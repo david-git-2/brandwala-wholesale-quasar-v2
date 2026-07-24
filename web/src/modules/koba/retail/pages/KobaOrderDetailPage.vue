@@ -4,7 +4,7 @@
     <div class="detail-header q-mb-md">
       <div class="row items-center justify-between no-wrap w-full">
         <div class="row items-center q-gutter-sm">
-          <q-btn flat round icon="arrow_back" color="grey-8" :to="{ name: ordersRouteName }" />
+          <q-btn flat round icon="ph ph-arrow-left" color="grey-8" :to="{ name: ordersRouteName }" />
           <div>
             <div class="text-h5 text-weight-bold text-grey-9">Order details #{{ orderId }}</div>
             <div class="text-caption text-grey-7">
@@ -60,7 +60,7 @@
             v-if="isAdmin"
             flat
             round
-            icon="delete_outline"
+            icon="ph ph-trash"
             color="negative"
             :loading="savingDelete"
             @click="deleteDialogOpen = true"
@@ -76,7 +76,7 @@
 
     <!-- Error State -->
     <div v-else-if="error" class="text-negative text-center q-pa-md empty-state-card">
-      <q-icon name="error_outline" size="48px" color="negative" class="q-mb-sm" />
+      <q-icon name="ph ph-warning-circle" size="48px" color="negative" class="q-mb-sm" />
       <div class="text-h6">{{ error }}</div>
       <q-btn
         label="Back to Orders"
@@ -97,7 +97,7 @@
               class="text-subtitle1 text-weight-bold text-grey-9 row items-center justify-between"
             >
               <div class="row items-center">
-                <q-icon name="local_shipping" color="primary" size="20px" class="q-mr-xs" />
+                <q-icon name="ph ph-truck" color="primary" size="20px" class="q-mr-xs" />
                 Shipping Information
               </div>
               <!-- Copy all button (admin) -->
@@ -106,7 +106,7 @@
                 flat
                 dense
                 no-caps
-                icon="copy_all"
+                icon="ph ph-copy"
                 label="Copy all"
                 color="primary"
                 size="sm"
@@ -127,7 +127,7 @@
                       flat
                       dense
                       round
-                      icon="content_copy"
+                      icon="ph ph-copy"
                       size="xs"
                       color="grey-6"
                       @click="copyToClipboard(order.shipping_name!, 'Name copied')"
@@ -145,7 +145,7 @@
                       flat
                       dense
                       round
-                      icon="content_copy"
+                      icon="ph ph-copy"
                       size="xs"
                       color="grey-6"
                       @click="copyToClipboard(order.shipping_phone!, 'Phone copied')"
@@ -166,7 +166,7 @@
                       flat
                       dense
                       round
-                      icon="content_copy"
+                      icon="ph ph-copy"
                       size="xs"
                       color="grey-6"
                       @click="
@@ -189,7 +189,7 @@
                       flat
                       dense
                       round
-                      icon="content_copy"
+                      icon="ph ph-copy"
                       size="xs"
                       color="grey-6"
                       @click="copyToClipboard(order.shipping_address!, 'Address copied')"
@@ -198,7 +198,7 @@
                 </div>
               </div>
               <div class="col-12" v-if="order.free_delivery">
-                <q-chip outline color="primary" icon="check_circle" dense
+                <q-chip outline color="primary" icon="ph ph-check-circle" dense
                   >Free Delivery Requested</q-chip
                 >
               </div>
@@ -211,7 +211,7 @@
           <q-card-section class="q-pb-none">
             <div class="row items-center justify-between">
               <div class="text-subtitle1 text-weight-bold text-grey-9 row items-center">
-                <q-icon name="shopping_bag" color="primary" size="20px" class="q-mr-xs" />
+                <q-icon name="ph ph-tote" color="primary" size="20px" class="q-mr-xs" />
                 Order Items ({{ filteredItems.length
                 }}<span v-if="isAdmin"> / {{ items.length }}</span> variant{{
                   items.length === 1 ? '' : 's'
@@ -261,7 +261,7 @@
                           :src="toDirectGoogleImageUrl(props.row.image_url)"
                           referrerpolicy="no-referrer"
                         />
-                        <q-icon v-else name="image_not_supported" color="grey-5" />
+                        <q-icon v-else name="ph ph-image-square" color="grey-5" />
                       </q-avatar>
                       <div>
                         <div
@@ -334,7 +334,7 @@
                     }}</span>
                     <q-icon
                       v-if="isAdmin && showConfirmedInput"
-                      name="edit"
+                      name="ph ph-pencil-simple"
                       size="xs"
                       color="blue-4"
                       class="q-ml-xs show-on-hover"
@@ -371,7 +371,7 @@
                     }}</span>
                     <q-icon
                       v-if="isAdmin && showDeliveredInput"
-                      name="edit"
+                      name="ph ph-pencil-simple"
                       size="xs"
                       color="teal-4"
                       class="q-ml-xs show-on-hover"
@@ -409,7 +409,7 @@
         <!-- Summary Card -->
         <q-card flat class="detail-card q-pa-md q-mb-md">
           <div class="text-subtitle1 text-weight-bold text-grey-9 q-mb-md row items-center">
-            <q-icon name="summarize" color="primary" size="20px" class="q-mr-xs" />
+            <q-icon name="ph ph-file-text" color="primary" size="20px" class="q-mr-xs" />
             Order Summary
           </div>
 
@@ -460,7 +460,7 @@
         <!-- Commission Card -->
         <q-card flat class="detail-card q-pa-md q-mb-md">
           <div class="text-subtitle1 text-weight-bold text-grey-9 q-mb-md row items-center">
-            <q-icon name="payments" color="primary" size="20px" class="q-mr-xs" />
+            <q-icon name="ph ph-money" color="primary" size="20px" class="q-mr-xs" />
             Earnings & Fees
           </div>
 
@@ -512,7 +512,7 @@
             class="row justify-between q-py-sm text-subtitle1 text-weight-bold text-positive q-mt-sm bg-positive-soft q-px-sm rounded-borders"
           >
             <div class="row items-center">
-              <q-icon name="monetization_on" class="q-mr-xs" size="20px" />
+              <q-icon name="ph ph-coin" class="q-mr-xs" size="20px" />
               Net Earnings
             </div>
             <div>৳{{ netOrderCommission.toFixed(2) }}</div>
@@ -526,7 +526,7 @@
             v-if="order.status === 'pending'"
             unelevated
             color="blue-7"
-            icon="check_circle"
+            icon="ph ph-check-circle"
             label="Mark as Confirmed"
             no-caps
             class="full-width cta-btn"
@@ -542,7 +542,7 @@
             v-if="order.status === 'confirmed'"
             unelevated
             color="indigo-7"
-            icon="autorenew"
+            icon="ph ph-arrows-clockwise"
             label="Mark as Processing"
             no-caps
             class="full-width cta-btn"
@@ -558,7 +558,7 @@
             v-if="order.status === 'processing'"
             unelevated
             color="deep-purple-7"
-            icon="local_shipping"
+            icon="ph ph-truck"
             label="Mark as Shipped"
             no-caps
             class="full-width cta-btn"
@@ -578,7 +578,7 @@
             "
             unelevated
             color="positive"
-            icon="task_alt"
+            icon="ph ph-check-circle"
             label="Mark as Delivered"
             no-caps
             class="full-width cta-btn"
@@ -594,7 +594,7 @@
             v-if="order.status !== 'delivered' && order.status !== 'cancelled'"
             flat
             color="negative"
-            icon="cancel"
+            icon="ph ph-x-circle"
             label="Cancel Order"
             no-caps
             class="full-width"
@@ -612,7 +612,7 @@
     <q-dialog v-model="statusDialogOpen" persistent>
       <q-card style="min-width: 320px" class="rounded-dialog">
         <q-card-section class="row items-center q-pb-none">
-          <q-icon name="swap_horiz" color="primary" size="28px" class="q-mr-sm" />
+          <q-icon name="ph ph-arrows-left-right" color="primary" size="28px" class="q-mr-sm" />
           <span class="text-h6">Change Order Status</span>
         </q-card-section>
         <q-card-section class="text-grey-8">
@@ -638,7 +638,7 @@
     <q-dialog v-model="deleteDialogOpen" persistent>
       <q-card style="min-width: 320px" class="rounded-dialog">
         <q-card-section class="row items-center q-pb-none">
-          <q-icon name="delete_outline" color="negative" size="28px" class="q-mr-sm" />
+          <q-icon name="ph ph-trash" color="negative" size="28px" class="q-mr-sm" />
           <span class="text-h6">Delete Order</span>
         </q-card-section>
         <q-card-section class="text-grey-8">
@@ -839,14 +839,14 @@ async function onConfirmStatusChange() {
       $q.notify({
         message: 'Order status updated',
         color: 'positive',
-        icon: 'check_circle',
+        icon: 'ph ph-check-circle',
         timeout: 1500,
       });
     } else {
       $q.notify({
         message: result?.error ?? 'Failed to update status',
         color: 'negative',
-        icon: 'error',
+        icon: 'ph ph-warning-circle',
         timeout: 2500,
       });
       pendingStatusChange.value = order.value?.status ?? null;
@@ -872,7 +872,7 @@ async function onConfirmDelete() {
       $q.notify({
         message: 'Order deleted successfully',
         color: 'dark',
-        icon: 'delete',
+        icon: 'ph ph-trash',
         timeout: 1500,
       });
       void router.push({ name: ordersRouteName.value });
@@ -880,7 +880,7 @@ async function onConfirmDelete() {
       $q.notify({
         message: result?.error ?? 'Failed to delete order',
         color: 'negative',
-        icon: 'error',
+        icon: 'ph ph-warning-circle',
         timeout: 2500,
       });
     }
@@ -1092,7 +1092,7 @@ async function onSaveConfirmedQty(item: KobaOrderItem, newValue: unknown) {
       $q.notify({
         message: 'Confirmed qty saved',
         color: 'positive',
-        icon: 'check',
+        icon: 'ph ph-check',
         timeout: 1200,
       });
     } else {
@@ -1114,7 +1114,7 @@ async function onSaveDeliveredQty(item: KobaOrderItem, newValue: unknown) {
   try {
     const result = await orderStore.updateItemDeliveredQty(item.id, qty);
     if (result?.success) {
-      $q.notify({ message: 'Delivered qty saved', color: 'teal', icon: 'check', timeout: 1200 });
+      $q.notify({ message: 'Delivered qty saved', color: 'teal', icon: 'ph ph-check', timeout: 1200 });
     } else {
       qtyError.value = result?.error ?? 'Failed to save delivered quantity.';
       // Revert if API failed

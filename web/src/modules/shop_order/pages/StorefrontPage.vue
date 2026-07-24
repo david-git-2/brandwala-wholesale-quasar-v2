@@ -5,7 +5,7 @@
       v-if="accessDenied"
       class="column items-center justify-center error-container text-center q-pa-xl"
     >
-      <q-icon name="gpp_bad" size="80px" color="negative" class="q-mb-md" />
+      <q-icon name="ph ph-shield-warning" size="80px" color="negative" class="q-mb-md" />
       <div class="text-h5 text-weight-bold text-grey-9">{{ $t('shop.access_denied') }}</div>
       <p class="text-body1 text-grey-6 q-mt-sm q-mb-lg" style="max-width: 400px">
         {{ $t('shop.access_denied_desc') }}
@@ -18,7 +18,7 @@
       v-else-if="notFound"
       class="column items-center justify-center error-container text-center q-pa-xl"
     >
-      <q-icon name="search_off" size="80px" color="warning" class="q-mb-md" />
+      <q-icon name="ph ph-magnifying-glass-minus" size="80px" color="warning" class="q-mb-md" />
       <div class="text-h5 text-weight-bold text-grey-9">{{ $t('shop.shop_not_found') }}</div>
       <p class="text-body1 text-grey-6 q-mt-sm q-mb-lg" style="max-width: 400px">
         {{ $t('shop.shop_not_found_desc') }}
@@ -54,7 +54,7 @@
       <section class="row items-center justify-between q-col-gutter-md q-mb-md">
         <div class="col">
           <div class="row items-center q-gutter-xs">
-            <q-btn flat dense icon="arrow_back" color="grey-7" @click="goDashboard" />
+            <q-btn flat dense icon="ph ph-arrow-left" color="grey-7" @click="goDashboard" />
             <div class="text-overline text-primary">Wholesale Storefront</div>
           </div>
           <h1 class="text-h5 text-weight-bold q-my-none">{{ shopName }}</h1>
@@ -65,7 +65,7 @@
             color="primary"
             flat
             round
-            icon="shopping_cart"
+            icon="ph ph-shopping-cart"
             @click="goToCart"
           >
             <q-badge v-if="shopCartStore.itemCount > 0" color="negative" floating rounded>
@@ -93,7 +93,7 @@
               @clear="onSearchClick"
             >
               <template #prepend>
-                <q-icon name="search" />
+                <q-icon name="ph ph-magnifying-glass" />
               </template>
             </q-input>
             <q-btn
@@ -116,7 +116,7 @@
               round
               dense
               color="primary"
-              icon="filter_list"
+              icon="ph ph-funnel-simple"
               @click="filterDrawerOpen = true"
             >
               <q-badge v-if="activeFilterCount > 0" color="primary" floating rounded>
@@ -196,7 +196,7 @@
             class="col-xs-12 col-sm-6 col-md-4 col-lg-3 product-grid-item"
           >
             <q-card flat bordered class="product-card">
-              <div class="product-image-wrapper">
+              <div class="product-image-wrapper cursor-pointer" @click="openQuickView(item)">
                 <img
                   v-if="item.product_image_url && !brokenImages[itemKey(item)]"
                   :src="item.product_image_url"
@@ -206,7 +206,7 @@
                   @error="brokenImages[itemKey(item)] = true"
                 />
                 <div v-else class="product-image-fallback">
-                  <q-icon name="image_not_supported" size="28px" color="grey-5" />
+                  <q-icon name="ph ph-image-square" size="28px" color="grey-5" />
                 </div>
               </div>
 
@@ -214,7 +214,7 @@
                 <div class="product-meta text-caption text-uppercase tracking-wider">
                   {{ item.product_brand || 'Generic' }}
                 </div>
-                <div class="product-name text-subtitle2 text-weight-bold">
+                <div class="product-name text-subtitle2 text-weight-bold cursor-pointer" @click="openQuickView(item)">
                   {{ item.product_name }}
                 </div>
 
@@ -292,7 +292,7 @@
                         round
                         dense
                         size="xs"
-                        icon="remove"
+                        icon="ph ph-minus"
                         color="grey-8"
                         style="min-width: 28px; min-height: 28px"
                         @click="decrementQty(item)"
@@ -308,7 +308,7 @@
                         round
                         dense
                         size="xs"
-                        icon="add"
+                        icon="ph ph-plus"
                         color="grey-8"
                         style="min-width: 28px; min-height: 28px"
                         @click="incrementQty(item)"
@@ -322,7 +322,7 @@
                       unelevated
                       no-caps
                       dense
-                      icon="shopping_cart"
+                      icon="ph ph-shopping-cart"
                       :label="quasar.screen.lt.sm ? undefined : $t('shop.add')"
                       class="add-cart-btn"
                       :disabled="
@@ -337,7 +337,7 @@
                       unelevated
                       no-caps
                       dense
-                      icon="remove_shopping_cart"
+                      icon="ph ph-shopping-cart"
                       :label="quasar.screen.lt.sm ? undefined : $t('shop.remove')"
                       class="add-cart-btn"
                       :disabled="!shopStorefrontStore.permissions?.can_add_to_cart"
@@ -354,7 +354,7 @@
           v-else-if="!shopStorefrontStore.loading"
           class="column items-center justify-center empty-state q-pa-xl text-center"
         >
-          <q-icon name="o_shopping_bag" size="64px" color="grey-5" class="q-mb-md" />
+          <q-icon name="ph ph-tote" size="64px" color="grey-5" class="q-mb-md" />
           <div class="text-h6 text-weight-bold text-grey-8">{{ $t('shop.no_products_found') }}</div>
           <p class="text-body2 text-grey-6 q-mt-sm">
             {{ $t('shop.no_products_desc') }}
@@ -417,6 +417,17 @@
         </div>
       </div>
     </FilterSidebar>
+
+    <!-- PRODUCT QUICK VIEW DRAWER / BOTTOM SHEET -->
+    <ProductQuickView
+      v-model="quickViewOpen"
+      :product="selectedQuickViewProduct"
+      :shop-details="shopStorefrontStore.shopDetails"
+      :permissions="shopStorefrontStore.permissions"
+      :cart-item="selectedQuickViewProduct ? cartItemFor(selectedQuickViewProduct) : null"
+      :saving="shopCartStore.saving"
+      @add-to-cart="onQuickViewAddToCart"
+    />
   </q-page>
 </template>
 
@@ -429,6 +440,7 @@ import { useProductStore } from 'src/modules/products/stores/productStore';
 import { useShopCartStore } from '../stores/shopCartStore';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
+import ProductQuickView from '../components/ProductQuickView.vue';
 import { useQuasar, type QInfiniteScroll } from 'quasar';
 
 const quasar = useQuasar();
@@ -453,6 +465,8 @@ const search = ref('');
 const brand = ref<string | null>(null);
 const category = ref<string | null>(null);
 const filterDrawerOpen = ref(false);
+const quickViewOpen = ref(false);
+const selectedQuickViewProduct = ref<any | null>(null);
 
 const brandNames = ref<string[]>([]);
 const categoryNames = ref<string[]>([]);
@@ -638,6 +652,26 @@ const incrementQty = (item: any) => {
   const current = selectedQuantities[key] || min;
   if (item.available_units === null || current + min <= item.available_units) {
     selectedQuantities[key] = current + min;
+  }
+};
+
+const openQuickView = (item: any) => {
+  selectedQuickViewProduct.value = item;
+  quickViewOpen.value = true;
+};
+
+const onQuickViewAddToCart = async (payload: { product: any; quantity: number }) => {
+  if (!shopStorefrontStore.shopDetails) return;
+  const existing = cartItemFor(payload.product);
+  if (existing) {
+    await shopCartStore.updateQty(existing.id, payload.quantity);
+  } else {
+    await shopCartStore.addItem(
+      shopStorefrontStore.shopDetails.id,
+      payload.product.product_id,
+      payload.product.global_stock_allocation_id,
+      payload.quantity,
+    );
   }
 };
 

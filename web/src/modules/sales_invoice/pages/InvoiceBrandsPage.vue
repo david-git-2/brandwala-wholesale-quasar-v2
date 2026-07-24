@@ -16,7 +16,7 @@
               size="sm"
               class="pill-btn slim-btn"
               label="Create Brand"
-              icon="add"
+              icon="ph ph-plus"
               @click="openCreateDialog"
             />
           </div>
@@ -35,7 +35,7 @@
           placeholder="Search Brand Name or Address"
         >
           <template #prepend>
-            <q-icon name="search" />
+            <q-icon name="ph ph-magnifying-glass" />
           </template>
         </q-input>
       </div>
@@ -74,7 +74,7 @@
               </q-chip>
             </td>
             <td class="text-right">
-              <q-btn flat round dense icon="more_vert">
+              <q-btn flat round dense icon="ph ph-dots-three-vertical">
                 <q-menu auto-close>
                   <q-list dense style="min-width: 140px">
                     <q-item clickable @click="openEditDialog(row)">
@@ -99,7 +99,7 @@
           <div class="text-h6 text-weight-bold text-black">
             {{ isEdit ? 'Edit Invoice Brand' : 'Create Invoice Brand' }}
           </div>
-          <q-btn flat round dense icon="close" v-close-popup />
+          <q-btn flat round dense icon="ph ph-x" v-close-popup />
         </q-card-section>
         <q-separator class="q-mx-md" />
 

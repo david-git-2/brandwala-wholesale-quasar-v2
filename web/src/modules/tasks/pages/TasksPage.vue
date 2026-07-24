@@ -19,7 +19,7 @@
               no-caps
               size="sm"
               class="pill-btn slim-btn"
-              icon="local_offer"
+              icon="ph ph-tag"
               label="Manage Tags"
               @click="tagManagerOpen = true"
             />
@@ -29,7 +29,7 @@
               no-caps
               size="sm"
               class="pill-btn slim-btn"
-              icon="delete_sweep"
+              icon="ph ph-trash"
               label="Bulk Delete"
               @click="bulkDeleteOpen = true"
             />
@@ -38,7 +38,7 @@
               no-caps
               size="sm"
               class="pill-btn slim-btn"
-              icon="add"
+              icon="ph ph-plus"
               label="Create Item"
               @click="onClickCreate"
             />
@@ -55,7 +55,7 @@
           flat
           round
           dense
-          icon="search"
+          icon="ph ph-magnifying-glass"
           aria-label="Show search"
           @click="showSearchInput = true"
         >
@@ -73,14 +73,14 @@
           autofocus
         >
           <template #prepend>
-            <q-icon name="search" size="18px" />
+            <q-icon name="ph ph-magnifying-glass" size="18px" />
           </template>
           <template #append>
             <q-btn
               flat
               round
               dense
-              icon="close"
+              icon="ph ph-x"
               aria-label="Hide search"
               @click="
                 () => {
@@ -98,7 +98,7 @@
           flat
           round
           dense
-          icon="filter_alt"
+          icon="ph ph-funnel"
           aria-label="Filters"
           @click="filterDrawerOpen = true"
         >
@@ -126,11 +126,11 @@
         narrow-indicator
         no-caps
       >
-        <q-tab name="tree" icon="lan" label="Tree View" />
-        <q-tab name="list" icon="list" label="List View" />
-        <q-tab name="notes" icon="note" label="Notes" />
-        <q-tab name="discussions" icon="forum" label="Discussions" />
-        <q-tab name="my-tasks" icon="person" label="My Tasks" />
+        <q-tab name="tree" icon="ph ph-tree-structure" label="Tree View" />
+        <q-tab name="ph ph-list" icon="ph ph-list" label="List View" />
+        <q-tab name="notes" icon="ph ph-note" label="Notes" />
+        <q-tab name="discussions" icon="ph ph-chats" label="Discussions" />
+        <q-tab name="my-tasks" icon="ph ph-user" label="My Tasks" />
       </q-tabs>
 
       <!-- Status Summary Row -->
@@ -278,7 +278,7 @@
                   flat
                   round
                   dense
-                  icon="add"
+                  icon="ph ph-plus"
                   size="sm"
                   :color="getTicketColor(project.type)"
                   @click.stop="
@@ -320,7 +320,7 @@
                           size="xs"
                           @click.stop="toggleCollapse(mod.id)"
                         />
-                        <q-icon name="view_module" color="blue" size="20px" />
+                        <q-icon name="ph ph-squares-four" color="blue" size="20px" />
                         <div>
                           <div class="row items-center q-gutter-x-sm">
                             <span
@@ -364,7 +364,7 @@
                         flat
                         round
                         dense
-                        icon="add"
+                        icon="ph ph-plus"
                         size="sm"
                         color="blue"
                         @click.stop="onClickQuickAdd(mod.id, 'submodule')"
@@ -403,7 +403,7 @@
                                 size="xs"
                                 @click.stop="toggleCollapse(sub.id)"
                               />
-                              <q-icon name="layers" color="cyan" size="18px" />
+                              <q-icon name="ph ph-stack" color="cyan" size="18px" />
                               <div>
                                 <div class="row items-center q-gutter-x-sm">
                                   <span
@@ -451,7 +451,7 @@
                               flat
                               round
                               dense
-                              icon="add"
+                              icon="ph ph-plus"
                               size="xs"
                               color="cyan"
                               @click.stop="onClickQuickAdd(sub.id, 'task')"
@@ -600,7 +600,7 @@
                                 flat
                                 round
                                 dense
-                                icon="add"
+                                icon="ph ph-plus"
                                 size="xs"
                                 :color="getTicketColor(ticket.type)"
                                 @click.stop="onClickQuickAdd(ticket.id, 'task')"
@@ -736,7 +736,7 @@
                             flat
                             round
                             dense
-                            icon="add"
+                            icon="ph ph-plus"
                             size="xs"
                             :color="getTicketColor(sub.type)"
                             @click.stop="onClickQuickAdd(sub.id, 'task')"
@@ -861,7 +861,7 @@
                       flat
                       round
                       dense
-                      icon="add"
+                      icon="ph ph-plus"
                       size="xs"
                       :color="getTicketColor(mod.type)"
                       @click.stop="onClickQuickAdd(mod.id, 'task')"
@@ -1000,7 +1000,7 @@
                     flat
                     round
                     dense
-                    icon="add"
+                    icon="ph ph-plus"
                     size="xs"
                     :color="getTicketColor(child.type)"
                     @click.stop="onClickQuickAdd(child.id, 'task')"
@@ -1012,7 +1012,7 @@
             </div>
           </div>
           <div v-else class="text-center q-pa-xl floating-surface shadow-1">
-            <q-icon name="folder_open" size="48px" class="text-grey-5 q-mb-md" />
+            <q-icon name="ph ph-folder-open" size="48px" class="text-grey-5 q-mb-md" />
             <div class="text-subtitle1 text-grey-9 text-weight-bold">No Projects Found</div>
             <div class="text-body2 text-grey-6">
               Create a Project to begin building your task hierarchy.
@@ -1021,7 +1021,7 @@
         </q-tab-panel>
 
         <!-- LIST VIEW -->
-        <q-tab-panel name="list" class="q-pa-none">
+        <q-tab-panel name="ph ph-list" class="q-pa-none">
           <q-card flat class="floating-surface shadow-1">
             <q-card-section class="q-pa-none">
               <q-table
@@ -1223,7 +1223,7 @@
               v-if="!filteredNotes.length"
               class="col-12 text-center q-pa-xl floating-surface shadow-1"
             >
-              <q-icon name="note" size="48px" class="text-grey-5 q-mb-md" />
+              <q-icon name="ph ph-note" size="48px" class="text-grey-5 q-mb-md" />
               <div class="text-subtitle1 text-grey-9 text-weight-bold">No Notes Found</div>
               <div class="text-body2 text-grey-6">
                 Create a note to keep track of ideas or documentation.
@@ -1263,7 +1263,7 @@
                     {{ d.content || 'No details provided.' }}
                   </div>
                   <div class="row items-center q-mt-md text-primary text-weight-bold text-caption">
-                    <q-icon name="comment" class="q-mr-xs" /> View Comments
+                    <q-icon name="ph ph-chat-circle" class="q-mr-xs" /> View Comments
                   </div>
                 </q-card-section>
               </q-card>
@@ -1272,7 +1272,7 @@
               v-if="!filteredDiscussions.length"
               class="col-12 text-center q-pa-xl floating-surface shadow-1"
             >
-              <q-icon name="forum" size="48px" class="text-grey-5 q-mb-md" />
+              <q-icon name="ph ph-chats" size="48px" class="text-grey-5 q-mb-md" />
               <div class="text-subtitle1 text-grey-9 text-weight-bold">No Discussions Found</div>
               <div class="text-body2 text-grey-6">
                 Create a discussion under any project, module, or submodule.
@@ -1552,7 +1552,7 @@
             class="full-width soft-input text-left justify-start q-px-sm"
             color="primary"
           >
-            <q-icon name="event" class="q-mr-xs" />
+            <q-icon name="ph ph-calendar" class="q-mr-xs" />
             <span class="text-caption">{{ dateRangeLabel }}</span>
             <q-popup-proxy cover transition-show="scale" transition-hide="scale">
               <q-date v-model="selectedDateRange" range @update:model-value="onDateRangeChange">

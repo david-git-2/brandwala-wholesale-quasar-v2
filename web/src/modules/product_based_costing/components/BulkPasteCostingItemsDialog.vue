@@ -4,13 +4,13 @@
       <q-card-section class="row items-center q-pb-none">
         <div class="text-h6 text-primary text-weight-bold">Bulk Paste Costing Updates</div>
         <q-space />
-        <q-btn icon="close" flat round dense v-close-popup />
+        <q-btn icon="ph ph-x" flat round dense v-close-popup />
       </q-card-section>
 
       <q-card-section class="q-pa-md q-gutter-y-md">
         <q-banner class="bg-blue-1 text-blue-9 rounded-borders">
           <template #avatar>
-            <q-icon name="info" size="sm" />
+            <q-icon name="ph ph-info" size="sm" />
           </template>
           Copy cells from Excel or Google Sheets (Quantity, Price, Product Weight, or Package
           Weight) and paste them below. Values are applied to items top to bottom in table order.
@@ -38,7 +38,7 @@
               dense
               color="primary"
               label="Clear & Paste Again"
-              icon="refresh"
+              icon="ph ph-arrows-clockwise"
               @click="resetPaste"
             />
           </div>
@@ -105,7 +105,7 @@
                   :colspan="maxColumns + 2"
                   class="text-center text-amber-9 text-caption text-weight-medium q-py-sm"
                 >
-                  <q-icon name="warning" size="14px" class="q-mr-xs" />
+                  <q-icon name="ph ph-warning" size="14px" class="q-mr-xs" />
                   {{
                     parsedRows.length > currentItems.length
                       ? `You pasted ${parsedRows.length} rows, but this file only has ${currentItems.length} items. Extra rows will be ignored.`

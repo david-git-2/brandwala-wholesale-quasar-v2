@@ -36,7 +36,7 @@
       style="border-radius: 8px"
     >
       <template #avatar>
-        <q-icon name="check_circle" color="primary" />
+        <q-icon name="ph ph-check-circle" color="primary" />
       </template>
       {{ bannerText }}
     </q-banner>

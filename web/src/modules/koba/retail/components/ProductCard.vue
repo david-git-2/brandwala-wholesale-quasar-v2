@@ -9,7 +9,7 @@
         round
         dense
         color="grey-7"
-        icon="info"
+        icon="ph ph-info"
         size="sm"
         class="info-btn"
         @click.stop="detailsOpen = true"
@@ -28,7 +28,7 @@
         @error="onImageError"
       />
       <div v-else class="no-image-placeholder">
-        <q-icon name="image_not_supported" size="28px" color="grey-5" />
+        <q-icon name="ph ph-image-square" size="28px" color="grey-5" />
         <span class="text-caption text-grey-5 q-mt-xs">No image</span>
       </div>
     </div>
@@ -64,13 +64,13 @@
               flat
               dense
               round
-              icon="remove"
+              icon="ph ph-minus"
               size="xs"
               :disable="qty <= step"
               @click.stop="qty = Math.max(step, qty - step)"
             />
             <span class="qty-value">{{ qty }}</span>
-            <q-btn flat dense round icon="add" size="xs" @click.stop="qty += step" />
+            <q-btn flat dense round icon="ph ph-plus" size="xs" @click.stop="qty += step" />
           </div>
 
           <q-btn
@@ -78,7 +78,7 @@
             no-caps
             dense
             color="primary"
-            icon="shopping_cart"
+            icon="ph ph-shopping-cart"
             label="Add"
             class="add-btn"
             :loading="addBusy"
@@ -88,7 +88,7 @@
 
         <template v-else>
           <div class="in-cart-label">
-            <q-icon name="check_circle" color="positive" size="16px" />
+            <q-icon name="ph ph-check-circle" color="positive" size="16px" />
             <span class="text-caption text-positive q-ml-xs">In cart</span>
           </div>
           <q-btn
@@ -96,7 +96,7 @@
             dense
             round
             color="negative"
-            icon="o_delete"
+            icon="ph ph-trash"
             size="sm"
             :loading="removeBusy"
             @click.stop="onRemove"
@@ -111,7 +111,7 @@
     <q-card class="details-card">
       <q-card-section class="row items-center justify-between q-py-md q-px-lg">
         <div class="text-h6 text-weight-bold text-grey-9">Product Details</div>
-        <q-btn flat round dense icon="close" v-close-popup />
+        <q-btn flat round dense icon="ph ph-x" v-close-popup />
       </q-card-section>
 
       <q-separator />
@@ -125,7 +125,7 @@
           referrerpolicy="no-referrer"
         />
         <div v-else class="no-image-placeholder q-py-lg">
-          <q-icon name="image_not_supported" size="48px" color="grey-4" />
+          <q-icon name="ph ph-image-square" size="48px" color="grey-4" />
           <span class="text-caption text-grey-5 q-mt-xs">No image available</span>
         </div>
       </q-card-section>

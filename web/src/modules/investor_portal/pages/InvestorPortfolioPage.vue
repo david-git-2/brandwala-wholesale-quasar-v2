@@ -25,7 +25,7 @@
 
       <q-banner dense inline-actions class="bg-indigo-1 text-indigo-9 q-mb-md rounded-borders">
         <template #avatar>
-          <q-icon name="info" color="indigo" />
+          <q-icon name="ph ph-info" color="indigo" />
         </template>
         Withdrawable balance is calculated from realized profits. Contact your administrator to
         request a payout.

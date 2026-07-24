@@ -13,7 +13,7 @@
           <q-btn
             color="primary"
             unelevated
-            icon="person_add"
+            icon="ph ph-user-plus"
             label="Add Super Admin"
             @click="onClickAddSuperadmin"
           />
@@ -38,7 +38,7 @@
             class="q-mt-md"
             color="primary"
             unelevated
-            icon="person_add"
+            icon="ph ph-user-plus"
             label="Add Super Admin"
             @click="onClickAddSuperadmin"
           />
@@ -73,13 +73,13 @@
         <template #body-cell-actions="props">
           <q-td :props="props">
             <div class="row items-center q-gutter-xs no-wrap">
-              <q-btn flat round dense icon="o_edit" @click="onClickEditSuperadmin(props.row)" />
+              <q-btn flat round dense icon="ph ph-pencil-simple" @click="onClickEditSuperadmin(props.row)" />
               <q-btn
                 flat
                 round
                 dense
                 color="negative"
-                icon="o_delete"
+                icon="ph ph-trash"
                 :disable="isCurrentUser(props.row.email)"
                 @click="onClickDeleteSuperadmin(props.row)"
               />

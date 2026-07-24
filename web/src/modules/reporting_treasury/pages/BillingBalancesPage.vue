@@ -20,7 +20,7 @@
               @update:model-value="loadData"
             >
               <template #append>
-                <q-icon name="search" />
+                <q-icon name="ph ph-magnifying-glass" />
               </template>
             </q-input>
           </div>
@@ -33,8 +33,8 @@
               active-color="primary"
               indicator-color="primary"
             >
-              <q-tab name="profiles" label="Billing Profiles" icon="people" />
-              <q-tab name="outstanding" label="Outstanding Invoices" icon="description" />
+              <q-tab name="profiles" label="Billing Profiles" icon="ph ph-users" />
+              <q-tab name="outstanding" label="Outstanding Invoices" icon="ph ph-file-text" />
             </q-tabs>
           </div>
         </div>

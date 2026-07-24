@@ -6,13 +6,13 @@
     >
       <q-card-section class="row items-center justify-between q-py-sm">
         <div class="row items-center q-gutter-sm">
-          <q-icon name="inventory_2" size="24px" color="primary" />
+          <q-icon name="ph ph-archive-box" size="24px" color="primary" />
           <div class="text-h6 text-weight-bold text-black">Stock Batch Details</div>
           <q-badge v-if="item" color="primary" outline class="text-weight-bold q-ml-sm">
             Batch #{{ item.id }}
           </q-badge>
         </div>
-        <q-btn icon="close" flat round dense v-close-popup />
+        <q-btn icon="ph ph-x" flat round dense v-close-popup />
       </q-card-section>
       <q-separator />
 

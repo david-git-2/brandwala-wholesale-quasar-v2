@@ -17,7 +17,7 @@
               @update:model-value="resetAndFetch"
             >
               <template #append>
-                <q-icon name="search" />
+                <q-icon name="ph ph-magnifying-glass" />
               </template>
             </q-input>
           </div>
@@ -61,7 +61,7 @@
             <q-btn
               color="primary"
               outline
-              icon="refresh"
+              icon="ph ph-arrows-clockwise"
               no-caps
               label="Reset Filters"
               class="px-3"

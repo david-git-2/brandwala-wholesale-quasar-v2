@@ -3,7 +3,7 @@
     <section class="bw-page__stack">
       <section class="row items-center q-col-gutter-md">
         <div class="col-auto">
-          <q-btn flat round icon="arrow_back" color="grey-7" @click="goBack" />
+          <q-btn flat round icon="ph ph-arrow-left" color="grey-7" @click="goBack" />
         </div>
         <div class="col">
           <div class="text-overline">{{ $t('navigation.customer_groups') }}</div>
@@ -17,7 +17,7 @@
             color="primary"
             unelevated
             no-caps
-            icon="person_add"
+            icon="ph ph-user-plus"
             :label="$t('shop_admin.add_member')"
             @click="openCreateDialog"
           />
@@ -38,14 +38,14 @@
         </q-card-section>
 
         <q-card-section v-else-if="members.length === 0" class="text-grey-6 text-center q-pa-xl">
-          <q-icon name="person_off" size="48px" class="q-mb-sm block" />
+          <q-icon name="ph ph-user-minus" size="48px" class="q-mb-sm block" />
           {{ $t('shop_admin.no_members') }}
           <div class="q-mt-md">
             <q-btn
               color="primary"
               outline
               no-caps
-              icon="person_add"
+              icon="ph ph-user-plus"
               :label="$t('shop_admin.add_member')"
               @click="openCreateDialog"
             />
@@ -95,7 +95,7 @@
                 flat
                 round
                 dense
-                icon="o_edit"
+                icon="ph ph-pencil-simple"
                 color="grey-7"
                 @click="openEditDialog(props.row)"
               >
@@ -105,7 +105,7 @@
                 flat
                 round
                 dense
-                icon="o_delete"
+                icon="ph ph-trash"
                 color="negative"
                 @click="openDeleteDialog(props.row)"
               >
@@ -124,7 +124,7 @@
             {{ form.id ? $t('shop_admin.edit_member') : $t('shop_admin.add_member') }}
           </div>
           <q-space />
-          <q-btn icon="close" flat round dense v-close-popup />
+          <q-btn icon="ph ph-x" flat round dense v-close-popup />
         </q-card-section>
 
         <q-card-section class="q-gutter-md">
@@ -177,7 +177,7 @@
     <q-dialog v-model="deleteOpen" persistent>
       <q-card style="min-width: 350px">
         <q-card-section class="row items-center">
-          <q-avatar icon="warning" color="warning" text-color="white" />
+          <q-avatar icon="ph ph-warning" color="warning" text-color="white" />
           <span class="q-ml-sm text-subtitle1 text-weight-bold">{{
             $t('shop_admin.delete_member')
           }}</span>

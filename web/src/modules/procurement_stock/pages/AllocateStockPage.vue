@@ -26,7 +26,7 @@
         class="bg-orange-1 text-orange-10 rounded-borders q-mb-md bw-status-banner"
       >
         <template #avatar>
-          <q-icon name="warning" color="warning" />
+          <q-icon name="ph ph-warning" color="warning" />
         </template>
         Allocate Stock is restricted to parent tenant administrators. Please switch to the parent
         tenant context.
@@ -47,11 +47,11 @@
             @clear="onSearch"
           >
             <template #prepend>
-              <q-icon name="search" />
+              <q-icon name="ph ph-magnifying-glass" />
             </template>
           </q-input>
 
-          <q-btn flat round dense icon="filter_alt" @click="openFilterDrawer">
+          <q-btn flat round dense icon="ph ph-funnel" @click="openFilterDrawer">
             <q-badge v-if="activeFilterCount > 0" color="primary" rounded floating>
               {{ activeFilterCount }}
             </q-badge>
@@ -145,7 +145,7 @@
                           alt="Product"
                           style="object-fit: cover; width: 100%; height: 100%"
                         />
-                        <q-icon v-else name="inventory_2" color="grey-6" size="36px" />
+                        <q-icon v-else name="ph ph-archive-box" color="grey-6" size="36px" />
                       </q-avatar>
                       <div>
                         <div
@@ -271,7 +271,7 @@
                           v-if="isOverAllocated(props.row.id)"
                           class="text-caption text-negative text-weight-bold"
                         >
-                          <q-icon name="warning" color="negative" /> Allocation exceeds pool
+                          <q-icon name="ph ph-warning" color="negative" /> Allocation exceeds pool
                           capacity! Save disabled.
                         </div>
                       </div>
@@ -284,7 +284,7 @@
             <!-- Empty State -->
             <template #no-data>
               <div class="full-width text-center text-grey-7 q-py-lg">
-                <q-icon name="inventory" size="48px" class="q-mb-sm text-grey-4" />
+                <q-icon name="ph ph-package" size="48px" class="q-mb-sm text-grey-4" />
                 <div>
                   No ready stock pools found for allocation. Ensure shipments are received and in
                   Ready Stock.

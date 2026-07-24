@@ -35,7 +35,7 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
   {
     title: 'Dashboard',
     caption: 'Platform pulse and rollout status',
-    icon: 'space_dashboard',
+    icon: 'ph ph-squares-four',
     scopes: ['platform'],
     allowedRoles: ['superadmin'],
     route: () => '/platform/dashboard',
@@ -43,7 +43,7 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
   {
     title: 'Tenants',
     caption: 'Create and govern businesses',
-    icon: 'apartment',
+    icon: 'ph ph-buildings',
     scopes: ['platform'],
     allowedRoles: ['superadmin'],
     route: () => '/platform/tenants',
@@ -51,7 +51,7 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
   {
     title: 'Feature Catalog',
     caption: 'Control modules and activation',
-    icon: 'inventory_2',
+    icon: 'ph ph-archive-box',
     scopes: ['platform'],
     allowedRoles: ['superadmin'],
     route: () => '/platform/modules',
@@ -59,7 +59,7 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
   {
     title: 'Global Reference',
     caption: 'Currencies, markets, payment methods, units',
-    icon: 'library_books',
+    icon: 'ph ph-books',
     scopes: ['platform'],
     allowedRoles: ['superadmin'],
     route: () => '/platform/reference',
@@ -67,7 +67,7 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
   {
     title: 'Super Admins',
     caption: 'Manage platform superadmin access',
-    icon: 'shield',
+    icon: 'ph ph-shield',
     scopes: ['platform'],
     allowedRoles: ['superadmin'],
     route: () => '/platform/superadmins',
@@ -75,7 +75,7 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
   {
     title: 'Documentation',
     caption: 'Global platform & module manuals',
-    icon: 'menu_book',
+    icon: 'ph ph-book-open',
     scopes: ['platform'],
     allowedRoles: ['superadmin'],
     route: () => '/platform/documentation',
@@ -84,7 +84,7 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
   {
     title: 'Dashboard',
     caption: 'Internal activity and quick actions',
-    icon: 'insights',
+    icon: 'ph ph-chart-line-up',
     scopes: ['app'],
     allowedRoles: ['admin', 'staff'],
     route: ({ tenantSlug }) => (tenantSlug ? `/${tenantSlug}/app/dashboard` : '/app/dashboard'),
@@ -92,7 +92,7 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
   {
     title: 'Tenants',
     caption: 'Open tenant details and assignments',
-    icon: 'domain',
+    icon: 'ph ph-buildings',
     scopes: ['app'],
     allowedRoles: ['admin', 'staff'],
     route: ({ tenantSlug }) => (tenantSlug ? `/${tenantSlug}/app/tenants` : '/app/tenants'),
@@ -100,7 +100,7 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
   {
     title: 'Access Control',
     caption: 'Govern roles, members & features',
-    icon: 'admin_panel_settings',
+    icon: 'ph ph-shield-check',
     scopes: ['app'],
     allowedRoles: ['admin'],
     route: ({ tenantSlug }) =>
@@ -109,7 +109,7 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
   {
     title: 'Documentation',
     caption: 'User guides and feature manuals',
-    icon: 'menu_book',
+    icon: 'ph ph-book-open',
     scopes: ['app'],
     allowedRoles: ['admin', 'staff', 'viewer'],
     route: ({ tenantSlug }) =>
@@ -119,7 +119,7 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
   {
     title: 'Dashboard',
     caption: 'Current orders, approvals, and next actions',
-    icon: 'shopping_bag',
+    icon: 'ph ph-tote',
     scopes: ['shop'],
     allowedRoles: ['customer_admin', 'customer_negotiator', 'customer_staff'],
     requiresTenantContext: true,
@@ -223,7 +223,7 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
         .map((routeDefinition) => ({
           title: routeDefinition.title,
           caption: routeDefinition.caption,
-          icon: 'chevron_right',
+          icon: 'ph ph-caret-right',
           to: routeDefinition.to,
         }));
 
@@ -232,7 +232,7 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
         {
           title: 'Koba Retail',
           caption: 'Koba Retail module',
-          icon: 'shopping_bag',
+          icon: 'ph ph-tote',
           children: kobaRetailChildren,
         },
       ];
@@ -275,7 +275,7 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
       .map((routeDefinition) => ({
         title: routeDefinition.title,
         caption: routeDefinition.caption,
-        icon: 'chevron_right',
+        icon: 'ph ph-caret-right',
         to: routeDefinition.to,
       }));
 
@@ -292,7 +292,7 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
       .map((routeDefinition) => ({
         title: routeDefinition.title,
         caption: routeDefinition.caption,
-        icon: 'chevron_right',
+        icon: 'ph ph-caret-right',
         to: routeDefinition.to,
       }));
 
@@ -303,7 +303,7 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
             {
               title: 'Product',
               caption: 'Product module',
-              icon: 'inventory_2',
+              icon: 'ph ph-archive-box',
               children: productsChildren,
             },
           ]
@@ -313,7 +313,7 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
             {
               title: 'Koba Retail',
               caption: 'Koba Retail module',
-              icon: 'shopping_bag',
+              icon: 'ph ph-tote',
               children: kobaRetailChildren,
             },
           ]
@@ -334,31 +334,31 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
             {
               title: 'Modules',
               caption: 'Workspace features',
-              icon: 'extension',
+              icon: 'ph ph-puzzle-piece',
               to: `${basePath}/modules`,
             },
             {
               title: 'Roles',
               caption: 'Workspace roles',
-              icon: 'admin_panel_settings',
+              icon: 'ph ph-shield-check',
               to: `${basePath}/roles`,
             },
             {
               title: 'Team',
               caption: 'Workspace team',
-              icon: 'manage_accounts',
+              icon: 'ph ph-users',
               to: `${basePath}/team`,
             },
             {
               title: 'Customer Groups',
               caption: 'Workspace customer groups',
-              icon: 'groups',
+              icon: 'ph ph-users-three',
               to: `${basePath}/customer-groups`,
             },
             {
               title: 'Investor Access',
               caption: 'Workspace investor access',
-              icon: 'savings',
+              icon: 'ph ph-piggy-bank',
               to: `${basePath}/investors`,
             },
           ],

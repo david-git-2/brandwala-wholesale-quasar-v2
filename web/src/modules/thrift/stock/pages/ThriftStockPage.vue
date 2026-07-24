@@ -4,7 +4,7 @@
     <div class="bw-page-toolbar">
       <div class="bw-page-toolbar__left">
         <div class="row items-center q-gutter-sm">
-          <q-icon name="inventory_2" size="20px" color="primary" />
+          <q-icon name="ph ph-archive-box" size="20px" color="primary" />
           <div class="bw-page-toolbar__title">Thrift Stock</div>
         </div>
 
@@ -16,7 +16,7 @@
             no-caps
             size="sm"
             class="pill-btn slim-btn"
-            icon="view_column"
+            icon="ph ph-columns"
             label="Columns"
             aria-label="Select columns"
           >
@@ -55,7 +55,7 @@
             no-caps
             size="sm"
             class="pill-btn slim-btn"
-            icon="download"
+            icon="ph ph-download-simple"
             label="CSV"
             :loading="csvExportLoading"
             @click="downloadStockCsv"
@@ -70,7 +70,7 @@
             no-caps
             size="sm"
             class="pill-btn slim-btn"
-            icon="settings"
+            icon="ph ph-gear"
             label="Settings"
             @click="goToSettings"
           />
@@ -88,12 +88,12 @@
             @update:model-value="onFiltersChanged"
           >
             <template #prepend>
-              <q-icon name="search" size="18px" />
+              <q-icon name="ph ph-magnifying-glass" size="18px" />
             </template>
           </q-input>
 
           <!-- Filter drawer open button -->
-          <q-btn flat round dense icon="filter_alt" @click="openFilterDrawer">
+          <q-btn flat round dense icon="ph ph-funnel" @click="openFilterDrawer">
             <q-badge v-if="activeFilterCount > 0" color="primary" rounded floating>
               {{ activeFilterCount }}
             </q-badge>
@@ -108,7 +108,7 @@
           no-caps
           size="sm"
           class="pill-btn slim-btn"
-          icon="add"
+          icon="ph ph-plus"
           label="Register Stock"
           @click="openAddDialog"
         />
@@ -164,7 +164,7 @@
           <q-btn
             color="negative"
             no-caps
-            icon="delete"
+            icon="ph ph-trash"
             label="Delete selected"
             @click="confirmBulkDelete"
           />
@@ -277,7 +277,7 @@
                     round
                     dense
                     size="xs"
-                    icon="qr_code"
+                    icon="ph ph-qr-code"
                     color="primary"
                     class="col-auto"
                     @click.stop="openBarcodePreview(props.row)"
@@ -615,7 +615,7 @@
                     round
                     dense
                     size="xs"
-                    icon="info"
+                    icon="ph ph-info"
                     color="primary"
                     @click.stop="openLandedBreakdownDialog(props.row)"
                   >
@@ -645,7 +645,7 @@
                   <div class="row items-center justify-end no-wrap q-gutter-x-xs">
                     <q-icon
                       v-if="isItemMarkupLocked(props.row.pricing)"
-                      name="lock"
+                      name="ph ph-lock-key"
                       color="amber-8"
                       size="16px"
                     >
@@ -664,7 +664,7 @@
                       round
                       dense
                       size="xs"
-                      icon="refresh"
+                      icon="ph ph-arrows-clockwise"
                       color="grey-7"
                       @click.stop="resetItemMarkupToShipment(props.row)"
                     >
@@ -703,7 +703,7 @@
                   <!-- Lock Icon when Manual -->
                   <q-icon
                     v-if="isListedPriceLocked(props.row.pricing)"
-                    name="lock"
+                    name="ph ph-lock-key"
                     color="amber-8"
                     size="16px"
                   >
@@ -729,7 +729,7 @@
                     round
                     dense
                     size="xs"
-                    icon="refresh"
+                    icon="ph ph-arrows-clockwise"
                     color="grey-7"
                     @click.stop="resetPriceToSuggested(props.row)"
                   >
@@ -797,7 +797,7 @@
                   flat
                   round
                   dense
-                  icon="straighten"
+                  icon="ph ph-ruler"
                   size="sm"
                   color="secondary"
                   @click.stop="openMeasurementsDialog(props.row)"
@@ -808,7 +808,7 @@
                   flat
                   round
                   dense
-                  icon="o_edit"
+                  icon="ph ph-pencil-simple"
                   size="sm"
                   color="primary"
                   @click.stop="openEditDialog(props.row)"
@@ -819,7 +819,7 @@
                   flat
                   round
                   dense
-                  icon="delete"
+                  icon="ph ph-trash"
                   size="sm"
                   color="negative"
                   @click.stop="confirmDelete(props.row)"
@@ -830,7 +830,7 @@
                   flat
                   round
                   dense
-                  icon="o_report_problem"
+                  icon="ph ph-warning"
                   size="sm"
                   color="warning"
                   @click.stop="updateStatus(props.row.id, 'DAMAGED')"
@@ -841,7 +841,7 @@
                   flat
                   round
                   dense
-                  icon="o_block"
+                  icon="ph ph-prohibit"
                   size="sm"
                   color="negative"
                   @click.stop="updateStatus(props.row.id, 'STOLEN')"
@@ -865,7 +865,7 @@
           <div class="text-h6 text-weight-bold">
             {{ editingId ? 'Edit Thrift Stock' : 'Register Thrift Stock' }}
           </div>
-          <q-btn flat round dense icon="close" v-close-popup />
+          <q-btn flat round dense icon="ph ph-x" v-close-popup />
         </q-card-section>
         <q-separator />
         <q-card-section>
@@ -889,7 +889,7 @@
                     dense
                     no-caps
                     color="primary"
-                    icon="cloud_upload"
+                    icon="ph ph-cloud-arrow-up"
                     label="Replace"
                     @click="openEditUploader"
                   />
@@ -898,7 +898,7 @@
                     dense
                     no-caps
                     color="negative"
-                    icon="delete"
+                    icon="ph ph-trash"
                     label="Remove"
                     @click="imageRemoveConfirmOpen = true"
                   />
@@ -909,7 +909,7 @@
                 class="stock-image-upload text-center q-pa-lg rounded-borders cursor-pointer"
                 @click="openEditUploader"
               >
-                <q-icon name="cloud_upload" size="40px" color="primary" />
+                <q-icon name="ph ph-cloud-arrow-up" size="40px" color="primary" />
                 <div class="text-subtitle2 text-weight-bold text-grey-8 q-mt-xs">Upload Image</div>
                 <div class="text-caption text-grey-6">
                   Click to select photo (uploads when you save)
@@ -1198,7 +1198,7 @@
       <q-card style="width: 450px; max-width: 95vw" class="floating-surface shadow-2 q-pa-md">
         <q-card-section class="row items-center justify-between q-pb-sm">
           <div class="text-h6 text-weight-bold">Quick Register Stock</div>
-          <q-btn flat round dense icon="close" v-close-popup />
+          <q-btn flat round dense icon="ph ph-x" v-close-popup />
         </q-card-section>
         <q-separator />
 
@@ -1283,7 +1283,7 @@
                 </div>
               </div>
               <div v-else class="q-py-md">
-                <q-icon name="cloud_upload" size="40px" color="primary" />
+                <q-icon name="ph ph-cloud-arrow-up" size="40px" color="primary" />
                 <div class="text-subtitle2 text-weight-bold text-grey-8 q-mt-xs">
                   Select Image *
                 </div>
@@ -1352,7 +1352,7 @@
           <div class="text-caption text-grey-8 q-mt-sm">Deleting stock and image...</div>
         </q-inner-loading>
         <q-card-section class="row items-center">
-          <q-avatar icon="warning" color="warning" text-color="white" />
+          <q-avatar icon="ph ph-warning" color="warning" text-color="white" />
           <span class="q-ml-sm text-weight-bold">Delete Stock Item</span>
         </q-card-section>
         <q-card-section>
@@ -1383,7 +1383,7 @@
           <div class="text-caption text-grey-8 q-mt-sm">Deleting selected stock and images...</div>
         </q-inner-loading>
         <q-card-section class="row items-center">
-          <q-avatar icon="warning" color="warning" text-color="white" />
+          <q-avatar icon="ph ph-warning" color="warning" text-color="white" />
           <span class="q-ml-sm text-weight-bold">Delete Selected Stock</span>
         </q-card-section>
         <q-card-section>
@@ -1407,7 +1407,7 @@
     <q-dialog v-model="imageRemoveConfirmOpen" persistent>
       <q-card style="width: 350px; max-width: 90vw" class="floating-surface shadow-2 q-pa-md">
         <q-card-section class="row items-center">
-          <q-avatar icon="image" color="warning" text-color="white" />
+          <q-avatar icon="ph ph-image" color="warning" text-color="white" />
           <span class="q-ml-sm text-weight-bold">Remove Product Image</span>
         </q-card-section>
         <q-card-section>
@@ -1424,7 +1424,7 @@
     <q-dialog v-model="barcodePreviewOpen">
       <q-card style="min-width: 320px; text-align: center; border-radius: 14px">
         <q-card-section class="bg-grey-2 q-py-xs text-right">
-          <q-btn flat round dense icon="close" v-close-popup />
+          <q-btn flat round dense icon="ph ph-x" v-close-popup />
         </q-card-section>
 
         <q-card-section class="q-pa-lg">
@@ -1450,7 +1450,7 @@
           <q-btn
             color="primary"
             no-caps
-            icon="content_copy"
+            icon="ph ph-copy"
             label="Copy barcode"
             class="pill-btn"
             @click="copyPreviewBarcode"

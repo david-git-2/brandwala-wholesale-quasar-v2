@@ -34,7 +34,7 @@
         <!-- Done UI -->
         <div v-else-if="phase === 'done'" class="column q-gutter-y-sm">
           <div class="row items-center q-gutter-x-sm text-green-7 q-py-xs">
-            <q-icon name="check_circle" size="24px" />
+            <q-icon name="ph ph-check-circle" size="24px" />
             <div class="text-weight-bold">Download completed successfully!</div>
           </div>
           <div class="text-body2 text-grey-8">
@@ -59,7 +59,7 @@
 
         <!-- Cancelled UI -->
         <div v-else-if="phase === 'cancelled'" class="column items-center q-py-md text-orange-7">
-          <q-icon name="cancel" size="36px" />
+          <q-icon name="ph ph-x-circle" size="36px" />
           <div class="text-subtitle2 text-weight-bold q-mt-sm">Download Cancelled</div>
           <div class="text-caption text-grey-6 q-mt-xs">Operation stopped by user</div>
         </div>

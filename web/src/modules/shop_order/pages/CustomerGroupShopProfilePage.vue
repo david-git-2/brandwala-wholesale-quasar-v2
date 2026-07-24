@@ -4,7 +4,7 @@
       <!-- Header -->
       <section class="row items-center q-col-gutter-md">
         <div class="col-auto">
-          <q-btn flat round icon="arrow_back" color="grey-7" @click="goBack" />
+          <q-btn flat round icon="ph ph-arrow-left" color="grey-7" @click="goBack" />
         </div>
         <div class="col">
           <div class="text-overline">Customer Groups</div>

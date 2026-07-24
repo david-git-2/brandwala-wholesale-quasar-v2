@@ -9,7 +9,7 @@
       <section class="row items-center justify-between q-col-gutter-md">
         <div class="col">
           <div class="row items-center q-gutter-x-sm">
-            <q-btn flat dense icon="arrow_back" color="grey-7" @click="goBack" />
+            <q-btn flat dense icon="ph ph-arrow-left" color="grey-7" @click="goBack" />
             <div>
               <div class="text-overline text-primary">Sales Invoice</div>
               <h1 class="text-h5 text-weight-bold q-my-none">
@@ -29,7 +29,7 @@
             flat
             dense
             color="secondary"
-            icon="o_visibility"
+            icon="ph ph-eye"
             @click="openPreview"
           >
             <q-tooltip>Preview</q-tooltip>
@@ -40,7 +40,7 @@
             color="primary"
             unelevated
             no-caps
-            icon="add"
+            icon="ph ph-plus"
             label="Add Stock"
             @click="stockDialog = true"
           />
@@ -52,7 +52,7 @@
             "
             flat
             dense
-            icon="more_vert"
+            icon="ph ph-dots-three-vertical"
             aria-label="Actions"
           >
             <q-tooltip>More Actions</q-tooltip>
@@ -66,7 +66,7 @@
                   @click="onDeleteInvoice"
                 >
                   <q-item-section avatar class="q-pr-none" style="min-width: 32px">
-                    <q-icon name="delete" />
+                    <q-icon name="ph ph-trash" />
                   </q-item-section>
                   <q-item-section>Delete Draft</q-item-section>
                 </q-item>
@@ -81,7 +81,7 @@
                   @click="onConvertWholesaleToRetail"
                 >
                   <q-item-section avatar class="q-pr-none" style="min-width: 32px">
-                    <q-icon name="swap_horiz" />
+                    <q-icon name="ph ph-arrows-left-right" />
                   </q-item-section>
                   <q-item-section>Convert to Retail</q-item-section>
                 </q-item>
@@ -94,7 +94,7 @@
                   @click="changeInvoiceStatus('voided')"
                 >
                   <q-item-section avatar class="q-pr-none" style="min-width: 32px">
-                    <q-icon name="cancel" />
+                    <q-icon name="ph ph-x-circle" />
                   </q-item-section>
                   <q-item-section>Void Invoice</q-item-section>
                 </q-item>
@@ -107,7 +107,7 @@
                   @click="changeInvoiceStatus('draft')"
                 >
                   <q-item-section avatar class="q-pr-none" style="min-width: 32px">
-                    <q-icon name="undo" />
+                    <q-icon name="ph ph-arrow-u-up-left" />
                   </q-item-section>
                   <q-item-section>Undo Post (Draft)</q-item-section>
                 </q-item>
@@ -134,12 +134,12 @@
                 :disable="(postingInvoice || unpostingInvoice || voidingInvoice) || isTransitionDisabled(st)"
                 @click="changeInvoiceStatus(st)"
               >
-                <q-icon v-if="invoice.invoice_status === st" name="check_circle" size="14px" class="q-mr-xs" />
+                <q-icon v-if="invoice.invoice_status === st" name="ph ph-check-circle" size="14px" class="q-mr-xs" />
                 {{ st.charAt(0).toUpperCase() + st.slice(1) }}
               </q-btn>
               <q-icon
                 v-if="idx === 0"
-                name="chevron_right"
+                name="ph ph-caret-right"
                 color="grey-5"
                 size="18px"
                 class="status-workflow-chevron"
@@ -158,7 +158,7 @@
               :disable="(postingInvoice || unpostingInvoice || voidingInvoice) || (isTransitionDisabled('voided') && invoice.invoice_status !== 'voided')"
               @click="changeInvoiceStatus('voided')"
             >
-              <q-icon v-if="invoice.invoice_status === 'voided'" name="cancel" size="14px" class="q-mr-xs" />
+              <q-icon v-if="invoice.invoice_status === 'voided'" name="ph ph-x-circle" size="14px" class="q-mr-xs" />
               Voided
             </q-btn>
           </div>
@@ -233,7 +233,7 @@
                 <q-btn
                   v-if="items.length > 0"
                   color="secondary"
-                  icon="content_paste"
+                  icon="ph ph-clipboard"
                   label="Bulk Paste"
                   unelevated
                   dense
@@ -247,7 +247,7 @@
             <q-separator />
             
             <q-card-section v-if="!items.length" class="text-grey-7 text-center q-pa-xl">
-              <q-icon name="inventory" size="48px" color="grey-4" class="q-mb-md" />
+              <q-icon name="ph ph-package" size="48px" color="grey-4" class="q-mb-md" />
               <div class="text-subtitle2 text-grey-6">No items yet. Add items from global stock.</div>
             </q-card-section>
             
@@ -291,7 +291,7 @@
                       }"
                     >
                       {{ row.quantity }}
-                      <q-icon name="edit" size="10px" class="q-ml-xs text-grey-5" v-if="invoice.invoice_status === 'draft'" />
+                      <q-icon name="ph ph-pencil-simple" size="10px" class="q-ml-xs text-grey-5" v-if="invoice.invoice_status === 'draft'" />
                     </span>
                     <q-popup-edit
                       v-if="invoice.invoice_status === 'draft'"
@@ -332,7 +332,7 @@
                       }"
                     >
                       {{ formatAmount(row.sell_price_amount) }}
-                      <q-icon name="edit" size="10px" class="q-ml-xs text-grey-5" v-if="invoice.invoice_status === 'draft'" />
+                      <q-icon name="ph ph-pencil-simple" size="10px" class="q-ml-xs text-grey-5" v-if="invoice.invoice_status === 'draft'" />
                     </span>
                     <q-popup-edit
                       v-if="invoice.invoice_status === 'draft'"
@@ -364,7 +364,7 @@
                       }"
                     >
                       {{ formatAmount(row.recipient_price_amount ?? row.sell_price_amount) }}
-                      <q-icon name="edit" size="10px" class="q-ml-xs text-grey-5" v-if="invoice.invoice_status === 'draft'" />
+                      <q-icon name="ph ph-pencil-simple" size="10px" class="q-ml-xs text-grey-5" v-if="invoice.invoice_status === 'draft'" />
                     </span>
                     <q-popup-edit
                       v-if="invoice.invoice_status === 'draft'"
@@ -401,7 +401,7 @@
                       round
                       dense
                       color="negative"
-                      icon="delete"
+                      icon="ph ph-trash"
                       size="sm"
                       @click="onRemoveItem(row.id)"
                     >
@@ -423,7 +423,7 @@
                 round
                 dense
                 color="primary"
-                icon="edit"
+                icon="ph ph-pencil-simple"
                 size="sm"
                 @click="openEditNoteDialog"
               >
@@ -461,7 +461,7 @@
                   color="primary"
                   unelevated
                   class="full-width text-subtitle2 text-weight-bold pill-btn q-py-sm"
-                  icon="send"
+                  icon="ph ph-paper-plane-right"
                   label="POST INVOICE"
                   :loading="postingInvoice"
                   @click="changeInvoiceStatus('posted')"
@@ -477,7 +477,7 @@
                     color="primary"
                     unelevated
                     class="full-width text-subtitle2 text-weight-bold pill-btn q-py-sm"
-                    icon="payment"
+                    icon="ph ph-credit-card"
                     :label="isDropship ? 'RECORD COD' : 'RECORD PAYMENT'"
                     @click="isDropship ? openCodDialog() : openPaymentDialog()"
                   />
@@ -491,7 +491,7 @@
                     unelevated
                     disable
                     class="full-width text-subtitle2 text-weight-bold pill-btn q-py-sm"
-                    icon="check_circle"
+                    icon="ph ph-check-circle"
                     label="INVOICE SETTLED"
                   />
                   <div class="text-caption text-positive text-center q-px-xs">
@@ -506,7 +506,7 @@
                   unelevated
                   disable
                   class="full-width text-subtitle2 text-weight-bold pill-btn q-py-sm"
-                  icon="cancel"
+                  icon="ph ph-x-circle"
                   label="INVOICE VOIDED"
                 />
                 <div class="text-caption text-grey-6 text-center q-px-xs">
@@ -537,7 +537,7 @@
                 class="soft-input text-caption"
               >
                 <template #append>
-                  <q-icon name="event" class="cursor-pointer">
+                  <q-icon name="ph ph-calendar" class="cursor-pointer">
                     <q-popup-proxy cover transition-show="scale" transition-hide="scale">
                       <q-date
                         v-model="form.invoice_date"
@@ -994,7 +994,7 @@
       >
         <q-card-section class="text-h6 text-weight-bold row items-center justify-between q-pb-none">
           <span>Add From Stock</span>
-          <q-btn flat round dense icon="close" v-close-popup />
+          <q-btn flat round dense icon="ph ph-x" v-close-popup />
         </q-card-section>
 
         <q-card-section class="q-pt-md">
@@ -1048,7 +1048,7 @@
                   class="column items-center justify-center text-grey-5 q-py-xl"
                   style="height: 100%"
                 >
-                  <q-icon name="shopping_cart" size="48px" class="q-mb-sm" />
+                  <q-icon name="ph ph-shopping-cart" size="48px" class="q-mb-sm" />
                   <div class="text-subtitle2">Cart is empty</div>
                   <div class="text-caption text-center">
                     Click items in the search results to add them here
@@ -1132,7 +1132,7 @@
                         round
                         dense
                         color="negative"
-                        icon="delete"
+                        icon="ph ph-trash"
                         size="sm"
                         @click="stockCart.splice(idx, 1)"
                       >
@@ -1187,7 +1187,7 @@
             class="soft-input"
           >
             <template #append>
-              <q-icon name="event" class="cursor-pointer">
+              <q-icon name="ph ph-calendar" class="cursor-pointer">
                 <q-popup-proxy cover transition-show="scale" transition-hide="scale">
                   <q-date v-model="paymentDate" mask="YYYY-MM-DD" />
                 </q-popup-proxy>
@@ -1239,7 +1239,7 @@
             class="soft-input"
           >
             <template #append>
-              <q-icon name="event" class="cursor-pointer">
+              <q-icon name="ph ph-calendar" class="cursor-pointer">
                 <q-popup-proxy cover transition-show="scale" transition-hide="scale">
                   <q-date v-model="codDate" mask="YYYY-MM-DD" />
                 </q-popup-proxy>

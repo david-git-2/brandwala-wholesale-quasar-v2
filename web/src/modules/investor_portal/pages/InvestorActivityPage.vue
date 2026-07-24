@@ -42,13 +42,13 @@
         </q-markup-table>
 
         <div class="row items-center justify-end q-mt-md q-gutter-sm">
-          <q-btn flat round dense icon="chevron_left" :disable="page === 1" @click="prevPage" />
+          <q-btn flat round dense icon="ph ph-caret-left" :disable="page === 1" @click="prevPage" />
           <span class="text-caption">Page {{ page }} of {{ totalPages }}</span>
           <q-btn
             flat
             round
             dense
-            icon="chevron_right"
+            icon="ph ph-caret-right"
             :disable="page >= totalPages"
             @click="nextPage"
           />

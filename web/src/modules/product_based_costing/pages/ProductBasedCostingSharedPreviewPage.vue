@@ -8,7 +8,7 @@
             dense
             flat
             color="primary"
-            icon="arrow_back"
+            icon="ph ph-arrow-left"
             label="Back"
             class="preview-page__action-btn"
             @click="goBack"
@@ -18,7 +18,7 @@
               size="sm"
               :color="mode === 'screenshot' ? 'primary' : 'grey-4'"
               :text-color="mode === 'screenshot' ? 'white' : 'dark'"
-              icon="photo_camera"
+              icon="ph ph-camera"
               label="Screenshot"
               @click="mode = 'screenshot'"
             />
@@ -26,7 +26,7 @@
               size="sm"
               :color="mode === 'pdf' ? 'primary' : 'grey-4'"
               :text-color="mode === 'pdf' ? 'white' : 'dark'"
-              icon="picture_as_pdf"
+              icon="ph ph-file-pdf"
               label="PDF Mode"
               @click="mode = 'pdf'"
             />
@@ -36,7 +36,7 @@
         <q-btn
           size="sm"
           color="primary"
-          icon="print"
+          icon="ph ph-printer"
           label="Print"
           class="preview-page__action-btn preview-page__print-btn"
           @click="printPage"
@@ -67,7 +67,7 @@
         class="no-print q-mb-md bg-amber-1 text-amber-10 rounded-borders"
       >
         <template #avatar>
-          <q-icon name="warning" color="warning" size="18px" />
+          <q-icon name="ph ph-warning" color="warning" size="18px" />
         </template>
         <div class="text-caption">
           <strong>A4 Print Notice:</strong> {{ columns.length }} columns are selected. Standard A4 page print width fits up to 7 columns best. Extra columns may wrap or require Landscape orientation in your print settings.
@@ -265,7 +265,7 @@
       >
         <q-card-section class="q-pa-md">
           <div class="text-subtitle2 text-weight-bold text-grey-9 q-mb-sm row items-center">
-            <q-icon name="summarize" size="18px" class="q-mr-xs text-primary" />
+            <q-icon name="ph ph-file-text" size="18px" class="q-mr-xs text-primary" />
             Costing Summary
           </div>
           <div class="row q-col-gutter-sm">
@@ -295,7 +295,7 @@
           round
           flat
           color="primary"
-          icon="chevron_left"
+          icon="ph ph-caret-left"
           class="preview-page__pager-nav"
           :disable="currentPage <= 1 || !rows.length"
           @click="goPrevPage"
@@ -312,7 +312,7 @@
           round
           flat
           color="primary"
-          icon="chevron_right"
+          icon="ph ph-caret-right"
           class="preview-page__pager-nav"
           :disable="currentPage >= totalPages || !rows.length"
           @click="goNextPage"

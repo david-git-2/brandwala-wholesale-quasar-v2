@@ -13,7 +13,7 @@
         <div class="col-auto row q-gutter-sm">
           <q-btn
             color="primary"
-            icon="add"
+            icon="ph ph-plus"
             label="Add Merchant Profile"
             no-caps
             class="pill-btn"
@@ -34,7 +34,7 @@
               clearable
             >
               <template #prepend>
-                <q-icon name="search" />
+                <q-icon name="ph ph-magnifying-glass" />
               </template>
             </q-input>
           </div>
@@ -124,7 +124,7 @@
                 </q-chip>
               </td>
               <td class="text-right">
-                <q-btn flat round dense icon="edit" color="primary" @click="openEditDialog(m)">
+                <q-btn flat round dense icon="ph ph-pencil-simple" color="primary" @click="openEditDialog(m)">
                   <q-tooltip>Edit Profile</q-tooltip>
                 </q-btn>
                 <q-btn
@@ -151,7 +151,7 @@
           <div class="text-h6 text-weight-bold">
             {{ editingId ? 'Edit Merchant Profile' : 'Add New Merchant Profile' }}
           </div>
-          <q-btn v-close-popup flat round dense icon="close" />
+          <q-btn v-close-popup flat round dense icon="ph ph-x" />
         </q-card-section>
 
         <q-separator />

@@ -7,14 +7,14 @@
     >
       <div class="text-subtitle1 text-weight-bold text-primary q-mb-md row items-center justify-between">
         <span class="row items-center">
-          <q-icon name="explore" class="q-mr-xs" />
+          <q-icon name="ph ph-compass" class="q-mr-xs" />
           {{ $t('shop_admin.scenario_finder') }}
         </span>
         <q-btn
           flat
           dense
           color="grey-7"
-          icon="restart_alt"
+          icon="ph ph-arrows-counter-clockwise"
           :label="$t('shop_admin.reset')"
           size="sm"
           @click="resetFinder"

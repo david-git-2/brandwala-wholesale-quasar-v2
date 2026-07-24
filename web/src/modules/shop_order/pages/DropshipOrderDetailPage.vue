@@ -10,7 +10,7 @@
         <!-- Confirmed Handoff Warning Banner -->
         <q-banner v-if="order?.status === 'confirmed'" class="bg-amber-2 text-amber-10 rounded-borders q-mb-md border-all-1">
           <template #avatar>
-            <q-icon name="warning" color="amber-9" size="32px" />
+            <q-icon name="ph ph-warning" color="amber-9" size="32px" />
           </template>
           <div class="text-subtitle2 text-weight-bold">
             {{ $t('shop_admin.dropship_handoff_required_banner') }}
@@ -23,7 +23,7 @@
               color="primary"
               unelevated
               no-caps
-              icon="local_shipping"
+              icon="ph ph-truck"
               :label="$t('shop_admin.add_to_dropship_desk')"
               :loading="handingOff"
               @click="performHandoff"
@@ -35,7 +35,7 @@
         <section class="row items-center justify-between q-col-gutter-md">
           <div class="col">
             <div class="row items-center q-gutter-x-sm">
-              <q-btn flat round icon="arrow_back" color="grey-7" :to="{ name: 'app-shop-dropship-orders-page' }" />
+              <q-btn flat round icon="ph ph-arrow-left" color="grey-7" :to="{ name: 'app-shop-dropship-orders-page' }" />
               <div>
                 <div class="text-overline">Dropship Desk / Order Process</div>
                 <h1 class="text-h5 q-my-none">Process Order: {{ order?.order_no || 'ORD-DS' }}</h1>
@@ -50,7 +50,7 @@
               v-if="order?.status !== 'confirmed' && order?.status !== 'submitted'"
               outline
               color="accent"
-              icon="receipt"
+              icon="ph ph-receipt"
               label="Print Recipient Invoice"
               no-caps
               @click="openRecipientInvoicePreview"
@@ -59,7 +59,7 @@
             <q-btn
               v-if="order?.global_invoice_id"
               color="positive"
-              icon="receipt"
+              icon="ph ph-receipt"
               label="View Accounting Invoice"
               no-caps
               :to="{ name: 'app-global-invoice-details-page', params: { id: order.global_invoice_id } }"
@@ -67,7 +67,7 @@
             <q-btn
               v-else-if="['ready_for_pickup', 'shipped', 'delivered', 'payment_received'].includes(order?.status ?? '')"
               color="positive"
-              icon="receipt_long"
+              icon="ph ph-receipt"
               label="Create Dual Invoice"
               no-caps
               @click="openDualInvoiceDialog"
@@ -79,7 +79,7 @@
         <q-card v-if="order?.status !== 'confirmed'" flat bordered class="q-pa-md form-card">
           <div class="row items-center justify-between q-mb-sm">
             <div class="text-subtitle2 text-weight-bold text-grey-8 row items-center">
-              <q-icon name="linear_scale" size="20px" class="q-mr-xs text-primary" />
+              <q-icon name="ph ph-sliders-horizontal" size="20px" class="q-mr-xs text-primary" />
               Shipment Status Workflow
             </div>
             <div class="text-caption text-grey-6">
@@ -104,7 +104,7 @@
               >
                 <q-icon
                   v-if="order?.status === st"
-                  name="check_circle"
+                  name="ph ph-check-circle"
                   size="14px"
                   class="q-mr-xs"
                 />
@@ -112,7 +112,7 @@
               </q-btn>
               <q-icon
                 v-if="idx < 4"
-                name="chevron_right"
+                name="ph ph-caret-right"
                 color="grey-5"
                 size="18px"
               />
@@ -128,7 +128,7 @@
               <q-card flat bordered class="form-card">
                 <q-card-section class="border-bottom row items-center justify-between">
                   <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center">
-                    <q-icon name="person" size="18px" class="q-mr-xs text-primary" />
+                    <q-icon name="ph ph-user" size="18px" class="q-mr-xs text-primary" />
                     Block A: Recipient Delivery Information
                   </div>
                   <div class="row items-center q-gutter-x-sm">
@@ -265,7 +265,7 @@
               <q-card flat bordered class="form-card">
                 <q-card-section class="border-bottom row items-center justify-between">
                   <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center">
-                    <q-icon name="inventory_2" size="18px" class="q-mr-xs text-primary" />
+                    <q-icon name="ph ph-archive-box" size="18px" class="q-mr-xs text-primary" />
                     Block B: Parcel Weight &amp; COD Collection
                   </div>
                 </q-card-section>
@@ -324,7 +324,7 @@
               <q-card flat bordered class="form-card">
                 <q-card-section class="border-bottom row items-center justify-between">
                   <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center">
-                    <q-icon name="storefront" size="18px" class="q-mr-xs text-primary" />
+                    <q-icon name="ph ph-storefront" size="18px" class="q-mr-xs text-primary" />
                     Block C: Merchant Sender Pickup Info
                   </div>
                 </q-card-section>
@@ -361,7 +361,7 @@
               <q-card flat bordered class="form-card">
                 <q-card-section class="border-bottom row items-center justify-between">
                   <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center">
-                    <q-icon name="note" size="18px" class="q-mr-xs text-primary" />
+                    <q-icon name="ph ph-note" size="18px" class="q-mr-xs text-primary" />
                     Block D: Driver Notes &amp; Policy Flags
                   </div>
                 </q-card-section>
@@ -385,7 +385,7 @@
               <q-card flat bordered class="form-card">
                 <q-card-section class="border-bottom row items-center justify-between">
                   <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center">
-                    <q-icon name="local_shipping" size="18px" class="q-mr-xs text-primary" />
+                    <q-icon name="ph ph-truck" size="18px" class="q-mr-xs text-primary" />
                     Block E: Courier &amp; Tracking Assignment
                   </div>
                 </q-card-section>
@@ -428,7 +428,7 @@
               <q-card flat bordered class="form-card">
                 <q-card-section class="border-bottom">
                   <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center">
-                    <q-icon name="account_balance_wallet" size="18px" class="q-mr-xs text-primary" />
+                    <q-icon name="ph ph-wallet" size="18px" class="q-mr-xs text-primary" />
                     Totals &amp; Profit Breakdown
                   </div>
                 </q-card-section>
@@ -527,7 +527,7 @@
                     v-if="order"
                     outline
                     color="primary"
-                    icon="open_in_new"
+                    icon="ph ph-arrow-up-right"
                     label="View Order"
                     no-caps
                     class="full-width q-mt-md"
@@ -545,7 +545,7 @@
               >
                 <q-card-section class="border-bottom">
                   <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center">
-                    <q-icon name="payments" size="18px" class="q-mr-xs text-primary" />
+                    <q-icon name="ph ph-money" size="18px" class="q-mr-xs text-primary" />
                     Settlement
                   </div>
                 </q-card-section>
@@ -583,7 +583,7 @@
                     unelevated
                     no-caps
                     class="full-width pill-btn"
-                    icon="account_balance"
+                    icon="ph ph-bank"
                     label="Record Courier Remittance"
                     @click="openOrderRemittanceDialog"
                   />
@@ -593,7 +593,7 @@
                     outline
                     no-caps
                     class="full-width pill-btn"
-                    icon="payments"
+                    icon="ph ph-money"
                     label="Settle Middle-Man Payout"
                     :loading="settlingPayout"
                     @click="settleOrderPayout"
@@ -603,7 +603,7 @@
                     color="grey-8"
                     no-caps
                     class="full-width pill-btn"
-                    icon="receipt_long"
+                    icon="ph ph-receipt"
                     label="Open Payout Ledger"
                     :to="{ name: 'app-shop-dropship-ledger-page', params: { tenantSlug: route.params.tenantSlug } }"
                   />
@@ -618,7 +618,7 @@
         <q-card style="min-width: 440px; border-radius: 12px">
           <q-card-section class="row items-center justify-between">
             <div class="text-h6 text-weight-bold">Record Courier Remittance</div>
-            <q-btn flat round dense icon="close" v-close-popup />
+            <q-btn flat round dense icon="ph ph-x" v-close-popup />
           </q-card-section>
           <q-card-section class="q-gutter-sm">
             <div class="text-body2 text-grey-8">
@@ -670,7 +670,7 @@
         <q-card style="min-width: 440px; border-radius: 12px">
           <q-card-section class="row items-center justify-between">
             <div class="text-h6 text-weight-bold">Create Dual Invoice</div>
-            <q-btn flat round dense icon="close" v-close-popup />
+            <q-btn flat round dense icon="ph ph-x" v-close-popup />
           </q-card-section>
           <q-card-section class="q-gutter-sm text-body2 text-grey-8">
             <p>Generate dual invoices for order <strong>{{ order?.order_no }}</strong>:</p>
@@ -696,7 +696,7 @@
         <div v-if="isFormDirty && !loading" class="fixed-bottom row justify-center q-pb-lg z-top">
           <q-card flat class="bg-grey-10 text-white shadow-24 row items-center justify-between q-py-md q-px-lg" style="width: 90%; max-width: 800px; border-radius: 12px; border-left: 5px solid var(--q-warning); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 16px rgba(242, 193, 46, 0.25);">
             <div class="row items-center q-gutter-x-md">
-              <q-icon name="warning" color="warning" size="32px" class="animate-flash" />
+              <q-icon name="ph ph-warning" color="warning" size="32px" class="animate-flash" />
               <div>
                 <div class="text-subtitle1 text-weight-bold text-white row items-center">
                   Unsaved Changes in Consignment
@@ -718,7 +718,7 @@
                 unelevated
                 label="Save Changes"
                 no-caps
-                icon="save"
+                icon="ph ph-floppy-disk"
                 :loading="saving"
                 class="text-weight-bold"
                 @click="saveChanges"

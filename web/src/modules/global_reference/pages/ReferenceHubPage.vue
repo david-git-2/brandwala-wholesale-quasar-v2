@@ -33,25 +33,25 @@ const cards = [
   {
     title: 'Markets',
     caption: 'ISO country markets',
-    icon: 'public',
+    icon: 'ph ph-globe',
     to: '/platform/reference/markets',
   },
   {
     title: 'Currencies',
     caption: 'Global currencies',
-    icon: 'payments',
+    icon: 'ph ph-money',
     to: '/platform/reference/currencies',
   },
   {
     title: 'Payment Methods',
     caption: 'BD and international',
-    icon: 'account_balance_wallet',
+    icon: 'ph ph-wallet',
     to: '/platform/reference/payment-methods',
   },
   {
     title: 'Units of Measure',
     caption: 'Weight, count, volume',
-    icon: 'straighten',
+    icon: 'ph ph-ruler',
     to: '/platform/reference/units',
   },
 ] as const;

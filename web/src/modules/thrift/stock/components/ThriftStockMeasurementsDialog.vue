@@ -9,10 +9,10 @@
           </div>
         </div>
         <div class="row items-center q-gutter-xs">
-          <q-btn flat round dense icon="info" color="primary" @click="openGuide">
+          <q-btn flat round dense icon="ph ph-info" color="primary" @click="openGuide">
             <q-tooltip>What do these measurements mean?</q-tooltip>
           </q-btn>
-          <q-btn flat round dense icon="close" v-close-popup />
+          <q-btn flat round dense icon="ph ph-x" v-close-popup />
         </div>
       </q-card-section>
       <q-separator />

@@ -31,25 +31,25 @@ const links = computed(() => {
     {
       title: 'Portfolio Dashboard',
       caption: 'Balances and overview',
-      icon: 'savings',
+      icon: 'ph ph-piggy-bank',
       to: `/${slug}/investor/portfolio`,
     },
     {
       title: 'Capital Deployment',
       caption: 'Shipment allocations',
-      icon: 'local_shipping',
+      icon: 'ph ph-truck',
       to: `/${slug}/investor/allocations`,
     },
     {
       title: 'Profit Report',
       caption: 'Earnings status',
-      icon: 'trending_up',
+      icon: 'ph ph-trend-up',
       to: `/${slug}/investor/profit`,
     },
     {
       title: 'Activity Ledger',
       caption: 'Transaction history',
-      icon: 'history',
+      icon: 'ph ph-clock-counter-clockwise',
       to: `/${slug}/investor/activity`,
     },
   ];

@@ -11,7 +11,7 @@
           <q-btn
             color="primary"
             unelevated
-            icon="add"
+            icon="ph ph-plus"
             :label="`Add ${entityLabel}`"
             @click="$emit('add')"
           />
@@ -46,7 +46,7 @@
                 flat
                 round
                 dense
-                icon="o_edit"
+                icon="ph ph-pencil-simple"
                 :disable="props.row.is_system"
                 @click="$emit('edit', props.row)"
               />
@@ -55,7 +55,7 @@
                 round
                 dense
                 color="negative"
-                icon="o_delete"
+                icon="ph ph-trash"
                 :disable="props.row.is_system"
                 @click="$emit('delete', props.row)"
               />

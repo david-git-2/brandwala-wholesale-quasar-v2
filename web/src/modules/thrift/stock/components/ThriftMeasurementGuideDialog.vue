@@ -6,7 +6,7 @@
           <div class="text-h6 text-weight-bold">Measurement guide</div>
           <div class="text-caption text-grey-8">What each field means and how to measure</div>
         </div>
-        <q-btn flat round dense icon="close" v-close-popup />
+        <q-btn flat round dense icon="ph ph-x" v-close-popup />
       </q-card-section>
 
       <q-banner dense rounded class="bg-blue-1 text-grey-9 q-mx-md q-mb-sm">

@@ -30,8 +30,41 @@ export interface Shop {
   deduct_print_from_margin?: boolean;
   deduct_packing_from_margin?: boolean;
   vendor_filters?: Array<{ vendor_code: string; brands: string[] }> | null;
+  description?: string | null;
+  category_ids?: number[];
   created_at: string;
   updated_at: string;
+}
+
+export interface ShopCategory {
+  id: number;
+  tenant_id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+  icon: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateShopCategoryPayload {
+  tenant_id: number;
+  name: string;
+  slug: string;
+  description?: string | null;
+  icon?: string;
+  is_active?: boolean;
+}
+
+export interface UpdateShopCategoryPayload {
+  id: number;
+  tenant_id: number;
+  name: string;
+  slug: string;
+  description?: string | null;
+  icon?: string;
+  is_active?: boolean;
 }
 
 // ---- Payloads -------------------------------------------------------
@@ -60,6 +93,8 @@ export interface CreateShopPayload {
   deduct_print_from_margin?: boolean;
   deduct_packing_from_margin?: boolean;
   vendor_filters?: Array<{ vendor_code: string; brands: string[] }> | null;
+  description?: string | null;
+  category_ids?: number[];
 }
 
 export interface UpdateShopPayload {
@@ -85,6 +120,8 @@ export interface UpdateShopPayload {
   deduct_print_from_margin?: boolean;
   deduct_packing_from_margin?: boolean;
   vendor_filters?: Array<{ vendor_code: string; brands: string[] }> | null;
+  description?: string | null;
+  category_ids?: number[];
 }
 
 // ---- Service result wrapper -----------------------------------------

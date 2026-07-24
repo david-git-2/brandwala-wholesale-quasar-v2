@@ -281,25 +281,25 @@ const resolveCategoryStyle = (
   const name = (categoryName || '').toLowerCase();
 
   if (/t-shirt|apparel|shirt/.test(name)) {
-    return { icon: 'checkroom', color: 'blue-7', bgColor: 'blue-1' };
+    return { icon: 'ph ph-t-shirt', color: 'blue-7', bgColor: 'blue-1' };
   }
   if (/hoodie|jacket|outerwear/.test(name)) {
-    return { icon: 'sports_outdoor', color: 'deep-orange-7', bgColor: 'deep-orange-1' };
+    return { icon: 'ph ph-sneaker', color: 'deep-orange-7', bgColor: 'deep-orange-1' };
   }
   if (/activewear|sport/.test(name)) {
-    return { icon: 'directions_run', color: 'green-7', bgColor: 'green-1' };
+    return { icon: 'ph ph-person-simple-run', color: 'green-7', bgColor: 'green-1' };
   }
   if (/accessory|watch|jewel/.test(name)) {
-    return { icon: 'watch', color: 'purple-7', bgColor: 'purple-1' };
+    return { icon: 'ph ph-watch', color: 'purple-7', bgColor: 'purple-1' };
   }
   if (/footwear|shoe/.test(name)) {
-    return { icon: 'roller_skating', color: 'indigo-7', bgColor: 'indigo-1' };
+    return { icon: 'ph ph-sneaker', color: 'indigo-7', bgColor: 'indigo-1' };
   }
   if (/pant|trouser|bottom/.test(name)) {
-    return { icon: 'layers', color: 'teal-7', bgColor: 'teal-1' };
+    return { icon: 'ph ph-stack', color: 'teal-7', bgColor: 'teal-1' };
   }
 
-  return { icon: 'category', color: 'grey-7', bgColor: 'grey-2' };
+  return { icon: 'ph ph-squares-four', color: 'grey-7', bgColor: 'grey-2' };
 };
 
 const listCustomerShopCategories = async (

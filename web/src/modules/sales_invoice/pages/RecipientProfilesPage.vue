@@ -18,7 +18,7 @@
               size="sm"
               class="pill-btn slim-btn hover-elevate"
               label="Create Recipient Profile"
-              icon="add"
+              icon="ph ph-plus"
               @click="openCreateDialog"
             />
           </div>
@@ -34,7 +34,7 @@
           flat
           round
           dense
-          icon="search"
+          icon="ph ph-magnifying-glass"
           aria-label="Show search"
           @click="showSearchInput = true"
         />
@@ -49,10 +49,10 @@
           @clear="onClearSearch"
         >
           <template #prepend>
-            <q-icon name="search" />
+            <q-icon name="ph ph-magnifying-glass" />
           </template>
           <template #append>
-            <q-btn flat round dense icon="close" aria-label="Hide search" @click="onCloseSearch" />
+            <q-btn flat round dense icon="ph ph-x" aria-label="Hide search" @click="onCloseSearch" />
           </template>
         </q-input>
       </div>
@@ -79,7 +79,7 @@
           </tr>
           <tr v-else-if="!filteredItems.length">
             <td colspan="5" class="text-center text-grey-7 q-py-xl">
-              <q-icon name="contacts" size="36px" class="text-grey-4 q-mb-xs" />
+              <q-icon name="ph ph-address-book" size="36px" class="text-grey-4 q-mb-xs" />
               <div>No recipient profiles found.</div>
             </td>
           </tr>
@@ -95,7 +95,7 @@
             <td>
               <div class="column">
                 <div class="row items-center no-wrap">
-                  <q-icon name="phone" size="14px" class="text-grey-6 q-mr-xs" />
+                  <q-icon name="ph ph-phone" size="14px" class="text-grey-6 q-mr-xs" />
                   <span>{{ row.phone }}</span>
                 </div>
                 <span v-if="row.secondary_phone" class="text-caption text-grey-6">
@@ -109,7 +109,7 @@
             </td>
             <td>
               <div class="row items-center">
-                <q-icon name="place" size="14px" class="text-grey-6 q-mr-xs" />
+                <q-icon name="ph ph-map-pin" size="14px" class="text-grey-6 q-mr-xs" />
                 <span class="ellipsis-2-lines">{{ row.address }}</span>
               </div>
               <div
@@ -120,18 +120,18 @@
               </div>
             </td>
             <td class="text-right">
-              <q-btn flat round dense icon="more_vert">
+              <q-btn flat round dense icon="ph ph-dots-three-vertical">
                 <q-menu auto-close class="menu-surface shadow-2">
                   <q-list dense style="min-width: 140px">
                     <q-item clickable class="menu-item" @click="onOpenEdit(row)">
                       <q-item-section avatar class="min-w-0-avatar">
-                        <q-icon name="edit" size="16px" />
+                        <q-icon name="ph ph-pencil-simple" size="16px" />
                       </q-item-section>
                       <q-item-section>Edit</q-item-section>
                     </q-item>
                     <q-item clickable class="text-negative menu-item" @click="onOpenDelete(row.id)">
                       <q-item-section avatar class="min-w-0-avatar">
-                        <q-icon name="delete" size="16px" color="negative" />
+                        <q-icon name="ph ph-trash" size="16px" color="negative" />
                       </q-item-section>
                       <q-item-section>Delete</q-item-section>
                     </q-item>

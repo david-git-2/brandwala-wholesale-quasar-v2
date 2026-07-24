@@ -6,7 +6,7 @@
         <section class="row items-center justify-between q-col-gutter-md">
           <div class="col">
             <div class="row items-center q-gutter-x-sm">
-              <q-btn flat dense icon="arrow_back" color="grey-7" @click="goBack" />
+              <q-btn flat dense icon="ph ph-arrow-left" color="grey-7" @click="goBack" />
               <div>
                 <div class="text-overline text-primary">Product Based Costing</div>
                 <h1 class="text-h5 text-weight-bold q-my-none">
@@ -26,28 +26,28 @@
               label="Add Item"
               @click="openCreateDialog"
             />
-            <q-btn flat dense icon="more_vert" aria-label="Actions">
+            <q-btn flat dense icon="ph ph-dots-three-vertical" aria-label="Actions">
               <q-menu style="min-width: 200px">
                 <q-list dense>
                   <q-item clickable v-close-popup @click="openBulkPaste">
                     <q-item-section avatar>
-                      <q-icon name="content_paste" />
+                      <q-icon name="ph ph-clipboard" />
                     </q-item-section>
                     <q-item-section>Bulk Paste</q-item-section>
                   </q-item>
                   <q-item clickable v-close-popup @click="openCatalogDialog">
                     <q-item-section avatar>
-                      <q-icon name="shopping_cart" />
+                      <q-icon name="ph ph-shopping-cart" />
                     </q-item-section>
                     <q-item-section>Add from Catalog</q-item-section>
                   </q-item>
                   <q-item clickable>
                     <q-item-section avatar>
-                      <q-icon name="view_column" />
+                      <q-icon name="ph ph-columns" />
                     </q-item-section>
                     <q-item-section>Columns</q-item-section>
                     <q-item-section side>
-                      <q-icon name="keyboard_arrow_right" />
+                      <q-icon name="ph ph-caret-right" />
                     </q-item-section>
                     <q-menu anchor="top end" self="top start">
                       <q-list style="min-width: 240px">
@@ -79,13 +79,13 @@
                   <q-separator />
                   <q-item clickable v-close-popup @click="openPreviewAndPrint">
                     <q-item-section avatar>
-                      <q-icon name="preview" />
+                      <q-icon name="ph ph-eye" />
                     </q-item-section>
                     <q-item-section>Preview & Print</q-item-section>
                   </q-item>
                   <q-item clickable v-close-popup @click="downloadExcel">
                     <q-item-section avatar>
-                      <q-icon name="table_view" />
+                      <q-icon name="ph ph-table" />
                     </q-item-section>
                     <q-item-section>Download Excel</q-item-section>
                   </q-item>
@@ -113,7 +113,7 @@
                 >
                   <q-icon
                     v-if="status === st"
-                    name="check_circle"
+                    name="ph ph-check-circle"
                     size="14px"
                     class="q-mr-xs"
                   />
@@ -121,7 +121,7 @@
                 </q-btn>
                 <q-icon
                   v-if="idx < workflowStatuses.length - 1"
-                  name="chevron_right"
+                  name="ph ph-caret-right"
                   color="grey-5"
                   size="18px"
                   class="status-workflow-chevron"
@@ -142,7 +142,7 @@
               >
                 <q-icon
                   v-if="status === 'cancelled'"
-                  name="cancel"
+                  name="ph ph-x-circle"
                   size="14px"
                   class="q-mr-xs"
                 />
@@ -238,7 +238,7 @@
         <!-- Summary Metrics Section -->
         <div v-if="store.costingItems.length" class="q-mt-lg">
           <div class="text-subtitle1 text-weight-bold q-mb-sm text-grey-9 row items-center">
-            <q-icon name="analytics" class="q-mr-xs text-primary" size="20px" />
+            <q-icon name="ph ph-chart-line-up" class="q-mr-xs text-primary" size="20px" />
             Summary Metrics & Cost Breakdown
           </div>
 
@@ -247,7 +247,7 @@
             <div class="col-12 col-md-6">
               <q-card flat bordered class="q-pa-md fill-height bg-grey-1">
                 <div class="row items-center q-mb-md">
-                  <q-icon name="inventory_2" color="primary" size="22px" class="q-mr-sm" />
+                  <q-icon name="ph ph-archive-box" color="primary" size="22px" class="q-mr-sm" />
                   <div class="text-subtitle2 text-weight-bold text-primary">Goods Cost Summary</div>
                 </div>
                 <div class="q-gutter-y-sm">
@@ -278,7 +278,7 @@
             <div class="col-12 col-md-6">
               <q-card flat bordered class="q-pa-md fill-height bg-grey-1">
                 <div class="row items-center q-mb-md">
-                  <q-icon name="local_shipping" color="teal-8" size="22px" class="q-mr-sm" />
+                  <q-icon name="ph ph-truck" color="teal-8" size="22px" class="q-mr-sm" />
                   <div class="text-subtitle2 text-weight-bold text-teal-9">Cargo Cost Summary</div>
                 </div>
                 <div class="q-gutter-y-sm">
@@ -310,7 +310,7 @@
               <q-card flat bordered class="q-pa-md bg-blue-1 text-blue-10">
                 <div class="row items-center justify-between q-col-gutter-sm">
                   <div class="col-12 col-sm-auto row items-center">
-                    <q-icon name="payments" size="24px" class="q-mr-sm text-primary" />
+                    <q-icon name="ph ph-money" size="24px" class="q-mr-sm text-primary" />
                     <div>
                       <div class="text-caption text-uppercase text-weight-bold text-grey-7">Total Landed Cost</div>
                       <div class="text-subtitle2 text-weight-bold">Goods Cost (BDT) + Cargo Cost (BDT)</div>

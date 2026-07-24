@@ -9,7 +9,7 @@
         class="costing-item-add-dialog__header row items-center justify-between q-pb-md"
       >
         <div class="row items-center q-gutter-md">
-          <q-avatar icon="add_shopping_cart" color="primary" text-color="white" />
+          <q-avatar icon="ph ph-shopping-cart" color="primary" text-color="white" />
           <div>
             <div class="text-h6 text-weight-bold">Add Item</div>
             <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
@@ -21,7 +21,7 @@
           flat
           dense
           round
-          icon="close"
+          icon="ph ph-x"
           aria-label="Close"
           :disable="loading"
           @click="emit('update:modelValue', false)"
@@ -41,7 +41,7 @@
             v-else
             class="costing-item-add-dialog__preview costing-item-add-dialog__preview--empty"
           >
-            <q-icon name="image" size="32px" />
+            <q-icon name="ph ph-image" size="32px" />
             <div class="text-caption q-mt-sm">Image preview</div>
           </div>
 
@@ -53,7 +53,7 @@
               dense
               :rules="[(value) => !!String(value ?? '').trim() || 'Product image URL is required.']"
             >
-              <template #prepend><q-icon name="image" /></template>
+              <template #prepend><q-icon name="ph ph-image" /></template>
             </q-input>
             <q-input
               v-model="form.websiteUrl"
@@ -62,7 +62,7 @@
               dense
               :rules="[(value) => !!String(value ?? '').trim() || 'Website URL is required.']"
             >
-              <template #prepend><q-icon name="link" /></template>
+              <template #prepend><q-icon name="ph ph-link" /></template>
             </q-input>
             <q-input
               v-model.number="form.quantity"
@@ -76,7 +76,7 @@
                   (value !== null && value !== '' && Number(value) > 0) || 'Quantity is required.',
               ]"
             >
-              <template #prepend><q-icon name="inventory_2" /></template>
+              <template #prepend><q-icon name="ph ph-archive-box" /></template>
             </q-input>
           </div>
         </div>
@@ -91,7 +91,7 @@
             dense
             :rules="[(value) => !!String(value ?? '').trim() || 'Name is required.']"
           >
-            <template #prepend><q-icon name="badge" /></template>
+            <template #prepend><q-icon name="ph ph-identification-badge" /></template>
           </q-input>
 
           <div class="row q-col-gutter-sm">
@@ -104,17 +104,17 @@
                 dense
                 clearable
               >
-                <template #prepend><q-icon name="category" /></template>
+                <template #prepend><q-icon name="ph ph-squares-four" /></template>
               </q-select>
             </div>
             <div class="col-12 col-sm-4">
               <q-input v-model="form.size" label="Size" outlined dense placeholder="XL, 250ml">
-                <template #prepend><q-icon name="straighten" /></template>
+                <template #prepend><q-icon name="ph ph-ruler" /></template>
               </q-input>
             </div>
             <div class="col-12 col-sm-4">
               <q-input v-model="form.color" label="Color" outlined dense>
-                <template #prepend><q-icon name="palette" /></template>
+                <template #prepend><q-icon name="ph ph-palette" /></template>
               </q-input>
             </div>
           </div>
@@ -138,7 +138,7 @@
                     'Web price is required.',
                 ]"
               >
-                <template #prepend><q-icon name="currency_pound" /></template>
+                <template #prepend><q-icon name="ph ph-currency-gbp" /></template>
               </q-input>
             </div>
             <div class="col-12 col-sm-6">
@@ -155,7 +155,7 @@
                     'Delivery charge is required.',
                 ]"
               >
-                <template #prepend><q-icon name="local_shipping" /></template>
+                <template #prepend><q-icon name="ph ph-truck" /></template>
               </q-input>
             </div>
           </div>
@@ -175,7 +175,7 @@
                     'Product weight is required.',
                 ]"
               >
-                <template #prepend><q-icon name="fitness_center" /></template>
+                <template #prepend><q-icon name="ph ph-barbell" /></template>
               </q-input>
             </div>
             <div class="col-12 col-sm-6">
@@ -192,7 +192,7 @@
                     'Package weight is required.',
                 ]"
               >
-                <template #prepend><q-icon name="scale" /></template>
+                <template #prepend><q-icon name="ph ph-scales" /></template>
               </q-input>
             </div>
           </div>

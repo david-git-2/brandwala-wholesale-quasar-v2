@@ -17,7 +17,7 @@
                 no-caps
                 size="sm"
                 class="pill-btn slim-btn"
-                icon="add"
+                icon="ph ph-plus"
                 label="Add Shipment"
                 @click="openCreateShipment"
               />
@@ -43,11 +43,11 @@
           @clear="onSearch"
         >
           <template #prepend>
-            <q-icon name="search" />
+            <q-icon name="ph ph-magnifying-glass" />
           </template>
         </q-input>
 
-        <q-btn flat round dense icon="filter_alt" @click="openFilterDrawer">
+        <q-btn flat round dense icon="ph ph-funnel" @click="openFilterDrawer">
           <q-badge v-if="activeFilterCount > 0" color="primary" rounded floating>
             {{ activeFilterCount }}
           </q-badge>
@@ -133,7 +133,7 @@
 
           <template #no-data>
             <div class="full-width text-center text-grey-7 q-py-lg">
-              <q-icon name="local_shipping" size="48px" class="q-mb-sm text-grey-4" />
+              <q-icon name="ph ph-truck" size="48px" class="q-mb-sm text-grey-4" />
               <div>No Inbound Shipments Found.</div>
             </div>
           </template>

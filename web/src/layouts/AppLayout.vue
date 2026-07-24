@@ -9,7 +9,7 @@
           dense
           size="md"
           color="primary"
-          icon="keyboard_backspace"
+          icon="ph ph-arrow-left"
           class="app-header-back-btn"
           @click="onHeaderBack"
         />
@@ -22,7 +22,7 @@
     <template #header-extra>
       <!-- Mobile Only: Three Dots (Dropdown Menu) -->
       <div v-if="$q.screen.xs" class="row items-center">
-        <q-btn flat round dense color="primary" icon="more_vert">
+        <q-btn flat round dense color="primary" icon="ph ph-dots-three-vertical">
           <q-menu style="min-width: 180px">
             <q-list class="q-py-xs">
               <q-item-label
@@ -35,7 +35,7 @@
               <!-- Task search on mobile -->
               <q-item v-if="hasTasksModule" clickable @click="searchDialogOpen = true">
                 <q-item-section avatar class="q-pr-none" style="min-width: 32px">
-                  <q-icon name="assignment" size="sm" color="primary" />
+                  <q-icon name="ph ph-clipboard-text" size="sm" color="primary" />
                 </q-item-section>
                 <q-item-section>Search Tasks</q-item-section>
               </q-item>
@@ -43,7 +43,7 @@
               <!-- Stock search on mobile -->
               <q-item v-if="hasGlobalStockModule" clickable @click="stockSearchDialogOpen = true">
                 <q-item-section avatar class="q-pr-none" style="min-width: 32px">
-                  <q-icon name="inventory_2" size="sm" color="primary" />
+                  <q-icon name="ph ph-archive-box" size="sm" color="primary" />
                 </q-item-section>
                 <q-item-section>Search Stock</q-item-section>
               </q-item>
@@ -68,7 +68,7 @@
                 >
                   <q-item-section avatar class="q-pr-none" style="min-width: 32px">
                     <q-icon
-                      name="apartment"
+                      name="ph ph-buildings"
                       size="sm"
                       :color="option.value === selectedTenantId ? 'primary' : 'grey-6'"
                     />
@@ -102,7 +102,7 @@
 
               <q-item clickable @click="toggleDensity">
                 <q-item-section avatar class="q-pr-none" style="min-width: 32px">
-                  <q-icon name="density_medium" size="sm" color="primary" />
+                  <q-icon name="ph ph-list" size="sm" color="primary" />
                 </q-item-section>
                 <q-item-section>Compact Rows</q-item-section>
                 <q-item-section side>
@@ -117,7 +117,7 @@
               <q-separator class="q-my-xs" />
               <q-item clickable v-close-popup @click="onMobileSignOut">
                 <q-item-section avatar class="q-pr-none" style="min-width: 32px">
-                  <q-icon name="logout" size="sm" color="grey-7" />
+                  <q-icon name="ph ph-sign-out" size="sm" color="grey-7" />
                 </q-item-section>
                 <q-item-section class="text-grey-8 text-weight-medium">Sign out</q-item-section>
               </q-item>
@@ -135,7 +135,7 @@
           dense
           size="sm"
           color="primary"
-          icon="assignment"
+          icon="ph ph-clipboard-text"
           @click="searchDialogOpen = true"
         >
           <q-tooltip>Search Tasks</q-tooltip>
@@ -148,7 +148,7 @@
           dense
           size="sm"
           color="primary"
-          icon="inventory_2"
+          icon="ph ph-archive-box"
           @click="stockSearchDialogOpen = true"
         >
           <q-tooltip>Search Stock</q-tooltip>

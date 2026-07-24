@@ -15,7 +15,7 @@
               no-caps
               size="sm"
               class="pill-btn slim-btn"
-              icon="add"
+              icon="ph ph-plus"
               label="Add Type"
               @click="openDialog()"
             />
@@ -64,7 +64,7 @@
               flat
               round
               dense
-              icon="o_edit"
+              icon="ph ph-pencil-simple"
               color="warning"
               size="sm"
               @click.stop="openDialog(props.row)"
@@ -76,7 +76,7 @@
               flat
               round
               dense
-              icon="delete"
+              icon="ph ph-trash"
               color="negative"
               size="sm"
               @click.stop="confirmDelete(props.row)"
@@ -93,7 +93,7 @@
       <q-card style="width: 420px; max-width: 95vw" class="floating-surface shadow-2 q-pa-md">
         <q-card-section class="row items-center justify-between q-pb-sm">
           <div class="text-h6 text-weight-bold">{{ editingId ? 'Edit Type' : 'New Type' }}</div>
-          <q-btn flat round dense icon="close" v-close-popup />
+          <q-btn flat round dense icon="ph ph-x" v-close-popup />
         </q-card-section>
         <q-separator />
         <q-card-section class="q-pt-md q-gutter-md">
@@ -161,7 +161,7 @@
     <q-dialog v-model="deleteConfirmOpen" persistent>
       <q-card style="width: 350px; max-width: 90vw">
         <q-card-section class="row items-center">
-          <q-avatar icon="warning" color="warning" text-color="white" />
+          <q-avatar icon="ph ph-warning" color="warning" text-color="white" />
           <span class="q-ml-sm text-weight-bold">Delete Type</span>
         </q-card-section>
         <q-card-section>

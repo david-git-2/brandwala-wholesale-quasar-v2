@@ -2,7 +2,7 @@
   <q-card flat bordered class="q-pa-md shipment-weight-balance-card bg-white">
     <div class="row items-center justify-between q-mb-md">
       <div class="text-subtitle1 text-weight-bold text-primary row items-center q-gutter-xs">
-        <q-icon name="scale" size="22px" />
+        <q-icon name="ph ph-scales" size="22px" />
         <span>Shipment Weight Balance</span>
       </div>
       <q-badge v-if="hasDelta" :color="deltaColor" class="q-py-xs q-px-sm text-weight-bold">
@@ -30,7 +30,7 @@
                 flat
                 round
                 dense
-                icon="save"
+                icon="ph ph-floppy-disk"
                 color="blue-9"
                 size="sm"
                 :loading="savingCargoInvoiceWeight"
@@ -102,7 +102,7 @@
           <q-btn
             v-if="editingBoxId !== null"
             color="grey-7"
-            icon="close"
+            icon="ph ph-x"
             dense
             flat
             round
@@ -175,7 +175,7 @@
               round
               dense
               color="primary"
-              icon="edit"
+              icon="ph ph-pencil-simple"
               size="xs"
               @click="startEditBox(box)"
             >
@@ -186,7 +186,7 @@
               round
               dense
               color="negative"
-              icon="close"
+              icon="ph ph-x"
               size="xs"
               @click="deleteBox(box.id)"
             >
@@ -270,7 +270,7 @@
         class="bg-amber-1 text-amber-10 rounded-borders q-mb-xs"
         style="font-size: 11px"
       >
-        <q-icon name="info" class="q-mr-xs" />
+        <q-icon name="ph ph-info" class="q-mr-xs" />
         Unsaved cargo invoice weight — click save before applying weight balance.
       </q-banner>
       <q-banner
@@ -279,7 +279,7 @@
         class="bg-warning text-black rounded-borders"
         style="font-size: 11px"
       >
-        <q-icon name="warning" class="q-mr-xs" />
+        <q-icon name="ph ph-warning" class="q-mr-xs" />
         {{ validationError }}
       </q-banner>
     </div>
@@ -289,7 +289,7 @@
       <q-btn
         outline
         color="secondary"
-        icon="visibility"
+        icon="ph ph-eye"
         label="Preview Weight Adjustments"
         class="full-width soft-input"
         no-caps
@@ -302,11 +302,11 @@
         <q-card style="width: 600px; max-width: 90vw">
           <q-card-section class="row items-center q-pb-none">
             <div class="text-subtitle1 text-weight-bold text-primary row items-center q-gutter-xs">
-              <q-icon name="scale" size="20px" />
+              <q-icon name="ph ph-scales" size="20px" />
               <span>Preview Weight Adjustments</span>
             </div>
             <q-space />
-            <q-btn icon="close" flat round dense v-close-popup />
+            <q-btn icon="ph ph-x" flat round dense v-close-popup />
           </q-card-section>
 
           <q-card-section class="q-pa-md">

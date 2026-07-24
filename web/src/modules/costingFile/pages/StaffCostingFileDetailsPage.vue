@@ -13,7 +13,7 @@
               <q-btn
                 outline
                 color="primary"
-                icon="view_column"
+                icon="ph ph-columns"
                 label="Columns"
                 no-caps
                 size="sm"
@@ -188,7 +188,7 @@
                     dense
                     round
                     color="primary"
-                    icon="o_edit"
+                    icon="ph ph-pencil-simple"
                     :disable="!canEditFile"
                     @click="openEditDialog(props.row.id)"
                   />

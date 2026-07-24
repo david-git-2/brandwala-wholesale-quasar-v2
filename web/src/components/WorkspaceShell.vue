@@ -11,7 +11,7 @@
           flat
           round
           dense
-          icon="menu"
+          icon="ph ph-list"
           class="workspace-shell__menu"
           @click="toggleDrawerOrPin"
         />
@@ -37,7 +37,7 @@
               >
               <q-item v-if="currentRoleLabel">
                 <q-item-section avatar class="q-pr-none" style="min-width: 24px">
-                  <q-icon name="shield" size="xs" color="grey-6" />
+                  <q-icon name="ph ph-shield" size="xs" color="grey-6" />
                 </q-item-section>
                 <q-item-section>
                   <q-item-label class="text-caption text-weight-medium">Role</q-item-label>
@@ -46,7 +46,7 @@
               </q-item>
               <q-item v-if="contextLabel && contextValue">
                 <q-item-section avatar class="q-pr-none" style="min-width: 24px">
-                  <q-icon name="apartment" size="xs" color="grey-6" />
+                  <q-icon name="ph ph-buildings" size="xs" color="grey-6" />
                 </q-item-section>
                 <q-item-section>
                   <q-item-label class="text-caption text-weight-medium">{{
@@ -74,7 +74,7 @@
               </q-item>
               <q-item clickable @click="toggleDensity">
                 <q-item-section avatar class="q-pr-none" style="min-width: 24px">
-                  <q-icon name="density_medium" size="xs" color="grey-6" />
+                  <q-icon name="ph ph-list" size="xs" color="grey-6" />
                 </q-item-section>
                 <q-item-section>Compact Rows</q-item-section>
                 <q-item-section side>
@@ -89,7 +89,7 @@
               <q-separator class="q-my-xs" />
               <q-item clickable v-close-popup @click="handleLogout">
                 <q-item-section avatar class="q-pr-none" style="min-width: 24px">
-                  <q-icon name="logout" size="xs" color="grey-7" />
+                  <q-icon name="ph ph-sign-out" size="xs" color="grey-7" />
                 </q-item-section>
                 <q-item-section class="text-grey-8 text-weight-medium">Sign out</q-item-section>
               </q-item>
@@ -111,10 +111,10 @@
             color="primary"
             class="locale-selector-btn q-mr-sm"
             padding="xs sm"
-            icon="translate"
+            icon="ph ph-translate"
           >
             <span class="locale-selector-btn__label">{{ localeLabel }}</span>
-            <q-icon name="arrow_drop_down" size="sm" />
+            <q-icon name="ph ph-caret-down" size="sm" />
             <q-menu auto-close style="min-width: 140px">
               <q-list dense class="q-py-xs">
                 <q-item
@@ -162,7 +162,7 @@
               flat
               round
               dense
-              icon="push_pin"
+              icon="ph ph-push-pin"
               size="sm"
               :color="navPinned ? 'primary' : 'grey-7'"
               :style="
@@ -198,7 +198,7 @@
               <div class="text-caption text-grey-7 ellipsis leading-tight">{{ userEmail }}</div>
             </div>
 
-            <q-btn v-if="!isMini" flat round dense icon="more_vert" size="sm" color="grey-7">
+            <q-btn v-if="!isMini" flat round dense icon="ph ph-dots-three-vertical" size="sm" color="grey-7">
               <q-menu style="min-width: 200px">
                 <q-list dense class="q-py-xs">
                   <q-item-label
@@ -209,7 +209,7 @@
                   >
                   <q-item v-if="currentRoleLabel">
                     <q-item-section avatar class="q-pr-none" style="min-width: 24px">
-                      <q-icon name="shield" size="xs" color="grey-6" />
+                      <q-icon name="ph ph-shield" size="xs" color="grey-6" />
                     </q-item-section>
                     <q-item-section>
                       <q-item-label class="text-caption text-weight-medium">Role</q-item-label>
@@ -218,7 +218,7 @@
                   </q-item>
                   <q-item v-if="contextLabel && contextValue">
                     <q-item-section avatar class="q-pr-none" style="min-width: 24px">
-                      <q-icon name="apartment" size="xs" color="grey-6" />
+                      <q-icon name="ph ph-buildings" size="xs" color="grey-6" />
                     </q-item-section>
                     <q-item-section>
                       <q-item-label class="text-caption text-weight-medium">{{
@@ -254,7 +254,7 @@
                   </q-item>
                   <q-item clickable @click="toggleDensity">
                     <q-item-section avatar class="q-pr-none" style="min-width: 24px">
-                      <q-icon name="density_medium" size="xs" color="grey-6" />
+                      <q-icon name="ph ph-list" size="xs" color="grey-6" />
                     </q-item-section>
                     <q-item-section>Compact Rows</q-item-section>
                     <q-item-section side>
@@ -269,7 +269,7 @@
                   <q-separator class="q-my-xs" />
                   <q-item clickable v-close-popup @click="handleLogout">
                     <q-item-section avatar class="q-pr-none" style="min-width: 24px">
-                      <q-icon name="logout" size="xs" color="grey-7" />
+                      <q-icon name="ph ph-sign-out" size="xs" color="grey-7" />
                     </q-item-section>
                     <q-item-section class="text-grey-8 text-weight-medium"
                       >Sign out</q-item-section
@@ -288,7 +288,7 @@
                 >
                 <q-item v-if="currentRoleLabel">
                   <q-item-section avatar class="q-pr-none" style="min-width: 24px">
-                    <q-icon name="shield" size="xs" color="grey-6" />
+                    <q-icon name="ph ph-shield" size="xs" color="grey-6" />
                   </q-item-section>
                   <q-item-section>
                     <q-item-label class="text-caption text-weight-medium">Role</q-item-label>
@@ -297,7 +297,7 @@
                 </q-item>
                 <q-item v-if="contextLabel && contextValue">
                   <q-item-section avatar class="q-pr-none" style="min-width: 24px">
-                    <q-icon name="apartment" size="xs" color="grey-6" />
+                    <q-icon name="ph ph-buildings" size="xs" color="grey-6" />
                   </q-item-section>
                   <q-item-section>
                     <q-item-label class="text-caption text-weight-medium">{{
@@ -329,7 +329,7 @@
                 </q-item>
                 <q-item clickable @click="toggleDensity">
                   <q-item-section avatar class="q-pr-none" style="min-width: 24px">
-                    <q-icon name="density_medium" size="xs" color="grey-6" />
+                    <q-icon name="ph ph-list" size="xs" color="grey-6" />
                   </q-item-section>
                   <q-item-section>Compact Rows</q-item-section>
                   <q-item-section side>
@@ -344,7 +344,7 @@
                 <q-separator class="q-my-xs" />
                 <q-item clickable v-close-popup @click="handleLogout">
                   <q-item-section avatar class="q-pr-none" style="min-width: 24px">
-                    <q-icon name="logout" size="xs" color="grey-7" />
+                    <q-icon name="ph ph-sign-out" size="xs" color="grey-7" />
                   </q-item-section>
                   <q-item-section class="text-grey-8 text-weight-medium">Sign out</q-item-section>
                 </q-item>
@@ -366,7 +366,7 @@
                 @click="showCommandPalette = true"
               >
                 <template #prepend>
-                  <q-icon name="search" size="xs" />
+                  <q-icon name="ph ph-magnifying-glass" size="xs" />
                 </template>
                 <template #append>
                   <div class="shortcut-badge">⌘K</div>
@@ -510,7 +510,7 @@
             flat
             dense
             no-caps
-            icon="logout"
+            icon="ph ph-sign-out"
             :label="isMini ? '' : 'Sign out'"
             color="grey-7"
             class="workspace-shell__logout"
@@ -607,7 +607,7 @@
             @keydown="onInputKeydown"
           >
             <template #prepend>
-              <q-icon name="search" />
+              <q-icon name="ph ph-magnifying-glass" />
             </template>
             <template #append>
               <q-btn
@@ -615,7 +615,7 @@
                 flat
                 round
                 dense
-                icon="close"
+                icon="ph ph-x"
                 size="sm"
                 @click="searchQuery = ''"
               />
@@ -657,7 +657,7 @@
             </q-item>
           </q-list>
           <div v-else class="flex flex-center text-grey-6 q-pa-lg">
-            <q-icon name="search_off" size="md" />
+            <q-icon name="ph ph-magnifying-glass-minus" size="md" />
             <div class="q-ml-sm">No matching pages found</div>
           </div>
         </q-scroll-area>
@@ -685,11 +685,11 @@
         <!-- Meta pills -->
         <div class="signout-card__meta">
           <span v-if="currentRoleLabel" class="signout-card__pill">
-            <q-icon name="shield" size="0.8rem" />
+            <q-icon name="ph ph-shield" size="0.8rem" />
             {{ currentRoleLabel }}
           </span>
           <span v-if="contextValue" class="signout-card__pill">
-            <q-icon name="apartment" size="0.8rem" />
+            <q-icon name="ph ph-buildings" size="0.8rem" />
             {{ contextValue }}
           </span>
         </div>
@@ -708,7 +708,7 @@
             Stay signed in
           </button>
           <button class="signout-card__btn signout-card__btn--confirm" @click="confirmLogout">
-            <q-icon name="logout" size="1rem" />
+            <q-icon name="ph ph-sign-out" size="1rem" />
             Sign out
           </button>
         </div>

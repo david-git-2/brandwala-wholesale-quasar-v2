@@ -15,7 +15,7 @@
               size="sm"
               class="pill-btn slim-btn"
               label="Bulk Import"
-              icon="drive_folder_upload"
+              icon="ph ph-folder-simple-plus"
               @click="bulkImportDialogOpen = true"
             />
             <q-btn
@@ -25,7 +25,7 @@
               size="sm"
               class="pill-btn slim-btn"
               label="Add Product"
-              icon="add"
+              icon="ph ph-plus"
               @click="openCreateDialog"
             />
           </div>
@@ -40,7 +40,7 @@
           flat
           round
           dense
-          icon="search"
+          icon="ph ph-magnifying-glass"
           aria-label="Show search"
           @click="showSearchInput = true"
         />
@@ -56,10 +56,10 @@
           @clear="onApplyFilters"
         >
           <template #prepend>
-            <q-icon name="search" />
+            <q-icon name="ph ph-magnifying-glass" />
           </template>
           <template #append>
-            <q-btn flat round dense icon="close" aria-label="Hide search" @click="onCloseSearch" />
+            <q-btn flat round dense icon="ph ph-x" aria-label="Hide search" @click="onCloseSearch" />
           </template>
         </q-input>
 
@@ -67,7 +67,7 @@
           flat
           round
           dense
-          icon="filter_alt"
+          icon="ph ph-funnel"
           aria-label="Filters"
           @click="filterDrawerOpen = true"
         >
@@ -206,7 +206,7 @@
       <q-card style="width: 960px; max-width: 95vw" class="floating-surface shadow-2 q-pa-md">
         <q-card-section class="row items-center justify-between q-pb-none">
           <div class="text-h6 text-weight-bold text-primary">Add Product</div>
-          <q-btn flat round dense icon="close" v-close-popup />
+          <q-btn flat round dense icon="ph ph-x" v-close-popup />
         </q-card-section>
 
         <q-separator class="q-my-md" />
@@ -241,7 +241,7 @@
                   </div>
                   <div v-else class="flex flex-center text-grey-6" style="height: 200px">
                     <div class="column items-center">
-                      <q-icon name="image" size="48px" />
+                      <q-icon name="ph ph-image" size="48px" />
                       <div class="text-caption q-mt-sm">No Image Preview</div>
                     </div>
                   </div>
@@ -255,7 +255,7 @@
                   class="soft-input"
                 >
                   <template #prepend>
-                    <q-icon name="image" />
+                    <q-icon name="ph ph-image" />
                   </template>
                 </q-input>
 
@@ -270,7 +270,7 @@
                   :rules="[(val) => !!val || 'Name is required']"
                 >
                   <template #prepend>
-                    <q-icon name="inventory_2" />
+                    <q-icon name="ph ph-archive-box" />
                   </template>
                 </q-input>
 
@@ -282,7 +282,7 @@
                   class="soft-input"
                 >
                   <template #prepend>
-                    <q-icon name="qr_code" />
+                    <q-icon name="ph ph-qr-code" />
                   </template>
                 </q-input>
 
@@ -294,7 +294,7 @@
                   class="soft-input"
                 >
                   <template #prepend>
-                    <q-icon name="badge" />
+                    <q-icon name="ph ph-identification-badge" />
                   </template>
                 </q-input>
               </div>
@@ -316,7 +316,7 @@
                       @update:model-value="onVendorOrMarketChange"
                     >
                       <template #prepend>
-                        <q-icon name="storefront" />
+                        <q-icon name="ph ph-storefront" />
                       </template>
                     </q-select>
                   </div>
@@ -334,7 +334,7 @@
                       @update:model-value="onVendorOrMarketChange"
                     >
                       <template #prepend>
-                        <q-icon name="public" />
+                        <q-icon name="ph ph-globe" />
                       </template>
                     </q-select>
                   </div>
@@ -363,7 +363,7 @@
                           class="soft-input"
                         >
                           <template #prepend>
-                            <q-icon name="sell" />
+                            <q-icon name="ph ph-tag" />
                           </template>
                         </q-select>
                       </div>
@@ -404,7 +404,7 @@
                           class="soft-input"
                         >
                           <template #prepend>
-                            <q-icon name="category" />
+                            <q-icon name="ph ph-squares-four" />
                           </template>
                         </q-select>
                       </div>
@@ -487,7 +487,7 @@
                       class="soft-input"
                     >
                       <template #prepend>
-                        <q-icon name="scale" />
+                        <q-icon name="ph ph-scales" />
                       </template>
                     </q-input>
                   </div>
@@ -501,7 +501,7 @@
                       class="soft-input"
                     >
                       <template #prepend>
-                        <q-icon name="fitness_center" />
+                        <q-icon name="ph ph-barbell" />
                       </template>
                     </q-input>
                   </div>

@@ -12,7 +12,7 @@
         <div class="col-auto">
           <q-btn
             color="primary"
-            icon="add"
+            icon="ph ph-plus"
             :label="$t('shop_admin.new_shop')"
             unelevated
             @click="openCreate"
@@ -29,11 +29,11 @@
             dense
             outlined
             :placeholder="$t('shop_admin.search_shops_placeholder')"
-            prepend-icon="search"
+            prepend-icon="ph ph-magnifying-glass"
             @update:model-value="onSearchChange"
           >
             <template #prepend>
-              <q-icon name="search" />
+              <q-icon name="ph ph-magnifying-glass" />
             </template>
           </q-input>
         </div>
@@ -68,7 +68,7 @@
           v-else-if="store.shops.length === 0"
           class="text-grey-6 text-center q-pa-xl"
         >
-          <q-icon name="storefront" size="48px" class="q-mb-sm block" />
+          <q-icon name="ph ph-storefront" size="48px" class="q-mb-sm block" />
           {{ $t('shop_admin.no_shops_found') }}
           <br />
           <q-btn
@@ -133,7 +133,7 @@
                 flat
                 round
                 dense
-                icon="sell"
+                icon="ph ph-tag"
                 color="orange"
                 @click="goToPricing(props.row.id)"
               >
@@ -143,7 +143,7 @@
                 flat
                 round
                 dense
-                icon="security"
+                icon="ph ph-shield"
                 color="teal"
                 @click="goToAccessMatrix(props.row.id)"
               >
@@ -153,13 +153,13 @@
                 flat
                 round
                 dense
-                icon="visibility"
+                icon="ph ph-eye"
                 color="indigo"
                 @click="goToPreview(props.row.id)"
               >
                 <q-tooltip>Preview Storefront</q-tooltip>
               </q-btn>
-              <q-btn flat round dense icon="edit" color="primary" @click="openEdit(props.row)">
+              <q-btn flat round dense icon="ph ph-pencil-simple" color="primary" @click="openEdit(props.row)">
                 <q-tooltip>{{ $t('shop_admin.edit') }}</q-tooltip>
               </q-btn>
             </q-td>
@@ -187,6 +187,7 @@ import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useShopOrderStore } from 'src/modules/shop_order/stores/shopOrderStore';
+import { shopOrderRepository } from 'src/modules/shop_order/repositories/shopOrderRepository';
 import ShopFormDialog from 'src/modules/shop_order/components/ShopFormDialog.vue';
 import { vendorService } from 'src/modules/vendor/services/vendorService';
 import type { Vendor } from 'src/modules/vendor/types';
@@ -292,6 +293,16 @@ const onSave = async (payload: CreateShopPayload | UpdateShopPayload) => {
   const result = isEdit ? await store.updateShop(payload) : await store.createShop(payload);
   if (!result) return;
   if (result.success) {
+    const savedShop = result.data;
+    if (savedShop && savedShop.id) {
+      await shopOrderRepository.updateShopExtraAttributes(
+        savedShop.id,
+        tenantId.value,
+        payload.description || null,
+        payload.category_ids || [],
+      );
+      void store.fetchShopsByTenant(tenantId.value);
+    }
     dialogOpen.value = false;
   } else {
     dialogError.value = result.error;

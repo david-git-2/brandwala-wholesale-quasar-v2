@@ -12,7 +12,7 @@
       <section class="row items-center justify-between q-col-gutter-md">
         <div class="col">
           <div class="row items-center q-gutter-x-sm">
-            <q-btn flat dense icon="arrow_back" color="grey-7" @click="goOrders" />
+            <q-btn flat dense icon="ph ph-arrow-left" color="grey-7" @click="goOrders" />
             <div>
               <div class="text-overline text-primary">Customer Order</div>
               <h1 class="text-h5 text-weight-bold q-my-none">Order #{{ order.order_no }}</h1>
@@ -39,10 +39,10 @@
                 no-caps
                 class="q-px-md text-caption text-weight-bold"
               >
-                <q-icon v-if="order.status === st" name="check_circle" size="14px" class="q-mr-xs" />
+                <q-icon v-if="order.status === st" name="ph ph-check-circle" size="14px" class="q-mr-xs" />
                 {{ formatStatusLabel(st) }}
               </q-btn>
-              <q-icon v-if="idx < 4" name="chevron_right" color="grey-5" size="18px" />
+              <q-icon v-if="idx < 4" name="ph ph-caret-right" color="grey-5" size="18px" />
             </template>
             <q-separator vertical class="q-mx-sm" />
             <q-btn
@@ -80,7 +80,7 @@
                 <q-item-section avatar>
                   <q-avatar size="50px" rounded class="bg-grey-2">
                     <q-img v-if="item.image_url" :src="item.image_url" />
-                    <q-icon v-else name="image" size="24px" color="grey-4" />
+                    <q-icon v-else name="ph ph-image" size="24px" color="grey-4" />
                   </q-avatar>
                 </q-item-section>
 
@@ -222,7 +222,7 @@
                     no-caps
                     size="sm"
                     color="primary"
-                    icon="open_in_new"
+                    icon="ph ph-arrow-up-right"
                     label="Track Parcel"
                     type="a"
                     href="https://steadfast.com.bd/t/ST-987654"

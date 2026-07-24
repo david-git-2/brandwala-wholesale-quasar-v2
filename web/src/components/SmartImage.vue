@@ -33,7 +33,7 @@
       round
       dense
       color="primary"
-      icon="edit"
+      icon="ph ph-pencil-simple"
       size="sm"
       class="smart-image-edit-btn"
       @click.stop="openEditDialog"
@@ -46,7 +46,7 @@
       <q-card style="width: 400px; max-width: 90vw" class="q-pa-md">
         <q-card-section class="q-pa-none q-mb-md row items-center justify-between">
           <div class="text-subtitle1 text-weight-bold">Update Image URL</div>
-          <q-btn flat round dense icon="close" size="sm" v-close-popup />
+          <q-btn flat round dense icon="ph ph-x" size="sm" v-close-popup />
         </q-card-section>
 
         <q-card-section class="q-pa-none q-mb-md">

@@ -11,7 +11,7 @@
           <div class="col-12 col-md-5">
             <q-input v-model="search" placeholder="Search by shipment name or ID..." dense outlined>
               <template #append>
-                <q-icon name="search" />
+                <q-icon name="ph ph-magnifying-glass" />
               </template>
             </q-input>
           </div>
@@ -86,7 +86,7 @@
                   round
                   dense
                   color="primary"
-                  icon="o_insights"
+                  icon="ph ph-lightbulb"
                   @click="navigateToPnL(props.row.id)"
                 >
                   <q-tooltip>Analyze Profitability &amp; P&amp;L</q-tooltip>
@@ -214,12 +214,12 @@ const onRowClick = (evt: any, row: any) => {
 const statusColor = (status: string | null | undefined) => {
   const s = (status ?? '').trim().toLowerCase();
   if (s === 'completed' || s === 'delivered')
-    return { bg: 'green-1', text: 'green-9', icon: 'check_circle' };
+    return { bg: 'green-1', text: 'green-9', icon: 'ph ph-check-circle' };
   if (s === 'in_transit' || s === 'transit' || s === 'shipped')
-    return { bg: 'blue-1', text: 'blue-9', icon: 'local_shipping' };
+    return { bg: 'blue-1', text: 'blue-9', icon: 'ph ph-truck' };
   if (s === 'pending') return { bg: 'amber-1', text: 'amber-9', icon: 'pending' };
-  if (s === 'cancelled') return { bg: 'red-1', text: 'red-9', icon: 'cancel' };
-  return { bg: 'grey-2', text: 'grey-8', icon: 'inventory_2' };
+  if (s === 'cancelled') return { bg: 'red-1', text: 'red-9', icon: 'ph ph-x-circle' };
+  return { bg: 'grey-2', text: 'grey-8', icon: 'ph ph-archive-box' };
 };
 
 onMounted(() => {

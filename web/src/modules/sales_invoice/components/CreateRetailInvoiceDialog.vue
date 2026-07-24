@@ -57,7 +57,7 @@
             :rules="[(v: number | null) => v != null || 'Required']"
           >
             <template #after>
-              <q-btn round dense flat icon="add" color="primary" @click="goToBillingProfileCreate">
+              <q-btn round dense flat icon="ph ph-plus" color="primary" @click="goToBillingProfileCreate">
                 <q-tooltip>Create Billing Profile</q-tooltip>
               </q-btn>
             </template>
@@ -73,7 +73,7 @@
             :rules="[(value: string) => Boolean(value) || 'Invoice date is required']"
           >
             <template #append>
-              <q-icon name="event" class="cursor-pointer">
+              <q-icon name="ph ph-calendar" class="cursor-pointer">
                 <q-popup-proxy cover transition-show="scale" transition-hide="scale">
                   <q-date v-model="form.invoice_date" mask="YYYY-MM-DD">
                     <div class="row items-center justify-end">

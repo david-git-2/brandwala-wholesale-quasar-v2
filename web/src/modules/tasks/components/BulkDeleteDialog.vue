@@ -4,7 +4,7 @@
       <!-- Header -->
       <q-card-section class="q-py-md row items-center justify-between border-bottom">
         <div class="row items-center q-gutter-sm">
-          <q-icon name="delete_sweep" size="28px" color="negative" />
+          <q-icon name="ph ph-trash" size="28px" color="negative" />
           <div>
             <div class="text-h6 text-weight-bold text-grey-9">Bulk Delete Items</div>
             <div class="text-caption text-grey-6">
@@ -12,7 +12,7 @@
             </div>
           </div>
         </div>
-        <q-btn flat round dense icon="close" v-close-popup />
+        <q-btn flat round dense icon="ph ph-x" v-close-popup />
       </q-card-section>
 
       <!-- Filters Section -->
@@ -29,7 +29,7 @@
               class="soft-input"
             >
               <template #prepend>
-                <q-icon name="search" size="18px" />
+                <q-icon name="ph ph-magnifying-glass" size="18px" />
               </template>
             </q-input>
           </div>
@@ -191,7 +191,7 @@
             color="negative"
             no-caps
             label="Delete Selected"
-            icon="o_delete"
+            icon="ph ph-trash"
             :disable="selected.length === 0"
             :loading="deleting"
             @click="confirmDelete"

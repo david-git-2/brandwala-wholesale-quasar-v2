@@ -14,7 +14,7 @@
           <q-btn
             outline
             color="primary"
-            icon="local_shipping"
+            icon="ph ph-truck"
             label="Dropship Ops Desk"
             no-caps
             :to="{ name: 'app-shop-dropship-orders-page' }"
@@ -53,7 +53,7 @@
             @update:model-value="onFilterChange"
           >
             <template #prepend>
-              <q-icon name="search" />
+              <q-icon name="ph ph-magnifying-glass" />
             </template>
           </q-input>
         </div>
@@ -82,7 +82,7 @@
         v-else-if="orderStore.orders.length === 0"
         class="column items-center justify-center empty-state q-pa-xl text-center"
       >
-        <q-icon name="receipt_long" size="80px" color="grey-3" class="q-mb-md" />
+        <q-icon name="ph ph-receipt" size="80px" color="grey-3" class="q-mb-md" />
         <div class="text-h6 text-grey-6">{{ $t('shop_admin.no_orders_found') }}</div>
         <p class="text-body2 text-grey-5 q-mt-sm">
           {{ $t('shop_admin.no_orders_match') }}
@@ -146,7 +146,7 @@
                       color="primary"
                       no-caps
                       dense
-                      icon="local_shipping"
+                      icon="ph ph-truck"
                       :label="$t('shop_admin.add_to_dropship_desk')"
                       class="q-px-md pill-btn text-weight-bold"
                       :loading="orderStore.saving"

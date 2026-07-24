@@ -22,7 +22,7 @@
             class="product-image"
           />
           <div v-else class="product-image-placeholder flex flex-center">
-            <q-icon name="shopping_bag" size="40px" class="text-grey-4" />
+            <q-icon name="ph ph-tote" size="40px" class="text-grey-4" />
           </div>
         </div>
 
@@ -68,7 +68,7 @@
                 round
                 dense
                 size="xs"
-                icon="close"
+                icon="ph ph-x"
                 color="amber-9"
                 @click="$emit('negotiate-price', product.id, null)"
               />
@@ -78,7 +78,7 @@
               outline
               color="amber-9"
               size="sm"
-              icon="handshake"
+              icon="ph ph-handshake"
               label="Negotiate Price"
               class="full-width negotiate-btn"
               @click="promptNegotiation(product)"

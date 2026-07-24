@@ -4,7 +4,7 @@
       <q-card-section class="row items-center q-pb-none" style="position: relative">
         <div class="text-h6 text-primary text-weight-bold">Split Stock Quantity</div>
         <q-btn
-          icon="close"
+          icon="ph ph-x"
           flat
           round
           dense

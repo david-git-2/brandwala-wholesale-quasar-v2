@@ -14,7 +14,7 @@
           round
           dense
           color="white"
-          icon="download"
+          icon="ph ph-download-simple"
           class="lightbox-btn"
           size="md"
           @click="downloadImage"
@@ -26,7 +26,7 @@
           round
           dense
           color="white"
-          icon="close"
+          icon="ph ph-x"
           class="lightbox-btn"
           size="md"
           @click="close"

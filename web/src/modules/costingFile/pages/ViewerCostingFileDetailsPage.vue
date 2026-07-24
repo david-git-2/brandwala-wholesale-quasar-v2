@@ -36,7 +36,7 @@
                 "
                 outline
                 color="primary"
-                icon="view_column"
+                icon="ph ph-columns"
                 label="Columns"
                 no-caps
                 size="sm"

@@ -16,7 +16,7 @@
                 flat
                 round
                 dense
-                icon="o_delete"
+                icon="ph ph-trash"
                 :loading="deleting"
                 @click="confirmDelete"
               >
@@ -26,7 +26,7 @@
                 color="primary"
                 no-caps
                 label="Edit Product"
-                icon="o_edit"
+                icon="ph ph-pencil-simple"
                 class="pill-btn slim-btn"
                 @click="startEdit"
               />
@@ -36,7 +36,7 @@
                 color="positive"
                 no-caps
                 label="Save"
-                icon="save"
+                icon="ph ph-floppy-disk"
                 :loading="updating"
                 class="pill-btn slim-btn"
                 @click="onSave"
@@ -90,7 +90,7 @@
                 class="soft-input"
               >
                 <template #prepend>
-                  <q-icon name="image" />
+                  <q-icon name="ph ph-image" />
                 </template>
               </q-input>
             </div>
@@ -120,7 +120,7 @@
                     :rules="[(val) => !!val || 'Name is required']"
                   >
                     <template #prepend>
-                      <q-icon name="assignment" />
+                      <q-icon name="ph ph-clipboard-text" />
                     </template>
                   </q-input>
                 </div>
@@ -133,14 +133,14 @@
                     class="soft-input"
                   >
                     <template #prepend>
-                      <q-icon name="qr_code" />
+                      <q-icon name="ph ph-qr-code" />
                     </template>
                   </q-input>
                 </div>
                 <div class="col-12 col-sm-6">
                   <q-input v-model="form.barcode" label="Barcode" outlined dense class="soft-input">
                     <template #prepend>
-                      <q-icon name="barcode_reader" />
+                      <q-icon name="ph ph-barcode" />
                     </template>
                   </q-input>
                 </div>
@@ -161,7 +161,7 @@
                     clearable
                   >
                     <template #prepend>
-                      <q-icon name="storefront" />
+                      <q-icon name="ph ph-storefront" />
                     </template>
                   </q-select>
                 </div>
@@ -182,7 +182,7 @@
                     clearable
                   >
                     <template #prepend>
-                      <q-icon name="category" />
+                      <q-icon name="ph ph-squares-four" />
                     </template>
                   </q-select>
                 </div>
@@ -242,7 +242,7 @@
                     class="soft-input"
                   >
                     <template #prepend>
-                      <q-icon name="inventory_2" />
+                      <q-icon name="ph ph-archive-box" />
                     </template>
                   </q-input>
                 </div>
@@ -256,7 +256,7 @@
                     class="soft-input"
                   >
                     <template #prepend>
-                      <q-icon name="shopping_cart" />
+                      <q-icon name="ph ph-shopping-cart" />
                     </template>
                   </q-input>
                 </div>
@@ -269,7 +269,7 @@
                     class="soft-input"
                   >
                     <template #prepend>
-                      <q-icon name="public" />
+                      <q-icon name="ph ph-globe" />
                     </template>
                   </q-input>
                 </div>
@@ -282,7 +282,7 @@
                     class="soft-input"
                   >
                     <template #prepend>
-                      <q-icon name="description" />
+                      <q-icon name="ph ph-file-text" />
                     </template>
                   </q-input>
                 </div>
@@ -295,7 +295,7 @@
                     class="soft-input"
                   >
                     <template #prepend>
-                      <q-icon name="translate" />
+                      <q-icon name="ph ph-translate" />
                     </template>
                   </q-input>
                 </div>
@@ -308,7 +308,7 @@
                     class="soft-input"
                   >
                     <template #prepend>
-                      <q-icon name="date_range" />
+                      <q-icon name="ph ph-calendar-blank" />
                     </template>
                   </q-input>
                 </div>
@@ -321,7 +321,7 @@
                     class="soft-input"
                   >
                     <template #prepend>
-                      <q-icon name="event_busy" />
+                      <q-icon name="ph ph-calendar-x" />
                     </template>
                   </q-input>
                 </div>
@@ -336,7 +336,7 @@
                     class="soft-input"
                   >
                     <template #prepend>
-                      <q-icon name="scale" />
+                      <q-icon name="ph ph-scales" />
                     </template>
                   </q-input>
                 </div>
@@ -351,7 +351,7 @@
                     class="soft-input"
                   >
                     <template #prepend>
-                      <q-icon name="scale" />
+                      <q-icon name="ph ph-scales" />
                     </template>
                   </q-input>
                 </div>
@@ -371,7 +371,7 @@
                     clearable
                   >
                     <template #prepend>
-                      <q-icon name="badge" />
+                      <q-icon name="ph ph-identification-badge" />
                     </template>
                   </q-select>
                 </div>
@@ -384,7 +384,7 @@
                     class="soft-input"
                   >
                     <template #prepend>
-                      <q-icon name="explore" />
+                      <q-icon name="ph ph-compass" />
                     </template>
                   </q-input>
                 </div>

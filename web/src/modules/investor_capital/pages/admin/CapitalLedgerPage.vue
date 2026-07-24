@@ -12,7 +12,7 @@
         <div class="col-auto">
           <q-btn
             color="primary"
-            icon="add"
+            icon="ph ph-plus"
             label="Add Transaction"
             unelevated
             @click="onClickAddTransaction"

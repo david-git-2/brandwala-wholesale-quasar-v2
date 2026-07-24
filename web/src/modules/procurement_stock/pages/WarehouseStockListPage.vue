@@ -11,7 +11,7 @@
             outline
             color="secondary"
             no-caps
-            icon="settings"
+            icon="ph ph-gear"
             label="Stock Types Config"
             @click="openStockTypesConfig"
           />
@@ -19,7 +19,7 @@
             unelevated
             color="primary"
             no-caps
-            icon="call_split"
+            icon="ph ph-git-fork"
             label="Allocate Stock"
             :to="allocateStockRoute"
           />
@@ -43,11 +43,11 @@
           @clear="onSearch"
         >
           <template #prepend>
-            <q-icon name="search" />
+            <q-icon name="ph ph-magnifying-glass" />
           </template>
         </q-input>
 
-        <q-btn flat round dense icon="filter_alt" @click="openFilterDrawer">
+        <q-btn flat round dense icon="ph ph-funnel" @click="openFilterDrawer">
           <q-badge v-if="activeFilterCount > 0" color="primary" rounded floating>
             {{ activeFilterCount }}
           </q-badge>
@@ -164,7 +164,7 @@
                 flat
                 round
                 dense
-                icon="call_split"
+                icon="ph ph-git-fork"
                 size="sm"
                 color="primary"
                 @click.stop="openSplitDialog(props.row)"
@@ -206,7 +206,7 @@
 
           <template #no-data>
             <div class="full-width text-center text-grey-7 q-py-lg">
-              <q-icon name="inventory_2" size="48px" class="q-mb-sm text-grey-4" />
+              <q-icon name="ph ph-archive-box" size="48px" class="q-mb-sm text-grey-4" />
               <div>No Warehouse Stock Found.</div>
             </div>
           </template>

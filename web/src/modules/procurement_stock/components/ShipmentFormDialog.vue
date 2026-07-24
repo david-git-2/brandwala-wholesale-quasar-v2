@@ -7,7 +7,7 @@
             {{ isEdit ? 'Edit Shipment Details' : 'Create New Inbound Shipment' }}
           </div>
           <q-space />
-          <q-btn icon="close" flat round dense v-close-popup />
+          <q-btn icon="ph ph-x" flat round dense v-close-popup />
         </q-card-section>
 
         <q-card-section class="q-pa-md q-gutter-y-md">
@@ -100,7 +100,7 @@
                   clearable
                 >
                   <template #append>
-                    <q-icon name="event" class="cursor-pointer">
+                    <q-icon name="ph ph-calendar" class="cursor-pointer">
                       <q-popup-proxy cover transition-show="scale" transition-hide="scale">
                         <q-date v-model="form.received_date" mask="YYYY-MM-DD">
                           <div class="row items-center justify-end">

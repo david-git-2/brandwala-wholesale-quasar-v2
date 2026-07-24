@@ -3,11 +3,11 @@
     <q-card class="q-dialog-plugin" style="width: 520px; max-width: 95vw">
       <q-card-section class="row items-center q-pb-none">
         <div class="text-h6 text-primary text-weight-bold row items-center q-gutter-x-xs">
-          <q-icon name="preview" size="24px" class="q-mr-xs" />
+          <q-icon name="ph ph-eye" size="24px" class="q-mr-xs" />
           Select Preview Columns
         </div>
         <q-space />
-        <q-btn icon="close" flat round dense v-close-popup />
+        <q-btn icon="ph ph-x" flat round dense v-close-popup />
       </q-card-section>
 
       <q-card-section class="q-pa-md">
@@ -34,7 +34,7 @@
           class="bg-amber-1 text-amber-10 rounded-borders q-mb-sm"
         >
           <template #avatar>
-            <q-icon name="warning" color="warning" size="18px" />
+            <q-icon name="ph ph-warning" color="warning" size="18px" />
           </template>
           <div class="text-caption">
             <strong>A4 Layout Warning:</strong> {{ selectedCount }} columns selected. Printing on standard A4 paper works best with 7 or fewer columns to prevent table overflow.
@@ -65,7 +65,7 @@
         <q-btn
           color="primary"
           unelevated
-          icon="open_in_new"
+          icon="ph ph-arrow-up-right"
           label="Open Preview & Print"
           no-caps
           @click="onConfirm"

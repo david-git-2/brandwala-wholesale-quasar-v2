@@ -12,7 +12,7 @@
       <section class="row items-center justify-between q-col-gutter-md">
         <div class="col">
           <div class="row items-center q-gutter-x-sm">
-            <q-btn flat round icon="arrow_back" color="grey-7" @click="goBack" />
+            <q-btn flat round icon="ph ph-arrow-left" color="grey-7" @click="goBack" />
             <div>
               <div class="text-overline">{{ $t('shop_admin.staff_order_desk') }}</div>
               <h1 class="text-h5 text-weight-bold q-my-none">{{ $t('shop_admin.order_management') }}</h1>
@@ -36,7 +36,7 @@
               :style="{ backgroundColor: statusDotColor(orderStore.currentOrder.status) }"
             />
             {{ orderStore.currentOrder.status }}
-            <q-icon name="arrow_drop_down" class="q-ml-xs" size="16px" />
+            <q-icon name="ph ph-caret-down" class="q-ml-xs" size="16px" />
             <q-menu>
               <q-list dense style="min-width: 150px">
                 <q-item
@@ -83,7 +83,7 @@
                 <q-item-section avatar>
                   <q-avatar size="50px" rounded class="bg-grey-2">
                     <q-img v-if="item.image_url" :src="item.image_url" />
-                    <q-icon v-else name="image" size="24px" color="grey-4" />
+                    <q-icon v-else name="ph ph-image" size="24px" color="grey-4" />
                   </q-avatar>
                 </q-item-section>
 
@@ -163,7 +163,7 @@
                 outline
                 color="negative"
                 no-caps
-                icon="delete"
+                icon="ph ph-trash"
                 :label="$t('shop_admin.delete_order')"
                 class="pill-btn text-weight-bold q-px-lg q-py-sm"
                 :loading="orderStore.saving"
@@ -209,7 +209,7 @@
                   color="primary"
                   unelevated
                   no-caps
-                  icon="local_shipping"
+                  icon="ph ph-truck"
                   :label="$t('shop_admin.add_to_dropship_desk')"
                   class="pill-btn text-weight-bold q-px-lg q-py-sm"
                   :loading="orderStore.saving"
@@ -369,7 +369,7 @@
                     <q-btn
                       outline
                       color="primary"
-                      icon="edit"
+                      icon="ph ph-pencil-simple"
                       label="Edit Charges"
                       size="sm"
                       class="full-width pill-btn"
@@ -405,7 +405,7 @@
                     flat
                     round
                     dense
-                    icon="content_copy"
+                    icon="ph ph-copy"
                     size="xs"
                     color="grey-7"
                     @click="copyToClipboard(orderStore.currentOrder.recipient_name, 'Name')"
@@ -420,7 +420,7 @@
                     flat
                     round
                     dense
-                    icon="content_copy"
+                    icon="ph ph-copy"
                     size="xs"
                     color="grey-7"
                     @click="copyToClipboard(orderStore.currentOrder.recipient_phone, 'Phone')"
@@ -435,7 +435,7 @@
                     flat
                     round
                     dense
-                    icon="content_copy"
+                    icon="ph ph-copy"
                     size="xs"
                     color="grey-7"
                     class="absolute-top-right q-ma-xs"
@@ -451,7 +451,7 @@
                     dense
                     size="sm"
                     color="primary"
-                    icon="content_copy"
+                    icon="ph ph-copy"
                     label="Copy All Details"
                     class="full-width pill-btn"
                     @click="copyAllShippingDetails"
@@ -482,7 +482,7 @@
           <q-card-section class="row items-center border-bottom q-py-md">
             <div class="text-h6 text-weight-bold">Edit Charges</div>
             <q-space />
-            <q-btn icon="close" flat round dense v-close-popup />
+            <q-btn icon="ph ph-x" flat round dense v-close-popup />
           </q-card-section>
 
           <q-card-section class="q-pa-lg q-gutter-y-md">

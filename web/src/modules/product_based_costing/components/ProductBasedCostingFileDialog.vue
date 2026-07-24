@@ -6,7 +6,7 @@
           {{ isEditMode ? 'Edit Costing File' : 'Create Costing File' }}
         </div>
 
-        <q-btn icon="close" flat round dense v-close-popup />
+        <q-btn icon="ph ph-x" flat round dense v-close-popup />
       </q-card-section>
 
       <q-separator />

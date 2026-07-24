@@ -6,7 +6,7 @@
           {{ isEditMode ? 'Edit Product Based Costing Item' : 'Add Product Based Costing Item' }}
         </div>
 
-        <q-btn icon="close" flat round dense v-close-popup />
+        <q-btn icon="ph ph-x" flat round dense v-close-popup />
       </q-card-section>
 
       <q-separator />
@@ -31,7 +31,7 @@
                   style="height: 200px"
                 >
                   <div class="column items-center">
-                    <q-icon name="image" size="48px" />
+                    <q-icon name="ph ph-image" size="48px" />
                     <div class="text-caption q-mt-sm">No Image Preview</div>
                   </div>
                 </div>
@@ -45,13 +45,13 @@
                 :disable="isProductListInputType"
               >
                 <template #prepend>
-                  <q-icon name="image" />
+                  <q-icon name="ph ph-image" />
                 </template>
               </q-input>
 
               <q-input v-model="form.name" label="Name" type="textarea" autogrow outlined dense>
                 <template #prepend>
-                  <q-icon name="inventory_2" />
+                  <q-icon name="ph ph-archive-box" />
                 </template>
               </q-input>
 
@@ -63,7 +63,7 @@
                 :disable="isProductListInputType"
               >
                 <template #prepend>
-                  <q-icon name="qr_code" />
+                  <q-icon name="ph ph-qr-code" />
                 </template>
               </q-input>
 
@@ -75,13 +75,13 @@
                 :disable="isProductListInputType"
               >
                 <template #prepend>
-                  <q-icon name="badge" />
+                  <q-icon name="ph ph-identification-badge" />
                 </template>
               </q-input>
 
               <q-input v-model="form.web_link" label="Web Link" outlined dense>
                 <template #prepend>
-                  <q-icon name="link" />
+                  <q-icon name="ph ph-link" />
                 </template>
               </q-input>
             </div>
@@ -104,7 +104,7 @@
                     @update:model-value="onVendorOrMarketChange"
                   >
                     <template #prepend>
-                      <q-icon name="storefront" />
+                      <q-icon name="ph ph-storefront" />
                     </template>
                   </q-select>
                 </div>
@@ -123,7 +123,7 @@
                     @update:model-value="onVendorOrMarketChange"
                   >
                     <template #prepend>
-                      <q-icon name="public" />
+                      <q-icon name="ph ph-globe" />
                     </template>
                   </q-select>
                 </div>
@@ -151,7 +151,7 @@
                         @input-value="onBrandInputValue"
                       >
                         <template #prepend>
-                          <q-icon name="sell" />
+                          <q-icon name="ph ph-tag" />
                         </template>
                       </q-select>
                     </div>
@@ -190,7 +190,7 @@
                         @input-value="onCategoryInputValue"
                       >
                         <template #prepend>
-                          <q-icon name="category" />
+                          <q-icon name="ph ph-squares-four" />
                         </template>
                       </q-select>
                     </div>
@@ -220,7 +220,7 @@
                     @wheel.prevent
                   >
                     <template #prepend>
-                      <q-icon name="numbers" />
+                      <q-icon name="ph ph-hash" />
                     </template>
                   </q-input>
                 </div>
@@ -233,7 +233,7 @@
                     dense
                   >
                     <template #prepend>
-                      <q-icon name="currency_pound" />
+                      <q-icon name="ph ph-currency-gbp" />
                     </template>
                   </q-input>
                 </div>
@@ -246,7 +246,7 @@
                   dense
                   no-caps
                   size="sm"
-                  icon="auto_awesome"
+                  icon="ph ph-sparkle"
                   label="Autofill weights via Gemini"
                   :loading="aiLoading"
                   @click="autofillWeights"
@@ -263,7 +263,7 @@
                     dense
                   >
                     <template #prepend>
-                      <q-icon name="scale" />
+                      <q-icon name="ph ph-scales" />
                     </template>
                   </q-input>
                 </div>
@@ -276,7 +276,7 @@
                     dense
                   >
                     <template #prepend>
-                      <q-icon name="fitness_center" />
+                      <q-icon name="ph ph-barbell" />
                     </template>
                   </q-input>
                 </div>

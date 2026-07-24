@@ -10,7 +10,7 @@
             flat
             dense
             no-caps
-            icon="arrow_back"
+            icon="ph ph-arrow-left"
             label="Back to Barcodes"
             color="primary"
             @click="goBack"
@@ -20,7 +20,7 @@
         <div class="col-auto">
           <q-btn
             color="primary"
-            icon="print"
+            icon="ph ph-printer"
             label="Print Barcodes"
             class="preview-page__print-btn pill-btn"
             :loading="loading"

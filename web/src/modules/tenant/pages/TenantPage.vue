@@ -13,7 +13,7 @@
               no-caps
               size="sm"
               class="pill-btn slim-btn"
-              icon="add"
+              icon="ph ph-plus"
               label="Add Tenant"
               @click="onClickAddTenant"
             />
@@ -42,7 +42,7 @@
             color="primary"
             no-caps
             size="sm"
-            icon="add"
+            icon="ph ph-plus"
             label="Create Tenant"
             @click="onClickAddTenant"
           />

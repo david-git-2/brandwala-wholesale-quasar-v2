@@ -27,11 +27,11 @@
           @clear="onSearch"
         >
           <template #prepend>
-            <q-icon name="search" />
+            <q-icon name="ph ph-magnifying-glass" />
           </template>
         </q-input>
 
-        <q-btn flat round dense icon="filter_alt" @click="openFilterDrawer">
+        <q-btn flat round dense icon="ph ph-funnel" @click="openFilterDrawer">
           <q-badge v-if="activeFilterCount > 0" color="primary" rounded floating>
             {{ activeFilterCount }}
           </q-badge>
@@ -134,7 +134,7 @@
 
           <template #no-data>
             <div class="full-width text-center text-grey-7 q-py-lg">
-              <q-icon name="inventory_2" size="48px" class="q-mb-sm text-grey-4" />
+              <q-icon name="ph ph-archive-box" size="48px" class="q-mb-sm text-grey-4" />
               <div>No Tenant Stock Allocations Found.</div>
             </div>
           </template>

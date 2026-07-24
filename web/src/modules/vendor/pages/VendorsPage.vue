@@ -33,7 +33,7 @@
             flat
             round
             dense
-            icon="search"
+            icon="ph ph-magnifying-glass"
             aria-label="Show search"
             @click="showSearchInput = true"
           />
@@ -49,14 +49,14 @@
             autofocus
           >
             <template #prepend>
-              <q-icon name="search" />
+              <q-icon name="ph ph-magnifying-glass" />
             </template>
             <template #append>
               <q-btn
                 flat
                 round
                 dense
-                icon="close"
+                icon="ph ph-x"
                 aria-label="Hide search"
                 @click="onCloseSearch"
               />

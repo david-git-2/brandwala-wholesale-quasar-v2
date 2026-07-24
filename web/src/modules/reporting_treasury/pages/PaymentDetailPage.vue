@@ -9,7 +9,7 @@
         flat
         dense
         no-caps
-        icon="arrow_back"
+        icon="ph ph-arrow-left"
         label="Back to Payments"
         @click="goBack"
         class="q-mr-sm"
@@ -17,7 +17,7 @@
       <q-btn
         v-if="payment && payment.unallocated_amount > 0"
         color="warning"
-        icon="o_payments"
+        icon="ph ph-money"
         no-caps
         label="Allocate Balance"
         unelevated
@@ -132,7 +132,7 @@
       <q-card style="width: 700px; max-width: 95vw">
         <q-card-section class="row items-center justify-between">
           <div class="text-h6 text-weight-bold">Allocate Payment Funds</div>
-          <q-btn flat round dense icon="close" v-close-popup />
+          <q-btn flat round dense icon="ph ph-x" v-close-popup />
         </q-card-section>
 
         <q-card-section>

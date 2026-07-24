@@ -8,7 +8,7 @@
             {{ stockLabel }}
           </div>
         </div>
-        <q-btn flat round dense icon="close" v-close-popup />
+        <q-btn flat round dense icon="ph ph-x" v-close-popup />
       </q-card-section>
 
       <q-card-section class="q-pt-none">

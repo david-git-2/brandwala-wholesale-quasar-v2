@@ -5,9 +5,9 @@
       <q-card-section class="row items-center justify-between q-pb-none">
         <div>
           <div class="text-h6 text-weight-bold text-primary flex items-center gap-sm no-wrap">
-            <q-icon name="drive_folder_upload" size="md" class="q-mr-xs" />
+            <q-icon name="ph ph-folder-simple-plus" size="md" class="q-mr-xs" />
             Bulk Import Products
-            <q-btn flat round dense icon="info" color="primary" size="sm" class="q-ml-xs">
+            <q-btn flat round dense icon="ph ph-info" color="primary" size="sm" class="q-ml-xs">
               <q-menu style="width: 480px; max-width: 90vw" class="q-pa-md border-radius-lg shadow-3">
                 <div class="text-subtitle2 text-weight-bold q-mb-xs">Import Guidelines</div>
                 <div class="text-caption text-grey-8 q-mb-md">
@@ -33,7 +33,7 @@
                 </q-markup-table>
                 <div class="row justify-between items-center q-mt-sm">
                   <div class="text-caption text-grey-7">* Required for mapping</div>
-                  <q-btn outline color="primary" size="sm" label="Copy Sample Table" icon="content_copy" class="pill-btn" no-caps @click="copyTemplate" />
+                  <q-btn outline color="primary" size="sm" label="Copy Sample Table" icon="ph ph-copy" class="pill-btn" no-caps @click="copyTemplate" />
                 </div>
               </q-menu>
             </q-btn>
@@ -42,7 +42,7 @@
             Upload a CSV file or paste tabular data from Excel/Google Sheets.
           </div>
         </div>
-        <q-btn flat round dense icon="close" v-close-popup :disable="importing" />
+        <q-btn flat round dense icon="ph ph-x" v-close-popup :disable="importing" />
       </q-card-section>
 
       <q-separator class="q-my-md" />
@@ -98,11 +98,11 @@
                 @update:model-value="onFileSelected"
               >
                 <template #prepend>
-                  <q-icon name="attach_file" />
+                  <q-icon name="ph ph-paperclip" />
                 </template>
                 <template #append v-if="fileUpload">
                   <q-icon
-                    name="close"
+                    name="ph ph-x"
                     @click.stop.prevent="clearFile"
                     class="cursor-pointer"
                   />
@@ -113,7 +113,7 @@
             <!-- Import Fallback Settings -->
             <q-card flat bordered class="q-pa-md border-radius-lg bg-grey-1">
               <div class="text-subtitle2 text-weight-bold q-mb-md flex items-center">
-                <q-icon name="settings" size="xs" class="q-mr-xs" />
+                <q-icon name="ph ph-gear" size="xs" class="q-mr-xs" />
                 Default Fallbacks
               </div>
               <div class="column q-gutter-y-sm">
@@ -130,7 +130,7 @@
                   class="soft-input"
                 >
                   <template #prepend>
-                    <q-icon name="storefront" />
+                    <q-icon name="ph ph-storefront" />
                   </template>
                 </q-select>
 
@@ -147,7 +147,7 @@
                   class="soft-input"
                 >
                   <template #prepend>
-                    <q-icon name="public" />
+                    <q-icon name="ph ph-globe" />
                   </template>
                 </q-select>
 
@@ -163,7 +163,7 @@
                   class="soft-input"
                 >
                   <template #prepend>
-                    <q-icon name="payments" />
+                    <q-icon name="ph ph-money" />
                   </template>
                 </q-select>
 
@@ -182,7 +182,7 @@
           <div class="col-12 col-md-7 column q-gutter-y-md">
             <!-- Header Check -->
             <div v-if="headers.length === 0" class="flex flex-center text-grey-5 q-pa-xl column">
-              <q-icon name="table_chart" size="64px" />
+              <q-icon name="ph ph-table" size="64px" />
               <div class="text-h6 q-mt-sm">No Data Parsed Yet</div>
               <div class="text-caption">Enter pasted data or upload a file to begin column mapping.</div>
             </div>
@@ -228,7 +228,7 @@
                     dense
                     color="green-1"
                     text-color="green-9"
-                    icon="check_circle"
+                    icon="ph ph-check-circle"
                     label="Ready to Import"
                   />
                   <q-chip
@@ -236,7 +236,7 @@
                     dense
                     color="red-1"
                     text-color="red-9"
-                    icon="warning"
+                    icon="ph ph-warning"
                     label="Mapping 'Name' is required"
                   />
                 </div>
@@ -262,7 +262,7 @@
                             :src="row.image_url"
                             style="object-fit: contain"
                           />
-                          <q-icon v-else name="image" size="18px" color="grey-6" />
+                          <q-icon v-else name="ph ph-image" size="18px" color="grey-6" />
                         </q-avatar>
                       </td>
                       <td class="text-left text-weight-medium">
@@ -311,7 +311,7 @@
           label="Import Products"
           no-caps
           class="pill-btn slim-btn"
-          icon="check"
+          icon="ph ph-check"
           :loading="importing"
           :disable="!canSubmit"
           @click="onImport"

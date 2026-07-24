@@ -34,7 +34,7 @@
           </template>
           <template #append>
             <q-icon
-              name="palette"
+              name="ph ph-palette"
               class="cursor-pointer"
               :style="{ color: form.color || '#cccccc' }"
             >

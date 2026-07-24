@@ -16,7 +16,7 @@
         class="bg-warning text-black rounded-borders q-pa-md"
       >
         <template #avatar>
-          <q-icon name="warning" color="black" />
+          <q-icon name="ph ph-warning" color="black" />
         </template>
         <div>
           <strong>PnL data unavailable for {{ failedShipmentNames.length }} shipments:</strong>

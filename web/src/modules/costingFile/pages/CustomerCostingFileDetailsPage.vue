@@ -33,7 +33,7 @@
                 v-if="selectedFile && columnSelectorOptions.length > 0"
                 outline
                 color="primary"
-                icon="view_column"
+                icon="ph ph-columns"
                 label="Columns"
                 no-caps
                 size="sm"
@@ -75,7 +75,7 @@
                 "
                 outline
                 color="primary"
-                icon="visibility"
+                icon="ph ph-eye"
                 label="Preview"
                 no-caps
                 size="sm"
@@ -190,7 +190,7 @@
                     no-caps
                     size="sm"
                     color="primary"
-                    icon="open_in_new"
+                    icon="ph ph-arrow-up-right"
                     label="Open link"
                     class="pill-btn slim-btn costing-page__open-link-btn"
                     :href="props.row.websiteUrl"
@@ -224,7 +224,7 @@
                     dense
                     round
                     color="primary"
-                    icon="o_edit"
+                    icon="ph ph-pencil-simple"
                     aria-label="Edit item"
                     @click="handleEditDraftItem(props.row.id)"
                   />
@@ -233,7 +233,7 @@
                     dense
                     round
                     color="negative"
-                    icon="o_delete"
+                    icon="ph ph-trash"
                     aria-label="Delete item"
                     :loading="deletingItemId === props.row.id"
                     @click="handleDeleteDraftItem(props.row.id)"
@@ -334,7 +334,7 @@
                       no-caps
                       size="sm"
                       color="primary"
-                      icon="open_in_new"
+                      icon="ph ph-arrow-up-right"
                       label="Open link"
                       class="pill-btn slim-btn costing-page__open-link-btn"
                       :href="toExternalUrl(props.row.websiteUrl)"
@@ -529,7 +529,7 @@
                     no-caps
                     size="sm"
                     color="primary"
-                    icon="open_in_new"
+                    icon="ph ph-arrow-up-right"
                     label="Open link"
                     class="pill-btn slim-btn costing-page__open-link-btn"
                     :href="toExternalUrl(props.row.websiteUrl)"
@@ -734,7 +734,7 @@
                     no-caps
                     size="sm"
                     color="primary"
-                    icon="open_in_new"
+                    icon="ph ph-arrow-up-right"
                     label="Open link"
                     class="pill-btn slim-btn costing-page__open-link-btn"
                     :href="toExternalUrl(props.row.websiteUrl)"
@@ -852,7 +852,7 @@
               flat
               dense
               round
-              icon="close"
+              icon="ph ph-x"
               aria-label="Close"
               @click="addItemDialogOpen = false"
             />
@@ -872,7 +872,7 @@
                     dense
                     :rules="[(value) => !!String(value ?? '').trim() || 'Web link is required.']"
                   >
-                    <template #prepend><q-icon name="link" /></template>
+                    <template #prepend><q-icon name="ph ph-link" /></template>
                   </q-input>
                 </div>
                 <div class="col-12 col-sm-4">
@@ -888,7 +888,7 @@
                         (value !== null && Number(value) > 0) || 'Quantity must be at least 1.',
                     ]"
                   >
-                    <template #prepend><q-icon name="inventory_2" /></template>
+                    <template #prepend><q-icon name="ph ph-archive-box" /></template>
                   </q-input>
                 </div>
               </div>
@@ -907,17 +907,17 @@
                     hint="Pick the closest product type."
                     :rules="[(value) => !!String(value ?? '').trim() || 'Type is required.']"
                   >
-                    <template #prepend><q-icon name="category" /></template>
+                    <template #prepend><q-icon name="ph ph-squares-four" /></template>
                   </q-select>
                 </div>
                 <div class="col-12 col-sm-4">
                   <q-input v-model="requestForm.size" label="Size" outlined dense>
-                    <template #prepend><q-icon name="straighten" /></template>
+                    <template #prepend><q-icon name="ph ph-ruler" /></template>
                   </q-input>
                 </div>
                 <div class="col-12 col-sm-4">
                   <q-input v-model="requestForm.color" label="Color" outlined dense>
-                    <template #prepend><q-icon name="palette" /></template>
+                    <template #prepend><q-icon name="ph ph-palette" /></template>
                   </q-input>
                 </div>
               </div>

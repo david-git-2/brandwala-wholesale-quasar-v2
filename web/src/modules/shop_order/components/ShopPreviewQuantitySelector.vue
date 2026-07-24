@@ -2,16 +2,16 @@
   <div class="quantity-selector-container">
     <!-- Stock status line -->
     <div v-if="showStockQuantity" class="stock-display text-caption text-grey-7 q-mb-xs">
-      <q-icon name="inventory_2" size="14px" class="q-mr-xs" />
+      <q-icon name="ph ph-archive-box" size="14px" class="q-mr-xs" />
       Available: <span class="text-weight-bold text-grey-9">{{ stock }}</span> units
     </div>
     <div v-else class="stock-display text-caption q-mb-xs">
       <span v-if="stock > 0" class="text-success-custom text-weight-medium">
-        <q-icon name="check_circle" size="14px" class="q-mr-xs" />
+        <q-icon name="ph ph-check-circle" size="14px" class="q-mr-xs" />
         In Stock
       </span>
       <span v-else class="text-negative text-weight-medium">
-        <q-icon name="cancel" size="14px" class="q-mr-xs" />
+        <q-icon name="ph ph-x-circle" size="14px" class="q-mr-xs" />
         Out of Stock
       </span>
     </div>
@@ -23,7 +23,7 @@
         round
         dense
         size="sm"
-        icon="remove"
+        icon="ph ph-minus"
         color="primary"
         class="control-btn minus-btn"
         :disable="modelValue <= 0"
@@ -37,7 +37,7 @@
         round
         dense
         size="sm"
-        icon="add"
+        icon="ph ph-plus"
         color="primary"
         class="control-btn plus-btn"
         :disable="modelValue >= stock"

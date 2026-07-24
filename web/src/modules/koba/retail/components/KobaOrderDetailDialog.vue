@@ -4,7 +4,7 @@
       <q-card-section class="row items-center q-pb-none header-section">
         <div class="text-h6 text-weight-bold">Order Details #{{ order?.id }}</div>
         <q-space />
-        <q-btn icon="close" flat round dense v-close-popup />
+        <q-btn icon="ph ph-x" flat round dense v-close-popup />
       </q-card-section>
 
       <q-separator class="q-my-sm" />
@@ -144,7 +144,7 @@
               <div class="text-body2 font-medium">{{ order.shipping_address || '—' }}</div>
             </div>
             <div class="col-12 q-mt-sm" v-if="order.free_delivery">
-              <q-chip outline color="primary" icon="local_shipping" dense>Free Delivery</q-chip>
+              <q-chip outline color="primary" icon="ph ph-truck" dense>Free Delivery</q-chip>
             </div>
           </div>
         </div>
@@ -162,7 +162,7 @@
                   :src="toDirectGoogleImageUrl(item.image_url)"
                   referrerpolicy="no-referrer"
                 />
-                <q-icon v-else name="image_not_supported" color="grey-5" />
+                <q-icon v-else name="ph ph-image-square" color="grey-5" />
               </q-avatar>
             </q-item-section>
 

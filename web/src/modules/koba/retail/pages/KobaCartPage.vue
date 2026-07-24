@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="cart-header q-mb-md">
       <div class="row items-center q-gutter-sm">
-        <q-btn flat round icon="arrow_back" color="grey-8" :to="{ name: productsRouteName }" />
+        <q-btn flat round icon="ph ph-arrow-left" color="grey-8" :to="{ name: productsRouteName }" />
         <div>
           <div class="text-h5 text-weight-bold">Cart</div>
           <div class="text-caption text-grey-7">
@@ -17,7 +17,7 @@
           flat
           no-caps
           color="primary"
-          icon="receipt_long"
+          icon="ph ph-receipt"
           label="View Orders"
           :to="{ name: ordersRouteName }"
         />
@@ -26,7 +26,7 @@
           flat
           no-caps
           color="primary"
-          icon="settings"
+          icon="ph ph-gear"
           label="Settings"
           :to="{ name: settingsRouteName }"
         />
@@ -34,7 +34,7 @@
           v-if="cartStore.items.length > 0"
           outline
           color="negative"
-          icon="delete_sweep"
+          icon="ph ph-trash"
           label="Clear Cart"
           no-caps
           :loading="cartStore.saving"
@@ -45,7 +45,7 @@
 
     <!-- Empty State -->
     <div v-if="cartStore.items.length === 0" class="empty-state-card q-pa-xl text-center">
-      <q-icon name="shopping_cart" size="64px" color="grey-4" class="q-mb-md" />
+      <q-icon name="ph ph-shopping-cart" size="64px" color="grey-4" class="q-mb-md" />
       <div class="text-h6 text-grey-8 text-weight-medium">Your cart is empty</div>
       <div class="text-caption text-grey-6 q-mb-lg">
         Add some products from the catalog to get started.
@@ -75,7 +75,7 @@
                       referrerpolicy="no-referrer"
                       style="object-fit: contain"
                     />
-                    <q-icon v-else name="image_not_supported" color="grey-5" />
+                    <q-icon v-else name="ph ph-image-square" color="grey-5" />
                   </q-avatar>
                 </div>
               </q-item-section>
@@ -94,7 +94,7 @@
 
                   <div class="text-caption text-grey-6 row items-center q-gutter-x-xs q-mt-xs">
                     <span>৳{{ Number(getDraftPrice(item)).toFixed(2) }} each</span>
-                    <q-btn flat round dense icon="o_edit" size="xs" color="primary" class="q-ml-xs">
+                    <q-btn flat round dense icon="ph ph-pencil-simple" size="xs" color="primary" class="q-ml-xs">
                       <q-popup-edit
                         v-model="draftPrice[item.id]"
                         :validate="(val) => val >= (item.unit_price_gbp || 0)"
@@ -132,13 +132,13 @@
                       flat
                       dense
                       round
-                      icon="remove"
+                      icon="ph ph-minus"
                       size="xs"
                       :disable="getDraftQty(item) <= item.case_size"
                       @click="bumpQty(item, -1)"
                     />
                     <span class="qty-value">{{ getDraftQty(item) }}</span>
-                    <q-btn flat dense round icon="add" size="xs" @click="bumpQty(item, 1)" />
+                    <q-btn flat dense round icon="ph ph-plus" size="xs" @click="bumpQty(item, 1)" />
                   </div>
 
                   <div class="text-right text-weight-bold text-primary q-mb-xs">
@@ -149,7 +149,7 @@
                     <q-btn
                       v-if="isDirty(item) || isPriceDirty(item)"
                       color="primary"
-                      icon="save"
+                      icon="ph ph-floppy-disk"
                       label="Save"
                       no-caps
                       dense
@@ -165,7 +165,7 @@
                       round
                       flat
                       color="negative"
-                      icon="o_delete"
+                      icon="ph ph-trash"
                       :loading="cartStore.saving"
                       @click="onRemoveItem(item)"
                     >
@@ -321,7 +321,7 @@
               type="submit"
               color="primary"
               label="Place Order"
-              icon="shopping_bag"
+              icon="ph ph-tote"
               no-caps
               unelevated
               class="w-full q-py-sm text-weight-bold q-mt-md checkout-btn"

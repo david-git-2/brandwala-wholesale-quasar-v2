@@ -4,14 +4,14 @@
       <q-card-section class="row items-center q-pb-none">
         <div class="text-h6 text-primary text-weight-bold">Bulk Paste Invoice Updates</div>
         <q-space />
-        <q-btn icon="close" flat round dense v-close-popup />
+        <q-btn icon="ph ph-x" flat round dense v-close-popup />
       </q-card-section>
 
       <q-card-section class="q-pa-md q-gutter-y-md">
         <!-- Banner alert -->
         <q-banner class="bg-blue-1 text-blue-9 rounded-borders">
           <template #avatar>
-            <q-icon name="info" size="sm" />
+            <q-icon name="ph ph-info" size="sm" />
           </template>
           Copy cells from Excel or Google Sheets (columns containing Quantity, Sell Price, or
           Recipient Price) and paste them below. Values will be applied to items sequentially from
@@ -42,7 +42,7 @@
               dense
               color="primary"
               label="Clear & Paste Again"
-              icon="refresh"
+              icon="ph ph-arrows-clockwise"
               @click="resetPaste"
             />
           </div>
@@ -116,7 +116,7 @@
                   :colspan="maxColumns + 2"
                   class="text-center text-amber-9 text-caption text-weight-medium q-py-sm"
                 >
-                  <q-icon name="warning" size="14px" class="q-mr-xs" />
+                  <q-icon name="ph ph-warning" size="14px" class="q-mr-xs" />
                   {{
                     parsedRows.length > items.length
                       ? `You pasted ${parsedRows.length} rows, but this invoice only has ${items.length} items. Extra rows will be ignored.`

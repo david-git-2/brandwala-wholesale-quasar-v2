@@ -17,7 +17,7 @@
             <div class="text-subtitle2 text-grey-6 q-mt-xs">{{ activeDoc.description }}</div>
           </div>
           <div v-if="activeDoc.moduleKey" class="active-badge flex items-center gap-xs no-shrink">
-            <q-icon name="check_circle" size="xs" color="teal-6" />
+            <q-icon name="ph ph-check-circle" size="xs" color="teal-6" />
             <span class="text-caption text-teal-8 text-weight-medium">Active Module</span>
           </div>
         </div>
@@ -29,7 +29,7 @@
           v-if="loadError === 'NOT_FOUND'"
           class="text-center error-container q-pa-lg rounded-borders"
         >
-          <q-icon name="warning" color="warning" size="xl" class="q-mb-md" />
+          <q-icon name="ph ph-warning" color="warning" size="xl" class="q-mb-md" />
           <div class="text-h6 text-weight-bold text-warning-dark">
             Documentation File Not Created Yet
           </div>
@@ -44,7 +44,7 @@
           </div>
         </div>
         <div v-else class="text-center">
-          <q-icon name="error_outline" color="negative" size="xl" class="q-mb-md" />
+          <q-icon name="ph ph-warning-circle" color="negative" size="xl" class="q-mb-md" />
           <div class="text-h6 text-negative text-weight-bold">Failed to Load Content</div>
           <p class="text-grey-7 q-mt-sm">{{ loadError }}</p>
         </div>
@@ -59,7 +59,7 @@
     <!-- No Active Doc State -->
     <div v-else class="flex flex-center q-pa-xl col-grow text-center text-grey-6">
       <div>
-        <q-icon name="library_books" size="xl" class="q-mb-sm" />
+        <q-icon name="ph ph-books" size="xl" class="q-mb-sm" />
         <div class="text-h6">Select an article to begin reading</div>
       </div>
     </div>

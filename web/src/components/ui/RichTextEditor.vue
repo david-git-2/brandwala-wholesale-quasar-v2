@@ -10,7 +10,7 @@
     @update:model-value="emit('update:modelValue', $event)"
   >
     <template v-if="withTable" #insert_table>
-      <q-btn dense flat no-caps size="sm" icon="table_chart" class="q-px-sm">
+      <q-btn dense flat no-caps size="sm" icon="ph ph-table" class="q-px-sm">
         <q-tooltip>Insert Table</q-tooltip>
         <q-menu
           anchor="bottom left"

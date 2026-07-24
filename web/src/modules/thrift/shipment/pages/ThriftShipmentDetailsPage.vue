@@ -5,7 +5,7 @@
       <q-card-section class="q-py-sm">
         <div class="row items-center q-col-gutter-sm">
           <div class="col-auto">
-            <q-btn flat round icon="arrow_back" color="BW-Grey-7" @click="goBack" />
+            <q-btn flat round icon="ph ph-arrow-left" color="BW-Grey-7" @click="goBack" />
           </div>
           <div class="col">
             <div class="text-h6 text-weight-bold">
@@ -32,7 +32,7 @@
       class="bg-blue-1 text-blue-9 rounded-borders q-mb-md q-pa-md"
     >
       <template v-slot:avatar>
-        <q-icon name="info" color="blue-8" size="24px" />
+        <q-icon name="ph ph-info" color="blue-8" size="24px" />
       </template>
       <div class="text-subtitle2 text-weight-bold">No stock in this shipment yet</div>
       <div class="text-caption">
@@ -265,12 +265,12 @@
                 class="soft-input"
               >
                 <template v-slot:append>
-                  <q-icon name="search" />
+                  <q-icon name="ph ph-magnifying-glass" />
                 </template>
               </q-input>
 
               <!-- Columns menu picker -->
-              <q-btn-dropdown outline dense color="primary" icon="view_column" label="Columns">
+              <q-btn-dropdown outline dense color="primary" icon="ph ph-columns" label="Columns">
                 <q-list class="q-pa-xs" style="min-width: 180px">
                   <div
                     class="text-caption text-weight-bold text-grey-7 q-px-sm q-py-xs border-bottom-translucent"

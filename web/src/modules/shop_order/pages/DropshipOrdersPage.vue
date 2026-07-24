@@ -11,7 +11,7 @@
           <q-btn
             outline
             color="primary"
-            icon="local_shipping"
+            icon="ph ph-truck"
             label="Courier Catalog"
             no-caps
             :to="{ name: 'app-shop-dropship-couriers-page' }"
@@ -19,7 +19,7 @@
           <q-btn
             outline
             color="secondary"
-            icon="storefront"
+            icon="ph ph-storefront"
             label="Merchants & Pickup"
             no-caps
             :to="{ name: 'app-shop-dropship-merchants-page' }"
@@ -27,7 +27,7 @@
           <q-btn
             outline
             color="secondary"
-            icon="account_balance_wallet"
+            icon="ph ph-wallet"
             label="Payout Ledger"
             no-caps
             :to="{ name: 'app-shop-dropship-ledger-page' }"
@@ -50,7 +50,7 @@
               @update:model-value="onSearchChange"
             >
               <template #prepend>
-                <q-icon name="search" />
+                <q-icon name="ph ph-magnifying-glass" />
               </template>
             </q-input>
           </div>
@@ -92,7 +92,7 @@
           <tbody>
             <tr v-if="filteredOrders.length === 0">
               <td colspan="8" class="text-center text-grey-7 q-py-xl">
-                <q-icon name="inbox" size="36px" class="text-grey-4 q-mb-xs" />
+                <q-icon name="ph ph-tray" size="36px" class="text-grey-4 q-mb-xs" />
                 <div>No dropship consignments found for this filter.</div>
               </td>
             </tr>
@@ -198,7 +198,7 @@
       <q-card style="min-width: 440px; border-radius: 12px">
         <q-card-section class="row items-center justify-between">
           <div class="text-h6 text-weight-bold">Record Courier Remittance</div>
-          <q-btn flat round dense icon="close" v-close-popup />
+          <q-btn flat round dense icon="ph ph-x" v-close-popup />
         </q-card-section>
         <q-card-section class="q-gutter-sm">
           <div class="text-body2 text-grey-8">

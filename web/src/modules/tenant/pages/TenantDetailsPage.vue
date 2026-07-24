@@ -3,7 +3,7 @@
     <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
       <q-card-section class="q-py-sm">
         <div class="row items-center q-col-gutter-sm">
-          <q-btn flat round dense icon="arrow_back" color="primary" @click="goBack" />
+          <q-btn flat round dense icon="ph ph-arrow-left" color="primary" @click="goBack" />
           <div class="min-w-0 q-ml-sm">
             <div class="text-h6 text-weight-bold">Tenant Details</div>
             <div v-if="tenant" class="text-caption text-grey-8">
@@ -93,7 +93,7 @@
                 no-caps
                 size="sm"
                 class="pill-btn slim-btn"
-                icon="o_edit"
+                icon="ph ph-pencil-simple"
                 label="Edit"
                 @click="onClickEditTenant"
               />
@@ -103,7 +103,7 @@
                 no-caps
                 size="sm"
                 class="pill-btn slim-btn"
-                icon="o_delete"
+                icon="ph ph-trash"
                 label="Delete"
                 @click="openDeleteDialog = true"
               />
@@ -122,7 +122,7 @@
                 no-caps
                 size="sm"
                 class="pill-btn slim-btn"
-                icon="person_add"
+                icon="ph ph-user-plus"
                 label="Add Member"
                 @click="onClickAddAdmin"
               />
@@ -182,7 +182,7 @@
                     color="negative"
                     flat
                     round
-                    icon="o_delete"
+                    icon="ph ph-trash"
                     @click="onClickDeleteAdmin(props.row)"
                   />
                 </q-td>

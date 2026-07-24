@@ -12,7 +12,7 @@
         <div class="col-auto row q-gutter-sm">
           <q-btn
             color="primary"
-            icon="account_balance"
+            icon="ph ph-bank"
             label="Record Courier Remittance"
             no-caps
             class="pill-btn"
@@ -70,7 +70,7 @@
             </tr>
             <tr v-else-if="ledgerEntries.length === 0">
               <td colspan="7" class="text-center text-grey-7 q-py-xl">
-                <q-icon name="receipt" size="36px" class="text-grey-4 q-mb-xs" />
+                <q-icon name="ph ph-receipt" size="36px" class="text-grey-4 q-mb-xs" />
                 <div>No ledger entries found.</div>
               </td>
             </tr>
@@ -131,7 +131,7 @@
         <q-card style="min-width: 440px; border-radius: 12px">
           <q-card-section class="row items-center justify-between">
             <div class="text-h6 text-weight-bold">Record Courier Remittance</div>
-            <q-btn flat round dense icon="close" v-close-popup />
+            <q-btn flat round dense icon="ph ph-x" v-close-popup />
           </q-card-section>
           <q-card-section class="q-gutter-sm">
             <q-select

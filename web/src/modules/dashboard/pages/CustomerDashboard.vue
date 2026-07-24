@@ -23,7 +23,7 @@
                 @keydown.enter="triggerSearch"
               >
                 <template #prepend>
-                  <q-icon name="search" color="grey-6" />
+                  <q-icon name="ph ph-magnifying-glass" color="grey-6" />
                 </template>
                 <template #append>
                   <q-btn
@@ -40,7 +40,7 @@
           </div>
           
           <div class="col-12 col-md-5 z-index-1 text-right gt-sm">
-            <q-icon name="storefront" size="140px" class="opacity-20 q-mr-lg" />
+            <q-icon name="ph ph-storefront" size="140px" class="opacity-20 q-mr-lg" />
           </div>
         </div>
         <div class="hero-bg-overlay"></div>
@@ -63,7 +63,7 @@
           <div class="row items-center justify-between q-mb-md">
             <div>
               <div class="text-subtitle1 text-weight-bold text-grey-9 row items-center gap-xs">
-                <q-icon name="explore" color="primary" size="24px" class="q-mr-xs" />
+                <q-icon name="ph ph-compass" color="primary" size="24px" class="q-mr-xs" />
                 Get Started with Brandwala Shop
               </div>
               <div class="text-caption text-grey-6">Complete these quick steps to start sourcing inventory.</div>
@@ -85,7 +85,7 @@
                 <div class="col-12 col-sm-4">
                   <div class="step-item" :class="{ 'step-item--done': true }">
                     <div class="row items-center no-wrap q-gutter-sm">
-                      <q-avatar size="36px" color="green-1" text-color="green-7" icon="check" />
+                      <q-avatar size="36px" color="green-1" text-color="green-7" icon="ph ph-check" />
                       <div class="column">
                         <span class="text-subtitle2 text-weight-bold text-grey-9 leading-none">1. Account Active</span>
                         <span class="text-caption text-grey-5">Workspace ready</span>
@@ -143,7 +143,7 @@
                   <div class="text-caption text-grey-6 text-uppercase text-weight-bold">Active Shops</div>
                   <div class="text-h5 text-weight-bold text-grey-9 q-mt-xs">{{ shops.length }}</div>
                 </div>
-                <q-avatar color="blue-1" text-color="blue-7" icon="storefront" size="48px" />
+                <q-avatar color="blue-1" text-color="blue-7" icon="ph ph-storefront" size="48px" />
               </div>
             </q-card>
           </div>
@@ -155,7 +155,7 @@
                   <div class="text-caption text-grey-6 text-uppercase text-weight-bold">Recent Orders</div>
                   <div class="text-h5 text-weight-bold text-grey-9 q-mt-xs">{{ recentOrders.length }}</div>
                 </div>
-                <q-avatar color="green-1" text-color="green-7" icon="shopping_bag" size="48px" />
+                <q-avatar color="green-1" text-color="green-7" icon="ph ph-tote" size="48px" />
               </div>
             </q-card>
           </div>
@@ -169,7 +169,7 @@
                     £{{ totalOutlay.toFixed(2) }}
                   </div>
                 </div>
-                <q-avatar color="indigo-1" text-color="indigo-7" icon="receipt_long" size="48px" />
+                <q-avatar color="indigo-1" text-color="indigo-7" icon="ph ph-receipt" size="48px" />
               </div>
             </q-card>
           </div>
@@ -213,7 +213,7 @@
                 <q-card flat bordered class="action-card cursor-pointer card-hover q-pa-md" @click="goBrowse">
                   <q-item class="q-pa-none">
                     <q-item-section avatar>
-                      <q-avatar color="blue-1" text-color="blue-7" icon="storefront" />
+                      <q-avatar color="blue-1" text-color="blue-7" icon="ph ph-storefront" />
                     </q-item-section>
                     <q-item-section>
                       <q-item-label class="text-subtitle2 text-weight-bold text-grey-9">Shop Catalogs</q-item-label>
@@ -227,7 +227,7 @@
                 <q-card flat bordered class="action-card cursor-pointer card-hover q-pa-md" @click="goOrders">
                   <q-item class="q-pa-none">
                     <q-item-section avatar>
-                      <q-avatar color="green-1" text-color="green-7" icon="receipt_long" />
+                      <q-avatar color="green-1" text-color="green-7" icon="ph ph-receipt" />
                     </q-item-section>
                     <q-item-section>
                       <q-item-label class="text-subtitle2 text-weight-bold text-grey-9">My Orders</q-item-label>
@@ -246,7 +246,7 @@
                 >
                   <q-item class="q-pa-none">
                     <q-item-section avatar>
-                      <q-avatar color="amber-1" text-color="amber-9" icon="history" />
+                      <q-avatar color="amber-1" text-color="amber-9" icon="ph ph-clock-counter-clockwise" />
                     </q-item-section>
                     <q-item-section>
                       <q-item-label class="text-subtitle2 text-weight-bold text-grey-9">Latest Order</q-item-label>
@@ -262,7 +262,7 @@
                 <q-card flat bordered class="action-card cursor-pointer card-hover q-pa-md" @click="goDocumentation">
                   <q-item class="q-pa-none">
                     <q-item-section avatar>
-                      <q-avatar color="purple-1" text-color="purple-7" icon="help_outline" />
+                      <q-avatar color="purple-1" text-color="purple-7" icon="ph ph-question" />
                     </q-item-section>
                     <q-item-section>
                       <q-item-label class="text-subtitle2 text-weight-bold text-grey-9">Help & Tutorials</q-item-label>
@@ -291,7 +291,7 @@
             </div>
 
             <div v-if="recentOrders.length === 0" class="empty-orders-block q-pa-xl text-center border-dashed-1">
-              <q-icon name="shopping_cart" size="48px" color="grey-3" class="q-mb-sm" />
+              <q-icon name="ph ph-shopping-cart" size="48px" color="grey-3" class="q-mb-sm" />
               <div class="text-subtitle2 text-grey-6">No recent orders found</div>
               <q-btn
                 unelevated

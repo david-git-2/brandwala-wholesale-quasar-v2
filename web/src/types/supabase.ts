@@ -4725,6 +4725,50 @@ export type Database = {
           },
         ]
       }
+      shop_categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: number
+          is_active: boolean
+          name: string
+          slug: string
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: never
+          is_active?: boolean
+          name: string
+          slug: string
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: never
+          is_active?: boolean
+          name?: string
+          slug?: string
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_categories_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shop_customer_group_access: {
         Row: {
           can_add_to_cart: boolean | null
@@ -5423,6 +5467,7 @@ export type Database = {
         Row: {
           allow_delivery: boolean
           buy_currency_id: number
+          category_ids: number[] | null
           created_at: string
           deduct_charges_from_margin: boolean
           deduct_packing_from_margin: boolean
@@ -5431,6 +5476,7 @@ export type Database = {
           default_currency_id: number | null
           default_packing_charge_amount: number
           default_print_charge_amount: number
+          description: string | null
           global_stock_type_id: number | null
           id: number
           is_active: boolean
@@ -5452,6 +5498,7 @@ export type Database = {
         Insert: {
           allow_delivery?: boolean
           buy_currency_id: number
+          category_ids?: number[] | null
           created_at?: string
           deduct_charges_from_margin?: boolean
           deduct_packing_from_margin?: boolean
@@ -5460,6 +5507,7 @@ export type Database = {
           default_currency_id?: number | null
           default_packing_charge_amount?: number
           default_print_charge_amount?: number
+          description?: string | null
           global_stock_type_id?: number | null
           id?: never
           is_active?: boolean
@@ -5481,6 +5529,7 @@ export type Database = {
         Update: {
           allow_delivery?: boolean
           buy_currency_id?: number
+          category_ids?: number[] | null
           created_at?: string
           deduct_charges_from_margin?: boolean
           deduct_packing_from_margin?: boolean
@@ -5489,6 +5538,7 @@ export type Database = {
           default_currency_id?: number | null
           default_packing_charge_amount?: number
           default_print_charge_amount?: number
+          description?: string | null
           global_stock_type_id?: number | null
           id?: never
           is_active?: boolean
@@ -11032,6 +11082,7 @@ export type Database = {
         Returns: {
           allow_delivery: boolean
           buy_currency_id: number
+          category_ids: number[] | null
           created_at: string
           deduct_charges_from_margin: boolean
           deduct_packing_from_margin: boolean
@@ -11040,6 +11091,7 @@ export type Database = {
           default_currency_id: number | null
           default_packing_charge_amount: number
           default_print_charge_amount: number
+          description: string | null
           global_stock_type_id: number | null
           id: number
           is_active: boolean

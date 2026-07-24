@@ -21,13 +21,13 @@
       >
         <template #body-cell-actions="props">
           <q-td :props="props" class="text-right q-gutter-x-xs">
-            <q-btn flat round dense icon="settings" color="grey-7" @click="openConfig(props.row)">
+            <q-btn flat round dense icon="ph ph-gear" color="grey-7" @click="openConfig(props.row)">
               <q-tooltip>Configure tag layout</q-tooltip>
             </q-btn>
             <q-btn
               unelevated
               color="primary"
-              icon="print"
+              icon="ph ph-printer"
               label="Print Tags"
               class="pill-btn"
               size="sm"

@@ -5,7 +5,7 @@
       <section class="row items-center justify-between q-col-gutter-md">
         <div class="col">
           <div class="row items-center q-gutter-x-sm">
-            <q-btn flat round icon="arrow_back" color="grey-7" @click="goBack" />
+            <q-btn flat round icon="ph ph-arrow-left" color="grey-7" @click="goBack" />
             <div>
               <div class="text-overline">{{ $t('navigation.shops') }}</div>
               <h1 class="text-h5 q-my-none">
@@ -20,7 +20,7 @@
         <div class="col-auto">
           <q-btn
             color="primary"
-            icon="add"
+            icon="ph ph-plus"
             :label="$t('shop_admin.add_product_listing')"
             unelevated
             @click="openPickDialog"
@@ -39,7 +39,7 @@
             :placeholder="$t('shop_admin.search_listings_placeholder')"
           >
             <template #prepend>
-              <q-icon name="search" />
+              <q-icon name="ph ph-magnifying-glass" />
             </template>
           </q-input>
         </div>
@@ -64,7 +64,7 @@
           v-else-if="filteredListings.length === 0"
           class="text-grey-6 text-center q-pa-xl"
         >
-          <q-icon name="list_alt" size="48px" class="q-mb-sm block" />
+          <q-icon name="ph ph-list-dashes" size="48px" class="q-mb-sm block" />
           {{ $t('shop_admin.no_listings') }}
         </q-card-section>
 
@@ -83,7 +83,7 @@
               <div class="row items-center no-wrap">
                 <q-avatar size="36px" rounded class="q-mr-sm bg-grey-3">
                   <q-img v-if="props.row.product_image_url" :src="props.row.product_image_url" />
-                  <q-icon v-else name="image" color="grey-6" />
+                  <q-icon v-else name="ph ph-image" color="grey-6" />
                 </q-avatar>
                 <div class="ellipsis" style="max-width: 250px">
                   <div class="text-weight-bold text-grey-9">{{ props.row.product_name }}</div>
@@ -187,7 +187,7 @@
                 flat
                 round
                 dense
-                icon="edit"
+                icon="ph ph-pencil-simple"
                 color="primary"
                 @click="openEditListing(props.row)"
               >
@@ -214,7 +214,7 @@
             {{ form.id ? $t('shop_admin.edit_listing') : $t('shop_admin.add_listing') }}
           </div>
           <q-space />
-          <q-btn icon="close" flat round dense v-close-popup />
+          <q-btn icon="ph ph-x" flat round dense v-close-popup />
         </q-card-section>
 
         <q-card-section class="q-gutter-y-md q-pt-md">

@@ -13,7 +13,7 @@
           <q-btn
             color="primary"
             unelevated
-            icon="add"
+            icon="ph ph-plus"
             label="Add Market"
             @click="onClickAddMarket"
           />
@@ -40,7 +40,7 @@
             class="q-mt-md"
             color="primary"
             unelevated
-            icon="add"
+            icon="ph ph-plus"
             label="Create Market"
             @click="onClickAddMarket"
           />
@@ -82,7 +82,7 @@
                   flat
                   round
                   dense
-                  icon="o_edit"
+                  icon="ph ph-pencil-simple"
                   :disable="props.row.is_system"
                   @click="onClickEditMarket(props.row)"
                 />
@@ -91,7 +91,7 @@
                   round
                   dense
                   color="negative"
-                  icon="o_delete"
+                  icon="ph ph-trash"
                   :disable="props.row.is_system"
                   @click="onClickDeleteMarket(props.row)"
                 />

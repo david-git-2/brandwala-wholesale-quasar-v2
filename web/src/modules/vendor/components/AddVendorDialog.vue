@@ -8,7 +8,7 @@
       <q-card-section class="q-gutter-md">
         <q-input v-model="form.name" label="Name" outlined dense>
           <template #prepend>
-            <q-icon name="storefront" />
+            <q-icon name="ph ph-storefront" />
           </template>
         </q-input>
 
@@ -23,17 +23,17 @@
           @update:model-value="onCodeInput"
         >
           <template #prepend>
-            <q-icon name="badge" />
+            <q-icon name="ph ph-identification-badge" />
           </template>
           <template #append>
             <q-icon
               v-if="normalizedCode && !checkingCode && codeAvailable === true"
-              name="check_circle"
+              name="ph ph-check-circle"
               color="positive"
             />
             <q-icon
               v-else-if="normalizedCode && !checkingCode && codeAvailable === false"
-              name="error"
+              name="ph ph-warning-circle"
               color="negative"
             />
           </template>
@@ -57,28 +57,28 @@
           :options="marketOptions"
         >
           <template #prepend>
-            <q-icon name="public" />
+            <q-icon name="ph ph-globe" />
           </template>
         </q-select>
 
         <q-input v-model="form.email" label="Email" outlined dense>
           <template #prepend>
-            <q-icon name="mail" />
+            <q-icon name="ph ph-envelope-simple" />
           </template>
         </q-input>
         <q-input v-model="form.phone" label="Phone" outlined dense>
           <template #prepend>
-            <q-icon name="call" />
+            <q-icon name="ph ph-phone" />
           </template>
         </q-input>
         <q-input v-model="form.website" label="Website" outlined dense>
           <template #prepend>
-            <q-icon name="language" />
+            <q-icon name="ph ph-globe" />
           </template>
         </q-input>
         <q-input v-model="form.address" label="Address" type="textarea" autogrow outlined>
           <template #prepend>
-            <q-icon name="location_on" />
+            <q-icon name="ph ph-map-pin" />
           </template>
         </q-input>
       </q-card-section>

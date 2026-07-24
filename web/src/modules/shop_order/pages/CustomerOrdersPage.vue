@@ -34,7 +34,7 @@
               placeholder="Search order no..."
             >
               <template #prepend>
-                <q-icon name="search" />
+                <q-icon name="ph ph-magnifying-glass" />
               </template>
             </q-input>
           </div>
@@ -62,7 +62,7 @@
         v-else-if="filteredOrders.length === 0"
         class="column items-center justify-center empty-state q-pa-xl text-center"
       >
-        <q-icon name="receipt_long" size="80px" color="grey-4" class="q-mb-md" />
+        <q-icon name="ph ph-receipt" size="80px" color="grey-4" class="q-mb-md" />
         <div class="text-h6 text-grey-6">{{ $t('shop_admin.no_orders_yet') }}</div>
         <p class="text-body2 text-grey-5 q-mt-sm q-mb-md">
           {{ $t('shop_admin.no_orders_hint') }}

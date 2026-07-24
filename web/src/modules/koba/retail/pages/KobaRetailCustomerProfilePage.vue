@@ -6,7 +6,7 @@
         <q-btn
           flat
           round
-          icon="arrow_back"
+          icon="ph ph-arrow-left"
           color="grey-8"
           :to="{ name: 'app-koba-retail-customers-page' }"
         />
@@ -18,7 +18,7 @@
       <q-btn
         color="primary"
         outline
-        icon="people"
+        icon="ph ph-users"
         label="Back to Customer List"
         no-caps
         :to="{ name: 'app-koba-retail-customers-page' }"
@@ -58,21 +58,21 @@
 
               <div class="q-mt-md q-gutter-y-sm">
                 <div class="row items-center">
-                  <q-icon name="place" color="grey-6" size="sm" class="q-mr-sm" />
+                  <q-icon name="ph ph-map-pin" color="grey-6" size="sm" class="q-mr-sm" />
                   <div>
                     <span class="text-weight-bold text-grey-8">District:</span>
                     {{ profile.district || '—' }}
                   </div>
                 </div>
                 <div class="row items-center">
-                  <q-icon name="location_city" color="grey-6" size="sm" class="q-mr-sm" />
+                  <q-icon name="ph ph-buildings" color="grey-6" size="sm" class="q-mr-sm" />
                   <div>
                     <span class="text-weight-bold text-grey-8">Thana:</span>
                     {{ profile.thana || '—' }}
                   </div>
                 </div>
                 <div class="row items-start">
-                  <q-icon name="home" color="grey-6" size="sm" class="q-mr-sm q-mt-xs" />
+                  <q-icon name="ph ph-house" color="grey-6" size="sm" class="q-mr-sm q-mt-xs" />
                   <div class="col">
                     <span class="text-weight-bold text-grey-8">Delivery Address:</span>
                     <div class="text-grey-8">{{ profile.address || '—' }}</div>
@@ -90,7 +90,7 @@
             <div class="col-6">
               <q-card flat bordered class="profile-card stat-card flex flex-center full-height">
                 <q-card-section class="text-center">
-                  <q-icon name="shopping_cart" size="md" color="primary" class="q-mb-xs" />
+                  <q-icon name="ph ph-shopping-cart" size="md" color="primary" class="q-mb-xs" />
                   <div class="text-h4 text-weight-bold text-grey-9">{{ profile.total_orders }}</div>
                   <div class="text-caption text-grey-6 text-uppercase text-weight-bold">
                     Total Orders
@@ -103,7 +103,7 @@
             <div class="col-6">
               <q-card flat bordered class="profile-card stat-card flex flex-center full-height">
                 <q-card-section class="text-center">
-                  <q-icon name="payments" size="md" color="positive" class="q-mb-xs" />
+                  <q-icon name="ph ph-money" size="md" color="positive" class="q-mb-xs" />
                   <div class="text-h5 text-weight-bold text-positive">
                     ৳{{ Number(profile.total_spent).toFixed(2) }}
                   </div>
@@ -274,7 +274,7 @@
                     flat
                     round
                     color="primary"
-                    icon="visibility"
+                    icon="ph ph-eye"
                     size="sm"
                     @click.stop="viewOrderDetails(sp.row.order_id)"
                   >

@@ -104,7 +104,7 @@
                   {{ shipmentStore.currentShipment.status }}
                   <q-icon
                     v-if="shipmentStore.currentShipment.status !== 'Ready Stock'"
-                    name="arrow_drop_down"
+                    name="ph ph-caret-down"
                     class="q-ml-xs"
                     size="16px"
                   />
@@ -123,7 +123,7 @@
                             <span>{{ status }}</span>
                             <q-icon
                               v-if="status === 'Ready Stock' && !isSplitsComplete"
-                              name="lock"
+                              name="ph ph-lock-key"
                               color="grey-6"
                               size="14px"
                               class="q-ml-xs"
@@ -141,7 +141,7 @@
                 </q-chip>
 
                 <!-- Edit / Delete flat buttons with icons only -->
-                <q-btn color="primary" flat round dense icon="download" @click="downloadExcel">
+                <q-btn color="primary" flat round dense icon="ph ph-download-simple" @click="downloadExcel">
                   <q-tooltip>Download Excel</q-tooltip>
                 </q-btn>
                 <q-btn
@@ -150,7 +150,7 @@
                   flat
                   round
                   dense
-                  icon="edit"
+                  icon="ph ph-pencil-simple"
                   @click="openEditShipment"
                 >
                   <q-tooltip>Edit Details</q-tooltip>
@@ -161,7 +161,7 @@
                   flat
                   round
                   dense
-                  icon="delete"
+                  icon="ph ph-trash"
                   @click="confirmDeleteShipment"
                 >
                   <q-tooltip>Delete Shipment</q-tooltip>
@@ -331,7 +331,7 @@
                     outline
                     no-caps
                     size="sm"
-                    icon="view_column"
+                    icon="ph ph-columns"
                     dense
                     label="Columns"
                     class="q-px-sm"
@@ -372,7 +372,7 @@
                       !isSplitsComplete
                     "
                     color="green-7"
-                    icon="call_split"
+                    icon="ph ph-git-fork"
                     label="Auto Accept Splits"
                     unelevated
                     dense
@@ -384,7 +384,7 @@
                   <q-btn
                     v-if="isEditable"
                     color="secondary"
-                    icon="content_paste"
+                    icon="ph ph-clipboard"
                     label="Bulk Paste"
                     unelevated
                     dense
@@ -395,7 +395,7 @@
                   <q-btn
                     v-if="isEditable"
                     color="primary"
-                    icon="add_shopping_cart"
+                    icon="ph ph-shopping-cart"
                     label="Add Items"
                     unelevated
                     dense
@@ -431,7 +431,7 @@
                   flat
                   round
                   dense
-                  icon="edit_note"
+                  icon="ph ph-note-pencil"
                   color="primary"
                   size="sm"
                   @click="openEditRates"
@@ -590,7 +590,7 @@
                     class="row items-center q-mt-xs q-px-xs text-amber-9 text-caption text-weight-medium"
                     style="font-size: 11px; line-height: 1.2"
                   >
-                    <q-icon name="warning" class="q-mr-xs" size="14px" />
+                    <q-icon name="ph ph-warning" class="q-mr-xs" size="14px" />
                     <span
                       >Landed cost total ({{ currentCostCurrencySymbol
                       }}{{
@@ -633,7 +633,7 @@
                       class="row items-center justify-center text-amber-9 text-caption text-weight-medium"
                       style="font-size: 11px"
                     >
-                      <q-icon name="warning" class="q-mr-xs" size="14px" />
+                      <q-icon name="ph ph-warning" class="q-mr-xs" size="14px" />
                       <span
                         >Line estimate ({{ totals.packagingWeightKg.toFixed(2) }} kg) differs from
                         invoice ({{ totals.cargoWeightKg.toFixed(2) }} kg) — apply weight
@@ -645,7 +645,7 @@
                       class="row items-center justify-center text-green-9 text-caption text-weight-medium"
                       style="font-size: 11px"
                     >
-                      <q-icon name="check_circle" class="q-mr-xs" size="14px" />
+                      <q-icon name="ph ph-check-circle" class="q-mr-xs" size="14px" />
                       <span>Line estimate matches invoice weight</span>
                     </div>
                   </div>
@@ -658,7 +658,7 @@
                   :disable="!isSplitsComplete"
                   unelevated
                   class="full-width q-mt-md text-weight-bold text-white"
-                  icon="check_circle"
+                  icon="ph ph-check-circle"
                   label="Receive to Stock"
                   no-caps
                   @click="changeStatus('Ready Stock')"
@@ -674,7 +674,7 @@
                   color="negative"
                   unelevated
                   class="full-width q-mt-md text-weight-bold text-white"
-                  icon="history"
+                  icon="ph ph-clock-counter-clockwise"
                   label="Rollback Shipment to Draft"
                   no-caps
                   :loading="updatingStatus"
@@ -763,7 +763,7 @@
           <q-card-section class="row items-center q-pb-none">
             <div class="text-h6 text-weight-bold text-primary">Edit Shipment Rates</div>
             <q-space />
-            <q-btn icon="close" flat round dense v-close-popup />
+            <q-btn icon="ph ph-x" flat round dense v-close-popup />
           </q-card-section>
 
           <q-separator class="q-my-sm" />

@@ -7,7 +7,7 @@
         <div class="preview-page__header-actions">
           <q-btn
             v-if="0"
-            icon="image"
+            icon="ph ph-image"
             color="blue-8"
             text-color="white"
             :loading="exporting"
@@ -18,7 +18,7 @@
             style="border-radius: 8px"
           />
           <q-btn
-            icon="print"
+            icon="ph ph-printer"
             color="blue-8"
             text-color="white"
             label="Print"

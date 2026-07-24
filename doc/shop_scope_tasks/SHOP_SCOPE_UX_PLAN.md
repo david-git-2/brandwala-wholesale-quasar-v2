@@ -314,8 +314,44 @@ Every page in the Shop Scope is designed to strictly conform to `docs/PAGE_HEADE
 
 ---
 
-### Phase 6: B2B Frictionless Expansion (Lackings & Gaps Resolution)
-- **Goal**: Implement the missing crucial B2B flows: **Product Quick View Drawer** in the Storefront to prevent context loss, **Invoices & Billing** list page for financial self-service, **Company & Address Book** settings page to reduce checkout friction, and the **1-Click Reorder** feature in Order Details.
+### Phase 6: Product Quick View Drawer (B2B Frictionless Expansion)
+- **Goal**: Eliminate B2B friction by preventing full page navigations away from the catalog grid.
+- **What to do**: Implement a right-side drawer (desktop) and a bottom sheet (mobile) containing a product's details (image carousel, MOQ warnings, tiered pricing table, and a sticky "Add to Cart" action bar).
+- **Where to change**: 
+  - `web/src/modules/shop/pages/StorefrontPage.vue` (Trigger drawer/bottom sheet on product image click)
+  - `web/src/modules/shop/components/ProductQuickView.vue` (New component for the Quick View content)
+- **Status**: [Completed]
+
+---
+
+### Phase 7: Invoices & Billing Page (B2B Financial Self-Service)
+- **Goal**: Allow B2B buyers to self-serve their financial records and track pending payments.
+- **What to do**: Build a financial list page adhering to the LOCKED LIST pattern. Include a table with status chips (Paid, Overdue, Pending), bulk PDF download checkboxes, and statement generation capabilities. Update routing and sidebar navigation.
+- **Where to change**:
+  - `web/src/modules/shop/pages/CustomerInvoicesPage.vue` (New page)
+  - `web/src/router/routes.ts` (Add route for `/invoices`)
+  - `web/src/layouts/ShopLayout.vue` (or wherever the shop sidebar is configured)
+- **Status**: [Pending]
+
+---
+
+### Phase 8: Company & Address Book Settings (Reduce Checkout Friction)
+- **Goal**: Remove checkout friction by allowing users to manage saved addresses and company profiles.
+- **What to do**: Create a settings page with cards for default Shipping & Billing addresses. Implement a modal for adding and editing locations. Update routing and sidebar navigation.
+- **Where to change**:
+  - `web/src/modules/shop/pages/CustomerSettingsPage.vue` (New page)
+  - `web/src/router/routes.ts` (Add route for `/settings`)
+  - `web/src/layouts/ShopLayout.vue` (Sidebar navigation updates)
+- **Status**: [Pending]
+
+---
+
+### Phase 9: 1-Click Reorder in Order Details (B2B Repeating Purchases)
+- **Goal**: Allow fast reordering of previous orders for B2B repeating past purchases.
+- **What to do**: Add a "Reorder" action button (`icon="replay"`) to the order details header. Wire it to a function that adds all items from the historical order into the active shop cart, then navigates the user directly to the Cart page for checkout.
+- **Where to change**:
+  - `web/src/modules/shop/pages/CustomerOrderDetailPage.vue` (UI button and `handleReorder` logic)
+  - `web/src/modules/shop/store/cartStore.ts` or similar composable (handle bulk add to cart)
 - **Status**: [Pending]
 
 ---

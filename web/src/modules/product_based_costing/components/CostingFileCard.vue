@@ -20,7 +20,7 @@
               <span class="status-dot" :style="{ backgroundColor: statusDotColor(item.status) }" />
               {{ item.status ?? 'pending' }}
             </q-chip>
-            <q-btn icon="more_vert" flat round dense @click.stop>
+            <q-btn icon="ph ph-dots-three-vertical" flat round dense @click.stop>
               <q-menu auto-close>
                 <q-list dense style="min-width: 140px">
                   <q-item clickable v-ripple @click="handleCopy(item)">

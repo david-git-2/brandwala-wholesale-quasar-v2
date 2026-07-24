@@ -8,7 +8,7 @@
             {{ shipmentName }}
           </div>
         </div>
-        <q-btn icon="close" flat round dense color="white" v-close-popup />
+        <q-btn icon="ph ph-x" flat round dense color="white" v-close-popup />
       </q-card-section>
 
       <AddShipmentItemsPanel

@@ -5,7 +5,7 @@
       <section class="row items-center justify-between q-col-gutter-md">
         <div class="col">
           <div class="row items-center q-gutter-x-sm">
-            <q-btn flat round icon="arrow_back" color="grey-7" @click="goBack" />
+            <q-btn flat round icon="ph ph-arrow-left" color="grey-7" @click="goBack" />
             <div>
               <div class="text-overline">Checkout</div>
               <h1 class="text-h5 text-weight-bold q-my-none">Complete Wholesale Order</h1>
@@ -39,7 +39,7 @@
                 class="q-px-md q-py-sm border-bottom row items-center justify-between"
               >
                 <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center">
-                  <q-icon name="local_shipping" size="18px" class="q-mr-xs text-primary" />
+                  <q-icon name="ph ph-truck" size="18px" class="q-mr-xs text-primary" />
                   {{ $t('shop.shipping_info') }}
                 </div>
                 <!-- Toggle checkbox only for fixed_price -->
@@ -202,7 +202,7 @@
                 </div>
 
                 <div v-if="shopType === 'dropship'" class="text-caption text-grey-7 q-mt-sm">
-                  <q-icon name="info" size="14px" class="q-mr-xs text-primary" />
+                  <q-icon name="ph ph-info" size="14px" class="q-mr-xs text-primary" />
                   Inside Dhaka standard delivery: 60-70 BDT | Outside Dhaka: 120-130 BDT
                 </div>
 
@@ -237,7 +237,7 @@
                 <q-item-section avatar>
                   <q-avatar size="36px" rounded class="bg-grey-2">
                     <q-img v-if="item.image_url" :src="item.image_url" />
-                    <q-icon v-else name="image" size="18px" color="grey-4" />
+                    <q-icon v-else name="ph ph-image" size="18px" color="grey-4" />
                   </q-avatar>
                 </q-item-section>
                 <q-item-section>

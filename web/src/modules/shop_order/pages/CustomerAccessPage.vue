@@ -15,7 +15,7 @@
             color="primary"
             unelevated
             no-caps
-            icon="group_add"
+            icon="ph ph-user-plus"
             :label="$t('shop_admin.add_customer_group')"
             @click="openCreateDialog"
           />
@@ -49,14 +49,14 @@
           v-else-if="store.customerGroups.length === 0"
           class="text-grey-6 text-center q-pa-xl"
         >
-          <q-icon name="groups" size="48px" class="q-mb-sm block" />
+          <q-icon name="ph ph-users-three" size="48px" class="q-mb-sm block" />
           {{ $t('shop_admin.no_customer_groups') }}
           <div class="q-mt-md">
             <q-btn
               color="primary"
               outline
               no-caps
-              icon="group_add"
+              icon="ph ph-user-plus"
               :label="$t('shop_admin.add_customer_group')"
               @click="openCreateDialog"
             />
@@ -98,7 +98,7 @@
                 </q-chip>
               </div>
               <div v-else class="row items-center q-gutter-x-xs text-amber-9 text-caption text-weight-medium bg-amber-1 q-px-sm q-py-xs rounded-borders" style="display: inline-flex; border: 1px dashed #ffb300;">
-                <q-icon name="warning" size="14px" />
+                <q-icon name="ph ph-warning" size="14px" />
                 <span>{{ $t('shop_admin.none_required_dropship') }}</span>
               </div>
             </q-td>
@@ -120,7 +120,7 @@
                 flat
                 round
                 dense
-                icon="o_edit"
+                icon="ph ph-pencil-simple"
                 color="grey-7"
                 @click="openEditDialog(props.row)"
               >
@@ -130,7 +130,7 @@
                 flat
                 round
                 dense
-                icon="link"
+                icon="ph ph-link"
                 color="primary"
                 @click="openLinkProfileDialog(props.row)"
               >
@@ -140,7 +140,7 @@
                 flat
                 round
                 dense
-                icon="group"
+                icon="ph ph-users"
                 color="primary"
                 @click="goToMembers(props.row.id)"
               >
@@ -150,7 +150,7 @@
                 flat
                 round
                 dense
-                icon="o_delete"
+                icon="ph ph-trash"
                 color="negative"
                 @click="openDeleteDialog(props.row)"
               >
@@ -170,7 +170,7 @@
             {{ form.id ? $t('shop_admin.edit_customer_group') : $t('shop_admin.add_customer_group') }}
           </div>
           <q-space />
-          <q-btn icon="close" flat round dense v-close-popup />
+          <q-btn icon="ph ph-x" flat round dense v-close-popup />
         </q-card-section>
 
         <q-card-section class="q-gutter-md">
@@ -211,7 +211,7 @@
     <q-dialog v-model="deleteOpen" persistent>
       <q-card style="min-width: 350px">
         <q-card-section class="row items-center">
-          <q-avatar icon="warning" color="warning" text-color="white" />
+          <q-avatar icon="ph ph-warning" color="warning" text-color="white" />
           <span class="q-ml-sm text-subtitle1 text-weight-bold">{{ $t('shop_admin.delete_group') }}</span>
         </q-card-section>
         <q-card-section class="q-pt-none">
@@ -237,7 +237,7 @@
         <q-card-section class="row items-center q-pb-none">
           <div class="text-h6 text-weight-bold">{{ $t('shop_admin.link_billing_profile') }}</div>
           <q-space />
-          <q-btn icon="close" flat round dense v-close-popup />
+          <q-btn icon="ph ph-x" flat round dense v-close-popup />
         </q-card-section>
 
         <q-card-section class="q-py-md">
@@ -268,7 +268,7 @@
                 no-caps
                 unelevated
                 class="pill-btn"
-                icon="add"
+                icon="ph ph-plus"
                 :label="$t('shop_admin.create_billing_profile')"
                 @click="goToBillingProfileCreate"
               />

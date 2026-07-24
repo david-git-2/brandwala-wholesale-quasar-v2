@@ -173,7 +173,7 @@
                 round
                 dense
                 size="xs"
-                icon="straighten"
+                icon="ph ph-ruler"
                 color="secondary"
                 class="col-auto"
                 @click="emit('edit-measurements', row)"
@@ -255,7 +255,7 @@
                 round
                 dense
                 size="xs"
-                icon="info"
+                icon="ph ph-info"
                 color="primary"
                 @click="emit('open-landed-breakdown', row)"
               >
@@ -274,7 +274,7 @@
               <div class="row items-center justify-end no-wrap q-gutter-x-xs">
                 <q-icon
                   v-if="isItemMarkupLocked(row.pricing)"
-                  name="lock"
+                  name="ph ph-lock-key"
                   color="amber-8"
                   size="16px"
                 >
@@ -289,7 +289,7 @@
                   round
                   dense
                   size="xs"
-                  icon="refresh"
+                  icon="ph ph-arrows-clockwise"
                   color="grey-7"
                   @click.stop="emit('reset-item-markup', row)"
                 >
@@ -333,7 +333,7 @@
             <div class="row items-center justify-end no-wrap q-gutter-x-xs">
               <q-icon
                 v-if="isListedPriceLocked(row.pricing)"
-                name="lock"
+                name="ph ph-lock-key"
                 color="amber-8"
                 size="16px"
               >
@@ -350,7 +350,7 @@
                 round
                 dense
                 size="xs"
-                icon="refresh"
+                icon="ph ph-arrows-clockwise"
                 color="grey-7"
                 @click.stop="emit('reset-listed-price', row)"
               >

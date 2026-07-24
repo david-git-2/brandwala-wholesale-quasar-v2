@@ -62,6 +62,19 @@ const adminRoutes: RouteRecordRaw[] = [
     ],
   },
 
+  {
+    path: '/:tenantSlug?/app/shop/categories',
+    component: () => import('layouts/AppLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'app-shop-categories-page',
+        component: () => import('src/modules/shop_order/pages/ShopCategoriesPage.vue'),
+        beforeEnter: guard('shop_category'),
+      },
+    ],
+  },
+
   // shop_permissions — Customer Access
   {
     path: '/:tenantSlug?/app/shop/customer-groups',

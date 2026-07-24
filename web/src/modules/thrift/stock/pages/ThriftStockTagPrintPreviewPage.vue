@@ -9,7 +9,7 @@
             flat
             dense
             no-caps
-            icon="arrow_back"
+            icon="ph ph-arrow-left"
             label="Back to Picker"
             color="primary"
             @click="goBack"
@@ -19,7 +19,7 @@
           <q-btn
             outline
             color="primary"
-            icon="settings"
+            icon="ph ph-gear"
             label="Configure Tags"
             class="pill-btn"
             no-caps
@@ -28,7 +28,7 @@
           />
           <q-btn
             color="primary"
-            icon="print"
+            icon="ph ph-printer"
             label="Print Marketing Tags"
             class="preview-page__print-btn pill-btn"
             :loading="loading"

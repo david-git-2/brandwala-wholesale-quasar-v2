@@ -69,7 +69,7 @@
                 class="soft-input"
               >
                 <template #append>
-                  <q-icon name="search" />
+                  <q-icon name="ph ph-magnifying-glass" />
                 </template>
               </q-input>
             </div>
@@ -99,7 +99,7 @@
             round
             dense
             color="primary"
-            icon="help_outline"
+            icon="ph ph-question"
             @click="showInfoDialog = true"
           >
             <q-tooltip>Learn about these tabs</q-tooltip>
@@ -336,7 +336,7 @@
               class="bg-warning text-black rounded-borders q-mt-md"
             >
               <template #avatar>
-                <q-icon name="warning" color="black" />
+                <q-icon name="ph ph-warning" color="black" />
               </template>
               <div class="text-weight-bold q-mb-xs">Unit count mismatch</div>
               <div class="q-mb-sm">{{ reconciliationSummary.message }}</div>
@@ -384,7 +384,7 @@
                   class="soft-input"
                 >
                   <template #append>
-                    <q-icon name="search" />
+                    <q-icon name="ph ph-magnifying-glass" />
                   </template>
                 </q-input>
               </div>
@@ -524,7 +524,7 @@
         <q-card-section class="row items-center q-pb-none">
           <div class="text-h6 text-weight-bold text-primary">Shipment P&L Tabs Guide</div>
           <q-space />
-          <q-btn icon="close" flat round dense v-close-popup />
+          <q-btn icon="ph ph-x" flat round dense v-close-popup />
         </q-card-section>
 
         <q-card-section class="q-pt-md">

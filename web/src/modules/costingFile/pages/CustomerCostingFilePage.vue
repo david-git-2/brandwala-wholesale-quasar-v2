@@ -35,8 +35,8 @@
           color="white"
           text-color="primary"
           :options="[
-            { icon: 'table_rows', value: 'table' },
-            { icon: 'grid_view', value: 'card' },
+            { icon: 'ph ph-rows', value: 'table' },
+            { icon: 'ph ph-squares-four', value: 'card' },
           ]"
         />
       </div>
@@ -90,7 +90,7 @@
                     round
                     dense
                     color="negative"
-                    icon="o_delete"
+                    icon="ph ph-trash"
                     aria-label="Delete costing file"
                     :loading="deletingFileId === slotProps.row.id"
                     @click.stop="handleDelete(slotProps.row.id)"
@@ -136,7 +136,7 @@
                 dense
                 round
                 color="negative"
-                icon="o_delete"
+                icon="ph ph-trash"
                 aria-label="Delete costing file"
                 :loading="deletingFileId === file.id"
                 @click.stop="handleDelete(file.id)"

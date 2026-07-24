@@ -5,7 +5,7 @@
         <div class="text-h6 text-weight-bold text-grey-9">
           {{ isEdit ? 'Edit Item' : 'Create New Item' }}
         </div>
-        <q-btn flat round dense icon="close" v-close-popup />
+        <q-btn flat round dense icon="ph ph-x" v-close-popup />
       </q-card-section>
 
       <q-form @submit.prevent="onSave">

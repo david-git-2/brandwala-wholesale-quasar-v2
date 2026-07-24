@@ -26,7 +26,7 @@
               flat
               round
               dense
-              icon="search"
+              icon="ph ph-magnifying-glass"
               aria-label="Show search"
               @click="showSearchInput = true"
             />
@@ -42,14 +42,14 @@
               @keyup.enter="onSearchChange"
             >
               <template #prepend>
-                <q-icon name="search" />
+                <q-icon name="ph ph-magnifying-glass" />
               </template>
               <template #append>
                 <q-btn
                   flat
                   round
                   dense
-                  icon="close"
+                  icon="ph ph-x"
                   aria-label="Hide search"
                   @click="onCloseSearch"
                 />
@@ -60,7 +60,7 @@
               flat
               round
               dense
-              icon="filter_alt"
+              icon="ph ph-funnel"
               aria-label="Filters"
               @click="filterDrawerOpen = true"
             >
@@ -119,7 +119,7 @@
             <td>{{ row.phone ?? '-' }}</td>
             <td>{{ row.address ?? '-' }}</td>
             <td class="text-right">
-              <q-btn flat round dense icon="more_vert">
+              <q-btn flat round dense icon="ph ph-dots-three-vertical">
                 <q-menu auto-close>
                   <q-list dense style="min-width: 140px">
                     <q-item clickable @click="onOpenEdit(row.id)">

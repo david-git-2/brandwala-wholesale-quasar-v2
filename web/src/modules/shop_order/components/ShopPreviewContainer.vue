@@ -12,7 +12,7 @@
         
         <!-- Address Bar -->
         <div class="address-bar col flex items-center justify-center text-caption text-grey-6 bg-grey-2 rounded q-mx-md q-py-xs">
-          <q-icon name="lock" size="12px" class="q-mr-xs text-success" />
+          <q-icon name="ph ph-lock-key" size="12px" class="q-mr-xs text-success" />
           <span>https://brandwala.com/shop/{{ shopName.toLowerCase().replace(/\s+/g, '-') || 'preview' }}</span>
         </div>
       </div>
@@ -21,7 +21,7 @@
       <div class="viewport flex flex-column">
         <!-- Sandbox Mode Warning Banner -->
         <div class="sandbox-banner bg-amber text-black text-weight-bold text-center text-caption q-py-xs">
-          <q-icon name="warning" size="16px" class="q-mr-xs" />
+          <q-icon name="ph ph-warning" size="16px" class="q-mr-xs" />
           Interactive Storefront Web Preview — Changes Not Saved
         </div>
 
@@ -36,7 +36,7 @@
             </div>
           </div>
           <!-- Cart Trigger -->
-          <q-btn flat round dense icon="shopping_cart" size="lg" @click="showCart = true">
+          <q-btn flat round dense icon="ph ph-shopping-cart" size="lg" @click="showCart = true">
             <q-badge color="amber text-black" floating v-if="cartTotalQuantity > 0">
               {{ cartTotalQuantity }}
             </q-badge>
@@ -55,7 +55,7 @@
                 class="search-bar"
               >
                 <template v-slot:append>
-                  <q-icon name="search" />
+                  <q-icon name="ph ph-magnifying-glass" />
                 </template>
               </q-input>
             </div>
@@ -103,7 +103,7 @@
             </div>
           </div>
           <div v-else-if="filteredProducts.length === 0" class="flex flex-center flex-column q-py-xl">
-            <q-icon name="search_off" size="48px" class="text-grey-4 q-mb-sm" />
+            <q-icon name="ph ph-magnifying-glass-minus" size="48px" class="text-grey-4 q-mb-sm" />
             <div class="text-subtitle2 text-grey-6">No products match your filters</div>
           </div>
           <ShopPreviewProductList
@@ -128,12 +128,12 @@
         <q-card-section class="row items-center q-pb-none">
           <div class="text-h6 text-weight-bold">Simulated Shopping Cart</div>
           <q-space />
-          <q-btn icon="close" flat round dense v-close-popup />
+          <q-btn icon="ph ph-x" flat round dense v-close-popup />
         </q-card-section>
 
         <q-card-section class="q-pt-md">
           <div v-if="cartItemsList.length === 0" class="flex flex-center flex-column q-py-lg">
-            <q-icon name="shopping_cart" size="48px" class="text-grey-3 q-mb-sm" />
+            <q-icon name="ph ph-shopping-cart" size="48px" class="text-grey-3 q-mb-sm" />
             <div class="text-grey-6 text-subtitle2">Your cart is empty</div>
           </div>
           <q-list v-else separator class="cart-items-list">
@@ -141,7 +141,7 @@
               <q-item-section avatar>
                 <q-avatar rounded size="48px" class="bg-grey-2">
                   <img v-if="item.product.image_url" :src="item.product.image_url" />
-                  <q-icon v-else name="shopping_bag" color="grey-6" />
+                  <q-icon v-else name="ph ph-tote" color="grey-6" />
                 </q-avatar>
               </q-item-section>
 
@@ -163,9 +163,9 @@
                   {{ item.qty }} x ${{ (item.negotiatedPrice ?? item.unitPrice).toFixed(2) }}
                 </div>
                 <div class="flex items-center gap-xs q-mt-xs justify-end">
-                  <q-btn flat round dense size="xs" icon="remove" color="primary" @click="updateCartQty(item.product.id, item.qty - 1)" />
+                  <q-btn flat round dense size="xs" icon="ph ph-minus" color="primary" @click="updateCartQty(item.product.id, item.qty - 1)" />
                   <span class="text-caption text-weight-bold">{{ item.qty }}</span>
-                  <q-btn flat round dense size="xs" icon="add" color="primary" @click="updateCartQty(item.product.id, item.qty + 1)" :disable="item.qty >= (item.product.available_units || 0)" />
+                  <q-btn flat round dense size="xs" icon="ph ph-plus" color="primary" @click="updateCartQty(item.product.id, item.qty + 1)" :disable="item.qty >= (item.product.available_units || 0)" />
                 </div>
               </q-item-section>
             </q-item>
@@ -190,7 +190,7 @@
             color="primary"
             class="full-width q-py-sm text-weight-bold text-capitalize checkout-btn"
             :label="checkoutCTALabel"
-            icon="shopping_bag"
+            icon="ph ph-tote"
             @click="simulateCheckout"
           />
         </q-card-section>
@@ -376,7 +376,7 @@ const simulateCheckout = () => {
     type: 'positive',
     message: `Sandbox checkout simulated: "${checkoutCTALabel.value}" submitted successfully!`,
     caption: `Simulated order total: $${cartTotalAmount.value.toFixed(2)}`,
-    icon: 'check',
+    icon: 'ph ph-check',
     position: 'bottom',
     timeout: 3000,
   });

@@ -3,10 +3,10 @@
     <q-card class="search-card floating-surface shadow-2">
       <q-card-section class="q-py-md row items-center justify-between">
         <div class="row items-center q-gutter-sm">
-          <q-icon name="inventory_2" size="24px" color="primary" />
+          <q-icon name="ph ph-archive-box" size="24px" color="primary" />
           <div class="text-h6 text-weight-bold">Search Global Stock</div>
         </div>
-        <q-btn flat round dense icon="close" v-close-popup />
+        <q-btn flat round dense icon="ph ph-x" v-close-popup />
       </q-card-section>
 
       <q-card-section class="q-pt-none">

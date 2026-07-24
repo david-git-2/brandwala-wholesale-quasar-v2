@@ -4,7 +4,7 @@
       <q-card-section class="row items-center q-pb-none">
         <div class="text-h6">{{ $t('shop_admin.select_allocation') }}</div>
         <q-space />
-        <q-btn icon="close" flat round dense v-close-popup />
+        <q-btn icon="ph ph-x" flat round dense v-close-popup />
       </q-card-section>
 
       <q-card-section class="q-pt-sm">
@@ -16,7 +16,7 @@
           clearable
         >
           <template #prepend>
-            <q-icon name="search" />
+            <q-icon name="ph ph-magnifying-glass" />
           </template>
         </q-input>
       </q-card-section>
@@ -36,7 +36,7 @@
               <div class="row items-center no-wrap">
                 <q-avatar size="32px" rounded class="q-mr-sm bg-grey-3">
                   <q-img v-if="props.row.product_image_url" :src="props.row.product_image_url" />
-                  <q-icon v-else name="image" color="grey-6" />
+                  <q-icon v-else name="ph ph-image" color="grey-6" />
                 </q-avatar>
                 <div class="ellipsis" style="max-width: 250px">
                   <div class="text-weight-medium">{{ props.row.product_name }}</div>

@@ -332,9 +332,31 @@ const fetchCustomerShopCategories = async (
   return (data as { name: string; count: number }[] | null) ?? [];
 };
 
+const updateShopExtraAttributes = async (
+  shopId: number,
+  tenantId: number,
+  description: string | null,
+  categoryIds: number[],
+): Promise<void> => {
+  const { error } = await supabase
+    .from('shops')
+    .update({
+      description,
+      category_ids: categoryIds,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', shopId)
+    .eq('tenant_id', tenantId);
+
+  if (error) {
+    throw error;
+  }
+};
+
 export const shopOrderRepository = {
   listShops,
   upsertShop,
+  updateShopExtraAttributes,
   browseShopCatalog,
   listShopsForCustomer,
   fetchCustomerShopCategories,

@@ -5,7 +5,7 @@
       <q-card-section class="q-py-sm">
         <div class="row items-center q-col-gutter-sm">
           <div class="col-auto">
-            <q-btn flat round dense icon="arrow_back" color="primary" @click="goBack" />
+            <q-btn flat round dense icon="ph ph-arrow-left" color="primary" @click="goBack" />
           </div>
           <div class="col">
             <div class="text-h6 text-weight-bold">

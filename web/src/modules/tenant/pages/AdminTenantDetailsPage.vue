@@ -85,7 +85,7 @@
                     flat
                     round
                     dense
-                    icon="content_copy"
+                    icon="ph ph-copy"
                     aria-label="Copy admin login URL"
                     @click="copyLoginUrl(adminLoginUrl, 'Admin login URL copied.')"
                   />
@@ -107,7 +107,7 @@
                     flat
                     round
                     dense
-                    icon="content_copy"
+                    icon="ph ph-copy"
                     aria-label="Copy customer login URL"
                     @click="copyLoginUrl(customerLoginUrl, 'Customer login URL copied.')"
                   />
@@ -129,7 +129,7 @@
                     flat
                     round
                     dense
-                    icon="content_copy"
+                    icon="ph ph-copy"
                     aria-label="Copy investor login URL"
                     @click="copyLoginUrl(investorLoginUrl, 'Investor login URL copied.')"
                   />
@@ -153,7 +153,7 @@
             <q-card-section class="column q-gutter-sm">
               <q-btn
                 color="primary"
-                icon="o_groups"
+                icon="ph ph-users-three"
                 label="Customer Group Management"
                 no-caps
                 class="pill-btn slim-btn full-width"
@@ -161,7 +161,7 @@
               />
               <q-btn
                 color="primary"
-                icon="o_manage_accounts"
+                icon="ph ph-user-gear"
                 label="Staff Management"
                 no-caps
                 class="pill-btn slim-btn full-width"
@@ -170,7 +170,7 @@
               <q-btn
                 v-if="isCapitalHostTenant"
                 color="primary"
-                icon="o_savings"
+                icon="ph ph-piggy-bank"
                 label="Investor Management"
                 no-caps
                 class="pill-btn slim-btn full-width"
@@ -178,7 +178,7 @@
               />
               <q-btn
                 color="primary"
-                icon="o_extension"
+                icon="ph ph-puzzle-piece"
                 :label="modulesButtonLabel"
                 no-caps
                 class="pill-btn slim-btn full-width"
@@ -186,7 +186,7 @@
               />
               <q-btn
                 color="primary"
-                icon="o_tune"
+                icon="ph ph-faders"
                 label="Tenant Preferences"
                 no-caps
                 class="pill-btn slim-btn full-width"
@@ -298,7 +298,7 @@ const copyLoginUrl = async (value: string, successMessage: string) => {
     $q.notify({
       color: 'positive',
       message: successMessage,
-      icon: 'check',
+      icon: 'ph ph-check',
       position: 'top',
     });
   } catch (error) {
@@ -306,7 +306,7 @@ const copyLoginUrl = async (value: string, successMessage: string) => {
     $q.notify({
       color: 'negative',
       message: 'Failed to copy URL.',
-      icon: 'error',
+      icon: 'ph ph-warning-circle',
       position: 'top',
     });
   }

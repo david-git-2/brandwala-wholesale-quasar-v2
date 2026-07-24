@@ -10,7 +10,7 @@
         <q-btn
           color="negative"
           no-caps
-          icon="o_delete"
+          icon="ph ph-trash"
           label="Delete Selected"
           @click="showBulkDeleteConfirm = true"
         />
@@ -58,7 +58,7 @@
                     class="q-px-sm q-py-xs"
                   >
                     {{ slotProps.row.status }}
-                    <q-icon name="arrow_drop_down" size="xs" />
+                    <q-icon name="ph ph-caret-down" size="xs" />
                   </q-badge>
                   <q-popup-edit
                     v-slot="scope"
@@ -90,7 +90,7 @@
                 <!-- Actions -->
                 <q-btn
                   v-if="isColumnVisible('action')"
-                  icon="o_edit"
+                  icon="ph ph-pencil-simple"
                   flat
                   dense
                   color="blue-10"
@@ -99,7 +99,7 @@
                 />
                 <q-btn
                   v-if="isColumnVisible('action')"
-                  icon="o_delete"
+                  icon="ph ph-trash"
                   flat
                   dense
                   color="negative"
@@ -132,7 +132,7 @@
                     <span class="card-item-name text-weight-bold">{{ slotProps.row.name }}</span>
                     <div v-if="props.status === 'processing'" class="card-ship-btn">
                       <q-btn
-                        icon="local_shipping"
+                        icon="ph ph-truck"
                         :color="isShipped(slotProps.row.raw) ? 'negative' : 'primary'"
                         flat
                         dense
@@ -164,7 +164,7 @@
                         round
                         dense
                         size="xs"
-                        icon="content_copy"
+                        icon="ph ph-copy"
                         color="grey-6"
                         class="q-ml-xs"
                         @click="handleCopy(slotProps.row.barcode, 'Barcode')"
@@ -179,7 +179,7 @@
                         round
                         dense
                         size="xs"
-                        icon="content_copy"
+                        icon="ph ph-copy"
                         color="grey-6"
                         class="q-ml-xs"
                         @click="handleCopy(slotProps.row.productCode, 'Code')"
@@ -194,7 +194,7 @@
                         round
                         dense
                         size="xs"
-                        icon="content_copy"
+                        icon="ph ph-copy"
                         color="grey-6"
                         class="q-ml-xs"
                         @click="handleCopy(String(slotProps.row.productId), 'Product ID')"
@@ -210,7 +210,7 @@
                       dense
                       no-caps
                       color="primary"
-                      icon="open_in_new"
+                      icon="ph ph-arrow-up-right"
                       label="Website"
                       size="xs"
                       type="a"
@@ -289,7 +289,7 @@
                   <div class="metric-label">Qty</div>
                   <div class="metric-value font-mono font-weight-medium">
                     {{ slotProps.row.qty }}
-                    <q-icon name="edit" size="xs" color="grey-6" class="q-ml-xs" />
+                    <q-icon name="ph ph-pencil-simple" size="xs" color="grey-6" class="q-ml-xs" />
                   </div>
                   <q-popup-edit
                     v-slot="scope"
@@ -324,7 +324,7 @@
                   <div class="metric-label">Delivered Qty</div>
                   <div class="metric-value font-mono font-weight-medium">
                     {{ slotProps.row.deliveredQty }}
-                    <q-icon name="edit" size="xs" color="grey-6" class="q-ml-xs" />
+                    <q-icon name="ph ph-pencil-simple" size="xs" color="grey-6" class="q-ml-xs" />
                   </div>
                   <q-popup-edit
                     v-slot="scope"
@@ -370,7 +370,7 @@
                   <div class="metric-label text-purple-9">Offer Price BDT</div>
                   <div class="metric-value text-purple-10 text-weight-bold font-mono">
                     ৳{{ formatNumber(slotProps.row.offerPriceBdt) }}
-                    <q-icon name="edit" size="xs" color="purple-6" class="q-ml-xs" />
+                    <q-icon name="ph ph-pencil-simple" size="xs" color="purple-6" class="q-ml-xs" />
                   </div>
                   <q-popup-edit
                     v-slot="scope"
@@ -474,7 +474,7 @@
               <div class="name-cell-ship-btn">
                 <q-btn
                   v-if="props.status === 'processing'"
-                  icon="local_shipping"
+                  icon="ph ph-truck"
                   :color="isShipped(slotProps.row.raw) ? 'negative' : 'primary'"
                   flat
                   dense
@@ -632,7 +632,7 @@
                   round
                   dense
                   size="xs"
-                  icon="content_copy"
+                  icon="ph ph-copy"
                   color="grey-6"
                   class="q-ml-xs"
                   @click="handleCopy(slotProps.row.barcode, 'Barcode')"
@@ -649,7 +649,7 @@
                   round
                   dense
                   size="xs"
-                  icon="content_copy"
+                  icon="ph ph-copy"
                   color="grey-6"
                   class="q-ml-xs"
                   @click="handleCopy(slotProps.row.productCode, 'Code')"
@@ -666,7 +666,7 @@
                   round
                   dense
                   size="xs"
-                  icon="content_copy"
+                  icon="ph ph-copy"
                   color="grey-6"
                   class="q-ml-xs"
                   @click="handleCopy(String(slotProps.row.productId), 'Product ID')"
@@ -956,7 +956,7 @@
           <q-td v-if="isColumnVisible('action')" key="action" :props="slotProps" class="col-action">
             <div class="row items-center justify-center q-gutter-xs">
               <q-btn
-                icon="o_edit"
+                icon="ph ph-pencil-simple"
                 flat
                 dense
                 color="blue-10"
@@ -964,7 +964,7 @@
                 class="col"
               />
               <q-btn
-                icon="o_delete"
+                icon="ph ph-trash"
                 flat
                 dense
                 color="negative"

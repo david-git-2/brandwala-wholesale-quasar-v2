@@ -14,7 +14,7 @@
           <q-btn
             flat
             color="primary"
-            icon="arrow_back"
+            icon="ph ph-arrow-left"
             label="Back to Shipment"
             no-caps
             @click="goBack"

@@ -5,7 +5,7 @@
       <section class="row items-center justify-between q-col-gutter-md">
         <div class="col">
           <div class="row items-center q-gutter-x-sm">
-            <q-btn flat round icon="arrow_back" color="grey-7" @click="goBack" />
+            <q-btn flat round icon="ph ph-arrow-left" color="grey-7" @click="goBack" />
             <div>
               <div class="text-overline">Shop Cart</div>
               <h1 class="text-h5 text-weight-bold q-my-none">
@@ -25,7 +25,7 @@
       <!-- Empty State -->
       <q-card v-else-if="cartStore.items.length === 0" flat bordered class="q-pa-xl text-center">
         <q-card-section>
-          <q-icon name="shopping_cart" size="64px" color="grey-4" class="q-mb-md" />
+          <q-icon name="ph ph-shopping-cart" size="64px" color="grey-4" class="q-mb-md" />
           <div class="text-h6 text-grey-7 text-weight-bold">{{ $t('shop.cart_empty') }}</div>
           <p class="text-body2 text-grey-6 q-mt-sm q-mb-md">
             {{ $t('shop.cart_empty_desc') }}
@@ -57,7 +57,7 @@
                 <q-item-section avatar class="item-img-section">
                   <q-avatar size="64px" rounded class="bg-grey-2 border-all">
                     <q-img v-if="item.image_url" :src="item.image_url" />
-                    <q-icon v-else name="image" color="grey-4" size="32px" />
+                    <q-icon v-else name="ph ph-image" color="grey-4" size="32px" />
                   </q-avatar>
                 </q-item-section>
 
@@ -101,7 +101,7 @@
                         round
                         dense
                         size="sm"
-                        icon="remove"
+                        icon="ph ph-minus"
                         color="grey-7"
                         :disabled="cartStore.saving"
                         @click="adjustItemQtyLocal(item, -(cartStore.cart?.shop_type === 'dropship' ? 1 : (item.minimum_quantity || 1)))"
@@ -114,7 +114,7 @@
                         round
                         dense
                         size="sm"
-                        icon="add"
+                        icon="ph ph-plus"
                         color="grey-7"
                         :disabled="cartStore.saving"
                         @click="adjustItemQtyLocal(item, cartStore.cart?.shop_type === 'dropship' ? 1 : (item.minimum_quantity || 1))"
@@ -176,7 +176,7 @@
                     flat
                     round
                     dense
-                    icon="delete_outline"
+                    icon="ph ph-trash"
                     color="negative"
                     :disabled="cartStore.saving"
                     @click="removeItem(item)"

@@ -14,7 +14,7 @@
               no-caps
               size="sm"
               class="pill-btn slim-btn"
-              icon="print"
+              icon="ph ph-printer"
               label="Print Barcodes"
               @click="onClickPrint"
             />
@@ -56,7 +56,7 @@
               type="submit"
               color="primary"
               no-caps
-              icon="add"
+              icon="ph ph-plus"
               label="Generate"
               class="full-width pill-btn"
               :loading="generateMutation.isPending.value"
@@ -81,7 +81,7 @@
               clearable
             >
               <template v-slot:append>
-                <q-icon name="search" />
+                <q-icon name="ph ph-magnifying-glass" />
               </template>
             </q-input>
           </div>
@@ -171,7 +171,7 @@
                 round
                 dense
                 color="primary"
-                icon="visibility"
+                icon="ph ph-eye"
                 @click="onPreviewBarcode(props.row)"
               >
                 <q-tooltip>Preview Barcode</q-tooltip>
@@ -256,7 +256,7 @@
               color="secondary"
               no-caps
               label="Print Selected Only"
-              icon="print"
+              icon="ph ph-printer"
               class="pill-btn"
               :disabled="selectedPrintableCount === 0"
               @click="confirmSelectedPrint"
@@ -313,7 +313,7 @@
               color="primary"
               no-caps
               label="Proceed to Print Preview"
-              icon="navigate_next"
+              icon="ph ph-caret-right"
               class="pill-btn full-width"
               :disabled="!hasSufficientForBulk || printQty <= 0"
               @click="confirmBulkPrint"
@@ -332,7 +332,7 @@
     <q-dialog v-model="previewDialog">
       <q-card style="min-width: 320px; text-align: center; border-radius: 14px">
         <q-card-section class="bg-grey-2 q-py-xs text-right">
-          <q-btn flat round dense icon="close" v-close-popup />
+          <q-btn flat round dense icon="ph ph-x" v-close-popup />
         </q-card-section>
 
         <q-card-section class="q-pa-lg">

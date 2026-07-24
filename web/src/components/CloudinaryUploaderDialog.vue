@@ -12,10 +12,10 @@
     >
       <q-card-section class="row items-center justify-between q-pb-sm">
         <div class="text-h6 text-weight-bold row items-center">
-          <q-icon name="cloud_upload" color="primary" class="q-mr-sm" size="sm" />
+          <q-icon name="ph ph-cloud-arrow-up" color="primary" class="q-mr-sm" size="sm" />
           {{ deferUpload ? 'Select Image' : 'Upload Image' }}
         </div>
-        <q-btn flat round dense icon="close" v-close-popup :disabled="uploading" />
+        <q-btn flat round dense icon="ph ph-x" v-close-popup :disabled="uploading" />
       </q-card-section>
 
       <q-separator />
@@ -34,7 +34,7 @@
           <q-btn
             round
             color="negative"
-            icon="delete"
+            icon="ph ph-trash"
             size="sm"
             class="absolute-top-right q-ma-md"
             @click="clearSelection"
@@ -61,7 +61,7 @@
             class="hidden"
             @change="handleFileChange"
           />
-          <q-icon name="o_image" size="56px" color="grey-6" class="q-mb-md" />
+          <q-icon name="ph ph-image" size="56px" color="grey-6" class="q-mb-md" />
           <div class="text-subtitle1 text-weight-medium text-grey-9">
             Drag and drop your image here
           </div>
@@ -85,7 +85,7 @@
           no-caps
           class="pill-btn slim-btn px-md"
           :label="deferUpload ? 'Use Image' : 'Upload Now'"
-          icon="cloud_upload"
+          icon="ph ph-cloud-arrow-up"
           :loading="uploading"
           :disabled="!selectedFile"
           @click="confirmSelection"

@@ -7,7 +7,7 @@
     <template #action>
       <q-btn
         color="primary"
-        icon="add"
+        icon="ph ph-plus"
         no-caps
         label="Record Payment"
         unelevated
@@ -30,7 +30,7 @@
               outlined
             >
               <template #append>
-                <q-icon name="search" />
+                <q-icon name="ph ph-magnifying-glass" />
               </template>
             </q-input>
           </div>
@@ -117,7 +117,7 @@
                   round
                   dense
                   color="primary"
-                  icon="o_visibility"
+                  icon="ph ph-eye"
                   @click="navigateToDetails(props.row.id)"
                 >
                   <q-tooltip>View Details & Allocate</q-tooltip>
@@ -134,7 +134,7 @@
       <q-card style="width: 500px; max-width: 90vw">
         <q-card-section class="row items-center justify-between">
           <div class="text-h6 text-weight-bold">Record Customer Payment</div>
-          <q-btn flat round dense icon="close" v-close-popup />
+          <q-btn flat round dense icon="ph ph-x" v-close-popup />
         </q-card-section>
 
         <q-card-section>
@@ -172,7 +172,7 @@
                   readonly
                 >
                   <template #append>
-                    <q-icon name="event" class="cursor-pointer">
+                    <q-icon name="ph ph-calendar" class="cursor-pointer">
                       <q-popup-proxy
                         ref="qDateProxy"
                         cover

@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="orders-header q-mb-md">
       <div class="row items-center q-gutter-sm">
-        <q-btn flat round icon="arrow_back" color="grey-8" :to="{ name: productsRouteName }" />
+        <q-btn flat round icon="ph ph-arrow-left" color="grey-8" :to="{ name: productsRouteName }" />
         <div>
           <div class="text-h5 text-weight-bold">Orders</div>
           <div class="text-caption text-grey-7">Manage your placed Koba retail orders</div>
@@ -12,7 +12,7 @@
       <div>
         <q-btn
           color="primary"
-          icon="shopping_cart"
+          icon="ph ph-shopping-cart"
           label="Back to Shop"
           no-caps
           unelevated
@@ -28,7 +28,7 @@
         flat
         round
         dense
-        icon="filter_alt"
+        icon="ph ph-funnel"
         color="primary"
         aria-label="Filters"
         @click="filterDrawerOpen = true"
@@ -44,7 +44,7 @@
           dense
           no-caps
           size="sm"
-          icon="close"
+          icon="ph ph-x"
           label="Clear"
           color="grey-7"
           @click="onClearDrawerFilters"
@@ -77,7 +77,7 @@
 
     <!-- Empty State -->
     <div v-else-if="store.orders.length === 0" class="empty-state-card q-pa-xl text-center">
-      <q-icon name="receipt_long" size="64px" color="grey-4" class="q-mb-md" />
+      <q-icon name="ph ph-receipt" size="64px" color="grey-4" class="q-mb-md" />
       <div class="text-h6 text-grey-8 text-weight-medium">No orders found</div>
       <div class="text-caption text-grey-6">You haven't placed any orders yet.</div>
     </div>

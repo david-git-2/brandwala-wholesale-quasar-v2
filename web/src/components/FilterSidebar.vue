@@ -8,7 +8,7 @@
       <div class="filter-sidebar__inner q-pa-md">
         <div class="row items-center justify-between q-mb-md">
           <div class="text-subtitle1 text-weight-bold">{{ title }}</div>
-          <q-btn flat round dense icon="close" :aria-label="`Close ${title}`" @click="close" />
+          <q-btn flat round dense icon="ph ph-x" :aria-label="`Close ${title}`" @click="close" />
         </div>
 
         <slot />

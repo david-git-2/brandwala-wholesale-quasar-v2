@@ -4,13 +4,13 @@
       <q-btn
         flat
         color="primary"
-        icon="arrow_back"
+        icon="ph ph-arrow-left"
         label="Back to Investor Shipments"
         @click="onBack"
       />
       <q-btn
         color="secondary"
-        icon="refresh"
+        icon="ph ph-arrows-clockwise"
         label="Refresh Profits"
         unelevated
         :loading="capitalStore.saving"
@@ -32,7 +32,7 @@
     <!-- Parent Remainder Banner -->
     <q-banner v-if="parentRemainderPct > 0" class="bg-amber-1 text-amber-9 q-mb-md rounded-borders">
       <template #avatar>
-        <q-icon name="warning" color="warning" size="md" class="q-mr-sm" />
+        <q-icon name="ph ph-warning" color="warning" size="md" class="q-mr-sm" />
       </template>
       Parent company retains <strong>{{ parentRemainderPct.toFixed(2) }}%</strong> remainder cost
       share of this shipment batch.
@@ -105,7 +105,7 @@
                 </q-badge>
               </td>
               <td class="text-right">
-                <q-btn flat round dense icon="more_vert" color="grey-7">
+                <q-btn flat round dense icon="ph ph-dots-three-vertical" color="grey-7">
                   <q-menu>
                     <q-list dense style="min-width: 100px">
                       <q-item clickable v-close-popup @click="openEditDialog(row)">

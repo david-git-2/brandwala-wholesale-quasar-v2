@@ -12,7 +12,7 @@
         <div class="col-auto">
           <q-btn
             color="primary"
-            icon="add"
+            icon="ph ph-plus"
             label="Add Investor"
             unelevated
             @click="onClickAddInvestor"
@@ -67,7 +67,7 @@
 
           <template #body-cell-actions="props">
             <q-td :props="props" class="text-right">
-              <q-btn icon="more_vert" flat round dense>
+              <q-btn icon="ph ph-dots-three-vertical" flat round dense>
                 <q-menu auto-close>
                   <q-list dense style="min-width: 160px">
                     <q-item clickable v-ripple @click="goToMembershipAccess(props.row)">

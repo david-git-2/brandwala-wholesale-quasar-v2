@@ -12,7 +12,7 @@
           v-if="canShowCartIcon"
           color="primary"
           flat
-          icon="o_shopping_cart"
+          icon="ph ph-shopping-cart"
           :round="isKobaActive"
           :dense="isKobaActive"
           :unelevated="!isKobaActive"

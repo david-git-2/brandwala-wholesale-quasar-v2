@@ -23,7 +23,7 @@
               clearable
             >
               <template #prepend>
-                <q-icon name="search" />
+                <q-icon name="ph ph-magnifying-glass" />
               </template>
             </q-input>
           </div>
@@ -54,7 +54,7 @@
         v-else-if="filteredShops.length === 0"
         class="column items-center justify-center q-pa-xl text-center text-grey-6"
       >
-        <q-icon name="storefront" size="64px" color="grey-4" class="q-mb-md" />
+        <q-icon name="ph ph-storefront" size="64px" color="grey-4" class="q-mb-md" />
         <div class="text-h6">{{ $t('shop_admin.no_shops_available') }}</div>
         <p class="text-body2 text-grey-5 q-mb-none">
           {{ $t('shop_admin.no_shops_access') }}
@@ -72,7 +72,7 @@
           >
             <q-card-section>
               <div class="row items-start no-wrap q-gutter-sm">
-                <q-avatar color="primary-1" text-color="primary" icon="storefront" size="40px" />
+                <q-avatar color="primary-1" text-color="primary" icon="ph ph-storefront" size="40px" />
                 <div class="col">
                   <div class="row items-center gap-xs">
                     <div class="text-subtitle1 text-weight-bold text-grey-9">{{ shop.name }}</div>
@@ -87,7 +87,7 @@
                   </div>
                   <div class="text-caption text-grey-6">/{{ shop.slug }}</div>
                 </div>
-                <q-icon name="chevron_right" color="grey-5" class="q-mt-xs" />
+                <q-icon name="ph ph-caret-right" color="grey-5" class="q-mt-xs" />
               </div>
             </q-card-section>
           </q-card>

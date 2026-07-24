@@ -60,13 +60,13 @@
         </q-markup-table>
 
         <div class="row items-center justify-end q-mt-md q-gutter-sm">
-          <q-btn flat round dense icon="chevron_left" :disable="page === 1" @click="prevPage" />
+          <q-btn flat round dense icon="ph ph-caret-left" :disable="page === 1" @click="prevPage" />
           <span class="text-caption">Page {{ page }} of {{ totalPages }}</span>
           <q-btn
             flat
             round
             dense
-            icon="chevron_right"
+            icon="ph ph-caret-right"
             :disable="page >= totalPages"
             @click="nextPage"
           />
@@ -79,7 +79,7 @@
       <q-card style="width: 600px; max-width: 95vw">
         <q-card-section class="row items-center justify-between">
           <div class="text-h6 text-weight-bold">Allocation Details</div>
-          <q-btn flat round dense icon="close" v-close-popup />
+          <q-btn flat round dense icon="ph ph-x" v-close-popup />
         </q-card-section>
 
         <q-card-section class="q-pt-none" v-if="selectedAllocation">
@@ -155,7 +155,7 @@
             v-if="selectedAllocation.profit_status === 'realized'"
           >
             <div class="row items-center">
-              <q-icon name="check_circle" size="sm" class="q-mr-sm" />
+              <q-icon name="ph ph-check-circle" size="sm" class="q-mr-sm" />
               <div>
                 <strong>Earnings Realized:</strong> Your net share of BDT
                 {{ formatCurrency(selectedAllocation.computed_profit) }} has been added to your
@@ -165,7 +165,7 @@
           </q-card>
           <q-card flat bordered class="q-pa-md bg-amber-1 text-amber-9" v-else>
             <div class="row items-center">
-              <q-icon name="info" size="sm" class="q-mr-sm" />
+              <q-icon name="ph ph-info" size="sm" class="q-mr-sm" />
               <div>
                 <strong>Earnings Unrealized:</strong> Estimated profit share of BDT
                 {{ formatCurrency(selectedAllocation.computed_profit) }} is subject to change until

@@ -16,7 +16,7 @@
               dense
               :color="detectedPresetId ? 'blue-1' : 'grey-2'"
               :text-color="detectedPresetId ? 'primary' : 'grey-8'"
-              icon="category"
+              icon="ph ph-squares-four"
               size="sm"
               @click="openScenariosHelp"
             >
@@ -26,10 +26,10 @@
           </div>
         </div>
         <div class="row items-center q-gutter-x-sm">
-          <q-btn flat round dense icon="info" color="primary" @click="showHelpDialog = true">
+          <q-btn flat round dense icon="ph ph-info" color="primary" @click="showHelpDialog = true">
             <q-tooltip>{{ $t('shop_admin.shop_functionality_guide') }}</q-tooltip>
           </q-btn>
-          <q-btn flat round dense icon="close" color="grey-7" v-close-popup>
+          <q-btn flat round dense icon="ph ph-x" color="grey-7" v-close-popup>
             <q-tooltip>{{ $t('shop_admin.close') || 'Close' }}</q-tooltip>
           </q-btn>
         </div>
@@ -76,6 +76,35 @@
           </div>
         </div>
 
+        <!-- Shop Description & Categories -->
+        <q-input
+          v-model="form.description"
+          label="Shop Description"
+          outlined
+          dense
+          type="textarea"
+          rows="2"
+          class="q-mb-md"
+          hint="Displayed on customer shop cards & storefront header"
+        />
+
+        <q-select
+          v-model="form.category_ids"
+          :options="categoryOptions"
+          option-value="id"
+          option-label="name"
+          emit-value
+          map-options
+          multiple
+          use-chips
+          outlined
+          dense
+          label="Shop Categories"
+          class="q-mb-md"
+          :loading="loadingCategories"
+          hint="Categories featured for this shop on customer homepage"
+        />
+
         <!-- Shop type (create-only) -->
         <q-select
           v-if="!isEdit"
@@ -112,7 +141,7 @@
                   round 
                   dense 
                   color="negative" 
-                  icon="delete" 
+                  icon="ph ph-trash" 
                   size="sm" 
                   @click="removeVendorFilter(idx)"
                 />
@@ -164,7 +193,7 @@
             <div class="col-auto">
               <q-btn 
                 color="primary" 
-                icon="add" 
+                icon="ph ph-plus" 
                 label="Add" 
                 unelevated 
                 :disable="!newVendorCode" 
@@ -403,10 +432,10 @@
       <!-- Header -->
       <q-card-section class="row items-center justify-between q-py-md bg-primary text-white">
         <div class="text-h6 row items-center no-wrap">
-          <q-icon name="help_outline" class="q-mr-sm" size="24px" />
+          <q-icon name="ph ph-question" class="q-mr-sm" size="24px" />
           {{ $t('shop_admin.help_features_guide') }}
         </div>
-        <q-btn icon="close" flat round dense v-close-popup color="white" />
+        <q-btn icon="ph ph-x" flat round dense v-close-popup color="white" />
       </q-card-section>
 
       <!-- Tabs Navigation -->
@@ -421,7 +450,7 @@
       >
         <q-tab name="types" :label="$t('shop_admin.help_tab_types')" />
         <q-tab name="modes" :label="$t('shop_admin.help_tab_modes')" />
-        <q-tab name="settings" :label="$t('shop_admin.help_tab_settings')" />
+        <q-tab name="ph ph-gear" :label="$t('shop_admin.help_tab_settings')" />
         <q-tab name="scenarios" :label="$t('shop_admin.help_tab_scenarios')" />
       </q-tabs>
 
@@ -433,7 +462,7 @@
         <q-tab-panel name="types" class="q-gutter-y-sm">
           <div class="row items-start no-wrap q-py-sm">
             <q-avatar
-              icon="storefront"
+              icon="ph ph-storefront"
               color="blue-1"
               text-color="blue-8"
               size="md"
@@ -452,7 +481,7 @@
 
           <div class="row items-start no-wrap q-py-sm">
             <q-avatar
-              icon="local_offer"
+              icon="ph ph-tag"
               color="green-1"
               text-color="green-8"
               size="md"
@@ -471,7 +500,7 @@
 
           <div class="row items-start no-wrap q-py-sm">
             <q-avatar
-              icon="local_shipping"
+              icon="ph ph-truck"
               color="orange-1"
               text-color="orange-8"
               size="md"
@@ -492,7 +521,7 @@
         <q-tab-panel name="modes" class="q-gutter-y-sm">
           <div class="row items-start no-wrap q-py-sm">
             <q-avatar
-              icon="assignment"
+              icon="ph ph-clipboard-text"
               color="purple-1"
               text-color="purple-8"
               size="md"
@@ -511,7 +540,7 @@
 
           <div class="row items-start no-wrap q-py-sm">
             <q-avatar
-              icon="shopping_cart"
+              icon="ph ph-shopping-cart"
               color="teal-1"
               text-color="teal-8"
               size="md"
@@ -530,7 +559,7 @@
 
           <div class="row items-start no-wrap q-py-sm">
             <q-avatar
-              icon="business"
+              icon="ph ph-briefcase"
               color="indigo-1"
               text-color="indigo-8"
               size="md"
@@ -548,9 +577,9 @@
         </q-tab-panel>
 
         <!-- Settings -->
-        <q-tab-panel name="settings" class="q-gutter-y-sm">
+        <q-tab-panel name="ph ph-gear" class="q-gutter-y-sm">
           <div class="row items-start no-wrap q-py-sm">
-            <q-avatar icon="forum" color="pink-1" text-color="pink-8" size="md" class="q-mr-md" />
+            <q-avatar icon="ph ph-chats" color="pink-1" text-color="pink-8" size="md" class="q-mr-md" />
             <div>
               <div class="text-weight-bold text-grey-9 text-subtitle2">
                 {{ $t('shop_admin.help_negotiable_title') }}
@@ -564,7 +593,7 @@
 
           <div class="row items-start no-wrap q-py-sm">
             <q-avatar
-              icon="visibility"
+              icon="ph ph-eye"
               color="cyan-1"
               text-color="cyan-8"
               size="md"
@@ -583,7 +612,7 @@
 
           <div class="row items-start no-wrap q-py-sm">
             <q-avatar
-              icon="monetization_on"
+              icon="ph ph-coin"
               color="yellow-2"
               text-color="yellow-9"
               size="md"
@@ -602,7 +631,7 @@
 
           <div class="row items-start no-wrap q-py-sm">
             <q-avatar
-              icon="calculate"
+              icon="ph ph-calculator"
               color="indigo-1"
               text-color="indigo-8"
               size="md"
@@ -621,7 +650,7 @@
 
           <div class="row items-start no-wrap q-py-sm">
             <q-avatar
-              icon="bar_chart"
+              icon="ph ph-chart-bar"
               color="cyan-1"
               text-color="cyan-8"
               size="md"
@@ -639,7 +668,7 @@
           <q-separator inset />
 
           <div class="row items-start no-wrap q-py-sm">
-            <q-avatar icon="check_circle" color="positive" size="md" class="q-mr-md" />
+            <q-avatar icon="ph ph-check-circle" color="positive" size="md" class="q-mr-md" />
             <div>
               <div class="text-weight-bold text-grey-9 text-subtitle2">
                 {{ $t('shop_admin.help_active_title') }}
@@ -695,6 +724,8 @@ import { globalReferenceRepository } from 'src/modules/global_reference/reposito
 import type { GlobalCurrency } from 'src/modules/global_reference/types';
 import { productService } from 'src/modules/products/services/productService';
 import type { Vendor } from 'src/modules/vendor/types';
+import { shopCategoryRepository } from '../repositories/shopCategoryRepository';
+import type { ShopCategory } from '../types';
 
 // ---- types ---------------------------------------------------------
 
@@ -703,6 +734,8 @@ type ShopForm = {
   tenant_id: number;
   name: string;
   slug: string;
+  description?: string;
+  category_ids?: number[];
   shop_type: ShopType | null;
   vendor_code: string;
   order_mode: ShopOrderMode;
@@ -766,6 +799,8 @@ const defaultForm = (): ShopForm => ({
   tenant_id: props.tenantId,
   name: '',
   slug: '',
+  description: '',
+  category_ids: [],
   shop_type: null,
   vendor_code: '',
   order_mode: 'procurement_intent',
@@ -927,6 +962,25 @@ const loadCurrencies = async () => {
   }
 };
 
+const shopCategories = ref<ShopCategory[]>([]);
+const loadingCategories = ref(false);
+
+const categoryOptions = computed(() =>
+  shopCategories.value.map((c) => ({ id: c.id, name: c.name })),
+);
+
+const loadCategories = async () => {
+  if (!props.tenantId) return;
+  loadingCategories.value = true;
+  try {
+    shopCategories.value = await shopCategoryRepository.listCategories(props.tenantId);
+  } catch (e) {
+    console.error('Failed to load categories', e);
+  } finally {
+    loadingCategories.value = false;
+  }
+};
+
 // ---- label helpers -------------------------------------------------
 
 const shopTypeOptions = computed(() => [
@@ -985,6 +1039,7 @@ watch(
 
     void loadVendors();
     void loadCurrencies();
+    void loadCategories();
 
     if (initialData) {
       shopTypeSnapshot.value = initialData.shop_type;
@@ -993,6 +1048,8 @@ watch(
         tenant_id: initialData.tenant_id,
         name: initialData.name,
         slug: initialData.slug,
+        description: initialData.description || '',
+        category_ids: initialData.category_ids || [],
         shop_type: initialData.shop_type,
         vendor_code: initialData.vendor_code ?? '',
         order_mode: initialData.order_mode,

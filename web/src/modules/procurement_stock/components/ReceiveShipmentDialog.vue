@@ -11,7 +11,7 @@
           </div>
         </div>
         <q-space />
-        <q-btn icon="close" flat round dense v-close-popup />
+        <q-btn icon="ph ph-x" flat round dense v-close-popup />
       </q-card-section>
 
       <q-card-section class="q-pa-md scroll" style="max-height: 70vh">
@@ -91,7 +91,7 @@
                     round
                     dense
                     color="negative"
-                    icon="remove_circle"
+                    icon="ph ph-minus-circle"
                     @click="removeSplit(lineIndex, splitIndex)"
                   />
                 </div>
@@ -101,7 +101,7 @@
                 <q-btn
                   flat
                   color="primary"
-                  icon="add"
+                  icon="ph ph-plus"
                   label="Add Split Row"
                   no-caps
                   dense

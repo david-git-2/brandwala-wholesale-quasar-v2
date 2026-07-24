@@ -8,7 +8,7 @@
           flat
           round
           dense
-          icon="menu"
+          icon="ph ph-list"
           class="lt-md q-mr-md"
           color="primary"
           @click="leftDrawerOpen = !leftDrawerOpen"
@@ -38,7 +38,7 @@
           dense
           color="grey-7"
           label="Close"
-          icon="close"
+          icon="ph ph-x"
           class="rounded-borders q-px-sm"
           @click="closeTab"
         />
@@ -57,7 +57,7 @@
       <div class="q-pa-md full-height column no-wrap">
         <!-- Drawer Header -->
         <div class="text-subtitle1 text-weight-bold ink-color flex items-center gap-xs q-mb-md">
-          <q-icon name="article" color="primary" size="xs" />
+          <q-icon name="ph ph-article" color="primary" size="xs" />
           <span>Articles</span>
         </div>
 
@@ -70,7 +70,7 @@
           class="search-input q-mb-md bg-white"
         >
           <template v-slot:append>
-            <q-icon name="search" size="xs" color="grey-6" />
+            <q-icon name="ph ph-magnifying-glass" size="xs" color="grey-6" />
           </template>
         </q-input>
 

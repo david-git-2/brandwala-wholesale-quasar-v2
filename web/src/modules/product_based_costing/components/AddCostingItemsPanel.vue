@@ -39,7 +39,7 @@
               />
             </div>
             <div class="col-auto">
-              <q-btn flat round dense icon="filter_alt" color="grey-8" @click="openFilterSidebar">
+              <q-btn flat round dense icon="ph ph-funnel" color="grey-8" @click="openFilterSidebar">
                 <q-badge v-if="activeFilterCount > 0" color="primary" rounded floating>
                   {{ activeFilterCount }}
                 </q-badge>
@@ -52,7 +52,7 @@
               <q-btn
                 outline
                 no-caps
-                icon="playlist_add"
+                icon="ph ph-list-plus"
                 label="Bulk codes"
                 class="full-width"
                 :color="showBulkCodes ? 'secondary' : 'primary'"
@@ -97,7 +97,7 @@
                   unelevated
                   no-caps
                   color="secondary"
-                  icon="add_shopping_cart"
+                  icon="ph ph-shopping-cart"
                   label="Add to cart"
                   class="full-width"
                   :loading="bulkLoading"
@@ -181,7 +181,7 @@
                     dense
                     no-caps
                     color="secondary"
-                    icon="add"
+                    icon="ph ph-plus"
                     class="q-px-sm"
                     label="Add"
                     :disable="isAlreadyOnFile(product)"
@@ -229,7 +229,7 @@
           </div>
 
           <div v-if="cart.length === 0" class="text-center text-grey-6 q-py-lg">
-            <q-icon name="shopping_cart" size="36px" color="grey-4" />
+            <q-icon name="ph ph-shopping-cart" size="36px" color="grey-4" />
             <div class="q-mt-sm">Search catalog and add products</div>
           </div>
 
@@ -271,7 +271,7 @@
                     dense
                     size="sm"
                     color="negative"
-                    icon="close"
+                    icon="ph ph-x"
                     @click="removeFromCart(item)"
                   />
                 </div>
@@ -340,7 +340,7 @@
               unelevated
               no-caps
               color="primary"
-              icon="save"
+              icon="ph ph-floppy-disk"
               :label="
                 cart.length ? `Save ${cart.length} item${cart.length === 1 ? '' : 's'}` : 'Save'
               "

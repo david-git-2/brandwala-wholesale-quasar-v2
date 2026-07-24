@@ -93,7 +93,7 @@
                     round
                     dense
                     size="xs"
-                    icon="keyboard_arrow_up"
+                    icon="ph ph-caret-up"
                     :disable="index === 0"
                     class="q-my-none"
                     style="height: 14px; min-height: 14px"
@@ -106,7 +106,7 @@
                     round
                     dense
                     size="xs"
-                    icon="keyboard_arrow_down"
+                    icon="ph ph-caret-down"
                     :disable="index === items.length - 1"
                     class="q-my-none"
                     style="height: 14px; min-height: 14px"
@@ -144,7 +144,7 @@
                   flat
                   round
                   dense
-                  icon="call_split"
+                  icon="ph ph-git-fork"
                   :color="isItemSplitsCompleteInDb(item) ? 'green-7' : 'orange-7'"
                   size="sm"
                   @click="openSplitDialog(item)"
@@ -312,7 +312,7 @@
               </div>
             </td>
             <td v-if="isColumnVisible('actions')" class="text-right shipment-actions-col">
-              <q-btn flat round dense icon="more_vert">
+              <q-btn flat round dense icon="ph ph-dots-three-vertical">
                 <q-menu auto-close>
                   <q-list dense style="min-width: 120px">
                     <q-item clickable @click="emit('edit-details', item)">
@@ -398,7 +398,7 @@
             :src="activeSplitItem.image_url"
             style="object-fit: cover; width: 100%; height: 100%"
           />
-          <q-icon v-else name="image" color="grey-6" />
+          <q-icon v-else name="ph ph-image" color="grey-6" />
         </q-avatar>
         <div class="col column justify-center text-left">
           <div
@@ -412,7 +412,7 @@
             {{ activeSplitItem.product_code || '-' }}
           </div>
         </div>
-        <q-btn icon="close" flat round dense v-close-popup class="q-ml-md self-start" />
+        <q-btn icon="ph ph-x" flat round dense v-close-popup class="q-ml-md self-start" />
       </q-card-section>
 
       <q-separator class="q-mx-md q-my-sm" />

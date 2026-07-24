@@ -4,7 +4,7 @@
       <!-- Header -->
       <section class="row items-center q-col-gutter-md">
         <div class="col-auto">
-          <q-btn flat round icon="arrow_back" color="grey-7" @click="goBack" />
+          <q-btn flat round icon="ph ph-arrow-left" color="grey-7" @click="goBack" />
         </div>
         <div class="col">
           <div class="text-overline">{{ $t('navigation.shops') }}</div>
@@ -59,7 +59,7 @@
                 flat
                 :label="$t('shop_admin.configure')"
                 color="primary"
-                icon="settings"
+                icon="ph ph-gear"
                 @click="editGroup(group.id)"
               />
               <q-btn
@@ -67,7 +67,7 @@
                 flat
                 :label="$t('shop_admin.collapse')"
                 color="grey-7"
-                icon="expand_less"
+                icon="ph ph-caret-up"
                 @click="editGroup(null)"
               />
             </div>

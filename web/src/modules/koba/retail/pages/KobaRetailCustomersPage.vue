@@ -12,7 +12,7 @@
         flat
         round
         color="grey-8"
-        icon="arrow_back"
+        icon="ph ph-arrow-left"
         :to="{ name: 'app-koba-retail-page' }"
         hint="Back to Products"
       />
@@ -33,7 +33,7 @@
               @update:model-value="onSearch"
             >
               <template #prepend>
-                <q-icon name="search" color="grey-6" />
+                <q-icon name="ph ph-magnifying-glass" color="grey-6" />
               </template>
             </q-input>
           </div>
@@ -41,7 +41,7 @@
             <q-btn
               flat
               color="primary"
-              icon="refresh"
+              icon="ph ph-arrows-clockwise"
               label="Reload"
               no-caps
               :loading="loading"
@@ -116,7 +116,7 @@
               flat
               round
               color="primary"
-              icon="analytics"
+              icon="ph ph-chart-line-up"
               size="sm"
               :to="{
                 name: 'app-koba-retail-customer-profile-page',

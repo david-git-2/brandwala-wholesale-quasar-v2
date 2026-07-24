@@ -7,7 +7,7 @@
             {{ isEdit ? 'Edit Shipment Item' : 'Add Manual Shipment Item' }}
           </div>
           <q-space />
-          <q-btn icon="close" flat round dense v-close-popup />
+          <q-btn icon="ph ph-x" flat round dense v-close-popup />
         </q-card-section>
 
         <q-separator class="q-my-sm" />
@@ -36,7 +36,7 @@
                   style="max-width: 100%; max-height: 100%; object-fit: contain"
                 />
                 <div v-else class="column items-center text-grey-6">
-                  <q-icon name="image" size="32px" />
+                  <q-icon name="ph ph-image" size="32px" />
                   <div class="text-caption">No Image</div>
                 </div>
               </div>
@@ -50,7 +50,7 @@
                 :disable="isReceived"
               >
                 <template #prepend>
-                  <q-icon name="link" />
+                  <q-icon name="ph ph-link" />
                 </template>
               </q-input>
             </div>
@@ -87,7 +87,7 @@
                   flat
                   dense
                   color="primary"
-                  icon="add"
+                  icon="ph ph-plus"
                   label="Create New Catalog Product"
                   @click="openCreateProductDialog"
                   no-caps
@@ -213,7 +213,7 @@
               Create New Catalog Product
             </div>
             <q-space />
-            <q-btn icon="close" flat round dense v-close-popup />
+            <q-btn icon="ph ph-x" flat round dense v-close-popup />
           </q-card-section>
 
           <q-separator />

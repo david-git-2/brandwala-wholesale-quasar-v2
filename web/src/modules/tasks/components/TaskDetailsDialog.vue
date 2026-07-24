@@ -8,7 +8,7 @@
         style="height: 250px"
       >
         <div>
-          <q-icon name="warning" size="40px" color="negative" class="q-mb-md" />
+          <q-icon name="ph ph-warning" size="40px" color="negative" class="q-mb-md" />
           <div class="text-subtitle1 text-weight-bold">Failed to Load Item</div>
           <div class="text-caption">
             The item may have been deleted, or you might not have permissions to view it.
@@ -29,7 +29,7 @@
                 class="row items-center q-gutter-x-xs text-caption text-primary cursor-pointer q-mb-xs hover-underline"
                 @click="onNavigateToParent"
               >
-                <q-icon name="arrow_back" size="14px" />
+                <q-icon name="ph ph-arrow-left" size="14px" />
                 <span>Parent: [{{ parentItem.type.toUpperCase() }}] {{ parentItem.title }}</span>
               </div>
               <div class="row items-center no-wrap full-width">
@@ -94,12 +94,12 @@
               flat
               round
               dense
-              icon="o_delete"
+              icon="ph ph-trash"
               color="negative"
               size="sm"
               @click="onClickDelete"
             />
-            <q-btn flat round dense icon="close" v-close-popup />
+            <q-btn flat round dense icon="ph ph-x" v-close-popup />
           </div>
         </q-card-section>
 
@@ -246,7 +246,7 @@
                         label="Reply"
                         color="grey-7"
                         size="xs"
-                        icon="reply"
+                        icon="ph ph-arrow-u-up-left"
                         @click="activeReplyId = c.id"
                       />
                       <q-btn
@@ -255,7 +255,7 @@
                         dense
                         round
                         color="red"
-                        icon="o_delete"
+                        icon="ph ph-trash"
                         size="xs"
                         @click="onDeleteComment(c.id)"
                       />
@@ -305,7 +305,7 @@
                   flat
                   round
                   dense
-                  icon="add"
+                  icon="ph ph-plus"
                   size="sm"
                   color="primary"
                   @click="createChildOpen = true"
@@ -341,7 +341,7 @@
                     >
                   </q-item-section>
                   <q-item-section side>
-                    <q-btn flat round dense icon="open_in_new" size="xs" color="grey" />
+                    <q-btn flat round dense icon="ph ph-arrow-up-right" size="xs" color="grey" />
                   </q-item-section>
                 </q-item>
               </q-list>
@@ -351,7 +351,7 @@
             <div class="border-top q-pt-md q-mt-lg">
               <q-expansion-item
                 label="Activity Log"
-                icon="history"
+                icon="ph ph-clock-counter-clockwise"
                 dense
                 header-class="text-weight-bold text-grey-8 text-overline q-px-none"
               >
@@ -501,7 +501,7 @@
             <q-expansion-item
               dense
               expand-separator
-              icon="tune"
+              icon="ph ph-faders"
               label="More details"
               default-opened
               header-class="text-overline text-grey-8 text-weight-bold"
@@ -527,7 +527,7 @@
                     <span class="text-caption text-grey-7"
                       >Start: {{ formatDate(item.start_date) }}</span
                     >
-                    <q-btn flat round dense icon="edit_calendar" size="xs" color="primary">
+                    <q-btn flat round dense icon="ph ph-calendar-plus" size="xs" color="primary">
                       <q-popup-proxy cover transition-show="scale" transition-hide="scale">
                         <q-date
                           v-model="startDateProxy"
@@ -552,7 +552,7 @@
                     <span class="text-caption text-grey-7"
                       >Due: {{ formatDate(item.due_date) }}</span
                     >
-                    <q-btn flat round dense icon="edit_calendar" size="xs" color="primary">
+                    <q-btn flat round dense icon="ph ph-calendar-plus" size="xs" color="primary">
                       <q-popup-proxy cover transition-show="scale" transition-hide="scale">
                         <q-date
                           v-model="dueDateProxy"
@@ -581,7 +581,7 @@
                       flat
                       round
                       dense
-                      icon="add"
+                      icon="ph ph-plus"
                       size="xs"
                       color="primary"
                       @click="showAddAssignee = !showAddAssignee"
@@ -621,7 +621,7 @@
                       flat
                       round
                       dense
-                      icon="add"
+                      icon="ph ph-plus"
                       size="xs"
                       color="primary"
                       @click="showAddTag = !showAddTag"
@@ -665,7 +665,7 @@
                       flat
                       round
                       dense
-                      icon="add"
+                      icon="ph ph-plus"
                       size="xs"
                       color="primary"
                       @click="showAddPerm = !showAddPerm"
@@ -711,7 +711,7 @@
                           flat
                           round
                           dense
-                          icon="o_delete"
+                          icon="ph ph-trash"
                           size="xs"
                           color="red"
                           @click="onDeletePermission(p.user_email)"
@@ -1360,14 +1360,14 @@ const accessibilityOptions: {
   {
     label: 'Public',
     value: 'public',
-    icon: 'lock_open',
+    icon: 'ph ph-lock-open',
     caption: 'Visible to all workspace members',
   },
-  { label: 'Private', value: 'private', icon: 'lock', caption: 'Only visible to you (creator)' },
+  { label: 'Private', value: 'private', icon: 'ph ph-lock-key', caption: 'Only visible to you (creator)' },
   {
     label: 'Restricted',
     value: 'restricted',
-    icon: 'lock_person',
+    icon: 'ph ph-lock-key',
     caption: 'Only visible to creator, assignees, and collaborators',
   },
 ];

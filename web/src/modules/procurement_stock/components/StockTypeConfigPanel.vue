@@ -9,7 +9,7 @@
           </div>
         </div>
         <q-space />
-        <q-btn icon="close" flat round dense v-close-popup />
+        <q-btn icon="ph ph-x" flat round dense v-close-popup />
       </q-card-section>
 
       <q-card-section class="q-pa-md">
@@ -112,7 +112,7 @@
                   round
                   dense
                   color="primary"
-                  icon="edit"
+                  icon="ph ph-pencil-simple"
                   @click="onStartEdit(props.row)"
                 />
                 <q-btn
@@ -120,7 +120,7 @@
                   round
                   dense
                   color="negative"
-                  icon="delete"
+                  icon="ph ph-trash"
                   @click="onDelete(props.row.id)"
                 />
               </template>

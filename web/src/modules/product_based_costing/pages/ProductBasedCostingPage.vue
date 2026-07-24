@@ -31,7 +31,7 @@
                 flat
                 round
                 dense
-                icon="search"
+                icon="ph ph-magnifying-glass"
                 aria-label="Show search"
                 @click="showSearchInput = true"
               />
@@ -49,14 +49,14 @@
                 @clear="onApplyFilters"
               >
                 <template #prepend>
-                  <q-icon name="search" />
+                  <q-icon name="ph ph-magnifying-glass" />
                 </template>
                 <template #append>
                   <q-btn
                     flat
                     round
                     dense
-                    icon="close"
+                    icon="ph ph-x"
                     aria-label="Hide search"
                     @click="
                       () => {
@@ -69,7 +69,7 @@
                 </template>
               </q-input>
 
-              <q-btn flat round dense icon="filter_alt" aria-label="Filters" @click="openFilterDrawer">
+              <q-btn flat round dense icon="ph ph-funnel" aria-label="Filters" @click="openFilterDrawer">
                 <q-badge v-if="activeFilterCount > 0" color="primary" rounded floating>
                   {{ activeFilterCount }}
                 </q-badge>
@@ -86,8 +86,8 @@
                 color="white"
                 text-color="primary"
                 :options="[
-                  { icon: 'table_rows', value: 'table' },
-                  { icon: 'grid_view', value: 'card' },
+                  { icon: 'ph ph-rows', value: 'table' },
+                  { icon: 'ph ph-squares-four', value: 'card' },
                 ]"
               />
             </div>
@@ -135,7 +135,7 @@
                   flat
                   round
                   dense
-                  icon="more_vert"
+                  icon="ph ph-dots-three-vertical"
                   aria-label="Costing file actions"
                   @click.stop
                 >

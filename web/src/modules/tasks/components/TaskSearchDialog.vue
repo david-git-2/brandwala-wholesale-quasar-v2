@@ -3,7 +3,7 @@
     <q-card class="search-card floating-surface shadow-2 relative-position">
       <q-card-section class="q-py-md row items-center justify-between">
         <div class="row items-center q-gutter-sm col">
-          <q-icon name="search" :size="$q.screen.lt.sm ? '20px' : '24px'" color="primary" />
+          <q-icon name="ph ph-magnifying-glass" :size="$q.screen.lt.sm ? '20px' : '24px'" color="primary" />
           <div class="col">
             <div
               class="text-weight-bold text-grey-9"
@@ -21,13 +21,13 @@
             unelevated
             round
             color="primary"
-            icon="add"
+            icon="ph ph-plus"
             class="pill-btn"
             @click="openCreateDialog"
           >
             <q-tooltip>New Task</q-tooltip>
           </q-btn>
-          <q-btn flat round dense icon="close" v-close-popup />
+          <q-btn flat round dense icon="ph ph-x" v-close-popup />
         </div>
       </q-card-section>
 
@@ -97,12 +97,12 @@
         </q-list>
 
         <div v-else-if="searchQuery.trim()" class="text-center q-pa-xl text-grey-6">
-          <q-icon name="info" size="36px" class="q-mb-xs" />
+          <q-icon name="ph ph-info" size="36px" class="q-mb-xs" />
           <div>No tasks found matching your search.</div>
         </div>
 
         <div v-else class="text-center q-pa-xl text-grey-5">
-          <q-icon name="manage_search" size="48px" class="q-mb-sm" />
+          <q-icon name="ph ph-magnifying-glass-plus" size="48px" class="q-mb-sm" />
           <div>
             Search for tickets, notes, bugs, and discussions across all workspaces you belong to.
           </div>

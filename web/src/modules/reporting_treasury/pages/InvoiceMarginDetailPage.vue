@@ -5,7 +5,7 @@
     :error="error"
   >
     <template #action>
-      <q-btn flat dense no-caps icon="arrow_back" label="Back to Margin Reports" @click="goBack" />
+      <q-btn flat dense no-caps icon="ph ph-arrow-left" label="Back to Margin Reports" @click="goBack" />
     </template>
 
     <!-- Loading spinner -->

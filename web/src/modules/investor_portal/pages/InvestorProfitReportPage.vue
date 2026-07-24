@@ -12,7 +12,7 @@
         <div class="col-12 col-sm-4">
           <q-input v-model="startDate" label="Start Date" outlined dense readonly>
             <template #append>
-              <q-icon name="event" class="cursor-pointer">
+              <q-icon name="ph ph-calendar" class="cursor-pointer">
                 <q-popup-proxy
                   ref="startPopup"
                   cover
@@ -37,7 +37,7 @@
         <div class="col-12 col-sm-4">
           <q-input v-model="endDate" label="End Date" outlined dense readonly>
             <template #append>
-              <q-icon name="event" class="cursor-pointer">
+              <q-icon name="ph ph-calendar" class="cursor-pointer">
                 <q-popup-proxy ref="endPopup" cover transition-show="scale" transition-hide="scale">
                   <q-date
                     v-model="endDate"
@@ -78,7 +78,7 @@
           outline
           color="primary"
           label="Export CSV"
-          icon="download"
+          icon="ph ph-download-simple"
           no-caps
           @click="exportCSV"
         />

@@ -1,7 +1,7 @@
 <template>
   <q-page class="q-pa-md bw-page">
     <div class="row items-center q-mb-md q-gutter-sm">
-      <q-btn flat round icon="arrow_back" color="grey-8" :to="{ name: 'app-koba-retail-page' }" />
+      <q-btn flat round icon="ph ph-arrow-left" color="grey-8" :to="{ name: 'app-koba-retail-page' }" />
       <div>
         <div class="text-h5 text-weight-bold">Retail Settings</div>
         <div class="text-caption text-grey-7">Configure commission rules and charges</div>
@@ -128,7 +128,7 @@
                     flat
                     round
                     color="negative"
-                    icon="o_delete"
+                    icon="ph ph-trash"
                     size="sm"
                     :disable="key === 'default'"
                     @click="removeRate(key)"
@@ -140,7 +140,7 @@
             <q-btn
               outline
               color="primary"
-              icon="add"
+              icon="ph ph-plus"
               label="Add Location"
               class="w-full"
               no-caps
@@ -154,7 +154,7 @@
         <q-btn
           color="primary"
           label="Save Settings"
-          icon="save"
+          icon="ph ph-floppy-disk"
           unelevated
           class="q-px-xl"
           no-caps

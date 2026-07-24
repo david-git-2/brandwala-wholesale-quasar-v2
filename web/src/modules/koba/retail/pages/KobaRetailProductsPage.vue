@@ -11,7 +11,7 @@
           flat
           no-caps
           color="primary"
-          icon="settings"
+          icon="ph ph-gear"
           label="Settings"
           :to="{ name: 'app-koba-retail-settings-page' }"
         />
@@ -33,7 +33,7 @@
         @update:model-value="onSearchChange"
         @clear="onSearchClear"
       >
-        <template #prepend><q-icon name="search" size="18px" /></template>
+        <template #prepend><q-icon name="ph ph-magnifying-glass" size="18px" /></template>
       </q-input>
 
       <!-- Sidebar Toggle Button -->
@@ -41,7 +41,7 @@
         flat
         round
         dense
-        icon="filter_alt"
+        icon="ph ph-funnel"
         color="primary"
         aria-label="Filters"
         @click="filterDrawerOpen = true"
@@ -64,7 +64,7 @@
           dense
           no-caps
           size="sm"
-          icon="close"
+          icon="ph ph-x"
           label="Clear"
           color="grey-7"
           @click="onClearDrawerFilters"

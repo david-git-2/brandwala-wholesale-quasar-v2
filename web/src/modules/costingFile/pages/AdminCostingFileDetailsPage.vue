@@ -41,7 +41,7 @@
           <q-btn
             outline
             color="primary"
-            icon="view_column"
+            icon="ph ph-columns"
             label="Columns"
             no-caps
             size="sm"
@@ -88,7 +88,7 @@
             v-if="selectedFile?.status === 'offered'"
             outline
             color="primary"
-            icon="visibility"
+            icon="ph ph-eye"
             label="Preview"
             no-caps
             size="sm"
@@ -98,7 +98,7 @@
           <q-btn
             outline
             color="primary"
-            icon="people"
+            icon="ph ph-users"
             label="Manage viewers"
             no-caps
             size="sm"
@@ -166,7 +166,7 @@
                   no-caps
                   size="sm"
                   color="primary"
-                  icon="open_in_new"
+                  icon="ph ph-arrow-up-right"
                   label="Open link"
                   class="pill-btn slim-btn costing-page__open-link-btn"
                   :href="props.row.websiteUrl"
@@ -402,7 +402,7 @@
                   flat
                   dense
                   color="primary"
-                  icon="o_edit"
+                  icon="ph ph-pencil-simple"
                   round
                   aria-label="Edit item"
                   :disable="savingItemId === props.row.id"
@@ -539,7 +539,7 @@
                   no-caps
                   size="sm"
                   color="primary"
-                  icon="open_in_new"
+                  icon="ph ph-arrow-up-right"
                   label="Open link"
                   class="pill-btn slim-btn costing-page__open-link-btn"
                   :href="props.row.websiteUrl"
@@ -571,7 +571,7 @@
                     v-if="
                       selectedFile?.status === 'accepted' || selectedFile?.status === 'po_placed'
                     "
-                    icon="local_shipping"
+                    icon="ph ph-truck"
                     :color="shippedItemIds.includes(props.row.id) ? 'negative' : 'primary'"
                     flat
                     round
@@ -910,7 +910,7 @@
                   flat
                   dense
                   color="primary"
-                  icon="o_edit"
+                  icon="ph ph-pencil-simple"
                   round
                   aria-label="Edit item"
                   :disable="savingItemId === props.row.id"
@@ -957,7 +957,7 @@
                   flat
                   dense
                   color="negative"
-                  icon="o_delete"
+                  icon="ph ph-trash"
                   round
                   aria-label="Delete item"
                   :loading="deletingReviewItemId === props.row.id"

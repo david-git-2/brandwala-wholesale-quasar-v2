@@ -12,7 +12,7 @@
         <div class="col-auto">
           <q-btn
             color="primary"
-            icon="add"
+            icon="ph ph-plus"
             label="Add Courier Service"
             no-caps
             class="pill-btn"
@@ -24,8 +24,8 @@
       <!-- Tabs for Catalog / Policy -->
       <q-card flat bordered class="form-card">
         <q-tabs v-model="tab" dense class="text-grey-8" active-color="primary" indicator-color="primary" align="left">
-          <q-tab name="couriers" icon="local_shipping" label="Courier Services" />
-          <q-tab name="policies" icon="assignment_return" label="Return Policy" />
+          <q-tab name="couriers" icon="ph ph-truck" label="Courier Services" />
+          <q-tab name="policies" icon="ph ph-arrow-u-down-left" label="Return Policy" />
         </q-tabs>
 
         <q-separator />
@@ -75,7 +75,7 @@
                   </td>
                   <td><span class="text-caption text-grey-7">{{ c.notes }}</span></td>
                   <td class="text-right">
-                    <q-btn flat round dense icon="edit" color="primary" @click="openEditDialog(c)" />
+                    <q-btn flat round dense icon="ph ph-pencil-simple" color="primary" @click="openEditDialog(c)" />
                   </td>
                 </tr>
               </tbody>
@@ -149,7 +149,7 @@
             <div class="text-h6 text-weight-bold text-grey-9">
               {{ editId ? 'Edit Courier Service & Policy' : 'Add Courier Service & Policy' }}
             </div>
-            <q-btn flat round dense icon="close" color="grey-7" v-close-popup />
+            <q-btn flat round dense icon="ph ph-x" color="grey-7" v-close-popup />
           </q-card-section>
 
           <q-separator />

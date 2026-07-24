@@ -16,7 +16,7 @@
           flat
           dense
           round
-          icon="close"
+          icon="ph ph-x"
           aria-label="Close"
           :disable="loading"
           @click="emit('update:modelValue', false)"
@@ -36,7 +36,7 @@
             v-else
             class="costing-item-edit-dialog__preview costing-item-edit-dialog__preview--empty"
           >
-            <q-icon name="image" size="32px" />
+            <q-icon name="ph ph-image" size="32px" />
             <div class="text-caption q-mt-sm">Image preview</div>
           </div>
 
@@ -48,17 +48,17 @@
               dense
               :rules="[(value) => !!String(value ?? '').trim() || 'Product image URL is required.']"
             >
-              <template #prepend><q-icon name="image" /></template>
+              <template #prepend><q-icon name="ph ph-image" /></template>
             </q-input>
             <q-input v-model="form.websiteUrl" label="Website URL" outlined dense readonly>
-              <template #prepend><q-icon name="link" /></template>
+              <template #prepend><q-icon name="ph ph-link" /></template>
               <template #append>
                 <q-btn
                   v-if="externalWebsiteUrl"
                   flat
                   dense
                   round
-                  icon="open_in_new"
+                  icon="ph ph-arrow-up-right"
                   aria-label="Open website URL"
                   :href="externalWebsiteUrl"
                   target="_blank"
@@ -77,7 +77,7 @@
             dense
             :rules="[(value) => !!String(value ?? '').trim() || 'Name is required.']"
           >
-            <template #prepend><q-icon name="badge" /></template>
+            <template #prepend><q-icon name="ph ph-identification-badge" /></template>
           </q-input>
           <q-select
             v-model="form.itemType"
@@ -88,7 +88,7 @@
             clearable
             hint="Pick the closest product type."
           >
-            <template #prepend><q-icon name="category" /></template>
+            <template #prepend><q-icon name="ph ph-squares-four" /></template>
           </q-select>
           <q-input
             v-model.number="form.priceInWebGbp"
@@ -102,7 +102,7 @@
                 'Web price is required.',
             ]"
           >
-            <template #prepend><q-icon name="currency_pound" /></template>
+            <template #prepend><q-icon name="ph ph-currency-gbp" /></template>
           </q-input>
           <q-input
             v-model.number="form.productWeight"
@@ -116,7 +116,7 @@
                 'Product weight is required.',
             ]"
           >
-            <template #prepend><q-icon name="fitness_center" /></template>
+            <template #prepend><q-icon name="ph ph-barbell" /></template>
           </q-input>
           <q-input
             v-model.number="form.packageWeight"
@@ -130,7 +130,7 @@
                 'Package weight is required.',
             ]"
           >
-            <template #prepend><q-icon name="scale" /></template>
+            <template #prepend><q-icon name="ph ph-scales" /></template>
           </q-input>
           <q-input
             v-model.number="form.deliveryPriceGbp"
@@ -144,7 +144,7 @@
                 'Delivery charge is required.',
             ]"
           >
-            <template #prepend><q-icon name="local_shipping" /></template>
+            <template #prepend><q-icon name="ph ph-truck" /></template>
           </q-input>
         </div>
       </q-card-section>

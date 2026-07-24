@@ -3,7 +3,7 @@
     <q-card style="min-width: 420px; max-width: 90vw">
       <q-card-section class="row items-center justify-between">
         <div class="text-h6">Add Shipment</div>
-        <q-btn flat round dense icon="close" :disable="loading" @click="onCancel" />
+        <q-btn flat round dense icon="ph ph-x" :disable="loading" @click="onCancel" />
       </q-card-section>
 
       <q-separator />
@@ -20,7 +20,7 @@
           :disable="loading"
         >
           <template #after>
-            <q-btn round dense flat icon="add" color="primary" @click="onCreateShipment">
+            <q-btn round dense flat icon="ph ph-plus" color="primary" @click="onCreateShipment">
               <q-tooltip>Create new shipment</q-tooltip>
             </q-btn>
           </template>

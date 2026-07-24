@@ -3,10 +3,10 @@
     <q-card class="tag-card floating-surface shadow-2">
       <q-card-section class="q-py-md row items-center justify-between border-bottom">
         <div class="row items-center q-gutter-sm">
-          <q-icon name="local_offer" size="24px" color="primary" />
+          <q-icon name="ph ph-tag" size="24px" color="primary" />
           <div class="text-h6 text-weight-bold">Manage Tags</div>
         </div>
-        <q-btn flat round dense icon="close" v-close-popup />
+        <q-btn flat round dense icon="ph ph-x" v-close-popup />
       </q-card-section>
 
       <q-card-section class="q-pb-none">
@@ -39,7 +39,7 @@
           <div class="col-12 col-sm-3">
             <q-input v-model="newTag.color" label="Color" outlined dense class="color-input">
               <template #append>
-                <q-icon name="colorize" class="cursor-pointer" color="grey-8">
+                <q-icon name="ph ph-palette" class="cursor-pointer" color="grey-8">
                   <q-popup-proxy cover transition-show="scale" transition-hide="scale">
                     <q-color v-model="newTag.color" />
                   </q-popup-proxy>
@@ -56,7 +56,7 @@
               round
               dense
               color="grey-7"
-              icon="close"
+              icon="ph ph-x"
               @click="cancelEdit"
             >
               <q-tooltip>Cancel Edit</q-tooltip>
@@ -123,7 +123,7 @@
                   round
                   dense
                   color="primary"
-                  icon="edit"
+                  icon="ph ph-pencil-simple"
                   size="sm"
                   @click="onEditTag(tag)"
                 >
@@ -134,7 +134,7 @@
                   round
                   dense
                   color="negative"
-                  icon="o_delete"
+                  icon="ph ph-trash"
                   size="sm"
                   @click="onDeleteTag(tag.id)"
                 >
@@ -146,7 +146,7 @@
         </q-list>
 
         <div v-else class="text-center q-pa-xl text-grey-5">
-          <q-icon name="info" size="36px" class="q-mb-xs" />
+          <q-icon name="ph ph-info" size="36px" class="q-mb-xs" />
           <div>No custom tags created yet. Create your first tag above!</div>
         </div>
       </q-card-section>

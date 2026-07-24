@@ -14,24 +14,24 @@
             no-caps
             class="pill-btn text-weight-bold"
             label="Create Invoice"
-            icon="add"
+            icon="ph ph-plus"
           >
             <q-list dense style="min-width: 180px">
               <q-item clickable v-close-popup @click="createWholesaleDialog = true">
                 <q-item-section avatar>
-                  <q-icon name="business" color="purple" size="20px" />
+                  <q-icon name="ph ph-briefcase" color="purple" size="20px" />
                 </q-item-section>
                 <q-item-section>Wholesale Invoice</q-item-section>
               </q-item>
               <q-item clickable v-close-popup @click="createRetailDialog = true">
                 <q-item-section avatar>
-                  <q-icon name="shopping_bag" color="blue" size="20px" />
+                  <q-icon name="ph ph-tote" color="blue" size="20px" />
                 </q-item-section>
                 <q-item-section>Retail Invoice</q-item-section>
               </q-item>
               <q-item clickable v-close-popup @click="createDropshipDialog = true">
                 <q-item-section avatar>
-                  <q-icon name="local_shipping" color="orange" size="20px" />
+                  <q-icon name="ph ph-truck" color="orange" size="20px" />
                 </q-item-section>
                 <q-item-section>Dropship Invoice</q-item-section>
               </q-item>
@@ -49,7 +49,7 @@
               <div class="row justify-between items-center">
                 <div class="text-caption text-weight-bold opacity-80">Total Receivables</div>
                 <q-avatar size="24px" class="bg-white-20">
-                  <q-icon name="account_balance_wallet" size="14px" />
+                  <q-icon name="ph ph-wallet" size="14px" />
                 </q-avatar>
               </div>
               <div class="text-h6 text-weight-bolder q-mt-xs">
@@ -75,7 +75,7 @@
               <div>
                 <div class="row items-center q-gutter-xs">
                   <q-avatar size="24px" color="green-1" text-color="green">
-                    <q-icon name="payments" size="12px" />
+                    <q-icon name="ph ph-money" size="12px" />
                   </q-avatar>
                   <span class="text-caption text-grey-8 text-weight-bold q-ml-xs">Paid</span>
                 </div>
@@ -83,7 +83,7 @@
                   {{ formatAmount(totalPaid) }}
                 </div>
                 <div class="text-xxs text-green text-weight-bold q-mt-xs row items-center">
-                  <q-icon name="trending_up" size="12px" class="q-mr-xs" />
+                  <q-icon name="ph ph-trend-up" size="12px" class="q-mr-xs" />
                   {{ paidPercent }}% collected
                 </div>
               </div>
@@ -108,7 +108,7 @@
               <div>
                 <div class="row items-center q-gutter-xs">
                   <q-avatar size="24px" color="blue-1" text-color="blue">
-                    <q-icon name="pending_actions" size="12px" />
+                    <q-icon name="ph ph-hourglass-medium" size="12px" />
                   </q-avatar>
                   <span class="text-caption text-grey-8 text-weight-bold q-ml-xs">Unpaid</span>
                 </div>
@@ -116,7 +116,7 @@
                   {{ formatAmount(totalDue) }}
                 </div>
                 <div class="text-xxs text-blue text-weight-bold q-mt-xs row items-center">
-                  <q-icon name="trending_flat" size="12px" class="q-mr-xs" />
+                  <q-icon name="ph ph-arrow-right" size="12px" class="q-mr-xs" />
                   {{ unpaidPercent }}% outstanding
                 </div>
               </div>
@@ -147,7 +147,7 @@
               <div>
                 <div class="row items-center q-gutter-xs">
                   <q-avatar size="24px" color="red-1" text-color="red">
-                    <q-icon name="error_outline" size="12px" />
+                    <q-icon name="ph ph-warning-circle" size="12px" />
                   </q-avatar>
                   <span class="text-caption text-grey-8 text-weight-bold q-ml-xs">Overdue</span>
                 </div>
@@ -155,7 +155,7 @@
                   {{ formatAmount(totalOverdue) }}
                 </div>
                 <div class="text-xxs text-red text-weight-bold q-mt-xs row items-center">
-                  <q-icon name="trending_down" size="12px" class="q-mr-xs" />
+                  <q-icon name="ph ph-trend-down" size="12px" class="q-mr-xs" />
                   {{ overduePercent }}% overdue
                 </div>
               </div>
@@ -205,7 +205,7 @@
               flat
               round
               dense
-              icon="search"
+              icon="ph ph-magnifying-glass"
               aria-label="Show search"
               @click="showSearchInput = true"
             >
@@ -224,14 +224,14 @@
               @keyup.enter="onSearchChange"
             >
               <template #prepend>
-                <q-icon name="search" size="18px" />
+                <q-icon name="ph ph-magnifying-glass" size="18px" />
               </template>
               <template #append>
                 <q-btn
                   flat
                   round
                   dense
-                  icon="close"
+                  icon="ph ph-x"
                   size="18px"
                   aria-label="Hide search"
                   @click="onCloseSearch"
@@ -243,7 +243,7 @@
               flat
               round
               dense
-              icon="filter_alt"
+              icon="ph ph-funnel"
               aria-label="Filters"
               @click="filterDrawerOpen = true"
             >
@@ -268,7 +268,7 @@
         v-else-if="!invoicesList.length && activeFilterCount === 0 && quickFilter === 'all'"
         class="column items-center justify-center q-pa-xl text-grey-6 empty-state-block floating-surface shadow-1"
       >
-        <q-icon name="description" size="64px" class="q-mb-sm text-grey-4" />
+        <q-icon name="ph ph-file-text" size="64px" class="q-mb-sm text-grey-4" />
         <div class="text-subtitle1 text-weight-medium">No Sales Invoices Found</div>
         <div class="text-caption text-grey-5">
           Invoices will appear here once created for this parent company.
@@ -417,13 +417,13 @@
                   round
                   dense
                   color="grey-7"
-                  icon="visibility"
+                  icon="ph ph-eye"
                   size="sm"
                   @click="goToDetails(props.row)"
                 >
                   <q-tooltip>View Invoice</q-tooltip>
                 </q-btn>
-                <q-btn flat round dense color="grey-7" icon="more_vert" size="sm">
+                <q-btn flat round dense color="grey-7" icon="ph ph-dots-three-vertical" size="sm">
                   <q-menu auto-close>
                     <q-list dense style="min-width: 120px">
                       <q-item clickable @click="goToDetails(props.row)">
@@ -488,7 +488,7 @@
             color="primary"
             style="min-height: 40px; border-color: rgba(0, 0, 0, 0.12)"
           >
-            <q-icon name="event" class="q-mr-xs" color="primary" />
+            <q-icon name="ph ph-calendar" class="q-mr-xs" color="primary" />
             <span class="text-caption text-grey-8">{{ dateRangeLabel }}</span>
             <q-popup-proxy cover transition-show="scale" transition-hide="scale">
               <q-date v-model="selectedDateRange" range>

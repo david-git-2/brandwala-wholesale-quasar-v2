@@ -204,7 +204,7 @@
                         color="primary"
                         class="pill-btn"
                         no-caps
-                        icon="add"
+                        icon="ph ph-plus"
                         label="Add Role"
                         @click="openCreateRoleDialog"
                       />
@@ -221,7 +221,7 @@
                   v-else-if="filteredRoles.length === 0"
                   class="text-center text-grey-7 q-pa-xl floating-surface bg-white shadow-1"
                 >
-                  <q-icon name="admin_panel_settings" size="48px" class="q-mb-sm" />
+                  <q-icon name="ph ph-shield-check" size="48px" class="q-mb-sm" />
                   <div>No roles found for the selected scope.</div>
                 </div>
 
@@ -276,7 +276,7 @@
                               flat
                               no-caps
                               color="primary"
-                              icon="admin_panel_settings"
+                              icon="ph ph-shield-check"
                               label="Configure Grants"
                               @click="navigateToGrants(role.id)"
                             />
@@ -288,7 +288,7 @@
                               flat
                               round
                               dense
-                              icon="edit"
+                              icon="ph ph-pencil-simple"
                               color="grey-7"
                               @click="openEditRoleDialog(role)"
                             />
@@ -297,7 +297,7 @@
                               flat
                               round
                               dense
-                              icon="delete"
+                              icon="ph ph-trash"
                               color="negative"
                               @click="openDeleteRoleDialog(role)"
                             />
@@ -328,7 +328,7 @@
                       class="pill-btn slim-btn"
                       no-caps
                       size="sm"
-                      icon="person_add"
+                      icon="ph ph-user-plus"
                       label="Add Member"
                       @click="onClickAddMember('staff')"
                     />
@@ -367,7 +367,7 @@
                             dense
                             color="orange-2"
                             text-color="orange-9"
-                            icon="shield"
+                            icon="ph ph-shield"
                           />
                         </div>
                       </q-td>
@@ -398,7 +398,7 @@
                           color="primary"
                           flat
                           no-caps
-                          icon="admin_panel_settings"
+                          icon="ph ph-shield-check"
                           label="Grants"
                           @click="openOverridesDialog(props.row, 'app')"
                         />
@@ -424,7 +424,7 @@
                           color="negative"
                           flat
                           round
-                          icon="o_delete"
+                          icon="ph ph-trash"
                           @click="onClickDeleteMember(props.row)"
                         />
                       </q-td>
@@ -459,7 +459,7 @@
                             dense
                             color="orange-2"
                             text-color="orange-9"
-                            icon="shield"
+                            icon="ph ph-shield"
                           />
                         </div>
                       </q-td>
@@ -490,7 +490,7 @@
                           color="primary"
                           flat
                           no-caps
-                          icon="admin_panel_settings"
+                          icon="ph ph-shield-check"
                           label="Grants"
                           @click="openOverridesDialog(props.row, 'app')"
                         />
@@ -516,7 +516,7 @@
                           color="negative"
                           flat
                           round
-                          icon="o_delete"
+                          icon="ph ph-trash"
                           @click="onClickDeleteMember(props.row)"
                         />
                       </q-td>
@@ -545,7 +545,7 @@
                         class="pill-btn slim-btn"
                         no-caps
                         size="sm"
-                        icon="groups"
+                        icon="ph ph-users-three"
                         label="Add"
                         @click="openCreateGroupDialog"
                       />
@@ -596,7 +596,7 @@
                               flat
                               round
                               dense
-                              icon="o_edit"
+                              icon="ph ph-pencil-simple"
                               @click.stop="openEditGroupDialog(group)"
                             />
                             <q-btn
@@ -604,7 +604,7 @@
                               round
                               dense
                               color="negative"
-                              icon="o_delete"
+                              icon="ph ph-trash"
                               @click.stop="openDeleteGroupDialog(group)"
                             />
                           </div>
@@ -631,7 +631,7 @@
                         class="pill-btn slim-btn"
                         no-caps
                         size="sm"
-                        icon="person_add"
+                        icon="ph ph-user-plus"
                         label="Add Customer User"
                         :disable="!selectedCustomerGroup"
                         @click="openCreateCustomerMemberDialog"
@@ -714,7 +714,7 @@
                                   dense
                                   color="orange-2"
                                   text-color="orange-9"
-                                  icon="shield"
+                                  icon="ph ph-shield"
                                 />
                               </div>
                             </q-td>
@@ -747,7 +747,7 @@
                                 color="primary"
                                 flat
                                 no-caps
-                                icon="admin_panel_settings"
+                                icon="ph ph-shield-check"
                                 label="Grants"
                                 @click="openOverridesDialog(props.row, 'shop')"
                               />
@@ -774,7 +774,7 @@
                                   flat
                                   round
                                   dense
-                                  icon="o_edit"
+                                  icon="ph ph-pencil-simple"
                                   @click="openEditCustomerMemberDialog(props.row)"
                                 />
                                 <q-btn
@@ -782,7 +782,7 @@
                                   round
                                   dense
                                   color="negative"
-                                  icon="o_delete"
+                                  icon="ph ph-trash"
                                   @click="openDeleteCustomerMemberDialog(props.row)"
                                 />
                               </div>
@@ -809,7 +809,7 @@
                         class="pill-btn slim-btn"
                         no-caps
                         size="sm"
-                        icon="link"
+                        icon="ph ph-link"
                         label="Link Billing Profile"
                         :disable="!selectedCustomerGroup"
                         @click="openLinkProfileDialog"
@@ -848,7 +848,7 @@
                               round
                               dense
                               color="negative"
-                              icon="link_off"
+                              icon="ph ph-link-break"
                               @click="unlinkProfile(props.row)"
                             >
                               <q-tooltip>Unlink from Group</q-tooltip>
@@ -877,7 +877,7 @@
                     class="pill-btn slim-btn"
                     no-caps
                     size="sm"
-                    icon="person_add"
+                    icon="ph ph-user-plus"
                     label="Add Investor"
                     @click="onClickAddMember('investor')"
                   />
@@ -943,7 +943,7 @@
                           color="negative"
                           flat
                           round
-                          icon="o_delete"
+                          icon="ph ph-trash"
                           @click="onClickDeleteMember(props.row)"
                         />
                       </q-td>
@@ -967,7 +967,7 @@
         <q-card-section class="row items-center q-pb-none">
           <div class="text-h6 text-weight-bold">{{ isRoleEdit ? 'Edit Role' : 'Create Role' }}</div>
           <q-space />
-          <q-btn icon="close" flat round dense v-close-popup />
+          <q-btn icon="ph ph-x" flat round dense v-close-popup />
         </q-card-section>
 
         <q-card-section class="q-py-md">
@@ -1022,7 +1022,7 @@
     <q-dialog v-model="roleDeleteDialogOpen" persistent>
       <q-card style="min-width: 350px; border-radius: 12px">
         <q-card-section class="row items-center">
-          <q-avatar icon="warning" color="warning" text-color="white" />
+          <q-avatar icon="ph ph-warning" color="warning" text-color="white" />
           <span class="q-ml-sm text-subtitle1 text-weight-bold">Delete Role</span>
         </q-card-section>
 
@@ -1059,7 +1059,7 @@
             </div>
           </div>
           <q-space />
-          <q-btn icon="close" flat round dense v-close-popup />
+          <q-btn icon="ph ph-x" flat round dense v-close-popup />
         </q-card-section>
 
         <q-card-section class="q-py-md">
@@ -1126,7 +1126,7 @@
             }}
           </div>
           <q-space />
-          <q-btn icon="close" flat round dense v-close-popup />
+          <q-btn icon="ph ph-x" flat round dense v-close-popup />
         </q-card-section>
 
         <q-card-section class="q-py-md q-gutter-md">
@@ -1190,7 +1190,7 @@
     <q-dialog v-model="openDeleteMemberDialog" persistent>
       <q-card style="min-width: 350px; border-radius: 12px">
         <q-card-section class="row items-center">
-          <q-avatar icon="warning" color="warning" text-color="white" />
+          <q-avatar icon="ph ph-warning" color="warning" text-color="white" />
           <span class="q-ml-sm text-subtitle1 text-weight-bold">Confirm Delete</span>
         </q-card-section>
 
@@ -1222,7 +1222,7 @@
             {{ customerGroupForm.id ? 'Edit Customer Group' : 'Create Customer Group' }}
           </div>
           <q-space />
-          <q-btn icon="close" flat round dense v-close-popup />
+          <q-btn icon="ph ph-x" flat round dense v-close-popup />
         </q-card-section>
 
         <q-card-section class="q-py-md q-gutter-md">
@@ -1269,7 +1269,7 @@
     <q-dialog v-model="openDeleteCustomerGroupDialog" persistent>
       <q-card style="min-width: 350px; border-radius: 12px">
         <q-card-section class="row items-center">
-          <q-avatar icon="warning" color="warning" text-color="white" />
+          <q-avatar icon="ph ph-warning" color="warning" text-color="white" />
           <span class="q-ml-sm text-subtitle1 text-weight-bold">Delete Customer Group</span>
         </q-card-section>
 
@@ -1305,7 +1305,7 @@
             }}
           </div>
           <q-space />
-          <q-btn icon="close" flat round dense v-close-popup />
+          <q-btn icon="ph ph-x" flat round dense v-close-popup />
         </q-card-section>
 
         <q-card-section class="q-py-md q-gutter-md">
@@ -1354,7 +1354,7 @@
     <q-dialog v-model="openDeleteCustomerMemberDialogModel" persistent>
       <q-card style="min-width: 350px; border-radius: 12px">
         <q-card-section class="row items-center">
-          <q-avatar icon="warning" color="warning" text-color="white" />
+          <q-avatar icon="ph ph-warning" color="warning" text-color="white" />
           <span class="q-ml-sm text-subtitle1 text-weight-bold">Confirm Delete</span>
         </q-card-section>
 
@@ -1384,7 +1384,7 @@
         <q-card-section class="row items-center q-pb-none">
           <div class="text-h6 text-weight-bold">Link Billing Profile</div>
           <q-space />
-          <q-btn icon="close" flat round dense v-close-popup />
+          <q-btn icon="ph ph-x" flat round dense v-close-popup />
         </q-card-section>
 
         <q-card-section class="q-py-md">
@@ -1414,7 +1414,7 @@
                 no-caps
                 unelevated
                 class="pill-btn"
-                icon="add"
+                icon="ph ph-plus"
                 label="Create Billing Profile"
                 @click="goToBillingProfileCreate"
               />

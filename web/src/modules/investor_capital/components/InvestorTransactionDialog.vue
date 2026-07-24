@@ -28,7 +28,7 @@
 
         <q-input v-model="form.date" label="Date" outlined dense readonly>
           <template #append>
-            <q-icon name="event" class="cursor-pointer">
+            <q-icon name="ph ph-calendar" class="cursor-pointer">
               <q-popup-proxy
                 ref="datePopupRef"
                 cover

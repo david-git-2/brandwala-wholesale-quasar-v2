@@ -15,7 +15,7 @@
                 no-caps
                 size="sm"
                 class="pill-btn slim-btn"
-                icon="arrow_back"
+                icon="ph ph-arrow-left"
                 label="Back to file"
                 :disable="!selectedFile"
                 @click="goBackToFile"
@@ -116,7 +116,7 @@
                   flat
                   dense
                   color="negative"
-                  icon="remove_circle"
+                  icon="ph ph-minus-circle"
                   label="Remove"
                   :loading="savingMembershipId === props.row.membership_id"
                   :disable="savingMembershipId !== null"
@@ -127,7 +127,7 @@
                   flat
                   dense
                   color="primary"
-                  icon="person_add"
+                  icon="ph ph-user-plus"
                   label="Add"
                   :loading="savingMembershipId === props.row.membership_id"
                   :disable="savingMembershipId !== null || !props.row.is_active"

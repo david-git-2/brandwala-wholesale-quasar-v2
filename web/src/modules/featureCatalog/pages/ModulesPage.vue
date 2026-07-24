@@ -11,7 +11,7 @@
           <q-btn
             color="primary"
             unelevated
-            icon="add"
+            icon="ph ph-plus"
             label="Add Module"
             @click="onClickAddModule"
           />
@@ -45,11 +45,11 @@
                     {{ parent.description || 'No description provided yet.' }}
                   </div>
                   <div class="row justify-end q-gutter-sm q-mt-md">
-                    <q-btn flat round icon="o_edit" @click.stop="onClickEditModule(parent)" />
+                    <q-btn flat round icon="ph ph-pencil-simple" @click.stop="onClickEditModule(parent)" />
                     <q-btn
                       flat
                       round
-                      icon="o_delete"
+                      icon="ph ph-trash"
                       color="negative"
                       :disable="isSeededModule(parent.key)"
                       @click.stop="onClickDeleteModule(parent)"
@@ -78,11 +78,11 @@
                       {{ child.description || 'No description provided yet.' }}
                     </div>
                     <div class="row justify-end q-gutter-sm q-mt-md">
-                      <q-btn flat round icon="o_edit" @click.stop="onClickEditModule(child)" />
+                      <q-btn flat round icon="ph ph-pencil-simple" @click.stop="onClickEditModule(child)" />
                       <q-btn
                         flat
                         round
-                        icon="o_delete"
+                        icon="ph ph-trash"
                         color="negative"
                         :disable="isSeededModule(child.key)"
                         @click.stop="onClickDeleteModule(child)"
@@ -104,7 +104,7 @@
             class="q-mt-md"
             color="primary"
             unelevated
-            icon="add"
+            icon="ph ph-plus"
             label="Create Module"
             @click="onClickAddModule"
           />

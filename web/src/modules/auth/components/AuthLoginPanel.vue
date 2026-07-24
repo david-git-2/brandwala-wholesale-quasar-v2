@@ -11,7 +11,7 @@
 
     <!-- Error banner -->
     <div v-if="loginErrorMessage" class="auth-card__error" role="alert">
-      <q-icon name="o_error_outline" size="1.1rem" class="auth-card__error-icon" />
+      <q-icon name="ph ph-warning-circle" size="1.1rem" class="auth-card__error-icon" />
       <span>{{ loginErrorMessage }}</span>
     </div>
 
@@ -90,7 +90,7 @@
 
     <!-- Security note -->
     <p class="auth-card__secure-note">
-      <q-icon name="o_lock" size="0.85rem" style="vertical-align: -2px" />
+      <q-icon name="ph ph-lock-key" size="0.85rem" style="vertical-align: -2px" />
       Secured with OAuth 2.0 — we never store your password
     </p>
   </section>

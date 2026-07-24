@@ -6,7 +6,7 @@
           <div class="text-h6 text-weight-bold">Marketing Tag Layout</div>
           <div class="text-caption text-grey-8">{{ shipmentName }}</div>
         </div>
-        <q-btn flat round dense icon="close" v-close-popup />
+        <q-btn flat round dense icon="ph ph-x" v-close-popup />
       </q-card-section>
       <q-separator />
 

@@ -81,7 +81,7 @@
 
           <q-btn
             color="primary"
-            icon="print"
+            icon="ph ph-printer"
             label="Print Recipient Invoice"
             no-caps
             class="full-width pill-btn text-weight-bold"

@@ -123,7 +123,7 @@
               flat
               round
               dense
-              icon="add_circle"
+              icon="ph ph-plus-circle"
               color="primary"
               :disable="!pickableContext(group)"
               @click.stop="onSelectGroup(group)"
@@ -133,12 +133,12 @@
       </q-list>
 
       <div v-else-if="searchQuery.trim() && !loading" class="text-center q-pa-xl text-grey-6">
-        <q-icon name="info" size="36px" class="q-mb-xs" />
+        <q-icon name="ph ph-info" size="36px" class="q-mb-xs" />
         <div>No stock items found matching your search.</div>
       </div>
 
       <div v-else-if="!loading && mode !== 'invoice'" class="text-center q-pa-xl text-grey-5">
-        <q-icon name="manage_search" size="48px" class="q-mb-sm" />
+        <q-icon name="ph ph-magnifying-glass-plus" size="48px" class="q-mb-sm" />
         <div>Search stock across your organization. Your allocations appear first.</div>
       </div>
     </div>
