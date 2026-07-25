@@ -117,7 +117,7 @@ const onBrandChanged = (id: number | null) => {
   }
 };
 
-const combineInvoiceItemsForPreview = (itemList: GlobalInvoiceItemRow[], isDropship: boolean) => {
+const combineInvoiceItemsForPreview = (itemList: GlobalInvoiceItemRow[]) => {
   const grouped: Record<
     string,
     {
@@ -132,13 +132,8 @@ const combineInvoiceItemsForPreview = (itemList: GlobalInvoiceItemRow[], isDrops
 
   for (const row of itemList) {
     const key = row.name_snapshot;
-
-    const unit = isDropship
-      ? Number(row.recipient_price_amount ?? row.sell_price_amount)
-      : Number(row.sell_price_amount);
-    const lineTotal = isDropship
-      ? Number(row.line_face_total_amount ?? row.line_total_amount)
-      : Number(row.line_total_amount);
+    const unit = Number(row.sell_price_amount);
+    const lineTotal = Number(row.line_total_amount);
 
     if (!grouped[key]) {
       grouped[key] = {
@@ -164,15 +159,11 @@ const combineInvoiceItemsForPreview = (itemList: GlobalInvoiceItemRow[], isDrops
 const printModel = computed<InvoicePrintModel>(() => {
   const inv = invoice.value;
   const isWholesale = inv?.invoice_type === 'wholesale';
-  const isDropship = inv?.invoice_type === 'dropship';
-  const subtotal = isDropship
-    ? (inv?.face_subtotal_amount ?? inv?.subtotal_amount ?? 0)
-    : (inv?.subtotal_amount ?? 0);
+  const subtotal = inv?.subtotal_amount ?? 0;
 
   // Construct charges array from inline header columns
   const inlineCharges = [
     { type: 'delivery', label: 'Delivery', amount: Number(inv?.shipping_charge ?? 0) },
-    { type: 'cod', label: 'COD', amount: Number(inv?.cod_charge ?? 0) },
     { type: 'print', label: 'Print', amount: Number(inv?.print_charge ?? 0) },
     { type: 'packing', label: 'Wrapping', amount: Number(inv?.wrapping_charge ?? 0) },
   ].filter((c) => c.amount > 0);
@@ -185,7 +176,6 @@ const printModel = computed<InvoicePrintModel>(() => {
     {
       invoice_type: inv?.invoice_type as 'wholesale' | 'retail' | 'dropship',
       shipping_charge: inv?.shipping_charge,
-      cod_charge: inv?.cod_charge,
       print_charge: inv?.print_charge,
       wrapping_charge: inv?.wrapping_charge,
       discount_amount: inv?.discount_amount,
@@ -211,7 +201,7 @@ const printModel = computed<InvoicePrintModel>(() => {
     recipientName: inv?.recipient_name || inv?.billing_profiles?.name || '-',
     recipientPhone: inv?.recipient_phone ?? null,
     recipientAddress: inv?.recipient_address ?? null,
-    lines: combineInvoiceItemsForPreview(items.value, isDropship),
+    lines: combineInvoiceItemsForPreview(items.value),
     charges: inlineCharges,
     subtotal,
     discount: Number(inv?.discount_amount ?? 0),

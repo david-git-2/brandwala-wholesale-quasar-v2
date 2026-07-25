@@ -289,10 +289,10 @@ import { useQuasar } from 'quasar';
 
 const props = defineProps<{
   modelValue: boolean;
-  product: any | null;
-  shopDetails?: any | null;
-  permissions?: any | null;
-  cartItem?: any | null;
+  product: Record<string, any> | null;
+  shopDetails?: Record<string, any> | null | undefined;
+  permissions?: Record<string, any> | null | undefined;
+  cartItem?: Record<string, any> | null | undefined;
   saving?: boolean;
 }>();
 

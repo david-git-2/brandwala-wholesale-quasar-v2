@@ -512,7 +512,7 @@ const {
 
 const filterDrawerOpen = ref(false);
 const quickViewOpen = ref(false);
-const selectedQuickViewProduct = ref<any | null>(null);
+const selectedQuickViewProduct = ref<any>(null);
 
 const lookupParams = computed(() => ({
   vendorCode: shopDetails.value?.vendor_code ?? null,

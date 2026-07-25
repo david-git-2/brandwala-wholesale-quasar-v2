@@ -235,6 +235,7 @@ export interface ShopOrderItem {
   delivered_quantity: number;
   returned_quantity: number;
   procurement_pulled: boolean;
+  sku?: string | null;
   created_at: string;
   updated_at: string;
 }

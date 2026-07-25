@@ -8,8 +8,8 @@ export function useCreateShopCategoryMutation() {
 
   return useMutation({
     mutationFn: (input: CreateShopCategoryPayload) => shopCategoryRepository.createCategory(input),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
+    onSuccess: async (_, variables) => {
+      await queryClient.invalidateQueries({
         queryKey: shopOrderQueryKeys.categories(variables.tenant_id),
       });
     },
@@ -21,8 +21,8 @@ export function useUpdateShopCategoryMutation() {
 
   return useMutation({
     mutationFn: (input: UpdateShopCategoryPayload) => shopCategoryRepository.updateCategory(input),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
+    onSuccess: async (_, variables) => {
+      await queryClient.invalidateQueries({
         queryKey: shopOrderQueryKeys.categories(variables.tenant_id),
       });
     },
@@ -35,8 +35,8 @@ export function useDeleteShopCategoryMutation() {
   return useMutation({
     mutationFn: (input: { id: number; tenantId: number }) =>
       shopCategoryRepository.deleteCategory(input.id, input.tenantId),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
+    onSuccess: async (_, variables) => {
+      await queryClient.invalidateQueries({
         queryKey: shopOrderQueryKeys.categories(variables.tenantId),
       });
     },

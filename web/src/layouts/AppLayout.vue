@@ -187,7 +187,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute } from 'vue-router';
 
 import WorkspaceShell from 'src/components/WorkspaceShell.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
@@ -206,7 +206,7 @@ const tenantStore = useTenantStore();
 const tenantPreferenceStore = useTenantPreferenceStore();
 const membershipPreferenceStore = useMembershipPreferenceStore();
 const route = useRoute();
-const router = useRouter();
+// Layout initialized
 const { links } = useAppWorkspaceLinks();
 
 const workspaceShellRef = ref<InstanceType<typeof WorkspaceShell> | null>(null);

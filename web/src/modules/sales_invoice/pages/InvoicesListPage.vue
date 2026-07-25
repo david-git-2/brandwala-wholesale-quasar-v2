@@ -257,7 +257,52 @@
       </q-card>
 
       <!-- Loaders & States -->
-      <PageInitialLoader v-if="invoicesQuery.isLoading.value && !invoicesList.length" />
+      <q-markup-table v-if="invoicesQuery.isLoading.value && !invoicesList.length" flat bordered class="invoice-table treasury-table-wrap">
+        <thead>
+          <tr>
+            <th><q-skeleton type="text" width="80px" /></th>
+            <th><q-skeleton type="text" width="120px" /></th>
+            <th><q-skeleton type="text" width="80px" /></th>
+            <th><q-skeleton type="text" width="80px" /></th>
+            <th class="text-right"><q-skeleton type="text" width="90px" class="q-ml-auto" /></th>
+            <th><q-skeleton type="text" width="60px" /></th>
+            <th class="text-right"><q-skeleton type="text" width="40px" class="q-ml-auto" /></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="n in 6" :key="n">
+            <td>
+              <q-skeleton type="text" width="90px" height="18px" class="q-mb-xs" />
+              <q-skeleton type="QBadge" width="60px" height="18px" />
+            </td>
+            <td>
+              <div class="row items-center no-wrap">
+                <q-skeleton type="QAvatar" size="36px" class="q-mr-sm" />
+                <div class="col">
+                  <q-skeleton type="text" width="70%" height="16px" />
+                  <q-skeleton type="text" width="50%" height="12px" />
+                </div>
+              </div>
+            </td>
+            <td><q-skeleton type="text" width="75px" height="16px" /></td>
+            <td><q-skeleton type="text" width="75px" height="16px" /></td>
+            <td class="text-right">
+              <q-skeleton type="text" width="70px" height="16px" class="q-ml-auto q-mb-xs" />
+              <q-skeleton type="text" width="50px" height="12px" class="q-ml-auto" />
+            </td>
+            <td>
+              <q-skeleton type="QBadge" width="70px" height="22px" class="q-mb-xs" />
+              <q-skeleton type="text" width="40px" height="10px" />
+            </td>
+            <td class="text-right">
+              <div class="row justify-end q-gutter-x-xs">
+                <q-skeleton type="QBtn" size="sm" width="28px" height="28px" />
+                <q-skeleton type="QBtn" size="sm" width="28px" height="28px" />
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </q-markup-table>
 
       <q-banner v-else-if="invoicesQuery.error.value" class="bg-negative text-white q-mb-md" rounded>
         {{ invoicesQuery.error.value }}
@@ -543,7 +588,6 @@ import { computed, ref, watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
 
-import PageInitialLoader from 'src/components/ui/PageInitialLoader.vue';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';

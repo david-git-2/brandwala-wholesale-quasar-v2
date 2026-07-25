@@ -90,13 +90,7 @@ export const dropshipLedgerService = {
       if (!invoice.billing_profile_id) {
         return { success: false, error: 'Invoice has no billing profile for payout.' };
       }
-      if (invoice.middle_man_payout_status === 'paid') {
-        return { success: false, error: 'Middle-man payout is already settled for this invoice.' };
-      }
-      const amount =
-        Number(invoice.middle_man_payout_amount ?? 0) > 0
-          ? Number(invoice.middle_man_payout_amount)
-          : Math.abs(Number(entry.amount));
+      const amount = Math.abs(Number(entry.amount));
       if (amount <= 0) {
         return { success: false, error: 'Nothing to settle for this invoice.' };
       }
@@ -119,6 +113,7 @@ export const dropshipLedgerService = {
   async settlePayoutForInvoice(
     tenantId: number,
     globalInvoiceId: number,
+    amount: number,
     orderNo?: string | null,
   ): Promise<ShopServiceResult<unknown>> {
     try {
@@ -126,10 +121,6 @@ export const dropshipLedgerService = {
       if (!invoice.billing_profile_id) {
         return { success: false, error: 'Invoice has no billing profile for payout.' };
       }
-      if (invoice.middle_man_payout_status === 'paid') {
-        return { success: false, error: 'Middle-man payout is already settled for this invoice.' };
-      }
-      const amount = Number(invoice.middle_man_payout_amount ?? 0);
       if (amount <= 0) {
         return { success: false, error: 'Nothing to settle for this invoice.' };
       }

@@ -160,23 +160,20 @@ describe('Reporting Treasury Margin Formulas', () => {
     const lines: (LineInput & { id: number })[] = [
       {
         id: 1,
-        sell_price_amount: 500, // what we bill the dropshipper
-        recipient_price_amount: 700, // face COD price billed to end customer
+        sell_price_amount: 500,
         unit_cost_price: 350,
         quantity: 2,
         line_discount_amount: 0,
       },
     ];
 
-    test('calculates correct splits, middle-man spread, and accounting margin', () => {
+    test('calculates correct subtotal and accounting margin', () => {
       const res = dropshipColumns(invoice, lines);
 
       // accounting subtotal = 500 * 2 = 1000
       expect(res.accountingSubtotal).toBe(1000);
-      // face subtotal = 700 * 2 = 1400
-      expect(res.faceSubtotal).toBe(1400);
-      // middle man payout = (700 - 500) * 2 = 400
-      expect(res.middleManPayout).toBe(400);
+      expect(res.faceSubtotal).toBe(1000);
+      expect(res.middleManPayout).toBe(0);
       // accounting margin = line_margin (500 - 350)*2 + charges (100) = 300 + 100 = 400
       expect(res.accountingMargin).toBe(400);
     });

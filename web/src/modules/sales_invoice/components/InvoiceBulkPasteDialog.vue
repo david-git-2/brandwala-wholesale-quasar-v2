@@ -88,10 +88,6 @@
                   <div class="text-caption text-grey-6">
                     Current: Qty {{ item.quantity }} · Sell
                     {{ formatAmount(item.sell_price_amount) }}
-                    <template v-if="isDropship">
-                      · Recipient
-                      {{ formatAmount(item.recipient_price_amount ?? item.sell_price_amount) }}
-                    </template>
                   </div>
                 </td>
                 <td v-for="colIdx in maxColumns" :key="colIdx" class="text-center font-mono">
@@ -155,7 +151,7 @@ import type { GlobalInvoiceItemRow } from '../types';
 
 const props = defineProps<{
   items: GlobalInvoiceItemRow[];
-  isDropship: boolean;
+  isDropship?: boolean;
 }>();
 
 defineEmits([...useDialogPluginComponent.emits]);
@@ -175,17 +171,11 @@ const previewRows = computed(() => {
   return props.items.slice(0, len);
 });
 
-const mappingOptions = computed(() => {
-  const options = [
-    { label: 'Ignore', value: 'ignore' },
-    { label: 'Quantity', value: 'quantity' },
-    { label: 'Sell Price', value: 'sell_price_amount' },
-  ];
-  if (props.isDropship) {
-    options.push({ label: 'Recipient Price', value: 'recipient_price_amount' });
-  }
-  return options;
-});
+const mappingOptions = computed(() => [
+  { label: 'Ignore', value: 'ignore' },
+  { label: 'Quantity', value: 'quantity' },
+  { label: 'Sell Price', value: 'sell_price_amount' },
+]);
 
 const getColumnLabel = (mapping?: string) => {
   return mappingOptions.value.find((opt) => opt.value === mapping)?.label || 'Ignore';
@@ -220,9 +210,6 @@ const onPasteUpdate = (val: string | number | null) => {
   maxColumns.value = maxCols;
 
   const defaultMappings = ['quantity', 'sell_price_amount'];
-  if (props.isDropship) {
-    defaultMappings.push('recipient_price_amount');
-  }
 
   colMappings.value = Array.from({ length: maxCols }, (_, idx) => {
     return defaultMappings[idx] || 'ignore';
@@ -251,7 +238,7 @@ const formatPreviewValue = (val: string | null, mapping?: string): string => {
   if (mapping === 'quantity') {
     return `${Math.floor(num)} pcs`;
   }
-  if (mapping === 'sell_price_amount' || mapping === 'recipient_price_amount') {
+  if (mapping === 'sell_price_amount') {
     return formatAmount(num);
   }
   return val;
@@ -267,7 +254,6 @@ const onApply = async () => {
     id: number;
     quantity: number;
     sell_price_amount: number;
-    recipient_price_amount?: number;
   }> = [];
 
   const limit = Math.min(parsedRows.value.length, props.items.length);
@@ -293,22 +279,16 @@ const onApply = async () => {
         payload[mapping] = Math.max(1, Math.floor(numVal));
       } else if (mapping === 'sell_price_amount') {
         payload[mapping] = Math.max(0, numVal);
-      } else if (mapping === 'recipient_price_amount') {
-        payload[mapping] = Math.max(0, numVal);
       }
     });
 
     const finalQuantity = payload.quantity ?? item.quantity;
     const finalSellPrice = payload.sell_price_amount ?? item.sell_price_amount;
-    const finalRecipientPrice = props.isDropship
-      ? (payload.recipient_price_amount ?? item.recipient_price_amount ?? item.sell_price_amount)
-      : undefined;
 
     updates.push({
       id: item.id,
       quantity: finalQuantity,
       sell_price_amount: finalSellPrice,
-      ...(props.isDropship ? { recipient_price_amount: finalRecipientPrice } : {}),
     });
   }
 

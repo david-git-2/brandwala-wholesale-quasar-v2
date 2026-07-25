@@ -38,7 +38,6 @@ export type CreateGlobalInvoiceInput = {
   retail_billing_mode?: 'account' | 'direct' | null;
   due_date?: string | null;
   invoice_date?: string | null;
-  middle_man_payout_amount?: number | null;
   note?: string | null;
 };
 
@@ -58,13 +57,9 @@ export type GlobalInvoiceCreated = GlobalInvoiceRow & {
 
 export type GlobalInvoiceDetail = GlobalInvoiceCreated & {
   ordered_by_party_id: number | null;
-  face_subtotal_amount?: number;
-  accounting_subtotal_amount?: number;
   collection_source?: InvoiceCollectionSource | null;
-  middle_man_payout_amount?: number;
-  middle_man_payout_status?: string | null;
   shipping_charge: number;
-  cod_charge: number;
+  cod_charge?: number;
   wrapping_charge: number;
   print_charge: number;
   recipient_phone: string | null;
@@ -86,8 +81,6 @@ export type GlobalInvoiceItemRow = {
   name_snapshot: string;
   quantity: number;
   sell_price_amount: number;
-  recipient_price_amount?: number | null;
-  line_face_total_amount?: number | null;
   line_discount_amount: number;
   line_total_amount: number;
   unit_cost_price?: number | null;

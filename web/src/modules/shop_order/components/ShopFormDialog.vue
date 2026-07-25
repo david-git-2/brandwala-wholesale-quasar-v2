@@ -724,9 +724,7 @@ import { globalReferenceRepository } from 'src/modules/global_reference/reposito
 import type { GlobalCurrency } from 'src/modules/global_reference/types';
 import { productService } from 'src/modules/products/services/productService';
 import type { Vendor } from 'src/modules/vendor/types';
-import { shopCategoryRepository } from '../repositories/shopCategoryRepository';
 import { useShopCategoryListQuery } from '../composables/useShopCategoryQuery';
-import type { ShopCategory } from '../types';
 
 // ---- types ---------------------------------------------------------
 

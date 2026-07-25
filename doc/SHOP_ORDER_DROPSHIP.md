@@ -1,6 +1,6 @@
 # Shop & Order — Dropship Ops, Invoice Timing & Settlement
 
-BrandWala / TradeFlow BD dropship is a **stock-backed shop type** under the parent module **`shop_order`**. The middle man (reseller) places orders on a dropship storefront with **courier-ready recipient details at checkout**; the seller runs an **ops desk** (Process Order → courier consignment → deliver/return). **Recipient (customer) invoice** is print/download from the order at `processing`. **Accounting invoice** is one posted `global_invoices` dropship row (dual amounts) created at `ready_for_pickup`. After `delivered`, courier remits COD **net of charges** and middle-man profit is settled on the **payout ledger** for reporting.
+BrandWala / TradeFlow BD dropship is a **stock-backed shop type** under the parent module **`shop_order`**. The middle man (reseller) places orders on a dropship storefront with **courier-ready recipient details at checkout**; the seller runs an **ops desk** (Process Order → courier consignment → deliver/return). **Recipient (customer) invoice** is print/download from the order at `processing`. **B2B Sales Invoice** is one posted `global_invoices` dropship row (wholesale goods + packing/print) created at `ready_for_pickup`. After `delivered`, courier remits COD **net of charges** and middle-man profit is settled on the **payout ledger** for reporting.
 
 This document is the domain design for that ops + settlement path. Catalog, cart, pricing floor, and non-COD outbound charge toggles remain in [SHOP_ORDER.md](SHOP_ORDER.md). Desk invoice field shapes and payment RPCs remain in [SALES_INVOICE.md](SALES_INVOICE.md).
 
@@ -27,7 +27,7 @@ Related: [MASTER_PLAN.md](MASTER_PLAN.md), [SHOP_ORDER.md](SHOP_ORDER.md), [SALE
 | **Recipient invoice print** | **As** staff, **I want** to download/print the **customer (recipient) invoice** from `processing`, **so that** the end customer / courier slip shows face prices and middle-man brand **without** creating a `global_invoices` row. |
 | **Courier policies** | **As** admin, **I want** a maintainable courier catalog (Steadfast / Pathao / REDX) with COD and return-fee rules, **so that** each courier’s policy drives suggestions instead of hard-coded shop defaults. |
 | **COD on courier** | **As** staff, **I want** COD fee rules to come from the **selected courier**, not the shop, **so that** Pathao vs Steadfast COD pricing stays accurate — and prepaid orders (`cod_collect_amount = 0`) skip courier COD fees. |
-| **Accounting invoice** | **As** staff, **I want** to create the **accounting invoice** when the order reaches **`ready_for_pickup`**, **so that** books use middle-man sell price + shipment cost (dual amounts on one dropship row) while the customer copy stays the ops print from the order. |
+| **B2B Sales Invoice** | **As** staff, **I want** to create the **B2B Sales Invoice** when the order reaches **`ready_for_pickup`**, **so that** books use middle-man wholesale price + packing/print (Brandwala revenue) while the customer copy stays the ops print from the order, keeping third-party courier costs strictly on the settlement ledger. |
 | **Outbound margin (non-COD)** | **As** admin, **I want** delivery / print / packing toggles on the shop to bill the recipient or deduct from middle-man margin, **so that** commercial terms match the shop (COD is separate — on courier; only when collect > 0). |
 | **Return bearer** | **As** admin, **I want** a shop setting for whether return courier fees are deducted from the middle man or absorbed by the seller, **so that** failed-delivery risk is explicit. |
 | **Return on desk** | **As** staff, **I want** return fee suggested from the courier policy + zone, then confirm actual fee and who pays, **so that** stock and the payout ledger stay correct. |
@@ -45,7 +45,7 @@ This document answers:
 - What statuses and consignment fields does the Process Order path use?
 - Why is COD owned by the courier catalog, not the shop — and when is the COD fee skipped?
 - How do recipient print (order) and posted accounting invoice stay decoupled?
-- When is the accounting invoice created vs when is customer invoice printed?
+- When is the B2B sales invoice created vs when is customer invoice printed?
 - How do courier net remittance and middle-man payout land on the ledger for reports?
 - How do courier return policies (Steadfast / Pathao / REDX) drive suggested return fees?
 - What are the return scenarios, exchange, uninvoiced ledger debits, and locked defaults?
@@ -63,7 +63,7 @@ This document answers:
 | Primary UI (target) | `/:slug/app/shop/dropship/*` |
 | Order rows | `shop_orders` / `shop_order_items` (same tables; dropship status + consignment fields) |
 | Courier catalog | `courier_services` — COD + return/attempt/open-box policies |
-| Invoice write | `global_invoices` type `dropship` via **Create Accounting Invoice** (dual amounts) — sole **invoice** write path (not a parallel commerce ledger) |
+| Invoice write | `global_invoices` type `dropship` via **Create B2B Sales Invoice** (standard wholesale model) — sole **invoice** write path (not a parallel commerce ledger) |
 | Recipient customer copy | Print/download from `shop_orders` at `processing`+ — **not** a second invoice table |
 | Settlement journal | Middle-man payout ledger + recipient collections — separate from invoice create; reportable money-in / money-out |
 | Settlements | Courier COD remittance (net) + middle-man payout → [SALES_INVOICE.md](SALES_INVOICE.md) / [REPORTING_TREASURY.md](REPORTING_TREASURY.md) |
@@ -77,7 +77,7 @@ This document answers:
 | Process Order | Consignment entry; packing slip / label print before pickup |
 | Courier catalog | Per-courier COD + return policies |
 | Recipient invoice print | Download/print customer face copy from order at **`processing`** (no books post) |
-| Accounting invoice handoff | Posted dual-amount `global_invoices` dropship row at **`ready_for_pickup`** |
+| B2B Sales Invoice handoff | Posted standard B2B `global_invoices` dropship row at **`ready_for_pickup`** |
 | Charge policy | Shop toggles for delivery/print/packing (non-COD); **COD on courier** only when `cod_collect_amount > 0`; independent return-fee bearer |
 | Courier remittance + ledger | After **`delivered`**: courier pays seller net of charges → collection ledger; then middle-man profit payout ledger |
 | Middle-man ledger | Credits/debits for profit, remittance trail, payouts, return clawbacks (including `return_fee_uninvoiced`) |
@@ -88,7 +88,7 @@ This document answers:
 |-------|--------|
 | **Vendor-catalog / fixed-price orders** | Stay on `shop_order_mgmt` / `shop_fulfillment` paths |
 | **Desk-created dropship without a shop order** | Remains available under `sales_invoice` desk create — this doc covers the **shop-order-originated** path |
-| **Separate recipient invoice table** | Customer copy is **order print**; books are one dropship row with dual amounts (**D-SD1**) |
+| **Separate recipient invoice table** | Customer copy is **order print**; books are one dropship row with standard B2B amounts (**D-SD1**) |
 | **Shop-owned COD fee rules** | Deprecated for dropship — COD lives on `courier_services` (**D-SD11**) |
 | **GAAP chart of accounts** | Operational invoices + COD + payout ledger only |
 | **Live courier API sync (v1)** | Catalog is admin-editable; fields match future API payload shape |
@@ -111,7 +111,7 @@ flowchart TB
   end
 
   subgraph invoice [sales_invoice handoff]
-    acct["Create Accounting Invoice posted"]
+    acct["Create B2B Sales Invoice posted"]
   end
 
   subgraph settle [Settlement]
@@ -381,24 +381,24 @@ Couriers do **not** share one COD or return rule. Maintain **`courier_services`*
 
 ---
 
-## 8. Accounting invoice + recipient print
+## 8. B2B Sales Invoice + recipient print
 
-**One** posted `global_invoices` row with `invoice_type = dropship` (dual-amount model) for **books**. The **recipient / customer invoice** is an ops **print/download** from the order — not a second table and not required to wait for post (**D-SD1**, **D-SD4**, **D-SD16**).
+**One** posted `global_invoices` row with `invoice_type = dropship` (standard B2B model) for **books**. The **recipient / customer invoice** is an ops **print/download** from the order — not a second table and not required to wait for post (**D-SD1**, **D-SD4**, **D-SD16**).
 
 | Document | Audience | Line prices | When | Storage |
 |----------|----------|-------------|------|---------|
 | **Recipient (customer) invoice** | End customer + courier COD slip | Face / `customer_sell_price` on order | From **`processing`** | Order print only — no `global_invoices` row |
-| **Accounting invoice** | Seller books / margin / payout | `sell_price_amount` + `recipient_price_amount` on one row | From **`ready_for_pickup`** | Posted `global_invoices` dropship |
+| **B2B Sales Invoice** | Seller books / margin | `sell_price_amount` on one row | From **`ready_for_pickup`** | Posted `global_invoices` dropship |
 
 | Rule | Detail |
 |------|--------|
 | Cost | `unit_cost_price` from shipment item landed cost on post — same as other invoice types |
-| Charges on face (books) | Delivery / print / packing per shop toggles; **COD fee per courier policy** only when `cod_collect_amount > 0` |
-| Recipient snapshot on books | Copy recipient A (name/phone/address; profile id when set) onto invoice at create |
-| Payout amount | `middle_man_payout_amount` from spread and policy (see §9); profit credit may land on ledger at invoice create |
-| Collection | `collection_source = recipient`; after delivery courier remits net → §11 |
+| Charges on B2B books | Packing and Print charges only. COD and courier delivery fees are kept off the B2B invoice. |
+| Recipient snapshot on books | Copy recipient A (name/phone/address; profile id when set) onto invoice at create for delivery context |
+| Payout amount | Settled on the `shop_orders` ledger (see §11), decoupled from the B2B invoice |
+| Collection | `collection_source = billing_profile`. COD remittance settles this balance on the Dropship Ledger. |
 | **Ops print (print ≠ post)** | Packing slip / **Download Customer Invoice** from `shop_orders` at `processing`+ — face prices + consignment; **no** `global_invoices` row |
-| **Books (posted)** | Create Accounting Invoice from **`ready_for_pickup`**+; sets `global_invoice_id`. Optional later print of accounting document from invoice detail |
+| **Books (posted)** | Create B2B Sales Invoice from **`ready_for_pickup`**+; sets `global_invoice_id`. |
 | Remittance snapshot | When COD remits, copy `courier_remittance_ref` / `courier_bank_trx_id` onto collection fields — see [SALES_INVOICE.md](SALES_INVOICE.md) / §11 |
 
 Desk-only dropship create (no shop order) remains in [SALES_INVOICE.md](SALES_INVOICE.md) §5.4; this submodule **wires shop orders into that invoice type**.
@@ -462,12 +462,11 @@ Shop setting (dropship-only), overridable per return:
 
 ### 10.4 Post-invoice return math
 
-Use [SALES_INVOICE.md](SALES_INVOICE.md) return dual columns: `return_face_amount`, `return_accounting_amount`, `return_charge_amount`.
+Use standard [SALES_INVOICE.md](SALES_INVOICE.md) return logic. The return simply voids or reduces the B2B Wholesale Invoice balance.
 
 ```text
 revised_middle_man_payout =
   original_payout
-  − (returned_face − returned_accounting)
   − (return_charge if deduct_return_charge_from_middle_man)
   ± COD already collected / refunded / short-paid adjustments
 ```

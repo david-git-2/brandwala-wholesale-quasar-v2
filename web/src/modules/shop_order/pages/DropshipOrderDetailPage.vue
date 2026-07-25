@@ -16,19 +16,8 @@
             {{ $t('shop_admin.dropship_handoff_required_banner') }}
           </div>
           <div>
-            Click <strong>Add to Dropship Desk</strong> below to hand off this order from the Service Desk to start courier operations.
+            Use <strong>Add to Dropship Desk</strong> in the header to hand off this order from the Service Desk and start courier operations.
           </div>
-          <template #action>
-            <q-btn
-              color="primary"
-              unelevated
-              no-caps
-              icon="ph ph-truck"
-              :label="$t('shop_admin.add_to_dropship_desk')"
-              :loading="handingOff"
-              @click="performHandoff"
-            />
-          </template>
         </q-banner>
 
         <!-- Header -->
@@ -58,21 +47,23 @@
 
             <q-btn
               v-if="order?.global_invoice_id"
+              outline
               color="positive"
-              unelevated
               icon="ph ph-receipt"
               label="View Accounting Invoice"
               no-caps
               :to="{ name: 'app-global-invoice-details-page', params: { id: order.global_invoice_id } }"
             />
+
             <q-btn
-              v-else-if="['ready_for_pickup', 'shipped', 'delivered', 'payment_received'].includes(order?.status ?? '')"
-              color="positive"
+              v-if="primaryCta"
+              color="primary"
               unelevated
-              icon="ph ph-receipt"
-              label="Create Dual Invoice"
               no-caps
-              @click="openDualInvoiceDialog"
+              :icon="primaryCta.icon"
+              :label="primaryCta.label"
+              :loading="primaryCta.loading"
+              @click="primaryCta.action"
             />
           </div>
         </section>
@@ -165,7 +156,21 @@
                         dense
                         hide-bottom-space
                         @blur="onRecipientPhoneBlur"
-                      />
+                      >
+                        <template #append>
+                          <q-btn
+                            flat
+                            round
+                            dense
+                            icon="ph ph-copy"
+                            size="xs"
+                            color="grey-7"
+                            @click.stop="handleCopy(form.recipient_phone, 'Phone')"
+                          >
+                            <q-tooltip>Copy Phone</q-tooltip>
+                          </q-btn>
+                        </template>
+                      </q-input>
                     </div>
                     <div class="col-12 col-sm-6">
                       <q-input v-model="form.secondary_phone" label="Secondary Phone" outlined dense hide-bottom-space />
@@ -272,9 +277,93 @@
                       </q-select>
                     </div>
                     <div class="col-12">
-                      <q-input v-model="form.shipping_address" label="Shipping Address *" outlined dense hide-bottom-space type="textarea" rows="2" />
+                      <q-input v-model="form.shipping_address" label="Shipping Address *" outlined dense hide-bottom-space type="textarea" rows="2">
+                        <template #append>
+                          <q-btn
+                            flat
+                            round
+                            dense
+                            icon="ph ph-copy"
+                            size="xs"
+                            color="grey-7"
+                            @click.stop="handleCopy(form.shipping_address, 'Address')"
+                          >
+                            <q-tooltip>Copy Address</q-tooltip>
+                          </q-btn>
+                        </template>
+                      </q-input>
                     </div>
                   </div>
+                </q-card-section>
+              </q-card>
+
+              <!-- Ordered Items (between recipient and parcel) -->
+              <q-card flat bordered class="form-card">
+                <q-card-section class="border-bottom row items-center justify-between">
+                  <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center">
+                    <q-icon name="ph ph-shopping-bag" size="18px" class="q-mr-xs text-primary" />
+                    Ordered Items
+                  </div>
+                  <q-chip dense color="grey-2" text-color="grey-9" size="sm">
+                    {{ orderItems.length }} {{ orderItems.length === 1 ? 'item' : 'items' }}
+                  </q-chip>
+                </q-card-section>
+                <q-card-section class="q-pa-none">
+                  <div v-if="orderItems.length === 0" class="text-center text-grey-6 q-pa-md text-caption">
+                    No items in this order.
+                  </div>
+                  <q-markup-table v-else flat borderless class="soft-table text-caption">
+                    <thead>
+                      <tr>
+                        <th style="width: 48px"></th>
+                        <th class="text-left">Item Name</th>
+                        <th class="text-left">SKU</th>
+                        <th class="text-center">Qty</th>
+                        <th class="text-right">Customer Price</th>
+                        <th class="text-right">Cost</th>
+                        <th class="text-right">Subtotal</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="item in orderItems" :key="item.id" class="hover-row">
+                        <td>
+                          <q-img
+                            v-if="item.image_url"
+                            :src="item.image_url"
+                            style="width: 36px; height: 36px; border-radius: 4px"
+                            fit="cover"
+                          />
+                          <div
+                            v-else
+                            class="bg-grey-3 row flex-center rounded-borders"
+                            style="width: 36px; height: 36px"
+                          >
+                            <q-icon name="ph ph-package" size="18px" color="grey-6" />
+                          </div>
+                        </td>
+                        <td>
+                          <div class="text-weight-bold text-grey-9">{{ item.name }}</div>
+                        </td>
+                        <td>
+                          <q-chip dense outline size="xs" color="grey-7" class="q-ma-none">
+                            {{ item.sku || '—' }}
+                          </q-chip>
+                        </td>
+                        <td class="text-center text-weight-medium">
+                          {{ item.quantity }}
+                        </td>
+                        <td class="text-right text-weight-medium">
+                          {{ formatBdt(item.customer_sell_price_amount ?? item.final_price_amount ?? 0) }}
+                        </td>
+                        <td class="text-right text-grey-7">
+                          {{ formatBdt(item.unit_sell_price_amount ?? 0) }}
+                        </td>
+                        <td class="text-right text-weight-bold text-grey-9">
+                          {{ formatBdt((item.customer_sell_price_amount ?? item.final_price_amount ?? 0) * item.quantity) }}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </q-markup-table>
                 </q-card-section>
               </q-card>
 
@@ -339,39 +428,51 @@
 
               <!-- Block C: Merchant Sender Pickup Defaults -->
               <q-card flat bordered class="form-card">
-                <q-card-section class="border-bottom row items-center justify-between">
-                  <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center">
-                    <q-icon name="ph ph-storefront" size="18px" class="q-mr-xs text-primary" />
-                    Block C: Merchant Sender Pickup Info
-                  </div>
-                </q-card-section>
-                <q-card-section>
-                  <div class="row q-col-gutter-md">
-                    <div class="col-12">
-                      <q-select
-                        v-model="selectedMerchantId"
-                        :options="merchantOptions"
-                        emit-value
-                        map-options
-                        clearable
-                        label="Select Merchant Profile *"
-                        outlined
-                        dense
-                        hide-bottom-space
-                        @update:model-value="onMerchantSelect"
-                      />
+                <q-expansion-item
+                  v-model="blockCExpanded"
+                  header-class="border-bottom"
+                >
+                  <template #header>
+                    <div class="row items-center justify-between full-width">
+                      <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center">
+                        <q-icon name="ph ph-storefront" size="18px" class="q-mr-xs text-primary" />
+                        Block C: Merchant Sender Pickup Info
+                      </div>
+                      <div v-if="selectedMerchantId" class="text-caption text-grey-7 q-mr-sm">
+                        <q-chip dense color="blue-1" text-color="primary" size="sm">
+                          {{ form.sender_name || 'Merchant Selected' }}
+                        </q-chip>
+                      </div>
                     </div>
-                    <div class="col-12 col-sm-6">
-                      <q-input v-model="form.sender_name" label="Sender Name *" outlined dense hide-bottom-space />
+                  </template>
+                  <q-card-section>
+                    <div class="row q-col-gutter-md">
+                      <div class="col-12">
+                        <q-select
+                          v-model="selectedMerchantId"
+                          :options="merchantOptions"
+                          emit-value
+                          map-options
+                          clearable
+                          label="Select Merchant Profile *"
+                          outlined
+                          dense
+                          hide-bottom-space
+                          @update:model-value="onMerchantSelect"
+                        />
+                      </div>
+                      <div class="col-12 col-sm-6">
+                        <q-input v-model="form.sender_name" label="Sender Name *" outlined dense hide-bottom-space />
+                      </div>
+                      <div class="col-12 col-sm-6">
+                        <q-input v-model="form.pickup_phone" label="Sender Pickup Phone *" outlined dense hide-bottom-space />
+                      </div>
+                      <div class="col-12">
+                        <q-input v-model="form.pickup_address" label="Sender Pickup Address *" outlined dense hide-bottom-space type="textarea" rows="2" />
+                      </div>
                     </div>
-                    <div class="col-12 col-sm-6">
-                      <q-input v-model="form.pickup_phone" label="Sender Pickup Phone *" outlined dense hide-bottom-space />
-                    </div>
-                    <div class="col-12">
-                      <q-input v-model="form.pickup_address" label="Sender Pickup Address *" outlined dense hide-bottom-space type="textarea" rows="2" />
-                    </div>
-                  </div>
-                </q-card-section>
+                  </q-card-section>
+                </q-expansion-item>
               </q-card>
 
               <!-- Block D: Delivery & Driver Notes -->
@@ -598,40 +699,20 @@
                     <div class="text-caption text-grey-7">Bank / MFS Trx</div>
                     <div class="text-weight-medium">{{ order.courier_bank_trx_id }}</div>
                   </div>
-                  <div v-if="invoicePayout" class="text-body2">
-                    <div class="text-caption text-grey-7">Middle-man payout</div>
-                    <div class="text-weight-medium">
-                      {{ formatBdt(invoicePayout.middle_man_payout_amount) }}
-                      ·
-                      <span
-                        :class="invoicePayout.middle_man_payout_status === 'paid' ? 'text-positive' : 'text-grey-7'"
-                      >
-                        {{ (invoicePayout.middle_man_payout_status || 'pending').toUpperCase() }}
-                      </span>
-                    </div>
+                  <div v-if="order?.cod_collect_amount" class="text-body2">
+                    <div class="text-caption text-grey-7">COD Collection Target</div>
+                    <div class="text-weight-medium">{{ formatBdt(order.cod_collect_amount) }}</div>
                   </div>
 
-                  <q-btn
-                    v-if="canRecordRemittance"
-                    color="primary"
-                    unelevated
-                    no-caps
-                    class="full-width pill-btn"
-                    icon="ph ph-bank"
-                    label="Record Courier Remittance"
-                    @click="openOrderRemittanceDialog"
-                  />
-                  <q-btn
-                    v-if="canSettlePayout"
-                    color="positive"
-                    outline
-                    no-caps
-                    class="full-width pill-btn"
-                    icon="ph ph-money"
-                    label="Settle Middle-Man Payout"
-                    :loading="settlingPayout"
-                    @click="settleOrderPayout"
-                  />
+                  <div
+                    v-if="canRecordRemittance || canSettlePayout"
+                    class="text-caption text-grey-7"
+                  >
+                    Use the header action to
+                    <template v-if="canRecordRemittance">record remittance</template>
+                    <template v-else>settle payout</template>.
+                  </div>
+
                   <q-btn
                     outline
                     color="grey-8"
@@ -761,12 +842,104 @@
         </div>
       </q-slide-transition>
       </template>
+
+      <q-dialog v-model="confirmB2bInvoiceDialogOpen" persistent>
+        <q-card style="min-width: 440px; border-radius: 12px">
+          <q-card-section class="row items-center justify-between q-pb-none">
+            <div class="text-h6 text-weight-bold">Confirm B2B Invoice</div>
+            <q-btn flat round dense icon="ph ph-x" v-close-popup />
+          </q-card-section>
+          <q-card-section class="q-pt-sm text-body2">
+            <p class="text-grey-8 q-mb-md">
+              Advancing to <strong>Ready for Pickup</strong> will automatically create the B2B Accounting Invoice for the middle man. Please review the financial breakdown before confirming.
+            </p>
+
+            <div class="row q-col-gutter-sm">
+              <div class="col-12 col-sm-6">
+                <q-card flat bordered class="q-pa-sm bg-grey-1">
+                  <div class="text-caption text-grey-7">Recipient Pays</div>
+                  <div class="text-weight-bold text-h6">{{ formatBdt(recipientGrandTotal) }}</div>
+                </q-card>
+              </div>
+              <div class="col-12 col-sm-6">
+                <q-card flat bordered class="q-pa-sm bg-grey-1">
+                  <div class="text-caption text-grey-7">Total Courier Cost</div>
+                  <div class="text-weight-bold text-h6">{{ formatBdt(deliveryChargeVal + codChargeVal) }}</div>
+                </q-card>
+              </div>
+              <div class="col-12">
+                <q-card flat bordered class="q-pa-sm bg-blue-1 border-blue">
+                  <div class="text-caption text-blue-9">B2B Invoice Entry (Brandwala Revenue)</div>
+                  <div class="text-weight-bold text-h6 text-blue-9">
+                    {{ formatBdt(accountingSubtotal + printChargeVal + packingChargeVal) }}
+                  </div>
+                  <div class="text-caption text-blue-8">
+                    Wholesale Items + Packing + Print
+                  </div>
+                </q-card>
+              </div>
+              <div class="col-12">
+                <q-card flat bordered class="q-pa-sm bg-green-1 border-green">
+                  <div class="text-caption text-green-9">Middle Man Profit (Ledger Payout)</div>
+                  <div class="text-weight-bold text-h6 text-green-9">
+                    {{ formatBdt(estimatedProfit) }}
+                  </div>
+                </q-card>
+              </div>
+            </div>
+          </q-card-section>
+          <q-card-actions align="right" class="q-pa-md">
+            <q-btn flat label="Cancel" color="grey-8" no-caps v-close-popup />
+            <q-btn
+              color="primary"
+              label="Confirm & Create Invoice"
+              unelevated
+              no-caps
+              :loading="updatingStatus"
+              @click="executeStatusUpdate('ready_for_pickup'); confirmB2bInvoiceDialogOpen = false"
+            />
+          </q-card-actions>
+        </q-card>
+      </q-dialog>
+
+      <q-dialog v-model="confirmDeleteInvoiceDialogOpen" persistent>
+        <q-card style="min-width: 440px; border-radius: 12px">
+          <q-card-section class="row items-center justify-between q-pb-none">
+            <div class="text-h6 text-weight-bold text-negative">Warning: Rollback Order</div>
+            <q-btn flat round dense icon="ph ph-x" v-close-popup />
+          </q-card-section>
+          <q-card-section class="q-pt-sm text-body2">
+            <q-banner class="bg-red-1 text-red-10 border-all-1 rounded-borders q-mb-md">
+              <template #avatar>
+                <q-icon name="ph ph-warning-circle" color="red-9" />
+              </template>
+              Rolling back to <strong>Processing</strong> will completely delete the associated B2B accounting invoice and restore the inventory stock.
+            </q-banner>
+            <p class="text-grey-8 q-mb-none">
+              Are you sure you want to proceed?
+            </p>
+          </q-card-section>
+          <q-card-actions align="right" class="q-pa-md">
+            <q-btn flat label="Cancel" color="grey-8" no-caps v-close-popup />
+            <q-btn
+              color="negative"
+              label="Yes, Delete Invoice & Rollback"
+              unelevated
+              no-caps
+              :loading="updatingStatus"
+              @click="executeStatusUpdate('processing'); confirmDeleteInvoiceDialogOpen = false"
+            />
+          </q-card-actions>
+        </q-card>
+      </q-dialog>
+
     </div>
   </q-page>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed, watch } from 'vue';
+import { copyToClipboard } from 'quasar';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import { useRoute, useRouter } from 'vue-router';
 import { supabase } from 'src/boot/supabase';
@@ -815,6 +988,7 @@ const orderItems = ref<ShopOrderItem[]>([]);
 const couriers = ref<CourierServiceRow[]>([]);
 const merchants = ref<MerchantProfileRow[]>([]);
 const selectedMerchantId = ref<string | null>(null);
+const blockCExpanded = ref(true);
 const dualInvoiceDialogOpen = ref(false);
 const remittanceDialogOpen = ref(false);
 const savingRemittance = ref(false);
@@ -822,8 +996,6 @@ const settlingPayout = ref(false);
 const invoicePayout = ref<{
   id: number;
   billing_profile_id: number | null;
-  middle_man_payout_amount: number;
-  middle_man_payout_status: string | null;
 } | null>(null);
 const remittanceForm = reactive({
   remittance_ref: '',
@@ -897,8 +1069,7 @@ const canSettlePayout = computed(
   () =>
     !!order.value?.global_invoice_id &&
     !!invoicePayout.value?.billing_profile_id &&
-    invoicePayout.value.middle_man_payout_status !== 'paid' &&
-    Number(invoicePayout.value.middle_man_payout_amount ?? 0) > 0,
+    ['delivered', 'payment_received'].includes(order.value?.status ?? ''),
 );
 
 const canSaveOrderRemittance = computed(
@@ -906,6 +1077,60 @@ const canSaveOrderRemittance = computed(
     remittanceForm.remittance_ref.trim().length > 0 &&
     Number(remittanceForm.net_amount) > 0,
 );
+
+const primaryCta = computed(() => {
+  if (!order.value) return null;
+  const status = order.value.status;
+
+  // 1. Confirmed -> Add to Dropship Desk
+  if (status === 'confirmed') {
+    return {
+      label: 'Add to Dropship Desk',
+      icon: 'ph ph-truck',
+      loading: handingOff.value,
+      action: () => {
+        void performHandoff();
+      },
+    };
+  }
+
+  // 2. Processing path without accounting invoice -> Create Accounting Invoice
+  if (
+    !order.value.global_invoice_id &&
+    ['ready_for_pickup', 'shipped', 'delivered', 'payment_received'].includes(status ?? '')
+  ) {
+    return {
+      label: 'Create Accounting Invoice',
+      icon: 'ph ph-receipt',
+      loading: false,
+      action: openDualInvoiceDialog,
+    };
+  }
+
+  // 3. Delivered & can record remittance -> Record Courier Remittance
+  if (canRecordRemittance.value) {
+    return {
+      label: 'Record Courier Remittance',
+      icon: 'ph ph-bank',
+      loading: false,
+      action: openOrderRemittanceDialog,
+    };
+  }
+
+  // 4. Can settle payout -> Settle Middle-Man Payout
+  if (canSettlePayout.value) {
+    return {
+      label: 'Settle Middle-Man Payout',
+      icon: 'ph ph-money',
+      loading: settlingPayout.value,
+      action: () => {
+        void settleOrderPayout();
+      },
+    };
+  }
+
+  return null;
+});
 
 const loadInvoicePayoutContext = async () => {
   const invoiceId = order.value?.global_invoice_id;
@@ -976,7 +1201,7 @@ const settleOrderPayout = async () => {
       tenant_id: order.value.tenant_id,
       billing_profile_id: invoicePayout.value.billing_profile_id,
       global_invoice_id: order.value.global_invoice_id,
-      amount: Number(invoicePayout.value.middle_man_payout_amount),
+      amount: Number(order.value.cod_collect_amount ?? 0),
       note: `Payout settled for order #${order.value.order_no}`,
     });
     if (!res.success) {
@@ -1003,6 +1228,20 @@ const openRecipientInvoicePreview = () => {
     },
   });
   window.open(routeData.href, '_blank');
+};
+
+const handleCopy = (text: string | null | undefined, label: string) => {
+  if (!text || !text.trim()) {
+    showErrorNotification(`No ${label.toLowerCase()} available to copy`);
+    return;
+  }
+  copyToClipboard(text.trim())
+    .then(() => {
+      showSuccessNotification(`${label} copied`);
+    })
+    .catch(() => {
+      showErrorNotification(`Failed to copy ${label.toLowerCase()}`);
+    });
 };
 
 // District, Thana/Upazila & Postcode Options
@@ -1492,6 +1731,8 @@ const hydrateFormFromOrder = async (o: any) => {
       selectedMerchantId.value = matchedMerchant.id;
     }
 
+    blockCExpanded.value = !selectedMerchantId.value;
+
     // Populate original state references for block dirty checking
     originalBlockA.recipient_name = form.recipient_name;
     originalBlockA.recipient_phone = form.recipient_phone;
@@ -1542,6 +1783,21 @@ watch(
     await hydrateFormFromOrder(data.order as any);
   },
   { immediate: true },
+);
+
+watch(
+  [() => form.courier_awb_number, () => form.courier_service_id],
+  ([awbVal, courierIdVal]) => {
+    if (hydratingForm.value) return;
+    const courier = couriers.value.find((c) => c.id === courierIdVal) || selectedCourier.value;
+    const template = courier?.tracking_url_template;
+    if (!template) return;
+
+    const trimmedAwb = (awbVal || '').trim();
+    if (trimmedAwb) {
+      form.tracking_url = template.replace(/\{awb\}/gi, trimmedAwb);
+    }
+  },
 );
 
 watch(
@@ -1687,11 +1943,32 @@ const isPassedStatus = (st: string) => {
   return targetIdx !== -1 && targetIdx < currentIdx;
 };
 
+const confirmB2bInvoiceDialogOpen = ref(false);
+const confirmDeleteInvoiceDialogOpen = ref(false);
+
 const onUpdateStatus = async (status: string) => {
   if (!order.value || order.value.status === status) return;
 
+  if (order.value.status === 'processing' && status === 'ready_for_pickup') {
+    confirmB2bInvoiceDialogOpen.value = true;
+    return;
+  }
+
+  if (status === 'processing' && order.value.global_invoice_id) {
+    confirmDeleteInvoiceDialogOpen.value = true;
+    return;
+  }
+
+  await executeStatusUpdate(status);
+};
+
+const executeStatusUpdate = async (status: string) => {
+  if (!order.value) return;
+
   updatingStatus.value = true;
   targetUpdatingStatus.value = status;
+  const invoiceIdToDelete = order.value.global_invoice_id;
+
   try {
     let resData: any = null;
     if (status === 'returned') {
@@ -1714,6 +1991,27 @@ const onUpdateStatus = async (status: string) => {
 
     if (resData && typeof resData === 'object' && resData.success === false) {
       throw new Error(resData.error || 'Failed to update status');
+    }
+
+    if (status === 'processing' && invoiceIdToDelete) {
+      try {
+        await supabase.rpc('unpost_global_invoice', { p_invoice_id: invoiceIdToDelete });
+      } catch {
+        // Ignored if already unposted by RPC
+      }
+
+      try {
+        await supabase
+          .from('shop_orders')
+          .update({ global_invoice_id: null })
+          .eq('id', order.value.id);
+
+        await supabase.from('global_return_items').delete().eq('invoice_id', invoiceIdToDelete);
+        await supabase.from('global_invoice_items').delete().eq('invoice_id', invoiceIdToDelete);
+        await supabase.from('global_invoices').delete().eq('id', invoiceIdToDelete);
+      } catch (e) {
+        console.error('Error during client invoice deletion fallback:', e);
+      }
     }
 
     showSuccessNotification(`Status updated to ${status.replace(/_/g, ' ')}`);
@@ -1752,21 +2050,21 @@ const confirmDualInvoice = async () => {
 
   creatingInvoice.value = true;
   try {
-    const { data, error } = await supabase.rpc('create_dual_invoice_from_dropship_order', {
+    const { data, error } = await supabase.rpc('create_dropship_invoice', {
       p_order_id: order.value.id,
       p_invoice_no: null,
       p_billing_profile_id: null,
-      p_note: `Dual invoice created from dropship order #${order.value.order_no}`,
+      p_note: `Accounting invoice created from dropship order #${order.value.order_no}`,
     });
 
     if (error) throw error;
 
     const res = data as any;
-    showSuccessNotification(`Dual invoice #${res.invoice_no || ''} created successfully!`);
+    showSuccessNotification(`Accounting invoice #${res.invoice_no || ''} created successfully!`);
     dualInvoiceDialogOpen.value = false;
     await refetchOrderDetail();
   } catch (err: any) {
-    showErrorNotification(err.message || 'Failed to create dual invoice');
+    showErrorNotification(err.message || 'Failed to create accounting invoice');
   } finally {
     creatingInvoice.value = false;
   }

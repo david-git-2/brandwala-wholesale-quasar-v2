@@ -27,7 +27,7 @@ Related: [MASTER_PLAN.md](MASTER_PLAN.md) (§6.4–6.6, §14 rows 13–17, §16.
 | **Wholesale** | **As a** desk salesperson, **I want to** sell to a known billing account (buyer = recipient) at one price with optional credit terms, **so that** I can run the main B2B business and collect via the buyer's account balance. |
 | **Retail — account** | **As a** desk salesperson, **I want to** sell to an end customer (or ship to a different address) but bill and collect from a regular reseller or account, **so that** delivery/COD/print charges appear on the invoice while AR stays on the account. |
 | **Retail — direct** | **As a** desk salesperson, **I want to** sell once to a walk-in or one-time customer without creating a billing profile, **so that** the customer receives goods and pays me directly (cash or COD) without polluting the account catalog. |
-| **Dropship** | **As a** desk salesperson, **I want to** sell through a middle man at a face price to the end customer, **so that** the courier collects COD from the recipient, I track accounting margin separately, and settle the middle man's payout. Shop-originated dropship timing (customer print → accounting invoice @ ready_for_pickup → remittance/payout after delivered) is specified in [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md). |
+| **Dropship** | **As a** desk salesperson, **I want to** issue a B2B sales invoice to a middle man for the goods they sold, **so that** my revenue and stock are correctly tracked without conflating it with the end-customer's COD or courier delivery charges. Shop-originated dropship timing (customer print → B2B accounting invoice @ ready_for_pickup → remittance/payout after delivered) is specified in [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md). |
 
 **Shared invoice capabilities:**
 
@@ -196,7 +196,7 @@ Desk invoices support **three types**. Retail has **two billing modes** (`accoun
 | **Wholesale** | Required — bill-to = recipient | Same as profile | Optional `shipping_charge` only | `billing_profile` |
 | **Retail — account** | Required — bill-to account | Delivery party (required; may differ from bill-to) | COD, delivery, print, wrapping | `billing_profile` |
 | **Retail — direct** | **Not used** (`null`) | Customer = recipient (required) | Same as retail account | `recipient` |
-| **Dropship** | Required — middle man | End customer (required) | Same as retail; on face total | `recipient` (COD) + middle-man payout |
+| **Dropship** | Required — middle man | End customer (required) | Packing, Print (Brandwala services only) | `billing_profile` |
 
 ### Retail billing mode
 
@@ -204,22 +204,11 @@ Desk invoices support **three types**. Retail has **two billing modes** (`accoun
 |-------|--------|-------|
 | `retail_billing_mode` | `account` \| `direct` | Set only when `invoice_type = retail`; null otherwise |
 
-### Dropship dual totals
-
-| Field | Purpose |
-|-------|---------|
-| `face_subtotal_amount` | Amount shown to end customer (recipient-facing) |
-| `accounting_subtotal_amount` | Amount used for margin and ledger (middle-man accounting) |
-
-Line-level: `sell_price_amount` (accounting), `recipient_price_amount` (dropship face).
-
 ### Collection and settlement
 
 | Field | Notes |
 |-------|-------|
-| `collection_source` | `billing_profile` (wholesale, retail account) or `recipient` (retail direct, dropship COD) |
-| `middle_man_payout_amount` | Dropship only — amount owed to billing profile (middle man) |
-| `middle_man_payout_status` | Dropship settlement tracking |
+| `collection_source` | `billing_profile` (wholesale, retail account, dropship) or `recipient` (retail direct) |
 
 ### Invoice lifecycle (all types)
 
@@ -321,20 +310,19 @@ Optional UX: **Save as recipient profile** after create for repeat delivery addr
 
 | Stage | Behavior |
 |-------|----------|
-| **Create** | `billing_profile_id` = middle man; end-customer recipient required; `collection_source = recipient` |
+| **Create** | `billing_profile_id` = middle man; end-customer recipient required for delivery context |
 | **Recipient** | End customer — required name; driver uses phone/address |
-| **Add item** | **Dual price:** `sell_price_amount` (accounting) + `recipient_price_amount` (face/COD) |
-| **Charges** | Same types as retail; added to **face total** (`total_amount`) |
+| **Add item** | Single price: `sell_price_amount` (B2B wholesale price) |
+| **Charges** | Packing and Print charges only (Brandwala's services to middle man). No COD or Courier Delivery charges. |
 | **Post** | Stock deduct; snapshots locked |
-| **Totals** | `accounting_subtotal` from sell prices; `face_subtotal` from recipient prices; `middle_man_payout_amount` = spread `(recipient_price - sell_price) × qty` when not overridden |
-| **Payment (COD)** | `record_recipient_invoice_collection` — courier/recipient cash |
-| **Payment (middle man)** | `create_middle_man_payout` — pays middle man against `middle_man_payout_amount` |
-| **Courier reconcile** | `courier_collected_amount` when courier remits (may differ from expected COD) |
-| **Print** | Preview shows recipient prices on face document |
-| **Return** | Dual amounts: `return_face_amount` and `return_accounting_amount` |
-| **Void** | Same as wholesale (reverse COD collections first if any) |
+| **Totals** | `subtotal_amount` from sell prices; `total_amount` = subtotal + packing + print - discount |
+| **Payment (B2B)** | `collection_source = billing_profile`. COD remittance settles this balance on the Dropship Ledger. |
+| **Courier reconcile** | Managed on the Dropship Ledger (`shop_orders`), not this invoice table. |
+| **Print** | Accounting copy shows B2B prices. Face copy is printed from `shop_orders`, not here. |
+| **Return** | Single amounts; reduces billing-profile balance |
+| **Void** | Same as wholesale |
 
-Traditional behavior: Middle man shows end customer a face-price invoice. Courier collects COD. Middle man earns spread minus payout to parent.
+Traditional behavior: Middle man shows end customer a face-price invoice (generated from `shop_orders`). The `global_invoices` dropship row strictly acts as a B2B sales invoice for the wholesale items + Brandwala fulfillment services, excluding all third-party courier costs.
 
 ### 5.5 Fulfillment (operational — all types)
 
@@ -353,12 +341,12 @@ Does **not** affect stock, margin, `due_amount`, or payment RPCs. For desk/couri
 |-------|-----------|----------------|---------------|----------|
 | Billing profile | Required | Required | Null | Required (middle man) |
 | Recipient | = profile | Separate or same | = customer | End customer |
-| Line prices | One | One | One | Two |
-| Charges | Shipping only | Full set | Full set | Full set (on face) |
-| Collection | Billing profile | Billing profile | Recipient | Recipient + payout |
-| Middle-man payout | — | — | — | Yes |
-| Return amounts | Single | Single | Single | Face + accounting |
-| AR report | Billing balance | Billing balance | Invoice balance | Invoice + payout |
+| Line prices | One | One | One | One |
+| Charges | Shipping only | Full set | Full set | Packing/Print only |
+| Collection | Billing profile | Billing profile | Recipient | Billing profile |
+| Middle-man payout | — | — | — | Ledger (`shop_orders`) |
+| Return amounts | Single | Single | Single | Single |
+| AR report | Billing balance | Billing balance | Invoice balance | Billing balance |
 
 ---
 
@@ -624,9 +612,7 @@ Delivery-party catalog for one sister concern. `recipient_profile_id` on `global
 | `due_date` | Optional — wholesale and retail account credit terms |
 | `payment_status`, `total_amount`, `due_amount`, `paid_amount` | Balance |
 | `subtotal_amount`, `discount_amount` | Accounting subtotal |
-| `face_subtotal_amount`, `accounting_subtotal_amount` | Dropship dual subtotals |
-| `middle_man_payout_amount`, `middle_man_payout_status` | Dropship settlement |
-| `shipping_charge`, `cod_charge`, `courier_collected_amount`, `wrapping_charge`, `print_charge` | Inline header charges |
+| `wrapping_charge`, `print_charge`, `shipping_charge` | Inline header charges (Shipping for Wholesale, Packing/Print for Dropship) |
 
 ### 11.4 Invoice items — `global_invoice_items` [target]
 
@@ -637,8 +623,7 @@ Delivery-party catalog for one sister concern. `recipient_profile_id` on `global
 | `name_snapshot`, `quantity` | |
 | `unit_cost_price` | Immutable landed-cost snapshot at post (from shipment item via `landedCost.ts`) |
 | `sell_price_amount` | Accounting sell price |
-| `recipient_price_amount` | Dropship face price |
-| `line_discount_amount`, `line_total_amount`, `line_face_total_amount` | |
+| `line_discount_amount`, `line_total_amount` | |
 | `return_quantity` | Cumulative returned qty |
 
 ### 11.5 Return items — `global_return_items` [target]
@@ -647,7 +632,7 @@ Delivery-party catalog for one sister concern. `recipient_profile_id` on `global
 |-------|-------|
 | `invoice_id`, `invoice_item_id`, `global_stock_id` | FK |
 | `quantity` | |
-| `return_face_amount`, `return_accounting_amount` | Dual amounts (dropship); equal for other types |
+| `return_amount` | Value of returned goods |
 | `return_charge_amount` | Optional handling fee |
 
 ### 11.6 Invoice brands — `invoice_brands` [stable]

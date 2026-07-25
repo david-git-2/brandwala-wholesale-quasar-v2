@@ -43,8 +43,9 @@ export function useShopStorefrontInfiniteQuery(params: Ref<StorefrontQueryParams
       const shopDetails = meta.shop ?? null;
 
       // Reuse permissions from previous page if already loaded and missing in meta
-      if (!permissions && pageParam > 0 && query.data?.value?.pages?.length) {
-        permissions = query.data.value.pages[0].permissions ?? null;
+      const pages = query.data?.value?.pages;
+      if (!permissions && pageParam > 0 && pages && pages.length > 0) {
+        permissions = pages[0]?.permissions ?? null;
       }
 
       if (!permissions && shopDetails?.id) {
@@ -80,21 +81,21 @@ export function useShopStorefrontInfiniteQuery(params: Ref<StorefrontQueryParams
   });
 
   const shopDetails = computed(() => {
-    const dataVal = query.data.value;
+    const dataVal = query.data?.value;
     const pages = dataVal?.pages;
-    return pages && pages.length > 0 ? pages[0].shopDetails : null;
+    return pages && pages.length > 0 ? pages[0]?.shopDetails ?? null : null;
   });
 
   const permissions = computed(() => {
-    const dataVal = query.data.value;
+    const dataVal = query.data?.value;
     const pages = dataVal?.pages;
-    return pages && pages.length > 0 ? pages[0].permissions : null;
+    return pages && pages.length > 0 ? pages[0]?.permissions ?? null : null;
   });
 
   const totalItems = computed(() => {
-    const dataVal = query.data.value;
+    const dataVal = query.data?.value;
     const pages = dataVal?.pages;
-    return pages && pages.length > 0 ? pages[0].total : 0;
+    return pages && pages.length > 0 ? pages[0]?.total ?? 0 : 0;
   });
 
   const catalogItems = computed(() => {

@@ -618,6 +618,7 @@ const { data: currenciesData } = useThriftCurrenciesQuery();
 const currencies = computed(() => currenciesData.value || []);
 const $q = useQuasar();
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const statusDotColor = (currentStatus: string) => {
   const val = (currentStatus || '').toLowerCase();
   switch (val) {
@@ -650,6 +651,7 @@ const statusDotColor = (currentStatus: string) => {
   }
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const statusChipStyle = (currentStatus: string) => {
   const val = (currentStatus || '').toLowerCase();
   switch (val) {

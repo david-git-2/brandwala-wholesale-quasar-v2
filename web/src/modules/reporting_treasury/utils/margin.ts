@@ -14,10 +14,7 @@ export interface LineInput {
   qty?: number | null | undefined;
   line_discount_amount?: number | null | undefined;
   line_discount?: number | null | undefined;
-  recipient_price_amount?: number | null | undefined;
-  recipient_price?: number | null | undefined;
   line_total_amount?: number | null | undefined;
-  line_face_total_amount?: number | null | undefined;
 }
 
 export interface InvoiceInput {
@@ -29,9 +26,6 @@ export interface InvoiceInput {
   discount_amount?: number | null | undefined;
   settlement_discount_amount?: number | null | undefined;
   invoice_status?: string | null | undefined;
-  accounting_subtotal_amount?: number | null | undefined;
-  face_subtotal_amount?: number | null | undefined;
-  middle_man_payout_amount?: number | null | undefined;
 }
 
 export interface ReturnInput {
@@ -249,56 +243,28 @@ export interface DropshipColumnsResult {
 }
 
 /**
- * Calculates separate accounting margin vs face/COD totals for dropship invoices.
+ * Calculates B2B accounting margin and totals for dropship invoices.
  */
 export const dropshipColumns = (
   invoice: InvoiceInput,
   lines: (LineInput & { id: number })[],
   returns: ReturnInput[] = [],
 ): DropshipColumnsResult => {
-  const accountingSubtotal =
-    invoice.accounting_subtotal_amount ??
-    lines.reduce((sum, line) => {
-      return (
-        sum +
-        (line.line_total_amount ??
-          (line.sell_price_amount ?? line.sell_price ?? 0) * (line.quantity ?? line.qty ?? 0) -
-            (line.line_discount_amount ?? line.line_discount ?? 0))
-      );
-    }, 0);
-
-  const faceSubtotal =
-    invoice.face_subtotal_amount ??
-    lines.reduce((sum, line) => {
-      const recipientPrice =
-        line.recipient_price_amount ??
-        line.recipient_price ??
-        line.sell_price_amount ??
-        line.sell_price ??
-        0;
-      return (
-        sum +
-        (line.line_face_total_amount ??
-          recipientPrice * (line.quantity ?? line.qty ?? 0) -
-            (line.line_discount_amount ?? line.line_discount ?? 0))
-      );
-    }, 0);
-
-  const middleManPayout =
-    invoice.middle_man_payout_amount ??
-    lines.reduce((sum, line) => {
-      const sellPrice = line.sell_price_amount ?? line.sell_price ?? 0;
-      const recipientPrice = line.recipient_price_amount ?? line.recipient_price ?? sellPrice;
-      const qty = line.quantity ?? line.qty ?? 0;
-      return sum + Math.max((recipientPrice - sellPrice) * qty, 0);
-    }, 0);
+  const accountingSubtotal = lines.reduce((sum, line) => {
+    return (
+      sum +
+      (line.line_total_amount ??
+        (line.sell_price_amount ?? line.sell_price ?? 0) * (line.quantity ?? line.qty ?? 0) -
+          (line.line_discount_amount ?? line.line_discount ?? 0))
+    );
+  }, 0);
 
   const accountingMargin = invoiceGrossProfit(invoice, lines, returns);
 
   return {
     accountingSubtotal,
-    faceSubtotal,
-    middleManPayout,
+    faceSubtotal: accountingSubtotal,
+    middleManPayout: 0,
     accountingMargin,
   };
 };

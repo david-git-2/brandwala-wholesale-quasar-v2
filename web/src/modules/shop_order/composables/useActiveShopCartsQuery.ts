@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/vue-query';
-import { computed, type Ref } from 'vue';
+import { computed } from 'vue';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { shopCartService } from '../services/shopCartService';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';

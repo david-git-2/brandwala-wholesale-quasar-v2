@@ -1,6 +1,102 @@
 <template>
   <q-page class="q-pa-md global-invoice-details-page">
-    <PageInitialLoader v-if="loading" />
+    <!-- Skeleton Loader -->
+    <div v-if="loading" class="q-gutter-y-md">
+      <!-- Header Skeleton -->
+      <section class="row items-center justify-between q-col-gutter-md">
+        <div class="col">
+          <div class="row items-center q-gutter-x-sm">
+            <q-skeleton type="QBtn" size="sm" width="32px" height="32px" />
+            <div>
+              <q-skeleton type="text" width="90px" height="14px" class="q-mb-xs" />
+              <q-skeleton type="text" width="240px" height="32px" />
+              <q-skeleton type="text" width="180px" height="14px" class="q-mt-xs" />
+            </div>
+          </div>
+        </div>
+        <div class="col-auto row q-gutter-x-sm items-center">
+          <q-skeleton type="QBtn" width="80px" height="36px" />
+          <q-skeleton type="QBtn" width="100px" height="36px" />
+        </div>
+      </section>
+
+      <!-- Status Workflow Strip Skeleton -->
+      <q-card flat bordered class="q-pa-sm">
+        <div class="row items-center justify-between">
+          <div class="row items-center q-gutter-x-sm">
+            <q-skeleton v-for="n in 4" :key="n" type="QBtn" width="90px" height="28px" />
+          </div>
+          <q-skeleton type="QBadge" width="80px" height="24px" />
+        </div>
+      </q-card>
+
+      <!-- 2-Column Content Grid Skeleton -->
+      <div class="row q-col-gutter-md">
+        <!-- Main Left Column -->
+        <div class="col-12 col-md-8 q-gutter-y-md">
+          <!-- Items Table Card Skeleton -->
+          <q-card flat bordered class="q-pa-md">
+            <div class="row justify-between items-center q-mb-md">
+              <q-skeleton type="text" width="140px" height="22px" />
+              <q-skeleton type="QBtn" width="100px" height="32px" />
+            </div>
+            <q-markup-table flat borderless class="q-mb-sm">
+              <thead>
+                <tr>
+                  <th><q-skeleton type="text" width="100px" /></th>
+                  <th class="text-right"><q-skeleton type="text" width="60px" class="q-ml-auto" /></th>
+                  <th class="text-right"><q-skeleton type="text" width="70px" class="q-ml-auto" /></th>
+                  <th class="text-right"><q-skeleton type="text" width="80px" class="q-ml-auto" /></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="i in 3" :key="i">
+                  <td>
+                    <q-skeleton type="text" width="80%" height="16px" />
+                    <q-skeleton type="text" width="40%" height="12px" />
+                  </td>
+                  <td class="text-right"><q-skeleton type="text" width="40px" class="q-ml-auto" /></td>
+                  <td class="text-right"><q-skeleton type="text" width="60px" class="q-ml-auto" /></td>
+                  <td class="text-right"><q-skeleton type="text" width="70px" class="q-ml-auto" /></td>
+                </tr>
+              </tbody>
+            </q-markup-table>
+          </q-card>
+
+          <!-- Summary Card Skeleton -->
+          <q-card flat bordered class="q-pa-md">
+            <q-skeleton type="text" width="120px" height="20px" class="q-mb-md" />
+            <div v-for="j in 4" :key="j" class="row justify-between q-mb-sm">
+              <q-skeleton type="text" width="30%" />
+              <q-skeleton type="text" width="20%" />
+            </div>
+          </q-card>
+        </div>
+
+        <!-- Sidebar Right Column -->
+        <div class="col-12 col-md-4 q-gutter-y-md">
+          <!-- Customer Info Card Skeleton -->
+          <q-card flat bordered class="q-pa-md">
+            <q-skeleton type="text" width="110px" height="20px" class="q-mb-md" />
+            <div class="row items-center q-mb-md">
+              <q-skeleton type="QAvatar" size="40px" class="q-mr-sm" />
+              <div class="col">
+                <q-skeleton type="text" width="70%" height="16px" />
+                <q-skeleton type="text" width="50%" height="12px" />
+              </div>
+            </div>
+            <q-skeleton type="rect" height="60px" class="rounded-borders" />
+          </q-card>
+
+          <!-- Payment Details Card Skeleton -->
+          <q-card flat bordered class="q-pa-md">
+            <q-skeleton type="text" width="130px" height="20px" class="q-mb-md" />
+            <q-skeleton type="rect" height="80px" class="rounded-borders q-mb-sm" />
+            <q-skeleton type="QBtn" class="full-width" height="36px" />
+          </q-card>
+        </div>
+      </div>
+    </div>
 
     <div v-else-if="error" class="text-center q-pa-xl text-negative">{{ error }}</div>
 
@@ -260,7 +356,6 @@
                   <th class="text-right">Qty</th>
                   <th class="text-right">Cost</th>
                   <th class="text-right">Sell</th>
-                  <th v-if="isDropship" class="text-right">Recipient</th>
                   <th class="text-right">Total</th>
                   <th v-if="invoice.invoice_status === 'posted'" class="text-right">Margin</th>
                   <th v-if="invoice.invoice_status === 'draft'" style="width: 50px"></th>
@@ -357,38 +452,7 @@
                       />
                     </q-popup-edit>
                   </td>
-                  <td v-if="isDropship" class="text-right">
-                    <span
-                      :class="{
-                        'cursor-pointer text-underline-dashed text-primary': invoice.invoice_status === 'draft',
-                      }"
-                    >
-                      {{ formatAmount(row.recipient_price_amount ?? row.sell_price_amount) }}
-                      <q-icon name="ph ph-pencil-simple" size="10px" class="q-ml-xs text-grey-5" v-if="invoice.invoice_status === 'draft'" />
-                    </span>
-                    <q-popup-edit
-                      v-if="invoice.invoice_status === 'draft'"
-                      :model-value="row.recipient_price_amount ?? row.sell_price_amount"
-                      buttons
-                      persistent
-                      label-set="Save"
-                      label-cancel="Cancel"
-                      v-slot="scope"
-                      @save="(val) => onUpdateItemField(row, 'recipient_price_amount', val)"
-                    >
-                      <q-input
-                        :model-value="scope.value ?? ''"
-                        type="number"
-                        dense
-                        outlined
-                        autofocus
-                        min="0"
-                        step="0.01"
-                        @update:model-value="(v) => (scope.value = v === '' ? null : Number(v))"
-                        @keyup.enter="scope.set"
-                      />
-                    </q-popup-edit>
-                  </td>
+
                   <td class="text-right text-weight-bold">
                     {{ formatAmount(row.line_total_amount) }}
                   </td>
@@ -664,7 +728,7 @@
                   @blur="onHeaderUpdate"
                 />
                 <div v-else class="text-body2 text-right">
-                  {{ formatAmount(invoice.cod_charge) }}
+                  {{ formatAmount(invoice.cod_charge ?? 0) }}
                 </div>
               </div>
             </div>
@@ -726,61 +790,12 @@
             </div>
           </q-card>
 
-          <!-- Dropship Settlements (Payouts & Collections) -->
-          <q-card v-if="isDropship" flat class="floating-surface shadow-1 q-pa-md">
-            <div class="text-subtitle2 text-weight-bold q-mb-sm">Dropship Settlement</div>
-            <div class="text-caption text-grey-8">
-              Collection: {{ invoice.collection_source || 'recipient' }}
-            </div>
-            <div class="text-body2 q-mt-xs text-weight-medium">
-              Middle-man payout: {{ formatAmount(invoice.middle_man_payout_amount ?? 0) }}
-            </div>
-            <div
-              class="text-caption text-uppercase text-weight-bold"
-              :class="invoice.middle_man_payout_status === 'paid' ? 'text-positive' : 'text-grey-7'"
-            >
-              Payout status: {{ invoice.middle_man_payout_status || 'pending' }}
-            </div>
-            <div class="row q-gutter-sm q-mt-sm">
-              <q-btn
-                v-if="showPayments && invoice.invoice_status === 'posted' && invoice.due_amount > 0"
-                class="col pill-btn slim-btn"
-                color="primary"
-                no-caps
-                label="Record COD"
-                @click="openCodDialog"
-              />
-              <q-btn
-                v-if="
-                  showPayments &&
-                  invoice.invoice_status === 'posted' &&
-                  invoice.middle_man_payout_status !== 'paid' &&
-                  (invoice.middle_man_payout_amount ?? 0) > 0
-                "
-                class="col pill-btn slim-btn"
-                color="secondary"
-                no-caps
-                label="Payout"
-                outline
-                @click="payoutDialog = true"
-              />
-            </div>
-            <q-btn
-              v-if="showPayments && invoice.invoice_status === 'posted' && invoice.due_amount > 0"
-              class="full-width pill-btn slim-btn q-mt-sm"
-              color="orange"
-              no-caps
-              outline
-              label="Settle / Write-off remaining"
-              @click="openSettleDialog"
-            />
-          </q-card>
+
 
           <!-- Retail / Wholesale Payments -->
           <q-card
             v-if="
               showPayments &&
-              !isDropship &&
               invoice.invoice_status === 'posted' &&
               invoice.due_amount > 0
             "
@@ -814,7 +829,7 @@
             class="floating-surface shadow-1 q-pa-md"
           >
             <div class="text-subtitle2 text-weight-bold q-mb-xs">
-              {{ isDropship ? 'Adjust to Total (Customer)' : 'Adjust to Total' }}
+              Adjust to Total
             </div>
             <div class="text-caption text-grey-7 q-mb-sm">
               Enter the final total you want; item prices auto-adjust to match.
@@ -881,9 +896,7 @@
             <div class="row justify-between text-body2">
               <span>Subtotal</span><span>{{ formatAmount(invoice.subtotal_amount) }}</span>
             </div>
-            <div v-if="isDropship" class="row justify-between text-caption text-grey-7">
-              <span>Face subtotal</span><span>{{ formatAmount(invoice.face_subtotal_amount ?? 0) }}</span>
-            </div>
+
             <div class="row justify-between text-body2 text-grey-8">
               <span>Total Cost</span><span>{{ formatAmount(totalCost) }}</span>
             </div>
@@ -1101,22 +1114,11 @@
                             class="soft-input"
                           />
                         </div>
-                        <div class="col-4">
+                        <div class="col-6">
                           <q-input
                             v-model.number="item.sell_price_amount"
                             type="number"
                             label="Sell Price"
-                            dense
-                            outlined
-                            min="0"
-                            class="soft-input"
-                          />
-                        </div>
-                        <div class="col-4" v-if="isDropship">
-                          <q-input
-                            v-model.number="item.recipient_price_amount"
-                            type="number"
-                            label="Recipient"
                             dense
                             outlined
                             min="0"
@@ -1440,7 +1442,6 @@ import { computed, nextTick, onMounted, ref, watch, reactive } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 
-import PageInitialLoader from 'src/components/ui/PageInitialLoader.vue';
 import RichTextEditor from 'src/components/ui/RichTextEditor.vue';
 import SmartImage from 'src/components/SmartImage.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
@@ -1690,7 +1691,7 @@ const loadInvoice = async () => {
     // Sync form values
     form.discount_amount = inv.discount_amount;
     form.shipping_charge = inv.shipping_charge;
-    form.cod_charge = inv.cod_charge;
+    form.cod_charge = inv.cod_charge ?? 0;
     form.wrapping_charge = inv.wrapping_charge;
     form.print_charge = inv.print_charge;
     form.recipient_name = inv.recipient_name || '';
@@ -1715,7 +1716,7 @@ const refreshInvoiceHeader = async () => {
     // Sync form values
     form.discount_amount = inv.discount_amount;
     form.shipping_charge = inv.shipping_charge;
-    form.cod_charge = inv.cod_charge;
+    form.cod_charge = inv.cod_charge ?? 0;
     form.wrapping_charge = inv.wrapping_charge;
     form.print_charge = inv.print_charge;
     form.recipient_name = inv.recipient_name || '';
@@ -1774,14 +1775,7 @@ const onAddCartItems = async () => {
         quantity: item.quantity,
         sell_price_amount: item.sell_price_amount,
       };
-      if (isDropship.value) {
-        await invoiceRepository.addGlobalInvoiceItem({
-          ...payload,
-          recipient_price_amount: item.recipient_price_amount,
-        });
-      } else {
-        await invoiceRepository.addGlobalInvoiceItem(payload);
-      }
+      await invoiceRepository.addGlobalInvoiceItem(payload);
     }
     stockDialog.value = false;
     stockCart.value = [];
@@ -1808,7 +1802,7 @@ const onRemoveItem = async (itemId: number) => {
 
 const onUpdateItemField = async (
   row: GlobalInvoiceItemRow,
-  field: 'quantity' | 'sell_price_amount' | 'recipient_price_amount',
+  field: 'quantity' | 'sell_price_amount',
   value: any,
 ) => {
   if (!invoice.value) return;
@@ -1824,24 +1818,18 @@ const onUpdateItemField = async (
 
   const quantity = field === 'quantity' ? parsed : row.quantity;
   const sellPrice = field === 'sell_price_amount' ? parsed : row.sell_price_amount;
-  const recipientPrice =
-    field === 'recipient_price_amount'
-      ? parsed
-      : (row.recipient_price_amount ?? row.sell_price_amount);
 
   try {
     await invoiceRepository.updateGlobalInvoiceItem({
       id: row.id,
       quantity,
       sell_price_amount: sellPrice,
-      recipient_price_amount: recipientPrice,
     });
     const itemIdx = items.value.findIndex((item) => item.id === row.id);
     const existing = itemIdx > -1 ? items.value[itemIdx] : null;
     if (existing) {
       existing.quantity = quantity;
       existing.sell_price_amount = sellPrice;
-      existing.recipient_price_amount = recipientPrice;
     }
     await refreshInvoiceHeader();
     showSuccessNotification('Item updated successfully.');
@@ -2275,10 +2263,9 @@ watch([returnItemId, returnQty], () => {
   if (item) {
     const qty = Number(returnQty.value || 0);
     const sellPrice = Number(item.sell_price_amount || 0);
-    const recipientPrice = Number(item.recipient_price_amount || sellPrice);
 
     returnAccountingAmount.value = sellPrice * qty;
-    returnFaceAmount.value = recipientPrice * qty;
+    returnFaceAmount.value = sellPrice * qty;
   }
 });
 

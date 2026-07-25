@@ -170,7 +170,7 @@ const listActiveShopCarts = async (): Promise<ActiveCartItem[]> => {
     throw error;
   }
 
-  return (data ?? []).map((row) => ({
+  return (data ?? []).map((row: Record<string, any>) => ({
     cart_id: Number(row.cart_id),
     shop_id: Number(row.shop_id),
     shop_name: row.shop_name,

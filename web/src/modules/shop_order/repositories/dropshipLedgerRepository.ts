@@ -191,12 +191,10 @@ export const dropshipLedgerRepository = {
   async getInvoicePayoutContext(globalInvoiceId: number): Promise<{
     id: number;
     billing_profile_id: number | null;
-    middle_man_payout_amount: number;
-    middle_man_payout_status: string | null;
   }> {
     const { data, error } = await supabase
       .from('global_invoices')
-      .select('id, billing_profile_id, middle_man_payout_amount, middle_man_payout_status')
+      .select('id, billing_profile_id')
       .eq('id', globalInvoiceId)
       .single();
 
@@ -207,8 +205,6 @@ export const dropshipLedgerRepository = {
     return data as {
       id: number;
       billing_profile_id: number | null;
-      middle_man_payout_amount: number;
-      middle_man_payout_status: string | null;
     };
   },
 };

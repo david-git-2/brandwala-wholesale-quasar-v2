@@ -496,7 +496,6 @@ const {
   itemCount,
   cartTotal,
   buyerCartTotal,
-  chargeTotal,
   recipientGrandTotal,
   estimatedProfit,
   permissions,
@@ -513,6 +512,8 @@ const isSaving = computed(
 );
 
 const placingOrder = ref(false);
+
+const storefrontStore = useShopStorefrontStore();
 
 const currencySymbol = computed(() => {
   if (currentShopCartInfo.value?.currency_symbol) {

@@ -295,6 +295,15 @@
             </div>
 
             <q-input
+              v-model="form.tracking_url_template"
+              label="Tracking URL Template"
+              hint="Use {awb} where consignment number goes (e.g. https://steadfast.com.bd/t/{awb})"
+              outlined
+              dense
+              hide-bottom-space
+            />
+
+            <q-input
               v-model="form.notes"
               label="Notes / Instructions"
               outlined
@@ -354,6 +363,7 @@ const form = reactive<CreateCourierServicePayload>({
   hub_hold_days: 3,
   open_box_default_allowed: true,
   notes: '',
+  tracking_url_template: '',
 });
 
 const loadCouriers = async () => {
@@ -395,6 +405,7 @@ const openAddDialog = () => {
   form.hub_hold_days = 3;
   form.open_box_default_allowed = true;
   form.notes = '';
+  form.tracking_url_template = '';
   dialogOpen.value = true;
 };
 
@@ -419,6 +430,7 @@ const openEditDialog = (c: CourierServiceRow) => {
   form.hub_hold_days = c.hub_hold_days;
   form.open_box_default_allowed = c.open_box_default_allowed;
   form.notes = c.notes || '';
+  form.tracking_url_template = c.tracking_url_template || '';
   dialogOpen.value = true;
 };
 

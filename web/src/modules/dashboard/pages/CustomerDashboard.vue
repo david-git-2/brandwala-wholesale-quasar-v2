@@ -464,9 +464,9 @@ import { useQuery } from '@tanstack/vue-query';
 
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { shopOrderService } from 'src/modules/shop_order/services/shopOrderService';
-import { showSuccessNotification, handleApiFailure } from 'src/utils/appFeedback';
-
+import { shopCartRepository } from 'src/modules/shop_order/repositories/shopCartRepository';
 import { shopCategoryRepository } from 'src/modules/shop_order/repositories/shopCategoryRepository';
+import { showSuccessNotification, handleApiFailure } from 'src/utils/appFeedback';
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -621,23 +621,23 @@ const triggerSearch = async () => {
   }
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const quickAddToCart = async (item: any) => {
   addingToCartId.value = item.product_id;
   try {
-    const res = await shopCartStore.addItem(
+    await shopCartRepository.addToCart(
       item.shop_id,
       item.product_id,
       item.global_stock_allocation_id || null,
       item.minimum_order_quantity || 1,
     );
-    if (res.success) {
-      showSuccessNotification(`Added ${item.product_name} to ${item.shop_name} cart.`);
-    }
+    showSuccessNotification(`Added ${item.product_name} to ${item.shop_name} cart.`);
   } finally {
     addingToCartId.value = null;
   }
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const goToStorefrontWithSearch = () => {
   showSearchResultsModal.value = false;
   const activeShopSlug = searchResults.value[0]?.shop_slug || shops.value[0]?.slug || localStorage.getItem('last_visited_shop_slug');
@@ -685,6 +685,7 @@ const getShopCategories = (shopOrId: any) => {
   return categories.value.filter((cat: any) => categoryIds.includes(Number(cat.id)));
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const formatShopType = (type: string) => {
   switch (type) {
     case 'vendor_catalog':
@@ -698,6 +699,7 @@ const formatShopType = (type: string) => {
   }
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const filterByCategory = (categoryName: string) => {
   const activeShopSlug = shops.value[0]?.slug || localStorage.getItem('last_visited_shop_slug');
   if (activeShopSlug) {

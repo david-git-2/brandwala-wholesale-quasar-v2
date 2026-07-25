@@ -261,16 +261,23 @@ const getShopOrderById = async (
 
   if (orderErr) throw orderErr;
 
-  const { data: items, error: itemsErr } = await supabase
+  const { data: rawItems, error: itemsErr } = await supabase
     .from('shop_order_items')
-    .select('*')
+    .select('*, products(product_code)')
     .eq('order_id', orderId);
 
   if (itemsErr) throw itemsErr;
 
+  const items: ShopOrderItem[] = (rawItems || []).map((row: any) => {
+    const sku = row.products?.product_code ?? null;
+    const item = { ...row, sku };
+    delete item.products;
+    return item as ShopOrderItem;
+  });
+
   return {
     order: order as ShopOrder,
-    items: (items as ShopOrderItem[] | null) ?? [],
+    items,
   };
 };
 

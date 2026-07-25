@@ -21,6 +21,7 @@ export interface CourierServiceRow {
   hub_hold_days: number;
   open_box_default_allowed: boolean;
   notes: string | null;
+  tracking_url_template?: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -392,7 +392,7 @@ const createAccountingInvoice = async (c: ShopOrder) => {
   actionOrderId.value = c.id;
   actionKind.value = 'invoice';
   try {
-    const { data, error } = await supabase.rpc('create_dual_invoice_from_dropship_order', {
+    const { data, error } = await supabase.rpc('create_dropship_invoice', {
       p_order_id: c.id,
       p_invoice_no: null,
       p_billing_profile_id: null,
@@ -463,6 +463,7 @@ const settlePayout = async (c: ShopOrder) => {
     const res = await dropshipLedgerService.settlePayoutForInvoice(
       authStore.tenantId,
       c.global_invoice_id,
+      Number(c.cod_collect_amount ?? 0),
       c.order_no,
     );
     if (!res.success) {

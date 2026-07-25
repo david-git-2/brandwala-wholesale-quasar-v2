@@ -7,7 +7,6 @@ export function useSaveShopMutation() {
 
   return useMutation({
     mutationFn: async (payload: CreateShopPayload | UpdateShopPayload): Promise<Shop> => {
-      const isEdit = 'id' in payload && typeof payload.id === 'number';
       const savedShop = await shopOrderRepository.upsertShop(payload);
 
       if (savedShop && savedShop.id) {
@@ -20,8 +19,8 @@ export function useSaveShopMutation() {
       }
       return savedShop;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['shopOrder', 'shops'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['shopOrder', 'shops'] });
     },
   });
 }

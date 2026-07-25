@@ -411,7 +411,6 @@ const {
   items,
   cartTotal,
   buyerCartTotal,
-  chargeTotal,
   recipientGrandTotal,
   estimatedProfit,
 } = useShopCartQuery(shopId);
@@ -524,8 +523,8 @@ const filterPostcode = (val: string, update: (fn: () => void) => void) => {
 };
 
 const currencySymbol = computed(() => {
-  if (cart.value?.currency_symbol) {
-    return cart.value.currency_symbol;
+  if ((cart.value as any)?.currency_symbol) {
+    return (cart.value as any).currency_symbol;
   }
   const shop = storefrontStore.shopDetails;
   if (shop?.sell_currency_id) {

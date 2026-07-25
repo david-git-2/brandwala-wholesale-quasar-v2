@@ -107,21 +107,12 @@
             autogrow
             class="soft-input"
           />
-          <q-input
-            v-model.number="form.middle_man_payout_amount"
-            type="number"
-            label="Middle-man payout (optional override)"
-            outlined
-            dense
-            class="soft-input"
-            min="0"
-          />
           <div class="q-mb-sm">
             <div class="text-caption text-grey-7 q-mb-xs">Note</div>
             <RichTextEditor v-model="form.note" min-height="6rem" />
           </div>
           <div class="text-caption text-grey-7">
-            Invoice face bills the recipient. Accounting uses sell price per line.
+            B2B Wholesale invoice billed to Middle Man (Billing Profile). Includes Goods + Packing + Print charges.
           </div>
           <div class="row justify-end q-gutter-sm">
             <q-btn flat no-caps label="Cancel" @click="onCancel" />
@@ -192,7 +183,6 @@ const form = reactive({
   recipient_name: '',
   recipient_phone: '',
   recipient_address: '',
-  middle_man_payout_amount: 0,
   note: '',
 });
 
@@ -283,7 +273,6 @@ const resetForm = (tenantId: number | null) => {
   form.recipient_name = '';
   form.recipient_phone = '';
   form.recipient_address = '';
-  form.middle_man_payout_amount = 0;
   form.note = '';
 };
 const loadBillingProfiles = async (tenantId: number | null) => {
@@ -333,7 +322,6 @@ const onSubmit = async () => {
     recipient_name: form.recipient_name.trim(),
     recipient_phone: form.recipient_phone.trim(),
     recipient_address: form.recipient_address.trim(),
-    middle_man_payout_amount: form.middle_man_payout_amount || null,
     note: cleanEditorHtml(form.note || ''),
   });
   if (!result.success || !result.data) {

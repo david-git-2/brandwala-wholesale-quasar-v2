@@ -206,10 +206,6 @@ const mapListGlobalInvoiceItemRow = (row: any): GlobalInvoiceItemRow => {
     name_snapshot: row.name_snapshot,
     quantity: Number(row.quantity),
     sell_price_amount: Number(row.sell_price_amount),
-    recipient_price_amount:
-      row.recipient_price_amount == null ? null : Number(row.recipient_price_amount),
-    line_face_total_amount:
-      row.line_face_total_amount == null ? null : Number(row.line_face_total_amount),
     line_discount_amount: Number(row.line_discount_amount),
     line_total_amount: Number(row.line_total_amount),
     return_quantity: Number(row.return_quantity),
@@ -234,7 +230,6 @@ const addGlobalInvoiceItem = async (payload: {
   quantity: number;
   sell_price_amount: number;
   line_discount_amount?: number;
-  recipient_price_amount?: number;
 }): Promise<GlobalInvoiceItemRow> => {
   const { data, error } = await supabase.rpc('add_global_invoice_item', {
     p_invoice_id: payload.invoice_id,
@@ -242,7 +237,6 @@ const addGlobalInvoiceItem = async (payload: {
     p_quantity: payload.quantity,
     p_sell_price_amount: payload.sell_price_amount,
     p_line_discount_amount: payload.line_discount_amount ?? 0,
-    p_recipient_price_amount: payload.recipient_price_amount ?? null,
   });
 
   if (error) throw error;
@@ -376,13 +370,11 @@ const updateGlobalInvoiceItem = async (payload: {
   id: number;
   quantity: number;
   sell_price_amount: number;
-  recipient_price_amount?: number;
 }): Promise<GlobalInvoiceItemRow> => {
   const { data, error } = await supabase.rpc('update_global_invoice_item', {
     p_item_id: payload.id,
     p_quantity: payload.quantity,
     p_sell_price_amount: payload.sell_price_amount,
-    p_recipient_price_amount: payload.recipient_price_amount ?? null,
   });
 
   if (error) throw error;
@@ -491,7 +483,6 @@ const updateInvoiceItemsBulk = async (
     id: number;
     quantity: number;
     sell_price_amount: number;
-    recipient_price_amount?: number;
   }>,
 ) => Promise.all(updates.map(updateGlobalInvoiceItem));
 

@@ -44,11 +44,10 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useActiveShopCartsQuery } from 'src/modules/shop_order/composables/useActiveShopCartsQuery';
 import { useShopWorkspaceLinks } from 'src/modules/navigation/useWorkspaceNavigation';
 import { useKobaCartStore } from 'src/modules/koba/retail/stores/kobaCartStore';
-import { useShopStorefrontStore } from 'src/modules/shop_order/stores/shopStorefrontStore';
 
 const authStore = useAuthStore();
 const kobaCartStore = useKobaCartStore();
-const storefrontStore = useShopStorefrontStore();
+// ShopLayout setup
 const { data: activeCarts } = useActiveShopCartsQuery();
 const router = useRouter();
 const route = useRoute();
