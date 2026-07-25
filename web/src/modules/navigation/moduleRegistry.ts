@@ -868,7 +868,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         scope: 'shop',
         title: 'Browse',
         caption: 'Browse available shops and products',
-        icon: 'ph ph-tote',
+        icon: 'ph ph-storefront',
         routeSegment: 'browse',
         requiredAction: 'view',
       },

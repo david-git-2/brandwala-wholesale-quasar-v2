@@ -725,6 +725,7 @@ import type { GlobalCurrency } from 'src/modules/global_reference/types';
 import { productService } from 'src/modules/products/services/productService';
 import type { Vendor } from 'src/modules/vendor/types';
 import { shopCategoryRepository } from '../repositories/shopCategoryRepository';
+import { useShopCategoryListQuery } from '../composables/useShopCategoryQuery';
 import type { ShopCategory } from '../types';
 
 // ---- types ---------------------------------------------------------
@@ -962,24 +963,12 @@ const loadCurrencies = async () => {
   }
 };
 
-const shopCategories = ref<ShopCategory[]>([]);
-const loadingCategories = ref(false);
+const categoryParams = computed(() => ({ tenantId: props.tenantId }));
+const { data: categoryData, isLoading: loadingCategories } = useShopCategoryListQuery(categoryParams);
 
 const categoryOptions = computed(() =>
-  shopCategories.value.map((c) => ({ id: c.id, name: c.name })),
+  (categoryData.value || []).map((c) => ({ id: c.id, name: c.name })),
 );
-
-const loadCategories = async () => {
-  if (!props.tenantId) return;
-  loadingCategories.value = true;
-  try {
-    shopCategories.value = await shopCategoryRepository.listCategories(props.tenantId);
-  } catch (e) {
-    console.error('Failed to load categories', e);
-  } finally {
-    loadingCategories.value = false;
-  }
-};
 
 // ---- label helpers -------------------------------------------------
 
@@ -1039,7 +1028,6 @@ watch(
 
     void loadVendors();
     void loadCurrencies();
-    void loadCategories();
 
     if (initialData) {
       shopTypeSnapshot.value = initialData.shop_type;
@@ -1184,6 +1172,8 @@ const onSave = () => {
       tenant_id: form.tenant_id,
       name: form.name.trim(),
       slug: form.slug.trim(),
+      description: form.description?.trim() || null,
+      category_ids: form.category_ids || [],
       order_mode: form.order_mode,
       is_negotiable: form.is_negotiable,
       show_stock_quantity: form.show_stock_quantity,
@@ -1206,6 +1196,8 @@ const onSave = () => {
       tenant_id: form.tenant_id,
       name: form.name.trim(),
       slug: form.slug.trim(),
+      description: form.description?.trim() || null,
+      category_ids: form.category_ids || [],
       shop_type: form.shop_type,
       vendor_code: form.shop_type === 'vendor_catalog' ? (form.vendor_filters?.[0]?.vendor_code || form.vendor_code.trim()) : null,
       order_mode: form.order_mode,

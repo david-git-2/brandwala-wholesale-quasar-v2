@@ -233,7 +233,7 @@
             </q-card-section>
 
             <q-list class="item-list-compact" separator>
-              <q-item v-for="item in cartStore.items" :key="item.id" class="q-py-sm">
+              <q-item v-for="item in items" :key="item.id" class="q-py-sm">
                 <q-item-section avatar>
                   <q-avatar size="36px" rounded class="bg-grey-2">
                     <q-img v-if="item.image_url" :src="item.image_url" />
@@ -248,8 +248,8 @@
                     {{ $t('shop.qty') }}: {{ item.quantity }}
                   </div>
                 </q-item-section>
-                <q-item-section side v-if="cartStore.cart?.see_price_snapshot || cartStore.cart?.shop_type === 'dropship'">
-                  <template v-if="cartStore.cart?.shop_type === 'dropship'">
+                <q-item-section side v-if="cart?.see_price_snapshot || cart?.shop_type === 'dropship'">
+                  <template v-if="cart?.shop_type === 'dropship'">
                     <div class="text-caption text-grey-6 text-right" style="font-size: 10px;">
                       {{ $t('shop.cost_label') }} {{ formatBuyerItemTotal(item) }}
                     </div>
@@ -269,15 +269,15 @@
             <q-separator />
 
             <q-card-section class="q-py-md">
-              <template v-if="cartStore.cart?.shop_type === 'dropship'">
-                <!-- Items Subtotal -->
+              <template v-if="cart?.shop_type === 'dropship'">
+                <!-- Recipient Subtotal -->
                 <div class="row justify-between q-mb-sm text-body2 text-grey-7">
                   <span>{{ $t('shop.items_subtotal') }}</span>
                   <span class="text-weight-medium text-grey-9">
-                    {{ formatAmount(cartStore.cartTotal) }}
+                    {{ formatCartTotal() }}
                   </span>
                 </div>
-
+                
                 <!-- Charges Section -->
                 <div class="column q-mt-sm q-mb-sm bg-grey-1 q-pa-sm rounded-borders" style="border: 1px solid rgba(0,0,0,0.05); border-radius: 8px;">
                   <div class="text-caption text-weight-bold text-grey-7 q-mb-xs">
@@ -286,12 +286,12 @@
                   
                   <div class="row justify-between text-caption text-grey-7 q-mb-xs">
                     <span>{{ $t('shop.delivery_charge') }}</span>
-                    <span>{{ formatAmount(0) }}</span>
+                    <span>{{ formatAmount(deliveryCharge) }}</span>
                   </div>
                   
-                  <div v-if="!isPrepaid" class="row justify-between text-caption text-grey-7 q-mb-xs">
+                  <div class="row justify-between text-caption text-grey-7 q-mb-xs">
                     <span>{{ $t('shop.cod_fee') }}</span>
-                    <span>{{ formatAmount(0) }}</span>
+                    <span>{{ formatAmount(codCharge) }}</span>
                   </div>
                   
                   <div class="row justify-between text-caption text-grey-7 q-mb-xs">
@@ -313,7 +313,7 @@
                   <div class="text-caption text-grey-6 q-mt-sm">
                     {{ $t('shop.courier_charges_may_vary') }}
                     <div>{{ $t('shop.courier_delivery_estimate', { min: formatAmount(courierEstimate.deliveryMin), max: formatAmount(courierEstimate.deliveryMax) }) }}</div>
-                    <div v-if="!isPrepaid && codEstimateSummary">{{ $t('shop.courier_cod_estimate', { summary: codEstimateSummary }) }}</div>
+                    <div v-if="codEstimateSummary">{{ $t('shop.courier_cod_estimate', { summary: codEstimateSummary }) }}</div>
                   </div>
                 </div>
 
@@ -321,7 +321,7 @@
                 <div class="row justify-between q-mb-sm text-body2 text-grey-7">
                   <span>{{ $t('shop.your_cost_buyer') }}</span>
                   <span class="text-weight-medium text-grey-9">
-                    {{ formatAmount(cartStore.buyerCartTotal + printCharge + packingCharge) }}
+                    {{ formatAmount(buyerCartTotal + printCharge + packingCharge) }}
                   </span>
                 </div>
 
@@ -338,13 +338,13 @@
 
               <div class="row justify-between items-baseline q-mb-lg">
                 <span class="text-subtitle1 text-weight-bold text-grey-9">{{
-                  cartStore.cart?.shop_type === 'dropship' ? $t('shop.recipient_pay_total') : $t('shop.estimated_total')
+                  cart?.shop_type === 'dropship' ? $t('shop.recipient_pay_total') : $t('shop.estimated_total')
                 }}</span>
                 <span
-                  v-if="cartStore.cart?.see_price_snapshot || cartStore.cart?.shop_type === 'dropship'"
+                  v-if="cart?.see_price_snapshot || cart?.shop_type === 'dropship'"
                   class="text-h6 text-weight-bold text-primary"
                 >
-                  {{ cartStore.cart?.shop_type === 'dropship' ? formatAmount(recipientGrandTotal) : formatCartTotal() }}
+                  {{ cart?.shop_type === 'dropship' ? formatAmount(recipientGrandTotal) : formatCartTotal() }}
                 </span>
                 <span v-else class="text-subtitle1 text-grey-5 italic">
                   {{ $t('shop.prices_hidden') }}
@@ -377,7 +377,9 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import { useShopCartStore } from '../stores/shopCartStore';
+import { useQueryClient } from '@tanstack/vue-query';
+import { useShopCartQuery } from '../composables/useShopCartQuery';
+import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { useShopOrderStore } from '../stores/shopOrderStore';
 import { useShopStorefrontStore } from '../stores/shopStorefrontStore';
 import { useThriftCurrenciesQuery } from 'src/modules/thrift/currency/composables/useThriftCurrenciesQuery';
@@ -385,6 +387,7 @@ import { useThriftCurrenciesQuery } from 'src/modules/thrift/currency/composable
 import { showErrorNotification } from 'src/utils/appFeedback';
 import { fetchCourierChargeEstimate } from '../services/courierChargeEstimate';
 import { useRecipientProfileStore } from 'src/modules/sales_invoice/stores/recipientProfileStore';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import {
   getBDDistricts,
   getBDUpazilas,
@@ -396,7 +399,23 @@ import {
 const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
-const cartStore = useShopCartStore();
+const queryClient = useQueryClient();
+const authStore = useAuthStore();
+
+const shopId = computed(() => {
+  return route.query.shopId ? Number(route.query.shopId) : null;
+});
+
+const {
+  cart,
+  items,
+  cartTotal,
+  buyerCartTotal,
+  chargeTotal,
+  recipientGrandTotal,
+  estimatedProfit,
+} = useShopCartQuery(shopId);
+
 const orderStore = useShopOrderStore();
 const storefrontStore = useShopStorefrontStore();
 const { data: currenciesData } = useThriftCurrenciesQuery();
@@ -424,12 +443,8 @@ const districtOptions = ref<BDLocationOption[]>([]);
 const thanaOptions = ref<BDLocationOption[]>([]);
 const postcodeOptions = ref<(BDPostcodeOption & { displayLabel: string })[]>([]);
 
-const shopType = computed(() => cartStore.cart?.shop_type);
-const allowDelivery = computed(() => cartStore.cart?.allow_delivery);
-
-const shopId = computed(() => {
-  return route.query.shopId ? Number(route.query.shopId) : null;
-});
+const shopType = computed(() => cart.value?.shop_type);
+const allowDelivery = computed(() => cart.value?.allow_delivery);
 
 // Load BD Districts and Upazilas
 const loadLocationData = async () => {
@@ -508,6 +523,18 @@ const filterPostcode = (val: string, update: (fn: () => void) => void) => {
   });
 };
 
+const currencySymbol = computed(() => {
+  if (cart.value?.currency_symbol) {
+    return cart.value.currency_symbol;
+  }
+  const shop = storefrontStore.shopDetails;
+  if (shop?.sell_currency_id) {
+    const curr = currencies.value.find((c) => c.id === shop.sell_currency_id);
+    if (curr?.symbol) return curr.symbol;
+  }
+  return '৳';
+});
+
 const createPostcode = (val: string, done: (item: any) => void) => {
   const custom = {
     id: 0,
@@ -531,29 +558,16 @@ const onThanaChange = async (newThanaName: string) => {
 };
 
 // Print/packing from shop; COD/delivery confirmed later by courier
-const defaultPrintCharge = computed(() => Number(cartStore.cart?.default_print_charge_amount || 0));
-const defaultPackingCharge = computed(() => Number(cartStore.cart?.default_packing_charge_amount || 0));
+const defaultPrintCharge = computed(() => Number(cart.value?.default_print_charge_amount || 0));
+const defaultPackingCharge = computed(() => Number(cart.value?.default_packing_charge_amount || 0));
 
 const deliveryCharge = computed(() => 0);
 const printCharge = computed(() => (shopType.value === 'dropship' ? defaultPrintCharge.value : 0));
 const packingCharge = computed(() => (shopType.value === 'dropship' ? defaultPackingCharge.value : 0));
 const codCharge = computed(() => 0);
 
-const deductPrintFromMargin = computed(() => !!cartStore.cart?.deduct_print_from_margin);
-const deductPackingFromMargin = computed(() => !!cartStore.cart?.deduct_packing_from_margin);
-
-const recipientGrandTotal = computed(() => {
-  return cartStore.cartTotal
-    + (deductPrintFromMargin.value ? 0 : printCharge.value)
-    + (deductPackingFromMargin.value ? 0 : packingCharge.value);
-});
-
-const estimatedProfit = computed(() => {
-  const buyerCost = cartStore.buyerCartTotal
-    + printCharge.value
-    + packingCharge.value;
-  return recipientGrandTotal.value - buyerCost;
-});
+const deductPrintFromMargin = computed(() => !!cart.value?.deduct_print_from_margin);
+const deductPackingFromMargin = computed(() => !!cart.value?.deduct_packing_from_margin);
 
 const courierEstimate = ref({
   deliveryMin: 60,
@@ -584,28 +598,14 @@ const codEstimateSummary = computed(() => {
   return parts.join(' / ') || '~1%';
 });
 
-watch(shopType, async (type) => {
-  if (type === 'dropship') {
-    courierEstimate.value = await fetchCourierChargeEstimate();
-  }
-}, { immediate: true });
-
-const currencySymbol = computed(() => {
-  const shop = storefrontStore.shopDetails;
-  if (shop?.sell_currency_id) {
-    const curr = currencies.value.find((c) => c.id === shop.sell_currency_id);
-    if (curr?.symbol) return curr.symbol;
-  }
-  return '£';
-});
-
-// Watch for cart changes to initialize requestDelivery
+// Watch for cart changes to initialize requestDelivery & fetch courier estimates
 watch(
-  () => cartStore.cart,
-  (cart) => {
-    if (cart) {
-      if (cart.shop_type === 'dropship') {
+  () => cart.value,
+  async (c) => {
+    if (c) {
+      if (c.shop_type === 'dropship') {
         requestDelivery.value = true;
+        courierEstimate.value = await fetchCourierChargeEstimate();
       } else {
         requestDelivery.value = false;
       }
@@ -616,9 +616,6 @@ watch(
 
 onMounted(async () => {
   await loadLocationData();
-  if (!cartStore.cart && shopId.value) {
-    await cartStore.fetchCart(shopId.value);
-  }
   if (!storefrontStore.shopDetails) {
     const lastSlug = localStorage.getItem('last_visited_shop_slug');
     if (lastSlug) {
@@ -634,7 +631,7 @@ const goBack = () => {
 
 const onRecipientPhoneBlur = async () => {
   const phone = recipientPhone.value.replace(/\D/g, '');
-  const tenantId = cartStore.cart?.tenant_id;
+  const tenantId = cart.value?.tenant_id;
   if (!tenantId || !/^01\d{9}$/.test(phone)) return;
   if (phone === lastLookupPhone.value) return;
   lastLookupPhone.value = phone;
@@ -660,10 +657,10 @@ const onRecipientPhoneBlur = async () => {
 };
 
 const submitOrder = async () => {
-  if (!cartStore.cart?.id) return;
+  if (!cart.value?.id) return;
 
   if (shopType.value === 'dropship') {
-    for (const item of cartStore.items) {
+    for (const item of items.value) {
       const minPrice = item.unit_minimum_sell_price_amount || 0;
       const sellPrice = item.customer_sell_price_amount ?? 0;
       if (sellPrice < minPrice) {
@@ -681,7 +678,6 @@ const submitOrder = async () => {
   const name = requestDelivery.value ? recipientName.value.trim() : '';
   const phone = requestDelivery.value ? recipientPhone.value.trim() : '';
   
-  // Format full combined shipping address if district/thana/postcode are specified
   let formattedAddress = requestDelivery.value ? shippingAddress.value.trim() : '';
   if (requestDelivery.value && (district.value || thana.value || postCode.value)) {
     const parts = [
@@ -699,7 +695,7 @@ const submitOrder = async () => {
   }
 
   const res = await orderStore.submitOrder(
-    cartStore.cart.id,
+    cart.value.id,
     name,
     phone,
     formattedAddress,
@@ -716,15 +712,22 @@ const submitOrder = async () => {
     requestDelivery.value ? thana.value || null : null,
   );
   if (res.success && res.data) {
-    cartStore.clearCart();
+    if (shopId.value) {
+      void queryClient.invalidateQueries({
+        queryKey: shopOrderQueryKeys.cart(authStore.tenantId ?? 0, shopId.value),
+      });
+    }
+    void queryClient.invalidateQueries({
+      queryKey: shopOrderQueryKeys.activeCarts(authStore.tenantId ?? 0),
+    });
     const tenantSlug = route.params.tenantSlug ? `/${String(route.params.tenantSlug)}` : '';
     void router.push(`${tenantSlug}/shop/orders/${res.data.order_id}`);
   }
 };
 
-// Formatting helpers
-const formatAmount = (val: number) => {
-  return `${currencySymbol.value}${val.toFixed(2)}`;
+const formatAmount = (val: any) => {
+  const num = typeof val === 'number' ? val : (val?.value ?? 0);
+  return `${currencySymbol.value}${num.toFixed(2)}`;
 };
 
 const formatItemTotal = (item: any) => {
@@ -744,7 +747,7 @@ const formatBuyerItemTotal = (item: any) => {
 };
 
 const formatCartTotal = () => {
-  return `${currencySymbol.value}${cartStore.cartTotal.toFixed(2)}`;
+  return `${currencySymbol.value}${cartTotal.value.toFixed(2)}`;
 };
 </script>
 

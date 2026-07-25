@@ -180,9 +180,24 @@
             <span class="text-h5 text-weight-bold text-primary">${{ cartTotalAmount.toFixed(2) }}</span>
           </div>
 
-          <div v-if="shopType === 'dropship'" class="text-caption text-grey-6">
-            COD and delivery are set by the courier after processing and may vary.
-            Estimated delivery: $60–$130; COD typically ~1%.
+          <div v-if="shopType === 'dropship'" class="delivery-notice-banner q-pa-md q-my-sm rounded-borders bg-amber-1 border-amber-5 text-grey-10 shadow-2 flex flex-column gap-xs">
+            <div class="flex items-center text-weight-bold text-subtitle2 text-amber-10">
+              <q-icon name="ph ph-truck text-weight-bold" size="20px" class="q-mr-xs text-amber-9" />
+              <span>Important Courier Notice</span>
+            </div>
+            <div class="text-caption text-weight-medium text-grey-9 q-mt-xs">
+              COD and delivery are set by the courier after processing and may vary.
+            </div>
+            <div class="column gap-xs q-mt-sm">
+              <div class="text-caption text-weight-bold flex items-center justify-between bg-white q-pa-xs q-px-sm rounded-borders border-amber-3 shadow-1">
+                <span class="text-grey-9 flex items-center"><q-icon name="ph ph-currency-bdt" size="16px" class="q-mr-xs text-primary" /> Estimated delivery:</span>
+                <span class="text-primary text-weight-bolder text-subtitle2">৳60.00–৳130.00</span>
+              </div>
+              <div class="text-caption text-weight-bold flex items-center justify-between bg-white q-pa-xs q-px-sm rounded-borders border-amber-3 shadow-1">
+                <span class="text-grey-9 flex items-center"><q-icon name="ph ph-percent" size="16px" class="q-mr-xs text-indigo-9" /> Estimated COD fee:</span>
+                <span class="text-indigo-9 text-weight-bolder text-subtitle2">~1%</span>
+              </div>
+            </div>
           </div>
 
           <!-- CTA based on Order Mode -->
@@ -512,6 +527,15 @@ onMounted(() => {
 
 .checkout-btn {
   border-radius: 10px;
+}
+
+.delivery-notice-banner {
+  border: 1px solid #fcd34d;
+  background-color: #fffbeb;
+}
+
+.border-amber-3 {
+  border: 1px solid #fde68a;
 }
 
 .gap-sm {

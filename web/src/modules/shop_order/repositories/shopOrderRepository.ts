@@ -56,6 +56,8 @@ const upsertShop = async (payload: CreateShopPayload | UpdateShopPayload): Promi
     p_vendor_filters: payload.vendor_filters ?? null,
     p_deduct_print_from_margin: (payload as any).deduct_print_from_margin ?? false,
     p_deduct_packing_from_margin: (payload as any).deduct_packing_from_margin ?? false,
+    p_description: payload.description?.trim() || null,
+    p_category_ids: payload.category_ids ?? [],
   });
 
   if (error) {
@@ -104,6 +106,9 @@ export type CustomerAccessibleShop = {
   order_mode: string;
   is_negotiable: boolean;
   see_price: boolean;
+  description?: string | null;
+  category_ids?: number[] | null;
+  categories?: Array<{ id: number; name: string; slug: string; icon: string }> | null;
 };
 
 const listShopsForCustomer = async (

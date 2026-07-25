@@ -147,11 +147,53 @@ const updateShopCartCharges = async (
   return getOrCreateCart(shopId);
 };
 
+export interface ActiveCartItem {
+  cart_id: number;
+  shop_id: number;
+  shop_name: string;
+  shop_slug: string;
+  shop_logo_url: string | null;
+  shop_type: 'vendor_catalog' | 'fixed_price' | 'dropship';
+  see_price: boolean;
+  currency_id: number | null;
+  currency_code: string | null;
+  currency_symbol: string | null;
+  item_count: number;
+  cart_total: number | null;
+  updated_at: string;
+}
+
+const listActiveShopCarts = async (): Promise<ActiveCartItem[]> => {
+  const { data, error } = await supabase.rpc('list_active_shop_carts');
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map((row) => ({
+    cart_id: Number(row.cart_id),
+    shop_id: Number(row.shop_id),
+    shop_name: row.shop_name,
+    shop_slug: row.shop_slug,
+    shop_logo_url: row.shop_logo_url ?? null,
+    shop_type: row.shop_type as ActiveCartItem['shop_type'],
+    see_price: row.see_price,
+    currency_id: row.currency_id ?? null,
+    currency_code: row.currency_code ?? null,
+    currency_symbol: row.currency_symbol ?? null,
+    item_count: Number(row.item_count ?? 0),
+    cart_total: row.cart_total == null ? null : Number(row.cart_total),
+    updated_at: row.updated_at,
+  }));
+};
+
 export const shopCartRepository = {
   getOrCreateCart,
+  listActiveShopCarts,
   addToCart,
   updateCartItemQty,
   removeCartItem,
   updateCartItemPrice,
   updateShopCartCharges,
 };
+

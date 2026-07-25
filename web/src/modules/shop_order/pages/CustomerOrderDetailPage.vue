@@ -20,43 +20,40 @@
             </div>
           </div>
         </div>
-        <div class="col-auto">
-          <q-btn color="primary" unelevated no-caps label="Download Invoice" @click="downloadInvoice" />
-        </div>
       </section>
 
-      <!-- Status Workflow Button Strip (LOCKED) -->
+      <!-- Status (read-only for customer; sequence depends on shop type) -->
       <q-card flat bordered class="q-pa-sm">
-        <div class="row items-center justify-between q-col-gutter-sm">
-          <div class="col-grow row items-center q-gutter-xs status-workflow-row">
-            <template v-for="(st, idx) in ['pending', 'negotiating', 'approved', 'shipped', 'delivered']" :key="st">
-              <q-btn
-                :color="order.status === st ? getStatusColor(st) : isPassedStatus(st) ? 'grey-5' : 'grey-3'"
-                :text-color="order.status === st ? 'white' : isPassedStatus(st) ? 'grey-9' : 'grey-7'"
-                :outline="order.status !== st"
-                :unelevated="order.status === st"
-                dense
-                no-caps
-                class="q-px-md text-caption text-weight-bold"
-              >
-                <q-icon v-if="order.status === st" name="ph ph-check-circle" size="14px" class="q-mr-xs" />
-                {{ formatStatusLabel(st) }}
-              </q-btn>
-              <q-icon v-if="idx < 4" name="ph ph-caret-right" color="grey-5" size="18px" />
-            </template>
-            <q-separator vertical class="q-mx-sm" />
-            <q-btn
-              :color="order.status === 'cancelled' ? 'negative' : 'grey-3'"
-              :text-color="order.status === 'cancelled' ? 'white' : 'grey-7'"
-              :outline="order.status !== 'cancelled'"
-              :unelevated="order.status === 'cancelled'"
+        <div class="row items-center q-gutter-xs status-workflow-row">
+          <template v-for="(st, idx) in statusSequence" :key="st">
+            <q-chip
               dense
-              no-caps
-              class="q-px-md text-caption text-weight-bold"
+              :clickable="false"
+              :color="normalizedStatus === st ? getStatusColor(st) : isPassedStatus(st) ? 'grey-5' : 'grey-3'"
+              :text-color="normalizedStatus === st ? 'white' : isPassedStatus(st) ? 'grey-9' : 'grey-7'"
+              :outline="normalizedStatus !== st"
+              class="text-caption text-weight-bold"
             >
-              Cancelled
-            </q-btn>
-          </div>
+              <q-icon v-if="normalizedStatus === st" name="ph ph-check-circle" size="14px" class="q-mr-xs" />
+              {{ formatStatusLabel(st) }}
+            </q-chip>
+            <q-icon v-if="idx < statusSequence.length - 1" name="ph ph-caret-right" color="grey-5" size="18px" />
+          </template>
+          <template v-if="terminalStatuses.length">
+            <q-separator vertical class="q-mx-sm" />
+            <q-chip
+              v-for="st in terminalStatuses"
+              :key="st"
+              dense
+              :clickable="false"
+              :color="normalizedStatus === st ? getStatusColor(st) : 'grey-3'"
+              :text-color="normalizedStatus === st ? 'white' : 'grey-7'"
+              :outline="normalizedStatus !== st"
+              class="text-caption text-weight-bold"
+            >
+              {{ formatStatusLabel(st) }}
+            </q-chip>
+          </template>
         </div>
       </q-card>
 
@@ -214,7 +211,13 @@
                     }}
                   </q-badge>
                 </div>
-                <div class="row justify-between items-center q-mt-xs" v-if="orderStore.currentOrder.shop_type_snapshot === 'dropship'">
+                <div
+                  class="row justify-between items-center q-mt-xs"
+                  v-if="
+                    orderStore.currentOrder.shop_type_snapshot === 'dropship' &&
+                    orderStore.currentOrder.tracking_url
+                  "
+                >
                   <span class="text-grey-6">Courier Tracking</span>
                   <q-btn
                     flat
@@ -225,11 +228,15 @@
                     icon="ph ph-arrow-up-right"
                     label="Track Parcel"
                     type="a"
-                    href="https://steadfast.com.bd/t/ST-987654"
+                    :href="orderStore.currentOrder.tracking_url"
                     target="_blank"
+                    rel="noopener noreferrer"
                   />
                 </div>
-                <div class="row justify-between" v-else>
+                <div
+                  class="row justify-between"
+                  v-if="orderStore.currentOrder.shop_type_snapshot !== 'dropship'"
+                >
                   <span class="text-grey-6">{{ $t('shop_admin.order_mode_label') }}</span>
                   <span class="text-grey-8 text-capitalize">{{
                     orderStore.currentOrder.order_mode_snapshot
@@ -448,30 +455,76 @@ const submitCounterOffer = async () => {
 
 const order = computed(() => orderStore.currentOrder || ({} as any));
 
-const statusSequence = ['pending', 'negotiating', 'approved', 'shipped', 'delivered'];
+/** Map legacy/alias statuses onto the display sequence. */
+const normalizedStatus = computed(() => {
+  const status = String(order.value.status || '');
+  if (status === 'pending') return 'submitted';
+  if (status === 'approved') return 'confirmed';
+  // Customer-facing happy path ends at delivered; remittance is internal.
+  if (status === 'payment_received') return 'delivered';
+  return status;
+});
+
+const statusSequence = computed(() => {
+  const shopType = order.value.shop_type_snapshot;
+  if (shopType === 'dropship') {
+    return ['confirmed', 'processing', 'ready_for_pickup', 'shipped', 'delivered'];
+  }
+  if (shopType === 'vendor_catalog') {
+    if (order.value.is_negotiable_snapshot) {
+      return ['negotiating', 'priced', 'confirmed', 'placed'];
+    }
+    return ['submitted', 'confirmed', 'placed'];
+  }
+  // fixed_price (and wholesale checkout)
+  return ['confirmed', 'fulfilled'];
+});
+
+const terminalStatuses = computed(() => {
+  if (order.value.shop_type_snapshot === 'dropship') {
+    return ['returned', 'cancelled'];
+  }
+  return ['cancelled'];
+});
 
 const isPassedStatus = (st: string) => {
-  const currentStatus = order.value.status || '';
-  const currentIndex = statusSequence.indexOf(currentStatus);
-  const targetIndex = statusSequence.indexOf(st);
+  const currentIndex = statusSequence.value.indexOf(normalizedStatus.value);
+  const targetIndex = statusSequence.value.indexOf(st);
   if (currentIndex === -1 || targetIndex === -1) return false;
   return targetIndex < currentIndex;
 };
 
 const formatStatusLabel = (st: string) => {
   switch (st) {
-    case 'pending': return 'Pending';
-    case 'negotiating': return 'Negotiating';
-    case 'approved': return 'Approved';
-    case 'shipped': return 'Shipped';
-    case 'delivered': return 'Delivered';
-    case 'cancelled': return 'Cancelled';
-    default: return st;
+    case 'submitted':
+      return 'Submitted';
+    case 'negotiating':
+      return 'Negotiating';
+    case 'priced':
+      return 'Priced';
+    case 'confirmed':
+      return 'Confirmed';
+    case 'placed':
+      return 'Placed';
+    case 'fulfilled':
+      return 'Fulfilled';
+    case 'processing':
+      return 'Processing';
+    case 'ready_for_pickup':
+      return 'Ready for Pickup';
+    case 'shipped':
+      return 'Shipped';
+    case 'delivered':
+      return 'Delivered';
+    case 'returned':
+      return 'Returned';
+    case 'cancelled':
+      return 'Cancelled';
+    case 'payment_received':
+      return 'Payment Received';
+    default:
+      return st.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
   }
-};
-
-const downloadInvoice = () => {
-  window.print();
 };
 
 const goOrders = () => {

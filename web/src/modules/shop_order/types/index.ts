@@ -203,6 +203,7 @@ export interface ShopOrder {
   cod_collect_amount?: number | null;
   courier_name?: string | null;
   courier_awb_number?: string | null;
+  tracking_url?: string | null;
   courier_remittance_ref?: string | null;
   courier_bank_trx_id?: string | null;
 }

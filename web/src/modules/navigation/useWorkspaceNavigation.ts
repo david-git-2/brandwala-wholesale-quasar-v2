@@ -119,7 +119,7 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
   {
     title: 'Dashboard',
     caption: 'Current orders, approvals, and next actions',
-    icon: 'ph ph-tote',
+    icon: 'ph ph-squares-four',
     scopes: ['shop'],
     allowedRoles: ['customer_admin', 'customer_negotiator', 'customer_staff'],
     requiresTenantContext: true,

@@ -112,8 +112,23 @@ export const useAuthStore = defineStore('auth', () => {
   const snapshot = ref<StoredAuthAccess | null>(readStorage());
   const tenantStore = useTenantStore();
 
-  let lastFreshnessCheckAt: number | null = null;
-  const FRESHNESS_TTL_MS = 60_000;
+  const FRESHNESS_STORAGE_KEY = 'brandwala.auth.freshness.timestamp';
+  const FRESHNESS_TTL_MS = 300_000; // 5 minutes
+
+  const readFreshnessTimestamp = (): number | null => {
+    if (typeof window === 'undefined') return null;
+    const val = window.sessionStorage.getItem(FRESHNESS_STORAGE_KEY);
+    return val ? Number(val) : null;
+  };
+
+  const writeFreshnessTimestamp = (timestamp: number | null) => {
+    if (typeof window === 'undefined') return;
+    if (timestamp === null) {
+      window.sessionStorage.removeItem(FRESHNESS_STORAGE_KEY);
+    } else {
+      window.sessionStorage.setItem(FRESHNESS_STORAGE_KEY, String(timestamp));
+    }
+  };
 
   const access = computed(() => snapshot.value);
   const user = computed(() => snapshot.value?.user ?? null);
@@ -212,7 +227,7 @@ export const useAuthStore = defineStore('auth', () => {
           permissionVersion: bootstrap.permission_version ?? null,
           savedAt: new Date().toISOString(),
         });
-        lastFreshnessCheckAt = null;
+        writeFreshnessTimestamp(Date.now());
         return true;
       } else if (scopeVal === 'shop') {
         const tenantIdVal = snapshot.value.tenant?.id ?? null;
@@ -264,7 +279,7 @@ export const useAuthStore = defineStore('auth', () => {
           id: bootstrap.tenant_id,
           slug: bootstrap.tenant_slug,
         });
-        lastFreshnessCheckAt = null;
+        writeFreshnessTimestamp(Date.now());
         return true;
       } else if (scopeVal === 'investor') {
         const tenantIdVal = snapshot.value.tenant?.id ?? null;
@@ -305,7 +320,7 @@ export const useAuthStore = defineStore('auth', () => {
           permissionVersion: bootstrap.permission_version ?? null,
           savedAt: new Date().toISOString(),
         });
-        lastFreshnessCheckAt = null;
+        writeFreshnessTimestamp(Date.now());
         return true;
       }
     } catch (e) {
@@ -316,14 +331,15 @@ export const useAuthStore = defineStore('auth', () => {
 
   const checkFreshness = async () => {
     if (!tenantId.value) return;
-    if (lastFreshnessCheckAt !== null && Date.now() - lastFreshnessCheckAt < FRESHNESS_TTL_MS) {
+    const lastCheck = readFreshnessTimestamp();
+    if (lastCheck !== null && Date.now() - lastCheck < FRESHNESS_TTL_MS) {
       return;
     }
     try {
       const { data, error } = await supabase.rpc('get_tenant_permission_version', {
         p_tenant_id: tenantId.value,
       });
-      lastFreshnessCheckAt = Date.now();
+      writeFreshnessTimestamp(Date.now());
       if (!error && data !== null && Number(data) !== permissionVersion.value) {
         console.log(
           '[authStore] Permission version mismatch. Re-bootstrapping silently...',
@@ -340,6 +356,7 @@ export const useAuthStore = defineStore('auth', () => {
   const clearAccess = () => {
     snapshot.value = null;
     writeStorage(null);
+    writeFreshnessTimestamp(null);
     clearTenantWorkspaceStorage();
     useTenantPreferenceStore().clear();
     useMembershipPreferenceStore().clear();

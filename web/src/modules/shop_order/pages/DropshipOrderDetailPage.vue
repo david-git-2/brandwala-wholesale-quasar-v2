@@ -1,6 +1,6 @@
 <template>
-  <q-page class="bw-page">
-    <section class="bw-page__stack">
+  <q-page class="q-pa-md">
+    <div class="q-gutter-y-md">
       <!-- Loading Spinner -->
       <div v-if="loading" class="row justify-center q-py-xl">
         <q-spinner color="primary" size="3em" />
@@ -35,17 +35,17 @@
         <section class="row items-center justify-between q-col-gutter-md">
           <div class="col">
             <div class="row items-center q-gutter-x-sm">
-              <q-btn flat round icon="ph ph-arrow-left" color="grey-7" :to="{ name: 'app-shop-dropship-orders-page' }" />
+              <q-btn flat dense icon="ph ph-arrow-left" color="grey-7" :to="{ name: 'app-shop-dropship-orders-page' }" />
               <div>
-                <div class="text-overline">Dropship Desk / Order Process</div>
-                <h1 class="text-h5 q-my-none">Process Order: {{ order?.order_no || 'ORD-DS' }}</h1>
+                <div class="text-overline text-primary">Dropship Desk</div>
+                <h1 class="text-h5 text-weight-bold q-my-none">Process Order: {{ order?.order_no || 'ORD-DS' }}</h1>
                 <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
                   Middle Man: <strong class="text-grey-9">{{ order?.customer_group_name || order?.created_by_email || '—' }}</strong>
                 </p>
               </div>
             </div>
           </div>
-          <div class="col-auto row q-gutter-sm">
+          <div class="col-auto row q-gutter-sm items-center">
             <q-btn
               v-if="order?.status !== 'confirmed' && order?.status !== 'submitted'"
               outline
@@ -59,6 +59,7 @@
             <q-btn
               v-if="order?.global_invoice_id"
               color="positive"
+              unelevated
               icon="ph ph-receipt"
               label="View Accounting Invoice"
               no-caps
@@ -67,6 +68,7 @@
             <q-btn
               v-else-if="['ready_for_pickup', 'shipped', 'delivered', 'payment_received'].includes(order?.status ?? '')"
               color="positive"
+              unelevated
               icon="ph ph-receipt"
               label="Create Dual Invoice"
               no-caps
@@ -74,49 +76,64 @@
             />
           </div>
         </section>
-
-        <!-- Status Stepper Bar (Gated if confirmed) -->
-        <q-card v-if="order?.status !== 'confirmed'" flat bordered class="q-pa-md form-card">
-          <div class="row items-center justify-between q-mb-sm">
-            <div class="text-subtitle2 text-weight-bold text-grey-8 row items-center">
-              <q-icon name="ph ph-sliders-horizontal" size="20px" class="q-mr-xs text-primary" />
-              Shipment Status Workflow
-            </div>
-            <div class="text-caption text-grey-6">
-              Click any state button to change status (backward or forward)
-            </div>
-          </div>
-          <div class="row items-center q-gutter-xs">
-            <template
-              v-for="(st, idx) in ['processing', 'ready_for_pickup', 'shipped', 'delivered', 'returned']"
-              :key="st"
-            >
+        <!-- Status Workflow Strip (LOCKED detail spec) -->
+        <q-card v-if="order?.status !== 'confirmed'" flat bordered class="q-pa-sm">
+          <div class="row items-center justify-between q-col-gutter-sm">
+            <div class="col-grow row items-center q-gutter-xs status-workflow-row">
+              <template
+                v-for="(st, idx) in ['processing', 'ready_for_pickup', 'shipped', 'delivered']"
+                :key="st"
+              >
+                <q-btn
+                  :color="order?.status === st ? getStatusColor(st) : isPassedStatus(st) ? 'grey-5' : 'grey-3'"
+                  :text-color="order?.status === st ? 'white' : isPassedStatus(st) ? 'grey-9' : 'grey-7'"
+                  :outline="order?.status !== st"
+                  :unelevated="order?.status === st"
+                  dense
+                  no-caps
+                  class="q-px-md text-caption text-weight-bold"
+                  :loading="updatingStatus && targetUpdatingStatus === st"
+                  :disable="updatingStatus && targetUpdatingStatus !== st"
+                  @click="onUpdateStatus(st)"
+                >
+                  <q-icon
+                    v-if="order?.status === st"
+                    name="ph ph-check-circle"
+                    size="14px"
+                    class="q-mr-xs"
+                  />
+                  {{ formatStatusLabel(st) }}
+                </q-btn>
+                <q-icon
+                  v-if="idx < 3"
+                  name="ph ph-caret-right"
+                  color="grey-5"
+                  size="18px"
+                  class="status-workflow-chevron"
+                />
+              </template>
+              <q-separator vertical class="q-mx-sm status-workflow-sep" />
               <q-btn
-                :color="order?.status === st ? getStatusColor(st) : isPassedStatus(st) ? 'grey-5' : 'grey-3'"
-                :text-color="order?.status === st ? 'white' : isPassedStatus(st) ? 'grey-9' : 'grey-7'"
-                :outline="order?.status !== st"
-                :unelevated="order?.status === st"
+                :color="order?.status === 'returned' ? 'negative' : 'grey-3'"
+                :text-color="order?.status === 'returned' ? 'white' : 'grey-7'"
+                :outline="order?.status !== 'returned'"
+                :unelevated="order?.status === 'returned'"
                 dense
                 no-caps
                 class="q-px-md text-caption text-weight-bold"
-                :loading="updatingStatus && targetUpdatingStatus === st"
-                @click="onUpdateStatus(st)"
+                :loading="updatingStatus && targetUpdatingStatus === 'returned'"
+                :disable="updatingStatus && targetUpdatingStatus !== 'returned'"
+                @click="onUpdateStatus('returned')"
               >
                 <q-icon
-                  v-if="order?.status === st"
-                  name="ph ph-check-circle"
+                  v-if="order?.status === 'returned'"
+                  name="ph ph-x-circle"
                   size="14px"
                   class="q-mr-xs"
                 />
-                {{ st.toUpperCase().replace(/_/g, ' ') }}
+                Returned
               </q-btn>
-              <q-icon
-                v-if="idx < 4"
-                name="ph ph-caret-right"
-                color="grey-5"
-                size="18px"
-              />
-            </template>
+            </div>
           </div>
         </q-card>
 
@@ -411,6 +428,23 @@
                       <q-input v-model="form.tracking_url" label="Courier Tracking URL" outlined dense hide-bottom-space />
                     </div>
 
+                    <!-- Track Shipment Link (Only shown when admin selects courier and provides tracking URL) -->
+                    <div v-if="selectedCourier && form.tracking_url" class="col-12">
+                      <q-btn
+                        flat
+                        dense
+                        no-caps
+                        color="primary"
+                        icon="ph ph-arrow-square-out"
+                        label="Track Parcel / Open Tracking Link"
+                        type="a"
+                        :href="form.tracking_url"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="full-width bg-blue-1 text-weight-medium rounded-borders q-py-xs"
+                      />
+                    </div>
+
                     <!-- Return Policy Chip Summary -->
                     <div v-if="selectedCourier" class="col-12">
                       <div class="q-pa-sm bg-blue-50 rounded-borders text-caption text-grey-8" style="border: 1px solid #d0e7ff">
@@ -612,7 +646,6 @@
             </div>
           </div>
         </div>
-      </template>
 
       <q-dialog v-model="remittanceDialogOpen" persistent>
         <q-card style="min-width: 440px; border-radius: 12px">
@@ -727,7 +760,8 @@
           </q-card>
         </div>
       </q-slide-transition>
-    </section>
+      </template>
+    </div>
   </q-page>
 </template>
 
@@ -1690,6 +1724,10 @@ const onUpdateStatus = async (status: string) => {
     updatingStatus.value = false;
     targetUpdatingStatus.value = null;
   }
+};
+
+const formatStatusLabel = (st: string) => {
+  return st.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 };
 
 const getStatusColor = (status: string) => {

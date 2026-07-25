@@ -36,18 +36,20 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue';
+import { computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import WorkspaceShell from 'src/components/WorkspaceShell.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useShopCartStore } from 'src/modules/shop_order/stores/shopCartStore';
+import { useActiveShopCartsQuery } from 'src/modules/shop_order/composables/useActiveShopCartsQuery';
 import { useShopWorkspaceLinks } from 'src/modules/navigation/useWorkspaceNavigation';
 import { useKobaCartStore } from 'src/modules/koba/retail/stores/kobaCartStore';
+import { useShopStorefrontStore } from 'src/modules/shop_order/stores/shopStorefrontStore';
 
 const authStore = useAuthStore();
-const shopCartStore = useShopCartStore();
 const kobaCartStore = useKobaCartStore();
+const storefrontStore = useShopStorefrontStore();
+const { data: activeCarts } = useActiveShopCartsQuery();
 const router = useRouter();
 const route = useRoute();
 const { links } = useShopWorkspaceLinks();
@@ -65,7 +67,7 @@ const cartItemCount = computed(() => {
   if (isKobaActive.value) {
     return kobaCartStore.itemCount;
   }
-  return shopCartStore.itemCount;
+  return (activeCarts.value ?? []).reduce((sum, c) => sum + Number(c.item_count), 0);
 });
 
 const canShowCartIcon = computed(() => {
@@ -105,18 +107,6 @@ const goToCart = async () => {
   await router.push(`${tenantPrefix}/shop/cart`);
 };
 
-onMounted(() => {
-  if (authStore.tenantId) {
-    const lastVisitedShopId = localStorage.getItem('last_visited_shop_id');
-    if (lastVisitedShopId) {
-      void shopCartStore.fetchCart(Number(lastVisitedShopId));
-    }
-  }
-  if (isKobaActive.value) {
-    void kobaCartStore.fetchCart();
-  }
-});
-
 watch(
   () => isKobaActive.value,
   (active) => {
@@ -125,6 +115,7 @@ watch(
     }
   },
 );
+
 </script>
 
 <style scoped>

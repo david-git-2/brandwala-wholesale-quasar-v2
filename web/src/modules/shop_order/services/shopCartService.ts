@@ -1,4 +1,4 @@
-import { shopCartRepository, type CartData, type CartChargesPayload } from '../repositories/shopCartRepository';
+import { shopCartRepository, type CartData, type CartChargesPayload, type ActiveCartItem } from '../repositories/shopCartRepository';
 import type { ShopServiceResult } from '../types';
 
 const getOrCreateCart = async (shopId: number): Promise<ShopServiceResult<CartData>> => {
@@ -9,6 +9,18 @@ const getOrCreateCart = async (shopId: number): Promise<ShopServiceResult<CartDa
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to retrieve or create cart.',
+    };
+  }
+};
+
+const listActiveShopCarts = async (): Promise<ShopServiceResult<ActiveCartItem[]>> => {
+  try {
+    const data = await shopCartRepository.listActiveShopCarts();
+    return { success: true, data };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to list active shop carts.',
     };
   }
 };
@@ -99,9 +111,11 @@ const updateShopCartCharges = async (
 
 export const shopCartService = {
   getOrCreateCart,
+  listActiveShopCarts,
   addToCart,
   updateCartItemQty,
   removeCartItem,
   updateCartItemPrice,
   updateShopCartCharges,
 };
+

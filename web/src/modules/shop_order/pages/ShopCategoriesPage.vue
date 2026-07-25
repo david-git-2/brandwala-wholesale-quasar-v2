@@ -48,7 +48,7 @@
               icon="ph ph-arrows-clockwise"
               aria-label="Refresh categories"
               :loading="loading"
-              @click="fetchCategories"
+              @click="() => fetchCategories()"
             >
               <q-tooltip>Refresh Categories</q-tooltip>
             </q-btn>
@@ -86,7 +86,7 @@
           <template #body-cell-icon="props">
             <q-td :props="props">
               <div class="row items-center q-gutter-x-xs">
-                <q-icon :name="props.value || 'category'" size="sm" color="primary" />
+                <q-icon :name="props.value || 'ph ph-squares-four'" size="sm" color="primary" />
                 <span class="text-caption text-grey-8">{{ props.value }}</span>
               </div>
             </q-td>
@@ -128,7 +128,7 @@
               <q-card flat bordered class="q-pa-md">
                 <div class="row items-center justify-between q-mb-xs">
                   <div class="row items-center q-gutter-x-xs">
-                    <q-icon :name="props.row.icon || 'category'" color="primary" size="sm" />
+                    <q-icon :name="props.row.icon || 'ph ph-squares-four'" color="primary" size="sm" />
                     <span class="text-subtitle1 text-weight-bold">{{ props.row.name }}</span>
                   </div>
                   <q-chip
@@ -295,19 +295,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed } from 'vue';
 import { useQuasar } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { shopCategoryRepository } from '../repositories/shopCategoryRepository';
 import type { ShopCategory } from '../types';
+import { useShopCategoryListQuery } from '../composables/useShopCategoryQuery';
+import {
+  useCreateShopCategoryMutation,
+  useUpdateShopCategoryMutation,
+  useDeleteShopCategoryMutation,
+} from '../composables/useShopCategoryMutations';
 
 const $q = useQuasar();
 const authStore = useAuthStore();
 
-const categories = ref<ShopCategory[]>([]);
-const loading = ref(false);
-const saving = ref(false);
-const deleting = ref(false);
 const searchQuery = ref('');
 
 const showDialog = ref(false);
@@ -331,15 +332,80 @@ const form = ref<{
 });
 
 const iconOptions = [
-  { label: 'Category', value: 'category' },
-  { label: 'Checkroom (Apparel)', value: 'checkroom' },
-  { label: 'Shopping Bag', value: 'shopping_bag' },
-  { label: 'Storefront', value: 'storefront' },
-  { label: 'Style', value: 'style' },
-  { label: 'Devices (Electronics)', value: 'devices' },
-  { label: 'Local Mall', value: 'local_mall' },
-  { label: 'Inventory', value: 'inventory_2' },
-  { label: 'Star / Featured', value: 'star' },
+  // General & Storefront
+  { label: 'Grid / All Categories', value: 'ph ph-squares-four' },
+  { label: 'Storefront / Shop', value: 'ph ph-storefront' },
+  { label: 'Shopping Bag', value: 'ph ph-shopping-bag' },
+  { label: 'Shopping Cart', value: 'ph ph-shopping-cart' },
+  { label: 'Tag / Specials', value: 'ph ph-tag' },
+  { label: 'Star / Featured', value: 'ph ph-star' },
+  { label: 'Sparkle / New Arrival', value: 'ph ph-sparkle' },
+  { label: 'Gift / Sets & Combos', value: 'ph ph-gift' },
+
+  // Personal Care, Washing & Bathing
+  { label: 'Soap & Hand Wash', value: 'ph ph-hand-soap' },
+  { label: 'Shower Gel & Body Wash', value: 'ph ph-shower' },
+  { label: 'Bubble Bath & Bath Oils', value: 'ph ph-bathtub' },
+  { label: 'Deodorants & Roll-On', value: 'ph ph-gender-male' },
+  { label: 'Sanitary & Feminine Hygiene', value: 'ph ph-heart' },
+
+  // Dental & Oral Care (Mouthwash, Toothpaste, Toothbrushes)
+  { label: 'Dental & Oral Care', value: 'ph ph-smiley' },
+  { label: 'Toothbrush & Hygiene', value: 'ph ph-first-aid-kit' },
+
+  // Hair Care & Hair Styling Tools
+  { label: 'Hair Care & Shampoo', value: 'ph ph-sparkles' },
+  { label: 'Hair Styling Tools & Accessories', value: 'ph ph-scissors' },
+  { label: 'Hair Dryer / Electricals', value: 'ph ph-wind' },
+  { label: 'Hair Dye & Treatments', value: 'ph ph-drop' },
+
+  // Skincare, Cosmetics & Beauty
+  { label: 'Skin Care & Lotions', value: 'ph ph-flower' },
+  { label: 'Face Wash & Cleanser', value: 'ph ph-waves' },
+  { label: 'Cosmetics / Face & Eye Makeup', value: 'ph ph-palette' },
+  { label: 'Make-up Remover & Wipes', value: 'ph ph-textbox' },
+  { label: 'Lip Care & Lipsticks', value: 'ph ph-smiley-wink' },
+  { label: 'Sun Protection & Aftersun', value: 'ph ph-sun' },
+  { label: 'Nail Polish Remover & Foot Care', value: 'ph ph-hand' },
+
+  // Baby Care, Nursery & Feeding
+  { label: 'Baby Accessories & Care', value: 'ph ph-baby' },
+  { label: 'Baby Bottles & Feeding', value: 'ph ph-flask' },
+  { label: 'Baby Wipes & Nappies', value: 'ph ph-check-circle' },
+  { label: 'Teething & Soothers', value: 'ph ph-heartbeat' },
+  { label: 'Baby Blankets & Bedding', value: 'ph ph-bed' },
+
+  // Health, Medicine & Pharmacy
+  { label: 'Medicine & Pharmacy', value: 'ph ph-pill' },
+  { label: 'Vitamins & Energy', value: 'ph ph-lightning' },
+  { label: 'First Aid & Plasters', value: 'ph ph-first-aid' },
+  { label: 'Contraceptives & Family', value: 'ph ph-shield-check' },
+
+  // Grocery, Foods & Beverages
+  { label: 'Grocery & Packaged Food', value: 'ph ph-shopping-bag-open' },
+  { label: 'Rice, Pasta & Noodles', value: 'ph ph-bowl-food' },
+  { label: 'Biscuits & Bakery', value: 'ph ph-cookie' },
+  { label: 'Crisps & Savoury Snacks', value: 'ph ph-popcorn' },
+  { label: 'Chocolate & Sweets / Confectionery', value: 'ph ph-cake' },
+  { label: 'Breakfast Cereals & Snack Bars', value: 'ph ph-grain' },
+  { label: 'Cooking & Table Sauces', value: 'ph ph-cooking-pot' },
+  { label: 'Soft Drinks & Beverages', value: 'ph ph-pint-glass' },
+  { label: 'Flavoured Milk & Dairy', value: 'ph ph-drop-half-bottom' },
+
+  // Household, Cleaning & Air Care
+  { label: 'Multi-Purpose & Surface Cleaner', value: 'ph ph-broom' },
+  { label: 'Dishwashing & Tabs', value: 'ph ph-circle' },
+  { label: 'Stain Remover & Laundry', value: 'ph ph-t-shirt' },
+  { label: 'Toilet Roll & Tissues', value: 'ph ph-paper-plane' },
+  { label: 'Air Fresheners & Car Sprays', value: 'ph ph-wind' },
+  { label: 'Candles & Wax Melts', value: 'ph ph-flame' },
+  { label: 'Gloves, Sponges & Scourers', value: 'ph ph-hand-grabbing' },
+
+  // Toys, Stationery & Miscellaneous
+  { label: 'Toys, Games & Stationery', value: 'ph ph-puzzle-piece' },
+  { label: 'Car Accessories', value: 'ph ph-car' },
+  { label: 'Wholesale Bulk & Packaging', value: 'ph ph-boxes' },
+  { label: 'Shipping & Delivery', value: 'ph ph-truck' },
 ];
 
 const columns = [
@@ -353,10 +419,24 @@ const columns = [
 
 const tenantId = computed(() => authStore.selectedTenant?.id ?? 0);
 
+const queryParams = computed(() => ({
+  tenantId: tenantId.value,
+}));
+
+const { data: categories, isLoading: loading, refetch: fetchCategories } = useShopCategoryListQuery(queryParams);
+
+const { mutateAsync: createCategoryMutation, isPending: isCreating } = useCreateShopCategoryMutation();
+const { mutateAsync: updateCategoryMutation, isPending: isUpdating } = useUpdateShopCategoryMutation();
+const { mutateAsync: deleteCategoryMutation, isPending: isDeleting } = useDeleteShopCategoryMutation();
+
+const saving = computed(() => isCreating.value || isUpdating.value);
+const deleting = computed(() => isDeleting.value);
+
 const filteredCategories = computed(() => {
-  if (!searchQuery.value.trim()) return categories.value;
+  const cats = categories.value || [];
+  if (!searchQuery.value.trim()) return cats;
   const q = searchQuery.value.toLowerCase().trim();
-  return categories.value.filter(
+  return cats.filter(
     (c) => c.name.toLowerCase().includes(q) || c.slug.toLowerCase().includes(q),
   );
 });
@@ -372,21 +452,6 @@ const slugify = (text: string) => {
 const onNameChange = (val: string | number | null) => {
   if (!isEditing.value) {
     form.value.slug = slugify(String(val ?? ''));
-  }
-};
-
-const fetchCategories = async () => {
-  if (!tenantId.value) return;
-  loading.value = true;
-  try {
-    categories.value = await shopCategoryRepository.listCategories(tenantId.value);
-  } catch (error: any) {
-    $q.notify({
-      type: 'negative',
-      message: error?.message || 'Failed to load shop categories.',
-    });
-  } finally {
-    loading.value = false;
   }
 };
 
@@ -409,7 +474,7 @@ const openEditDialog = (category: ShopCategory) => {
     name: category.name,
     slug: category.slug,
     description: category.description || '',
-    icon: category.icon || 'category',
+    icon: category.icon || 'ph ph-squares-four',
     is_active: category.is_active,
   };
   showDialog.value = true;
@@ -421,10 +486,9 @@ const saveCategory = async () => {
     return;
   }
 
-  saving.value = true;
   try {
     if (isEditing.value && form.value.id) {
-      await shopCategoryRepository.updateCategory({
+      await updateCategoryMutation({
         id: form.value.id,
         tenant_id: tenantId.value,
         name: form.value.name,
@@ -435,7 +499,7 @@ const saveCategory = async () => {
       });
       $q.notify({ type: 'positive', message: 'Category updated successfully.' });
     } else {
-      await shopCategoryRepository.createCategory({
+      await createCategoryMutation({
         tenant_id: tenantId.value,
         name: form.value.name,
         slug: form.value.slug,
@@ -446,14 +510,11 @@ const saveCategory = async () => {
       $q.notify({ type: 'positive', message: 'Category created successfully.' });
     }
     showDialog.value = false;
-    await fetchCategories();
   } catch (error: any) {
     $q.notify({
       type: 'negative',
       message: error?.message || 'Failed to save shop category.',
     });
-  } finally {
-    saving.value = false;
   }
 };
 
@@ -464,23 +525,15 @@ const confirmDelete = (category: ShopCategory) => {
 
 const handleDelete = async () => {
   if (!categoryToDelete.value || !tenantId.value) return;
-  deleting.value = true;
   try {
-    await shopCategoryRepository.deleteCategory(categoryToDelete.value.id, tenantId.value);
+    await deleteCategoryMutation({ id: categoryToDelete.value.id, tenantId: tenantId.value });
     $q.notify({ type: 'positive', message: 'Category deleted successfully.' });
     showDeleteDialog.value = false;
-    await fetchCategories();
   } catch (error: any) {
     $q.notify({
       type: 'negative',
       message: error?.message || 'Failed to delete category.',
     });
-  } finally {
-    deleting.value = false;
   }
 };
-
-onMounted(() => {
-  fetchCategories();
-});
 </script>

@@ -2,17 +2,6 @@
   <WorkspaceShell ref="workspaceShellRef" :logout-to="logoutTo" theme="app" :links="links">
     <template #header-left>
       <div class="row items-center q-gutter-sm">
-        <q-btn
-          v-if="showHeaderBackButton"
-          flat
-          round
-          dense
-          size="md"
-          color="primary"
-          icon="ph ph-arrow-left"
-          class="app-header-back-btn"
-          @click="onHeaderBack"
-        />
         <div v-if="headerTitle && !hasPageToolbar" class="app-context__title">
           {{ headerTitle }}
         </div>
@@ -323,47 +312,6 @@ const headerTitle = computed(() => {
   return 'App';
 });
 
-const inferredBackRouteName = computed(() => {
-  const name = routeName.value;
-  if (!name.includes('details')) {
-    return null;
-  }
-
-  const mapped = name.replace(/-details-page$/, '-page');
-  if (mapped !== name && router.hasRoute(mapped)) {
-    return mapped;
-  }
-
-  return null;
-});
-
-const showHeaderBackButton = computed(() => {
-  const metaFlag = route.meta?.showHeaderBackButton;
-  if (metaFlag === false) {
-    return false;
-  }
-
-  if (metaFlag === true) {
-    return true;
-  }
-
-  return routeName.value.includes('details');
-});
-
-const onHeaderBack = () => {
-  if (window.history.length > 1) {
-    router.back();
-    return;
-  }
-
-  if (inferredBackRouteName.value) {
-    void router.push({ name: inferredBackRouteName.value });
-    return;
-  }
-
-  void router.push({ name: 'app-dashboard' });
-};
-
 const onSelectTenant = (tenantId: number | null) => {
   tenantMenuOpen.value = false;
 
@@ -422,13 +370,6 @@ onMounted(() => {
   max-width: min(21rem, 58vw);
   font-weight: 600;
   border-radius: 8px;
-}
-
-.app-header-back-btn {
-  font-weight: 700;
-  border: 1px solid var(--bw-theme-border);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--bw-theme-surface) 72%, transparent);
 }
 
 .pill-btn {

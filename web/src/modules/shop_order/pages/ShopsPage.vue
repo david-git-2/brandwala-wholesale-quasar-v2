@@ -30,7 +30,6 @@
             outlined
             :placeholder="$t('shop_admin.search_shops_placeholder')"
             prepend-icon="ph ph-magnifying-glass"
-            @update:model-value="onSearchChange"
           >
             <template #prepend>
               <q-icon name="ph ph-magnifying-glass" />
@@ -46,26 +45,22 @@
             unelevated
             toggle-color="primary"
             :options="filterOptions"
-            @update:model-value="onFilterChange"
           />
         </div>
       </section>
 
-      <q-banner v-if="store.error" class="text-white bg-negative" rounded>
-        {{ store.error }}
-        <template #action>
-          <q-btn flat color="white" :label="$t('shop_admin.dismiss')" @click="store.clearError()" />
-        </template>
+      <q-banner v-if="isError" class="text-white bg-negative" rounded>
+        {{ error?.message || 'An error occurred while fetching shops.' }}
       </q-banner>
 
       <q-card flat bordered>
-        <q-card-section v-if="store.loadingShops" class="text-grey-7 text-center q-pa-xl">
+        <q-card-section v-if="isLoading" class="text-grey-7 text-center q-pa-xl">
           <q-spinner size="32px" color="primary" class="q-mr-sm" />
           {{ $t('shop_admin.loading_shops') }}
         </q-card-section>
 
         <q-card-section
-          v-else-if="store.shops.length === 0"
+          v-else-if="!shops || shops.length === 0"
           class="text-grey-6 text-center q-pa-xl"
         >
           <q-icon name="ph ph-storefront" size="48px" class="q-mb-sm block" />
@@ -84,7 +79,7 @@
           v-else
           flat
           row-key="id"
-          :rows="store.shops"
+          :rows="shops"
           :columns="columns"
           :pagination="{ rowsPerPage: 25 }"
           :dense="$q.screen.lt.md"
@@ -172,25 +167,21 @@
       v-model="dialogOpen"
       :initial-data="editingShop"
       :tenant-id="tenantId"
-      :saving="store.saving"
+      :saving="isSaving"
       :save-error="dialogError"
       @save="onSave"
     />
-
-
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useShopOrderStore } from 'src/modules/shop_order/stores/shopOrderStore';
-import { shopOrderRepository } from 'src/modules/shop_order/repositories/shopOrderRepository';
 import ShopFormDialog from 'src/modules/shop_order/components/ShopFormDialog.vue';
-import { vendorService } from 'src/modules/vendor/services/vendorService';
-import type { Vendor } from 'src/modules/vendor/types';
+import { useShopListQuery, useVendorListQuery } from '../composables/useShopQuery';
+import { useSaveShopMutation } from '../composables/useShopMutations';
 import type {
   Shop,
   ShopType,
@@ -200,24 +191,28 @@ import type {
 } from 'src/modules/shop_order/types';
 
 const authStore = useAuthStore();
-const store = useShopOrderStore();
 const router = useRouter();
 const { t } = useI18n();
 
 const tenantId = computed(() => authStore.tenantId as number);
 const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '');
 
-const vendors = ref<Vendor[]>([]);
+const search = ref<string>('');
+const activeFilter = ref<boolean | null>(null);
 
-const loadVendors = async () => {
-  if (!tenantId.value) return;
-  const result = await vendorService.listVendors(tenantId.value);
-  vendors.value = result.success && result.data ? result.data : [];
-};
+const queryParams = computed(() => ({
+  tenantId: tenantId.value,
+  search: search.value || null,
+  active: activeFilter.value,
+}));
+
+const { data: shops, isLoading, isError, error } = useShopListQuery(queryParams);
+const { data: vendors } = useVendorListQuery(tenantId);
+const { mutate: saveShopMutation, isPending: isSaving } = useSaveShopMutation();
 
 const getVendorName = (code: string | null) => {
   if (!code) return '—';
-  const vendor = vendors.value.find((v) => v.code === code);
+  const vendor = vendors.value?.find((v) => v.code === code);
   return vendor ? `${vendor.name} (${code})` : code;
 };
 
@@ -244,26 +239,6 @@ const filterOptions = computed(() => [
   { value: false, label: t('shop_admin.inactive') },
 ]);
 
-const search = ref<string>('');
-const activeFilter = ref<boolean | null>(null);
-
-const load = () => {
-  if (!tenantId.value) return;
-  void store.fetchShopsByTenant(tenantId.value, {
-    search: search.value || null,
-    active: activeFilter.value,
-  });
-  void loadVendors();
-};
-
-const onSearchChange = () => load();
-const onFilterChange = () => load();
-
-onMounted(load);
-watch(tenantId, (v) => {
-  if (v) load();
-});
-
 const dialogOpen = ref(false);
 const editingShop = ref<Shop | null>(null);
 const dialogError = ref<string | null>(null);
@@ -287,26 +262,16 @@ const openEdit = (shop: Shop) => {
   dialogOpen.value = true;
 };
 
-const onSave = async (payload: CreateShopPayload | UpdateShopPayload) => {
+const onSave = (payload: CreateShopPayload | UpdateShopPayload) => {
   dialogError.value = null;
-  const isEdit = 'id' in payload;
-  const result = isEdit ? await store.updateShop(payload) : await store.createShop(payload);
-  if (!result) return;
-  if (result.success) {
-    const savedShop = result.data;
-    if (savedShop && savedShop.id) {
-      await shopOrderRepository.updateShopExtraAttributes(
-        savedShop.id,
-        tenantId.value,
-        payload.description || null,
-        payload.category_ids || [],
-      );
-      void store.fetchShopsByTenant(tenantId.value);
-    }
-    dialogOpen.value = false;
-  } else {
-    dialogError.value = result.error;
-  }
+  saveShopMutation(payload, {
+    onSuccess: () => {
+      dialogOpen.value = false;
+    },
+    onError: (err: Error) => {
+      dialogError.value = err.message || 'Failed to save shop.';
+    },
+  });
 };
 
 const goToAccessMatrix = (shopId: number) => {

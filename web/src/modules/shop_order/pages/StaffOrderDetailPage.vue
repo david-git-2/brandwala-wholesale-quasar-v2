@@ -1,67 +1,79 @@
 <template>
-  <q-page class="bw-page">
-    <div class="bw-page__stack" v-if="orderStore.loading">
-      <div class="column items-center justify-center q-pa-xl">
+  <q-page class="q-pa-md">
+    <div class="q-gutter-y-md">
+      <!-- Loading Spinner -->
+      <div v-if="orderStore.loading" class="row justify-center q-py-xl">
         <q-spinner color="primary" size="40px" />
-        <div class="text-grey-6 q-mt-sm">{{ $t('shop_admin.loading_order_details') }}</div>
+        <div class="text-grey-6 q-mt-sm full-width text-center">{{ $t('shop_admin.loading_order_details') }}</div>
       </div>
-    </div>
 
-    <div class="bw-page__stack" v-else-if="orderStore.currentOrder">
-      <!-- Header -->
-      <section class="row items-center justify-between q-col-gutter-md">
-        <div class="col">
-          <div class="row items-center q-gutter-x-sm">
-            <q-btn flat round icon="ph ph-arrow-left" color="grey-7" @click="goBack" />
-            <div>
-              <div class="text-overline">{{ $t('shop_admin.staff_order_desk') }}</div>
-              <h1 class="text-h5 text-weight-bold q-my-none">{{ $t('shop_admin.order_management') }}</h1>
-              <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-                Manage and negotiate Order
-                <span class="text-weight-bold">{{ orderStore.currentOrder.order_no }}</span>
-              </p>
+      <template v-else-if="orderStore.currentOrder">
+        <!-- Header -->
+        <section class="row items-center justify-between q-col-gutter-md">
+          <div class="col">
+            <div class="row items-center q-gutter-x-sm">
+              <q-btn flat dense icon="ph ph-arrow-left" color="grey-7" @click="goBack" />
+              <div>
+                <div class="text-overline text-primary">{{ $t('shop_admin.staff_order_desk') }}</div>
+                <h1 class="text-h5 text-weight-bold q-my-none">{{ orderStore.currentOrder.order_no }}</h1>
+                <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
+                  {{ $t('shop_admin.order_management') }}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-        <div class="col-auto row items-center q-gutter-x-sm">
-          <q-chip
-            dense
-            square
-            clickable
-            :style="statusChipStyle(orderStore.currentOrder.status)"
-            class="q-px-md q-py-sm text-weight-bold q-ma-none text-uppercase text-caption cursor-pointer"
-          >
-            <span
-              class="status-chip-dot"
-              :style="{ backgroundColor: statusDotColor(orderStore.currentOrder.status) }"
-            />
-            {{ orderStore.currentOrder.status }}
-            <q-icon name="ph ph-caret-down" class="q-ml-xs" size="16px" />
-            <q-menu>
-              <q-list dense style="min-width: 150px">
-                <q-item
-                  v-for="st in availableStatuses"
-                  :key="st"
-                  clickable
-                  v-close-popup
-                  :active="st === orderStore.currentOrder.status"
+          <div class="col-auto row q-gutter-sm items-center">
+            <!-- Header actions can go here if needed -->
+          </div>
+        </section>
+
+        <!-- Status Workflow Strip (LOCKED detail spec) -->
+        <q-card flat bordered class="q-pa-sm">
+          <div class="row items-center justify-between q-col-gutter-sm">
+            <div class="col-grow row items-center q-gutter-xs status-workflow-row">
+              <template v-for="(st, idx) in workflowStatuses" :key="st">
+                <q-btn
+                  :color="orderStore.currentOrder.status === st ? getStatusColor(st) : isPassedStatus(st) ? 'grey-5' : 'grey-3'"
+                  :text-color="orderStore.currentOrder.status === st ? 'white' : isPassedStatus(st) ? 'grey-9' : 'grey-7'"
+                  :outline="orderStore.currentOrder.status !== st"
+                  :unelevated="orderStore.currentOrder.status === st"
+                  dense
+                  no-caps
+                  class="q-px-md text-caption text-weight-bold"
+                  :loading="changingStatus && targetUpdatingStatus === st"
+                  :disable="changingStatus && targetUpdatingStatus !== st"
                   @click="changeOrderStatus(st)"
                 >
-                  <q-item-section avatar style="min-width: 20px">
-                    <span
-                      class="status-chip-dot"
-                      :style="{ backgroundColor: statusDotColor(st) }"
-                    />
-                  </q-item-section>
-                  <q-item-section class="text-capitalize text-weight-medium">
-                    {{ st }}
-                  </q-item-section>
-                </q-item>
-              </q-list>
-            </q-menu>
-          </q-chip>
-        </div>
-      </section>
+                  <q-icon v-if="orderStore.currentOrder.status === st" name="ph ph-check-circle" size="14px" class="q-mr-xs" />
+                  {{ formatStatusLabel(st) }}
+                </q-btn>
+                <q-icon
+                  v-if="idx < workflowStatuses.length - 1"
+                  name="chevron_right"
+                  color="grey-5"
+                  size="18px"
+                  class="status-workflow-chevron"
+                />
+              </template>
+              <q-separator vertical class="q-mx-sm status-workflow-sep" />
+              <q-btn
+                :color="orderStore.currentOrder.status === 'cancelled' ? 'negative' : 'grey-3'"
+                :text-color="orderStore.currentOrder.status === 'cancelled' ? 'white' : 'grey-7'"
+                :outline="orderStore.currentOrder.status !== 'cancelled'"
+                :unelevated="orderStore.currentOrder.status === 'cancelled'"
+                dense
+                no-caps
+                class="q-px-md text-caption text-weight-bold"
+                :loading="changingStatus && targetUpdatingStatus === 'cancelled'"
+                :disable="changingStatus && targetUpdatingStatus !== 'cancelled'"
+                @click="changeOrderStatus('cancelled')"
+              >
+                <q-icon v-if="orderStore.currentOrder.status === 'cancelled'" name="ph ph-check-circle" size="14px" class="q-mr-xs" />
+                Cancelled
+              </q-btn>
+            </div>
+          </div>
+        </q-card>
 
       <!-- Main Columns -->
       <div class="row q-col-gutter-lg">
@@ -365,7 +377,7 @@
                     <span>{{ currencySymbol }}{{ estimatedProfit.toFixed(2) }}</span>
                   </div>
 
-                  <div class="row justify-center q-mt-md" v-if="orderStore.currentOrder.status !== 'fulfilled' && orderStore.currentOrder.status !== 'cancelled'">
+                  <div class="row justify-center q-mt-md" v-if="orderStore.currentOrder.status !== 'confirmed' && orderStore.currentOrder.status !== 'fulfilled' && orderStore.currentOrder.status !== 'cancelled'">
                     <q-btn
                       outline
                       color="primary"
@@ -584,6 +596,7 @@
           </q-card-actions>
         </q-card>
       </q-dialog>
+      </template>
     </div>
   </q-page>
 </template>
@@ -734,7 +747,9 @@ const statusChipStyle = (currentStatus: string) => {
   }
 };
 
-const availableStatuses = computed(() => {
+const targetUpdatingStatus = ref<string | null>(null);
+
+const workflowStatuses = computed(() => {
   if (orderStore.currentOrder?.shop_type_snapshot === 'dropship') {
     return [
       'submitted',
@@ -745,7 +760,6 @@ const availableStatuses = computed(() => {
       'delivered',
       'returned',
       'payment_received',
-      'cancelled',
     ];
   }
   return [
@@ -756,9 +770,56 @@ const availableStatuses = computed(() => {
     'confirmed',
     'placed',
     'fulfilled',
-    'cancelled',
   ];
 });
+
+const formatStatusLabel = (st: string) => {
+  return st.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+};
+
+const getStatusColor = (st: string) => {
+  switch (st) {
+    case 'draft':
+      return 'grey-7';
+    case 'submitted':
+      return 'blue-7';
+    case 'negotiating':
+      return 'warning';
+    case 'priced':
+      return 'cyan-8';
+    case 'confirmed':
+      return 'positive';
+    case 'placed':
+      return 'indigo-7';
+    case 'fulfilled':
+      return 'teal-7';
+    case 'processing':
+      return 'purple-7';
+    case 'ready_for_pickup':
+      return 'light-blue-8';
+    case 'shipped':
+      return 'sky-7';
+    case 'delivered':
+      return 'positive';
+    case 'returned':
+      return 'orange-9';
+    case 'payment_received':
+      return 'emerald-7';
+    case 'cancelled':
+      return 'negative';
+    default:
+      return 'primary';
+  }
+};
+
+const isPassedStatus = (st: string) => {
+  const current = orderStore.currentOrder?.status;
+  if (!current) return false;
+  const currentIdx = workflowStatuses.value.indexOf(current);
+  const targetIdx = workflowStatuses.value.indexOf(st);
+  return currentIdx !== -1 && targetIdx !== -1 && targetIdx < currentIdx;
+};
+
 const changingStatus = ref(false);
 
 const changeOrderStatus = async (newStatus: string) => {
@@ -766,6 +827,7 @@ const changeOrderStatus = async (newStatus: string) => {
   if (orderStore.currentOrder.status === newStatus) return;
 
   changingStatus.value = true;
+  targetUpdatingStatus.value = newStatus;
   try {
     const { error } = await supabase
       .from('shop_orders')
@@ -780,12 +842,13 @@ const changeOrderStatus = async (newStatus: string) => {
     } else {
       $q.notify({
         type: 'positive',
-        message: `Order status changed to ${newStatus.toUpperCase()}`,
+        message: `Order status changed to ${formatStatusLabel(newStatus)}`,
       });
       await orderStore.fetchOrderDetails(orderId.value);
     }
   } finally {
     changingStatus.value = false;
+    targetUpdatingStatus.value = null;
   }
 };
 

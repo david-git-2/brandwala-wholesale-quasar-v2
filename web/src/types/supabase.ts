@@ -8944,6 +8944,24 @@ export type Database = {
         Returns: boolean
       }
       koba_order_allowed: { Args: { p_order_id: number }; Returns: boolean }
+      list_active_shop_carts: {
+        Args: never
+        Returns: {
+          cart_id: number
+          cart_total: number
+          currency_code: string
+          currency_id: number
+          currency_symbol: string
+          item_count: number
+          see_price: boolean
+          shop_id: number
+          shop_logo_url: string
+          shop_name: string
+          shop_slug: string
+          shop_type: string
+          updated_at: string
+        }[]
+      }
       list_allocatable_stock_paginated: {
         Args: {
           p_page?: number
@@ -9613,6 +9631,7 @@ export type Database = {
         Returns: {
           allow_delivery: boolean
           buy_currency_id: number
+          category_ids: number[]
           created_at: string
           deduct_charges_from_margin: boolean
           deduct_packing_from_margin: boolean
@@ -9620,6 +9639,7 @@ export type Database = {
           default_currency_id: number
           default_packing_charge_amount: number
           default_print_charge_amount: number
+          description: string
           global_stock_type_id: number
           id: number
           is_active: boolean
@@ -9643,6 +9663,9 @@ export type Database = {
       list_shops_for_customer: {
         Args: { p_tenant_id?: number }
         Returns: {
+          categories: Json
+          category_ids: number[]
+          description: string
           id: number
           is_negotiable: boolean
           name: string
@@ -11056,12 +11079,14 @@ export type Database = {
         Args: {
           p_allow_delivery?: boolean
           p_buy_currency_id?: number
+          p_category_ids?: number[]
           p_deduct_charges_from_margin?: boolean
           p_deduct_packing_from_margin?: boolean
           p_deduct_print_from_margin?: boolean
           p_default_currency_id?: number
           p_default_packing_charge_amount?: number
           p_default_print_charge_amount?: number
+          p_description?: string
           p_global_stock_type_id?: number
           p_id?: number
           p_is_active: boolean

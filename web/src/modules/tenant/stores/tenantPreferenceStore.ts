@@ -6,13 +6,47 @@ import { useTenantStore } from './tenantStore';
 import { parseTenantPreference } from '../utils/tenantPreferenceUtils';
 import type { TenantPreferenceSchema } from '../types/preferences';
 
+const TENANT_PREF_STORAGE_KEY = 'brandwala.tenant.preference.v1';
+
+interface StoredTenantPreference {
+  tenantId: number;
+  preference: TenantPreferenceSchema;
+}
+
+const readStoredTenantPreference = (): StoredTenantPreference | null => {
+  if (typeof window === 'undefined') return null;
+  const raw = window.localStorage.getItem(TENANT_PREF_STORAGE_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed.tenantId === 'number' && parsed.preference) {
+      return parsed;
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+};
+
+const writeStoredTenantPreference = (data: StoredTenantPreference | null) => {
+  if (typeof window === 'undefined') return;
+  if (!data) {
+    window.localStorage.removeItem(TENANT_PREF_STORAGE_KEY);
+  } else {
+    window.localStorage.setItem(TENANT_PREF_STORAGE_KEY, JSON.stringify(data));
+  }
+};
+
 export const useTenantPreferenceStore = defineStore('tenantPreference', {
-  state: () => ({
-    preference: {} as TenantPreferenceSchema,
-    loadedTenantId: null as number | null,
-    loading: false,
-    error: null as string | null,
-  }),
+  state: () => {
+    const stored = readStoredTenantPreference();
+    return {
+      preference: stored ? stored.preference : ({} as TenantPreferenceSchema),
+      loadedTenantId: stored ? stored.tenantId : (null as number | null),
+      loading: false,
+      error: null as string | null,
+    };
+  },
 
   getters: {
     thriftDefaultPurchaseCurrencyId(state): number | null {
@@ -31,6 +65,7 @@ export const useTenantPreferenceStore = defineStore('tenantPreference', {
       this.preference = parseTenantPreference(raw);
       this.loadedTenantId = tenantId;
       this.error = null;
+      writeStoredTenantPreference({ tenantId, preference: this.preference });
     },
 
     async ensureLoaded(
@@ -122,6 +157,7 @@ export const useTenantPreferenceStore = defineStore('tenantPreference', {
       this.loadedTenantId = null;
       this.loading = false;
       this.error = null;
+      writeStoredTenantPreference(null);
     },
   },
 });

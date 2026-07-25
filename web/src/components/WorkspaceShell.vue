@@ -524,7 +524,7 @@
       </div>
     </q-drawer>
 
-    <q-footer v-if="useMobileBottomNav" elevated class="workspace-shell__bottom-nav">
+    <q-footer v-if="useMobileBottomNav" :reveal="$q.screen.xs" elevated class="workspace-shell__bottom-nav">
       <nav class="workspace-shell__bottom-nav-inner" aria-label="Shop navigation">
         <template v-for="link in links" :key="link.to || link.title">
           <q-btn
