@@ -12,6 +12,11 @@ export const shopOrderQueryKeys = {
     ['shopOrder', 'brandOptions', params] as const,
   categoryOptions: (params: { vendorCode?: string | null; tenantId?: number | null }) =>
     ['shopOrder', 'categoryOptions', params] as const,
+  pricingListings: (shopId: number) => ['shopOrder', 'pricingListings', { shopId }] as const,
+  pricingCandidates: (tenantId: number, shopId: number) => ['shopOrder', 'pricingCandidates', { tenantId, shopId }] as const,
+  currencies: () => ['shopOrder', 'currencies'] as const,
+  pricingRule: (shopId: number) => ['shopOrder', 'pricingRule', { shopId }] as const,
 };
+
 
 

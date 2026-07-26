@@ -704,23 +704,19 @@
                     <div class="text-weight-medium">{{ formatBdt(order.cod_collect_amount) }}</div>
                   </div>
 
-                  <div
-                    v-if="canRecordRemittance || canSettlePayout"
-                    class="text-caption text-grey-7"
-                  >
-                    Use the header action to
-                    <template v-if="canRecordRemittance">record remittance</template>
-                    <template v-else>settle payout</template>.
+                  <div class="text-caption text-blue-9 bg-blue-1 q-pa-sm rounded-borders border-all-1">
+                    <q-icon name="ph ph-info" class="q-mr-xs" />
+                    Profit for this dropship order is automatically credited to the middle-man's <strong>Billing Profile Wallet</strong>.
                   </div>
 
                   <q-btn
                     outline
-                    color="grey-8"
+                    color="primary"
                     no-caps
-                    class="full-width pill-btn"
-                    icon="ph ph-receipt"
-                    label="Open Payout Ledger"
-                    :to="{ name: 'app-shop-dropship-ledger-page', params: { tenantSlug: route.params.tenantSlug } }"
+                    class="full-width pill-btn q-mt-sm"
+                    icon="ph ph-wallet"
+                    label="Open Billing Profile Wallet"
+                    :to="{ name: 'app-global-billing-wallets', params: { tenantSlug: route.params.tenantSlug } }"
                   />
                 </q-card-section>
               </q-card>
@@ -946,8 +942,6 @@ import { supabase } from 'src/boot/supabase';
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
 import { dropshipCourierService } from '../services/dropshipCourierService';
 import { dropshipMerchantService } from '../services/dropshipMerchantService';
-import { dropshipLedgerService } from '../services/dropshipLedgerService';
-import { dropshipLedgerRepository } from '../repositories/dropshipLedgerRepository';
 import { shopOrderQueryKeys } from '../services/shopOrderQueryKeys';
 import type { CourierServiceRow } from '../repositories/dropshipCourierRepository';
 import type { MerchantProfileRow } from '../repositories/dropshipMerchantRepository';
@@ -992,7 +986,6 @@ const blockCExpanded = ref(true);
 const dualInvoiceDialogOpen = ref(false);
 const remittanceDialogOpen = ref(false);
 const savingRemittance = ref(false);
-const settlingPayout = ref(false);
 const invoicePayout = ref<{
   id: number;
   billing_profile_id: number | null;
@@ -1065,12 +1058,6 @@ const canRecordRemittance = computed(
     !order.value?.courier_remittance_ref,
 );
 
-const canSettlePayout = computed(
-  () =>
-    !!order.value?.global_invoice_id &&
-    !!invoicePayout.value?.billing_profile_id &&
-    ['delivered', 'payment_received'].includes(order.value?.status ?? ''),
-);
 
 const canSaveOrderRemittance = computed(
   () =>
@@ -1117,18 +1104,6 @@ const primaryCta = computed(() => {
     };
   }
 
-  // 4. Can settle payout -> Settle Middle-Man Payout
-  if (canSettlePayout.value) {
-    return {
-      label: 'Settle Middle-Man Payout',
-      icon: 'ph ph-money',
-      loading: settlingPayout.value,
-      action: () => {
-        void settleOrderPayout();
-      },
-    };
-  }
-
   return null;
 });
 
@@ -1139,7 +1114,12 @@ const loadInvoicePayoutContext = async () => {
     return;
   }
   try {
-    invoicePayout.value = await dropshipLedgerRepository.getInvoicePayoutContext(invoiceId);
+    const { data } = await supabase
+      .from('global_invoices')
+      .select('id, billing_profile_id, middle_man_payout_amount, middle_man_payout_status')
+      .eq('id', invoiceId)
+      .maybeSingle();
+    invoicePayout.value = data ?? null;
   } catch {
     invoicePayout.value = null;
   }
@@ -1167,17 +1147,14 @@ const saveOrderRemittance = async () => {
   if (!order.value || !canSaveOrderRemittance.value) return;
   savingRemittance.value = true;
   try {
-    const res = await dropshipLedgerService.recordRemittance({
-      order_id: order.value.id,
-      net_amount: Number(remittanceForm.net_amount),
-      remittance_ref: remittanceForm.remittance_ref.trim(),
-      bank_trx_id: remittanceForm.bank_trx_id.trim() || null,
-      note: remittanceForm.note.trim() || null,
+    const { error } = await supabase.rpc('record_dropship_courier_remittance', {
+      p_order_id: order.value.id,
+      p_net_amount: Number(remittanceForm.net_amount),
+      p_remittance_ref: remittanceForm.remittance_ref.trim(),
+      p_bank_trx_id: remittanceForm.bank_trx_id.trim() || null,
+      p_note: remittanceForm.note.trim() || null,
     });
-    if (!res.success) {
-      showErrorNotification(res.error || 'Failed to record remittance');
-      return;
-    }
+    if (error) throw error;
     showSuccessNotification('Courier remittance recorded.');
     remittanceDialogOpen.value = false;
     await refetchOrderDetail();
@@ -1188,35 +1165,14 @@ const saveOrderRemittance = async () => {
     await queryClient.invalidateQueries({
       queryKey: shopOrderQueryKeys.ledgerPendingCod(tenantSlug.value),
     });
+  } catch (err: any) {
+    showErrorNotification(err?.message || 'Failed to record remittance');
   } finally {
     savingRemittance.value = false;
   }
 };
 
-const settleOrderPayout = async () => {
-  if (!order.value?.global_invoice_id || !invoicePayout.value?.billing_profile_id) return;
-  settlingPayout.value = true;
-  try {
-    const res = await dropshipLedgerService.settlePayout({
-      tenant_id: order.value.tenant_id,
-      billing_profile_id: invoicePayout.value.billing_profile_id,
-      global_invoice_id: order.value.global_invoice_id,
-      amount: Number(order.value.cod_collect_amount ?? 0),
-      note: `Payout settled for order #${order.value.order_no}`,
-    });
-    if (!res.success) {
-      showErrorNotification(res.error || 'Failed to settle payout');
-      return;
-    }
-    showSuccessNotification('Middle-man payout settled.');
-    await loadInvoicePayoutContext();
-    await queryClient.invalidateQueries({
-      queryKey: shopOrderQueryKeys.ledger(tenantSlug.value),
-    });
-  } finally {
-    settlingPayout.value = false;
-  }
-};
+
 
 const openRecipientInvoicePreview = () => {
   if (!order.value) return;

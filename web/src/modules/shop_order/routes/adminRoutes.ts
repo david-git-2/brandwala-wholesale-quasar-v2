@@ -117,6 +117,12 @@ const adminRoutes: RouteRecordRaw[] = [
         component: () => import('src/modules/shop_order/pages/ShopPricingPage.vue'),
         beforeEnter: guard('shop_pricing'),
       },
+      {
+        path: 'add-listings',
+        name: 'app-shop-add-listings-page',
+        component: () => import('src/modules/shop_order/pages/AddShopListingsPage.vue'),
+        beforeEnter: guard('shop_pricing'),
+      },
     ],
   },
 
@@ -174,8 +180,10 @@ const adminRoutes: RouteRecordRaw[] = [
       {
         path: 'ledger',
         name: 'app-shop-dropship-ledger-page',
-        component: () => import('src/modules/shop_order/pages/DropshipLedgerPage.vue'),
-        beforeEnter: guard('shop_dropship'),
+        redirect: (to) => ({
+          name: 'app-global-billing-wallets',
+          params: { tenantSlug: to.params.tenantSlug },
+        }),
       },
       {
         path: 'merchants',

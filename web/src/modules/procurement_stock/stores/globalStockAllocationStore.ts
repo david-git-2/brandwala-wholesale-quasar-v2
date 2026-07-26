@@ -142,5 +142,23 @@ export const useGlobalStockAllocationStore = defineStore('global_stock_allocatio
         throw err;
       }
     },
+
+    async bulkAllocateShipment(
+      parentTenantId: number,
+      shipmentId: number,
+      childTenantId: number,
+    ): Promise<number> {
+      this.error = null;
+      try {
+        return await globalStockAllocationRepository.bulkAllocateShipment(
+          parentTenantId,
+          shipmentId,
+          childTenantId,
+        );
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to bulk allocate shipment';
+        throw err;
+      }
+    },
   },
 });

@@ -24,3 +24,17 @@ export function useSaveShopMutation() {
     },
   });
 }
+
+export function useDeleteShopMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ shopId, tenantId }: { shopId: number; tenantId: number }) => {
+      await shopOrderRepository.deleteShop(shopId, tenantId);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['shopOrder', 'shops'] });
+    },
+  });
+}
+

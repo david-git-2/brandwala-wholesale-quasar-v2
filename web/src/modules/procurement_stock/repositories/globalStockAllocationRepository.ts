@@ -224,6 +224,24 @@ const getAllocationReconciliation = async (stockId: number): Promise<AllocationR
   return rows[0]!;
 };
 
+const bulkAllocateShipment = async (
+  parentTenantId: number,
+  shipmentId: number,
+  childTenantId: number,
+): Promise<number> => {
+  const { data, error } = await db.rpc('bulk_allocate_shipment_stock', {
+    p_parent_tenant_id: parentTenantId,
+    p_shipment_id: shipmentId,
+    p_child_tenant_id: childTenantId,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data as number) || 0;
+};
+
 export const globalStockAllocationRepository = {
   listPaginated,
   listAllocatableStockPaginated,
@@ -231,4 +249,5 @@ export const globalStockAllocationRepository = {
   upsertGlobalStockAllocation,
   deleteGlobalStockAllocation,
   getAllocationReconciliation,
+  bulkAllocateShipment,
 };

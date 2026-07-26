@@ -71,6 +71,15 @@ const salesInvoiceRoutes: RouteRecordRaw[] = [
         beforeEnter: guard('billing_profile'),
       },
       {
+        path: 'wallets',
+        name: 'app-global-billing-wallets',
+        component: () => import('../pages/BillingWalletLedgerPage.vue'),
+        meta: {
+          hasPageToolbar: true,
+        },
+        beforeEnter: guard('billing_profile_wallet'),
+      },
+      {
         path: 'recipient-profiles',
         name: 'app-global-recipient-profiles',
         component: () => import('../pages/RecipientProfilesPage.vue'),

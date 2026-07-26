@@ -365,9 +365,21 @@ const updateShopExtraAttributes = async (
   }
 };
 
+const deleteShop = async (shopId: number, tenantId: number): Promise<void> => {
+  const { error } = await supabase.rpc('delete_shop', {
+    p_shop_id: shopId,
+    p_tenant_id: tenantId,
+  });
+
+  if (error) {
+    throw error;
+  }
+};
+
 export const shopOrderRepository = {
   listShops,
   upsertShop,
+  deleteShop,
   updateShopExtraAttributes,
   browseShopCatalog,
   listShopsForCustomer,
@@ -387,4 +399,5 @@ export const shopOrderRepository = {
   updateOrderCharges,
   processDropshipShopOrder,
 };
+
 

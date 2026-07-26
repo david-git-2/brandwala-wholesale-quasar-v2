@@ -5,6 +5,7 @@
       imageHidden ? fallbackClass : imgClass,
       { 'cursor-pointer': !imageHidden && enableLightbox },
     ]"
+    style="display: inline-block; position: relative"
     @click="onWrapperClick"
   >
     <template v-if="!imageHidden">
@@ -190,10 +191,12 @@ const toProxyImageUrl = (url: string | null | undefined) => {
 };
 
 const imageCandidates = computed(() => {
-  const original = props.src || '';
+  const original = (props.src || '').trim();
+  if (!original) return [fallbackImage];
   const direct = toDirectGoogleImageUrl(original);
   const proxied = toProxyImageUrl(direct || original);
-  return [...new Set([proxied, direct, original, fallbackImage].filter(Boolean))];
+  // Put direct URL & original first so standard valid image URLs load instantly without proxy delay
+  return [...new Set([direct, original, proxied, fallbackImage].filter(Boolean))];
 });
 
 const currentImageSrc = computed(() => {
@@ -289,7 +292,7 @@ const onUpdate = async () => {
 .smart-image__img {
   width: 100%;
   height: 100%;
-  object-fit: inherit;
+  object-fit: cover;
   display: block;
   border-radius: inherit;
   transition: filter 0.25s ease;

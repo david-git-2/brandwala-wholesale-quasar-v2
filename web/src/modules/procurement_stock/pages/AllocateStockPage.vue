@@ -1,29 +1,30 @@
 <template>
-  <q-page class="q-pa-xs q-sm-pa-sm">
-    <div class="q-gutter-y-sm">
-      <!-- Compact Header Card -->
-      <q-card flat bordered class="q-py-sm q-px-md bg-white">
-        <div class="row items-center justify-between no-wrap">
-          <div class="column">
-            <span
-              class="text-caption text-weight-bold text-primary text-uppercase tracking-wider"
-              style="font-size: 10px"
-              >Procurement & Stock</span
-            >
-            <div class="text-h6 text-weight-bold text-grey-9 q-mt-xs" style="line-height: 1.1">
-              Allocate Stock
-            </div>
-            <div class="text-caption text-grey-6 q-mt-xs" style="font-size: 11px">
-              Distribute physical stock pools to sister concerns (child tenants)
-            </div>
-          </div>
+  <q-page class="q-pa-md">
+    <div class="q-gutter-y-md">
+      <!-- Header section -->
+      <section class="row items-center justify-between q-col-gutter-md">
+        <div class="col">
+          <div class="text-overline text-primary">Procurement & Stock</div>
+          <h1 class="text-h5 text-weight-bold q-my-none">Allocate Stock</h1>
         </div>
-      </q-card>
+        <div class="col-auto row items-center q-gutter-x-sm">
+          <q-btn
+            v-if="isParentContext"
+            color="primary"
+            unelevated
+            no-caps
+            class="pill-btn"
+            icon="ph ph-package"
+            label="Bulk Allocate Shipment"
+            @click="openBulkAllocateDialog"
+          />
+        </div>
+      </section>
 
       <!-- Parent Context Validation Banner -->
       <q-banner
         v-if="!isParentContext"
-        class="bg-orange-1 text-orange-10 rounded-borders q-mb-md bw-status-banner"
+        class="bg-orange-1 text-orange-10 rounded-borders bw-status-banner"
       >
         <template #avatar>
           <q-icon name="ph ph-warning" color="warning" />
@@ -34,29 +35,76 @@
 
       <!-- Main Content (Only visible for Parent Context) -->
       <template v-else>
-        <!-- Search and Filter Toolbar -->
-        <div class="row items-center q-gutter-sm q-mb-md">
-          <q-input
-            v-model="searchText"
-            filled
-            dense
-            clearable
-            class="col-grow"
-            label="Search ready stock pools..."
-            @keyup.enter="onSearch"
-            @clear="onSearch"
-          >
-            <template #prepend>
-              <q-icon name="ph ph-magnifying-glass" />
-            </template>
-          </q-input>
+        <!-- Toolbar Card -->
+        <q-card flat bordered class="q-pa-sm">
+          <div class="row items-center justify-between q-col-gutter-sm">
+            <div class="col row items-center q-gutter-sm">
+              <q-input
+                v-model="searchText"
+                outlined
+                dense
+                class="soft-input col-grow col-sm-auto"
+                style="min-width: 200px"
+                label="Search ready stock pools..."
+                clearable
+                @keyup.enter="onSearch"
+                @clear="onSearch"
+              >
+                <template #prepend>
+                  <q-icon name="ph ph-magnifying-glass" />
+                </template>
+              </q-input>
 
-          <q-btn flat round dense icon="ph ph-funnel" @click="openFilterDrawer">
-            <q-badge v-if="activeFilterCount > 0" color="primary" rounded floating>
-              {{ activeFilterCount }}
-            </q-badge>
-          </q-btn>
-        </div>
+              <q-btn flat round dense icon="ph ph-funnel" aria-label="Filters" @click="openFilterDrawer">
+                <q-badge v-if="activeFilterCount > 0" color="primary" rounded floating>
+                  {{ activeFilterCount }}
+                </q-badge>
+              </q-btn>
+
+              <q-separator vertical class="gt-xs q-mx-xs" />
+
+              <!-- Quick Status Filter Chips -->
+              <div class="row items-center q-gutter-x-xs">
+                <q-chip
+                  clickable
+                  dense
+                  :color="statusChipFilter === 'all' ? 'primary' : 'grey-3'"
+                  :text-color="statusChipFilter === 'all' ? 'white' : 'grey-8'"
+                  @click="setStatusChipFilter('all')"
+                >
+                  All Stocks
+                </q-chip>
+                <q-chip
+                  clickable
+                  dense
+                  :color="statusChipFilter === 'unallocated' ? 'orange-9' : 'grey-3'"
+                  :text-color="statusChipFilter === 'unallocated' ? 'white' : 'grey-8'"
+                  @click="setStatusChipFilter('unallocated')"
+                >
+                  Unallocated
+                </q-chip>
+                <q-chip
+                  clickable
+                  dense
+                  :color="statusChipFilter === 'partial' ? 'warning' : 'grey-3'"
+                  :text-color="statusChipFilter === 'partial' ? 'white' : 'grey-8'"
+                  @click="setStatusChipFilter('partial')"
+                >
+                  Partially Allocated
+                </q-chip>
+                <q-chip
+                  clickable
+                  dense
+                  :color="statusChipFilter === 'full' ? 'positive' : 'grey-3'"
+                  :text-color="statusChipFilter === 'full' ? 'white' : 'grey-8'"
+                  @click="setStatusChipFilter('full')"
+                >
+                  Fully Allocated
+                </q-chip>
+              </div>
+            </div>
+          </div>
+        </q-card>
 
         <!-- Filter Sidebar -->
         <FilterSidebar v-model="filterDrawerOpen" title="Filters">
@@ -96,20 +144,64 @@
           </div>
         </FilterSidebar>
 
-        <!-- Allocatable Stock Pools Table -->
-        <q-card flat bordered class="q-pa-none">
+        <!-- Allocatable Stock Pools Table Skeleton -->
+        <q-markup-table
+          v-if="isLoadingAllocatableStock && !allocatableStocks.length"
+          flat
+          bordered
+          class="treasury-table-wrap"
+        >
+          <thead>
+            <tr>
+              <th style="width: 40px"><q-skeleton type="QBtn" size="xs" width="24px" height="24px" /></th>
+              <th><q-skeleton type="text" width="120px" /></th>
+              <th><q-skeleton type="text" width="100px" /></th>
+              <th><q-skeleton type="text" width="80px" /></th>
+              <th class="text-center"><q-skeleton type="text" width="60px" class="q-mx-auto" /></th>
+              <th><q-skeleton type="text" width="110px" /></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="n in 6" :key="n">
+              <td><q-skeleton type="QBtn" size="xs" width="24px" height="24px" /></td>
+              <td>
+                <div class="row items-center no-wrap q-gutter-x-md">
+                  <q-skeleton type="QAvatar" size="48px" class="flex-shrink-0" />
+                  <div class="col">
+                    <q-skeleton type="text" width="70%" height="16px" />
+                    <q-skeleton type="text" width="40%" height="12px" class="q-mt-xs" />
+                  </div>
+                </div>
+              </td>
+              <td><q-skeleton type="text" width="80px" height="14px" /></td>
+              <td><q-skeleton type="QBadge" width="70px" height="20px" /></td>
+              <td class="text-center"><q-skeleton type="text" width="40px" height="14px" class="q-mx-auto" /></td>
+              <td>
+                <div style="min-width: 140px">
+                  <div class="row justify-between items-center q-mb-xs">
+                    <q-skeleton type="text" width="60px" height="12px" />
+                    <q-skeleton type="QBadge" width="36px" height="16px" />
+                  </div>
+                  <q-skeleton type="rect" height="8px" class="rounded-borders" />
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </q-markup-table>
+
+        <q-card v-else flat bordered class="q-pa-none">
           <q-table
             flat
-            :rows="allocationStore.allocatableStocks"
+            :rows="filteredRows"
             :columns="columns"
             row-key="id"
-            :loading="allocationStore.loadingAllocatable"
+            :loading="isLoadingAllocatableStock"
             v-model:pagination="pagination"
             @request="onRequest"
             binary-state-sort
             class="allocation-sticky-header-table"
           >
-            <!-- Header Slot with leading auto-width for Collapse actions -->
+            <!-- Header Slot -->
             <template #header="props">
               <q-tr :props="props">
                 <q-th auto-width />
@@ -119,7 +211,7 @@
               </q-tr>
             </template>
 
-            <!-- Expanded Row Slot -->
+            <!-- Row Slot -->
             <template #body="props">
               <q-tr :props="props">
                 <q-td auto-width>
@@ -130,7 +222,7 @@
                     dense
                     @click="
                       props.expand = !props.expand;
-                      props.expand ? loadRowAllocations(props.row.id) : null;
+                      props.expand ? onRowExpand(props.row.id) : null;
                     "
                     :icon="props.expand ? 'remove' : 'add'"
                   />
@@ -163,6 +255,29 @@
                       </div>
                     </div>
                   </template>
+                  <template v-else-if="col.name === 'allocation_progress'">
+                    <div style="min-width: 140px" class="q-py-xs">
+                      <div class="row justify-between items-center text-caption q-mb-xs">
+                        <span class="text-weight-medium text-grey-8">
+                          {{ getRowDisplayAllocated(props.row.id, props.row.allocated_qty) }} / {{ props.row.pool_quantity }}
+                        </span>
+                        <q-badge
+                          :color="getRatioColor(getRowDisplayAllocated(props.row.id, props.row.allocated_qty), props.row.pool_quantity)"
+                          dense
+                          style="font-size: 10px"
+                        >
+                          {{ getPercentage(getRowDisplayAllocated(props.row.id, props.row.allocated_qty), props.row.pool_quantity) }}%
+                        </q-badge>
+                      </div>
+                      <q-linear-progress
+                        :value="props.row.pool_quantity > 0 ? getRowDisplayAllocated(props.row.id, props.row.allocated_qty) / props.row.pool_quantity : 0"
+                        :color="getRatioColor(getRowDisplayAllocated(props.row.id, props.row.allocated_qty), props.row.pool_quantity)"
+                        track-color="grey-3"
+                        rounded
+                        size="8px"
+                      />
+                    </div>
+                  </template>
                   <template v-else>
                     {{ col.value }}
                   </template>
@@ -177,8 +292,19 @@
                       Child Tenant Allocations for {{ props.row.item_name }}
                     </div>
 
-                    <div v-if="rowLoadingState[props.row.id]" class="row justify-center q-py-md">
-                      <q-spinner color="primary" size="24px" />
+                    <div v-if="loadingRowAllocations[props.row.id]" class="column q-gutter-y-sm q-py-sm">
+                      <div v-for="n in 3" :key="n" class="row q-col-gutter-sm items-center q-py-xs">
+                        <div class="col-4">
+                          <q-skeleton type="text" width="120px" height="16px" />
+                        </div>
+                        <div class="col-4 row justify-center items-center q-gutter-x-xs">
+                          <q-skeleton type="QInput" height="36px" style="width: 110px" />
+                          <q-skeleton type="QBtn" width="40px" height="24px" />
+                        </div>
+                        <div class="col-4 row justify-end">
+                          <q-skeleton type="QBtn" width="70px" height="32px" />
+                        </div>
+                      </div>
                     </div>
 
                     <div v-else-if="rowAllocations[props.row.id]" class="column q-gutter-y-sm">
@@ -192,40 +318,47 @@
                       </div>
 
                       <div
-                        v-for="child in rowAllocations[props.row.id]"
+                        v-for="(child, idx) in rowAllocations[props.row.id]"
                         :key="child.child_tenant_id"
                         class="row q-col-gutter-sm items-center q-py-sm"
                       >
-                        <div class="col-4 text-body2 text-grey-9">
+                        <div class="col-4 text-body2 text-grey-9 row items-center no-wrap">
+                          <span
+                            v-if="hasQtyChanged(props.row.id, child.child_tenant_id)"
+                            class="q-mr-xs text-caption text-weight-bold text-amber-9"
+                            title="Unsaved changes"
+                          >
+                            ●
+                          </span>
                           {{ child.child_tenant_name }}
                         </div>
-                        <div class="col-4 row justify-center">
+                        <div class="col-4 row justify-center items-center q-gutter-x-xs">
                           <q-input
                             v-model.number="draftQuantities[props.row.id]![child.child_tenant_id]"
                             type="number"
                             dense
                             filled
                             min="0"
+                            :tabindex="idx + 1"
                             class="soft-input text-center"
-                            style="max-width: 120px"
+                            :class="{ 'bg-amber-1 rounded-borders': hasQtyChanged(props.row.id, child.child_tenant_id) }"
+                            style="max-width: 110px"
                             input-class="text-center"
                             @update:model-value="onQtyChange(props.row)"
                           />
-                        </div>
-                        <div class="col-4 row justify-end q-gutter-x-sm">
                           <q-btn
                             unelevated
-                            size="sm"
-                            color="primary"
-                            label="Save"
+                            size="xs"
+                            color="secondary"
+                            label="Max"
                             no-caps
-                            :loading="submittingMap[`${props.row.id}-${child.child_tenant_id}`]"
-                            :disable="
-                              isOverAllocated(props.row.id) ||
-                              !hasQtyChanged(props.row.id, child.child_tenant_id)
-                            "
-                            @click="saveAllocation(props.row, child.child_tenant_id)"
-                          />
+                            class="q-px-xs"
+                            @click="applyMaxAllocation(props.row.id, child.child_tenant_id)"
+                          >
+                            <q-tooltip>Assign remaining pool quantity to this tenant</q-tooltip>
+                          </q-btn>
+                        </div>
+                        <div class="col-4 row justify-end q-gutter-x-sm">
                           <q-btn
                             outline
                             size="sm"
@@ -267,12 +400,28 @@
                             props.row.pool_quantity - (draftTotals[props.row.id] ?? 0)
                           }}</span>
                         </div>
-                        <div
-                          v-if="isOverAllocated(props.row.id)"
-                          class="text-caption text-negative text-weight-bold"
-                        >
-                          <q-icon name="ph ph-warning" color="negative" /> Allocation exceeds pool
-                          capacity! Save disabled.
+
+                        <div class="row items-center q-gutter-x-sm">
+                          <div
+                            v-if="isOverAllocated(props.row.id)"
+                            class="text-caption text-negative text-weight-bold q-mr-sm"
+                          >
+                            <q-icon name="ph ph-warning" color="negative" /> Exceeds pool capacity!
+                          </div>
+                          <q-btn
+                            unelevated
+                            size="sm"
+                            color="primary"
+                            label="Save Row Allocations"
+                            no-caps
+                            icon="ph ph-floppy-disk"
+                            :loading="rowSubmittingState[props.row.id]"
+                            :disable="
+                              isOverAllocated(props.row.id) ||
+                              !hasRowChanges(props.row.id)
+                            "
+                            @click="saveRowAllocations(props.row)"
+                          />
                         </div>
                       </div>
                     </div>
@@ -293,101 +442,93 @@
             </template>
           </q-table>
         </q-card>
+
+        <!-- Bulk Allocate Shipment Dialog -->
+        <q-dialog v-model="bulkDialogOpen" persistent>
+          <q-card style="min-width: 400px; max-width: 500px" class="q-pa-sm">
+            <q-card-section class="row items-center justify-between q-pb-none">
+              <div class="text-h6 text-weight-bold text-grey-9">Bulk Allocate Shipment</div>
+              <q-btn icon="ph ph-x" flat round dense v-close-popup />
+            </q-card-section>
+
+            <q-card-section class="q-pt-sm">
+              <div class="text-caption text-grey-7 q-mb-md">
+                Allocate all unallocated ready stocks within a selected shipment batch to a target child tenant in a single action.
+              </div>
+
+              <div class="q-gutter-y-md">
+                <q-select
+                  v-model="bulkSelectedShipmentId"
+                  :options="shipmentOptions"
+                  label="Select Shipment Batch"
+                  filled
+                  dense
+                  emit-value
+                  map-options
+                  :rules="[(val) => !!val || 'Shipment selection is required']"
+                />
+
+                <q-select
+                  v-model="bulkSelectedChildTenantId"
+                  :options="childTenantOptions"
+                  label="Select Target Child Tenant"
+                  filled
+                  dense
+                  emit-value
+                  map-options
+                  :loading="isLoadingChildTenants"
+                  :rules="[(val) => !!val || 'Child tenant selection is required']"
+                />
+              </div>
+            </q-card-section>
+
+            <q-card-actions align="right" class="q-pt-md">
+              <q-btn flat label="Cancel" color="grey-7" no-caps v-close-popup />
+              <q-btn
+                unelevated
+                label="Allocate All Stock"
+                color="primary"
+                no-caps
+                :loading="bulkMutation.isPending.value"
+                :disable="!bulkSelectedShipmentId || !bulkSelectedChildTenantId"
+                @click="onConfirmBulkAllocate"
+              />
+            </q-card-actions>
+          </q-card>
+        </q-dialog>
       </template>
     </div>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useQuasar, type QTableColumn } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
-import { useGlobalShipmentStore } from 'src/modules/procurement_stock/stores/globalShipmentStore';
-import { useGlobalStockTypeStore } from 'src/modules/procurement_stock/stores/globalStockTypeStore';
-import { useGlobalStockAllocationStore } from 'src/modules/procurement_stock/stores/globalStockAllocationStore';
 import {
   globalStockAllocationRepository,
   type AllocatableStock,
+  type ChildAllocationSummary,
 } from '../repositories/globalStockAllocationRepository';
+import {
+  useAllocatableStockListQuery,
+  useChildTenantsQuery,
+  useShipmentsQuery,
+  useStockTypesQuery,
+} from '../composables/useAllocatableStockQueries';
+import {
+  useSaveAllocationMutation,
+  useBulkAllocateShipmentMutation,
+} from '../composables/useStockAllocationMutations';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';
 
 const $q = useQuasar();
 const authStore = useAuthStore();
 const tenantStore = useTenantStore();
-const shipmentStore = useGlobalShipmentStore();
-const stockTypeStore = useGlobalStockTypeStore();
-const allocationStore = useGlobalStockAllocationStore();
 
-// State
-const searchText = ref('');
-
-// Filter State
-const filterDrawerOpen = ref(false);
-const shipmentFilter = ref<number | null>(null);
-const stockTypeFilter = ref<number | null>(null);
-const draftShipmentFilter = ref<number | null>(null);
-const draftStockTypeFilter = ref<number | null>(null);
-
-// Allocation editing states
-const rowAllocations = ref<Record<number, any[]>>({});
-const rowLoadingState = ref<Record<number, boolean>>({});
-const savedQuantities = ref<Record<number, Record<number, number>>>({}); // Map of stockId -> childTenantId -> qty
-const draftQuantities = ref<Record<number, Record<number, number>>>({}); // Map of stockId -> childTenantId -> qty
-const draftTotals = ref<Record<number, number>>({});
-const submittingMap = ref<Record<string, boolean>>({});
-
-// Table Pagination
-const pagination = ref({
-  sortBy: 'id',
-  descending: true,
-  page: 1,
-  rowsPerPage: 20,
-  rowsNumber: 0,
-});
-
-// Column definitions
-const columns: QTableColumn[] = [
-  { name: 'product', label: 'Product Details', field: 'item_name', align: 'left', sortable: true },
-  {
-    name: 'shipment',
-    label: 'Shipment Batch',
-    field: 'shipment_name',
-    align: 'left',
-    sortable: true,
-  },
-  {
-    name: 'stock_type',
-    label: 'Stock Type',
-    field: 'stock_type_description',
-    align: 'left',
-    sortable: true,
-  },
-  {
-    name: 'pool_quantity',
-    label: 'Pool Qty',
-    field: 'pool_quantity',
-    align: 'center',
-    sortable: true,
-  },
-  {
-    name: 'allocated_qty',
-    label: 'Allocated',
-    field: 'allocated_qty',
-    align: 'center',
-    sortable: true,
-  },
-  {
-    name: 'unallocated_qty',
-    label: 'Unallocated',
-    field: 'unallocated_qty',
-    align: 'center',
-    sortable: true,
-  },
-];
-
-// Computed properties for Context Verification
+// Context Verification
 const contextTenantId = computed(() => tenantStore.selectedTenantId ?? authStore.tenantId ?? null);
 const effectiveParentTenantId = computed(() => {
   const current =
@@ -405,6 +546,118 @@ const isParentContext = computed(() => {
   );
 });
 
+// State & Filters
+const searchText = ref('');
+const filterDrawerOpen = ref(false);
+const shipmentFilter = ref<number | null>(null);
+const stockTypeFilter = ref<number | null>(null);
+const draftShipmentFilter = ref<number | null>(null);
+const draftStockTypeFilter = ref<number | null>(null);
+
+type StatusChipType = 'all' | 'unallocated' | 'partial' | 'full';
+const statusChipFilter = ref<StatusChipType>('all');
+
+// Table Pagination
+const pagination = ref({
+  sortBy: 'id',
+  descending: true,
+  page: 1,
+  rowsPerPage: 20,
+  rowsNumber: 0,
+});
+
+// TanStack Query Params
+const allocatableQueryParams = computed(() => ({
+  tenantId: isParentContext.value ? contextTenantId.value : null,
+  page: pagination.value.page,
+  pageSize: pagination.value.rowsPerPage,
+  search: searchText.value,
+  shipmentId: shipmentFilter.value,
+  stockTypeId: stockTypeFilter.value,
+}));
+
+// TanStack Queries
+const {
+  data: allocatableData,
+  isLoading: isLoadingAllocatableStock,
+} = useAllocatableStockListQuery(allocatableQueryParams);
+
+const allocatableStocks = computed(() => allocatableData.value?.data || []);
+
+watch(allocatableData, (newData) => {
+  if (newData?.meta?.total !== undefined) {
+    pagination.value.rowsNumber = newData.meta.total;
+  }
+});
+
+const { data: childTenants, isLoading: isLoadingChildTenants } = useChildTenantsQuery(
+  effectiveParentTenantId,
+);
+const { data: shipments } = useShipmentsQuery(contextTenantId);
+const { data: stockTypes } = useStockTypesQuery(contextTenantId);
+
+// TanStack Mutations
+const saveAllocationMutation = useSaveAllocationMutation();
+const bulkMutation = useBulkAllocateShipmentMutation();
+
+// Allocation Editing Local UI States
+const rowAllocations = ref<Record<number, ChildAllocationSummary[]>>({});
+const loadingRowAllocations = ref<Record<number, boolean>>({});
+const rowSubmittingState = ref<Record<number, boolean>>({});
+const savedQuantities = ref<Record<number, Record<number, number>>>({});
+const draftQuantities = ref<Record<number, Record<number, number>>>({});
+const draftTotals = ref<Record<number, number>>({});
+const submittingMap = ref<Record<string, boolean>>({});
+
+// Bulk Allocation Dialog State
+const bulkDialogOpen = ref(false);
+const bulkSelectedShipmentId = ref<number | null>(null);
+const bulkSelectedChildTenantId = ref<number | null>(null);
+
+// Columns Definition
+const columns: QTableColumn[] = [
+  { name: 'product', label: 'Product Details', field: 'item_name', align: 'left', sortable: true },
+  { name: 'shipment', label: 'Shipment Batch', field: 'shipment_name', align: 'left', sortable: true },
+  { name: 'stock_type', label: 'Stock Type', field: 'stock_type_description', align: 'left', sortable: true },
+  { name: 'pool_quantity', label: 'Pool Qty', field: 'pool_quantity', align: 'center', sortable: true },
+  { name: 'allocation_progress', label: 'Allocation Status', field: 'allocated_qty', align: 'left', sortable: true },
+];
+
+// Computed Options
+const childTenantOptions = computed(() => {
+  return (childTenants.value || []).map((t: { name: string; id: number }) => ({
+    label: t.name,
+    value: t.id,
+  }));
+});
+
+const shipmentOptions = computed(() => {
+  return (shipments.value || [])
+    .filter((s: { status: string }) => s.status === 'Ready Stock')
+    .map((s: { name: string; id: number }) => ({ label: s.name, value: s.id }));
+});
+
+const stockTypeOptions = computed(() => {
+  return (stockTypes.value || [])
+    .filter((t: { is_sellable: boolean }) => t.is_sellable)
+    .map((t: { description: string; id: number }) => ({ label: t.description, value: t.id }));
+});
+
+// Filtered Rows for Status Chips
+const filteredRows = computed(() => {
+  const stocks = allocatableStocks.value;
+  if (statusChipFilter.value === 'all') return stocks;
+
+  return stocks.filter((stock) => {
+    const allocated = stock.allocated_qty;
+    const total = stock.pool_quantity;
+    if (statusChipFilter.value === 'unallocated') return allocated === 0;
+    if (statusChipFilter.value === 'partial') return allocated > 0 && allocated < total;
+    if (statusChipFilter.value === 'full') return allocated >= total && total > 0;
+    return true;
+  });
+});
+
 // Active Filter Count
 const activeFilterCount = computed(() => {
   let count = 0;
@@ -413,47 +666,29 @@ const activeFilterCount = computed(() => {
   return count;
 });
 
-// Select options
-const shipmentOptions = computed(() => {
-  return shipmentStore.rows
-    .filter((s) => s.status === 'Ready Stock')
-    .map((s) => ({ label: s.name, value: s.id }));
-});
-
-const stockTypeOptions = computed(() => {
-  return stockTypeStore.items
-    .filter((t) => t.is_sellable)
-    .map((t) => ({ label: t.description, value: t.id }));
-});
-
-// Handlers
-
-// Loads allocations for child tenants of a specific stock pool
-const loadRowAllocations = async (stockId: number) => {
-  rowLoadingState.value[stockId] = true;
-  try {
-    const data = await globalStockAllocationRepository.listChildAllocationSummary(stockId);
-    rowAllocations.value[stockId] = data;
-
-    // Initialize maps
-    const saved = savedQuantities.value[stockId] ?? {};
-    const draft = draftQuantities.value[stockId] ?? {};
-    savedQuantities.value[stockId] = saved;
-    draftQuantities.value[stockId] = draft;
-
-    // Pre-fill child concerns
-    data.forEach((item) => {
-      saved[item.child_tenant_id] = item.allocated_qty;
-      draft[item.child_tenant_id] = item.allocated_qty;
-    });
-
-    recalculateDraftTotal(stockId);
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    showErrorNotification(msg || 'Failed to load allocations.');
-  } finally {
-    rowLoadingState.value[stockId] = false;
+// UI Helpers
+const getRowDisplayAllocated = (stockId: number, fallbackQty: number) => {
+  if (draftTotals.value[stockId] !== undefined) {
+    return draftTotals.value[stockId]!;
   }
+  return fallbackQty;
+};
+
+const getPercentage = (allocated: number, total: number) => {
+  if (!total || total <= 0) return 0;
+  return Math.min(100, Math.round((allocated / total) * 100));
+};
+
+const getRatioColor = (allocated: number, total: number) => {
+  if (allocated > total) return 'negative';
+  if (allocated === total && total > 0) return 'positive';
+  if (allocated > 0) return 'warning';
+  return 'grey-5';
+};
+
+const setStatusChipFilter = (filterType: StatusChipType) => {
+  statusChipFilter.value = filterType;
+  pagination.value.page = 1;
 };
 
 const recalculateDraftTotal = (stockId: number) => {
@@ -470,7 +705,7 @@ const onQtyChange = (row: AllocatableStock) => {
 };
 
 const isOverAllocated = (stockId: number) => {
-  const pool = allocationStore.allocatableStocks.find((s) => s.id === stockId);
+  const pool = allocatableStocks.value.find((s) => s.id === stockId);
   if (!pool) return false;
   return (draftTotals.value[stockId] || 0) > pool.pool_quantity;
 };
@@ -486,33 +721,95 @@ const hasExistingAllocation = (stockId: number, childId: number) => {
   return Number(saved) > 0;
 };
 
-const saveAllocation = async (row: AllocatableStock, childId: number) => {
-  const stockId = row.id;
-  const qty = Number(draftQuantities.value[stockId]?.[childId] || 0);
-  const key = `${stockId}-${childId}`;
-  const currentTenantId = contextTenantId.value;
+const hasRowChanges = (stockId: number) => {
+  const saved = savedQuantities.value[stockId] || {};
+  const draft = draftQuantities.value[stockId] || {};
+  const allocs = rowAllocations.value[stockId] || [];
 
+  return allocs.some((child) => {
+    const sVal = Number(saved[child.child_tenant_id] ?? 0);
+    const dVal = Number(draft[child.child_tenant_id] ?? 0);
+    return sVal !== dVal;
+  });
+};
+
+const applyMaxAllocation = (stockId: number, childTenantId: number) => {
+  const pool = allocatableStocks.value.find((s) => s.id === stockId);
+  if (!pool) return;
+
+  const currentDrafts = draftQuantities.value[stockId] || {};
+  let otherDraftSum = 0;
+  Object.keys(currentDrafts).forEach((keyIdStr) => {
+    const cId = Number(keyIdStr);
+    if (cId !== childTenantId) {
+      otherDraftSum += Number(currentDrafts[cId] || 0);
+    }
+  });
+
+  const availableRemaining = Math.max(0, pool.pool_quantity - otherDraftSum);
+  if (!draftQuantities.value[stockId]) {
+    draftQuantities.value[stockId] = {};
+  }
+  draftQuantities.value[stockId][childTenantId] = availableRemaining;
+  recalculateDraftTotal(stockId);
+};
+
+const onRowExpand = async (stockId: number) => {
+  loadingRowAllocations.value[stockId] = true;
+  try {
+    const data = await globalStockAllocationRepository.listChildAllocationSummary(stockId);
+    rowAllocations.value[stockId] = data;
+
+    const saved = savedQuantities.value[stockId] ?? {};
+    const draft = draftQuantities.value[stockId] ?? {};
+    savedQuantities.value[stockId] = saved;
+    draftQuantities.value[stockId] = draft;
+
+    data.forEach((item) => {
+      saved[item.child_tenant_id] = item.allocated_qty;
+      draft[item.child_tenant_id] = item.allocated_qty;
+    });
+
+    recalculateDraftTotal(stockId);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    showErrorNotification(msg || 'Failed to load allocations.');
+  } finally {
+    loadingRowAllocations.value[stockId] = false;
+  }
+};
+
+const saveRowAllocations = async (row: AllocatableStock) => {
+  const stockId = row.id;
+  const currentTenantId = contextTenantId.value;
   if (!currentTenantId) {
     showErrorNotification('Parent tenant context is missing.');
     return;
   }
 
-  submittingMap.value[key] = true;
+  const allocs = rowAllocations.value[stockId] || [];
+  const changes = allocs.filter((child) => hasQtyChanged(stockId, child.child_tenant_id));
+
+  if (changes.length === 0) return;
+
+  rowSubmittingState.value[stockId] = true;
   try {
-    await globalStockAllocationRepository.upsertGlobalStockAllocation(
-      currentTenantId,
-      childId,
-      stockId,
-      qty,
-    );
-    showSuccessNotification('Allocation updated successfully.');
-    await loadRowAllocations(stockId);
-    await fetchAllocatableData();
+    for (const child of changes) {
+      const qty = Number(draftQuantities.value[stockId]?.[child.child_tenant_id] || 0);
+      await saveAllocationMutation.mutateAsync({
+        parentTenantId: currentTenantId,
+        childTenantId: child.child_tenant_id,
+        stockId,
+        quantity: qty,
+      });
+    }
+    showSuccessNotification(`Allocations updated for ${row.item_name}.`);
+    await onRowExpand(stockId);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
-    showErrorNotification(msg || 'Failed to update allocation.');
+    showErrorNotification(msg || 'Failed to save row allocations.');
   } finally {
-    submittingMap.value[key] = false;
+    rowSubmittingState.value[stockId] = false;
   }
 };
 
@@ -535,15 +832,14 @@ const removeAllocation = (row: AllocatableStock, childId: number) => {
     void (async () => {
       submittingMap.value[key] = true;
       try {
-        await globalStockAllocationRepository.upsertGlobalStockAllocation(
-          currentTenantId,
-          childId,
+        await saveAllocationMutation.mutateAsync({
+          parentTenantId: currentTenantId,
+          childTenantId: childId,
           stockId,
-          0,
-        );
+          quantity: 0,
+        });
         showSuccessNotification('Allocation removed successfully.');
-        await loadRowAllocations(stockId);
-        await fetchAllocatableData();
+        await onRowExpand(stockId);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         showErrorNotification(msg || 'Failed to remove allocation.');
@@ -554,21 +850,37 @@ const removeAllocation = (row: AllocatableStock, childId: number) => {
   });
 };
 
-// Pagination & Fetching
-const fetchAllocatableData = async () => {
-  if (!isParentContext.value || !authStore.tenantId) return;
-
-  await allocationStore.fetchAllocatableStocks(authStore.tenantId, {
-    page: pagination.value.page,
-    pageSize: pagination.value.rowsPerPage,
-    search: searchText.value,
-    shipmentId: shipmentFilter.value,
-    stockTypeId: stockTypeFilter.value,
-  });
-
-  pagination.value.rowsNumber = allocationStore.allocatableTotal;
+const openBulkAllocateDialog = () => {
+  bulkSelectedShipmentId.value = shipmentFilter.value ?? null;
+  bulkSelectedChildTenantId.value = null;
+  bulkDialogOpen.value = true;
 };
 
+const onConfirmBulkAllocate = async () => {
+  if (!bulkSelectedShipmentId.value || !bulkSelectedChildTenantId.value) return;
+  const parentId = contextTenantId.value;
+  if (!parentId) {
+    showErrorNotification('Parent tenant context is missing.');
+    return;
+  }
+
+  try {
+    const updatedCount = await bulkMutation.mutateAsync({
+      parentTenantId: parentId,
+      shipmentId: bulkSelectedShipmentId.value,
+      childTenantId: bulkSelectedChildTenantId.value,
+    });
+    showSuccessNotification(
+      `Bulk allocation completed successfully (${updatedCount} products updated).`,
+    );
+    bulkDialogOpen.value = false;
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    showErrorNotification(msg || 'Failed to bulk allocate shipment.');
+  }
+};
+
+// Table pagination request
 const onRequest = (props: {
   pagination: {
     page: number;
@@ -581,15 +893,12 @@ const onRequest = (props: {
   pagination.value.rowsPerPage = props.pagination.rowsPerPage;
   pagination.value.sortBy = props.pagination.sortBy;
   pagination.value.descending = props.pagination.descending;
-  void fetchAllocatableData();
 };
 
 const onSearch = () => {
   pagination.value.page = 1;
-  void fetchAllocatableData();
 };
 
-// Filter Actions
 const openFilterDrawer = () => {
   draftShipmentFilter.value = shipmentFilter.value;
   draftStockTypeFilter.value = stockTypeFilter.value;
@@ -601,7 +910,6 @@ const onApplyDrawerFilters = () => {
   stockTypeFilter.value = draftStockTypeFilter.value;
   filterDrawerOpen.value = false;
   pagination.value.page = 1;
-  void fetchAllocatableData();
 };
 
 const onResetFilters = () => {
@@ -611,34 +919,7 @@ const onResetFilters = () => {
   stockTypeFilter.value = null;
   filterDrawerOpen.value = false;
   pagination.value.page = 1;
-  void fetchAllocatableData();
 };
-
-// Lifecycle
-onMounted(async () => {
-  const currentTenantId = contextTenantId.value;
-  if (isParentContext.value && currentTenantId) {
-    await Promise.all([
-      shipmentStore.fetchShipments(currentTenantId),
-      stockTypeStore.fetchStockTypes(currentTenantId),
-      fetchAllocatableData(),
-    ]);
-  }
-});
-
-// Watch context change
-watch(
-  () => [contextTenantId.value, isParentContext.value] as const,
-  async ([newTenantId, parentCtx]) => {
-    if (parentCtx && newTenantId) {
-      await Promise.all([
-        shipmentStore.fetchShipments(newTenantId),
-        stockTypeStore.fetchStockTypes(newTenantId),
-        fetchAllocatableData(),
-      ]);
-    }
-  },
-);
 </script>
 
 <style scoped>

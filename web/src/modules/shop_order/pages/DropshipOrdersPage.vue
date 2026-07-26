@@ -26,11 +26,11 @@
           />
           <q-btn
             outline
-            color="secondary"
+            color="primary"
             icon="ph ph-wallet"
-            label="Payout Ledger"
+            label="Wallet & Payouts"
             no-caps
-            :to="{ name: 'app-shop-dropship-ledger-page' }"
+            :to="{ name: 'app-global-billing-wallets' }"
           />
         </div>
       </section>
@@ -175,17 +175,6 @@
                     label="Record Remittance"
                     @click="openRemittanceDialog(c)"
                   />
-                  <q-btn
-                    v-if="canSettlePayout(c)"
-                    color="positive"
-                    outline
-                    dense
-                    size="sm"
-                    no-caps
-                    label="Settle Payout"
-                    :loading="actionOrderId === c.id && actionKind === 'settle'"
-                    @click="settlePayout(c)"
-                  />
                 </div>
               </td>
             </tr>
@@ -259,7 +248,6 @@ import {
   requestConfirmation,
 } from 'src/utils/appFeedback';
 import { shopOrderService } from '../services/shopOrderService';
-import { dropshipLedgerService } from '../services/dropshipLedgerService';
 import type { ShopOrder } from '../types';
 
 const authStore = useAuthStore();
@@ -269,7 +257,7 @@ const searchQuery = ref('');
 const selectedStatus = ref<string>('all');
 
 const actionOrderId = ref<number | null>(null);
-const actionKind = ref<'deliver' | 'invoice' | 'remit' | 'settle' | null>(null);
+const actionKind = ref<'deliver' | 'invoice' | 'remit' | null>(null);
 
 const remittanceDialogOpen = ref(false);
 const remittanceOrder = ref<ShopOrder | null>(null);
@@ -281,7 +269,6 @@ const remittanceForm = reactive({
 });
 
 const INVOICE_ELIGIBLE = ['ready_for_pickup', 'shipped', 'delivered', 'payment_received'];
-const SETTLE_ELIGIBLE = ['delivered', 'payment_received'];
 
 const statusOptions = [
   { label: 'All Orders', val: 'all' },
@@ -340,9 +327,6 @@ const canCreateAccountingInvoice = (c: ShopOrder) =>
 
 const canRecordRemittance = (c: ShopOrder) =>
   c.status === 'delivered' && !!c.global_invoice_id && !c.courier_remittance_ref;
-
-const canSettlePayout = (c: ShopOrder) =>
-  SETTLE_ELIGIBLE.includes(c.status) && !!c.global_invoice_id;
 
 const canSaveRemittance = computed(
   () =>
@@ -426,56 +410,20 @@ const saveRemittance = async () => {
 
   actionKind.value = 'remit';
   try {
-    const res = await dropshipLedgerService.recordRemittance({
-      order_id: remittanceOrder.value.id,
-      net_amount: Number(remittanceForm.net_amount),
-      remittance_ref: remittanceForm.remittance_ref.trim(),
-      bank_trx_id: remittanceForm.bank_trx_id.trim() || null,
-      note: remittanceForm.note.trim() || null,
+    const { error } = await supabase.rpc('record_dropship_courier_remittance', {
+      p_order_id: remittanceOrder.value.id,
+      p_net_amount: Number(remittanceForm.net_amount),
+      p_remittance_ref: remittanceForm.remittance_ref.trim(),
+      p_bank_trx_id: remittanceForm.bank_trx_id.trim() || null,
+      p_note: remittanceForm.note.trim() || null,
     });
-    if (!res.success) {
-      showErrorNotification(res.error || 'Failed to record remittance');
-      return;
-    }
+    if (error) throw error;
     showSuccessNotification(`Remittance ${remittanceForm.remittance_ref.trim()} recorded.`);
     remittanceDialogOpen.value = false;
     await loadOrders();
   } catch (err: any) {
     showErrorNotification(err?.message || 'Failed to record remittance');
   } finally {
-    actionKind.value = null;
-  }
-};
-
-const settlePayout = async (c: ShopOrder) => {
-  if (!authStore.tenantId || !c.global_invoice_id) return;
-
-  const ok = await requestConfirmation(
-    `Settle middle-man payout for order ${c.order_no}?`,
-    'Settle Payout',
-    'Settle',
-  );
-  if (!ok) return;
-
-  actionOrderId.value = c.id;
-  actionKind.value = 'settle';
-  try {
-    const res = await dropshipLedgerService.settlePayoutForInvoice(
-      authStore.tenantId,
-      c.global_invoice_id,
-      Number(c.cod_collect_amount ?? 0),
-      c.order_no,
-    );
-    if (!res.success) {
-      showErrorNotification(res.error || 'Failed to settle payout');
-      return;
-    }
-    showSuccessNotification(`Payout settled for order ${c.order_no}.`);
-    await loadOrders();
-  } catch (err: any) {
-    showErrorNotification(err?.message || 'Failed to settle payout');
-  } finally {
-    actionOrderId.value = null;
     actionKind.value = null;
   }
 };

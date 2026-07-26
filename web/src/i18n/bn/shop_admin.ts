@@ -358,5 +358,21 @@ export default {
   add_to_dropship_desk: 'ড্রপশিপ ডেস্কে যুক্ত করুন',
   added_to_dropship_desk_success: 'অর্ডার সফলভাবে ড্রপশিপ ডেস্কে পাঠানো হয়েছে।',
   dropship_handoff_required_banner: 'এই ড্রপশিপ অর্ডারটি সার্ভিস ডেস্কে নিশ্চিত করা হয়েছে কিন্তু এখনও ড্রপশিপ ডেস্কে পাঠানো হয়নি।',
+  delete_shop_title: 'শপ মোছার অনুমতি',
+  delete_shop_confirm_msg: 'আপনি কি নিশ্চিত যে "{name}" শপটি মুছতে চান? এই পদক্ষেপটি স্থায়ী এবং এই শপের সমস্ত অর্ডার, কার্ট এন্ট্রি, পণ্য লিস্টিং এবং অ্যাক্সেস সেটিংস মুছে ফেলবে।',
+  delete_shop_success: 'শপ সফলভাবে মোছা হয়েছে।',
+  delete_shop_failed: 'শপ মুছতে ব্যর্থ হয়েছে।',
+
+  // Global Pricing & Grid view
+  global_pricing_rule: 'গ্লোবাল মূল্য নির্ধারণ কৌশল',
+  global_pricing_rule_subtitle: 'বরাদ্দকৃত পণ্যের জন্য অটো-পাবলিশ এবং গ্লোবাল প্রফিট মার্কআপ সেট করুন',
+  auto_publish_new_allocations: 'নতুন স্টক অ্যালোকেশন স্বয়ংক্রিয়ভাবে প্রকাশ করুন',
+  markup_percent: 'মার্কআপ শতাংশ',
+  save_rule: 'নিয়ম সংরক্ষণ করুন',
+  view_list: 'লিস্ট ভিউ',
+  view_grid: 'গ্রিড ভিউ',
+  items_selected: '{count} টি আইটেম নির্বাচিত',
+  apply_markup_selected: 'নির্বাচিতগুলিতে মার্কআপ প্রয়োগ করুন',
+  clear_selection: 'নির্বাচন বাতিল করুন',
 };
 

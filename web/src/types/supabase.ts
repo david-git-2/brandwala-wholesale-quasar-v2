@@ -103,6 +103,80 @@ export type Database = {
           },
         ]
       }
+      billing_profile_wallet_ledger: {
+        Row: {
+          amount: number
+          balance_after: number
+          billing_profile_id: number
+          created_at: string
+          created_by: string | null
+          global_invoice_id: number | null
+          id: string
+          reference_id: string | null
+          reference_notes: string | null
+          shop_order_id: number | null
+          tenant_id: number
+          transaction_type: string
+        }
+        Insert: {
+          amount: number
+          balance_after: number
+          billing_profile_id: number
+          created_at?: string
+          created_by?: string | null
+          global_invoice_id?: number | null
+          id?: string
+          reference_id?: string | null
+          reference_notes?: string | null
+          shop_order_id?: number | null
+          tenant_id: number
+          transaction_type: string
+        }
+        Update: {
+          amount?: number
+          balance_after?: number
+          billing_profile_id?: number
+          created_at?: string
+          created_by?: string | null
+          global_invoice_id?: number | null
+          id?: string
+          reference_id?: string | null
+          reference_notes?: string | null
+          shop_order_id?: number | null
+          tenant_id?: number
+          transaction_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_profile_wallet_ledger_billing_profile_id_fkey"
+            columns: ["billing_profile_id"]
+            isOneToOne: false
+            referencedRelation: "billing_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_profile_wallet_ledger_global_invoice_id_fkey"
+            columns: ["global_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "global_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_profile_wallet_ledger_shop_order_id_fkey"
+            columns: ["shop_order_id"]
+            isOneToOne: false
+            referencedRelation: "shop_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_profile_wallet_ledger_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       billing_profiles: {
         Row: {
           address: string | null
@@ -3303,77 +3377,6 @@ export type Database = {
           },
         ]
       }
-      middle_man_payout_ledger: {
-        Row: {
-          amount: number
-          balance_after: number
-          created_at: string
-          created_by: string | null
-          customer_group_member_id: number
-          entry_type: string
-          global_invoice_id: number | null
-          id: string
-          reference_notes: string | null
-          shop_order_id: number | null
-          tenant_id: number
-        }
-        Insert: {
-          amount: number
-          balance_after: number
-          created_at?: string
-          created_by?: string | null
-          customer_group_member_id: number
-          entry_type: string
-          global_invoice_id?: number | null
-          id?: string
-          reference_notes?: string | null
-          shop_order_id?: number | null
-          tenant_id: number
-        }
-        Update: {
-          amount?: number
-          balance_after?: number
-          created_at?: string
-          created_by?: string | null
-          customer_group_member_id?: number
-          entry_type?: string
-          global_invoice_id?: number | null
-          id?: string
-          reference_notes?: string | null
-          shop_order_id?: number | null
-          tenant_id?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "middle_man_payout_ledger_customer_group_member_id_fkey"
-            columns: ["customer_group_member_id"]
-            isOneToOne: false
-            referencedRelation: "customer_group_members"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "middle_man_payout_ledger_global_invoice_id_fkey"
-            columns: ["global_invoice_id"]
-            isOneToOne: false
-            referencedRelation: "global_invoices"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "middle_man_payout_ledger_shop_order_id_fkey"
-            columns: ["shop_order_id"]
-            isOneToOne: false
-            referencedRelation: "shop_orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "middle_man_payout_ledger_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       module_actions: {
         Row: {
           action: string
@@ -5293,6 +5296,60 @@ export type Database = {
           },
         ]
       }
+      shop_pricing_rules: {
+        Row: {
+          created_at: string
+          default_add_quantity: number
+          default_show_quantity: boolean
+          dropship_markup_percentage: number
+          id: number
+          is_auto_publish: boolean
+          markup_percentage: number
+          shop_id: number
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_add_quantity?: number
+          default_show_quantity?: boolean
+          dropship_markup_percentage?: number
+          id?: never
+          is_auto_publish?: boolean
+          markup_percentage?: number
+          shop_id: number
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_add_quantity?: number
+          default_show_quantity?: boolean
+          dropship_markup_percentage?: number
+          id?: never
+          is_auto_publish?: boolean
+          markup_percentage?: number
+          shop_id?: number
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_pricing_rules_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: true
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_pricing_rules_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shop_product_listings: {
         Row: {
           created_at: string
@@ -5301,9 +5358,12 @@ export type Database = {
           global_stock_id: number
           id: number
           is_active: boolean
+          is_price_locked: boolean
+          is_quantity_locked: boolean
           minimum_sell_price_amount: number | null
           minimum_sell_price_currency_id: number | null
           product_id: number
+          quantity_override_type: string
           sell_price_amount: number
           sell_price_currency_id: number
           shop_id: number
@@ -5318,9 +5378,12 @@ export type Database = {
           global_stock_id: number
           id?: never
           is_active?: boolean
+          is_price_locked?: boolean
+          is_quantity_locked?: boolean
           minimum_sell_price_amount?: number | null
           minimum_sell_price_currency_id?: number | null
           product_id: number
+          quantity_override_type?: string
           sell_price_amount: number
           sell_price_currency_id: number
           shop_id: number
@@ -5335,9 +5398,12 @@ export type Database = {
           global_stock_id?: number
           id?: never
           is_active?: boolean
+          is_price_locked?: boolean
+          is_quantity_locked?: boolean
           minimum_sell_price_amount?: number | null
           minimum_sell_price_currency_id?: number | null
           product_id?: number
+          quantity_override_type?: string
           sell_price_amount?: number
           sell_price_currency_id?: number
           shop_id?: number
@@ -7631,6 +7697,33 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      bulk_allocate_shipment_stock: {
+        Args: {
+          p_child_tenant_id: number
+          p_parent_tenant_id: number
+          p_shipment_id: number
+        }
+        Returns: number
+      }
+      bulk_apply_shop_markup:
+        | {
+            Args: {
+              p_listing_ids?: number[]
+              p_markup_amount?: number
+              p_markup_type?: string
+              p_shop_id: number
+              p_target_price?: string
+            }
+            Returns: number
+          }
+        | {
+            Args: {
+              p_listing_ids?: number[]
+              p_markup_percentage?: number
+              p_shop_id: number
+            }
+            Returns: number
+          }
       bulk_delete_shipment_items_by_product_id: {
         Args: { p_items: Json; p_shipment_id: number }
         Returns: number
@@ -7945,6 +8038,35 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_bulk_wallet_payout: {
+        Args: {
+          p_amount: number
+          p_billing_profile_id: number
+          p_created_by?: string
+          p_reference_notes?: string
+          p_tenant_id: number
+        }
+        Returns: {
+          amount: number
+          balance_after: number
+          billing_profile_id: number
+          created_at: string
+          created_by: string | null
+          global_invoice_id: number | null
+          id: string
+          reference_id: string | null
+          reference_notes: string | null
+          shop_order_id: number | null
+          tenant_id: number
+          transaction_type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "billing_profile_wallet_ledger"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_commerce_invoice:
         | {
             Args: {
@@ -8199,55 +8321,6 @@ export type Database = {
               isSetofReturn: false
             }
           }
-      create_middle_man_payout: {
-        Args: {
-          p_amount: number
-          p_billing_profile_id: number
-          p_global_invoice_id: number
-          p_note?: string
-          p_tenant_id: number
-        }
-        Returns: {
-          billing_profile_id: number | null
-          collection_source: Database["public"]["Enums"]["collection_source_type"]
-          created_at: string
-          created_by: string | null
-          discount_amount: number
-          due_amount: number
-          due_date: string | null
-          fulfillment_status: Database["public"]["Enums"]["global_fulfillment_status"]
-          id: number
-          invoice_date: string
-          invoice_no: string
-          invoice_status: Database["public"]["Enums"]["global_invoice_status"]
-          invoice_type: Database["public"]["Enums"]["global_invoice_type"]
-          note: string | null
-          paid_amount: number
-          parent_tenant_id: number
-          payment_status: string
-          print_charge: number
-          recipient_address: string | null
-          recipient_name: string | null
-          recipient_phone: string | null
-          recipient_profile_id: number | null
-          retail_billing_mode:
-            | Database["public"]["Enums"]["retail_billing_mode"]
-            | null
-          settlement_discount_amount: number
-          shipping_charge: number
-          subtotal_amount: number
-          tenant_id: number
-          total_amount: number
-          updated_at: string
-          wrapping_charge: number
-        }
-        SetofOptions: {
-          from: "*"
-          to: "global_invoices"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
       create_shipment: {
         Args: { p_name: string; p_shipment_type?: string; p_tenant_id: number }
         Returns: {
@@ -8446,7 +8519,15 @@ export type Database = {
         Returns: boolean
       }
       delete_shipment_order: { Args: { p_id: number }; Returns: undefined }
+      delete_shop: {
+        Args: { p_shop_id: number; p_tenant_id: number }
+        Returns: undefined
+      }
       delete_shop_order: { Args: { p_order_id: number }; Returns: undefined }
+      delete_shop_product_listing: {
+        Args: { p_listing_id: number; p_tenant_id: number }
+        Returns: boolean
+      }
       delete_store: { Args: { p_id: number }; Returns: undefined }
       delete_store_access: { Args: { p_id: number }; Returns: undefined }
       delete_tenant_for_superadmin: {
@@ -9023,6 +9104,8 @@ export type Database = {
         Returns: {
           allocated_quantity: number
           allocation_id: number
+          minimum_sell_price_amount: number
+          minimum_sell_price_currency_id: number
           product_barcode: string
           product_brand: string
           product_category: string
@@ -9030,7 +9113,10 @@ export type Database = {
           product_id: number
           product_image_url: string
           product_name: string
+          shipment_id: number
+          shipment_item_id: number
           stock_id: number
+          unit_cost_amount: number
         }[]
       }
       list_billing_balances: {
@@ -9659,9 +9745,12 @@ export type Database = {
           product_name: string
           sell_price_amount: number
           sell_price_currency_id: number
+          shipment_id: number
+          shipment_item_id: number
           shop_id: number
           show_quantity: boolean
           tenant_id: number
+          unit_cost_amount: number
           updated_at: string
         }[]
       }
@@ -10176,6 +10265,39 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "global_invoices"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      record_wallet_ledger_entry: {
+        Args: {
+          p_amount: number
+          p_billing_profile_id: number
+          p_created_by?: string
+          p_global_invoice_id?: number
+          p_reference_id?: string
+          p_reference_notes?: string
+          p_shop_order_id?: number
+          p_tenant_id: number
+          p_transaction_type: string
+        }
+        Returns: {
+          amount: number
+          balance_after: number
+          billing_profile_id: number
+          created_at: string
+          created_by: string | null
+          global_invoice_id: number | null
+          id: string
+          reference_id: string | null
+          reference_notes: string | null
+          shop_order_id: number | null
+          tenant_id: number
+          transaction_type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "billing_profile_wallet_ledger"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -11220,44 +11342,199 @@ export type Database = {
           isSetofReturn: true
         }
       }
-      upsert_shop_product_listing: {
-        Args: {
-          p_display_quantity_override?: number
-          p_global_stock_allocation_id: number
-          p_id?: number
-          p_is_active?: boolean
-          p_minimum_sell_price_amount?: number
-          p_minimum_sell_price_currency_id?: number
-          p_sell_price_amount: number
-          p_sell_price_currency_id: number
-          p_shop_id: number
-          p_show_quantity?: boolean
-          p_tenant_id: number
-        }
-        Returns: {
-          created_at: string
-          display_quantity_override: number | null
-          global_stock_allocation_id: number
-          global_stock_id: number
-          id: number
-          is_active: boolean
-          minimum_sell_price_amount: number | null
-          minimum_sell_price_currency_id: number | null
-          product_id: number
-          sell_price_amount: number
-          sell_price_currency_id: number
-          shop_id: number
-          show_quantity: boolean | null
-          tenant_id: number
-          updated_at: string
-        }[]
-        SetofOptions: {
-          from: "*"
-          to: "shop_product_listings"
-          isOneToOne: false
-          isSetofReturn: true
-        }
-      }
+      upsert_shop_pricing_rule:
+        | {
+            Args: {
+              p_is_auto_publish: boolean
+              p_markup_percentage: number
+              p_shop_id: number
+            }
+            Returns: {
+              created_at: string
+              default_add_quantity: number
+              default_show_quantity: boolean
+              dropship_markup_percentage: number
+              id: number
+              is_auto_publish: boolean
+              markup_percentage: number
+              shop_id: number
+              tenant_id: number
+              updated_at: string
+            }[]
+            SetofOptions: {
+              from: "*"
+              to: "shop_pricing_rules"
+              isOneToOne: false
+              isSetofReturn: true
+            }
+          }
+        | {
+            Args: {
+              p_default_show_quantity?: boolean
+              p_is_auto_publish: boolean
+              p_markup_percentage: number
+              p_shop_id: number
+            }
+            Returns: {
+              created_at: string
+              default_add_quantity: number
+              default_show_quantity: boolean
+              dropship_markup_percentage: number
+              id: number
+              is_auto_publish: boolean
+              markup_percentage: number
+              shop_id: number
+              tenant_id: number
+              updated_at: string
+            }[]
+            SetofOptions: {
+              from: "*"
+              to: "shop_pricing_rules"
+              isOneToOne: false
+              isSetofReturn: true
+            }
+          }
+        | {
+            Args: {
+              p_default_add_quantity?: number
+              p_default_show_quantity?: boolean
+              p_is_auto_publish: boolean
+              p_markup_percentage: number
+              p_shop_id: number
+            }
+            Returns: {
+              created_at: string
+              default_add_quantity: number
+              default_show_quantity: boolean
+              dropship_markup_percentage: number
+              id: number
+              is_auto_publish: boolean
+              markup_percentage: number
+              shop_id: number
+              tenant_id: number
+              updated_at: string
+            }[]
+            SetofOptions: {
+              from: "*"
+              to: "shop_pricing_rules"
+              isOneToOne: false
+              isSetofReturn: true
+            }
+          }
+        | {
+            Args: {
+              p_default_add_quantity?: number
+              p_default_show_quantity?: boolean
+              p_dropship_markup_percentage?: number
+              p_is_auto_publish: boolean
+              p_markup_percentage: number
+              p_shop_id: number
+            }
+            Returns: {
+              created_at: string
+              default_add_quantity: number
+              default_show_quantity: boolean
+              dropship_markup_percentage: number
+              id: number
+              is_auto_publish: boolean
+              markup_percentage: number
+              shop_id: number
+              tenant_id: number
+              updated_at: string
+            }[]
+            SetofOptions: {
+              from: "*"
+              to: "shop_pricing_rules"
+              isOneToOne: false
+              isSetofReturn: true
+            }
+          }
+      upsert_shop_product_listing:
+        | {
+            Args: {
+              p_display_quantity_override?: number
+              p_global_stock_allocation_id: number
+              p_id?: number
+              p_is_active?: boolean
+              p_minimum_sell_price_amount?: number
+              p_minimum_sell_price_currency_id?: number
+              p_sell_price_amount: number
+              p_sell_price_currency_id: number
+              p_shop_id: number
+              p_show_quantity?: boolean
+              p_tenant_id: number
+            }
+            Returns: {
+              created_at: string
+              display_quantity_override: number | null
+              global_stock_allocation_id: number
+              global_stock_id: number
+              id: number
+              is_active: boolean
+              is_price_locked: boolean
+              is_quantity_locked: boolean
+              minimum_sell_price_amount: number | null
+              minimum_sell_price_currency_id: number | null
+              product_id: number
+              quantity_override_type: string
+              sell_price_amount: number
+              sell_price_currency_id: number
+              shop_id: number
+              show_quantity: boolean | null
+              tenant_id: number
+              updated_at: string
+            }[]
+            SetofOptions: {
+              from: "*"
+              to: "shop_product_listings"
+              isOneToOne: false
+              isSetofReturn: true
+            }
+          }
+        | {
+            Args: {
+              p_display_quantity_override?: number
+              p_global_stock_allocation_id: number
+              p_id?: number
+              p_is_active?: boolean
+              p_is_price_locked?: boolean
+              p_is_quantity_locked?: boolean
+              p_minimum_sell_price_amount?: number
+              p_minimum_sell_price_currency_id?: number
+              p_quantity_override_type?: string
+              p_sell_price_amount: number
+              p_sell_price_currency_id: number
+              p_shop_id: number
+              p_show_quantity?: boolean
+              p_tenant_id: number
+            }
+            Returns: {
+              created_at: string
+              display_quantity_override: number | null
+              global_stock_allocation_id: number
+              global_stock_id: number
+              id: number
+              is_active: boolean
+              is_price_locked: boolean
+              is_quantity_locked: boolean
+              minimum_sell_price_amount: number | null
+              minimum_sell_price_currency_id: number | null
+              product_id: number
+              quantity_override_type: string
+              sell_price_amount: number
+              sell_price_currency_id: number
+              shop_id: number
+              show_quantity: boolean | null
+              tenant_id: number
+              updated_at: string
+            }[]
+            SetofOptions: {
+              from: "*"
+              to: "shop_product_listings"
+              isOneToOne: false
+              isSetofReturn: true
+            }
+          }
       upsert_tenant_role_grant: {
         Args: {
           p_action: string

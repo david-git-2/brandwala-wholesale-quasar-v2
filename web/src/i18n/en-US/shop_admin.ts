@@ -370,5 +370,21 @@ export default {
   add_to_dropship_desk: 'Add to Dropship Desk',
   added_to_dropship_desk_success: 'Order handed off to Dropship Desk successfully.',
   dropship_handoff_required_banner: 'This dropship order is confirmed on the service desk but has not yet been handed off to the Dropship Operations Desk.',
+  delete_shop_title: 'Delete Shop Confirmation',
+  delete_shop_confirm_msg: 'Are you sure you want to delete "{name}"? This action is permanent and will delete all associated orders, cart entries, product listings, and access settings for this shop.',
+  delete_shop_success: 'Shop deleted successfully.',
+  delete_shop_failed: 'Failed to delete shop.',
+
+  // Global Pricing & Grid view
+  global_pricing_rule: 'Global Pricing Strategy',
+  global_pricing_rule_subtitle: 'Set auto-publish and global profit markup for allocated products',
+  auto_publish_new_allocations: 'Auto-publish new stock allocations',
+  markup_percent: 'Markup Percent',
+  save_rule: 'Save Rule',
+  view_list: 'List View',
+  view_grid: 'Grid View',
+  items_selected: '{count} item(s) selected',
+  apply_markup_selected: 'Apply Markup to Selected',
+  clear_selection: 'Clear Selection',
 };
 

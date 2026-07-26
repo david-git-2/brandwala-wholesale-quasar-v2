@@ -53,6 +53,7 @@ export type ModuleKey =
   | 'shop_category'
   | 'sales_invoice'
   | 'billing_profile'
+  | 'billing_profile_wallet'
   | 'recipient_profile';
 
 export type ModuleAction = 'view';
@@ -582,6 +583,22 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     ],
   },
   {
+    key: 'billing_profile_wallet',
+    name: 'Billing Wallets',
+    description: 'Unified wallet balances, debits, credits, and bulk payouts for billing profiles.',
+    parentModuleKey: 'sales_invoice',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Wallets',
+        caption: 'Manage billing profile wallets and settlements',
+        icon: 'ph ph-wallet',
+        routeSegment: 'sales/invoices/wallets',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
     key: 'recipient_profile',
     name: 'Recipient Profiles',
     description: 'Manage end-customer delivery and drop-ship target profiles.',
@@ -934,7 +951,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'shop_dropship',
     name: 'Dropship Ops Desk',
-    description: 'Manage dropship consignments, couriers, return policies, and payout ledger.',
+    description: 'Manage dropship consignments, couriers, and return policies.',
     parentModuleKey: 'shop_order',
     routes: [
       {
@@ -951,14 +968,6 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         caption: 'Courier catalog & return policies',
         icon: 'ph ph-truck',
         routeSegment: 'shop/dropship/couriers',
-        requiredAction: 'view',
-      },
-      {
-        scope: 'app',
-        title: 'Payout Ledger',
-        caption: 'Middle-man profit & COD remittance ledger',
-        icon: 'ph ph-wallet',
-        routeSegment: 'shop/dropship/ledger',
         requiredAction: 'view',
       },
       {

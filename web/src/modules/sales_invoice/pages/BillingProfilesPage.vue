@@ -121,11 +121,23 @@
             <td class="text-right">
               <q-btn flat round dense icon="ph ph-dots-three-vertical">
                 <q-menu auto-close>
-                  <q-list dense style="min-width: 140px">
+                  <q-list dense style="min-width: 160px">
+                    <q-item clickable @click="onOpenWalletDrawer(row)">
+                      <q-item-section avatar class="min-width-auto q-pr-sm">
+                        <q-icon name="ph ph-wallet" color="primary" size="18px" />
+                      </q-item-section>
+                      <q-item-section>Wallet &amp; Ledger</q-item-section>
+                    </q-item>
                     <q-item clickable @click="onOpenEdit(row.id)">
+                      <q-item-section avatar class="min-width-auto q-pr-sm">
+                        <q-icon name="ph ph-pencil-simple" size="18px" />
+                      </q-item-section>
                       <q-item-section>Edit</q-item-section>
                     </q-item>
                     <q-item clickable class="text-negative" @click="onOpenDelete(row.id)">
+                      <q-item-section avatar class="min-width-auto q-pr-sm">
+                        <q-icon name="ph ph-trash" color="negative" size="18px" />
+                      </q-item-section>
                       <q-item-section>Delete</q-item-section>
                     </q-item>
                   </q-list>
@@ -191,6 +203,15 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+    <BillingProfileDetailsDrawer
+      v-model="walletDrawerOpen"
+      :tenant-id="authStore.tenantId"
+      :billing-profile-id="selectedProfileForWallet?.id ?? null"
+      :profile-name="selectedProfileForWallet?.name ?? ''"
+      :email="selectedProfileForWallet?.email"
+      :phone="selectedProfileForWallet?.phone"
+      :net-balance="0"
+    />
   </div>
 </q-page>
 </template>
@@ -202,6 +223,7 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import BillingProfileCreateDialog from '../components/BillingProfileCreateDialog.vue';
 import BillingProfileEditDialog from '../components/BillingProfileEditDialog.vue';
+import BillingProfileDetailsDrawer from '../components/BillingProfileDetailsDrawer.vue';
 import { useBillingProfileStore } from '../stores/billingProfileStore';
 import { useCustomerGroupStore } from 'src/modules/tenant/stores/customerGroupStore';
 import type {
@@ -223,6 +245,13 @@ const phoneFilter = ref('');
 const editOpen = ref(false);
 const deleteOpen = ref(false);
 const selectedId = ref<number | null>(null);
+const walletDrawerOpen = ref(false);
+const selectedProfileForWallet = ref<BillingProfile | null>(null);
+
+const onOpenWalletDrawer = (profile: BillingProfile) => {
+  selectedProfileForWallet.value = profile;
+  walletDrawerOpen.value = true;
+};
 
 const selectedProfile = computed<BillingProfile | null>(
   () => store.items.find((row) => row.id === selectedId.value) ?? null,

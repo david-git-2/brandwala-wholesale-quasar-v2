@@ -144,6 +144,7 @@
           <q-btn
             v-if="
               invoice.invoice_status === 'draft' ||
+              invoice.invoice_status === 'voided' ||
               (invoice.invoice_status === 'posted' && canUnpostOrVoid)
             "
             flat
@@ -155,7 +156,7 @@
             <q-menu auto-close>
               <q-list style="min-width: 150px">
                 <q-item
-                  v-if="invoice.invoice_status === 'draft'"
+                  v-if="invoice.invoice_status === 'draft' || invoice.invoice_status === 'voided'"
                   clickable
                   class="text-negative"
                   :disable="deletingInvoice"
@@ -164,7 +165,7 @@
                   <q-item-section avatar class="q-pr-none" style="min-width: 32px">
                     <q-icon name="ph ph-trash" />
                   </q-item-section>
-                  <q-item-section>Delete Draft</q-item-section>
+                  <q-item-section>{{ invoice.invoice_status === 'voided' ? 'Delete Voided Invoice' : 'Delete Draft' }}</q-item-section>
                 </q-item>
 
                 <q-item
@@ -1441,10 +1442,12 @@
 import { computed, nextTick, onMounted, ref, watch, reactive } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
+import { useQueryClient } from '@tanstack/vue-query';
 
 import RichTextEditor from 'src/components/ui/RichTextEditor.vue';
 import SmartImage from 'src/components/SmartImage.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { supabase } from 'src/boot/supabase';
 import { formatAmountBdt } from 'src/utils/currency';
 import {
   showSuccessNotification,
@@ -1456,7 +1459,7 @@ import {
 import { cleanEditorHtml } from 'src/utils/editor';
 import { invoiceRepository } from '../repositories/invoiceRepository';
 import type { TargetTotalSummary } from '../repositories/invoiceRepository';
-import { dropshipLedgerRepository } from 'src/modules/shop_order/repositories/dropshipLedgerRepository';
+import { salesInvoiceQueryKeys } from '../services/salesInvoiceQueryKeys';
 import NetworkStockSearchPanel from '../components/NetworkStockSearchPanel.vue';
 import InvoiceBulkPasteDialog from '../components/InvoiceBulkPasteDialog.vue';
 import { invoiceGrossProfit, lineMargin } from 'src/modules/reporting_treasury/utils/margin';
@@ -1468,6 +1471,7 @@ const route = useRoute();
 const router = useRouter();
 const $q = useQuasar();
 const authStore = useAuthStore();
+const queryClient = useQueryClient();
 
 const goBack = () => {
   void router.push({
@@ -1480,9 +1484,14 @@ const loading = ref(true);
 const error = ref<string | null>(null);
 const invoice = ref<GlobalInvoiceDetail | null>(null);
 const items = ref<GlobalInvoiceItemRow[]>([]);
-const linkedOrderRemittance = ref<Awaited<
-  ReturnType<typeof dropshipLedgerRepository.getShopOrderRemittanceByInvoiceId>
->>(null);
+interface LinkedOrderRemittanceInfo {
+  id: number;
+  order_no: string;
+  status: string;
+  courier_remittance_ref: string | null;
+  courier_bank_trx_id: string | null;
+}
+const linkedOrderRemittance = ref<LinkedOrderRemittanceInfo | null>(null);
 const { resolveItemUnitCosts, getItemUnitCost } = useInvoiceItemUnitCosts();
 
 const noteEditValue = ref('');
@@ -1612,8 +1621,12 @@ const loadLinkedOrderRemittance = async (inv: GlobalInvoiceDetail | null) => {
     return;
   }
   try {
-    linkedOrderRemittance.value =
-      await dropshipLedgerRepository.getShopOrderRemittanceByInvoiceId(inv.id);
+    const { data } = await supabase
+      .from('shop_orders')
+      .select('id, order_no, status, courier_remittance_ref, courier_bank_trx_id')
+      .eq('global_invoice_id', inv.id)
+      .maybeSingle();
+    linkedOrderRemittance.value = (data as LinkedOrderRemittanceInfo | null) ?? null;
   } catch {
     linkedOrderRemittance.value = null;
   }
@@ -2101,16 +2114,22 @@ const changeInvoiceStatus = (newStatus: string) => {
 
 const onDeleteInvoice = async () => {
   if (!invoice.value) return;
+  const isVoided = invoice.value.invoice_status === 'voided';
   const confirmed = await requestConfirmation(
-    'Are you sure you want to delete this draft invoice? This action cannot be undone.',
-    'Delete Invoice Draft',
+    isVoided
+      ? 'Are you sure you want to delete this voided invoice? This action cannot be undone.'
+      : 'Are you sure you want to delete this draft invoice? This action cannot be undone.',
+    isVoided ? 'Delete Voided Invoice' : 'Delete Invoice Draft',
     'Delete',
   );
   if (!confirmed) return;
   deletingInvoice.value = true;
   try {
     await invoiceRepository.deleteGlobalInvoice(invoice.value.id);
-    showSuccessNotification('Draft invoice deleted successfully.');
+    await queryClient.invalidateQueries({ queryKey: salesInvoiceQueryKeys.root });
+    showSuccessNotification(
+      isVoided ? 'Voided invoice deleted successfully.' : 'Draft invoice deleted successfully.',
+    );
     void router.push({
       name: 'app-global-invoices-page',
       params: { tenantSlug: authStore.tenantSlug },
