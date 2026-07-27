@@ -301,6 +301,54 @@ const setTenantModuleSubmodule = async (payload: TenantModuleSubmoduleSetInput) 
   return row as TenantModuleSubmodule;
 };
 
+const createTenantModuleWithSubmodules = async (
+  tenantId: number,
+  parentModuleKey: string,
+  _submoduleKeys: string[],
+): Promise<TenantModule[]> => {
+  // Submodules inherit parent access and cannot be assigned directly to tenant_modules.
+  // Assign only the parent module key.
+  const { data, error } = await supabase.rpc('create_tenant_module_for_superadmin', {
+    p_tenant_id: tenantId,
+    p_module_key: parentModuleKey,
+    p_is_active: true,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  const createdTenantModule = Array.isArray(data) ? data[0] : data;
+  return createdTenantModule ? [createdTenantModule as TenantModule] : [];
+};
+
+const deleteTenantModuleWithSubmodules = async (
+  tenantId: number,
+  moduleKeys: string[],
+): Promise<void> => {
+  const uniqueKeys = Array.from(new Set(moduleKeys));
+  const { data: existingModules, error: listError } = await supabase.rpc('list_tenant_modules_by_tenant', {
+    p_tenant_id: tenantId,
+  });
+
+  if (listError) {
+    throw listError;
+  }
+
+  const modules = (existingModules as TenantModule[] | null) ?? [];
+  const targets = modules.filter((m) => uniqueKeys.includes(m.module_key));
+
+  for (const target of targets) {
+    const { error } = await supabase.rpc('delete_tenant_module_for_superadmin', {
+      p_id: target.id,
+    });
+
+    if (error) {
+      throw error;
+    }
+  }
+};
+
 export const tenantRepository = {
   deleteTenant,
   listTenants,
@@ -313,9 +361,12 @@ export const tenantRepository = {
   createTenantModule,
   updateTenantModule,
   deleteTenantModule,
+  createTenantModuleWithSubmodules,
+  deleteTenantModuleWithSubmodules,
   listTenantModuleSubmodules,
   setTenantModuleSubmodule,
   listAdminTenantsByEmail,
   listTenantsByMembership,
   getTenantDetailsByMembership,
 };
+

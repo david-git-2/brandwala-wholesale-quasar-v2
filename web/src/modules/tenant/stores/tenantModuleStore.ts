@@ -117,6 +117,72 @@ export const useTenantModuleStore = defineStore('tenantModule', {
       }
     },
 
+    async createTenantModuleWithSubmodules(
+      tenantId: number,
+      parentModuleKey: string,
+      submoduleKeys: string[],
+    ) {
+      this.error = null;
+
+      try {
+        const result = await tenantService.createTenantModuleWithSubmodules(
+          tenantId,
+          parentModuleKey,
+          submoduleKeys,
+        );
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to create feature and submodules.';
+          handleApiFailure(result, this.error);
+          return result;
+        }
+
+        if (result.data) {
+          result.data.forEach((m) => {
+            if (!this.items.some((existing) => existing.id === m.id)) {
+              this.items.push(m);
+            }
+          });
+        }
+
+        showSuccessNotification('Feature added successfully.');
+        return result;
+      } catch (err) {
+        console.error(err);
+        this.error = 'Failed to create feature and submodules.';
+        return { success: false, error: this.error };
+      }
+    },
+
+    async deleteTenantModuleWithSubmodules(tenantId: number, moduleKeys: string[]) {
+      this.error = null;
+
+      // Optimistically remove from store for smooth UI transition
+      const previousItems = [...this.items];
+      this.items = this.items.filter((item) => !moduleKeys.includes(item.module_key));
+
+      try {
+        const result = await tenantService.deleteTenantModuleWithSubmodules(tenantId, moduleKeys);
+
+        if (!result.success) {
+          // Revert optimistic update on failure
+          this.items = previousItems;
+          this.error = result.error ?? 'Failed to remove feature and submodules.';
+          handleApiFailure(result, this.error);
+          return result;
+        }
+
+        showSuccessNotification('Feature removed successfully.');
+        return result;
+      } catch (err) {
+        // Revert optimistic update on exception
+        this.items = previousItems;
+        console.error(err);
+        this.error = 'Failed to remove feature and submodules.';
+        return { success: false, error: this.error };
+      }
+    },
+
     async listSubmoduleOverrides(tenantId: number, parentModuleKey: string) {
       return tenantService.listTenantModuleSubmodules(tenantId, parentModuleKey);
     },
@@ -132,3 +198,4 @@ export const useTenantModuleStore = defineStore('tenantModule', {
     },
   },
 });
+

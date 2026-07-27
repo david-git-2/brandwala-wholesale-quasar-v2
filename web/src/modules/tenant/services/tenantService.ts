@@ -267,6 +267,49 @@ const setTenantModuleSubmodule = async (payload: TenantModuleSubmoduleSetInput) 
   }
 };
 
+const createTenantModuleWithSubmodules = async (
+  tenantId: number,
+  parentModuleKey: string,
+  submoduleKeys: string[],
+): Promise<TenantServiceResult<TenantModule[]>> => {
+  try {
+    const data = await tenantRepository.createTenantModuleWithSubmodules(
+      tenantId,
+      parentModuleKey,
+      submoduleKeys,
+    );
+
+    return {
+      success: true,
+      data,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to create feature and submodules.',
+    };
+  }
+};
+
+const deleteTenantModuleWithSubmodules = async (
+  tenantId: number,
+  moduleKeys: string[],
+): Promise<TenantServiceResult<null>> => {
+  try {
+    await tenantRepository.deleteTenantModuleWithSubmodules(tenantId, moduleKeys);
+
+    return {
+      success: true,
+      data: null,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to remove feature and submodules.',
+    };
+  }
+};
+
 export const tenantService = {
   deleteTenant,
   listTenants,
@@ -279,9 +322,12 @@ export const tenantService = {
   createTenantModule,
   updateTenantModule,
   deleteTenantModule,
+  createTenantModuleWithSubmodules,
+  deleteTenantModuleWithSubmodules,
   listTenantModuleSubmodules,
   setTenantModuleSubmodule,
   listAdminTenantsByEmail,
   listTenantsByMembership,
   getTenantDetailsByMembership,
 };
+

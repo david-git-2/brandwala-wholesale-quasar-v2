@@ -755,10 +755,6 @@ const loadShopDetails = async () => {
   }
 };
 
-const openPickDialog = () => {
-  pickDialogOpen.value = true;
-};
-
 // Rounding helper: Nearest 5 or 0 (e.g. 5, 10, 15, 20...)
 const roundNearest5or0 = (val: number): number => {
   if (!val || val <= 0) return 0;
@@ -999,10 +995,6 @@ const onApplyBulkQtyDelta = (payload: {
   });
 
   selectedListings.value = [];
-};
-
-const onInlineSaveListing = (payload: UpsertListingPayload) => {
-  saveListing(payload);
 };
 
 const onInlineCellEdit = (

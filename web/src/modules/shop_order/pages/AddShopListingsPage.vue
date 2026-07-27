@@ -120,7 +120,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { supabase } from 'src/boot/supabase';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import {
   useShopPricingCandidatesQuery,
@@ -136,7 +135,6 @@ const authStore = useAuthStore();
 
 const tenantId = computed(() => authStore.tenantId as number);
 const shopId = computed(() => Number(route.params.shopId));
-const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '');
 
 
 
