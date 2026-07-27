@@ -115,6 +115,11 @@ export default {
     apply: 'Apply',
     save_qty: 'Save',
     save_price: 'Save',
+    quick_view: 'Quick View',
+    unit_price: 'Unit Price:',
+    no_image_available: 'No Image Available',
+    moq_notice: 'Minimum Order Quantity (MOQ) for this item is {count} units.',
+    description: 'Description',
   },
   customer_dashboard: {
     welcome: 'Welcome, {name}',

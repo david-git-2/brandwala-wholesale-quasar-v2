@@ -431,4 +431,10 @@ function onAddToCart() {
 .max-height-mobile-sheet {
   max-height: calc(85vh - 20px);
 }
+
+.product-carousel :deep(.q-carousel__slide) {
+  background-size: contain !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+}
 </style>

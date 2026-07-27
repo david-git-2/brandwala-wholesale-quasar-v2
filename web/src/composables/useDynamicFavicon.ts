@@ -66,6 +66,23 @@ function applyFavicon(href: string): void {
   link.href = href;
 }
 
+function applyThemeColor(color: string): void {
+  let meta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement | null;
+  if (!meta) {
+    meta = document.createElement('meta');
+    meta.name = 'theme-color';
+    document.head.appendChild(meta);
+  }
+  meta.content = color;
+}
+
+const THEME_COLORS: Record<FaviconScope, string> = {
+  platform: '#ef4444',
+  app: '#10b981',
+  shop: '#3b82f6',
+  default: '#7c3aed',
+};
+
 // ── Public composable ─────────────────────────────────────────────────────────
 export function useDynamicFavicon(): void {
   const route = useRoute();
@@ -75,7 +92,10 @@ export function useDynamicFavicon(): void {
     (path) => {
       const scope = detectScope(path);
       const faviconHref = FAVICON[scope];
+      const themeColor = THEME_COLORS[scope];
+      
       applyFavicon(faviconHref);
+      applyThemeColor(themeColor);
     },
     { immediate: true },
   );

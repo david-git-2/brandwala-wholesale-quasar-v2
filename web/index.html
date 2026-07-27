@@ -405,16 +405,15 @@
               return auth.tenant.name;
             }
 
-            return urlSlug.charAt(0).toUpperCase() + urlSlug.slice(1);
+            // Fallback for slugs: replace hyphens with spaces and title case
+            return urlSlug.split('-').map(function(word) {
+              return word ? word.charAt(0).toUpperCase() + word.slice(1) : '';
+            }).join(' ');
           }
 
           if (scope === 'app' && workspace && workspace.selectedTenantId != null) {
             var selected = findTenantById(tenants, workspace.selectedTenantId);
             if (selected && selected.name) return selected.name;
-          }
-
-          if (scope === 'shop' && auth && auth.customerGroup && auth.customerGroup.name) {
-            return auth.customerGroup.name;
           }
 
           if (auth && auth.tenant && auth.tenant.name) return auth.tenant.name;
@@ -470,6 +469,10 @@
         if (!splash) return;
 
         var path = window.location.pathname || '/';
+        if (window.location.hash && window.location.hash.indexOf('#/') === 0) {
+          path = window.location.hash.substring(1); // Converts "#/my-shop/shop" into "/my-shop/shop"
+        }
+
         var auth = readJson(AUTH_KEY);
         var workspace = readJson(WORKSPACE_KEY);
         var scope = resolveScope(path, auth);
@@ -504,6 +507,14 @@
           favicon.type = 'image/svg+xml';
           favicon.href = buildFaviconHref(theme.accent);
         }
+
+        var metaTheme = document.querySelector('meta[name="theme-color"]');
+        if (!metaTheme) {
+          metaTheme = document.createElement('meta');
+          metaTheme.name = 'theme-color';
+          document.head.appendChild(metaTheme);
+        }
+        metaTheme.content = theme.accent;
       })();
     </script>
     <!-- quasar:entry-point -->
