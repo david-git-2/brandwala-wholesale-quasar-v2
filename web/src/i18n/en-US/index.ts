@@ -114,6 +114,7 @@ export default {
     out_of_stock: 'Out of Stock',
     apply: 'Apply',
     save_qty: 'Save',
+    save_price: 'Save',
   },
   customer_dashboard: {
     welcome: 'Welcome, {name}',

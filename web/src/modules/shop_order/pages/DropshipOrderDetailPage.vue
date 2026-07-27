@@ -1512,21 +1512,19 @@ const deductPackingFromMargin = computed(() => !!form.deduct_packing_from_margin
 const recipientGrandTotal = computed(() =>
   recipientSubtotal.value
     + (deductDeliveryFromMargin.value ? 0 : deliveryChargeVal.value)
-    + (deductPrintFromMargin.value ? 0 : printChargeVal.value)
-    + (deductPackingFromMargin.value ? 0 : packingChargeVal.value)
     + (deductCodFromMargin.value ? 0 : codChargeVal.value)
     - discountVal.value,
 );
 
 const middlemanTotalCost = computed(() =>
   accountingSubtotal.value
-    + deliveryChargeVal.value
     + printChargeVal.value
     + packingChargeVal.value
+    + (deductDeliveryFromMargin.value ? deliveryChargeVal.value : 0)
     + (deductCodFromMargin.value ? codChargeVal.value : 0),
 );
 
-const estimatedProfit = computed(() => recipientGrandTotal.value - middlemanTotalCost.value);
+const estimatedProfit = computed(() => recipientSubtotal.value - discountVal.value - middlemanTotalCost.value);
 
 const recalculateCollectAmount = () => {
   form.cod_collect_amount = recipientSubtotal.value

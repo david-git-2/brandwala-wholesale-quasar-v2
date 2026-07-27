@@ -15,7 +15,14 @@ export function useShopCartMutations() {
     if (data) {
       queryClient.setQueryData(
         shopOrderQueryKeys.cart(tenantId.value, shopId),
-        data,
+        (oldData: any) => {
+          if (!oldData) return data;
+          return {
+            ...oldData,
+            ...data,
+            permissions: oldData.permissions ?? data.permissions ?? null,
+          };
+        },
       );
     } else {
       void queryClient.invalidateQueries({
@@ -28,6 +35,39 @@ export function useShopCartMutations() {
     void queryClient.invalidateQueries({
       queryKey: shopOrderQueryKeys.activeCarts(tenantId.value),
     });
+  };
+
+  const updateActiveCartsCache = (shopId: number, data: any) => {
+    if (data && data.items && data.items.length > 0) {
+      queryClient.setQueryData(
+        shopOrderQueryKeys.activeCarts(tenantId.value),
+        (old: any[] | undefined) => {
+          if (!old) return old;
+          const itemCount = data.items.reduce((sum: number, i: any) => sum + i.quantity, 0);
+          const cartTotal = data.items.reduce((sum: number, i: any) => {
+            const price =
+              i.customer_sell_price_amount ??
+              i.unit_sell_price_amount ??
+              i.unit_list_price_amount ??
+              0;
+            return sum + price * i.quantity;
+          }, 0);
+
+          return old.map((c) => {
+            if (c.shop_id === shopId) {
+              return {
+                ...c,
+                item_count: itemCount,
+                cart_total: cartTotal,
+              };
+            }
+            return c;
+          });
+        },
+      );
+    } else {
+      invalidateActiveCarts();
+    }
   };
 
   const addItemMutation = useMutation({
@@ -71,7 +111,7 @@ export function useShopCartMutations() {
     },
     onSuccess: ({ data, shopId }) => {
       updateCartCache(shopId, data);
-      invalidateActiveCarts();
+      updateActiveCartsCache(shopId, data);
     },
   });
 
@@ -86,11 +126,10 @@ export function useShopCartMutations() {
     },
     onSuccess: ({ data, shopId }) => {
       updateCartCache(shopId, data);
-      invalidateActiveCarts();
+      updateActiveCartsCache(shopId, data);
       showSuccessNotification('Item removed from cart.');
     },
   });
-
 
   const updatePriceMutation = useMutation({
     mutationFn: async (params: { cartItemId: number; price: number; shopId: number }) => {
@@ -103,7 +142,7 @@ export function useShopCartMutations() {
     },
     onSuccess: ({ data, shopId }) => {
       updateCartCache(shopId, data);
-      invalidateActiveCarts();
+      updateActiveCartsCache(shopId, data);
     },
   });
 
@@ -126,10 +165,9 @@ export function useShopCartMutations() {
     },
     onSuccess: ({ data, shopId }) => {
       updateCartCache(shopId, data);
-      invalidateActiveCarts();
+      updateActiveCartsCache(shopId, data);
     },
   });
-
 
   return {
     addItemMutation,

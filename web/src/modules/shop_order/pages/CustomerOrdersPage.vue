@@ -104,7 +104,7 @@
                     <div class="column">
                       <span class="text-caption text-grey-6">{{ $t('shop_admin.total_amount') }}</span>
                       <span class="text-body2 text-weight-bold text-primary">
-                        £{{ Number(order.total_amount || 0).toFixed(2) }}
+                        {{ getCurrencySymbol(order) }}{{ Number(order.total_amount || 0).toFixed(2) }}
                       </span>
                     </div>
                   </div>
@@ -143,12 +143,28 @@ import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useShopOrderStore } from '../stores/shopOrderStore';
 import { useShopStorefrontStore } from '../stores/shopStorefrontStore';
+import { useThriftCurrenciesQuery } from 'src/modules/thrift/currency/composables/useThriftCurrenciesQuery';
+import { supabase } from 'src/boot/supabase';
 import { date } from 'quasar';
 
 const route = useRoute();
 const router = useRouter();
 const orderStore = useShopOrderStore();
 const storefrontStore = useShopStorefrontStore();
+
+const { data: currenciesData } = useThriftCurrenciesQuery();
+const currencies = computed(() => currenciesData.value ?? []);
+const shopCurrenciesMap = ref<Record<number, number>>({});
+
+const getCurrencySymbol = (order: any) => {
+  const shopId = order.shop_id;
+  if (shopId && shopCurrenciesMap.value[shopId]) {
+    const currId = shopCurrenciesMap.value[shopId];
+    const curr = currencies.value.find((c) => c.id === currId);
+    if (curr?.symbol) return curr.symbol;
+  }
+  return '৳';
+};
 
 const searchQuery = ref('');
 const statusFilter = ref('all');
@@ -193,6 +209,20 @@ onMounted(async () => {
   const shopId = getShopId();
   if (shopId) {
     await orderStore.fetchCustomerOrders(shopId);
+    const shopIds = [...new Set((orderStore.orders || []).map((o: any) => o.shop_id).filter(Boolean))];
+    if (shopIds.length > 0) {
+      const { data: shopsData } = await supabase
+        .from('shops')
+        .select('id, sell_currency_id')
+        .in('id', shopIds);
+      if (shopsData) {
+        const map: Record<number, number> = {};
+        shopsData.forEach((s: any) => {
+          if (s.sell_currency_id) map[s.id] = s.sell_currency_id;
+        });
+        shopCurrenciesMap.value = map;
+      }
+    }
   }
 });
 

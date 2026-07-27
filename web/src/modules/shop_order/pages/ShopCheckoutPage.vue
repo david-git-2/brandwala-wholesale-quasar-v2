@@ -52,6 +52,19 @@
               </q-card-section>
 
               <q-card-section v-if="requestDelivery">
+                <!-- Free Delivery Option for Dropship -->
+                <div v-if="shopType === 'dropship'" class="q-mb-md bg-blue-1 q-pa-sm rounded-borders" style="border: 1px solid rgba(25, 118, 210, 0.15); border-radius: 8px;">
+                  <q-toggle
+                    v-model="isFreeDelivery"
+                    label="Free Delivery for Recipient Customer"
+                    color="primary"
+                    dense
+                  />
+                  <div class="text-caption text-grey-7 q-ml-md q-mt-xs">
+                    {{ isFreeDelivery ? 'Delivery and COD charges will be deducted from your profit margin. Recipient customer will not pay delivery/COD charges.' : 'Recipient customer will pay delivery and COD charges.' }}
+                  </div>
+                </div>
+
                 <div class="row q-col-gutter-md">
                   <!-- Recipient Name -->
                   <div class="col-12 col-sm-6">
@@ -285,19 +298,25 @@
                   </div>
                   
                   <div class="row justify-between text-caption text-grey-7 q-mb-xs">
-                    <span>{{ $t('shop.delivery_charge') }}</span>
+                    <span>
+                      {{ $t('shop.delivery_charge') }}
+                      <span class="text-grey-5">({{ isFreeDelivery ? 'deducted from profit' : 'customer pays' }})</span>
+                    </span>
                     <span>{{ formatAmount(deliveryCharge) }}</span>
                   </div>
                   
                   <div class="row justify-between text-caption text-grey-7 q-mb-xs">
-                    <span>{{ $t('shop.cod_fee') }}</span>
+                    <span>
+                      {{ $t('shop.cod_fee') }}
+                      <span class="text-grey-5">({{ isFreeDelivery ? 'deducted from profit' : 'customer pays' }})</span>
+                    </span>
                     <span>{{ formatAmount(codCharge) }}</span>
                   </div>
                   
                   <div class="row justify-between text-caption text-grey-7 q-mb-xs">
                     <span>
                       {{ $t('shop.print_charge') }}
-                      <span class="text-grey-5">({{ deductPrintFromMargin ? 'deducted' : 'customer pays' }})</span>
+                      <span class="text-grey-5">(deducted from profit)</span>
                     </span>
                     <span>{{ formatAmount(printCharge) }}</span>
                   </div>
@@ -305,7 +324,10 @@
                   <div class="row justify-between text-caption text-grey-7">
                     <span>
                       {{ $t('shop.packing_charge') }}
-                      <span class="text-grey-5">({{ deductPackingFromMargin ? 'deducted' : 'customer pays' }})</span>
+                      <span v-if="defaultPackingCharge > 0 && itemCount > 0" class="text-grey-6">
+                        ({{ formatAmount(defaultPackingCharge) }} &times; {{ itemCount }})
+                      </span>
+                      <span class="text-grey-5">(deducted from profit)</span>
                     </span>
                     <span>{{ formatAmount(packingCharge) }}</span>
                   </div>
@@ -321,7 +343,7 @@
                 <div class="row justify-between q-mb-sm text-body2 text-grey-7">
                   <span>{{ $t('shop.your_cost_buyer') }}</span>
                   <span class="text-weight-medium text-grey-9">
-                    {{ formatAmount(buyerCartTotal + printCharge + packingCharge) }}
+                    {{ formatAmount(buyerCartTotal + printCharge + packingCharge + (isFreeDelivery ? deliveryCharge + codCharge : 0)) }}
                   </span>
                 </div>
 
@@ -329,7 +351,7 @@
                 <div class="row justify-between q-mb-sm text-body2 text-grey-7">
                   <span>{{ $t('shop.estimated_profit') }}</span>
                   <span class="text-weight-bold text-positive">
-                    {{ formatAmount(estimatedProfit) }}
+                    {{ formatAmount(calculatedProfit) }}
                   </span>
                 </div>
                 
@@ -344,7 +366,7 @@
                   v-if="cart?.see_price_snapshot || cart?.shop_type === 'dropship'"
                   class="text-h6 text-weight-bold text-primary"
                 >
-                  {{ cart?.shop_type === 'dropship' ? formatAmount(recipientGrandTotal) : formatCartTotal() }}
+                  {{ cart?.shop_type === 'dropship' ? formatAmount(calculatedRecipientGrandTotal) : formatCartTotal() }}
                 </span>
                 <span v-else class="text-subtitle1 text-grey-5 italic">
                   {{ $t('shop.prices_hidden') }}
@@ -409,6 +431,7 @@ const shopId = computed(() => {
 const {
   cart,
   items,
+  itemCount,
   cartTotal,
   buyerCartTotal,
   recipientGrandTotal,
@@ -430,6 +453,7 @@ const thana = ref('Uttara');
 const postCode = ref('');
 const shippingAddress = ref('');
 const requestDelivery = ref(false);
+const isFreeDelivery = ref(false);
 
 const isPrepaid = ref(false);
 const deliveryInstructions = ref('');
@@ -562,11 +586,31 @@ const defaultPackingCharge = computed(() => Number(cart.value?.default_packing_c
 
 const deliveryCharge = computed(() => 0);
 const printCharge = computed(() => (shopType.value === 'dropship' ? defaultPrintCharge.value : 0));
-const packingCharge = computed(() => (shopType.value === 'dropship' ? defaultPackingCharge.value : 0));
+const packingCharge = computed(() => (shopType.value === 'dropship' ? defaultPackingCharge.value * itemCount.value : 0));
 const codCharge = computed(() => 0);
 
 const deductPrintFromMargin = computed(() => !!cart.value?.deduct_print_from_margin);
 const deductPackingFromMargin = computed(() => !!cart.value?.deduct_packing_from_margin);
+
+const calculatedRecipientGrandTotal = computed(() => {
+  const subtotal = cartTotal.value;
+  if (shopType.value !== 'dropship') return recipientGrandTotal.value;
+  if (isFreeDelivery.value) {
+    return subtotal;
+  }
+  return subtotal + deliveryCharge.value + codCharge.value;
+});
+
+const calculatedProfit = computed(() => {
+  const subtotal = cartTotal.value;
+  const buyerTotal = buyerCartTotal.value;
+  const margin = subtotal - buyerTotal;
+  const printAndPacking = printCharge.value + packingCharge.value;
+  if (isFreeDelivery.value) {
+    return margin - printAndPacking - deliveryCharge.value - codCharge.value;
+  }
+  return margin - printAndPacking;
+});
 
 const courierEstimate = ref({
   deliveryMin: 60,

@@ -132,8 +132,18 @@
             <q-td :props="props" class="col-name">
               <div class="name-cell-content">
                 <span class="name-cell-text text-weight-bold text-grey-9">{{ props.row.product_name }}</span>
-                <div v-if="props.row.product_brand || props.row.product_category" class="text-caption text-grey-6 q-mt-xs">
+                <div v-if="props.row.product_brand || props.row.product_category || props.row.shipment_id" class="text-caption text-grey-6 q-mt-xs">
                   {{ [props.row.product_brand, props.row.product_category].filter(Boolean).join(' | ') }}
+                  <q-chip
+                    v-if="props.row.shipment_id"
+                    dense
+                    size="xs"
+                    color="primary"
+                    text-color="white"
+                    class="q-ml-xs q-px-xs text-weight-bold"
+                  >
+                    Shipment #{{ props.row.shipment_id }}
+                  </q-chip>
                 </div>
               </div>
             </q-td>

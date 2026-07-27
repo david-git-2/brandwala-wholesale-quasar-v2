@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
-import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
+import { showWarningDialog, showSuccessNotification } from 'src/utils/appFeedback';
 import { shopPricingRepository } from '../repositories/shopPricingRepository';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import type { UpsertListingPayload, UpsertShopPricingRulePayload } from '../types';
@@ -19,7 +19,7 @@ export function useSaveShopListingMutation() {
       showSuccessNotification('Shop product listing saved successfully.');
     },
     onError: (error: Error) => {
-      showErrorNotification(error.message || 'Failed to save product listing.');
+      showWarningDialog(error.message || 'Failed to save product listing.', 'Save Failed');
     },
   });
 }
@@ -37,7 +37,7 @@ export function useSaveShopPricingRuleMutation() {
       showSuccessNotification('Shop pricing rule updated successfully.');
     },
     onError: (error: Error) => {
-      showErrorNotification(error.message || 'Failed to save pricing rule.');
+      showWarningDialog(error.message || 'Failed to save pricing rule.', 'Save Failed');
     },
   });
 }
@@ -66,7 +66,7 @@ export function useBulkApplyShopMarkupMutation() {
       showSuccessNotification(`Markup applied to ${count} listing(s) successfully.`);
     },
     onError: (error: Error) => {
-      showErrorNotification(error.message || 'Failed to bulk apply markup.');
+      showWarningDialog(error.message || 'Failed to bulk apply markup.', 'Apply Failed');
     },
   });
 }
@@ -87,7 +87,7 @@ export function useDeleteShopListingMutation() {
       showSuccessNotification('Product listing removed successfully.');
     },
     onError: (error: Error) => {
-      showErrorNotification(error.message || 'Failed to remove product listing.');
+      showWarningDialog(error.message || 'Failed to remove product listing.', 'Delete Failed');
     },
   });
 }

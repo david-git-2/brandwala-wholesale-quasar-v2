@@ -116,6 +116,7 @@ export default {
     out_of_stock: 'স্টকে নেই',
     apply: 'প্রয়োগ করুন',
     save_qty: 'সংরক্ষণ',
+    save_price: 'সংরক্ষণ',
   },
   customer_dashboard: {
     welcome: 'স্বাগতম, {name}',

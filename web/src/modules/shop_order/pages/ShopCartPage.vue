@@ -176,21 +176,38 @@
                   </div>
                   <!-- Dropship Selling Price Input -->
                   <div v-if="cart?.shop_type === 'dropship'" class="q-mt-sm" style="max-width: 210px">
-                    <q-input
-                      :model-value="item.customer_sell_price_amount"
-                      type="number"
-                      :label="$t('shop.your_selling_price')"
-                      outlined
-                      dense
-                      :prefix="currencySymbol"
-                      :min="item.unit_minimum_sell_price_amount || 0"
-                      :disable="!permissions?.can_set_dropship_price"
-                      @change="(val: string | number | null) => updateSellingPrice(item, Number(val))"
-                    >
-                      <template #hint v-if="item.unit_minimum_sell_price_amount">
-                        {{ $t('shop.min_price_hint', { amount: `${currencySymbol}${item.unit_minimum_sell_price_amount}` }) }}
-                      </template>
-                    </q-input>
+                    <div class="column q-gutter-y-xs">
+                      <q-input
+                        :model-value="getItemPrice(item)"
+                        type="number"
+                        :label="$t('shop.your_selling_price')"
+                        outlined
+                        dense
+                        :prefix="currencySymbol"
+                        :min="item.unit_minimum_sell_price_amount || 0"
+                        :disable="!permissions?.can_set_dropship_price"
+                        @update:model-value="(val: string | number | null) => updatePriceLocal(item, val)"
+                      />
+                      <div
+                        v-if="item.unit_minimum_sell_price_amount"
+                        class="text-caption text-grey-7 row items-center q-gutter-x-xs"
+                        style="font-size: 11px"
+                      >
+                        <q-icon name="ph ph-info" size="14px" color="grey-6" />
+                        <span>{{ $t('customer_dashboard.min_sell', { price: `${currencySymbol}${item.unit_minimum_sell_price_amount}` }) }}</span>
+                      </div>
+                      <q-btn
+                        v-if="editedPrices[item.id] !== undefined && editedPrices[item.id] !== item.customer_sell_price_amount"
+                        color="primary"
+                        size="xs"
+                        unelevated
+                        no-caps
+                        class="pill-btn q-px-sm self-start q-mt-xs"
+                        :label="$t('shop.save_price')"
+                        :loading="isSaving"
+                        @click="saveItemPrice(item)"
+                      />
+                    </div>
                   </div>
                 </q-item-section>
 
@@ -250,6 +267,12 @@
                       </div>
                       <div class="text-caption text-grey-6" style="font-size: 10px; line-height: 1">
                         {{ formatBuyerUnitPrice(item) }} {{ $t('shop.each') }}
+                      </div>
+                    </div>
+                    <div v-if="item.unit_minimum_sell_price_amount" class="q-mb-xs">
+                      <span class="text-caption text-grey-6 block" style="font-size: 10px; margin-bottom: 2px;">Min Sell Price</span>
+                      <div class="text-caption text-weight-medium text-grey-8" style="line-height: 1.2">
+                        {{ currencySymbol }}{{ Number(item.unit_minimum_sell_price_amount).toFixed(2) }} {{ $t('shop.each') }}
                       </div>
                     </div>
                     <div class="q-mt-xs">
@@ -313,8 +336,9 @@
                   
                   <!-- Charges Section -->
                   <div class="column q-mt-sm q-mb-sm bg-grey-1 q-pa-sm rounded-borders" style="border: 1px solid rgba(0,0,0,0.05); border-radius: 8px;">
-                    <div class="text-caption text-weight-bold text-grey-7 q-mb-xs">
-                      {{ $t('shop.dropship_charges') }}
+                    <div class="text-caption text-weight-bold text-grey-7 q-mb-xs row items-center justify-between">
+                      <span>{{ $t('shop.dropship_charges') }}</span>
+                      <span class="text-caption text-grey-6" style="font-size: 10px;">(Approximate)</span>
                     </div>
                     
                     <div class="row justify-between text-caption text-grey-7 q-mb-xs">
@@ -338,6 +362,9 @@
                     <div class="row justify-between text-caption text-grey-7">
                       <span>
                         {{ $t('shop.packing_charge') }}
+                        <span v-if="defaultPackingCharge > 0 && itemCount > 0" class="text-grey-6">
+                          ({{ formatAmount(defaultPackingCharge) }} &times; {{ itemCount }})
+                        </span>
                         <span class="text-grey-5">({{ deductPackingFromMargin ? 'deducted' : 'customer pays' }})</span>
                       </span>
                       <span>{{ formatAmount(packingCharge) }}</span>
@@ -346,7 +373,7 @@
                     <div class="delivery-notice-banner q-pa-sm q-mt-sm rounded-borders bg-amber-1 border-amber text-grey-10 shadow-1 flex flex-column gap-xs">
                       <div class="flex items-center text-weight-bold text-caption text-amber-10">
                         <q-icon name="ph ph-truck text-weight-bold" size="16px" class="q-mr-xs text-amber-9" />
-                        <span>Courier &amp; Delivery Notice</span>
+                        <span>Courier &amp; Delivery Notice (Approximate)</span>
                       </div>
                       <div class="text-caption text-grey-9">
                         {{ $t('shop.courier_charges_may_vary') }}
@@ -362,6 +389,12 @@
                         </div>
                       </div>
                     </div>
+
+                    <!-- Sum of Deductible Charges -->
+                    <div class="row justify-between text-caption text-grey-9 q-mt-sm q-pt-xs border-top text-weight-bold" style="font-size: 11px;">
+                      <span>Total Est. Charges &amp; Deductions:</span>
+                      <span class="text-negative">{{ formatAmount(totalDeductibleCharges) }}</span>
+                    </div>
                   </div>
 
                    <!-- Buyer Cost -->
@@ -372,12 +405,26 @@
                      </span>
                    </div>
                    
-                   <!-- Profit -->
-                   <div class="row justify-between q-mb-sm text-body2 text-grey-7">
-                     <span>{{ $t('shop.estimated_profit') }}</span>
-                     <span class="text-weight-medium text-positive text-weight-bold">
-                       {{ formatAmount(estimatedProfit) }}
-                     </span>
+                   <!-- Profit with Explicit Approximate Disclaimer & Sum of Deductions -->
+                   <div class="column q-mb-sm bg-green-1 q-pa-sm rounded-borders" style="border: 1px dashed rgba(76, 175, 80, 0.4); border-radius: 8px;">
+                     <div class="row justify-between items-center text-body2">
+                       <span class="text-weight-bold text-positive row items-center q-gutter-x-xs">
+                         <q-icon name="ph ph-trend-up" size="16px" />
+                         <span>{{ $t('shop.estimated_profit') }}</span>
+                         <span class="text-caption text-weight-normal text-grey-7">(Approximate)</span>
+                       </span>
+                       <span class="text-weight-bold text-positive text-subtitle1">
+                         {{ formatAmount(estimatedProfit) }}
+                       </span>
+                     </div>
+                     <div class="text-caption text-grey-8 q-mt-xs" style="font-size: 11px; line-height: 1.3;">
+                       <q-icon name="ph ph-info" size="12px" color="positive" class="q-mr-xs" />
+                       Profit is approximate. Delivery &amp; COD fees are estimated and finalized at checkout.
+                     </div>
+                     <div class="row justify-between text-caption text-grey-8 q-mt-xs q-pt-xs border-top" style="font-size: 11px;">
+                       <span>Est. Deductions (Print/Packing/Delivery):</span>
+                       <span class="text-weight-bold text-negative">-{{ formatAmount(totalDeductibleCharges) }}</span>
+                     </div>
                    </div>
                  </template>
                  <template v-else>
@@ -524,7 +571,7 @@ const currencySymbol = computed(() => {
     const curr = currencies.value.find((c) => c.id === shop.sell_currency_id);
     if (curr?.symbol) return curr.symbol;
   }
-  return '£';
+  return '৳';
 });
 
 const formatActiveCartTotal = (activeCart: ActiveCartItem) => {
@@ -591,11 +638,18 @@ const handleButtonClick = async () => {
 };
 
 const editedQuantities = ref<Record<number, number>>({});
+const editedPrices = ref<Record<number, number>>({});
 
 const getItemQty = (item: any) => {
   return editedQuantities.value[item.id] !== undefined
     ? editedQuantities.value[item.id]
     : item.quantity;
+};
+
+const getItemPrice = (item: any) => {
+  return editedPrices.value[item.id] !== undefined
+    ? editedPrices.value[item.id]
+    : item.customer_sell_price_amount;
 };
 
 const adjustItemQtyLocal = (item: any, delta: number) => {
@@ -621,20 +675,38 @@ const saveItemQty = async (item: any) => {
   delete editedQuantities.value[item.id];
 };
 
+const updatePriceLocal = (item: any, val: string | number | null) => {
+  if (val === '' || val === null) {
+    editedPrices.value[item.id] = 0;
+    return;
+  }
+  const numVal = Number(val);
+  if (isNaN(numVal) || numVal < 0) return;
+
+  if (numVal === item.customer_sell_price_amount) {
+    delete editedPrices.value[item.id];
+  } else {
+    editedPrices.value[item.id] = numVal;
+  }
+};
+
+const saveItemPrice = async (item: any) => {
+  const targetPrice = editedPrices.value[item.id];
+  if (targetPrice === undefined || isNaN(targetPrice) || targetPrice < 0 || !selectedShopId.value) return;
+  await updatePriceMutation.mutateAsync({
+    cartItemId: item.id,
+    price: targetPrice,
+    shopId: selectedShopId.value,
+  });
+  delete editedPrices.value[item.id];
+};
+
 const removeItem = async (item: any) => {
   if (!selectedShopId.value) return;
   delete editedQuantities.value[item.id];
+  delete editedPrices.value[item.id];
   await removeItemMutation.mutateAsync({
     cartItemId: item.id,
-    shopId: selectedShopId.value,
-  });
-};
-
-const updateSellingPrice = async (item: any, newPrice: number) => {
-  if (isNaN(newPrice) || newPrice < 0 || !selectedShopId.value) return;
-  await updatePriceMutation.mutateAsync({
-    cartItemId: item.id,
-    price: newPrice,
     shopId: selectedShopId.value,
   });
 };
@@ -674,7 +746,7 @@ const defaultPrintCharge = computed(() => Number(cart.value?.default_print_charg
 const defaultPackingCharge = computed(() => Number(cart.value?.default_packing_charge_amount || 0));
 
 const printCharge = computed(() => (cart.value?.shop_type === 'dropship' ? defaultPrintCharge.value : 0));
-const packingCharge = computed(() => (cart.value?.shop_type === 'dropship' ? defaultPackingCharge.value : 0));
+const packingCharge = computed(() => (cart.value?.shop_type === 'dropship' ? defaultPackingCharge.value * itemCount.value : 0));
 
 const deductPrintFromMargin = computed(() => !!cart.value?.deduct_print_from_margin);
 const deductPackingFromMargin = computed(() => !!cart.value?.deduct_packing_from_margin);
@@ -683,6 +755,14 @@ const buyerTotal = computed(() => {
   return buyerCartTotal.value
     + printCharge.value
     + packingCharge.value;
+});
+
+const totalDeductibleCharges = computed(() => {
+  return (
+    printCharge.value +
+    packingCharge.value +
+    (courierEstimate.value?.deliveryMin || 0)
+  );
 });
 
 const courierEstimate = ref({

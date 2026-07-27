@@ -334,22 +334,34 @@
                   </div>
                   
                   <div class="row justify-between text-body2 text-grey-7" v-if="deliveryChargeVal > 0">
-                    <span>{{ $t('shop.delivery_charge') }}</span>
+                    <span>
+                      {{ $t('shop.delivery_charge') }}
+                      <span class="text-grey-5">({{ deductDeliveryFromMargin ? 'deducted from profit' : 'customer pays' }})</span>
+                    </span>
                     <span>{{ currencySymbol }}{{ deliveryChargeVal.toFixed(2) }}</span>
                   </div>
                   
                   <div class="row justify-between text-body2 text-grey-7" v-if="codChargeVal > 0">
-                    <span>{{ $t('shop.cod_fee', { pct: codFeePctLabel }) }}</span>
+                    <span>
+                      {{ $t('shop.cod_fee', { pct: codFeePctLabel }) }}
+                      <span class="text-grey-5">({{ deductCodFromMargin ? 'deducted from profit' : 'customer pays' }})</span>
+                    </span>
                     <span>{{ currencySymbol }}{{ codChargeVal.toFixed(2) }}</span>
                   </div>
                   
                   <div class="row justify-between text-body2 text-grey-7" v-if="printChargeVal > 0">
-                    <span>{{ $t('shop.print_charge') }}</span>
+                    <span>
+                      {{ $t('shop.print_charge') }}
+                      <span class="text-grey-5">(deducted from profit)</span>
+                    </span>
                     <span>{{ currencySymbol }}{{ printChargeVal.toFixed(2) }}</span>
                   </div>
                   
                   <div class="row justify-between text-body2 text-grey-7" v-if="packingChargeVal > 0">
-                    <span>{{ $t('shop.packing_charge') }}</span>
+                    <span>
+                      {{ $t('shop.packing_charge') }}
+                      <span class="text-grey-5">(deducted from profit)</span>
+                    </span>
                     <span>{{ currencySymbol }}{{ packingChargeVal.toFixed(2) }}</span>
                   </div>
 
@@ -895,7 +907,16 @@ const currencySymbol = computed(() => {
     const curr = currencies.value.find((c) => c.id === shopSellCurrencyId.value);
     if (curr?.symbol) return curr.symbol;
   }
-  return '£';
+  const firstItem = orderItems.value?.[0];
+  const currId =
+    firstItem?.unit_sell_price_currency_id ||
+    firstItem?.customer_offer_currency_id ||
+    firstItem?.unit_list_price_currency_id;
+  if (currId) {
+    const curr = currencies.value.find((c) => c.id === currId);
+    if (curr?.symbol) return curr.symbol;
+  }
+  return '৳';
 });
 
 onMounted(async () => {
@@ -1046,22 +1067,20 @@ const deductPackingFromMargin = computed(() => !!orderStore.currentOrder?.deduct
 const recipientGrandTotal = computed(() => {
   return recipientSubtotal.value
     + (deductDeliveryFromMargin.value ? 0 : deliveryChargeVal.value)
-    + (deductPrintFromMargin.value ? 0 : printChargeVal.value)
-    + (deductPackingFromMargin.value ? 0 : packingChargeVal.value)
     + (deductCodFromMargin.value ? 0 : codChargeVal.value)
     - discountVal.value;
 });
 
 const middlemanTotalCost = computed(() => {
   return accountingSubtotal.value
-    + deliveryChargeVal.value
     + printChargeVal.value
     + packingChargeVal.value
+    + (deductDeliveryFromMargin.value ? deliveryChargeVal.value : 0)
     + (deductCodFromMargin.value ? codChargeVal.value : 0);
 });
 
 const estimatedProfit = computed(() => {
-  return recipientGrandTotal.value - middlemanTotalCost.value;
+  return recipientSubtotal.value - discountVal.value - middlemanTotalCost.value;
 });
 
 const submitStaffPricing = async () => {

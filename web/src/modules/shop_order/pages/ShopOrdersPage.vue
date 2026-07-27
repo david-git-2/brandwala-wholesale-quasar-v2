@@ -126,7 +126,7 @@
                     <div class="column">
                       <span class="text-caption text-grey-6">{{ $t('shop_admin.total_value') }}</span>
                       <span class="text-body2 text-weight-bold text-primary">
-                        £{{ Number(order.total_amount || 0).toFixed(2) }}
+                        {{ getCurrencySymbol(order) }}{{ Number(order.total_amount || 0).toFixed(2) }}
                       </span>
                     </div>
                   </div>
@@ -179,12 +179,28 @@ import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useShopOrderStore } from '../stores/shopOrderStore';
+import { useThriftCurrenciesQuery } from 'src/modules/thrift/currency/composables/useThriftCurrenciesQuery';
 import { date } from 'quasar';
 
 const router = useRouter();
 const { t } = useI18n();
 const authStore = useAuthStore();
 const orderStore = useShopOrderStore();
+
+const { data: currenciesData } = useThriftCurrenciesQuery();
+const currencies = computed(() => currenciesData.value ?? []);
+
+const getCurrencySymbol = (order: any) => {
+  const shopId = order.shop_id;
+  if (shopId) {
+    const shop = orderStore.shops.find((s) => s.id === shopId);
+    if (shop?.sell_currency_id) {
+      const curr = currencies.value.find((c) => c.id === shop.sell_currency_id);
+      if (curr?.symbol) return curr.symbol;
+    }
+  }
+  return '৳';
+};
 
 const search = ref('');
 const statusFilter = ref(null);

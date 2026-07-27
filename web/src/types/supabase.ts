@@ -9780,17 +9780,15 @@ export type Database = {
         Returns: {
           allow_delivery: boolean
           buy_currency_id: number
+          category_ids: number[]
           created_at: string
           deduct_charges_from_margin: boolean
-          deduct_cod_from_margin: boolean
-          deduct_delivery_from_margin: boolean
           deduct_packing_from_margin: boolean
           deduct_print_from_margin: boolean
-          default_cod_charge_pct: number
           default_currency_id: number
-          default_delivery_charge_amount: number
           default_packing_charge_amount: number
           default_print_charge_amount: number
+          description: string
           global_stock_type_id: number
           id: number
           is_active: boolean
@@ -10123,6 +10121,10 @@ export type Database = {
       process_dropship_shop_order: {
         Args: { p_order_id: number }
         Returns: Json
+      }
+      recalculate_product_based_costing_file_offer_prices: {
+        Args: { p_file_id: number }
+        Returns: undefined
       }
       recalculate_shipment_transaction_rate: {
         Args: { p_shipment_id: number }

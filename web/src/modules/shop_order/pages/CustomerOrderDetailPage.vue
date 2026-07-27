@@ -92,19 +92,19 @@
                     <div class="column text-right q-mb-xs">
                       <span class="text-caption text-grey-6" style="font-size: 10px;">{{ $t('shop_admin.accounting_cost') }}</span>
                       <span class="text-body2 text-weight-medium text-grey-8">
-                        £{{ (item.unit_sell_price_amount ?? item.unit_list_price_amount ?? 0).toFixed(2) }} {{ $t('shop.each') }}
+                        {{ currencySymbol }}{{ (item.unit_sell_price_amount ?? item.unit_list_price_amount ?? 0).toFixed(2) }} {{ $t('shop.each') }}
                       </span>
                       <span class="text-caption text-grey-6" style="font-size: 10px;">
-                        Total Cost: £{{ ((item.unit_sell_price_amount ?? item.unit_list_price_amount ?? 0) * item.quantity).toFixed(2) }}
+                        Total Cost: {{ currencySymbol }}{{ ((item.unit_sell_price_amount ?? item.unit_list_price_amount ?? 0) * item.quantity).toFixed(2) }}
                       </span>
                     </div>
                     <div class="column text-right">
                       <span class="text-caption text-grey-6" style="font-size: 10px;">{{ $t('shop_admin.recipient_price') }}</span>
                       <span class="text-body2 text-weight-bold text-primary">
-                        £{{ (item.customer_sell_price_amount ?? 0).toFixed(2) }} {{ $t('shop.each') }}
+                        {{ currencySymbol }}{{ (item.customer_sell_price_amount ?? 0).toFixed(2) }} {{ $t('shop.each') }}
                       </span>
                       <span class="text-caption text-weight-bold text-primary" style="font-size: 11px;">
-                        Total Recipient: £{{ ((item.customer_sell_price_amount ?? 0) * item.quantity).toFixed(2) }}
+                        Total Recipient: {{ currencySymbol }}{{ ((item.customer_sell_price_amount ?? 0) * item.quantity).toFixed(2) }}
                       </span>
                     </div>
                   </template>
@@ -112,10 +112,10 @@
                     <div class="column text-right">
                       <span class="text-caption text-grey-6">{{ $t('shop_admin.unit_price') }}</span>
                       <span class="text-body2 text-weight-bold text-grey-8">
-                        £{{ getDisplayUnitPrice(item).toFixed(2) }}
+                        {{ currencySymbol }}{{ getDisplayUnitPrice(item).toFixed(2) }}
                       </span>
                       <span class="text-caption text-grey-6">
-                        Total: £{{ (getDisplayUnitPrice(item) * item.quantity).toFixed(2) }}
+                        Total: {{ currencySymbol }}{{ (getDisplayUnitPrice(item) * item.quantity).toFixed(2) }}
                       </span>
                     </div>
                   </template>
@@ -129,7 +129,7 @@
                       outlined
                       dense
                       class="counter-input"
-                      prefix="£"
+                      :prefix="currencySymbol"
                       style="width: 100px"
                     />
                   </div>
@@ -249,32 +249,44 @@
                 <template v-if="orderStore.currentOrder.shop_type_snapshot === 'dropship'">
                   <div class="row justify-between text-body2 text-grey-7">
                     <span>{{ $t('shop.items_subtotal') }}</span>
-                    <span>£{{ recipientSubtotal.toFixed(2) }}</span>
+                    <span>{{ currencySymbol }}{{ recipientSubtotal.toFixed(2) }}</span>
                   </div>
                   
                   <div class="row justify-between text-body2 text-grey-7" v-if="deliveryChargeVal > 0">
-                    <span>{{ $t('shop.delivery_charge') }}</span>
-                    <span>£{{ deliveryChargeVal.toFixed(2) }}</span>
+                    <span>
+                      {{ $t('shop.delivery_charge') }}
+                      <span class="text-grey-5">({{ deductDeliveryFromMargin ? 'deducted from profit' : 'customer pays' }})</span>
+                    </span>
+                    <span>{{ currencySymbol }}{{ deliveryChargeVal.toFixed(2) }}</span>
                   </div>
                   
                   <div class="row justify-between text-body2 text-grey-7" v-if="codChargeVal > 0">
-                    <span>{{ $t('shop.cod_fee', { pct: codFeePctLabel }) }}</span>
-                    <span>£{{ codChargeVal.toFixed(2) }}</span>
+                    <span>
+                      {{ $t('shop.cod_fee', { pct: codFeePctLabel }) }}
+                      <span class="text-grey-5">({{ deductCodFromMargin ? 'deducted from profit' : 'customer pays' }})</span>
+                    </span>
+                    <span>{{ currencySymbol }}{{ codChargeVal.toFixed(2) }}</span>
                   </div>
                   
                   <div class="row justify-between text-body2 text-grey-7" v-if="printChargeVal > 0">
-                    <span>{{ $t('shop.print_charge') }}</span>
-                    <span>£{{ printChargeVal.toFixed(2) }}</span>
+                    <span>
+                      {{ $t('shop.print_charge') }}
+                      <span class="text-grey-5">(deducted from profit)</span>
+                    </span>
+                    <span>{{ currencySymbol }}{{ printChargeVal.toFixed(2) }}</span>
                   </div>
                   
                   <div class="row justify-between text-body2 text-grey-7" v-if="packingChargeVal > 0">
-                    <span>{{ $t('shop.packing_charge') }}</span>
-                    <span>£{{ packingChargeVal.toFixed(2) }}</span>
+                    <span>
+                      {{ $t('shop.packing_charge') }}
+                      <span class="text-grey-5">(deducted from profit)</span>
+                    </span>
+                    <span>{{ currencySymbol }}{{ packingChargeVal.toFixed(2) }}</span>
                   </div>
 
                   <div class="row justify-between text-body2 text-negative" v-if="discountVal > 0">
                     <span>{{ $t('shop_admin.discount') }}</span>
-                    <span>-£{{ discountVal.toFixed(2) }}</span>
+                    <span>-{{ currencySymbol }}{{ discountVal.toFixed(2) }}</span>
                   </div>
 
                   <q-separator class="q-my-sm" />
@@ -282,25 +294,36 @@
                   <div class="row justify-between items-baseline q-mb-xs">
                     <span class="text-subtitle1 text-weight-bold text-grey-9">{{ $t('shop.recipient_pay_total') }}</span>
                     <span class="text-h6 text-weight-bold text-primary">
-                      £{{ recipientGrandTotal.toFixed(2) }}
+                      {{ currencySymbol }}{{ recipientGrandTotal.toFixed(2) }}
                     </span>
                   </div>
 
                   <div class="row justify-between text-caption text-grey-6">
                     <span>{{ $t('shop_admin.your_cost_accounting') }}</span>
-                    <span>£{{ middlemanTotalCost.toFixed(2) }}</span>
+                    <span>{{ currencySymbol }}{{ middlemanTotalCost.toFixed(2) }}</span>
                   </div>
 
                   <div class="row justify-between text-body2 text-weight-bold text-positive q-mt-xs">
                     <span>{{ $t('shop_admin.your_estimated_profit') }}</span>
-                    <span>£{{ estimatedProfit.toFixed(2) }}</span>
+                    <span>{{ currencySymbol }}{{ estimatedProfit.toFixed(2) }}</span>
+                  </div>
+
+                  <div
+                    v-if="isBeforePickup"
+                    class="q-mt-sm q-pa-sm bg-blue-1 text-primary text-caption rounded-borders row items-start"
+                    style="border: 1px solid rgba(25, 118, 210, 0.2);"
+                  >
+                    <q-icon name="ph ph-info" size="16px" class="q-mr-xs q-mt-xs" />
+                    <div>
+                      Accurate delivery and COD charges will be updated when the order reaches the <strong>Ready for Pickup</strong> stage.
+                    </div>
                   </div>
                 </template>
                 <template v-else>
                   <div class="row justify-between items-baseline">
                     <span class="text-subtitle1 text-weight-bold text-grey-9">{{ $t('shop_admin.total_amount_label') }}</span>
                     <span class="text-h6 text-weight-bold text-primary">
-                      £{{ orderTotal.toFixed(2) }}
+                      {{ currencySymbol }}{{ orderTotal.toFixed(2) }}
                     </span>
                   </div>
                 </template>
@@ -346,21 +369,55 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useShopOrderStore } from '../stores/shopOrderStore';
+import { useThriftCurrenciesQuery } from 'src/modules/thrift/currency/composables/useThriftCurrenciesQuery';
+import { supabase } from 'src/boot/supabase';
 import { date } from 'quasar';
 
 const route = useRoute();
 const router = useRouter();
 const orderStore = useShopOrderStore();
 
+const { data: currenciesData } = useThriftCurrenciesQuery();
+const currencies = computed(() => currenciesData.value ?? []);
+
 const orderItems = ref<any[]>([]);
+const shopSellCurrencyId = ref<number | null>(null);
 
 const orderId = computed(() => Number(route.params.id));
+
+const currencySymbol = computed(() => {
+  if (shopSellCurrencyId.value) {
+    const curr = currencies.value.find((c) => c.id === shopSellCurrencyId.value);
+    if (curr?.symbol) return curr.symbol;
+  }
+  const firstItem = orderItems.value?.[0];
+  const currId =
+    firstItem?.unit_sell_price_currency_id ||
+    firstItem?.customer_offer_currency_id ||
+    firstItem?.unit_list_price_currency_id;
+  if (currId) {
+    const curr = currencies.value.find((c) => c.id === currId);
+    if (curr?.symbol) return curr.symbol;
+  }
+  return '৳';
+});
 
 onMounted(async () => {
   if (orderId.value) {
     const res = await orderStore.fetchOrderDetails(orderId.value);
     if (res.success && res.data) {
       orderItems.value = JSON.parse(JSON.stringify(res.data.items));
+      const shopId = res.data.order?.shop_id;
+      if (shopId) {
+        const { data: shopData } = await supabase
+          .from('shops')
+          .select('sell_currency_id')
+          .eq('id', shopId)
+          .single();
+        if (shopData?.sell_currency_id) {
+          shopSellCurrencyId.value = shopData.sell_currency_id;
+        }
+      }
     }
   }
 });
@@ -410,22 +467,20 @@ const deductPackingFromMargin = computed(() => !!orderStore.currentOrder?.deduct
 const recipientGrandTotal = computed(() => {
   return recipientSubtotal.value
     + (deductDeliveryFromMargin.value ? 0 : deliveryChargeVal.value)
-    + (deductPrintFromMargin.value ? 0 : printChargeVal.value)
-    + (deductPackingFromMargin.value ? 0 : packingChargeVal.value)
     + (deductCodFromMargin.value ? 0 : codChargeVal.value)
     - discountVal.value;
 });
 
 const middlemanTotalCost = computed(() => {
   return accountingSubtotal.value
-    + deliveryChargeVal.value
     + printChargeVal.value
     + packingChargeVal.value
+    + (deductDeliveryFromMargin.value ? deliveryChargeVal.value : 0)
     + (deductCodFromMargin.value ? codChargeVal.value : 0);
 });
 
 const estimatedProfit = computed(() => {
-  return recipientGrandTotal.value - middlemanTotalCost.value;
+  return recipientSubtotal.value - discountVal.value - middlemanTotalCost.value;
 });
 
 const codFeePctLabel = computed(() => {
@@ -463,6 +518,12 @@ const normalizedStatus = computed(() => {
   // Customer-facing happy path ends at delivered; remittance is internal.
   if (status === 'payment_received') return 'delivered';
   return status;
+});
+
+const isBeforePickup = computed(() => {
+  const current = normalizedStatus.value;
+  const postPickupStatuses = ['ready_for_pickup', 'shipped', 'delivered', 'payment_received', 'remitted'];
+  return !postPickupStatuses.includes(current);
 });
 
 const statusSequence = computed(() => {

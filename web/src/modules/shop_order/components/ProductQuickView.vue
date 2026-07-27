@@ -366,7 +366,7 @@ function validateQuantity() {
 
 function formatMoney(amount?: number | null, symbol?: string | null): string {
   if (amount == null || Number.isNaN(amount)) return '-';
-  const sym = symbol?.trim() || '£';
+  const sym = symbol?.trim() || '৳';
   const formatted = Number(amount).toLocaleString('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,

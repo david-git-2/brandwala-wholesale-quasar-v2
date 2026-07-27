@@ -117,10 +117,10 @@
                       <template v-if="item.see_price">
                         <span v-if="item.unit_price_amount != null" class="text-weight-bold text-primary">
                           <span v-if="item.shop_type === 'dropship'" class="text-caption text-grey-6 block text-weight-medium q-mb-xs" style="line-height: 1;">{{ $t('shop.wholesale_price') }}</span>
-                          {{ item.unit_price_currency_symbol || '£' }}{{ Number(item.unit_price_amount).toFixed(2) }}
+                          {{ item.unit_price_currency_symbol || '৳' }}{{ Number(item.unit_price_amount).toFixed(2) }}
                         </span>
                         <span v-if="item.shop_type === 'dropship' && item.minimum_sell_price_amount != null" class="text-caption text-secondary text-weight-bold q-ml-sm">
-                          {{ $t('customer_dashboard.min_sell', { price: (item.minimum_sell_price_currency_symbol || '£') + Number(item.minimum_sell_price_amount).toFixed(2) }) }}
+                          {{ $t('customer_dashboard.min_sell', { price: (item.minimum_sell_price_currency_symbol || '৳') + Number(item.minimum_sell_price_amount).toFixed(2) }) }}
                         </span>
                       </template>
                       <span v-if="item.available_units != null" class="q-ml-sm">
@@ -148,81 +148,6 @@
       </q-banner>
 
       <template v-else>
-        <!-- 2. Onboarding Stepper Checklist -->
-        <q-card flat bordered class="onboarding-card q-pa-md q-pa-sm-lg">
-          <div class="row items-center justify-between no-wrap">
-            <div>
-              <div class="text-subtitle1 text-weight-bold text-grey-9 row items-center gap-xs">
-                <q-icon name="ph ph-compass" color="primary" size="24px" class="q-mr-xs" />
-                {{ $t('customer_dashboard.onboarding_title') }}
-              </div>
-              <div class="text-caption text-grey-6">{{ $t('customer_dashboard.onboarding_sub') }}</div>
-            </div>
-            <q-btn
-              flat
-              dense
-              round
-              color="grey-6"
-              :icon="showOnboarding ? 'expand_less' : 'expand_more'"
-              @click="showOnboarding = !showOnboarding"
-            />
-          </div>
-
-          <q-slide-transition>
-            <div v-show="showOnboarding" class="q-pt-md">
-              <div class="row q-col-gutter-md">
-                <!-- Step 1 -->
-                <div class="col-12 col-sm-4">
-                  <div class="step-item" :class="{ 'step-item--done': true }">
-                    <div class="row items-center no-wrap q-gutter-sm">
-                      <q-avatar size="36px" color="green-1" text-color="green-7" icon="ph ph-check" />
-                      <div class="column">
-                        <span class="text-subtitle2 text-weight-bold text-grey-9 leading-none">{{ $t('customer_dashboard.step1_title') }}</span>
-                        <span class="text-caption text-grey-6 q-mt-xs">{{ $t('customer_dashboard.step1_sub') }}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Step 2 -->
-                <div class="col-12 col-sm-4">
-                  <div class="step-item cursor-pointer card-hover" :class="{ 'step-item--done': shops.length > 0 }" @click="goBrowse">
-                    <div class="row items-center no-wrap q-gutter-sm">
-                      <q-avatar
-                        size="36px"
-                        :color="shops.length > 0 ? 'green-1' : 'blue-1'"
-                        :text-color="shops.length > 0 ? 'green-7' : 'blue-7'"
-                        :icon="shops.length > 0 ? 'check' : 'storefront'"
-                      />
-                      <div class="column">
-                        <span class="text-subtitle2 text-weight-bold text-grey-9 leading-none">{{ $t('customer_dashboard.step2_title') }}</span>
-                        <span class="text-caption text-grey-6 q-mt-xs">{{ shops.length > 0 ? $t('customer_dashboard.step2_unlocked') : $t('customer_dashboard.step2_view') }}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Step 3 -->
-                <div class="col-12 col-sm-4">
-                  <div class="step-item cursor-pointer card-hover" :class="{ 'step-item--done': recentOrders.length > 0 }" @click="goBrowse">
-                    <div class="row items-center no-wrap q-gutter-sm">
-                      <q-avatar
-                        size="36px"
-                        :color="recentOrders.length > 0 ? 'green-1' : 'purple-1'"
-                        :text-color="recentOrders.length > 0 ? 'green-7' : 'purple-7'"
-                        :icon="recentOrders.length > 0 ? 'check' : 'shopping_bag'"
-                      />
-                      <div class="column">
-                        <span class="text-subtitle2 text-weight-bold text-grey-9 leading-none">{{ $t('customer_dashboard.step3_title') }}</span>
-                        <span class="text-caption text-grey-6 q-mt-xs">{{ recentOrders.length > 0 ? $t('customer_dashboard.step3_placed') : $t('customer_dashboard.step3_start') }}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </q-slide-transition>
-        </q-card>
 
         <!-- 3. KPI / Stat Summary Cards -->
         <div v-if="shops.length > 0 || recentOrders.length > 0" class="row q-col-gutter-md">
@@ -457,7 +382,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { date } from 'quasar';
 import { useQuery } from '@tanstack/vue-query';
@@ -482,9 +407,6 @@ const showSearchResultsModal = ref(false);
 const searching = ref(false);
 const searchResults = ref<any[]>([]);
 const addingToCartId = ref<number | null>(null);
-
-// Control visibility of onboarding checklist
-const showOnboarding = ref(true);
 
 // 1. Fetch shops customer has access to using TanStack Query
 const shopsQuery = useQuery({
@@ -557,12 +479,6 @@ const totalOutlay = computed(() => {
   return recentOrders.value.reduce((acc, order) => acc + Number(order.total_amount || 0), 0);
 });
 
-onMounted(() => {
-  // If the customer has placed orders previously, auto-collapse onboarding checklist
-  if (recentOrders.value.length > 0) {
-    showOnboarding.value = false;
-  }
-});
 
 const goBrowse = () => {
   void router.push({ path: `${tenantBase.value}/browse` });
@@ -797,24 +713,6 @@ const getStatusColor = (status: string) => {
   height: 40px;
 }
 
-.onboarding-card {
-  border-radius: 14px;
-  background: var(--bw-theme-surface, #ffffff);
-  border: 1px solid var(--bw-theme-border, #e0e0e0);
-}
-
-.step-item {
-  background: var(--bw-theme-base, #f9f9f9);
-  border: 1px solid var(--bw-theme-border, #e0e0e0);
-  border-radius: 10px;
-  padding: 12px;
-  transition: all 0.25s ease;
-}
-
-.step-item--done {
-  border-color: #2e7d32;
-  background: #f1f8e9;
-}
 
 .stat-card {
   border-radius: 10px;

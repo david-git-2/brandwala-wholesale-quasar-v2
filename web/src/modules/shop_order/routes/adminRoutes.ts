@@ -106,7 +106,19 @@ const adminRoutes: RouteRecordRaw[] = [
     ],
   },
 
-  // shop_pricing — Shop Pricing (accessed per shop in P4)
+  // shop_pricing — Shop Pricing
+  {
+    path: '/:tenantSlug?/app/shop/pricing',
+    component: () => import('layouts/AppLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'app-shop-pricing-list-page',
+        component: () => import('src/modules/shop_order/pages/ShopPricingListPage.vue'),
+        beforeEnter: guard('shop_pricing'),
+      },
+    ],
+  },
   {
     path: '/:tenantSlug?/app/shop/shops/:shopId/pricing',
     component: () => import('layouts/AppLayout.vue'),
