@@ -1,6 +1,13 @@
 <template>
   <q-page class="q-pa-md" :class="{ 'preview-canvas': mode === 'pdf' }">
-    <section class="preview-page__shell" :style="{ maxWidth: shellMaxWidth }">
+    <section
+      class="preview-page__shell"
+      :class="{
+        'preview-page--screenshot': mode === 'screenshot',
+        'preview-page--pdf': mode === 'pdf',
+      }"
+      :style="{ maxWidth: shellMaxWidth }"
+    >
       <div class="preview-page__actions q-mb-md no-print row items-center justify-between">
         <div class="row items-center q-gutter-x-sm">
           <q-btn
@@ -155,6 +162,7 @@
                     img-class="preview-page__image"
                     fallback-class="preview-page__image preview-page__image--placeholder"
                     :enable-edit="false"
+                    fit="contain"
                   />
                 </template>
 
@@ -162,9 +170,6 @@
                 <template v-else-if="col.name === 'name'">
                   <div class="preview-page__name-text">
                     {{ slotProps.row.name }}
-                  </div>
-                  <div v-if="slotProps.row.product_code" class="text-caption text-grey-7">
-                    Code: {{ slotProps.row.product_code }}
                   </div>
                 </template>
 
@@ -258,7 +263,7 @@
 
       <!-- Dynamic Export Summary Card -->
       <q-card
-        v-if="summaryMetrics.length"
+        v-if="summaryMetrics.length && mode !== 'screenshot'"
         flat
         bordered
         class="preview-page__summary-card q-mt-md"
@@ -288,7 +293,7 @@
         </q-card-section>
       </q-card>
 
-      <div v-if="mode === 'screenshot'" class="preview-page__pager q-mt-sm">
+      <div v-if="mode === 'screenshot'" class="preview-page__pager q-mt-sm no-print">
         <q-btn
           size="sm"
           dense
@@ -330,6 +335,13 @@ import { useRoute, useRouter } from 'vue-router';
 import SmartImage from 'src/components/SmartImage.vue';
 import { useProductBasedCostingStore } from '../stores/productBasedCostingStore';
 import type { ProductBasedCostingFile, ProductBasedCostingItem } from '../types';
+import {
+  calculateOfferPriceBdt,
+  getUnitCostBdt,
+  getUnitTotalCostGbp,
+  normalizeOfferPriceBdt,
+  toNumberSafe,
+} from '../utils/pricing';
 
 const props = defineProps<{
   id: string;
@@ -377,9 +389,9 @@ interface PreviewColumnDef {
 const ALL_PREVIEW_COLUMN_DEFS: Record<string, PreviewColumnDef> = {
   sl: { key: 'sl', label: 'SL', align: 'center', field: 'sl' },
   image: { key: 'image', label: 'Image', align: 'center', field: 'imageUrl' },
-  name: { key: 'name', label: 'Name', align: 'left', field: 'name' },
-  brand: { key: 'brand', label: 'Brand', align: 'left', field: 'brand' },
-  note: { key: 'note', label: 'Note', align: 'left', field: 'note' },
+  name: { key: 'name', label: 'Name', align: 'center', field: 'name' },
+  brand: { key: 'brand', label: 'Brand', align: 'center', field: 'brand' },
+  note: { key: 'note', label: 'Note', align: 'center', field: 'note' },
   qty: { key: 'qty', label: 'Qty', align: 'center', field: 'quantity' },
   deliveredQty: {
     key: 'deliveredQty',
@@ -393,12 +405,12 @@ const ALL_PREVIEW_COLUMN_DEFS: Record<string, PreviewColumnDef> = {
     align: 'center',
     field: 'barcodeText',
   },
-  website: { key: 'website', label: 'Website', align: 'left', field: 'website' },
-  priceGbp: { key: 'priceGbp', label: 'Price (GBP)', align: 'right', field: 'priceGbp' },
+  website: { key: 'website', label: 'Website', align: 'center', field: 'website' },
+  priceGbp: { key: 'priceGbp', label: 'Price (GBP)', align: 'center', field: 'priceGbp' },
   totalPurchasePriceGbp: {
     key: 'totalPurchasePriceGbp',
     label: 'Total Purchase (GBP)',
-    align: 'right',
+    align: 'center',
     field: 'totalPurchasePriceGbp',
   },
   productWeight: {
@@ -423,27 +435,27 @@ const ALL_PREVIEW_COLUMN_DEFS: Record<string, PreviewColumnDef> = {
   cargoCostGbp: {
     key: 'cargoCostGbp',
     label: 'Cargo Cost (GBP)',
-    align: 'right',
+    align: 'center',
     field: 'cargoCostGbp',
   },
   totalCostGbp: {
     key: 'totalCostGbp',
     label: 'Total Cost (GBP)',
-    align: 'right',
+    align: 'center',
     field: 'totalCostGbp',
   },
-  costBdt: { key: 'costBdt', label: 'Cost (BDT)', align: 'right', field: 'costBdt' },
+  costBdt: { key: 'costBdt', label: 'Cost (BDT)', align: 'center', field: 'costBdt' },
   offerPriceBdt: {
     key: 'offerPriceBdt',
     label: 'Offer Price (BDT)',
-    align: 'right',
+    align: 'center',
     field: 'offerPriceBdt',
   },
-  totalBdt: { key: 'totalBdt', label: 'Total Offer (BDT)', align: 'right', field: 'totalBdt' },
+  totalBdt: { key: 'totalBdt', label: 'Total Offer (BDT)', align: 'center', field: 'totalBdt' },
   profitPerUnitBdt: {
     key: 'profitPerUnitBdt',
     label: 'Profit (BDT)',
-    align: 'right',
+    align: 'center',
     field: 'profitPerUnitBdt',
   },
   profitRate: { key: 'profitRate', label: 'Profit Rate (%)', align: 'center', field: 'profitRate' },
@@ -467,7 +479,6 @@ const requestedColumnKeys = computed<string[]>(() => {
     'name',
     'brand',
     'qty',
-    'barcodeText',
     'priceGbp',
     'productWeight',
     'offerPriceBdt',
@@ -508,13 +519,13 @@ watch(
 
 const shellMaxWidth = computed(() => {
   if (mode.value === 'pdf') {
+    const count = requestedColumnKeys.value.length;
+    if (count <= 4) return '580px';
+    if (count <= 6) return '720px';
+    if (count <= 8) return '840px';
     return '920px';
   }
-  const count = requestedColumnKeys.value.length;
-  if (count <= 4) return '620px';
-  if (count <= 6) return '760px';
-  if (count <= 8) return '880px';
-  return '1000px';
+  return '414px';
 });
 
 const fileLabel = computed(() => `#${costingFile.value?.id ?? costingFileId.value ?? '-'}`);
@@ -527,7 +538,7 @@ const computedPageSize = computed(() => {
   if (typeof props.pageSize === 'number' && props.pageSize > 0) {
     return Math.floor(props.pageSize);
   }
-  return 8;
+  return 6;
 });
 
 const currentPage = ref(1);
@@ -562,16 +573,50 @@ const tableRows = computed(() => {
   const profitRate = costingFile.value?.profit_rate ?? 0;
 
   const mapItem = (item: ProductBasedCostingItem, slNum: number) => {
-    const qty = item.quantity ?? 0;
-    const priceGbp = item.price_gbp ?? 0;
+    const qty = toNumberSafe(item.quantity);
+    const priceGbp = toNumberSafe(item.price_gbp);
     const totalPurchasePriceGbp = priceGbp * qty;
-    const productWeight = item.product_weight ?? 0;
-    const packageWeight = item.package_weight ?? 0;
-    const totalWeight = productWeight + packageWeight;
-    const cargoCostGbp = totalWeight * cargoRate;
-    const totalCostGbp = priceGbp + cargoCostGbp;
-    const costBdt = totalCostGbp * conversionRate;
-    const offerPriceBdt = item.offer_price ?? costBdt * (1 + profitRate / 100);
+    const productWeight = toNumberSafe(item.product_weight);
+    const packageWeight = toNumberSafe(item.package_weight);
+    const totalWeightUnit = productWeight + packageWeight;
+
+    const unitCargoCostGbp = (totalWeightUnit / 1000) * cargoRate;
+
+    const unitTotalCostGbp = getUnitTotalCostGbp({
+      priceGbp,
+      productWeight,
+      packageWeight,
+      cargoRate,
+    });
+
+    const costBdt = getUnitCostBdt({
+      priceGbp,
+      productWeight,
+      packageWeight,
+      cargoRate,
+      conversionRate,
+    });
+
+    const calculatedOfferPriceBdt = calculateOfferPriceBdt({
+      priceGbp,
+      productWeight,
+      packageWeight,
+      cargoRate,
+      conversionRate,
+      profitRate,
+    });
+
+    const isManual =
+      item.is_offer_price_manual === true ||
+      (item.is_offer_price_manual == null &&
+        item.offer_price != null &&
+        normalizeOfferPriceBdt(item.offer_price) !== calculatedOfferPriceBdt);
+
+    const offerPriceBdt =
+      isManual && item.offer_price != null
+        ? normalizeOfferPriceBdt(item.offer_price)
+        : calculatedOfferPriceBdt;
+
     const totalBdt = offerPriceBdt * qty;
     const profitPerUnitBdt = offerPriceBdt - costBdt;
 
@@ -588,10 +633,10 @@ const tableRows = computed(() => {
       totalPurchasePriceGbp,
       productWeight,
       packageWeight,
-      totalWeight,
+      totalWeight: totalWeightUnit / 1000,
       cargoRate,
-      cargoCostGbp,
-      totalCostGbp,
+      cargoCostGbp: unitCargoCostGbp,
+      totalCostGbp: unitTotalCostGbp,
       costBdt,
       offerPriceBdt,
       totalBdt,
@@ -622,6 +667,9 @@ const summaryMetrics = computed<SummaryMetric[]>(() => {
 
   const visible = new Set(requestedColumnKeys.value);
   const metrics: SummaryMetric[] = [];
+  const cargoRate = costingFile.value?.cargo_rate_kg_gbp ?? 0;
+  const conversionRate = costingFile.value?.conversion_rate ?? 140;
+  const profitRate = costingFile.value?.profit_rate ?? 0;
 
   metrics.push({
     label: 'Total Items',
@@ -655,7 +703,7 @@ const summaryMetrics = computed<SummaryMetric[]>(() => {
     const totalKg = rawItems.value.reduce(
       (acc, item) =>
         acc +
-        ((item.product_weight ?? 0) + (item.package_weight ?? 0)) *
+        (((item.product_weight ?? 0) + (item.package_weight ?? 0)) / 1000) *
           (item.quantity ?? 0),
       0,
     );
@@ -670,14 +718,17 @@ const summaryMetrics = computed<SummaryMetric[]>(() => {
     visible.has('totalCostGbp') ||
     visible.has('cargoCostGbp')
   ) {
-    const cargoRate = costingFile.value?.cargo_rate_kg_gbp ?? 0;
-    const conversionRate = costingFile.value?.conversion_rate ?? 140;
-
     const totalCostBdt = rawItems.value.reduce((acc, item) => {
       const priceGbp = item.price_gbp ?? 0;
-      const weight = (item.product_weight ?? 0) + (item.package_weight ?? 0);
-      const totalCostGbp = priceGbp + weight * cargoRate;
-      const costBdt = totalCostGbp * conversionRate;
+      const productWeight = item.product_weight ?? 0;
+      const packageWeight = item.package_weight ?? 0;
+      const costBdt = getUnitCostBdt({
+        priceGbp,
+        productWeight,
+        packageWeight,
+        cargoRate,
+        conversionRate,
+      });
       return acc + costBdt * (item.quantity ?? 0);
     }, 0);
 
@@ -688,16 +739,27 @@ const summaryMetrics = computed<SummaryMetric[]>(() => {
   }
 
   if (visible.has('offerPriceBdt') || visible.has('totalBdt')) {
-    const cargoRate = costingFile.value?.cargo_rate_kg_gbp ?? 0;
-    const conversionRate = costingFile.value?.conversion_rate ?? 140;
-    const profitRate = costingFile.value?.profit_rate ?? 0;
-
     const totalOfferBdt = rawItems.value.reduce((acc, item) => {
       const priceGbp = item.price_gbp ?? 0;
-      const weight = (item.product_weight ?? 0) + (item.package_weight ?? 0);
-      const totalCostGbp = priceGbp + weight * cargoRate;
-      const costBdt = totalCostGbp * conversionRate;
-      const offerPriceBdt = item.offer_price ?? costBdt * (1 + profitRate / 100);
+      const productWeight = item.product_weight ?? 0;
+      const packageWeight = item.package_weight ?? 0;
+      const calculatedOfferPriceBdt = calculateOfferPriceBdt({
+        priceGbp,
+        productWeight,
+        packageWeight,
+        cargoRate,
+        conversionRate,
+        profitRate,
+      });
+      const isManual =
+        item.is_offer_price_manual === true ||
+        (item.is_offer_price_manual == null &&
+          item.offer_price != null &&
+          normalizeOfferPriceBdt(item.offer_price) !== calculatedOfferPriceBdt);
+      const offerPriceBdt =
+        isManual && item.offer_price != null
+          ? normalizeOfferPriceBdt(item.offer_price)
+          : calculatedOfferPriceBdt;
       return acc + offerPriceBdt * (item.quantity ?? 0);
     }, 0);
 
@@ -709,16 +771,34 @@ const summaryMetrics = computed<SummaryMetric[]>(() => {
   }
 
   if (visible.has('profitPerUnitBdt') || visible.has('profitRate')) {
-    const cargoRate = costingFile.value?.cargo_rate_kg_gbp ?? 0;
-    const conversionRate = costingFile.value?.conversion_rate ?? 140;
-    const profitRate = costingFile.value?.profit_rate ?? 0;
-
     const totalProfitBdt = rawItems.value.reduce((acc, item) => {
       const priceGbp = item.price_gbp ?? 0;
-      const weight = (item.product_weight ?? 0) + (item.package_weight ?? 0);
-      const totalCostGbp = priceGbp + weight * cargoRate;
-      const costBdt = totalCostGbp * conversionRate;
-      const offerPriceBdt = item.offer_price ?? costBdt * (1 + profitRate / 100);
+      const productWeight = item.product_weight ?? 0;
+      const packageWeight = item.package_weight ?? 0;
+      const costBdt = getUnitCostBdt({
+        priceGbp,
+        productWeight,
+        packageWeight,
+        cargoRate,
+        conversionRate,
+      });
+      const calculatedOfferPriceBdt = calculateOfferPriceBdt({
+        priceGbp,
+        productWeight,
+        packageWeight,
+        cargoRate,
+        conversionRate,
+        profitRate,
+      });
+      const isManual =
+        item.is_offer_price_manual === true ||
+        (item.is_offer_price_manual == null &&
+          item.offer_price != null &&
+          normalizeOfferPriceBdt(item.offer_price) !== calculatedOfferPriceBdt);
+      const offerPriceBdt =
+        isManual && item.offer_price != null
+          ? normalizeOfferPriceBdt(item.offer_price)
+          : calculatedOfferPriceBdt;
       const profitPerUnit = offerPriceBdt - costBdt;
       return acc + profitPerUnit * (item.quantity ?? 0);
     }, 0);
@@ -734,7 +814,14 @@ const summaryMetrics = computed<SummaryMetric[]>(() => {
 });
 
 function goBack() {
-  void router.back();
+  window.close();
+  setTimeout(() => {
+    if (!window.closed) {
+      if (window.history.length > 1) {
+        void router.back();
+      }
+    }
+  }, 100);
 }
 
 async function printPage() {
@@ -849,18 +936,25 @@ function formatNumber(val?: number | null): string {
     background: #f9fafb;
     padding: 6px 10px;
     white-space: nowrap;
+    text-align: center;
+    vertical-align: middle;
   }
 
   :deep(td) {
     font-size: 12px;
     padding: 8px 10px;
     white-space: nowrap;
+    text-align: center;
+    vertical-align: middle;
   }
 
   :deep(.preview-page__name-cell) {
-    white-space: normal;
-    word-break: break-word;
-    min-width: 200px;
+    white-space: normal !important;
+    word-break: break-word !important;
+    text-align: center;
+    min-width: 120px;
+    max-width: 200px;
+    width: 180px;
   }
 
   :deep(.a4-cutoff-cell) {
@@ -883,23 +977,41 @@ function formatNumber(val?: number | null): string {
 }
 
 .preview-page__header-cell--image {
-  width: 68px;
+  width: calc(1in + 16px);
 }
 
 .preview-page__header-cell--name {
-  min-width: 200px;
+  min-width: 120px;
+  max-width: 200px;
+  width: 180px;
 }
 
 .preview-page__header-cell--offer {
   min-width: 110px;
+  background-color: #ede9fe !important;
+  color: #5b21b6 !important;
 }
 
 .preview-page__image {
-  width: 52px;
-  height: 52px;
-  object-fit: cover;
+  width: 1in;
+  height: 1in;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background-color: #ffffff;
   border-radius: 6px;
   border: 1px solid #e5e7eb;
+  overflow: hidden;
+  margin: 0 auto;
+
+  :deep(img) {
+    max-width: 100% !important;
+    max-height: 100% !important;
+    width: auto !important;
+    height: auto !important;
+    object-fit: contain !important;
+    margin: auto !important;
+  }
 }
 
 .preview-page__name-text {
@@ -907,11 +1019,47 @@ function formatNumber(val?: number | null): string {
   font-weight: 700;
   color: #111827;
   line-height: 1.35;
+  white-space: normal !important;
+  word-break: break-word !important;
+  text-align: center;
+  max-width: 200px;
+  margin: 0 auto;
 }
 
 .preview-page__offer-cell {
+  background-color: #f3e8ff !important;
+  color: #6b21a8 !important;
   font-weight: 700;
-  color: #059669;
+}
+
+.preview-page--screenshot {
+  .preview-page__summary-card {
+    display: none !important;
+  }
+
+  .preview-page__name-text {
+    font-weight: 400;
+  }
+
+  .preview-page__table {
+    :deep(th) {
+      padding: 6px 8px;
+      font-size: 10.5px;
+    }
+
+    :deep(td) {
+      padding: 6px 8px;
+      font-size: 11.5px;
+    }
+
+    :deep(.preview-page__name-cell) {
+      min-width: 100px;
+    }
+  }
+
+  .preview-page__header-cell--name {
+    min-width: 100px;
+  }
 }
 
 .preview-page__pager {
@@ -967,8 +1115,8 @@ function formatNumber(val?: number | null): string {
 
 @media print {
   @page {
-    size: A4;
-    margin: 10mm;
+    size: A4 portrait;
+    margin: 8mm;
   }
 
   * {
@@ -982,7 +1130,7 @@ function formatNumber(val?: number | null): string {
   .q-page-container,
   .q-page,
   .preview-canvas {
-    min-height: auto !important;
+    min-height: 0 !important;
     height: auto !important;
     padding: 0 !important;
     margin: 0 !important;
@@ -990,39 +1138,49 @@ function formatNumber(val?: number | null): string {
     overflow: visible !important;
   }
 
-  .no-print {
-    display: none !important;
-  }
-
-  .preview-page__actions {
+  .q-header,
+  .q-footer,
+  .q-drawer,
+  .q-drawer-container,
+  .no-print,
+  .preview-page__actions,
+  .preview-page__pager {
     display: none !important;
   }
 
   .preview-page__shell {
-    max-width: 100% !important;
-    margin: 0 !important;
+    width: 100% !important;
+    margin: 0 auto !important;
     padding: 0 !important;
     box-shadow: none !important;
   }
 
   .preview-page__meta-card {
     margin-top: 0 !important;
-    margin-bottom: 8px !important;
+    margin-bottom: 6px !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 
   .preview-page__table-card {
     margin-top: 0 !important;
-    margin-bottom: 8px !important;
+    margin-bottom: 6px !important;
+    border: 1px solid #e5e7eb !important;
+    box-shadow: none !important;
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+  }
+
+  .preview-page__table {
+    :deep(tr) {
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
+    }
   }
 
   .preview-page__summary-card {
-    margin-top: 8px !important;
+    margin-top: 6px !important;
     margin-bottom: 0 !important;
-  }
-
-  .preview-page__table-card,
-  .preview-page__meta-card,
-  .preview-page__summary-card {
     border: 1px solid #e5e7eb !important;
     box-shadow: none !important;
     break-inside: avoid !important;

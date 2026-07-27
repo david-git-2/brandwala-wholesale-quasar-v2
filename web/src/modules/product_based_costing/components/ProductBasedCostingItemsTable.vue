@@ -2123,6 +2123,12 @@ const totals = computed(() => {
   border: 1px solid #ddd;
   border-radius: 6px;
   background: #fff;
+  overflow: hidden;
+}
+
+.table-image :deep(.smart-image__img) {
+  width: 100%;
+  height: 100%;
   object-fit: contain;
   object-position: center;
 }
@@ -2465,7 +2471,15 @@ const totals = computed(() => {
 .card-image {
   width: 100%;
   height: 100%;
+  display: block;
+  overflow: hidden;
+}
+
+.card-image :deep(.smart-image__img) {
+  width: 100%;
+  height: 100%;
   object-fit: contain;
+  object-position: center;
 }
 
 .card-image-placeholder {

@@ -122,7 +122,6 @@ const { visibleColumns: selectedColumns } = useMembershipColumnPreference({
     'name',
     'brand',
     'qty',
-    'barcodeText',
     'priceGbp',
     'productWeight',
     'offerPriceBdt',
