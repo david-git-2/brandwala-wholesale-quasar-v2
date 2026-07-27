@@ -1,8 +1,69 @@
 <template>
   <q-page class="q-pa-md costing-details-page">
-    <PageInitialLoader v-if="store.loading" />
-    <template v-else>
-      <div class="q-gutter-y-md">
+    <div class="q-gutter-y-md">
+      <!-- Loading Skeleton State -->
+      <template v-if="store.loading">
+        <!-- Header Skeleton -->
+        <section class="row items-center justify-between q-col-gutter-md">
+          <div class="col">
+            <div class="row items-center q-gutter-x-sm">
+              <q-skeleton type="QBtn" size="32px" flat />
+              <div>
+                <q-skeleton type="text" width="130px" height="14px" class="q-mb-xs" />
+                <q-skeleton type="text" width="240px" height="32px" />
+                <q-skeleton type="text" width="160px" height="14px" class="q-mt-xs" />
+              </div>
+            </div>
+          </div>
+          <div class="col-auto row q-gutter-sm items-center">
+            <q-skeleton type="QBtn" width="100px" height="36px" />
+            <q-skeleton type="QBtn" width="36px" height="36px" />
+          </div>
+        </section>
+
+        <!-- Workflow Strip Skeleton -->
+        <q-card flat bordered class="q-pa-sm">
+          <div class="row items-center justify-between q-col-gutter-sm">
+            <div class="col-grow row items-center q-gutter-xs">
+              <q-skeleton v-for="n in 6" :key="n" type="QBtn" width="90px" height="28px" />
+            </div>
+            <div class="col-auto">
+              <q-skeleton type="QBtn" width="80px" height="28px" />
+            </div>
+          </div>
+        </q-card>
+
+        <!-- Table Skeleton -->
+        <q-markup-table flat bordered class="costing-items-surface">
+          <thead>
+            <tr>
+              <th style="width: 40px"><q-skeleton type="QCheckbox" /></th>
+              <th><q-skeleton type="text" width="40px" /></th>
+              <th><q-skeleton type="text" width="60px" /></th>
+              <th><q-skeleton type="text" width="140px" /></th>
+              <th><q-skeleton type="text" width="80px" /></th>
+              <th class="text-right"><q-skeleton type="text" width="70px" /></th>
+              <th class="text-right"><q-skeleton type="text" width="80px" /></th>
+              <th class="text-right"><q-skeleton type="text" width="90px" /></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="n in 5" :key="n">
+              <td><q-skeleton type="QCheckbox" /></td>
+              <td><q-skeleton type="text" width="20px" /></td>
+              <td><q-skeleton type="QAvatar" size="32px" square class="rounded-borders" /></td>
+              <td><q-skeleton type="text" width="85%" /></td>
+              <td><q-skeleton type="text" width="70%" /></td>
+              <td class="text-right"><q-skeleton type="text" width="60px" class="q-ml-auto" /></td>
+              <td class="text-right"><q-skeleton type="text" width="70px" class="q-ml-auto" /></td>
+              <td class="text-right"><q-skeleton type="text" width="80px" class="q-ml-auto" /></td>
+            </tr>
+          </tbody>
+        </q-markup-table>
+      </template>
+
+      <!-- Loaded Content State -->
+      <template v-else>
         <section class="row items-center justify-between q-col-gutter-md">
           <div class="col">
             <div class="row items-center q-gutter-x-sm">
@@ -364,8 +425,8 @@
             </q-card-actions>
           </q-card>
         </q-dialog>
-      </div>
-    </template>
+      </template>
+    </div>
   </q-page>
 </template>
 
@@ -379,7 +440,6 @@ import AddCostingItemsDrawer from '../components/AddCostingItemsDrawer.vue';
 import BulkPasteCostingItemsDialog from '../components/BulkPasteCostingItemsDialog.vue';
 import ProductBasedCostingPreviewColumnSelectorDialog from '../components/ProductBasedCostingPreviewColumnSelectorDialog.vue';
 import ProductBasedCostingItemsTable from '../components/ProductBasedCostingItemsTable.vue';
-import PageInitialLoader from 'src/components/PageInitialLoader.vue';
 import { useProductStore } from 'src/modules/products/stores/productStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { useGlobalShipmentStore } from 'src/modules/procurement_stock/stores/globalShipmentStore';
@@ -387,7 +447,7 @@ import { globalShipmentRepository } from 'src/modules/procurement_stock/reposito
 import ShipmentItemCompactDialog from 'src/modules/procurement_stock/components/ShipmentItemCompactDialog.vue';
 import type { ProductBasedCostingItem } from '../types';
 import { productBasedCostingService } from '../services/productBasedCostingService';
-import { calculateOfferPriceBdt, toNumberSafe } from '../utils/pricing';
+import { toNumberSafe } from '../utils/pricing';
 import { buildCostingExcelWorkbook } from '../utils/buildCostingExcelWorkbook';
 import { useMembershipColumnPreference } from 'src/modules/membership/composables/useMembershipColumnPreference';
 const productStore = useProductStore();
@@ -619,27 +679,7 @@ const recalculateAndPersistOfferPrices = async () => {
     return;
   }
 
-  const cargoRate = cargoRateValue.value;
-  const conversionRate = conversionRateValue.value;
-  const profitRate = profitRateValue.value;
-
-  const updates = (store.costingItems ?? []).map((item) => {
-    const nextOfferPrice = calculateOfferPriceBdt({
-      priceGbp: toNumberSafe(item.price_gbp),
-      productWeight: toNumberSafe(item.product_weight),
-      packageWeight: toNumberSafe(item.package_weight),
-      cargoRate,
-      conversionRate,
-      profitRate,
-    });
-
-    return productBasedCostingService.updateProductBasedCostingItem({
-      id: item.id,
-      offer_price: nextOfferPrice,
-    });
-  });
-
-  await Promise.allSettled(updates);
+  await productBasedCostingService.recalculateProductBasedCostingFileOfferPrices(fileId.value);
   await store.fetchProductBasedCostingItems(fileId.value);
 };
 

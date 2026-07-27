@@ -48,15 +48,22 @@ export async function handleUnauthorizedResponse() {
     const currentRoute = router.currentRoute.value;
     const routeName = (currentRoute.name as string) || '';
 
-    const loginRouteNames = [
-      'admin-login-page',
-      'customer-login-page',
-      'superadmin-login-page',
-      'investor-login-page',
-      'auth-callback-page',
-      'auth-callback',
-    ];
-    if (loginRouteNames.includes(routeName) || currentRoute.path.includes('/auth/callback')) {
+    const isLoginOrAuthRoute = (path: string, name?: string) => {
+      if (!path) return true;
+      if (path.includes('/login') || path.includes('/auth/callback')) return true;
+      const loginRouteNames = [
+        'admin-login-page',
+        'customer-login-page',
+        'superadmin-login-page',
+        'investor-login-page',
+        'auth-callback-page',
+        'auth-callback',
+      ];
+      if (name && loginRouteNames.includes(name)) return true;
+      return false;
+    };
+
+    if (isLoginOrAuthRoute(currentRoute.path, routeName)) {
       isLoggingOut = false;
       return;
     }
@@ -82,22 +89,29 @@ export async function handleUnauthorizedResponse() {
     await supabase.auth.signOut();
 
     const loginError = 'session_expired';
+    const targetRedirect =
+      currentRoute.fullPath && currentRoute.fullPath !== '/' ? currentRoute.fullPath : undefined;
+
+    const extraQuery: Record<string, string> = {
+      login_error: loginError,
+    };
+    if (targetRedirect) {
+      extraQuery.redirect = targetRedirect;
+    }
 
     if (scope === 'platform') {
       await router.replace({
         name: 'superadmin-login-page',
-        query: { login_error: loginError },
+        query: extraQuery,
       });
     } else if (scope === 'shop') {
-      const loginRouteLocation = getShopLoginRouteLocation(currentRoute, {
-        login_error: loginError,
-      });
+      const loginRouteLocation = getShopLoginRouteLocation(currentRoute, extraQuery);
       await router.replace(loginRouteLocation);
     } else if (scope === 'investor') {
       await router.replace({
         name: 'investor-login-page',
         params: tenantSlug ? { tenantSlug } : {},
-        query: { login_error: loginError },
+        query: extraQuery,
       });
     } else {
       const loginRouteLocation = getAppRouteLocation(
@@ -113,9 +127,7 @@ export async function handleUnauthorizedResponse() {
         ...(typeof loginRouteLocation === 'string'
           ? { path: loginRouteLocation }
           : loginRouteLocation),
-        query: {
-          login_error: loginError,
-        },
+        query: extraQuery,
       });
     }
   } catch (err) {

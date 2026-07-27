@@ -99,12 +99,16 @@ export function useOAuthLogin(
     logAuthContext(message, payload);
     authStore.clearAccess();
     await supabase.auth.signOut();
+
+    const redirectPath =
+      typeof route.query.redirect === 'string' ? route.query.redirect.trim() : '';
+    const extraQuery: Record<string, string> = {
+      login_error: loginError,
+      ...(redirectPath ? { redirect: redirectPath } : {}),
+    };
+
     if (resolvedScope === 'shop') {
-      await router.replace(
-        getShopLoginRouteLocation(route, {
-          login_error: loginError,
-        }),
-      );
+      await router.replace(getShopLoginRouteLocation(route, extraQuery));
       return;
     }
 
@@ -123,18 +127,14 @@ export function useOAuthLogin(
         ...(typeof loginRouteLocation === 'string'
           ? { path: loginRouteLocation }
           : loginRouteLocation),
-        query: {
-          login_error: loginError,
-        },
+        query: extraQuery,
       });
       return;
     }
 
     await router.replace({
       name: currentScope.loginRouteName,
-      query: {
-        login_error: loginError,
-      },
+      query: extraQuery,
     });
   };
 
@@ -196,8 +196,12 @@ export function useOAuthLogin(
       ? getTenantSlugFromRoute(resolvedRedirectRoute)
       : null;
 
+    const isLoginOrAuthRoute = (path: string) =>
+      path.includes('/login') || path.includes('/auth/callback');
+
     if (
       redirectPath &&
+      !isLoginOrAuthRoute(redirectPath) &&
       !(
         payload.scope === 'shop' &&
         payload.tenant?.slug &&
@@ -205,7 +209,19 @@ export function useOAuthLogin(
         redirectTenantSlug !== payload.tenant.slug
       )
     ) {
-      await router.replace(redirectPath);
+      let finalRedirect = redirectPath;
+      if (
+        payload.scope === 'app' &&
+        payload.tenant?.slug &&
+        redirectTenantSlug &&
+        redirectTenantSlug !== payload.tenant.slug
+      ) {
+        finalRedirect = redirectPath.replace(
+          `/${redirectTenantSlug}/`,
+          `/${payload.tenant.slug}/`,
+        );
+      }
+      await router.replace(finalRedirect);
       return;
     }
 

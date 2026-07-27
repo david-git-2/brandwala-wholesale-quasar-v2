@@ -19,8 +19,8 @@ When editing any list/detail page header, **copy this markup**. Do not substitut
 | Overline | `div class="text-overline text-primary"` |
 | Title | `h1 class="text-h5 text-weight-bold q-my-none"` |
 | CTA wrap | `div class="col-auto"` |
-| Primary CTA (list) | `q-btn color="primary" unelevated no-caps class="pill-btn"` |
-| Primary CTA (detail) | `q-btn color="primary" unelevated no-caps` (no `pill-btn`, no `round`) |
+| Primary CTA (list) | `q-btn color="primary" unelevated no-caps` |
+| Primary CTA (detail) | `q-btn color="primary" unelevated no-caps` |
 | Toolbar card | `q-card flat bordered class="q-pa-sm"` |
 | Toolbar row | `div class="row items-center justify-between q-col-gutter-sm"` |
 | Filters | `FilterSidebar` + toolbar `filter_alt` + badge |
@@ -50,7 +50,7 @@ When editing any list/detail page header, **copy this markup**. Do not substitut
 - Overline text that only repeats the `h1` (overline = short module label, e.g. `Costing`)
 - Extra wrappers that add vertical gap between overline and `h1`
 - Header status as clickable `q-chip` + `q-menu` (legacy — replace when touching the page)
-- `round` / `pill-btn` on detail header actions
+- `round` / `pill-btn` on header actions
 
 ---
 
@@ -69,7 +69,6 @@ When editing any list/detail page header, **copy this markup**. Do not substitut
           color="primary"
           unelevated
           no-caps
-          class="pill-btn"
           label="Create Costing File"
           @click="openCreateDialog"
         />
@@ -219,8 +218,8 @@ When a detail page has a **lifecycle status** the user can change, use this patt
 - [ ] `class="q-pa-md"` on `q-page`
 - [ ] `class="q-gutter-y-md"` stack
 - [ ] Header = `text-overline text-primary` + `h1.text-h5.text-weight-bold.q-my-none`
-- [ ] List primary CTA = `unelevated no-caps pill-btn` in `col-auto`
-- [ ] Detail primary CTA = `unelevated no-caps` (no `pill-btn` / `round`)
+- [ ] List primary CTA = `unelevated no-caps` (standard square with rounded edges)
+- [ ] Detail primary CTA = `unelevated no-caps` (standard square with rounded edges)
 - [ ] List toolbar = `q-card flat bordered q-pa-sm`
 - [ ] Detail lifecycle status = workflow button strip (not chip menu)
 - [ ] No `AppPageHeader`, no hero title card, no list subtitle

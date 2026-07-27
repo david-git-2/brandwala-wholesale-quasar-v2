@@ -221,6 +221,23 @@ const getProductBasedCostingItemById = async (
   }
 };
 
+const recalculateProductBasedCostingFileOfferPrices = async (
+  fileId: number,
+): Promise<ProductBasedCostingServiceResult<void>> => {
+  try {
+    await productBasedCostingRepository.recalculateProductBasedCostingFileOfferPrices(fileId);
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to recalculate offer prices.',
+    };
+  }
+};
+
 export const productBasedCostingService = {
   listProductBasedCostingFiles,
   createProductBasedCostingFile,
@@ -234,4 +251,5 @@ export const productBasedCostingService = {
   updateProductBasedCostingItemsBulk,
   deleteProductBasedCostingItem,
   getProductBasedCostingItemById,
+  recalculateProductBasedCostingFileOfferPrices,
 };

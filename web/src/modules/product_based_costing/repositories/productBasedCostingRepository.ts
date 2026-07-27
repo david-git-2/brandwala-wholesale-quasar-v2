@@ -107,6 +107,7 @@ const buildProductBasedCostingItemCreatePayload = (
   product_weight: payload.product_weight ?? null,
   package_weight: payload.package_weight ?? null,
   offer_price: payload.offer_price ?? null,
+  is_offer_price_manual: payload.is_offer_price_manual ?? false,
   status: normalizeText(payload.status),
   product_id: payload.product_id,
   input_type: normalizeText(payload.input_type),
@@ -176,6 +177,10 @@ const buildProductBasedCostingItemUpdatePayload = (
 
   if (payload.offer_price !== undefined) {
     updatePayload.offer_price = payload.offer_price;
+  }
+
+  if (payload.is_offer_price_manual !== undefined) {
+    updatePayload.is_offer_price_manual = payload.is_offer_price_manual;
   }
 
   if (payload.status !== undefined) {
@@ -409,6 +414,16 @@ const getProductBasedCostingItemById = async (id: number): Promise<ProductBasedC
   return data as ProductBasedCostingItem;
 };
 
+const recalculateProductBasedCostingFileOfferPrices = async (fileId: number): Promise<void> => {
+  const { error } = await supabase.rpc('recalculate_product_based_costing_file_offer_prices', {
+    p_file_id: fileId,
+  });
+
+  if (error) {
+    throw error;
+  }
+};
+
 export const productBasedCostingRepository = {
   listProductBasedCostingFiles,
   createProductBasedCostingFile,
@@ -421,4 +436,5 @@ export const productBasedCostingRepository = {
   updateProductBasedCostingItem,
   deleteProductBasedCostingItem,
   getProductBasedCostingItemById,
+  recalculateProductBasedCostingFileOfferPrices,
 };

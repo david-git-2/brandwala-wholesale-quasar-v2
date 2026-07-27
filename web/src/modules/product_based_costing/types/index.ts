@@ -59,6 +59,7 @@ export interface ProductBasedCostingItem {
   product_weight: number | null;
   package_weight: number | null;
   offer_price: number | null;
+  is_offer_price_manual?: boolean | null;
   status: string | null;
   input_type?: 'manual' | 'product_list' | null;
   assigned_shipment_id?: number | null;
@@ -83,6 +84,7 @@ export interface ProductBasedCostingItemCreateInput {
   product_weight?: number | null;
   package_weight?: number | null;
   offer_price?: number | null;
+  is_offer_price_manual?: boolean | null;
   status?: string | null;
   product_id?: number | null;
   input_type?: 'manual' | 'product_list' | null;

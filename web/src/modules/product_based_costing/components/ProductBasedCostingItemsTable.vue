@@ -851,8 +851,34 @@
             :props="slotProps"
             class="col-offer-price-bdt text-right editable-cell"
           >
-            <div class="editable-value">
-              {{ formatNumber(slotProps.row.offerPriceBdt) }}
+            <div class="row items-center justify-end no-wrap q-gutter-x-xs">
+              <q-icon
+                v-if="slotProps.row.isOfferPriceManual"
+                name="ph ph-lock-key"
+                color="amber-8"
+                size="16px"
+                class="q-mr-xs"
+              >
+                <q-tooltip>Offer price manually locked — won't auto-recalculate</q-tooltip>
+              </q-icon>
+
+              <div class="editable-value">
+                {{ formatNumber(slotProps.row.offerPriceBdt) }}
+              </div>
+
+              <q-btn
+                v-if="slotProps.row.isOfferPriceManual"
+                flat
+                round
+                dense
+                size="xs"
+                icon="ph ph-arrows-clockwise"
+                color="grey-7"
+                class="q-ml-xs"
+                @click.stop="onUnlockOfferPrice(slotProps.row)"
+              >
+                <q-tooltip>Unlock & reset to auto price</q-tooltip>
+              </q-btn>
             </div>
 
             <q-popup-edit
@@ -1168,6 +1194,7 @@ interface ProductBasedCostingItem {
   product_weight: number | null;
   package_weight: number | null;
   offer_price: number | null;
+  is_offer_price_manual?: boolean | null;
   status: string | null;
   created_at: string;
   updated_at: string;
@@ -1193,6 +1220,7 @@ interface ProductBasedCostingTableRow {
   conversionRate: number;
   profitRate: number;
   offerPriceBdt: number;
+  isOfferPriceManual: boolean;
   status: string;
   raw: ProductBasedCostingItem;
 }
@@ -1365,10 +1393,19 @@ const buildRows = (): ProductBasedCostingTableRow[] => {
       cargoRate,
       conversionRate,
       profitRate,
+      isOfferPriceManual:
+        item.is_offer_price_manual === true ||
+        (item.is_offer_price_manual == null &&
+          item.offer_price != null &&
+          normalizeOfferPriceBdt(item.offer_price) !== calculatedOfferPriceBdt),
       offerPriceBdt:
-        item.offer_price == null
-          ? calculatedOfferPriceBdt
-          : normalizeOfferPriceBdt(item.offer_price),
+        (item.is_offer_price_manual === true ||
+          (item.is_offer_price_manual == null &&
+            item.offer_price != null &&
+            normalizeOfferPriceBdt(item.offer_price) !== calculatedOfferPriceBdt)) &&
+        item.offer_price != null
+          ? normalizeOfferPriceBdt(item.offer_price)
+          : calculatedOfferPriceBdt,
       status: toText(item.status, 'pending').toLowerCase(),
       raw: { ...item },
     };
@@ -1731,7 +1768,8 @@ const emitRowChange = (
     ...row.raw,
     quantity: row.qty,
     delivered_quantity: row.deliveredQty,
-    offer_price: row.offerPriceBdt,
+    offer_price: row.isOfferPriceManual ? row.offerPriceBdt : null,
+    is_offer_price_manual: row.isOfferPriceManual,
     status: row.status,
     product_weight: row.productWeight,
     package_weight: row.packageWeight,
@@ -1752,6 +1790,7 @@ const emitProductWeightChange = (row: ProductBasedCostingTableRow) => {
     ...row.raw,
     quantity: row.qty,
     offer_price: row.offerPriceBdt,
+    is_offer_price_manual: row.isOfferPriceManual,
     status: row.status,
     product_weight: row.productWeight,
     package_weight: row.packageWeight,
@@ -1771,6 +1810,7 @@ const emitPackageWeightChange = (row: ProductBasedCostingTableRow) => {
     ...row.raw,
     quantity: row.qty,
     offer_price: row.offerPriceBdt,
+    is_offer_price_manual: row.isOfferPriceManual,
     status: row.status,
     product_weight: row.productWeight,
     package_weight: row.packageWeight,
@@ -1797,6 +1837,27 @@ const onDeliveredQtySave = (row: ProductBasedCostingTableRow) => {
 
 const onOfferPriceBdtSave = (row: ProductBasedCostingTableRow) => {
   row.offerPriceBdt = normalizeOfferPriceBdt(row.offerPriceBdt);
+  row.isOfferPriceManual = true;
+  emitRowChange(row, 'offer_price');
+};
+
+const onUnlockOfferPrice = (row: ProductBasedCostingTableRow) => {
+  row.isOfferPriceManual = false;
+  const prodWt = toNumber(row.productWeight);
+  const pkgWt = toNumber(row.packageWeight);
+  const cargoRate = toNumber(props.cargoRate);
+  const conversionRate = toNumber(props.conversionRate);
+  const profitRate = toNumber(props.profitRate);
+
+  row.offerPriceBdt = calculateOfferPriceBdt({
+    priceGbp: toNumber(row.priceGbp),
+    productWeight: prodWt,
+    packageWeight: pkgWt,
+    cargoRate,
+    conversionRate,
+    profitRate,
+  });
+
   emitRowChange(row, 'offer_price');
 };
 
