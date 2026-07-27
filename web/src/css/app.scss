@@ -198,8 +198,131 @@ body {
   color: var(--bw-theme-muted);
 }
 
+/* ── Global Quasar Component Modernization ── */
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--bw-theme-muted) 30%, transparent);
+  border-radius: 999px;
+
+  &:hover {
+    background: var(--bw-theme-muted);
+  }
+}
+
+/* 1. Cards & Surfaces */
+.q-card {
+  background: var(--bw-theme-surface, #ffffff);
+  border: 1px solid var(--bw-theme-border, #e7e1d8);
+  border-radius: 12px;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+
+  &.q-card--flat {
+    box-shadow: none;
+  }
+}
+
+/* 2. Sleek Inputs & Select Controls */
+.q-field--outlined {
+  .q-field__control {
+    border-radius: 10px !important;
+    background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, var(--bw-theme-base, #fbfaf7) 4%);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  }
+
+  .q-field__control:before {
+    border-color: var(--bw-theme-border, #e7e1d8);
+  }
+
+  &:hover .q-field__control:before {
+    border-color: color-mix(in srgb, var(--bw-theme-primary) 60%, var(--bw-theme-border) 40%);
+  }
+
+  &.q-field--focused .q-field__control {
+    box-shadow: 0 0 0 3px var(--bw-theme-primary-soft);
+  }
+}
+
+/* 3. Global Quasar Table Refresh */
+.q-table__container {
+  border: 1px solid var(--bw-theme-border);
+  border-radius: 12px;
+  background: var(--bw-theme-surface);
+}
+
+.q-table {
+  color: var(--bw-theme-ink);
+
+  thead tr {
+    height: 42px;
+    background: color-mix(in srgb, var(--bw-theme-surface) 92%, var(--bw-theme-base) 8%);
+  }
+
+  thead th {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--bw-theme-muted);
+    border-bottom: 1px solid var(--bw-theme-border);
+  }
+
+  tbody tr {
+    transition: background 0.15s ease;
+
+    &:hover {
+      background: color-mix(in srgb, var(--bw-theme-surface) 90%, var(--bw-theme-primary-soft) 10%);
+    }
+
+    td {
+      border-bottom: 1px solid var(--bw-theme-border);
+      font-size: 0.84rem;
+    }
+  }
+}
+
+/* 4. Glassmorphic Dialog Backdrops & Elevated Modals */
+.q-dialog__inner > .q-card {
+  border-radius: 16px;
+  border: 1px solid var(--bw-theme-border);
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.25);
+}
+
+.q-dialog__backdrop {
+  background: rgba(15, 23, 42, 0.4) !important;
+}
+
+/* 5. Sleek Buttons & Micro-Interactions */
 .q-btn {
   border-radius: 8px !important;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  transition: transform 0.12s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+/* 6. Chips & Badges */
+.q-chip {
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 0.78rem;
 }
 
 .q-editor {

@@ -2,6 +2,9 @@
 
 Canonical UI rules for the Quasar app. Machine-readable rules: `.cursor/rules/.ui-consistency.mdc`.
 
+> [!IMPORTANT]
+> **Component Placement Rule**: Modernization tasks MUST NOT alter or move component placements on existing pages. Keep all elements in their exact current position. Modernization is achieved purely through subtle styling refinements (borders, radii, soft shadows, micro-interactions, dark mode tokens) to deliver a sleek, React-like aesthetic without breaking existing layouts.
+
 ## Color tokens
 
 ### Brand (light `:root`)
