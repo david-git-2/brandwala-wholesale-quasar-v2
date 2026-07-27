@@ -602,7 +602,12 @@ const syncUrlQuery = () => {
 const formatMoney = (amount: unknown, symbol?: string | null) => {
   const n = Number(amount);
   if (!Number.isFinite(n)) return '—';
-  return `${symbol || '£'}${n.toFixed(2)}`;
+  const sym = symbol?.trim() || '£';
+  const formatted = n.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return `${sym} ${formatted}`;
 };
 
 const brokenImages = reactive<Record<string, boolean>>({});

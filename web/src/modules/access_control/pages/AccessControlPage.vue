@@ -217,7 +217,6 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { supabase } from 'src/boot/supabase';
 import { showSuccessNotification } from 'src/utils/appFeedback';
 import { useRouter, useRoute } from 'vue-router';
-import { storeToRefs } from 'pinia';
 
 import PageInitialLoader from 'src/components/PageInitialLoader.vue';
 import { useMembershipStore } from 'src/modules/membership/stores/membershipStore';
@@ -527,7 +526,7 @@ const hasOverridesMap = computed(() => {
 });
 
 const loadTenantMembers = async () => {
-  void tenantMembersQuery.refetch();
+  await tenantMembersQuery.refetch();
 };
 
 const onClickAddMember = (roleType: TenantMembershipRole) => {

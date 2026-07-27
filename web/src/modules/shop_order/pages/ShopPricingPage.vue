@@ -340,13 +340,16 @@
           <!-- Status -->
           <template #body-cell-is_active="props">
             <q-td :props="props" class="text-center">
-              <q-badge
-                :color="props.row.is_active ? 'positive' : 'grey-5'"
-                outline
-                class="q-px-sm q-py-xs"
+              <q-toggle
+                :model-value="Boolean(props.row.is_active)"
+                color="positive"
+                dense
+                @update:model-value="(val) => onToggleIsActive(props.row, val)"
               >
-                {{ props.row.is_active ? 'Active' : 'Inactive' }}
-              </q-badge>
+                <q-tooltip>
+                  {{ props.row.is_active ? 'Listing Active (Visible in Shop Catalog)' : 'Listing Inactive (Hidden from Shop Catalog)' }}
+                </q-tooltip>
+              </q-toggle>
             </q-td>
           </template>
 
@@ -1090,6 +1093,40 @@ const onToggleShowQuantity = (listing: ShopProductListing, showQty: boolean) => 
     is_active: listing.is_active,
   };
   saveListing(payload);
+};
+
+const onToggleIsActive = (listing: ShopProductListing, isActive: boolean) => {
+  const currencyId = listing.sell_price_currency_id || shopDefaultCurrencyId.value || 0;
+  const minPriceAmount =
+    listing.minimum_sell_price_amount !== null && listing.minimum_sell_price_amount !== undefined
+      ? Number(listing.minimum_sell_price_amount)
+      : null;
+  const minPriceCurrency =
+    minPriceAmount !== null
+      ? (listing.minimum_sell_price_currency_id || currencyId || null)
+      : null;
+
+  const payload: UpsertListingPayload = {
+    id: listing.id,
+    tenant_id: tenantId.value,
+    shop_id: shopId.value,
+    global_stock_allocation_id: listing.global_stock_allocation_id,
+    sell_price_amount: Number(listing.sell_price_amount),
+    sell_price_currency_id: currencyId,
+    minimum_sell_price_amount: minPriceAmount,
+    minimum_sell_price_currency_id: minPriceCurrency,
+    show_quantity: listing.show_quantity,
+    display_quantity_override: listing.display_quantity_override,
+    is_active: isActive,
+    is_price_locked: Boolean(listing.is_price_locked),
+    is_quantity_locked: Boolean(listing.is_quantity_locked),
+  };
+  saveListing(payload);
+  $q.notify({
+    type: isActive ? 'positive' : 'info',
+    message: isActive ? 'Listing enabled in shop catalog' : 'Listing hidden from shop catalog',
+    timeout: 1500,
+  });
 };
 
 const confirmBulkDeleteListings = () => {

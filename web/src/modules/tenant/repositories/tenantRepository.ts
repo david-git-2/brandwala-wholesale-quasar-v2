@@ -304,6 +304,7 @@ const setTenantModuleSubmodule = async (payload: TenantModuleSubmoduleSetInput) 
 const createTenantModuleWithSubmodules = async (
   tenantId: number,
   parentModuleKey: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _submoduleKeys: string[],
 ): Promise<TenantModule[]> => {
   // Submodules inherit parent access and cannot be assigned directly to tenant_modules.
