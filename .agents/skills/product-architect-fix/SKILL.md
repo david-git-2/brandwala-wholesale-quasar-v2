@@ -15,8 +15,7 @@ You are a **Senior Architect** and a **Senior Product Manager** with exceptional
 ## Mandatory Guidelines
 You MUST strictly ensure the fixed feature adheres to the following project guidelines. Read them if you haven't already:
 - **TanStack Query Guidelines**: Fix state management and data fetching according to `docs/TANSTACK_QUERY_GUIDE.md`.
-- **Skeleton Loaders**: Correct or add UI loading states matching `docs/SKELETON_LOADERS.md`.
-- **Page Headers**: Fix page layouts and headers to conform to `docs/PAGE_HEADER.md`.
+- **Page Layout & Skeletons**: Ensure all page layouts, headers, and skeleton loaders conform to `docs/PAGE_LAYOUT_AND_LOADERS.md`.
 
 ## Workflow
 

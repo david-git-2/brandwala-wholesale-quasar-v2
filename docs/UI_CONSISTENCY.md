@@ -83,7 +83,7 @@ Shadow: `--bw-theme-shadow` (scope-specific; light: soft stone tint, dark: deepe
 
 Prefer Quasar defaults. Do not build custom wrappers when `q-card` / `q-table` suffice.
 
-**Page headers (LOCKED):** [PAGE_HEADER.md](./PAGE_HEADER.md) — list golden ref `ProductBasedCostingPage.vue`; detail golden ref `ProductBasedCostingFileDetailsPage.vue`: `q-pa-md` + `q-gutter-y-md` + `text-overline text-primary` + `h1.text-h5`; list CTA `pill-btn`; detail CTA square (no `round`/`pill-btn`); list toolbar in `q-card flat bordered q-pa-sm`; **detail status = workflow button strip** (not chip menu); 1200px white page; no `AppPageHeader` drift.
+**Page headers & skeletons (LOCKED):** [PAGE_LAYOUT_AND_LOADERS.md](./PAGE_LAYOUT_AND_LOADERS.md) — list golden ref `ProductBasedCostingPage.vue`; detail golden ref `ProductBasedCostingFileDetailsPage.vue`: `q-pa-md` + `q-gutter-y-md` + `text-overline text-primary` + `h1.text-h5`; list CTA `pill-btn`; detail CTA square (no `round`/`pill-btn`); list toolbar in `q-card flat bordered q-pa-sm`; **detail status = workflow button strip** (not chip menu); 1200px white page; no `AppPageHeader` drift.
 
 ## Component inventory
 
@@ -92,7 +92,7 @@ Prefer Quasar defaults. Do not build custom wrappers when `q-card` / `q-table` s
 |-----------|------|-------------|
 | `WorkspaceShell` | `components/WorkspaceShell.vue` | App shell, theme scope, nav layout |
 | `GlobalAjaxBar` | `components/GlobalAjaxBar.vue` | Top progress bar for in-flight requests |
-| `AppPageHeader` | `components/ui/AppPageHeader.vue` | Title, subtitle, eyebrow, action slot — see [PAGE_HEADER.md](./PAGE_HEADER.md) |
+| `AppPageHeader` | `components/ui/AppPageHeader.vue` | Title, subtitle, eyebrow, action slot — see [PAGE_LAYOUT_AND_LOADERS.md](./PAGE_LAYOUT_AND_LOADERS.md) |
 | `PageInitialLoader` | `components/PageInitialLoader.vue` | Full-page / overlay spinner (`q-spinner-tail`) |
 | `PageInitialLoader` | `components/ui/PageInitialLoader.vue` | Same pattern (prefer consolidating imports) |
 | `ModuleNavBadge` | `components/ui/ModuleNavBadge.vue` | Nav badge for module state |
@@ -185,7 +185,7 @@ Use `web/src/utils/appFeedback.ts` — do not call `Notify.create` ad hoc.
 
 ## Compact operational detail pages
 
-For shipment/costing-style dense views (LOCKED with [PAGE_HEADER.md](./PAGE_HEADER.md) detail + status workflow):
+For shipment/costing-style dense views (LOCKED with [PAGE_LAYOUT_AND_LOADERS.md](./PAGE_LAYOUT_AND_LOADERS.md) detail + status workflow):
 
 - Page chrome: `q-pa-md` + `q-gutter-y-md` (not ad-hoc `q-pa-xs` / hero title cards on new work)
 - Header: overline + `h1` + optional meta; primary CTA + `more_vert` menu — no status chip in the header row

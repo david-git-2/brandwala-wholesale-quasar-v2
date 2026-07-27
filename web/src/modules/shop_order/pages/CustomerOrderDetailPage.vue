@@ -1,363 +1,67 @@
 <template>
-  <q-page class="q-pa-md customer-order-detail-page">
-    <div class="bw-page__stack" v-if="orderStore.loading">
-      <div class="column items-center justify-center q-pa-xl">
-        <q-spinner color="primary" size="40px" />
-        <div class="text-grey-6 q-mt-sm">{{ $t('shop_admin.loading_order_details') }}</div>
+  <q-page class="q-pa-md">
+    <!-- Loading Skeleton State -->
+    <CustomerOrderDetailSkeleton v-if="isLoading" />
+
+    <!-- Error State -->
+    <div class="q-gutter-y-md" v-else-if="isError">
+      <div class="column items-center justify-center q-pa-xl text-center">
+        <q-icon name="ph ph-warning-circle" size="48px" color="negative" class="q-mb-sm" />
+        <div class="text-h6 text-grey-8">{{ error?.message || 'Failed to load order details.' }}</div>
+        <q-btn flat color="primary" label="Go Back to Orders" class="q-mt-md" @click="goOrders" />
       </div>
     </div>
 
-    <div class="bw-page__stack" v-else-if="orderStore.currentOrder">
-      <!-- Header -->
-      <section class="row items-center justify-between q-col-gutter-md">
-        <div class="col">
-          <div class="row items-center q-gutter-x-sm">
-            <q-btn flat dense icon="ph ph-arrow-left" color="grey-7" @click="goOrders" />
-            <div>
-              <div class="text-overline text-primary">Customer Order</div>
-              <h1 class="text-h5 text-weight-bold q-my-none">Order #{{ order.order_no }}</h1>
-              <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">Placed on {{ formatDate(order.created_at) }} • {{ order.shop_name || 'Wholesale Shop' }}</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Status (read-only for customer; sequence depends on shop type) -->
-      <q-card flat bordered class="q-pa-sm">
-        <div class="row items-center q-gutter-xs status-workflow-row">
-          <template v-for="(st, idx) in statusSequence" :key="st">
-            <q-chip
-              dense
-              :clickable="false"
-              :color="normalizedStatus === st ? getStatusColor(st) : isPassedStatus(st) ? 'grey-5' : 'grey-3'"
-              :text-color="normalizedStatus === st ? 'white' : isPassedStatus(st) ? 'grey-9' : 'grey-7'"
-              :outline="normalizedStatus !== st"
-              class="text-caption text-weight-bold"
-            >
-              <q-icon v-if="normalizedStatus === st" name="ph ph-check-circle" size="14px" class="q-mr-xs" />
-              {{ formatStatusLabel(st) }}
-            </q-chip>
-            <q-icon v-if="idx < statusSequence.length - 1" name="ph ph-caret-right" color="grey-5" size="18px" />
-          </template>
-          <template v-if="terminalStatuses.length">
-            <q-separator vertical class="q-mx-sm" />
-            <q-chip
-              v-for="st in terminalStatuses"
-              :key="st"
-              dense
-              :clickable="false"
-              :color="normalizedStatus === st ? getStatusColor(st) : 'grey-3'"
-              :text-color="normalizedStatus === st ? 'white' : 'grey-7'"
-              :outline="normalizedStatus !== st"
-              class="text-caption text-weight-bold"
-            >
-              {{ formatStatusLabel(st) }}
-            </q-chip>
-          </template>
-        </div>
-      </q-card>
+    <!-- Loaded Content State -->
+    <div class="q-gutter-y-md" v-else-if="currentOrder">
+      <!-- Header & Status Workflow Component -->
+      <CustomerOrderHeader
+        :order="currentOrder"
+        :status-sequence="statusSequence"
+        :terminal-statuses="terminalStatuses"
+        :normalized-status="normalizedStatus"
+        @back="goOrders"
+      />
 
       <!-- Order Info Cards -->
       <div class="row q-col-gutter-lg">
         <!-- Main details & Negotiation panel (8 cols) -->
         <div class="col-xs-12 col-md-8">
-          <q-card flat bordered class="details-card">
-            <q-card-section class="q-px-lg q-py-md border-bottom row items-center justify-between">
-              <div class="text-subtitle1 text-weight-bold text-grey-9">{{ $t('shop_admin.items_in_order') }}</div>
-              <div
-                class="text-caption text-grey-6"
-                v-if="orderStore.currentOrder.is_negotiable_snapshot"
-              >
-                {{ $t('shop_admin.negotiation_round') }} {{ orderStore.currentOrder.negotiate_round }}
-              </div>
-            </q-card-section>
-
-            <q-list separator>
-              <q-item v-for="item in orderItems" :key="item.id" class="q-py-md q-px-lg">
-                <q-item-section avatar>
-                  <q-avatar size="50px" rounded class="bg-grey-2">
-                    <q-img v-if="item.image_url" :src="item.image_url" />
-                    <q-icon v-else name="ph ph-image" size="24px" color="grey-4" />
-                  </q-avatar>
-                </q-item-section>
-
-                <q-item-section>
-                  <div class="text-body1 text-weight-bold text-grey-9">{{ item.name }}</div>
-                  <div class="text-caption text-grey-6">{{ $t('shop_admin.quantity') }}: {{ item.quantity }}</div>
-                </q-item-section>
-
-                <q-item-section side class="column items-end justify-center">
-                  <!-- Pricing display -->
-                  <template v-if="orderStore.currentOrder.shop_type_snapshot === 'dropship'">
-                    <div class="column text-right q-mb-xs">
-                      <span class="text-caption text-grey-6" style="font-size: 10px;">{{ $t('shop_admin.accounting_cost') }}</span>
-                      <span class="text-body2 text-weight-medium text-grey-8">
-                        {{ currencySymbol }}{{ (item.unit_sell_price_amount ?? item.unit_list_price_amount ?? 0).toFixed(2) }} {{ $t('shop.each') }}
-                      </span>
-                      <span class="text-caption text-grey-6" style="font-size: 10px;">
-                        Total Cost: {{ currencySymbol }}{{ ((item.unit_sell_price_amount ?? item.unit_list_price_amount ?? 0) * item.quantity).toFixed(2) }}
-                      </span>
-                    </div>
-                    <div class="column text-right">
-                      <span class="text-caption text-grey-6" style="font-size: 10px;">{{ $t('shop_admin.recipient_price') }}</span>
-                      <span class="text-body2 text-weight-bold text-primary">
-                        {{ currencySymbol }}{{ (item.customer_sell_price_amount ?? 0).toFixed(2) }} {{ $t('shop.each') }}
-                      </span>
-                      <span class="text-caption text-weight-bold text-primary" style="font-size: 11px;">
-                        Total Recipient: {{ currencySymbol }}{{ ((item.customer_sell_price_amount ?? 0) * item.quantity).toFixed(2) }}
-                      </span>
-                    </div>
-                  </template>
-                  <template v-else>
-                    <div class="column text-right">
-                      <span class="text-caption text-grey-6">{{ $t('shop_admin.unit_price') }}</span>
-                      <span class="text-body2 text-weight-bold text-grey-8">
-                        {{ currencySymbol }}{{ getDisplayUnitPrice(item).toFixed(2) }}
-                      </span>
-                      <span class="text-caption text-grey-6">
-                        Total: {{ currencySymbol }}{{ (getDisplayUnitPrice(item) * item.quantity).toFixed(2) }}
-                      </span>
-                    </div>
-                  </template>
-
-                  <!-- Offer editing if in negotiation status -->
-                  <div v-if="isNegotiationOpen" class="q-mt-sm row items-center q-gutter-x-sm">
-                    <span class="text-caption text-grey-7">{{ $t('shop_admin.your_counter') }}</span>
-                    <q-input
-                      v-model.number="item.customer_offer_amount"
-                      type="number"
-                      outlined
-                      dense
-                      class="counter-input"
-                      :prefix="currencySymbol"
-                      style="width: 100px"
-                    />
-                  </div>
-                </q-item-section>
-              </q-item>
-            </q-list>
-          </q-card>
-
-          <!-- Negotiation submit banner -->
-          <q-card
-            v-if="isNegotiationOpen"
-            flat
-            bordered
-            class="negotiate-action-card q-mt-md bg-amber-1 border-amber"
-          >
-            <q-card-section class="row items-center justify-between q-col-gutter-md">
-              <div class="col">
-                <div class="text-subtitle2 text-weight-bold text-amber-9">
-                  Counter Offer Action Required
-                </div>
-                <div class="text-body2 text-amber-8">
-                  Propose counter unit prices for the items above and submit them to staff.
-                </div>
-              </div>
-              <div class="col-auto">
-                <q-btn
-                  color="amber-9"
-                  unelevated
-                  no-caps
-                  :label="$t('shop_admin.submit_counter_offer')"
-                  class="pill-btn text-weight-bold"
-                  :loading="orderStore.saving"
-                  @click="submitCounterOffer"
-                />
-              </div>
-            </q-card-section>
-          </q-card>
+          <CustomerOrderItemsList
+            :order-items="orderItems"
+            :order="currentOrder"
+            :is-negotiation-open="isNegotiationOpen"
+            :is-sending-counter="isSendingCounter"
+            :currency-symbol="currencySymbol"
+            @submit-counter-offer="submitCounterOffer"
+          />
         </div>
 
         <!-- Sidebar (4 cols) -->
         <div class="col-xs-12 col-md-4">
           <div class="column q-gutter-md">
-            <!-- Summary Info -->
-            <q-card flat bordered class="details-card">
-              <q-card-section class="q-px-lg q-py-md border-bottom">
-                <div class="text-subtitle1 text-weight-bold text-grey-9">{{ $t('shop_admin.order_summary') }}</div>
-              </q-card-section>
+            <!-- Summary Info Card -->
+            <CustomerOrderSummaryCard
+              :order="currentOrder"
+              :currency-symbol="currencySymbol"
+              :recipient-subtotal="recipientSubtotal"
+              :delivery-charge-val="deliveryChargeVal"
+              :cod-charge-val="codChargeVal"
+              :print-charge-val="printChargeVal"
+              :packing-charge-val="packingChargeVal"
+              :discount-val="discountVal"
+              :deduct-delivery-from-margin="deductDeliveryFromMargin"
+              :deduct-cod-from-margin="deductCodFromMargin"
+              :cod-fee-pct-label="codFeePctLabel"
+              :recipient-grand-total="recipientGrandTotal"
+              :middleman-total-cost="middlemanTotalCost"
+              :estimated-profit="estimatedProfit"
+              :is-before-pickup="isBeforePickup"
+              :order-total="orderTotal"
+            />
 
-              <q-card-section class="q-px-lg q-py-md q-gutter-y-sm">
-                <div class="row justify-between">
-                  <span class="text-grey-6">{{ $t('shop_admin.order_no') }}</span>
-                  <span class="text-weight-bold text-grey-8">{{
-                    orderStore.currentOrder.order_no
-                  }}</span>
-                </div>
-                <div class="row justify-between">
-                  <span class="text-grey-6">{{ $t('shop_admin.date') }}</span>
-                  <span class="text-grey-8">{{
-                    formatDate(orderStore.currentOrder.created_at)
-                  }}</span>
-                </div>
-                <div class="row justify-between">
-                  <span class="text-grey-6">{{ $t('shop_admin.shop_type_label') }}</span>
-                  <span class="text-grey-8 text-capitalize">{{
-                    orderStore.currentOrder.shop_type_snapshot
-                  }}</span>
-                </div>
-                <div class="row justify-between" v-if="orderStore.currentOrder.shop_type_snapshot === 'dropship'">
-                  <span class="text-grey-6">{{ $t('shop_admin.payment_mode') }}</span>
-                  <q-badge
-                    :color="orderStore.currentOrder.is_prepaid_snapshot ? 'positive' : 'warning'"
-                    text-color="white"
-                    class="q-py-xs q-px-sm"
-                  >
-                    {{
-                      orderStore.currentOrder.is_prepaid_snapshot
-                        ? $t('shop_admin.payment_prepaid')
-                        : $t('shop_admin.payment_cod')
-                    }}
-                  </q-badge>
-                </div>
-                <div
-                  class="row justify-between items-center q-mt-xs"
-                  v-if="
-                    orderStore.currentOrder.shop_type_snapshot === 'dropship' &&
-                    orderStore.currentOrder.tracking_url
-                  "
-                >
-                  <span class="text-grey-6">Courier Tracking</span>
-                  <q-btn
-                    flat
-                    dense
-                    no-caps
-                    size="sm"
-                    color="primary"
-                    icon="ph ph-arrow-up-right"
-                    label="Track Parcel"
-                    type="a"
-                    :href="orderStore.currentOrder.tracking_url"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  />
-                </div>
-                <div
-                  class="row justify-between"
-                  v-if="orderStore.currentOrder.shop_type_snapshot !== 'dropship'"
-                >
-                  <span class="text-grey-6">{{ $t('shop_admin.order_mode_label') }}</span>
-                  <span class="text-grey-8 text-capitalize">{{
-                    orderStore.currentOrder.order_mode_snapshot
-                  }}</span>
-                </div>
-
-                <q-separator class="q-my-sm" />
-
-                <!-- Dropship detailed receipt footer -->
-                <template v-if="orderStore.currentOrder.shop_type_snapshot === 'dropship'">
-                  <div class="row justify-between text-body2 text-grey-7">
-                    <span>{{ $t('shop.items_subtotal') }}</span>
-                    <span>{{ currencySymbol }}{{ recipientSubtotal.toFixed(2) }}</span>
-                  </div>
-                  
-                  <div class="row justify-between text-body2 text-grey-7" v-if="deliveryChargeVal > 0">
-                    <span>
-                      {{ $t('shop.delivery_charge') }}
-                      <span class="text-grey-5">({{ deductDeliveryFromMargin ? 'deducted from profit' : 'customer pays' }})</span>
-                    </span>
-                    <span>{{ currencySymbol }}{{ deliveryChargeVal.toFixed(2) }}</span>
-                  </div>
-                  
-                  <div class="row justify-between text-body2 text-grey-7" v-if="codChargeVal > 0">
-                    <span>
-                      {{ $t('shop.cod_fee', { pct: codFeePctLabel }) }}
-                      <span class="text-grey-5">({{ deductCodFromMargin ? 'deducted from profit' : 'customer pays' }})</span>
-                    </span>
-                    <span>{{ currencySymbol }}{{ codChargeVal.toFixed(2) }}</span>
-                  </div>
-                  
-                  <div class="row justify-between text-body2 text-grey-7" v-if="printChargeVal > 0">
-                    <span>
-                      {{ $t('shop.print_charge') }}
-                      <span class="text-grey-5">(deducted from profit)</span>
-                    </span>
-                    <span>{{ currencySymbol }}{{ printChargeVal.toFixed(2) }}</span>
-                  </div>
-                  
-                  <div class="row justify-between text-body2 text-grey-7" v-if="packingChargeVal > 0">
-                    <span>
-                      {{ $t('shop.packing_charge') }}
-                      <span class="text-grey-5">(deducted from profit)</span>
-                    </span>
-                    <span>{{ currencySymbol }}{{ packingChargeVal.toFixed(2) }}</span>
-                  </div>
-
-                  <div class="row justify-between text-body2 text-negative" v-if="discountVal > 0">
-                    <span>{{ $t('shop_admin.discount') }}</span>
-                    <span>-{{ currencySymbol }}{{ discountVal.toFixed(2) }}</span>
-                  </div>
-
-                  <q-separator class="q-my-sm" />
-
-                  <div class="row justify-between items-baseline q-mb-xs">
-                    <span class="text-subtitle1 text-weight-bold text-grey-9">{{ $t('shop.recipient_pay_total') }}</span>
-                    <span class="text-h6 text-weight-bold text-primary">
-                      {{ currencySymbol }}{{ recipientGrandTotal.toFixed(2) }}
-                    </span>
-                  </div>
-
-                  <div class="row justify-between text-caption text-grey-6">
-                    <span>{{ $t('shop_admin.your_cost_accounting') }}</span>
-                    <span>{{ currencySymbol }}{{ middlemanTotalCost.toFixed(2) }}</span>
-                  </div>
-
-                  <div class="row justify-between text-body2 text-weight-bold text-positive q-mt-xs">
-                    <span>{{ $t('shop_admin.your_estimated_profit') }}</span>
-                    <span>{{ currencySymbol }}{{ estimatedProfit.toFixed(2) }}</span>
-                  </div>
-
-                  <div
-                    v-if="isBeforePickup"
-                    class="q-mt-sm q-pa-sm bg-blue-1 text-primary text-caption rounded-borders row items-start"
-                    style="border: 1px solid rgba(25, 118, 210, 0.2);"
-                  >
-                    <q-icon name="ph ph-info" size="16px" class="q-mr-xs q-mt-xs" />
-                    <div>
-                      Accurate delivery and COD charges will be updated when the order reaches the <strong>Ready for Pickup</strong> stage.
-                    </div>
-                  </div>
-                </template>
-                <template v-else>
-                  <div class="row justify-between items-baseline">
-                    <span class="text-subtitle1 text-weight-bold text-grey-9">{{ $t('shop_admin.total_amount_label') }}</span>
-                    <span class="text-h6 text-weight-bold text-primary">
-                      {{ currencySymbol }}{{ orderTotal.toFixed(2) }}
-                    </span>
-                  </div>
-                </template>
-              </q-card-section>
-            </q-card>
-
-            <!-- Shipping Info -->
-            <q-card flat bordered class="details-card">
-              <q-card-section class="q-px-lg q-py-md border-bottom">
-                <div class="text-subtitle1 text-weight-bold text-grey-9">{{ $t('shop_admin.shipping_details') }}</div>
-              </q-card-section>
-
-              <q-card-section class="q-px-lg q-py-md text-body2 text-grey-8">
-                <div class="text-weight-bold text-grey-9">
-                  {{ orderStore.currentOrder.recipient_name }}
-                </div>
-                <div class="q-mt-xs">{{ orderStore.currentOrder.recipient_phone }}</div>
-                <div
-                  class="q-mt-sm text-grey-6 bg-grey-1 q-pa-sm rounded-borders"
-                  style="white-space: pre-wrap"
-                >
-                  {{ orderStore.currentOrder.shipping_address }}
-                </div>
-                
-                <div
-                  v-if="orderStore.currentOrder.delivery_instructions"
-                  class="q-mt-sm q-pa-sm bg-blue-50 text-blue-9 text-caption rounded-borders"
-                  style="border: 1px solid #90caf9;"
-                >
-                  <div class="text-weight-bold">{{ $t('shop_admin.delivery_instructions_notes') }}</div>
-                  <div style="white-space: pre-wrap">{{ orderStore.currentOrder.delivery_instructions }}</div>
-                </div>
-              </q-card-section>
-            </q-card>
+            <!-- Shipping Info Card -->
+            <CustomerOrderShippingCard :order="currentOrder" />
           </div>
         </div>
       </div>
@@ -366,24 +70,54 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useShopOrderStore } from '../stores/shopOrderStore';
 import { useThriftCurrenciesQuery } from 'src/modules/thrift/currency/composables/useThriftCurrenciesQuery';
+import { useShopOrderDetailQuery, useSendCustomerCounterMutation } from '../composables/useShopOrderDetailQuery';
 import { supabase } from 'src/boot/supabase';
-import { date } from 'quasar';
+import type { ShopOrderItem } from '../types';
+
+import CustomerOrderDetailSkeleton from '../components/CustomerOrderDetailSkeleton.vue';
+import CustomerOrderHeader from '../components/CustomerOrderHeader.vue';
+import CustomerOrderItemsList from '../components/CustomerOrderItemsList.vue';
+import CustomerOrderSummaryCard from '../components/CustomerOrderSummaryCard.vue';
+import CustomerOrderShippingCard from '../components/CustomerOrderShippingCard.vue';
 
 const route = useRoute();
 const router = useRouter();
-const orderStore = useShopOrderStore();
 
+const orderId = computed(() => Number(route.params.id || 0));
+
+const { data: orderDetailsData, isLoading, isError, error } = useShopOrderDetailQuery(orderId);
+const { mutate: sendCustomerCounter, isPending: isSendingCounter } = useSendCustomerCounterMutation();
 const { data: currenciesData } = useThriftCurrenciesQuery();
-const currencies = computed(() => currenciesData.value ?? []);
 
-const orderItems = ref<any[]>([]);
+const currencies = computed(() => currenciesData.value ?? []);
+const currentOrder = computed(() => orderDetailsData.value?.order || null);
+
+const orderItems = ref<ShopOrderItem[]>([]);
 const shopSellCurrencyId = ref<number | null>(null);
 
-const orderId = computed(() => Number(route.params.id));
+watch(
+  () => orderDetailsData.value,
+  async (newData) => {
+    if (newData) {
+      orderItems.value = JSON.parse(JSON.stringify(newData.items || []));
+      const shopId = newData.order?.shop_id;
+      if (shopId) {
+        const { data: shopData } = await supabase
+          .from('shops')
+          .select('sell_currency_id')
+          .eq('id', shopId)
+          .single();
+        if (shopData?.sell_currency_id) {
+          shopSellCurrencyId.value = shopData.sell_currency_id;
+        }
+      }
+    }
+  },
+  { immediate: true },
+);
 
 const currencySymbol = computed(() => {
   if (shopSellCurrencyId.value) {
@@ -402,29 +136,9 @@ const currencySymbol = computed(() => {
   return '৳';
 });
 
-onMounted(async () => {
-  if (orderId.value) {
-    const res = await orderStore.fetchOrderDetails(orderId.value);
-    if (res.success && res.data) {
-      orderItems.value = JSON.parse(JSON.stringify(res.data.items));
-      const shopId = res.data.order?.shop_id;
-      if (shopId) {
-        const { data: shopData } = await supabase
-          .from('shops')
-          .select('sell_currency_id')
-          .eq('id', shopId)
-          .single();
-        if (shopData?.sell_currency_id) {
-          shopSellCurrencyId.value = shopData.sell_currency_id;
-        }
-      }
-    }
-  }
-});
-
 const isNegotiationOpen = computed(() => {
-  const o = orderStore.currentOrder;
-  return o && o.is_negotiable_snapshot && (o.status === 'negotiating' || o.status === 'priced');
+  const o = currentOrder.value;
+  return !!(o && o.is_negotiable_snapshot && (o.status === 'negotiating' || o.status === 'priced'));
 });
 
 const getDisplayUnitPrice = (item: any) => {
@@ -454,15 +168,13 @@ const accountingSubtotal = computed(() => {
   }, 0);
 });
 
-const codChargeVal = computed(() => Number(orderStore.currentOrder?.cod_charge_amount || 0));
-const deliveryChargeVal = computed(() => Number(orderStore.currentOrder?.delivery_charge_amount || 0));
-const printChargeVal = computed(() => Number(orderStore.currentOrder?.print_charge_amount || 0));
-const packingChargeVal = computed(() => Number(orderStore.currentOrder?.packing_charge_amount || 0));
-const discountVal = computed(() => Number(orderStore.currentOrder?.discount_amount || 0));
-const deductCodFromMargin = computed(() => !!orderStore.currentOrder?.deduct_cod_from_margin);
-const deductDeliveryFromMargin = computed(() => !!orderStore.currentOrder?.deduct_delivery_from_margin);
-const deductPrintFromMargin = computed(() => !!orderStore.currentOrder?.deduct_print_from_margin);
-const deductPackingFromMargin = computed(() => !!orderStore.currentOrder?.deduct_packing_from_margin);
+const codChargeVal = computed(() => Number(currentOrder.value?.cod_charge_amount || 0));
+const deliveryChargeVal = computed(() => Number(currentOrder.value?.delivery_charge_amount || 0));
+const printChargeVal = computed(() => Number(currentOrder.value?.print_charge_amount || 0));
+const packingChargeVal = computed(() => Number(currentOrder.value?.packing_charge_amount || 0));
+const discountVal = computed(() => Number(currentOrder.value?.discount_amount || 0));
+const deductCodFromMargin = computed(() => !!currentOrder.value?.deduct_cod_from_margin);
+const deductDeliveryFromMargin = computed(() => !!currentOrder.value?.deduct_delivery_from_margin);
 
 const recipientGrandTotal = computed(() => {
   return recipientSubtotal.value
@@ -489,33 +201,29 @@ const codFeePctLabel = computed(() => {
   return Number(((codChargeVal.value / sub) * 100).toFixed(1));
 });
 
-const submitCounterOffer = async () => {
+const submitCounterOffer = () => {
+  if (!orderId.value) return;
   const payload = orderItems.value.map((item) => ({
     id: item.id,
     customer_offer_amount: Number(item.customer_offer_amount || 0),
-    customer_offer_currency_id:
+    customer_offer_currency_id: Number(
       item.customer_offer_currency_id ||
       item.unit_sell_price_currency_id ||
-      item.unit_list_price_currency_id,
+      item.unit_list_price_currency_id ||
+      0
+    ),
   }));
 
-  const res = await orderStore.sendCustomerCounter(orderId.value, payload);
-  if (res.success) {
-    const detailsRes = await orderStore.fetchOrderDetails(orderId.value);
-    if (detailsRes.success && detailsRes.data) {
-      orderItems.value = JSON.parse(JSON.stringify(detailsRes.data.items));
-    }
-  }
+  sendCustomerCounter({ orderId: orderId.value, items: payload });
 };
 
-const order = computed(() => orderStore.currentOrder || ({} as any));
+const order = computed(() => currentOrder.value || ({} as any));
 
 /** Map legacy/alias statuses onto the display sequence. */
 const normalizedStatus = computed(() => {
   const status = String(order.value.status || '');
   if (status === 'pending') return 'submitted';
   if (status === 'approved') return 'confirmed';
-  // Customer-facing happy path ends at delivered; remittance is internal.
   if (status === 'payment_received') return 'delivered';
   return status;
 });
@@ -537,7 +245,6 @@ const statusSequence = computed(() => {
     }
     return ['submitted', 'confirmed', 'placed'];
   }
-  // fixed_price (and wholesale checkout)
   return ['confirmed', 'fulfilled'];
 });
 
@@ -548,88 +255,9 @@ const terminalStatuses = computed(() => {
   return ['cancelled'];
 });
 
-const isPassedStatus = (st: string) => {
-  const currentIndex = statusSequence.value.indexOf(normalizedStatus.value);
-  const targetIndex = statusSequence.value.indexOf(st);
-  if (currentIndex === -1 || targetIndex === -1) return false;
-  return targetIndex < currentIndex;
-};
-
-const formatStatusLabel = (st: string) => {
-  switch (st) {
-    case 'submitted':
-      return 'Submitted';
-    case 'negotiating':
-      return 'Negotiating';
-    case 'priced':
-      return 'Priced';
-    case 'confirmed':
-      return 'Confirmed';
-    case 'placed':
-      return 'Placed';
-    case 'fulfilled':
-      return 'Fulfilled';
-    case 'processing':
-      return 'Processing';
-    case 'ready_for_pickup':
-      return 'Ready for Pickup';
-    case 'shipped':
-      return 'Shipped';
-    case 'delivered':
-      return 'Delivered';
-    case 'returned':
-      return 'Returned';
-    case 'cancelled':
-      return 'Cancelled';
-    case 'payment_received':
-      return 'Payment Received';
-    default:
-      return st.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-  }
-};
-
 const goOrders = () => {
   const tenantSlug = route.params.tenantSlug ? `/${String(route.params.tenantSlug)}` : '';
   void router.push(`${tenantSlug}/shop/orders`);
-};
-
-const formatDate = (dateStr: string) => {
-  return date.formatDate(dateStr, 'D MMM YYYY, HH:mm');
-};
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'draft':
-      return 'grey-7';
-    case 'submitted':
-      return 'blue-7';
-    case 'negotiating':
-      return 'amber-9';
-    case 'priced':
-      return 'cyan-8';
-    case 'confirmed':
-      return 'green-7';
-    case 'placed':
-      return 'indigo-7';
-    case 'fulfilled':
-      return 'teal-7';
-    case 'processing':
-      return 'purple-7';
-    case 'ready_for_pickup':
-      return 'indigo-7';
-    case 'shipped':
-      return 'light-blue-7';
-    case 'delivered':
-      return 'green-8';
-    case 'returned':
-      return 'deep-orange-8';
-    case 'payment_received':
-      return 'emerald-7';
-    case 'cancelled':
-      return 'red-7';
-    default:
-      return 'grey-7';
-  }
 };
 </script>
 
@@ -638,40 +266,3 @@ export default {
   name: 'CustomerOrderDetailPage',
 };
 </script>
-
-<style scoped>
-.customer-order-detail-page {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.details-card {
-  border-radius: 14px;
-  background: #ffffff;
-  box-shadow: 0 4px 12px rgba(34, 56, 101, 0.02);
-}
-
-.border-bottom {
-  border-bottom: 1px solid rgba(34, 56, 101, 0.08);
-}
-
-.pill-btn {
-  border-radius: 30px;
-}
-
-.status-badge {
-  border-radius: 8px;
-}
-
-.negotiate-action-card {
-  border-radius: 12px;
-}
-
-.border-amber {
-  border-color: #ffb300 !important;
-}
-
-.counter-input :deep(.q-field__control) {
-  border-radius: 8px;
-}
-</style>

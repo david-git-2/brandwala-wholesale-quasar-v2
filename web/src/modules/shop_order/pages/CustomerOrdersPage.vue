@@ -1,21 +1,17 @@
 <template>
-  <q-page class="q-pa-md customer-orders-page">
+  <q-page class="q-pa-md">
     <div class="q-gutter-y-md">
       <!-- Header -->
       <section class="row items-center justify-between q-col-gutter-md">
         <div class="col">
           <div class="text-overline text-primary">{{ $t('shop_admin.customer_portal') }}</div>
           <h1 class="text-h5 text-weight-bold q-my-none">My Orders</h1>
-          <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-            {{ $t('shop_admin.my_orders_subtitle') }}
-          </p>
         </div>
         <div class="col-auto">
           <q-btn
             color="primary"
             unelevated
             no-caps
-            class="pill-btn"
             label="Browse Wholesale Shops"
             @click="goBrowse"
           />
@@ -52,10 +48,47 @@
         </div>
       </q-card>
 
-      <!-- Content -->
-      <div v-if="orderStore.loading" class="column items-center justify-center q-pa-xl">
-        <q-spinner color="primary" size="40px" />
-        <div class="text-grey-6 q-mt-sm">{{ $t('shop_admin.loading_orders') }}</div>
+      <!-- Skeleton Loading State -->
+      <div v-if="isLoading">
+        <q-card flat bordered class="order-table-card">
+          <q-list separator class="rounded-borders">
+            <q-item v-for="n in 5" :key="n" class="q-py-md q-px-md">
+              <q-item-section>
+                <div class="row items-center justify-between q-col-gutter-y-sm q-col-gutter-md-none">
+                  <div class="col-xs-12 col-sm-5 col-md-4 column justify-center">
+                    <q-skeleton type="text" width="140px" height="20px" class="q-mb-xs" />
+                    <q-skeleton type="text" width="110px" height="14px" />
+                  </div>
+                  <div class="col-xs-12 col-sm-7 col-md-5 row items-center justify-between justify-sm-start q-gutter-x-lg-xl">
+                    <div class="column">
+                      <q-skeleton type="text" width="50px" height="14px" class="q-mb-xs" />
+                      <q-skeleton type="text" width="65px" height="18px" />
+                    </div>
+                    <div class="column">
+                      <q-skeleton type="text" width="60px" height="14px" class="q-mb-xs" />
+                      <q-skeleton type="text" width="75px" height="18px" />
+                    </div>
+                  </div>
+                  <div class="col-xs-12 col-md-3 row items-center justify-between justify-md-end q-gutter-x-md q-mt-xs q-mt-md-none">
+                    <q-skeleton type="QBadge" width="80px" height="22px" />
+                    <q-skeleton type="rect" width="50px" height="18px" class="gt-xs rounded-borders" />
+                  </div>
+                </div>
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </q-card>
+      </div>
+
+      <div
+        v-else-if="isError"
+        class="column items-center justify-center empty-state q-pa-xl text-center"
+      >
+        <q-icon name="ph ph-warning-circle" size="60px" color="negative" class="q-mb-md" />
+        <div class="text-h6 text-negative">Failed to load orders</div>
+        <p class="text-body2 text-grey-6 q-mt-sm q-mb-md">
+          {{ error?.message || 'An error occurred while fetching your orders.' }}
+        </p>
       </div>
 
       <div
@@ -72,29 +105,35 @@
           unelevated
           no-caps
           label="Browse Wholesale Shops"
-          class="pill-btn"
           @click="goBrowse"
         />
       </div>
 
       <div v-else class="column q-gutter-md">
         <q-card flat bordered class="order-table-card">
-          <q-list separator>
-            <q-item v-for="order in filteredOrders" :key="order.id" class="q-py-md">
+          <q-list separator class="rounded-borders">
+            <q-item
+              v-for="order in filteredOrders"
+              :key="order.id"
+              clickable
+              v-ripple
+              class="q-py-md q-px-md order-item"
+              @click="goToOrderDetails(order.id)"
+            >
               <q-item-section>
-                <div class="row items-center justify-between q-col-gutter-sm">
-                  <!-- Order Identifier -->
-                  <div class="col-xs-12 col-sm-4 column">
-                    <span class="text-subtitle1 text-weight-bold text-grey-9">{{
-                      order.order_no
-                    }}</span>
+                <div class="row items-center justify-between q-col-gutter-y-sm q-col-gutter-md-none">
+                  <!-- Order Identifier & Date -->
+                  <div class="col-xs-12 col-sm-5 col-md-4 column justify-center">
+                    <span class="text-subtitle1 text-weight-bold text-grey-9">
+                      {{ order.order_no }}
+                    </span>
                     <span class="text-caption text-grey-6">
                       {{ $t('shop_admin.placed_on') }} {{ formatDate(order.created_at) }}
                     </span>
                   </div>
 
-                  <!-- Details (Qty & Total) -->
-                  <div class="col-xs-12 col-sm-4 row items-center q-gutter-x-lg">
+                  <!-- Details (Items & Total) -->
+                  <div class="col-xs-12 col-sm-7 col-md-5 row items-center justify-between justify-sm-start q-gutter-x-lg-xl">
                     <div class="column">
                       <span class="text-caption text-grey-6">{{ $t('shop_admin.items_count') }}</span>
                       <span class="text-body2 text-weight-bold text-grey-8">{{
@@ -109,8 +148,8 @@
                     </div>
                   </div>
 
-                  <!-- Status & Action -->
-                  <div class="col-xs-12 col-sm-4 row items-center justify-end q-gutter-x-md">
+                  <!-- Status Badge & Chevron Action -->
+                  <div class="col-xs-12 col-md-3 row items-center justify-between justify-md-end q-gutter-x-md q-mt-xs q-mt-md-none">
                     <q-badge
                       :color="getStatusColor(order.status)"
                       text-color="white"
@@ -118,15 +157,12 @@
                     >
                       {{ order.status.toUpperCase() }}
                     </q-badge>
-                    <q-btn
-                      outline
-                      color="primary"
-                      no-caps
-                      dense
-                      :label="$t('shop_admin.view_details')"
-                      class="q-px-md pill-btn"
-                      @click="goToOrderDetails(order.id)"
-                    />
+                    <div class="row items-center text-grey-6 action-arrow">
+                      <span class="text-caption text-weight-medium gt-xs q-mr-xs text-primary label-view">
+                        View
+                      </span>
+                      <q-icon name="ph ph-caret-right" size="18px" />
+                    </div>
                   </div>
                 </div>
               </q-item-section>
@@ -139,24 +175,39 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useShopOrderStore } from '../stores/shopOrderStore';
 import { useShopStorefrontStore } from '../stores/shopStorefrontStore';
 import { useThriftCurrenciesQuery } from 'src/modules/thrift/currency/composables/useThriftCurrenciesQuery';
-import { supabase } from 'src/boot/supabase';
+import {
+  useCustomerOrdersQuery,
+  useShopCurrenciesMapQuery,
+} from '../composables/useCustomerOrdersQuery';
 import { date } from 'quasar';
 
 const route = useRoute();
 const router = useRouter();
-const orderStore = useShopOrderStore();
 const storefrontStore = useShopStorefrontStore();
+
+const currentShopId = computed<number>(
+  () => storefrontStore.shopDetails?.id ?? Number(localStorage.getItem('last_visited_shop_id') || 0),
+);
+
+const { data: rawOrders, isLoading, isError, error } = useCustomerOrdersQuery(currentShopId);
+const orders = computed(() => rawOrders.value ?? []);
+
+const uniqueShopIds = computed<number[]>(() => {
+  const ids = orders.value.map((o: { shop_id?: number }) => o.shop_id).filter(Boolean) as number[];
+  return [...new Set(ids)];
+});
+
+const { data: shopCurrenciesData } = useShopCurrenciesMapQuery(uniqueShopIds);
+const shopCurrenciesMap = computed(() => shopCurrenciesData.value ?? {});
 
 const { data: currenciesData } = useThriftCurrenciesQuery();
 const currencies = computed(() => currenciesData.value ?? []);
-const shopCurrenciesMap = ref<Record<number, number>>({});
 
-const getCurrencySymbol = (order: any) => {
+const getCurrencySymbol = (order: { shop_id?: number }) => {
   const shopId = order.shop_id;
   if (shopId && shopCurrenciesMap.value[shopId]) {
     const currId = shopCurrenciesMap.value[shopId];
@@ -181,49 +232,27 @@ const statusOptions = [
 ];
 
 const filteredOrders = computed(() => {
-  let list = orderStore.orders || [];
+  let list = orders.value;
 
   if (searchQuery.value.trim()) {
     const q = searchQuery.value.toLowerCase().trim();
-    list = list.filter((o: any) => o.order_no?.toLowerCase().includes(q));
+    list = list.filter((o: { order_no?: string }) => o.order_no?.toLowerCase().includes(q));
   }
 
   if (statusFilter.value !== 'all') {
     if (statusFilter.value === 'pending') {
-      list = list.filter((o: any) => o.status === 'pending' || o.status === 'draft');
+      list = list.filter((o: { status: string }) => o.status === 'pending' || o.status === 'draft');
     } else if (statusFilter.value === 'approved') {
-      list = list.filter((o: any) => o.status === 'approved' || o.status === 'confirmed' || o.status === 'priced');
+      list = list.filter(
+        (o: { status: string }) =>
+          o.status === 'approved' || o.status === 'confirmed' || o.status === 'priced',
+      );
     } else {
-      list = list.filter((o: any) => o.status === statusFilter.value);
+      list = list.filter((o: { status: string }) => o.status === statusFilter.value);
     }
   }
 
   return list;
-});
-
-const getShopId = (): number => {
-  return storefrontStore.shopDetails?.id ?? Number(localStorage.getItem('last_visited_shop_id'));
-};
-
-onMounted(async () => {
-  const shopId = getShopId();
-  if (shopId) {
-    await orderStore.fetchCustomerOrders(shopId);
-    const shopIds = [...new Set((orderStore.orders || []).map((o: any) => o.shop_id).filter(Boolean))];
-    if (shopIds.length > 0) {
-      const { data: shopsData } = await supabase
-        .from('shops')
-        .select('id, sell_currency_id')
-        .in('id', shopIds);
-      if (shopsData) {
-        const map: Record<number, number> = {};
-        shopsData.forEach((s: any) => {
-          if (s.sell_currency_id) map[s.id] = s.sell_currency_id;
-        });
-        shopCurrenciesMap.value = map;
-      }
-    }
-  }
 });
 
 const goBrowse = () => {
@@ -290,23 +319,33 @@ export default {
 </script>
 
 <style scoped>
-.customer-orders-page {
-  max-width: 1000px;
-  margin: 0 auto;
-}
-
 .order-table-card {
-  border-radius: 14px;
+  border-radius: 12px;
   background: #ffffff;
-  box-shadow: 0 4px 12px rgba(34, 56, 101, 0.02);
+  box-shadow: var(--bw-theme-shadow, 0 2px 8px rgba(0, 0, 0, 0.04));
 }
 
-.pill-btn {
-  border-radius: 30px;
+.order-item {
+  transition: background-color 0.15s ease;
+}
+
+.order-item:hover {
+  background-color: rgba(0, 0, 0, 0.015);
+}
+
+.order-item:hover .action-arrow {
+  color: var(--q-primary) !important;
+  transform: translateX(2px);
+}
+
+.action-arrow {
+  transition: transform 0.15s ease, color 0.15s ease;
 }
 
 .status-badge {
-  border-radius: 8px;
+  border-radius: 6px;
+  letter-spacing: 0.3px;
+  font-size: 11px;
 }
 
 .empty-state {

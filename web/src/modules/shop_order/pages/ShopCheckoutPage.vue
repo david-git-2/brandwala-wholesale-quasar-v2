@@ -435,7 +435,6 @@ const {
   cartTotal,
   buyerCartTotal,
   recipientGrandTotal,
-  estimatedProfit,
 } = useShopCartQuery(shopId);
 
 const orderStore = useShopOrderStore();
@@ -588,9 +587,6 @@ const deliveryCharge = computed(() => 0);
 const printCharge = computed(() => (shopType.value === 'dropship' ? defaultPrintCharge.value : 0));
 const packingCharge = computed(() => (shopType.value === 'dropship' ? defaultPackingCharge.value * itemCount.value : 0));
 const codCharge = computed(() => 0);
-
-const deductPrintFromMargin = computed(() => !!cart.value?.deduct_print_from_margin);
-const deductPackingFromMargin = computed(() => !!cart.value?.deduct_packing_from_margin);
 
 const calculatedRecipientGrandTotal = computed(() => {
   const subtotal = cartTotal.value;

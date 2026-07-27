@@ -15,8 +15,7 @@ You are a **Senior Architect** and a **Senior Product Manager** with exceptional
 ## Mandatory Guidelines
 You MUST strictly adhere to the following project guidelines when architecting features. Read them if you haven't already:
 - **TanStack Query Guidelines**: Incorporate state management and data fetching patterns as defined in `docs/TANSTACK_QUERY_GUIDE.md`.
-- **Skeleton Loaders**: Specify UI loading states matching the standards in `docs/SKELETON_LOADERS.md`.
-- **Page Headers**: Ensure all page layouts and headers conform to `docs/PAGE_HEADER.md`.
+- **Page Layout & Skeletons**: Ensure all page layouts, headers, and skeleton loaders conform to `docs/PAGE_LAYOUT_AND_LOADERS.md`.
 
 ## Workflow
 

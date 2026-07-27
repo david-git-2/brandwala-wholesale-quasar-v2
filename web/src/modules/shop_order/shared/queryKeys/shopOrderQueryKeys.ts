@@ -16,6 +16,12 @@ export const shopOrderQueryKeys = {
   pricingCandidates: (tenantId: number, shopId: number) => ['shopOrder', 'pricingCandidates', { tenantId, shopId }] as const,
   currencies: () => ['shopOrder', 'currencies'] as const,
   pricingRule: (shopId: number) => ['shopOrder', 'pricingRule', { shopId }] as const,
+  customerOrders: (shopId: number) => ['shopOrder', 'customerOrders', { shopId }] as const,
+  customerDashboardOrders: (shopIds: number[]) =>
+    ['shopOrder', 'customerDashboardOrders', { shopIds: [...shopIds].sort((a, b) => a - b) }] as const,
+  orderDetail: (orderId: number) => ['shopOrder', 'orderDetail', { orderId }] as const,
+  shopCurrenciesMap: (shopIds: number[]) =>
+    ['shopOrder', 'shopCurrenciesMap', { shopIds: [...shopIds].sort((a, b) => a - b) }] as const,
 };
 
 

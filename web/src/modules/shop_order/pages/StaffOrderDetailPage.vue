@@ -1061,8 +1061,6 @@ const packingChargeVal = computed(() => Number(orderStore.currentOrder?.packing_
 const discountVal = computed(() => Number(orderStore.currentOrder?.discount_amount || 0));
 const deductCodFromMargin = computed(() => !!orderStore.currentOrder?.deduct_cod_from_margin);
 const deductDeliveryFromMargin = computed(() => !!orderStore.currentOrder?.deduct_delivery_from_margin);
-const deductPrintFromMargin = computed(() => !!orderStore.currentOrder?.deduct_print_from_margin);
-const deductPackingFromMargin = computed(() => !!orderStore.currentOrder?.deduct_packing_from_margin);
 
 const recipientGrandTotal = computed(() => {
   return recipientSubtotal.value
