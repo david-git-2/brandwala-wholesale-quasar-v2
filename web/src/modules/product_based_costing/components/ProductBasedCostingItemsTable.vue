@@ -2033,7 +2033,7 @@ const totals = computed(() => {
 .product-based-costing-table :deep(.costing-q-table .q-table__middle) {
   height: 100%;
   max-height: 100% !important;
-  overflow: auto;
+  overflow: scroll !important;
 }
 
 :deep(.q-table) {

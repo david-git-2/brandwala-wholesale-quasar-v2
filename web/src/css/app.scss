@@ -789,6 +789,46 @@ body.body--compact {
   }
 }
 
+/* ── Global Table Custom Scrollbar Standard ── */
+/*
+  Do NOT set scrollbar-width / scrollbar-color here.
+  On macOS Chrome those standard properties keep overlay scrollbars
+  (thumb only while scrolling) and defeat ::-webkit-scrollbar classic bars.
+*/
+.q-table__middle {
+  overflow-x: scroll !important;
+  overflow-y: auto !important;
+
+  &::-webkit-scrollbar {
+    -webkit-appearance: none;
+    width: 10px;
+    height: 10px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #94a3b8;
+    border-radius: 4px;
+    border: 2px solid #f1f5f9;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+  }
+}
+
+/* Firefox (no ::-webkit-scrollbar) */
+@supports not (selector(::-webkit-scrollbar)) {
+  .q-table__middle {
+    scrollbar-width: thin;
+    scrollbar-color: #94a3b8 #f1f5f9;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

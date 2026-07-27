@@ -113,6 +113,44 @@ Replace solid/harsh status blocks with lightweight soft-tinted tags without shif
 
 ---
 
+### 6. Table Scrollbar Visibility & Styling
+
+All Quasar table scroll containers (`.q-table__middle`) automatically inherit sleek, high-visibility custom scrollbars globally defined in `app.scss`:
+
+```scss
+/* Global Table Custom Scrollbar Standard in app.scss */
+.q-table__middle {
+  /* Firefox */
+  scrollbar-width: auto;
+  scrollbar-color: #94a3b8 #f1f5f9;
+
+  /* WebKit (Chrome / Edge / Safari) */
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #94a3b8;
+    border-radius: 4px;
+
+    &:hover {
+      background: #64748b;
+    }
+  }
+}
+```
+
+> [!TIP]
+> This rule automatically formats all tables across the application (`.q-table`), giving them a clear `#f1f5f9` track background and `#94a3b8` thumb that stays visible on macOS, Windows, and Linux without hiding behind auto-overlay.
+
+---
+
 ## ⚡ Verification Checklist
 
 Before completing any UI refinement task:
