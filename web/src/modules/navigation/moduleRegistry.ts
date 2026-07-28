@@ -54,7 +54,8 @@ export type ModuleKey =
   | 'sales_invoice'
   | 'billing_profile'
   | 'billing_profile_wallet'
-  | 'recipient_profile';
+  | 'recipient_profile'
+  | 'universal_wallet';
 
 export type ModuleAction = 'view';
 export type InteractiveScope = Extract<AuthScope, 'app' | 'shop'>;
@@ -587,13 +588,20 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     name: 'Billing Wallets',
     description: 'Unified wallet balances, debits, credits, and bulk payouts for billing profiles.',
     parentModuleKey: 'sales_invoice',
+    routes: [],
+  },
+  {
+    key: 'universal_wallet',
+    name: 'Universal Wallet Ledger',
+    description: 'Unified multi-currency single/double-entry financial ledger across entities.',
+    navIcon: 'ph ph-wallet',
     routes: [
       {
         scope: 'app',
-        title: 'Wallets',
-        caption: 'Manage billing profile wallets and settlements',
+        title: 'Wallet Ledger',
+        caption: 'View entity ledger transactions and balances',
         icon: 'ph ph-wallet',
-        routeSegment: 'sales/invoices/wallets',
+        routeSegment: 'wallet',
         requiredAction: 'view',
       },
     ],
@@ -968,6 +976,14 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         caption: 'Courier catalog & return policies',
         icon: 'ph ph-truck',
         routeSegment: 'shop/dropship/couriers',
+        requiredAction: 'view',
+      },
+      {
+        scope: 'app',
+        title: 'Courier Holdings',
+        caption: 'Unremitted courier escrow & statement reconciliation',
+        icon: 'ph ph-vault',
+        routeSegment: 'shop/dropship/courier-holdings',
         requiredAction: 'view',
       },
       {

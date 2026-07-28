@@ -316,7 +316,7 @@
         <q-icon name="ph ph-file-text" size="64px" class="q-mb-sm text-grey-4" />
         <div class="text-subtitle1 text-weight-medium">No Sales Invoices Found</div>
         <div class="text-caption text-grey-5">
-          Invoices will appear here once created for this parent company.
+          Invoices will appear here once created for this tenant.
         </div>
       </div>
 
@@ -567,17 +567,17 @@
     <!-- Dialogs -->
     <CreateGlobalInvoiceDialog
       v-model="createWholesaleDialog"
-      :parent-tenant-id="effectiveParentTenantId"
+      :parent-tenant-id="effectiveTenantId"
       @created="onInvoiceCreated"
     />
     <CreateRetailInvoiceDialog
       v-model="createRetailDialog"
-      :parent-tenant-id="effectiveParentTenantId"
+      :parent-tenant-id="effectiveTenantId"
       @created="onInvoiceCreated"
     />
     <CreateDropshipInvoiceDialog
       v-model="createDropshipDialog"
-      :parent-tenant-id="effectiveParentTenantId"
+      :parent-tenant-id="effectiveTenantId"
       @created="onInvoiceCreated"
     />
   </q-page>
@@ -607,13 +607,13 @@ const router = useRouter();
 const queryClient = useQueryClient();
 const customerGroupStore = useCustomerGroupStore();
 
-const effectiveParentTenantId = computed(() => {
+const effectiveTenantId = computed(() => {
   const current =
     tenantStore.selectedTenant ??
     tenantStore.items.find((tenant) => tenant.id === authStore.tenantId) ??
     null;
   if (!current) return authStore.tenantId;
-  return current.parent_id ?? current.id;
+  return current.id;
 });
 
 const showSearchInput = ref(false);
@@ -696,7 +696,7 @@ const columns: any[] = [
 
 const invoicesQuery = useQuery({
   queryKey: computed(() =>
-    salesInvoiceQueryKeys.list(effectiveParentTenantId.value, {
+    salesInvoiceQueryKeys.list(effectiveTenantId.value, {
       page: pagination.value.page,
       pageSize: pagination.value.rowsPerPage,
       search: searchText.value,
@@ -708,12 +708,12 @@ const invoicesQuery = useQuery({
       quickFilter: quickFilter.value,
     })
   ),
-  enabled: computed(() => !!effectiveParentTenantId.value),
+  enabled: computed(() => !!effectiveTenantId.value),
   queryFn: async () => {
-    const parentId = effectiveParentTenantId.value;
-    if (!parentId) return { data: [], total: 0 };
+    const tenantId = effectiveTenantId.value;
+    if (!tenantId) return { data: [], total: 0 };
     return invoiceRepository.listGlobalInvoices({
-      parentTenantId: parentId,
+      tenantId,
       page: pagination.value.page,
       pageSize: pagination.value.rowsPerPage,
       search: searchText.value,
@@ -878,15 +878,15 @@ const getAvatarStyleAndColor = (row: any) => {
 };
 
 const loadCustomerGroups = async () => {
-  const parentId = effectiveParentTenantId.value;
-  if (parentId) {
-    await customerGroupStore.fetchCustomerGroupsByTenant(parentId);
+  const tenantId = effectiveTenantId.value;
+  if (tenantId) {
+    await customerGroupStore.fetchCustomerGroupsByTenant(tenantId);
   }
 };
 
 onMounted(loadCustomerGroups);
 
-watch(effectiveParentTenantId, (newId) => {
+watch(effectiveTenantId, (newId) => {
   if (newId) {
     void customerGroupStore.fetchCustomerGroupsByTenant(newId);
   }

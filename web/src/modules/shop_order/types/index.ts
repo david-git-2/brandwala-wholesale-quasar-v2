@@ -242,3 +242,5 @@ export interface ShopOrderItem {
 
 export * from './permissions';
 export * from './pricing';
+export * from './courierRemittance';
+

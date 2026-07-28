@@ -438,7 +438,7 @@ begin
   end if;
 
   -- Status transition rules
-  if v_current_status = 'pending' and p_target_status in ('processing', 'cancelled') then
+  if v_current_status in ('submitted', 'draft', 'placed', 'confirmed') and p_target_status in ('processing', 'cancelled') then
     v_is_valid := true;
   elsif v_current_status in ('processing', 'ready_for_pickup', 'shipped', 'delivered', 'returned', 'payment_received') then
     if p_target_status in ('processing', 'ready_for_pickup', 'shipped', 'delivered', 'returned', 'payment_received', 'cancelled') then

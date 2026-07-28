@@ -1,10 +1,8 @@
 <template>
   <q-page class="q-pa-md">
     <div class="q-gutter-y-md">
-      <!-- Loading Spinner -->
-      <div v-if="loading" class="row justify-center q-py-xl">
-        <q-spinner color="primary" size="3em" />
-      </div>
+      <!-- Loading Skeleton -->
+      <DropshipOrderDetailSkeleton v-if="loading" />
 
       <template v-else>
         <!-- Confirmed Handoff Warning Banner -->
@@ -21,924 +19,195 @@
         </q-banner>
 
         <!-- Header -->
-        <section class="row items-center justify-between q-col-gutter-md">
-          <div class="col">
-            <div class="row items-center q-gutter-x-sm">
-              <q-btn flat dense icon="ph ph-arrow-left" color="grey-7" :to="{ name: 'app-shop-dropship-orders-page' }" />
-              <div>
-                <div class="text-overline text-primary">Dropship Desk</div>
-                <h1 class="text-h5 text-weight-bold q-my-none">Process Order: {{ order?.order_no || 'ORD-DS' }}</h1>
-                <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-                  Middle Man: <strong class="text-grey-9">{{ order?.customer_group_name || order?.created_by_email || '—' }}</strong>
-                </p>
-              </div>
-            </div>
-          </div>
-          <div class="col-auto row q-gutter-sm items-center">
-            <q-btn
-              v-if="order?.status !== 'confirmed' && order?.status !== 'submitted'"
-              outline
-              color="accent"
-              icon="ph ph-receipt"
-              label="Print Recipient Invoice"
-              no-caps
-              @click="openRecipientInvoicePreview"
-            />
+        <DropshipOrderHeader
+          :order="order"
+          :primary-cta="primaryCta"
+          @open-recipient-invoice="openRecipientInvoicePreview"
+          @quick-remit="quickRemitDialogOpen = true"
+        />
 
-            <q-btn
-              v-if="order?.global_invoice_id"
-              outline
-              color="positive"
-              icon="ph ph-receipt"
-              label="View Accounting Invoice"
-              no-caps
-              :to="{ name: 'app-global-invoice-details-page', params: { id: order.global_invoice_id } }"
-            />
-
-            <q-btn
-              v-if="primaryCta"
-              color="primary"
-              unelevated
-              no-caps
-              :icon="primaryCta.icon"
-              :label="primaryCta.label"
-              :loading="primaryCta.loading"
-              @click="primaryCta.action"
-            />
-          </div>
-        </section>
-        <!-- Status Workflow Strip (LOCKED detail spec) -->
-        <q-card v-if="order?.status !== 'confirmed'" flat bordered class="q-pa-sm">
-          <div class="row items-center justify-between q-col-gutter-sm">
-            <div class="col-grow row items-center q-gutter-xs status-workflow-row">
-              <template
-                v-for="(st, idx) in ['processing', 'ready_for_pickup', 'shipped', 'delivered']"
-                :key="st"
-              >
-                <q-btn
-                  :color="order?.status === st ? getStatusColor(st) : isPassedStatus(st) ? 'grey-5' : 'grey-3'"
-                  :text-color="order?.status === st ? 'white' : isPassedStatus(st) ? 'grey-9' : 'grey-7'"
-                  :outline="order?.status !== st"
-                  :unelevated="order?.status === st"
-                  dense
-                  no-caps
-                  class="q-px-md text-caption text-weight-bold"
-                  :loading="updatingStatus && targetUpdatingStatus === st"
-                  :disable="updatingStatus && targetUpdatingStatus !== st"
-                  @click="onUpdateStatus(st)"
-                >
-                  <q-icon
-                    v-if="order?.status === st"
-                    name="ph ph-check-circle"
-                    size="14px"
-                    class="q-mr-xs"
-                  />
-                  {{ formatStatusLabel(st) }}
-                </q-btn>
-                <q-icon
-                  v-if="idx < 3"
-                  name="ph ph-caret-right"
-                  color="grey-5"
-                  size="18px"
-                  class="status-workflow-chevron"
-                />
-              </template>
-              <q-separator vertical class="q-mx-sm status-workflow-sep" />
-              <q-btn
-                :color="order?.status === 'returned' ? 'negative' : 'grey-3'"
-                :text-color="order?.status === 'returned' ? 'white' : 'grey-7'"
-                :outline="order?.status !== 'returned'"
-                :unelevated="order?.status === 'returned'"
-                dense
-                no-caps
-                class="q-px-md text-caption text-weight-bold"
-                :loading="updatingStatus && targetUpdatingStatus === 'returned'"
-                :disable="updatingStatus && targetUpdatingStatus !== 'returned'"
-                @click="onUpdateStatus('returned')"
-              >
-                <q-icon
-                  v-if="order?.status === 'returned'"
-                  name="ph ph-x-circle"
-                  size="14px"
-                  class="q-mr-xs"
-                />
-                Returned
-              </q-btn>
-            </div>
-          </div>
-        </q-card>
+        <!-- Status Workflow Strip -->
+        <DropshipOrderStatusWorkflow
+          :order="order"
+          :updating-status="updatingStatus"
+          :target-updating-status="targetUpdatingStatus"
+          @update-status="onUpdateStatus"
+        />
 
         <div class="row q-col-gutter-lg">
           <!-- Main Form Sections -->
           <div class="col-xs-12 col-md-8">
             <div class="q-gutter-y-md">
-              <!-- Block A: Courier-Ready Recipient (Editable) -->
-              <q-card flat bordered class="form-card">
-                <q-card-section class="border-bottom row items-center justify-between">
-                  <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center">
-                    <q-icon name="ph ph-user" size="18px" class="q-mr-xs text-primary" />
-                    Block A: Recipient Delivery Information
-                  </div>
-                  <div class="row items-center q-gutter-x-sm">
-                    <q-chip dense color="blue-1" text-color="primary" size="sm">Editable at Desk</q-chip>
-                  </div>
-                </q-card-section>
-                <q-card-section>
-                  <div class="row q-col-gutter-md">
-                    <div class="col-12 col-sm-6">
-                      <q-input v-model="form.recipient_name" label="Recipient Name *" outlined dense hide-bottom-space />
-                    </div>
-                    <div class="col-12 col-sm-6">
-                      <q-input
-                        v-model="form.recipient_phone"
-                        label="Recipient Phone *"
-                        outlined
-                        dense
-                        hide-bottom-space
-                        @blur="onRecipientPhoneBlur"
-                      >
-                        <template #append>
-                          <q-btn
-                            flat
-                            round
-                            dense
-                            icon="ph ph-copy"
-                            size="xs"
-                            color="grey-7"
-                            @click.stop="handleCopy(form.recipient_phone, 'Phone')"
-                          >
-                            <q-tooltip>Copy Phone</q-tooltip>
-                          </q-btn>
-                        </template>
-                      </q-input>
-                    </div>
-                    <div class="col-12 col-sm-6">
-                      <q-input v-model="form.secondary_phone" label="Secondary Phone" outlined dense hide-bottom-space />
-                    </div>
-                    <div class="col-12 col-sm-6">
-                      <q-select
-                        v-model="form.district"
-                        outlined
-                        dense
-                        use-input
-                        fill-input
-                        hide-selected
-                        input-debounce="0"
-                        label="District *"
-                        :options="districtOptions"
-                        option-label="name"
-                        option-value="name"
-                        emit-value
-                        map-options
-                        hide-bottom-space
-                        @filter="filterDistrict"
-                        @update:model-value="onDistrictChange"
-                      >
-                        <template #no-option>
-                          <q-item>
-                            <q-item-section class="text-grey">No matching district</q-item-section>
-                          </q-item>
-                        </template>
-                        <template #option="scope">
-                          <q-item v-bind="scope.itemProps">
-                            <q-item-section>
-                              <q-item-label>{{ scope.opt.name }}</q-item-label>
-                              <q-item-label v-if="scope.opt.bnName" caption>{{ scope.opt.bnName }}</q-item-label>
-                            </q-item-section>
-                          </q-item>
-                        </template>
-                      </q-select>
-                    </div>
-                    <div class="col-12 col-sm-6">
-                      <q-select
-                        v-model="form.thana"
-                        outlined
-                        dense
-                        use-input
-                        fill-input
-                        hide-selected
-                        input-debounce="0"
-                        label="Thana / Upazila *"
-                        :options="thanaOptions"
-                        option-label="name"
-                        option-value="name"
-                        emit-value
-                        map-options
-                        hide-bottom-space
-                        @filter="filterThana"
-                        @update:model-value="onThanaChange"
-                      >
-                        <template #no-option>
-                          <q-item>
-                            <q-item-section class="text-grey">No matching thana/upazila</q-item-section>
-                          </q-item>
-                        </template>
-                        <template #option="scope">
-                          <q-item v-bind="scope.itemProps">
-                            <q-item-section>
-                              <q-item-label>{{ scope.opt.name }}</q-item-label>
-                              <q-item-label v-if="scope.opt.bnName" caption>{{ scope.opt.bnName }}</q-item-label>
-                            </q-item-section>
-                          </q-item>
-                        </template>
-                      </q-select>
-                    </div>
-                    <div class="col-12 col-sm-6">
-                      <q-select
-                        v-model="form.post_code"
-                        outlined
-                        dense
-                        use-input
-                        fill-input
-                        hide-selected
-                        input-debounce="0"
-                        label="Post Code / Post Office"
-                        :options="postcodeOptions"
-                        option-label="displayLabel"
-                        option-value="postCode"
-                        emit-value
-                        map-options
-                        hide-bottom-space
-                        @filter="filterPostcode"
-                        @new-value="createPostcode"
-                      >
-                        <template #no-option>
-                          <q-item>
-                            <q-item-section class="text-grey">Type custom post code or office</q-item-section>
-                          </q-item>
-                        </template>
-                        <template #option="scope">
-                          <q-item v-bind="scope.itemProps">
-                            <q-item-section>
-                              <q-item-label>{{ scope.opt.postOffice }} - {{ scope.opt.postCode }}</q-item-label>
-                            </q-item-section>
-                          </q-item>
-                        </template>
-                      </q-select>
-                    </div>
-                    <div class="col-12">
-                      <q-input v-model="form.shipping_address" label="Shipping Address *" outlined dense hide-bottom-space type="textarea" rows="2">
-                        <template #append>
-                          <q-btn
-                            flat
-                            round
-                            dense
-                            icon="ph ph-copy"
-                            size="xs"
-                            color="grey-7"
-                            @click.stop="handleCopy(form.shipping_address, 'Address')"
-                          >
-                            <q-tooltip>Copy Address</q-tooltip>
-                          </q-btn>
-                        </template>
-                      </q-input>
-                    </div>
-                  </div>
-                </q-card-section>
-              </q-card>
+              <!-- Block A: Recipient Information -->
+              <DropshipRecipientFormCard
+                :form="form"
+                :district-options="districtOptions"
+                :thana-options="thanaOptions"
+                :postcode-options="postcodeOptions"
+                @copy="handleCopy"
+                @phone-blur="onRecipientPhoneBlur"
+                @filter-district="filterDistrict"
+                @filter-thana="filterThana"
+                @filter-postcode="filterPostcode"
+                @create-postcode="createPostcode"
+                @district-change="onDistrictChange"
+                @thana-change="onThanaChange"
+                @update:form-field="(k, v) => (form as any)[k] = v"
+              />
 
-              <!-- Ordered Items (between recipient and parcel) -->
-              <q-card flat bordered class="form-card">
-                <q-card-section class="border-bottom row items-center justify-between">
-                  <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center">
-                    <q-icon name="ph ph-shopping-bag" size="18px" class="q-mr-xs text-primary" />
-                    Ordered Items
-                  </div>
-                  <q-chip dense color="grey-2" text-color="grey-9" size="sm">
-                    {{ orderItems.length }} {{ orderItems.length === 1 ? 'item' : 'items' }}
-                  </q-chip>
-                </q-card-section>
-                <q-card-section class="q-pa-none">
-                  <div v-if="orderItems.length === 0" class="text-center text-grey-6 q-pa-md text-caption">
-                    No items in this order.
-                  </div>
-                  <q-markup-table v-else flat borderless class="soft-table text-caption">
-                    <thead>
-                      <tr>
-                        <th style="width: 48px"></th>
-                        <th class="text-left">Item Name</th>
-                        <th class="text-left">SKU</th>
-                        <th class="text-center">Qty</th>
-                        <th class="text-right">Customer Price</th>
-                        <th class="text-right">Cost</th>
-                        <th class="text-right">Subtotal</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr v-for="item in orderItems" :key="item.id" class="hover-row">
-                        <td>
-                          <q-img
-                            v-if="item.image_url"
-                            :src="item.image_url"
-                            style="width: 36px; height: 36px; border-radius: 4px"
-                            fit="cover"
-                          />
-                          <div
-                            v-else
-                            class="bg-grey-3 row flex-center rounded-borders"
-                            style="width: 36px; height: 36px"
-                          >
-                            <q-icon name="ph ph-package" size="18px" color="grey-6" />
-                          </div>
-                        </td>
-                        <td>
-                          <div class="text-weight-bold text-grey-9">{{ item.name }}</div>
-                        </td>
-                        <td>
-                          <q-chip dense outline size="xs" color="grey-7" class="q-ma-none">
-                            {{ item.sku || '—' }}
-                          </q-chip>
-                        </td>
-                        <td class="text-center text-weight-medium">
-                          {{ item.quantity }}
-                        </td>
-                        <td class="text-right text-weight-medium">
-                          {{ formatBdt(item.customer_sell_price_amount ?? item.final_price_amount ?? 0) }}
-                        </td>
-                        <td class="text-right text-grey-7">
-                          {{ formatBdt(item.unit_sell_price_amount ?? 0) }}
-                        </td>
-                        <td class="text-right text-weight-bold text-grey-9">
-                          {{ formatBdt((item.customer_sell_price_amount ?? item.final_price_amount ?? 0) * item.quantity) }}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </q-markup-table>
-                </q-card-section>
-              </q-card>
+              <!-- Ordered Items -->
+              <DropshipOrderItemsCard
+                :order-items="orderItems"
+                :format-bdt="formatBdt"
+              />
 
-              <!-- Block B: Parcel & COD Details -->
-              <q-card flat bordered class="form-card">
-                <q-card-section class="border-bottom row items-center justify-between">
-                  <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center">
-                    <q-icon name="ph ph-archive-box" size="18px" class="q-mr-xs text-primary" />
-                    Block B: Parcel Weight &amp; COD Collection
-                  </div>
-                </q-card-section>
-                <q-card-section>
-                  <div class="row q-col-gutter-md">
-                    <div class="col-12 col-sm-3">
-                      <q-input
-                        v-model.number="form.delivery_charge"
-                        type="number"
-                        label="Delivery Charge (BDT)"
-                        outlined
-                        dense
-                        hide-bottom-space
-                        @update:model-value="onDeliveryChargeManualEdit"
-                      />
-                    </div>
-                    <div class="col-12 col-sm-3">
-                      <q-select
-                        v-model="form.package_weight_band"
-                        :options="['under_1kg', '1_2kg', '2_3kg', 'over_3kg']"
-                        label="Parcel Weight Band *"
-                        outlined
-                        dense
-                        hide-bottom-space
-                      />
-                    </div>
-                    <div class="col-12 col-sm-3">
-                      <q-input
-                        v-model.number="form.cod_fee_percent"
-                        type="number"
-                        label="COD Fee (%)"
-                        outlined
-                        dense
-                        hide-bottom-space
-                        :readonly="selectedCourier?.cod_fee_mode !== 'percent_of_collect'"
-                        @update:model-value="calculateCodCharge"
-                      />
-                    </div>
-                    <div class="col-12 col-sm-3">
-                      <q-input
-                        v-model.number="form.cod_charge"
-                        type="number"
-                        label="Courier COD Fee (BDT)"
-                        outlined
-                        dense
-                        hide-bottom-space
-                        hint="Editable; included in collect when not deducted from margin"
-                        @update:model-value="recalculateCollectAmount"
-                      />
-                    </div>
-                  </div>
-                </q-card-section>
-              </q-card>
+              <!-- Block B: Parcel & COD -->
+              <DropshipParcelFormCard
+                :form="form"
+                :selected-courier="selectedCourier"
+                @delivery-charge-edit="onDeliveryChargeManualEdit"
+                @calculate-cod="calculateCodCharge"
+                @recalculate-collect="recalculateCollectAmount"
+                @update:form-field="(k, v) => (form as any)[k] = v"
+              />
 
-              <!-- Block C: Merchant Sender Pickup Defaults -->
-              <q-card flat bordered class="form-card">
-                <q-expansion-item
-                  v-model="blockCExpanded"
-                  header-class="border-bottom"
-                >
-                  <template #header>
-                    <div class="row items-center justify-between full-width">
-                      <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center">
-                        <q-icon name="ph ph-storefront" size="18px" class="q-mr-xs text-primary" />
-                        Block C: Merchant Sender Pickup Info
-                      </div>
-                      <div v-if="selectedMerchantId" class="text-caption text-grey-7 q-mr-sm">
-                        <q-chip dense color="blue-1" text-color="primary" size="sm">
-                          {{ form.sender_name || 'Merchant Selected' }}
-                        </q-chip>
-                      </div>
-                    </div>
-                  </template>
-                  <q-card-section>
-                    <div class="row q-col-gutter-md">
-                      <div class="col-12">
-                        <q-select
-                          v-model="selectedMerchantId"
-                          :options="merchantOptions"
-                          emit-value
-                          map-options
-                          clearable
-                          label="Select Merchant Profile *"
-                          outlined
-                          dense
-                          hide-bottom-space
-                          @update:model-value="onMerchantSelect"
-                        />
-                      </div>
-                      <div class="col-12 col-sm-6">
-                        <q-input v-model="form.sender_name" label="Sender Name *" outlined dense hide-bottom-space />
-                      </div>
-                      <div class="col-12 col-sm-6">
-                        <q-input v-model="form.pickup_phone" label="Sender Pickup Phone *" outlined dense hide-bottom-space />
-                      </div>
-                      <div class="col-12">
-                        <q-input v-model="form.pickup_address" label="Sender Pickup Address *" outlined dense hide-bottom-space type="textarea" rows="2" />
-                      </div>
-                    </div>
-                  </q-card-section>
-                </q-expansion-item>
-              </q-card>
+              <!-- Block C: Merchant Sender Pickup -->
+              <DropshipMerchantFormCard
+                v-model:selected-merchant-id="selectedMerchantId"
+                v-model:block-c-expanded="blockCExpanded"
+                :form="form"
+                :merchant-options="merchantOptions"
+                @merchant-select="onMerchantSelect"
+                @update:form-field="(k, v) => (form as any)[k] = v"
+              />
 
-              <!-- Block D: Delivery & Driver Notes -->
-              <q-card flat bordered class="form-card">
-                <q-card-section class="border-bottom row items-center justify-between">
-                  <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center">
-                    <q-icon name="ph ph-note" size="18px" class="q-mr-xs text-primary" />
-                    Block D: Driver Notes &amp; Policy Flags
-                  </div>
-                </q-card-section>
-                <q-card-section>
-                  <div class="row q-col-gutter-md">
-                    <div class="col-12">
-                      <q-toggle v-model="form.allow_open_box" label="Allow Open-Box Inspection by Recipient" color="primary" />
-                    </div>
-                    <div class="col-12">
-                      <q-input v-model="form.delivery_instruction_notes" label="Driver / Special Instructions" outlined dense hide-bottom-space type="textarea" rows="2" />
-                    </div>
-                  </div>
-                </q-card-section>
-              </q-card>
+              <!-- Block D: Driver Notes & Policy Flags -->
+              <DropshipDeliveryNotesCard
+                :form="form"
+                @update:form-field="(k, v) => (form as any)[k] = v"
+              />
             </div>
           </div>
 
-          <!-- Right Side: Block E Courier Tracking & Actions -->
+          <!-- Right Side: Courier Tracking & Totals -->
           <div class="col-xs-12 col-md-4">
             <div class="q-gutter-y-md">
-              <q-card flat bordered class="form-card">
-                <q-card-section class="border-bottom row items-center justify-between">
-                  <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center">
-                    <q-icon name="ph ph-truck" size="18px" class="q-mr-xs text-primary" />
-                    Block E: Courier &amp; Tracking Assignment
-                  </div>
-                </q-card-section>
-                <q-card-section>
-                  <div class="row q-col-gutter-md">
-                    <div class="col-12">
-                      <q-select
-                        v-model="form.courier_service_id"
-                        :options="courierOptions"
-                        emit-value
-                        map-options
-                        label="Select Courier Partner *"
-                        outlined
-                        dense
-                        hide-bottom-space
-                        @update:model-value="onCourierChange"
-                      />
-                    </div>
-                    <div class="col-12">
-                      <q-input v-model="form.courier_awb_number" label="Consignment / AWB Number" outlined dense hide-bottom-space />
-                    </div>
-                    <div class="col-12">
-                      <q-input v-model="form.tracking_url" label="Courier Tracking URL" outlined dense hide-bottom-space />
-                    </div>
+              <!-- Block E: Courier Assignment -->
+              <DropshipCourierCard
+                :form="form"
+                :courier-options="courierOptions"
+                :selected-courier="selectedCourier"
+                :delivery-zone-label="deliveryZoneLabel"
+                :suggested-delivery-fee="suggestedDeliveryFee"
+                :cod-rate-label="codRateLabel"
+                :format-bdt="formatBdt"
+                @courier-change="onCourierChange"
+                @update:form-field="(k, v) => (form as any)[k] = v"
+              />
 
-                    <!-- Track Shipment Link (Only shown when admin selects courier and provides tracking URL) -->
-                    <div v-if="selectedCourier && form.tracking_url" class="col-12">
-                      <q-btn
-                        flat
-                        dense
-                        no-caps
-                        color="primary"
-                        icon="ph ph-arrow-square-out"
-                        label="Track Parcel / Open Tracking Link"
-                        type="a"
-                        :href="form.tracking_url"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="full-width bg-blue-1 text-weight-medium rounded-borders q-py-xs"
-                      />
-                    </div>
-
-                    <!-- Return Policy Chip Summary -->
-                    <div v-if="selectedCourier" class="col-12">
-                      <div class="q-pa-sm bg-blue-50 rounded-borders text-caption text-grey-8" style="border: 1px solid #d0e7ff">
-                        <div class="text-weight-bold text-primary q-mb-xs">Selected Courier: {{ selectedCourier.name }}</div>
-                        <div>Zone: {{ deliveryZoneLabel }} | Delivery: {{ formatBdt(suggestedDeliveryFee) }}</div>
-                        <div>COD Rate: {{ codRateLabel }} | Suggested COD Fee: {{ formatBdt(form.cod_charge) }}</div>
-                        <div>Inside Dhaka Return: {{ selectedCourier.inside_dhaka_return_fee }} BDT | Outside: {{ selectedCourier.outside_dhaka_return_fee }} BDT</div>
-                        <div>Max Attempts: {{ selectedCourier.delivery_attempt_count }} | Open Box: {{ form.allow_open_box ? 'Yes' : 'No' }}</div>
-                      </div>
-                    </div>
-                  </div>
-                </q-card-section>
-              </q-card>
-
-              <q-card flat bordered class="form-card">
-                <q-card-section class="border-bottom">
-                  <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center">
-                    <q-icon name="ph ph-wallet" size="18px" class="q-mr-xs text-primary" />
-                    Totals &amp; Profit Breakdown
-                  </div>
-                </q-card-section>
-                <q-card-section class="q-gutter-y-xs text-body2">
-                  <div class="row justify-between text-grey-7 q-py-xs">
-                    <span>Face Items Subtotal</span>
-                    <span>{{ formatBdt(recipientSubtotal) }}</span>
-                  </div>
-
-                  <div v-if="deliveryChargeVal > 0" class="q-py-xs" style="border-bottom: 1px dashed #e0e0e0">
-                    <div class="row justify-between text-grey-7 items-center">
-                      <span>Delivery Charge</span>
-                      <span>{{ formatBdt(deliveryChargeVal) }}</span>
-                    </div>
-                    <div class="row justify-end q-mt-xs">
-                      <q-toggle
-                        v-model="form.deduct_delivery_from_margin"
-                        label="Deduct from Profit"
-                        dense
-                        size="xs"
-                        class="text-caption text-grey-6"
-                        @update:model-value="onToggleDeduct"
-                      />
-                    </div>
-                  </div>
-
-                  <div v-if="codChargeVal > 0" class="q-py-xs" style="border-bottom: 1px dashed #e0e0e0">
-                    <div class="row justify-between text-grey-7 items-center">
-                      <span>COD Fee</span>
-                      <span>{{ formatBdt(codChargeVal) }}</span>
-                    </div>
-                    <div class="row justify-end q-mt-xs">
-                      <q-toggle
-                        v-model="form.deduct_cod_from_margin"
-                        label="Deduct from Profit"
-                        dense
-                        size="xs"
-                        class="text-caption text-grey-6"
-                        @update:model-value="onToggleDeduct"
-                      />
-                    </div>
-                  </div>
-
-                  <div v-if="printChargeVal > 0" class="q-py-xs" style="border-bottom: 1px dashed #e0e0e0">
-                    <div class="row justify-between text-grey-7 items-center">
-                      <span>Print Charge</span>
-                      <span>{{ formatBdt(printChargeVal) }}</span>
-                    </div>
-                    <div class="row justify-end q-mt-xs">
-                      <q-toggle
-                        v-model="form.deduct_print_from_margin"
-                        label="Deduct from Profit"
-                        dense
-                        size="xs"
-                        class="text-caption text-grey-6"
-                        @update:model-value="onToggleDeduct"
-                      />
-                    </div>
-                  </div>
-
-                  <div v-if="packingChargeVal > 0" class="q-py-xs" style="border-bottom: 1px dashed #e0e0e0">
-                    <div class="row justify-between text-grey-7 items-center">
-                      <span>Packing Charge</span>
-                      <span>{{ formatBdt(packingChargeVal) }}</span>
-                    </div>
-                    <div class="row justify-end q-mt-xs">
-                      <q-toggle
-                        v-model="form.deduct_packing_from_margin"
-                        label="Deduct from Profit"
-                        dense
-                        size="xs"
-                        class="text-caption text-grey-6"
-                        @update:model-value="onToggleDeduct"
-                      />
-                    </div>
-                  </div>
-
-                  <div v-if="discountVal > 0" class="row justify-between text-negative q-py-xs">
-                    <span>Discount</span>
-                    <span>-{{ formatBdt(discountVal) }}</span>
-                  </div>
-                  <q-separator class="q-my-sm" />
-                  <div class="row justify-between items-baseline">
-                    <span class="text-subtitle2 text-weight-bold text-grey-9">Recipient Pay Total</span>
-                    <span class="text-h6 text-weight-bold text-primary">{{ formatBdt(recipientGrandTotal) }}</span>
-                  </div>
-                  <div class="row justify-between text-caption text-grey-6">
-                    <span>Middle-Man Cost</span>
-                    <span>{{ formatBdt(middlemanTotalCost) }}</span>
-                  </div>
-                  <div class="row justify-between text-body2 text-weight-bold" :class="estimatedProfit >= 0 ? 'text-positive' : 'text-negative'">
-                    <span>Estimated Profit</span>
-                    <span>{{ formatBdt(estimatedProfit) }}</span>
-                  </div>
-                  <q-btn
-                    v-if="order"
-                    outline
-                    color="primary"
-                    icon="ph ph-arrow-up-right"
-                    label="View Order"
-                    no-caps
-                    class="full-width q-mt-md"
-                    :to="{ name: 'app-shop-order-detail-page', params: { tenantSlug: route.params.tenantSlug, id: order.id } }"
-                  />
-                </q-card-section>
-              </q-card>
-
-              <!-- Settlement (after delivered + accounting invoice) -->
-              <q-card
-                v-if="showSettlementCard"
-                flat
-                bordered
-                class="form-card"
-              >
-                <q-card-section class="border-bottom">
-                  <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center">
-                    <q-icon name="ph ph-money" size="18px" class="q-mr-xs text-primary" />
-                    Settlement
-                  </div>
-                </q-card-section>
-                <q-card-section class="q-gutter-y-sm">
-                  <div class="text-caption text-grey-7">
-                    Status:
-                    <span class="text-weight-bold text-grey-9">
-                      {{ order?.status?.toUpperCase().replace(/_/g, ' ') }}
-                    </span>
-                  </div>
-                  <div v-if="order?.courier_remittance_ref" class="text-body2">
-                    <div class="text-caption text-grey-7">Remittance Ref</div>
-                    <div class="text-weight-medium">{{ order.courier_remittance_ref }}</div>
-                  </div>
-                  <div v-if="order?.courier_bank_trx_id" class="text-body2">
-                    <div class="text-caption text-grey-7">Bank / MFS Trx</div>
-                    <div class="text-weight-medium">{{ order.courier_bank_trx_id }}</div>
-                  </div>
-                  <div v-if="order?.cod_collect_amount" class="text-body2">
-                    <div class="text-caption text-grey-7">COD Collection Target</div>
-                    <div class="text-weight-medium">{{ formatBdt(order.cod_collect_amount) }}</div>
-                  </div>
-
-                  <div class="text-caption text-blue-9 bg-blue-1 q-pa-sm rounded-borders border-all-1">
-                    <q-icon name="ph ph-info" class="q-mr-xs" />
-                    Profit for this dropship order is automatically credited to the middle-man's <strong>Billing Profile Wallet</strong>.
-                  </div>
-
-                  <q-btn
-                    outline
-                    color="primary"
-                    no-caps
-                    class="full-width pill-btn q-mt-sm"
-                    icon="ph ph-wallet"
-                    label="Open Billing Profile Wallet"
-                    :to="{ name: 'app-global-billing-wallets', params: { tenantSlug: route.params.tenantSlug } }"
-                  />
-                </q-card-section>
-              </q-card>
+              <!-- Totals & Settlement Breakdown -->
+              <DropshipTotalsCard
+                :order="order"
+                :form="form"
+                :recipient-subtotal="recipientSubtotal"
+                :delivery-charge-val="deliveryChargeVal"
+                :cod-charge-val="codChargeVal"
+                :print-charge-val="printChargeVal"
+                :packing-charge-val="packingChargeVal"
+                :discount-val="discountVal"
+                :recipient-grand-total="recipientGrandTotal"
+                :middleman-total-cost="middlemanTotalCost"
+                :estimated-profit="estimatedProfit"
+                :show-settlement-card="showSettlementCard"
+                :tenant-slug="tenantSlug"
+                :format-bdt="formatBdt"
+                @toggle-deduct="onToggleDeduct"
+                @update:form-field="(k, v) => (form as any)[k] = v"
+              />
             </div>
           </div>
         </div>
 
-      <q-dialog v-model="remittanceDialogOpen" persistent>
-        <q-card style="min-width: 440px; border-radius: 12px">
-          <q-card-section class="row items-center justify-between">
-            <div class="text-h6 text-weight-bold">Record Courier Remittance</div>
-            <q-btn flat round dense icon="ph ph-x" v-close-popup />
-          </q-card-section>
-          <q-card-section class="q-gutter-sm">
-            <div class="text-body2 text-grey-8">
-              Order <strong>{{ order?.order_no }}</strong> — net COD collection from courier.
-            </div>
-            <q-input
-              v-model="remittanceForm.remittance_ref"
-              label="Remittance Batch / Statement ID *"
-              outlined
-              dense
-            />
-            <q-input
-              v-model.number="remittanceForm.net_amount"
-              type="number"
-              label="Net Remitted Amount (BDT) *"
-              outlined
-              dense
-            />
-            <q-input
-              v-model="remittanceForm.bank_trx_id"
-              label="Bank / MFS Transaction ID"
-              outlined
-              dense
-            />
-            <q-input
-              v-model="remittanceForm.note"
-              label="Notes"
-              outlined
-              dense
-              type="textarea"
-              rows="2"
-            />
-          </q-card-section>
-          <q-card-actions align="right" class="q-pa-md">
-            <q-btn flat label="Cancel" v-close-popup />
-            <q-btn
-              color="primary"
-              label="Save Remittance"
-              :loading="savingRemittance"
-              :disable="!canSaveOrderRemittance"
-              @click="saveOrderRemittance"
-            />
-          </q-card-actions>
-        </q-card>
-      </q-dialog>
+        <!-- Dialogs -->
+        <DropshipOrderDialogs
+          v-model:remittance-dialog-open="remittanceDialogOpen"
+          v-model:dual-invoice-dialog-open="dualInvoiceDialogOpen"
+          v-model:confirm-b2b-invoice-dialog-open="confirmB2bInvoiceDialogOpen"
+          v-model:confirm-delete-invoice-dialog-open="confirmDeleteInvoiceDialogOpen"
+          :order="order"
+          :remittance-form="remittanceForm"
+          :saving-remittance="savingRemittance"
+          :can-save-order-remittance="canSaveOrderRemittance"
+          :creating-invoice="creatingInvoice"
+          :updating-status="updatingStatus"
+          :recipient-grand-total="recipientGrandTotal"
+          :delivery-charge-val="deliveryChargeVal"
+          :cod-charge-val="codChargeVal"
+          :accounting-subtotal="accountingSubtotal"
+          :print-charge-val="printChargeVal"
+          :packing-charge-val="packingChargeVal"
+          :estimated-profit="estimatedProfit"
+          :cod-collect-amount="form.cod_collect_amount"
+          :format-bdt="formatBdt"
+          @save-remittance="saveOrderRemittance"
+          @confirm-dual-invoice="confirmDualInvoice"
+          @execute-status-update="executeStatusUpdate"
+          @update:remittance-field="(k, v) => (remittanceForm as any)[k] = v"
+        />
 
-      <!-- Create Dual Invoice Dialog Handoff -->
-      <q-dialog v-model="dualInvoiceDialogOpen">
-        <q-card style="min-width: 440px; border-radius: 12px">
-          <q-card-section class="row items-center justify-between">
-            <div class="text-h6 text-weight-bold">Create Dual Invoice</div>
-            <q-btn flat round dense icon="ph ph-x" v-close-popup />
-          </q-card-section>
-          <q-card-section class="q-gutter-sm text-body2 text-grey-8">
-            <p>Generate dual invoices for order <strong>{{ order?.order_no }}</strong>:</p>
-            <div class="q-pa-sm bg-grey-2 rounded-borders">
-              <div>1. <strong>Accounting Invoice</strong> (Merchant Cost + Margin Split)</div>
-              <div>2. <strong>Recipient Invoice</strong> (Customer Face Prices: {{ form.cod_collect_amount }} BDT)</div>
-            </div>
-            <p class="q-mt-sm text-caption text-grey-6">
-              Posting dual invoice will commit books and stamp global_invoice_id on order.
-            </p>
-          </q-card-section>
-          <q-card-actions align="right" class="q-pa-md">
-            <q-btn flat label="Cancel" v-close-popup />
-            <q-btn color="positive" label="Post Dual Invoice" :loading="creatingInvoice" @click="confirmDualInvoice" />
-          </q-card-actions>
-        </q-card>
-      </q-dialog>
-      <!-- Spacer to prevent content blocking by the floating footer -->
-      <div v-if="isFormDirty && !loading" style="height: 100px;"></div>
+        <QuickRemitDialog
+          v-model="quickRemitDialogOpen"
+          :order="order"
+          @success="() => orderDetailQuery.refetch()"
+        />
 
-      <!-- Floating Unsaved Changes Footer Bar -->
-      <q-slide-transition>
-        <div v-if="isFormDirty && !loading" class="fixed-bottom row justify-center q-pb-lg z-top">
-          <q-card flat class="bg-grey-10 text-white shadow-24 row items-center justify-between q-py-md q-px-lg" style="width: 90%; max-width: 800px; border-radius: 12px; border-left: 5px solid var(--q-warning); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 16px rgba(242, 193, 46, 0.25);">
-            <div class="row items-center q-gutter-x-md">
-              <q-icon name="ph ph-warning" color="warning" size="32px" class="animate-flash" />
-              <div>
-                <div class="text-subtitle1 text-weight-bold text-white row items-center">
-                  Unsaved Changes in Consignment
+        <!-- Floating Unsaved Changes Footer Bar -->
+        <div v-if="isFormDirty && !loading" style="height: 100px;"></div>
+
+        <q-slide-transition>
+          <div v-if="isFormDirty && !loading" class="fixed-bottom row justify-center q-pb-lg z-top">
+            <q-card flat class="bg-grey-10 text-white shadow-24 row items-center justify-between q-py-md q-px-lg" style="width: 90%; max-width: 800px; border-radius: 12px; border-left: 5px solid var(--q-warning); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 16px rgba(242, 193, 46, 0.25);">
+              <div class="row items-center q-gutter-x-md">
+                <q-icon name="ph ph-warning" color="warning" size="32px" class="animate-flash" />
+                <div>
+                  <div class="text-subtitle1 text-weight-bold text-white row items-center">
+                    Unsaved Changes in Consignment
+                  </div>
+                  <div class="text-caption text-grey-4">You have modified details on this page. Click Save to persist updates.</div>
                 </div>
-                <div class="text-caption text-grey-4">You have modified details on this page. Click Save to persist updates.</div>
               </div>
-            </div>
-            <div class="row q-gutter-sm items-center">
-              <q-btn
-                flat
-                color="white"
-                label="Discard"
-                no-caps
-                @click="discardChanges"
-              />
-              <q-btn
-                color="warning"
-                text-color="dark"
-                unelevated
-                label="Save Changes"
-                no-caps
-                icon="ph ph-floppy-disk"
-                :loading="saving"
-                class="text-weight-bold"
-                @click="saveChanges"
-              />
-            </div>
-          </q-card>
-        </div>
-      </q-slide-transition>
+              <div class="row q-gutter-sm items-center">
+                <q-btn
+                  flat
+                  color="white"
+                  label="Discard"
+                  no-caps
+                  @click="discardChanges"
+                />
+                <q-btn
+                  color="warning"
+                  text-color="dark"
+                  unelevated
+                  label="Save Changes"
+                  no-caps
+                  icon="ph ph-floppy-disk"
+                  :loading="saving"
+                  class="text-weight-bold"
+                  @click="saveChanges"
+                />
+              </div>
+            </q-card>
+          </div>
+        </q-slide-transition>
       </template>
-
-      <q-dialog v-model="confirmB2bInvoiceDialogOpen" persistent>
-        <q-card style="min-width: 440px; border-radius: 12px">
-          <q-card-section class="row items-center justify-between q-pb-none">
-            <div class="text-h6 text-weight-bold">Confirm B2B Invoice</div>
-            <q-btn flat round dense icon="ph ph-x" v-close-popup />
-          </q-card-section>
-          <q-card-section class="q-pt-sm text-body2">
-            <p class="text-grey-8 q-mb-md">
-              Advancing to <strong>Ready for Pickup</strong> will automatically create the B2B Accounting Invoice for the middle man. Please review the financial breakdown before confirming.
-            </p>
-
-            <div class="row q-col-gutter-sm">
-              <div class="col-12 col-sm-6">
-                <q-card flat bordered class="q-pa-sm bg-grey-1">
-                  <div class="text-caption text-grey-7">Recipient Pays</div>
-                  <div class="text-weight-bold text-h6">{{ formatBdt(recipientGrandTotal) }}</div>
-                </q-card>
-              </div>
-              <div class="col-12 col-sm-6">
-                <q-card flat bordered class="q-pa-sm bg-grey-1">
-                  <div class="text-caption text-grey-7">Total Courier Cost</div>
-                  <div class="text-weight-bold text-h6">{{ formatBdt(deliveryChargeVal + codChargeVal) }}</div>
-                </q-card>
-              </div>
-              <div class="col-12">
-                <q-card flat bordered class="q-pa-sm bg-blue-1 border-blue">
-                  <div class="text-caption text-blue-9">B2B Invoice Entry (Brandwala Revenue)</div>
-                  <div class="text-weight-bold text-h6 text-blue-9">
-                    {{ formatBdt(accountingSubtotal + printChargeVal + packingChargeVal) }}
-                  </div>
-                  <div class="text-caption text-blue-8">
-                    Wholesale Items + Packing + Print
-                  </div>
-                </q-card>
-              </div>
-              <div class="col-12">
-                <q-card flat bordered class="q-pa-sm bg-green-1 border-green">
-                  <div class="text-caption text-green-9">Middle Man Profit (Ledger Payout)</div>
-                  <div class="text-weight-bold text-h6 text-green-9">
-                    {{ formatBdt(estimatedProfit) }}
-                  </div>
-                </q-card>
-              </div>
-            </div>
-          </q-card-section>
-          <q-card-actions align="right" class="q-pa-md">
-            <q-btn flat label="Cancel" color="grey-8" no-caps v-close-popup />
-            <q-btn
-              color="primary"
-              label="Confirm & Create Invoice"
-              unelevated
-              no-caps
-              :loading="updatingStatus"
-              @click="executeStatusUpdate('ready_for_pickup'); confirmB2bInvoiceDialogOpen = false"
-            />
-          </q-card-actions>
-        </q-card>
-      </q-dialog>
-
-      <q-dialog v-model="confirmDeleteInvoiceDialogOpen" persistent>
-        <q-card style="min-width: 440px; border-radius: 12px">
-          <q-card-section class="row items-center justify-between q-pb-none">
-            <div class="text-h6 text-weight-bold text-negative">Warning: Rollback Order</div>
-            <q-btn flat round dense icon="ph ph-x" v-close-popup />
-          </q-card-section>
-          <q-card-section class="q-pt-sm text-body2">
-            <q-banner class="bg-red-1 text-red-10 border-all-1 rounded-borders q-mb-md">
-              <template #avatar>
-                <q-icon name="ph ph-warning-circle" color="red-9" />
-              </template>
-              Rolling back to <strong>Processing</strong> will completely delete the associated B2B accounting invoice and restore the inventory stock.
-            </q-banner>
-            <p class="text-grey-8 q-mb-none">
-              Are you sure you want to proceed?
-            </p>
-          </q-card-section>
-          <q-card-actions align="right" class="q-pa-md">
-            <q-btn flat label="Cancel" color="grey-8" no-caps v-close-popup />
-            <q-btn
-              color="negative"
-              label="Yes, Delete Invoice & Rollback"
-              unelevated
-              no-caps
-              :loading="updatingStatus"
-              @click="executeStatusUpdate('processing'); confirmDeleteInvoiceDialogOpen = false"
-            />
-          </q-card-actions>
-        </q-card>
-      </q-dialog>
-
     </div>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch } from 'vue';
-import { copyToClipboard } from 'quasar';
+import { ref, computed, watch } from 'vue';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
-import { useRoute, useRouter } from 'vue-router';
-import { supabase } from 'src/boot/supabase';
+import { useRoute } from 'vue-router';
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
 import { dropshipCourierService } from '../services/dropshipCourierService';
 import { dropshipMerchantService } from '../services/dropshipMerchantService';
@@ -946,56 +215,92 @@ import { shopOrderQueryKeys } from '../services/shopOrderQueryKeys';
 import type { CourierServiceRow } from '../repositories/dropshipCourierRepository';
 import type { MerchantProfileRow } from '../repositories/dropshipMerchantRepository';
 import type { ShopOrder, ShopOrderItem } from '../types';
-import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';
-import { useRecipientProfileStore } from 'src/modules/sales_invoice/stores/recipientProfileStore';
-import {
-  resolveDeliveryZone,
-  suggestDeliveryFee,
-  type DeliveryZone,
-} from '../services/courierChargeEstimate';
+import { showErrorNotification } from 'src/utils/appFeedback';
 
-import { useShopOrderStore } from '../stores/shopOrderStore';
-import {
-  getBDDistricts,
-  getBDUpazilas,
-  getBDPostcodes,
-  type BDLocationOption,
-  type BDPostcodeOption,
-} from 'src/utils/bdAddressService';
+import DropshipOrderDetailSkeleton from '../components/DropshipOrderDetailSkeleton.vue';
+import DropshipOrderHeader from '../components/DropshipOrderHeader.vue';
+import DropshipOrderStatusWorkflow from '../components/DropshipOrderStatusWorkflow.vue';
+import DropshipRecipientFormCard from '../components/DropshipRecipientFormCard.vue';
+import DropshipOrderItemsCard from '../components/DropshipOrderItemsCard.vue';
+import DropshipParcelFormCard from '../components/DropshipParcelFormCard.vue';
+import DropshipMerchantFormCard from '../components/DropshipMerchantFormCard.vue';
+import DropshipDeliveryNotesCard from '../components/DropshipDeliveryNotesCard.vue';
+import DropshipCourierCard from '../components/DropshipCourierCard.vue';
+import DropshipTotalsCard from '../components/DropshipTotalsCard.vue';
+import DropshipOrderDialogs from '../components/DropshipOrderDialogs.vue';
+import QuickRemitDialog from '../components/QuickRemitDialog.vue';
+
+import { useBDAddressOptions } from '../composables/useBDAddressOptions';
+import { useDropshipOrderForm } from '../composables/useDropshipOrderForm';
+import { useDropshipOrderActions } from '../composables/useDropshipOrderActions';
 
 const route = useRoute();
-const router = useRouter();
-const orderStore = useShopOrderStore();
-const recipientProfileStore = useRecipientProfileStore();
 const queryClient = useQueryClient();
+const quickRemitDialogOpen = ref(false);
 const tenantSlug = computed(() =>
   typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : null,
 );
 const orderId = computed(() => Number(route.params.id || 0));
-const lastLookupPhone = ref('');
-const hydratingForm = ref(false);
-const saving = ref(false);
-const handingOff = ref(false);
-const updatingStatus = ref(false);
+
 const order = ref<ShopOrder | null>(null);
 const orderItems = ref<ShopOrderItem[]>([]);
 const couriers = ref<CourierServiceRow[]>([]);
 const merchants = ref<MerchantProfileRow[]>([]);
-const selectedMerchantId = ref<string | null>(null);
-const blockCExpanded = ref(true);
-const dualInvoiceDialogOpen = ref(false);
-const remittanceDialogOpen = ref(false);
-const savingRemittance = ref(false);
-const invoicePayout = ref<{
-  id: number;
-  billing_profile_id: number | null;
-} | null>(null);
-const remittanceForm = reactive({
-  remittance_ref: '',
-  net_amount: 0,
-  bank_trx_id: '',
-  note: '',
-});
+
+const {
+  districtOptions,
+  thanaOptions,
+  postcodeOptions,
+  loadInitialDistricts,
+  updateThanaList,
+  updatePostcodeList,
+  filterDistrict,
+  filterThana,
+  filterPostcode,
+  createPostcode,
+} = useBDAddressOptions();
+
+const {
+  form,
+  hydratingForm,
+  selectedMerchantId,
+  blockCExpanded,
+  isFormDirty,
+  deliveryZoneLabel,
+  selectedCourier,
+  suggestedDeliveryFee,
+  codRateLabel,
+  formatBdt,
+  recipientSubtotal,
+  accountingSubtotal,
+  deliveryChargeVal,
+  codChargeVal,
+  printChargeVal,
+  packingChargeVal,
+  discountVal,
+  recipientGrandTotal,
+  middlemanTotalCost,
+  estimatedProfit,
+  courierOptions,
+  merchantOptions,
+  discardChanges,
+  recalculateCollectAmount,
+  calculateCodCharge,
+  onToggleDeduct,
+  applySuggestedCharges,
+  onDeliveryChargeManualEdit,
+  onMerchantSelect,
+  handleCopy,
+  onRecipientPhoneBlur,
+  hydrateFormFromOrder,
+} = useDropshipOrderForm(
+  order,
+  orderItems,
+  couriers,
+  merchants,
+  updateThanaList,
+  updatePostcodeList,
+);
 
 const orderDetailQuery = useQuery({
   queryKey: computed(() => shopOrderQueryKeys.detail(tenantSlug.value, orderId.value)),
@@ -1045,407 +350,33 @@ const refetchOrderDetail = async () => {
   await orderDetailQuery.refetch();
 };
 
-const showSettlementCard = computed(
-  () =>
-    !!order.value?.global_invoice_id &&
-    ['delivered', 'payment_received'].includes(order.value?.status ?? ''),
+const {
+  saving,
+  updatingStatus,
+  targetUpdatingStatus,
+  primaryCta,
+  showSettlementCard,
+  canSaveOrderRemittance,
+  remittanceDialogOpen,
+  savingRemittance,
+  remittanceForm,
+  dualInvoiceDialogOpen,
+  creatingInvoice,
+  confirmB2bInvoiceDialogOpen,
+  confirmDeleteInvoiceDialogOpen,
+  saveChanges,
+  onUpdateStatus,
+  executeStatusUpdate,
+  saveOrderRemittance,
+  openRecipientInvoicePreview,
+  confirmDualInvoice,
+} = useDropshipOrderActions(
+  tenantSlug,
+  order,
+  form,
+  selectedCourier,
+  refetchOrderDetail,
 );
-
-const canRecordRemittance = computed(
-  () =>
-    order.value?.status === 'delivered' &&
-    !!order.value?.global_invoice_id &&
-    !order.value?.courier_remittance_ref,
-);
-
-
-const canSaveOrderRemittance = computed(
-  () =>
-    remittanceForm.remittance_ref.trim().length > 0 &&
-    Number(remittanceForm.net_amount) > 0,
-);
-
-const primaryCta = computed(() => {
-  if (!order.value) return null;
-  const status = order.value.status;
-
-  // 1. Confirmed -> Add to Dropship Desk
-  if (status === 'confirmed') {
-    return {
-      label: 'Add to Dropship Desk',
-      icon: 'ph ph-truck',
-      loading: handingOff.value,
-      action: () => {
-        void performHandoff();
-      },
-    };
-  }
-
-  // 2. Processing path without accounting invoice -> Create Accounting Invoice
-  if (
-    !order.value.global_invoice_id &&
-    ['ready_for_pickup', 'shipped', 'delivered', 'payment_received'].includes(status ?? '')
-  ) {
-    return {
-      label: 'Create Accounting Invoice',
-      icon: 'ph ph-receipt',
-      loading: false,
-      action: openDualInvoiceDialog,
-    };
-  }
-
-  // 3. Delivered & can record remittance -> Record Courier Remittance
-  if (canRecordRemittance.value) {
-    return {
-      label: 'Record Courier Remittance',
-      icon: 'ph ph-bank',
-      loading: false,
-      action: openOrderRemittanceDialog,
-    };
-  }
-
-  return null;
-});
-
-const loadInvoicePayoutContext = async () => {
-  const invoiceId = order.value?.global_invoice_id;
-  if (!invoiceId) {
-    invoicePayout.value = null;
-    return;
-  }
-  try {
-    const { data } = await supabase
-      .from('global_invoices')
-      .select('id, billing_profile_id, middle_man_payout_amount, middle_man_payout_status')
-      .eq('id', invoiceId)
-      .maybeSingle();
-    invoicePayout.value = data ?? null;
-  } catch {
-    invoicePayout.value = null;
-  }
-};
-
-watch(
-  () => [order.value?.global_invoice_id, order.value?.status] as const,
-  () => {
-    void loadInvoicePayoutContext();
-  },
-  { immediate: true },
-);
-
-const openOrderRemittanceDialog = () => {
-  remittanceForm.remittance_ref = '';
-  remittanceForm.net_amount = Number(
-    order.value?.cod_collect_amount ?? form.cod_collect_amount ?? 0,
-  );
-  remittanceForm.bank_trx_id = '';
-  remittanceForm.note = '';
-  remittanceDialogOpen.value = true;
-};
-
-const saveOrderRemittance = async () => {
-  if (!order.value || !canSaveOrderRemittance.value) return;
-  savingRemittance.value = true;
-  try {
-    const { error } = await supabase.rpc('record_dropship_courier_remittance', {
-      p_order_id: order.value.id,
-      p_net_amount: Number(remittanceForm.net_amount),
-      p_remittance_ref: remittanceForm.remittance_ref.trim(),
-      p_bank_trx_id: remittanceForm.bank_trx_id.trim() || null,
-      p_note: remittanceForm.note.trim() || null,
-    });
-    if (error) throw error;
-    showSuccessNotification('Courier remittance recorded.');
-    remittanceDialogOpen.value = false;
-    await refetchOrderDetail();
-    await loadInvoicePayoutContext();
-    await queryClient.invalidateQueries({
-      queryKey: shopOrderQueryKeys.ledger(tenantSlug.value),
-    });
-    await queryClient.invalidateQueries({
-      queryKey: shopOrderQueryKeys.ledgerPendingCod(tenantSlug.value),
-    });
-  } catch (err: any) {
-    showErrorNotification(err?.message || 'Failed to record remittance');
-  } finally {
-    savingRemittance.value = false;
-  }
-};
-
-
-
-const openRecipientInvoicePreview = () => {
-  if (!order.value) return;
-  const routeData = router.resolve({
-    name: 'app-shop-dropship-recipient-invoice-preview',
-    params: {
-      id: order.value.id,
-      tenantSlug: route.params.tenantSlug || undefined,
-    },
-  });
-  window.open(routeData.href, '_blank');
-};
-
-const handleCopy = (text: string | null | undefined, label: string) => {
-  if (!text || !text.trim()) {
-    showErrorNotification(`No ${label.toLowerCase()} available to copy`);
-    return;
-  }
-  copyToClipboard(text.trim())
-    .then(() => {
-      showSuccessNotification(`${label} copied`);
-    })
-    .catch(() => {
-      showErrorNotification(`Failed to copy ${label.toLowerCase()}`);
-    });
-};
-
-// District, Thana/Upazila & Postcode Options
-const rawDistricts = ref<BDLocationOption[]>([]);
-const rawThanas = ref<BDLocationOption[]>([]);
-const rawPostcodes = ref<(BDPostcodeOption & { displayLabel: string })[]>([]);
-const districtOptions = ref<BDLocationOption[]>([]);
-const thanaOptions = ref<BDLocationOption[]>([]);
-const postcodeOptions = ref<(BDPostcodeOption & { displayLabel: string })[]>([]);
-
-const performHandoff = async () => {
-  if (!order.value) return;
-  handingOff.value = true;
-  try {
-    const res = await orderStore.processDropshipOrder(order.value.id);
-    if (res.success) {
-      await refetchOrderDetail();
-    }
-  } finally {
-    handingOff.value = false;
-  }
-};
-
-const originalBlockB = reactive({
-  delivery_charge: 0,
-  package_weight_band: 'under_1kg',
-  cod_fee_percent: 0,
-  cod_charge: 0,
-});
-const isBlockBDirty = computed(() => {
-  return form.delivery_charge !== originalBlockB.delivery_charge ||
-         form.package_weight_band !== originalBlockB.package_weight_band ||
-         form.cod_fee_percent !== originalBlockB.cod_fee_percent ||
-         form.cod_charge !== originalBlockB.cod_charge;
-});
-
-// Block A: Recipient
-const originalBlockA = reactive({
-  recipient_name: '',
-  recipient_phone: '',
-  secondary_phone: '',
-  district: '',
-  thana: '',
-  post_code: '',
-  shipping_address: '',
-});
-const isBlockADirty = computed(() => {
-  return form.recipient_name !== originalBlockA.recipient_name ||
-         form.recipient_phone !== originalBlockA.recipient_phone ||
-         form.secondary_phone !== originalBlockA.secondary_phone ||
-         form.district !== originalBlockA.district ||
-         form.thana !== originalBlockA.thana ||
-         form.post_code !== originalBlockA.post_code ||
-         form.shipping_address !== originalBlockA.shipping_address;
-});
-
-// Block C: Merchant Sender
-const originalBlockC = reactive({
-  sender_name: '',
-  pickup_phone: '',
-  pickup_address: '',
-  merchant_id: null as string | null,
-});
-const isBlockCDirty = computed(() => {
-  return form.sender_name !== originalBlockC.sender_name ||
-         form.pickup_phone !== originalBlockC.pickup_phone ||
-         form.pickup_address !== originalBlockC.pickup_address ||
-         selectedMerchantId.value !== originalBlockC.merchant_id;
-});
-
-// Block D: Notes & Flags
-const originalBlockD = reactive({
-  allow_open_box: false,
-  delivery_instruction_notes: '',
-});
-const isBlockDDirty = computed(() => {
-  return form.allow_open_box !== originalBlockD.allow_open_box ||
-         form.delivery_instruction_notes !== originalBlockD.delivery_instruction_notes;
-});
-
-// Block E: Courier Assignment
-const originalBlockE = reactive({
-  courier_service_id: null as string | null,
-  courier_awb_number: '',
-  tracking_url: '',
-});
-const isBlockEDirty = computed(() => {
-  return form.courier_service_id !== originalBlockE.courier_service_id ||
-         form.courier_awb_number !== originalBlockE.courier_awb_number ||
-         form.tracking_url !== originalBlockE.tracking_url;
-});
-
-// Central save/dirty checks
-const isFormDirty = computed(() => {
-  return isBlockADirty.value ||
-         isBlockBDirty.value ||
-         isBlockCDirty.value ||
-         isBlockDDirty.value ||
-         isBlockEDirty.value;
-});
-
-const discardChanges = () => {
-  form.recipient_name = originalBlockA.recipient_name;
-  form.recipient_phone = originalBlockA.recipient_phone;
-  form.secondary_phone = originalBlockA.secondary_phone;
-  form.district = originalBlockA.district;
-  form.thana = originalBlockA.thana;
-  form.post_code = originalBlockA.post_code;
-  form.shipping_address = originalBlockA.shipping_address;
-
-  form.delivery_charge = originalBlockB.delivery_charge;
-  form.package_weight_band = originalBlockB.package_weight_band;
-  form.cod_fee_percent = originalBlockB.cod_fee_percent;
-  form.cod_charge = originalBlockB.cod_charge;
-
-  selectedMerchantId.value = originalBlockC.merchant_id;
-  form.sender_name = originalBlockC.sender_name;
-  form.pickup_phone = originalBlockC.pickup_phone;
-  form.pickup_address = originalBlockC.pickup_address;
-
-  form.allow_open_box = originalBlockD.allow_open_box;
-  form.delivery_instruction_notes = originalBlockD.delivery_instruction_notes;
-
-  form.courier_service_id = originalBlockE.courier_service_id;
-  form.courier_awb_number = originalBlockE.courier_awb_number;
-  form.tracking_url = originalBlockE.tracking_url;
-};
-
-
-const form = reactive({
-  recipient_name: '',
-  recipient_phone: '',
-  secondary_phone: '',
-  district: 'Dhaka',
-  thana: '',
-  post_code: '',
-  shipping_address: '',
-  cod_collect_amount: 0,
-  delivery_charge: 0,
-  cod_charge: 0,
-  cod_fee_percent: 0,
-  package_weight_band: 'under_1kg',
-  sender_name: '',
-  pickup_phone: '',
-  pickup_address: '',
-  allow_open_box: false,
-  delivery_instruction_notes: '',
-  courier_service_id: null as string | null,
-  courier_awb_number: '',
-  tracking_url: '',
-  deduct_delivery_from_margin: false,
-  deduct_cod_from_margin: false,
-  deduct_print_from_margin: false,
-  deduct_packing_from_margin: false,
-});
-
-const updateThanaList = async (distName: string) => {
-  if (!distName) {
-    rawThanas.value = await getBDUpazilas();
-  } else {
-    rawThanas.value = await getBDUpazilas(distName);
-  }
-  thanaOptions.value = rawThanas.value;
-  await updatePostcodeList(distName, form.thana);
-};
-
-const updatePostcodeList = async (distName: string, thanaName: string) => {
-  if (!distName) {
-    rawPostcodes.value = [];
-    postcodeOptions.value = [];
-    return;
-  }
-  const fetched = await getBDPostcodes(distName, thanaName);
-  const mapped = fetched.map((p) => ({
-    ...p,
-    displayLabel: `${p.postOffice} - ${p.postCode}`,
-  }));
-
-  // If there's a current form.post_code, make sure it is represented in the options so it displays correctly
-  if (form.post_code && !mapped.some((m) => m.postCode === form.post_code)) {
-    mapped.push({
-      id: 0,
-      districtId: 0,
-      postOffice: form.post_code,
-      postCode: form.post_code,
-      displayLabel: form.post_code,
-    });
-  }
-
-  rawPostcodes.value = mapped;
-  postcodeOptions.value = mapped;
-};
-
-const filterDistrict = (val: string, update: (fn: () => void) => void) => {
-  update(() => {
-    const needle = val.toLowerCase().trim();
-    if (!needle) {
-      districtOptions.value = rawDistricts.value;
-    } else {
-      districtOptions.value = rawDistricts.value.filter(
-        (d) =>
-          d.name.toLowerCase().includes(needle) ||
-          d.bnName.toLowerCase().includes(needle)
-      );
-    }
-  });
-};
-
-const filterThana = (val: string, update: (fn: () => void) => void) => {
-  update(() => {
-    const needle = val.toLowerCase().trim();
-    if (!needle) {
-      thanaOptions.value = rawThanas.value;
-    } else {
-      thanaOptions.value = rawThanas.value.filter(
-        (t) =>
-          t.name.toLowerCase().includes(needle) ||
-          t.bnName.toLowerCase().includes(needle)
-      );
-    }
-  });
-};
-
-const filterPostcode = (val: string, update: (fn: () => void) => void) => {
-  update(() => {
-    const needle = val.toLowerCase().trim();
-    if (!needle) {
-      postcodeOptions.value = rawPostcodes.value;
-    } else {
-      postcodeOptions.value = rawPostcodes.value.filter(
-        (p) =>
-          p.postCode.toLowerCase().includes(needle) ||
-          p.postOffice.toLowerCase().includes(needle)
-      );
-    }
-  });
-};
-
-const createPostcode = (val: string, done: (item: any) => void) => {
-  const custom = {
-    id: 0,
-    districtId: 0,
-    postOffice: val,
-    postCode: val,
-    displayLabel: val,
-  };
-  done(custom);
-};
 
 const onDistrictChange = async (newDistName: string) => {
   form.thana = '';
@@ -1454,262 +385,13 @@ const onDistrictChange = async (newDistName: string) => {
   applySuggestedCharges();
 };
 
-const onCourierChange = () => {
-  applySuggestedCharges();
-};
-
-const deliveryZone = computed<DeliveryZone>(() => resolveDeliveryZone(form.district));
-
-const deliveryZoneLabel = computed(() =>
-  deliveryZone.value === 'inside_dhaka' ? 'Inside Dhaka' : 'Outside Dhaka',
-);
-
-const selectedCourier = computed(() =>
-  couriers.value.find((c) => c.id === form.courier_service_id),
-);
-
-const suggestedDeliveryFee = computed(() => {
-  if (!selectedCourier.value) return 0;
-  return suggestDeliveryFee(selectedCourier.value, deliveryZone.value);
-});
-
-const codRateLabel = computed(() => {
-  const courier = selectedCourier.value;
-  if (!courier) return '—';
-  if (courier.cod_fee_mode === 'percent_of_collect') return `${courier.cod_fee_percent}% of collect`;
-  if (courier.cod_fee_mode === 'flat') return `${courier.cod_fee_flat_amount} BDT flat`;
-  if (courier.cod_fee_mode === 'tiered_manual') return 'Tiered / manual';
-  return 'None';
-});
-
-const formatBdt = (amount: number) => `${Number(amount || 0).toFixed(2)} BDT`;
-
-const recipientSubtotal = computed(() =>
-  orderItems.value.reduce(
-    (sum, item) => sum + (item.customer_sell_price_amount ?? 0) * item.quantity,
-    0,
-  ),
-);
-
-const accountingSubtotal = computed(() =>
-  orderItems.value.reduce((sum, item) => {
-    const price = item.unit_sell_price_amount ?? item.unit_list_price_amount ?? 0;
-    return sum + price * item.quantity;
-  }, 0),
-);
-
-const deliveryChargeVal = computed(() => Number(form.delivery_charge || 0));
-const codChargeVal = computed(() => Number(form.cod_charge || 0));
-const printChargeVal = computed(() => Number(order.value?.print_charge_amount || 0));
-const packingChargeVal = computed(() => Number(order.value?.packing_charge_amount || 0));
-const discountVal = computed(() => Number(order.value?.discount_amount || 0));
-
-const deductCodFromMargin = computed(() => !!form.deduct_cod_from_margin);
-const deductDeliveryFromMargin = computed(() => !!form.deduct_delivery_from_margin);
-const deductPrintFromMargin = computed(() => !!form.deduct_print_from_margin);
-const deductPackingFromMargin = computed(() => !!form.deduct_packing_from_margin);
-
-const recipientGrandTotal = computed(() =>
-  recipientSubtotal.value
-    + (deductDeliveryFromMargin.value ? 0 : deliveryChargeVal.value)
-    + (deductCodFromMargin.value ? 0 : codChargeVal.value)
-    - discountVal.value,
-);
-
-const middlemanTotalCost = computed(() =>
-  accountingSubtotal.value
-    + printChargeVal.value
-    + packingChargeVal.value
-    + (deductDeliveryFromMargin.value ? deliveryChargeVal.value : 0)
-    + (deductCodFromMargin.value ? codChargeVal.value : 0),
-);
-
-const estimatedProfit = computed(() => recipientSubtotal.value - discountVal.value - middlemanTotalCost.value);
-
-const recalculateCollectAmount = () => {
-  form.cod_collect_amount = recipientSubtotal.value
-    + (deductDeliveryFromMargin.value ? 0 : form.delivery_charge)
-    + (deductPrintFromMargin.value ? 0 : printChargeVal.value)
-    + (deductPackingFromMargin.value ? 0 : packingChargeVal.value)
-    + (deductCodFromMargin.value ? 0 : form.cod_charge)
-    - discountVal.value;
-};
-
-const calculateCodCharge = () => {
-  if (order.value?.is_prepaid_snapshot) {
-    form.cod_charge = 0;
-    return;
-  }
-  const courier = selectedCourier.value;
-  if (!courier) return;
-
-  if (courier.cod_fee_mode === 'percent_of_collect') {
-    const collectBase = recipientSubtotal.value
-      + (deductDeliveryFromMargin.value ? 0 : Number(form.delivery_charge || 0));
-    if (collectBase <= 0) {
-      form.cod_charge = 0;
-    } else {
-      form.cod_charge = Math.round(collectBase * Number(form.cod_fee_percent || 0) / 100 * 100) / 100;
-    }
-  } else if (courier.cod_fee_mode === 'flat') {
-    form.cod_charge = Number(courier.cod_fee_flat_amount || 0);
-  } else {
-    form.cod_charge = 0;
-  }
-
-  recalculateCollectAmount();
-};
-
-const onToggleDeduct = async () => {
-  if (!order.value) return;
-  try {
-    calculateCodCharge();
-
-    const { error } = await supabase
-      .from('shop_orders')
-      .update({
-        deduct_delivery_from_margin: form.deduct_delivery_from_margin,
-        deduct_cod_from_margin: form.deduct_cod_from_margin,
-        deduct_print_from_margin: form.deduct_print_from_margin,
-        deduct_packing_from_margin: form.deduct_packing_from_margin,
-        cod_collect_amount: form.cod_collect_amount,
-      })
-      .eq('id', order.value.id);
-
-    if (error) throw error;
-    showSuccessNotification('Order charge preferences updated');
-  } catch (err: any) {
-    showErrorNotification(err.message || 'Failed to update charge preferences');
-  }
-};
-
-const applySuggestedCharges = () => {
-  const courier = selectedCourier.value;
-  if (!courier) return;
-
-  const zone = deliveryZone.value;
-  form.delivery_charge = suggestDeliveryFee(courier, zone);
-  form.cod_fee_percent = Number(courier.cod_fee_percent || 0);
-
-  calculateCodCharge();
-};
-
-const onDeliveryChargeManualEdit = () => {
-  calculateCodCharge();
-};
-
 const onThanaChange = async (newThanaName: string) => {
   form.post_code = '';
   await updatePostcodeList(form.district, newThanaName);
 };
 
-const courierOptions = computed(() =>
-  couriers.value.map((c) => ({ label: c.name, value: c.id }))
-);
-
-const merchantOptions = computed(() =>
-  merchants.value.map((m) => ({
-    label: `${m.merchant_name}${m.store_name ? ' (' + m.store_name + ')' : ''} - ${m.phone_primary}`,
-    value: m.id,
-  }))
-);
-
-const onMerchantSelect = (merchantId: string | null) => {
-  if (!merchantId) return;
-  const merchant = merchants.value.find((m) => m.id === merchantId);
-  if (merchant) {
-    form.sender_name = merchant.merchant_name;
-    form.pickup_phone = merchant.phone_primary;
-    form.pickup_address = merchant.pickup_address;
-  }
-};
-
-const hydrateFormFromOrder = async (o: any) => {
-  hydratingForm.value = true;
-  try {
-    form.recipient_name = o.recipient_name || '';
-    form.recipient_phone = o.recipient_phone || '';
-    form.secondary_phone = o.recipient_phone_secondary || '';
-    form.district = o.shipping_district || 'Dhaka';
-    form.thana = o.shipping_thana || '';
-
-    // Extract postcode and clean address line
-    let baseAddress = o.shipping_address || '';
-    let extractedPostcode = '';
-    const pcMatch = baseAddress.match(/Post\s*Code:\s*([^\n,]+)/i);
-    if (pcMatch) {
-      extractedPostcode = pcMatch[1].trim();
-    }
-    baseAddress = baseAddress.replace(/\n?(?:Thana|District|Post\s*Code):.*$/gi, '').trim();
-
-    form.post_code = o.shipping_post_code || o.post_code || extractedPostcode || '';
-    form.shipping_address = baseAddress;
-
-    form.cod_collect_amount = o.cod_collect_amount ?? o.total_amount ?? 0;
-    form.delivery_charge = o.delivery_charge_amount ?? o.courier_cost_amount ?? 0;
-    form.cod_charge = o.cod_charge_amount ?? 0;
-    form.package_weight_band = o.package_weight_band || 'under_1kg';
-
-    const activeCourier = couriers.value.find((c: any) => c.id === o.courier_service_id) || null;
-    form.cod_fee_percent = activeCourier ? Number(activeCourier.cod_fee_percent || 0) : 0;
-
-    form.deduct_delivery_from_margin = !!o.deduct_delivery_from_margin;
-    form.deduct_cod_from_margin = o.deduct_cod_from_margin !== undefined ? !!o.deduct_cod_from_margin : !!activeCourier?.deduct_cod_from_margin_default;
-    form.deduct_print_from_margin = !!o.deduct_print_from_margin;
-    form.deduct_packing_from_margin = !!o.deduct_packing_from_margin;
-
-    originalBlockB.delivery_charge = form.delivery_charge;
-    originalBlockB.package_weight_band = form.package_weight_band;
-    originalBlockB.cod_fee_percent = form.cod_fee_percent;
-    originalBlockB.cod_charge = form.cod_charge;
-    form.sender_name = o.sender_name || o.default_sender_name || '';
-    form.pickup_phone = o.pickup_phone || o.default_pickup_phone || '';
-    form.pickup_address = o.pickup_address || o.default_pickup_address || '';
-    form.allow_open_box = !!o.allow_open_box;
-    form.delivery_instruction_notes = o.delivery_instruction_notes || o.driver_notes || '';
-    form.courier_service_id = o.courier_service_id || null;
-    form.courier_awb_number = o.courier_awb_number || '';
-    form.tracking_url = o.tracking_url || '';
-
-    // Load BD location data for dropdowns
-    rawDistricts.value = await getBDDistricts();
-    districtOptions.value = rawDistricts.value;
-    await updateThanaList(form.district);
-    await updatePostcodeList(form.district, form.thana);
-
-    // Auto-match merchant if sender details match an existing merchant profile
-    const matchedMerchant = merchants.value.find(
-      (m) => m.merchant_name === form.sender_name || m.phone_primary === form.pickup_phone
-    );
-    if (matchedMerchant) {
-      selectedMerchantId.value = matchedMerchant.id;
-    }
-
-    blockCExpanded.value = !selectedMerchantId.value;
-
-    // Populate original state references for block dirty checking
-    originalBlockA.recipient_name = form.recipient_name;
-    originalBlockA.recipient_phone = form.recipient_phone;
-    originalBlockA.secondary_phone = form.secondary_phone;
-    originalBlockA.district = form.district;
-    originalBlockA.thana = form.thana;
-    originalBlockA.post_code = form.post_code;
-    originalBlockA.shipping_address = form.shipping_address;
-
-    originalBlockC.sender_name = form.sender_name;
-    originalBlockC.pickup_phone = form.pickup_phone;
-    originalBlockC.pickup_address = form.pickup_address;
-    originalBlockC.merchant_id = selectedMerchantId.value;
-
-    originalBlockD.allow_open_box = form.allow_open_box;
-    originalBlockD.delivery_instruction_notes = form.delivery_instruction_notes;
-
-    originalBlockE.courier_service_id = form.courier_service_id;
-    originalBlockE.courier_awb_number = form.courier_awb_number;
-    originalBlockE.tracking_url = form.tracking_url;
-  } finally {
-    hydratingForm.value = false;
-  }
+const onCourierChange = () => {
+  applySuggestedCharges();
 };
 
 watch(
@@ -1734,24 +416,10 @@ watch(
     if (!data) return;
     order.value = data.order;
     orderItems.value = data.items;
+    await loadInitialDistricts();
     await hydrateFormFromOrder(data.order as any);
   },
   { immediate: true },
-);
-
-watch(
-  [() => form.courier_awb_number, () => form.courier_service_id],
-  ([awbVal, courierIdVal]) => {
-    if (hydratingForm.value) return;
-    const courier = couriers.value.find((c) => c.id === courierIdVal) || selectedCourier.value;
-    const template = courier?.tracking_url_template;
-    if (!template) return;
-
-    const trimmedAwb = (awbVal || '').trim();
-    if (trimmedAwb) {
-      form.tracking_url = template.replace(/\{awb\}/gi, trimmedAwb);
-    }
-  },
 );
 
 watch(
@@ -1777,252 +445,6 @@ watch(
     showErrorNotification((err as Error).message || 'Failed to load merchant profiles');
   },
 );
-
-const onRecipientPhoneBlur = async () => {
-  const phone = form.recipient_phone.replace(/\D/g, '');
-  const tenantId = order.value?.tenant_id;
-  if (!tenantId || !/^01\d{9}$/.test(phone)) return;
-  if (phone === lastLookupPhone.value) return;
-  lastLookupPhone.value = phone;
-
-  const profile = await recipientProfileStore.getByPhone(tenantId, phone);
-  if (!profile) return;
-
-  if (!form.recipient_name.trim()) form.recipient_name = profile.name || '';
-  if (!form.secondary_phone.trim() && profile.secondary_phone) {
-    form.secondary_phone = profile.secondary_phone;
-  }
-
-  let baseAddress = profile.address || '';
-  let extractedPostcode = '';
-  const pcMatch = baseAddress.match(/Post\s*Code:\s*([^\n,]+)/i);
-  if (pcMatch) {
-    extractedPostcode = pcMatch[1]?.trim() || '';
-  }
-  baseAddress = baseAddress.replace(/\n?(?:Thana|District|Post\s*Code):.*$/gi, '').trim();
-
-  if (!form.shipping_address.trim() && baseAddress) {
-    form.shipping_address = baseAddress;
-  }
-  if (profile.district) {
-    form.district = profile.district;
-    await updateThanaList(profile.district);
-  }
-  if (profile.thana) {
-    form.thana = profile.thana;
-    await updatePostcodeList(form.district, profile.thana);
-  }
-  if (extractedPostcode) {
-    form.post_code = extractedPostcode;
-    await updatePostcodeList(form.district, form.thana);
-  }
-};
-
-const saveChanges = async () => {
-  if (!order.value) return;
-
-  saving.value = true;
-  try {
-    let finalAddress = form.shipping_address.trim();
-    const parts = [
-      form.thana ? `Thana: ${form.thana}` : '',
-      form.district ? `District: ${form.district}` : '',
-      form.post_code ? `Post Code: ${form.post_code}` : '',
-    ].filter(Boolean);
-    if (parts.length > 0) {
-      finalAddress = `${finalAddress}\n${parts.join(', ')}`;
-    }
-
-    const { error: dbError } = await supabase.rpc('update_dropship_consignment', {
-      p_order_id: order.value.id,
-      p_cod_collect_amount: form.cod_collect_amount,
-      p_package_weight_band: form.package_weight_band,
-      p_item_category: null,
-      p_parcel_description: null,
-      p_courier_order_ref: order.value.order_no,
-      p_delivery_zone: resolveDeliveryZone(form.district),
-      p_sender_name: form.sender_name,
-      p_pickup_phone: form.pickup_phone,
-      p_pickup_address: form.pickup_address,
-      p_payout_account_type: 'bank',
-      p_payout_account_info: null,
-      p_allow_open_box: form.allow_open_box,
-      p_delivery_instruction_notes: form.delivery_instruction_notes,
-      p_courier_service_id: form.courier_service_id,
-      p_courier_tracking_number: form.courier_awb_number,
-      p_courier_awb_number: form.courier_awb_number,
-      p_courier_consignment_id: null,
-      p_tracking_url: form.tracking_url,
-      p_courier_cost_amount: form.delivery_charge,
-      p_recipient_name: form.recipient_name,
-      p_recipient_phone: form.recipient_phone,
-      p_recipient_phone_secondary: form.secondary_phone || null,
-      p_shipping_address: finalAddress,
-      p_shipping_district: form.district || null,
-      p_shipping_thana: form.thana || null,
-      p_delivery_charge_amount: form.delivery_charge,
-      p_cod_charge_amount: form.cod_charge,
-    });
-
-    if (dbError) throw dbError;
-
-    // Also update order deduct settings
-    const { error: chargesError } = await supabase
-      .from('shop_orders')
-      .update({
-        deduct_delivery_from_margin: form.deduct_delivery_from_margin,
-        deduct_cod_from_margin: form.deduct_cod_from_margin,
-        deduct_print_from_margin: form.deduct_print_from_margin,
-        deduct_packing_from_margin: form.deduct_packing_from_margin,
-      })
-      .eq('id', order.value.id);
-    if (chargesError) throw chargesError;
-
-    showSuccessNotification('Consignment details saved successfully!');
-    await refetchOrderDetail();
-  } catch (err: any) {
-    showErrorNotification(err.message || 'Failed to save consignment');
-  } finally {
-    saving.value = false;
-  }
-};
-
-const targetUpdatingStatus = ref<string | null>(null);
-
-const statusOrder = ['processing', 'ready_for_pickup', 'shipped', 'delivered', 'returned'];
-const isPassedStatus = (st: string) => {
-  if (!order.value?.status) return false;
-  const currentIdx = statusOrder.indexOf(order.value.status);
-  const targetIdx = statusOrder.indexOf(st);
-  return targetIdx !== -1 && targetIdx < currentIdx;
-};
-
-const confirmB2bInvoiceDialogOpen = ref(false);
-const confirmDeleteInvoiceDialogOpen = ref(false);
-
-const onUpdateStatus = async (status: string) => {
-  if (!order.value || order.value.status === status) return;
-
-  if (order.value.status === 'processing' && status === 'ready_for_pickup') {
-    confirmB2bInvoiceDialogOpen.value = true;
-    return;
-  }
-
-  if (status === 'processing' && order.value.global_invoice_id) {
-    confirmDeleteInvoiceDialogOpen.value = true;
-    return;
-  }
-
-  await executeStatusUpdate(status);
-};
-
-const executeStatusUpdate = async (status: string) => {
-  if (!order.value) return;
-
-  updatingStatus.value = true;
-  targetUpdatingStatus.value = status;
-  const invoiceIdToDelete = order.value.global_invoice_id;
-
-  try {
-    let resData: any = null;
-    if (status === 'returned') {
-      const { data, error } = await supabase.rpc('mark_dropship_order_returned', {
-        p_order_id: order.value.id,
-        p_actual_return_charge: selectedCourier.value?.inside_dhaka_return_fee ?? 30,
-        p_deduct_from_middle_man: true,
-        p_reason: 'Refused on delivery',
-      });
-      if (error) throw error;
-      resData = data;
-    } else {
-      const { data, error } = await supabase.rpc('advance_dropship_order_status', {
-        p_order_id: order.value.id,
-        p_target_status: status,
-      });
-      if (error) throw error;
-      resData = data;
-    }
-
-    if (resData && typeof resData === 'object' && resData.success === false) {
-      throw new Error(resData.error || 'Failed to update status');
-    }
-
-    if (status === 'processing' && invoiceIdToDelete) {
-      try {
-        await supabase.rpc('unpost_global_invoice', { p_invoice_id: invoiceIdToDelete });
-      } catch {
-        // Ignored if already unposted by RPC
-      }
-
-      try {
-        await supabase
-          .from('shop_orders')
-          .update({ global_invoice_id: null })
-          .eq('id', order.value.id);
-
-        await supabase.from('global_return_items').delete().eq('invoice_id', invoiceIdToDelete);
-        await supabase.from('global_invoice_items').delete().eq('invoice_id', invoiceIdToDelete);
-        await supabase.from('global_invoices').delete().eq('id', invoiceIdToDelete);
-      } catch (e) {
-        console.error('Error during client invoice deletion fallback:', e);
-      }
-    }
-
-    showSuccessNotification(`Status updated to ${status.replace(/_/g, ' ')}`);
-    await refetchOrderDetail();
-  } catch (err: any) {
-    showErrorNotification(err.message || 'Failed to update status');
-  } finally {
-    updatingStatus.value = false;
-    targetUpdatingStatus.value = null;
-  }
-};
-
-const formatStatusLabel = (st: string) => {
-  return st.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-};
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'processing': return 'orange-8';
-    case 'ready_for_pickup': return 'blue-7';
-    case 'shipped': return 'purple-7';
-    case 'delivered': return 'positive';
-    case 'returned': return 'negative';
-    default: return 'grey';
-  }
-};
-
-const creatingInvoice = ref(false);
-
-const openDualInvoiceDialog = () => {
-  dualInvoiceDialogOpen.value = true;
-};
-
-const confirmDualInvoice = async () => {
-  if (!order.value) return;
-
-  creatingInvoice.value = true;
-  try {
-    const { data, error } = await supabase.rpc('create_dropship_invoice', {
-      p_order_id: order.value.id,
-      p_invoice_no: null,
-      p_billing_profile_id: null,
-      p_note: `Accounting invoice created from dropship order #${order.value.order_no}`,
-    });
-
-    if (error) throw error;
-
-    const res = data as any;
-    showSuccessNotification(`Accounting invoice #${res.invoice_no || ''} created successfully!`);
-    dualInvoiceDialogOpen.value = false;
-    await refetchOrderDetail();
-  } catch (err: any) {
-    showErrorNotification(err.message || 'Failed to create accounting invoice');
-  } finally {
-    creatingInvoice.value = false;
-  }
-};
 </script>
 
 <style scoped>

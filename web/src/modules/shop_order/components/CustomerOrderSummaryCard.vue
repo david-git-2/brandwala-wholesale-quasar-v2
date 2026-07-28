@@ -86,7 +86,7 @@
         <div class="row justify-between text-body2 text-grey-7" v-if="printChargeVal > 0">
           <span>
             {{ $t('shop.print_charge') }}
-            <span class="text-grey-5">(deducted from profit)</span>
+            <span class="text-grey-5">({{ deductPrintFromMargin ? 'deducted from profit' : 'customer pays' }})</span>
           </span>
           <span>{{ currencySymbol }}{{ printChargeVal.toFixed(2) }}</span>
         </div>
@@ -94,7 +94,7 @@
         <div class="row justify-between text-body2 text-grey-7" v-if="packingChargeVal > 0">
           <span>
             {{ $t('shop.packing_charge') }}
-            <span class="text-grey-5">(deducted from profit)</span>
+            <span class="text-grey-5">({{ deductPackingFromMargin ? 'deducted from profit' : 'customer pays' }})</span>
           </span>
           <span>{{ currencySymbol }}{{ packingChargeVal.toFixed(2) }}</span>
         </div>
@@ -160,6 +160,8 @@ defineProps<{
   discountVal: number;
   deductDeliveryFromMargin: boolean;
   deductCodFromMargin: boolean;
+  deductPrintFromMargin?: boolean;
+  deductPackingFromMargin?: boolean;
   codFeePctLabel: number | string;
   recipientGrandTotal: number;
   middlemanTotalCost: number;

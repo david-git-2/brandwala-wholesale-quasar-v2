@@ -7,6 +7,7 @@ As an admin, staff member, or tenant, I need a centralized, double-entry style w
 - A single `wallets` table that acts as a generalized account balance repository for different entities (`tenant`, `billing_profile`, `investor_profile`, `courier_service`).
 - A `wallet_transactions` table representing the true ledger of every debit and credit, maintaining a strict running balance.
 - All core accounting workflows (dropship profits, retail cash collections, wholesale advance payments, bulk payouts) interact strictly via this unified API to ensure an uncorrupted source of truth.
+- **Identity:** Wallet owner is always `owner_type` + `owner_id` (or ledger `entity_type` + `entity_id`). Tags are classification only and are out of scope for v1 of this feature — see [tag/UNIVERSAL_TAGGING_SYSTEM.md](tag/UNIVERSAL_TAGGING_SYSTEM.md) and [wallet/UNIVERSAL_WALLET_LEDGER.md](wallet/UNIVERSAL_WALLET_LEDGER.md).
 
 ## 2. Data Modeling & Database Schema
 **New Tables:**

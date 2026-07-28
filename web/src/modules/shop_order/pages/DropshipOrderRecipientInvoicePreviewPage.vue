@@ -1,99 +1,119 @@
 <template>
-  <q-page class="recipient-preview-page q-pa-md bg-grey-2">
-    <div v-if="loading" class="row justify-center items-center" style="min-height: 400px">
-      <q-spinner-dots color="primary" size="40px" />
-    </div>
-
-    <div v-else class="row q-col-gutter-md">
-      <!-- Sidebar controls - hidden on print -->
-      <div class="col-12 col-md-4 no-print">
-        <q-card flat class="floating-surface shadow-2 q-pa-lg glass-card">
-          <div class="text-h6 text-weight-bold text-primary q-mb-md">Customize Print</div>
-          
-          <q-select
-            v-model="selectedProfileId"
-            :options="profileOptions"
-            option-value="id"
-            option-label="name"
-            emit-value
-            map-options
-            label="Reseller Brand Profile"
-            outlined
-            dense
-            clearable
-            class="soft-input q-mb-md"
-            @update:model-value="onProfileChanged"
-          />
-
-          <q-input
-            v-model="brandName"
-            label="Brand Name"
-            outlined
-            dense
-            class="soft-input q-mb-md"
-          />
-
-          <q-input
-            v-model="brandAddress"
-            label="Brand Address"
-            type="textarea"
-            outlined
-            dense
-            rows="2"
-            class="soft-input q-mb-md"
-          />
-
-          <q-separator class="q-my-md" />
-
-          <q-input
-            v-model="recipientName"
-            label="Recipient Name"
-            outlined
-            dense
-            class="soft-input q-mb-md"
-          />
-
-          <q-input
-            v-model="recipientPhone"
-            label="Recipient Phone"
-            outlined
-            dense
-            class="soft-input q-mb-md"
-          />
-
-          <q-input
-            v-model="recipientAddress"
-            label="Recipient Address"
-            type="textarea"
-            outlined
-            dense
-            rows="2"
-            class="soft-input q-mb-md"
-          />
-
-          <q-input
-            v-model="thankYouMessage"
-            label="Thank You Message"
-            outlined
-            dense
-            class="soft-input q-mb-lg"
-          />
-
+  <q-page class="recipient-preview-page q-pa-md">
+    <div class="q-gutter-y-md">
+      <!-- Header -->
+      <section class="row items-center justify-between q-col-gutter-md no-print">
+        <div class="col">
+          <div class="row items-center q-gutter-x-sm">
+            <q-btn flat dense icon="arrow_back" color="grey-7" @click="goBack" />
+            <div>
+              <div class="text-overline text-primary">Dropship Orders</div>
+              <h1 class="text-h5 text-weight-bold q-my-none">Recipient Invoice Preview</h1>
+              <p v-if="order?.order_no" class="text-body2 text-grey-7 q-mt-xs q-mb-none">
+                Order #{{ order.order_no }}
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="col-auto row q-gutter-sm items-center">
           <q-btn
             color="primary"
-            icon="ph ph-printer"
-            label="Print Recipient Invoice"
+            unelevated
             no-caps
-            class="full-width pill-btn text-weight-bold"
+            icon="ph ph-printer"
+            label="Print Invoice"
             @click="printInvoice"
           />
-        </q-card>
-      </div>
+        </div>
+      </section>
 
-      <!-- Preview Sheet - centered / A4 styled -->
-      <div class="col-12 col-md-8 print-sheet-col">
-        <div class="a4-container shadow-8">
-          <InvoicePrintSheet :model="printModel" />
+      <!-- Skeleton Loader -->
+      <DropshipOrderRecipientInvoicePreviewSkeleton v-if="loading" />
+
+      <!-- Loaded Content -->
+      <div v-else class="row q-col-gutter-md">
+        <!-- Sidebar controls - hidden on print -->
+        <div class="col-12 col-md-4 no-print">
+          <q-card flat bordered class="q-pa-md">
+            <div class="text-subtitle1 text-weight-bold text-primary q-mb-md">Customize Print</div>
+            
+            <q-input
+              v-model="brandName"
+              label="Brand Name"
+              outlined
+              dense
+              class="q-mb-md"
+            />
+
+            <q-input
+              v-model="brandAddress"
+              label="Brand Address"
+              type="textarea"
+              outlined
+              dense
+              rows="2"
+              class="q-mb-md"
+            />
+
+            <q-separator class="q-my-md" />
+
+            <q-input
+              v-model="recipientName"
+              label="Recipient Name"
+              outlined
+              dense
+              class="q-mb-md"
+            />
+
+            <q-input
+              v-model="recipientPhone"
+              label="Recipient Phone"
+              outlined
+              dense
+              class="q-mb-md"
+            />
+
+            <q-input
+              v-model="recipientAddress"
+              label="Recipient Address"
+              type="textarea"
+              outlined
+              dense
+              rows="2"
+              class="q-mb-md"
+            />
+
+            <q-input
+              v-model="thankYouMessage"
+              label="Thank You Message"
+              outlined
+              dense
+              class="q-mb-md"
+            />
+
+            <q-toggle
+              v-model="showItemImages"
+              label="Show product images on print"
+              class="q-mb-lg"
+            />
+
+            <q-btn
+              color="primary"
+              unelevated
+              no-caps
+              icon="ph ph-printer"
+              label="Print Recipient Invoice"
+              class="full-width text-weight-bold"
+              @click="printInvoice"
+            />
+          </q-card>
+        </div>
+
+        <!-- Preview Sheet - centered / A4 styled -->
+        <div class="col-12 col-md-8 print-sheet-col">
+          <div class="a4-container shadow-4">
+            <InvoicePrintSheet :model="printModel" :show-images="showItemImages" />
+          </div>
         </div>
       </div>
     </div>
@@ -102,48 +122,40 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { supabase } from 'src/boot/supabase';
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
 import InvoicePrintSheet from 'src/modules/invoice_shared/components/InvoicePrintSheet.vue';
+import DropshipOrderRecipientInvoicePreviewSkeleton from '../components/DropshipOrderRecipientInvoicePreviewSkeleton.vue';
 import type { InvoicePrintModel } from 'src/modules/invoice_shared/types/invoicePrintModel';
 
 const route = useRoute();
+const router = useRouter();
 const loading = ref(true);
+
+const goBack = () => {
+  window.close();
+  // Fallback in case window.close() is blocked by browser security (e.g. not opened via script)
+  if (!window.closed) {
+    if (window.history.length > 1) {
+      router.back();
+    } else {
+      void router.push({ name: 'dropship-orders' });
+    }
+  }
+};
 
 const order = ref<any>(null);
 const items = ref<any[]>([]);
-const profiles = ref<any[]>([]);
 
 // Customization states
-const selectedProfileId = ref<number | null>(null);
 const brandName = ref('');
 const brandAddress = ref('');
 const recipientName = ref('');
 const recipientPhone = ref('');
 const recipientAddress = ref('');
 const thankYouMessage = ref('Thank you for shopping with us!');
-
-const profileOptions = computed(() => {
-  return profiles.value.map((p) => ({
-    id: p.id,
-    name: p.name,
-    address: p.address,
-  }));
-});
-
-const onProfileChanged = (id: number | null) => {
-  if (id) {
-    const selected = profiles.value.find((p) => p.id === id);
-    if (selected) {
-      brandName.value = selected.name;
-      brandAddress.value = selected.address || '';
-    }
-  } else {
-    brandName.value = order.value?.customer_group_name || 'Dropship Reseller';
-    brandAddress.value = '';
-  }
-};
+const showItemImages = ref(true);
 
 const printModel = computed<InvoicePrintModel>(() => {
   const o = order.value;
@@ -256,23 +268,15 @@ onMounted(async () => {
     ].filter(Boolean);
     recipientAddress.value = addressParts.join(', ');
 
-    // Load profiles (billing_profiles) for the reseller dropdown
-    if (orderRes.order.tenant_id) {
-      const { data: bpList } = await supabase
-        .from('billing_profiles')
-        .select('*')
-        .eq('tenant_id', orderRes.order.tenant_id);
-      if (bpList) {
-        profiles.value = bpList;
-      }
-    }
-
     // Set initial brand
     if (orderRes.order.billing_profile_id) {
-      selectedProfileId.value = orderRes.order.billing_profile_id;
-      const bp = profiles.value.find((p) => p.id === orderRes.order.billing_profile_id);
+      const { data: bp } = await supabase
+        .from('billing_profiles')
+        .select('name, address')
+        .eq('id', orderRes.order.billing_profile_id)
+        .maybeSingle();
       if (bp) {
-        brandName.value = bp.name;
+        brandName.value = bp.name || '';
         brandAddress.value = bp.address || '';
       } else {
         brandName.value = orderRes.order.customer_group_name || 'Dropship Reseller';

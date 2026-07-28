@@ -1146,6 +1146,161 @@ export type Database = {
           },
         ]
       }
+      courier_remittance_batches: {
+        Row: {
+          allocated_amount: number
+          bank_trx_id: string | null
+          batch_no: string
+          courier_charges_amount: number
+          courier_service_id: string
+          created_at: string
+          created_by: string | null
+          gross_cod_amount: number
+          id: number
+          net_deposited_amount: number
+          note: string | null
+          payment_date: string
+          posted_at: string | null
+          posted_by: string | null
+          status: string
+          tenant_id: number
+          updated_at: string
+          variance_amount: number
+        }
+        Insert: {
+          allocated_amount?: number
+          bank_trx_id?: string | null
+          batch_no: string
+          courier_charges_amount?: number
+          courier_service_id: string
+          created_at?: string
+          created_by?: string | null
+          gross_cod_amount?: number
+          id?: never
+          net_deposited_amount?: number
+          note?: string | null
+          payment_date?: string
+          posted_at?: string | null
+          posted_by?: string | null
+          status?: string
+          tenant_id: number
+          updated_at?: string
+          variance_amount?: number
+        }
+        Update: {
+          allocated_amount?: number
+          bank_trx_id?: string | null
+          batch_no?: string
+          courier_charges_amount?: number
+          courier_service_id?: string
+          created_at?: string
+          created_by?: string | null
+          gross_cod_amount?: number
+          id?: never
+          net_deposited_amount?: number
+          note?: string | null
+          payment_date?: string
+          posted_at?: string | null
+          posted_by?: string | null
+          status?: string
+          tenant_id?: number
+          updated_at?: string
+          variance_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courier_remittance_batches_courier_service_id_fkey"
+            columns: ["courier_service_id"]
+            isOneToOne: false
+            referencedRelation: "courier_services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "courier_remittance_batches_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      courier_remittance_items: {
+        Row: {
+          awb_number: string | null
+          batch_id: number
+          cod_collected_amount: number
+          courier_charge_amount: number
+          created_at: string
+          error_message: string | null
+          global_invoice_id: number | null
+          id: number
+          net_remitted_amount: number
+          shop_order_id: number | null
+          status: string
+          tenant_id: number
+          tracking_number: string | null
+        }
+        Insert: {
+          awb_number?: string | null
+          batch_id: number
+          cod_collected_amount?: number
+          courier_charge_amount?: number
+          created_at?: string
+          error_message?: string | null
+          global_invoice_id?: number | null
+          id?: never
+          net_remitted_amount?: number
+          shop_order_id?: number | null
+          status?: string
+          tenant_id: number
+          tracking_number?: string | null
+        }
+        Update: {
+          awb_number?: string | null
+          batch_id?: number
+          cod_collected_amount?: number
+          courier_charge_amount?: number
+          created_at?: string
+          error_message?: string | null
+          global_invoice_id?: number | null
+          id?: never
+          net_remitted_amount?: number
+          shop_order_id?: number | null
+          status?: string
+          tenant_id?: number
+          tracking_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courier_remittance_items_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "courier_remittance_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "courier_remittance_items_global_invoice_id_fkey"
+            columns: ["global_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "global_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "courier_remittance_items_shop_order_id_fkey"
+            columns: ["shop_order_id"]
+            isOneToOne: false
+            referencedRelation: "shop_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "courier_remittance_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       courier_services: {
         Row: {
           cod_fee_flat_amount: number | null
@@ -7069,6 +7224,65 @@ export type Database = {
         }
         Relationships: []
       }
+      universal_wallet_ledger: {
+        Row: {
+          amount: number
+          balance_after: number
+          base_amount: number
+          created_at: string
+          currency_code: string
+          entity_id: number
+          entity_type: string
+          exchange_rate: number
+          id: string
+          metadata: Json
+          source_id: string | null
+          source_type: string
+          tenant_id: number
+          type: string
+        }
+        Insert: {
+          amount: number
+          balance_after: number
+          base_amount: number
+          created_at?: string
+          currency_code?: string
+          entity_id: number
+          entity_type: string
+          exchange_rate?: number
+          id?: string
+          metadata?: Json
+          source_id?: string | null
+          source_type: string
+          tenant_id: number
+          type: string
+        }
+        Update: {
+          amount?: number
+          balance_after?: number
+          base_amount?: number
+          created_at?: string
+          currency_code?: string
+          entity_id?: number
+          entity_type?: string
+          exchange_rate?: number
+          id?: string
+          metadata?: Json
+          source_id?: string | null
+          source_type?: string
+          tenant_id?: number
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "universal_wallet_ledger_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vendors: {
         Row: {
           address: string | null
@@ -7175,20 +7389,6 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      add_commerce_invoice_item: {
-        Args: {
-          p_cost_bdt: number
-          p_image_url: string
-          p_inventory_item_id: number
-          p_invoice_id: number
-          p_order_id: number
-          p_product_id: number
-          p_quantity: number
-          p_recipient_price_bdt: number
-          p_sell_price_bdt: number
-        }
-        Returns: undefined
-      }
       add_global_invoice_item: {
         Args: {
           p_global_stock_id: number
@@ -7284,25 +7484,6 @@ export type Database = {
               isSetofReturn: false
             }
           }
-      add_invoice_item_transactional: {
-        Args: {
-          p_barcode_snapshot: string
-          p_cost_amount: number
-          p_created_by: string
-          p_inventory_item_id: number
-          p_invoice_id: number
-          p_line_discount_amount: number
-          p_line_tax_amount: number
-          p_name_snapshot: string
-          p_product_code_snapshot: string
-          p_quantity: number
-          p_sell_price_amount: number
-          p_source_item_id: number
-          p_source_item_type: string
-          p_tenant_id: number
-        }
-        Returns: Json
-      }
       add_item_to_cart: {
         Args: {
           p_can_see_price?: boolean
@@ -7600,28 +7781,6 @@ export type Database = {
           p_transaction_rate?: number
         }
         Returns: Json
-      }
-      apply_invoice_item_return: {
-        Args: {
-          p_actor?: string
-          p_invoice_item_id: number
-          p_note?: string
-          p_return_amount: number
-          p_return_damaged_quantity: number
-          p_return_normal_quantity: number
-          p_return_open_box_quantity: number
-          p_return_to_new_batch?: boolean
-          p_tenant_id: number
-        }
-        Returns: Json
-      }
-      assign_commerce_order_item_inventory_transactional: {
-        Args: {
-          p_inventory_item_id: number
-          p_invoice_id: number
-          p_order_item_id: number
-        }
-        Returns: undefined
       }
       assign_customer_group_member_role: {
         Args: { p_cgm_id: number; p_tenant_role_id: number }
@@ -8082,52 +8241,6 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      create_commerce_invoice:
-        | {
-            Args: {
-              p_amount_paid: number
-              p_billing_profile_id?: number
-              p_cod: number
-              p_delivered_by: string
-              p_delivery_charge: number
-              p_order_id: number
-              p_tenant_id: number
-              p_total_amount: number
-              p_wrapping_charge: number
-            }
-            Returns: number
-          }
-        | {
-            Args: {
-              p_amount_paid: number
-              p_billing_profile_id?: number
-              p_cod: number
-              p_delivered_by: string
-              p_delivery_charge: number
-              p_invoice_date?: string
-              p_order_id: number
-              p_tenant_id: number
-              p_total_amount: number
-              p_wrapping_charge: number
-            }
-            Returns: number
-          }
-        | {
-            Args: {
-              p_amount_paid: number
-              p_billing_profile_id?: number
-              p_cod: number
-              p_delivered_by: string
-              p_delivery_charge: number
-              p_invoice_date?: string
-              p_order_id: number
-              p_print_charge?: number
-              p_tenant_id: number
-              p_total_amount: number
-              p_wrapping_charge: number
-            }
-            Returns: number
-          }
       create_costing_file:
         | {
             Args: {
@@ -8336,6 +8449,22 @@ export type Database = {
               isSetofReturn: false
             }
           }
+      create_or_update_courier_remittance_batch: {
+        Args: {
+          p_bank_trx_id?: string
+          p_batch_id?: number
+          p_batch_no?: string
+          p_courier_charges_amount?: number
+          p_courier_service_id?: string
+          p_gross_cod_amount?: number
+          p_items?: Json
+          p_net_deposited_amount?: number
+          p_note?: string
+          p_payment_date?: string
+          p_tenant_id?: number
+        }
+        Returns: Json
+      }
       create_shipment: {
         Args: { p_name: string; p_shipment_type?: string; p_tenant_id: number }
         Returns: {
@@ -8500,24 +8629,12 @@ export type Database = {
         Args: { p_items: Json; p_order_id: number }
         Returns: undefined
       }
-      delete_commerce_invoice_transactional: {
-        Args: { p_invoice_id: number }
-        Returns: undefined
-      }
       delete_customer_group_member_grant: {
         Args: { p_action: string; p_cgm_id: number; p_module_key: string }
         Returns: undefined
       }
       delete_global_stock_allocation: {
         Args: { p_allocation_id: number }
-        Returns: undefined
-      }
-      delete_invoice_item_transactional: {
-        Args: { p_invoice_item_id: number }
-        Returns: undefined
-      }
-      delete_invoice_transactional: {
-        Args: { p_invoice_id: number }
         Returns: undefined
       }
       delete_membership_grant: {
@@ -8571,6 +8688,15 @@ export type Database = {
         }[]
       }
       delete_tenant_role: { Args: { p_role_id: number }; Returns: undefined }
+      dispense_middleman_payout: {
+        Args: {
+          p_amount: number
+          p_billing_profile_id: number
+          p_method?: string
+          p_trx_id?: string
+        }
+        Returns: Json
+      }
       fetch_customer_shop_categories: {
         Args: { p_tenant_id: number }
         Returns: {
@@ -8669,6 +8795,17 @@ export type Database = {
           status: Database["public"]["Enums"]["costing_file_status"]
           tenant_id: number
           updated_at: string
+        }[]
+      }
+      get_courier_unremitted_financial_summary: {
+        Args: { p_tenant_id: number }
+        Returns: {
+          company_wholesale_total: number
+          courier_name: string
+          courier_service_id: string
+          gross_cod_total: number
+          middleman_margin_total: number
+          order_count: number
         }[]
       }
       get_effective_grants: {
@@ -10118,6 +10255,10 @@ export type Database = {
         Args: { p_invoice_id: number }
         Returns: undefined
       }
+      process_courier_bulk_remittance_batch: {
+        Args: { p_batch_id: number }
+        Returns: Json
+      }
       process_dropship_shop_order: {
         Args: { p_order_id: number }
         Returns: Json
@@ -10138,9 +10279,9 @@ export type Database = {
         Args: { p_invoice_id: number }
         Returns: undefined
       }
-      recompute_invoice_payment_status: {
-        Args: { p_invoice_id: number }
-        Returns: undefined
+      reconcile_single_order_remittance: {
+        Args: { p_courier_charge?: number; p_order_id: number }
+        Returns: Json
       }
       record_dropship_courier_remittance: {
         Args: {
@@ -10234,6 +10375,42 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "investor_transactions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      record_ledger_transaction: {
+        Args: {
+          p_amount: number
+          p_currency_code?: string
+          p_entity_id: number
+          p_entity_type: string
+          p_exchange_rate?: number
+          p_metadata?: Json
+          p_source_id?: string
+          p_source_type?: string
+          p_tenant_id: number
+          p_type: string
+        }
+        Returns: {
+          amount: number
+          balance_after: number
+          base_amount: number
+          created_at: string
+          currency_code: string
+          entity_id: number
+          entity_type: string
+          exchange_rate: number
+          id: string
+          metadata: Json
+          source_id: string | null
+          source_type: string
+          tenant_id: number
+          type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "universal_wallet_ledger"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -10400,10 +10577,6 @@ export type Database = {
             }
             Returns: number
           }
-      remove_commerce_invoice_item_transactional: {
-        Args: { p_invoice_id: number; p_order_item_id: number }
-        Returns: undefined
-      }
       remove_global_invoice_item: {
         Args: { p_invoice_item_id: number }
         Returns: undefined
@@ -10587,47 +10760,8 @@ export type Database = {
           sort_year: string
         }[]
       }
-      unassign_commerce_order_item_inventory_transactional: {
-        Args: { p_invoice_id: number; p_order_item_id: number }
-        Returns: undefined
-      }
       unpost_global_invoice: {
         Args: { p_invoice_id: number }
-        Returns: undefined
-      }
-      update_commerce_invoice_charges: {
-        Args: {
-          p_advance_amount?: number
-          p_amount_paid?: number
-          p_brand_address?: string
-          p_brand_name?: string
-          p_client_name?: string
-          p_client_tr?: string
-          p_cod?: number
-          p_delivered_by?: string
-          p_delivery_charge?: number
-          p_discount_amount?: number
-          p_invoice_date?: string
-          p_invoice_id: number
-          p_note?: string
-          p_previous_due?: number
-          p_print_charge?: number
-          p_status?: string
-          p_thank_you_message?: string
-          p_total_boxes?: number
-          p_wrapping_charge?: number
-        }
-        Returns: Json
-      }
-      update_commerce_invoice_item_transactional: {
-        Args: {
-          p_invoice_id: number
-          p_order_item_id: number
-          p_quantity: number
-          p_recipient_price_bdt: number
-          p_sell_price_bdt: number
-          p_unit: string
-        }
         Returns: undefined
       }
       update_costing_file: {
@@ -10877,15 +11011,6 @@ export type Database = {
       update_global_shipment_items_order: {
         Args: { p_items: Json }
         Returns: undefined
-      }
-      update_invoice_item_transactional: {
-        Args: {
-          p_invoice_item_id: number
-          p_quantity: number
-          p_sell_price_amount: number
-          p_unit: string
-        }
-        Returns: Json
       }
       update_membership_preference_for_self: {
         Args: { p_membership_id: number; p_preference: Json }

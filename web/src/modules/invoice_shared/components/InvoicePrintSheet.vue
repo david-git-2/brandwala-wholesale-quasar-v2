@@ -97,9 +97,17 @@ import { formatAmountBdt } from 'src/utils/currency';
 
 import type { InvoicePrintModel } from '../types/invoicePrintModel';
 
-const props = defineProps<{ model: InvoicePrintModel }>();
+const props = withDefaults(
+  defineProps<{
+    model: InvoicePrintModel;
+    showImages?: boolean;
+  }>(),
+  {
+    showImages: true,
+  },
+);
 
-const hasImages = computed(() => props.model.lines.some((line) => !!line.imageUrl));
+const hasImages = computed(() => props.showImages && props.model.lines.some((line) => !!line.imageUrl));
 
 const totalQuantity = computed(() =>
   props.model.lines.reduce((sum, line) => sum + (line.quantity || 0), 0),

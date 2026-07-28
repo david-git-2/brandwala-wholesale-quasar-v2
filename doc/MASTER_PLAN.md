@@ -245,6 +245,10 @@ Per-tenant assignment table: §15.5 and domain docs.
 | [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) | Dropship Process Order desk, dual invoice, return bearer, middle-man payout |
 | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) | Margin reports, payments, balances, batch P&L |
 | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) | Investor profiles, capital ledger, portal, cost-share |
+| [wallet/UNIVERSAL_WALLET_LEDGER.md](wallet/UNIVERSAL_WALLET_LEDGER.md) | Universal wallet identity (`entity_type` + `entity_id`), ledger, interim metadata dimensions |
+| [tag/UNIVERSAL_TAGGING_SYSTEM.md](tag/UNIVERSAL_TAGGING_SYSTEM.md) | Optional classification tags — use cases, where not to use, deferred until multi-module need |
+| [trash/TRASH_AND_SOFT_DELETE.md](trash/TRASH_AND_SOFT_DELETE.md) | Soft delete matrix, `trash_entries` index, central tenant Trash module |
+| [COURIER_AND_MIDDLEMAN_FINANCIAL_MASTER_PLAN.md](COURIER_AND_MIDDLEMAN_FINANCIAL_MASTER_PLAN.md) | Dropship COD escrow, remittance, middleman dispense |
 | [docs/UI_CONSISTENCY.md](../docs/UI_CONSISTENCY.md) | Mandatory UI patterns: `bw-page`, tables, cards, tokens |
 | [docs/AI_WORKFLOW_SOP.md](../docs/AI_WORKFLOW_SOP.md) | Deterministic AI development protocol |
 
@@ -260,6 +264,7 @@ Per-tenant assignment table: §15.5 and domain docs.
 - `is_display_only = false` child sale bridge
 - Merge `invoice_accounting_payments` with `payments`
 - Investor withdrawal request flow (v1 is display-only — see INVESTOR_CAPITAL)
+- **Universal tagging engine** (`tags` + `entity_tags`) — classification only; not wallet identity. Build when 2+ modules need a shared vocabulary; see [tag/UNIVERSAL_TAGGING_SYSTEM.md](tag/UNIVERSAL_TAGGING_SYSTEM.md). Interim expense dimensions may use ledger `metadata` only.
 
 ---
 

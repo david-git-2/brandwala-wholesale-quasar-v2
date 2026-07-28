@@ -11,6 +11,14 @@
           <q-btn
             outline
             color="primary"
+            icon="ph ph-receipt"
+            label="Courier Remittances"
+            no-caps
+            :to="{ name: 'app-shop-courier-remittances-list-page' }"
+          />
+          <q-btn
+            outline
+            color="primary"
             icon="ph ph-truck"
             label="Courier Catalog"
             no-caps
@@ -166,6 +174,17 @@
                     @click="createAccountingInvoice(c)"
                   />
                   <q-btn
+                    v-if="c.status === 'delivered'"
+                    color="positive"
+                    unelevated
+                    dense
+                    size="sm"
+                    no-caps
+                    label="Mark Remitted"
+                    icon="ph ph-check-circle"
+                    @click="openQuickRemitDialog(c)"
+                  />
+                  <q-btn
                     v-if="canRecordRemittance(c)"
                     color="primary"
                     outline
@@ -235,6 +254,13 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <!-- 1-Click Quick Remit Dialog -->
+    <QuickRemitDialog
+      v-model="quickRemitDialogOpen"
+      :order="quickRemitOrder"
+      @success="loadOrders"
+    />
   </q-page>
 </template>
 
@@ -247,6 +273,7 @@ import {
   showErrorNotification,
   requestConfirmation,
 } from 'src/utils/appFeedback';
+import QuickRemitDialog from '../components/QuickRemitDialog.vue';
 import { shopOrderService } from '../services/shopOrderService';
 import type { ShopOrder } from '../types';
 
@@ -258,6 +285,14 @@ const selectedStatus = ref<string>('all');
 
 const actionOrderId = ref<number | null>(null);
 const actionKind = ref<'deliver' | 'invoice' | 'remit' | null>(null);
+
+const quickRemitDialogOpen = ref(false);
+const quickRemitOrder = ref<ShopOrder | null>(null);
+
+const openQuickRemitDialog = (c: ShopOrder) => {
+  quickRemitOrder.value = c;
+  quickRemitDialogOpen.value = true;
+};
 
 const remittanceDialogOpen = ref(false);
 const remittanceOrder = ref<ShopOrder | null>(null);

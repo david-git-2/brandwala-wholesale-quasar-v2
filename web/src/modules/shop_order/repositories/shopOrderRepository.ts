@@ -376,6 +376,24 @@ const deleteShop = async (shopId: number, tenantId: number): Promise<void> => {
   }
 };
 
+const updateOrderStatus = async (orderId: number, status: string): Promise<void> => {
+  const { error } = await supabase
+    .from('shop_orders')
+    .update({ status })
+    .eq('id', orderId);
+  if (error) throw error;
+};
+
+const getShopSellCurrencyId = async (shopId: number): Promise<number | null> => {
+  const { data, error } = await supabase
+    .from('shops')
+    .select('sell_currency_id')
+    .eq('id', shopId)
+    .single();
+  if (error) return null;
+  return data?.sell_currency_id ?? null;
+};
+
 export const shopOrderRepository = {
   listShops,
   upsertShop,
@@ -398,6 +416,9 @@ export const shopOrderRepository = {
   deleteShopOrder,
   updateOrderCharges,
   processDropshipShopOrder,
+  updateOrderStatus,
+  getShopSellCurrencyId,
 };
+
 
 

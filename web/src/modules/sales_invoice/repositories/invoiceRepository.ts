@@ -16,7 +16,8 @@ const localToday = (): string => {
 };
 
 export type ListGlobalInvoicesParams = {
-  parentTenantId: number;
+  tenantId?: number;
+  parentTenantId?: number;
   page?: number;
   pageSize?: number;
   search?: string;
@@ -37,6 +38,7 @@ const listGlobalInvoices = async (
   params: ListGlobalInvoicesParams,
 ): Promise<PaginatedGlobalInvoices> => {
   const {
+    tenantId,
     parentTenantId,
     page = 1,
     pageSize = 10,
@@ -50,14 +52,18 @@ const listGlobalInvoices = async (
   } = params;
 
   const offset = (page - 1) * pageSize;
+  const targetTenantId = tenantId ?? parentTenantId;
 
   let query = supabase
     .from('global_invoices')
     .select(
       'id, tenant_id, parent_tenant_id, invoice_no, invoice_type, invoice_status, payment_status, invoice_date, due_date, total_amount, due_amount, paid_amount, billing_profile_id, recipient_name, billing_profiles(name, email, color, customer_group_id)',
       { count: 'exact' },
-    )
-    .eq('parent_tenant_id', parentTenantId);
+    );
+
+  if (targetTenantId) {
+    query = query.eq('tenant_id', targetTenantId);
+  }
 
   if (paymentStatus) {
     query = query.eq('payment_status', paymentStatus);

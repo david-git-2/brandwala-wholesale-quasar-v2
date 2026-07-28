@@ -1,13 +1,13 @@
 <template>
-  <q-page class="bw-page">
-    <section class="bw-page__stack">
-      <!-- Header -->
+  <q-page class="q-pa-md">
+    <div class="max-width-container q-gutter-y-md">
+      <!-- Header Section -->
       <section class="row items-center justify-between q-col-gutter-md">
         <div class="col">
-          <div class="text-overline">Shop &amp; Order — Dropship</div>
-          <h1 class="text-h5 q-my-none">Merchant &amp; Sender Pickup Profiles</h1>
+          <div class="text-overline text-primary">Shop &amp; Order — Dropship</div>
+          <h1 class="text-h5 text-weight-bold q-my-none">Middleman &amp; Merchant Payout Center</h1>
           <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-            Manage merchants, store brands, and pickup address profiles for easy parcel dispatch tasks.
+            Monitor reseller margins, locked courier escrow, available wallet balances, and dispense middleman payouts.
           </p>
         </div>
         <div class="col-auto row q-gutter-sm">
@@ -16,469 +16,254 @@
             icon="ph ph-plus"
             label="Add Merchant Profile"
             no-caps
-            class="pill-btn"
+            unelevated
+            class="rounded-btn"
             @click="openAddDialog"
           />
         </div>
       </section>
 
-      <!-- Filters & Search -->
-      <q-card flat bordered class="form-card q-pa-sm">
-        <div class="row items-center justify-between q-col-gutter-md">
-          <div class="col-12 col-sm-6 col-md-4">
-            <q-input
-              v-model="searchQuery"
-              dense
-              outlined
-              placeholder="Search merchant name, phone, district..."
-              clearable
-            >
-              <template #prepend>
-                <q-icon name="ph ph-magnifying-glass" />
-              </template>
-            </q-input>
-          </div>
-          <div class="col-auto row q-gutter-xs items-center">
-            <q-chip
-              clickable
-              :outline="statusFilter !== 'all'"
-              :color="statusFilter === 'all' ? 'primary' : 'grey-4'"
-              :text-color="statusFilter === 'all' ? 'white' : 'grey-9'"
-              @click="statusFilter = 'all'"
-            >
-              All ({{ merchants.length }})
-            </q-chip>
-            <q-chip
-              clickable
-              :outline="statusFilter !== 'active'"
-              :color="statusFilter === 'active' ? 'positive' : 'grey-4'"
-              :text-color="statusFilter === 'active' ? 'white' : 'grey-9'"
-              @click="statusFilter = 'active'"
-            >
-              Active ({{ activeCount }})
-            </q-chip>
-            <q-chip
-              clickable
-              :outline="statusFilter !== 'inactive'"
-              :color="statusFilter === 'inactive' ? 'grey-7' : 'grey-4'"
-              :text-color="statusFilter === 'inactive' ? 'white' : 'grey-9'"
-              @click="statusFilter = 'inactive'"
-            >
-              Inactive ({{ inactiveCount }})
-            </q-chip>
-          </div>
-        </div>
-      </q-card>
+      <!-- Loading State: Dedicated Skeleton Loader -->
+      <DropshipMerchantsSkeleton v-if="isLoading" />
 
-      <!-- Table Card -->
-      <q-card flat bordered class="form-card">
-        <div v-if="loading" class="row justify-center q-py-xl">
-          <q-spinner color="primary" size="3em" />
-        </div>
-
-        <q-markup-table v-else flat borderless class="q-mb-none soft-table">
-          <thead>
-            <tr>
-              <th class="text-left">Merchant / Brand</th>
-              <th class="text-left">Contact Info</th>
-              <th class="text-left">Pickup Address</th>
-              <th class="text-left">Location (District / Thana)</th>
-              <th class="text-left">Status</th>
-              <th class="text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-if="filteredMerchants.length === 0">
-              <td colspan="6" class="text-center text-grey-6 q-pa-lg">
-                No merchant profiles found. Click "Add Merchant Profile" to create one.
-              </td>
-            </tr>
-            <tr v-for="m in filteredMerchants" :key="m.id" class="hover-row">
-              <td>
-                <div class="text-weight-bold text-grey-9">{{ m.merchant_name }}</div>
-                <div class="text-caption text-grey-7">{{ m.store_name || '—' }}</div>
-              </td>
-              <td>
-                <div class="text-weight-medium">{{ m.phone_primary }}</div>
-                <div v-if="m.phone_secondary" class="text-caption text-grey-7">
-                  Alt: {{ m.phone_secondary }}
-                </div>
-              </td>
-              <td>
-                <div class="text-body2 text-grey-9" style="max-width: 250px; white-space: normal;">
-                  {{ m.pickup_address }}
-                </div>
-              </td>
-              <td>
-                <q-chip dense outline size="sm" color="blue-8">
-                  {{ m.district || 'Dhaka' }} / {{ m.thana || 'Dhanmondi' }}
-                </q-chip>
-              </td>
-              <td>
-                <q-chip
-                  dense
-                  :color="m.is_active ? 'green-1' : 'grey-2'"
-                  :text-color="m.is_active ? 'positive' : 'grey-7'"
-                >
-                  {{ m.is_active ? 'Active' : 'Inactive' }}
-                </q-chip>
-              </td>
-              <td class="text-right">
-                <q-btn flat round dense icon="ph ph-pencil-simple" color="primary" @click="openEditDialog(m)">
-                  <q-tooltip>Edit Profile</q-tooltip>
-                </q-btn>
-                <q-btn
-                  flat
-                  round
-                  dense
-                  :icon="m.is_active ? 'block' : 'check_circle'"
-                  :color="m.is_active ? 'negative' : 'positive'"
-                  @click="toggleMerchantStatus(m)"
-                >
-                  <q-tooltip>{{ m.is_active ? 'Deactivate' : 'Activate' }}</q-tooltip>
-                </q-btn>
-              </td>
-            </tr>
-          </tbody>
-        </q-markup-table>
-      </q-card>
-    </section>
-
-    <!-- Dialog: Add / Edit Merchant -->
-    <q-dialog v-model="dialogOpen" persistent>
-      <q-card style="min-width: 500px; max-width: 90vw;" class="q-pa-sm">
-        <q-card-section class="row items-center justify-between">
-          <div class="text-h6 text-weight-bold">
-            {{ editingId ? 'Edit Merchant Profile' : 'Add New Merchant Profile' }}
-          </div>
-          <q-btn v-close-popup flat round dense icon="ph ph-x" />
-        </q-card-section>
-
-        <q-separator />
-
-        <q-card-section class="q-gutter-y-md">
-          <div class="row q-col-gutter-sm">
-            <div class="col-12 col-sm-6">
+      <!-- Loaded State -->
+      <template v-else>
+        <!-- Search & Quick Filters Toolbar -->
+        <q-card flat bordered class="rounded-card q-pa-sm">
+          <div class="row items-center justify-between q-col-gutter-md">
+            <div class="col-12 col-sm-6 col-md-4">
               <q-input
-                v-model="form.merchant_name"
-                label="Merchant / Sender Name *"
+                v-model="searchQuery"
                 dense
                 outlined
-                :rules="[(val) => !!val || 'Name is required']"
-              />
+                placeholder="Search reseller name, email, phone..."
+                clearable
+              >
+                <template #prepend>
+                  <q-icon name="ph ph-magnifying-glass" />
+                </template>
+              </q-input>
             </div>
-            <div class="col-12 col-sm-6">
-              <q-input
-                v-model="form.store_name"
-                label="Store / Brand Name"
-                dense
-                outlined
-                placeholder="e.g. Fashion BD"
-              />
-            </div>
-          </div>
-
-          <div class="row q-col-gutter-sm">
-            <div class="col-12 col-sm-6">
-              <q-input
-                v-model="form.phone_primary"
-                label="Primary Phone *"
-                dense
-                outlined
-                placeholder="017xxxxxxxx"
-                :rules="[(val) => !!val || 'Primary phone is required']"
-              />
-            </div>
-            <div class="col-12 col-sm-6">
-              <q-input
-                v-model="form.phone_secondary"
-                label="Secondary Phone"
-                dense
-                outlined
-                placeholder="Optional"
-              />
-            </div>
-          </div>
-
-          <q-input
-            v-model="form.pickup_address"
-            label="Pickup Address *"
-            type="textarea"
-            rows="2"
-            dense
-            outlined
-            placeholder="Full street address for courier pickup"
-            :rules="[(val) => !!val || 'Pickup address is required']"
-          />
-
-          <div class="row q-col-gutter-sm">
-            <div class="col-12 col-sm-6">
-              <q-input
-                v-model="form.district"
-                label="District *"
-                dense
-                outlined
-                placeholder="e.g. Dhaka"
-                :rules="[(val) => !!val || 'District is required']"
-              />
-            </div>
-            <div class="col-12 col-sm-6">
-              <q-input
-                v-model="form.thana"
-                label="Thana / Area *"
-                dense
-                outlined
-                placeholder="e.g. Dhanmondi"
-                :rules="[(val) => !!val || 'Thana is required']"
-              />
+            <div class="col-auto row q-gutter-xs items-center">
+              <q-chip
+                clickable
+                :outline="balanceFilter !== 'all'"
+                :color="balanceFilter === 'all' ? 'primary' : 'grey-4'"
+                :text-color="balanceFilter === 'all' ? 'white' : 'grey-9'"
+                @click="balanceFilter = 'all'"
+              >
+                All Resellers ({{ merchantList.length }})
+              </q-chip>
+              <q-chip
+                clickable
+                :outline="balanceFilter !== 'payable'"
+                :color="balanceFilter === 'payable' ? 'positive' : 'grey-4'"
+                :text-color="balanceFilter === 'payable' ? 'white' : 'grey-9'"
+                @click="balanceFilter = 'payable'"
+              >
+                Payable ({{ payableCount }})
+              </q-chip>
+              <q-chip
+                clickable
+                :outline="balanceFilter !== 'locked'"
+                :color="balanceFilter === 'locked' ? 'amber-9' : 'grey-4'"
+                :text-color="balanceFilter === 'locked' ? 'white' : 'grey-9'"
+                @click="balanceFilter = 'locked'"
+              >
+                Has Locked Escrow ({{ lockedCount }})
+              </q-chip>
             </div>
           </div>
+        </q-card>
 
-          <q-input
-            v-model="form.notes"
-            label="Internal Notes"
-            dense
-            outlined
-            placeholder="Special instructions or contact notes"
-          />
+        <!-- Merchant Financial Balances Table -->
+        <q-card flat bordered class="rounded-card">
+          <q-markup-table flat borderless class="q-mb-none soft-table">
+            <thead>
+              <tr>
+                <th class="text-left">Merchant / Reseller Profile</th>
+                <th class="text-left">Contact Info</th>
+                <th class="text-right">Locked Margin (Pending Courier)</th>
+                <th class="text-right">Available Wallet Balance</th>
+                <th class="text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="filteredMerchants.length === 0">
+                <td colspan="5" class="text-center text-grey-6 q-pa-lg">
+                  No merchant profiles found.
+                </td>
+              </tr>
+              <tr v-for="m in filteredMerchants" :key="m.billing_profile_id" class="hover-row">
+                <td>
+                  <div class="row items-center q-gutter-x-sm">
+                    <q-avatar size="36px" :color="getAvatarColor(m.name)" text-color="white" class="text-weight-bold">
+                      {{ getInitials(m.name) }}
+                    </q-avatar>
+                    <div>
+                      <div class="text-weight-bold text-grey-9">{{ m.name }}</div>
+                      <div class="text-caption text-grey-7">ID: #{{ m.billing_profile_id }}</div>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <div class="text-weight-medium text-grey-9">{{ m.phone || '—' }}</div>
+                  <div class="text-caption text-grey-7">{{ m.email || 'No email registered' }}</div>
+                </td>
+                <td class="text-right">
+                  <div class="text-weight-bold text-amber-9">
+                    🔒 ৳{{ (m.locked_margin || 0).toLocaleString() }}
+                  </div>
+                  <div class="text-caption text-grey-6">Courier Escrow</div>
+                </td>
+                <td class="text-right">
+                  <div class="text-weight-bold" :class="m.available_balance > 0 ? 'text-positive' : 'text-grey-7'">
+                    🟢 ৳{{ (m.available_balance || 0).toLocaleString() }}
+                  </div>
+                  <div class="text-caption text-grey-6">Ready for Dispense</div>
+                </td>
+                <td class="text-right">
+                  <q-btn
+                    color="positive"
+                    icon="ph ph-hand-coins"
+                    label="Dispense Payout"
+                    no-caps
+                    unelevated
+                    size="sm"
+                    class="rounded-btn"
+                    :disable="m.available_balance <= 0"
+                    @click="openDispenseModal(m)"
+                  >
+                    <q-tooltip v-if="m.available_balance <= 0">
+                      No available balance for payout
+                    </q-tooltip>
+                  </q-btn>
+                </td>
+              </tr>
+            </tbody>
+          </q-markup-table>
+        </q-card>
+      </template>
 
-          <q-toggle v-model="form.is_active" label="Active Profile" color="positive" />
-        </q-card-section>
+      <!-- Dispense Payout Modal -->
+      <DispensePayoutModal
+        v-model="dispenseModalOpen"
+        :merchant="selectedMerchant"
+        :loading="dispenseMutation.isPending.value"
+        @confirm="handleDispenseConfirm"
+      />
 
-        <q-separator />
-
-        <q-card-actions align="right" class="q-pa-md">
-          <q-btn v-close-popup flat label="Cancel" no-caps />
-          <q-btn
-            color="primary"
-            :label="editingId ? 'Save Changes' : 'Create Merchant'"
-            no-caps
-            class="pill-btn"
-            @click="saveMerchant"
-          />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+      <!-- Dialog: Add Merchant Profile placeholder/integration -->
+      <q-dialog v-model="addDialogOpen" persistent>
+        <q-card style="min-width: 450px; max-width: 90vw;" class="q-pa-sm">
+          <q-card-section class="row items-center justify-between">
+            <div class="text-h6 text-weight-bold">Add Merchant Profile</div>
+            <q-btn v-close-popup flat round dense icon="ph ph-x" />
+          </q-card-section>
+          <q-separator />
+          <q-card-section class="q-gutter-y-md">
+            <q-input v-model="newMerchantForm.merchant_name" label="Merchant Name *" dense outlined />
+            <q-input v-model="newMerchantForm.phone_primary" label="Primary Phone *" dense outlined />
+            <q-input v-model="newMerchantForm.pickup_address" label="Pickup Address *" dense outlined type="textarea" rows="2" />
+          </q-card-section>
+          <q-separator />
+          <q-card-actions align="right" class="q-pa-md">
+            <q-btn v-close-popup flat label="Cancel" no-caps />
+            <q-btn color="primary" label="Create" no-caps unelevated class="rounded-btn" @click="handleCreateMerchant" />
+          </q-card-actions>
+        </q-card>
+      </q-dialog>
+    </div>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { useQuasar } from 'quasar';
+import { ref, computed } from 'vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { dropshipMerchantService } from '../services/dropshipMerchantService';
-import type { MerchantProfileRow } from '../repositories/dropshipMerchantRepository';
+import { getInitials, getAvatarColor } from 'src/shared/utils/avatarUtils';
+import { useMerchantPayoutQuery } from '../composables/useMerchantPayoutQuery';
+import { useDispensePayoutMutation } from '../composables/useDispensePayoutMutation';
+import DispensePayoutModal from '../components/DispensePayoutModal.vue';
+import DropshipMerchantsSkeleton from '../components/DropshipMerchantsSkeleton.vue';
+import type { MerchantPayoutSummary } from '../types';
 
-export interface MerchantProfile {
-  id: string;
-  merchant_name: string;
-  store_name?: string | undefined;
-  phone_primary: string;
-  phone_secondary?: string | undefined;
-  pickup_address: string;
-  district: string;
-  thana: string;
-  notes?: string | undefined;
-  is_active: boolean;
-}
-
-const $q = useQuasar();
 const authStore = useAuthStore();
-const loading = ref(false);
+const currentTenantId = computed(() => (authStore.selectedTenant?.id ? Number(authStore.selectedTenant.id) : null));
+
+// Queries & Mutations
+const { merchants, isLoading } = useMerchantPayoutQuery(currentTenantId);
+const dispenseMutation = useDispensePayoutMutation(currentTenantId.value ?? undefined);
+
+// Filters
 const searchQuery = ref('');
-const statusFilter = ref<'all' | 'active' | 'inactive'>('all');
+const balanceFilter = ref<'all' | 'payable' | 'locked'>('all');
 
-const dialogOpen = ref(false);
-const editingId = ref<string | null>(null);
+// Modals
+const dispenseModalOpen = ref(false);
+const selectedMerchant = ref<MerchantPayoutSummary | null>(null);
 
-const form = ref<Omit<MerchantProfile, 'id'>>({
+const addDialogOpen = ref(false);
+const newMerchantForm = ref({
   merchant_name: '',
-  store_name: '',
   phone_primary: '',
-  phone_secondary: '',
   pickup_address: '',
-  district: 'Dhaka',
-  thana: '',
-  notes: '',
-  is_active: true,
 });
 
-const merchants = ref<MerchantProfile[]>([]);
+const merchantList = computed(() => merchants.value || []);
 
-const activeCount = computed(() => merchants.value.filter((m) => m.is_active).length);
-const inactiveCount = computed(() => merchants.value.filter((m) => !m.is_active).length);
+const payableCount = computed(() => merchantList.value.filter((m) => m.available_balance > 0).length);
+const lockedCount = computed(() => merchantList.value.filter((m) => m.locked_margin > 0).length);
 
 const filteredMerchants = computed(() => {
-  return merchants.value.filter((m) => {
+  return merchantList.value.filter((m) => {
     const matchesSearch =
       !searchQuery.value ||
-      m.merchant_name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      (m.store_name && m.store_name.toLowerCase().includes(searchQuery.value.toLowerCase())) ||
-      m.phone_primary.includes(searchQuery.value) ||
-      m.district.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      m.thana.toLowerCase().includes(searchQuery.value.toLowerCase());
+      m.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+      (m.email && m.email.toLowerCase().includes(searchQuery.value.toLowerCase())) ||
+      (m.phone && m.phone.includes(searchQuery.value));
 
-    const matchesStatus =
-      statusFilter.value === 'all' ||
-      (statusFilter.value === 'active' && m.is_active) ||
-      (statusFilter.value === 'inactive' && !m.is_active);
+    const matchesFilter =
+      balanceFilter.value === 'all' ||
+      (balanceFilter.value === 'payable' && m.available_balance > 0) ||
+      (balanceFilter.value === 'locked' && m.locked_margin > 0);
 
-    return matchesSearch && matchesStatus;
+    return matchesSearch && matchesFilter;
   });
 });
 
-async function loadMerchants() {
-  loading.value = true;
-  const res = await dropshipMerchantService.fetchMerchants({ forceRefresh: true });
-  loading.value = false;
-
-  if (res.success && res.data) {
-    merchants.value = res.data.map((row: MerchantProfileRow) => ({
-      id: row.id,
-      merchant_name: row.merchant_name,
-      store_name: row.store_name || undefined,
-      phone_primary: row.phone_primary,
-      phone_secondary: row.phone_secondary || undefined,
-      pickup_address: row.pickup_address,
-      district: row.district,
-      thana: row.thana,
-      notes: row.notes || undefined,
-      is_active: row.is_active,
-    }));
-  } else if (!res.success) {
-    $q.notify({
-      type: 'negative',
-      message: res.error || 'Failed to load merchant profiles.',
-    });
-  }
+function openDispenseModal(merchant: MerchantPayoutSummary) {
+  selectedMerchant.value = merchant;
+  dispenseModalOpen.value = true;
 }
 
-onMounted(() => {
-  void loadMerchants();
-});
+function handleDispenseConfirm(payload: { billingProfileId: number; amount: number; method: string; trxId?: string }) {
+  dispenseMutation.mutate(payload, {
+    onSuccess: () => {
+      dispenseModalOpen.value = false;
+      selectedMerchant.value = null;
+    },
+  });
+}
 
 function openAddDialog() {
-  editingId.value = null;
-  form.value = {
-    merchant_name: '',
-    store_name: '',
-    phone_primary: '',
-    phone_secondary: '',
-    pickup_address: '',
-    district: 'Dhaka',
-    thana: '',
-    notes: '',
-    is_active: true,
-  };
-  dialogOpen.value = true;
+  newMerchantForm.value = { merchant_name: '', phone_primary: '', pickup_address: '' };
+  addDialogOpen.value = true;
 }
 
-function openEditDialog(m: MerchantProfile) {
-  editingId.value = m.id;
-  form.value = {
-    merchant_name: m.merchant_name,
-    store_name: m.store_name || '',
-    phone_primary: m.phone_primary,
-    phone_secondary: m.phone_secondary || '',
-    pickup_address: m.pickup_address,
-    district: m.district,
-    thana: m.thana,
-    notes: m.notes || '',
-    is_active: m.is_active,
-  };
-  dialogOpen.value = true;
-}
-
-async function toggleMerchantStatus(m: MerchantProfile) {
-  const newStatus = !m.is_active;
-  const res = await dropshipMerchantService.updateMerchant(m.id, { is_active: newStatus });
-  if (res.success) {
-    m.is_active = newStatus;
-    $q.notify({
-      type: 'positive',
-      message: `Merchant ${m.merchant_name} set to ${newStatus ? 'Active' : 'Inactive'}`,
-    });
-  } else {
-    $q.notify({
-      type: 'negative',
-      message: res.error || 'Failed to update merchant status.',
-    });
-  }
-}
-
-async function saveMerchant() {
-  if (!form.value.merchant_name || !form.value.phone_primary || !form.value.pickup_address || !form.value.district || !form.value.thana) {
-    $q.notify({
-      type: 'warning',
-      message: 'Please fill in all required fields.',
-    });
-    return;
-  }
-
-  const currentTenantId = authStore.selectedTenant?.id;
-  if (!currentTenantId) {
-    $q.notify({
-      type: 'negative',
-      message: 'Tenant context is missing. Please select a store/tenant.',
-    });
-    return;
-  }
-
-  if (editingId.value) {
-    const res = await dropshipMerchantService.updateMerchant(editingId.value, {
-      merchant_name: form.value.merchant_name,
-      store_name: form.value.store_name || null,
-      phone_primary: form.value.phone_primary,
-      phone_secondary: form.value.phone_secondary || null,
-      pickup_address: form.value.pickup_address,
-      district: form.value.district,
-      thana: form.value.thana,
-      notes: form.value.notes || null,
-      is_active: form.value.is_active,
-    });
-
-    if (res.success) {
-      $q.notify({ type: 'positive', message: 'Merchant profile updated successfully.' });
-      dialogOpen.value = false;
-      await loadMerchants();
-    } else {
-      $q.notify({ type: 'negative', message: res.error || 'Failed to update merchant.' });
-    }
-  } else {
-    const res = await dropshipMerchantService.createMerchant({
-      tenant_id: Number(currentTenantId),
-      merchant_name: form.value.merchant_name,
-      store_name: form.value.store_name || null,
-      phone_primary: form.value.phone_primary,
-      phone_secondary: form.value.phone_secondary || null,
-      pickup_address: form.value.pickup_address,
-      district: form.value.district,
-      thana: form.value.thana,
-      notes: form.value.notes || null,
-      is_active: form.value.is_active,
-    });
-
-    if (res.success) {
-      $q.notify({ type: 'positive', message: 'Merchant profile added successfully.' });
-      dialogOpen.value = false;
-      await loadMerchants();
-    } else {
-      $q.notify({ type: 'negative', message: res.error || 'Failed to create merchant.' });
-    }
-  }
+function handleCreateMerchant() {
+  addDialogOpen.value = false;
 }
 </script>
 
 <style scoped>
-.bw-page {
-  padding: 16px;
+.max-width-container {
+  max-width: 1200px;
+  margin: 0 auto;
 }
-.bw-page__stack {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+.rounded-card {
+  border-radius: 8px;
 }
-.form-card {
+.rounded-btn {
   border-radius: 8px;
 }
 .soft-table th {
@@ -487,8 +272,5 @@ async function saveMerchant() {
 }
 .hover-row:hover {
   background-color: #f9fafb;
-}
-.pill-btn {
-  border-radius: 20px;
 }
 </style>

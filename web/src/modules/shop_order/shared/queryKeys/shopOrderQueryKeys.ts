@@ -1,5 +1,7 @@
 export const shopOrderQueryKeys = {
   categories: (tenantId: number) => ['shopOrder', 'categories', { tenantId }] as const,
+  staffOrders: (params: { tenantId: number; search?: string | null; status?: string | null; shopId?: number | null }) =>
+    ['shopOrder', 'staffOrders', params] as const,
   shopsList: (params: { tenantId: number; search?: string | null; active?: boolean | null }) =>
     ['shopOrder', 'shops', params] as const,
   customerShops: (tenantId: number | null) => ['shopOrder', 'customerShops', { tenantId }] as const,
@@ -22,7 +24,16 @@ export const shopOrderQueryKeys = {
   orderDetail: (orderId: number) => ['shopOrder', 'orderDetail', { orderId }] as const,
   shopCurrenciesMap: (shopIds: number[]) =>
     ['shopOrder', 'shopCurrenciesMap', { shopIds: [...shopIds].sort((a, b) => a - b) }] as const,
+  courierRemittances: (params: { tenantId: number; courierServiceId?: string | null; status?: string | null }) =>
+    ['courier-remittances', params.tenantId, { courierServiceId: params.courierServiceId ?? null, status: params.status ?? null }] as const,
+  courierRemittanceDetail: (tenantId: number, batchId: number) =>
+    ['courier-remittance-detail', tenantId, batchId] as const,
+  deliveredOrdersUnremitted: (tenantId: number, courierServiceId: string) =>
+    ['delivered-orders-unremitted', tenantId, courierServiceId] as const,
+  courierHoldingSummary: (tenantId: number) => ['courier-holding-summary', { tenantId }] as const,
+  merchantPayouts: (tenantId: number) => ['merchant-payouts', { tenantId }] as const,
 };
+
 
 
 

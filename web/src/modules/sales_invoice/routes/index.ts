@@ -73,11 +73,10 @@ const salesInvoiceRoutes: RouteRecordRaw[] = [
       {
         path: 'wallets',
         name: 'app-global-billing-wallets',
-        component: () => import('../pages/BillingWalletLedgerPage.vue'),
-        meta: {
-          hasPageToolbar: true,
+        redirect: (to) => {
+          const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : '';
+          return tenantSlug ? `/${tenantSlug}/app/wallet` : '/app/wallet';
         },
-        beforeEnter: guard('billing_profile_wallet'),
       },
       {
         path: 'recipient-profiles',

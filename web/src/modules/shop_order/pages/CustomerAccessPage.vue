@@ -40,13 +40,13 @@
 
       <!-- Table / Card -->
       <q-card flat bordered>
-        <q-card-section v-if="store.loadingGroups" class="text-grey-7 text-center q-pa-xl">
+        <q-card-section v-if="groupStore.loading" class="text-grey-7 text-center q-pa-xl">
           <q-spinner size="32px" color="primary" class="q-mr-sm" />
           {{ $t('shop_admin.loading_customer_groups') }}
         </q-card-section>
 
         <q-card-section
-          v-else-if="store.customerGroups.length === 0"
+          v-else-if="groupStore.groups.length === 0"
           class="text-grey-6 text-center q-pa-xl"
         >
           <q-icon name="ph ph-users-three" size="48px" class="q-mb-sm block" />
@@ -67,7 +67,7 @@
           v-else
           flat
           row-key="id"
-          :rows="store.customerGroups"
+          :rows="groupStore.groups"
           :columns="columns"
           :pagination="{ rowsPerPage: 25 }"
           :dense="$q.screen.lt.md"
@@ -336,7 +336,7 @@ const columns = computed(() => [
 
 const load = () => {
   if (tenantId.value) {
-    void store.fetchCustomerGroups(tenantId.value);
+    void groupStore.fetchCustomerGroupsByTenant(tenantId.value);
     void billingProfileStore.fetchBillingProfiles({ tenant_id: tenantId.value, page_size: 1000 });
   }
 };

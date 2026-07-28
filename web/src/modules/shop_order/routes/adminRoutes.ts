@@ -204,6 +204,30 @@ const adminRoutes: RouteRecordRaw[] = [
         beforeEnter: guard('shop_dropship'),
       },
       {
+        path: 'courier-holdings',
+        name: 'app-shop-courier-holdings-page',
+        component: () => import('src/modules/shop_order/pages/CourierHoldingsPage.vue'),
+        beforeEnter: guard('shop_dropship'),
+      },
+      {
+        path: 'courier-remittances',
+        name: 'app-shop-courier-remittances-list-page',
+        component: () => import('src/modules/shop_order/pages/CourierRemittancesListPage.vue'),
+        beforeEnter: guard('shop_dropship'),
+      },
+      {
+        path: 'courier-remittances/new',
+        name: 'app-shop-courier-remittance-new-page',
+        component: () => import('src/modules/shop_order/pages/CourierRemittanceDetailPage.vue'),
+        beforeEnter: guard('shop_dropship'),
+      },
+      {
+        path: 'courier-remittances/:id',
+        name: 'app-shop-courier-remittance-detail-page',
+        component: () => import('src/modules/shop_order/pages/CourierRemittanceDetailPage.vue'),
+        beforeEnter: guard('shop_dropship'),
+      },
+      {
         path: ':id',
         name: 'app-shop-dropship-order-detail-page',
         component: () => import('src/modules/shop_order/pages/DropshipOrderDetailPage.vue'),

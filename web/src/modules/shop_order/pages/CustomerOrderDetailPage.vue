@@ -52,6 +52,8 @@
               :discount-val="discountVal"
               :deduct-delivery-from-margin="deductDeliveryFromMargin"
               :deduct-cod-from-margin="deductCodFromMargin"
+              :deduct-print-from-margin="deductPrintFromMargin"
+              :deduct-packing-from-margin="deductPackingFromMargin"
               :cod-fee-pct-label="codFeePctLabel"
               :recipient-grand-total="recipientGrandTotal"
               :middleman-total-cost="middlemanTotalCost"
@@ -175,18 +177,22 @@ const packingChargeVal = computed(() => Number(currentOrder.value?.packing_charg
 const discountVal = computed(() => Number(currentOrder.value?.discount_amount || 0));
 const deductCodFromMargin = computed(() => !!currentOrder.value?.deduct_cod_from_margin);
 const deductDeliveryFromMargin = computed(() => !!currentOrder.value?.deduct_delivery_from_margin);
+const deductPrintFromMargin = computed(() => !!currentOrder.value?.deduct_print_from_margin);
+const deductPackingFromMargin = computed(() => !!currentOrder.value?.deduct_packing_from_margin);
 
 const recipientGrandTotal = computed(() => {
   return recipientSubtotal.value
     + (deductDeliveryFromMargin.value ? 0 : deliveryChargeVal.value)
+    + (deductPrintFromMargin.value ? 0 : printChargeVal.value)
+    + (deductPackingFromMargin.value ? 0 : packingChargeVal.value)
     + (deductCodFromMargin.value ? 0 : codChargeVal.value)
     - discountVal.value;
 });
 
 const middlemanTotalCost = computed(() => {
   return accountingSubtotal.value
-    + printChargeVal.value
-    + packingChargeVal.value
+    + (deductPrintFromMargin.value ? printChargeVal.value : 0)
+    + (deductPackingFromMargin.value ? packingChargeVal.value : 0)
     + (deductDeliveryFromMargin.value ? deliveryChargeVal.value : 0)
     + (deductCodFromMargin.value ? codChargeVal.value : 0);
 });
