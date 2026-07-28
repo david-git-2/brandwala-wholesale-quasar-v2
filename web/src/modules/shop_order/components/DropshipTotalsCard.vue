@@ -182,7 +182,7 @@ const updateField = (key: string, val: any) => {
 
         <div class="text-caption text-blue-9 bg-blue-1 q-pa-sm rounded-borders border-all-1">
           <q-icon name="ph ph-info" class="q-mr-xs" />
-          Profit for this dropship order is automatically credited to the middle-man's <strong>Billing Profile Wallet</strong>.
+          Profit for this dropship order is processed and tracked through the <strong>Dropship Finance Hub</strong>.
         </div>
 
         <q-btn
@@ -191,9 +191,9 @@ const updateField = (key: string, val: any) => {
           color="primary"
           no-caps
           class="full-width pill-btn q-mt-sm"
-          icon="ph ph-wallet"
-          label="Open Billing Profile Wallet"
-          :to="{ name: 'app-global-billing-wallets', params: { tenantSlug } }"
+          icon="ph ph-bank"
+          label="Open Dropship Finance Hub"
+          :to="{ name: 'app-shop-dropship-finance-hub-page', params: { tenantSlug }, query: order ? { orderId: order.id } : undefined }"
         />
       </q-card-section>
     </q-card>

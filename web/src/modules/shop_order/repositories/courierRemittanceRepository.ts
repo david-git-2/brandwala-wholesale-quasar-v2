@@ -168,7 +168,7 @@ export const courierRemittanceRepository = {
   },
 
   async reconcileSingleOrder(payload: ReconcileSingleOrderPayload): Promise<ReconcileSingleOrderResult> {
-    const { data, error } = await supabase.rpc('reconcile_single_order_remittance', {
+    const { data, error } = await supabase.rpc('confirm_courier_remittance_to_tenant', {
       p_order_id: payload.orderId,
       p_courier_charge: payload.courierCharge ?? 0.00,
     });
@@ -182,11 +182,12 @@ export const courierRemittanceRepository = {
   },
 
   async dispensePayout(payload: DispensePayoutPayload): Promise<DispensePayoutResult> {
-    const { data, error } = await supabase.rpc('dispense_middleman_payout', {
+    const { data, error } = await supabase.rpc('dispense_middleman_payout_from_tenant', {
+      p_tenant_id: payload.tenantId,
       p_billing_profile_id: payload.billingProfileId,
       p_amount: payload.amount,
-      p_method: payload.method ?? 'bkash',
-      p_trx_id: payload.trxId ?? null,
+      p_payout_method: payload.method ?? 'bank_transfer',
+      p_reference_notes: payload.trxId ? `Trx: ${payload.trxId}` : null,
     });
 
     if (error) {

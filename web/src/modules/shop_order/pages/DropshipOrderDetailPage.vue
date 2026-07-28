@@ -23,7 +23,6 @@
           :order="order"
           :primary-cta="primaryCta"
           @open-recipient-invoice="openRecipientInvoicePreview"
-          @quick-remit="quickRemitDialogOpen = true"
         />
 
         <!-- Status Workflow Strip -->
@@ -155,12 +154,6 @@
           @update:remittance-field="(k, v) => (remittanceForm as any)[k] = v"
         />
 
-        <QuickRemitDialog
-          v-model="quickRemitDialogOpen"
-          :order="order"
-          @success="() => orderDetailQuery.refetch()"
-        />
-
         <!-- Floating Unsaved Changes Footer Bar -->
         <div v-if="isFormDirty && !loading" style="height: 100px;"></div>
 
@@ -228,7 +221,6 @@ import DropshipDeliveryNotesCard from '../components/DropshipDeliveryNotesCard.v
 import DropshipCourierCard from '../components/DropshipCourierCard.vue';
 import DropshipTotalsCard from '../components/DropshipTotalsCard.vue';
 import DropshipOrderDialogs from '../components/DropshipOrderDialogs.vue';
-import QuickRemitDialog from '../components/QuickRemitDialog.vue';
 
 import { useBDAddressOptions } from '../composables/useBDAddressOptions';
 import { useDropshipOrderForm } from '../composables/useDropshipOrderForm';
@@ -236,7 +228,6 @@ import { useDropshipOrderActions } from '../composables/useDropshipOrderActions'
 
 const route = useRoute();
 const queryClient = useQueryClient();
-const quickRemitDialogOpen = ref(false);
 const tenantSlug = computed(() =>
   typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : null,
 );

@@ -193,7 +193,7 @@ const adminRoutes: RouteRecordRaw[] = [
         path: 'ledger',
         name: 'app-shop-dropship-ledger-page',
         redirect: (to) => ({
-          name: 'app-global-billing-wallets',
+          name: 'app-shop-dropship-finance-hub-page',
           params: { tenantSlug: to.params.tenantSlug },
         }),
       },
@@ -204,28 +204,46 @@ const adminRoutes: RouteRecordRaw[] = [
         beforeEnter: guard('shop_dropship'),
       },
       {
+        path: 'finance-hub',
+        name: 'app-shop-dropship-finance-hub-page',
+        component: () => import('src/modules/shop_order/pages/DropshipFinanceHubPage.vue'),
+        beforeEnter: guard('shop_dropship'),
+      },
+      {
         path: 'courier-holdings',
         name: 'app-shop-courier-holdings-page',
-        component: () => import('src/modules/shop_order/pages/CourierHoldingsPage.vue'),
-        beforeEnter: guard('shop_dropship'),
+        redirect: (to) => ({
+          name: 'app-shop-dropship-finance-hub-page',
+          params: { tenantSlug: to.params.tenantSlug },
+          query: { step: 'courier_remittance' },
+        }),
       },
       {
         path: 'courier-remittances',
         name: 'app-shop-courier-remittances-list-page',
-        component: () => import('src/modules/shop_order/pages/CourierRemittancesListPage.vue'),
-        beforeEnter: guard('shop_dropship'),
+        redirect: (to) => ({
+          name: 'app-shop-dropship-finance-hub-page',
+          params: { tenantSlug: to.params.tenantSlug },
+          query: { step: 'courier_remittance' },
+        }),
       },
       {
         path: 'courier-remittances/new',
         name: 'app-shop-courier-remittance-new-page',
-        component: () => import('src/modules/shop_order/pages/CourierRemittanceDetailPage.vue'),
-        beforeEnter: guard('shop_dropship'),
+        redirect: (to) => ({
+          name: 'app-shop-dropship-finance-hub-page',
+          params: { tenantSlug: to.params.tenantSlug },
+          query: { step: 'courier_remittance' },
+        }),
       },
       {
         path: 'courier-remittances/:id',
         name: 'app-shop-courier-remittance-detail-page',
-        component: () => import('src/modules/shop_order/pages/CourierRemittanceDetailPage.vue'),
-        beforeEnter: guard('shop_dropship'),
+        redirect: (to) => ({
+          name: 'app-shop-dropship-finance-hub-page',
+          params: { tenantSlug: to.params.tenantSlug },
+          query: { step: 'courier_remittance' },
+        }),
       },
       {
         path: ':id',

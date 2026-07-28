@@ -972,6 +972,14 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
       },
       {
         scope: 'app',
+        title: 'Finance Hub',
+        caption: 'Courier remittances, tenant treasury & merchant payouts',
+        icon: 'ph ph-bank',
+        routeSegment: 'shop/dropship/finance-hub',
+        requiredAction: 'view',
+      },
+      {
+        scope: 'app',
         title: 'Couriers',
         caption: 'Courier catalog & return policies',
         icon: 'ph ph-truck',

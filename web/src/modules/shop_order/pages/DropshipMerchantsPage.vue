@@ -124,15 +124,15 @@
                 </td>
                 <td class="text-right">
                   <q-btn
-                    color="positive"
-                    icon="ph ph-hand-coins"
-                    label="Dispense Payout"
+                    color="primary"
+                    icon="ph ph-bank"
+                    label="Dispense in Finance Hub"
                     no-caps
                     unelevated
                     size="sm"
                     class="rounded-btn"
                     :disable="m.available_balance <= 0"
-                    @click="openDispenseModal(m)"
+                    :to="{ name: 'app-shop-dropship-finance-hub-page', query: { merchantId: m.billing_profile_id, step: 'middleman_payout' } }"
                   >
                     <q-tooltip v-if="m.available_balance <= 0">
                       No available balance for payout
@@ -144,14 +144,6 @@
           </q-markup-table>
         </q-card>
       </template>
-
-      <!-- Dispense Payout Modal -->
-      <DispensePayoutModal
-        v-model="dispenseModalOpen"
-        :merchant="selectedMerchant"
-        :loading="dispenseMutation.isPending.value"
-        @confirm="handleDispenseConfirm"
-      />
 
       <!-- Dialog: Add Merchant Profile placeholder/integration -->
       <q-dialog v-model="addDialogOpen" persistent>
@@ -182,26 +174,19 @@ import { ref, computed } from 'vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { getInitials, getAvatarColor } from 'src/shared/utils/avatarUtils';
 import { useMerchantPayoutQuery } from '../composables/useMerchantPayoutQuery';
-import { useDispensePayoutMutation } from '../composables/useDispensePayoutMutation';
-import DispensePayoutModal from '../components/DispensePayoutModal.vue';
 import DropshipMerchantsSkeleton from '../components/DropshipMerchantsSkeleton.vue';
-import type { MerchantPayoutSummary } from '../types';
 
 const authStore = useAuthStore();
 const currentTenantId = computed(() => (authStore.selectedTenant?.id ? Number(authStore.selectedTenant.id) : null));
 
 // Queries & Mutations
 const { merchants, isLoading } = useMerchantPayoutQuery(currentTenantId);
-const dispenseMutation = useDispensePayoutMutation(currentTenantId.value ?? undefined);
 
 // Filters
 const searchQuery = ref('');
 const balanceFilter = ref<'all' | 'payable' | 'locked'>('all');
 
 // Modals
-const dispenseModalOpen = ref(false);
-const selectedMerchant = ref<MerchantPayoutSummary | null>(null);
-
 const addDialogOpen = ref(false);
 const newMerchantForm = ref({
   merchant_name: '',
@@ -231,19 +216,7 @@ const filteredMerchants = computed(() => {
   });
 });
 
-function openDispenseModal(merchant: MerchantPayoutSummary) {
-  selectedMerchant.value = merchant;
-  dispenseModalOpen.value = true;
-}
 
-function handleDispenseConfirm(payload: { billingProfileId: number; amount: number; method: string; trxId?: string }) {
-  dispenseMutation.mutate(payload, {
-    onSuccess: () => {
-      dispenseModalOpen.value = false;
-      selectedMerchant.value = null;
-    },
-  });
-}
 
 function openAddDialog() {
   newMerchantForm.value = { merchant_name: '', phone_primary: '', pickup_address: '' };

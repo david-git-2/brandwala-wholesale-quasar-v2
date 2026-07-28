@@ -1,5 +1,5 @@
 <template>
-  <q-card flat bordered class="surface-card">
+  <q-card flat class="soft-table-card shadow-soft">
     <div class="treasury-table-wrap">
       <q-table
         flat
@@ -8,21 +8,20 @@
         :columns="columns"
         row-key="id"
         :pagination="pagination"
-        class="wallet-table"
-        no-data-label="No wallet ledger entries found."
+        class="soft-wallet-table"
+        no-data-label="No financial transaction records found."
       >
         <!-- Type Column Slot -->
         <template #body-cell-type="props">
           <q-td :props="props">
             <q-chip
               dense
-              square
-              size="sm"
-              :class="props.row.type === 'credit' ? 'chip-credit' : 'chip-debit'"
-              class="text-weight-bold text-uppercase"
+              unelevated
+              :class="props.row.type === 'credit' ? 'soft-chip-credit' : 'soft-chip-debit'"
+              class="text-weight-bolder text-uppercase q-px-sm"
             >
               <q-icon
-                :name="props.row.type === 'credit' ? 'arrow_downward' : 'arrow_upward'"
+                :name="props.row.type === 'credit' ? 'ph ph-arrow-down-left' : 'ph ph-arrow-up-right'"
                 size="12px"
                 class="q-mr-xs"
               />
@@ -35,7 +34,8 @@
         <template #body-cell-amount="props">
           <q-td :props="props">
             <span
-              :class="props.row.type === 'credit' ? 'text-positive text-weight-bold' : 'text-negative text-weight-bold'"
+              :class="props.row.type === 'credit' ? 'text-emerald text-weight-bolder' : 'text-rose text-weight-bolder'"
+              class="font-mono text-body2"
             >
               {{ props.row.type === 'credit' ? '+' : '-' }}{{ formatCurrency(props.row.amount, props.row.currency_code) }}
             </span>
@@ -44,7 +44,7 @@
 
         <!-- Balance After Column Slot -->
         <template #body-cell-balance_after="props">
-          <q-td :props="props" class="text-weight-bolder">
+          <q-td :props="props" class="text-weight-bolder font-mono text-ink text-body2">
             {{ formatCurrency(props.row.balance_after, props.row.currency_code) }}
           </q-td>
         </template>
@@ -53,10 +53,10 @@
         <template #body-cell-source="props">
           <q-td :props="props">
             <div class="row items-center q-gutter-x-xs">
-              <q-chip dense outline size="xs" color="primary">
+              <q-chip dense flat class="bg-primary-soft text-primary text-weight-bold text-caption">
                 {{ props.row.source_type }}
               </q-chip>
-              <span v-if="props.row.source_id" class="text-caption text-weight-medium">
+              <span v-if="props.row.source_id" class="text-caption text-weight-medium font-mono text-muted">
                 #{{ props.row.source_id }}
               </span>
             </div>
@@ -65,7 +65,7 @@
 
         <!-- Created At Column Slot -->
         <template #body-cell-created_at="props">
-          <q-td :props="props" class="text-muted">
+          <q-td :props="props" class="text-muted text-caption">
             {{ formatDate(props.row.created_at) }}
           </q-td>
         </template>
@@ -76,10 +76,13 @@
             <span v-if="props.row.metadata?.approved_by" class="text-caption text-muted">
               Approved by: {{ props.row.metadata.approved_by }}
             </span>
-            <span v-else-if="props.row.metadata?.trx_id" class="text-caption text-muted">
+            <span v-else-if="props.row.metadata?.trx_id" class="text-caption text-muted font-mono">
               Trx: {{ props.row.metadata.trx_id }}
             </span>
-            <span v-else class="text-caption text-muted">-</span>
+            <span v-else-if="props.row.metadata?.note" class="text-caption text-muted">
+              {{ props.row.metadata.note }}
+            </span>
+            <span v-else class="text-caption text-grey-4">-</span>
           </q-td>
         </template>
       </q-table>
@@ -112,7 +115,7 @@ const columns: QTableColumn<UniversalWalletLedgerEntry>[] = [
   },
   {
     name: 'type',
-    label: 'Type',
+    label: 'Transaction',
     field: 'type',
     align: 'center',
     sortable: true,
@@ -126,7 +129,7 @@ const columns: QTableColumn<UniversalWalletLedgerEntry>[] = [
   },
   {
     name: 'balance_after',
-    label: 'Balance After',
+    label: 'Running Balance',
     field: 'balance_after',
     align: 'right',
     sortable: true,
@@ -140,7 +143,7 @@ const columns: QTableColumn<UniversalWalletLedgerEntry>[] = [
   },
   {
     name: 'metadata',
-    label: 'Details',
+    label: 'Details & Notes',
     field: 'metadata',
     align: 'left',
   },
@@ -169,23 +172,74 @@ const formatDate = (dateStr: string) => {
 </script>
 
 <style scoped>
-.surface-card {
-  background: var(--bw-theme-surface);
-  border-color: var(--bw-theme-border);
-  border-radius: 10px;
+.soft-table-card {
+  background: var(--bw-theme-surface, #ffffff);
+  border: 1px solid var(--bw-theme-border, #e2e8f0);
+  border-radius: 16px;
+  overflow: hidden;
 }
 
-.chip-credit {
-  background: rgba(33, 186, 69, 0.15);
-  color: #21ba45;
+.shadow-soft {
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04);
 }
 
-.chip-debit {
-  background: rgba(193, 0, 21, 0.15);
-  color: #c10015;
+.soft-wallet-table :deep(.q-table__card) {
+  background: transparent;
+}
+
+.soft-wallet-table :deep(thead tr th) {
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid #f1f5f9;
+  background: #f8fafc;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.soft-wallet-table :deep(tbody tr td) {
+  border-bottom: 1px solid #f1f5f9;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  transition: background 0.15s ease;
+}
+
+.soft-wallet-table :deep(tbody tr:hover td) {
+  background: rgba(241, 245, 249, 0.6);
+}
+
+.soft-chip-credit {
+  background: rgba(16, 185, 129, 0.12) !important;
+  color: #059669 !important;
+  border-radius: 8px;
+}
+
+.soft-chip-debit {
+  background: rgba(244, 63, 94, 0.12) !important;
+  color: #e11d48 !important;
+  border-radius: 8px;
+}
+
+.bg-primary-soft {
+  background: rgba(59, 130, 246, 0.08) !important;
+}
+
+.text-emerald {
+  color: #059669;
+}
+
+.text-rose {
+  color: #e11d48;
+}
+
+.text-ink {
+  color: #0f172a;
 }
 
 .text-muted {
-  color: var(--bw-theme-muted);
+  color: #64748b;
 }
 </style>
+

@@ -41,6 +41,14 @@ Because the system relies on permanent Double-Entry / Single-Entry ledger mathem
    - Wallet Action: `+ 1,200 TK` (Credit) added to Courier's wallet (They owe us).
    - When Courier remits cash to bank: `- 1,200 TK` (Debit) on Courier Wallet, `+ 1,200 TK` on Tenant Wallet.
 
+### Dropship 3-Step Wallet Posting Matrix
+
+| Step | Trigger Action | Courier Wallet | Tenant Wallet | Middleman Wallet | Notes |
+|---|---|---|---|---|---|
+| **1. Delivered Costing** | Confirm COD & delivery charge | `+ COD net` (Credit/Owed) | — | — | Courier holds collected COD cash |
+| **2. Courier Remittance** | Courier deposits cash to Tenant | `- Remitted` (Debit) | `+ Remitted` (Credit) | `+ Profit` (Credit/Payable) | Cash lands in Tenant; Middleman profit payable is opened |
+| **3. Tenant Payout** | Tenant pays Middleman profit | — | `- Payout` (Debit) | `- Payout` (Debit) | Settlement clears Middleman payable balance |
+
 ---
 
 ## 3. The Universal Data Model & Backend Architecture
@@ -107,10 +115,17 @@ Because the backend is generalized, the Frontend UI is equally generalized. The 
 ### Component Structure & Layout Integration
 Following `docs/PAGE_LAYOUT_AND_LOADERS.md` and the **Rule of 3**, the `<UniversalWallet :entityType="..." :entityId="..." />` component acts as the container, assembling these distinct visual blocks:
 
-1. **`<UniversalWalletHeader />`**: Contains the overline (e.g., "Courier Wallet") and title (e.g., "Steadfast Ledger").
-2. **`<UniversalWalletToolbar />`**: A `q-card flat bordered class="q-pa-sm"` containing search and filter controls.
-3. **`<UniversalWalletKPICards />`**: Live KPI cards showing **Current Balance**, **Total Debits**, and **Total Credits**.
-4. **`<UniversalWalletLedgerTable />`**: A Quasar data table displaying the ledger rows chronologically, using `text-positive` (green) for credits and `text-negative` (red) for debits.
+1. **Entity Selection Dropdowns (`UniversalWalletPage.vue`)**:
+   - **Customer Tab**: Dynamic searchable dropdown mapping to **Billing Profiles** (`billing_profiles` table).
+   - **Vendor Tab**: Dynamic searchable dropdown mapping to **Vendors** (`vendors` table).
+   - **Courier Tab**: Dynamic searchable dropdown mapping to **Courier Services** (`courier_services` table).
+   - **Middleman Tab**: Shared reseller wallet mapping to **Billing Profiles** (`billing_profiles` table).
+   - **Tenant Tab**: Self-contained tenant operational wallet (`tenant_id`).
+
+2. **`<UniversalWalletHeader />`**: Contains the overline (e.g., "Courier Wallet") and title (e.g., "Steadfast Ledger").
+3. **`<UniversalWalletToolbar />`**: A `q-card flat bordered class="q-pa-sm"` containing search and filter controls.
+4. **`<UniversalWalletKPICards />`**: Live KPI cards showing **Current Balance**, **Total Debits**, and **Total Credits**.
+5. **`<UniversalWalletLedgerTable />`**: A Quasar data table displaying the ledger rows chronologically, using `text-positive` (green) for credits and `text-negative` (red) for debits.
 
 *Note: All business math (e.g., calculating totals) must be extracted into composables (`composables/useWalletMath.ts`). The Vue templates remain strictly presentational.*
 

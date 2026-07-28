@@ -59,8 +59,6 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-
 const searchQuery = defineModel<string>('search', { default: '' });
 const typeFilter = defineModel<string>('type', { default: 'all' });
 const sourceFilter = defineModel<string>('source', { default: 'all' });

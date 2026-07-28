@@ -13,7 +13,6 @@ defineProps<{
 
 const emit = defineEmits<{
   (e: 'open-recipient-invoice'): void;
-  (e: 'quick-remit'): void;
 }>();
 </script>
 
@@ -34,12 +33,12 @@ const emit = defineEmits<{
     <div class="col-auto row q-gutter-sm items-center">
       <q-btn
         v-if="order?.status === 'delivered'"
-        color="positive"
+        color="primary"
         unelevated
-        icon="ph ph-check-circle"
-        label="Mark Remitted"
+        icon="ph ph-bank"
+        label="Remit in Finance Hub"
         no-caps
-        @click="emit('quick-remit')"
+        :to="{ name: 'app-shop-dropship-finance-hub-page', query: { orderId: order.id, step: 'courier_remittance' } }"
       />
 
       <q-btn

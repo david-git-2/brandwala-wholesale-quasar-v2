@@ -9,12 +9,12 @@
         </div>
         <div class="col-auto row q-gutter-sm">
           <q-btn
-            outline
             color="primary"
-            icon="ph ph-receipt"
-            label="Courier Remittances"
+            unelevated
+            icon="ph ph-bank"
+            label="Finance Hub"
             no-caps
-            :to="{ name: 'app-shop-courier-remittances-list-page' }"
+            :to="{ name: 'app-shop-dropship-finance-hub-page' }"
           />
           <q-btn
             outline
@@ -31,14 +31,6 @@
             label="Merchants & Pickup"
             no-caps
             :to="{ name: 'app-shop-dropship-merchants-page' }"
-          />
-          <q-btn
-            outline
-            color="primary"
-            icon="ph ph-wallet"
-            label="Wallet & Payouts"
-            no-caps
-            :to="{ name: 'app-global-billing-wallets' }"
           />
         </div>
       </section>
@@ -174,25 +166,15 @@
                     @click="createAccountingInvoice(c)"
                   />
                   <q-btn
-                    v-if="c.status === 'delivered'"
-                    color="positive"
+                    v-if="c.status === 'delivered' || canRecordRemittance(c)"
+                    color="primary"
                     unelevated
                     dense
                     size="sm"
                     no-caps
-                    label="Mark Remitted"
-                    icon="ph ph-check-circle"
-                    @click="openQuickRemitDialog(c)"
-                  />
-                  <q-btn
-                    v-if="canRecordRemittance(c)"
-                    color="primary"
-                    outline
-                    dense
-                    size="sm"
-                    no-caps
-                    label="Record Remittance"
-                    @click="openRemittanceDialog(c)"
+                    label="Remit in Hub"
+                    icon="ph ph-bank"
+                    :to="{ name: 'app-shop-dropship-finance-hub-page', query: { orderId: c.id, step: 'courier_remittance' } }"
                   />
                 </div>
               </td>
@@ -201,71 +183,11 @@
         </q-markup-table>
       </q-card>
     </section>
-
-    <q-dialog v-model="remittanceDialogOpen" persistent>
-      <q-card style="min-width: 440px; border-radius: 12px">
-        <q-card-section class="row items-center justify-between">
-          <div class="text-h6 text-weight-bold">Record Courier Remittance</div>
-          <q-btn flat round dense icon="ph ph-x" v-close-popup />
-        </q-card-section>
-        <q-card-section class="q-gutter-sm">
-          <div class="text-body2 text-grey-8">
-            Order <strong>{{ remittanceOrder?.order_no }}</strong> — net COD collection from courier.
-          </div>
-          <q-input
-            v-model="remittanceForm.remittance_ref"
-            label="Remittance Batch / Statement ID *"
-            outlined
-            dense
-          />
-          <q-input
-            v-model.number="remittanceForm.net_amount"
-            type="number"
-            label="Net Remitted Amount (BDT) *"
-            outlined
-            dense
-          />
-          <q-input
-            v-model="remittanceForm.bank_trx_id"
-            label="Bank / MFS Transaction ID"
-            outlined
-            dense
-          />
-          <q-input
-            v-model="remittanceForm.note"
-            label="Notes"
-            outlined
-            dense
-            type="textarea"
-            autogrow
-          />
-        </q-card-section>
-        <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat label="Cancel" v-close-popup no-caps />
-          <q-btn
-            color="primary"
-            unelevated
-            label="Save Remittance"
-            no-caps
-            :disable="!canSaveRemittance"
-            :loading="actionKind === 'remit'"
-            @click="saveRemittance"
-          />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <!-- 1-Click Quick Remit Dialog -->
-    <QuickRemitDialog
-      v-model="quickRemitDialogOpen"
-      :order="quickRemitOrder"
-      @success="loadOrders"
-    />
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, reactive, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { supabase } from 'src/boot/supabase';
 import {
@@ -273,7 +195,6 @@ import {
   showErrorNotification,
   requestConfirmation,
 } from 'src/utils/appFeedback';
-import QuickRemitDialog from '../components/QuickRemitDialog.vue';
 import { shopOrderService } from '../services/shopOrderService';
 import type { ShopOrder } from '../types';
 
@@ -285,23 +206,6 @@ const selectedStatus = ref<string>('all');
 
 const actionOrderId = ref<number | null>(null);
 const actionKind = ref<'deliver' | 'invoice' | 'remit' | null>(null);
-
-const quickRemitDialogOpen = ref(false);
-const quickRemitOrder = ref<ShopOrder | null>(null);
-
-const openQuickRemitDialog = (c: ShopOrder) => {
-  quickRemitOrder.value = c;
-  quickRemitDialogOpen.value = true;
-};
-
-const remittanceDialogOpen = ref(false);
-const remittanceOrder = ref<ShopOrder | null>(null);
-const remittanceForm = reactive({
-  remittance_ref: '',
-  net_amount: 0,
-  bank_trx_id: '',
-  note: '',
-});
 
 const INVOICE_ELIGIBLE = ['ready_for_pickup', 'shipped', 'delivered', 'payment_received'];
 
@@ -363,13 +267,6 @@ const canCreateAccountingInvoice = (c: ShopOrder) =>
 const canRecordRemittance = (c: ShopOrder) =>
   c.status === 'delivered' && !!c.global_invoice_id && !c.courier_remittance_ref;
 
-const canSaveRemittance = computed(
-  () =>
-    remittanceForm.remittance_ref.trim().length > 0 &&
-    Number(remittanceForm.net_amount) > 0 &&
-    !!remittanceOrder.value,
-);
-
 const markDelivered = async (c: ShopOrder) => {
   const ok = await requestConfirmation(
     `Mark order ${c.order_no} as collected / delivered?`,
@@ -427,38 +324,6 @@ const createAccountingInvoice = async (c: ShopOrder) => {
     showErrorNotification(err?.message || 'Failed to create accounting invoice');
   } finally {
     actionOrderId.value = null;
-    actionKind.value = null;
-  }
-};
-
-const openRemittanceDialog = (c: ShopOrder) => {
-  remittanceOrder.value = c;
-  remittanceForm.remittance_ref = '';
-  remittanceForm.net_amount = Number(c.cod_collect_amount ?? 0);
-  remittanceForm.bank_trx_id = '';
-  remittanceForm.note = '';
-  remittanceDialogOpen.value = true;
-};
-
-const saveRemittance = async () => {
-  if (!canSaveRemittance.value || !remittanceOrder.value || !authStore.tenantId) return;
-
-  actionKind.value = 'remit';
-  try {
-    const { error } = await supabase.rpc('record_dropship_courier_remittance', {
-      p_order_id: remittanceOrder.value.id,
-      p_net_amount: Number(remittanceForm.net_amount),
-      p_remittance_ref: remittanceForm.remittance_ref.trim(),
-      p_bank_trx_id: remittanceForm.bank_trx_id.trim() || null,
-      p_note: remittanceForm.note.trim() || null,
-    });
-    if (error) throw error;
-    showSuccessNotification(`Remittance ${remittanceForm.remittance_ref.trim()} recorded.`);
-    remittanceDialogOpen.value = false;
-    await loadOrders();
-  } catch (err: any) {
-    showErrorNotification(err?.message || 'Failed to record remittance');
-  } finally {
     actionKind.value = null;
   }
 };

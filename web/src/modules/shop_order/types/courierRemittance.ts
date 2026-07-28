@@ -114,6 +114,7 @@ export interface ReconcileSingleOrderResult {
 }
 
 export interface DispensePayoutPayload {
+  tenantId: number;
   billingProfileId: number;
   amount: number;
   method?: string;

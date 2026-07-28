@@ -92,7 +92,7 @@
           />
         </q-card-actions>
       </q-card>
-    </dialog>
+    </q-dialog>
   </div>
 </template>
 
