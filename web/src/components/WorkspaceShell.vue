@@ -136,6 +136,19 @@
               </q-list>
             </q-menu>
           </q-btn>
+          <q-btn
+            flat
+            round
+            dense
+            size="sm"
+            color="primary"
+            icon="ph ph-question"
+            aria-label="Module Guide"
+            class="q-mr-xs"
+            @click="openModuleHelp"
+          >
+            <q-tooltip>Module Guide</q-tooltip>
+          </q-btn>
           <slot name="header-extra" />
         </div>
       </q-toolbar>
@@ -583,6 +596,8 @@
       <slot />
     </q-page-container>
 
+    <ModuleHelpDrawer />
+
     <!-- Command Palette Dialog -->
     <q-dialog
       v-model="showCommandPalette"
@@ -727,6 +742,8 @@ import { useI18n } from 'vue-i18n';
 import { supabase } from 'src/boot/supabase';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useAppearance } from 'src/composables/useAppearance';
+import ModuleHelpDrawer from 'src/modules/help/components/ModuleHelpDrawer.vue';
+import { useModuleHelp } from 'src/modules/help/composables/useModuleHelp';
 
 export interface WorkspaceLink {
   title: string;
@@ -751,6 +768,19 @@ const showLogoutDialog = ref(false);
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
+const { openHelp, setHelpScope } = useModuleHelp();
+
+watch(
+  () => props.theme,
+  (theme) => {
+    setHelpScope(theme);
+  },
+  { immediate: true },
+);
+
+const openModuleHelp = () => {
+  openHelp({ scope: props.theme });
+};
 
 const $q = useQuasar();
 const { navPinned, setNavPinned, darkMode, setDarkMode, density, setDensity } = useAppearance();

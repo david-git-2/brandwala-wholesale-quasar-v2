@@ -41,6 +41,8 @@ graph TD
 2. **Contextual Module Help Drawer (`ModuleHelpDrawer.vue`)**: Reusable slide-over panel available on every page header (`? Module Guide` action).
 3. **Help Center Portal (`/app/help`)**: Dedicated search-enabled knowledge base presenting visual module cards, task-oriented guides, and role-filtered help articles.
 
+**Operational AI protocol:** [`docs/OPTIMIZE_HELP_CENTER.md`](../docs/OPTIMIZE_HELP_CENTER.md) — attach a page + this protocol to generate/update registry content and optional Learn-more buttons.
+
 ---
 
 ## 4. Phased Implementation Roadmap

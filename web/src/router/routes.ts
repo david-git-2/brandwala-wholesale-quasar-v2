@@ -10,6 +10,7 @@ import productBasedCostingRoutes from 'src/modules/product_based_costing/routes'
 import productRoutes from 'src/modules/products/routes';
 import vendorRoutes from 'src/modules/vendor/routes';
 import documentationRoutes from 'src/modules/documentation/routes';
+import helpRoutes from 'src/modules/help/routes';
 import kobaRoutes from 'src/modules/koba/routes';
 import tasksRoutes from 'src/modules/tasks/routes';
 import thriftRoutes from 'src/modules/thrift/routes';
@@ -85,6 +86,7 @@ const routes: RouteRecordRaw[] = [
   ...costingFileRoutes,
   ...membershipRoutes,
   ...documentationRoutes,
+  ...helpRoutes,
   ...kobaRoutes,
   ...tasksRoutes,
   ...thriftRoutes,

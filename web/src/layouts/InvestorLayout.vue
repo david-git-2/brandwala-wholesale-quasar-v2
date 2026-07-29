@@ -52,6 +52,12 @@ const links = computed(() => {
       icon: 'ph ph-clock-counter-clockwise',
       to: `/${slug}/investor/activity`,
     },
+    {
+      title: 'Help Center',
+      caption: 'Guides for this portal',
+      icon: 'ph ph-question',
+      to: `/${slug}/investor/help`,
+    },
   ];
 });
 </script>

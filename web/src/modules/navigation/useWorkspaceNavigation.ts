@@ -82,6 +82,14 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
     target: '_blank',
   },
   {
+    title: 'Help Center',
+    caption: 'How-to guides for platform tools',
+    icon: 'ph ph-question',
+    scopes: ['platform'],
+    allowedRoles: ['superadmin'],
+    route: () => '/platform/help',
+  },
+  {
     title: 'Dashboard',
     caption: 'Internal activity and quick actions',
     icon: 'ph ph-chart-line-up',
@@ -117,6 +125,14 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
     target: '_blank',
   },
   {
+    title: 'Help Center',
+    caption: 'How-to guides for your workspace',
+    icon: 'ph ph-question',
+    scopes: ['app'],
+    allowedRoles: ['admin', 'staff', 'viewer'],
+    route: ({ tenantSlug }) => (tenantSlug ? `/${tenantSlug}/app/help` : '/app/help'),
+  },
+  {
     title: 'Dashboard',
     caption: 'Current orders, approvals, and next actions',
     icon: 'ph ph-squares-four',
@@ -124,6 +140,15 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
     allowedRoles: ['customer_admin', 'customer_negotiator', 'customer_staff'],
     requiresTenantContext: true,
     route: ({ tenantSlug }) => (tenantSlug ? `/${tenantSlug}/shop/dashboard` : '/shop/dashboard'),
+  },
+  {
+    title: 'Help Center',
+    caption: 'Guides for ordering and tracking',
+    icon: 'ph ph-question',
+    scopes: ['shop'],
+    allowedRoles: ['customer_admin', 'customer_negotiator', 'customer_staff'],
+    requiresTenantContext: true,
+    route: ({ tenantSlug }) => (tenantSlug ? `/${tenantSlug}/shop/help` : '/shop/help'),
   },
 ] as const;
 
