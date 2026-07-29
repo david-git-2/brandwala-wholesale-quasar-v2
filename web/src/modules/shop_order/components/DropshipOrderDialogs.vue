@@ -3,15 +3,6 @@ import type { ShopOrder } from '../types';
 
 const props = defineProps<{
   order: ShopOrder | null;
-  remittanceDialogOpen: boolean;
-  remittanceForm: {
-    remittance_ref: string;
-    net_amount: number;
-    bank_trx_id: string;
-    note: string;
-  };
-  savingRemittance: boolean;
-  canSaveOrderRemittance: boolean;
 
   dualInvoiceDialogOpen: boolean;
   creatingInvoice: boolean;
@@ -33,90 +24,16 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'update:remittanceDialogOpen', val: boolean): void;
   (e: 'update:dualInvoiceDialogOpen', val: boolean): void;
   (e: 'update:confirmB2bInvoiceDialogOpen', val: boolean): void;
   (e: 'update:confirmDeleteInvoiceDialogOpen', val: boolean): void;
-  (e: 'save-remittance'): void;
   (e: 'confirm-dual-invoice'): void;
   (e: 'execute-status-update', status: string): void;
-  (e: 'update:remittance-field', key: string, val: any): void;
 }>();
-
-const updateRemittanceField = (key: string, val: any) => {
-  emit('update:remittance-field', key, val);
-};
 </script>
 
 <template>
   <div>
-    <!-- Courier Remittance Dialog -->
-    <q-dialog
-      v-if="props.order?.collection_source !== 'billing_profile'"
-      :model-value="props.remittanceDialogOpen"
-      persistent
-      @update:model-value="(v) => emit('update:remittanceDialogOpen', v)"
-    >
-      <q-card style="min-width: 440px; border-radius: 12px">
-        <q-card-section class="row items-center justify-between">
-          <div class="text-h6 text-weight-bold">Record Courier Remittance</div>
-          <q-btn flat round dense icon="ph ph-x" v-close-popup />
-        </q-card-section>
-        <q-card-section class="q-gutter-sm">
-          <div class="text-body2 text-grey-8">
-            Order <strong>{{ props.order?.order_no }}</strong> — net COD collection from courier.
-          </div>
-          <q-banner v-if="props.order?.collection_source === 'billing_profile'" class="bg-amber-1 text-amber-10 rounded-borders q-mb-xs">
-            Prepaid order (billing_profile). Remittance action disabled.
-          </q-banner>
-          <q-input
-            :model-value="props.remittanceForm.remittance_ref"
-            label="Remittance Batch / Statement ID *"
-            outlined
-            dense
-            @update:model-value="(val) => updateRemittanceField('remittance_ref', val)"
-          />
-          <q-input
-            :model-value="props.remittanceForm.net_amount"
-            type="number"
-            label="Net Remitted Amount (BDT) *"
-            outlined
-            dense
-            :rules="[
-              (val) => Number(val) > 0 || 'Amount must be greater than zero',
-              (val) => Number(val) <= (props.codCollectAmount || 999999) || `Amount cannot exceed collectible cap of ${props.codCollectAmount} BDT`
-            ]"
-            @update:model-value="(val) => updateRemittanceField('net_amount', Number(val))"
-          />
-          <q-input
-            :model-value="props.remittanceForm.bank_trx_id"
-            label="Bank / MFS Transaction ID"
-            outlined
-            dense
-            @update:model-value="(val) => updateRemittanceField('bank_trx_id', val)"
-          />
-          <q-input
-            :model-value="props.remittanceForm.note"
-            label="Notes"
-            outlined
-            dense
-            type="textarea"
-            rows="2"
-            @update:model-value="(val) => updateRemittanceField('note', val)"
-          />
-        </q-card-section>
-        <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat label="Cancel" v-close-popup />
-          <q-btn
-            color="primary"
-            label="Save Remittance"
-            :loading="props.savingRemittance"
-            :disable="!props.canSaveOrderRemittance || props.remittanceForm.net_amount > (props.codCollectAmount || 999999)"
-            @click="emit('save-remittance')"
-          />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
 
     <!-- Create Dual Invoice Dialog -->
     <q-dialog
@@ -158,7 +75,7 @@ const updateRemittanceField = (key: string, val: any) => {
         </q-card-section>
         <q-card-section class="q-pt-sm text-body2">
           <p class="text-grey-8 q-mb-md">
-            Advancing to <strong>Ready for Pickup</strong> will automatically create the B2B Accounting Invoice for the middle man. Please review the financial breakdown before confirming.
+            Advancing to <strong>Ready for Pickup</strong> will automatically create the B2B Accounting Invoice for the merchant. Please review the financial breakdown before confirming.
           </p>
 
           <div class="row q-col-gutter-sm">

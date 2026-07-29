@@ -5209,6 +5209,7 @@ export type Database = {
           cart_id: number | null
           cod_charge_amount: number
           cod_collect_amount: number | null
+          collection_source: Database["public"]["Enums"]["collection_source_type"] | null
           conversion_rate: number | null
           courier_awb_number: string | null
           courier_bank_trx_id: string | null
@@ -5260,6 +5261,7 @@ export type Database = {
           pickup_address: string | null
           pickup_phone: string | null
           placed_at: string | null
+          payout_settlement_status: string | null
           print_charge_amount: number
           profit_rate: number | null
           recipient_name: string | null
@@ -5290,6 +5292,7 @@ export type Database = {
           cart_id?: number | null
           cod_charge_amount?: number
           cod_collect_amount?: number | null
+          collection_source?: Database["public"]["Enums"]["collection_source_type"] | null
           conversion_rate?: number | null
           courier_awb_number?: string | null
           courier_bank_trx_id?: string | null
@@ -5338,6 +5341,7 @@ export type Database = {
           parcel_description?: string | null
           payout_account_info?: string | null
           payout_account_type?: string | null
+          payout_settlement_status?: string | null
           pickup_address?: string | null
           pickup_phone?: string | null
           placed_at?: string | null
@@ -5371,6 +5375,7 @@ export type Database = {
           cart_id?: number | null
           cod_charge_amount?: number
           cod_collect_amount?: number | null
+          collection_source?: Database["public"]["Enums"]["collection_source_type"] | null
           conversion_rate?: number | null
           courier_awb_number?: string | null
           courier_bank_trx_id?: string | null
@@ -5419,6 +5424,7 @@ export type Database = {
           parcel_description?: string | null
           payout_account_info?: string | null
           payout_account_type?: string | null
+          payout_settlement_status?: string | null
           pickup_address?: string | null
           pickup_phone?: string | null
           placed_at?: string | null
@@ -8925,6 +8931,28 @@ export type Database = {
           order_count: number
         }[]
       }
+      get_dropship_shop_readiness: {
+        Args: { p_shop_id: number }
+        Returns: {
+          has_access_group_with_price: boolean
+          has_active_courier: boolean
+          has_billing_profile_linked: boolean
+          has_customer_group_with_members: boolean
+          has_listing_with_floor: boolean
+          ready: boolean
+          shop_id: number
+        }[]
+      }
+      get_my_dropship_wallet_summary: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          available_balance: number
+          billing_profile_id: number
+          currency: string
+          locked_balance: number
+          pending_balance: number
+        }[]
+      }
       get_dropship_wallet_reconciliation_report: {
         Args: { p_tenant_id?: number }
         Returns: Json
@@ -9536,6 +9564,19 @@ export type Database = {
           module_key: string
         }[]
       }
+      list_my_dropship_wallet_ledger: {
+        Args: { p_limit?: number; p_offset?: number }
+        Returns: {
+          amount: number
+          balance_after: number
+          created_at: string
+          id: string
+          note: string
+          order_id: number
+          source_id: string
+          transaction_type: string
+        }[]
+      }
       list_dropship_shop_orders_for_staff: {
         Args: {
           p_limit?: number
@@ -9546,6 +9587,7 @@ export type Database = {
         }
         Returns: {
           cod_collect_amount: number
+          collection_source: Database["public"]["Enums"]["collection_source_type"] | null
           courier_awb_number: string
           courier_name: string
           courier_remittance_ref: string
@@ -9555,6 +9597,7 @@ export type Database = {
           global_invoice_id: number
           id: number
           order_no: string
+          payout_settlement_status: string | null
           recipient_name: string
           recipient_phone: string
           status: Database["public"]["Enums"]["shop_order_status"]

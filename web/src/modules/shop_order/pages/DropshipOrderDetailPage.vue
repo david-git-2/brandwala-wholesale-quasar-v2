@@ -22,6 +22,17 @@
           @update-status="onUpdateStatus"
         />
 
+        <!-- Progressive Process Step Strip -->
+        <DropshipProcessStepStrip
+          :order="order"
+          :form="form"
+          :selected-courier="selectedCourier"
+          :has-items="orderItems.length > 0"
+          @open-recipient-invoice="openRecipientInvoicePreview"
+          @update-status="onUpdateStatus"
+          @open-dual-invoice="openDualInvoiceDialog"
+        />
+
         <div class="row q-col-gutter-lg">
           <!-- Main Form Sections -->
           <div class="col-xs-12" :class="isConfirmedStatus ? 'col-md-8' : 'col-md-8'">
@@ -61,23 +72,35 @@
                 @update:form-field="(k, v) => (form as any)[k] = v"
               />
 
-              <!-- Block C: Merchant Sender Pickup (Hidden when confirmed) -->
-              <DropshipMerchantFormCard
+              <!-- Additional Consignment Details (Merchant Pickup & Driver Notes) under More -->
+              <q-expansion-item
                 v-if="!isConfirmedStatus"
-                v-model:selected-merchant-id="selectedMerchantId"
-                v-model:block-c-expanded="blockCExpanded"
-                :form="form"
-                :merchant-options="merchantOptions"
-                @merchant-select="onMerchantSelect"
-                @update:form-field="(k, v) => (form as any)[k] = v"
-              />
+                dense
+                dense-toggle
+                expand-separator
+                icon="ph ph-sliders"
+                label="More Details (Merchant Pickup & Driver Instructions)"
+                header-class="bg-grey-2 text-weight-bold text-grey-8 rounded-borders"
+                class="overflow-hidden rounded-borders border-grey"
+              >
+                <div class="q-pa-md q-gutter-y-md bg-grey-1">
+                  <!-- Block C: Merchant Sender Pickup -->
+                  <DropshipMerchantFormCard
+                    v-model:selected-merchant-id="selectedMerchantId"
+                    v-model:block-c-expanded="blockCExpanded"
+                    :form="form"
+                    :merchant-options="merchantOptions"
+                    @merchant-select="onMerchantSelect"
+                    @update:form-field="(k, v) => (form as any)[k] = v"
+                  />
 
-              <!-- Block D: Driver Notes & Policy Flags (Hidden when confirmed) -->
-              <DropshipDeliveryNotesCard
-                v-if="!isConfirmedStatus"
-                :form="form"
-                @update:form-field="(k, v) => (form as any)[k] = v"
-              />
+                  <!-- Block D: Driver Notes & Policy Flags -->
+                  <DropshipDeliveryNotesCard
+                    :form="form"
+                    @update:form-field="(k, v) => (form as any)[k] = v"
+                  />
+                </div>
+              </q-expansion-item>
             </div>
           </div>
 
@@ -124,14 +147,10 @@
 
         <!-- Dialogs -->
         <DropshipOrderDialogs
-          v-model:remittance-dialog-open="remittanceDialogOpen"
           v-model:dual-invoice-dialog-open="dualInvoiceDialogOpen"
           v-model:confirm-b2b-invoice-dialog-open="confirmB2bInvoiceDialogOpen"
           v-model:confirm-delete-invoice-dialog-open="confirmDeleteInvoiceDialogOpen"
           :order="order"
-          :remittance-form="remittanceForm"
-          :saving-remittance="savingRemittance"
-          :can-save-order-remittance="canSaveOrderRemittance"
           :creating-invoice="creatingInvoice"
           :updating-status="updatingStatus"
           :target-updating-status="targetUpdatingStatus"
@@ -144,10 +163,8 @@
           :estimated-profit="estimatedProfit"
           :cod-collect-amount="form.cod_collect_amount"
           :format-bdt="formatBdt"
-          @save-remittance="saveOrderRemittance"
           @confirm-dual-invoice="confirmDualInvoice"
           @execute-status-update="executeStatusUpdate"
-          @update:remittance-field="(k, v) => (remittanceForm as any)[k] = v"
         />
 
         <DropshipReturnFinalizeDialog
@@ -220,6 +237,7 @@ import { showErrorNotification, showSuccessNotification } from 'src/utils/appFee
 import DropshipOrderDetailSkeleton from '../components/DropshipOrderDetailSkeleton.vue';
 import DropshipOrderHeader from '../components/DropshipOrderHeader.vue';
 import DropshipOrderStatusWorkflow from '../components/DropshipOrderStatusWorkflow.vue';
+import DropshipProcessStepStrip from '../components/DropshipProcessStepStrip.vue';
 import DropshipRecipientFormCard from '../components/DropshipRecipientFormCard.vue';
 import DropshipOrderItemsCard from '../components/DropshipOrderItemsCard.vue';
 import DropshipParcelFormCard from '../components/DropshipParcelFormCard.vue';
@@ -359,10 +377,6 @@ const {
   targetUpdatingStatus,
   primaryCta,
   showSettlementCard,
-  canSaveOrderRemittance,
-  remittanceDialogOpen,
-  savingRemittance,
-  remittanceForm,
   returnDialogOpen,
   suggestedReturnFee,
   totalReturnableQty,
@@ -374,7 +388,6 @@ const {
   onUpdateStatus,
   executeStatusUpdate,
   submitReturnFinalize,
-  saveOrderRemittance,
   openRecipientInvoicePreview,
   confirmDualInvoice,
 } = useDropshipOrderActions(

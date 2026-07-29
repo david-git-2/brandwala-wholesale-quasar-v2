@@ -23,6 +23,8 @@ export interface FinanceHubOrderQueueItem {
   billingProfileName: string | null;
   createdAt: string;
   nextStep: 'delivered_costing' | 'courier_remittance' | 'middleman_payout' | 'completed';
+  collectionSource?: string | null;
+  payoutSettlementStatus?: string | null;
 }
 
 export interface FinanceHubMerchantItem {
@@ -80,9 +82,16 @@ export const dropshipFinanceRepository = {
         billing_profile_id,
         created_at,
         courier_service_id,
+        global_invoice_id,
+        is_prepaid_snapshot,
+        collection_source,
+        payout_settlement_status,
         billing_profiles (
           id,
           name
+        ),
+        global_invoices!shop_orders_global_invoice_id_fkey (
+          collection_source
         )
       `)
       .eq('tenant_id', tenantId)
@@ -144,6 +153,11 @@ export const dropshipFinanceRepository = {
         billingProfileName: o.billing_profiles?.name ?? null,
         createdAt: o.created_at,
         nextStep,
+        collectionSource:
+          o.collection_source
+          ?? o.global_invoices?.collection_source
+          ?? (o.is_prepaid_snapshot ? 'billing_profile' : null),
+        payoutSettlementStatus: o.payout_settlement_status || 'unpaid',
       };
     });
 

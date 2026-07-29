@@ -267,6 +267,20 @@ const getShopOrderById = async (
   };
   delete (order as any).customer_groups;
 
+  // Fallback until shop_orders.collection_source is migrated / populated
+  if (!order.collection_source && order.global_invoice_id) {
+    const { data: inv } = await supabase
+      .from('global_invoices')
+      .select('collection_source')
+      .eq('id', order.global_invoice_id)
+      .maybeSingle();
+    if (inv?.collection_source) {
+      order.collection_source = inv.collection_source;
+    }
+  } else if (!order.collection_source && order.is_prepaid_snapshot) {
+    order.collection_source = 'billing_profile';
+  }
+
   const { data: rawItems, error: itemsErr } = await supabase
     .from('shop_order_items')
     .select('*, products(product_code)')

@@ -7,7 +7,16 @@
           <div class="text-overline text-primary">{{ $t('shop_admin.customer_portal') }}</div>
           <h1 class="text-h5 text-weight-bold q-my-none">My Orders</h1>
         </div>
-        <div class="col-auto">
+        <div class="col-auto row q-gutter-sm">
+          <q-btn
+            outline
+            color="primary"
+            unelevated
+            no-caps
+            icon="ph ph-wallet"
+            label="Merchant wallet"
+            :to="{ name: 'shop-merchant-wallet-page' }"
+          />
           <q-btn
             color="primary"
             unelevated

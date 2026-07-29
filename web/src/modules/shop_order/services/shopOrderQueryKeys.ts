@@ -26,5 +26,11 @@ export const shopOrderQueryKeys = {
     [...shopOrderQueryKeys.root, 'ledger_remittance_orders', tenantSlug ?? 'no-tenant'] as const,
   financeHub: (tenantSlug: string | null) =>
     [...shopOrderQueryKeys.root, 'finance_hub', tenantSlug ?? 'no-tenant'] as const,
+  readiness: (shopId: number) =>
+    [...shopOrderQueryKeys.root, 'readiness', shopId] as const,
+  merchantWalletSummary: () =>
+    [...shopOrderQueryKeys.root, 'merchant_wallet_summary'] as const,
+  merchantWalletLedger: () =>
+    [...shopOrderQueryKeys.root, 'merchant_wallet_ledger'] as const,
 };
 

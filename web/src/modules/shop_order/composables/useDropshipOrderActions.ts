@@ -1,4 +1,4 @@
-import { ref, reactive, computed, watch, type Ref } from 'vue';
+import { ref, computed, watch, type Ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { supabase } from 'src/boot/supabase';
 import { useShopOrderStore } from '../stores/shopOrderStore';
@@ -6,7 +6,6 @@ import { resolveDeliveryZone } from '../services/courierChargeEstimate';
 import type { ShopOrder, ShopOrderItem } from '../types';
 import type { CourierServiceRow } from '../repositories/dropshipCourierRepository';
 import { showSuccessNotification, showErrorNotification, parseSupabaseError } from 'src/utils/appFeedback';
-import { useDropshipRemittanceMutations } from './useDropshipRemittanceMutations';
 import {
   useDropshipReturnMutations,
   type ReturnCondition,
@@ -79,7 +78,6 @@ export function useDropshipOrderActions(
   const router = useRouter();
   const orderStore = useShopOrderStore();
 
-  const { recordOrderRemittanceMutation } = useDropshipRemittanceMutations(tenantSlug);
   const { finalizeReturnMutation } = useDropshipReturnMutations(tenantSlug);
 
   const saving = ref(false);
@@ -90,9 +88,6 @@ export function useDropshipOrderActions(
   const dualInvoiceDialogOpen = ref(false);
   const creatingInvoice = ref(false);
 
-  const remittanceDialogOpen = ref(false);
-  const savingRemittance = ref(false);
-
   const returnDialogOpen = ref(false);
 
   const confirmB2bInvoiceDialogOpen = ref(false);
@@ -101,14 +96,8 @@ export function useDropshipOrderActions(
   const invoicePayout = ref<{
     id: number;
     billing_profile_id: number | null;
+    collection_source: string | null;
   } | null>(null);
-
-  const remittanceForm = reactive({
-    remittance_ref: '',
-    net_amount: 0,
-    bank_trx_id: '',
-    note: '',
-  });
 
   const suggestedReturnFee = computed(
     () => Number(selectedCourier.value?.inside_dhaka_return_fee ?? 30),
@@ -116,6 +105,13 @@ export function useDropshipOrderActions(
 
   const totalReturnableQty = computed(() =>
     orderItems.value.reduce((sum, item) => sum + returnableQty(item), 0),
+  );
+
+  const effectiveCollectionSource = computed(
+    () =>
+      order.value?.collection_source
+      ?? invoicePayout.value?.collection_source
+      ?? (order.value?.is_prepaid_snapshot ? 'billing_profile' : null),
   );
 
   const loadInvoicePayoutContext = async () => {
@@ -127,10 +123,16 @@ export function useDropshipOrderActions(
     try {
       const { data } = await supabase
         .from('global_invoices')
-        .select('id, billing_profile_id')
+        .select('id, billing_profile_id, collection_source')
         .eq('id', invoiceId)
         .maybeSingle();
-      invoicePayout.value = data ?? null;
+      invoicePayout.value = data
+        ? {
+            id: data.id,
+            billing_profile_id: data.billing_profile_id,
+            collection_source: data.collection_source ?? null,
+          }
+        : null;
     } catch {
       invoicePayout.value = null;
     }
@@ -154,43 +156,9 @@ export function useDropshipOrderActions(
     () =>
       order.value?.status === 'delivered' &&
       !!order.value?.global_invoice_id &&
-      !order.value?.courier_remittance_ref,
+      !order.value?.courier_remittance_ref &&
+      effectiveCollectionSource.value !== 'billing_profile',
   );
-
-  const canSaveOrderRemittance = computed(
-    () =>
-      remittanceForm.remittance_ref.trim().length > 0 &&
-      Number(remittanceForm.net_amount) > 0,
-  );
-
-  const openOrderRemittanceDialog = () => {
-    remittanceForm.remittance_ref = '';
-    remittanceForm.net_amount = Number(
-      order.value?.cod_collect_amount ?? form.cod_collect_amount ?? 0,
-    );
-    remittanceForm.bank_trx_id = '';
-    remittanceForm.note = '';
-    remittanceDialogOpen.value = true;
-  };
-
-  const saveOrderRemittance = async () => {
-    if (!order.value || !canSaveOrderRemittance.value) return;
-    savingRemittance.value = true;
-    try {
-      await recordOrderRemittanceMutation.mutateAsync({
-        orderId: order.value.id,
-        netAmount: Number(remittanceForm.net_amount),
-        remittanceRef: remittanceForm.remittance_ref.trim(),
-        bankTrxId: remittanceForm.bank_trx_id.trim() || null,
-        note: remittanceForm.note.trim() || null,
-      });
-      remittanceDialogOpen.value = false;
-      await refetchOrderDetail();
-      await loadInvoicePayoutContext();
-    } finally {
-      savingRemittance.value = false;
-    }
-  };
 
   const performHandoff = async () => {
     if (!order.value) return;
@@ -226,7 +194,16 @@ export function useDropshipOrderActions(
         label: 'Record Courier Remittance',
         icon: 'ph ph-bank',
         loading: false,
-        action: openOrderRemittanceDialog,
+        action: () => {
+          if (!order.value) return;
+          void router.push({
+            name: 'app-shop-dropship-finance-hub-page',
+            query: {
+              orderId: String(order.value.id),
+              step: 'courier_remittance',
+            },
+          });
+        },
       };
     }
 
@@ -452,10 +429,6 @@ export function useDropshipOrderActions(
     primaryCta,
     showSettlementCard,
     canRecordRemittance,
-    canSaveOrderRemittance,
-    remittanceDialogOpen,
-    savingRemittance,
-    remittanceForm,
     returnDialogOpen,
     suggestedReturnFee,
     totalReturnableQty,
@@ -468,8 +441,6 @@ export function useDropshipOrderActions(
     executeStatusUpdate,
     submitReturnFinalize,
     performHandoff,
-    openOrderRemittanceDialog,
-    saveOrderRemittance,
     openRecipientInvoicePreview,
     openDualInvoiceDialog,
     confirmDualInvoice,

@@ -9,7 +9,19 @@
       Please select an order from the queue above to record courier remittance.
     </div>
 
-    <q-form v-else @submit.prevent="handleConfirm" class="q-gutter-y-sm">
+    <q-banner
+      v-else-if="selectedOrder.collectionSource === 'billing_profile'"
+      class="bg-amber-1 text-amber-10 rounded-borders q-mb-md"
+      dense
+    >
+      Prepaid / billing-profile collection — recipient courier remittance is not applicable for this order.
+    </q-banner>
+
+    <q-form
+      v-else
+      @submit.prevent="handleConfirm"
+      class="q-gutter-y-sm"
+    >
       <div class="text-subtitle2 text-weight-bold">
         Order #{{ selectedOrder.orderNo }} (COD: {{ selectedOrder.codCollectAmount }} BDT)
       </div>
@@ -62,7 +74,7 @@
           no-caps
           :loading="loading"
           :disable="netRemitted <= 0"
-          label="Confirm Remittance & Book Middleman Profit"
+          label="Confirm Remittance & Book Merchant Profit"
         />
       </div>
     </q-form>

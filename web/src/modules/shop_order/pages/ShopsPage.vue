@@ -185,6 +185,14 @@
                 </div>
               </div>
             </q-card-section>
+
+            <!-- Dropship Go-Live Readiness Card (Dropship shops only) -->
+            <q-card-section v-if="shop.shop_type === 'dropship'" class="q-pt-none">
+              <DropshipShopReadinessCard
+                :shop-id="shop.id"
+                :tenant-slug="tenantSlug"
+              />
+            </q-card-section>
           </q-card>
         </div>
       </div>
@@ -208,6 +216,7 @@ import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import ShopFormDialog from 'src/modules/shop_order/components/ShopFormDialog.vue';
+import DropshipShopReadinessCard from 'src/modules/shop_order/components/DropshipShopReadinessCard.vue';
 import { useShopListQuery, useVendorListQuery } from '../composables/useShopQuery';
 import { useSaveShopMutation, useDeleteShopMutation } from '../composables/useShopMutations';
 import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';

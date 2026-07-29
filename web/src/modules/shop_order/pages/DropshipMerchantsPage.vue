@@ -5,9 +5,9 @@
       <section class="row items-center justify-between q-col-gutter-md">
         <div class="col">
           <div class="text-overline text-primary">Shop &amp; Order — Dropship</div>
-          <h1 class="text-h5 text-weight-bold q-my-none">Middleman &amp; Merchant Payout Center</h1>
+          <h1 class="text-h5 text-weight-bold q-my-none">Merchant Payout Center</h1>
           <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-            Monitor reseller margins, locked courier escrow, available wallet balances, and dispense middleman payouts.
+            Monitor merchant margins, locked courier escrow, available wallet balances, and dispense merchant payouts.
           </p>
         </div>
         <div class="col-auto row q-gutter-sm">

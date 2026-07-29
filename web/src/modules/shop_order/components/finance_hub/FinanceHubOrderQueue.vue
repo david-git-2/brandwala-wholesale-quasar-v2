@@ -41,14 +41,17 @@
 
         <template #body-cell-status="props">
           <q-td :props="props">
-            <q-chip
-              dense
-              size="12px"
-              :color="props.row.status === 'payment_received' ? 'positive' : 'info'"
-              text-color="white"
-            >
-              {{ props.row.status }}
-            </q-chip>
+            <div class="column items-center q-gutter-y-xs">
+              <q-chip
+                dense
+                size="12px"
+                :color="props.row.status === 'payment_received' ? 'positive' : 'info'"
+                text-color="white"
+              >
+                {{ props.row.status }}
+              </q-chip>
+              <DropshipSettlementBadge :status="props.row.payoutSettlementStatus || 'unpaid'" />
+            </div>
           </q-td>
         </template>
 
@@ -86,6 +89,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { FinanceHubOrderQueueItem } from '../../repositories/dropshipFinanceRepository';
+import DropshipSettlementBadge from '../DropshipSettlementBadge.vue';
 
 const props = defineProps<{
   orders: FinanceHubOrderQueueItem[];

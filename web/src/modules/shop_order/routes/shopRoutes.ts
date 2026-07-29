@@ -24,6 +24,21 @@ const shopRoutes: RouteRecordRaw[] = [
         }),
       },
       {
+        path: 'wallet',
+        name: 'shop-merchant-wallet-page',
+        component: () => import('src/modules/shop_order/pages/MerchantWalletPage.vue'),
+        beforeEnter: createAccessGuard({
+          loginRoute: (to) =>
+            getShopLoginRouteLocation(to, {
+              redirect: to.fullPath,
+            }),
+          requiredScope: 'shop',
+          requireTenantContext: true,
+          allowedRoles: ['customer_admin', 'customer_negotiator', 'customer_staff'],
+          requiredModule: 'shop_order_mgmt',
+        }),
+      },
+      {
         path: ':id',
         name: 'shop-order-detail-page',
         component: () => import('src/modules/shop_order/pages/CustomerOrderDetailPage.vue'),

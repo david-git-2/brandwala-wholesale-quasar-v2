@@ -131,9 +131,12 @@
                 <div v-else class="text-caption text-grey-5">—</div>
               </td>
               <td>
-                <q-chip dense :color="getStatusColor(c.status)" text-color="white" size="sm">
-                  {{ c.status.toUpperCase().replace(/_/g, ' ') }}
-                </q-chip>
+                <div class="column items-center q-gutter-y-xs">
+                  <q-chip dense :color="getStatusColor(c.status)" text-color="white" size="sm">
+                    {{ c.status.toUpperCase().replace(/_/g, ' ') }}
+                  </q-chip>
+                  <DropshipSettlementBadge :status="c.payout_settlement_status || 'unpaid'" />
+                </div>
               </td>
               <td class="text-right text-weight-bold text-grey-9">
                 {{ formatAmount(c.cod_collect_amount ?? c.total_amount ?? 0) }} BDT
@@ -174,6 +177,7 @@ import {
 } from 'src/utils/appFeedback';
 import { shopOrderService } from '../services/shopOrderService';
 import type { ShopOrder } from '../types';
+import DropshipSettlementBadge from '../components/DropshipSettlementBadge.vue';
 
 const router = useRouter();
 const authStore = useAuthStore();

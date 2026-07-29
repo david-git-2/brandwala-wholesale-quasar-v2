@@ -106,39 +106,42 @@ const selectedOrder = ref<FinanceHubOrderQueueItem | null>(null);
 const preselectedMerchantId = ref<number | null>(null);
 
 // Route parameters auto-selection support
-onMounted(() => {
+function checkAndSelectQueryOrder() {
   const queryOrderId = route.query.orderId ? Number(route.query.orderId) : null;
-  const queryMerchantId = route.query.merchantId ? Number(route.query.merchantId) : null;
   const queryStep = route.query.step ? String(route.query.step) : null;
 
   if (queryStep) {
     activeTab.value = queryStep;
   }
 
+  if (queryOrderId && orders.value.length > 0) {
+    const match = orders.value.find((o) => o.id === queryOrderId);
+    if (match) {
+      handleSelectOrder(match);
+      if (queryStep) {
+        activeTab.value = queryStep;
+      }
+    }
+  }
+}
+
+onMounted(() => {
+  const queryMerchantId = route.query.merchantId ? Number(route.query.merchantId) : null;
+
   if (queryMerchantId) {
     preselectedMerchantId.value = queryMerchantId;
     activeTab.value = 'middleman_payout';
   }
 
-  if (queryOrderId && orders.value.length > 0) {
-    const match = orders.value.find((o) => o.id === queryOrderId);
-    if (match) {
-      handleSelectOrder(match);
-    }
-  }
+  checkAndSelectQueryOrder();
 });
 
 watch(
   () => orders.value,
-  (newOrders) => {
-    const queryOrderId = route.query.orderId ? Number(route.query.orderId) : null;
-    if (queryOrderId && !selectedOrder.value) {
-      const match = newOrders.find((o) => o.id === queryOrderId);
-      if (match) {
-        handleSelectOrder(match);
-      }
-    }
-  }
+  () => {
+    checkAndSelectQueryOrder();
+  },
+  { immediate: true },
 );
 
 function handleSelectOrder(order: FinanceHubOrderQueueItem) {
