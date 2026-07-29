@@ -119,6 +119,12 @@ const buildProductBasedCostingItemCreatePayload = (
   assigned_shipment_id: payload.assigned_shipment_id ?? null,
 });
 
+const sanitizeNumeric = (value: unknown): number | null => {
+  if (value === null || value === undefined || value === '') return null;
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+};
+
 const buildProductBasedCostingItemUpdatePayload = (
   payload: Omit<ProductBasedCostingItemUpdateInput, 'id'>,
 ) => {
@@ -141,7 +147,7 @@ const buildProductBasedCostingItemUpdatePayload = (
   }
 
   if (payload.quantity !== undefined) {
-    updatePayload.quantity = payload.quantity;
+    updatePayload.quantity = sanitizeNumeric(payload.quantity);
   }
 
   if (payload.barcode !== undefined) {
@@ -169,31 +175,31 @@ const buildProductBasedCostingItemUpdatePayload = (
   }
 
   if (payload.price_gbp !== undefined) {
-    updatePayload.price_gbp = payload.price_gbp;
+    updatePayload.price_gbp = sanitizeNumeric(payload.price_gbp);
   }
 
   if (payload.product_weight !== undefined) {
-    updatePayload.product_weight = payload.product_weight;
+    updatePayload.product_weight = sanitizeNumeric(payload.product_weight);
   }
 
   if (payload.package_weight !== undefined) {
-    updatePayload.package_weight = payload.package_weight;
+    updatePayload.package_weight = sanitizeNumeric(payload.package_weight);
   }
 
   if (payload.confirmed_quantity !== undefined) {
-    updatePayload.confirmed_quantity = payload.confirmed_quantity;
+    updatePayload.confirmed_quantity = sanitizeNumeric(payload.confirmed_quantity);
   }
 
   if (payload.ordered_quantity !== undefined) {
-    updatePayload.ordered_quantity = payload.ordered_quantity;
+    updatePayload.ordered_quantity = sanitizeNumeric(payload.ordered_quantity);
   }
 
   if (payload.delivered_quantity !== undefined) {
-    updatePayload.delivered_quantity = payload.delivered_quantity;
+    updatePayload.delivered_quantity = sanitizeNumeric(payload.delivered_quantity);
   }
 
   if (payload.offer_price !== undefined) {
-    updatePayload.offer_price = payload.offer_price;
+    updatePayload.offer_price = sanitizeNumeric(payload.offer_price);
   }
 
   if (payload.is_offer_price_manual !== undefined) {

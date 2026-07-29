@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import { productBasedCostingQueryKeys } from '../shared/queryKeys/productBasedCostingQueryKeys';
 import { productBasedCostingRepository } from '../repositories/productBasedCostingRepository';
-import { showSuccessNotification } from 'src/utils/appFeedback';
+import { showErrorNotification, showSuccessNotification, parseSupabaseError } from 'src/utils/appFeedback';
 import type {
   ProductBasedCostingItem,
   ProductBasedCostingItemCreateInput,
@@ -23,6 +23,9 @@ export function useCreateProductBasedCostingItemMutation() {
         );
       }
     },
+    onError: (error) => {
+      showErrorNotification(parseSupabaseError(error, 'Failed to create costing item.'));
+    },
   });
 }
 
@@ -43,6 +46,9 @@ export function useUpdateProductBasedCostingItemMutation() {
           },
         );
       }
+    },
+    onError: (error) => {
+      showErrorNotification(parseSupabaseError(error, 'Failed to update costing item.'));
     },
   });
 }
@@ -68,7 +74,7 @@ export function useDeleteProductBasedCostingItemsBulkMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ fileId, ids }: { fileId: number; ids: number[] }) =>
+    mutationFn: ({ ids }: { fileId: number; ids: number[] }) =>
       productBasedCostingRepository.deleteProductBasedCostingItemsBulk(ids),
     onSuccess: (deletedItems, variables) => {
       const deletedIds = new Set(variables.ids);

@@ -30,7 +30,7 @@
           :has-items="orderItems.length > 0"
           @open-recipient-invoice="openRecipientInvoicePreview"
           @update-status="onUpdateStatus"
-          @open-dual-invoice="openDualInvoiceDialog"
+          @open-dual-invoice="dualInvoiceDialogOpen = true"
         />
 
         <div class="row q-col-gutter-lg">

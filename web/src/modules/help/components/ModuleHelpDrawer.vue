@@ -147,12 +147,12 @@ const onDrawerUpdate = (open: boolean) => {
 const goToHelpCenter = () => {
   if (!scope.value) return;
   const path = helpCenterPathForScope(scope.value, authStore.tenantSlug);
-  const query =
-    activeGuideId.value != null
-      ? { module: activeGuideId.value, section: activeTab.value }
-      : undefined;
+  const location: { path: string; query?: Record<string, string> } = { path };
+  if (activeGuideId.value != null) {
+    location.query = { module: activeGuideId.value, section: activeTab.value };
+  }
   closeHelp();
-  void router.push({ path, query });
+  void router.push(location);
 };
 </script>
 

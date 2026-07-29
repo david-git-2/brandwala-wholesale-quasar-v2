@@ -1,10 +1,8 @@
-import type { AccessRole } from 'src/modules/auth/guards/accessGuard';
-
 import type { HelpAudience, HelpResolveContext, HelpScope, ModuleGuide } from '../types';
 import { MODULE_GUIDE_REGISTRY } from './moduleGuideRegistry';
 
 export const mapAccessRoleToHelpAudience = (
-  role: AccessRole | string | null | undefined,
+  role: string | null | undefined,
 ): HelpAudience | null => {
   if (!role) return null;
   switch (role) {

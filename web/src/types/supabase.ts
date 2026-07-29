@@ -7760,6 +7760,10 @@ export type Database = {
         Args: { p_backlog_ids: number[]; p_file_id: number }
         Returns: number[]
       }
+      add_pbc_backlog_to_file: {
+        Args: { p_backlog_ids: number[]; p_file_id: number }
+        Returns: number[]
+      }
       add_shipment_item_from_product: {
         Args: {
           p_product_id: number

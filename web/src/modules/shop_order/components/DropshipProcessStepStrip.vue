@@ -174,7 +174,7 @@ const currentStepIndex = computed(() => {
   return idx !== -1 ? idx : steps.value.length - 1;
 });
 
-const currentStep = computed(() => steps.value[currentStepIndex.value] || steps.value[0]);
+const currentStep = computed<ProcessStep>(() => steps.value[currentStepIndex.value] ?? steps.value[0]!);
 
 const currentStepAction = computed(() => {
   const stepId = currentStep.value.id;

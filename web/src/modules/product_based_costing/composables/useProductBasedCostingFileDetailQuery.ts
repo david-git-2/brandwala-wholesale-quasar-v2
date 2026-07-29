@@ -17,7 +17,7 @@ export function useProductBasedCostingFileDetailQuery(fileId: Ref<number>) {
       const listQueries = queryClient.getQueriesData<ProductBasedCostingFileListPage>({
         queryKey: ['productBasedCosting', 'files', 'list'],
       });
-      for (const [_, data] of listQueries) {
+      for (const [, data] of listQueries) {
         const found = data?.data?.find((file) => file.id === fileId.value);
         if (found) return found;
       }

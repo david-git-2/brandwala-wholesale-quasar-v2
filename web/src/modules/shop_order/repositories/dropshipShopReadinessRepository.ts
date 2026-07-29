@@ -21,6 +21,6 @@ export const dropshipShopReadinessRepository = {
     }
 
     const rows = data as DropshipShopReadiness[] | null;
-    return rows && rows.length > 0 ? rows[0] : null;
+    return rows?.[0] ?? null;
   },
 };

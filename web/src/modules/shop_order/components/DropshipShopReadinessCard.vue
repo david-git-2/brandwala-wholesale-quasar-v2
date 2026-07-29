@@ -92,7 +92,17 @@ const readinessQuery = useQuery({
 const readiness = computed(() => readinessQuery.data.value);
 const isLoading = computed(() => readinessQuery.isLoading.value);
 
-const checkItems = computed(() => {
+interface CheckItem {
+  id: string;
+  label: string;
+  passed: boolean;
+  actionLabel: string;
+  routeName: string;
+  routeParams: Record<string, string>;
+  routeQuery?: Record<string, string>;
+}
+
+const checkItems = computed<CheckItem[]>(() => {
   if (!readiness.value) return [];
   const r = readiness.value;
   return [
@@ -144,7 +154,10 @@ const navigateToRoute = (
   params?: Record<string, string>,
   query?: Record<string, string>,
 ) => {
-  void router.push({ name, params, query });
+  const loc: { name: string; params?: Record<string, string>; query?: Record<string, string> } = { name };
+  if (params) loc.params = params;
+  if (query) loc.query = query;
+  void router.push(loc);
 };
 </script>
 

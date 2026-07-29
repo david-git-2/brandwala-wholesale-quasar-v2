@@ -17,10 +17,42 @@
       </div>
     </div>
 
+    <div
+      v-if="status === 'placing_order'"
+      class="row items-center justify-between q-pa-sm q-mb-sm bg-grey-1 rounded-borders border-grey-3"
+    >
+      <div class="row items-center q-gutter-xs">
+        <q-btn
+          :unelevated="statusFilter === 'all'"
+          :flat="statusFilter !== 'all'"
+          dense
+          no-caps
+          color="primary"
+          label="All Statuses"
+          class="q-px-sm text-caption"
+          @click="statusFilter = 'all'"
+        />
+        <q-btn
+          :unelevated="statusFilter === 'accepted'"
+          :flat="statusFilter !== 'accepted'"
+          dense
+          no-caps
+          color="green-8"
+          icon="ph ph-check-circle"
+          label="Accepted Only"
+          class="q-px-sm text-caption"
+          @click="statusFilter = 'accepted'"
+        />
+      </div>
+      <div class="text-caption text-grey-7">
+        Showing {{ displayRows.length }} of {{ tableRows.length }} items
+      </div>
+    </div>
+
     <q-table
       flat
       bordered
-      :rows="tableRows"
+      :rows="displayRows"
       :columns="columns"
       :visible-columns="resolvedVisibleColumns"
       row-key="id"
@@ -1544,17 +1576,29 @@ const buildRows = (): ProductBasedCostingTableRow[] => {
 };
 
 const tableRows = ref<ProductBasedCostingTableRow[]>([]);
+const statusFilter = ref<'all' | 'accepted'>('accepted');
+
+const displayRows = computed(() => {
+  if (props.status === 'placing_order') {
+    if (statusFilter.value === 'all') {
+      return tableRows.value;
+    }
+    return tableRows.value.filter((row) => row.status === 'accepted');
+  }
+  return tableRows.value;
+});
+
 const selectedRowIds = ref<number[]>([]);
 const showBulkDeleteConfirm = ref(false);
 
 const isAllSelected = computed({
   get: () => {
-    if (tableRows.value.length === 0) return false;
-    return tableRows.value.every((row) => selectedRowIds.value.includes(row.id));
+    if (displayRows.value.length === 0) return false;
+    return displayRows.value.every((row) => selectedRowIds.value.includes(row.id));
   },
   set: (val: boolean) => {
     if (val) {
-      selectedRowIds.value = tableRows.value.map((row) => row.id);
+      selectedRowIds.value = displayRows.value.map((row) => row.id);
     } else {
       selectedRowIds.value = [];
     }
@@ -1570,6 +1614,14 @@ watch(
   },
   { immediate: true, deep: true },
 );
+
+const resetRows = () => {
+  tableRows.value = buildRows();
+};
+
+defineExpose({
+  resetRows,
+});
 
 const columns = computed<QTableColumn[]>(() => [
   {
@@ -2094,17 +2146,6 @@ const onEdit = (row: ProductBasedCostingTableRow) => {
   emit('edit', row.raw);
 };
 
-const onDelete = (row: ProductBasedCostingTableRow) => {
-  $q.dialog({
-    title: 'Confirm Delete',
-    message: `Are you sure you want to delete #${row.id} ${row.name || ''}?`,
-    cancel: true,
-    persistent: true,
-  }).onOk(() => {
-    emit('delete', row.raw);
-  });
-};
-
 const onToggleRowSelection = (rowId: number, checked: boolean) => {
   if (checked) {
     if (!selectedRowIds.value.includes(rowId)) {
@@ -2124,10 +2165,6 @@ const onConfirmBulkDelete = () => {
   emit('bulk-delete', [...selectedRowIds.value]);
   selectedRowIds.value = [];
   showBulkDeleteConfirm.value = false;
-};
-
-const isShipped = (item: ProductBasedCostingItem) => {
-  return props.shippedItemIds.includes(item.id);
 };
 
 const getStatusColor = (status: string | null) => {
@@ -2171,7 +2208,7 @@ const totals = computed(() => {
     averageProfitRate: 0,
   };
 
-  const sum = tableRows.value.reduce((acc, row) => {
+  const sum = displayRows.value.reduce((acc, row) => {
     acc.qty += row.qty;
     acc.deliveredQty += row.deliveredQty;
     acc.priceGbp += row.priceGbp;

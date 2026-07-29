@@ -32,8 +32,6 @@ const props = withDefaults(
   }>(),
   {
     tab: 'overview',
-    sectionId: undefined,
-    label: undefined,
     icon: 'ph ph-question',
     color: 'primary',
     size: 'sm',
@@ -44,10 +42,11 @@ const props = withDefaults(
 const { openHelp } = useModuleHelp();
 
 const onClick = () => {
-  openHelp({
+  const opts: { guideId: string; tab?: HelpTab; sectionId?: string } = {
     guideId: props.guideId,
-    tab: props.tab,
-    sectionId: props.sectionId,
-  });
+  };
+  if (props.tab) opts.tab = props.tab;
+  if (props.sectionId) opts.sectionId = props.sectionId;
+  openHelp(opts);
 };
 </script>

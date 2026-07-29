@@ -75,7 +75,6 @@
 <script setup lang="ts">
 import { computed, reactive, watch, ref } from 'vue';
 import {
-  billingProfileRepository,
   type BillingProfile,
 } from 'src/modules/sales_invoice/repositories/billingProfileRepository';
 import { useBillingProfilesQuery } from 'src/modules/sales_invoice/composables/useBillingProfileQuery';
