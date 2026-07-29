@@ -6,6 +6,7 @@ import {
   type UpdateBillingProfileInput,
 } from '../repositories/billingProfileRepository';
 import { salesInvoiceQueryKeys } from '../services/salesInvoiceQueryKeys';
+import { tenantQueryKeys } from 'src/modules/tenant/shared/queryKeys/tenantQueryKeys';
 
 export function useBillingProfileMutations() {
   const queryClient = useQueryClient();
@@ -17,6 +18,11 @@ export function useBillingProfileMutations() {
       void queryClient.invalidateQueries({
         queryKey: salesInvoiceQueryKeys.billingProfiles(data.tenant_id),
       });
+      if (data.tenant_id) {
+        void queryClient.invalidateQueries({
+          queryKey: tenantQueryKeys.customerGroups(data.tenant_id),
+        });
+      }
     },
   });
 

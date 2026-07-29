@@ -67,9 +67,68 @@ const listBillingProfiles = async (
 const createBillingProfile = async (
   payload: CreateBillingProfileInput,
 ): Promise<BillingProfile> => {
+  let customerGroupId = payload.customer_group_id;
+
+  // Always ensure a customer group exists for the billing profile
+  if (!customerGroupId && payload.tenant_id) {
+    const { data: group, error: groupError } = await supabase
+      .from('customer_groups')
+      .insert([
+        {
+          tenant_id: payload.tenant_id,
+          name: payload.name.trim(),
+          is_active: true,
+          accent_color: payload.color?.trim() || null,
+        },
+      ])
+      .select()
+      .single();
+
+    if (groupError) throw groupError;
+    customerGroupId = group.id;
+  }
+
+  // Check if DB trigger trg_customer_groups_auto_billing_profile created the billing profile
+  if (customerGroupId) {
+    const { data: existingBp } = await supabase
+      .from('billing_profiles')
+      .select('*')
+      .eq('customer_group_id', customerGroupId)
+      .maybeSingle();
+
+    if (existingBp) {
+      // Update auto-created billing profile with extra payload fields
+      const patch: Partial<CreateBillingProfileInput> = {};
+      if (payload.name) patch.name = payload.name.trim();
+      if (payload.email !== undefined) patch.email = payload.email;
+      if (payload.phone !== undefined) patch.phone = payload.phone;
+      if (payload.address !== undefined) patch.address = payload.address;
+      if (payload.color !== undefined) patch.color = payload.color;
+
+      if (Object.keys(patch).length > 0) {
+        const { data: updatedBp, error: updateError } = await supabase
+          .from('billing_profiles')
+          .update(patch)
+          .eq('id', existingBp.id)
+          .select('*')
+          .single();
+
+        if (updateError) throw updateError;
+        return updatedBp as BillingProfile;
+      }
+      return existingBp as BillingProfile;
+    }
+  }
+
+  // Fallback direct insert with customer_group_id attached
+  const insertPayload = {
+    ...payload,
+    customer_group_id: customerGroupId ?? payload.customer_group_id ?? null,
+  };
+
   const { data, error } = await supabase
     .from('billing_profiles')
-    .insert([payload])
+    .insert([insertPayload])
     .select('*')
     .single();
 

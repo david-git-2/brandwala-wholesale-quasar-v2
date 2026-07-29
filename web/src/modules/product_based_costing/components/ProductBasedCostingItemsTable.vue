@@ -1400,15 +1400,6 @@ const handleCopy = (text: string, label: string) => {
     });
 };
 
-const statusOptions = [
-  { label: 'Pending', value: 'pending' },
-  { label: 'Accepted', value: 'accepted' },
-  { label: 'Partial', value: 'partial' },
-  { label: 'Added to shipment', value: 'on_shipment' },
-  { label: 'Rejected', value: 'rejected' },
-  { label: 'Unavailable', value: 'unavailable' },
-];
-
 const toNumber = (value: unknown) => toNumberSafe(value);
 
 const toText = (value: unknown, fallback = '-') => {
@@ -2074,11 +2065,6 @@ const onUnlockOfferPrice = (row: ProductBasedCostingTableRow) => {
   });
 
   emitRowChange(row, 'offer_price');
-};
-
-const onStatusSave = (row: ProductBasedCostingTableRow) => {
-  row.status = toText(row.status, 'pending').toLowerCase();
-  emitRowChange(row, 'status');
 };
 
 const onNoteSave = (row: ProductBasedCostingTableRow) => {

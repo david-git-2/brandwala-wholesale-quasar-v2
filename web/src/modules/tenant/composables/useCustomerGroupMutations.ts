@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import { customerGroupRepository } from '../repositories/customerGroupRepository';
 import { tenantQueryKeys } from '../shared/queryKeys/tenantQueryKeys';
+import { salesInvoiceQueryKeys } from 'src/modules/sales_invoice/services/salesInvoiceQueryKeys';
 import type {
   CustomerGroupCreateInput,
   CustomerGroupDeleteInput,
@@ -18,7 +19,27 @@ export function useCustomerGroupMutations() {
         queryKey: tenantQueryKeys.customerGroups(data.tenant_id),
       });
       void queryClient.invalidateQueries({
-        queryKey: ['billing_profiles', data.tenant_id],
+        queryKey: salesInvoiceQueryKeys.root,
+      });
+    },
+  });
+
+  const createAndLinkGroupMutation = useMutation({
+    mutationFn: (input: {
+      billing_profile_id: number;
+      tenant_id: number;
+      name: string;
+      email?: string | null;
+      phone?: string | null;
+      address?: string | null;
+      color?: string | null;
+    }) => customerGroupRepository.createAndLinkToBillingProfile(input),
+    onSuccess: (data) => {
+      void queryClient.invalidateQueries({
+        queryKey: tenantQueryKeys.customerGroups(data.tenant_id),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: salesInvoiceQueryKeys.root,
       });
     },
   });
@@ -31,7 +52,7 @@ export function useCustomerGroupMutations() {
         queryKey: tenantQueryKeys.customerGroups(data.tenant_id),
       });
       void queryClient.invalidateQueries({
-        queryKey: ['billing_profiles', data.tenant_id],
+        queryKey: salesInvoiceQueryKeys.root,
       });
     },
   });
@@ -45,14 +66,14 @@ export function useCustomerGroupMutations() {
           queryKey: tenantQueryKeys.customerGroups(variables.tenant_id),
         });
         void queryClient.invalidateQueries({
-          queryKey: ['billing_profiles', variables.tenant_id],
+          queryKey: salesInvoiceQueryKeys.root,
         });
       } else {
         void queryClient.invalidateQueries({
           queryKey: tenantQueryKeys.root,
         });
         void queryClient.invalidateQueries({
-          queryKey: ['billing_profiles'],
+          queryKey: salesInvoiceQueryKeys.root,
         });
       }
     },
@@ -60,7 +81,9 @@ export function useCustomerGroupMutations() {
 
   return {
     createGroupMutation,
+    createAndLinkGroupMutation,
     updateGroupMutation,
     deleteGroupMutation,
   };
 }
+

@@ -269,9 +269,80 @@ const deleteCustomerGroupMember = async (
   }
 };
 
+const createAndLinkToBillingProfile = async (payload: {
+  billing_profile_id: number;
+  tenant_id: number;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  color?: string | null;
+}): Promise<CustomerGroup> => {
+  // 1. Create the customer group
+  const { data: group, error: groupError } = await supabase
+    .from('customer_groups')
+    .insert([
+      {
+        tenant_id: payload.tenant_id,
+        name: payload.name.trim(),
+        is_active: true,
+        accent_color: payload.color?.trim() || null,
+      },
+    ])
+    .select()
+    .single();
+
+  if (groupError || !group) {
+    throw groupError || new Error('Failed to create customer group.');
+  }
+
+  const createdGroup = group as CustomerGroup;
+
+  // 2. Link existing billing profile to newly created customer group
+  const { error: bpError } = await supabase
+    .from('billing_profiles')
+    .update({
+      customer_group_id: createdGroup.id,
+      name: payload.name.trim(),
+      email: payload.email?.trim() || null,
+      phone: payload.phone?.trim() || null,
+      address: payload.address?.trim() || null,
+      color: payload.color?.trim() || null,
+    })
+    .eq('id', payload.billing_profile_id);
+
+  if (bpError) {
+    throw bpError;
+  }
+
+  // 3. Clean up any redundant auto-created billing profile from DB trigger
+  await supabase
+    .from('billing_profiles')
+    .delete()
+    .eq('customer_group_id', createdGroup.id)
+    .neq('id', payload.billing_profile_id);
+
+  // 4. Create admin member if email provided
+  if (payload.email?.trim()) {
+    const adminName = payload.name.trim() ? `${payload.name.trim()} Admin` : 'Admin';
+    await supabase.from('customer_group_members').insert([
+      {
+        customer_group_id: createdGroup.id,
+        name: adminName,
+        email: payload.email.trim().toLowerCase(),
+        role: 'admin' as const,
+        is_active: true,
+      },
+    ]);
+  }
+
+  return createdGroup;
+};
+
 export const customerGroupRepository = {
   listCustomerGroupsByTenant,
   createCustomerGroup,
+  createAndLinkToBillingProfile,
   updateCustomerGroup,
   deleteCustomerGroup,
   listCustomerGroupMembersByGroup,
@@ -279,3 +350,4 @@ export const customerGroupRepository = {
   updateCustomerGroupMember,
   deleteCustomerGroupMember,
 };
+

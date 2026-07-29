@@ -52,34 +52,23 @@
                 </h1>
               </template>
             </div>
-            <div class="row items-center q-gutter-x-xs q-mt-xs text-body2 text-grey-7">
-              <span>Created for</span>
+            <div class="row items-center q-gutter-x-sm q-mt-xs">
               <q-select
                 v-model="selectedBillingProfile"
                 :options="billingProfileOptions"
                 option-label="name"
                 option-value="id"
+                label="Billing Profile"
                 dense
-                borderless
+                outlined
+                clearable
                 use-input
-                hide-dropdown-icon
                 input-debounce="300"
                 :loading="loadingProfiles || savingBillingProfile"
-                class="billing-profile-select-pill"
+                style="min-width: 220px; max-width: 320px"
                 @filter="filterBillingProfiles"
                 @update:model-value="onBillingProfileChange"
               >
-                <template #selected>
-                  <div
-                    class="row items-center text-primary text-weight-bold cursor-pointer profile-picker-chip"
-                    title="Click to change billing profile"
-                  >
-                    <q-icon name="ph ph-user-circle" size="16px" class="q-mr-xs" />
-                    <span>{{ selectedBillingProfile?.name ?? 'Select Billing Profile' }}</span>
-                    <q-icon name="ph ph-caret-down" size="14px" class="q-ml-xs text-primary" />
-                  </div>
-                </template>
-
                 <template #option="scope">
                   <q-item v-bind="scope.itemProps" dense class="rounded-borders q-my-xs">
                     <q-item-section avatar style="min-width: 28px">
@@ -93,8 +82,19 @@
                 </template>
 
                 <template #no-option>
-                  <q-item dense>
-                    <q-item-section class="text-grey caption">No billing profiles found</q-item-section>
+                  <q-item dense class="column items-center q-py-md q-gutter-y-xs">
+                    <div class="text-caption text-grey-7">No billing profiles found</div>
+                    <q-btn
+                      color="primary"
+                      unelevated
+                      dense
+                      no-caps
+                      size="sm"
+                      icon="ph ph-plus"
+                      label="Create New Billing Profile"
+                      class="q-px-sm q-mt-xs"
+                      @click="openCreateBillingProfileDialog"
+                    />
                   </q-item>
                 </template>
               </q-select>
@@ -159,13 +159,24 @@
                   <q-icon name="ph ph-caret-right" />
                 </q-item-section>
                 <q-menu anchor="top end" self="top start">
-                  <q-list style="min-width: 240px">
-                    <q-item>
+                  <q-list style="min-width: 260px; max-height: 400px" class="q-pa-xs">
+                    <q-item class="q-pb-none">
                       <q-item-section>
-                        <div class="text-subtitle2">Show Columns</div>
+                        <div class="text-subtitle2 q-mb-xs">Show Columns</div>
+                        <q-input
+                          v-model="columnSearchQuery"
+                          dense
+                          outlined
+                          placeholder="Search columns..."
+                          clearable
+                        >
+                          <template #prepend>
+                            <q-icon name="ph ph-magnifying-glass" size="16px" />
+                          </template>
+                        </q-input>
                       </q-item-section>
                     </q-item>
-                    <q-item clickable>
+                    <q-item clickable class="q-py-xs">
                       <q-item-section>
                         <q-checkbox
                           v-model="allSelectableColumnsSelected"
@@ -173,12 +184,17 @@
                         />
                       </q-item-section>
                     </q-item>
-                    <q-item>
+                    <q-separator class="q-my-xs" />
+                    <q-item class="q-py-none">
                       <q-item-section>
+                        <div v-if="!filteredColumnSelectorOptions.length" class="text-caption text-grey-6 q-pa-sm">
+                          No matching columns found
+                        </div>
                         <q-option-group
+                          v-else
                           v-model="localVisibleColumns"
                           type="checkbox"
-                          :options="columnSelectorOptions"
+                          :options="filteredColumnSelectorOptions"
                         />
                       </q-item-section>
                     </q-item>
@@ -208,8 +224,12 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
+import { useQuasar } from 'quasar';
 import type { ProductBasedCostingFile } from '../types';
 import type { BillingProfile } from 'src/modules/sales_invoice/repositories/billingProfileRepository';
+import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
+import { useBillingProfileMutations } from 'src/modules/sales_invoice/composables/useBillingProfileMutations';
+import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';
 import {
   alwaysVisibleColumns,
   columnSelectorOptions,
@@ -240,6 +260,11 @@ const emit = defineEmits<{
   (e: 'update-billing-profile', profile: BillingProfile | null): void;
 }>();
 
+const $q = useQuasar();
+const tenantStore = useTenantStore();
+const { createBillingProfileMutation } = useBillingProfileMutations();
+const billingProfileSearchText = ref('');
+
 const isEditingName = ref(false);
 const editingNameValue = ref('');
 const savingName = ref(false);
@@ -251,6 +276,13 @@ const billingProfileOptions = ref<BillingProfile[]>([]);
 const localVisibleColumns = computed({
   get: () => props.visibleColumns,
   set: (val: string[]) => emit('update:visibleColumns', val),
+});
+
+const columnSearchQuery = ref('');
+const filteredColumnSelectorOptions = computed(() => {
+  const query = columnSearchQuery.value.trim().toLowerCase();
+  if (!query) return columnSelectorOptions;
+  return columnSelectorOptions.filter((opt) => opt.label.toLowerCase().includes(query));
 });
 
 const selectableColumnValues = columnSelectorOptions.map((option) => option.value);
@@ -294,6 +326,7 @@ function syncSelectedBillingProfile() {
 }
 
 function filterBillingProfiles(val: string, update: (fn: () => void) => void) {
+  billingProfileSearchText.value = val;
   update(() => {
     if (!val.trim()) {
       billingProfileOptions.value = props.allBillingProfiles;
@@ -305,6 +338,39 @@ function filterBillingProfiles(val: string, update: (fn: () => void) => void) {
           (p.email && p.email.toLowerCase().includes(needle)),
       );
     }
+  });
+}
+
+function openCreateBillingProfileDialog() {
+  $q.dialog({
+    title: 'Create Billing Profile',
+    message: 'Enter the name for the new billing profile:',
+    prompt: {
+      model: billingProfileSearchText.value.trim(),
+      type: 'text',
+      label: 'Profile Name *',
+      isValid: (val) => Boolean(val && val.trim().length > 0),
+    },
+    cancel: true,
+    persistent: true,
+  }).onOk((name: string) => {
+    void (async () => {
+      const tenantId = tenantStore.selectedTenant?.id;
+      if (!tenantId) {
+        showErrorNotification('No active tenant selected.');
+        return;
+      }
+      try {
+        const created = await createBillingProfileMutation.mutateAsync({
+          tenant_id: tenantId,
+          name: name.trim(),
+        });
+        showSuccessNotification(`Billing profile "${created.name}" created successfully.`);
+        onBillingProfileChange(created);
+      } catch (err: unknown) {
+        showErrorNotification(err instanceof Error ? err.message : 'Failed to create billing profile.');
+      }
+    })();
   });
 }
 
@@ -355,18 +421,5 @@ function onBillingProfileChange(val: BillingProfile | null) {
 .name-inline-edit:hover {
   background: rgba(var(--q-primary-rgb, 15, 98, 254), 0.06);
   border-bottom-color: var(--q-primary);
-}
-
-.profile-picker-chip {
-  background: rgba(var(--q-primary-rgb, 15, 98, 254), 0.08);
-  padding: 2px 10px;
-  border-radius: 12px;
-  transition: all 0.2s ease;
-  border: 1px solid rgba(var(--q-primary-rgb, 15, 98, 254), 0.2);
-}
-
-.profile-picker-chip:hover {
-  background: rgba(var(--q-primary-rgb, 15, 98, 254), 0.15);
-  border-color: var(--q-primary);
 }
 </style>

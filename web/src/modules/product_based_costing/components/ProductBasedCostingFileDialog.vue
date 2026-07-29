@@ -38,8 +38,19 @@
             @update:model-value="onProfileChange"
           >
             <template #no-option>
-              <q-item>
-                <q-item-section class="text-grey">No billing profiles found</q-item-section>
+              <q-item dense class="column items-center q-py-md q-gutter-y-xs">
+                <div class="text-caption text-grey-7">No billing profiles found</div>
+                <q-btn
+                  color="primary"
+                  unelevated
+                  dense
+                  no-caps
+                  size="sm"
+                  icon="ph ph-plus"
+                  label="Create New Billing Profile"
+                  class="q-px-sm q-mt-xs"
+                  @click="openCreateBillingProfileDialog"
+                />
               </q-item>
             </template>
           </q-select>
@@ -74,11 +85,14 @@
 
 <script setup lang="ts">
 import { computed, reactive, watch, ref } from 'vue';
+import { useQuasar } from 'quasar';
 import {
   type BillingProfile,
 } from 'src/modules/sales_invoice/repositories/billingProfileRepository';
 import { useBillingProfilesQuery } from 'src/modules/sales_invoice/composables/useBillingProfileQuery';
+import { useBillingProfileMutations } from 'src/modules/sales_invoice/composables/useBillingProfileMutations';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
+import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';
 
 interface CostingFileForm {
   id: number | null;
@@ -104,6 +118,7 @@ type FormRef = {
   validate: () => boolean | Promise<boolean>;
 };
 
+const $q = useQuasar();
 const formRef = ref<FormRef | null>(null);
 
 const emptyForm = (): CostingFileForm => ({
@@ -118,6 +133,7 @@ const emptyForm = (): CostingFileForm => ({
 
 const form = reactive(emptyForm());
 const selectedProfile = ref<BillingProfile | null>(null);
+const profileSearchText = ref('');
 
 const isEditMode = computed(() => !!props.data?.id);
 
@@ -129,6 +145,7 @@ const localOpen = computed({
 const tenantStore = useTenantStore();
 const tenantIdRef = computed(() => tenantStore.selectedTenant?.id);
 const { data: billingProfilesResult, isLoading: loadingProfiles } = useBillingProfilesQuery(tenantIdRef);
+const { createBillingProfileMutation } = useBillingProfileMutations();
 
 const allProfiles = computed(() => billingProfilesResult.value?.data ?? []);
 const profileOptions = ref<BillingProfile[]>([]);
@@ -154,6 +171,7 @@ function syncSelectedProfile() {
 }
 
 function filterProfiles(val: string, update: (fn: () => void) => void) {
+  profileSearchText.value = val;
   update(() => {
     if (!val.trim()) {
       profileOptions.value = allProfiles.value;
@@ -163,6 +181,40 @@ function filterProfiles(val: string, update: (fn: () => void) => void) {
         p.name.toLowerCase().includes(needle),
       );
     }
+  });
+}
+
+function openCreateBillingProfileDialog() {
+  $q.dialog({
+    title: 'Create Billing Profile',
+    message: 'Enter the name for the new billing profile:',
+    prompt: {
+      model: profileSearchText.value.trim(),
+      type: 'text',
+      label: 'Profile Name *',
+      isValid: (val) => Boolean(val && val.trim().length > 0),
+    },
+    cancel: true,
+    persistent: true,
+  }).onOk((name: string) => {
+    void (async () => {
+      const tenantId = tenantStore.selectedTenant?.id;
+      if (!tenantId) {
+        showErrorNotification('No active tenant selected.');
+        return;
+      }
+      try {
+        const created = await createBillingProfileMutation.mutateAsync({
+          tenant_id: tenantId,
+          name: name.trim(),
+        });
+        showSuccessNotification(`Billing profile "${created.name}" created successfully.`);
+        selectedProfile.value = created;
+        onProfileChange(created);
+      } catch (err: unknown) {
+        showErrorNotification(err instanceof Error ? err.message : 'Failed to create billing profile.');
+      }
+    })();
   });
 }
 

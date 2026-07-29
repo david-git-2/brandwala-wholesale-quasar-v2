@@ -62,7 +62,10 @@ type TabType = 'customer-groups' | 'billing-profiles';
 const activeTab = ref<TabType>('customer-groups');
 
 const resolveActiveTab = () => {
-  if (route.query.tab === 'billing-profiles' || route.name === 'app-global-billing-profiles') {
+  const queryTab = route.query.tab as string | undefined;
+  if (queryTab === 'billing-profiles' || queryTab === 'customer-groups') {
+    activeTab.value = queryTab as TabType;
+  } else if (route.name === 'app-global-billing-profiles') {
     activeTab.value = 'billing-profiles';
   } else {
     activeTab.value = 'customer-groups';

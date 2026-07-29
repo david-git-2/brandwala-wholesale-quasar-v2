@@ -71,7 +71,7 @@
             <th class="text-left">Email</th>
             <th class="text-left">Phone</th>
             <th class="text-left">Address</th>
-            <th class="text-right" style="width: 80px">Actions</th>
+            <th class="text-right" style="width: 100px">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -114,22 +114,65 @@
               <q-chip v-if="row.customer_group_id" dense outline size="sm">
                 {{ customerGroupNameMap[row.customer_group_id] ?? '-' }}
               </q-chip>
-              <span v-else class="text-grey-6 text-caption">Others</span>
+              <div v-else class="row items-center no-wrap q-gutter-xs">
+                <q-btn
+                  unelevated
+                  dense
+                  no-caps
+                  size="sm"
+                  color="primary"
+                  class="q-px-sm"
+                  icon="ph ph-user-plus"
+                  label="Create &amp; Link Group"
+                  :loading="linkingProfileId === row.id"
+                  @click="onCreateAndLinkCustomerGroup(row)"
+                >
+                  <q-tooltip>Create Customer Group profile and link automatically</q-tooltip>
+                </q-btn>
+              </div>
             </td>
             <td>{{ row.email ?? '-' }}</td>
             <td>{{ row.phone ?? '-' }}</td>
             <td>{{ row.address ?? '-' }}</td>
             <td class="text-right">
-              <q-btn
-                flat
-                round
-                dense
-                color="primary"
-                icon="ph ph-wallet"
-                @click="onOpenWalletDrawer(row)"
-              >
-                <q-tooltip>Wallet &amp; Ledger</q-tooltip>
-              </q-btn>
+              <div class="row items-center justify-end no-wrap q-gutter-xs">
+                <q-btn
+                  v-if="!row.customer_group_id"
+                  flat
+                  round
+                  dense
+                  color="primary"
+                  icon="ph ph-user-plus"
+                  :loading="linkingProfileId === row.id"
+                  @click="onCreateAndLinkCustomerGroup(row)"
+                >
+                  <q-tooltip>Create Customer Group &amp; Link</q-tooltip>
+                </q-btn>
+
+                <q-btn
+                  flat
+                  round
+                  dense
+                  color="primary"
+                  icon="ph ph-wallet"
+                  @click="onOpenWalletDrawer(row)"
+                >
+                  <q-tooltip>Wallet &amp; Ledger</q-tooltip>
+                </q-btn>
+
+                <q-btn
+                  v-if="!row.customer_group_id"
+                  flat
+                  round
+                  dense
+                  color="negative"
+                  icon="ph ph-trash"
+                  :loading="deletingProfileId === row.id"
+                  @click="onDeleteBillingProfile(row)"
+                >
+                  <q-tooltip>Delete Profile</q-tooltip>
+                </q-btn>
+              </div>
             </td>
           </tr>
         </tbody>
@@ -182,9 +225,16 @@ import BillingProfileDetailsDrawer from '../components/BillingProfileDetailsDraw
 import { useBillingProfilesQuery } from '../composables/useBillingProfileQuery';
 import { useBillingProfileMutations } from '../composables/useBillingProfileMutations';
 import { useCustomerGroupsQuery } from 'src/modules/tenant/composables/useCustomerGroupQuery';
+import { useCustomerGroupMutations } from 'src/modules/tenant/composables/useCustomerGroupMutations';
 import type {
   BillingProfile,
 } from '../repositories/billingProfileRepository';
+import {
+  requestConfirmation,
+  showSuccessNotification,
+  showErrorNotification,
+  parseSupabaseError,
+} from 'src/utils/appFeedback';
 
 defineProps<{
   isEmbedded?: boolean;
@@ -204,6 +254,7 @@ const {
   updateBillingProfileMutation,
   deleteBillingProfileMutation,
 } = useBillingProfileMutations();
+const { createAndLinkGroupMutation } = useCustomerGroupMutations();
 
 const items = computed(() => billingProfilesData.value?.data ?? []);
 const customerGroups = computed(() => customerGroupsData.value ?? []);
@@ -211,7 +262,8 @@ const isSaving = computed(
   () =>
     createBillingProfileMutation.isPending.value ||
     updateBillingProfileMutation.isPending.value ||
-    deleteBillingProfileMutation.isPending.value
+    deleteBillingProfileMutation.isPending.value ||
+    createAndLinkGroupMutation.isPending.value
 );
 
 const store = computed(() => ({
@@ -228,10 +280,54 @@ const emailFilter = ref('');
 const phoneFilter = ref('');
 const walletDrawerOpen = ref(false);
 const selectedProfileForWallet = ref<BillingProfile | null>(null);
+const deletingProfileId = ref<number | null>(null);
+const linkingProfileId = ref<number | null>(null);
+
+const onCreateAndLinkCustomerGroup = async (row: BillingProfile) => {
+  linkingProfileId.value = row.id;
+  try {
+    await createAndLinkGroupMutation.mutateAsync({
+      billing_profile_id: row.id,
+      tenant_id: tenantId.value,
+      name: row.name,
+      email: row.email,
+      phone: row.phone,
+      address: row.address,
+      color: row.color,
+    });
+    showSuccessNotification(`Customer group "${row.name}" created and linked successfully`);
+  } catch (err: any) {
+    showErrorNotification(parseSupabaseError(err, 'Failed to create and link customer group'));
+  } finally {
+    linkingProfileId.value = null;
+  }
+};
 
 const onOpenWalletDrawer = (profile: BillingProfile) => {
   selectedProfileForWallet.value = profile;
   walletDrawerOpen.value = true;
+};
+
+const onDeleteBillingProfile = async (row: BillingProfile) => {
+  const confirmed = await requestConfirmation(
+    `Are you sure you want to delete "${row.name}"?`,
+    'Delete Billing Profile',
+    'Delete'
+  );
+  if (!confirmed) return;
+
+  deletingProfileId.value = row.id;
+  try {
+    await deleteBillingProfileMutation.mutateAsync({
+      id: row.id,
+      tenant_id: tenantId.value,
+    });
+    showSuccessNotification('Billing profile deleted successfully');
+  } catch (err: any) {
+    showErrorNotification(parseSupabaseError(err, 'Failed to delete billing profile'));
+  } finally {
+    deletingProfileId.value = null;
+  }
 };
 
 const filteredItems = computed(() => {
