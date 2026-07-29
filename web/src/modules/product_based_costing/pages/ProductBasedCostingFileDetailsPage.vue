@@ -871,11 +871,20 @@ const onStatusChange = async () => {
     visibleColumns.value = getDefaultVisibleColumnsForStatus(status.value);
   }
 
-  if (!fileUpdateResult?.success || status.value !== 'offered') {
+  if (!fileUpdateResult?.success) {
     return;
   }
 
-  await recalculateAndPersistOfferPrices();
+  if (status.value === 'confirmed' && store.costingItems.length > 0) {
+    await store.updateProductBasedCostingItemsByFileId(fileId.value, {
+      confirmed_quantity: 0,
+      status: 'rejected',
+    });
+  }
+
+  if (status.value === 'offered') {
+    await recalculateAndPersistOfferPrices();
+  }
 };
 
 const workflowStatuses = [
@@ -904,7 +913,7 @@ const getDefaultVisibleColumnsForStatus = (fileStatus: string): string[] => {
   const baseCols = ['select', 'sl', 'image', 'name'];
   switch (fileStatus) {
     case 'confirmed':
-      return [...baseCols, 'confirmedQty', 'status', 'action'];
+      return [...baseCols, 'qty', 'confirmedQty', 'status', 'action'];
     case 'placing_order':
       return [...baseCols, 'confirmedQty', 'orderedQty', 'barcodeText', 'status', 'action'];
     case 'invoicing':
@@ -1055,7 +1064,6 @@ const onEdit = (item: ProductBasedCostingItem) => {
 const onDelete = async (item: ProductBasedCostingItem) => {
   console.log('delete', item);
   await store.deleteProductBasedCostingItem(item.id);
-  refreshBacklog();
 };
 
 const onBulkDelete = async (ids: number[]) => {
@@ -1112,10 +1120,6 @@ type WeightChangePayload = {
 
 const onRowChange = async (payload: RowChangePayload) => {
   await store.updateProductBasedCostingItem(payload.item);
-  if (payload.field === 'delivered_quantity' || payload.field === 'status' || payload.field === 'quantity') {
-    await backlog.upsertBacklogFromItem(payload.item.id);
-    refreshBacklog();
-  }
   console.log('Row changed:', payload);
 };
 

@@ -19,7 +19,7 @@
             Open demand for this billing profile
           </div>
         </div>
-        <q-btn icon="ph ph-x" flat round dense v-close-popup />
+        <q-btn icon="ph ph-x" flat round dense @click="isOpen = false" />
       </div>
 
       <q-separator />

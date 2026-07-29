@@ -97,15 +97,6 @@
                   size="sm"
                   @click="onEdit(slotProps.row)"
                 />
-                <q-btn
-                  v-if="isColumnVisible('action')"
-                  icon="ph ph-trash"
-                  flat
-                  dense
-                  color="negative"
-                  size="sm"
-                  @click="onDelete(slotProps.row)"
-                />
               </div>
             </div>
 
@@ -318,12 +309,12 @@
                 >
                   <div class="metric-label">Confirmed Qty</div>
                   <div class="metric-value font-mono font-weight-medium">
-                    {{ slotProps.row.confirmedQty }}
+                    {{ slotProps.row.confirmedQty || '-' }}
                     <q-icon name="ph ph-pencil-simple" size="xs" color="grey-6" class="q-ml-xs" />
                   </div>
                   <q-popup-edit
                     v-slot="scope"
-                    :model-value="slotProps.row.confirmedQty"
+                    :model-value="slotProps.row.confirmedQty || ''"
                     buttons
                     persistent
                     label-set="Save"
@@ -647,12 +638,12 @@
             class="col-confirmed-qty text-center editable-cell"
           >
             <div class="editable-value">
-              {{ slotProps.row.confirmedQty }}
+              {{ slotProps.row.confirmedQty || '-' }}
             </div>
 
             <q-popup-edit
               v-slot="scope"
-              :model-value="slotProps.row.confirmedQty"
+              :model-value="slotProps.row.confirmedQty || ''"
               buttons
               persistent
               label-set="Save"
@@ -1116,15 +1107,6 @@
                 dense
                 color="blue-10"
                 @click="onEdit(slotProps.row)"
-                class="col"
-              />
-              <q-btn
-                icon="ph ph-trash"
-                flat
-                dense
-                color="negative"
-                @click="onDelete(slotProps.row)"
-                class="col"
               />
             </div>
           </q-td>
@@ -1503,7 +1485,7 @@ const buildRows = (): ProductBasedCostingTableRow[] => {
     const productCode = toText(item.product_code, '');
     const productId = item.product_id != null ? String(item.product_id) : '';
     const qty = toNumber(item.quantity);
-    const confirmedQty = item.confirmed_quantity != null ? toNumber(item.confirmed_quantity) : qty;
+    const confirmedQty = item.confirmed_quantity != null ? toNumber(item.confirmed_quantity) : 0;
     const orderedQty = item.ordered_quantity != null ? toNumber(item.ordered_quantity) : 0;
     const deliveredQty = toNumber(item.delivered_quantity);
     const priceGbp = toNumber(item.price_gbp);
@@ -1929,7 +1911,7 @@ const deriveItemStatusFromQuantities = (
   orderedQty: number,
   fileStatus?: string,
 ): string => {
-  if (currentStatus === 'rejected') {
+  if (confirmedQty === 0) {
     return 'rejected';
   }
   if (fileStatus === 'placing_order' || fileStatus === 'ready_for_shipment') {
@@ -1937,7 +1919,7 @@ const deriveItemStatusFromQuantities = (
     if (orderedQty > 0 && orderedQty < confirmedQty) return 'partial';
     if (orderedQty >= confirmedQty) return 'accepted';
   }
-  if (confirmedQty > 0 && currentStatus === 'pending') {
+  if (confirmedQty > 0) {
     return 'accepted';
   }
   return currentStatus;
@@ -2020,7 +2002,7 @@ const onQtySave = (row: ProductBasedCostingTableRow) => {
 };
 
 const onConfirmedQtySave = (row: ProductBasedCostingTableRow) => {
-  row.confirmedQty = toNumber(row.confirmedQty);
+  row.confirmedQty = Math.max(0, toNumber(row.confirmedQty));
   row.status = deriveItemStatusFromQuantities(row.status, row.confirmedQty, row.orderedQty, props.status);
   emitRowChange(row, 'confirmed_quantity');
 };

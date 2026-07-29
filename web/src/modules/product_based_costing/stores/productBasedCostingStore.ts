@@ -307,6 +307,33 @@ export const useProductBasedCostingStore = defineStore('productBasedCosting', {
       }
     },
 
+    async updateProductBasedCostingItemsByFileId(fileId: number, payload: Partial<ProductBasedCostingItem>) {
+      this.saving = true;
+      this.error = null;
+
+      try {
+        const result = await productBasedCostingService.updateProductBasedCostingItemsByFileId(fileId, payload);
+
+        if (!result.success) {
+          this.error = result.error ?? 'Failed to update costing items by file id.';
+          handleApiFailure(result, this.error);
+          return result;
+        }
+
+        if (result.data?.length) {
+          const byId = new Map(result.data.map((item) => [item.id, item]));
+          this.costingItems = this.costingItems.map((item) => byId.get(item.id) ?? item);
+          if (this.costingItem && byId.has(this.costingItem.id)) {
+            this.costingItem = byId.get(this.costingItem.id) ?? this.costingItem;
+          }
+        }
+
+        return result;
+      } finally {
+        this.saving = false;
+      }
+    },
+
     async deleteProductBasedCostingItem(payload: number) {
       this.saving = true;
       this.error = null;

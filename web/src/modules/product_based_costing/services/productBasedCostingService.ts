@@ -238,6 +238,21 @@ const recalculateProductBasedCostingFileOfferPrices = async (
   }
 };
 
+const updateProductBasedCostingItemsByFileId = async (
+  fileId: number,
+  payload: Partial<ProductBasedCostingItem>,
+): Promise<ProductBasedCostingServiceResult<ProductBasedCostingItem[]>> => {
+  try {
+    const data = await productBasedCostingRepository.updateProductBasedCostingItemsByFileId(fileId, payload);
+    return { success: true, data };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to update items by file id.',
+    };
+  }
+};
+
 export const productBasedCostingService = {
   listProductBasedCostingFiles,
   createProductBasedCostingFile,
@@ -249,6 +264,7 @@ export const productBasedCostingService = {
   createProductBasedCostingItem,
   updateProductBasedCostingItem,
   updateProductBasedCostingItemsBulk,
+  updateProductBasedCostingItemsByFileId,
   deleteProductBasedCostingItem,
   getProductBasedCostingItemById,
   recalculateProductBasedCostingFileOfferPrices,

@@ -180,6 +180,18 @@ const buildProductBasedCostingItemUpdatePayload = (
     updatePayload.package_weight = payload.package_weight;
   }
 
+  if (payload.confirmed_quantity !== undefined) {
+    updatePayload.confirmed_quantity = payload.confirmed_quantity;
+  }
+
+  if (payload.ordered_quantity !== undefined) {
+    updatePayload.ordered_quantity = payload.ordered_quantity;
+  }
+
+  if (payload.delivered_quantity !== undefined) {
+    updatePayload.delivered_quantity = payload.delivered_quantity;
+  }
+
   if (payload.offer_price !== undefined) {
     updatePayload.offer_price = payload.offer_price;
   }
@@ -401,6 +413,23 @@ const deleteProductBasedCostingItem = async (id: number): Promise<ProductBasedCo
   return data as ProductBasedCostingItem;
 };
 
+const updateProductBasedCostingItemsByFileId = async (
+  fileId: number,
+  payload: Partial<ProductBasedCostingItem>,
+): Promise<ProductBasedCostingItem[]> => {
+  const { data, error } = await supabase
+    .from('product_based_costing_items')
+    .update(payload)
+    .eq('product_based_costing_file_id', fileId)
+    .select();
+
+  if (error) {
+    throw error;
+  }
+
+  return (data || []) as ProductBasedCostingItem[];
+};
+
 const getProductBasedCostingItemById = async (id: number): Promise<ProductBasedCostingItem> => {
   const { data, error } = await supabase
     .from('product_based_costing_items')
@@ -456,6 +485,7 @@ export const productBasedCostingRepository = {
   listProductBasedCostingItems,
   createProductBasedCostingItem,
   updateProductBasedCostingItem,
+  updateProductBasedCostingItemsByFileId,
   deleteProductBasedCostingItem,
   getProductBasedCostingItemById,
   recalculateProductBasedCostingFileOfferPrices,
