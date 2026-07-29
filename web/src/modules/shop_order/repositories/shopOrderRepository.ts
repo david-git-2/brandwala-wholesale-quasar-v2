@@ -253,13 +253,19 @@ const listDropshipShopOrdersForStaff = async (
 const getShopOrderById = async (
   orderId: number,
 ): Promise<{ order: ShopOrder; items: ShopOrderItem[] }> => {
-  const { data: order, error: orderErr } = await supabase
+  const { data: orderRow, error: orderErr } = await supabase
     .from('shop_orders')
-    .select('*')
+    .select('*, customer_groups(name)')
     .eq('id', orderId)
     .single();
 
   if (orderErr) throw orderErr;
+
+  const order: ShopOrder = {
+    ...orderRow,
+    customer_group_name: (orderRow as any).customer_groups?.name ?? orderRow.customer_group_name,
+  };
+  delete (order as any).customer_groups;
 
   const { data: rawItems, error: itemsErr } = await supabase
     .from('shop_order_items')

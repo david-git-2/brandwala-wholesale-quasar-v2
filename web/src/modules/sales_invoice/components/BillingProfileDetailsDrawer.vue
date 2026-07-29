@@ -87,28 +87,28 @@
             <q-item-section avatar>
               <q-avatar
                 size="32px"
-                :color="getTypeMeta(entry.transaction_type).color"
+                :color="getTypeMeta(entry).color"
                 text-color="white"
-                :icon="getTypeMeta(entry.transaction_type).icon"
+                :icon="getTypeMeta(entry).icon"
               />
             </q-item-section>
 
             <q-item-section>
               <q-item-label class="text-weight-bold text-subtitle2 text-grey-9">
-                {{ getTypeMeta(entry.transaction_type).label }}
+                {{ getTypeMeta(entry).label }}
               </q-item-label>
               <q-item-label caption class="text-grey-7">
                 {{ formatDate(entry.created_at) }}
-                <span v-if="entry.reference_notes"> • {{ entry.reference_notes }}</span>
+                <span v-if="entry.source_id"> • {{ entry.source_id }}</span>
               </q-item-label>
             </q-item-section>
 
             <q-item-section side class="text-right">
               <q-item-label
                 class="text-weight-bold text-subtitle2"
-                :class="getTypeMeta(entry.transaction_type).isCredit ? 'text-positive' : 'text-negative'"
+                :class="getTypeMeta(entry).isCredit ? 'text-positive' : 'text-negative'"
               >
-                {{ getTypeMeta(entry.transaction_type).isCredit ? '+' : '-' }}{{ formatBdt(entry.amount) }}
+                {{ getTypeMeta(entry).isCredit ? '+' : '-' }}{{ formatBdt(entry.amount) }}
               </q-item-label>
               <q-item-label caption class="text-grey-6">
                 Bal: {{ formatBdt(entry.balance_after) }}
@@ -122,8 +122,8 @@
 </template>
 
 <script setup lang="ts">
-import { toRef } from 'vue';
-import { useBillingWalletLedgerQuery } from '../composables/useBillingWalletQuery';
+import { computed } from 'vue';
+import { useWalletQuery } from 'src/modules/wallet/composables/useWalletQuery';
 
 const props = defineProps<{
   modelValue: boolean;
@@ -139,13 +139,9 @@ defineEmits<{
   (e: 'update:modelValue', value: boolean): void;
 }>();
 
-const tenantIdRef = toRef(props, 'tenantId');
-const profileIdRef = toRef(props, 'billingProfileId');
+const entityId = computed(() => props.billingProfileId ?? 0);
 
-const { data: ledgerEntries, isLoading, refetch } = useBillingWalletLedgerQuery(
-  tenantIdRef,
-  profileIdRef,
-);
+const { ledgerEntries, isLoading, refetch } = useWalletQuery('customer', entityId);
 
 const onRefresh = () => {
   void refetch();
@@ -158,20 +154,22 @@ const formatDate = (iso: string) => new Date(iso).toLocaleDateString('en-US', { 
 
 const getInitials = (name: string) => (name ? name.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase() : 'BP');
 
-const getTypeMeta = (type: string) => {
-  switch (type) {
+const getTypeMeta = (entry: { type: string; metadata: Record<string, unknown> }) => {
+  const txType = entry.metadata?.['transaction_type'] as string | undefined;
+  const isCredit = entry.type === 'credit';
+  switch (txType) {
     case 'dropship_profit':
-      return { label: 'Dropship Profit', color: 'positive', icon: 'ph ph-trend-up', isCredit: true };
+      return { label: 'Dropship Profit', color: 'positive', icon: 'ph ph-trend-up', isCredit };
     case 'payment_received':
-      return { label: 'Payment Received', color: 'positive', icon: 'ph ph-arrow-down-left', isCredit: true };
+      return { label: 'Payment Received', color: 'positive', icon: 'ph ph-arrow-down-left', isCredit };
     case 'invoice_billed':
-      return { label: 'Invoice Billed', color: 'negative', icon: 'ph ph-receipt', isCredit: false };
+      return { label: 'Invoice Billed', color: 'negative', icon: 'ph ph-receipt', isCredit };
     case 'payout_paid':
-      return { label: 'Payout Paid', color: 'blue-8', icon: 'ph ph-hand-coins', isCredit: false };
+      return { label: 'Payout Paid', color: 'blue-8', icon: 'ph ph-hand-coins', isCredit };
     case 'dropship_return_fee':
-      return { label: 'Return Fee', color: 'negative', icon: 'ph ph-arrow-counter-clockwise', isCredit: false };
+      return { label: 'Return Fee', color: 'negative', icon: 'ph ph-arrow-counter-clockwise', isCredit };
     default:
-      return { label: 'Adjustment', color: 'grey-7', icon: 'ph ph-sliders-horizontal', isCredit: true };
+      return { label: (entry.metadata?.['label'] as string | undefined) || 'Adjustment', color: 'grey-7', icon: 'ph ph-sliders-horizontal', isCredit };
   }
 };
 </script>

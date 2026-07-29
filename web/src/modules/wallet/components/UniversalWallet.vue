@@ -10,6 +10,8 @@
         :entity-name="entityName"
         :allow-adjustment="allowAdjustment"
         @open-adjustment="showAdjustmentDialog = true"
+        @open-payment="showPaymentDialog = true"
+        @open-remittance="showRemittanceDialog = true"
       >
         <template #actions>
           <slot name="header-actions" />
@@ -19,6 +21,7 @@
       <!-- KPI Cards -->
       <UniversalWalletKPICards
         :totals="totals"
+        :entity-type="entityType"
         :currency-code="currencyCode"
       />
 
@@ -26,7 +29,8 @@
       <UniversalWalletToolbar
         v-model:search="searchQuery"
         v-model:type="typeFilter"
-        v-model:source="sourceFilter"
+        v-model:section="sectionFilter"
+        :entries="ledgerEntries"
         @refresh="refetch"
       />
 
@@ -35,6 +39,90 @@
         :entries="filteredEntries"
       />
     </div>
+
+    <!-- Record Payment Dialog (Customer) -->
+    <q-dialog v-model="showPaymentDialog" persistent>
+      <q-card style="min-width: 380px" class="q-pa-sm surface-dialog">
+        <q-card-section>
+          <div class="text-h6 text-weight-bold">Record Payment</div>
+          <div class="text-caption text-muted">
+            Record an incoming payment from {{ entityName || `#${entityId}` }}.
+          </div>
+        </q-card-section>
+        <q-card-section class="q-gutter-y-md">
+          <q-input
+            v-model.number="quickAmount"
+            label="Amount Received *"
+            outlined
+            dense
+            type="number"
+            min="0.01"
+            step="any"
+          />
+          <q-input
+            v-model="quickNote"
+            label="Reference / Note"
+            outlined
+            dense
+            type="textarea"
+            rows="2"
+          />
+        </q-card-section>
+        <q-card-actions align="right" class="q-px-md q-pb-md">
+          <q-btn flat label="Cancel" color="grey" v-close-popup />
+          <q-btn
+            unelevated
+            label="Record Payment"
+            color="positive"
+            :loading="adjustMutation.isPending.value"
+            :disable="!quickAmount || quickAmount <= 0"
+            @click="handleQuickAction('payment_received')"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- Record Remittance Dialog (Courier) -->
+    <q-dialog v-model="showRemittanceDialog" persistent>
+      <q-card style="min-width: 380px" class="q-pa-sm surface-dialog">
+        <q-card-section>
+          <div class="text-h6 text-weight-bold">Record Remittance</div>
+          <div class="text-caption text-muted">
+            Record a COD remittance from {{ entityName || `#${entityId}` }}.
+          </div>
+        </q-card-section>
+        <q-card-section class="q-gutter-y-md">
+          <q-input
+            v-model.number="quickAmount"
+            label="Amount Remitted *"
+            outlined
+            dense
+            type="number"
+            min="0.01"
+            step="any"
+          />
+          <q-input
+            v-model="quickNote"
+            label="Reference / Note"
+            outlined
+            dense
+            type="textarea"
+            rows="2"
+          />
+        </q-card-section>
+        <q-card-actions align="right" class="q-px-md q-pb-md">
+          <q-btn flat label="Cancel" color="grey" v-close-popup />
+          <q-btn
+            unelevated
+            label="Record Remittance"
+            color="positive"
+            :loading="adjustMutation.isPending.value"
+            :disable="!quickAmount || quickAmount <= 0"
+            @click="handleQuickAction('cod_holding')"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
 
     <!-- Manual Adjustment Dialog -->
     <q-dialog v-model="showAdjustmentDialog" persistent>
@@ -136,7 +224,7 @@ const { totals } = useWalletMath(ledgerEntries);
 // Filtering & Search Toolbar state
 const searchQuery = ref('');
 const typeFilter = ref('all');
-const sourceFilter = ref('all');
+const sectionFilter = ref<string[]>([]);
 
 const filteredEntries = computed(() => {
   let entries = ledgerEntries.value;
@@ -145,8 +233,8 @@ const filteredEntries = computed(() => {
     entries = entries.filter((e) => e.type === typeFilter.value);
   }
 
-  if (sourceFilter.value !== 'all') {
-    entries = entries.filter((e) => e.source_type === sourceFilter.value);
+  if (sectionFilter.value.length > 0) {
+    entries = entries.filter((e) => sectionFilter.value.includes(e.metadata?.section ?? ''));
   }
 
   if (searchQuery.value.trim()) {
@@ -163,6 +251,37 @@ const filteredEntries = computed(() => {
 
   return entries;
 });
+
+// Quick action dialogs (Payment / Remittance)
+const showPaymentDialog = ref(false);
+const showRemittanceDialog = ref(false);
+const quickAmount = ref<number | null>(null);
+const quickNote = ref('');
+
+const handleQuickAction = (section: string) => {
+  if (!quickAmount.value || quickAmount.value <= 0) return;
+  adjustMutation.mutate(
+    {
+      entity_type: props.entityType,
+      entity_id: props.entityId,
+      type: 'credit',
+      amount: quickAmount.value,
+      currency_code: props.currencyCode,
+      exchange_rate: 1.0,
+      source_type: 'adjustment',
+      source_id: `QA-${Date.now().toString().slice(-6)}`,
+      metadata: { section, ...(quickNote.value ? { note: quickNote.value } : {}) },
+    },
+    {
+      onSuccess: () => {
+        showPaymentDialog.value = false;
+        showRemittanceDialog.value = false;
+        quickAmount.value = null;
+        quickNote.value = '';
+      },
+    },
+  );
+};
 
 // Balance Adjustment Modal State & Mutation
 const showAdjustmentDialog = ref(false);

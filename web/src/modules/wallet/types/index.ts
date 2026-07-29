@@ -1,6 +1,15 @@
 export type UniversalWalletEntityType = 'customer' | 'vendor' | 'courier' | 'middleman' | 'tenant';
 export type UniversalWalletTransactionType = 'credit' | 'debit';
 export type UniversalWalletSourceType = 'shop_order' | 'vendor_purchase' | 'payout' | 'adjustment';
+export type UniversalWalletSection =
+  | 'receivable'
+  | 'payout_earned'
+  | 'cod_holding'
+  | 'delivery_fee'
+  | 'revenue'
+  | 'adjustment'
+  | 'payment_received'
+  | 'intercompany';
 
 export interface UniversalWalletLedgerEntry {
   id: string;

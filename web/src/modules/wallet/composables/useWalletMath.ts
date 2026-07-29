@@ -7,6 +7,8 @@ export interface WalletTotals {
   totalDebits: number;
   netFlow: number;
   entryCount: number;
+  /** Section-level aggregates: net amount per metadata.section (credits positive, debits negative) */
+  sectionTotals: Record<string, number>;
 }
 
 /**
@@ -20,6 +22,7 @@ export function calculateWalletTotals(entries: UniversalWalletLedgerEntry[]): Wa
       totalDebits: 0,
       netFlow: 0,
       entryCount: 0,
+      sectionTotals: {},
     };
   }
 
@@ -28,6 +31,7 @@ export function calculateWalletTotals(entries: UniversalWalletLedgerEntry[]): Wa
 
   let totalCredits = 0;
   let totalDebits = 0;
+  const sectionTotals: Record<string, number> = {};
 
   for (const entry of entries) {
     const baseAmt = Number(entry.base_amount || 0);
@@ -36,6 +40,9 @@ export function calculateWalletTotals(entries: UniversalWalletLedgerEntry[]): Wa
     } else if (entry.type === 'debit') {
       totalDebits += baseAmt;
     }
+    const section: string = entry.metadata?.section ?? 'other';
+    const signed = entry.type === 'credit' ? baseAmt : -baseAmt;
+    sectionTotals[section] = (sectionTotals[section] ?? 0) + signed;
   }
 
   const netFlow = totalCredits - totalDebits;
@@ -46,6 +53,7 @@ export function calculateWalletTotals(entries: UniversalWalletLedgerEntry[]): Wa
     totalDebits,
     netFlow,
     entryCount: entries.length,
+    sectionTotals,
   };
 }
 

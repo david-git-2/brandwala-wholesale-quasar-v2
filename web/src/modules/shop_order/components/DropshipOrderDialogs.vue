@@ -19,6 +19,7 @@ const props = defineProps<{
   confirmB2bInvoiceDialogOpen: boolean;
   confirmDeleteInvoiceDialogOpen: boolean;
   updatingStatus: boolean;
+  targetUpdatingStatus?: string | null;
 
   recipientGrandTotal: number;
   deliveryChargeVal: number;
@@ -216,7 +217,7 @@ const updateRemittanceField = (key: string, val: any) => {
             <template #avatar>
               <q-icon name="ph ph-warning-circle" color="red-9" />
             </template>
-            Rolling back to <strong>Processing</strong> will completely delete the associated B2B accounting invoice and restore the inventory stock.
+            Rolling back status will completely delete the associated B2B accounting invoice and restore the inventory stock.
           </q-banner>
           <p class="text-grey-8 q-mb-none">
             Are you sure you want to proceed?
@@ -230,7 +231,7 @@ const updateRemittanceField = (key: string, val: any) => {
             unelevated
             no-caps
             :loading="props.updatingStatus"
-            @click="emit('execute-status-update', 'processing'); emit('update:confirmDeleteInvoiceDialogOpen', false)"
+            @click="emit('execute-status-update', props.targetUpdatingStatus || 'processing'); emit('update:confirmDeleteInvoiceDialogOpen', false)"
           />
         </q-card-actions>
       </q-card>

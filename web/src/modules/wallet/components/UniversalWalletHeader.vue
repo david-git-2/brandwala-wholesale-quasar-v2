@@ -18,16 +18,65 @@
     </div>
     <div class="row items-center q-gutter-x-sm">
       <slot name="actions">
-        <q-btn
-          v-if="allowAdjustment"
-          label="Adjust Balance"
-          icon="tune"
-          color="primary"
-          unelevated
-          dense
-          class="q-px-sm"
-          @click="$emit('open-adjustment')"
-        />
+        <!-- Customer: Record Payment + Adjust -->
+        <template v-if="entityType === 'customer' || entityType === 'middleman'">
+          <q-btn
+            label="Record Payment"
+            icon="ph ph-hand-coins"
+            color="positive"
+            unelevated
+            dense
+            class="q-px-sm"
+            @click="$emit('open-payment')"
+          />
+          <q-btn
+            v-if="allowAdjustment"
+            label="Adjust"
+            icon="ph ph-sliders"
+            color="primary"
+            flat
+            dense
+            class="q-px-sm"
+            @click="$emit('open-adjustment')"
+          />
+        </template>
+
+        <!-- Courier: Record Remittance -->
+        <template v-else-if="entityType === 'courier'">
+          <q-btn
+            label="Record Remittance"
+            icon="ph ph-money"
+            color="positive"
+            unelevated
+            dense
+            class="q-px-sm"
+            @click="$emit('open-remittance')"
+          />
+          <q-btn
+            v-if="allowAdjustment"
+            label="Adjust"
+            icon="ph ph-sliders"
+            color="primary"
+            flat
+            dense
+            class="q-px-sm"
+            @click="$emit('open-adjustment')"
+          />
+        </template>
+
+        <!-- Tenant / others: Adjust only -->
+        <template v-else>
+          <q-btn
+            v-if="allowAdjustment"
+            label="Adjust Balance"
+            icon="ph ph-sliders"
+            color="primary"
+            unelevated
+            dense
+            class="q-px-sm"
+            @click="$emit('open-adjustment')"
+          />
+        </template>
       </slot>
     </div>
   </div>
@@ -52,6 +101,8 @@ const props = withDefaults(
 
 defineEmits<{
   (e: 'open-adjustment'): void;
+  (e: 'open-payment'): void;
+  (e: 'open-remittance'): void;
 }>();
 
 const overlineLabel = computed(() => {

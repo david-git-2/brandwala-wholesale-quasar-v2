@@ -260,7 +260,8 @@ export function useDropshipOrderActions(
       return;
     }
 
-    if (status === 'processing' && order.value.global_invoice_id) {
+    if ((status === 'processing' || status === 'confirmed') && order.value.global_invoice_id) {
+      targetUpdatingStatus.value = status;
       confirmDeleteInvoiceDialogOpen.value = true;
       return;
     }

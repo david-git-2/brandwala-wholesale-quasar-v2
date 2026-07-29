@@ -178,26 +178,17 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
-import BillingProfileCreateDialog from '../components/BillingProfileCreateDialog.vue';
-import BillingProfileEditDialog from '../components/BillingProfileEditDialog.vue';
 import BillingProfileDetailsDrawer from '../components/BillingProfileDetailsDrawer.vue';
 import { useBillingProfilesQuery } from '../composables/useBillingProfileQuery';
 import { useBillingProfileMutations } from '../composables/useBillingProfileMutations';
 import { useCustomerGroupsQuery } from 'src/modules/tenant/composables/useCustomerGroupQuery';
 import type {
   BillingProfile,
-  CreateBillingProfileInput,
 } from '../repositories/billingProfileRepository';
-import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';
 
-const props = withDefaults(
-  defineProps<{
-    isEmbedded?: boolean;
-  }>(),
-  {
-    isEmbedded: false,
-  }
-);
+defineProps<{
+  isEmbedded?: boolean;
+}>();
 
 const authStore = useAuthStore();
 const route = useRoute();
@@ -235,9 +226,6 @@ const filterDrawerOpen = ref(false);
 const searchText = ref('');
 const emailFilter = ref('');
 const phoneFilter = ref('');
-const editOpen = ref(false);
-const deleteOpen = ref(false);
-const selectedId = ref<number | null>(null);
 const walletDrawerOpen = ref(false);
 const selectedProfileForWallet = ref<BillingProfile | null>(null);
 
@@ -246,9 +234,6 @@ const onOpenWalletDrawer = (profile: BillingProfile) => {
   walletDrawerOpen.value = true;
 };
 
-const selectedProfile = computed<BillingProfile | null>(
-  () => items.value.find((row) => row.id === selectedId.value) ?? null,
-);
 const filteredItems = computed(() => {
   const search = searchText.value.trim().toLowerCase();
   const email = emailFilter.value.trim().toLowerCase();
@@ -285,63 +270,7 @@ const customerGroupColorMap = computed<Record<number, string | null>>(() =>
   }, {}),
 );
 
-const onCreate = async (payload: CreateBillingProfileInput) => {
-  try {
-    await createBillingProfileMutation.mutateAsync(payload);
-    showSuccessNotification('Billing profile created successfully');
-    createOpen.value = false;
-  } catch (err: any) {
-    showErrorNotification(err?.message || 'Failed to create billing profile');
-  }
-};
 
-const onOpenEdit = (id: number) => {
-  selectedId.value = id;
-  editOpen.value = true;
-};
-
-const onEdit = async (payload: {
-  id: number;
-  patch: {
-    name: string;
-    email: string | null;
-    phone: string | null;
-    address: string | null;
-    customer_group_id: number | null;
-    color: string | null;
-  };
-}) => {
-  try {
-    await updateBillingProfileMutation.mutateAsync({
-      ...payload,
-      tenant_id: tenantId.value,
-    });
-    showSuccessNotification('Billing profile updated successfully');
-    editOpen.value = false;
-  } catch (err: any) {
-    showErrorNotification(err?.message || 'Failed to update billing profile');
-  }
-};
-
-const onOpenDelete = (id: number) => {
-  selectedId.value = id;
-  deleteOpen.value = true;
-};
-
-const onDelete = async () => {
-  if (selectedId.value === null) return;
-  try {
-    await deleteBillingProfileMutation.mutateAsync({
-      id: selectedId.value,
-      tenant_id: tenantId.value,
-    });
-    showSuccessNotification('Billing profile deleted successfully');
-    deleteOpen.value = false;
-    selectedId.value = null;
-  } catch (err: any) {
-    showErrorNotification(err?.message || 'Failed to delete billing profile');
-  }
-};
 
 const onSearchChange = () => {};
 const onCloseSearch = () => {

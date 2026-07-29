@@ -409,14 +409,9 @@ import { useBillingProfilesQuery } from 'src/modules/sales_invoice/composables/u
 import { useBillingProfileMutations } from 'src/modules/sales_invoice/composables/useBillingProfileMutations';
 import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';
 
-const props = withDefaults(
-  defineProps<{
-    isEmbedded?: boolean;
-  }>(),
-  {
-    isEmbedded: false,
-  }
-);
+defineProps<{
+  isEmbedded?: boolean;
+}>();
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -626,6 +621,7 @@ const openLinkProfileDialog = (group: any) => {
   profileToLink.value = null;
   linkProfileDialogOpen.value = true;
 };
+void openLinkProfileDialog;
 
 const unassociatedProfileOptions = computed(() => {
   if (!activeGroupForLink.value) return [];
@@ -683,6 +679,7 @@ const unlinkProfile = async (profile: any) => {
     showErrorNotification(err?.message || 'Failed to unlink billing profile');
   }
 };
+void unlinkProfile;
 
 const presetColors = [
   '#B45F34', // Brand Rust

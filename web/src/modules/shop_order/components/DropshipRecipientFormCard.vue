@@ -1,20 +1,26 @@
 <script setup lang="ts">
 import type { BDLocationOption, BDPostcodeOption } from 'src/utils/bdAddressService';
 
-const props = defineProps<{
-  form: {
-    recipient_name: string;
-    recipient_phone: string;
-    secondary_phone: string;
-    district: string;
-    thana: string;
-    post_code: string;
-    shipping_address: string;
-  };
-  districtOptions: BDLocationOption[];
-  thanaOptions: BDLocationOption[];
-  postcodeOptions: (BDPostcodeOption & { displayLabel: string })[];
-}>();
+const props = withDefaults(
+  defineProps<{
+    form: {
+      recipient_name: string;
+      recipient_phone: string;
+      secondary_phone: string;
+      district: string;
+      thana: string;
+      post_code: string;
+      shipping_address: string;
+    };
+    districtOptions: BDLocationOption[];
+    thanaOptions: BDLocationOption[];
+    postcodeOptions: (BDPostcodeOption & { displayLabel: string })[];
+    readonly?: boolean;
+  }>(),
+  {
+    readonly: false,
+  },
+);
 
 const emit = defineEmits<{
   (e: 'copy', text: string | null | undefined, label: string): void;
@@ -41,7 +47,9 @@ const updateField = (key: string, val: any) => {
         Block A: Recipient Delivery Information
       </div>
       <div class="row items-center q-gutter-x-sm">
-        <q-chip dense color="blue-1" text-color="primary" size="sm">Editable at Desk</q-chip>
+        <q-chip dense :color="props.readonly ? 'grey-3' : 'blue-1'" :text-color="props.readonly ? 'grey-8' : 'primary'" size="sm">
+          {{ props.readonly ? 'View Mode' : 'Editable at Desk' }}
+        </q-chip>
       </div>
     </q-card-section>
     <q-card-section>
@@ -53,6 +61,7 @@ const updateField = (key: string, val: any) => {
             outlined
             dense
             hide-bottom-space
+            :readonly="props.readonly"
             @update:model-value="(val) => updateField('recipient_name', val)"
           />
         </div>
@@ -63,6 +72,7 @@ const updateField = (key: string, val: any) => {
             outlined
             dense
             hide-bottom-space
+            :readonly="props.readonly"
             @blur="emit('phone-blur')"
             @update:model-value="(val) => updateField('recipient_phone', val)"
           >
@@ -88,6 +98,7 @@ const updateField = (key: string, val: any) => {
             outlined
             dense
             hide-bottom-space
+            :readonly="props.readonly"
             @update:model-value="(val) => updateField('secondary_phone', val)"
           />
         </div>
@@ -105,6 +116,7 @@ const updateField = (key: string, val: any) => {
             emit-value
             map-options
             hide-bottom-space
+            :disable="props.readonly"
             @filter="(v, u) => emit('filter-district', v, u)"
             @update:model-value="(v) => { updateField('district', v); emit('district-change', v); }"
           >
@@ -137,6 +149,7 @@ const updateField = (key: string, val: any) => {
             emit-value
             map-options
             hide-bottom-space
+            :disable="props.readonly"
             @filter="(v, u) => emit('filter-thana', v, u)"
             @update:model-value="(v) => { updateField('thana', v); emit('thana-change', v); }"
           >
@@ -169,6 +182,7 @@ const updateField = (key: string, val: any) => {
             emit-value
             map-options
             hide-bottom-space
+            :disable="props.readonly"
             @filter="(v, u) => emit('filter-postcode', v, u)"
             @new-value="(v, d) => emit('create-postcode', v, d)"
             @update:model-value="(val) => updateField('post_code', val)"
@@ -196,6 +210,7 @@ const updateField = (key: string, val: any) => {
             hide-bottom-space
             type="textarea"
             rows="2"
+            :readonly="props.readonly"
             @update:model-value="(val) => updateField('shipping_address', val)"
           >
             <template #append>

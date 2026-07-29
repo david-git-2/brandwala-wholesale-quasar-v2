@@ -54,40 +54,23 @@
         {{ error?.message || 'An error occurred while fetching shops.' }}
       </q-banner>
 
-      <q-markup-table v-if="isLoading" flat bordered>
-        <thead>
-          <tr>
-            <th><q-skeleton type="text" width="100px" /></th>
-            <th><q-skeleton type="text" width="80px" /></th>
-            <th><q-skeleton type="text" width="90px" /></th>
-            <th><q-skeleton type="text" width="110px" /></th>
-            <th><q-skeleton type="text" width="100px" /></th>
-            <th class="text-center"><q-skeleton type="text" width="70px" class="q-mx-auto" /></th>
-            <th class="text-center"><q-skeleton type="text" width="50px" class="q-mx-auto" /></th>
-            <th class="text-right"><q-skeleton type="text" width="80px" class="q-ml-auto" /></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="n in 5" :key="n">
-            <td><q-skeleton type="text" width="85%" /></td>
-            <td><q-skeleton type="text" width="70%" /></td>
-            <td><q-skeleton type="QBadge" width="80px" height="24px" /></td>
-            <td><q-skeleton type="text" width="75%" /></td>
-            <td><q-skeleton type="QBadge" width="100px" height="24px" /></td>
-            <td class="text-center"><q-skeleton type="QAvatar" size="20px" class="q-mx-auto" /></td>
-            <td class="text-center"><q-skeleton type="QAvatar" size="20px" class="q-mx-auto" /></td>
-            <td class="text-right row justify-end q-gutter-x-xs">
-              <q-skeleton v-for="i in 4" :key="i" type="QAvatar" size="28px" />
-            </td>
-          </tr>
-        </tbody>
-      </q-markup-table>
+      <div v-if="isLoading" class="q-gutter-y-md">
+        <q-card v-for="n in 3" :key="n" flat bordered class="q-pa-md">
+          <div class="row items-center justify-between q-mb-sm">
+            <q-skeleton type="text" width="40%" height="24px" />
+            <q-skeleton type="QBadge" width="80px" height="24px" />
+          </div>
+          <q-skeleton type="text" width="20%" class="q-mb-sm" />
+          <q-separator class="q-my-sm" />
+          <div class="row items-center justify-between">
+            <q-skeleton type="text" width="30%" />
+            <q-skeleton type="QAvatar" size="28px" />
+          </div>
+        </q-card>
+      </div>
 
-      <q-card v-else flat bordered>
-        <q-card-section
-          v-if="!shops || shops.length === 0"
-          class="text-grey-6 text-center q-pa-xl"
-        >
+      <div v-else>
+        <q-card v-if="!shops || shops.length === 0" flat bordered class="q-pa-xl text-center text-grey-6">
           <q-icon name="ph ph-storefront" size="48px" class="q-mb-sm block" />
           {{ $t('shop_admin.no_shops_found') }}
           <br />
@@ -98,97 +81,113 @@
             unelevated
             @click="openCreate"
           />
-        </q-card-section>
+        </q-card>
 
-        <q-table
-          v-else
-          flat
-          row-key="id"
-          :rows="shops"
-          :columns="columns"
-          :pagination="{ rowsPerPage: 25 }"
-          :dense="$q.screen.lt.md"
-        >
-          <template #body-cell-shop_type="props">
-            <q-td :props="props">
-              <q-chip
-                dense
-                :color="shopTypeColor(props.row.shop_type)"
-                text-color="white"
-                :label="shopTypeLabel(props.row.shop_type)"
-              />
-            </q-td>
-          </template>
+        <div v-else class="q-gutter-y-md">
+          <q-card v-for="shop in shops" :key="shop.id" flat bordered class="shop-card full-width">
+            <q-card-section>
+              <div class="row items-center justify-between q-col-gutter-sm">
+                <div class="col-12 col-md-4">
+                  <div class="row items-center q-gutter-x-sm">
+                    <div class="text-subtitle1 text-weight-bold" :title="shop.name">
+                      {{ shop.name }}
+                    </div>
+                    <q-chip
+                      dense
+                      size="sm"
+                      :color="shopTypeColor(shop.shop_type)"
+                      text-color="white"
+                      class="text-weight-medium"
+                    >
+                      {{ shopTypeLabel(shop.shop_type) }}
+                    </q-chip>
+                  </div>
+                  <div class="text-caption text-grey-6 font-monospace q-mt-xs">/{{ shop.slug }}</div>
+                </div>
 
-          <template #body-cell-order_mode="props">
-            <q-td :props="props">
-              <q-chip dense outline :label="orderModeLabel(props.row.order_mode)" />
-            </q-td>
-          </template>
+                <div class="col-12 col-md-5">
+                  <div class="row items-center q-gutter-x-md text-caption">
+                    <div>
+                      <span class="text-grey-7">{{ $t('shop_admin.col_vendor') }}: </span>
+                      <span class="text-weight-medium">{{ getVendorName(shop.vendor_code) }}</span>
+                    </div>
+                    <div>
+                      <span class="text-grey-7">{{ $t('shop_admin.col_order_mode') }}: </span>
+                      <q-chip dense outline size="xs" :label="orderModeLabel(shop.order_mode)" />
+                    </div>
+                  </div>
+                  <div class="row items-center q-gutter-x-md text-caption q-mt-xs">
+                    <div class="row items-center q-gutter-x-xs">
+                      <span class="text-grey-7">{{ $t('shop_admin.col_negotiable') }}:</span>
+                      <q-icon
+                        :name="shop.is_negotiable ? 'check_circle' : 'remove'"
+                        :color="shop.is_negotiable ? 'positive' : 'grey-4'"
+                        size="16px"
+                      />
+                    </div>
+                    <div class="row items-center q-gutter-x-xs">
+                      <span class="text-grey-7">{{ $t('shop_admin.active') }}:</span>
+                      <q-chip
+                        dense
+                        size="xs"
+                        :color="shop.is_active ? 'positive' : 'grey-5'"
+                        text-color="white"
+                      >
+                        {{ shop.is_active ? $t('shop_admin.active') : $t('shop_admin.inactive') }}
+                      </q-chip>
+                    </div>
+                  </div>
+                </div>
 
-          <template #body-cell-is_active="props">
-            <q-td :props="props" class="text-center">
-              <q-icon
-                :name="props.row.is_active ? 'check_circle' : 'cancel'"
-                :color="props.row.is_active ? 'positive' : 'grey-5'"
-                size="20px"
-              />
-            </q-td>
-          </template>
+                <div class="col-12 col-md-3 row items-center justify-end q-gutter-x-xs">
+                  <q-btn
+                    v-if="shop.shop_type !== 'vendor_catalog'"
+                    flat
+                    round
+                    dense
+                    icon="ph ph-tag"
+                    color="orange"
+                    @click="goToPricing(shop.id)"
+                  >
+                    <q-tooltip>{{ $t('shop_admin.manage_pricing') }}</q-tooltip>
+                  </q-btn>
 
-          <template #body-cell-is_negotiable="props">
-            <q-td :props="props" class="text-center">
-              <q-icon
-                :name="props.row.is_negotiable ? 'check_circle' : 'remove'"
-                :color="props.row.is_negotiable ? 'positive' : 'grey-4'"
-                size="18px"
-              />
-            </q-td>
-          </template>
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    icon="ph ph-shield"
+                    color="teal"
+                    @click="goToAccessMatrix(shop.id)"
+                  >
+                    <q-tooltip>{{ $t('shop_admin.manage_access_matrix') }}</q-tooltip>
+                  </q-btn>
 
-          <template #body-cell-actions="props">
-            <q-td :props="props" class="q-gutter-x-sm">
-              <q-btn
-                v-if="props.row.shop_type !== 'vendor_catalog'"
-                flat
-                round
-                dense
-                icon="ph ph-tag"
-                color="orange"
-                @click="goToPricing(props.row.id)"
-              >
-                <q-tooltip>{{ $t('shop_admin.manage_pricing') }}</q-tooltip>
-              </q-btn>
-              <q-btn
-                flat
-                round
-                dense
-                icon="ph ph-shield"
-                color="teal"
-                @click="goToAccessMatrix(props.row.id)"
-              >
-                <q-tooltip>{{ $t('shop_admin.manage_access_matrix') }}</q-tooltip>
-              </q-btn>
-              <q-btn
-                flat
-                round
-                dense
-                icon="ph ph-eye"
-                color="indigo"
-                @click="goToPreview(props.row.id)"
-              >
-                <q-tooltip>Preview Storefront</q-tooltip>
-              </q-btn>
-              <q-btn flat round dense icon="ph ph-pencil-simple" color="primary" @click="openEdit(props.row)">
-                <q-tooltip>{{ $t('shop_admin.edit') }}</q-tooltip>
-              </q-btn>
-              <q-btn flat round dense icon="ph ph-trash" color="negative" @click="confirmDeleteShop(props.row)">
-                <q-tooltip>{{ $t('shop_admin.delete') }}</q-tooltip>
-              </q-btn>
-            </q-td>
-          </template>
-        </q-table>
-      </q-card>
+                  <q-btn flat round dense icon="ph ph-dots-three-vertical" color="grey-7">
+                    <q-menu auto-close anchor="bottom right" self="top right">
+                      <q-list style="min-width: 140px">
+                        <q-item clickable @click="openEdit(shop)">
+                          <q-item-section avatar min-width="24px">
+                            <q-icon name="ph ph-pencil-simple" color="primary" size="18px" />
+                          </q-item-section>
+                          <q-item-section>{{ $t('shop_admin.edit') }}</q-item-section>
+                        </q-item>
+
+                        <q-item clickable @click="confirmDeleteShop(shop)">
+                          <q-item-section avatar min-width="24px">
+                            <q-icon name="ph ph-trash" color="negative" size="18px" />
+                          </q-item-section>
+                          <q-item-section class="text-negative">{{ $t('shop_admin.delete') }}</q-item-section>
+                        </q-item>
+                      </q-list>
+                    </q-menu>
+                  </q-btn>
+                </div>
+              </div>
+            </q-card-section>
+          </q-card>
+        </div>
+      </div>
     </div>
 
     <ShopFormDialog
@@ -248,23 +247,6 @@ const getVendorName = (code: string | null) => {
   return vendor ? `${vendor.name} (${code})` : code;
 };
 
-const columns = computed(() => [
-  { name: 'name', label: t('shop_admin.col_name'), field: 'name', align: 'left' as const, sortable: true },
-  { name: 'slug', label: t('shop_admin.slug'), field: 'slug', align: 'left' as const, sortable: true },
-  { name: 'shop_type', label: t('shop_admin.col_type'), field: 'shop_type', align: 'left' as const },
-  {
-    name: 'vendor_name',
-    label: t('shop_admin.col_vendor'),
-    field: (row: Shop) => getVendorName(row.vendor_code),
-    align: 'left' as const,
-    sortable: true,
-  },
-  { name: 'order_mode', label: t('shop_admin.col_order_mode'), field: 'order_mode', align: 'left' as const },
-  { name: 'is_negotiable', label: t('shop_admin.col_negotiable'), field: 'is_negotiable', align: 'center' as const },
-  { name: 'is_active', label: t('shop_admin.active'), field: 'is_active', align: 'center' as const },
-  { name: 'actions', label: '', field: 'id', align: 'right' as const },
-]);
-
 const filterOptions = computed(() => [
   { value: null, label: t('shop_admin.all') },
   { value: true, label: t('shop_admin.active') },
@@ -274,13 +256,6 @@ const filterOptions = computed(() => [
 const dialogOpen = ref(false);
 const editingShop = ref<Shop | null>(null);
 const dialogError = ref<string | null>(null);
-
-const goToPreview = (shopId: number) => {
-  void router.push({
-    name: 'app-shop-preview-page',
-    params: { tenantSlug: tenantSlug.value, shopId: String(shopId) },
-  });
-};
 
 const openCreate = () => {
   editingShop.value = null;

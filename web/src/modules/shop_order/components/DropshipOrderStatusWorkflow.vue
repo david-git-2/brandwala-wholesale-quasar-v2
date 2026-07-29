@@ -11,7 +11,7 @@ const emit = defineEmits<{
   (e: 'update-status', status: string): void;
 }>();
 
-const statusOrder = ['submitted', 'processing', 'ready_for_pickup', 'shipped', 'delivered', 'returned'];
+const statusOrder = ['confirmed', 'processing', 'ready_for_pickup', 'shipped', 'delivered', 'returned'];
 const isPassedStatus = (st: string) => {
   if (!props.order?.status) return false;
   const currentIdx = statusOrder.indexOf(props.order.status);
@@ -25,6 +25,7 @@ const formatStatusLabel = (st: string) => {
 
 const getStatusColor = (status: string) => {
   switch (status) {
+    case 'confirmed': return 'indigo-7';
     case 'processing': return 'orange-8';
     case 'ready_for_pickup': return 'blue-7';
     case 'shipped': return 'purple-7';
@@ -39,33 +40,8 @@ const getStatusColor = (status: string) => {
   <q-card flat bordered class="q-pa-sm">
     <div class="row items-center justify-between q-col-gutter-sm">
       <div class="col-grow row items-center q-gutter-xs status-workflow-row">
-        <!-- Submitted state indicator (Read-Only) -->
-        <q-chip
-          v-if="order?.status === 'submitted' || isPassedStatus('submitted')"
-          dense
-          :color="order?.status === 'submitted' ? 'indigo-7' : 'grey-5'"
-          :text-color="order?.status === 'submitted' ? 'white' : 'grey-9'"
-          :outline="order?.status !== 'submitted'"
-          class="q-px-sm text-caption text-weight-bold"
-        >
-          <q-icon
-            v-if="order?.status === 'submitted'"
-            name="ph ph-check-circle"
-            size="14px"
-            class="q-mr-xs"
-          />
-          Submitted
-        </q-chip>
-        <q-icon
-          v-if="order?.status === 'submitted' || isPassedStatus('submitted')"
-          name="ph ph-caret-right"
-          color="grey-5"
-          size="18px"
-          class="status-workflow-chevron"
-        />
-
         <template
-          v-for="(st, idx) in ['processing', 'ready_for_pickup', 'shipped', 'delivered']"
+          v-for="(st, idx) in ['confirmed', 'processing', 'ready_for_pickup', 'shipped', 'delivered']"
           :key="st"
         >
           <q-btn
@@ -89,7 +65,7 @@ const getStatusColor = (status: string) => {
             {{ formatStatusLabel(st) }}
           </q-btn>
           <q-icon
-            v-if="idx < 3"
+            v-if="idx < 4"
             name="ph ph-caret-right"
             color="grey-5"
             size="18px"

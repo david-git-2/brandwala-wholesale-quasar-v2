@@ -15,7 +15,7 @@
               Universal Wallet
             </h1>
             <p class="text-body2 text-muted q-mb-none q-mt-xs font-gentle">
-              Manage accounts, financial balances, and transaction history across system tenants, billing profiles, vendors, and courier partners.
+              Manage accounts, financial balances, and transaction history across tenants, billing profiles (customers &amp; resellers), vendors, and courier partners.
             </p>
           </div>
           <div class="col-12 col-md-4 text-left text-md-right">
@@ -87,22 +87,7 @@
             </div>
           </q-tab>
 
-          <!-- 4. Middleman / Dropship Merchant -->
-          <q-tab name="middleman" class="soft-tab-btn q-px-md q-py-sm">
-            <div class="row items-center q-gutter-x-sm">
-              <div class="tab-icon-wrapper" :class="{ active: activeTab === 'middleman' }">
-                <q-icon name="ph ph-user-switch" size="18px" />
-              </div>
-              <div class="column text-left">
-                <span class="tab-title" :class="{ 'text-weight-bold text-primary': activeTab === 'middleman' }">
-                  Middleman
-                </span>
-                <span class="tab-subtitle">Dropship Merchants</span>
-              </div>
-            </div>
-          </q-tab>
-
-          <!-- 5. Courier -->
+          <!-- 4. Courier -->
           <q-tab name="courier" class="soft-tab-btn q-px-md q-py-sm">
             <div class="row items-center q-gutter-x-sm">
               <div class="tab-icon-wrapper" :class="{ active: activeTab === 'courier' }">
@@ -245,15 +230,10 @@ const effectiveEntityId = computed(() => {
 
 const currentEntityOptions = computed<EntityOption[]>(() => {
   switch (activeTab.value) {
-    case 'customer':
-    case 'middleman':
-      return billingProfileOptions.value;
-    case 'vendor':
-      return vendorOptions.value;
-    case 'courier':
-      return courierOptions.value;
-    default:
-      return [];
+    case 'customer': return billingProfileOptions.value;
+    case 'vendor':   return vendorOptions.value;
+    case 'courier':  return courierOptions.value;
+    default:         return [];
   }
 });
 
@@ -269,48 +249,29 @@ const filteredEntityOptions = computed<EntityOption[]>(() => {
 
 const activeTabDisplay = computed(() => {
   switch (activeTab.value) {
-    case 'tenant':
-      return 'Tenant';
-    case 'customer':
-      return 'Billing Profile';
-    case 'middleman':
-      return 'Middleman Merchant';
-    case 'vendor':
-      return 'Vendor';
-    case 'courier':
-      return 'Courier';
-    default:
-      return 'Entity';
+    case 'tenant':   return 'Tenant';
+    case 'customer': return 'Billing Profile';
+    case 'vendor':   return 'Vendor';
+    case 'courier':  return 'Courier';
+    default:         return 'Entity';
   }
 });
 
 const entitySelectLabel = computed(() => {
   switch (activeTab.value) {
-    case 'customer':
-      return 'Search Billing Profile / Customer...';
-    case 'middleman':
-      return 'Search Middleman / Dropship Merchant...';
-    case 'vendor':
-      return 'Search Vendor / Supplier...';
-    case 'courier':
-      return 'Search Courier Partner...';
-    default:
-      return 'Select Entity...';
+    case 'customer': return 'Search Billing Profile / Customer...';
+    case 'vendor':   return 'Search Vendor / Supplier...';
+    case 'courier':  return 'Search Courier Partner...';
+    default:         return 'Select Entity...';
   }
 });
 
 const entitySelectIcon = computed(() => {
   switch (activeTab.value) {
-    case 'customer':
-      return 'ph ph-receipt';
-    case 'middleman':
-      return 'ph ph-user-switch';
-    case 'vendor':
-      return 'ph ph-storefront';
-    case 'courier':
-      return 'ph ph-truck';
-    default:
-      return 'ph ph-buildings';
+    case 'customer': return 'ph ph-receipt';
+    case 'vendor':   return 'ph ph-storefront';
+    case 'courier':  return 'ph ph-truck';
+    default:         return 'ph ph-buildings';
   }
 });
 

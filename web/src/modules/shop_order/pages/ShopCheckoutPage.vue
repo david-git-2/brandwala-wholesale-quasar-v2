@@ -12,16 +12,6 @@
             </div>
           </div>
         </div>
-        <div class="col-auto">
-          <q-btn
-            color="primary"
-            unelevated
-            no-caps
-            label="Submit Order"
-            :loading="orderStore.saving"
-            @click="submitOrder"
-          />
-        </div>
       </section>
 
       <div class="row q-col-gutter-lg">

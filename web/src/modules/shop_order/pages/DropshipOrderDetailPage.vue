@@ -24,7 +24,7 @@
 
         <div class="row q-col-gutter-lg">
           <!-- Main Form Sections -->
-          <div class="col-xs-12 col-md-8">
+          <div class="col-xs-12" :class="isConfirmedStatus ? 'col-md-8' : 'col-md-8'">
             <div class="q-gutter-y-md">
               <!-- Block A: Recipient Information -->
               <DropshipRecipientFormCard
@@ -32,6 +32,7 @@
                 :district-options="districtOptions"
                 :thana-options="thanaOptions"
                 :postcode-options="postcodeOptions"
+                :readonly="isConfirmedStatus"
                 @copy="handleCopy"
                 @phone-blur="onRecipientPhoneBlur"
                 @filter-district="filterDistrict"
@@ -49,8 +50,9 @@
                 :format-bdt="formatBdt"
               />
 
-              <!-- Block B: Parcel & COD -->
+              <!-- Block B: Parcel & COD (Hidden when confirmed) -->
               <DropshipParcelFormCard
+                v-if="!isConfirmedStatus"
                 :form="form"
                 :selected-courier="selectedCourier"
                 @delivery-charge-edit="onDeliveryChargeManualEdit"
@@ -59,8 +61,9 @@
                 @update:form-field="(k, v) => (form as any)[k] = v"
               />
 
-              <!-- Block C: Merchant Sender Pickup -->
+              <!-- Block C: Merchant Sender Pickup (Hidden when confirmed) -->
               <DropshipMerchantFormCard
+                v-if="!isConfirmedStatus"
                 v-model:selected-merchant-id="selectedMerchantId"
                 v-model:block-c-expanded="blockCExpanded"
                 :form="form"
@@ -69,8 +72,9 @@
                 @update:form-field="(k, v) => (form as any)[k] = v"
               />
 
-              <!-- Block D: Driver Notes & Policy Flags -->
+              <!-- Block D: Driver Notes & Policy Flags (Hidden when confirmed) -->
               <DropshipDeliveryNotesCard
+                v-if="!isConfirmedStatus"
                 :form="form"
                 @update:form-field="(k, v) => (form as any)[k] = v"
               />
@@ -80,8 +84,9 @@
           <!-- Right Side: Courier Tracking & Totals -->
           <div class="col-xs-12 col-md-4">
             <div class="q-gutter-y-md">
-              <!-- Block E: Courier Assignment -->
+              <!-- Block E: Courier Assignment (Hidden when confirmed) -->
               <DropshipCourierCard
+                v-if="!isConfirmedStatus"
                 :form="form"
                 :courier-options="courierOptions"
                 :selected-courier="selectedCourier"
@@ -109,6 +114,7 @@
                 :show-settlement-card="showSettlementCard"
                 :tenant-slug="tenantSlug"
                 :format-bdt="formatBdt"
+                :readonly="isConfirmedStatus"
                 @toggle-deduct="onToggleDeduct"
                 @update:form-field="(k, v) => (form as any)[k] = v"
               />
@@ -128,6 +134,7 @@
           :can-save-order-remittance="canSaveOrderRemittance"
           :creating-invoice="creatingInvoice"
           :updating-status="updatingStatus"
+          :target-updating-status="targetUpdatingStatus"
           :recipient-grand-total="recipientGrandTotal"
           :delivery-charge-val="deliveryChargeVal"
           :cod-charge-val="codChargeVal"
@@ -144,10 +151,10 @@
         />
 
         <!-- Floating Unsaved Changes Footer Bar -->
-        <div v-if="isFormDirty && !loading" style="height: 100px;"></div>
+        <div v-if="!isConfirmedStatus && isFormDirty && !loading" style="height: 100px;"></div>
 
         <q-slide-transition>
-          <div v-if="isFormDirty && !loading" class="fixed-bottom row justify-center q-pb-lg z-top">
+          <div v-if="!isConfirmedStatus && isFormDirty && !loading" class="fixed-bottom row justify-center q-pb-lg z-top">
             <q-card flat class="bg-grey-10 text-white shadow-24 row items-center justify-between q-py-md q-px-lg" style="width: 90%; max-width: 800px; border-radius: 12px; border-left: 5px solid var(--q-warning); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 16px rgba(242, 193, 46, 0.25);">
               <div class="row items-center q-gutter-x-md">
                 <q-icon name="ph ph-warning" color="warning" size="32px" class="animate-flash" />
@@ -228,6 +235,7 @@ const tenantSlug = computed(() =>
 const orderId = computed(() => Number(route.params.id || 0));
 
 const order = ref<ShopOrder | null>(null);
+const isConfirmedStatus = computed(() => order.value?.status === 'confirmed');
 const orderItems = ref<ShopOrderItem[]>([]);
 const couriers = ref<CourierServiceRow[]>([]);
 const merchants = ref<MerchantProfileRow[]>([]);

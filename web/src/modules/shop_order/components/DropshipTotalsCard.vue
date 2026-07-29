@@ -1,27 +1,33 @@
 <script setup lang="ts">
 import type { ShopOrder } from '../types';
 
-const props = defineProps<{
-  order: ShopOrder | null;
-  form: {
-    deduct_delivery_from_margin: boolean;
-    deduct_cod_from_margin: boolean;
-    deduct_print_from_margin: boolean;
-    deduct_packing_from_margin: boolean;
-  };
-  recipientSubtotal: number;
-  deliveryChargeVal: number;
-  codChargeVal: number;
-  printChargeVal: number;
-  packingChargeVal: number;
-  discountVal: number;
-  recipientGrandTotal: number;
-  middlemanTotalCost: number;
-  estimatedProfit: number;
-  showSettlementCard: boolean;
-  tenantSlug: string | null;
-  formatBdt: (amount: number) => string;
-}>();
+const props = withDefaults(
+  defineProps<{
+    order: ShopOrder | null;
+    form: {
+      deduct_delivery_from_margin: boolean;
+      deduct_cod_from_margin: boolean;
+      deduct_print_from_margin: boolean;
+      deduct_packing_from_margin: boolean;
+    };
+    recipientSubtotal: number;
+    deliveryChargeVal: number;
+    codChargeVal: number;
+    printChargeVal: number;
+    packingChargeVal: number;
+    discountVal: number;
+    recipientGrandTotal: number;
+    middlemanTotalCost: number;
+    estimatedProfit: number;
+    showSettlementCard: boolean;
+    tenantSlug: string | null;
+    formatBdt: (amount: number) => string;
+    readonly?: boolean;
+  }>(),
+  {
+    readonly: false,
+  },
+);
 
 const emit = defineEmits<{
   (e: 'toggle-deduct'): void;
@@ -61,6 +67,7 @@ const updateField = (key: string, val: any) => {
               dense
               size="xs"
               class="text-caption text-grey-6"
+              :disable="props.readonly"
               @update:model-value="(val) => updateField('deduct_delivery_from_margin', val)"
             />
           </div>
@@ -78,6 +85,7 @@ const updateField = (key: string, val: any) => {
               dense
               size="xs"
               class="text-caption text-grey-6"
+              :disable="props.readonly"
               @update:model-value="(val) => updateField('deduct_cod_from_margin', val)"
             />
           </div>
@@ -95,6 +103,7 @@ const updateField = (key: string, val: any) => {
               dense
               size="xs"
               class="text-caption text-grey-6"
+              :disable="props.readonly"
               @update:model-value="(val) => updateField('deduct_print_from_margin', val)"
             />
           </div>
@@ -112,6 +121,7 @@ const updateField = (key: string, val: any) => {
               dense
               size="xs"
               class="text-caption text-grey-6"
+              :disable="props.readonly"
               @update:model-value="(val) => updateField('deduct_packing_from_margin', val)"
             />
           </div>

@@ -27,7 +27,7 @@ const emit = defineEmits<{
           <div class="text-overline text-primary">Dropship Desk</div>
           <h1 class="text-h5 text-weight-bold q-my-none">Process Order: {{ order?.order_no || 'ORD-DS' }}</h1>
           <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-            Middle Man: <strong class="text-grey-9">{{ order?.customer_group_name || order?.created_by_email || '—' }}</strong>
+            Middle Man: <strong class="text-grey-9">{{ order?.customer_group_name || '—' }}</strong>
           </p>
         </div>
       </div>
@@ -74,15 +74,18 @@ const emit = defineEmits<{
         @click="primaryCta.action"
       />
 
-      <q-btn
-        flat
-        color="negative"
-        icon="ph ph-trash"
-        label="Delete Order"
-        no-caps
-        :loading="isDeleting"
-        @click="emit('delete-order')"
-      />
+      <q-btn flat round color="grey-7" icon="ph ph-dots-three-vertical">
+        <q-menu auto-close anchor="bottom end" self="top end">
+          <q-list style="min-width: 160px">
+            <q-item clickable class="text-negative" @click="emit('delete-order')">
+              <q-item-section avatar>
+                <q-icon name="ph ph-trash" color="negative" />
+              </q-item-section>
+              <q-item-section>Delete Order</q-item-section>
+            </q-item>
+          </q-list>
+        </q-menu>
+      </q-btn>
     </div>
   </section>
 </template>
