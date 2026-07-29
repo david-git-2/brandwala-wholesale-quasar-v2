@@ -128,10 +128,18 @@ const localOpen = computed({
   set: (v) => emit('update:modelValue', v),
 });
 
+import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
+
+const tenantStore = useTenantStore();
+
 async function loadBillingProfiles() {
   loadingProfiles.value = true;
   try {
-    const res = await billingProfileRepository.listBillingProfiles({ page_size: 100 });
+    const tenantId = tenantStore.selectedTenant?.id;
+    const res = await billingProfileRepository.listBillingProfiles({
+      tenant_id: tenantId,
+      page_size: 100,
+    });
     allProfiles.value = res.data;
     profileOptions.value = res.data;
     syncSelectedProfile();

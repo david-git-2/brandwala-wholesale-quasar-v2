@@ -101,28 +101,34 @@ const statusSurfaceStyle = (status: string | null | undefined) => {
       boxShadow: 'inset 6px 0 0 #6f93d8',
     };
   }
-  if (value === 'processing') {
+  if (value === 'confirmed') {
     return {
-      backgroundColor: '#f2fbf6',
-      boxShadow: 'inset 6px 0 0 #59aa7d',
+      backgroundColor: '#e6f7ff',
+      boxShadow: 'inset 6px 0 0 #1890ff',
     };
   }
-  if (value === 'ordered') {
+  if (value === 'placing_order') {
     return {
-      backgroundColor: '#f7fbff',
-      boxShadow: 'inset 6px 0 0 #6d91b0',
+      backgroundColor: '#f0f5ff',
+      boxShadow: 'inset 6px 0 0 #2f54eb',
+    };
+  }
+  if (value === 'ready_for_shipment') {
+    return {
+      backgroundColor: '#f6ffed',
+      boxShadow: 'inset 6px 0 0 #52c41a',
     };
   }
   if (value === 'invoicing') {
     return {
       backgroundColor: '#f8f9fa',
-      boxShadow: 'inset 6px 0 0 #3f51b5',
+      boxShadow: 'inset 6px 0 0 #722ed1',
     };
   }
-  if (value === 'invoiced') {
+  if (value === 'delivered') {
     return {
-      backgroundColor: '#f2fbfb',
-      boxShadow: 'inset 6px 0 0 #009688',
+      backgroundColor: '#e6fffb',
+      boxShadow: 'inset 6px 0 0 #13c2c2',
     };
   }
   if (value === 'cancelled') {
@@ -155,36 +161,44 @@ const statusChipStyle = (status: string | null | undefined) => {
       boxShadow: '0 1px 2px rgba(39, 72, 122, 0.18)',
     };
   }
-  if (value === 'processing') {
+  if (value === 'confirmed') {
     return {
-      backgroundColor: '#c3e8d2',
-      color: '#1f5d3c',
-      border: '1px solid #9fd4b7',
-      boxShadow: '0 1px 2px rgba(31, 93, 60, 0.18)',
+      backgroundColor: '#bae7ff',
+      color: '#0050b3',
+      border: '1px solid #91d5ff',
+      boxShadow: '0 1px 2px rgba(0, 80, 179, 0.18)',
     };
   }
-  if (value === 'ordered') {
+  if (value === 'placing_order') {
     return {
-      backgroundColor: '#d7e7f6',
-      color: '#1a4562',
-      border: '1px solid #9ebfdc',
-      boxShadow: '0 1px 2px rgba(26, 69, 98, 0.18)',
+      backgroundColor: '#d6e4ff',
+      color: '#10239e',
+      border: '1px solid #adc6ff',
+      boxShadow: '0 1px 2px rgba(16, 35, 158, 0.18)',
+    };
+  }
+  if (value === 'ready_for_shipment') {
+    return {
+      backgroundColor: '#d9f7be',
+      color: '#237804',
+      border: '1px solid #b7eb8f',
+      boxShadow: '0 1px 2px rgba(35, 120, 4, 0.18)',
     };
   }
   if (value === 'invoicing') {
     return {
-      backgroundColor: '#e8eaf6',
-      color: '#283593',
-      border: '1px solid #c5cae9',
-      boxShadow: '0 1px 2px rgba(40, 53, 147, 0.18)',
+      backgroundColor: '#efdbff',
+      color: '#391085',
+      border: '1px solid #d3ade6',
+      boxShadow: '0 1px 2px rgba(57, 16, 133, 0.18)',
     };
   }
-  if (value === 'invoiced') {
+  if (value === 'delivered') {
     return {
-      backgroundColor: '#e0f2f1',
-      color: '#00695c',
-      border: '1px solid #b2dfdb',
-      boxShadow: '0 1px 2px rgba(0, 105, 92, 0.18)',
+      backgroundColor: '#b5f5ec',
+      color: '#00474f',
+      border: '1px solid #87e8de',
+      boxShadow: '0 1px 2px rgba(0, 71, 79, 0.18)',
     };
   }
   if (value === 'cancelled') {
@@ -207,10 +221,11 @@ const statusDotColor = (status: string | null | undefined) => {
   const value = normalizeStatus(status);
   if (value === 'pending') return '#9a6a24';
   if (value === 'offered') return '#3f67b3';
-  if (value === 'processing') return '#2f8b5d';
-  if (value === 'ordered') return '#2f6e92';
-  if (value === 'invoicing') return '#3f51b5';
-  if (value === 'invoiced') return '#009688';
+  if (value === 'confirmed') return '#1890ff';
+  if (value === 'placing_order') return '#2f54eb';
+  if (value === 'ready_for_shipment') return '#52c41a';
+  if (value === 'invoicing') return '#722ed1';
+  if (value === 'delivered') return '#13c2c2';
   if (value === 'cancelled') return '#a64c62';
   return '#66758c';
 };

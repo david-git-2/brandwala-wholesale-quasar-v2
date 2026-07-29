@@ -4074,6 +4074,7 @@ export type Database = {
           assigned_shipment_id: number | null
           barcode: string | null
           brand: string | null
+          confirmed_quantity: number | null
           created_at: string
           delivered_quantity: number | null
           id: number
@@ -4084,6 +4085,7 @@ export type Database = {
           name: string | null
           note: string | null
           offer_price: number | null
+          ordered_quantity: number | null
           package_weight: number | null
           price_gbp: number | null
           product_based_costing_file_id: number | null
@@ -4101,6 +4103,7 @@ export type Database = {
           assigned_shipment_id?: number | null
           barcode?: string | null
           brand?: string | null
+          confirmed_quantity?: number | null
           created_at?: string
           delivered_quantity?: number | null
           id?: number
@@ -4111,6 +4114,7 @@ export type Database = {
           name?: string | null
           note?: string | null
           offer_price?: number | null
+          ordered_quantity?: number | null
           package_weight?: number | null
           price_gbp?: number | null
           product_based_costing_file_id?: number | null
@@ -4128,6 +4132,7 @@ export type Database = {
           assigned_shipment_id?: number | null
           barcode?: string | null
           brand?: string | null
+          confirmed_quantity?: number | null
           created_at?: string
           delivered_quantity?: number | null
           id?: number
@@ -4138,6 +4143,7 @@ export type Database = {
           name?: string | null
           note?: string | null
           offer_price?: number | null
+          ordered_quantity?: number | null
           package_weight?: number | null
           price_gbp?: number | null
           product_based_costing_file_id?: number | null

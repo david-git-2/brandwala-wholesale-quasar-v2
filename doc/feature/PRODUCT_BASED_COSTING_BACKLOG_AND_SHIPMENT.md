@@ -3,27 +3,17 @@
 ## 1. User Story & Core Logic
 ### User Story
 As a merchant operations user managing Product Based Costing (PBC) files:
-- I want unfulfilled customer demand (items wanted by a billing profile but unavailable or only partially fulfilled in a given costing batch) to automatically form an open demand **backlog** for that billing profile.
+- I want unfulfilled customer demand (items wanted by a billing profile but not ordered in a given costing batch) to automatically form an open demand **backlog** for that billing profile (`confirmed_quantity - ordered_quantity`).
 - When creating or viewing a new costing file for that billing profile, I want to see an **auto-suggested backlog panel** and one-click add available backlog items directly into the current costing file.
-- I want to bind a **default global shipment** (file shipment) to a costing file, and easily one-click / batch-add fulfilled costing lines into that global shipment with precise delivered quantity and provenance.
+- I want child PBC files to prepare demand and reach **Ready for Shipment** status, while parent inbound shipments own procurement and pull costing lines into shipments.
 
 ### Core Product Logic & Rules
 ```mermaid
-flowchart TD
-  accept[ItemAccepted]
-  fulfill[SetDeliveredQty]
-  accept --> fulfill
-  fulfill -->|"delivered = 0"| unavailable[StatusUnavailable]
-  fulfill -->|"0 < delivered < qty"| partial[KeepAccepted]
-  fulfill -->|"delivered = qty"| full[FullyFulfilled]
-  unavailable --> backlog[UpsertBacklogOpenQty]
-  partial --> backlog
-  partial --> shipEligible[ShipDeliveredQty]
-  full --> shipEligible
-  reject[StatusRejected] -.->|no backlog| ignore[Ignore]
-  backlog --> nextFile[NextCostingFileAutoSuggest]
-  nextFile --> addBtn[AddFromBacklog]
-  shipEligible --> batchShip[BatchAddToGlobalShipment]
+flowchart LR
+  childPbc["Child PBC"] -->|"accepted + ordered_qty"| ready["Ready for shipment"]
+  ready --> parentPull["Parent inbound pull"]
+  parentPull --> onShip["Item on_shipment"]
+  childPbc -->|"confirmed - ordered"| backlog["Backlog drawer"]
 ```
 
 #### Fulfillment Status & Backlog Matrix
@@ -31,18 +21,17 @@ flowchart TD
 |---------|-------------|----------------|-----------------------|
 | Customer rejected | `rejected` | None | None |
 | Still deciding | `pending` | None | None |
-| Wanted; got all | `accepted`, `delivered_quantity = quantity` | Clear/Delete backlog | `delivered_quantity` |
-| Wanted; got some | `accepted`, `0 < delivered_quantity < quantity` | Upsert open backlog (`quantity - delivered_quantity`) | `delivered_quantity` |
-| Wanted; got none | `unavailable` | Upsert open backlog (`quantity`) | None |
-| Already on shipment | any + `assigned_shipment_id` set | — | None |
+| Confirmed; got all | `accepted`, `ordered_quantity = confirmed_quantity` | Clear/Delete backlog | `ordered_quantity` (when file is `ready_for_shipment`) |
+| Confirmed; got some | `partial`, `0 < ordered_quantity < confirmed_quantity` | Upsert open backlog (`confirmed_quantity - ordered_quantity`) | `ordered_quantity` (when file is `ready_for_shipment`) |
+| Confirmed; got none | `unavailable`, `ordered_quantity = 0` | Upsert open backlog (`confirmed_quantity`) | None |
+| Pulled into shipment | `on_shipment` + `assigned_shipment_id` set | — | None |
 
 #### Key Rules
 1. **Targeting Entity:** Backlog is scoped strictly by `billing_profile_id` (per tenant and product). `billing_profiles.customer_group_id` is unused for this feature.
 2. **Latest Snapshot Semantics:** Unique constraint on `(tenant_id, billing_profile_id, product_id)`. Replaces open quantity on upsert; no historical transaction log required.
-3. **Partial Quantity Handling:** Uses existing `product_based_costing_items.delivered_quantity` column. `null` is treated as `0`.
+3. **Quantity Semantics:** Open backlog quantity = `confirmed_quantity - ordered_quantity`.
 4. **Auto-Suggest Drawer/Panel:** When a costing file has a `billing_profile_id` assigned, fetch open backlog items for that profile. Allow selecting items to add into the current file.
-5. **File Default Shipment:** Costing file maintains a `default_shipment_id` targeting `global_shipments(id)`. Header allows picking an existing shipment or inline creation of a draft shipment.
-6. **Add-to-Shipment Flow:** Batch or row CTAs default to `default_shipment_id`. Only `accepted` items with `delivered_quantity > 0` and `assigned_shipment_id IS NULL` can be added to a parent shipment.
+5. **Parent Shipment Pull:** Child PBC files prepare demand and transition to `ready_for_shipment`. Parent inbound shipments pull eligible lines via `list_child_procurement_lines` and `add_child_line_to_parent_shipment`. Child PBC displays a read-only **On Shipment** indicator once pulled.
 
 ---
 

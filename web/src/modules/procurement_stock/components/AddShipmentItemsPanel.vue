@@ -3,7 +3,24 @@
     class="add-items-panel column no-wrap"
     :class="{ 'add-items-panel--drawer': layout === 'drawer' }"
   >
-    <div class="panel-body col">
+    <q-tabs
+      v-model="activeTab"
+      dense
+      class="text-grey"
+      active-color="primary"
+      indicator-color="primary"
+      align="justify"
+      narrow-indicator
+    >
+      <q-tab name="catalog" icon="ph ph-squares-four" label="Catalog Products" />
+      <q-tab name="children" icon="ph ph-arrow-down-left" label="Pull from Children">
+        <q-badge v-if="childLines.length" color="orange-9" floating rounded>
+          {{ childLines.length }}
+        </q-badge>
+      </q-tab>
+    </q-tabs>
+
+    <div v-if="activeTab === 'catalog'" class="panel-body col">
       <!-- LEFT COLUMN: search + catalog -->
       <div class="search-col column no-wrap">
         <!-- Top compact toolbar -->
@@ -337,6 +354,82 @@
       </div>
     </div>
 
+    <!-- Pull from Children Tab View -->
+    <div v-else-if="activeTab === 'children'" class="col column q-pa-md">
+      <div class="row items-center justify-between q-mb-md">
+        <div class="row items-center q-gutter-x-sm">
+          <q-input
+            v-model="childSearch"
+            placeholder="Filter child lines by name/ref..."
+            outlined
+            dense
+            clearable
+            style="min-width: 280px"
+          >
+            <template #prepend>
+              <q-icon name="ph ph-magnifying-glass" />
+            </template>
+          </q-input>
+          <q-btn
+            flat
+            dense
+            no-caps
+            icon="ph ph-arrows-clockwise"
+            label="Refresh"
+            :loading="loadingChildLines"
+            @click="fetchChildLines"
+          />
+        </div>
+        <div class="text-caption text-grey-7">
+          Showing eligible child procurement lines (Orders & Costing files in Ready for Shipment)
+        </div>
+      </div>
+
+      <div class="col scroll relative-position">
+        <q-inner-loading :showing="loadingChildLines" />
+        <q-table
+          flat
+          bordered
+          :rows="filteredChildLines"
+          :columns="childLineColumns"
+          row-key="source_key"
+          dense
+          hide-pagination
+          :pagination="{ rowsPerPage: 0 }"
+        >
+          <template #body-cell-source_type="props">
+            <q-td :props="props">
+              <q-chip
+                dense
+                square
+                :color="props.row.source_type === 'costing_item' ? 'teal-1' : 'blue-1'"
+                :text-color="props.row.source_type === 'costing_item' ? 'teal-9' : 'blue-9'"
+                class="text-weight-bold text-caption"
+              >
+                {{ props.row.source_type === 'costing_item' ? 'Costing' : props.row.source_type }}
+              </q-chip>
+            </q-td>
+          </template>
+
+          <template #body-cell-action="props">
+            <q-td :props="props" class="text-right">
+              <q-btn
+                color="primary"
+                unelevated
+                dense
+                no-caps
+                size="sm"
+                icon="ph ph-plus"
+                label="Pull to Shipment"
+                :loading="pullingSourceKey === props.row.source_key"
+                @click="onPullChildLine(props.row)"
+              />
+            </q-td>
+          </template>
+        </q-table>
+      </div>
+    </div>
+
     <!-- Catalog Filters Sidebar -->
     <FilterSidebar v-model="filterDrawerOpen" title="Filters" :z-index="7000">
       <div class="q-gutter-y-md q-pa-sm">
@@ -417,6 +510,8 @@ import FilterSidebar from 'src/components/FilterSidebar.vue';
 import SmartImage from 'src/components/SmartImage.vue';
 import NewShipmentProductSidebar from './NewShipmentProductSidebar.vue';
 
+import { globalShipmentRepository } from '../repositories/globalShipmentRepository';
+
 export interface ShipmentCartItem {
   key: string;
   product_id: number | null;
@@ -466,6 +561,86 @@ const $q = useQuasar();
 const authStore = useAuthStore();
 const vendorStore = useVendorStore();
 const shipmentStore = useGlobalShipmentStore();
+
+const activeTab = ref<'catalog' | 'children'>('catalog');
+const childSearch = ref('');
+const childLines = ref<any[]>([]);
+const loadingChildLines = ref(false);
+const pullingSourceKey = ref<string | null>(null);
+
+const childLineColumns: Array<{
+  name: string;
+  label: string;
+  field: string;
+  align?: 'left' | 'right' | 'center';
+}> = [
+  { name: 'source_type', label: 'Type', field: 'source_type', align: 'left' },
+  { name: 'reference_label', label: 'Reference', field: 'reference_label', align: 'left' },
+  { name: 'child_tenant_name', label: 'Child Tenant', field: 'child_tenant_name', align: 'left' },
+  { name: 'name', label: 'Item Name', field: 'name', align: 'left' },
+  { name: 'quantity', label: 'Ordered Qty', field: 'quantity', align: 'right' },
+  { name: 'price_gbp', label: 'Price (GBP)', field: 'price_gbp', align: 'right' },
+  { name: 'action', label: '', field: 'action', align: 'right' },
+];
+
+const filteredChildLines = computed(() => {
+  const q = (childSearch.value || '').trim().toLowerCase();
+  if (!q) return childLines.value;
+  return childLines.value.filter(
+    (line) =>
+      (line.name || '').toLowerCase().includes(q) ||
+      (line.reference_label || '').toLowerCase().includes(q) ||
+      (line.child_tenant_name || '').toLowerCase().includes(q),
+  );
+});
+
+const fetchChildLines = async () => {
+  const parentTenantId = authStore.tenantId;
+  if (!parentTenantId) return;
+
+  loadingChildLines.value = true;
+  try {
+    const rawLines = await globalShipmentRepository.listChildProcurementLines(parentTenantId);
+    childLines.value = (rawLines ?? []).map((line: any) => ({
+      ...line,
+      source_key: `${line.source_type}:${line.source_id}`,
+    }));
+  } catch (err) {
+    console.error('Failed to fetch child procurement lines:', err);
+  } finally {
+    loadingChildLines.value = false;
+  }
+};
+
+const onPullChildLine = async (line: any) => {
+  pullingSourceKey.value = line.source_key;
+  try {
+    await globalShipmentRepository.addChildLineToParentShipment(
+      props.shipmentId,
+      line.source_type,
+      line.source_id,
+    );
+    $q.notify({
+      type: 'positive',
+      message: `Pulled ${line.name} into shipment successfully.`,
+    });
+    await shipmentStore.fetchShipmentDetails(props.shipmentId);
+    await fetchChildLines();
+  } catch (err) {
+    $q.notify({
+      type: 'negative',
+      message: err instanceof Error ? err.message : 'Failed to pull line into shipment.',
+    });
+  } finally {
+    pullingSourceKey.value = null;
+  }
+};
+
+watch(activeTab, (tab) => {
+  if (tab === 'children') {
+    void fetchChildLines();
+  }
+});
 
 const submitting = ref(false);
 

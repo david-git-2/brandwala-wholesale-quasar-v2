@@ -71,44 +71,84 @@
               <div>
                 <div class="text-overline text-primary">Product Based Costing</div>
                 <div class="row items-center q-gutter-x-xs">
-                  <h1 class="text-h5 text-weight-bold q-my-none">
-                    {{ store?.item?.name ?? 'Costing File' }}
-                  </h1>
-                  <q-chip
-                    v-if="store?.item?.billing_profile_id"
-                    dense
-                    color="primary"
-                    text-color="white"
-                    icon="ph ph-user text-caption"
-                    class="q-ml-sm"
-                  >
-                    {{ store?.item?.order_for ?? 'Profile' }}
-                  </q-chip>
+                  <template v-if="isEditingName">
+                    <q-input
+                      ref="nameInputRef"
+                      v-model="editingNameValue"
+                      dense
+                      outlined
+                      autofocus
+                      class="text-h5 text-weight-bold name-inline-input"
+                      style="min-width: 220px; max-width: 380px;"
+                      :loading="savingName"
+                      @blur="saveInlineName"
+                      @keyup.enter="saveInlineName"
+                      @keyup.esc="cancelInlineName"
+                    />
+                  </template>
+                  <template v-else>
+                    <h1
+                      class="text-h5 text-weight-bold q-my-none cursor-pointer name-inline-edit row items-center q-gutter-x-xs"
+                      title="Click to edit name"
+                      @click="startInlineNameEdit"
+                    >
+                      <span>{{ store?.item?.name ?? 'Costing File' }}</span>
+                      <q-icon name="ph ph-pencil-simple" size="18px" class="q-ml-xs edit-icon text-grey-6" />
+                    </h1>
+                  </template>
+
                 </div>
-                <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-                  Created for {{ store?.item?.order_for ?? '-' }}
-                </p>
+                <div class="row items-center q-gutter-x-xs q-mt-xs text-body2 text-grey-7">
+                  <span>Created for</span>
+                  <q-select
+                    v-model="selectedBillingProfile"
+                    :options="billingProfileOptions"
+                    option-label="name"
+                    option-value="id"
+                    dense
+                    borderless
+                    use-input
+                    hide-dropdown-icon
+                    input-debounce="300"
+                    :loading="loadingProfiles || savingBillingProfile"
+                    class="billing-profile-select-pill"
+                    @filter="filterBillingProfiles"
+                    @update:model-value="onInlineBillingProfileChange"
+                  >
+                    <template #selected>
+                      <div
+                        class="row items-center text-primary text-weight-bold cursor-pointer profile-picker-chip"
+                        title="Click to change billing profile"
+                      >
+                        <q-icon name="ph ph-user-circle" size="16px" class="q-mr-xs" />
+                        <span>{{ selectedBillingProfile?.name ?? 'Select Billing Profile' }}</span>
+                        <q-icon name="ph ph-caret-down" size="14px" class="q-ml-xs text-primary" />
+                      </div>
+                    </template>
+
+                    <template #option="scope">
+                      <q-item v-bind="scope.itemProps" dense class="rounded-borders q-my-xs">
+                        <q-item-section avatar style="min-width: 28px">
+                          <q-icon name="ph ph-user text-primary" size="16px" />
+                        </q-item-section>
+                        <q-item-section>
+                          <q-item-label class="text-weight-medium">{{ scope.opt.name }}</q-item-label>
+                          <q-item-label v-if="scope.opt.company_name" caption class="text-grey-6">{{ scope.opt.company_name }}</q-item-label>
+                        </q-item-section>
+                      </q-item>
+                    </template>
+
+                    <template #no-option>
+                      <q-item dense>
+                        <q-item-section class="text-grey caption">No billing profiles found</q-item-section>
+                      </q-item>
+                    </template>
+                  </q-select>
+                </div>
               </div>
             </div>
           </div>
           <div class="col-auto row q-gutter-sm items-center">
-            <q-select
-              v-model="defaultShipmentId"
-              :options="defaultShipmentOptions"
-              label="File Shipment"
-              dense
-              outlined
-              emit-value
-              map-options
-              style="min-width: 180px"
-              class="soft-input"
-            >
-              <template #after>
-                <q-btn round dense flat icon="ph ph-plus" color="primary" @click="createDefaultShipment">
-                  <q-tooltip>Create draft shipment</q-tooltip>
-                </q-btn>
-              </template>
-            </q-select>
             <q-btn
               v-if="store?.item?.billing_profile_id"
               outline
@@ -138,6 +178,12 @@
             <q-btn flat dense icon="ph ph-dots-three-vertical" aria-label="Actions">
               <q-menu style="min-width: 200px">
                 <q-list dense>
+                  <q-item clickable v-close-popup @click="openEditFileDialog">
+                    <q-item-section avatar>
+                      <q-icon name="ph ph-pencil-simple" />
+                    </q-item-section>
+                    <q-item-section>Edit File Details</q-item-section>
+                  </q-item>
                   <q-item clickable v-close-popup @click="openBulkPaste">
                     <q-item-section avatar>
                       <q-icon name="ph ph-clipboard" />
@@ -322,9 +368,6 @@
         </q-card>
 
         <div v-if="!store.item" class="text-negative">File not found.</div>
-        <div v-else-if="!store.costingItems.length" class="text-grey-7 q-pa-md">
-          No items found.
-        </div>
         <q-card v-else flat bordered class="q-pa-none costing-items-surface">
           <ProductBasedCostingItemsTable
             :items="store.costingItems"
@@ -334,11 +377,8 @@
             :status="store.item?.status ?? 'pending'"
             :shipped-item-ids="shippedItemIds"
             :visible-columns="visibleColumns"
-            :default-shipment-id="store.item?.default_shipment_id ?? null"
             @edit="onEdit"
             @delete="onDelete"
-            @ship="onShip"
-            @batch-ship="onBatchShip"
             @row-change="onRowChange"
             @product-weight-change="onProductWeightChange"
             @package-weight-change="onPackageWeightChange"
@@ -346,8 +386,6 @@
             @update:visible-columns="onVisibleColumnsUpdate"
           />
         </q-card>
-
-        <!-- Summary Metrics Section -->
         <div v-if="store.costingItems.length" class="q-mt-lg">
           <div class="text-subtitle1 text-weight-bold q-mb-sm text-grey-9 row items-center">
             <q-icon name="ph ph-chart-line-up" class="q-mr-xs text-primary" size="20px" />
@@ -453,6 +491,12 @@
           @add="handleConsumeBacklog"
         />
 
+        <ProductBasedCostingFileDialog
+          v-model="showFileDialog"
+          :data="editFormData"
+          @submit="handleUpdateFileDialog"
+        />
+
         <ProductBasedCostingItemAddDialog
           v-model="showItemDialog"
           :product-based-costing-file-id="fileId"
@@ -462,45 +506,17 @@
           @created="handleCreated"
           @updated="handleUpdated"
         />
-
-        <ShipmentItemCompactDialog
-          v-model="showAddShipmentDialog"
-          :quantity="selectedQuantity"
-          :price-gbp="selectedPriceGbp"
-          :loading="shipmentStore.saving"
-          :is-batch="isBatchShip"
-          :default-shipment-id="
-            (store.item?.default_shipment_id as number | null | undefined) ?? null
-          "
-          @shipment-change="onDefaultShipmentChange"
-          @save="onSaveShipment"
-        />
-
-        <q-dialog v-model="confirmRemoveShipmentOpen">
-          <q-card style="min-width: 360px">
-            <q-card-section class="text-h6">Remove From Shipment?</q-card-section>
-            <q-card-section> This will remove the selected item from its shipment. </q-card-section>
-            <q-card-actions align="right">
-              <q-btn flat label="Cancel" v-close-popup />
-              <q-btn
-                color="negative"
-                label="Remove"
-                :loading="shipmentStore.saving"
-                @click="onConfirmRemoveShipment"
-              />
-            </q-card-actions>
-          </q-card>
-        </q-dialog>
       </template>
     </div>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { useRoute, useRouter } from 'vue-router';
 import { useProductBasedCostingStore } from '../stores/productBasedCostingStore';
+import ProductBasedCostingFileDialog from '../components/ProductBasedCostingFileDialog.vue';
 import ProductBasedCostingItemAddDialog from '../components/ProductBasedCostingItemAddDialog.vue';
 import PbcBacklogSuggestDrawer from '../components/PbcBacklogSuggestDrawer.vue';
 import AddCostingItemsDrawer from '../components/AddCostingItemsDrawer.vue';
@@ -509,9 +525,10 @@ import ProductBasedCostingPreviewColumnSelectorDialog from '../components/Produc
 import ProductBasedCostingItemsTable from '../components/ProductBasedCostingItemsTable.vue';
 import { useProductStore } from 'src/modules/products/stores/productStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
-import { useGlobalShipmentStore } from 'src/modules/procurement_stock/stores/globalShipmentStore';
-import { globalShipmentRepository } from 'src/modules/procurement_stock/repositories/globalShipmentRepository';
-import ShipmentItemCompactDialog from 'src/modules/procurement_stock/components/ShipmentItemCompactDialog.vue';
+import {
+  billingProfileRepository,
+  type BillingProfile,
+} from 'src/modules/sales_invoice/repositories/billingProfileRepository';
 import { productBasedCostingRepository } from '../repositories/productBasedCostingRepository';
 import type { ProductBasedCostingItem } from '../types';
 import { productBasedCostingService } from '../services/productBasedCostingService';
@@ -520,15 +537,185 @@ import { buildCostingExcelWorkbook } from '../utils/buildCostingExcelWorkbook';
 import { useMembershipColumnPreference } from 'src/modules/membership/composables/useMembershipColumnPreference';
 import { usePbcBacklog } from '../composables/usePbcBacklog';
 const productStore = useProductStore();
-const shipmentStore = useGlobalShipmentStore();
 const tenantStore = useTenantStore();
 const backlog = usePbcBacklog();
 const showBacklogDrawer = ref(false);
+const showFileDialog = ref(false);
+const isEditingName = ref(false);
+const editingNameValue = ref('');
+const savingName = ref(false);
+const nameInputRef = ref<HTMLInputElement | { focus: () => void; select: () => void } | null>(null);
+
+const selectedBillingProfile = ref<BillingProfile | null>(null);
+const allBillingProfiles = ref<BillingProfile[]>([]);
+const billingProfileOptions = ref<BillingProfile[]>([]);
+const loadingProfiles = ref(false);
+const savingBillingProfile = ref(false);
 const $q = useQuasar();
 
 const route = useRoute();
 const router = useRouter();
 const store = useProductBasedCostingStore();
+
+const editFormData = computed(() => {
+  if (!store.item) return null;
+  return {
+    id: store.item.id,
+    name: store.item.name ?? '',
+    order_for: store.item.order_for ?? '',
+    billing_profile_id: store.item.billing_profile_id ?? null,
+    note: store.item.note ?? '',
+    vendor_code: store.item.vendor_code ?? null,
+    market_code: store.item.market_code ?? null,
+  };
+});
+
+function openEditFileDialog() {
+  showFileDialog.value = true;
+}
+
+function startInlineNameEdit() {
+  editingNameValue.value = store.item?.name ?? '';
+  isEditingName.value = true;
+  void nextTick(() => {
+    if (nameInputRef.value && 'focus' in nameInputRef.value) {
+      nameInputRef.value.focus();
+    }
+  });
+}
+
+function cancelInlineName() {
+  isEditingName.value = false;
+  editingNameValue.value = '';
+}
+
+async function saveInlineName() {
+  if (!isEditingName.value || savingName.value) return;
+
+  const trimmed = editingNameValue.value.trim();
+  const currentName = store.item?.name ?? '';
+
+  if (!trimmed || trimmed === currentName) {
+    cancelInlineName();
+    return;
+  }
+
+  if (!fileId.value) {
+    cancelInlineName();
+    return;
+  }
+
+  savingName.value = true;
+  try {
+    const res = await store.updateProductBasedCostingFile({
+      id: fileId.value,
+      name: trimmed,
+    });
+    if (res?.success) {
+      isEditingName.value = false;
+    }
+  } finally {
+    savingName.value = false;
+  }
+}
+
+async function loadBillingProfiles() {
+  loadingProfiles.value = true;
+  try {
+    const tenantId = tenantStore.selectedTenant?.id;
+    const res = await billingProfileRepository.listBillingProfiles({
+      tenant_id: tenantId,
+      page_size: 100,
+    });
+    allBillingProfiles.value = res.data;
+    billingProfileOptions.value = res.data;
+    syncSelectedBillingProfile();
+  } catch (err) {
+    console.error('Failed to load billing profiles', err);
+  } finally {
+    loadingProfiles.value = false;
+  }
+}
+
+function syncSelectedBillingProfile() {
+  if (store.item?.billing_profile_id) {
+    const found = allBillingProfiles.value.find((p) => p.id === store.item?.billing_profile_id);
+    if (found) {
+      selectedBillingProfile.value = found;
+      return;
+    }
+  }
+  selectedBillingProfile.value = null;
+}
+
+function filterBillingProfiles(val: string, update: (fn: () => void) => void) {
+  update(() => {
+    if (!val.trim()) {
+      billingProfileOptions.value = allBillingProfiles.value;
+    } else {
+      const needle = val.toLowerCase();
+      billingProfileOptions.value = allBillingProfiles.value.filter(
+        (p) =>
+          p.name.toLowerCase().includes(needle) ||
+          (p.company_name && p.company_name.toLowerCase().includes(needle)),
+      );
+    }
+  });
+}
+
+async function onInlineBillingProfileChange(val: BillingProfile | null) {
+  if (!fileId.value || savingBillingProfile.value) return;
+
+  const newProfileId = val?.id ?? null;
+  const newOrderFor = val?.name ?? store.item?.order_for ?? '';
+
+  if (
+    newProfileId === store.item?.billing_profile_id &&
+    newOrderFor === store.item?.order_for
+  ) {
+    return;
+  }
+
+  savingBillingProfile.value = true;
+  try {
+    const res = await store.updateProductBasedCostingFile({
+      id: fileId.value,
+      billing_profile_id: newProfileId,
+      order_for: newOrderFor,
+    });
+    if (res?.success) {
+      syncSelectedBillingProfile();
+      refreshBacklog();
+    }
+  } finally {
+    savingBillingProfile.value = false;
+  }
+}
+
+async function handleUpdateFileDialog(payload: {
+  id: number | null;
+  name: string;
+  order_for: string;
+  billing_profile_id: number | null;
+  note: string;
+  vendor_code: string | null;
+  market_code: string | null;
+}) {
+  if (!payload.id) return;
+  const res = await store.updateProductBasedCostingFile({
+    id: payload.id,
+    name: payload.name,
+    order_for: payload.order_for,
+    billing_profile_id: payload.billing_profile_id,
+    note: payload.note,
+    vendor_code: payload.vendor_code,
+    market_code: payload.market_code,
+  });
+  if (res?.success) {
+    showFileDialog.value = false;
+    refreshBacklog();
+  }
+}
 
 const cargo_rate_kg_gbp = ref<number | null>(null);
 const conversion_rate = ref<number | null>(null);
@@ -537,58 +724,8 @@ const ratesExpanded = ref(false);
 const status = ref<string>('pending');
 const updatingStatus = ref(false);
 const targetUpdatingStatus = ref<string | null>(null);
-const showAddShipmentDialog = ref(false);
-const selectedQuantity = ref<number | null>(null);
-const selectedPriceGbp = ref<number | null>(null);
-const selectedShipItem = ref<ProductBasedCostingItem | null>(null);
 const shippedItemIds = ref<number[]>([]);
-const confirmRemoveShipmentOpen = ref(false);
-const pendingRemoveShipItem = ref<ProductBasedCostingItem | null>(null);
-const isBatchShip = ref(false);
-const batchShipItemIds = ref<number[]>([]);
 
-type GlobalShipmentRow = {
-  id: number;
-  name: string;
-  status?: string | null;
-  tenant_shipment_id?: number | null;
-};
-
-const defaultShipmentOptions = computed(() =>
-  (shipmentStore.rows ?? [])
-    .filter((s: GlobalShipmentRow) => s.status === 'Draft')
-    .map((s: GlobalShipmentRow) => ({
-      label: `#${s.tenant_shipment_id ?? s.id} ${s.name}`,
-      value: s.id,
-    })),
-);
-
-const defaultShipmentId = computed<number | null>({
-  get: () => (store.item?.default_shipment_id as number | null | undefined) ?? null,
-  set: (val: number | null) => {
-    void onDefaultShipmentChange(val);
-  },
-});
-
-const createDefaultShipment = async () => {
-  const tenantId = tenantStore.selectedTenant?.id;
-  if (!tenantId || !fileId.value) return;
-
-  const created = await shipmentStore.createShipment(tenantId, {
-    name: `Shipment ${new Date().toLocaleDateString()}`,
-    type: 'international',
-    shipment_purchase_currency_id: null,
-    shipment_cost_currency_id: null,
-  });
-
-  if (created?.id) {
-    await shipmentStore.fetchShipments(tenantId);
-    await store.updateProductBasedCostingFile({
-      id: fileId.value,
-      default_shipment_id: created.id,
-    });
-  }
-};
 const alwaysVisibleColumns = ['select', 'sl', 'image', 'name'];
 const allColumnNames = [
   'select',
@@ -598,6 +735,8 @@ const allColumnNames = [
   'brand',
   'note',
   'qty',
+  'confirmedQty',
+  'orderedQty',
   'deliveredQty',
   'barcodeText',
   'website',
@@ -630,6 +769,8 @@ const columnSelectorOptions = [
   { label: 'Brand', value: 'brand' },
   { label: 'Note', value: 'note' },
   { label: 'Qty', value: 'qty' },
+  { label: 'Confirmed Qty', value: 'confirmedQty' },
+  { label: 'Ordered Qty', value: 'orderedQty' },
   { label: 'Delivered Qty', value: 'deliveredQty' },
   { label: 'Barcode / Code / Product ID', value: 'barcodeText' },
   { label: 'Website', value: 'website' },
@@ -726,6 +867,10 @@ const onStatusChange = async () => {
     status: status.value,
   });
 
+  if (fileUpdateResult?.success) {
+    visibleColumns.value = getDefaultVisibleColumnsForStatus(status.value);
+  }
+
   if (!fileUpdateResult?.success || status.value !== 'offered') {
     return;
   }
@@ -736,10 +881,11 @@ const onStatusChange = async () => {
 const workflowStatuses = [
   'pending',
   'offered',
-  'processing',
-  'ordered',
+  'confirmed',
+  'placing_order',
+  'ready_for_shipment',
   'invoicing',
-  'invoiced',
+  'delivered',
 ] as const;
 
 const formatStatusLabel = (value: string) =>
@@ -754,20 +900,48 @@ const isPassedStatus = (st: string) => {
   return currentIdx > -1 && targetIdx > -1 && targetIdx < currentIdx;
 };
 
+const getDefaultVisibleColumnsForStatus = (fileStatus: string): string[] => {
+  const baseCols = ['select', 'sl', 'image', 'name'];
+  switch (fileStatus) {
+    case 'confirmed':
+      return [...baseCols, 'confirmedQty', 'status', 'action'];
+    case 'placing_order':
+      return [...baseCols, 'confirmedQty', 'orderedQty', 'barcodeText', 'status', 'action'];
+    case 'invoicing':
+      return [
+        ...baseCols,
+        'confirmedQty',
+        'orderedQty',
+        'deliveredQty',
+        'barcodeText',
+        'priceGbp',
+        'costBdt',
+        'status',
+        'action',
+      ];
+    case 'delivered':
+      return [...allColumnNames];
+    default:
+      return [...allColumnNames];
+  }
+};
+
 const getStatusColor = (st: string) => {
   switch (st) {
     case 'pending':
       return 'orange-8';
     case 'offered':
       return 'blue-8';
-    case 'processing':
-      return 'teal-8';
-    case 'ordered':
-      return 'light-blue-9';
-    case 'invoicing':
+    case 'confirmed':
+      return 'blue-9';
+    case 'placing_order':
       return 'indigo-8';
-    case 'invoiced':
+    case 'ready_for_shipment':
       return 'green-8';
+    case 'invoicing':
+      return 'purple-8';
+    case 'delivered':
+      return 'teal-9';
     case 'cancelled':
       return 'negative';
     default:
@@ -848,11 +1022,7 @@ const handleCreated = async () => {
 
 onMounted(async () => {
   await loadData();
-  const tenantId = tenantStore.selectedTenant?.id;
-  if (tenantId) {
-    await shipmentStore.fetchShipments(tenantId);
-  }
-  refreshShippedItemIndicators();
+  void loadBillingProfiles();
 
   cargo_rate_kg_gbp.value = store.item?.cargo_rate_kg_gbp ?? null;
   conversion_rate.value = store.item?.conversion_rate ?? null;
@@ -861,13 +1031,19 @@ onMounted(async () => {
 });
 
 watch(
+  () => store.item?.billing_profile_id,
+  () => {
+    syncSelectedBillingProfile();
+  },
+);
+
+watch(
   () => route.params.id,
   async (newId, oldId) => {
     if (newId === oldId) {
       return;
     }
     await loadData();
-    refreshShippedItemIndicators();
   },
 );
 
@@ -897,7 +1073,6 @@ const onBulkDelete = async (ids: number[]) => {
   ).length;
 
   await store.fetchProductBasedCostingItems(fileId.value);
-  refreshShippedItemIndicators();
   refreshBacklog();
 
   if (failedCount > 0) {
@@ -917,7 +1092,16 @@ const onBulkDelete = async (ids: number[]) => {
 type RowChangePayload = {
   item: ProductBasedCostingItem;
   row: unknown;
-  field: 'quantity' | 'offer_price' | 'status' | 'note' | 'delivered_quantity';
+  field:
+    | 'quantity'
+    | 'offer_price'
+    | 'status'
+    | 'note'
+    | 'delivered_quantity'
+    | 'confirmed_quantity'
+    | 'ordered_quantity'
+    | 'product_weight'
+    | 'package_weight';
 };
 
 type WeightChangePayload = {
@@ -1087,216 +1271,7 @@ const onPackageWeightChange = async (payload: WeightChangePayload) => {
   });
 };
 
-const openShipmentDialog = (item: ProductBasedCostingItem) => {
-  isBatchShip.value = false;
-  selectedShipItem.value = item;
-  selectedQuantity.value = item.delivered_quantity ?? item.quantity ?? null;
-  selectedPriceGbp.value = item.price_gbp ?? null;
-  showAddShipmentDialog.value = true;
-};
-
-const onBatchShip = async (payload: { itemIds: number[]; shipmentId: number | null }) => {
-  if (!payload.itemIds.length) return;
-
-  if (payload.shipmentId) {
-    await executeBatchShipment(payload.shipmentId, payload.itemIds);
-    return;
-  }
-
-  isBatchShip.value = true;
-  batchShipItemIds.value = payload.itemIds;
-  selectedQuantity.value = null;
-  selectedPriceGbp.value = null;
-  showAddShipmentDialog.value = true;
-};
-
-const executeBatchShipment = async (shipmentId: number, itemIds: number[]) => {
-  let successCount = 0;
-  let failCount = 0;
-
-  for (const itemId of itemIds) {
-    try {
-      await productBasedCostingRepository.addCostingItemToShipment(shipmentId, itemId);
-      successCount++;
-    } catch (err) {
-      console.error(`Failed to add item ${itemId} to shipment ${shipmentId}:`, err);
-      failCount++;
-    }
-  }
-
-  await store.fetchProductBasedCostingItems(fileId.value!);
-  refreshShippedItemIndicators();
-
-  if (failCount > 0) {
-    $q.notify({
-      type: 'warning',
-      message: `${successCount} item(s) added to shipment, ${failCount} failed.`,
-    });
-  } else {
-    $q.notify({
-      type: 'positive',
-      message: `${successCount} item(s) added to shipment successfully.`,
-    });
-  }
-};
-
 const normalizeText = (value: string | null | undefined) => (value ?? '').trim().toLowerCase();
-
-const refreshShippedItemIndicators = () => {
-  const productItems = store.costingItems ?? [];
-  shippedItemIds.value = Array.from(
-    new Set(
-      productItems.filter((item) => item.assigned_shipment_id != null).map((item) => item.id),
-    ),
-  );
-};
-
-const onShip = (item: ProductBasedCostingItem) => {
-  if (shippedItemIds.value.includes(item.id)) {
-    pendingRemoveShipItem.value = item;
-    confirmRemoveShipmentOpen.value = true;
-    return;
-  }
-
-  openShipmentDialog(item);
-};
-
-const findShipmentItemForCostingItem = async (item: ProductBasedCostingItem) => {
-  if (item.assigned_shipment_id == null) {
-    return null;
-  }
-
-  const items = await globalShipmentRepository.listShipmentItems(item.assigned_shipment_id);
-  const shipmentItems = (items ?? []).filter((entry) => entry.add_method === 'costing');
-  const itemProductId = item.product_id ?? null;
-  const itemName = normalizeText(item.name);
-  const itemBarcode = normalizeText(item.barcode);
-  const itemProductCode = normalizeText(item.product_code);
-  const matched =
-    shipmentItems.find((entry) => {
-      if (itemProductId != null && entry.product_id === itemProductId) {
-        return true;
-      }
-
-      return (
-        normalizeText(entry.name) === itemName &&
-        normalizeText(entry.barcode) === itemBarcode &&
-        normalizeText(entry.product_code) === itemProductCode
-      );
-    }) ?? null;
-
-  if (matched) {
-    return matched;
-  }
-
-  return null;
-};
-
-const onConfirmRemoveShipment = async () => {
-  const item = pendingRemoveShipItem.value;
-  if (!item) {
-    confirmRemoveShipmentOpen.value = false;
-    return;
-  }
-
-  const shipmentItem = await findShipmentItemForCostingItem(item);
-  if (!shipmentItem) {
-    $q.notify({
-      type: 'warning',
-      message: 'No linked shipment item found.',
-    });
-    confirmRemoveShipmentOpen.value = false;
-    pendingRemoveShipItem.value = null;
-    refreshShippedItemIndicators();
-    return;
-  }
-
-  try {
-    await shipmentStore.deleteShipmentItem(shipmentItem.id);
-  } catch {
-    return;
-  }
-
-  await store.updateProductBasedCostingItem({
-    id: item.id,
-    assigned_shipment_id: null,
-  });
-
-  confirmRemoveShipmentOpen.value = false;
-  pendingRemoveShipItem.value = null;
-  refreshShippedItemIndicators();
-};
-
-const onSaveShipment = async (data: {
-  shipment_id: number;
-  quantity?: number | null;
-  price_gbp?: number | null;
-  save_as_default?: boolean;
-}) => {
-  if (data.save_as_default && fileId.value && store.item?.default_shipment_id !== data.shipment_id) {
-    await store.updateProductBasedCostingFile({
-      id: fileId.value,
-      default_shipment_id: data.shipment_id,
-    });
-  }
-
-  if (isBatchShip.value) {
-    showAddShipmentDialog.value = false;
-    await executeBatchShipment(data.shipment_id, batchShipItemIds.value);
-    batchShipItemIds.value = [];
-    isBatchShip.value = false;
-    return;
-  }
-
-  const rowItem = selectedShipItem.value;
-  if (!rowItem) {
-    return;
-  }
-
-  if (rowItem.product_id == null) {
-    $q.notify({
-      type: 'negative',
-      message: 'Product ID is required before adding shipment.',
-    });
-    return;
-  }
-
-  try {
-    await productBasedCostingRepository.addCostingItemToShipment(data.shipment_id, rowItem.id);
-    await store.fetchProductBasedCostingItems(fileId.value!);
-    refreshShippedItemIndicators();
-    $q.notify({
-      type: 'positive',
-      message: 'Item added to shipment successfully.',
-    });
-  } catch (err) {
-    $q.notify({
-      type: 'negative',
-      message: err instanceof Error ? err.message : 'Failed to add item to shipment.',
-    });
-  }
-
-  showAddShipmentDialog.value = false;
-  selectedShipItem.value = null;
-  selectedQuantity.value = null;
-  selectedPriceGbp.value = null;
-};
-
-const onDefaultShipmentChange = async (shipmentId: number | null) => {
-  if (!fileId.value) {
-    return;
-  }
-
-  const currentDefault = store.item?.default_shipment_id ?? null;
-  if (currentDefault === shipmentId) {
-    return;
-  }
-
-  await store.updateProductBasedCostingFile({
-    id: fileId.value,
-    default_shipment_id: shipmentId,
-  });
-};
 
 const goBack = () => {
   void router.push({ name: 'product-based-costing-page' });
@@ -1376,5 +1351,34 @@ const goBack = () => {
   .rates-summary {
     white-space: normal;
   }
+}
+
+.name-inline-edit {
+  border-bottom: 1px dashed transparent;
+  transition: all 0.2s ease;
+  border-radius: 4px;
+  padding: 2px 4px;
+}
+
+.name-inline-edit:hover {
+  background: rgba(var(--q-primary-rgb, 15, 98, 254), 0.06);
+  border-bottom-color: var(--q-primary);
+}
+
+.name-inline-edit:hover .edit-icon {
+  color: var(--q-primary) !important;
+}
+
+.profile-picker-chip {
+  background: rgba(var(--q-primary-rgb, 15, 98, 254), 0.08);
+  padding: 2px 10px;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+  border: 1px solid rgba(var(--q-primary-rgb, 15, 98, 254), 0.2);
+}
+
+.profile-picker-chip:hover {
+  background: rgba(var(--q-primary-rgb, 15, 98, 254), 0.15);
+  border-color: var(--q-primary);
 }
 </style>

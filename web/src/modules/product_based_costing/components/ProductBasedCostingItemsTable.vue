@@ -8,22 +8,6 @@
       <div class="row items-center q-gutter-sm">
         <q-btn flat no-caps color="grey-8" label="Clear Selection" @click="selectedRowIds = []" />
         <q-btn
-          v-if="props.defaultShipmentId && canShipSelection"
-          color="teal-9"
-          no-caps
-          icon="ph ph-truck"
-          label="Add to File Shipment"
-          @click="onBatchShipDefault"
-        />
-        <q-btn
-          v-if="canShipSelection"
-          color="primary"
-          no-caps
-          icon="ph ph-truck"
-          label="Add to Shipment..."
-          @click="onBatchShipPicker"
-        />
-        <q-btn
           color="negative"
           no-caps
           icon="ph ph-trash"
@@ -146,20 +130,15 @@
                 <div class="col-8 col-sm-9">
                   <div class="row items-start justify-between no-wrap q-gutter-xs">
                     <span class="card-item-name text-weight-bold">{{ slotProps.row.name }}</span>
-                    <div v-if="props.status === 'processing'" class="card-ship-btn">
-                      <q-btn
-                        icon="ph ph-truck"
-                        :color="isShipped(slotProps.row.raw) ? 'negative' : 'primary'"
-                        flat
-                        dense
-                        size="sm"
-                        @click="onShip(slotProps.row)"
-                      >
-                        <q-tooltip>{{
-                          isShipped(slotProps.row.raw) ? 'Added in shipment' : 'Add Shipment'
-                        }}</q-tooltip>
-                      </q-btn>
-                    </div>
+                    <q-badge
+                      v-if="slotProps.row.raw.assigned_shipment_id || slotProps.row.status === 'on_shipment'"
+                      color="teal-8"
+                      text-color="white"
+                      class="q-px-xs text-caption"
+                    >
+                      <q-icon name="ph ph-truck" class="q-mr-xs" />
+                      Added to shipment
+                    </q-badge>
                   </div>
 
                   <div
@@ -332,6 +311,76 @@
                   </q-popup-edit>
                 </div>
 
+                <!-- Confirmed Qty -->
+                <div
+                  v-if="isColumnVisible('confirmedQty')"
+                  class="col-6 col-sm-3 cursor-pointer text-center"
+                >
+                  <div class="metric-label">Confirmed Qty</div>
+                  <div class="metric-value font-mono font-weight-medium">
+                    {{ slotProps.row.confirmedQty }}
+                    <q-icon name="ph ph-pencil-simple" size="xs" color="grey-6" class="q-ml-xs" />
+                  </div>
+                  <q-popup-edit
+                    v-slot="scope"
+                    :model-value="slotProps.row.confirmedQty"
+                    buttons
+                    persistent
+                    label-set="Save"
+                    label-cancel="Cancel"
+                    @save="
+                      (value) => {
+                        slotProps.row.confirmedQty = toNumber(value);
+                        onConfirmedQtySave(slotProps.row);
+                      }
+                    "
+                  >
+                    <q-input
+                      v-model.number="scope.value"
+                      type="number"
+                      dense
+                      outlined
+                      autofocus
+                      min="0"
+                    />
+                  </q-popup-edit>
+                </div>
+
+                <!-- Ordered Qty -->
+                <div
+                  v-if="isColumnVisible('orderedQty')"
+                  class="col-6 col-sm-3 cursor-pointer text-center"
+                >
+                  <div class="metric-label">Ordered Qty</div>
+                  <div class="metric-value font-mono font-weight-medium">
+                    {{ slotProps.row.orderedQty }}
+                    <q-icon name="ph ph-pencil-simple" size="xs" color="grey-6" class="q-ml-xs" />
+                  </div>
+                  <q-popup-edit
+                    v-slot="scope"
+                    :model-value="slotProps.row.orderedQty"
+                    buttons
+                    persistent
+                    label-set="Save"
+                    label-cancel="Cancel"
+                    @save="
+                      (value) => {
+                        slotProps.row.orderedQty = toNumber(value);
+                        onOrderedQtySave(slotProps.row);
+                      }
+                    "
+                  >
+                    <q-input
+                      v-model.number="scope.value"
+                      type="number"
+                      dense
+                      outlined
+                      autofocus
+                      min="0"
+                    />
+                  </q-popup-edit>
+                </div>
+
                 <!-- Delivered Qty -->
                 <div
                   v-if="isColumnVisible('deliveredQty')"
@@ -485,23 +534,17 @@
           </q-td>
 
           <q-td key="name" :props="slotProps" class="col-name">
-            <div class="name-cell-content">
+            <div class="name-cell-content row items-center justify-between no-wrap">
               <span class="name-cell-text">{{ slotProps.row.name }}</span>
-              <div class="name-cell-ship-btn">
-                <q-btn
-                  v-if="props.status === 'processing'"
-                  icon="ph ph-truck"
-                  :color="isShipped(slotProps.row.raw) ? 'negative' : 'primary'"
-                  flat
-                  dense
-                  size="md"
-                  @click="onShip(slotProps.row)"
-                >
-                  <q-tooltip>{{
-                    isShipped(slotProps.row.raw) ? 'Added in shipment' : 'Add Shipment'
-                  }}</q-tooltip>
-                </q-btn>
-              </div>
+              <q-badge
+                v-if="slotProps.row.raw.assigned_shipment_id || slotProps.row.status === 'on_shipment'"
+                color="teal-8"
+                text-color="white"
+                class="q-px-xs text-caption q-ml-xs"
+              >
+                <q-icon name="ph ph-truck" class="q-mr-xs" />
+                Added to shipment
+              </q-badge>
             </div>
           </q-td>
 
@@ -583,6 +626,76 @@
                 (value) => {
                   slotProps.row.qty = toNumber(value);
                   onQtySave(slotProps.row);
+                }
+              "
+            >
+              <q-input
+                v-model.number="scope.value"
+                type="number"
+                dense
+                outlined
+                autofocus
+                min="0"
+              />
+            </q-popup-edit>
+          </q-td>
+
+          <q-td
+            v-if="isColumnVisible('confirmedQty')"
+            key="confirmedQty"
+            :props="slotProps"
+            class="col-confirmed-qty text-center editable-cell"
+          >
+            <div class="editable-value">
+              {{ slotProps.row.confirmedQty }}
+            </div>
+
+            <q-popup-edit
+              v-slot="scope"
+              :model-value="slotProps.row.confirmedQty"
+              buttons
+              persistent
+              label-set="Save"
+              label-cancel="Cancel"
+              @save="
+                (value) => {
+                  slotProps.row.confirmedQty = toNumber(value);
+                  onConfirmedQtySave(slotProps.row);
+                }
+              "
+            >
+              <q-input
+                v-model.number="scope.value"
+                type="number"
+                dense
+                outlined
+                autofocus
+                min="0"
+              />
+            </q-popup-edit>
+          </q-td>
+
+          <q-td
+            v-if="isColumnVisible('orderedQty')"
+            key="orderedQty"
+            :props="slotProps"
+            class="col-ordered-qty text-center editable-cell"
+          >
+            <div class="editable-value">
+              {{ slotProps.row.orderedQty }}
+            </div>
+
+            <q-popup-edit
+              v-slot="scope"
+              :model-value="slotProps.row.orderedQty"
+              buttons
+              persistent
+              label-set="Save"
+              label-cancel="Cancel"
+              @save="
+                (value) => {
+                  slotProps.row.orderedQty = toNumber(value);
+                  onOrderedQtySave(slotProps.row);
                 }
               "
             >
@@ -1201,6 +1314,8 @@ interface ProductBasedCostingItem {
   image_url: string | null;
   note: string | null;
   quantity: number | null;
+  confirmed_quantity?: number | null;
+  ordered_quantity?: number | null;
   delivered_quantity: number | null;
   barcode: string | null;
   product_code: string | null;
@@ -1225,6 +1340,8 @@ interface ProductBasedCostingTableRow {
   noteHtml: string;
   imageUrl: string | null;
   qty: number;
+  confirmedQty: number;
+  orderedQty: number;
   deliveredQty: number;
   barcode: string;
   productCode: string;
@@ -1251,7 +1368,6 @@ const props = withDefaults(
     status?: string | undefined;
     shippedItemIds?: number[];
     visibleColumns?: string[];
-    defaultShipmentId?: number | null;
   }>(),
   {
     cargoRate: 0,
@@ -1259,24 +1375,27 @@ const props = withDefaults(
     profitRate: 0,
     status: 'pending',
     shippedItemIds: () => [],
-    defaultShipmentId: null,
   },
 );
 
 const emit = defineEmits<{
   (e: 'edit', item: ProductBasedCostingItem): void;
   (e: 'delete', item: ProductBasedCostingItem): void;
-  (e: 'ship', item: ProductBasedCostingItem): void;
-  (
-    e: 'batch-ship',
-    payload: { itemIds: number[]; shipmentId: number | null },
-  ): void;
   (
     e: 'row-change',
     payload: {
       item: ProductBasedCostingItem;
       row: ProductBasedCostingTableRow;
-      field: 'quantity' | 'offer_price' | 'status' | 'note' | 'delivered_quantity';
+      field:
+        | 'quantity'
+        | 'offer_price'
+        | 'status'
+        | 'note'
+        | 'delivered_quantity'
+        | 'confirmed_quantity'
+        | 'ordered_quantity'
+        | 'product_weight'
+        | 'package_weight';
     },
   ): void;
   (
@@ -1322,6 +1441,8 @@ const handleCopy = (text: string, label: string) => {
 const statusOptions = [
   { label: 'Pending', value: 'pending' },
   { label: 'Accepted', value: 'accepted' },
+  { label: 'Partial', value: 'partial' },
+  { label: 'Added to shipment', value: 'on_shipment' },
   { label: 'Rejected', value: 'rejected' },
   { label: 'Unavailable', value: 'unavailable' },
 ];
@@ -1382,6 +1503,8 @@ const buildRows = (): ProductBasedCostingTableRow[] => {
     const productCode = toText(item.product_code, '');
     const productId = item.product_id != null ? String(item.product_id) : '';
     const qty = toNumber(item.quantity);
+    const confirmedQty = item.confirmed_quantity != null ? toNumber(item.confirmed_quantity) : qty;
+    const orderedQty = item.ordered_quantity != null ? toNumber(item.ordered_quantity) : 0;
     const deliveredQty = toNumber(item.delivered_quantity);
     const priceGbp = toNumber(item.price_gbp);
     const productWeight = toNumber(item.product_weight);
@@ -1406,6 +1529,8 @@ const buildRows = (): ProductBasedCostingTableRow[] => {
       noteHtml: item.note ?? '',
       imageUrl: item.image_url ?? null,
       qty,
+      confirmedQty,
+      orderedQty,
       deliveredQty,
       barcode,
       productCode,
@@ -1510,6 +1635,20 @@ const columns = computed<QTableColumn[]>(() => [
     style: 'text-align: left;',
   },
   { name: 'qty', label: 'Qty', field: 'qty', align: 'center', style: 'text-align: center;' },
+  {
+    name: 'confirmedQty',
+    label: 'Confirmed Qty',
+    field: 'confirmedQty',
+    align: 'center',
+    style: 'text-align: center;',
+  },
+  {
+    name: 'orderedQty',
+    label: 'Ordered Qty',
+    field: 'orderedQty',
+    align: 'center',
+    style: 'text-align: center;',
+  },
   {
     name: 'deliveredQty',
     label: 'Delivered Qty',
@@ -1784,13 +1923,35 @@ const getProfitRate = (row: ProductBasedCostingTableRow) => {
   return (getProfitPerUnit(row) / costBdt) * 100;
 };
 
+const deriveItemStatusFromQuantities = (
+  currentStatus: string,
+  confirmedQty: number,
+  orderedQty: number,
+  fileStatus?: string,
+): string => {
+  if (currentStatus === 'rejected') {
+    return 'rejected';
+  }
+  if (fileStatus === 'placing_order' || fileStatus === 'ready_for_shipment') {
+    if (orderedQty === 0) return 'unavailable';
+    if (orderedQty > 0 && orderedQty < confirmedQty) return 'partial';
+    if (orderedQty >= confirmedQty) return 'accepted';
+  }
+  if (confirmedQty > 0 && currentStatus === 'pending') {
+    return 'accepted';
+  }
+  return currentStatus;
+};
+
 const emitRowChange = (
   row: ProductBasedCostingTableRow,
-  field: 'quantity' | 'offer_price' | 'status' | 'note' | 'delivered_quantity',
+  field: 'quantity' | 'confirmed_quantity' | 'ordered_quantity' | 'offer_price' | 'status' | 'note' | 'delivered_quantity',
 ) => {
   const updatedItem: ProductBasedCostingItem = {
     ...row.raw,
     quantity: row.qty,
+    confirmed_quantity: row.confirmedQty,
+    ordered_quantity: row.orderedQty,
     delivered_quantity: row.deliveredQty,
     offer_price: row.isOfferPriceManual ? row.offerPriceBdt : null,
     is_offer_price_manual: row.isOfferPriceManual,
@@ -1813,6 +1974,8 @@ const emitProductWeightChange = (row: ProductBasedCostingTableRow) => {
   const updatedItem: ProductBasedCostingItem = {
     ...row.raw,
     quantity: row.qty,
+    confirmed_quantity: row.confirmedQty,
+    ordered_quantity: row.orderedQty,
     offer_price: row.offerPriceBdt,
     is_offer_price_manual: row.isOfferPriceManual,
     status: row.status,
@@ -1833,6 +1996,8 @@ const emitPackageWeightChange = (row: ProductBasedCostingTableRow) => {
   const updatedItem: ProductBasedCostingItem = {
     ...row.raw,
     quantity: row.qty,
+    confirmed_quantity: row.confirmedQty,
+    ordered_quantity: row.orderedQty,
     offer_price: row.offerPriceBdt,
     is_offer_price_manual: row.isOfferPriceManual,
     status: row.status,
@@ -1852,6 +2017,18 @@ const emitPackageWeightChange = (row: ProductBasedCostingTableRow) => {
 const onQtySave = (row: ProductBasedCostingTableRow) => {
   row.qty = toNumber(row.qty);
   emitRowChange(row, 'quantity');
+};
+
+const onConfirmedQtySave = (row: ProductBasedCostingTableRow) => {
+  row.confirmedQty = toNumber(row.confirmedQty);
+  row.status = deriveItemStatusFromQuantities(row.status, row.confirmedQty, row.orderedQty, props.status);
+  emitRowChange(row, 'confirmed_quantity');
+};
+
+const onOrderedQtySave = (row: ProductBasedCostingTableRow) => {
+  row.orderedQty = toNumber(row.orderedQty);
+  row.status = deriveItemStatusFromQuantities(row.status, row.confirmedQty, row.orderedQty, props.status);
+  emitRowChange(row, 'ordered_quantity');
 };
 
 const onDeliveredQtySave = (row: ProductBasedCostingTableRow) => {
@@ -1956,52 +2133,6 @@ const onToggleRowSelection = (rowId: number, checked: boolean) => {
   selectedRowIds.value = selectedRowIds.value.filter((id) => id !== rowId);
 };
 
-const canShipSelection = computed(() => {
-  if (props.status !== 'processing' && props.status !== 'ordered') {
-    return false;
-  }
-  const eligibleSelected = props.items.filter(
-    (item) =>
-      selectedRowIds.value.includes(item.id) &&
-      item.status === 'accepted' &&
-      (item.delivered_quantity ?? 0) > 0 &&
-      item.assigned_shipment_id == null &&
-      item.product_id != null,
-  );
-  return eligibleSelected.length > 0;
-});
-
-const onBatchShipDefault = () => {
-  if (!props.defaultShipmentId) return;
-  const eligibleIds = props.items
-    .filter(
-      (item) =>
-        selectedRowIds.value.includes(item.id) &&
-        item.status === 'accepted' &&
-        (item.delivered_quantity ?? 0) > 0 &&
-        item.assigned_shipment_id == null &&
-        item.product_id != null,
-    )
-    .map((item) => item.id);
-  if (!eligibleIds.length) return;
-  emit('batch-ship', { itemIds: eligibleIds, shipmentId: props.defaultShipmentId });
-};
-
-const onBatchShipPicker = () => {
-  const eligibleIds = props.items
-    .filter(
-      (item) =>
-        selectedRowIds.value.includes(item.id) &&
-        item.status === 'accepted' &&
-        (item.delivered_quantity ?? 0) > 0 &&
-        item.assigned_shipment_id == null &&
-        item.product_id != null,
-    )
-    .map((item) => item.id);
-  if (!eligibleIds.length) return;
-  emit('batch-ship', { itemIds: eligibleIds, shipmentId: null });
-};
-
 const onConfirmBulkDelete = () => {
   if (!selectedRowIds.value.length) {
     showBulkDeleteConfirm.value = false;
@@ -2011,10 +2142,6 @@ const onConfirmBulkDelete = () => {
   emit('bulk-delete', [...selectedRowIds.value]);
   selectedRowIds.value = [];
   showBulkDeleteConfirm.value = false;
-};
-
-const onShip = (row: ProductBasedCostingTableRow) => {
-  emit('ship', row.raw);
 };
 
 const isShipped = (item: ProductBasedCostingItem) => {
@@ -2027,6 +2154,10 @@ const getStatusColor = (status: string | null) => {
       return 'warning';
     case 'accepted':
       return 'positive';
+    case 'partial':
+      return 'info';
+    case 'on_shipment':
+      return 'teal-8';
     case 'rejected':
       return 'negative';
     case 'unavailable':

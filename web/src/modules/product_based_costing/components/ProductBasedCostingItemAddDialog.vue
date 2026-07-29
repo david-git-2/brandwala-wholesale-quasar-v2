@@ -210,7 +210,7 @@
               </div>
 
               <div class="row q-col-gutter-sm">
-                <div class="col-12 col-sm-6">
+                <div class="col-12 col-sm-4">
                   <q-input
                     v-model.number="form.quantity"
                     label="Quantity"
@@ -224,7 +224,37 @@
                     </template>
                   </q-input>
                 </div>
-                <div class="col-12 col-sm-6">
+                <div class="col-12 col-sm-4">
+                  <q-input
+                    v-model.number="form.confirmed_quantity"
+                    label="Confirmed Qty"
+                    type="number"
+                    outlined
+                    dense
+                    @wheel.prevent
+                  >
+                    <template #prepend>
+                      <q-icon name="ph ph-check-circle" />
+                    </template>
+                  </q-input>
+                </div>
+                <div class="col-12 col-sm-4">
+                  <q-input
+                    v-model.number="form.ordered_quantity"
+                    label="Ordered Qty"
+                    type="number"
+                    outlined
+                    dense
+                    @wheel.prevent
+                  >
+                    <template #prepend>
+                      <q-icon name="ph ph-shopping-bag" />
+                    </template>
+                  </q-input>
+                </div>
+              </div>
+              <div class="row q-col-gutter-sm q-mt-xs">
+                <div class="col-12">
                   <q-input
                     v-model.number="form.price_gbp"
                     label="Price GBP"
@@ -342,6 +372,8 @@ interface ProductBasedCostingItemFormData {
   vendor_code?: string | null;
   market_code?: string | null;
   quantity?: number | null;
+  confirmed_quantity?: number | null;
+  ordered_quantity?: number | null;
   web_link?: string | null;
   price_gbp?: number | null;
   product_weight?: number | null;
@@ -482,6 +514,8 @@ const getInitialForm = () => ({
   vendor_code: props.defaultVendorCode ?? null,
   market_code: props.defaultMarketCode ?? null,
   quantity: null as number | null,
+  confirmed_quantity: null as number | null,
+  ordered_quantity: null as number | null,
   web_link: '',
   price_gbp: null as number | null,
   product_weight: null as number | null,
@@ -506,6 +540,8 @@ const fillForm = () => {
       vendor_code: props.itemData.vendor_code ?? null,
       market_code: props.itemData.market_code ?? null,
       quantity: props.itemData.quantity ?? null,
+      confirmed_quantity: props.itemData.confirmed_quantity ?? null,
+      ordered_quantity: props.itemData.ordered_quantity ?? null,
       web_link: props.itemData.web_link ?? '',
       price_gbp: props.itemData.price_gbp ?? null,
       product_weight: props.itemData.product_weight ?? null,

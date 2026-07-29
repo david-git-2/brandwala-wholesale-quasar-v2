@@ -51,6 +51,8 @@ export interface ProductBasedCostingItem {
   image_url: string | null;
   note: string | null;
   quantity: number | null;
+  confirmed_quantity?: number | null;
+  ordered_quantity?: number | null;
   delivered_quantity: number | null;
   barcode: string | null;
   product_code: string | null;
@@ -76,6 +78,8 @@ export interface ProductBasedCostingItemCreateInput {
   image_url?: string | null;
   note?: string | null;
   quantity?: number | null;
+  confirmed_quantity?: number | null;
+  ordered_quantity?: number | null;
   delivered_quantity?: number | null;
   barcode?: string | null;
   product_code?: string | null;

@@ -347,6 +347,40 @@ const checkShipmentItemStockReferences = async (itemId: number): Promise<boolean
   return (data && data.length > 0) || false;
 };
 
+const listChildProcurementLines = async (
+  parentTenantId: number,
+  childTenantId?: number | null,
+  search?: string | null,
+  limit: number = 100,
+  offset: number = 0,
+) => {
+  const { data, error } = await db.rpc('list_child_procurement_lines', {
+    p_parent_tenant_id: parentTenantId,
+    p_child_tenant_id: childTenantId || null,
+    p_search: search || null,
+    p_limit: limit,
+    p_offset: offset,
+  });
+
+  if (error) throw error;
+  return data;
+};
+
+const addChildLineToParentShipment = async (
+  parentShipmentId: number,
+  sourceType: string,
+  sourceId: number,
+) => {
+  const { data, error } = await db.rpc('add_child_line_to_parent_shipment', {
+    p_parent_shipment_id: parentShipmentId,
+    p_source_type: sourceType,
+    p_source_id: sourceId,
+  });
+
+  if (error) throw error;
+  return data;
+};
+
 export const globalShipmentRepository = {
   getById,
   listPaginated,
@@ -364,4 +398,6 @@ export const globalShipmentRepository = {
   updateShipmentItemsOrder,
   applyWeightBalance,
   applyPurchaseBalance,
+  listChildProcurementLines,
+  addChildLineToParentShipment,
 };
