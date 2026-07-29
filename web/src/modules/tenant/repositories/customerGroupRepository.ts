@@ -25,7 +25,12 @@ const listCustomerGroupsByTenant = async (tenantId: number): Promise<CustomerGro
   return (data as CustomerGroup[] | null) ?? [];
 };
 
-const createCustomerGroup = async (payload: CustomerGroupCreateInput): Promise<CustomerGroup> => {
+const createCustomerGroup = async (payload: CustomerGroupCreateInput & {
+  admin_name?: string | null;
+  admin_email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+}): Promise<CustomerGroup> => {
   const { data, error } = await supabase
     .from('customer_groups')
     .insert([
@@ -47,10 +52,49 @@ const createCustomerGroup = async (payload: CustomerGroupCreateInput): Promise<C
     throw new Error('Customer group was not created.');
   }
 
-  return data as CustomerGroup;
+  const group = data as CustomerGroup;
+  const adminName = payload.admin_name?.trim() || `${group.name} Admin`;
+
+  // 1. Create admin member if admin email provided
+  if (payload.admin_email?.trim()) {
+    const email = payload.admin_email.trim().toLowerCase();
+    await supabase.from('customer_group_members').insert([
+      {
+        customer_group_id: group.id,
+        name: adminName,
+        email,
+        role: 'admin' as const,
+        is_active: true,
+      },
+    ]);
+  }
+
+  // 2. Update auto-created billing profile with initial phone, address, email, name if provided
+  const emailVal = payload.admin_email?.trim() || null;
+  const phoneVal = payload.phone?.trim() || null;
+  const addressVal = payload.address?.trim() || null;
+
+  await supabase
+    .from('billing_profiles')
+    .update({
+      name: adminName,
+      email: emailVal,
+      phone: phoneVal,
+      address: addressVal,
+      color: payload.accent_color?.trim() || null,
+    })
+    .eq('customer_group_id', group.id)
+    .eq('tenant_id', payload.tenant_id);
+
+  return group;
 };
 
-const updateCustomerGroup = async (payload: CustomerGroupUpdateInput): Promise<CustomerGroup> => {
+const updateCustomerGroup = async (payload: CustomerGroupUpdateInput & {
+  admin_name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+}): Promise<CustomerGroup> => {
   const updateData: Partial<CustomerGroup> = {};
 
   if (payload.tenant_id !== undefined) {
@@ -84,10 +128,38 @@ const updateCustomerGroup = async (payload: CustomerGroupUpdateInput): Promise<C
     throw new Error('Customer group was not updated.');
   }
 
-  return data as CustomerGroup;
+  const group = data as CustomerGroup;
+
+  // Sync update to associated billing profile
+  const bpUpdate: Record<string, any> = {};
+  if (payload.admin_name !== undefined) bpUpdate.name = payload.admin_name?.trim() || group.name;
+  if (payload.accent_color !== undefined) bpUpdate.color = payload.accent_color?.trim() || null;
+  if (payload.email !== undefined) bpUpdate.email = payload.email?.trim() || null;
+  if (payload.phone !== undefined) bpUpdate.phone = payload.phone?.trim() || null;
+  if (payload.address !== undefined) bpUpdate.address = payload.address?.trim() || null;
+
+  if (Object.keys(bpUpdate).length > 0) {
+    await supabase
+      .from('billing_profiles')
+      .update(bpUpdate)
+      .eq('customer_group_id', group.id);
+  }
+
+  // Also sync admin member name if admin_name was provided
+  if (payload.admin_name?.trim()) {
+    await supabase
+      .from('customer_group_members')
+      .update({ name: payload.admin_name.trim() })
+      .eq('customer_group_id', group.id)
+      .eq('role', 'admin');
+  }
+
+  return group;
 };
 
 const deleteCustomerGroup = async (payload: CustomerGroupDeleteInput): Promise<void> => {
+  // Also explicitly cleanup associated billing profile in case cascade is not yet triggered on legacy records
+  await supabase.from('billing_profiles').delete().eq('customer_group_id', payload.id);
   const { error } = await supabase.from('customer_groups').delete().eq('id', payload.id);
 
   if (error) {

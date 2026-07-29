@@ -11,7 +11,7 @@ const emit = defineEmits<{
   (e: 'update-status', status: string): void;
 }>();
 
-const statusOrder = ['processing', 'ready_for_pickup', 'shipped', 'delivered', 'returned'];
+const statusOrder = ['submitted', 'processing', 'ready_for_pickup', 'shipped', 'delivered', 'returned'];
 const isPassedStatus = (st: string) => {
   if (!props.order?.status) return false;
   const currentIdx = statusOrder.indexOf(props.order.status);
@@ -36,9 +36,34 @@ const getStatusColor = (status: string) => {
 </script>
 
 <template>
-  <q-card v-if="order?.status !== 'confirmed'" flat bordered class="q-pa-sm">
+  <q-card flat bordered class="q-pa-sm">
     <div class="row items-center justify-between q-col-gutter-sm">
       <div class="col-grow row items-center q-gutter-xs status-workflow-row">
+        <!-- Submitted state indicator (Read-Only) -->
+        <q-chip
+          v-if="order?.status === 'submitted' || isPassedStatus('submitted')"
+          dense
+          :color="order?.status === 'submitted' ? 'indigo-7' : 'grey-5'"
+          :text-color="order?.status === 'submitted' ? 'white' : 'grey-9'"
+          :outline="order?.status !== 'submitted'"
+          class="q-px-sm text-caption text-weight-bold"
+        >
+          <q-icon
+            v-if="order?.status === 'submitted'"
+            name="ph ph-check-circle"
+            size="14px"
+            class="q-mr-xs"
+          />
+          Submitted
+        </q-chip>
+        <q-icon
+          v-if="order?.status === 'submitted' || isPassedStatus('submitted')"
+          name="ph ph-caret-right"
+          color="grey-5"
+          size="18px"
+          class="status-workflow-chevron"
+        />
+
         <template
           v-for="(st, idx) in ['processing', 'ready_for_pickup', 'shipped', 'delivered']"
           :key="st"

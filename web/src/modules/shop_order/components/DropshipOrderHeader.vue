@@ -9,10 +9,12 @@ defineProps<{
     loading: boolean;
     action: () => void;
   } | null;
+  isDeleting?: boolean;
 }>();
 
 const emit = defineEmits<{
   (e: 'open-recipient-invoice'): void;
+  (e: 'delete-order'): void;
 }>();
 </script>
 
@@ -70,6 +72,16 @@ const emit = defineEmits<{
         :label="primaryCta.label"
         :loading="primaryCta.loading"
         @click="primaryCta.action"
+      />
+
+      <q-btn
+        flat
+        color="negative"
+        icon="ph ph-trash"
+        label="Delete Order"
+        no-caps
+        :loading="isDeleting"
+        @click="emit('delete-order')"
       />
     </div>
   </section>

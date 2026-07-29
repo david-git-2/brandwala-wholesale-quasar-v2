@@ -1,20 +1,10 @@
 <template>
-  <q-page class="q-pa-md">
+  <component :is="isEmbedded ? 'div' : 'q-page'" :class="isEmbedded ? '' : 'q-pa-md'">
     <div class="q-gutter-y-md">
-      <section class="row items-center justify-between q-col-gutter-md">
+      <section v-if="!isEmbedded" class="row items-center justify-between q-col-gutter-md">
         <div class="col">
           <div class="text-overline text-primary">Invoices</div>
           <h1 class="text-h5 text-weight-bold q-my-none">Billing Profiles</h1>
-        </div>
-        <div class="col-auto">
-          <q-btn
-            color="primary"
-            unelevated
-            no-caps
-            class="pill-btn"
-            label="Create Billing Profile"
-            @click="createOpen = true"
-          />
         </div>
       </section>
 
@@ -69,7 +59,6 @@
               </q-badge>
             </q-btn>
           </div>
-          <div class="col-auto"></div>
         </div>
       </q-card>
 
@@ -87,7 +76,19 @@
         </thead>
         <tbody>
           <tr v-if="!store.items.length && !store.loading">
-            <td colspan="6" class="text-center text-grey-7">No billing profiles found.</td>
+            <td colspan="6" class="q-pa-none">
+              <div class="column items-center justify-center q-pa-xl text-center">
+                <q-avatar size="64px" color="primary-soft" class="q-mb-md">
+                  <q-icon name="ph ph-receipt" size="32px" color="primary" />
+                </q-avatar>
+                <div class="text-h6 text-weight-bold text-grey-9 q-mb-xs">
+                  No Billing Profiles Found
+                </div>
+                <p class="text-body2 text-grey-6 q-mb-md" style="max-width: 400px">
+                  Billing profiles are automatically managed per Customer Group. Create a Customer Group to generate its billing profile.
+                </p>
+              </div>
+            </td>
           </tr>
           <tr v-for="row in filteredItems" :key="row.id">
             <td>
@@ -119,29 +120,15 @@
             <td>{{ row.phone ?? '-' }}</td>
             <td>{{ row.address ?? '-' }}</td>
             <td class="text-right">
-              <q-btn flat round dense icon="ph ph-dots-three-vertical">
-                <q-menu auto-close>
-                  <q-list dense style="min-width: 160px">
-                    <q-item clickable @click="onOpenWalletDrawer(row)">
-                      <q-item-section avatar class="min-width-auto q-pr-sm">
-                        <q-icon name="ph ph-wallet" color="primary" size="18px" />
-                      </q-item-section>
-                      <q-item-section>Wallet &amp; Ledger</q-item-section>
-                    </q-item>
-                    <q-item clickable @click="onOpenEdit(row.id)">
-                      <q-item-section avatar class="min-width-auto q-pr-sm">
-                        <q-icon name="ph ph-pencil-simple" size="18px" />
-                      </q-item-section>
-                      <q-item-section>Edit</q-item-section>
-                    </q-item>
-                    <q-item clickable class="text-negative" @click="onOpenDelete(row.id)">
-                      <q-item-section avatar class="min-width-auto q-pr-sm">
-                        <q-icon name="ph ph-trash" color="negative" size="18px" />
-                      </q-item-section>
-                      <q-item-section>Delete</q-item-section>
-                    </q-item>
-                  </q-list>
-                </q-menu>
+              <q-btn
+                flat
+                round
+                dense
+                color="primary"
+                icon="ph ph-wallet"
+                @click="onOpenWalletDrawer(row)"
+              >
+                <q-tooltip>Wallet &amp; Ledger</q-tooltip>
               </q-btn>
             </td>
           </tr>
@@ -173,36 +160,6 @@
       </div>
     </FilterSidebar>
 
-    <BillingProfileCreateDialog
-      v-model="createOpen"
-      :tenant-id="authStore.tenantId"
-      :saving="store.saving"
-      @submit="onCreate"
-    />
-
-    <BillingProfileEditDialog
-      v-model="editOpen"
-      :profile="selectedProfile"
-      :saving="store.saving"
-      @submit="onEdit"
-    />
-
-    <q-dialog v-model="deleteOpen">
-      <q-card style="min-width: 320px">
-        <q-card-section class="text-h6">Delete Billing Profile</q-card-section>
-        <q-card-section> Are you sure you want to delete this billing profile? </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat no-caps label="Cancel" v-close-popup />
-          <q-btn
-            color="negative"
-            no-caps
-            label="Delete"
-            :loading="store.saving"
-            @click="onDelete"
-          />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
     <BillingProfileDetailsDrawer
       v-model="walletDrawerOpen"
       :tenant-id="authStore.tenantId"
@@ -213,7 +170,7 @@
       :net-balance="0"
     />
   </div>
-</q-page>
+  </component>
 </template>
 
 <script setup lang="ts">
@@ -224,17 +181,53 @@ import FilterSidebar from 'src/components/FilterSidebar.vue';
 import BillingProfileCreateDialog from '../components/BillingProfileCreateDialog.vue';
 import BillingProfileEditDialog from '../components/BillingProfileEditDialog.vue';
 import BillingProfileDetailsDrawer from '../components/BillingProfileDetailsDrawer.vue';
-import { useBillingProfileStore } from '../stores/billingProfileStore';
-import { useCustomerGroupStore } from 'src/modules/tenant/stores/customerGroupStore';
+import { useBillingProfilesQuery } from '../composables/useBillingProfileQuery';
+import { useBillingProfileMutations } from '../composables/useBillingProfileMutations';
+import { useCustomerGroupsQuery } from 'src/modules/tenant/composables/useCustomerGroupQuery';
 import type {
   BillingProfile,
   CreateBillingProfileInput,
 } from '../repositories/billingProfileRepository';
+import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';
+
+const props = withDefaults(
+  defineProps<{
+    isEmbedded?: boolean;
+  }>(),
+  {
+    isEmbedded: false,
+  }
+);
 
 const authStore = useAuthStore();
 const route = useRoute();
-const store = useBillingProfileStore();
-const customerGroupStore = useCustomerGroupStore();
+
+const tenantId = computed(() => authStore.tenantId as number);
+
+// TanStack Query & Mutations
+const { data: billingProfilesData, isLoading: profilesLoading } = useBillingProfilesQuery(tenantId);
+const { data: customerGroupsData } = useCustomerGroupsQuery(tenantId);
+
+const {
+  createBillingProfileMutation,
+  updateBillingProfileMutation,
+  deleteBillingProfileMutation,
+} = useBillingProfileMutations();
+
+const items = computed(() => billingProfilesData.value?.data ?? []);
+const customerGroups = computed(() => customerGroupsData.value ?? []);
+const isSaving = computed(
+  () =>
+    createBillingProfileMutation.isPending.value ||
+    updateBillingProfileMutation.isPending.value ||
+    deleteBillingProfileMutation.isPending.value
+);
+
+const store = computed(() => ({
+  items: items.value,
+  loading: profilesLoading.value,
+  saving: isSaving.value,
+}));
 
 const createOpen = ref(false);
 const showSearchInput = ref(false);
@@ -254,13 +247,13 @@ const onOpenWalletDrawer = (profile: BillingProfile) => {
 };
 
 const selectedProfile = computed<BillingProfile | null>(
-  () => store.items.find((row) => row.id === selectedId.value) ?? null,
+  () => items.value.find((row) => row.id === selectedId.value) ?? null,
 );
 const filteredItems = computed(() => {
   const search = searchText.value.trim().toLowerCase();
   const email = emailFilter.value.trim().toLowerCase();
   const phone = phoneFilter.value.trim().toLowerCase();
-  return store.items.filter((row) => {
+  return items.value.filter((row) => {
     const matchesSearch =
       !search ||
       [row.name, row.email ?? '', row.phone ?? '', row.address ?? ''].some((value) =>
@@ -279,37 +272,26 @@ const activeFilterCount = computed(() => {
 });
 
 const customerGroupNameMap = computed<Record<number, string>>(() =>
-  customerGroupStore.groups.reduce<Record<number, string>>((acc, g) => {
+  customerGroups.value.reduce<Record<number, string>>((acc, g) => {
     acc[g.id] = g.name;
     return acc;
   }, {}),
 );
 
 const customerGroupColorMap = computed<Record<number, string | null>>(() =>
-  customerGroupStore.groups.reduce<Record<number, string | null>>((acc, g) => {
+  customerGroups.value.reduce<Record<number, string | null>>((acc, g) => {
     acc[g.id] = g.accent_color;
     return acc;
   }, {}),
 );
 
-const load = async () => {
-  if (!authStore.tenantId) return;
-  await Promise.all([
-    store.fetchBillingProfiles({
-      tenant_id: authStore.tenantId,
-      page: 1,
-      page_size: 50,
-      sortBy: 'created_at',
-      sortOrder: 'desc',
-    }),
-    customerGroupStore.fetchCustomerGroupsByTenant(authStore.tenantId),
-  ]);
-};
-
 const onCreate = async (payload: CreateBillingProfileInput) => {
-  const result = await store.createBillingProfile(payload);
-  if (result.success) {
+  try {
+    await createBillingProfileMutation.mutateAsync(payload);
+    showSuccessNotification('Billing profile created successfully');
     createOpen.value = false;
+  } catch (err: any) {
+    showErrorNotification(err?.message || 'Failed to create billing profile');
   }
 };
 
@@ -329,9 +311,15 @@ const onEdit = async (payload: {
     color: string | null;
   };
 }) => {
-  const result = await store.updateBillingProfile(payload);
-  if (result.success) {
+  try {
+    await updateBillingProfileMutation.mutateAsync({
+      ...payload,
+      tenant_id: tenantId.value,
+    });
+    showSuccessNotification('Billing profile updated successfully');
     editOpen.value = false;
+  } catch (err: any) {
+    showErrorNotification(err?.message || 'Failed to update billing profile');
   }
 };
 
@@ -342,10 +330,16 @@ const onOpenDelete = (id: number) => {
 
 const onDelete = async () => {
   if (selectedId.value === null) return;
-  const result = await store.deleteBillingProfile(selectedId.value);
-  if (result.success) {
+  try {
+    await deleteBillingProfileMutation.mutateAsync({
+      id: selectedId.value,
+      tenant_id: tenantId.value,
+    });
+    showSuccessNotification('Billing profile deleted successfully');
     deleteOpen.value = false;
     selectedId.value = null;
+  } catch (err: any) {
+    showErrorNotification(err?.message || 'Failed to delete billing profile');
   }
 };
 
@@ -404,7 +398,6 @@ const onResetFilters = () => {
 };
 
 onMounted(() => {
-  void load();
   if (route.query.create === 'true') {
     createOpen.value = true;
   }

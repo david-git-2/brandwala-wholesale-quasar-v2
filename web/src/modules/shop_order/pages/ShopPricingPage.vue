@@ -854,6 +854,13 @@ const onSaveListing = () => {
     form.value.minimum_sell_price_currency_id = null;
   }
 
+  if (form.value.global_stock_allocation_id) {
+    const alloc = candidates.value.find((c) => c.allocation_id === form.value.global_stock_allocation_id);
+    if (alloc && alloc.allocated_quantity <= 0) {
+      form.value.is_active = false;
+    }
+  }
+
   saveListing(form.value, {
     onSuccess: () => {
       editDialogOpen.value = false;
@@ -1030,6 +1037,9 @@ const onInlineCellEdit = (
   const isQtyField = field === 'display_quantity_override';
   const isPriceField = field === 'sell_price_amount' || field === 'minimum_sell_price_amount';
 
+  // Automatically make product inactive if actual quantity (available_to_sell) <= 0
+  const nextIsActive = listing.available_to_sell <= 0 ? false : listing.is_active;
+
   const payload: UpsertListingPayload = {
     id: listing.id,
     tenant_id: tenantId.value,
@@ -1042,7 +1052,7 @@ const onInlineCellEdit = (
     show_quantity: listing.show_quantity,
     display_quantity_override:
       field === 'display_quantity_override' ? val : listing.display_quantity_override,
-    is_active: listing.is_active,
+    is_active: nextIsActive,
     is_price_locked: isPriceField && lockOnManualEdit ? true : Boolean(listing.is_price_locked),
     is_quantity_locked: isQtyField && lockOnManualEdit ? true : Boolean(listing.is_quantity_locked),
   };
@@ -1106,6 +1116,15 @@ const onToggleShowQuantity = (listing: ShopProductListing, showQty: boolean) => 
 };
 
 const onToggleIsActive = (listing: ShopProductListing, isActive: boolean) => {
+  if (isActive && listing.available_to_sell <= 0) {
+    $q.notify({
+      type: 'warning',
+      message: 'Cannot activate listing because actual quantity is 0 or less',
+      timeout: 2000,
+    });
+    return;
+  }
+
   const currencyId = listing.sell_price_currency_id || shopDefaultCurrencyId.value || 0;
   const minPriceAmount =
     listing.minimum_sell_price_amount !== null && listing.minimum_sell_price_amount !== undefined

@@ -69,8 +69,13 @@ const { data: currenciesData } = useThriftCurrenciesQuery();
 const currencies = computed(() => currenciesData.value ?? []);
 
 const goToOrderDetails = (orderId: number) => {
+  const order = orders.value.find((o) => o.id === orderId);
   const slug = tenantSlug.value ? `/${tenantSlug.value}` : '';
-  void router.push(`${slug}/app/shop/orders/${orderId}`);
+  if (order?.shop_type_snapshot === 'dropship') {
+    void router.push(`${slug}/app/shop/dropship/${orderId}`);
+  } else {
+    void router.push(`${slug}/app/shop/orders/${orderId}`);
+  }
 };
 
 const addToDropshipDesk = async (orderId: number) => {

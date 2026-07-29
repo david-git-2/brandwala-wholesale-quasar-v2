@@ -106,6 +106,9 @@ const { t } = useI18n();
 const $q = useQuasar();
 
 const orderId = computed(() => Number(route.params.id || 0));
+const tenantSlug = computed(() =>
+  typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : '',
+);
 
 const { data: orderDetailsData, isLoading, isError, error } = useShopOrderDetailQuery(orderId);
 const currentOrder = computed(() => orderDetailsData.value?.order || null);
@@ -130,6 +133,13 @@ watch(
   () => orderDetailsData.value,
   async (newData) => {
     if (newData) {
+      if (newData.order?.shop_type_snapshot === 'dropship') {
+        void router.replace({
+          name: 'app-shop-dropship-order-detail-page',
+          params: { tenantSlug: tenantSlug.value, id: orderId.value },
+        });
+        return;
+      }
       orderItems.value = JSON.parse(JSON.stringify(newData.items || []));
       const shopId = newData.order?.shop_id;
       if (shopId) {

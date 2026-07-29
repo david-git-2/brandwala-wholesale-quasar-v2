@@ -1,8 +1,8 @@
 <template>
-  <q-page class="bw-page">
+  <component :is="isEmbedded ? 'div' : 'q-page'" :class="isEmbedded ? '' : 'bw-page'">
     <section class="bw-page__stack">
-      <!-- Header -->
-      <section class="row items-center justify-between q-col-gutter-md">
+      <!-- Header (Hidden when embedded in hub) -->
+      <section v-if="!isEmbedded" class="row items-center justify-between q-col-gutter-md">
         <div class="col">
           <div class="text-overline">{{ $t('shop_admin.shop_and_order') }}</div>
           <h1 class="text-h5 q-my-none">{{ $t('navigation.customer_groups') }}</h1>
@@ -21,6 +21,23 @@
           />
         </div>
       </section>
+
+      <!-- Embedded Top Action Bar -->
+      <div v-else class="row items-center justify-between q-mb-xs">
+        <div class="text-subtitle1 text-weight-medium text-grey-8">
+          Customer Groups
+        </div>
+        <div>
+          <q-btn
+            color="primary"
+            unelevated
+            no-caps
+            icon="ph ph-user-plus"
+            :label="$t('shop_admin.add_customer_group')"
+            @click="openCreateDialog"
+          />
+        </div>
+      </div>
 
       <!-- Error banner -->
       <q-banner v-if="store.error || groupStore.error" class="text-white bg-negative" rounded>
@@ -47,16 +64,24 @@
 
         <q-card-section
           v-else-if="groupStore.groups.length === 0"
-          class="text-grey-6 text-center q-pa-xl"
+          class="column items-center justify-center q-pa-xl text-center"
         >
-          <q-icon name="ph ph-users-three" size="48px" class="q-mb-sm block" />
-          {{ $t('shop_admin.no_customer_groups') }}
-          <div class="q-mt-md">
+          <q-avatar size="64px" color="primary-soft" class="q-mb-md">
+            <q-icon name="ph ph-users-three" size="32px" color="primary" />
+          </q-avatar>
+          <div class="text-h6 text-weight-bold text-grey-9 q-mb-xs">
+            {{ $t('shop_admin.no_customer_groups') }}
+          </div>
+          <p class="text-body2 text-grey-6 q-mb-md" style="max-width: 400px">
+            Organize customer access levels, discounts, and custom billing rules by adding customer groups.
+          </p>
+          <div>
             <q-btn
               color="primary"
-              outline
+              unelevated
               no-caps
-              icon="ph ph-user-plus"
+              class="pill-btn"
+              icon="ph ph-plus"
               :label="$t('shop_admin.add_customer_group')"
               @click="openCreateDialog"
             />
@@ -75,86 +100,76 @@
           <template #body-cell-accent="props">
             <q-td :props="props">
               <div
-                class="accent-swatch"
+                class="accent-swatch shadow-1"
                 :style="{ backgroundColor: props.row.accent_color || '#B45F34' }"
-              />
+              >
+                <q-tooltip>{{ props.row.accent_color || 'Default' }}</q-tooltip>
+              </div>
             </q-td>
           </template>
 
-          <template #body-cell-billing_profiles="props">
+          <template #body-cell-name="props">
             <q-td :props="props">
-              <div v-if="getBillingProfilesForGroup(props.row.id).length > 0" class="row q-gutter-xs">
-                <q-chip
-                  v-for="profile in getBillingProfilesForGroup(props.row.id)"
-                  :key="profile.id"
-                  dense
-                  outline
-                  color="primary"
-                  text-color="primary"
-                  removable
-                  @remove="unlinkProfile(profile)"
-                >
-                  {{ profile.name }}
-                </q-chip>
+              <div class="text-weight-bold text-grey-9">{{ props.row.name }}</div>
+            </q-td>
+          </template>
+
+          <template #body-cell-admin_name="props">
+            <q-td :props="props">
+              <div v-if="getGroupAdminInfo(props.row.id)" class="column">
+                <span class="text-weight-medium text-grey-9">{{ getGroupAdminInfo(props.row.id)?.name || 'Admin' }}</span>
+                <span class="text-caption text-grey-6">{{ getGroupAdminInfo(props.row.id)?.email || '-' }}</span>
               </div>
-              <div v-else class="row items-center q-gutter-x-xs text-amber-9 text-caption text-weight-medium bg-amber-1 q-px-sm q-py-xs rounded-borders" style="display: inline-flex; border: 1px dashed #ffb300;">
-                <q-icon name="ph ph-warning" size="14px" />
-                <span>{{ $t('shop_admin.none_required_dropship') }}</span>
-              </div>
+              <span v-else class="text-caption text-grey-5">-</span>
             </q-td>
           </template>
 
           <template #body-cell-is_active="props">
             <q-td :props="props" class="text-center">
-              <q-icon
-                :name="props.row.is_active ? 'check_circle' : 'cancel'"
-                :color="props.row.is_active ? 'positive' : 'grey-5'"
-                size="20px"
+              <q-toggle
+                :model-value="props.row.is_active"
+                color="positive"
+                dense
+                @update:model-value="toggleGroupActive(props.row, $event)"
+              />
+            </q-td>
+          </template>
+
+          <template #body-cell-manage_members="props">
+            <q-td :props="props" class="text-center">
+              <q-btn
+                flat
+                dense
+                no-caps
+                color="primary"
+                icon="ph ph-users"
+                label="Manage Members"
+                class="rounded-borders"
+                @click="goToMembers(props.row.id)"
               />
             </q-td>
           </template>
 
           <template #body-cell-actions="props">
-            <q-td :props="props">
-              <q-btn
-                flat
-                round
-                dense
-                icon="ph ph-pencil-simple"
-                color="grey-7"
-                @click="openEditDialog(props.row)"
-              >
-                <q-tooltip>{{ $t('shop_admin.edit_group') }}</q-tooltip>
-              </q-btn>
-              <q-btn
-                flat
-                round
-                dense
-                icon="ph ph-link"
-                color="primary"
-                @click="openLinkProfileDialog(props.row)"
-              >
-                <q-tooltip>{{ $t('shop_admin.connect_billing_profile') }}</q-tooltip>
-              </q-btn>
-              <q-btn
-                flat
-                round
-                dense
-                icon="ph ph-users"
-                color="primary"
-                @click="goToMembers(props.row.id)"
-              >
-                <q-tooltip>{{ $t('shop_admin.manage_members') }}</q-tooltip>
-              </q-btn>
-              <q-btn
-                flat
-                round
-                dense
-                icon="ph ph-trash"
-                color="negative"
-                @click="openDeleteDialog(props.row)"
-              >
-                <q-tooltip>{{ $t('shop_admin.delete_group') }}</q-tooltip>
+            <q-td :props="props" class="text-right">
+              <q-btn flat round dense icon="ph ph-dots-three-vertical">
+                <q-menu auto-close>
+                  <q-list dense style="min-width: 160px">
+                    <q-item clickable @click="openEditDialog(props.row)">
+                      <q-item-section avatar class="min-width-auto q-pr-sm">
+                        <q-icon name="ph ph-pencil-simple" size="18px" color="grey-7" />
+                      </q-item-section>
+                      <q-item-section>{{ $t('shop_admin.edit_group') }}</q-item-section>
+                    </q-item>
+                    <q-separator />
+                    <q-item clickable class="text-negative" @click="openDeleteDialog(props.row)">
+                      <q-item-section avatar class="min-width-auto q-pr-sm">
+                        <q-icon name="ph ph-trash" size="18px" color="negative" />
+                      </q-item-section>
+                      <q-item-section>{{ $t('shop_admin.delete_group') }}</q-item-section>
+                    </q-item>
+                  </q-list>
+                </q-menu>
               </q-btn>
             </q-td>
           </template>
@@ -173,37 +188,124 @@
           <q-btn icon="ph ph-x" flat round dense v-close-popup />
         </q-card-section>
 
-        <q-card-section class="q-gutter-md">
-          <q-input v-model="form.name" :label="$t('shop_admin.group_name') + ' *'" outlined dense />
-          <q-input
-            v-model="form.accentColor"
-            :label="$t('shop_admin.accent_color')"
-            outlined
-            dense
-          />
-          <div class="row items-center justify-between">
-            <div class="text-subtitle2 text-grey-8">{{ $t('shop_admin.status') }}</div>
-            <q-toggle
-              v-model="form.isActive"
-              :label="form.isActive ? $t('shop_admin.active') : $t('shop_admin.inactive')"
-              color="positive"
-              keep-color
+        <q-form ref="formRef" @submit.prevent="saveGroup">
+          <q-card-section class="q-gutter-md">
+            <q-input
+              v-model="form.name"
+              :label="$t('shop_admin.group_name') + ' *'"
+              outlined
+              dense
+              :rules="[val => !!val && !!val.trim() || 'Group Name is required']"
             />
-          </div>
-        </q-card-section>
+            <div>
+              <div class="text-caption text-grey-7 q-mb-xs font-weight-medium">Accent Color *</div>
+              <q-input
+                v-model="form.accentColor"
+                :label="$t('shop_admin.accent_color') + ' *'"
+                outlined
+                dense
+                clearable
+                :rules="[val => !!val && !!val.trim() || 'Accent Color is required']"
+              >
+                <template #prepend>
+                  <div
+                    class="cursor-pointer rounded-borders shadow-1"
+                    :style="{
+                      width: '24px',
+                      height: '24px',
+                      backgroundColor: form.accentColor || '#B45F34',
+                      border: '1px solid rgba(0,0,0,0.12)'
+                    }"
+                  >
+                    <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                      <q-color v-model="form.accentColor" no-header-tabs />
+                    </q-popup-proxy>
+                  </div>
+                </template>
+                <template #append>
+                  <q-icon name="ph ph-palette" class="cursor-pointer">
+                    <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                      <q-color v-model="form.accentColor" no-header-tabs />
+                    </q-popup-proxy>
+                  </q-icon>
+                </template>
+              </q-input>
 
-        <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat no-caps :label="$t('shop_admin.cancel')" v-close-popup />
-          <q-btn
-            color="primary"
-            unelevated
-            no-caps
-            :label="$t('shop_admin.save')"
-            :loading="groupStore.loading"
-            :disable="!form.name.trim()"
-            @click="saveGroup"
-          />
-        </q-card-actions>
+              <!-- Quick Preset Swatches -->
+              <div class="row items-center q-gutter-xs q-mt-xs">
+                <span class="text-caption text-grey-6 q-mr-xs">Quick Set:</span>
+                <div
+                  v-for="color in presetColors"
+                  :key="color"
+                  class="cursor-pointer preset-swatch shadow-1"
+                  :class="{ 'preset-swatch--active': form.accentColor === color }"
+                  :style="{ backgroundColor: color }"
+                  @click="form.accentColor = color"
+                >
+                  <q-tooltip>{{ color }}</q-tooltip>
+                </div>
+              </div>
+            </div>
+            <q-input
+              v-model="form.adminName"
+              label="Admin Name *"
+              outlined
+              dense
+              hint="Name of the group contact / administrator"
+              :rules="[val => !!val && !!val.trim() || 'Admin Name is required']"
+            />
+            <q-input
+              v-model="form.adminEmail"
+              label="Admin Email *"
+              type="email"
+              outlined
+              dense
+              hint="Used for group admin member and billing profile email"
+              :rules="[
+                val => !!val && !!val.trim() || 'Admin Email is required',
+                val => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim()) || 'Please enter a valid email address'
+              ]"
+            />
+            <q-input
+              v-model="form.phone"
+              label="Phone (Optional)"
+              outlined
+              dense
+              hint="Billing profile contact phone"
+            />
+            <q-input
+              v-model="form.address"
+              label="Address (Optional)"
+              type="textarea"
+              rows="2"
+              outlined
+              dense
+              hint="Billing profile address"
+            />
+            <div class="row items-center justify-between">
+              <div class="text-subtitle2 text-grey-8">{{ $t('shop_admin.status') }}</div>
+              <q-toggle
+                v-model="form.isActive"
+                :label="form.isActive ? $t('shop_admin.active') : $t('shop_admin.inactive')"
+                color="positive"
+                keep-color
+              />
+            </div>
+          </q-card-section>
+
+          <q-card-actions align="right" class="q-pa-md">
+            <q-btn flat no-caps :label="$t('shop_admin.cancel')" v-close-popup />
+            <q-btn
+              color="primary"
+              unelevated
+              no-caps
+              type="submit"
+              :label="$t('shop_admin.save')"
+              :loading="groupStore.loading"
+              :disable="!isFormValid"
+            />
+          </q-card-actions>
+        </q-form>
       </q-card>
     </q-dialog>
 
@@ -285,35 +387,75 @@
             class="pill-btn"
             no-caps
             :label="$t('shop_admin.link')"
-            :loading="billingProfileStore.saving"
+            :loading="updateBillingProfileMutation.isPending.value"
             :disable="!profileToLink"
             @click="submitLinkProfile"
           />
         </q-card-actions>
       </q-card>
     </q-dialog>
-  </q-page>
+  </component>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useCustomerGroupStore } from 'src/modules/tenant/stores/customerGroupStore';
 import type { CustomerGroup } from 'src/modules/tenant/types';
-import { useShopPermissionsStore } from '../stores/shopPermissionsStore';
-import { useBillingProfileStore } from 'src/modules/sales_invoice/stores/billingProfileStore';
+import { useCustomerGroupsQuery } from 'src/modules/tenant/composables/useCustomerGroupQuery';
+import { useCustomerGroupMutations } from 'src/modules/tenant/composables/useCustomerGroupMutations';
+import { useBillingProfilesQuery } from 'src/modules/sales_invoice/composables/useBillingProfileQuery';
+import { useBillingProfileMutations } from 'src/modules/sales_invoice/composables/useBillingProfileMutations';
+import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';
+
+const props = withDefaults(
+  defineProps<{
+    isEmbedded?: boolean;
+  }>(),
+  {
+    isEmbedded: false,
+  }
+);
 
 const authStore = useAuthStore();
-const store = useShopPermissionsStore();
-const groupStore = useCustomerGroupStore();
-const billingProfileStore = useBillingProfileStore();
 const router = useRouter();
 
 const tenantId = computed(() => authStore.tenantId as number);
 const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '');
 
+// TanStack Query & Mutations
+const { data: groupsData, isLoading: groupsLoading, error: groupsError } = useCustomerGroupsQuery(tenantId);
+const { data: billingProfilesData } = useBillingProfilesQuery(tenantId);
+
+const { createGroupMutation, updateGroupMutation, deleteGroupMutation } = useCustomerGroupMutations();
+const { updateBillingProfileMutation } = useBillingProfileMutations();
+
+const groups = computed(() => groupsData.value ?? []);
+const billingProfiles = computed(() => billingProfilesData.value?.data ?? []);
+const isSaving = computed(
+  () =>
+    createGroupMutation.isPending.value ||
+    updateGroupMutation.isPending.value ||
+    deleteGroupMutation.isPending.value
+);
+const errorMessage = computed(
+  () => (groupsError.value ? (groupsError.value as Error).message : '')
+);
+
+const groupStore = computed(() => ({
+  loading: groupsLoading.value || isSaving.value,
+  groups: groups.value,
+  error: errorMessage.value,
+  clearError: () => {},
+}));
+
+const store = computed(() => ({
+  error: '',
+  clearError: () => {},
+}));
+
+const formRef = ref<any>(null);
 const dialogOpen = ref(false);
 const deleteOpen = ref(false);
 const groupToDelete = ref<CustomerGroup | null>(null);
@@ -321,23 +463,54 @@ const form = reactive({
   id: null as number | null,
   name: '',
   accentColor: '',
+  adminName: '',
+  adminEmail: '',
+  phone: '',
+  address: '',
   isActive: true,
+});
+
+const isEmailValid = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+const isFormValid = computed(() => {
+  return (
+    !!form.name.trim() &&
+    !!form.accentColor.trim() &&
+    !!form.adminName.trim() &&
+    !!form.adminEmail.trim() &&
+    isEmailValid(form.adminEmail)
+  );
 });
 
 const { t } = useI18n();
 
 const columns = computed(() => [
-  { name: 'accent', label: '', field: 'accent_color', align: 'left' as const },
+  { name: 'accent', label: 'Color', field: 'accent_color', align: 'left' as const },
   { name: 'name', label: t('shop_admin.group_name'), field: 'name', align: 'left' as const, sortable: true },
-  { name: 'billing_profiles', label: t('shop_admin.col_billing_profiles'), field: 'id', align: 'left' as const },
+  { name: 'admin_name', label: 'Admin', field: 'id', align: 'left' as const },
   { name: 'is_active', label: t('shop_admin.active'), field: 'is_active', align: 'center' as const },
+  { name: 'manage_members', label: 'Members', field: 'id', align: 'center' as const },
   { name: 'actions', label: '', field: 'id', align: 'right' as const },
 ]);
 
-const load = () => {
-  if (tenantId.value) {
-    void groupStore.fetchCustomerGroupsByTenant(tenantId.value);
-    void billingProfileStore.fetchBillingProfiles({ tenant_id: tenantId.value, page_size: 1000 });
+const getGroupAdminInfo = (groupId: number) => {
+  const profile = billingProfiles.value.find(p => p.customer_group_id === groupId);
+  if (!profile) return null;
+  return {
+    name: profile.name,
+    email: profile.email,
+  };
+};
+
+const toggleGroupActive = async (group: any, activeVal: boolean) => {
+  try {
+    await updateGroupMutation.mutateAsync({
+      id: group.id,
+      tenant_id: tenantId.value,
+      is_active: activeVal,
+    });
+    showSuccessNotification(`Customer group ${activeVal ? 'activated' : 'deactivated'}`);
+  } catch (err: any) {
+    showErrorNotification(err?.message || 'Failed to toggle status');
   }
 };
 
@@ -345,6 +518,10 @@ const openCreateDialog = () => {
   form.id = null;
   form.name = '';
   form.accentColor = '';
+  form.adminName = '';
+  form.adminEmail = '';
+  form.phone = '';
+  form.address = '';
   form.isActive = true;
   dialogOpen.value = true;
 };
@@ -359,6 +536,14 @@ const openEditDialog = (group: {
   form.name = group.name;
   form.accentColor = group.accent_color || '';
   form.isActive = group.is_active;
+
+  const groupProfiles = getBillingProfilesForGroup(group.id);
+  const matchedBp = groupProfiles[0];
+  form.adminName = matchedBp?.name || '';
+  form.adminEmail = matchedBp?.email || '';
+  form.phone = matchedBp?.phone || '';
+  form.address = matchedBp?.address || '';
+
   dialogOpen.value = true;
 };
 
@@ -370,33 +555,52 @@ const openDeleteDialog = (group: CustomerGroup) => {
 const saveGroup = async () => {
   if (!tenantId.value || !form.name.trim()) return;
 
-  const result = form.id
-    ? await groupStore.updateCustomerGroup({
+  try {
+    if (form.id) {
+      await updateGroupMutation.mutateAsync({
         id: form.id,
         tenant_id: tenantId.value,
         name: form.name.trim(),
         accent_color: form.accentColor || null,
         is_active: form.isActive,
-      })
-    : await groupStore.createCustomerGroup({
+        admin_name: form.adminName.trim() || null,
+        email: form.adminEmail.trim() || null,
+        phone: form.phone.trim() || null,
+        address: form.address.trim() || null,
+      } as any);
+      showSuccessNotification('Customer group updated successfully');
+    } else {
+      await createGroupMutation.mutateAsync({
         tenant_id: tenantId.value,
         name: form.name.trim(),
         accent_color: form.accentColor || null,
         is_active: form.isActive,
-      });
-
-  if (!result.success) return;
-  dialogOpen.value = false;
-  load();
+        admin_name: form.adminName.trim() || null,
+        admin_email: form.adminEmail.trim() || null,
+        phone: form.phone.trim() || null,
+        address: form.address.trim() || null,
+      } as any);
+      showSuccessNotification('Customer group created successfully');
+    }
+    dialogOpen.value = false;
+  } catch (err: any) {
+    showErrorNotification(err?.message || 'Failed to save customer group');
+  }
 };
 
 const confirmDelete = async () => {
   if (!groupToDelete.value) return;
-  const result = await groupStore.deleteCustomerGroup({ id: groupToDelete.value.id });
-  if (!result.success) return;
-  deleteOpen.value = false;
-  groupToDelete.value = null;
-  load();
+  try {
+    await deleteGroupMutation.mutateAsync({
+      id: groupToDelete.value.id,
+      tenant_id: tenantId.value,
+    });
+    showSuccessNotification('Customer group deleted successfully');
+    deleteOpen.value = false;
+    groupToDelete.value = null;
+  } catch (err: any) {
+    showErrorNotification(err?.message || 'Failed to delete customer group');
+  }
 };
 
 const goToMembers = (groupId: number) => {
@@ -410,7 +614,7 @@ const goToMembers = (groupId: number) => {
 };
 
 const getBillingProfilesForGroup = (groupId: number) => {
-  return billingProfileStore.items.filter(p => p.customer_group_id === groupId);
+  return billingProfiles.value.filter(p => p.customer_group_id === groupId);
 };
 
 const linkProfileDialogOpen = ref(false);
@@ -425,7 +629,7 @@ const openLinkProfileDialog = (group: any) => {
 
 const unassociatedProfileOptions = computed(() => {
   if (!activeGroupForLink.value) return [];
-  return billingProfileStore.items
+  return billingProfiles.value
     .filter((p) => p.customer_group_id !== activeGroupForLink.value.id)
     .map((p) => ({
       label: p.customer_group_id 
@@ -437,42 +641,59 @@ const unassociatedProfileOptions = computed(() => {
 
 const submitLinkProfile = async () => {
   if (!profileToLink.value || !activeGroupForLink.value) return;
-  const profile = billingProfileStore.items.find(p => p.id === profileToLink.value);
+  const profile = billingProfiles.value.find(p => p.id === profileToLink.value);
   if (!profile) return;
   
-  const res = await billingProfileStore.updateBillingProfile({
-    id: profile.id,
-    patch: {
-      name: profile.name,
-      customer_group_id: activeGroupForLink.value.id,
-      email: profile.email || null,
-      phone: profile.phone || null,
-      address: profile.address || null,
-      color: profile.color || null,
-    },
-  });
-  if (res.success) {
+  try {
+    await updateBillingProfileMutation.mutateAsync({
+      id: profile.id,
+      tenant_id: tenantId.value,
+      patch: {
+        name: profile.name,
+        customer_group_id: activeGroupForLink.value.id,
+        email: profile.email || null,
+        phone: profile.phone || null,
+        address: profile.address || null,
+        color: profile.color || null,
+      },
+    });
+    showSuccessNotification('Billing profile linked successfully');
     linkProfileDialogOpen.value = false;
-    load();
+  } catch (err: any) {
+    showErrorNotification(err?.message || 'Failed to link billing profile');
   }
 };
 
 const unlinkProfile = async (profile: any) => {
-  const res = await billingProfileStore.updateBillingProfile({
-    id: profile.id,
-    patch: {
-      name: profile.name,
-      customer_group_id: null,
-      email: profile.email || null,
-      phone: profile.phone || null,
-      address: profile.address || null,
-      color: profile.color || null,
-    },
-  });
-  if (res.success) {
-    load();
+  try {
+    await updateBillingProfileMutation.mutateAsync({
+      id: profile.id,
+      tenant_id: tenantId.value,
+      patch: {
+        name: profile.name,
+        customer_group_id: null,
+        email: profile.email || null,
+        phone: profile.phone || null,
+        address: profile.address || null,
+        color: profile.color || null,
+      },
+    });
+    showSuccessNotification('Billing profile unlinked successfully');
+  } catch (err: any) {
+    showErrorNotification(err?.message || 'Failed to unlink billing profile');
   }
 };
+
+const presetColors = [
+  '#B45F34', // Brand Rust
+  '#2563EB', // Primary Blue
+  '#059669', // Emerald Green
+  '#D97706', // Amber / Orange
+  '#7C3AED', // Violet / Purple
+  '#DB2777', // Pink
+  '#4B5563', // Slate Slate
+  '#000000', // Black
+];
 
 const goToBillingProfileCreate = () => {
   linkProfileDialogOpen.value = false;
@@ -486,11 +707,6 @@ const goToBillingProfileCreate = () => {
     },
   });
 };
-
-onMounted(load);
-watch(tenantId, (v) => {
-  if (v) load();
-});
 </script>
 
 <style scoped>
@@ -498,5 +714,19 @@ watch(tenantId, (v) => {
   width: 14px;
   height: 14px;
   border-radius: 4px;
+}
+.preset-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.preset-swatch:hover {
+  transform: scale(1.15);
+}
+.preset-swatch--active {
+  border-color: var(--q-primary, #2563eb);
+  transform: scale(1.1);
 }
 </style>

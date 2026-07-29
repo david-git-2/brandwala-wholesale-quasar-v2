@@ -849,6 +849,22 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     ],
   },
   {
+    key: 'shop_category',
+    name: 'Shop Categories',
+    description: 'Manage tenant shop categories displayed across customer storefronts.',
+    parentModuleKey: 'shop_order',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Categories',
+        caption: 'Manage shop categories and icons',
+        icon: 'ph ph-squares-four',
+        routeSegment: 'shop/categories',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
     key: 'shop_permissions',
     name: 'Customer Groups',
     description:
@@ -988,34 +1004,10 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
       },
       {
         scope: 'app',
-        title: 'Courier Holdings',
-        caption: 'Unremitted courier escrow & statement reconciliation',
-        icon: 'ph ph-vault',
-        routeSegment: 'shop/dropship/courier-holdings',
-        requiredAction: 'view',
-      },
-      {
-        scope: 'app',
         title: 'Merchants & Pickup',
         caption: 'Manage merchant sender profiles & pickup locations',
         icon: 'ph ph-storefront',
         routeSegment: 'shop/dropship/merchants',
-        requiredAction: 'view',
-      },
-    ],
-  },
-  {
-    key: 'shop_category',
-    name: 'Shop Categories',
-    description: 'Manage tenant shop categories displayed across customer storefronts.',
-    parentModuleKey: 'shop_order',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Categories',
-        caption: 'Manage shop categories and icons',
-        icon: 'ph ph-squares-four',
-        routeSegment: 'shop/categories',
         requiredAction: 'view',
       },
     ],

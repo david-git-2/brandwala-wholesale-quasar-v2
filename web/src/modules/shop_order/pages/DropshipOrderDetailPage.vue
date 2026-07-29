@@ -5,24 +5,13 @@
       <DropshipOrderDetailSkeleton v-if="loading" />
 
       <template v-else>
-        <!-- Confirmed Handoff Warning Banner -->
-        <q-banner v-if="order?.status === 'confirmed'" class="bg-amber-2 text-amber-10 rounded-borders q-mb-md border-all-1">
-          <template #avatar>
-            <q-icon name="ph ph-warning" color="amber-9" size="32px" />
-          </template>
-          <div class="text-subtitle2 text-weight-bold">
-            {{ $t('shop_admin.dropship_handoff_required_banner') }}
-          </div>
-          <div>
-            Use <strong>Add to Dropship Desk</strong> in the header to hand off this order from the Service Desk and start courier operations.
-          </div>
-        </q-banner>
-
         <!-- Header -->
         <DropshipOrderHeader
           :order="order"
           :primary-cta="primaryCta"
+          :is-deleting="isDeletingOrder"
           @open-recipient-invoice="openRecipientInvoicePreview"
+          @delete-order="confirmDeleteOrder"
         />
 
         <!-- Status Workflow Strip -->
@@ -200,15 +189,17 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
+import { useQuasar } from 'quasar';
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
 import { dropshipCourierService } from '../services/dropshipCourierService';
 import { dropshipMerchantService } from '../services/dropshipMerchantService';
 import { shopOrderQueryKeys } from '../services/shopOrderQueryKeys';
+import { useDeleteShopOrderMutation } from '../composables/useShopOrderMutations';
 import type { CourierServiceRow } from '../repositories/dropshipCourierRepository';
 import type { MerchantProfileRow } from '../repositories/dropshipMerchantRepository';
 import type { ShopOrder, ShopOrderItem } from '../types';
-import { showErrorNotification } from 'src/utils/appFeedback';
+import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 
 import DropshipOrderDetailSkeleton from '../components/DropshipOrderDetailSkeleton.vue';
 import DropshipOrderHeader from '../components/DropshipOrderHeader.vue';
@@ -227,7 +218,10 @@ import { useDropshipOrderForm } from '../composables/useDropshipOrderForm';
 import { useDropshipOrderActions } from '../composables/useDropshipOrderActions';
 
 const route = useRoute();
+const router = useRouter();
+const $q = useQuasar();
 const queryClient = useQueryClient();
+const { mutate: deleteShopOrder, isPending: isDeletingOrder } = useDeleteShopOrderMutation();
 const tenantSlug = computed(() =>
   typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : null,
 );
@@ -436,6 +430,32 @@ watch(
     showErrorNotification((err as Error).message || 'Failed to load merchant profiles');
   },
 );
+
+const confirmDeleteOrder = () => {
+  if (!orderId.value) return;
+  $q.dialog({
+    title: 'Delete Dropship Order',
+    message: `Are you sure you want to delete order #${order.value?.order_no || orderId.value}? This will completely remove the order and its dropship operational record.`,
+    cancel: true,
+    persistent: true,
+    ok: {
+      color: 'negative',
+      label: 'Delete Order',
+      unelevated: true,
+    },
+  }).onOk(() => {
+    deleteShopOrder(orderId.value, {
+      onSuccess: () => {
+        showSuccessNotification('Order deleted successfully');
+        const slug = tenantSlug.value ? `/${tenantSlug.value}` : '';
+        void router.replace(`${slug}/app/shop/dropship`);
+      },
+      onError: (err: any) => {
+        showErrorNotification(err?.message || 'Failed to delete order');
+      },
+    });
+  });
+};
 </script>
 
 <style scoped>

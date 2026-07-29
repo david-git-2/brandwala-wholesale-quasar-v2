@@ -83,7 +83,7 @@ const adminRoutes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'app-shop-customer-groups-page',
-        component: () => import('src/modules/shop_order/pages/CustomerAccessPage.vue'),
+        component: () => import('src/modules/sales_invoice/pages/CustomerBillingHubPage.vue'),
         beforeEnter: guard('shop_permissions'),
       },
       {

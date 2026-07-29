@@ -147,17 +147,6 @@ export function useDropshipOrderActions(
     if (!order.value) return null;
     const status = order.value.status;
 
-    if (status === 'confirmed') {
-      return {
-        label: 'Add to Dropship Desk',
-        icon: 'ph ph-truck',
-        loading: handingOff.value,
-        action: () => {
-          void performHandoff();
-        },
-      };
-    }
-
     if (
       !order.value.global_invoice_id &&
       ['ready_for_pickup', 'shipped', 'delivered', 'payment_received'].includes(status ?? '')

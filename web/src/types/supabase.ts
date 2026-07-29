@@ -8159,6 +8159,24 @@ export type Database = {
         Args: { p_stock_id: number }
         Returns: number
       }
+      confirm_courier_remittance_to_tenant: {
+        Args: {
+          p_bank_trx_id?: string
+          p_courier_charge?: number
+          p_order_id: number
+          p_remittance_ref?: string
+        }
+        Returns: Json
+      }
+      confirm_dropship_delivered_costing: {
+        Args: {
+          p_cod_amount?: number
+          p_courier_notes?: string
+          p_delivery_charge?: number
+          p_order_id: number
+        }
+        Returns: Json
+      }
       confirm_shop_order: { Args: { p_order_id: number }; Returns: undefined }
       convert_wholesale_draft_to_retail: {
         Args: { p_invoice_id: number }
@@ -8697,6 +8715,16 @@ export type Database = {
         }
         Returns: Json
       }
+      dispense_middleman_payout_from_tenant: {
+        Args: {
+          p_amount: number
+          p_billing_profile_id: number
+          p_payout_method?: string
+          p_reference_notes?: string
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
       fetch_customer_shop_categories: {
         Args: { p_tenant_id: number }
         Returns: {
@@ -8729,6 +8757,10 @@ export type Database = {
       fulfill_shop_order_to_invoice: {
         Args: { p_order_id: number }
         Returns: undefined
+      }
+      generate_shop_order_number: {
+        Args: { p_shop_id: number; p_tenant_id: number }
+        Returns: string
       }
       generate_thrift_barcodes: {
         Args: { p_inserted_by: string; p_quantity: number; p_tenant_id: number }
@@ -11352,6 +11384,18 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      upsert_recipient_profile_and_address: {
+        Args: {
+          p_address?: string
+          p_district?: string
+          p_name: string
+          p_phone: string
+          p_phone_secondary?: string
+          p_tenant_id: number
+          p_thana?: string
+        }
+        Returns: Json
       }
       upsert_recipient_profile_by_phone: {
         Args: {

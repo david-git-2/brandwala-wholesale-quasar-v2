@@ -6,4 +6,7 @@ export const salesInvoiceQueryKeys = {
     [...salesInvoiceQueryKeys.root, 'wallet_balances', tenantId ?? 0] as const,
   walletLedger: (tenantId: number | null, billingProfileId: number | null) =>
     [...salesInvoiceQueryKeys.root, 'wallet_ledger', tenantId ?? 0, billingProfileId ?? 0] as const,
+  billingProfiles: (tenantId: number | null, params?: Record<string, any>) =>
+    [...salesInvoiceQueryKeys.root, 'billing_profiles', tenantId ?? 0, params ?? {}] as const,
 };
+

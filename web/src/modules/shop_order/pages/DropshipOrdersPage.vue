@@ -96,11 +96,17 @@
                 <div>No dropship consignments found for this filter.</div>
               </td>
             </tr>
-            <tr v-for="c in filteredOrders" :key="c.id" class="hover-row">
+            <tr
+              v-for="c in filteredOrders"
+              :key="c.id"
+              class="hover-row cursor-pointer"
+              @click="goToOrderDetail(c.id)"
+            >
               <td>
                 <router-link
                   class="text-weight-bold text-primary text-decoration-none"
                   :to="{ name: 'app-shop-dropship-order-detail-page', params: { id: c.id } }"
+                  @click.stop
                 >
                   {{ c.order_no }}
                 </router-link>
@@ -132,49 +138,18 @@
               <td class="text-right text-weight-bold text-grey-9">
                 {{ formatAmount(c.cod_collect_amount ?? c.total_amount ?? 0) }} BDT
               </td>
-              <td class="text-right">
+              <td class="text-right" @click.stop>
                 <div class="row reverse q-gutter-xs justify-end items-center no-wrap">
                   <q-btn
-                    color="primary"
-                    unelevated
+                    color="negative"
+                    flat
                     dense
                     size="sm"
                     no-caps
-                    label="Process"
-                    :to="{ name: 'app-shop-dropship-order-detail-page', params: { id: c.id } }"
-                  />
-                  <q-btn
-                    v-if="c.status === 'shipped'"
-                    color="positive"
-                    outline
-                    dense
-                    size="sm"
-                    no-caps
-                    label="Mark Delivered"
-                    :loading="actionOrderId === c.id && actionKind === 'deliver'"
-                    @click="markDelivered(c)"
-                  />
-                  <q-btn
-                    v-if="canCreateAccountingInvoice(c)"
-                    color="positive"
-                    outline
-                    dense
-                    size="sm"
-                    no-caps
-                    label="Create Accounting Invoice"
-                    :loading="actionOrderId === c.id && actionKind === 'invoice'"
-                    @click="createAccountingInvoice(c)"
-                  />
-                  <q-btn
-                    v-if="c.status === 'delivered' || canRecordRemittance(c)"
-                    color="primary"
-                    unelevated
-                    dense
-                    size="sm"
-                    no-caps
-                    label="Remit in Hub"
-                    icon="ph ph-bank"
-                    :to="{ name: 'app-shop-dropship-finance-hub-page', query: { orderId: c.id, step: 'courier_remittance' } }"
+                    icon="ph ph-trash"
+                    label="Delete"
+                    :loading="actionOrderId === c.id && actionKind === 'delete'"
+                    @click="deleteOrderFromList(c)"
                   />
                 </div>
               </td>
@@ -188,6 +163,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { supabase } from 'src/boot/supabase';
 import {
@@ -198,6 +174,7 @@ import {
 import { shopOrderService } from '../services/shopOrderService';
 import type { ShopOrder } from '../types';
 
+const router = useRouter();
 const authStore = useAuthStore();
 const loading = ref(false);
 const orders = ref<ShopOrder[]>([]);
@@ -205,12 +182,12 @@ const searchQuery = ref('');
 const selectedStatus = ref<string>('all');
 
 const actionOrderId = ref<number | null>(null);
-const actionKind = ref<'deliver' | 'invoice' | 'remit' | null>(null);
-
-const INVOICE_ELIGIBLE = ['ready_for_pickup', 'shipped', 'delivered', 'payment_received'];
+const actionKind = ref<'delete' | null>(null);
 
 const statusOptions = [
   { label: 'All Orders', val: 'all' },
+  { label: 'Submitted', val: 'submitted' },
+  { label: 'Confirmed', val: 'confirmed' },
   { label: 'Processing', val: 'processing' },
   { label: 'Ready for Pickup', val: 'ready_for_pickup' },
   { label: 'Shipped', val: 'shipped' },
@@ -261,67 +238,28 @@ const getCountForStatus = (val: string) => {
   return orders.value.filter((c) => c.status === val).length;
 };
 
-const canCreateAccountingInvoice = (c: ShopOrder) =>
-  INVOICE_ELIGIBLE.includes(c.status) && !c.global_invoice_id;
-
-const canRecordRemittance = (c: ShopOrder) =>
-  c.status === 'delivered' && !!c.global_invoice_id && !c.courier_remittance_ref;
-
-const markDelivered = async (c: ShopOrder) => {
-  const ok = await requestConfirmation(
-    `Mark order ${c.order_no} as collected / delivered?`,
-    'Mark Delivered',
-    'Mark Delivered',
-  );
-  if (!ok) return;
-
-  actionOrderId.value = c.id;
-  actionKind.value = 'deliver';
-  try {
-    const { data, error } = await supabase.rpc('advance_dropship_order_status', {
-      p_order_id: c.id,
-      p_target_status: 'delivered',
-    });
-    if (error) throw error;
-    const res = data as { success?: boolean; error?: string } | null;
-    if (res && typeof res === 'object' && res.success === false) {
-      throw new Error(res.error || 'Failed to update status');
-    }
-    showSuccessNotification(`Order ${c.order_no} marked delivered.`);
-    await loadOrders();
-  } catch (err: any) {
-    showErrorNotification(err?.message || 'Failed to mark delivered');
-  } finally {
-    actionOrderId.value = null;
-    actionKind.value = null;
-  }
+const goToOrderDetail = (id: number) => {
+  void router.push({ name: 'app-shop-dropship-order-detail-page', params: { id } });
 };
 
-const createAccountingInvoice = async (c: ShopOrder) => {
-  const ok = await requestConfirmation(
-    `Create accounting invoice for order ${c.order_no}? This posts books and links global_invoice_id.`,
-    'Create Accounting Invoice',
-    'Post Invoice',
+const deleteOrderFromList = async (c: ShopOrder) => {
+  const confirmed = await requestConfirmation(
+    `Are you sure you want to delete order #${c.order_no}? This will permanently remove the order.`,
+    'Delete Order',
   );
-  if (!ok) return;
+  if (!confirmed) return;
 
   actionOrderId.value = c.id;
-  actionKind.value = 'invoice';
+  actionKind.value = 'delete';
   try {
-    const { data, error } = await supabase.rpc('create_dropship_invoice', {
+    const { error } = await supabase.rpc('delete_shop_order', {
       p_order_id: c.id,
-      p_invoice_no: null,
-      p_billing_profile_id: null,
-      p_note: `Accounting invoice created from dropship order #${c.order_no}`,
     });
     if (error) throw error;
-    const res = data as { invoice_no?: string } | null;
-    showSuccessNotification(
-      `Accounting invoice${res?.invoice_no ? ` #${res.invoice_no}` : ''} created for ${c.order_no}.`,
-    );
+    showSuccessNotification(`Order #${c.order_no} deleted successfully.`);
     await loadOrders();
   } catch (err: any) {
-    showErrorNotification(err?.message || 'Failed to create accounting invoice');
+    showErrorNotification(err?.message || 'Failed to delete order.');
   } finally {
     actionOrderId.value = null;
     actionKind.value = null;
