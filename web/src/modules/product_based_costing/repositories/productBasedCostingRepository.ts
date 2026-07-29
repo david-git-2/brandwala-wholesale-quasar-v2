@@ -113,7 +113,6 @@ const buildProductBasedCostingItemCreatePayload = (
   package_weight: payload.package_weight ?? null,
   offer_price: payload.offer_price ?? null,
   is_offer_price_manual: payload.is_offer_price_manual ?? false,
-  status: normalizeText(payload.status),
   product_id: payload.product_id,
   input_type: normalizeText(payload.input_type),
   assigned_shipment_id: payload.assigned_shipment_id ?? null,
@@ -204,10 +203,6 @@ const buildProductBasedCostingItemUpdatePayload = (
 
   if (payload.is_offer_price_manual !== undefined) {
     updatePayload.is_offer_price_manual = payload.is_offer_price_manual;
-  }
-
-  if (payload.status !== undefined) {
-    updatePayload.status = normalizeText(payload.status);
   }
 
   if (payload.input_type !== undefined) {

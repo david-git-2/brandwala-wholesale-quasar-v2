@@ -1022,7 +1022,6 @@ const onCommitCart = async () => {
         product_weight: item.product_weight || 0,
         web_link: '',
         package_weight: item.package_weight || 0,
-        status: 'pending',
         product_based_costing_file_id: props.fileId,
         product_id: item.product_id,
         input_type: 'product_list',

@@ -295,7 +295,6 @@ async function onStatusChange() {
       fileId: fileId.value,
       payload: {
         confirmed_quantity: 0,
-        status: 'rejected',
       },
     });
   }
@@ -404,7 +403,18 @@ type RowChangePayload = {
 
 async function onRowChange(payload: RowChangePayload) {
   try {
-    await updateItemMutation.mutateAsync(payload.item);
+    await updateItemMutation.mutateAsync({
+      id: payload.item.id,
+      quantity: payload.item.quantity,
+      confirmed_quantity: payload.item.confirmed_quantity ?? null,
+      ordered_quantity: payload.item.ordered_quantity ?? null,
+      delivered_quantity: payload.item.delivered_quantity,
+      offer_price: payload.item.offer_price,
+      is_offer_price_manual: payload.item.is_offer_price_manual ?? false,
+      product_weight: payload.item.product_weight,
+      package_weight: payload.item.package_weight,
+      note: payload.item.note,
+    });
   } catch (error) {
     showErrorNotification(parseSupabaseError(error, 'Failed to update item. Rolling back changes...'));
     if (fileId.value) {

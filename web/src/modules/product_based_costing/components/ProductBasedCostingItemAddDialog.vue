@@ -798,7 +798,6 @@ const submitForm = async () => {
       price_gbp: form.price_gbp,
       product_weight: form.product_weight,
       package_weight: form.package_weight,
-      status: form.status || 'pending',
     });
 
     if (!result.success) {
@@ -863,7 +862,6 @@ const submitForm = async () => {
     price_gbp: form.price_gbp,
     product_weight: form.product_weight,
     package_weight: form.package_weight,
-    status: 'pending',
   });
 
   if (!result.success) {

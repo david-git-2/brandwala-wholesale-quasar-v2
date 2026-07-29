@@ -4093,7 +4093,6 @@ export type Database = {
           product_id: number | null
           product_weight: number | null
           quantity: number | null
-          status: string | null
           updated_at: string
           vendor_code: string | null
           vendor_id: number | null
@@ -4122,7 +4121,6 @@ export type Database = {
           product_id?: number | null
           product_weight?: number | null
           quantity?: number | null
-          status?: string | null
           updated_at?: string
           vendor_code?: string | null
           vendor_id?: number | null
@@ -4151,7 +4149,6 @@ export type Database = {
           product_id?: number | null
           product_weight?: number | null
           quantity?: number | null
-          status?: string | null
           updated_at?: string
           vendor_code?: string | null
           vendor_id?: number | null

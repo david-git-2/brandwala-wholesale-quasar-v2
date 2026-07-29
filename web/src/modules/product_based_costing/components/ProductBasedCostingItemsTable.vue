@@ -33,15 +33,15 @@
           @click="statusFilter = 'all'"
         />
         <q-btn
-          :unelevated="statusFilter === 'accepted'"
-          :flat="statusFilter !== 'accepted'"
+          :unelevated="statusFilter === 'active'"
+          :flat="statusFilter !== 'active'"
           dense
           no-caps
-          color="green-8"
-          icon="ph ph-check-circle"
-          label="Accepted Only"
+          color="teal-8"
+          icon="ph ph-funnel"
+          label="Hide Rejected"
           class="q-px-sm text-caption"
-          @click="statusFilter = 'accepted'"
+          @click="statusFilter = 'active'"
         />
       </div>
       <div class="text-caption text-grey-7">
@@ -79,10 +79,10 @@
               </div>
 
               <div class="row items-center q-gutter-xs">
-                <!-- Status -->
+                <!-- Status (Dynamic / Auto-derived, Read-only) -->
                 <div
                   v-if="isColumnVisible('status')"
-                  class="cursor-pointer text-center relative-position"
+                  class="text-center relative-position"
                 >
                   <q-badge
                     :color="getStatusColor(slotProps.row.status)"
@@ -90,33 +90,7 @@
                     class="q-px-sm q-py-xs"
                   >
                     {{ slotProps.row.status }}
-                    <q-icon name="ph ph-caret-down" size="xs" />
                   </q-badge>
-                  <q-popup-edit
-                    v-slot="scope"
-                    :model-value="slotProps.row.status"
-                    buttons
-                    persistent
-                    label-set="Save"
-                    label-cancel="Cancel"
-                    @save="
-                      (value) => {
-                        slotProps.row.status = toText(value, 'pending').toLowerCase();
-                        onStatusSave(slotProps.row);
-                      }
-                    "
-                  >
-                    <q-select
-                      v-model="scope.value"
-                      :options="statusOptions"
-                      dense
-                      outlined
-                      options-dense
-                      emit-value
-                      map-options
-                      autofocus
-                    />
-                  </q-popup-edit>
                 </div>
 
                 <!-- Actions -->
@@ -1098,37 +1072,11 @@
             v-if="isColumnVisible('status')"
             key="status"
             :props="slotProps"
-            class="col-status text-center editable-cell"
+            class="col-status text-center"
           >
             <q-badge :color="getStatusColor(slotProps.row.status)" outline>
               {{ slotProps.row.status }}
             </q-badge>
-
-            <q-popup-edit
-              v-slot="scope"
-              :model-value="slotProps.row.status"
-              buttons
-              persistent
-              label-set="Save"
-              label-cancel="Cancel"
-              @save="
-                (value) => {
-                  slotProps.row.status = toText(value, 'pending').toLowerCase();
-                  onStatusSave(slotProps.row);
-                }
-              "
-            >
-              <q-select
-                v-model="scope.value"
-                :options="statusOptions"
-                dense
-                outlined
-                options-dense
-                emit-value
-                map-options
-                autofocus
-              />
-            </q-popup-edit>
           </q-td>
 
           <q-td v-if="isColumnVisible('action')" key="action" :props="slotProps" class="col-action">
@@ -1511,6 +1459,30 @@ const getUnitCostBdt = (
     conversionRate,
   });
 
+const deriveItemStatusFromQuantities = (
+  currentStatus: string,
+  confirmedQty: number,
+  orderedQty: number,
+  fileStatus?: string,
+  assignedShipmentId?: number | null,
+): string => {
+  if (assignedShipmentId) {
+    return 'on_shipment';
+  }
+  if (confirmedQty === 0) {
+    return 'rejected';
+  }
+  if (fileStatus === 'placing_order' || fileStatus === 'ready_for_shipment') {
+    if (orderedQty === 0) return 'unavailable';
+    if (orderedQty < confirmedQty) return 'partially_available';
+    return 'accepted';
+  }
+  if (confirmedQty > 0 && currentStatus === 'pending') {
+    return 'accepted';
+  }
+  return currentStatus;
+};
+
 const buildRows = (): ProductBasedCostingTableRow[] => {
   return (props.items ?? []).map((item, index) => {
     const barcode = toText(item.barcode, '');
@@ -1569,21 +1541,27 @@ const buildRows = (): ProductBasedCostingTableRow[] => {
         item.offer_price != null
           ? normalizeOfferPriceBdt(item.offer_price)
           : calculatedOfferPriceBdt,
-      status: toText(item.status, 'pending').toLowerCase(),
+      status: deriveItemStatusFromQuantities(
+        item.status ?? 'pending',
+        confirmedQty,
+        orderedQty,
+        props.status,
+        item.assigned_shipment_id ?? null,
+      ),
       raw: { ...item },
     };
   });
 };
 
 const tableRows = ref<ProductBasedCostingTableRow[]>([]);
-const statusFilter = ref<'all' | 'accepted'>('accepted');
+const statusFilter = ref<'all' | 'active'>('active');
 
 const displayRows = computed(() => {
   if (props.status === 'placing_order') {
     if (statusFilter.value === 'all') {
       return tableRows.value;
     }
-    return tableRows.value.filter((row) => row.status === 'accepted');
+    return tableRows.value.filter((row) => row.status !== 'rejected');
   }
   return tableRows.value;
 });
@@ -1606,7 +1584,7 @@ const isAllSelected = computed({
 });
 
 watch(
-  () => [props.items, props.cargoRate, props.conversionRate, props.profitRate],
+  () => [props.items, props.cargoRate, props.conversionRate, props.profitRate, props.status],
   () => {
     tableRows.value = buildRows();
     const allowedIds = new Set(tableRows.value.map((row) => row.id));
@@ -1957,25 +1935,7 @@ const getProfitRate = (row: ProductBasedCostingTableRow) => {
   return (getProfitPerUnit(row) / costBdt) * 100;
 };
 
-const deriveItemStatusFromQuantities = (
-  currentStatus: string,
-  confirmedQty: number,
-  orderedQty: number,
-  fileStatus?: string,
-): string => {
-  if (confirmedQty === 0) {
-    return 'rejected';
-  }
-  if (fileStatus === 'placing_order' || fileStatus === 'ready_for_shipment') {
-    if (orderedQty === 0) return 'unavailable';
-    if (orderedQty > 0 && orderedQty < confirmedQty) return 'partial';
-    if (orderedQty >= confirmedQty) return 'accepted';
-  }
-  if (confirmedQty > 0) {
-    return 'accepted';
-  }
-  return currentStatus;
-};
+
 
 const emitRowChange = (
   row: ProductBasedCostingTableRow,
@@ -2055,13 +2015,25 @@ const onQtySave = (row: ProductBasedCostingTableRow) => {
 
 const onConfirmedQtySave = (row: ProductBasedCostingTableRow) => {
   row.confirmedQty = Math.max(0, toNumber(row.confirmedQty));
-  row.status = deriveItemStatusFromQuantities(row.status, row.confirmedQty, row.orderedQty, props.status);
+  row.status = deriveItemStatusFromQuantities(
+    row.status,
+    row.confirmedQty,
+    row.orderedQty,
+    props.status,
+    row.raw.assigned_shipment_id ?? null,
+  );
   emitRowChange(row, 'confirmed_quantity');
 };
 
 const onOrderedQtySave = (row: ProductBasedCostingTableRow) => {
   row.orderedQty = toNumber(row.orderedQty);
-  row.status = deriveItemStatusFromQuantities(row.status, row.confirmedQty, row.orderedQty, props.status);
+  row.status = deriveItemStatusFromQuantities(
+    row.status,
+    row.confirmedQty,
+    row.orderedQty,
+    props.status,
+    row.raw.assigned_shipment_id ?? null,
+  );
   emitRowChange(row, 'ordered_quantity');
 };
 

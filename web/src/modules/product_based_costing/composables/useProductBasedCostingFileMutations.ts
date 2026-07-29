@@ -133,7 +133,6 @@ export function useCopyProductBasedCostingFileMutation() {
           product_weight: sourceItem.product_weight ?? null,
           package_weight: sourceItem.package_weight ?? null,
           offer_price: sourceItem.offer_price ?? null,
-          status: 'pending',
           input_type: sourceItem.input_type ?? null,
           assigned_shipment_id: null,
         });
