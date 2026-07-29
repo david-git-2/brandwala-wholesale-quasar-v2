@@ -73,11 +73,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch, ref, onMounted } from 'vue';
+import { computed, reactive, watch, ref } from 'vue';
 import {
   billingProfileRepository,
   type BillingProfile,
 } from 'src/modules/sales_invoice/repositories/billingProfileRepository';
+import { useBillingProfilesQuery } from 'src/modules/sales_invoice/composables/useBillingProfileQuery';
+import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 
 interface CostingFileForm {
   id: number | null;
@@ -117,9 +119,6 @@ const emptyForm = (): CostingFileForm => ({
 
 const form = reactive(emptyForm());
 const selectedProfile = ref<BillingProfile | null>(null);
-const profileOptions = ref<BillingProfile[]>([]);
-const allProfiles = ref<BillingProfile[]>([]);
-const loadingProfiles = ref(false);
 
 const isEditMode = computed(() => !!props.data?.id);
 
@@ -128,27 +127,21 @@ const localOpen = computed({
   set: (v) => emit('update:modelValue', v),
 });
 
-import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
-
 const tenantStore = useTenantStore();
+const tenantIdRef = computed(() => tenantStore.selectedTenant?.id);
+const { data: billingProfilesResult, isLoading: loadingProfiles } = useBillingProfilesQuery(tenantIdRef);
 
-async function loadBillingProfiles() {
-  loadingProfiles.value = true;
-  try {
-    const tenantId = tenantStore.selectedTenant?.id;
-    const res = await billingProfileRepository.listBillingProfiles({
-      tenant_id: tenantId,
-      page_size: 100,
-    });
-    allProfiles.value = res.data;
-    profileOptions.value = res.data;
+const allProfiles = computed(() => billingProfilesResult.value?.data ?? []);
+const profileOptions = ref<BillingProfile[]>([]);
+
+watch(
+  allProfiles,
+  (profiles) => {
+    profileOptions.value = profiles;
     syncSelectedProfile();
-  } catch (err) {
-    console.error('Failed to load billing profiles', err);
-  } finally {
-    loadingProfiles.value = false;
-  }
-}
+  },
+  { immediate: true },
+);
 
 function syncSelectedProfile() {
   if (form.billing_profile_id) {
@@ -197,10 +190,6 @@ function fillForm(source: CostingFileForm | null) {
   form.market_code = values.market_code ?? null;
   syncSelectedProfile();
 }
-
-onMounted(() => {
-  void loadBillingProfiles();
-});
 
 watch(
   () => props.data,

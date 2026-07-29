@@ -2,7 +2,7 @@
   <q-page class="q-pa-md costing-details-page">
     <div class="q-gutter-y-md">
       <!-- Loading Skeleton State -->
-      <template v-if="store.loading">
+      <template v-if="isLoading">
         <!-- Header Skeleton -->
         <section class="row items-center justify-between q-col-gutter-md">
           <div class="col">
@@ -92,7 +92,7 @@
                       title="Click to edit name"
                       @click="startInlineNameEdit"
                     >
-                      <span>{{ store?.item?.name ?? 'Costing File' }}</span>
+                      <span>{{ file?.name ?? 'Costing File' }}</span>
                       <q-icon name="ph ph-pencil-simple" size="18px" class="q-ml-xs edit-icon text-grey-6" />
                     </h1>
                   </template>
@@ -133,7 +133,7 @@
                         </q-item-section>
                         <q-item-section>
                           <q-item-label class="text-weight-medium">{{ scope.opt.name }}</q-item-label>
-                          <q-item-label v-if="scope.opt.company_name" caption class="text-grey-6">{{ scope.opt.company_name }}</q-item-label>
+                          <q-item-label v-if="scope.opt.email" caption class="text-grey-6">{{ scope.opt.email }}</q-item-label>
                         </q-item-section>
                       </q-item>
                     </template>
@@ -150,7 +150,7 @@
           </div>
           <div class="col-auto row q-gutter-sm items-center">
             <q-btn
-              v-if="store?.item?.billing_profile_id"
+              v-if="file?.billing_profile_id"
               outline
               color="primary"
               no-caps
@@ -250,7 +250,7 @@
           </div>
         </section>
 
-        <q-card v-if="store.item" flat bordered class="q-pa-sm">
+        <q-card v-if="file" flat bordered class="q-pa-sm">
           <div class="row items-center justify-between q-col-gutter-sm">
             <div class="col-grow row items-center q-gutter-xs status-workflow-row">
               <template v-for="(st, idx) in workflowStatuses" :key="st">
@@ -367,14 +367,14 @@
           </div>
         </q-card>
 
-        <div v-if="!store.item" class="text-negative">File not found.</div>
+        <div v-if="!file" class="text-negative">File not found.</div>
         <q-card v-else flat bordered class="q-pa-none costing-items-surface">
           <ProductBasedCostingItemsTable
-            :items="store.costingItems"
+            :items="costingItems"
             :cargo-rate="cargoRateValue"
             :conversion-rate="conversionRateValue"
             :profit-rate="profitRateValue"
-            :status="store.item?.status ?? 'pending'"
+            :status="file?.status ?? 'pending'"
             :shipped-item-ids="shippedItemIds"
             :visible-columns="visibleColumns"
             @edit="onEdit"
@@ -386,7 +386,7 @@
             @update:visible-columns="onVisibleColumnsUpdate"
           />
         </q-card>
-        <div v-if="store.costingItems.length" class="q-mt-lg">
+        <div v-if="costingItems.length" class="q-mt-lg">
           <div class="text-subtitle1 text-weight-bold q-mb-sm text-grey-9 row items-center">
             <q-icon name="ph ph-chart-line-up" class="q-mr-xs text-primary" size="20px" />
             Summary Metrics & Cost Breakdown
@@ -501,8 +501,8 @@
           v-model="showItemDialog"
           :product-based-costing-file-id="fileId"
           :item-data="selectedItem"
-          :default-vendor-code="store.item?.vendor_code ?? null"
-          :default-market-code="store.item?.market_code ?? null"
+          :default-vendor-code="file?.vendor_code ?? null"
+          :default-market-code="file?.market_code ?? null"
           @created="handleCreated"
           @updated="handleUpdated"
         />
@@ -512,10 +512,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { useRoute, useRouter } from 'vue-router';
-import { useProductBasedCostingStore } from '../stores/productBasedCostingStore';
+import { useQueryClient } from '@tanstack/vue-query';
 import ProductBasedCostingFileDialog from '../components/ProductBasedCostingFileDialog.vue';
 import ProductBasedCostingItemAddDialog from '../components/ProductBasedCostingItemAddDialog.vue';
 import PbcBacklogSuggestDrawer from '../components/PbcBacklogSuggestDrawer.vue';
@@ -529,15 +529,28 @@ import {
   billingProfileRepository,
   type BillingProfile,
 } from 'src/modules/sales_invoice/repositories/billingProfileRepository';
+import { useBillingProfilesQuery } from 'src/modules/sales_invoice/composables/useBillingProfileQuery';
 import { productBasedCostingRepository } from '../repositories/productBasedCostingRepository';
+import { productBasedCostingQueryKeys } from '../shared/queryKeys/productBasedCostingQueryKeys';
+import { useProductBasedCostingFileDetailQuery } from '../composables/useProductBasedCostingFileDetailQuery';
+import { useProductBasedCostingItemsQuery } from '../composables/useProductBasedCostingItemsQuery';
+import { useUpdateProductBasedCostingFileMutation } from '../composables/useProductBasedCostingFileMutations';
+import {
+  useDeleteProductBasedCostingItemMutation,
+  useDeleteProductBasedCostingItemsBulkMutation,
+  useUpdateProductBasedCostingItemMutation,
+  useUpdateProductBasedCostingItemsByFileIdMutation,
+  useRecalculateOfferPricesMutation,
+} from '../composables/useProductBasedCostingItemMutations';
 import type { ProductBasedCostingItem } from '../types';
-import { productBasedCostingService } from '../services/productBasedCostingService';
 import { toNumberSafe } from '../utils/pricing';
 import { buildCostingExcelWorkbook } from '../utils/buildCostingExcelWorkbook';
 import { useMembershipColumnPreference } from 'src/modules/membership/composables/useMembershipColumnPreference';
 import { usePbcBacklog } from '../composables/usePbcBacklog';
+
 const productStore = useProductStore();
 const tenantStore = useTenantStore();
+const queryClient = useQueryClient();
 const backlog = usePbcBacklog();
 const showBacklogDrawer = ref(false);
 const showFileDialog = ref(false);
@@ -547,26 +560,49 @@ const savingName = ref(false);
 const nameInputRef = ref<HTMLInputElement | { focus: () => void; select: () => void } | null>(null);
 
 const selectedBillingProfile = ref<BillingProfile | null>(null);
-const allBillingProfiles = ref<BillingProfile[]>([]);
-const billingProfileOptions = ref<BillingProfile[]>([]);
-const loadingProfiles = ref(false);
 const savingBillingProfile = ref(false);
 const $q = useQuasar();
 
 const route = useRoute();
 const router = useRouter();
-const store = useProductBasedCostingStore();
+
+const fileId = computed(() => {
+  const parsed = Number(route.params.id);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+});
+
+// Queries
+const {
+  data: file,
+  isLoading: isLoadingFile,
+} = useProductBasedCostingFileDetailQuery(fileId);
+
+const {
+  data: costingItemsData,
+  isLoading: isLoadingItems,
+} = useProductBasedCostingItemsQuery(fileId);
+
+const isLoading = computed(() => isLoadingFile.value || isLoadingItems.value);
+const costingItems = computed(() => costingItemsData.value ?? []);
+
+// Mutations
+const updateFileMutation = useUpdateProductBasedCostingFileMutation();
+const updateItemMutation = useUpdateProductBasedCostingItemMutation();
+const deleteItemMutation = useDeleteProductBasedCostingItemMutation();
+const deleteItemsBulkMutation = useDeleteProductBasedCostingItemsBulkMutation();
+const updateItemsByFileIdMutation = useUpdateProductBasedCostingItemsByFileIdMutation();
+const recalculateOfferPricesMutation = useRecalculateOfferPricesMutation();
 
 const editFormData = computed(() => {
-  if (!store.item) return null;
+  if (!file.value) return null;
   return {
-    id: store.item.id,
-    name: store.item.name ?? '',
-    order_for: store.item.order_for ?? '',
-    billing_profile_id: store.item.billing_profile_id ?? null,
-    note: store.item.note ?? '',
-    vendor_code: store.item.vendor_code ?? null,
-    market_code: store.item.market_code ?? null,
+    id: file.value.id,
+    name: file.value.name ?? '',
+    order_for: file.value.order_for ?? '',
+    billing_profile_id: file.value.billing_profile_id ?? null,
+    note: file.value.note ?? '',
+    vendor_code: file.value.vendor_code ?? null,
+    market_code: file.value.market_code ?? null,
   };
 });
 
@@ -575,7 +611,7 @@ function openEditFileDialog() {
 }
 
 function startInlineNameEdit() {
-  editingNameValue.value = store.item?.name ?? '';
+  editingNameValue.value = file.value?.name ?? '';
   isEditingName.value = true;
   void nextTick(() => {
     if (nameInputRef.value && 'focus' in nameInputRef.value) {
@@ -593,7 +629,7 @@ async function saveInlineName() {
   if (!isEditingName.value || savingName.value) return;
 
   const trimmed = editingNameValue.value.trim();
-  const currentName = store.item?.name ?? '';
+  const currentName = file.value?.name ?? '';
 
   if (!trimmed || trimmed === currentName) {
     cancelInlineName();
@@ -607,39 +643,34 @@ async function saveInlineName() {
 
   savingName.value = true;
   try {
-    const res = await store.updateProductBasedCostingFile({
+    await updateFileMutation.mutateAsync({
       id: fileId.value,
       name: trimmed,
     });
-    if (res?.success) {
-      isEditingName.value = false;
-    }
+    isEditingName.value = false;
   } finally {
     savingName.value = false;
   }
 }
 
-async function loadBillingProfiles() {
-  loadingProfiles.value = true;
-  try {
-    const tenantId = tenantStore.selectedTenant?.id;
-    const res = await billingProfileRepository.listBillingProfiles({
-      tenant_id: tenantId,
-      page_size: 100,
-    });
-    allBillingProfiles.value = res.data;
-    billingProfileOptions.value = res.data;
+const tenantIdRef = computed(() => tenantStore.selectedTenant?.id);
+const { data: billingProfilesResult, isLoading: loadingProfiles } = useBillingProfilesQuery(tenantIdRef);
+
+const allBillingProfiles = computed(() => billingProfilesResult.value?.data ?? []);
+const billingProfileOptions = ref<BillingProfile[]>([]);
+
+watch(
+  allBillingProfiles,
+  (profiles) => {
+    billingProfileOptions.value = profiles;
     syncSelectedBillingProfile();
-  } catch (err) {
-    console.error('Failed to load billing profiles', err);
-  } finally {
-    loadingProfiles.value = false;
-  }
-}
+  },
+  { immediate: true },
+);
 
 function syncSelectedBillingProfile() {
-  if (store.item?.billing_profile_id) {
-    const found = allBillingProfiles.value.find((p) => p.id === store.item?.billing_profile_id);
+  if (file.value?.billing_profile_id) {
+    const found = allBillingProfiles.value.find((p) => p.id === file.value?.billing_profile_id);
     if (found) {
       selectedBillingProfile.value = found;
       return;
@@ -657,7 +688,7 @@ function filterBillingProfiles(val: string, update: (fn: () => void) => void) {
       billingProfileOptions.value = allBillingProfiles.value.filter(
         (p) =>
           p.name.toLowerCase().includes(needle) ||
-          (p.company_name && p.company_name.toLowerCase().includes(needle)),
+          (p.email && p.email.toLowerCase().includes(needle)),
       );
     }
   });
@@ -667,26 +698,24 @@ async function onInlineBillingProfileChange(val: BillingProfile | null) {
   if (!fileId.value || savingBillingProfile.value) return;
 
   const newProfileId = val?.id ?? null;
-  const newOrderFor = val?.name ?? store.item?.order_for ?? '';
+  const newOrderFor = val?.name ?? file.value?.order_for ?? '';
 
   if (
-    newProfileId === store.item?.billing_profile_id &&
-    newOrderFor === store.item?.order_for
+    newProfileId === file.value?.billing_profile_id &&
+    newOrderFor === file.value?.order_for
   ) {
     return;
   }
 
   savingBillingProfile.value = true;
   try {
-    const res = await store.updateProductBasedCostingFile({
+    await updateFileMutation.mutateAsync({
       id: fileId.value,
       billing_profile_id: newProfileId,
       order_for: newOrderFor,
     });
-    if (res?.success) {
-      syncSelectedBillingProfile();
-      refreshBacklog();
-    }
+    syncSelectedBillingProfile();
+    refreshBacklog();
   } finally {
     savingBillingProfile.value = false;
   }
@@ -702,7 +731,7 @@ async function handleUpdateFileDialog(payload: {
   market_code: string | null;
 }) {
   if (!payload.id) return;
-  const res = await store.updateProductBasedCostingFile({
+  await updateFileMutation.mutateAsync({
     id: payload.id,
     name: payload.name,
     order_for: payload.order_for,
@@ -711,10 +740,8 @@ async function handleUpdateFileDialog(payload: {
     vendor_code: payload.vendor_code,
     market_code: payload.market_code,
   });
-  if (res?.success) {
-    showFileDialog.value = false;
-    refreshBacklog();
-  }
+  showFileDialog.value = false;
+  refreshBacklog();
 }
 
 const cargo_rate_kg_gbp = ref<number | null>(null);
@@ -725,6 +752,20 @@ const status = ref<string>('pending');
 const updatingStatus = ref(false);
 const targetUpdatingStatus = ref<string | null>(null);
 const shippedItemIds = ref<number[]>([]);
+
+watch(
+  file,
+  (newFile) => {
+    if (newFile) {
+      cargo_rate_kg_gbp.value = newFile.cargo_rate_kg_gbp ?? null;
+      conversion_rate.value = newFile.conversion_rate ?? null;
+      profit_rate.value = newFile.profit_rate ?? null;
+      status.value = newFile.status || 'pending';
+      syncSelectedBillingProfile();
+    }
+  },
+  { immediate: true },
+);
 
 const alwaysVisibleColumns = ['select', 'sl', 'image', 'name'];
 const allColumnNames = [
@@ -817,7 +858,7 @@ const formatMoney = (val: number) =>
   val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const summaryMetrics = computed(() => {
-  const items = store.costingItems ?? [];
+  const items = costingItems.value;
   let totalQuantity = 0;
   let goodsCostGbp = 0;
   let cargoWeightGrams = 0;
@@ -852,33 +893,26 @@ const summaryMetrics = computed(() => {
     totalCostBdt,
   };
 });
-const fileId = computed(() => {
-  const parsed = Number(route.params.id);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
-});
 
 const onStatusChange = async () => {
   if (!fileId.value) {
     return;
   }
 
-  const fileUpdateResult = await store.updateProductBasedCostingFile({
+  await updateFileMutation.mutateAsync({
     id: fileId.value,
     status: status.value,
   });
 
-  if (fileUpdateResult?.success) {
-    visibleColumns.value = getDefaultVisibleColumnsForStatus(status.value);
-  }
+  visibleColumns.value = getDefaultVisibleColumnsForStatus(status.value);
 
-  if (!fileUpdateResult?.success) {
-    return;
-  }
-
-  if (status.value === 'confirmed' && store.costingItems.length > 0) {
-    await store.updateProductBasedCostingItemsByFileId(fileId.value, {
-      confirmed_quantity: 0,
-      status: 'rejected',
+  if (status.value === 'confirmed' && costingItems.value.length > 0) {
+    await updateItemsByFileIdMutation.mutateAsync({
+      fileId: fileId.value,
+      payload: {
+        confirmed_quantity: 0,
+        status: 'rejected',
+      },
     });
   }
 
@@ -978,26 +1012,12 @@ const recalculateAndPersistOfferPrices = async () => {
     return;
   }
 
-  await productBasedCostingService.recalculateProductBasedCostingFileOfferPrices(fileId.value);
-  await store.fetchProductBasedCostingItems(fileId.value);
-};
-
-const loadData = async () => {
-  if (!fileId.value) {
-    return;
-  }
-
-  await Promise.all([
-    store.fetchProductBasedCostingFileById(fileId.value),
-    store.fetchProductBasedCostingItems(fileId.value),
-  ]);
-
-  refreshBacklog();
+  await recalculateOfferPricesMutation.mutateAsync(fileId.value);
 };
 
 const refreshBacklog = () => {
   const tenantId = tenantStore.selectedTenant?.id;
-  const profileId = store.item?.billing_profile_id;
+  const profileId = file.value?.billing_profile_id;
   if (tenantId && profileId) {
     void backlog.fetchBacklogItems(tenantId, profileId);
   }
@@ -1012,7 +1032,9 @@ const handleConsumeBacklog = async (backlogIds: number[]) => {
   if (!fileId.value) return;
   const addedIds = await backlog.consumeBacklogItems(fileId.value, backlogIds);
   if (addedIds.length > 0) {
-    await store.fetchProductBasedCostingItems(fileId.value);
+    void queryClient.invalidateQueries({
+      queryKey: productBasedCostingQueryKeys.itemsList(fileId.value),
+    });
     refreshBacklog();
     showBacklogDrawer.value = false;
   }
@@ -1023,38 +1045,11 @@ const handleCreated = async () => {
     return;
   }
 
-  // Keep store in sync with backend using a single items fetch.
-  // Avoid shipment refresh here because it fans out into many API calls.
-  await store.fetchProductBasedCostingItems(fileId.value);
+  void queryClient.invalidateQueries({
+    queryKey: productBasedCostingQueryKeys.itemsList(fileId.value),
+  });
   refreshBacklog();
 };
-
-onMounted(async () => {
-  await loadData();
-  void loadBillingProfiles();
-
-  cargo_rate_kg_gbp.value = store.item?.cargo_rate_kg_gbp ?? null;
-  conversion_rate.value = store.item?.conversion_rate ?? null;
-  profit_rate.value = store.item?.profit_rate ?? null;
-  status.value = store.item?.status || 'pending';
-});
-
-watch(
-  () => store.item?.billing_profile_id,
-  () => {
-    syncSelectedBillingProfile();
-  },
-);
-
-watch(
-  () => route.params.id,
-  async (newId, oldId) => {
-    if (newId === oldId) {
-      return;
-    }
-    await loadData();
-  },
-);
 
 const onEdit = (item: ProductBasedCostingItem) => {
   console.log('edit', item);
@@ -1063,38 +1058,19 @@ const onEdit = (item: ProductBasedCostingItem) => {
 
 const onDelete = async (item: ProductBasedCostingItem) => {
   console.log('delete', item);
-  await store.deleteProductBasedCostingItem(item.id);
+  await deleteItemMutation.mutateAsync(item.id);
 };
 
 const onBulkDelete = async (ids: number[]) => {
-  if (!ids.length) {
+  if (!ids.length || !fileId.value) {
     return;
   }
 
-  const results = await Promise.allSettled(
-    ids.map((id) => productBasedCostingService.deleteProductBasedCostingItem(id)),
-  );
-
-  const failedCount = results.filter(
-    (result) =>
-      result.status === 'rejected' || (result.status === 'fulfilled' && !result.value.success),
-  ).length;
-
-  await store.fetchProductBasedCostingItems(fileId.value);
-  refreshBacklog();
-
-  if (failedCount > 0) {
-    $q.notify({
-      type: 'warning',
-      message: `${ids.length - failedCount} item(s) deleted, ${failedCount} failed.`,
-    });
-    return;
-  }
-
-  $q.notify({
-    type: 'positive',
-    message: `${ids.length} item(s) deleted successfully.`,
+  await deleteItemsBulkMutation.mutateAsync({
+    fileId: fileId.value,
+    ids,
   });
+  refreshBacklog();
 };
 
 type RowChangePayload = {
@@ -1119,7 +1095,7 @@ type WeightChangePayload = {
 };
 
 const onRowChange = async (payload: RowChangePayload) => {
-  await store.updateProductBasedCostingItem(payload.item);
+  await updateItemMutation.mutateAsync(payload.item);
   console.log('Row changed:', payload);
 };
 
@@ -1139,12 +1115,15 @@ const openCatalogDialog = () => {
     component: AddCostingItemsDrawer,
     componentProps: { fileId: fileId.value },
   }).onOk(() => {
-    void store.fetchProductBasedCostingItems(fileId.value!);
+    void queryClient.invalidateQueries({
+      queryKey: productBasedCostingQueryKeys.itemsList(fileId.value),
+    });
+    refreshBacklog();
   });
 };
 
 const openBulkPaste = () => {
-  if (!store.costingItems.length) {
+  if (!costingItems.value.length) {
     $q.notify({ type: 'warning', message: 'No costing items to update.' });
     return;
   }
@@ -1180,7 +1159,7 @@ const safeNamePart = (value: string) =>
   value.replace(/[^a-z0-9-_]+/gi, '_').replace(/^_+|_+$/g, '');
 
 const downloadExcel = async () => {
-  if (!store.item) {
+  if (!file.value) {
     $q.notify({ type: 'warning', message: 'No costing file selected.' });
     return;
   }
@@ -1189,8 +1168,8 @@ const downloadExcel = async () => {
 
   try {
     const workbook = await buildCostingExcelWorkbook({
-      file: store.item,
-      items: store.costingItems ?? [],
+      file: file.value,
+      items: costingItems.value,
     });
 
     const buffer = await workbook.xlsx.writeBuffer();
@@ -1199,9 +1178,9 @@ const downloadExcel = async () => {
     });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
-    const fileTitle = safeNamePart(store.item.name ?? `costing_file_${store.item.id}`);
+    const fileTitle = safeNamePart(file.value.name ?? `costing_file_${file.value.id}`);
     anchor.href = url;
-    anchor.download = `${fileTitle || `costing_file_${store.item.id}`}.xlsx`;
+    anchor.download = `${fileTitle || `costing_file_${file.value.id}`}.xlsx`;
     anchor.click();
     URL.revokeObjectURL(url);
   } catch (error) {
@@ -1224,7 +1203,7 @@ const handleUpdated = () => {
 };
 
 const onRateSave = async () => {
-  if (!store.item || !fileId.value) {
+  if (!file.value || !fileId.value) {
     return;
   }
 
@@ -1234,13 +1213,13 @@ const onRateSave = async () => {
     profit_rate: profit_rate.value,
   });
   const payload = {
-    id: store.item.id,
+    id: file.value.id,
     conversion_rate: conversion_rate.value || 0,
     cargo_rate_kg_gbp: cargo_rate_kg_gbp.value || 0,
     profit_rate: profit_rate.value || 0,
   };
 
-  await store.updateProductBasedCostingFile(payload);
+  await updateFileMutation.mutateAsync(payload);
   await recalculateAndPersistOfferPrices();
   ratesExpanded.value = false;
 };
@@ -1253,7 +1232,7 @@ const onProductWeightChange = async (payload: WeightChangePayload) => {
       product_weight: payload.item.product_weight,
     });
   }
-  await store.updateProductBasedCostingItem({
+  await updateItemMutation.mutateAsync({
     id: payload.item.id,
     product_weight: payload.item.product_weight,
     offer_price: payload.item.offer_price,
@@ -1268,14 +1247,12 @@ const onPackageWeightChange = async (payload: WeightChangePayload) => {
       package_weight: payload.item.package_weight,
     });
   }
-  await store.updateProductBasedCostingItem({
+  await updateItemMutation.mutateAsync({
     id: payload.item.id,
     package_weight: payload.item.package_weight,
     offer_price: payload.item.offer_price,
   });
 };
-
-const normalizeText = (value: string | null | undefined) => (value ?? '').trim().toLowerCase();
 
 const goBack = () => {
   void router.push({ name: 'product-based-costing-page' });
@@ -1367,10 +1344,6 @@ const goBack = () => {
 .name-inline-edit:hover {
   background: rgba(var(--q-primary-rgb, 15, 98, 254), 0.06);
   border-bottom-color: var(--q-primary);
-}
-
-.name-inline-edit:hover .edit-icon {
-  color: var(--q-primary) !important;
 }
 
 .profile-picker-chip {

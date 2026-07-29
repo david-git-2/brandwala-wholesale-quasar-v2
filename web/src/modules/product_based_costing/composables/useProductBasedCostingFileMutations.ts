@@ -5,6 +5,7 @@ import { showSuccessNotification } from 'src/utils/appFeedback';
 import type {
   ProductBasedCostingFile,
   ProductBasedCostingFileCreateInput,
+  ProductBasedCostingFileListPage,
   ProductBasedCostingFileUpdateInput,
 } from '../types';
 
@@ -14,8 +15,12 @@ export function useCreateProductBasedCostingFileMutation() {
   return useMutation({
     mutationFn: (payload: ProductBasedCostingFileCreateInput) =>
       productBasedCostingRepository.createProductBasedCostingFile(payload),
-    onSuccess: () => {
+    onSuccess: (newFile) => {
       showSuccessNotification('Product based costing file created successfully.');
+      queryClient.setQueryData(
+        productBasedCostingQueryKeys.fileDetail(newFile.id),
+        newFile,
+      );
       void queryClient.invalidateQueries({ queryKey: productBasedCostingQueryKeys.all });
     },
   });
@@ -27,9 +32,27 @@ export function useUpdateProductBasedCostingFileMutation() {
   return useMutation({
     mutationFn: (payload: ProductBasedCostingFileUpdateInput) =>
       productBasedCostingRepository.updateProductBasedCostingFile(payload),
-    onSuccess: () => {
+    onSuccess: (updatedFile) => {
       showSuccessNotification('Product based costing file updated successfully.');
-      void queryClient.invalidateQueries({ queryKey: productBasedCostingQueryKeys.all });
+      // 1. Update the detail query cache directly
+      queryClient.setQueryData(
+        productBasedCostingQueryKeys.fileDetail(updatedFile.id),
+        updatedFile,
+      );
+
+      // 2. Update the item in any cached files list queries
+      queryClient.setQueriesData<ProductBasedCostingFileListPage>(
+        { queryKey: ['productBasedCosting', 'files', 'list'] },
+        (oldData) => {
+          if (!oldData || !oldData.data) return oldData;
+          return {
+            ...oldData,
+            data: oldData.data.map((item) =>
+              item.id === updatedFile.id ? { ...item, ...updatedFile } : item,
+            ),
+          };
+        },
+      );
     },
   });
 }
@@ -39,9 +62,25 @@ export function useDeleteProductBasedCostingFileMutation() {
 
   return useMutation({
     mutationFn: (id: number) => productBasedCostingRepository.deleteProductBasedCostingFile(id),
-    onSuccess: () => {
+    onSuccess: (deletedFile, id) => {
       showSuccessNotification('Product based costing file deleted successfully.');
-      void queryClient.invalidateQueries({ queryKey: productBasedCostingQueryKeys.all });
+      queryClient.removeQueries({
+        queryKey: productBasedCostingQueryKeys.fileDetail(id),
+      });
+      queryClient.setQueriesData<ProductBasedCostingFileListPage>(
+        { queryKey: ['productBasedCosting', 'files', 'list'] },
+        (oldData) => {
+          if (!oldData || !oldData.data) return oldData;
+          return {
+            ...oldData,
+            data: oldData.data.filter((item) => item.id !== id),
+            meta: {
+              ...oldData.meta,
+              total: Math.max(0, oldData.meta.total - 1),
+            },
+          };
+        },
+      );
     },
   });
 }

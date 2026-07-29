@@ -458,6 +458,26 @@ const recalculateProductBasedCostingFileOfferPrices = async (fileId: number): Pr
   }
 };
 
+const deleteProductBasedCostingItemsBulk = async (
+  ids: number[],
+): Promise<ProductBasedCostingItem[]> => {
+  if (!ids.length) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from('product_based_costing_items')
+    .delete()
+    .in('id', ids)
+    .select();
+
+  if (error) {
+    throw error;
+  }
+
+  return (data || []) as ProductBasedCostingItem[];
+};
+
 const addCostingItemToShipment = async (
   shipmentId: number,
   costingItemId: number,
@@ -487,6 +507,7 @@ export const productBasedCostingRepository = {
   updateProductBasedCostingItem,
   updateProductBasedCostingItemsByFileId,
   deleteProductBasedCostingItem,
+  deleteProductBasedCostingItemsBulk,
   getProductBasedCostingItemById,
   recalculateProductBasedCostingFileOfferPrices,
   addCostingItemToShipment,
