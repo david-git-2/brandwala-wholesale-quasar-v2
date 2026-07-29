@@ -103,80 +103,6 @@ export type Database = {
           },
         ]
       }
-      billing_profile_wallet_ledger: {
-        Row: {
-          amount: number
-          balance_after: number
-          billing_profile_id: number
-          created_at: string
-          created_by: string | null
-          global_invoice_id: number | null
-          id: string
-          reference_id: string | null
-          reference_notes: string | null
-          shop_order_id: number | null
-          tenant_id: number
-          transaction_type: string
-        }
-        Insert: {
-          amount: number
-          balance_after: number
-          billing_profile_id: number
-          created_at?: string
-          created_by?: string | null
-          global_invoice_id?: number | null
-          id?: string
-          reference_id?: string | null
-          reference_notes?: string | null
-          shop_order_id?: number | null
-          tenant_id: number
-          transaction_type: string
-        }
-        Update: {
-          amount?: number
-          balance_after?: number
-          billing_profile_id?: number
-          created_at?: string
-          created_by?: string | null
-          global_invoice_id?: number | null
-          id?: string
-          reference_id?: string | null
-          reference_notes?: string | null
-          shop_order_id?: number | null
-          tenant_id?: number
-          transaction_type?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "billing_profile_wallet_ledger_billing_profile_id_fkey"
-            columns: ["billing_profile_id"]
-            isOneToOne: false
-            referencedRelation: "billing_profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "billing_profile_wallet_ledger_global_invoice_id_fkey"
-            columns: ["global_invoice_id"]
-            isOneToOne: false
-            referencedRelation: "global_invoices"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "billing_profile_wallet_ledger_shop_order_id_fkey"
-            columns: ["shop_order_id"]
-            isOneToOne: false
-            referencedRelation: "shop_orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "billing_profile_wallet_ledger_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       billing_profiles: {
         Row: {
           address: string | null
@@ -8230,35 +8156,6 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      create_bulk_wallet_payout: {
-        Args: {
-          p_amount: number
-          p_billing_profile_id: number
-          p_created_by?: string
-          p_reference_notes?: string
-          p_tenant_id: number
-        }
-        Returns: {
-          amount: number
-          balance_after: number
-          billing_profile_id: number
-          created_at: string
-          created_by: string | null
-          global_invoice_id: number | null
-          id: string
-          reference_id: string | null
-          reference_notes: string | null
-          shop_order_id: number | null
-          tenant_id: number
-          transaction_type: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "billing_profile_wallet_ledger"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
       create_costing_file:
         | {
             Args: {
@@ -10493,39 +10390,6 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "global_invoices"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
-      record_wallet_ledger_entry: {
-        Args: {
-          p_amount: number
-          p_billing_profile_id: number
-          p_created_by?: string
-          p_global_invoice_id?: number
-          p_reference_id?: string
-          p_reference_notes?: string
-          p_shop_order_id?: number
-          p_tenant_id: number
-          p_transaction_type: string
-        }
-        Returns: {
-          amount: number
-          balance_after: number
-          billing_profile_id: number
-          created_at: string
-          created_by: string | null
-          global_invoice_id: number | null
-          id: string
-          reference_id: string | null
-          reference_notes: string | null
-          shop_order_id: number | null
-          tenant_id: number
-          transaction_type: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "billing_profile_wallet_ledger"
           isOneToOne: true
           isSetofReturn: false
         }
