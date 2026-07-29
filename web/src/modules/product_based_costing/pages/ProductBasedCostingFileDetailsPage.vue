@@ -112,7 +112,6 @@ import ProductBasedCostingPreviewColumnSelectorDialog from '../components/Produc
 import ProductBasedCostingItemsTable from '../components/ProductBasedCostingItemsTable.vue';
 import { useProductStore } from 'src/modules/products/stores/productStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
-import { showErrorNotification, parseSupabaseError } from 'src/utils/appFeedback';
 import type { BillingProfile } from 'src/modules/sales_invoice/repositories/billingProfileRepository';
 import { useBillingProfilesQuery } from 'src/modules/sales_invoice/composables/useBillingProfileQuery';
 import { productBasedCostingQueryKeys } from '../shared/queryKeys/productBasedCostingQueryKeys';
@@ -438,8 +437,7 @@ async function onRowChange(payload: RowChangePayload) {
       package_weight: payload.item.package_weight,
       note: payload.item.note,
     });
-  } catch (error) {
-    showErrorNotification(parseSupabaseError(error, 'Failed to update item. Rolling back changes...'));
+  } catch {
     if (fileId.value) {
       await queryClient.refetchQueries({
         queryKey: productBasedCostingQueryKeys.itemsList(fileId.value),
@@ -516,8 +514,7 @@ async function onProductWeightChange(payload: WeightChangePayload) {
       product_weight: payload.item.product_weight,
       offer_price: payload.item.offer_price,
     });
-  } catch (error) {
-    showErrorNotification(parseSupabaseError(error, 'Failed to update product weight. Rolling back...'));
+  } catch {
     if (fileId.value) {
       await queryClient.refetchQueries({
         queryKey: productBasedCostingQueryKeys.itemsList(fileId.value),
@@ -543,8 +540,7 @@ async function onPackageWeightChange(payload: WeightChangePayload) {
       package_weight: payload.item.package_weight,
       offer_price: payload.item.offer_price,
     });
-  } catch (error) {
-    showErrorNotification(parseSupabaseError(error, 'Failed to update package weight. Rolling back...'));
+  } catch {
     if (fileId.value) {
       await queryClient.refetchQueries({
         queryKey: productBasedCostingQueryKeys.itemsList(fileId.value),

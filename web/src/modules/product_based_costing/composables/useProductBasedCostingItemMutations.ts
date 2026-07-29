@@ -1,12 +1,16 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import { productBasedCostingQueryKeys } from '../shared/queryKeys/productBasedCostingQueryKeys';
 import { productBasedCostingRepository } from '../repositories/productBasedCostingRepository';
-import { showErrorNotification, showSuccessNotification, parseSupabaseError } from 'src/utils/appFeedback';
+import { parseSupabaseError, showSuccessNotification, showWarningDialog } from 'src/utils/appFeedback';
 import type {
   ProductBasedCostingItem,
   ProductBasedCostingItemCreateInput,
   ProductBasedCostingItemUpdateInput,
 } from '../types';
+
+const showMutationWarning = (error: unknown, fallback: string) => {
+  showWarningDialog(parseSupabaseError(error, fallback), 'Request failed');
+};
 
 export function useCreateProductBasedCostingItemMutation() {
   const queryClient = useQueryClient();
@@ -24,7 +28,7 @@ export function useCreateProductBasedCostingItemMutation() {
       }
     },
     onError: (error) => {
-      showErrorNotification(parseSupabaseError(error, 'Failed to create costing item.'));
+      showMutationWarning(error, 'Failed to create costing item.');
     },
   });
 }
@@ -48,7 +52,7 @@ export function useUpdateProductBasedCostingItemMutation() {
       }
     },
     onError: (error) => {
-      showErrorNotification(parseSupabaseError(error, 'Failed to update costing item.'));
+      showMutationWarning(error, 'Failed to update costing item.');
     },
   });
 }
@@ -66,6 +70,9 @@ export function useDeleteProductBasedCostingItemMutation() {
           (oldItems) => (oldItems ? oldItems.filter((item) => item.id !== data.id) : []),
         );
       }
+    },
+    onError: (error) => {
+      showMutationWarning(error, 'Failed to delete costing item.');
     },
   });
 }
@@ -85,6 +92,9 @@ export function useDeleteProductBasedCostingItemsBulkMutation() {
         productBasedCostingQueryKeys.itemsList(variables.fileId),
         (oldItems) => (oldItems ? oldItems.filter((item) => !deletedIds.has(item.id)) : []),
       );
+    },
+    onError: (error) => {
+      showMutationWarning(error, 'Failed to delete costing items.');
     },
   });
 }
@@ -111,6 +121,9 @@ export function useUpdateProductBasedCostingItemsByFileIdMutation() {
         });
       }
     },
+    onError: (error) => {
+      showMutationWarning(error, 'Failed to update costing items.');
+    },
   });
 }
 
@@ -124,6 +137,9 @@ export function useRecalculateOfferPricesMutation() {
       void queryClient.invalidateQueries({
         queryKey: productBasedCostingQueryKeys.itemsList(fileId),
       });
+    },
+    onError: (error) => {
+      showMutationWarning(error, 'Failed to recalculate offer prices.');
     },
   });
 }

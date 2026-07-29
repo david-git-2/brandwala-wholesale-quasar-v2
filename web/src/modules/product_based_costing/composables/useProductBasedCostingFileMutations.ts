@@ -1,13 +1,17 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import { productBasedCostingQueryKeys } from '../shared/queryKeys/productBasedCostingQueryKeys';
 import { productBasedCostingRepository } from '../repositories/productBasedCostingRepository';
-import { showSuccessNotification } from 'src/utils/appFeedback';
+import { parseSupabaseError, showSuccessNotification, showWarningDialog } from 'src/utils/appFeedback';
 import type {
   ProductBasedCostingFile,
   ProductBasedCostingFileCreateInput,
   ProductBasedCostingFileListPage,
   ProductBasedCostingFileUpdateInput,
 } from '../types';
+
+const showMutationWarning = (error: unknown, fallback: string) => {
+  showWarningDialog(parseSupabaseError(error, fallback), 'Request failed');
+};
 
 export function useCreateProductBasedCostingFileMutation() {
   const queryClient = useQueryClient();
@@ -22,6 +26,9 @@ export function useCreateProductBasedCostingFileMutation() {
         newFile,
       );
       void queryClient.invalidateQueries({ queryKey: productBasedCostingQueryKeys.all });
+    },
+    onError: (error) => {
+      showMutationWarning(error, 'Failed to create costing file.');
     },
   });
 }
@@ -54,6 +61,9 @@ export function useUpdateProductBasedCostingFileMutation() {
         },
       );
     },
+    onError: (error) => {
+      showMutationWarning(error, 'Failed to update costing file.');
+    },
   });
 }
 
@@ -81,6 +91,9 @@ export function useDeleteProductBasedCostingFileMutation() {
           };
         },
       );
+    },
+    onError: (error) => {
+      showMutationWarning(error, 'Failed to delete costing file.');
     },
   });
 }
@@ -143,6 +156,9 @@ export function useCopyProductBasedCostingFileMutation() {
     onSuccess: (data) => {
       showSuccessNotification(`Copied as #${data.copiedFileId} ${data.nextName}`);
       void queryClient.invalidateQueries({ queryKey: productBasedCostingQueryKeys.all });
+    },
+    onError: (error) => {
+      showMutationWarning(error, 'Failed to copy costing file.');
     },
   });
 }
