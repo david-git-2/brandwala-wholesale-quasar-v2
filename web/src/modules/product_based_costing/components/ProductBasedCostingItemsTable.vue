@@ -8,6 +8,22 @@
       <div class="row items-center q-gutter-sm">
         <q-btn flat no-caps color="grey-8" label="Clear Selection" @click="selectedRowIds = []" />
         <q-btn
+          v-if="props.defaultShipmentId && canShipSelection"
+          color="teal-9"
+          no-caps
+          icon="ph ph-truck"
+          label="Add to File Shipment"
+          @click="onBatchShipDefault"
+        />
+        <q-btn
+          v-if="canShipSelection"
+          color="primary"
+          no-caps
+          icon="ph ph-truck"
+          label="Add to Shipment..."
+          @click="onBatchShipPicker"
+        />
+        <q-btn
           color="negative"
           no-caps
           icon="ph ph-trash"
@@ -1196,6 +1212,7 @@ interface ProductBasedCostingItem {
   offer_price: number | null;
   is_offer_price_manual?: boolean | null;
   status: string | null;
+  assigned_shipment_id?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -1234,6 +1251,7 @@ const props = withDefaults(
     status?: string | undefined;
     shippedItemIds?: number[];
     visibleColumns?: string[];
+    defaultShipmentId?: number | null;
   }>(),
   {
     cargoRate: 0,
@@ -1241,6 +1259,7 @@ const props = withDefaults(
     profitRate: 0,
     status: 'pending',
     shippedItemIds: () => [],
+    defaultShipmentId: null,
   },
 );
 
@@ -1248,6 +1267,10 @@ const emit = defineEmits<{
   (e: 'edit', item: ProductBasedCostingItem): void;
   (e: 'delete', item: ProductBasedCostingItem): void;
   (e: 'ship', item: ProductBasedCostingItem): void;
+  (
+    e: 'batch-ship',
+    payload: { itemIds: number[]; shipmentId: number | null },
+  ): void;
   (
     e: 'row-change',
     payload: {
@@ -1300,6 +1323,7 @@ const statusOptions = [
   { label: 'Pending', value: 'pending' },
   { label: 'Accepted', value: 'accepted' },
   { label: 'Rejected', value: 'rejected' },
+  { label: 'Unavailable', value: 'unavailable' },
 ];
 
 const toNumber = (value: unknown) => toNumberSafe(value);
@@ -1932,6 +1956,52 @@ const onToggleRowSelection = (rowId: number, checked: boolean) => {
   selectedRowIds.value = selectedRowIds.value.filter((id) => id !== rowId);
 };
 
+const canShipSelection = computed(() => {
+  if (props.status !== 'processing' && props.status !== 'ordered') {
+    return false;
+  }
+  const eligibleSelected = props.items.filter(
+    (item) =>
+      selectedRowIds.value.includes(item.id) &&
+      item.status === 'accepted' &&
+      (item.delivered_quantity ?? 0) > 0 &&
+      item.assigned_shipment_id == null &&
+      item.product_id != null,
+  );
+  return eligibleSelected.length > 0;
+});
+
+const onBatchShipDefault = () => {
+  if (!props.defaultShipmentId) return;
+  const eligibleIds = props.items
+    .filter(
+      (item) =>
+        selectedRowIds.value.includes(item.id) &&
+        item.status === 'accepted' &&
+        (item.delivered_quantity ?? 0) > 0 &&
+        item.assigned_shipment_id == null &&
+        item.product_id != null,
+    )
+    .map((item) => item.id);
+  if (!eligibleIds.length) return;
+  emit('batch-ship', { itemIds: eligibleIds, shipmentId: props.defaultShipmentId });
+};
+
+const onBatchShipPicker = () => {
+  const eligibleIds = props.items
+    .filter(
+      (item) =>
+        selectedRowIds.value.includes(item.id) &&
+        item.status === 'accepted' &&
+        (item.delivered_quantity ?? 0) > 0 &&
+        item.assigned_shipment_id == null &&
+        item.product_id != null,
+    )
+    .map((item) => item.id);
+  if (!eligibleIds.length) return;
+  emit('batch-ship', { itemIds: eligibleIds, shipmentId: null });
+};
+
 const onConfirmBulkDelete = () => {
   if (!selectedRowIds.value.length) {
     showBulkDeleteConfirm.value = false;
@@ -1959,6 +2029,8 @@ const getStatusColor = (status: string | null) => {
       return 'positive';
     case 'rejected':
       return 'negative';
+    case 'unavailable':
+      return 'deep-orange';
     default:
       return 'grey';
   }

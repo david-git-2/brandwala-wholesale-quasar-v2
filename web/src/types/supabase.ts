@@ -3877,8 +3877,105 @@ export type Database = {
         }
         Relationships: []
       }
+      product_based_costing_backlog_items: {
+        Row: {
+          barcode: string | null
+          billing_profile_id: number
+          created_at: string
+          id: number
+          image_url: string | null
+          last_costing_file_id: number | null
+          last_costing_item_id: number | null
+          name: string
+          note: string | null
+          open_quantity: number
+          package_weight: number | null
+          price_gbp: number | null
+          product_code: string | null
+          product_id: number
+          product_weight: number | null
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          barcode?: string | null
+          billing_profile_id: number
+          created_at?: string
+          id?: never
+          image_url?: string | null
+          last_costing_file_id?: number | null
+          last_costing_item_id?: number | null
+          name: string
+          note?: string | null
+          open_quantity: number
+          package_weight?: number | null
+          price_gbp?: number | null
+          product_code?: string | null
+          product_id: number
+          product_weight?: number | null
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          barcode?: string | null
+          billing_profile_id?: number
+          created_at?: string
+          id?: never
+          image_url?: string | null
+          last_costing_file_id?: number | null
+          last_costing_item_id?: number | null
+          name?: string
+          note?: string | null
+          open_quantity?: number
+          package_weight?: number | null
+          price_gbp?: number | null
+          product_code?: string | null
+          product_id?: number
+          product_weight?: number | null
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_based_costing_backlog_items_billing_profile_id_fkey"
+            columns: ["billing_profile_id"]
+            isOneToOne: false
+            referencedRelation: "billing_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_based_costing_backlog_items_last_costing_file_id_fkey"
+            columns: ["last_costing_file_id"]
+            isOneToOne: false
+            referencedRelation: "product_based_costing_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_based_costing_backlog_items_last_costing_item_id_fkey"
+            columns: ["last_costing_item_id"]
+            isOneToOne: false
+            referencedRelation: "product_based_costing_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_based_costing_backlog_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_based_costing_backlog_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_based_costing_files: {
         Row: {
+          billing_profile_id: number | null
           cargo_rate_kg_gbp: number | null
           conversion_rate: number | null
           created_at: string
@@ -3897,6 +3994,7 @@ export type Database = {
           vendor_id: number | null
         }
         Insert: {
+          billing_profile_id?: number | null
           cargo_rate_kg_gbp?: number | null
           conversion_rate?: number | null
           created_at?: string
@@ -3915,6 +4013,7 @@ export type Database = {
           vendor_id?: number | null
         }
         Update: {
+          billing_profile_id?: number | null
           cargo_rate_kg_gbp?: number | null
           conversion_rate?: number | null
           created_at?: string
@@ -3934,10 +4033,17 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "product_based_costing_files_billing_profile_id_fkey"
+            columns: ["billing_profile_id"]
+            isOneToOne: false
+            referencedRelation: "billing_profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "product_based_costing_files_default_shipment_id_fkey"
             columns: ["default_shipment_id"]
             isOneToOne: false
-            referencedRelation: "shipments"
+            referencedRelation: "global_shipments"
             referencedColumns: ["id"]
           },
           {
@@ -4057,7 +4163,7 @@ export type Database = {
             foreignKeyName: "product_based_costing_items_assigned_shipment_id_fkey"
             columns: ["assigned_shipment_id"]
             isOneToOne: false
-            referencedRelation: "shipments"
+            referencedRelation: "global_shipments"
             referencedColumns: ["id"]
           },
           {
@@ -5209,7 +5315,9 @@ export type Database = {
           cart_id: number | null
           cod_charge_amount: number
           cod_collect_amount: number | null
-          collection_source: Database["public"]["Enums"]["collection_source_type"] | null
+          collection_source:
+            | Database["public"]["Enums"]["collection_source_type"]
+            | null
           conversion_rate: number | null
           courier_awb_number: string | null
           courier_bank_trx_id: string | null
@@ -5258,10 +5366,10 @@ export type Database = {
           parcel_description: string | null
           payout_account_info: string | null
           payout_account_type: string | null
+          payout_settlement_status: string | null
           pickup_address: string | null
           pickup_phone: string | null
           placed_at: string | null
-          payout_settlement_status: string | null
           print_charge_amount: number
           profit_rate: number | null
           recipient_name: string | null
@@ -5292,7 +5400,9 @@ export type Database = {
           cart_id?: number | null
           cod_charge_amount?: number
           cod_collect_amount?: number | null
-          collection_source?: Database["public"]["Enums"]["collection_source_type"] | null
+          collection_source?:
+            | Database["public"]["Enums"]["collection_source_type"]
+            | null
           conversion_rate?: number | null
           courier_awb_number?: string | null
           courier_bank_trx_id?: string | null
@@ -5375,7 +5485,9 @@ export type Database = {
           cart_id?: number | null
           cod_charge_amount?: number
           cod_collect_amount?: number | null
-          collection_source?: Database["public"]["Enums"]["collection_source_type"] | null
+          collection_source?:
+            | Database["public"]["Enums"]["collection_source_type"]
+            | null
           conversion_rate?: number | null
           courier_awb_number?: string | null
           courier_bank_trx_id?: string | null
@@ -7638,6 +7750,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      add_pbc_backlog_to_costing_file: {
+        Args: { p_backlog_ids: number[]; p_file_id: number }
+        Returns: number[]
+      }
       add_shipment_item_from_product: {
         Args: {
           p_product_id: number
@@ -7819,6 +7935,14 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      apply_dropship_payout_settlement_fifo: {
+        Args: {
+          p_amount: number
+          p_billing_profile_id: number
+          p_tenant_id: number
+        }
+        Returns: undefined
       }
       apply_global_invoice_settlement_discount: {
         Args: { p_amount: number; p_invoice_id: number; p_note?: string }
@@ -8943,16 +9067,6 @@ export type Database = {
           shop_id: number
         }[]
       }
-      get_my_dropship_wallet_summary: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          available_balance: number
-          billing_profile_id: number
-          currency: string
-          locked_balance: number
-          pending_balance: number
-        }[]
-      }
       get_dropship_wallet_reconciliation_report: {
         Args: { p_tenant_id?: number }
         Returns: Json
@@ -9026,6 +9140,16 @@ export type Database = {
           thana: string
           total_orders: number
           total_spent: number
+        }[]
+      }
+      get_my_dropship_wallet_summary: {
+        Args: never
+        Returns: {
+          available_balance: number
+          billing_profile_id: number
+          currency: string
+          locked_balance: number
+          pending_balance: number
         }[]
       }
       get_or_create_shop_cart: { Args: { p_shop_id: number }; Returns: Json }
@@ -9564,19 +9688,6 @@ export type Database = {
           module_key: string
         }[]
       }
-      list_my_dropship_wallet_ledger: {
-        Args: { p_limit?: number; p_offset?: number }
-        Returns: {
-          amount: number
-          balance_after: number
-          created_at: string
-          id: string
-          note: string
-          order_id: number
-          source_id: string
-          transaction_type: string
-        }[]
-      }
       list_dropship_shop_orders_for_staff: {
         Args: {
           p_limit?: number
@@ -9587,7 +9698,7 @@ export type Database = {
         }
         Returns: {
           cod_collect_amount: number
-          collection_source: Database["public"]["Enums"]["collection_source_type"] | null
+          collection_source: Database["public"]["Enums"]["collection_source_type"]
           courier_awb_number: string
           courier_name: string
           courier_remittance_ref: string
@@ -9597,7 +9708,7 @@ export type Database = {
           global_invoice_id: number
           id: number
           order_no: string
-          payout_settlement_status: string | null
+          payout_settlement_status: string
           recipient_name: string
           recipient_phone: string
           status: Database["public"]["Enums"]["shop_order_status"]
@@ -9869,6 +9980,19 @@ export type Database = {
           updated_at: string
         }[]
       }
+      list_my_dropship_wallet_ledger: {
+        Args: { p_limit?: number; p_offset?: number }
+        Returns: {
+          amount: number
+          balance_after: number
+          created_at: string
+          id: string
+          note: string
+          order_id: number
+          source_id: string
+          transaction_type: string
+        }[]
+      }
       list_payment_methods: {
         Args: never
         Returns: {
@@ -9877,6 +10001,28 @@ export type Database = {
           name: string
           scope: string
           sort_order: number
+        }[]
+      }
+      list_pbc_backlog_items: {
+        Args: { p_billing_profile_id: number; p_tenant_id: number }
+        Returns: {
+          barcode: string
+          billing_profile_id: number
+          created_at: string
+          id: number
+          image_url: string
+          last_costing_file_id: number
+          last_costing_item_id: number
+          name: string
+          note: string
+          open_quantity: number
+          package_weight: number
+          price_gbp: number
+          product_code: string
+          product_id: number
+          product_weight: number
+          tenant_id: number
+          updated_at: string
         }[]
       }
       list_procurement_shop_order_lines: {
@@ -11503,6 +11649,34 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "membership_grants"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      upsert_pbc_backlog_from_item: {
+        Args: { p_costing_item_id: number }
+        Returns: {
+          barcode: string | null
+          billing_profile_id: number
+          created_at: string
+          id: number
+          image_url: string | null
+          last_costing_file_id: number | null
+          last_costing_item_id: number | null
+          name: string
+          note: string | null
+          open_quantity: number
+          package_weight: number | null
+          price_gbp: number | null
+          product_code: string | null
+          product_id: number
+          product_weight: number | null
+          tenant_id: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "product_based_costing_backlog_items"
           isOneToOne: true
           isSetofReturn: false
         }

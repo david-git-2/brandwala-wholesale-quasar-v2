@@ -2,15 +2,18 @@ import type { Database } from 'src/types/supabase';
 
 export type ProductBasedCostingFile =
   Database['public']['Tables']['product_based_costing_files']['Row'] & {
+    billing_profile_id?: number | null;
     default_shipment_id?: number | null;
   };
 export type ProductBasedCostingFileCreateInput =
   Database['public']['Tables']['product_based_costing_files']['Insert'] & {
+    billing_profile_id?: number | null;
     default_shipment_id?: number | null;
   };
 export type ProductBasedCostingFileUpdateInput =
   Database['public']['Tables']['product_based_costing_files']['Update'] & {
     id: number;
+    billing_profile_id?: number | null;
     default_shipment_id?: number | null;
   };
 export type ProductBasedCostingFileDeleteInput = {

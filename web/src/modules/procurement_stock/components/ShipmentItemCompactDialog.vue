@@ -2,8 +2,8 @@
   <q-dialog v-model="localOpen" persistent>
     <q-card style="min-width: 420px; max-width: 90vw">
       <q-card-section class="row items-center justify-between">
-        <div class="text-h6">Add Shipment</div>
-        <q-btn flat round dense icon="ph ph-x" :disable="loading" @click="onCancel" />
+        <div class="text-h6">{{ isBatch ? 'Batch Add to Shipment' : 'Add Shipment' }}</div>
+        <q-btn flat round dense icon="ph ph-x" :disable="loading || creatingShipment" @click="onCancel" />
       </q-card-section>
 
       <q-separator />
@@ -17,48 +17,66 @@
           emit-value
           map-options
           :rules="[requiredRule]"
-          :disable="loading"
+          :disable="loading || creatingShipment"
         >
           <template #after>
-            <q-btn round dense flat icon="ph ph-plus" color="primary" @click="onCreateShipment">
-              <q-tooltip>Create new shipment</q-tooltip>
+            <q-btn
+              round
+              dense
+              flat
+              icon="ph ph-plus"
+              color="primary"
+              :loading="creatingShipment"
+              @click="onCreateInlineShipment"
+            >
+              <q-tooltip>Create new draft shipment</q-tooltip>
             </q-btn>
           </template>
         </q-select>
 
-        <q-input
-          v-model.number="form.quantity"
-          label="Quantity"
-          type="number"
-          outlined
-          :rules="[requiredRule]"
-          :disable="loading"
+        <q-checkbox
+          v-if="form.shipment_id !== props.defaultShipmentId"
+          v-model="form.save_as_default"
+          label="Set as file default shipment"
+          dense
         />
 
-        <q-input
-          v-model.number="form.price_gbp"
-          label="Price (GBP)"
-          type="number"
-          step="0.01"
-          outlined
-          :disable="loading"
-        />
+        <template v-if="!isBatch">
+          <q-input
+            v-model.number="form.quantity"
+            label="Quantity"
+            type="number"
+            outlined
+            :rules="[requiredRule]"
+            :disable="loading"
+          />
+
+          <q-input
+            v-model.number="form.price_gbp"
+            label="Price (GBP)"
+            type="number"
+            step="0.01"
+            outlined
+            :disable="loading"
+          />
+        </template>
       </q-card-section>
 
       <q-separator />
 
       <q-card-actions align="right">
-        <q-btn flat label="Cancel" color="grey-7" :disable="loading" @click="onCancel" />
-        <q-btn color="primary" label="Save" :loading="loading" :disable="loading" @click="onSave" />
+        <q-btn flat label="Cancel" color="grey-7" :disable="loading || creatingShipment" @click="onCancel" />
+        <q-btn color="primary" label="Save" :loading="loading" :disable="loading || creatingShipment" @click="onSave" />
       </q-card-actions>
     </q-card>
   </q-dialog>
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed, reactive, ref, watch } from 'vue';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
+import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
+
 type Shipment = {
   id: number;
   name: string;
@@ -66,23 +84,32 @@ type Shipment = {
   tenant_shipment_id?: number | null;
 };
 
-const router = useRouter();
-
 const props = defineProps<{
   modelValue: boolean;
   quantity?: number | null;
   priceGbp?: number | null;
   defaultShipmentId?: number | null;
+  isBatch?: boolean;
   loading?: boolean;
 }>();
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void;
-  (e: 'save', payload: { shipment_id: number; quantity: number; price_gbp: number | null }): void;
+  (
+    e: 'save',
+    payload: {
+      shipment_id: number;
+      quantity?: number | null;
+      price_gbp?: number | null;
+      save_as_default?: boolean;
+    },
+  ): void;
   (e: 'shipment-change', shipmentId: number | null): void;
 }>();
 
 const shipmentStore = useGlobalShipmentStore();
+const tenantStore = useTenantStore();
+const creatingShipment = ref(false);
 
 const localOpen = computed({
   get: () => props.modelValue,
@@ -93,10 +120,12 @@ const form = reactive<{
   shipment_id: number | null;
   quantity: number | null;
   price_gbp: number | null;
+  save_as_default: boolean;
 }>({
-  shipment_id: null,
+  shipment_id: props.defaultShipmentId ?? null,
   quantity: props.quantity ?? null,
   price_gbp: props.priceGbp ?? null,
+  save_as_default: true,
 });
 
 watch(
@@ -106,6 +135,7 @@ watch(
       form.shipment_id = props.defaultShipmentId ?? null;
       form.quantity = props.quantity ?? null;
       form.price_gbp = props.priceGbp ?? null;
+      form.save_as_default = true;
     }
   },
 );
@@ -153,24 +183,44 @@ const onCancel = () => {
   localOpen.value = false;
 };
 
-const onCreateShipment = () => {
-  localOpen.value = false;
-  void router.push({ name: 'app-procurement-shipment-list' });
+const onCreateInlineShipment = async () => {
+  const tenantId = tenantStore.selectedTenant?.id;
+  if (!tenantId) return;
+
+  creatingShipment.value = true;
+  try {
+    const created = await shipmentStore.createShipment(tenantId, {
+      name: `Shipment ${new Date().toLocaleDateString()}`,
+      type: 'international',
+      shipment_purchase_currency_id: null,
+      shipment_cost_currency_id: null,
+    });
+    if (created?.id) {
+      await shipmentStore.fetchShipments(tenantId);
+      form.shipment_id = created.id;
+    }
+  } finally {
+    creatingShipment.value = false;
+  }
 };
 
 const onSave = () => {
-  if (props.loading) {
+  if (props.loading || creatingShipment.value) {
     return;
   }
-  if (form.shipment_id == null || form.quantity == null) {
+  if (form.shipment_id == null) {
+    return;
+  }
+  if (!props.isBatch && form.quantity == null) {
     return;
   }
 
   emit('save', {
     shipment_id: form.shipment_id,
-    quantity: Number(form.quantity),
+    quantity: form.quantity == null ? null : Number(form.quantity),
     price_gbp:
       form.price_gbp === null || form.price_gbp === undefined ? null : Number(form.price_gbp),
+    save_as_default: form.save_as_default,
   });
 };
 

@@ -27,6 +27,7 @@ const buildProductBasedCostingFileCreatePayload = (
   tenant_id: payload.tenant_id ?? null,
   name: normalizeText(payload.name),
   order_for: normalizeText(payload.order_for),
+  billing_profile_id: payload.billing_profile_id ?? null,
   note: normalizeText(payload.note),
   vendor_code: normalizeText(payload.vendor_code),
   market_code: normalizeText(payload.market_code),
@@ -52,6 +53,10 @@ const buildProductBasedCostingFileUpdatePayload = (
 
   if (payload.order_for !== undefined) {
     updatePayload.order_for = normalizeText(payload.order_for);
+  }
+
+  if (payload.billing_profile_id !== undefined) {
+    updatePayload.billing_profile_id = payload.billing_profile_id;
   }
 
   if (payload.note !== undefined) {
@@ -424,6 +429,23 @@ const recalculateProductBasedCostingFileOfferPrices = async (fileId: number): Pr
   }
 };
 
+const addCostingItemToShipment = async (
+  shipmentId: number,
+  costingItemId: number,
+): Promise<unknown> => {
+  const { data, error } = await supabase.rpc('add_child_line_to_parent_shipment', {
+    p_parent_shipment_id: shipmentId,
+    p_source_type: 'costing_item',
+    p_source_id: costingItemId,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+};
+
 export const productBasedCostingRepository = {
   listProductBasedCostingFiles,
   createProductBasedCostingFile,
@@ -437,4 +459,5 @@ export const productBasedCostingRepository = {
   deleteProductBasedCostingItem,
   getProductBasedCostingItemById,
   recalculateProductBasedCostingFileOfferPrices,
+  addCostingItemToShipment,
 };

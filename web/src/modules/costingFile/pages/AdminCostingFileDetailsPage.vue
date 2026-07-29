@@ -2246,8 +2246,9 @@ const onConfirmRemoveShipment = async () => {
 
 const onSaveShipment = async (data: {
   shipment_id: number;
-  quantity: number;
-  price_gbp: number | null;
+  quantity?: number | null;
+  price_gbp?: number | null;
+  save_as_default?: boolean;
 }) => {
   const rowItem = selectedShipItem.value;
   if (!rowItem) {

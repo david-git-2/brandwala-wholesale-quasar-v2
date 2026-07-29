@@ -339,6 +339,7 @@ type CostingFileForm = {
   id: number | null;
   name: string;
   order_for: string;
+  billing_profile_id: number | null;
   note: string;
   vendor_code: string | null;
   market_code: string | null;
@@ -357,6 +358,7 @@ function openEditDialog(row: ProductBasedCostingFile) {
     id: row.id,
     name: row.name ?? '',
     order_for: row.order_for ?? '',
+    billing_profile_id: row.billing_profile_id ?? null,
     note: row.note ?? '',
     vendor_code: row.vendor_code ?? null,
     market_code: row.market_code ?? null,
@@ -370,6 +372,7 @@ async function handleDialogSubmit(payload: CostingFileForm) {
       id: payload.id,
       name: payload.name,
       order_for: payload.order_for,
+      billing_profile_id: payload.billing_profile_id,
       note: payload.note,
       vendor_code: payload.vendor_code,
       market_code: payload.market_code,
@@ -378,6 +381,7 @@ async function handleDialogSubmit(payload: CostingFileForm) {
     await createCostingFile({
       name: payload.name,
       order_for: payload.order_for,
+      billing_profile_id: payload.billing_profile_id,
       note: payload.note,
       vendor_code: payload.vendor_code,
       market_code: payload.market_code,

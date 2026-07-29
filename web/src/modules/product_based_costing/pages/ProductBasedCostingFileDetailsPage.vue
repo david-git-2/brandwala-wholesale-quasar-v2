@@ -70,9 +70,21 @@
               <q-btn flat dense icon="ph ph-arrow-left" color="grey-7" @click="goBack" />
               <div>
                 <div class="text-overline text-primary">Product Based Costing</div>
-                <h1 class="text-h5 text-weight-bold q-my-none">
-                  {{ store?.item?.name ?? 'Costing File' }}
-                </h1>
+                <div class="row items-center q-gutter-x-xs">
+                  <h1 class="text-h5 text-weight-bold q-my-none">
+                    {{ store?.item?.name ?? 'Costing File' }}
+                  </h1>
+                  <q-chip
+                    v-if="store?.item?.billing_profile_id"
+                    dense
+                    color="primary"
+                    text-color="white"
+                    icon="ph ph-user text-caption"
+                    class="q-ml-sm"
+                  >
+                    {{ store?.item?.order_for ?? 'Profile' }}
+                  </q-chip>
+                </div>
                 <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
                   Created for {{ store?.item?.order_for ?? '-' }}
                 </p>
@@ -80,6 +92,42 @@
             </div>
           </div>
           <div class="col-auto row q-gutter-sm items-center">
+            <q-select
+              v-model="defaultShipmentId"
+              :options="defaultShipmentOptions"
+              label="File Shipment"
+              dense
+              outlined
+              emit-value
+              map-options
+              style="min-width: 180px"
+              class="soft-input"
+            >
+              <template #after>
+                <q-btn round dense flat icon="ph ph-plus" color="primary" @click="createDefaultShipment">
+                  <q-tooltip>Create draft shipment</q-tooltip>
+                </q-btn>
+              </template>
+            </q-select>
+            <q-btn
+              v-if="store?.item?.billing_profile_id"
+              outline
+              color="primary"
+              no-caps
+              icon="ph ph-tray"
+              label="Backlog"
+              :loading="backlog.loading.value"
+              @click="openBacklogDrawer"
+            >
+              <q-badge
+                v-if="backlog.items.value.length > 0"
+                color="orange-9"
+                floating
+                rounded
+              >
+                {{ backlog.items.value.length }}
+              </q-badge>
+            </q-btn>
             <q-btn
               color="primary"
               unelevated
@@ -286,9 +334,11 @@
             :status="store.item?.status ?? 'pending'"
             :shipped-item-ids="shippedItemIds"
             :visible-columns="visibleColumns"
+            :default-shipment-id="store.item?.default_shipment_id ?? null"
             @edit="onEdit"
             @delete="onDelete"
             @ship="onShip"
+            @batch-ship="onBatchShip"
             @row-change="onRowChange"
             @product-weight-change="onProductWeightChange"
             @package-weight-change="onPackageWeightChange"
@@ -395,6 +445,14 @@
           </div>
         </div>
 
+        <PbcBacklogSuggestDrawer
+          v-model="showBacklogDrawer"
+          :items="backlog.items.value"
+          :loading="backlog.loading.value"
+          :adding="backlog.saving.value"
+          @add="handleConsumeBacklog"
+        />
+
         <ProductBasedCostingItemAddDialog
           v-model="showItemDialog"
           :product-based-costing-file-id="fileId"
@@ -410,6 +468,7 @@
           :quantity="selectedQuantity"
           :price-gbp="selectedPriceGbp"
           :loading="shipmentStore.saving"
+          :is-batch="isBatchShip"
           :default-shipment-id="
             (store.item?.default_shipment_id as number | null | undefined) ?? null
           "
@@ -443,6 +502,7 @@ import { useQuasar } from 'quasar';
 import { useRoute, useRouter } from 'vue-router';
 import { useProductBasedCostingStore } from '../stores/productBasedCostingStore';
 import ProductBasedCostingItemAddDialog from '../components/ProductBasedCostingItemAddDialog.vue';
+import PbcBacklogSuggestDrawer from '../components/PbcBacklogSuggestDrawer.vue';
 import AddCostingItemsDrawer from '../components/AddCostingItemsDrawer.vue';
 import BulkPasteCostingItemsDialog from '../components/BulkPasteCostingItemsDialog.vue';
 import ProductBasedCostingPreviewColumnSelectorDialog from '../components/ProductBasedCostingPreviewColumnSelectorDialog.vue';
@@ -452,14 +512,18 @@ import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { useGlobalShipmentStore } from 'src/modules/procurement_stock/stores/globalShipmentStore';
 import { globalShipmentRepository } from 'src/modules/procurement_stock/repositories/globalShipmentRepository';
 import ShipmentItemCompactDialog from 'src/modules/procurement_stock/components/ShipmentItemCompactDialog.vue';
+import { productBasedCostingRepository } from '../repositories/productBasedCostingRepository';
 import type { ProductBasedCostingItem } from '../types';
 import { productBasedCostingService } from '../services/productBasedCostingService';
 import { toNumberSafe } from '../utils/pricing';
 import { buildCostingExcelWorkbook } from '../utils/buildCostingExcelWorkbook';
 import { useMembershipColumnPreference } from 'src/modules/membership/composables/useMembershipColumnPreference';
+import { usePbcBacklog } from '../composables/usePbcBacklog';
 const productStore = useProductStore();
 const shipmentStore = useGlobalShipmentStore();
 const tenantStore = useTenantStore();
+const backlog = usePbcBacklog();
+const showBacklogDrawer = ref(false);
 const $q = useQuasar();
 
 const route = useRoute();
@@ -480,6 +544,51 @@ const selectedShipItem = ref<ProductBasedCostingItem | null>(null);
 const shippedItemIds = ref<number[]>([]);
 const confirmRemoveShipmentOpen = ref(false);
 const pendingRemoveShipItem = ref<ProductBasedCostingItem | null>(null);
+const isBatchShip = ref(false);
+const batchShipItemIds = ref<number[]>([]);
+
+type GlobalShipmentRow = {
+  id: number;
+  name: string;
+  status?: string | null;
+  tenant_shipment_id?: number | null;
+};
+
+const defaultShipmentOptions = computed(() =>
+  (shipmentStore.rows ?? [])
+    .filter((s: GlobalShipmentRow) => s.status === 'Draft')
+    .map((s: GlobalShipmentRow) => ({
+      label: `#${s.tenant_shipment_id ?? s.id} ${s.name}`,
+      value: s.id,
+    })),
+);
+
+const defaultShipmentId = computed<number | null>({
+  get: () => (store.item?.default_shipment_id as number | null | undefined) ?? null,
+  set: (val: number | null) => {
+    void onDefaultShipmentChange(val);
+  },
+});
+
+const createDefaultShipment = async () => {
+  const tenantId = tenantStore.selectedTenant?.id;
+  if (!tenantId || !fileId.value) return;
+
+  const created = await shipmentStore.createShipment(tenantId, {
+    name: `Shipment ${new Date().toLocaleDateString()}`,
+    type: 'international',
+    shipment_purchase_currency_id: null,
+    shipment_cost_currency_id: null,
+  });
+
+  if (created?.id) {
+    await shipmentStore.fetchShipments(tenantId);
+    await store.updateProductBasedCostingFile({
+      id: fileId.value,
+      default_shipment_id: created.id,
+    });
+  }
+};
 const alwaysVisibleColumns = ['select', 'sl', 'image', 'name'];
 const allColumnNames = [
   'select',
@@ -699,6 +808,31 @@ const loadData = async () => {
     store.fetchProductBasedCostingFileById(fileId.value),
     store.fetchProductBasedCostingItems(fileId.value),
   ]);
+
+  refreshBacklog();
+};
+
+const refreshBacklog = () => {
+  const tenantId = tenantStore.selectedTenant?.id;
+  const profileId = store.item?.billing_profile_id;
+  if (tenantId && profileId) {
+    void backlog.fetchBacklogItems(tenantId, profileId);
+  }
+};
+
+const openBacklogDrawer = () => {
+  refreshBacklog();
+  showBacklogDrawer.value = true;
+};
+
+const handleConsumeBacklog = async (backlogIds: number[]) => {
+  if (!fileId.value) return;
+  const addedIds = await backlog.consumeBacklogItems(fileId.value, backlogIds);
+  if (addedIds.length > 0) {
+    await store.fetchProductBasedCostingItems(fileId.value);
+    refreshBacklog();
+    showBacklogDrawer.value = false;
+  }
 };
 
 const handleCreated = async () => {
@@ -709,6 +843,7 @@ const handleCreated = async () => {
   // Keep store in sync with backend using a single items fetch.
   // Avoid shipment refresh here because it fans out into many API calls.
   await store.fetchProductBasedCostingItems(fileId.value);
+  refreshBacklog();
 };
 
 onMounted(async () => {
@@ -744,6 +879,7 @@ const onEdit = (item: ProductBasedCostingItem) => {
 const onDelete = async (item: ProductBasedCostingItem) => {
   console.log('delete', item);
   await store.deleteProductBasedCostingItem(item.id);
+  refreshBacklog();
 };
 
 const onBulkDelete = async (ids: number[]) => {
@@ -762,6 +898,7 @@ const onBulkDelete = async (ids: number[]) => {
 
   await store.fetchProductBasedCostingItems(fileId.value);
   refreshShippedItemIndicators();
+  refreshBacklog();
 
   if (failedCount > 0) {
     $q.notify({
@@ -791,6 +928,10 @@ type WeightChangePayload = {
 
 const onRowChange = async (payload: RowChangePayload) => {
   await store.updateProductBasedCostingItem(payload.item);
+  if (payload.field === 'delivered_quantity' || payload.field === 'status' || payload.field === 'quantity') {
+    await backlog.upsertBacklogFromItem(payload.item.id);
+    refreshBacklog();
+  }
   console.log('Row changed:', payload);
 };
 
@@ -947,10 +1088,56 @@ const onPackageWeightChange = async (payload: WeightChangePayload) => {
 };
 
 const openShipmentDialog = (item: ProductBasedCostingItem) => {
+  isBatchShip.value = false;
   selectedShipItem.value = item;
-  selectedQuantity.value = item.quantity ?? null;
+  selectedQuantity.value = item.delivered_quantity ?? item.quantity ?? null;
   selectedPriceGbp.value = item.price_gbp ?? null;
   showAddShipmentDialog.value = true;
+};
+
+const onBatchShip = async (payload: { itemIds: number[]; shipmentId: number | null }) => {
+  if (!payload.itemIds.length) return;
+
+  if (payload.shipmentId) {
+    await executeBatchShipment(payload.shipmentId, payload.itemIds);
+    return;
+  }
+
+  isBatchShip.value = true;
+  batchShipItemIds.value = payload.itemIds;
+  selectedQuantity.value = null;
+  selectedPriceGbp.value = null;
+  showAddShipmentDialog.value = true;
+};
+
+const executeBatchShipment = async (shipmentId: number, itemIds: number[]) => {
+  let successCount = 0;
+  let failCount = 0;
+
+  for (const itemId of itemIds) {
+    try {
+      await productBasedCostingRepository.addCostingItemToShipment(shipmentId, itemId);
+      successCount++;
+    } catch (err) {
+      console.error(`Failed to add item ${itemId} to shipment ${shipmentId}:`, err);
+      failCount++;
+    }
+  }
+
+  await store.fetchProductBasedCostingItems(fileId.value!);
+  refreshShippedItemIndicators();
+
+  if (failCount > 0) {
+    $q.notify({
+      type: 'warning',
+      message: `${successCount} item(s) added to shipment, ${failCount} failed.`,
+    });
+  } else {
+    $q.notify({
+      type: 'positive',
+      message: `${successCount} item(s) added to shipment successfully.`,
+    });
+  }
 };
 
 const normalizeText = (value: string | null | undefined) => (value ?? '').trim().toLowerCase();
@@ -1042,9 +1229,25 @@ const onConfirmRemoveShipment = async () => {
 
 const onSaveShipment = async (data: {
   shipment_id: number;
-  quantity: number;
-  price_gbp: number | null;
+  quantity?: number | null;
+  price_gbp?: number | null;
+  save_as_default?: boolean;
 }) => {
+  if (data.save_as_default && fileId.value && store.item?.default_shipment_id !== data.shipment_id) {
+    await store.updateProductBasedCostingFile({
+      id: fileId.value,
+      default_shipment_id: data.shipment_id,
+    });
+  }
+
+  if (isBatchShip.value) {
+    showAddShipmentDialog.value = false;
+    await executeBatchShipment(data.shipment_id, batchShipItemIds.value);
+    batchShipItemIds.value = [];
+    isBatchShip.value = false;
+    return;
+  }
+
   const rowItem = selectedShipItem.value;
   if (!rowItem) {
     return;
@@ -1058,50 +1261,25 @@ const onSaveShipment = async (data: {
     return;
   }
 
-  const quantity = Math.max(0, Number(data.quantity) || 0);
-  if (quantity <= 0) {
-    return;
-  }
-
-  let newItem;
   try {
-    newItem = await shipmentStore.addShipmentItem({
-      shipment_id: data.shipment_id,
-      product_id: rowItem.product_id,
-      vendor_id: null,
-      name: rowItem.name ?? '',
-      ordered_quantity: quantity,
-      image_url: rowItem.image_url ?? null,
-      add_method: 'costing',
-      purchase_price: data.price_gbp ?? 0,
-      product_weight: rowItem.product_weight ?? 0,
-      package_weight: rowItem.package_weight ?? 0,
-      barcode: rowItem.barcode ?? null,
-      product_code: rowItem.product_code ?? null,
-      source_child_tenant_id: null,
-      source_type: null,
-      source_id: null,
+    await productBasedCostingRepository.addCostingItemToShipment(data.shipment_id, rowItem.id);
+    await store.fetchProductBasedCostingItems(fileId.value!);
+    refreshShippedItemIndicators();
+    $q.notify({
+      type: 'positive',
+      message: 'Item added to shipment successfully.',
     });
-  } catch {
-    return;
+  } catch (err) {
+    $q.notify({
+      type: 'negative',
+      message: err instanceof Error ? err.message : 'Failed to add item to shipment.',
+    });
   }
-
-  if (!newItem) {
-    return;
-  }
-
-  await store.updateProductBasedCostingItem({
-    id: rowItem.id,
-    assigned_shipment_id: data.shipment_id,
-  });
 
   showAddShipmentDialog.value = false;
   selectedShipItem.value = null;
   selectedQuantity.value = null;
   selectedPriceGbp.value = null;
-  if (!shippedItemIds.value.includes(rowItem.id)) {
-    shippedItemIds.value = [...shippedItemIds.value, rowItem.id];
-  }
 };
 
 const onDefaultShipmentChange = async (shipmentId: number | null) => {

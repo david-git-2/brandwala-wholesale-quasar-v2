@@ -58,6 +58,7 @@ export function useCopyProductBasedCostingFileMutation() {
         tenant_id: item.tenant_id ?? null,
         name: nextName,
         order_for: item.order_for ?? null,
+        billing_profile_id: item.billing_profile_id ?? null,
         note: item.note ?? null,
         vendor_code: item.vendor_code ?? null,
         market_code: item.market_code ?? null,
