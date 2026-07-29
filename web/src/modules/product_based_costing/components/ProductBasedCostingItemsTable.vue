@@ -18,7 +18,7 @@
     </div>
 
     <div
-      v-if="status === 'placing_order'"
+      v-if="status === 'placing_order' || status === 'ready_for_shipment'"
       class="row items-center justify-between q-pa-sm q-mb-sm bg-grey-1 rounded-borders border-grey-3"
     >
       <div class="row items-center q-gutter-xs">
@@ -39,7 +39,7 @@
           no-caps
           color="teal-8"
           icon="ph ph-funnel"
-          label="Hide Rejected"
+          :label="status === 'ready_for_shipment' ? 'Hide Rejected & Unavailable' : 'Hide Rejected'"
           class="q-px-sm text-caption"
           @click="statusFilter = 'active'"
         />
@@ -1557,6 +1557,14 @@ const tableRows = ref<ProductBasedCostingTableRow[]>([]);
 const statusFilter = ref<'all' | 'active'>('active');
 
 const displayRows = computed(() => {
+  if (props.status === 'ready_for_shipment') {
+    if (statusFilter.value === 'all') {
+      return tableRows.value;
+    }
+    return tableRows.value.filter(
+      (row) => row.status !== 'rejected' && row.status !== 'unavailable',
+    );
+  }
   if (props.status === 'placing_order') {
     if (statusFilter.value === 'all') {
       return tableRows.value;

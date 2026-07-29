@@ -69,7 +69,7 @@
         <!-- Drawers & Dialogs -->
         <PbcBacklogSuggestDrawer
           v-model="showBacklogDrawer"
-          :items="backlog.items.value"
+          :items="availableBacklogItems"
           :loading="backlog.loading.value"
           :adding="backlog.saving.value"
           @add="handleConsumeBacklog"
@@ -166,6 +166,29 @@ const { data: costingItemsData, isLoading: isLoadingItems } = useProductBasedCos
 
 const isLoading = computed(() => isLoadingFile.value || isLoadingItems.value);
 const costingItems = computed(() => costingItemsData.value ?? []);
+
+const availableBacklogItems = computed(() => {
+  const currentProductIds = new Set(
+    costingItems.value
+      .map((item) => item.product_id)
+      .filter((id): id is number => id != null),
+  );
+  const currentBarcodes = new Set(
+    costingItems.value
+      .map((item) => item.barcode?.trim())
+      .filter((b): b is string => Boolean(b)),
+  );
+
+  return backlog.items.value.filter((item) => {
+    if (item.product_id && currentProductIds.has(item.product_id)) {
+      return false;
+    }
+    if (item.barcode && currentBarcodes.has(item.barcode.trim())) {
+      return false;
+    }
+    return true;
+  });
+});
 
 // Mutations
 const updateFileMutation = useUpdateProductBasedCostingFileMutation();
