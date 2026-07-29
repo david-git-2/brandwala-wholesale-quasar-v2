@@ -140,17 +140,18 @@
               </td>
               <td class="text-right" @click.stop>
                 <div class="row reverse q-gutter-xs justify-end items-center no-wrap">
-                  <q-btn
-                    color="negative"
-                    flat
-                    dense
-                    size="sm"
-                    no-caps
-                    icon="ph ph-trash"
-                    label="Delete"
-                    :loading="actionOrderId === c.id && actionKind === 'delete'"
-                    @click="deleteOrderFromList(c)"
-                  />
+                  <q-btn flat round dense icon="ph ph-dots-three-vertical" color="grey-7">
+                    <q-menu auto-close anchor="bottom right" self="top right">
+                      <q-list style="min-width: 140px">
+                        <q-item clickable @click="deleteOrderFromList(c)">
+                          <q-item-section avatar min-width="24px">
+                            <q-icon name="ph ph-trash" color="negative" size="18px" />
+                          </q-item-section>
+                          <q-item-section class="text-negative">Delete</q-item-section>
+                        </q-item>
+                      </q-list>
+                    </q-menu>
+                  </q-btn>
                 </div>
               </td>
             </tr>
