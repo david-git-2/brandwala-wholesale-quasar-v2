@@ -42,7 +42,7 @@ export const dropshipFinanceRepository = {
     // 1. Calculate Courier Owed (courier wallet credit total - debit total)
     const { data: ledgerRows, error: ledgerError } = await supabase
       .from('universal_wallet_ledger')
-      .select('entity_type, type, amount')
+      .select('entity_type, entity_id, type, amount')
       .eq('tenant_id', tenantId);
 
     if (ledgerError) throw ledgerError;
@@ -57,7 +57,7 @@ export const dropshipFinanceRepository = {
         courierOwedTotal += row.type === 'credit' ? amt : -amt;
       } else if (row.entity_type === 'tenant') {
         tenantCashTotal += row.type === 'credit' ? amt : -amt;
-      } else if (row.entity_type === 'middleman') {
+      } else if (row.entity_type === 'middleman' || row.entity_type === 'customer') {
         middlemanPayableTotal += row.type === 'credit' ? amt : -amt;
       }
     });
@@ -158,7 +158,7 @@ export const dropshipFinanceRepository = {
     // Calculate per-merchant middleman balance
     const merchantBalanceMap = new Map<number, number>();
     (ledgerRows || []).forEach((r: any) => {
-      if (r.entity_type === 'middleman') {
+      if (r.entity_type === 'middleman' || r.entity_type === 'customer') {
         // entity_id maps to billing_profile_id
         const entityId = Number(r.entity_id || 0);
         const current = merchantBalanceMap.get(entityId) || 0;
@@ -205,15 +205,20 @@ export const dropshipFinanceRepository = {
 
   async confirmCourierRemittance(params: {
     orderId: number;
+    netAmount: number;
     courierCharge?: number;
     remittanceRef?: string;
     bankTrxId?: string;
   }) {
-    const { data, error } = await supabase.rpc('confirm_courier_remittance_to_tenant', {
+    if (!(params.netAmount > 0)) {
+      throw new Error('Net remittance amount must be positive');
+    }
+    const { data, error } = await supabase.rpc('record_dropship_courier_remittance', {
       p_order_id: params.orderId,
-      p_courier_charge: params.courierCharge ?? 0,
-      p_remittance_ref: params.remittanceRef ?? null,
+      p_net_amount: params.netAmount,
+      p_remittance_ref: params.remittanceRef ?? `REMIT-${params.orderId}`,
       p_bank_trx_id: params.bankTrxId ?? null,
+      p_courier_charge: params.courierCharge ?? 0,
     });
 
     if (error) throw error;

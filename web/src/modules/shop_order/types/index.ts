@@ -206,6 +206,8 @@ export interface ShopOrder {
   tracking_url?: string | null;
   courier_remittance_ref?: string | null;
   courier_bank_trx_id?: string | null;
+  collection_source?: string | null;
+  payout_settlement_status?: string | null;
 }
 
 export interface ShopOrderItem {

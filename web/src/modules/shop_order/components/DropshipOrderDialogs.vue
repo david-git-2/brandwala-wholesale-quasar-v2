@@ -52,6 +52,7 @@ const updateRemittanceField = (key: string, val: any) => {
   <div>
     <!-- Courier Remittance Dialog -->
     <q-dialog
+      v-if="props.order?.collection_source !== 'billing_profile'"
       :model-value="props.remittanceDialogOpen"
       persistent
       @update:model-value="(v) => emit('update:remittanceDialogOpen', v)"
@@ -65,6 +66,9 @@ const updateRemittanceField = (key: string, val: any) => {
           <div class="text-body2 text-grey-8">
             Order <strong>{{ props.order?.order_no }}</strong> — net COD collection from courier.
           </div>
+          <q-banner v-if="props.order?.collection_source === 'billing_profile'" class="bg-amber-1 text-amber-10 rounded-borders q-mb-xs">
+            Prepaid order (billing_profile). Remittance action disabled.
+          </q-banner>
           <q-input
             :model-value="props.remittanceForm.remittance_ref"
             label="Remittance Batch / Statement ID *"
@@ -78,6 +82,10 @@ const updateRemittanceField = (key: string, val: any) => {
             label="Net Remitted Amount (BDT) *"
             outlined
             dense
+            :rules="[
+              (val) => Number(val) > 0 || 'Amount must be greater than zero',
+              (val) => Number(val) <= (props.codCollectAmount || 999999) || `Amount cannot exceed collectible cap of ${props.codCollectAmount} BDT`
+            ]"
             @update:model-value="(val) => updateRemittanceField('net_amount', Number(val))"
           />
           <q-input
@@ -103,7 +111,7 @@ const updateRemittanceField = (key: string, val: any) => {
             color="primary"
             label="Save Remittance"
             :loading="props.savingRemittance"
-            :disable="!props.canSaveOrderRemittance"
+            :disable="!props.canSaveOrderRemittance || props.remittanceForm.net_amount > (props.codCollectAmount || 999999)"
             @click="emit('save-remittance')"
           />
         </q-card-actions>

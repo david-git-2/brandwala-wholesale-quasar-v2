@@ -41,13 +41,19 @@
         
         <template #body-cell-status="props">
           <q-td :props="props">
-            <q-badge
-              :color="getStatusColor(props.row.status)"
-              text-color="white"
-              class="status-badge text-weight-bold q-py-xs q-px-sm"
-            >
-              {{ props.row.status.toUpperCase() }}
-            </q-badge>
+            <div class="column items-center q-gutter-y-xs">
+              <q-badge
+                :color="getStatusColor(props.row.status)"
+                text-color="white"
+                class="status-badge text-weight-bold q-py-xs q-px-sm"
+              >
+                {{ props.row.status.toUpperCase() }}
+              </q-badge>
+              <DropshipSettlementBadge
+                v-if="props.row.shop_type_snapshot === 'dropship'"
+                :status="props.row.payout_settlement_status || 'unpaid'"
+              />
+            </div>
           </q-td>
         </template>
         
@@ -77,6 +83,7 @@ import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { date } from 'quasar';
 import type { ShopOrder, Shop } from '../types';
+import DropshipSettlementBadge from './DropshipSettlementBadge.vue';
 
 const props = defineProps<{
   orders: ShopOrder[];

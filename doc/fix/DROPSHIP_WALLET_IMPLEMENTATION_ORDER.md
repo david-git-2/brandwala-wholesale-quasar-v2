@@ -31,13 +31,13 @@ Gap statements (read if you need “why”, not for coding):
 
 Mark as you finish:
 
-- [ ] Step 1 — P0A invoice billed + collection_source
-- [ ] Step 2 — P0B remittance unify + middleman + R1
-- [ ] Step 3 — P0C return finalize + stock types + R2 + P0 checklist
-- [ ] Step 4 — P1 frontend wire + R3–R4
-- [ ] Step 5 — P2 ops UI / offers / gifts + R5
-- [ ] Step 6 — P3 backfill
-- [ ] Step 7 — P3 governance + R6
+- [x] Step 1 — P0A invoice billed + collection_source
+- [x] Step 2 — P0B remittance unify + middleman + R1
+- [x] Step 3 — P0C return finalize + stock types + R2 + P0 checklist
+- [x] Step 4 — P1 frontend wire + R3–R4
+- [x] Step 5 — P2 ops UI / offers / gifts + R5
+- [x] Step 6 — P3 backfill
+- [x] Step 7 — P3 governance + R6
 - [ ] Step 8 — P4 test gate → hand to QA
 
 ---

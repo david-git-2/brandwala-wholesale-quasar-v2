@@ -27,8 +27,13 @@ export function useDropshipFinanceHubMutations(tenantId: { value: number | null 
   });
 
   const confirmCourierRemittanceMutation = useMutation({
-    mutationFn: (params: { orderId: number; courierCharge?: number; remittanceRef?: string; bankTrxId?: string }) =>
-      dropshipFinanceRepository.confirmCourierRemittance(params),
+    mutationFn: (params: {
+      orderId: number;
+      netAmount: number;
+      courierCharge?: number;
+      remittanceRef?: string;
+      bankTrxId?: string;
+    }) => dropshipFinanceRepository.confirmCourierRemittance(params),
     onSuccess: (data) => {
       showSuccessNotification(data.message || 'Courier remittance confirmed successfully');
       invalidateHub();

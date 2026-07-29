@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ShopOrder } from '../types';
+import DropshipSettlementBadge from './DropshipSettlementBadge.vue';
 
 const props = withDefaults(
   defineProps<{
@@ -171,11 +172,9 @@ const updateField = (key: string, val: any) => {
         </div>
       </q-card-section>
       <q-card-section class="q-gutter-y-sm">
-        <div class="text-caption text-grey-7">
-          Status:
-          <span class="text-weight-bold text-grey-9">
-            {{ order?.status?.toUpperCase().replace(/_/g, ' ') }}
-          </span>
+        <div class="row items-center justify-between text-caption text-grey-7">
+          <span>Status:</span>
+          <DropshipSettlementBadge :status="order?.payout_settlement_status || 'unpaid'" />
         </div>
         <div v-if="order?.courier_remittance_ref" class="text-body2">
           <div class="text-caption text-grey-7">Remittance Ref</div>

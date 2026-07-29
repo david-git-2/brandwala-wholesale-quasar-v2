@@ -98,12 +98,12 @@ Settlement visible; return dialog posts `finalize_dropship_return`; one price pe
 
 ## Verification checklist (P2)
 
-- [ ] Recipient remittance CTA hidden when `collection_source = billing_profile`
-- [ ] Remittance UI cannot submit above outstanding/collectible cap
-- [ ] Settlement badge shows unpaid / partial / paid on desk + list
-- [ ] Return dialog: condition split, suggested vs actual fee, override reason required when fee changed
-- [ ] Return posts `finalize_dropship_return` with `p_return_ref`
-- [ ] Detail page uses skeleton for initial load
-- [ ] One customer-facing price per `(shop_id, product_id, condition_bucket)`
-- [ ] Gift rule scoped by `customer_group_id`; duplicate `(order, rule)` blocked
-- [ ] LEGACY_DROP R5 marked done
+- [x] Recipient remittance CTA hidden when `collection_source = billing_profile`
+- [x] Remittance UI cannot submit above outstanding/collectible cap
+- [x] Settlement badge shows unpaid / partial / paid on desk + list
+- [x] Return dialog: condition split, suggested vs actual fee, override reason required when fee changed
+- [x] Return posts `finalize_dropship_return` with `p_return_ref`
+- [x] Detail page uses skeleton for initial load
+- [x] One customer-facing price per `(shop_id, product_id, condition_bucket)`
+- [x] Gift rule scoped by `customer_group_id`; duplicate `(order, rule)` blocked
+- [x] LEGACY_DROP R5 marked done

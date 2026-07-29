@@ -103,6 +103,7 @@ export interface CourierUnremittedFinancialSummary {
 
 export interface ReconcileSingleOrderPayload {
   orderId: number;
+  netAmount: number;
   courierCharge?: number;
 }
 

@@ -61,6 +61,7 @@
           unelevated
           no-caps
           :loading="loading"
+          :disable="netRemitted <= 0"
           label="Confirm Remittance & Book Middleman Profit"
         />
       </div>
@@ -78,7 +79,16 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'submit', payload: { orderId: number; courierCharge: number; remittanceRef?: string; bankTrxId?: string }): void;
+  (
+    e: 'submit',
+    payload: {
+      orderId: number;
+      netAmount: number;
+      courierCharge: number;
+      remittanceRef?: string;
+      bankTrxId?: string;
+    },
+  ): void;
 }>();
 
 const form = reactive({
@@ -107,9 +117,10 @@ const netRemitted = computed(() => {
 });
 
 function handleConfirm() {
-  if (!props.selectedOrder) return;
+  if (!props.selectedOrder || netRemitted.value <= 0) return;
   emit('submit', {
     orderId: props.selectedOrder.id,
+    netAmount: netRemitted.value,
     courierCharge: form.courierCharge,
     remittanceRef: form.remittanceRef,
     bankTrxId: form.bankTrxId,

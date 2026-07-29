@@ -36,9 +36,9 @@
 - Skip wrapper on `mark_dropship_order_returned`
 
 ### Done checklist
-- [ ] Finalize restocks sellable vs damage types correctly
-- [ ] Allocations shown qty updated
-- [ ] Duplicate `p_return_ref` rejected
-- [ ] Desk `mark_dropship_order_returned` cannot skip wallet/stock
-- [ ] Remitted return reverses remittance legs; unremitted does not invent remittance reverses
-- [ ] LEGACY_DROP R2 marked done
+- [x] Finalize restocks sellable vs damage types correctly
+- [x] Allocations shown qty updated
+- [x] Duplicate `p_return_ref` rejected
+- [x] Desk `mark_dropship_order_returned` cannot skip wallet/stock
+- [x] Remitted return reverses remittance legs; unremitted does not invent remittance reverses
+- [x] LEGACY_DROP R2 marked done

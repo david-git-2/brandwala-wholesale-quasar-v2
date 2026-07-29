@@ -1513,6 +1513,122 @@ export type Database = {
           },
         ]
       }
+      gift_rule_items: {
+        Row: {
+          created_at: string
+          id: number
+          product_id: number
+          quantity: number
+          rule_id: number
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          product_id: number
+          quantity?: number
+          rule_id: number
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          product_id?: number
+          quantity?: number
+          rule_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gift_rule_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gift_rule_items_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "gift_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gift_rule_redemptions: {
+        Row: {
+          id: number
+          order_id: number
+          redeemed_at: string
+          rule_id: number
+        }
+        Insert: {
+          id?: never
+          order_id: number
+          redeemed_at?: string
+          rule_id: number
+        }
+        Update: {
+          id?: never
+          order_id?: number
+          redeemed_at?: string
+          rule_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gift_rule_redemptions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "shop_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gift_rule_redemptions_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "gift_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gift_rules: {
+        Row: {
+          cost_ownership: string
+          created_at: string
+          customer_group_id: number | null
+          id: number
+          is_active: boolean
+          name: string
+          priority: number
+          updated_at: string
+        }
+        Insert: {
+          cost_ownership?: string
+          created_at?: string
+          customer_group_id?: number | null
+          id?: never
+          is_active?: boolean
+          name: string
+          priority?: number
+          updated_at?: string
+        }
+        Update: {
+          cost_ownership?: string
+          created_at?: string
+          customer_group_id?: number | null
+          id?: never
+          is_active?: boolean
+          name?: string
+          priority?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gift_rules_customer_group_id_fkey"
+            columns: ["customer_group_id"]
+            isOneToOne: false
+            referencedRelation: "customer_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       global_currencies: {
         Row: {
           code: string
@@ -5152,6 +5268,9 @@ export type Database = {
           recipient_profile_id: number | null
           replacement_of_order_id: number | null
           return_charge_amount: number | null
+          return_override_reason: string | null
+          return_ref: string | null
+          return_sub_state: string | null
           returned_at: string | null
           sender_name: string | null
           shipping_address: string | null
@@ -5230,6 +5349,9 @@ export type Database = {
           recipient_profile_id?: number | null
           replacement_of_order_id?: number | null
           return_charge_amount?: number | null
+          return_override_reason?: string | null
+          return_ref?: string | null
+          return_sub_state?: string | null
           returned_at?: string | null
           sender_name?: string | null
           shipping_address?: string | null
@@ -5308,6 +5430,9 @@ export type Database = {
           recipient_profile_id?: number | null
           replacement_of_order_id?: number | null
           return_charge_amount?: number | null
+          return_override_reason?: string | null
+          return_ref?: string | null
+          return_sub_state?: string | null
           returned_at?: string | null
           sender_name?: string | null
           shipping_address?: string | null
@@ -5549,6 +5674,54 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shop_product_offers: {
+        Row: {
+          condition_bucket: string
+          created_at: string
+          id: number
+          is_active: boolean
+          price: number
+          product_id: number
+          shop_id: number
+          updated_at: string
+        }
+        Insert: {
+          condition_bucket?: string
+          created_at?: string
+          id?: never
+          is_active?: boolean
+          price: number
+          product_id: number
+          shop_id: number
+          updated_at?: string
+        }
+        Update: {
+          condition_bucket?: string
+          created_at?: string
+          id?: never
+          is_active?: boolean
+          price?: number
+          product_id?: number
+          shop_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_product_offers_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_product_offers_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
             referencedColumns: ["id"]
           },
         ]
@@ -8622,12 +8795,27 @@ export type Database = {
         }
         Returns: Json
       }
+      ensure_dropship_invoice_billed_entry: {
+        Args: { p_invoice_id: number }
+        Returns: undefined
+      }
       fetch_customer_shop_categories: {
         Args: { p_tenant_id: number }
         Returns: {
           count: number
           name: string
         }[]
+      }
+      finalize_dropship_return: {
+        Args: {
+          p_actual_return_charge?: number
+          p_deduct_from_middle_man?: boolean
+          p_items: Json
+          p_order_id: number
+          p_override_reason?: string
+          p_return_ref?: string
+        }
+        Returns: Json
       }
       find_active_tenant_by_public_domain: {
         Args: { p_public_domain: string }
@@ -8736,6 +8924,10 @@ export type Database = {
           middleman_margin_total: number
           order_count: number
         }[]
+      }
+      get_dropship_wallet_reconciliation_report: {
+        Args: { p_tenant_id?: number }
+        Returns: Json
       }
       get_effective_grants: {
         Args: { p_tenant_id: number }
@@ -10188,6 +10380,15 @@ export type Database = {
         Args: { p_batch_id: number }
         Returns: Json
       }
+      process_dropship_courier_remittance_uwl: {
+        Args: {
+          p_courier_charge?: number
+          p_net_amount: number
+          p_order_id: number
+          p_remittance_ref?: string
+        }
+        Returns: undefined
+      }
       process_dropship_shop_order: {
         Args: { p_order_id: number }
         Returns: Json
@@ -10212,18 +10413,32 @@ export type Database = {
         Args: { p_courier_charge?: number; p_order_id: number }
         Returns: Json
       }
-      record_dropship_courier_remittance: {
-        Args: {
-          p_bank_trx_id?: string
-          p_method?: string
-          p_net_amount: number
-          p_note?: string
-          p_order_id: number
-          p_payment_date?: string
-          p_remittance_ref: string
-        }
-        Returns: Json
-      }
+      record_dropship_courier_remittance:
+        | {
+            Args: {
+              p_bank_trx_id?: string
+              p_method?: string
+              p_net_amount: number
+              p_note?: string
+              p_order_id: number
+              p_payment_date?: string
+              p_remittance_ref: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_bank_trx_id?: string
+              p_courier_charge?: number
+              p_method?: string
+              p_net_amount: number
+              p_note?: string
+              p_order_id: number
+              p_payment_date?: string
+              p_remittance_ref: string
+            }
+            Returns: Json
+          }
       record_investor_capital_adjustment: {
         Args: {
           p_amount: number

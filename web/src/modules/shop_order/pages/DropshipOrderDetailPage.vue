@@ -150,6 +150,15 @@
           @update:remittance-field="(k, v) => (remittanceForm as any)[k] = v"
         />
 
+        <DropshipReturnFinalizeDialog
+          v-model="returnDialogOpen"
+          :order="order"
+          :suggested-return-fee="suggestedReturnFee"
+          :total-returnable-qty="totalReturnableQty"
+          :loading="updatingStatus && targetUpdatingStatus === 'returned'"
+          @submit="submitReturnFinalize"
+        />
+
         <!-- Floating Unsaved Changes Footer Bar -->
         <div v-if="!isConfirmedStatus && isFormDirty && !loading" style="height: 100px;"></div>
 
@@ -219,6 +228,7 @@ import DropshipDeliveryNotesCard from '../components/DropshipDeliveryNotesCard.v
 import DropshipCourierCard from '../components/DropshipCourierCard.vue';
 import DropshipTotalsCard from '../components/DropshipTotalsCard.vue';
 import DropshipOrderDialogs from '../components/DropshipOrderDialogs.vue';
+import DropshipReturnFinalizeDialog from '../components/DropshipReturnFinalizeDialog.vue';
 
 import { useBDAddressOptions } from '../composables/useBDAddressOptions';
 import { useDropshipOrderForm } from '../composables/useDropshipOrderForm';
@@ -353,6 +363,9 @@ const {
   remittanceDialogOpen,
   savingRemittance,
   remittanceForm,
+  returnDialogOpen,
+  suggestedReturnFee,
+  totalReturnableQty,
   dualInvoiceDialogOpen,
   creatingInvoice,
   confirmB2bInvoiceDialogOpen,
@@ -360,6 +373,7 @@ const {
   saveChanges,
   onUpdateStatus,
   executeStatusUpdate,
+  submitReturnFinalize,
   saveOrderRemittance,
   openRecipientInvoicePreview,
   confirmDualInvoice,
@@ -369,6 +383,7 @@ const {
   form,
   selectedCourier,
   refetchOrderDetail,
+  orderItems,
 );
 
 const onDistrictChange = async (newDistName: string) => {

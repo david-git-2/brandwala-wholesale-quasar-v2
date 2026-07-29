@@ -28,7 +28,7 @@
 - Change invoice status enum
 
 ### Done checklist
-- [ ] COD invoice → recipient
-- [ ] Prepaid invoice → billing_profile
-- [ ] `invoice_billed` exists after ready_for_pickup
-- [ ] Re-advance / re-post does not duplicate `invoice_billed`
+- [x] COD invoice → recipient
+- [x] Prepaid invoice → billing_profile
+- [x] `invoice_billed` exists after ready_for_pickup
+- [x] Re-advance / re-post does not duplicate `invoice_billed`

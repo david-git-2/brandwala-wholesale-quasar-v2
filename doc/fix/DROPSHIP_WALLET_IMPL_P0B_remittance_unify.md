@@ -29,9 +29,9 @@
 - Leave two independent remittance writers
 
 ### Done checklist
-- [ ] Desk remittance posts courier+tenant UWL once
-- [ ] Old confirm RPC produces same ledger semantics (wrapper)
-- [ ] New profit rows are `middleman`
-- [ ] Wrong courier no longer possible via limit-1 join
-- [ ] Over-remit rejected
-- [ ] LEGACY_DROP R1 marked done
+- [x] Desk remittance posts courier+tenant UWL once
+- [x] Old confirm RPC produces same ledger semantics (wrapper)
+- [x] New profit rows are `middleman`
+- [x] Wrong courier no longer possible via limit-1 join
+- [x] Over-remit rejected
+- [x] LEGACY_DROP R1 marked done

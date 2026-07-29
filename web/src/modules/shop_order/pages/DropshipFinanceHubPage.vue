@@ -158,7 +158,13 @@ async function handleConfirmDelivered(payload: { orderId: number; codAmount: num
   }
 }
 
-async function handleConfirmRemittance(payload: { orderId: number; courierCharge: number; remittanceRef?: string; bankTrxId?: string }) {
+async function handleConfirmRemittance(payload: {
+  orderId: number;
+  netAmount: number;
+  courierCharge: number;
+  remittanceRef?: string;
+  bankTrxId?: string;
+}) {
   await confirmCourierRemittanceMutation.mutateAsync(payload);
   if (selectedOrder.value && selectedOrder.value.id === payload.orderId) {
     selectedOrder.value.nextStep = 'completed';

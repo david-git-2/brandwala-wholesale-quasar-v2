@@ -1,13 +1,72 @@
 import { ref, reactive, computed, watch, type Ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { useQueryClient } from '@tanstack/vue-query';
 import { supabase } from 'src/boot/supabase';
-import { shopOrderQueryKeys } from '../services/shopOrderQueryKeys';
 import { useShopOrderStore } from '../stores/shopOrderStore';
 import { resolveDeliveryZone } from '../services/courierChargeEstimate';
-import type { ShopOrder } from '../types';
+import type { ShopOrder, ShopOrderItem } from '../types';
 import type { CourierServiceRow } from '../repositories/dropshipCourierRepository';
-import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';
+import { showSuccessNotification, showErrorNotification, parseSupabaseError } from 'src/utils/appFeedback';
+import { useDropshipRemittanceMutations } from './useDropshipRemittanceMutations';
+import {
+  useDropshipReturnMutations,
+  type ReturnCondition,
+} from './useDropshipReturnMutations';
+
+function returnableQty(item: ShopOrderItem): number {
+  const delivered = Number(
+    item.delivered_quantity ?? item.ordered_quantity ?? item.quantity ?? 0,
+  );
+  const returned = Number(item.returned_quantity ?? 0);
+  return Math.max(0, delivered - returned);
+}
+
+function mapConditionQtysToItems(
+  items: ShopOrderItem[],
+  qtyNormal: number,
+  qtyOpenBox: number,
+  qtyDamaged: number,
+): Array<{ order_item_id: number; returned_qty: number; condition: ReturnCondition }> {
+  const totalReturnable = items.reduce((sum, item) => sum + returnableQty(item), 0);
+  const requested = qtyNormal + qtyOpenBox + qtyDamaged;
+  if (requested <= 0) {
+    throw new Error('Return quantity must be greater than zero');
+  }
+  if (requested !== totalReturnable) {
+    throw new Error(
+      `Return quantities (${requested}) must equal returnable total (${totalReturnable})`,
+    );
+  }
+
+  const remaining: Record<ReturnCondition, number> = {
+    perfect: qtyNormal,
+    open_box: qtyOpenBox,
+    damaged: qtyDamaged,
+  };
+  const result: Array<{
+    order_item_id: number;
+    returned_qty: number;
+    condition: ReturnCondition;
+  }> = [];
+
+  for (const item of items) {
+    let need = returnableQty(item);
+    for (const condition of ['perfect', 'open_box', 'damaged'] as const) {
+      if (need <= 0) break;
+      const take = Math.min(need, remaining[condition]);
+      if (take > 0) {
+        result.push({
+          order_item_id: item.id,
+          returned_qty: take,
+          condition,
+        });
+        remaining[condition] -= take;
+        need -= take;
+      }
+    }
+  }
+
+  return result;
+}
 
 export function useDropshipOrderActions(
   tenantSlug: Ref<string | null>,
@@ -15,10 +74,13 @@ export function useDropshipOrderActions(
   form: any,
   selectedCourier: Ref<CourierServiceRow | undefined>,
   refetchOrderDetail: () => Promise<void>,
+  orderItems: Ref<ShopOrderItem[]>,
 ) {
   const router = useRouter();
-  const queryClient = useQueryClient();
   const orderStore = useShopOrderStore();
+
+  const { recordOrderRemittanceMutation } = useDropshipRemittanceMutations(tenantSlug);
+  const { finalizeReturnMutation } = useDropshipReturnMutations(tenantSlug);
 
   const saving = ref(false);
   const handingOff = ref(false);
@@ -30,6 +92,8 @@ export function useDropshipOrderActions(
 
   const remittanceDialogOpen = ref(false);
   const savingRemittance = ref(false);
+
+  const returnDialogOpen = ref(false);
 
   const confirmB2bInvoiceDialogOpen = ref(false);
   const confirmDeleteInvoiceDialogOpen = ref(false);
@@ -45,6 +109,14 @@ export function useDropshipOrderActions(
     bank_trx_id: '',
     note: '',
   });
+
+  const suggestedReturnFee = computed(
+    () => Number(selectedCourier.value?.inside_dhaka_return_fee ?? 30),
+  );
+
+  const totalReturnableQty = computed(() =>
+    orderItems.value.reduce((sum, item) => sum + returnableQty(item), 0),
+  );
 
   const loadInvoicePayoutContext = async () => {
     const invoiceId = order.value?.global_invoice_id;
@@ -105,26 +177,16 @@ export function useDropshipOrderActions(
     if (!order.value || !canSaveOrderRemittance.value) return;
     savingRemittance.value = true;
     try {
-      const { error } = await supabase.rpc('record_dropship_courier_remittance', {
-        p_order_id: order.value.id,
-        p_net_amount: Number(remittanceForm.net_amount),
-        p_remittance_ref: remittanceForm.remittance_ref.trim(),
-        p_bank_trx_id: remittanceForm.bank_trx_id.trim() || null,
-        p_note: remittanceForm.note.trim() || null,
+      await recordOrderRemittanceMutation.mutateAsync({
+        orderId: order.value.id,
+        netAmount: Number(remittanceForm.net_amount),
+        remittanceRef: remittanceForm.remittance_ref.trim(),
+        bankTrxId: remittanceForm.bank_trx_id.trim() || null,
+        note: remittanceForm.note.trim() || null,
       });
-      if (error) throw error;
-      showSuccessNotification('Courier remittance recorded.');
       remittanceDialogOpen.value = false;
       await refetchOrderDetail();
       await loadInvoicePayoutContext();
-      await queryClient.invalidateQueries({
-        queryKey: shopOrderQueryKeys.ledger(tenantSlug.value),
-      });
-      await queryClient.invalidateQueries({
-        queryKey: shopOrderQueryKeys.ledgerPendingCod(tenantSlug.value),
-      });
-    } catch (err: any) {
-      showErrorNotification(err?.message || 'Failed to record remittance');
     } finally {
       savingRemittance.value = false;
     }
@@ -212,40 +274,85 @@ export function useDropshipOrderActions(
     }
   };
 
+  const openReturnFinalizeDialog = () => {
+    returnDialogOpen.value = true;
+  };
+
+  const submitReturnFinalize = async (payload: {
+    qty_normal: number;
+    qty_open_box: number;
+    qty_damaged: number;
+    actual_return_fee: number;
+    override_reason: string;
+    note: string;
+  }) => {
+    if (!order.value) return;
+
+    let items: Array<{
+      order_item_id: number;
+      returned_qty: number;
+      condition: ReturnCondition;
+    }>;
+    try {
+      items = mapConditionQtysToItems(
+        orderItems.value,
+        Number(payload.qty_normal) || 0,
+        Number(payload.qty_open_box) || 0,
+        Number(payload.qty_damaged) || 0,
+      );
+    } catch (err: unknown) {
+      showErrorNotification(
+        err instanceof Error ? err.message : 'Invalid return quantities',
+      );
+      return;
+    }
+
+    updatingStatus.value = true;
+    targetUpdatingStatus.value = 'returned';
+    try {
+      await finalizeReturnMutation.mutateAsync({
+        orderId: order.value.id,
+        items,
+        actualReturnCharge: Number(payload.actual_return_fee) || 0,
+        deductFromMiddleman: true,
+        overrideReason: payload.override_reason?.trim() || null,
+        reason: payload.note?.trim() || 'Refused on delivery',
+        returnRef: `RET-${order.value.id}-${Date.now()}`,
+      });
+
+      returnDialogOpen.value = false;
+      await refetchOrderDetail();
+    } finally {
+      updatingStatus.value = false;
+      targetUpdatingStatus.value = null;
+    }
+  };
+
   const executeStatusUpdate = async (status: string) => {
     if (!order.value) return;
+
+    if (status === 'returned') {
+      openReturnFinalizeDialog();
+      return;
+    }
 
     updatingStatus.value = true;
     targetUpdatingStatus.value = status;
 
     try {
-      let resData: any = null;
-      if (status === 'returned') {
-        const { data, error } = await supabase.rpc('mark_dropship_order_returned', {
-          p_order_id: order.value.id,
-          p_actual_return_charge: selectedCourier.value?.inside_dhaka_return_fee ?? 30,
-          p_deduct_from_middle_man: true,
-          p_reason: 'Refused on delivery',
-        });
-        if (error) throw error;
-        resData = data;
-      } else {
-        const { data, error } = await supabase.rpc('advance_dropship_order_status', {
-          p_order_id: order.value.id,
-          p_target_status: status,
-        });
-        if (error) throw error;
-        resData = data;
+      const { data, error } = await supabase.rpc('advance_dropship_order_status', {
+        p_order_id: order.value.id,
+        p_target_status: status,
+      });
+      if (error) throw error;
+      if (data && typeof data === 'object' && (data as any).success === false) {
+        throw new Error((data as any).error || 'Failed to update status');
       }
-
-      if (resData && typeof resData === 'object' && resData.success === false) {
-        throw new Error(resData.error || 'Failed to update status');
-      }
-
       showSuccessNotification(`Status updated to ${status.replace(/_/g, ' ')}`);
+
       await refetchOrderDetail();
     } catch (err: any) {
-      showErrorNotification(err.message || 'Failed to update status');
+      showErrorNotification(parseSupabaseError(err, 'Failed to update status'));
     } finally {
       updatingStatus.value = false;
       targetUpdatingStatus.value = null;
@@ -349,6 +456,9 @@ export function useDropshipOrderActions(
     remittanceDialogOpen,
     savingRemittance,
     remittanceForm,
+    returnDialogOpen,
+    suggestedReturnFee,
+    totalReturnableQty,
     dualInvoiceDialogOpen,
     creatingInvoice,
     confirmB2bInvoiceDialogOpen,
@@ -356,6 +466,7 @@ export function useDropshipOrderActions(
     saveChanges,
     onUpdateStatus,
     executeStatusUpdate,
+    submitReturnFinalize,
     performHandoff,
     openOrderRemittanceDialog,
     saveOrderRemittance,

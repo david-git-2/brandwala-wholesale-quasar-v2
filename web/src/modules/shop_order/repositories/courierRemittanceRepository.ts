@@ -168,8 +168,13 @@ export const courierRemittanceRepository = {
   },
 
   async reconcileSingleOrder(payload: ReconcileSingleOrderPayload): Promise<ReconcileSingleOrderResult> {
-    const { data, error } = await supabase.rpc('confirm_courier_remittance_to_tenant', {
+    if (!(payload.netAmount > 0)) {
+      throw new Error('Net remittance amount must be positive');
+    }
+    const { data, error } = await supabase.rpc('record_dropship_courier_remittance', {
       p_order_id: payload.orderId,
+      p_net_amount: payload.netAmount,
+      p_remittance_ref: `REMIT-${payload.orderId}`,
       p_courier_charge: payload.courierCharge ?? 0.00,
     });
 
@@ -211,11 +216,12 @@ export const courierRemittanceRepository = {
 
     if (!profiles || profiles.length === 0) return [];
 
-    // Fetch wallet ledger balances & locked profits for all profiles
+    // Fetch universal wallet ledger balances for middleman (& customer compat) entities
     const { data: ledger, error: ledgerErr } = await supabase
-      .from('billing_profile_wallet_ledger')
-      .select('billing_profile_id, transaction_type, amount')
-      .eq('tenant_id', tenantId);
+      .from('universal_wallet_ledger')
+      .select('entity_id, type, amount')
+      .eq('tenant_id', tenantId)
+      .in('entity_type', ['middleman', 'customer']);
 
     if (ledgerErr) {
       console.error('[courierRemittanceRepository.fetchMerchantPayoutSummaries ledger error]:', ledgerErr);
@@ -236,26 +242,41 @@ export const courierRemittanceRepository = {
     });
 
     (ledger ?? []).forEach((entry) => {
-      const item = summaryMap.get(entry.billing_profile_id);
+      const entityId = Number(entry.entity_id || 0);
+      const item = summaryMap.get(entityId);
       if (!item) return;
 
       const amt = Number(entry.amount || 0);
-      switch (entry.transaction_type) {
-        case 'dropship_profit':
-          item.locked_margin += amt;
-          break;
-        case 'payment_received':
-        case 'adjustment':
-          item.available_balance += amt;
-          break;
-        case 'invoice_billed':
-        case 'dropship_return_fee':
-        case 'payout_paid':
-          item.available_balance -= amt;
-          break;
+      if (entry.type === 'credit') {
+        item.available_balance += amt;
+      } else if (entry.type === 'debit') {
+        item.available_balance -= amt;
       }
     });
 
     return Array.from(summaryMap.values());
+  },
+
+  async recordOrderRemittance(payload: {
+    orderId: number;
+    netAmount: number;
+    remittanceRef: string;
+    bankTrxId?: string | null;
+    note?: string | null;
+  }) {
+    const { data, error } = await supabase.rpc('record_dropship_courier_remittance', {
+      p_order_id: payload.orderId,
+      p_net_amount: payload.netAmount,
+      p_remittance_ref: payload.remittanceRef,
+      p_bank_trx_id: payload.bankTrxId || null,
+      p_note: payload.note || null,
+    });
+
+    if (error) {
+      console.error('[courierRemittanceRepository.recordOrderRemittance error]:', error);
+      throw error;
+    }
+
+    return data;
   },
 };
