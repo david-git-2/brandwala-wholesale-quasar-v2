@@ -394,10 +394,10 @@ BEGIN
   END IF;
 
   IF NOT (
-    public.can_admin_manage_shipment(v_shipment.tenant_id)
-    OR public.can_staff_access_shipment(v_shipment.tenant_id)
+    public.can_admin_manage_shipment(v_shipment.parent_tenant_id)
+    OR public.can_staff_access_shipment(v_shipment.parent_tenant_id)
   ) THEN
-    RAISE EXCEPTION 'access denied for parent shipment tenant %', v_shipment.tenant_id;
+    RAISE EXCEPTION 'access denied for parent shipment tenant %', v_shipment.parent_tenant_id;
   END IF;
 
   IF p_source_type = 'costing_item' THEN

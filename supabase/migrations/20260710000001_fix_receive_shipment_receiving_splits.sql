@@ -29,7 +29,7 @@ begin
     raise exception 'shipment not found';
   end if;
 
-  if not public.user_can_manage_parent_tenant(public.resolve_parent_tenant_id(v_shipment.tenant_id)) then
+  if not public.user_can_manage_parent_tenant(public.resolve_parent_tenant_id(v_shipment.parent_tenant_id)) then
     raise exception 'not allowed';
   end if;
 
@@ -37,7 +37,7 @@ begin
     raise exception 'shipment already received to stock';
   end if;
 
-  v_parent_tenant_id := public.resolve_parent_tenant_id(v_shipment.tenant_id);
+  v_parent_tenant_id := public.resolve_parent_tenant_id(v_shipment.parent_tenant_id);
 
   for v_item in
     select *

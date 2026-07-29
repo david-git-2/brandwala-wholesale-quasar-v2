@@ -65,11 +65,11 @@ begin
   select * into v_shipment from public.shipments where id = p_shipment_id;
   if v_shipment.id is null then raise exception 'shipment not found'; end if;
 
-  if not public.user_can_manage_parent_tenant(v_shipment.tenant_id) then
+  if not public.user_can_manage_parent_tenant(v_shipment.parent_tenant_id) then
     raise exception 'not allowed';
   end if;
 
-  perform public.refresh_global_shipment_accounting(v_shipment.tenant_id, p_shipment_id);
+  perform public.refresh_global_shipment_accounting(v_shipment.parent_tenant_id, p_shipment_id);
 
   select * into v_accounting
   from public.global_shipment_accounting

@@ -14,8 +14,8 @@
     >
       <q-tab name="catalog" icon="ph ph-squares-four" label="Catalog Products" />
       <q-tab name="children" icon="ph ph-arrow-down-left" label="Pull from Children">
-        <q-badge v-if="childLines.length" color="orange-9" floating rounded>
-          {{ childLines.length }}
+        <q-badge v-if="groupedChildFiles.length" color="orange-9" floating rounded>
+          {{ groupedChildFiles.length }}
         </q-badge>
       </q-tab>
     </q-tabs>
@@ -355,12 +355,12 @@
     </div>
 
     <!-- Pull from Children Tab View -->
-    <div v-else-if="activeTab === 'children'" class="col column q-pa-md">
+    <div v-else-if="activeTab === 'children'" class="children-tab-col col column q-pa-md">
       <div class="row items-center justify-between q-mb-md">
         <div class="row items-center q-gutter-x-sm">
           <q-input
             v-model="childSearch"
-            placeholder="Filter child lines by name/ref..."
+            placeholder="Filter child files by name/ref..."
             outlined
             dense
             clearable
@@ -381,7 +381,7 @@
           />
         </div>
         <div class="text-caption text-grey-7">
-          Showing eligible child procurement lines (Orders & Costing files in Ready for Shipment)
+          Showing eligible child procurement files (Orders & Costing files in Ready for Shipment)
         </div>
       </div>
 
@@ -390,24 +390,49 @@
         <q-table
           flat
           bordered
-          :rows="filteredChildLines"
-          :columns="childLineColumns"
-          row-key="source_key"
+          :rows="groupedChildFiles"
+          :columns="childFileColumns"
+          row-key="group_key"
           dense
           hide-pagination
+          class="full-width"
           :pagination="{ rowsPerPage: 0 }"
         >
-          <template #body-cell-source_type="props">
+          <template #body-cell-source_type_label="props">
             <q-td :props="props">
               <q-chip
                 dense
                 square
-                :color="props.row.source_type === 'costing_item' ? 'teal-1' : 'blue-1'"
-                :text-color="props.row.source_type === 'costing_item' ? 'teal-9' : 'blue-9'"
+                :color="props.row.source_type_label.includes('Costing') ? 'teal-1' : 'blue-1'"
+                :text-color="props.row.source_type_label.includes('Costing') ? 'teal-9' : 'blue-9'"
                 class="text-weight-bold text-caption"
               >
-                {{ props.row.source_type === 'costing_item' ? 'Costing' : props.row.source_type }}
+                {{ props.row.source_type_label }}
               </q-chip>
+            </q-td>
+          </template>
+
+          <template #body-cell-reference_label="props">
+            <q-td :props="props">
+              <div class="text-weight-bold ellipsis" style="max-width: 280px" :title="props.value">
+                {{ props.value }}
+              </div>
+            </q-td>
+          </template>
+
+          <template #body-cell-child_tenant_name="props">
+            <q-td :props="props">
+              <div class="ellipsis" style="max-width: 140px" :title="props.value">
+                {{ props.value }}
+              </div>
+            </q-td>
+          </template>
+
+          <template #body-cell-item_count="props">
+            <q-td :props="props" class="text-right">
+              <q-badge color="grey-3" text-color="grey-9" class="text-weight-medium">
+                {{ props.value }} {{ props.value === 1 ? 'item' : 'items' }}
+              </q-badge>
             </q-td>
           </template>
 
@@ -420,9 +445,9 @@
                 no-caps
                 size="sm"
                 icon="ph ph-plus"
-                label="Pull to Shipment"
-                :loading="pullingSourceKey === props.row.source_key"
-                @click="onPullChildLine(props.row)"
+                label="Add All to Shipment"
+                :loading="pullingGroupKey === props.row.group_key"
+                @click="onPullChildFile(props.row)"
               />
             </q-td>
           </template>
@@ -562,35 +587,83 @@ const authStore = useAuthStore();
 const vendorStore = useVendorStore();
 const shipmentStore = useGlobalShipmentStore();
 
+interface GroupedChildFile {
+  group_key: string;
+  source_type_label: string;
+  reference_label: string;
+  child_tenant_name: string;
+  item_count: number;
+  total_quantity: number;
+  total_price_gbp: number;
+  lines: any[];
+}
+
 const activeTab = ref<'catalog' | 'children'>('catalog');
 const childSearch = ref('');
 const childLines = ref<any[]>([]);
 const loadingChildLines = ref(false);
-const pullingSourceKey = ref<string | null>(null);
+const pullingGroupKey = ref<string | null>(null);
 
-const childLineColumns: Array<{
+const childFileColumns: Array<{
   name: string;
   label: string;
-  field: string;
+  field: string | ((row: any) => any);
   align?: 'left' | 'right' | 'center';
+  style?: string;
+  format?: (val: any) => string;
 }> = [
-  { name: 'source_type', label: 'Type', field: 'source_type', align: 'left' },
-  { name: 'reference_label', label: 'Reference', field: 'reference_label', align: 'left' },
-  { name: 'child_tenant_name', label: 'Child Tenant', field: 'child_tenant_name', align: 'left' },
-  { name: 'name', label: 'Item Name', field: 'name', align: 'left' },
-  { name: 'quantity', label: 'Ordered Qty', field: 'quantity', align: 'right' },
-  { name: 'price_gbp', label: 'Price (GBP)', field: 'price_gbp', align: 'right' },
-  { name: 'action', label: '', field: 'action', align: 'right' },
+  { name: 'source_type_label', label: 'Type', field: 'source_type_label', align: 'left', style: 'width: 100px' },
+  { name: 'reference_label', label: 'File / Reference', field: 'reference_label', align: 'left' },
+  { name: 'child_tenant_name', label: 'Child Tenant', field: 'child_tenant_name', align: 'left', style: 'width: 130px' },
+  { name: 'item_count', label: 'Items', field: 'item_count', align: 'right', style: 'width: 90px' },
+  { name: 'total_quantity', label: 'Total Qty', field: 'total_quantity', align: 'right', style: 'width: 100px' },
+  {
+    name: 'total_price_gbp',
+    label: 'Total Value',
+    field: 'total_price_gbp',
+    align: 'right',
+    style: 'width: 110px',
+    format: (val: any) => (val != null && !isNaN(Number(val)) ? `£${Number(val).toFixed(2)}` : '—'),
+  },
+  { name: 'action', label: '', field: 'action', align: 'right', style: 'width: 160px' },
 ];
 
-const filteredChildLines = computed(() => {
+const groupedChildFiles = computed<GroupedChildFile[]>(() => {
+  const map = new Map<string, GroupedChildFile>();
   const q = (childSearch.value || '').trim().toLowerCase();
-  if (!q) return childLines.value;
-  return childLines.value.filter(
-    (line) =>
-      (line.name || '').toLowerCase().includes(q) ||
-      (line.reference_label || '').toLowerCase().includes(q) ||
-      (line.child_tenant_name || '').toLowerCase().includes(q),
+
+  for (const line of childLines.value) {
+    const groupKey = `${line.reference_label}||${line.child_tenant_name}`;
+    let group = map.get(groupKey);
+
+    if (!group) {
+      group = {
+        group_key: groupKey,
+        source_type_label: line.source_type === 'costing_item' ? 'Costing' : 'Order',
+        reference_label: line.reference_label || 'Untitled File',
+        child_tenant_name: line.child_tenant_name || '',
+        item_count: 0,
+        total_quantity: 0,
+        total_price_gbp: 0,
+        lines: [],
+      };
+      map.set(groupKey, group);
+    }
+
+    group.lines.push(line);
+    group.item_count += 1;
+    group.total_quantity += Number(line.quantity) || 0;
+    group.total_price_gbp += (Number(line.quantity) || 0) * (Number(line.price_gbp) || 0);
+  }
+
+  const result = Array.from(map.values());
+  if (!q) return result;
+
+  return result.filter(
+    (file) =>
+      file.reference_label.toLowerCase().includes(q) ||
+      file.child_tenant_name.toLowerCase().includes(q) ||
+      file.lines.some((l) => (l.name || '').toLowerCase().includes(q)),
   );
 });
 
@@ -612,27 +685,31 @@ const fetchChildLines = async () => {
   }
 };
 
-const onPullChildLine = async (line: any) => {
-  pullingSourceKey.value = line.source_key;
+const onPullChildFile = async (file: GroupedChildFile) => {
+  pullingGroupKey.value = file.group_key;
+  let successCount = 0;
   try {
-    await globalShipmentRepository.addChildLineToParentShipment(
-      props.shipmentId,
-      line.source_type,
-      line.source_id,
-    );
+    for (const line of file.lines) {
+      await globalShipmentRepository.addChildLineToParentShipment(
+        props.shipmentId,
+        line.source_type,
+        line.source_id,
+      );
+      successCount++;
+    }
     $q.notify({
       type: 'positive',
-      message: `Pulled ${line.name} into shipment successfully.`,
+      message: `Successfully pulled all ${successCount} item(s) from "${file.reference_label}" into shipment.`,
     });
     await shipmentStore.fetchShipmentDetails(props.shipmentId);
     await fetchChildLines();
   } catch (err) {
     $q.notify({
       type: 'negative',
-      message: err instanceof Error ? err.message : 'Failed to pull line into shipment.',
+      message: err instanceof Error ? err.message : 'Failed to pull file into shipment.',
     });
   } finally {
-    pullingSourceKey.value = null;
+    pullingGroupKey.value = null;
   }
 };
 
@@ -1249,6 +1326,18 @@ onMounted(async () => {
   flex: 1;
   min-height: 0;
   background: transparent;
+}
+
+.children-tab-col {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.children-tab-col :deep(thead tr th) {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #ffffff;
 }
 
 .add-items-panel--drawer {
