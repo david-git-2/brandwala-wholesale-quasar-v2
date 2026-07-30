@@ -434,6 +434,22 @@ const getShopSellCurrencyId = async (shopId: number): Promise<number | null> => 
   return data?.sell_currency_id ?? null;
 };
 
+const updateCatalogOrderRates = async (
+  orderId: number,
+  payload: {
+    conversion_rate?: number | null;
+    cargo_rate?: number | null;
+    profit_rate?: number | null;
+    profit_basis?: 'purchase' | 'total_cost' | null;
+  },
+): Promise<void> => {
+  const { error } = await supabase
+    .from('shop_orders')
+    .update(payload)
+    .eq('id', orderId);
+  if (error) throw error;
+};
+
 export const shopOrderRepository = {
   listShops,
   upsertShop,
@@ -460,6 +476,7 @@ export const shopOrderRepository = {
   processDropshipShopOrder,
   updateOrderStatus,
   getShopSellCurrencyId,
+  updateCatalogOrderRates,
 };
 
 

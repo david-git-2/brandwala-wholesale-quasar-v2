@@ -21,54 +21,164 @@
           @add-to-dropship="addToDropshipDesk"
         />
 
-        <!-- Workflow Statuses Strip -->
-        <StaffOrderStatusWorkflow
-          :order="currentOrder"
-          :workflow-statuses="workflowStatuses"
-          :changing-status="isUpdatingStatus"
-          :target-updating-status="targetUpdatingStatus"
-          @change-status="changeOrderStatus"
-        />
+        <!-- VENDOR CATALOG S1 SPECIFIC LAYOUT -->
+        <template v-if="isCatalogShop">
+          <!-- Catalog Workflow Statuses Strip -->
+          <CatalogOrderWorkflowBar
+            :order="currentOrder"
+            v-model:rates-expanded="ratesExpanded"
+            :is-loading="isLoading"
+            :updating-status="isUpdatingStatus"
+            :target-updating-status="targetUpdatingStatus"
+            @change-status="changeOrderStatus"
+          />
 
-        <!-- Main Columns -->
-        <div class="row q-col-gutter-lg">
-          <!-- Items & Actions Panel (8 cols) -->
-          <div class="col-xs-12 col-md-8">
-            <StaffOrderItemsList
-              :order="currentOrder"
-              :order-items="orderItems"
-              :currency-symbol="currencySymbol"
-              :can-action="canAction"
-              :can-fulfill="canFulfill"
-              :is-deleting-order="isDeletingOrder"
-              :is-submitting-pricing="isSubmittingPricing"
-              :is-confirming-order="isConfirmingOrder"
-              :is-placing-procurement="isPlacingProcurement"
-              :is-fulfilling-to-invoice="isFulfillingToInvoice"
-              @delete-order="confirmDeleteOrder"
-              @submit-pricing="handleSubmitStaffPricing"
-              @confirm-order="handleConfirmOrder"
-              @place-procurement="handlePlaceForProcurement"
-              @fulfill-invoice="handleFulfillToInvoice"
-            />
+          <!-- Rates Panel -->
+          <CatalogOrderRatesBar
+            v-if="ratesExpanded"
+            :order="currentOrder"
+            :saving="isSavingRates"
+            @save-rates="handleSaveRates"
+          />
+
+          <!-- Main Catalog Content -->
+          <div class="row q-col-gutter-lg">
+            <div class="col-xs-12 col-md-8">
+              <div class="column q-gutter-md">
+                <CatalogOrderItemsTable
+                  :order="currentOrder"
+                  :items="orderItems"
+                  :currency-symbol="currencySymbol"
+                  :buy-currency-symbol="buyCurrencySymbol"
+                  :visible-columns="catalogVisibleColumns"
+                  @open-column-selector="openColumnSelector"
+                />
+
+                <!-- Catalog Status-Gated Sticky Action Bar -->
+                <q-card flat bordered class="q-pa-md bg-grey-1">
+                  <div class="row items-center justify-between q-col-gutter-sm">
+                    <div class="text-caption text-grey-7">
+                      Status: <strong>{{ currentOrder.status }}</strong>
+                    </div>
+
+                    <div class="row items-center q-gutter-sm">
+                      <q-btn
+                        v-if="currentOrder.status === 'submitted'"
+                        color="warning"
+                        unelevated
+                        no-caps
+                        label="Start Costing (Pending)"
+                        :loading="isUpdatingStatus && targetUpdatingStatus === 'costing_pending'"
+                        @click="changeOrderStatus('costing_pending')"
+                      />
+
+                      <q-btn
+                        v-if="['submitted', 'costing_pending'].includes(currentOrder.status)"
+                        color="primary"
+                        unelevated
+                        no-caps
+                        icon="ph ph-check"
+                        label="Save Costing & Price Order → Priced"
+                        :loading="isSavingStaffPricing"
+                        @click="handleSaveStaffCatalogPricing"
+                      />
+
+                      <q-btn
+                        v-if="['priced', 'countered'].includes(currentOrder.status)"
+                        color="purple"
+                        unelevated
+                        no-caps
+                        icon="ph ph-paper-plane-tilt"
+                        label="Save Final Prices → Final Offered"
+                        :loading="isFinalizingPrices"
+                        @click="handleSaveFinalCatalogPrices"
+                      />
+
+                      <q-btn
+                        v-if="currentOrder.status === 'final_offered'"
+                        outline
+                        color="purple"
+                        no-caps
+                        label="Awaiting Customer Confirmation"
+                        disable
+                      />
+
+                      <q-btn
+                        v-if="currentOrder.status === 'confirmed'"
+                        color="primary"
+                        unelevated
+                        no-caps
+                        label="Start Procuring"
+                        :loading="isPlacingProcurement"
+                        @click="handlePlaceForProcurement"
+                      />
+                    </div>
+                  </div>
+                </q-card>
+              </div>
+            </div>
+
+            <!-- Sidebar (4 cols) -->
+            <div class="col-xs-12 col-md-4">
+              <div class="column q-gutter-md">
+                <StaffOrderSummaryCard
+                  :order="currentOrder"
+                  :order-items="orderItems"
+                  :currency-symbol="currencySymbol"
+                  :is-updating-charges="isUpdatingCharges"
+                  @update-charges="handleUpdateCharges"
+                />
+                <StaffOrderShippingCard :order="currentOrder" />
+              </div>
+            </div>
           </div>
+        </template>
 
-          <!-- Sidebar (4 cols) -->
-          <div class="col-xs-12 col-md-4">
-            <div class="column q-gutter-md">
-              <StaffOrderSummaryCard
+        <!-- OTHER SHOP TYPES (Dropship/Fixed) -->
+        <template v-else>
+          <StaffOrderStatusWorkflow
+            :order="currentOrder"
+            :workflow-statuses="workflowStatuses"
+            :changing-status="isUpdatingStatus"
+            :target-updating-status="targetUpdatingStatus"
+            @change-status="changeOrderStatus"
+          />
+
+          <div class="row q-col-gutter-lg">
+            <div class="col-xs-12 col-md-8">
+              <StaffOrderItemsList
                 :order="currentOrder"
                 :order-items="orderItems"
                 :currency-symbol="currencySymbol"
-                :is-updating-charges="isUpdatingCharges"
-                @update-charges="handleUpdateCharges"
-              />
-              <StaffOrderShippingCard
-                :order="currentOrder"
+                :can-action="canAction"
+                :can-fulfill="canFulfill"
+                :is-deleting-order="isDeletingOrder"
+                :is-submitting-pricing="isSubmittingPricing"
+                :is-confirming-order="isConfirmingOrder"
+                :is-placing-procurement="isPlacingProcurement"
+                :is-fulfilling-to-invoice="isFulfillingToInvoice"
+                @delete-order="confirmDeleteOrder"
+                @submit-pricing="handleSubmitStaffPricing"
+                @confirm-order="handleConfirmOrder"
+                @place-procurement="handlePlaceForProcurement"
+                @fulfill-invoice="handleFulfillToInvoice"
               />
             </div>
+
+            <div class="col-xs-12 col-md-4">
+              <div class="column q-gutter-md">
+                <StaffOrderSummaryCard
+                  :order="currentOrder"
+                  :order-items="orderItems"
+                  :currency-symbol="currencySymbol"
+                  :is-updating-charges="isUpdatingCharges"
+                  @update-charges="handleUpdateCharges"
+                />
+                <StaffOrderShippingCard :order="currentOrder" />
+              </div>
+            </div>
           </div>
-        </div>
+        </template>
       </template>
     </div>
   </q-page>
@@ -91,6 +201,11 @@ import {
   useDeleteShopOrderMutation,
   useProcessDropshipOrderMutation,
 } from '../composables/useShopOrderMutations';
+import {
+  useSaveCatalogRatesMutation,
+  useStaffPriceCatalogOrderMutation,
+  useStaffFinalizeCatalogPricesMutation,
+} from '../composables/useCatalogOrderMutations';
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
 
 import StaffOrderHeader from '../components/StaffOrderHeader.vue';
@@ -99,6 +214,11 @@ import StaffOrderItemsList from '../components/StaffOrderItemsList.vue';
 import StaffOrderSummaryCard from '../components/StaffOrderSummaryCard.vue';
 import StaffOrderShippingCard from '../components/StaffOrderShippingCard.vue';
 import StaffOrderDetailSkeleton from '../components/StaffOrderDetailSkeleton.vue';
+
+import CatalogOrderWorkflowBar from '../components/CatalogOrderWorkflowBar.vue';
+import CatalogOrderRatesBar from '../components/CatalogOrderRatesBar.vue';
+import CatalogOrderItemsTable from '../components/CatalogOrderItemsTable.vue';
+import CatalogOrderColumnSelectorDialog from '../components/CatalogOrderColumnSelectorDialog.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -113,6 +233,10 @@ const tenantSlug = computed(() =>
 const { data: orderDetailsData, isLoading, isError, error } = useShopOrderDetailQuery(orderId);
 const currentOrder = computed(() => orderDetailsData.value?.order || null);
 
+const isCatalogShop = computed(
+  () => currentOrder.value?.shop_type_snapshot === 'vendor_catalog',
+);
+
 const { mutate: updateOrderStatus, isPending: isUpdatingStatus } = useUpdateOrderStatusMutation();
 const { mutate: submitStaffPricing, isPending: isSubmittingPricing } = useSubmitStaffPricingMutation();
 const { mutate: confirmShopOrder, isPending: isConfirmingOrder } = useConfirmShopOrderMutation();
@@ -122,12 +246,28 @@ const { mutate: updateOrderCharges, isPending: isUpdatingCharges } = useUpdateOr
 const { mutate: deleteShopOrder, isPending: isDeletingOrder } = useDeleteShopOrderMutation();
 const { mutate: processDropshipOrder, isPending: isProcessingDropship } = useProcessDropshipOrderMutation();
 
+// Catalog Specific Mutations
+const { mutate: saveCatalogRates, isPending: isSavingRates } = useSaveCatalogRatesMutation();
+const { mutate: staffPriceCatalogOrder, isPending: isSavingStaffPricing } = useStaffPriceCatalogOrderMutation();
+const { mutate: staffFinalizeCatalogPrices, isPending: isFinalizingPrices } = useStaffFinalizeCatalogPricesMutation();
+
 const { data: currenciesData } = useThriftCurrenciesQuery();
 const currencies = computed(() => currenciesData.value || []);
 
 const targetUpdatingStatus = ref<string | null>(null);
 const orderItems = ref<any[]>([]);
 const shopSellCurrencyId = ref<number | null>(null);
+const shopBuyCurrencyId = ref<number | null>(null);
+
+const ratesExpanded = ref(false);
+const catalogVisibleColumns = ref<string[]>([
+  'sku',
+  'weight_kg',
+  'cost_price',
+  'staff_offer',
+  'customer_offer',
+  'final_price',
+]);
 
 watch(
   () => orderDetailsData.value,
@@ -191,6 +331,20 @@ const currencySymbol = computed(() => {
   return '৳';
 });
 
+const buyCurrencySymbol = computed(() => {
+  if (shopBuyCurrencyId.value) {
+    const curr = currencies.value.find((c) => c.id === shopBuyCurrencyId.value);
+    if (curr?.symbol) return curr.symbol;
+  }
+  const firstItem = orderItems.value?.[0];
+  const currId = firstItem?.cost_price_currency_id || firstItem?.unit_list_price_currency_id;
+  if (currId) {
+    const curr = currencies.value.find((c) => c.id === currId);
+    if (curr?.symbol) return curr.symbol;
+  }
+  return '£';
+});
+
 const canAction = computed(() => {
   const o = currentOrder.value;
   return !!(o && (o.status === 'submitted' || o.status === 'negotiating' || o.status === 'priced'));
@@ -214,6 +368,68 @@ const changeOrderStatus = (newStatus: string) => {
       },
     },
   );
+};
+
+const handleSaveRates = (payload: {
+  conversion_rate: number | null;
+  cargo_rate: number | null;
+  profit_rate: number | null;
+  profit_basis: 'purchase' | 'total_cost';
+}) => {
+  if (!orderId.value) return;
+  saveCatalogRates({ orderId: orderId.value, payload });
+};
+
+const handleSaveStaffCatalogPricing = () => {
+  if (!orderId.value || !currentOrder.value) return;
+
+  const itemsPayload = orderItems.value.map((item) => ({
+    id: item.id,
+    staff_offer_amount: Number(item.staff_offer_amount || 0),
+    staff_offer_currency_id:
+      item.staff_offer_currency_id ||
+      item.unit_sell_price_currency_id ||
+      item.unit_list_price_currency_id ||
+      1,
+    gross_weight_kg: Number(item.weight_kg || 0),
+    cost_price_amount: Number(item.cost_price_amount || 0),
+  }));
+
+  staffPriceCatalogOrder({
+    orderId: orderId.value,
+    items: itemsPayload,
+    profitBasis: currentOrder.value.profit_basis || 'total_cost',
+  });
+};
+
+const handleSaveFinalCatalogPrices = () => {
+  if (!orderId.value || !currentOrder.value) return;
+
+  const itemsPayload = orderItems.value.map((item) => ({
+    id: item.id,
+    final_offer_amount: Number(item.final_price_amount || item.staff_offer_amount || 0),
+    final_offer_currency_id:
+      item.final_price_currency_id ||
+      item.staff_offer_currency_id ||
+      item.unit_sell_price_currency_id ||
+      1,
+  }));
+
+  staffFinalizeCatalogPrices({
+    orderId: orderId.value,
+    items: itemsPayload,
+  });
+};
+
+const openColumnSelector = () => {
+  $q.dialog({
+    component: CatalogOrderColumnSelectorDialog,
+    componentProps: {
+      visibleColumns: catalogVisibleColumns.value,
+    },
+  }).onOk(({ visibleColumns }: { visibleColumns: string[] }) => {
+    catalogVisibleColumns.value = visibleColumns;
+  });
 };
 
 const handlePlaceForProcurement = () => {
