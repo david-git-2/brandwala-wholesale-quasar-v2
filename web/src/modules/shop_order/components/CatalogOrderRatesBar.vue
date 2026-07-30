@@ -114,7 +114,7 @@ watch(
       conversion_rate.value = newOrder.conversion_rate ?? 140;
       cargo_rate.value = newOrder.cargo_rate ?? 0;
       profit_rate.value = newOrder.profit_rate ?? 25;
-      profit_basis.value = newOrder.profit_basis || 'total_cost';
+      profit_basis.value = (newOrder.profit_basis as 'purchase' | 'total_cost') || 'total_cost';
     }
   },
   { immediate: true },

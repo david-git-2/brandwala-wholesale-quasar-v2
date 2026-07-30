@@ -303,14 +303,25 @@ const getShopOrderById = async (
 
   const { data: rawItems, error: itemsErr } = await supabase
     .from('shop_order_items')
-    .select('*, products(product_code)')
+    .select('*, products(product_code, brand, barcode, product_weight, package_weight)')
     .eq('order_id', orderId);
 
   if (itemsErr) throw itemsErr;
 
   const items: ShopOrderItem[] = (rawItems || []).map((row: any) => {
     const sku = row.products?.product_code ?? null;
-    const item = { ...row, sku };
+    const brand = row.products?.brand ?? null;
+    const barcode = row.products?.barcode ?? null;
+    const product_weight_gm = row.products?.product_weight ?? null;
+    const package_weight_gm = row.products?.package_weight ?? null;
+    const item = {
+      ...row,
+      sku,
+      brand,
+      barcode,
+      product_weight_gm,
+      package_weight_gm,
+    };
     delete item.products;
     return item as ShopOrderItem;
   });
@@ -424,14 +435,24 @@ const updateOrderStatus = async (orderId: number, status: string): Promise<void>
   if (error) throw error;
 };
 
-const getShopSellCurrencyId = async (shopId: number): Promise<number | null> => {
+const getShopCurrencies = async (
+  shopId: number,
+): Promise<{ sell_currency_id: number | null; buy_currency_id: number | null }> => {
   const { data, error } = await supabase
     .from('shops')
-    .select('sell_currency_id')
+    .select('sell_currency_id, buy_currency_id')
     .eq('id', shopId)
     .maybeSingle();
-  if (error) return null;
-  return data?.sell_currency_id ?? null;
+  if (error) return { sell_currency_id: null, buy_currency_id: null };
+  return {
+    sell_currency_id: data?.sell_currency_id ?? null,
+    buy_currency_id: data?.buy_currency_id ?? null,
+  };
+};
+
+const getShopSellCurrencyId = async (shopId: number): Promise<number | null> => {
+  const currencies = await getShopCurrencies(shopId);
+  return currencies.sell_currency_id;
 };
 
 const updateCatalogOrderRates = async (
@@ -520,6 +541,7 @@ export const shopOrderRepository = {
   updateOrderCharges,
   processDropshipShopOrder,
   updateOrderStatus,
+  getShopCurrencies,
   getShopSellCurrencyId,
   updateCatalogOrderRates,
 };

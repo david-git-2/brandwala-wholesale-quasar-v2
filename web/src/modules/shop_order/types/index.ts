@@ -180,7 +180,8 @@ export interface ShopOrder {
   cargo_rate: number | null;
   conversion_rate: number | null;
   profit_rate: number | null;
-  profit_basis?: 'purchase' | 'total_cost' | null;
+  profit_basis?: 'purchase' | 'total_cost' | 'sale_price' | string | null;
+  package_weight_kg?: number | null;
   recipient_name: string | null;
   recipient_phone: string | null;
   recipient_phone_secondary?: string | null;
@@ -259,6 +260,11 @@ export interface ShopOrderItem {
   returned_quantity: number;
   procurement_pulled: boolean;
   sku?: string | null;
+  brand?: string | null;
+  barcode?: string | null;
+  note?: string | null;
+  product_weight_gm?: number | null;
+  package_weight_gm?: number | null;
   created_at: string;
   updated_at: string;
 }

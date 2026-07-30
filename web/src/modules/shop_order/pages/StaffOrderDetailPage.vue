@@ -17,8 +17,10 @@
           :order="currentOrder"
           :can-fulfill="canFulfill"
           :is-processing-dropship="isProcessingDropship"
+          :visible-columns="catalogVisibleColumns"
           @go-back="goBack"
           @add-to-dropship="addToDropshipDesk"
+          @update:visible-columns="onCatalogVisibleColumnsUpdate"
         />
 
         <!-- VENDOR CATALOG S1 SPECIFIC LAYOUT -->
@@ -243,7 +245,6 @@ import StaffOrderDetailSkeleton from '../components/StaffOrderDetailSkeleton.vue
 import CatalogOrderWorkflowBar from '../components/CatalogOrderWorkflowBar.vue';
 import CatalogOrderRatesBar from '../components/CatalogOrderRatesBar.vue';
 import CatalogOrderItemsTable from '../components/CatalogOrderItemsTable.vue';
-import CatalogOrderColumnSelectorDialog from '../components/CatalogOrderColumnSelectorDialog.vue';
 import CatalogBacklogDrawer from '../components/CatalogBacklogDrawer.vue';
 import { useMembershipColumnPreference } from 'src/modules/membership/composables/useMembershipColumnPreference';
 
@@ -294,28 +295,68 @@ const shopBuyCurrencyId = ref<number | null>(null);
 const ratesExpanded = ref(false);
 
 const catalogAllColumnNames = [
-  'sku',
-  'list_price',
-  'weight_kg',
-  'cost_price',
-  'profit_base',
-  'staff_offer',
-  'customer_offer',
-  'final_price',
-  'confirmed_quantity',
-  'ordered_quantity',
-  'delivered_quantity',
+  'sl',
+  'image',
+  'name',
+  'brand',
+  'note',
+  'code_barcode_id',
+  'qty_customer',
+  'ordered_qty',
+  'delivered_qty',
+  'purchase_price_unit',
+  'purchase_price_total',
+  'product_weight_gm',
+  'package_weight_gm',
+  'total_weight_gm',
+  'cargo_rate',
+  'cargo_cost_unit_purchase',
+  'landed_cost_unit_purchase',
+  'landed_cost_row_purchase',
+  'landed_cost_unit_sell',
+  'landed_cost_row_sell',
+  'first_offer_unit',
+  'first_offer_row',
+  'first_offer_margin',
+  'counter_offer_unit',
+  'counter_offer_row',
+  'counter_offer_margin',
+  'final_offer_unit',
+  'final_offer_row',
+  'final_offer_margin',
+  'status',
+  'action',
 ];
 
-const catalogAlwaysVisibleColumns = ['sl', 'image', 'name', 'quantity', 'total_amount'];
+const catalogAlwaysVisibleColumns = ['sl', 'image', 'name', 'status', 'action'];
 
 const catalogDefaultVisibleColumns = [
-  'sku',
-  'weight_kg',
-  'cost_price',
-  'staff_offer',
-  'customer_offer',
-  'final_price',
+  'sl',
+  'image',
+  'name',
+  'brand',
+  'qty_customer',
+  'ordered_qty',
+  'delivered_qty',
+  'code_barcode_id',
+  'purchase_price_unit',
+  'purchase_price_total',
+  'total_weight_gm',
+  'cargo_cost_unit_purchase',
+  'landed_cost_unit_purchase',
+  'landed_cost_unit_sell',
+  'landed_cost_row_sell',
+  'first_offer_unit',
+  'first_offer_row',
+  'first_offer_margin',
+  'counter_offer_unit',
+  'counter_offer_row',
+  'counter_offer_margin',
+  'final_offer_unit',
+  'final_offer_row',
+  'final_offer_margin',
+  'status',
+  'action',
 ];
 
 const { visibleColumns: catalogVisibleColumns } = useMembershipColumnPreference({
@@ -343,7 +384,9 @@ watch(
       orderItems.value = JSON.parse(JSON.stringify(newData.items || []));
       const shopId = newData.order?.shop_id;
       if (shopId) {
-        shopSellCurrencyId.value = await shopOrderRepository.getShopSellCurrencyId(shopId);
+        const shopCurrencies = await shopOrderRepository.getShopCurrencies(shopId);
+        shopSellCurrencyId.value = shopCurrencies.sell_currency_id;
+        shopBuyCurrencyId.value = shopCurrencies.buy_currency_id;
       }
     }
   },
@@ -506,14 +549,7 @@ const handleSaveStaffDeliveredQty = () => {
 };
 
 const openColumnSelector = () => {
-  $q.dialog({
-    component: CatalogOrderColumnSelectorDialog,
-    componentProps: {
-      visibleColumns: catalogVisibleColumns.value,
-    },
-  }).onOk(({ visibleColumns }: { visibleColumns: string[] }) => {
-    catalogVisibleColumns.value = visibleColumns;
-  });
+  // Column selector handled via top header 3-dot menu
 };
 
 const handlePlaceForProcurement = () => {
