@@ -32,7 +32,7 @@ DECLARE
   v_item record;
 BEGIN
   -- Fetch cart
-  SELECT * INTO v_cart FROM public.shop_carts WHERE id = p_cart_id AND is_active = true;
+  SELECT * INTO v_cart FROM public.shop_carts WHERE id = p_cart_id AND status = 'active';
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Active cart not found for ID %', p_cart_id;
   END IF;
@@ -130,7 +130,7 @@ BEGIN
   END LOOP;
 
   -- Deactivate cart
-  UPDATE public.shop_carts SET is_active = false, updated_at = now() WHERE id = p_cart_id;
+  UPDATE public.shop_carts SET status = 'converted', updated_at = now() WHERE id = p_cart_id;
 
   RETURN jsonb_build_object(
     'order_id', v_order_id,
