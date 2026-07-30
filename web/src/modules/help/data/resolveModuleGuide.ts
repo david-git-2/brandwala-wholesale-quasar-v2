@@ -1,4 +1,5 @@
 import type { HelpAudience, HelpResolveContext, HelpScope, ModuleGuide } from '../types';
+import { localizedSearchBlob } from './localize';
 import { MODULE_GUIDE_REGISTRY } from './moduleGuideRegistry';
 
 export const mapAccessRoleToHelpAudience = (
@@ -74,12 +75,21 @@ export const searchModuleGuides = (query: string, ctx: HelpResolveContext): Modu
 
   return base.filter((guide) => {
     const haystack = [
-      guide.title,
-      guide.caption,
-      guide.overview,
-      ...guide.workflows.flatMap((w) => [w.title, ...w.steps]),
-      ...guide.terms.flatMap((t) => [t.term, t.definition]),
-      ...guide.faqs.flatMap((f) => [f.question, f.answer]),
+      localizedSearchBlob(guide.title),
+      localizedSearchBlob(guide.caption),
+      localizedSearchBlob(guide.overview),
+      ...guide.workflows.flatMap((w) => [
+        localizedSearchBlob(w.title),
+        ...w.steps.map(localizedSearchBlob),
+      ]),
+      ...guide.terms.flatMap((t) => [
+        localizedSearchBlob(t.term),
+        localizedSearchBlob(t.definition),
+      ]),
+      ...guide.faqs.flatMap((f) => [
+        localizedSearchBlob(f.question),
+        localizedSearchBlob(f.answer),
+      ]),
     ]
       .join(' ')
       .toLowerCase();

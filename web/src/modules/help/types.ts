@@ -10,31 +10,37 @@ export type HelpAudience =
 
 export type HelpTab = 'overview' | 'workflows' | 'terms' | 'faqs';
 
+/** Guide body copy — always ship both locales. UI chrome stays in vue-i18n. */
+export type LocalizedText = {
+  en: string;
+  bn: string;
+};
+
 export interface ModuleGuideWorkflow {
   id: string;
-  title: string;
-  steps: string[];
+  title: LocalizedText;
+  steps: LocalizedText[];
 }
 
 export interface ModuleGuideTerm {
-  term: string;
-  definition: string;
+  term: LocalizedText;
+  definition: LocalizedText;
 }
 
 export interface ModuleGuideFaq {
-  question: string;
-  answer: string;
+  question: LocalizedText;
+  answer: LocalizedText;
 }
 
 export interface ModuleGuide {
   id: string;
-  title: string;
-  caption: string;
+  title: LocalizedText;
+  caption: LocalizedText;
   icon: string;
   scopes: HelpScope[];
   audiences: HelpAudience[];
   routeMatchers: string[];
-  overview: string;
+  overview: LocalizedText;
   workflows: ModuleGuideWorkflow[];
   terms: ModuleGuideTerm[];
   faqs: ModuleGuideFaq[];

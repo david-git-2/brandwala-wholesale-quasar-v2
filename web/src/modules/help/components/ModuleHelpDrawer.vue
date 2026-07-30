@@ -16,10 +16,10 @@
           </div>
           <div class="col">
             <div class="text-subtitle1 text-weight-bold text-grey-9 ellipsis">
-              {{ activeGuide?.title ?? t('help.drawerTitle') }}
+              {{ activeGuide ? lt(activeGuide.title, locale) : t('help.drawerTitle') }}
             </div>
             <div class="text-caption text-grey-7 ellipsis">
-              {{ activeGuide?.caption ?? t('help.drawerSubtitle') }}
+              {{ activeGuide ? lt(activeGuide.caption, locale) : t('help.drawerSubtitle') }}
             </div>
           </div>
         </div>
@@ -73,7 +73,7 @@
 
         <div class="col scroll q-pa-md">
           <div v-if="activeTab === 'overview'" class="text-body2 text-grey-9 overview-text" style="line-height: 1.6">
-            {{ activeGuide.overview }}
+            {{ lt(activeGuide.overview, locale) }}
           </div>
 
           <div v-else-if="activeTab === 'workflows'" class="q-gutter-y-md">
@@ -87,7 +87,7 @@
             >
               <div class="text-subtitle2 text-weight-bold text-grey-9 q-mb-xs row items-center q-gutter-xs">
                 <q-icon name="ph ph-git-fork" class="text-primary" size="16px" />
-                <span>{{ workflow.title }}</span>
+                <span>{{ lt(workflow.title, locale) }}</span>
               </div>
               <div class="q-gutter-y-xs">
                 <div
@@ -99,7 +99,7 @@
                     {{ idx + 1 }}
                   </div>
                   <div class="col text-body2 text-grey-8 step-text">
-                    {{ step }}
+                    {{ lt(step, locale) }}
                   </div>
                 </div>
               </div>
@@ -112,14 +112,14 @@
             </div>
             <div
               v-for="term in activeGuide.terms"
-              :key="term.term"
+              :key="term.term.en"
               class="term-card q-pa-sm rounded-borders bg-grey-1"
             >
               <div class="text-subtitle2 text-weight-bold text-grey-9 q-mb-xs row items-center q-gutter-xs">
                 <q-icon name="ph ph-tag" class="text-primary" size="15px" />
-                <span>{{ term.term }}</span>
+                <span>{{ lt(term.term, locale) }}</span>
               </div>
-              <div class="text-body2 text-grey-8">{{ term.definition }}</div>
+              <div class="text-body2 text-grey-8">{{ lt(term.definition, locale) }}</div>
             </div>
           </div>
 
@@ -130,7 +130,7 @@
             <q-list dense class="faq-list">
               <q-expansion-item
                 v-for="faq in activeGuide.faqs"
-                :key="faq.question"
+                :key="faq.question.en"
                 group="drawer-faqs"
                 class="bg-grey-1 q-mb-xs rounded-borders faq-item"
                 header-class="text-weight-bold text-grey-9 text-body2"
@@ -140,12 +140,12 @@
                     <q-icon name="ph ph-question" color="primary" size="16px" />
                   </q-item-section>
                   <q-item-section class="text-subtitle2 text-weight-bold text-grey-9">
-                    {{ faq.question }}
+                    {{ lt(faq.question, locale) }}
                   </q-item-section>
                 </template>
                 <q-card class="bg-grey-1">
                   <q-card-section class="text-body2 text-grey-8 q-pt-none q-pb-sm q-pl-lg">
-                    {{ faq.answer }}
+                    {{ lt(faq.answer, locale) }}
                   </q-card-section>
                 </q-card>
               </q-expansion-item>
@@ -181,6 +181,7 @@ import { useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 
 import { useModuleHelp } from '../composables/useModuleHelp';
+import { lt } from '../data/localize';
 import { helpCenterPathForScope } from '../data/resolveModuleGuide';
 
 const router = useRouter();
@@ -212,7 +213,7 @@ const toggleLanguage = () => {
 
 const guideOptions = computed(() =>
   availableGuides.value.map((guide) => ({
-    label: guide.title,
+    label: lt(guide.title, locale.value),
     value: guide.id,
   })),
 );

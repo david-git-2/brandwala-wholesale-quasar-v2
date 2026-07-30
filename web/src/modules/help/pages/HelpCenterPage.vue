@@ -80,10 +80,10 @@
               </q-chip>
             </div>
             <div class="text-subtitle1 text-weight-bold text-grey-9 q-mb-xs">
-              {{ guide.title }}
+              {{ lt(guide.title, locale) }}
             </div>
             <div class="text-body2 text-grey-7 line-clamp-2">
-              {{ guide.caption }}
+              {{ lt(guide.caption, locale) }}
             </div>
           </q-card-section>
         </q-card>
@@ -97,8 +97,8 @@
             <q-icon :name="selectedGuide.icon" size="22px" class="text-primary" />
           </div>
           <div>
-            <div class="text-h6 text-weight-bold text-grey-9">{{ selectedGuide.title }}</div>
-            <div class="text-body2 text-grey-7">{{ selectedGuide.caption }}</div>
+            <div class="text-h6 text-weight-bold text-grey-9">{{ lt(selectedGuide.title, locale) }}</div>
+            <div class="text-body2 text-grey-7">{{ lt(selectedGuide.caption, locale) }}</div>
           </div>
         </div>
         <q-btn
@@ -130,7 +130,7 @@
 
       <q-card-section class="q-pa-lg">
         <div v-if="sectionTab === 'overview'" class="text-body1 text-grey-9 overview-text" style="line-height: 1.65">
-          {{ selectedGuide.overview }}
+          {{ lt(selectedGuide.overview, locale) }}
         </div>
 
         <div v-else-if="sectionTab === 'workflows'" class="q-gutter-y-lg">
@@ -144,7 +144,7 @@
           >
             <div class="text-subtitle1 text-weight-bold text-grey-9 q-mb-md row items-center q-gutter-xs">
               <q-icon name="ph ph-git-fork" class="text-primary" size="18px" />
-              <span>{{ workflow.title }}</span>
+              <span>{{ lt(workflow.title, locale) }}</span>
             </div>
             <div class="workflow-steps q-gutter-y-xs">
               <div
@@ -156,7 +156,7 @@
                   {{ idx + 1 }}
                 </div>
                 <div class="col text-body2 text-grey-8 step-text">
-                  {{ step }}
+                  {{ lt(step, locale) }}
                 </div>
               </div>
             </div>
@@ -167,13 +167,13 @@
           <div v-if="!selectedGuide.terms.length" class="col-12 text-grey-6 text-body2">
             {{ t('help.noTerms') }}
           </div>
-          <div v-for="term in selectedGuide.terms" :key="term.term" class="col-12 col-md-6">
+          <div v-for="term in selectedGuide.terms" :key="term.term.en" class="col-12 col-md-6">
             <div class="term-card q-pa-md border-radius-8 bg-grey-1 full-height">
               <div class="text-subtitle2 text-weight-bold text-grey-9 q-mb-xs row items-center q-gutter-xs">
                 <q-icon name="ph ph-tag" class="text-primary" size="16px" />
-                <span>{{ term.term }}</span>
+                <span>{{ lt(term.term, locale) }}</span>
               </div>
-              <div class="text-body2 text-grey-8">{{ term.definition }}</div>
+              <div class="text-body2 text-grey-8">{{ lt(term.definition, locale) }}</div>
             </div>
           </div>
         </div>
@@ -185,7 +185,7 @@
           <q-list class="faq-list border-radius-8">
             <q-expansion-item
               v-for="faq in selectedGuide.faqs"
-              :key="faq.question"
+              :key="faq.question.en"
               group="faqs"
               class="bg-grey-1 q-mb-xs rounded-borders faq-item"
               header-class="text-weight-bold text-grey-9"
@@ -195,12 +195,12 @@
                   <q-icon name="ph ph-question" color="primary" size="18px" />
                 </q-item-section>
                 <q-item-section class="text-subtitle2 text-weight-bold text-grey-9">
-                  {{ faq.question }}
+                  {{ lt(faq.question, locale) }}
                 </q-item-section>
               </template>
               <q-card class="bg-grey-1">
                 <q-card-section class="text-body2 text-grey-8 q-pt-none q-pb-md q-pl-xl">
-                  {{ faq.answer }}
+                  {{ lt(faq.answer, locale) }}
                 </q-card-section>
               </q-card>
             </q-expansion-item>
@@ -219,6 +219,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 
 import type { HelpScope, HelpTab } from '../types';
+import { lt } from '../data/localize';
 import {
   getModuleGuideById,
   mapAccessRoleToHelpAudience,

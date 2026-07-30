@@ -6,7 +6,8 @@
           <div class="text-overline text-primary">{{ $t('shop_admin.shop_and_order') }}</div>
           <h1 class="text-h5 text-weight-bold q-my-none">{{ $t('navigation.shops') }}</h1>
         </div>
-        <div class="col-auto">
+        <div class="col-auto row items-center q-gutter-x-sm">
+          <LearnMoreHelpBtn guide-id="shop_management" tab="workflows" />
           <q-btn
             color="primary"
             unelevated
@@ -215,6 +216,7 @@ import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import LearnMoreHelpBtn from 'src/modules/help/components/LearnMoreHelpBtn.vue';
 import ShopFormDialog from 'src/modules/shop_order/components/ShopFormDialog.vue';
 import DropshipShopReadinessCard from 'src/modules/shop_order/components/DropshipShopReadinessCard.vue';
 import { useShopListQuery, useVendorListQuery } from '../composables/useShopQuery';

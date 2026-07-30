@@ -32,12 +32,12 @@ The Help Center ecosystem consists of three unified components:
 
 ```mermaid
 graph TD
-    A["Centralized Functional Registry (moduleGuideRegistry.ts)"] --> B["Contextual Module Help Drawer (? Header Action)"]
+    A["Per-guide files (data/guides/*) → moduleGuideRegistry.ts"] --> B["Contextual Module Help Drawer (? Header Action)"]
     A --> C["Dedicated Help Center Page (/app/help)"]
     A --> D["In-Page Interactive Feature Highlights & Tooltips"]
 ```
 
-1. **Functional Module Registry (`moduleGuideRegistry.ts`)**: Centralized source of truth defining module goals, FAQs, key terms, and step-by-step guides.
+1. **Functional Module Registry (`data/guides/*` + `moduleGuideRegistry.ts`)**: Per-guide TypeScript files with bilingual `{ en, bn }` copy; thin aggregator is the import index.
 2. **Contextual Module Help Drawer (`ModuleHelpDrawer.vue`)**: Reusable slide-over panel available on every page header (`? Module Guide` action).
 3. **Help Center Portal (`/app/help`)**: Dedicated search-enabled knowledge base presenting visual module cards, task-oriented guides, and role-filtered help articles.
 
@@ -81,4 +81,4 @@ graph TD
 - **Usability**: Users can open module guidance in 1 click from any page without leaving their working workflow.
 - **Searchability**: The `/app/help` center instantly filters articles by keyword and active user role.
 - **Performance**: Zero CLS impact; module guide data loaded lazily via code splitting.
-- **Maintainability**: Adding a new feature or module guide requires updating only `moduleGuideRegistry.ts`.
+- **Maintainability**: Adding a new feature guide means one file under `data/guides/` plus a one-line registry import; body copy must include both English and Bangla.
