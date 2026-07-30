@@ -450,6 +450,47 @@ const updateCatalogOrderRates = async (
   if (error) throw error;
 };
 
+const staffStartCatalogProcurement = async (orderId: number): Promise<void> => {
+  const { error } = await supabase.rpc('staff_start_catalog_procurement', {
+    p_order_id: orderId,
+  });
+  if (error) throw error;
+};
+
+const staffSetCatalogOrderedQty = async (
+  orderId: number,
+  items: Array<{ id: number; ordered_quantity: number }>,
+): Promise<void> => {
+  const { error } = await supabase.rpc('staff_set_catalog_ordered_qty', {
+    p_order_id: orderId,
+    p_items: items,
+  });
+  if (error) throw error;
+};
+
+const staffSetCatalogDeliveredQty = async (
+  orderId: number,
+  items: Array<{ id: number; delivered_quantity: number }>,
+): Promise<void> => {
+  const { error } = await supabase.rpc('staff_set_catalog_delivered_qty', {
+    p_order_id: orderId,
+    p_items: items,
+  });
+  if (error) throw error;
+};
+
+const listCustomerOrderBacklogItems = async (
+  tenantId: number,
+  billingProfileId: number,
+): Promise<any[]> => {
+  const { data, error } = await supabase.rpc('list_customer_order_backlog_items', {
+    p_tenant_id: tenantId,
+    p_billing_profile_id: billingProfileId,
+  });
+  if (error) throw error;
+  return (data as any[] | null) ?? [];
+};
+
 export const shopOrderRepository = {
   listShops,
   upsertShop,
@@ -465,6 +506,10 @@ export const shopOrderRepository = {
   staffCounterOffer,
   confirmShopOrder,
   customerConfirmShopOrder,
+  staffStartCatalogProcurement,
+  staffSetCatalogOrderedQty,
+  staffSetCatalogDeliveredQty,
+  listCustomerOrderBacklogItems,
   listShopOrdersForCustomer,
   listShopOrdersForStaff,
   listDropshipShopOrdersForStaff,

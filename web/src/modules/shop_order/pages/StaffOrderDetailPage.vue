@@ -108,9 +108,42 @@
                         color="primary"
                         unelevated
                         no-caps
+                        icon="ph ph-shopping-bag"
                         label="Start Procuring"
-                        :loading="isPlacingProcurement"
-                        @click="handlePlaceForProcurement"
+                        :loading="isStartingProcurement"
+                        @click="handleStartCatalogProcurement"
+                      />
+
+                      <q-btn
+                        v-if="['confirmed', 'procuring'].includes(currentOrder.status)"
+                        color="indigo-9"
+                        unelevated
+                        no-caps
+                        icon="ph ph-package"
+                        label="Save Ordered Qty → Ordered"
+                        :loading="isSavingOrderedQty"
+                        @click="handleSaveStaffOrderedQty"
+                      />
+
+                      <q-btn
+                        v-if="['procuring', 'ordered'].includes(currentOrder.status)"
+                        color="positive"
+                        unelevated
+                        no-caps
+                        icon="ph ph-truck"
+                        label="Save Delivered Qty → Delivered"
+                        :loading="isSavingDeliveredQty"
+                        @click="handleSaveStaffDeliveredQty"
+                      />
+
+                      <q-btn
+                        v-if="currentOrder.billing_profile_id"
+                        flat
+                        color="primary"
+                        no-caps
+                        icon="ph ph-tray"
+                        label="View Backlog"
+                        @click="showBacklogDrawer = true"
                       />
                     </div>
                   </div>
@@ -181,6 +214,14 @@
         </template>
       </template>
     </div>
+
+    <!-- Catalog Customer Backlog Drawer -->
+    <CatalogBacklogDrawer
+      v-if="currentOrder && currentOrder.billing_profile_id"
+      v-model="showBacklogDrawer"
+      :tenant-id="currentOrder.tenant_id"
+      :billing-profile-id="currentOrder.billing_profile_id"
+    />
   </q-page>
 </template>
 
@@ -205,6 +246,9 @@ import {
   useSaveCatalogRatesMutation,
   useStaffPriceCatalogOrderMutation,
   useStaffFinalizeCatalogPricesMutation,
+  useStaffStartCatalogProcurementMutation,
+  useStaffSetCatalogOrderedQtyMutation,
+  useStaffSetCatalogDeliveredQtyMutation,
 } from '../composables/useCatalogOrderMutations';
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
 
@@ -219,6 +263,7 @@ import CatalogOrderWorkflowBar from '../components/CatalogOrderWorkflowBar.vue';
 import CatalogOrderRatesBar from '../components/CatalogOrderRatesBar.vue';
 import CatalogOrderItemsTable from '../components/CatalogOrderItemsTable.vue';
 import CatalogOrderColumnSelectorDialog from '../components/CatalogOrderColumnSelectorDialog.vue';
+import CatalogBacklogDrawer from '../components/CatalogBacklogDrawer.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -250,6 +295,11 @@ const { mutate: processDropshipOrder, isPending: isProcessingDropship } = usePro
 const { mutate: saveCatalogRates, isPending: isSavingRates } = useSaveCatalogRatesMutation();
 const { mutate: staffPriceCatalogOrder, isPending: isSavingStaffPricing } = useStaffPriceCatalogOrderMutation();
 const { mutate: staffFinalizeCatalogPrices, isPending: isFinalizingPrices } = useStaffFinalizeCatalogPricesMutation();
+const { mutate: staffStartCatalogProcurement, isPending: isStartingProcurement } = useStaffStartCatalogProcurementMutation();
+const { mutate: staffSetCatalogOrderedQty, isPending: isSavingOrderedQty } = useStaffSetCatalogOrderedQtyMutation();
+const { mutate: staffSetCatalogDeliveredQty, isPending: isSavingDeliveredQty } = useStaffSetCatalogDeliveredQtyMutation();
+
+const showBacklogDrawer = ref(false);
 
 const { data: currenciesData } = useThriftCurrenciesQuery();
 const currencies = computed(() => currenciesData.value || []);
@@ -419,6 +469,30 @@ const handleSaveFinalCatalogPrices = () => {
     orderId: orderId.value,
     items: itemsPayload,
   });
+};
+
+const handleStartCatalogProcurement = () => {
+  if (orderId.value) {
+    staffStartCatalogProcurement(orderId.value);
+  }
+};
+
+const handleSaveStaffOrderedQty = () => {
+  if (!orderId.value) return;
+  const itemsPayload = orderItems.value.map((item) => ({
+    id: item.id,
+    ordered_quantity: Number(item.ordered_quantity ?? item.confirmed_quantity ?? item.quantity ?? 0),
+  }));
+  staffSetCatalogOrderedQty({ orderId: orderId.value, items: itemsPayload });
+};
+
+const handleSaveStaffDeliveredQty = () => {
+  if (!orderId.value) return;
+  const itemsPayload = orderItems.value.map((item) => ({
+    id: item.id,
+    delivered_quantity: Number(item.delivered_quantity ?? item.ordered_quantity ?? item.confirmed_quantity ?? item.quantity ?? 0),
+  }));
+  staffSetCatalogDeliveredQty({ orderId: orderId.value, items: itemsPayload });
 };
 
 const openColumnSelector = () => {

@@ -9820,6 +9820,26 @@ export type Database = {
           module_key: string
         }[]
       }
+      list_customer_order_backlog_items: {
+        Args: { p_billing_profile_id: number; p_tenant_id: number }
+        Returns: {
+          backlog_status: string
+          barcode: string
+          billing_profile_id: number
+          created_at: string
+          fulfilled_quantity: number
+          id: number
+          image_url: string
+          name: string
+          open_quantity: number
+          order_id: number
+          order_item_id: number
+          product_code: string
+          product_id: number
+          requested_quantity: number
+          tenant_id: number
+        }[]
+      }
       list_dropship_shop_orders_for_staff: {
         Args: {
           p_limit?: number
@@ -11159,6 +11179,18 @@ export type Database = {
             }
             Returns: undefined
           }
+      staff_set_catalog_delivered_qty: {
+        Args: { p_items: Json; p_order_id: number }
+        Returns: undefined
+      }
+      staff_set_catalog_ordered_qty: {
+        Args: { p_items: Json; p_order_id: number }
+        Returns: undefined
+      }
+      staff_start_catalog_procurement: {
+        Args: { p_order_id: number }
+        Returns: undefined
+      }
       submit_shop_order_from_cart:
         | {
             Args: {

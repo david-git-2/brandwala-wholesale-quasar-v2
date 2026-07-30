@@ -84,6 +84,8 @@ const columnSelectorOptions = [
   { label: 'Customer Counter', value: 'customer_offer' },
   { label: 'Final Offer Price', value: 'final_price' },
   { label: 'Confirmed Qty', value: 'confirmed_quantity' },
+  { label: 'Ordered Qty', value: 'ordered_quantity' },
+  { label: 'Delivered Qty', value: 'delivered_quantity' },
 ];
 
 const selectableColumnValues = columnSelectorOptions.map((opt) => opt.value);

@@ -68,6 +68,12 @@
             <th v-if="isColVisible('confirmed_quantity')" class="text-center" style="width: 100px">
               Confirmed Qty
             </th>
+            <th v-if="isColVisible('ordered_quantity')" class="text-center" style="width: 100px">
+              Ordered Qty
+            </th>
+            <th v-if="isColVisible('delivered_quantity')" class="text-center" style="width: 100px">
+              Delivered Qty
+            </th>
             <th class="text-right" style="width: 130px">Total Amount ({{ currencySymbol }})</th>
           </tr>
         </thead>
@@ -192,6 +198,38 @@
               {{ item.confirmed_quantity ?? item.quantity }}
             </td>
 
+            <!-- Ordered Qty -->
+            <td v-if="isColVisible('ordered_quantity')" class="text-center">
+              <q-input
+                v-if="isProcuringMode"
+                v-model.number="item.ordered_quantity"
+                dense
+                outlined
+                type="number"
+                min="0"
+                class="soft-input text-center dense-input text-indigo-9 text-weight-bold"
+              />
+              <span v-else class="text-caption text-weight-bold text-indigo-8">
+                {{ item.ordered_quantity ?? '—' }}
+              </span>
+            </td>
+
+            <!-- Delivered Qty -->
+            <td v-if="isColVisible('delivered_quantity')" class="text-center">
+              <q-input
+                v-if="isOrderedMode || isProcuringMode"
+                v-model.number="item.delivered_quantity"
+                dense
+                outlined
+                type="number"
+                min="0"
+                class="soft-input text-center dense-input text-positive text-weight-bold"
+              />
+              <span v-else class="text-caption text-weight-bold text-positive">
+                {{ item.delivered_quantity ?? '—' }}
+              </span>
+            </td>
+
             <!-- Total Amount -->
             <td class="text-right text-caption text-weight-bold text-grey-9">
               {{ formatAmount(getItemTotalAmount(item)) }}
@@ -215,6 +253,12 @@
             <td v-if="isColVisible('final_price')"></td>
             <td v-if="isColVisible('confirmed_quantity')" class="text-center q-pa-sm">
               {{ totalConfirmedQuantity }}
+            </td>
+            <td v-if="isColVisible('ordered_quantity')" class="text-center q-pa-sm text-indigo-8">
+              {{ totalOrderedQuantity }}
+            </td>
+            <td v-if="isColVisible('delivered_quantity')" class="text-center q-pa-sm text-positive">
+              {{ totalDeliveredQuantity }}
             </td>
             <td class="text-right q-pa-sm text-primary">
               {{ formatAmount(grandTotalAmount) }} {{ currencySymbol }}
@@ -264,6 +308,14 @@ const isCostingMode = computed(() =>
 
 const isFinalPricingMode = computed(() =>
   ['priced', 'countered'].includes(status.value),
+);
+
+const isProcuringMode = computed(() =>
+  ['confirmed', 'procuring'].includes(status.value),
+);
+
+const isOrderedMode = computed(() =>
+  ['ordered'].includes(status.value),
 );
 
 const FX = computed(() => props.order?.conversion_rate ?? 140);
@@ -329,6 +381,14 @@ const totalQuantity = computed(() =>
 
 const totalConfirmedQuantity = computed(() =>
   props.items.reduce((sum, i) => sum + Number(i.confirmed_quantity ?? i.quantity ?? 0), 0),
+);
+
+const totalOrderedQuantity = computed(() =>
+  props.items.reduce((sum, i) => sum + Number(i.ordered_quantity ?? 0), 0),
+);
+
+const totalDeliveredQuantity = computed(() =>
+  props.items.reduce((sum, i) => sum + Number(i.delivered_quantity ?? 0), 0),
 );
 
 const totalWeight = computed(() =>

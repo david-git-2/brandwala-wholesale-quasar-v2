@@ -100,3 +100,66 @@ export function useStaffFinalizeCatalogPricesMutation() {
     },
   });
 }
+
+export function useStaffStartCatalogProcurementMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (orderId: number) => {
+      await shopOrderRepository.staffStartCatalogProcurement(orderId);
+    },
+    onSuccess: (_, orderId) => {
+      showSuccessNotification('Order status updated to Procuring');
+      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetail(orderId) });
+    },
+    onError: (err: any) => {
+      handleApiFailure(err, 'Failed to start procurement');
+    },
+  });
+}
+
+export function useStaffSetCatalogOrderedQtyMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      orderId,
+      items,
+    }: {
+      orderId: number;
+      items: Array<{ id: number; ordered_quantity: number }>;
+    }) => {
+      await shopOrderRepository.staffSetCatalogOrderedQty(orderId, items);
+    },
+    onSuccess: (_, variables) => {
+      showSuccessNotification('Ordered quantities saved (Ordered)');
+      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetail(variables.orderId) });
+    },
+    onError: (err: any) => {
+      handleApiFailure(err, 'Failed to save ordered quantities');
+    },
+  });
+}
+
+export function useStaffSetCatalogDeliveredQtyMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      orderId,
+      items,
+    }: {
+      orderId: number;
+      items: Array<{ id: number; delivered_quantity: number }>;
+    }) => {
+      await shopOrderRepository.staffSetCatalogDeliveredQty(orderId, items);
+    },
+    onSuccess: (_, variables) => {
+      showSuccessNotification('Delivered quantities saved (Delivered)');
+      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetail(variables.orderId) });
+    },
+    onError: (err: any) => {
+      handleApiFailure(err, 'Failed to save delivered quantities');
+    },
+  });
+}

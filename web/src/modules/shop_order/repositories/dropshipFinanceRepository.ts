@@ -58,8 +58,8 @@ export const dropshipFinanceRepository = {
 
     (ledgerRows || []).forEach((row) => {
       const amt = Number(row.amount || 0);
-      const meta = (row.metadata || {}) as Record<string, unknown>;
-      const section = String(meta.section || '');
+      const meta = (row.metadata || {}) as Record<string, any>;
+      const section = typeof meta.section === 'string' ? meta.section : '';
       if (row.entity_type === 'courier') {
         courierOwedTotal += row.type === 'credit' ? amt : -amt;
       } else if (row.entity_type === 'tenant') {

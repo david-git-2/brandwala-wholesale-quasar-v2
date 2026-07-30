@@ -60,7 +60,7 @@
         <div class="row items-center justify-between">
           <span class="text-caption text-weight-bold text-amber-9">Your Counter Unit Offer:</span>
           <q-input
-            v-model.number="item.customer_offer_amount"
+            :model-value="item.customer_offer_amount"
             type="number"
             outlined
             dense
@@ -68,6 +68,7 @@
             class="counter-field"
             :prefix="currencySymbol"
             style="width: 130px"
+            @update:model-value="onOfferInput"
           />
         </div>
       </div>
@@ -158,6 +159,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:confirmedQty', payload: { itemId: number; confirmedQuantity: number }): void;
+  (e: 'update:customerOffer', payload: { itemId: number; amount: number }): void;
 }>();
 
 const confirmedQty = ref<number>(props.item.confirmed_quantity ?? props.item.quantity);
@@ -194,13 +196,17 @@ const calculatedLineTotal = computed(() => {
 const updateConfirmedQty = (val: number) => {
   const bounded = Math.max(1, Math.min(props.item.quantity, val));
   confirmedQty.value = bounded;
-  props.item.confirmed_quantity = bounded;
   emit('update:confirmedQty', { itemId: props.item.id, confirmedQuantity: bounded });
 };
 
 const onQtyInput = (val: any) => {
   const num = Number(val || 1);
   updateConfirmedQty(num);
+};
+
+const onOfferInput = (val: any) => {
+  const amount = Number(val || 0);
+  emit('update:customerOffer', { itemId: props.item.id, amount });
 };
 </script>
 

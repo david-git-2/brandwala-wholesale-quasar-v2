@@ -46,6 +46,7 @@
               :is-negotiable="!!currentOrder.is_negotiable_snapshot"
               :currency-symbol="currencySymbol"
               @update:confirmed-qty="handleConfirmedQtyUpdate"
+              @update:customer-offer="handleCustomerOfferUpdate"
             />
           </div>
 
@@ -314,6 +315,13 @@ const handleConfirmedQtyUpdate = ({ itemId, confirmedQuantity }: { itemId: numbe
   const item = orderItems.value.find((i) => i.id === itemId);
   if (item) {
     item.confirmed_quantity = confirmedQuantity;
+  }
+};
+
+const handleCustomerOfferUpdate = ({ itemId, amount }: { itemId: number; amount: number }) => {
+  const item = orderItems.value.find((i) => i.id === itemId);
+  if (item) {
+    item.customer_offer_amount = amount;
   }
 };
 
