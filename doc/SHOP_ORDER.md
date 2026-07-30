@@ -763,19 +763,14 @@ shop_order_items
 
 ### 8.1 Vendor catalog (procurement intent)
 
-```mermaid
-stateDiagram-v2
-  [*] --> draft
-  draft --> submitted: customer submit
-  submitted --> priced: staff price
-  submitted --> negotiating: is_negotiable
-  negotiating --> confirmed: agree
-  priced --> confirmed: accept
-  confirmed --> placed: staff place
-  placed --> [*]: procurement pull eligible
-  draft --> cancelled
-  submitted --> cancelled
-```
+> **Implementation plan (pages + phase file lists):** [fix/CATALOG_SHOP_NEGOTIATION_FLOW_SPEC.md](fix/CATALOG_SHOP_NEGOTIATION_FLOW_SPEC.md). Customer UI = mobile cards; staff UI = PBC-style table. Dropship unchanged (§8.2).
+
+Catalog expanded ladder: `submitted → costing_pending → priced → (countered Path A) → final_offered → confirmed → procuring → ordered → delivered`.
+
+| Path | Gate | Difference |
+|------|------|------------|
+| **A — Negotiate** | `is_negotiable` ∧ `can_negotiate` | May `countered` |
+| **B — Not negotiate** | otherwise | Skips `countered` |
 
 ### 8.2 Fixed / dropship checkout
 
@@ -792,18 +787,19 @@ stateDiagram-v2
 
 ### 8.3 Key RPCs
 
-| RPC | Actor |
-|-----|-------|
-| `get_or_create_shop_cart` | Customer |
-| `add_to_shop_cart` / `update_shop_cart_item_qty` | Customer |
-| `submit_shop_order_from_cart` | Customer |
-| `staff_price_shop_order` | Staff |
-| `customer_counter_offer` / `staff_counter_offer` | Negotiable path |
-| `confirm_shop_order` | Staff or auto |
-| `place_shop_order_for_procurement` | Staff |
-| `fulfill_shop_order_to_invoice` | Staff → `global_invoices` |
-| `list_shop_orders_for_customer` / `list_shop_orders_for_staff` | Scoped lists |
-| `list_procurement_shop_order_lines` | Parent shipment UI pull source |
+| RPC | Actor | Notes |
+|-----|-------|-------|
+| `get_or_create_shop_cart` | Customer | |
+| `add_to_shop_cart` / `update_shop_cart_item_qty` | Customer | |
+| `submit_shop_order_from_cart` | Customer | Catalog → `submitted` |
+| `staff_price_shop_order` (+ catalog costing extensions) | Staff | → `costing_pending` / `priced` |
+| `customer_counter_offer` | Customer Path A | → `countered` |
+| `staff_finalize_catalog_prices` | Staff | → `final_offered` |
+| `customer_confirm_shop_order` | Customer | `final_offered` → `confirmed` |
+| `staff_start_catalog_procurement` / ordered / delivered RPCs | Staff | Native Phase 2 — see fix spec |
+| `fulfill_shop_order_to_invoice` | Staff → `global_invoices` | Stock-backed / checkout; catalog deliver may share invoice patterns |
+| `list_shop_orders_for_customer` / `list_shop_orders_for_staff` | Scoped lists | Filter by shop type |
+| Dropship advance / wallet RPCs | Staff | **Unchanged** — [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) |
 
 ---
 

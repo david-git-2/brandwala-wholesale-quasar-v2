@@ -140,13 +140,18 @@ export interface ShopOrderState {
 export type ShopOrderStatus =
   | 'draft'
   | 'submitted'
-  | 'cancelled'
+  | 'costing_pending'
   | 'priced'
+  | 'countered'
+  | 'final_offered'
+  | 'confirmed'
+  | 'procuring'
+  | 'ordered'
+  | 'cancelled'
   | 'negotiating'
   | 'revised'
   | 'rejected'
   | 'expired'
-  | 'confirmed'
   | 'placed'
   | 'fulfilled'
   | 'processing'
@@ -175,6 +180,7 @@ export interface ShopOrder {
   cargo_rate: number | null;
   conversion_rate: number | null;
   profit_rate: number | null;
+  profit_basis?: 'purchase' | 'total_cost' | null;
   recipient_name: string | null;
   recipient_phone: string | null;
   recipient_phone_secondary?: string | null;
@@ -236,6 +242,16 @@ export interface ShopOrderItem {
   staff_offer_currency_id: number | null;
   final_price_amount: number | null;
   final_price_currency_id: number | null;
+  confirmed_quantity?: number | null;
+  weight_kg?: number | null;
+  cost_price_amount?: number | null;
+  cost_price_currency_id?: number | null;
+  customer_decision_status?: string | null;
+  customer_decision_at?: string | null;
+  negotiation_status?: string | null;
+  staff_offer_at?: string | null;
+  customer_counter_at?: string | null;
+  final_offer_at?: string | null;
   ordered_quantity: number;
   delivered_quantity: number;
   returned_quantity: number;

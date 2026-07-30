@@ -1516,6 +1516,84 @@ export type Database = {
           },
         ]
       }
+      customer_order_backlog_items: {
+        Row: {
+          backlog_status: string
+          billing_profile_id: number
+          created_at: string
+          fulfilled_quantity: number
+          id: number
+          order_id: number | null
+          order_item_id: number | null
+          product_id: number
+          requested_quantity: number
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          backlog_status?: string
+          billing_profile_id: number
+          created_at?: string
+          fulfilled_quantity?: number
+          id?: never
+          order_id?: number | null
+          order_item_id?: number | null
+          product_id: number
+          requested_quantity: number
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          backlog_status?: string
+          billing_profile_id?: number
+          created_at?: string
+          fulfilled_quantity?: number
+          id?: never
+          order_id?: number | null
+          order_item_id?: number | null
+          product_id?: number
+          requested_quantity?: number
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_order_backlog_items_billing_profile_id_fkey"
+            columns: ["billing_profile_id"]
+            isOneToOne: false
+            referencedRelation: "billing_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_order_backlog_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "shop_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_order_backlog_items_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: false
+            referencedRelation: "shop_order_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_order_backlog_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_order_backlog_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gift_rule_items: {
         Row: {
           created_at: string
@@ -5144,12 +5222,19 @@ export type Database = {
       }
       shop_order_items: {
         Row: {
+          confirmed_quantity: number | null
+          cost_price_amount: number | null
+          cost_price_currency_id: number | null
           created_at: string
+          customer_counter_at: string | null
+          customer_decision_at: string | null
+          customer_decision_status: string | null
           customer_offer_amount: number | null
           customer_offer_currency_id: number | null
           customer_sell_price_amount: number | null
           customer_sell_price_currency_id: number | null
           delivered_quantity: number
+          final_offer_at: string | null
           final_price_amount: number | null
           final_price_currency_id: number | null
           global_stock_allocation_id: number | null
@@ -5157,6 +5242,7 @@ export type Database = {
           id: number
           image_url: string | null
           name: string
+          negotiation_status: string | null
           order_id: number
           ordered_quantity: number
           procurement_pulled: boolean
@@ -5164,6 +5250,7 @@ export type Database = {
           quantity: number
           returned_quantity: number
           staff_offer_amount: number | null
+          staff_offer_at: string | null
           staff_offer_currency_id: number | null
           unit_list_price_amount: number | null
           unit_list_price_currency_id: number | null
@@ -5172,14 +5259,22 @@ export type Database = {
           unit_sell_price_amount: number | null
           unit_sell_price_currency_id: number | null
           updated_at: string
+          weight_kg: number | null
         }
         Insert: {
+          confirmed_quantity?: number | null
+          cost_price_amount?: number | null
+          cost_price_currency_id?: number | null
           created_at?: string
+          customer_counter_at?: string | null
+          customer_decision_at?: string | null
+          customer_decision_status?: string | null
           customer_offer_amount?: number | null
           customer_offer_currency_id?: number | null
           customer_sell_price_amount?: number | null
           customer_sell_price_currency_id?: number | null
           delivered_quantity?: number
+          final_offer_at?: string | null
           final_price_amount?: number | null
           final_price_currency_id?: number | null
           global_stock_allocation_id?: number | null
@@ -5187,6 +5282,7 @@ export type Database = {
           id?: never
           image_url?: string | null
           name: string
+          negotiation_status?: string | null
           order_id: number
           ordered_quantity: number
           procurement_pulled?: boolean
@@ -5194,6 +5290,7 @@ export type Database = {
           quantity: number
           returned_quantity?: number
           staff_offer_amount?: number | null
+          staff_offer_at?: string | null
           staff_offer_currency_id?: number | null
           unit_list_price_amount?: number | null
           unit_list_price_currency_id?: number | null
@@ -5202,14 +5299,22 @@ export type Database = {
           unit_sell_price_amount?: number | null
           unit_sell_price_currency_id?: number | null
           updated_at?: string
+          weight_kg?: number | null
         }
         Update: {
+          confirmed_quantity?: number | null
+          cost_price_amount?: number | null
+          cost_price_currency_id?: number | null
           created_at?: string
+          customer_counter_at?: string | null
+          customer_decision_at?: string | null
+          customer_decision_status?: string | null
           customer_offer_amount?: number | null
           customer_offer_currency_id?: number | null
           customer_sell_price_amount?: number | null
           customer_sell_price_currency_id?: number | null
           delivered_quantity?: number
+          final_offer_at?: string | null
           final_price_amount?: number | null
           final_price_currency_id?: number | null
           global_stock_allocation_id?: number | null
@@ -5217,6 +5322,7 @@ export type Database = {
           id?: never
           image_url?: string | null
           name?: string
+          negotiation_status?: string | null
           order_id?: number
           ordered_quantity?: number
           procurement_pulled?: boolean
@@ -5224,6 +5330,7 @@ export type Database = {
           quantity?: number
           returned_quantity?: number
           staff_offer_amount?: number | null
+          staff_offer_at?: string | null
           staff_offer_currency_id?: number | null
           unit_list_price_amount?: number | null
           unit_list_price_currency_id?: number | null
@@ -5232,8 +5339,16 @@ export type Database = {
           unit_sell_price_amount?: number | null
           unit_sell_price_currency_id?: number | null
           updated_at?: string
+          weight_kg?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "shop_order_items_cost_price_currency_id_fkey"
+            columns: ["cost_price_currency_id"]
+            isOneToOne: false
+            referencedRelation: "global_currencies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "shop_order_items_customer_offer_currency_id_fkey"
             columns: ["customer_offer_currency_id"]
@@ -5377,6 +5492,7 @@ export type Database = {
           pickup_phone: string | null
           placed_at: string | null
           print_charge_amount: number
+          profit_basis: string | null
           profit_rate: number | null
           recipient_name: string | null
           recipient_phone: string | null
@@ -5462,6 +5578,7 @@ export type Database = {
           pickup_phone?: string | null
           placed_at?: string | null
           print_charge_amount?: number
+          profit_basis?: string | null
           profit_rate?: number | null
           recipient_name?: string | null
           recipient_phone?: string | null
@@ -5547,6 +5664,7 @@ export type Database = {
           pickup_phone?: string | null
           placed_at?: string | null
           print_charge_amount?: number
+          profit_basis?: string | null
           profit_rate?: number | null
           recipient_name?: string | null
           recipient_phone?: string | null
@@ -12240,6 +12358,11 @@ export type Database = {
         | "payment_received"
         | "ready_for_pickup"
         | "returned"
+        | "costing_pending"
+        | "countered"
+        | "final_offered"
+        | "procuring"
+        | "ordered"
       shop_type_enum: "vendor_catalog" | "fixed_price" | "dropship"
       thrift_condition: "NEW_WITH_TAGS" | "EXCELLENT" | "GOOD" | "FAIR"
       thrift_delivery_status:
@@ -12466,6 +12589,11 @@ export const Constants = {
         "payment_received",
         "ready_for_pickup",
         "returned",
+        "costing_pending",
+        "countered",
+        "final_offered",
+        "procuring",
+        "ordered",
       ],
       shop_type_enum: ["vendor_catalog", "fixed_price", "dropship"],
       thrift_condition: ["NEW_WITH_TAGS", "EXCELLENT", "GOOD", "FAIR"],
