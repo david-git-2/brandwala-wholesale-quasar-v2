@@ -202,7 +202,7 @@ const shopId = computed(() => Number(route.params.shopId));
 
 const search = ref('');
 const selectedShipment = ref<number | 'all'>('all');
-const selectedBrand = ref<string | 'all'>('all');
+const selectedBrand = ref<string>('all');
 const selectedCandidates = ref<CandidateAllocation[]>([]);
 const addingId = ref<number | null>(null);
 const isBatchAdding = ref(false);

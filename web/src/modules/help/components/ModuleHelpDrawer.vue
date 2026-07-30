@@ -8,13 +8,13 @@
     class="bg-white module-help-drawer"
     @update:model-value="onDrawerUpdate"
   >
-    <div class="column full-height">
-      <div class="q-pa-md row items-center justify-between bg-grey-1 border-bottom">
-        <div class="col row items-center q-gutter-sm">
-          <div class="drawer-title-badge row items-center justify-center bg-primary-soft text-primary">
+    <div class="column full-height overflow-hidden">
+      <div class="q-pa-md row items-center justify-between bg-grey-1 border-bottom no-wrap">
+        <div class="col row items-center q-gutter-x-sm no-wrap style-min-w-0">
+          <div class="drawer-title-badge row items-center justify-center bg-primary-soft text-primary flex-shrink-0">
             <q-icon :name="activeGuide?.icon ?? 'ph ph-book-open-text'" size="20px" />
           </div>
-          <div class="col">
+          <div class="col style-min-w-0">
             <div class="text-subtitle1 text-weight-bold text-grey-9 ellipsis">
               {{ activeGuide ? lt(activeGuide.title, locale) : t('help.drawerTitle') }}
             </div>
@@ -23,7 +23,7 @@
             </div>
           </div>
         </div>
-        <div class="row items-center q-gutter-xs">
+        <div class="row items-center q-gutter-x-xs no-wrap flex-shrink-0">
           <q-btn
             flat
             dense
@@ -63,6 +63,8 @@
           indicator-color="primary"
           align="left"
           narrow-indicator
+          outside-arrows
+          mobile-arrows
         >
           <q-tab name="overview" :label="t('help.tabs.overview')" no-caps />
           <q-tab name="workflows" :label="t('help.tabs.workflows')" no-caps />
@@ -279,5 +281,17 @@ const goToHelpCenter = () => {
 
 .guide-tabs {
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.style-min-w-0 {
+  min-width: 0;
+}
+
+.flex-shrink-0 {
+  flex-shrink: 0;
+}
+
+.overflow-hidden {
+  overflow: hidden;
 }
 </style>

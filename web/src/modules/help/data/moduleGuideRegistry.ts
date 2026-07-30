@@ -1,5 +1,6 @@
 import type { ModuleGuide } from '../types';
 
+import { customerDashboardGuide } from './guides/customerDashboard';
 import { gettingStartedGuide } from './guides/gettingStarted';
 import { investorPortalGuide } from './guides/investorPortal';
 import { platformAdminGuide } from './guides/platformAdmin';
@@ -14,6 +15,7 @@ import { universalWalletGuide } from './guides/universalWallet';
  * Add a new guide file there, then register it here.
  */
 export const MODULE_GUIDE_REGISTRY: readonly ModuleGuide[] = [
+  customerDashboardGuide,
   gettingStartedGuide,
   platformAdminGuide,
   shopCategoriesGuide,

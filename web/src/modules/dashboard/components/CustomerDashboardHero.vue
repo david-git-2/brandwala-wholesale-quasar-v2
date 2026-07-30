@@ -2,7 +2,10 @@
   <q-card flat class="hero-card q-pa-md q-pa-sm-lg q-pa-md-xl text-white relative-position overflow-hidden">
     <div class="row items-center justify-between q-col-gutter-md">
       <div class="col-12 col-md-7 z-index-1">
-        <div class="text-overline text-blue-2 text-weight-bold tracking-wider">{{ tenantName }}</div>
+        <div class="row items-center justify-between text-overline text-blue-2 text-weight-bold tracking-wider q-mb-xs">
+          <span>{{ tenantName }}</span>
+          <LearnMoreHelpBtn guide-id="customer_dashboard" tab="workflows" color="white" size="xs" />
+        </div>
         <h1 class="text-h4 text-sm-h3 text-weight-bold q-my-xs q-my-sm-sm leading-tight">
           {{ $t('customer_dashboard.welcome', { name: customerName }) }}
         </h1>
@@ -48,6 +51,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import LearnMoreHelpBtn from 'src/modules/help/components/LearnMoreHelpBtn.vue';
 
 const props = defineProps<{
   tenantName: string;
