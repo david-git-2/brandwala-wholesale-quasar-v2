@@ -37,9 +37,9 @@ const getStatusColor = (status: string) => {
 </script>
 
 <template>
-  <q-card flat bordered class="q-pa-sm">
-    <div class="row items-center justify-between q-col-gutter-sm">
-      <div class="col-grow row items-center q-gutter-xs status-workflow-row">
+  <q-card flat bordered class="q-pa-xs overflow-hidden">
+    <div class="row items-center justify-between no-wrap overflow-x-auto q-pa-xs">
+      <div class="row items-center no-wrap q-gutter-xs status-workflow-row">
         <template
           v-for="(st, idx) in ['confirmed', 'processing', 'ready_for_pickup', 'shipped', 'delivered']"
           :key="st"
@@ -52,6 +52,7 @@ const getStatusColor = (status: string) => {
             dense
             no-caps
             class="q-px-md text-caption text-weight-bold"
+            style="white-space: nowrap; flex-shrink: 0;"
             :loading="updatingStatus && targetUpdatingStatus === st"
             :disable="updatingStatus && targetUpdatingStatus !== st"
             @click="emit('update-status', st)"
@@ -69,10 +70,10 @@ const getStatusColor = (status: string) => {
             name="ph ph-caret-right"
             color="grey-5"
             size="18px"
-            class="status-workflow-chevron"
+            class="status-workflow-chevron flex-shrink-0"
           />
         </template>
-        <q-separator vertical class="q-mx-sm status-workflow-sep" />
+        <q-separator vertical class="q-mx-sm status-workflow-sep self-stretch" />
         <q-btn
           :color="order?.status === 'returned' ? 'negative' : 'grey-3'"
           :text-color="order?.status === 'returned' ? 'white' : 'grey-7'"
@@ -81,6 +82,7 @@ const getStatusColor = (status: string) => {
           dense
           no-caps
           class="q-px-md text-caption text-weight-bold"
+          style="white-space: nowrap; flex-shrink: 0;"
           :loading="updatingStatus && targetUpdatingStatus === 'returned'"
           :disable="updatingStatus && targetUpdatingStatus !== 'returned'"
           @click="emit('update-status', 'returned')"

@@ -35,7 +35,7 @@
 
         <div class="row q-col-gutter-lg">
           <!-- Main Form Sections -->
-          <div class="col-xs-12" :class="isConfirmedStatus ? 'col-md-8' : 'col-md-8'">
+          <div class="col-xs-12 col-md-8">
             <div class="q-gutter-y-md">
               <!-- Block A: Recipient Information -->
               <DropshipRecipientFormCard
@@ -72,35 +72,23 @@
                 @update:form-field="(k, v) => (form as any)[k] = v"
               />
 
-              <!-- Additional Consignment Details (Merchant Pickup & Driver Notes) under More -->
-              <q-expansion-item
+              <!-- Block C: Merchant Sender Pickup -->
+              <DropshipMerchantFormCard
                 v-if="!isConfirmedStatus"
-                dense
-                dense-toggle
-                expand-separator
-                icon="ph ph-sliders"
-                label="More Details (Merchant Pickup & Driver Instructions)"
-                header-class="bg-grey-2 text-weight-bold text-grey-8 rounded-borders"
-                class="overflow-hidden rounded-borders border-grey"
-              >
-                <div class="q-pa-md q-gutter-y-md bg-grey-1">
-                  <!-- Block C: Merchant Sender Pickup -->
-                  <DropshipMerchantFormCard
-                    v-model:selected-merchant-id="selectedMerchantId"
-                    v-model:block-c-expanded="blockCExpanded"
-                    :form="form"
-                    :merchant-options="merchantOptions"
-                    @merchant-select="onMerchantSelect"
-                    @update:form-field="(k, v) => (form as any)[k] = v"
-                  />
+                v-model:selected-merchant-id="selectedMerchantId"
+                v-model:block-c-expanded="blockCExpanded"
+                :form="form"
+                :merchant-options="merchantOptions"
+                @merchant-select="onMerchantSelect"
+                @update:form-field="(k, v) => (form as any)[k] = v"
+              />
 
-                  <!-- Block D: Driver Notes & Policy Flags -->
-                  <DropshipDeliveryNotesCard
-                    :form="form"
-                    @update:form-field="(k, v) => (form as any)[k] = v"
-                  />
-                </div>
-              </q-expansion-item>
+              <!-- Block D: Driver Notes & Policy Flags -->
+              <DropshipDeliveryNotesCard
+                v-if="!isConfirmedStatus"
+                :form="form"
+                @update:form-field="(k, v) => (form as any)[k] = v"
+              />
             </div>
           </div>
 
@@ -180,8 +168,8 @@
         <div v-if="!isConfirmedStatus && isFormDirty && !loading" style="height: 100px;"></div>
 
         <q-slide-transition>
-          <div v-if="!isConfirmedStatus && isFormDirty && !loading" class="fixed-bottom row justify-center q-pb-lg z-top">
-            <q-card flat class="bg-grey-10 text-white shadow-24 row items-center justify-between q-py-md q-px-lg" style="width: 90%; max-width: 800px; border-radius: 12px; border-left: 5px solid var(--q-warning); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 16px rgba(242, 193, 46, 0.25);">
+          <div v-if="!isConfirmedStatus && isFormDirty && !loading" class="fixed-bottom row justify-center q-pb-lg" style="z-index: 1000;">
+            <q-card flat class="bg-grey-10 text-white shadow-24 column sm-row items-start sm-items-center justify-between q-py-md q-px-lg q-gutter-y-sm" style="width: 90%; max-width: 800px; border-radius: 12px; border-left: 5px solid var(--q-warning); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 16px rgba(242, 193, 46, 0.25);">
               <div class="row items-center q-gutter-x-md">
                 <q-icon name="ph ph-warning" color="warning" size="32px" class="animate-flash" />
                 <div>
@@ -191,7 +179,7 @@
                   <div class="text-caption text-grey-4">You have modified details on this page. Click Save to persist updates.</div>
                 </div>
               </div>
-              <div class="row q-gutter-sm items-center">
+              <div class="row q-gutter-sm items-center self-end sm-self-center">
                 <q-btn
                   flat
                   color="white"

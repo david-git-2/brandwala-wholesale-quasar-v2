@@ -46,8 +46,8 @@
       </div>
     </div>
 
-    <div v-if="currentStepAction" class="q-px-sm q-pt-xs row items-center justify-between bg-white rounded-borders q-pa-xs q-mt-xs">
-      <div class="row items-center q-gutter-x-xs">
+    <div v-if="currentStepAction" class="q-px-sm q-py-xs row items-center justify-between bg-white rounded-borders q-mt-xs wrap q-gutter-y-xs">
+      <div class="row items-center q-gutter-x-xs col-12 col-sm-auto">
         <q-icon name="ph ph-info" color="info" size="18px" />
         <span class="text-caption text-grey-8">{{ currentStepAction.instruction }}</span>
       </div>
@@ -58,7 +58,7 @@
         no-caps
         size="sm"
         color="primary"
-        class="q-px-sm text-weight-bold"
+        class="q-px-sm text-weight-bold col-12 col-sm-auto"
         :icon="currentStepAction.btnIcon"
         :label="currentStepAction.btnLabel"
         @click="currentStepAction.action"

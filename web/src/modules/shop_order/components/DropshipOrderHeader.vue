@@ -21,12 +21,12 @@ const emit = defineEmits<{
 
 <template>
   <section class="row items-center justify-between q-col-gutter-md">
-    <div class="col">
+    <div class="col-12 col-md">
       <div class="row items-center q-gutter-x-sm">
         <q-btn flat dense icon="ph ph-arrow-left" color="grey-7" :to="{ name: 'app-shop-dropship-orders-page' }" />
         <div>
           <div class="text-overline text-primary">Dropship Desk</div>
-          <div class="row items-center q-gutter-x-sm">
+          <div class="row items-center q-gutter-x-sm wrap">
             <h1 class="text-h5 text-weight-bold q-my-none">Process Order: {{ order?.order_no || 'ORD-DS' }}</h1>
             <DropshipSettlementBadge
               v-if="order && (order.global_invoice_id || ['delivered', 'completed', 'returned', 'payment_received'].includes(order.status))"
@@ -39,7 +39,7 @@ const emit = defineEmits<{
         </div>
       </div>
     </div>
-    <div class="col-auto row q-gutter-sm items-center">
+    <div class="col-12 col-md-auto row q-gutter-sm items-center justify-start justify-md-end wrap">
       <q-btn
         v-if="order?.status === 'delivered' && order?.collection_source !== 'billing_profile' && !order?.courier_remittance_ref"
         color="primary"
