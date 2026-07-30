@@ -137,6 +137,7 @@
             icon="ph ph-shopping-cart"
             :label="$q.screen.lt.sm ? undefined : $t('shop.add')"
             class="add-cart-btn"
+            :loading="loading"
             :disabled="
               !permissions?.can_add_to_cart ||
               (item.available_units !== null && item.available_units <= 0)
@@ -152,6 +153,7 @@
             icon="ph ph-shopping-cart"
             :label="$q.screen.lt.sm ? undefined : $t('shop.remove')"
             class="add-cart-btn"
+            :loading="loading"
             :disabled="!permissions?.can_add_to_cart"
             @click="$emit('remove-from-cart', item)"
           />
@@ -170,6 +172,7 @@ const props = defineProps<{
   shopType?: string | null;
   selectedQty?: number | undefined;
   inCart?: boolean | undefined;
+  loading?: boolean | undefined;
   isImageBroken?: boolean | undefined;
   formatMoney: (amount: unknown, symbol?: string | null) => string;
 }>();

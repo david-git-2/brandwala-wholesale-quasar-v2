@@ -65,6 +65,7 @@
               :shop-type="shopDetails?.shop_type"
               :selected-qty="selectedQuantities[itemKey(item)]"
               :in-cart="isInCart(item)"
+              :loading="isCartPendingForItem(item)"
               :is-image-broken="brokenImages[itemKey(item)]"
               :format-money="formatMoney"
               @quick-view="openQuickView"
@@ -350,27 +351,44 @@ const onQuickViewAddToCart = async (payload: { product: any; quantity: number })
   }
 };
 
+const pendingCartItems = reactive(new Set<string>());
+
+const isCartPendingForItem = (item: any) => {
+  return pendingCartItems.has(itemKey(item));
+};
+
 const onAddToCart = async (item: any) => {
   if (!shopDetails.value) return;
   const key = itemKey(item);
   const qty = selectedQuantities[key] || getMinQty(item);
-  await addItemMutation.mutateAsync({
-    shopId: shopDetails.value.id,
-    productId: item.product_id,
-    globalStockAllocationId: item.global_stock_allocation_id,
-    quantity: qty,
-  });
-  delete selectedQuantities[key];
+  pendingCartItems.add(key);
+  try {
+    await addItemMutation.mutateAsync({
+      shopId: shopDetails.value.id,
+      productId: item.product_id,
+      globalStockAllocationId: item.global_stock_allocation_id,
+      quantity: qty,
+    });
+    delete selectedQuantities[key];
+  } finally {
+    pendingCartItems.delete(key);
+  }
 };
 
 const onRemoveFromCart = async (catalogItem: any) => {
   if (!shopDetails.value) return;
   const cartItem = cartItemFor(catalogItem);
   if (!cartItem) return;
-  await removeItemMutation.mutateAsync({
-    cartItemId: cartItem.id,
-    shopId: shopDetails.value.id,
-  });
+  const key = itemKey(catalogItem);
+  pendingCartItems.add(key);
+  try {
+    await removeItemMutation.mutateAsync({
+      cartItemId: cartItem.id,
+      shopId: shopDetails.value.id,
+    });
+  } finally {
+    pendingCartItems.delete(key);
+  }
 };
 
 const onSearchClick = () => {
