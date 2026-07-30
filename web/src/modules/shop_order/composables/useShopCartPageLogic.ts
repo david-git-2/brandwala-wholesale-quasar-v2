@@ -164,12 +164,14 @@ export function useShopCartPageLogic(
   };
 
   const adjustItemQtyLocal = (item: any, delta: number) => {
-    const minQty =
+    const rawMin =
       cart.value?.shop_type === 'dropship'
         ? 1
-        : item.minimum_quantity || item.minimum_order_quantity || item.moq || 1;
-    const currentVal = getItemQty(item);
-    let newVal = currentVal + delta;
+        : item.minimum_quantity ?? item.minimum_order_quantity ?? item.moq ?? 1;
+    const minQty = Number(rawMin) || 1;
+    const stepDelta = Number(delta) || minQty;
+    const currentVal = Number(getItemQty(item)) || minQty;
+    let newVal = currentVal + stepDelta;
     if (newVal < minQty) newVal = minQty;
 
     if (newVal === item.quantity) {
@@ -241,7 +243,8 @@ export function useShopCartPageLogic(
       item.unit_sell_price_amount ??
       item.unit_list_price_amount ??
       0;
-    const total = price * item.quantity;
+    const qty = getItemQty(item);
+    const total = price * qty;
     return `${currencySymbol.value}${total.toFixed(2)}`;
   };
 
@@ -252,7 +255,8 @@ export function useShopCartPageLogic(
 
   const formatBuyerItemTotal = (item: any) => {
     const price = item.unit_sell_price_amount ?? item.unit_list_price_amount ?? 0;
-    const total = price * item.quantity;
+    const qty = getItemQty(item);
+    const total = price * qty;
     return `${currencySymbol.value}${total.toFixed(2)}`;
   };
 

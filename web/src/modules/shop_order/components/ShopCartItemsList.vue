@@ -201,7 +201,8 @@ defineEmits<{
 
 const getItemMinQty = (item: any) => {
   if (props.cart?.shop_type === 'dropship') return 1;
-  return item?.minimum_quantity || item?.minimum_order_quantity || item?.moq || 1;
+  const val = item?.minimum_quantity ?? item?.minimum_order_quantity ?? item?.moq ?? 1;
+  return Number(val) || 1;
 };
 </script>
 

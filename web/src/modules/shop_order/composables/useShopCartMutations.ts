@@ -17,9 +17,20 @@ export function useShopCartMutations() {
         shopOrderQueryKeys.cart(tenantId.value, shopId),
         (oldData: any) => {
           if (!oldData) return data;
+          const oldItemsMap = new Map((oldData.items ?? []).map((i: any) => [i.id, i]));
+          const enrichedItems = (data.items ?? []).map((i: any) => {
+            const oldItem = oldItemsMap.get(i.id) as Record<string, any> | undefined;
+            const moq = oldItem?.minimum_quantity ?? oldItem?.minimum_order_quantity ?? i.minimum_quantity ?? 1;
+            return {
+              ...i,
+              minimum_quantity: moq,
+              minimum_order_quantity: moq,
+            };
+          });
           return {
             ...oldData,
             ...data,
+            items: enrichedItems,
             permissions: oldData.permissions ?? data.permissions ?? null,
           };
         },
