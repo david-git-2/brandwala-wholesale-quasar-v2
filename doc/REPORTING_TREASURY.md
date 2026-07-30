@@ -372,7 +372,7 @@ Aligned with [SALES_INVOICE.md](SALES_INVOICE.md) §8.
 |------|--------------|-----------|------------|
 | Billing profile payment + allocation | `create_billing_profile_payment_with_allocations` | `payments` | Wholesale, retail account |
 | Recipient collection (COD / cash) | `record_recipient_invoice_collection` | `payments` | Retail direct, dropship |
-| Middle-man payout | `create_middle_man_payout` | `payments` | Dropship |
+| Middle-man payout | `dispense_middleman_payout_from_tenant` | `universal_wallet_ledger` | Dropship |
 | Status recompute | `recompute_global_invoice_payment_status` | `payments` | All posted invoices |
 
 **Rules:**

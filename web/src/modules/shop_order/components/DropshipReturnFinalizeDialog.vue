@@ -95,6 +95,13 @@
           :rules="[(val) => !!val || 'Reason required for fee override']"
         />
 
+        <q-toggle
+          v-model="form.deduct_from_middle_man"
+          label="Deduct return fee from merchant wallet"
+          color="primary"
+          dense
+        />
+
         <q-input
           v-model="form.note"
           label="Return Notes"
@@ -143,6 +150,7 @@ const emit = defineEmits<{
       qty_open_box: number;
       qty_damaged: number;
       actual_return_fee: number;
+      deduct_from_middle_man: boolean;
       override_reason: string;
       note: string;
     },
@@ -154,6 +162,7 @@ const form = ref({
   qty_open_box: 0,
   qty_damaged: 0,
   actual_return_fee: 0,
+  deduct_from_middle_man: true,
   override_reason: '',
   note: '',
 });
@@ -173,6 +182,7 @@ watch(
       form.value.qty_normal = Number(total) || 0;
       form.value.qty_open_box = 0;
       form.value.qty_damaged = 0;
+      form.value.deduct_from_middle_man = true;
       form.value.override_reason = '';
       form.value.note = '';
       form.value.actual_return_fee = props.suggestedReturnFee;

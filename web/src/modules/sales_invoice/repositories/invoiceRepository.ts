@@ -313,14 +313,19 @@ const createMiddleManPayout = async (payload: {
   global_invoice_id: number;
   amount: number;
 }) => {
-  const { data, error } = await supabase.rpc('create_middle_man_payout', {
+  const { data, error } = await supabase.rpc('dispense_middleman_payout_from_tenant', {
     p_tenant_id: payload.tenant_id,
     p_billing_profile_id: payload.billing_profile_id,
-    p_global_invoice_id: payload.global_invoice_id,
     p_amount: payload.amount,
-    p_note: null,
+    p_payout_method: 'bank_transfer',
+    p_reference_notes: `Invoice #${payload.global_invoice_id}`,
   });
   if (error) throw error;
+  if (data && typeof data === 'object' && (data as { success?: boolean }).success === false) {
+    throw new Error(
+      (data as { error?: string }).error || 'Failed to dispense middleman payout',
+    );
+  }
   return data;
 };
 

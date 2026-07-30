@@ -260,6 +260,7 @@ export function useDropshipOrderActions(
     qty_open_box: number;
     qty_damaged: number;
     actual_return_fee: number;
+    deduct_from_middle_man: boolean;
     override_reason: string;
     note: string;
   }) => {
@@ -291,7 +292,7 @@ export function useDropshipOrderActions(
         orderId: order.value.id,
         items,
         actualReturnCharge: Number(payload.actual_return_fee) || 0,
-        deductFromMiddleman: true,
+        deductFromMiddleman: payload.deduct_from_middle_man === true,
         overrideReason: payload.override_reason?.trim() || null,
         reason: payload.note?.trim() || 'Refused on delivery',
         returnRef: `RET-${order.value.id}-${Date.now()}`,

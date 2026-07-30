@@ -412,7 +412,7 @@ Optional `return_charge_amount` (restocking/handling) reduces credit on the face
 | Billing profile payment + allocation | `create_billing_profile_payment_with_allocations` | Wholesale, retail account |
 | Recipient collection (COD / cash) | `record_recipient_invoice_collection` | Retail direct, dropship |
 | Settlement discount / write-off | `apply_global_invoice_settlement_discount` | All — closes remaining `due_amount` as a discount |
-| Middle-man payout | `create_middle_man_payout` | Dropship only |
+| Middle-man payout | `dispense_middleman_payout_from_tenant` | Dropship only |
 | Status recompute | `recompute_global_invoice_payment_status` | All — `due` / `partially_paid` / `paid` |
 
 **Collection rules:**

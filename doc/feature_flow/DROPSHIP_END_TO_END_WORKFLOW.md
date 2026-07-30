@@ -214,11 +214,11 @@ When courier deposits remitted COD cash into Tenant's bank:
 
 ### 7.3 Scenario B: Returned / Failed Delivery (Edge Case Flow)
 If recipient refuses delivery:
-* **RPC Called**: `mark_dropship_order_returned`
-* **Status**: `returned` / `failed_delivery`.
+* **RPC Called**: `finalize_dropship_return` (UI return wizard; `mark_dropship_order_returned` is a thin legacy wrapper only)
+* **Status**: `returned` / `return_finalized`.
 * **Financial Handling**:
   * Recipient COD collected = `৳0`.
-  * Return Shipping Charge (e.g. `৳60`) is deducted from Merchant's wallet balance.
+  * Return Shipping Charge (e.g. `৳60`) is deducted from Merchant's UWL balance (`return_fee`).
   * Product stock inventory is automatically restocked into warehouse batching.
 
 ---
@@ -275,7 +275,8 @@ If recipient refuses delivery:
 | `confirm_dropship_delivered_costing` | `dropshipFinanceRepository.ts` | Locks delivered order product cost & profit |
 | `confirm_courier_remittance_to_tenant` | `courierRemittanceRepository.ts` | Settles courier COD bulk remittance batch |
 | `dispense_middleman_payout_from_tenant` | `courierRemittanceRepository.ts` | Settles agent commissions to wallet |
-| `mark_dropship_order_returned` | `useDropshipOrderActions.ts` | Handles rejected delivery & return fee penalties |
+| `finalize_dropship_return` | `useDropshipReturnMutations.ts` | Handles rejected delivery, stock restock & return fee (UWL) |
+| `mark_dropship_order_returned` | (legacy wrapper) | Delegates to `finalize_dropship_return` |
 
 ---
 

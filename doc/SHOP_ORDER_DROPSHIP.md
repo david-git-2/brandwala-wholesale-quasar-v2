@@ -79,8 +79,8 @@ This document answers:
 | Recipient invoice print | Download/print customer face copy from order at **`processing`** (no books post) |
 | B2B Sales Invoice handoff | Posted standard B2B `global_invoices` dropship row at **`ready_for_pickup`** |
 | Charge policy | Shop toggles for delivery/print/packing (non-COD); **COD on courier** only when `cod_collect_amount > 0`; independent return-fee bearer |
-| Courier remittance + ledger | After **`delivered`**: courier pays seller net of charges → collection ledger; then middle-man profit payout ledger |
-| Middle-man ledger | Credits/debits for profit, remittance trail, payouts, return clawbacks (including `return_fee_uninvoiced`) |
+| Courier remittance + wallet | After **`delivered`**: courier pays seller net of charges → UWL remittance; then middle-man profit payout via UWL |
+| Middle-man wallet | Credits/debits on customer billing-profile UWL for profit, remittance trail, payouts, return clawbacks / `return_fee` |
 
 ### What this feature is not
 
@@ -437,7 +437,7 @@ middle_man_payout =
 | Stage | Invoice | Stock | COD | Action |
 |-------|---------|-------|-----|--------|
 | **A. Before ship** | None | Release reservation | None | Cancel |
-| **B. Shipped, refused / failed (no accounting invoice yet)** | None | Restore when parcel received | None collected | `returned` + `returned_at`; return fee from **courier policy**; ledger `return_fee_uninvoiced` if middle man bears |
+| **B. Shipped, refused / failed (no accounting invoice yet)** | None | Restore when parcel received | None collected | `returned` + `returned_at` via `finalize_dropship_return`; return fee from **courier policy**; UWL `return_fee` debit if middle man bears |
 | **B2. Failed after accounting invoice** (`ready_for_pickup`+ already invoiced) | Posted accounting invoice | Restore / void or return lines | None or reverse collection | Void or dual return per [SALES_INVOICE.md](SALES_INVOICE.md); rebalance payout |
 | **C. After delivery / remittance** | Posted accounting invoice | `global_return_items` if return | May be remitted | Dual return amounts + return charge; rebalance COD and payout |
 | **D. Partial accept** | Adjust lines | Partial restore | Partial COD | Per-line face/accounting/payout recalc |
@@ -476,7 +476,7 @@ revised_middle_man_payout =
 - Status → `returned`; stamp `returned_at`
 - **Do not** invent a posted sale if `global_invoice_id` is still null
 - Restore stock when warehouse confirms
-- If middle man bears return fee → ledger debit **`return_fee_uninvoiced`** (settlement journal, not invoice write)
+- If middle man bears return fee → UWL debit **`return_fee`** on billing-profile customer wallet (settlement journal, not invoice write)
 
 If an accounting invoice was already posted at `ready_for_pickup`, use void/return (§10.1 B2 / §10.4) instead.
 
@@ -594,10 +594,11 @@ Reuse `global_invoices`, `global_invoice_items`, `global_return_items` dual colu
 | `process_dropship_shop_order` | Staff | → `processing`; open consignment |
 | `update_dropship_consignment` | Staff | A–E fields (incl. AWB, consignment id, tracking URL); load courier COD suggestion only if collect > 0 |
 | `advance_dropship_order_status` | Staff | ready_for_pickup / shipped / delivered / payment_received; stamps `delivered_at` / remittance refs on `payment_received` |
-| `mark_dropship_order_returned` | Staff | Suggest return fee from courier policy; bearer + stock; `returned_at`; ledger `return_fee_uninvoiced` when no invoice |
+| `finalize_dropship_return` | Staff | Canonical return: status + stock restock + invoice return rows + UWL clawbacks/reversals; optional `return_fee` debit |
+| `mark_dropship_order_returned` | Staff (legacy wrapper) | Thin wrapper → `finalize_dropship_return` (full item return, perfect condition) |
 | `create_dual_invoice_from_dropship_order` | Staff | From **`ready_for_pickup`**+ → posted `global_invoices` dropship (accounting dual amounts); set `global_invoice_id` |
 | `list/upsert_courier_services` | Admin | Maintain courier catalog |
-| Existing recipient collection / middle-man payout | Finance | `record_recipient_invoice_collection` (courier net remit) + `create_middle_man_payout` — [SALES_INVOICE.md](SALES_INVOICE.md) |
+| Existing recipient collection / middle-man payout | Finance | `record_recipient_invoice_collection` (courier net remit) + `dispense_middleman_payout_from_tenant` — [SALES_INVOICE.md](SALES_INVOICE.md) |
 
 Packing slip / courier label / **customer invoice** print is **client-side** from the order payload on the process desk (no courier API in v1).
 
@@ -631,8 +632,8 @@ Replace primary **Fulfill to Invoice** on dropship order detail with **Process O
 | **D2 — Courier catalog** | `courier_services` + seeds; COD on courier (skip fee when collect = 0); deprecate shop COD for dropship |
 | **D3 — Dropship desk UI** | Menu, list, Process Order (B–E incl. AWB / tracking URL), packing slip / label print, status stepper — wire §16a shells to RPCs |
 | **D4 — Create Accounting Invoice** | Handoff RPC from **`ready_for_pickup`**+; recipient print remains order-only (print ≠ post) |
-| **D5 — Returns** | Policy-suggested fee, bearer, stock restore, dual return when invoiced; `return_fee_uninvoiced` ledger when no invoice yet; exchange = replacement order |
-| **D6 — Ledger + courier settlement** | Profit credit, courier net remittance → collection, middle-man payout paid, remittance refs on `payment_received`, settlement report |
+| **D5 — Returns** | Policy-suggested fee, bearer, stock restore via `finalize_dropship_return`; dual return when invoiced; UWL `return_fee` when middle man bears; exchange = replacement order |
+| **D6 — Wallet + courier settlement** | Profit credit, courier net remittance → UWL, middle-man payout via `dispense_middleman_payout_from_tenant`, remittance refs on `payment_received`, settlement report |
 | **I2 — Wire-up** | Replace remaining mocks with repository/service calls after D1–D6 RPCs land |
 
 ```mermaid
@@ -743,7 +744,7 @@ Clickable shells first. No new migrations/RPCs in I0. Enhanced later as fields a
 | **Create** | `web/src/modules/shop_order/pages/DropshipLedgerPage.vue` |
 | **Route** | `/:slug/app/shop/dropship/ledger` |
 | **Update (light)** | [InvoiceDetailsPage.vue](../web/src/modules/sales_invoice/pages/InvoiceDetailsPage.vue) payout/collection panels — remittance refs |
-| **UI** | Ledger table: order, type (profit credit / payout paid / `return_fee_uninvoiced` / clawback), amount, balance. Actions: **Record courier remittance** (net amount + batch id + bank trx), **Settle middle-man payout**. |
+| **UI** | Wallet trail: order, type (profit credit / payout paid / `return_fee` / clawback), amount, balance. Actions: **Record courier remittance** (net amount + batch id + bank trx), **Settle middle-man payout**. |
 
 #### 10. Customer / middle-man order visibility
 
@@ -782,7 +783,7 @@ Clickable shells first. No new migrations/RPCs in I0. Enhanced later as fields a
 | D-SD4 | Invoice timing | **Recipient print** from order at **`processing`+** (no books). **Posted accounting invoice** from **`ready_for_pickup`+**. After **`delivered`**: courier net remittance + middle-man payout on ledger |
 | D-SD5 | Return fee bearer | Shop flag `deduct_return_charge_from_middle_man` default **true**; per-return override |
 | D-SD6 | Return vs outbound toggles | Return fee independent of `deduct_delivery_from_margin` |
-| D-SD7 | Failed before accounting invoice | No fake posted sale if still pre-`ready_for_pickup`; stock + optional ledger debit `return_fee_uninvoiced`. After invoice: void/return path |
+| D-SD7 | Failed before accounting invoice | No fake posted sale if still pre-`ready_for_pickup`; stock + optional UWL debit `return_fee`. After invoice: void/return path via `finalize_dropship_return` |
 | D-SD8 | Negative ledger | Allowed; net on future payouts |
 | D-SD9 | Cost source | Unchanged — shipment landed cost on invoice post |
 | D-SD10 | Desk dropship without shop order | Remains `sales_invoice` path; this doc owns shop-order path |
@@ -793,9 +794,9 @@ Clickable shells first. No new migrations/RPCs in I0. Enhanced later as fields a
 | D-SD15 | Consignment storage | Columns on `shop_orders` for v1 |
 | D-SD16 | Print ≠ post | Packing slip / courier label / **customer invoice** from order at `processing`+; no early draft on `global_invoices` |
 | D-SD17 | Prepaid COD fee | Apply courier COD fee **only when `cod_collect_amount > 0`** |
-| D-SD18 | Uninvoiced return ledger | Entry type `return_fee_uninvoiced`; ledger is settlement journal, not invoice write |
+| D-SD18 | Return fee wallet entry | UWL `transaction_type` = `return_fee` on billing-profile customer wallet; settlement journal, not invoice write |
 | D-SD19 | Exchange | v1: original → `returned` + replacement shop order via `replacement_of_order_id`; no single-order exchange state machine |
-| D-SD20 | Settlement report | Courier net remittance (collection) + middle-man payout ledger entries are the reportable money trail after delivery |
+| D-SD20 | Settlement report | Courier net remittance + middle-man UWL payout entries are the reportable money trail after delivery |
 
 ---
 

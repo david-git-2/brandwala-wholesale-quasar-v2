@@ -41,7 +41,7 @@ export function useDropshipReturnMutations(tenantSlug?: Ref<string | null>) {
         p_order_id: payload.orderId,
         p_items: payload.items,
         p_actual_return_charge: payload.actualReturnCharge ?? 0,
-        p_deduct_from_middle_man: payload.deductFromMiddleman ?? true,
+        p_deduct_from_middle_man: payload.deductFromMiddleman === true,
         p_override_reason: payload.overrideReason ?? payload.reason ?? null,
         p_return_ref: returnRef,
       });
