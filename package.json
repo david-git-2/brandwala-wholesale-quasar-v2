@@ -30,9 +30,10 @@
     "backend:new-migration": "pnpm exec supabase migration new",
     "backend:push": "pnpm exec supabase db push --linked --include-all",
     "backend:push:all": "pnpm exec supabase db push --linked --include-all",
-    "backend:types": "sh -c 'mkdir -p web/src/types && pnpm exec supabase gen types typescript --linked --schema public > web/src/types/supabase.ts'",
-    "deploy:backend": "pnpm run backend:push && pnpm run backend:types",
-    "backend:all": "pnpm run backend:push:all && pnpm run backend:types"
+    "backend:types": "sh -c 'mkdir -p web/src/types && pnpm exec supabase gen types typescript --project-id pqlmomdpuiajhfwwfoqw --schema public > web/src/types/database.types.ts'",
+    "db:schema": "pnpm run backend:types",
+    "deploy:backend": "pnpm run backend:push && pnpm run db:schema",
+    "backend:all": "pnpm run backend:push:all && pnpm run db:schema"
   },
   "devDependencies": {
     "supabase": "^2.105.0",

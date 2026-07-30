@@ -10,7 +10,10 @@ metadata:
 
 ## Core Principles
 
-**1. Supabase changes frequently — verify against changelog and current docs before implementing.**
+**1. Active Database Schema & Token Optimization:**
+ALWAYS inspect `web/src/types/database.types.ts` FIRST to understand current database tables, columns, enums, views, and relationships. Do NOT read or scan through all files in `supabase/migrations/*.sql` to figure out active database state.
+
+**2. Supabase changes frequently — verify against changelog and current docs before implementing.**
 Do not rely on training data for Supabase features. Function signatures, config.toml settings, and API conventions change between versions.
 
 First, fetch `https://supabase.com/changelog.md` (a lightweight summary index — not a heavy pull), scan for `breaking-change` tags relevant to your task, and follow the linked page for any that apply. Then look up the relevant topic using the documentation access methods below.
