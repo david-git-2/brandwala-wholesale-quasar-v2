@@ -4,10 +4,10 @@
       <!-- Standard Page Header DNA -->
       <div class="row items-center justify-between q-col-gutter-md">
         <div class="col-12 col-sm-auto">
-          <div class="text-overline text-primary">SHOP & ORDER</div>
-          <h1 class="text-h5 text-weight-bold q-my-none">Shop Categories</h1>
+          <div class="text-overline text-primary">{{ $t('shop_admin.shop_and_order') }}</div>
+          <h1 class="text-h5 text-weight-bold q-my-none">{{ $t('shop_admin.shop_categories_title') }}</h1>
           <p class="text-body2 text-grey-7 q-mb-none">
-            Manage tenant shop categories displayed across customer storefronts.
+            {{ $t('shop_admin.shop_categories_subtitle') }}
           </p>
         </div>
         <div class="col-12 col-sm-auto row items-center q-gutter-sm">
@@ -17,7 +17,7 @@
             unelevated
             no-caps
             icon="ph ph-plus"
-            label="Add Category"
+            :label="$t('shop_admin.add_category')"
             class="pill-btn"
             style="min-height: 44px"
             @click="openCreateDialog"
@@ -33,7 +33,7 @@
               v-model="searchQuery"
               dense
               outlined
-              placeholder="Search category by name or slug..."
+              :placeholder="$t('shop_admin.search_category_placeholder')"
               clearable
             >
               <template #prepend>
@@ -47,11 +47,11 @@
               dense
               round
               icon="ph ph-arrows-clockwise"
-              aria-label="Refresh categories"
+              :aria-label="$t('shop_admin.refresh_categories')"
               :loading="loading"
               @click="() => fetchCategories()"
             >
-              <q-tooltip>Refresh Categories</q-tooltip>
+              <q-tooltip>{{ $t('shop_admin.refresh_categories') }}</q-tooltip>
             </q-btn>
           </div>
         </div>
@@ -66,7 +66,7 @@
           row-key="id"
           :loading="loading"
           :grid="$q.screen.lt.sm"
-          no-data-label="No shop categories found"
+          :no-data-label="$t('shop_admin.no_categories_found')"
           :pagination="{ rowsPerPage: 15 }"
         >
           <!-- Custom Status Column -->
@@ -78,7 +78,7 @@
                 text-color="white"
                 class="text-weight-bold"
               >
-                {{ props.value ? 'Active' : 'Inactive' }}
+                {{ props.value ? $t('shop_admin.active') : $t('shop_admin.inactive') }}
               </q-chip>
             </q-td>
           </template>
@@ -103,10 +103,10 @@
                   round
                   icon="ph ph-pencil-simple"
                   color="primary"
-                  aria-label="Edit Category"
+                  :aria-label="$t('shop_admin.edit')"
                   @click="openEditDialog(props.row)"
                 >
-                  <q-tooltip>Edit</q-tooltip>
+                  <q-tooltip>{{ $t('shop_admin.edit') }}</q-tooltip>
                 </q-btn>
                 <q-btn
                   flat
@@ -114,10 +114,10 @@
                   round
                   icon="ph ph-trash"
                   color="negative"
-                  aria-label="Delete Category"
+                  :aria-label="$t('shop_admin.delete')"
                   @click="confirmDelete(props.row)"
                 >
-                  <q-tooltip>Delete</q-tooltip>
+                  <q-tooltip>{{ $t('shop_admin.delete') }}</q-tooltip>
                 </q-btn>
               </div>
             </q-td>
@@ -137,11 +137,11 @@
                     :color="props.row.is_active ? 'positive' : 'grey-5'"
                     text-color="white"
                   >
-                    {{ props.row.is_active ? 'Active' : 'Inactive' }}
+                    {{ props.row.is_active ? $t('shop_admin.active') : $t('shop_admin.inactive') }}
                   </q-chip>
                 </div>
                 <div class="text-caption text-grey-7 q-mb-sm">
-                  Slug: <code class="bg-grey-2 q-px-xs rounded">{{ props.row.slug }}</code>
+                  {{ $t('shop_admin.slug') }}: <code class="bg-grey-2 q-px-xs rounded">{{ props.row.slug }}</code>
                 </div>
                 <p v-if="props.row.description" class="text-body2 text-grey-9 q-mb-sm">
                   {{ props.row.description }}
@@ -152,7 +152,7 @@
                     dense
                     no-caps
                     icon="ph ph-pencil-simple"
-                    label="Edit"
+                    :label="$t('shop_admin.edit')"
                     color="primary"
                     @click="openEditDialog(props.row)"
                   />
@@ -161,7 +161,7 @@
                     dense
                     no-caps
                     icon="ph ph-trash"
-                    label="Delete"
+                    :label="$t('shop_admin.delete')"
                     color="negative"
                     @click="confirmDelete(props.row)"
                   />
@@ -178,7 +178,7 @@
       <q-card style="min-width: 400px; max-width: 500px">
         <q-card-section class="row items-center justify-between">
           <div class="text-h6 text-weight-bold">
-            {{ isEditing ? 'Edit Category' : 'Create Shop Category' }}
+            {{ isEditing ? $t('shop_admin.edit_category') : $t('shop_admin.create_category') }}
           </div>
           <q-btn flat round dense icon="ph ph-x" v-close-popup />
         </q-card-section>
@@ -188,25 +188,25 @@
         <q-card-section class="q-gutter-y-sm">
           <q-input
             v-model="form.name"
-            label="Category Name *"
+            :label="$t('shop_admin.category_name') + ' *'"
             outlined
             dense
-            :rules="[(val) => !!val || 'Name is required']"
+            :rules="[(val) => !!val || $t('shop_admin.category_name_required')]"
             @update:model-value="onNameChange"
           />
 
           <q-input
             v-model="form.slug"
-            label="Slug *"
+            :label="$t('shop_admin.slug') + ' *'"
             outlined
             dense
-            hint="URL-friendly identifier"
-            :rules="[(val) => !!val || 'Slug is required']"
+            :hint="$t('shop_admin.slug_hint')"
+            :rules="[(val) => !!val || $t('shop_admin.slug_required')]"
           />
 
           <q-select
             v-model="form.icon"
-            label="Icon"
+            :label="$t('shop_admin.icon_label')"
             outlined
             dense
             emit-value
@@ -233,17 +233,17 @@
 
           <q-input
             v-model="form.description"
-            label="Description"
+            :label="$t('shop_admin.description_label')"
             outlined
             dense
             type="textarea"
             rows="3"
-            hint="Brief description of products in this category"
+            :hint="$t('shop_admin.description_hint')"
           />
 
           <q-toggle
             v-model="form.is_active"
-            label="Active Category"
+            :label="$t('shop_admin.active_category')"
             color="positive"
           />
         </q-card-section>
@@ -251,12 +251,12 @@
         <q-separator />
 
         <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat no-caps label="Cancel" v-close-popup />
+          <q-btn flat no-caps :label="$t('shop_admin.cancel')" v-close-popup />
           <q-btn
             color="primary"
             unelevated
             no-caps
-            :label="isEditing ? 'Save Changes' : 'Create Category'"
+            :label="isEditing ? $t('shop_admin.save_changes') : $t('shop_admin.create_category')"
             :loading="saving"
             style="min-height: 40px"
             @click="saveCategory"
@@ -270,22 +270,20 @@
       <q-card style="min-width: 350px">
         <q-card-section class="row items-center">
           <q-avatar icon="ph ph-warning" color="negative" text-color="white" />
-          <span class="q-ml-sm text-subtitle1">Delete Category?</span>
+          <span class="q-ml-sm text-subtitle1">{{ $t('shop_admin.delete_category_title') }}</span>
         </q-card-section>
 
         <q-card-section class="q-pt-none text-body2 text-grey-7">
-          Are you sure you want to delete category
-          <strong class="text-grey-10">{{ categoryToDelete?.name }}</strong>?
-          This action cannot be undone.
+          {{ $t('shop_admin.delete_category_confirm', { name: categoryToDelete?.name }) }}
         </q-card-section>
 
         <q-card-actions align="right">
-          <q-btn flat no-caps label="Cancel" v-close-popup />
+          <q-btn flat no-caps :label="$t('shop_admin.cancel')" v-close-popup />
           <q-btn
             color="negative"
             unelevated
             no-caps
-            label="Delete"
+            :label="$t('shop_admin.delete')"
             :loading="deleting"
             @click="handleDelete"
           />
@@ -298,6 +296,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { useQuasar } from 'quasar';
+import { useI18n } from 'vue-i18n';
 import LearnMoreHelpBtn from 'src/modules/help/components/LearnMoreHelpBtn.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import type { ShopCategory } from '../types';
@@ -309,6 +308,7 @@ import {
 } from '../composables/useShopCategoryMutations';
 
 const $q = useQuasar();
+const { t } = useI18n();
 const authStore = useAuthStore();
 
 const searchQuery = ref('');
@@ -410,14 +410,14 @@ const iconOptions = [
   { label: 'Shipping & Delivery', value: 'ph ph-truck' },
 ];
 
-const columns = [
-  { name: 'name', label: 'Category Name', field: 'name', align: 'left' as const, sortable: true },
-  { name: 'slug', label: 'Slug', field: 'slug', align: 'left' as const, sortable: true },
-  { name: 'icon', label: 'Icon', field: 'icon', align: 'left' as const },
-  { name: 'description', label: 'Description', field: 'description', align: 'left' as const },
-  { name: 'is_active', label: 'Status', field: 'is_active', align: 'center' as const, sortable: true },
-  { name: 'actions', label: 'Actions', field: 'actions', align: 'right' as const },
-];
+const columns = computed(() => [
+  { name: 'name', label: t('shop_admin.category_name'), field: 'name', align: 'left' as const, sortable: true },
+  { name: 'slug', label: t('shop_admin.slug'), field: 'slug', align: 'left' as const, sortable: true },
+  { name: 'icon', label: t('shop_admin.icon_label'), field: 'icon', align: 'left' as const },
+  { name: 'description', label: t('shop_admin.description_label'), field: 'description', align: 'left' as const },
+  { name: 'is_active', label: t('shop_admin.status'), field: 'is_active', align: 'center' as const, sortable: true },
+  { name: 'actions', label: t('shop_admin.capabilities'), field: 'actions', align: 'right' as const },
+]);
 
 const tenantId = computed(() => authStore.selectedTenant?.id ?? 0);
 
@@ -484,7 +484,7 @@ const openEditDialog = (category: ShopCategory) => {
 
 const saveCategory = async () => {
   if (!form.value.name.trim() || !form.value.slug.trim()) {
-    $q.notify({ type: 'warning', message: 'Name and slug are required.' });
+    $q.notify({ type: 'warning', message: t('shop_admin.name_slug_required') });
     return;
   }
 
@@ -499,7 +499,7 @@ const saveCategory = async () => {
         icon: form.value.icon,
         is_active: form.value.is_active,
       });
-      $q.notify({ type: 'positive', message: 'Category updated successfully.' });
+      $q.notify({ type: 'positive', message: t('shop_admin.category_updated_success') });
     } else {
       await createCategoryMutation({
         tenant_id: tenantId.value,
@@ -509,13 +509,13 @@ const saveCategory = async () => {
         icon: form.value.icon,
         is_active: form.value.is_active,
       });
-      $q.notify({ type: 'positive', message: 'Category created successfully.' });
+      $q.notify({ type: 'positive', message: t('shop_admin.category_created_success') });
     }
     showDialog.value = false;
   } catch (error: any) {
     $q.notify({
       type: 'negative',
-      message: error?.message || 'Failed to save shop category.',
+      message: error?.message || t('shop_admin.category_save_failed'),
     });
   }
 };
@@ -529,12 +529,12 @@ const handleDelete = async () => {
   if (!categoryToDelete.value || !tenantId.value) return;
   try {
     await deleteCategoryMutation({ id: categoryToDelete.value.id, tenantId: tenantId.value });
-    $q.notify({ type: 'positive', message: 'Category deleted successfully.' });
+    $q.notify({ type: 'positive', message: t('shop_admin.category_deleted_success') });
     showDeleteDialog.value = false;
   } catch (error: any) {
     $q.notify({
       type: 'negative',
-      message: error?.message || 'Failed to delete category.',
+      message: error?.message || t('shop_admin.category_delete_failed'),
     });
   }
 };

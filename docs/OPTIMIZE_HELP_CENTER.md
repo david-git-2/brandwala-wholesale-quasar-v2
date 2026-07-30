@@ -34,15 +34,22 @@ Do **not** invent backend/CMS storage. Do **not** rewrite drawer/shell unless pl
    Import from `src/modules/help/components/LearnMoreHelpBtn.vue`
 3. **Do not** change `ModuleHelpDrawer`, `WorkspaceShell`, or help routes unless `routeMatchers` cannot cover the page path.
 
-## 4. Writing rules
+## 4. Writing & Visual Rules
 
-- End-user language only (Admin / Merchant / Investor voice).
-- No RPC names, table names, migration IDs, or ledger internals.
-- Steps must match the real UI labels on the attached page.
-- Role-appropriate: merchants never get remittance/admin payout instructions; investors never get dropship ops.
-- FAQs = blockers (“Why is Remit disabled?”), not essays.
-- Prefer 3–7 workflow steps, 3–8 terms, 3–8 FAQs per guide.
-- Avoid empty tabs: if a section has nothing useful, omit items or write one honest placeholder only for stubs.
+- **End-user language only** (Admin / Merchant / Investor voice).
+- **No RPC names**, table names, migration IDs, or ledger internals.
+- **Steps must match real UI labels** on the attached page.
+- **Role-appropriate**: merchants never get remittance/admin payout instructions; investors never get dropship ops.
+- **FAQs = blockers** (“Why is Remit disabled?”), not essays.
+- **Prefer 3–7 workflow steps**, 3–8 terms, 3–8 FAQs per guide.
+- **Avoid empty tabs**: if a section has nothing useful, omit items or write one honest placeholder only for stubs.
+- **Modern UI & Aesthetic Standards**:
+  - Keep cards lightweight with `--bw-theme-border` borders and smooth `.card-hover` lift effects.
+  - Use primary badge accents (`bg-primary-soft`) for step markers and icon wrappers.
+  - Present workflows using numbered step badges and FAQs as expandable accordions (`<q-expansion-item>`).
+- **Translation & i18n Support**:
+  - UI labels (tabs, buttons, search placeholders) use `vue-i18n` translation keys defined in `src/i18n/en-US` and `src/i18n/bn`.
+  - Include locale switcher (`currentLocale`) support on both Help Center portal and contextual Module Guide drawer.
 
 ## 5. Registry shape (reference)
 
@@ -71,7 +78,8 @@ Do **not** invent backend/CMS storage. Do **not** rewrite drawer/shell unless pl
 - [ ] Searchable words appear in title/caption/overview/faqs
 - [ ] Deep link works: `?module=<id>&section=workflows|terms|faqs`
 - [ ] Optional `LearnMoreHelpBtn` only if the page header benefits from an inline entry
-- [ ] No edits to unrelated modules or Documentation Markdown
+- [ ] Both English and Bengali translation keys are verified for UI elements
+- [ ] Visual styling follows Quasar design tokens (`bg-primary-soft`, `soft-input`, border radii)
 
 ## 7. Example prompts
 
