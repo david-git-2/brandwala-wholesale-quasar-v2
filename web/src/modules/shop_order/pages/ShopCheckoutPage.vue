@@ -55,154 +55,168 @@
                   </div>
                 </div>
 
-                <div class="row q-col-gutter-md">
-                  <!-- Recipient Name -->
-                  <div class="col-12 col-sm-6">
-                    <q-input
-                      v-model="recipientName"
-                      outlined
-                      dense
-                      :label="$t('shop.recipient_name') + ' *'"
-                    />
-                  </div>
+                <q-form ref="checkoutFormRef" @submit.prevent="submitOrder">
+                  <div class="row q-col-gutter-md">
+                    <!-- Recipient Name -->
+                    <div class="col-12 col-sm-6">
+                      <q-input
+                        v-model="recipientName"
+                        outlined
+                        dense
+                        :label="$t('shop.recipient_name') + ' *'"
+                        :rules="[val => !!val?.trim() || 'Recipient name is required']"
+                      />
+                    </div>
 
-                  <!-- Recipient Phone -->
-                  <div class="col-12 col-sm-6">
-                    <q-input
-                      v-model="recipientPhone"
-                      outlined
-                      dense
-                      :label="$t('shop.recipient_phone') + ' *'"
-                      @blur="onRecipientPhoneBlur"
-                    />
-                  </div>
+                    <!-- Recipient Phone -->
+                    <div class="col-12 col-sm-6">
+                      <q-input
+                        v-model="recipientPhone"
+                        outlined
+                        dense
+                        :label="$t('shop.recipient_phone') + ' *'"
+                        hint="Must be an 11-digit BD number (e.g. 01712345678)"
+                        :rules="[
+                          val => !!val?.trim() || 'Recipient phone is required',
+                          val => /^01[3-9]\d{8}$/.test(val?.trim() || '') || 'Must be a valid 11-digit Bangladeshi mobile number (e.g. 01XXXXXXXXX)'
+                        ]"
+                        @blur="onRecipientPhoneBlur"
+                      />
+                    </div>
 
-                  <!-- Secondary Phone (Dropship) -->
-                  <div v-if="shopType === 'dropship'" class="col-12 col-sm-6">
-                    <q-input
-                      v-model="secondaryPhone"
-                      outlined
-                      dense
-                      label="Secondary Phone (Optional)"
-                    />
-                  </div>
+                    <!-- Secondary Phone (Dropship) -->
+                    <div v-if="shopType === 'dropship'" class="col-12 col-sm-6">
+                      <q-input
+                        v-model="secondaryPhone"
+                        outlined
+                        dense
+                        label="Secondary Phone (Optional)"
+                        :rules="[
+                          val => !val?.trim() || /^01[3-9]\d{8}$/.test(val.trim()) || 'Must be a valid 11-digit Bangladeshi mobile number (e.g. 01XXXXXXXXX)'
+                        ]"
+                      />
+                    </div>
 
-                  <!-- District (Searchable Dropdown) -->
-                  <div class="col-12 col-sm-6">
-                    <q-select
-                      v-model="district"
-                      outlined
-                      dense
-                      use-input
-                      fill-input
-                      hide-selected
-                      input-debounce="0"
-                      label="District *"
-                      :options="districtOptions"
-                      option-label="name"
-                      option-value="name"
-                      emit-value
-                      map-options
-                      @filter="filterDistrict"
-                      @update:model-value="onDistrictChange"
-                    >
-                      <template #no-option>
-                        <q-item>
-                          <q-item-section class="text-grey">No matching district</q-item-section>
-                        </q-item>
-                      </template>
-                      <template #option="scope">
-                        <q-item v-bind="scope.itemProps">
-                          <q-item-section>
-                            <q-item-label>{{ scope.opt.name }}</q-item-label>
-                            <q-item-label v-if="scope.opt.bnName" caption>{{ scope.opt.bnName }}</q-item-label>
-                          </q-item-section>
-                        </q-item>
-                      </template>
-                    </q-select>
-                  </div>
+                    <!-- District (Searchable Dropdown) -->
+                    <div class="col-12 col-sm-6">
+                      <q-select
+                        v-model="district"
+                        outlined
+                        dense
+                        use-input
+                        fill-input
+                        hide-selected
+                        input-debounce="0"
+                        label="District *"
+                        :options="districtOptions"
+                        option-label="name"
+                        option-value="name"
+                        emit-value
+                        map-options
+                        :rules="[val => !!val || 'District is required']"
+                        @filter="filterDistrict"
+                        @update:model-value="onDistrictChange"
+                      >
+                        <template #no-option>
+                          <q-item>
+                            <q-item-section class="text-grey">No matching district</q-item-section>
+                          </q-item>
+                        </template>
+                        <template #option="scope">
+                          <q-item v-bind="scope.itemProps">
+                            <q-item-section>
+                              <q-item-label>{{ scope.opt.name }}</q-item-label>
+                              <q-item-label v-if="scope.opt.bnName" caption>{{ scope.opt.bnName }}</q-item-label>
+                            </q-item-section>
+                          </q-item>
+                        </template>
+                      </q-select>
+                    </div>
 
-                  <!-- Thana / Upazila (Searchable Dropdown) -->
-                  <div class="col-12 col-sm-6">
-                    <q-select
-                      v-model="thana"
-                      outlined
-                      dense
-                      use-input
-                      fill-input
-                      hide-selected
-                      input-debounce="0"
-                      label="Thana / Upazila *"
-                      :options="thanaOptions"
-                      option-label="name"
-                      option-value="name"
-                      emit-value
-                      map-options
-                      @filter="filterThana"
-                      @update:model-value="onThanaChange"
-                    >
-                      <template #no-option>
-                        <q-item>
-                          <q-item-section class="text-grey">No matching thana/upazila</q-item-section>
-                        </q-item>
-                      </template>
-                      <template #option="scope">
-                        <q-item v-bind="scope.itemProps">
-                          <q-item-section>
-                            <q-item-label>{{ scope.opt.name }}</q-item-label>
-                            <q-item-label v-if="scope.opt.bnName" caption>{{ scope.opt.bnName }}</q-item-label>
-                          </q-item-section>
-                        </q-item>
-                      </template>
-                    </q-select>
-                  </div>
+                    <!-- Thana / Upazila (Searchable Dropdown) -->
+                    <div class="col-12 col-sm-6">
+                      <q-select
+                        v-model="thana"
+                        outlined
+                        dense
+                        use-input
+                        fill-input
+                        hide-selected
+                        input-debounce="0"
+                        label="Thana / Upazila *"
+                        :options="thanaOptions"
+                        option-label="name"
+                        option-value="name"
+                        emit-value
+                        map-options
+                        :rules="[val => !!val || 'Thana / Upazila is required']"
+                        @filter="filterThana"
+                        @update:model-value="onThanaChange"
+                      >
+                        <template #no-option>
+                          <q-item>
+                            <q-item-section class="text-grey">No matching thana/upazila</q-item-section>
+                          </q-item>
+                        </template>
+                        <template #option="scope">
+                          <q-item v-bind="scope.itemProps">
+                            <q-item-section>
+                              <q-item-label>{{ scope.opt.name }}</q-item-label>
+                              <q-item-label v-if="scope.opt.bnName" caption>{{ scope.opt.bnName }}</q-item-label>
+                            </q-item-section>
+                          </q-item>
+                        </template>
+                      </q-select>
+                    </div>
 
-                  <!-- Post Code / Post Office (Searchable Select or Manual Input) -->
-                  <div class="col-12 col-sm-6">
-                    <q-select
-                      v-model="postCode"
-                      outlined
-                      dense
-                      use-input
-                      fill-input
-                      hide-selected
-                      input-debounce="0"
-                      label="Post Code / Post Office"
-                      :options="postcodeOptions"
-                      option-label="displayLabel"
-                      option-value="postCode"
-                      emit-value
-                      map-options
-                      @filter="filterPostcode"
-                      @new-value="createPostcode"
-                    >
-                      <template #no-option>
-                        <q-item>
-                          <q-item-section class="text-grey">Type custom post code or office</q-item-section>
-                        </q-item>
-                      </template>
-                      <template #option="scope">
-                        <q-item v-bind="scope.itemProps">
-                          <q-item-section>
-                            <q-item-label>{{ scope.opt.postOffice }} - {{ scope.opt.postCode }}</q-item-label>
-                          </q-item-section>
-                        </q-item>
-                      </template>
-                    </q-select>
-                  </div>
+                    <!-- Post Code / Post Office (Searchable Select or Manual Input) -->
+                    <div class="col-12 col-sm-6">
+                      <q-select
+                        v-model="postCode"
+                        outlined
+                        dense
+                        use-input
+                        fill-input
+                        hide-selected
+                        input-debounce="0"
+                        label="Post Code / Post Office"
+                        :options="postcodeOptions"
+                        option-label="displayLabel"
+                        option-value="postCode"
+                        emit-value
+                        map-options
+                        @filter="filterPostcode"
+                        @new-value="createPostcode"
+                      >
+                        <template #no-option>
+                          <q-item>
+                            <q-item-section class="text-grey">Type custom post code or office</q-item-section>
+                          </q-item>
+                        </template>
+                        <template #option="scope">
+                          <q-item v-bind="scope.itemProps">
+                            <q-item-section>
+                              <q-item-label>{{ scope.opt.postOffice }} - {{ scope.opt.postCode }}</q-item-label>
+                            </q-item-section>
+                          </q-item>
+                        </template>
+                      </q-select>
+                    </div>
 
-                  <!-- Detailed Address -->
-                  <div class="col-12">
-                    <q-input
-                      v-model="shippingAddress"
-                      outlined
-                      dense
-                      type="textarea"
-                      :label="$t('shop.shipping_address') + ' *'"
-                      rows="3"
-                    />
+                    <!-- Detailed Address -->
+                    <div class="col-12">
+                      <q-input
+                        v-model="shippingAddress"
+                        outlined
+                        dense
+                        type="textarea"
+                        :label="$t('shop.shipping_address') + ' *'"
+                        rows="3"
+                        :rules="[val => !!val?.trim() || 'Shipping address is required']"
+                      />
+                    </div>
                   </div>
-                </div>
+                </q-form>
 
                 <div v-if="shopType === 'dropship'" class="text-caption text-grey-7 q-mt-sm">
                   <q-icon name="ph ph-info" size="14px" class="q-mr-xs text-primary" />
@@ -373,7 +387,7 @@
                 :loading="orderStore.saving"
                 :disabled="
                   requestDelivery &&
-                  (!recipientName.trim() || !recipientPhone.trim() || !shippingAddress.trim())
+                  (!recipientName.trim() || !/^01[3-9]\d{8}$/.test(recipientPhone.trim()) || !shippingAddress.trim())
                 "
                 @click="submitOrder"
               />
@@ -685,8 +699,18 @@ const onRecipientPhoneBlur = async () => {
   }
 };
 
+const checkoutFormRef = ref<any>(null);
+
 const submitOrder = async () => {
   if (!cart.value?.id) return;
+
+  if (requestDelivery.value && checkoutFormRef.value) {
+    const valid = await checkoutFormRef.value.validate();
+    if (!valid) {
+      showErrorNotification('Please fix the errors in the form before submitting.');
+      return;
+    }
+  }
 
   if (shopType.value === 'dropship') {
     for (const item of items.value) {
