@@ -1,5 +1,5 @@
 <template>
-  <q-page class="q-pa-md">
+  <q-page class="q-pa-md page-container">
     <!-- Loading Skeleton State -->
     <CustomerOrderDetailSkeleton v-if="isLoading" />
 
@@ -23,50 +23,117 @@
         @back="goOrders"
       />
 
-      <!-- Order Info Cards -->
-      <div class="row q-col-gutter-lg">
-        <!-- Main details & Negotiation panel (8 cols) -->
-        <div class="col-xs-12 col-md-8">
-          <CustomerOrderItemsList
-            :order-items="orderItems"
-            :order="currentOrder"
-            :is-negotiation-open="isNegotiationOpen"
-            :is-sending-counter="isSendingCounter"
-            :currency-symbol="currencySymbol"
-            @submit-counter-offer="submitCounterOffer"
-          />
-        </div>
+      <!-- Catalog Shop Order View (Mobile Card List + Sticky Bottom Actions) -->
+      <template v-if="isVendorCatalog">
+        <div class="row q-col-gutter-lg">
+          <!-- Item Cards List (8 cols on desktop, 12 on mobile) -->
+          <div class="col-xs-12 col-md-8">
+            <div class="row items-center justify-between q-mb-sm">
+              <div class="text-subtitle1 text-weight-bold text-grey-9">
+                Items in Order ({{ orderItems.length }})
+              </div>
+              <div v-if="currentOrder.is_negotiable_snapshot" class="text-caption text-amber-9 text-weight-bold">
+                Round {{ currentOrder.negotiate_round || 1 }}
+              </div>
+            </div>
 
-        <!-- Sidebar (4 cols) -->
-        <div class="col-xs-12 col-md-4">
-          <div class="column q-gutter-md">
-            <!-- Summary Info Card -->
-            <CustomerOrderSummaryCard
-              :order="currentOrder"
+            <!-- Cards loop -->
+            <CustomerCatalogOrderItemCard
+              v-for="item in orderItems"
+              :key="item.id"
+              :item="item"
+              :status="normalizedStatus"
+              :is-negotiable="!!currentOrder.is_negotiable_snapshot"
               :currency-symbol="currencySymbol"
-              :recipient-subtotal="recipientSubtotal"
-              :delivery-charge-val="deliveryChargeVal"
-              :cod-charge-val="codChargeVal"
-              :print-charge-val="printChargeVal"
-              :packing-charge-val="packingChargeVal"
-              :discount-val="discountVal"
-              :deduct-delivery-from-margin="deductDeliveryFromMargin"
-              :deduct-cod-from-margin="deductCodFromMargin"
-              :deduct-print-from-margin="deductPrintFromMargin"
-              :deduct-packing-from-margin="deductPackingFromMargin"
-              :cod-fee-pct-label="codFeePctLabel"
-              :recipient-grand-total="recipientGrandTotal"
-              :middleman-total-cost="middlemanTotalCost"
-              :estimated-profit="estimatedProfit"
-              :is-before-pickup="isBeforePickup"
-              :order-total="orderTotal"
+              @update:confirmed-qty="handleConfirmedQtyUpdate"
             />
+          </div>
 
-            <!-- Shipping Info Card -->
-            <CustomerOrderShippingCard :order="currentOrder" />
+          <!-- Sidebar (Summary + Shipping) -->
+          <div class="col-xs-12 col-md-4">
+            <div class="column q-gutter-md">
+              <CustomerOrderSummaryCard
+                :order="currentOrder"
+                :currency-symbol="currencySymbol"
+                :recipient-subtotal="orderTotal"
+                :delivery-charge-val="deliveryChargeVal"
+                :cod-charge-val="codChargeVal"
+                :print-charge-val="printChargeVal"
+                :packing-charge-val="packingChargeVal"
+                :discount-val="discountVal"
+                :deduct-delivery-from-margin="deductDeliveryFromMargin"
+                :deduct-cod-from-margin="deductCodFromMargin"
+                :deduct-print-from-margin="deductPrintFromMargin"
+                :deduct-packing-from-margin="deductPackingFromMargin"
+                :cod-fee-pct-label="0"
+                :recipient-grand-total="orderTotal + deliveryChargeVal + codChargeVal + printChargeVal + packingChargeVal - discountVal"
+                :middleman-total-cost="orderTotal"
+                :estimated-profit="0"
+                :is-before-pickup="true"
+                :order-total="orderTotal"
+              />
+              <CustomerOrderShippingCard :order="currentOrder" />
+            </div>
           </div>
         </div>
-      </div>
+
+        <!-- Sticky Bottom CTA Action Bar for Mobile/Catalog -->
+        <CustomerOrderStickyActions
+          :status="normalizedStatus"
+          :is-negotiable="!!currentOrder.is_negotiable_snapshot"
+          :total-amount="orderTotal"
+          :currency-symbol="currencySymbol"
+          :is-submitting-counter="isSendingCounter"
+          :is-confirming="isConfirming"
+          @submit-counter="submitCounterOffer"
+          @confirm-order="confirmOrder"
+        />
+      </template>
+
+      <!-- Dropship / Other Order View (Original layout) -->
+      <template v-else>
+        <div class="row q-col-gutter-lg">
+          <!-- Main details & Negotiation panel (8 cols) -->
+          <div class="col-xs-12 col-md-8">
+            <CustomerOrderItemsList
+              :order-items="orderItems"
+              :order="currentOrder"
+              :is-negotiation-open="isNegotiationOpen"
+              :is-sending-counter="isSendingCounter"
+              :currency-symbol="currencySymbol"
+              @submit-counter-offer="submitCounterOffer"
+            />
+          </div>
+
+          <!-- Sidebar (4 cols) -->
+          <div class="col-xs-12 col-md-4">
+            <div class="column q-gutter-md">
+              <CustomerOrderSummaryCard
+                :order="currentOrder"
+                :currency-symbol="currencySymbol"
+                :recipient-subtotal="recipientSubtotal"
+                :delivery-charge-val="deliveryChargeVal"
+                :cod-charge-val="codChargeVal"
+                :print-charge-val="printChargeVal"
+                :packing-charge-val="packingChargeVal"
+                :discount-val="discountVal"
+                :deduct-delivery-from-margin="deductDeliveryFromMargin"
+                :deduct-cod-from-margin="deductCodFromMargin"
+                :deduct-print-from-margin="deductPrintFromMargin"
+                :deduct-packing-from-margin="deductPackingFromMargin"
+                :cod-fee-pct-label="codFeePctLabel"
+                :recipient-grand-total="recipientGrandTotal"
+                :middleman-total-cost="middlemanTotalCost"
+                :estimated-profit="estimatedProfit"
+                :is-before-pickup="isBeforePickup"
+                :order-total="orderTotal"
+              />
+
+              <CustomerOrderShippingCard :order="currentOrder" />
+            </div>
+          </div>
+        </div>
+      </template>
     </div>
   </q-page>
 </template>
@@ -75,7 +142,11 @@
 import { ref, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useThriftCurrenciesQuery } from 'src/modules/thrift/currency/composables/useThriftCurrenciesQuery';
-import { useShopOrderDetailQuery, useSendCustomerCounterMutation } from '../composables/useShopOrderDetailQuery';
+import {
+  useShopOrderDetailQuery,
+  useSendCustomerCounterMutation,
+  useCustomerConfirmOrderMutation,
+} from '../composables/useShopOrderDetailQuery';
 import { supabase } from 'src/boot/supabase';
 import type { ShopOrderItem } from '../types';
 
@@ -84,6 +155,8 @@ import CustomerOrderHeader from '../components/CustomerOrderHeader.vue';
 import CustomerOrderItemsList from '../components/CustomerOrderItemsList.vue';
 import CustomerOrderSummaryCard from '../components/CustomerOrderSummaryCard.vue';
 import CustomerOrderShippingCard from '../components/CustomerOrderShippingCard.vue';
+import CustomerCatalogOrderItemCard from '../components/CustomerCatalogOrderItemCard.vue';
+import CustomerOrderStickyActions from '../components/CustomerOrderStickyActions.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -92,6 +165,7 @@ const orderId = computed(() => Number(route.params.id || 0));
 
 const { data: orderDetailsData, isLoading, isError, error } = useShopOrderDetailQuery(orderId);
 const { mutate: sendCustomerCounter, isPending: isSendingCounter } = useSendCustomerCounterMutation();
+const { mutate: confirmCustomerOrder, isPending: isConfirming } = useCustomerConfirmOrderMutation();
 const { data: currenciesData } = useThriftCurrenciesQuery();
 
 const currencies = computed(() => currenciesData.value ?? []);
@@ -99,6 +173,8 @@ const currentOrder = computed(() => orderDetailsData.value?.order || null);
 
 const orderItems = ref<ShopOrderItem[]>([]);
 const shopSellCurrencyId = ref<number | null>(null);
+
+const isVendorCatalog = computed(() => currentOrder.value?.shop_type_snapshot === 'vendor_catalog');
 
 watch(
   () => orderDetailsData.value,
@@ -145,7 +221,7 @@ const isNegotiationOpen = computed(() => {
 
 const getDisplayUnitPrice = (item: any) => {
   return (
-    item.final_price_amount ??
+    item.final_offer_amount ??
     item.staff_offer_amount ??
     item.customer_offer_amount ??
     item.unit_sell_price_amount ??
@@ -155,7 +231,13 @@ const getDisplayUnitPrice = (item: any) => {
 };
 
 const orderTotal = computed(() => {
-  return orderItems.value.reduce((sum, item) => sum + getDisplayUnitPrice(item) * item.quantity, 0);
+  const isFinalOrBeyond = ['final_offered', 'confirmed', 'procuring', 'ordered', 'delivered'].includes(
+    normalizedStatus.value,
+  );
+  return orderItems.value.reduce((sum, item) => {
+    const qty = isFinalOrBeyond ? (item.confirmed_quantity ?? item.quantity) : item.quantity;
+    return sum + getDisplayUnitPrice(item) * qty;
+  }, 0);
 });
 
 // Dropship calculations
@@ -223,6 +305,18 @@ const submitCounterOffer = () => {
   sendCustomerCounter({ orderId: orderId.value, items: payload });
 };
 
+const confirmOrder = () => {
+  if (!orderId.value) return;
+  confirmCustomerOrder(orderId.value);
+};
+
+const handleConfirmedQtyUpdate = ({ itemId, confirmedQuantity }: { itemId: number; confirmedQuantity: number }) => {
+  const item = orderItems.value.find((i) => i.id === itemId);
+  if (item) {
+    item.confirmed_quantity = confirmedQuantity;
+  }
+};
+
 const order = computed(() => currentOrder.value || ({} as any));
 
 /** Map legacy/alias statuses onto the display sequence. */
@@ -247,9 +341,9 @@ const statusSequence = computed(() => {
   }
   if (shopType === 'vendor_catalog') {
     if (order.value.is_negotiable_snapshot) {
-      return ['negotiating', 'priced', 'confirmed', 'placed'];
+      return ['submitted', 'costing_pending', 'priced', 'countered', 'final_offered', 'confirmed', 'procuring', 'ordered', 'delivered'];
     }
-    return ['submitted', 'confirmed', 'placed'];
+    return ['submitted', 'costing_pending', 'priced', 'final_offered', 'confirmed', 'procuring', 'ordered', 'delivered'];
   }
   return ['confirmed', 'fulfilled'];
 });
@@ -272,3 +366,4 @@ export default {
   name: 'CustomerOrderDetailPage',
 };
 </script>
+

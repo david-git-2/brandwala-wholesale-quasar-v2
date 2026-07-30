@@ -37,3 +37,23 @@ export function useSendCustomerCounterMutation() {
     },
   });
 }
+
+export function useCustomerConfirmOrderMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (orderId: number) => {
+      await shopOrderRepository.customerConfirmShopOrder(orderId);
+    },
+    onSuccess: (_, orderId) => {
+      void queryClient.invalidateQueries({
+        queryKey: shopOrderQueryKeys.orderDetail(orderId),
+      });
+      showSuccessNotification('Order confirmed successfully!');
+    },
+    onError: (error: Error) => {
+      showWarningDialog(error.message || 'Failed to confirm order.', 'Action Failed');
+    },
+  });
+}
+

@@ -231,11 +231,14 @@ const statusFilter = ref('all');
 
 const statusOptions = [
   { label: 'All Statuses', value: 'all' },
-  { label: 'Pending / Draft', value: 'pending' },
   { label: 'Submitted', value: 'submitted' },
-  { label: 'Negotiating', value: 'negotiating' },
-  { label: 'Approved / Confirmed', value: 'approved' },
-  { label: 'Shipped', value: 'shipped' },
+  { label: 'Costing Pending', value: 'costing_pending' },
+  { label: 'Priced', value: 'priced' },
+  { label: 'Countered', value: 'countered' },
+  { label: 'Final Offered', value: 'final_offered' },
+  { label: 'Confirmed', value: 'confirmed' },
+  { label: 'Procuring', value: 'procuring' },
+  { label: 'Ordered', value: 'ordered' },
   { label: 'Delivered', value: 'delivered' },
   { label: 'Cancelled', value: 'cancelled' },
 ];
@@ -251,10 +254,10 @@ const filteredOrders = computed(() => {
   if (statusFilter.value !== 'all') {
     if (statusFilter.value === 'pending') {
       list = list.filter((o: { status: string }) => o.status === 'pending' || o.status === 'draft');
-    } else if (statusFilter.value === 'approved') {
+    } else if (statusFilter.value === 'confirmed') {
       list = list.filter(
         (o: { status: string }) =>
-          o.status === 'approved' || o.status === 'confirmed' || o.status === 'priced',
+          o.status === 'approved' || o.status === 'confirmed',
       );
     } else {
       list = list.filter((o: { status: string }) => o.status === statusFilter.value);
@@ -290,13 +293,22 @@ const getStatusColor = (status: string) => {
       return 'grey-7';
     case 'submitted':
       return 'blue-7';
+    case 'costing_pending':
+      return 'deep-orange-7';
     case 'negotiating':
+    case 'countered':
       return 'amber-9';
     case 'priced':
       return 'cyan-8';
+    case 'final_offered':
+      return 'purple-7';
     case 'approved':
     case 'confirmed':
       return 'green-7';
+    case 'procuring':
+      return 'blue-9';
+    case 'ordered':
+      return 'indigo-7';
     case 'placed':
       return 'indigo-7';
     case 'fulfilled':
@@ -319,6 +331,7 @@ const getStatusColor = (status: string) => {
       return 'grey-7';
   }
 };
+
 </script>
 
 <script lang="ts">

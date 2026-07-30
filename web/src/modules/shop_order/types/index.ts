@@ -242,6 +242,8 @@ export interface ShopOrderItem {
   staff_offer_currency_id: number | null;
   final_price_amount: number | null;
   final_price_currency_id: number | null;
+  final_offer_amount?: number | null;
+  final_offer_currency_id?: number | null;
   confirmed_quantity?: number | null;
   weight_kg?: number | null;
   cost_price_amount?: number | null;
