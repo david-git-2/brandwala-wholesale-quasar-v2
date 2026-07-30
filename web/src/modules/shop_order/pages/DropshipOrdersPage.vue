@@ -197,6 +197,7 @@ const statusOptions = [
   { label: 'Ready for Pickup', val: 'ready_for_pickup' },
   { label: 'Shipped', val: 'shipped' },
   { label: 'Delivered', val: 'delivered' },
+  { label: 'Payment Received', val: 'payment_received' },
   { label: 'Returned', val: 'returned' },
 ];
 
@@ -281,6 +282,8 @@ const getStatusColor = (status: string) => {
       return 'purple-7';
     case 'delivered':
       return 'positive';
+    case 'payment_received':
+      return 'teal-8';
     case 'returned':
       return 'negative';
     default:

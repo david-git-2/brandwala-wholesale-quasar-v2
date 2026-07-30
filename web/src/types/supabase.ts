@@ -1252,6 +1252,7 @@ export type Database = {
           tenant_id: number | null
           tracking_url_template: string | null
           updated_at: string
+          wallet_entity_id: number
         }
         Insert: {
           cod_fee_flat_amount?: number | null
@@ -1277,6 +1278,7 @@ export type Database = {
           tenant_id?: number | null
           tracking_url_template?: string | null
           updated_at?: string
+          wallet_entity_id?: number
         }
         Update: {
           cod_fee_flat_amount?: number | null
@@ -1302,6 +1304,7 @@ export type Database = {
           tenant_id?: number | null
           tracking_url_template?: string | null
           updated_at?: string
+          wallet_entity_id?: number
         }
         Relationships: [
           {

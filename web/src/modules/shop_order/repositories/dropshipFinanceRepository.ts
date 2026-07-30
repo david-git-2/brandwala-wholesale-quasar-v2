@@ -16,6 +16,7 @@ export interface FinanceHubOrderQueueItem {
   totalAmount: number;
   codCollectAmount: number;
   deliveryChargeAmount: number;
+  codChargeAmount: number;
   courierNotes: string | null;
   courierRemittanceRef: string | null;
   courierBankTrxId: string | null;
@@ -25,6 +26,8 @@ export interface FinanceHubOrderQueueItem {
   nextStep: 'delivered_costing' | 'courier_remittance' | 'middleman_payout' | 'completed';
   collectionSource?: string | null;
   payoutSettlementStatus?: string | null;
+  /** B2B invoice outstanding (total - paid); used for remittance allocation preview */
+  invoiceOutstanding?: number | null;
 }
 
 export interface FinanceHubMerchantItem {
@@ -44,7 +47,7 @@ export const dropshipFinanceRepository = {
     // 1. Calculate Courier Owed (courier wallet credit total - debit total)
     const { data: ledgerRows, error: ledgerError } = await supabase
       .from('universal_wallet_ledger')
-      .select('entity_type, entity_id, type, amount')
+      .select('entity_type, entity_id, type, amount, metadata')
       .eq('tenant_id', tenantId);
 
     if (ledgerError) throw ledgerError;
@@ -55,11 +58,16 @@ export const dropshipFinanceRepository = {
 
     (ledgerRows || []).forEach((row) => {
       const amt = Number(row.amount || 0);
+      const meta = (row.metadata || {}) as Record<string, unknown>;
+      const section = String(meta.section || '');
       if (row.entity_type === 'courier') {
         courierOwedTotal += row.type === 'credit' ? amt : -amt;
       } else if (row.entity_type === 'tenant') {
         tenantCashTotal += row.type === 'credit' ? amt : -amt;
-      } else if (row.entity_type === 'middleman' || row.entity_type === 'customer') {
+      } else if (
+        (row.entity_type === 'middleman' || row.entity_type === 'customer')
+        && section === 'payout_earned'
+      ) {
         middlemanPayableTotal += row.type === 'credit' ? amt : -amt;
       }
     });
@@ -70,13 +78,13 @@ export const dropshipFinanceRepository = {
       .select(`
         id,
         order_no,
-        customer_name,
-        shop_name,
+        recipient_name,
         status,
-        total_amount,
         cod_collect_amount,
         delivery_charge_amount,
-        courier_notes,
+        cod_charge_amount,
+        driver_notes,
+        courier_name,
         courier_remittance_ref,
         courier_bank_trx_id,
         billing_profile_id,
@@ -90,8 +98,14 @@ export const dropshipFinanceRepository = {
           id,
           name
         ),
+        shops (
+          id,
+          name
+        ),
         global_invoices!shop_orders_global_invoice_id_fkey (
-          collection_source
+          collection_source,
+          total_amount,
+          paid_amount
         )
       `)
       .eq('tenant_id', tenantId)
@@ -136,17 +150,26 @@ export const dropshipFinanceRepository = {
         nextStep = 'completed';
       }
 
+      const inv = o.global_invoices;
+      const invTotal = Number(inv?.total_amount ?? 0);
+      const invPaid = Number(inv?.paid_amount ?? 0);
+      const invoiceOutstanding = inv
+        ? Math.max(invTotal - invPaid, 0)
+        : null;
+      const codCollect = Number(o.cod_collect_amount || 0);
+
       return {
         id: o.id,
         orderNo: o.order_no,
-        customerName: o.customer_name,
-        shopName: o.shop_name,
-        courierName: null,
+        customerName: o.recipient_name,
+        shopName: o.shops?.name ?? null,
+        courierName: o.courier_name ?? null,
         status: o.status,
-        totalAmount: Number(o.total_amount || 0),
-        codCollectAmount: Number(o.cod_collect_amount || 0),
+        totalAmount: inv ? invTotal : codCollect,
+        codCollectAmount: codCollect,
         deliveryChargeAmount: Number(o.delivery_charge_amount || 0),
-        courierNotes: o.courier_notes,
+        codChargeAmount: Number(o.cod_charge_amount || 0),
+        courierNotes: o.driver_notes,
         courierRemittanceRef: o.courier_remittance_ref,
         courierBankTrxId: o.courier_bank_trx_id,
         billingProfileId: o.billing_profile_id,
@@ -155,9 +178,10 @@ export const dropshipFinanceRepository = {
         nextStep,
         collectionSource:
           o.collection_source
-          ?? o.global_invoices?.collection_source
+          ?? inv?.collection_source
           ?? (o.is_prepaid_snapshot ? 'billing_profile' : null),
         payoutSettlementStatus: o.payout_settlement_status || 'unpaid',
+        invoiceOutstanding,
       };
     });
 
@@ -169,11 +193,14 @@ export const dropshipFinanceRepository = {
 
     if (profilesError) throw profilesError;
 
-    // Calculate per-merchant middleman balance
+    // Payable = payout_earned section only (profit), not invoice AR
     const merchantBalanceMap = new Map<number, number>();
     (ledgerRows || []).forEach((r: any) => {
-      if (r.entity_type === 'middleman' || r.entity_type === 'customer') {
-        // entity_id maps to billing_profile_id
+      const section = String(r.metadata?.section || '');
+      if (
+        (r.entity_type === 'middleman' || r.entity_type === 'customer')
+        && section === 'payout_earned'
+      ) {
         const entityId = Number(r.entity_id || 0);
         const current = merchantBalanceMap.get(entityId) || 0;
         merchantBalanceMap.set(entityId, current + (r.type === 'credit' ? Number(r.amount) : -Number(r.amount)));

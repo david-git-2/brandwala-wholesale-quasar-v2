@@ -1,37 +1,27 @@
 <template>
-  <q-page class="wallet-page-container q-pa-md q-pa-md-lg">
-    <div class="q-gutter-y-lg">
-      <!-- Modern Header Banner -->
-      <section class="wallet-header-card q-pa-md q-pa-md-lg surface-card shadow-soft">
-        <div class="row items-center justify-between q-col-gutter-md">
-          <div class="col-12 col-md-8">
-            <div class="row items-center q-gutter-x-sm q-mb-xs">
-              <q-badge color="primary" class="soft-badge text-weight-bolder text-uppercase q-px-sm q-py-xs">
-                Ledger Hub
-              </q-badge>
-              <span class="text-caption text-muted">Multi-currency financial system</span>
-            </div>
-            <h1 class="text-h5 text-md-h4 text-weight-bolder q-my-none text-ink tracking-tight">
-              Universal Wallet
-            </h1>
-            <p class="text-body2 text-muted q-mb-none q-mt-xs font-gentle">
-              Manage accounts, financial balances, and transaction history across tenants, billing profiles (customers &amp; resellers), vendors, and courier partners.
-            </p>
-          </div>
-          <div class="col-12 col-md-4 text-left text-md-right">
-            <div class="inline-block soft-pill-container q-pa-xs">
-              <span class="text-caption text-muted q-px-sm">Active Tenant:</span>
-              <q-chip dense flat class="bg-primary-soft text-primary text-weight-bold">
-                <q-icon name="ph ph-buildings" size="14px" class="q-mr-xs" />
-                {{ authStore.selectedTenant?.name || 'Primary Platform' }}
-              </q-chip>
-            </div>
-          </div>
+  <q-page class="wallet-page-container q-pa-md">
+    <UniversalWalletPageSkeleton v-if="isInitialLoading" />
+
+    <div v-else class="q-gutter-y-md">
+      <!-- Standard Page Header -->
+      <section class="row items-center justify-between q-col-gutter-md">
+        <div class="col">
+          <div class="text-overline text-primary">Ledger Hub</div>
+          <h1 class="text-h5 text-weight-bold q-my-none">Universal Wallet</h1>
+          <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
+            Manage accounts, financial balances, and transaction history across tenants, billing profiles (customers &amp; resellers), vendors, and courier partners.
+          </p>
+        </div>
+        <div class="col-auto">
+          <q-chip dense flat class="bg-primary-soft text-primary text-weight-bold">
+            <q-icon name="ph ph-buildings" size="14px" class="q-mr-xs" />
+            {{ authStore.selectedTenant?.name || 'Primary Platform' }}
+          </q-chip>
         </div>
       </section>
 
-      <!-- Soft Entity Type Selector Tabs -->
-      <section class="tabs-container surface-card shadow-soft q-pa-xs">
+      <!-- Soft Entity Type Selector Tabs Card -->
+      <q-card flat bordered class="tabs-card q-pa-xs">
         <q-tabs
           v-model="activeTab"
           dense
@@ -102,11 +92,11 @@
             </div>
           </q-tab>
         </q-tabs>
-      </section>
+      </q-card>
 
       <!-- Soft Selector Card for Non-Tenant Entities -->
       <transition name="fade-slide">
-        <section v-if="activeTab !== 'tenant'" class="soft-selector-card surface-card shadow-soft q-pa-md">
+        <q-card v-if="activeTab !== 'tenant'" flat bordered class="q-pa-md">
           <div class="row items-center justify-between q-col-gutter-md">
             <div class="col-xs-12 col-sm-6 col-md-5">
               <label class="text-caption text-weight-bold text-muted q-mb-xs block">
@@ -177,7 +167,7 @@
               </div>
             </div>
           </div>
-        </section>
+        </q-card>
       </transition>
 
       <!-- Main Ledger View -->
@@ -202,6 +192,7 @@ import { vendorService } from 'src/modules/vendor/services/vendorService';
 import { dropshipCourierRepository } from 'src/modules/shop_order/repositories/dropshipCourierRepository';
 import type { UniversalWalletEntityType } from '../types';
 import UniversalWallet from '../components/UniversalWallet.vue';
+import UniversalWalletPageSkeleton from '../components/UniversalWalletPageSkeleton.vue';
 
 interface EntityOption {
   label: string;
@@ -213,6 +204,7 @@ interface EntityOption {
 const authStore = useAuthStore();
 const activeTab = ref<UniversalWalletEntityType>('tenant');
 const selectedEntityId = ref<number>(1);
+const isInitialLoading = ref<boolean>(true);
 const isEntityLoading = ref<boolean>(false);
 const filterText = ref<string>('');
 
@@ -306,17 +298,21 @@ async function loadBillingProfiles() {
   try {
     const { data } = await supabase
       .from('billing_profiles')
-      .select('id, name, email, phone')
+      .select('id, name, email, phone, customer_groups(name)')
       .eq('tenant_id', tenantId)
       .order('name', { ascending: true });
 
     if (data && data.length > 0) {
-      billingProfileOptions.value = data.map((bp) => ({
-        label: bp.name || `Profile #${bp.id}`,
-        value: Number(bp.id),
-        caption: [bp.phone, bp.email].filter(Boolean).join(' • '),
-        rawName: bp.name || undefined,
-      }));
+      billingProfileOptions.value = data.map((bp) => {
+        const groupName = (bp as { customer_groups?: { name?: string } | null }).customer_groups?.name;
+        const baseName = bp.name || `Profile #${bp.id}`;
+        return {
+          label: groupName ? `${groupName} · ${baseName}` : baseName,
+          value: Number(bp.id),
+          caption: [bp.phone, bp.email].filter(Boolean).join(' • ') || undefined,
+          rawName: baseName,
+        };
+      });
     } else {
       billingProfileOptions.value = [];
     }
@@ -352,36 +348,36 @@ async function loadVendors() {
 async function loadCouriers() {
   isEntityLoading.value = true;
   try {
-    const couriers = await dropshipCourierRepository.listCouriers();
-    // Query public.couriers table for true database numeric IDs
-    const { data: dbCouriers } = await supabase
-      .from('couriers')
-      .select('id, name, code');
+    const { data: services, error } = await supabase
+      .from('courier_services')
+      .select('id, name, code, wallet_entity_id, notes, is_active')
+      .eq('is_active', true)
+      .order('name', { ascending: true });
 
-    const dbCourierMap = new Map<string, number>();
-    if (dbCouriers) {
-      for (const dbc of dbCouriers) {
-        if (dbc.code) dbCourierMap.set(dbc.code.toLowerCase(), Number(dbc.id));
-        if (dbc.name) dbCourierMap.set(dbc.name.toLowerCase(), Number(dbc.id));
-      }
-    }
+    if (error) throw error;
 
-    courierOptions.value = couriers.map((c, index) => {
-      let numericId = dbCourierMap.get(c.code.toLowerCase()) || dbCourierMap.get(c.name.toLowerCase());
-      if (!numericId) {
-        // Fallback to numeric parsing or stable positive ID
-        const parsed = parseInt(c.id.replace(/\D/g, '').substring(0, 8), 10);
-        numericId = !isNaN(parsed) && parsed > 0 ? parsed : index + 1;
-      }
-      return {
-        label: `${c.name}${c.code ? ` (${c.code.toUpperCase()})` : ''}`,
-        value: numericId,
-        caption: c.notes || undefined,
+    courierOptions.value = (services || [])
+      .filter((c) => c.wallet_entity_id != null)
+      .map((c) => ({
+        label: `${c.name}${c.code ? ` (${String(c.code).toUpperCase()})` : ''}`,
+        value: Number(c.wallet_entity_id),
+        caption: c.notes || `Service ${c.code || c.id}`,
         rawName: c.name,
-      };
-    });
+      }));
   } catch (err) {
     console.error('[UniversalWalletPage] Failed to load couriers:', err);
+    // Fallback to legacy list if wallet_entity_id column not migrated yet
+    try {
+      const couriers = await dropshipCourierRepository.listCouriers();
+      courierOptions.value = couriers.map((c, index) => ({
+        label: `${c.name}${c.code ? ` (${c.code.toUpperCase()})` : ''}`,
+        value: index + 1,
+        caption: c.notes || undefined,
+        rawName: c.name,
+      }));
+    } catch {
+      courierOptions.value = [];
+    }
   } finally {
     isEntityLoading.value = false;
   }
@@ -411,14 +407,19 @@ watch(
 );
 
 onMounted(async () => {
-  await Promise.all([loadBillingProfiles(), loadVendors(), loadCouriers()]);
-  selectDefaultEntityForTab();
+  isInitialLoading.value = true;
+  try {
+    await Promise.all([loadBillingProfiles(), loadVendors(), loadCouriers()]);
+    selectDefaultEntityForTab();
+  } finally {
+    isInitialLoading.value = false;
+  }
 });
 </script>
 
 <style scoped>
 .wallet-page-container {
-  max-width: 1400px;
+  max-width: 1200px;
   margin: 0 auto;
 }
 
@@ -430,34 +431,12 @@ onMounted(async () => {
   color: var(--bw-theme-muted, #64748b);
 }
 
-.surface-card {
-  background: var(--bw-theme-surface, #ffffff);
-  border: 1px solid var(--bw-theme-border, #e2e8f0);
-  border-radius: 16px;
-}
-
-.shadow-soft {
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04);
-}
-
-.soft-badge {
-  border-radius: 8px;
-  background: rgba(var(--q-primary-rgb, 59, 130, 246), 0.12) !important;
-  color: var(--q-primary, #3b82f6) !important;
-}
-
-.soft-pill-container {
-  background: rgba(241, 245, 249, 0.8);
-  border-radius: 20px;
-  border: 1px solid rgba(226, 232, 240, 0.8);
-}
-
 .bg-primary-soft {
   background: rgba(var(--q-primary-rgb, 59, 130, 246), 0.08) !important;
 }
 
 /* Tabs Styling */
-.tabs-container {
+.tabs-card {
   overflow-x: auto;
 }
 
@@ -466,7 +445,7 @@ onMounted(async () => {
 }
 
 .soft-tab-btn {
-  border-radius: 12px;
+  border-radius: 8px;
   margin: 2px;
   transition: all 0.2s ease;
 }
@@ -476,9 +455,9 @@ onMounted(async () => {
 }
 
 .tab-icon-wrapper {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -490,11 +469,10 @@ onMounted(async () => {
 .tab-icon-wrapper.active {
   background: var(--q-primary, #3b82f6);
   color: #ffffff;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
 }
 
 .tab-title {
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   color: #334155;
   line-height: 1.2;
 }
@@ -505,27 +483,20 @@ onMounted(async () => {
   line-height: 1.1;
 }
 
-/* Soft Selector Card */
-.soft-selector-card {
-  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-}
-
 .selected-entity-preview {
   background: rgba(241, 245, 249, 0.6);
   border: 1px dashed rgba(203, 213, 225, 0.8);
-  border-radius: 12px;
+  border-radius: 8px;
 }
 
 .fade-slide-enter-active,
 .fade-slide-leave-active {
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s ease;
 }
 
 .fade-slide-enter-from,
 .fade-slide-leave-to {
   opacity: 0;
-  transform: translateY(-8px);
+  transform: translateY(-4px);
 }
 </style>
-
-

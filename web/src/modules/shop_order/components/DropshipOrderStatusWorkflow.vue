@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import type { ShopOrder } from '../types';
 
 const props = defineProps<{
@@ -11,12 +12,27 @@ const emit = defineEmits<{
   (e: 'update-status', status: string): void;
 }>();
 
-const statusOrder = ['confirmed', 'processing', 'ready_for_pickup', 'shipped', 'delivered', 'returned'];
+/** Happy-path strip (Returned is a side branch). */
+const happyPath = [
+  'confirmed',
+  'processing',
+  'ready_for_pickup',
+  'shipped',
+  'delivered',
+  'payment_received',
+] as const;
+
+const statusOrder = [...happyPath, 'returned'];
+
 const isPassedStatus = (st: string) => {
   if (!props.order?.status) return false;
-  const currentIdx = statusOrder.indexOf(props.order.status);
+  const current = props.order.status;
+  // Treat returned as past delivery for progress shading on the happy path
+  const effective =
+    current === 'returned' ? 'delivered' : current;
+  const currentIdx = statusOrder.indexOf(effective);
   const targetIdx = statusOrder.indexOf(st);
-  return targetIdx !== -1 && targetIdx < currentIdx;
+  return currentIdx !== -1 && targetIdx !== -1 && targetIdx < currentIdx;
 };
 
 const formatStatusLabel = (st: string) => {
@@ -30,18 +46,30 @@ const getStatusColor = (status: string) => {
     case 'ready_for_pickup': return 'blue-7';
     case 'shipped': return 'purple-7';
     case 'delivered': return 'positive';
+    case 'payment_received': return 'teal-8';
     case 'returned': return 'negative';
-    default: return 'grey';
+    case 'cancelled': return 'negative';
+    case 'submitted': return 'blue-7';
+    default: return 'grey-8';
   }
 };
+
+const currentStatus = computed(() => props.order?.status ?? null);
+
+/** Statuses not on the strip still need a visible label. */
+const showOffStripBadge = computed(() => {
+  const st = currentStatus.value;
+  if (!st) return false;
+  return !happyPath.includes(st as typeof happyPath[number]) && st !== 'returned';
+});
 </script>
 
 <template>
   <q-card flat bordered class="q-pa-xs overflow-hidden">
-    <div class="row items-center justify-between no-wrap overflow-x-auto q-pa-xs">
+    <div class="row items-center justify-between no-wrap overflow-x-auto q-pa-xs q-gutter-x-sm">
       <div class="row items-center no-wrap q-gutter-xs status-workflow-row">
         <template
-          v-for="(st, idx) in ['confirmed', 'processing', 'ready_for_pickup', 'shipped', 'delivered']"
+          v-for="(st, idx) in happyPath"
           :key="st"
         >
           <q-btn
@@ -66,7 +94,7 @@ const getStatusColor = (status: string) => {
             {{ formatStatusLabel(st) }}
           </q-btn>
           <q-icon
-            v-if="idx < 4"
+            v-if="idx < happyPath.length - 1"
             name="ph ph-caret-right"
             color="grey-5"
             size="18px"
@@ -96,6 +124,17 @@ const getStatusColor = (status: string) => {
           Returned
         </q-btn>
       </div>
+
+      <q-chip
+        v-if="showOffStripBadge && currentStatus"
+        dense
+        :color="getStatusColor(currentStatus)"
+        text-color="white"
+        class="text-weight-bold q-ml-sm"
+        style="flex-shrink: 0;"
+      >
+        {{ formatStatusLabel(currentStatus) }}
+      </q-chip>
     </div>
   </q-card>
 </template>

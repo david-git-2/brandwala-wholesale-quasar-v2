@@ -114,6 +114,7 @@
                 :order="order"
                 :form="form"
                 :recipient-subtotal="recipientSubtotal"
+                :accounting-subtotal="accountingSubtotal"
                 :delivery-charge-val="deliveryChargeVal"
                 :cod-charge-val="codChargeVal"
                 :print-charge-val="printChargeVal"

@@ -495,32 +495,42 @@ If an accounting invoice was already posted at `ready_for_pickup`, use void/retu
 
 ## 11. Ledger infrastructure (courier money + middle-man settlement)
 
-The ledger is a **settlement journal**, not an invoice path. Entries reference `shop_order_id` (and `global_invoice_id` when an accounting invoice exists). `global_invoices` remains the sole **invoice** write path (§1). Together with `record_recipient_invoice_collection` / payments, this trail supports a **settlement report**.
+The ledger is a **settlement journal**, not an invoice path. Entries reference `shop_order_id` (and `global_invoice_id` when an accounting invoice exists). `global_invoices` remains the sole **invoice** write path (§1). Together with remittance / payments, this trail supports a **settlement report**.
+
+**One billing-profile wallet:** Dropship middle man and wholesale customer share `entity_type = customer` + `entity_id = billing_profile_id`. Distinguish AR vs profit by `metadata.section` (`receivable` vs `payout_earned`). Universal Wallet **Billing Profile** tab shows both.
+
+**Example (COD 4,000; delivery 60 + COD fee 40; B2B invoice 2,571; profit 1,329):**
+
+| State | Tenant | Billing profile | Courier |
+|-------|--------|-----------------|---------|
+| Accounting inv | Revenue +2,571 | AR −2,571; Profit +1,329 | 0 |
+| Remittance net 3,900 / charge 100 | Cash +3,900; delivery_fee −100; invoice pay 2,571 allocated; 1,329 held for payout | AR cleared via collection +2,571; Profit still +1,329 | Debit gross COD on `wallet_entity_id` |
+| Merchant payout 1,329 | Debit payout | Profit Pending → 0 | — |
 
 ### 11.1 After delivery — courier pays seller (net)
 
-1. Recipient paid COD to courier (face collect on order / invoice due).
-2. Courier remits to seller **after cutting courier charges** — staff records the **net remitted** amount (variance vs face due is visible).
-3. Advance toward **`payment_received`** with `courier_remittance_ref` + `courier_bank_trx_id`.
-4. Write money-in via **`record_recipient_invoice_collection`** against the linked accounting invoice (and remittance refs on order/invoice where supported).
+1. Recipient paid COD to courier (`cod_collect_amount`).
+2. Staff records **net remitted** + **courier charge**. Cap: `net + charge ≤ COD collect`.
+3. System allocates: `invoice_pay = min(net, invoice_due)`; remainder = merchant funds held (does not double-credit profit).
+4. Order → **`payment_received`** with remittance refs; UWL posts courier settle + tenant cash + `delivery_fee` cost.
 
 ### 11.2 Middle-man profit payout
 
-1. Accounting invoice already holds `middle_man_payout_amount` (and may have posted a **profit credit** on create).
-2. When seller pays the middle man, call **`create_middle_man_payout`** → **Payout paid** ledger entry (reduces payable).
+1. Profit credit posted at accounting invoice (`dropship_profit` / section `payout_earned` on billing profile).
+2. When seller pays the middle man, **`dispense_middleman_payout_from_tenant`** debits the same customer wallet section.
 
 ### 11.3 Ledger entry types
 
 | Entry type | When | Sign |
 |------------|------|------|
-| Profit credit | Accounting invoice created / eligible payout | + |
-| Collection / remittance | Courier net COD lands (`payment_received` path) | money-in via payments + invoice collection (not always a ledger row type — see payments) |
-| Return fee debit | Return with middle-man bearer **after** accounting invoice | − |
-| `return_fee_uninvoiced` | Failed / returned **before** accounting invoice; middle man bears return fee | − |
-| Clawback | Post-payout return | − |
-| Payout paid | Admin settles cash/transfer to middle man | reduces payable |
+| Profit credit | Accounting invoice (`payout_earned`) | + |
+| Invoice billed | Accounting invoice (`receivable`) | − (AR) |
+| Remittance / collection | After delivered | money-in; clears AR up to invoice due |
+| Courier fee | Remittance (`delivery_fee` on tenant) | − |
+| Return fee / clawback | Return finalize | − |
+| Payout paid | Admin settles to middle man | reduces `payout_earned` |
 
-UI: Dropship **ledger** page + process-desk settlement actions after `delivered`. Integrates with `create_middle_man_payout` / `record_recipient_invoice_collection` from [SALES_INVOICE.md](SALES_INVOICE.md). Report = filterable ledger + payment list by middle man / date / order / invoice.
+UI: Universal Wallet + Dropship Finance Hub. Report = filterable UWL by billing profile / date / order / invoice.
 
 ---
 
