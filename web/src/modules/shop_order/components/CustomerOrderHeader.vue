@@ -92,12 +92,22 @@ const formatStatusLabel = (st: string) => {
   switch (st) {
     case 'submitted':
       return 'Submitted';
-    case 'negotiating':
-      return 'Negotiating';
+    case 'costing_pending':
+      return 'Costing Pending';
     case 'priced':
       return 'Priced';
+    case 'countered':
+      return 'Countered';
+    case 'final_offered':
+      return 'Final Offered';
     case 'confirmed':
       return 'Confirmed';
+    case 'procuring':
+      return 'Procuring';
+    case 'ordered':
+      return 'Ordered';
+    case 'negotiating':
+      return 'Negotiating';
     case 'placed':
       return 'Placed';
     case 'fulfilled':
@@ -127,12 +137,21 @@ const getStatusColor = (status: string) => {
       return 'grey-7';
     case 'submitted':
       return 'blue-7';
+    case 'costing_pending':
+      return 'deep-orange-7';
     case 'negotiating':
+    case 'countered':
       return 'amber-9';
     case 'priced':
       return 'cyan-8';
+    case 'final_offered':
+      return 'purple-7';
     case 'confirmed':
       return 'green-7';
+    case 'procuring':
+      return 'blue-9';
+    case 'ordered':
+      return 'indigo-7';
     case 'placed':
       return 'indigo-7';
     case 'fulfilled':

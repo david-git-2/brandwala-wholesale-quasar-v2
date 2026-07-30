@@ -9,6 +9,7 @@
         v-model:selected-shop-id="selectedShopId"
         v-model:search="search"
         v-model:status-filter="statusFilter"
+        v-model:shop-type-filter="shopTypeFilter"
         :shops="shops"
       />
 
@@ -52,6 +53,7 @@ const shops = computed(() => shopsData.value || []);
 
 const search = ref('');
 const statusFilter = ref<string | null>(null);
+const shopTypeFilter = ref<string | null>(null);
 const selectedShopId = ref<number | null>(null);
 
 const orderParams = computed(() => ({
@@ -61,7 +63,13 @@ const orderParams = computed(() => ({
   shopId: selectedShopId.value || null,
 }));
 const { data: ordersData, isLoading: isLoadingOrders } = useStaffOrdersQuery(orderParams);
-const orders = computed(() => ordersData.value || []);
+const orders = computed(() => {
+  let list = ordersData.value || [];
+  if (shopTypeFilter.value) {
+    list = list.filter((o) => o.shop_type_snapshot === shopTypeFilter.value);
+  }
+  return list;
+});
 
 const { mutateAsync: processDropship, isPending: isProcessingDropship } = useProcessDropshipOrderMutation();
 
