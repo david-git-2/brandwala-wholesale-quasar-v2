@@ -47,15 +47,31 @@ const submitOrder = async (
 
 const staffPriceOrder = async (
   orderId: number,
-  items: Array<{ id: number; staff_offer_amount: number; staff_offer_currency_id: number }>,
+  items: Array<{ id: number; staff_offer_amount: number; staff_offer_currency_id: number; gross_weight_kg?: number | null; cbm?: number | null }>,
+  profitBasis?: string | null,
 ): Promise<ShopServiceResult<void>> => {
   try {
-    await shopOrderRepository.staffPriceShopOrder(orderId, items);
+    await shopOrderRepository.staffPriceShopOrder(orderId, items, profitBasis);
     return { success: true, data: undefined };
   } catch (error) {
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to set pricing.',
+    };
+  }
+};
+
+const staffFinalizeCatalogPrices = async (
+  orderId: number,
+  items: Array<{ id: number; final_offer_amount: number; final_offer_currency_id: number }>,
+): Promise<ShopServiceResult<void>> => {
+  try {
+    await shopOrderRepository.staffFinalizeCatalogPrices(orderId, items);
+    return { success: true, data: undefined };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to finalize catalog prices.',
     };
   }
 };
@@ -98,6 +114,18 @@ const confirmOrder = async (orderId: number): Promise<ShopServiceResult<void>> =
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to confirm order.',
+    };
+  }
+};
+
+const customerConfirmCatalogOrder = async (orderId: number): Promise<ShopServiceResult<void>> => {
+  try {
+    await shopOrderRepository.customerConfirmShopOrder(orderId);
+    return { success: true, data: undefined };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to confirm catalog order.',
     };
   }
 };
@@ -331,9 +359,11 @@ const listCustomerShopCategories = async (
 export const shopOrderService = {
   submitOrder,
   staffPriceOrder,
+  staffFinalizeCatalogPrices,
   customerCounter,
   staffCounter,
   confirmOrder,
+  customerConfirmCatalogOrder,
   getOrderDetails,
   fetchCustomerOrders,
   fetchStaffOrders,

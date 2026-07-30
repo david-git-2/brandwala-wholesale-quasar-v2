@@ -8971,6 +8971,10 @@ export type Database = {
       }
       current_tenant_id: { Args: never; Returns: number }
       current_user_email: { Args: never; Returns: string }
+      customer_confirm_shop_order: {
+        Args: { p_order_id: number }
+        Returns: undefined
+      }
       customer_counter_offer: {
         Args: { p_items: Json; p_order_id: number }
         Returns: undefined
@@ -11138,10 +11142,23 @@ export type Database = {
         Args: { p_items: Json; p_order_id: number }
         Returns: undefined
       }
-      staff_price_shop_order: {
+      staff_finalize_catalog_prices: {
         Args: { p_items: Json; p_order_id: number }
         Returns: undefined
       }
+      staff_price_shop_order:
+        | { Args: { p_items: Json; p_order_id: number }; Returns: undefined }
+        | {
+            Args: {
+              p_cargo_rate?: number
+              p_fx_rate?: number
+              p_items: Json
+              p_order_id: number
+              p_profit_basis?: string
+              p_profit_pct?: number
+            }
+            Returns: undefined
+          }
       submit_shop_order_from_cart:
         | {
             Args: {

@@ -168,9 +168,22 @@ const submitShopOrderFromCart = async (
 
 const staffPriceShopOrder = async (
   orderId: number,
-  items: Array<{ id: number; staff_offer_amount: number; staff_offer_currency_id: number }>,
+  items: Array<{ id: number; staff_offer_amount: number; staff_offer_currency_id: number; gross_weight_kg?: number | null; cbm?: number | null }>,
+  profitBasis?: string | null,
 ): Promise<void> => {
   const { error } = await supabase.rpc('staff_price_shop_order', {
+    p_order_id: orderId,
+    p_items: items,
+    p_profit_basis: profitBasis ?? null,
+  });
+  if (error) throw error;
+};
+
+const staffFinalizeCatalogPrices = async (
+  orderId: number,
+  items: Array<{ id: number; final_offer_amount: number; final_offer_currency_id: number }>,
+): Promise<void> => {
+  const { error } = await supabase.rpc('staff_finalize_catalog_prices', {
     p_order_id: orderId,
     p_items: items,
   });
@@ -201,6 +214,13 @@ const staffCounterOffer = async (
 
 const confirmShopOrder = async (orderId: number): Promise<void> => {
   const { error } = await supabase.rpc('confirm_shop_order', {
+    p_order_id: orderId,
+  });
+  if (error) throw error;
+};
+
+const customerConfirmShopOrder = async (orderId: number): Promise<void> => {
+  const { error } = await supabase.rpc('customer_confirm_shop_order', {
     p_order_id: orderId,
   });
   if (error) throw error;
@@ -424,9 +444,11 @@ export const shopOrderRepository = {
   fetchCustomerShopCategories,
   submitShopOrderFromCart,
   staffPriceShopOrder,
+  staffFinalizeCatalogPrices,
   customerCounterOffer,
   staffCounterOffer,
   confirmShopOrder,
+  customerConfirmShopOrder,
   listShopOrdersForCustomer,
   listShopOrdersForStaff,
   listDropshipShopOrdersForStaff,
