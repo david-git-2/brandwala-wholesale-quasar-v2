@@ -10,6 +10,9 @@ export interface MembershipPreferenceSchema {
     procurementShipment?: {
       detailsVisibleColumns?: string[];
     };
+    shopOrder?: {
+      staffCatalogVisibleColumns?: string[];
+    };
     appearance?: {
       darkMode?: boolean;
       density?: 'comfortable' | 'compact';
@@ -23,6 +26,7 @@ export const MEMBERSHIP_UI_PATHS = {
   productBasedCostingPreviewPrintColumns: ['ui', 'productBasedCosting', 'previewPrintVisibleColumns'],
   thriftShipmentDetailsColumns: ['ui', 'thriftShipment', 'detailsVisibleColumns'],
   procurementShipmentDetailsColumns: ['ui', 'procurementShipment', 'detailsVisibleColumns'],
+  shopOrderStaffCatalogVisibleColumns: ['ui', 'shopOrder', 'staffCatalogVisibleColumns'],
   uiAppearanceDarkMode: ['ui', 'appearance', 'darkMode'],
   uiAppearanceDensity: ['ui', 'appearance', 'density'],
   uiAppearanceNavPinned: ['ui', 'appearance', 'navPinned'],
@@ -35,4 +39,5 @@ export const LEGACY_MEMBERSHIP_PREFERENCE_KEYS: Record<string, MembershipUiPathK
   'ui.productBasedCosting.previewPrintVisibleColumns': 'productBasedCostingPreviewPrintColumns',
   'ui.thriftShipment.detailsVisibleColumns': 'thriftShipmentDetailsColumns',
   'ui.procurementShipment.detailsVisibleColumns': 'procurementShipmentDetailsColumns',
+  'ui.shopOrder.staffCatalogVisibleColumns': 'shopOrderStaffCatalogVisibleColumns',
 };

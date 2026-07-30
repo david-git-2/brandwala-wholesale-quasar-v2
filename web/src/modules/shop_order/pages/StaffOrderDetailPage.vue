@@ -42,129 +42,110 @@
           />
 
           <!-- Main Catalog Content -->
-          <div class="row q-col-gutter-lg">
-            <div class="col-xs-12 col-md-8">
-              <div class="column q-gutter-md">
-                <CatalogOrderItemsTable
-                  :order="currentOrder"
-                  :items="orderItems"
-                  :currency-symbol="currencySymbol"
-                  :buy-currency-symbol="buyCurrencySymbol"
-                  :visible-columns="catalogVisibleColumns"
-                  @open-column-selector="openColumnSelector"
+          <CatalogOrderItemsTable
+            :order="currentOrder"
+            :items="orderItems"
+            :currency-symbol="currencySymbol"
+            :buy-currency-symbol="buyCurrencySymbol"
+            :visible-columns="catalogVisibleColumns"
+            @open-column-selector="openColumnSelector"
+            @update:visible-columns="onCatalogVisibleColumnsUpdate"
+          />
+
+          <!-- Catalog Status-Gated Sticky Action Bar -->
+          <q-card flat bordered class="q-pa-md bg-grey-1">
+            <div class="row items-center justify-between q-col-gutter-sm">
+              <div class="text-caption text-grey-7">
+                Status: <strong>{{ currentOrder.status }}</strong>
+              </div>
+
+              <div class="row items-center q-gutter-sm">
+                <q-btn
+                  v-if="currentOrder.status === 'submitted'"
+                  color="warning"
+                  unelevated
+                  no-caps
+                  label="Start Costing (Pending)"
+                  :loading="isUpdatingStatus && targetUpdatingStatus === 'costing_pending'"
+                  @click="changeOrderStatus('costing_pending')"
                 />
 
-                <!-- Catalog Status-Gated Sticky Action Bar -->
-                <q-card flat bordered class="q-pa-md bg-grey-1">
-                  <div class="row items-center justify-between q-col-gutter-sm">
-                    <div class="text-caption text-grey-7">
-                      Status: <strong>{{ currentOrder.status }}</strong>
-                    </div>
-
-                    <div class="row items-center q-gutter-sm">
-                      <q-btn
-                        v-if="currentOrder.status === 'submitted'"
-                        color="warning"
-                        unelevated
-                        no-caps
-                        label="Start Costing (Pending)"
-                        :loading="isUpdatingStatus && targetUpdatingStatus === 'costing_pending'"
-                        @click="changeOrderStatus('costing_pending')"
-                      />
-
-                      <q-btn
-                        v-if="['submitted', 'costing_pending'].includes(currentOrder.status)"
-                        color="primary"
-                        unelevated
-                        no-caps
-                        icon="ph ph-check"
-                        label="Save Costing & Price Order → Priced"
-                        :loading="isSavingStaffPricing"
-                        @click="handleSaveStaffCatalogPricing"
-                      />
-
-                      <q-btn
-                        v-if="['priced', 'countered'].includes(currentOrder.status)"
-                        color="purple"
-                        unelevated
-                        no-caps
-                        icon="ph ph-paper-plane-tilt"
-                        label="Save Final Prices → Final Offered"
-                        :loading="isFinalizingPrices"
-                        @click="handleSaveFinalCatalogPrices"
-                      />
-
-                      <q-btn
-                        v-if="currentOrder.status === 'final_offered'"
-                        outline
-                        color="purple"
-                        no-caps
-                        label="Awaiting Customer Confirmation"
-                        disable
-                      />
-
-                      <q-btn
-                        v-if="currentOrder.status === 'confirmed'"
-                        color="primary"
-                        unelevated
-                        no-caps
-                        icon="ph ph-shopping-bag"
-                        label="Start Procuring"
-                        :loading="isStartingProcurement"
-                        @click="handleStartCatalogProcurement"
-                      />
-
-                      <q-btn
-                        v-if="['confirmed', 'procuring'].includes(currentOrder.status)"
-                        color="indigo-9"
-                        unelevated
-                        no-caps
-                        icon="ph ph-package"
-                        label="Save Ordered Qty → Ordered"
-                        :loading="isSavingOrderedQty"
-                        @click="handleSaveStaffOrderedQty"
-                      />
-
-                      <q-btn
-                        v-if="['procuring', 'ordered'].includes(currentOrder.status)"
-                        color="positive"
-                        unelevated
-                        no-caps
-                        icon="ph ph-truck"
-                        label="Save Delivered Qty → Delivered"
-                        :loading="isSavingDeliveredQty"
-                        @click="handleSaveStaffDeliveredQty"
-                      />
-
-                      <q-btn
-                        v-if="currentOrder.billing_profile_id"
-                        flat
-                        color="primary"
-                        no-caps
-                        icon="ph ph-tray"
-                        label="View Backlog"
-                        @click="showBacklogDrawer = true"
-                      />
-                    </div>
-                  </div>
-                </q-card>
-              </div>
-            </div>
-
-            <!-- Sidebar (4 cols) -->
-            <div class="col-xs-12 col-md-4">
-              <div class="column q-gutter-md">
-                <StaffOrderSummaryCard
-                  :order="currentOrder"
-                  :order-items="orderItems"
-                  :currency-symbol="currencySymbol"
-                  :is-updating-charges="isUpdatingCharges"
-                  @update-charges="handleUpdateCharges"
+                <q-btn
+                  v-if="['submitted', 'costing_pending'].includes(currentOrder.status)"
+                  color="primary"
+                  unelevated
+                  no-caps
+                  icon="ph ph-check"
+                  label="Save Costing & Price Order → Priced"
+                  :loading="isSavingStaffPricing"
+                  @click="handleSaveStaffCatalogPricing"
                 />
-                <StaffOrderShippingCard :order="currentOrder" />
+
+                <q-btn
+                  v-if="['priced', 'countered'].includes(currentOrder.status)"
+                  color="purple"
+                  unelevated
+                  no-caps
+                  icon="ph ph-paper-plane-tilt"
+                  label="Save Final Prices → Final Offered"
+                  :loading="isFinalizingPrices"
+                  @click="handleSaveFinalCatalogPrices"
+                />
+
+                <q-btn
+                  v-if="currentOrder.status === 'final_offered'"
+                  outline
+                  color="purple"
+                  no-caps
+                  label="Awaiting Customer Confirmation"
+                  disable
+                />
+
+                <q-btn
+                  v-if="currentOrder.status === 'confirmed'"
+                  color="primary"
+                  unelevated
+                  no-caps
+                  icon="ph ph-shopping-bag"
+                  label="Start Procuring"
+                  :loading="isStartingProcurement"
+                  @click="handleStartCatalogProcurement"
+                />
+
+                <q-btn
+                  v-if="['confirmed', 'procuring'].includes(currentOrder.status)"
+                  color="indigo-9"
+                  unelevated
+                  no-caps
+                  icon="ph ph-package"
+                  label="Save Ordered Qty → Ordered"
+                  :loading="isSavingOrderedQty"
+                  @click="handleSaveStaffOrderedQty"
+                />
+
+                <q-btn
+                  v-if="['procuring', 'ordered'].includes(currentOrder.status)"
+                  color="positive"
+                  unelevated
+                  no-caps
+                  icon="ph ph-truck"
+                  label="Save Delivered Qty → Delivered"
+                  :loading="isSavingDeliveredQty"
+                  @click="handleSaveStaffDeliveredQty"
+                />
+
+                <q-btn
+                  v-if="currentOrder.billing_profile_id"
+                  flat
+                  color="primary"
+                  no-caps
+                  icon="ph ph-tray"
+                  label="View Backlog"
+                  @click="showBacklogDrawer = true"
+                />
               </div>
             </div>
-          </div>
+          </q-card>
         </template>
 
         <!-- OTHER SHOP TYPES (Dropship/Fixed) -->
@@ -178,7 +159,7 @@
           />
 
           <div class="row q-col-gutter-lg">
-            <div class="col-xs-12 col-md-8">
+            <div class="col-xs-12 col-md-8" style="min-width: 0">
               <StaffOrderItemsList
                 :order="currentOrder"
                 :order-items="orderItems"
@@ -264,6 +245,7 @@ import CatalogOrderRatesBar from '../components/CatalogOrderRatesBar.vue';
 import CatalogOrderItemsTable from '../components/CatalogOrderItemsTable.vue';
 import CatalogOrderColumnSelectorDialog from '../components/CatalogOrderColumnSelectorDialog.vue';
 import CatalogBacklogDrawer from '../components/CatalogBacklogDrawer.vue';
+import { useMembershipColumnPreference } from 'src/modules/membership/composables/useMembershipColumnPreference';
 
 const route = useRoute();
 const router = useRouter();
@@ -310,14 +292,42 @@ const shopSellCurrencyId = ref<number | null>(null);
 const shopBuyCurrencyId = ref<number | null>(null);
 
 const ratesExpanded = ref(false);
-const catalogVisibleColumns = ref<string[]>([
+
+const catalogAllColumnNames = [
+  'sku',
+  'list_price',
+  'weight_kg',
+  'cost_price',
+  'profit_base',
+  'staff_offer',
+  'customer_offer',
+  'final_price',
+  'confirmed_quantity',
+  'ordered_quantity',
+  'delivered_quantity',
+];
+
+const catalogAlwaysVisibleColumns = ['sl', 'image', 'name', 'quantity', 'total_amount'];
+
+const catalogDefaultVisibleColumns = [
   'sku',
   'weight_kg',
   'cost_price',
   'staff_offer',
   'customer_offer',
   'final_price',
-]);
+];
+
+const { visibleColumns: catalogVisibleColumns } = useMembershipColumnPreference({
+  preferenceKey: 'ui.shopOrder.staffCatalogVisibleColumns',
+  allColumnNames: catalogAllColumnNames,
+  alwaysVisibleColumns: catalogAlwaysVisibleColumns,
+  defaultVisibleColumns: catalogDefaultVisibleColumns,
+});
+
+const onCatalogVisibleColumnsUpdate = (columns: string[]) => {
+  catalogVisibleColumns.value = columns;
+};
 
 watch(
   () => orderDetailsData.value,

@@ -429,7 +429,7 @@ const getShopSellCurrencyId = async (shopId: number): Promise<number | null> => 
     .from('shops')
     .select('sell_currency_id')
     .eq('id', shopId)
-    .single();
+    .maybeSingle();
   if (error) return null;
   return data?.sell_currency_id ?? null;
 };

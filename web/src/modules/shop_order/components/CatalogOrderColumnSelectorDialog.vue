@@ -1,6 +1,6 @@
 <template>
   <q-dialog ref="dialogRef" @hide="onDialogHide">
-    <q-card class="q-dialog-plugin" style="width: 520px; max-width: 95vw">
+    <q-card class="q-dialog-plugin" style="width: 540px; max-width: 95vw">
       <q-card-section class="row items-center q-pb-none">
         <div class="text-h6 text-primary text-weight-bold row items-center q-gutter-x-xs">
           <q-icon name="ph ph-sliders-horizontal" size="24px" class="q-mr-xs" />
@@ -11,10 +11,25 @@
       </q-card-section>
 
       <q-card-section class="q-pa-md">
-        <div class="text-caption text-grey-7 q-mb-md">
+        <div class="text-caption text-grey-7 q-mb-sm">
           Toggle visible columns for the order table grid.
         </div>
 
+        <!-- Search Bar -->
+        <q-input
+          v-model="searchQuery"
+          dense
+          outlined
+          placeholder="Search columns..."
+          clearable
+          class="q-mb-md"
+        >
+          <template #prepend>
+            <q-icon name="ph ph-magnifying-glass" size="18px" />
+          </template>
+        </q-input>
+
+        <!-- Select All Bar -->
         <div class="row items-center justify-between q-mb-sm bg-grey-2 q-pa-sm rounded-borders">
           <q-checkbox
             v-model="allColumnsSelected"
@@ -28,9 +43,12 @@
         </div>
 
         <q-scroll-area style="height: 280px">
-          <div class="row q-col-gutter-xs">
+          <div v-if="!filteredOptions.length" class="text-center text-grey-6 q-pa-md">
+            No matching columns found
+          </div>
+          <div v-else class="row q-col-gutter-xs">
             <div
-              v-for="col in columnSelectorOptions"
+              v-for="col in filteredOptions"
               :key="col.value"
               class="col-12 col-sm-6"
             >
@@ -72,7 +90,8 @@ defineEmits([...useDialogPluginComponent.emits]);
 
 const { dialogRef, onDialogHide, onDialogOK } = useDialogPluginComponent();
 
-const alwaysVisibleColumns = ['item', 'quantity'];
+const alwaysVisibleColumns = ['sl', 'image', 'name', 'quantity', 'total_amount'];
+const searchQuery = ref('');
 
 const columnSelectorOptions = [
   { label: 'SKU / Code', value: 'sku' },
@@ -91,6 +110,12 @@ const columnSelectorOptions = [
 const selectableColumnValues = columnSelectorOptions.map((opt) => opt.value);
 
 const selectedColumns = ref<string[]>([...props.visibleColumns]);
+
+const filteredOptions = computed(() => {
+  const query = searchQuery.value.trim().toLowerCase();
+  if (!query) return columnSelectorOptions;
+  return columnSelectorOptions.filter((opt) => opt.label.toLowerCase().includes(query));
+});
 
 const selectedCount = computed(() => selectedColumns.value.length);
 

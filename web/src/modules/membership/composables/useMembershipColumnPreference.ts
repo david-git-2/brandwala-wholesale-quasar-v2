@@ -11,7 +11,8 @@ type LegacyPreferenceKey =
   | 'ui.productBasedCosting.fileDetailsVisibleColumns'
   | 'ui.productBasedCosting.previewPrintVisibleColumns'
   | 'ui.thriftShipment.detailsVisibleColumns'
-  | 'ui.procurementShipment.detailsVisibleColumns';
+  | 'ui.procurementShipment.detailsVisibleColumns'
+  | 'ui.shopOrder.staffCatalogVisibleColumns';
 
 function resolvePreferencePath(
   preferencePath?: MembershipUiPathKey,

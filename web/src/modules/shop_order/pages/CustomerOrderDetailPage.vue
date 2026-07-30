@@ -188,7 +188,7 @@ watch(
           .from('shops')
           .select('sell_currency_id')
           .eq('id', shopId)
-          .single();
+          .maybeSingle();
         if (shopData?.sell_currency_id) {
           shopSellCurrencyId.value = shopData.sell_currency_id;
         }
