@@ -78,8 +78,8 @@
                 size="sm"
                 icon="ph ph-minus"
                 color="grey-7"
-                :disabled="isSaving"
-                @click="$emit('adjust-qty-local', item, -(cart?.shop_type === 'dropship' ? 1 : (item.minimum_quantity || 1)))"
+                :disabled="isSaving || getItemQty(item) <= getItemMinQty(item)"
+                @click="$emit('adjust-qty-local', item, -getItemMinQty(item))"
               />
               <div class="quantity-value text-weight-bold text-center text-grey-8">
                 {{ getItemQty(item) }}
@@ -92,7 +92,7 @@
                 icon="ph ph-plus"
                 color="grey-7"
                 :disabled="isSaving"
-                @click="$emit('adjust-qty-local', item, cart?.shop_type === 'dropship' ? 1 : (item.minimum_quantity || 1))"
+                @click="$emit('adjust-qty-local', item, getItemMinQty(item))"
               />
             </div>
             <q-btn
@@ -173,7 +173,7 @@
 <script setup lang="ts">
 import type { ActiveCartItem } from '../repositories/shopCartRepository';
 
-defineProps<{
+const props = defineProps<{
   items: any[];
   itemCount: number;
   currentShopCartInfo: ActiveCartItem | null;
@@ -198,6 +198,11 @@ defineEmits<{
   (e: 'save-item-qty', item: any): void;
   (e: 'remove-item', item: any): void;
 }>();
+
+const getItemMinQty = (item: any) => {
+  if (props.cart?.shop_type === 'dropship') return 1;
+  return item?.minimum_quantity || item?.minimum_order_quantity || item?.moq || 1;
+};
 </script>
 
 <style scoped>

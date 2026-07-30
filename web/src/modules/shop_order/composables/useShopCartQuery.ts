@@ -30,8 +30,40 @@ export function useShopCartQuery(shopId: Ref<number | null>) {
         // Fallback if RPC fails
       }
 
+      const rawItems = res.data?.items ?? [];
+      const productIds = Array.from(new Set(rawItems.map((i) => i.product_id).filter(Boolean)));
+      const moqMap: Record<number, number> = {};
+
+      if (productIds.length > 0) {
+        try {
+          const { data: prodData } = await supabase
+            .from('products')
+            .select('id, minimum_order_quantity')
+            .in('id', productIds);
+          if (prodData) {
+            prodData.forEach((p) => {
+              if (p.minimum_order_quantity && p.minimum_order_quantity > 1) {
+                moqMap[p.id] = p.minimum_order_quantity;
+              }
+            });
+          }
+        } catch {
+          // Fallback if fetch fails
+        }
+      }
+
+      const enrichedItems = rawItems.map((i) => {
+        const moq = moqMap[i.product_id] || i.minimum_quantity || 1;
+        return {
+          ...i,
+          minimum_quantity: moq,
+          minimum_order_quantity: moq,
+        };
+      });
+
       return {
         ...res.data,
+        items: enrichedItems,
         permissions,
       };
     },

@@ -164,9 +164,13 @@ export function useShopCartPageLogic(
   };
 
   const adjustItemQtyLocal = (item: any, delta: number) => {
+    const minQty =
+      cart.value?.shop_type === 'dropship'
+        ? 1
+        : item.minimum_quantity || item.minimum_order_quantity || item.moq || 1;
     const currentVal = getItemQty(item);
     let newVal = currentVal + delta;
-    if (newVal < 1) newVal = 1;
+    if (newVal < minQty) newVal = minQty;
 
     if (newVal === item.quantity) {
       delete editedQuantities.value[item.id];

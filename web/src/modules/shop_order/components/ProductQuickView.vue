@@ -96,7 +96,11 @@
 
           <!-- MOQ Warning -->
           <q-banner
-            v-if="product.moq && product.moq > 1"
+            v-if="
+              product &&
+              (product.minimum_order_quantity || product.moq) &&
+              (product.minimum_order_quantity || product.moq) > 1
+            "
             dense
             rounded
             class="bg-warning-soft text-warning-dark border-warning"
@@ -105,7 +109,7 @@
               <q-icon name="ph ph-info" color="warning" size="20px" />
             </template>
             <div class="text-caption text-weight-medium">
-              {{ $t('shop.moq_notice', { count: product.moq }) }}
+              {{ $t('shop.moq_notice', { count: product.minimum_order_quantity || product.moq }) }}
             </div>
           </q-banner>
 
@@ -131,7 +135,7 @@
                   round
                   icon="ph ph-minus"
                   size="sm"
-                  :disabled="quantity <= 1"
+                  :disabled="quantity <= minQty"
                   @click="decrementQty"
                 />
                 <q-input
@@ -141,7 +145,7 @@
                   type="number"
                   input-class="text-center text-weight-bold text-body2"
                   style="width: 44px"
-                  :min="1"
+                  :min="minQty"
                   @blur="validateQuantity"
                 />
                 <q-btn flat dense round icon="ph ph-plus" size="sm" @click="incrementQty" />
@@ -246,7 +250,7 @@
                   round
                   icon="ph ph-minus"
                   size="sm"
-                  :disabled="quantity <= 1"
+                  :disabled="quantity <= minQty"
                   @click="decrementQty"
                 />
                 <q-input
@@ -256,7 +260,7 @@
                   type="number"
                   input-class="text-center text-weight-bold text-body2"
                   style="width: 40px"
-                  :min="1"
+                  :min="minQty"
                   @blur="validateQuantity"
                 />
                 <q-btn flat dense round icon="ph ph-plus" size="sm" @click="incrementQty" />
@@ -324,12 +328,17 @@ const images = computed(() => {
   return list;
 });
 
+const minQty = computed(() => {
+  if (props.shopDetails?.shop_type === 'dropship') return 1;
+  return props.product?.minimum_order_quantity || props.product?.moq || 1;
+});
+
 watch(
   () => props.product,
   (newProd) => {
     if (newProd) {
       activeSlide.value = 0;
-      quantity.value = props.cartItem?.quantity || newProd.moq || 1;
+      quantity.value = props.cartItem?.quantity || minQty.value;
     }
   },
   { immediate: true },
@@ -349,18 +358,24 @@ function close() {
 }
 
 function incrementQty() {
-  quantity.value++;
+  const step = minQty.value;
+  const max = props.product?.available_units;
+  if (max === null || max === undefined || quantity.value + step <= max) {
+    quantity.value += step;
+  }
 }
 
 function decrementQty() {
-  if (quantity.value > 1) {
-    quantity.value--;
+  const step = minQty.value;
+  if (quantity.value > step) {
+    quantity.value -= step;
   }
 }
 
 function validateQuantity() {
-  if (!quantity.value || quantity.value < 1) {
-    quantity.value = 1;
+  const min = minQty.value;
+  if (!quantity.value || quantity.value < min) {
+    quantity.value = min;
   }
 }
 

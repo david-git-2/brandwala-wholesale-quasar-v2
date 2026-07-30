@@ -726,6 +726,17 @@ const submitOrder = async () => {
         return;
       }
     }
+  } else {
+    for (const item of items.value) {
+      const itemAny = item as any;
+      const minQty = itemAny.minimum_quantity || itemAny.minimum_order_quantity || itemAny.moq || 1;
+      if (item.quantity < minQty) {
+        showErrorNotification(
+          `Minimum order quantity for ${item.name} is ${minQty}. Current quantity: ${item.quantity}.`,
+        );
+        return;
+      }
+    }
   }
 
   const name = requestDelivery.value ? recipientName.value.trim() : '';
