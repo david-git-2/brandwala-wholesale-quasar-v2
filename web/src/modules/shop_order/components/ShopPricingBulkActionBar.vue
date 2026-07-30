@@ -1,28 +1,26 @@
 <template>
   <q-slide-transition>
-    <q-card v-if="selectedCount > 0" flat class="bg-primary text-white q-mb-md">
-      <q-card-section class="q-py-sm">
-        <div class="row items-center justify-between q-col-gutter-sm">
-          <div class="col-auto row items-center q-gutter-x-sm">
-            <q-icon name="ph ph-check-square-offset" size="20px" />
-            <span class="text-subtitle2 text-weight-bold">
+    <q-card v-if="selectedCount > 0" flat bordered class="bg-white text-grey-9 q-mb-md">
+      <q-card-section class="q-py-md q-px-lg">
+        <div class="row items-center justify-between q-col-gutter-md wrap">
+          <!-- Selected count badge -->
+          <div class="col-auto row items-center">
+            <q-chip color="primary" text-color="white" icon="ph ph-check-square-offset" class="text-weight-bold q-ma-none q-py-sm q-px-md">
               {{ $t('shop_admin.items_selected', { count: selectedCount }) }}
-            </span>
+            </q-chip>
           </div>
 
-          <div class="col-auto row items-center q-gutter-x-md wrap">
+          <div class="col-auto row items-center q-gutter-md wrap">
             <!-- Price Markup Controls -->
-            <div class="row items-center q-gutter-x-xs">
+            <div class="row items-center q-gutter-x-sm">
               <q-select
                 v-model="targetPrice"
                 dense
                 outlined
-                dark
                 options-dense
                 emit-value
                 map-options
-                bg-color="white-transparent"
-                style="width: 130px"
+                style="width: 140px"
                 :options="[
                   { label: 'Sell Price', value: 'sell_price' },
                   { label: 'Dropship Floor', value: 'min_sell_price' },
@@ -32,9 +30,11 @@
               <q-btn-toggle
                 v-model="markupType"
                 dense
-                flat
-                dark
-                toggle-color="white"
+                unelevated
+                toggle-color="primary"
+                color="grey-2"
+                text-color="grey-8"
+                class="q-btn-toggle--custom"
                 :options="[
                   { label: '%', value: 'percentage' },
                   { label: '$', value: 'fixed' },
@@ -46,8 +46,6 @@
                 type="number"
                 dense
                 outlined
-                dark
-                bg-color="white-transparent"
                 style="width: 100px"
                 :suffix="markupType === 'percentage' ? '%' : ''"
                 :label="markupType === 'percentage' ? 'Markup %' : 'Amount'"
@@ -57,10 +55,8 @@
 
               <q-btn
                 unelevated
-                color="white"
-                text-color="primary"
-                dense
-                class="q-px-sm"
+                color="primary"
+                class="q-px-md"
                 icon="ph ph-lightning"
                 :label="$t('shop_admin.apply_markup_selected')"
                 :loading="isApplying"
@@ -68,16 +64,18 @@
               />
             </div>
 
-            <q-separator vertical dark class="q-mx-xs" />
+            <q-separator vertical class="q-mx-sm self-stretch" />
 
             <!-- Quantity Adjustment Controls -->
-            <div class="row items-center q-gutter-x-xs">
+            <div class="row items-center q-gutter-x-sm">
               <q-btn-toggle
                 v-model="qtyOperation"
                 dense
-                flat
-                dark
-                toggle-color="white"
+                unelevated
+                toggle-color="primary"
+                color="grey-2"
+                text-color="grey-8"
+                class="q-btn-toggle--custom"
                 :options="[
                   { label: '+ Add', value: 'add' },
                   { label: '- Sub', value: 'subtract' },
@@ -90,8 +88,6 @@
                 type="number"
                 dense
                 outlined
-                dark
-                bg-color="white-transparent"
                 style="width: 100px"
                 label="Qty Value"
                 step="1"
@@ -100,10 +96,8 @@
 
               <q-btn
                 unelevated
-                color="white"
-                text-color="primary"
-                dense
-                class="q-px-sm"
+                color="primary"
+                class="q-px-md"
                 icon="ph ph-plus-minus"
                 label="Apply Qty"
                 :loading="isApplying"
@@ -113,15 +107,14 @@
               </q-btn>
             </div>
 
-            <q-separator vertical dark class="q-mx-xs" />
+            <q-separator vertical class="q-mx-sm self-stretch" />
 
             <!-- Bulk Actions -->
-            <div class="row items-center q-gutter-x-xs">
+            <div class="row items-center q-gutter-x-sm">
               <q-btn
-                unelevated
+                outline
                 color="negative"
-                dense
-                class="q-px-sm"
+                class="q-px-md"
                 icon="ph ph-trash"
                 label="Remove Selected"
                 @click="$emit('bulk-remove')"
@@ -132,7 +125,7 @@
                 round
                 dense
                 icon="ph ph-x"
-                color="white"
+                color="grey-7"
                 @click="$emit('clear-selection')"
               >
                 <q-tooltip>{{ $t('shop_admin.clear_selection') }}</q-tooltip>

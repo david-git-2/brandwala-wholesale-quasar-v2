@@ -401,18 +401,11 @@
         </q-card-section>
 
         <q-card-section class="q-gutter-y-md q-pt-md">
-          <div class="bg-grey-1 q-pa-md rounded-borders row items-center no-wrap q-gutter-x-md">
-            <q-avatar size="48px" rounded class="bg-grey-3 flex-shrink-0">
+          <div class="row justify-center q-mb-md">
+            <q-avatar size="48px" rounded class="bg-grey-3">
               <q-img v-if="selectedProductImageUrl" :src="selectedProductImageUrl" />
               <q-icon v-else name="ph ph-image" color="grey-6" size="24px" />
             </q-avatar>
-            <div class="col overflow-hidden">
-              <div class="text-weight-bold text-grey-9 ellipsis">{{ selectedProductName }}</div>
-              <div class="text-caption text-grey-7 ellipsis">{{ selectedProductDetails }}</div>
-              <div v-if="selectedProductCost !== null" class="text-caption text-primary text-weight-medium q-mt-xs">
-                Cost: {{ selectedProductCost }}
-              </div>
-            </div>
           </div>
 
           <!-- Sell Price -->
