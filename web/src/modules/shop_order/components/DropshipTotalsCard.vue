@@ -30,7 +30,6 @@ const props = withDefaults(
   }>(),
   {
     readonly: false,
-    b2bInvoiceTotal: undefined,
   },
 );
 

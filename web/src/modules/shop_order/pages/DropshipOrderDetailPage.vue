@@ -22,17 +22,6 @@
           @update-status="onUpdateStatus"
         />
 
-        <!-- Progressive Process Step Strip -->
-        <DropshipProcessStepStrip
-          :order="order"
-          :form="form"
-          :selected-courier="selectedCourier"
-          :has-items="orderItems.length > 0"
-          @open-recipient-invoice="openRecipientInvoicePreview"
-          @update-status="onUpdateStatus"
-          @open-dual-invoice="dualInvoiceDialogOpen = true"
-        />
-
         <div class="row q-col-gutter-lg">
           <!-- Main Form Sections -->
           <div class="col-xs-12 col-md-8">
@@ -226,7 +215,6 @@ import { showErrorNotification, showSuccessNotification } from 'src/utils/appFee
 import DropshipOrderDetailSkeleton from '../components/DropshipOrderDetailSkeleton.vue';
 import DropshipOrderHeader from '../components/DropshipOrderHeader.vue';
 import DropshipOrderStatusWorkflow from '../components/DropshipOrderStatusWorkflow.vue';
-import DropshipProcessStepStrip from '../components/DropshipProcessStepStrip.vue';
 import DropshipRecipientFormCard from '../components/DropshipRecipientFormCard.vue';
 import DropshipOrderItemsCard from '../components/DropshipOrderItemsCard.vue';
 import DropshipParcelFormCard from '../components/DropshipParcelFormCard.vue';
