@@ -78,6 +78,72 @@ export const MODULE_GUIDE_REGISTRY: readonly ModuleGuide[] = [
     ],
   },
   {
+    id: 'shop_categories',
+    title: 'Shop Categories',
+    caption: 'Organize tenant products into storefront categories',
+    icon: 'ph ph-squares-four',
+    scopes: ['app'],
+    audiences: ['admin', 'staff'],
+    routeMatchers: ['/app/shop/categories'],
+    overview:
+      'Shop Categories allow tenant administrators and staff to categorize items for display across storefronts, manage URL slugs, set visual category icons, and toggle active visibility.',
+    workflows: [
+      {
+        id: 'create-category',
+        title: 'Create a new shop category',
+        steps: [
+          'Click the "+ Add Category" button in the top header.',
+          'Enter the category name (the URL slug will auto-generate).',
+          'Select a descriptive icon and optional category description.',
+          'Ensure "Active Category" toggle is enabled, then click "Create Category".',
+        ],
+      },
+      {
+        id: 'edit-category',
+        title: 'Edit or disable an existing category',
+        steps: [
+          'Locate the category using the search toolbar.',
+          'Click the pencil (Edit) icon on the category row or card.',
+          'Update the category details, icon, or toggle status to inactive.',
+          'Click "Save Changes" to apply updates.',
+        ],
+      },
+      {
+        id: 'delete-category',
+        title: 'Delete a shop category',
+        steps: [
+          'Find the category you wish to remove.',
+          'Click the trash (Delete) icon on the row or card.',
+          'Confirm deletion in the pop-up modal dialog.',
+        ],
+      },
+    ],
+    terms: [
+      {
+        term: 'Slug',
+        definition: 'A URL-friendly identifier used in storefront navigation links.',
+      },
+      {
+        term: 'Active Status',
+        definition: 'Controls whether a category and its grouped items are visible on public customer storefronts.',
+      },
+      {
+        term: 'Category Icon',
+        definition: 'Phosphor visual icon associated with the category on navigation menus.',
+      },
+    ],
+    faqs: [
+      {
+        question: 'What happens when a category is toggled to Inactive?',
+        answer: 'Inactive categories remain saved in the system but are hidden from customer storefront navigation.',
+      },
+      {
+        question: 'Can I change a category slug after creating it?',
+        answer: 'Yes, edit the category and update the slug input manually before saving.',
+      },
+    ],
+  },
+  {
     id: 'shop_order_staff',
     title: 'Shop & Orders (Staff)',
     caption: 'Process orders, dropship, and settlements',

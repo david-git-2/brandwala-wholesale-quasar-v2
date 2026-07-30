@@ -11,6 +11,7 @@
           </p>
         </div>
         <div class="col-12 col-sm-auto row items-center q-gutter-sm">
+          <LearnMoreHelpBtn guide-id="shop_categories" tab="workflows" />
           <q-btn
             color="primary"
             unelevated
@@ -297,6 +298,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { useQuasar } from 'quasar';
+import LearnMoreHelpBtn from 'src/modules/help/components/LearnMoreHelpBtn.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import type { ShopCategory } from '../types';
 import { useShopCategoryListQuery } from '../composables/useShopCategoryQuery';

@@ -88,22 +88,34 @@
           hint="Displayed on customer shop cards & storefront header"
         />
 
-        <q-select
-          v-model="form.category_ids"
-          :options="categoryOptions"
-          option-value="id"
-          option-label="name"
-          emit-value
-          map-options
-          multiple
-          use-chips
-          outlined
-          dense
-          label="Shop Categories"
-          class="q-mb-md"
-          :loading="loadingCategories"
-          hint="Categories featured for this shop on customer homepage"
-        />
+        <div>
+          <q-select
+            v-model="form.category_ids"
+            :options="categoryOptions"
+            option-value="id"
+            option-label="name"
+            emit-value
+            map-options
+            multiple
+            use-chips
+            outlined
+            dense
+            label="Shop Categories"
+            :loading="loadingCategories"
+            hint="Categories featured for this shop on customer homepage"
+          />
+          <div class="q-mt-xs q-mb-md text-right">
+            <router-link
+              :to="{ name: 'app-shop-categories-page', params: { tenantSlug: authStore.selectedTenant?.slug ?? '' } }"
+              class="text-primary text-weight-medium text-caption"
+              style="text-decoration: none"
+              target="_blank"
+            >
+              <q-icon name="ph ph-plus-circle" size="14px" class="q-mr-xs" />
+              Manage or add categories
+            </router-link>
+          </div>
+        </div>
 
         <!-- Shop type (create-only) -->
         <q-select
@@ -726,6 +738,8 @@ import { productService } from 'src/modules/products/services/productService';
 import type { Vendor } from 'src/modules/vendor/types';
 import { useShopCategoryListQuery } from '../composables/useShopCategoryQuery';
 
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+
 // ---- types ---------------------------------------------------------
 
 type ShopForm = {
@@ -781,6 +795,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const authStore = useAuthStore();
 const { presetName } = useShopLocale();
 
 const localModelValue = computed({
