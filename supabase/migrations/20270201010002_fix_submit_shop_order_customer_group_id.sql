@@ -1,4 +1,4 @@
--- Fix submit_shop_order_from_cart column names for shop_carts and required columns on shop_orders
+-- Fix missing customer_group_id and required metadata columns in submit_shop_order_from_cart RPC
 CREATE OR REPLACE FUNCTION public.submit_shop_order_from_cart(
   p_cart_id bigint,
   p_recipient_name text,
