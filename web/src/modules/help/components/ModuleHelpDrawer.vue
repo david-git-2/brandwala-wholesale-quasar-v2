@@ -165,7 +165,9 @@
                     </q-item-section>
                   </template>
                   <q-card class="bg-transparent">
-                    <q-card-section class="text-body2 text-grey-8 q-pt-none q-pb-md q-pl-xl" v-html="formatRichText(lt(faq.answer, locale))"></q-card-section>
+                    <q-card-section class="text-body2 text-grey-8 q-pt-none q-pb-md q-pl-xl">
+                      <div v-html="formatRichText(lt(faq.answer, locale))" />
+                    </q-card-section>
                   </q-card>
                 </q-expansion-item>
               </q-list>
