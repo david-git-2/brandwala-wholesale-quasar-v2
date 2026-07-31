@@ -274,8 +274,8 @@ const calculatedFirstOfferMargin = computed(() => {
   if (!form.value) return 0;
   const offer = Number(form.value.staff_offer_amount || 0);
   const cost = Number(calculatedLandedCostSell.value);
-  if (offer <= 0) return 0;
-  return ((offer - cost) / offer) * 100;
+  if (cost <= 0) return 0;
+  return ((offer - cost) / cost) * 100;
 });
 
 const marginColorClass = computed(() => {
@@ -298,10 +298,12 @@ function recalculateOffer() {
   if (pBasis === 'purchase') {
     const purchaseCostSell = purchasePrice * fx;
     const cargoCostSell = cargoCostBuy * fx;
-    form.value.staff_offer_amount = Math.ceil(purchaseCostSell * (1 + markup) + cargoCostSell);
+    const rawPrice = purchaseCostSell * (1 + markup) + cargoCostSell;
+    form.value.staff_offer_amount = rawPrice > 0 ? Math.ceil(rawPrice / 5) * 5 : 0;
   } else {
     const landedCostSell = (purchasePrice + cargoCostBuy) * fx;
-    form.value.staff_offer_amount = Math.ceil(landedCostSell * (1 + markup));
+    const rawPrice = landedCostSell * (1 + markup);
+    form.value.staff_offer_amount = rawPrice > 0 ? Math.ceil(rawPrice / 5) * 5 : 0;
   }
 }
 

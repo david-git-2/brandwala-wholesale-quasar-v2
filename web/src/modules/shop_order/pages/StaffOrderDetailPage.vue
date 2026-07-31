@@ -573,11 +573,13 @@ const recalculateFirstOffers = (rates: {
     if (profitBasis === 'purchase') {
       const purchaseSell = purchasePrice * fx;
       const markup = (profitRate || 0) / 100;
-      item.staff_offer_amount = Math.ceil(purchaseSell * (1 + markup) + cargoCostBuy * fx);
+      const rawPrice = purchaseSell * (1 + markup) + cargoCostBuy * fx;
+      item.staff_offer_amount = rawPrice > 0 ? Math.ceil(rawPrice / 5) * 5 : 0;
     } else {
       const landedCostSell = landedCostBuy * fx;
       const markup = (profitRate || 0) / 100;
-      item.staff_offer_amount = Math.ceil(landedCostSell * (1 + markup));
+      const rawPrice = landedCostSell * (1 + markup);
+      item.staff_offer_amount = rawPrice > 0 ? Math.ceil(rawPrice / 5) * 5 : 0;
     }
   });
 };
@@ -612,6 +614,7 @@ const handleSaveStaffCatalogPricing = () => {
   const itemsPayload = orderItems.value.map((item) => ({
     id: item.id,
     staff_offer_amount: Number(item.staff_offer_amount || 0),
+    is_first_offer_manual: Boolean(item.is_first_offer_manual),
     staff_offer_currency_id:
       item.staff_offer_currency_id ||
       item.unit_sell_price_currency_id ||

@@ -172,6 +172,7 @@ const staffPriceShopOrder = async (
     id: number;
     staff_offer_amount: number;
     staff_offer_currency_id: number;
+    is_first_offer_manual?: boolean | null;
     weight_kg?: number | null;
     cbm?: number | null;
     cost_price_amount?: number | null;
@@ -187,6 +188,16 @@ const staffPriceShopOrder = async (
     p_profit_basis: profitBasis ?? null,
   });
   if (error) throw error;
+
+  // Persist is_first_offer_manual status for each item
+  for (const item of items) {
+    if (item.is_first_offer_manual !== undefined && item.is_first_offer_manual !== null) {
+      await supabase
+        .from('shop_order_items')
+        .update({ is_first_offer_manual: item.is_first_offer_manual })
+        .eq('id', item.id);
+    }
+  }
 
   // Sync updated price/unit (reference_cost_amount), product_weight, and package_weight back to products table
   const { data: orderItemRows } = await supabase

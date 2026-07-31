@@ -231,7 +231,7 @@
                 </q-icon>
 
                 <span class="font-mono text-weight-bold text-deep-purple-9">
-                  {{ formatAmount(slotProps.row.staff_offer_amount, sellCurrency) }}
+                  {{ formatAmount(getFirstOfferUnitAmount(slotProps.row), sellCurrency) }}
                 </span>
 
                 <q-btn
@@ -251,7 +251,7 @@
 
               <q-popup-edit
                 v-slot="scope"
-                :model-value="slotProps.row.staff_offer_amount"
+                :model-value="getFirstOfferUnitAmount(slotProps.row)"
                 buttons
                 persistent
                 label-set="Save"
@@ -264,7 +264,7 @@
 
             <!-- 22. First Offer Row Total -->
             <q-td v-if="isColVisible('first_offer_row')" key="first_offer_row" :props="slotProps" class="sec-first-offer text-right font-mono text-weight-bold text-deep-purple-8 bg-offer">
-              {{ formatAmount((slotProps.row.staff_offer_amount || 0) * slotProps.row.quantity, sellCurrency) }}
+              {{ formatAmount(getFirstOfferUnitAmount(slotProps.row) * slotProps.row.quantity, sellCurrency) }}
             </q-td>
 
             <!-- 23. First Offer Margin % -->
@@ -516,8 +516,8 @@ const tableColumns = computed<QTableColumn[]>(() => [
   { name: 'landed_cost_row_sell', label: `Row Total Cost (${sellCurrency.value})`, field: (row) => getLandedCostRowSell(row), align: 'right', sortable: true },
 
   // 5. First Offer Section (sec-first-offer)
-  { name: 'first_offer_unit', label: `1st Offer Unit (${sellCurrency.value})`, field: 'staff_offer_amount', align: 'right', sortable: true },
-  { name: 'first_offer_row', label: `Row Total 1st Offer (${sellCurrency.value})`, field: (row) => (row.staff_offer_amount || 0) * row.quantity, align: 'right', sortable: true },
+  { name: 'first_offer_unit', label: `1st Offer Unit (${sellCurrency.value})`, field: (row) => getFirstOfferUnitAmount(row), align: 'right', sortable: true },
+  { name: 'first_offer_row', label: `Row Total 1st Offer (${sellCurrency.value})`, field: (row) => getFirstOfferUnitAmount(row) * row.quantity, align: 'right', sortable: true },
   { name: 'first_offer_margin', label: 'Profit Margin %', field: (row) => getFirstOfferMargin(row), align: 'right', sortable: true },
 
   // 6. Counter Offer Section (sec-counter-offer)
@@ -696,25 +696,36 @@ function getLandedCostRowSell(item: ShopOrderItem): number {
   return getLandedCostUnitSell(item) * item.quantity;
 }
 
+function getFirstOfferUnitAmount(item: ShopOrderItem): number {
+  if (item.is_first_offer_manual) {
+    return Number(item.staff_offer_amount || 0);
+  }
+  const calc = calculateItemOffer(item);
+  if (calc > 0) {
+    item.staff_offer_amount = calc;
+  }
+  return Number(item.staff_offer_amount || 0);
+}
+
 function getFirstOfferMargin(item: ShopOrderItem): number {
-  const offer = Number(item.staff_offer_amount || 0);
+  const offer = getFirstOfferUnitAmount(item);
   const cost = getLandedCostUnitSell(item);
-  if (offer <= 0) return 0;
-  return ((offer - cost) / offer) * 100;
+  if (cost <= 0) return 0;
+  return ((offer - cost) / cost) * 100;
 }
 
 function getCounterOfferMargin(item: ShopOrderItem): number {
   const offer = Number(item.customer_offer_amount || 0);
   const cost = getLandedCostUnitSell(item);
-  if (offer <= 0) return 0;
-  return ((offer - cost) / offer) * 100;
+  if (cost <= 0) return 0;
+  return ((offer - cost) / cost) * 100;
 }
 
 function getFinalOfferMargin(item: ShopOrderItem): number {
   const offer = Number(item.final_price_amount || 0);
   const cost = getLandedCostUnitSell(item);
-  if (offer <= 0) return 0;
-  return ((offer - cost) / offer) * 100;
+  if (cost <= 0) return 0;
+  return ((offer - cost) / cost) * 100;
 }
 
 function getMarginColorClass(margin: number): string {
@@ -729,6 +740,11 @@ function getItemStatusColor(item: ShopOrderItem): string {
   if (st === 'countered') return 'orange';
   if (st === 'priced') return 'primary';
   return 'grey-7';
+}
+
+function roundUpToNearest5(val: number): number {
+  if (val <= 0) return 0;
+  return Math.ceil(val / 5) * 5;
 }
 
 function calculateItemOffer(item: ShopOrderItem): number {
@@ -746,10 +762,10 @@ function calculateItemOffer(item: ShopOrderItem): number {
   if (pBasis === 'purchase') {
     const purchaseCostSell = purchasePrice * fx;
     const cargoCostSell = cargoCostBuy * fx;
-    return Math.ceil(purchaseCostSell * (1 + markup) + cargoCostSell);
+    return roundUpToNearest5(purchaseCostSell * (1 + markup) + cargoCostSell);
   }
   const landedCostSell = (purchasePrice + cargoCostBuy) * fx;
-  return Math.ceil(landedCostSell * (1 + markup));
+  return roundUpToNearest5(landedCostSell * (1 + markup));
 }
 
 function onItemFieldChange(item: ShopOrderItem, field: string, val: any) {
@@ -783,7 +799,7 @@ function onItemCostChange(item: ShopOrderItem, val?: number | string | null) {
   }
   if (isCostingMode.value && !item.is_first_offer_manual) {
     const rawOffer = calculateItemOffer(item);
-    item.staff_offer_amount = Math.ceil(rawOffer);
+    item.staff_offer_amount = rawOffer;
   }
   emitItemUpdate(item, { cost_price_amount: item.cost_price_amount, staff_offer_amount: item.staff_offer_amount });
 }
@@ -793,7 +809,7 @@ function onItemWeightChange(item: ShopOrderItem, val?: number | string | null) {
   item.weight_kg = wKg;
   if (isCostingMode.value && !item.is_first_offer_manual) {
     const rawOffer = calculateItemOffer(item);
-    item.staff_offer_amount = Math.ceil(rawOffer);
+    item.staff_offer_amount = rawOffer;
   }
   emitItemUpdate(item, { weight_kg: wKg });
 }
@@ -805,7 +821,7 @@ function onItemProductWeightChange(item: ShopOrderItem, val?: number | string | 
   item.weight_kg = (prodGm + pkgGm) / 1000;
   if (isCostingMode.value && !item.is_first_offer_manual) {
     const rawOffer = calculateItemOffer(item);
-    item.staff_offer_amount = Math.ceil(rawOffer);
+    item.staff_offer_amount = rawOffer;
   }
   emitItemUpdate(item, { product_weight_gm: prodGm, weight_kg: item.weight_kg });
 }
@@ -817,7 +833,7 @@ function onItemPackageWeightChange(item: ShopOrderItem, val?: number | string | 
   item.weight_kg = (prodGm + pkgGm) / 1000;
   if (isCostingMode.value && !item.is_first_offer_manual) {
     const rawOffer = calculateItemOffer(item);
-    item.staff_offer_amount = Math.ceil(rawOffer);
+    item.staff_offer_amount = rawOffer;
   }
   emitItemUpdate(item, { package_weight_gm: pkgGm, weight_kg: item.weight_kg });
 }
@@ -825,7 +841,7 @@ function onItemPackageWeightChange(item: ShopOrderItem, val?: number | string | 
 function recalculateAllOffers() {
   props.items.forEach((item) => {
     const rawOffer = calculateItemOffer(item);
-    item.staff_offer_amount = Math.ceil(rawOffer);
+    item.staff_offer_amount = rawOffer;
   });
   $q.notify({
     type: 'positive',
@@ -848,20 +864,20 @@ const grandTotalLandedSell = computed(() => props.items.reduce((sum, i) => sum +
 
 const grandTotalFirstOffer = computed(() => props.items.reduce((sum, i) => sum + ((i.staff_offer_amount || 0) * i.quantity), 0));
 const overallFirstOfferMargin = computed(() => {
-  if (grandTotalFirstOffer.value <= 0) return 0;
-  return ((grandTotalFirstOffer.value - grandTotalLandedSell.value) / grandTotalFirstOffer.value) * 100;
+  if (grandTotalLandedSell.value <= 0) return 0;
+  return ((grandTotalFirstOffer.value - grandTotalLandedSell.value) / grandTotalLandedSell.value) * 100;
 });
 
 const grandTotalCounterOffer = computed(() => props.items.reduce((sum, i) => sum + ((i.customer_offer_amount || 0) * i.quantity), 0));
 const overallCounterOfferMargin = computed(() => {
-  if (grandTotalCounterOffer.value <= 0) return 0;
-  return ((grandTotalCounterOffer.value - grandTotalLandedSell.value) / grandTotalCounterOffer.value) * 100;
+  if (grandTotalLandedSell.value <= 0) return 0;
+  return ((grandTotalCounterOffer.value - grandTotalLandedSell.value) / grandTotalLandedSell.value) * 100;
 });
 
 const grandTotalFinalOffer = computed(() => props.items.reduce((sum, i) => sum + ((i.final_price_amount || 0) * i.quantity), 0));
 const overallFinalOfferMargin = computed(() => {
-  if (grandTotalFinalOffer.value <= 0) return 0;
-  return ((grandTotalFinalOffer.value - grandTotalLandedSell.value) / grandTotalFinalOffer.value) * 100;
+  if (grandTotalLandedSell.value <= 0) return 0;
+  return ((grandTotalFinalOffer.value - grandTotalLandedSell.value) / grandTotalLandedSell.value) * 100;
 });
 
 function formatAmount(val: number | null | undefined, symbol?: string): string {
