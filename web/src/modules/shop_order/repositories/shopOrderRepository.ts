@@ -513,6 +513,8 @@ const updateCatalogOrderRates = async (
     conversion_rate?: number | null;
     cargo_rate?: number | null;
     profit_rate?: number | null;
+    first_offer_rate?: number | null;
+    final_offer_rate?: number | null;
     profit_basis?: 'purchase' | 'total_cost' | null;
   },
 ): Promise<void> => {
@@ -574,7 +576,9 @@ const updateCatalogOrderItem = async (
     weight_kg?: number | null;
     cost_price_amount?: number | null;
     staff_offer_amount?: number | null;
+    is_first_offer_manual?: boolean | null;
     final_price_amount?: number | null;
+    is_final_offer_manual?: boolean | null;
     ordered_quantity?: number | null;
     delivered_quantity?: number | null;
   },
@@ -583,7 +587,9 @@ const updateCatalogOrderItem = async (
   if (payload.weight_kg !== undefined) itemUpdates.weight_kg = payload.weight_kg;
   if (payload.cost_price_amount !== undefined) itemUpdates.cost_price_amount = payload.cost_price_amount;
   if (payload.staff_offer_amount !== undefined) itemUpdates.staff_offer_amount = payload.staff_offer_amount;
+  if (payload.is_first_offer_manual !== undefined) itemUpdates.is_first_offer_manual = payload.is_first_offer_manual;
   if (payload.final_price_amount !== undefined) itemUpdates.final_price_amount = payload.final_price_amount;
+  if (payload.is_final_offer_manual !== undefined) itemUpdates.is_final_offer_manual = payload.is_final_offer_manual;
   if (payload.ordered_quantity !== undefined) itemUpdates.ordered_quantity = payload.ordered_quantity;
   if (payload.delivered_quantity !== undefined) itemUpdates.delivered_quantity = payload.delivered_quantity;
 

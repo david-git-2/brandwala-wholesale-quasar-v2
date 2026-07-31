@@ -180,6 +180,8 @@ export interface ShopOrder {
   cargo_rate: number | null;
   conversion_rate: number | null;
   profit_rate: number | null;
+  first_offer_rate?: number | null;
+  final_offer_rate?: number | null;
   profit_basis?: 'purchase' | 'total_cost' | 'sale_price' | string | null;
   package_weight_kg?: number | null;
   recipient_name: string | null;
@@ -241,10 +243,12 @@ export interface ShopOrderItem {
   customer_offer_currency_id: number | null;
   staff_offer_amount: number | null;
   staff_offer_currency_id: number | null;
+  is_first_offer_manual?: boolean | null;
   final_price_amount: number | null;
   final_price_currency_id: number | null;
   final_offer_amount?: number | null;
   final_offer_currency_id?: number | null;
+  is_final_offer_manual?: boolean | null;
   confirmed_quantity?: number | null;
   weight_kg?: number | null;
   cost_price_amount?: number | null;

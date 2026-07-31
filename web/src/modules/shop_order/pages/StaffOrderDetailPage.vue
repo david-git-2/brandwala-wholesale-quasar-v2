@@ -444,7 +444,21 @@ watch(
         });
         return;
       }
-      orderItems.value = JSON.parse(JSON.stringify(newData.items || []));
+      const fetchedItems = newData.items || [];
+      const currentItemsMap = new Map(orderItems.value.map((i) => [i.id, i]));
+
+      orderItems.value = fetchedItems.map((item: any) => {
+        const local = currentItemsMap.get(item.id);
+        if (local && local.is_first_offer_manual) {
+          return {
+            ...item,
+            staff_offer_amount: local.staff_offer_amount,
+            is_first_offer_manual: true,
+          };
+        }
+        return { ...item };
+      });
+
       shopSellCurrencyId.value = newData.order?.shop_sell_currency_id ?? null;
       shopBuyCurrencyId.value = newData.order?.shop_buy_currency_id ?? null;
     }
@@ -536,14 +550,19 @@ const recalculateFirstOffers = (rates: {
   conversion_rate: number | null;
   cargo_rate: number | null;
   profit_rate: number | null;
+  first_offer_rate?: number | null;
+  final_offer_rate?: number | null;
   profit_basis: 'purchase' | 'total_cost';
 }) => {
   const fx = rates.conversion_rate ?? currentOrder.value?.conversion_rate ?? 140;
   const cargoRate = rates.cargo_rate ?? currentOrder.value?.cargo_rate ?? 0;
-  const profitRate = rates.profit_rate ?? currentOrder.value?.profit_rate ?? 25;
+  const profitRate = rates.first_offer_rate ?? rates.profit_rate ?? currentOrder.value?.first_offer_rate ?? currentOrder.value?.profit_rate ?? 25;
   const profitBasis = rates.profit_basis ?? currentOrder.value?.profit_basis ?? 'total_cost';
 
   orderItems.value.forEach((item) => {
+    if (item.is_first_offer_manual) {
+      return;
+    }
     const purchasePrice = Number(item.cost_price_amount || 0);
     const prodGm = Number(item.product_weight_gm || 0);
     const pkgGm = Number(item.package_weight_gm || 0);
@@ -567,6 +586,8 @@ const handleChangeRates = (payload: {
   conversion_rate: number | null;
   cargo_rate: number | null;
   profit_rate: number | null;
+  first_offer_rate: number | null;
+  final_offer_rate: number | null;
   profit_basis: 'purchase' | 'total_cost';
 }) => {
   recalculateFirstOffers(payload);
@@ -576,6 +597,8 @@ const handleSaveRates = (payload: {
   conversion_rate: number | null;
   cargo_rate: number | null;
   profit_rate: number | null;
+  first_offer_rate: number | null;
+  final_offer_rate: number | null;
   profit_basis: 'purchase' | 'total_cost';
 }) => {
   if (!orderId.value) return;

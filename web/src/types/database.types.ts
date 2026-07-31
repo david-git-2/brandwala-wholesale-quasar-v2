@@ -5241,6 +5241,8 @@ export type Database = {
           global_stock_id: number | null
           id: number
           image_url: string | null
+          is_final_offer_manual: boolean
+          is_first_offer_manual: boolean
           name: string
           negotiation_status: string | null
           order_id: number
@@ -5281,6 +5283,8 @@ export type Database = {
           global_stock_id?: number | null
           id?: never
           image_url?: string | null
+          is_final_offer_manual?: boolean
+          is_first_offer_manual?: boolean
           name: string
           negotiation_status?: string | null
           order_id: number
@@ -5321,6 +5325,8 @@ export type Database = {
           global_stock_id?: number | null
           id?: never
           image_url?: string | null
+          is_final_offer_manual?: boolean
+          is_first_offer_manual?: boolean
           name?: string
           negotiation_status?: string | null
           order_id?: number
@@ -5470,6 +5476,8 @@ export type Database = {
           delivery_zone: string | null
           discount_amount: number
           driver_notes: string | null
+          final_offer_rate: number | null
+          first_offer_rate: number | null
           fulfilled_at: string | null
           global_invoice_id: number | null
           id: number
@@ -5556,6 +5564,8 @@ export type Database = {
           delivery_zone?: string | null
           discount_amount?: number
           driver_notes?: string | null
+          final_offer_rate?: number | null
+          first_offer_rate?: number | null
           fulfilled_at?: string | null
           global_invoice_id?: number | null
           id?: never
@@ -5642,6 +5652,8 @@ export type Database = {
           delivery_zone?: string | null
           discount_amount?: number
           driver_notes?: string | null
+          final_offer_rate?: number | null
+          first_offer_rate?: number | null
           fulfilled_at?: string | null
           global_invoice_id?: number | null
           id?: never

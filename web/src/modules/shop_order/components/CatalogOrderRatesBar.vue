@@ -11,7 +11,7 @@
     </div>
 
     <div class="row items-end q-col-gutter-sm">
-      <div class="col-12 col-sm-6 col-md-3">
+      <div class="col-12 col-sm-6 col-md-2">
         <q-input
           v-model.number="conversion_rate"
           dense
@@ -24,7 +24,7 @@
         />
       </div>
 
-      <div class="col-12 col-sm-6 col-md-3">
+      <div class="col-12 col-sm-6 col-md-2">
         <q-input
           v-model.number="cargo_rate"
           dense
@@ -37,15 +37,29 @@
         />
       </div>
 
+
       <div class="col-12 col-sm-6 col-md-2">
         <q-input
-          v-model.number="profit_rate"
+          v-model.number="first_offer_rate"
           dense
           outlined
           type="number"
           step="0.01"
           class="bg-white soft-input"
-          label="First Offer Profit Rate (%)"
+          label="1st Offer Profit Rate (%)"
+          @update:model-value="onRateChange"
+        />
+      </div>
+
+      <div class="col-12 col-sm-6 col-md-2">
+        <q-input
+          v-model.number="final_offer_rate"
+          dense
+          outlined
+          type="number"
+          step="0.01"
+          class="bg-white soft-input"
+          label="Final Offer Profit Rate (%)"
           @update:model-value="onRateChange"
         />
       </div>
@@ -96,6 +110,8 @@ const emit = defineEmits<{
       conversion_rate: number | null;
       cargo_rate: number | null;
       profit_rate: number | null;
+      first_offer_rate: number | null;
+      final_offer_rate: number | null;
       profit_basis: 'purchase' | 'total_cost';
     },
   ): void;
@@ -105,6 +121,8 @@ const emit = defineEmits<{
       conversion_rate: number | null;
       cargo_rate: number | null;
       profit_rate: number | null;
+      first_offer_rate: number | null;
+      final_offer_rate: number | null;
       profit_basis: 'purchase' | 'total_cost';
     },
   ): void;
@@ -113,6 +131,8 @@ const emit = defineEmits<{
 const conversion_rate = ref<number | null>(null);
 const cargo_rate = ref<number | null>(null);
 const profit_rate = ref<number | null>(null);
+const first_offer_rate = ref<number | null>(null);
+const final_offer_rate = ref<number | null>(null);
 const profit_basis = ref<'purchase' | 'total_cost'>('total_cost');
 
 const basisOptions = [
@@ -127,6 +147,8 @@ watch(
       conversion_rate.value = newOrder.conversion_rate ?? 140;
       cargo_rate.value = newOrder.cargo_rate ?? 0;
       profit_rate.value = newOrder.profit_rate ?? 25;
+      first_offer_rate.value = newOrder.first_offer_rate ?? null;
+      final_offer_rate.value = newOrder.final_offer_rate ?? null;
       profit_basis.value = (newOrder.profit_basis as 'purchase' | 'total_cost') || 'total_cost';
     }
   },
@@ -145,6 +167,8 @@ function onRateChange() {
     conversion_rate: conversion_rate.value,
     cargo_rate: cargo_rate.value,
     profit_rate: profit_rate.value,
+    first_offer_rate: first_offer_rate.value,
+    final_offer_rate: final_offer_rate.value,
     profit_basis: profit_basis.value,
   });
 }
@@ -154,6 +178,8 @@ function onSave() {
     conversion_rate: conversion_rate.value,
     cargo_rate: cargo_rate.value,
     profit_rate: profit_rate.value,
+    first_offer_rate: first_offer_rate.value,
+    final_offer_rate: final_offer_rate.value,
     profit_basis: profit_basis.value,
   });
 }

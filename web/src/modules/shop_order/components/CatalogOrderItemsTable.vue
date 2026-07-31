@@ -219,9 +219,36 @@
 
             <!-- 21. First Offer Unit (Selling Currency) (On Tap Popup Edit) -->
             <q-td v-if="isColVisible('first_offer_unit')" key="first_offer_unit" :props="slotProps" class="sec-first-offer text-right bg-offer editable-cell">
-              <span class="font-mono text-weight-bold text-deep-purple-9">
-                {{ formatAmount(slotProps.row.staff_offer_amount, sellCurrency) }}
-              </span>
+              <div class="row items-center justify-end no-wrap q-gutter-x-xs">
+                <q-icon
+                  v-if="slotProps.row.is_first_offer_manual"
+                  name="ph ph-lock-key"
+                  color="amber-8"
+                  size="16px"
+                  class="q-mr-xs"
+                >
+                  <q-tooltip>First offer price manually locked — won't auto-recalculate</q-tooltip>
+                </q-icon>
+
+                <span class="font-mono text-weight-bold text-deep-purple-9">
+                  {{ formatAmount(slotProps.row.staff_offer_amount, sellCurrency) }}
+                </span>
+
+                <q-btn
+                  v-if="slotProps.row.is_first_offer_manual"
+                  flat
+                  round
+                  dense
+                  size="xs"
+                  icon="ph ph-arrows-clockwise"
+                  color="grey-7"
+                  class="q-ml-xs"
+                  @click.stop="onUnlockFirstOffer(slotProps.row)"
+                >
+                  <q-tooltip>Unlock & reset to auto price</q-tooltip>
+                </q-btn>
+              </div>
+
               <q-popup-edit
                 v-slot="scope"
                 :model-value="slotProps.row.staff_offer_amount"
@@ -229,7 +256,7 @@
                 persistent
                 label-set="Save"
                 label-cancel="Cancel"
-                @save="(val) => onItemFieldChange(slotProps.row, 'staff_offer_amount', Number(val) || 0)"
+                @save="(val) => onFirstOfferPriceSave(slotProps.row, val)"
               >
                 <q-input v-model.number="scope.value" type="number" step="1" dense outlined autofocus min="0" label="1st Offer" />
               </q-popup-edit>
@@ -394,7 +421,9 @@ const emit = defineEmits<{
         weight_kg?: number | null | undefined;
         cost_price_amount?: number | null | undefined;
         staff_offer_amount?: number | null | undefined;
+        is_first_offer_manual?: boolean | null | undefined;
         final_price_amount?: number | null | undefined;
+        is_final_offer_manual?: boolean | null | undefined;
         ordered_quantity?: number | null | undefined;
         delivered_quantity?: number | null | undefined;
       };
@@ -625,7 +654,7 @@ const isOrderedMode = computed(() => ['ordered'].includes(status.value));
 
 const FX = computed(() => props.order?.conversion_rate ?? 140);
 const cargoRate = computed(() => props.order?.cargo_rate ?? 0);
-const profitRate = computed(() => props.order?.profit_rate ?? 25);
+const profitRate = computed(() => props.order?.first_offer_rate ?? props.order?.profit_rate ?? 25);
 const profitBasis = computed(() => props.order?.profit_basis || 'total_cost');
 
 // Calculation Helpers
@@ -728,11 +757,31 @@ function onItemFieldChange(item: ShopOrderItem, field: string, val: any) {
   emitItemUpdate(item, { [field]: val });
 }
 
+function onFirstOfferPriceSave(item: ShopOrderItem, val: any) {
+  const newPrice = Number(val) || 0;
+  item.staff_offer_amount = newPrice;
+  item.is_first_offer_manual = true;
+  emitItemUpdate(item, {
+    staff_offer_amount: newPrice,
+    is_first_offer_manual: true,
+  });
+}
+
+function onUnlockFirstOffer(item: ShopOrderItem) {
+  item.is_first_offer_manual = false;
+  const autoOffer = calculateItemOffer(item);
+  item.staff_offer_amount = autoOffer;
+  emitItemUpdate(item, {
+    staff_offer_amount: autoOffer,
+    is_first_offer_manual: false,
+  });
+}
+
 function onItemCostChange(item: ShopOrderItem, val?: number | string | null) {
   if (val !== undefined) {
     item.cost_price_amount = Number(val) || 0;
   }
-  if (isCostingMode.value) {
+  if (isCostingMode.value && !item.is_first_offer_manual) {
     const rawOffer = calculateItemOffer(item);
     item.staff_offer_amount = Math.ceil(rawOffer);
   }
@@ -742,7 +791,7 @@ function onItemCostChange(item: ShopOrderItem, val?: number | string | null) {
 function onItemWeightChange(item: ShopOrderItem, val?: number | string | null) {
   const wKg = Number(val) || 0;
   item.weight_kg = wKg;
-  if (isCostingMode.value) {
+  if (isCostingMode.value && !item.is_first_offer_manual) {
     const rawOffer = calculateItemOffer(item);
     item.staff_offer_amount = Math.ceil(rawOffer);
   }
@@ -754,7 +803,7 @@ function onItemProductWeightChange(item: ShopOrderItem, val?: number | string | 
   item.product_weight_gm = prodGm;
   const pkgGm = getPackageWeightGm(item);
   item.weight_kg = (prodGm + pkgGm) / 1000;
-  if (isCostingMode.value) {
+  if (isCostingMode.value && !item.is_first_offer_manual) {
     const rawOffer = calculateItemOffer(item);
     item.staff_offer_amount = Math.ceil(rawOffer);
   }
@@ -766,7 +815,7 @@ function onItemPackageWeightChange(item: ShopOrderItem, val?: number | string | 
   item.package_weight_gm = pkgGm;
   const prodGm = getProductWeightGm(item);
   item.weight_kg = (prodGm + pkgGm) / 1000;
-  if (isCostingMode.value) {
+  if (isCostingMode.value && !item.is_first_offer_manual) {
     const rawOffer = calculateItemOffer(item);
     item.staff_offer_amount = Math.ceil(rawOffer);
   }

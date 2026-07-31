@@ -16,6 +16,8 @@ export function useSaveCatalogRatesMutation() {
         conversion_rate?: number | null;
         cargo_rate?: number | null;
         profit_rate?: number | null;
+        first_offer_rate?: number | null;
+        final_offer_rate?: number | null;
         profit_basis?: 'purchase' | 'total_cost' | null;
       };
     }) => {
@@ -185,7 +187,9 @@ export function useUpdateCatalogOrderItemMutation() {
         weight_kg?: number | null;
         cost_price_amount?: number | null;
         staff_offer_amount?: number | null;
+        is_first_offer_manual?: boolean | null;
         final_price_amount?: number | null;
+        is_final_offer_manual?: boolean | null;
         ordered_quantity?: number | null;
         delivered_quantity?: number | null;
       };
@@ -193,7 +197,7 @@ export function useUpdateCatalogOrderItemMutation() {
       await shopOrderRepository.updateCatalogOrderItem(orderId, itemId, productId, payload);
     },
     onSuccess: () => {
-      showSuccessNotification('Item updated successfully');
+      // Intentionally not invalidating query list on single cell edits to preserve local UI state
     },
     onError: (err: any) => {
       handleApiFailure(err, 'Failed to update item');
