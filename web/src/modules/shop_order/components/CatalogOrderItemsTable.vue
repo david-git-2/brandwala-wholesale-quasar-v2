@@ -92,7 +92,7 @@
                 persistent
                 label-set="Save"
                 label-cancel="Cancel"
-                @save="(val) => { slotProps.row.ordered_quantity = Number(val) || 0; }"
+                @save="(val) => onItemFieldChange(slotProps.row, 'ordered_quantity', Number(val) || 0)"
               >
                 <q-input v-model.number="scope.value" type="number" dense outlined autofocus min="0" />
               </q-popup-edit>
@@ -110,7 +110,7 @@
                 persistent
                 label-set="Save"
                 label-cancel="Cancel"
-                @save="(val) => { slotProps.row.delivered_quantity = Number(val) || 0; }"
+                @save="(val) => onItemFieldChange(slotProps.row, 'delivered_quantity', Number(val) || 0)"
               >
                 <q-input v-model.number="scope.value" type="number" dense outlined autofocus min="0" />
               </q-popup-edit>
@@ -128,7 +128,7 @@
                 persistent
                 label-set="Save"
                 label-cancel="Cancel"
-                @save="(val) => { slotProps.row.cost_price_amount = Number(val) || 0; onItemCostChange(slotProps.row); }"
+                @save="(val) => onItemCostChange(slotProps.row, Number(val) || 0)"
               >
                 <q-input v-model.number="scope.value" type="number" step="0.01" dense outlined autofocus min="0" />
               </q-popup-edit>
@@ -139,14 +139,36 @@
               {{ formatAmount((slotProps.row.cost_price_amount || 0) * slotProps.row.quantity, buyCurrency) }}
             </q-td>
 
-            <!-- 12. Product Weight (gm) -->
-            <q-td v-if="isColVisible('product_weight_gm')" key="product_weight_gm" :props="slotProps" class="sec-purchase text-right font-mono">
-              {{ Math.round(getProductWeightGm(slotProps.row)) }} g
+            <!-- 12. Product Weight (gm) (On Tap Popup Edit) -->
+            <q-td v-if="isColVisible('product_weight_gm')" key="product_weight_gm" :props="slotProps" class="sec-purchase text-right font-mono editable-cell">
+              <span>{{ Math.round(getProductWeightGm(slotProps.row)) }} g</span>
+              <q-popup-edit
+                v-slot="scope"
+                :model-value="slotProps.row.product_weight_gm ?? getProductWeightGm(slotProps.row)"
+                buttons
+                persistent
+                label-set="Save"
+                label-cancel="Cancel"
+                @save="(val) => onItemProductWeightChange(slotProps.row, val)"
+              >
+                <q-input v-model.number="scope.value" type="number" step="1" dense outlined autofocus min="0" label="Product Weight (Grams)" />
+              </q-popup-edit>
             </q-td>
 
-            <!-- 13. Package Weight (gm) -->
-            <q-td v-if="isColVisible('package_weight_gm')" key="package_weight_gm" :props="slotProps" class="sec-purchase text-right font-mono">
-              {{ Math.round(getPackageWeightGm(slotProps.row)) }} g
+            <!-- 13. Package Weight (gm) (On Tap Popup Edit) -->
+            <q-td v-if="isColVisible('package_weight_gm')" key="package_weight_gm" :props="slotProps" class="sec-purchase text-right font-mono editable-cell">
+              <span>{{ Math.round(getPackageWeightGm(slotProps.row)) }} g</span>
+              <q-popup-edit
+                v-slot="scope"
+                :model-value="slotProps.row.package_weight_gm ?? getPackageWeightGm(slotProps.row)"
+                buttons
+                persistent
+                label-set="Save"
+                label-cancel="Cancel"
+                @save="(val) => onItemPackageWeightChange(slotProps.row, val)"
+              >
+                <q-input v-model.number="scope.value" type="number" step="1" dense outlined autofocus min="0" label="Package Weight (Grams)" />
+              </q-popup-edit>
             </q-td>
 
             <!-- 14. Total Weight (gm) (On Tap Popup Edit) -->
@@ -159,9 +181,9 @@
                 persistent
                 label-set="Save"
                 label-cancel="Cancel"
-                @save="(val) => { onItemWeightChange(slotProps.row, val); }"
+                @save="(val) => onItemWeightChange(slotProps.row, val)"
               >
-                <q-input v-model.number="scope.value" type="number" step="0.01" dense outlined autofocus min="0" label="Weight (KG)" />
+                <q-input v-model.number="scope.value" type="number" step="0.01" dense outlined autofocus min="0" label="Total Weight (KG)" />
               </q-popup-edit>
             </q-td>
 
@@ -207,7 +229,7 @@
                 persistent
                 label-set="Save"
                 label-cancel="Cancel"
-                @save="(val) => { slotProps.row.staff_offer_amount = Number(val) || 0; }"
+                @save="(val) => onItemFieldChange(slotProps.row, 'staff_offer_amount', Number(val) || 0)"
               >
                 <q-input v-model.number="scope.value" type="number" step="1" dense outlined autofocus min="0" label="1st Offer" />
               </q-popup-edit>
@@ -250,7 +272,7 @@
                 persistent
                 label-set="Save"
                 label-cancel="Cancel"
-                @save="(val) => { slotProps.row.final_price_amount = Number(val) || 0; }"
+                @save="(val) => onItemFieldChange(slotProps.row, 'final_price_amount', Number(val) || 0)"
               >
                 <q-input v-model.number="scope.value" type="number" step="1" dense outlined autofocus min="0" label="Final Offer" />
               </q-popup-edit>
@@ -361,6 +383,23 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'open-column-selector'): void;
   (e: 'update:visible-columns', columns: string[]): void;
+  (
+    e: 'update-item',
+    payload: {
+      itemId: number;
+      productId: number | null;
+      payload: {
+        product_weight_gm?: number | null | undefined;
+        package_weight_gm?: number | null | undefined;
+        weight_kg?: number | null | undefined;
+        cost_price_amount?: number | null | undefined;
+        staff_offer_amount?: number | null | undefined;
+        final_price_amount?: number | null | undefined;
+        ordered_quantity?: number | null | undefined;
+        delivered_quantity?: number | null | undefined;
+      };
+    },
+  ): void;
 }>();
 
 const $q = useQuasar();
@@ -373,21 +412,37 @@ function openEditDialog(item: ShopOrderItem) {
   showEditDialog.value = true;
 }
 
+function emitItemUpdate(item: ShopOrderItem, payload: Record<string, any>) {
+  emit('update-item', {
+    itemId: item.id,
+    productId: item.product_id ?? null,
+    payload,
+  });
+}
+
 function handleSaveEditedItem(updated: ShopOrderItem) {
   const target = props.items.find((i) => i.id === updated.id);
   if (target) {
     target.weight_kg = updated.weight_kg ?? null;
+    target.product_weight_gm = updated.product_weight_gm ?? null;
+    target.package_weight_gm = updated.package_weight_gm ?? null;
     target.cost_price_amount = updated.cost_price_amount ?? null;
     target.staff_offer_amount = updated.staff_offer_amount ?? null;
     target.final_price_amount = updated.final_price_amount ?? null;
     target.ordered_quantity = updated.ordered_quantity ?? 0;
     target.delivered_quantity = updated.delivered_quantity ?? 0;
+
+    emitItemUpdate(target, {
+      product_weight_gm: target.product_weight_gm,
+      package_weight_gm: target.package_weight_gm,
+      weight_kg: target.weight_kg,
+      cost_price_amount: target.cost_price_amount,
+      staff_offer_amount: target.staff_offer_amount,
+      final_price_amount: target.final_price_amount,
+      ordered_quantity: target.ordered_quantity,
+      delivered_quantity: target.delivered_quantity,
+    });
   }
-  $q.notify({
-    type: 'positive',
-    message: 'Item updated successfully',
-    icon: 'ph ph-check',
-  });
 }
 
 const buyCurrency = computed(() => props.buyCurrencySymbol || '£');
@@ -658,19 +713,54 @@ function calculateItemOffer(item: ShopOrderItem): number {
   return landedCostSell * (1 + markup);
 }
 
-function onItemCostChange(item: ShopOrderItem) {
+function onItemFieldChange(item: ShopOrderItem, field: string, val: any) {
+  (item as any)[field] = val;
+  emitItemUpdate(item, { [field]: val });
+}
+
+function onItemCostChange(item: ShopOrderItem, val?: number | string | null) {
+  if (val !== undefined) {
+    item.cost_price_amount = Number(val) || 0;
+  }
   if (isCostingMode.value) {
     const rawOffer = calculateItemOffer(item);
     item.staff_offer_amount = Math.ceil(rawOffer);
   }
+  emitItemUpdate(item, { cost_price_amount: item.cost_price_amount, staff_offer_amount: item.staff_offer_amount });
 }
 
 function onItemWeightChange(item: ShopOrderItem, val?: number | string | null) {
-  item.weight_kg = Number(val) || 0;
+  const wKg = Number(val) || 0;
+  item.weight_kg = wKg;
   if (isCostingMode.value) {
     const rawOffer = calculateItemOffer(item);
     item.staff_offer_amount = Math.ceil(rawOffer);
   }
+  emitItemUpdate(item, { weight_kg: wKg });
+}
+
+function onItemProductWeightChange(item: ShopOrderItem, val?: number | string | null) {
+  const prodGm = Number(val) || 0;
+  item.product_weight_gm = prodGm;
+  const pkgGm = getPackageWeightGm(item);
+  item.weight_kg = (prodGm + pkgGm) / 1000;
+  if (isCostingMode.value) {
+    const rawOffer = calculateItemOffer(item);
+    item.staff_offer_amount = Math.ceil(rawOffer);
+  }
+  emitItemUpdate(item, { product_weight_gm: prodGm, weight_kg: item.weight_kg });
+}
+
+function onItemPackageWeightChange(item: ShopOrderItem, val?: number | string | null) {
+  const pkgGm = Number(val) || 0;
+  item.package_weight_gm = pkgGm;
+  const prodGm = getProductWeightGm(item);
+  item.weight_kg = (prodGm + pkgGm) / 1000;
+  if (isCostingMode.value) {
+    const rawOffer = calculateItemOffer(item);
+    item.staff_offer_amount = Math.ceil(rawOffer);
+  }
+  emitItemUpdate(item, { package_weight_gm: pkgGm, weight_kg: item.weight_kg });
 }
 
 function recalculateAllOffers() {

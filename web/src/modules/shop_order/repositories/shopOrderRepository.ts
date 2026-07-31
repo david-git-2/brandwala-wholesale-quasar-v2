@@ -202,9 +202,6 @@ const staffPriceShopOrder = async (
       if (!productId) continue;
 
       const productUpdates: Record<string, any> = {};
-      if (payloadItem?.cost_price_amount !== undefined && payloadItem.cost_price_amount !== null && payloadItem.cost_price_amount > 0) {
-        productUpdates.reference_cost_amount = payloadItem.cost_price_amount;
-      }
       if (payloadItem?.product_weight_gm !== undefined && payloadItem.product_weight_gm !== null && payloadItem.product_weight_gm > 0) {
         productUpdates.product_weight = payloadItem.product_weight_gm;
       }
@@ -567,6 +564,56 @@ const listCustomerOrderBacklogItems = async (
   return (data as any[] | null) ?? [];
 };
 
+const updateCatalogOrderItem = async (
+  orderId: number,
+  itemId: number,
+  productId: number | null,
+  payload: {
+    product_weight_gm?: number | null;
+    package_weight_gm?: number | null;
+    weight_kg?: number | null;
+    cost_price_amount?: number | null;
+    staff_offer_amount?: number | null;
+    final_price_amount?: number | null;
+    ordered_quantity?: number | null;
+    delivered_quantity?: number | null;
+  },
+): Promise<void> => {
+  const itemUpdates: Record<string, any> = {};
+  if (payload.weight_kg !== undefined) itemUpdates.weight_kg = payload.weight_kg;
+  if (payload.cost_price_amount !== undefined) itemUpdates.cost_price_amount = payload.cost_price_amount;
+  if (payload.staff_offer_amount !== undefined) itemUpdates.staff_offer_amount = payload.staff_offer_amount;
+  if (payload.final_price_amount !== undefined) itemUpdates.final_price_amount = payload.final_price_amount;
+  if (payload.ordered_quantity !== undefined) itemUpdates.ordered_quantity = payload.ordered_quantity;
+  if (payload.delivered_quantity !== undefined) itemUpdates.delivered_quantity = payload.delivered_quantity;
+
+  if (Object.keys(itemUpdates).length > 0) {
+    const { error: itemErr } = await supabase
+      .from('shop_order_items')
+      .update(itemUpdates)
+      .eq('id', itemId);
+    if (itemErr) throw itemErr;
+  }
+
+  if (productId) {
+    const productUpdates: Record<string, any> = {};
+    if (payload.product_weight_gm !== undefined && payload.product_weight_gm !== null && payload.product_weight_gm > 0) {
+      productUpdates.product_weight = payload.product_weight_gm;
+    }
+    if (payload.package_weight_gm !== undefined && payload.package_weight_gm !== null && payload.package_weight_gm > 0) {
+      productUpdates.package_weight = payload.package_weight_gm;
+    }
+
+    if (Object.keys(productUpdates).length > 0) {
+      const { error: prodErr } = await supabase
+        .from('products')
+        .update(productUpdates)
+        .eq('id', productId);
+      if (prodErr) throw prodErr;
+    }
+  }
+};
+
 export const shopOrderRepository = {
   listShops,
   upsertShop,
@@ -599,7 +646,9 @@ export const shopOrderRepository = {
   getShopCurrencies,
   getShopSellCurrencyId,
   updateCatalogOrderRates,
+  updateCatalogOrderItem,
 };
+
 
 
 

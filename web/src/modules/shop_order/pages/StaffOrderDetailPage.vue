@@ -52,7 +52,9 @@
             :visible-columns="catalogVisibleColumns"
             @open-column-selector="openColumnSelector"
             @update:visible-columns="onCatalogVisibleColumnsUpdate"
+            @update-item="handleUpdateCatalogOrderItem"
           />
+
 
           <!-- Catalog Status-Gated Sticky Action Bar -->
           <q-card flat bordered class="q-pa-md bg-grey-1">
@@ -232,6 +234,7 @@ import {
   useStaffStartCatalogProcurementMutation,
   useStaffSetCatalogOrderedQtyMutation,
   useStaffSetCatalogDeliveredQtyMutation,
+  useUpdateCatalogOrderItemMutation,
 } from '../composables/useCatalogOrderMutations';
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
 
@@ -281,6 +284,25 @@ const { mutate: staffFinalizeCatalogPrices, isPending: isFinalizingPrices } = us
 const { mutate: staffStartCatalogProcurement, isPending: isStartingProcurement } = useStaffStartCatalogProcurementMutation();
 const { mutate: staffSetCatalogOrderedQty, isPending: isSavingOrderedQty } = useStaffSetCatalogOrderedQtyMutation();
 const { mutate: staffSetCatalogDeliveredQty, isPending: isSavingDeliveredQty } = useStaffSetCatalogDeliveredQtyMutation();
+const { mutate: updateCatalogOrderItem } = useUpdateCatalogOrderItemMutation();
+
+const handleUpdateCatalogOrderItem = ({
+  itemId,
+  productId,
+  payload,
+}: {
+  itemId: number;
+  productId: number | null;
+  payload: any;
+}) => {
+  if (!orderId.value) return;
+  updateCatalogOrderItem({
+    orderId: orderId.value,
+    itemId,
+    productId,
+    payload,
+  });
+};
 
 const showBacklogDrawer = ref(false);
 
@@ -371,17 +393,31 @@ const submittedModeColumns = [
   'image',
   'name',
   'brand',
+  'note',
   'code_barcode_id',
   'qty_customer',
   'purchase_price_unit',
+  'product_weight_gm',
+  'package_weight_gm',
   'status',
   'action',
 ];
 
 const catalogVisibleColumns = computed<string[]>({
   get: () => {
-    if (currentOrder.value?.status === 'submitted') {
+    if (['submitted', 'costing_pending'].includes(currentOrder.value?.status || '')) {
       return submittedModeColumns;
+    }
+    if (currentOrder.value?.status === 'priced') {
+      const hiddenInPriced = [
+        'counter_offer_unit',
+        'counter_offer_row',
+        'counter_offer_margin',
+        'final_offer_unit',
+        'final_offer_row',
+        'final_offer_margin',
+      ];
+      return rawCatalogVisibleColumns.value.filter((col) => !hiddenInPriced.includes(col));
     }
     return rawCatalogVisibleColumns.value;
   },

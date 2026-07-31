@@ -165,3 +165,39 @@ export function useStaffSetCatalogDeliveredQtyMutation() {
     },
   });
 }
+
+export function useUpdateCatalogOrderItemMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      orderId,
+      itemId,
+      productId,
+      payload,
+    }: {
+      orderId: number;
+      itemId: number;
+      productId: number | null;
+      payload: {
+        product_weight_gm?: number | null;
+        package_weight_gm?: number | null;
+        weight_kg?: number | null;
+        cost_price_amount?: number | null;
+        staff_offer_amount?: number | null;
+        final_price_amount?: number | null;
+        ordered_quantity?: number | null;
+        delivered_quantity?: number | null;
+      };
+    }) => {
+      await shopOrderRepository.updateCatalogOrderItem(orderId, itemId, productId, payload);
+    },
+    onSuccess: () => {
+      showSuccessNotification('Item updated successfully');
+    },
+    onError: (err: any) => {
+      handleApiFailure(err, 'Failed to update item');
+    },
+  });
+}
+

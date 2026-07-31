@@ -73,31 +73,46 @@
 
           <!-- Weight & Cargo Row -->
           <div class="row q-col-gutter-sm">
-            <div class="col-12 col-sm-6">
+            <div class="col-12 col-sm-4">
               <q-input
-                v-model.number="form.weight_kg"
-                label="Item Weight (KG)"
+                v-model.number="form.product_weight_gm"
+                label="Product Weight (gm)"
                 dense
                 outlined
                 type="number"
-                step="0.01"
+                step="1"
                 min="0"
-                hint="Auto-calculates freight"
                 @update:model-value="recalculateOffer"
               >
                 <template #append>
-                  <span class="text-caption">kg</span>
+                  <span class="text-caption">g</span>
                 </template>
               </q-input>
             </div>
-            <div class="col-12 col-sm-6">
+            <div class="col-12 col-sm-4">
+              <q-input
+                v-model.number="form.package_weight_gm"
+                label="Package Weight (gm)"
+                dense
+                outlined
+                type="number"
+                step="1"
+                min="0"
+                @update:model-value="recalculateOffer"
+              >
+                <template #append>
+                  <span class="text-caption">g</span>
+                </template>
+              </q-input>
+            </div>
+            <div class="col-12 col-sm-4">
               <q-input
                 :model-value="calculatedTotalWeightGm"
-                label="Total Weight (Grams)"
+                label="Total Weight (gm)"
                 dense
                 outlined
                 readonly
-                class="bg-grey-2 font-mono"
+                class="bg-grey-2 font-mono text-weight-bold"
               >
                 <template #append>
                   <span class="text-caption">g</span>
@@ -283,6 +298,7 @@ function recalculateOffer() {
 
 function onSave() {
   if (form.value) {
+    form.value.weight_kg = calculatedTotalWeightGm.value / 1000;
     emit('save-item', form.value);
     emit('update:modelValue', false);
   }
