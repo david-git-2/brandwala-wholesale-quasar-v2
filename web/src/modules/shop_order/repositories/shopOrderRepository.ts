@@ -368,7 +368,8 @@ const getShopOrderById = async (
   const { data: rawItems, error: itemsErr } = await supabase
     .from('shop_order_items')
     .select('*, products(product_code, brand, barcode, product_weight, package_weight, reference_cost_amount)')
-    .eq('order_id', orderId);
+    .eq('order_id', orderId)
+    .order('created_at', { ascending: true });
 
   if (itemsErr) throw itemsErr;
 

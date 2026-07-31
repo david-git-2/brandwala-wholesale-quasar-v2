@@ -220,6 +220,7 @@
 import { ref, computed, watch } from 'vue';
 import SmartImage from 'src/components/SmartImage.vue';
 import type { ShopOrder, ShopOrderItem } from '../types';
+import { getFinalOfferUnitAmount } from '../utils/catalogPricingUtils';
 
 const props = defineProps<{
   modelValue: boolean;
@@ -236,22 +237,35 @@ const emit = defineEmits<{
 
 const form = ref<ShopOrderItem | null>(null);
 
+const FX = computed(() => props.order?.conversion_rate ?? 140);
+const cargoRate = computed(() => props.order?.cargo_rate ?? 0);
+const profitRate = computed(() => props.order?.profit_rate ?? 25);
+const profitBasis = computed(() => props.order?.profit_basis || 'total_cost');
+
 watch(
   () => props.item,
   (newItem) => {
     if (newItem) {
-      form.value = JSON.parse(JSON.stringify(newItem));
+      const cloned = JSON.parse(JSON.stringify(newItem));
+      if (cloned.final_price_amount == null) {
+        cloned.final_price_amount = getFinalOfferUnitAmount(
+          cloned,
+          {
+            conversion_rate: FX.value,
+            cargo_rate: cargoRate.value,
+            first_offer_rate: profitRate.value,
+            profit_basis: profitBasis.value,
+          },
+          props.order?.package_weight_kg,
+        );
+      }
+      form.value = cloned;
     } else {
       form.value = null;
     }
   },
   { immediate: true },
 );
-
-const FX = computed(() => props.order?.conversion_rate ?? 140);
-const cargoRate = computed(() => props.order?.cargo_rate ?? 0);
-const profitRate = computed(() => props.order?.profit_rate ?? 25);
-const profitBasis = computed(() => props.order?.profit_basis || 'total_cost');
 
 const calculatedTotalWeightGm = computed(() => {
   if (!form.value) return 0;

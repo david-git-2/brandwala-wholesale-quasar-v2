@@ -4,6 +4,7 @@ export interface CatalogRatesParams {
   conversion_rate?: number | null | undefined;
   cargo_rate?: number | null | undefined;
   first_offer_rate?: number | null | undefined;
+  final_offer_rate?: number | null | undefined;
   profit_rate?: number | null | undefined;
   profit_basis?: 'purchase' | 'total_cost' | string | null | undefined;
 }
@@ -162,12 +163,48 @@ export function getCounterOfferMargin(
   return ((offer - cost) / cost) * 100;
 }
 
+export function calculateItemFinalOfferPrice(
+  item: Partial<ShopOrderItem>,
+  rates: CatalogRatesParams,
+  orderPackageWeightKg?: number | null,
+): number {
+  const effectiveFinalRate = rates.final_offer_rate ?? rates.first_offer_rate ?? rates.profit_rate ?? 25;
+  return calculateItemFirstOfferPrice(
+    item,
+    {
+      ...rates,
+      first_offer_rate: effectiveFinalRate,
+    },
+    orderPackageWeightKg,
+  );
+}
+
+export function getFinalOfferUnitAmount(
+  item: Partial<ShopOrderItem>,
+  rates: CatalogRatesParams,
+  orderPackageWeightKg?: number | null,
+): number {
+  if (item.is_final_offer_manual && item.final_price_amount != null) {
+    return Number(item.final_price_amount);
+  }
+  if (rates.final_offer_rate != null && rates.final_offer_rate > 0) {
+    return calculateItemFinalOfferPrice(item, rates, orderPackageWeightKg);
+  }
+  if (item.final_price_amount != null && Number(item.final_price_amount) > 0) {
+    return Number(item.final_price_amount);
+  }
+  if (item.final_offer_amount != null && Number(item.final_offer_amount) > 0) {
+    return Number(item.final_offer_amount);
+  }
+  return getFirstOfferUnitAmount(item, rates, orderPackageWeightKg);
+}
+
 export function getFinalOfferMargin(
   item: Partial<ShopOrderItem>,
   rates: CatalogRatesParams,
   orderPackageWeightKg?: number | null,
 ): number {
-  const offer = Number(item.final_price_amount || 0);
+  const offer = getFinalOfferUnitAmount(item, rates, orderPackageWeightKg);
   const cost = getLandedCostUnitSell(
     item,
     rates.cargo_rate ?? 0,

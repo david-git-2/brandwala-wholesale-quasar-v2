@@ -238,7 +238,7 @@ import {
   useUpdateCatalogOrderItemMutation,
 } from '../composables/useCatalogOrderMutations';
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
-import { calculateItemFirstOfferPrice } from '../utils/catalogPricingUtils';
+import { calculateItemFirstOfferPrice, calculateItemFinalOfferPrice, getFinalOfferUnitAmount } from '../utils/catalogPricingUtils';
 
 import StaffOrderHeader from '../components/StaffOrderHeader.vue';
 import StaffOrderStatusWorkflow from '../components/StaffOrderStatusWorkflow.vue';
@@ -405,10 +405,28 @@ const submittedModeColumns = [
   'action',
 ];
 
+const counteredModeColumns = [
+  'sl',
+  'image',
+  'name',
+  'purchase_price_unit',
+  'landed_cost_unit_sell',
+  'first_offer_unit',
+  'counter_offer_unit',
+  'counter_offer_margin',
+  'final_offer_unit',
+  'final_offer_margin',
+  'status',
+  'action',
+];
+
 const catalogVisibleColumns = computed<string[]>({
   get: () => {
     if (currentOrder.value?.status === 'submitted') {
       return submittedModeColumns;
+    }
+    if (currentOrder.value?.status === 'countered') {
+      return counteredModeColumns;
     }
     if (['priced', 'costing_pending'].includes(currentOrder.value?.status || '')) {
       const hiddenInPriced = [
@@ -450,14 +468,16 @@ watch(
 
       orderItems.value = fetchedItems.map((item: any) => {
         const local = currentItemsMap.get(item.id);
+        const res = { ...item };
         if (local && local.is_first_offer_manual) {
-          return {
-            ...item,
-            staff_offer_amount: local.staff_offer_amount,
-            is_first_offer_manual: true,
-          };
+          res.staff_offer_amount = local.staff_offer_amount;
+          res.is_first_offer_manual = true;
         }
-        return { ...item };
+        if (local && local.is_final_offer_manual) {
+          res.final_price_amount = local.final_price_amount;
+          res.is_final_offer_manual = true;
+        }
+        return res;
       });
 
       shopSellCurrencyId.value = newData.order?.shop_sell_currency_id ?? null;
@@ -547,7 +567,7 @@ const changeOrderStatus = (newStatus: string) => {
   );
 };
 
-const recalculateFirstOffers = (rates: {
+const recalculateOffers = (rates: {
   conversion_rate: number | null;
   cargo_rate: number | null;
   profit_rate: number | null;
@@ -556,19 +576,35 @@ const recalculateFirstOffers = (rates: {
   profit_basis: 'purchase' | 'total_cost';
 }) => {
   orderItems.value.forEach((item) => {
-    if (item.is_first_offer_manual) {
-      return;
+    if (!item.is_first_offer_manual) {
+      item.staff_offer_amount = calculateItemFirstOfferPrice(
+        item,
+        {
+          conversion_rate: rates.conversion_rate ?? currentOrder.value?.conversion_rate,
+          cargo_rate: rates.cargo_rate ?? currentOrder.value?.cargo_rate,
+          first_offer_rate: rates.first_offer_rate ?? rates.profit_rate ?? currentOrder.value?.first_offer_rate ?? currentOrder.value?.profit_rate,
+          profit_basis: rates.profit_basis ?? currentOrder.value?.profit_basis,
+        },
+        currentOrder.value?.package_weight_kg,
+      );
     }
-    item.staff_offer_amount = calculateItemFirstOfferPrice(
-      item,
-      {
-        conversion_rate: rates.conversion_rate ?? currentOrder.value?.conversion_rate,
-        cargo_rate: rates.cargo_rate ?? currentOrder.value?.cargo_rate,
-        first_offer_rate: rates.first_offer_rate ?? rates.profit_rate ?? currentOrder.value?.first_offer_rate ?? currentOrder.value?.profit_rate,
-        profit_basis: rates.profit_basis ?? currentOrder.value?.profit_basis,
-      },
-      currentOrder.value?.package_weight_kg,
-    );
+    if (!item.is_final_offer_manual) {
+      if (rates.final_offer_rate != null && rates.final_offer_rate > 0) {
+        item.final_price_amount = calculateItemFinalOfferPrice(
+          item,
+          {
+            conversion_rate: rates.conversion_rate ?? currentOrder.value?.conversion_rate,
+            cargo_rate: rates.cargo_rate ?? currentOrder.value?.cargo_rate,
+            final_offer_rate: rates.final_offer_rate,
+            first_offer_rate: rates.first_offer_rate ?? rates.profit_rate ?? currentOrder.value?.first_offer_rate ?? currentOrder.value?.profit_rate,
+            profit_basis: rates.profit_basis ?? currentOrder.value?.profit_basis,
+          },
+          currentOrder.value?.package_weight_kg,
+        );
+      } else {
+        item.final_price_amount = item.staff_offer_amount;
+      }
+    }
   });
 };
 
@@ -580,7 +616,7 @@ const handleChangeRates = (payload: {
   final_offer_rate: number | null;
   profit_basis: 'purchase' | 'total_cost';
 }) => {
-  recalculateFirstOffers(payload);
+  recalculateOffers(payload);
 };
 
 const handleSaveRates = (payload: {
@@ -592,7 +628,7 @@ const handleSaveRates = (payload: {
   profit_basis: 'purchase' | 'total_cost';
 }) => {
   if (!orderId.value) return;
-  recalculateFirstOffers(payload);
+  recalculateOffers(payload);
   saveCatalogRates({ orderId: orderId.value, payload });
 };
 
@@ -624,9 +660,18 @@ const handleSaveStaffCatalogPricing = () => {
 const handleSaveFinalCatalogPrices = () => {
   if (!orderId.value || !currentOrder.value) return;
 
+  const rates = {
+    conversion_rate: currentOrder.value.conversion_rate,
+    cargo_rate: currentOrder.value.cargo_rate,
+    first_offer_rate: currentOrder.value.first_offer_rate ?? currentOrder.value.profit_rate,
+    profit_basis: currentOrder.value.profit_basis,
+  };
+
   const itemsPayload = orderItems.value.map((item) => ({
     id: item.id,
-    final_offer_amount: Number(item.final_price_amount || item.staff_offer_amount || 0),
+    final_offer_amount: Number(
+      getFinalOfferUnitAmount(item, rates, currentOrder.value?.package_weight_kg) || 0,
+    ),
     final_offer_currency_id:
       item.final_price_currency_id ||
       item.staff_offer_currency_id ||

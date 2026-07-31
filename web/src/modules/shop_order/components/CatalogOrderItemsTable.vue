@@ -289,17 +289,44 @@
 
             <!-- 27. Final Offer Unit (On Tap Popup Edit) -->
             <q-td v-if="isColVisible('final_offer_unit')" key="final_offer_unit" :props="slotProps" class="sec-final-offer text-right bg-final-offer editable-cell">
-              <span class="font-mono text-weight-bold text-green-10">
-                {{ slotProps.row.final_price_amount != null ? formatAmount(slotProps.row.final_price_amount, sellCurrency) : '—' }}
-              </span>
+              <div class="row items-center justify-end no-wrap q-gutter-x-xs">
+                <q-icon
+                  v-if="slotProps.row.is_final_offer_manual"
+                  name="ph ph-lock-key"
+                  color="amber-8"
+                  size="16px"
+                  class="q-mr-xs"
+                >
+                  <q-tooltip>Final offer price manually locked — won't auto-recalculate</q-tooltip>
+                </q-icon>
+
+                <span class="font-mono text-weight-bold text-green-10">
+                  {{ formatAmount(getFinalOfferUnitAmount(slotProps.row), sellCurrency) }}
+                </span>
+
+                <q-btn
+                  v-if="slotProps.row.is_final_offer_manual"
+                  flat
+                  round
+                  dense
+                  size="xs"
+                  icon="ph ph-arrows-clockwise"
+                  color="grey-7"
+                  class="q-ml-xs"
+                  @click.stop="onUnlockFinalOffer(slotProps.row)"
+                >
+                  <q-tooltip>Unlock & reset to auto price</q-tooltip>
+                </q-btn>
+              </div>
+
               <q-popup-edit
                 v-slot="scope"
-                :model-value="slotProps.row.final_price_amount"
+                :model-value="getFinalOfferUnitAmount(slotProps.row)"
                 buttons
                 persistent
                 label-set="Save"
                 label-cancel="Cancel"
-                @save="(val) => onItemFieldChange(slotProps.row, 'final_price_amount', Number(val) || 0)"
+                @save="(val) => onFinalOfferPriceSave(slotProps.row, val)"
               >
                 <q-input v-model.number="scope.value" type="number" step="1" dense outlined autofocus min="0" label="Final Offer" />
               </q-popup-edit>
@@ -307,12 +334,12 @@
 
             <!-- 28. Final Offer Row Total -->
             <q-td v-if="isColVisible('final_offer_row')" key="final_offer_row" :props="slotProps" class="sec-final-offer text-right font-mono text-weight-bold text-green-9 bg-final-offer">
-              {{ slotProps.row.final_price_amount != null ? formatAmount(slotProps.row.final_price_amount * slotProps.row.quantity, sellCurrency) : '—' }}
+              {{ formatAmount(getFinalOfferUnitAmount(slotProps.row) * slotProps.row.quantity, sellCurrency) }}
             </q-td>
 
             <!-- 29. Final Offer Margin % -->
             <q-td v-if="isColVisible('final_offer_margin')" key="final_offer_margin" :props="slotProps" class="sec-final-offer text-right font-mono text-weight-bold bg-final-offer" :class="getMarginColorClass(getFinalOfferMargin(slotProps.row))">
-              {{ slotProps.row.final_price_amount != null ? `${getFinalOfferMargin(slotProps.row).toFixed(1)}%` : '—' }}
+              {{ `${getFinalOfferMargin(slotProps.row).toFixed(1)}%` }}
             </q-td>
 
             <!-- 30. Status -->
@@ -410,6 +437,7 @@ import {
   calculateItemFirstOfferPrice,
   getFirstOfferMargin as catalogGetFirstOfferMargin,
   getCounterOfferMargin as catalogGetCounterOfferMargin,
+  getFinalOfferUnitAmount as catalogGetFinalOfferUnitAmount,
   getFinalOfferMargin as catalogGetFinalOfferMargin,
 } from '../utils/catalogPricingUtils';
 
@@ -669,6 +697,7 @@ const isOrderedMode = computed(() => ['ordered'].includes(status.value));
 const FX = computed(() => props.order?.conversion_rate ?? 140);
 const cargoRate = computed(() => props.order?.cargo_rate ?? 0);
 const profitRate = computed(() => props.order?.first_offer_rate ?? props.order?.profit_rate ?? 25);
+const finalOfferRate = computed(() => props.order?.final_offer_rate ?? null);
 const profitBasis = computed(() => props.order?.profit_basis || 'total_cost');
 
 // Calculation Helpers
@@ -741,6 +770,20 @@ function getCounterOfferMargin(item: ShopOrderItem): number {
   );
 }
 
+function getFinalOfferUnitAmount(item: ShopOrderItem): number {
+  return catalogGetFinalOfferUnitAmount(
+    item,
+    {
+      conversion_rate: FX.value,
+      cargo_rate: cargoRate.value,
+      first_offer_rate: profitRate.value,
+      final_offer_rate: finalOfferRate.value,
+      profit_basis: profitBasis.value,
+    },
+    props.order?.package_weight_kg,
+  );
+}
+
 function getFinalOfferMargin(item: ShopOrderItem): number {
   return catalogGetFinalOfferMargin(
     item,
@@ -748,6 +791,7 @@ function getFinalOfferMargin(item: ShopOrderItem): number {
       conversion_rate: FX.value,
       cargo_rate: cargoRate.value,
       first_offer_rate: profitRate.value,
+      final_offer_rate: finalOfferRate.value,
       profit_basis: profitBasis.value,
     },
     props.order?.package_weight_kg,
@@ -783,7 +827,12 @@ function calculateItemOffer(item: ShopOrderItem): number {
 
 function onItemFieldChange(item: ShopOrderItem, field: string, val: any) {
   (item as any)[field] = val;
-  emitItemUpdate(item, { [field]: val });
+  if (field === 'final_price_amount') {
+    item.is_final_offer_manual = true;
+    emitItemUpdate(item, { [field]: val, is_final_offer_manual: true });
+  } else {
+    emitItemUpdate(item, { [field]: val });
+  }
 }
 
 function onFirstOfferPriceSave(item: ShopOrderItem, val: any) {
@@ -803,6 +852,36 @@ function onUnlockFirstOffer(item: ShopOrderItem) {
   emitItemUpdate(item, {
     staff_offer_amount: autoOffer,
     is_first_offer_manual: false,
+  });
+}
+
+function onFinalOfferPriceSave(item: ShopOrderItem, val: any) {
+  const newPrice = Number(val) || 0;
+  item.final_price_amount = newPrice;
+  item.is_final_offer_manual = true;
+  emitItemUpdate(item, {
+    final_price_amount: newPrice,
+    is_final_offer_manual: true,
+  });
+}
+
+function onUnlockFinalOffer(item: ShopOrderItem) {
+  item.is_final_offer_manual = false;
+  const autoOffer = catalogGetFinalOfferUnitAmount(
+    { ...item, is_final_offer_manual: false, final_price_amount: null },
+    {
+      conversion_rate: FX.value,
+      cargo_rate: cargoRate.value,
+      first_offer_rate: profitRate.value,
+      final_offer_rate: finalOfferRate.value,
+      profit_basis: profitBasis.value,
+    },
+    props.order?.package_weight_kg,
+  );
+  item.final_price_amount = autoOffer;
+  emitItemUpdate(item, {
+    final_price_amount: autoOffer,
+    is_final_offer_manual: false,
   });
 }
 
@@ -887,7 +966,7 @@ const overallCounterOfferMargin = computed(() => {
   return ((grandTotalCounterOffer.value - grandTotalLandedSell.value) / grandTotalLandedSell.value) * 100;
 });
 
-const grandTotalFinalOffer = computed(() => props.items.reduce((sum, i) => sum + ((i.final_price_amount || 0) * i.quantity), 0));
+const grandTotalFinalOffer = computed(() => props.items.reduce((sum, i) => sum + (getFinalOfferUnitAmount(i) * i.quantity), 0));
 const overallFinalOfferMargin = computed(() => {
   if (grandTotalLandedSell.value <= 0) return 0;
   return ((grandTotalFinalOffer.value - grandTotalLandedSell.value) / grandTotalLandedSell.value) * 100;
