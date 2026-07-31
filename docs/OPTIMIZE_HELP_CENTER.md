@@ -49,6 +49,9 @@ Do **not** invent backend/CMS storage. Do **not** rewrite drawer/shell unless pl
 - **Prefer 3–7 workflow steps**, 3–8 terms, 3–8 FAQs per guide.
 - **Avoid empty tabs**: if a section has nothing useful, omit items or write one honest placeholder only for stubs.
 - **Modern UI & Aesthetic Standards**:
+  - **Make Interactive Elements Clear**: A button should look like a button. Use clear boundaries, distinct colors (e.g., solid primary buttons vs outline/flat secondary buttons), hover states, and active states to signal interactivity. Avoid ambiguous clickable elements.
+  - **Feature Clarity**: A feature should be instantly understandable as a feature. Use appropriate visual hierarchy, descriptive icons (`q-icon`), and clear titles to explain functionality intuitively without relying on long text explanations.
+  - **Engaging & Accessible Design**: Avoid a plain, boring layout. Ensure the interface is visually engaging and easy to understand by utilizing ample whitespace, distinct component boundaries, curated brand colors, and subtle micro-animations.
   - Keep cards lightweight with `--bw-theme-border` borders and smooth `.card-hover` lift effects.
   - Use primary badge accents (`bg-primary-soft`) for step markers and icon wrappers.
   - Present workflows using numbered step badges and FAQs as expandable accordions (`<q-expansion-item>`).

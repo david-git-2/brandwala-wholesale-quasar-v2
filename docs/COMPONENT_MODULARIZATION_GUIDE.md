@@ -3,8 +3,8 @@
 > **TL;DR Quick Rules for AI Agents & Developers:**
 > 1. **Size Limit:** Max **300 lines** per `.vue` page. Max **150 lines** per sub-component.
 > 2. **Rule of 3:** If a single file contains >3 distinct visual blocks (e.g. Header, Table, Summary, Modals), extract each block into `components/`.
-> 3. **No Math in Template:** Move calculations & state logic into custom composables (`composables/`).
-> 4. **Parent is Container:** Parent page handles routes, query calls, and layout grid. Sub-components receive props.
+> 3. **Fast Script Refactoring:** Do NOT immediately extract all logic to composables. Keep state in the parent page and pass it down via props. Only extract to `composables/` if the logic is shared or the parent script alone exceeds 150 lines.
+> 4. **Parent is Container:** Parent page handles routes, query calls, layout grid, and holds primary state.
 > 5. **Token Efficiency:** Editing 100-line components costs ~87% fewer context tokens and runs 4x faster.
 
 ---
@@ -19,21 +19,37 @@
 
 ---
 
-## ⚡ 5-Step Low-Context Refactoring Checklist
+## 🤖 AI Agent Mega-File Protocol (For Files > 800 Lines)
+
+When an AI Agent is tasked with refactoring massive files (e.g., 1500+ lines like `ThriftStockPage.vue`), it will struggle with context limits, timeouts, and hallucinations if it attempts to do too much at once. 
+
+**AI Agents MUST follow these strict rules for massive files:**
+
+1. **One Component Per Turn:** NEVER attempt to extract multiple sub-components in a single tool call or single prompt response. Extract exactly **ONE** visual block (e.g., just the Table, or just the Dialog), wire it up, verify it, and stop. Wait for the next step.
+2. **Surgical Parent Edits:** Do NOT attempt to rewrite or replace the entire parent file. Use the `multi_replace_file_content` tool with precise `StartLine` and `EndLine` constraints to surgically remove the extracted HTML and insert the child component tag.
+3. **Prop & Emit Grouping:** If a child component requires 10+ props and 10+ emits, do not panic. Write them out explicitly in the child, but do it carefully. To save tokens, avoid refactoring the parent's state—just pass the existing refs directly as props.
+4. **Leave Unrelated Script Alone:** When extracting a UI template, leave the rest of the parent's `<script setup>` completely untouched. Do not reformat or optimize unrelated functions during a component extraction.
+
+---
+
+## ⚡ 4-Step Fast-Track Refactoring Checklist
+
+*Note: Untangling reactivity into composables is time-consuming. To refactor fast, focus on UI template extraction first.*
 
 ```mermaid
 graph TD
-    A["1. Detect File > 300 Lines"] --> B["2. Extract Math/Logic to Composable"]
-    B --> C["3. Create Sub-Components in components/"]
+    A["1. Detect File > 300 Lines"] --> B["2. Extract Visual Blocks to components/"]
+    B --> C["3. Pass State via Props/Emits"]
     C --> D["4. Assemble in Parent Page"]
     D --> E["5. Run vue-tsc & eslint"]
 ```
 
 - [ ] **Step 1: Audit Boundaries** — Identify visual sections (Header, Items Table, Financial Summary, Shipping Card, Modals).
-- [ ] **Step 2: Extract Composables** — Move non-UI calculations, refs, and watch blocks to `composables/use[Feature].ts`.
-- [ ] **Step 3: Build Sub-Components** — Create `components/[PagePrefix][Section].vue` with explicit TypeScript props.
-- [ ] **Step 4: Connect Parent** — Replace template sections in `pages/[PageName].vue` with child components.
-- [ ] **Step 5: Verify** — Run `npx vue-tsc --noEmit` and `npx eslint src/modules/[module]/`.
+- [ ] **Step 2: Build Sub-Components** — Create `components/[PagePrefix][Section].vue`. Move ONLY the template HTML and scoped CSS. 
+- [ ] **Step 3: Quick Wiring** — Define explicit `defineProps` & `defineEmits` in the child. Keep the complex state, API calls, and logic in the parent page.
+- [ ] **Step 4: Connect Parent** — Replace template sections in `pages/[PageName].vue` with child components. Run `npx vue-tsc --noEmit` and `npx eslint src/modules/[module]/`.
+
+*(Optional Step 5): Only extract non-UI calculations, refs, and watch blocks to `composables/use[Feature].ts` if the parent `<script setup>` is still too bloated (>150 lines).*
 
 ---
 

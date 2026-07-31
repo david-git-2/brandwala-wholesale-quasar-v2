@@ -18,12 +18,14 @@ export interface ThriftSettingsCostInput {
 
 export interface ThriftStockCostInput {
   id?: number;
+  shipment_id?: number;
   quantity: number;
   product_weight?: number | null | undefined;
   extra_weight?: number | null | undefined;
   origin_unit_price?: number | null | undefined;
   extra_origin_unit_price?: number | null | undefined;
   additional_charges_cost?: number | null | undefined;
+  pricing?: ThriftStockPricingInput | null | undefined;
 }
 
 export interface ThriftStockPricingInput {
