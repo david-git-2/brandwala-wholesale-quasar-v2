@@ -329,17 +329,24 @@ const getShopOrderById = async (
 }> => {
   const { data: orderRow, error: orderErr } = await supabase
     .from('shop_orders')
-    .select('*, customer_groups(name), shops(sell_currency_id, buy_currency_id)')
+    .select('*, customer_groups(name), shops(sell_currency_id, buy_currency_id, sell_currency:global_currencies!shops_sell_currency_id_fkey(id, code, symbol), buy_currency:global_currencies!shops_buy_currency_id_fkey(id, code, symbol))')
     .eq('id', orderId)
     .single();
 
   if (orderErr) throw orderErr;
 
-  const order: ShopOrder & { shop_sell_currency_id?: number | null; shop_buy_currency_id?: number | null } = {
+  const order: ShopOrder & {
+    shop_sell_currency_id?: number | null;
+    shop_buy_currency_id?: number | null;
+    shop_sell_currency_symbol?: string | null;
+    shop_buy_currency_symbol?: string | null;
+  } = {
     ...orderRow,
     customer_group_name: (orderRow as any).customer_groups?.name ?? orderRow.customer_group_name,
     shop_sell_currency_id: (orderRow as any).shops?.sell_currency_id ?? null,
     shop_buy_currency_id: (orderRow as any).shops?.buy_currency_id ?? null,
+    shop_sell_currency_symbol: (orderRow as any).shops?.sell_currency?.symbol ?? null,
+    shop_buy_currency_symbol: (orderRow as any).shops?.buy_currency?.symbol ?? null,
   };
   delete (order as any).customer_groups;
   delete (order as any).shops;
@@ -590,6 +597,8 @@ const updateCatalogOrderItem = async (
     is_first_offer_manual?: boolean | null;
     final_price_amount?: number | null;
     is_final_offer_manual?: boolean | null;
+    customer_offer_amount?: number | null;
+    customer_offer_currency_id?: number | null;
     ordered_quantity?: number | null;
     delivered_quantity?: number | null;
   },
@@ -599,6 +608,8 @@ const updateCatalogOrderItem = async (
   if (payload.cost_price_amount !== undefined) itemUpdates.cost_price_amount = payload.cost_price_amount;
   if (payload.staff_offer_amount !== undefined) itemUpdates.staff_offer_amount = payload.staff_offer_amount;
   if (payload.is_first_offer_manual !== undefined) itemUpdates.is_first_offer_manual = payload.is_first_offer_manual;
+  if (payload.customer_offer_amount !== undefined) itemUpdates.customer_offer_amount = payload.customer_offer_amount;
+  if (payload.customer_offer_currency_id !== undefined) itemUpdates.customer_offer_currency_id = payload.customer_offer_currency_id;
   if (payload.final_price_amount !== undefined) itemUpdates.final_price_amount = payload.final_price_amount;
   if (payload.is_final_offer_manual !== undefined) itemUpdates.is_final_offer_manual = payload.is_final_offer_manual;
   if (payload.ordered_quantity !== undefined) itemUpdates.ordered_quantity = payload.ordered_quantity;

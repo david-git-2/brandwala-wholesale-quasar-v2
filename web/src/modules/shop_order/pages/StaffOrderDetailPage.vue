@@ -238,6 +238,7 @@ import {
   useUpdateCatalogOrderItemMutation,
 } from '../composables/useCatalogOrderMutations';
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
+import { calculateItemFirstOfferPrice } from '../utils/catalogPricingUtils';
 
 import StaffOrderHeader from '../components/StaffOrderHeader.vue';
 import StaffOrderStatusWorkflow from '../components/StaffOrderStatusWorkflow.vue';
@@ -554,33 +555,20 @@ const recalculateFirstOffers = (rates: {
   final_offer_rate?: number | null;
   profit_basis: 'purchase' | 'total_cost';
 }) => {
-  const fx = rates.conversion_rate ?? currentOrder.value?.conversion_rate ?? 140;
-  const cargoRate = rates.cargo_rate ?? currentOrder.value?.cargo_rate ?? 0;
-  const profitRate = rates.first_offer_rate ?? rates.profit_rate ?? currentOrder.value?.first_offer_rate ?? currentOrder.value?.profit_rate ?? 25;
-  const profitBasis = rates.profit_basis ?? currentOrder.value?.profit_basis ?? 'total_cost';
-
   orderItems.value.forEach((item) => {
     if (item.is_first_offer_manual) {
       return;
     }
-    const purchasePrice = Number(item.cost_price_amount || 0);
-    const prodGm = Number(item.product_weight_gm || 0);
-    const pkgGm = Number(item.package_weight_gm || 0);
-    const weightKg = (prodGm + pkgGm) > 0 ? (prodGm + pkgGm) / 1000 : Number(item.weight_kg || 0);
-    const cargoCostBuy = weightKg * cargoRate;
-    const landedCostBuy = purchasePrice + cargoCostBuy;
-
-    if (profitBasis === 'purchase') {
-      const purchaseSell = purchasePrice * fx;
-      const markup = (profitRate || 0) / 100;
-      const rawPrice = purchaseSell * (1 + markup) + cargoCostBuy * fx;
-      item.staff_offer_amount = rawPrice > 0 ? Math.ceil(rawPrice / 5) * 5 : 0;
-    } else {
-      const landedCostSell = landedCostBuy * fx;
-      const markup = (profitRate || 0) / 100;
-      const rawPrice = landedCostSell * (1 + markup);
-      item.staff_offer_amount = rawPrice > 0 ? Math.ceil(rawPrice / 5) * 5 : 0;
-    }
+    item.staff_offer_amount = calculateItemFirstOfferPrice(
+      item,
+      {
+        conversion_rate: rates.conversion_rate ?? currentOrder.value?.conversion_rate,
+        cargo_rate: rates.cargo_rate ?? currentOrder.value?.cargo_rate,
+        first_offer_rate: rates.first_offer_rate ?? rates.profit_rate ?? currentOrder.value?.first_offer_rate ?? currentOrder.value?.profit_rate,
+        profit_basis: rates.profit_basis ?? currentOrder.value?.profit_basis,
+      },
+      currentOrder.value?.package_weight_kg,
+    );
   });
 };
 

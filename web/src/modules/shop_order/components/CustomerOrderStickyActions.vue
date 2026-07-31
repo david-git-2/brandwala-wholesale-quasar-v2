@@ -21,25 +21,20 @@
         <!-- Status: priced (Path A: Negotiable) -->
         <template v-else-if="status === 'priced' && isNegotiable">
           <q-btn
-            outline
+            unelevated
             color="amber-9"
             no-caps
             dense
-            class="q-px-sm text-caption text-weight-bold"
+            class="q-px-md text-caption text-weight-bold"
             label="Submit Counter"
+            :disable="!canSubmitCounter"
             :loading="isSubmittingCounter"
             @click="emit('submit-counter')"
-          />
-          <q-btn
-            unelevated
-            color="primary"
-            no-caps
-            dense
-            class="q-px-md text-caption text-weight-bold"
-            label="Accept Offer"
-            :loading="isConfirming"
-            @click="emit('confirm-order')"
-          />
+          >
+            <q-tooltip v-if="!canSubmitCounter">
+              Accept or counter all items to submit counter offer
+            </q-tooltip>
+          </q-btn>
         </template>
 
         <!-- Status: priced (Path B: Non-negotiable) -->
@@ -107,6 +102,7 @@ const props = defineProps<{
   isNegotiable: boolean;
   totalAmount: number;
   currencySymbol: string;
+  canSubmitCounter?: boolean;
   isSubmittingCounter?: boolean;
   isConfirming?: boolean;
 }>();

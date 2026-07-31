@@ -16,53 +16,57 @@
       </div>
     </section>
 
-    <!-- Status Workflow Strip (read-only for customer; sequence depends on shop type) -->
-    <q-card flat bordered class="q-pa-sm q-mt-md">
-      <div class="row items-center q-gutter-xs status-workflow-row">
-        <template v-for="(st, idx) in statusSequence" :key="st">
-          <q-btn
+    <!-- Status Workflow Strip (Mobile-optimized focused 3-step tracker: Previous -> Current Active -> Next) -->
+    <q-card flat bordered class="q-pa-sm q-mt-md bg-grey-1">
+      <div class="row items-center justify-between no-wrap q-gutter-x-xs">
+        <!-- 1. Previous Step (Completed) -->
+        <div v-if="focusedSteps.prev" class="col-auto">
+          <q-chip
             dense
-            no-caps
-            :color="normalizedStatus === st ? getStatusColor(st) : isPassedStatus(st) ? 'grey-5' : 'grey-3'"
-            :text-color="normalizedStatus === st ? 'white' : isPassedStatus(st) ? 'grey-9' : 'grey-7'"
-            :outline="normalizedStatus !== st"
-            :unelevated="normalizedStatus === st"
-            class="q-px-md text-caption text-weight-bold"
+            color="grey-3"
+            text-color="grey-8"
+            icon="ph ph-check-circle"
+            class="text-caption text-weight-medium q-ma-none"
           >
-            <q-icon v-if="normalizedStatus === st" name="ph ph-check-circle" size="14px" class="q-mr-xs" />
-            {{ formatStatusLabel(st) }}
-          </q-btn>
-          <q-icon
-            v-if="idx < statusSequence.length - 1"
-            name="ph ph-caret-right"
-            color="grey-5"
-            size="18px"
-            class="status-workflow-chevron"
-          />
-        </template>
-        <template v-if="terminalStatuses.length">
-          <q-separator vertical class="q-mx-sm status-workflow-sep" />
-          <q-btn
-            v-for="st in terminalStatuses"
-            :key="st"
+            {{ formatStatusLabel(focusedSteps.prev) }}
+          </q-chip>
+        </div>
+
+        <q-icon v-if="focusedSteps.prev" name="ph ph-caret-right" color="grey-5" size="16px" />
+
+        <!-- 2. Current Active Step (Highlighted with Action Badge) -->
+        <div class="col text-center">
+          <q-badge
+            unelevated
+            :color="getStatusColor(normalizedStatus)"
+            class="q-pa-xs text-weight-bold text-caption shadow-1 full-width justify-center"
+            style="font-size: 12px;"
+          >
+            <q-icon name="ph ph-clock text-white q-mr-xs" size="14px" />
+            {{ formatStatusLabel(normalizedStatus) }}
+          </q-badge>
+        </div>
+
+        <q-icon v-if="focusedSteps.next" name="ph ph-caret-right" color="grey-5" size="16px" />
+
+        <!-- 3. Next Step (Upcoming) -->
+        <div v-if="focusedSteps.next" class="col-auto">
+          <q-chip
             dense
-            no-caps
-            :color="normalizedStatus === st ? getStatusColor(st) : 'grey-3'"
-            :text-color="normalizedStatus === st ? 'white' : 'grey-7'"
-            :outline="normalizedStatus !== st"
-            :unelevated="normalizedStatus === st"
-            class="q-px-md text-caption text-weight-bold"
+            outline
+            color="grey-6"
+            class="text-caption q-ma-none"
           >
-            <q-icon v-if="normalizedStatus === st" name="ph ph-check-circle" size="14px" class="q-mr-xs" />
-            {{ formatStatusLabel(st) }}
-          </q-btn>
-        </template>
+            Next: {{ formatStatusLabel(focusedSteps.next) }}
+          </q-chip>
+        </div>
       </div>
     </q-card>
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { date } from 'quasar';
 
 const props = defineProps<{
@@ -75,6 +79,18 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'back'): void;
 }>();
+
+const focusedSteps = computed(() => {
+  const seq = props.statusSequence || [];
+  const idx = seq.indexOf(props.normalizedStatus);
+  if (idx === -1) {
+    return { prev: null, next: null };
+  }
+  return {
+    prev: idx > 0 ? seq[idx - 1] : null,
+    next: idx < seq.length - 1 ? seq[idx + 1] : null,
+  };
+});
 
 const isPassedStatus = (st: string) => {
   const currentIndex = props.statusSequence.indexOf(props.normalizedStatus);

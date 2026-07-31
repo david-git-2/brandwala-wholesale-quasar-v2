@@ -195,6 +195,10 @@ export interface ShopOrder {
   placed_at: string | null;
   fulfilled_at: string | null;
   global_invoice_id: number | null;
+  shop_sell_currency_id?: number | null;
+  shop_buy_currency_id?: number | null;
+  shop_sell_currency_symbol?: string | null;
+  shop_buy_currency_symbol?: string | null;
   created_by_email: string;
   created_at: string;
   updated_at: string;

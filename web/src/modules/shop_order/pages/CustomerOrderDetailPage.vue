@@ -42,37 +42,20 @@
               v-for="item in orderItems"
               :key="item.id"
               :item="item"
+              :order="currentOrder"
               :status="normalizedStatus"
               :is-negotiable="!!currentOrder.is_negotiable_snapshot"
               :currency-symbol="currencySymbol"
+              :buy-currency-symbol="buyCurrencySymbol"
               @update:confirmed-qty="handleConfirmedQtyUpdate"
               @update:customer-offer="handleCustomerOfferUpdate"
+              @save-item-counter="handleSaveItemCounter"
             />
           </div>
 
-          <!-- Sidebar (Summary + Shipping) -->
+          <!-- Sidebar (Shipping) -->
           <div class="col-xs-12 col-md-4">
             <div class="column q-gutter-md">
-              <CustomerOrderSummaryCard
-                :order="currentOrder"
-                :currency-symbol="currencySymbol"
-                :recipient-subtotal="orderTotal"
-                :delivery-charge-val="deliveryChargeVal"
-                :cod-charge-val="codChargeVal"
-                :print-charge-val="printChargeVal"
-                :packing-charge-val="packingChargeVal"
-                :discount-val="discountVal"
-                :deduct-delivery-from-margin="deductDeliveryFromMargin"
-                :deduct-cod-from-margin="deductCodFromMargin"
-                :deduct-print-from-margin="deductPrintFromMargin"
-                :deduct-packing-from-margin="deductPackingFromMargin"
-                :cod-fee-pct-label="0"
-                :recipient-grand-total="orderTotal + deliveryChargeVal + codChargeVal + printChargeVal + packingChargeVal - discountVal"
-                :middleman-total-cost="orderTotal"
-                :estimated-profit="0"
-                :is-before-pickup="true"
-                :order-total="orderTotal"
-              />
               <CustomerOrderShippingCard :order="currentOrder" />
             </div>
           </div>
@@ -84,6 +67,7 @@
           :is-negotiable="!!currentOrder.is_negotiable_snapshot"
           :total-amount="orderTotal"
           :currency-symbol="currencySymbol"
+          :can-submit-counter="isAllItemsDecided"
           :is-submitting-counter="isSendingCounter"
           :is-confirming="isConfirming"
           @submit-counter="submitCounterOffer"
@@ -142,14 +126,14 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useThriftCurrenciesQuery } from 'src/modules/thrift/currency/composables/useThriftCurrenciesQuery';
 import {
   useShopOrderDetailQuery,
   useSendCustomerCounterMutation,
   useCustomerConfirmOrderMutation,
 } from '../composables/useShopOrderDetailQuery';
-import { supabase } from 'src/boot/supabase';
+import { useUpdateCatalogOrderItemMutation } from '../composables/useCatalogOrderMutations';
 import type { ShopOrderItem } from '../types';
+import { calculateItemFirstOfferPrice } from '../utils/catalogPricingUtils';
 
 import CustomerOrderDetailSkeleton from '../components/CustomerOrderDetailSkeleton.vue';
 import CustomerOrderHeader from '../components/CustomerOrderHeader.vue';
@@ -167,52 +151,29 @@ const orderId = computed(() => Number(route.params.id || 0));
 const { data: orderDetailsData, isLoading, isError, error } = useShopOrderDetailQuery(orderId);
 const { mutate: sendCustomerCounter, isPending: isSendingCounter } = useSendCustomerCounterMutation();
 const { mutate: confirmCustomerOrder, isPending: isConfirming } = useCustomerConfirmOrderMutation();
-const { data: currenciesData } = useThriftCurrenciesQuery();
+const { mutate: updateCatalogOrderItem } = useUpdateCatalogOrderItemMutation();
 
-const currencies = computed(() => currenciesData.value ?? []);
 const currentOrder = computed(() => orderDetailsData.value?.order || null);
-
 const orderItems = ref<ShopOrderItem[]>([]);
-const shopSellCurrencyId = ref<number | null>(null);
 
 const isVendorCatalog = computed(() => currentOrder.value?.shop_type_snapshot === 'vendor_catalog');
 
 watch(
   () => orderDetailsData.value,
-  async (newData) => {
+  (newData) => {
     if (newData) {
       orderItems.value = JSON.parse(JSON.stringify(newData.items || []));
-      const shopId = newData.order?.shop_id;
-      if (shopId) {
-        const { data: shopData } = await supabase
-          .from('shops')
-          .select('sell_currency_id')
-          .eq('id', shopId)
-          .maybeSingle();
-        if (shopData?.sell_currency_id) {
-          shopSellCurrencyId.value = shopData.sell_currency_id;
-        }
-      }
     }
   },
   { immediate: true },
 );
 
 const currencySymbol = computed(() => {
-  if (shopSellCurrencyId.value) {
-    const curr = currencies.value.find((c) => c.id === shopSellCurrencyId.value);
-    if (curr?.symbol) return curr.symbol;
-  }
-  const firstItem = orderItems.value?.[0];
-  const currId =
-    firstItem?.unit_sell_price_currency_id ||
-    firstItem?.customer_offer_currency_id ||
-    firstItem?.unit_list_price_currency_id;
-  if (currId) {
-    const curr = currencies.value.find((c) => c.id === currId);
-    if (curr?.symbol) return curr.symbol;
-  }
-  return '৳';
+  return currentOrder.value?.shop_sell_currency_symbol || '৳';
+});
+
+const buyCurrencySymbol = computed(() => {
+  return currentOrder.value?.shop_buy_currency_symbol || '£';
 });
 
 const isNegotiationOpen = computed(() => {
@@ -221,15 +182,43 @@ const isNegotiationOpen = computed(() => {
 });
 
 const getDisplayUnitPrice = (item: any) => {
+  if (normalizedStatus.value === 'final_offered' || ['confirmed', 'procuring', 'ordered', 'delivered'].includes(normalizedStatus.value)) {
+    if (item.final_offer_amount != null && item.final_offer_amount > 0) {
+      return Number(item.final_offer_amount);
+    }
+  }
+  if (['priced', 'countered', 'final_offered', 'confirmed', 'procuring', 'ordered', 'delivered'].includes(normalizedStatus.value)) {
+    if (item.staff_offer_amount != null && item.staff_offer_amount > 0) {
+      return Number(item.staff_offer_amount);
+    }
+    if (currentOrder.value) {
+      const computedOffer = calculateItemFirstOfferPrice(
+        item,
+        {
+          conversion_rate: currentOrder.value.conversion_rate,
+          cargo_rate: currentOrder.value.cargo_rate,
+          first_offer_rate: currentOrder.value.first_offer_rate ?? currentOrder.value.profit_rate,
+          profit_basis: currentOrder.value.profit_basis,
+        },
+        currentOrder.value.package_weight_kg,
+      );
+      if (computedOffer > 0) return computedOffer;
+    }
+  }
   return (
-    item.final_offer_amount ??
-    item.staff_offer_amount ??
     item.customer_offer_amount ??
     item.unit_sell_price_amount ??
     item.unit_list_price_amount ??
     0
   );
 };
+
+const isAllItemsDecided = computed(() => {
+  if (orderItems.value.length === 0) return false;
+  return orderItems.value.every(
+    (item) => item.customer_offer_amount != null && Number(item.customer_offer_amount) > 0,
+  );
+});
 
 const orderTotal = computed(() => {
   const isFinalOrBeyond = ['final_offered', 'confirmed', 'procuring', 'ordered', 'delivered'].includes(
@@ -323,6 +312,31 @@ const handleCustomerOfferUpdate = ({ itemId, amount }: { itemId: number; amount:
   if (item) {
     item.customer_offer_amount = amount;
   }
+};
+
+const handleSaveItemCounter = ({ itemId, amount }: { itemId: number; amount: number }) => {
+  if (!orderId.value) return;
+  handleCustomerOfferUpdate({ itemId, amount });
+
+  const targetItem = orderItems.value.find((i) => i.id === itemId);
+  if (!targetItem) return;
+
+  const currencyId = Number(
+    targetItem.customer_offer_currency_id ||
+      targetItem.unit_sell_price_currency_id ||
+      targetItem.unit_list_price_currency_id ||
+      0,
+  );
+
+  updateCatalogOrderItem({
+    orderId: orderId.value,
+    itemId,
+    productId: targetItem.product_id,
+    payload: {
+      customer_offer_amount: amount,
+      customer_offer_currency_id: currencyId > 0 ? currencyId : null,
+    },
+  });
 };
 
 const order = computed(() => currentOrder.value || ({} as any));

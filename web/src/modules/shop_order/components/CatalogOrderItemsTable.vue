@@ -398,6 +398,20 @@ import { useQuasar, copyToClipboard, type QTableColumn } from 'quasar';
 import SmartImage from 'src/components/SmartImage.vue';
 import type { ShopOrder, ShopOrderItem } from '../types';
 import CatalogOrderItemEditDialog from './CatalogOrderItemEditDialog.vue';
+import {
+  getProductWeightGm as catalogGetProductWeightGm,
+  getPackageWeightGm as catalogGetPackageWeightGm,
+  getTotalWeightGm as catalogGetTotalWeightGm,
+  getCargoCostUnitPurchase as catalogGetCargoCostUnitPurchase,
+  getLandedCostUnitPurchase as catalogGetLandedCostUnitPurchase,
+  getLandedCostRowPurchase as catalogGetLandedCostRowPurchase,
+  getLandedCostUnitSell as catalogGetLandedCostUnitSell,
+  getLandedCostRowSell as catalogGetLandedCostRowSell,
+  calculateItemFirstOfferPrice,
+  getFirstOfferMargin as catalogGetFirstOfferMargin,
+  getCounterOfferMargin as catalogGetCounterOfferMargin,
+  getFinalOfferMargin as catalogGetFinalOfferMargin,
+} from '../utils/catalogPricingUtils';
 
 const props = defineProps<{
   order: ShopOrder | null;
@@ -659,41 +673,35 @@ const profitBasis = computed(() => props.order?.profit_basis || 'total_cost');
 
 // Calculation Helpers
 function getProductWeightGm(item: ShopOrderItem): number {
-  if (item.product_weight_gm != null && item.product_weight_gm > 0) return Number(item.product_weight_gm);
-  if (item.weight_kg != null) return Number(item.weight_kg) * 1000;
-  return 0;
+  return catalogGetProductWeightGm(item);
 }
 
 function getPackageWeightGm(item: ShopOrderItem): number {
-  if (item.package_weight_gm != null && item.package_weight_gm > 0) return Number(item.package_weight_gm);
-  if (props.order?.package_weight_kg != null) return Number(props.order.package_weight_kg) * 1000;
-  return 0;
+  return catalogGetPackageWeightGm(item, props.order?.package_weight_kg);
 }
 
 function getTotalWeightGm(item: ShopOrderItem): number {
-  return getProductWeightGm(item) + getPackageWeightGm(item);
+  return catalogGetTotalWeightGm(item, props.order?.package_weight_kg);
 }
 
 function getCargoCostUnitPurchase(item: ShopOrderItem): number {
-  const weightKg = getTotalWeightGm(item) / 1000;
-  return weightKg * cargoRate.value;
+  return catalogGetCargoCostUnitPurchase(item, cargoRate.value, props.order?.package_weight_kg);
 }
 
 function getLandedCostUnitPurchase(item: ShopOrderItem): number {
-  const purchasePrice = Number(item.cost_price_amount || 0);
-  return purchasePrice + getCargoCostUnitPurchase(item);
+  return catalogGetLandedCostUnitPurchase(item, cargoRate.value, props.order?.package_weight_kg);
 }
 
 function getLandedCostRowPurchase(item: ShopOrderItem): number {
-  return getLandedCostUnitPurchase(item) * item.quantity;
+  return catalogGetLandedCostRowPurchase(item, cargoRate.value, props.order?.package_weight_kg);
 }
 
 function getLandedCostUnitSell(item: ShopOrderItem): number {
-  return getLandedCostUnitPurchase(item) * FX.value;
+  return catalogGetLandedCostUnitSell(item, cargoRate.value, FX.value, props.order?.package_weight_kg);
 }
 
 function getLandedCostRowSell(item: ShopOrderItem): number {
-  return getLandedCostUnitSell(item) * item.quantity;
+  return catalogGetLandedCostRowSell(item, cargoRate.value, FX.value, props.order?.package_weight_kg);
 }
 
 function getFirstOfferUnitAmount(item: ShopOrderItem): number {
@@ -708,24 +716,42 @@ function getFirstOfferUnitAmount(item: ShopOrderItem): number {
 }
 
 function getFirstOfferMargin(item: ShopOrderItem): number {
-  const offer = getFirstOfferUnitAmount(item);
-  const cost = getLandedCostUnitSell(item);
-  if (cost <= 0) return 0;
-  return ((offer - cost) / cost) * 100;
+  return catalogGetFirstOfferMargin(
+    item,
+    {
+      conversion_rate: FX.value,
+      cargo_rate: cargoRate.value,
+      first_offer_rate: profitRate.value,
+      profit_basis: profitBasis.value,
+    },
+    props.order?.package_weight_kg,
+  );
 }
 
 function getCounterOfferMargin(item: ShopOrderItem): number {
-  const offer = Number(item.customer_offer_amount || 0);
-  const cost = getLandedCostUnitSell(item);
-  if (cost <= 0) return 0;
-  return ((offer - cost) / cost) * 100;
+  return catalogGetCounterOfferMargin(
+    item,
+    {
+      conversion_rate: FX.value,
+      cargo_rate: cargoRate.value,
+      first_offer_rate: profitRate.value,
+      profit_basis: profitBasis.value,
+    },
+    props.order?.package_weight_kg,
+  );
 }
 
 function getFinalOfferMargin(item: ShopOrderItem): number {
-  const offer = Number(item.final_price_amount || 0);
-  const cost = getLandedCostUnitSell(item);
-  if (cost <= 0) return 0;
-  return ((offer - cost) / cost) * 100;
+  return catalogGetFinalOfferMargin(
+    item,
+    {
+      conversion_rate: FX.value,
+      cargo_rate: cargoRate.value,
+      first_offer_rate: profitRate.value,
+      profit_basis: profitBasis.value,
+    },
+    props.order?.package_weight_kg,
+  );
 }
 
 function getMarginColorClass(margin: number): string {
@@ -742,30 +768,17 @@ function getItemStatusColor(item: ShopOrderItem): string {
   return 'grey-7';
 }
 
-function roundUpToNearest5(val: number): number {
-  if (val <= 0) return 0;
-  return Math.ceil(val / 5) * 5;
-}
-
 function calculateItemOffer(item: ShopOrderItem): number {
-  const purchasePrice = Number(item.cost_price_amount || 0);
-  const prodGm = item.product_weight_gm ?? getProductWeightGm(item);
-  const pkgGm = item.package_weight_gm ?? getPackageWeightGm(item);
-  const weightKg = (prodGm + pkgGm) > 0 ? (prodGm + pkgGm) / 1000 : Number(item.weight_kg || 0);
-  const cRate = cargoRate.value;
-  const fx = FX.value;
-  const pRate = profitRate.value || 0;
-  const pBasis = profitBasis.value || 'total_cost';
-  const markup = pRate / 100;
-  const cargoCostBuy = weightKg * cRate;
-
-  if (pBasis === 'purchase') {
-    const purchaseCostSell = purchasePrice * fx;
-    const cargoCostSell = cargoCostBuy * fx;
-    return roundUpToNearest5(purchaseCostSell * (1 + markup) + cargoCostSell);
-  }
-  const landedCostSell = (purchasePrice + cargoCostBuy) * fx;
-  return roundUpToNearest5(landedCostSell * (1 + markup));
+  return calculateItemFirstOfferPrice(
+    item,
+    {
+      conversion_rate: FX.value,
+      cargo_rate: cargoRate.value,
+      first_offer_rate: profitRate.value,
+      profit_basis: profitBasis.value,
+    },
+    props.order?.package_weight_kg,
+  );
 }
 
 function onItemFieldChange(item: ShopOrderItem, field: string, val: any) {
