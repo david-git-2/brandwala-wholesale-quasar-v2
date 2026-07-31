@@ -1,186 +1,188 @@
 <template>
   <q-page class="q-pa-md barcode-list-page">
-    <!-- Page Title Card -->
-    <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
-      <q-card-section class="q-py-sm">
-        <div class="row items-center justify-between q-col-gutter-sm">
-          <div class="col">
-            <div class="text-h6 text-weight-bold">Thrift Barcodes</div>
-            <div class="text-caption text-grey-8">Generate and print barcodes in bulk</div>
-          </div>
-          <div class="col-auto row q-gutter-sm">
-            <q-btn
-              color="secondary"
-              no-caps
-              size="sm"
-              class="pill-btn slim-btn"
-              icon="ph ph-printer"
-              label="Print Barcodes"
-              @click="onClickPrint"
-            />
-          </div>
+    <div class="q-gutter-y-md">
+      <!-- Header -->
+      <section class="row items-center justify-between q-col-gutter-md">
+        <div class="col">
+          <div class="text-overline text-primary">Thrift</div>
+          <h1 class="text-h5 text-weight-bold q-my-none">Thrift Barcodes</h1>
         </div>
-      </q-card-section>
-    </q-card>
-
-    <!-- Error Alert Banner -->
-    <q-banner v-if="error" class="bg-negative text-white q-mb-md" rounded>
-      {{ error }}
-    </q-banner>
-
-    <!-- Barcode Bulk Generator Form -->
-    <q-card flat class="q-mb-md floating-surface shadow-1">
-      <q-card-section>
-        <div class="text-subtitle2 text-weight-bold q-mb-md text-primary">
-          Bulk Barcode Generator
+        <div class="col-auto row items-center q-gutter-x-sm">
+          <LearnMoreHelpBtn guide-id="thrift_barcode" tab="workflows" />
+          <q-btn
+            color="primary"
+            unelevated
+            no-caps
+            icon="ph ph-printer"
+            label="Print Barcodes"
+            @click="onClickPrint"
+          />
         </div>
-        <q-form @submit.prevent="showConfirmGenDialog" class="row q-col-gutter-md items-end">
-          <div class="col-12 col-sm-6 text-grey-8">
-            The system will automatically determine the next sequential prefix (starting from AA)
-            and append the current year (e.g. {{ currentYear }}).
-          </div>
-          <div class="col-12 col-sm-3">
-            <q-select
-              v-model="genQuantity"
-              label="Quantity to Generate"
-              outlined
-              dense
-              :options="qtyOptions"
-              emit-value
-              map-options
-              hide-bottom-space
-            />
-          </div>
-          <div class="col-12 col-sm-3">
-            <q-btn
-              type="submit"
-              color="primary"
-              no-caps
-              icon="ph ph-plus"
-              label="Generate"
-              class="full-width pill-btn"
-              :loading="generateMutation.isPending.value"
-            />
-          </div>
-        </q-form>
-      </q-card-section>
-    </q-card>
+      </section>
 
-    <!-- Data Table & Filter Panel -->
-    <q-card flat class="floating-surface shadow-1">
-      <!-- Search & Filters Header -->
-      <q-card-section class="q-py-md">
-        <div class="row q-col-gutter-sm items-center">
-          <div class="col-12 col-sm-4">
-            <q-input
-              v-model="filterText"
-              label="Search Barcodes"
-              outlined
-              dense
-              placeholder="e.g. 01-AA-26-"
-              clearable
-            >
-              <template v-slot:append>
-                <q-icon name="ph ph-magnifying-glass" />
-              </template>
-            </q-input>
-          </div>
-          <div class="col-12 col-sm-4">
-            <q-select
-              v-model="filterPrinted"
-              label="Printed Status"
-              outlined
-              dense
-              :options="printedOptions"
-              emit-value
-              map-options
-            />
-          </div>
-          <div class="col-12 col-sm-4">
-            <q-select
-              v-model="filterStatus"
-              label="Barcode Status"
-              outlined
-              dense
-              :options="statusOptions"
-              emit-value
-              map-options
-            />
-          </div>
-        </div>
-      </q-card-section>
+      <!-- Skeleton Loading State -->
+      <ThriftBarcodeSkeleton v-if="loading" />
 
-      <!-- Table -->
-      <q-card-section class="q-pa-none">
-        <q-table
-          flat
-          :rows="barcodes"
-          :columns="columns"
-          row-key="id"
-          selection="multiple"
-          v-model:selected="selected"
-          :loading="loading"
-          v-model:pagination="tablePagination"
-          :rows-per-page-options="[50]"
-          @request="onTableRequest"
-        >
-          <template v-slot:body-cell-status="props">
-            <q-td :props="props">
-              <q-chip
+      <template v-else>
+        <!-- Error Alert Banner -->
+        <q-banner v-if="error" class="bg-negative text-white q-mb-md" rounded>
+          {{ error }}
+        </q-banner>
+
+        <!-- Barcode Bulk Generator Form -->
+        <q-card flat bordered class="q-pa-md">
+          <div class="text-subtitle2 text-weight-bold q-mb-md text-primary">
+            Bulk Barcode Generator
+          </div>
+          <q-form @submit.prevent="showConfirmGenDialog" class="row q-col-gutter-md items-end">
+            <div class="col-12 col-sm-6 text-grey-8">
+              The system will automatically determine the next sequential prefix (starting from AA)
+              and append the current year (e.g. {{ currentYear }}).
+            </div>
+            <div class="col-12 col-sm-3">
+              <q-select
+                v-model="genQuantity"
+                label="Quantity to Generate"
+                outlined
                 dense
-                square
-                class="status-chip"
-                :style="props.value === 'AVAILABLE' ? activeChipStyle : inactiveChipStyle"
-              >
-                <span
-                  class="status-dot"
-                  :style="{ backgroundColor: props.value === 'AVAILABLE' ? '#2f8b5d' : '#a85b2f' }"
-                />
-                {{ props.value }}
-              </q-chip>
-            </q-td>
-          </template>
-
-          <template v-slot:body-cell-is_printed="props">
-            <q-td :props="props">
-              <q-chip
-                dense
-                square
-                class="status-chip"
-                :style="props.value === 1 ? printedChipStyle : unprintedChipStyle"
-              >
-                <span
-                  class="status-dot"
-                  :style="{ backgroundColor: props.value === 1 ? '#2f5b8b' : '#66758c' }"
-                />
-                {{ props.value === 1 ? 'Yes' : 'No' }}
-              </q-chip>
-            </q-td>
-          </template>
-
-          <template v-slot:body-cell-created_at="props">
-            <q-td :props="props">
-              {{ formatDate(props.value) }}
-            </q-td>
-          </template>
-
-          <template v-slot:body-cell-actions="props">
-            <q-td :props="props" class="text-center">
+                :options="qtyOptions"
+                emit-value
+                map-options
+                hide-bottom-space
+              />
+            </div>
+            <div class="col-12 col-sm-3">
               <q-btn
-                flat
-                round
-                dense
+                type="submit"
                 color="primary"
-                icon="ph ph-eye"
-                @click="onPreviewBarcode(props.row)"
-              >
-                <q-tooltip>Preview Barcode</q-tooltip>
-              </q-btn>
-            </q-td>
-          </template>
-        </q-table>
-      </q-card-section>
-    </q-card>
+                unelevated
+                no-caps
+                icon="ph ph-plus"
+                label="Generate"
+                class="full-width"
+                :loading="generateMutation.isPending.value"
+              />
+            </div>
+          </q-form>
+        </q-card>
+
+        <!-- Toolbar Card & Data Table -->
+        <q-card flat bordered class="q-pa-sm">
+          <!-- Toolbar Controls -->
+          <div class="q-pa-xs q-mb-sm">
+            <div class="row q-col-gutter-sm items-center">
+              <div class="col-12 col-sm-4">
+                <q-input
+                  v-model="filterText"
+                  label="Search Barcodes"
+                  outlined
+                  dense
+                  placeholder="e.g. 01-AA-26-"
+                  clearable
+                >
+                  <template v-slot:append>
+                    <q-icon name="ph ph-magnifying-glass" />
+                  </template>
+                </q-input>
+              </div>
+              <div class="col-12 col-sm-4">
+                <q-select
+                  v-model="filterPrinted"
+                  label="Printed Status"
+                  outlined
+                  dense
+                  :options="printedOptions"
+                  emit-value
+                  map-options
+                />
+              </div>
+              <div class="col-12 col-sm-4">
+                <q-select
+                  v-model="filterStatus"
+                  label="Barcode Status"
+                  outlined
+                  dense
+                  :options="statusOptions"
+                  emit-value
+                  map-options
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- Table -->
+          <q-card-section class="q-pa-none">
+            <q-table
+              flat
+              :rows="barcodes"
+              :columns="columns"
+              row-key="id"
+              selection="multiple"
+              v-model:selected="selected"
+              :loading="loading"
+              v-model:pagination="tablePagination"
+              :rows-per-page-options="[50]"
+              @request="onTableRequest"
+            >
+              <template v-slot:body-cell-status="props">
+                <q-td :props="props">
+                  <q-chip
+                    dense
+                    square
+                    class="status-chip"
+                    :style="props.value === 'AVAILABLE' ? activeChipStyle : inactiveChipStyle"
+                  >
+                    <span
+                      class="status-dot"
+                      :style="{ backgroundColor: props.value === 'AVAILABLE' ? '#2f8b5d' : '#a85b2f' }"
+                    />
+                    {{ props.value }}
+                  </q-chip>
+                </q-td>
+              </template>
+
+              <template v-slot:body-cell-is_printed="props">
+                <q-td :props="props">
+                  <q-chip
+                    dense
+                    square
+                    class="status-chip"
+                    :style="props.value === 1 ? printedChipStyle : unprintedChipStyle"
+                  >
+                    <span
+                      class="status-dot"
+                      :style="{ backgroundColor: props.value === 1 ? '#2f5b8b' : '#66758c' }"
+                    />
+                    {{ props.value === 1 ? 'Yes' : 'No' }}
+                  </q-chip>
+                </q-td>
+              </template>
+
+              <template v-slot:body-cell-created_at="props">
+                <q-td :props="props">
+                  {{ formatDate(props.value) }}
+                </q-td>
+              </template>
+
+              <template v-slot:body-cell-actions="props">
+                <q-td :props="props" class="text-center">
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    color="primary"
+                    icon="ph ph-eye"
+                    @click="onPreviewBarcode(props.row)"
+                  >
+                    <q-tooltip>Preview Barcode</q-tooltip>
+                  </q-btn>
+                </q-td>
+              </template>
+            </q-table>
+          </q-card-section>
+        </q-card>
+      </template>
+    </div>
 
     <!-- Barcode Generation Confirmation Dialog -->
     <q-dialog v-model="confirmGenDialog" persistent>
@@ -382,6 +384,8 @@ import { useThriftBarcodesQuery, type BarcodeQueryParams } from '../composables/
 import { useGenerateBarcodesMutation } from '../composables/useThriftBarcodeMutations';
 import { thriftBarcodeRepository } from '../repositories/thriftBarcodeRepository';
 import BarcodeRenderer from '../components/BarcodeRenderer.vue';
+import ThriftBarcodeSkeleton from '../components/ThriftBarcodeSkeleton.vue';
+import LearnMoreHelpBtn from 'src/modules/help/components/LearnMoreHelpBtn.vue';
 import type { ThriftBarcode, ThriftBarcodeListMeta } from '../types';
 import { isBarcodePrintEligible } from '../types';
 

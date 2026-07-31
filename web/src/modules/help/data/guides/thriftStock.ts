@@ -32,8 +32,8 @@ export const thriftStockGuide: ModuleGuide = {
           bn: 'সংশ্লিষ্ট শিপমেন্ট নির্বাচন করুন এবং আইটেমের বিবরণ (কোড, নাম, ক্যাটাগরি, সেকশন, কন্ডিশন) লিখুন।',
         },
         {
-          en: 'Enter origin unit price and pricing overrides if necessary, then save to generate stock record.',
-          bn: 'মূল কেনা দাম এবং প্রয়োজনে মূল্যের ওভাররাইড প্রদান করুন, তারপর স্টক রেকর্ড তৈরি করতে সংরক্ষণ করুন।',
+          en: 'Enter origin unit price and pricing overrides if necessary, then click "Save" to generate stock record.',
+          bn: 'মূল কেনা দাম এবং প্রয়োজনে মূল্যের ওভাররাইড প্রদান করুন, তারপর স্টক রেকর্ড তৈরি করতে "Save" বাটনে ক্লিক করুন।',
         },
       ],
     },
@@ -49,8 +49,8 @@ export const thriftStockGuide: ModuleGuide = {
           bn: 'সম্পাদনাযোগ্য টেবিল ফিল্ডে (যেমন কেনা দাম, মার্কআপ %, তালিকাভুক্ত মূল্য) ডাবল ক্লিক বা ট্যাপ করুন।',
         },
         {
-          en: 'Enter the updated value and confirm to apply inline changes instantly.',
-          bn: 'আপডেট করা মানটি দিন এবং তাত্ক্ষণিকভাবে ইনলাইন পরিবর্তন প্রয়োগ করতে নিশ্চিত করুন।',
+          en: 'Enter the updated value and press "Enter" or click outside to apply inline changes instantly.',
+          bn: 'আপডেট করা মানটি দিন এবং ইনলাইন পরিবর্তন তাত্ক্ষণিকভাবে প্রয়োগ করতে "Enter" চাপুন বা বাইরে ক্লিক করুন।',
         },
         {
           en: 'Expand or hover cost breakdown badges to inspect shipment cost allocation per item.',

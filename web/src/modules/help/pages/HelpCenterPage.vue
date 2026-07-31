@@ -155,9 +155,7 @@
                 <div class="step-badge text-weight-bold text-primary bg-primary-soft">
                   {{ idx + 1 }}
                 </div>
-                <div class="col text-body2 text-grey-8 step-text">
-                  {{ lt(step, locale) }}
-                </div>
+                <div class="col text-body2 text-grey-8 step-text" v-html="formatRichText(lt(step, locale))"></div>
               </div>
             </div>
           </div>
@@ -173,7 +171,7 @@
                 <q-icon name="ph ph-tag" class="text-primary" size="16px" />
                 <span>{{ lt(term.term, locale) }}</span>
               </div>
-              <div class="text-body2 text-grey-8">{{ lt(term.definition, locale) }}</div>
+              <div class="text-body2 text-grey-8" v-html="formatRichText(lt(term.definition, locale))"></div>
             </div>
           </div>
         </div>
@@ -199,9 +197,7 @@
                 </q-item-section>
               </template>
               <q-card class="bg-grey-1">
-                <q-card-section class="text-body2 text-grey-8 q-pt-none q-pb-md q-pl-xl">
-                  {{ lt(faq.answer, locale) }}
-                </q-card-section>
+                <q-card-section class="text-body2 text-grey-8 q-pt-none q-pb-md q-pl-xl" v-html="formatRichText(lt(faq.answer, locale))"></q-card-section>
               </q-card>
             </q-expansion-item>
           </q-list>
@@ -239,6 +235,35 @@ const { t, locale } = useI18n();
 const search = ref('');
 const selectedId = ref<string | null>(null);
 const sectionTab = ref<HelpTab>('overview');
+
+const formatRichText = (text: string) => {
+  if (!text) return '';
+  let formatted = text.replace(/\(([^)]+)\)/g, (match, content) => {
+    if (content.includes(',')) {
+      const parts = content.split(',').map((s: string) => s.trim());
+      const tags = parts
+        .map(
+          (p: string) =>
+            `<span class='field-tag-badge bg-grey-2 text-grey-8 q-px-xs'>${p}</span>`
+        )
+        .join(`<span class='text-grey-5'>, </span>`);
+      return `( ${tags} )`;
+    }
+    return match;
+  });
+
+  formatted = formatted.replace(
+    /"([^"]+)"/g,
+    `<span class='action-badge action-badge-primary bg-primary text-white text-caption shadow-2'>$1</span>`
+  );
+
+  formatted = formatted.replace(
+    /\*\*([^*]+)\*\*/g,
+    `<span class='action-badge action-badge-grey bg-grey-2 text-grey-9 text-caption shadow-1'>$1</span>`
+  );
+
+  return formatted;
+};
 
 const currentLocale = computed({
   get: () => locale.value,
@@ -405,5 +430,35 @@ watch(sectionTab, (tab) => {
 
 .guide-tabs {
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+:deep(.action-badge) {
+  display: inline-flex !important;
+  align-items: center !important;
+  white-space: nowrap !important;
+  line-height: 1.2 !important;
+  margin: 1px 4px !important;
+  border-radius: 9999px !important;
+  padding: 3px 10px !important;
+  vertical-align: middle !important;
+  font-weight: 600 !important;
+}
+
+:deep(.action-badge-primary) {
+  border: 1px solid var(--q-primary) !important;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2) !important;
+}
+
+:deep(.action-badge-grey) {
+  border: 1px solid rgba(0, 0, 0, 0.15) !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12) !important;
+}
+
+:deep(.field-tag-badge) {
+  font-size: 11px !important;
+  border-radius: 6px !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  display: inline-block !important;
+  white-space: nowrap !important;
 }
 </style>

@@ -1,101 +1,98 @@
 <template>
-  <q-page class="q-pa-md thrift-shipment-page">
-    <!-- Header -->
-    <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
-      <q-card-section class="q-py-sm">
-        <div class="row items-center justify-between q-col-gutter-sm">
-          <div class="col-12 col-sm">
-            <div class="text-h6 text-weight-bold">Thrift Shipments</div>
-            <div class="text-caption text-grey-8">
-              Open a shipment to set cargo, ops, and item-level landed costs
-            </div>
-          </div>
-          <div class="col-12 col-sm-auto row justify-start justify-sm-end q-mt-xs q-mt-sm-none">
-            <q-btn
-              color="primary"
-              no-caps
-              size="sm"
-              class="pill-btn slim-btn"
-              icon="ph ph-plus"
-              label="Add Shipment"
-              @click="openDialog()"
-            />
-          </div>
+  <ThriftShipmentSkeleton v-if="loading" />
+  <q-page v-else class="q-pa-md thrift-shipment-page">
+    <div class="q-gutter-y-md">
+      <!-- Header -->
+      <section class="row items-center justify-between q-col-gutter-md">
+        <div class="col">
+          <div class="text-overline text-primary">Thrift</div>
+          <h1 class="text-h5 text-weight-bold q-my-none">Thrift Shipments</h1>
         </div>
-      </q-card-section>
-    </q-card>
+        <div class="col-auto row q-gutter-sm items-center">
+          <LearnMoreHelpBtn guide-id="thrift_shipment" />
+          <q-btn
+            color="primary"
+            unelevated
+            no-caps
+            icon="ph ph-plus"
+            label="Add Shipment"
+            @click="openDialog()"
+          />
+        </div>
+      </section>
 
-    <!-- Table -->
-    <q-card flat class="floating-surface shadow-1">
-      <q-table
-        flat
-        :rows="shipmentRows"
-        :columns="columns"
-        row-key="id"
-        v-model:pagination="tablePagination"
-        :rows-per-page-options="[10, 20, 50]"
-        :loading="loading"
-        class="thrift-table"
-      >
-        <template #body-cell-sl="props">
-          <q-td :props="props">
-            {{ (tablePagination.page - 1) * tablePagination.rowsPerPage + props.rowIndex + 1 }}
-          </q-td>
-        </template>
-        <template #body-cell-name="props">
-          <q-td :props="props">
-            <router-link
-              :to="`/${authStore.tenantSlug || 'tenant'}/app/thrift/shipments/${props.row.id}`"
-              class="text-primary text-weight-bold"
-              style="text-decoration: none"
-            >
-              {{ props.row.name }}
-            </router-link>
-          </q-td>
-        </template>
-        <template #body-cell-actions="props">
-          <q-td :props="props" class="text-right q-gutter-x-xs">
-            <q-btn
-              flat
-              round
-              dense
-              icon="ph ph-download-simple"
-              color="secondary"
-              size="sm"
-              @click.stop="downloadShipmentImages(props.row)"
-            >
-              <q-tooltip>Download images from Cloudinary</q-tooltip>
-            </q-btn>
-            <q-btn
-              flat
-              round
-              dense
-              icon="ph ph-pencil-simple"
-              color="warning"
-              size="sm"
-              @click.stop="openDialog(props.row)"
-            >
-              <q-tooltip>Edit</q-tooltip>
-            </q-btn>
-            <q-btn
-              flat
-              round
-              dense
-              icon="ph ph-trash"
-              color="negative"
-              size="sm"
-              @click.stop="confirmDelete(props.row)"
-            >
-              <q-tooltip>Delete</q-tooltip>
-            </q-btn>
-          </q-td>
-        </template>
-      </q-table>
-    </q-card>
+      <!-- Table Card -->
+      <q-card flat bordered>
+        <q-table
+          flat
+          :rows="shipmentRows"
+          :columns="columns"
+          row-key="id"
+          v-model:pagination="tablePagination"
+          :rows-per-page-options="[10, 20, 50]"
+          :loading="loading"
+          class="thrift-table"
+        >
+          <template #body-cell-sl="props">
+            <q-td :props="props">
+              {{ (tablePagination.page - 1) * tablePagination.rowsPerPage + props.rowIndex + 1 }}
+            </q-td>
+          </template>
+          <template #body-cell-name="props">
+            <q-td :props="props">
+              <router-link
+                :to="`/${authStore.tenantSlug || 'tenant'}/app/thrift/shipments/${props.row.id}`"
+                class="text-primary text-weight-bold"
+                style="text-decoration: none"
+              >
+                {{ props.row.name }}
+              </router-link>
+            </q-td>
+          </template>
+          <template #body-cell-actions="props">
+            <q-td :props="props" class="text-right q-gutter-x-xs">
+              <q-btn
+                flat
+                round
+                dense
+                icon="ph ph-download-simple"
+                color="secondary"
+                size="sm"
+                @click.stop="downloadShipmentImages(props.row)"
+              >
+                <q-tooltip>Download images from Cloudinary</q-tooltip>
+              </q-btn>
+              <q-btn
+                flat
+                round
+                dense
+                icon="ph ph-pencil-simple"
+                color="warning"
+                size="sm"
+                @click.stop="openDialog(props.row)"
+              >
+                <q-tooltip>Edit</q-tooltip>
+              </q-btn>
+              <q-btn
+                flat
+                round
+                dense
+                icon="ph ph-trash"
+                color="negative"
+                size="sm"
+                @click.stop="confirmDelete(props.row)"
+              >
+                <q-tooltip>Delete</q-tooltip>
+              </q-btn>
+            </q-td>
+          </template>
+        </q-table>
+      </q-card>
+    </div>
 
     <!-- Create / Edit Dialog -->
     <q-dialog v-model="dialogOpen" persistent>
-      <q-card style="width: 500px; max-width: 95vw" class="floating-surface shadow-2 q-pa-md">
+      <q-card style="width: 500px; max-width: 95vw" class="q-pa-md">
         <q-card-section class="row items-center justify-between q-pb-sm">
           <div class="text-h6 text-weight-bold">
             {{ editingId ? 'Edit Shipment' : 'New Shipment' }}
@@ -109,7 +106,6 @@
             outlined
             dense
             label="Shipment Name *"
-            class="soft-input"
             :rules="[(val) => !!val || 'Required']"
           />
 
@@ -125,7 +121,6 @@
                 :option-label="currencyOptionLabel"
                 emit-value
                 map-options
-                class="soft-input"
                 :rules="[(val) => !!val || 'Required']"
               />
             </div>
@@ -140,7 +135,6 @@
                 :option-label="currencyOptionLabel"
                 emit-value
                 map-options
-                class="soft-input"
                 :rules="[(val) => !!val || 'Required']"
               />
             </div>
@@ -155,7 +149,6 @@
                 outlined
                 dense
                 label="Product Conversion Rate"
-                class="soft-input"
               />
             </div>
             <div class="col-12 col-sm-6">
@@ -166,7 +159,6 @@
                 outlined
                 dense
                 label="Cargo Conversion Rate"
-                class="soft-input"
               />
             </div>
           </div>
@@ -180,7 +172,6 @@
                 outlined
                 dense
                 label="Cargo Rate"
-                class="soft-input"
               />
             </div>
             <div class="col-12 col-sm-6">
@@ -191,7 +182,6 @@
                 outlined
                 dense
                 label="Total Cargo Weight (kg)"
-                class="soft-input"
               />
             </div>
           </div>
@@ -205,7 +195,6 @@
                 outlined
                 dense
                 label="Labor Total Cost"
-                class="soft-input"
               />
             </div>
             <div class="col-12 col-sm-6">
@@ -216,7 +205,6 @@
                 outlined
                 dense
                 label="Transportation Total Cost"
-                class="soft-input"
               />
             </div>
             <div class="col-12 col-sm-6">
@@ -227,7 +215,6 @@
                 outlined
                 dense
                 label="Washing Total Cost"
-                class="soft-input"
               />
             </div>
           </div>
@@ -240,7 +227,6 @@
             outlined
             dense
             label="Default Markup (%)"
-            class="soft-input"
             suffix="%"
           />
         </q-card-section>
@@ -248,9 +234,8 @@
           <q-btn flat no-caps label="Cancel" v-close-popup />
           <q-btn
             color="primary"
+            unelevated
             no-caps
-            size="sm"
-            class="pill-btn slim-btn"
             label="Save Shipment"
             @click="save"
           />
@@ -295,6 +280,8 @@ import type { ThriftCurrency } from 'src/modules/thrift/currency/types';
 import { useQuasar, type QTableColumn } from 'quasar';
 import type { ThriftShipment } from '../types';
 import ShipmentImageDownloadDialog from '../components/ShipmentImageDownloadDialog.vue';
+import ThriftShipmentSkeleton from '../components/ThriftShipmentSkeleton.vue';
+import LearnMoreHelpBtn from 'src/modules/help/components/LearnMoreHelpBtn.vue';
 
 const $q = useQuasar();
 const authStore = useAuthStore();
@@ -479,26 +466,9 @@ async function deleteItem() {
 .thrift-shipment-page {
   background: transparent;
 }
-.hero-surface {
-  border-radius: 16px;
-}
-
-.pill-btn {
-  border-radius: 999px;
-}
-
-.slim-btn {
-  min-height: 32px;
-  padding-left: 10px;
-  padding-right: 10px;
-}
-
-.soft-input :deep(.q-field__control) {
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.82);
-}
 
 .thrift-table :deep(th) {
   background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #f7f9fc 4%);
 }
 </style>
+

@@ -1,134 +1,136 @@
 <template>
   <q-page class="q-pa-md thrift-shelf-page">
-    <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
-      <q-card-section class="q-py-sm">
-        <div class="row items-center justify-between q-col-gutter-sm">
-          <div class="col-12 col-sm">
-            <div class="text-h6 text-weight-bold">Thrift Shelves</div>
-            <div class="text-caption text-grey-8">Manage warehouse shelf locations</div>
-          </div>
-          <div class="col-12 col-sm-auto">
-            <q-btn
-              color="primary"
-              no-caps
-              size="sm"
-              class="pill-btn slim-btn"
-              icon="ph ph-plus"
-              label="Add Shelf"
-              @click="openDialog()"
-            />
-          </div>
+    <div class="q-gutter-y-md">
+      <!-- Header -->
+      <section class="row items-center justify-between q-col-gutter-md">
+        <div class="col">
+          <div class="text-overline text-primary">Thrift</div>
+          <h1 class="text-h5 text-weight-bold q-my-none">Thrift Shelves</h1>
         </div>
-      </q-card-section>
-    </q-card>
-
-    <q-card flat class="floating-surface shadow-1">
-      <q-table
-        flat
-        :rows="shelvesList"
-        :columns="columns"
-        row-key="id"
-        v-model:pagination="tablePagination"
-        :rows-per-page-options="[10, 20, 50]"
-        :loading="shelvesLoading"
-        class="thrift-table"
-      >
-        <template #body-cell-sl="props">
-          <q-td :props="props">
-            {{ (tablePagination.page - 1) * tablePagination.rowsPerPage + props.rowIndex + 1 }}
-          </q-td>
-        </template>
-        <template #body-cell-actions="props">
-          <q-td :props="props" class="text-right q-gutter-x-xs">
-            <q-btn
-              flat
-              round
-              dense
-              icon="ph ph-pencil-simple"
-              color="warning"
-              size="sm"
-              @click.stop="openDialog(props.row)"
-            >
-              <q-tooltip>Edit</q-tooltip>
-            </q-btn>
-            <q-btn
-              flat
-              round
-              dense
-              icon="ph ph-trash"
-              color="negative"
-              size="sm"
-              @click.stop="confirmDelete(props.row)"
-            >
-              <q-tooltip>Delete</q-tooltip>
-            </q-btn>
-          </q-td>
-        </template>
-      </q-table>
-    </q-card>
-
-    <q-dialog v-model="dialogOpen" persistent>
-      <q-card style="width: 420px; max-width: 95vw" class="floating-surface shadow-2 q-pa-md">
-        <q-card-section class="row items-center justify-between q-pb-sm">
-          <div class="text-h6 text-weight-bold">{{ editingId ? 'Edit Shelf' : 'New Shelf' }}</div>
-          <q-btn flat round dense icon="ph ph-x" v-close-popup />
-        </q-card-section>
-        <q-separator />
-        <q-card-section class="q-pt-md q-gutter-md">
-          <q-input
-            v-model="form.name"
-            outlined
-            dense
-            label="Shelf Name *"
-            class="soft-input"
-            :rules="[(val) => !!val || 'Required']"
-          />
-          <q-input
-            v-model="form.shelf_code"
-            outlined
-            dense
-            label="Shelf Code *"
-            class="soft-input"
-            :rules="[(val) => !!val || 'Required']"
-          />
-          <q-input
-            v-model="form.location_bay"
-            outlined
-            dense
-            label="Location / Bay"
-            class="soft-input"
-          />
-        </q-card-section>
-        <q-card-section class="row justify-end q-gutter-sm q-pt-sm">
-          <q-btn flat no-caps label="Cancel" v-close-popup />
+        <div class="col-auto">
           <q-btn
             color="primary"
+            unelevated
             no-caps
-            size="sm"
-            class="pill-btn slim-btn"
-            label="Save"
-            @click="save"
+            label="Add Shelf"
+            @click="openDialog()"
           />
-        </q-card-section>
-      </q-card>
-    </q-dialog>
+        </div>
+      </section>
 
-    <q-dialog v-model="deleteConfirmOpen" persistent>
-      <q-card style="width: 350px; max-width: 90vw">
-        <q-card-section class="row items-center">
-          <q-avatar icon="ph ph-warning" color="warning" text-color="white" />
-          <span class="q-ml-sm text-weight-bold">Delete Shelf</span>
-        </q-card-section>
-        <q-card-section>
-          Delete shelf <strong>{{ selectedRow?.shelf_code }}</strong
-          >?
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="Cancel" v-close-popup />
-          <q-btn color="negative" label="Delete" @click="deleteItem" />
-        </q-card-actions>
+      <!-- Loading Skeleton State -->
+      <ThriftShelfSkeleton v-if="shelvesLoading" />
+
+      <!-- Table -->
+      <q-card v-else flat class="floating-surface shadow-1">
+        <q-table
+          flat
+          :rows="shelvesList"
+          :columns="columns"
+          row-key="id"
+          v-model:pagination="tablePagination"
+          :rows-per-page-options="[10, 20, 50]"
+          :loading="shelvesLoading"
+          class="thrift-table"
+        >
+          <template #body-cell-sl="props">
+            <q-td :props="props">
+              {{ (tablePagination.page - 1) * tablePagination.rowsPerPage + props.rowIndex + 1 }}
+            </q-td>
+          </template>
+          <template #body-cell-actions="props">
+            <q-td :props="props" class="text-right q-gutter-x-xs">
+              <q-btn
+                flat
+                round
+                dense
+                icon="ph ph-pencil-simple"
+                color="warning"
+                size="sm"
+                @click.stop="openDialog(props.row)"
+              >
+                <q-tooltip>Edit</q-tooltip>
+              </q-btn>
+              <q-btn
+                flat
+                round
+                dense
+                icon="ph ph-trash"
+                color="negative"
+                size="sm"
+                @click.stop="confirmDelete(props.row)"
+              >
+                <q-tooltip>Delete</q-tooltip>
+              </q-btn>
+            </q-td>
+          </template>
+        </q-table>
       </q-card>
-    </q-dialog>
+
+      <!-- Create / Edit Dialog -->
+      <q-dialog v-model="dialogOpen" persistent>
+        <q-card style="width: 420px; max-width: 95vw" class="floating-surface shadow-2 q-pa-md">
+          <q-card-section class="row items-center justify-between q-pb-sm">
+            <div class="text-h6 text-weight-bold">{{ editingId ? 'Edit Shelf' : 'New Shelf' }}</div>
+            <q-btn flat round dense icon="ph ph-x" v-close-popup />
+          </q-card-section>
+          <q-separator />
+          <q-card-section class="q-pt-md q-gutter-md">
+            <q-input
+              v-model="form.name"
+              outlined
+              dense
+              label="Shelf Name *"
+              class="soft-input"
+              :rules="[(val) => !!val || 'Required']"
+            />
+            <q-input
+              v-model="form.shelf_code"
+              outlined
+              dense
+              label="Shelf Code *"
+              class="soft-input"
+              :rules="[(val) => !!val || 'Required']"
+            />
+            <q-input
+              v-model="form.location_bay"
+              outlined
+              dense
+              label="Location / Bay"
+              class="soft-input"
+            />
+          </q-card-section>
+          <q-card-section class="row justify-end q-gutter-sm q-pt-sm">
+            <q-btn flat no-caps label="Cancel" v-close-popup />
+            <q-btn
+              color="primary"
+              unelevated
+              no-caps
+              label="Save Shelf"
+              @click="save"
+            />
+          </q-card-section>
+        </q-card>
+      </q-dialog>
+
+      <!-- Delete Confirmation Dialog -->
+      <q-dialog v-model="deleteConfirmOpen" persistent>
+        <q-card style="width: 350px; max-width: 90vw">
+          <q-card-section class="row items-center">
+            <q-avatar icon="ph ph-warning" color="warning" text-color="white" />
+            <span class="q-ml-sm text-weight-bold">Delete Shelf</span>
+          </q-card-section>
+          <q-card-section>
+            Are you sure you want to delete shelf <strong>{{ selectedRow?.shelf_code }}</strong
+            >?
+          </q-card-section>
+          <q-card-actions align="right">
+            <q-btn flat label="Cancel" v-close-popup />
+            <q-btn color="negative" label="Delete" @click="deleteItem" />
+          </q-card-actions>
+        </q-card>
+      </q-dialog>
+    </div>
   </q-page>
 </template>
 
@@ -139,6 +141,7 @@ import { useThriftStore } from '../../shared/stores/thriftStore';
 import { useThriftShelvesQuery } from '../../shared/composables/useThriftMasterDataQuery';
 import { useQuasar, type QTableColumn } from 'quasar';
 import type { ThriftShelf } from '../types';
+import ThriftShelfSkeleton from '../components/ThriftShelfSkeleton.vue';
 
 const $q = useQuasar();
 const authStore = useAuthStore();
@@ -250,16 +253,16 @@ async function deleteItem() {
 </script>
 
 <style scoped>
-.hero-surface {
-  border-radius: 16px;
+.thrift-shelf-page {
+  background: transparent;
 }
-.pill-btn {
-  border-radius: 999px;
-}
-.slim-btn {
-  min-height: 32px;
-}
+
 .soft-input :deep(.q-field__control) {
   border-radius: 12px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.thrift-table :deep(th) {
+  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #f7f9fc 4%);
 }
 </style>

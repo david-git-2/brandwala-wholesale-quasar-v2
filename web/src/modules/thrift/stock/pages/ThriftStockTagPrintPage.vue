@@ -1,44 +1,47 @@
 <template>
   <q-page class="q-pa-md thrift-stock-tag-print-page">
-    <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
-      <q-card-section class="q-py-sm">
-        <div class="text-h6 text-weight-bold">Marketing Tag Printing</div>
-        <div class="text-caption text-grey-8">
-          Select a shipment to configure and print marketing stickers for available stock.
+    <ThriftStockTagPrintSkeleton v-if="loading" />
+    <div v-else class="q-gutter-y-md">
+      <!-- Standard Page Header -->
+      <section class="row items-center justify-between q-col-gutter-md">
+        <div class="col">
+          <div class="text-overline text-primary">Thrift Stock</div>
+          <h1 class="text-h5 text-weight-bold q-my-none">Marketing Tag Printing</h1>
+          <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
+            Select a shipment to configure and print marketing stickers for available stock.
+          </p>
         </div>
-      </q-card-section>
-    </q-card>
+      </section>
 
-    <q-card flat class="floating-surface shadow-1">
-      <q-table
-        flat
-        :rows="printRows"
-        :columns="columns"
-        row-key="shipmentId"
-        :loading="loading"
-        :class="['thrift-table', { 'thrift-table--loading': loading }]"
-        :pagination="{ rowsPerPage: 10 }"
-      >
-        <template #body-cell-actions="props">
-          <q-td :props="props" class="text-right q-gutter-x-xs">
-            <q-btn flat round dense icon="ph ph-gear" color="grey-7" @click="openConfig(props.row)">
-              <q-tooltip>Configure tag layout</q-tooltip>
-            </q-btn>
-            <q-btn
-              unelevated
-              color="primary"
-              icon="ph ph-printer"
-              label="Print Tags"
-              class="pill-btn"
-              size="sm"
-              no-caps
-              :disabled="props.row.stickerCount === 0"
-              @click="goToPreview(props.row.shipmentId)"
-            />
-          </q-td>
-        </template>
-      </q-table>
-    </q-card>
+      <!-- Table Surface Card -->
+      <q-card flat bordered>
+        <q-table
+          flat
+          :rows="printRows"
+          :columns="columns"
+          row-key="shipmentId"
+          :pagination="{ rowsPerPage: 10 }"
+        >
+          <template #body-cell-actions="props">
+            <q-td :props="props" class="text-right q-gutter-x-xs">
+              <q-btn flat round dense icon="ph ph-gear" color="grey-7" @click="openConfig(props.row)">
+                <q-tooltip>Configure tag layout</q-tooltip>
+              </q-btn>
+              <q-btn
+                unelevated
+                color="primary"
+                icon="ph ph-printer"
+                label="Print Tags"
+                size="sm"
+                no-caps
+                :disabled="props.row.stickerCount === 0"
+                @click="goToPreview(props.row.shipmentId)"
+              />
+            </q-td>
+          </template>
+        </q-table>
+      </q-card>
+    </div>
   </q-page>
 </template>
 
@@ -52,6 +55,7 @@ import type { QTableColumn } from 'quasar';
 import { useThriftShipmentsQuery } from '../../shipment/composables/useThriftShipmentQuery';
 import { thriftStockRepository } from '../repositories/thriftStockRepository';
 import ShipmentMarketingTagConfigDialog from '../../shipment/components/ShipmentMarketingTagConfigDialog.vue';
+import ThriftStockTagPrintSkeleton from '../components/ThriftStockTagPrintSkeleton.vue';
 import type { ThriftShipment } from '../../shipment/types';
 import type { ShipmentTagPrintRow } from '../types/marketingTag';
 
@@ -136,15 +140,8 @@ function goToPreview(shipmentId: number) {
 </script>
 
 <style scoped>
-.hero-surface {
-  border-radius: 16px;
-}
-.pill-btn {
-  border-radius: 999px;
-}
-
-.thrift-table--loading {
-  opacity: 0.6;
-  pointer-events: none;
+.thrift-stock-tag-print-page {
+  background: transparent;
 }
 </style>
+

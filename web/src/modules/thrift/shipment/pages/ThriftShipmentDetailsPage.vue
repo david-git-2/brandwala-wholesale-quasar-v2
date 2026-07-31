@@ -1,235 +1,43 @@
 <template>
-  <q-page class="q-pa-md thrift-shipment-details-page">
-    <!-- Header -->
-    <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
-      <q-card-section class="q-py-sm">
-        <div class="row items-center q-col-gutter-sm">
-          <div class="col-auto">
-            <q-btn flat round icon="ph ph-arrow-left" color="BW-Grey-7" @click="goBack" />
-          </div>
-          <div class="col">
-            <div class="text-h6 text-weight-bold">
-              {{ shipment?.name || 'Shipment Details' }}
-            </div>
-            <div class="text-caption text-grey-8">Landed costing breakdown and item details</div>
-          </div>
-          <div class="col-auto row q-gutter-x-sm" v-if="shipment">
-            <q-chip outline color="primary" text-color="white" dense>
-              Purchase: {{ currencyCode(shipment.purchase_currency_id) }}
-            </q-chip>
-            <q-chip outline color="secondary" text-color="white" dense>
-              Cost: {{ currencyCode(shipment.cost_currency_id) }}
-            </q-chip>
-          </div>
+  <ThriftShipmentDetailsSkeleton v-if="loading && !shipment" />
+  <q-page v-else class="q-pa-md thrift-shipment-details-page">
+    <div class="q-gutter-y-md">
+      <!-- Header -->
+      <ThriftShipmentDetailsHeader
+        :shipment-name="shipment?.name"
+        :purchase-currency-code="currencyCode(shipment?.purchase_currency_id)"
+        :cost-currency-code="currencyCode(shipment?.cost_currency_id)"
+        @back="goBack"
+      />
+
+
+      <!-- Empty State when no stocks exist in the shipment -->
+      <q-banner
+        v-if="!loading && stocks.length === 0"
+        inline-actions
+        class="bg-blue-1 text-blue-9 rounded-borders q-pa-md"
+      >
+        <template v-slot:avatar>
+          <q-icon name="ph ph-info" color="blue-8" size="24px" />
+        </template>
+        <div class="text-subtitle2 text-weight-bold">No stock in this shipment yet</div>
+        <div class="text-caption">
+          Register items in the mobile app or catalog page to populate this shipment.
         </div>
-      </q-card-section>
-    </q-card>
-
-    <!-- Empty State when no stocks exist in the shipment -->
-    <q-banner
-      v-if="!loading && stocks.length === 0"
-      inline-actions
-      class="bg-blue-1 text-blue-9 rounded-borders q-mb-md q-pa-md"
-    >
-      <template v-slot:avatar>
-        <q-icon name="ph ph-info" color="blue-8" size="24px" />
-      </template>
-      <div class="text-subtitle2 text-weight-bold">No stock in this shipment yet</div>
-      <div class="text-caption">
-        Register items in the mobile app or catalog page to populate this shipment.
-      </div>
-    </q-banner>
-
-    <!-- Skeleton loader for the entire page body when first loading -->
-    <div class="row q-col-gutter-md" v-if="loading && !shipment">
-      <!-- Left sidebar skeleton -->
-      <div class="col-12 col-md-3">
-        <q-card flat class="floating-surface shadow-1 q-mb-md">
-          <q-card-section>
-            <q-skeleton type="text" width="60%" class="q-mb-sm" />
-            <q-separator class="q-my-sm" />
-            <div v-for="n in 2" :key="n" class="row justify-between q-py-xs">
-              <q-skeleton type="text" width="40%" />
-              <q-skeleton type="text" width="20%" />
-            </div>
-          </q-card-section>
-        </q-card>
-        <q-card flat class="floating-surface shadow-1">
-          <q-card-section class="q-gutter-y-sm">
-            <q-skeleton type="text" width="50%" />
-            <q-skeleton v-for="n in 6" :key="n" type="QInput" height="40px" />
-          </q-card-section>
-        </q-card>
-      </div>
-
-      <!-- Main table area skeleton -->
-      <div class="col-12 col-md-9">
-        <q-card flat class="floating-surface shadow-1">
-          <q-card-section class="row items-center justify-between q-py-sm">
-            <q-skeleton type="text" width="120px" height="32px" />
-            <div class="row q-gutter-sm">
-              <q-skeleton type="QInput" width="200px" height="32px" />
-              <q-skeleton type="QBtn" width="100px" height="32px" />
-            </div>
-          </q-card-section>
-
-          <thrift-shipment-items-table
-            :stocks="[]"
-            :visibleColumns="visibleColumns"
-            :costingBreakdowns="{}"
-            :purchaseCurrency="undefined"
-            :costCurrency="undefined"
-            :loading="true"
-          />
-        </q-card>
-      </div>
-    </div>
+      </q-banner>
 
     <div class="row q-col-gutter-md" v-else>
       <!-- Collapsible Left Sidebar (col-3) -->
       <div v-show="isLeftColumnVisible" class="col-12 col-md-3 transition-sidebar">
-        <!-- Summary card -->
-        <q-card flat class="floating-surface shadow-1 q-mb-md">
-          <q-card-section>
-            <div class="text-subtitle2 text-weight-bold text-primary q-mb-xs">Shipment Summary</div>
-            <q-separator class="q-my-sm" />
-            <div class="row justify-between q-py-xs">
-              <span class="text-caption text-grey-8">Total Items (U):</span>
-              <span class="text-subtitle2 text-weight-bold text-grey-9">{{ U }}</span>
-            </div>
-            <div class="row justify-between q-py-xs">
-              <span class="text-caption text-grey-8">Unique Stocks:</span>
-              <span class="text-subtitle2 text-weight-bold text-grey-9">{{ stocks.length }}</span>
-            </div>
-          </q-card-section>
-        </q-card>
-
-        <!-- Cost Inputs Editor -->
-        <q-card flat class="floating-surface shadow-1">
-          <q-card-section>
-            <div class="text-subtitle2 text-weight-bold text-primary q-mb-md">
-              Landed Cost Inputs
-            </div>
-
-            <div class="column q-gutter-y-sm">
-              <div class="text-caption text-weight-bold text-grey-7 q-mb-none">CARGO</div>
-              <q-input
-                v-model.number="costForm.total_cargo_weight_kg"
-                type="number"
-                step="0.1"
-                min="0"
-                outlined
-                dense
-                label="Total Cargo Weight (kg)"
-                class="soft-input"
-                @change="saveShipmentCosts"
-              />
-              <q-input
-                v-model.number="costForm.cargo_rate"
-                type="number"
-                step="0.01"
-                min="0"
-                outlined
-                dense
-                label="Cargo Rate"
-                class="soft-input"
-                @change="saveShipmentCosts"
-              />
-              <q-input
-                v-model.number="costForm.cargo_conversion_rate"
-                type="number"
-                step="0.0001"
-                min="0"
-                outlined
-                dense
-                label="Cargo Conv. Rate"
-                class="soft-input"
-                @change="saveShipmentCosts"
-              />
-
-              <q-separator class="q-my-xs" />
-              <div class="text-caption text-weight-bold text-grey-7 q-mb-none">OPERATIONS</div>
-              <q-input
-                v-model.number="costForm.labor_total_cost"
-                type="number"
-                step="0.01"
-                min="0"
-                outlined
-                dense
-                label="Labor Total Cost"
-                class="soft-input"
-                @change="saveShipmentCosts"
-              />
-              <q-input
-                v-model.number="costForm.transportation_total_cost"
-                type="number"
-                step="0.01"
-                min="0"
-                outlined
-                dense
-                label="Transport Total Cost"
-                class="soft-input"
-                @change="saveShipmentCosts"
-              />
-              <q-input
-                v-model.number="costForm.washing_total_cost"
-                type="number"
-                step="0.01"
-                min="0"
-                outlined
-                dense
-                label="Washing Total Cost"
-                class="soft-input"
-                @change="saveShipmentCosts"
-              />
-
-              <q-separator class="q-my-xs" />
-              <div class="text-caption text-weight-bold text-grey-7 q-mb-none">RATES & MARKUP</div>
-              <q-input
-                v-model.number="costForm.product_conversion_rate"
-                type="number"
-                step="0.0001"
-                min="0"
-                outlined
-                dense
-                label="Product Conv. Rate"
-                class="soft-input"
-                @change="saveShipmentCosts"
-              />
-              <q-input
-                v-model.number="markupPercentage"
-                type="number"
-                step="1"
-                min="0"
-                outlined
-                dense
-                label="Default Markup (%)"
-                class="soft-input"
-                suffix="%"
-                @change="saveShipmentCosts"
-              />
-              <div
-                class="text-caption text-grey-6 text-italic"
-                style="font-size: 10px; line-height: 1.2"
-              >
-                Suggested sell = landed × (1 + markup)
-              </div>
-              <div
-                class="q-pa-xs q-mt-xs bg-grey-2 rounded-borders text-caption text-grey-8"
-                style="font-size: 11px"
-              >
-                <div>
-                  Sample Preview (using Default Origin:
-                  {{ formatPurchase(settings?.default_origin_unit_price || 0) }}):
-                </div>
-                <div class="row justify-between text-weight-bold text-grey-9 q-mt-xs">
-                  <span>Suggested Sell:</span>
-                  <span>{{ formatCost(sampleSuggestedPrice) }}</span>
-                </div>
-              </div>
-            </div>
-          </q-card-section>
-        </q-card>
+        <ThriftShipmentCostInputsCard
+          v-model:cost-form="costForm"
+          v-model:markup-percentage="markupPercentage"
+          :total-units="U"
+          :stock-count="stocks.length"
+          :formatted-default-origin="formatPurchase(settings?.default_origin_unit_price || 0)"
+          :formatted-suggested-price="formatCost(sampleSuggestedPrice)"
+          @save="saveShipmentCosts"
+        />
       </div>
 
       <!-- Right Panel Table (col-9 or col-12) -->
@@ -319,134 +127,19 @@
     <!-- Bottom Row Summaries -->
     <div class="row q-col-gutter-md q-mt-md">
       <div class="col-12">
-        <q-card flat class="floating-surface shadow-1">
-          <q-card-section>
-            <div class="text-subtitle2 text-weight-bold text-primary q-mb-md">
-              SHIPMENT COST OVERVIEW
-            </div>
-
-            <div class="row q-col-gutter-md">
-              <!-- Units Section -->
-              <div class="col-12 col-md-3">
-                <div class="text-caption text-weight-bold text-grey-7 q-mb-xs">
-                  HOW COSTS ARE SPLIT
-                </div>
-                <div
-                  class="q-pa-sm bg-grey-1 rounded-borders h-100 column justify-center"
-                  style="min-height: 120px"
-                >
-                  <div class="row justify-between items-center">
-                    <span class="text-body2 text-grey-8">Unit Count (U):</span>
-                    <span class="text-subtitle1 text-weight-bold text-grey-9">{{ U }}</span>
-                  </div>
-                  <div class="text-caption text-grey-6 q-mt-xs">
-                    Cargo splits by item weight when set; ops bills divide by U.
-                  </div>
-                </div>
-              </div>
-
-              <!-- Shipment Bills Section -->
-              <div class="col-12 col-md-3">
-                <div class="text-caption text-weight-bold text-grey-7 q-mb-xs">
-                  SHIPMENT TOTALS ({{ costCurrency?.code || '—' }})
-                </div>
-                <div class="q-gutter-y-xs">
-                  <div class="row justify-between text-body2">
-                    <span class="text-grey-8">Cargo Total:</span>
-                    <span class="text-weight-medium">{{ formatCost(cargoCost) }}</span>
-                  </div>
-                  <div class="row justify-between text-body2">
-                    <span class="text-grey-8">Labor:</span>
-                    <span>{{ formatCost(costForm.labor_total_cost || 0) }}</span>
-                  </div>
-                  <div class="row justify-between text-body2">
-                    <span class="text-grey-8">Transport:</span>
-                    <span>{{ formatCost(costForm.transportation_total_cost || 0) }}</span>
-                  </div>
-                  <div class="row justify-between text-body2">
-                    <span class="text-grey-8">Washing:</span>
-                    <span>{{ formatCost(costForm.washing_total_cost || 0) }}</span>
-                  </div>
-                  <div class="row justify-between text-body2">
-                    <span class="text-grey-8">Hand tags (total):</span>
-                    <span>{{ formatCost(handTagTotal) }}</span>
-                  </div>
-                  <div class="row justify-between text-body2">
-                    <span class="text-grey-8">Stickers (total):</span>
-                    <span>{{ formatCost(stickerTotal) }}</span>
-                  </div>
-                  <q-separator class="q-my-xs" />
-                  <div class="row justify-between text-body2 text-weight-bold">
-                    <span class="text-grey-9">Ops Total:</span>
-                    <span class="text-primary">{{ formatCost(opsCost) }}</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Per Unit Share Section -->
-              <div class="col-12 col-md-3">
-                <div class="text-caption text-weight-bold text-grey-7 q-mb-xs">
-                  PER-UNIT SHARE ({{ costCurrency?.code || '—' }})
-                </div>
-                <div class="q-gutter-y-sm">
-                  <div
-                    class="q-pa-sm bg-blue-1 rounded-borders"
-                    style="border: 1px solid rgba(33, 150, 243, 0.12)"
-                  >
-                    <div class="row justify-between items-baseline">
-                      <span class="text-caption text-blue-9">Cargo Share:</span>
-                      <span class="text-subtitle2 text-weight-bold text-blue-10">{{
-                        formatCost(cargoSharePerUnit)
-                      }}</span>
-                    </div>
-                    <div class="text-caption text-grey-6" style="font-size: 10px">
-                      {{ usesWeightBasedCargo ? 'By weight (avg shown)' : 'Cargo Total ÷ U' }}
-                    </div>
-                  </div>
-                  <div
-                    class="q-pa-sm bg-orange-1 rounded-borders"
-                    style="border: 1px solid rgba(255, 152, 0, 0.12)"
-                  >
-                    <div class="row justify-between items-baseline">
-                      <span class="text-caption text-orange-9">Ops Share:</span>
-                      <span class="text-subtitle2 text-weight-bold text-orange-10">{{
-                        formatCost(opsSharePerUnit)
-                      }}</span>
-                    </div>
-                    <div class="text-caption text-grey-6" style="font-size: 10px">
-                      Ops Total ÷ U
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Each Item Formula Section -->
-              <div class="col-12 col-md-3">
-                <div class="text-caption text-weight-bold text-grey-7 q-mb-xs">
-                  PER-ITEM LANDED COST
-                </div>
-                <div
-                  class="q-pa-sm bg-teal-1 rounded-borders h-100 column justify-center"
-                  style="border: 1px solid rgba(0, 150, 136, 0.12); min-height: 120px"
-                >
-                  <div class="text-caption text-teal-9 text-weight-bold q-mb-xs">
-                    Landed Cost Formula
-                  </div>
-                  <div class="text-caption text-grey-8" style="line-height: 1.4; font-size: 11px">
-                    <code>Product Cost</code> + <br />
-                    <code>Cargo Share</code> + <br />
-                    <code>Ops Share</code> + <br />
-                    <code>Add'l Charges</code>
-                  </div>
-                  <div class="text-caption text-grey-6 q-mt-xs" style="font-size: 10px">
-                    Computed per item from origin, weight-based cargo share, ops share, and add'l
-                    charges.
-                  </div>
-                </div>
-              </div>
-            </div>
-          </q-card-section>
-        </q-card>
+        <ThriftShipmentCostOverviewCard
+          :cost-currency-code="costCurrency?.code"
+          :total-units="U"
+          :cargo-cost="cargoCost"
+          :cost-form="costForm"
+          :hand-tag-total="handTagTotal"
+          :sticker-total="stickerTotal"
+          :ops-cost="opsCost"
+          :cargo-share-per-unit="cargoSharePerUnit"
+          :ops-share-per-unit="opsSharePerUnit"
+          :uses-weight-based-cargo="usesWeightBasedCargo"
+          :format-cost="formatCost"
+        />
       </div>
     </div>
 
@@ -458,6 +151,7 @@
       :stock="selectedStock"
       @ok="onMeasurementsUpdated"
     />
+    </div>
   </q-page>
 </template>
 
@@ -465,6 +159,10 @@
 import { ref, computed, watch, nextTick } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useRoute, useRouter } from 'vue-router';
+import ThriftShipmentDetailsSkeleton from '../components/ThriftShipmentDetailsSkeleton.vue';
+import ThriftShipmentDetailsHeader from '../components/ThriftShipmentDetailsHeader.vue';
+import ThriftShipmentCostInputsCard from '../components/ThriftShipmentCostInputsCard.vue';
+import ThriftShipmentCostOverviewCard from '../components/ThriftShipmentCostOverviewCard.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useThriftCurrenciesQuery } from 'src/modules/thrift/currency/composables/useThriftCurrenciesQuery';
 import { useThriftSettingsQuery } from 'src/modules/thrift/settings/composables/useThriftSettingsQuery';
