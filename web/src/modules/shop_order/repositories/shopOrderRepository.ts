@@ -271,6 +271,23 @@ const confirmShopOrder = async (orderId: number): Promise<void> => {
 };
 
 const customerConfirmShopOrder = async (orderId: number): Promise<void> => {
+  // Ensure all order items have confirmed_quantity set (defaulting to item quantity if null)
+  const { data: items } = await supabase
+    .from('shop_order_items')
+    .select('id, quantity, confirmed_quantity')
+    .eq('order_id', orderId);
+
+  if (items && items.length > 0) {
+    for (const item of items) {
+      if (item.confirmed_quantity == null) {
+        await supabase
+          .from('shop_order_items')
+          .update({ confirmed_quantity: item.quantity })
+          .eq('id', item.id);
+      }
+    }
+  }
+
   const { error } = await supabase.rpc('customer_confirm_shop_order', {
     p_order_id: orderId,
   });
@@ -367,7 +384,7 @@ const getShopOrderById = async (
 
   const { data: rawItems, error: itemsErr } = await supabase
     .from('shop_order_items')
-    .select('*, products(product_code, brand, barcode, product_weight, package_weight, reference_cost_amount)')
+    .select('*, products(product_code, brand, barcode, product_weight, package_weight, reference_cost_amount, minimum_order_quantity)')
     .eq('order_id', orderId)
     .order('created_at', { ascending: true });
 
@@ -379,6 +396,7 @@ const getShopOrderById = async (
     const barcode = row.products?.barcode ?? null;
     const product_weight_gm = row.products?.product_weight ?? null;
     const package_weight_gm = row.products?.package_weight ?? null;
+    const minimum_order_quantity = row.products?.minimum_order_quantity ?? 1;
     const cost_price_amount =
       row.cost_price_amount ??
       row.unit_list_price_amount ??
@@ -392,6 +410,7 @@ const getShopOrderById = async (
       barcode,
       product_weight_gm,
       package_weight_gm,
+      minimum_order_quantity,
     };
     delete item.products;
     return item as ShopOrderItem;
@@ -600,6 +619,8 @@ const updateCatalogOrderItem = async (
     is_final_offer_manual?: boolean | null;
     customer_offer_amount?: number | null;
     customer_offer_currency_id?: number | null;
+    confirmed_quantity?: number | null;
+    quantity?: number | null;
     ordered_quantity?: number | null;
     delivered_quantity?: number | null;
   },
@@ -613,6 +634,8 @@ const updateCatalogOrderItem = async (
   if (payload.customer_offer_currency_id !== undefined) itemUpdates.customer_offer_currency_id = payload.customer_offer_currency_id;
   if (payload.final_price_amount !== undefined) itemUpdates.final_price_amount = payload.final_price_amount;
   if (payload.is_final_offer_manual !== undefined) itemUpdates.is_final_offer_manual = payload.is_final_offer_manual;
+  if (payload.confirmed_quantity !== undefined) itemUpdates.confirmed_quantity = payload.confirmed_quantity;
+  if (payload.quantity !== undefined) itemUpdates.quantity = payload.quantity;
   if (payload.ordered_quantity !== undefined) itemUpdates.ordered_quantity = payload.ordered_quantity;
   if (payload.delivered_quantity !== undefined) itemUpdates.delivered_quantity = payload.delivered_quantity;
 

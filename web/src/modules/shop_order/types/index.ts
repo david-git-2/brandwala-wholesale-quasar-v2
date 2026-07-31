@@ -273,6 +273,7 @@ export interface ShopOrderItem {
   note?: string | null;
   product_weight_gm?: number | null;
   package_weight_gm?: number | null;
+  minimum_order_quantity?: number | null;
   created_at: string;
   updated_at: string;
 }

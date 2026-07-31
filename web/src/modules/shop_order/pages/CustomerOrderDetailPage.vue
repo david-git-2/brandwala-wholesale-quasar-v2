@@ -47,7 +47,8 @@
               :is-negotiable="!!currentOrder.is_negotiable_snapshot"
               :currency-symbol="currencySymbol"
               :buy-currency-symbol="buyCurrencySymbol"
-              @update:confirmed-qty="handleConfirmedQtyUpdate"
+              @update:quantity="handleQuantityUpdate"
+              @save-quantity="handleSaveQuantity"
               @update:customer-offer="handleCustomerOfferUpdate"
               @save-item-counter="handleSaveItemCounter"
             />
@@ -222,12 +223,8 @@ const isAllItemsDecided = computed(() => {
 });
 
 const orderTotal = computed(() => {
-  const isFinalOrBeyond = ['final_offered', 'confirmed', 'procuring', 'ordered', 'delivered'].includes(
-    normalizedStatus.value,
-  );
   return orderItems.value.reduce((sum, item) => {
-    const qty = isFinalOrBeyond ? (item.confirmed_quantity ?? item.quantity) : item.quantity;
-    return sum + getDisplayUnitPrice(item) * qty;
+    return sum + getDisplayUnitPrice(item) * item.quantity;
   }, 0);
 });
 
@@ -305,16 +302,42 @@ const submitCounterOffer = async () => {
   sendCustomerCounter({ orderId: orderId.value, items: payload });
 };
 
-const confirmOrder = () => {
+const confirmOrder = async () => {
   if (!orderId.value) return;
+
+  const confirmed = await requestConfirmation(
+    'Are you sure you want to confirm this order? Once confirmed, the order will proceed to processing and fulfillment.',
+    'Confirm Order',
+    'Confirm Order',
+  );
+
+  if (!confirmed) return;
+
   confirmCustomerOrder(orderId.value);
 };
 
-const handleConfirmedQtyUpdate = ({ itemId, confirmedQuantity }: { itemId: number; confirmedQuantity: number }) => {
+const handleQuantityUpdate = ({ itemId, quantity }: { itemId: number; quantity: number }) => {
   const item = orderItems.value.find((i) => i.id === itemId);
   if (item) {
-    item.confirmed_quantity = confirmedQuantity;
+    item.quantity = quantity;
   }
+};
+
+const handleSaveQuantity = ({ itemId, quantity }: { itemId: number; quantity: number }) => {
+  if (!orderId.value) return;
+  handleQuantityUpdate({ itemId, quantity });
+
+  const targetItem = orderItems.value.find((i) => i.id === itemId);
+  if (!targetItem) return;
+
+  updateCatalogOrderItem({
+    orderId: orderId.value,
+    itemId,
+    productId: targetItem.product_id,
+    payload: {
+      quantity,
+    },
+  });
 };
 
 const handleCustomerOfferUpdate = ({ itemId, amount }: { itemId: number; amount: number }) => {

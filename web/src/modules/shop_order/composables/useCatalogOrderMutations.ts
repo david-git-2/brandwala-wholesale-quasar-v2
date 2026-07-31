@@ -192,6 +192,8 @@ export function useUpdateCatalogOrderItemMutation() {
         is_final_offer_manual?: boolean | null;
         customer_offer_amount?: number | null;
         customer_offer_currency_id?: number | null;
+        confirmed_quantity?: number | null;
+        quantity?: number | null;
         ordered_quantity?: number | null;
         delivered_quantity?: number | null;
       };

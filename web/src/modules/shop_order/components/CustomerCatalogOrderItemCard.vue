@@ -175,14 +175,16 @@
         </div>
       </div>
 
-      <!-- Confirmed Quantity Stepper for status == 'final_offered' -->
+      <!-- Quantity Stepper for status == 'final_offered' -->
       <div v-if="status === 'final_offered'" class="qty-stepper-box q-mt-md q-pa-sm bg-green-1 rounded-borders border-green">
-        <div class="row items-center justify-between">
-          <div class="column">
-            <span class="text-caption text-weight-bold text-green-9">Confirm Final Quantity:</span>
-            <span class="text-caption text-grey-7" style="font-size: 11px;">Max requested: {{ item.quantity }}</span>
+        <div class="row items-center justify-between q-col-gutter-xs">
+          <div class="column col-xs-12 col-sm-auto q-mb-xs q-mb-sm-none">
+            <span class="text-caption text-weight-bold text-green-9">Update Final Quantity:</span>
+            <span class="text-caption text-grey-7" style="font-size: 11px;">
+              Step size: {{ minQtyStep }}
+            </span>
           </div>
-          <div class="row items-center q-gutter-x-xs">
+          <div class="row items-center q-gutter-x-xs col-xs-12 col-sm-auto justify-end">
             <q-btn
               unelevated
               dense
@@ -191,17 +193,18 @@
               icon="ph ph-minus"
               size="md"
               class="touch-stepper-btn border-green"
-              :disable="confirmedQty <= 1"
-              @click="updateConfirmedQty(confirmedQty - 1)"
+              :disable="quantity <= 0"
+              @click="updateQuantity(quantity - minQtyStep)"
             />
             <q-input
-              v-model.number="confirmedQty"
+              v-model.number="quantity"
               type="number"
               outlined
               dense
               bg-color="white"
               input-class="text-center text-weight-bolder"
-              style="width: 65px"
+              style="width: 70px"
+              :min="0"
               @update:model-value="onQtyInput"
             />
             <q-btn
@@ -212,8 +215,18 @@
               icon="ph ph-plus"
               size="md"
               class="touch-stepper-btn border-green"
-              :disable="confirmedQty >= item.quantity"
-              @click="updateConfirmedQty(confirmedQty + 1)"
+              @click="updateQuantity(quantity + minQtyStep)"
+            />
+            <q-btn
+              v-if="isQtyChanged"
+              unelevated
+              color="positive"
+              dense
+              no-caps
+              class="q-px-sm text-caption text-weight-bold q-ml-xs"
+              style="height: 38px; border-radius: 8px;"
+              label="Save"
+              @click="saveQuantity"
             />
           </div>
         </div>
@@ -227,12 +240,12 @@
         </span>
       </div>
 
-      <!-- Progress Tracking Post-Confirmed -->
-      <div v-if="isConfirmedOrBeyond" class="progress-section q-mt-sm q-pa-xs bg-grey-2 rounded-borders text-caption text-grey-8">
+      <!-- Progress Tracking Post-Confirmed (procuring, ordered, delivered) -->
+      <div v-if="isConfirmedOrBeyond && status !== 'confirmed'" class="progress-section q-mt-sm q-pa-xs bg-grey-2 rounded-borders text-caption text-grey-8">
         <div class="row items-center justify-around text-center">
           <div>
-            <div class="text-weight-bold">{{ item.confirmed_quantity ?? item.quantity }}</div>
-            <div style="font-size: 10px;" class="text-grey-6">Confirmed</div>
+            <div class="text-weight-bold">{{ item.quantity }}</div>
+            <div style="font-size: 10px;" class="text-grey-6">Quantity</div>
           </div>
           <q-separator vertical />
           <div>
@@ -265,23 +278,34 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'update:confirmedQty', payload: { itemId: number; confirmedQuantity: number }): void;
+  (e: 'update:quantity', payload: { itemId: number; quantity: number }): void;
+  (e: 'save-quantity', payload: { itemId: number; quantity: number }): void;
   (e: 'update:customerOffer', payload: { itemId: number; amount: number }): void;
   (e: 'save-item-counter', payload: { itemId: number; amount: number }): void;
 }>();
 
-const confirmedQty = ref<number>(props.item.confirmed_quantity ?? props.item.quantity);
+const initialQty = ref<number>(props.item.quantity);
+const quantity = ref<number>(props.item.quantity);
+
 const isCountering = ref<boolean>(
   props.item.customer_offer_amount != null &&
     Number(props.item.customer_offer_amount) > 0 &&
     Number(props.item.customer_offer_amount) !== Number(props.item.staff_offer_amount),
 );
 
+const isQtyChanged = computed(() => {
+  return quantity.value !== initialQty.value;
+});
+
 watch(
-  () => props.item.confirmed_quantity,
+  () => props.item.quantity,
   (newVal) => {
     if (newVal != null) {
-      confirmedQty.value = newVal;
+      initialQty.value = newVal;
+      // Only set quantity if user hasn't modified it locally
+      if (!isQtyChanged.value) {
+        quantity.value = newVal;
+      }
     }
   },
   { immediate: true },
@@ -368,22 +392,31 @@ const effectiveUnitPrice = computed(() => {
   return Number(props.item.unit_sell_price_amount || props.item.unit_list_price_amount || 0);
 });
 
+const minQtyStep = computed(() => {
+  const itemAny = props.item as any;
+  const step = itemAny.minimum_order_quantity ?? itemAny.minimum_quantity ?? itemAny.moq ?? 1;
+  return Math.max(1, Number(step) || 1);
+});
+
 const calculatedLineTotal = computed(() => {
-  const qty = props.status === 'final_offered' || isConfirmedOrBeyond.value ? confirmedQty.value : props.item.quantity;
+  const qty = props.status === 'final_offered' || isConfirmedOrBeyond.value ? quantity.value : props.item.quantity;
   return effectiveUnitPrice.value * qty;
 });
 
-const updateConfirmedQty = (val: number) => {
-  const bounded = Math.max(1, Math.min(props.item.quantity, val));
-  confirmedQty.value = bounded;
-  emit('update:confirmedQty', { itemId: props.item.id, confirmedQuantity: bounded });
+const updateQuantity = (val: number) => {
+  const bounded = Math.max(0, val);
+  quantity.value = bounded;
+};
+
+const saveQuantity = () => {
+  initialQty.value = quantity.value;
+  emit('save-quantity', { itemId: props.item.id, quantity: quantity.value });
 };
 
 const onQtyInput = (val: any) => {
-  const num = Number(val || 1);
-  updateConfirmedQty(num);
+  const num = Math.max(0, Number(val || 0));
+  updateQuantity(num);
 };
-
 const onOfferInput = (val: any) => {
   const amount = Number(val || 0);
   // Auto-remove counter if amount equals offer price
