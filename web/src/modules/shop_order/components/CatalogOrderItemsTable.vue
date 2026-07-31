@@ -1,34 +1,5 @@
 <template>
   <q-card flat bordered class="catalog-items-card q-pa-none costing-items-surface shadow-1">
-    <!-- Top Header Bar with Items Count, Total Weight & Three Dot Action Menu -->
-    <div class="row items-center justify-between q-pa-sm bg-grey-1 border-bottom">
-      <div class="row items-center q-gutter-x-sm">
-        <div class="text-subtitle1 text-weight-bold text-grey-9 row items-center q-gutter-x-xs">
-          <q-icon name="ph ph-package" size="20px" class="text-primary" />
-          <span>Order Items ({{ items.length }})</span>
-        </div>
-        <q-chip dense outline color="primary" class="text-caption text-weight-bold">
-          Total Weight: {{ totalWeightKg.toFixed(2) }} kg ({{ totalWeightGm.toLocaleString() }} g)
-        </q-chip>
-      </div>
-
-      <div class="row items-center q-gutter-x-xs">
-        <q-btn
-          v-if="isCostingMode"
-          flat
-          dense
-          no-caps
-          color="grey-8"
-          icon="ph ph-arrows-clockwise"
-          label="Recalculate Offers"
-          class="q-px-sm text-caption"
-          @click="recalculateAllOffers"
-        >
-          <q-tooltip>Recalculate staff initial offers using FX and Cargo rates</q-tooltip>
-        </q-btn>
-      </div>
-    </div>
-
     <!-- Table matching ProductBasedCostingItemsTable style -->
     <q-table
       flat

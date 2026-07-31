@@ -48,6 +48,8 @@ export function useStaffPriceCatalogOrderMutation() {
         staff_offer_currency_id: number;
         gross_weight_kg?: number | null;
         cost_price_amount?: number | null;
+        product_weight_gm?: number | null;
+        package_weight_gm?: number | null;
       }>;
       profitBasis?: string | null;
       rates?: {

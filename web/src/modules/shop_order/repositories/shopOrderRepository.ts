@@ -168,7 +168,17 @@ const submitShopOrderFromCart = async (
 
 const staffPriceShopOrder = async (
   orderId: number,
-  items: Array<{ id: number; staff_offer_amount: number; staff_offer_currency_id: number; gross_weight_kg?: number | null; cbm?: number | null }>,
+  items: Array<{
+    id: number;
+    staff_offer_amount: number;
+    staff_offer_currency_id: number;
+    gross_weight_kg?: number | null;
+    cbm?: number | null;
+    cost_price_amount?: number | null;
+    product_id?: number | null;
+    product_weight_gm?: number | null;
+    package_weight_gm?: number | null;
+  }>,
   profitBasis?: string | null,
 ): Promise<void> => {
   const { error } = await supabase.rpc('staff_price_shop_order', {
@@ -177,6 +187,39 @@ const staffPriceShopOrder = async (
     p_profit_basis: profitBasis ?? null,
   });
   if (error) throw error;
+
+  // Sync updated price/unit (reference_cost_amount), product_weight, and package_weight back to products table
+  const { data: orderItemRows } = await supabase
+    .from('shop_order_items')
+    .select('id, product_id, weight_kg')
+    .eq('order_id', orderId);
+
+  if (orderItemRows && orderItemRows.length > 0) {
+    const itemMap = new Map(items.map((i) => [i.id, i]));
+    for (const itemRow of orderItemRows) {
+      const payloadItem = itemMap.get(itemRow.id);
+      const productId = itemRow.product_id || payloadItem?.product_id;
+      if (!productId) continue;
+
+      const productUpdates: Record<string, any> = {};
+      if (payloadItem?.cost_price_amount !== undefined && payloadItem.cost_price_amount !== null && payloadItem.cost_price_amount > 0) {
+        productUpdates.reference_cost_amount = payloadItem.cost_price_amount;
+      }
+      if (payloadItem?.product_weight_gm !== undefined && payloadItem.product_weight_gm !== null && payloadItem.product_weight_gm > 0) {
+        productUpdates.product_weight = payloadItem.product_weight_gm;
+      }
+      if (payloadItem?.package_weight_gm !== undefined && payloadItem.package_weight_gm !== null && payloadItem.package_weight_gm > 0) {
+        productUpdates.package_weight = payloadItem.package_weight_gm;
+      }
+
+      if (Object.keys(productUpdates).length > 0) {
+        await supabase
+          .from('products')
+          .update(productUpdates)
+          .eq('id', productId);
+      }
+    }
+  }
 };
 
 const staffFinalizeCatalogPrices = async (
@@ -272,20 +315,26 @@ const listDropshipShopOrdersForStaff = async (
 
 const getShopOrderById = async (
   orderId: number,
-): Promise<{ order: ShopOrder; items: ShopOrderItem[] }> => {
+): Promise<{
+  order: ShopOrder & { shop_sell_currency_id?: number | null; shop_buy_currency_id?: number | null };
+  items: ShopOrderItem[];
+}> => {
   const { data: orderRow, error: orderErr } = await supabase
     .from('shop_orders')
-    .select('*, customer_groups(name)')
+    .select('*, customer_groups(name), shops(sell_currency_id, buy_currency_id)')
     .eq('id', orderId)
     .single();
 
   if (orderErr) throw orderErr;
 
-  const order: ShopOrder = {
+  const order: ShopOrder & { shop_sell_currency_id?: number | null; shop_buy_currency_id?: number | null } = {
     ...orderRow,
     customer_group_name: (orderRow as any).customer_groups?.name ?? orderRow.customer_group_name,
+    shop_sell_currency_id: (orderRow as any).shops?.sell_currency_id ?? null,
+    shop_buy_currency_id: (orderRow as any).shops?.buy_currency_id ?? null,
   };
   delete (order as any).customer_groups;
+  delete (order as any).shops;
 
   // Fallback until shop_orders.collection_source is migrated / populated
   if (!order.collection_source && order.global_invoice_id) {
@@ -303,7 +352,7 @@ const getShopOrderById = async (
 
   const { data: rawItems, error: itemsErr } = await supabase
     .from('shop_order_items')
-    .select('*, products(product_code, brand, barcode, product_weight, package_weight)')
+    .select('*, products(product_code, brand, barcode, product_weight, package_weight, reference_cost_amount)')
     .eq('order_id', orderId);
 
   if (itemsErr) throw itemsErr;
@@ -314,8 +363,14 @@ const getShopOrderById = async (
     const barcode = row.products?.barcode ?? null;
     const product_weight_gm = row.products?.product_weight ?? null;
     const package_weight_gm = row.products?.package_weight ?? null;
+    const cost_price_amount =
+      row.cost_price_amount ??
+      row.unit_list_price_amount ??
+      row.products?.reference_cost_amount ??
+      null;
     const item = {
       ...row,
+      cost_price_amount,
       sku,
       brand,
       barcode,
@@ -327,7 +382,7 @@ const getShopOrderById = async (
   });
 
   return {
-    order: order as ShopOrder,
+    order,
     items,
   };
 };

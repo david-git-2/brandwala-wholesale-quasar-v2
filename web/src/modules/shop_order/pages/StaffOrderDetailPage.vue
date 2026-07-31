@@ -359,11 +359,35 @@ const catalogDefaultVisibleColumns = [
   'action',
 ];
 
-const { visibleColumns: catalogVisibleColumns } = useMembershipColumnPreference({
+const { visibleColumns: rawCatalogVisibleColumns } = useMembershipColumnPreference({
   preferenceKey: 'ui.shopOrder.staffCatalogVisibleColumns',
   allColumnNames: catalogAllColumnNames,
   alwaysVisibleColumns: catalogAlwaysVisibleColumns,
   defaultVisibleColumns: catalogDefaultVisibleColumns,
+});
+
+const submittedModeColumns = [
+  'sl',
+  'image',
+  'name',
+  'brand',
+  'code_barcode_id',
+  'qty_customer',
+  'purchase_price_unit',
+  'status',
+  'action',
+];
+
+const catalogVisibleColumns = computed<string[]>({
+  get: () => {
+    if (currentOrder.value?.status === 'submitted') {
+      return submittedModeColumns;
+    }
+    return rawCatalogVisibleColumns.value;
+  },
+  set: (val: string[]) => {
+    rawCatalogVisibleColumns.value = val;
+  },
 });
 
 const onCatalogVisibleColumnsUpdate = (columns: string[]) => {
@@ -372,7 +396,7 @@ const onCatalogVisibleColumnsUpdate = (columns: string[]) => {
 
 watch(
   () => orderDetailsData.value,
-  async (newData) => {
+  (newData) => {
     if (newData) {
       if (newData.order?.shop_type_snapshot === 'dropship') {
         void router.replace({
@@ -382,12 +406,8 @@ watch(
         return;
       }
       orderItems.value = JSON.parse(JSON.stringify(newData.items || []));
-      const shopId = newData.order?.shop_id;
-      if (shopId) {
-        const shopCurrencies = await shopOrderRepository.getShopCurrencies(shopId);
-        shopSellCurrencyId.value = shopCurrencies.sell_currency_id;
-        shopBuyCurrencyId.value = shopCurrencies.buy_currency_id;
-      }
+      shopSellCurrencyId.value = newData.order?.shop_sell_currency_id ?? null;
+      shopBuyCurrencyId.value = newData.order?.shop_buy_currency_id ?? null;
     }
   },
   { immediate: true },
@@ -496,6 +516,8 @@ const handleSaveStaffCatalogPricing = () => {
       1,
     gross_weight_kg: Number(item.weight_kg || 0),
     cost_price_amount: Number(item.cost_price_amount || 0),
+    product_weight_gm: Number(item.product_weight_gm || 0),
+    package_weight_gm: Number(item.package_weight_gm || 0),
   }));
 
   staffPriceCatalogOrder({
