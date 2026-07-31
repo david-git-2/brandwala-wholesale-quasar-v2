@@ -20,6 +20,7 @@
           step="0.01"
           class="bg-white soft-input"
           label="Conversion Rate (FX)"
+          @update:model-value="onRateChange"
         />
       </div>
 
@@ -32,6 +33,7 @@
           step="0.01"
           class="bg-white soft-input"
           label="Cargo Rate (kg/GBP)"
+          @update:model-value="onRateChange"
         />
       </div>
 
@@ -43,7 +45,8 @@
           type="number"
           step="0.01"
           class="bg-white soft-input"
-          label="Profit Rate (%)"
+          label="First Offer Profit Rate (%)"
+          @update:model-value="onRateChange"
         />
       </div>
 
@@ -57,6 +60,7 @@
           :options="basisOptions"
           class="bg-white soft-input"
           label="Profit Basis"
+          @update:model-value="onRateChange"
         />
       </div>
 
@@ -95,6 +99,15 @@ const emit = defineEmits<{
       profit_basis: 'purchase' | 'total_cost';
     },
   ): void;
+  (
+    e: 'change-rates',
+    payload: {
+      conversion_rate: number | null;
+      cargo_rate: number | null;
+      profit_rate: number | null;
+      profit_basis: 'purchase' | 'total_cost';
+    },
+  ): void;
 }>();
 
 const conversion_rate = ref<number | null>(null);
@@ -126,6 +139,15 @@ const formulaExplanation = computed(() => {
   }
   return 'Round5(ceil((Cost × FX + Weight × Cargo × FX) × (1 + Profit%)))';
 });
+
+function onRateChange() {
+  emit('change-rates', {
+    conversion_rate: conversion_rate.value,
+    cargo_rate: cargo_rate.value,
+    profit_rate: profit_rate.value,
+    profit_basis: profit_basis.value,
+  });
+}
 
 function onSave() {
   emit('save-rates', {

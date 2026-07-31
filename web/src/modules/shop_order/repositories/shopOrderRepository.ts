@@ -172,7 +172,7 @@ const staffPriceShopOrder = async (
     id: number;
     staff_offer_amount: number;
     staff_offer_currency_id: number;
-    gross_weight_kg?: number | null;
+    weight_kg?: number | null;
     cbm?: number | null;
     cost_price_amount?: number | null;
     product_id?: number | null;

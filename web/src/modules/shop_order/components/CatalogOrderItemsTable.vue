@@ -703,14 +703,24 @@ function getItemStatusColor(item: ShopOrderItem): string {
 }
 
 function calculateItemOffer(item: ShopOrderItem): number {
-  const landedCostSell = getLandedCostUnitSell(item);
-  if ((profitBasis.value as string) === 'sale_price') {
-    const margin = (profitRate.value || 0) / 100;
-    if (margin >= 1) return landedCostSell;
-    return landedCostSell / (1 - margin);
+  const purchasePrice = Number(item.cost_price_amount || 0);
+  const prodGm = item.product_weight_gm ?? getProductWeightGm(item);
+  const pkgGm = item.package_weight_gm ?? getPackageWeightGm(item);
+  const weightKg = (prodGm + pkgGm) > 0 ? (prodGm + pkgGm) / 1000 : Number(item.weight_kg || 0);
+  const cRate = cargoRate.value;
+  const fx = FX.value;
+  const pRate = profitRate.value || 0;
+  const pBasis = profitBasis.value || 'total_cost';
+  const markup = pRate / 100;
+  const cargoCostBuy = weightKg * cRate;
+
+  if (pBasis === 'purchase') {
+    const purchaseCostSell = purchasePrice * fx;
+    const cargoCostSell = cargoCostBuy * fx;
+    return Math.ceil(purchaseCostSell * (1 + markup) + cargoCostSell);
   }
-  const markup = (profitRate.value || 0) / 100;
-  return landedCostSell * (1 + markup);
+  const landedCostSell = (purchasePrice + cargoCostBuy) * fx;
+  return Math.ceil(landedCostSell * (1 + markup));
 }
 
 function onItemFieldChange(item: ShopOrderItem, field: string, val: any) {

@@ -41,6 +41,7 @@
             :order="currentOrder"
             :saving="isSavingRates"
             @save-rates="handleSaveRates"
+            @change-rates="handleChangeRates"
           />
 
           <!-- Main Catalog Content -->
@@ -405,11 +406,13 @@ const submittedModeColumns = [
 
 const catalogVisibleColumns = computed<string[]>({
   get: () => {
-    if (['submitted', 'costing_pending'].includes(currentOrder.value?.status || '')) {
+    if (currentOrder.value?.status === 'submitted') {
       return submittedModeColumns;
     }
-    if (currentOrder.value?.status === 'priced') {
+    if (['priced', 'costing_pending'].includes(currentOrder.value?.status || '')) {
       const hiddenInPriced = [
+        'ordered_qty',
+        'delivered_qty',
         'counter_offer_unit',
         'counter_offer_row',
         'counter_offer_margin',
@@ -529,6 +532,46 @@ const changeOrderStatus = (newStatus: string) => {
   );
 };
 
+const recalculateFirstOffers = (rates: {
+  conversion_rate: number | null;
+  cargo_rate: number | null;
+  profit_rate: number | null;
+  profit_basis: 'purchase' | 'total_cost';
+}) => {
+  const fx = rates.conversion_rate ?? currentOrder.value?.conversion_rate ?? 140;
+  const cargoRate = rates.cargo_rate ?? currentOrder.value?.cargo_rate ?? 0;
+  const profitRate = rates.profit_rate ?? currentOrder.value?.profit_rate ?? 25;
+  const profitBasis = rates.profit_basis ?? currentOrder.value?.profit_basis ?? 'total_cost';
+
+  orderItems.value.forEach((item) => {
+    const purchasePrice = Number(item.cost_price_amount || 0);
+    const prodGm = Number(item.product_weight_gm || 0);
+    const pkgGm = Number(item.package_weight_gm || 0);
+    const weightKg = (prodGm + pkgGm) > 0 ? (prodGm + pkgGm) / 1000 : Number(item.weight_kg || 0);
+    const cargoCostBuy = weightKg * cargoRate;
+    const landedCostBuy = purchasePrice + cargoCostBuy;
+
+    if (profitBasis === 'purchase') {
+      const purchaseSell = purchasePrice * fx;
+      const markup = (profitRate || 0) / 100;
+      item.staff_offer_amount = Math.ceil(purchaseSell * (1 + markup) + cargoCostBuy * fx);
+    } else {
+      const landedCostSell = landedCostBuy * fx;
+      const markup = (profitRate || 0) / 100;
+      item.staff_offer_amount = Math.ceil(landedCostSell * (1 + markup));
+    }
+  });
+};
+
+const handleChangeRates = (payload: {
+  conversion_rate: number | null;
+  cargo_rate: number | null;
+  profit_rate: number | null;
+  profit_basis: 'purchase' | 'total_cost';
+}) => {
+  recalculateFirstOffers(payload);
+};
+
 const handleSaveRates = (payload: {
   conversion_rate: number | null;
   cargo_rate: number | null;
@@ -536,6 +579,7 @@ const handleSaveRates = (payload: {
   profit_basis: 'purchase' | 'total_cost';
 }) => {
   if (!orderId.value) return;
+  recalculateFirstOffers(payload);
   saveCatalogRates({ orderId: orderId.value, payload });
 };
 
@@ -550,7 +594,7 @@ const handleSaveStaffCatalogPricing = () => {
       item.unit_sell_price_currency_id ||
       item.unit_list_price_currency_id ||
       1,
-    gross_weight_kg: Number(item.weight_kg || 0),
+    weight_kg: Number(item.weight_kg || 0),
     cost_price_amount: Number(item.cost_price_amount || 0),
     product_weight_gm: Number(item.product_weight_gm || 0),
     package_weight_gm: Number(item.package_weight_gm || 0),

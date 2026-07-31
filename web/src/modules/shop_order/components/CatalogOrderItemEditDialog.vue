@@ -287,13 +287,22 @@ const marginColorClass = computed(() => {
 
 function recalculateOffer() {
   if (!form.value) return;
-  const cost = Number(calculatedLandedCostSell.value);
-  let rawOffer = cost * (1 + (profitRate.value || 0) / 100);
-  if ((profitBasis.value as string) === 'sale_price') {
-    const margin = (profitRate.value || 0) / 100;
-    if (margin < 1) rawOffer = cost / (1 - margin);
+  const purchasePrice = Number(form.value.cost_price_amount || 0);
+  const weightKg = calculatedTotalWeightGm.value / 1000;
+  const cargoCostBuy = weightKg * cargoRate.value;
+  const fx = FX.value;
+  const pRate = profitRate.value || 0;
+  const pBasis = profitBasis.value || 'total_cost';
+  const markup = pRate / 100;
+
+  if (pBasis === 'purchase') {
+    const purchaseCostSell = purchasePrice * fx;
+    const cargoCostSell = cargoCostBuy * fx;
+    form.value.staff_offer_amount = Math.ceil(purchaseCostSell * (1 + markup) + cargoCostSell);
+  } else {
+    const landedCostSell = (purchasePrice + cargoCostBuy) * fx;
+    form.value.staff_offer_amount = Math.ceil(landedCostSell * (1 + markup));
   }
-  form.value.staff_offer_amount = Math.ceil(rawOffer);
 }
 
 function onSave() {
