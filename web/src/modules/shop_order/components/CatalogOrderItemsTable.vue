@@ -1,10 +1,34 @@
 <template>
   <q-card flat bordered class="catalog-items-card q-pa-none costing-items-surface shadow-1">
+    <!-- Filter Header Bar when order status is confirmed -->
+    <div v-if="order?.status === 'confirmed'" class="row items-center justify-between q-px-md q-py-sm bg-grey-2 border-bottom">
+      <div class="row items-center q-gutter-x-sm">
+        <span class="text-caption text-weight-bold text-grey-8">Filter Status:</span>
+        <q-btn-toggle
+          v-model="statusFilter"
+          dense
+          unelevated
+          toggle-color="primary"
+          color="white"
+          text-color="grey-9"
+          :options="[
+            { label: 'Accepted Only', value: 'accepted' },
+            { label: 'Rejected Only', value: 'rejected' },
+            { label: 'All Items', value: 'all' },
+          ]"
+          class="shadow-1"
+        />
+      </div>
+      <div class="text-caption text-grey-7">
+        Showing {{ filteredRows.length }} of {{ items.length }} items
+      </div>
+    </div>
+
     <!-- Table matching ProductBasedCostingItemsTable style -->
     <q-table
       flat
       bordered
-      :rows="items"
+      :rows="filteredRows"
         :columns="tableColumns"
         :visible-columns="resolvedVisibleColumns"
         row-key="id"
@@ -172,7 +196,7 @@
             </q-td>
 
             <!-- 14. Total Weight (gm) (On Tap Popup Edit) -->
-            <q-td v-if="isColVisible('total_weight_gm')" key="total_weight_gm" :props="slotProps" class="sec-purchase text-right font-mono text-weight-bold editable-cell">
+            <q-td v-if="isColVisible('total_weight_gm')" key="total_weight_gm" :props="slotProps" class="sec-purchase text-right font-mono editable-cell">
               <span>{{ Math.round(getTotalWeightGm(slotProps.row)) }} g</span>
               <q-popup-edit
                 v-slot="scope"
@@ -345,7 +369,7 @@
             <!-- 30. Status -->
             <q-td v-if="isColVisible('status')" key="status" :props="slotProps" class="sec-action text-center">
               <q-chip dense outline :color="getItemStatusColor(slotProps.row)" class="text-caption text-weight-bold uppercase">
-                {{ slotProps.row.negotiation_status || slotProps.row.customer_decision_status || 'Submitted' }}
+                {{ getItemStatusLabel(slotProps.row) }}
               </q-chip>
             </q-td>
 
@@ -798,6 +822,26 @@ function getFinalOfferMargin(item: ShopOrderItem): number {
   );
 }
 
+const statusFilter = ref<'accepted' | 'rejected' | 'all'>('accepted');
+
+const getItemStatusLabel = (item: ShopOrderItem): string => {
+  if (props.order?.status === 'confirmed') {
+    const qty = Number(item.quantity || 0);
+    return qty > 0 ? 'accepted' : 'rejected';
+  }
+  return item.negotiation_status || item.customer_decision_status || 'Submitted';
+};
+
+const filteredRows = computed(() => {
+  if (props.order?.status !== 'confirmed' || statusFilter.value === 'all') {
+    return props.items;
+  }
+  return props.items.filter((item) => {
+    const isAccepted = Number(item.quantity || 0) > 0;
+    return statusFilter.value === 'accepted' ? isAccepted : !isAccepted;
+  });
+});
+
 function getMarginColorClass(margin: number): string {
   if (margin >= 20) return 'text-positive';
   if (margin >= 10) return 'text-warning';
@@ -805,6 +849,9 @@ function getMarginColorClass(margin: number): string {
 }
 
 function getItemStatusColor(item: ShopOrderItem): string {
+  if (props.order?.status === 'confirmed') {
+    return Number(item.quantity || 0) > 0 ? 'positive' : 'negative';
+  }
   const st = item.negotiation_status || item.customer_decision_status;
   if (st === 'confirmed' || st === 'accepted') return 'positive';
   if (st === 'countered') return 'orange';

@@ -114,7 +114,6 @@ const workflowStatuses = [
   'countered',
   'final_offered',
   'confirmed',
-  'procuring',
   'ordered',
   'delivered',
 ];
