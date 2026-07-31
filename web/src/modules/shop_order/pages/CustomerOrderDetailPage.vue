@@ -54,7 +54,7 @@
           </div>
 
           <!-- Sidebar (Shipping) -->
-          <div class="col-xs-12 col-md-4">
+          <div v-if="currentOrder.recipient_name || currentOrder.shipping_address" class="col-xs-12 col-md-4">
             <div class="column q-gutter-md">
               <CustomerOrderShippingCard :order="currentOrder" />
             </div>
@@ -134,6 +134,7 @@ import {
 import { useUpdateCatalogOrderItemMutation } from '../composables/useCatalogOrderMutations';
 import type { ShopOrderItem } from '../types';
 import { calculateItemFirstOfferPrice } from '../utils/catalogPricingUtils';
+import { requestConfirmation } from 'src/utils/appFeedback';
 
 import CustomerOrderDetailSkeleton from '../components/CustomerOrderDetailSkeleton.vue';
 import CustomerOrderHeader from '../components/CustomerOrderHeader.vue';
@@ -279,8 +280,17 @@ const codFeePctLabel = computed(() => {
   return Number(((codChargeVal.value / sub) * 100).toFixed(1));
 });
 
-const submitCounterOffer = () => {
+const submitCounterOffer = async () => {
   if (!orderId.value) return;
+
+  const confirmed = await requestConfirmation(
+    'Are you sure you want to submit your counter offer for all items? Once submitted, the staff will review your request.',
+    'Submit Counter Offer',
+    'Submit Counter',
+  );
+
+  if (!confirmed) return;
+
   const payload = orderItems.value.map((item) => ({
     id: item.id,
     customer_offer_amount: Number(item.customer_offer_amount || 0),

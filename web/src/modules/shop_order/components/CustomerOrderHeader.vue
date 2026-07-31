@@ -16,25 +16,10 @@
       </div>
     </section>
 
-    <!-- Status Workflow Strip (Mobile-optimized focused 3-step tracker: Previous -> Current Active -> Next) -->
+    <!-- Status Workflow Strip (Shows Current Active -> Next) -->
     <q-card flat bordered class="q-pa-sm q-mt-md bg-grey-1">
       <div class="row items-center justify-between no-wrap q-gutter-x-xs">
-        <!-- 1. Previous Step (Completed) -->
-        <div v-if="focusedSteps.prev" class="col-auto">
-          <q-chip
-            dense
-            color="grey-3"
-            text-color="grey-8"
-            icon="ph ph-check-circle"
-            class="text-caption text-weight-medium q-ma-none"
-          >
-            {{ formatStatusLabel(focusedSteps.prev) }}
-          </q-chip>
-        </div>
-
-        <q-icon v-if="focusedSteps.prev" name="ph ph-caret-right" color="grey-5" size="16px" />
-
-        <!-- 2. Current Active Step (Highlighted with Action Badge) -->
+        <!-- 1. Current Active Step (Highlighted with Action Badge) -->
         <div class="col text-center">
           <q-badge
             unelevated
@@ -49,7 +34,7 @@
 
         <q-icon v-if="focusedSteps.next" name="ph ph-caret-right" color="grey-5" size="16px" />
 
-        <!-- 3. Next Step (Upcoming) -->
+        <!-- 2. Next Step (Upcoming) -->
         <div v-if="focusedSteps.next" class="col-auto">
           <q-chip
             dense
