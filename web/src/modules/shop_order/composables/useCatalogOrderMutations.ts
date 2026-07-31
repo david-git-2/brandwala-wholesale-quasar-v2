@@ -169,8 +169,6 @@ export function useStaffSetCatalogDeliveredQtyMutation() {
 }
 
 export function useUpdateCatalogOrderItemMutation() {
-  const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: async ({
       orderId,

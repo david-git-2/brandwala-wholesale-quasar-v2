@@ -137,15 +137,12 @@ import {
 } from '../composables/useShopOrderMutations';
 import {
   useSaveCatalogRatesMutation,
-  useStaffPriceCatalogOrderMutation,
-  useStaffFinalizeCatalogPricesMutation,
-  useStaffStartCatalogProcurementMutation,
-  useStaffSetCatalogOrderedQtyMutation,
-  useStaffSetCatalogDeliveredQtyMutation,
   useUpdateCatalogOrderItemMutation,
 } from '../composables/useCatalogOrderMutations';
-import { shopOrderRepository } from '../repositories/shopOrderRepository';
-import { calculateItemFirstOfferPrice, calculateItemFinalOfferPrice, getFinalOfferUnitAmount } from '../utils/catalogPricingUtils';
+import {
+  calculateItemFirstOfferPrice,
+  calculateItemFinalOfferPrice,
+} from '../utils/catalogPricingUtils';
 
 import StaffOrderHeader from '../components/StaffOrderHeader.vue';
 import StaffOrderStatusWorkflow from '../components/StaffOrderStatusWorkflow.vue';
@@ -188,11 +185,6 @@ const { mutate: processDropshipOrder, isPending: isProcessingDropship } = usePro
 
 // Catalog Specific Mutations
 const { mutate: saveCatalogRates, isPending: isSavingRates } = useSaveCatalogRatesMutation();
-const { mutate: staffPriceCatalogOrder, isPending: isSavingStaffPricing } = useStaffPriceCatalogOrderMutation();
-const { mutate: staffFinalizeCatalogPrices, isPending: isFinalizingPrices } = useStaffFinalizeCatalogPricesMutation();
-const { mutate: staffStartCatalogProcurement, isPending: isStartingProcurement } = useStaffStartCatalogProcurementMutation();
-const { mutate: staffSetCatalogOrderedQty, isPending: isSavingOrderedQty } = useStaffSetCatalogOrderedQtyMutation();
-const { mutate: staffSetCatalogDeliveredQty, isPending: isSavingDeliveredQty } = useStaffSetCatalogDeliveredQtyMutation();
 const { mutate: updateCatalogOrderItem } = useUpdateCatalogOrderItemMutation();
 
 const handleUpdateCatalogOrderItem = ({
@@ -552,83 +544,6 @@ const handleSaveRates = (payload: {
   if (!orderId.value) return;
   recalculateOffers(payload);
   saveCatalogRates({ orderId: orderId.value, payload });
-};
-
-const handleSaveStaffCatalogPricing = () => {
-  if (!orderId.value || !currentOrder.value) return;
-
-  const itemsPayload = orderItems.value.map((item) => ({
-    id: item.id,
-    staff_offer_amount: Number(item.staff_offer_amount || 0),
-    is_first_offer_manual: Boolean(item.is_first_offer_manual),
-    staff_offer_currency_id:
-      item.staff_offer_currency_id ||
-      item.unit_sell_price_currency_id ||
-      item.unit_list_price_currency_id ||
-      1,
-    weight_kg: Number(item.weight_kg || 0),
-    cost_price_amount: Number(item.cost_price_amount || 0),
-    product_weight_gm: Number(item.product_weight_gm || 0),
-    package_weight_gm: Number(item.package_weight_gm || 0),
-  }));
-
-  staffPriceCatalogOrder({
-    orderId: orderId.value,
-    items: itemsPayload,
-    profitBasis: currentOrder.value.profit_basis || 'total_cost',
-  });
-};
-
-const handleSaveFinalCatalogPrices = () => {
-  if (!orderId.value || !currentOrder.value) return;
-
-  const rates = {
-    conversion_rate: currentOrder.value.conversion_rate,
-    cargo_rate: currentOrder.value.cargo_rate,
-    first_offer_rate: currentOrder.value.first_offer_rate ?? currentOrder.value.profit_rate,
-    profit_basis: currentOrder.value.profit_basis,
-  };
-
-  const itemsPayload = orderItems.value.map((item) => ({
-    id: item.id,
-    final_offer_amount: Number(
-      getFinalOfferUnitAmount(item, rates, currentOrder.value?.package_weight_kg) || 0,
-    ),
-    final_offer_currency_id:
-      item.final_price_currency_id ||
-      item.staff_offer_currency_id ||
-      item.unit_sell_price_currency_id ||
-      1,
-  }));
-
-  staffFinalizeCatalogPrices({
-    orderId: orderId.value,
-    items: itemsPayload,
-  });
-};
-
-const handleStartCatalogProcurement = () => {
-  if (orderId.value) {
-    staffStartCatalogProcurement(orderId.value);
-  }
-};
-
-const handleSaveStaffOrderedQty = () => {
-  if (!orderId.value) return;
-  const itemsPayload = orderItems.value.map((item) => ({
-    id: item.id,
-    ordered_quantity: Number(item.ordered_quantity ?? item.confirmed_quantity ?? item.quantity ?? 0),
-  }));
-  staffSetCatalogOrderedQty({ orderId: orderId.value, items: itemsPayload });
-};
-
-const handleSaveStaffDeliveredQty = () => {
-  if (!orderId.value) return;
-  const itemsPayload = orderItems.value.map((item) => ({
-    id: item.id,
-    delivered_quantity: Number(item.delivered_quantity ?? item.ordered_quantity ?? item.confirmed_quantity ?? item.quantity ?? 0),
-  }));
-  staffSetCatalogDeliveredQty({ orderId: orderId.value, items: itemsPayload });
 };
 
 const openColumnSelector = () => {

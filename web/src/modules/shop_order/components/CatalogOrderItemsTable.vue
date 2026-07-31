@@ -498,7 +498,6 @@ const emit = defineEmits<{
 }>();
 
 const $q = useQuasar();
-const quickColumnSearch = ref('');
 const showEditDialog = ref(false);
 const editingItem = ref<ShopOrderItem | null>(null);
 
@@ -670,32 +669,6 @@ const resolvedVisibleColumns = computed<string[]>(() => {
   return Array.from(mapped);
 });
 
-const quickColumnSearchOptions = computed(() => tableColumns.value.map((c) => ({ label: c.label, value: c.name })));
-
-const filteredQuickColumns = computed(() => {
-  const query = quickColumnSearch.value.trim().toLowerCase();
-  if (!query) return quickColumnSearchOptions.value;
-  return quickColumnSearchOptions.value.filter((c) => c.label.toLowerCase().includes(query));
-});
-
-const allQuickColumnsSelected = computed({
-  get: () => quickColumnSearchOptions.value.every((col) => resolvedVisibleColumns.value.includes(col.value)),
-  set: (val: boolean) => {
-    const next = val ? quickColumnSearchOptions.value.map((c) => c.value) : ['sl', 'image', 'name', 'qty_customer', 'final_offer_unit', 'action'];
-    emit('update:visible-columns', next);
-  },
-});
-
-function toggleColumn(colValue: string, active: boolean) {
-  const current = [...resolvedVisibleColumns.value];
-  if (active) {
-    if (!current.includes(colValue)) current.push(colValue);
-  } else {
-    const idx = current.indexOf(colValue);
-    if (idx !== -1) current.splice(idx, 1);
-  }
-  emit('update:visible-columns', current);
-}
 
 function isColVisible(colKey: string): boolean {
   return resolvedVisibleColumns.value.includes(colKey);
@@ -714,9 +687,6 @@ function getHeaderSectionClass(colName: string): string {
 
 const status = computed(() => props.order?.status || 'submitted');
 const isCostingMode = computed(() => ['submitted', 'costing_pending'].includes(status.value));
-const isFinalPricingMode = computed(() => ['priced', 'countered'].includes(status.value));
-const isProcuringMode = computed(() => ['confirmed', 'procuring'].includes(status.value));
-const isOrderedMode = computed(() => ['ordered'].includes(status.value));
 
 const FX = computed(() => props.order?.conversion_rate ?? 140);
 const cargoRate = computed(() => props.order?.cargo_rate ?? 0);
@@ -977,25 +947,12 @@ function onItemPackageWeightChange(item: ShopOrderItem, val?: number | string | 
   emitItemUpdate(item, { package_weight_gm: pkgGm, weight_kg: item.weight_kg });
 }
 
-function recalculateAllOffers() {
-  props.items.forEach((item) => {
-    const rawOffer = calculateItemOffer(item);
-    item.staff_offer_amount = rawOffer;
-  });
-  $q.notify({
-    type: 'positive',
-    message: `Recalculated 1st offers for ${props.items.length} items`,
-    icon: 'ph ph-check-circle',
-  });
-}
-
 // Totals calculations
 const totalQuantity = computed(() => props.items.reduce((sum, i) => sum + (i.quantity || 0), 0));
 const totalOrderedQty = computed(() => props.items.reduce((sum, i) => sum + (i.ordered_quantity || 0), 0));
 const totalDeliveredQty = computed(() => props.items.reduce((sum, i) => sum + (i.delivered_quantity || 0), 0));
 
 const totalWeightGm = computed(() => props.items.reduce((sum, i) => sum + (getTotalWeightGm(i) * i.quantity), 0));
-const totalWeightKg = computed(() => totalWeightGm.value / 1000);
 
 const grandTotalPurchasePrice = computed(() => props.items.reduce((sum, i) => sum + ((i.cost_price_amount || 0) * i.quantity), 0));
 const grandTotalLandedPurchase = computed(() => props.items.reduce((sum, i) => sum + getLandedCostRowPurchase(i), 0));
@@ -1028,35 +985,6 @@ function formatAmount(val: number | null | undefined, symbol?: string): string {
 function handleCopy(text: string, label: string) {
   void copyToClipboard(text);
   $q.notify({ type: 'positive', message: `Copied ${label}`, timeout: 1200 });
-}
-
-function onInputFocus(evt: Event) {
-  const target = evt.target as HTMLInputElement | null;
-  if (target?.select) target.select();
-}
-
-function handleEnterKey(evt: Event) {
-  const target = evt.target as HTMLElement | null;
-  if (!target) return;
-  const tr = target.closest('tr');
-  if (!tr) return;
-
-  const allInputs = Array.from(tr.querySelectorAll<HTMLInputElement>('input:not([type="hidden"])'));
-  const idx = allInputs.indexOf(target as HTMLInputElement);
-
-  if (idx >= 0 && idx < allInputs.length - 1 && allInputs[idx + 1]) {
-    allInputs[idx + 1]!.focus();
-    allInputs[idx + 1]!.select();
-  } else {
-    const nextTr = tr.nextElementSibling as HTMLTableRowElement | null;
-    if (nextTr) {
-      const firstInput = nextTr.querySelector<HTMLInputElement>('input:not([type="hidden"])');
-      if (firstInput) {
-        firstInput.focus();
-        firstInput.select();
-      }
-    }
-  }
 }
 </script>
 

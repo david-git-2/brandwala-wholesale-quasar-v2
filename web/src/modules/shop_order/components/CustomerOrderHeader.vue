@@ -77,12 +77,7 @@ const focusedSteps = computed(() => {
   };
 });
 
-const isPassedStatus = (st: string) => {
-  const currentIndex = props.statusSequence.indexOf(props.normalizedStatus);
-  const targetIndex = props.statusSequence.indexOf(st);
-  if (currentIndex === -1 || targetIndex === -1) return false;
-  return targetIndex < currentIndex;
-};
+
 
 const formatDate = (dateStr?: string) => {
   if (!dateStr) return '';

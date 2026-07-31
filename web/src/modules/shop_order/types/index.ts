@@ -182,7 +182,7 @@ export interface ShopOrder {
   profit_rate: number | null;
   first_offer_rate?: number | null;
   final_offer_rate?: number | null;
-  profit_basis?: 'purchase' | 'total_cost' | 'sale_price' | string | null;
+  profit_basis?: 'purchase' | 'total_cost' | 'sale_price' | null;
   package_weight_kg?: number | null;
   recipient_name: string | null;
   recipient_phone: string | null;

@@ -6,7 +6,7 @@ export interface CatalogRatesParams {
   first_offer_rate?: number | null | undefined;
   final_offer_rate?: number | null | undefined;
   profit_rate?: number | null | undefined;
-  profit_basis?: 'purchase' | 'total_cost' | string | null | undefined;
+  profit_basis?: 'purchase' | 'total_cost' | 'sale_price' | null | undefined;
 }
 
 export function roundUpToNearest5(val: number): number {
