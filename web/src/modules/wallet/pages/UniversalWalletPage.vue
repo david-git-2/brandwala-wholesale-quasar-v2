@@ -6,13 +6,22 @@
       <!-- Standard Page Header -->
       <section class="row items-center justify-between q-col-gutter-md">
         <div class="col">
-          <div class="text-overline text-primary">Ledger Hub</div>
-          <h1 class="text-h5 text-weight-bold q-my-none">Universal Wallet</h1>
+          <div class="text-overline text-primary">Ledger &amp; Financial Kernel</div>
+          <h1 class="text-h5 text-weight-bold q-my-none">Universal Wallet &amp; Accounting</h1>
           <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-            Manage accounts, financial balances, and transaction history across tenants, billing profiles (customers &amp; resellers), vendors, and courier partners.
+            3-bucket financial accounting (`available`, `pending`, `locked`), audit statements, and inflows across tenants, customers, vendors, and couriers.
           </p>
         </div>
-        <div class="col-auto">
+        <div class="col-auto row items-center q-gutter-x-sm">
+          <q-btn
+            unelevated
+            color="primary"
+            icon="ph ph-arrows-left-right"
+            label="Transfer Buckets"
+            no-caps
+            class="text-weight-bold q-px-md rounded-borders"
+            @click="isTransferModalOpen = true"
+          />
           <q-chip dense flat class="bg-primary-soft text-primary text-weight-bold">
             <q-icon name="ph ph-buildings" size="14px" class="q-mr-xs" />
             {{ authStore.selectedTenant?.name || 'Primary Platform' }}
@@ -170,8 +179,37 @@
         </q-card>
       </transition>
 
-      <!-- Main Ledger View -->
-      <section class="wallet-main-content">
+      <!-- Navigation Sub-Tabs (Overview & Ledger vs Statement vs Platform Reports) -->
+      <div class="sub-nav-bar row items-center justify-between">
+        <q-btn-toggle
+          v-model="activeSubView"
+          dense
+          unelevated
+          toggle-color="primary"
+          toggle-text-color="white"
+          text-color="grey-8"
+          class="bg-grey-2 q-pa-xs rounded-borders"
+          no-caps
+          :options="[
+            { label: 'Overview & Ledger', value: 'overview', icon: 'ph ph-chart-pie-slice' },
+            { label: 'Account Statement', value: 'statement', icon: 'ph ph-receipt' },
+            { label: 'Platform Reports', value: 'reports', icon: 'ph ph-trend-up' },
+          ]"
+        />
+      </div>
+
+      <!-- View 1: Overview & Ledger -->
+      <section v-if="activeSubView === 'overview'" class="q-gutter-y-md">
+        <!-- 3-Bucket Account Card -->
+        <WalletAccountCard
+          :key="`acc-${activeTab}-${effectiveEntityId}`"
+          :account="account"
+          :entity-type="activeTab"
+          :entity-name="selectedEntityNameOnly"
+          @open-transfer="isTransferModalOpen = true"
+        />
+
+        <!-- Main Immutable Ledger View -->
         <UniversalWallet
           :key="`${activeTab}-${effectiveEntityId}`"
           :entity-type="activeTab"
@@ -180,7 +218,31 @@
           :allow-adjustment="true"
         />
       </section>
+
+      <!-- View 2: Account Statement -->
+      <section v-else-if="activeSubView === 'statement'">
+        <WalletStatementView
+          :key="`stmt-${activeTab}-${effectiveEntityId}`"
+          :entity-type="activeTab"
+          :entity-id="effectiveEntityId"
+          :entity-name="selectedEntityNameOnly"
+        />
+      </section>
+
+      <!-- View 3: Platform Reports -->
+      <section v-else-if="activeSubView === 'reports'">
+        <WalletReportsView />
+      </section>
     </div>
+
+    <!-- Bucket Transfer Modal -->
+    <WalletTransferModal
+      v-model="isTransferModalOpen"
+      :entity-type="activeTab"
+      :entity-id="effectiveEntityId"
+      :entity-name="selectedEntityNameOnly"
+      @transferred="onTransferCompleted"
+    />
   </q-page>
 </template>
 
@@ -193,6 +255,11 @@ import { dropshipCourierRepository } from 'src/modules/shop_order/repositories/d
 import type { UniversalWalletEntityType } from '../types';
 import UniversalWallet from '../components/UniversalWallet.vue';
 import UniversalWalletPageSkeleton from '../components/UniversalWalletPageSkeleton.vue';
+import WalletAccountCard from '../components/WalletAccountCard.vue';
+import WalletTransferModal from '../components/WalletTransferModal.vue';
+import WalletStatementView from '../components/WalletStatementView.vue';
+import WalletReportsView from '../components/WalletReportsView.vue';
+import { useWalletAccounts } from '../composables/useWalletAccounts';
 
 interface EntityOption {
   label: string;
@@ -203,10 +270,12 @@ interface EntityOption {
 
 const authStore = useAuthStore();
 const activeTab = ref<UniversalWalletEntityType>('tenant');
+const activeSubView = ref<'overview' | 'statement' | 'reports'>('overview');
 const selectedEntityId = ref<number>(1);
 const isInitialLoading = ref<boolean>(true);
 const isEntityLoading = ref<boolean>(false);
 const filterText = ref<string>('');
+const isTransferModalOpen = ref<boolean>(false);
 
 // Cached option lists for each entity type
 const billingProfileOptions = ref<EntityOption[]>([]);
@@ -219,6 +288,11 @@ const effectiveEntityId = computed(() => {
   }
   return selectedEntityId.value || 1;
 });
+
+const { account, refetchAccount } = useWalletAccounts(
+  () => activeTab.value,
+  () => effectiveEntityId.value,
+);
 
 const currentEntityOptions = computed<EntityOption[]>(() => {
   switch (activeTab.value) {
@@ -288,6 +362,10 @@ function filterEntities(val: string, update: (callback: () => void) => void) {
   update(() => {
     filterText.value = val;
   });
+}
+
+function onTransferCompleted() {
+  void refetchAccount();
 }
 
 // Data loaders for entities
@@ -366,7 +444,6 @@ async function loadCouriers() {
       }));
   } catch (err) {
     console.error('[UniversalWalletPage] Failed to load couriers:', err);
-    // Fallback to legacy list if wallet_entity_id column not migrated yet
     try {
       const couriers = await dropshipCourierRepository.listCouriers();
       courierOptions.value = couriers.map((c, index) => ({

@@ -7703,6 +7703,53 @@ export type Database = {
           },
         ]
       }
+      wallet_accounts: {
+        Row: {
+          available_balance: number
+          created_at: string
+          currency_code: string
+          entity_id: number
+          entity_type: string
+          id: number
+          locked_balance: number
+          pending_balance: number
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          available_balance?: number
+          created_at?: string
+          currency_code?: string
+          entity_id: number
+          entity_type: string
+          id?: never
+          locked_balance?: number
+          pending_balance?: number
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          available_balance?: number
+          created_at?: string
+          currency_code?: string
+          entity_id?: number
+          entity_type?: string
+          id?: never
+          locked_balance?: number
+          pending_balance?: number
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_accounts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -9559,6 +9606,29 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      get_wallet_account_balances: {
+        Args: {
+          p_currency_code?: string
+          p_entity_id: number
+          p_entity_type: string
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
+      get_wallet_dashboard_summary: {
+        Args: { p_tenant_id: number }
+        Returns: Json
+      }
+      get_wallet_entity_statement: {
+        Args: {
+          p_end_date?: string
+          p_entity_id: number
+          p_entity_type: string
+          p_start_date?: string
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
       global_search_tasks: {
         Args: { p_query: string }
         Returns: {
@@ -10886,31 +10956,11 @@ export type Database = {
           p_metadata?: Json
           p_source_id?: string
           p_source_type?: string
+          p_target_bucket?: string
           p_tenant_id: number
           p_type: string
         }
-        Returns: {
-          amount: number
-          balance_after: number
-          base_amount: number
-          created_at: string
-          currency_code: string
-          entity_id: number
-          entity_type: string
-          exchange_rate: number
-          id: string
-          metadata: Json
-          source_id: string | null
-          source_type: string
-          tenant_id: number
-          type: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "universal_wallet_ledger"
-          isOneToOne: true
-          isSetofReturn: false
-        }
+        Returns: Json
       }
       record_recipient_invoice_collection: {
         Args: {
@@ -11248,6 +11298,20 @@ export type Database = {
           sort_seq: number
           sort_year: string
         }[]
+      }
+      transfer_wallet_balance: {
+        Args: {
+          p_amount: number
+          p_currency_code?: string
+          p_entity_id: number
+          p_entity_type: string
+          p_from_bucket: string
+          p_metadata?: Json
+          p_notes?: string
+          p_tenant_id: number
+          p_to_bucket: string
+        }
+        Returns: Json
       }
       unpost_global_invoice: {
         Args: { p_invoice_id: number }
@@ -12550,7 +12614,6 @@ export type Enums<
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {

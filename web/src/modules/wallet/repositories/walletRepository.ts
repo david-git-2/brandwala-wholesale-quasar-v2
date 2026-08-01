@@ -85,6 +85,7 @@ export const walletRepository = {
       p_source_type: payload.source_type ?? 'adjustment',
       p_source_id: payload.source_id ?? null,
       p_metadata: payload.metadata ?? {},
+      p_target_bucket: payload.target_bucket ?? 'available',
     });
 
     if (error) {

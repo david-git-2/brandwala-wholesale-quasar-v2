@@ -6,4 +6,10 @@ export const walletQueryKeys = {
     ['wallet', 'ledgerList', params] as const,
   balance: (params: { tenantId: number; entityType: UniversalWalletEntityType; entityId: number }) =>
     ['wallet', 'balance', params] as const,
+  accountBalances: (params: { tenantId: number; entityType: UniversalWalletEntityType; entityId: number }) =>
+    ['wallet', 'accountBalances', params] as const,
+  dashboardSummary: (tenantId: number) =>
+    ['wallet', 'dashboardSummary', tenantId] as const,
+  statement: (params: { tenantId: number; entityType: UniversalWalletEntityType; entityId: number; startDate?: string | null; endDate?: string | null }) =>
+    ['wallet', 'statement', params] as const,
 };
