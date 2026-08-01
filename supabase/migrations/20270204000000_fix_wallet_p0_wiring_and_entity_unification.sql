@@ -137,14 +137,14 @@ begin
       entity_type,
       entity_id,
       currency_code,
-      sum(case when type = 'credit' and (target_bucket = 'available' or target_bucket is null) then base_amount
-               when type = 'debit' and (target_bucket = 'available' or target_bucket is null) then -base_amount
+      sum(case when type = 'credit' and (metadata->>'target_bucket' = 'available' or metadata->>'target_bucket' is null) then base_amount
+               when type = 'debit' and (metadata->>'target_bucket' = 'available' or metadata->>'target_bucket' is null) then -base_amount
                else 0 end) as total_available,
-      sum(case when type = 'credit' and target_bucket = 'pending' then base_amount
-               when type = 'debit' and target_bucket = 'pending' then -base_amount
+      sum(case when type = 'credit' and metadata->>'target_bucket' = 'pending' then base_amount
+               when type = 'debit' and metadata->>'target_bucket' = 'pending' then -base_amount
                else 0 end) as total_pending,
-      sum(case when type = 'credit' and target_bucket = 'locked' then base_amount
-               when type = 'debit' and target_bucket = 'locked' then -base_amount
+      sum(case when type = 'credit' and metadata->>'target_bucket' = 'locked' then base_amount
+               when type = 'debit' and metadata->>'target_bucket' = 'locked' then -base_amount
                else 0 end) as total_locked
     from public.universal_wallet_ledger
     where entity_type = 'customer'

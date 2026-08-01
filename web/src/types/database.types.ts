@@ -214,6 +214,69 @@ export type Database = {
           },
         ]
       }
+      cargo_companies: {
+        Row: {
+          address: string | null
+          code: string
+          created_at: string
+          email: string | null
+          id: number
+          is_active: boolean
+          name: string
+          notes: string | null
+          parent_tenant_id: number | null
+          phone: string | null
+          tenant_id: number | null
+          updated_at: string
+          wallet_entity_id: number | null
+        }
+        Insert: {
+          address?: string | null
+          code: string
+          created_at?: string
+          email?: string | null
+          id?: number
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          parent_tenant_id?: number | null
+          phone?: string | null
+          tenant_id?: number | null
+          updated_at?: string
+          wallet_entity_id?: number | null
+        }
+        Update: {
+          address?: string | null
+          code?: string
+          created_at?: string
+          email?: string | null
+          id?: number
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          parent_tenant_id?: number | null
+          phone?: string | null
+          tenant_id?: number | null
+          updated_at?: string
+          wallet_entity_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cargo_companies_parent_tenant_id_fkey"
+            columns: ["parent_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cargo_companies_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cart_items: {
         Row: {
           cart_id: number
@@ -11011,6 +11074,27 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      record_vendor_grn_payable: {
+        Args: {
+          p_amount: number
+          p_metadata?: Json
+          p_source_id: string
+          p_tenant_id: number
+          p_vendor_id: number
+        }
+        Returns: Json
+      }
+      record_vendor_payment_outflow: {
+        Args: {
+          p_amount: number
+          p_note?: string
+          p_payment_method?: string
+          p_reference?: string
+          p_tenant_id: number
+          p_vendor_id: number
+        }
+        Returns: Json
       }
       refresh_commerce_inventory_product_summaries: {
         Args: { p_tenant_id?: number }
