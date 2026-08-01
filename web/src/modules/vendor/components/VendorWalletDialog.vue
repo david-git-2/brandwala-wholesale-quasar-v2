@@ -69,7 +69,7 @@ import { computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 
 import WalletAccountCard from 'src/modules/wallet/components/WalletAccountCard.vue';
-import { useWalletAccounts } from 'src/modules/wallet/composables/useWalletAccounts';
+import { useWalletAccount } from 'src/modules/wallet/composables/useWalletAccount';
 import type { Vendor } from '../types';
 
 const props = defineProps<{
@@ -85,7 +85,7 @@ const router = useRouter();
 const route = useRoute();
 
 const vendorId = computed(() => props.vendor?.id ?? 0);
-const { account, isAccountLoading } = useWalletAccounts('vendor', vendorId);
+const { account, isAccountLoading } = useWalletAccount('vendor', vendorId);
 
 const onClickOpenFullWallet = () => {
   if (!props.vendor) return;

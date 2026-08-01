@@ -98,6 +98,7 @@
 
       <!-- Vendor Wallet Pockets Dialog -->
       <VendorWalletDialog
+        v-if="openWalletDialog"
         v-model="openWalletDialog"
         :vendor="walletVendor"
       />
