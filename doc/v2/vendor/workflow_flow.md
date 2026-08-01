@@ -6,10 +6,27 @@ This document details the step-by-step business flow for vendor setup and manage
 
 ## Lifecycle Overview
 
-```
-[ STAGE 1: VENDOR & WALLET PROVISIONING ] ➔ [ STAGE 2: PROFILE EDITING ] ➔ [ STAGE 3: DELETION & ARCHIVAL ]
-  • RPC: create_vendor_with_wallet           • API: vendor_api (UPDATE)      • API: vendor_api (DELETE)
-  • Creates vendor record & wallet anchor                                      • Blocked if balance > 0
+```mermaid
+flowchart TD
+    subgraph Stage1["Stage 1: Provisioning"]
+        A["Call RPC: create_vendor_with_wallet"]
+        B["Create Vendor Record & Wallet Account"]
+        A --> B
+    end
+
+    subgraph Stage2["Stage 2: Profile Maintenance"]
+        C["Update Vendor Profile (REST API)"]
+        B --> C
+    end
+
+    subgraph Stage3["Stage 3: Deletion & Safety Check"]
+        D{"Wallet Balance?"}
+        E["Delete Vendor & Wallet"]
+        F["Block Deletion (Keep Trail)"]
+        C --> D
+        D -- "Balance = 0" --> E
+        D -- "Balance > 0" --> F
+    end
 ```
 
 ---
