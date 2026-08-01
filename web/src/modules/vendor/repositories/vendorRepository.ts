@@ -188,6 +188,27 @@ const deleteVendor = async (payload: VendorDeleteInput): Promise<void> => {
   }
 };
 
+const recordVendorPayment = async (payload: {
+  tenant_id: number;
+  vendor_id: number;
+  amount: number;
+  payment_method?: string;
+  reference?: string;
+  note?: string;
+}): Promise<any> => {
+  const { data, error } = await supabase.rpc('record_vendor_payment_outflow', {
+    p_tenant_id: payload.tenant_id,
+    p_vendor_id: payload.vendor_id,
+    p_amount: payload.amount,
+    p_payment_method: payload.payment_method || 'bank_transfer',
+    p_reference: payload.reference || null,
+    p_note: payload.note || null,
+  });
+
+  if (error) throw error;
+  return data;
+};
+
 export const vendorRepository = {
   listVendors,
   getVendorById,
@@ -196,4 +217,5 @@ export const vendorRepository = {
   createVendor,
   updateVendor,
   deleteVendor,
+  recordVendorPayment,
 };

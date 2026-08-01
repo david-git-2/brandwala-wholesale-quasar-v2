@@ -1,5 +1,34 @@
 <template>
   <q-card flat class="soft-table-card shadow-soft">
+    <!-- Beginner Quick-Guide Header Banner -->
+    <div class="ledger-guide-banner q-pa-sm q-px-md bg-grey-1 row items-center justify-between">
+      <div class="row items-center q-gutter-x-md text-caption text-grey-8">
+        <span class="text-weight-bold row items-center">
+          <q-icon name="ph ph-lightbulb" color="amber-9" size="16px" class="q-mr-xs" />
+          Quick Guide:
+        </span>
+        <span class="row items-center">
+          <q-badge color="positive" class="q-mr-xs font-weight-bold">+ Money In</q-badge>
+          Cash Added (Credit)
+        </span>
+        <span class="row items-center">
+          <q-badge color="negative" class="q-mr-xs font-weight-bold">- Money Out</q-badge>
+          Cash Deducted (Debit)
+        </span>
+        <span class="gt-xs text-grey-6">• Wallet Balance After shows remaining cash after that entry</span>
+      </div>
+      <q-btn
+        v-if="showGuide"
+        flat
+        dense
+        round
+        size="xs"
+        icon="ph ph-x"
+        color="grey-6"
+        @click="showGuide = false"
+      />
+    </div>
+
     <div class="treasury-table-wrap">
       <q-table
         flat
@@ -11,21 +40,24 @@
         class="soft-wallet-table"
         no-data-label="No financial transaction records found."
       >
-        <!-- Type Column Slot -->
+        <!-- Type / Movement Column Slot -->
         <template #body-cell-type="props">
           <q-td :props="props">
             <q-chip
               dense
               unelevated
               :class="props.row.type === 'credit' ? 'soft-chip-credit' : 'soft-chip-debit'"
-              class="text-weight-bolder text-uppercase q-px-sm"
+              class="text-weight-bolder text-capitalize q-px-sm"
             >
               <q-icon
                 :name="props.row.type === 'credit' ? 'ph ph-arrow-down-left' : 'ph ph-arrow-up-right'"
                 size="12px"
                 class="q-mr-xs"
               />
-              {{ props.row.type }}
+              {{ props.row.type === 'credit' ? '+ Money In' : '- Money Out' }}
+              <q-tooltip class="bg-grey-9 text-caption">
+                {{ props.row.type === 'credit' ? 'Credit: Money added to wallet balance' : 'Debit: Money deducted from wallet balance' }}
+              </q-tooltip>
             </q-chip>
           </q-td>
         </template>
@@ -46,6 +78,25 @@
         <template #body-cell-balance_after="props">
           <q-td :props="props" class="text-weight-bolder font-mono text-ink text-body2">
             {{ formatCurrency(props.row.balance_after, props.row.currency_code) }}
+            <q-tooltip class="bg-grey-9 text-caption">
+              Remaining pocket balance immediately after this transaction
+            </q-tooltip>
+          </q-td>
+        </template>
+
+        <!-- Pocket Column Slot -->
+        <template #body-cell-pocket="props">
+          <q-td :props="props">
+            <q-chip
+              dense
+              flat
+              size="xs"
+              class="text-weight-bold uppercase"
+              :class="getPocketClass(props.row)"
+            >
+              <q-icon :name="getPocketIcon(props.row)" size="12px" class="q-mr-xs" />
+              {{ getPocketLabel(props.row) }}
+            </q-chip>
           </q-td>
         </template>
 
@@ -115,6 +166,8 @@ defineProps<{
   entries: UniversalWalletLedgerEntry[];
 }>();
 
+const showGuide = ref(true);
+
 const pagination = ref({
   rowsPerPage: 15,
   sortBy: 'created_at',
@@ -131,35 +184,41 @@ const columns: QTableColumn<UniversalWalletLedgerEntry>[] = [
   },
   {
     name: 'type',
-    label: 'Transaction',
+    label: 'Money Movement',
     field: 'type',
     align: 'center',
     sortable: true,
   },
   {
     name: 'amount',
-    label: 'Amount',
+    label: 'Amount (+/-)',
     field: 'amount',
     align: 'right',
     sortable: true,
   },
   {
+    name: 'pocket',
+    label: 'Money Pocket',
+    field: (row) => getPocketLabel(row),
+    align: 'center',
+  },
+  {
     name: 'balance_after',
-    label: 'Running Balance',
+    label: 'Wallet Balance After',
     field: 'balance_after',
     align: 'right',
     sortable: true,
   },
   {
     name: 'category',
-    label: 'Category',
+    label: 'Category / Reason',
     field: (row) => row.metadata?.section ?? '',
     align: 'left',
     sortable: true,
   },
   {
     name: 'source',
-    label: 'Source / Reference',
+    label: 'Source Reference',
     field: 'source_type',
     align: 'left',
     sortable: true,
@@ -197,13 +256,34 @@ const SECTION_CHIP_CLASSES: Record<string, string> = {
 const SOURCE_TYPE_LABELS: Record<string, string> = {
   shop_order: 'Sales Order',
   vendor_purchase: 'Vendor Purchase',
-  payout: 'Payout',
-  adjustment: 'Adjustment',
+  payout: 'Payout Request',
+  adjustment: 'Manual Adjustment',
 };
 
 const sectionLabel = (section: string) => SECTION_LABELS[section] ?? section;
 const sectionChipClass = (section: string) => SECTION_CHIP_CLASSES[section] ?? 'chip-grey';
 const sourceTypeLabel = (sourceType: string) => SOURCE_TYPE_LABELS[sourceType] ?? sourceType;
+
+const getPocketLabel = (row: UniversalWalletLedgerEntry): string => {
+  const bucket = (row.metadata as Record<string, any>)?.bucket || 'available';
+  if (bucket === 'pending') return 'In Transit';
+  if (bucket === 'locked') return 'Security Hold';
+  return 'Available Cash';
+};
+
+const getPocketIcon = (row: UniversalWalletLedgerEntry): string => {
+  const bucket = (row.metadata as Record<string, any>)?.bucket || 'available';
+  if (bucket === 'pending') return 'ph ph-clock';
+  if (bucket === 'locked') return 'ph ph-lock-key';
+  return 'ph ph-check-circle';
+};
+
+const getPocketClass = (row: UniversalWalletLedgerEntry): string => {
+  const bucket = (row.metadata as Record<string, any>)?.bucket || 'available';
+  if (bucket === 'pending') return 'bg-warning-soft text-warning';
+  if (bucket === 'locked') return 'bg-grey-3 text-grey-8';
+  return 'bg-positive-soft text-positive';
+};
 
 const formatCurrency = (amount: number, currencyCode = 'BDT') => {
   return new Intl.NumberFormat('en-BD', {
@@ -233,6 +313,10 @@ const formatDate = (dateStr: string) => {
   border: 1px solid var(--bw-theme-border, #e2e8f0);
   border-radius: 16px;
   overflow: hidden;
+}
+
+.ledger-guide-banner {
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .shadow-soft {
@@ -282,6 +366,14 @@ const formatDate = (dateStr: string) => {
   background: rgba(59, 130, 246, 0.08) !important;
 }
 
+.bg-positive-soft {
+  background: rgba(16, 185, 129, 0.12) !important;
+}
+
+.bg-warning-soft {
+  background: rgba(245, 158, 11, 0.12) !important;
+}
+
 .chip-orange  { background: rgba(249, 115, 22, 0.12) !important; color: #ea580c !important; border-radius: 8px; }
 .chip-green   { background: rgba(16, 185, 129, 0.12) !important; color: #059669 !important; border-radius: 8px; }
 .chip-blue    { background: rgba(37, 99, 235, 0.12)  !important; color: #2563eb !important; border-radius: 8px; }
@@ -305,4 +397,5 @@ const formatDate = (dateStr: string) => {
   color: #64748b;
 }
 </style>
+
 

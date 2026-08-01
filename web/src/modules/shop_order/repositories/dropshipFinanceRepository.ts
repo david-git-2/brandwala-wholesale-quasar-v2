@@ -44,33 +44,18 @@ export interface FinanceHubData {
 
 export const dropshipFinanceRepository = {
   async getHubData(tenantId: number): Promise<FinanceHubData> {
-    // 1. Calculate Courier Owed (courier wallet credit total - debit total)
-    const { data: ledgerRows, error: ledgerError } = await supabase
-      .from('universal_wallet_ledger')
-      .select('entity_type, entity_id, type, amount, metadata')
-      .eq('tenant_id', tenantId);
+    // 1. Fetch O(1) materialized wallet account balances via RPC
+    const { data: summaryData, error: summaryError } = await supabase.rpc(
+      'get_wallet_dashboard_summary',
+      { p_tenant_id: tenantId }
+    );
 
-    if (ledgerError) throw ledgerError;
+    if (summaryError) throw summaryError;
 
-    let courierOwedTotal = 0;
-    let tenantCashTotal = 0;
-    let middlemanPayableTotal = 0;
-
-    (ledgerRows || []).forEach((row) => {
-      const amt = Number(row.amount || 0);
-      const meta = (row.metadata || {}) as Record<string, any>;
-      const section = typeof meta.section === 'string' ? meta.section : '';
-      if (row.entity_type === 'courier') {
-        courierOwedTotal += row.type === 'credit' ? amt : -amt;
-      } else if (row.entity_type === 'tenant') {
-        tenantCashTotal += row.type === 'credit' ? amt : -amt;
-      } else if (
-        (row.entity_type === 'middleman' || row.entity_type === 'customer')
-        && section === 'payout_earned'
-      ) {
-        middlemanPayableTotal += row.type === 'credit' ? amt : -amt;
-      }
-    });
+    const summary = summaryData as Record<string, any>;
+    const courierOwedTotal = Number(summary?.courier_cod_holding_total || 0);
+    const tenantCashTotal = Number(summary?.tenant_cash_total || 0);
+    const middlemanPayableTotal = Number(summary?.merchant_available_total || 0);
 
     // 2. Query dropship orders needing finance actions
     const { data: ordersData, error: ordersError } = await supabase
@@ -193,18 +178,18 @@ export const dropshipFinanceRepository = {
 
     if (profilesError) throw profilesError;
 
-    // Payable = payout_earned section only (profit), not invoice AR
+    // Payable = available_balance in wallet_accounts for customer identity
+    const { data: walletAccounts, error: walletAccountsError } = await supabase
+      .from('wallet_accounts')
+      .select('entity_id, available_balance')
+      .eq('tenant_id', tenantId)
+      .eq('entity_type', 'customer');
+
+    if (walletAccountsError) throw walletAccountsError;
+
     const merchantBalanceMap = new Map<number, number>();
-    (ledgerRows || []).forEach((r: any) => {
-      const section = String(r.metadata?.section || '');
-      if (
-        (r.entity_type === 'middleman' || r.entity_type === 'customer')
-        && section === 'payout_earned'
-      ) {
-        const entityId = Number(r.entity_id || 0);
-        const current = merchantBalanceMap.get(entityId) || 0;
-        merchantBalanceMap.set(entityId, current + (r.type === 'credit' ? Number(r.amount) : -Number(r.amount)));
-      }
+    (walletAccounts || []).forEach((acc: any) => {
+      merchantBalanceMap.set(Number(acc.entity_id), Number(acc.available_balance || 0));
     });
 
     const merchants: FinanceHubMerchantItem[] = (profilesData || []).map((p: any) => ({

@@ -127,6 +127,28 @@ const deleteVendor = async (payload: VendorDeleteInput): Promise<VendorServiceRe
   }
 };
 
+const recordVendorPayment = async (payload: {
+  tenant_id: number;
+  vendor_id: number;
+  amount: number;
+  payment_method?: string;
+  reference?: string;
+  note?: string;
+}): Promise<VendorServiceResult<any>> => {
+  try {
+    const data = await vendorRepository.recordVendorPayment(payload);
+    return {
+      success: true,
+      data,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to record vendor payment.',
+    };
+  }
+};
+
 export const vendorService = {
   listVendors,
   getVendorById,
@@ -135,4 +157,5 @@ export const vendorService = {
   createVendor,
   updateVendor,
   deleteVendor,
+  recordVendorPayment,
 };
