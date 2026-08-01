@@ -64,7 +64,10 @@ export const useVendorStore = defineStore('vendor', {
       }
     },
 
-    async fetchMarkets() {
+    async fetchMarkets(forceReload = false) {
+      if (!forceReload && this.markets.length > 0) {
+        return { success: true, data: this.markets };
+      }
       const result = await vendorService.listVendorMarkets();
 
       if (!result.success) {

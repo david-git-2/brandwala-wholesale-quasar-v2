@@ -10,16 +10,15 @@ export type GlobalCurrency = {
   updated_at?: string;
 };
 
-export type GlobalCurrencyCreateInput = {
-  name: string;
-  country: string;
-  code: string;
-  symbol: string;
-  is_active: boolean;
-};
-
-export type GlobalCurrencyUpdateInput = GlobalCurrencyCreateInput & {
+export type Market = {
   id: number;
+  name: string;
+  code: string;
+  is_active: boolean;
+  is_system: boolean;
+  region: string;
+  created_at?: string;
+  updated_at?: string;
 };
 
 export type PaymentMethod = {
@@ -35,19 +34,6 @@ export type PaymentMethod = {
   updated_at?: string;
 };
 
-export type PaymentMethodCreateInput = {
-  code: string;
-  name: string;
-  category: string;
-  scope: string;
-  sort_order: number;
-  is_active: boolean;
-};
-
-export type PaymentMethodUpdateInput = PaymentMethodCreateInput & {
-  id: number;
-};
-
 export type UnitOfMeasure = {
   id: number;
   code: string;
@@ -59,19 +45,6 @@ export type UnitOfMeasure = {
   is_system: boolean;
   created_at?: string;
   updated_at?: string;
-};
-
-export type UnitOfMeasureCreateInput = {
-  code: string;
-  name: string;
-  unit_type: string;
-  symbol: string | null;
-  sort_order: number;
-  is_active: boolean;
-};
-
-export type UnitOfMeasureUpdateInput = UnitOfMeasureCreateInput & {
-  id: number;
 };
 
 export const PAYMENT_METHOD_CATEGORIES = [

@@ -10,7 +10,6 @@
 | `name` | TEXT | Yes | Vendor business/display name |
 | `code` | TEXT | Yes | Unique vendor identifier/shortcode per tenant |
 | `market_code` | TEXT | Yes | FK to `markets.code` (e.g., `BD_LOCAL`, `UK_MARKET`) |
-| `currency_id` | BIGINT | No | FK to `currencies.id` (Default transaction/settlement currency) |
 | `email` | TEXT | No | Vendor contact email address |
 | `phone` | TEXT | No | Vendor primary contact phone number |
 | `address` | TEXT | No | Physical/billing address |

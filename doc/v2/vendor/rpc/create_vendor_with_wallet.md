@@ -15,11 +15,10 @@ Atomically creates a new vendor record and provisions its corresponding `wallet_
 
 ```typescript
 const { data, error } = await supabase.rpc('create_vendor_with_wallet', {
-  p_tenant_id: 12,
+  p_tenant_id: 15,
   p_name: "Apex Textiles",
   p_code: "ATS-BD",
   p_market_code: "BD_LOCAL",
-  p_currency_id: 1,
   p_email: "info@apextextiles.com",
   p_phone: "+880 1711 999999",
   p_address: "Dhaka, Bangladesh",
@@ -33,11 +32,10 @@ const { data, error } = await supabase.rpc('create_vendor_with_wallet', {
 
 ```json
 {
-  "p_tenant_id": 12,
+  "p_tenant_id": 15,
   "p_name": "Apex Textiles",
   "p_code": "ATS-BD",
   "p_market_code": "BD_LOCAL",
-  "p_currency_id": 1,
   "p_email": "info@apextextiles.com",
   "p_phone": "+880 1711 999999",
   "p_address": "Dhaka, Bangladesh",
@@ -53,7 +51,7 @@ const { data, error } = await supabase.rpc('create_vendor_with_wallet', {
 {
   "vendor": {
     "id": 2,
-    "tenant_id": 12,
+    "tenant_id": 15,
     "name": "Apex Textiles",
     "code": "ATS-BD",
     "market_code": "BD_LOCAL",
@@ -66,7 +64,7 @@ const { data, error } = await supabase.rpc('create_vendor_with_wallet', {
   },
   "wallet": {
     "id": 102,
-    "tenant_id": 12,
+    "tenant_id": 15,
     "entity_type": "vendor",
     "entity_id": 2,
     "currency_id": 1,

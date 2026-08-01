@@ -68,7 +68,10 @@ const getVendorById = async (id: number, tenantId?: number | null): Promise<Vend
 };
 
 const listVendorMarkets = async (): Promise<VendorMarket[]> => {
-  const { data, error } = await supabase.rpc('list_vendor_markets');
+  const { data, error } = await supabase
+    .from('markets')
+    .select('*')
+    .order('id', { ascending: true });
 
   if (error) {
     throw error;

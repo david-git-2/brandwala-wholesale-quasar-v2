@@ -40,7 +40,7 @@ const globalReferenceRoutes: RouteRecordRaw[] = [
       {
         path: 'markets',
         name: 'platform-reference-markets',
-        component: () => import('../pages/MarketsReferencePage.vue'),
+        component: () => import('../pages/MarketsPage.vue'),
       },
       {
         path: 'currencies',

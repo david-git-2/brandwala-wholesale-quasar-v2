@@ -351,7 +351,7 @@ import { useProductBasedCostingStore } from '../stores/productBasedCostingStore'
 import SmartImage from 'src/components/SmartImage.vue';
 import { useProductStore } from 'src/modules/products/stores/productStore';
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
-import { useMarketStore } from 'src/modules/market/stores/marketStore';
+import { useGlobalMarketsQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { productService } from 'src/modules/products/services/productService';
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback';
@@ -399,7 +399,7 @@ const emit = defineEmits<{
 const store = useProductBasedCostingStore();
 const productStore = useProductStore();
 const vendorStore = useVendorStore();
-const marketStore = useMarketStore();
+const { data: marketsData } = useGlobalMarketsQuery();
 const authStore = useAuthStore();
 const $q = useQuasar();
 
@@ -567,7 +567,7 @@ const vendorOptions = computed(() => [
 
 const marketOptions = computed(() => [
   { label: 'Other', value: null as string | null },
-  ...marketStore.items.map((market) => ({
+  ...(marketsData.value ?? []).map((market) => ({
     label: `${market.name} (${market.code})`,
     value: market.code,
   })),
@@ -880,9 +880,6 @@ watch(
       fillForm();
       if (!vendorStore.items.length) {
         await vendorStore.fetchVendors(authStore.tenantId ?? null);
-      }
-      if (!marketStore.items.length) {
-        await marketStore.fetchMarkets();
       }
       await loadBrandCategoryOptions();
     }

@@ -325,9 +325,8 @@
 import { computed, onMounted, ref, reactive } from 'vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
-import { useMarketStore } from 'src/modules/market/stores/marketStore';
+import { useGlobalMarketsQuery, useGlobalCurrenciesQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
 import { useProductStore } from '../stores/productStore';
-import { globalReferenceRepository } from 'src/modules/global_reference/repositories/globalReferenceRepository';
 import { showSuccessNotification } from 'src/utils/appFeedback';
 
 const props = defineProps<{
@@ -348,7 +347,8 @@ const copyTemplate = () => {
 
 const authStore = useAuthStore();
 const vendorStore = useVendorStore();
-const marketStore = useMarketStore();
+const { data: marketsData } = useGlobalMarketsQuery();
+const { data: currenciesData } = useGlobalCurrenciesQuery();
 const productStore = useProductStore();
 
 const isOpen = computed({
@@ -365,8 +365,6 @@ const defaultVendor = ref<string | null>(null);
 const defaultMarket = ref<string | null>('GB');
 const defaultCurrency = ref<number | null>(null);
 const defaultIsAvailable = ref(true);
-
-const currencies = ref<{ label: string; value: number }[]>([]);
 
 // Header parsed from file/paste
 const headers = ref<string[]>([]);
@@ -411,10 +409,12 @@ const vendorOptions = computed(() =>
 );
 
 const marketOptions = computed(() =>
-  marketStore.items.map((m) => ({ label: `${m.name} (${m.code})`, value: m.code })),
+  (marketsData.value ?? []).map((m) => ({ label: `${m.name} (${m.code})`, value: m.code })),
 );
 
-const currencyOptions = computed(() => currencies.value);
+const currencyOptions = computed(() =>
+  (currenciesData.value ?? []).map((c) => ({ label: `${c.code} - ${c.name}`, value: c.code })),
+);
 
 const hasRequiredFieldsMapped = computed(() => {
   return !!mapping.name;
@@ -432,7 +432,7 @@ const canSubmit = computed(() => {
 
 // Formatting functions
 const formatPrice = (val: number) => {
-  const currencySymbol = currencies.value.find((c) => c.value === defaultCurrency.value)?.label?.match(/\((.+)\)/)?.[1] ?? '£';
+  const currencySymbol = (currenciesData.value ?? []).find((c) => String(c.id) === String(defaultCurrency.value))?.symbol ?? '£';
   return `${currencySymbol}${val.toFixed(2)}`;
 };
 
@@ -692,28 +692,9 @@ const onImport = async () => {
 
 onMounted(async () => {
   try {
-    const currencyData = await globalReferenceRepository.listCurrencies();
-    currencies.value = currencyData
-      .filter((c) => c.is_active)
-      .map((c) => ({ label: `${c.code} (${c.symbol})`, value: c.id }));
-
-    // Preselect GBP if available
-    const gbpCurrency = currencies.value.find((c) => c.label.startsWith('GBP'));
-    if (gbpCurrency) {
-      defaultCurrency.value = gbpCurrency.value;
-    }
-  } catch (e) {
-    console.error('Error fetching currencies:', e);
-  }
-
-  // Pre-load reference options
-  try {
-    await Promise.all([
-      vendorStore.fetchVendors(authStore.tenantId ?? null),
-      marketStore.fetchMarkets(),
-    ]);
+    await vendorStore.fetchVendors(authStore.tenantId ?? null);
   } catch (err) {
-    console.error('Error fetching vendors/markets:', err);
+    console.error('Error fetching vendors:', err);
   }
 });
 </script>

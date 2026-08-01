@@ -12,7 +12,7 @@ This document details the direct REST / Supabase API operations for managing `ve
 ### Request Payload
 ```json
 {
-  "tenant_id": 12,
+  "tenant_id": 15,
   "name": "Apex Textiles",
   "code": "ATS-BD",
   "market_code": "BD_LOCAL",
@@ -28,7 +28,7 @@ This document details the direct REST / Supabase API operations for managing `ve
 ```json
 {
   "id": 2,
-  "tenant_id": 12,
+  "tenant_id": 15,
   "name": "Apex Textiles",
   "code": "ATS-BD",
   "market_code": "BD_LOCAL",
@@ -60,7 +60,7 @@ This document details the direct REST / Supabase API operations for managing `ve
 ```json
 {
   "id": 2,
-  "tenant_id": 12,
+  "tenant_id": 15,
   "name": "Apex Textiles Ltd",
   "code": "ATS-BD",
   "market_code": "BD_LOCAL",
@@ -108,7 +108,7 @@ This document details the direct REST / Supabase API operations for managing `ve
 const { data, error } = await supabase
   .from('vendors')
   .select('*')
-  .eq('tenant_id', 12)
+  .eq('tenant_id', 15)
   .order('name', { ascending: true });
 ```
 
@@ -117,7 +117,7 @@ const { data, error } = await supabase
 [
   {
     "id": 2,
-    "tenant_id": 12,
+    "tenant_id": 15,
     "name": "Apex Textiles Ltd",
     "code": "ATS-BD",
     "market_code": "BD_LOCAL",

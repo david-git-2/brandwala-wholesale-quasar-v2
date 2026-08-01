@@ -11,12 +11,11 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { QTableColumn } from 'quasar';
-import { useThriftCurrenciesQuery } from 'src/modules/thrift/currency/composables/useThriftCurrenciesQuery';
+import { useGlobalCurrenciesQuery } from '../composables/useGlobalReferenceQuery';
 import AppReferenceReadOnlyPage from '../components/AppReferenceReadOnlyPage.vue';
 
-const { data, isLoading } = useThriftCurrenciesQuery();
+const { data, isLoading } = useGlobalCurrenciesQuery();
 const currencies = computed(() => (data.value ?? []) as unknown as Array<Record<string, unknown>>);
-
 
 const columns: QTableColumn[] = [
   { name: 'code', label: 'Code', field: 'code', align: 'left', sortable: true },

@@ -1,53 +1,64 @@
 <template>
-  <ReferenceCatalogPage
-    title="Units of Measure"
-    description="Weight, count, length, volume, and packaging units. System rows are protected."
-    entity-label="Unit"
-    :columns="columns"
-    :rows="items"
-    :loading="loading"
-    :error="error"
-    @add="openCreate"
-    @edit="(row) => openEdit(row as UnitOfMeasure)"
-    @delete="(row) => openDelete(row as UnitOfMeasure)"
-  />
+  <q-page class="bw-page">
+    <section class="bw-page__stack">
+      <section class="row items-center justify-between q-col-gutter-md">
+        <div class="col">
+          <div class="text-overline">Catalog</div>
+          <h1 class="text-h5 q-my-none">Units of Measure</h1>
+          <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
+            Weight, count, length, volume, and packaging units reference catalog.
+          </p>
+        </div>
+      </section>
 
-  <AddUnitDialog v-model="dialogOpen" :initial-data="selected" @save="handleSave" />
+      <q-banner v-if="isError" class="bw-status-banner text-white" rounded>
+        {{ error?.message || 'Failed to load units of measure.' }}
+      </q-banner>
 
-  <q-dialog v-model="deleteOpen" persistent>
-    <q-card style="min-width: 350px">
-      <q-card-section><div class="text-h6">Confirm Delete</div></q-card-section>
-      <q-card-section
-        >Delete <strong>{{ selected?.name }}</strong
-        >?</q-card-section
-      >
-      <q-card-actions align="right">
-        <q-btn flat label="Cancel" @click="deleteOpen = false" />
-        <q-btn color="negative" label="Delete" @click="confirmDelete" />
-      </q-card-actions>
-    </q-card>
-  </q-dialog>
+      <q-card flat bordered>
+        <q-card-section>
+          <div class="text-subtitle1">Unit of Measure Catalog</div>
+        </q-card-section>
+
+        <q-card-section v-if="isLoading" class="text-grey-7">Loading units...</q-card-section>
+
+        <q-card-section v-else-if="!items || items.length === 0" class="text-center text-grey-7">
+          No units found.
+        </q-card-section>
+
+        <q-table v-else flat row-key="id" :rows="items" :columns="columns" :dense="$q.screen.lt.md">
+          <template #body-cell-code="props">
+            <q-td :props="props">
+              <q-badge color="primary" outline>{{ props.row.code }}</q-badge>
+            </q-td>
+          </template>
+
+          <template #body-cell-is_active="props">
+            <q-td :props="props">
+              <q-badge :color="props.row.is_active ? 'positive' : 'grey-6'">
+                {{ props.row.is_active ? 'Active' : 'Inactive' }}
+              </q-badge>
+            </q-td>
+          </template>
+
+          <template #body-cell-is_system="props">
+            <q-td :props="props">
+              <q-badge :color="props.row.is_system ? 'teal' : 'grey-6'">
+                {{ props.row.is_system ? 'System' : 'Custom' }}
+              </q-badge>
+            </q-td>
+          </template>
+        </q-table>
+      </q-card>
+    </section>
+  </q-page>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
 import type { QTableColumn } from 'quasar';
-import {
-  handleApiFailure,
-  showSuccessNotification,
-  showWarningDialog,
-} from 'src/utils/appFeedback';
-import ReferenceCatalogPage from '../components/ReferenceCatalogPage.vue';
-import AddUnitDialog from '../components/AddUnitDialog.vue';
-import { globalReferenceRepository } from '../repositories/globalReferenceRepository';
-import type { UnitOfMeasure, UnitOfMeasureCreateInput, UnitOfMeasureUpdateInput } from '../types';
+import { useGlobalUnitsOfMeasureQuery } from '../composables/useGlobalReferenceQuery';
 
-const items = ref<UnitOfMeasure[]>([]);
-const loading = ref(false);
-const error = ref<string | null>(null);
-const dialogOpen = ref(false);
-const deleteOpen = ref(false);
-const selected = ref<UnitOfMeasure | null>(null);
+const { data: items, isLoading, isError, error } = useGlobalUnitsOfMeasureQuery();
 
 const columns: QTableColumn[] = [
   { name: 'code', label: 'Code', field: 'code', align: 'left', sortable: true },
@@ -57,69 +68,5 @@ const columns: QTableColumn[] = [
   { name: 'sort_order', label: 'Order', field: 'sort_order', align: 'left', sortable: true },
   { name: 'is_active', label: 'Status', field: 'is_active', align: 'left', sortable: true },
   { name: 'is_system', label: 'Type', field: 'is_system', align: 'left', sortable: true },
-  { name: 'actions', label: 'Actions', field: 'id', align: 'right' },
 ];
-
-const load = async () => {
-  loading.value = true;
-  error.value = null;
-  try {
-    items.value = await globalReferenceRepository.listUnitsOfMeasure();
-  } catch (err: unknown) {
-    error.value = (err as Error).message || 'Failed to load units.';
-  } finally {
-    loading.value = false;
-  }
-};
-
-const openCreate = () => {
-  selected.value = null;
-  dialogOpen.value = true;
-};
-const openEdit = (row: UnitOfMeasure) => {
-  if (row.is_system) {
-    showWarningDialog('System units cannot be edited.', 'Protected row');
-    return;
-  }
-  selected.value = { ...row };
-  dialogOpen.value = true;
-};
-const openDelete = (row: UnitOfMeasure) => {
-  if (row.is_system) {
-    showWarningDialog('System units cannot be deleted.', 'Protected row');
-    return;
-  }
-  selected.value = row;
-  deleteOpen.value = true;
-};
-
-const handleSave = async (payload: UnitOfMeasureCreateInput & { id?: number }) => {
-  try {
-    if (payload.id !== undefined) {
-      await globalReferenceRepository.updateUnitOfMeasure(payload as UnitOfMeasureUpdateInput);
-      showSuccessNotification('Unit updated.');
-    } else {
-      await globalReferenceRepository.createUnitOfMeasure(payload);
-      showSuccessNotification('Unit created.');
-    }
-    dialogOpen.value = false;
-    await load();
-  } catch (err: unknown) {
-    handleApiFailure({ success: false, error: (err as Error).message }, 'Save failed');
-  }
-};
-
-const confirmDelete = async () => {
-  if (!selected.value) return;
-  try {
-    await globalReferenceRepository.deleteUnitOfMeasure(selected.value.id);
-    showSuccessNotification('Unit deleted.');
-    deleteOpen.value = false;
-    await load();
-  } catch (err: unknown) {
-    handleApiFailure({ success: false, error: (err as Error).message }, 'Delete failed');
-  }
-};
-
-onMounted(() => void load());
 </script>

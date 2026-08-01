@@ -557,12 +557,11 @@ import PageInitialLoader from 'src/components/PageInitialLoader.vue';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import BulkImportDialog from '../components/BulkImportDialog.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useMarketStore } from 'src/modules/market/stores/marketStore';
+import { useGlobalMarketsQuery, useGlobalCurrenciesQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
 import { productService } from '../services/productService';
 import { useProductStore } from '../stores/productStore';
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback';
-import { globalReferenceRepository } from 'src/modules/global_reference/repositories/globalReferenceRepository';
 
 const router = useRouter();
 const route = useRoute();
@@ -570,7 +569,8 @@ const $q = useQuasar();
 const authStore = useAuthStore();
 const productStore = useProductStore();
 const vendorStore = useVendorStore();
-const marketStore = useMarketStore();
+const { data: marketsData } = useGlobalMarketsQuery();
+const { data: currenciesData } = useGlobalCurrenciesQuery();
 
 const page = ref(1);
 const showSearchInput = ref(false);
@@ -585,7 +585,11 @@ const marketCode = ref<string | null>(null);
 const availability = ref<'all' | 'available' | 'unavailable'>('all');
 const brands = ref<string[]>([]);
 const categories = ref<string[]>([]);
-const currencies = ref<{ label: string; value: number }[]>([]);
+const currencies = computed(() =>
+  (currenciesData.value ?? [])
+    .filter((c) => c.is_active)
+    .map((c) => ({ label: `${c.code} (${c.symbol})`, value: c.id })),
+);
 
 const searchFieldOptions = [
   { label: 'Name', value: 'name' },
@@ -608,7 +612,7 @@ const vendorOptions = computed(() =>
   vendorStore.items.map((item) => ({ label: `${item.name} (${item.code})`, value: item.code })),
 );
 const marketOptions = computed(() =>
-  marketStore.items.map((item) => ({ label: `${item.name} (${item.code})`, value: item.code })),
+  (marketsData.value ?? []).map((item) => ({ label: `${item.name} (${item.code})`, value: item.code })),
 );
 const totalPages = computed(() =>
   Math.max(1, Math.ceil(productStore.total / productStore.pageSize)),
@@ -788,7 +792,7 @@ const dialogVendorOptions = computed(() => [
 
 const dialogMarketOptions = computed(() => [
   { label: 'Other', value: null as string | null },
-  ...marketStore.items.map((market) => ({
+  ...(marketsData.value ?? []).map((market) => ({
     label: `${market.name} (${market.code})`,
     value: market.code,
   })),
@@ -1083,19 +1087,10 @@ const initializeFiltersFromQuery = () => {
 
 onMounted(async () => {
   initializeFiltersFromQuery();
-  try {
-    const currencyData = await globalReferenceRepository.listCurrencies();
-    currencies.value = currencyData
-      .filter((c) => c.is_active)
-      .map((c) => ({ label: `${c.code} (${c.symbol})`, value: c.id }));
-  } catch (e) {
-    console.error('Error fetching currencies:', e);
-  }
 
   await Promise.all([
     reloadFilterLookups(vendorCode.value),
     vendorStore.fetchVendors(authStore.tenantId ?? null),
-    marketStore.fetchMarkets(),
   ]);
 
   await loadProducts();

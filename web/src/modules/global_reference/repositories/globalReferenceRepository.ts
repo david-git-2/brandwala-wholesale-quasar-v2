@@ -1,77 +1,73 @@
 import { supabase } from 'src/boot/supabase';
-import type {
-  GlobalCurrency,
-  GlobalCurrencyCreateInput,
-  GlobalCurrencyUpdateInput,
-  PaymentMethod,
-  PaymentMethodCreateInput,
-  PaymentMethodUpdateInput,
-  UnitOfMeasure,
-  UnitOfMeasureCreateInput,
-  UnitOfMeasureUpdateInput,
-} from '../types';
+import type { GlobalCurrency, Market, PaymentMethod, UnitOfMeasure } from '../types';
 
-let cachedCurrencies: GlobalCurrency[] | null = null;
-
-const listCurrencies = async (forceReload = false): Promise<GlobalCurrency[]> => {
-  if (!forceReload && cachedCurrencies) {
-    return cachedCurrencies;
-  }
+// Currencies
+const listCurrencies = async (): Promise<GlobalCurrency[]> => {
   const { data, error } = await supabase
     .from('global_currencies')
     .select('*')
     .order('code', { ascending: true });
 
   if (error) throw error;
-  cachedCurrencies = (data as GlobalCurrency[] | null) ?? [];
-  return cachedCurrencies;
+  return (data as GlobalCurrency[] | null) ?? [];
 };
 
-const createCurrency = async (input: GlobalCurrencyCreateInput): Promise<GlobalCurrency> => {
+const getCurrencyById = async (id: number): Promise<GlobalCurrency | null> => {
   const { data, error } = await supabase
     .from('global_currencies')
-    .insert([
-      {
-        name: input.name.trim(),
-        country: input.country.trim(),
-        code: input.code.trim().toUpperCase(),
-        symbol: input.symbol.trim(),
-        is_active: input.is_active,
-      },
-    ])
-    .select()
-    .single();
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
 
   if (error) throw error;
-  cachedCurrencies = null; // Clear cache on changes
-  return data as GlobalCurrency;
+  return data as GlobalCurrency | null;
 };
 
-const updateCurrency = async (input: GlobalCurrencyUpdateInput): Promise<GlobalCurrency> => {
+const getCurrencyByCode = async (code: string): Promise<GlobalCurrency | null> => {
   const { data, error } = await supabase
     .from('global_currencies')
-    .update({
-      name: input.name.trim(),
-      country: input.country.trim(),
-      code: input.code.trim().toUpperCase(),
-      symbol: input.symbol.trim(),
-      is_active: input.is_active,
-    })
-    .eq('id', input.id)
-    .select()
-    .single();
+    .select('*')
+    .eq('code', code.trim().toUpperCase())
+    .maybeSingle();
 
   if (error) throw error;
-  cachedCurrencies = null; // Clear cache on changes
-  return data as GlobalCurrency;
+  return data as GlobalCurrency | null;
 };
 
-const deleteCurrency = async (id: number): Promise<void> => {
-  const { error } = await supabase.from('global_currencies').delete().eq('id', id);
+// Markets
+const listMarkets = async (): Promise<Market[]> => {
+  const { data, error } = await supabase
+    .from('markets')
+    .select('*')
+    .order('code', { ascending: true });
+
   if (error) throw error;
-  cachedCurrencies = null; // Clear cache on changes
+  return (data as Market[] | null) ?? [];
 };
 
+const getMarketById = async (id: number): Promise<Market | null> => {
+  const { data, error } = await supabase
+    .from('markets')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data as Market | null;
+};
+
+const getMarketByCode = async (code: string): Promise<Market | null> => {
+  const { data, error } = await supabase
+    .from('markets')
+    .select('*')
+    .eq('code', code.trim().toUpperCase())
+    .maybeSingle();
+
+  if (error) throw error;
+  return data as Market | null;
+};
+
+// Payment Methods
 const listPaymentMethods = async (): Promise<PaymentMethod[]> => {
   const { data, error } = await supabase
     .from('payment_methods')
@@ -82,51 +78,18 @@ const listPaymentMethods = async (): Promise<PaymentMethod[]> => {
   return (data as PaymentMethod[] | null) ?? [];
 };
 
-const createPaymentMethod = async (input: PaymentMethodCreateInput): Promise<PaymentMethod> => {
+const getPaymentMethodById = async (id: number): Promise<PaymentMethod | null> => {
   const { data, error } = await supabase
     .from('payment_methods')
-    .insert([
-      {
-        code: input.code.trim().toUpperCase(),
-        name: input.name.trim(),
-        category: input.category,
-        scope: input.scope,
-        sort_order: input.sort_order,
-        is_active: input.is_active,
-        is_system: false,
-      },
-    ])
-    .select()
-    .single();
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
 
   if (error) throw error;
-  return data as PaymentMethod;
+  return data as PaymentMethod | null;
 };
 
-const updatePaymentMethod = async (input: PaymentMethodUpdateInput): Promise<PaymentMethod> => {
-  const { data, error } = await supabase
-    .from('payment_methods')
-    .update({
-      code: input.code.trim().toUpperCase(),
-      name: input.name.trim(),
-      category: input.category,
-      scope: input.scope,
-      sort_order: input.sort_order,
-      is_active: input.is_active,
-    })
-    .eq('id', input.id)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data as PaymentMethod;
-};
-
-const deletePaymentMethod = async (id: number): Promise<void> => {
-  const { error } = await supabase.from('payment_methods').delete().eq('id', id);
-  if (error) throw error;
-};
-
+// Units of Measure
 const listUnitsOfMeasure = async (): Promise<UnitOfMeasure[]> => {
   const { data, error } = await supabase
     .from('units_of_measure')
@@ -137,62 +100,26 @@ const listUnitsOfMeasure = async (): Promise<UnitOfMeasure[]> => {
   return (data as UnitOfMeasure[] | null) ?? [];
 };
 
-const createUnitOfMeasure = async (input: UnitOfMeasureCreateInput): Promise<UnitOfMeasure> => {
+const getUnitOfMeasureById = async (id: number): Promise<UnitOfMeasure | null> => {
   const { data, error } = await supabase
     .from('units_of_measure')
-    .insert([
-      {
-        code: input.code.trim().toUpperCase(),
-        name: input.name.trim(),
-        unit_type: input.unit_type,
-        symbol: input.symbol?.trim() || null,
-        sort_order: input.sort_order,
-        is_active: input.is_active,
-        is_system: false,
-      },
-    ])
-    .select()
-    .single();
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
 
   if (error) throw error;
-  return data as UnitOfMeasure;
-};
-
-const updateUnitOfMeasure = async (input: UnitOfMeasureUpdateInput): Promise<UnitOfMeasure> => {
-  const { data, error } = await supabase
-    .from('units_of_measure')
-    .update({
-      code: input.code.trim().toUpperCase(),
-      name: input.name.trim(),
-      unit_type: input.unit_type,
-      symbol: input.symbol?.trim() || null,
-      sort_order: input.sort_order,
-      is_active: input.is_active,
-    })
-    .eq('id', input.id)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data as UnitOfMeasure;
-};
-
-const deleteUnitOfMeasure = async (id: number): Promise<void> => {
-  const { error } = await supabase.from('units_of_measure').delete().eq('id', id);
-  if (error) throw error;
+  return data as UnitOfMeasure | null;
 };
 
 export const globalReferenceRepository = {
   listCurrencies,
-  createCurrency,
-  updateCurrency,
-  deleteCurrency,
+  getCurrencyById,
+  getCurrencyByCode,
+  listMarkets,
+  getMarketById,
+  getMarketByCode,
   listPaymentMethods,
-  createPaymentMethod,
-  updatePaymentMethod,
-  deletePaymentMethod,
+  getPaymentMethodById,
   listUnitsOfMeasure,
-  createUnitOfMeasure,
-  updateUnitOfMeasure,
-  deleteUnitOfMeasure,
+  getUnitOfMeasureById,
 };
