@@ -89,7 +89,9 @@ flowchart TD
 | slug | is_system | is_admin | source_app_role |
 |------|-----------|----------|-----------------|
 | `administrator` | true | **true** | admin |
+| `manager` | true | false | manager |
 | `staff` | true | false | staff |
+| `cashier` | true | false | cashier |
 | `viewer` | true | false | viewer |
 
 Shop scope (scope = `shop`), seeded per tenant:
