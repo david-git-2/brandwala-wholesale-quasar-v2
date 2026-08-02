@@ -248,7 +248,7 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
         .map((routeDefinition) => ({
           title: routeDefinition.title,
           caption: routeDefinition.caption,
-          icon: 'ph ph-caret-right',
+          icon: routeDefinition.icon,
           to: routeDefinition.to,
         }));
 
@@ -300,7 +300,7 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
       .map((routeDefinition) => ({
         title: routeDefinition.title,
         caption: routeDefinition.caption,
-        icon: 'ph ph-caret-right',
+        icon: routeDefinition.icon,
         to: routeDefinition.to,
       }));
 
@@ -317,7 +317,7 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
       .map((routeDefinition) => ({
         title: routeDefinition.title,
         caption: routeDefinition.caption,
-        icon: 'ph ph-caret-right',
+        icon: routeDefinition.icon,
         to: routeDefinition.to,
       }));
 

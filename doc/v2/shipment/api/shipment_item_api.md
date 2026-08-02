@@ -57,24 +57,29 @@ This document details the API operations for `shipment_items`.
 
 ---
 
-## 2. Update / Bulk Upsert Shipment Items
+## 2. Update / Bulk Upsert Shipment Items (Bulk Price & Weight Balancing)
 
 * **Endpoint / Query**: `supabase.from('shipment_items').upsert(payload)`
+* **Use Cases**:
+  * **Bulk Price Update**: Batch update `unit_purchase_price` across items when vendor invoice is finalized.
+  * **Bulk Weight Balancing**: Batch update `product_weight_gm` and `package_weight_gm` across items to align with actual cargo bill weight.
 
-### Request Payload (Partial / Update)
+### Request Payload (Batch Partial Update / Price & Weight Balance)
 ```json
 [
   {
     "id": 501,
     "shipment_id": 88,
-    "quantity": 25,
     "unit_purchase_price": 12.50,
-    "product_weight_gm": 260.00
+    "product_weight_gm": 260.00,
+    "package_weight_gm": 15.00
   },
   {
     "id": 502,
     "shipment_id": 88,
-    "unit_purchase_price": 7.50
+    "unit_purchase_price": 7.50,
+    "product_weight_gm": 180.00,
+    "package_weight_gm": 12.00
   }
 ]
 ```
@@ -87,14 +92,16 @@ This document details the API operations for `shipment_items`.
     "shipment_id": 88,
     "quantity": 25,
     "unit_purchase_price": 12.50,
-    "product_weight_gm": 260.00
+    "product_weight_gm": 260.00,
+    "package_weight_gm": 15.00
   },
   {
     "id": 502,
     "shipment_id": 88,
     "quantity": 50,
     "unit_purchase_price": 7.50,
-    "product_weight_gm": 180.00
+    "product_weight_gm": 180.00,
+    "package_weight_gm": 12.00
   }
 ]
 ```
