@@ -1,4 +1,5 @@
 import salesRoutes from './sales.routes';
+import reportsRoutes from './reports.routes';
 import shipmentRoutes from './shipment.routes';
 import boxRoutes from './box.routes';
 import shelfRoutes from './shelf.routes';
@@ -11,6 +12,7 @@ import stockTagRoutes from './stock-tag.routes';
 
 export default [
   ...salesRoutes,
+  ...reportsRoutes,
   ...shipmentRoutes,
   ...boxRoutes,
   ...shelfRoutes,

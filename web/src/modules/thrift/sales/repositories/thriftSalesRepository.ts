@@ -24,7 +24,6 @@ export interface AvailableStockItem {
 
 export interface CreateSalesInvoiceInput {
   tenantId: number;
-  invoiceNumber: string;
   customerName?: string | undefined;
   customerPhone?: string | undefined;
   date: string;
@@ -104,51 +103,59 @@ function mapInvoiceRow(row: any): Omit<ThriftSalesInvoiceListItem, 'itemCount'> 
   };
 }
 
+export interface ThriftSalesInvoiceListMeta {
+  page: number;
+  total: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface ThriftSalesInvoiceListResult {
+  data: ThriftSalesInvoiceListItem[];
+  meta: ThriftSalesInvoiceListMeta;
+}
+
+export interface ListSalesInvoicesParams {
+  tenantId: number;
+  search?: string | undefined;
+  page?: number | undefined;
+  pageSize?: number | undefined;
+}
+
 export const thriftSalesRepository = {
   /**
-   * List sales invoices for a tenant (newest first)
+   * List sales invoices for a tenant (newest first), server-paginated via RPC
    */
-  async listSalesInvoices(tenantId: number, search?: string): Promise<ThriftSalesInvoiceListItem[]> {
-    let query = supabase
-      .from('thrift_sales_invoices')
-      .select(
-        `
-        id,
-        invoice_number,
-        customer_name,
-        customer_phone,
-        date,
-        payment_method,
-        payment_status,
-        total_invoice_amount,
-        created_by,
-        notes,
-        created_at,
-        status,
-        reverted_at,
-        reverted_by,
-        revert_reason,
-        revert_notes,
-        thrift_sales_invoice_items(count)
-      `,
-      )
-      .eq('tenant_id', tenantId)
-      .order('created_at', { ascending: false });
+  async listSalesInvoices(params: ListSalesInvoicesParams): Promise<ThriftSalesInvoiceListResult> {
+    const page = params.page ?? 1;
+    const pageSize = params.pageSize ?? 20;
 
-    const trimmed = search?.trim();
-    if (trimmed) {
-      query = query.or(
-        `invoice_number.ilike.%${trimmed}%,customer_name.ilike.%${trimmed}%,customer_phone.ilike.%${trimmed}%`,
-      );
-    }
+    const { data, error } = await supabase.rpc('list_thrift_sales_invoices_paginated', {
+      p_tenant_id: params.tenantId,
+      p_page: page,
+      p_page_size: pageSize,
+      p_search: params.search?.trim() || null,
+    });
 
-    const { data, error } = await query;
     if (error) throw error;
 
-    return (data || []).map((row: any) => ({
-      ...mapInvoiceRow(row),
-      itemCount: Number(row.thrift_sales_invoice_items?.[0]?.count ?? 0),
-    }));
+    const payload = (data ?? {}) as {
+      data?: any[];
+      meta?: Partial<ThriftSalesInvoiceListMeta>;
+    };
+
+    return {
+      data: (payload.data || []).map((row: any) => ({
+        ...mapInvoiceRow(row),
+        itemCount: Number(row.item_count ?? 0),
+      })),
+      meta: {
+        page: Number(payload.meta?.page) || page,
+        total: Number(payload.meta?.total) || 0,
+        page_size: Number(payload.meta?.page_size) || pageSize,
+        total_pages: Number(payload.meta?.total_pages) || 0,
+      },
+    };
   },
 
   /**
@@ -257,7 +264,6 @@ export const thriftSalesRepository = {
   async createSalesInvoice(input: CreateSalesInvoiceInput): Promise<{ id: number; invoiceNumber: string }> {
     const { data, error } = await supabase.rpc('create_thrift_sales_invoice', {
       p_tenant_id: input.tenantId,
-      p_invoice_number: input.invoiceNumber,
       p_customer_name: input.customerName || null,
       p_customer_phone: input.customerPhone || null,
       p_date: input.date,
@@ -283,7 +289,7 @@ export const thriftSalesRepository = {
     const result = data as any;
     return {
       id: Number(result.id ?? result),
-      invoiceNumber: String(result.invoice_number ?? input.invoiceNumber),
+      invoiceNumber: String(result.invoice_number ?? ''),
     };
   },
 

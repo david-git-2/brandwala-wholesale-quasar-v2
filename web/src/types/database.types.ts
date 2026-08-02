@@ -6929,6 +6929,38 @@ export type Database = {
           },
         ]
       }
+      thrift_invoice_counters: {
+        Row: {
+          created_at: string
+          last_value: number
+          tenant_id: number
+          updated_at: string
+          year_month: string
+        }
+        Insert: {
+          created_at?: string
+          last_value?: number
+          tenant_id: number
+          updated_at?: string
+          year_month: string
+        }
+        Update: {
+          created_at?: string
+          last_value?: number
+          tenant_id?: number
+          updated_at?: string
+          year_month?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thrift_invoice_counters_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       thrift_invoice_items: {
         Row: {
           created_at: string
@@ -9230,7 +9262,7 @@ export type Database = {
           p_customer_name?: string
           p_customer_phone?: string
           p_date?: string
-          p_invoice_number: string
+          p_invoice_number?: string
           p_items?: Json
           p_notes?: string
           p_payment_method?: string
@@ -9401,6 +9433,10 @@ export type Database = {
       generate_thrift_barcodes: {
         Args: { p_inserted_by: string; p_quantity: number; p_tenant_id: number }
         Returns: string[]
+      }
+      generate_thrift_invoice_number: {
+        Args: { p_date?: string; p_tenant_id: number }
+        Returns: string
       }
       get_active_module_keys_for_tenant: {
         Args: { p_tenant_id: number }
@@ -9811,6 +9847,10 @@ export type Database = {
       get_tenant_role_detail: { Args: { p_role_id: number }; Returns: Json }
       get_thrift_dashboard_metrics: {
         Args: { p_tenant_id: number }
+        Returns: Json
+      }
+      get_thrift_shipment_sales_report: {
+        Args: { p_shipment_id: number; p_tenant_id: number }
         Returns: Json
       }
       get_vendor_for_tenant: {
@@ -10881,6 +10921,15 @@ export type Database = {
           p_page_size?: number
           p_search?: string
           p_status?: string
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
+      list_thrift_sales_invoices_paginated: {
+        Args: {
+          p_page?: number
+          p_page_size?: number
+          p_search?: string
           p_tenant_id: number
         }
         Returns: Json

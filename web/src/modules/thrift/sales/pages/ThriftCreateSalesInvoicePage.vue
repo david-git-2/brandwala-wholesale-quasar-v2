@@ -57,8 +57,9 @@
               <div class="row q-col-gutter-md">
                 <div class="col-12 col-sm-4">
                   <q-input
-                    v-model="invoiceForm.invoiceNumber"
+                    :model-value="invoiceForm.invoiceNumber"
                     label="Invoice Number"
+                    hint="Assigned on save (INV-YYYY-MM-#####)"
                     outlined
                     dense
                     readonly
@@ -456,16 +457,6 @@
                   :disable="selectedItems.length === 0"
                   @click="onSaveInvoice"
                 />
-                <q-btn
-                  outline
-                  color="primary"
-                  no-caps
-                  icon="ph ph-printer"
-                  label="Save & Print Receipt"
-                  class="full-width"
-                  :disable="selectedItems.length === 0"
-                  @click="onSaveInvoice"
-                />
               </q-card-actions>
             </q-card>
           </div>
@@ -497,7 +488,7 @@ const { mutateAsync: createSalesInvoice, isPending: saving } =
   useCreateThriftSalesInvoiceMutation();
 
 const invoiceForm = ref({
-  invoiceNumber: `INV-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+  invoiceNumber: 'Auto on save',
   customerName: '',
   customerPhone: '',
   date: new Date().toISOString().split('T')[0],
@@ -693,7 +684,6 @@ async function onSaveInvoice() {
 
     const result = await createSalesInvoice({
       tenantId,
-      invoiceNumber: invoiceForm.value.invoiceNumber,
       customerName: invoiceForm.value.customerName || undefined,
       customerPhone: invoiceForm.value.customerPhone || undefined,
       date: new Date(invoiceForm.value.date || Date.now()).toISOString(),

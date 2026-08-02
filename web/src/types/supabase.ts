@@ -9402,6 +9402,10 @@ export type Database = {
         Args: { p_tenant_id: number }
         Returns: Json
       }
+      get_thrift_shipment_sales_report: {
+        Args: { p_shipment_id: number; p_tenant_id: number }
+        Returns: Json
+      }
       get_vendor_for_tenant: {
         Args: { p_id: number; p_tenant_id: number }
         Returns: {

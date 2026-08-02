@@ -12,6 +12,7 @@ export type ModuleKey =
   | 'documentation'
   | 'thrift'
   | 'thrift_sales'
+  | 'thrift_reports'
   | 'thrift_stock'
   | 'thrift_marketing_tag'
   | 'thrift_shipment'
@@ -341,6 +342,22 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         caption: 'Create sales invoices',
         icon: 'ph ph-receipt',
         routeSegment: 'thrift/sales',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'thrift_reports',
+    name: 'Thrift Reports',
+    description: 'Shipment sales and profit reports for thrift inventory.',
+    parentModuleKey: 'thrift',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Reports',
+        caption: 'Shipment sales & profit',
+        icon: 'ph ph-chart-bar',
+        routeSegment: 'thrift/reports',
         requiredAction: 'view',
       },
     ],

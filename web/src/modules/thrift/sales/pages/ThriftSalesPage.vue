@@ -44,6 +44,7 @@
           :rows-per-page-options="[10, 20, 50]"
           :loading="loading"
           class="thrift-table cursor-pointer"
+          @request="onTableRequest"
           @row-click="onRowClick"
         >
           <template #body-cell-sl="props">
@@ -154,7 +155,11 @@ const { tenantId, tenantSlug } = storeToRefs(authStore);
 const loading = ref(false);
 const search = ref('');
 const rows = ref<ThriftSalesInvoiceListItem[]>([]);
-const tablePagination = ref({ page: 1, rowsPerPage: 20 });
+const tablePagination = ref({
+  page: 1,
+  rowsPerPage: 20,
+  rowsNumber: 0,
+});
 
 const columns: QTableColumn[] = [
   {
@@ -170,63 +175,63 @@ const columns: QTableColumn[] = [
     label: 'Invoice #',
     field: 'invoiceNumber',
     align: 'left',
-    sortable: true,
+    sortable: false,
   },
   {
     name: 'customer',
     label: 'Customer',
     field: 'customerName',
     align: 'left',
-    sortable: true,
+    sortable: false,
   },
   {
     name: 'date',
     label: 'Date',
     field: 'date',
     align: 'left',
-    sortable: true,
+    sortable: false,
   },
   {
     name: 'itemCount',
     label: 'Items',
     field: 'itemCount',
     align: 'center',
-    sortable: true,
+    sortable: false,
   },
   {
     name: 'paymentMethod',
     label: 'Method',
     field: 'paymentMethod',
     align: 'left',
-    sortable: true,
+    sortable: false,
   },
   {
     name: 'paymentStatus',
     label: 'Payment',
     field: 'paymentStatus',
     align: 'left',
-    sortable: true,
+    sortable: false,
   },
   {
     name: 'status',
     label: 'Status',
     field: 'status',
     align: 'left',
-    sortable: true,
+    sortable: false,
   },
   {
     name: 'totalInvoiceAmount',
     label: 'Total',
     field: 'totalInvoiceAmount',
     align: 'right',
-    sortable: true,
+    sortable: false,
   },
   {
     name: 'createdBy',
     label: 'Cashier',
     field: 'createdBy',
     align: 'left',
-    sortable: true,
+    sortable: false,
   },
 ];
 
@@ -272,10 +277,17 @@ async function loadInvoices() {
   if (!resolvedTenantId.value) return;
   loading.value = true;
   try {
-    rows.value = await thriftSalesRepository.listSalesInvoices(
-      resolvedTenantId.value,
-      search.value,
-    );
+    const result = await thriftSalesRepository.listSalesInvoices({
+      tenantId: resolvedTenantId.value,
+      search: search.value,
+      page: tablePagination.value.page,
+      pageSize: tablePagination.value.rowsPerPage,
+    });
+    rows.value = result.data;
+    tablePagination.value = {
+      ...tablePagination.value,
+      rowsNumber: result.meta.total,
+    };
   } catch (err: any) {
     $q.notify({
       type: 'negative',
@@ -286,14 +298,26 @@ async function loadInvoices() {
   }
 }
 
+function onTableRequest(props: {
+  pagination: { page: number; rowsPerPage: number; rowsNumber?: number };
+}) {
+  tablePagination.value.page = props.pagination.page;
+  tablePagination.value.rowsPerPage = props.pagination.rowsPerPage;
+  void loadInvoices();
+}
+
 watch(search, () => {
+  tablePagination.value.page = 1;
   void loadInvoices();
 });
 
 watch(
   resolvedTenantId,
   (id) => {
-    if (id) void loadInvoices();
+    if (id) {
+      tablePagination.value.page = 1;
+      void loadInvoices();
+    }
   },
   { immediate: true },
 );
