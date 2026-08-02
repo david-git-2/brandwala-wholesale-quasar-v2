@@ -29,6 +29,10 @@
     </div>
 
     <!-- Grant Matrix Grouped by Module -->
+    <div v-else-if="groupedActions.length === 0" class="text-center text-grey-6 q-my-xl">
+      No enabled modules for this tenant. Add modules under Access Control → Modules first.
+    </div>
+
     <div v-else class="row q-col-gutter-md">
       <div v-for="mod in groupedActions" :key="mod.moduleKey" class="col-12 col-md-6">
         <q-card flat class="floating-surface shadow-1 full-height">
@@ -93,6 +97,8 @@ const authStore = useAuthStore();
 const role = ref<any>(null);
 const grants = ref<any[]>([]);
 const moduleActions = ref<any[]>([]);
+/** Live tenant-enabled module keys (incl. expanded submodules). */
+const tenantActiveModuleKeys = ref<string[]>([]);
 const loading = ref(false);
 const pageError = ref<string | null>(null);
 
@@ -122,32 +128,35 @@ const loadData = async () => {
       return;
     }
 
-    const { data: actionsData, error: actionsError } = await supabase.rpc(
-      'list_configurable_module_actions',
-      {
+    const [actionsResult, keysResult, grantsResult] = await Promise.all([
+      supabase.rpc('list_configurable_module_actions', {
         p_scope: roleData.scope,
         p_tenant_id: tenantId,
-      },
-    );
+      }),
+      supabase.rpc('get_active_module_keys_for_tenant', {
+        p_tenant_id: tenantId,
+      }),
+      supabase.rpc('list_tenant_role_grants', {
+        p_tenant_role_id: props.id,
+      }),
+    ]);
 
-    if (actionsError) {
-      pageError.value = actionsError.message;
+    if (actionsResult.error) {
+      pageError.value = actionsResult.error.message;
+      return;
+    }
+    if (keysResult.error) {
+      pageError.value = keysResult.error.message;
+      return;
+    }
+    if (grantsResult.error) {
+      pageError.value = grantsResult.error.message;
       return;
     }
 
-    moduleActions.value = actionsData || [];
-
-    // 3. Fetch existing role grants
-    const { data: grantsData, error: grantsError } = await supabase.rpc('list_tenant_role_grants', {
-      p_tenant_role_id: props.id,
-    });
-
-    if (grantsError) {
-      pageError.value = grantsError.message;
-      return;
-    }
-
-    grants.value = grantsData || [];
+    moduleActions.value = actionsResult.data || [];
+    tenantActiveModuleKeys.value = keysResult.data || [];
+    grants.value = grantsResult.data || [];
   } catch (err: any) {
     pageError.value = err.message || 'Failed to load grants data';
   } finally {
@@ -155,13 +164,10 @@ const loadData = async () => {
   }
 };
 
-// Group active configurable module actions by module key
+// Group actions for modules currently enabled on this tenant only
 const groupedActions = computed(() => {
-  const activeModuleKeys = authStore.activeModuleKeys;
-  // Only display actions belonging to modules currently enabled for the tenant
-  const activeActions = moduleActions.value.filter((action) =>
-    activeModuleKeys.includes(action.module_key),
-  );
+  const allowed = new Set(tenantActiveModuleKeys.value);
+  const activeActions = moduleActions.value.filter((action) => allowed.has(action.module_key));
 
   const groups: Record<string, any[]> = {};
   activeActions.forEach((action) => {

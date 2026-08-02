@@ -9,4 +9,8 @@ export const thriftQueryKeys = {
   barcodes: (params: object) => ['thrift', 'barcodes', params] as const,
   shipments: (tenantId: number) => ['thrift', 'shipments', { tenantId }] as const,
   shipmentDetail: (id: string) => ['thrift', 'shipment-detail', { id }] as const,
+  salesInvoices: (params: object) => ['thrift', 'sales', 'list', params] as const,
+  salesInvoiceDetail: (params: object) => ['thrift', 'sales', 'detail', params] as const,
+  availableStockSearch: (params: object) =>
+    ['thrift', 'sales', 'available-stock-search', params] as const,
 };

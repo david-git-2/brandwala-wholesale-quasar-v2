@@ -84,18 +84,43 @@ export function useThriftStockActions(
     selectedStockIds.value = [];
   }
 
+  function isSoldStatus(status: string | null | undefined): boolean {
+    return (status ?? '').trim().toUpperCase() === 'SOLD';
+  }
+
   function confirmDelete(row: ThriftStock) {
+    if (isSoldStatus(row.status)) {
+      $q.notify({ type: 'warning', message: 'Cannot delete sold items' });
+      return;
+    }
     selectedRow.value = row;
     deleteConfirmOpen.value = true;
   }
 
   function confirmBulkDelete() {
     if (!selectedStockIds.value.length) return;
+    const hasSold = selectedStockIds.value.some((id) => {
+      const row = stocks.value.find((s) => s.id === id);
+      return row ? isSoldStatus(row.status) : false;
+    });
+    if (hasSold) {
+      $q.notify({
+        type: 'warning',
+        message: 'Cannot bulk delete: selection includes sold items. Deselect sold items first.',
+      });
+      return;
+    }
     bulkDeleteConfirmOpen.value = true;
   }
 
   async function deleteItem() {
     if (!selectedRow.value) return;
+    if (isSoldStatus(selectedRow.value.status)) {
+      $q.notify({ type: 'warning', message: 'Cannot delete sold items' });
+      deleteConfirmOpen.value = false;
+      selectedRow.value = null;
+      return;
+    }
     const target = {
       id: selectedRow.value.id,
       imageUrl: selectedRow.value.image_url ?? undefined,
@@ -123,6 +148,18 @@ export function useThriftStockActions(
 
   async function deleteSelectedItems() {
     if (!selectedStockIds.value.length) return;
+    const hasSold = selectedStockIds.value.some((id) => {
+      const row = stocks.value.find((s) => s.id === id);
+      return row ? isSoldStatus(row.status) : false;
+    });
+    if (hasSold) {
+      $q.notify({
+        type: 'warning',
+        message: 'Cannot bulk delete: selection includes sold items. Deselect sold items first.',
+      });
+      bulkDeleteConfirmOpen.value = false;
+      return;
+    }
     bulkDeleteLoading.value = true;
     try {
       const targets = selectedStockIds.value

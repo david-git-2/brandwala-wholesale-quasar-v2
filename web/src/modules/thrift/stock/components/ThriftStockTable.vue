@@ -106,6 +106,8 @@ const statusChipStyle = (status: string | null | undefined) => {
     return { backgroundColor: '#d1fae5', color: '#065f46', border: '1px solid #6ee7b7' };
   if (v === 'OUT_OF_STOCK')
     return { backgroundColor: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db' };
+  if (v === 'SOLD')
+    return { backgroundColor: '#dbeafe', color: '#1e40af', border: '1px solid #93c5fd' };
   if (v === 'DAMAGED')
     return { backgroundColor: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d' };
   if (v === 'STOLEN')
@@ -117,6 +119,7 @@ const statusDotColor = (status: string | null | undefined) => {
   const v = normalizeStatus(status);
   if (v === 'AVAILABLE') return '#059669';
   if (v === 'OUT_OF_STOCK') return '#9ca3af';
+  if (v === 'SOLD') return '#2563eb';
   if (v === 'DAMAGED') return '#d97706';
   if (v === 'STOLEN') return '#dc2626';
   return '#9ca3af';
@@ -743,9 +746,16 @@ const statusDotColor = (status: string | null | undefined) => {
                 icon="ph ph-trash"
                 size="sm"
                 color="negative"
+                :disable="normalizeStatus(rowProps.row.status) === 'SOLD'"
                 @click.stop="emit('confirm-delete', rowProps.row)"
               >
-                <q-tooltip>Delete Stock</q-tooltip>
+                <q-tooltip>
+                  {{
+                    normalizeStatus(rowProps.row.status) === 'SOLD'
+                      ? 'Cannot delete sold items'
+                      : 'Delete Stock'
+                  }}
+                </q-tooltip>
               </q-btn>
               <q-btn
                 flat

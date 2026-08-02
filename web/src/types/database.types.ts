@@ -7125,6 +7125,144 @@ export type Database = {
           },
         ]
       }
+      thrift_sales_invoice_items: {
+        Row: {
+          created_at: string
+          discount_amount: number
+          final_price: number
+          id: number
+          invoice_id: number
+          landed_unit_cost_at_sale: number
+          net_profit: number
+          quantity: number
+          sell_price: number
+          stock_id: number
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          discount_amount?: number
+          final_price?: number
+          id?: number
+          invoice_id: number
+          landed_unit_cost_at_sale?: number
+          net_profit?: number
+          quantity?: number
+          sell_price?: number
+          stock_id: number
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          discount_amount?: number
+          final_price?: number
+          id?: number
+          invoice_id?: number
+          landed_unit_cost_at_sale?: number
+          net_profit?: number
+          quantity?: number
+          sell_price?: number
+          stock_id?: number
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thrift_sales_invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "thrift_sales_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thrift_sales_invoice_items_stock_id_fkey"
+            columns: ["stock_id"]
+            isOneToOne: false
+            referencedRelation: "thrift_stocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thrift_sales_invoice_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thrift_sales_invoices: {
+        Row: {
+          created_at: string
+          created_by: string
+          customer_name: string | null
+          customer_phone: string | null
+          date: string
+          id: number
+          invoice_number: string
+          notes: string | null
+          payment_method: string
+          payment_status: string
+          revert_notes: string | null
+          revert_reason: string | null
+          reverted_at: string | null
+          reverted_by: string | null
+          status: string
+          tenant_id: number
+          total_invoice_amount: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          customer_name?: string | null
+          customer_phone?: string | null
+          date?: string
+          id?: number
+          invoice_number: string
+          notes?: string | null
+          payment_method?: string
+          payment_status?: string
+          revert_notes?: string | null
+          revert_reason?: string | null
+          reverted_at?: string | null
+          reverted_by?: string | null
+          status?: string
+          tenant_id: number
+          total_invoice_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          customer_name?: string | null
+          customer_phone?: string | null
+          date?: string
+          id?: number
+          invoice_number?: string
+          notes?: string | null
+          payment_method?: string
+          payment_status?: string
+          revert_notes?: string | null
+          revert_reason?: string | null
+          reverted_at?: string | null
+          reverted_by?: string | null
+          status?: string
+          tenant_id?: number
+          total_invoice_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thrift_sales_invoices_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       thrift_settings: {
         Row: {
           created_at: string
@@ -9085,6 +9223,35 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      create_thrift_sales_invoice: {
+        Args: {
+          p_created_by?: string
+          p_customer_name?: string
+          p_customer_phone?: string
+          p_date?: string
+          p_invoice_number: string
+          p_items?: Json
+          p_notes?: string
+          p_payment_method?: string
+          p_payment_status?: string
+          p_tenant_id: number
+          p_total_invoice_amount?: number
+        }
+        Returns: Json
+      }
+      create_vendor_with_wallet: {
+        Args: {
+          p_address?: string
+          p_code: string
+          p_email?: string
+          p_market_code: string
+          p_name: string
+          p_phone?: string
+          p_tenant_id: number
+          p_website?: string
+        }
+        Returns: Json
       }
       current_authenticated_email: { Args: never; Returns: string }
       current_costing_item_actor_role: {
@@ -11216,6 +11383,16 @@ export type Database = {
         Args: { p_scanned_value: string; p_tenant_id: number }
         Returns: string
       }
+      revert_thrift_sales_invoice: {
+        Args: {
+          p_invoice_id: number
+          p_notes?: string
+          p_reason: string
+          p_reverted_by?: string
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
       revoke_costing_file_viewer: {
         Args: { p_costing_file_id: number; p_membership_id: number }
         Returns: {
@@ -12491,7 +12668,14 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "superadmin" | "admin" | "manager" | "staff" | "cashier" | "viewer" | "investor"
+      app_role:
+        | "superadmin"
+        | "admin"
+        | "staff"
+        | "viewer"
+        | "investor"
+        | "manager"
+        | "cashier"
       collection_source_type: "billing_profile" | "recipient"
       commerce_order_status:
         | "placed"
@@ -12586,7 +12770,12 @@ export type Database = {
       thrift_payment_status: "UNPAID" | "PAID" | "REFUNDED"
       thrift_return_action: "RESTOCK" | "WRITE_OFF"
       thrift_section: "MALE" | "FEMALE" | "UNISEX" | "KIDS" | "HOME"
-      thrift_stock_status: "AVAILABLE" | "OUT_OF_STOCK" | "DAMAGED" | "STOLEN"
+      thrift_stock_status:
+        | "AVAILABLE"
+        | "OUT_OF_STOCK"
+        | "DAMAGED"
+        | "STOLEN"
+        | "SOLD"
       thrift_stock_type: "SINGLE" | "BULK"
       thrift_transaction_method: "CASH" | "CARD" | "MOBILE_BANKING" | "COD"
     }
@@ -12716,7 +12905,15 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["superadmin", "admin", "manager", "staff", "cashier", "viewer", "investor"],
+      app_role: [
+        "superadmin",
+        "admin",
+        "staff",
+        "viewer",
+        "investor",
+        "manager",
+        "cashier",
+      ],
       collection_source_type: ["billing_profile", "recipient"],
       commerce_order_status: [
         "placed",
@@ -12819,7 +13016,13 @@ export const Constants = {
       thrift_payment_status: ["UNPAID", "PAID", "REFUNDED"],
       thrift_return_action: ["RESTOCK", "WRITE_OFF"],
       thrift_section: ["MALE", "FEMALE", "UNISEX", "KIDS", "HOME"],
-      thrift_stock_status: ["AVAILABLE", "OUT_OF_STOCK", "DAMAGED", "STOLEN"],
+      thrift_stock_status: [
+        "AVAILABLE",
+        "OUT_OF_STOCK",
+        "DAMAGED",
+        "STOLEN",
+        "SOLD",
+      ],
       thrift_stock_type: ["SINGLE", "BULK"],
       thrift_transaction_method: ["CASH", "CARD", "MOBILE_BANKING", "COD"],
     },

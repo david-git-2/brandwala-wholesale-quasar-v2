@@ -115,16 +115,6 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
       tenantSlug ? `/${tenantSlug}/app/access-control` : '/app/access-control',
   },
   {
-    title: 'Documentation',
-    caption: 'User guides and feature manuals',
-    icon: 'ph ph-book-open',
-    scopes: ['app'],
-    allowedRoles: ['admin', 'staff', 'viewer'],
-    route: ({ tenantSlug }) =>
-      tenantSlug ? `/${tenantSlug}/app/documentation` : '/app/documentation',
-    target: '_blank',
-  },
-  {
     title: 'Help Center',
     caption: 'How-to guides for your workspace',
     icon: 'ph ph-question',

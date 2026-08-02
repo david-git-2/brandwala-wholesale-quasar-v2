@@ -4,6 +4,7 @@ import type { QTableColumn } from 'quasar';
 export const statusOptions = [
   { label: 'Available', value: 'AVAILABLE' },
   { label: 'Out of stock', value: 'OUT_OF_STOCK' },
+  { label: 'Sold', value: 'SOLD' },
   { label: 'Damaged', value: 'DAMAGED' },
   { label: 'Stolen', value: 'STOLEN' },
 ];

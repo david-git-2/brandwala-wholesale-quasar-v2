@@ -16,6 +16,7 @@ const documentationRoutes: RouteRecordRaw[] = [
       requiredScope: 'app',
       allowedRoles: ['admin', 'staff', 'viewer'],
       requireTenantContext: true,
+      requiredModule: 'documentation',
       validateAccess: ({ authStore, to }) => {
         const selectedTenantSlug = authStore.selectedTenant?.slug ?? null;
 

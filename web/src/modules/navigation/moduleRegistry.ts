@@ -9,7 +9,9 @@ export type ModuleKey =
   | 'koba_retail'
   | 'koba_wholesale'
   | 'tasks'
+  | 'documentation'
   | 'thrift'
+  | 'thrift_sales'
   | 'thrift_stock'
   | 'thrift_shipment'
   | 'thrift_box'
@@ -289,12 +291,43 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     ],
   },
   {
+    key: 'documentation',
+    name: 'Documentation',
+    description: 'User guides and feature manuals.',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Documentation',
+        caption: 'User guides and feature manuals',
+        icon: 'ph ph-book-open',
+        routeSegment: 'documentation',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
     key: 'thrift',
     name: 'Thrift Model',
     description:
       'Parent module for thrift stock inventory, shipments, boxes, shelves, categories, types, barcodes, and settings.',
     navIcon: 'ph ph-t-shirt',
     routes: [],
+  },
+  {
+    key: 'thrift_sales',
+    name: 'Thrift Sales',
+    description: 'Create and manage sales invoices for thrift inventory.',
+    parentModuleKey: 'thrift',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Sales & Invoices',
+        caption: 'Create sales invoices',
+        icon: 'ph ph-receipt',
+        routeSegment: 'thrift/sales',
+        requiredAction: 'view',
+      },
+    ],
   },
   {
     key: 'thrift_stock',
