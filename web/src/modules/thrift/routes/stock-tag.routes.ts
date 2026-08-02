@@ -10,7 +10,7 @@ const thriftStockTagRoutes: RouteRecordRaw[] = [
       requiredScope: 'app',
       allowedRoles: ['admin', 'staff'],
       requireTenantContext: true,
-      requiredModule: 'thrift_stock',
+      requiredModule: 'thrift_marketing_tag',
     }),
     children: [
       {
@@ -32,7 +32,7 @@ const thriftStockTagRoutes: RouteRecordRaw[] = [
       requiredScope: 'app',
       allowedRoles: ['admin', 'staff'],
       requireTenantContext: true,
-      requiredModule: 'thrift_stock',
+      requiredModule: 'thrift_marketing_tag',
     }),
     children: [
       {

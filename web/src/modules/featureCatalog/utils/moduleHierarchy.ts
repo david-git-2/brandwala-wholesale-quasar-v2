@@ -111,6 +111,7 @@ const getSubmoduleSectionAndWeight = (
       case 'thrift_sales':
         return { section: 'Sales & Invoices', weight: 5 };
       case 'thrift_stock':
+      case 'thrift_marketing_tag':
         return { section: 'Inventory & Tags', weight: 10 };
       case 'thrift_shipment':
       case 'thrift_box':

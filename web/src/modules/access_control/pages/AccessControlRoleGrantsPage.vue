@@ -37,10 +37,41 @@
       <div v-for="mod in groupedActions" :key="mod.displayKey" class="col-12 col-md-6">
         <q-card flat class="floating-surface shadow-1 full-height">
           <q-card-section class="bg-grey-2 q-py-sm">
-            <div class="text-subtitle1 text-weight-bold text-grey-9">
-              {{ mod.displayTitle }}
+            <div class="row items-center no-wrap q-gutter-sm">
+              <div class="col">
+                <div class="text-subtitle1 text-weight-bold text-grey-9">
+                  {{ mod.displayTitle }}
+                </div>
+                <div class="text-caption text-grey-6">Module key: {{ mod.grantModuleKey }}</div>
+              </div>
+              <div class="col-auto row items-center q-gutter-xs">
+                <q-btn
+                  flat
+                  dense
+                  no-caps
+                  size="sm"
+                  color="positive"
+                  label="All on"
+                  :disable="isSectionBusy(mod.displayKey) || isSectionFullyAllowed(mod)"
+                  @click="setSectionGrants(mod, true)"
+                />
+                <q-btn
+                  flat
+                  dense
+                  no-caps
+                  size="sm"
+                  color="grey-8"
+                  label="All off"
+                  :disable="isSectionBusy(mod.displayKey) || isSectionFullyDenied(mod)"
+                  @click="setSectionGrants(mod, false)"
+                />
+                <q-spinner
+                  v-if="isSectionBusy(mod.displayKey)"
+                  size="xs"
+                  color="primary"
+                />
+              </div>
             </div>
-            <div class="text-caption text-grey-6">Module key: {{ mod.grantModuleKey }}</div>
           </q-card-section>
 
           <q-separator />
@@ -61,7 +92,9 @@
                   <q-toggle
                     :model-value="isAllowed(act.module_key, act.action)"
                     color="positive"
-                    :disable="savingMap[act.module_key + ':' + act.action]"
+                    :disable="
+                      savingMap[act.module_key + ':' + act.action] || isSectionBusy(mod.displayKey)
+                    "
                     @update:model-value="(val) => toggleGrant(act.module_key, act.action, val)"
                   >
                     <q-spinner
@@ -89,6 +122,7 @@ import { showSuccessNotification } from 'src/utils/appFeedback';
 import {
   formatModuleKey,
   groupActionsForGrantMatrix,
+  type GrantDisplayGroup,
 } from 'src/modules/access_control/utils/grantDisplayGroups';
 
 const props = defineProps<{
@@ -108,6 +142,8 @@ const pageError = ref<string | null>(null);
 
 // Track individual toggles currently saving to DB
 const savingMap = ref<Record<string, boolean>>({});
+/** Section-level bulk save in progress (keyed by displayKey). */
+const sectionSavingMap = ref<Record<string, boolean>>({});
 
 const loadData = async () => {
   loading.value = true;
@@ -180,48 +216,88 @@ const isAllowed = (moduleKey: string, action: string): boolean => {
   return grant ? Boolean(grant.allowed) : false;
 };
 
+const isSectionBusy = (displayKey: string): boolean => Boolean(sectionSavingMap.value[displayKey]);
+
+const isSectionFullyAllowed = (mod: GrantDisplayGroup): boolean =>
+  mod.actions.every((act) => isAllowed(act.module_key, act.action));
+
+const isSectionFullyDenied = (mod: GrantDisplayGroup): boolean =>
+  mod.actions.every((act) => !isAllowed(act.module_key, act.action));
+
+const applyLocalGrant = (moduleKey: string, action: string, allowed: boolean) => {
+  const existingIndex = grants.value.findIndex(
+    (g) => g.module_key === moduleKey && g.action === action,
+  );
+
+  if (existingIndex >= 0) {
+    grants.value[existingIndex] = {
+      ...grants.value[existingIndex],
+      allowed,
+    };
+    return;
+  }
+
+  grants.value.push({
+    tenant_role_id: props.id,
+    module_key: moduleKey,
+    action,
+    allowed,
+  });
+};
+
+const upsertGrant = async (moduleKey: string, action: string, allowed: boolean) => {
+  const { error } = await supabase.rpc('upsert_tenant_role_grant', {
+    p_tenant_role_id: props.id,
+    p_module_key: moduleKey,
+    p_action: action,
+    p_allowed: allowed,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  applyLocalGrant(moduleKey, action, allowed);
+};
+
 const toggleGrant = async (moduleKey: string, action: string, allowed: boolean) => {
   const key = `${moduleKey}:${action}`;
   savingMap.value[key] = true;
   pageError.value = null;
 
   try {
-    const { error } = await supabase.rpc('upsert_tenant_role_grant', {
-      p_tenant_role_id: props.id,
-      p_module_key: moduleKey,
-      p_action: action,
-      p_allowed: allowed,
-    });
-
-    if (error) {
-      pageError.value = error.message;
-      return;
-    }
-
-    // Update local state list
-    const existingIndex = grants.value.findIndex(
-      (g) => g.module_key === moduleKey && g.action === action,
-    );
-
-    if (existingIndex >= 0) {
-      grants.value[existingIndex] = {
-        ...grants.value[existingIndex],
-        allowed,
-      };
-    } else {
-      grants.value.push({
-        tenant_role_id: props.id,
-        module_key: moduleKey,
-        action,
-        allowed,
-      });
-    }
-
+    await upsertGrant(moduleKey, action, allowed);
     showSuccessNotification(`Grant rules updated for ${formatModuleKey(moduleKey)}: ${action}`);
   } catch (err: any) {
     pageError.value = err.message || 'Failed to update grant rule';
   } finally {
     savingMap.value[key] = false;
+  }
+};
+
+const setSectionGrants = async (mod: GrantDisplayGroup, allowed: boolean) => {
+  const targets = mod.actions.filter((act) => isAllowed(act.module_key, act.action) !== allowed);
+  if (targets.length === 0) return;
+
+  sectionSavingMap.value[mod.displayKey] = true;
+  pageError.value = null;
+
+  for (const act of targets) {
+    savingMap.value[`${act.module_key}:${act.action}`] = true;
+  }
+
+  try {
+    await Promise.all(targets.map((act) => upsertGrant(act.module_key, act.action, allowed)));
+    showSuccessNotification(
+      `${allowed ? 'Enabled' : 'Disabled'} all actions for ${mod.displayTitle}`,
+    );
+  } catch (err: any) {
+    pageError.value = err.message || 'Failed to update section grants';
+  } finally {
+    for (const act of targets) {
+      savingMap.value[`${act.module_key}:${act.action}`] = false;
+    }
+    sectionSavingMap.value[mod.displayKey] = false;
   }
 };
 

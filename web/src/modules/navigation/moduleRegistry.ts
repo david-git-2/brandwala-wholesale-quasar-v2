@@ -13,6 +13,7 @@ export type ModuleKey =
   | 'thrift'
   | 'thrift_sales'
   | 'thrift_stock'
+  | 'thrift_marketing_tag'
   | 'thrift_shipment'
   | 'thrift_box'
   | 'thrift_shelf'
@@ -358,6 +359,14 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         routeSegment: 'thrift/stocks',
         requiredAction: 'view',
       },
+    ],
+  },
+  {
+    key: 'thrift_marketing_tag',
+    name: 'Thrift Marketing Tags',
+    description: 'Print live sale stickers and marketing tags for thrift stock.',
+    parentModuleKey: 'thrift',
+    routes: [
       {
         scope: 'app',
         title: 'Marketing Tags',
