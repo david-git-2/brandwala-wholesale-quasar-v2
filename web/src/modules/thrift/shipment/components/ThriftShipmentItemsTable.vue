@@ -169,6 +169,7 @@
                 </q-tooltip>
               </span>
               <q-btn
+                v-if="canEditMeasurements"
                 flat
                 round
                 dense
@@ -186,10 +187,12 @@
           <!-- Origin Price -->
           <td
             v-if="isVisible('origin_unit_price')"
-            class="cursor-pointer text-right text-underline-dashed"
+            class="text-right"
+            :class="{ 'cursor-pointer text-underline-dashed': canEditLandedCost }"
           >
             {{ formatPurchase(row.origin_unit_price || 0) }}
             <q-popup-edit
+              v-if="canEditLandedCost"
               :model-value="row.origin_unit_price || 0"
               v-slot="scope"
               buttons
@@ -202,10 +205,12 @@
           <!-- Extra Origin -->
           <td
             v-if="isVisible('extra_origin_unit_price')"
-            class="cursor-pointer text-right text-underline-dashed"
+            class="text-right"
+            :class="{ 'cursor-pointer text-underline-dashed': canEditLandedCost }"
           >
             {{ formatPurchase(row.extra_origin_unit_price || 0) }}
             <q-popup-edit
+              v-if="canEditLandedCost"
               :model-value="row.extra_origin_unit_price || 0"
               v-slot="scope"
               buttons
@@ -233,10 +238,12 @@
           <!-- Additional charges cost -->
           <td
             v-if="isVisible('additional_charges_cost')"
-            class="cursor-pointer text-right text-underline-dashed"
+            class="text-right"
+            :class="{ 'cursor-pointer text-underline-dashed': canEditLandedCost }"
           >
             {{ formatCost(row.additional_charges_cost || 0) }}
             <q-popup-edit
+              v-if="canEditLandedCost"
               :model-value="row.additional_charges_cost || 0"
               v-slot="scope"
               buttons
@@ -251,6 +258,7 @@
             <div class="row items-center justify-end no-wrap q-gutter-x-xs">
               <span>{{ formatCost(costingBreakdowns[row.id]?.landed_unit_cost || 0) }}</span>
               <q-btn
+                v-if="canViewLandedCost"
                 flat
                 round
                 dense
@@ -280,11 +288,11 @@
                 >
                   <q-tooltip>Item markup locked — won't follow shipment markup</q-tooltip>
                 </q-icon>
-                <span class="text-underline-dashed cursor-pointer">
+                <span :class="{ 'text-underline-dashed cursor-pointer': canEditLandedCost }">
                   {{ itemMarkupLabel(row) }}
                 </span>
                 <q-btn
-                  v-if="isItemMarkupLocked(row.pricing)"
+                  v-if="canEditLandedCost && isItemMarkupLocked(row.pricing)"
                   flat
                   round
                   dense
@@ -297,6 +305,7 @@
                 </q-btn>
               </div>
               <q-popup-edit
+                v-if="canEditLandedCost"
                 :model-value="itemMarkupPct(row) ?? 0"
                 v-slot="scope"
                 buttons
@@ -340,12 +349,15 @@
                 <q-tooltip>Listed price locked — won't follow markup changes</q-tooltip>
               </q-icon>
 
-              <span class="text-weight-bold text-underline-dashed cursor-pointer">
+              <span
+                class="text-weight-bold"
+                :class="{ 'text-underline-dashed cursor-pointer': canEditListedPrice }"
+              >
                 {{ formatCost(resolvedListedPrice(row)) }}
               </span>
 
               <q-btn
-                v-if="isListedPriceLocked(row.pricing)"
+                v-if="canEditListedPrice && isListedPriceLocked(row.pricing)"
                 flat
                 round
                 dense
@@ -358,6 +370,7 @@
               </q-btn>
             </div>
             <q-popup-edit
+              v-if="canEditListedPrice"
               :model-value="resolvedListedPrice(row)"
               v-slot="scope"
               buttons
@@ -395,14 +408,28 @@ import { formatThriftAmount } from '../../currency/utils/formatMoney';
 import { resolveListedSellPrice } from '../../shared/utils/resolveListedSellPrice';
 import { isListedPriceLocked, isItemMarkupLocked } from '../../shared/utils/thriftPricingLock';
 
-const props = defineProps<{
-  stocks: ThriftStock[];
-  visibleColumns: Set<string>;
-  costingBreakdowns: Record<number, ThriftUnitCostBreakdown>;
-  purchaseCurrency: ThriftCurrency | undefined;
-  costCurrency: ThriftCurrency | undefined;
-  loading?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    stocks: ThriftStock[];
+    visibleColumns: Set<string>;
+    costingBreakdowns: Record<number, ThriftUnitCostBreakdown>;
+    purchaseCurrency: ThriftCurrency | undefined;
+    costCurrency: ThriftCurrency | undefined;
+    loading?: boolean;
+    canViewLandedCost?: boolean;
+    canEditLandedCost?: boolean;
+    canViewMeasurements?: boolean;
+    canEditMeasurements?: boolean;
+    canEditListedPrice?: boolean;
+  }>(),
+  {
+    canViewLandedCost: true,
+    canEditLandedCost: true,
+    canViewMeasurements: true,
+    canEditMeasurements: true,
+    canEditListedPrice: true,
+  },
+);
 
 const emit = defineEmits<{
   (e: 'edit-measurements', row: ThriftStock): void;

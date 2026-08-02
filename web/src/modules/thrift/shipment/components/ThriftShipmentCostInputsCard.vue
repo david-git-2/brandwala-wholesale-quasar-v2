@@ -34,8 +34,9 @@
             dense
             label="Total Cargo Weight (kg)"
             class="soft-input"
+            :readonly="!canEditLandedCost"
             @update:model-value="(val) => updateCostField('total_cargo_weight_kg', val)"
-            @change="emit('save')"
+            @change="onCostChange"
           />
           <q-input
             :model-value="costForm.cargo_rate"
@@ -46,8 +47,9 @@
             dense
             label="Cargo Rate"
             class="soft-input"
+            :readonly="!canEditLandedCost"
             @update:model-value="(val) => updateCostField('cargo_rate', val)"
-            @change="emit('save')"
+            @change="onCostChange"
           />
           <q-input
             :model-value="costForm.cargo_conversion_rate"
@@ -58,8 +60,9 @@
             dense
             label="Cargo Conv. Rate"
             class="soft-input"
+            :readonly="!canEditLandedCost"
             @update:model-value="(val) => updateCostField('cargo_conversion_rate', val)"
-            @change="emit('save')"
+            @change="onCostChange"
           />
 
           <q-separator class="q-my-xs" />
@@ -73,8 +76,9 @@
             dense
             label="Labor Total Cost"
             class="soft-input"
+            :readonly="!canEditLandedCost"
             @update:model-value="(val) => updateCostField('labor_total_cost', val)"
-            @change="emit('save')"
+            @change="onCostChange"
           />
           <q-input
             :model-value="costForm.transportation_total_cost"
@@ -85,8 +89,9 @@
             dense
             label="Transport Total Cost"
             class="soft-input"
+            :readonly="!canEditLandedCost"
             @update:model-value="(val) => updateCostField('transportation_total_cost', val)"
-            @change="emit('save')"
+            @change="onCostChange"
           />
           <q-input
             :model-value="costForm.washing_total_cost"
@@ -97,8 +102,9 @@
             dense
             label="Washing Total Cost"
             class="soft-input"
+            :readonly="!canEditLandedCost"
             @update:model-value="(val) => updateCostField('washing_total_cost', val)"
-            @change="emit('save')"
+            @change="onCostChange"
           />
 
           <q-separator class="q-my-xs" />
@@ -112,8 +118,9 @@
             dense
             label="Product Conv. Rate"
             class="soft-input"
+            :readonly="!canEditLandedCost"
             @update:model-value="(val) => updateCostField('product_conversion_rate', val)"
-            @change="emit('save')"
+            @change="onCostChange"
           />
           <q-input
             :model-value="markupPercentage"
@@ -125,8 +132,13 @@
             label="Default Markup (%)"
             class="soft-input"
             suffix="%"
-            @update:model-value="(val) => emit('update:markupPercentage', val !== null && val !== '' ? Number(val) : null)"
-            @change="emit('save')"
+            :readonly="!canEditLandedCost"
+            @update:model-value="
+              (val) =>
+                canEditLandedCost &&
+                emit('update:markupPercentage', val !== null && val !== '' ? Number(val) : null)
+            "
+            @change="onCostChange"
           />
           <div
             class="text-caption text-grey-6 text-italic"
@@ -165,14 +177,20 @@ export interface CostFormState {
   product_conversion_rate: number | null;
 }
 
-const props = defineProps<{
-  costForm: CostFormState;
-  markupPercentage: number | null;
-  totalUnits: number;
-  stockCount: number;
-  formattedDefaultOrigin: string;
-  formattedSuggestedPrice: string;
-}>();
+const props = withDefaults(
+  defineProps<{
+    costForm: CostFormState;
+    markupPercentage: number | null;
+    totalUnits: number;
+    stockCount: number;
+    formattedDefaultOrigin: string;
+    formattedSuggestedPrice: string;
+    canEditLandedCost?: boolean;
+  }>(),
+  {
+    canEditLandedCost: true,
+  },
+);
 
 const emit = defineEmits<{
   (e: 'update:costForm', val: CostFormState): void;
@@ -181,11 +199,17 @@ const emit = defineEmits<{
 }>();
 
 function updateCostField(field: keyof CostFormState, rawVal: unknown) {
+  if (!props.canEditLandedCost) return;
   const numVal = rawVal !== null && rawVal !== '' ? Number(rawVal) : null;
   emit('update:costForm', {
     ...props.costForm,
     [field]: numVal,
   });
+}
+
+function onCostChange() {
+  if (!props.canEditLandedCost) return;
+  emit('save');
 }
 </script>
 

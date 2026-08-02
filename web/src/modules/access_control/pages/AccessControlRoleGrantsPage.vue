@@ -34,13 +34,13 @@
     </div>
 
     <div v-else class="row q-col-gutter-md">
-      <div v-for="mod in groupedActions" :key="mod.moduleKey" class="col-12 col-md-6">
+      <div v-for="mod in groupedActions" :key="mod.displayKey" class="col-12 col-md-6">
         <q-card flat class="floating-surface shadow-1 full-height">
           <q-card-section class="bg-grey-2 q-py-sm">
             <div class="text-subtitle1 text-weight-bold text-grey-9">
-              {{ formatModuleKey(mod.moduleKey) }}
+              {{ mod.displayTitle }}
             </div>
-            <div class="text-caption text-grey-6">Module key: {{ mod.moduleKey }}</div>
+            <div class="text-caption text-grey-6">Module key: {{ mod.grantModuleKey }}</div>
           </q-card-section>
 
           <q-separator />
@@ -59,13 +59,13 @@
 
                 <q-item-section side>
                   <q-toggle
-                    :model-value="isAllowed(mod.moduleKey, act.action)"
+                    :model-value="isAllowed(act.module_key, act.action)"
                     color="positive"
-                    :disable="savingMap[mod.moduleKey + ':' + act.action]"
-                    @update:model-value="(val) => toggleGrant(mod.moduleKey, act.action, val)"
+                    :disable="savingMap[act.module_key + ':' + act.action]"
+                    @update:model-value="(val) => toggleGrant(act.module_key, act.action, val)"
                   >
                     <q-spinner
-                      v-if="savingMap[mod.moduleKey + ':' + act.action]"
+                      v-if="savingMap[act.module_key + ':' + act.action]"
                       size="xs"
                       color="positive"
                     />
@@ -86,6 +86,10 @@ import { useRouter } from 'vue-router';
 import { supabase } from 'src/boot/supabase';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { showSuccessNotification } from 'src/utils/appFeedback';
+import {
+  formatModuleKey,
+  groupActionsForGrantMatrix,
+} from 'src/modules/access_control/utils/grantDisplayGroups';
 
 const props = defineProps<{
   id: number;
@@ -168,19 +172,7 @@ const loadData = async () => {
 const groupedActions = computed(() => {
   const allowed = new Set(tenantActiveModuleKeys.value);
   const activeActions = moduleActions.value.filter((action) => allowed.has(action.module_key));
-
-  const groups: Record<string, any[]> = {};
-  activeActions.forEach((action) => {
-    const key = action.module_key;
-    const arr = groups[key] || [];
-    arr.push(action);
-    groups[key] = arr;
-  });
-
-  return Object.keys(groups).map((moduleKey) => ({
-    moduleKey,
-    actions: groups[moduleKey],
-  }));
+  return groupActionsForGrantMatrix(activeActions);
 });
 
 const isAllowed = (moduleKey: string, action: string): boolean => {
@@ -231,13 +223,6 @@ const toggleGrant = async (moduleKey: string, action: string, allowed: boolean) 
   } finally {
     savingMap.value[key] = false;
   }
-};
-
-const formatModuleKey = (key: string): string => {
-  return key
-    .split('_')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
 };
 
 const goBack = () => {

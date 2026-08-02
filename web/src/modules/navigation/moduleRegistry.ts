@@ -59,7 +59,22 @@ export type ModuleKey =
   | 'recipient_profile'
   | 'universal_wallet';
 
-export type ModuleAction = 'view';
+export type ModuleAction =
+  | 'view'
+  | 'create'
+  | 'edit'
+  | 'delete'
+  | 'download'
+  | 'edit_quantity'
+  | 'edit_price'
+  | 'view_cost'
+  | 'apply_discount'
+  | 'view_landed_cost'
+  | 'edit_landed_cost'
+  | 'view_measurements'
+  | 'edit_measurements'
+  | 'edit_listed_price'
+  | 'receive';
 export type InteractiveScope = Extract<AuthScope, 'app' | 'shop'>;
 
 export interface ModuleRouteDefinition {

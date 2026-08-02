@@ -26,15 +26,15 @@
         <div v-else style="max-height: 480px; overflow-y: auto">
           <div
             v-for="group in groupedActions"
-            :key="group.moduleKey"
+            :key="group.displayKey"
             class="q-mb-md border-radius-inherit"
           >
             <div class="bg-grey-2 q-px-sm q-py-xs text-weight-bold text-subtitle2 text-grey-9 rounded-borders q-mb-xs row items-center justify-between">
-              <span>{{ formatModuleKey(group.moduleKey) }}</span>
-              <span class="text-caption text-grey-6 font-mono">{{ group.moduleKey }}</span>
+              <span>{{ group.displayTitle }}</span>
+              <span class="text-caption text-grey-6 font-mono">{{ group.grantModuleKey }}</span>
             </div>
             <q-list separator bordered class="rounded-borders">
-              <q-item v-for="act in group.actions" :key="act.id" class="q-py-sm">
+              <q-item v-for="act in group.actions" :key="act.id ?? `${act.module_key}:${act.action}`" class="q-py-sm">
                 <q-item-section>
                   <div class="row items-center q-gutter-xs">
                     <q-chip
@@ -98,6 +98,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { groupActionsForGrantMatrix } from 'src/modules/access_control/utils/grantDisplayGroups';
 
 const props = defineProps<{
   modelValue: boolean;
@@ -121,13 +122,6 @@ const overrideToggleOptions = [
   { label: 'Default', value: 'inherit' },
 ];
 
-const formatModuleKey = (key: string): string => {
-  return key
-    .split('_')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-};
-
 const getActionChipStyle = (action: string) => {
   const normalized = action.toLowerCase();
   switch (normalized) {
@@ -146,16 +140,5 @@ const getActionChipStyle = (action: string) => {
   }
 };
 
-const groupedActions = computed(() => {
-  const groups: Record<string, any[]> = {};
-  props.actions.forEach((act) => {
-    const key = act.module_key || 'general';
-    if (!groups[key]) groups[key] = [];
-    groups[key].push(act);
-  });
-  return Object.keys(groups).map((moduleKey) => ({
-    moduleKey,
-    actions: groups[moduleKey],
-  }));
-});
+const groupedActions = computed(() => groupActionsForGrantMatrix(props.actions || []));
 </script>

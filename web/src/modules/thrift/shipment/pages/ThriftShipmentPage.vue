@@ -11,6 +11,7 @@
         <div class="col-auto row q-gutter-sm items-center">
           <LearnMoreHelpBtn guide-id="thrift_shipment" />
           <q-btn
+            v-if="canCreate"
             color="primary"
             unelevated
             no-caps
@@ -52,6 +53,7 @@
           <template #body-cell-actions="props">
             <q-td :props="props" class="text-right q-gutter-x-xs">
               <q-btn
+                v-if="canDownload"
                 flat
                 round
                 dense
@@ -63,6 +65,7 @@
                 <q-tooltip>Download images from Cloudinary</q-tooltip>
               </q-btn>
               <q-btn
+                v-if="canEdit"
                 flat
                 round
                 dense
@@ -74,6 +77,7 @@
                 <q-tooltip>Edit</q-tooltip>
               </q-btn>
               <q-btn
+                v-if="canDelete"
                 flat
                 round
                 dense
@@ -282,10 +286,17 @@ import type { ThriftShipment } from '../types';
 import ShipmentImageDownloadDialog from '../components/ShipmentImageDownloadDialog.vue';
 import ThriftShipmentSkeleton from '../components/ThriftShipmentSkeleton.vue';
 import LearnMoreHelpBtn from 'src/modules/help/components/LearnMoreHelpBtn.vue';
+import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
 
 const $q = useQuasar();
 const authStore = useAuthStore();
 const { tenantId } = storeToRefs(authStore);
+const { hasModuleAccess } = useModulePermissions();
+
+const canCreate = computed(() => hasModuleAccess('thrift_shipment', 'create'));
+const canEdit = computed(() => hasModuleAccess('thrift_shipment', 'edit'));
+const canDelete = computed(() => hasModuleAccess('thrift_shipment', 'delete'));
+const canDownload = computed(() => hasModuleAccess('thrift_shipment', 'download'));
 
 const { data: currenciesData } = useThriftCurrenciesQuery();
 const currencies = computed(() => currenciesData.value || []);
@@ -351,6 +362,7 @@ function currencyOptionLabel(option: ThriftCurrency) {
 }
 
 function downloadShipmentImages(row: ThriftShipment) {
+  if (!canDownload.value) return;
   $q.dialog({
     component: ShipmentImageDownloadDialog,
     componentProps: { shipmentId: row.id, shipmentName: row.name },
@@ -370,6 +382,7 @@ function defaultCostCurrencyId(): number | null {
 // Dialog open & edit setups
 function openDialog(row?: ThriftShipment) {
   if (row) {
+    if (!canEdit.value) return;
     editingId.value = row.id;
     form.value = {
       name: row.name,
@@ -385,6 +398,7 @@ function openDialog(row?: ThriftShipment) {
       cost_currency_id: row.cost_currency_id,
     };
   } else {
+    if (!canCreate.value) return;
     editingId.value = null;
     form.value = {
       name: '',
@@ -406,6 +420,7 @@ function openDialog(row?: ThriftShipment) {
 async function save() {
   if (!authStore.tenantId || !form.value.name) return;
   if (!form.value.purchase_currency_id || !form.value.cost_currency_id) return;
+  if (editingId.value ? !canEdit.value : !canCreate.value) return;
   $q.loading.show();
   try {
     const payload = {
@@ -442,12 +457,13 @@ async function save() {
 }
 
 function confirmDelete(row: ThriftShipment) {
+  if (!canDelete.value) return;
   selectedRow.value = row;
   deleteConfirmOpen.value = true;
 }
 
 async function deleteItem() {
-  if (!selectedRow.value) return;
+  if (!selectedRow.value || !canDelete.value) return;
   $q.loading.show();
   try {
     await deleteMutation.mutateAsync(selectedRow.value.id);

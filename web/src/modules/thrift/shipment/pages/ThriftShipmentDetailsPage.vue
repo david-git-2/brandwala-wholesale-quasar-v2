@@ -28,7 +28,10 @@
 
     <div class="row q-col-gutter-md" v-else>
       <!-- Collapsible Left Sidebar (col-3) -->
-      <div v-show="isLeftColumnVisible" class="col-12 col-md-3 transition-sidebar">
+      <div
+        v-show="canViewLandedCost && isLeftColumnVisible"
+        class="col-12 col-md-3 transition-sidebar"
+      >
         <ThriftShipmentCostInputsCard
           v-model:cost-form="costForm"
           v-model:markup-percentage="markupPercentage"
@@ -36,16 +39,21 @@
           :stock-count="stocks.length"
           :formatted-default-origin="formatPurchase(settings?.default_origin_unit_price || 0)"
           :formatted-suggested-price="formatCost(sampleSuggestedPrice)"
+          :can-edit-landed-cost="canEditLandedCost"
           @save="saveShipmentCosts"
         />
       </div>
 
       <!-- Right Panel Table (col-9 or col-12) -->
-      <div :class="isLeftColumnVisible ? 'col-12 col-md-9' : 'col-12'" class="transition-table">
+      <div
+        :class="canViewLandedCost && isLeftColumnVisible ? 'col-12 col-md-9' : 'col-12'"
+        class="transition-table"
+      >
         <q-card flat class="floating-surface shadow-1">
           <q-card-section class="row items-center justify-between q-py-sm">
             <div class="row items-center q-gutter-x-sm">
               <q-btn
+                v-if="canViewLandedCost"
                 flat
                 round
                 dense
@@ -113,6 +121,11 @@
             :purchaseCurrency="purchaseCurrency"
             :costCurrency="costCurrency"
             :loading="loading"
+            :can-view-landed-cost="canViewLandedCost"
+            :can-edit-landed-cost="canEditLandedCost"
+            :can-view-measurements="canViewMeasurements"
+            :can-edit-measurements="canEditMeasurements"
+            :can-edit-listed-price="canEditListedPrice"
             @edit-measurements="openMeasurementsDialog"
             @open-landed-breakdown="openLandedBreakdownDialog"
             @save-stock-value="saveStockValue"
@@ -125,7 +138,7 @@
     </div>
 
     <!-- Bottom Row Summaries -->
-    <div class="row q-col-gutter-md q-mt-md">
+    <div v-if="canViewLandedCost" class="row q-col-gutter-md q-mt-md">
       <div class="col-12">
         <ThriftShipmentCostOverviewCard
           :cost-currency-code="costCurrency?.code"
@@ -180,6 +193,7 @@ import { computeThriftUnitCosts } from '../../shared/utils/computeThriftUnitCost
 import { buildAutoListedPricingPatch } from '../../shared/utils/buildAutoListedPricingPatch';
 import { useQuasar } from 'quasar';
 import { useMembershipColumnPreference } from 'src/modules/membership/composables/useMembershipColumnPreference';
+import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
 
 
 const $q = useQuasar();
@@ -187,6 +201,23 @@ const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const { tenantId } = storeToRefs(authStore);
+const { hasModuleAccess } = useModulePermissions();
+
+const canViewLandedCost = computed(() =>
+  hasModuleAccess('thrift_shipment', 'view_landed_cost'),
+);
+const canEditLandedCost = computed(() =>
+  hasModuleAccess('thrift_shipment', 'edit_landed_cost'),
+);
+const canViewMeasurements = computed(() =>
+  hasModuleAccess('thrift_shipment', 'view_measurements'),
+);
+const canEditMeasurements = computed(() =>
+  hasModuleAccess('thrift_shipment', 'edit_measurements'),
+);
+const canEditListedPrice = computed(() =>
+  hasModuleAccess('thrift_shipment', 'edit_listed_price'),
+);
 
 const { data: currenciesData } = useThriftCurrenciesQuery();
 const currencies = computed(() => currenciesData.value || []);
@@ -309,7 +340,18 @@ const filteredStocks = computed(() => {
 });
 
 // Columns Selector logic
-const columnsList = [
+const COST_COLUMN_NAMES = new Set([
+  'origin_unit_price',
+  'extra_origin_unit_price',
+  'product_unit_cost',
+  'cargo_share_per_unit',
+  'ops_share_per_unit',
+  'additional_charges_cost',
+  'landed_unit_cost',
+  'suggested_sell_unit_price',
+]);
+
+const allColumnsList = [
   { name: 'barcode', label: 'Barcode' },
   { name: 'name', label: 'Name' },
   { name: 'brand_name', label: 'Brand' },
@@ -329,6 +371,14 @@ const columnsList = [
   { name: 'listed_unit_price', label: 'Listed Sell' },
 ];
 
+const columnsList = computed(() =>
+  allColumnsList.filter((col) => {
+    if (!canViewLandedCost.value && COST_COLUMN_NAMES.has(col.name)) return false;
+    if (!canViewMeasurements.value && col.name === 'measurements') return false;
+    return true;
+  }),
+);
+
 const defaultVisibleColumns = [
   'barcode',
   'name',
@@ -340,7 +390,7 @@ const defaultVisibleColumns = [
   'listed_unit_price',
 ];
 
-const allColumnNames = columnsList.map((c) => c.name);
+const allColumnNames = allColumnsList.map((c) => c.name);
 
 const { visibleColumns: visibleColumnsRaw } = useMembershipColumnPreference({
   preferenceKey: 'ui.thriftShipment.detailsVisibleColumns',
@@ -348,7 +398,18 @@ const { visibleColumns: visibleColumnsRaw } = useMembershipColumnPreference({
   defaultVisibleColumns,
 });
 
-const visibleColumns = computed(() => new Set(visibleColumnsRaw.value));
+const visibleColumns = computed(() => {
+  const set = new Set(visibleColumnsRaw.value);
+  if (!canViewLandedCost.value) {
+    for (const name of COST_COLUMN_NAMES) {
+      set.delete(name);
+    }
+  }
+  if (!canViewMeasurements.value) {
+    set.delete('measurements');
+  }
+  return set;
+});
 
 function toggleColumn(colName: string) {
   const idx = visibleColumnsRaw.value.indexOf(colName);
@@ -385,7 +446,7 @@ function formatThriftAmount(amount: number, currency: ThriftCurrency | undefined
 
 
 async function saveShipmentCosts() {
-  if (!shipment.value) return;
+  if (!shipment.value || !canEditLandedCost.value) return;
   try {
     const payload = {
       total_cargo_weight_kg: costForm.value.total_cargo_weight_kg,
@@ -402,21 +463,28 @@ async function saveShipmentCosts() {
     // Wait for the cost calculations to propagate
     await nextTick();
 
-    // Batch update all non-locked stock prices
-    const autoStocks = stocks.value.filter((s) => !s.pricing?.is_listed_price_manual);
-    if (autoStocks.length > 0) {
-      await Promise.all(
-        autoStocks.map(async (stock) => {
-          const breakdown = costingBreakdowns.value[stock.id];
-          if (!breakdown) return;
-          const pricing = buildAutoListedPricingPatch(stock, breakdown);
-          await thriftStockRepository.updateStock(stock.id, {}, pricing);
-        }),
-      );
-      await refetchStocks();
+    // Batch update all non-locked stock prices (requires edit_listed_price)
+    if (canEditListedPrice.value) {
+      const autoStocks = stocks.value.filter((s) => !s.pricing?.is_listed_price_manual);
+      if (autoStocks.length > 0) {
+        await Promise.all(
+          autoStocks.map(async (stock) => {
+            const breakdown = costingBreakdowns.value[stock.id];
+            if (!breakdown) return;
+            const pricing = buildAutoListedPricingPatch(stock, breakdown);
+            await thriftStockRepository.updateStock(stock.id, {}, pricing);
+          }),
+        );
+        await refetchStocks();
+      }
     }
 
-    $q.notify({ type: 'positive', message: 'Shipment costs and auto-prices saved successfully' });
+    $q.notify({
+      type: 'positive',
+      message: canEditListedPrice.value
+        ? 'Shipment costs and auto-prices saved successfully'
+        : 'Shipment costs saved successfully',
+    });
   } catch (err: unknown) {
     $q.notify({
       type: 'negative',
@@ -426,6 +494,7 @@ async function saveShipmentCosts() {
 }
 
 async function saveStockValue(row: ThriftStock, field: string, value: number) {
+  if (!canEditLandedCost.value) return;
   try {
     const pricing = {
       cost_of_goods_sold: Number(row.pricing?.cost_of_goods_sold) || 0,
@@ -444,6 +513,12 @@ async function saveStockValue(row: ThriftStock, field: string, value: number) {
 }
 
 async function saveStockPricingValue(row: ThriftStock, field: string, value: unknown) {
+  const isListedPriceField =
+    field === 'listed_unit_price' || field === 'is_listed_price_manual';
+  const isMarkupField = field === 'markup_rate_override';
+  if (isListedPriceField && !canEditListedPrice.value) return;
+  if (isMarkupField && !canEditLandedCost.value) return;
+  if (!isListedPriceField && !isMarkupField) return;
   try {
     const pricingPatch: Record<string, unknown> = { [field]: value };
     if (field === 'listed_unit_price') {
@@ -508,6 +583,7 @@ async function saveStockPricingValue(row: ThriftStock, field: string, value: unk
 }
 
 async function resetListedPriceToSuggested(row: ThriftStock) {
+  if (!canEditListedPrice.value) return;
   try {
     await saveStockPricingValue(row, 'is_listed_price_manual', false);
   } catch (err: unknown) {
@@ -516,6 +592,7 @@ async function resetListedPriceToSuggested(row: ThriftStock) {
 }
 
 async function resetItemMarkupToShipment(row: ThriftStock) {
+  if (!canEditLandedCost.value) return;
   try {
     await saveStockPricingValue(row, 'markup_rate_override', null);
   } catch (err: unknown) {
@@ -524,11 +601,13 @@ async function resetItemMarkupToShipment(row: ThriftStock) {
 }
 
 function openMeasurementsDialog(row: ThriftStock) {
+  if (!canEditMeasurements.value) return;
   selectedStock.value = row;
   measurementsDialogOpen.value = true;
 }
 
 function openLandedBreakdownDialog(row: ThriftStock) {
+  if (!canViewLandedCost.value) return;
   const breakdown = costingBreakdowns.value[row.id];
   if (!breakdown) return;
   $q.dialog({

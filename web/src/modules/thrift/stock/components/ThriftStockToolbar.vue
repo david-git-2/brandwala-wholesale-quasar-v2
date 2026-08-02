@@ -16,7 +16,6 @@ const emit = defineEmits<{
   (e: 'update:allSelectableColumnsSelected', val: boolean): void;
   (e: 'open-filters'): void;
   (e: 'download-csv'): void;
-  (e: 'go-to-settings'): void;
 }>();
 
 const searchText = computed({
@@ -122,18 +121,6 @@ const selectAllCols = computed({
         >
           <q-tooltip>Download CSV</q-tooltip>
         </q-btn>
-
-        <!-- Settings -->
-        <q-btn
-          outline
-          color="secondary"
-          no-caps
-          dense
-          class="q-px-sm"
-          icon="ph ph-gear"
-          label="Settings"
-          @click="$emit('go-to-settings')"
-        />
       </div>
     </div>
   </q-card>

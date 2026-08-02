@@ -2,7 +2,7 @@
   <q-page class="q-pa-md thrift-stock-page">
     <div class="q-gutter-y-md">
       <!-- Standard Page Header -->
-      <ThriftStockHeader @register-stock="openAddDialog" />
+      <ThriftStockHeader :can-create="canCreate" @register-stock="openAddDialog" />
 
       <!-- Standard Toolbar Card -->
       <ThriftStockToolbar
@@ -14,7 +14,6 @@
         :csv-export-loading="csvExportLoading"
         @open-filters="openFilterDrawer"
         @download-csv="downloadStockCsv"
-        @go-to-settings="goToSettings"
       />
 
       <!-- Filter Sidebar Drawer -->
@@ -31,6 +30,7 @@
       <!-- Bulk Selection Bar -->
       <ThriftStockBulkActionBar
         :selected-count="selectedStockIds.length"
+        :can-delete="canDelete"
         @clear-selection="clearStockSelection"
         @confirm-bulk-delete="confirmBulkDelete"
       />
@@ -56,6 +56,8 @@
         :item-markup-pct-for-row="itemMarkupPctForRow"
         :effective-markup-label="effectiveMarkupLabel"
         :get-box-name="getBoxName"
+        :can-edit="canEdit"
+        :can-delete="canDelete"
         @toggle-select-all-page="toggleSelectAllPage"
         @toggle-stock-selection="({ id, checked }) => toggleStockSelection(id, checked)"
         @open-barcode-preview="openBarcodePreview"
@@ -165,6 +167,7 @@
 import { ref, computed, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
 import { useThriftStockStore } from '../stores/thriftStockStore';
 import { useThriftStocksQuery, type ThriftStockQueryParams } from '../composables/useThriftStocksQuery';
 import PageInitialLoader from 'src/components/PageInitialLoader.vue';
@@ -197,6 +200,11 @@ const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
 const store = useThriftStockStore();
+const { hasModuleAccess } = useModulePermissions();
+
+const canCreate = computed(() => hasModuleAccess('thrift_stock', 'create'));
+const canEdit = computed(() => hasModuleAccess('thrift_stock', 'edit'));
+const canDelete = computed(() => hasModuleAccess('thrift_stock', 'delete'));
 
 const {
   columns,
@@ -322,10 +330,6 @@ function onFiltersChanged() {
   store.setStatusFilter(statusFilter.value);
   store.setConditionFilter(conditionFilter.value);
   store.setPage(1);
-}
-
-function goToSettings() {
-  void router.push({ name: 'ThriftSettingsPage' });
 }
 
 // 1. Setup Forms Composable

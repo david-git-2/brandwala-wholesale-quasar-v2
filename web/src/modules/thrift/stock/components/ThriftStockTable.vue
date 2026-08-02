@@ -26,27 +26,35 @@ interface BoxOption {
   shipment_id?: number | null;
 }
 
-const props = defineProps<{
-  stocks: ThriftStock[];
-  loading: boolean;
-  storePage: number;
-  storePageSize: number;
-  columns: QTableColumn[];
-  visibleColumns: string[];
-  tablePagination: { page: number; rowsPerPage: number; rowsNumber: number };
-  selectedStockIds: number[];
-  allPageRowsSelected: boolean;
-  somePageRowsSelected: boolean;
-  costBreakdownByStockId: Record<number, ThriftUnitCostBreakdown>;
-  boxesList: BoxOption[];
-  tableCellClass: (colName: string) => string;
-  stickyCellClass: (colName: string) => string;
-  shipmentPurchaseCurrency: (shipmentId: number | null | undefined) => ThriftCurrency | undefined;
-  shipmentCostCurrency: (shipmentId: number | null | undefined) => ThriftCurrency | undefined;
-  itemMarkupPctForRow: (row: ThriftStock) => number | null;
-  effectiveMarkupLabel: (row: ThriftStock) => string;
-  getBoxName: (boxId: number | undefined | null) => string;
-}>();
+const props = withDefaults(
+  defineProps<{
+    stocks: ThriftStock[];
+    loading: boolean;
+    storePage: number;
+    storePageSize: number;
+    columns: QTableColumn[];
+    visibleColumns: string[];
+    tablePagination: { page: number; rowsPerPage: number; rowsNumber: number };
+    selectedStockIds: number[];
+    allPageRowsSelected: boolean;
+    somePageRowsSelected: boolean;
+    costBreakdownByStockId: Record<number, ThriftUnitCostBreakdown>;
+    boxesList: BoxOption[];
+    tableCellClass: (colName: string) => string;
+    stickyCellClass: (colName: string) => string;
+    shipmentPurchaseCurrency: (shipmentId: number | null | undefined) => ThriftCurrency | undefined;
+    shipmentCostCurrency: (shipmentId: number | null | undefined) => ThriftCurrency | undefined;
+    itemMarkupPctForRow: (row: ThriftStock) => number | null;
+    effectiveMarkupLabel: (row: ThriftStock) => string;
+    getBoxName: (boxId: number | undefined | null) => string;
+    canEdit?: boolean;
+    canDelete?: boolean;
+  }>(),
+  {
+    canEdit: false,
+    canDelete: false,
+  },
+);
 
 const emit = defineEmits<{
   (e: 'update:tablePagination', val: { page: number; rowsPerPage: number; rowsNumber: number }): void;
@@ -77,6 +85,15 @@ const pagination = computed({
   get: () => props.tablePagination,
   set: (val) => emit('update:tablePagination', val),
 });
+
+const effectiveVisibleColumns = computed(() => {
+  if (props.canDelete) return props.visibleColumns;
+  return props.visibleColumns.filter((name) => name !== 'select');
+});
+
+function cellClass(colName: string) {
+  return [props.canEdit ? props.tableCellClass(colName) : '', props.stickyCellClass(colName)];
+}
 
 function onRequest(requestProps: { pagination: { page: number; rowsPerPage: number; rowsNumber?: number } }) {
   pagination.value = {
@@ -142,12 +159,15 @@ const statusDotColor = (status: string | null | undefined) => {
       flat
       :rows="stocks"
       :columns="columns"
-      :visible-columns="visibleColumns"
+      :visible-columns="effectiveVisibleColumns"
       :table-style="{ maxHeight: '100%' }"
       row-key="id"
       v-model:pagination="pagination"
       :rows-per-page-options="[25, 50, 100, 250]"
-      :class="['thrift-table', { 'thrift-table--loading': loading }]"
+      :class="[
+        'thrift-table',
+        { 'thrift-table--loading': loading, 'thrift-table--no-select': !canDelete },
+      ]"
       @request="onRequest"
     >
       <template #header-cell-select="headerProps">
@@ -172,7 +192,7 @@ const statusDotColor = (status: string | null | undefined) => {
             v-for="col in rowProps.cols"
             :key="col.name"
             :props="{ ...rowProps, col }"
-            :class="[tableCellClass(col.name), stickyCellClass(col.name)]"
+            :class="cellClass(col.name)"
           >
             <template v-if="col.name === 'select'">
               <q-checkbox
@@ -213,6 +233,7 @@ const statusDotColor = (status: string | null | undefined) => {
                 </q-btn>
               </div>
               <q-popup-edit
+                v-if="canEdit"
                 v-slot="scope"
                 :model-value="rowProps.row.barcode"
                 buttons
@@ -227,6 +248,7 @@ const statusDotColor = (status: string | null | undefined) => {
             <template v-else-if="col.name === 'name'">
               <div class="editable-value">{{ rowProps.row.name || '—' }}</div>
               <q-popup-edit
+                v-if="canEdit"
                 v-slot="scope"
                 :model-value="rowProps.row.name"
                 buttons
@@ -241,6 +263,7 @@ const statusDotColor = (status: string | null | undefined) => {
             <template v-else-if="col.name === 'brand_name'">
               <div class="editable-value">{{ rowProps.row.brand_name || '—' }}</div>
               <q-popup-edit
+                v-if="canEdit"
                 v-slot="scope"
                 :model-value="rowProps.row.brand_name"
                 buttons
@@ -255,6 +278,7 @@ const statusDotColor = (status: string | null | undefined) => {
             <template v-else-if="col.name === 'section'">
               <div class="editable-value">{{ rowProps.row.section || '—' }}</div>
               <q-popup-edit
+                v-if="canEdit"
                 v-slot="scope"
                 :model-value="rowProps.row.section"
                 buttons
@@ -275,8 +299,9 @@ const statusDotColor = (status: string | null | undefined) => {
             </template>
             <template v-else-if="col.name === 'size'">
               <div
-                class="measurements-cell cursor-pointer text-grey-9 text-weight-medium"
-                @click="emit('open-measurements-dialog', rowProps.row)"
+                class="measurements-cell text-grey-9 text-weight-medium"
+                :class="{ 'cursor-pointer': canEdit }"
+                @click="canEdit && emit('open-measurements-dialog', rowProps.row)"
               >
                 <span class="measurements-cell__text">
                   {{ formatThriftStockMeasurements(rowProps.row) }}
@@ -289,6 +314,7 @@ const statusDotColor = (status: string | null | undefined) => {
             <template v-else-if="col.name === 'box'">
               <div class="editable-value">{{ getBoxName(rowProps.row.box_id) }}</div>
               <q-popup-edit
+                v-if="canEdit"
                 v-slot="scope"
                 :model-value="rowProps.row.box_id ?? null"
                 buttons
@@ -316,6 +342,7 @@ const statusDotColor = (status: string | null | undefined) => {
                 {{ rowProps.row.product_weight ? `${rowProps.row.product_weight} g` : '—' }}
               </div>
               <q-popup-edit
+                v-if="canEdit"
                 v-slot="scope"
                 :model-value="rowProps.row.product_weight ?? 0"
                 buttons
@@ -341,6 +368,7 @@ const statusDotColor = (status: string | null | undefined) => {
                 {{ rowProps.row.extra_weight ? `${rowProps.row.extra_weight} g` : '—' }}
               </div>
               <q-popup-edit
+                v-if="canEdit"
                 v-slot="scope"
                 :model-value="rowProps.row.extra_weight ?? 0"
                 buttons
@@ -364,6 +392,7 @@ const statusDotColor = (status: string | null | undefined) => {
             <template v-else-if="col.name === 'condition'">
               <div class="editable-value">{{ rowProps.row.condition || '—' }}</div>
               <q-popup-edit
+                v-if="canEdit"
                 v-slot="scope"
                 :model-value="rowProps.row.condition"
                 buttons
@@ -385,6 +414,7 @@ const statusDotColor = (status: string | null | undefined) => {
             <template v-else-if="col.name === 'quantity'">
               <div class="editable-value">{{ rowProps.row.quantity ?? '—' }}</div>
               <q-popup-edit
+                v-if="canEdit"
                 v-slot="scope"
                 :model-value="rowProps.row.quantity"
                 buttons
@@ -414,6 +444,7 @@ const statusDotColor = (status: string | null | undefined) => {
                 }}
               </div>
               <q-popup-edit
+                v-if="canEdit"
                 v-slot="scope"
                 :model-value="rowProps.row.origin_unit_price ?? 0"
                 buttons
@@ -444,6 +475,7 @@ const statusDotColor = (status: string | null | undefined) => {
                 }}
               </div>
               <q-popup-edit
+                v-if="canEdit"
                 v-slot="scope"
                 :model-value="rowProps.row.extra_origin_unit_price ?? 0"
                 buttons
@@ -504,6 +536,7 @@ const statusDotColor = (status: string | null | undefined) => {
                 }}
               </div>
               <q-popup-edit
+                v-if="canEdit"
                 v-slot="scope"
                 :model-value="rowProps.row.additional_charges_cost ?? 0"
                 buttons
@@ -590,12 +623,14 @@ const statusDotColor = (status: string | null | undefined) => {
                     size="xs"
                     icon="ph ph-arrows-clockwise"
                     color="grey-7"
+                    :disable="!canEdit"
                     @click.stop="emit('reset-item-markup-to-shipment', rowProps.row)"
                   >
                     <q-tooltip>Reset to shipment markup</q-tooltip>
                   </q-btn>
                 </div>
                 <q-popup-edit
+                  v-if="canEdit"
                   v-slot="scope"
                   :model-value="itemMarkupPctForRow(rowProps.row) ?? 0"
                   buttons
@@ -655,12 +690,14 @@ const statusDotColor = (status: string | null | undefined) => {
                   size="xs"
                   icon="ph ph-arrows-clockwise"
                   color="grey-7"
+                  :disable="!canEdit"
                   @click.stop="emit('reset-price-to-suggested', rowProps.row)"
                 >
                   <q-tooltip>Reset to auto price</q-tooltip>
                 </q-btn>
               </div>
               <q-popup-edit
+                v-if="canEdit"
                 v-slot="scope"
                 :model-value="
                   resolveListedSellPrice(rowProps.row.pricing, costBreakdownByStockId[rowProps.row.id])
@@ -697,6 +734,7 @@ const statusDotColor = (status: string | null | undefined) => {
                 {{ rowProps.row.status ?? 'AVAILABLE' }}
               </q-chip>
               <q-popup-edit
+                v-if="canEdit"
                 v-slot="scope"
                 :model-value="rowProps.row.status"
                 buttons
@@ -724,6 +762,7 @@ const statusDotColor = (status: string | null | undefined) => {
                 icon="ph ph-ruler"
                 size="sm"
                 color="secondary"
+                :disable="!canEdit"
                 @click.stop="emit('open-measurements-dialog', rowProps.row)"
               >
                 <q-tooltip>Garment Measurements</q-tooltip>
@@ -735,6 +774,7 @@ const statusDotColor = (status: string | null | undefined) => {
                 icon="ph ph-pencil-simple"
                 size="sm"
                 color="primary"
+                :disable="!canEdit"
                 @click.stop="emit('open-edit-dialog', rowProps.row)"
               >
                 <q-tooltip>Edit Details</q-tooltip>
@@ -746,14 +786,16 @@ const statusDotColor = (status: string | null | undefined) => {
                 icon="ph ph-trash"
                 size="sm"
                 color="negative"
-                :disable="normalizeStatus(rowProps.row.status) === 'SOLD'"
+                :disable="!canDelete || normalizeStatus(rowProps.row.status) === 'SOLD'"
                 @click.stop="emit('confirm-delete', rowProps.row)"
               >
                 <q-tooltip>
                   {{
-                    normalizeStatus(rowProps.row.status) === 'SOLD'
-                      ? 'Cannot delete sold items'
-                      : 'Delete Stock'
+                    !canDelete
+                      ? 'No delete permission'
+                      : normalizeStatus(rowProps.row.status) === 'SOLD'
+                        ? 'Cannot delete sold items'
+                        : 'Delete Stock'
                   }}
                 </q-tooltip>
               </q-btn>
@@ -764,6 +806,7 @@ const statusDotColor = (status: string | null | undefined) => {
                 icon="ph ph-warning"
                 size="sm"
                 color="warning"
+                :disable="!canEdit"
                 @click.stop="emit('update-status', { id: rowProps.row.id, status: 'DAMAGED' })"
               >
                 <q-tooltip>Mark Damaged</q-tooltip>
@@ -775,6 +818,7 @@ const statusDotColor = (status: string | null | undefined) => {
                 icon="ph ph-prohibit"
                 size="sm"
                 color="negative"
+                :disable="!canEdit"
                 @click.stop="emit('update-status', { id: rowProps.row.id, status: 'STOLEN' })"
               >
                 <q-tooltip>Mark Stolen</q-tooltip>
@@ -883,6 +927,19 @@ const statusDotColor = (status: string | null | undefined) => {
   overflow: hidden;
   vertical-align: middle;
   background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
+}
+
+/* When select column is hidden, shift sticky SL/IMAGE to the left edge */
+.thrift-table--no-select :deep(td.col-sticky-sl),
+.thrift-table--no-select :deep(th.col-sticky-sl),
+.thrift-table--no-select :deep(.col-sticky-sl) {
+  left: 0;
+}
+
+.thrift-table--no-select :deep(td.col-sticky-image),
+.thrift-table--no-select :deep(th.col-sticky-image),
+.thrift-table--no-select :deep(.col-sticky-image) {
+  left: 50px;
 }
 
 .thrift-table :deep(tr:first-child th.col-sticky-select) {

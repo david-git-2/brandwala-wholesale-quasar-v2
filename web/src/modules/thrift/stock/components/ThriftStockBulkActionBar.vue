@@ -1,6 +1,7 @@
 <script setup lang="ts">
 defineProps<{
   selectedCount: number;
+  canDelete?: boolean;
 }>();
 
 defineEmits<{
@@ -11,7 +12,7 @@ defineEmits<{
 
 <template>
   <q-card
-    v-if="selectedCount > 0"
+    v-if="canDelete && selectedCount > 0"
     flat
     class="floating-surface shadow-1 bulk-selection-bar"
   >

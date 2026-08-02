@@ -295,7 +295,7 @@
                     <th class="text-left">Item Details</th>
                     <th class="text-right">Landed Cost</th>
                     <th class="text-right" style="width: 130px">Sell Price (৳)</th>
-                    <th class="text-right" style="width: 120px">Discount (৳)</th>
+                    <th v-if="canApplyDiscount" class="text-right" style="width: 120px">Discount (৳)</th>
                     <th class="text-right">Final Price</th>
                     <th class="text-right">Net Profit</th>
                     <th class="text-center" style="width: 50px"></th>
@@ -333,7 +333,7 @@
                     </td>
 
                     <!-- Editable Discount -->
-                    <td class="text-right">
+                    <td v-if="canApplyDiscount" class="text-right">
                       <q-input
                         v-model.number="line.discountAmount"
                         type="number"
@@ -400,7 +400,10 @@
                   <span class="text-grey-7">Gross Subtotal</span>
                   <span class="text-weight-bold">৳{{ grossSubtotal.toFixed(2) }}</span>
                 </div>
-                <div class="row justify-between items-center text-body2">
+                <div
+                  v-if="canApplyDiscount"
+                  class="row justify-between items-center text-body2"
+                >
                   <span class="text-grey-7">Total Discounts</span>
                   <span class="text-weight-bold text-negative">
                     -৳{{ totalDiscounts.toFixed(2) }}
@@ -477,6 +480,7 @@ import { ref, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
 import type { AvailableStockItem } from '../repositories/thriftSalesRepository';
 import { useThriftAvailableStockSearchQuery } from '../composables/useThriftSalesQuery';
 import { useCreateThriftSalesInvoiceMutation } from '../composables/useThriftSalesMutations';
@@ -484,6 +488,10 @@ import { useCreateThriftSalesInvoiceMutation } from '../composables/useThriftSal
 const $q = useQuasar();
 const router = useRouter();
 const authStore = useAuthStore();
+const { hasModuleAccess } = useModulePermissions();
+const canApplyDiscount = computed(() =>
+  hasModuleAccess('thrift_sales', 'apply_discount'),
+);
 
 const { mutateAsync: createSalesInvoice, isPending: saving } =
   useCreateThriftSalesInvoiceMutation();
@@ -669,12 +677,13 @@ async function onSaveInvoice() {
     const userEmail = authStore.user?.email || 'cashier@brandwala.com';
 
     const itemsPayload = selectedItems.value.map((line) => {
-      const finalPrice = getFinalPrice(line);
-      const profit = getNetProfit(line);
+      const discountAmount = canApplyDiscount.value ? line.discountAmount || 0 : 0;
+      const finalPrice = Math.max(0, (line.sellPrice || 0) - discountAmount);
+      const profit = finalPrice - (line.landedCost || 0);
       return {
         stockId: line.stockId,
         sellPrice: line.sellPrice || 0,
-        discountAmount: line.discountAmount || 0,
+        discountAmount,
         finalPrice,
         landedUnitCostAtSale: line.landedCost || 0,
         quantity: 1,
