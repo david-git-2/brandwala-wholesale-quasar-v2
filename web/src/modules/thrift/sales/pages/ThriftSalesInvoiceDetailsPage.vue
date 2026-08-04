@@ -1,31 +1,35 @@
 <template>
   <q-page class="q-pa-md thrift-invoice-details-page">
     <div class="q-gutter-y-md">
-      <div class="row items-center justify-between q-col-gutter-sm">
-        <div class="col-auto row items-center q-gutter-x-sm">
-          <q-btn
-            flat
-            round
-            dense
-            icon="ph ph-arrow-left"
-            color="primary"
-            :to="salesListPath"
-          >
-            <q-tooltip>Back to Sales</q-tooltip>
-          </q-btn>
-          <div>
-            <div class="text-overline text-primary">Thrift / Sales</div>
-            <h1 class="text-h5 text-weight-bold q-my-none row items-center q-gutter-x-sm">
-              <span>{{ invoice?.invoiceNumber || 'Invoice Details' }}</span>
-              <q-badge
-                v-if="invoice"
-                :color="invoiceStatusColor(invoice.status)"
-                :label="labelize(invoice.status)"
-              />
-            </h1>
+      <!-- Header Section -->
+      <section class="row items-center justify-between q-col-gutter-md">
+        <div class="col">
+          <div class="row items-center q-gutter-x-sm">
+            <q-btn
+              flat
+              dense
+              icon="ph ph-arrow-left"
+              color="grey-7"
+              :to="salesListPath"
+              aria-label="Back to Sales"
+            >
+              <q-tooltip>Back to Sales</q-tooltip>
+            </q-btn>
+            <div>
+              <div class="text-overline text-primary">Thrift / Sales</div>
+              <h1 class="text-h5 text-weight-bold q-my-none row items-center q-gutter-x-sm">
+                <span>{{ invoice?.invoiceNumber || 'Invoice Details' }}</span>
+                <q-badge
+                  v-if="invoice"
+                  :color="invoiceStatusColor(invoice.status)"
+                  :label="labelize(invoice.status)"
+                />
+              </h1>
+            </div>
           </div>
         </div>
         <div class="col-auto row q-gutter-sm items-center">
+          <LearnMoreHelpBtn guide-id="thrift_sales" />
           <q-btn
             outline
             color="primary"
@@ -50,7 +54,7 @@
               outline
               color="negative"
               no-caps
-              icon="ph ph-warning-circle"
+              icon="ph ph-trash"
               label="Staff Mistake"
               :loading="reverting === 'STAFF_MISTAKE'"
               :disable="!!reverting"
@@ -58,12 +62,12 @@
             />
           </template>
         </div>
-      </div>
+      </section>
 
-      <div v-if="loading" class="column flex-center q-pa-xl">
-        <q-spinner color="primary" size="40px" />
-      </div>
+      <!-- Skeleton Loader -->
+      <ThriftSalesInvoiceDetailsSkeleton v-if="loading" />
 
+      <!-- Loaded Content -->
       <template v-else-if="invoice">
         <div class="row q-col-gutter-md">
           <div class="col-12 col-lg-8 q-gutter-y-md">
@@ -248,8 +252,10 @@ import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useQuasar, type QTableColumn } from 'quasar';
+import LearnMoreHelpBtn from 'src/modules/help/components/LearnMoreHelpBtn.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { formatThriftAmount } from 'src/modules/thrift/currency/utils/formatMoney';
+import ThriftSalesInvoiceDetailsSkeleton from '../components/ThriftSalesInvoiceDetailsSkeleton.vue';
 import {
   thriftSalesRepository,
   type ThriftSalesInvoiceDetail,
@@ -356,7 +362,7 @@ function confirmRevert(reason: ThriftSalesRevertReason) {
     title: isReturn ? 'Confirm Return' : 'Confirm Staff Mistake',
     message: isReturn
       ? 'This will restore stock to AVAILABLE, post a REFUND ledger entry, and mark the invoice as RETURNED.'
-      : 'This will restore stock to AVAILABLE, post a REFUND ledger entry, and mark the invoice as STAFF_MISTAKE.',
+      : 'This permanently deletes the invoice and its line items, restores stock to AVAILABLE, and removes related ledger entries. This cannot be undone.',
     prompt: {
       model: '',
       type: 'text',
@@ -365,7 +371,7 @@ function confirmRevert(reason: ThriftSalesRevertReason) {
     cancel: { flat: true, label: 'Cancel', color: 'grey-8', noCaps: true },
     ok: {
       unelevated: true,
-      label: isReturn ? 'Return Invoice' : 'Mark Staff Mistake',
+      label: isReturn ? 'Return Invoice' : 'Delete Mistake Invoice',
       color: isReturn ? 'warning' : 'negative',
       noCaps: true,
     },
@@ -379,19 +385,24 @@ async function runRevert(reason: ThriftSalesRevertReason, notes?: string) {
   if (!tenantId.value || !invoice.value) return;
   reverting.value = reason;
   try {
-    await thriftSalesRepository.revertSalesInvoice({
+    const result = await thriftSalesRepository.revertSalesInvoice({
       tenantId: tenantId.value,
       invoiceId: invoice.value.id,
       reason,
       revertedBy: authStore.user?.email || 'cashier',
       notes: notes?.trim() || undefined,
     });
+    if (result.deleted) {
+      $q.notify({
+        type: 'positive',
+        message: 'Mistake invoice deleted and stock restored',
+      });
+      await router.push(salesListPath.value);
+      return;
+    }
     $q.notify({
       type: 'positive',
-      message:
-        reason === 'RETURN'
-          ? 'Invoice returned and stock restored'
-          : 'Staff mistake recorded and stock restored',
+      message: 'Invoice returned and stock restored',
     });
     await loadInvoice();
   } catch (err: any) {

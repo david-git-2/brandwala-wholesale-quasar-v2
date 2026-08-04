@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import {
   thriftStockRepository,
   type ThriftStockPricingInput,
@@ -127,18 +128,28 @@ export function useUpdateStockStatusMutation() {
 
 export function useDeleteStockMutation() {
   const queryClient = useQueryClient();
+  const authStore = useAuthStore();
 
   return useMutation({
-    mutationFn: (id: number) => thriftStockRepository.deleteStock(id),
+    mutationFn: (id: number) => {
+      const tenantId = authStore.tenantId;
+      if (!tenantId) throw new Error('Tenant required');
+      return thriftStockRepository.deleteStock(tenantId, id);
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['thrift', 'stocks'] }),
   });
 }
 
 export function useDeleteStocksMutation() {
   const queryClient = useQueryClient();
+  const authStore = useAuthStore();
 
   return useMutation({
-    mutationFn: (ids: number[]) => thriftStockRepository.deleteStocks(ids),
+    mutationFn: (ids: number[]) => {
+      const tenantId = authStore.tenantId;
+      if (!tenantId) throw new Error('Tenant required');
+      return thriftStockRepository.deleteStocks(tenantId, ids);
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['thrift', 'stocks'] }),
   });
 }

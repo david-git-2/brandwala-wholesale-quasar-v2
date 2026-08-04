@@ -238,7 +238,7 @@ defineEmits<{
   (e: 'open-deposit'): void;
 }>();
 
-const { openHelp } = useModuleHelp();
+useModuleHelp();
 const showAdvanced = ref(false);
 
 const { ledgerEntries, isLoading } = useWalletQuery(

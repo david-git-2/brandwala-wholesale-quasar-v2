@@ -51,6 +51,8 @@ Stores inventory quantities grouped by shipment, shipment item, product, and con
 | `product_id` | BIGINT | Yes | FK to `products.id` |
 | `condition` | `stock_condition` | Yes | Inventory condition tag (default `'sellable'`) |
 | `quantity` | INT | Yes | Quantity for this specific condition (default `0`) |
+| `deleted_at` | TIMESTAMPTZ | No | Timestamp of soft deletion |
+| `deleted_by` | UUID | No | FK to auth.users (soft deleted by) |
 | `created_at` | TIMESTAMPTZ | Yes | Creation timestamp |
 | `updated_at` | TIMESTAMPTZ | Yes | Update timestamp |
 
@@ -66,6 +68,8 @@ Tracks allocations of `global_stocks` from a parent tenant to child/shop tenants
 | `child_tenant_id` | BIGINT | Yes | FK to `tenants.id` (Destination child/shop tenant) |
 | `stock_id` | BIGINT | Yes | FK to `global_stocks.id` |
 | `quantity` | INT | Yes | Quantity allocated to child tenant |
+| `deleted_at` | TIMESTAMPTZ | No | Timestamp of soft deletion |
+| `deleted_by` | UUID | No | FK to auth.users (soft deleted by) |
 | `created_at` | TIMESTAMPTZ | Yes | Creation timestamp |
 | `updated_at` | TIMESTAMPTZ | Yes | Update timestamp |
 

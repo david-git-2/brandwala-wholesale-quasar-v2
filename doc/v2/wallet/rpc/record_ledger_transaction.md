@@ -9,6 +9,8 @@ Atomic PostgreSQL RPC to record a credit/debit entry into `universal_wallet_ledg
 * [universal_wallet_ledger_api.md](../api/universal_wallet_ledger_api.md) — `universal_wallet_ledger` insert
 * [wallet_account_api.md](../api/wallet_account_api.md) — `wallet_accounts` balance bucket update / upsert
 
+> **Concurrency Note**: To ensure accurate calculation in a high-concurrency environment (e.g., simultaneous payments to the same entity), the underlying PostgreSQL function MUST use a row-level lock (`SELECT ... FOR UPDATE`) when fetching the current balance from `wallet_accounts`. Alternatively, use an atomic mathematical increment/decrement directly in the update statement (e.g., `UPDATE wallet_accounts SET available_balance = available_balance + p_amount`).
+
 ---
 
 ## 2. Main RPC Call

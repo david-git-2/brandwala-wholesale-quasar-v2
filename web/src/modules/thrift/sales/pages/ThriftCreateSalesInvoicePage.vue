@@ -1,26 +1,29 @@
 <template>
   <q-page class="q-pa-md thrift-create-invoice-page">
     <div class="q-gutter-y-md">
-      <!-- Top Navigation & Header -->
-      <div class="row items-center justify-between q-col-gutter-sm">
-        <div class="col-auto row items-center q-gutter-x-sm">
-          <q-btn
-            flat
-            round
-            dense
-            icon="ph ph-arrow-left"
-            color="primary"
-            :to="`/${authStore.tenantSlug || 'tenant'}/app/thrift/sales`"
-          >
-            <q-tooltip>Back to Sales</q-tooltip>
-          </q-btn>
-          <div>
-            <div class="text-overline text-primary">Thrift / Sales</div>
-            <h1 class="text-h5 text-weight-bold q-my-none">Create Sales Invoice</h1>
+      <!-- Header Section -->
+      <section class="row items-center justify-between q-col-gutter-md">
+        <div class="col">
+          <div class="row items-center q-gutter-x-sm">
+            <q-btn
+              flat
+              dense
+              icon="ph ph-arrow-left"
+              color="grey-7"
+              :to="`/${authStore.tenantSlug || 'tenant'}/app/thrift/sales`"
+              aria-label="Back to Sales"
+            >
+              <q-tooltip>Back to Sales</q-tooltip>
+            </q-btn>
+            <div>
+              <div class="text-overline text-primary">Thrift / Sales</div>
+              <h1 class="text-h5 text-weight-bold q-my-none">Create Sales Invoice</h1>
+            </div>
           </div>
         </div>
 
         <div class="col-auto row q-gutter-sm items-center">
+          <LearnMoreHelpBtn guide-id="thrift_sales" />
           <q-btn
             outline
             color="grey-8"
@@ -39,7 +42,7 @@
             @click="onSaveInvoice"
           />
         </div>
-      </div>
+      </section>
 
       <!-- Main 2-Column Content Grid -->
       <div class="row q-col-gutter-md">
@@ -470,6 +473,7 @@
 import { ref, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
+import LearnMoreHelpBtn from 'src/modules/help/components/LearnMoreHelpBtn.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
 import type { AvailableStockItem } from '../repositories/thriftSalesRepository';
@@ -704,7 +708,7 @@ async function onSaveInvoice() {
     });
 
     const slug = authStore.tenantSlug || 'tenant';
-    router.push(`/${slug}/app/thrift/sales/${result.id}`);
+    await router.push(`/${slug}/app/thrift/sales/${result.id}`);
   } catch (err: any) {
     console.error('Failed to create sales invoice:', err);
     $q.notify({

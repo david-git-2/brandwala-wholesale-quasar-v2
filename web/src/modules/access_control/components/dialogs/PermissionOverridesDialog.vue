@@ -34,7 +34,7 @@
               <span class="text-caption text-grey-6 font-mono">{{ group.grantModuleKey }}</span>
             </div>
             <q-list separator bordered class="rounded-borders">
-              <q-item v-for="act in group.actions" :key="act.id ?? `${act.module_key}:${act.action}`" class="q-py-sm">
+              <q-item v-for="act in group.actions" :key="String(act.id || `${act.module_key}:${act.action}`)" class="q-py-sm">
                 <q-item-section>
                   <div class="row items-center q-gutter-xs">
                     <q-chip
@@ -100,12 +100,20 @@
 import { computed } from 'vue';
 import { groupActionsForGrantMatrix } from 'src/modules/access_control/utils/grantDisplayGroups';
 
+interface SystemActionItem {
+  id?: string | number;
+  module_key: string;
+  action: string;
+  description?: string;
+  [key: string]: unknown;
+}
+
 const props = defineProps<{
   modelValue: boolean;
   member: any;
   roleName?: string;
   loading: boolean;
-  actions: any[];
+  actions: SystemActionItem[];
   grants: Record<string, 'allow' | 'deny' | 'inherit'>;
   inheritedGrants: Record<string, boolean>;
   savingMap: Record<string, boolean>;

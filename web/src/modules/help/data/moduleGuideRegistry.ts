@@ -9,6 +9,8 @@ import { shopManagementGuide } from './guides/shopManagement';
 import { shopOrderMerchantGuide } from './guides/shopOrderMerchant';
 import { shopOrderStaffGuide } from './guides/shopOrderStaff';
 import { thriftBarcodeGuide } from './guides/thriftBarcode';
+import { thriftSalesGuide } from './guides/thriftSales';
+import { thriftShelfGuide } from './guides/thriftShelf';
 import { thriftShipmentGuide } from './guides/thriftShipment';
 import { thriftStockGuide } from './guides/thriftStock';
 import { universalWalletGuide } from './guides/universalWallet';
@@ -30,5 +32,8 @@ export const MODULE_GUIDE_REGISTRY: readonly ModuleGuide[] = [
   thriftStockGuide,
   thriftShipmentGuide,
   thriftBarcodeGuide,
+  thriftSalesGuide,
+  thriftShelfGuide,
 ];
+
 

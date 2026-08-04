@@ -1,12 +1,14 @@
 <template>
   <q-page class="q-pa-md thrift-sales-page">
     <div class="q-gutter-y-md">
+      <!-- Header Section -->
       <section class="row items-center justify-between q-col-gutter-md">
         <div class="col">
           <div class="text-overline text-primary">Thrift</div>
           <h1 class="text-h5 text-weight-bold q-my-none">Sales & Invoices</h1>
         </div>
         <div class="col-auto row q-gutter-sm items-center">
+          <LearnMoreHelpBtn guide-id="thrift_sales" />
           <q-btn
             color="primary"
             unelevated
@@ -18,119 +20,129 @@
         </div>
       </section>
 
-      <q-card flat bordered>
-        <q-card-section class="q-pb-none">
-          <q-input
-            v-model="search"
-            dense
-            outlined
-            clearable
-            debounce="300"
-            placeholder="Search invoice #, customer, phone…"
-            class="search-input"
-          >
-            <template #prepend>
-              <q-icon name="ph ph-magnifying-glass" />
-            </template>
-          </q-input>
-        </q-card-section>
+      <!-- Initial Loading Skeleton -->
+      <ThriftSalesSkeleton v-if="initialLoading" />
 
-        <q-table
-          flat
-          :rows="rows"
-          :columns="columns"
-          row-key="id"
-          v-model:pagination="tablePagination"
-          :rows-per-page-options="[10, 20, 50]"
-          :loading="loading"
-          class="thrift-table cursor-pointer"
-          @request="onTableRequest"
-          @row-click="onRowClick"
-        >
-          <template #body-cell-sl="props">
-            <q-td :props="props">
-              {{ (tablePagination.page - 1) * tablePagination.rowsPerPage + props.rowIndex + 1 }}
-            </q-td>
-          </template>
-
-          <template #body-cell-invoiceNumber="props">
-            <q-td :props="props">
-              <router-link
-                :to="invoicePath(props.row.id)"
-                class="text-weight-bold text-primary"
-                style="text-decoration: none"
-                @click.stop
+      <!-- Main Content Block -->
+      <template v-else>
+        <q-card flat bordered class="q-pa-sm">
+          <div class="row items-center justify-between q-col-gutter-sm">
+            <div class="col-12 col-sm-5 col-md-4">
+              <q-input
+                v-model="search"
+                dense
+                outlined
+                clearable
+                debounce="300"
+                placeholder="Search invoice #, customer, phone…"
+                class="search-input"
               >
-                {{ props.row.invoiceNumber }}
-              </router-link>
-            </q-td>
-          </template>
-
-          <template #body-cell-customer="props">
-            <q-td :props="props">
-              <div v-if="props.row.customerName || props.row.customerPhone">
-                <div class="text-weight-medium">{{ props.row.customerName || '—' }}</div>
-                <div v-if="props.row.customerPhone" class="text-caption text-grey-7">
-                  {{ props.row.customerPhone }}
-                </div>
-              </div>
-              <span v-else class="text-grey-5">Walk-in</span>
-            </q-td>
-          </template>
-
-          <template #body-cell-date="props">
-            <q-td :props="props">
-              {{ formatDate(props.row.date) }}
-            </q-td>
-          </template>
-
-          <template #body-cell-paymentMethod="props">
-            <q-td :props="props">
-              <q-badge outline color="grey-7" :label="labelize(props.row.paymentMethod)" />
-            </q-td>
-          </template>
-
-          <template #body-cell-paymentStatus="props">
-            <q-td :props="props">
-              <q-badge
-                :color="paymentStatusColor(props.row.paymentStatus)"
-                :label="labelize(props.row.paymentStatus)"
-              />
-            </q-td>
-          </template>
-
-          <template #body-cell-status="props">
-            <q-td :props="props">
-              <q-badge
-                :color="invoiceStatusColor(props.row.status)"
-                :label="labelize(props.row.status)"
-              />
-            </q-td>
-          </template>
-
-          <template #body-cell-totalInvoiceAmount="props">
-            <q-td :props="props" class="text-right text-weight-bold">
-              {{ formatThriftAmount(props.row.totalInvoiceAmount) }}
-            </q-td>
-          </template>
-
-          <template #no-data>
-            <div class="full-width column flex-center q-pa-xl text-grey-6">
-              <q-icon name="ph ph-receipt" size="48px" class="q-mb-sm" />
-              <div class="text-subtitle1 text-weight-medium">No invoices yet</div>
-              <div class="text-body2 q-mb-md">Create a counter sale to see it listed here.</div>
-              <q-btn
-                color="primary"
-                unelevated
-                no-caps
-                icon="ph ph-plus"
-                label="Create Invoice"
-                :to="`/${authStore.tenantSlug || 'tenant'}/app/thrift/sales/create`"
-              />
+                <template #prepend>
+                  <q-icon name="ph ph-magnifying-glass" />
+                </template>
+              </q-input>
             </div>
-          </template>
-        </q-table>
-      </q-card>
+          </div>
+        </q-card>
+
+        <q-card flat bordered>
+          <q-table
+            flat
+            :rows="rows"
+            :columns="columns"
+            row-key="id"
+            v-model:pagination="tablePagination"
+            :rows-per-page-options="[10, 20, 50]"
+            :loading="loading"
+            class="thrift-table cursor-pointer"
+            @request="onTableRequest"
+            @row-click="onRowClick"
+          >
+            <template #body-cell-sl="props">
+              <q-td :props="props">
+                {{ (tablePagination.page - 1) * tablePagination.rowsPerPage + props.rowIndex + 1 }}
+              </q-td>
+            </template>
+
+            <template #body-cell-invoiceNumber="props">
+              <q-td :props="props">
+                <router-link
+                  :to="invoicePath(props.row.id)"
+                  class="text-weight-bold text-primary"
+                  style="text-decoration: none"
+                  @click.stop
+                >
+                  {{ props.row.invoiceNumber }}
+                </router-link>
+              </q-td>
+            </template>
+
+            <template #body-cell-customer="props">
+              <q-td :props="props">
+                <div v-if="props.row.customerName || props.row.customerPhone">
+                  <div class="text-weight-medium">{{ props.row.customerName || '—' }}</div>
+                  <div v-if="props.row.customerPhone" class="text-caption text-grey-7">
+                    {{ props.row.customerPhone }}
+                  </div>
+                </div>
+                <span v-else class="text-grey-5">Walk-in</span>
+              </q-td>
+            </template>
+
+            <template #body-cell-date="props">
+              <q-td :props="props">
+                {{ formatDate(props.row.date) }}
+              </q-td>
+            </template>
+
+            <template #body-cell-paymentMethod="props">
+              <q-td :props="props">
+                <q-badge outline color="grey-7" :label="labelize(props.row.paymentMethod)" />
+              </q-td>
+            </template>
+
+            <template #body-cell-paymentStatus="props">
+              <q-td :props="props">
+                <q-badge
+                  :color="paymentStatusColor(props.row.paymentStatus)"
+                  :label="labelize(props.row.paymentStatus)"
+                />
+              </q-td>
+            </template>
+
+            <template #body-cell-status="props">
+              <q-td :props="props">
+                <q-badge
+                  :color="invoiceStatusColor(props.row.status)"
+                  :label="labelize(props.row.status)"
+                />
+              </q-td>
+            </template>
+
+            <template #body-cell-totalInvoiceAmount="props">
+              <q-td :props="props" class="text-right text-weight-bold">
+                {{ formatThriftAmount(props.row.totalInvoiceAmount) }}
+              </q-td>
+            </template>
+
+            <template #no-data>
+              <div class="full-width column flex-center q-pa-xl text-grey-6">
+                <q-icon name="ph ph-receipt" size="48px" class="q-mb-sm" />
+                <div class="text-subtitle1 text-weight-medium">No invoices yet</div>
+                <div class="text-body2 q-mb-md">Create a counter sale to see it listed here.</div>
+                <q-btn
+                  color="primary"
+                  unelevated
+                  no-caps
+                  icon="ph ph-plus"
+                  label="Create Invoice"
+                  :to="`/${authStore.tenantSlug || 'tenant'}/app/thrift/sales/create`"
+                />
+              </div>
+            </template>
+          </q-table>
+        </q-card>
+      </template>
     </div>
   </q-page>
 </template>
@@ -140,8 +152,10 @@ import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useQuasar, type QTableColumn } from 'quasar';
+import LearnMoreHelpBtn from 'src/modules/help/components/LearnMoreHelpBtn.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { formatThriftAmount } from 'src/modules/thrift/currency/utils/formatMoney';
+import ThriftSalesSkeleton from '../components/ThriftSalesSkeleton.vue';
 import {
   thriftSalesRepository,
   type ThriftSalesInvoiceListItem,
@@ -152,6 +166,7 @@ const router = useRouter();
 const authStore = useAuthStore();
 const { tenantId, tenantSlug } = storeToRefs(authStore);
 
+const initialLoading = ref(true);
 const loading = ref(false);
 const search = ref('');
 const rows = ref<ThriftSalesInvoiceListItem[]>([]);
@@ -295,6 +310,7 @@ async function loadInvoices() {
     });
   } finally {
     loading.value = false;
+    initialLoading.value = false;
   }
 }
 

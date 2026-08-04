@@ -15,6 +15,8 @@ Stores current balance buckets (`available_balance`, `locked_balance`, `pending_
 | `available_balance` | NUMERIC | Yes | Unrestricted funds ready for payout or transaction (Default: `0.00`) |
 | `locked_balance` | NUMERIC | Yes | Funds locked for escrow, security, or active orders (Default: `0.00`) |
 | `pending_balance` | NUMERIC | Yes | Unsettled incoming/outgoing funds awaiting release (Default: `0.00`) |
+| `deleted_at` | TIMESTAMPTZ | No | Timestamp of soft deletion |
+| `deleted_by` | UUID | No | FK to auth.users (soft deleted by) |
 | `created_at` | TIMESTAMPTZ | No | Creation timestamp |
 | `updated_at` | TIMESTAMPTZ | No | Last update timestamp |
 
@@ -57,6 +59,8 @@ CREATE TABLE wallet_accounts (
   available_balance NUMERIC NOT NULL DEFAULT 0.00,
   locked_balance    NUMERIC NOT NULL DEFAULT 0.00,
   pending_balance   NUMERIC NOT NULL DEFAULT 0.00,
+  deleted_at        TIMESTAMPTZ,
+  deleted_by        UUID,
   created_at        TIMESTAMPTZ DEFAULT NOW(),
   updated_at        TIMESTAMPTZ DEFAULT NOW(),
   CONSTRAINT uq_wallet_account UNIQUE (tenant_id, entity_type, entity_id, currency_code)

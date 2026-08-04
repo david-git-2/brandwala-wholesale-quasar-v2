@@ -7168,7 +7168,7 @@ export type Database = {
           net_profit: number
           quantity: number
           sell_price: number
-          stock_id: number
+          stock_id: number | null
           tenant_id: number
           updated_at: string
         }
@@ -7182,7 +7182,7 @@ export type Database = {
           net_profit?: number
           quantity?: number
           sell_price?: number
-          stock_id: number
+          stock_id?: number | null
           tenant_id: number
           updated_at?: string
         }
@@ -7196,7 +7196,7 @@ export type Database = {
           net_profit?: number
           quantity?: number
           sell_price?: number
-          stock_id?: number
+          stock_id?: number | null
           tenant_id?: number
           updated_at?: string
         }
@@ -9359,6 +9359,10 @@ export type Database = {
         }[]
       }
       delete_tenant_role: { Args: { p_role_id: number }; Returns: undefined }
+      delete_thrift_stocks: {
+        Args: { p_stock_ids: number[]; p_tenant_id: number }
+        Returns: Json
+      }
       dispense_middleman_payout: {
         Args: {
           p_amount: number
@@ -12936,6 +12940,7 @@ export type Enums<
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
+    // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {

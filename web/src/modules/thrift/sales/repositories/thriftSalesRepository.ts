@@ -56,7 +56,7 @@ export interface ThriftSalesInvoiceListItem {
   notes: string | null;
   itemCount: number;
   createdAt: string;
-  status: 'ACTIVE' | 'RETURNED' | 'STAFF_MISTAKE' | string;
+  status: string;
   revertedAt: string | null;
   revertedBy: string | null;
   revertReason: string | null;
@@ -231,7 +231,9 @@ export const thriftSalesRepository = {
   },
 
   /**
-   * Revert an ACTIVE invoice (RETURN or STAFF_MISTAKE)
+   * Revert an ACTIVE invoice:
+   * - RETURN → soft (status RETURNED, stock restored, REFUND ledger)
+   * - STAFF_MISTAKE → hard delete invoice + items + scrub ledger; stock restored
    */
   async revertSalesInvoice(input: {
     tenantId: number;
@@ -239,7 +241,7 @@ export const thriftSalesRepository = {
     reason: ThriftSalesRevertReason;
     revertedBy: string;
     notes?: string | undefined;
-  }): Promise<{ id: number; invoiceNumber: string; status: string }> {
+  }): Promise<{ id: number; invoiceNumber: string; status: string; deleted: boolean }> {
     const { data, error } = await supabase.rpc('revert_thrift_sales_invoice', {
       p_tenant_id: input.tenantId,
       p_invoice_id: input.invoiceId,
@@ -255,6 +257,7 @@ export const thriftSalesRepository = {
       id: Number(result?.id ?? input.invoiceId),
       invoiceNumber: String(result?.invoice_number ?? ''),
       status: String(result?.status ?? ''),
+      deleted: Boolean(result?.deleted),
     };
   },
 

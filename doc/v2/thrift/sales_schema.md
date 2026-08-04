@@ -23,6 +23,8 @@ Represents a single sales transaction header recorded at the physical store coun
 | `total_invoice_amount` | NUMERIC(12,2) | Yes | Final total invoice amount after all item discounts |
 | `created_by` | TEXT | Yes | Email/User ID of the cashier/staff who created the invoice (`inserted_by`) |
 | `notes` | TEXT | No | Optional counter sale notes |
+| `deleted_at` | TIMESTAMPTZ | No | Timestamp of soft deletion |
+| `deleted_by` | UUID | No | FK to auth.users (soft deleted by) |
 | `created_at` | TIMESTAMPTZ | Yes | Record creation timestamp |
 | `updated_at` | TIMESTAMPTZ | Yes | Record update timestamp |
 

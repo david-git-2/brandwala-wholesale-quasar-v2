@@ -14,6 +14,8 @@
 | `phone` | TEXT | No | Vendor primary contact phone number |
 | `address` | TEXT | No | Physical/billing address |
 | `website` | TEXT | No | Vendor official website URL |
+| `deleted_at` | TIMESTAMPTZ | No | Timestamp of soft deletion |
+| `deleted_by` | UUID | No | FK to auth.users (soft deleted by) |
 | `created_at` | TIMESTAMPTZ | No | Timestamp of creation |
 | `updated_at` | TIMESTAMPTZ | No | Timestamp of last update |
 

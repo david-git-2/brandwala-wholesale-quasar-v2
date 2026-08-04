@@ -296,6 +296,12 @@ const draftConditionFilter = ref<string | null>(null);
 watch(() => store.search, (val) => {
   if (searchText.value !== val) searchText.value = val;
 });
+watch(searchText, (val) => {
+  if (store.search !== val) {
+    store.setSearch(val);
+    store.setPage(1);
+  }
+});
 watch(() => store.statusFilter, (val) => {
   if (statusFilter.value !== val) statusFilter.value = val;
 });

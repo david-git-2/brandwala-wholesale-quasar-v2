@@ -29,14 +29,7 @@ const emit = defineEmits<{
       persistent
       @update:model-value="(val) => emit('update:deleteConfirmOpen', val)"
     >
-      <q-card
-        style="width: 350px; max-width: 90vw"
-        class="floating-surface shadow-2 q-pa-md relative-position"
-      >
-        <q-inner-loading :showing="deleteLoading" color="negative">
-          <q-spinner size="40px" color="negative" />
-          <div class="text-caption text-grey-8 q-mt-sm">Deleting stock and image...</div>
-        </q-inner-loading>
+      <q-card style="width: 350px; max-width: 90vw" class="floating-surface shadow-2 q-pa-md">
         <q-card-section class="row items-center">
           <q-avatar icon="ph ph-warning" color="warning" text-color="white" />
           <span class="q-ml-sm text-weight-bold">Delete Stock Item</span>
@@ -64,14 +57,7 @@ const emit = defineEmits<{
       persistent
       @update:model-value="(val) => emit('update:bulkDeleteConfirmOpen', val)"
     >
-      <q-card
-        style="width: 400px; max-width: 90vw"
-        class="floating-surface shadow-2 q-pa-md relative-position"
-      >
-        <q-inner-loading :showing="bulkDeleteLoading" color="negative">
-          <q-spinner size="40px" color="negative" />
-          <div class="text-caption text-grey-8 q-mt-sm">Deleting selected stock and images...</div>
-        </q-inner-loading>
+      <q-card style="width: 400px; max-width: 90vw" class="floating-surface shadow-2 q-pa-md">
         <q-card-section class="row items-center">
           <q-avatar icon="ph ph-warning" color="warning" text-color="white" />
           <span class="q-ml-sm text-weight-bold">Delete Selected Stock</span>

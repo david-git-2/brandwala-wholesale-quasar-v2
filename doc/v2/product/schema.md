@@ -33,6 +33,8 @@
 | `is_available` | BOOLEAN | No | Active availability status flag |
 | `source` | TEXT | No | Source system / catalog origin |
 | `hazardous` | BOOLEAN | No | Flag indicating hazardous / restricted goods |
+| `deleted_at` | TIMESTAMPTZ | No | Timestamp of soft deletion |
+| `deleted_by` | UUID | No | FK to auth.users (soft deleted by) |
 | `created_at` | TIMESTAMPTZ | Yes | Timestamp of creation |
 | `updated_at` | TIMESTAMPTZ | Yes | Timestamp of last update |
 
@@ -48,6 +50,8 @@
 | `value` | TEXT | No | Normalized brand slug / identifier |
 | `vendor_id` | BIGINT | No | FK to `vendors.id` |
 | `vendor_code` | TEXT | No | Associated vendor code |
+| `deleted_at` | TIMESTAMPTZ | No | Timestamp of soft deletion |
+| `deleted_by` | UUID | No | FK to auth.users (soft deleted by) |
 | `created_at` | TIMESTAMPTZ | Yes | Timestamp of creation |
 | `updated_at` | TIMESTAMPTZ | Yes | Timestamp of last update |
 
@@ -63,6 +67,8 @@
 | `value` | TEXT | No | Normalized category slug / identifier |
 | `vendor_id` | BIGINT | No | FK to `vendors.id` |
 | `vendor_code` | TEXT | No | Associated vendor code |
+| `deleted_at` | TIMESTAMPTZ | No | Timestamp of soft deletion |
+| `deleted_by` | UUID | No | FK to auth.users (soft deleted by) |
 | `created_at` | TIMESTAMPTZ | Yes | Timestamp of creation |
 | `updated_at` | TIMESTAMPTZ | Yes | Timestamp of last update |
 

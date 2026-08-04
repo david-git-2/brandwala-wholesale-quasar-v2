@@ -27,7 +27,7 @@ This document details the step-by-step business flow and maps each lifecycle sta
 ## Stage 2: Ledger Transaction & Atomic Balance Mutation
 
 * **Action**: System records a money movement (credit or debit) triggered by shop orders, vendor purchases, payouts, adjustments, or intercompany operations.
-* **Execution**: Atomic RPC function inserts an immutable entry into `universal_wallet_ledger` and updates the target bucket in `wallet_accounts`.
+* **Execution**: Atomic RPC function inserts an immutable entry into `universal_wallet_ledger` and updates the target bucket in `wallet_accounts`. *(**Concurrency Note**: The underlying PostgreSQL RPC must utilize row-level locks via `SELECT ... FOR UPDATE` or direct atomic increments to prevent race conditions during high-concurrency balance updates.)*
 * **APIs / RPCs Used**:
   * [record_ledger_transaction.md](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/v2/wallet/rpc/record_ledger_transaction.md) (`supabase.rpc('record_ledger_transaction', ...)`)
   * [universal_wallet_ledger_api.md](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/v2/wallet/api/universal_wallet_ledger_api.md) (`supabase.from('universal_wallet_ledger').select(...)`)
@@ -45,8 +45,11 @@ This document details the step-by-step business flow and maps each lifecycle sta
 
 ## Stage 4: Dashboard Aggregations & Statement Reports
 
-* **Action**: Tenant admins or accountants view platform-wide financial summaries, liabilities, receivables, or download detailed entity statements.
-* **Execution**: Aggregate queries calculate total platform cash, courier COD holdings, vendor payables, and generate date-filtered ledger export data.
+* **Action**: Standard users view their simplified financial dashboard, advanced users download itemized statements, and Tenant Admins view platform-wide financial totals.
+* **Execution**: 
+  * The "Presentation Engine" RPC aggregates data into plain-English metrics for frontend users.
+  * Aggregate queries calculate total platform cash, vendor payables, and generate date-filtered ledger exports.
 * **APIs / RPCs Used**:
-  * [get_wallet_dashboard_summary.md](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/v2/wallet/rpc/get_wallet_dashboard_summary.md) (`supabase.rpc('get_wallet_dashboard_summary', ...)` )
-  * [get_wallet_entity_statement.md](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/v2/wallet/rpc/get_wallet_entity_statement.md) (`supabase.rpc('get_wallet_entity_statement', ...)`)
+  * [get_wallet_minimal_summary.md](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/v2/wallet/rpc/get_wallet_minimal_summary.md) (`supabase.rpc('get_wallet_minimal_summary', ...)`) - *Minimal User Dashboard*
+  * [get_wallet_entity_statement.md](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/v2/wallet/rpc/get_wallet_entity_statement.md) (`supabase.rpc('get_wallet_entity_statement', ...)`) - *Advanced Ledger View*
+  * [get_wallet_dashboard_summary.md](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/v2/wallet/rpc/get_wallet_dashboard_summary.md) (`supabase.rpc('get_wallet_dashboard_summary', ...)` ) - *Tenant Admin View*

@@ -500,14 +500,20 @@ export const thriftStockRepository = {
     if (error) throw error;
   },
 
-  async deleteStock(id: number): Promise<void> {
-    const { error } = await supabase.from('thrift_stocks').delete().eq('id', id);
+  async deleteStock(tenantId: number, id: number): Promise<void> {
+    const { error } = await supabase.rpc('delete_thrift_stocks', {
+      p_tenant_id: tenantId,
+      p_stock_ids: [id],
+    });
     if (error) throw error;
   },
 
-  async deleteStocks(ids: number[]): Promise<void> {
+  async deleteStocks(tenantId: number, ids: number[]): Promise<void> {
     if (!ids.length) return;
-    const { error } = await supabase.from('thrift_stocks').delete().in('id', ids);
+    const { error } = await supabase.rpc('delete_thrift_stocks', {
+      p_tenant_id: tenantId,
+      p_stock_ids: ids,
+    });
     if (error) throw error;
   },
 
