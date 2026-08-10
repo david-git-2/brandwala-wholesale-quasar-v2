@@ -6929,6 +6929,53 @@ export type Database = {
           },
         ]
       }
+      thrift_customers: {
+        Row: {
+          address: string | null
+          created_at: string
+          id: number
+          inserted_by: string
+          name: string
+          notes: string | null
+          phone: string
+          phone_normalized: string
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          id?: number
+          inserted_by: string
+          name: string
+          notes?: string | null
+          phone: string
+          phone_normalized: string
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          id?: number
+          inserted_by?: string
+          name?: string
+          notes?: string | null
+          phone?: string
+          phone_normalized?: string
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thrift_customers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       thrift_invoice_counters: {
         Row: {
           created_at: string
@@ -7228,6 +7275,8 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string
+          customer_address: string | null
+          customer_id: number | null
           customer_name: string | null
           customer_phone: string | null
           date: string
@@ -7240,6 +7289,7 @@ export type Database = {
           revert_reason: string | null
           reverted_at: string | null
           reverted_by: string | null
+          sale_channel: string
           status: string
           tenant_id: number
           total_invoice_amount: number
@@ -7248,6 +7298,8 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string
+          customer_address?: string | null
+          customer_id?: number | null
           customer_name?: string | null
           customer_phone?: string | null
           date?: string
@@ -7260,6 +7312,7 @@ export type Database = {
           revert_reason?: string | null
           reverted_at?: string | null
           reverted_by?: string | null
+          sale_channel?: string
           status?: string
           tenant_id: number
           total_invoice_amount?: number
@@ -7268,6 +7321,8 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string
+          customer_address?: string | null
+          customer_id?: number | null
           customer_name?: string | null
           customer_phone?: string | null
           date?: string
@@ -7280,12 +7335,20 @@ export type Database = {
           revert_reason?: string | null
           reverted_at?: string | null
           reverted_by?: string | null
+          sale_channel?: string
           status?: string
           tenant_id?: number
           total_invoice_amount?: number
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "thrift_sales_invoices_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "thrift_customers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "thrift_sales_invoices_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -7302,6 +7365,7 @@ export type Database = {
           hand_tag_unit_cost: number | null
           hand_tag_unit_currency_id: number | null
           marketing_tag_config: Json
+          return_window_days: number
           sticker_unit_cost: number | null
           sticker_unit_currency_id: number | null
           tenant_id: number
@@ -7313,6 +7377,7 @@ export type Database = {
           hand_tag_unit_cost?: number | null
           hand_tag_unit_currency_id?: number | null
           marketing_tag_config?: Json
+          return_window_days?: number
           sticker_unit_cost?: number | null
           sticker_unit_currency_id?: number | null
           tenant_id: number
@@ -7324,6 +7389,7 @@ export type Database = {
           hand_tag_unit_cost?: number | null
           hand_tag_unit_currency_id?: number | null
           marketing_tag_config?: Json
+          return_window_days?: number
           sticker_unit_cost?: number | null
           sticker_unit_currency_id?: number | null
           tenant_id?: number
@@ -9259,7 +9325,9 @@ export type Database = {
       create_thrift_sales_invoice: {
         Args: {
           p_created_by?: string
+          p_customer_address?: string
           p_customer_name?: string
+          p_customer_notes?: string
           p_customer_phone?: string
           p_date?: string
           p_invoice_number?: string
@@ -9267,6 +9335,7 @@ export type Database = {
           p_notes?: string
           p_payment_method?: string
           p_payment_status?: string
+          p_sale_channel?: string
           p_tenant_id: number
           p_total_invoice_amount?: number
         }
@@ -11029,6 +11098,7 @@ export type Database = {
         Returns: number
       }
       normalize_bd_mobile: { Args: { p_phone: string }; Returns: string }
+      normalize_thrift_phone: { Args: { p_phone: string }; Returns: string }
       parent_tenant_has_module_action: {
         Args: {
           p_action: string
@@ -11438,6 +11508,7 @@ export type Database = {
       }
       revert_thrift_sales_invoice: {
         Args: {
+          p_force?: boolean
           p_invoice_id: number
           p_notes?: string
           p_reason: string
@@ -12940,7 +13011,6 @@ export type Enums<
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
