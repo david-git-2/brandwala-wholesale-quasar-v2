@@ -99,7 +99,7 @@ export default defineConfig((ctx) => {
       // extendViteConf (viteConf) {},
       // viteVuePluginOptions: {},
 
-      vitePlugins: ctx.dev ? [checkerVitePlugin] : [],
+      vitePlugins: ctx.dev && process.env.CHECKER === '1' ? [checkerVitePlugin] : [],
 
       // Keep production output file count lower (helps Cloudflare Pages upload stability).
       extendViteConf() {

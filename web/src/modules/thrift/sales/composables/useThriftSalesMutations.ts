@@ -30,6 +30,7 @@ export function useRevertThriftSalesInvoiceMutation() {
       revertedBy: string;
       notes?: string | undefined;
       force?: boolean | undefined;
+      returnCourierAmount?: number | undefined;
     }) => thriftSalesRepository.revertSalesInvoice(input),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['thrift', 'sales'] });

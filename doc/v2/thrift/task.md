@@ -27,16 +27,18 @@ Canon: [README.md](./README.md) · [sales/schema.md](./sales/schema.md) · [sale
 
 ## Implementation phases
 
+Focused trackers: [task-rto.md](./task-rto.md) · [task-post-accept-return.md](./task-post-accept-return.md)
+
 | # | Work | Status |
 | :---: | :--- | :--- |
 | 1 | Migration: invoice columns + `thrift_sales_pnl_lines` + returns tables + RLS (`20270802000038`) | Done (schema only — RPCs follow) |
 | 2 | `create_thrift_sales_invoice` — Offline PnL; Online money rules | Done (`20270802000039`) |
 | 2b | `thrift_courier_providers` — system BD seed (`is_system`) + tenant customs; invoice `courier_provider_id` / `meta` | Done (`20270802000041`–`042` + UI) |
-| 3 | `update_thrift_delivery_status` — PnL on `DELIVERED`; RTO path for no-pickup | Pending |
-| 4 | `revert_thrift_sales_invoice` — **RTO + staff mistake only** | Staff mistake Done (`20270802000040`); RTO Pending |
-| 5 | `create_thrift_sales_return` — partial/full post-pay returns | Pending |
+| 3 | `update_thrift_delivery_status` — PnL on `DELIVERED` | Pending → [task-rto.md](./task-rto.md) Phase A |
+| 4 | `revert_thrift_sales_invoice` — **RTO** + staff mistake | Staff mistake Done (`040`); RTO → [task-rto.md](./task-rto.md) Phase B–C |
+| 5 | `create_thrift_sales_return` — partial/full post-pay returns | Pending → [task-post-accept-return.md](./task-post-accept-return.md) Phase A |
 | 6 | Reports RPCs — PnL + live COGS; shipment group by inbound shipment | Pending |
-| 7 | UI — delivery, **Mark RTO**, invoice **Return items**, **Returns management list/detail**, reports | Pending |
+| 7 | UI — **Mark RTO** · **Return items** · **Returns management** · reports | Mark RTO → [task-rto.md](./task-rto.md) Phase C; Return items + hub → [task-post-accept-return.md](./task-post-accept-return.md) Phase C–D |
 | 8 | Backfill — existing closed invoices → PnL; optional historic returns | Pending |
 
 ---

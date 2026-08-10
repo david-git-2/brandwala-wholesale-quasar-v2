@@ -137,16 +137,24 @@ Independent of §3 cash track (either can move first).
 
 RPC: [rpc/record_thrift_cod_remittance.md](./rpc/record_thrift_cod_remittance.md)
 
-Cash settlement is stored **on the same invoice** (`cod_*` + `payment_status`). There is no separate collection document.
+Cash settlement is stored **on the same invoice** (`cod_*` + `payment_status`). There is no separate collection document. Write-off uses the **same** RPC (`outcome = WRITTEN_OFF`) — not a second write model.
+
+Independent of §2 parcel track (either can move first). Remittance may run before or after `DELIVERED`.
 
 | Rule | Locked |
 | :--- | :--- |
-| Preconditions | Online, `ACTIVE` (or partially returned as applicable), `payment_status = COD_PENDING` |
-| Writes | `cod_remitted_amount` / `cod_remitted_at` / `cod_remittance_ref`; typically `payment_status → PAID` (or keep pending / `WRITTEN_OFF`) |
+| Preconditions | `status = ACTIVE`, `payment_status = COD_PENDING` |
+| Staff may edit | `cod_remitted_amount`, `cod_remitted_at`, `cod_remittance_ref`, optional remittance notes (appended to invoice `notes`), `outcome` |
+| Outcomes | `PAID` → `payment_status = PAID`; `KEEP_PENDING` → stay `COD_PENDING`; `WRITTEN_OFF` → `payment_status = WRITTEN_OFF` |
+| Default (`outcome` omitted) | remitted ≥ `cod_expected` (or `cod_expected` null) → `PAID`; else `KEEP_PENDING` |
+| Amount write | Each call **replaces** `cod_remitted_amount` (does not accumulate) |
+| Shortfall | Staff may still choose `PAID` when remitted &lt; `cod_expected` (accept settlement) — do **not** rewrite `cod_expected` |
 | Ledger / PnL | No new `REVENUE`; **no** PnL change |
-| Does not | Mutate `delivery_status` |
+| Does not | Mutate `delivery_status`, fee columns / payers, `cod_expected`, lines, customer, or courier provider |
 
-“COD queue” = list filter on invoices where remittance still owed — not a second table.
+UI surface = cash-settlement dialog only (amount / when / ref / outcome / notes). Broader invoice edits belong elsewhere.
+
+“COD queue” = list filter on invoices where remittance still owed (`COD_PENDING` outstanding) — not a second table.
 
 ---
 

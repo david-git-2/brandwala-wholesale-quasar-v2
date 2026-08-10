@@ -55,18 +55,26 @@
               label="Record COD"
               :disable="!!reverting || remitting || updatingDelivery"
               @click="openRemittanceDialog()"
-            />
+            >
+              <q-tooltip>
+                Cash remittance from courier — not a return / RTO
+              </q-tooltip>
+            </q-btn>
             <q-btn
-              v-if="canReturn || canForceReturn"
+              v-if="canShowMarkRto"
               outline
               color="warning"
               no-caps
-              icon="ph ph-arrow-u-up-left"
-              label="Return"
-              :loading="reverting === 'RETURN'"
+              icon="ph ph-package"
+              label="Mark RTO"
+              :loading="reverting === 'RTO'"
               :disable="!!reverting || remitting || updatingDelivery"
-              @click="confirmRevert('RETURN')"
-            />
+              @click="openRtoDialog()"
+            >
+              <q-tooltip>
+                No pickup / refuse — closes parcel as RETURNED. Not COD remittance.
+              </q-tooltip>
+            </q-btn>
             <q-btn
               v-if="canStaffMistake"
               outline
@@ -171,21 +179,16 @@
                     </div>
                   </div>
                   <div
-                    v-if="invoice.status === 'ACTIVE' && returnEligibility"
+                    v-if="invoice.status === 'ACTIVE' && invoice.saleChannel === 'ONLINE'"
                     class="col-12"
                   >
                     <q-banner dense rounded class="bg-grey-2 text-grey-9">
                       <template #avatar>
-                        <q-icon
-                          :name="
-                            returnEligibility.withinWindow
-                              ? 'ph ph-clock'
-                              : 'ph ph-warning'
-                          "
-                          :color="returnEligibility.withinWindow ? 'primary' : 'warning'"
-                        />
+                        <q-icon name="ph ph-info" color="primary" />
                       </template>
-                      {{ returnEligibility.message }}
+                      <strong>Record COD</strong> = courier paid you cash.
+                      <strong>Mark RTO</strong> = no pickup / refuse (stock comes back).
+                      After delivered, use Return items (not RTO).
                     </q-banner>
                   </div>
                   <div v-if="invoice.revertedAt" class="col-12">
@@ -324,8 +327,26 @@
                     no-caps
                     icon="ph ph-hand-coins"
                     label="Record COD remittance"
-                    :disable="remitting"
+                    :disable="remitting || !!reverting"
                     @click="openRemittanceDialog()"
+                  />
+                </template>
+                <template v-if="canShowMarkRto">
+                  <div
+                    v-if="canShowRemittance"
+                    class="text-caption text-grey-6 q-mt-sm"
+                  >
+                    COD = cash from courier. RTO = customer refused / no pickup.
+                  </div>
+                  <q-btn
+                    class="full-width q-mt-sm"
+                    color="warning"
+                    outline
+                    no-caps
+                    icon="ph ph-package"
+                    label="Mark RTO (no pickup)"
+                    :disable="remitting || !!reverting"
+                    @click="openRtoDialog()"
                   />
                 </template>
               </q-card-section>
@@ -348,6 +369,56 @@
       </q-card>
     </div>
 
+    <q-dialog v-model="rtoDialogOpen" persistent>
+      <q-card style="min-width: 360px; max-width: 440px">
+        <q-card-section>
+          <div class="text-h6">Mark RTO — no pickup</div>
+          <div class="text-caption text-grey-7">
+            Customer did not accept the parcel. Closes the whole order as RETURNED /
+            REFUNDED and restores stock. This is not COD remittance.
+          </div>
+        </q-card-section>
+        <q-card-section class="q-gutter-y-sm">
+          <q-banner dense rounded class="bg-orange-1 text-grey-9">
+            <template #avatar>
+              <q-icon name="ph ph-info" color="warning" />
+            </template>
+            Use <strong>Record COD</strong> only when the courier paid you cash.
+            Use this when the parcel comes back.
+          </q-banner>
+          <q-input
+            v-model.number="rtoForm.returnCourierAmount"
+            type="number"
+            dense
+            outlined
+            label="Return courier cost (shop)"
+            hint="Courier RTO / return fee your shop pays — 0 if none"
+            min="0"
+            step="0.01"
+          />
+          <q-input
+            v-model="rtoForm.notes"
+            type="textarea"
+            dense
+            outlined
+            autogrow
+            label="Notes (optional)"
+          />
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat no-caps label="Cancel" color="grey-8" v-close-popup />
+          <q-btn
+            unelevated
+            no-caps
+            color="warning"
+            label="Confirm Mark RTO"
+            :loading="reverting === 'RTO'"
+            @click="submitRto"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
     <q-dialog
       v-model="remittanceDialogOpen"
       persistent
@@ -357,10 +428,16 @@
         <q-card-section>
           <div class="text-h6">Record COD remittance</div>
           <div class="text-caption text-grey-7">
-            Updates payment status only — does not post revenue again.
+            Cash settlement only — does not mark RTO or change delivery.
           </div>
         </q-card-section>
         <q-card-section class="q-gutter-y-sm">
+          <div>
+            <div class="text-caption text-grey-6">COD expected</div>
+            <div class="text-weight-bold">
+              {{ formatThriftAmount(invoice?.codExpected ?? null) }}
+            </div>
+          </div>
           <q-input
             v-model.number="remittanceForm.amount"
             type="number"
@@ -370,6 +447,13 @@
             min="0"
             step="0.01"
           />
+          <div
+            v-if="remittanceAcceptsShortfall"
+            class="text-caption text-warning"
+          >
+            Remitted is less than expected — saving as Paid accepts this shortfall
+            (expected is not changed).
+          </div>
           <q-input
             v-model="remittanceForm.date"
             dense
@@ -393,6 +477,24 @@
             map-options
             :options="remittanceOutcomeOptions"
             label="Outcome"
+          />
+          <q-input
+            v-model="remittanceForm.notes"
+            dense
+            outlined
+            type="textarea"
+            autogrow
+            :label="
+              remittanceForm.outcome === 'WRITTEN_OFF'
+                ? 'Notes *'
+                : 'Notes (optional)'
+            "
+            :hint="
+              remittanceForm.outcome === 'WRITTEN_OFF'
+                ? 'Required for write-off'
+                : 'Appended to invoice notes'
+            "
+            placeholder="Dispute / deposit / write-off reason"
           />
         </q-card-section>
         <q-card-actions align="right">
@@ -420,7 +522,6 @@ import LearnMoreHelpBtn from 'src/modules/help/components/LearnMoreHelpBtn.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
 import { formatThriftAmount } from 'src/modules/thrift/currency/utils/formatMoney';
-import { thriftSettingsRepository } from 'src/modules/thrift/settings/repositories/thriftSettingsRepository';
 import { requestConfirmation, showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 import ThriftSalesInvoiceDetailsSkeleton from '../components/ThriftSalesInvoiceDetailsSkeleton.vue';
 import ThriftSalesInvoiceStatusTracks from '../components/ThriftSalesInvoiceStatusTracks.vue';
@@ -467,14 +568,20 @@ const updatingDelivery = ref(false);
 const targetDeliveryStatus = ref<string | null>(null);
 const targetPaymentStatus = ref<string | null>(null);
 const remittanceDialogOpen = ref(false);
+const rtoDialogOpen = ref(false);
 const invoice = ref<ThriftSalesInvoiceDetail | null>(null);
-const returnWindowDays = ref(30);
 
 const remittanceForm = ref({
   amount: 0,
   date: '',
   ref: '',
+  notes: '',
   outcome: 'PAID' as ThriftCodRemittanceOutcome,
+});
+
+const rtoForm = ref({
+  returnCourierAmount: 0,
+  notes: '',
 });
 
 const remittanceOutcomeOptions = [
@@ -501,6 +608,23 @@ const canShowRemittance = computed(
     (invoice.value.paymentStatus || '').toUpperCase() === 'COD_PENDING',
 );
 
+/** Online refuse only — never after DELIVERED (that is post-accept Return items). */
+const canShowMarkRto = computed(() => {
+  const inv = invoice.value;
+  if (!inv || inv.status !== 'ACTIVE' || inv.saleChannel !== 'ONLINE') return false;
+  if (!canReturn.value && !canForceReturn.value) return false;
+  const ds = (inv.deliveryStatus || 'PENDING').toUpperCase();
+  return ds !== 'DELIVERED' && ds !== 'RETURNED';
+});
+
+const remittanceAcceptsShortfall = computed(() => {
+  if (remittanceForm.value.outcome !== 'PAID') return false;
+  const expected = invoice.value?.codExpected;
+  if (expected == null) return false;
+  const amount = Number(remittanceForm.value.amount);
+  return Number.isFinite(amount) && amount < Number(expected);
+});
+
 const deliveryAdvanceOptions = computed(() => {
   const inv = invoice.value;
   if (!inv || inv.status !== 'ACTIVE' || inv.saleChannel !== 'ONLINE') return [];
@@ -519,29 +643,6 @@ const deliveryAdvanceOptions = computed(() => {
 const allowedDeliveryNext = computed(() =>
   deliveryAdvanceOptions.value.map((o) => o.value),
 );
-
-const returnEligibility = computed(() => {
-  const inv = invoice.value;
-  if (!inv || inv.status !== 'ACTIVE') return null;
-  const days = returnWindowDays.value;
-  if (days === 0) {
-    return {
-      withinWindow: false,
-      message: 'Customer returns are disabled. Staff can force a return if needed.',
-    };
-  }
-  const invoiceDate = new Date(inv.date);
-  if (Number.isNaN(invoiceDate.getTime())) return null;
-  const deadline = new Date(invoiceDate.getTime());
-  deadline.setDate(deadline.getDate() + days);
-  const withinWindow = Date.now() <= deadline.getTime();
-  return {
-    withinWindow,
-    message: withinWindow
-      ? `Return window: ${days} day(s) — open until ${deadline.toLocaleString()}.`
-      : `Outside return window (${days} day(s) ended ${deadline.toLocaleString()}). Force required.`,
-  };
-});
 
 const itemColumns: QTableColumn[] = [
   { name: 'item', label: 'Item', field: 'stockName', align: 'left' },
@@ -615,6 +716,7 @@ function openRemittanceDialog(outcome: ThriftCodRemittanceOutcome = 'PAID') {
     amount: Number(inv.codExpected ?? inv.totalInvoiceAmount) || 0,
     date: toDatetimeLocalValue(),
     ref: inv.codRemittanceRef || '',
+    notes: '',
     outcome,
   };
   remittanceDialogOpen.value = true;
@@ -625,11 +727,22 @@ function onSelectPaymentStatus(status: 'PAID' | 'WRITTEN_OFF') {
   openRemittanceDialog(status === 'WRITTEN_OFF' ? 'WRITTEN_OFF' : 'PAID');
 }
 
+function remittanceSuccessMessage(outcome: ThriftCodRemittanceOutcome): string {
+  if (outcome === 'WRITTEN_OFF') return 'COD written off';
+  if (outcome === 'KEEP_PENDING') return 'COD remittance saved — still pending';
+  return 'COD remittance recorded as paid';
+}
+
 async function submitRemittance() {
   if (!tenantId.value || !invoice.value) return;
   const amount = Number(remittanceForm.value.amount);
   if (!Number.isFinite(amount) || amount < 0) {
     showErrorNotification('Remitted amount must be zero or greater.');
+    return;
+  }
+  const notes = remittanceForm.value.notes.trim();
+  if (remittanceForm.value.outcome === 'WRITTEN_OFF' && !notes) {
+    showErrorNotification('Notes are required when writing off COD.');
     return;
   }
 
@@ -638,6 +751,7 @@ async function submitRemittance() {
     const remittedAt = remittanceForm.value.date
       ? new Date(remittanceForm.value.date).toISOString()
       : undefined;
+    const outcome = remittanceForm.value.outcome;
     await remittanceMutation.mutateAsync({
       tenantId: tenantId.value,
       invoiceId: invoice.value.id,
@@ -645,9 +759,10 @@ async function submitRemittance() {
       actor: authStore.user?.email || 'cashier',
       remittedAt,
       remittanceRef: remittanceForm.value.ref || undefined,
-      outcome: remittanceForm.value.outcome,
+      notes: notes || undefined,
+      outcome,
     });
-    showSuccessNotification('COD remittance recorded');
+    showSuccessNotification(remittanceSuccessMessage(outcome));
     remittanceDialogOpen.value = false;
     targetPaymentStatus.value = null;
     await loadInvoice();
@@ -680,12 +795,10 @@ async function loadInvoice() {
   }
   loading.value = true;
   try {
-    const [inv, settings] = await Promise.all([
-      thriftSalesRepository.getSalesInvoice(tenantId.value, invoiceId.value),
-      thriftSettingsRepository.fetchSettings(tenantId.value),
-    ]);
-    invoice.value = inv;
-    returnWindowDays.value = settings?.return_window_days ?? 30;
+    invoice.value = await thriftSalesRepository.getSalesInvoice(
+      tenantId.value,
+      invoiceId.value,
+    );
   } catch (err: any) {
     invoice.value = null;
     showErrorNotification(
@@ -696,60 +809,81 @@ async function loadInvoice() {
   }
 }
 
+function openRtoDialog() {
+  if (!canShowMarkRto.value) {
+    showErrorNotification(
+      'Mark RTO is only for Online invoices that are not yet delivered.',
+    );
+    return;
+  }
+  rtoForm.value = { returnCourierAmount: 0, notes: '' };
+  rtoDialogOpen.value = true;
+}
+
+async function submitRto() {
+  if (!tenantId.value || !invoice.value) return;
+  const amount = Number(rtoForm.value.returnCourierAmount);
+  if (!Number.isFinite(amount) || amount < 0) {
+    showErrorNotification('Return courier cost must be 0 or greater.');
+    return;
+  }
+  if (!canReturn.value && !canForceReturn.value) {
+    showErrorNotification('Mark RTO requires thrift_sales return permission.');
+    return;
+  }
+
+  const ok = await requestConfirmation(
+    [
+      `Mark ${invoice.value.invoiceNumber} as RTO (no pickup)?`,
+      'Parcel → RETURNED, payment → REFUNDED, stock restored.',
+      'This is not Record COD.',
+    ].join(' '),
+    'Confirm Mark RTO',
+    'Mark RTO',
+  );
+  if (!ok) return;
+
+  reverting.value = 'RTO';
+  try {
+    await revertMutation.mutateAsync({
+      tenantId: tenantId.value,
+      invoiceId: invoice.value.id,
+      reason: 'RTO',
+      revertedBy: authStore.user?.email || 'cashier',
+      notes: rtoForm.value.notes.trim() || undefined,
+      returnCourierAmount: amount,
+      force: !canReturn.value && canForceReturn.value ? true : undefined,
+    });
+    showSuccessNotification('Marked RTO — stock restored, invoice closed');
+    rtoDialogOpen.value = false;
+    await loadInvoice();
+  } catch (err: any) {
+    showErrorNotification(formatThriftActionableError(err, 'Failed to mark RTO'));
+  } finally {
+    reverting.value = null;
+  }
+}
+
 async function confirmRevert(reason: ThriftSalesRevertReason) {
-  const isReturn = reason === 'RETURN';
-  if (!isReturn && !canStaffMistake.value) {
+  if (reason !== 'STAFF_MISTAKE') {
+    openRtoDialog();
+    return;
+  }
+  if (!canStaffMistake.value) {
     showErrorNotification(
       'You do not have permission to mark staff mistake on thrift sales invoices.',
     );
     return;
   }
-  if (isReturn && !canReturn.value && !canForceReturn.value) {
-    showErrorNotification(
-      'You do not have permission to return thrift sales invoices.',
-    );
-    return;
-  }
-
-  let force = false;
-
-  if (isReturn && returnEligibility.value && !returnEligibility.value.withinWindow) {
-    if (!canForceReturn.value) {
-      showErrorNotification(
-        'Outside return window — force return requires thrift_sales force_return permission.',
-      );
-      return;
-    }
-    const ok = await requestConfirmation(
-      'This invoice is outside the return window — force return anyway?',
-      'Outside return window — force?',
-      'Force Return',
-    );
-    if (!ok) return;
-    force = true;
-  } else if (isReturn && !canReturn.value) {
-    showErrorNotification(
-      'Customer return requires thrift_sales return permission.',
-    );
-    return;
-  }
 
   $q.dialog({
-    title: isReturn
-      ? force
-        ? 'Confirm Force Return'
-        : 'Confirm Return'
-      : 'Confirm Staff Mistake',
-    message: isReturn
-      ? force
-        ? 'Force will bypass the return window. Stock will be restored, a REFUND ledger entry posted, and the invoice marked RETURNED. Sale expense ledger rows are removed.'
-        : 'This will restore stock to AVAILABLE, post a REFUND ledger entry, mark the invoice as RETURNED, and remove sale expense ledger rows.'
-      : [
-          `Permanently erase invoice ${invoice.value?.invoiceNumber || ''} as a staff entry error.`,
-          'Stock returns to AVAILABLE. Ledger and PnL rows for this invoice are scrubbed (no refund/loss events).',
-          'The invoice number is not reused — the monthly counter continues (gaps are OK).',
-          'Blocked if any post-pay returns already exist. This cannot be undone.',
-        ].join(' '),
+    title: 'Confirm Staff Mistake',
+    message: [
+      `Permanently erase invoice ${invoice.value?.invoiceNumber || ''} as a staff entry error.`,
+      'Stock returns to AVAILABLE. Ledger and PnL rows for this invoice are scrubbed (no refund/loss events).',
+      'The invoice number is not reused — the monthly counter continues (gaps are OK).',
+      'Blocked if any post-pay returns already exist. This cannot be undone.',
+    ].join(' '),
     prompt: {
       model: '',
       type: 'text',
@@ -758,31 +892,26 @@ async function confirmRevert(reason: ThriftSalesRevertReason) {
     cancel: { flat: true, label: 'Cancel', color: 'grey-8', noCaps: true },
     ok: {
       unelevated: true,
-      label: isReturn
-        ? force
-          ? 'Force Return Invoice'
-          : 'Return Invoice'
-        : 'Delete Mistake Invoice',
-      color: isReturn ? 'warning' : 'negative',
+      label: 'Delete Mistake Invoice',
+      color: 'negative',
       noCaps: true,
     },
     persistent: true,
   }).onOk((notes: string) => {
-    void runRevert(reason, notes, force);
+    void runStaffMistake(notes);
   });
 }
 
-async function runRevert(reason: ThriftSalesRevertReason, notes?: string, force = false) {
+async function runStaffMistake(notes?: string) {
   if (!tenantId.value || !invoice.value) return;
-  reverting.value = reason;
+  reverting.value = 'STAFF_MISTAKE';
   try {
     const result = await revertMutation.mutateAsync({
       tenantId: tenantId.value,
       invoiceId: invoice.value.id,
-      reason,
+      reason: 'STAFF_MISTAKE',
       revertedBy: authStore.user?.email || 'cashier',
       notes: notes?.trim() || undefined,
-      force: force || undefined,
     });
     if (result.deleted) {
       showSuccessNotification(
@@ -791,13 +920,10 @@ async function runRevert(reason: ThriftSalesRevertReason, notes?: string, force 
       await router.push(salesListPath.value);
       return;
     }
-    showSuccessNotification(
-      force ? 'Invoice force-returned and stock restored' : 'Invoice returned and stock restored',
-    );
     await loadInvoice();
   } catch (err: any) {
     showErrorNotification(
-      formatThriftActionableError(err, 'Failed to revert invoice'),
+      formatThriftActionableError(err, 'Failed to delete mistake invoice'),
     );
   } finally {
     reverting.value = null;

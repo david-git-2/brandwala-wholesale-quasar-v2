@@ -11984,6 +11984,7 @@ export type Database = {
           p_invoice_id: number
           p_notes?: string
           p_reason: string
+          p_return_courier_amount?: number
           p_reverted_by?: string
           p_tenant_id: number
         }

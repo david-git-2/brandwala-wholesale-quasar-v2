@@ -30,9 +30,9 @@ There is **no** separate delivery shipment table and **no** separate payment/col
 | Track | Invoice fields | Write RPC | Does not |
 | :--- | :--- | :--- | :--- |
 | **Parcel** | `delivery_status` (+ RTO close fields when no-pickup) | `update_thrift_delivery_status` (RTO may share `revert_thrift_sales_invoice`) | Set `PAID` |
-| **Cash** | `payment_status`, `cod_expected`, `cod_remitted_*` | `record_thrift_cod_remittance` (and write-off paths) | Change `delivery_status` or write PnL |
+| **Cash** | `payment_status`, `cod_expected`, `cod_remitted_*`, optional remittance notes on `notes` | `record_thrift_cod_remittance` only (`outcome` includes write-off) | Change `delivery_status`, fees, `cod_expected`, lines, or write PnL |
 
-`DELIVERED` ≠ `PAID`. Remittance can happen before or after deliver; either order is valid while invoice stays `ACTIVE` / `COD_PENDING` until cash settles (or `WRITTEN_OFF`).
+`DELIVERED` ≠ `PAID`. Remittance can happen before or after deliver; either order is valid while invoice stays `ACTIVE` / `COD_PENDING` until cash settles (or `WRITTEN_OFF`). Remittance is a **cash-facts** edit surface only — see [workflow.md](./workflow.md) §3.
 
 List filters / “COD queue” / delivery filters are **read projections** over invoice columns — not new write models.
 
@@ -102,10 +102,10 @@ Sale header = commercial document + Online parcel + COD + fee rows.
 | `packing_paid_by` | TEXT | No | `CUSTOMER` \| `SHOP`; required iff amount `> 0` |
 | `return_courier_amount` | NUMERIC(12,2) | Yes | **RTO only** shop return/RTO courier on invoice close; default `0`. Post-pay returns store fee on `thrift_sales_returns` |
 | `meta` | JSONB | No | Optional Online **extras only** — e.g. `{ "tracking_id", "tracking_url" }`. **Never** store fee amounts, payers, `courier_provider_id`, COD expected/remitted, or delivery status here (those are columns) |
-| `cod_expected` | NUMERIC(12,2) | No | Derived on Online COD create |
-| `cod_remitted_amount` | NUMERIC(12,2) | No | |
-| `cod_remitted_at` | TIMESTAMPTZ | No | |
-| `cod_remittance_ref` | TEXT | No | |
+| `cod_expected` | NUMERIC(12,2) | No | Derived on Online COD create; **immutable** at remittance (do not rewrite to accept shortfalls) |
+| `cod_remitted_amount` | NUMERIC(12,2) | No | Last remittance call **replaces** this value (not cumulative) |
+| `cod_remitted_at` | TIMESTAMPTZ | No | Timestamp of last remittance write |
+| `cod_remittance_ref` | TEXT | No | Optional statement / SMS / deposit ref from last remittance |
 | `close_reason` | TEXT | No | `null` while open/partial; `RTO` when no-pickup close; `CUSTOMER_RETURN` when **all** lines returned via returns |
 | `economics_closed_at` | TIMESTAMPTZ | No | Last PnL write/update time |
 | `created_by` | TEXT | Yes | |
@@ -122,11 +122,11 @@ Sale header = commercial document + Online parcel + COD + fee rows.
 
 | Status | When |
 | :--- | :--- |
-| `PAID` | Offline create; or Online after full remittance (and no full refund yet) |
-| `COD_PENDING` | Online COD — sale real, cash not remitted |
+| `PAID` | Offline create; or Online remittance `outcome = PAID` (staff may accept remitted &lt; `cod_expected`) |
+| `COD_PENDING` | Online COD — sale real; cash not settled (`outcome = KEEP_PENDING` leaves this) |
 | `PARTIALLY_REFUNDED` | Some lines returned; remainder still sold / cash settled |
 | `REFUNDED` | Full RTO or all lines returned |
-| `WRITTEN_OFF` | COD will never remit |
+| `WRITTEN_OFF` | COD will never remit — same remittance RPC with `outcome = WRITTEN_OFF` |
 
 `DELIVERED` does **not** auto-set `PAID`.
 
@@ -388,7 +388,7 @@ Monthly sequences for `INV-YYYY-MM-#####`. Optionally same pattern for `RET-YYYY
 | Mark `DELIVERED` | parcel only | No money change | Insert `DELIVERED` | — |
 | **RTO / no-pickup** | Soft close: `RETURNED`, `REFUNDED`, `close_reason=RTO`, all stock back | `REFUND` full; `LOSS` uncollected delivery + return courier; keep packing expense | All lines → `RTO` | Unchanged |
 | **Post-pay return** (partial/full) | Insert return + items; stock per condition; status `PARTIALLY_RETURNED` or `RETURNED`; payment `PARTIALLY_REFUNDED` or `REFUNDED` | `REFUND` = return `refund_amount`; `LOSS` = return courier | Returned lines → `CUSTOMER_RETURN` | Unchanged (return # separate) |
-| COD remittance | `PAID` / remitted fields | No row | No change | — |
+| COD remittance | Remitted fields + `payment_status` via `outcome` (`PAID` / stay `COD_PENDING` / `WRITTEN_OFF`); optional notes append | No row | No change | — |
 | `STAFF_MISTAKE` | Hard-delete invoice + lines; restore stock `AVAILABLE`; **block** if returns exist | Delete invoice ledger rows (no REFUND/LOSS) | Delete PnL | **Unchanged** (number gap OK) |
 
 Detail: [workflow.md](./workflow.md) §1 · §6 · [rpc/create_thrift_sales_invoice.md](./rpc/create_thrift_sales_invoice.md) · [rpc/revert_thrift_sales_invoice.md](./rpc/revert_thrift_sales_invoice.md).

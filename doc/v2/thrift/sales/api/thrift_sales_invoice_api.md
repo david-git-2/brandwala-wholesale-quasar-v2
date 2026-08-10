@@ -27,7 +27,8 @@ Schema: [../schema.md](../schema.md) · Workflow: [../workflow.md](../workflow.m
 
 Fees: `courier_*`, `cod_fee_*`, `packing_*`, `return_courier_amount`.  
 Tracks: `payment_status`, `delivery_status`, `close_reason`, `economics_closed_at`.  
-COD: `cod_expected`, `cod_remitted_*`.
+COD: `cod_expected` (set at create), `cod_remitted_*` via `record_thrift_cod_remittance` only — staff edits remitted amount / when / ref / outcome / notes; never fee columns or `cod_expected` on that call.  
+Write-off = same remittance RPC (`outcome = WRITTEN_OFF`).
 
 ## PnL line columns (high-signal)
 

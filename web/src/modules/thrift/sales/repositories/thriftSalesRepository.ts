@@ -138,7 +138,7 @@ export interface ThriftSalesInvoiceDetail extends Omit<ThriftSalesInvoiceListIte
   items: ThriftSalesInvoiceItemDetail[];
 }
 
-export type ThriftSalesRevertReason = 'RETURN' | 'STAFF_MISTAKE';
+export type ThriftSalesRevertReason = 'RTO' | 'STAFF_MISTAKE' | 'RETURN';
 
 function mapSaleChannel(value: unknown): ThriftSaleChannel {
   return value === 'ONLINE' ? 'ONLINE' : 'IN_STORE';
@@ -385,7 +385,7 @@ export const thriftSalesRepository = {
 
   /**
    * Advance Online parcel delivery_status. Does not change payment_status.
-   * RETURNED must go through revertSalesInvoice(RETURN).
+   * First DELIVERED writes PnL. RETURNED must go through revertSalesInvoice(RTO).
    */
   async updateDeliveryStatus(input: {
     tenantId: number;
@@ -444,7 +444,7 @@ export const thriftSalesRepository = {
 
   /**
    * Revert an ACTIVE invoice:
-   * - RETURN → legacy soft return (status RETURNED…) until full RTO RPC
+   * - RTO → soft-close Online refuse (legacy RETURN maps to RTO on server)
    * - STAFF_MISTAKE → hard-delete invoice/lines/ledger/PnL; restore stock; counter unchanged
    */
   async revertSalesInvoice(input: {
@@ -454,20 +454,26 @@ export const thriftSalesRepository = {
     revertedBy: string;
     notes?: string | undefined;
     force?: boolean | undefined;
+    returnCourierAmount?: number | undefined;
   }): Promise<{
     id: number;
     invoiceNumber: string;
     status: string;
     deleted: boolean;
     counterUnchanged?: boolean;
+    closeReason?: string | null;
   }> {
     const { data, error } = await supabase.rpc('revert_thrift_sales_invoice', {
       p_tenant_id: input.tenantId,
       p_invoice_id: input.invoiceId,
-      p_reason: input.reason,
+      p_reason: input.reason === 'RETURN' ? 'RTO' : input.reason,
       p_reverted_by: input.revertedBy,
       p_notes: input.notes || null,
       p_force: input.force === true,
+      p_return_courier_amount:
+        input.reason === 'RTO' || input.reason === 'RETURN'
+          ? Math.max(0, Number(input.returnCourierAmount) || 0)
+          : 0,
     });
 
     if (error) throw error;
@@ -479,6 +485,7 @@ export const thriftSalesRepository = {
       status: String(result?.status ?? ''),
       deleted: Boolean(result?.deleted),
       counterUnchanged: result?.counter_unchanged === true,
+      closeReason: result?.close_reason != null ? String(result.close_reason) : null,
     };
   },
 

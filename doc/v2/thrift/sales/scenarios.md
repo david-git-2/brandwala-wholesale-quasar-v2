@@ -79,8 +79,8 @@ Customer is asked to pay **3150** to the courier. Shop already spent **10** on p
 | A / ship 1 | 1000 | 3.33 | 400 | 596.67 |
 | B / ship 2 | 2000 | 6.67 | 900 | 1093.33 |
 
-**Remittance (separate):** courier pays shop ~`3150` (or less if disputes) → `payment_status = PAID`.  
-**No second `REVENUE`.** Remittance does not change PnL.
+**Remittance (separate):** courier pays shop ~`3150` (or less if disputes) → remittance RPC `outcome = PAID` (allowed even when remitted &lt; expected).  
+**No second `REVENUE`.** Remittance does not change PnL or `cod_expected`.
 
 **Invoice P&L:** revenue `3000`, cogs `1300`, fees `10`, net `1690`.  
 **Shipment P&L:** ship1 ≈ `596.67`, ship2 ≈ `1093.33`.
@@ -198,7 +198,7 @@ Invoice still `ACTIVE` + `COD_PENDING`, maybe already `DELIVERED`.
 
 ## 11. COD written off
 
-Courier will never remit. Staff sets `payment_status = WRITTEN_OFF` + notes.
+Courier will never remit. Staff calls `record_thrift_cod_remittance` with `outcome = WRITTEN_OFF` (+ notes) — same cash-track RPC as remittance, not a separate write path.
 
 | PnL | Unchanged (economics already closed on deliver/RTO) |
 | Cash | Drops out of COD outstanding |
