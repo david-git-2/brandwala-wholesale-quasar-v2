@@ -66,7 +66,10 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import InvoicePrintSheet from 'src/modules/invoice_shared/components/InvoicePrintSheet.vue';
-import type { InvoicePrintModel } from 'src/modules/invoice_shared/types/invoicePrintModel';
+import type {
+  InvoicePrintCharge,
+  InvoicePrintModel,
+} from 'src/modules/invoice_shared/types/invoicePrintModel';
 import {
   thriftSalesRepository,
   type ThriftSalesInvoiceDetail,
@@ -91,20 +94,42 @@ const printModel = computed<InvoicePrintModel>(() => {
     (sum, item) => sum + (item.discountAmount || 0) * (item.quantity || 1),
     0,
   );
-  const total = Number(inv?.totalInvoiceAmount ?? 0);
-  const isPaid = (inv?.paymentStatus || '').toLowerCase() === 'paid';
+  const itemTotal = Number(inv?.totalInvoiceAmount ?? 0);
+  const courierAmount = Number(inv?.courierAmount ?? 0);
+  const paymentStatus = (inv?.paymentStatus || '').toLowerCase().replace(/-/g, '_');
+  const isPaid = paymentStatus === 'paid';
+  const channelLabel = inv?.saleChannel === 'ONLINE' ? 'Online' : 'In-store';
+  const customerDue =
+    inv?.codExpected != null
+      ? Number(inv.codExpected)
+      : inv?.courierPaidBy === 'CUSTOMER' && courierAmount > 0
+        ? itemTotal + courierAmount
+        : itemTotal;
+  const charges: InvoicePrintCharge[] = [];
+  if (courierAmount > 0) {
+    charges.push({
+      type: 'courier',
+      label:
+        inv?.courierPaidBy === 'CUSTOMER'
+          ? 'Courier (customer)'
+          : 'Courier (shop expense)',
+      amount: courierAmount,
+    });
+  }
 
   return {
     id: inv?.id ?? 0,
     invoiceNo: inv?.invoiceNumber ?? '-',
     invoiceDate: inv?.date ? new Date(inv.date).toLocaleDateString() : '-',
-    invoiceType: 'thrift',
+    invoiceType: `Thrift · ${channelLabel}${
+      paymentStatus === 'cod_pending' ? ' · COD pending' : ''
+    }`,
     brandName: brandName.value,
     brandAddress: brandAddress.value,
     clientName: clientName.value || inv?.customerName || 'Walk-in Customer',
     recipientName: clientName.value || inv?.customerName || 'Walk-in Customer',
     recipientPhone: inv?.customerPhone ?? null,
-    recipientAddress: null,
+    recipientAddress: inv?.customerAddress ?? null,
     lines: items.map((item) => ({
       id: item.id,
       name: [item.stockName, item.barcode].filter(Boolean).join(' · ') || `Stock #${item.stockId}`,
@@ -112,12 +137,12 @@ const printModel = computed<InvoicePrintModel>(() => {
       unitPrice: item.sellPrice || 0,
       lineTotal: item.finalPrice || 0,
     })),
-    charges: [],
+    charges,
     subtotal,
     discount,
-    total,
-    paid: isPaid ? total : 0,
-    due: isPaid ? 0 : total,
+    total: inv?.saleChannel === 'ONLINE' ? customerDue : itemTotal,
+    paid: isPaid ? customerDue : 0,
+    due: isPaid ? 0 : customerDue,
     thankYouMessage: thankYouMessage.value,
     isWholesale: false,
   };

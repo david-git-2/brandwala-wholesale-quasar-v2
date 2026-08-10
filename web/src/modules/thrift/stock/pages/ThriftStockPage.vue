@@ -68,6 +68,8 @@
         @open-edit-dialog="openEditDialog"
         @confirm-delete="confirmDelete"
         @update-status="({ id, status }) => updateStatus(id, status)"
+        @open-hold-dialog="openHoldDialog"
+        @release-hold="releaseHold"
         @text-cell-save="({ row, field, val }) => onTextCellSave(row, field, val)"
         @section-save="({ row, val }) => onSectionSave(row, val)"
         @box-save="({ row, val }) => onBoxSave(row, val)"
@@ -112,6 +114,8 @@
         v-model="quickAddDialogOpen"
         v-model:form="quickAddForm"
         :shipments="shipments"
+        :categories="categories"
+        :types="types"
         :quick-add-filtered-boxes="quickAddFilteredBoxes"
         :condition-select-options="conditionSelectOptions"
         :quick-add-barcode-loading="quickAddBarcodeLoading"
@@ -127,6 +131,48 @@
         @submit="submitQuickAdd"
         @hide="onQuickAddDialogHide"
       />
+
+      <!-- Hold Dialog -->
+      <q-dialog v-model="holdDialogOpen" persistent>
+        <q-card style="min-width: 360px; max-width: 420px">
+          <q-card-section>
+            <div class="text-h6">Hold item</div>
+            <div class="text-caption text-grey-7 q-mt-xs">
+              {{ holdTarget?.barcode || holdTarget?.name || 'Stock' }} — removes from open sell until
+              release or invoice with the same phone.
+            </div>
+          </q-card-section>
+          <q-card-section class="q-gutter-y-sm">
+            <q-input
+              v-model="holdForm.heldForPhone"
+              label="Customer phone *"
+              dense
+              outlined
+              autofocus
+            />
+            <q-input v-model="holdForm.heldForName" label="Customer name" dense outlined />
+            <q-input
+              v-model="holdForm.holdNote"
+              label="Hold note"
+              dense
+              outlined
+              type="textarea"
+              autogrow
+            />
+          </q-card-section>
+          <q-card-actions align="right">
+            <q-btn flat no-caps label="Cancel" v-close-popup :disable="holdSubmitting" />
+            <q-btn
+              color="orange-8"
+              unelevated
+              no-caps
+              label="Place hold"
+              :loading="holdSubmitting"
+              @click="submitHold"
+            />
+          </q-card-actions>
+        </q-card>
+      </q-dialog>
 
       <!-- Barcode Preview Dialog -->
       <ThriftStockBarcodePreviewDialog
@@ -223,6 +269,8 @@ const queryParams = computed<ThriftStockQueryParams>(() => ({
   search: store.search,
   status: store.statusFilter,
   condition: store.conditionFilter,
+  // Avoid exact COUNT on filtered search; keeps large-tenant typeahead usable.
+  skip_count: !!store.search?.trim(),
 }));
 
 const { data: stocksQueryData, isLoading: queryLoading, isFetching: queryFetching } = useThriftStocksQuery(queryParams);
@@ -431,6 +479,13 @@ const {
   deleteItem,
   deleteSelectedItems,
   updateStatus,
+  holdDialogOpen,
+  holdSubmitting,
+  holdTarget,
+  holdForm,
+  openHoldDialog,
+  submitHold,
+  releaseHold,
   openBarcodePreview,
   copyPreviewBarcode,
   saveStockCell,

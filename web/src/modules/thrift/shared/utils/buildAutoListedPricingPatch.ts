@@ -8,10 +8,7 @@ export function buildAutoListedPricingPatch(
   breakdown: ThriftUnitCostBreakdown,
 ): ThriftStockPricing {
   const currentPricing = stock.pricing || {
-    cost_of_goods_sold: 0,
-    target_price: 0,
     listed_unit_price: 0,
-    extra_expense_cost: 0,
   };
   return {
     ...currentPricing,

@@ -8,7 +8,6 @@ const thriftBarcodeRoutes: RouteRecordRaw[] = [
     beforeEnter: createAccessGuard({
       loginRoute: 'admin-login-page',
       requiredScope: 'app',
-      allowedRoles: ['admin', 'staff'],
       requireTenantContext: true,
       requiredModule: 'thrift_barcode',
     }),
@@ -30,7 +29,6 @@ const thriftBarcodeRoutes: RouteRecordRaw[] = [
     beforeEnter: createAccessGuard({
       loginRoute: 'admin-login-page',
       requiredScope: 'app',
-      allowedRoles: ['admin', 'staff'],
       requireTenantContext: true,
       requiredModule: 'thrift_barcode',
     }),

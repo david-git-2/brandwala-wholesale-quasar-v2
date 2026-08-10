@@ -32,3 +32,39 @@ export function useThriftShipmentSalesReportQuery(
     staleTime: 30 * 1000,
   });
 }
+
+export function useThriftPeriodSalesReportQuery(
+  tenantId: Ref<number | null | undefined>,
+  dateFrom: Ref<string>,
+  dateTo: Ref<string>,
+  saleChannel: Ref<'IN_STORE' | 'ONLINE' | null>,
+) {
+  return useQuery({
+    queryKey: computed(() =>
+      thriftQueryKeys.salesReport({
+        tenantId: Number(tenantId.value) || 0,
+        dateFrom: dateFrom.value,
+        dateTo: dateTo.value,
+        saleChannel: saleChannel.value,
+      }),
+    ),
+    queryFn: () =>
+      thriftReportsRepository.getSalesReport({
+        tenantId: Number(tenantId.value),
+        dateFrom: dateFrom.value,
+        dateTo: dateTo.value,
+        saleChannel: saleChannel.value,
+      }),
+    enabled: computed(() => !!tenantId.value && !!dateFrom.value && !!dateTo.value),
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useThriftDashboardMetricsQuery(tenantId: Ref<number | null | undefined>) {
+  return useQuery({
+    queryKey: computed(() => thriftQueryKeys.dashboardMetrics(Number(tenantId.value) || 0)),
+    queryFn: () => thriftReportsRepository.getDashboardMetrics(Number(tenantId.value)),
+    enabled: computed(() => !!tenantId.value),
+    staleTime: 30 * 1000,
+  });
+}

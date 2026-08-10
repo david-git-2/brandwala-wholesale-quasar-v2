@@ -243,7 +243,7 @@ const lineColumns: QTableColumn[] = [
   { name: 'finalPrice', label: 'Final', field: 'finalPrice', align: 'right' },
   {
     name: 'landedUnitCostAtSale',
-    label: 'Landed cost',
+    label: 'Landed cost (live)',
     field: 'landedUnitCostAtSale',
     align: 'right',
   },

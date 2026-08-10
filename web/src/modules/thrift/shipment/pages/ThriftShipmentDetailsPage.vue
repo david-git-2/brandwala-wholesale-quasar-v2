@@ -22,8 +22,26 @@
         </template>
         <div class="text-subtitle2 text-weight-bold">No stock in this shipment yet</div>
         <div class="text-caption">
-          Register items in the mobile app or catalog page to populate this shipment.
+          Register items for this shipment, or generate barcodes first if the pool is empty.
         </div>
+        <template v-slot:action>
+          <q-btn
+            flat
+            no-caps
+            color="primary"
+            icon="ph ph-plus"
+            label="Register"
+            :to="emptyRegisterPath"
+          />
+          <q-btn
+            flat
+            no-caps
+            color="primary"
+            icon="ph ph-barcode"
+            label="Barcodes"
+            :to="emptyBarcodesPath"
+          />
+        </template>
       </q-banner>
 
     <div class="row q-col-gutter-md" v-else>
@@ -172,6 +190,7 @@
 import { ref, computed, watch, nextTick } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useRoute, useRouter } from 'vue-router';
+import { useQueryClient } from '@tanstack/vue-query';
 import ThriftShipmentDetailsSkeleton from '../components/ThriftShipmentDetailsSkeleton.vue';
 import ThriftShipmentDetailsHeader from '../components/ThriftShipmentDetailsHeader.vue';
 import ThriftShipmentCostInputsCard from '../components/ThriftShipmentCostInputsCard.vue';
@@ -191,12 +210,15 @@ import ThriftLandedCostBreakdownDialog from '../../stock/components/ThriftLanded
 import ThriftShipmentItemsTable from '../components/ThriftShipmentItemsTable.vue';
 import { computeThriftUnitCosts } from '../../shared/utils/computeThriftUnitCosts';
 import { buildAutoListedPricingPatch } from '../../shared/utils/buildAutoListedPricingPatch';
+import { formatThriftActionableError } from '../../shared/utils/formatThriftActionableError';
+import { thriftQueryKeys } from '../../shared/queryKeys/thriftQueryKeys';
 import { useQuasar } from 'quasar';
 import { useMembershipColumnPreference } from 'src/modules/membership/composables/useMembershipColumnPreference';
 import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
 
 
 const $q = useQuasar();
+const queryClient = useQueryClient();
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
@@ -225,13 +247,25 @@ const { data: settingsData } = useThriftSettingsQuery(tenantId);
 const settings = computed(() => settingsData.value || null);
 
 const shipmentIdRef = computed(() => Number(route.params.id) || null);
+const emptyRegisterPath = computed(() => {
+  const slug = authStore.tenantSlug || 'tenant';
+  const shipmentId = shipmentIdRef.value;
+  if (!shipmentId) return `/${slug}/app/thrift/stocks`;
+  return `/${slug}/app/thrift/stocks?shipmentId=${shipmentId}&quickAdd=1`;
+});
+const emptyBarcodesPath = computed(() => {
+  const slug = authStore.tenantSlug || 'tenant';
+  const shipmentId = shipmentIdRef.value;
+  if (!shipmentId) return `/${slug}/app/thrift/barcodes`;
+  return `/${slug}/app/thrift/barcodes?shipmentId=${shipmentId}`;
+});
 const { data: shipmentData, isLoading: shipmentLoading } = useThriftShipmentDetailQuery(
   tenantId,
   shipmentIdRef,
 );
 const shipment = computed(() => shipmentData.value || null);
 
-const { data: shipmentStocksData, isLoading: stocksLoading, refetch: refetchStocks } =
+const { data: shipmentStocksData, isLoading: stocksLoading } =
   useThriftStocksByShipmentQuery(tenantId, shipmentIdRef);
 const stocks = computed(() => shipmentStocksData.value || []);
 
@@ -467,15 +501,30 @@ async function saveShipmentCosts() {
     if (canEditListedPrice.value) {
       const autoStocks = stocks.value.filter((s) => !s.pricing?.is_listed_price_manual);
       if (autoStocks.length > 0) {
-        await Promise.all(
+        const updatedRows = await Promise.all(
           autoStocks.map(async (stock) => {
             const breakdown = costingBreakdowns.value[stock.id];
-            if (!breakdown) return;
+            if (!breakdown) return null;
             const pricing = buildAutoListedPricingPatch(stock, breakdown);
-            await thriftStockRepository.updateStock(stock.id, {}, pricing);
+            return thriftStockRepository.updateStock(stock.id, {}, pricing);
           }),
         );
-        await refetchStocks();
+        const byId = new Map(
+          updatedRows.filter((row): row is ThriftStock => !!row).map((row) => [row.id, row]),
+        );
+        if (byId.size > 0 && shipmentIdRef.value) {
+          queryClient.setQueryData(
+            thriftQueryKeys.stocks({
+              tenantId: tenantId.value,
+              shipmentId: shipmentIdRef.value,
+            }),
+            (old: ThriftStock[] | undefined) =>
+              (old || []).map((s) => {
+                const next = byId.get(s.id);
+                return next ? { ...s, ...next } : s;
+              }),
+          );
+        }
       }
     }
 
@@ -488,7 +537,7 @@ async function saveShipmentCosts() {
   } catch (err: unknown) {
     $q.notify({
       type: 'negative',
-      message: (err as Error).message || 'Failed to update shipment costs',
+      message: formatThriftActionableError(err, 'Failed to update shipment costs'),
     });
   }
 }
@@ -497,18 +546,28 @@ async function saveStockValue(row: ThriftStock, field: string, value: number) {
   if (!canEditLandedCost.value) return;
   try {
     const pricing = {
-      cost_of_goods_sold: Number(row.pricing?.cost_of_goods_sold) || 0,
-      target_price: Number(row.pricing?.target_price) || 0,
       listed_unit_price: Number(row.pricing?.listed_unit_price) || 0,
       is_listed_price_manual: !!row.pricing?.is_listed_price_manual,
-      extra_expense_cost: Number(row.pricing?.extra_expense_cost) || 0,
+      markup_rate_override: row.pricing?.markup_rate_override ?? null,
     };
 
-    await thriftStockRepository.updateStock(row.id, { [field]: value }, pricing);
-    await refetchStocks();
+    const updated = await thriftStockRepository.updateStock(row.id, { [field]: value }, pricing);
+    if (shipmentIdRef.value) {
+      queryClient.setQueryData(
+        thriftQueryKeys.stocks({
+          tenantId: tenantId.value,
+          shipmentId: shipmentIdRef.value,
+        }),
+        (old: ThriftStock[] | undefined) =>
+          (old || []).map((s) => (s.id === updated.id ? { ...s, ...updated } : s)),
+      );
+    }
     $q.notify({ type: 'positive', message: 'Item updated' });
   } catch (err: unknown) {
-    $q.notify({ type: 'negative', message: (err as Error).message || 'Update failed' });
+    $q.notify({
+      type: 'negative',
+      message: formatThriftActionableError(err, 'Update failed'),
+    });
   }
 }
 
@@ -539,12 +598,9 @@ async function saveStockPricingValue(row: ThriftStock, field: string, value: unk
 
     if (!isManual && shipment.value) {
       const currentPricing = {
-        cost_of_goods_sold: Number(row.pricing?.cost_of_goods_sold) || 0,
-        target_price: Number(row.pricing?.target_price) || 0,
         listed_unit_price: Number(row.pricing?.listed_unit_price) || 0,
         is_listed_price_manual: false,
         markup_rate_override: row.pricing?.markup_rate_override ?? null,
-        extra_expense_cost: Number(row.pricing?.extra_expense_cost) || 0,
         ...pricingPatch,
       };
 
@@ -565,20 +621,29 @@ async function saveStockPricingValue(row: ThriftStock, field: string, value: unk
     }
 
     const pricing = {
-      cost_of_goods_sold: Number(row.pricing?.cost_of_goods_sold) || 0,
-      target_price: Number(row.pricing?.target_price) || 0,
       listed_unit_price: Number(row.pricing?.listed_unit_price) || 0,
       is_listed_price_manual: !!row.pricing?.is_listed_price_manual,
       markup_rate_override: row.pricing?.markup_rate_override ?? null,
-      extra_expense_cost: Number(row.pricing?.extra_expense_cost) || 0,
       ...pricingPatch,
     };
 
-    await thriftStockRepository.updateStock(row.id, {}, pricing);
-    await refetchStocks();
+    const updated = await thriftStockRepository.updateStock(row.id, {}, pricing);
+    if (shipmentIdRef.value) {
+      queryClient.setQueryData(
+        thriftQueryKeys.stocks({
+          tenantId: tenantId.value,
+          shipmentId: shipmentIdRef.value,
+        }),
+        (old: ThriftStock[] | undefined) =>
+          (old || []).map((s) => (s.id === updated.id ? { ...s, ...updated } : s)),
+      );
+    }
     $q.notify({ type: 'positive', message: 'Price updated' });
   } catch (err: unknown) {
-    $q.notify({ type: 'negative', message: (err as Error).message || 'Update failed' });
+    $q.notify({
+      type: 'negative',
+      message: formatThriftActionableError(err, 'Update failed'),
+    });
   }
 }
 

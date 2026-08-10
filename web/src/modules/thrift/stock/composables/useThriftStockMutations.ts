@@ -102,7 +102,25 @@ export function useUpdateStockMutation() {
   return useMutation({
     mutationFn: ({ id, stock, pricing, imageUrl, driveFileId }: UpdateStockInput) =>
       thriftStockRepository.updateStock(id, stock, pricing, imageUrl, driveFileId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['thrift', 'stocks'] }),
+    onSuccess: (updated) => {
+      // Patch list / by-shipment caches instead of a full stocks refetch (F29).
+      queryClient.setQueriesData({ queryKey: ['thrift', 'stocks'] }, (old: unknown) => {
+        if (!old) return old;
+        if (Array.isArray(old)) {
+          return (old as ThriftStock[]).map((s) =>
+            s.id === updated.id ? { ...s, ...updated } : s,
+          );
+        }
+        const page = old as { data?: ThriftStock[] };
+        if (page.data && Array.isArray(page.data)) {
+          return {
+            ...page,
+            data: page.data.map((s) => (s.id === updated.id ? { ...s, ...updated } : s)),
+          };
+        }
+        return old;
+      });
+    },
   });
 }
 
@@ -122,6 +140,48 @@ export function useUpdateStockStatusMutation() {
   return useMutation({
     mutationFn: ({ id, status }: UpdateStockStatusInput) =>
       thriftStockRepository.updateStockStatus(id, status),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['thrift', 'stocks'] }),
+  });
+}
+
+export function useHoldStockMutation() {
+  const queryClient = useQueryClient();
+  const authStore = useAuthStore();
+
+  return useMutation({
+    mutationFn: (input: {
+      stockId: number;
+      heldForPhone: string;
+      heldForName?: string | null;
+      holdNote?: string | null;
+      holdExpiresAt?: string | null;
+    }) => {
+      const tenantId = authStore.tenantId;
+      if (!tenantId) throw new Error('Tenant required');
+      return thriftStockRepository.holdStock({
+        tenantId,
+        stockId: input.stockId,
+        heldForPhone: input.heldForPhone,
+        heldForName: input.heldForName,
+        holdNote: input.holdNote,
+        heldBy: authStore.user?.email ?? null,
+        holdExpiresAt: input.holdExpiresAt,
+      });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['thrift', 'stocks'] }),
+  });
+}
+
+export function useReleaseStockHoldMutation() {
+  const queryClient = useQueryClient();
+  const authStore = useAuthStore();
+
+  return useMutation({
+    mutationFn: (stockId: number) => {
+      const tenantId = authStore.tenantId;
+      if (!tenantId) throw new Error('Tenant required');
+      return thriftStockRepository.releaseStockHold(tenantId, stockId);
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['thrift', 'stocks'] }),
   });
 }

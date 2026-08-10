@@ -4,7 +4,6 @@ import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
 const thriftGuard = {
   loginRoute: 'admin-login-page' as const,
   requiredScope: 'app' as const,
-  allowedRoles: ['admin', 'staff'] as const,
   requireTenantContext: true,
 };
 

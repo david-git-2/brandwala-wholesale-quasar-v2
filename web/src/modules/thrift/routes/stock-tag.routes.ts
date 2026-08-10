@@ -8,7 +8,6 @@ const thriftStockTagRoutes: RouteRecordRaw[] = [
     beforeEnter: createAccessGuard({
       loginRoute: 'admin-login-page',
       requiredScope: 'app',
-      allowedRoles: ['admin', 'staff'],
       requireTenantContext: true,
       requiredModule: 'thrift_marketing_tag',
     }),
@@ -30,7 +29,6 @@ const thriftStockTagRoutes: RouteRecordRaw[] = [
     beforeEnter: createAccessGuard({
       loginRoute: 'admin-login-page',
       requiredScope: 'app',
-      allowedRoles: ['admin', 'staff'],
       requireTenantContext: true,
       requiredModule: 'thrift_marketing_tag',
     }),

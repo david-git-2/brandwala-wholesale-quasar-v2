@@ -6,6 +6,7 @@ import {
   type ModuleKey,
 } from 'src/modules/navigation/modulePermissions';
 import type { LocationQueryRaw, RouteLocationRaw } from 'vue-router';
+import { showWarningDialog } from 'src/utils/appFeedback';
 
 type GuardRoute = {
   name?: string | symbol | null | undefined;
@@ -39,6 +40,35 @@ export const mapShopRoleToAccessRole = (role: string): AccessRole | null => {
     default:
       return null;
   }
+};
+
+const ACCESS_DENIED_MESSAGE = 'You do not have permission to access this page.';
+
+const resolveAuthenticatedDenyTarget = ({
+  authStore,
+  requiredModule,
+}: {
+  authStore: ReturnType<typeof useAuthStore>;
+  requiredModule?: ModuleKey | undefined;
+}): string => {
+  const tenantSlug = authStore.tenantSlug;
+  const currentScope = authStore.scope;
+
+  if (currentScope === 'shop') {
+    return tenantSlug ? `/${tenantSlug}/shop/dashboard` : '/shop/dashboard';
+  }
+
+  if (requiredModule === 'global_shipment' || requiredModule === 'global_stock') {
+    return tenantSlug
+      ? `/${tenantSlug}/app/procurement/tenant-stock`
+      : '/app/procurement/tenant-stock';
+  }
+
+  return tenantSlug ? `/${tenantSlug}/app/dashboard` : '/app/dashboard';
+};
+
+const notifyAccessDenied = () => {
+  showWarningDialog(ACCESS_DENIED_MESSAGE, 'Access denied');
 };
 
 export const createAccessGuard = ({
@@ -91,8 +121,7 @@ export const createAccessGuard = ({
       !authStore.hasAccess ||
       (requiredScope !== undefined && currentScope !== requiredScope) ||
       (requireTenantContext === true && !hasTenantContext) ||
-      !memberRole ||
-      (allowedRoles !== undefined && !allowedRoles.includes(memberRole))
+      !memberRole
     ) {
       if (typeof loginRoute === 'function') {
         return loginRoute(to);
@@ -106,20 +135,14 @@ export const createAccessGuard = ({
       };
     }
 
+    if (allowedRoles !== undefined && !allowedRoles.includes(memberRole)) {
+      notifyAccessDenied();
+      return resolveAuthenticatedDenyTarget({ authStore, requiredModule });
+    }
+
     if (!hasRequiredModuleAccess) {
-      const tenantSlug = authStore.tenantSlug;
-
-      if (currentScope === 'shop') {
-        return tenantSlug ? `/${tenantSlug}/shop/dashboard` : '/shop/dashboard';
-      }
-
-      if (requiredModule === 'global_shipment' || requiredModule === 'global_stock') {
-        return tenantSlug
-          ? `/${tenantSlug}/app/procurement/tenant-stock`
-          : '/app/procurement/tenant-stock';
-      }
-
-      return tenantSlug ? `/${tenantSlug}/app/dashboard` : '/app/dashboard';
+      notifyAccessDenied();
+      return resolveAuthenticatedDenyTarget({ authStore, requiredModule });
     }
 
     if (validateAccess) {

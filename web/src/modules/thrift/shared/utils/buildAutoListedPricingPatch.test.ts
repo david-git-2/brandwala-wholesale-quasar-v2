@@ -10,9 +10,6 @@ describe('buildAutoListedPricingPatch', () => {
       listed_unit_price: 137,
       is_listed_price_manual: true,
       markup_rate_override: 0.5,
-      cost_of_goods_sold: 0,
-      target_price: 0,
-      extra_expense_cost: 0,
     },
   } as ThriftStock;
 

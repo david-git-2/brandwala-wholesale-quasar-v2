@@ -28,8 +28,20 @@
                 class="soft-input"
                 :rules="[(val) => val >= 0 || 'Cannot be negative']"
               />
+              <q-input
+                v-model.number="form.returnWindowDays"
+                type="number"
+                step="1"
+                min="0"
+                outlined
+                dense
+                label="Customer return window (days) *"
+                class="soft-input"
+                :rules="[(val) => val >= 0 || 'Cannot be negative']"
+              />
               <div class="text-caption text-grey-7">
-                Currency symbols come from the shipment when registering stock items.
+                Currency symbols come from the shipment when registering stock items. Set return
+                window to 0 to disable customer returns.
               </div>
             </q-form>
           </q-card-section>
@@ -148,6 +160,7 @@ const updateSettingsMutation = useUpdateThriftSettingsMutation(tenantId);
 
 const form = ref({
   defaultOriginUnitPrice: 0,
+  returnWindowDays: 30,
   handTagUnitCost: null as number | null,
   handTagUnitCurrencyId: null as number | null,
   stickerUnitCost: null as number | null,
@@ -160,6 +173,7 @@ watchEffect(() => {
   }
   if (settings.value) {
     form.value.defaultOriginUnitPrice = settings.value.default_origin_unit_price ?? 0;
+    form.value.returnWindowDays = settings.value.return_window_days ?? 30;
     form.value.handTagUnitCost = settings.value.hand_tag_unit_cost ?? null;
     form.value.handTagUnitCurrencyId =
       settings.value.hand_tag_unit_currency_id || preferenceStore.thriftDefaultCostCurrencyId;
@@ -179,10 +193,15 @@ async function save() {
     $q.notify({ type: 'negative', message: 'Default origin unit price cannot be negative' });
     return;
   }
+  if (form.value.returnWindowDays < 0) {
+    $q.notify({ type: 'negative', message: 'Return window days cannot be negative' });
+    return;
+  }
 
   try {
     await updateSettingsMutation.mutateAsync({
       defaultOriginUnitPrice: form.value.defaultOriginUnitPrice,
+      returnWindowDays: form.value.returnWindowDays,
       handTagUnitCost: form.value.handTagUnitCost,
       handTagUnitCurrencyId: form.value.handTagUnitCurrencyId,
       stickerUnitCost: form.value.stickerUnitCost,

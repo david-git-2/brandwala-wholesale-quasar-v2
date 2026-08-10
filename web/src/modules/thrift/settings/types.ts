@@ -5,6 +5,7 @@ export interface ThriftSettings {
   hand_tag_unit_currency_id?: number | null;
   sticker_unit_cost?: number | null;
   sticker_unit_currency_id?: number | null;
+  return_window_days: number;
   created_at: string;
   updated_at: string;
 }
@@ -15,4 +16,5 @@ export interface ThriftSettingsInput {
   handTagUnitCurrencyId?: number | null;
   stickerUnitCost?: number | null;
   stickerUnitCurrencyId?: number | null;
+  returnWindowDays: number;
 }

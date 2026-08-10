@@ -2,6 +2,11 @@
 import { computed } from 'vue';
 import { formatThriftAmount } from 'src/modules/thrift/currency/utils/formatMoney';
 import type { ThriftCurrency } from 'src/modules/thrift/currency/types';
+import type { ThriftSection } from '../types';
+import { resolveTypeIcon } from 'src/modules/thrift/type/utils/typeIcon';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+
+const authStore = useAuthStore();
 
 interface ShipmentOption {
   id: number;
@@ -16,9 +21,23 @@ interface BoxOption {
   shipment_id?: number | null;
 }
 
+interface CategoryOption {
+  id: number;
+  name: string;
+}
+
+interface TypeOption {
+  id: number;
+  name: string;
+  icon?: string | null;
+}
+
 interface QuickAddForm {
   shipment_id: number | null;
   box_id: number | null;
+  category_id: number | null;
+  type_id: number | null;
+  section: ThriftSection | null;
   barcode: string;
   brand_name: string;
   condition: string;
@@ -27,10 +46,20 @@ interface QuickAddForm {
   pendingBlob: Blob | null;
 }
 
+const sectionOptions: Array<{ label: string; value: ThriftSection }> = [
+  { label: 'Male', value: 'MALE' },
+  { label: 'Female', value: 'FEMALE' },
+  { label: 'Unisex', value: 'UNISEX' },
+  { label: 'Kids', value: 'KIDS' },
+  { label: 'Home', value: 'HOME' },
+];
+
 const props = defineProps<{
   modelValue: boolean;
   form: QuickAddForm;
   shipments: ShipmentOption[];
+  categories: CategoryOption[];
+  types: TypeOption[];
   quickAddFilteredBoxes: BoxOption[];
   conditionSelectOptions: Array<{ label: string; value: string }>;
   quickAddBarcodeLoading: boolean;
@@ -64,7 +93,7 @@ function updateFormField<K extends keyof QuickAddForm>(key: K, val: QuickAddForm
 
 <template>
   <q-dialog v-model="isOpen" persistent @hide="emit('hide')">
-    <q-card style="width: 450px; max-width: 95vw" class="floating-surface shadow-2 q-pa-md">
+    <q-card style="width: 480px; max-width: 95vw" class="floating-surface shadow-2 q-pa-md">
       <q-card-section class="row items-center justify-between q-pb-sm">
         <div class="text-h6 text-weight-bold">Quick Register Stock</div>
         <q-btn flat round dense icon="ph ph-x" v-close-popup />
@@ -102,6 +131,69 @@ function updateFormField<K extends keyof QuickAddForm>(key: K, val: QuickAddForm
             @update:model-value="(val) => updateFormField('box_id', val)"
           />
 
+          <div class="row q-col-gutter-sm">
+            <div class="col-12 col-sm-6">
+              <q-select
+                :model-value="form.category_id"
+                outlined
+                dense
+                label="Category *"
+                :options="categories"
+                option-value="id"
+                option-label="name"
+                emit-value
+                map-options
+                class="soft-input"
+                :rules="[(val) => !!val || 'Required']"
+                @update:model-value="(val) => updateFormField('category_id', val)"
+              />
+            </div>
+            <div class="col-12 col-sm-6">
+              <q-select
+                :model-value="form.type_id"
+                outlined
+                dense
+                label="Type *"
+                :options="types"
+                option-value="id"
+                option-label="name"
+                emit-value
+                map-options
+                class="soft-input"
+                :rules="[(val) => !!val || 'Required']"
+                @update:model-value="(val) => updateFormField('type_id', val)"
+              >
+                <template #option="scope">
+                  <q-item v-bind="scope.itemProps">
+                    <q-item-section avatar>
+                      <q-icon :name="resolveTypeIcon(scope.opt.icon)" />
+                    </q-item-section>
+                    <q-item-section>{{ scope.opt.name }}</q-item-section>
+                  </q-item>
+                </template>
+                <template #selected-item="scope">
+                  <span v-if="scope.opt" class="row items-center no-wrap">
+                    <q-icon :name="resolveTypeIcon(scope.opt.icon)" class="q-mr-sm" />
+                    {{ scope.opt.name }}
+                  </span>
+                </template>
+              </q-select>
+            </div>
+          </div>
+
+          <q-select
+            :model-value="form.section"
+            outlined
+            dense
+            label="Section *"
+            :options="sectionOptions"
+            emit-value
+            map-options
+            class="soft-input"
+            :rules="[(val) => !!val || 'Required']"
+            @update:model-value="(val) => updateFormField('section', val)"
+          />
+
           <q-input
             :model-value="form.brand_name"
             outlined
@@ -137,7 +229,7 @@ function updateFormField<K extends keyof QuickAddForm>(key: K, val: QuickAddForm
             @update:model-value="(val) => updateFormField('product_weight', Number(val ?? 0))"
           />
 
-          <!-- Upload Area -->
+          <!-- Upload Area (optional) -->
           <div
             class="text-center q-pa-md border-dashed rounded-borders bg-grey-1 cursor-pointer"
             @click="emit('open-uploader')"
@@ -155,9 +247,9 @@ function updateFormField<K extends keyof QuickAddForm>(key: K, val: QuickAddForm
             <div v-else class="q-py-md">
               <q-icon name="ph ph-cloud-arrow-up" size="40px" color="primary" />
               <div class="text-subtitle2 text-weight-bold text-grey-8 q-mt-xs">
-                Select Image *
+                Photo (optional)
               </div>
-              <div class="text-caption text-grey-6">Click to choose your item photo</div>
+              <div class="text-caption text-grey-6">Click to add a photo, or skip</div>
             </div>
           </div>
 
@@ -177,9 +269,23 @@ function updateFormField<K extends keyof QuickAddForm>(key: K, val: QuickAddForm
             </div>
             <div
               v-else-if="form.shipment_id && !form.barcode"
-              class="text-caption text-negative q-mt-xs"
+              class="column q-gutter-y-xs q-mt-xs"
             >
-              No available barcode found. Generate barcodes first.
+              <div class="text-caption text-negative">
+                No available barcode in the pool for this shipment.
+              </div>
+              <div>
+                <q-btn
+                  dense
+                  flat
+                  no-caps
+                  color="primary"
+                  icon="ph ph-barcode"
+                  label="Generate barcodes"
+                  class="q-px-none"
+                  :to="`/${authStore.tenantSlug || 'tenant'}/app/thrift/barcodes`"
+                />
+              </div>
             </div>
           </div>
 
@@ -202,7 +308,7 @@ function updateFormField<K extends keyof QuickAddForm>(key: K, val: QuickAddForm
           no-caps
           size="sm"
           class="pill-btn slim-btn px-md"
-          label="Submit & Edit Details"
+          label="Register"
           :loading="quickSubmitting"
           :disabled="!canSubmitQuickAdd"
           @click="emit('submit')"

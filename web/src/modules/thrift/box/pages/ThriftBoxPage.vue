@@ -9,6 +9,7 @@
         </div>
         <div class="col-auto">
           <q-btn
+            v-if="canCreate"
             color="primary"
             unelevated
             no-caps
@@ -56,6 +57,7 @@
           <template #body-cell-actions="props">
             <q-td :props="props" class="text-right q-gutter-x-xs">
               <q-btn
+                v-if="canEdit"
                 flat
                 round
                 dense
@@ -67,6 +69,7 @@
                 <q-tooltip>Edit</q-tooltip>
               </q-btn>
               <q-btn
+                v-if="canDelete"
                 flat
                 round
                 dense
@@ -173,6 +176,7 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useQuasar, type QTableColumn } from 'quasar';
 import { supabase } from 'src/boot/supabase';
 import { useQueryClient } from '@tanstack/vue-query';
+import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
 import ThriftBoxSkeleton from '../components/ThriftBoxSkeleton.vue';
 import { useThriftBoxesQuery } from '../../shared/composables/useThriftMasterDataQuery';
 import { useThriftShipmentsQuery } from '../../shipment/composables/useThriftShipmentQuery';
@@ -181,6 +185,11 @@ import { thriftQueryKeys } from '../../shared/queryKeys/thriftQueryKeys';
 const $q = useQuasar();
 const authStore = useAuthStore();
 const queryClient = useQueryClient();
+const { hasModuleAccess } = useModulePermissions();
+
+const canCreate = computed(() => hasModuleAccess('thrift_box', 'create'));
+const canEdit = computed(() => hasModuleAccess('thrift_box', 'edit'));
+const canDelete = computed(() => hasModuleAccess('thrift_box', 'delete'));
 
 const tenantIdRef = computed(() => authStore.tenantId ?? 0);
 
@@ -242,6 +251,7 @@ function getShipmentName(shipmentId: number) {
 
 function openDialog(row?: Record<string, unknown>) {
   if (row) {
+    if (!canEdit.value) return;
     editingId.value = row.id as number;
     form.value = {
       name: row.name as string,
@@ -250,6 +260,7 @@ function openDialog(row?: Record<string, unknown>) {
       received_weight: (row.received_weight as number) || 0,
     };
   } else {
+    if (!canCreate.value) return;
     editingId.value = null;
     form.value = {
       name: '',
@@ -262,6 +273,7 @@ function openDialog(row?: Record<string, unknown>) {
 }
 
 async function save() {
+  if (editingId.value ? !canEdit.value : !canCreate.value) return;
   if (!authStore.tenantId || !form.value.name || !form.value.shipment_id) return;
   $q.loading.show();
   try {
@@ -298,12 +310,13 @@ async function save() {
 }
 
 function confirmDelete(row: Record<string, unknown>) {
+  if (!canDelete.value) return;
   selectedRow.value = row;
   deleteConfirmOpen.value = true;
 }
 
 async function deleteItem() {
-  if (!selectedRow.value) return;
+  if (!selectedRow.value || !canDelete.value) return;
   $q.loading.show();
   try {
     const { error } = await supabase.from('thrift_boxes').delete().eq('id', selectedRow.value.id);

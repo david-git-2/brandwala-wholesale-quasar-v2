@@ -16,6 +16,8 @@ export interface ThriftStockListParams {
   search?: string;
   status?: string | null;
   condition?: string | null;
+  /** Skip exact COUNT(*) on direct query path (search/typeahead). RPCs ignore this until migrated. */
+  skip_count?: boolean;
 }
 
 export interface ThriftStockListResult {
@@ -54,12 +56,9 @@ interface ThriftStockDbRow {
   created_at: string;
   updated_at: string;
   thrift_pricings?: Array<{
-    cost_of_goods_sold: number;
-    target_price: number;
     listed_unit_price: number;
     is_listed_price_manual?: boolean;
     markup_rate_override?: number | null;
-    extra_expense_cost?: number;
   }>;
   thrift_stock_images?: Array<{
     image_url: string;
@@ -74,25 +73,20 @@ interface ThriftStockDbRow {
 
 interface ThriftStockPaginatedRow extends ThriftStockDbRow {
   pricing?: {
-    cost_of_goods_sold: number;
-    target_price: number;
     listed_unit_price: number;
     is_listed_price_manual?: boolean;
     markup_rate_override?: number | null;
-    extra_expense_cost?: number;
   };
   image_url?: string | null;
   drive_file_id?: string | null;
   measurements?: ThriftStockMeasurements | null;
 }
 
+/** Sell-facing pricing only — never persist stored COGS (engine + sale snapshot). */
 export interface ThriftStockPricingInput {
-  cost_of_goods_sold: number;
-  target_price: number;
   listed_unit_price: number;
   is_listed_price_manual?: boolean | null | undefined;
   markup_rate_override?: number | null | undefined;
-  extra_expense_cost?: number | null | undefined;
 }
 
 async function upsertStockPricing(
@@ -109,12 +103,9 @@ async function upsertStockPricing(
 
   const pricingRow = {
     stock_id: stockId,
-    cost_of_goods_sold: pricing.cost_of_goods_sold,
-    target_price: pricing.target_price,
     listed_unit_price: pricing.listed_unit_price,
     is_listed_price_manual: pricing.is_listed_price_manual ?? false,
     markup_rate_override: pricing.markup_rate_override ?? null,
-    extra_expense_cost: pricing.extra_expense_cost ?? 0,
     inserted_by: insertedBy,
   };
 
@@ -165,20 +156,14 @@ function shouldFallbackToDirectQuery(error: {
 }
 
 function mapPricingRow(pricing: {
-  cost_of_goods_sold?: number | null;
-  target_price?: number | null;
   listed_unit_price?: number | null;
   is_listed_price_manual?: boolean | null;
   markup_rate_override?: number | null;
-  extra_expense_cost?: number | null;
 }) {
   return {
-    cost_of_goods_sold: Number(pricing.cost_of_goods_sold) || 0,
-    target_price: Number(pricing.target_price) || 0,
     listed_unit_price: Number(pricing.listed_unit_price) || 0,
     is_listed_price_manual: !!pricing.is_listed_price_manual,
     markup_rate_override: pricing.markup_rate_override ?? null,
-    extra_expense_cost: Number(pricing.extra_expense_cost) || 0,
   };
 }
 
@@ -186,12 +171,9 @@ function mapPaginatedRows(rows: ThriftStockPaginatedRow[]): ThriftStock[] {
   return rows.map((stock) => {
     const pricing = stock.pricing ??
       stock.thrift_pricings?.[0] ?? {
-        cost_of_goods_sold: 0,
-        target_price: 0,
         listed_unit_price: 0,
         is_listed_price_manual: false,
         markup_rate_override: null,
-        extra_expense_cost: 0,
       };
     const primaryImage =
       stock.thrift_stock_images?.find((img) => img.is_primary) || stock.thrift_stock_images?.[0];
@@ -258,18 +240,16 @@ async function fetchStocksPaginatedDirect(
   const to = from + pageSize - 1;
   const search = escapeIlike(params.search?.trim() || '');
 
+  const skipCount = !!params.skip_count;
   let query = supabase
     .from('thrift_stocks')
     .select(
       `
         *,
         thrift_pricings (
-          cost_of_goods_sold,
-          target_price,
           listed_unit_price,
           is_listed_price_manual,
-          markup_rate_override,
-          extra_expense_cost
+          markup_rate_override
         ),
         thrift_stock_images (
           image_url,
@@ -280,7 +260,7 @@ async function fetchStocksPaginatedDirect(
           *
         )
       `,
-      { count: 'exact' },
+      skipCount ? {} : { count: 'exact' },
     )
     .eq('tenant_id', params.tenantId)
     .order('created_at', { ascending: false });
@@ -302,11 +282,15 @@ async function fetchStocksPaginatedDirect(
   const { data, error, count } = await query.range(from, to);
   if (error) throw error;
 
-  const total = count ?? 0;
+  const rows = data || [];
+  // When count is skipped, allow "next" if the page is full.
+  const total = skipCount
+    ? from + rows.length + (rows.length === pageSize ? 1 : 0)
+    : (count ?? 0);
   const totalPages = total === 0 ? 0 : Math.ceil(total / pageSize);
 
   return {
-    data: mapPaginatedRows((data || []) as ThriftStockPaginatedRow[]),
+    data: mapPaginatedRows(rows as ThriftStockPaginatedRow[]),
     meta: {
       total,
       page,
@@ -318,6 +302,11 @@ async function fetchStocksPaginatedDirect(
 
 export const thriftStockRepository = {
   async fetchStocksPaginated(params: ThriftStockListParams): Promise<ThriftStockListResult> {
+    // Direct path honors skip_count; thrift list RPCs do not support it yet.
+    if (params.skip_count) {
+      return fetchStocksPaginatedDirect(params);
+    }
+
     try {
       return await fetchStocksPaginatedViaRpc(params);
     } catch (error) {
@@ -335,7 +324,18 @@ export const thriftStockRepository = {
   async fetchStocks(tenantId: number): Promise<ThriftStock[]> {
     const { data, error } = await supabase
       .from('thrift_stocks')
-      .select('*, thrift_pricings(*), thrift_stock_images(*), thrift_stock_measurements(*)')
+      .select(
+        `
+        *,
+        thrift_pricings (
+          listed_unit_price,
+          is_listed_price_manual,
+          markup_rate_override
+        ),
+        thrift_stock_images(*),
+        thrift_stock_measurements(*)
+      `,
+      )
       .eq('tenant_id', tenantId)
       .order('created_at', { ascending: false });
     if (error) throw error;
@@ -349,7 +349,13 @@ export const thriftStockRepository = {
 
       return {
         ...stock,
-        pricing: stock.thrift_pricings?.[0] || stock.thrift_pricings || undefined,
+        pricing: mapPricingRow(
+          stock.thrift_pricings?.[0] || {
+            listed_unit_price: 0,
+            is_listed_price_manual: false,
+            markup_rate_override: null,
+          },
+        ),
         image_url: primaryImage?.image_url || undefined,
         drive_file_id: primaryImage?.drive_file_id || undefined,
         measurements: measurements || null,
@@ -496,7 +502,39 @@ export const thriftStockRepository = {
   },
 
   async updateStockStatus(id: number, status: string): Promise<void> {
+    if (status === 'RESERVED') {
+      throw new Error('Use holdStock to place a hold (RESERVED)');
+    }
     const { error } = await supabase.from('thrift_stocks').update({ status }).eq('id', id);
+    if (error) throw error;
+  },
+
+  async holdStock(input: {
+    tenantId: number;
+    stockId: number;
+    heldForPhone: string;
+    heldForName?: string | null | undefined;
+    holdNote?: string | null | undefined;
+    heldBy?: string | null | undefined;
+    holdExpiresAt?: string | null | undefined;
+  }): Promise<void> {
+    const { error } = await supabase.rpc('hold_thrift_stock', {
+      p_tenant_id: input.tenantId,
+      p_stock_id: input.stockId,
+      p_held_for_phone: input.heldForPhone,
+      p_held_for_name: input.heldForName ?? null,
+      p_hold_note: input.holdNote ?? null,
+      p_held_by: input.heldBy ?? null,
+      p_hold_expires_at: input.holdExpiresAt ?? null,
+    });
+    if (error) throw error;
+  },
+
+  async releaseStockHold(tenantId: number, stockId: number): Promise<void> {
+    const { error } = await supabase.rpc('release_thrift_stock_hold', {
+      p_tenant_id: tenantId,
+      p_stock_id: stockId,
+    });
     if (error) throw error;
   },
 
@@ -597,7 +635,18 @@ export const thriftStockRepository = {
   async fetchStocksByShipment(tenantId: number, shipmentId: number): Promise<ThriftStock[]> {
     const { data, error } = await supabase
       .from('thrift_stocks')
-      .select('*, thrift_pricings(*), thrift_stock_images(*), thrift_stock_measurements(*)')
+      .select(
+        `
+        *,
+        thrift_pricings (
+          listed_unit_price,
+          is_listed_price_manual,
+          markup_rate_override
+        ),
+        thrift_stock_images(*),
+        thrift_stock_measurements(*)
+      `,
+      )
       .eq('tenant_id', tenantId)
       .eq('shipment_id', shipmentId)
       .order('created_at', { ascending: false });
@@ -612,7 +661,13 @@ export const thriftStockRepository = {
 
       return {
         ...stock,
-        pricing: stock.thrift_pricings?.[0] || stock.thrift_pricings || undefined,
+        pricing: mapPricingRow(
+          stock.thrift_pricings?.[0] || {
+            listed_unit_price: 0,
+            is_listed_price_manual: false,
+            markup_rate_override: null,
+          },
+        ),
         image_url: primaryImage?.image_url || undefined,
         drive_file_id: primaryImage?.drive_file_id || undefined,
         measurements: measurements || null,

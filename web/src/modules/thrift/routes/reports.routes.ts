@@ -4,7 +4,6 @@ import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
 const thriftGuard = {
   loginRoute: 'admin-login-page' as const,
   requiredScope: 'app' as const,
-  allowedRoles: ['admin', 'staff'] as const,
   requireTenantContext: true,
 };
 
@@ -26,6 +25,15 @@ const routes: RouteRecordRaw[] = [
         meta: {
           title: 'Thrift Reports',
           headerTitle: 'Thrift Reports',
+        },
+      },
+      {
+        path: 'sales',
+        name: 'thrift-sales-report',
+        component: () => import('../reports/pages/ThriftSalesReportPage.vue'),
+        meta: {
+          title: 'Thrift Sales Report',
+          headerTitle: 'Thrift Sales Report',
         },
       },
       {

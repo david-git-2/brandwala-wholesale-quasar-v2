@@ -10,6 +10,7 @@ export interface ThriftStockQueryParams {
   search?: string;
   status?: string | null;
   condition?: string | null;
+  skip_count?: boolean;
 }
 
 export function useThriftStocksQuery(params: Ref<ThriftStockQueryParams>) {

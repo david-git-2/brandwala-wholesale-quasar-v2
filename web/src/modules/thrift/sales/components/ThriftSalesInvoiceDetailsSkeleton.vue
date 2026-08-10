@@ -1,5 +1,19 @@
 <template>
   <div class="q-gutter-y-md">
+    <!-- Status tracks skeleton -->
+    <q-card flat bordered class="q-pa-sm">
+      <div class="row items-center q-gutter-xs">
+        <q-skeleton type="text" width="70px" height="16px" class="q-mr-sm" />
+        <q-skeleton v-for="n in 4" :key="`d-${n}`" type="QBtn" width="90px" height="28px" />
+      </div>
+    </q-card>
+    <q-card flat bordered class="q-pa-sm">
+      <div class="row items-center q-gutter-xs">
+        <q-skeleton type="text" width="70px" height="16px" class="q-mr-sm" />
+        <q-skeleton v-for="n in 2" :key="`p-${n}`" type="QBtn" width="110px" height="28px" />
+      </div>
+    </q-card>
+
     <div class="row q-col-gutter-md">
       <!-- Left / Main column -->
       <div class="col-12 col-lg-8 q-gutter-y-md">

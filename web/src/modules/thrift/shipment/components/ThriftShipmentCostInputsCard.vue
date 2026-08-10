@@ -58,7 +58,7 @@
             min="0"
             outlined
             dense
-            label="Cargo Conv. Rate"
+            label="Cargo conversion"
             class="soft-input"
             :readonly="!canEditLandedCost"
             @update:model-value="(val) => updateCostField('cargo_conversion_rate', val)"
@@ -116,7 +116,7 @@
             min="0"
             outlined
             dense
-            label="Product Conv. Rate"
+            label="Product conversion"
             class="soft-input"
             :readonly="!canEditLandedCost"
             @update:model-value="(val) => updateCostField('product_conversion_rate', val)"

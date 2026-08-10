@@ -6,6 +6,8 @@ import {
   useUpdateStockMutation,
   useUpdateStockStatusMutation,
   useDeleteStockMutation,
+  useHoldStockMutation,
+  useReleaseStockHoldMutation,
 } from './useThriftStockMutations';
 import { deleteStockCloudinaryImageStrict } from 'src/utils/stockImageClient';
 import {
@@ -15,6 +17,7 @@ import {
 import { downloadCsv, rowsToCsv } from 'src/utils/csvExport';
 import { formatThriftStockMeasurements } from 'src/modules/thrift/shared/utils/formatThriftStockMeasurements';
 import { computeThriftUnitCosts, type ThriftUnitCostBreakdown } from 'src/modules/thrift/shared/utils/computeThriftUnitCosts';
+import { formatThriftActionableError } from 'src/modules/thrift/shared/utils/formatThriftActionableError';
 import type { ThriftCurrency } from 'src/modules/thrift/currency/types';
 import type { ShipmentOption } from './useThriftStockCosting';
 
@@ -36,6 +39,8 @@ export function useThriftStockActions(
   const updateStockMutation = useUpdateStockMutation();
   const updateStockStatusMutation = useUpdateStockStatusMutation();
   const deleteStockMutation = useDeleteStockMutation();
+  const holdStockMutation = useHoldStockMutation();
+  const releaseStockHoldMutation = useReleaseStockHoldMutation();
 
   // Selection state
   const selectedStockIds = ref<number[]>([]);
@@ -47,6 +52,14 @@ export function useThriftStockActions(
   const bulkDeleteConfirmOpen = ref(false);
   const bulkDeleteLoading = ref(false);
   const csvExportLoading = ref(false);
+  const holdDialogOpen = ref(false);
+  const holdSubmitting = ref(false);
+  const holdTarget = ref<ThriftStock | null>(null);
+  const holdForm = ref({
+    heldForPhone: '',
+    heldForName: '',
+    holdNote: '',
+  });
 
   // Barcode preview
   const barcodePreviewOpen = ref(false);
@@ -140,7 +153,7 @@ export function useThriftStockActions(
       deleteConfirmOpen.value = false;
       selectedRow.value = null;
     } catch (err: unknown) {
-      $q.notify({ type: 'negative', message: (err as Error).message || 'Delete failed' });
+      $q.notify({ type: 'negative', message: formatThriftActionableError(err, 'Delete failed') });
     } finally {
       deleteLoading.value = false;
     }
@@ -189,7 +202,7 @@ export function useThriftStockActions(
       selectedStockIds.value = [];
       bulkDeleteConfirmOpen.value = false;
     } catch (err: unknown) {
-      $q.notify({ type: 'negative', message: (err as Error).message || 'Bulk delete failed' });
+      $q.notify({ type: 'negative', message: formatThriftActionableError(err, 'Bulk delete failed') });
     } finally {
       bulkDeleteLoading.value = false;
     }
@@ -200,7 +213,51 @@ export function useThriftStockActions(
       await updateStockStatusMutation.mutateAsync({ id, status });
       $q.notify({ type: 'positive', message: `Stock status updated to ${status}` });
     } catch (err: unknown) {
-      $q.notify({ type: 'negative', message: (err as Error).message || 'Failed to update status' });
+      $q.notify({ type: 'negative', message: formatThriftActionableError(err, 'Failed to update status') });
+    }
+  }
+
+  function openHoldDialog(row: ThriftStock) {
+    holdTarget.value = row;
+    holdForm.value = {
+      heldForPhone: '',
+      heldForName: '',
+      holdNote: '',
+    };
+    holdDialogOpen.value = true;
+  }
+
+  async function submitHold() {
+    const row = holdTarget.value;
+    if (!row) return;
+    const phone = holdForm.value.heldForPhone.trim();
+    if (!phone) {
+      $q.notify({ type: 'warning', message: 'Customer phone is required for a hold' });
+      return;
+    }
+    holdSubmitting.value = true;
+    try {
+      await holdStockMutation.mutateAsync({
+        stockId: row.id,
+        heldForPhone: phone,
+        heldForName: holdForm.value.heldForName.trim() || null,
+        holdNote: holdForm.value.holdNote.trim() || null,
+      });
+      holdDialogOpen.value = false;
+      $q.notify({ type: 'positive', message: 'Item placed on hold (RESERVED)' });
+    } catch (err: unknown) {
+      $q.notify({ type: 'negative', message: formatThriftActionableError(err, 'Failed to place hold') });
+    } finally {
+      holdSubmitting.value = false;
+    }
+  }
+
+  async function releaseHold(row: ThriftStock) {
+    try {
+      await releaseStockHoldMutation.mutateAsync(row.id);
+      $q.notify({ type: 'positive', message: 'Hold released — item is AVAILABLE again' });
+    } catch (err: unknown) {
+      $q.notify({ type: 'negative', message: formatThriftActionableError(err, 'Failed to release hold') });
     }
   }
 
@@ -445,6 +502,13 @@ export function useThriftStockActions(
     deleteItem,
     deleteSelectedItems,
     updateStatus,
+    holdDialogOpen,
+    holdSubmitting,
+    holdTarget,
+    holdForm,
+    openHoldDialog,
+    submitHold,
+    releaseHold,
     openBarcodePreview,
     copyPreviewBarcode,
     saveStockCell,

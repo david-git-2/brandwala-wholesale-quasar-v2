@@ -1,16 +1,46 @@
 import type { RouteRecordRaw } from 'vue-router';
 import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
+import { canAccessModule } from 'src/modules/navigation/modulePermissions';
+import { showWarningDialog } from 'src/utils/appFeedback';
 
 const thriftGuard = {
   loginRoute: 'admin-login-page' as const,
   requiredScope: 'app' as const,
-  allowedRoles: ['admin', 'staff'] as const,
   requireTenantContext: true,
 };
 
 const thriftSalesGuard = createAccessGuard({
   ...thriftGuard,
   requiredModule: 'thrift_sales',
+});
+
+const thriftSalesCreateGuard = createAccessGuard({
+  ...thriftGuard,
+  requiredModule: 'thrift_sales',
+  validateAccess: ({ authStore }) => {
+    const accessArgs = {
+      scope: authStore.scope,
+      tenantId: authStore.tenantId,
+      customerGroupId: authStore.customerGroupId,
+      role: authStore.matchedRole,
+      moduleKey: 'thrift_sales' as const,
+      activeModuleKeys: authStore.activeModuleKeys,
+      effectiveGrants: authStore.access?.effectiveGrants,
+      isAdmin: authStore.access?.isAdmin,
+    };
+
+    const canCreateOrEdit =
+      canAccessModule({ ...accessArgs, action: 'create' }) ||
+      canAccessModule({ ...accessArgs, action: 'edit' });
+
+    if (canCreateOrEdit) {
+      return true;
+    }
+
+    showWarningDialog('You do not have permission to access this page.', 'Access denied');
+    const tenantSlug = authStore.tenantSlug;
+    return tenantSlug ? `/${tenantSlug}/app/dashboard` : '/app/dashboard';
+  },
 });
 
 const routes: RouteRecordRaw[] = [
@@ -32,6 +62,7 @@ const routes: RouteRecordRaw[] = [
         path: 'create',
         name: 'thrift-sales-create',
         component: () => import('../sales/pages/ThriftCreateSalesInvoicePage.vue'),
+        beforeEnter: thriftSalesCreateGuard,
         meta: {
           title: 'Create Sales Invoice',
           headerTitle: 'Create Sales Invoice',

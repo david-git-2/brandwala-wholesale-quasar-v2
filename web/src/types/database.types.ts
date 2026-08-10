@@ -6929,9 +6929,60 @@ export type Database = {
           },
         ]
       }
+      thrift_courier_providers: {
+        Row: {
+          code: string
+          country_code: string
+          created_at: string
+          id: number
+          is_active: boolean
+          is_system: boolean
+          meta: Json
+          name: string
+          sort_order: number
+          tenant_id: number | null
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          country_code?: string
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          is_system?: boolean
+          meta?: Json
+          name: string
+          sort_order?: number
+          tenant_id?: number | null
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          country_code?: string
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          is_system?: boolean
+          meta?: Json
+          name?: string
+          sort_order?: number
+          tenant_id?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thrift_courier_providers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       thrift_customers: {
         Row: {
           address: string | null
+          address_parts: Json
           created_at: string
           id: number
           inserted_by: string
@@ -6939,11 +6990,13 @@ export type Database = {
           notes: string | null
           phone: string
           phone_normalized: string
+          secondary_phone: string | null
           tenant_id: number
           updated_at: string
         }
         Insert: {
           address?: string | null
+          address_parts?: Json
           created_at?: string
           id?: number
           inserted_by: string
@@ -6951,11 +7004,13 @@ export type Database = {
           notes?: string | null
           phone: string
           phone_normalized: string
+          secondary_phone?: string | null
           tenant_id: number
           updated_at?: string
         }
         Update: {
           address?: string | null
+          address_parts?: Json
           created_at?: string
           id?: number
           inserted_by?: string
@@ -6963,6 +7018,7 @@ export type Database = {
           notes?: string | null
           phone?: string
           phone_normalized?: string
+          secondary_phone?: string | null
           tenant_id?: number
           updated_at?: string
         }
@@ -7204,6 +7260,38 @@ export type Database = {
           },
         ]
       }
+      thrift_return_counters: {
+        Row: {
+          created_at: string
+          last_value: number
+          tenant_id: number
+          updated_at: string
+          year_month: string
+        }
+        Insert: {
+          created_at?: string
+          last_value?: number
+          tenant_id: number
+          updated_at?: string
+          year_month: string
+        }
+        Update: {
+          created_at?: string
+          last_value?: number
+          tenant_id?: number
+          updated_at?: string
+          year_month?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thrift_return_counters_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       thrift_sales_invoice_items: {
         Row: {
           created_at: string
@@ -7273,18 +7361,39 @@ export type Database = {
       }
       thrift_sales_invoices: {
         Row: {
+          close_reason: string | null
+          cod_expected: number | null
+          cod_fee_amount: number
+          cod_fee_paid_by: string | null
+          cod_remittance_ref: string | null
+          cod_remitted_amount: number | null
+          cod_remitted_at: string | null
+          courier_amount: number
+          courier_cod_amount: number
+          courier_paid_by: string | null
+          courier_provider: string | null
+          courier_provider_id: number | null
           created_at: string
           created_by: string
           customer_address: string | null
+          customer_address_parts: Json
           customer_id: number | null
           customer_name: string | null
           customer_phone: string | null
+          customer_secondary_phone: string | null
           date: string
+          delivery_status: string | null
+          economics_closed_at: string | null
           id: number
           invoice_number: string
+          meta: Json
           notes: string | null
+          other_expense_amount: number
+          packing_amount: number
+          packing_paid_by: string | null
           payment_method: string
           payment_status: string
+          return_courier_amount: number
           revert_notes: string | null
           revert_reason: string | null
           reverted_at: string | null
@@ -7296,18 +7405,39 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          close_reason?: string | null
+          cod_expected?: number | null
+          cod_fee_amount?: number
+          cod_fee_paid_by?: string | null
+          cod_remittance_ref?: string | null
+          cod_remitted_amount?: number | null
+          cod_remitted_at?: string | null
+          courier_amount?: number
+          courier_cod_amount?: number
+          courier_paid_by?: string | null
+          courier_provider?: string | null
+          courier_provider_id?: number | null
           created_at?: string
           created_by?: string
           customer_address?: string | null
+          customer_address_parts?: Json
           customer_id?: number | null
           customer_name?: string | null
           customer_phone?: string | null
+          customer_secondary_phone?: string | null
           date?: string
+          delivery_status?: string | null
+          economics_closed_at?: string | null
           id?: number
           invoice_number: string
+          meta?: Json
           notes?: string | null
+          other_expense_amount?: number
+          packing_amount?: number
+          packing_paid_by?: string | null
           payment_method?: string
           payment_status?: string
+          return_courier_amount?: number
           revert_notes?: string | null
           revert_reason?: string | null
           reverted_at?: string | null
@@ -7319,18 +7449,39 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          close_reason?: string | null
+          cod_expected?: number | null
+          cod_fee_amount?: number
+          cod_fee_paid_by?: string | null
+          cod_remittance_ref?: string | null
+          cod_remitted_amount?: number | null
+          cod_remitted_at?: string | null
+          courier_amount?: number
+          courier_cod_amount?: number
+          courier_paid_by?: string | null
+          courier_provider?: string | null
+          courier_provider_id?: number | null
           created_at?: string
           created_by?: string
           customer_address?: string | null
+          customer_address_parts?: Json
           customer_id?: number | null
           customer_name?: string | null
           customer_phone?: string | null
+          customer_secondary_phone?: string | null
           date?: string
+          delivery_status?: string | null
+          economics_closed_at?: string | null
           id?: number
           invoice_number?: string
+          meta?: Json
           notes?: string | null
+          other_expense_amount?: number
+          packing_amount?: number
+          packing_paid_by?: string | null
           payment_method?: string
           payment_status?: string
+          return_courier_amount?: number
           revert_notes?: string | null
           revert_reason?: string | null
           reverted_at?: string | null
@@ -7343,6 +7494,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "thrift_sales_invoices_courier_provider_id_fkey"
+            columns: ["courier_provider_id"]
+            isOneToOne: false
+            referencedRelation: "thrift_courier_providers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "thrift_sales_invoices_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
@@ -7351,6 +7509,240 @@ export type Database = {
           },
           {
             foreignKeyName: "thrift_sales_invoices_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thrift_sales_pnl_lines: {
+        Row: {
+          allocated_fees_total: number
+          allocated_return_courier: number
+          allocated_shop_cod_fee: number
+          allocated_shop_delivery: number
+          allocated_shop_packing: number
+          cogs_is_loss: boolean
+          created_at: string
+          event_at: string
+          event_date: string
+          id: number
+          inbound_shipment_id: number
+          invoice_id: number
+          invoice_item_id: number
+          outcome: string
+          quantity: number
+          return_id: number | null
+          sell_amount: number
+          stock_id: number
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          allocated_fees_total?: number
+          allocated_return_courier?: number
+          allocated_shop_cod_fee?: number
+          allocated_shop_delivery?: number
+          allocated_shop_packing?: number
+          cogs_is_loss?: boolean
+          created_at?: string
+          event_at?: string
+          event_date?: string
+          id?: number
+          inbound_shipment_id: number
+          invoice_id: number
+          invoice_item_id: number
+          outcome: string
+          quantity?: number
+          return_id?: number | null
+          sell_amount?: number
+          stock_id: number
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          allocated_fees_total?: number
+          allocated_return_courier?: number
+          allocated_shop_cod_fee?: number
+          allocated_shop_delivery?: number
+          allocated_shop_packing?: number
+          cogs_is_loss?: boolean
+          created_at?: string
+          event_at?: string
+          event_date?: string
+          id?: number
+          inbound_shipment_id?: number
+          invoice_id?: number
+          invoice_item_id?: number
+          outcome?: string
+          quantity?: number
+          return_id?: number | null
+          sell_amount?: number
+          stock_id?: number
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thrift_sales_pnl_lines_inbound_shipment_id_fkey"
+            columns: ["inbound_shipment_id"]
+            isOneToOne: false
+            referencedRelation: "thrift_shipments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thrift_sales_pnl_lines_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "thrift_sales_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thrift_sales_pnl_lines_invoice_item_id_fkey"
+            columns: ["invoice_item_id"]
+            isOneToOne: true
+            referencedRelation: "thrift_sales_invoice_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thrift_sales_pnl_lines_return_id_fkey"
+            columns: ["return_id"]
+            isOneToOne: false
+            referencedRelation: "thrift_sales_returns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thrift_sales_pnl_lines_stock_id_fkey"
+            columns: ["stock_id"]
+            isOneToOne: false
+            referencedRelation: "thrift_stocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thrift_sales_pnl_lines_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thrift_sales_return_items: {
+        Row: {
+          condition: string
+          created_at: string
+          id: number
+          invoice_item_id: number
+          quantity: number
+          refund_amount: number
+          return_id: number
+          stock_id: number
+          tenant_id: number
+        }
+        Insert: {
+          condition: string
+          created_at?: string
+          id?: number
+          invoice_item_id: number
+          quantity?: number
+          refund_amount?: number
+          return_id: number
+          stock_id: number
+          tenant_id: number
+        }
+        Update: {
+          condition?: string
+          created_at?: string
+          id?: number
+          invoice_item_id?: number
+          quantity?: number
+          refund_amount?: number
+          return_id?: number
+          stock_id?: number
+          tenant_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thrift_sales_return_items_invoice_item_id_fkey"
+            columns: ["invoice_item_id"]
+            isOneToOne: true
+            referencedRelation: "thrift_sales_invoice_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thrift_sales_return_items_return_id_fkey"
+            columns: ["return_id"]
+            isOneToOne: false
+            referencedRelation: "thrift_sales_returns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thrift_sales_return_items_stock_id_fkey"
+            columns: ["stock_id"]
+            isOneToOne: false
+            referencedRelation: "thrift_stocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thrift_sales_return_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thrift_sales_returns: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: number
+          invoice_id: number
+          notes: string | null
+          refund_amount: number
+          return_courier_amount: number
+          return_number: string
+          status: string
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          id?: number
+          invoice_id: number
+          notes?: string | null
+          refund_amount?: number
+          return_courier_amount?: number
+          return_number: string
+          status?: string
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: number
+          invoice_id?: number
+          notes?: string | null
+          refund_amount?: number
+          return_courier_amount?: number
+          return_number?: string
+          status?: string
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thrift_sales_returns_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "thrift_sales_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thrift_sales_returns_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -7673,8 +8065,17 @@ export type Database = {
           color: string | null
           condition: Database["public"]["Enums"]["thrift_condition"] | null
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
           extra_origin_unit_price: number | null
           extra_weight: number | null
+          held_at: string | null
+          held_by: string | null
+          held_for_name: string | null
+          held_for_phone: string | null
+          held_for_phone_normalized: string | null
+          hold_expires_at: string | null
+          hold_note: string | null
           id: number
           inserted_by: string
           name: string | null
@@ -7701,8 +8102,17 @@ export type Database = {
           color?: string | null
           condition?: Database["public"]["Enums"]["thrift_condition"] | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           extra_origin_unit_price?: number | null
           extra_weight?: number | null
+          held_at?: string | null
+          held_by?: string | null
+          held_for_name?: string | null
+          held_for_phone?: string | null
+          held_for_phone_normalized?: string | null
+          hold_expires_at?: string | null
+          hold_note?: string | null
           id?: number
           inserted_by: string
           name?: string | null
@@ -7729,8 +8139,17 @@ export type Database = {
           color?: string | null
           condition?: Database["public"]["Enums"]["thrift_condition"] | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           extra_origin_unit_price?: number | null
           extra_weight?: number | null
+          held_at?: string | null
+          held_by?: string | null
+          held_for_name?: string | null
+          held_for_phone?: string | null
+          held_for_phone_normalized?: string | null
+          hold_expires_at?: string | null
+          hold_note?: string | null
           id?: number
           inserted_by?: string
           name?: string | null
@@ -8835,6 +9254,7 @@ export type Database = {
         Returns: boolean
       }
       cart_exists: { Args: { p_cart_id: number }; Returns: boolean }
+      ceil_thrift_retail_price: { Args: { p_price: number }; Returns: number }
       check_login_membership: {
         Args: { p_email: string; p_scope: string }
         Returns: {
@@ -9324,15 +9744,26 @@ export type Database = {
       }
       create_thrift_sales_invoice: {
         Args: {
+          p_cod_fee_amount?: number
+          p_cod_fee_paid_by?: string
+          p_courier_amount?: number
+          p_courier_paid_by?: string
+          p_courier_provider?: string
+          p_courier_provider_id?: number
           p_created_by?: string
           p_customer_address?: string
+          p_customer_address_parts?: Json
           p_customer_name?: string
           p_customer_notes?: string
           p_customer_phone?: string
+          p_customer_secondary_phone?: string
           p_date?: string
           p_invoice_number?: string
           p_items?: Json
+          p_meta?: Json
           p_notes?: string
+          p_packing_amount?: number
+          p_packing_paid_by?: string
           p_payment_method?: string
           p_payment_status?: string
           p_sale_channel?: string
@@ -9922,6 +10353,15 @@ export type Database = {
         Args: { p_tenant_id: number }
         Returns: Json
       }
+      get_thrift_sales_report: {
+        Args: {
+          p_date_from: string
+          p_date_to: string
+          p_sale_channel?: string
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
       get_thrift_shipment_sales_report: {
         Args: { p_shipment_id: number; p_tenant_id: number }
         Returns: Json
@@ -10012,6 +10452,18 @@ export type Database = {
       has_module_action: {
         Args: { p_action: string; p_module_key: string; p_tenant_id: number }
         Returns: boolean
+      }
+      hold_thrift_stock: {
+        Args: {
+          p_held_by?: string
+          p_held_for_name?: string
+          p_held_for_phone: string
+          p_hold_expires_at?: string
+          p_hold_note?: string
+          p_stock_id: number
+          p_tenant_id: number
+        }
+        Returns: Json
       }
       investor_tenant_can_view: {
         Args: { p_tenant_id: number }
@@ -11000,9 +11452,12 @@ export type Database = {
       }
       list_thrift_sales_invoices_paginated: {
         Args: {
+          p_delivery_status?: string
           p_page?: number
           p_page_size?: number
+          p_payment_status?: string
           p_search?: string
+          p_status?: string
           p_tenant_id: number
         }
         Returns: Json
@@ -11365,6 +11820,19 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      record_thrift_cod_remittance: {
+        Args: {
+          p_actor: string
+          p_invoice_id: number
+          p_notes?: string
+          p_outcome?: string
+          p_remittance_ref?: string
+          p_remitted_amount: number
+          p_remitted_at?: string
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
       record_vendor_grn_payable: {
         Args: {
           p_amount: number
@@ -11465,6 +11933,10 @@ export type Database = {
             }
             Returns: number
           }
+      release_thrift_stock_hold: {
+        Args: { p_stock_id: number; p_tenant_id: number }
+        Returns: Json
+      }
       remove_global_invoice_item: {
         Args: { p_invoice_item_id: number }
         Returns: undefined
@@ -11581,6 +12053,15 @@ export type Database = {
           total_qty: number
           transaction_rate: number
         }[]
+      }
+      search_thrift_available_stocks_for_sale: {
+        Args: {
+          p_customer_phone?: string
+          p_limit?: number
+          p_search?: string
+          p_tenant_id: number
+        }
+        Returns: Json
       }
       seed_tenant_roles_and_grants: {
         Args: { p_tenant_id: number }
@@ -12167,6 +12648,15 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      update_thrift_sales_delivery_status: {
+        Args: {
+          p_actor?: string
+          p_delivery_status: string
+          p_invoice_id: number
+          p_tenant_id: number
+        }
+        Returns: Json
       }
       upsert_customer_group_member_grant: {
         Args: {
@@ -12900,6 +13390,7 @@ export type Database = {
         | "DAMAGED"
         | "STOLEN"
         | "SOLD"
+        | "RESERVED"
       thrift_stock_type: "SINGLE" | "BULK"
       thrift_transaction_method: "CASH" | "CARD" | "MOBILE_BANKING" | "COD"
     }
@@ -13146,6 +13637,7 @@ export const Constants = {
         "DAMAGED",
         "STOLEN",
         "SOLD",
+        "RESERVED",
       ],
       thrift_stock_type: ["SINGLE", "BULK"],
       thrift_transaction_method: ["CASH", "CARD", "MOBILE_BANKING", "COD"],

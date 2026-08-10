@@ -22,6 +22,7 @@ export const thriftSettingsRepository = {
         hand_tag_unit_currency_id: input.handTagUnitCurrencyId ?? null,
         sticker_unit_cost: input.stickerUnitCost ?? null,
         sticker_unit_currency_id: input.stickerUnitCurrencyId ?? null,
+        return_window_days: input.returnWindowDays,
       })
       .select()
       .single();

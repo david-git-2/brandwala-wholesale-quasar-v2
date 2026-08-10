@@ -34,6 +34,7 @@ import {
 } from 'src/utils/cloudinaryClient';
 import { computeThriftUnitCosts, type ThriftStockCostInput, type ThriftUnitCostBreakdown } from 'src/modules/thrift/shared/utils/computeThriftUnitCosts';
 import { resolveListedSellPrice } from 'src/modules/thrift/shared/utils/resolveListedSellPrice';
+import { formatThriftActionableError } from 'src/modules/thrift/shared/utils/formatThriftActionableError';
 import type { ShipmentOption } from './useThriftStockCosting';
 
 export function useThriftStockForms(
@@ -104,6 +105,9 @@ export function useThriftStockForms(
   const quickAddForm = ref({
     shipment_id: null as number | null,
     box_id: null as number | null,
+    category_id: null as number | null,
+    type_id: null as number | null,
+    section: null as ThriftSection | null,
     barcode: '',
     brand_name: '',
     condition: 'EXCELLENT',
@@ -116,8 +120,10 @@ export function useThriftStockForms(
   const canSubmitQuickAdd = computed(() => {
     const f = quickAddForm.value;
     return !!(
-      f.pendingBlob &&
       f.shipment_id &&
+      f.category_id &&
+      f.type_id &&
+      f.section &&
       f.barcode.trim() &&
       f.brand_name.trim() &&
       f.condition &&
@@ -157,11 +163,8 @@ export function useThriftStockForms(
   const extraOriginUnitPrice = ref(0);
   const additionalChargesCost = ref(0);
   const pricing = ref<ThriftStockPricingInput>({
-    cost_of_goods_sold: 0,
-    target_price: 0,
     listed_unit_price: 0,
     is_listed_price_manual: false,
-    extra_expense_cost: 0,
   });
 
   const purchaseCurrency = computed(() => {
@@ -235,7 +238,7 @@ export function useThriftStockForms(
       quickAddForm.value.barcode = '';
       $q.notify({
         type: 'negative',
-        message: (err as Error).message || 'Failed to load available barcode',
+        message: formatThriftActionableError(err, 'Failed to load available barcode'),
       });
     } finally {
       quickAddBarcodeLoading.value = false;
@@ -252,6 +255,9 @@ export function useThriftStockForms(
     quickAddForm.value = {
       shipment_id: null,
       box_id: null,
+      category_id: null,
+      type_id: null,
+      section: null,
       barcode: '',
       brand_name: '',
       condition: 'EXCELLENT',
@@ -265,12 +271,9 @@ export function useThriftStockForms(
   function buildPricingFromRow(row: ThriftStock): ThriftStockPricingInput {
     const breakdown = costBreakdownByStockId.value[row.id];
     return {
-      cost_of_goods_sold: Number(row.pricing?.cost_of_goods_sold) || 0,
-      target_price: Number(row.pricing?.target_price) || 0,
       listed_unit_price: resolveListedSellPrice(row.pricing, breakdown),
       is_listed_price_manual: !!row.pricing?.is_listed_price_manual,
       markup_rate_override: row.pricing?.markup_rate_override ?? null,
-      extra_expense_cost: Number(row.pricing?.extra_expense_cost) || 0,
     };
   }
 
@@ -399,9 +402,24 @@ export function useThriftStockForms(
     const brandName = quickAddForm.value.brand_name.trim();
     const condition = quickAddForm.value.condition;
     const productWeight = Number(quickAddForm.value.product_weight);
+    const categoryId = quickAddForm.value.category_id;
+    const typeId = quickAddForm.value.type_id;
+    const section = quickAddForm.value.section;
 
     if (!brandName) {
       $q.notify({ type: 'negative', message: 'Brand name is required' });
+      return;
+    }
+    if (!categoryId) {
+      $q.notify({ type: 'negative', message: 'Category is required' });
+      return;
+    }
+    if (!typeId) {
+      $q.notify({ type: 'negative', message: 'Type is required' });
+      return;
+    }
+    if (!section) {
+      $q.notify({ type: 'negative', message: 'Section is required' });
       return;
     }
     if (!condition) {
@@ -413,7 +431,10 @@ export function useThriftStockForms(
       return;
     }
     if (!quickAddForm.value.barcode.trim()) {
-      $q.notify({ type: 'negative', message: 'Barcode is required' });
+      $q.notify({
+        type: 'negative',
+        message: 'Generate barcodes first (Thrift → Barcodes), then try Quick Add again.',
+      });
       return;
     }
 
@@ -427,9 +448,9 @@ export function useThriftStockForms(
       const created = await createStockMutation.mutateAsync({
         tenantId: authStore.tenantId,
         shipmentId: quickAddForm.value.shipment_id!,
-        categoryId: 1,
-        typeId: 1,
-        section: 'UNISEX',
+        categoryId,
+        typeId,
+        section,
         color: '',
         size: '',
         name: brandName,
@@ -444,11 +465,8 @@ export function useThriftStockForms(
         note: '',
         userEmail: authStore.user?.email || 'admin@brandwala.com',
         pricing: {
-          cost_of_goods_sold: 0,
-          target_price: 0,
           listed_unit_price: 0,
           is_listed_price_manual: false,
-          extra_expense_cost: 0,
         },
         originUnitPrice: defaultOriginPrice,
         extraOriginUnitPrice: 0,
@@ -475,18 +493,16 @@ export function useThriftStockForms(
         invalidateShipmentCache(quickAddForm.value.shipment_id);
       }
 
-      $q.notify({ type: 'positive', message: 'Quick stock registered successfully' });
-
-      const fullCreated = stocks.value.find((s) => s.id === createdStockId) || {
-        ...created,
-        image_url: uploadedImage?.secureUrl || null,
-      };
-      openEditDialog(fullCreated as ThriftStock);
+      $q.notify({
+        type: 'positive',
+        message: `Stock ${created.barcode || createdStockId} registered`,
+      });
+      quickAddDialogOpen.value = false;
     } catch (err: unknown) {
       if (uploadedImage) {
         await cleanupStockImageAssets({ imageUrl: uploadedImage.secureUrl });
       }
-      $q.notify({ type: 'negative', message: (err as Error).message || 'Quick add failed' });
+      $q.notify({ type: 'negative', message: formatThriftActionableError(err, 'Quick add failed') });
     } finally {
       quickSubmitting.value = false;
     }
@@ -646,7 +662,7 @@ export function useThriftStockForms(
           imageUrl: orphanImage.secureUrl,
         });
       }
-      $q.notify({ type: 'negative', message: (err as Error).message || 'Saving failed' });
+      $q.notify({ type: 'negative', message: formatThriftActionableError(err, 'Saving failed') });
     } finally {
       actionLoading.value = false;
     }

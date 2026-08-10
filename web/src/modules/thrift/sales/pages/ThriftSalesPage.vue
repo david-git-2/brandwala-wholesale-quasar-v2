@@ -10,6 +10,7 @@
         <div class="col-auto row q-gutter-sm items-center">
           <LearnMoreHelpBtn guide-id="thrift_sales" />
           <q-btn
+            v-if="canCreate"
             color="primary"
             unelevated
             no-caps
@@ -26,7 +27,7 @@
       <!-- Main Content Block -->
       <template v-else>
         <q-card flat bordered class="q-pa-sm">
-          <div class="row items-center justify-between q-col-gutter-sm">
+          <div class="row items-center q-col-gutter-sm">
             <div class="col-12 col-sm-5 col-md-4">
               <q-input
                 v-model="search"
@@ -41,6 +42,40 @@
                   <q-icon name="ph ph-magnifying-glass" />
                 </template>
               </q-input>
+            </div>
+            <div class="col-12 col-sm-4 col-md-3">
+              <q-select
+                v-model="paymentStatusFilter"
+                dense
+                outlined
+                emit-value
+                map-options
+                :options="paymentStatusOptions"
+                label="Payment status"
+              />
+            </div>
+            <div class="col-12 col-sm-4 col-md-3">
+              <q-select
+                v-model="deliveryStatusFilter"
+                dense
+                outlined
+                emit-value
+                map-options
+                clearable
+                :options="deliveryStatusOptions"
+                label="Delivery"
+              />
+            </div>
+            <div class="col-12 col-sm-3 col-md-2">
+              <q-select
+                v-model="statusFilter"
+                dense
+                outlined
+                emit-value
+                map-options
+                :options="statusOptions"
+                label="Invoice status"
+              />
             </div>
           </div>
         </q-card>
@@ -84,8 +119,25 @@
                   <div v-if="props.row.customerPhone" class="text-caption text-grey-7">
                     {{ props.row.customerPhone }}
                   </div>
+                  <div
+                    v-if="props.row.customerAddress"
+                    class="text-caption text-grey-6 ellipsis"
+                    style="max-width: 220px"
+                  >
+                    {{ props.row.customerAddress }}
+                  </div>
                 </div>
                 <span v-else class="text-grey-5">Walk-in</span>
+              </q-td>
+            </template>
+
+            <template #body-cell-saleChannel="props">
+              <q-td :props="props">
+                <q-badge
+                  outline
+                  :color="saleChannelColor(props.row.saleChannel)"
+                  :label="saleChannelLabel(props.row.saleChannel)"
+                />
               </q-td>
             </template>
 
@@ -110,6 +162,18 @@
               </q-td>
             </template>
 
+            <template #body-cell-deliveryStatus="props">
+              <q-td :props="props">
+                <q-badge
+                  v-if="props.row.deliveryStatus"
+                  outline
+                  :color="deliveryStatusColor(props.row.deliveryStatus)"
+                  :label="labelize(props.row.deliveryStatus)"
+                />
+                <span v-else class="text-grey-5">—</span>
+              </q-td>
+            </template>
+
             <template #body-cell-status="props">
               <q-td :props="props">
                 <q-badge
@@ -131,6 +195,7 @@
                 <div class="text-subtitle1 text-weight-medium">No invoices yet</div>
                 <div class="text-body2 q-mb-md">Create a counter sale to see it listed here.</div>
                 <q-btn
+                  v-if="canCreate"
                   color="primary"
                   unelevated
                   no-caps
@@ -151,29 +216,90 @@
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
-import { useQuasar, type QTableColumn } from 'quasar';
+import { type QTableColumn } from 'quasar';
 import LearnMoreHelpBtn from 'src/modules/help/components/LearnMoreHelpBtn.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
 import { formatThriftAmount } from 'src/modules/thrift/currency/utils/formatMoney';
+import { showErrorNotification } from 'src/utils/appFeedback';
 import ThriftSalesSkeleton from '../components/ThriftSalesSkeleton.vue';
 import {
-  thriftSalesRepository,
-  type ThriftSalesInvoiceListItem,
-} from '../repositories/thriftSalesRepository';
+  useThriftSalesInvoicesQuery,
+  type ThriftSalesInvoiceListQueryParams,
+} from '../composables/useThriftSalesQuery';
+import type { ThriftSalesInvoiceListItem } from '../repositories/thriftSalesRepository';
+import { formatThriftActionableError } from 'src/modules/thrift/shared/utils/formatThriftActionableError';
 
-const $q = useQuasar();
 const router = useRouter();
 const authStore = useAuthStore();
 const { tenantId, tenantSlug } = storeToRefs(authStore);
+const { hasModuleAccess } = useModulePermissions();
 
-const initialLoading = ref(true);
-const loading = ref(false);
+const canCreate = computed(() => hasModuleAccess('thrift_sales', 'create'));
+
 const search = ref('');
-const rows = ref<ThriftSalesInvoiceListItem[]>([]);
-const tablePagination = ref({
-  page: 1,
-  rowsPerPage: 20,
-  rowsNumber: 0,
+const paymentStatusFilter = ref<string | null>(null);
+const deliveryStatusFilter = ref<string | null>(null);
+const statusFilter = ref<string | null>(null);
+const page = ref(1);
+const rowsPerPage = ref(20);
+
+const paymentStatusOptions = [
+  { label: 'All', value: null },
+  { label: 'COD pending', value: 'COD_PENDING' },
+  { label: 'Paid', value: 'PAID' },
+  { label: 'Refunded', value: 'REFUNDED' },
+  { label: 'Written off', value: 'WRITTEN_OFF' },
+];
+
+const deliveryStatusOptions = [
+  { label: 'All', value: null },
+  { label: 'Pending', value: 'PENDING' },
+  { label: 'Ready', value: 'READY' },
+  { label: 'In transit', value: 'IN_TRANSIT' },
+  { label: 'Delivered', value: 'DELIVERED' },
+  { label: 'Returned', value: 'RETURNED' },
+];
+
+const statusOptions = [
+  { label: 'All', value: null },
+  { label: 'Active', value: 'ACTIVE' },
+  { label: 'Returned', value: 'RETURNED' },
+];
+
+const queryParams = computed<ThriftSalesInvoiceListQueryParams>(() => ({
+  tenantId: tenantId.value || 0,
+  search: search.value,
+  page: page.value,
+  pageSize: rowsPerPage.value,
+  paymentStatus: paymentStatusFilter.value,
+  deliveryStatus: deliveryStatusFilter.value,
+  status: statusFilter.value,
+}));
+
+const {
+  data: listData,
+  isLoading: queryLoading,
+  isFetching: queryFetching,
+  isError,
+  error,
+  isFetched,
+} = useThriftSalesInvoicesQuery(queryParams);
+
+const initialLoading = computed(() => queryLoading.value && !isFetched.value);
+const loading = computed(() => queryLoading.value || queryFetching.value);
+const rows = computed(() => listData.value?.data ?? []);
+
+const tablePagination = computed({
+  get: () => ({
+    page: page.value,
+    rowsPerPage: rowsPerPage.value,
+    rowsNumber: listData.value?.meta.total ?? 0,
+  }),
+  set: (val: { page: number; rowsPerPage: number; rowsNumber?: number }) => {
+    page.value = val.page;
+    rowsPerPage.value = val.rowsPerPage;
+  },
 });
 
 const columns: QTableColumn[] = [
@@ -196,6 +322,13 @@ const columns: QTableColumn[] = [
     name: 'customer',
     label: 'Customer',
     field: 'customerName',
+    align: 'left',
+    sortable: false,
+  },
+  {
+    name: 'saleChannel',
+    label: 'Channel',
+    field: 'saleChannel',
     align: 'left',
     sortable: false,
   },
@@ -228,6 +361,13 @@ const columns: QTableColumn[] = [
     sortable: false,
   },
   {
+    name: 'deliveryStatus',
+    label: 'Delivery',
+    field: 'deliveryStatus',
+    align: 'left',
+    sortable: false,
+  },
+  {
     name: 'status',
     label: 'Status',
     field: 'status',
@@ -250,18 +390,36 @@ const columns: QTableColumn[] = [
   },
 ];
 
-const resolvedTenantId = computed(() => tenantId.value || null);
-
 function labelize(value: string): string {
   return (value || '—').replace(/_/g, ' ').toUpperCase();
 }
 
+function saleChannelLabel(channel: string): string {
+  return channel === 'ONLINE' ? 'Online' : 'In-store';
+}
+
+function saleChannelColor(channel: string): string {
+  return channel === 'ONLINE' ? 'primary' : 'grey-7';
+}
+
 function paymentStatusColor(status: string): string {
-  const s = (status || '').toLowerCase();
+  const s = (status || '').toLowerCase().replace(/-/g, '_');
   if (s === 'paid') return 'positive';
+  if (s === 'cod_pending') return 'orange';
   if (s === 'partial') return 'warning';
   if (s === 'unpaid') return 'negative';
-  if (s === 'refunded') return 'orange';
+  if (s === 'refunded') return 'orange-8';
+  if (s === 'written_off') return 'grey-8';
+  return 'grey';
+}
+
+function deliveryStatusColor(status: string): string {
+  const s = (status || '').toUpperCase();
+  if (s === 'PENDING') return 'grey-7';
+  if (s === 'READY') return 'primary';
+  if (s === 'IN_TRANSIT') return 'blue-8';
+  if (s === 'DELIVERED') return 'positive';
+  if (s === 'RETURNED') return 'warning';
   return 'grey';
 }
 
@@ -288,55 +446,35 @@ function onRowClick(_evt: Event, row: ThriftSalesInvoiceListItem) {
   void router.push(invoicePath(row.id));
 }
 
-async function loadInvoices() {
-  if (!resolvedTenantId.value) return;
-  loading.value = true;
-  try {
-    const result = await thriftSalesRepository.listSalesInvoices({
-      tenantId: resolvedTenantId.value,
-      search: search.value,
-      page: tablePagination.value.page,
-      pageSize: tablePagination.value.rowsPerPage,
-    });
-    rows.value = result.data;
-    tablePagination.value = {
-      ...tablePagination.value,
-      rowsNumber: result.meta.total,
-    };
-  } catch (err: any) {
-    $q.notify({
-      type: 'negative',
-      message: err?.message || 'Failed to load sales invoices',
-    });
-  } finally {
-    loading.value = false;
-    initialLoading.value = false;
-  }
-}
-
 function onTableRequest(props: {
   pagination: { page: number; rowsPerPage: number; rowsNumber?: number };
 }) {
-  tablePagination.value.page = props.pagination.page;
-  tablePagination.value.rowsPerPage = props.pagination.rowsPerPage;
-  void loadInvoices();
+  page.value = props.pagination.page;
+  rowsPerPage.value = props.pagination.rowsPerPage;
 }
 
 watch(search, () => {
-  tablePagination.value.page = 1;
-  void loadInvoices();
+  page.value = 1;
 });
 
-watch(
-  resolvedTenantId,
-  (id) => {
-    if (id) {
-      tablePagination.value.page = 1;
-      void loadInvoices();
-    }
-  },
-  { immediate: true },
-);
+watch(paymentStatusFilter, () => {
+  page.value = 1;
+});
+
+watch(deliveryStatusFilter, () => {
+  page.value = 1;
+});
+
+watch(statusFilter, () => {
+  page.value = 1;
+});
+
+watch(isError, (failed) => {
+  if (!failed || !error.value) return;
+  showErrorNotification(
+    formatThriftActionableError(error.value, 'Failed to load sales invoices'),
+  );
+});
 </script>
 
 <style scoped>

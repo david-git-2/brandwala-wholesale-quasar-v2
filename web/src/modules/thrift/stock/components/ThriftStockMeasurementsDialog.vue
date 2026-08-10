@@ -372,11 +372,9 @@ export default defineComponent({
             props.stock.id,
             { size: form.value.size },
             {
-              cost_of_goods_sold: props.stock.pricing?.cost_of_goods_sold || 0,
-              target_price: props.stock.pricing?.target_price || 0,
               listed_unit_price: props.stock.pricing?.listed_unit_price || 0,
               is_listed_price_manual: props.stock.pricing?.is_listed_price_manual,
-              extra_expense_cost: props.stock.pricing?.extra_expense_cost,
+              markup_rate_override: props.stock.pricing?.markup_rate_override ?? null,
             },
           );
         }

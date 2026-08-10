@@ -1,7 +1,18 @@
 import { ref, computed } from 'vue';
 import type { QTableColumn } from 'quasar';
+import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
 
 export const statusOptions = [
+  { label: 'Available', value: 'AVAILABLE' },
+  { label: 'On hold', value: 'RESERVED' },
+  { label: 'Out of stock', value: 'OUT_OF_STOCK' },
+  { label: 'Sold', value: 'SOLD' },
+  { label: 'Damaged', value: 'DAMAGED' },
+  { label: 'Stolen', value: 'STOLEN' },
+];
+
+/** Inline status edit — RESERVED only via hold RPC. */
+export const editableStatusOptions = [
   { label: 'Available', value: 'AVAILABLE' },
   { label: 'Out of stock', value: 'OUT_OF_STOCK' },
   { label: 'Sold', value: 'SOLD' },
@@ -31,6 +42,20 @@ export const sectionSelectOptions = [
   { label: 'Home', value: 'HOME' },
 ];
 
+/** Cost / margin columns gated by thrift_stock view_cost */
+export const COST_COLUMN_NAMES = new Set([
+  'origin_unit_price',
+  'extra_origin_unit_price',
+  'product_unit_cost',
+  'cargo_share_per_unit',
+  'ops_share_per_unit',
+  'additional_charges_cost',
+  'landed_unit_cost',
+  'suggested_sell_unit_price',
+  'item_markup_pct',
+  'effective_markup_pct',
+]);
+
 const DEFAULT_VISIBLE_COLUMNS = [
   'select',
   'sl',
@@ -45,22 +70,15 @@ const DEFAULT_VISIBLE_COLUMNS = [
   'extra_weight',
   'condition',
   'quantity',
-  'origin_unit_price',
-  'extra_origin_unit_price',
-  'product_unit_cost',
-  'cargo_share_per_unit',
-  'ops_share_per_unit',
-  'additional_charges_cost',
-  'landed_unit_cost',
-  'suggested_sell_unit_price',
-  'item_markup_pct',
-  'effective_markup_pct',
   'listed_unit_price',
   'status',
   'actions',
 ];
 
 export function useThriftStockColumns() {
+  const { hasModuleAccess } = useModulePermissions();
+  const canViewCost = computed(() => hasModuleAccess('thrift_stock', 'view_cost'));
+
   const columns: QTableColumn[] = [
     { name: 'select', align: 'center', label: '', field: 'id' },
     { name: 'sl', align: 'center', label: 'SL', field: 'id' },
@@ -90,24 +108,32 @@ export function useThriftStockColumns() {
     { name: 'actions', align: 'center', label: 'Actions', field: 'id' },
   ];
 
-  const columnSelectorOptions = columns
-    .filter((col) => !['select', 'sl', 'image', 'actions'].includes(col.name))
-    .map((col) => ({ label: col.label, value: col.name }));
+  const columnSelectorOptions = computed(() =>
+    columns
+      .filter((col) => !['select', 'sl', 'image', 'actions'].includes(col.name))
+      .filter((col) => canViewCost.value || !COST_COLUMN_NAMES.has(col.name))
+      .map((col) => ({ label: col.label, value: col.name })),
+  );
 
   const selectedColumnNames = ref<string[]>(DEFAULT_VISIBLE_COLUMNS);
 
   const visibleColumns = computed(() => {
     const alwaysVisible = ['select', 'sl', 'image', 'actions'];
-    return [...alwaysVisible, ...selectedColumnNames.value];
+    const selected = selectedColumnNames.value.filter(
+      (name) => canViewCost.value || !COST_COLUMN_NAMES.has(name),
+    );
+    return [...alwaysVisible, ...selected];
   });
 
   const allSelectableColumnsSelected = computed({
     get() {
-      return columnSelectorOptions.every((opt) => selectedColumnNames.value.includes(opt.value));
+      return columnSelectorOptions.value.every((opt) =>
+        selectedColumnNames.value.includes(opt.value),
+      );
     },
     set(val: boolean) {
       if (val) {
-        selectedColumnNames.value = columnSelectorOptions.map((opt) => opt.value);
+        selectedColumnNames.value = columnSelectorOptions.value.map((opt) => opt.value);
       } else {
         selectedColumnNames.value = [];
       }
@@ -150,5 +176,6 @@ export function useThriftStockColumns() {
     allSelectableColumnsSelected,
     tableCellClass,
     stickyCellClass,
+    canViewCost,
   };
 }

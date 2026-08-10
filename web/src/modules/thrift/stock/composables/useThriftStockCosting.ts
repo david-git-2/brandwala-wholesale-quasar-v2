@@ -90,8 +90,6 @@ export function useThriftStockCosting(
             additional_charges_cost: targetStock.additional_charges_cost ?? null,
             pricing: targetStock.pricing
               ? {
-                  cost_of_goods_sold: Number(targetStock.pricing.cost_of_goods_sold) || 0,
-                  target_price: Number(targetStock.pricing.target_price) || 0,
                   listed_unit_price: targetStock.pricing.listed_unit_price,
                   is_listed_price_manual: targetStock.pricing.is_listed_price_manual,
                   markup_rate_override: targetStock.pricing.markup_rate_override ?? null,
@@ -113,8 +111,6 @@ export function useThriftStockCosting(
             additional_charges_cost: targetStock.additional_charges_cost ?? null,
             pricing: targetStock.pricing
               ? {
-                  cost_of_goods_sold: Number(targetStock.pricing.cost_of_goods_sold) || 0,
-                  target_price: Number(targetStock.pricing.target_price) || 0,
                   listed_unit_price: targetStock.pricing.listed_unit_price,
                   is_listed_price_manual: targetStock.pricing.is_listed_price_manual,
                   markup_rate_override: targetStock.pricing.markup_rate_override ?? null,

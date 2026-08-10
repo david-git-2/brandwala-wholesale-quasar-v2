@@ -1,7 +1,13 @@
 export type ThriftSection = 'MALE' | 'FEMALE' | 'UNISEX' | 'KIDS' | 'HOME';
 export type ThriftCondition = 'NEW_WITH_TAGS' | 'EXCELLENT' | 'GOOD' | 'FAIR';
 export type ThriftStockType = 'SINGLE' | 'BULK';
-export type ThriftStockStatus = 'AVAILABLE' | 'OUT_OF_STOCK' | 'DAMAGED' | 'STOLEN';
+export type ThriftStockStatus =
+  | 'AVAILABLE'
+  | 'RESERVED'
+  | 'OUT_OF_STOCK'
+  | 'DAMAGED'
+  | 'STOLEN'
+  | 'SOLD';
 
 export interface ThriftStockMeasurements {
   stock_id: number;
@@ -48,16 +54,20 @@ export interface ThriftStock {
   extra_weight?: number | undefined;
   status: ThriftStockStatus;
   note?: string | undefined;
+  held_for_name?: string | null;
+  held_for_phone?: string | null;
+  held_for_phone_normalized?: string | null;
+  hold_note?: string | null;
+  held_by?: string | null;
+  held_at?: string | null;
+  hold_expires_at?: string | null;
   inserted_by: string;
   created_at: string;
   updated_at: string;
   pricing?: {
-    cost_of_goods_sold: number;
-    target_price: number;
     listed_unit_price: number;
     is_listed_price_manual?: boolean;
     markup_rate_override?: number | null;
-    extra_expense_cost?: number;
   };
   category_name?: string;
   type_name?: string;

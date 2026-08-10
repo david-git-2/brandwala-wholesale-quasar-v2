@@ -76,7 +76,10 @@ export type ModuleAction =
   | 'view_measurements'
   | 'edit_measurements'
   | 'edit_listed_price'
-  | 'receive';
+  | 'receive'
+  | 'return'
+  | 'force_return'
+  | 'staff_mistake';
 export type InteractiveScope = Extract<AuthScope, 'app' | 'shop'>;
 
 export interface ModuleRouteDefinition {
@@ -342,6 +345,14 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         caption: 'Create sales invoices',
         icon: 'ph ph-receipt',
         routeSegment: 'thrift/sales',
+        requiredAction: 'view',
+      },
+      {
+        scope: 'app',
+        title: 'Courier Providers',
+        caption: 'System + custom couriers',
+        icon: 'ph ph-truck',
+        routeSegment: 'thrift/couriers',
         requiredAction: 'view',
       },
     ],

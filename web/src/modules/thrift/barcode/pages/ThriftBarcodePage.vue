@@ -30,7 +30,7 @@
         </q-banner>
 
         <!-- Barcode Bulk Generator Form -->
-        <q-card flat bordered class="q-pa-md">
+        <q-card v-if="canCreate" flat bordered class="q-pa-md">
           <div class="text-subtitle2 text-weight-bold q-mb-md text-primary">
             Bulk Barcode Generator
           </div>
@@ -77,6 +77,7 @@
                   label="Search Barcodes"
                   outlined
                   dense
+                  debounce="300"
                   placeholder="e.g. 01-AA-26-"
                   clearable
                 >
@@ -380,6 +381,7 @@ import { ref, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
 import { useThriftBarcodesQuery, type BarcodeQueryParams } from '../composables/useThriftBarcodesQuery';
 import { useGenerateBarcodesMutation } from '../composables/useThriftBarcodeMutations';
 import { thriftBarcodeRepository } from '../repositories/thriftBarcodeRepository';
@@ -388,10 +390,13 @@ import ThriftBarcodeSkeleton from '../components/ThriftBarcodeSkeleton.vue';
 import LearnMoreHelpBtn from 'src/modules/help/components/LearnMoreHelpBtn.vue';
 import type { ThriftBarcode, ThriftBarcodeListMeta } from '../types';
 import { isBarcodePrintEligible } from '../types';
+import { formatThriftActionableError } from 'src/modules/thrift/shared/utils/formatThriftActionableError';
 
 const router = useRouter();
 const $q = useQuasar();
 const authStore = useAuthStore();
+const { hasModuleAccess } = useModulePermissions();
+const canCreate = computed(() => hasModuleAccess('thrift_barcode', 'create'));
 
 // Generator State
 const genQuantity = ref(50);
@@ -406,6 +411,7 @@ const printQty = ref(50);
 
 // Filter & Pagination State
 const filterText = ref('');
+const debouncedSearch = ref('');
 const filterPrinted = ref('ALL');
 const filterStatus = ref('ALL');
 const page = ref(1);
@@ -437,7 +443,7 @@ const queryParams = computed<BarcodeQueryParams>(() => ({
   tenantId: authStore.tenantId ?? 0,
   page: page.value,
   pageSize: pageSize.value,
-  search: filterText.value.trim() || undefined,
+  search: debouncedSearch.value || undefined,
   isPrinted: mapPrintedFilter(filterPrinted.value),
   status: mapStatusFilter(filterStatus.value),
 }));
@@ -513,14 +519,17 @@ const printableCount = computed(() => meta.value.printable_total);
 const hasSufficientForBulk = computed(() => printableCount.value >= printQty.value);
 const selectedPrintableCount = computed(() => selected.value.filter(isBarcodePrintEligible).length);
 
-let searchDebounce: ReturnType<typeof setTimeout> | null = null;
+watch(filterText, (value) => {
+  const next = value.trim();
+  if (debouncedSearch.value === next) return;
+  debouncedSearch.value = next;
+  page.value = 1;
+  selected.value = [];
+});
 
-watch([filterText, filterPrinted, filterStatus], () => {
-  if (searchDebounce) clearTimeout(searchDebounce);
-  searchDebounce = setTimeout(() => {
-    page.value = 1;
-    selected.value = [];
-  }, 300);
+watch([filterPrinted, filterStatus], () => {
+  page.value = 1;
+  selected.value = [];
 });
 
 const onTableRequest = (props: { pagination: { page: number; rowsPerPage: number } }) => {
@@ -593,11 +602,12 @@ const formatDate = (dateStr: string) => {
 };
 
 const showConfirmGenDialog = () => {
+  if (!canCreate.value) return;
   confirmGenDialog.value = true;
 };
 
 const handleGenerate = async () => {
-  if (!authStore.tenantId) return;
+  if (!canCreate.value || !authStore.tenantId) return;
   try {
     await generateMutation.mutateAsync({
       tenantId: authStore.tenantId,
@@ -613,7 +623,7 @@ const handleGenerate = async () => {
   } catch (err: unknown) {
     $q.notify({
       type: 'negative',
-      message: (err as Error).message || 'Failed to generate barcodes',
+      message: formatThriftActionableError(err, 'Failed to generate barcodes'),
     });
   }
 };

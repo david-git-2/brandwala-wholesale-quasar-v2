@@ -20,12 +20,22 @@ export interface ThriftStockCostInput {
   id?: number;
   shipment_id?: number;
   quantity: number;
+  /** When SOLD with qty 0, costing qty treats the row as 1 unit (live report COGS). */
+  status?: string | null | undefined;
   product_weight?: number | null | undefined;
   extra_weight?: number | null | undefined;
   origin_unit_price?: number | null | undefined;
   extra_origin_unit_price?: number | null | undefined;
   additional_charges_cost?: number | null | undefined;
   pricing?: ThriftStockPricingInput | null | undefined;
+}
+
+/** Matches SQL compute_thrift_landed_unit_cost costing quantity. */
+export function costingQuantity(stock: ThriftStockCostInput): number {
+  if ((stock.status || '').toUpperCase() === 'SOLD' && (stock.quantity || 0) === 0) {
+    return 1;
+  }
+  return Math.max(stock.quantity || 0, 0);
 }
 
 export interface ThriftStockPricingInput {
@@ -79,13 +89,13 @@ export interface ThriftUnitCostBreakdown {
 }
 
 export function computeShipmentUnitCount(stocks: ThriftStockCostInput[]): number {
-  const sum = stocks.reduce((acc, stock) => acc + (stock.quantity || 0), 0);
+  const sum = stocks.reduce((acc, stock) => acc + costingQuantity(stock), 0);
   return Math.max(sum, 1);
 }
 
 export function computeStockLineWeightKg(stock: ThriftStockCostInput): number {
   const grams = (stock.product_weight ?? 0) + (stock.extra_weight ?? 0);
-  return (grams / 1000) * Math.max(stock.quantity || 0, 0);
+  return (grams / 1000) * costingQuantity(stock);
 }
 
 export function computeShipmentTotalWeightKg(stocks: ThriftStockCostInput[]): number {
@@ -135,7 +145,7 @@ export function computeCargoSharePerUnit(
   U: number,
 ): number {
   const cargoTotal = computeShipmentCargoCost(shipment);
-  const qty = stock.quantity || 0;
+  const qty = costingQuantity(stock);
   if (qty <= 0) return 0;
 
   const totalWeightKg = computeShipmentTotalWeightKg(allStocks);
@@ -172,7 +182,7 @@ export function computeThriftUnitCosts(
   const cargo_share_per_unit = computeCargoSharePerUnit(stock, shipment, stocksForCargo, U);
   const ops_share_per_unit = shipment_ops_cost / U;
 
-  const qty = stock.quantity || 0;
+  const qty = costingQuantity(stock);
   const productWeightG = stock.product_weight ?? 0;
   const extraWeightG = stock.extra_weight ?? 0;
   const unitWeightKg = (productWeightG + extraWeightG) / 1000;

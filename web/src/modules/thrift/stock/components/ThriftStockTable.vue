@@ -10,7 +10,7 @@ import { formatThriftAmount } from 'src/modules/thrift/currency/utils/formatMone
 import { formatThriftStockMeasurements } from 'src/modules/thrift/shared/utils/formatThriftStockMeasurements';
 import { resolveListedSellPrice } from 'src/modules/thrift/shared/utils/resolveListedSellPrice';
 import { isListedPriceLocked, isItemMarkupLocked } from 'src/modules/thrift/shared/utils/thriftPricingLock';
-import { statusOptions, conditionSelectOptions, sectionSelectOptions } from '../composables/useThriftStockColumns';
+import { editableStatusOptions, conditionSelectOptions, sectionSelectOptions } from '../composables/useThriftStockColumns';
 
 function formatStockPrice(
   amount: number | null | undefined,
@@ -68,6 +68,8 @@ const emit = defineEmits<{
   (e: 'open-edit-dialog', row: ThriftStock): void;
   (e: 'confirm-delete', row: ThriftStock): void;
   (e: 'update-status', payload: { id: number; status: string }): void;
+  (e: 'open-hold-dialog', row: ThriftStock): void;
+  (e: 'release-hold', row: ThriftStock): void;
   (e: 'text-cell-save', payload: { row: ThriftStock; field: string; val: string }): void;
   (e: 'section-save', payload: { row: ThriftStock; val: ThriftSection | null }): void;
   (e: 'box-save', payload: { row: ThriftStock; val: number | null }): void;
@@ -121,6 +123,8 @@ const statusChipStyle = (status: string | null | undefined) => {
   const v = normalizeStatus(status);
   if (v === 'AVAILABLE')
     return { backgroundColor: '#d1fae5', color: '#065f46', border: '1px solid #6ee7b7' };
+  if (v === 'RESERVED')
+    return { backgroundColor: '#ffedd5', color: '#9a3412', border: '1px solid #fdba74' };
   if (v === 'OUT_OF_STOCK')
     return { backgroundColor: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db' };
   if (v === 'SOLD')
@@ -135,6 +139,7 @@ const statusChipStyle = (status: string | null | undefined) => {
 const statusDotColor = (status: string | null | undefined) => {
   const v = normalizeStatus(status);
   if (v === 'AVAILABLE') return '#059669';
+  if (v === 'RESERVED') return '#ea580c';
   if (v === 'OUT_OF_STOCK') return '#9ca3af';
   if (v === 'SOLD') return '#2563eb';
   if (v === 'DAMAGED') return '#d97706';
@@ -745,7 +750,7 @@ const statusDotColor = (status: string | null | undefined) => {
               >
                 <q-select
                   v-model="scope.value"
-                  :options="statusOptions"
+                  :options="editableStatusOptions"
                   emit-value
                   map-options
                   dense
@@ -753,6 +758,10 @@ const statusDotColor = (status: string | null | undefined) => {
                   autofocus
                 />
               </q-popup-edit>
+              <q-tooltip v-if="normalizeStatus(rowProps.row.status) === 'RESERVED'">
+                Held for {{ rowProps.row.held_for_phone || rowProps.row.held_for_name || 'customer' }}
+                <template v-if="rowProps.row.hold_note"> · {{ rowProps.row.hold_note }}</template>
+              </q-tooltip>
             </template>
             <template v-else-if="col.name === 'actions'">
               <q-btn
@@ -798,6 +807,32 @@ const statusDotColor = (status: string | null | undefined) => {
                         : 'Delete Stock'
                   }}
                 </q-tooltip>
+              </q-btn>
+              <q-btn
+                v-if="normalizeStatus(rowProps.row.status) === 'AVAILABLE'"
+                flat
+                round
+                dense
+                icon="ph ph-lock-key"
+                size="sm"
+                color="orange-8"
+                :disable="!canEdit"
+                @click.stop="emit('open-hold-dialog', rowProps.row)"
+              >
+                <q-tooltip>Hold for customer</q-tooltip>
+              </q-btn>
+              <q-btn
+                v-else-if="normalizeStatus(rowProps.row.status) === 'RESERVED'"
+                flat
+                round
+                dense
+                icon="ph ph-lock-open"
+                size="sm"
+                color="orange-8"
+                :disable="!canEdit"
+                @click.stop="emit('release-hold', rowProps.row)"
+              >
+                <q-tooltip>Release hold</q-tooltip>
               </q-btn>
               <q-btn
                 flat
