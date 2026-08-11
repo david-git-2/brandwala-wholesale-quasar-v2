@@ -1,4 +1,5 @@
 import salesRoutes from './sales.routes';
+import customersRoutes from './customers.routes';
 import reportsRoutes from './reports.routes';
 import ledgerRoutes from './ledger.routes';
 import shipmentRoutes from './shipment.routes';
@@ -14,6 +15,7 @@ import courierRoutes from './courier.routes';
 
 export default [
   ...salesRoutes,
+  ...customersRoutes,
   ...courierRoutes,
   ...reportsRoutes,
   ...ledgerRoutes,

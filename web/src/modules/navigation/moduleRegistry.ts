@@ -12,6 +12,7 @@ export type ModuleKey =
   | 'documentation'
   | 'thrift'
   | 'thrift_sales'
+  | 'thrift_customers'
   | 'thrift_reports'
   | 'thrift_stock'
   | 'thrift_marketing_tag'
@@ -361,6 +362,22 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         caption: 'System + custom couriers',
         icon: 'ph ph-truck',
         routeSegment: 'thrift/couriers',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'thrift_customers',
+    name: 'Thrift Customers',
+    description: 'Browse thrift customer profiles created from sales invoices.',
+    parentModuleKey: 'thrift',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Customers',
+        caption: 'Customer profiles from sales',
+        icon: 'ph ph-users',
+        routeSegment: 'thrift/customers',
         requiredAction: 'view',
       },
     ],

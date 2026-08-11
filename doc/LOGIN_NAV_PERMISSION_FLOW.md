@@ -230,6 +230,8 @@ Effective permission is:
 
 ## Auto-Generated Navigation
 
+The app dashboard uses the same enablement + grant filter for widgets — see [doc/v2/dashboard/README.md](v2/dashboard/README.md).
+
 Navigation should not be hardcoded per layout.
 
 Instead, generate it from:

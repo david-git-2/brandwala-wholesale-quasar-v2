@@ -82,13 +82,14 @@ dotenv_get() {
 }
 
 # Local GoTrue needs the same Google OAuth client as prod.
-# Fill missing GOOGLE_* from: root .env → web/.env.prod → web/.env
+# Fill missing GOOGLE_* from: root .env → profile prod → legacy .env.prod → web/.env
 load_google_oauth_env() {
   load_root_env
 
   local file id secret
   for file in \
     "${ROOT_DIR}/.env" \
+    "${ROOT_DIR}/web/.env.profile.prod" \
     "${ROOT_DIR}/web/.env.prod" \
     "${ROOT_DIR}/web/.env"
   do
@@ -113,7 +114,7 @@ load_google_oauth_env() {
   if [[ -z "${GOOGLE_CLIENT_ID:-}" || -z "${GOOGLE_CLIENT_SECRET:-}" ]]; then
     echo "Warning: GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET not found."
     echo "         Add the same values as Supabase Dashboard → Authentication → Google"
-    echo "         into web/.env.prod (preferred) or web/.env, then re-run start."
+    echo "         into web/.env.profile.prod (preferred) or web/.env, then re-run start."
     echo "         Also add redirect URI: http://127.0.0.1:54321/auth/v1/callback"
   else
     echo "Google OAuth client loaded for local Auth (from env profiles)."
@@ -131,7 +132,7 @@ cmd_start() {
     echo "Local Supabase is already running."
     supabase_cli status
     echo
-    echo "Next: pnpm run backend:env:print  # seed web/.env.local if needed"
+    echo "Next: pnpm run backend:env:print  # seed web/.env.profile.local if needed"
     echo "Then: pnpm run env:local && pnpm run dev"
     return 0
   fi
@@ -143,7 +144,7 @@ cmd_start() {
 
   if [[ "$start_rc" -eq 0 ]] || local_stack_healthy; then
     echo
-    echo "Local stack is up. Next: pnpm run backend:env:print → web/.env.local; pnpm run env:local"
+    echo "Local stack is up. Next: pnpm run backend:env:print → web/.env.profile.local; pnpm run env:local"
     return 0
   fi
 
@@ -156,7 +157,7 @@ cmd_start() {
       echo "Stack is healthy now."
       supabase_cli status
       echo
-      echo "Local stack is up. Next: pnpm run backend:env:print → web/.env.local; pnpm run env:local"
+      echo "Local stack is up. Next: pnpm run backend:env:print → web/.env.profile.local; pnpm run env:local"
       return 0
     fi
   done
@@ -165,7 +166,7 @@ cmd_start() {
   supabase_cli stop || true
   supabase_cli start
   echo
-  echo "Local stack is up. Next: pnpm run backend:env:print → web/.env.local; pnpm run env:local"
+  echo "Local stack is up. Next: pnpm run backend:env:print → web/.env.profile.local; pnpm run env:local"
 }
 
 cmd_stop() {

@@ -28,10 +28,46 @@
             </q-input>
           </div>
           <div class="col-6 col-sm-3 col-md-2">
-            <q-input v-model="dateFrom" dense outlined type="date" label="From" />
+            <q-input
+              :model-value="dateFromLabel"
+              dense
+              outlined
+              readonly
+              label="From"
+            >
+              <template #append>
+                <q-icon name="ph ph-calendar" class="cursor-pointer">
+                  <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                    <q-date v-model="dateFrom" mask="YYYY-MM-DD">
+                      <div class="row items-center justify-end">
+                        <q-btn v-close-popup label="Close" color="primary" flat dense />
+                      </div>
+                    </q-date>
+                  </q-popup-proxy>
+                </q-icon>
+              </template>
+            </q-input>
           </div>
           <div class="col-6 col-sm-3 col-md-2">
-            <q-input v-model="dateTo" dense outlined type="date" label="To" />
+            <q-input
+              :model-value="dateToLabel"
+              dense
+              outlined
+              readonly
+              label="To"
+            >
+              <template #append>
+                <q-icon name="ph ph-calendar" class="cursor-pointer">
+                  <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                    <q-date v-model="dateTo" mask="YYYY-MM-DD">
+                      <div class="row items-center justify-end">
+                        <q-btn v-close-popup label="Close" color="primary" flat dense />
+                      </div>
+                    </q-date>
+                  </q-popup-proxy>
+                </q-icon>
+              </template>
+            </q-input>
           </div>
           <div class="col-12 col-sm-3 col-md-2">
             <q-select
@@ -161,6 +197,22 @@ const dateTo = ref(todayIsoDate());
 const damagedFilter = ref<boolean | null>(null);
 const page = ref(1);
 const rowsPerPage = ref(20);
+
+function formatDisplayDate(value: string): string {
+  if (!value) return '—';
+  try {
+    return new Date(`${value}T00:00:00`).toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  } catch {
+    return value;
+  }
+}
+
+const dateFromLabel = computed(() => formatDisplayDate(dateFrom.value));
+const dateToLabel = computed(() => formatDisplayDate(dateTo.value));
 
 const damagedOptions = [
   { label: 'All', value: null },

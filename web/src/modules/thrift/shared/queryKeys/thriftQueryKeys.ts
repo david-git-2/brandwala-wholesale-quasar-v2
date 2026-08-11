@@ -19,4 +19,5 @@ export const thriftQueryKeys = {
   salesInvoiceDetail: (params: object) => ['thrift', 'sales', 'detail', params] as const,
   availableStockSearch: (params: object) =>
     ['thrift', 'sales', 'available-stock-search', params] as const,
+  customers: (params: object) => ['thrift', 'customers', 'list', params] as const,
 };

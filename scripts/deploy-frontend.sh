@@ -20,7 +20,7 @@ fi
 
 PROJECT_NAME="${1:-${CF_PAGES_PROJECT_NAME:-}}"
 if [[ -z "${PROJECT_NAME}" ]]; then
-  echo "Error: set CF_PAGES_PROJECT_NAME in web/.env.prod (or web/.env) or pass project name as an argument."
+  echo "Error: set CF_PAGES_PROJECT_NAME in web/.env.profile.prod (or web/.env) or pass project name as an argument."
   exit 1
 fi
 

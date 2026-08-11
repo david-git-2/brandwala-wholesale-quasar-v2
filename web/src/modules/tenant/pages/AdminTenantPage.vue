@@ -74,7 +74,7 @@ const goToTenantDetails = (tenantId?: number) => {
   const tenant = items.value.find((item) => item.id === tenantId) ?? null;
 
   if (tenant) {
-    void selectTenantWorkspace(tenant);
+    void selectTenantWorkspace(tenant, { destination: 'tenant-details' });
   }
 };
 

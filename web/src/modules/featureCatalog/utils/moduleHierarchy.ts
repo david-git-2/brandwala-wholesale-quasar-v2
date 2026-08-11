@@ -110,6 +110,8 @@ const getSubmoduleSectionAndWeight = (
     switch (moduleKey) {
       case 'thrift_sales':
         return { section: 'Sell', weight: 10 };
+      case 'thrift_customers':
+        return { section: 'Sell', weight: 15 };
       case 'thrift_reports':
         return { section: 'Sell', weight: 20 };
       case 'thrift_stock':

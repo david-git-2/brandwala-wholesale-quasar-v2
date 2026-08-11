@@ -20,6 +20,8 @@ export function useAdminTenantSelection() {
     tenant: Pick<Tenant, 'id' | 'slug' | 'name'>,
     options?: {
       navigate?: boolean;
+      /** Where to land after bootstrap. Default: dashboard (header switcher). */
+      destination?: 'dashboard' | 'tenant-details';
     },
   ) => {
     if (!authStore.user?.email || !authStore.member) {
@@ -109,10 +111,10 @@ export function useAdminTenantSelection() {
       );
 
       if (options?.navigate !== false) {
-        if (bootstrap.member_role === 'admin') {
-          await router.push(`/${bootstrap.tenant_slug}/app/tenants/${bootstrap.tenant_id}`);
-        } else if (bootstrap.member_role === 'viewer') {
+        if (bootstrap.member_role === 'viewer') {
           await router.push(`/${bootstrap.tenant_slug}/app/costing/viewer`);
+        } else if (options?.destination === 'tenant-details') {
+          await router.push(`/${bootstrap.tenant_slug}/app/tenants/${bootstrap.tenant_id}`);
         } else {
           await router.push(`/${bootstrap.tenant_slug}/app/dashboard`);
         }
