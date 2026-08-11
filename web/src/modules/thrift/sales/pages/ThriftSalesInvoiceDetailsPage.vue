@@ -22,7 +22,7 @@
                 <q-badge
                   v-if="invoice"
                   :color="invoiceStatusColor(invoice.status)"
-                  :label="labelize(invoice.status)"
+                  :label="invoiceStatusLabel(invoice.status)"
                 />
                 <q-badge
                   v-if="invoice"
@@ -60,52 +60,50 @@
               label="Record COD"
               :disable="!!reverting || remitting || updatingDelivery || returning"
               @click="openRemittanceDialog()"
-            >
-              <q-tooltip>
-                Cash remittance from courier — not a return / RTO
-              </q-tooltip>
-            </q-btn>
-            <q-btn
-              v-if="canShowReturnItems"
-              color="warning"
-              unelevated
-              no-caps
-              icon="ph ph-arrow-u-up-left"
-              label="Return items"
-              :loading="returning"
-              :disable="!!reverting || remitting || updatingDelivery"
-              @click="openReturnDialog()"
-            >
-              <q-tooltip>
-                Post-pay return — select some or all lines (not Mark RTO)
-              </q-tooltip>
-            </q-btn>
-            <q-btn
-              v-if="canShowMarkRto"
-              outline
-              color="warning"
-              no-caps
-              icon="ph ph-package"
-              label="Mark RTO"
-              :loading="reverting === 'RTO'"
-              :disable="!!reverting || remitting || updatingDelivery || returning"
-              @click="openRtoDialog()"
-            >
-              <q-tooltip>
-                No pickup / refuse — closes parcel as RETURNED. Not COD remittance.
-              </q-tooltip>
-            </q-btn>
-            <q-btn
-              v-if="canStaffMistake && invoice.status === 'ACTIVE' && !hasReturns"
-              outline
-              color="negative"
-              no-caps
-              icon="ph ph-trash"
-              label="Staff Mistake"
-              :loading="reverting === 'STAFF_MISTAKE'"
-              :disable="!!reverting || remitting || updatingDelivery || returning"
-              @click="confirmRevert('STAFF_MISTAKE')"
             />
+            <q-btn-dropdown
+              v-if="showWhatHappenedMenu"
+              outline
+              color="grey-8"
+              no-caps
+              label="What happened?"
+              :disable="!!reverting || remitting || updatingDelivery || returning"
+            >
+              <q-list dense style="min-width: 260px">
+                <q-item
+                  v-if="canRecordRemittance && canShowRemittance"
+                  clickable
+                  v-close-popup
+                  @click="openRemittanceDialog()"
+                >
+                  <q-item-section>Courier brought COD cash</q-item-section>
+                </q-item>
+                <q-item
+                  v-if="canShowMarkRto"
+                  clickable
+                  v-close-popup
+                  @click="openRtoDialog()"
+                >
+                  <q-item-section>Customer did not take the parcel</q-item-section>
+                </q-item>
+                <q-item
+                  v-if="canShowReturnItems"
+                  clickable
+                  v-close-popup
+                  @click="openReturnDialog()"
+                >
+                  <q-item-section>Customer returned items after delivery</q-item-section>
+                </q-item>
+                <q-item
+                  v-if="canStaffMistake && invoice.status === 'ACTIVE' && !hasReturns"
+                  clickable
+                  v-close-popup
+                  @click="confirmRevert('STAFF_MISTAKE')"
+                >
+                  <q-item-section>Wrong sale entered (staff mistake)</q-item-section>
+                </q-item>
+              </q-list>
+            </q-btn-dropdown>
           </template>
         </div>
       </section>
@@ -160,7 +158,7 @@
                     <div class="text-caption text-grey-6">Invoice Status</div>
                     <q-badge
                       :color="invoiceStatusColor(invoice.status)"
-                      :label="labelize(invoice.status)"
+                      :label="invoiceStatusLabel(invoice.status)"
                     />
                   </div>
                   <div class="col-6 col-sm-4">
@@ -383,47 +381,6 @@
                     <span>Ref</span>
                     <span>{{ invoice.codRemittanceRef }}</span>
                   </div>
-                  <q-btn
-                    v-if="canRecordRemittance && canShowRemittance"
-                    class="full-width q-mt-md"
-                    color="primary"
-                    outline
-                    no-caps
-                    icon="ph ph-hand-coins"
-                    label="Record COD remittance"
-                    :disable="remitting || !!reverting"
-                    @click="openRemittanceDialog()"
-                  />
-                </template>
-                <template v-if="canShowReturnItems">
-                  <q-btn
-                    class="full-width q-mt-sm"
-                    color="warning"
-                    unelevated
-                    no-caps
-                    icon="ph ph-arrow-u-up-left"
-                    label="Return items"
-                    :disable="remitting || !!reverting || returning"
-                    @click="openReturnDialog()"
-                  />
-                </template>
-                <template v-if="canShowMarkRto">
-                  <div
-                    v-if="canShowRemittance"
-                    class="text-caption text-grey-6 q-mt-sm"
-                  >
-                    COD = cash from courier. RTO = customer refused / no pickup.
-                  </div>
-                  <q-btn
-                    class="full-width q-mt-sm"
-                    color="warning"
-                    outline
-                    no-caps
-                    icon="ph ph-package"
-                    label="Mark RTO (no pickup)"
-                    :disable="remitting || !!reverting || returning"
-                    @click="openRtoDialog()"
-                  />
                 </template>
               </q-card-section>
             </q-card>
@@ -824,6 +781,16 @@ const canShowReturnItems = computed(() => {
   return ds === 'DELIVERED' || inv.status === 'PARTIALLY_RETURNED';
 });
 
+const showWhatHappenedMenu = computed(() => {
+  const inv = invoice.value;
+  if (!inv) return false;
+  if (canRecordRemittance.value && canShowRemittance.value) return true;
+  if (canShowMarkRto.value) return true;
+  if (canShowReturnItems.value) return true;
+  if (canStaffMistake.value && inv.status === 'ACTIVE' && !hasReturns.value) return true;
+  return false;
+});
+
 const remittanceAcceptsShortfall = computed(() => {
   if (remittanceForm.value.outcome !== 'PAID') return false;
   const expected = invoice.value?.codExpected;
@@ -861,8 +828,40 @@ const itemColumns: QTableColumn[] = [
   { name: 'finalPrice', label: 'Final', field: 'finalPrice', align: 'right' },
 ];
 
+const PAYMENT_LABELS: Record<string, string> = {
+  COD_PENDING: 'Waiting for COD',
+  PAID: 'Paid',
+  PARTIALLY_REFUNDED: 'Partially refunded',
+  REFUNDED: 'Refunded',
+  WRITTEN_OFF: 'Written off',
+};
+const DELIVERY_LABELS: Record<string, string> = {
+  PENDING: 'Pending',
+  READY: 'Ready',
+  IN_TRANSIT: 'In transit',
+  DELIVERED: 'Delivered',
+  RETURNED: 'Came back',
+};
+const INVOICE_STATUS_LABELS: Record<string, string> = {
+  ACTIVE: 'Active',
+  PARTIALLY_RETURNED: 'Partially returned',
+  RETURNED: 'Closed — returned',
+};
+
 function labelize(value: string): string {
   return (value || '—').replace(/_/g, ' ').toUpperCase();
+}
+
+function paymentStatusLabel(value: string): string {
+  return PAYMENT_LABELS[value] ?? labelize(value);
+}
+
+function deliveryStatusLabel(value: string): string {
+  return DELIVERY_LABELS[value] ?? labelize(value);
+}
+
+function invoiceStatusLabel(value: string): string {
+  return INVOICE_STATUS_LABELS[value] ?? labelize(value);
 }
 
 function saleChannelLabel(channel: string): string {
@@ -911,7 +910,7 @@ async function advanceDelivery(
       deliveryStatus: next,
       actor: authStore.user?.email || 'cashier',
     });
-    showSuccessNotification(`Delivery set to ${labelize(next)}`);
+    showSuccessNotification(`Delivery set to ${deliveryStatusLabel(next)}`);
     await loadInvoice();
   } catch (err: any) {
     showErrorNotification(

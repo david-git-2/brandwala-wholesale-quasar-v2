@@ -115,6 +115,19 @@
           </p>
         </section>
 
+        <div class="sales-deeplink">
+          <q-btn
+            outline
+            color="primary"
+            no-caps
+            label="Open sales list"
+            :to="salesListPath"
+          />
+          <p class="sales-deeplink__caption q-mb-none">
+            Sales list has no date filter yet — use search or COD/Ready presets.
+          </p>
+        </div>
+
         <section class="story-card">
           <div class="story-card__title">In plain words</div>
           <div class="story-row">
@@ -303,6 +316,10 @@ const reportsListPath = computed(
   () => `/${tenantSlug.value || 'tenant'}/app/thrift/reports`,
 );
 
+const salesListPath = computed(
+  () => `/${tenantSlug.value || 'tenant'}/app/thrift/sales`,
+);
+
 const summary = computed(() => report.value?.summary || {
   invoiceCount: 0,
   unitsSold: 0,
@@ -438,6 +455,19 @@ const channelColumns: QTableColumn[] = [
 
 .hero-panel__note {
   margin-top: 0.85rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--bw-theme-muted, #6b7280);
+}
+
+.sales-deeplink {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+
+.sales-deeplink__caption {
   font-size: 0.8rem;
   line-height: 1.4;
   color: var(--bw-theme-muted, #6b7280);

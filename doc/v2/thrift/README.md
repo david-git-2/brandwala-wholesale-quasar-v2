@@ -28,6 +28,7 @@ Worked examples: [sales/scenarios.md](./sales/scenarios.md).
 - [task.md](./task.md) — sales economics overview
 - [task-rto.md](./task-rto.md) — DELIVERED PnL + Mark RTO
 - [task-post-accept-return.md](./task-post-accept-return.md) — post-accept Return items + returns hub
+- [ux-friction-fix.md](./ux-friction-fix.md) — Sales + Reports new-user friction fix backlog
 
 ## Stock extras
 

@@ -47,15 +47,29 @@ export function useThriftStockForms(
   const authStore = useAuthStore();
   const tenantIdRef = computed(() => authStore.tenantId ?? 0);
 
+  // Dialog & Form States (declared early so dialog-only master data can stay lazy)
+  const dialogOpen = ref(false);
+  const editingId = ref<number | null>(null);
+  const quickAddDialogOpen = ref(false);
+  const dialogMasterDataEnabled = computed(
+    () => dialogOpen.value || quickAddDialogOpen.value,
+  );
+
   // Master Data Queries
   const { data: settingsData } = useThriftSettingsQuery(tenantIdRef);
   const settings = computed(() => settingsData.value || null);
   const { data: currenciesData } = useThriftCurrenciesQuery();
   const currencies = computed(() => currenciesData.value || []);
-  const { data: categoriesData } = useThriftCategoriesQuery(tenantIdRef);
-  const { data: typesData } = useThriftTypesQuery(tenantIdRef);
+  const { data: categoriesData } = useThriftCategoriesQuery(
+    tenantIdRef,
+    dialogMasterDataEnabled,
+  );
+  const { data: typesData } = useThriftTypesQuery(tenantIdRef, dialogMasterDataEnabled);
   const { data: boxesData } = useThriftBoxesQuery(tenantIdRef);
-  const { data: shelvesData } = useThriftShelvesQuery(tenantIdRef);
+  const { data: shelvesData } = useThriftShelvesQuery(
+    tenantIdRef,
+    dialogMasterDataEnabled,
+  );
   const { data: shipmentsData } = useThriftShipmentsQuery(tenantIdRef);
 
   const categories = computed(() => categoriesData.value ?? []);
@@ -92,10 +106,8 @@ export function useThriftStockForms(
   const updateStockMutation = useUpdateStockMutation();
   const attachStockImageMutation = useAttachStockImageMutation();
 
-  // Dialog & Form States
-  const dialogOpen = ref(false);
-  const editingId = ref<number | null>(null);
-  const quickAddDialogOpen = ref(false);
+  // Remaining dialog UI state
+
   const isUploaderOpen = ref(false);
   const uploaderTarget = ref<'quick' | 'edit'>('quick');
   const quickSubmitting = ref(false);

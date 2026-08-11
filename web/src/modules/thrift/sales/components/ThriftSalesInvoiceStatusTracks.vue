@@ -219,15 +219,22 @@ const isRefundPayment = computed(() =>
   ['REFUNDED', 'PARTIALLY_REFUNDED'].includes(paymentCurrent.value),
 );
 
-const writtenOffDisabled = computed(() => {
-  if (paymentCurrent.value === 'WRITTEN_OFF') return true;
-  if (!props.invoiceActive || !props.canRecordRemittance) return true;
-  if (paymentCurrent.value !== 'COD_PENDING') return true;
-  return props.remitting || props.updatingDelivery;
-});
+const writtenOffDisabled = computed(() => true);
 
 function formatStatusLabel(value: string): string {
-  return value.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  const labels: Record<string, string> = {
+    PENDING: 'Pending',
+    READY: 'Ready',
+    IN_TRANSIT: 'In transit',
+    DELIVERED: 'Delivered',
+    RETURNED: 'Came back',
+    COD_PENDING: 'Waiting for COD',
+    PAID: 'Paid',
+    WRITTEN_OFF: 'Written off',
+    REFUNDED: 'Refunded',
+    PARTIALLY_REFUNDED: 'Partially refunded',
+  };
+  return labels[value] ?? value.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function isPassed(current: string, workflow: readonly string[], st: string): boolean {
@@ -275,15 +282,7 @@ function deliveryBtnDisabled(st: string): boolean {
   return true;
 }
 
-function paymentBtnDisabled(st: string): boolean {
-  if (paymentCurrent.value === st) return true;
-  if (isRefundPayment.value || paymentCurrent.value === 'WRITTEN_OFF') return true;
-  if (!isOnline.value) return true;
-  if (st === 'PAID') {
-    if (!props.invoiceActive || !props.canRecordRemittance) return true;
-    if (paymentCurrent.value !== 'COD_PENDING') return true;
-    return props.remitting || props.updatingDelivery;
-  }
+function paymentBtnDisabled(_st: string): boolean {
   return true;
 }
 
@@ -292,16 +291,8 @@ function onDeliveryClick(st: string) {
   emit('select-delivery', st as Exclude<ThriftDeliveryStatus, 'RETURNED'>);
 }
 
-function onPaymentClick(st: 'PAID' | 'WRITTEN_OFF' | string) {
-  if (st === 'PAID') {
-    if (paymentBtnDisabled('PAID')) return;
-    emit('select-payment', 'PAID');
-    return;
-  }
-  if (st === 'WRITTEN_OFF') {
-    if (writtenOffDisabled.value) return;
-    emit('select-payment', 'WRITTEN_OFF');
-  }
+function onPaymentClick(_st: 'PAID' | 'WRITTEN_OFF' | string) {
+  return;
 }
 </script>
 

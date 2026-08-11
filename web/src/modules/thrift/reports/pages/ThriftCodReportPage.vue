@@ -52,6 +52,16 @@
           </div>
         </div>
 
+        <q-btn
+          color="primary"
+          unelevated
+          no-caps
+          class="full-width"
+          icon="ph ph-arrow-right"
+          label="Open COD waiting invoices"
+          :to="`/${tenantSlug || 'tenant'}/app/thrift/sales?paymentStatus=COD_PENDING`"
+        />
+
         <p class="help-text q-mb-none">
           This is cash the courier still owes you (or partially paid). It is separate from
           “How much did I earn?”

@@ -56,6 +56,7 @@
           <span class="shipment-row__body">
             <span class="shipment-row__name">{{ row.name }}</span>
             <span class="shipment-row__meta">{{ formatDate(row.created_at) }}</span>
+            <span class="shipment-row__teaser">{{ profitTeaserFor(row.id) }}</span>
           </span>
           <q-icon name="ph ph-caret-right" class="shipment-row__chevron" size="20px" />
         </button>
@@ -66,10 +67,14 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { useQueries } from '@tanstack/vue-query';
 import { useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { formatThriftAmount } from 'src/modules/thrift/currency/utils/formatMoney';
+import { thriftQueryKeys } from '../../shared/queryKeys/thriftQueryKeys';
 import { useThriftReportShipmentsQuery } from '../composables/useThriftReportsQuery';
+import { thriftReportsRepository } from '../repositories/thriftReportsRepository';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -89,6 +94,56 @@ const filteredRows = computed(() => {
   if (!q) return rows;
   return rows.filter((row) => row.name?.toLowerCase().includes(q) || String(row.id).includes(q));
 });
+
+const teaserQueries = useQueries({
+  queries: computed(() => {
+    const tid = Number(tenantId.value) || 0;
+    return filteredRows.value.map((row) => ({
+      queryKey: thriftQueryKeys.reportDetail({ tenantId: tid, shipmentId: row.id }),
+      queryFn: () => thriftReportsRepository.getShipmentSalesReport(tid, row.id),
+      enabled: !!tenantId.value && !!row.id,
+      staleTime: 30 * 1000,
+    }));
+  }),
+});
+
+const teaserByShipmentId = computed(() => {
+  const map = new Map<number, { isLoading: boolean; isError: boolean; text: string }>();
+  const rows = filteredRows.value;
+  const results = teaserQueries.value;
+  for (let i = 0; i < rows.length; i += 1) {
+    const row = rows[i];
+    const q = results[i];
+    if (!q || q.isLoading || q.isPending) {
+      map.set(row.id, { isLoading: true, isError: false, text: '…' });
+      continue;
+    }
+    if (q.isError) {
+      map.set(row.id, { isLoading: false, isError: true, text: 'Profit unavailable' });
+      continue;
+    }
+    const summary = q.data?.summary;
+    if (!summary) {
+      map.set(row.id, { isLoading: false, isError: true, text: 'Profit unavailable' });
+      continue;
+    }
+    const finished = summary.unitsSold + summary.unitsRto + summary.unitsReturned;
+    if (finished === 0) {
+      map.set(row.id, { isLoading: false, isError: false, text: 'No finished sales yet' });
+      continue;
+    }
+    map.set(row.id, {
+      isLoading: false,
+      isError: false,
+      text: `Profit ${formatThriftAmount(summary.netProfit)} · ${summary.unitsSold} delivered`,
+    });
+  }
+  return map;
+});
+
+function profitTeaserFor(id: number) {
+  return teaserByShipmentId.value.get(id)?.text ?? '…';
+}
 
 function goDetail(id: number) {
   void router.push(`/${tenantSlug.value || 'tenant'}/app/thrift/reports/${id}`);
@@ -182,6 +237,12 @@ function formatDate(value: string) {
 .shipment-row__meta {
   font-size: 0.8rem;
   color: var(--bw-theme-muted, #6b7280);
+}
+
+.shipment-row__teaser {
+  font-size: 0.8rem;
+  color: var(--bw-theme-ink, inherit);
+  opacity: 0.85;
 }
 
 .shipment-row__chevron {

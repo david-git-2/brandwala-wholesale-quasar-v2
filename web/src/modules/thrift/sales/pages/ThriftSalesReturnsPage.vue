@@ -92,8 +92,23 @@
             </q-td>
           </template>
           <template #no-data>
-            <div class="full-width column flex-center q-pa-lg text-grey-6">
-              No returns found.
+            <div class="full-width column flex-center q-pa-xl text-grey-6">
+              <q-icon name="ph ph-arrow-u-up-left" size="48px" class="q-mb-sm" />
+              <template v-if="filtersActive">
+                <div class="text-subtitle1 text-weight-medium">No matching returns</div>
+                <q-btn
+                  class="q-mt-md"
+                  color="primary"
+                  unelevated
+                  no-caps
+                  label="Clear filters"
+                  @click="clearFilters"
+                />
+              </template>
+              <template v-else>
+                <div class="text-subtitle1 text-weight-medium">No returns yet</div>
+                <div class="text-body2 q-mt-sm">Create from an invoice → Return items.</div>
+              </template>
             </div>
           </template>
         </q-table>
@@ -222,6 +237,23 @@ function onTableRequest(req: Parameters<NonNullable<QTableProps['onRequest']>>[0
 
 function onRowClick(_evt: Event, row: ThriftSalesReturnListItem) {
   void router.push(`/${tenantSlug.value || 'tenant'}/app/thrift/sales/returns/${row.id}`);
+}
+
+const filtersActive = computed(() => {
+  if (search.value.trim()) return true;
+  if (damagedFilter.value !== null) return true;
+  // Default range is start-of-month → today; only treat as filtered when changed/cleared.
+  if (dateFrom.value !== startOfMonthIsoDate()) return true;
+  if (dateTo.value !== todayIsoDate()) return true;
+  return false;
+});
+
+function clearFilters() {
+  search.value = '';
+  dateFrom.value = startOfMonthIsoDate();
+  dateTo.value = todayIsoDate();
+  damagedFilter.value = null;
+  page.value = 1;
 }
 
 watch([search, dateFrom, dateTo, damagedFilter], () => {

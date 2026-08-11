@@ -44,18 +44,26 @@
             class="col-grow col-sm-auto"
             :to="`/${authStore.tenantSlug || 'tenant'}/app/thrift/sales`"
           />
-          <q-btn
-            color="primary"
-            unelevated
-            no-caps
-            icon="ph ph-check"
-            label="Generate"
-            dense
-            class="col-grow col-sm-auto"
-            :loading="saving"
-            :disable="generateDisabled"
-            @click="onSaveInvoice"
-          />
+          <div class="col-grow col-sm-auto column items-stretch items-sm-end">
+            <q-btn
+              color="primary"
+              unelevated
+              no-caps
+              icon="ph ph-check"
+              :label="generatePrimaryLabel"
+              dense
+              class="full-width"
+              :loading="saving"
+              :disable="generateDisabled"
+              @click="onSaveInvoice"
+            />
+            <div
+              v-if="generateDisabledReason"
+              class="text-caption text-grey-6 q-mt-xs"
+            >
+              {{ generateDisabledReason }}
+            </div>
+          </div>
         </div>
       </section>
 
@@ -92,7 +100,7 @@
               dense
               no-caps
               class="q-px-md text-caption text-weight-bold"
-              @click="goOnlineStep(st.value)"
+              @click="onOnlineStepChipClick(st.value)"
             >
               <q-icon
                 v-if="onlineStep === st.value"
@@ -714,6 +722,20 @@
                 Enter each fee, then choose who pays. Leave amount at 0 to skip.
               </div>
 
+              <q-select
+                v-model="feePreset"
+                :options="feePresetOptions"
+                option-value="value"
+                option-label="label"
+                emit-value
+                map-options
+                outlined
+                dense
+                label="Fee preset"
+                class="q-mb-md"
+                @update:model-value="onFeePresetSelect"
+              />
+
               <div class="column q-gutter-y-md">
                 <div class="courier-fee-row row q-col-gutter-sm items-start">
                   <div class="col-12 col-sm-6">
@@ -743,6 +765,7 @@
                       :disable="!courierAmountPositive"
                       :options="courierPaidByOptions"
                       :class="{ 'courier-payer-error': !!validationErrors.courierPaidBy }"
+                      @update:model-value="onFeePayerManualChange"
                     />
                     <div
                       v-if="validationErrors.courierPaidBy"
@@ -781,6 +804,7 @@
                       :disable="!codFeeAmountPositive"
                       :options="courierPaidByOptions"
                       :class="{ 'courier-payer-error': !!validationErrors.codFeePaidBy }"
+                      @update:model-value="onFeePayerManualChange"
                     />
                     <div
                       v-if="validationErrors.codFeePaidBy"
@@ -819,6 +843,7 @@
                       :disable="!packingAmountPositive"
                       :options="courierPaidByOptions"
                       :class="{ 'courier-payer-error': !!validationErrors.packingPaidBy }"
+                      @update:model-value="onFeePayerManualChange"
                     />
                     <div
                       v-if="validationErrors.packingPaidBy"
@@ -898,7 +923,7 @@
                 </div>
               </div>
               <div class="text-caption text-grey-6">
-                Draft is saved on this device. Generate creates the invoice.
+                Draft is saved on this device. Create order submits the invoice.
               </div>
             </q-card-section>
           </q-card>
@@ -916,7 +941,7 @@
                       Online steps: Items → Customer → Courier → Review. Draft autosaves locally.
                     </template>
                     <template v-else>
-                      Offline sales are marked paid on generate. Matching holds convert when phone matches.
+                      Offline sales are marked paid when you complete the sale. Matching holds convert when phone matches.
                     </template>
                   </span>
                 </div>
@@ -954,12 +979,24 @@
                       no-caps
                       class="full-width text-weight-bold"
                       icon="ph ph-check-circle"
-                      label="Generate"
+                      :label="generatePrimaryLabel"
                       :loading="saving"
                       :disable="generateDisabled"
                       @click="onSaveInvoice"
                     />
                   </div>
+                </div>
+                <div
+                  v-if="onlineStep === 3 && generateDisabledReason"
+                  class="text-caption text-grey-6 q-mt-sm"
+                >
+                  {{ generateDisabledReason }}
+                </div>
+                <div
+                  v-else-if="onlineStep === 3"
+                  class="text-caption text-grey-6 q-mt-sm"
+                >
+                  {{ generatePrimaryCaption }}
                 </div>
               </q-card-section>
 
@@ -969,13 +1006,25 @@
                   unelevated
                   no-caps
                   icon="ph ph-check-circle"
-                  label="Generate"
+                  :label="generatePrimaryLabel"
                   class="full-width text-weight-bold"
                   size="lg"
                   :loading="saving"
                   :disable="generateDisabled"
                   @click="onSaveInvoice"
                 />
+                <div
+                  v-if="generateDisabledReason"
+                  class="text-caption text-grey-6 full-width text-center"
+                >
+                  {{ generateDisabledReason }}
+                </div>
+                <div
+                  v-else
+                  class="text-caption text-grey-6 full-width text-center"
+                >
+                  {{ generatePrimaryCaption }}
+                </div>
               </q-card-actions>
             </q-card>
           </div>
@@ -986,7 +1035,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onBeforeUnmount, onMounted } from 'vue';
+import { ref, computed, watch, onBeforeUnmount, onMounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import LearnMoreHelpBtn from 'src/modules/help/components/LearnMoreHelpBtn.vue';
@@ -1120,6 +1169,36 @@ const courierPaidByOptions = [
   { label: 'Shop', value: 'SHOP' },
 ];
 
+type FeePreset = 'typical' | 'shop' | 'customer' | 'custom';
+
+const feePresetOptions: { label: string; value: FeePreset }[] = [
+  {
+    label: 'Customer pays delivery + COD · Shop pays packing',
+    value: 'typical',
+  },
+  { label: 'Shop pays all fees', value: 'shop' },
+  { label: 'Customer pays all fees', value: 'customer' },
+  { label: 'Custom', value: 'custom' },
+];
+
+const FEE_PRESET_PAYERS: Record<
+  Exclude<FeePreset, 'custom'>,
+  {
+    courier: ThriftCourierPaidBy;
+    cod: ThriftCourierPaidBy;
+    packing: ThriftCourierPaidBy;
+  }
+> = {
+  typical: { courier: 'CUSTOMER', cod: 'CUSTOMER', packing: 'SHOP' },
+  shop: { courier: 'SHOP', cod: 'SHOP', packing: 'SHOP' },
+  customer: { courier: 'CUSTOMER', cod: 'CUSTOMER', packing: 'CUSTOMER' },
+};
+
+const feePreset = ref<FeePreset>('typical');
+let applyingFeePreset = false;
+let channelSwitchLock = false;
+let channelConfirmBusy = false;
+
 const isOnline = computed(() => invoiceForm.value.saleChannel === 'ONLINE');
 
 const onlineSteps = [
@@ -1148,10 +1227,60 @@ const generateDisabled = computed(() => {
   return false;
 });
 
+const generatePrimaryLabel = computed(() =>
+  isOnline.value ? 'Create order' : 'Complete sale',
+);
+
+const generatePrimaryCaption = computed(() =>
+  isOnline.value
+    ? 'Creates a COD order. Not counted as earned until delivered.'
+    : 'Marks this sale paid now.',
+);
+
+const generateDisabledReason = computed(() => {
+  if (!generateDisabled.value) return '';
+  if (selectedItems.value.length === 0) return 'Add at least one item.';
+  if (isOnline.value && onlineStep.value !== 3) {
+    return 'Finish all steps to create the order.';
+  }
+  return '';
+});
+
 function formatDraftSavedAt(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
   return d.toLocaleString();
+}
+
+function applyFeePresetPayers(preset: Exclude<FeePreset, 'custom'>) {
+  applyingFeePreset = true;
+  const p = FEE_PRESET_PAYERS[preset];
+  invoiceForm.value.courierPaidBy = p.courier;
+  invoiceForm.value.codFeePaidBy = p.cod;
+  invoiceForm.value.packingPaidBy = p.packing;
+  void nextTick(() => {
+    applyingFeePreset = false;
+  });
+}
+
+function onFeePresetSelect(value: FeePreset | null | undefined) {
+  const preset = value ?? 'custom';
+  feePreset.value = preset;
+  if (preset === 'custom') return;
+  applyFeePresetPayers(preset);
+}
+
+function onFeePayerManualChange() {
+  if (applyingFeePreset) return;
+  feePreset.value = 'custom';
+}
+
+function defaultPayerFor(
+  kind: 'courier' | 'cod' | 'packing',
+): ThriftCourierPaidBy {
+  const preset = feePreset.value;
+  if (preset === 'custom') return 'CUSTOMER';
+  return FEE_PRESET_PAYERS[preset][kind];
 }
 
 function goOnlineStep(step: number) {
@@ -1179,6 +1308,27 @@ function goNextOnlineStep() {
     }
   }
   goOnlineStep(onlineStep.value + 1);
+}
+
+function onOnlineStepChipClick(step: number) {
+  if (step <= onlineStep.value) {
+    onlineStep.value = step;
+    return;
+  }
+  // only allow moving forward one validated step at a time
+  if (step === onlineStep.value + 1) {
+    goNextOnlineStep();
+    return;
+  }
+  // trying to skip: walk forward with validation
+  const walk = async () => {
+    while (onlineStep.value < step) {
+      const before = onlineStep.value;
+      goNextOnlineStep();
+      if (onlineStep.value === before) return; // validation failed
+    }
+  };
+  void walk();
 }
 
 function persistDraftNow() {
@@ -1230,6 +1380,16 @@ async function applyDraft(draft: ThriftCreateInvoiceDraft) {
     }
   } finally {
     draftHydrating.value = false;
+  }
+  if (
+    isOnline.value &&
+    onlineStep.value === 2 &&
+    !invoiceForm.value.courierPaidBy &&
+    !invoiceForm.value.codFeePaidBy &&
+    !invoiceForm.value.packingPaidBy
+  ) {
+    feePreset.value = 'typical';
+    applyFeePresetPayers('typical');
   }
 }
 
@@ -1296,7 +1456,56 @@ const courierAmountPositive = computed(() => courierAmountValue.value > 0);
 const packingAmountPositive = computed(() => packingAmountValue.value > 0);
 const codFeeAmountPositive = computed(() => codFeeAmountValue.value > 0);
 
+watch(
+  () => invoiceForm.value.saleChannel,
+  async (next, prev) => {
+    if (draftHydrating.value || channelConfirmBusy) return;
+    if (prev === undefined || next === prev) return;
+
+    const dirty =
+      selectedItems.value.length > 0 ||
+      !!invoiceForm.value.customerName.trim() ||
+      !!invoiceForm.value.customerPhone.trim() ||
+      !!invoiceForm.value.customerAddress.trim();
+    if (!dirty) return;
+
+    // Sync revert before isOnline side-effects; hold lock through nextTick
+    channelConfirmBusy = true;
+    channelSwitchLock = true;
+    invoiceForm.value.saleChannel = prev;
+    await nextTick();
+    channelSwitchLock = false;
+
+    const ok = await requestConfirmation(
+      'Switching Offline/Online keeps items but online-only courier fields may not apply.',
+      'Switch channel?',
+    );
+    if (!ok) {
+      channelConfirmBusy = false;
+      return;
+    }
+
+    // Apply confirmed switch; busy skips re-prompt, lock off so isOnline runs
+    invoiceForm.value.saleChannel = next;
+    await nextTick();
+    channelConfirmBusy = false;
+  },
+  { flush: 'sync' },
+);
+
+watch(onlineStep, (step) => {
+  if (!isOnline.value || step !== 2 || draftHydrating.value) return;
+  const allEmpty =
+    !invoiceForm.value.courierPaidBy &&
+    !invoiceForm.value.codFeePaidBy &&
+    !invoiceForm.value.packingPaidBy;
+  if (!allEmpty) return;
+  feePreset.value = 'typical';
+  applyFeePresetPayers('typical');
+});
+
 watch(isOnline, (online) => {
+  if (channelSwitchLock) return;
   if (!online) {
     invoiceForm.value.courierAmount = 0;
     invoiceForm.value.courierPaidBy = null;
@@ -1307,6 +1516,7 @@ watch(isOnline, (online) => {
     invoiceForm.value.courierProviderId = null;
     invoiceForm.value.trackingId = '';
     onlineStep.value = 0;
+    feePreset.value = 'typical';
   } else {
     onlineStep.value = 0;
     scheduleDraftPersist();
@@ -1319,7 +1529,7 @@ watch(courierAmountPositive, (positive) => {
     return;
   }
   if (!invoiceForm.value.courierPaidBy) {
-    invoiceForm.value.courierPaidBy = 'CUSTOMER';
+    invoiceForm.value.courierPaidBy = defaultPayerFor('courier');
   }
 });
 watch(packingAmountPositive, (positive) => {
@@ -1328,7 +1538,7 @@ watch(packingAmountPositive, (positive) => {
     return;
   }
   if (!invoiceForm.value.packingPaidBy) {
-    invoiceForm.value.packingPaidBy = 'CUSTOMER';
+    invoiceForm.value.packingPaidBy = defaultPayerFor('packing');
   }
 });
 watch(codFeeAmountPositive, (positive) => {
@@ -1337,7 +1547,7 @@ watch(codFeeAmountPositive, (positive) => {
     return;
   }
   if (!invoiceForm.value.codFeePaidBy) {
-    invoiceForm.value.codFeePaidBy = 'CUSTOMER';
+    invoiceForm.value.codFeePaidBy = defaultPayerFor('cod');
   }
 });
 
@@ -1793,7 +2003,7 @@ async function onSaveInvoice() {
       icon: 'ph ph-check-circle',
       message: isOnline.value
         ? `Online sale ${result.invoiceNumber} created (COD pending)`
-        : `Offline sale ${result.invoiceNumber} generated (paid)`,
+        : `Offline sale ${result.invoiceNumber} completed (paid)`,
       timeout: 2500,
     });
 

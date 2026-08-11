@@ -10,6 +10,12 @@
         <div class="col-auto row q-gutter-sm items-center">
           <LearnMoreHelpBtn guide-id="thrift_sales" />
           <q-btn
+            flat
+            no-caps
+            label="Returns"
+            :to="`/${authStore.tenantSlug || 'tenant'}/app/thrift/sales/returns`"
+          />
+          <q-btn
             v-if="canCreate"
             color="primary"
             unelevated
@@ -27,6 +33,19 @@
       <!-- Main Content Block -->
       <template v-else>
         <q-card flat bordered class="q-pa-sm">
+          <div class="row q-gutter-sm q-mb-sm">
+            <q-chip
+              v-for="preset in listPresetOptions"
+              :key="preset.value"
+              clickable
+              dense
+              :outline="listPreset !== preset.value"
+              :color="listPreset === preset.value ? 'primary' : 'grey-7'"
+              :text-color="listPreset === preset.value ? 'white' : undefined"
+              :label="preset.label"
+              @click="setListPreset(preset.value)"
+            />
+          </div>
           <div class="row items-center q-col-gutter-sm">
             <div class="col-12 col-sm-5 col-md-4">
               <q-input
@@ -147,39 +166,9 @@
               </q-td>
             </template>
 
-            <template #body-cell-paymentMethod="props">
+            <template #body-cell-statusSummary="props">
               <q-td :props="props">
-                <q-badge outline color="grey-7" :label="labelize(props.row.paymentMethod)" />
-              </q-td>
-            </template>
-
-            <template #body-cell-paymentStatus="props">
-              <q-td :props="props">
-                <q-badge
-                  :color="paymentStatusColor(props.row.paymentStatus)"
-                  :label="labelize(props.row.paymentStatus)"
-                />
-              </q-td>
-            </template>
-
-            <template #body-cell-deliveryStatus="props">
-              <q-td :props="props">
-                <q-badge
-                  v-if="props.row.deliveryStatus"
-                  outline
-                  :color="deliveryStatusColor(props.row.deliveryStatus)"
-                  :label="labelize(props.row.deliveryStatus)"
-                />
-                <span v-else class="text-grey-5">—</span>
-              </q-td>
-            </template>
-
-            <template #body-cell-status="props">
-              <q-td :props="props">
-                <q-badge
-                  :color="invoiceStatusColor(props.row.status)"
-                  :label="labelize(props.row.status)"
-                />
+                {{ statusSentence(props.row) }}
               </q-td>
             </template>
 
@@ -192,17 +181,30 @@
             <template #no-data>
               <div class="full-width column flex-center q-pa-xl text-grey-6">
                 <q-icon name="ph ph-receipt" size="48px" class="q-mb-sm" />
-                <div class="text-subtitle1 text-weight-medium">No invoices yet</div>
-                <div class="text-body2 q-mb-md">Create a counter sale to see it listed here.</div>
-                <q-btn
-                  v-if="canCreate"
-                  color="primary"
-                  unelevated
-                  no-caps
-                  icon="ph ph-plus"
-                  label="Create Invoice"
-                  :to="`/${authStore.tenantSlug || 'tenant'}/app/thrift/sales/create`"
-                />
+                <template v-if="filtersActive">
+                  <div class="text-subtitle1 text-weight-medium">No matching invoices</div>
+                  <div class="text-body2 q-mb-md">Try another filter or clear search.</div>
+                  <q-btn
+                    color="primary"
+                    unelevated
+                    no-caps
+                    label="Clear filters"
+                    @click="clearFilters"
+                  />
+                </template>
+                <template v-else>
+                  <div class="text-subtitle1 text-weight-medium">No invoices yet</div>
+                  <div class="text-body2 q-mb-md">Create a counter sale to see it listed here.</div>
+                  <q-btn
+                    v-if="canCreate"
+                    color="primary"
+                    unelevated
+                    no-caps
+                    icon="ph ph-plus"
+                    label="Create Invoice"
+                    :to="`/${authStore.tenantSlug || 'tenant'}/app/thrift/sales/create`"
+                  />
+                </template>
               </div>
             </template>
           </q-table>
@@ -214,7 +216,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { type QTableColumn } from 'quasar';
 import LearnMoreHelpBtn from 'src/modules/help/components/LearnMoreHelpBtn.vue';
@@ -230,19 +232,32 @@ import {
 import type { ThriftSalesInvoiceListItem } from '../repositories/thriftSalesRepository';
 import { formatThriftActionableError } from 'src/modules/thrift/shared/utils/formatThriftActionableError';
 
+type ListPreset = 'active' | 'cod' | 'ready' | 'transit' | 'all' | 'custom';
+
 const router = useRouter();
+const route = useRoute();
 const authStore = useAuthStore();
 const { tenantId, tenantSlug } = storeToRefs(authStore);
 const { hasModuleAccess } = useModulePermissions();
 
 const canCreate = computed(() => hasModuleAccess('thrift_sales', 'create'));
 
+const listPresetOptions: { label: string; value: Exclude<ListPreset, 'custom'> }[] = [
+  { label: 'Active', value: 'active' },
+  { label: 'COD waiting', value: 'cod' },
+  { label: 'Ready', value: 'ready' },
+  { label: 'In transit', value: 'transit' },
+  { label: 'All', value: 'all' },
+];
+
+const listPreset = ref<ListPreset>('active');
 const search = ref('');
 const paymentStatusFilter = ref<string | null>(null);
 const deliveryStatusFilter = ref<string | null>(null);
-const statusFilter = ref<string | null>(null);
+const statusFilter = ref<string | null>('ACTIVE');
 const page = ref(1);
 const rowsPerPage = ref(20);
+let applyingPreset = false;
 
 const paymentStatusOptions = [
   { label: 'All', value: null },
@@ -268,6 +283,56 @@ const statusOptions = [
   { label: 'Partially returned', value: 'PARTIALLY_RETURNED' },
   { label: 'Returned', value: 'RETURNED' },
 ];
+
+function applyPresetFilters(preset: Exclude<ListPreset, 'custom'>) {
+  applyingPreset = true;
+  listPreset.value = preset;
+  if (preset === 'active') {
+    statusFilter.value = 'ACTIVE';
+    paymentStatusFilter.value = null;
+    deliveryStatusFilter.value = null;
+  } else if (preset === 'cod') {
+    statusFilter.value = 'ACTIVE';
+    paymentStatusFilter.value = 'COD_PENDING';
+    deliveryStatusFilter.value = null;
+  } else if (preset === 'ready') {
+    statusFilter.value = 'ACTIVE';
+    paymentStatusFilter.value = null;
+    deliveryStatusFilter.value = 'READY';
+  } else if (preset === 'transit') {
+    statusFilter.value = 'ACTIVE';
+    paymentStatusFilter.value = null;
+    deliveryStatusFilter.value = 'IN_TRANSIT';
+  } else {
+    statusFilter.value = null;
+    paymentStatusFilter.value = null;
+    deliveryStatusFilter.value = null;
+  }
+  page.value = 1;
+  applyingPreset = false;
+}
+
+function setListPreset(preset: Exclude<ListPreset, 'custom'>) {
+  applyPresetFilters(preset);
+}
+
+function clearFilters() {
+  search.value = '';
+  applyPresetFilters('active');
+}
+
+if (route.query.paymentStatus === 'COD_PENDING') {
+  applyPresetFilters('cod');
+}
+
+const filtersActive = computed(() => {
+  if (search.value.trim()) return true;
+  if (listPreset.value !== 'active') return true;
+  if (paymentStatusFilter.value) return true;
+  if (deliveryStatusFilter.value) return true;
+  if (statusFilter.value !== 'ACTIVE') return true;
+  return false;
+});
 
 const queryParams = computed<ThriftSalesInvoiceListQueryParams>(() => ({
   tenantId: tenantId.value || 0,
@@ -349,30 +414,9 @@ const columns: QTableColumn[] = [
     sortable: false,
   },
   {
-    name: 'paymentMethod',
-    label: 'Method',
-    field: 'paymentMethod',
-    align: 'left',
-    sortable: false,
-  },
-  {
-    name: 'paymentStatus',
-    label: 'Payment',
-    field: 'paymentStatus',
-    align: 'left',
-    sortable: false,
-  },
-  {
-    name: 'deliveryStatus',
-    label: 'Delivery',
-    field: 'deliveryStatus',
-    align: 'left',
-    sortable: false,
-  },
-  {
-    name: 'status',
+    name: 'statusSummary',
     label: 'Status',
-    field: 'status',
+    field: 'paymentStatus',
     align: 'left',
     sortable: false,
   },
@@ -392,8 +436,28 @@ const columns: QTableColumn[] = [
   },
 ];
 
-function labelize(value: string): string {
-  return (value || '—').replace(/_/g, ' ').toUpperCase();
+function statusSentence(row: ThriftSalesInvoiceListItem): string {
+  const ch = row.saleChannel === 'ONLINE' ? 'Online' : 'In-store';
+  const payMap: Record<string, string> = {
+    COD_PENDING: 'Waiting for COD',
+    PAID: 'Paid',
+    PARTIALLY_REFUNDED: 'Partially refunded',
+    REFUNDED: 'Refunded',
+    WRITTEN_OFF: 'Written off',
+  };
+  const delMap: Record<string, string> = {
+    PENDING: 'Pending',
+    READY: 'Ready',
+    IN_TRANSIT: 'In transit',
+    DELIVERED: 'Delivered',
+    RETURNED: 'Came back',
+  };
+  const pay = payMap[row.paymentStatus] || row.paymentStatus;
+  if (row.deliveryStatus) {
+    const del = delMap[row.deliveryStatus] || row.deliveryStatus;
+    return `${ch} · ${del} · ${pay}`;
+  }
+  return `${ch} · ${pay}`;
 }
 
 function saleChannelLabel(channel: string): string {
@@ -402,35 +466,6 @@ function saleChannelLabel(channel: string): string {
 
 function saleChannelColor(channel: string): string {
   return channel === 'ONLINE' ? 'primary' : 'grey-7';
-}
-
-function paymentStatusColor(status: string): string {
-  const s = (status || '').toLowerCase().replace(/-/g, '_');
-  if (s === 'paid') return 'positive';
-  if (s === 'cod_pending') return 'orange';
-  if (s === 'partial') return 'warning';
-  if (s === 'unpaid') return 'negative';
-  if (s === 'refunded') return 'orange-8';
-  if (s === 'written_off') return 'grey-8';
-  return 'grey';
-}
-
-function deliveryStatusColor(status: string): string {
-  const s = (status || '').toUpperCase();
-  if (s === 'PENDING') return 'grey-7';
-  if (s === 'READY') return 'primary';
-  if (s === 'IN_TRANSIT') return 'blue-8';
-  if (s === 'DELIVERED') return 'positive';
-  if (s === 'RETURNED') return 'warning';
-  return 'grey';
-}
-
-function invoiceStatusColor(status: string): string {
-  const s = (status || '').toUpperCase();
-  if (s === 'ACTIVE') return 'positive';
-  if (s === 'RETURNED') return 'warning';
-  if (s === 'STAFF_MISTAKE') return 'negative';
-  return 'grey';
 }
 
 function formatDate(value: string): string {
@@ -459,17 +494,11 @@ watch(search, () => {
   page.value = 1;
 });
 
-watch(paymentStatusFilter, () => {
+watch([paymentStatusFilter, deliveryStatusFilter, statusFilter], () => {
+  if (applyingPreset) return;
+  listPreset.value = 'custom';
   page.value = 1;
-});
-
-watch(deliveryStatusFilter, () => {
-  page.value = 1;
-});
-
-watch(statusFilter, () => {
-  page.value = 1;
-});
+}, { flush: 'sync' });
 
 watch(isError, (failed) => {
   if (!failed || !error.value) return;

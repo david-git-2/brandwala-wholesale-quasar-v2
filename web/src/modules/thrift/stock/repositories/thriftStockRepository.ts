@@ -675,6 +675,58 @@ export const thriftStockRepository = {
     }) as unknown as ThriftStock[];
   },
 
+  /**
+   * Slim rows for shipment-wide landed-cost math (U + weight share).
+   * Omits images/measurements and non-costing columns.
+   */
+  async fetchStocksForCostingByShipment(
+    tenantId: number,
+    shipmentId: number,
+  ): Promise<ThriftStock[]> {
+    const { data, error } = await supabase
+      .from('thrift_stocks')
+      .select(
+        `
+        id,
+        shipment_id,
+        quantity,
+        status,
+        product_weight,
+        extra_weight,
+        origin_unit_price,
+        extra_origin_unit_price,
+        additional_charges_cost,
+        thrift_pricings (
+          listed_unit_price,
+          is_listed_price_manual,
+          markup_rate_override
+        )
+      `,
+      )
+      .eq('tenant_id', tenantId)
+      .eq('shipment_id', shipmentId);
+    if (error) throw error;
+
+    return ((data || []) as unknown as ThriftStockDbRow[]).map((stock) => ({
+      id: stock.id,
+      shipment_id: stock.shipment_id,
+      quantity: stock.quantity,
+      status: stock.status as ThriftStock['status'],
+      product_weight: stock.product_weight,
+      extra_weight: stock.extra_weight,
+      origin_unit_price: stock.origin_unit_price,
+      extra_origin_unit_price: stock.extra_origin_unit_price,
+      additional_charges_cost: stock.additional_charges_cost,
+      pricing: mapPricingRow(
+        stock.thrift_pricings?.[0] || {
+          listed_unit_price: 0,
+          is_listed_price_manual: false,
+          markup_rate_override: null,
+        },
+      ),
+    })) as unknown as ThriftStock[];
+  },
+
   async fetchQuantityByShipment(tenantId: number): Promise<Map<number, number>> {
     const { data, error } = await supabase
       .from('thrift_stocks')

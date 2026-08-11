@@ -51,7 +51,10 @@ export function useThriftStockCosting(
     const promises = shipmentIds.map(async (id) => {
       if (shipmentStocksCache.value.has(id)) return;
       try {
-        const list = await thriftStockRepository.fetchStocksByShipment(authStore.tenantId!, id);
+        const list = await thriftStockRepository.fetchStocksForCostingByShipment(
+          authStore.tenantId!,
+          id,
+        );
         shipmentStocksCache.value.set(id, list);
       } catch (err) {
         console.error(`Failed to load shipment stocks for shipment ${id}:`, err);

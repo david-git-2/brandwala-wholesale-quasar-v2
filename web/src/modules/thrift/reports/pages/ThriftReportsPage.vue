@@ -56,20 +56,23 @@
         <div v-else-if="metricsError" class="text-negative text-body2">
           {{ metricsErrorMessage }}
         </div>
-        <div v-else-if="metrics" class="glance-card__grid">
-          <div class="glance-card__metric">
-            <div class="glance-card__value text-positive">{{ metrics.availableItems }}</div>
-            <div class="glance-card__meta">Available</div>
+        <template v-else-if="metrics">
+          <div class="glance-card__grid">
+            <div class="glance-card__metric">
+              <div class="glance-card__value text-positive">{{ metrics.availableItems }}</div>
+              <div class="glance-card__meta">Available</div>
+            </div>
+            <div class="glance-card__metric">
+              <div class="glance-card__value">{{ metrics.soldItems }}</div>
+              <div class="glance-card__meta">Sold</div>
+            </div>
+            <div class="glance-card__metric">
+              <div class="glance-card__value text-warning">{{ metrics.codPendingCount }}</div>
+              <div class="glance-card__meta">COD waiting</div>
+            </div>
           </div>
-          <div class="glance-card__metric">
-            <div class="glance-card__value">{{ metrics.soldItems }}</div>
-            <div class="glance-card__meta">Sold</div>
-          </div>
-          <div class="glance-card__metric">
-            <div class="glance-card__value text-warning">{{ metrics.codPendingCount }}</div>
-            <div class="glance-card__meta">COD waiting</div>
-          </div>
-        </div>
+          <div class="text-caption text-grey-7">Waiting is not earned yet.</div>
+        </template>
       </section>
 
       <div class="text-center">
@@ -79,7 +82,7 @@
           no-caps
           color="grey-7"
           icon-right="ph ph-arrow-right"
-          label="Money in/out history"
+          label="Cash journal (not profit)"
           @click="goLedger"
         />
       </div>
