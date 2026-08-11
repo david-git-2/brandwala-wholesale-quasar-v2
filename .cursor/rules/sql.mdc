@@ -16,9 +16,9 @@ alwaysApply: false
 - For query edits: show only the changed clause(s) when possible. If the full query is needed, show it complete (queries don't usefully diff in pieces).
 
 ## Migrations
-- **Never edit a migration that has been applied to production.** Add a new migration.
-- Match the existing migration tool's idioms (Alembic, Prisma, Knex, Flyway, Liquibase, raw SQL).
-- Always include a reversible/down step if siblings have one.
+- **Supabase (`supabase/migrations/`):** follow `.cursor/rules/supabase-migrations.mdc` (fresh-reset safety, ordering, `IF EXISTS`, verify with `pnpm run backend:reset`).
+- Prefer a **new** migration for features. Edit an already-applied file only to fix local fresh-reset breakage (never for normal schema work).
+- Match existing migration idioms in this repo (raw SQL, `security definer` RPC patterns, snake_case).
 - Don't drop columns/tables in the same migration that adds replacements — split into two.
 
 ## Queries

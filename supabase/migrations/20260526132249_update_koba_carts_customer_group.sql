@@ -28,11 +28,18 @@ alter table public.koba_carts
 
 -- 5. Add customer group foreign key
 
-alter table public.koba_carts
-  add constraint koba_carts_customer_group_id_fkey
-  foreign key (customer_group_id)
-  references public.customer_groups (id)
-  on delete set null;
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'koba_carts_customer_group_id_fkey'
+  ) then
+    alter table public.koba_carts
+      add constraint koba_carts_customer_group_id_fkey
+      foreign key (customer_group_id)
+      references public.customer_groups (id)
+      on delete set null;
+  end if;
+end $$;
 
 create index if not exists koba_carts_customer_group_id_idx
 on public.koba_carts using btree (customer_group_id);

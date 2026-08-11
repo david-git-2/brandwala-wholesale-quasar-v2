@@ -45,7 +45,12 @@
             :disable="!invoice"
             @click="openPrintPreview"
           />
-          <template v-if="invoice?.status === 'ACTIVE'">
+          <template
+            v-if="
+              invoice &&
+              (invoice.status === 'ACTIVE' || invoice.status === 'PARTIALLY_RETURNED')
+            "
+          >
             <q-btn
               v-if="canRecordRemittance && canShowRemittance"
               color="primary"
@@ -53,11 +58,26 @@
               no-caps
               icon="ph ph-hand-coins"
               label="Record COD"
-              :disable="!!reverting || remitting || updatingDelivery"
+              :disable="!!reverting || remitting || updatingDelivery || returning"
               @click="openRemittanceDialog()"
             >
               <q-tooltip>
                 Cash remittance from courier — not a return / RTO
+              </q-tooltip>
+            </q-btn>
+            <q-btn
+              v-if="canShowReturnItems"
+              color="warning"
+              unelevated
+              no-caps
+              icon="ph ph-arrow-u-up-left"
+              label="Return items"
+              :loading="returning"
+              :disable="!!reverting || remitting || updatingDelivery"
+              @click="openReturnDialog()"
+            >
+              <q-tooltip>
+                Post-pay return — select some or all lines (not Mark RTO)
               </q-tooltip>
             </q-btn>
             <q-btn
@@ -68,7 +88,7 @@
               icon="ph ph-package"
               label="Mark RTO"
               :loading="reverting === 'RTO'"
-              :disable="!!reverting || remitting || updatingDelivery"
+              :disable="!!reverting || remitting || updatingDelivery || returning"
               @click="openRtoDialog()"
             >
               <q-tooltip>
@@ -76,14 +96,14 @@
               </q-tooltip>
             </q-btn>
             <q-btn
-              v-if="canStaffMistake"
+              v-if="canStaffMistake && invoice.status === 'ACTIVE' && !hasReturns"
               outline
               color="negative"
               no-caps
               icon="ph ph-trash"
               label="Staff Mistake"
               :loading="reverting === 'STAFF_MISTAKE'"
-              :disable="!!reverting || remitting || updatingDelivery"
+              :disable="!!reverting || remitting || updatingDelivery || returning"
               @click="confirmRevert('STAFF_MISTAKE')"
             />
           </template>
@@ -99,7 +119,9 @@
           :sale-channel="invoice.saleChannel"
           :delivery-status="invoice.deliveryStatus"
           :payment-status="invoice.paymentStatus"
-          :invoice-active="invoice.status === 'ACTIVE'"
+          :invoice-active="
+            invoice.status === 'ACTIVE' || invoice.status === 'PARTIALLY_RETURNED'
+          "
           :can-update-delivery="canUpdateDelivery && !reverting"
           :can-record-remittance="canRecordRemittance && !reverting"
           :updating-delivery="updatingDelivery"
@@ -255,6 +277,48 @@
                 </template>
               </q-table>
             </q-card>
+
+            <q-card flat bordered>
+              <q-card-section class="q-pb-none row items-center justify-between">
+                <div class="text-subtitle1 text-weight-bold">Return history</div>
+                <q-btn
+                  v-if="canShowReturnItems"
+                  flat
+                  dense
+                  no-caps
+                  color="warning"
+                  icon="ph ph-arrow-u-up-left"
+                  label="Return items"
+                  :disable="returning || !!reverting"
+                  @click="openReturnDialog()"
+                />
+              </q-card-section>
+              <q-card-section v-if="invoiceReturns.length === 0" class="text-grey-6">
+                No post-pay returns on this invoice.
+              </q-card-section>
+              <q-list v-else separator>
+                <q-item
+                  v-for="ret in invoiceReturns"
+                  :key="ret.id"
+                  clickable
+                  :to="returnDetailPath(ret.id)"
+                >
+                  <q-item-section>
+                    <q-item-label class="text-weight-medium">{{ ret.returnNumber }}</q-item-label>
+                    <q-item-label caption>
+                      {{ formatDate(ret.createdAt) }}
+                      · {{ ret.lineCount }} line{{ ret.lineCount === 1 ? '' : 's' }}
+                      <span v-if="ret.hasDamaged"> · damaged</span>
+                    </q-item-label>
+                  </q-item-section>
+                  <q-item-section side>
+                    <div class="text-weight-medium">
+                      {{ formatThriftAmount(ret.refundAmount) }}
+                    </div>
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </q-card>
           </div>
 
           <div class="col-12 col-lg-4">
@@ -331,6 +395,18 @@
                     @click="openRemittanceDialog()"
                   />
                 </template>
+                <template v-if="canShowReturnItems">
+                  <q-btn
+                    class="full-width q-mt-sm"
+                    color="warning"
+                    unelevated
+                    no-caps
+                    icon="ph ph-arrow-u-up-left"
+                    label="Return items"
+                    :disable="remitting || !!reverting || returning"
+                    @click="openReturnDialog()"
+                  />
+                </template>
                 <template v-if="canShowMarkRto">
                   <div
                     v-if="canShowRemittance"
@@ -345,7 +421,7 @@
                     no-caps
                     icon="ph ph-package"
                     label="Mark RTO (no pickup)"
-                    :disable="remitting || !!reverting"
+                    :disable="remitting || !!reverting || returning"
                     @click="openRtoDialog()"
                   />
                 </template>
@@ -368,6 +444,84 @@
         />
       </q-card>
     </div>
+
+    <q-dialog v-model="returnDialogOpen" persistent>
+      <q-card style="min-width: 420px; max-width: 560px">
+        <q-card-section>
+          <div class="text-h6">Return items</div>
+          <div class="text-caption text-grey-7">
+            Customer paid / received goods. Select lines to refund. Not Mark RTO.
+          </div>
+        </q-card-section>
+        <q-card-section class="q-gutter-y-sm">
+          <div
+            v-for="line in returnableLines"
+            :key="line.id"
+            class="row items-center q-col-gutter-sm q-py-xs"
+          >
+            <div class="col-auto">
+              <q-checkbox v-model="returnSelection[line.id]" dense />
+            </div>
+            <div class="col">
+              <div class="text-weight-medium">
+                {{ line.stockName || `Stock #${line.stockId}` }}
+              </div>
+              <div class="text-caption text-grey-7">
+                {{ formatThriftAmount(line.finalPrice * line.quantity) }}
+              </div>
+            </div>
+            <div class="col-5 col-sm-4">
+              <q-select
+                v-model="returnConditions[line.id]"
+                dense
+                outlined
+                emit-value
+                map-options
+                :options="conditionOptions"
+                :disable="!returnSelection[line.id]"
+                label="Condition"
+              />
+            </div>
+          </div>
+          <q-banner v-if="returnableLines.length === 0" dense rounded class="bg-grey-2">
+            No returnable lines left on this invoice.
+          </q-banner>
+          <q-input
+            v-model.number="returnForm.returnCourierAmount"
+            type="number"
+            dense
+            outlined
+            label="Return courier cost (shop)"
+            hint="Logistics for this return — 0 if none"
+            min="0"
+            step="0.01"
+          />
+          <q-input
+            v-model="returnForm.notes"
+            type="textarea"
+            dense
+            outlined
+            autogrow
+            label="Notes (optional)"
+          />
+          <div class="text-subtitle2">
+            Refund total: {{ formatThriftAmount(returnRefundTotal) }}
+          </div>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat no-caps label="Cancel" color="grey-8" v-close-popup :disable="returning" />
+          <q-btn
+            unelevated
+            no-caps
+            color="warning"
+            label="Confirm return"
+            :loading="returning"
+            :disable="returnRefundTotal <= 0"
+            @click="submitReturn"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
 
     <q-dialog v-model="rtoDialogOpen" persistent>
       <q-card style="min-width: 360px; max-width: 440px">
@@ -526,6 +680,7 @@ import { requestConfirmation, showErrorNotification, showSuccessNotification } f
 import ThriftSalesInvoiceDetailsSkeleton from '../components/ThriftSalesInvoiceDetailsSkeleton.vue';
 import ThriftSalesInvoiceStatusTracks from '../components/ThriftSalesInvoiceStatusTracks.vue';
 import {
+  useCreateThriftSalesReturnMutation,
   useRecordThriftCodRemittanceMutation,
   useRevertThriftSalesInvoiceMutation,
   useUpdateThriftDeliveryStatusMutation,
@@ -535,7 +690,9 @@ import {
   thriftSalesRepository,
   type ThriftCodRemittanceOutcome,
   type ThriftDeliveryStatus,
+  type ThriftReturnItemCondition,
   type ThriftSalesInvoiceDetail,
+  type ThriftSalesReturnListItem,
   type ThriftSalesRevertReason,
 } from '../repositories/thriftSalesRepository';
 
@@ -548,6 +705,7 @@ const { hasModuleAccess } = useModulePermissions();
 const revertMutation = useRevertThriftSalesInvoiceMutation();
 const remittanceMutation = useRecordThriftCodRemittanceMutation();
 const deliveryMutation = useUpdateThriftDeliveryStatusMutation();
+const returnMutation = useCreateThriftSalesReturnMutation();
 
 const canReturn = computed(() => hasModuleAccess('thrift_sales', 'return'));
 const canForceReturn = computed(() => hasModuleAccess('thrift_sales', 'force_return'));
@@ -565,11 +723,17 @@ const loading = ref(false);
 const reverting = ref<ThriftSalesRevertReason | null>(null);
 const remitting = ref(false);
 const updatingDelivery = ref(false);
+const returning = ref(false);
 const targetDeliveryStatus = ref<string | null>(null);
 const targetPaymentStatus = ref<string | null>(null);
 const remittanceDialogOpen = ref(false);
 const rtoDialogOpen = ref(false);
+const returnDialogOpen = ref(false);
 const invoice = ref<ThriftSalesInvoiceDetail | null>(null);
+const invoiceReturns = ref<ThriftSalesReturnListItem[]>([]);
+const returnedItemIds = ref<number[]>([]);
+const returnSelection = ref<Record<number, boolean>>({});
+const returnConditions = ref<Record<number, ThriftReturnItemCondition>>({});
 
 const remittanceForm = ref({
   amount: 0,
@@ -584,6 +748,16 @@ const rtoForm = ref({
   notes: '',
 });
 
+const returnForm = ref({
+  returnCourierAmount: 0,
+  notes: '',
+});
+
+const conditionOptions = [
+  { label: 'Sellable', value: 'SELLABLE' },
+  { label: 'Damaged', value: 'DAMAGED' },
+];
+
 const remittanceOutcomeOptions = [
   { label: 'Paid', value: 'PAID' },
   { label: 'Keep pending', value: 'KEEP_PENDING' },
@@ -594,6 +768,10 @@ const salesListPath = computed(
   () => `/${tenantSlug.value || 'tenant'}/app/thrift/sales`,
 );
 
+function returnDetailPath(returnId: number): string {
+  return `/${tenantSlug.value || 'tenant'}/app/thrift/sales/returns/${returnId}`;
+}
+
 const invoiceId = computed(() => Number(route.params.invoiceId));
 
 const addressPartsLabel = computed(() => {
@@ -602,9 +780,24 @@ const addressPartsLabel = computed(() => {
   return [parts.thana, parts.district, parts.post_code].filter(Boolean).join(' · ');
 });
 
+const hasReturns = computed(() => invoiceReturns.value.length > 0);
+
+const returnedItemIdSet = computed(() => new Set(returnedItemIds.value));
+
+const returnableLines = computed(() =>
+  (invoice.value?.items || []).filter((item) => !returnedItemIdSet.value.has(item.id)),
+);
+
+const returnRefundTotal = computed(() =>
+  returnableLines.value.reduce((sum, line) => {
+    if (!returnSelection.value[line.id]) return sum;
+    return sum + Number(line.finalPrice) * Number(line.quantity || 1);
+  }, 0),
+);
+
 const canShowRemittance = computed(
   () =>
-    invoice.value?.status === 'ACTIVE' &&
+    (invoice.value?.status === 'ACTIVE' || invoice.value?.status === 'PARTIALLY_RETURNED') &&
     (invoice.value.paymentStatus || '').toUpperCase() === 'COD_PENDING',
 );
 
@@ -615,6 +808,20 @@ const canShowMarkRto = computed(() => {
   if (!canReturn.value && !canForceReturn.value) return false;
   const ds = (inv.deliveryStatus || 'PENDING').toUpperCase();
   return ds !== 'DELIVERED' && ds !== 'RETURNED';
+});
+
+const canShowReturnItems = computed(() => {
+  const inv = invoice.value;
+  if (!inv) return false;
+  if (inv.closeReason === 'RTO' || (inv.revertReason || '').toUpperCase() === 'RTO') {
+    return false;
+  }
+  if (!canReturn.value && !canForceReturn.value) return false;
+  if (!['ACTIVE', 'PARTIALLY_RETURNED'].includes(inv.status)) return false;
+  if (returnableLines.value.length === 0) return false;
+  if (inv.saleChannel === 'IN_STORE') return true;
+  const ds = (inv.deliveryStatus || '').toUpperCase();
+  return ds === 'DELIVERED' || inv.status === 'PARTIALLY_RETURNED';
 });
 
 const remittanceAcceptsShortfall = computed(() => {
@@ -637,6 +844,8 @@ const deliveryAdvanceOptions = computed(() => {
   if (current === 'PENDING') return all;
   if (current === 'READY') return all.filter((o) => o.value !== 'READY');
   if (current === 'IN_TRANSIT') return all.filter((o) => o.value === 'DELIVERED');
+  // Mistaken deliver: reopen parcel track (RPC deletes DELIVERED PnL).
+  if (current === 'DELIVERED') return all.filter((o) => o.value === 'IN_TRANSIT');
   return [];
 });
 
@@ -667,6 +876,7 @@ function saleChannelColor(channel: string): string {
 function invoiceStatusColor(status: string): string {
   const s = (status || '').toUpperCase();
   if (s === 'ACTIVE') return 'positive';
+  if (s === 'PARTIALLY_RETURNED') return 'orange';
   if (s === 'RETURNED') return 'warning';
   if (s === 'STAFF_MISTAKE') return 'negative';
   return 'grey';
@@ -683,6 +893,15 @@ async function advanceDelivery(
   next: Exclude<ThriftDeliveryStatus, 'RETURNED'>,
 ) {
   if (!tenantId.value || !invoice.value) return;
+  const current = (invoice.value.deliveryStatus || 'PENDING').toUpperCase();
+  if (current === 'DELIVERED' && next === 'IN_TRANSIT') {
+    const ok = await requestConfirmation(
+      'Move back to In transit? This removes delivered PnL so you can mark Delivered again later.',
+      'Undo delivered',
+      'Move to In transit',
+    );
+    if (!ok) return;
+  }
   updatingDelivery.value = true;
   targetDeliveryStatus.value = next;
   try {
@@ -791,21 +1010,103 @@ function openPrintPreview() {
 async function loadInvoice() {
   if (!tenantId.value || !invoiceId.value || Number.isNaN(invoiceId.value)) {
     invoice.value = null;
+    invoiceReturns.value = [];
+    returnedItemIds.value = [];
     return;
   }
   loading.value = true;
   try {
-    invoice.value = await thriftSalesRepository.getSalesInvoice(
-      tenantId.value,
-      invoiceId.value,
-    );
+    const [inv, returnsResult, returnedIds] = await Promise.all([
+      thriftSalesRepository.getSalesInvoice(tenantId.value, invoiceId.value),
+      thriftSalesRepository.listSalesReturnsPaginated({
+        tenantId: tenantId.value,
+        invoiceId: invoiceId.value,
+        page: 1,
+        pageSize: 50,
+      }),
+      thriftSalesRepository.listReturnedInvoiceItemIds(tenantId.value, invoiceId.value),
+    ]);
+    invoice.value = inv;
+    invoiceReturns.value = returnsResult.data;
+    returnedItemIds.value = returnedIds;
   } catch (err: any) {
     invoice.value = null;
+    invoiceReturns.value = [];
+    returnedItemIds.value = [];
     showErrorNotification(
       formatThriftActionableError(err, 'Failed to load invoice'),
     );
   } finally {
     loading.value = false;
+  }
+}
+
+function openReturnDialog() {
+  if (!canShowReturnItems.value) {
+    showErrorNotification('Return items is not available for this invoice.');
+    return;
+  }
+  const selection: Record<number, boolean> = {};
+  const conditions: Record<number, ThriftReturnItemCondition> = {};
+  for (const line of returnableLines.value) {
+    selection[line.id] = false;
+    conditions[line.id] = 'SELLABLE';
+  }
+  returnSelection.value = selection;
+  returnConditions.value = conditions;
+  returnForm.value = { returnCourierAmount: 0, notes: '' };
+  returnDialogOpen.value = true;
+}
+
+async function submitReturn() {
+  if (!tenantId.value || !invoice.value) return;
+  const items = returnableLines.value
+    .filter((line) => returnSelection.value[line.id])
+    .map((line) => ({
+      invoiceItemId: line.id,
+      quantity: line.quantity || 1,
+      condition: returnConditions.value[line.id] || 'SELLABLE',
+    }));
+
+  if (items.length === 0) {
+    showErrorNotification('Select at least one line to return.');
+    return;
+  }
+
+  const courier = Number(returnForm.value.returnCourierAmount);
+  if (!Number.isFinite(courier) || courier < 0) {
+    showErrorNotification('Return courier cost must be 0 or greater.');
+    return;
+  }
+
+  const ok = await requestConfirmation(
+    [
+      `Create return for ${items.length} line(s) on ${invoice.value.invoiceNumber}?`,
+      `Refund ${formatThriftAmount(returnRefundTotal.value)}.`,
+      'This is a post-pay return — not Mark RTO.',
+    ].join(' '),
+    'Confirm return',
+    'Create return',
+  );
+  if (!ok) return;
+
+  returning.value = true;
+  try {
+    const result = await returnMutation.mutateAsync({
+      tenantId: tenantId.value,
+      invoiceId: invoice.value.id,
+      items,
+      returnCourierAmount: courier,
+      notes: returnForm.value.notes.trim() || undefined,
+      createdBy: authStore.user?.email || 'cashier',
+    });
+    showSuccessNotification(`Return ${result.returnNumber} created`);
+    returnDialogOpen.value = false;
+    await loadInvoice();
+  } catch (err: any) {
+    showErrorNotification(formatThriftActionableError(err, 'Failed to create return'));
+  } finally {
+    returning.value = false;
   }
 }
 
@@ -883,11 +1184,14 @@ async function confirmRevert(reason: ThriftSalesRevertReason) {
       'Stock returns to AVAILABLE. Ledger and PnL rows for this invoice are scrubbed (no refund/loss events).',
       'The invoice number is not reused — the monthly counter continues (gaps are OK).',
       'Blocked if any post-pay returns already exist. This cannot be undone.',
+      '',
+      'Type DELETE STAFF MISTAKE to confirm.',
     ].join(' '),
     prompt: {
       model: '',
       type: 'text',
-      label: 'Notes (optional)',
+      label: 'Type DELETE STAFF MISTAKE',
+      isValid: (val: string) => val.trim() === 'DELETE STAFF MISTAKE',
     },
     cancel: { flat: true, label: 'Cancel', color: 'grey-8', noCaps: true },
     ok: {
@@ -897,12 +1201,12 @@ async function confirmRevert(reason: ThriftSalesRevertReason) {
       noCaps: true,
     },
     persistent: true,
-  }).onOk((notes: string) => {
-    void runStaffMistake(notes);
+  }).onOk(() => {
+    void runStaffMistake();
   });
 }
 
-async function runStaffMistake(notes?: string) {
+async function runStaffMistake() {
   if (!tenantId.value || !invoice.value) return;
   reverting.value = 'STAFF_MISTAKE';
   try {
@@ -911,7 +1215,6 @@ async function runStaffMistake(notes?: string) {
       invoiceId: invoice.value.id,
       reason: 'STAFF_MISTAKE',
       revertedBy: authStore.user?.email || 'cashier',
-      notes: notes?.trim() || undefined,
     });
     if (result.deleted) {
       showSuccessNotification(

@@ -41,7 +41,7 @@ alwaysApply: true
 - `web/src/modules/<module>/` — pages, components, stores, services, repositories, routes
 - `web/src/components/` — cross-module shared UI (`ui/` subfolder for primitives)
 - `web/src/css/app.scss` — global tokens, layout utilities, theme scopes
-- `supabase/migrations/` — ordered SQL migrations (idempotent seeds where noted)
+- `supabase/migrations/` — ordered SQL migrations; must pass fresh local reset (see `.cursor/rules/supabase-migrations.mdc`)
 - `doc/` — domain specifications (not `docs/` except UI + workflow + archive)
 
 ## Naming conventions
@@ -75,7 +75,8 @@ alwaysApply: true
 - Do not copy Thrift composable architecture into web — keep module/repository/store pattern
 - Do not add README/docs unless asked
 - Regenerate `supabase.ts` after every schema migration
-- Deploy backend: `npm run deploy:backend` (push migrations + types)
+- Deploy backend: `pnpm run deploy:backend` (push migrations + types)
+- Verify migrations locally first: `pnpm run backend:reset` (empty DB replay)
 
 ## Key paths
 - Entry: `web/src/App.vue`, `web/src/router/`

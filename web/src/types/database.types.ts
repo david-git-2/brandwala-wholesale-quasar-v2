@@ -9772,6 +9772,17 @@ export type Database = {
         }
         Returns: Json
       }
+      create_thrift_sales_return: {
+        Args: {
+          p_created_by?: string
+          p_invoice_id: number
+          p_items: Json
+          p_notes?: string
+          p_return_courier_amount?: number
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
       create_vendor_with_wallet: {
         Args: {
           p_address?: string
@@ -9939,6 +9950,10 @@ export type Database = {
         Returns: string[]
       }
       generate_thrift_invoice_number: {
+        Args: { p_date?: string; p_tenant_id: number }
+        Returns: string
+      }
+      generate_thrift_return_number: {
         Args: { p_date?: string; p_tenant_id: number }
         Returns: string
       }
@@ -10357,6 +10372,7 @@ export type Database = {
         Args: {
           p_date_from: string
           p_date_to: string
+          p_outcome?: string
           p_sale_channel?: string
           p_tenant_id: number
         }
@@ -11458,6 +11474,20 @@ export type Database = {
           p_payment_status?: string
           p_search?: string
           p_status?: string
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
+      list_thrift_sales_returns_paginated: {
+        Args: {
+          p_date_from?: string
+          p_date_to?: string
+          p_has_damaged?: boolean
+          p_invoice_id?: number
+          p_page?: number
+          p_page_size?: number
+          p_search?: string
+          p_skip_count?: boolean
           p_tenant_id: number
         }
         Returns: Json

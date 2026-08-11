@@ -24,6 +24,8 @@ $$;
 grant execute on function public.can_manage_membership(bigint, public.app_role)
 to authenticated;
 
+drop function if exists public.check_login_membership(text, text);
+
 create or replace function public.check_login_membership(
   p_email text,
   p_scope text

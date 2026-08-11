@@ -11,7 +11,9 @@ web/dist
 web/.env
 web/.env.*
 !web/.env.example
+!web/.env.local.example
 supabase/.temp
+supabase/.dumps/
 web/quasar.config.*.temporary.compiled*
 web/npm-debug.log*
 web/yarn-debug.log*

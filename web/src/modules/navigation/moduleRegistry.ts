@@ -349,6 +349,14 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
       },
       {
         scope: 'app',
+        title: 'Returns',
+        caption: 'Post-pay returns hub',
+        icon: 'ph ph-arrow-u-up-left',
+        routeSegment: 'thrift/sales/returns',
+        requiredAction: 'view',
+      },
+      {
+        scope: 'app',
         title: 'Courier Providers',
         caption: 'System + custom couriers',
         icon: 'ph ph-truck',
@@ -366,7 +374,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
       {
         scope: 'app',
         title: 'Reports',
-        caption: 'Shipment sales & profit',
+        caption: 'Earn · COD · Purchases',
         icon: 'ph ph-chart-bar',
         routeSegment: 'thrift/reports',
         requiredAction: 'view',

@@ -4,6 +4,7 @@ import { thriftQueryKeys } from '../../shared/queryKeys/thriftQueryKeys';
 import {
   thriftSalesRepository,
   type ListSalesInvoicesParams,
+  type ListSalesReturnsParams,
 } from '../repositories/thriftSalesRepository';
 
 export interface ThriftAvailableStockSearchParams {
@@ -43,5 +44,29 @@ export function useThriftAvailableStockSearchQuery(
     enabled: computed(
       () => !!params.value.tenantId && !!params.value.search.trim(),
     ),
+  });
+}
+
+export function useThriftSalesReturnsQuery(
+  params: Ref<ListSalesReturnsParams>,
+) {
+  return useQuery({
+    queryKey: computed(() => ['thrift', 'sales', 'returns', params.value]),
+    queryFn: () => thriftSalesRepository.listSalesReturnsPaginated(params.value),
+    staleTime: 30 * 1000,
+    placeholderData: keepPreviousData,
+    enabled: computed(() => !!params.value.tenantId),
+  });
+}
+
+export function useThriftSalesReturnDetailQuery(
+  tenantId: Ref<number | null | undefined>,
+  returnId: Ref<number>,
+) {
+  return useQuery({
+    queryKey: computed(() => ['thrift', 'sales', 'returns', 'detail', tenantId.value, returnId.value]),
+    queryFn: () =>
+      thriftSalesRepository.getSalesReturn(Number(tenantId.value), returnId.value),
+    enabled: computed(() => !!tenantId.value && returnId.value > 0),
   });
 }

@@ -260,15 +260,19 @@ function paymentColor(st: string): string {
 
 function deliveryBtnDisabled(st: string): boolean {
   if (deliveryCurrent.value === st) return true;
-  if (deliveryCurrent.value === 'RETURNED' || deliveryCurrent.value === 'DELIVERED') {
-    return true;
-  }
+  if (deliveryCurrent.value === 'RETURNED') return true;
   if (!props.invoiceActive || !props.canUpdateDelivery || !isOnline.value) return true;
   if (props.updatingDelivery || props.remitting) return true;
+  // allowedDeliveryNext may include a backward correction (DELIVERED → IN_TRANSIT)
+  if (
+    props.allowedDeliveryNext.includes(
+      st as Exclude<ThriftDeliveryStatus, 'RETURNED'>,
+    )
+  ) {
+    return false;
+  }
   if (isPassed(deliveryCurrent.value, deliveryWorkflow, st)) return true;
-  return !props.allowedDeliveryNext.includes(
-    st as Exclude<ThriftDeliveryStatus, 'RETURNED'>,
-  );
+  return true;
 }
 
 function paymentBtnDisabled(st: string): boolean {

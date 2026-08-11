@@ -119,6 +119,7 @@ export interface ThriftSalesInvoiceListItem {
   revertedBy: string | null;
   revertReason: string | null;
   revertNotes: string | null;
+  closeReason: string | null;
 }
 
 export interface ThriftSalesInvoiceItemDetail {
@@ -212,6 +213,7 @@ function mapInvoiceRow(row: any): Omit<ThriftSalesInvoiceListItem, 'itemCount'> 
     revertedBy: row.reverted_by ?? null,
     revertReason: row.revert_reason ?? null,
     revertNotes: row.revert_notes ?? null,
+    closeReason: row.close_reason ?? null,
   };
 }
 
@@ -256,6 +258,118 @@ export interface RecordCodRemittanceResult {
   codExpected: number | null;
   codRemittedAmount: number;
   outcome: string;
+}
+
+export type ThriftReturnItemCondition = 'SELLABLE' | 'DAMAGED';
+
+export interface CreateSalesReturnInput {
+  tenantId: number;
+  invoiceId: number;
+  items: Array<{
+    invoiceItemId: number;
+    quantity: number;
+    condition: ThriftReturnItemCondition;
+  }>;
+  returnCourierAmount?: number | undefined;
+  notes?: string | undefined;
+  createdBy: string;
+}
+
+export interface CreateSalesReturnResult {
+  returnId: number;
+  returnNumber: string;
+  invoiceId: number;
+  refundAmount: number;
+  returnCourierAmount: number;
+  status: string;
+  paymentStatus: string;
+  closeReason: string | null;
+}
+
+export interface ThriftSalesReturnListItem {
+  id: number;
+  returnNumber: string;
+  invoiceId: number;
+  invoiceNumber: string;
+  customerName: string | null;
+  customerPhone: string | null;
+  refundAmount: number;
+  returnCourierAmount: number;
+  status: string;
+  notes: string | null;
+  lineCount: number;
+  hasDamaged: boolean;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface ListSalesReturnsParams {
+  tenantId: number;
+  page?: number | undefined;
+  pageSize?: number | undefined;
+  search?: string | undefined;
+  dateFrom?: string | null | undefined;
+  dateTo?: string | null | undefined;
+  invoiceId?: number | null | undefined;
+  hasDamaged?: boolean | null | undefined;
+  skipCount?: boolean | undefined;
+}
+
+export interface ThriftSalesReturnListResult {
+  data: ThriftSalesReturnListItem[];
+  meta: {
+    page: number;
+    total: number | null;
+    pageSize: number;
+    totalPages: number | null;
+    skipCount: boolean;
+  };
+}
+
+export interface ThriftSalesReturnItemDetail {
+  id: number;
+  invoiceItemId: number;
+  stockId: number;
+  quantity: number;
+  condition: ThriftReturnItemCondition;
+  refundAmount: number;
+  stockName: string | null;
+  barcode: string | null;
+}
+
+export interface ThriftSalesReturnDetail {
+  id: number;
+  returnNumber: string;
+  invoiceId: number;
+  invoiceNumber: string;
+  customerName: string | null;
+  customerPhone: string | null;
+  refundAmount: number;
+  returnCourierAmount: number;
+  status: string;
+  notes: string | null;
+  createdBy: string;
+  createdAt: string;
+  items: ThriftSalesReturnItemDetail[];
+}
+
+function mapReturnListRow(row: Record<string, unknown>): ThriftSalesReturnListItem {
+  return {
+    id: Number(row.id) || 0,
+    returnNumber: String(row.return_number ?? ''),
+    invoiceId: Number(row.invoice_id) || 0,
+    invoiceNumber: String(row.invoice_number ?? ''),
+    customerName: (row.customer_name as string | null) ?? null,
+    customerPhone: (row.customer_phone as string | null) ?? null,
+    refundAmount: Number(row.refund_amount) || 0,
+    returnCourierAmount: Number(row.return_courier_amount) || 0,
+    status: String(row.status ?? 'COMPLETED'),
+    notes: (row.notes as string | null) ?? null,
+    lineCount: Number(row.line_count) || 0,
+    hasDamaged: Boolean(row.has_damaged),
+    createdBy: String(row.created_by ?? ''),
+    createdAt: String(row.created_at ?? ''),
+  };
 }
 
 export const thriftSalesRepository = {
@@ -331,6 +445,7 @@ export const thriftSalesRepository = {
         notes,
         created_at,
         status,
+        close_reason,
         reverted_at,
         reverted_by,
         revert_reason,
@@ -385,7 +500,8 @@ export const thriftSalesRepository = {
 
   /**
    * Advance Online parcel delivery_status. Does not change payment_status.
-   * First DELIVERED writes PnL. RETURNED must go through revertSalesInvoice(RTO).
+   * First DELIVERED writes PnL. DELIVERED→IN_TRANSIT deletes DELIVERED PnL.
+   * RETURNED must go through revertSalesInvoice(RTO).
    */
   async updateDeliveryStatus(input: {
     tenantId: number;
@@ -638,6 +754,170 @@ export const thriftSalesRepository = {
       heldForPhone: row.held_for_phone ?? null,
       heldForName: row.held_for_name ?? null,
     }));
+  },
+
+  async createSalesReturn(input: CreateSalesReturnInput): Promise<CreateSalesReturnResult> {
+    const { data, error } = await supabase.rpc('create_thrift_sales_return', {
+      p_tenant_id: input.tenantId,
+      p_invoice_id: input.invoiceId,
+      p_items: input.items.map((item) => ({
+        invoice_item_id: item.invoiceItemId,
+        quantity: item.quantity,
+        condition: item.condition,
+      })),
+      p_return_courier_amount: Math.max(0, Number(input.returnCourierAmount) || 0),
+      p_notes: input.notes?.trim() || null,
+      p_created_by: input.createdBy,
+    });
+
+    if (error) throw error;
+
+    const result = data as Record<string, unknown>;
+    return {
+      returnId: Number(result?.return_id) || 0,
+      returnNumber: String(result?.return_number ?? ''),
+      invoiceId: Number(result?.invoice_id ?? input.invoiceId),
+      refundAmount: Number(result?.refund_amount) || 0,
+      returnCourierAmount: Number(result?.return_courier_amount) || 0,
+      status: String(result?.status ?? ''),
+      paymentStatus: String(result?.payment_status ?? ''),
+      closeReason: result?.close_reason != null ? String(result.close_reason) : null,
+    };
+  },
+
+  async listSalesReturnsPaginated(
+    params: ListSalesReturnsParams,
+  ): Promise<ThriftSalesReturnListResult> {
+    const page = params.page ?? 1;
+    const pageSize = params.pageSize ?? 20;
+
+    const { data, error } = await supabase.rpc('list_thrift_sales_returns_paginated', {
+      p_tenant_id: params.tenantId,
+      p_page: page,
+      p_page_size: pageSize,
+      p_search: params.search?.trim() || null,
+      p_date_from: params.dateFrom || null,
+      p_date_to: params.dateTo || null,
+      p_invoice_id: params.invoiceId ?? null,
+      p_has_damaged: params.hasDamaged ?? null,
+      p_skip_count: params.skipCount === true,
+    });
+
+    if (error) throw error;
+
+    const raw = (data || {}) as { data?: unknown[]; meta?: Record<string, unknown> };
+    const rows = Array.isArray(raw.data) ? raw.data : [];
+    const meta = raw.meta || {};
+
+    return {
+      data: rows.map((row) => mapReturnListRow((row || {}) as Record<string, unknown>)),
+      meta: {
+        page: Number(meta.page) || page,
+        total: meta.total == null ? null : Number(meta.total) || 0,
+        pageSize: Number(meta.page_size) || pageSize,
+        totalPages: meta.total_pages == null ? null : Number(meta.total_pages) || 0,
+        skipCount: Boolean(meta.skip_count),
+      },
+    };
+  },
+
+  async getSalesReturn(
+    tenantId: number,
+    returnId: number,
+  ): Promise<ThriftSalesReturnDetail | null> {
+    const { data: header, error: headerError } = await supabase
+      .from('thrift_sales_returns')
+      .select(
+        `
+        id,
+        return_number,
+        invoice_id,
+        refund_amount,
+        return_courier_amount,
+        status,
+        notes,
+        created_by,
+        created_at,
+        thrift_sales_invoices!inner (
+          invoice_number,
+          customer_name,
+          customer_phone,
+          tenant_id
+        )
+      `,
+      )
+      .eq('tenant_id', tenantId)
+      .eq('id', returnId)
+      .maybeSingle();
+
+    if (headerError) throw headerError;
+    if (!header) return null;
+
+    const inv = (header as any).thrift_sales_invoices || {};
+
+    const { data: items, error: itemsError } = await supabase
+      .from('thrift_sales_return_items')
+      .select(
+        `
+        id,
+        invoice_item_id,
+        stock_id,
+        quantity,
+        condition,
+        refund_amount,
+        thrift_stocks (
+          name,
+          barcode
+        )
+      `,
+      )
+      .eq('tenant_id', tenantId)
+      .eq('return_id', returnId)
+      .order('id', { ascending: true });
+
+    if (itemsError) throw itemsError;
+
+    return {
+      id: Number((header as any).id) || returnId,
+      returnNumber: String((header as any).return_number ?? ''),
+      invoiceId: Number((header as any).invoice_id) || 0,
+      invoiceNumber: String(inv.invoice_number ?? ''),
+      customerName: inv.customer_name ?? null,
+      customerPhone: inv.customer_phone ?? null,
+      refundAmount: Number((header as any).refund_amount) || 0,
+      returnCourierAmount: Number((header as any).return_courier_amount) || 0,
+      status: String((header as any).status ?? 'COMPLETED'),
+      notes: (header as any).notes ?? null,
+      createdBy: String((header as any).created_by ?? ''),
+      createdAt: String((header as any).created_at ?? ''),
+      items: (items || []).map((row: any) => ({
+        id: Number(row.id) || 0,
+        invoiceItemId: Number(row.invoice_item_id) || 0,
+        stockId: Number(row.stock_id) || 0,
+        quantity: Number(row.quantity) || 1,
+        condition: row.condition === 'DAMAGED' ? 'DAMAGED' : 'SELLABLE',
+        refundAmount: Number(row.refund_amount) || 0,
+        stockName: row.thrift_stocks?.name ?? null,
+        barcode: row.thrift_stocks?.barcode ?? null,
+      })),
+    };
+  },
+
+  async listReturnedInvoiceItemIds(
+    tenantId: number,
+    invoiceId: number,
+  ): Promise<number[]> {
+    const { data, error } = await supabase
+      .from('thrift_sales_return_items')
+      .select('invoice_item_id, thrift_sales_returns!inner(invoice_id, tenant_id)')
+      .eq('tenant_id', tenantId)
+      .eq('thrift_sales_returns.invoice_id', invoiceId);
+
+    if (error) throw error;
+
+    return (data || [])
+      .map((row: any) => Number(row.invoice_item_id) || 0)
+      .filter((id: number) => id > 0);
   },
 };
 

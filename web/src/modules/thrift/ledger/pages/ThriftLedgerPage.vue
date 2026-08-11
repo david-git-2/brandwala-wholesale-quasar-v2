@@ -143,6 +143,14 @@ function daysAgoIsoDate(days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+function dayStartIso(date: string): string {
+  return new Date(`${date}T00:00:00`).toISOString();
+}
+
+function dayEndIso(date: string): string {
+  return new Date(`${date}T23:59:59.999`).toISOString();
+}
+
 const authStore = useAuthStore();
 const { tenantId, tenantSlug } = storeToRefs(authStore);
 
@@ -162,8 +170,8 @@ const typeOptions = [
 
 const queryParams = computed<ThriftLedgerListQueryParams>(() => ({
   tenantId: tenantId.value || 0,
-  dateFrom: dateFrom.value,
-  dateTo: dateTo.value,
+  dateFrom: dayStartIso(dateFrom.value),
+  dateTo: dayEndIso(dateTo.value),
   type: typeFilter.value,
   page: page.value,
   pageSize: rowsPerPage.value,

@@ -24,7 +24,7 @@ const routes: RouteRecordRaw[] = [
         component: () => import('../reports/pages/ThriftReportsPage.vue'),
         meta: {
           title: 'Thrift Reports',
-          headerTitle: 'Thrift Reports',
+          headerTitle: 'Reports',
         },
       },
       {
@@ -32,8 +32,26 @@ const routes: RouteRecordRaw[] = [
         name: 'thrift-sales-report',
         component: () => import('../reports/pages/ThriftSalesReportPage.vue'),
         meta: {
-          title: 'Thrift Sales Report',
-          headerTitle: 'Thrift Sales Report',
+          title: 'How much did I earn?',
+          headerTitle: 'How much did I earn?',
+        },
+      },
+      {
+        path: 'cod',
+        name: 'thrift-cod-report',
+        component: () => import('../reports/pages/ThriftCodReportPage.vue'),
+        meta: {
+          title: 'Money still coming',
+          headerTitle: 'Money still coming',
+        },
+      },
+      {
+        path: 'shipments',
+        name: 'thrift-shipment-reports-list',
+        component: () => import('../reports/pages/ThriftShipmentReportsListPage.vue'),
+        meta: {
+          title: 'Was this purchase worth it?',
+          headerTitle: 'Was this purchase worth it?',
         },
       },
       {
@@ -41,8 +59,8 @@ const routes: RouteRecordRaw[] = [
         name: 'thrift-report-details',
         component: () => import('../reports/pages/ThriftReportDetailsPage.vue'),
         meta: {
-          title: 'Shipment Sales Report',
-          headerTitle: 'Shipment Sales Report',
+          title: 'Purchase profit',
+          headerTitle: 'Purchase profit',
         },
       },
     ],

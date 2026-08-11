@@ -248,6 +248,7 @@ const paymentStatusOptions = [
   { label: 'All', value: null },
   { label: 'COD pending', value: 'COD_PENDING' },
   { label: 'Paid', value: 'PAID' },
+  { label: 'Partially refunded', value: 'PARTIALLY_REFUNDED' },
   { label: 'Refunded', value: 'REFUNDED' },
   { label: 'Written off', value: 'WRITTEN_OFF' },
 ];
@@ -264,6 +265,7 @@ const deliveryStatusOptions = [
 const statusOptions = [
   { label: 'All', value: null },
   { label: 'Active', value: 'ACTIVE' },
+  { label: 'Partially returned', value: 'PARTIALLY_RETURNED' },
   { label: 'Returned', value: 'RETURNED' },
 ];
 

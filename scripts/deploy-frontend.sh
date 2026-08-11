@@ -5,6 +5,12 @@ set -euo pipefail
 #   pnpm run deploy:frontend
 #   pnpm run deploy:frontend -- tradeflowbd
 
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT_DIR"
+
+# Frontend builds must use production Supabase keys, not local Docker.
+bash "${ROOT_DIR}/scripts/env-switch.sh" prod
+
 if [[ -f web/.env ]]; then
   # shellcheck disable=SC1091
   set -a
@@ -14,7 +20,7 @@ fi
 
 PROJECT_NAME="${1:-${CF_PAGES_PROJECT_NAME:-}}"
 if [[ -z "${PROJECT_NAME}" ]]; then
-  echo "Error: set CF_PAGES_PROJECT_NAME in web/.env or pass project name as an argument."
+  echo "Error: set CF_PAGES_PROJECT_NAME in web/.env.prod (or web/.env) or pass project name as an argument."
   exit 1
 fi
 
@@ -53,6 +59,7 @@ while [[ "${attempt}" -le "${RETRY_ATTEMPTS}" ]]; do
   echo "Deploy attempt ${attempt}/${RETRY_ATTEMPTS}..."
   if wrangler_cmd pages deploy web/dist/spa --project-name "${PROJECT_NAME}" --commit-dirty=true --skip-caching; then
     echo "Deploy succeeded."
+    echo "Note: web/.env is now on PRODUCTION. Run pnpm run env:local to return to Docker for daily work."
     exit 0
   fi
 

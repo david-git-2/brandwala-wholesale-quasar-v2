@@ -1,0 +1,48 @@
+---
+description: Fresh-reset-safe Supabase migrations (ordering, IF EXISTS, verify with backend:reset)
+globs: supabase/migrations/**/*.sql
+alwaysApply: false
+---
+
+# Supabase Migration Safety (Fresh Reset)
+
+Local `pnpm run backend:reset` / `pull-prod-data` replays **all** migrations from empty. Prod often never does. Every new migration must succeed on a clean DB.
+
+## Before writing SQL
+
+1. Confirm every table/type/enum/function you reference already exists in an **earlier** `YYYYMMDDHHMMSS_*.sql` file (timestamp order = apply order).
+2. Never assume “it exists on prod already” — prod state ≠ empty local.
+
+## Required patterns
+
+| Change | Do this |
+|--------|---------|
+| `CREATE TABLE` / index / type | `IF NOT EXISTS` when re-runnable |
+| `DROP` table/column/policy/function | `IF EXISTS` |
+| Change function **return type** / OUT params | `DROP FUNCTION IF EXISTS ...(...);` then `CREATE` — never bare `CREATE OR REPLACE` |
+| `ALTER TABLE` / FK on maybe-missing relation | Guard with `to_regclass('public.foo')` (or skip via `IF EXISTS` where valid) |
+| Enum labels in function bodies | Enum value must be added in an **earlier** migration than the function |
+| Rename (`payments` → `global_payments`) | Mid-history migrations must use the name that exists **at their timestamp** |
+
+## Forbidden (caused real reset failures here)
+
+- Referencing `shop_orders` / `shop_order_status` / `universal_wallet_ledger` before their create migration timestamp
+- `ALTER … DROP COLUMN col` when `col` was never added in prior migrations
+- `CREATE INDEX …(user_email)` after an earlier migration dropped that column
+- Backfills (`INSERT INTO new_table`) timestamped **before** `new_table` is created
+
+## Out-of-order fix (exceptional)
+
+If history is already wrong: stub the early file (`raise notice` no-op) and add a **later** `*_deferred_*.sql` after dependencies exist. Do not only patch prod mentally.
+
+## Verify (mandatory for migration work)
+
+```bash
+pnpm run backend:reset
+```
+
+Must finish with no SQLSTATE errors. Only then run `pnpm run backend:pull-prod-data` (optional data) or `pnpm run deploy:backend`.
+
+## New features
+
+Prefer a **new** forward migration over editing old applied files. Edit applied files only to fix fresh-reset breakage (ordering / IF EXISTS), not for normal features.

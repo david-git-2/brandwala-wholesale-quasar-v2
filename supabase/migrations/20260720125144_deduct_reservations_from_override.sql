@@ -1,12 +1,22 @@
 -- Migration: Deduct reservations/orders from display quantity override for dropshop
-begin;
+-- Note: shop_orders is created in 20260902000600. On a fresh reset this file runs
+-- earlier, so we no-op until the table exists. Later shop_order migrations
+-- recreate fulfill_shop_order_to_invoice after the table is present.
 
+do $wrap$
+begin
+  if to_regclass('public.shop_orders') is null then
+    raise notice 'shop_orders missing — skip fulfill_shop_order_to_invoice (see shop_order_p8+)';
+    return;
+  end if;
+
+  execute $fn$
 create or replace function public.fulfill_shop_order_to_invoice(p_order_id bigint)
 returns void
 language plpgsql
 security definer
 set search_path = public
-as $$
+as $body$
 declare
   v_order public.shop_orders;
   v_invoice public.global_invoices;
@@ -17,7 +27,7 @@ declare
   v_invoice_row record;
 begin
   select * into v_order from public.shop_orders where id = p_order_id;
-  
+
   if v_order.id is null then
     raise exception 'order not found';
   end if;
@@ -34,12 +44,10 @@ begin
     raise exception 'vendor catalog orders cannot be fulfilled to an invoice directly';
   end if;
 
-  -- 1. Determine invoice type & retail billing mode
   if v_order.shop_type_snapshot = 'dropship' then
     v_invoice_type := 'dropship'::public.global_invoice_type;
     v_retail_billing_mode := null;
   else
-    -- fixed_price
     if v_order.order_mode_snapshot = 'checkout_wholesale' then
       v_invoice_type := 'wholesale'::public.global_invoice_type;
       v_retail_billing_mode := null;
@@ -53,10 +61,8 @@ begin
     end if;
   end if;
 
-  -- Generate invoice number
   v_invoice_no := 'INV-SO-' || v_order.order_no;
 
-  -- 2. Create the global invoice
   select * into v_invoice from public.create_global_invoice(
     p_tenant_id => v_order.tenant_id,
     p_invoice_no => v_invoice_no,
@@ -71,7 +77,6 @@ begin
     p_note => coalesce(v_order.delivery_instructions, 'Fulfillment of Shop Order: ' || v_order.order_no)
   );
 
-  -- Update invoice charges and collection source
   update public.global_invoices
   set
     shipping_charge = coalesce(v_order.delivery_charge_amount, 0),
@@ -82,7 +87,6 @@ begin
     collection_source = case when v_order.is_prepaid_snapshot then 'billing_profile'::public.collection_source_type else 'recipient'::public.collection_source_type end
   where id = v_invoice.id;
 
-  -- 3. Add lines to invoice
   for v_item in select * from public.shop_order_items where order_id = p_order_id loop
     if v_item.global_stock_id is null then
       raise exception 'item % is missing global_stock_id association', v_item.name;
@@ -97,7 +101,6 @@ begin
       p_line_discount_amount => 0.00
     );
 
-    -- Deduct from display quantity override for dropshop
     if v_order.shop_type_snapshot = 'dropship' then
       update public.shop_product_listings
       set display_quantity_override = greatest(0, display_quantity_override - v_item.quantity)
@@ -107,20 +110,15 @@ begin
         and display_quantity_override is not null;
     end if;
 
-    -- Update delivered quantities on order item
     update public.shop_order_items
     set delivered_quantity = quantity,
         updated_at = now()
     where id = v_item.id;
   end loop;
 
-  -- Recompute totals with charges set
   perform public.recompute_global_invoice_totals(v_invoice.id);
-
-  -- 4. Post the invoice to book ledger entries and deduct quantities
   perform public.post_global_invoice(v_invoice.id);
 
-  -- 5. Complete the shop order
   update public.shop_orders
   set status = 'fulfilled',
       global_invoice_id = v_invoice.id,
@@ -128,6 +126,7 @@ begin
       updated_at = now()
   where id = p_order_id;
 end;
-$$;
-
-commit;
+$body$;
+  $fn$;
+end;
+$wrap$;

@@ -67,3 +67,17 @@ export function useUpdateThriftDeliveryStatusMutation() {
     },
   });
 }
+
+export function useCreateThriftSalesReturnMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: thriftSalesRepository.createSalesReturn,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['thrift', 'sales'] });
+      void queryClient.invalidateQueries({ queryKey: ['thrift', 'stocks'] });
+      void queryClient.invalidateQueries({ queryKey: ['thrift', 'ledger'] });
+      void queryClient.invalidateQueries({ queryKey: ['thrift', 'reports'] });
+    },
+  });
+}

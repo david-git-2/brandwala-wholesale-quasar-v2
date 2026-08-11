@@ -708,100 +708,124 @@
                     label="Tracking ID (optional)"
                   />
                 </div>
-                <div class="col-12 col-sm-6">
-                  <q-input
-                    v-model.number="invoiceForm.courierAmount"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    label="Delivery amount"
-                    outlined
-                    dense
-                    hint="0 if prepaid / no courier fee"
-                    prefix="৳"
-                  />
-                </div>
-                <div v-if="courierAmountPositive" class="col-12 col-sm-6">
-                  <div class="text-caption text-grey-7 q-mb-xs">
-                    Delivery paid by *
+              </div>
+
+              <div class="text-caption text-grey-7 q-mt-md q-mb-sm">
+                Enter each fee, then choose who pays. Leave amount at 0 to skip.
+              </div>
+
+              <div class="column q-gutter-y-md">
+                <div class="courier-fee-row row q-col-gutter-sm items-start">
+                  <div class="col-12 col-sm-6">
+                    <q-input
+                      v-model.number="invoiceForm.courierAmount"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      label="Delivery amount"
+                      outlined
+                      dense
+                      prefix="৳"
+                    />
                   </div>
-                  <q-btn-toggle
-                    v-model="invoiceForm.courierPaidBy"
-                    toggle-color="primary"
-                    unelevated
-                    dense
-                    no-caps
-                    class="full-width"
-                    :options="courierPaidByOptions"
-                    :class="{ 'courier-payer-error': !!validationErrors.courierPaidBy }"
-                  />
-                  <div
-                    v-if="validationErrors.courierPaidBy"
-                    class="text-negative text-caption q-mt-xs"
-                  >
-                    {{ validationErrors.courierPaidBy }}
-                  </div>
-                </div>
-                <div class="col-12 col-sm-6">
-                  <q-input
-                    v-model.number="invoiceForm.codFeeAmount"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    label="COD fee"
-                    outlined
-                    dense
-                    prefix="৳"
-                  />
-                </div>
-                <div v-if="codFeeAmountPositive" class="col-12 col-sm-6">
-                  <div class="text-caption text-grey-7 q-mb-xs">COD fee paid by *</div>
-                  <q-btn-toggle
-                    v-model="invoiceForm.codFeePaidBy"
-                    toggle-color="primary"
-                    unelevated
-                    dense
-                    no-caps
-                    class="full-width"
-                    :options="courierPaidByOptions"
-                    :class="{ 'courier-payer-error': !!validationErrors.codFeePaidBy }"
-                  />
-                  <div
-                    v-if="validationErrors.codFeePaidBy"
-                    class="text-negative text-caption q-mt-xs"
-                  >
-                    {{ validationErrors.codFeePaidBy }}
+                  <div class="col-12 col-sm-6">
+                    <div class="text-caption text-grey-7 q-mb-xs">
+                      Paid by
+                      <span v-if="courierAmountPositive" class="text-negative">*</span>
+                    </div>
+                    <q-btn-toggle
+                      v-model="invoiceForm.courierPaidBy"
+                      toggle-color="primary"
+                      unelevated
+                      dense
+                      no-caps
+                      class="full-width"
+                      :disable="!courierAmountPositive"
+                      :options="courierPaidByOptions"
+                      :class="{ 'courier-payer-error': !!validationErrors.courierPaidBy }"
+                    />
+                    <div
+                      v-if="validationErrors.courierPaidBy"
+                      class="text-negative text-caption q-mt-xs"
+                    >
+                      {{ validationErrors.courierPaidBy }}
+                    </div>
                   </div>
                 </div>
-                <div class="col-12 col-sm-6">
-                  <q-input
-                    v-model.number="invoiceForm.packingAmount"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    label="Packing amount"
-                    outlined
-                    dense
-                    prefix="৳"
-                  />
+
+                <div class="courier-fee-row row q-col-gutter-sm items-start">
+                  <div class="col-12 col-sm-6">
+                    <q-input
+                      v-model.number="invoiceForm.codFeeAmount"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      label="COD fee"
+                      outlined
+                      dense
+                      prefix="৳"
+                    />
+                  </div>
+                  <div class="col-12 col-sm-6">
+                    <div class="text-caption text-grey-7 q-mb-xs">
+                      Paid by
+                      <span v-if="codFeeAmountPositive" class="text-negative">*</span>
+                    </div>
+                    <q-btn-toggle
+                      v-model="invoiceForm.codFeePaidBy"
+                      toggle-color="primary"
+                      unelevated
+                      dense
+                      no-caps
+                      class="full-width"
+                      :disable="!codFeeAmountPositive"
+                      :options="courierPaidByOptions"
+                      :class="{ 'courier-payer-error': !!validationErrors.codFeePaidBy }"
+                    />
+                    <div
+                      v-if="validationErrors.codFeePaidBy"
+                      class="text-negative text-caption q-mt-xs"
+                    >
+                      {{ validationErrors.codFeePaidBy }}
+                    </div>
+                  </div>
                 </div>
-                <div v-if="packingAmountPositive" class="col-12 col-sm-6">
-                  <div class="text-caption text-grey-7 q-mb-xs">Packing paid by *</div>
-                  <q-btn-toggle
-                    v-model="invoiceForm.packingPaidBy"
-                    toggle-color="primary"
-                    unelevated
-                    dense
-                    no-caps
-                    class="full-width"
-                    :options="courierPaidByOptions"
-                    :class="{ 'courier-payer-error': !!validationErrors.packingPaidBy }"
-                  />
-                  <div
-                    v-if="validationErrors.packingPaidBy"
-                    class="text-negative text-caption q-mt-xs"
-                  >
-                    {{ validationErrors.packingPaidBy }}
+
+                <div class="courier-fee-row row q-col-gutter-sm items-start">
+                  <div class="col-12 col-sm-6">
+                    <q-input
+                      v-model.number="invoiceForm.packingAmount"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      label="Packing amount"
+                      outlined
+                      dense
+                      prefix="৳"
+                    />
+                  </div>
+                  <div class="col-12 col-sm-6">
+                    <div class="text-caption text-grey-7 q-mb-xs">
+                      Paid by
+                      <span v-if="packingAmountPositive" class="text-negative">*</span>
+                    </div>
+                    <q-btn-toggle
+                      v-model="invoiceForm.packingPaidBy"
+                      toggle-color="primary"
+                      unelevated
+                      dense
+                      no-caps
+                      class="full-width"
+                      :disable="!packingAmountPositive"
+                      :options="courierPaidByOptions"
+                      :class="{ 'courier-payer-error': !!validationErrors.packingPaidBy }"
+                    />
+                    <div
+                      v-if="validationErrors.packingPaidBy"
+                      class="text-negative text-caption q-mt-xs"
+                    >
+                      {{ validationErrors.packingPaidBy }}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1290,13 +1314,31 @@ watch(isOnline, (online) => {
 });
 
 watch(courierAmountPositive, (positive) => {
-  if (!positive) invoiceForm.value.courierPaidBy = null;
+  if (!positive) {
+    invoiceForm.value.courierPaidBy = null;
+    return;
+  }
+  if (!invoiceForm.value.courierPaidBy) {
+    invoiceForm.value.courierPaidBy = 'CUSTOMER';
+  }
 });
 watch(packingAmountPositive, (positive) => {
-  if (!positive) invoiceForm.value.packingPaidBy = null;
+  if (!positive) {
+    invoiceForm.value.packingPaidBy = null;
+    return;
+  }
+  if (!invoiceForm.value.packingPaidBy) {
+    invoiceForm.value.packingPaidBy = 'CUSTOMER';
+  }
 });
 watch(codFeeAmountPositive, (positive) => {
-  if (!positive) invoiceForm.value.codFeePaidBy = null;
+  if (!positive) {
+    invoiceForm.value.codFeePaidBy = null;
+    return;
+  }
+  if (!invoiceForm.value.codFeePaidBy) {
+    invoiceForm.value.codFeePaidBy = 'CUSTOMER';
+  }
 });
 
 const lookingUpCustomer = ref(false);
@@ -1802,6 +1844,13 @@ async function onSaveInvoice() {
 .courier-payer-error {
   outline: 1px solid var(--q-negative);
   border-radius: 4px;
+}
+
+.courier-fee-row {
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--bw-theme-border, rgba(0, 0, 0, 0.08));
+  border-radius: 8px;
+  background: var(--bw-theme-surface, transparent);
 }
 
 .thrift-invoice-table-wrap {

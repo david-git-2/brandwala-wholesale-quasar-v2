@@ -19,7 +19,7 @@ $$;
 DROP TRIGGER IF EXISTS trg_pbc_items_auto_backlog ON public.product_based_costing_items;
 
 CREATE TRIGGER trg_pbc_items_auto_backlog
-AFTER INSERT OR UPDATE OF quantity, confirmed_quantity, ordered_quantity, status, product_id OR DELETE
+AFTER INSERT OR UPDATE OF quantity, confirmed_quantity, ordered_quantity, product_id OR DELETE
 ON public.product_based_costing_items
 FOR EACH ROW
 EXECUTE FUNCTION public.trg_fn_auto_upsert_pbc_backlog();

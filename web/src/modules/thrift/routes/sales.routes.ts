@@ -69,6 +69,24 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'returns',
+        name: 'thrift-sales-returns',
+        component: () => import('../sales/pages/ThriftSalesReturnsPage.vue'),
+        meta: {
+          title: 'Thrift Returns',
+          headerTitle: 'Returns',
+        },
+      },
+      {
+        path: 'returns/:returnId',
+        name: 'thrift-sales-return-details',
+        component: () => import('../sales/pages/ThriftSalesReturnDetailsPage.vue'),
+        meta: {
+          title: 'Return Details',
+          headerTitle: 'Return Details',
+        },
+      },
+      {
         path: ':invoiceId',
         name: 'thrift-sales-invoice-details',
         component: () => import('../sales/pages/ThriftSalesInvoiceDetailsPage.vue'),

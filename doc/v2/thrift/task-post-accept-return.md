@@ -49,11 +49,11 @@ Prefer full **Return items** (all lines) over RTO when the customer already rece
 
 | Piece | Status |
 | :--- | :--- |
-| Tables `thrift_sales_returns` + items + RLS | Present (`038`) — schema only |
-| `create_thrift_sales_return` RPC | **Missing** |
-| `list_thrift_sales_returns_paginated` | **Missing** |
-| UI Return items / returns hub | **Missing** |
-| Invoice detail **Return** button | Legacy whole-invoice `revert(RETURN)` — **not** Situation B |
+| Tables `thrift_sales_returns` + items + RLS | Present (`038`) |
+| `create_thrift_sales_return` RPC | **Done** (`053`) |
+| `list_thrift_sales_returns_paginated` | **Done** (`054`) |
+| UI Return items / returns hub | **Done** |
+| Invoice detail **Return** button | Replaced by **Return items** (legacy whole `RETURN` retired) |
 
 ---
 
@@ -61,7 +61,7 @@ Prefer full **Return items** (all lines) over RTO when the customer already rece
 
 ### Phase A — `create_thrift_sales_return` RPC
 
-**Status:** Pending · Online depends on [task-rto](./task-rto.md) Phase A
+**Status:** Complete · migration `20270802000053_create_thrift_sales_return.sql`
 
 **Work**
 - Validate invoice: not RTO-closed (`close_reason ≠ RTO`); Offline OK; Online requires `delivery_status = DELIVERED` (or `PARTIALLY_RETURNED` after prior deliver)
@@ -89,7 +89,7 @@ Prefer full **Return items** (all lines) over RTO when the customer already rece
 
 ### Phase B — `list_thrift_sales_returns_paginated`
 
-**Status:** Pending · Depends on Phase A (readable rows)
+**Status:** Complete · migration `20270802000054_list_thrift_sales_returns_paginated.sql`
 
 **Work**
 - Tenant-scoped paginated list: filters date range, search (`return_number`, invoice #, phone), optional `invoice_id`, optional damaged flag, `skip_count`
@@ -105,7 +105,7 @@ Prefer full **Return items** (all lines) over RTO when the customer already rece
 
 ### Phase C — UI Return items + invoice history
 
-**Status:** Pending · Depends on Phase A
+**Status:** Complete
 
 **Work**
 - Invoice detail separate **Return items** action (not Create Invoice, not Mark RTO, not Record COD)
@@ -124,7 +124,7 @@ Prefer full **Return items** (all lines) over RTO when the customer already rece
 
 ### Phase D — UI Returns management hub
 
-**Status:** Pending · Depends on Phase B–C
+**Status:** Complete
 
 **Work**
 - Module page or sales sub-route: list/search returns; open return detail (lines, refund, courier, link to invoice/stocks)
@@ -141,7 +141,7 @@ Prefer full **Return items** (all lines) over RTO when the customer already rece
 
 ### Phase E — Smoke + deploy
 
-**Status:** Pending · Depends on A–D
+**Status:** Pending · migrations ready; verify on `backend:reset` / deploy + `backend:types`
 
 **Work**
 - Smoke [sales/scenarios.md](./sales/scenarios.md) §5 partial + full via return doc

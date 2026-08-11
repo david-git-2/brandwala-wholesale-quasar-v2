@@ -4,12 +4,32 @@ import type { ThriftShipment } from '../../shipment/types';
 
 export interface ThriftShipmentReportSummary {
   unitsSold: number;
+  unitsRto: number;
+  unitsReturned: number;
   grossSales: number;
   discounts: number;
   netRevenue: number;
+  deliveredRevenue: number;
   cogs: number;
+  allocatedFeesTotal: number;
   netProfit: number;
+  deliveredNet: number;
+  rtoFeeLoss: number;
+  returnFeeLoss: number;
+  deliveredLineCount: number;
+  rtoLineCount: number;
+  returnLineCount: number;
   marginPct: number;
+}
+
+export interface ThriftShipmentOutcomeRow {
+  outcome: string;
+  lineCount: number;
+  units: number;
+  netRevenue: number;
+  cogs: number;
+  allocatedFeesTotal: number;
+  netProfit: number;
 }
 
 export interface ThriftShipmentReportLine {
@@ -17,6 +37,7 @@ export interface ThriftShipmentReportLine {
   invoiceId: number;
   invoiceNumber: string;
   invoiceDate: string;
+  outcome: string;
   stockId: number;
   stockName: string | null;
   barcode: string | null;
@@ -24,7 +45,10 @@ export interface ThriftShipmentReportLine {
   sellPrice: number;
   discountAmount: number;
   finalPrice: number;
+  sellAmount: number;
   landedUnitCostAtSale: number;
+  cogs: number;
+  allocatedFeesTotal: number;
   netProfit: number;
 }
 
@@ -36,6 +60,7 @@ export interface ThriftShipmentSalesReport {
     updatedAt: string;
   };
   summary: ThriftShipmentReportSummary;
+  byOutcome: ThriftShipmentOutcomeRow[];
   lines: ThriftShipmentReportLine[];
 }
 
@@ -51,6 +76,16 @@ export interface ThriftPeriodSalesReportSummary {
   netAfterFees: number;
   refundCount: number;
   refundAmount: number;
+  rtoCount: number;
+  rtoAmount: number;
+  customerReturnCount: number;
+  customerReturnAmount: number;
+  allocatedShopDelivery?: number;
+  allocatedShopCodFee?: number;
+  allocatedShopPacking?: number;
+  allocatedReturnCourier?: number;
+  allocatedFeesTotal?: number;
+  netProfit?: number;
 }
 
 export interface ThriftPeriodSalesChannelRow extends ThriftPeriodSalesReportSummary {
@@ -89,16 +124,26 @@ function num(v: unknown): number {
 function mapPeriodSummary(raw: Record<string, unknown>): ThriftPeriodSalesReportSummary {
   return {
     invoiceCount: num(raw.invoice_count),
-    unitsSold: num(raw.units_sold),
+    unitsSold: num(raw.units_sold ?? raw.units),
     netRevenue: num(raw.net_revenue),
     cogs: num(raw.cogs),
-    lineProfit: num(raw.line_profit),
+    lineProfit: num(raw.line_profit ?? raw.net_profit),
     courierCodAmount: num(raw.courier_cod_amount),
     otherExpenseAmount: num(raw.other_expense_amount),
-    totalFees: num(raw.total_fees),
-    netAfterFees: num(raw.net_after_fees),
+    totalFees: num(raw.total_fees ?? raw.allocated_fees_total),
+    netAfterFees: num(raw.net_after_fees ?? raw.net_profit),
     refundCount: num(raw.refund_count),
     refundAmount: num(raw.refund_amount),
+    rtoCount: num(raw.rto_count),
+    rtoAmount: num(raw.rto_amount),
+    customerReturnCount: num(raw.customer_return_count),
+    customerReturnAmount: num(raw.customer_return_amount),
+    allocatedShopDelivery: num(raw.allocated_shop_delivery),
+    allocatedShopCodFee: num(raw.allocated_shop_cod_fee),
+    allocatedShopPacking: num(raw.allocated_shop_packing),
+    allocatedReturnCourier: num(raw.allocated_return_courier),
+    allocatedFeesTotal: num(raw.allocated_fees_total),
+    netProfit: num(raw.net_profit ?? raw.net_after_fees),
   };
 }
 
@@ -121,6 +166,7 @@ export const thriftReportsRepository = {
     const shipment = raw.shipment || {};
     const summary = raw.summary || {};
     const lines = Array.isArray(raw.lines) ? raw.lines : [];
+    const byOutcome = Array.isArray(raw.by_outcome) ? raw.by_outcome : [];
 
     return {
       shipment: {
@@ -131,18 +177,38 @@ export const thriftReportsRepository = {
       },
       summary: {
         unitsSold: num(summary.units_sold),
+        unitsRto: num(summary.units_rto),
+        unitsReturned: num(summary.units_returned),
         grossSales: num(summary.gross_sales),
         discounts: num(summary.discounts),
         netRevenue: num(summary.net_revenue),
+        deliveredRevenue: num(summary.delivered_revenue),
         cogs: num(summary.cogs),
+        allocatedFeesTotal: num(summary.allocated_fees_total),
         netProfit: num(summary.net_profit),
+        deliveredNet: num(summary.delivered_net),
+        rtoFeeLoss: num(summary.rto_fee_loss),
+        returnFeeLoss: num(summary.return_fee_loss),
+        deliveredLineCount: num(summary.delivered_line_count),
+        rtoLineCount: num(summary.rto_line_count),
+        returnLineCount: num(summary.return_line_count),
         marginPct: num(summary.margin_pct),
       },
+      byOutcome: byOutcome.map((row: Record<string, unknown>) => ({
+        outcome: typeof row.outcome === 'string' ? row.outcome : '',
+        lineCount: num(row.line_count),
+        units: num(row.units),
+        netRevenue: num(row.net_revenue),
+        cogs: num(row.cogs),
+        allocatedFeesTotal: num(row.allocated_fees_total),
+        netProfit: num(row.net_profit),
+      })),
       lines: lines.map((row: any) => ({
         id: Number(row.id),
         invoiceId: Number(row.invoice_id),
         invoiceNumber: row.invoice_number || '',
         invoiceDate: row.invoice_date || '',
+        outcome: row.outcome || '',
         stockId: Number(row.stock_id),
         stockName: row.stock_name ?? null,
         barcode: row.barcode ?? null,
@@ -150,7 +216,10 @@ export const thriftReportsRepository = {
         sellPrice: num(row.sell_price),
         discountAmount: num(row.discount_amount),
         finalPrice: num(row.final_price),
+        sellAmount: num(row.sell_amount),
         landedUnitCostAtSale: num(row.landed_unit_cost_at_sale),
+        cogs: num(row.cogs),
+        allocatedFeesTotal: num(row.allocated_fees_total),
         netProfit: num(row.net_profit),
       })),
     };
@@ -181,14 +250,10 @@ export const thriftReportsRepository = {
       saleChannel: raw.sale_channel ?? null,
       summary: {
         ...mapPeriodSummary(summary),
-        refundCount: num(summary.refund_count),
-        refundAmount: num(summary.refund_amount),
       },
       byChannel: byChannel.map((row: Record<string, unknown>) => ({
         saleChannel: typeof row.sale_channel === 'string' ? row.sale_channel : 'IN_STORE',
         ...mapPeriodSummary(row),
-        refundCount: 0,
-        refundAmount: 0,
       })),
       codOutstanding: {
         invoiceCount: num(codOutstanding.invoice_count),

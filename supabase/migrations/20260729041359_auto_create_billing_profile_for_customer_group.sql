@@ -111,6 +111,14 @@ $$;
 grant execute on function public.resolve_billing_profile_for_customer_group(bigint, bigint) to authenticated;
 
 -- 5. Backfill any existing shop_orders that have NULL billing_profile_id
-update public.shop_orders so
-set billing_profile_id = public.resolve_billing_profile_for_customer_group(so.tenant_id, so.customer_group_id)
-where so.billing_profile_id is null;
+do $$
+begin
+  if to_regclass('public.shop_orders') is null then
+    raise notice 'shop_orders missing — skip billing_profile backfill';
+    return;
+  end if;
+
+  update public.shop_orders so
+  set billing_profile_id = public.resolve_billing_profile_for_customer_group(so.tenant_id, so.customer_group_id)
+  where so.billing_profile_id is null;
+end $$;
