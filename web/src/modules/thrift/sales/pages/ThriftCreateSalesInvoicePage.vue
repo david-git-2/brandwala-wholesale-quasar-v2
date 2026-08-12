@@ -501,7 +501,7 @@
                     dense
                     placeholder="e.g. 01712-345678"
                     :loading="lookingUpCustomer"
-                    hint="Type phone to find existing customer"
+                    hint="Enter 11-digit phone to find existing customer"
                     :error="!!validationErrors.customerPhone"
                     :error-message="validationErrors.customerPhone"
                   >
@@ -664,6 +664,104 @@
                     </q-input>
                   </div>
                 </template>
+                <div
+                  v-if="isOnline && hasCustomerRiskHistory"
+                  class="col-12"
+                  data-test="thrift-customer-risk-panel"
+                >
+                  <q-banner dense rounded class="bg-orange-1 text-grey-9">
+                    <template #avatar>
+                      <q-icon name="ph ph-warning" color="orange-9" />
+                    </template>
+                    Prior RTO / return history for this phone
+                    <span class="text-caption text-grey-7">
+                      · {{ customerRisk.rtoCount }} RTO ·
+                      {{ customerRisk.returnCount }} return(s)
+                    </span>
+                  </q-banner>
+
+                  <div
+                    v-if="customerRisk.rtoCount > 0"
+                    class="risk-block risk-block--rto q-mt-md q-pa-sm rounded-borders"
+                  >
+                    <div class="text-subtitle2 text-weight-bold text-negative row items-center">
+                      <q-icon name="ph ph-package" class="q-mr-xs" size="18px" />
+                      RTO ({{ customerRisk.rtoCount }})
+                    </div>
+                    <div
+                      v-for="r in customerRisk.rtos"
+                      :key="`rto-${r.invoiceId}`"
+                      class="text-caption q-mt-xs row items-center justify-between"
+                    >
+                      <span>
+                        {{ r.invoiceNumber }}
+                        <span class="text-grey-7">
+                          · {{ formatAppDate(r.at, '—') }}
+                        </span>
+                      </span>
+                      <span class="text-weight-medium">
+                        {{ formatThriftAmount(r.totalInvoiceAmount) }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div
+                    v-if="customerRisk.returnCount > 0"
+                    class="risk-block q-mt-md q-pa-sm rounded-borders"
+                  >
+                    <div class="text-subtitle2 text-weight-bold row items-center">
+                      <q-icon name="ph ph-arrow-u-up-left" class="q-mr-xs" size="18px" />
+                      Returns ({{ customerRisk.returnCount }})
+                    </div>
+                    <div
+                      v-for="r in customerRisk.returns"
+                      :key="`ret-${r.returnId}`"
+                      class="text-caption q-mt-xs row items-center justify-between"
+                    >
+                      <span>
+                        {{ r.returnNumber }}
+                        <span class="text-grey-7">
+                          · {{ r.invoiceNumber }} · {{ formatAppDate(r.at, '—') }}
+                        </span>
+                        <span v-if="r.hasDamaged" class="text-negative"> · damaged</span>
+                      </span>
+                      <span class="text-weight-medium">
+                        {{ formatThriftAmount(r.refundAmount) }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div class="q-mt-md">
+                    <q-input
+                      v-model.number="invoiceForm.advanceAmount"
+                      type="number"
+                      label="Advance collected *"
+                      outlined
+                      dense
+                      min="0"
+                      step="1"
+                      :loading="lookingUpRisk"
+                      :error="!!validationErrors.advanceAmount"
+                      :error-message="validationErrors.advanceAmount"
+                      hint="Non-refundable. Deducted from COD expected."
+                      data-test="thrift-advance-amount"
+                    >
+                      <template #prepend>
+                        <q-icon name="ph ph-hand-coins" color="grey-6" size="xs" />
+                      </template>
+                    </q-input>
+                    <div class="text-caption text-grey-7 q-mt-xs">
+                      COD preview:
+                      <span class="text-weight-medium text-grey-9">
+                        {{ formatThriftAmount(codExpected) }}
+                      </span>
+                      <span v-if="advanceAmountValue > 0">
+                        ({{ formatThriftAmount(codGross) }} −
+                        {{ formatThriftAmount(advanceAmountValue) }})
+                      </span>
+                    </div>
+                  </div>
+                </div>
                 <div class="col-12">
                   <q-input
                     v-model="invoiceForm.notes"
@@ -922,6 +1020,15 @@
                   Tracking: {{ invoiceForm.trackingId }}
                 </div>
               </div>
+              <div v-if="advanceAmountValue > 0">
+                <div class="text-caption text-grey-6">Advance (non-refundable)</div>
+                <div class="text-weight-medium">
+                  {{ formatThriftAmount(advanceAmountValue) }}
+                </div>
+                <div class="text-caption text-grey-7">
+                  COD expected {{ formatThriftAmount(codExpected) }}
+                </div>
+              </div>
               <div class="text-caption text-grey-6">
                 Draft is saved on this device. Create order submits the invoice.
               </div>
@@ -1047,6 +1154,7 @@ import {
   thriftSalesRepository,
   type AvailableStockItem,
   type ThriftCourierPaidBy,
+  type ThriftCustomerSalesRisk,
   type ThriftSaleChannel,
 } from '../repositories/thriftSalesRepository';
 import {
@@ -1121,6 +1229,7 @@ const invoiceForm = ref({
   packingPaidBy: null as ThriftCourierPaidBy | null,
   codFeeAmount: 0 as number,
   codFeePaidBy: null as ThriftCourierPaidBy | null,
+  advanceAmount: 0 as number,
 });
 
 const validationErrors = ref<{
@@ -1132,7 +1241,26 @@ const validationErrors = ref<{
   courierPaidBy?: string;
   packingPaidBy?: string;
   codFeePaidBy?: string;
+  advanceAmount?: string;
 }>({});
+
+function emptyCustomerRisk(): ThriftCustomerSalesRisk {
+  return {
+    customerId: null,
+    rtoCount: 0,
+    returnCount: 0,
+    rtos: [],
+    returns: [],
+  };
+}
+
+const customerRisk = ref<ThriftCustomerSalesRisk>(emptyCustomerRisk());
+const lookingUpRisk = ref(false);
+let customerRiskSeq = 0;
+
+const hasCustomerRiskHistory = computed(
+  () => customerRisk.value.rtoCount + customerRisk.value.returnCount > 0,
+);
 
 onMounted(() => {
   void loadInitialDistricts();
@@ -1301,6 +1429,12 @@ function goNextOnlineStep() {
     }
     if (!invoiceForm.value.district.trim()) errors.district = 'District is required';
     if (!invoiceForm.value.thana.trim()) errors.thana = 'Thana / upazila is required';
+    if (
+      hasCustomerRiskHistory.value &&
+      !(Number(invoiceForm.value.advanceAmount) > 0)
+    ) {
+      errors.advanceAmount = 'Advance is required when this customer has RTO or return history';
+    }
     validationErrors.value = { ...validationErrors.value, ...errors };
     if (Object.keys(errors).length) {
       $q.notify({ type: 'warning', message: 'Complete customer details before continuing.' });
@@ -1364,6 +1498,7 @@ async function applyDraft(draft: ThriftCreateInvoiceDraft) {
       ...invoiceForm.value,
       ...draft.form,
       saleChannel: 'ONLINE',
+      advanceAmount: Number(draft.form.advanceAmount) || 0,
     };
     selectedItems.value = (draft.items || []).map((i) => ({ ...i }));
     onlineStep.value = Math.min(3, Math.max(0, Number(draft.onlineStep) || 0));
@@ -1390,6 +1525,12 @@ async function applyDraft(draft: ThriftCreateInvoiceDraft) {
   ) {
     feePreset.value = 'typical';
     applyFeePresetPayers('typical');
+  }
+  if (isOnline.value) {
+    const phone = invoiceForm.value.customerPhone.trim();
+    if (phone.replace(/\D/g, '').length >= 11) {
+      void fetchCustomerRisk(phone);
+    }
   }
 }
 
@@ -1515,11 +1656,17 @@ watch(isOnline, (online) => {
     invoiceForm.value.codFeePaidBy = null;
     invoiceForm.value.courierProviderId = null;
     invoiceForm.value.trackingId = '';
+    invoiceForm.value.advanceAmount = 0;
+    clearCustomerRisk();
     onlineStep.value = 0;
     feePreset.value = 'typical';
   } else {
     onlineStep.value = 0;
     scheduleDraftPersist();
+    const phone = invoiceForm.value.customerPhone.trim();
+    if (phone.replace(/\D/g, '').length >= 11) {
+      void fetchCustomerRisk(phone);
+    }
   }
 });
 
@@ -1555,17 +1702,43 @@ const lookingUpCustomer = ref(false);
 let customerLookupTimer: ReturnType<typeof setTimeout> | null = null;
 let customerLookupSeq = 0;
 
+function clearCustomerRisk() {
+  customerRiskSeq += 1;
+  lookingUpRisk.value = false;
+  customerRisk.value = emptyCustomerRisk();
+}
+
+function clearCustomerAutofillFields() {
+  invoiceForm.value.customerName = '';
+  invoiceForm.value.customerSecondaryPhone = '';
+  invoiceForm.value.customerAddress = '';
+  invoiceForm.value.district = '';
+  invoiceForm.value.thana = '';
+  invoiceForm.value.postCode = '';
+}
+
+const PHONE_LOOKUP_DIGITS = 11;
+
 watch(
   () => invoiceForm.value.customerPhone,
   (phone) => {
     if (customerLookupTimer) clearTimeout(customerLookupTimer);
     const digits = (phone || '').replace(/\D/g, '');
-    if (digits.length < 4) {
+    if (digits.length < PHONE_LOOKUP_DIGITS) {
       lookingUpCustomer.value = false;
+      clearCustomerAutofillFields();
+      clearCustomerRisk();
+      invoiceForm.value.advanceAmount = 0;
       return;
     }
     customerLookupTimer = setTimeout(() => {
       void lookupCustomerByPhone(phone || '');
+      if (isOnline.value) {
+        void fetchCustomerRisk(phone || '');
+      } else {
+        clearCustomerRisk();
+        invoiceForm.value.advanceAmount = 0;
+      }
     }, 400);
   },
 );
@@ -1574,24 +1747,28 @@ async function lookupCustomerByPhone(phone: string) {
   const tenantId = authStore.tenantId;
   if (!tenantId) return;
 
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length < PHONE_LOOKUP_DIGITS) {
+    clearCustomerAutofillFields();
+    clearCustomerRisk();
+    invoiceForm.value.advanceAmount = 0;
+    return;
+  }
+
   const seq = ++customerLookupSeq;
   lookingUpCustomer.value = true;
   try {
     const results = await thriftSalesRepository.searchCustomers(tenantId, phone);
     if (seq !== customerLookupSeq) return;
 
-    const digits = phone.replace(/\D/g, '');
     const match =
       results.find((c) => c.phoneNormalized && c.phoneNormalized === digits) ||
-      results.find(
-        (c) => c.phoneNormalized && digits.startsWith(c.phoneNormalized),
-      ) ||
-      results.find(
-        (c) => c.phoneNormalized && c.phoneNormalized.startsWith(digits),
-      ) ||
-      results[0];
+      null;
 
-    if (!match) return;
+    if (!match) {
+      clearCustomerAutofillFields();
+      return;
+    }
 
     invoiceForm.value.customerName = match.name || '';
     invoiceForm.value.customerSecondaryPhone = match.secondaryPhone || '';
@@ -1613,6 +1790,37 @@ async function lookupCustomerByPhone(phone: string) {
     console.error('Customer lookup failed:', err);
   } finally {
     if (seq === customerLookupSeq) lookingUpCustomer.value = false;
+  }
+}
+
+async function fetchCustomerRisk(phone: string) {
+  const tenantId = authStore.tenantId;
+  if (!tenantId || !isOnline.value) return;
+
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length < PHONE_LOOKUP_DIGITS) {
+    clearCustomerRisk();
+    invoiceForm.value.advanceAmount = 0;
+    return;
+  }
+
+  const seq = ++customerRiskSeq;
+  lookingUpRisk.value = true;
+  try {
+    const risk = await thriftSalesRepository.getCustomerSalesRisk(tenantId, phone);
+    if (seq !== customerRiskSeq) return;
+    customerRisk.value = risk;
+    if (risk.rtoCount + risk.returnCount === 0) {
+      invoiceForm.value.advanceAmount = 0;
+    }
+  } catch (err) {
+    console.error('Customer risk lookup failed:', err);
+    if (seq === customerRiskSeq) {
+      customerRisk.value = emptyCustomerRisk();
+      invoiceForm.value.advanceAmount = 0;
+    }
+  } finally {
+    if (seq === customerRiskSeq) lookingUpRisk.value = false;
   }
 }
 
@@ -1854,7 +2062,7 @@ const totalInvoiceAmount = computed(() =>
   selectedItems.value.reduce((sum, line) => sum + getLineTotal(line), 0),
 );
 
-const codExpected = computed(() => {
+const codGross = computed(() => {
   if (!isOnline.value) return totalInvoiceAmount.value;
   let total = totalInvoiceAmount.value;
   if (courierAmountPositive.value && invoiceForm.value.courierPaidBy === 'CUSTOMER') {
@@ -1868,6 +2076,15 @@ const codExpected = computed(() => {
   }
   return total;
 });
+
+const advanceAmountValue = computed(() => {
+  if (!isOnline.value || !hasCustomerRiskHistory.value) return 0;
+  return Math.max(0, Number(invoiceForm.value.advanceAmount) || 0);
+});
+
+const codExpected = computed(() =>
+  Math.max(0, codGross.value - advanceAmountValue.value),
+);
 
 const displayTotal = computed(() =>
   isOnline.value ? codExpected.value : totalInvoiceAmount.value,
@@ -1898,6 +2115,13 @@ function validateForm(): boolean {
     }
     if (codFeeAmountPositive.value && !invoiceForm.value.codFeePaidBy) {
       errors.codFeePaidBy = 'Choose who pays COD fee';
+    }
+    if (
+      hasCustomerRiskHistory.value &&
+      !(Number(invoiceForm.value.advanceAmount) > 0)
+    ) {
+      errors.advanceAmount =
+        'Advance is required when this customer has RTO or return history';
     }
   }
 
@@ -1995,6 +2219,7 @@ async function onSaveInvoice() {
         isOnline.value && trackingId
           ? { tracking_id: trackingId }
           : undefined,
+      advanceAmount: advanceAmountValue.value,
       items: itemsPayload,
     });
 
@@ -2045,6 +2270,16 @@ async function onSaveInvoice() {
 
 .lh-1 {
   line-height: 1.1;
+}
+
+.risk-block {
+  background: var(--bw-theme-surface, #fafafa);
+  border: 1px solid var(--bw-theme-border, #e0e0e0);
+}
+
+.risk-block--rto {
+  border-color: rgba(193, 0, 21, 0.28);
+  background: rgba(193, 0, 21, 0.04);
 }
 
 .text-mono {

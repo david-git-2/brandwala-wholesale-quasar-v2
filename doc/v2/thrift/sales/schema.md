@@ -100,6 +100,8 @@ Sale header = commercial document + Online parcel + COD + fee rows.
 | `cod_fee_paid_by` | TEXT | No | `CUSTOMER` \| `SHOP`; required iff amount `> 0` |
 | `packing_amount` | NUMERIC(12,2) | Yes | Pack / print; default `0` |
 | `packing_paid_by` | TEXT | No | `CUSTOMER` \| `SHOP`; required iff amount `> 0` |
+| `advance_amount` | NUMERIC(12,2) | Yes | Online COD only; default `0`. Collected at create; **non-refundable** on RTO / return. Deducted from `cod_expected`. IN_STORE always `0` |
+| `advance_note` | TEXT | No | Optional ref / note for advance |
 | `return_courier_amount` | NUMERIC(12,2) | Yes | **RTO only** shop return/RTO courier on invoice close; default `0`. Post-pay returns store fee on `thrift_sales_returns` |
 | `meta` | JSONB | No | Optional Online **extras only** — e.g. `{ "tracking_id", "tracking_url" }`. **Never** store fee amounts, payers, `courier_provider_id`, COD expected/remitted, or delivery status here (those are columns) |
 | `cod_expected` | NUMERIC(12,2) | No | Derived on Online COD create; **immutable** at remittance (do not rewrite to accept shortfalls) |
@@ -158,12 +160,16 @@ Offline: `delivery_status` always `null`. Economics close as `DELIVERED` at crea
 ### `cod_expected`
 
 ```text
-cod_expected =
+gross_cod =
   total_invoice_amount
   + (courier_amount if courier_paid_by = CUSTOMER else 0)
   + (cod_fee_amount if cod_fee_paid_by = CUSTOMER else 0)
   + (packing_amount if packing_paid_by = CUSTOMER else 0)
+
+cod_expected = max(0, gross_cod − advance_amount)
 ```
+
+`advance_amount` is collected at Online create when the customer has RTO/return history. It is **not** a line discount (PnL `sell_amount` unchanged). Refundable cash later = COD remitted only — **never** `advance_amount` (RTO / return ledger `REFUND` excludes advance).
 
 ### Channel rules
 
@@ -384,10 +390,10 @@ Monthly sequences for `INV-YYYY-MM-#####`. Optionally same pattern for `RET-YYYY
 | Action | Invoice / stock | Ledger | PnL | Counter |
 | :--- | :--- | :--- | :--- | :--- |
 | Create Offline | `CASH`/`PAID`/`ACTIVE`, fees `0`, `delivery_status=null`, `economics_closed_at`, stock `SOLD` | `REVENUE` = item total only | Insert `DELIVERED` (fees alloc `0`) | Allocate next |
-| Create Online | `COD`/`COD_PENDING`/`ACTIVE`/`PENDING`, fees + `cod_expected`, `economics_closed_at=null`, stock `SOLD` | `REVENUE`; shop delivery/packing `EXPENSE` (no COD-fee ledger) | None yet | Allocate next |
+| Create Online | `COD`/`COD_PENDING`/`ACTIVE`/`PENDING`, fees + optional `advance_amount`, `cod_expected = max(0, gross − advance)`, `economics_closed_at=null`, stock `SOLD` | `REVENUE`; shop delivery/packing `EXPENSE` (no COD-fee ledger) | None yet | Allocate next |
 | Mark `DELIVERED` | parcel only | No money change | Insert `DELIVERED` | — |
-| **RTO / no-pickup** | Soft close: `RETURNED`, `REFUNDED`, `close_reason=RTO`, all stock back | `REFUND` full; `LOSS` uncollected delivery + return courier; keep packing expense | All lines → `RTO` | Unchanged |
-| **Post-pay return** (partial/full) | Insert return + items; stock per condition; status `PARTIALLY_RETURNED` or `RETURNED`; payment `PARTIALLY_REFUNDED` or `REFUNDED` | `REFUND` = return `refund_amount`; `LOSS` = return courier | Returned lines → `CUSTOMER_RETURN` | Unchanged (return # separate) |
+| **RTO / no-pickup** | Soft close: `RETURNED`, `REFUNDED`, `close_reason=RTO`, all stock back | `REFUND` = item total − `advance_amount` (advance retained); `LOSS` uncollected delivery + return courier; keep packing expense | All lines → `RTO` | Unchanged |
+| **Post-pay return** (partial/full) | Insert return + items; stock per condition; status `PARTIALLY_RETURNED` or `RETURNED`; payment `PARTIALLY_REFUNDED` or `REFUNDED` | `REFUND` = line refunds − proportional advance share (advance retained); `LOSS` = return courier | Returned lines → `CUSTOMER_RETURN` | Unchanged (return # separate) |
 | COD remittance | Remitted fields + `payment_status` via `outcome` (`PAID` / stay `COD_PENDING` / `WRITTEN_OFF`); optional notes append | No row | No change | — |
 | `STAFF_MISTAKE` | Hard-delete invoice + lines; restore stock `AVAILABLE`; **block** if returns exist | Delete invoice ledger rows (no REFUND/LOSS) | Delete PnL | **Unchanged** (number gap OK) |
 

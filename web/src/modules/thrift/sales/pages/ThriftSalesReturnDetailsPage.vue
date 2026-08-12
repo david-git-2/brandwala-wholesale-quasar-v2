@@ -37,7 +37,12 @@
                 </div>
                 <div class="row justify-between">
                   <span class="text-grey-7">Customer</span>
-                  <span>{{ detail.customerName || detail.customerPhone || '—' }}</span>
+                  <div class="text-right">
+                    <div>{{ detail.customerName || '—' }}</div>
+                    <div v-if="detail.customerPhone" class="text-caption text-grey-7">
+                      {{ detail.customerPhone }}
+                    </div>
+                  </div>
                 </div>
                 <div class="row justify-between">
                   <span class="text-grey-7">Refund</span>

@@ -31,7 +31,7 @@ Add items → Channel
 ```
 
 **Offline:** fees forced `0`; economics close immediately as walk-out `DELIVERED`.  
-**Online:** required address **line** + `address_parts.district` + `address_parts.thana` (BD catalogs; `post_code` optional); optional `secondary_phone`; optional courier from `thrift_courier_providers` → `courier_provider_id` + name snapshot; fee rows + payers as **invoice columns**; optional `meta` tracking only; derived `cod_expected`; **no** PnL until parcel `DELIVERED` or RTO.
+**Online:** required address **line** + `address_parts.district` + `address_parts.thana` (BD catalogs; `post_code` optional); optional `secondary_phone`; optional courier from `thrift_courier_providers` → `courier_provider_id` + name snapshot; fee rows + payers as **invoice columns**; optional `meta` tracking only; derived `cod_expected = max(0, gross_cod − advance_amount)`; when phone has RTO/return history, staff must collect **advance** (`advance_amount` > 0, non-refundable); **no** PnL until parcel `DELIVERED` or RTO.
 
 Never on create: return docs, remittance, COGS freeze, RTO fields (`return_courier_amount` stays `0`, `close_reason` null), fee data inside `meta`.
 
@@ -166,7 +166,7 @@ RPC: [rpc/revert_thrift_sales_invoice.md](./rpc/revert_thrift_sales_invoice.md) 
 1. `delivery_status = RETURNED`, `status = RETURNED`, `payment_status = REFUNDED`, `close_reason = RTO`.  
 2. Staff enters invoice `return_courier_amount`.  
 3. Restore **all** stocks `AVAILABLE`.  
-4. Ledger: `REFUND` = full item total; `LOSS` for uncollected customer delivery if needed; `LOSS` for return courier; **keep** prior shop packing expense.  
+4. Ledger: `REFUND` = item total − `advance_amount` (advance **retained**, never paid back); `LOSS` for uncollected customer delivery if needed; `LOSS` for return courier; **keep** prior shop packing expense.  
 5. PnL: **all** lines → `outcome = RTO`.  
 6. **No** `thrift_sales_returns` row.
 
@@ -221,7 +221,7 @@ Preconditions: Offline always; Online only after `DELIVERED` (or Offline desk). 
 3. Enter this return’s `return_courier_amount` (shop loss; default `0`).  
 4. Insert `thrift_sales_returns` + `thrift_sales_return_items`; allocate `return_number`.  
 5. Restore each stock (`AVAILABLE` / `DAMAGED`).  
-6. Ledger: `REFUND` = Σ line refunds; `LOSS` = return courier if `> 0`.  
+6. Ledger: `REFUND` = Σ line refunds − proportional **advance** share (advance retained; never paid back); `LOSS` = return courier if `> 0`.  
 7. PnL: **only returned lines** → `CUSTOMER_RETURN` (`sell_amount = 0`; keep sunk shop fee alloc on those lines; allocate this return’s courier across returned lines by sell value); set `cogs_is_loss` if damaged.  
 8. Invoice status:
 
@@ -230,7 +230,7 @@ Preconditions: Offline always; Online only after `DELIVERED` (or Offline desk). 
 | Some left | `PARTIALLY_RETURNED` | `PARTIALLY_REFUNDED` (if was `PAID`) | `null` |
 | None left | `RETURNED` | `REFUNDED` | `CUSTOMER_RETURN` |
 
-Original delivery/packing on the invoice are **not** refunded to the customer by default (BD thrift default). Only item refund + optional return courier shop loss.
+Original delivery/packing on the invoice are **not** refunded to the customer by default (BD thrift default). Only item refund (minus non-refundable advance) + optional return courier shop loss.
 
 ### 5.2 Full invoice via return doc
 

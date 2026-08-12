@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
+export type ThriftStockViewMode = 'table' | 'compact';
+
 const props = defineProps<{
   search: string;
   activeFilterCount: number;
@@ -8,12 +10,14 @@ const props = defineProps<{
   selectedColumnNames: string[];
   allSelectableColumnsSelected: boolean;
   csvExportLoading: boolean;
+  viewMode: ThriftStockViewMode;
 }>();
 
 const emit = defineEmits<{
   (e: 'update:search', val: string): void;
   (e: 'update:selectedColumnNames', val: string[]): void;
   (e: 'update:allSelectableColumnsSelected', val: boolean): void;
+  (e: 'update:viewMode', val: ThriftStockViewMode): void;
   (e: 'open-filters'): void;
   (e: 'download-csv'): void;
 }>();
@@ -31,6 +35,11 @@ const selectedCols = computed({
 const selectAllCols = computed({
   get: () => props.allSelectableColumnsSelected,
   set: (val: boolean) => emit('update:allSelectableColumnsSelected', val),
+});
+
+const viewModeModel = computed({
+  get: () => props.viewMode,
+  set: (val: ThriftStockViewMode) => emit('update:viewMode', val),
 });
 </script>
 
@@ -68,8 +77,23 @@ const selectAllCols = computed({
       </div>
 
       <div class="col-auto row items-center q-gutter-sm">
-        <!-- Column Selector -->
+        <q-btn-toggle
+          v-model="viewModeModel"
+          dense
+          unelevated
+          no-caps
+          toggle-color="primary"
+          color="white"
+          text-color="primary"
+          :options="[
+            { icon: 'ph ph-rows', value: 'table', attrs: { 'aria-label': 'Table view' } },
+            { icon: 'ph ph-list', value: 'compact', attrs: { 'aria-label': 'Compact view' } },
+          ]"
+        />
+
+        <!-- Column Selector (table view only) -->
         <q-btn
+          v-if="viewMode === 'table'"
           color="primary"
           outline
           no-caps

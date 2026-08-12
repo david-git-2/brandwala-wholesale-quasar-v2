@@ -101,6 +101,17 @@
               {{ (tablePagination.page - 1) * tablePagination.rowsPerPage + props.rowIndex + 1 }}
             </q-td>
           </template>
+          <template #body-cell-customer="props">
+            <q-td :props="props">
+              <div v-if="props.row.customerName || props.row.customerPhone">
+                <div class="text-weight-medium">{{ props.row.customerName || '—' }}</div>
+                <div v-if="props.row.customerPhone" class="text-caption text-grey-7">
+                  {{ props.row.customerPhone }}
+                </div>
+              </div>
+              <span v-else class="text-grey-5">—</span>
+            </q-td>
+          </template>
           <template #body-cell-refundAmount="props">
             <q-td :props="props" class="text-right text-weight-medium">
               {{ formatThriftAmount(props.row.refundAmount) }}
@@ -257,12 +268,7 @@ const columns: QTableColumn<ThriftSalesReturnListItem>[] = [
   { name: 'sl', label: '#', field: 'id', align: 'left', style: 'width: 48px' },
   { name: 'returnNumber', label: 'Return #', field: 'returnNumber', align: 'left' },
   { name: 'invoiceNumber', label: 'Invoice', field: 'invoiceNumber', align: 'left' },
-  {
-    name: 'customer',
-    label: 'Customer',
-    field: (row) => row.customerName || row.customerPhone || '—',
-    align: 'left',
-  },
+  { name: 'customer', label: 'Customer', field: 'customerName', align: 'left' },
   { name: 'lineCount', label: 'Lines', field: 'lineCount', align: 'center' },
   { name: 'refundAmount', label: 'Refund', field: 'refundAmount', align: 'right' },
   {

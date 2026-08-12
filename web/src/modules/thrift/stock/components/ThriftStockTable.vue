@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { QTableColumn } from 'quasar';
+import { copyToClipboard, useQuasar, type QTableColumn } from 'quasar';
 import SmartImage from 'src/components/SmartImage.vue';
 import ThriftStockSkeleton from './ThriftStockSkeleton.vue';
 import type { ThriftStock, ThriftSection, ThriftCondition } from '../types';
@@ -83,6 +83,8 @@ const emit = defineEmits<{
   (e: 'status-cell-save', payload: { row: ThriftStock; val: string }): void;
 }>();
 
+const $q = useQuasar();
+
 const pagination = computed({
   get: () => props.tablePagination,
   set: (val) => emit('update:tablePagination', val),
@@ -114,6 +116,21 @@ function toNumber(val: unknown): number {
 function boxesForShipment(shipmentId: number | null | undefined): BoxOption[] {
   if (!shipmentId) return [];
   return props.boxesList.filter((b) => b.shipment_id === shipmentId);
+}
+
+function copyText(text: string, label: string) {
+  const v = text.trim();
+  if (!v || v === '—') return;
+  void copyToClipboard(v).then(() => {
+    $q.notify({ type: 'positive', message: `Copied ${label}`, timeout: 1200 });
+  });
+}
+
+function listedPriceText(row: ThriftStock): string {
+  return formatStockPrice(
+    resolveListedSellPrice(row.pricing, props.costBreakdownByStockId[row.id]),
+    props.shipmentCostCurrency(row.shipment_id),
+  );
 }
 
 const normalizeStatus = (status: string | null | undefined) =>
@@ -229,6 +246,20 @@ const statusDotColor = (status: string | null | undefined) => {
                   round
                   dense
                   size="xs"
+                  icon="ph ph-copy"
+                  color="grey-7"
+                  class="col-auto"
+                  aria-label="Copy barcode"
+                  @click.stop="copyText(rowProps.row.barcode, 'barcode')"
+                >
+                  <q-tooltip>Copy barcode</q-tooltip>
+                </q-btn>
+                <q-btn
+                  v-if="rowProps.row.barcode"
+                  flat
+                  round
+                  dense
+                  size="xs"
                   icon="ph ph-qr-code"
                   color="primary"
                   class="col-auto"
@@ -266,7 +297,23 @@ const statusDotColor = (status: string | null | undefined) => {
               </q-popup-edit>
             </template>
             <template v-else-if="col.name === 'brand_name'">
-              <div class="editable-value">{{ rowProps.row.brand_name || '—' }}</div>
+              <div class="editable-value row items-center no-wrap">
+                <span class="col ellipsis">{{ rowProps.row.brand_name || '—' }}</span>
+                <q-btn
+                  v-if="rowProps.row.brand_name"
+                  flat
+                  round
+                  dense
+                  size="xs"
+                  icon="ph ph-copy"
+                  color="grey-7"
+                  class="col-auto"
+                  aria-label="Copy brand"
+                  @click.stop="copyText(String(rowProps.row.brand_name), 'brand')"
+                >
+                  <q-tooltip>Copy brand</q-tooltip>
+                </q-btn>
+              </div>
               <q-popup-edit
                 v-if="canEdit"
                 v-slot="scope"
@@ -303,20 +350,35 @@ const statusDotColor = (status: string | null | undefined) => {
               </q-popup-edit>
             </template>
             <template v-else-if="col.name === 'size'">
-              <div
-                class="measurements-cell text-grey-9 text-weight-medium"
-                :class="{ 'cursor-pointer': canEdit }"
-                @click="canEdit && emit('open-measurements-dialog', rowProps.row)"
-              >
-                <span class="measurements-cell__text">
-                  {{ formatThriftStockMeasurements(rowProps.row) }}
-                </span>
-                <q-tooltip max-width="320px">
-                  {{ formatThriftStockMeasurements(rowProps.row) }}
-                </q-tooltip>
+              <div class="row items-center no-wrap q-gutter-x-xs">
+                <div
+                  class="measurements-cell text-grey-9 text-weight-medium col"
+                  :class="{ 'cursor-pointer': canEdit }"
+                  @click="canEdit && emit('open-measurements-dialog', rowProps.row)"
+                >
+                  <span class="measurements-cell__text">
+                    {{ formatThriftStockMeasurements(rowProps.row) }}
+                  </span>
+                  <q-tooltip max-width="320px">
+                    {{ formatThriftStockMeasurements(rowProps.row) }}
+                  </q-tooltip>
+                </div>
+                <q-btn
+                  v-if="formatThriftStockMeasurements(rowProps.row) !== '—'"
+                  flat
+                  round
+                  dense
+                  size="xs"
+                  icon="ph ph-copy"
+                  color="grey-7"
+                  class="col-auto"
+                  aria-label="Copy size"
+                  @click.stop="copyText(formatThriftStockMeasurements(rowProps.row), 'size')"
+                >
+                  <q-tooltip>Copy size</q-tooltip>
+                </q-btn>
               </div>
-            </template>
-            <template v-else-if="col.name === 'box'">
+            </template>            <template v-else-if="col.name === 'box'">
               <div class="editable-value">{{ getBoxName(rowProps.row.box_id) }}</div>
               <q-popup-edit
                 v-if="canEdit"
@@ -675,16 +737,22 @@ const statusDotColor = (status: string | null | undefined) => {
                 </q-icon>
 
                 <div class="editable-value text-weight-bold">
-                  {{
-                    formatStockPrice(
-                      resolveListedSellPrice(
-                        rowProps.row.pricing,
-                        costBreakdownByStockId[rowProps.row.id],
-                      ),
-                      shipmentCostCurrency(rowProps.row.shipment_id),
-                    )
-                  }}
+                  {{ listedPriceText(rowProps.row) }}
                 </div>
+
+                <q-btn
+                  v-if="listedPriceText(rowProps.row) !== '—'"
+                  flat
+                  round
+                  dense
+                  size="xs"
+                  icon="ph ph-copy"
+                  color="grey-7"
+                  aria-label="Copy listed sell price"
+                  @click.stop="copyText(listedPriceText(rowProps.row), 'listed sell price')"
+                >
+                  <q-tooltip>Copy listed sell price</q-tooltip>
+                </q-btn>
 
                 <!-- Reset Button when Manual -->
                 <q-btn
@@ -724,8 +792,7 @@ const statusDotColor = (status: string | null | undefined) => {
                   autofocus
                 />
               </q-popup-edit>
-            </template>
-            <template v-else-if="col.name === 'status'">
+            </template>            <template v-else-if="col.name === 'status'">
               <q-chip
                 dense
                 square

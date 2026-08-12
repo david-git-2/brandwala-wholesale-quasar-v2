@@ -26,7 +26,7 @@ Whole invoice only (situation A — customer did not pick up).
 1. Reject if any `thrift_sales_returns` already exist.  
 2. Soft `RETURNED` + `REFUNDED`; Online `delivery_status = RETURNED`.  
 3. Restore all stocks sellable.  
-4. Ledger refund + losses; **never delete** expenses.  
+4. Ledger refund + losses; **never delete** expenses. Ledger `REFUND` = item total − `advance_amount` (advance **non-refundable** / retained).  
 5. PnL all lines → `RTO`.
 
 ### `STAFF_MISTAKE`

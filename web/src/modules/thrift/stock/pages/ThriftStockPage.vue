@@ -9,6 +9,7 @@
         v-model:search="searchText"
         v-model:selected-column-names="selectedColumnNames"
         v-model:all-selectable-columns-selected="allSelectableColumnsSelected"
+        v-model:view-mode="viewMode"
         :active-filter-count="activeFilterCount"
         :column-selector-options="columnSelectorOptions"
         :csv-export-loading="csvExportLoading"
@@ -43,7 +44,7 @@
         :store-page="store.page"
         :store-page-size="store.pageSize"
         :columns="columns"
-        :visible-columns="visibleColumns"
+        :visible-columns="displayVisibleColumns"
         :selected-stock-ids="selectedStockIds"
         :all-page-rows-selected="allPageRowsSelected"
         :some-page-rows-selected="somePageRowsSelected"
@@ -224,6 +225,7 @@ import ThriftStockToolbar from '../components/ThriftStockToolbar.vue';
 import ThriftStockFilterDrawer from '../components/ThriftStockFilterDrawer.vue';
 import ThriftStockBulkActionBar from '../components/ThriftStockBulkActionBar.vue';
 import ThriftStockTable from '../components/ThriftStockTable.vue';
+import type { ThriftStockViewMode } from '../components/ThriftStockToolbar.vue';
 import ThriftStockRegisterDialog from '../components/ThriftStockRegisterDialog.vue';
 import ThriftStockQuickAddDialog from '../components/ThriftStockQuickAddDialog.vue';
 import ThriftStockBarcodePreviewDialog from '../components/ThriftStockBarcodePreviewDialog.vue';
@@ -261,6 +263,36 @@ const {
   tableCellClass,
   stickyCellClass,
 } = useThriftStockColumns();
+
+/** Compact mode: SL + image always shown; these selectable cols only (no select/actions). */
+const COMPACT_COLUMN_NAMES = ['barcode', 'size', 'brand_name', 'listed_unit_price'] as const;
+const savedTableColumns = ref<string[] | null>(null);
+const viewMode = ref<ThriftStockViewMode>('compact');
+
+const displayVisibleColumns = computed(() => {
+  if (viewMode.value === 'compact') {
+    return ['sl', 'image', ...COMPACT_COLUMN_NAMES];
+  }
+  return visibleColumns.value;
+});
+
+watch(
+  viewMode,
+  (mode) => {
+    if (mode === 'compact') {
+      if (!savedTableColumns.value) {
+        savedTableColumns.value = [...selectedColumnNames.value];
+      }
+      selectedColumnNames.value = [...COMPACT_COLUMN_NAMES];
+      return;
+    }
+    if (savedTableColumns.value) {
+      selectedColumnNames.value = savedTableColumns.value;
+      savedTableColumns.value = null;
+    }
+  },
+  { immediate: true },
+);
 
 const queryParams = computed<ThriftStockQueryParams>(() => ({
   tenantId: authStore.tenantId ?? 0,

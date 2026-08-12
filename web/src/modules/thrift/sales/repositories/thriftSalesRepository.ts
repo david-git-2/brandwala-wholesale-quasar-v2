@@ -75,6 +75,9 @@ export interface CreateSalesInvoiceInput {
   meta?: Record<string, unknown> | undefined;
   /** @deprecated Prefer courierAmount. */
   courierCodAmount?: number | undefined;
+  /** Online COD only; deducted from cod_expected. Offline / no risk → 0. */
+  advanceAmount?: number | undefined;
+  advanceNote?: string | undefined;
   items: Array<{
     stockId: number;
     sellPrice: number;
@@ -83,6 +86,34 @@ export interface CreateSalesInvoiceInput {
     /** Ignored on create — server computes final_price. */
     finalPrice?: number | undefined;
   }>;
+}
+
+export interface ThriftCustomerSalesRiskRto {
+  kind: 'RTO';
+  invoiceId: number;
+  invoiceNumber: string;
+  at: string;
+  totalInvoiceAmount: number;
+}
+
+export interface ThriftCustomerSalesRiskReturn {
+  kind: 'CUSTOMER_RETURN';
+  returnId: number;
+  returnNumber: string;
+  invoiceId: number;
+  invoiceNumber: string;
+  at: string;
+  refundAmount: number;
+  lineCount: number;
+  hasDamaged: boolean;
+}
+
+export interface ThriftCustomerSalesRisk {
+  customerId: number | null;
+  rtoCount: number;
+  returnCount: number;
+  rtos: ThriftCustomerSalesRiskRto[];
+  returns: ThriftCustomerSalesRiskReturn[];
 }
 
 export interface ThriftSalesInvoiceListItem {
@@ -106,6 +137,9 @@ export interface ThriftSalesInvoiceListItem {
   codRemittedAmount: number | null;
   codRemittedAt: string | null;
   codRemittanceRef: string | null;
+  /** Online COD advance collected at create; non-refundable. */
+  advanceAmount: number;
+  advanceNote: string | null;
   /** @deprecated Alias of courierAmount for older UI; prefer courierAmount. */
   courierCodAmount: number;
   /** @deprecated Historical only; create path no longer writes this. */
@@ -203,6 +237,8 @@ function mapInvoiceRow(row: any): Omit<ThriftSalesInvoiceListItem, 'itemCount'> 
         : null,
     codRemittedAt: row.cod_remitted_at ?? null,
     codRemittanceRef: row.cod_remittance_ref ?? null,
+    advanceAmount: Number(row.advance_amount) || 0,
+    advanceNote: row.advance_note ?? null,
     courierCodAmount: courierAmount,
     otherExpenseAmount: Number(row.other_expense_amount) || 0,
     createdBy: row.created_by || '',
@@ -441,6 +477,8 @@ export const thriftSalesRepository = {
         cod_remitted_amount,
         cod_remitted_at,
         cod_remittance_ref,
+        advance_amount,
+        advance_note,
         created_by,
         notes,
         created_at,
@@ -630,6 +668,14 @@ export const thriftSalesRepository = {
     const codFeePaidBy =
       !isOffline && codFeeAmount > 0 ? input.codFeePaidBy || null : null;
 
+    const advanceAmount = isOffline
+      ? 0
+      : Math.max(0, Number(input.advanceAmount) || 0);
+    const advanceNote =
+      !isOffline && advanceAmount > 0
+        ? input.advanceNote?.trim() || null
+        : null;
+
     const { data, error } = await supabase.rpc('create_thrift_sales_invoice', {
       p_tenant_id: input.tenantId,
       p_sale_channel: saleChannel,
@@ -654,6 +700,8 @@ export const thriftSalesRepository = {
         : input.courierProvider?.trim() || null,
       p_courier_provider_id: isOffline ? null : input.courierProviderId || null,
       p_meta: isOffline ? {} : input.meta || {},
+      p_advance_amount: advanceAmount,
+      p_advance_note: advanceNote,
       p_items: input.items.map((item) => ({
         stock_id: item.stockId,
         sell_price: item.sellPrice,
@@ -669,6 +717,49 @@ export const thriftSalesRepository = {
     return {
       id: Number(result.id ?? result),
       invoiceNumber: String(result.invoice_number ?? ''),
+    };
+  },
+
+  /**
+   * RTO + post-pay return history for create-sale risk panel (online COD advance).
+   */
+  async getCustomerSalesRisk(
+    tenantId: number,
+    phone: string,
+  ): Promise<ThriftCustomerSalesRisk> {
+    const { data, error } = await supabase.rpc('get_thrift_customer_sales_risk', {
+      p_tenant_id: tenantId,
+      p_phone: phone,
+    } as any);
+
+    if (error) throw error;
+
+    const row = (data || {}) as Record<string, unknown>;
+    const rtosRaw = Array.isArray(row.rtos) ? row.rtos : [];
+    const returnsRaw = Array.isArray(row.returns) ? row.returns : [];
+
+    return {
+      customerId: row.customer_id != null ? Number(row.customer_id) : null,
+      rtoCount: Number(row.rto_count) || 0,
+      returnCount: Number(row.return_count) || 0,
+      rtos: rtosRaw.map((item: any) => ({
+        kind: 'RTO' as const,
+        invoiceId: Number(item.invoice_id),
+        invoiceNumber: String(item.invoice_number ?? ''),
+        at: String(item.at ?? ''),
+        totalInvoiceAmount: Number(item.total_invoice_amount) || 0,
+      })),
+      returns: returnsRaw.map((item: any) => ({
+        kind: 'CUSTOMER_RETURN' as const,
+        returnId: Number(item.return_id),
+        returnNumber: String(item.return_number ?? ''),
+        invoiceId: Number(item.invoice_id),
+        invoiceNumber: String(item.invoice_number ?? ''),
+        at: String(item.at ?? ''),
+        refundAmount: Number(item.refund_amount) || 0,
+        lineCount: Number(item.line_count) || 0,
+        hasDamaged: Boolean(item.has_damaged),
+      })),
     };
   },
 

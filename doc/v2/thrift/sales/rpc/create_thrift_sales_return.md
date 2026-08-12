@@ -22,10 +22,12 @@ Schema: [../schema.md](../schema.md) · Workflow: [../workflow.md](../workflow.m
 2. Validate each line not already returned; qty within line.  
 3. Insert return header + items; allocate `RET-YYYY-MM-#####`.  
 4. Restore stocks per `condition`.  
-5. Ledger: `REFUND` = Σ refund amounts; `LOSS` = return courier if `> 0`.  
+5. Ledger: `REFUND` = Σ refund amounts − proportional `advance_amount` share (advance retained); `LOSS` = return courier if `> 0`.  
 6. Update PnL for those `invoice_item_id`s only → `CUSTOMER_RETURN`.  
 7. Set invoice `PARTIALLY_RETURNED` / `RETURNED` and payment `PARTIALLY_REFUNDED` / `REFUNDED`.  
-8. Return `{ return_id, return_number }`.
+8. Return `{ return_id, return_number, refund_amount, ledger_refund_amount, advance_retained, … }`.
+
+**Advance:** never refunded to the customer. Return doc `refund_amount` remains Σ line sell; ledger cash `REFUND` excludes the advance share.
 
 ## UI
 

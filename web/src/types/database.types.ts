@@ -7361,6 +7361,8 @@ export type Database = {
       }
       thrift_sales_invoices: {
         Row: {
+          advance_amount: number
+          advance_note: string | null
           close_reason: string | null
           cod_expected: number | null
           cod_fee_amount: number
@@ -7405,6 +7407,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          advance_amount?: number
+          advance_note?: string | null
           close_reason?: string | null
           cod_expected?: number | null
           cod_fee_amount?: number
@@ -7449,6 +7453,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          advance_amount?: number
+          advance_note?: string | null
           close_reason?: string | null
           cod_expected?: number | null
           cod_fee_amount?: number
@@ -9744,6 +9750,8 @@ export type Database = {
       }
       create_thrift_sales_invoice: {
         Args: {
+          p_advance_amount?: number
+          p_advance_note?: string
           p_cod_fee_amount?: number
           p_cod_fee_paid_by?: string
           p_courier_amount?: number
@@ -10364,6 +10372,10 @@ export type Database = {
         Returns: number
       }
       get_tenant_role_detail: { Args: { p_role_id: number }; Returns: Json }
+      get_thrift_customer_sales_risk: {
+        Args: { p_phone: string; p_tenant_id: number }
+        Returns: Json
+      }
       get_thrift_dashboard_metrics: {
         Args: { p_tenant_id: number }
         Returns: Json

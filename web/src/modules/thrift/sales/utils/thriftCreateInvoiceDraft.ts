@@ -19,6 +19,8 @@ export type ThriftCreateInvoiceDraftForm = {
   packingPaidBy: 'CUSTOMER' | 'SHOP' | null;
   codFeeAmount: number;
   codFeePaidBy: 'CUSTOMER' | 'SHOP' | null;
+  /** Online COD advance when customer has RTO/return history. */
+  advanceAmount?: number;
 };
 
 export type ThriftCreateInvoiceDraftLine = {

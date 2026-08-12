@@ -352,6 +352,19 @@
                     Shop expense — not charged to customer
                   </div>
                 </template>
+                <template v-if="invoice.advanceAmount > 0">
+                  <q-separator class="q-my-md" />
+                  <div class="row justify-between items-center text-body2">
+                    <span class="text-grey-8 text-weight-bold">Advance</span>
+                    <span class="text-weight-bold">
+                      {{ formatThriftAmount(invoice.advanceAmount) }}
+                    </span>
+                  </div>
+                  <div class="text-caption text-grey-6 q-mt-xs">
+                    Non-refundable — deducted from COD expected
+                    <span v-if="invoice.advanceNote"> · {{ invoice.advanceNote }}</span>
+                  </div>
+                </template>
                 <template v-if="invoice.codExpected != null">
                   <q-separator class="q-my-md" />
                   <div class="row justify-between items-center text-body2">
@@ -359,6 +372,12 @@
                     <span class="text-weight-bold">
                       {{ formatThriftAmount(invoice.codExpected) }}
                     </span>
+                  </div>
+                  <div
+                    v-if="invoice.advanceAmount > 0"
+                    class="text-caption text-grey-6 q-mt-xs"
+                  >
+                    After advance — courier collects this amount
                   </div>
                   <div
                     v-if="invoice.codRemittedAmount != null && invoice.codRemittedAmount > 0"
@@ -409,6 +428,18 @@
           <div class="text-caption text-grey-7">
             Customer paid / received goods. Select lines to refund. Not Mark RTO.
           </div>
+          <q-banner
+            v-if="(invoice?.advanceAmount ?? 0) > 0"
+            dense
+            rounded
+            class="bg-orange-1 text-grey-9 q-mt-sm"
+          >
+            <template #avatar>
+              <q-icon name="ph ph-hand-coins" color="warning" />
+            </template>
+            Advance {{ formatThriftAmount(invoice?.advanceAmount ?? 0) }} is
+            non-refundable and will be retained.
+          </q-banner>
         </q-card-section>
         <q-card-section class="q-gutter-y-sm">
           <div
@@ -488,6 +519,18 @@
             Customer did not accept the parcel. Closes the whole order as RETURNED /
             REFUNDED and restores stock. This is not COD remittance.
           </div>
+          <q-banner
+            v-if="(invoice?.advanceAmount ?? 0) > 0"
+            dense
+            rounded
+            class="bg-orange-1 text-grey-9 q-mt-sm"
+          >
+            <template #avatar>
+              <q-icon name="ph ph-hand-coins" color="warning" />
+            </template>
+            Advance {{ formatThriftAmount(invoice?.advanceAmount ?? 0) }} is
+            non-refundable — kept by the shop on RTO.
+          </q-banner>
         </q-card-section>
         <q-card-section class="q-gutter-y-sm">
           <q-banner dense rounded class="bg-orange-1 text-grey-9">
@@ -1081,9 +1124,14 @@ async function submitReturn() {
   const ok = await requestConfirmation(
     [
       `Create return for ${items.length} line(s) on ${invoice.value.invoiceNumber}?`,
-      `Refund ${formatThriftAmount(returnRefundTotal.value)}.`,
+      `Line refund total ${formatThriftAmount(returnRefundTotal.value)}.`,
+      invoice.value.advanceAmount > 0
+        ? `Advance ${formatThriftAmount(invoice.value.advanceAmount)} is non-refundable and retained.`
+        : '',
       'This is a post-pay return — not Mark RTO.',
-    ].join(' '),
+    ]
+      .filter(Boolean)
+      .join(' '),
     'Confirm return',
     'Create return',
   );
@@ -1136,8 +1184,13 @@ async function submitRto() {
     [
       `Mark ${invoice.value.invoiceNumber} as RTO (no pickup)?`,
       'Parcel → RETURNED, payment → REFUNDED, stock restored.',
+      invoice.value.advanceAmount > 0
+        ? `Advance ${formatThriftAmount(invoice.value.advanceAmount)} is non-refundable and retained.`
+        : '',
       'This is not Record COD.',
-    ].join(' '),
+    ]
+      .filter(Boolean)
+      .join(' '),
     'Confirm Mark RTO',
     'Mark RTO',
   );
