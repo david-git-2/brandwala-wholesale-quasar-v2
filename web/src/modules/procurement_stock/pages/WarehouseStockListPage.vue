@@ -311,8 +311,8 @@ const stockTypeOptions = computed(() => {
 
 const shipmentStatusOptions = [
   { label: 'All', value: '__all__' },
-  { label: 'Warehouse Received', value: 'Warehouse Received' },
-  { label: 'Ready Stock', value: 'Ready Stock' },
+  { label: 'In transit', value: 'in_transit' },
+  { label: 'Received', value: 'received' },
 ];
 
 const getUnitCost = (row: GlobalStock): number => {

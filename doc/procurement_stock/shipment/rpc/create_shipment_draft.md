@@ -2,11 +2,16 @@
 
 Initializes a **draft shipment header only**. Cost entries are **not** required at create — add via [shipment_cost_entry_api.md](../api/shipment_cost_entry_api.md) when entering rates (typically one `product` + one `cargo` for current behaviour).
 
+**Defaults (parent / stock-owning tenant):**
+* `p_vendor_id` null → `ensure_default_vendor` ([../../vendor/workflow_flow.md](../../vendor/workflow_flow.md))
+* `p_cargo_company_id` null → `ensure_default_cargo_company` ([../../cargo_company/workflow_flow.md](../../cargo_company/workflow_flow.md))
+
 ---
 
 ## 1. APIs Called (Internal)
 
 * [shipment_api.md](../api/shipment_api.md) — `shipments` insert
+* `ensure_default_vendor` / `ensure_default_cargo_company` when ids omitted
 
 ---
 
@@ -14,30 +19,28 @@ Initializes a **draft shipment header only**. Cost entries are **not** required 
 
 ```typescript
 supabase.rpc('create_shipment_draft', {
-  p_tenant_id: 12,
-  p_tenant_shipment_id: 104,
+  p_parent_tenant_id: 12,
   p_name: 'UK Apparel Batch #40',
-  p_shipment_type: 'international',
-  p_vendor_id: 2,
-  p_cargo_company_id: 5,
+  p_type: 'international',
+  p_vendor_id: 2,           // optional — defaults to tenant DEFAULT vendor
+  p_cargo_company_id: 5,    // optional — defaults to tenant DEFAULT cargo company
 });
 ```
 
 ---
 
-## 3. Internal payload (`shipments`)
+## 3. Internal payload (`global_shipments`)
 
 ```json
 {
-  "tenant_id": 12,
-  "tenant_shipment_id": 104,
+  "parent_tenant_id": 12,
   "name": "UK Apparel Batch #40",
-  "shipment_type": "international",
+  "type": "international",
   "vendor_id": 2,
   "cargo_company_id": 5,
-  "status": "draft",
-  "total_weight_kg": null,
-  "inventory_added": false
+  "status": "Draft",
+  "received_weight": null,
+  "stock_ready": false
 }
 ```
 

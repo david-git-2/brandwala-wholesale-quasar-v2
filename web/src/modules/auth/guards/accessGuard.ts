@@ -62,7 +62,8 @@ const resolveAuthenticatedDenyTarget = ({
     requiredModule === 'global_shipment' ||
     requiredModule === 'global_stock' ||
     requiredModule === 'global_stock_movement' ||
-    requiredModule === 'global_stock_location'
+    requiredModule === 'global_stock_location' ||
+    requiredModule === 'cargo_company'
   ) {
     return tenantSlug
       ? `/${tenantSlug}/app/procurement/child-stock`

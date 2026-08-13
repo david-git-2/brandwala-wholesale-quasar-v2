@@ -1,6 +1,6 @@
 # Stock & Inventory Database Schema
 
-Parent warehouse qty + **bin/zone location** + how a child shop gets permission to list a batch.
+Parent warehouse qty + **shelf / slot / box location** (SMB) + how a child shop gets permission to list a batch.
 
 **Design lock:** Locked in this schema + [PROCUREMENT_STOCK_ISSUES.md](../../PROCUREMENT_STOCK_ISSUES.md) (open gaps only).
 
@@ -11,7 +11,7 @@ Parent warehouse qty + **bin/zone location** + how a child shop gets permission 
 | Layer | Storage | Role |
 | :--- | :--- | :--- |
 | **Physical on-hand** | `global_stocks` | Parent-owned. **Sole** inventory qty truth. |
-| **Where (bin/zone)** | `stock_locations` + `global_stocks.location_id` | Place inside the one parent warehouse |
+| **Where (shelf/slot/box)** | `stock_locations` + `global_stocks.location_id` | Place inside the one parent warehouse |
 | **Who may list** | `shipments.assigned_child_tenant_id` (Option A) | List permission only — not a qty ledger. |
 | **Sell truth (ATP)** | pickable sellable on-hand − draft invoice holds − shop cart holds | Desk + assigned shop share this. |
 | **Shop display** | Real ATP **or** `display_quantity_override` | Cosmetics — checkout never trusts dummy. |
@@ -29,7 +29,7 @@ Parent warehouse qty + **bin/zone location** + how a child shop gets permission 
 ```text
 Qty truth     = global_stocks
 Sell gate     = availability (sellable | held | unsellable)
-Where         = location_id → stock_locations
+Where         = location_id → stock_locations (leaf only for put-away)
 How changed   = stock movements (post RPC)
 Cost          = shipment_item stamp
 Who may list  = assign child
@@ -49,9 +49,9 @@ CREATE TYPE stock_availability AS ENUM (
 );
 
 CREATE TYPE stock_location_kind AS ENUM (
-  'zone',
-  'bin',
-  'staging',
+  'shelf',
+  'slot',
+  'box',
   'returns'
 );
 ```
@@ -62,34 +62,44 @@ CREATE TYPE stock_location_kind AS ENUM (
 | `location.is_pickable` | **Yes** (required) |
 | Optional detail note / future tag | **No** |
 
-**Receive day one:** default 100% → `sellable` at **default** location (`is_default`). Split availability only when something is held/unsellable.
+**Receive day one:** default 100% → `sellable` at **default leaf** location (`is_default`). Split availability only when something is held/unsellable.
 
 **Live bridge:** map `global_stock_types.is_sellable` → `sellable`; non-sellable types → `held` or `unsellable` until cutover.
 
-> Older v2 sketch of a large `stock_condition` enum is **superseded** by this 3-way availability. Detail reasons are labels, not extra qty columns. Availability is **not** a physical bin.
+> Older v2 sketch of a large `stock_condition` enum is **superseded** by this 3-way availability. Detail reasons are labels, not extra qty columns. Availability is **not** a physical place.
 
 ---
 
 ## 2. Schema tables
 
-### 2.1 `stock_locations` (bin / zone catalog) — locked
+### 2.1 `stock_locations` (shelf / slot / box catalog) — locked
 
-Physical place inside the **one** parent warehouse. Not a second qty ledger.
+SMB hierarchy inside the **one** parent warehouse. Not a second qty ledger.
+
+```text
+Shelf → Slot → Box
+Returns (area) → optional Slot → Box
+```
 
 | Field | Type | Required | Description |
 | :--- | :--- | :---: | :--- |
 | `id` | BIGINT | Yes | PK |
 | `parent_tenant_id` | BIGINT | Yes | Warehouse owner |
-| `code` | TEXT | Yes | e.g. `A-01-03` — unique per `(parent_tenant_id, code)` |
+| `parent_location_id` | BIGINT | No | FK self — parent shelf/slot/returns |
+| `code` | TEXT | Yes | e.g. `S1-03-B2` — unique per `(parent_tenant_id, code)` |
 | `name` | TEXT | Yes | Human label |
-| `kind` | `stock_location_kind` | Yes | `zone` \| `bin` \| `staging` \| `returns` |
-| `is_default` | BOOLEAN | Yes | Default put-away on receive (one per parent) |
-| `is_pickable` | BOOLEAN | Yes | Counts toward ATP / sell pick; staging may be false |
-| `sort_order` | INT | No | UI order |
+| `kind` | `stock_location_kind` | Yes | `shelf` \| `slot` \| `box` \| `returns` |
+| `is_default` | BOOLEAN | Yes | Default put-away — **leaf only** (one active default per parent) |
+| `is_pickable` | BOOLEAN | Yes | Counts toward ATP / sell pick |
+| `sort_order` | INT | No | UI order among siblings |
 | `is_active` | BOOLEAN | Yes | Default true |
 | `created_at` / `updated_at` | TIMESTAMPTZ | Yes | Audit |
 
-**Seed day one (per parent):** e.g. `MAIN` (`bin`, default, pickable) + `RETURNS` (`returns`, not default, usually not pickable until released).
+**Nesting rules:** `shelf` / `returns` = root; `slot` under `shelf` or `returns`; `box` under `slot`.
+
+**Leaf:** no children. Put-away / default / (future) stock qty attach to **leaves** only. A shelf with no slots is itself a leaf.
+
+**No auto-seed:** staff create shelves/slots/boxes (and optional returns area) as needed. Locations may be **hard-deleted** (children cascade).
 
 **Do not:** free-text location on stock only; soft allocation as fake location; multi-warehouse table day one.
 

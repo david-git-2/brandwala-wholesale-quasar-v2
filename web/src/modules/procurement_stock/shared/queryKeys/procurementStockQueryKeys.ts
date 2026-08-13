@@ -20,4 +20,10 @@ export const procurementStockQueryKeys = {
 
   stockTypes: (tenantId: number) =>
     ['procurementStock', 'stockTypes', { tenantId }] as const,
+
+  stockLocations: (tenantId: number, includeInactive?: boolean) =>
+    ['procurementStock', 'stockLocations', { tenantId, includeInactive }] as const,
+
+  cargoCompanies: (tenantId: number, includeInactive?: boolean) =>
+    ['procurementStock', 'cargoCompanies', { tenantId, includeInactive }] as const,
 };

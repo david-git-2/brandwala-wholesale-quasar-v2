@@ -21,7 +21,7 @@ describe('resolveGlobalStockUnitCostSync', () => {
   test('returns domestic cost without conversion', () => {
     const line: GlobalStockCostingInput = {
       ...baseLine,
-      shipment_type: 'domestic',
+      shipment_type: 'local',
       product_conversion_rate: 1,
       cargo_conversion_rate: 1,
       cargo_rate: 0,

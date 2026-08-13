@@ -1,30 +1,21 @@
 <template>
-  <q-page class="bw-page q-pa-xs">
-    <section class="bw-page__stack">
-      <!-- Compact Header Design -->
-      <q-card flat class="q-mb-md floating-surface hero-surface shadow-1">
-        <q-card-section class="q-py-sm">
-          <div class="row items-center justify-between q-col-gutter-sm">
-            <div class="col-12 col-sm">
-              <div class="text-h6 text-weight-bold text-grey-9">Inbound Shipments</div>
-              <div class="text-caption text-grey-7">
-                Manage inbound supplier shipment batches, costing, and statuses
-              </div>
-            </div>
-            <div class="col-12 col-sm-auto row justify-start justify-sm-end q-mt-xs q-mt-sm-none">
-              <q-btn
-                color="primary"
-                no-caps
-                size="sm"
-                class="pill-btn slim-btn"
-                icon="ph ph-plus"
-                label="Add Shipment"
-                @click="openCreateShipment"
-              />
-            </div>
-          </div>
-        </q-card-section>
-      </q-card>
+  <q-page class="q-pa-md">
+    <div class="q-gutter-y-md">
+      <section class="row items-center justify-between q-col-gutter-md">
+        <div class="col">
+          <div class="text-overline text-primary">Procurement & Stock</div>
+          <h1 class="text-h5 text-weight-bold q-my-none">Inbound Shipments</h1>
+        </div>
+        <div class="col-auto">
+          <q-btn
+            color="primary"
+            unelevated
+            no-caps
+            label="Add Shipment"
+            @click="openCreateShipment"
+          />
+        </div>
+      </section>
 
       <q-banner v-if="shipmentStore.error" class="bw-status-banner bg-negative text-white q-mb-md">
         {{ shipmentStore.error }}
@@ -122,7 +113,7 @@
                     class="status-dot"
                     :style="{ backgroundColor: statusDotColor(props.row.status) }"
                   />
-                  {{ props.row.status }}
+                  {{ formatShipmentStatusLabel(props.row.status) }}
                 </q-chip>
               </q-td>
               <q-td key="received_date" :props="props">
@@ -139,7 +130,7 @@
           </template>
         </q-table>
       </q-card>
-    </section>
+    </div>
   </q-page>
 </template>
 
@@ -167,17 +158,10 @@ const draftStatusFilter = ref<string | null>(null);
 
 const statusOptions = [
   { label: 'All Statuses', value: '__all__' },
-  { label: 'Draft', value: 'Draft' },
-  { label: 'Order Placed', value: 'Order Placed' },
-  { label: 'Proforma Generated', value: 'Proforma Generated' },
-  { label: 'Payment Done', value: 'Payment Done' },
-  { label: 'Delivery Date Received', value: 'Delivery Date Received' },
-  { label: 'UK Warehouse Delivery Received', value: 'Uk Warehouse Delivery Received' },
-  { label: 'Air Shipment Date Set', value: 'Air Shipment Date Set' },
-  { label: 'Airport Arrival', value: 'Airport Arrival' },
-  { label: 'Airport Released', value: 'Airport Released' },
-  { label: 'Warehouse Received', value: 'Warehouse Received' },
-  { label: 'Ready Stock', value: 'Ready Stock' },
+  { label: 'Draft', value: 'draft' },
+  { label: 'In transit', value: 'in_transit' },
+  { label: 'Received', value: 'received' },
+  { label: 'Cancelled', value: 'cancelled' },
 ];
 
 const columns: QTableColumn[] = [
@@ -300,52 +284,7 @@ const shipmentStatusVisualMap: Record<string, ShipmentStatusVisual> = {
     chipShadow: '0 1px 2px rgba(106, 74, 20, 0.18)',
     dot: '#9a6a24',
   },
-  'order placed': {
-    rowBackground: '#f3f7ff',
-    rowAccent: '#6f93d8',
-    chipBackground: '#c8d8f8',
-    chipText: '#27487a',
-    chipBorder: '#a9c4f3',
-    chipShadow: '0 1px 2px rgba(39, 72, 122, 0.18)',
-    dot: '#3f67b3',
-  },
-  'proforma generated': {
-    rowBackground: '#f8f4ff',
-    rowAccent: '#9a74d4',
-    chipBackground: '#dccdfa',
-    chipText: '#4e2d86',
-    chipBorder: '#c6b1f1',
-    chipShadow: '0 1px 2px rgba(78, 45, 134, 0.18)',
-    dot: '#6f4ab2',
-  },
-  'payment done': {
-    rowBackground: '#f2fbf7',
-    rowAccent: '#51b595',
-    chipBackground: '#bfeadc',
-    chipText: '#1c5f4b',
-    chipBorder: '#9edcc8',
-    chipShadow: '0 1px 2px rgba(28, 95, 75, 0.18)',
-    dot: '#2f8f72',
-  },
-  'delivery date received': {
-    rowBackground: '#eefbff',
-    rowAccent: '#5cbfd6',
-    chipBackground: '#bde9f4',
-    chipText: '#1e5f71',
-    chipBorder: '#9fd8e7',
-    chipShadow: '0 1px 2px rgba(30, 95, 113, 0.18)',
-    dot: '#308ca6',
-  },
-  'uk warehouse delivery received': {
-    rowBackground: '#eef4ff',
-    rowAccent: '#5b82d6',
-    chipBackground: '#c4d5fa',
-    chipText: '#274a8d',
-    chipBorder: '#a9c2f2',
-    chipShadow: '0 1px 2px rgba(39, 74, 141, 0.18)',
-    dot: '#3f67b3',
-  },
-  'air shipment date set': {
+  in_transit: {
     rowBackground: '#fff7ee',
     rowAccent: '#df9549',
     chipBackground: '#f7d6af',
@@ -354,34 +293,7 @@ const shipmentStatusVisualMap: Record<string, ShipmentStatusVisual> = {
     chipShadow: '0 1px 2px rgba(122, 69, 22, 0.18)',
     dot: '#b86d23',
   },
-  'airport arrival': {
-    rowBackground: '#fff3ef',
-    rowAccent: '#df7f63',
-    chipBackground: '#f4c8ba',
-    chipText: '#7f3420',
-    chipBorder: '#e7ab98',
-    chipShadow: '0 1px 2px rgba(127, 52, 32, 0.18)',
-    dot: '#b65336',
-  },
-  'airport released': {
-    rowBackground: '#f8f4f1',
-    rowAccent: '#9a7c66',
-    chipBackground: '#decebf',
-    chipText: '#5d4635',
-    chipBorder: '#cdb9a8',
-    chipShadow: '0 1px 2px rgba(93, 70, 53, 0.18)',
-    dot: '#7a5e48',
-  },
-  'warehouse received': {
-    rowBackground: '#f2fbf6',
-    rowAccent: '#59aa7d',
-    chipBackground: '#c3e8d2',
-    chipText: '#1f5d3c',
-    chipBorder: '#9fd4b7',
-    chipShadow: '0 1px 2px rgba(31, 93, 60, 0.18)',
-    dot: '#2f8b5d',
-  },
-  'ready stock': {
+  received: {
     rowBackground: '#edf9f2',
     rowAccent: '#449a69',
     chipBackground: '#b9e3ca',
@@ -390,6 +302,30 @@ const shipmentStatusVisualMap: Record<string, ShipmentStatusVisual> = {
     chipShadow: '0 1px 2px rgba(25, 79, 53, 0.18)',
     dot: '#25784d',
   },
+  cancelled: {
+    rowBackground: '#fef2f2',
+    rowAccent: '#dc2626',
+    chipBackground: '#fecaca',
+    chipText: '#7f1d1d',
+    chipBorder: '#fca5a5',
+    chipShadow: '0 1px 2px rgba(127, 29, 29, 0.18)',
+    dot: '#b91c1c',
+  },
+};
+
+const formatShipmentStatusLabel = (status: string | null | undefined): string => {
+  switch ((status ?? '').trim()) {
+    case 'draft':
+      return 'Draft';
+    case 'in_transit':
+      return 'In transit';
+    case 'received':
+      return 'Received';
+    case 'cancelled':
+      return 'Cancelled';
+    default:
+      return status || '—';
+  }
 };
 
 const getStatusVisual = (status: string | null | undefined): ShipmentStatusVisual => {

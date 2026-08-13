@@ -137,6 +137,25 @@ const getSubmoduleSectionAndWeight = (
     }
   }
 
+  if (parentKey === 'procurement_stock') {
+    switch (moduleKey) {
+      case 'global_shipment':
+        return { section: '', weight: 10 };
+      case 'global_stock':
+        return { section: '', weight: 20 };
+      case 'global_stock_movement':
+        return { section: '', weight: 30 };
+      case 'global_stock_location':
+        return { section: '', weight: 40 };
+      case 'cargo_company':
+        return { section: '', weight: 50 };
+      case 'inventory':
+        return { section: '', weight: 60 };
+      default:
+        return { section: '', weight: 99 };
+    }
+  }
+
   return { section: '', weight: 99 };
 };
 

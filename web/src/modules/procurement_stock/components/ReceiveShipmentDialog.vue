@@ -288,9 +288,9 @@ const onCommit = async () => {
 
     if (insertError) throw insertError;
 
-    // 3. Promote shipment status to 'Ready Stock'
+    // 3. Promote shipment status to received
     await shipmentStore.updateShipment(props.shipmentId, {
-      status: 'Ready Stock',
+      status: 'received',
       stock_ready: true,
     });
 

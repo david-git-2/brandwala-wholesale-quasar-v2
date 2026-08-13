@@ -26,6 +26,7 @@ Maps lifecycle stages to APIs / RPCs. Schema: [schema.md](./schema.md) (§4 land
 
 * **Action**: User fills basic shipment details and creates a draft.
 * **Execution**: Creates the shipment header only. Cost entries are added when entering rates (day one: one `product` + one `cargo`).
+* **Defaults**: Prefill / RPC fallback to tenant **default vendor** and **default cargo company** when omitted ([../vendor/workflow_flow.md](../vendor/workflow_flow.md) · [../cargo_company/workflow_flow.md](../cargo_company/workflow_flow.md)).
 * **API / RPC**:
   * [create_shipment_draft.md](./rpc/create_shipment_draft.md) or [shipment_api.md](./api/shipment_api.md)
 

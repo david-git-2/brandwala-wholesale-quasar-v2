@@ -149,7 +149,7 @@ Blocked or revision-gated once `inventory_added = true` (product policy).
 | Field | When to send |
 | :--- | :--- |
 | `payment_source` | `'cash'` \| `'credit'` \| `'wallet'` — settlement mode for this cost slice |
-| `entity_type` / `entity_id` | Payee (`vendor`, cargo agent, …). **Never** `shipment`. Settlement **intent** only day one — no auto wallet post on finalize ([issues §3](../../../PROCUREMENT_STOCK_ISSUES.md)) |
+| `entity_type` / `entity_id` | Payee (`vendor`, `cargo_company`, …). **Never** `shipment`. Settlement **intent** only day one — no auto wallet post on finalize ([issues §3](../../../PROCUREMENT_STOCK_ISSUES.md)) · [cargo company](../../cargo_company/schema.md) |
 | `allocation` | Non-default spread for duty/labor later |
 | `cost_type` beyond product/cargo | When UI enables duty, insurance, etc. |
 

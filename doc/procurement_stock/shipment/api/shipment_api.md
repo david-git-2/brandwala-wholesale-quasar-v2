@@ -9,6 +9,7 @@ Core `shipments` header — ops / identity only. **No rate fields.** Money → [
 
 * **Endpoint:** `supabase.from('shipments').insert(payload)`  
 * Prefer RPC: [create_shipment_draft.md](../rpc/create_shipment_draft.md) (header only; no cost entries required)
+* Omit `vendor_id` / `cargo_company_id` to use tenant **defaults** ([../../vendor/](../../vendor/) · [../../cargo_company/](../../cargo_company/))
 
 ### Request Payload
 

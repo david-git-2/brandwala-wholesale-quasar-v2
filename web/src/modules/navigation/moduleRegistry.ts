@@ -32,6 +32,7 @@ export type ModuleKey =
   | 'global_stock'
   | 'global_stock_movement'
   | 'global_stock_location'
+  | 'cargo_company'
   | 'inventory'
   | 'global_invoice'
   | 'investor_portal'
@@ -619,7 +620,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'global_shipment',
     name: 'Shipment',
-    description: 'Inbound batches: draft, cost entries, finalize, and Ready Stock.',
+    description: 'Inbound batches: draft, in transit, finalize, and received.',
     parentModuleKey: 'procurement_stock',
     routes: [
       {
@@ -667,15 +668,31 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'global_stock_location',
     name: 'Locations',
-    description: 'Bin and zone catalog for the parent warehouse.',
+    description: 'Shelves, slots, and boxes for the parent warehouse.',
     parentModuleKey: 'procurement_stock',
     routes: [
       {
         scope: 'app',
         title: 'Locations',
-        caption: 'Manage warehouse bins and zones',
+        caption: 'Shelves, slots, and boxes',
         icon: 'ph ph-map-pin',
         routeSegment: 'procurement/locations',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'cargo_company',
+    name: 'Cargo Companies',
+    description: 'Inbound freight / cargo agents for procurement shipments.',
+    parentModuleKey: 'procurement_stock',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Cargo Companies',
+        caption: 'Freight agents and default cargo company',
+        icon: 'ph ph-airplane-tilt',
+        routeSegment: 'procurement/cargo-companies',
         requiredAction: 'view',
       },
     ],
@@ -906,7 +923,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     key: 'procurement_stock',
     name: 'Procurement & Stock',
     description:
-      'Inbound shipments, warehouse stock, movements, locations, and child stock view.',
+      'Inbound shipments, warehouse stock, movements, locations, cargo companies, and child stock view.',
     navIcon: 'ph ph-truck',
     routes: [],
   },

@@ -169,7 +169,7 @@ watch(
 
 const shipmentOptions = computed(() =>
   (shipmentStore.rows ?? [])
-    .filter((shipment: Shipment) => shipment.status === 'Draft')
+    .filter((shipment: Shipment) => shipment.status === 'draft')
     .map((shipment: Shipment) => ({
       label: `#${shipment.tenant_shipment_id ?? shipment.id} ${shipment.name}`,
       value: shipment.id,

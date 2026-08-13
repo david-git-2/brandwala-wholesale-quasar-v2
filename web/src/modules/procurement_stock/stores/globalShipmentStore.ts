@@ -156,7 +156,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       tenantId: number,
       payload: {
         name: string;
-        type: 'domestic' | 'international';
+        type: 'international' | 'local' | 'transfer';
         shipment_purchase_currency_id: number | null;
         shipment_cost_currency_id: number | null;
       },
@@ -165,6 +165,29 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       this.error = null;
       try {
         const newShipment = await globalShipmentRepository.createShipment(tenantId, payload);
+        this.rows.unshift(newShipment);
+        return newShipment;
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to create shipment';
+        throw err;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async createShipmentDraft(
+      tenantId: number,
+      payload: {
+        name: string;
+        type: 'international' | 'local' | 'transfer';
+        vendor_id?: number | null;
+        cargo_company_id?: number | null;
+      },
+    ) {
+      this.loading = true;
+      this.error = null;
+      try {
+        const newShipment = await globalShipmentRepository.createShipmentDraft(tenantId, payload);
         this.rows.unshift(newShipment);
         return newShipment;
       } catch (err: unknown) {
@@ -477,7 +500,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
 
         // 3. Update shipment status to Draft and stock_ready to false
         await globalShipmentRepository.updateShipment(shipmentId, {
-          status: 'Draft',
+          status: 'draft',
           stock_ready: false,
         });
 

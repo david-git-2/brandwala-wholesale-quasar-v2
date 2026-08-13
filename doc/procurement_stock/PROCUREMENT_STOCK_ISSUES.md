@@ -10,17 +10,19 @@ Sell model, assign, ATP (incl. pickable locations), listing FK, availability, **
 
 ## 1. Warehouse ops + location — implement
 
-**Solution locked:** [v2/stock/schema.md](./v2/stock/schema.md) —
+**Solution locked:** [stock/schema.md](./stock/schema.md) —
 
 * `stock_locations` catalog + required `global_stocks.location_id`
 * Balance grain `(shipment_item_id, availability, location_id)`
 * Movements post all qty / availability / location changes; UI never free-edits
 
-**Still open:** exact table/RPC names and migration SQL.
+**Locations catalog (locked names):** table `stock_locations` with SMB hierarchy `shelf` → `slot` → `box` (+ `returns` area), `parent_location_id`; no auto-seed; hard delete via `delete_stock_location` (cascade children). RPCs `list_stock_locations`, `upsert_stock_location`, `set_default_stock_location`, `delete_stock_location` — [stock/api/stock_location_api.md](./stock/api/stock_location_api.md).
+
+**Still open:** movement table/RPC names; `global_stocks.location_id` cutover SQL.
 
 | Gap | Meaning | In first movement cut? |
 | :--- | :--- | :---: |
-| Locations CRUD + seed (`MAIN`, `RETURNS`) | Catalog per parent | Yes |
+| Locations CRUD (no seed; hard delete) | SMB shelf/slot/box catalog | **Done** |
 | Receive put-away | Default or chosen `location_id` | Yes |
 | Location transfer | Bin A → bin B (same availability) | Yes |
 | Availability transfer / adjustment | sellable ↔ held / unsellable; write-off; cycle count | Yes |

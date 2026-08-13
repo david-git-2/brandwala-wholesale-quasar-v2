@@ -23,7 +23,7 @@ export type GlobalStockCostingInput = {
   product_weight: number;
   package_weight: number;
   ordered_quantity: number;
-  shipment_type: 'domestic' | 'international';
+  shipment_type: 'international' | 'local' | 'transfer';
   product_conversion_rate: number;
   cargo_conversion_rate: number;
   cargo_rate: number;

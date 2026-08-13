@@ -5,6 +5,7 @@ export type Vendor = {
   market_code: string;
   tenant_id: number | null;
   parent_tenant_id: number | null;
+  is_default: boolean;
   email: string | null;
   phone: string | null;
   address: string | null;

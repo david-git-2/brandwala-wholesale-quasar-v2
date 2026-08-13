@@ -23,7 +23,7 @@ Ops / identity container. **Zero financial rate fields** — money lives in `shi
 | `shipment_type` | TEXT | Yes | Solid enum: `'international'` \| `'local'` \| `'transfer'` \| `'thrift'` (thrift only if sharing this header). Economics branch — not progress labels |
 | `vendor_id` | BIGINT | Yes | **One vendor per shipment** (product rule). Line-level vendor is not the target model |
 | `assigned_child_tenant_id` | BIGINT | No | Optional: which child may **list** this batch (standalone = self / null). Listing permission only — not a qty ledger. |
-| `cargo_company_id` | BIGINT | No | FK to cargo companies |
+| `cargo_company_id` | BIGINT | No | FK → `cargo_companies.id` (inbound freight agent). Create/dialog + `create_shipment_draft` prefill tenant **default** when omitted — [../cargo_company/schema.md](../cargo_company/schema.md) |
 | `total_weight_kg` | NUMERIC | No | **Cargo invoice weight (kg)** — same role as live `received_weight`. Drives weight balance + cargo weight basis. Set only via explicit save — never overwritten by weight-balance apply |
 | `inventory_added` | BOOLEAN | No | True after finalize posts stock |
 | `metadata` | JSONB | No | Non-financial extras only |
@@ -73,7 +73,7 @@ Effective rates are **computed by the engine**, never stored on the shipment hea
 | `currency_id` | BIGINT | No | FK → currencies — currency of `amount` |
 | `exchange_rate` | NUMERIC | Yes | → base (BDT). Default `1.00` for local / domestic |
 | `payment_source` | TEXT | No | `'cash'` \| `'credit'` \| `'wallet'` — how this cost slice was / will be settled. Null OK day one |
-| `entity_type` | TEXT | No | Payee wallet identity (e.g. `'vendor'`, `'courier'` / cargo). **Not** `'shipment'` |
+| `entity_type` | TEXT | No | Payee wallet identity (e.g. `'vendor'`, `'cargo_company'`). **Not** `'shipment'`. Last-mile COD uses `'courier'` (separate) |
 | `entity_id` | BIGINT | No | Payee id. Posts go to this entity’s wallet + tenant wallet; see money handoff below |
 | `allocation` | TEXT | No | Stub: how this cost spreads to lines — see stubs |
 | `metadata` | JSONB | No | Invoice ref, notes — **not** the cost journal |

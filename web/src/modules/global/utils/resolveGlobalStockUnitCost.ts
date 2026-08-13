@@ -36,7 +36,9 @@ export const isGlobalStockCostingInput = (
   typeof row.purchase_price === 'number' &&
   typeof row.product_weight === 'number' &&
   typeof row.package_weight === 'number' &&
-  (row.shipment_type === 'domestic' || row.shipment_type === 'international');
+  (row.shipment_type === 'local' ||
+    row.shipment_type === 'international' ||
+    row.shipment_type === 'transfer');
 
 export function resolveGlobalStockUnitCostSync(
   line: GlobalStockCostingInput,

@@ -97,6 +97,7 @@ export const canAccessModule = ({
     moduleKey === 'global_stock' ||
     moduleKey === 'global_stock_movement' ||
     moduleKey === 'global_stock_location' ||
+    moduleKey === 'cargo_company' ||
     moduleKey === 'investor_capital' ||
     moduleKey === 'investor_profiles' ||
     moduleKey === 'investor_capital_ledger' ||
@@ -180,6 +181,7 @@ export const resolveModuleAccess = ({
     moduleKey === 'global_stock' ||
     moduleKey === 'global_stock_movement' ||
     moduleKey === 'global_stock_location' ||
+    moduleKey === 'cargo_company' ||
     moduleKey === 'investor_capital' ||
     moduleKey === 'investor_profiles' ||
     moduleKey === 'investor_capital_ledger' ||

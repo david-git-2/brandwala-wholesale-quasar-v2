@@ -6,9 +6,11 @@ const db = supabase as any;
 export interface GlobalShipment {
   id: number;
   parent_tenant_id: number;
+  vendor_id: number;
+  cargo_company_id: number | null;
   name: string;
   tenant_shipment_id: number | null;
-  type: 'domestic' | 'international';
+  type: 'international' | 'local' | 'transfer';
   status: string;
   shipment_purchase_currency_id: number | null;
   shipment_cost_currency_id: number | null;
@@ -112,28 +114,65 @@ const createShipment = async (
   tenantId: number,
   payload: {
     name: string;
-    type: 'domestic' | 'international';
+    type: 'international' | 'local' | 'transfer';
     shipment_purchase_currency_id: number | null;
     shipment_cost_currency_id: number | null;
   },
 ): Promise<GlobalShipment> => {
-  const { data, error } = await db
-    .from('global_shipments')
-    .insert([
-      {
-        parent_tenant_id: tenantId,
-        name: payload.name.trim(),
-        type: payload.type,
-        shipment_purchase_currency_id: payload.shipment_purchase_currency_id,
-        shipment_cost_currency_id: payload.shipment_cost_currency_id,
-        status: 'Draft',
-      },
-    ])
-    .select()
-    .single();
+  const draft = await createShipmentDraft(tenantId, {
+    name: payload.name,
+    type: payload.type,
+  });
+
+  if (
+    payload.shipment_purchase_currency_id == null &&
+    payload.shipment_cost_currency_id == null
+  ) {
+    return draft;
+  }
+
+  return updateShipment(draft.id, {
+    shipment_purchase_currency_id: payload.shipment_purchase_currency_id,
+    shipment_cost_currency_id: payload.shipment_cost_currency_id,
+  });
+};
+
+const createShipmentDraft = async (
+  tenantId: number,
+  payload: {
+    name: string;
+    type: 'international' | 'local' | 'transfer';
+    vendor_id?: number | null;
+    cargo_company_id?: number | null;
+  },
+): Promise<GlobalShipment> => {
+  const { data, error } = await db.rpc('create_shipment_draft', {
+    p_parent_tenant_id: tenantId,
+    p_name: payload.name.trim(),
+    p_type: payload.type,
+    p_vendor_id: payload.vendor_id ?? null,
+    p_cargo_company_id: payload.cargo_company_id ?? null,
+  });
 
   if (error) throw error;
   return data as GlobalShipment;
+};
+
+const listCargoCompaniesForTenant = async (
+  tenantId: number,
+): Promise<Array<{ id: number; name: string; code: string; is_default: boolean }>> => {
+  const { data, error } = await db
+    .from('cargo_companies')
+    .select('id, name, code, is_default')
+    .or(`parent_tenant_id.eq.${tenantId},tenant_id.eq.${tenantId}`)
+    .eq('is_active', true)
+    .order('is_default', { ascending: false })
+    .order('name', { ascending: true });
+
+  if (error) throw error;
+  return (
+    (data as Array<{ id: number; name: string; code: string; is_default: boolean }> | null) ?? []
+  );
 };
 
 const updateShipment = async (
@@ -385,6 +424,8 @@ export const globalShipmentRepository = {
   getById,
   listPaginated,
   createShipment,
+  createShipmentDraft,
+  listCargoCompaniesForTenant,
   updateShipment,
   deleteShipment,
   listShipmentItems,

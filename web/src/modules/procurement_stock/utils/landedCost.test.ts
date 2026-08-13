@@ -18,7 +18,7 @@ describe('Landed Cost Utility', () => {
   };
 
   const sampleDomesticShipment = {
-    type: 'domestic' as const,
+    type: 'local' as const,
     product_conversion_rate: 1.0,
     cargo_conversion_rate: 1.0,
     cargo_rate: 0.0,

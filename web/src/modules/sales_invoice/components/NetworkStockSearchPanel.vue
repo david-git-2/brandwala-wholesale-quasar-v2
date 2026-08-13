@@ -216,7 +216,7 @@ const loadShipments = async () => {
       .from('global_shipments')
       .select('id, name, tenant_shipment_id')
       .eq('parent_tenant_id', targetTenantId)
-      .eq('status', 'Ready Stock')
+      .eq('status', 'received')
       .order('id', { ascending: false });
     if (error) throw error;
     shipments.value = data || [];

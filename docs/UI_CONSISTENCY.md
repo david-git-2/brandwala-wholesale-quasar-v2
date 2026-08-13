@@ -125,7 +125,7 @@ Prefer Quasar defaults. Do not build custom wrappers when `q-card` / `q-table` s
 
 | State | Pattern |
 |-------|---------|
-| Primary | `q-btn color="primary" unelevated` — one per header max |
+| Primary | `q-btn color="primary" unelevated` — one visible at a time (header **or** empty-state CTA) |
 | Secondary | `q-btn flat` or `outline` |
 | Danger | `q-btn color="negative"` or `flat color="negative"` |
 | Disabled | `:disable="true"` on `q-btn` |
@@ -134,6 +134,7 @@ Prefer Quasar defaults. Do not build custom wrappers when `q-card` / `q-table` s
 | Icon-only (dense ops) | `flat round` + `q-tooltip` — secondary header actions |
 
 No default refresh buttons on app management pages. No FABs when header action suffices.
+Never show the same primary create action in both the page header and the empty state.
 
 ## Form input states
 
@@ -158,9 +159,17 @@ No skeleton system app-wide — `PageInitialLoader` is the default for page-leve
 | Pattern | When |
 |---------|------|
 | `.empty-state-block.floating-surface` | List pages with no rows (invoices, catalogs) |
-| `column items-center … empty-state q-pa-xl` | Shop/customer empty lists |
+| `column items-center … empty-state q-pa-xl` | Shop/customer empty lists + in-table `#no-data` |
 | Plain muted text in `q-card` | Simple management screens |
 | `q-banner.bw-status-banner` | Error / warning (not empty data) |
+
+Empty-state composition (first-time / zero rows):
+1. Domain illustration or large muted icon
+2. Short title + one muted supporting line
+3. Primary recovery CTA (`Add …`) in the empty state
+4. **Hide** the matching header Add button until at least one item exists
+
+Filtered-empty (items exist, filters hide all): keep the header Add; show “Clear filters” in the empty body — do not duplicate the create CTA.
 
 ## Toast & alert patterns
 

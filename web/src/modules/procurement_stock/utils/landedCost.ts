@@ -1,5 +1,5 @@
 export interface CostingShipmentInput {
-  type: 'domestic' | 'international';
+  type: 'international' | 'local' | 'transfer';
   product_conversion_rate: number;
   cargo_conversion_rate: number;
   cargo_rate: number;
@@ -117,7 +117,7 @@ export const calculateRawTransactionRate = (
   shipment: CostingShipmentInput,
   items: CostingLineItemInput[],
 ): number | null => {
-  if (shipment.type === 'domestic') {
+  if (shipment.type === 'local') {
     return null;
   }
 
@@ -171,7 +171,7 @@ export const calculateLineLandedCostBdt = (
 ): number => {
   const base = calculateLinePurchaseBase(item, shipment, items);
 
-  if (shipment.type === 'domestic') {
+  if (shipment.type === 'local') {
     return base;
   }
 
@@ -231,11 +231,11 @@ export function calculateShipmentCostSummary(
   const totalPurchase = goodsPurchase + cargoPurchase;
 
   const goodsCost =
-    shipment.type === 'domestic'
+    shipment.type === 'local'
       ? goodsPurchase
       : goodsPurchase * (shipment.product_conversion_rate || 1);
   const cargoCost =
-    shipment.type === 'domestic'
+    shipment.type === 'local'
       ? cargoPurchase
       : cargoPurchase * (shipment.cargo_conversion_rate || 1);
   const totalCost = goodsCost + cargoCost;

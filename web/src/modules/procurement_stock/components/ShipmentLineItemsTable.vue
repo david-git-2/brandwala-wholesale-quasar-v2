@@ -9,7 +9,7 @@
             <th class="text-left shipment-image-col">Image</th>
             <th v-if="isColumnVisible('name')" class="text-left shipment-name-col">Name</th>
             <th
-              v-if="props.shipment?.status === 'Warehouse Received'"
+              v-if="props.shipment?.status === 'in_transit'"
               class="text-center shipment-split-col"
               style="width: 80px; min-width: 80px; max-width: 80px"
             >
@@ -136,7 +136,7 @@
               {{ item.name ?? '-' }}
             </td>
             <td
-              v-if="props.shipment?.status === 'Warehouse Received'"
+              v-if="props.shipment?.status === 'in_transit'"
               class="text-center shipment-split-col"
             >
               <div class="column items-center q-gutter-y-xs q-py-xs">
@@ -336,7 +336,7 @@
             <td class="shipment-sl-col" />
             <td class="shipment-image-col" />
             <td v-if="isColumnVisible('name')" class="shipment-name-col" />
-            <td v-if="props.shipment?.status === 'Warehouse Received'" class="shipment-split-col" />
+            <td v-if="props.shipment?.status === 'in_transit'" class="shipment-split-col" />
             <td v-if="isColumnVisible('product_id')" />
             <td v-if="isColumnVisible('barcode')" />
             <td v-if="isColumnVisible('product_code')" />
@@ -573,7 +573,7 @@ const columnOptions = computed(() =>
 
 const isEditable = computed(() => {
   if (!props.shipment) return false;
-  return props.shipment.status !== 'Ready Stock' && props.shipment.status !== 'Warehouse Received';
+  return props.shipment.status !== 'received' && props.shipment.status !== 'cancelled';
 });
 
 const isColumnVisible = (column: ColumnKey) => activeVisibleColumns.value.includes(column);
@@ -583,7 +583,7 @@ const tableColspan = computed(() => {
   for (const opt of columnOptions.value) {
     if (isColumnVisible(opt.value)) count++;
   }
-  if (props.shipment?.status === 'Warehouse Received') count++;
+  if (props.shipment?.status === 'in_transit') count++;
   return count;
 });
 

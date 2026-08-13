@@ -186,7 +186,9 @@ const mapListGlobalInvoiceItemRow = (row: any): GlobalInvoiceItemRow => {
   const hasCosting =
     shipmentItemId !== null &&
     shipmentId !== null &&
-    (shipmentType === 'domestic' || shipmentType === 'international');
+    (shipmentType === 'local' ||
+      shipmentType === 'international' ||
+      shipmentType === 'transfer');
 
   const costing: GlobalStockCostingInput | null = hasCosting
     ? {
@@ -196,7 +198,7 @@ const mapListGlobalInvoiceItemRow = (row: any): GlobalInvoiceItemRow => {
         product_weight: Number(row.product_weight ?? 0),
         package_weight: Number(row.package_weight ?? 0),
         ordered_quantity: Number(row.ordered_quantity ?? 0),
-        shipment_type: shipmentType as 'domestic' | 'international',
+        shipment_type: shipmentType as 'international' | 'local' | 'transfer',
         product_conversion_rate: Number(row.product_conversion_rate ?? 1),
         cargo_conversion_rate: Number(row.cargo_conversion_rate ?? 1),
         cargo_rate: Number(row.cargo_rate ?? 0),

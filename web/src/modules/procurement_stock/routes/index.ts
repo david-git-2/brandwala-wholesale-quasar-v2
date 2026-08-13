@@ -117,6 +117,18 @@ const procurementStockRoutes: RouteRecordRaw[] = [
     ],
   },
   {
+    path: '/:tenantSlug?/app/procurement/cargo-companies',
+    component: () => import('layouts/AppLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'app-procurement-cargo-companies',
+        component: () => import('../pages/CargoCompaniesPage.vue'),
+        beforeEnter: guard('cargo_company'),
+      },
+    ],
+  },
+  {
     path: '/:tenantSlug?/app/procurement/child-stock',
     component: () => import('layouts/AppLayout.vue'),
     children: [

@@ -1,0 +1,34 @@
+---
+description: Frictionless Quasar UI — app theme, Quasar CSS first, custom CSS only when needed.
+globs: ["**/*.vue", "**/*.scss", "**/app.scss"]
+alwaysApply: false
+---
+
+# Frictionless App UI
+
+## Goal
+
+Screens must feel fast and obvious: fewest steps to complete the task, clear primary action, no dead ends. Match the active app shell theme (`.theme-app` / `.theme-platform` / `.theme-shop` / `.theme-investor`).
+
+## Frictionless UX
+
+- One obvious next step per screen; primary CTA in the page header when the list has data, or in the empty state when it does not — never both.
+- Defaults over configuration; sticky filters only when they cut re-entry.
+- Inline validation + disable invalid submit.
+- Prefer dialogs/drawers for small edits over full page hops.
+- Empty/error states always offer a recovery action (create, clear filters, retry) with illustration/icon + short copy.
+- Non-blocking loads: `GlobalAjaxBar` for background work; `PageInitialLoader` only for first paint.
+- Icon-only actions need tooltips; hit targets stay touch-friendly.
+
+## Styling stack (in order)
+
+1. **App theme** — `var(--bw-theme-*)` and Quasar `color="primary"` (maps to theme). No hardcoded hex except locked domain table pastels.
+2. **Quasar** — `q-pa-*`, `q-gutter-*`, `row`/`column`/`col-*`, `items-*`, `justify-*`, `full-width`, button variants (`unelevated` / `flat` / `outline`).
+3. **Project utilities** — `.bw-page`, `.bw-page__stack`, `.bw-entity-grid`, `.bw-inline-actions`, `.soft-input`, `.floating-surface`, `.pill-btn`, `.bw-text-muted` from `web/src/css/app.scss`.
+4. **Custom SCSS** — only when Quasar + tokens cannot express the need; scoped to the SFC; reuse tokens; no new global color system; no `backdrop-filter` on static chrome.
+
+## Do not
+
+- Invent a parallel layout/color system.
+- Add extra clicks, confirmations, or page navigations without a clear safety need.
+- Fight `docs/UI_CONSISTENCY.md` / `.ui-consistency.mdc` patterns — extend them, don’t replace them.

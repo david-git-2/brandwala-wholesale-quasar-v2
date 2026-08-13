@@ -59,7 +59,7 @@
             <template #body-cell-type="props">
               <q-td :props="props">
                 <span class="text-capitalize font-mono text-sm">
-                  {{ props.row.type || 'domestic' }}
+                  {{ props.row.type || 'local' }}
                 </span>
               </q-td>
             </template>
@@ -121,7 +121,7 @@ const shipments = ref<any[]>([]);
 
 // Filters
 const search = ref('');
-const statusFilter = ref('Ready Stock');
+const statusFilter = ref('received');
 
 const columns: QTableColumn[] = [
   { name: 'id', label: 'Shipment ID', field: 'id', align: 'left', sortable: true },
@@ -133,17 +133,11 @@ const columns: QTableColumn[] = [
 ];
 
 const statusOptions = [
-  { label: 'Ready Stock (Active)', value: 'Ready Stock' },
+  { label: 'Received (Active)', value: 'received' },
   { label: 'All Statuses', value: '__all__' },
-  { label: 'Draft', value: 'Draft' },
-  { label: 'Order Placed', value: 'Order Placed' },
-  { label: 'Proforma Generated', value: 'Proforma Generated' },
-  { label: 'Payment Done', value: 'Payment Done' },
-  { label: 'Uk Warehouse Delivery Received', value: 'Uk Warehouse Delivery Received' },
-  { label: 'Air Shipment Date Set', value: 'Air Shipment Date Set' },
-  { label: 'Airport Arrival', value: 'Airport Arrival' },
-  { label: 'Airport Released', value: 'Airport Released' },
-  { label: 'Warehouse Received', value: 'Warehouse Received' },
+  { label: 'Draft', value: 'draft' },
+  { label: 'In transit', value: 'in_transit' },
+  { label: 'Cancelled', value: 'cancelled' },
 ];
 
 // Load Shipments
@@ -189,8 +183,8 @@ const filteredShipments = computed(() => {
 
     const matchesStatus =
       statusFilter.value === '__all__' ||
-      (statusFilter.value === 'Ready Stock'
-        ? s.status === 'Ready Stock' || s.stock_ready === true
+      (statusFilter.value === 'received'
+        ? s.status === 'received' || s.stock_ready === true
         : s.status === statusFilter.value);
 
     return matchesSearch && matchesStatus;

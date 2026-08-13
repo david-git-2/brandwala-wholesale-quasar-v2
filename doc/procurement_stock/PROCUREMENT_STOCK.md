@@ -11,7 +11,7 @@ This document answers:
 - How should implementation start fresh (drop-and-recreate)?
 - How is the module designed to grow with new features?
 
-Related: [MASTER_PLAN.md](MASTER_PLAN.md) (§16 redesign), [PROCUREMENT_STOCK_ISSUES.md](PROCUREMENT_STOCK_ISSUES.md) (redesign — cost, money, status, **one vendor/shipment**, **shipment→child assign + shared ATP**), [REPORTING_TREASURY.md](REPORTING_TREASURY.md), [TENANT_MODEL_AND_ACCESS.md](TENANT_MODEL_AND_ACCESS.md), [APP_SCOPES_AND_ACCESS.md](APP_SCOPES_AND_ACCESS.md), [GLOBAL_REFERENCE_DATA.md](GLOBAL_REFERENCE_DATA.md).
+Related: [MASTER_PLAN.md](MASTER_PLAN.md) (§16 redesign), [PROCUREMENT_STOCK_ISSUES.md](PROCUREMENT_STOCK_ISSUES.md) (redesign — cost, money, status, **one vendor/shipment**, **shipment→child assign + shared ATP**), [REPORTING_TREASURY.md](REPORTING_TREASURY.md), [TENANT_MODEL_AND_ACCESS.md](TENANT_MODEL_AND_ACCESS.md), [APP_SCOPES_AND_ACCESS.md](APP_SCOPES_AND_ACCESS.md), [GLOBAL_REFERENCE_DATA.md](GLOBAL_REFERENCE_DATA.md), [vendor/](./vendor/), [cargo_company/](./cargo_company/), [shipment/](./shipment/), [stock/](./stock/).
 
 > **Target (v2):** one vendor per shipment; parent owns `global_stocks`; assign Option A + listing `global_stock_id`; sell = shared ATP; availability `sellable|held|unsellable` — [v2/stock/schema.md](./v2/stock/schema.md) · [PROCUREMENT_STOCK_ISSUES.md](./PROCUREMENT_STOCK_ISSUES.md). Live schema below may still show line vendors + qty allocations until cutover.
 
@@ -31,7 +31,8 @@ Related: [MASTER_PLAN.md](MASTER_PLAN.md) (§16 redesign), [PROCUREMENT_STOCK_IS
 
 | Capability | Submodule | Responsibility |
 |------------|-----------|----------------|
-| Inbound batch | `global_shipment` | Group purchases under a customs/cargo batch; capture FX rates and vendor |
+| Inbound batch | `global_shipment` | Group purchases under a customs/cargo batch; capture FX rates, **vendor**, and **cargo company** |
+| Freight agents | `cargo_company` *(catalog)* | Parent-scoped inbound cargo/freight providers + default row — [cargo_company/schema.md](./cargo_company/schema.md) |
 | Warehouse pool | `global_stock` | Parent-owned quantity pools; **Allocate Stock** UI writes child slices |
 | Tenant allocation view | `inventory` | Child (and parent) read allocated slices from `global_stock_allocations` |
 | Stock behaviour | `global_stock_type` *(config, no nav)* | Classify sellable vs damaged/quarantine; gates invoice pick |
@@ -44,6 +45,7 @@ Related: [MASTER_PLAN.md](MASTER_PLAN.md) (§16 redesign), [PROCUREMENT_STOCK_IS
 | **Commerce inbound** | Commerce does **not** create shipments (locked decision **D2**) |
 | **Desk sales** | Invoice creation lives under `global_invoice`; this domain only supplies stock |
 | **Reports & treasury** | Shipment P&L and parent dashboards live under `reporting_treasury` — see [REPORTING_TREASURY.md](REPORTING_TREASURY.md) |
+| **Last-mile courier** | COD remittance `entity_type = 'courier'` is not inbound `cargo_companies` — [cargo_company/schema.md](./cargo_company/schema.md) |
 | **Child procurement** | Orders and costing files are child inputs (`order_management`, `product_based_costing`) — not part of this parent module |
 | **Custom formula builder** | Cost math is **hardcoded** in `landedCost.ts` — admins edit inputs on the shipment UI, not the equation |
 
@@ -75,7 +77,8 @@ Commerce and desk invoices **sell from** `global_stocks`; they do not create inb
 | `global_shipment` | Shipment | `procurement_stock` | `procurement/shipment` | Existing inbound shipment UI |
 | `global_stock` | Warehouse | `procurement_stock` | `procurement/stock` | Existing warehouse stock list |
 | `global_stock_movement` | Movements | `procurement_stock` | `procurement/movements` | New stub (v2 movements) |
-| `global_stock_location` | Locations | `procurement_stock` | `procurement/locations` | New stub (bin/zone catalog) |
+| `global_stock_location` | Locations | `procurement_stock` | `procurement/locations` | Shelves & boxes ([StockLocationsPage.vue](../../web/src/modules/procurement_stock/pages/StockLocationsPage.vue)) |
+| `cargo_company` | Cargo Companies | `procurement_stock` *(or top-level like `vendor`)* | `procurement/cargo-companies` *(planned)* | Inbound freight agents + default — [cargo_company/](./cargo_company/) |
 | `inventory` | Stock | `procurement_stock` | `procurement/child-stock` | New stub (child ATP view) |
 | `global_stock_type` | Stock Types | `procurement_stock` | *(config inside Warehouse — no sidebar link)* | — |
 
@@ -88,7 +91,7 @@ Soft qty on `global_stock_allocations` is **legacy**. v2 uses assign + shared AT
 | Layer | Table / UI | Who |
 |-------|------------|-----|
 | Physical pool | `global_stocks` | Parent (Warehouse) |
-| Where | `stock_locations` (planned) | Parent (Locations) |
+| Where | `stock_locations` | Parent (Locations) |
 | Moves | Movement docs (planned) | Parent (Movements) |
 | Child read | Assigned / ATP | Child (Stock) |
 
@@ -477,6 +480,8 @@ Upon applying weight balance, the difference between the saved cargo invoice wei
 | `tenant_shipment_id` | int | Per-parent display sequence |
 | `type` | `global_shipment_type` | Drives cost branch — §5.0 |
 | `status` | text | Workflow CHECK — §5.1 |
+| `vendor_id` | bigint FK → `vendors` | One vendor per shipment (header); create falls back to tenant **default** — [vendor/schema.md](./vendor/schema.md) |
+| `cargo_company_id` | bigint FK → `cargo_companies` nullable | Inbound freight agent; create prefills tenant **default** — [cargo_company/schema.md](./cargo_company/schema.md) |
 | `shipment_purchase_currency_id` | bigint FK → `global_currencies` | Goods currency |
 | `shipment_cost_currency_id` | bigint FK → `global_currencies` | Freight currency |
 | `product_conversion_rate` | numeric | Forced `1.0` when domestic (**D6**) |
@@ -693,9 +698,10 @@ Tracks [procurement_stock_phases plan] Phases 1–10. Update this section when a
 | D-PS7 | Stock shape | Quantity + FKs only; no cost/display copies on `global_stocks` |
 | D-PS8 | Formula | **No** tenant formula builder — essential input UI on shipment only |
 | D-PS9 | Domestic vs intl | **Same formula structure**; domestic uses `effective_rate = 1`; international follows legacy `costing.ts`. **Target types:** solid enum incl. `transfer` — progress labels are tags, not types ([v2/shipment/schema.md](./v2/shipment/schema.md)) |
-| D-PS12 | Vendor scoping | **Live:** line-level `vendor_id` on items. **Target (v2):** **one vendor per shipment** on header (`shipments.vendor_id`); multi-vendor lines are not the product rule — [v2/shipment/schema.md](./v2/shipment/schema.md) |
+| D-PS12 | Vendor scoping | **Live:** line-level `vendor_id` on items. **Target (v2):** **one vendor per shipment** on header (`shipments.vendor_id`); multi-vendor lines are not the product rule — [shipment/schema.md](./shipment/schema.md) · [vendor/schema.md](./vendor/schema.md) |
 | D-PS13 | Weight balance | Package-weight-only distribution of weight delta; no audit trail v1 |
 | D-PS14 | Received weight | `received_weight` is the cargo invoice weight; set only via explicit save on the Weight Balance card (never overwritten by apply); box weights are verification-only |
-| D-PS15 | Money handoff | Cost entries ≠ cash. Wallets on **tenant + vendor/cargo** only; shipment = `source_*`. Optional posts; store-credit returns credit vendor wallet (no tenant cash). See [v2/wallet/schema.md](./v2/wallet/schema.md) · [PROCUREMENT_STOCK_ISSUES.md](./PROCUREMENT_STOCK_ISSUES.md) §3 |
+| D-PS15 | Money handoff | Cost entries ≠ cash. Wallets on **tenant + vendor / cargo_company** only; shipment = `source_*`. Optional posts; store-credit returns credit vendor wallet (no tenant cash). See [cargo_company/schema.md](./cargo_company/schema.md) · [PROCUREMENT_STOCK_ISSUES.md](./PROCUREMENT_STOCK_ISSUES.md) §3 |
 | D-PS16 | Shop qty display | Real ATP from assigned shipment’s parent stock **or** dummy via `display_quantity_override`. Checkout always uses real ATP — [v2/stock/schema.md](./v2/stock/schema.md) · [PROCUREMENT_STOCK_ISSUES.md](./PROCUREMENT_STOCK_ISSUES.md) |
+| D-PS17 | Cargo company default | Per parent tenant: `code = 'DEFAULT'`, `is_default = true`, via `ensure_default_cargo_company` (mirror vendor). Shipment create prefills / draft RPC falls back when `cargo_company_id` omitted — [cargo_company/](./cargo_company/) |
 

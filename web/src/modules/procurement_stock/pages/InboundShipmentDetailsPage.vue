@@ -1,6 +1,6 @@
 <template>
-  <q-page class="q-pa-xs q-sm-pa-sm" style="max-width: 100%; overflow-x: hidden">
-    <section class="q-gutter-y-sm" style="width: 100%; min-width: 0; overflow: hidden">
+  <q-page class="q-pa-md shipment-details-page">
+    <div class="q-gutter-y-sm">
       <!-- Loading / Error States -->
       <div
         v-if="shipmentStore.loading && !shipmentStore.currentShipment"
@@ -19,535 +19,377 @@
         </q-banner>
       </div>
 
-      <div
-        v-else-if="shipmentStore.currentShipment"
-        class="q-gutter-y-md"
-        style="min-width: 0; width: 100%"
-      >
+      <template v-else-if="shipmentStore.currentShipment">
         <!-- Error banner for actions -->
         <q-banner v-if="shipmentStore.error" class="bg-negative text-white rounded-borders">
           {{ shipmentStore.error }}
         </q-banner>
 
-        <!-- Compact Header & Workflow Status Card -->
-        <q-card flat class="q-mb-sm floating-surface hero-surface shadow-1">
-          <q-card-section class="q-py-sm">
-            <div class="row items-center justify-between q-col-gutter-sm">
-              <!-- Left Side: ID, Title, and Subtitle Meta -->
-              <div class="col-12 col-sm">
-                <div class="row items-center q-gutter-sm">
-                  <q-badge color="primary" outline class="text-weight-medium q-px-sm">
-                    #{{
-                      shipmentStore.currentShipment.tenant_shipment_id ||
-                      shipmentStore.currentShipment.id
-                    }}
-                  </q-badge>
-                  <div class="text-subtitle1 text-weight-bold text-grey-9">
-                    {{ shipmentStore.currentShipment.name }}
-                  </div>
+        <!-- Compact header + status -->
+        <section class="row items-start justify-between q-col-gutter-sm">
+          <div class="col">
+            <div class="row items-center no-wrap q-gutter-x-xs">
+              <q-btn
+                flat
+                dense
+                round
+                icon="ph ph-arrow-left"
+                color="grey-7"
+                aria-label="Back"
+                @click="goBack"
+              />
+              <div class="min-width-0">
+                <div class="text-subtitle1 text-weight-bold ellipsis">
+                  {{ shipmentStore.currentShipment.name }}
                 </div>
-                <div
-                  class="text-caption text-grey-7 q-mt-xs q-pl-xs row items-center q-gutter-x-sm wrap"
-                >
-                  <span
-                    >Type:
-                    <strong class="text-capitalize">{{
-                      shipmentStore.currentShipment.type
-                    }}</strong></span
-                  >
-                  <span>|</span>
-                  <span
-                    >Weight:
-                    <strong>{{
-                      formatWeightKg(shipmentStore.currentShipment.received_weight)
-                    }}</strong></span
-                  >
-                  <span>|</span>
-                  <span
-                    >Received Date:
-                    <strong>{{ shipmentStore.currentShipment.received_date || '—' }}</strong></span
-                  >
-                  <span>|</span>
-                  <q-chip
-                    dense
-                    square
-                    :color="shipmentStore.currentShipment.stock_ready ? 'green-1' : 'grey-2'"
-                    :text-color="shipmentStore.currentShipment.stock_ready ? 'green-9' : 'grey-8'"
-                    class="q-ma-none text-weight-bold"
-                    style="font-size: 11px"
-                  >
-                    {{
-                      shipmentStore.currentShipment.stock_ready ? 'Stock Ready' : 'Stock Not Ready'
-                    }}
-                  </q-chip>
+                <div class="text-caption text-grey-7 ellipsis">
+                  #{{
+                    shipmentStore.currentShipment.tenant_shipment_id ||
+                    shipmentStore.currentShipment.id
+                  }}
+                  ·
+                  <span class="text-capitalize">{{ shipmentStore.currentShipment.type }}</span>
+                  · {{ formatWeightKg(shipmentStore.currentShipment.received_weight) }}
+                  · {{ shipmentStore.currentShipment.received_date || '—' }}
+                  ·
+                  {{
+                    shipmentStore.currentShipment.stock_ready ? 'Stock ready' : 'Stock not ready'
+                  }}
                 </div>
-              </div>
-
-              <!-- Right Side: Workflow & Action Buttons -->
-              <div
-                class="col-12 col-sm-auto row items-center q-gutter-sm justify-start justify-sm-end q-mt-xs q-mt-sm-none wrap"
-              >
-                <!-- Workflow Status Selector Chip -->
-                <q-chip
-                  dense
-                  square
-                  :clickable="shipmentStore.currentShipment.status !== 'Ready Stock'"
-                  :style="statusChipStyle(shipmentStore.currentShipment.status)"
-                  class="q-px-md q-py-sm text-weight-bold q-ma-none"
-                >
-                  <span
-                    class="status-chip-dot"
-                    :style="{
-                      backgroundColor: statusDotColor(shipmentStore.currentShipment.status),
-                    }"
-                  />
-                  {{ shipmentStore.currentShipment.status }}
-                  <q-icon
-                    v-if="shipmentStore.currentShipment.status !== 'Ready Stock'"
-                    name="ph ph-caret-down"
-                    class="q-ml-xs"
-                    size="16px"
-                  />
-                  <q-menu v-if="shipmentStore.currentShipment.status !== 'Ready Stock'">
-                    <q-list dense style="min-width: 180px">
-                      <q-item
-                        v-for="status in statuses"
-                        :key="status"
-                        clickable
-                        v-close-popup
-                        :disable="status === 'Ready Stock' && !isSplitsComplete"
-                        @click="changeStatus(status)"
-                      >
-                        <q-item-section>
-                          <div class="row items-center justify-between no-wrap">
-                            <span>{{ status }}</span>
-                            <q-icon
-                              v-if="status === 'Ready Stock' && !isSplitsComplete"
-                              name="ph ph-lock-key"
-                              color="grey-6"
-                              size="14px"
-                              class="q-ml-xs"
-                            >
-                              <q-tooltip
-                                >Configure splits for all items in 'Warehouse Received'
-                                first</q-tooltip
-                              >
-                            </q-icon>
-                          </div>
-                        </q-item-section>
-                      </q-item>
-                    </q-list>
-                  </q-menu>
-                </q-chip>
-
-                <!-- Edit / Delete flat buttons with icons only -->
-                <q-btn color="primary" flat round dense icon="ph ph-download-simple" @click="downloadExcel">
-                  <q-tooltip>Download Excel</q-tooltip>
-                </q-btn>
-                <q-btn
-                  v-if="isEditable"
-                  color="secondary"
-                  flat
-                  round
-                  dense
-                  icon="ph ph-pencil-simple"
-                  @click="openEditShipment"
-                >
-                  <q-tooltip>Edit Details</q-tooltip>
-                </q-btn>
-                <q-btn
-                  v-if="isEditable"
-                  color="negative"
-                  flat
-                  round
-                  dense
-                  icon="ph ph-trash"
-                  @click="confirmDeleteShipment"
-                >
-                  <q-tooltip>Delete Shipment</q-tooltip>
-                </q-btn>
               </div>
             </div>
-          </q-card-section>
-        </q-card>
-
-        <!-- Main Row: Metadata Sidebar left, Line items table right -->
-        <div class="row q-col-gutter-md">
-          <!-- Left Column: Summary and Costing Rates -->
-          <div v-if="isLeftColumnVisible" class="col-12 col-md-3 q-gutter-y-md">
-            <!-- Shipment Summary -->
-            <q-card flat bordered class="q-pa-md">
-              <div class="text-subtitle1 text-weight-bold text-primary q-mb-md">
-                Shipment Summary
-              </div>
-              <q-list dense separator>
-                <q-item class="q-py-sm">
-                  <q-item-section>
-                    <q-item-label class="text-grey-7 text-caption">Display ID</q-item-label>
-                    <q-item-label class="text-weight-bold">
-                      #{{
-                        shipmentStore.currentShipment.tenant_shipment_id ||
-                        shipmentStore.currentShipment.id
-                      }}
-                    </q-item-label>
-                  </q-item-section>
-                </q-item>
-
-                <q-item class="q-py-sm">
-                  <q-item-section>
-                    <q-item-label class="text-grey-7 text-caption">Status</q-item-label>
-                    <q-item-label>
-                      <q-chip
-                        square
-                        dense
-                        :color="statusChipColor(shipmentStore.currentShipment.status)"
-                        text-color="white"
-                        class="text-weight-bold"
-                      >
-                        {{ shipmentStore.currentShipment.status }}
-                      </q-chip>
-                    </q-item-label>
-                  </q-item-section>
-                </q-item>
-
-                <q-item class="q-py-sm">
-                  <q-item-section>
-                    <q-item-label class="text-grey-7 text-caption">Type</q-item-label>
-                    <q-item-label class="text-weight-bold text-capitalize">
-                      {{ shipmentStore.currentShipment.type }}
-                    </q-item-label>
-                  </q-item-section>
-                </q-item>
-
-                <q-item class="q-py-sm">
-                  <q-item-section>
-                    <q-item-label class="text-grey-7 text-caption">Stock Ready</q-item-label>
-                    <q-item-label>
-                      <q-chip
-                        dense
-                        square
-                        :color="shipmentStore.currentShipment.stock_ready ? 'green-1' : 'grey-2'"
-                        :text-color="
-                          shipmentStore.currentShipment.stock_ready ? 'green-9' : 'grey-8'
-                        "
-                      >
-                        {{ shipmentStore.currentShipment.stock_ready ? 'Ready' : 'Not Ready' }}
-                      </q-chip>
-                    </q-item-label>
-                  </q-item-section>
-                </q-item>
-              </q-list>
-            </q-card>
-
-            <!-- Rates & Weights -->
-            <q-card flat bordered class="q-pa-md">
-              <div class="text-subtitle1 text-weight-bold text-primary q-mb-md">
-                Rates & Weights
-              </div>
-              <q-list dense separator>
-                <q-item class="q-py-sm">
-                  <q-item-section>
-                    <q-item-label class="text-grey-7 text-caption"
-                      >Product Conversion Rate</q-item-label
-                    >
-                    <q-item-label class="text-weight-bold">
-                      {{ shipmentStore.currentShipment.product_conversion_rate }}
-                    </q-item-label>
-                  </q-item-section>
-                </q-item>
-
-                <q-item class="q-py-sm">
-                  <q-item-section>
-                    <q-item-label class="text-grey-7 text-caption"
-                      >Cargo Conversion Rate</q-item-label
-                    >
-                    <q-item-label class="text-weight-bold">
-                      {{ shipmentStore.currentShipment.cargo_conversion_rate }}
-                    </q-item-label>
-                  </q-item-section>
-                </q-item>
-
-                <q-item class="q-py-sm">
-                  <q-item-section>
-                    <q-item-label class="text-grey-7 text-caption">Cargo Rate</q-item-label>
-                    <q-item-label class="text-weight-bold">
-                      {{ shipmentStore.currentShipment.cargo_rate }}
-                    </q-item-label>
-                  </q-item-section>
-                </q-item>
-
-                <q-item class="q-py-sm">
-                  <q-item-section>
-                    <q-item-label class="text-grey-7 text-caption">Transaction Rate</q-item-label>
-                    <q-item-label class="text-weight-bold">
-                      {{
-                        totals.transactionRate !== null ? totals.transactionRate.toFixed(4) : '-'
-                      }}
-                    </q-item-label>
-                  </q-item-section>
-                </q-item>
-
-                <q-item class="q-py-sm">
-                  <q-item-section>
-                    <q-item-label class="text-grey-7 text-caption">Received Weight</q-item-label>
-                    <q-item-label class="text-weight-bold">
-                      {{ formatWeightKg(shipmentStore.currentShipment.received_weight) }}
-                    </q-item-label>
-                  </q-item-section>
-                </q-item>
-              </q-list>
-            </q-card>
           </div>
+          <div class="col-auto row q-gutter-xs items-center">
+            <q-btn
+              flat
+              dense
+              no-caps
+              size="sm"
+              color="primary"
+              icon="ph ph-download-simple"
+              label="Excel"
+              @click="downloadExcel"
+            />
+            <q-btn
+              v-if="isEditable"
+              flat
+              dense
+              no-caps
+              size="sm"
+              color="grey-8"
+              icon="ph ph-pencil-simple"
+              label="Edit"
+              @click="openEditShipment"
+            />
+            <q-btn
+              v-if="isEditable"
+              flat
+              dense
+              no-caps
+              size="sm"
+              color="negative"
+              icon="ph ph-trash"
+              label="Delete"
+              @click="confirmDeleteShipment"
+            />
+          </div>
+        </section>
 
-          <!-- Right Column: Shipment Line Items -->
-          <div class="col-12" :class="isLeftColumnVisible ? 'col-md-9' : 'col-md-12'">
-            <q-card flat bordered class="q-pa-none line-items-card">
-              <q-card-section class="row items-center justify-between q-pb-none q-pa-md">
-                <div class="row items-center">
-                  <q-btn
-                    flat
-                    round
-                    dense
-                    color="primary"
-                    :icon="
-                      isLeftColumnVisible
-                        ? 'keyboard_double_arrow_left'
-                        : 'keyboard_double_arrow_right'
-                    "
-                    @click="isLeftColumnVisible = !isLeftColumnVisible"
-                    class="q-mr-sm"
-                  >
-                    <q-tooltip>{{
-                      isLeftColumnVisible ? 'Collapse Sidebar' : 'Expand Sidebar'
-                    }}</q-tooltip>
-                  </q-btn>
-                  <div class="text-subtitle1 text-weight-bold text-primary">
-                    Shipment Line Items
-                  </div>
+        <ShipmentStatusWorkflowBar
+          :status="shipmentStore.currentShipment.status"
+          :updating="updatingStatus"
+          :target-status="targetUpdatingStatus"
+          :lock-received="!isSplitsComplete"
+          @update-status="changeStatus"
+        />
+
+        <!-- Next-step banner (only when there is something to do or a lock notice) -->
+        <q-banner
+          v-if="nextStep"
+          dense
+          rounded
+          class="bg-primary-1 text-primary"
+          style="background: var(--bw-theme-primary-soft, #e8f5e9)"
+        >
+          <template #avatar>
+            <q-icon name="ph ph-arrow-right" color="primary" />
+          </template>
+          <div class="row items-center justify-between q-gutter-sm wrap full-width">
+            <div class="col">
+              <div class="text-body2 text-weight-medium text-grey-9">{{ nextStep.message }}</div>
+              <div v-if="nextStep.disabled && nextStep.reason" class="text-caption text-grey-7">
+                {{ nextStep.reason }}
+              </div>
+            </div>
+            <div class="col-auto row items-center q-gutter-xs">
+              <q-chip
+                v-if="weightNeedsAttention"
+                dense
+                square
+                color="orange-1"
+                text-color="orange-9"
+                label="Weight off"
+              />
+              <q-chip
+                v-if="purchaseNeedsAttention"
+                dense
+                square
+                color="orange-1"
+                text-color="orange-9"
+                label="Purchase off"
+              />
+              <q-chip
+                v-if="receiveNeedsAttention"
+                dense
+                square
+                color="orange-1"
+                text-color="orange-9"
+                label="Splits pending"
+              />
+              <q-btn
+                v-if="nextStep.label"
+                color="primary"
+                unelevated
+                dense
+                no-caps
+                class="q-px-md"
+                :label="nextStep.label"
+                :disable="nextStep.disabled"
+                @click="runPrimaryCta"
+              >
+                <q-tooltip v-if="nextStep.disabled && nextStep.reason">{{
+                  nextStep.reason
+                }}</q-tooltip>
+              </q-btn>
+            </div>
+          </div>
+        </q-banner>
+
+        <!-- Tabs + contextual actions on one row -->
+        <div>
+          <div class="row items-center justify-between no-wrap q-gutter-sm">
+            <q-tabs
+              v-model="activeTab"
+              dense
+              align="left"
+              active-color="primary"
+              indicator-color="primary"
+              class="text-grey-8 col-grow"
+              no-caps
+              narrow-indicator
+            >
+              <q-tab name="lines" data-test="tab-lines">
+                <div class="row items-center no-wrap q-gutter-xs">
+                  <span>Items</span>
+                  <q-badge v-if="!hasLineItems" color="orange" rounded label="!" />
                 </div>
-                <div class="row items-center q-gutter-x-sm">
+              </q-tab>
+              <q-tab name="balance" data-test="tab-balance">
+                <div class="row items-center no-wrap q-gutter-xs">
+                  <span>Match invoices</span>
+                  <q-badge v-if="balanceNeedsAttention" color="orange" rounded label="!" />
+                </div>
+              </q-tab>
+              <q-tab name="cost" label="Landed cost" data-test="tab-cost" />
+              <q-tab v-if="showReceiveTab" name="receive" data-test="tab-receive">
+                <div class="row items-center no-wrap q-gutter-xs">
+                  <span>Add to stock</span>
+                  <q-badge v-if="receiveNeedsAttention" color="orange" rounded label="!" />
+                </div>
+              </q-tab>
+            </q-tabs>
+
+            <div v-if="activeTab === 'lines'" class="col-auto row items-center q-gutter-xs">
+              <q-btn
+                color="primary"
+                outline
+                no-caps
+                size="sm"
+                icon="ph ph-columns"
+                dense
+                label="Columns"
+                class="q-px-sm"
+              >
+                <q-menu>
+                  <q-list style="min-width: 220px" class="q-py-xs">
+                    <q-item>
+                      <q-item-section>
+                        <div class="text-subtitle2 text-weight-bold text-primary">Show Columns</div>
+                      </q-item-section>
+                    </q-item>
+                    <q-item clickable>
+                      <q-item-section>
+                        <q-checkbox v-model="allColumnsSelected" label="Select / Deselect All" />
+                      </q-item-section>
+                    </q-item>
+                    <q-separator />
+                    <q-item v-for="col in availableColumnOptions" :key="col.value" clickable>
+                      <q-item-section>
+                        <q-checkbox
+                          v-model="visibleColumns"
+                          :val="col.value"
+                          :label="col.label"
+                        />
+                      </q-item-section>
+                    </q-item>
+                  </q-list>
+                </q-menu>
+              </q-btn>
+              <q-btn
+                v-if="
+                  shipmentStore.currentShipment?.status === 'in_transit' && !isSplitsComplete
+                "
+                color="green-7"
+                icon="ph ph-git-fork"
+                label="Auto Accept"
+                unelevated
+                dense
+                no-caps
+                size="sm"
+                :loading="shipmentStore.loading"
+                @click="autoAcceptSplits"
+              />
+              <q-btn
+                v-if="isEditable"
+                color="secondary"
+                icon="ph ph-clipboard"
+                label="Paste"
+                unelevated
+                dense
+                no-caps
+                size="sm"
+                @click="openBulkPaste"
+              />
+              <q-btn
+                v-if="isEditable"
+                color="primary"
+                icon="ph ph-plus"
+                label="Add"
+                unelevated
+                dense
+                no-caps
+                size="sm"
+                @click="openAddItems"
+              />
+            </div>
+          </div>
+          <q-separator />
+
+          <q-tab-panels v-model="activeTab" animated class="bg-transparent q-pt-sm">
+            <!-- Items -->
+            <q-tab-panel name="lines" class="q-pa-none">
+              <q-card flat bordered class="q-pa-none line-items-card">
+                <div
+                  v-if="!hasLineItems && !shipmentStore.loading"
+                  class="column items-center q-pa-lg text-center"
+                >
+                  <q-icon name="ph ph-package" size="40px" color="grey-5" />
+                  <div class="text-body2 text-grey-7 q-mt-sm q-mb-md">No products yet</div>
                   <q-btn
+                    v-if="isEditable"
                     color="primary"
-                    outline
+                    unelevated
                     no-caps
+                    dense
                     size="sm"
-                    icon="ph ph-columns"
-                    dense
-                    label="Columns"
-                    class="q-px-sm"
-                  >
-                    <q-menu>
-                      <q-list style="min-width: 220px" class="q-py-xs">
-                        <q-item>
-                          <q-item-section>
-                            <div class="text-subtitle2 text-weight-bold text-primary">
-                              Show Columns
-                            </div>
-                          </q-item-section>
-                        </q-item>
-                        <q-item clickable>
-                          <q-item-section>
-                            <q-checkbox
-                              v-model="allColumnsSelected"
-                              label="Select / Deselect All"
-                            />
-                          </q-item-section>
-                        </q-item>
-                        <q-separator />
-                        <q-item v-for="col in availableColumnOptions" :key="col.value" clickable>
-                          <q-item-section>
-                            <q-checkbox
-                              v-model="visibleColumns"
-                              :val="col.value"
-                              :label="col.label"
-                            />
-                          </q-item-section>
-                        </q-item>
-                      </q-list>
-                    </q-menu>
-                  </q-btn>
-                  <q-btn
-                    v-if="
-                      shipmentStore.currentShipment?.status === 'Warehouse Received' &&
-                      !isSplitsComplete
-                    "
-                    color="green-7"
-                    icon="ph ph-git-fork"
-                    label="Auto Accept Splits"
-                    unelevated
-                    dense
-                    no-caps
-                    class="q-px-md q-mr-sm"
-                    :loading="shipmentStore.loading"
-                    @click="autoAcceptSplits"
-                  />
-                  <q-btn
-                    v-if="isEditable"
-                    color="secondary"
-                    icon="ph ph-clipboard"
-                    label="Bulk Paste"
-                    unelevated
-                    dense
-                    no-caps
-                    class="q-px-md q-mr-sm"
-                    @click="openBulkPaste"
-                  />
-                  <q-btn
-                    v-if="isEditable"
-                    color="primary"
-                    icon="ph ph-shopping-cart"
-                    label="Add Items"
-                    unelevated
-                    dense
-                    no-caps
-                    class="q-px-md"
+                    icon="ph ph-plus"
+                    label="Add items"
                     @click="openAddItems"
                   />
                 </div>
-              </q-card-section>
+                <ShipmentLineItemsTable
+                  v-else
+                  :items="shipmentStore.currentShipmentItems"
+                  :shipment="shipmentForLiveCosting"
+                  :loading="shipmentStore.loading"
+                  :visible-columns="visibleColumns"
+                  :purchase-currency-symbol="currentPurchaseCurrencySymbol"
+                  :cost-currency-symbol="currentCostCurrencySymbol"
+                  @edit-details="openEditItem"
+                  @delete="confirmDeleteItem"
+                />
+              </q-card>
+            </q-tab-panel>
 
-              <ShipmentLineItemsTable
-                :items="shipmentStore.currentShipmentItems"
-                :shipment="shipmentForLiveCosting"
-                :loading="shipmentStore.loading"
-                :visible-columns="visibleColumns"
-                :purchase-currency-symbol="currentPurchaseCurrencySymbol"
-                :cost-currency-symbol="currentCostCurrencySymbol"
-                @edit-details="openEditItem"
-                @delete="confirmDeleteItem"
-              />
-            </q-card>
-          </div>
-        </div>
-
-        <!-- Costing / Weight Band Below Table (50/50 split on SM+) -->
-        <div class="row q-col-gutter-md q-mt-md">
-          <div class="col-12 col-sm-6">
-            <!-- Landed Cost Summary Card -->
-            <q-card flat bordered class="q-pa-md bg-white text-grey-9 shadow-1">
-              <div class="row items-center justify-between q-mb-md">
-                <div class="text-subtitle1 text-weight-bold text-primary">Landed Cost Summary</div>
-                <q-btn
-                  flat
-                  round
-                  dense
-                  icon="ph ph-note-pencil"
-                  color="primary"
-                  size="sm"
-                  @click="openEditRates"
-                >
-                  <q-tooltip>Edit Rates</q-tooltip>
-                </q-btn>
+            <!-- Match invoices -->
+            <q-tab-panel name="balance" class="q-pa-none">
+              <div class="column q-gutter-y-md">
+                <ShipmentWeightBalanceCard
+                  :shipment-id="shipmentId"
+                  @applied="loadShipmentDetails"
+                />
+                <ShipmentPurchaseBalanceCard
+                  :shipment-id="shipmentId"
+                  @applied="loadShipmentDetails"
+                />
               </div>
+            </q-tab-panel>
 
-              <!-- 1. Shipment totals -->
-              <div class="q-mb-md">
-                <div
-                  class="text-xs text-weight-bold text-grey-6 uppercase q-mb-xs"
-                  style="font-size: 11px; letter-spacing: 0.5px"
-                >
-                  Shipment Totals
-                </div>
-                <div class="row justify-between q-py-xs">
-                  <span class="text-caption text-grey-7">Total Quantity:</span>
-                  <span class="text-subtitle2 text-weight-bold">{{ totals.quantity }} pcs</span>
-                </div>
-                <div class="row justify-between q-py-xs">
-                  <span class="text-caption text-grey-7">Packaging Weight:</span>
-                  <span class="text-subtitle2 text-weight-bold"
-                    >{{ totals.packagingWeightKg.toFixed(2) }} kg</span
+            <!-- Landed cost -->
+            <q-tab-panel name="cost" class="q-pa-none">
+              <q-card flat bordered class="q-pa-md bg-white text-grey-9">
+                <div class="row items-center justify-between q-mb-md">
+                  <div class="text-subtitle1 text-weight-bold text-primary">Landed Cost Summary</div>
+                  <q-btn
+                    v-if="isEditable"
+                    flat
+                    round
+                    dense
+                    icon="ph ph-note-pencil"
+                    color="primary"
+                    size="sm"
+                    @click="openEditRates"
                   >
+                    <q-tooltip>Edit Rates</q-tooltip>
+                  </q-btn>
                 </div>
-                <div class="row justify-between q-py-xs" v-if="hasCargoInvoiceWeight">
-                  <span class="text-caption text-grey-7">Invoice Weight:</span>
-                  <span class="text-subtitle2 text-weight-bold text-primary"
-                    >{{ totals.cargoWeightKg.toFixed(2) }} kg</span
-                  >
-                </div>
-                <div class="row justify-between q-py-xs">
-                  <span class="text-caption text-grey-7">Box Weight Sum:</span>
-                  <span class="text-subtitle2 text-weight-bold"
-                    >{{ currentShipmentBoxesTotal.toFixed(2) }} kg</span
-                  >
-                </div>
-              </div>
 
-              <q-separator class="q-my-sm" />
-
-              <!-- 2. Purchase currency -->
-              <div class="q-mb-md">
-                <div
-                  class="text-xs text-weight-bold text-grey-6 uppercase q-mb-xs"
-                  style="font-size: 11px; letter-spacing: 0.5px"
-                >
-                  Purchase Currency ({{ currentPurchaseCurrencySymbol }})
-                </div>
-                <div class="row justify-between q-py-xs">
-                  <span class="text-caption text-grey-7">Product Purchase Cost:</span>
-                  <span class="text-subtitle2 text-weight-bold">
-                    {{ currentPurchaseCurrencySymbol
-                    }}{{
-                      totals.goodsPurchase.toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })
-                    }}
-                  </span>
-                </div>
-                <div
-                  class="row justify-between q-py-xs"
-                  v-if="shipmentStore.currentShipment?.cargo_rate > 0"
-                >
-                  <span class="text-caption text-grey-7">Cargo Cost:</span>
-                  <div class="text-right">
-                    <div class="text-subtitle2 text-weight-bold">
-                      {{ currentPurchaseCurrencySymbol
-                      }}{{
-                        totals.cargoPurchase.toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })
-                      }}
-                    </div>
-                    <div class="text-caption text-grey-5" style="font-size: 10px">
-                      {{ cargoCostWeightLabel }}
-                    </div>
-                  </div>
-                </div>
-                <div class="row justify-between q-py-xs bg-grey-1 q-px-sm rounded-borders">
-                  <span class="text-caption text-weight-medium text-grey-8"
-                    >Total Purchase Cost:</span
-                  >
-                  <span class="text-subtitle2 text-weight-bold text-primary">
-                    {{ currentPurchaseCurrencySymbol
-                    }}{{
-                      totals.totalPurchase.toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })
-                    }}
-                  </span>
-                </div>
-              </div>
-
-              <!-- 3 & 4: Only for international -->
-              <template v-if="shipmentStore.currentShipment?.type === 'international'">
-                <q-separator class="q-my-sm" />
-
-                <!-- 3. Cost currency -->
                 <div class="q-mb-md">
                   <div
                     class="text-xs text-weight-bold text-grey-6 uppercase q-mb-xs"
                     style="font-size: 11px; letter-spacing: 0.5px"
                   >
-                    Cost Currency ({{ currentCostCurrencySymbol }})
+                    Shipment Totals
                   </div>
                   <div class="row justify-between q-py-xs">
-                    <span class="text-caption text-grey-7">Product Cost:</span>
+                    <span class="text-caption text-grey-7">Total Quantity:</span>
+                    <span class="text-subtitle2 text-weight-bold">{{ totals.quantity }} pcs</span>
+                  </div>
+                  <div class="row justify-between q-py-xs">
+                    <span class="text-caption text-grey-7">Packaging Weight:</span>
+                    <span class="text-subtitle2 text-weight-bold"
+                      >{{ totals.packagingWeightKg.toFixed(2) }} kg</span
+                    >
+                  </div>
+                  <div class="row justify-between q-py-xs" v-if="hasCargoInvoiceWeight">
+                    <span class="text-caption text-grey-7">Invoice Weight:</span>
+                    <span class="text-subtitle2 text-weight-bold text-primary"
+                      >{{ totals.cargoWeightKg.toFixed(2) }} kg</span
+                    >
+                  </div>
+                  <div class="row justify-between q-py-xs">
+                    <span class="text-caption text-grey-7">Box Weight Sum:</span>
+                    <span class="text-subtitle2 text-weight-bold"
+                      >{{ currentShipmentBoxesTotal.toFixed(2) }} kg</span
+                    >
+                  </div>
+                </div>
+
+                <q-separator class="q-my-sm" />
+
+                <div class="q-mb-md">
+                  <div
+                    class="text-xs text-weight-bold text-grey-6 uppercase q-mb-xs"
+                    style="font-size: 11px; letter-spacing: 0.5px"
+                  >
+                    Purchase Currency ({{ currentPurchaseCurrencySymbol }})
+                  </div>
+                  <div class="row justify-between q-py-xs">
+                    <span class="text-caption text-grey-7">Product Purchase Cost:</span>
                     <span class="text-subtitle2 text-weight-bold">
-                      {{ currentCostCurrencySymbol
+                      {{ currentPurchaseCurrencySymbol
                       }}{{
-                        totals.goodsCost.toLocaleString(undefined, {
+                        totals.goodsPurchase.toLocaleString(undefined, {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2,
                         })
@@ -559,203 +401,303 @@
                     v-if="shipmentStore.currentShipment?.cargo_rate > 0"
                   >
                     <span class="text-caption text-grey-7">Cargo Cost:</span>
-                    <span class="text-subtitle2 text-weight-bold">
-                      {{ currentCostCurrencySymbol
+                    <div class="text-right">
+                      <div class="text-subtitle2 text-weight-bold">
+                        {{ currentPurchaseCurrencySymbol
+                        }}{{
+                          totals.cargoPurchase.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })
+                        }}
+                      </div>
+                      <div class="text-caption text-grey-5" style="font-size: 10px">
+                        {{ cargoCostWeightLabel }}
+                      </div>
+                    </div>
+                  </div>
+                  <div class="row justify-between q-py-xs bg-grey-1 q-px-sm rounded-borders">
+                    <span class="text-caption text-weight-medium text-grey-8"
+                      >Total Purchase Cost:</span
+                    >
+                    <span class="text-subtitle2 text-weight-bold text-primary">
+                      {{ currentPurchaseCurrencySymbol
                       }}{{
-                        totals.cargoCost.toLocaleString(undefined, {
+                        totals.totalPurchase.toLocaleString(undefined, {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2,
                         })
                       }}
                     </span>
                   </div>
-                  <div
-                    class="row justify-between items-center q-py-sm bg-primary text-white q-px-sm rounded-borders"
-                  >
-                    <span class="text-subtitle2 text-weight-bold">Total Cost:</span>
-                    <span class="text-h6 text-weight-bolder">
-                      {{ currentCostCurrencySymbol
-                      }}{{
-                        totals.totalCost.toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })
+                </div>
+
+                <template v-if="shipmentStore.currentShipment?.type === 'international'">
+                  <q-separator class="q-my-sm" />
+                  <div class="q-mb-md">
+                    <div
+                      class="text-xs text-weight-bold text-grey-6 uppercase q-mb-xs"
+                      style="font-size: 11px; letter-spacing: 0.5px"
+                    >
+                      Cost Currency ({{ currentCostCurrencySymbol }})
+                    </div>
+                    <div class="row justify-between q-py-xs">
+                      <span class="text-caption text-grey-7">Product Cost:</span>
+                      <span class="text-subtitle2 text-weight-bold">
+                        {{ currentCostCurrencySymbol
+                        }}{{
+                          totals.goodsCost.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })
+                        }}
+                      </span>
+                    </div>
+                    <div
+                      class="row justify-between q-py-xs"
+                      v-if="shipmentStore.currentShipment?.cargo_rate > 0"
+                    >
+                      <span class="text-caption text-grey-7">Cargo Cost:</span>
+                      <span class="text-subtitle2 text-weight-bold">
+                        {{ currentCostCurrencySymbol
+                        }}{{
+                          totals.cargoCost.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })
+                        }}
+                      </span>
+                    </div>
+                    <div
+                      class="row justify-between items-center q-py-sm bg-primary text-white q-px-sm rounded-borders"
+                    >
+                      <span class="text-subtitle2 text-weight-bold">Total Cost:</span>
+                      <span class="text-h6 text-weight-bolder">
+                        {{ currentCostCurrencySymbol
+                        }}{{
+                          totals.totalCost.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })
+                        }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div class="bg-blue-1 text-blue-10 q-pa-sm rounded-borders text-center">
+                    <div
+                      class="text-caption text-weight-medium uppercase"
+                      style="font-size: 10px; letter-spacing: 0.5px"
+                    >
+                      Live Blended Transaction Rate
+                    </div>
+                    <div class="text-h5 text-weight-bolder q-my-xs">
+                      {{
+                        totals.transactionRate !== null
+                          ? `${currentCostCurrencySymbol}${totals.transactionRate.toFixed(4)}`
+                          : '-'
                       }}
+                    </div>
+                    <div class="text-caption text-blue-8" style="font-size: 10px; line-height: 1.2">
+                      {{ transactionRateWeightLabel }}
+                    </div>
+                  </div>
+                </template>
+              </q-card>
+            </q-tab-panel>
+
+            <!-- Add to stock -->
+            <q-tab-panel v-if="showReceiveTab" name="receive" class="q-pa-none">
+              <q-card
+                v-if="shipmentStore.currentShipment?.status === 'in_transit'"
+                flat
+                bordered
+                class="q-pa-md bg-white text-grey-9 q-mb-md"
+              >
+                <div class="text-subtitle1 text-weight-bold text-primary q-mb-sm">Checklist</div>
+                <div class="text-caption text-grey-7 q-mb-md">
+                  Complete each step before adding this shipment to stock.
+                </div>
+                <q-list dense separator>
+                  <q-item clickable @click="activeTab = 'lines'">
+                    <q-item-section avatar>
+                      <q-icon
+                        :name="hasLineItems ? 'ph ph-check-circle' : 'ph ph-circle'"
+                        :color="hasLineItems ? 'positive' : 'grey-5'"
+                      />
+                    </q-item-section>
+                    <q-item-section>
+                      <q-item-label>Items added</q-item-label>
+                      <q-item-label caption>{{
+                        hasLineItems
+                          ? `${shipmentStore.currentShipmentItems.length} products`
+                          : 'Add products on the Items tab'
+                      }}</q-item-label>
+                    </q-item-section>
+                  </q-item>
+                  <q-item clickable @click="activeTab = 'balance'">
+                    <q-item-section avatar>
+                      <q-icon
+                        :name="
+                          !hasCargoInvoiceWeight || !weightNeedsAttention
+                            ? 'ph ph-check-circle'
+                            : 'ph ph-circle'
+                        "
+                        :color="
+                          !hasCargoInvoiceWeight || !weightNeedsAttention ? 'positive' : 'grey-5'
+                        "
+                      />
+                    </q-item-section>
+                    <q-item-section>
+                      <q-item-label>Weight matched</q-item-label>
+                      <q-item-label caption>{{
+                        !hasCargoInvoiceWeight
+                          ? 'No cargo invoice weight set (optional skip)'
+                          : weightNeedsAttention
+                            ? 'Invoice weight still differs from line weights'
+                            : 'Line weights match cargo invoice'
+                      }}</q-item-label>
+                    </q-item-section>
+                  </q-item>
+                  <q-item clickable @click="activeTab = 'balance'">
+                    <q-item-section avatar>
+                      <q-icon
+                        :name="
+                          !purchaseNeedsAttention ? 'ph ph-check-circle' : 'ph ph-circle'
+                        "
+                        :color="!purchaseNeedsAttention ? 'positive' : 'grey-5'"
+                      />
+                    </q-item-section>
+                    <q-item-section>
+                      <q-item-label>Purchase matched</q-item-label>
+                      <q-item-label caption>{{
+                        !((shipmentStore.currentShipment?.purchase_invoice_total ?? 0) > 0)
+                          ? 'No paid invoice total set (optional skip)'
+                          : purchaseNeedsAttention
+                            ? 'Paid invoice still differs from line purchases'
+                            : 'Line purchases match paid invoice'
+                      }}</q-item-label>
+                    </q-item-section>
+                  </q-item>
+                  <q-item clickable @click="activeTab = 'lines'">
+                    <q-item-section avatar>
+                      <q-icon
+                        :name="isSplitsComplete ? 'ph ph-check-circle' : 'ph ph-circle'"
+                        :color="isSplitsComplete ? 'positive' : 'orange'"
+                      />
+                    </q-item-section>
+                    <q-item-section>
+                      <q-item-label>Splits complete</q-item-label>
+                      <q-item-label caption>{{
+                        isSplitsComplete
+                          ? `${splitsSummary.totalAllocated} / ${splitsSummary.totalOrdered} pcs allocated`
+                          : 'Configure quantity splits on the Items tab'
+                      }}</q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+              </q-card>
+
+              <q-card
+                v-if="shipmentStore.currentShipment?.status === 'in_transit'"
+                flat
+                bordered
+                class="q-pa-md bg-white text-grey-9 q-mb-md"
+              >
+                <div class="row items-center justify-between q-mb-md">
+                  <div class="text-subtitle1 text-weight-bold text-primary">
+                    Quantity Splits Summary
+                  </div>
+                  <q-chip
+                    dense
+                    square
+                    :color="splitsSummary.isComplete ? 'green-1' : 'orange-1'"
+                    :text-color="splitsSummary.isComplete ? 'green-9' : 'orange-9'"
+                    class="text-weight-bold"
+                  >
+                    {{ splitsSummary.isComplete ? 'Complete' : 'Pending Splits' }}
+                  </q-chip>
+                </div>
+
+                <div class="q-gutter-y-sm">
+                  <div
+                    v-for="item in splitsSummary.breakdown"
+                    :key="item.id"
+                    class="row justify-between items-center q-py-xs"
+                    style="border-bottom: 1px dashed rgba(0, 0, 0, 0.08)"
+                  >
+                    <div class="column">
+                      <span class="text-subtitle2 text-weight-bold" style="line-height: 1.2">{{
+                        item.description
+                      }}</span>
+                      <span class="text-caption text-grey-6" style="font-size: 11px">
+                        {{ item.is_sellable ? 'Sellable Pool' : 'Non-Sellable Pool' }}
+                      </span>
+                    </div>
+                    <div class="text-subtitle2 text-weight-bold text-primary">
+                      {{ item.quantity }} pcs
+                    </div>
+                  </div>
+
+                  <div
+                    v-if="splitsSummary.breakdown.length === 0"
+                    class="text-center text-grey-6 q-py-md"
+                  >
+                    No stock allocations saved yet. Configure splits on the Items tab.
+                  </div>
+
+                  <q-separator class="q-my-sm" />
+
+                  <div
+                    class="row justify-between items-center q-py-sm bg-grey-1 q-px-sm rounded-borders"
+                  >
+                    <span class="text-caption text-weight-medium text-grey-8">Total Allocated:</span>
+                    <span class="text-subtitle2 text-weight-bolder text-primary">
+                      {{ splitsSummary.totalAllocated }} / {{ splitsSummary.totalOrdered }} pcs
                     </span>
                   </div>
-
-                  <!-- Warning caption if lineLandedCostTotal differs from totalCost -->
-                  <div
-                    v-if="Math.abs(totals.lineLandedCostTotal - totals.totalCost) > 0.05"
-                    class="row items-center q-mt-xs q-px-xs text-amber-9 text-caption text-weight-medium"
-                    style="font-size: 11px; line-height: 1.2"
-                  >
-                    <q-icon name="ph ph-warning" class="q-mr-xs" size="14px" />
-                    <span
-                      >Landed cost total ({{ currentCostCurrencySymbol
-                      }}{{
-                        totals.lineLandedCostTotal.toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })
-                      }}) differs from total cost by {{ currentCostCurrencySymbol
-                      }}{{ Math.abs(totals.lineLandedCostTotal - totals.totalCost).toFixed(2) }} due
-                      to rounding.</span
-                    >
-                  </div>
                 </div>
 
-                <q-separator class="q-my-sm" />
-
-                <!-- 4. Transaction rate (always visible) -->
-                <div class="bg-blue-1 text-blue-10 q-pa-sm rounded-borders text-center">
-                  <div
-                    class="text-caption text-weight-medium uppercase"
-                    style="font-size: 10px; letter-spacing: 0.5px"
-                  >
-                    Live Blended Transaction Rate
-                  </div>
-                  <div class="text-h5 text-weight-bolder q-my-xs">
-                    {{
-                      totals.transactionRate !== null
-                        ? `${currentCostCurrencySymbol}${totals.transactionRate.toFixed(4)}`
-                        : '-'
-                    }}
-                  </div>
-                  <div class="text-caption text-blue-8" style="font-size: 10px; line-height: 1.2">
-                    {{ transactionRateWeightLabel }}
-                  </div>
-
-                  <!-- Weight balance status -->
-                  <div v-if="hasCargoInvoiceWeight" class="q-mt-xs">
-                    <div
-                      v-if="Math.abs(totals.packagingWeightKg - totals.cargoWeightKg) > 0.01"
-                      class="row items-center justify-center text-amber-9 text-caption text-weight-medium"
-                      style="font-size: 11px"
-                    >
-                      <q-icon name="ph ph-warning" class="q-mr-xs" size="14px" />
-                      <span
-                        >Line estimate ({{ totals.packagingWeightKg.toFixed(2) }} kg) differs from
-                        invoice ({{ totals.cargoWeightKg.toFixed(2) }} kg) — apply weight
-                        balance</span
-                      >
-                    </div>
-                    <div
-                      v-else
-                      class="row items-center justify-center text-green-9 text-caption text-weight-medium"
-                      style="font-size: 11px"
-                    >
-                      <q-icon name="ph ph-check-circle" class="q-mr-xs" size="14px" />
-                      <span>Line estimate matches invoice weight</span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Promoted Receive to Stock button (only for Warehouse Received status) -->
                 <q-btn
-                  v-if="shipmentStore.currentShipment?.status === 'Warehouse Received'"
                   :color="isSplitsComplete ? 'green-7' : 'grey-5'"
                   :disable="!isSplitsComplete"
                   unelevated
                   class="full-width q-mt-md text-weight-bold text-white"
                   icon="ph ph-check-circle"
-                  label="Receive to Stock"
+                  label="Add to stock"
                   no-caps
-                  @click="changeStatus('Ready Stock')"
+                  @click="changeStatus('received')"
                 >
                   <q-tooltip v-if="!isSplitsComplete">
-                    Configure quantity splits for all items in the table first
+                    Configure quantity splits for all items first
                   </q-tooltip>
                 </q-btn>
+              </q-card>
 
-                <!-- Rollback Shipment button (only for Ready Stock status) -->
+              <q-card
+                v-if="shipmentStore.currentShipment?.status === 'received'"
+                flat
+                bordered
+                class="q-pa-md"
+              >
+                <div class="text-subtitle1 text-weight-bold text-primary q-mb-sm">In stock</div>
+                <div class="text-body2 text-grey-7 q-mb-md">
+                  Stock already posted — editing is locked. Use Rollback only if you need to undo.
+                </div>
                 <q-btn
-                  v-if="shipmentStore.currentShipment?.status === 'Ready Stock'"
                   color="negative"
                   unelevated
-                  class="full-width q-mt-md text-weight-bold text-white"
+                  class="full-width text-weight-bold text-white"
                   icon="ph ph-clock-counter-clockwise"
-                  label="Rollback Shipment to Draft"
+                  label="Rollback shipment to Draft"
                   no-caps
                   :loading="updatingStatus"
                   @click="rollbackShipmentToDraft"
                 />
-              </template>
-            </q-card>
-
-            <!-- Stock Splits Summary Card -->
-            <q-card
-              v-if="shipmentStore.currentShipment?.status === 'Warehouse Received'"
-              flat
-              bordered
-              class="q-pa-md bg-white text-grey-9 shadow-1 q-mt-md"
-            >
-              <div class="row items-center justify-between q-mb-md">
-                <div class="text-subtitle1 text-weight-bold text-primary">
-                  Quantity Splits Summary
-                </div>
-                <q-chip
-                  dense
-                  square
-                  :color="splitsSummary.isComplete ? 'green-1' : 'orange-1'"
-                  :text-color="splitsSummary.isComplete ? 'green-9' : 'orange-9'"
-                  class="text-weight-bold"
-                >
-                  {{ splitsSummary.isComplete ? 'Complete' : 'Pending Splits' }}
-                </q-chip>
-              </div>
-
-              <div class="q-gutter-y-sm">
-                <!-- Breakdown list -->
-                <div
-                  v-for="item in splitsSummary.breakdown"
-                  :key="item.id"
-                  class="row justify-between items-center q-py-xs"
-                  style="border-bottom: 1px dashed rgba(0, 0, 0, 0.08)"
-                >
-                  <div class="column">
-                    <span class="text-subtitle2 text-weight-bold" style="line-height: 1.2">{{
-                      item.description
-                    }}</span>
-                    <span class="text-caption text-grey-6" style="font-size: 11px">
-                      {{ item.is_sellable ? 'Sellable Pool' : 'Non-Sellable Pool' }}
-                    </span>
-                  </div>
-                  <div class="text-subtitle2 text-weight-bold text-primary">
-                    {{ item.quantity }} pcs
-                  </div>
-                </div>
-
-                <div
-                  v-if="splitsSummary.breakdown.length === 0"
-                  class="text-center text-grey-6 q-py-md"
-                >
-                  No stock allocations saved yet.
-                </div>
-
-                <q-separator class="q-my-sm" />
-
-                <!-- Total -->
-                <div
-                  class="row justify-between items-center q-py-sm bg-grey-1 q-px-sm rounded-borders"
-                >
-                  <span class="text-caption text-weight-medium text-grey-8">Total Allocated:</span>
-                  <span class="text-subtitle2 text-weight-bolder text-primary">
-                    {{ splitsSummary.totalAllocated }} / {{ splitsSummary.totalOrdered }} pcs
-                  </span>
-                </div>
-              </div>
-            </q-card>
-          </div>
-
-          <div class="col-12 col-sm-6 q-gutter-y-md">
-            <!-- Shipment Weight Balance Card -->
-            <ShipmentWeightBalanceCard :shipment-id="shipmentId" @applied="loadShipmentDetails" />
-            <!-- Shipment Purchase Balance Card -->
-            <ShipmentPurchaseBalanceCard :shipment-id="shipmentId" @applied="loadShipmentDetails" />
-          </div>
+              </q-card>
+            </q-tab-panel>
+          </q-tab-panels>
         </div>
-      </div>
 
       <!-- Edit Rates Dialog -->
       <q-dialog v-model="showRatesDialog" persistent>
@@ -967,7 +909,8 @@
           </q-card-actions>
         </q-card>
       </q-dialog>
-    </section>
+      </template>
+    </div>
   </q-page>
 </template>
 
@@ -986,6 +929,7 @@ import BulkPasteDialog from '../components/BulkPasteDialog.vue';
 import ShipmentLineItemsTable, { type ColumnKey } from '../components/ShipmentLineItemsTable.vue';
 import ShipmentWeightBalanceCard from '../components/ShipmentWeightBalanceCard.vue';
 import ShipmentPurchaseBalanceCard from '../components/ShipmentPurchaseBalanceCard.vue';
+import ShipmentStatusWorkflowBar from '../components/ShipmentStatusWorkflowBar.vue';
 import { calculateTransactionRate, calculateShipmentCostSummary } from '../utils/landedCost';
 import { buildShipmentExcelWorkbook } from '../utils/buildShipmentExcelWorkbook';
 import { globalReferenceRepository } from 'src/modules/global_reference/repositories/globalReferenceRepository';
@@ -1003,24 +947,10 @@ const $q = useQuasar();
 const shipmentStore = useGlobalShipmentStore();
 const globalStockTypeStore = useGlobalStockTypeStore();
 
-const isLeftColumnVisible = ref(true);
-
 const shipmentId = Number(route.params.id);
 const updatingStatus = ref(false);
-
-const statuses = [
-  'Draft',
-  'Order Placed',
-  'Proforma Generated',
-  'Payment Done',
-  'Delivery Date Received',
-  'Uk Warehouse Delivery Received',
-  'Air Shipment Date Set',
-  'Airport Arrival',
-  'Airport Released',
-  'Warehouse Received',
-  'Ready Stock',
-];
+const targetUpdatingStatus = ref<string | null>(null);
+const activeTab = ref<'lines' | 'balance' | 'cost' | 'receive'>('lines');
 
 const isSplitsComplete = computed(() => {
   const items = shipmentStore.currentShipmentItems;
@@ -1197,8 +1127,110 @@ const shipmentForLiveCosting = computed(() => {
 const isEditable = computed(() => {
   const shipment = shipmentStore.currentShipment;
   if (!shipment) return false;
-  return shipment.status !== 'Ready Stock' && shipment.status !== 'Warehouse Received';
+  // §5.1.1 / workflow Stage 2: editable through in_transit; lock after received/cancelled
+  return shipment.status !== 'received' && shipment.status !== 'cancelled';
 });
+
+const hasLineItems = computed(() => (shipmentStore.currentShipmentItems?.length ?? 0) > 0);
+
+const weightNeedsAttention = computed(() => {
+  if (!hasCargoInvoiceWeight.value) return false;
+  return Math.abs(totals.value.packagingWeightKg - totals.value.cargoWeightKg) > 0.01;
+});
+
+const purchaseNeedsAttention = computed(() => {
+  const invoice = shipmentStore.currentShipment?.purchase_invoice_total;
+  if (invoice == null || invoice <= 0) return false;
+  return Math.abs(invoice - totals.value.goodsPurchase) > 0.05;
+});
+
+const balanceNeedsAttention = computed(
+  () => weightNeedsAttention.value || purchaseNeedsAttention.value,
+);
+
+const showReceiveTab = computed(() => {
+  const status = shipmentStore.currentShipment?.status;
+  return status === 'in_transit' || status === 'received';
+});
+
+const receiveNeedsAttention = computed(() => {
+  return (
+    shipmentStore.currentShipment?.status === 'in_transit' && !isSplitsComplete.value
+  );
+});
+
+const nextStep = computed(() => {
+  const status = shipmentStore.currentShipment?.status;
+  if (status === 'received' || status === 'cancelled') {
+    return {
+      message:
+        status === 'cancelled' ? 'Shipment cancelled' : 'In stock — editing locked',
+      label: null as string | null,
+      disabled: true,
+      reason:
+        status === 'cancelled'
+          ? 'This shipment was cancelled.'
+          : 'Stock already posted. Use Add to stock tab to rollback if needed.',
+      action: null as (() => void) | null,
+    };
+  }
+  if (!hasLineItems.value) {
+    return {
+      message: 'Add products to this shipment',
+      label: 'Add items',
+      disabled: false,
+      reason: '',
+      action: () => {
+        activeTab.value = 'lines';
+        openAddItems();
+      },
+    };
+  }
+  if (balanceNeedsAttention.value) {
+    const both = weightNeedsAttention.value && purchaseNeedsAttention.value;
+    return {
+      message: both
+        ? 'Weight and purchase still need matching'
+        : weightNeedsAttention.value
+          ? "Cargo invoice weight doesn’t match line weights"
+          : "Paid invoice total doesn’t match line purchases",
+      label: both ? 'Fix balances' : weightNeedsAttention.value ? 'Fix weight' : 'Fix purchase',
+      disabled: false,
+      reason: '',
+      action: () => {
+        activeTab.value = 'balance';
+      },
+    };
+  }
+  if (status === 'in_transit') {
+    if (!isSplitsComplete.value) {
+      return {
+        message: 'Split each line into stock types before adding to stock',
+        label: 'Configure splits',
+        disabled: false,
+        reason: '',
+        action: () => {
+          activeTab.value = 'lines';
+        },
+      };
+    }
+    return {
+      message: 'Ready to post inventory',
+      label: 'Add to stock',
+      disabled: false,
+      reason: '',
+      action: () => {
+        activeTab.value = 'receive';
+        changeStatus('received');
+      },
+    };
+  }
+  return null;
+});
+
+const runPrimaryCta = () => {
+  nextStep.value?.action?.();
+};
 
 const ratesPreview = computed(() => {
   const shipment = shipmentStore.currentShipment;
@@ -1290,14 +1322,44 @@ const changeStatus = (newStatus: string) => {
   if (!shipmentStore.currentShipment) return;
   if (shipmentStore.currentShipment.status === newStatus) return;
 
-  if (shipmentStore.currentShipment.status === 'Ready Stock') {
+  if (
+    shipmentStore.currentShipment.status === 'received' ||
+    shipmentStore.currentShipment.status === 'cancelled'
+  ) {
     showWarningNotification(
-      'To change status, please use the Rollback option to revert the shipment to Draft.',
+      shipmentStore.currentShipment.status === 'received'
+        ? 'To change status, please use the Rollback option to revert the shipment to Draft.'
+        : 'Cancelled shipments cannot change status.',
     );
     return;
   }
 
-  if (newStatus === 'Ready Stock') {
+  if (newStatus === 'cancelled') {
+    $q.dialog({
+      title: 'Cancel shipment',
+      message: 'Mark this shipment as cancelled? This does not post stock.',
+      cancel: true,
+      persistent: true,
+    }).onOk(() => {
+      void (async () => {
+        updatingStatus.value = true;
+        targetUpdatingStatus.value = 'cancelled';
+        try {
+          await shipmentStore.updateShipment(shipmentId, { status: 'cancelled' });
+          showSuccessNotification('Shipment cancelled.');
+          loadShipmentDetails();
+        } catch (err: any) {
+          showErrorNotification(err.message || 'Failed to cancel shipment.');
+        } finally {
+          updatingStatus.value = false;
+          targetUpdatingStatus.value = null;
+        }
+      })();
+    });
+    return;
+  }
+
+  if (newStatus === 'received') {
     if (!isSplitsComplete.value) {
       showWarningNotification('Please configure quantity splits for all line items first.');
       return;
@@ -1306,28 +1368,30 @@ const changeStatus = (newStatus: string) => {
     $q.dialog({
       title: 'Commit Shipment to Stock',
       message:
-        'All item splits are fully configured. Changing status to "Ready Stock" will lock the allocations and commit them to active inventory pools. Continue?',
+        'All item splits are fully configured. Changing status to Received will lock the allocations and commit them to active inventory pools. Continue?',
       cancel: true,
       persistent: true,
     }).onOk(() => {
       void (async () => {
         updatingStatus.value = true;
+        targetUpdatingStatus.value = 'received';
         try {
           const txRate = totals.value.transactionRate;
           const updatePayload: any = {
-            status: 'Ready Stock',
+            status: 'received',
             stock_ready: true,
           };
           if (txRate !== null) {
             updatePayload.transaction_rate = txRate;
           }
           await shipmentStore.updateShipment(shipmentId, updatePayload);
-          showSuccessNotification('Shipment promoted to Ready Stock successfully.');
+          showSuccessNotification('Shipment promoted to Received successfully.');
           loadShipmentDetails();
         } catch (err: any) {
           showErrorNotification(err.message || 'Failed to promote shipment.');
         } finally {
           updatingStatus.value = false;
+          targetUpdatingStatus.value = null;
         }
       })();
     });
@@ -1342,6 +1406,7 @@ const changeStatus = (newStatus: string) => {
   }).onOk(() => {
     void (async () => {
       updatingStatus.value = true;
+      targetUpdatingStatus.value = newStatus;
       try {
         const txRate = totals.value.transactionRate;
         const updatePayload: Partial<
@@ -1359,6 +1424,7 @@ const changeStatus = (newStatus: string) => {
         showErrorNotification(message || 'Failed to update status');
       } finally {
         updatingStatus.value = false;
+        targetUpdatingStatus.value = null;
       }
     })();
   });
@@ -1376,6 +1442,7 @@ const rollbackShipmentToDraft = () => {
   }).onOk(() => {
     void (async () => {
       updatingStatus.value = true;
+      targetUpdatingStatus.value = 'draft';
       try {
         await shipmentStore.rollbackShipmentToDraft(shipmentId);
         showSuccessNotification('Shipment successfully rolled back to Draft.');
@@ -1384,6 +1451,7 @@ const rollbackShipmentToDraft = () => {
         showErrorNotification(err.message || 'Failed to rollback shipment.');
       } finally {
         updatingStatus.value = false;
+        targetUpdatingStatus.value = null;
       }
     })();
   });
@@ -1503,8 +1571,8 @@ const openEditItem = (item: GlobalShipmentItem) => {
       shipmentId,
       item,
       isReceived:
-        shipmentStore.currentShipment?.status === 'Warehouse Received' ||
-        shipmentStore.currentShipment?.status === 'Ready Stock' ||
+        shipmentStore.currentShipment?.status === 'in_transit' ||
+        shipmentStore.currentShipment?.status === 'received' ||
         shipmentStore.currentShipment?.stock_ready === true,
     },
   });
@@ -1527,143 +1595,6 @@ const confirmDeleteItem = (itemId: number) => {
       }
     })();
   });
-};
-
-const statusChipColor = (status: string) => {
-  switch (status) {
-    case 'Draft':
-      return 'grey-7';
-    case 'Order Placed':
-      return 'blue-6';
-    case 'Payment Done':
-      return 'indigo-6';
-    case 'Warehouse Received':
-      return 'orange-8';
-    case 'Ready Stock':
-      return 'green-7';
-    default:
-      return 'primary';
-  }
-};
-
-const statusChipStyle = (currentStatus: string) => {
-  const value = (currentStatus ?? '').toLowerCase();
-  switch (value) {
-    case 'draft':
-      return {
-        backgroundColor: '#f3f4f6',
-        color: '#374151',
-        border: '1px solid #d1d5db',
-        borderRadius: '6px',
-      };
-    case 'order placed':
-      return {
-        backgroundColor: '#eff6ff',
-        color: '#1d4ed8',
-        border: '1px solid #bfdbfe',
-        borderRadius: '6px',
-      };
-    case 'proforma generated':
-      return {
-        backgroundColor: '#f0fdf4',
-        color: '#15803d',
-        border: '1px solid #bbf7d0',
-        borderRadius: '6px',
-      };
-    case 'payment done':
-      return {
-        backgroundColor: '#faf5ff',
-        color: '#7e22ce',
-        border: '1px solid #e9d5ff',
-        borderRadius: '6px',
-      };
-    case 'delivery date received':
-      return {
-        backgroundColor: '#fdf2f8',
-        color: '#be185d',
-        border: '1px solid #fbcfe8',
-        borderRadius: '6px',
-      };
-    case 'uk warehouse delivery received':
-      return {
-        backgroundColor: '#fff7ed',
-        color: '#c2410c',
-        border: '1px solid #ffedd5',
-        borderRadius: '6px',
-      };
-    case 'air shipment date set':
-      return {
-        backgroundColor: '#ecfdf5',
-        color: '#047857',
-        border: '1px solid #a7f3d0',
-        borderRadius: '6px',
-      };
-    case 'airport arrival':
-      return {
-        backgroundColor: '#f0fdfa',
-        color: '#0f766e',
-        border: '1px solid #99f6e4',
-        borderRadius: '6px',
-      };
-    case 'airport released':
-      return {
-        backgroundColor: '#f5f3ff',
-        color: '#6d28d9',
-        border: '1px solid #ddd6fe',
-        borderRadius: '6px',
-      };
-    case 'warehouse received':
-      return {
-        backgroundColor: '#fffbeb',
-        color: '#b45309',
-        border: '1px solid #fde68a',
-        borderRadius: '6px',
-      };
-    case 'ready stock':
-      return {
-        backgroundColor: '#f0fdf4',
-        color: '#166534',
-        border: '1px solid #bbf7d0',
-        borderRadius: '6px',
-      };
-    default:
-      return {
-        backgroundColor: '#f9fafb',
-        color: '#1f2937',
-        border: '1px solid #e5e7eb',
-        borderRadius: '6px',
-      };
-  }
-};
-
-const statusDotColor = (currentStatus: string) => {
-  const value = (currentStatus ?? '').toLowerCase();
-  switch (value) {
-    case 'draft':
-      return '#4b5563';
-    case 'order placed':
-      return '#2563eb';
-    case 'proforma generated':
-      return '#16a34a';
-    case 'payment done':
-      return '#9333ea';
-    case 'delivery date received':
-      return '#db2777';
-    case 'uk warehouse delivery received':
-      return '#ea580c';
-    case 'air shipment date set':
-      return '#059669';
-    case 'airport arrival':
-      return '#0d9488';
-    case 'airport released':
-      return '#7c3aed';
-    case 'warehouse received':
-      return '#d97706';
-    case 'ready stock':
-      return '#15803d';
-    default:
-      return '#9ca3af';
-  }
 };
 
 // Rates Dialog Setup
@@ -1742,6 +1673,10 @@ const onSaveRates = async () => {
 </script>
 
 <style scoped>
+.shipment-details-page .min-width-0 {
+  min-width: 0;
+}
+
 .line-items-card {
   min-width: 0;
 }

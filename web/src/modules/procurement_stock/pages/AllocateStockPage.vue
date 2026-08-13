@@ -435,8 +435,8 @@
               <div class="full-width text-center text-grey-7 q-py-lg">
                 <q-icon name="ph ph-package" size="48px" class="q-mb-sm text-grey-4" />
                 <div>
-                  No ready stock pools found for allocation. Ensure shipments are received and in
-                  Ready Stock.
+                  No ready stock pools found for allocation. Ensure shipments are in Received
+                  status.
                 </div>
               </div>
             </template>
@@ -633,7 +633,7 @@ const childTenantOptions = computed(() => {
 
 const shipmentOptions = computed(() => {
   return (shipments.value || [])
-    .filter((s: { status: string }) => s.status === 'Ready Stock')
+    .filter((s: { status: string }) => s.status === 'received')
     .map((s: { name: string; id: number }) => ({ label: s.name, value: s.id }));
 });
 

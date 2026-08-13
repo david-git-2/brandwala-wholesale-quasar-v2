@@ -24,7 +24,7 @@ export interface GlobalStock {
   product_weight: number;
   package_weight: number;
   shipment_name: string;
-  shipment_type: 'domestic' | 'international';
+  shipment_type: 'international' | 'local' | 'transfer';
   shipment_status: string;
   product_conversion_rate: number;
   cargo_conversion_rate: number;

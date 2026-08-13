@@ -282,6 +282,7 @@ Per-tenant assignment table: §15.5 and domain docs.
 | 3 | Currency | Global Reference | global_reference | CURRENT | app | All (read) | Currencies, markets, payment methods, units | P0 |
 | 4 | Catalog & Supply | Products | products | STABLE | app | Parent+Child | Product catalog | — |
 | 5 | Catalog & Supply | Vendors | vendor | STABLE | app | Parent+Child | Supplier records | P0 |
+| 5b | Catalog & Supply | Cargo Companies | cargo_company | CURRENT | app | Parent | Inbound freight agents + default row (shipment FK) | P1 |
 | 6 | Procurement Inputs | Order Management | order_management | STABLE | app+shop | Child | B2B purchase intent | P1 |
 | 7 | Procurement Inputs | Costing File | costing_file | STABLE | app+shop | Child | Pre-order costing references | — |
 | 8 | Procurement Inputs | Product Based Costing | product_based_costing | STABLE | app | Child | Batch costing → shipment lines | — |
@@ -487,7 +488,8 @@ Legend: **view** = access granted | **—** = no access
 | 2 | modules / tenant_modules | STABLE | [LOGIN_NAV_PERMISSION_FLOW.md](LOGIN_NAV_PERMISSION_FLOW.md) |
 | 3 | global_reference | CURRENT | [GLOBAL_REFERENCE_DATA.md](GLOBAL_REFERENCE_DATA.md) |
 | 4 | products | STABLE | *(no domain doc — catalog CRUD)* |
-| 5 | vendor | STABLE | *(no domain doc — vendor CRUD)* |
+| 5 | vendor | STABLE | [procurement_stock/vendor/](procurement_stock/vendor/) |
+| 5b | cargo_company | CURRENT | [procurement_stock/cargo_company/](procurement_stock/cargo_company/) |
 | 6 | order_management | STABLE | *(no domain doc — B2B orders)* |
 | 7 | costing_file | STABLE | *(no domain doc)* |
 | 8 | product_based_costing | STABLE | *(no domain doc)* |

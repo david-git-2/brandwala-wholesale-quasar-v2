@@ -222,6 +222,7 @@ export type Database = {
           email: string | null
           id: number
           is_active: boolean
+          is_default: boolean
           name: string
           notes: string | null
           parent_tenant_id: number | null
@@ -237,6 +238,7 @@ export type Database = {
           email?: string | null
           id?: number
           is_active?: boolean
+          is_default?: boolean
           name: string
           notes?: string | null
           parent_tenant_id?: number | null
@@ -252,6 +254,7 @@ export type Database = {
           email?: string | null
           id?: number
           is_active?: boolean
+          is_default?: boolean
           name?: string
           notes?: string | null
           parent_tenant_id?: number | null
@@ -2403,6 +2406,7 @@ export type Database = {
       global_shipments: {
         Row: {
           assigned_child_tenant_id: number | null
+          cargo_company_id: number | null
           cargo_conversion_rate: number
           cargo_invoice_total: number | null
           cargo_rate: number
@@ -2422,9 +2426,11 @@ export type Database = {
           transaction_rate: number | null
           type: Database["public"]["Enums"]["global_shipment_type"]
           updated_at: string
+          vendor_id: number
         }
         Insert: {
           assigned_child_tenant_id?: number | null
+          cargo_company_id?: number | null
           cargo_conversion_rate?: number
           cargo_invoice_total?: number | null
           cargo_rate?: number
@@ -2444,9 +2450,11 @@ export type Database = {
           transaction_rate?: number | null
           type?: Database["public"]["Enums"]["global_shipment_type"]
           updated_at?: string
+          vendor_id: number
         }
         Update: {
           assigned_child_tenant_id?: number | null
+          cargo_company_id?: number | null
           cargo_conversion_rate?: number
           cargo_invoice_total?: number | null
           cargo_rate?: number
@@ -2466,6 +2474,7 @@ export type Database = {
           transaction_rate?: number | null
           type?: Database["public"]["Enums"]["global_shipment_type"]
           updated_at?: string
+          vendor_id?: number
         }
         Relationships: [
           {
@@ -2473,6 +2482,13 @@ export type Database = {
             columns: ["assigned_child_tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "global_shipments_cargo_company_id_fkey"
+            columns: ["cargo_company_id"]
+            isOneToOne: false
+            referencedRelation: "cargo_companies"
             referencedColumns: ["id"]
           },
           {
@@ -2494,6 +2510,13 @@ export type Database = {
             columns: ["shipment_purchase_currency_id"]
             isOneToOne: false
             referencedRelation: "global_currencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "global_shipments_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
         ]
@@ -6299,6 +6322,66 @@ export type Database = {
           },
         ]
       }
+      stock_locations: {
+        Row: {
+          code: string
+          created_at: string
+          id: number
+          is_active: boolean
+          is_default: boolean
+          is_pickable: boolean
+          kind: Database["public"]["Enums"]["stock_location_kind"]
+          name: string
+          parent_location_id: number | null
+          parent_tenant_id: number
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          is_default?: boolean
+          is_pickable?: boolean
+          kind?: Database["public"]["Enums"]["stock_location_kind"]
+          name: string
+          parent_location_id?: number | null
+          parent_tenant_id: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          is_default?: boolean
+          is_pickable?: boolean
+          kind?: Database["public"]["Enums"]["stock_location_kind"]
+          name?: string
+          parent_location_id?: number | null
+          parent_tenant_id?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_locations_parent_location_id_fkey"
+            columns: ["parent_location_id"]
+            isOneToOne: false
+            referencedRelation: "stock_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_locations_parent_tenant_id_fkey"
+            columns: ["parent_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       store_access: {
         Row: {
           created_at: string
@@ -8453,6 +8536,7 @@ export type Database = {
           created_at: string
           email: string | null
           id: number
+          is_default: boolean
           market_code: string
           name: string
           parent_tenant_id: number | null
@@ -8467,6 +8551,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: number
+          is_default?: boolean
           market_code: string
           name: string
           parent_tenant_id?: number | null
@@ -8481,6 +8566,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: number
+          is_default?: boolean
           market_code?: string
           name?: string
           parent_tenant_id?: number | null
@@ -8565,6 +8651,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _assert_parent_warehouse_tenant: {
+        Args: { p_parent_tenant_id: number }
+        Returns: undefined
+      }
+      _can_view_stock_locations: {
+        Args: { p_parent_tenant_id: number }
+        Returns: boolean
+      }
+      _stock_location_is_leaf: { Args: { p_id: number }; Returns: boolean }
+      _validate_stock_location_nesting: {
+        Args: {
+          p_kind: Database["public"]["Enums"]["stock_location_kind"]
+          p_parent_location_id: number
+          p_parent_tenant_id: number
+        }
+        Returns: undefined
+      }
       add_child_line_to_parent_shipment: {
         Args: {
           p_parent_shipment_id: number
@@ -9458,6 +9561,18 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_cargo_company_with_wallet: {
+        Args: {
+          p_address?: string
+          p_code: string
+          p_email?: string
+          p_name: string
+          p_notes?: string
+          p_phone?: string
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
       create_costing_file:
         | {
             Args: {
@@ -9708,6 +9823,45 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_shipment_draft: {
+        Args: {
+          p_cargo_company_id?: number
+          p_name: string
+          p_parent_tenant_id: number
+          p_type: Database["public"]["Enums"]["global_shipment_type"]
+          p_vendor_id?: number
+        }
+        Returns: {
+          assigned_child_tenant_id: number | null
+          cargo_company_id: number | null
+          cargo_conversion_rate: number
+          cargo_invoice_total: number | null
+          cargo_rate: number
+          created_at: string
+          id: number
+          name: string
+          parent_tenant_id: number
+          product_conversion_rate: number
+          purchase_invoice_total: number | null
+          received_date: string | null
+          received_weight: number | null
+          shipment_cost_currency_id: number | null
+          shipment_purchase_currency_id: number | null
+          status: string
+          stock_ready: boolean
+          tenant_shipment_id: number | null
+          transaction_rate: number | null
+          type: Database["public"]["Enums"]["global_shipment_type"]
+          updated_at: string
+          vendor_id: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "global_shipments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_store: {
         Args: { p_name: string; p_tenant_id: number; p_vendor_code: string }
         Returns: {
@@ -9941,6 +10095,7 @@ export type Database = {
         Args: { p_listing_id: number; p_tenant_id: number }
         Returns: boolean
       }
+      delete_stock_location: { Args: { p_id: number }; Returns: undefined }
       delete_store: { Args: { p_id: number }; Returns: undefined }
       delete_store_access: { Args: { p_id: number }; Returns: undefined }
       delete_tenant_for_superadmin: {
@@ -9992,6 +10147,11 @@ export type Database = {
         }
         Returns: Json
       }
+      ensure_default_cargo_company: {
+        Args: { p_tenant_id: number }
+        Returns: number
+      }
+      ensure_default_vendor: { Args: { p_tenant_id: number }; Returns: number }
       ensure_dropship_invoice_billed_entry: {
         Args: { p_invoice_id: number }
         Returns: undefined
@@ -10501,6 +10661,7 @@ export type Database = {
           created_at: string
           email: string | null
           id: number
+          is_default: boolean
           market_code: string
           name: string
           parent_tenant_id: number | null
@@ -11453,6 +11614,29 @@ export type Database = {
           tenant_id: number
         }[]
       }
+      list_stock_locations: {
+        Args: { p_include_inactive?: boolean; p_parent_tenant_id: number }
+        Returns: {
+          code: string
+          created_at: string
+          id: number
+          is_active: boolean
+          is_default: boolean
+          is_pickable: boolean
+          kind: Database["public"]["Enums"]["stock_location_kind"]
+          name: string
+          parent_location_id: number | null
+          parent_tenant_id: number
+          sort_order: number
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "stock_locations"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       list_store_product_pricing: {
         Args: {
           p_page?: number
@@ -11665,6 +11849,7 @@ export type Database = {
           created_at: string
           email: string | null
           id: number
+          is_default: boolean
           market_code: string
           name: string
           parent_tenant_id: number | null
@@ -12237,6 +12422,29 @@ export type Database = {
       seed_tenant_roles_and_grants: {
         Args: { p_tenant_id: number }
         Returns: undefined
+      }
+      set_default_stock_location: {
+        Args: { p_id: number }
+        Returns: {
+          code: string
+          created_at: string
+          id: number
+          is_active: boolean
+          is_default: boolean
+          is_pickable: boolean
+          kind: Database["public"]["Enums"]["stock_location_kind"]
+          name: string
+          parent_location_id: number | null
+          parent_tenant_id: number
+          sort_order: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "stock_locations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       set_tenant_module_submodule_for_superadmin: {
         Args: {
@@ -13451,6 +13659,40 @@ export type Database = {
               isSetofReturn: true
             }
           }
+      upsert_stock_location: {
+        Args: {
+          p_code: string
+          p_id?: number
+          p_is_active?: boolean
+          p_is_default?: boolean
+          p_is_pickable?: boolean
+          p_kind?: Database["public"]["Enums"]["stock_location_kind"]
+          p_name: string
+          p_parent_location_id?: number
+          p_parent_tenant_id: number
+          p_sort_order?: number
+        }
+        Returns: {
+          code: string
+          created_at: string
+          id: number
+          is_active: boolean
+          is_default: boolean
+          is_pickable: boolean
+          kind: Database["public"]["Enums"]["stock_location_kind"]
+          name: string
+          parent_location_id: number | null
+          parent_tenant_id: number
+          sort_order: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "stock_locations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       upsert_tenant_role_grant: {
         Args: {
           p_action: string
@@ -13534,7 +13776,7 @@ export type Database = {
         | "transport"
         | "handling"
       global_shipment_item_add_method: "order" | "costing" | "manual"
-      global_shipment_type: "domestic" | "international"
+      global_shipment_type: "local" | "international" | "transfer" | "thrift"
       global_source_module: "wholesale" | "retail" | "commerce"
       investor_payment_method: "cash" | "bank" | "mobile_banking" | "other"
       investor_transaction_type:
@@ -13592,6 +13834,7 @@ export type Database = {
         | "procuring"
         | "ordered"
       shop_type_enum: "vendor_catalog" | "fixed_price" | "dropship"
+      stock_location_kind: "shelf" | "slot" | "box" | "returns"
       thrift_condition: "NEW_WITH_TAGS" | "EXCELLENT" | "GOOD" | "FAIR"
       thrift_delivery_status:
         | "PENDING"
@@ -13785,7 +14028,7 @@ export const Constants = {
         "handling",
       ],
       global_shipment_item_add_method: ["order", "costing", "manual"],
-      global_shipment_type: ["domestic", "international"],
+      global_shipment_type: ["local", "international", "transfer", "thrift"],
       global_source_module: ["wholesale", "retail", "commerce"],
       investor_payment_method: ["cash", "bank", "mobile_banking", "other"],
       investor_transaction_type: [
@@ -13848,6 +14091,7 @@ export const Constants = {
         "ordered",
       ],
       shop_type_enum: ["vendor_catalog", "fixed_price", "dropship"],
+      stock_location_kind: ["shelf", "slot", "box", "returns"],
       thrift_condition: ["NEW_WITH_TAGS", "EXCELLENT", "GOOD", "FAIR"],
       thrift_delivery_status: [
         "PENDING",
