@@ -39,8 +39,10 @@ Immutable double-entry transaction history log for auditing, reporting, and acco
 | `currency_code` | TEXT | Yes | Currency code (Default: `'BDT'`) |
 | `exchange_rate` | NUMERIC | Yes | Conversion multiplier against base currency (Default: `1.000000`) |
 | `balance_after` | NUMERIC | Yes | Snapshot of effective running balance after transaction |
-| `source_type` | TEXT | Yes | Transaction origin (`'shop_order'`, `'vendor_purchase'`, `'shipment'`, `'shipment_return'`, `'payout'`, `'adjustment'`, `'bucket_transfer'`, `'shipment_invoice'`). Identifies the **trigger document**, not the wallet owner |
-| `source_id` | TEXT | No | Reference ID of triggering record (e.g. invoice #, order #, shipment id, payment ID) |
+| `source_type` | TEXT | Yes | Trigger document (not wallet owner). Canonical values: `'shop_order'`, `'vendor_purchase'`, `'shipment'`, `'shipment_return'`, `'sales_invoice'`, `'sales_invoice_return'`, `'payout'`, `'adjustment'`, `'bucket_transfer'`. Legacy/alias `'shipment_invoice'` = procurement payee docs only — **not** desk sales |
+| `source_id` | TEXT | No | ID of trigger: shipment id, `sales_invoices.id`, return id, order id, payment id, etc. |
+
+**Desk sales (locked):** Pay / allocate / refund against a desk sale uses `source_type = 'sales_invoice'` and `source_id = sales_invoices.id` (text). Return cash uses `'sales_invoice_return'` + return id. Do **not** use `'shipment_invoice'` for desk AR. See [../invoice/schema.md](../invoice/schema.md) §5.2.
 | `metadata` | JSONB | No | Flexible JSON payload for context notes, references, and audit tags |
 | `created_at` | TIMESTAMPTZ | No | Creation timestamp |
 

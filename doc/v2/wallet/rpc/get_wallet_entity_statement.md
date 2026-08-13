@@ -61,11 +61,11 @@ const { data, error } = await supabase.rpc('get_wallet_entity_statement', {
       "exchange_rate": 1.000000,
       "base_amount": 5000.00,
       "balance_after": 20000.00,
-      "source_type": "shipment_invoice",
-      "source_id": "INV-2026-004",
+      "source_type": "shipment",
+      "source_id": "881",
       "metadata": {
         "reference": "PO-9912",
-        "note": "Payment received for stock shipment"
+        "note": "Pay / Settle for inbound shipment"
       },
       "created_at": "2026-08-01T20:11:00Z"
     }

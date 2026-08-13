@@ -24,21 +24,44 @@ const { data, error } = await supabase.rpc('record_ledger_transaction', {
   p_amount: 5000.00,
   p_currency_code: 'BDT',
   p_exchange_rate: 1.000000,
-  p_source_type: 'shipment_invoice',
-  p_source_id: 'INV-2026-004',
+  p_source_type: 'shipment',
+  p_source_id: '881',
   p_target_bucket: 'available',
   p_metadata: {
     reference: 'PO-9912',
-    note: 'Payment received for stock shipment'
+    note: 'Pay / Settle for inbound shipment'
   }
 });
 ```
+
+Desk sales Pay / allocate (billing profile / customer entity):
+
+```typescript
+const { data, error } = await supabase.rpc('record_ledger_transaction', {
+  p_tenant_id: 12,
+  p_entity_type: 'customer',
+  p_entity_id: 44,
+  p_type: 'credit',
+  p_amount: 12000.00,
+  p_currency_code: 'BDT',
+  p_exchange_rate: 1.000000,
+  p_source_type: 'sales_invoice',
+  p_source_id: '90210',
+  p_target_bucket: 'available',
+  p_metadata: {
+    invoice_no: 'SI-2026-0042',
+    note: 'Collection against desk sales invoice'
+  }
+});
+```
+
+`source_type` for desk sales is locked: `sales_invoice` / `sales_invoice_return` — see [../schema.md](../schema.md) · [../../invoice/schema.md](../../invoice/schema.md) §5.2. Do **not** post wallet on invoice post (stub-skip).
 
 ---
 
 ## 3. Payloads
 
-### A. Request Payload
+### A. Request Payload (shipment Pay / Settle)
 ```json
 {
   "p_tenant_id": 12,
@@ -48,12 +71,12 @@ const { data, error } = await supabase.rpc('record_ledger_transaction', {
   "p_amount": 5000.00,
   "p_currency_code": "BDT",
   "p_exchange_rate": 1.000000,
-  "p_source_type": "shipment_invoice",
-  "p_source_id": "INV-2026-004",
+  "p_source_type": "shipment",
+  "p_source_id": "881",
   "p_target_bucket": "available",
   "p_metadata": {
     "reference": "PO-9912",
-    "note": "Payment received for stock shipment"
+    "note": "Pay / Settle for inbound shipment"
   }
 }
 ```
@@ -71,11 +94,11 @@ const { data, error } = await supabase.rpc('record_ledger_transaction', {
   "currency_code": "BDT",
   "exchange_rate": 1.000000,
   "balance_after": 20000.00,
-  "source_type": "shipment_invoice",
-  "source_id": "INV-2026-004",
+  "source_type": "shipment",
+  "source_id": "881",
   "metadata": {
     "reference": "PO-9912",
-    "note": "Payment received for stock shipment"
+    "note": "Pay / Settle for inbound shipment"
   },
   "created_at": "2026-08-01T20:11:00Z"
 }

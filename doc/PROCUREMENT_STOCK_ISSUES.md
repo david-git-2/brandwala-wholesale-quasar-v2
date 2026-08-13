@@ -4,24 +4,31 @@
 **Architecture (locked):** [v2/shipment](./v2/shipment/) · [v2/stock](./v2/stock/) · [v2/wallet](./v2/wallet/)  
 **Updated:** 2026-08-13
 
-Sell model, assign, ATP, listing FK, availability, and soft-allocation retirement are **decided** in the v2 docs — not listed here.
+Sell model, assign, ATP (incl. pickable locations), listing FK, availability, **stock locations**, soft-allocation retirement, and movement **pattern** are **decided** in the v2 docs — not listed here as open design.
 
 ---
 
-## 1. Warehouse ops after receive — deferred
+## 1. Warehouse ops + location — implement
 
-**Solution locked:** [v2/stock/schema.md §2.4](./v2/stock/schema.md) — movement documents + post RPC; `global_stocks` stays balances-only; UI never free-edits qty.
+**Solution locked:** [v2/stock/schema.md](./v2/stock/schema.md) —
 
-**Still open:** exact table/RPC names and migration SQL. Not required before assign + ATP cutover.
+* `stock_locations` catalog + required `global_stocks.location_id`
+* Balance grain `(shipment_item_id, availability, location_id)`
+* Movements post all qty / availability / location changes; UI never free-edits
+
+**Still open:** exact table/RPC names and migration SQL.
 
 | Gap | Meaning | In first movement cut? |
 | :--- | :--- | :---: |
+| Locations CRUD + seed (`MAIN`, `RETURNS`) | Catalog per parent | Yes |
+| Receive put-away | Default or chosen `location_id` | Yes |
+| Location transfer | Bin A → bin B (same availability) | Yes |
 | Availability transfer / adjustment | sellable ↔ held / unsellable; write-off; cycle count | Yes |
-| Return inbound | Return doc → qty onto a stock row (usually `held`) | Yes |
+| Return inbound | Return doc → usually `held` @ returns location | Yes |
 | Receive rollback | Clean reverse of posted stock + stamps | Yes |
 | Partial receive | Cost share when only part of the batch arrives | Later |
 | Weight audit | History when package weights / cost inputs change | Later |
-| Transfer / multi-location | Later if single warehouse | Later |
+| Inter-warehouse / multi-site | Second warehouse | Later |
 
 ---
 
@@ -33,7 +40,7 @@ Sell model, assign, ATP, listing FK, availability, and soft-allocation retiremen
 | :--- | :--- |
 | Path | Edit `shipment_cost_entries` via **revision RPC only** → server recompute → re-stamp `shipment_items.landed_cost_bdt` |
 | After finalize | No silent upsert of rates / entries |
-| Stock | Qty only — cost always via `shipment_item_id` → stamp |
+| Stock | Qty + location only — cost always via `shipment_item_id` → stamp |
 | Posted invoices | Provisional `unit_cost_price` / `landed_cost_bdt` snapshot **frozen** |
 | Report / investor P&L | `revenue − (current stamp × sold_qty)` — join living stamp, not invoice snapshot |
 | Wallet variance | **Stub-optional** — not required for day-one report truth ([schema §4.2](./v2/shipment/schema.md)) |

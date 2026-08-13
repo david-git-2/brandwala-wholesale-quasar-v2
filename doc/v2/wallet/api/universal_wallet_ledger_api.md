@@ -12,7 +12,7 @@ This document details the direct API operations for the immutable `universal_wal
 * `tenant_id`: Scope to tenant
 * `entity_type`: Target entity classification (`vendor`, `customer`, `courier`, `middleman`, `tenant`, `investor`)
 * `entity_id`: Primary ID of target entity
-* `source_type`: Filter by transaction source (e.g., `shop_order`, `vendor_purchase`, `payout`, `adjustment`, `bucket_transfer`, `shipment_invoice`)
+* `source_type`: Filter by transaction source (e.g., `shop_order`, `vendor_purchase`, `shipment`, `sales_invoice`, `sales_invoice_return`, `payout`, `adjustment`, `bucket_transfer`)
 * `limit` / `offset`: Pagination parameters
 
 ### Request Example
@@ -42,11 +42,11 @@ const { data, error } = await supabase
     "currency_code": "BDT",
     "exchange_rate": 1.000000,
     "balance_after": 20000.00,
-    "source_type": "shipment_invoice",
-    "source_id": "INV-2026-004",
+    "source_type": "shipment",
+    "source_id": "881",
     "metadata": {
       "reference": "PO-9912",
-      "note": "Payment received for stock shipment"
+      "note": "Pay / Settle for inbound shipment"
     },
     "created_at": "2026-08-01T20:11:00Z"
   }
