@@ -70,6 +70,22 @@ Parent-controlled labels for filtering/reporting across orders or remittance bat
 
 Shared vocabulary: `Damaged`, `Return`, `QC fail` across tickets, thrift lots, shipments.
 
+### 3.7 Inbound shipment progress (customer / customer-group updates)
+
+Soft journey labels shared with customers or a customer group: `UK warehouse`, `On flight`, `Airport`, `Customs cleared`, etc.
+
+| Rule | Detail |
+| :--- | :--- |
+| Tag group | `shipment_progress` — **per-tenant** customize names + optional `sort_order` |
+| Attach | `entity_tags` on `entity_type = 'shipment'` |
+| Cardinality | Prefer **one** active progress tag (UI replaces on change) |
+| Filters | List/filter shipments by tag — primary value of this group |
+| APIs | Shipment list/get expose lifecycle `status` + current progress tag for any surface |
+
+Shipment **lifecycle** stays a solid column: `draft` → `in_transit` → `received` (+ `cancelled`). Progress tags never unlock receive / stock / sell and must not encode payment.
+
+Decision: [v2/shipment/schema.md](../v2/shipment/schema.md).
+
 ---
 
 ## 4. Where **not** to use tags
@@ -80,7 +96,7 @@ Shared vocabulary: `Damaged`, `Return`, `QC fail` across tickets, thrift lots, s
 | Order / remittance / payout **workflow** | Status enums + RPCs |
 | Permissions / modules / roles | Grant system ([PERMISSION_SYSTEM.md](../PERMISSION_SYSTEM.md)) |
 | Payment method (bKash, bank, cash) | `global_payment_methods` / payment rows |
-| Invoice type / shipment type | Existing typed columns / enums |
+| Invoice type / shipment type / shipment **lifecycle status** | Existing typed columns / enums |
 | Currency, tenant, shop membership | Real FKs and scope tables |
 | COD amounts, locked vs available balance | Ledger amounts + wallet state |
 | Anything that must survive tag rename/delete as identity | Stable primary keys |
@@ -101,9 +117,10 @@ Exactly two tables: master dictionary + polymorphic linker.
 | **`tenant_id`** | `bigint` (FK) | **NULLABLE.** `NULL` = global System Tag; set = Custom Tag for that tenant. |
 | **`name`** | `text` | Display name (e.g. `"Eid Sale"`, `"Urgent"`). |
 | **`slug`** | `text` | URL-safe machine name. UNIQUE per `tenant_id` (system tags globally unique). |
-| **`group_name`** | `text` | UI grouping (`"Marketing"`, `"CRM"`, `"Logistics"`, `"Ops"`). |
+| **`group_name`** | `text` | UI grouping (`"Marketing"`, `"CRM"`, `"Logistics"`, `"Ops"`, `"shipment_progress"`). |
 | **`parent_id`** | `uuid` (FK) | Optional hierarchy (e.g. `"Facebook Ads"` under `"Marketing"`). |
 | **`color`** | `text` | Hex for UI badges. |
+| **`sort_order`** | `int` | Optional — ordered steppers (e.g. shipment progress). Null = unordered / alpha. |
 
 ### Table 2: `entity_tags` (The Universal Linker)
 
@@ -112,7 +129,7 @@ Exactly two tables: master dictionary + polymorphic linker.
 | **`id`** | `uuid` (PK) | Unique link ID. |
 | **`tenant_id`** | `bigint` (FK) | **REQUIRED.** RLS: tenants only see tags on their entities. |
 | **`tag_id`** | `uuid` (FK) | Points to `tags.id`. |
-| **`entity_type`** | `text` | What is tagged (`"shop_order"`, `"product"`, `"wallet_ledger"`, `"billing_profile"`). |
+| **`entity_type`** | `text` | What is tagged (`"shop_order"`, `"product"`, `"wallet_ledger"`, `"billing_profile"`, `"shipment"`). |
 | **`entity_id`** | `text` | Target id as text (UUID or BIGINT). |
 | **`created_at`** | `timestamptz` | When applied. |
 
@@ -150,6 +167,8 @@ Until then: finish wallet + remittance + dispense; use order status and wallet i
 | Doc | Relationship |
 | :--- | :--- |
 | [UNIVERSAL_WALLET_LEDGER.md](../wallet/UNIVERSAL_WALLET_LEDGER.md) | Money identity + interim metadata dimensions |
+| [v2/shipment/schema.md](../v2/shipment/schema.md) | Shipment lifecycle vs `shipment_progress` tags |
+| [v2/shipment/schema.md](../v2/shipment/schema.md) | Shipment header + progress via `entity_tags` |
 | [COURIER_AND_MIDDLEMAN_FINANCIAL_MASTER_PLAN.md](../COURIER_AND_MIDDLEMAN_FINANCIAL_MASTER_PLAN.md) | Dropship escrow — tags deferred |
 | [SHOP_ORDER_DROPSHIP.md](../SHOP_ORDER_DROPSHIP.md) | Dropship desk / middleman flows |
 | [MASTER_PLAN.md](../MASTER_PLAN.md) | Index; tagging listed under later / optional |

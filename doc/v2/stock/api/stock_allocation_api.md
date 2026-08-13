@@ -1,55 +1,54 @@
-# Stock Allocation API Specification
+# Shipment → child assign / listing permission API
 
-This document details the API operations for managing tenant/shop stock allocations in `global_stock_allocations`.
+**Target:** Permission for a child shop to list a parent shipment batch. **Not** a qty allocation ledger.
+
+**Design lock:** [../schema.md](../schema.md) · [../schema.md](../schema.md) §0 / §2.2.
+
+**Consumers:** stock-backed shop / dropship listings. Display = real ATP from shipment stock **or** dummy override. Checkout deducts parent `global_stocks`.
+
+**Live:** `global_stock_allocations` qty CRUD still exists — migrate away; do not add new soft-qty features.
 
 ---
 
-## 1. List Stock Allocations by Tenant / Stock ID
+## 1. Assign shipment to child
 
-* **Endpoint / Query**: `supabase.from('global_stock_allocations').select('*').eq('parent_tenant_id', 12)`
+Prefer header field or small assign table (see schema §2.2).
 
-### Request Example
+```typescript
+// Option A — header
+await supabase
+  .from('shipments')
+  .update({ assigned_child_tenant_id: 5 })
+  .eq('id', 88)
+  .eq('tenant_id', 12);
+```
+
+---
+
+## 2. List shipments assigned to a child
+
 ```typescript
 const { data, error } = await supabase
-  .from('global_stock_allocations')
-  .select('*')
-  .eq('parent_tenant_id', 12)
-  .eq('child_tenant_id', 5);
+  .from('shipments')
+  .select('id, name, vendor_id, status, assigned_child_tenant_id')
+  .eq('assigned_child_tenant_id', 5);
 ```
 
-### Response Payload
-```json
-[
-  {
-    "id": 201,
-    "parent_tenant_id": 12,
-    "child_tenant_id": 5,
-    "stock_id": 1001,
-    "quantity": 10,
-    "created_at": "2026-08-02T10:00:00Z",
-    "updated_at": "2026-08-02T10:00:00Z"
-  }
-]
+Shop then loads `global_stocks` for those `shipment_id`s for **real** qty.
+
+---
+
+## 3. Clear assign
+
+```typescript
+await supabase
+  .from('shipments')
+  .update({ assigned_child_tenant_id: null })
+  .eq('id', 88);
 ```
 
 ---
 
-## 2. Upsert / Create Stock Allocation
+## 4. Legacy allocation qty API
 
-* **Endpoint / Query**: `supabase.from('global_stock_allocations').upsert(payload)`
-
-### Request Payload
-```json
-{
-  "parent_tenant_id": 12,
-  "child_tenant_id": 5,
-  "stock_id": 1001,
-  "quantity": 15
-}
-```
-
----
-
-## 3. Delete Stock Allocation
-
-* **Endpoint / Query**: `supabase.from('global_stock_allocations').delete().eq('id', 201)`
+Direct upsert/delete on `global_stock_allocations.quantity` is **legacy**. Do not use for new shop ATP design.

@@ -1,44 +1,56 @@
 # Stock & Inventory Lifecycle Specification
 
-This document details the step-by-step business flow for stock management, line-item quantity splits, auto-acceptance, and tenant allocations.
+Receive → parent stock → assign → list/sell on shared ATP.
+
+**Design lock:** [schema.md](./schema.md).
 
 ---
 
 ## Lifecycle Overview
 
 ```
-[ STAGE 1: CONFIGURE STOCK TYPES ] ➔ [ STAGE 2: SHIPMENT ITEM SPLITS ] ➔ [ STAGE 3: STOCK COMMIT & TENANT ALLOCATION ]
-  • API: global_stock_types CRUD      • API: global_stocks upsert          • API: Update shipment status 'Ready Stock'
-                                      • RPC / API: auto_accept_splits      • RPC: bulk_allocate_shipment_stock
+[ STAGE 1: AVAILABILITY ] ➔ [ STAGE 2: RECEIVE ] ➔ [ STAGE 3: READY + ASSIGN + LIST ]
+  • sellable | held | unsellable   • post global_stocks     • status → received
+  • (no tag-driven ATP)            • default 100% sellable  • assign one child (list only)
+                                   • rare splits            • listing.global_stock_id
+                                                            • ATP = sellable − holds
 ```
 
 ---
 
-## Stage 1: Stock Type Configuration
+## Stage 1: Availability model
 
-* **Action**: Admin configures stock categories (e.g. *Standard Sellable*, *Damaged*, *Hold*, *Display Sample*).
-* **APIs Used**:
-  * `global_stock_types` CRUD operations — [stock_type_api.md](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/v2/stock/api/stock_type_api.md)
-
----
-
-## Stage 2: Shipment Item Quantity Splits
-
-* **Action**: While shipment is in `"Warehouse Received"` status, each shipment item's ordered quantity is allocated into stock pools.
-* **Validation**: Total allocated quantity across all splits for an item must equal `shipment_items.ordered_quantity`.
-* **Shortcut Option (Auto Accept)**:
-  * User triggers "Auto Accept Splits" to allocate 100% of pending quantities to the default `"Standard Sellable"` stock type.
-* **APIs / RPCs Used**:
-  * **Manual Splits**: `global_stocks` upsert / insert / delete — [global_stock_api.md](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/v2/stock/api/global_stock_api.md)
-  * **Auto Accept Splits**: Bulk replace pending item stock entries — [global_stock_api.md](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/v2/stock/api/global_stock_api.md#3-auto-accept-splits-bulk-replacement)
+* **Sell gate (locked):** `stock_availability` = `sellable` | `held` | `unsellable` on `global_stocks`.
+* **Not tags:** optional detail notes/labels never drive ATP.
+* **Live bridge:** `global_stock_types.is_sellable` maps into availability until cutover — [stock_type_api.md](./api/stock_type_api.md) transitional.
 
 ---
 
-## Stage 3: Stock Commitment & Tenant Allocation
+## Stage 2: Receive → `global_stocks`
 
-* **Action**: Once splits are complete for all items, the shipment is promoted to status `"Ready Stock"`.
-* **Tenant Distribution**: Stock quantities in `global_stocks` are allocated from parent tenant to child/shop tenants.
-* **APIs / RPCs Used**:
-  * **Shipment Promotion**: Update shipment header `status: "Ready Stock"`, `stock_ready: true`.
-  * **Tenant Allocation**: `supabase.rpc('bulk_allocate_shipment_stock', ...)` — [bulk_allocate_shipment_stock.md](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/v2/stock/rpc/bulk_allocate_shipment_stock.md)
-  * **Direct Allocation CRUD**: `global_stock_allocations` CRUD — [stock_allocation_api.md](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/v2/stock/api/stock_allocation_api.md)
+* Split each line’s ordered qty into parent stock rows by **availability** (default: all `sellable`).
+* Validation: total split = `ordered_quantity` (partial receive deferred).
+* Auto-accept → 100% `sellable`.
+* APIs: [global_stock_api.md](./api/global_stock_api.md)
+
+---
+
+## Stage 3: Ready + assign + list/sell
+
+* Promote shipment to `received`. Qty lives only on parent `global_stocks`.
+* **Assign (Option A):** `assigned_child_tenant_id` = list permission only.
+* **List:** `shop_product_listings.global_stock_id` (not allocation id).
+* **Display:** real ATP or dummy override.
+* **Sell:** desk + shop deduct parent sellable qty; shared ATP formula.
+* RPCs: assign replaces soft-qty meaning of [bulk_allocate_shipment_stock.md](./rpc/bulk_allocate_shipment_stock.md).
+
+---
+
+## Explicit non-goals (this lifecycle)
+
+* Soft qty allocation as a second warehouse  
+* Multi-child same batch / request-reassign (day one)  
+* Inter-warehouse transfer  
+* Reservation ledger in procurement (holds stay on cart / draft invoice)  
+* Day-one adjustment / return UI (movement docs later — issues §4.1)  
+* Return/sold columns on `global_stocks`

@@ -119,7 +119,7 @@ ONLINE ACTIVE
 
 ### Phase D — Smoke + deploy
 
-**Status:** Pending · Depends on A–C
+**Status:** Complete · Depends on A–C
 
 **Work**
 - Smoke matrix from [sales/scenarios.md](./sales/scenarios.md) §3 (delivered remittance independent) + §4 (RTO)
@@ -127,8 +127,14 @@ ONLINE ACTIVE
 - Note: post-accept Online returns blocked until **Phase A** Done — see sibling task
 
 **Acceptance**
-- [ ] §4 RTO numbers match ledger + PnL expectations in a manual/scripted check
-- [ ] Delivered invoice can still Record COD separately (cash track)
+- [x] §4 RTO numbers match ledger + PnL expectations in a manual/scripted check
+- [x] Delivered invoice can still Record COD separately (cash track)
+
+**Smoke notes (2026-08-12, prod / code review — no Docker):**
+- `update_thrift_sales_delivery_status` (`048`/`050`): first `DELIVERED` → PnL; never touches `payment_status`
+- `record_thrift_cod_remittance` (`047`): cash track only when `COD_PENDING`; independent of parcel
+- `revert_thrift_sales_invoice` RTO (`059`): soft-close; **no** `thrift_sales_returns` insert; rejects if returns exist or already `DELIVERED`; keeps prior packing `EXPENSE`; PnL all `RTO`
+- UI: Mark RTO gated to not-yet-delivered Online; Record COD separate
 
 ---
 

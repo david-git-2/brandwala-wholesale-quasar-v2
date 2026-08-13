@@ -1,6 +1,7 @@
 # Shipment Box API Specification
 
-This document details the API operations for `shipment_boxes`.
+Physical box weights for **verification / audit only**.  
+They do **not** set `shipments.total_weight_kg`, do **not** drive weight-balance apply, and do **not** enter cargo costing. See [schema.md](../schema.md) §1.4 · §2.
 
 ## 1. Create / Add Box
 

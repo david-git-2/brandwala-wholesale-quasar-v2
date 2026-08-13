@@ -61,8 +61,8 @@ This document details the API operations for `shipment_items`.
 
 * **Endpoint / Query**: `supabase.from('shipment_items').upsert(payload)`
 * **Use Cases**:
-  * **Bulk Price Update**: Batch update `unit_purchase_price` across items when vendor invoice is finalized.
-  * **Bulk Weight Balancing**: Batch update `product_weight_gm` and `package_weight_gm` across items to align with actual cargo bill weight.
+  * **Bulk Price Update**: Batch update `unit_purchase_price` when vendor invoice is finalized.
+  * **Bulk Weight Balancing**: Adjust `package_weight_gm` so Σ line gross weight matches header **`total_weight_kg`** (cargo invoice weight). Do **not** change `product_weight_gm` unless product policy says otherwise; do **not** write invoice weight onto boxes. Engine: [shipment_engine.md](../shipment_engine.md) §5.
 
 ### Request Payload (Batch Partial Update / Price & Weight Balance)
 ```json
@@ -139,7 +139,10 @@ This document details the API operations for `shipment_items`.
     "quantity": 25,
     "unit_purchase_price": 12.50,
     "product_weight_gm": 260.0,
-    "package_weight_gm": 10.0
+    "package_weight_gm": 10.0,
+    "landed_cost_bdt": 2400.0
   }
 ]
 ```
+
+`landed_cost_bdt` is **null** until finalize / cost revision. Clients must **not** write this column — server stamp only ([schema.md](../schema.md) §4, [workflow_flow.md](../workflow_flow.md) Stages 3–4).

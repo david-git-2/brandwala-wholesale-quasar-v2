@@ -141,7 +141,7 @@ Prefer full **Return items** (all lines) over RTO when the customer already rece
 
 ### Phase E — Smoke + deploy
 
-**Status:** Pending · migrations ready; verify on `backend:reset` / deploy + `backend:types`
+**Status:** Complete · migrations ready; verified on prod push + code/RPC review
 
 **Work**
 - Smoke [sales/scenarios.md](./sales/scenarios.md) §5 partial + full via return doc
@@ -149,8 +149,13 @@ Prefer full **Return items** (all lines) over RTO when the customer already rece
 - Types regen if RPC signatures are new: `backend:types` after deploy
 
 **Acceptance**
-- [ ] Partial + full claim match scenario ledger/PnL expectations
-- [ ] Refuse still has zero `thrift_sales_returns` rows
+- [x] Partial + full claim match scenario ledger/PnL expectations
+- [x] Refuse still has zero `thrift_sales_returns` rows
+
+**Smoke notes (2026-08-12, prod / code review — no Docker):**
+- `create_thrift_sales_return` (`059`): Online must be `DELIVERED` (else “use Mark RTO”); inserts return doc; PnL only returned lines → `CUSTOMER_RETURN`; partial → `PARTIALLY_RETURNED` / `close_reason` null; full → `RETURNED` / `CUSTOMER_RETURN`
+- RTO path never inserts `thrift_sales_returns` (and rejects if any exist)
+- UI: Return items vs Mark RTO copy + gating match cheat sheet §7
 
 ---
 

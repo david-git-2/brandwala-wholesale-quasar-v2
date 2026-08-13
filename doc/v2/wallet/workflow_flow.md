@@ -26,8 +26,9 @@ This document details the step-by-step business flow and maps each lifecycle sta
 
 ## Stage 2: Ledger Transaction & Atomic Balance Mutation
 
-* **Action**: System records a money movement (credit or debit) triggered by shop orders, vendor purchases, payouts, adjustments, or intercompany operations.
+* **Action**: System records a money movement (credit or debit) triggered by shop orders, vendor purchases, **inbound shipments**, shipment returns, payouts, adjustments, or intercompany operations.
 * **Execution**: Atomic RPC function inserts an immutable entry into `universal_wallet_ledger` and updates the target bucket in `wallet_accounts`. *(**Concurrency Note**: The underlying PostgreSQL RPC must utilize row-level locks via `SELECT ... FOR UPDATE` or direct atomic increments to prevent race conditions during high-concurrency balance updates.)*
+* **Shipment rule**: Wallets belong to **tenant / vendor / cargo agent** — never the shipment. Use `source_type` ∈ (`shipment`, `shipment_return`, `vendor_purchase`) + `source_id`. See [../../PROCUREMENT_STOCK_ISSUES.md](../../PROCUREMENT_STOCK_ISSUES.md) §3.
 * **APIs / RPCs Used**:
   * [record_ledger_transaction.md](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/v2/wallet/rpc/record_ledger_transaction.md) (`supabase.rpc('record_ledger_transaction', ...)`)
   * [universal_wallet_ledger_api.md](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/v2/wallet/api/universal_wallet_ledger_api.md) (`supabase.from('universal_wallet_ledger').select(...)`)

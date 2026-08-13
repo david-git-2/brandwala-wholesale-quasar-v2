@@ -1,6 +1,6 @@
 # Shop & Order
 
-BrandWala / TradeFlow BD uses a **parent module** for customer-facing storefronts: shop configuration, carts, and orders. **Child tenants** (sister concerns) create and own their shops. Stock-backed shops sell only from **`global_stock_allocations`** assigned to that child. Vendor-catalog shops expose supplier assortment for procurement intent. Fulfillment converges on existing global domains — procurement pull or **`global_invoices`** — not a parallel commerce ledger.
+BrandWala / TradeFlow BD uses a **parent module** for customer-facing storefronts: shop configuration, carts, and orders. **Child tenants** (sister concerns) create and own their shops. Stock-backed shops list from **shipments assigned to that child** and sell against **parent warehouse ATP** (see [v2/stock/schema.md](./v2/stock/schema.md)). **Live** code may still use `global_stock_allocations` qty until cutover. Vendor-catalog shops expose supplier assortment for procurement intent. Fulfillment converges on existing global domains — procurement pull or **`global_invoices`** — not a parallel commerce ledger.
 
 This document is written as a **reusable domain pattern**: shop types, two-layer customer permissions, multi-currency amounts, and display-vs-sellable quantity are applicable beyond this codebase whenever a B2B portal must serve multiple catalog modes from shared inventory.
 
@@ -134,7 +134,7 @@ This document answers:
 |-------|--------|
 | **Desk sales** | Staff invoice UI lives under `sales_invoice` — shop fulfillment **calls into** `global_invoices` |
 | **Inbound procurement** | Parent shipments live under `procurement_stock` — vendor-catalog orders are **inputs** to pull, not creators of shipments |
-| **Physical stock ownership** | Child does not own `global_stocks` — only `global_stock_allocations` slices |
+| **Physical stock ownership** | Child does not own `global_stocks` — parent warehouse only. **Target:** shipment → child assign for listing; sell = shared parent ATP |
 | **Separate commerce ledger** | No `commerce_accounting` stack — payments follow [REPORTING_TREASURY.md](REPORTING_TREASURY.md) on desk invoices |
 | **Legacy shop tables** | No FK to `stores`, `carts`, `orders`, `commerce_*` — concept reuse only |
 | **Koba / Thrift** | Isolated verticals — out of scope for `shop_order` v1 |
@@ -246,7 +246,7 @@ Redirect legacy routes when cut over:
 | Child (sister concern) | Yes | Child `admin` / `staff` |
 | Standalone | Yes | Tenant `admin` / `staff` |
 
-**Ownership rule (D-SH9):** `shops.tenant_id` = the operating child (or standalone). Parent only **allocates** stock via `global_stock_allocations`; it does not own shop rows.
+**Ownership rule (D-SH9):** `shops.tenant_id` = the operating child (or standalone). Parent owns warehouse stock; **target:** parent **assigns shipment → child** for listing (not soft qty allocation).
 
 ### Legacy keys (transition)
 
@@ -274,8 +274,8 @@ Shop **type** is set at create and **immutable**. Order **mode** and **negotiati
 | Type | `shop_type` | Catalog source | Stock required | Details / Configurations |
 |------|-------------|----------------|----------------|--------------------------|
 | **Vendor catalog (Procurement)** | `vendor_catalog` | `products` where `vendor_code = shops.vendor_code` and `is_available` | No | Catalog ordering when product is not present. Order negotiable toggle is set based on the user profile for the shop. If negotiable, full negotiation flow is supported. |
-| **Fixed price (Retail)** | `fixed_price` | `shop_product_listings` → `global_stock_allocations` | Yes | Stock-backed. Admin configures display selling price (Direct Cost vs. Markup) and quantity display option (Original Quantity vs. Custom Override). |
-| **Dropship** | `dropship` | Same as fixed price | Yes | Reseller storefront. Shows suggested sell price and minimum sell price (floor price constraint) that the reseller must sell at. |
+| **Fixed price (Retail)** | `fixed_price` | `shop_product_listings` → assigned shipment / parent stock (**live:** may still use `global_stock_allocations`) | Yes | Stock-backed. Display price (Direct Cost vs Markup) + qty display (real ATP vs custom/dummy override). |
+| **Dropship** | `dropship` | Same as fixed price | Yes | Reseller storefront. Suggested sell price + minimum sell floor. |
 
 ### 3.2 Order modes
 
@@ -460,14 +460,16 @@ flowchart TD
 
 ## 4. Stock-backed shops (fixed price & dropship)
 
-### 4.1 Allocation as the sellable slice
+### 4.1 Stock-backed listing (target vs live)
 
-Child tenants sell only from rows in `global_stock_allocations` where `child_tenant_id = shops.tenant_id`. See [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) §5.6.
+**Target (agreed):** Child lists stock from **shipments assigned** to `shops.tenant_id`. Listing FK = `global_stock_id`. Real sellable qty = shared parent ATP (`sellable` on-hand − holds). Dummy qty = `display_quantity_override` only. [v2/stock/schema.md](./v2/stock/schema.md).
+
+**Live (until cutover):** Listings may still FK `global_stock_allocations` with a qty ceiling — do not extend that model.
 
 ```mermaid
 flowchart LR
-  pool["global_stocks parent pool"] --> alloc["global_stock_allocations"]
-  alloc --> listing["shop_product_listings"]
+  pool["global_stocks parent pool"] --> shipAssign["shipment assigned to child"]
+  shipAssign --> listing["shop_product_listings.global_stock_id"]
   listing --> cart["shop_cart_items"]
   cart --> order["shop_order_items"]
   order --> invoice["global_invoices post"]
@@ -475,10 +477,10 @@ flowchart LR
 
 | Rule | Detail |
 |------|--------|
-| Listing FK | `shop_product_listings.global_stock_allocation_id` required for stock-backed shops |
-| Denormalize | `global_stock_id`, `product_id` copied for display joins |
-| Eligibility | Parent shipment **Ready Stock** + sellable `global_stock_type` only |
-| Deduction | On invoice post (or explicit fulfill RPC) — decrement allocation / parent pool per [SALES_INVOICE.md](SALES_INVOICE.md) |
+| Listing source (target) | `shop_product_listings.global_stock_id` → parent `global_stocks` |
+| Listing FK (live) | `global_stock_allocation_id` until cutover |
+| Eligibility | Shipment assigned + `received` + stock `availability = sellable` |
+| Deduction | Always parent pool (retire allocation qty touch) |
 
 ### 4.2 Quantity model (display vs sellable)
 
@@ -486,18 +488,20 @@ Three quantities drive behaviour. This separation is **reusable** anywhere UI ma
 
 | Concept | Source | Purpose |
 |---------|--------|---------|
-| **Allocated qty** | `global_stock_allocations.quantity` | Physical ceiling for this child |
+| **Parent ATP** (target) | `global_stocks.quantity` (− holds) for listed shipment stock | Real sell ceiling |
+| **Legacy allocated qty** | `global_stock_allocations.quantity` | Live only — soft ceiling to retire |
 | **Reserved qty** | `SUM(shop_stock_reservations.quantity)` | Active cart holds |
 | **Pending order qty** | Open order lines not yet fulfilled | Soft commit |
-| **Display override** | `shop_product_listings.display_quantity_override` | Optional inflated qty shown in UI |
+| **Display override** | `shop_product_listings.display_quantity_override` | Optional dummy qty on the website |
 
 **Computed in RPCs (not stored):**
 
 ```text
 available_to_sell =
-  allocated_qty
+  parent_stock_qty          -- target: global_stocks for the listing’s shipment/stock
   − reserved_qty
   − pending_order_qty
+  -- live may still start from allocation.quantity until cutover
 
 display_qty =
   if NOT effective(can_view_quantity) OR NOT shop.show_stock_quantity → null
@@ -693,8 +697,8 @@ See §5.2.
 |-------|------|-------|
 | `id` | bigint PK | |
 | `tenant_id`, `shop_id` | bigint FK | |
-| `global_stock_allocation_id` | bigint FK | Required stock-backed |
-| `global_stock_id` | bigint FK | Denormalized |
+| `global_stock_id` | bigint FK | **Target required** stock-backed → parent `global_stocks` |
+| `global_stock_allocation_id` | bigint FK | **Live only** until cutover — retire |
 | `product_id` | bigint FK | Denormalized |
 | `sell_price_amount`, `sell_price_currency_id` | money pair | |
 | `minimum_sell_price_amount`, `minimum_sell_price_currency_id` | money pair | Dropship only |
@@ -702,7 +706,7 @@ See §5.2.
 | `display_quantity_override` | integer null | Marketing display |
 | `is_active` | boolean | |
 
-**Unique:** `(shop_id, global_stock_allocation_id)`
+**Unique (target):** `(shop_id, global_stock_id)` · **Live:** `(shop_id, global_stock_allocation_id)` until cutover
 
 ### 7.5 `shop_carts` / `shop_cart_items`
 
@@ -937,7 +941,7 @@ To ensure admin users understand all configuration choices, a bilingual Help Dia
 | # | Topic | Decision |
 |---|-------|----------|
 | D-SH1 | Legacy isolation | New `shop_*` tables only; no FK to legacy shop/order/commerce |
-| D-SH2 | Stock source | Fixed + dropship sell from child `global_stock_allocations` (inherits **D3**) |
+| D-SH2 | Stock source | **Live:** `global_stock_allocations`. **Target:** assign Option A + shared ATP + `global_stock_id` — [v2/stock/schema.md](./v2/stock/schema.md) |
 | D-SH3 | Vendor downstream | `placed` vendor-catalog lines eligible for parent shipment pull |
 | D-SH4 | Currency | Amount + `global_currencies` FK — no currency-named columns |
 | D-SH5 | Shop type | Immutable after create |
@@ -945,7 +949,7 @@ To ensure admin users understand all configuration choices, a bilingual Help Dia
 | D-SH7 | Invoice handoff | Fulfillment writes `global_invoices` — not `commerce_invoice` |
 | D-SH8 | Negotiation | Only when `is_negotiable` and effective `can_negotiate` |
 | D-SH9 | Shop ownership | Child (or standalone) creates and owns `shops` |
-| D-SH10 | Listing FK | Stock-backed listings reference `global_stock_allocation_id` |
+| D-SH10 | Listing FK | **Target:** `global_stock_id`. **Live:** `global_stock_allocation_id` until cutover |
 | D-SH11 | Display qty | Override affects display only; checkout capped by `available_to_sell` |
 | D-SH12 | Dropship | `minimum_sell_price` floor; dual amounts on invoice per **D-SI***; ops desk per [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) **D-SD*** |
 

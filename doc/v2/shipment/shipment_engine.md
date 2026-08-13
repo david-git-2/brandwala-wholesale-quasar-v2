@@ -1,9 +1,13 @@
 # Shipment Engine — Cost, Balance & Costing
 
 > Reusable, pure-function computation layer for all shipment types.
-> Consumes `shipment_cost_entries` + `shipment_items` + `shipment_boxes` — produces computed outputs.
+> Consumes `shipment_cost_entries` + `shipment_items` + header `total_weight_kg` (+ boxes only for verification display).
 >
-> **Dual-phase design**: UI computes for live preview (no network cost), server computes for authoritative stamping & wallet posting.
+> **Dual-phase design**: UI computes for live preview; server computes for authoritative **stamping** on `shipment_items.landed_cost_bdt`.
+>
+> **Cost ownership:** [schema.md](./schema.md) §4 — stamp on shipment item; stock has no cost; invoice snapshots provisional; reports join current stamp for actual P&L.
+>
+> **Schema canon:** [schema.md](./schema.md) — day-one = one `product` + one `cargo` entry; weight rules in §2.
 
 ---
 
@@ -14,14 +18,14 @@
 │                         shipment_engine/                              │
 │                                                                      │
 │  ┌───────────────┐  ┌───────────────┐  ┌──────────┐  ┌────────────┐ │
-│  │ costEngine.ts │  │weightBalance  │  │ price    │  │ cost       │ │
-│  │               │  │  .ts          │  │ Balance  │  │ Variance   │ │
-│  │ • effective   │  │ • estimated   │  │  .ts     │  │  .ts       │ │
-│  │   rates       │  │   vs actual   │  │ • est vs │  │ • compute  │ │
-│  │ • breakdown   │  │   weight      │  │   invoice│  │   variance │ │
-│  │ • per-item    │  │ • pkg weight  │  │ • price  │  │ • build    │ │
-│  │   landed cost │  │   adjustments │  │   adjust │  │   ledger   │ │
-│  │ • summary     │  │ • remainder   │  │ • rest   │  │   payload  │ │
+│  │ costEngine.ts │  │weightBalance  │  │ price    │  │ costRevision│ │
+│  │               │  │  .ts          │  │ Balance  │  │  .ts (opt) │ │
+│  │ • effective   │  │ • estimated   │  │  .ts     │  │ • old→new  │ │
+│  │   rates       │  │   vs actual   │  │ • est vs │  │   delta    │ │
+│  │ • breakdown   │  │   weight      │  │   invoice│  │ • UI /      │ │
+│  │ • per-item    │  │ • pkg weight  │  │ • price  │  │   wallet    │ │
+│  │   landed cost │  │   adjustments │  │   adjust │  │   stub only │ │
+│  │ • summary     │  │ • remainder   │  │ • rest   │  │             │ │
 │  └───────────────┘  └───────────────┘  └──────────┘  └────────────┘ │
 │                                                                      │
 │  ┌────────────────────────────────────────────────────────────────┐  │
@@ -35,12 +39,14 @@
          ▼
 ┌──────────────────────────────────────────────────────────────────────┐
 │  UI (live preview)       │  Server RPCs            │  Tests         │
-│  • Computed costs        │  • Finalization: stamp   │  • Unit tests  │
-│  • Balance previews      │    landed_cost_bdt       │    with plain  │
-│  • No network cost       │  • Variance: post ledger │    objects     │
-│  • For UX only           │  • Authoritative         │                │
+│  • Computed costs        │  • Finalize: stamp      │  • Unit tests  │
+│  • Balance previews      │    landed_cost_bdt      │    with plain  │
+│  • No network cost       │  • Revision: re-stamp   │    objects     │
+│  • For UX only           │  • Authoritative        │                │
 └──────────────────────────────────────────────────────────────────────┘
 ```
+
+**Keep `costEngine`.** Drop treating a variance ledger as P&L authority — true profit is report-side join to the stamp ([schema.md](./schema.md) §4).
 
 **Key Principle**: Every function in the engine is **pure** — takes plain objects as input, returns plain objects as output. No Supabase client, no Pinia store, no Vue reactivity inside.
 
@@ -51,16 +57,18 @@
 ```
 web/src/shared/shipment-engine/
 ├── types.ts              # Shared input/output interfaces
-├── costEngine.ts         # Effective rates, cost breakdown, landed cost
-├── costVariance.ts       # Variance calculation & ledger payload builder
+├── costEngine.ts         # Effective rates, cost breakdown, landed cost (required)
+├── costRevision.ts       # Optional: old→new delta helper for revision UI / wallet stub
 ├── weightBalance.ts      # Weight delta calculation & package weight distribution
 ├── priceBalance.ts       # Price delta calculation & purchase price distribution
 └── __tests__/
     ├── costEngine.test.ts
-    ├── costVariance.test.ts
+    ├── costRevision.test.ts
     ├── weightBalance.test.ts
     └── priceBalance.test.ts
 ```
+
+> Rename from older sketch `costVariance.ts` if present — same helper, clearer job (not “accounting variance table”).
 
 > Located in `shared/` because it is consumed by multiple modules (`procurement_stock`, `thrift`, future v2 shipment module).
 
@@ -73,13 +81,14 @@ web/src/shared/shipment-engine/
 ```typescript
 /** A single cost/rate entry from shipment_cost_entries */
 export interface CostEntry {
-  cost_type: string;        // 'product' | 'cargo' | 'duty' | 'labor' | 'washing' | 'transport' | ...
-  entity_type?: string;     // target wallet entity type if payment_source = 'wallet' (e.g. 'vendor', 'courier')
-  entity_id?: number;       // target wallet entity ID if payment_source = 'wallet'
+  cost_type: string;        // day-one: 'product' | 'cargo'; stubs: 'duty' | 'insurance' | 'labor' | ...
+  entity_type?: string;     // stub — payee ('vendor' | cargo…); never 'shipment'
+  entity_id?: number;       // stub — payee id for optional wallet post
   currency_id: number | null;
-  amount: number;           // in source currency
+  amount: number;           // total in source currency (not per-kg)
   exchange_rate: number;    // to base currency (BDT). 1.00 for local
-  payment_source?: string;  // 'cash' | 'credit' | 'wallet'
+  payment_source?: string;  // stub: 'cash' | 'credit' | 'wallet' | omit = costing only
+  allocation?: string;      // stub: 'by_weight' | 'by_value' | 'by_qty' | 'per_unit'
 }
 
 /** A shipment line item */
@@ -100,7 +109,7 @@ export interface Box {
 /** Minimal shipment header context needed by the engine */
 export interface ShipmentContext {
   shipment_type: string;        // 'international' | 'local' | 'thrift' | 'transfer'
-  total_weight_kg: number | null;  // cargo invoice weight (received weight)
+  total_weight_kg: number | null;  // cargo invoice weight (live received_weight) — NOT Σ boxes
 }
 ```
 
@@ -160,25 +169,29 @@ effective_rate(type) = Σ(amount × exchange_rate) / Σ(amount)
                        where cost_type = type
 ```
 
-For `blended_rate` (international only): combines product + cargo weighted by total value.
+For `blended_rate` (international only): money-weighted blend of product + cargo (live `transaction_rate` parity):
+
+```
+blended = (goods_bdt + cargo_bdt) / (Σ product.amount + Σ cargo.amount)
+```
 
 ### 4.2 `computeCostBreakdown(entries: CostEntry[], items: LineItem[], ctx: ShipmentContext): CostBreakdown`
 
 Aggregates all cost entries into a structured breakdown:
 - Groups by `cost_type`
 - Computes `purchase_total` and `base_total` per group
-- Determines `cargo_weight_kg` (invoice weight → fallback to estimated from items)
+- Determines `cargo_weight_kg` from **header invoice weight** (see §5) — never from boxes
 
 ### 4.3 `computeItemLandedCost(item: LineItem, entries: CostEntry[], items: LineItem[], ctx: ShipmentContext): ItemLandedCost`
 
-Per-item landed cost:
+Per-item landed cost (**day-one parity** with live `landedCost.ts`):
 
-1. **Cargo allocation** — distributes total cargo cost to item proportional to its gross weight share:
+1. **Cargo allocation** — distributes `Σ(cargo.amount)` proportional to gross weight share:
    ```
-   item_gross_weight = (product_weight_gm + package_weight_gm) × quantity
-   cargo_share = (item_gross_weight / total_gross_weight) × total_cargo_purchase
+   item_gross_kg = ((product_weight_gm + package_weight_gm) × quantity) / 1000
+   cargo_share   = (item_gross_kg / estimated_pack_kg) × Σ(cargo.amount)
    ```
-   Falls back to even distribution by quantity when no weight basis exists.
+   Falls back to qty share when no weight basis.
 
 2. **Purchase base** = `unit_purchase_price + (cargo_share / quantity)`
 
@@ -186,17 +199,34 @@ Per-item landed cost:
    - **Local**: `purchase_base` (rate = 1.00)
    - **International**: `purchase_base × blended_rate`
 
+**Later stub:** extra `cost_type`s allocate by entry `allocation` into BDT on the line (prefer Σ components over stretching blended FX).
+
 ### 4.4 `computeShipmentCostSummary(entries: CostEntry[], items: LineItem[], ctx: ShipmentContext): ShipmentCostSummary`
 
-Top-level aggregation function that calls the above and returns everything:
-- Effective rates
-- Full cost breakdown
-- Per-item landed costs
-- Grand total BDT
+Top-level aggregation: effective rates, breakdown, per-item landed costs, grand total BDT.
 
 ---
 
-## 5. Weight Balance (`weightBalance.ts`)
+## 5. Weight (`weightBalance.ts` + costing basis)
+
+Canon: [schema.md](./schema.md) §2.
+
+### 5.0 Cargo weight for costing (not boxes)
+
+```
+estimated_pack_kg = Σ((product_weight_gm + package_weight_gm) × quantity) / 1000
+
+cargo_kg = ctx.total_weight_kg   if set and > 0
+         else estimated_pack_kg
+```
+
+| Source | Role |
+| :--- | :--- |
+| `ctx.total_weight_kg` | Cargo **invoice** weight — costing + balance target |
+| Line weights | Estimate + share basis after apply |
+| `shipment_boxes` | Verification / display only — **never** `cargo_kg` |
+
+UI may set cargo entry `amount = cargo_kg × per_kg_rate`; engine uses entry `amount`, not a header `cargo_rate`.
 
 ### 5.1 `computeEstimatedWeightKg(items: LineItem[]): number`
 
@@ -204,19 +234,21 @@ Top-level aggregation function that calls the above and returns everything:
 Σ((product_weight_gm + package_weight_gm) × quantity) / 1000
 ```
 
-### 5.2 `computeActualWeightKg(boxes: Box[]): number`
+### 5.2 `computeBoxWeightKg(boxes: Box[]): number` (verification only)
 
 ```
 Σ(box.weight_kg)
 ```
 
+Compare to invoice weight in UI; **do not** feed into cost engine as `cargo_kg`.
+
 ### 5.3 `computeWeightDelta(items: LineItem[], invoiceWeightKg: number): { estimated: number, actual: number, delta: number }`
 
-Simple comparison.
+`actual` = **invoice** weight (`total_weight_kg`), not Σ boxes.
 
-### 5.4 `computePackageWeightAdjustments(items: LineItem[], actualTotalKg: number): WeightAdjustment[]`
+### 5.4 `computePackageWeightAdjustments(items: LineItem[], invoiceTotalKg: number): WeightAdjustment[]`
 
-Distributes weight delta proportionally across items by their current gross weight share. Adjusts `package_weight_gm` per item.
+Distributes `(invoiceTotalKg − estimated)` into line `package_weight_gm` only. **Does not** mutate `shipments.total_weight_kg`.
 
 ```typescript
 export interface WeightAdjustment {
@@ -228,7 +260,7 @@ export interface WeightAdjustment {
 
 **Algorithm**:
 1. Calculate total estimated weight (gm) from items
-2. Compute `delta = actual_total_gm - estimated_total_gm`
+2. Compute `delta = invoice_total_gm - estimated_total_gm`
 3. For each item: `share = item_gross_weight / total_gross_weight`
 4. `per_unit_delta = (delta × share) / quantity`
 5. `new_package_weight = current_package_weight + per_unit_delta`
@@ -331,6 +363,14 @@ The engine computes `product_rate`, `cargo_rate`, and `blended_rate` from entrie
 **Before**: `cargo_purchase = received_weight × cargo_rate` (header field).
 **After**: `cargo_purchase = Σ(amount)` where `cost_type = 'cargo'` from entries. The weight × per-kg rate is now just how the user _enters_ the cost — the engine works with the final amount.
 
+### 8.4 Day-one vs improved
+
+| Mode | Entries |
+| :--- | :--- |
+| Current behaviour | One `product` + one `cargo` |
+| Multi FX | Multiple `product` rows → weighted `effective_rate` |
+| Duty / labor / … | Extra `cost_type` rows + `allocation` stub |
+
 ---
 
 ## 9. Usage Examples
@@ -352,7 +392,8 @@ const summary = computed(() =>
 ```sql
 -- Postgres function calls the same logic
 -- Reads from shipment_cost_entries, computes effective rates,
--- then posts wallet ledger entries using the computed totals
+-- stamps landed_cost_bdt, optionally posts wallet to tenant + payee
+-- (never a shipment wallet; source_type/source_id = shipment)
 ```
 
 ### 9.3 Unit Tests
@@ -371,73 +412,67 @@ test('weighted average for multi-source product payments', () => {
 
 ---
 
-## 10. Cost Stamping & Variance
+## 10. Cost Stamping & Revision
 
-### 10.1 Cost Stamping Rules
+Authority: [schema.md](./schema.md) §4. Engine **computes**; RPCs **stamp**.
 
-The engine computes costs, but **stamping** (writing to DB) only happens at two points:
+### 10.1 When to stamp
 
-| Event | What happens | Who does it |
-|---|---|---|
-| **Finalization** (Stage 3) | Engine computes → stamps `landed_cost_bdt` on each `shipment_item` | Server RPC |
-| **Cost Revision** (Stage 4) | Engine recomputes → computes variance → re-stamps `landed_cost_bdt` → posts variance ledger entry | Server RPC |
-| **Draft editing** (Stage 2) | Engine computes for live preview only | Client (UI) — nothing stored |
+| Event | What happens | Who |
+| :--- | :--- | :--- |
+| **Draft editing** (Stage 2) | Preview only — nothing written | Client |
+| **Finalization** (Stage 3) | `costEngine` → write `shipment_items.landed_cost_bdt` | Server RPC |
+| **Cost revision** (Stage 4) | Recompute → **re-stamp** `landed_cost_bdt` | Server RPC |
 
-### 10.2 Variance Computation (`costVariance.ts`)
+Stock rows are never updated for cost. Invoice lines are never rewritten for cost.
 
-#### `computeCostVariance(oldCosts: ItemLandedCost[], newCosts: ItemLandedCost[]): CostVarianceResult`
+### 10.2 Revision delta helper (`costRevision.ts`) — optional
 
-Compares previously-stamped costs against newly-computed costs:
+UI / confirmation dialog / optional wallet stub. **Not** the source of true P&L (reports join current stamp × sold qty).
+
+#### `computeStampDelta(oldStamps, newCosts): StampDeltaResult`
 
 ```typescript
-export interface ItemVariance {
+export interface ItemStampDelta {
   item_id: number;
   old_landed_cost_bdt: number;
   new_landed_cost_bdt: number;
-  variance_per_unit: number;     // new - old
-  quantity: number;
-  total_variance: number;        // variance_per_unit × quantity
+  delta_per_unit: number;        // new - old
+  quantity: number;              // shipment line qty (or sold qty if caller passes it)
+  total_delta: number;           // delta_per_unit × quantity
 }
 
-export interface CostVarianceResult {
-  items: ItemVariance[];
-  total_variance_bdt: number;    // Σ(total_variance) across all items
-  has_variance: boolean;         // |total_variance| > threshold
-}
-```
-
-#### `buildVarianceLedgerPayload(variance: CostVarianceResult, shipmentId: number, costEntry: CostEntry): WalletLedgerEntry`
-
-Builds the wallet ledger entry payload for posting:
-
-```typescript
-{
-  entity_type: costEntry.entity_type,
-  entity_id: costEntry.entity_id,
-  type: variance.total_variance_bdt > 0 ? 'debit' : 'credit',
-  amount: Math.abs(variance.total_variance_bdt),
-  source_type: 'shipment_cost_variance',
-  source_id: String(shipmentId),
-  metadata: {
-    items: variance.items,
-    old_total: Σ(old costs),
-    new_total: Σ(new costs)
-  }
+export interface StampDeltaResult {
+  items: ItemStampDelta[];
+  total_delta_bdt: number;
+  has_change: boolean;           // |total_delta| > threshold
 }
 ```
 
-### 10.3 Order Cost Snapshots (Downstream)
+#### `buildOptionalWalletPayload(...)` (stub)
 
-When an order/invoice is created from shipment stock, the order line **snapshots** the cost:
+Only if wallet integration wants an explicit “cost changed” post. Prefer report join for investor / batch P&L; do not require a variance ledger table for day-one truth.
 
-```
-order_line_item: {
-  product_id: 105,
+### 10.3 Downstream: provisional snapshot vs actual report
+
+**At sale** (invoice / shop order) — copy stamp once:
+
+```text
+invoice_line: {
   sell_price: 3000,
-  unit_cost_snapshot: 2400    ← frozen from landed_cost_bdt at time of sale
+  unit_cost_price / landed_cost_bdt: 2400   ← frozen from shipment_item.landed_cost_bdt
+  shipment_item_id: …                      ← required for actual P&L join
 }
 ```
 
-- Already-issued invoices/orders are **never retroactively modified**
-- Cost variance appears only in **accounting reports** (Provisional COGS vs Actual COGS)
-- The invoice/order shows **sell price only** to the customer; cost is internal admin view only
+| View | Formula |
+| :--- | :--- |
+| Provisional line margin | `sell − unit_cost_snapshot` (invoice only) |
+| **Actual** batch / investor P&L | `Σ sell − Σ (current shipment_item.landed_cost_bdt × sold_qty)` |
+| Optional adjustment column | `provisional_cogs − actual_cogs` |
+
+Rules:
+
+- Posted invoice cost snapshots are **immutable**
+- Customer-facing docs show sell only; cost is admin-internal
+- After revision, unsold stock “shows” the new stamp via join; sold qty truth moves via **report join**, not invoice mutation

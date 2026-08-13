@@ -11,7 +11,9 @@ This document answers:
 - How should implementation start fresh (drop-and-recreate)?
 - How is the module designed to grow with new features?
 
-Related: [MASTER_PLAN.md](MASTER_PLAN.md) (§16 redesign), [REPORTING_TREASURY.md](REPORTING_TREASURY.md), [TENANT_MODEL_AND_ACCESS.md](TENANT_MODEL_AND_ACCESS.md), [APP_SCOPES_AND_ACCESS.md](APP_SCOPES_AND_ACCESS.md), [GLOBAL_REFERENCE_DATA.md](GLOBAL_REFERENCE_DATA.md).
+Related: [MASTER_PLAN.md](MASTER_PLAN.md) (§16 redesign), [PROCUREMENT_STOCK_ISSUES.md](PROCUREMENT_STOCK_ISSUES.md) (redesign — cost, money, status, **one vendor/shipment**, **shipment→child assign + shared ATP**), [REPORTING_TREASURY.md](REPORTING_TREASURY.md), [TENANT_MODEL_AND_ACCESS.md](TENANT_MODEL_AND_ACCESS.md), [APP_SCOPES_AND_ACCESS.md](APP_SCOPES_AND_ACCESS.md), [GLOBAL_REFERENCE_DATA.md](GLOBAL_REFERENCE_DATA.md).
+
+> **Target (v2):** one vendor per shipment; parent owns `global_stocks`; assign Option A + listing `global_stock_id`; sell = shared ATP; availability `sellable|held|unsellable` — [v2/stock/schema.md](./v2/stock/schema.md) · [PROCUREMENT_STOCK_ISSUES.md](./PROCUREMENT_STOCK_ISSUES.md). Live schema below may still show line vendors + qty allocations until cutover.
 
 ---
 
@@ -181,7 +183,7 @@ Follow **`global_reference`** as the template (one assignable parent, granular s
 | `global_stock_reservation` | `global_stock_reservations` | Hold qty for pending orders/invoices |
 | `global_shipment_inspection` | `global_shipment_inspections`, `global_shipment_inspection_items` | QC before receive |
 | `global_shipment_document` | `global_shipment_documents` | Customs / proforma attachments |
-| `global_shipment_cost_line` | `global_shipment_cost_lines` | Extra fixed cost slots (duty, insurance) added in code — not a formula builder |
+| `global_shipment_cost_line` | — | **Superseded** — use `global_shipment_cost_entries` (v2 §5.1); do not add duty/insurance beside header rates |
 | `global_batch_code` | `global_batch_codes` | Batch / barcode PC labels |
 | `global_warehouse_location` | `global_warehouse_locations`, `global_stock_locations` | Bin / shelf tracking |
 | `global_reorder_point` | `global_reorder_rules` | Low-stock alerts |
@@ -367,6 +369,8 @@ Index `global_stocks.shipment_item_id`.
 | Text + CHECK | `global_shipments.status` | Workflow statuses (Draft → Ready Stock) — see table below |
 
 `global_shipments.status` is **`text not null default 'Draft'`** with a CHECK constraint on the values below.
+
+> **Redesign target:** collapse to solid `draft` \| `in_transit` \| `received` \| `cancelled`. Mid-ops labels (UK warehouse, airport, Payment Done, …) move to tenant-custom **progress tags** (`shipment_progress`) — [v2/stock/schema.md](./v2/stock/schema.md) · [PROCUREMENT_STOCK_ISSUES.md](./PROCUREMENT_STOCK_ISSUES.md). Live product still uses the table below until cutover.
 
 Based on legacy `SHIPMENT_STATUS_OPTIONS` in `web/src/modules/shipment/types/index.ts`, with the **final receive milestone renamed** for the new stack:
 
@@ -676,16 +680,18 @@ Tracks [procurement_stock_phases plan] Phases 1–10. Update this section when a
 | D7 | Cost at sale | Join + frontend calc; snapshot on **invoice line at sale only** |
 | D-PS1 | Tables | Drop-recreate; no migration |
 | D-PS2 | Parent module | `procurement_stock` + shipment / stock / inventory submodules |
-| D-PS3 | Allocation | `global_stock_allocations` in scope |
+| D-PS3 | Allocation | **Live:** qty rows in `global_stock_allocations`. **Target (v2):** assign **shipment → child** for listing only; sell from **shared parent ATP**; no soft allocation qty — [v2/stock/schema.md](./v2/stock/schema.md) · [PROCUREMENT_STOCK_ISSUES.md](./PROCUREMENT_STOCK_ISSUES.md) |
 | D-PS4 | Routes | `/app/procurement/*` |
-| D-PS5 | Status | Draft → Ready Stock; **Warehouse Received** = edit rates + receive split; **Ready Stock** = allocate, search, invoice |
+| D-PS5 | Status | **Live:** Draft → Ready Stock checklist (§5.1). **Target (v2):** solid `draft` \| `in_transit` \| `received` \| `cancelled`; customer progress via tags group `shipment_progress` — [v2/stock/schema.md](./v2/stock/schema.md) · [PROCUREMENT_STOCK_ISSUES.md](./PROCUREMENT_STOCK_ISSUES.md) |
 | D-PS10 | Receive split | Qty per line split across `global_stock_types` into `global_stocks` rows |
-| D-PS11 | Sellable gate | Allocate, global search pick, and invoice only when `Ready Stock` + `stock_ready` |
-| D-PS6 | Costing | Hardcoded `landedCost.ts`; frontend only; no DB triggers or costing RPCs |
+| D-PS11 | Sellable gate | Allocate, global search pick, and invoice only when `Ready Stock` + `stock_ready` (**live**). **Target:** sellable when `status = received` + `inventory_added` |
+| D-PS6 | Costing | **Live:** hardcoded `landedCost.ts` (frontend). **Target (v2):** `global_shipment_cost_entries` + server stamp `landed_cost_bdt` — [v2/shipment/schema.md](./v2/shipment/schema.md) |
 | D-PS7 | Stock shape | Quantity + FKs only; no cost/display copies on `global_stocks` |
 | D-PS8 | Formula | **No** tenant formula builder — essential input UI on shipment only |
-| D-PS9 | Domestic vs intl | **Same formula structure**; domestic uses `effective_rate = 1`; international follows legacy `costing.ts` |
-| D-PS12 | Vendor scoping | **Vendor is line-level only**; `vendor_id` dropped from shipment headers and legacy table; added to `global_shipment_items` |
+| D-PS9 | Domestic vs intl | **Same formula structure**; domestic uses `effective_rate = 1`; international follows legacy `costing.ts`. **Target types:** solid enum incl. `transfer` — progress labels are tags, not types ([v2/shipment/schema.md](./v2/shipment/schema.md)) |
+| D-PS12 | Vendor scoping | **Live:** line-level `vendor_id` on items. **Target (v2):** **one vendor per shipment** on header (`shipments.vendor_id`); multi-vendor lines are not the product rule — [v2/shipment/schema.md](./v2/shipment/schema.md) |
 | D-PS13 | Weight balance | Package-weight-only distribution of weight delta; no audit trail v1 |
 | D-PS14 | Received weight | `received_weight` is the cargo invoice weight; set only via explicit save on the Weight Balance card (never overwritten by apply); box weights are verification-only |
+| D-PS15 | Money handoff | Cost entries ≠ cash. Wallets on **tenant + vendor/cargo** only; shipment = `source_*`. Optional posts; store-credit returns credit vendor wallet (no tenant cash). See [v2/wallet/schema.md](./v2/wallet/schema.md) · [PROCUREMENT_STOCK_ISSUES.md](./PROCUREMENT_STOCK_ISSUES.md) §3 |
+| D-PS16 | Shop qty display | Real ATP from assigned shipment’s parent stock **or** dummy via `display_quantity_override`. Checkout always uses real ATP — [v2/stock/schema.md](./v2/stock/schema.md) · [PROCUREMENT_STOCK_ISSUES.md](./PROCUREMENT_STOCK_ISSUES.md) |
 

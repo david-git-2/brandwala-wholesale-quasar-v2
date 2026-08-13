@@ -1,23 +1,26 @@
-# RPC: `bulk_allocate_shipment_stock`
+# RPC: assign shipment to child (was `bulk_allocate_shipment_stock`)
 
-Allocates shipment stock from a parent tenant to a child/shop tenant in bulk across all stock entries associated with a shipment.
+**Target behavior:** Assign a Ready Stock **shipment** to one child tenant so that child’s shop may **list** the batch. Does not move warehouse ownership and does **not** write soft qty slices.
 
----
+**Design lock:** [../schema.md](../schema.md).
 
-## 1. Description & Behavior
-
-* **Function Name**: `bulk_allocate_shipment_stock`
-* **Purpose**: Performs batch allocation of `global_stocks` into `global_stock_allocations` for a specific child tenant when a shipment arrives or stock distribution is triggered.
-* **Internal Operations**:
-  * Finds all `global_stocks` associated with the items in `p_shipment_id`.
-  * Inserts or updates corresponding rows in `global_stock_allocations` matching `p_child_tenant_id` and `p_parent_tenant_id`.
+**Live today:** `bulk_allocate_shipment_stock` still dumps remaining sellable stock qty into `global_stock_allocations`. Treat that as legacy until cutover.
 
 ---
 
-## 2. RPC Execution Example
+## 1. Target behavior
+
+* Set `shipments.assigned_child_tenant_id = p_child_tenant_id` (or upsert `shipment_assignments`).
+* Verify child belongs to parent (or child = parent for standalone).
+* Shipment must be Ready / `received` with stock posted.
+* **No** allocation qty rows required for sell truth — shop ATP reads `global_stocks` for this `shipment_id`.
+
+---
+
+## 2. Example (target)
 
 ```typescript
-const { data, error } = await supabase.rpc('bulk_allocate_shipment_stock', {
+const { data, error } = await supabase.rpc('assign_shipment_to_child', {
   p_parent_tenant_id: 12,
   p_child_tenant_id: 5,
   p_shipment_id: 88
@@ -26,13 +29,19 @@ const { data, error } = await supabase.rpc('bulk_allocate_shipment_stock', {
 
 ---
 
-## 3. Parameters & Return Type
+## 3. Parameters
 
 | Parameter | Type | Required | Description |
 | :--- | :--- | :---: | :--- |
-| `p_parent_tenant_id` | BIGINT | Yes | Source parent tenant ID |
-| `p_child_tenant_id` | BIGINT | Yes | Destination child/shop tenant ID |
-| `p_shipment_id` | BIGINT | Yes | Target shipment ID |
+| `p_parent_tenant_id` | BIGINT | Yes | Stock owner |
+| `p_child_tenant_id` | BIGINT | Yes | Shop tenant that may list this shipment |
+| `p_shipment_id` | BIGINT | Yes | Batch to assign |
 
-### Return Value
-* Returns `INT` representing total allocated row count or total quantity processed.
+### Return
+* Assigned shipment id / row count.
+
+---
+
+## 4. Legacy note
+
+Until rename/cutover, docs may still mention `bulk_allocate_shipment_stock` — implementers should follow §1 target, not soft-qty upsert.

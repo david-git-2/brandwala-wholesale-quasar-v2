@@ -1,12 +1,17 @@
 # Shipment API Specification
 
-This document details the API operations for the core `shipments` header record.
+Core `shipments` header — ops / identity only. **No rate fields.** Money → [shipment_cost_entry_api.md](./shipment_cost_entry_api.md).  
+**Schema:** [schema.md](../schema.md) §1.1
+
+---
 
 ## 1. Create Shipment (Draft)
 
-* **Endpoint / Query**: `supabase.from('shipments').insert(payload)`
+* **Endpoint:** `supabase.from('shipments').insert(payload)`  
+* Prefer RPC: [create_shipment_draft.md](../rpc/create_shipment_draft.md) (header only; no cost entries required)
 
 ### Request Payload
+
 ```json
 {
   "tenant_id": 12,
@@ -14,13 +19,12 @@ This document details the API operations for the core `shipments` header record.
   "name": "UK Apparel Batch #40",
   "shipment_type": "international",
   "vendor_id": 2,
-  "cargo_company_id": 5,
-  "shipment_purchase_currency_id": 1,
-  "shipment_cost_currency_id": 2
+  "cargo_company_id": 5
 }
 ```
 
 ### Response Payload
+
 ```json
 {
   "id": 88,
@@ -31,8 +35,7 @@ This document details the API operations for the core `shipments` header record.
   "shipment_type": "international",
   "vendor_id": 2,
   "cargo_company_id": 5,
-  "shipment_purchase_currency_id": 1,
-  "shipment_cost_currency_id": 2,
+  "total_weight_kg": null,
   "inventory_added": false,
   "created_at": "2026-08-01T22:00:00Z"
 }
@@ -42,25 +45,29 @@ This document details the API operations for the core `shipments` header record.
 
 ## 2. Update Shipment Header
 
-* **Endpoint / Query**: `supabase.from('shipments').update(payload).eq('id', 88)`
+* **Endpoint:** `supabase.from('shipments').update(payload).eq('id', 88)`
 
-### Request Payload (Partial Update)
+### Request — cargo invoice weight (explicit save)
+
 ```json
 {
   "name": "UK Apparel Batch #40 (Revised)",
   "status": "in_transit",
-  "total_weight_kg": 42.50
+  "total_weight_kg": 42.5
 }
 ```
 
-### Response Payload
+`total_weight_kg` = cargo **invoice** weight (live `received_weight`). Weight-balance **apply** must not overwrite this field.
+
+### Response
+
 ```json
 {
   "id": 88,
   "tenant_id": 12,
   "name": "UK Apparel Batch #40 (Revised)",
   "status": "in_transit",
-  "total_weight_kg": 42.50,
+  "total_weight_kg": 42.5,
   "updated_at": "2026-08-01T22:06:00Z"
 }
 ```
@@ -69,50 +76,41 @@ This document details the API operations for the core `shipments` header record.
 
 ## 3. Delete Shipment
 
-* **Endpoint / Query**: `supabase.from('shipments').delete().eq('id', 88)`
+* **Endpoint:** `supabase.from('shipments').delete().eq('id', 88)`
 
-### Request
-* Parameter: `id = 88`
+### Cascade
 
-### Response Payload
+* **CASCADE:** `shipment_cost_entries`, `shipment_items`, `shipment_boxes`
+* **Blocked** if `inventory_added = true` (`received` / stock posted)
+
 ```json
-{
-  "success": true,
-  "deleted_id": 88
-}
+{ "success": true, "deleted_id": 88 }
 ```
-
-### Cascade & Impact Rules:
-* **Child Tables (`CASCADE`)**: `shipment_payments`, `shipment_items`, and `shipment_boxes` are deleted automatically on database cascade.
-* **Inventory Constraint**: Deletion is blocked if `inventory_added = true` (`received` status).
 
 ---
 
 ## 4. List / Query Shipments
 
-* **Endpoint / Query**: `supabase.from('shipments').select('*, shipment_items(*), shipment_payments(*), shipment_boxes(*)')`
-
-### Query Parameters / Filters
-* `status`: Filter by shipment status (e.g. `draft`, `in_transit`, `received`)
-* `vendor_id`: Filter by vendor
-* `cargo_company_id`: Filter by cargo company
-* `tenant_id`: Scope to tenant
-
-### Request Example
 ```typescript
 const { data, error } = await supabase
   .from('shipments')
   .select(`
     *,
     shipment_items(*),
-    shipment_payments(*),
+    shipment_cost_entries(*),
     shipment_boxes(*)
   `)
   .eq('tenant_id', 12)
   .order('created_at', { ascending: false });
 ```
 
-### Response Payload
+### Filters
+
+* Columns: `status`, `vendor_id`, `cargo_company_id`, `tenant_id`, `shipment_type`
+* Progress / labels: filter via `entity_tags` (tag group `shipment_progress` or any tag) — see [../schema.md](../schema.md)
+
+### Response (shape)
+
 ```json
 [
   {
@@ -124,14 +122,14 @@ const { data, error } = await supabase
     "shipment_type": "international",
     "vendor_id": 2,
     "cargo_company_id": 5,
-    "shipment_purchase_currency_id": 1,
-    "shipment_cost_currency_id": 2,
+    "total_weight_kg": null,
     "inventory_added": false,
-    "created_at": "2026-08-01T22:00:00Z",
-    "updated_at": "2026-08-01T22:06:00Z",
+    "progress_tag": { "id": "…", "name": "UK Warehouse", "group_name": "shipment_progress" },
     "shipment_items": [],
-    "shipment_payments": [],
+    "shipment_cost_entries": [],
     "shipment_boxes": []
   }
 ]
 ```
+
+`status` = solid lifecycle. `progress_tag` = optional current tag from group `shipment_progress` (null if none). Expose the same pair on get-by-id for any consumer surface.

@@ -240,6 +240,7 @@ Per-tenant assignment table: §15.5 and domain docs.
 | [PERMISSION_SYSTEM.md](PERMISSION_SYSTEM.md) | Unified grant model, tables, data flows, Access Control v2 (implemented) |
 | [GLOBAL_REFERENCE_DATA.md](GLOBAL_REFERENCE_DATA.md) | Currencies, markets, payment methods, units |
 | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) | Shipments, stock, allocations, landed cost |
+| [PROCUREMENT_STOCK_ISSUES.md](PROCUREMENT_STOCK_ISSUES.md) | Redesign — cost, money, status; **one vendor/shipment**; **shipment→child assign + shared ATP**; shop real/dummy display |
 | [SALES_INVOICE.md](SALES_INVOICE.md) | Desk invoices (wholesale, retail account/direct, dropship), billing/recipient profiles |
 | [SHOP_ORDER.md](SHOP_ORDER.md) | Child-owned shops, cart, orders, permissions, allocated-stock storefronts |
 | [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) | Dropship Process Order desk, dual invoice, return bearer, middle-man payout |

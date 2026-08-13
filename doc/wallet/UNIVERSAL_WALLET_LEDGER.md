@@ -41,6 +41,18 @@ Because the system relies on permanent Double-Entry / Single-Entry ledger mathem
    - Wallet Action: `+ 1,200 TK` (Credit) added to Courier's wallet (They owe us).
    - When Courier remits cash to bank: `- 1,200 TK` (Debit) on Courier Wallet, `+ 1,200 TK` on Tenant Wallet.
 
+4. **Shipment purchase (procurement handoff):**
+   - Pay vendor $4,000 + cargo $1,000 for an inbound shipment.
+   - Wallet Action: Debit **Tenant** (cash out); settle **Vendor** / **Cargo agent** wallets.
+   - Shipment is **not** a wallet owner — use `source_type = 'shipment'` (or `vendor_purchase`) + `source_id = shipment.id`.
+   - Costing (landed cost) lives on `shipment_cost_entries`; wallet is optional day one. See [PROCUREMENT_STOCK_ISSUES.md](../PROCUREMENT_STOCK_ISSUES.md) §3.
+
+5. **Vendor return for store credit (not cash):**
+   - Return goods after payment; vendor issues credit instead of refunding cash.
+   - Wallet Action: Credit **Vendor** wallet (they hold our value). **Do not** credit Tenant cash.
+   - Stock qty decreases separately. Next purchase from that vendor consumes the credit balance first.
+   - Cash refund path: Credit Tenant (+ clear vendor) instead.
+
 ### Dropship 3-Step Wallet Posting Matrix
 
 | Step | Trigger Action | Courier Wallet | Tenant Wallet | Middleman Wallet | Notes |
@@ -67,8 +79,8 @@ This unified table (`universal_wallet_ledger`) replaces any need for separate "C
 | **`exchange_rate`** | `numeric(15,6)`| The rate against base currency at the *exact moment* of the transaction. |
 | **`base_amount`** | `numeric(15,4)`| `amount * exchange_rate`. Standardizes reporting across the platform. |
 | **`balance_after`** | `numeric(15,4)`| Running balance of this wallet after this transaction. (Ensures 0.001s queries). |
-| **`source_type`** | `text` | What triggered this? (`'shop_order'`, `'vendor_purchase'`, `'payout'`, `'adjustment'`). |
-| **`source_id`** | `text` | The ID of the trigger (e.g., Order #1234). |
+| **`source_type`** | `text` | What triggered this? (`'shop_order'`, `'vendor_purchase'`, `'shipment'`, `'shipment_return'`, `'payout'`, `'adjustment'`). **Not** the wallet owner. |
+| **`source_id`** | `text` | The ID of the trigger (e.g., Order #1234, shipment id). |
 | **`metadata`** | `jsonb` | Optional dimensions / audit fields (See Section 4). **Not** wallet identity. |
 | **`created_at`** | `timestamptz` | Exact time the transaction was recorded. |
 

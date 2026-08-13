@@ -39,8 +39,8 @@ Immutable double-entry transaction history log for auditing, reporting, and acco
 | `currency_code` | TEXT | Yes | Currency code (Default: `'BDT'`) |
 | `exchange_rate` | NUMERIC | Yes | Conversion multiplier against base currency (Default: `1.000000`) |
 | `balance_after` | NUMERIC | Yes | Snapshot of effective running balance after transaction |
-| `source_type` | TEXT | Yes | Transaction origin (`'shop_order'`, `'vendor_purchase'`, `'payout'`, `'adjustment'`, `'bucket_transfer'`, `'shipment_invoice'`) |
-| `source_id` | TEXT | No | Reference ID of triggering record (e.g. invoice #, order #, payment ID) |
+| `source_type` | TEXT | Yes | Transaction origin (`'shop_order'`, `'vendor_purchase'`, `'shipment'`, `'shipment_return'`, `'payout'`, `'adjustment'`, `'bucket_transfer'`, `'shipment_invoice'`). Identifies the **trigger document**, not the wallet owner |
+| `source_id` | TEXT | No | Reference ID of triggering record (e.g. invoice #, order #, shipment id, payment ID) |
 | `metadata` | JSONB | No | Flexible JSON payload for context notes, references, and audit tags |
 | `created_at` | TIMESTAMPTZ | No | Creation timestamp |
 

@@ -27,7 +27,7 @@ Canon: [README.md](./README.md) · [sales/schema.md](./sales/schema.md) · [sale
 
 ## Implementation phases
 
-Focused trackers: [task-rto.md](./task-rto.md) · [task-post-accept-return.md](./task-post-accept-return.md)
+Focused trackers: [task-rto.md](./task-rto.md) · [task-post-accept-return.md](./task-post-accept-return.md) · [task-advance-risk.md](./task-advance-risk.md)
 
 | # | Work | Status |
 | :---: | :--- | :--- |
@@ -39,7 +39,8 @@ Focused trackers: [task-rto.md](./task-rto.md) · [task-post-accept-return.md](.
 | 5 | `create_thrift_sales_return` — partial/full post-pay returns | Done (`053`) → [task-post-accept-return.md](./task-post-accept-return.md) |
 | 6 | Reports RPCs — PnL + live COGS; shipment group by inbound shipment | Period Done (`055`); shipment Already PnL (`052`+`055` cogs_is_loss) |
 | 7 | UI — **Mark RTO** · **Return items** · **Returns management** · reports | Done (RTO + Return items + hub + period report cards) |
-| 8 | Backfill — existing closed invoices → PnL; optional historic returns | Pending |
+| 7b | COD advance + customer risk (`057`–`059`) | Done → [task-advance-risk.md](./task-advance-risk.md) |
+| 8 | Backfill — existing closed invoices → PnL; optional historic returns | Skipped — historic invoices wiped; no backfill |
 
 ---
 

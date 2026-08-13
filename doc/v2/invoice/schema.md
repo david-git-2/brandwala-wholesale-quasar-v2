@@ -101,10 +101,12 @@ Links directly to the V2 stock schema. Records the exact unit price and the land
 | `line_discount` | NUMERIC(12,2)| No | Discount applied specifically to this item |
 | `line_total_amount` | NUMERIC(12,2)| Yes | Computed: `(quantity * unit_price) - line_discount` |
 | `return_quantity` | INT | Yes | Number of returned units (Default: `0`) |
-| `landed_cost_bdt` | NUMERIC(12,2)| Yes | Snapshot of the unit landed cost for profit calculation |
+| `landed_cost_bdt` | NUMERIC(12,2)| Yes | **Provisional** unit cost snapshot at post — copied from `shipment_items.landed_cost_bdt` via stock’s `shipment_item_id`. **Never rewritten** after post when shipment cost is revised. |
 | `metadata` | JSONB | No | Item-level notes or attributes |
 | `created_at` | TIMESTAMPTZ | Yes | Record creation timestamp |
 | `updated_at` | TIMESTAMPTZ | Yes | Record update timestamp |
+
+> Prefer also storing `shipment_item_id` on the line (directly or via `global_stock_id`) so batch / investor P&L can join the **current** shipment stamp for actual COGS. See [../shipment/schema.md](../shipment/schema.md) §4.
 
 ---
 
@@ -127,7 +129,10 @@ Replaces hardcoded header columns (`shipping_charge`, `cod_charge`, etc.). Any n
 - **Invoice Subtotal**: `Σ sales_invoice_items.line_total_amount`
 - **Total Charges**: `Σ sales_invoice_charges.amount`
 - **Final Invoice Total**: `Subtotal - discount_amount + Total Charges`
-- **Line Net Profit**: `line_total_amount - (quantity * landed_cost_bdt)`
+- **Provisional line margin**: `line_total_amount - (quantity * landed_cost_bdt)` — uses **frozen** snapshot
+- **Actual batch / investor COGS** (reporting): `Σ (shipment_items.landed_cost_bdt × sold_qty)` joined via stock → `shipment_item_id` — living stamp may differ after cost revision
+
+Storing sell **and** provisional cost on the invoice is intentional (audit, returns). True P&L after late cost changes comes from the shipment stamp join — not by deleting cost from the invoice.
 
 ### 3.2 V2 Wallet Integration (Payment Handling)
 In V2, payments are routed through the `wallet_ledger` to maintain an immutable accounting trail.
@@ -141,5 +146,5 @@ The process of "Posting" an invoice (`post_sales_invoice` RPC) performs the foll
 2. Updates `invoice_status` to `posted`.
 3. Loops through `sales_invoice_items`:
    - Decrements `quantity` in `global_stocks` by the item `quantity`.
-   - Copies the current `global_stocks.landed_cost` into `sales_invoice_items.landed_cost_bdt`.
+   - Resolves unit cost via `global_stocks.shipment_item_id → shipment_items.landed_cost_bdt` and **snapshots** it onto `sales_invoice_items.landed_cost_bdt` (provisional). Do **not** read a cost column from stock — stock has none.
 4. (Optional) Injects a pending receivable into the accounting ledger.
