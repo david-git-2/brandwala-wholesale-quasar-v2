@@ -83,7 +83,7 @@ web/src/shared/shipment-engine/
 export interface CostEntry {
   cost_type: string;        // day-one: 'product' | 'cargo'; stubs: 'duty' | 'insurance' | 'labor' | ...
   entity_type?: string;     // stub — payee ('vendor' | cargo…); never 'shipment'
-  entity_id?: number;       // stub — payee id for optional wallet post
+  entity_id?: number;       // stub — payee id; settlement intent only (no auto wallet post day one)
   currency_id: number | null;
   amount: number;           // total in source currency (not per-kg)
   exchange_rate: number;    // to base currency (BDT). 1.00 for local
@@ -428,7 +428,7 @@ Stock rows are never updated for cost. Invoice lines are never rewritten for cos
 
 ### 10.2 Revision delta helper (`costRevision.ts`) — optional
 
-UI / confirmation dialog / optional wallet stub. **Not** the source of true P&L (reports join current stamp × sold qty).
+UI / confirmation dialog only (old→new stamp delta). **No** auto wallet post on revise. **Not** the source of true P&L (reports join current stamp × sold qty).
 
 #### `computeStampDelta(oldStamps, newCosts): StampDeltaResult`
 

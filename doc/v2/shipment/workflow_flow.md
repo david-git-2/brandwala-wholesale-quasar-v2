@@ -10,10 +10,10 @@ Maps lifecycle stages to APIs / RPCs. Schema: [schema.md](./schema.md) (§4 land
 [ STAGE 1: DRAFT ]  ➔  [ STAGE 2: EDIT ]  ➔  [ STAGE 3: FINALIZE ]  ➔  [ STAGE 4: COST REVISION ]
   status: draft         status: in_transit      status: received        (stays received)
   • Create header       • Items CRUD          • Stamp landed_cost_bdt  • Update cost entries
-  • (no cost entries     • Cost entries CRUD   • Optional wallet posts  • Recompute + re-stamp
+  • (no cost entries     • Cost entries CRUD   • No wallet posts        • Recompute + re-stamp
     required yet)        • Boxes (verify)      • Post inventory         • Invoice snapshots stay frozen
                          • Weight / price      • Lock shipment          • Actual P&L via report join
-                           balance
+                           balance             • Settle intent only
                          • Live cost preview
 ```
 
@@ -56,12 +56,12 @@ Maps lifecycle stages to APIs / RPCs. Schema: [schema.md](./schema.md) (§4 land
 * **Execution** (single RPC):
   1. Read `shipment_cost_entries`; compute effective rates **server-side** (authoritative).
   2. Stamp `landed_cost_bdt` on each `shipment_item` (living cost source of truth).
-  3. **Optional wallet stub** (null `payment_source` / `entity_*` → skip): post to **tenant** + **payee** wallets only — never a shipment wallet. Ledger `source_type` / `source_id` = this shipment (cost-entry id optional in `metadata`). See [../../PROCUREMENT_STOCK_ISSUES.md](../../PROCUREMENT_STOCK_ISSUES.md) §3 · [wallet schema](../wallet/schema.md).
+  3. **No wallet ledger posts** (day one — [issues §3](../../PROCUREMENT_STOCK_ISSUES.md)). `payment_source` / `entity_*` are settlement **intent** only; Pay / Settle is a later action.
   4. Post inventory (`inventory_added = true`) — stock qty only; **no cost column on stock**.
   5. Lock header against hard delete; block silent entry edits (must use Stage 4).
 
 > Server does **not** trust client-computed landed costs.  
-> Costing always runs; wallet posts are optional and do not block receive.
+> Costing always runs; wallet never blocks receive.
 
 ---
 
@@ -75,8 +75,9 @@ Supports: customer sells first, then settles true freight / FX / duty.
   1. Update entry(ies) (e.g. `exchange_rate` 168 → 172).
   2. Recompute via server engine.
   3. Re-stamp `landed_cost_bdt` on items.
-  4. Optional: show old→new delta in UI (`costRevision.ts`); optional wallet stub post (tenant/payee only).
-  5. **Do not** rewrite posted invoice / order line cost snapshots.
+  4. Optional: show old→new delta in UI (`costRevision.ts`).
+  5. **No auto wallet posts** on revision ([issues §3](../../PROCUREMENT_STOCK_ISSUES.md)).
+  6. **Do not** rewrite posted invoice / order line cost snapshots.
 
 ### Vendor return (stock ≠ cash)
 

@@ -52,5 +52,5 @@ Receive → parent stock → assign → list/sell on shared ATP.
 * Multi-child same batch / request-reassign (day one)  
 * Inter-warehouse transfer  
 * Reservation ledger in procurement (holds stay on cart / draft invoice)  
-* Day-one adjustment / return UI (movement docs later — issues §4.1)  
+* Day-one adjustment / return UI (movement docs later — [schema §2.4](./schema.md) / [issues §1](../../PROCUREMENT_STOCK_ISSUES.md))  
 * Return/sold columns on `global_stocks`

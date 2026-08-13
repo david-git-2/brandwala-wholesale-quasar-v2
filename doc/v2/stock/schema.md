@@ -15,7 +15,7 @@ Parent warehouse qty + how a child shop gets permission to list a batch.
 | **Sell truth (ATP)** | `sellable on-hand − draft invoice holds − shop cart holds` | Desk + assigned shop share this. |
 | **Shop display** | Real ATP **or** `display_quantity_override` | Cosmetics — checkout never trusts dummy. |
 | **Holds** | Shop cart / invoice draft | Soft reservations — not a stock table. |
-| **Warehouse ops** | Future movement docs → update `quantity` | Return-in, availability transfer, write-off — deferred. |
+| **Warehouse ops** | Movement docs → update `quantity` (§2.4) | Return-in, availability transfer, write-off — deferred. |
 | **Transfer** | Deferred | Multi-location later. |
 
 **Retired:** soft qty on `global_stock_allocations`.
@@ -106,9 +106,44 @@ No `quantity` on assign. Qty always from `global_stocks`.
 
 Do not extend soft-qty semantics. Replace with §2.2 + listing `global_stock_id`.
 
-### 2.4 Warehouse movements (deferred — [issues §1](../../PROCUREMENT_STOCK_ISSUES.md))
+### 2.4 Warehouse movements (deferred — solution locked)
 
-Not day one. When built: documents that change `global_stocks.quantity` (and/or move between availability rows). Examples: return inbound → usually `held` += n; transfer sellable → unsellable; write-off.
+**Status:** Not required before assign + ATP cutover. Gap list: [issues §1](../../PROCUREMENT_STOCK_ISSUES.md).
+
+**Rule:** `global_stocks` = balances only. Never free-edit qty / availability in the UI. Every post-receive change is a **movement document** that posts into balances (same idea as wallet ledger vs balance).
+
+#### Shape (when built)
+
+| Layer | Role |
+| :--- | :--- |
+| `global_stocks` | On-hand by availability (unchanged role) |
+| Movement header + lines | Ops ledger — type, status, reason, refs |
+| Post RPC | Draft → post in one transaction; updates `quantity` / availability rows |
+| UI | Create / post / list movements only — no direct stock edits |
+
+**Posted docs are immutable.** Undo via a new reverse document, not by editing history.
+
+#### Day-one movement types (build order)
+
+| Type | Effect on `global_stocks` |
+| :--- | :--- |
+| Availability transfer / adjustment | Move qty between `sellable` ↔ `held` ↔ `unsellable`; write-off / cycle count (reduce qty) |
+| Return inbound | Add qty onto a stock row (usually `held`) |
+| Receive rollback | Reverse a receive post (qty + related stamps) cleanly |
+
+#### Deferred beyond first movement cut
+
+| Type | Why later |
+| :--- | :--- |
+| Partial receive cost share | Needs fair cost split when only part of a batch arrives |
+| Weight / cost input audit | History for package weight & cost revisions (ties to cost-revision RPC) |
+| Multi-location transfer | Only if more than one warehouse |
+
+#### Line grain (sketch)
+
+Each movement line references a `global_stock_id` (or enough keys to resolve/create the availability row), `qty`, and for transfers `from_availability` / `to_availability`. Header carries `parent_tenant_id`, `type`, `status` (`draft` \| `posted`), optional `shipment_id` / reason, audit fields.
+
+Exact table/RPC names left open until implementation; this section locks the **pattern**, not the migration SQL.
 
 ---
 
@@ -120,4 +155,6 @@ Not day one. When built: documents that change `global_stocks.quantity` (and/or 
      ├── (N) [shipment_items]          ← landed_cost_bdt stamp
      └── (N) [global_stocks]           ← on-hand by availability
               └── shop_product_listings.global_stock_id
+
+[stock_movements] (deferred) ──post──► [global_stocks]
 ```

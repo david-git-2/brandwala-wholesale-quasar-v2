@@ -129,8 +129,8 @@ entries = [
 | :--- | :--- | :--- |
 | Extra `cost_type`s | Duty, insurance, labor, … | Allow in check; UI can hide |
 | `allocation` | `'by_weight'` \| `'by_value'` \| `'by_qty'` \| `'per_unit'` | Default: cargo → `by_weight`; extras when enabled → `by_value` or `by_qty` |
-| `payment_source` + `entity_*` | Point at payee; optional wallet post (§ money handoff) | Null OK |
-| Cost revision workflow | Re-stamp `landed_cost_bdt`; optional delta helper for UI/wallet | Required path after Ready Stock — no silent rate edits |
+| `payment_source` + `entity_*` | Settlement **intent** only day one; no auto ledger post (§ money handoff) | Null OK; values OK without posting |
+| Cost revision workflow | Re-stamp `landed_cost_bdt`; UI delta helper; **no** auto wallet delta | Required path after Ready Stock — no silent rate edits |
 | Partial-receive cost share | Arrived qty only | Defer with warehouse ops |
 
 #### Money handoff (locked — not a shipment wallet)
@@ -139,15 +139,19 @@ Cost entries are **inputs for landed cost**. Cash / credit lives in the [univers
 
 | Holder | Wallet? |
 | :--- | :---: |
-| Tenant (shipment owner) | Yes — cash out on pay |
+| Tenant (shipment owner) | Yes — cash out on **Pay / Settle** (later) |
 | Vendor / cargo agent (`entity_*`) | Yes — settle, advance, store credit |
 | Shipment | **No** — use ledger `source_type` / `source_id` only |
 
-| `payment_source` | Meaning |
+| `payment_source` | Meaning (day one) |
 | :--- | :--- |
-| `cash` / `wallet` | Optional: debit tenant + settle payee on pay or finalize |
-| `credit` | Bought on account — open payable on vendor; no tenant cash |
+| `cash` / `wallet` | Settlement **intent** — store on entry; **do not** auto-debit tenant on finalize |
+| `credit` | Bought on account — intent only; open payable on vendor when Pay / Settle runs |
 | null | Costing only — no wallet requirement |
+
+**Day-one rule ([issues §3](../../PROCUREMENT_STOCK_ISSUES.md)):** Finalize and cost revision **never** post wallet ledger rows. They stamp cost + (on finalize) stock only. Auto-post on receive is an explicit non-goal.
+
+**Later:** Explicit **Pay / Settle** action posts tenant ↔ payee ledger with `source_*` = shipment. Return-for-credit / cash refund remains a separate return flow (workflow Stage 4).
 
 Return of goods for **store credit** (no cash refund): credit **vendor** wallet; tenant cash unchanged; stock qty down. Cash refund: credit tenant (+ clear vendor as needed).
 
@@ -157,6 +161,7 @@ Return of goods for **store credit** (no cash refund): credit **vendor** wallet;
 - Not a substitute for line `unit_purchase_price` / weights
 - Not the wallet ledger (entries may point at payees; posts live in wallet)
 - Not a shipment wallet
+- Not auto wallet posts on finalize / cost revision (day one)
 - Not thrift’s separate cost engine unless a later unification project
 
 ---
@@ -292,12 +297,24 @@ cost_adjustment   = provisional_cogs − actual_cogs         -- optional display
 
 Wallet variance posts (delta × qty) are an **optional stub** for cash/ledger UX — not required for report truth. Reports do not need a variance table if they join the current stamp.
 
-### 4.3 Explicit non-goals
+### 4.3 Revision RPC (pattern locked — contract open)
+
+| Locked | Open ([issues §2](../../PROCUREMENT_STOCK_ISSUES.md)) |
+| :--- | :--- |
+| Must go through one server revision path (not raw upsert after finalize) | Exact RPC name, args, return / error shape |
+| Recompute engine server-side → re-stamp all affected items | Which `module_action` / role may revise |
+| Invoice snapshots stay frozen; UI may show old→new delta | — |
+| Wallet on revise = **stub-skip** ([issues §3](../../PROCUREMENT_STOCK_ISSUES.md)) | Pay / Settle RPC later |
+
+Execution steps: [workflow Stage 4](./workflow_flow.md). Preview / delta helper: [shipment_engine.md](./shipment_engine.md).
+
+### 4.4 Explicit non-goals
 
 - Do **not** store authoritative landed cost on `global_stocks`
 - Do **not** rewrite invoice line cost after post
 - Do **not** leave rates editable after finalize without the revision RPC
 - Do **not** keep frontend `landedCost.ts` as the sale / report authority (preview-only OK)
+- Do **not** require a variance ledger table for day-one P&L truth
 
 ---
 
