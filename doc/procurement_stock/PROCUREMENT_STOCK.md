@@ -69,27 +69,31 @@ Commerce and desk invoices **sell from** `global_stocks`; they do not create inb
 **Display name:** Procurement & Stock  
 **Nav pattern:** Parent group with submodule children (same model as `global_reference`).
 
-| Key | Display name | `parent_module_key` | Nav route |
-|-----|--------------|---------------------|-----------|
-| `procurement_stock` | Procurement & Stock | `null` | *(none — group header only)* |
-| `global_shipment` | Inbound Shipment | `procurement_stock` | `procurement/shipment` |
-| `global_stock` | Warehouse Stock | `procurement_stock` | `procurement/stock`, `procurement/stock/allocate` |
-| `inventory` | Tenant Stock | `procurement_stock` | `procurement/tenant-stock` |
-| `global_stock_type` | Stock Types | `procurement_stock` | *(config inside Warehouse Stock — no sidebar link)* |
+| Key | Display name | `parent_module_key` | Nav route | Page |
+|-----|--------------|---------------------|-----------|------|
+| `procurement_stock` | Procurement & Stock | `null` | *(none — group header only)* | — |
+| `global_shipment` | Shipment | `procurement_stock` | `procurement/shipment` | Existing inbound shipment UI |
+| `global_stock` | Warehouse | `procurement_stock` | `procurement/stock` | Existing warehouse stock list |
+| `global_stock_movement` | Movements | `procurement_stock` | `procurement/movements` | New stub (v2 movements) |
+| `global_stock_location` | Locations | `procurement_stock` | `procurement/locations` | New stub (bin/zone catalog) |
+| `inventory` | Stock | `procurement_stock` | `procurement/child-stock` | New stub (child ATP view) |
+| `global_stock_type` | Stock Types | `procurement_stock` | *(config inside Warehouse — no sidebar link)* | — |
 
-### Tenant stock allocation (in scope)
+**Removed from sidebar:** Allocate Stock (`procurement/stock/allocate` redirects to Warehouse).
 
-Yes — **child tenant allocation belongs in this domain**. It is not a separate product area.
+### Tenant stock allocation (legacy — retiring)
+
+Soft qty on `global_stock_allocations` is **legacy**. v2 uses assign + shared ATP; child **Stock** nav is the future ATP view (stub for now).
 
 | Layer | Table / UI | Who |
 |-------|------------|-----|
-| Physical pool | `global_stocks` | Parent |
-| Parent → child slice | `global_stock_allocations` | Parent writes via **Allocate Stock** (`global_stock`) |
-| Child read view | Same allocation rows | Child reads via **Tenant Stock** (`inventory`) + joined stock queries |
+| Physical pool | `global_stocks` | Parent (Warehouse) |
+| Where | `stock_locations` (planned) | Parent (Locations) |
+| Moves | Movement docs (planned) | Parent (Movements) |
+| Child read | Assigned / ATP | Child (Stock) |
 
-**Reconciliation rule:** For each `global_stocks` row, `SUM(global_stock_allocations.quantity)` ≤ `global_stocks.quantity`. Unallocated remainder stays in the parent pool.
+Redirect `/app/stock` and `/app/procurement/tenant-stock` → `/app/procurement/child-stock`.
 
-Redirect `/app/stock` → `/app/procurement/tenant-stock` for bookmarks.
 
 ### Assignment rules
 
@@ -100,11 +104,11 @@ Redirect `/app/stock` → `/app/procurement/tenant-stock` for bookmarks.
 
 ### Tenant eligibility
 
-| Tenant type | `procurement_stock` | `global_shipment` | `global_stock` | `inventory` (Tenant Stock) |
-|-------------|---------------------|-------------------|----------------|----------------------------|
-| Parent company | Yes | Yes | Yes | Yes (allocate + own view) |
-| Child (sister concern) | No | No | Read via joined stock queries | Yes (allocated view) |
-| Standalone | Yes | Yes | Yes | Yes |
+| Tenant type | `procurement_stock` | `global_shipment` | `global_stock` | Movements / Locations | `inventory` (Stock) |
+|-------------|---------------------|-------------------|----------------|----------------------|---------------------|
+| Parent company | Yes | Yes | Yes | Yes | Optional |
+| Child (sister concern) | Yes (group) | No | No | No | Yes |
+| Standalone | Yes | Yes | Yes | Yes | Yes |
 
 ### Legacy keys (transition)
 

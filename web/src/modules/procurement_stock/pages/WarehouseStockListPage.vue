@@ -3,7 +3,7 @@
     <section class="bw-page__stack" style="min-width: 0">
       <AppPageHeader
         eyebrow="Procurement & Stock"
-        title="Warehouse Stock"
+        title="Warehouse"
         subtitle="View physical stock pools and configure stock types"
       >
         <template #action>
@@ -14,14 +14,6 @@
             icon="ph ph-gear"
             label="Stock Types Config"
             @click="openStockTypesConfig"
-          />
-          <q-btn
-            unelevated
-            color="primary"
-            no-caps
-            icon="ph ph-git-fork"
-            label="Allocate Stock"
-            :to="allocateStockRoute"
           />
         </template>
       </AppPageHeader>
@@ -348,11 +340,6 @@ const pageTotals = computed(() => {
     totalCost,
     avgUnitCost,
   };
-});
-
-const allocateStockRoute = computed(() => {
-  const slug = authStore.tenantSlug;
-  return slug ? `/${slug}/app/procurement/stock/allocate` : '/app/procurement/stock/allocate';
 });
 
 const loadStock = async () => {

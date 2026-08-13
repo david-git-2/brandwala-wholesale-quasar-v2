@@ -14,5 +14,3 @@ Use **one file per agent session**. Do not load the whole folder.
 | Legacy | [DROPSHIP_WALLET_LEGACY_DROP.md](./DROPSHIP_WALLET_LEGACY_DROP.md) | Drop conflicting code the same phase the gap closes |
 
 **AI rules:** [docs/AI_WORKFLOW_SOP.md](../../docs/AI_WORKFLOW_SOP.md) — one phase, listed files only, nothing else.
-
-**Related (after wallet green):** Shop ops UX ease (dropship first, reusable later) → [dropship_ux/README.md](./dropship_ux/README.md).

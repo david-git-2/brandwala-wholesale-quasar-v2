@@ -14,7 +14,7 @@ import { buildNavLinksFromModuleHierarchy } from 'src/modules/featureCatalog/uti
  * NAV SEPARATION (do not violate):
  * - Each enabled feature module gets its own sidebar link (flat or domain group).
  * - Do NOT nest unrelated modules under a shared parent (e.g. no "Global" mega-menu).
- * - `global_stock` and `inventory` (Tenant Stock) are separate module keys and separate links.
+ * - `global_stock` (Warehouse) and `inventory` (Stock) are separate module keys and separate links.
  * - Domain groups (Invoices, Accounting, Commerce, …) only contain routes from that same module family.
  */
 

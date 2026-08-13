@@ -30,6 +30,9 @@ export type ModuleKey =
   | 'global_reference_unit_of_measure'
   | 'global_shipment'
   | 'global_stock'
+  | 'global_stock_movement'
+  | 'global_stock_location'
+  | 'inventory'
   | 'global_invoice'
   | 'investor_portal'
   | 'procurement_stock'
@@ -615,14 +618,14 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   },
   {
     key: 'global_shipment',
-    name: 'Global Shipment',
-    description: 'Parent-coordinated dispatch, logistics, and delivery.',
+    name: 'Shipment',
+    description: 'Inbound batches: draft, cost entries, finalize, and Ready Stock.',
     parentModuleKey: 'procurement_stock',
     routes: [
       {
         scope: 'app',
         title: 'Shipment',
-        caption: 'Track dispatch, handoff, and delivery progress',
+        caption: 'Inbound procurement batches and finalize',
         icon: 'ph ph-truck',
         routeSegment: 'procurement/shipment',
         requiredAction: 'view',
@@ -631,24 +634,64 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   },
   {
     key: 'global_stock',
-    name: 'Global Stock',
-    description: 'Parent-owned stock with child allocation bridge.',
+    name: 'Warehouse',
+    description: 'Parent warehouse on-hand by availability and location.',
     parentModuleKey: 'procurement_stock',
     routes: [
       {
         scope: 'app',
-        title: 'Global Stock',
-        caption: 'Parent stock and child allocations',
-        icon: 'ph ph-archive-box',
+        title: 'Warehouse',
+        caption: 'Parent stock pools and stock types',
+        icon: 'ph ph-warehouse',
         routeSegment: 'procurement/stock',
         requiredAction: 'view',
       },
+    ],
+  },
+  {
+    key: 'global_stock_movement',
+    name: 'Movements',
+    description: 'Warehouse movement documents: location and availability transfers.',
+    parentModuleKey: 'procurement_stock',
+    routes: [
       {
         scope: 'app',
-        title: 'Allocate Stock',
-        caption: 'Divide global stock quantities to child tenants',
-        icon: 'ph ph-git-fork',
-        routeSegment: 'procurement/stock/allocate',
+        title: 'Movements',
+        caption: 'Post location and availability moves',
+        icon: 'ph ph-arrows-left-right',
+        routeSegment: 'procurement/movements',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'global_stock_location',
+    name: 'Locations',
+    description: 'Bin and zone catalog for the parent warehouse.',
+    parentModuleKey: 'procurement_stock',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Locations',
+        caption: 'Manage warehouse bins and zones',
+        icon: 'ph ph-map-pin',
+        routeSegment: 'procurement/locations',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'inventory',
+    name: 'Stock',
+    description: 'Child tenant view of assigned / sellable stock.',
+    parentModuleKey: 'procurement_stock',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Stock',
+        caption: 'View stock available to this sister concern',
+        icon: 'ph ph-package',
+        routeSegment: 'procurement/child-stock',
         requiredAction: 'view',
       },
     ],
@@ -863,7 +906,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     key: 'procurement_stock',
     name: 'Procurement & Stock',
     description:
-      'Parent module for inbound procurement, warehouse pools, and tenant stock allocations.',
+      'Inbound shipments, warehouse stock, movements, locations, and child stock view.',
     navIcon: 'ph ph-truck',
     routes: [],
   },
@@ -1129,11 +1172,13 @@ export const MODULE_REGISTRY_KEYS = MODULE_REGISTRY.map((definition) => definiti
 export const GLOBAL_MODULE_KEYS = [
   'global_shipment',
   'global_stock',
+  'global_stock_movement',
+  'global_stock_location',
   'global_invoice',
 ] as const satisfies readonly ModuleKey[];
 
-/** Top-level tenant modules — must never appear under the Global nav group. */
-export const TENANT_STOCK_MODULE_KEY = 'global_stock' as const satisfies ModuleKey;
+/** Child-facing stock sidebar module under procurement. */
+export const TENANT_STOCK_MODULE_KEY = 'inventory' as const satisfies ModuleKey;
 
 /**
  * Sidebar nav families for domain grouping only (Invoices, Commerce, …).

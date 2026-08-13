@@ -10,49 +10,49 @@ const guard = (requiredModule: ModuleKey) =>
     requiredModule,
   });
 
+const withTenantSlug = (to: { params: { tenantSlug?: string | string[] } }, path: string) => {
+  const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : null;
+  return tenantSlug ? `/${tenantSlug}${path}` : path;
+};
+
 const procurementStockRoutes: RouteRecordRaw[] = [
   // Legacy Redirects
   {
     path: '/:tenantSlug?/app/global/shipment/:rest(.*)*',
     redirect: (to) => {
-      const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : null;
       const rest = Array.isArray(to.params.rest)
         ? to.params.rest.join('/')
         : typeof to.params.rest === 'string'
           ? to.params.rest
           : '';
-      return tenantSlug
-        ? `/${tenantSlug}/app/procurement/shipment${rest ? `/${rest}` : ''}`
-        : `/app/procurement/shipment${rest ? `/${rest}` : ''}`;
+      return withTenantSlug(
+        to,
+        `/app/procurement/shipment${rest ? `/${rest}` : ''}`,
+      );
     },
   },
   {
     path: '/:tenantSlug?/app/global/stock/:rest(.*)*',
     redirect: (to) => {
-      const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : null;
       const rest = Array.isArray(to.params.rest)
         ? to.params.rest.join('/')
         : typeof to.params.rest === 'string'
           ? to.params.rest
           : '';
-      return tenantSlug
-        ? `/${tenantSlug}/app/procurement/stock${rest ? `/${rest}` : ''}`
-        : `/app/procurement/stock${rest ? `/${rest}` : ''}`;
+      return withTenantSlug(to, `/app/procurement/stock${rest ? `/${rest}` : ''}`);
     },
   },
   {
     path: '/:tenantSlug?/app/stock/:rest(.*)*',
-    redirect: (to) => {
-      const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : null;
-      const rest = Array.isArray(to.params.rest)
-        ? to.params.rest.join('/')
-        : typeof to.params.rest === 'string'
-          ? to.params.rest
-          : '';
-      return tenantSlug
-        ? `/${tenantSlug}/app/procurement/tenant-stock${rest ? `/${rest}` : ''}`
-        : `/app/procurement/tenant-stock${rest ? `/${rest}` : ''}`;
-    },
+    redirect: (to) => withTenantSlug(to, '/app/procurement/child-stock'),
+  },
+  {
+    path: '/:tenantSlug?/app/procurement/stock/allocate/:rest(.*)*',
+    redirect: (to) => withTenantSlug(to, '/app/procurement/stock'),
+  },
+  {
+    path: '/:tenantSlug?/app/procurement/tenant-stock/:rest(.*)*',
+    redirect: (to) => withTenantSlug(to, '/app/procurement/child-stock'),
   },
 
   // Active Routes
@@ -90,23 +90,41 @@ const procurementStockRoutes: RouteRecordRaw[] = [
         component: () => import('../pages/WarehouseStockListPage.vue'),
         beforeEnter: guard('global_stock'),
       },
-      {
-        path: 'allocate',
-        name: 'app-procurement-stock-allocate',
-        component: () => import('../pages/AllocateStockPage.vue'),
-        beforeEnter: guard('global_stock'),
-      },
     ],
   },
   {
-    path: '/:tenantSlug?/app/procurement/tenant-stock',
+    path: '/:tenantSlug?/app/procurement/movements',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
         path: '',
-        name: 'app-procurement-tenant-stock-list',
-        component: () => import('../pages/TenantStockListPage.vue'),
-        beforeEnter: guard('procurement_stock'),
+        name: 'app-procurement-movements',
+        component: () => import('../pages/StockMovementsPage.vue'),
+        beforeEnter: guard('global_stock_movement'),
+      },
+    ],
+  },
+  {
+    path: '/:tenantSlug?/app/procurement/locations',
+    component: () => import('layouts/AppLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'app-procurement-locations',
+        component: () => import('../pages/StockLocationsPage.vue'),
+        beforeEnter: guard('global_stock_location'),
+      },
+    ],
+  },
+  {
+    path: '/:tenantSlug?/app/procurement/child-stock',
+    component: () => import('layouts/AppLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'app-procurement-child-stock',
+        component: () => import('../pages/ChildStockPage.vue'),
+        beforeEnter: guard('inventory'),
       },
     ],
   },

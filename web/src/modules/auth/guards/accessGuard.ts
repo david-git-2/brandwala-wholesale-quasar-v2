@@ -58,10 +58,15 @@ const resolveAuthenticatedDenyTarget = ({
     return tenantSlug ? `/${tenantSlug}/shop/dashboard` : '/shop/dashboard';
   }
 
-  if (requiredModule === 'global_shipment' || requiredModule === 'global_stock') {
+  if (
+    requiredModule === 'global_shipment' ||
+    requiredModule === 'global_stock' ||
+    requiredModule === 'global_stock_movement' ||
+    requiredModule === 'global_stock_location'
+  ) {
     return tenantSlug
-      ? `/${tenantSlug}/app/procurement/tenant-stock`
-      : '/app/procurement/tenant-stock';
+      ? `/${tenantSlug}/app/procurement/child-stock`
+      : '/app/procurement/child-stock';
   }
 
   return tenantSlug ? `/${tenantSlug}/app/dashboard` : '/app/dashboard';

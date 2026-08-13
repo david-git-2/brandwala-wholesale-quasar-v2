@@ -95,6 +95,8 @@ export const canAccessModule = ({
   if (
     moduleKey === 'global_shipment' ||
     moduleKey === 'global_stock' ||
+    moduleKey === 'global_stock_movement' ||
+    moduleKey === 'global_stock_location' ||
     moduleKey === 'investor_capital' ||
     moduleKey === 'investor_profiles' ||
     moduleKey === 'investor_capital_ledger' ||
@@ -107,6 +109,18 @@ export const canAccessModule = ({
       tenantStore.items.find((tenant) => tenant.id === tenantId) ??
       null;
     if (current && current.parent_id !== null) {
+      return false;
+    }
+  }
+
+  // Stock (inventory) is child-tenant only — hide on parent / standalone roots
+  if (moduleKey === 'inventory') {
+    const tenantStore = useTenantStore();
+    const current =
+      tenantStore.selectedTenant ??
+      tenantStore.items.find((tenant) => tenant.id === tenantId) ??
+      null;
+    if (!current || current.parent_id === null) {
       return false;
     }
   }
@@ -164,6 +178,8 @@ export const resolveModuleAccess = ({
   if (
     moduleKey === 'global_shipment' ||
     moduleKey === 'global_stock' ||
+    moduleKey === 'global_stock_movement' ||
+    moduleKey === 'global_stock_location' ||
     moduleKey === 'investor_capital' ||
     moduleKey === 'investor_profiles' ||
     moduleKey === 'investor_capital_ledger' ||
@@ -180,6 +196,18 @@ export const resolveModuleAccess = ({
     }
   }
 
+  let isBlockedByParentStatus = false;
+  if (moduleKey === 'inventory') {
+    const tenantStore = useTenantStore();
+    const current =
+      tenantStore.selectedTenant ??
+      tenantStore.items.find((tenant) => tenant.id === tenantId) ??
+      null;
+    if (!current || current.parent_id === null) {
+      isBlockedByParentStatus = true;
+    }
+  }
+
   return {
     allowed:
       hasScopeContext &&
@@ -187,11 +215,12 @@ export const resolveModuleAccess = ({
       hasCustomerGroupContext &&
       moduleEnabled &&
       roleAllowed &&
-      !isBlockedByChildStatus,
+      !isBlockedByChildStatus &&
+      !isBlockedByParentStatus,
     hasScopeContext,
     hasTenantContext,
     hasCustomerGroupContext,
-    moduleEnabled: moduleEnabled && !isBlockedByChildStatus,
+    moduleEnabled: moduleEnabled && !isBlockedByChildStatus && !isBlockedByParentStatus,
     roleAllowed,
     allowedActions,
   };

@@ -45,7 +45,7 @@ Sell model, assign, ATP (incl. pickable locations), listing FK, availability, **
 | Report / investor P&L | `revenue − (current stamp × sold_qty)` — join living stamp, not invoice snapshot |
 | Wallet variance | **Stub-optional** — not required for day-one report truth ([schema §4.2](./v2/shipment/schema.md)) |
 
-**Still open:** exact RPC name / args / return shape; which module action may call it. Wallet on revise is locked stub-skip — [§3](#3-wallet-posts-on-finalize--revision).
+**Still open:** which module action may call revise in UI. RPC names locked: `finalize_global_shipment`, `revise_global_shipment_costs`, cost-entry CRUD — see [v2/shipment/rpc/](./v2/shipment/rpc/). Wallet on revise is locked stub-skip — [§3](#3-wallet-posts-on-finalize--revision). Header rate column **drop** waits for UI to read/write entries only ([plan Phase 4](./v2/shipment/)).
 
 ---
 

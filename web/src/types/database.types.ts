@@ -2229,6 +2229,79 @@ export type Database = {
           },
         ]
       }
+      global_shipment_cost_entries: {
+        Row: {
+          allocation: string | null
+          amount: number
+          cost_type: Database["public"]["Enums"]["global_shipment_cost_type"]
+          created_at: string
+          currency_id: number | null
+          entity_id: number | null
+          entity_type: string | null
+          exchange_rate: number
+          id: number
+          metadata: Json
+          parent_tenant_id: number
+          payment_source: string | null
+          shipment_id: number
+          updated_at: string
+        }
+        Insert: {
+          allocation?: string | null
+          amount: number
+          cost_type: Database["public"]["Enums"]["global_shipment_cost_type"]
+          created_at?: string
+          currency_id?: number | null
+          entity_id?: number | null
+          entity_type?: string | null
+          exchange_rate?: number
+          id?: never
+          metadata?: Json
+          parent_tenant_id: number
+          payment_source?: string | null
+          shipment_id: number
+          updated_at?: string
+        }
+        Update: {
+          allocation?: string | null
+          amount?: number
+          cost_type?: Database["public"]["Enums"]["global_shipment_cost_type"]
+          created_at?: string
+          currency_id?: number | null
+          entity_id?: number | null
+          entity_type?: string | null
+          exchange_rate?: number
+          id?: never
+          metadata?: Json
+          parent_tenant_id?: number
+          payment_source?: string | null
+          shipment_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "global_shipment_cost_entries_currency_id_fkey"
+            columns: ["currency_id"]
+            isOneToOne: false
+            referencedRelation: "global_currencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "global_shipment_cost_entries_parent_tenant_id_fkey"
+            columns: ["parent_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "global_shipment_cost_entries_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "global_shipments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       global_shipment_items: {
         Row: {
           add_method: Database["public"]["Enums"]["global_shipment_item_add_method"]
@@ -2236,6 +2309,7 @@ export type Database = {
           created_at: string
           id: number
           image_url: string | null
+          landed_cost_bdt: number | null
           name: string
           ordered_quantity: number
           package_weight: number
@@ -2257,6 +2331,7 @@ export type Database = {
           created_at?: string
           id?: number
           image_url?: string | null
+          landed_cost_bdt?: number | null
           name: string
           ordered_quantity: number
           package_weight?: number
@@ -2278,6 +2353,7 @@ export type Database = {
           created_at?: string
           id?: number
           image_url?: string | null
+          landed_cost_bdt?: number | null
           name?: string
           ordered_quantity?: number
           package_weight?: number
@@ -2326,6 +2402,7 @@ export type Database = {
       }
       global_shipments: {
         Row: {
+          assigned_child_tenant_id: number | null
           cargo_conversion_rate: number
           cargo_invoice_total: number | null
           cargo_rate: number
@@ -2347,6 +2424,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          assigned_child_tenant_id?: number | null
           cargo_conversion_rate?: number
           cargo_invoice_total?: number | null
           cargo_rate?: number
@@ -2368,6 +2446,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          assigned_child_tenant_id?: number | null
           cargo_conversion_rate?: number
           cargo_invoice_total?: number | null
           cargo_rate?: number
@@ -2389,6 +2468,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "global_shipments_assigned_child_tenant_id_fkey"
+            columns: ["assigned_child_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "global_shipments_parent_tenant_id_fkey"
             columns: ["parent_tenant_id"]
@@ -8491,6 +8577,7 @@ export type Database = {
           created_at: string
           id: number
           image_url: string | null
+          landed_cost_bdt: number | null
           name: string
           ordered_quantity: number
           package_weight: number
@@ -9823,6 +9910,10 @@ export type Database = {
         Args: { p_action: string; p_cgm_id: number; p_module_key: string }
         Returns: undefined
       }
+      delete_global_shipment_cost_entry: {
+        Args: { p_id: number }
+        Returns: undefined
+      }
       delete_global_stock_allocation: {
         Args: { p_allocation_id: number }
         Returns: undefined
@@ -9905,6 +9996,10 @@ export type Database = {
         Args: { p_invoice_id: number }
         Returns: undefined
       }
+      ensure_global_shipment_cost_entries_from_header: {
+        Args: { p_shipment_id: number }
+        Returns: undefined
+      }
       fetch_customer_shop_categories: {
         Args: { p_tenant_id: number }
         Returns: {
@@ -9921,6 +10016,10 @@ export type Database = {
           p_override_reason?: string
           p_return_ref?: string
         }
+        Returns: Json
+      }
+      finalize_global_shipment: {
+        Args: { p_shipment_id: number; p_stock_rows?: Json }
         Returns: Json
       }
       find_active_tenant_by_public_domain: {
@@ -10820,6 +10919,31 @@ export type Database = {
           shipment_type: string
           transaction_rate: number
         }[]
+      }
+      list_global_shipment_cost_entries: {
+        Args: { p_shipment_id: number }
+        Returns: {
+          allocation: string | null
+          amount: number
+          cost_type: Database["public"]["Enums"]["global_shipment_cost_type"]
+          created_at: string
+          currency_id: number | null
+          entity_id: number | null
+          entity_type: string | null
+          exchange_rate: number
+          id: number
+          metadata: Json
+          parent_tenant_id: number
+          payment_source: string | null
+          shipment_id: number
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "global_shipment_cost_entries"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       list_global_shipments_paginated: {
         Args: {
@@ -12032,6 +12156,10 @@ export type Database = {
         }
         Returns: Json
       }
+      revise_global_shipment_costs: {
+        Args: { p_entries: Json; p_shipment_id: number }
+        Returns: Json
+      }
       revoke_costing_file_viewer: {
         Args: { p_costing_file_id: number; p_membership_id: number }
         Returns: {
@@ -12161,6 +12289,10 @@ export type Database = {
       staff_start_catalog_procurement: {
         Args: { p_order_id: number }
         Returns: undefined
+      }
+      stamp_global_shipment_landed_costs: {
+        Args: { p_shipment_id: number }
+        Returns: number
       }
       submit_shop_order_from_cart:
         | {
@@ -12759,6 +12891,43 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      upsert_global_shipment_cost_entry: {
+        Args: {
+          p_allocation?: string
+          p_amount: number
+          p_cost_type: Database["public"]["Enums"]["global_shipment_cost_type"]
+          p_currency_id?: number
+          p_entity_id?: number
+          p_entity_type?: string
+          p_exchange_rate?: number
+          p_id?: number
+          p_metadata?: Json
+          p_payment_source?: string
+          p_shipment_id: number
+        }
+        Returns: {
+          allocation: string | null
+          amount: number
+          cost_type: Database["public"]["Enums"]["global_shipment_cost_type"]
+          created_at: string
+          currency_id: number | null
+          entity_id: number | null
+          entity_type: string | null
+          exchange_rate: number
+          id: number
+          metadata: Json
+          parent_tenant_id: number
+          payment_source: string | null
+          shipment_id: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "global_shipment_cost_entries"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       upsert_global_stock_allocation: {
         Args: {
           p_child_tenant_id: number
@@ -13355,6 +13524,15 @@ export type Database = {
       global_fulfillment_status: "pending" | "packed" | "shipped" | "delivered"
       global_invoice_status: "draft" | "posted" | "voided"
       global_invoice_type: "wholesale" | "retail" | "dropship"
+      global_shipment_cost_type:
+        | "product"
+        | "cargo"
+        | "duty"
+        | "insurance"
+        | "labor"
+        | "washing"
+        | "transport"
+        | "handling"
       global_shipment_item_add_method: "order" | "costing" | "manual"
       global_shipment_type: "domestic" | "international"
       global_source_module: "wholesale" | "retail" | "commerce"
@@ -13596,6 +13774,16 @@ export const Constants = {
       global_fulfillment_status: ["pending", "packed", "shipped", "delivered"],
       global_invoice_status: ["draft", "posted", "voided"],
       global_invoice_type: ["wholesale", "retail", "dropship"],
+      global_shipment_cost_type: [
+        "product",
+        "cargo",
+        "duty",
+        "insurance",
+        "labor",
+        "washing",
+        "transport",
+        "handling",
+      ],
       global_shipment_item_add_method: ["order", "costing", "manual"],
       global_shipment_type: ["domestic", "international"],
       global_source_module: ["wholesale", "retail", "commerce"],
