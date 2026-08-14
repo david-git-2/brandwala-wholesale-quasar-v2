@@ -60,7 +60,7 @@
               </q-btn>
             </div>
             <div class="row q-col-gutter-sm">
-              <div class="col-12 col-sm-4">
+              <div class="col-12 col-sm-6">
                 <q-input
                   v-model.number="row.amount"
                   type="number"
@@ -75,7 +75,7 @@
                   hint="Purchase currency total for this FX slice"
                 />
               </div>
-              <div class="col-12 col-sm-4">
+              <div class="col-12 col-sm-6">
                 <q-input
                   v-model.number="row.exchange_rate"
                   type="number"
@@ -87,62 +87,6 @@
                   class="soft-input"
                   :disable="!canEdit || isLocalShipment"
                   :hint="isLocalShipment ? 'Forced to 1.00 for local' : 'Rate to base currency'"
-                />
-              </div>
-              <div class="col-12 col-sm-4">
-                <q-select
-                  v-model="row.payment_source"
-                  :options="paymentSourceOptions"
-                  label="Payment source"
-                  dense
-                  outlined
-                  clearable
-                  emit-value
-                  map-options
-                  class="soft-input"
-                  :disable="!canEdit"
-                  hint="Settlement intent only"
-                />
-              </div>
-            </div>
-            <div class="row q-col-gutter-sm q-mt-sm">
-              <div class="col-12 col-sm-4">
-                <q-select
-                  :model-value="row.entity_type"
-                  :options="payeeTypeOptions"
-                  label="Payee type"
-                  dense
-                  outlined
-                  clearable
-                  emit-value
-                  map-options
-                  class="soft-input"
-                  :disable="!canEdit"
-                  hint="Who will be paid (optional)"
-                  data-test="cost-entry-payee-type"
-                  @update:model-value="(v) => onPayeeTypeChange(row, v)"
-                />
-              </div>
-              <div class="col-12 col-sm-8">
-                <q-select
-                  v-model="row.entity_id"
-                  :options="payeeOptionsFor(row.entity_type)"
-                  label="Payee"
-                  dense
-                  outlined
-                  clearable
-                  emit-value
-                  map-options
-                  use-input
-                  fill-input
-                  hide-selected
-                  input-debounce="0"
-                  class="soft-input"
-                  :disable="!canEdit || !row.entity_type"
-                  :loading="payeeLoading"
-                  hint="Null = costing only"
-                  data-test="cost-entry-payee-id"
-                  @filter="(val, update) => filterPayeeOptions(row.entity_type, val, update)"
                 />
               </div>
             </div>
@@ -227,7 +171,7 @@
               </q-btn>
             </div>
             <div class="row q-col-gutter-sm">
-              <div class="col-12 col-sm-3">
+              <div class="col-12 col-sm-4">
                 <q-input
                   v-model.number="row.amount"
                   type="number"
@@ -241,7 +185,7 @@
                   :disable="!canEdit"
                 />
               </div>
-              <div class="col-12 col-sm-3">
+              <div class="col-12 col-sm-4">
                 <q-input
                   :model-value="formatPerKg(row.amount)"
                   label="Per-kg (computed)"
@@ -253,7 +197,7 @@
                   :hint="cargoKg > 0 ? 'amount ÷ weight' : 'Set weight on Match invoices'"
                 />
               </div>
-              <div class="col-12 col-sm-3">
+              <div class="col-12 col-sm-4">
                 <q-input
                   v-model.number="row.exchange_rate"
                   type="number"
@@ -267,69 +211,9 @@
                   :hint="isLocalShipment ? 'Forced to 1.00 for local' : undefined"
                 />
               </div>
-              <div class="col-12 col-sm-3">
-                <q-select
-                  v-model="row.payment_source"
-                  :options="paymentSourceOptions"
-                  label="Payment source"
-                  dense
-                  outlined
-                  clearable
-                  emit-value
-                  map-options
-                  class="soft-input"
-                  :disable="!canEdit"
-                  hint="Settlement intent only"
-                />
-              </div>
-            </div>
-            <div class="row q-col-gutter-sm q-mt-sm">
-              <div class="col-12 col-sm-4">
-                <q-select
-                  :model-value="row.entity_type"
-                  :options="payeeTypeOptions"
-                  label="Payee type"
-                  dense
-                  outlined
-                  clearable
-                  emit-value
-                  map-options
-                  class="soft-input"
-                  :disable="!canEdit"
-                  hint="Who will be paid (optional)"
-                  data-test="cost-entry-payee-type"
-                  @update:model-value="(v) => onPayeeTypeChange(row, v)"
-                />
-              </div>
-              <div class="col-12 col-sm-8">
-                <q-select
-                  v-model="row.entity_id"
-                  :options="payeeOptionsFor(row.entity_type)"
-                  label="Payee"
-                  dense
-                  outlined
-                  clearable
-                  emit-value
-                  map-options
-                  use-input
-                  fill-input
-                  hide-selected
-                  input-debounce="0"
-                  class="soft-input"
-                  :disable="!canEdit || !row.entity_type"
-                  :loading="payeeLoading"
-                  hint="Null = costing only"
-                  data-test="cost-entry-payee-id"
-                  @filter="(val, update) => filterPayeeOptions(row.entity_type, val, update)"
-                />
-              </div>
             </div>
           </div>
         </div>
-      </div>
-
-      <div class="text-caption text-grey-5">
-        Stub types (duty, insurance, labor, …) are reserved — not shown day one.
       </div>
 
       <div class="row justify-end q-gutter-sm">
@@ -353,6 +237,25 @@
           @click="onSave"
         />
       </div>
+
+      <!-- Mounted ShipmentPayeeSettlePanel -->
+      <ShipmentPayeeSettlePanel
+        v-if="shipmentStore.currentShipment"
+        ref="payeeSettlePanelRef"
+        :shipment-id="shipmentStore.currentShipment.id"
+        :status="shipmentStore.currentShipment.status"
+        :vendor-id="shipmentStore.currentShipment.vendor_id"
+        :cargo-company-id="shipmentStore.currentShipment.cargo_company_id"
+        :vendor-name="vendorPayeeLabel"
+        :cargo-company-name="cargoPayeeLabel"
+        :vendor-rate="firstProductRate"
+        :cargo-rate="firstCargoRate"
+        :purchase-currency-symbol="purchaseCurrencySymbol"
+        :submitting="paySettling"
+        :vendor-product-total="vendorProductTotal"
+        :goods-purchase-total="goodsPurchaseTotal"
+        @settle="(payload) => emit('settle', payload)"
+      />
     </div>
   </q-card>
 </template>
@@ -371,6 +274,7 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
 import { useCargoCompanyStore } from '../stores/cargoCompanyStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
+import ShipmentPayeeSettlePanel from './ShipmentPayeeSettlePanel.vue';
 
 const props = defineProps<{
   entries: GlobalShipmentCostEntry[];
@@ -383,10 +287,22 @@ const props = defineProps<{
   cargoKg: number;
   purchaseCurrencySymbol: string;
   costCurrencySymbol: string;
+  goodsPurchaseTotal?: number;
+  goodsQuantityTotal?: number;
+  paySettling?: boolean;
 }>();
 
 const emit = defineEmits<{
   save: [payload: CostEntriesSavePayload];
+  settle: [
+    payload: {
+      entityType: 'vendor' | 'cargo_company';
+      entityId: number;
+      action: 'pay' | 'record_credit' | 'use_credit';
+      amount: number;
+      exchangeRate: number;
+    },
+  ];
   'go-match-invoices': [];
 }>();
 
@@ -396,65 +312,38 @@ const cargoCompanyStore = useCargoCompanyStore();
 const shipmentStore = useGlobalShipmentStore();
 
 const drafts = ref<CostEntryDraft[]>([]);
-const payeeLoading = ref(false);
-const vendorFilter = ref('');
-const cargoFilter = ref('');
-
-const paymentSourceOptions = [
-  { label: 'Cash', value: 'cash' as ShipmentCostPaymentSource },
-  { label: 'Credit', value: 'credit' as ShipmentCostPaymentSource },
-  { label: 'Wallet', value: 'wallet' as ShipmentCostPaymentSource },
-];
-
-const payeeTypeOptions = [
-  { label: 'Vendor', value: 'vendor' as ShipmentCostPayeeType },
-  { label: 'Cargo company', value: 'cargo_company' as ShipmentCostPayeeType },
-];
-
-const allVendorOptions = computed(() =>
-  vendorStore.items.map((v) => ({ label: `${v.name} (${v.code})`, value: v.id })),
-);
-
-const allCargoOptions = computed(() =>
-  cargoCompanyStore.items.map((c) => ({ label: c.name, value: c.id })),
-);
-
-const filteredVendorOptions = computed(() => {
-  const q = vendorFilter.value.trim().toLowerCase();
-  if (!q) return allVendorOptions.value;
-  return allVendorOptions.value.filter((o) => o.label.toLowerCase().includes(q));
-});
-
-const filteredCargoOptions = computed(() => {
-  const q = cargoFilter.value.trim().toLowerCase();
-  if (!q) return allCargoOptions.value;
-  return allCargoOptions.value.filter((o) => o.label.toLowerCase().includes(q));
-});
-
-const payeeOptionsFor = (entityType: ShipmentCostPayeeType | null) => {
-  if (entityType === 'vendor') return filteredVendorOptions.value;
-  if (entityType === 'cargo_company') return filteredCargoOptions.value;
-  return [];
-};
-
-const filterPayeeOptions = (
-  entityType: ShipmentCostPayeeType | null,
-  val: string,
-  update: (fn: () => void) => void,
-) => {
-  update(() => {
-    if (entityType === 'vendor') vendorFilter.value = val;
-    else if (entityType === 'cargo_company') cargoFilter.value = val;
-  });
-};
-
-const parsePayeeType = (raw: string | null | undefined): ShipmentCostPayeeType | null => {
-  if (raw === 'vendor' || raw === 'cargo_company') return raw;
-  return null;
-};
+const payeeSettlePanelRef = ref<InstanceType<typeof ShipmentPayeeSettlePanel> | null>(null);
 
 const productRows = computed(() => drafts.value.filter((d) => d.cost_type === 'product'));
 const cargoRows = computed(() => drafts.value.filter((d) => d.cost_type === 'cargo'));
+
+const vendorProductTotal = computed(() =>
+  productRows.value.reduce((sum, r) => sum + (Number(r.amount) || 0), 0),
+);
+
+const firstProductRate = computed(() => {
+  const p = productRows.value[0];
+  return p ? Number(p.exchange_rate) || 1.0 : 1.0;
+});
+
+const firstCargoRate = computed(() => {
+  const c = cargoRows.value[0];
+  return c ? Number(c.exchange_rate) || 1.0 : 1.0;
+});
+
+const vendorPayeeLabel = computed(() => {
+  const vendorId = shipmentStore.currentShipment?.vendor_id;
+  if (!vendorId) return 'Vendor';
+  const match = vendorStore.items.find((v) => v.id === vendorId);
+  return match ? `${match.name} (${match.code})` : `Vendor #${vendorId}`;
+});
+
+const cargoPayeeLabel = computed(() => {
+  const cargoId = shipmentStore.currentShipment?.cargo_company_id;
+  if (!cargoId) return 'Cargo Agent';
+  const match = cargoCompanyStore.items.find((c) => c.id === cargoId);
+  return match ? match.name : `Cargo Agent #${cargoId}`;
+});
 
 const weightKg = computed(() =>
   props.cargoKg > 0 ? Math.round(props.cargoKg * 100) / 100 : 0,
@@ -486,17 +375,6 @@ const emptyRow = (costType: 'product' | 'cargo'): CostEntryDraft => {
   };
 };
 
-const onPayeeTypeChange = (row: CostEntryDraft, value: ShipmentCostPayeeType | null) => {
-  if ((value as string) === 'shipment') {
-    showErrorNotification("Payee cannot be 'shipment'");
-    return;
-  }
-  row.entity_type = value;
-  row.entity_id = null;
-  vendorFilter.value = '';
-  cargoFilter.value = '';
-};
-
 const computedPerKg = (amount: number): number | null => {
   const w = weightKg.value;
   const a = Number(amount);
@@ -516,9 +394,11 @@ const entryToDraft = (entry: GlobalShipmentCostEntry): CostEntryDraft => ({
   cost_type: entry.cost_type,
   amount: Number(entry.amount) || 0,
   exchange_rate: props.isLocalShipment ? 1 : Number(entry.exchange_rate) || 1,
-  payment_source: (entry.payment_source as ShipmentCostPaymentSource | null) ?? null,
-  entity_type: parsePayeeType(entry.entity_type),
-  entity_id: entry.entity_id ?? null,
+  payment_source: null,
+  entity_type: entry.cost_type === 'product' ? 'vendor' : 'cargo_company',
+  entity_id: entry.cost_type === 'product'
+    ? (shipmentStore.currentShipment?.vendor_id ?? null)
+    : (shipmentStore.currentShipment?.cargo_company_id ?? null),
   per_kg_rate: null,
 });
 
@@ -578,18 +458,6 @@ const onSave = () => {
       showErrorNotification('Exchange rate must be > 0');
       return;
     }
-    if (row.entity_type === ('shipment' as ShipmentCostPayeeType)) {
-      showErrorNotification("Payee cannot be 'shipment'");
-      return;
-    }
-    if (row.entity_type && row.entity_id == null) {
-      showErrorNotification('Select a payee or clear payee type');
-      return;
-    }
-    if (!row.entity_type && row.entity_id != null) {
-      showErrorNotification('Payee id requires a payee type');
-      return;
-    }
   }
 
   if (!productRows.value.length || !cargoRows.value.length) {
@@ -599,12 +467,18 @@ const onSave = () => {
 
   const draftsOut = drafts.value.map((d) => {
     const perKg = d.cost_type === 'cargo' ? computedPerKg(d.amount) : null;
+    const isProduct = d.cost_type === 'product';
+    const entType = isProduct ? 'vendor' : 'cargo_company';
+    const entId = isProduct
+      ? (shipmentStore.currentShipment?.vendor_id ?? null)
+      : (shipmentStore.currentShipment?.cargo_company_id ?? null);
     return {
       ...d,
       exchange_rate: props.isLocalShipment ? 1 : d.exchange_rate,
       per_kg_rate: perKg,
-      entity_type: d.entity_type,
-      entity_id: d.entity_type ? d.entity_id : null,
+      payment_source: null,
+      entity_type: entType as ShipmentCostPayeeType,
+      entity_id: entId,
     };
   });
 
@@ -618,7 +492,6 @@ const onSave = () => {
 
 onMounted(async () => {
   if (!authStore.tenantId) return;
-  payeeLoading.value = true;
   try {
     await Promise.all([
       vendorStore.items.length
@@ -629,9 +502,7 @@ onMounted(async () => {
         : cargoCompanyStore.fetchCompanies(authStore.tenantId, true),
     ]);
   } catch {
-    // Options stay empty; payee can remain null
-  } finally {
-    payeeLoading.value = false;
+    // ignore
   }
 });
 

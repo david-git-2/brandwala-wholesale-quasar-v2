@@ -140,7 +140,7 @@ Cost entries are **inputs for landed cost**. Cash / credit lives in the [univers
 
 | Holder | Wallet? |
 | :--- | :---: |
-| Tenant (shipment owner) | Yes — cash out on **Pay / Settle** (later) |
+| Tenant (shipment owner) | Yes — cash out on **Pay / Settle** |
 | Vendor / cargo agent (`entity_*`) | Yes — settle, advance, store credit |
 | Shipment | **No** — use ledger `source_type` / `source_id` only |
 
@@ -152,7 +152,7 @@ Cost entries are **inputs for landed cost**. Cash / credit lives in the [univers
 
 **Day-one rule ([issues §3](../../PROCUREMENT_STOCK_ISSUES.md)):** Finalize and cost revision **never** post wallet ledger rows. They stamp cost + (on finalize) stock only. Auto-post on receive is an explicit non-goal.
 
-**Later:** Explicit **Pay / Settle** action posts tenant ↔ payee ledger with `source_*` = shipment. Return-for-credit / cash refund remains a separate return flow (workflow Stage 4).
+**Payee Settlement (`settle_shipment_payee`):** Inline **Pay** (debits tenant available balance with overdraft), **Record credit** (credits payee available balance for short-delivery/store credit), and **Use credit** (debits payee available balance) post tenant ↔ payee wallet ledger entries with `source_type = 'shipment'` and `source_id = shipment_id`. Multiple posts per shipment are supported.
 
 Return of goods for **store credit** (no cash refund): credit **vendor** wallet; tenant cash unchanged; stock qty down. Cash refund: credit tenant (+ clear vendor as needed).
 
@@ -169,19 +169,28 @@ Return of goods for **store credit** (no cash refund): credit **vendor** wallet;
 
 ### 1.3 `shipment_items`
 
+No separate PO / GR module. **One shipment line plays both roles.**
+
 | Field | Type | Required | Description |
 | :--- | :--- | :---: | :--- |
 | `id` | BIGINT | Yes | PK |
 | `shipment_id` | BIGINT | Yes | FK → `shipments.id` |
 | `product_id` | BIGINT | No | FK to product |
-| `quantity` | INT | Yes | Qty in shipment |
+| `ordered_quantity` | INT | Yes | **PO side** — qty bought / expected on this line (was live `ordered_quantity`; schema sketches that said `quantity` mean this) |
+| `received_quantity` | INT | No | **GR side** — qty counted at finalize. Null until receive. Written only on finalize. Stock posts from this value |
 | `unit_purchase_price` | NUMERIC | No | Unit price in purchase currency |
 | `product_weight_gm` | NUMERIC | No | Product weight per unit (gm) |
 | `package_weight_gm` | NUMERIC | No | Package contribution per unit (gm); **mutated by weight-balance apply** |
 | `landed_cost_bdt` | NUMERIC | No | **Authoritative stamped** per-unit landed BDT. Written only on finalize / cost revision. Null while draft. |
 | `metadata` | JSONB | No | |
 
-> **Cost lives here — not on stock.** `global_stocks` holds qty + `shipment_item_id` only. Display / sell / reports resolve unit cost via this stamp (see §4).
+| Derived | Formula | Use |
+| :--- | :--- | :--- |
+| Short / missing | `ordered_quantity − received_quantity` (when received set) | Vendor gap / door loss — **no extra loss table day one** |
+| Extra | `received_quantity − ordered_quantity` when received &gt; ordered | Overage at dock |
+
+> **Cost lives here — not on stock.** `global_stocks` holds qty + `shipment_item_id` only. Display / sell / reports resolve unit cost via this stamp (see §4).  
+> **Damage / quarantine / write-off** are **not** columns on the line — post-receive via `stock_movements` → `held` / `unsellable` ([../stock/workflow_flow.md](../stock/workflow_flow.md) Stage 4).
 
 ---
 
@@ -204,7 +213,7 @@ Return of goods for **store credit** (no cash refund): credit **vendor** wallet;
 Same semantics as live procurement `received_weight` / D-PS13–14.
 
 ```text
-line_gross_kg     = ((product_weight_gm + package_weight_gm) × quantity) / 1000
+line_gross_kg     = ((product_weight_gm + package_weight_gm) × ordered_quantity) / 1000
 estimated_pack_kg = Σ line_gross_kg
 
 cargo_kg = total_weight_kg   if total_weight_kg is set and > 0
@@ -217,7 +226,7 @@ cargo_kg = total_weight_kg   if total_weight_kg is set and > 0
 | **Weight-balance apply** | Distributes `(total_weight_kg − estimated_pack_kg)` into line `package_weight_gm` only; **does not** change `total_weight_kg` |
 | **Boxes** | Audit / verification; never used as `cargo_kg` |
 | **Cargo entry amount** | Freight **total** in freight currency. Per-kg is UI: `amount = cargo_kg × per_kg_rate` at edit time |
-| **Line cargo share** | Allocate `Σ(cargo entry amounts)` by `line_gross_kg / estimated_pack_kg`; if no weight basis, fall back to qty share |
+| **Line cargo share** | Allocate `Σ(cargo entry amounts)` by `line_gross_kg / estimated_pack_kg`; if no weight basis, fall back to **ordered** qty share |
 
 ---
 
@@ -234,7 +243,7 @@ cargo_bdt = Σ(amount × exchange_rate) for cargo
 # optional display blend (live transaction_rate parity):
 blended = (goods_bdt + cargo_bdt) / (Σ product.amount + Σ cargo.amount)   when denom > 0
 
-unit_base (purchase currency) = unit_purchase_price + (line_cargo_share / quantity)
+unit_base (purchase currency) = unit_purchase_price + (line_cargo_share / ordered_quantity)
 
 landed_cost_bdt =
   local / domestic:  unit_base

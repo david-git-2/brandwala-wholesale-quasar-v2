@@ -8,24 +8,12 @@
             <th class="text-right shipment-sl-col">SL</th>
             <th class="text-left shipment-image-col">Image</th>
             <th v-if="isColumnVisible('name')" class="text-left shipment-name-col">Name</th>
+
             <th
-              v-if="props.shipment?.status === 'in_transit'"
-              class="text-center shipment-split-col"
-              style="width: 80px; min-width: 80px; max-width: 80px"
+              v-if="isColumnVisible('product_codes')"
+              class="text-left shipment-codes-col"
             >
-              Split Qty
-            </th>
-            <th v-if="isColumnVisible('product_id')" class="text-center shipment-product-id-col">
-              Product ID
-            </th>
-            <th v-if="isColumnVisible('barcode')" class="text-left shipment-barcode-col">
-              Barcode
-            </th>
-            <th v-if="isColumnVisible('product_code')" class="text-left shipment-product-code-col">
-              Product Code
-            </th>
-            <th v-if="isColumnVisible('add_method')" class="text-left shipment-method-col">
-              Method
+              Codes
             </th>
             <th v-if="isColumnVisible('purchase_price')" class="text-center shipment-price-col">
               Price {{ purchaseCurrencySymbol }}
@@ -37,7 +25,7 @@
               v-if="isColumnVisible('ordered_quantity')"
               class="text-center shipment-qty-col shipment-qty-col--quantity"
             >
-              Quantity
+              Ordered quantity
             </th>
             <th
               v-if="isColumnVisible('product_weight')"
@@ -135,48 +123,78 @@
             >
               {{ item.name ?? '-' }}
             </td>
+
             <td
-              v-if="props.shipment?.status === 'in_transit'"
-              class="text-center shipment-split-col"
+              v-if="isColumnVisible('product_codes')"
+              class="shipment-codes-col font-mono text-caption"
             >
-              <div class="column items-center q-gutter-y-xs q-py-xs">
-                <q-btn
-                  flat
-                  round
-                  dense
-                  icon="ph ph-git-fork"
-                  :color="isItemSplitsCompleteInDb(item) ? 'green-7' : 'orange-7'"
-                  size="sm"
-                  @click="openSplitDialog(item)"
-                >
-                  <q-tooltip>
-                    {{
-                      isItemSplitsCompleteInDb(item)
-                        ? 'Quantity splits complete.'
-                        : 'Configure quantity splits.'
-                    }}
-                  </q-tooltip>
-                </q-btn>
-                <span
-                  class="text-weight-bold"
-                  style="font-size: 11px; line-height: 1"
-                  :class="isItemSplitsCompleteInDb(item) ? 'text-green-7' : 'text-orange-7'"
-                >
-                  {{ isItemSplitsCompleteInDb(item) ? 'Done' : 'Pending' }}
-                </span>
+              <div class="column q-gutter-y-2xs" style="line-height: 1.1">
+                <div v-if="item.product_code" class="row items-center justify-between no-wrap">
+                  <div class="ellipsis">
+                    <span class="text-grey-6 text-uppercase" style="font-size: 8px">C: </span>
+                    <b class="text-dark" style="font-size: 10px">{{ item.product_code }}</b>
+                  </div>
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    size="xs"
+                    icon="ph ph-copy"
+                    color="grey-7"
+                    style="font-size: 9px; padding: 0"
+                    @click.stop="copyToClipboard(item.product_code, 'Product Code')"
+                  >
+                    <q-tooltip>Copy Code</q-tooltip>
+                  </q-btn>
+                </div>
+
+                <div v-if="item.barcode" class="row items-center justify-between no-wrap">
+                  <div class="ellipsis">
+                    <span class="text-grey-6 text-uppercase" style="font-size: 8px">B: </span>
+                    <span class="text-grey-9" style="font-size: 10px">{{ item.barcode }}</span>
+                  </div>
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    size="xs"
+                    icon="ph ph-copy"
+                    color="grey-7"
+                    style="font-size: 9px; padding: 0"
+                    @click.stop="copyToClipboard(item.barcode, 'Barcode')"
+                  >
+                    <q-tooltip>Copy Barcode</q-tooltip>
+                  </q-btn>
+                </div>
+
+                <div v-if="item.product_id" class="row items-center justify-between no-wrap">
+                  <div class="ellipsis">
+                    <span class="text-grey-6 text-uppercase" style="font-size: 8px">ID: </span>
+                    <span class="text-grey-8" style="font-size: 10px">{{ item.product_id }}</span>
+                  </div>
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    size="xs"
+                    icon="ph ph-copy"
+                    color="grey-7"
+                    style="font-size: 9px; padding: 0"
+                    @click.stop="copyToClipboard(item.product_id, 'Product ID')"
+                  >
+                    <q-tooltip>Copy ID</q-tooltip>
+                  </q-btn>
+                </div>
+
+                <div v-if="item.add_method">
+                  <span
+                    class="text-uppercase text-weight-medium bg-grey-3 text-grey-8 q-px-xs rounded-borders"
+                    style="font-size: 9px"
+                  >
+                    {{ item.add_method }}
+                  </span>
+                </div>
               </div>
-            </td>
-            <td v-if="isColumnVisible('product_id')" class="shipment-product-id-col">
-              {{ item.product_id ?? '-' }}
-            </td>
-            <td v-if="isColumnVisible('barcode')" class="shipment-barcode-col">
-              {{ item.barcode ?? '-' }}
-            </td>
-            <td v-if="isColumnVisible('product_code')" class="shipment-product-code-col">
-              {{ item.product_code ?? '-' }}
-            </td>
-            <td v-if="isColumnVisible('add_method')" class="text-uppercase shipment-method-col">
-              {{ item.add_method ?? '-' }}
             </td>
             <td v-if="isColumnVisible('purchase_price')" class="text-center shipment-price-col">
               <div>
@@ -471,6 +489,12 @@ const props = withDefaults(
   },
 );
 
+const copyToClipboard = (text: any, label: string) => {
+  if (!text) return;
+  void navigator.clipboard.writeText(String(text));
+  showSuccessNotification(`Copied ${label} to clipboard`);
+};
+
 const emit = defineEmits<{
   'edit-details': [item: GlobalShipmentItem];
   delete: [id: number];
@@ -480,13 +504,10 @@ const shipmentStore = useGlobalShipmentStore();
 
 const baseColumnOptions = [
   { label: 'Name', value: 'name' },
-  { label: 'Product ID', value: 'product_id' },
-  { label: 'Barcode', value: 'barcode' },
-  { label: 'Product Code', value: 'product_code' },
-  { label: 'Method', value: 'add_method' },
+  { label: 'Product Identifiers', value: 'product_codes' },
   { label: 'Price GBP', value: 'purchase_price' },
   { label: 'Cost BDT', value: 'cost_bdt' },
-  { label: 'Quantity', value: 'ordered_quantity' },
+  { label: 'Ordered Quantity', value: 'ordered_quantity' },
   { label: 'Product Wt', value: 'product_weight' },
   { label: 'Package Wt', value: 'package_weight' },
   { label: 'Actions', value: 'actions' },
@@ -496,10 +517,7 @@ export type ColumnKey = (typeof baseColumnOptions)[number]['value'];
 
 const internalVisibleColumns = ref<ColumnKey[]>([
   'name',
-  'product_id',
-  'barcode',
-  'product_code',
-  'add_method',
+  'product_codes',
   'purchase_price',
   'cost_bdt',
   'ordered_quantity',
@@ -864,7 +882,7 @@ defineExpose({
 }
 
 .shipment-details-table.is-editable {
-  --sl-col-width: 90px;
+  --sl-col-width: 60px;
 }
 
 .shipment-details-table :deep(table) {
@@ -899,11 +917,24 @@ defineExpose({
   background: #f8f9fa;
 }
 
-.shipment-details-table :deep(.shipment-item-image),
+.shipment-details-table :deep(.shipment-item-image-box .smart-image-wrapper) {
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+}
+
+.shipment-details-table :deep(.shipment-item-image) {
+  width: 100%;
+  height: 100%;
+  object-fit: contain !important;
+}
+
 .shipment-details-table :deep(.shipment-item-image-fallback) {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .shipment-item-name-cell {
@@ -925,28 +956,15 @@ defineExpose({
 }
 
 .shipment-name-col {
-  width: 220px;
-  min-width: 220px;
-  max-width: 220px;
+  width: 180px;
+  min-width: 180px;
+  max-width: 180px;
 }
 
-.shipment-product-id-col {
-  width: 110px;
-  min-width: 110px;
-  max-width: 110px;
-}
-
-.shipment-barcode-col,
-.shipment-product-code-col {
-  width: 170px;
-  min-width: 170px;
-  max-width: 170px;
-}
-
-.shipment-method-col {
-  width: 110px;
-  min-width: 110px;
-  max-width: 110px;
+.shipment-codes-col {
+  width: 140px;
+  min-width: 140px;
+  max-width: 140px;
 }
 
 .shipment-price-col,

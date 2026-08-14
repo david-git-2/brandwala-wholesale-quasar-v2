@@ -230,7 +230,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         throw new Error('Current shipment not loaded');
       }
 
-      const count = this.currentCostEntries.filter((e) => e.cost_type === 'product').length;
+      const count = this.currentCostEntries.filter((e: any) => e.cost_type === 'product').length;
       if (count > 1) {
         throw new Error(
           'Multiple product cost entries exist. Update on Landed cost tab directly.',
@@ -240,23 +240,24 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       this.costEntriesSaving = true;
       this.error = null;
       try {
-        const existing = this.currentCostEntries.find((e) => e.cost_type === 'product');
+        const existing: any = this.currentCostEntries.find((e: any) => e.cost_type === 'product');
         const rounded = Math.round(total * 100) / 100;
-        await globalShipmentCostEntryRepository.upsert({
+        const payload: any = {
           shipment_id: shipmentId,
-          id: existing?.id,
+          id: existing?.id ?? null,
           cost_type: 'product',
           amount: rounded,
           exchange_rate: existing ? Number(existing.exchange_rate) || 1 : 1,
           currency_id: existing?.currency_id ?? shipment.shipment_purchase_currency_id,
-          payment_source: (existing?.payment_source as 'cash' | 'credit' | 'wallet' | null) ?? null,
+          payment_source: existing?.payment_source ?? null,
           entity_type:
             existing?.entity_type === 'vendor' || existing?.entity_type === 'cargo_company'
               ? existing.entity_type
               : null,
           entity_id: existing?.entity_id ?? null,
           metadata: existing?.metadata ?? {},
-        });
+        };
+        await globalShipmentCostEntryRepository.upsert(payload);
 
         this.currentCostEntries =
           (await globalShipmentCostEntryRepository.listByShipmentId(shipmentId)) as any;
@@ -302,7 +303,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
                 costEntries: this.currentCostEntries,
               }
             : undefined;
-        const result = await applyShipmentPurchaseBalance(shipmentId, preload);
+        const result = await applyShipmentPurchaseBalance(shipmentId, preload as any);
         await this.fetchShipmentDetails(shipmentId);
         return result;
       } catch (err: unknown) {
@@ -868,5 +869,34 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         this.loading = false;
       }
     },
+
+    async settleShipmentPayee(params: import('../repositories/globalShipmentRepository').SettleShipmentPayeeParams) {
+      this.loading = true;
+      this.error = null;
+      try {
+        const res = await globalShipmentRepository.settleShipmentPayee(params);
+        return res;
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to settle shipment payee';
+        throw err;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async listShipmentPayeeSettlements(shipmentId: number) {
+      this.loading = true;
+      this.error = null;
+      try {
+        const res = await globalShipmentRepository.listShipmentPayeeSettlements(shipmentId);
+        return res;
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to list shipment payee settlements';
+        throw err;
+      } finally {
+        this.loading = false;
+      }
+    },
   },
 });
+

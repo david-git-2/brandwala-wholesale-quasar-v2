@@ -175,9 +175,7 @@ function statusColor(st: string): string {
 
 function isStatusDisabled(st: string): boolean {
   if (props.updating && props.targetStatus !== st) return true;
-  if (props.status === 'received' && st !== 'received') return true;
   if (props.status === 'cancelled' && st !== 'cancelled') return true;
-  if (st === 'received' && props.lockReceived) return true;
   return false;
 }
 </script>

@@ -23,7 +23,7 @@ Sell model, assign, ATP (incl. pickable locations), listing FK, availability, **
 | Gap | Meaning | In first movement cut? |
 | :--- | :--- | :---: |
 | Locations CRUD (no seed; hard delete) | SMB shelf/slot/box catalog | **Done** |
-| Receive put-away | Default or chosen `location_id` | Yes |
+| Receive put-away | Persist `received_quantity` on line (GR); post that qty @ default location; short = ordered − received. Organize bins / damage via movements. UI = qty checklist — [shipment/schema.md](./shipment/schema.md) §1.3 | Yes (UX + column → **W6**) |
 | Location transfer | Bin A → bin B (same availability) | Yes |
 | Availability transfer / adjustment | sellable ↔ held / unsellable; write-off; cycle count | Yes |
 | Return inbound | Return doc → usually `held` @ returns location | Yes |
@@ -65,4 +65,4 @@ Sell model, assign, ATP (incl. pickable locations), listing FK, availability, **
 
 **Why:** Receive must not depend on treasury readiness; sell-first / cost-later often revises freight after receive; reports join living stamp × sold qty (no variance ledger needed day one).
 
-**Still open:** exact Pay / Settle UI polish when AP/cash UX expands. RPC **`pay_settle_shipment_costs`** implemented (`20270814000100`).
+**Resolved:** Inline Pay / Record credit / Use credit panel implemented with RPC `settle_shipment_payee` and `list_shipment_payee_settlements` (`20270818000010_settle_shipment_payee.sql`).

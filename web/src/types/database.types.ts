@@ -2368,6 +2368,7 @@ export type Database = {
           product_id: number | null
           product_weight: number
           purchase_price: number
+          received_quantity: number | null
           shipment_id: number
           sort_order: number
           source_child_tenant_id: number | null
@@ -2390,6 +2391,7 @@ export type Database = {
           product_id?: number | null
           product_weight?: number
           purchase_price?: number
+          received_quantity?: number | null
           shipment_id: number
           sort_order?: number
           source_child_tenant_id?: number | null
@@ -2412,6 +2414,7 @@ export type Database = {
           product_id?: number | null
           product_weight?: number
           purchase_price?: number
+          received_quantity?: number | null
           shipment_id?: number
           sort_order?: number
           source_child_tenant_id?: number | null
@@ -6705,13 +6708,64 @@ export type Database = {
           },
         ]
       }
+      tag_categories: {
+        Row: {
+          cardinality: string
+          code: string
+          created_at: string
+          id: number
+          is_active: boolean
+          is_system: boolean
+          module_key: string
+          name: string
+          sort_order: number | null
+          tenant_id: number | null
+        }
+        Insert: {
+          cardinality: string
+          code: string
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          is_system?: boolean
+          module_key: string
+          name: string
+          sort_order?: number | null
+          tenant_id?: number | null
+        }
+        Update: {
+          cardinality?: string
+          code?: string
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          is_system?: boolean
+          module_key?: string
+          name?: string
+          sort_order?: number | null
+          tenant_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tag_categories_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tags: {
         Row: {
+          category_id: number | null
           color: string
           created_at: string
           created_by_email: string
           group_name: string | null
           id: number
+          is_active: boolean
+          is_system: boolean
+          metadata: Json
           name: string
           slug: string
           sort_order: number | null
@@ -6719,11 +6773,15 @@ export type Database = {
           type: string
         }
         Insert: {
+          category_id?: number | null
           color?: string
           created_at?: string
           created_by_email?: string
           group_name?: string | null
           id?: number
+          is_active?: boolean
+          is_system?: boolean
+          metadata?: Json
           name: string
           slug: string
           sort_order?: number | null
@@ -6731,11 +6789,15 @@ export type Database = {
           type?: string
         }
         Update: {
+          category_id?: number | null
           color?: string
           created_at?: string
           created_by_email?: string
           group_name?: string | null
           id?: number
+          is_active?: boolean
+          is_system?: boolean
+          metadata?: Json
           name?: string
           slug?: string
           sort_order?: number | null
@@ -6743,6 +6805,13 @@ export type Database = {
           type?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "tags_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "tag_categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tags_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -8819,6 +8888,7 @@ export type Database = {
           product_id: number | null
           product_weight: number
           purchase_price: number
+          received_quantity: number | null
           shipment_id: number
           sort_order: number
           source_child_tenant_id: number | null
@@ -9335,6 +9405,7 @@ export type Database = {
           product_id: number | null
           product_weight: number
           purchase_price: number
+          received_quantity: number | null
           shipment_id: number
           sort_order: number
           source_child_tenant_id: number | null
@@ -9440,6 +9511,7 @@ export type Database = {
           product_id: number | null
           product_weight: number
           purchase_price: number
+          received_quantity: number | null
           shipment_id: number
           sort_order: number
           source_child_tenant_id: number | null
@@ -10403,11 +10475,15 @@ export type Database = {
       ensure_shipment_progress_tags: {
         Args: { p_tenant_id: number }
         Returns: {
+          category_id: number | null
           color: string
           created_at: string
           created_by_email: string
           group_name: string | null
           id: number
+          is_active: boolean
+          is_system: boolean
+          metadata: Json
           name: string
           slug: string
           sort_order: number | null
@@ -10665,6 +10741,15 @@ export type Database = {
         Args: { p_parent_tenant_id: number }
         Returns: Json
       }
+      get_payee_settlement_summary: {
+        Args: {
+          p_entity_id: number
+          p_entity_type: string
+          p_shipment_id: number
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
       get_pending_order_qty: {
         Args: { p_allocation_id: number }
         Returns: number
@@ -10857,6 +10942,15 @@ export type Database = {
           updated_at: string
           vendor_code: string
         }[]
+      }
+      get_tag_by_slug: {
+        Args: {
+          p_category_id?: number
+          p_code?: string
+          p_module_key?: string
+          p_slug?: string
+        }
+        Returns: Json
       }
       get_tenant_details_by_membership: {
         Args: {
@@ -11769,6 +11863,10 @@ export type Database = {
           shipment_id: number
         }[]
       }
+      list_shipment_payee_settlements: {
+        Args: { p_shipment_id: number }
+        Returns: Json
+      }
       list_shipments_paginated: {
         Args: {
           p_page?: number
@@ -11973,6 +12071,11 @@ export type Database = {
           p_sort_dir?: string
           p_store_id: number
         }
+        Returns: Json
+      }
+      list_tag_categories: { Args: { p_module_key?: string }; Returns: Json }
+      list_tags_for_category: {
+        Args: { p_category_id?: number; p_code?: string; p_module_key?: string }
         Returns: Json
       }
       list_tenant_module_submodules_for_superadmin: {
@@ -12409,6 +12512,7 @@ export type Database = {
       }
       record_ledger_transaction: {
         Args: {
+          p_allow_overdraft?: boolean
           p_amount: number
           p_currency_code?: string
           p_entity_id: number
@@ -12775,6 +12879,17 @@ export type Database = {
           tenant_id: number
           updated_at: string
         }[]
+      }
+      settle_shipment_payee: {
+        Args: {
+          p_action: string
+          p_amount: number
+          p_entity_id: number
+          p_entity_type: string
+          p_exchange_rate?: number
+          p_shipment_id: number
+        }
+        Returns: Json
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }

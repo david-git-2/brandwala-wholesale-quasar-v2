@@ -247,7 +247,7 @@ Per-tenant assignment table: §15.5 and domain docs.
 | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) | Margin reports, payments, balances, batch P&L |
 | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) | Investor profiles, capital ledger, portal, cost-share |
 | [wallet/UNIVERSAL_WALLET_LEDGER.md](wallet/UNIVERSAL_WALLET_LEDGER.md) | Universal wallet identity (`entity_type` + `entity_id`), ledger, interim metadata dimensions |
-| [tag/UNIVERSAL_TAGGING_SYSTEM.md](tag/UNIVERSAL_TAGGING_SYSTEM.md) | Optional classification tags — use cases, where not to use, deferred until multi-module need |
+| [tag/UNIVERSAL_TAGGING_SYSTEM.md](tag/UNIVERSAL_TAGGING_SYSTEM.md) | Platform tag catalog (`tag_categories` + `tags`) — stock grade, color, shop/sale filters; system seed; [schema](tag/schema.md) · [presets](tag/presets.md) · [order](tag/IMPLEMENTATION_ORDER.md) |
 | [trash/TRASH_AND_SOFT_DELETE.md](trash/TRASH_AND_SOFT_DELETE.md) | Soft delete matrix, `trash_entries` index, central tenant Trash module |
 | [COURIER_AND_MIDDLEMAN_FINANCIAL_MASTER_PLAN.md](COURIER_AND_MIDDLEMAN_FINANCIAL_MASTER_PLAN.md) | Dropship COD escrow, remittance, middleman dispense |
 | [docs/UI_CONSISTENCY.md](../docs/UI_CONSISTENCY.md) | Mandatory UI patterns: `bw-page`, tables, cards, tokens |
@@ -265,7 +265,8 @@ Per-tenant assignment table: §15.5 and domain docs.
 - `is_display_only = false` child sale bridge
 - Merge `invoice_accounting_payments` with `payments`
 - Investor withdrawal request flow (v1 is display-only — see INVESTOR_CAPITAL)
-- **Universal tagging engine** (`tags` + `entity_tags`) — classification only; not wallet identity. Build when 2+ modules need a shared vocabulary; see [tag/UNIVERSAL_TAGGING_SYSTEM.md](tag/UNIVERSAL_TAGGING_SYSTEM.md). Interim expense dimensions may use ledger `metadata` only.
+- Tenant-custom tag CRUD (system `stock_grade` + `color` seeds first — see [tag/IMPLEMENTATION_ORDER.md](tag/IMPLEMENTATION_ORDER.md))
+- Interim expense dimensions may use ledger `metadata` until wallet expense tags (tag T4+)
 
 ---
 

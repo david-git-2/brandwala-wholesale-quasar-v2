@@ -29,6 +29,7 @@ Parent warehouse qty + **shelf / slot / box location** (SMB) + how a child shop 
 ```text
 Qty truth     = global_stocks
 Sell gate     = availability (sellable | held | unsellable)
+Grade         = grade_tag_id → tags (catalog; after tag T1/T3) — price class, not ATP
 Where         = location_id → stock_locations (leaf only for put-away)
 How changed   = stock movements (post RPC)
 Cost          = shipment_item stamp
@@ -39,7 +40,7 @@ Who may list  = assign child
 
 ## 1. Availability (sell gate) — locked simple model
 
-Do **not** drive ATP from tags. Tags = optional labels only ([UNIVERSAL_TAGGING_SYSTEM.md](../../tag/UNIVERSAL_TAGGING_SYSTEM.md)).
+Do **not** drive ATP from tags. Grade catalog = [tag system](../../tag/UNIVERSAL_TAGGING_SYSTEM.md); sell gate stays this enum.
 
 ```sql
 CREATE TYPE stock_availability AS ENUM (
@@ -60,13 +61,16 @@ CREATE TYPE stock_location_kind AS ENUM (
 | :--- | :---: |
 | `availability = sellable` | **Yes** (required) |
 | `location.is_pickable` | **Yes** (required) |
-| Optional detail note / future tag | **No** |
+| `grade_tag_id` (stock grade tag) | **No** — pricing / condition class |
+| Optional detail note / other tags | **No** |
 
-**Receive day one:** default 100% → `sellable` at **default leaf** location (`is_default`). Split availability only when something is held/unsellable.
+**Receive day one:** checklist persists `shipment_items.received_quantity` (GR) beside `ordered_quantity` (PO); post `received_quantity` as `sellable` + grade **`standard`** at **default leaf** location (W7). Short = ordered − received. No damage/bin/grade on receive — availability / grade / location via movements ([workflow_flow.md](./workflow_flow.md)).
 
-**Live bridge:** map `global_stock_types.is_sellable` → `sellable`; non-sellable types → `held` or `unsellable` until cutover.
+**Grade (W7 — tag catalog ready):** no separate `stock_grades` table. System tags `module_key = stock_grade`. Day one preset **warehouse**: `standard` (receive default), `open_box`, `box_damage`, `box_less` (stay **sellable**), `badly_damaged` (**unsellable**). Store **`global_stocks.grade_tag_id` → tags.id`**. Unique grain: `(shipment_item_id, availability, location_id, grade_tag_id)`. Seeds: [tag/presets.md](../../tag/presets.md). Plan: [IMPLEMENTATION_ORDER.md](../IMPLEMENTATION_ORDER.md) W7a–c.
 
-> Older v2 sketch of a large `stock_condition` enum is **superseded** by this 3-way availability. Detail reasons are labels, not extra qty columns. Availability is **not** a physical place.
+**Live bridge:** map `global_stock_types.is_sellable` → `sellable`; non-sellable types → `held` or `unsellable` until cutover / grade tags.
+
+> Older v2 sketch of a large `stock_condition` enum is **superseded** by availability + grade tag. Availability is **not** a physical place.
 
 ---
 
@@ -109,7 +113,7 @@ Returns (area) → optional Slot → Box
 
 Current on-hand only. **No** `returned_qty` / `sold_qty` / cost columns.
 
-**Balance grain (locked):** `(shipment_item_id, availability, location_id)` → one qty row.
+**Balance grain (locked):** `(shipment_item_id, availability, location_id)` today; after tag T3 add `grade_tag_id` → `(shipment_item_id, availability, location_id, grade_tag_id)`.
 
 | Field | Type | Required | Description |
 | :--- | :--- | :---: | :--- |
@@ -125,7 +129,7 @@ Current on-hand only. **No** `returned_qty` / `sold_qty` / cost columns.
 | `deleted_at` / `deleted_by` | … | No | Soft delete |
 | `created_at` / `updated_at` | TIMESTAMPTZ | Yes | |
 
-**Unique:** `(shipment_item_id, availability, location_id)` where not soft-deleted.
+**Unique:** `(shipment_item_id, availability, location_id)` today; after T3 include `grade_tag_id`.
 
 **Example**
 

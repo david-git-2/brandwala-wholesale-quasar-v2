@@ -14,10 +14,7 @@ import { useMembershipColumnPreference } from 'src/modules/membership/composable
 
 const baseColumnOptions = [
   { label: 'Name', value: 'name' as ColumnKey },
-  { label: 'Product ID', value: 'product_id' as ColumnKey },
-  { label: 'Barcode', value: 'barcode' as ColumnKey },
-  { label: 'Product Code', value: 'product_code' as ColumnKey },
-  { label: 'Method', value: 'add_method' as ColumnKey },
+  { label: 'Product Identifiers', value: 'product_codes' as ColumnKey },
   { label: 'Price GBP', value: 'purchase_price' as ColumnKey },
   { label: 'Cost BDT', value: 'cost_bdt' as ColumnKey },
   { label: 'Quantity', value: 'ordered_quantity' as ColumnKey },
@@ -28,10 +25,7 @@ const baseColumnOptions = [
 
 const defaultColumns: ColumnKey[] = [
   'name',
-  'product_id',
-  'barcode',
-  'product_code',
-  'add_method',
+  'product_codes',
   'purchase_price',
   'cost_bdt',
   'ordered_quantity',
@@ -41,7 +35,7 @@ const defaultColumns: ColumnKey[] = [
 ];
 
 const allColumnNames = baseColumnOptions.map((col) => col.value);
-const alwaysVisibleColumns: ColumnKey[] = ['name', 'actions'];
+const alwaysVisibleColumns: ColumnKey[] = ['name', 'product_codes', 'actions'];
 
 export function useInboundShipmentCalculations() {
   const shipmentStore = useGlobalShipmentStore();
@@ -235,7 +229,7 @@ export function useInboundShipmentCalculations() {
 
   const showReceiveTab = computed(() => {
     const status = shipmentStore.currentShipment?.status;
-    return status === 'in_transit' || status === 'received';
+    return status === 'received';
   });
 
   const isSplitsComplete = computed(() => {

@@ -153,6 +153,6 @@ Blocked or revision-gated once `inventory_added = true` (product policy).
 | `allocation` | Non-default spread for duty/labor later |
 | `cost_type` beyond product/cargo | When UI enables duty, insurance, etc. |
 
-**UI (Landed cost panel):** each cost-entry row has payee type + payee id + payment source. Prefill may use shipment header `vendor_id` / `cargo_company_id`; staff can clear for costing-only.
+**UI (Landed cost panel):** Cost entry rows capture rates and FX slices only. Payee references (`entity_type` & `entity_id`) are prefilled from shipment header (`vendor_id` / `cargo_company_id`) on save, with `payment_source: null`. Payee settlement (cash payments, recording short-delivery store credit, or using available credit) is performed via the mounted Payee Settlement Panel using `settle_shipment_payee` RPC (**Pay** / **Record credit** / **Use credit**).
 
 Live preview and finalize consume these via [shipment_engine.md](../shipment_engine.md). Costing does not require wallet. Wallet ownership / return-for-credit: [PROCUREMENT_STOCK_ISSUES.md](../../../PROCUREMENT_STOCK_ISSUES.md) §3 · [schema.md](../schema.md) §1.2 money handoff. After finalize, mutation goes through cost revision (re-stamp), not silent upsert.

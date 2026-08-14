@@ -14,7 +14,6 @@ import type { ReturnLineDraft } from '../components/ShipmentVendorReturnCard.vue
 import ShipmentItemFormDialog from '../components/ShipmentItemFormDialog.vue';
 import AddShipmentItemsDrawer from '../components/AddShipmentItemsDrawer.vue';
 import BulkPasteDialog from '../components/BulkPasteDialog.vue';
-import ReceiveShipmentDialog from '../components/ReceiveShipmentDialog.vue';
 import { buildShipmentExcelWorkbook } from '../utils/buildShipmentExcelWorkbook';
 import {
   showSuccessNotification,
@@ -247,6 +246,41 @@ export function useInboundShipmentActions(options: {
     await saveAssignChild();
   };
 
+  const confirmSettlePayee = async (payload: {
+    entityType: 'vendor' | 'cargo_company';
+    entityId: number;
+    action: 'pay' | 'record_credit' | 'use_credit';
+    amount: number;
+    exchangeRate?: number | null;
+  }) => {
+    paySettling.value = true;
+    try {
+      const res = await shipmentStore.settleShipmentPayee({
+        shipmentId,
+        entityType: payload.entityType,
+        entityId: payload.entityId,
+        action: payload.action,
+        amount: payload.amount,
+        exchangeRate: payload.exchangeRate ?? null,
+      });
+      const actionLabel =
+        payload.action === 'pay'
+          ? 'Payment'
+          : payload.action === 'record_credit'
+            ? 'Credit recording'
+            : 'Credit usage';
+      showSuccessNotification(
+        `${actionLabel} of ৳ ${res.amount_bdt.toLocaleString(undefined, { minimumFractionDigits: 2 })} BDT recorded.`,
+      );
+      return res;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      showErrorNotification(msg || 'Settlement failed');
+    } finally {
+      paySettling.value = false;
+    }
+  };
+
   const confirmPaySettleAll = async () => {
     const ok = await requestConfirmation(
       `Pay ${settleableEntries.value.length} cost${settleableEntries.value.length === 1 ? '' : 's'} to the vendor or cargo company?`,
@@ -327,15 +361,8 @@ export function useInboundShipmentActions(options: {
     if (!shipmentStore.currentShipment) return;
     if (shipmentStore.currentShipment.status === newStatus) return;
 
-    if (
-      shipmentStore.currentShipment.status === 'received' ||
-      shipmentStore.currentShipment.status === 'cancelled'
-    ) {
-      showWarningNotification(
-        shipmentStore.currentShipment.status === 'received'
-          ? 'To change status, please use the Rollback option to revert the shipment to Draft.'
-          : 'Cancelled shipments cannot change status.',
-      );
+    if (shipmentStore.currentShipment.status === 'cancelled') {
+      showWarningNotification('Cancelled shipments cannot change status.');
       return;
     }
 
@@ -365,17 +392,19 @@ export function useInboundShipmentActions(options: {
     }
 
     if (newStatus === 'received') {
-      if (!calculations.isSplitsComplete.value) {
-        showWarningNotification('Please configure quantity splits for all line items first.');
-        return;
+      const currentRoute = router.currentRoute.value;
+      const tenantSlug = currentRoute.params.tenantSlug;
+      if (tenantSlug) {
+        void router.push({
+          name: 'app-procurement-shipment-receive',
+          params: { tenantSlug, id: shipmentId },
+        });
+      } else {
+        void router.push({
+          name: 'app-procurement-shipment-receive',
+          params: { id: shipmentId },
+        });
       }
-
-      $q.dialog({
-        component: ReceiveShipmentDialog,
-        componentProps: { shipmentId },
-      }).onOk(() => {
-        void loadShipmentDetails();
-      });
       return;
     }
 
@@ -479,7 +508,12 @@ export function useInboundShipmentActions(options: {
           label: 'Pay',
           disabled: false,
           reason: '',
-          action: () => paySettleCard.value?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+          action: () => {
+            activeTab.value = 'cost';
+            setTimeout(() => {
+              paySettleCard.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+          },
         };
       }
       return {
@@ -514,27 +548,22 @@ export function useInboundShipmentActions(options: {
         },
       };
     }
-    if (status === 'in_transit') {
-      if (!calculations.isSplitsComplete.value) {
-        return {
-          message: 'Split each line before receiving.',
-          label: 'Configure splits',
-          disabled: false,
-          reason: '',
-          action: () => {
-            activeTab.value = 'lines';
-          },
-        };
-      }
+    if (status === 'draft') {
       return {
-        message: 'Receive into the warehouse.',
-        label: 'Add to stock',
+        message: 'Draft ready. Dispatch shipment when it is in transit.',
+        label: 'Dispatch (In-Transit)',
         disabled: false,
         reason: '',
-        action: () => {
-          activeTab.value = 'receive';
-          changeStatus('received');
-        },
+        action: () => changeStatus('in_transit'),
+      };
+    }
+    if (status === 'in_transit') {
+      return {
+        message: 'Shipment is in transit. Click Receive & Post Stock to receive items at the warehouse.',
+        label: 'Receive & Post Stock',
+        disabled: false,
+        reason: '',
+        action: () => changeStatus('received'),
       };
     }
     return {
@@ -726,6 +755,7 @@ export function useInboundShipmentActions(options: {
     saveAssignChild,
     clearAssignChild,
     confirmPaySettleAll,
+    confirmSettlePayee,
     confirmVendorReturn,
     loadShipmentDetails,
     goBack,

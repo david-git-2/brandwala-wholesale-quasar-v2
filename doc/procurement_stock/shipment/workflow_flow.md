@@ -9,12 +9,12 @@ Maps lifecycle stages to APIs / RPCs. Schema: [schema.md](./schema.md) (§4 land
 ```
 [ STAGE 1: DRAFT ]  ➔  [ STAGE 2: EDIT ]  ➔  [ STAGE 3: FINALIZE ]  ➔  [ STAGE 4: COST REVISION ]
   status: draft         status: in_transit      status: received        (stays received)
-  • Create header       • Items CRUD          • Stamp landed_cost_bdt  • Update cost entries
-  • (no cost entries     • Cost entries CRUD   • No wallet posts        • Recompute + re-stamp
+  • Create header       • Items CRUD          • Qty checklist UI       • Update cost entries
+  • (no cost entries     • Cost entries CRUD   • Stamp landed_cost_bdt  • Recompute + re-stamp
     required yet)        • Boxes (verify)      • Post inventory         • Invoice snapshots stay frozen
-                         • Weight / price      • Lock shipment          • Actual P&L via report join
-                           balance             • Settle intent only
-                         • Live cost preview
+                         • Weight / price      • No wallet posts
+                           balance             • Lock shipment
+                         • Live cost preview   • Settle intent only
 ```
 
 **Status vs progress:** `status` is the solid lifecycle above. Customer-facing journey labels (UK hub, airport, …) are **progress tags** (`shipment_progress` group via `entity_tags`) — never additional status values. See [schema.md](./schema.md) · [schema.md](./schema.md).
@@ -54,15 +54,25 @@ Maps lifecycle stages to APIs / RPCs. Schema: [schema.md](./schema.md) (§4 land
 ## Stage 3: Finalization & Inventory Posting (`status: 'received'`)
 
 * **Action**: User marks received after verifying weights and rates (estimate OK — sell-first / cost-later).
-* **Execution** (single RPC):
+* **PO + GR on one document (locked):** no separate purchase-order / goods-receipt module. Per line:
+  * `ordered_quantity` = PO side (what we bought)
+  * `received_quantity` = GR side (what we counted) — **persisted on finalize**
+  * Short / missing = `ordered_quantity − received_quantity` (reportable; no dedicated loss table day one)
+* **Receive UI (locked):** qty checklist — product image + name, ordered qty, received qty (prefill = ordered; editable). Not put-away / damage splits.
+* **Happy path:** leave received = ordered → confirm. Persist `received_quantity`; post that qty as **100% `sellable` @ default leaf location**.
+* **Count variance:** stock posts from `received_quantity` only. Multi-wave / cost-share when a batch arrives in parts stays **deferred** ([IMPLEMENTATION_ORDER](../IMPLEMENTATION_ORDER.md) · [issues §1](../../PROCUREMENT_STOCK_ISSUES.md)).
+* **Not on receive:** damage, quarantine, bin moves — record **after** stock exists via warehouse movements ([../stock/workflow_flow.md](../stock/workflow_flow.md) Stage 4).
+* **Execution** (single RPC `finalize_global_shipment` with auto-built `p_stock_rows` from `received_quantity`):
   1. Read `shipment_cost_entries`; compute effective rates **server-side** (authoritative).
   2. Stamp `landed_cost_bdt` on each `shipment_item` (living cost source of truth).
-  3. **No wallet ledger posts** (day one — [issues §3](../../PROCUREMENT_STOCK_ISSUES.md)). `payment_source` / `entity_*` are settlement **intent** only; Pay / Settle is a later action.
-  4. Post inventory (`inventory_added = true`) — stock qty only; **no cost column on stock**.
-  5. Lock header against hard delete; block silent entry edits (must use Stage 4).
+  3. Write `received_quantity` on each line from the checklist.
+  4. **No wallet ledger posts** (day one — [issues §3](../../PROCUREMENT_STOCK_ISSUES.md)). `payment_source` / `entity_*` are settlement **intent** only; Pay / Settle is a later action.
+  5. Post inventory qty = `received_quantity` (`inventory_added = true`) — stock qty only; **no cost column on stock**.
+  6. Lock header against hard delete; block silent entry edits (must use Stage 4).
 
 > Server does **not** trust client-computed landed costs.  
-> Costing always runs; wallet never blocks receive.
+> Costing always runs; wallet never blocks receive.  
+> Omit `p_stock_rows` = stamp only (does **not** set `received` / stock ready / `received_quantity`).
 
 ---
 

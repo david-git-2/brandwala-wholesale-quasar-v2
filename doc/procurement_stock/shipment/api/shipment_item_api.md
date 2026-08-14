@@ -13,7 +13,7 @@ This document details the API operations for `shipment_items`.
   {
     "shipment_id": 88,
     "product_id": 105,
-    "quantity": 20,
+    "ordered_quantity": 20,
     "unit_purchase_price": 12.50,
     "product_weight_gm": 250,
     "package_weight_gm": 10
@@ -21,7 +21,7 @@ This document details the API operations for `shipment_items`.
   {
     "shipment_id": 88,
     "product_id": 106,
-    "quantity": 50,
+    "ordered_quantity": 50,
     "unit_purchase_price": 8.00,
     "product_weight_gm": 180,
     "package_weight_gm": 10
@@ -36,7 +36,7 @@ This document details the API operations for `shipment_items`.
     "id": 501,
     "shipment_id": 88,
     "product_id": 105,
-    "quantity": 20,
+    "ordered_quantity": 20,
     "unit_purchase_price": 12.50,
     "product_weight_gm": 250.0,
     "package_weight_gm": 10.0,
@@ -46,7 +46,7 @@ This document details the API operations for `shipment_items`.
     "id": 502,
     "shipment_id": 88,
     "product_id": 106,
-    "quantity": 50,
+    "ordered_quantity": 50,
     "unit_purchase_price": 8.00,
     "product_weight_gm": 180.0,
     "package_weight_gm": 10.0,
@@ -90,7 +90,7 @@ This document details the API operations for `shipment_items`.
   {
     "id": 501,
     "shipment_id": 88,
-    "quantity": 25,
+    "ordered_quantity": 25,
     "unit_purchase_price": 12.50,
     "product_weight_gm": 260.00,
     "package_weight_gm": 15.00
@@ -98,7 +98,7 @@ This document details the API operations for `shipment_items`.
   {
     "id": 502,
     "shipment_id": 88,
-    "quantity": 50,
+    "ordered_quantity": 50,
     "unit_purchase_price": 7.50,
     "product_weight_gm": 180.00,
     "package_weight_gm": 12.00
@@ -136,7 +136,7 @@ This document details the API operations for `shipment_items`.
     "id": 501,
     "shipment_id": 88,
     "product_id": 105,
-    "quantity": 25,
+    "ordered_quantity": 25,
     "unit_purchase_price": 12.50,
     "product_weight_gm": 260.0,
     "package_weight_gm": 10.0,
@@ -146,3 +146,5 @@ This document details the API operations for `shipment_items`.
 ```
 
 `landed_cost_bdt` is **null** until finalize / cost revision. Clients must **not** write this column — server stamp only ([schema.md](../schema.md) §4, [workflow_flow.md](../workflow_flow.md) Stages 3–4).
+
+`received_quantity` is **null** until finalize. Clients must **not** write it on insert/update — finalize persists GR qty and posts stock from it ([schema.md](../schema.md) §1.3). Short / missing = `ordered_quantity − received_quantity`.

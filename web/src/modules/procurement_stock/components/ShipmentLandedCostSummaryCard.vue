@@ -190,3 +190,11 @@ defineProps<{
   shipmentType?: 'international' | 'local' | 'transfer';
 }>();
 </script>
+
+<style scoped>
+.shipment-landed-cost-summary-card {
+  position: sticky;
+  top: 16px;
+  z-index: 1;
+}
+</style>

@@ -51,7 +51,6 @@
           :status="shipmentStore.currentShipment.status"
           :updating="updatingStatus"
           :target-status="targetUpdatingStatus"
-          :lock-received="!isSplitsComplete"
           :progress-options="shipmentStore.progressTags"
           :progress-tag-id="shipmentStore.currentShipment.progress_tag_id ?? shipmentStore.currentShipment.progress_tag?.id ?? null"
           :progress-updating="shipmentStore.progressUpdating"
@@ -126,42 +125,7 @@
           </template>
         </ShipmentStatusWorkflowBar>
 
-        <!-- Received-shipment ops: assign, settle, return -->
-        <div
-          v-if="shipmentStore.currentShipment.status === 'received'"
-          class="column q-gutter-y-md"
-        >
-          <div ref="assignShopCard">
-            <ShipmentAssignShopCard
-              v-model="selectedChildTenantId"
-              :child-tenant-options="childTenantOptions"
-              :child-tenants-loading="childTenantsLoading"
-              :assigning-child="assigningChild"
-              :assigned-child-tenant-id="shipmentStore.currentShipment.assigned_child_tenant_id"
-              @save="saveAssignChild"
-              @clear="clearAssignChild"
-            />
-          </div>
 
-          <div ref="paySettleCard">
-            <ShipmentPayCard
-              :settleable-entries="settleableEntries"
-              :settle-entry-columns="settleEntryColumns"
-              :pay-settling="paySettling"
-              @pay-all="confirmPaySettleAll"
-            />
-          </div>
-
-          <ShipmentVendorReturnCard
-            v-model:return-outcome="returnOutcome"
-            :return-outcome-options="returnOutcomeOptions"
-            :return-lines="returnLines"
-            :return-line-columns="returnLineColumns"
-            :has-return-qty="hasReturnQty"
-            :return-submitting="returnSubmitting"
-            @submit-return="confirmVendorReturn"
-          />
-        </div>
 
         <!-- Tabs + contextual actions on one row -->
         <div>
@@ -182,7 +146,7 @@
                   <q-badge v-if="!hasLineItems" color="orange" rounded label="!" />
                 </div>
               </q-tab>
-              <q-tab name="cost" label="Payment and rates" data-test="tab-cost" />
+              <q-tab name="cost" label="Rates & cost entries" data-test="tab-cost" />
               <q-tab name="balance" data-test="tab-balance">
                 <div class="row items-center no-wrap q-gutter-xs">
                   <span>Match invoices</span>
@@ -255,20 +219,7 @@
                   </q-list>
                 </q-menu>
               </q-btn>
-              <q-btn
-                v-if="
-                  shipmentStore.currentShipment?.status === 'in_transit' && !isSplitsComplete
-                "
-                color="green-7"
-                icon="ph ph-git-fork"
-                label="Auto Accept"
-                unelevated
-                dense
-                no-caps
-                size="sm"
-                :loading="shipmentStore.loading"
-                @click="autoAcceptSplits"
-              />
+
               <q-btn
                 v-if="isEditable"
                 color="secondary"
@@ -343,7 +294,7 @@
               </q-card>
             </q-tab-panel>
 
-            <!-- Payment and rates -->
+            <!-- Rates & cost entries -->
             <q-tab-panel name="cost" class="q-pa-none">
               <div class="column q-gutter-y-md">
                 <q-banner
@@ -364,30 +315,40 @@
                     />
                   </div>
                 </q-banner>
-                <ShipmentCostEntriesPanel
-                  :entries="shipmentStore.currentCostEntries"
-                  :loading="shipmentStore.costEntriesLoading"
-                  :saving="shipmentStore.costEntriesSaving"
-                  :can-edit="canEditCosts"
-                  :is-finalized="isCostFinalized"
-                  :is-local-shipment="shipmentStore.currentShipment?.type === 'local'"
-                  :cargo-kg="totals.cargoWeightKg"
-                  :purchase-currency-symbol="currentPurchaseCurrencySymbol"
-                  :cost-currency-symbol="currentCostCurrencySymbol"
-                  @save="onSaveCostEntries"
-                  @go-match-invoices="activeTab = 'balance'"
-                />
 
-                <ShipmentLandedCostSummaryCard
-                  :totals="totals"
-                  :has-cargo-invoice-weight="hasCargoInvoiceWeight"
-                  :current-shipment-boxes-total="currentShipmentBoxesTotal"
-                  :current-purchase-currency-symbol="currentPurchaseCurrencySymbol"
-                  :current-cost-currency-symbol="currentCostCurrencySymbol"
-                  :cargo-cost-weight-label="cargoCostWeightLabel"
-                  :transaction-rate-weight-label="transactionRateWeightLabel"
-                  :shipment-type="shipmentStore.currentShipment?.type"
-                />
+                <div class="row q-col-gutter-md items-start">
+                  <div ref="paySettleCard" class="col-12 col-md-7 col-lg-8">
+                    <ShipmentCostEntriesPanel
+                      :entries="shipmentStore.currentCostEntries"
+                      :loading="shipmentStore.costEntriesLoading"
+                      :saving="shipmentStore.costEntriesSaving"
+                      :can-edit="canEditCosts"
+                      :is-finalized="isCostFinalized"
+                      :is-local-shipment="shipmentStore.currentShipment?.type === 'local'"
+                      :cargo-kg="totals.cargoWeightKg"
+                      :purchase-currency-symbol="currentPurchaseCurrencySymbol"
+                      :cost-currency-symbol="currentCostCurrencySymbol"
+                      :goods-purchase-total="totals.goodsPurchase"
+                      :goods-quantity-total="totals.quantity"
+                      :pay-settling="paySettling"
+                      @save="onSaveCostEntries"
+                      @settle="confirmSettlePayee"
+                      @go-match-invoices="activeTab = 'balance'"
+                    />
+                  </div>
+                  <div class="col-12 col-md-5 col-lg-4">
+                    <ShipmentLandedCostSummaryCard
+                      :totals="totals"
+                      :has-cargo-invoice-weight="hasCargoInvoiceWeight"
+                      :current-shipment-boxes-total="currentShipmentBoxesTotal"
+                      :current-purchase-currency-symbol="currentPurchaseCurrencySymbol"
+                      :current-cost-currency-symbol="currentCostCurrencySymbol"
+                      :cargo-cost-weight-label="cargoCostWeightLabel"
+                      :transaction-rate-weight-label="transactionRateWeightLabel"
+                      :shipment-type="shipmentStore.currentShipment?.type"
+                    />
+                  </div>
+                </div>
               </div>
             </q-tab-panel>
 
@@ -490,9 +451,6 @@ import ShipmentPurchaseBalanceCard from '../components/ShipmentPurchaseBalanceCa
 import ShipmentStatusWorkflowBar from '../components/ShipmentStatusWorkflowBar.vue';
 import ShipmentCostEntriesPanel from '../components/ShipmentCostEntriesPanel.vue';
 import ShipmentHeaderBar from '../components/ShipmentHeaderBar.vue';
-import ShipmentAssignShopCard from '../components/ShipmentAssignShopCard.vue';
-import ShipmentPayCard from '../components/ShipmentPayCard.vue';
-import ShipmentVendorReturnCard from '../components/ShipmentVendorReturnCard.vue';
 import ShipmentLandedCostSummaryCard from '../components/ShipmentLandedCostSummaryCard.vue';
 import ShipmentReceiveTabPanel from '../components/ShipmentReceiveTabPanel.vue';
 
@@ -580,23 +538,6 @@ const {
   saveInlineType,
   saveInlineVendor,
   saveInlineCargo,
-  childTenantOptions,
-  childTenantsLoading,
-  selectedChildTenantId,
-  assigningChild,
-  paySettling,
-  returnSubmitting,
-  returnOutcome,
-  returnOutcomeOptions,
-  returnLines,
-  settleEntryColumns,
-  returnLineColumns,
-  settleableEntries,
-  hasReturnQty,
-  saveAssignChild,
-  clearAssignChild,
-  confirmPaySettleAll,
-  confirmVendorReturn,
   loadShipmentDetails,
   goBack,
   changeProgress,
@@ -612,6 +553,8 @@ const {
   openEditItem,
   confirmDeleteItem,
   onSaveCostEntries,
+  paySettling,
+  confirmSettlePayee,
 } = actions;
 
 onMounted(() => {
