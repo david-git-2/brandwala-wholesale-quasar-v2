@@ -1,8 +1,4 @@
-import {
-  calculateLineLandedCostBdt,
-  type CostingLineItemInput,
-  type CostingShipmentInput,
-} from '../../procurement_stock/utils/landedCost';
+import type { CostingShipmentInput } from 'src/shared/shipment-engine';
 
 export interface LineInput {
   id?: number | null | undefined;
@@ -42,7 +38,9 @@ export interface ShipmentItemInput {
   product_weight?: number | null | undefined;
   package_weight?: number | null | undefined;
   ordered_quantity?: number | null | undefined;
+  /** Living stamp (alias) — prefer over header-rate recompute */
   landed_unit_cost?: number | null | undefined;
+  landed_cost_bdt?: number | null | undefined;
   sellable_qty?: number | null | undefined;
   stolen_qty?: number | null | undefined;
   box_damage_qty?: number | null | undefined;
@@ -139,22 +137,15 @@ export interface BatchPnlResult {
 
 /**
  * Calculates Batch P&L statistics for a list of shipment items and sold lines.
- * Reuses landedCost.ts calculations when necessary.
+ * Living cost = stamped landed_unit_cost / landed_cost_bdt (not header-rate recompute).
+ * Sold cost uses frozen invoice line unit_cost snapshot.
  */
 export const batchPnl = (
-  shipment: CostingShipmentInput,
+  _shipment: CostingShipmentInput,
   shipmentItems: ShipmentItemInput[],
   soldLines: SoldLineInput[],
   returns: ReturnInput[] = [],
 ): BatchPnlResult => {
-  // Convert ShipmentItemInput to CostingLineItemInput to reuse calculateLineLandedCostBdt
-  const costingItems: CostingLineItemInput[] = shipmentItems.map((item) => ({
-    purchase_price: item.purchase_price ?? 0,
-    product_weight: item.product_weight ?? 0,
-    package_weight: item.package_weight ?? 0,
-    ordered_quantity: item.ordered_quantity ?? item.received_qty ?? item.received_quantity ?? 0,
-  }));
-
   let totalLandedCost = 0;
   let totalSoldCost = 0;
   let totalRevenue = 0;
@@ -164,23 +155,18 @@ export const batchPnl = (
   let totalBoxDamageValue = 0;
   let totalExpiredValue = 0;
 
-  shipmentItems.forEach((item, index) => {
+  shipmentItems.forEach((item) => {
     const receivedQty = item.received_qty ?? item.received_quantity ?? 0;
 
-    // Resolve landed unit cost: use calculated landed cost from landedCost.ts if available, otherwise direct override
-    let landedUnitCost = item.landed_unit_cost;
-    if (landedUnitCost === undefined || landedUnitCost === null) {
-      const costingItem = costingItems[index];
-      if (costingItem) {
-        landedUnitCost = calculateLineLandedCostBdt(costingItem, shipment, costingItems);
-      } else {
-        landedUnitCost = 0;
-      }
-    }
+    const landedUnitCost =
+      item.landed_unit_cost != null && Number.isFinite(Number(item.landed_unit_cost))
+        ? Number(item.landed_unit_cost)
+        : item.landed_cost_bdt != null && Number.isFinite(Number(item.landed_cost_bdt))
+          ? Number(item.landed_cost_bdt)
+          : 0;
 
     totalLandedCost += landedUnitCost * receivedQty;
 
-    // Find sold lines matching this shipment item
     const matchingLines = soldLines.filter((line) => line.shipment_item_id === item.id);
 
     let itemSoldQty = 0;
@@ -192,7 +178,6 @@ export const batchPnl = (
       const sellPrice = line.sell_price_amount ?? line.sell_price ?? 0;
       const unitCost = line.unit_cost_price ?? line.unit_cost ?? 0;
 
-      // Find returns matching this line
       const lineReturns = returns.filter((ret) => ret.invoice_item_id === line.id);
       const returnedQty = lineReturns.reduce((sum, r) => sum + r.quantity, 0);
       const returnedAmount = lineReturns.reduce((sum, r) => sum + r.return_accounting_amount, 0);

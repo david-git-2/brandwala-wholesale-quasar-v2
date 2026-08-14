@@ -39,22 +39,149 @@
                 @click="goBack"
               />
               <div class="min-width-0">
-                <div class="text-subtitle1 text-weight-bold ellipsis">
-                  {{ shipmentStore.currentShipment.name }}
+                <!-- Inline Edit Name -->
+                <div class="text-subtitle1 text-weight-bold row items-center q-gutter-x-xs">
+                  <span class="cursor-pointer" :class="{ 'text-primary': isEditable }">
+                    {{ shipmentStore.currentShipment.name }}
+                  </span>
+                  <q-icon
+                    v-if="isEditable"
+                    name="ph ph-pencil-simple"
+                    size="xs"
+                    color="grey-6"
+                    class="cursor-pointer"
+                  />
+                  <q-popup-edit
+                    v-if="isEditable"
+                    v-model="inlineNameInput"
+                    v-slot="scope"
+                    buttons
+                    label-set="Save"
+                    label-cancel="Cancel"
+                    @save="saveInlineName"
+                  >
+                    <q-input
+                      v-model="scope.value"
+                      dense
+                      autofocus
+                      counter
+                      @keyup.enter="scope.set"
+                    />
+                  </q-popup-edit>
                 </div>
-                <div class="text-caption text-grey-7 ellipsis">
-                  #{{
-                    shipmentStore.currentShipment.tenant_shipment_id ||
-                    shipmentStore.currentShipment.id
-                  }}
-                  ·
-                  <span class="text-capitalize">{{ shipmentStore.currentShipment.type }}</span>
-                  · {{ formatWeightKg(shipmentStore.currentShipment.received_weight) }}
-                  · {{ shipmentStore.currentShipment.received_date || '—' }}
-                  ·
-                  {{
-                    shipmentStore.currentShipment.stock_ready ? 'Stock ready' : 'Stock not ready'
-                  }}
+                <div class="text-caption text-grey-7">
+                  Buy, cost, then receive into the warehouse.
+                </div>
+
+                <!-- Chips Row for Type, Vendor & Cargo -->
+                <div class="row items-center q-gutter-xs q-mt-xs wrap">
+                  <span class="text-caption text-grey-7">
+                    #{{
+                      shipmentStore.currentShipment.tenant_shipment_id ||
+                      shipmentStore.currentShipment.id
+                    }}
+                  </span>
+                  <span class="text-grey-5">·</span>
+
+                  <!-- Interactive Type Chip -->
+                  <q-chip
+                    clickable
+                    outline
+                    dense
+                    size="sm"
+                    color="primary"
+                    class="cursor-pointer"
+                    :disable="!isEditable"
+                  >
+                    <q-icon name="ph ph-tag" size="xs" class="q-mr-xs" />
+                    <span class="text-capitalize">{{ shipmentStore.currentShipment.type }}</span>
+                    <q-icon v-if="isEditable" name="ph ph-caret-down" size="xs" class="q-ml-xs" />
+                    <q-menu v-if="isEditable" auto-close>
+                      <q-list dense style="min-width: 140px">
+                        <q-item
+                          v-for="opt in typeOptions"
+                          :key="opt.value"
+                          clickable
+                          :active="shipmentStore.currentShipment.type === opt.value"
+                          @click="saveInlineType(opt.value)"
+                        >
+                          <q-item-section>{{ opt.label }}</q-item-section>
+                        </q-item>
+                      </q-list>
+                    </q-menu>
+                  </q-chip>
+
+                  <!-- Interactive Vendor Chip -->
+                  <q-chip
+                    clickable
+                    outline
+                    dense
+                    size="sm"
+                    color="teal-8"
+                    class="cursor-pointer"
+                    :disable="!isEditable"
+                  >
+                    <q-icon name="ph ph-storefront" size="xs" class="q-mr-xs" />
+                    <span>{{ currentVendorLabel }}</span>
+                    <q-icon v-if="isEditable" name="ph ph-caret-down" size="xs" class="q-ml-xs" />
+                    <q-menu v-if="isEditable" @before-show="ensureVendorsLoaded">
+                      <div class="q-pa-sm" style="min-width: 220px">
+                        <div class="text-caption text-weight-bold text-grey-7 q-mb-xs">Vendor</div>
+                        <q-select
+                          :model-value="shipmentStore.currentShipment.vendor_id"
+                          :options="vendorOptions"
+                          dense
+                          outlined
+                          emit-value
+                          map-options
+                          :loading="loadingVendors"
+                          @update:model-value="saveInlineVendor"
+                        />
+                      </div>
+                    </q-menu>
+                  </q-chip>
+
+                  <!-- Interactive Cargo Vendor Chip -->
+                  <q-chip
+                    clickable
+                    outline
+                    dense
+                    size="sm"
+                    color="indigo-8"
+                    class="cursor-pointer"
+                    :disable="!isEditable"
+                  >
+                    <q-icon name="ph ph-truck" size="xs" class="q-mr-xs" />
+                    <span>{{ currentCargoLabel }}</span>
+                    <q-icon v-if="isEditable" name="ph ph-caret-down" size="xs" class="q-ml-xs" />
+                    <q-menu v-if="isEditable" @before-show="ensureCargoLoaded">
+                      <div class="q-pa-sm" style="min-width: 220px">
+                        <div class="text-caption text-weight-bold text-grey-7 q-mb-xs">Cargo Vendor</div>
+                        <q-select
+                          :model-value="shipmentStore.currentShipment.cargo_company_id"
+                          :options="cargoOptions"
+                          dense
+                          outlined
+                          emit-value
+                          map-options
+                          clearable
+                          :loading="loadingCargo"
+                          @update:model-value="saveInlineCargo"
+                        />
+                      </div>
+                    </q-menu>
+                  </q-chip>
+
+                  <span class="text-grey-5">·</span>
+                  <span class="text-caption text-grey-7">
+                    {{ shipmentStore.currentShipment.received_date || '—' }}
+                  </span>
+                  <template v-if="shipmentStore.currentShipment.progress_tag">
+                    <span class="text-grey-5">·</span>
+                    <span class="text-caption text-grey-7">
+                      {{ shipmentStore.currentShipment.progress_tag.name }}
+                    </span>
+                  </template>
                 </div>
               </div>
             </div>
@@ -76,17 +203,6 @@
               dense
               no-caps
               size="sm"
-              color="grey-8"
-              icon="ph ph-pencil-simple"
-              label="Edit"
-              @click="openEditShipment"
-            />
-            <q-btn
-              v-if="isEditable"
-              flat
-              dense
-              no-caps
-              size="sm"
               color="negative"
               icon="ph ph-trash"
               label="Delete"
@@ -100,16 +216,19 @@
           :updating="updatingStatus"
           :target-status="targetUpdatingStatus"
           :lock-received="!isSplitsComplete"
+          :progress-options="shipmentStore.progressTags"
+          :progress-tag-id="shipmentStore.currentShipment.progress_tag_id ?? shipmentStore.currentShipment.progress_tag?.id ?? null"
+          :progress-updating="shipmentStore.progressUpdating"
+          :progress-target-id="progressTargetId"
           @update-status="changeStatus"
+          @update-progress="changeProgress"
         />
 
         <!-- Next-step banner (only when there is something to do or a lock notice) -->
         <q-banner
           v-if="nextStep"
           dense
-          rounded
-          class="bg-primary-1 text-primary"
-          style="background: var(--bw-theme-primary-soft, #e8f5e9)"
+          class="bg-primary-soft text-primary rounded-borders"
         >
           <template #avatar>
             <q-icon name="ph ph-arrow-right" color="primary" />
@@ -164,6 +283,166 @@
             </div>
           </div>
         </q-banner>
+
+        <!-- Received-shipment ops: assign, settle, return -->
+        <div
+          v-if="shipmentStore.currentShipment.status === 'received'"
+          class="column q-gutter-y-md"
+        >
+          <div ref="assignShopCard">
+          <q-card flat bordered class="q-pa-md">
+            <div class="text-subtitle1 text-weight-bold text-primary q-mb-xs">
+              Assign to shop
+            </div>
+            <div class="text-caption text-grey-7 q-mb-md">
+              Choose which shop can sell this stock.
+            </div>
+            <div class="row q-col-gutter-sm items-end">
+              <div class="col-12 col-sm-8">
+                <q-select
+                  v-model="selectedChildTenantId"
+                  :options="childTenantOptions"
+                  label="Shop"
+                  dense
+                  outlined
+                  clearable
+                  emit-value
+                  map-options
+                  :loading="childTenantsLoading"
+                />
+              </div>
+              <div class="col-12 col-sm-4 row q-gutter-sm">
+                <q-btn
+                  color="primary"
+                  unelevated
+                  no-caps
+                  dense
+                  label="Save"
+                  class="col"
+                  :loading="assigningChild"
+                  @click="saveAssignChild"
+                />
+                <q-btn
+                  flat
+                  no-caps
+                  dense
+                  label="Clear"
+                  class="col"
+                  :disable="!shipmentStore.currentShipment.assigned_child_tenant_id"
+                  :loading="assigningChild"
+                  @click="clearAssignChild"
+                />
+              </div>
+            </div>
+          </q-card>
+          </div>
+
+          <div ref="paySettleCard">
+          <q-card flat bordered class="q-pa-md">
+            <div class="text-subtitle1 text-weight-bold text-primary q-mb-xs">
+              Pay
+            </div>
+            <div class="text-caption text-grey-7 q-mb-md">
+              Pay the vendor or cargo company for these costs.
+            </div>
+            <q-table
+              v-if="settleableEntries.length"
+              flat
+              dense
+              :rows="settleableEntries"
+              :columns="settleEntryColumns"
+              row-key="id"
+              hide-pagination
+              :rows-per-page-options="[0]"
+            >
+              <template #body-cell-cost_type="props">
+                <q-td :props="props">
+                  <span class="text-capitalize">{{ props.row.cost_type }}</span>
+                </q-td>
+              </template>
+              <template #body-cell-amount="props">
+                <q-td :props="props" class="text-right">
+                  ৳{{ Number(props.row.amount).toLocaleString(undefined, { minimumFractionDigits: 2 }) }}
+                </q-td>
+              </template>
+            </q-table>
+            <div v-else class="text-body2 text-grey-7 q-mb-md">
+              Add who to pay on the Landed cost tab first.
+            </div>
+            <span>
+              <q-btn
+                color="secondary"
+                unelevated
+                no-caps
+                icon="ph ph-wallet"
+                label="Pay all"
+                :disable="!settleableEntries.length"
+                :loading="paySettling"
+                @click="confirmPaySettleAll"
+              />
+              <q-tooltip v-if="!settleableEntries.length">
+                Add who to pay on the Landed cost tab first.
+              </q-tooltip>
+            </span>
+          </q-card>
+          </div>
+
+          <q-card flat bordered class="q-pa-md">
+            <div class="text-subtitle1 text-weight-bold text-primary q-mb-xs">
+              Vendor return
+            </div>
+            <div class="text-caption text-grey-7 q-mb-md">
+              Send goods back to the vendor.
+            </div>
+            <div class="row q-col-gutter-sm q-mb-md">
+              <div class="col-12 col-sm-6">
+                <q-select
+                  v-model="returnOutcome"
+                  :options="returnOutcomeOptions"
+                  label="Return outcome"
+                  dense
+                  outlined
+                  emit-value
+                  map-options
+                />
+              </div>
+            </div>
+            <q-table
+              flat
+              dense
+              :rows="returnLines"
+              :columns="returnLineColumns"
+              row-key="shipment_item_id"
+              hide-pagination
+              :rows-per-page-options="[0]"
+            >
+              <template #body-cell-return_qty="props">
+                <q-td :props="props">
+                  <q-input
+                    v-model.number="props.row.return_qty"
+                    type="number"
+                    dense
+                    outlined
+                    min="0"
+                    :max="props.row.max_qty"
+                    style="max-width: 100px"
+                  />
+                </q-td>
+              </template>
+            </q-table>
+            <q-btn
+              color="negative"
+              unelevated
+              no-caps
+              class="q-mt-md"
+              icon="ph ph-arrow-u-up-left"
+              label="Submit return"
+              :disable="!hasReturnQty"
+              :loading="returnSubmitting"
+              @click="confirmVendorReturn"
+            />
+          </q-card>
+        </div>
 
         <!-- Tabs + contextual actions on one row -->
         <div>
@@ -314,34 +593,101 @@
             <!-- Match invoices -->
             <q-tab-panel name="balance" class="q-pa-none">
               <div class="column q-gutter-y-md">
-                <ShipmentWeightBalanceCard
-                  :shipment-id="shipmentId"
-                  @applied="loadShipmentDetails"
-                />
-                <ShipmentPurchaseBalanceCard
-                  :shipment-id="shipmentId"
-                  @applied="loadShipmentDetails"
-                />
+                <div>
+                  <div class="text-body2 text-grey-8">
+                    Compare cargo weight and paid purchase to your lines, then apply to fix lines.
+                  </div>
+                  <div class="row q-gutter-sm q-mt-sm">
+                    <q-chip
+                      clickable
+                      dense
+                      :color="weightNeedsAttention ? 'orange-1' : hasCargoInvoiceWeight ? 'green-1' : 'grey-2'"
+                      :text-color="weightNeedsAttention ? 'orange-10' : hasCargoInvoiceWeight ? 'green-9' : 'grey-8'"
+                      icon="ph ph-scales"
+                      @click="scrollToBalanceCard('weight')"
+                    >
+                      Weight:
+                      {{
+                        !hasCargoInvoiceWeight
+                          ? 'not set'
+                          : weightNeedsAttention
+                            ? 'needs fix'
+                            : 'matched'
+                      }}
+                    </q-chip>
+                    <q-chip
+                      clickable
+                      dense
+                      :color="purchaseNeedsAttention ? 'orange-1' : hasProductInvoiceTotal ? 'green-1' : 'grey-2'"
+                      :text-color="purchaseNeedsAttention ? 'orange-10' : hasProductInvoiceTotal ? 'green-9' : 'grey-8'"
+                      icon="ph ph-money"
+                      @click="scrollToBalanceCard('purchase')"
+                    >
+                      Purchase:
+                      {{
+                        !hasProductInvoiceTotal
+                          ? 'not set'
+                          : purchaseNeedsAttention
+                            ? 'needs fix'
+                            : 'matched'
+                      }}
+                    </q-chip>
+                  </div>
+                </div>
+                <div ref="weightBalanceCardEl">
+                  <ShipmentWeightBalanceCard
+                    :shipment-id="shipmentId"
+                    @applied="loadShipmentDetails"
+                  />
+                </div>
+                <div ref="purchaseBalanceCardEl">
+                  <ShipmentPurchaseBalanceCard
+                    :shipment-id="shipmentId"
+                    @applied="loadShipmentDetails"
+                    @go-landed-cost="activeTab = 'cost'"
+                  />
+                </div>
               </div>
             </q-tab-panel>
 
             <!-- Landed cost -->
             <q-tab-panel name="cost" class="q-pa-none">
-              <q-card flat bordered class="q-pa-md bg-white text-grey-9">
+              <div class="column q-gutter-y-md">
+                <q-banner
+                  v-if="weightNeedsAttention || purchaseNeedsAttention"
+                  dense
+                  rounded
+                  class="bg-orange-1 text-orange-10"
+                >
+                  <div class="row items-center justify-between q-gutter-sm">
+                    <span>Lines don’t match invoices — open Match invoices to reconcile.</span>
+                    <q-btn
+                      flat
+                      dense
+                      no-caps
+                      color="orange-10"
+                      label="Open Match invoices"
+                      @click="activeTab = 'balance'"
+                    />
+                  </div>
+                </q-banner>
+                <ShipmentCostEntriesPanel
+                  :entries="shipmentStore.currentCostEntries"
+                  :loading="shipmentStore.costEntriesLoading"
+                  :saving="shipmentStore.costEntriesSaving"
+                  :can-edit="canEditCosts"
+                  :is-finalized="isCostFinalized"
+                  :is-local-shipment="shipmentStore.currentShipment?.type === 'local'"
+                  :cargo-kg="totals.cargoWeightKg"
+                  :purchase-currency-symbol="currentPurchaseCurrencySymbol"
+                  :cost-currency-symbol="currentCostCurrencySymbol"
+                  @save="onSaveCostEntries"
+                  @go-match-invoices="activeTab = 'balance'"
+                />
+
+                <q-card flat bordered class="q-pa-md bg-white text-grey-9">
                 <div class="row items-center justify-between q-mb-md">
                   <div class="text-subtitle1 text-weight-bold text-primary">Landed Cost Summary</div>
-                  <q-btn
-                    v-if="isEditable"
-                    flat
-                    round
-                    dense
-                    icon="ph ph-note-pencil"
-                    color="primary"
-                    size="sm"
-                    @click="openEditRates"
-                  >
-                    <q-tooltip>Edit Rates</q-tooltip>
-                  </q-btn>
                 </div>
 
                 <div class="q-mb-md">
@@ -398,7 +744,7 @@
                   </div>
                   <div
                     class="row justify-between q-py-xs"
-                    v-if="shipmentStore.currentShipment?.cargo_rate > 0"
+                    v-if="totals.cargoPurchase > 0"
                   >
                     <span class="text-caption text-grey-7">Cargo Cost:</span>
                     <div class="text-right">
@@ -455,7 +801,7 @@
                     </div>
                     <div
                       class="row justify-between q-py-xs"
-                      v-if="shipmentStore.currentShipment?.cargo_rate > 0"
+                      v-if="totals.cargoPurchase > 0"
                     >
                       <span class="text-caption text-grey-7">Cargo Cost:</span>
                       <span class="text-subtitle2 text-weight-bold">
@@ -504,6 +850,7 @@
                   </div>
                 </template>
               </q-card>
+              </div>
             </q-tab-panel>
 
             <!-- Add to stock -->
@@ -571,8 +918,8 @@
                     <q-item-section>
                       <q-item-label>Purchase matched</q-item-label>
                       <q-item-label caption>{{
-                        !((shipmentStore.currentShipment?.purchase_invoice_total ?? 0) > 0)
-                          ? 'No paid invoice total set (optional skip)'
+                        !(sumProductEntryAmount(shipmentStore.currentCostEntries) > 0)
+                          ? 'No product cost entry amount set (optional skip)'
                           : purchaseNeedsAttention
                             ? 'Paid invoice still differs from line purchases'
                             : 'Line purchases match paid invoice'
@@ -643,7 +990,7 @@
                     v-if="splitsSummary.breakdown.length === 0"
                     class="text-center text-grey-6 q-py-md"
                   >
-                    No stock allocations saved yet. Configure splits on the Items tab.
+                    No splits yet. Split items on the Items tab first.
                   </div>
 
                   <q-separator class="q-my-sm" />
@@ -669,7 +1016,7 @@
                   @click="changeStatus('received')"
                 >
                   <q-tooltip v-if="!isSplitsComplete">
-                    Configure quantity splits for all items first
+                    Split every item first
                   </q-tooltip>
                 </q-btn>
               </q-card>
@@ -699,216 +1046,6 @@
           </q-tab-panels>
         </div>
 
-      <!-- Edit Rates Dialog -->
-      <q-dialog v-model="showRatesDialog" persistent>
-        <q-card style="width: 750px; max-width: 95vw">
-          <q-card-section class="row items-center q-pb-none">
-            <div class="text-h6 text-weight-bold text-primary">Edit Shipment Rates</div>
-            <q-space />
-            <q-btn icon="ph ph-x" flat round dense v-close-popup />
-          </q-card-section>
-
-          <q-separator class="q-my-sm" />
-
-          <q-card-section class="q-pa-md">
-            <div class="row q-col-gutter-md">
-              <!-- Left Column: Inputs -->
-              <div class="col-12 col-sm-6 q-gutter-y-md">
-                <div class="text-subtitle2 text-weight-bold text-grey-7">Configuration</div>
-                <q-input
-                  v-model.number="ratesForm.product_conversion_rate"
-                  type="number"
-                  step="0.0001"
-                  label="Product Conversion Rate *"
-                  filled
-                  dense
-                />
-                <q-input
-                  v-model.number="ratesForm.cargo_conversion_rate"
-                  type="number"
-                  step="0.0001"
-                  label="Cargo Conversion Rate *"
-                  filled
-                  dense
-                />
-                <q-input
-                  v-model.number="ratesForm.purchase_invoice_total"
-                  type="number"
-                  step="0.01"
-                  label="Paid Purchase Invoice Total"
-                  filled
-                  dense
-                  :prefix="currentPurchaseCurrencySymbol"
-                />
-
-                <q-separator class="q-my-xs" />
-                <div class="text-subtitle2 text-weight-bold text-grey-7">
-                  Cargo Rate Calculation
-                </div>
-                <div class="text-caption text-grey-6" style="margin-top: -8px; font-size: 11px">
-                  Cargo Rate = Cargo Invoice Total ÷ Cargo Weight (kg)
-                </div>
-
-                <q-input
-                  v-model.number="ratesForm.cargo_invoice_total"
-                  type="number"
-                  step="0.01"
-                  label="Cargo Invoice Total"
-                  filled
-                  dense
-                  :prefix="currentPurchaseCurrencySymbol"
-                />
-                <q-input
-                  v-model.number="ratesForm.received_weight"
-                  type="number"
-                  step="0.01"
-                  label="Cargo Weight (kg)"
-                  filled
-                  dense
-                  suffix="kg"
-                />
-                <q-input
-                  v-model.number="ratesForm.cargo_rate"
-                  type="number"
-                  step="0.01"
-                  label="Cargo Rate (per kg)"
-                  filled
-                  dense
-                  :readonly="isCargoRateAutoCalculated"
-                  :hint="
-                    isCargoRateAutoCalculated
-                      ? 'Auto-calculated from invoice total ÷ weight'
-                      : 'Enter manually or fill invoice total & weight above'
-                  "
-                  :class="{ 'bg-green-1': isCargoRateAutoCalculated }"
-                />
-              </div>
-
-              <!-- Right Column: Live Preview Panel -->
-              <div class="col-12 col-sm-6">
-                <div class="text-subtitle2 text-weight-bold text-grey-7 q-mb-md">Live Preview</div>
-                <div
-                  class="bg-grey-1 q-pa-sm rounded-borders q-gutter-y-xs text-grey-9 text-caption"
-                >
-                  <div class="row justify-between">
-                    <span>Product Purchase:</span>
-                    <span class="text-weight-bold"
-                      >{{ currentPurchaseCurrencySymbol
-                      }}{{
-                        ratesPreview.goodsPurchase.toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })
-                      }}</span
-                    >
-                  </div>
-                  <div
-                    class="row justify-between"
-                    v-if="shipmentStore.currentShipment?.type === 'international'"
-                  >
-                    <span>Product Converted Cost:</span>
-                    <span class="text-weight-bold"
-                      >{{ currentCostCurrencySymbol
-                      }}{{
-                        ratesPreview.goodsCost.toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })
-                      }}</span
-                    >
-                  </div>
-                  <q-separator class="q-my-xs" />
-                  <div class="row justify-between">
-                    <span>{{
-                      hasCargoInvoiceWeight ? 'Cargo Invoice Weight:' : 'Cargo Weight:'
-                    }}</span>
-                    <span class="text-weight-bold"
-                      >{{ ratesPreview.cargoWeightKg.toFixed(2) }} kg</span
-                    >
-                  </div>
-                  <div class="row justify-between">
-                    <span>Cargo Purchase:</span>
-                    <span class="text-weight-bold"
-                      >{{ currentPurchaseCurrencySymbol
-                      }}{{
-                        ratesPreview.cargoPurchase.toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })
-                      }}</span
-                    >
-                  </div>
-                  <div
-                    class="row justify-between"
-                    v-if="shipmentStore.currentShipment?.type === 'international'"
-                  >
-                    <span>Cargo Converted Cost:</span>
-                    <span class="text-weight-bold"
-                      >{{ currentCostCurrencySymbol
-                      }}{{
-                        ratesPreview.cargoCost.toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })
-                      }}</span
-                    >
-                  </div>
-                  <q-separator class="q-my-xs" />
-                  <div
-                    class="row justify-between text-subtitle2 text-weight-bold bg-primary text-white q-pa-xs rounded-borders"
-                  >
-                    <span>Total Cost:</span>
-                    <span
-                      >{{
-                        shipmentStore.currentShipment?.type === 'international'
-                          ? currentCostCurrencySymbol
-                          : currentPurchaseCurrencySymbol
-                      }}{{
-                        ratesPreview.totalCost.toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })
-                      }}</span
-                    >
-                  </div>
-                </div>
-
-                <div
-                  class="bg-blue-1 text-blue-10 q-pa-sm rounded-borders text-center q-mt-md"
-                  v-if="shipmentStore.currentShipment?.type === 'international'"
-                >
-                  <div
-                    class="text-caption text-weight-medium uppercase"
-                    style="font-size: 9px; letter-spacing: 0.5px"
-                  >
-                    Calculated Transaction Rate
-                  </div>
-                  <div class="text-h6 text-weight-bolder q-my-xs">
-                    {{
-                      ratesPreview.transactionRate ? ratesPreview.transactionRate.toFixed(4) : '-'
-                    }}
-                  </div>
-                  <div class="text-caption text-blue-8" style="font-size: 10px">
-                    Used for per-unit cost conversion
-                  </div>
-                </div>
-              </div>
-            </div>
-          </q-card-section>
-
-          <q-card-actions align="right" class="q-pa-md bg-grey-1">
-            <q-btn flat label="Cancel" color="grey-8" v-close-popup no-caps />
-            <q-btn
-              color="primary"
-              unelevated
-              label="Save Rates"
-              :loading="savingRates"
-              no-caps
-              @click="onSaveRates"
-            />
-          </q-card-actions>
-        </q-card>
-      </q-dialog>
       </template>
     </div>
   </q-page>
@@ -917,12 +1054,17 @@
 <script setup lang="ts">
 import { onMounted, computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useQuasar } from 'quasar';
+import { useQuasar, type QTableColumn } from 'quasar';
+import { useQuery } from '@tanstack/vue-query';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
-import { useGlobalStockTypeStore } from '../stores/globalStockTypeStore';
-import type { GlobalShipment, GlobalShipmentItem } from '../repositories/globalShipmentRepository';
-import ShipmentFormDialog from '../components/ShipmentFormDialog.vue';
+import { globalShipmentRepository } from '../repositories/globalShipmentRepository';
+import { tenantRepository } from 'src/modules/tenant/repositories/tenantRepository';
+import { procurementStockQueryKeys } from '../shared/queryKeys/procurementStockQueryKeys';
+import { STOCK_AVAILABILITY_OPTIONS } from '../constants/stockAvailability';
+import type { GlobalShipmentItem } from '../repositories/globalShipmentRepository';
+import type { GlobalShipmentCostEntry } from '../types/shipmentCostEntry';
 import ShipmentItemFormDialog from '../components/ShipmentItemFormDialog.vue';
 import AddShipmentItemsDrawer from '../components/AddShipmentItemsDrawer.vue';
 import BulkPasteDialog from '../components/BulkPasteDialog.vue';
@@ -930,7 +1072,14 @@ import ShipmentLineItemsTable, { type ColumnKey } from '../components/ShipmentLi
 import ShipmentWeightBalanceCard from '../components/ShipmentWeightBalanceCard.vue';
 import ShipmentPurchaseBalanceCard from '../components/ShipmentPurchaseBalanceCard.vue';
 import ShipmentStatusWorkflowBar from '../components/ShipmentStatusWorkflowBar.vue';
-import { calculateTransactionRate, calculateShipmentCostSummary } from '../utils/landedCost';
+import ShipmentCostEntriesPanel from '../components/ShipmentCostEntriesPanel.vue';
+import ReceiveShipmentDialog from '../components/ReceiveShipmentDialog.vue';
+import { calculateShipmentCostSummary, costingShipmentFromEntries } from 'src/shared/shipment-engine';
+import {
+  isShipmentCostFinalized,
+  sumProductEntryAmount,
+} from '../utils/costEntriesCosting';
+import type { CostEntriesSavePayload } from '../types/shipmentCostEntry';
 import { buildShipmentExcelWorkbook } from '../utils/buildShipmentExcelWorkbook';
 import { globalReferenceRepository } from 'src/modules/global_reference/repositories/globalReferenceRepository';
 import type { GlobalCurrency } from 'src/modules/global_reference/types';
@@ -938,19 +1087,297 @@ import {
   showSuccessNotification,
   showErrorNotification,
   showWarningNotification,
+  requestConfirmation,
 } from 'src/utils/appFeedback';
 import { useMembershipColumnPreference } from 'src/modules/membership/composables/useMembershipColumnPreference';
 
 const route = useRoute();
 const router = useRouter();
 const $q = useQuasar();
+const authStore = useAuthStore();
+const vendorStore = useVendorStore();
 const shipmentStore = useGlobalShipmentStore();
-const globalStockTypeStore = useGlobalStockTypeStore();
+
+const inlineNameInput = ref('');
+watch(
+  () => shipmentStore.currentShipment?.name,
+  (val) => {
+    if (val) inlineNameInput.value = val;
+  },
+  { immediate: true },
+);
+
+const saveInlineName = async (val: string) => {
+  if (!shipmentId || !val || !val.trim()) return;
+  try {
+    await shipmentStore.updateShipment(shipmentId, { name: val.trim() });
+    showSuccessNotification('Shipment name updated');
+  } catch (err: any) {
+    showErrorNotification(err.message || 'Failed to update shipment name');
+  }
+};
+
+const typeOptions = [
+  { label: 'International', value: 'international' as const },
+  { label: 'Local', value: 'local' as const },
+  { label: 'Transfer', value: 'transfer' as const },
+];
+
+const saveInlineType = async (typeVal: 'international' | 'local' | 'transfer') => {
+  if (!shipmentId) return;
+  try {
+    await shipmentStore.updateShipment(shipmentId, { type: typeVal });
+    showSuccessNotification('Shipment type updated');
+  } catch (err: any) {
+    showErrorNotification(err.message || 'Failed to update shipment type');
+  }
+};
+
+const loadingVendors = ref(false);
+const ensureVendorsLoaded = async () => {
+  if (authStore.tenantId && vendorStore.items.length === 0) {
+    loadingVendors.value = true;
+    try {
+      await vendorStore.fetchVendors(authStore.tenantId);
+    } catch (err) {
+      console.error('Failed to load vendors', err);
+    } finally {
+      loadingVendors.value = false;
+    }
+  }
+};
+
+const vendorOptions = computed(() =>
+  vendorStore.items.map((v) => ({
+    label: v.is_default ? `${v.name} (default)` : v.name,
+    value: v.id,
+  })),
+);
+
+const currentVendorLabel = computed(() => {
+  const vId = shipmentStore.currentShipment?.vendor_id;
+  if (!vId) return 'Select Vendor';
+  const found = vendorStore.items.find((v) => v.id === vId);
+  return found ? found.name : `Vendor #${vId}`;
+});
+
+const saveInlineVendor = async (val: number | null) => {
+  if (!shipmentId || val == null) return;
+  try {
+    await shipmentStore.updateShipment(shipmentId, { vendor_id: val });
+    showSuccessNotification('Vendor updated');
+  } catch (err: any) {
+    showErrorNotification(err.message || 'Failed to update vendor');
+  }
+};
+
+const loadingCargo = ref(false);
+const cargoCompanies = ref<Array<{ id: number; name: string; code: string }>>([]);
+const ensureCargoLoaded = async () => {
+  if (authStore.tenantId && cargoCompanies.value.length === 0) {
+    loadingCargo.value = true;
+    try {
+      cargoCompanies.value = await globalShipmentRepository.listCargoCompaniesForTenant(authStore.tenantId);
+    } catch (err) {
+      console.error('Failed to load cargo companies', err);
+    } finally {
+      loadingCargo.value = false;
+    }
+  }
+};
+
+const cargoOptions = computed(() =>
+  cargoCompanies.value.map((c) => ({
+    label: `${c.name} (${c.code})`,
+    value: c.id,
+  })),
+);
+
+const currentCargoLabel = computed(() => {
+  const cId = shipmentStore.currentShipment?.cargo_company_id;
+  if (!cId) return 'Cargo: None';
+  const found = cargoCompanies.value.find((c) => c.id === cId);
+  return found ? `Cargo: ${found.name}` : `Cargo #${cId}`;
+});
+
+const saveInlineCargo = async (val: number | null) => {
+  if (!shipmentId) return;
+  try {
+    await shipmentStore.updateShipment(shipmentId, { cargo_company_id: val });
+    showSuccessNotification('Cargo vendor updated');
+  } catch (err: any) {
+    showErrorNotification(err.message || 'Failed to update cargo vendor');
+  }
+};
+
+onMounted(() => {
+  ensureVendorsLoaded();
+  ensureCargoLoaded();
+});
+
+const parentTenantId = computed(() => authStore.tenantId);
+const { data: childTenants, isLoading: childTenantsLoading } = useQuery({
+  queryKey: computed(() => procurementStockQueryKeys.childTenants(parentTenantId.value ?? 0)),
+  queryFn: async () => {
+    const tenants = await tenantRepository.listTenants();
+    return tenants.filter((t) => t.parent_id === parentTenantId.value);
+  },
+  staleTime: 5 * 60 * 1000,
+  enabled: computed(() => !!parentTenantId.value),
+});
+const childTenantOptions = computed(() =>
+  (childTenants.value ?? []).map((t) => ({ label: t.name, value: t.id })),
+);
+const selectedChildTenantId = ref<number | null>(null);
+const assigningChild = ref(false);
+const paySettling = ref(false);
+const returnSubmitting = ref(false);
+const returnOutcome = ref<'cash_refund' | 'store_credit'>('store_credit');
+
+interface ReturnLineDraft {
+  shipment_item_id: number;
+  name: string;
+  max_qty: number;
+  return_qty: number;
+}
+
+const returnLines = ref<ReturnLineDraft[]>([]);
+
+const returnOutcomeOptions = [
+  { label: 'Store credit (vendor wallet)', value: 'store_credit' as const },
+  { label: 'Cash refund (tenant cash)', value: 'cash_refund' as const },
+];
+
+const settleEntryColumns: QTableColumn<GlobalShipmentCostEntry>[] = [
+  { name: 'cost_type', label: 'Type', field: 'cost_type', align: 'left' },
+  { name: 'amount', label: 'Amount (BDT)', field: 'amount', align: 'right' },
+  { name: 'payment_source', label: 'Source', field: 'payment_source', align: 'left' },
+  { name: 'entity_type', label: 'Payee', field: 'entity_type', align: 'left' },
+];
+
+const returnLineColumns: QTableColumn<ReturnLineDraft>[] = [
+  { name: 'name', label: 'Product', field: 'name', align: 'left' },
+  { name: 'max_qty', label: 'Ordered', field: 'max_qty', align: 'right' },
+  { name: 'return_qty', label: 'Return qty', field: 'return_qty', align: 'right' },
+];
+
+watch(
+  () => shipmentStore.currentShipment?.assigned_child_tenant_id,
+  (id) => {
+    selectedChildTenantId.value = id ?? null;
+  },
+  { immediate: true },
+);
+
+watch(
+  () => shipmentStore.currentShipmentItems,
+  (items) => {
+    returnLines.value = (items ?? []).map((item) => ({
+      shipment_item_id: item.id,
+      name: item.name,
+      max_qty: item.ordered_quantity ?? 0,
+      return_qty: 0,
+    }));
+  },
+  { immediate: true },
+);
+
+const settleableEntries = computed(() =>
+  shipmentStore.currentCostEntries.filter(
+    (e) =>
+      e.payment_source &&
+      e.entity_type &&
+      (e.entity_type === 'vendor' || e.entity_type === 'cargo_company'),
+  ),
+);
+
+const hasReturnQty = computed(() => returnLines.value.some((l) => l.return_qty > 0));
+
+const saveAssignChild = async () => {
+  if (!authStore.tenantId) return;
+  assigningChild.value = true;
+  try {
+    await shipmentStore.assignShipmentToChild(
+      authStore.tenantId,
+      selectedChildTenantId.value,
+      shipmentId,
+    );
+    showSuccessNotification('Shop assignment updated');
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    showErrorNotification(msg || 'Failed to update assignment');
+  } finally {
+    assigningChild.value = false;
+  }
+};
+
+const clearAssignChild = async () => {
+  selectedChildTenantId.value = null;
+  await saveAssignChild();
+};
+
+const confirmPaySettleAll = async () => {
+  const ok = await requestConfirmation(
+    `Pay ${settleableEntries.value.length} cost${settleableEntries.value.length === 1 ? '' : 's'} to the vendor or cargo company?`,
+    'Pay costs',
+    'Pay',
+  );
+  if (!ok) return;
+
+  paySettling.value = true;
+  try {
+    const res = await shipmentStore.paySettleShipmentCosts(shipmentId);
+    showSuccessNotification(
+      res.wallet_posted
+        ? `Settled ${res.settled_entries_count} entries — wallet posted.`
+        : `Processed ${res.settled_entries_count} entries.`,
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    showErrorNotification(msg || 'Settlement failed');
+  } finally {
+    paySettling.value = false;
+  }
+};
+
+const confirmVendorReturn = async () => {
+  const items = returnLines.value
+    .filter((l) => l.return_qty > 0)
+    .map((l) => ({ shipment_item_id: l.shipment_item_id, quantity: l.return_qty }));
+
+  const ok = await requestConfirmation(
+    `Return ${items.reduce((s, i) => s + i.quantity, 0)} pcs with ${returnOutcome.value === 'store_credit' ? 'store credit' : 'cash refund'}?`,
+    'Submit vendor return',
+    'Submit return',
+  );
+  if (!ok) return;
+
+  returnSubmitting.value = true;
+  try {
+    await shipmentStore.returnShipmentToVendor(shipmentId, items, returnOutcome.value);
+    showSuccessNotification('Vendor return submitted');
+    returnLines.value = returnLines.value.map((l) => ({ ...l, return_qty: 0 }));
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    showErrorNotification(msg || 'Vendor return failed');
+  } finally {
+    returnSubmitting.value = false;
+  }
+};
 
 const shipmentId = Number(route.params.id);
 const updatingStatus = ref(false);
 const targetUpdatingStatus = ref<string | null>(null);
 const activeTab = ref<'lines' | 'balance' | 'cost' | 'receive'>('lines');
+const weightBalanceCardEl = ref<HTMLElement | null>(null);
+const purchaseBalanceCardEl = ref<HTMLElement | null>(null);
+const assignShopCard = ref<HTMLElement | null>(null);
+const paySettleCard = ref<HTMLElement | null>(null);
+
+const scrollToBalanceCard = (which: 'weight' | 'purchase') => {
+  const el = which === 'weight' ? weightBalanceCardEl.value : purchaseBalanceCardEl.value;
+  el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
 
 const isSplitsComplete = computed(() => {
   const items = shipmentStore.currentShipmentItems;
@@ -965,16 +1392,15 @@ const isSplitsComplete = computed(() => {
 
 const splitsSummary = computed(() => {
   const stocks = shipmentStore.currentShipmentStocks || [];
-  const stockTypes = globalStockTypeStore.items;
 
-  const breakdown = stockTypes.map((type) => {
+  const breakdown = STOCK_AVAILABILITY_OPTIONS.map((opt) => {
     const totalQty = stocks
-      .filter((s) => s.stock_type_id === type.id)
+      .filter((s) => (s.availability || 'sellable') === opt.value)
       .reduce((sum, s) => sum + (s.quantity || 0), 0);
     return {
-      id: type.id,
-      description: type.description,
-      is_sellable: type.is_sellable,
+      id: opt.value,
+      description: opt.label,
+      is_sellable: opt.value === 'sellable',
       quantity: totalQty,
     };
   });
@@ -1031,17 +1457,19 @@ const currentShipmentBoxesTotal = computed(() => {
   return shipmentStore.currentShipmentBoxes.reduce((sum, box) => sum + (box.weight_kg || 0), 0);
 });
 
-const formatWeightKg = (weight: number | null | undefined): string => {
-  if (weight == null || weight <= 0) return '-';
-  return `${weight.toFixed(2)} kg`;
-};
+const shipmentCargoWeightKg = computed(
+  () =>
+    shipmentStore.currentShipment?.total_weight_kg ??
+    shipmentStore.currentShipment?.received_weight ??
+    null,
+);
 
 const hasCargoInvoiceWeight = computed(() => {
-  const rw = shipmentStore.currentShipment?.received_weight;
+  const rw = shipmentCargoWeightKg.value;
   return rw != null && rw > 0;
 });
 
-const authStore = useAuthStore();
+const progressTargetId = ref<number | null>(null);
 
 const defaultColumns: ColumnKey[] = [
   'name',
@@ -1094,7 +1522,12 @@ const totals = computed(() => {
       lineLandedCostTotal: 0,
     };
   }
-  return calculateShipmentCostSummary(shipment, items);
+  const forCosting = costingShipmentFromEntries(
+    shipment,
+    shipmentStore.currentCostEntries,
+    items,
+  );
+  return calculateShipmentCostSummary(forCosting, items);
 });
 
 const cargoCostWeightLabel = computed(() => {
@@ -1117,10 +1550,14 @@ const transactionRateWeightLabel = computed(() => {
 const shipmentForLiveCosting = computed(() => {
   const shipment = shipmentStore.currentShipment;
   if (!shipment) return null;
-  const rate = totals.value.transactionRate;
+  const fromEntries = costingShipmentFromEntries(
+    shipment,
+    shipmentStore.currentCostEntries,
+    shipmentStore.currentShipmentItems,
+  );
   return {
     ...shipment,
-    transaction_rate: rate,
+    ...fromEntries,
   };
 });
 
@@ -1131,6 +1568,21 @@ const isEditable = computed(() => {
   return shipment.status !== 'received' && shipment.status !== 'cancelled';
 });
 
+/** Cost entries: editable pre-finalize; post-finalize uses revision RPC (Stage 4). */
+const isCostFinalized = computed(() => {
+  const shipment = shipmentStore.currentShipment;
+  if (!shipment) return false;
+  return isShipmentCostFinalized(shipment);
+});
+
+const canEditCosts = computed(() => {
+  const shipment = shipmentStore.currentShipment;
+  if (!shipment) return false;
+  if (shipment.status === 'cancelled') return false;
+  // Lines lock after received, but Stage 4 still allows cost revision when stock_ready
+  return isEditable.value || isCostFinalized.value;
+});
+
 const hasLineItems = computed(() => (shipmentStore.currentShipmentItems?.length ?? 0) > 0);
 
 const weightNeedsAttention = computed(() => {
@@ -1139,10 +1591,14 @@ const weightNeedsAttention = computed(() => {
 });
 
 const purchaseNeedsAttention = computed(() => {
-  const invoice = shipmentStore.currentShipment?.purchase_invoice_total;
-  if (invoice == null || invoice <= 0) return false;
+  const invoice = sumProductEntryAmount(shipmentStore.currentCostEntries);
+  if (invoice <= 0) return false;
   return Math.abs(invoice - totals.value.goodsPurchase) > 0.05;
 });
+
+const hasProductInvoiceTotal = computed(
+  () => sumProductEntryAmount(shipmentStore.currentCostEntries) > 0,
+);
 
 const balanceNeedsAttention = computed(
   () => weightNeedsAttention.value || purchaseNeedsAttention.value,
@@ -1161,22 +1617,46 @@ const receiveNeedsAttention = computed(() => {
 
 const nextStep = computed(() => {
   const status = shipmentStore.currentShipment?.status;
-  if (status === 'received' || status === 'cancelled') {
+  if (status === 'cancelled') {
     return {
-      message:
-        status === 'cancelled' ? 'Shipment cancelled' : 'In stock — editing locked',
+      message: 'This shipment was cancelled.',
       label: null as string | null,
       disabled: true,
-      reason:
-        status === 'cancelled'
-          ? 'This shipment was cancelled.'
-          : 'Stock already posted. Use Add to stock tab to rollback if needed.',
+      reason: 'This shipment was cancelled.',
       action: null as (() => void) | null,
+    };
+  }
+  if (status === 'received') {
+    const assigned = shipmentStore.currentShipment?.assigned_child_tenant_id;
+    if (!assigned && childTenantOptions.value.length > 0) {
+      return {
+        message: 'Assign to a shop so they can sell it.',
+        label: 'Assign',
+        disabled: false,
+        reason: '',
+        action: () => assignShopCard.value?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+      };
+    }
+    if (settleableEntries.value.length > 0) {
+      return {
+        message: 'Pay the vendor or cargo company.',
+        label: 'Pay',
+        disabled: false,
+        reason: '',
+        action: () => paySettleCard.value?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+      };
+    }
+    return {
+      message: 'Goods are in the warehouse. Assign, pay, or return below if needed.',
+      label: null,
+      disabled: true,
+      reason: '',
+      action: null,
     };
   }
   if (!hasLineItems.value) {
     return {
-      message: 'Add products to this shipment',
+      message: 'Add products, then continue.',
       label: 'Add items',
       disabled: false,
       reason: '',
@@ -1189,11 +1669,7 @@ const nextStep = computed(() => {
   if (balanceNeedsAttention.value) {
     const both = weightNeedsAttention.value && purchaseNeedsAttention.value;
     return {
-      message: both
-        ? 'Weight and purchase still need matching'
-        : weightNeedsAttention.value
-          ? "Cargo invoice weight doesn’t match line weights"
-          : "Paid invoice total doesn’t match line purchases",
+      message: 'Cargo weight or purchase total does not match.',
       label: both ? 'Fix balances' : weightNeedsAttention.value ? 'Fix weight' : 'Fix purchase',
       disabled: false,
       reason: '',
@@ -1205,7 +1681,7 @@ const nextStep = computed(() => {
   if (status === 'in_transit') {
     if (!isSplitsComplete.value) {
       return {
-        message: 'Split each line into stock types before adding to stock',
+        message: 'Split each line before receiving.',
         label: 'Configure splits',
         disabled: false,
         reason: '',
@@ -1215,7 +1691,7 @@ const nextStep = computed(() => {
       };
     }
     return {
-      message: 'Ready to post inventory',
+      message: 'Receive into the warehouse.',
       label: 'Add to stock',
       disabled: false,
       reason: '',
@@ -1225,39 +1701,20 @@ const nextStep = computed(() => {
       },
     };
   }
-  return null;
+  return {
+    message: 'Mark In transit when the goods have left the vendor.',
+    label: 'In transit',
+    disabled: false,
+    reason: '',
+    action: () => {
+      changeStatus('in_transit');
+    },
+  };
 });
 
 const runPrimaryCta = () => {
   nextStep.value?.action?.();
 };
-
-const ratesPreview = computed(() => {
-  const shipment = shipmentStore.currentShipment;
-  const items = shipmentStore.currentShipmentItems;
-  if (!shipment) {
-    return {
-      quantity: 0,
-      packagingWeightKg: 0,
-      cargoWeightKg: 0,
-      goodsPurchase: 0,
-      cargoPurchase: 0,
-      totalPurchase: 0,
-      goodsCost: 0,
-      cargoCost: 0,
-      totalCost: 0,
-      transactionRate: null,
-      lineLandedCostTotal: 0,
-    };
-  }
-  const mockShipment = {
-    ...shipment,
-    product_conversion_rate: ratesForm.value.product_conversion_rate || 0,
-    cargo_conversion_rate: ratesForm.value.cargo_conversion_rate || 0,
-    cargo_rate: ratesForm.value.cargo_rate || 0,
-  };
-  return calculateShipmentCostSummary(mockShipment, items);
-});
 
 const currenciesList = ref<GlobalCurrency[]>([]);
 const loadingCurrencies = ref(false);
@@ -1299,23 +1756,33 @@ const loadShipmentDetails = () => {
   }
 };
 
-watch(
-  () => authStore.tenantId,
-  (newTenantId) => {
-    if (newTenantId && globalStockTypeStore.items.length === 0) {
-      void globalStockTypeStore.fetchStockTypes(newTenantId);
-    }
-  },
-  { immediate: true },
-);
-
 onMounted(() => {
   loadShipmentDetails();
   void loadCurrencies();
+  if (authStore.tenantId) {
+    void shipmentStore.ensureProgressTags(authStore.tenantId);
+  }
 });
 
 const goBack = () => {
   router.back();
+};
+
+const changeProgress = async (tagId: number | null) => {
+  if (!shipmentStore.currentShipment) return;
+  const currentId =
+    shipmentStore.currentShipment.progress_tag_id ??
+    shipmentStore.currentShipment.progress_tag?.id ??
+    null;
+  if (currentId === tagId) return;
+  progressTargetId.value = tagId;
+  try {
+    await shipmentStore.setProgressTag(shipmentStore.currentShipment.id, tagId);
+  } catch (err) {
+    showErrorNotification(err instanceof Error ? err.message : 'Failed to update progress');
+  } finally {
+    progressTargetId.value = null;
+  }
 };
 
 const changeStatus = (newStatus: string) => {
@@ -1366,34 +1833,10 @@ const changeStatus = (newStatus: string) => {
     }
 
     $q.dialog({
-      title: 'Commit Shipment to Stock',
-      message:
-        'All item splits are fully configured. Changing status to Received will lock the allocations and commit them to active inventory pools. Continue?',
-      cancel: true,
-      persistent: true,
+      component: ReceiveShipmentDialog,
+      componentProps: { shipmentId },
     }).onOk(() => {
-      void (async () => {
-        updatingStatus.value = true;
-        targetUpdatingStatus.value = 'received';
-        try {
-          const txRate = totals.value.transactionRate;
-          const updatePayload: any = {
-            status: 'received',
-            stock_ready: true,
-          };
-          if (txRate !== null) {
-            updatePayload.transaction_rate = txRate;
-          }
-          await shipmentStore.updateShipment(shipmentId, updatePayload);
-          showSuccessNotification('Shipment promoted to Received successfully.');
-          loadShipmentDetails();
-        } catch (err: any) {
-          showErrorNotification(err.message || 'Failed to promote shipment.');
-        } finally {
-          updatingStatus.value = false;
-          targetUpdatingStatus.value = null;
-        }
-      })();
+      void fetchShipmentDetails();
     });
     return;
   }
@@ -1408,15 +1851,7 @@ const changeStatus = (newStatus: string) => {
       updatingStatus.value = true;
       targetUpdatingStatus.value = newStatus;
       try {
-        const txRate = totals.value.transactionRate;
-        const updatePayload: Partial<
-          Omit<GlobalShipment, 'id' | 'created_at' | 'updated_at' | 'parent_tenant_id'>
-        > = { status: newStatus };
-        if (txRate !== null) {
-          updatePayload.transaction_rate = txRate;
-        }
-
-        await shipmentStore.updateShipment(shipmentId, updatePayload);
+        await shipmentStore.updateShipment(shipmentId, { status: newStatus });
         showSuccessNotification(`Shipment status updated to: ${newStatus}`);
         loadShipmentDetails();
       } catch (err) {
@@ -1457,15 +1892,7 @@ const rollbackShipmentToDraft = () => {
   });
 };
 
-const openEditShipment = () => {
-  if (!shipmentStore.currentShipment) return;
-  $q.dialog({
-    component: ShipmentFormDialog,
-    componentProps: {
-      shipment: shipmentStore.currentShipment,
-    },
-  });
-};
+
 
 const confirmDeleteShipment = () => {
   $q.dialog({
@@ -1597,77 +2024,35 @@ const confirmDeleteItem = (itemId: number) => {
   });
 };
 
-// Rates Dialog Setup
-const showRatesDialog = ref(false);
-const savingRates = ref(false);
-const ratesForm = ref({
-  product_conversion_rate: 1.0,
-  cargo_conversion_rate: 1.0,
-  cargo_rate: 0.0,
-  cargo_invoice_total: null as number | null,
-  purchase_invoice_total: null as number | null,
-  received_weight: null as number | null,
-});
-
-const isCargoRateAutoCalculated = computed(() => {
-  const t = ratesForm.value.cargo_invoice_total;
-  const w = ratesForm.value.received_weight;
-  return t != null && t > 0 && w != null && w > 0;
-});
-
-// Auto-calculate cargo_rate when both cargo_invoice_total and received_weight are provided
-watch(
-  () => [ratesForm.value.cargo_invoice_total, ratesForm.value.received_weight],
-  ([invoiceTotal, weight]) => {
-    if (invoiceTotal != null && invoiceTotal > 0 && weight != null && weight > 0) {
-      ratesForm.value.cargo_rate = invoiceTotal / weight;
-    }
-  },
-);
-
-const openEditRates = () => {
-  const shipment = shipmentStore.currentShipment;
-  if (!shipment) return;
-  ratesForm.value = {
-    product_conversion_rate: shipment.product_conversion_rate,
-    cargo_conversion_rate: shipment.cargo_conversion_rate,
-    cargo_rate: shipment.cargo_rate,
-    cargo_invoice_total: shipment.cargo_invoice_total,
-    purchase_invoice_total: shipment.purchase_invoice_total,
-    received_weight: shipment.received_weight,
-  };
-  showRatesDialog.value = true;
-};
-
-const onSaveRates = async () => {
-  const shipment = shipmentStore.currentShipment;
-  if (!shipment) return;
-  savingRates.value = true;
+const onSaveCostEntries = async (payload: CostEntriesSavePayload) => {
   try {
-    const items = shipmentStore.currentShipmentItems;
-    const mockShipment = {
-      ...shipment,
-      ...ratesForm.value,
-    };
-    const txRate = calculateTransactionRate(mockShipment, items);
-    const updatePayload = {
-      product_conversion_rate: ratesForm.value.product_conversion_rate,
-      cargo_conversion_rate: ratesForm.value.cargo_conversion_rate,
-      cargo_rate: ratesForm.value.cargo_rate,
-      cargo_invoice_total: ratesForm.value.cargo_invoice_total,
-      purchase_invoice_total: ratesForm.value.purchase_invoice_total,
-      received_weight: ratesForm.value.received_weight,
-      transaction_rate: txRate,
-    };
-    await shipmentStore.updateShipment(shipmentId, updatePayload);
-    showSuccessNotification('Conversion and cargo rates updated successfully.');
-    showRatesDialog.value = false;
-    loadShipmentDetails();
+    const shipment = shipmentStore.currentShipment;
+    if (!shipment) return;
+
+    const prevWeight = shipment.received_weight;
+    const nextWeight = payload.received_weight;
+    const weightChanged =
+      (prevWeight == null && nextWeight != null) ||
+      (prevWeight != null && nextWeight == null) ||
+      (prevWeight != null &&
+        nextWeight != null &&
+        Math.abs(prevWeight - nextWeight) > 0.0001);
+
+    if (weightChanged) {
+      await shipmentStore.updateShipment(shipmentId, {
+        received_weight: nextWeight,
+      });
+    }
+
+    await shipmentStore.saveCostEntries(shipmentId, payload.drafts);
+    showSuccessNotification(
+      isCostFinalized.value
+        ? 'Costs revised and landed costs re-stamped.'
+        : 'Cost entries saved.',
+    );
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    showErrorNotification(msg || 'Failed to update rates.');
-  } finally {
-    savingRates.value = false;
+    showErrorNotification(msg || 'Failed to save cost entries.');
   }
 };
 </script>

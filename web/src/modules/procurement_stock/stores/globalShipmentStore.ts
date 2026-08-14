@@ -1,16 +1,27 @@
 import { defineStore } from 'pinia';
 import {
   globalShipmentRepository,
+  type FinalizeShipmentResult,
+  type FinalizeShipmentStockRow,
   type GlobalShipment,
   type GlobalShipmentItem,
+  type ShipmentProgressTag,
 } from '../repositories/globalShipmentRepository';
 import { globalShipmentBoxRepository } from '../repositories/globalShipmentBoxRepository';
 import { type GlobalShipmentBox } from '../repositories/globalShipmentBoxRepository';
+import { globalShipmentCostEntryRepository } from '../repositories/globalShipmentCostEntryRepository';
+import type {
+  CostEntryDraft,
+  GlobalShipmentCostEntry,
+  ReviseShipmentCostEntryInput,
+} from '../types/shipmentCostEntry';
+import { isShipmentCostFinalized } from '../utils/costEntriesCosting';
 import { applyShipmentWeightBalance } from '../utils/applyShipmentWeightBalance';
 import { applyShipmentPurchaseBalance } from '../utils/applyShipmentPurchaseBalance';
 import { syncShipmentWeightToProduct } from '../utils/syncShipmentWeightToProduct';
 import { supabase } from 'src/boot/supabase';
-import { useGlobalStockTypeStore } from './globalStockTypeStore';
+import { useStockLocationStore } from './stockLocationStore';
+import { getDefaultPutawayLocationId } from '../utils/stockLocationOptions';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 
 export const useGlobalShipmentStore = defineStore('global_shipment', {
@@ -31,6 +42,11 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
     currentShipmentItems: [] as GlobalShipmentItem[],
     currentShipmentBoxes: [] as GlobalShipmentBox[],
     currentShipmentStocks: [] as any[],
+    currentCostEntries: [] as GlobalShipmentCostEntry[],
+    costEntriesLoading: false,
+    costEntriesSaving: false,
+    progressTags: [] as ShipmentProgressTag[],
+    progressUpdating: false,
   }),
 
   actions: {
@@ -107,10 +123,154 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
           }
         }
         this.currentShipmentStocks = stocks;
+        await this.fetchCostEntries(shipmentId);
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to load shipment details';
       } finally {
         this.loading = false;
+      }
+    },
+
+    async fetchCostEntries(shipmentId: number) {
+      this.costEntriesLoading = true;
+      try {
+        await globalShipmentCostEntryRepository.ensureFromHeader(shipmentId);
+        this.currentCostEntries =
+          await globalShipmentCostEntryRepository.listByShipmentId(shipmentId);
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to load cost entries';
+        this.currentCostEntries = [];
+        throw err;
+      } finally {
+        this.costEntriesLoading = false;
+      }
+    },
+
+    /**
+     * Pre-finalize: upsert/delete via cost-entry RPCs.
+     * Post-finalize (stock_ready / Ready Stock): revise_global_shipment_costs only.
+     */
+    async saveCostEntries(shipmentId: number, drafts: CostEntryDraft[]) {
+      const shipment = this.currentShipment;
+      if (!shipment || shipment.id !== shipmentId) {
+        throw new Error('Shipment not loaded');
+      }
+
+      this.costEntriesSaving = true;
+      this.error = null;
+      try {
+        const finalized = isShipmentCostFinalized(shipment);
+
+        if (finalized) {
+          const payload: ReviseShipmentCostEntryInput[] = drafts.map((d) => ({
+            cost_type: d.cost_type,
+            amount: Number(d.amount) || 0,
+            exchange_rate: Number(d.exchange_rate) || 1,
+            payment_source: d.payment_source,
+            entity_type: d.entity_type,
+            entity_id: d.entity_type ? d.entity_id : null,
+            metadata:
+              d.cost_type === 'cargo' && d.per_kg_rate != null
+                ? { per_kg_rate: d.per_kg_rate }
+                : {},
+          }));
+          await globalShipmentCostEntryRepository.revise(shipmentId, payload);
+        } else {
+          const existingIds = new Set(this.currentCostEntries.map((e) => e.id));
+          const keptIds = new Set(
+            drafts.map((d) => d.id).filter((id): id is number => typeof id === 'number'),
+          );
+
+          for (const id of existingIds) {
+            if (!keptIds.has(id)) {
+              await globalShipmentCostEntryRepository.remove(id);
+            }
+          }
+
+          for (const d of drafts) {
+            await globalShipmentCostEntryRepository.upsert({
+              shipment_id: shipmentId,
+              id: d.id,
+              cost_type: d.cost_type,
+              amount: Number(d.amount) || 0,
+              exchange_rate: Number(d.exchange_rate) || 1,
+              payment_source: d.payment_source,
+              entity_type: d.entity_type,
+              entity_id: d.entity_type ? d.entity_id : null,
+              metadata:
+                d.cost_type === 'cargo' && d.per_kg_rate != null
+                  ? { per_kg_rate: d.per_kg_rate }
+                  : {},
+            });
+          }
+        }
+
+        this.currentCostEntries =
+          await globalShipmentCostEntryRepository.listByShipmentId(shipmentId);
+
+        if (finalized) {
+          this.currentShipmentItems =
+            await globalShipmentRepository.listShipmentItems(shipmentId);
+        }
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to save cost entries';
+        throw err;
+      } finally {
+        this.costEntriesSaving = false;
+      }
+    },
+
+    /**
+     * Match invoices: write paid purchase total to the single product cost entry.
+     * Multiple product FX rows → edit on Landed cost instead.
+     */
+    async savePurchaseInvoiceTotal(shipmentId: number, amount: number) {
+      const shipment = this.currentShipment;
+      if (!shipment || shipment.id !== shipmentId) {
+        throw new Error('Shipment not loaded');
+      }
+      if (amount <= 0) {
+        throw new Error('Purchase Invoice Total must be greater than 0.');
+      }
+
+      this.costEntriesSaving = true;
+      this.error = null;
+      try {
+        await globalShipmentCostEntryRepository.ensureFromHeader(shipmentId);
+        const entries = await globalShipmentCostEntryRepository.listByShipmentId(shipmentId);
+        const productRows = entries.filter((e) => e.cost_type === 'product');
+
+        if (productRows.length > 1) {
+          throw new Error(
+            'Multiple product FX rates exist. Edit amounts on the Landed cost tab.',
+          );
+        }
+
+        const rounded = Math.round(amount * 100) / 100;
+        const existing = productRows[0];
+        await globalShipmentCostEntryRepository.upsert({
+          shipment_id: shipmentId,
+          id: existing?.id ?? null,
+          cost_type: 'product',
+          amount: rounded,
+          exchange_rate: existing ? Number(existing.exchange_rate) || 1 : 1,
+          currency_id: existing?.currency_id ?? shipment.shipment_purchase_currency_id,
+          payment_source: (existing?.payment_source as 'cash' | 'credit' | 'wallet' | null) ?? null,
+          entity_type:
+            existing?.entity_type === 'vendor' || existing?.entity_type === 'cargo_company'
+              ? existing.entity_type
+              : null,
+          entity_id: existing?.entity_id ?? null,
+          metadata: existing?.metadata ?? {},
+        });
+
+        this.currentCostEntries =
+          await globalShipmentCostEntryRepository.listByShipmentId(shipmentId);
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to save purchase invoice total';
+        throw err;
+      } finally {
+        this.costEntriesSaving = false;
       }
     },
 
@@ -137,9 +297,16 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       this.loading = true;
       this.error = null;
       try {
+        if (!this.currentCostEntries.length || this.currentShipment?.id !== shipmentId) {
+          await this.fetchCostEntries(shipmentId);
+        }
         const preload =
           this.currentShipment && this.currentShipment.id === shipmentId
-            ? { shipment: this.currentShipment, items: this.currentShipmentItems }
+            ? {
+                shipment: this.currentShipment,
+                items: this.currentShipmentItems,
+                costEntries: this.currentCostEntries,
+              }
             : undefined;
         const result = await applyShipmentPurchaseBalance(shipmentId, preload);
         await this.fetchShipmentDetails(shipmentId);
@@ -241,6 +408,9 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         if (this.currentShipment?.id === id) {
           this.currentShipment = null;
           this.currentShipmentItems = [];
+          this.currentShipmentBoxes = [];
+          this.currentShipmentStocks = [];
+          this.currentCostEntries = [];
         }
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to delete shipment';
@@ -413,26 +583,111 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       }
     },
 
+    /**
+     * Receive: stamp landed_cost_bdt + post stock via finalize_global_shipment.
+     * No wallet / ledger posts. Cost-entry mutation after this uses revise only.
+     */
+    async finalizeShipment(
+      shipmentId: number,
+      stockRows: FinalizeShipmentStockRow[],
+    ): Promise<FinalizeShipmentResult> {
+      this.loading = true;
+      this.error = null;
+      try {
+        if (!stockRows.length) {
+          throw new Error('No quantities received to stock.');
+        }
+
+        const result = await globalShipmentRepository.finalizeShipment(shipmentId, stockRows);
+
+        if (
+          typeof result?.items_stamped !== 'number' ||
+          typeof result?.stock_rows_posted !== 'number'
+        ) {
+          throw new Error('Invalid finalize response: missing stamp counts');
+        }
+        if (result.wallet_posted === true) {
+          throw new Error('Finalize unexpectedly posted wallet ledger rows');
+        }
+
+        if (this.currentShipment?.id === shipmentId) {
+          this.currentShipment = {
+            ...this.currentShipment,
+            status: 'received',
+            stock_ready: result.stock_ready === true,
+            inventory_added: result.stock_ready === true,
+          };
+        }
+
+        await this.fetchShipmentDetails(shipmentId);
+        return result;
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to finalize shipment';
+        throw err;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async ensureProgressTags(tenantId: number) {
+      try {
+        this.progressTags = await globalShipmentRepository.ensureShipmentProgressTags(tenantId);
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to load progress tags';
+        throw err;
+      }
+    },
+
+    async setProgressTag(shipmentId: number, tagId: number | null) {
+      this.progressUpdating = true;
+      this.error = null;
+      try {
+        const progressTag = await globalShipmentRepository.setShipmentProgressTag(
+          shipmentId,
+          tagId,
+        );
+        if (this.currentShipment?.id === shipmentId) {
+          this.currentShipment = {
+            ...this.currentShipment,
+            progress_tag: progressTag,
+            progress_tag_id: progressTag?.id ?? null,
+          };
+        }
+        const idx = this.rows.findIndex((r) => r.id === shipmentId);
+        if (idx >= 0) {
+          this.rows[idx] = {
+            ...this.rows[idx],
+            progress_tag: progressTag,
+            progress_tag_id: progressTag?.id ?? null,
+          };
+        }
+        return progressTag;
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to update progress tag';
+        throw err;
+      } finally {
+        this.progressUpdating = false;
+      }
+    },
+
     async autoAcceptAllSplits(shipmentId: number) {
       this.loading = true;
       this.error = null;
       try {
         const authStore = useAuthStore();
-        const stockTypeStore = useGlobalStockTypeStore();
+        const locationStore = useStockLocationStore();
 
         if (!authStore.tenantId) {
           throw new Error('Tenant ID is missing');
         }
 
-        if (stockTypeStore.items.length === 0) {
-          await stockTypeStore.fetchStockTypes(authStore.tenantId);
+        if (locationStore.items.length === 0) {
+          await locationStore.fetchLocations(authStore.tenantId, false);
         }
 
-        const defaultType =
-          stockTypeStore.items.find((t) => t.description === 'Standard Sellable') ||
-          stockTypeStore.items[0];
-        if (!defaultType) {
-          throw new Error('No default stock type found');
+        const locationId = getDefaultPutawayLocationId(locationStore.items);
+        if (!locationId) {
+          throw new Error('No default put-away location configured');
         }
 
         const items = this.currentShipmentItems;
@@ -458,9 +713,10 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         const stockRows = pendingItems.map((item) => ({
           parent_tenant_id: authStore.tenantId!,
           shipment_item_id: item.id,
-          stock_type_id: defaultType.id,
+          availability: 'sellable' as const,
+          location_id: locationId,
           quantity: item.ordered_quantity,
-          is_usable: defaultType.is_sellable,
+          is_usable: true,
         }));
 
         const { error: insertError } = await supabase.from('global_stocks').insert(stockRows);
@@ -488,7 +744,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
           );
         }
 
-        // 2. Delete global_stocks associated with shipment items (cascades to allocations)
+        // 2. Delete global_stocks associated with shipment items
         const itemIds = this.currentShipmentItems.map((item) => item.id);
         if (itemIds.length > 0) {
           const { error: deleteStocksError } = await supabase
@@ -508,6 +764,60 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         await this.fetchShipmentDetails(shipmentId);
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to rollback shipment';
+        throw err;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async assignShipmentToChild(parentTenantId: number, childTenantId: number | null, shipmentId: number) {
+      this.loading = true;
+      this.error = null;
+      try {
+        const res = await globalShipmentRepository.assignShipmentToChild(parentTenantId, childTenantId, shipmentId);
+        if (this.currentShipment?.id === shipmentId) {
+          this.currentShipment = {
+            ...this.currentShipment,
+            assigned_child_tenant_id: childTenantId,
+          };
+        }
+        return res;
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to assign shipment to child';
+        throw err;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async paySettleShipmentCosts(shipmentId: number, costEntryIds?: number[] | null) {
+      this.loading = true;
+      this.error = null;
+      try {
+        const res = await globalShipmentRepository.paySettleShipmentCosts(shipmentId, costEntryIds);
+        await this.fetchCostEntries(shipmentId);
+        return res;
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to settle shipment costs';
+        throw err;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async returnShipmentToVendor(
+      shipmentId: number,
+      itemsQty: Array<{ shipment_item_id: number; quantity: number }>,
+      outcome: 'cash_refund' | 'store_credit',
+    ) {
+      this.loading = true;
+      this.error = null;
+      try {
+        const res = await globalShipmentRepository.returnShipmentToVendor(shipmentId, itemsQty, outcome);
+        await this.fetchShipmentDetails(shipmentId);
+        return res;
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to process vendor return';
         throw err;
       } finally {
         this.loading = false;

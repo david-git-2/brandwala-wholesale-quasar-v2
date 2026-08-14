@@ -85,6 +85,25 @@ Prefer Quasar defaults. Do not build custom wrappers when `q-card` / `q-table` s
 
 **Page headers & skeletons (LOCKED):** [PAGE_LAYOUT_AND_LOADERS.md](./PAGE_LAYOUT_AND_LOADERS.md) — list golden ref `ProductBasedCostingPage.vue`; detail golden ref `ProductBasedCostingFileDetailsPage.vue`: `q-pa-md` + `q-gutter-y-md` + `text-overline text-primary` + `h1.text-h5`; list CTA `pill-btn`; detail CTA square (no `round`/`pill-btn`); list toolbar in `q-card flat bordered q-pa-sm`; **detail status = workflow button strip** (not chip menu); 1200px white page; no `AppPageHeader` drift.
 
+## Guidance layers (LOCKED)
+
+The page teaches the happy path. Help and `doc/` are not substitutes.
+
+| Layer | Audience | Job | When |
+|---|---|---|---|
+| **The page** | Staff using the product | One-line “what this is” + one next action. Happy path never needs Help. | Apply on pages as they are touched. Rule: `.cursor/rules/frictionless-ui.mdc` |
+| **Help (`?` drawer)** | Same staff, when stuck | Short blockers that match real buttons. Not a textbook, portal, or onboarding. | Later — [HELP_CENTER.md](../doc/HELP_CENTER.md) |
+| **`doc/` + in-app Documentation** | Developers / agents | How to build it. Never a staff manual. In-app markdown viewer is a spec dump; retire separately. | Later |
+
+**Page contract**
+
+- Header subtitle or caption in shop-floor English (no RPC, table, ATP, or entity jargon).
+- Exactly one next step. List: subtitle + one primary CTA (header **or** empty state). Detail/workflow: `q-banner class="bg-primary-soft text-primary rounded-borders" dense` under the header when the next step is status-gated.
+- Disabled primary action says why (`q-tooltip` or the banner).
+- Hide panels that do not apply to the current status.
+
+Do not dump Help-drawer copy on the page, add product tours, or send staff to `/app/documentation` or `doc/*.md`.
+
 ## Component inventory
 
 ### Shared (`web/src/components/`)

@@ -81,6 +81,9 @@
               <span v-if="getShipmentNames(group)" class="text-primary text-weight-bold">
                 Shipment: {{ getShipmentNames(group) }}
               </span>
+              <span v-if="getLocationLabel(group)" class="text-grey-8">
+                Location: {{ getLocationLabel(group) }}
+              </span>
             </q-item-label>
 
             <div class="row items-center q-gutter-xs q-mt-xs flex-wrap">
@@ -89,7 +92,7 @@
                 :key="`${ctx.global_stock_id}-${ctx.holding_tenant_id}`"
               >
                 <q-chip
-                  v-if="ctx.excellent_qty > 0 || ctx.allocated_qty > 0 || mode === 'invoice'"
+                  v-if="displayAvailableQty(ctx) > 0 || mode === 'invoice'"
                   dense
                   square
                   :color="ctx.is_own_tenant ? 'green-1' : 'grey-2'"
@@ -101,7 +104,7 @@
                   <span v-if="ctx.is_own_tenant">Own Stock</span>
                   <span v-else>{{ ctx.holding_tenant_name ?? 'Network' }}</span>
                   :
-                  {{ ctx.allocated_qty > 0 ? ctx.allocated_qty : ctx.excellent_qty }}
+                  {{ displayAvailableQty(ctx) }}
                   <span
                     v-if="
                       mode === 'invoice' &&
@@ -159,6 +162,7 @@ import type {
 import {
   groupStockNetworkRows,
   pickableContext,
+  stockNetworkAvailableQty,
   type StockNetworkProductGroup,
 } from 'src/modules/global/utils/mapStockNetworkRow';
 import { resolveGlobalStockUnitCost } from 'src/modules/global/utils/resolveGlobalStockUnitCost';
@@ -251,6 +255,13 @@ const searchPlaceholder = computed(() => {
       return 'Search stock...';
   }
 });
+
+const displayAvailableQty = (row: StockNetworkRow) => stockNetworkAvailableQty(row);
+
+const getLocationLabel = (group: StockNetworkProductGroup) => {
+  const ctx = pickableContext(group) ?? group.contexts[0];
+  return ctx?.location_name?.trim() || null;
+};
 
 const getShipmentNames = (group: StockNetworkProductGroup) => {
   const names = group.contexts

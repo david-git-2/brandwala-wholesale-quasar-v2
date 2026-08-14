@@ -214,6 +214,72 @@ export type Database = {
           },
         ]
       }
+      cargo_companies: {
+        Row: {
+          address: string | null
+          code: string
+          created_at: string
+          email: string | null
+          id: number
+          is_active: boolean
+          is_default: boolean
+          name: string
+          notes: string | null
+          parent_tenant_id: number | null
+          phone: string | null
+          tenant_id: number | null
+          updated_at: string
+          wallet_entity_id: number | null
+        }
+        Insert: {
+          address?: string | null
+          code: string
+          created_at?: string
+          email?: string | null
+          id?: number
+          is_active?: boolean
+          is_default?: boolean
+          name: string
+          notes?: string | null
+          parent_tenant_id?: number | null
+          phone?: string | null
+          tenant_id?: number | null
+          updated_at?: string
+          wallet_entity_id?: number | null
+        }
+        Update: {
+          address?: string | null
+          code?: string
+          created_at?: string
+          email?: string | null
+          id?: number
+          is_active?: boolean
+          is_default?: boolean
+          name?: string
+          notes?: string | null
+          parent_tenant_id?: number | null
+          phone?: string | null
+          tenant_id?: number | null
+          updated_at?: string
+          wallet_entity_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cargo_companies_parent_tenant_id_fkey"
+            columns: ["parent_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cargo_companies_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cart_items: {
         Row: {
           cart_id: number
@@ -1516,6 +1582,126 @@ export type Database = {
           },
         ]
       }
+      customer_order_backlog_items: {
+        Row: {
+          backlog_status: string
+          billing_profile_id: number
+          created_at: string
+          fulfilled_quantity: number
+          id: number
+          order_id: number | null
+          order_item_id: number | null
+          product_id: number
+          requested_quantity: number
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          backlog_status?: string
+          billing_profile_id: number
+          created_at?: string
+          fulfilled_quantity?: number
+          id?: never
+          order_id?: number | null
+          order_item_id?: number | null
+          product_id: number
+          requested_quantity: number
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          backlog_status?: string
+          billing_profile_id?: number
+          created_at?: string
+          fulfilled_quantity?: number
+          id?: never
+          order_id?: number | null
+          order_item_id?: number | null
+          product_id?: number
+          requested_quantity?: number
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_order_backlog_items_billing_profile_id_fkey"
+            columns: ["billing_profile_id"]
+            isOneToOne: false
+            referencedRelation: "billing_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_order_backlog_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "shop_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_order_backlog_items_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: false
+            referencedRelation: "shop_order_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_order_backlog_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_order_backlog_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      entity_tags: {
+        Row: {
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: number
+          tag_id: number
+          tenant_id: number
+        }
+        Insert: {
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: number
+          tag_id: number
+          tenant_id: number
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: number
+          tag_id?: number
+          tenant_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entity_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entity_tags_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gift_rule_items: {
         Row: {
           created_at: string
@@ -2088,6 +2274,85 @@ export type Database = {
           },
         ]
       }
+      global_shipment_cost_entries: {
+        Row: {
+          allocation: string | null
+          amount: number
+          cost_type: Database["public"]["Enums"]["global_shipment_cost_type"]
+          created_at: string
+          currency_id: number | null
+          entity_id: number | null
+          entity_type: string | null
+          exchange_rate: number
+          id: number
+          metadata: Json
+          parent_tenant_id: number
+          payment_source: string | null
+          settled_at: string | null
+          settlement_ledger_id: string | null
+          shipment_id: number
+          updated_at: string
+        }
+        Insert: {
+          allocation?: string | null
+          amount: number
+          cost_type: Database["public"]["Enums"]["global_shipment_cost_type"]
+          created_at?: string
+          currency_id?: number | null
+          entity_id?: number | null
+          entity_type?: string | null
+          exchange_rate?: number
+          id?: never
+          metadata?: Json
+          parent_tenant_id: number
+          payment_source?: string | null
+          settled_at?: string | null
+          settlement_ledger_id?: string | null
+          shipment_id: number
+          updated_at?: string
+        }
+        Update: {
+          allocation?: string | null
+          amount?: number
+          cost_type?: Database["public"]["Enums"]["global_shipment_cost_type"]
+          created_at?: string
+          currency_id?: number | null
+          entity_id?: number | null
+          entity_type?: string | null
+          exchange_rate?: number
+          id?: never
+          metadata?: Json
+          parent_tenant_id?: number
+          payment_source?: string | null
+          settled_at?: string | null
+          settlement_ledger_id?: string | null
+          shipment_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "global_shipment_cost_entries_currency_id_fkey"
+            columns: ["currency_id"]
+            isOneToOne: false
+            referencedRelation: "global_currencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "global_shipment_cost_entries_parent_tenant_id_fkey"
+            columns: ["parent_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "global_shipment_cost_entries_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "global_shipments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       global_shipment_items: {
         Row: {
           add_method: Database["public"]["Enums"]["global_shipment_item_add_method"]
@@ -2095,6 +2360,7 @@ export type Database = {
           created_at: string
           id: number
           image_url: string | null
+          landed_cost_bdt: number | null
           name: string
           ordered_quantity: number
           package_weight: number
@@ -2116,6 +2382,7 @@ export type Database = {
           created_at?: string
           id?: number
           image_url?: string | null
+          landed_cost_bdt?: number | null
           name: string
           ordered_quantity: number
           package_weight?: number
@@ -2137,6 +2404,7 @@ export type Database = {
           created_at?: string
           id?: number
           image_url?: string | null
+          landed_cost_bdt?: number | null
           name?: string
           ordered_quantity?: number
           package_weight?: number
@@ -2185,14 +2453,15 @@ export type Database = {
       }
       global_shipments: {
         Row: {
-          cargo_conversion_rate: number
+          assigned_child_tenant_id: number | null
+          cargo_company_id: number | null
           cargo_invoice_total: number | null
-          cargo_rate: number
           created_at: string
           id: number
+          inventory_added: boolean
           name: string
           parent_tenant_id: number
-          product_conversion_rate: number
+          progress_tag_id: number | null
           purchase_invoice_total: number | null
           received_date: string | null
           received_weight: number | null
@@ -2201,19 +2470,21 @@ export type Database = {
           status: string
           stock_ready: boolean
           tenant_shipment_id: number | null
-          transaction_rate: number | null
+          total_weight_kg: number | null
           type: Database["public"]["Enums"]["global_shipment_type"]
           updated_at: string
+          vendor_id: number
         }
         Insert: {
-          cargo_conversion_rate?: number
+          assigned_child_tenant_id?: number | null
+          cargo_company_id?: number | null
           cargo_invoice_total?: number | null
-          cargo_rate?: number
           created_at?: string
           id?: number
+          inventory_added?: boolean
           name: string
           parent_tenant_id: number
-          product_conversion_rate?: number
+          progress_tag_id?: number | null
           purchase_invoice_total?: number | null
           received_date?: string | null
           received_weight?: number | null
@@ -2222,19 +2493,21 @@ export type Database = {
           status?: string
           stock_ready?: boolean
           tenant_shipment_id?: number | null
-          transaction_rate?: number | null
+          total_weight_kg?: number | null
           type?: Database["public"]["Enums"]["global_shipment_type"]
           updated_at?: string
+          vendor_id: number
         }
         Update: {
-          cargo_conversion_rate?: number
+          assigned_child_tenant_id?: number | null
+          cargo_company_id?: number | null
           cargo_invoice_total?: number | null
-          cargo_rate?: number
           created_at?: string
           id?: number
+          inventory_added?: boolean
           name?: string
           parent_tenant_id?: number
-          product_conversion_rate?: number
+          progress_tag_id?: number | null
           purchase_invoice_total?: number | null
           received_date?: string | null
           received_weight?: number | null
@@ -2243,16 +2516,38 @@ export type Database = {
           status?: string
           stock_ready?: boolean
           tenant_shipment_id?: number | null
-          transaction_rate?: number | null
+          total_weight_kg?: number | null
           type?: Database["public"]["Enums"]["global_shipment_type"]
           updated_at?: string
+          vendor_id?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "global_shipments_assigned_child_tenant_id_fkey"
+            columns: ["assigned_child_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "global_shipments_cargo_company_id_fkey"
+            columns: ["cargo_company_id"]
+            isOneToOne: false
+            referencedRelation: "cargo_companies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "global_shipments_parent_tenant_id_fkey"
             columns: ["parent_tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "global_shipments_progress_tag_id_fkey"
+            columns: ["progress_tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
             referencedColumns: ["id"]
           },
           {
@@ -2269,56 +2564,11 @@ export type Database = {
             referencedRelation: "global_currencies"
             referencedColumns: ["id"]
           },
-        ]
-      }
-      global_stock_allocations: {
-        Row: {
-          child_tenant_id: number
-          created_at: string
-          id: number
-          parent_tenant_id: number
-          quantity: number
-          stock_id: number
-          updated_at: string
-        }
-        Insert: {
-          child_tenant_id: number
-          created_at?: string
-          id?: number
-          parent_tenant_id: number
-          quantity?: number
-          stock_id: number
-          updated_at?: string
-        }
-        Update: {
-          child_tenant_id?: number
-          created_at?: string
-          id?: number
-          parent_tenant_id?: number
-          quantity?: number
-          stock_id?: number
-          updated_at?: string
-        }
-        Relationships: [
           {
-            foreignKeyName: "global_stock_allocations_child_tenant_id_fkey"
-            columns: ["child_tenant_id"]
+            foreignKeyName: "global_shipments_vendor_id_fkey"
+            columns: ["vendor_id"]
             isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "global_stock_allocations_parent_tenant_id_fkey"
-            columns: ["parent_tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "global_stock_allocations_stock_id_fkey"
-            columns: ["stock_id"]
-            isOneToOne: false
-            referencedRelation: "global_stocks"
+            referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
         ]
@@ -2363,36 +2613,49 @@ export type Database = {
       }
       global_stocks: {
         Row: {
+          availability: Database["public"]["Enums"]["stock_availability"]
           created_at: string
           id: number
           is_usable: boolean
+          location_id: number | null
           parent_tenant_id: number
           quantity: number
           shipment_item_id: number
-          stock_type_id: number
+          stock_type_id: number | null
           updated_at: string
         }
         Insert: {
+          availability?: Database["public"]["Enums"]["stock_availability"]
           created_at?: string
           id?: number
           is_usable?: boolean
+          location_id?: number | null
           parent_tenant_id: number
           quantity?: number
           shipment_item_id: number
-          stock_type_id: number
+          stock_type_id?: number | null
           updated_at?: string
         }
         Update: {
+          availability?: Database["public"]["Enums"]["stock_availability"]
           created_at?: string
           id?: number
           is_usable?: boolean
+          location_id?: number | null
           parent_tenant_id?: number
           quantity?: number
           shipment_item_id?: number
-          stock_type_id?: number
+          stock_type_id?: number | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "global_stocks_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "stock_locations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "global_stocks_parent_tenant_id_fkey"
             columns: ["parent_tenant_id"]
@@ -4885,13 +5148,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "shop_cart_items_global_stock_allocation_id_fkey"
-            columns: ["global_stock_allocation_id"]
-            isOneToOne: false
-            referencedRelation: "global_stock_allocations"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "shop_cart_items_global_stock_id_fkey"
             columns: ["global_stock_id"]
             isOneToOne: false
@@ -5144,19 +5400,29 @@ export type Database = {
       }
       shop_order_items: {
         Row: {
+          confirmed_quantity: number | null
+          cost_price_amount: number | null
+          cost_price_currency_id: number | null
           created_at: string
+          customer_counter_at: string | null
+          customer_decision_at: string | null
+          customer_decision_status: string | null
           customer_offer_amount: number | null
           customer_offer_currency_id: number | null
           customer_sell_price_amount: number | null
           customer_sell_price_currency_id: number | null
           delivered_quantity: number
+          final_offer_at: string | null
           final_price_amount: number | null
           final_price_currency_id: number | null
           global_stock_allocation_id: number | null
           global_stock_id: number | null
           id: number
           image_url: string | null
+          is_final_offer_manual: boolean
+          is_first_offer_manual: boolean
           name: string
+          negotiation_status: string | null
           order_id: number
           ordered_quantity: number
           procurement_pulled: boolean
@@ -5164,6 +5430,7 @@ export type Database = {
           quantity: number
           returned_quantity: number
           staff_offer_amount: number | null
+          staff_offer_at: string | null
           staff_offer_currency_id: number | null
           unit_list_price_amount: number | null
           unit_list_price_currency_id: number | null
@@ -5172,21 +5439,32 @@ export type Database = {
           unit_sell_price_amount: number | null
           unit_sell_price_currency_id: number | null
           updated_at: string
+          weight_kg: number | null
         }
         Insert: {
+          confirmed_quantity?: number | null
+          cost_price_amount?: number | null
+          cost_price_currency_id?: number | null
           created_at?: string
+          customer_counter_at?: string | null
+          customer_decision_at?: string | null
+          customer_decision_status?: string | null
           customer_offer_amount?: number | null
           customer_offer_currency_id?: number | null
           customer_sell_price_amount?: number | null
           customer_sell_price_currency_id?: number | null
           delivered_quantity?: number
+          final_offer_at?: string | null
           final_price_amount?: number | null
           final_price_currency_id?: number | null
           global_stock_allocation_id?: number | null
           global_stock_id?: number | null
           id?: never
           image_url?: string | null
+          is_final_offer_manual?: boolean
+          is_first_offer_manual?: boolean
           name: string
+          negotiation_status?: string | null
           order_id: number
           ordered_quantity: number
           procurement_pulled?: boolean
@@ -5194,6 +5472,7 @@ export type Database = {
           quantity: number
           returned_quantity?: number
           staff_offer_amount?: number | null
+          staff_offer_at?: string | null
           staff_offer_currency_id?: number | null
           unit_list_price_amount?: number | null
           unit_list_price_currency_id?: number | null
@@ -5202,21 +5481,32 @@ export type Database = {
           unit_sell_price_amount?: number | null
           unit_sell_price_currency_id?: number | null
           updated_at?: string
+          weight_kg?: number | null
         }
         Update: {
+          confirmed_quantity?: number | null
+          cost_price_amount?: number | null
+          cost_price_currency_id?: number | null
           created_at?: string
+          customer_counter_at?: string | null
+          customer_decision_at?: string | null
+          customer_decision_status?: string | null
           customer_offer_amount?: number | null
           customer_offer_currency_id?: number | null
           customer_sell_price_amount?: number | null
           customer_sell_price_currency_id?: number | null
           delivered_quantity?: number
+          final_offer_at?: string | null
           final_price_amount?: number | null
           final_price_currency_id?: number | null
           global_stock_allocation_id?: number | null
           global_stock_id?: number | null
           id?: never
           image_url?: string | null
+          is_final_offer_manual?: boolean
+          is_first_offer_manual?: boolean
           name?: string
+          negotiation_status?: string | null
           order_id?: number
           ordered_quantity?: number
           procurement_pulled?: boolean
@@ -5224,6 +5514,7 @@ export type Database = {
           quantity?: number
           returned_quantity?: number
           staff_offer_amount?: number | null
+          staff_offer_at?: string | null
           staff_offer_currency_id?: number | null
           unit_list_price_amount?: number | null
           unit_list_price_currency_id?: number | null
@@ -5232,8 +5523,16 @@ export type Database = {
           unit_sell_price_amount?: number | null
           unit_sell_price_currency_id?: number | null
           updated_at?: string
+          weight_kg?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "shop_order_items_cost_price_currency_id_fkey"
+            columns: ["cost_price_currency_id"]
+            isOneToOne: false
+            referencedRelation: "global_currencies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "shop_order_items_customer_offer_currency_id_fkey"
             columns: ["customer_offer_currency_id"]
@@ -5253,13 +5552,6 @@ export type Database = {
             columns: ["final_price_currency_id"]
             isOneToOne: false
             referencedRelation: "global_currencies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "shop_order_items_global_stock_allocation_id_fkey"
-            columns: ["global_stock_allocation_id"]
-            isOneToOne: false
-            referencedRelation: "global_stock_allocations"
             referencedColumns: ["id"]
           },
           {
@@ -5355,6 +5647,8 @@ export type Database = {
           delivery_zone: string | null
           discount_amount: number
           driver_notes: string | null
+          final_offer_rate: number | null
+          first_offer_rate: number | null
           fulfilled_at: string | null
           global_invoice_id: number | null
           id: number
@@ -5377,6 +5671,7 @@ export type Database = {
           pickup_phone: string | null
           placed_at: string | null
           print_charge_amount: number
+          profit_basis: string | null
           profit_rate: number | null
           recipient_name: string | null
           recipient_phone: string | null
@@ -5440,6 +5735,8 @@ export type Database = {
           delivery_zone?: string | null
           discount_amount?: number
           driver_notes?: string | null
+          final_offer_rate?: number | null
+          first_offer_rate?: number | null
           fulfilled_at?: string | null
           global_invoice_id?: number | null
           id?: never
@@ -5462,6 +5759,7 @@ export type Database = {
           pickup_phone?: string | null
           placed_at?: string | null
           print_charge_amount?: number
+          profit_basis?: string | null
           profit_rate?: number | null
           recipient_name?: string | null
           recipient_phone?: string | null
@@ -5525,6 +5823,8 @@ export type Database = {
           delivery_zone?: string | null
           discount_amount?: number
           driver_notes?: string | null
+          final_offer_rate?: number | null
+          first_offer_rate?: number | null
           fulfilled_at?: string | null
           global_invoice_id?: number | null
           id?: never
@@ -5547,6 +5847,7 @@ export type Database = {
           pickup_phone?: string | null
           placed_at?: string | null
           print_charge_amount?: number
+          profit_basis?: string | null
           profit_rate?: number | null
           recipient_name?: string | null
           recipient_phone?: string | null
@@ -5693,7 +5994,7 @@ export type Database = {
         Row: {
           created_at: string
           display_quantity_override: number | null
-          global_stock_allocation_id: number
+          global_stock_allocation_id: number | null
           global_stock_id: number
           id: number
           is_active: boolean
@@ -5713,7 +6014,7 @@ export type Database = {
         Insert: {
           created_at?: string
           display_quantity_override?: number | null
-          global_stock_allocation_id: number
+          global_stock_allocation_id?: number | null
           global_stock_id: number
           id?: never
           is_active?: boolean
@@ -5733,7 +6034,7 @@ export type Database = {
         Update: {
           created_at?: string
           display_quantity_override?: number | null
-          global_stock_allocation_id?: number
+          global_stock_allocation_id?: number | null
           global_stock_id?: number
           id?: never
           is_active?: boolean
@@ -5751,13 +6052,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "shop_product_listings_global_stock_allocation_id_fkey"
-            columns: ["global_stock_allocation_id"]
-            isOneToOne: false
-            referencedRelation: "global_stock_allocations"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "shop_product_listings_global_stock_id_fkey"
             columns: ["global_stock_id"]
@@ -5854,21 +6148,24 @@ export type Database = {
         Row: {
           cart_item_id: number
           created_at: string
-          global_stock_allocation_id: number
+          global_stock_allocation_id: number | null
+          global_stock_id: number | null
           quantity: number
           updated_at: string
         }
         Insert: {
           cart_item_id: number
           created_at?: string
-          global_stock_allocation_id: number
+          global_stock_allocation_id?: number | null
+          global_stock_id?: number | null
           quantity: number
           updated_at?: string
         }
         Update: {
           cart_item_id?: number
           created_at?: string
-          global_stock_allocation_id?: number
+          global_stock_allocation_id?: number | null
+          global_stock_id?: number | null
           quantity?: number
           updated_at?: string
         }
@@ -5881,10 +6178,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "shop_stock_reservations_global_stock_allocation_id_fkey"
-            columns: ["global_stock_allocation_id"]
+            foreignKeyName: "shop_stock_reservations_global_stock_id_fkey"
+            columns: ["global_stock_id"]
             isOneToOne: false
-            referencedRelation: "global_stock_allocations"
+            referencedRelation: "global_stocks"
             referencedColumns: ["id"]
           },
         ]
@@ -6013,6 +6310,196 @@ export type Database = {
           },
           {
             foreignKeyName: "shops_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_locations: {
+        Row: {
+          code: string
+          created_at: string
+          id: number
+          is_active: boolean
+          is_default: boolean
+          is_pickable: boolean
+          kind: Database["public"]["Enums"]["stock_location_kind"]
+          name: string
+          parent_location_id: number | null
+          parent_tenant_id: number
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          is_default?: boolean
+          is_pickable?: boolean
+          kind?: Database["public"]["Enums"]["stock_location_kind"]
+          name: string
+          parent_location_id?: number | null
+          parent_tenant_id: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          is_default?: boolean
+          is_pickable?: boolean
+          kind?: Database["public"]["Enums"]["stock_location_kind"]
+          name?: string
+          parent_location_id?: number | null
+          parent_tenant_id?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_locations_parent_location_id_fkey"
+            columns: ["parent_location_id"]
+            isOneToOne: false
+            referencedRelation: "stock_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_locations_parent_tenant_id_fkey"
+            columns: ["parent_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_movement_lines: {
+        Row: {
+          created_at: string
+          from_availability:
+            | Database["public"]["Enums"]["stock_availability"]
+            | null
+          from_location_id: number | null
+          id: number
+          movement_id: number
+          quantity: number
+          stock_id: number | null
+          to_availability:
+            | Database["public"]["Enums"]["stock_availability"]
+            | null
+          to_location_id: number | null
+        }
+        Insert: {
+          created_at?: string
+          from_availability?:
+            | Database["public"]["Enums"]["stock_availability"]
+            | null
+          from_location_id?: number | null
+          id?: number
+          movement_id: number
+          quantity: number
+          stock_id?: number | null
+          to_availability?:
+            | Database["public"]["Enums"]["stock_availability"]
+            | null
+          to_location_id?: number | null
+        }
+        Update: {
+          created_at?: string
+          from_availability?:
+            | Database["public"]["Enums"]["stock_availability"]
+            | null
+          from_location_id?: number | null
+          id?: number
+          movement_id?: number
+          quantity?: number
+          stock_id?: number | null
+          to_availability?:
+            | Database["public"]["Enums"]["stock_availability"]
+            | null
+          to_location_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_movement_lines_from_location_id_fkey"
+            columns: ["from_location_id"]
+            isOneToOne: false
+            referencedRelation: "stock_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movement_lines_movement_id_fkey"
+            columns: ["movement_id"]
+            isOneToOne: false
+            referencedRelation: "stock_movements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movement_lines_stock_id_fkey"
+            columns: ["stock_id"]
+            isOneToOne: false
+            referencedRelation: "global_stocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movement_lines_to_location_id_fkey"
+            columns: ["to_location_id"]
+            isOneToOne: false
+            referencedRelation: "stock_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_movements: {
+        Row: {
+          created_at: string
+          created_by_email: string | null
+          id: number
+          is_posted: boolean
+          movement_no: string
+          movement_type: Database["public"]["Enums"]["stock_movement_type"]
+          notes: string | null
+          posted_at: string | null
+          reference_id: string | null
+          reference_type: string | null
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by_email?: string | null
+          id?: number
+          is_posted?: boolean
+          movement_no: string
+          movement_type: Database["public"]["Enums"]["stock_movement_type"]
+          notes?: string | null
+          posted_at?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by_email?: string | null
+          id?: number
+          is_posted?: boolean
+          movement_no?: string
+          movement_type?: Database["public"]["Enums"]["stock_movement_type"]
+          notes?: string | null
+          posted_at?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_movements_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -6223,9 +6710,11 @@ export type Database = {
           color: string
           created_at: string
           created_by_email: string
+          group_name: string | null
           id: number
           name: string
           slug: string
+          sort_order: number | null
           tenant_id: number | null
           type: string
         }
@@ -6233,9 +6722,11 @@ export type Database = {
           color?: string
           created_at?: string
           created_by_email?: string
+          group_name?: string | null
           id?: number
           name: string
           slug: string
+          sort_order?: number | null
           tenant_id?: number | null
           type?: string
         }
@@ -6243,9 +6734,11 @@ export type Database = {
           color?: string
           created_at?: string
           created_by_email?: string
+          group_name?: string | null
           id?: number
           name?: string
           slug?: string
+          sort_order?: number | null
           tenant_id?: number | null
           type?: string
         }
@@ -6736,6 +7229,141 @@ export type Database = {
           },
         ]
       }
+      thrift_courier_providers: {
+        Row: {
+          code: string
+          country_code: string
+          created_at: string
+          id: number
+          is_active: boolean
+          is_system: boolean
+          meta: Json
+          name: string
+          sort_order: number
+          tenant_id: number | null
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          country_code?: string
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          is_system?: boolean
+          meta?: Json
+          name: string
+          sort_order?: number
+          tenant_id?: number | null
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          country_code?: string
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          is_system?: boolean
+          meta?: Json
+          name?: string
+          sort_order?: number
+          tenant_id?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thrift_courier_providers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thrift_customers: {
+        Row: {
+          address: string | null
+          address_parts: Json
+          created_at: string
+          id: number
+          inserted_by: string
+          name: string
+          notes: string | null
+          phone: string
+          phone_normalized: string
+          secondary_phone: string | null
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          address_parts?: Json
+          created_at?: string
+          id?: number
+          inserted_by: string
+          name: string
+          notes?: string | null
+          phone: string
+          phone_normalized: string
+          secondary_phone?: string | null
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          address_parts?: Json
+          created_at?: string
+          id?: number
+          inserted_by?: string
+          name?: string
+          notes?: string | null
+          phone?: string
+          phone_normalized?: string
+          secondary_phone?: string | null
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thrift_customers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thrift_invoice_counters: {
+        Row: {
+          created_at: string
+          last_value: number
+          tenant_id: number
+          updated_at: string
+          year_month: string
+        }
+        Insert: {
+          created_at?: string
+          last_value?: number
+          tenant_id: number
+          updated_at?: string
+          year_month: string
+        }
+        Update: {
+          created_at?: string
+          last_value?: number
+          tenant_id?: number
+          updated_at?: string
+          year_month?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thrift_invoice_counters_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       thrift_invoice_items: {
         Row: {
           created_at: string
@@ -6932,6 +7560,502 @@ export type Database = {
           },
         ]
       }
+      thrift_return_counters: {
+        Row: {
+          created_at: string
+          last_value: number
+          tenant_id: number
+          updated_at: string
+          year_month: string
+        }
+        Insert: {
+          created_at?: string
+          last_value?: number
+          tenant_id: number
+          updated_at?: string
+          year_month: string
+        }
+        Update: {
+          created_at?: string
+          last_value?: number
+          tenant_id?: number
+          updated_at?: string
+          year_month?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thrift_return_counters_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thrift_sales_invoice_items: {
+        Row: {
+          created_at: string
+          discount_amount: number
+          final_price: number
+          id: number
+          invoice_id: number
+          landed_unit_cost_at_sale: number
+          net_profit: number
+          quantity: number
+          sell_price: number
+          stock_id: number | null
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          discount_amount?: number
+          final_price?: number
+          id?: number
+          invoice_id: number
+          landed_unit_cost_at_sale?: number
+          net_profit?: number
+          quantity?: number
+          sell_price?: number
+          stock_id?: number | null
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          discount_amount?: number
+          final_price?: number
+          id?: number
+          invoice_id?: number
+          landed_unit_cost_at_sale?: number
+          net_profit?: number
+          quantity?: number
+          sell_price?: number
+          stock_id?: number | null
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thrift_sales_invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "thrift_sales_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thrift_sales_invoice_items_stock_id_fkey"
+            columns: ["stock_id"]
+            isOneToOne: false
+            referencedRelation: "thrift_stocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thrift_sales_invoice_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thrift_sales_invoices: {
+        Row: {
+          advance_amount: number
+          advance_note: string | null
+          close_reason: string | null
+          cod_expected: number | null
+          cod_fee_amount: number
+          cod_fee_paid_by: string | null
+          cod_remittance_ref: string | null
+          cod_remitted_amount: number | null
+          cod_remitted_at: string | null
+          courier_amount: number
+          courier_cod_amount: number
+          courier_paid_by: string | null
+          courier_provider: string | null
+          courier_provider_id: number | null
+          created_at: string
+          created_by: string
+          customer_address: string | null
+          customer_address_parts: Json
+          customer_id: number | null
+          customer_name: string | null
+          customer_phone: string | null
+          customer_secondary_phone: string | null
+          date: string
+          delivery_status: string | null
+          economics_closed_at: string | null
+          id: number
+          invoice_number: string
+          meta: Json
+          notes: string | null
+          other_expense_amount: number
+          packing_amount: number
+          packing_paid_by: string | null
+          payment_method: string
+          payment_status: string
+          return_courier_amount: number
+          revert_notes: string | null
+          revert_reason: string | null
+          reverted_at: string | null
+          reverted_by: string | null
+          sale_channel: string
+          status: string
+          tenant_id: number
+          total_invoice_amount: number
+          updated_at: string
+        }
+        Insert: {
+          advance_amount?: number
+          advance_note?: string | null
+          close_reason?: string | null
+          cod_expected?: number | null
+          cod_fee_amount?: number
+          cod_fee_paid_by?: string | null
+          cod_remittance_ref?: string | null
+          cod_remitted_amount?: number | null
+          cod_remitted_at?: string | null
+          courier_amount?: number
+          courier_cod_amount?: number
+          courier_paid_by?: string | null
+          courier_provider?: string | null
+          courier_provider_id?: number | null
+          created_at?: string
+          created_by?: string
+          customer_address?: string | null
+          customer_address_parts?: Json
+          customer_id?: number | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          customer_secondary_phone?: string | null
+          date?: string
+          delivery_status?: string | null
+          economics_closed_at?: string | null
+          id?: number
+          invoice_number: string
+          meta?: Json
+          notes?: string | null
+          other_expense_amount?: number
+          packing_amount?: number
+          packing_paid_by?: string | null
+          payment_method?: string
+          payment_status?: string
+          return_courier_amount?: number
+          revert_notes?: string | null
+          revert_reason?: string | null
+          reverted_at?: string | null
+          reverted_by?: string | null
+          sale_channel?: string
+          status?: string
+          tenant_id: number
+          total_invoice_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          advance_amount?: number
+          advance_note?: string | null
+          close_reason?: string | null
+          cod_expected?: number | null
+          cod_fee_amount?: number
+          cod_fee_paid_by?: string | null
+          cod_remittance_ref?: string | null
+          cod_remitted_amount?: number | null
+          cod_remitted_at?: string | null
+          courier_amount?: number
+          courier_cod_amount?: number
+          courier_paid_by?: string | null
+          courier_provider?: string | null
+          courier_provider_id?: number | null
+          created_at?: string
+          created_by?: string
+          customer_address?: string | null
+          customer_address_parts?: Json
+          customer_id?: number | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          customer_secondary_phone?: string | null
+          date?: string
+          delivery_status?: string | null
+          economics_closed_at?: string | null
+          id?: number
+          invoice_number?: string
+          meta?: Json
+          notes?: string | null
+          other_expense_amount?: number
+          packing_amount?: number
+          packing_paid_by?: string | null
+          payment_method?: string
+          payment_status?: string
+          return_courier_amount?: number
+          revert_notes?: string | null
+          revert_reason?: string | null
+          reverted_at?: string | null
+          reverted_by?: string | null
+          sale_channel?: string
+          status?: string
+          tenant_id?: number
+          total_invoice_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thrift_sales_invoices_courier_provider_id_fkey"
+            columns: ["courier_provider_id"]
+            isOneToOne: false
+            referencedRelation: "thrift_courier_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thrift_sales_invoices_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "thrift_customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thrift_sales_invoices_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thrift_sales_pnl_lines: {
+        Row: {
+          allocated_fees_total: number
+          allocated_return_courier: number
+          allocated_shop_cod_fee: number
+          allocated_shop_delivery: number
+          allocated_shop_packing: number
+          cogs_is_loss: boolean
+          created_at: string
+          event_at: string
+          event_date: string
+          id: number
+          inbound_shipment_id: number
+          invoice_id: number
+          invoice_item_id: number
+          outcome: string
+          quantity: number
+          return_id: number | null
+          sell_amount: number
+          stock_id: number
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          allocated_fees_total?: number
+          allocated_return_courier?: number
+          allocated_shop_cod_fee?: number
+          allocated_shop_delivery?: number
+          allocated_shop_packing?: number
+          cogs_is_loss?: boolean
+          created_at?: string
+          event_at?: string
+          event_date?: string
+          id?: number
+          inbound_shipment_id: number
+          invoice_id: number
+          invoice_item_id: number
+          outcome: string
+          quantity?: number
+          return_id?: number | null
+          sell_amount?: number
+          stock_id: number
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          allocated_fees_total?: number
+          allocated_return_courier?: number
+          allocated_shop_cod_fee?: number
+          allocated_shop_delivery?: number
+          allocated_shop_packing?: number
+          cogs_is_loss?: boolean
+          created_at?: string
+          event_at?: string
+          event_date?: string
+          id?: number
+          inbound_shipment_id?: number
+          invoice_id?: number
+          invoice_item_id?: number
+          outcome?: string
+          quantity?: number
+          return_id?: number | null
+          sell_amount?: number
+          stock_id?: number
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thrift_sales_pnl_lines_inbound_shipment_id_fkey"
+            columns: ["inbound_shipment_id"]
+            isOneToOne: false
+            referencedRelation: "thrift_shipments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thrift_sales_pnl_lines_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "thrift_sales_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thrift_sales_pnl_lines_invoice_item_id_fkey"
+            columns: ["invoice_item_id"]
+            isOneToOne: true
+            referencedRelation: "thrift_sales_invoice_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thrift_sales_pnl_lines_return_id_fkey"
+            columns: ["return_id"]
+            isOneToOne: false
+            referencedRelation: "thrift_sales_returns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thrift_sales_pnl_lines_stock_id_fkey"
+            columns: ["stock_id"]
+            isOneToOne: false
+            referencedRelation: "thrift_stocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thrift_sales_pnl_lines_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thrift_sales_return_items: {
+        Row: {
+          condition: string
+          created_at: string
+          id: number
+          invoice_item_id: number
+          quantity: number
+          refund_amount: number
+          return_id: number
+          stock_id: number
+          tenant_id: number
+        }
+        Insert: {
+          condition: string
+          created_at?: string
+          id?: number
+          invoice_item_id: number
+          quantity?: number
+          refund_amount?: number
+          return_id: number
+          stock_id: number
+          tenant_id: number
+        }
+        Update: {
+          condition?: string
+          created_at?: string
+          id?: number
+          invoice_item_id?: number
+          quantity?: number
+          refund_amount?: number
+          return_id?: number
+          stock_id?: number
+          tenant_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thrift_sales_return_items_invoice_item_id_fkey"
+            columns: ["invoice_item_id"]
+            isOneToOne: true
+            referencedRelation: "thrift_sales_invoice_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thrift_sales_return_items_return_id_fkey"
+            columns: ["return_id"]
+            isOneToOne: false
+            referencedRelation: "thrift_sales_returns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thrift_sales_return_items_stock_id_fkey"
+            columns: ["stock_id"]
+            isOneToOne: false
+            referencedRelation: "thrift_stocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thrift_sales_return_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thrift_sales_returns: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: number
+          invoice_id: number
+          notes: string | null
+          refund_amount: number
+          return_courier_amount: number
+          return_number: string
+          status: string
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          id?: number
+          invoice_id: number
+          notes?: string | null
+          refund_amount?: number
+          return_courier_amount?: number
+          return_number: string
+          status?: string
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: number
+          invoice_id?: number
+          notes?: string | null
+          refund_amount?: number
+          return_courier_amount?: number
+          return_number?: string
+          status?: string
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thrift_sales_returns_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "thrift_sales_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thrift_sales_returns_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       thrift_settings: {
         Row: {
           created_at: string
@@ -6939,6 +8063,7 @@ export type Database = {
           hand_tag_unit_cost: number | null
           hand_tag_unit_currency_id: number | null
           marketing_tag_config: Json
+          return_window_days: number
           sticker_unit_cost: number | null
           sticker_unit_currency_id: number | null
           tenant_id: number
@@ -6950,6 +8075,7 @@ export type Database = {
           hand_tag_unit_cost?: number | null
           hand_tag_unit_currency_id?: number | null
           marketing_tag_config?: Json
+          return_window_days?: number
           sticker_unit_cost?: number | null
           sticker_unit_currency_id?: number | null
           tenant_id: number
@@ -6961,6 +8087,7 @@ export type Database = {
           hand_tag_unit_cost?: number | null
           hand_tag_unit_currency_id?: number | null
           marketing_tag_config?: Json
+          return_window_days?: number
           sticker_unit_cost?: number | null
           sticker_unit_currency_id?: number | null
           tenant_id?: number
@@ -7244,8 +8371,17 @@ export type Database = {
           color: string | null
           condition: Database["public"]["Enums"]["thrift_condition"] | null
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
           extra_origin_unit_price: number | null
           extra_weight: number | null
+          held_at: string | null
+          held_by: string | null
+          held_for_name: string | null
+          held_for_phone: string | null
+          held_for_phone_normalized: string | null
+          hold_expires_at: string | null
+          hold_note: string | null
           id: number
           inserted_by: string
           name: string | null
@@ -7272,8 +8408,17 @@ export type Database = {
           color?: string | null
           condition?: Database["public"]["Enums"]["thrift_condition"] | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           extra_origin_unit_price?: number | null
           extra_weight?: number | null
+          held_at?: string | null
+          held_by?: string | null
+          held_for_name?: string | null
+          held_for_phone?: string | null
+          held_for_phone_normalized?: string | null
+          hold_expires_at?: string | null
+          hold_note?: string | null
           id?: number
           inserted_by: string
           name?: string | null
@@ -7300,8 +8445,17 @@ export type Database = {
           color?: string | null
           condition?: Database["public"]["Enums"]["thrift_condition"] | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           extra_origin_unit_price?: number | null
           extra_weight?: number | null
+          held_at?: string | null
+          held_by?: string | null
+          held_for_name?: string | null
+          held_for_phone?: string | null
+          held_for_phone_normalized?: string | null
+          hold_expires_at?: string | null
+          hold_note?: string | null
           id?: number
           inserted_by?: string
           name?: string | null
@@ -7513,6 +8667,7 @@ export type Database = {
           created_at: string
           email: string | null
           id: number
+          is_default: boolean
           market_code: string
           name: string
           parent_tenant_id: number | null
@@ -7527,6 +8682,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: number
+          is_default?: boolean
           market_code: string
           name: string
           parent_tenant_id?: number | null
@@ -7541,6 +8697,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: number
+          is_default?: boolean
           market_code?: string
           name?: string
           parent_tenant_id?: number | null
@@ -7573,11 +8730,75 @@ export type Database = {
           },
         ]
       }
+      wallet_accounts: {
+        Row: {
+          available_balance: number
+          created_at: string
+          currency_code: string
+          entity_id: number
+          entity_type: string
+          id: number
+          locked_balance: number
+          pending_balance: number
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          available_balance?: number
+          created_at?: string
+          currency_code?: string
+          entity_id: number
+          entity_type: string
+          id?: never
+          locked_balance?: number
+          pending_balance?: number
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          available_balance?: number
+          created_at?: string
+          currency_code?: string
+          entity_id?: number
+          entity_type?: string
+          id?: never
+          locked_balance?: number
+          pending_balance?: number
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_accounts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      _assert_parent_warehouse_tenant: {
+        Args: { p_parent_tenant_id: number }
+        Returns: undefined
+      }
+      _can_view_stock_locations: {
+        Args: { p_parent_tenant_id: number }
+        Returns: boolean
+      }
+      _stock_location_is_leaf: { Args: { p_id: number }; Returns: boolean }
+      _validate_stock_location_nesting: {
+        Args: {
+          p_kind: Database["public"]["Enums"]["stock_location_kind"]
+          p_parent_location_id: number
+          p_parent_tenant_id: number
+        }
+        Returns: undefined
+      }
       add_child_line_to_parent_shipment: {
         Args: {
           p_parent_shipment_id: number
@@ -7590,6 +8811,7 @@ export type Database = {
           created_at: string
           id: number
           image_url: string | null
+          landed_cost_bdt: number | null
           name: string
           ordered_quantity: number
           package_weight: number
@@ -7898,11 +9120,24 @@ export type Database = {
               isSetofReturn: false
             }
           }
+      add_stock_movement_line: {
+        Args: {
+          p_from_availability?: Database["public"]["Enums"]["stock_availability"]
+          p_from_location_id?: number
+          p_movement_id: number
+          p_quantity: number
+          p_stock_id: number
+          p_to_availability?: Database["public"]["Enums"]["stock_availability"]
+          p_to_location_id?: number
+        }
+        Returns: Json
+      }
       add_to_shop_cart: {
         Args: {
           p_customer_sell_price_amount?: number
           p_customer_sell_price_currency_id?: number
           p_global_stock_allocation_id?: number
+          p_global_stock_id?: number
           p_product_id: number
           p_quantity?: number
           p_shop_id: number
@@ -8064,6 +9299,14 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      assign_shipment_to_child: {
+        Args: {
+          p_child_tenant_id: number
+          p_parent_tenant_id: number
+          p_shipment_id: number
+        }
+        Returns: Json
+      }
       auth_investor_id: { Args: never; Returns: number }
       browse_shop_catalog: {
         Args: {
@@ -8110,14 +9353,23 @@ export type Database = {
           isSetofReturn: true
         }
       }
-      bulk_allocate_shipment_stock: {
-        Args: {
-          p_child_tenant_id: number
-          p_parent_tenant_id: number
-          p_shipment_id: number
-        }
-        Returns: number
-      }
+      bulk_allocate_shipment_stock:
+        | {
+            Args: {
+              p_child_tenant_id: number
+              p_parent_tenant_id: number
+              p_shipment_id: number
+            }
+            Returns: number
+          }
+        | {
+            Args: {
+              p_allocations?: Json
+              p_child_tenant_id: number
+              p_shipment_id: number
+            }
+            Returns: Json
+          }
       bulk_apply_shop_markup:
         | {
             Args: {
@@ -8359,6 +9611,7 @@ export type Database = {
         Returns: boolean
       }
       cart_exists: { Args: { p_cart_id: number }; Returns: boolean }
+      ceil_thrift_retail_price: { Args: { p_price: number }; Returns: number }
       check_login_membership: {
         Args: { p_email: string; p_scope: string }
         Returns: {
@@ -8468,6 +9721,18 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      create_cargo_company_with_wallet: {
+        Args: {
+          p_address?: string
+          p_code: string
+          p_email?: string
+          p_name: string
+          p_notes?: string
+          p_phone?: string
+          p_tenant_id: number
+        }
+        Returns: Json
       }
       create_costing_file:
         | {
@@ -8719,6 +9984,54 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_shipment_draft: {
+        Args: {
+          p_cargo_company_id?: number
+          p_name: string
+          p_parent_tenant_id: number
+          p_type: Database["public"]["Enums"]["global_shipment_type"]
+          p_vendor_id?: number
+        }
+        Returns: {
+          assigned_child_tenant_id: number | null
+          cargo_company_id: number | null
+          cargo_invoice_total: number | null
+          created_at: string
+          id: number
+          inventory_added: boolean
+          name: string
+          parent_tenant_id: number
+          progress_tag_id: number | null
+          purchase_invoice_total: number | null
+          received_date: string | null
+          received_weight: number | null
+          shipment_cost_currency_id: number | null
+          shipment_purchase_currency_id: number | null
+          status: string
+          stock_ready: boolean
+          tenant_shipment_id: number | null
+          total_weight_kg: number | null
+          type: Database["public"]["Enums"]["global_shipment_type"]
+          updated_at: string
+          vendor_id: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "global_shipments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_stock_movement: {
+        Args: {
+          p_movement_type: Database["public"]["Enums"]["stock_movement_type"]
+          p_notes?: string
+          p_reference_id?: string
+          p_reference_type?: string
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
       create_store: {
         Args: { p_name: string; p_tenant_id: number; p_vendor_code: string }
         Returns: {
@@ -8846,6 +10159,62 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_thrift_sales_invoice: {
+        Args: {
+          p_advance_amount?: number
+          p_advance_note?: string
+          p_cod_fee_amount?: number
+          p_cod_fee_paid_by?: string
+          p_courier_amount?: number
+          p_courier_paid_by?: string
+          p_courier_provider?: string
+          p_courier_provider_id?: number
+          p_created_by?: string
+          p_customer_address?: string
+          p_customer_address_parts?: Json
+          p_customer_name?: string
+          p_customer_notes?: string
+          p_customer_phone?: string
+          p_customer_secondary_phone?: string
+          p_date?: string
+          p_invoice_number?: string
+          p_items?: Json
+          p_meta?: Json
+          p_notes?: string
+          p_packing_amount?: number
+          p_packing_paid_by?: string
+          p_payment_method?: string
+          p_payment_status?: string
+          p_sale_channel?: string
+          p_tenant_id: number
+          p_total_invoice_amount?: number
+        }
+        Returns: Json
+      }
+      create_thrift_sales_return: {
+        Args: {
+          p_created_by?: string
+          p_invoice_id: number
+          p_items: Json
+          p_notes?: string
+          p_return_courier_amount?: number
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
+      create_vendor_with_wallet: {
+        Args: {
+          p_address?: string
+          p_code: string
+          p_email?: string
+          p_market_code: string
+          p_name: string
+          p_phone?: string
+          p_tenant_id: number
+          p_website?: string
+        }
+        Returns: Json
+      }
       current_authenticated_email: { Args: never; Returns: string }
       current_costing_item_actor_role: {
         Args: { p_costing_file_id: number }
@@ -8853,12 +10222,28 @@ export type Database = {
       }
       current_tenant_id: { Args: never; Returns: number }
       current_user_email: { Args: never; Returns: string }
+      customer_confirm_shop_order: {
+        Args: { p_order_id: number }
+        Returns: undefined
+      }
       customer_counter_offer: {
         Args: { p_items: Json; p_order_id: number }
         Returns: undefined
       }
+      default_pickable_stock_location_id: {
+        Args: { p_tenant_id: number }
+        Returns: number
+      }
+      default_putaway_stock_location_id: {
+        Args: { p_tenant_id: number }
+        Returns: number
+      }
       delete_customer_group_member_grant: {
         Args: { p_action: string; p_cgm_id: number; p_module_key: string }
+        Returns: undefined
+      }
+      delete_global_shipment_cost_entry: {
+        Args: { p_id: number }
         Returns: undefined
       }
       delete_global_stock_allocation: {
@@ -8888,6 +10273,7 @@ export type Database = {
         Args: { p_listing_id: number; p_tenant_id: number }
         Returns: boolean
       }
+      delete_stock_location: { Args: { p_id: number }; Returns: undefined }
       delete_store: { Args: { p_id: number }; Returns: undefined }
       delete_store_access: { Args: { p_id: number }; Returns: undefined }
       delete_tenant_for_superadmin: {
@@ -8916,6 +10302,10 @@ export type Database = {
         }[]
       }
       delete_tenant_role: { Args: { p_role_id: number }; Returns: undefined }
+      delete_thrift_stocks: {
+        Args: { p_stock_ids: number[]; p_tenant_id: number }
+        Returns: Json
+      }
       dispense_middleman_payout: {
         Args: {
           p_amount: number
@@ -8935,9 +10325,39 @@ export type Database = {
         }
         Returns: Json
       }
+      ensure_default_cargo_company: {
+        Args: { p_tenant_id: number }
+        Returns: number
+      }
+      ensure_default_vendor: { Args: { p_tenant_id: number }; Returns: number }
       ensure_dropship_invoice_billed_entry: {
         Args: { p_invoice_id: number }
         Returns: undefined
+      }
+      ensure_global_shipment_cost_entries_from_header: {
+        Args: { p_shipment_id: number }
+        Returns: undefined
+      }
+      ensure_shipment_progress_tags: {
+        Args: { p_tenant_id: number }
+        Returns: {
+          color: string
+          created_at: string
+          created_by_email: string
+          group_name: string | null
+          id: number
+          name: string
+          slug: string
+          sort_order: number | null
+          tenant_id: number | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "tags"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       fetch_customer_shop_categories: {
         Args: { p_tenant_id: number }
@@ -8955,6 +10375,10 @@ export type Database = {
           p_override_reason?: string
           p_return_ref?: string
         }
+        Returns: Json
+      }
+      finalize_global_shipment: {
+        Args: { p_shipment_id: number; p_stock_rows?: Json }
         Returns: Json
       }
       find_active_tenant_by_public_domain: {
@@ -8990,6 +10414,14 @@ export type Database = {
       generate_thrift_barcodes: {
         Args: { p_inserted_by: string; p_quantity: number; p_tenant_id: number }
         Returns: string[]
+      }
+      generate_thrift_invoice_number: {
+        Args: { p_date?: string; p_tenant_id: number }
+        Returns: string
+      }
+      generate_thrift_return_number: {
+        Args: { p_date?: string; p_tenant_id: number }
+        Returns: string
       }
       get_active_module_keys_for_tenant: {
         Args: { p_tenant_id: number }
@@ -9398,8 +10830,22 @@ export type Database = {
         Returns: number
       }
       get_tenant_role_detail: { Args: { p_role_id: number }; Returns: Json }
+      get_thrift_customer_sales_risk: {
+        Args: { p_phone: string; p_tenant_id: number }
+        Returns: Json
+      }
       get_thrift_dashboard_metrics: {
         Args: { p_tenant_id: number }
+        Returns: Json
+      }
+      get_thrift_sales_report: {
+        Args: {
+          p_date_from: string
+          p_date_to: string
+          p_outcome?: string
+          p_sale_channel?: string
+          p_tenant_id: number
+        }
         Returns: Json
       }
       get_thrift_shipment_sales_report: {
@@ -9414,6 +10860,7 @@ export type Database = {
           created_at: string
           email: string | null
           id: number
+          is_default: boolean
           market_code: string
           name: string
           parent_tenant_id: number | null
@@ -9428,6 +10875,29 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      get_wallet_account_balances: {
+        Args: {
+          p_currency_code?: string
+          p_entity_id: number
+          p_entity_type: string
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
+      get_wallet_dashboard_summary: {
+        Args: { p_tenant_id: number }
+        Returns: Json
+      }
+      get_wallet_entity_statement: {
+        Args: {
+          p_end_date?: string
+          p_entity_id: number
+          p_entity_type: string
+          p_start_date?: string
+          p_tenant_id: number
+        }
+        Returns: Json
       }
       global_search_tasks: {
         Args: { p_query: string }
@@ -9447,6 +10917,14 @@ export type Database = {
           type: string
           updated_at: string
         }[]
+      }
+      global_stock_atp_qty: {
+        Args: { p_global_stock_id: number }
+        Returns: number
+      }
+      global_stock_hold_qty: {
+        Args: { p_global_stock_id: number }
+        Returns: number
       }
       grant_costing_file_viewer: {
         Args: { p_costing_file_id: number; p_membership_id: number }
@@ -9469,6 +10947,18 @@ export type Database = {
       has_module_action: {
         Args: { p_action: string; p_module_key: string; p_tenant_id: number }
         Returns: boolean
+      }
+      hold_thrift_stock: {
+        Args: {
+          p_held_by?: string
+          p_held_for_name?: string
+          p_held_for_phone: string
+          p_hold_expires_at?: string
+          p_hold_note?: string
+          p_stock_id: number
+          p_tenant_id: number
+        }
+        Returns: Json
       }
       investor_tenant_can_view: {
         Args: { p_tenant_id: number }
@@ -9538,26 +11028,28 @@ export type Database = {
         }
         Returns: Json
       }
-      list_allocations_for_shop_pick: {
-        Args: { p_shop_id: number; p_tenant_id: number }
-        Returns: {
-          allocated_quantity: number
-          allocation_id: number
-          minimum_sell_price_amount: number
-          minimum_sell_price_currency_id: number
-          product_barcode: string
-          product_brand: string
-          product_category: string
-          product_code: string
-          product_id: number
-          product_image_url: string
-          product_name: string
-          shipment_id: number
-          shipment_item_id: number
-          stock_id: number
-          unit_cost_amount: number
-        }[]
-      }
+      list_allocations_for_shop_pick:
+        | { Args: { p_search?: string; p_shop_id: number }; Returns: Json }
+        | {
+            Args: { p_shop_id: number; p_tenant_id: number }
+            Returns: {
+              allocated_quantity: number
+              allocation_id: number
+              minimum_sell_price_amount: number
+              minimum_sell_price_currency_id: number
+              product_barcode: string
+              product_brand: string
+              product_category: string
+              product_code: string
+              product_id: number
+              product_image_url: string
+              product_name: string
+              shipment_id: number
+              shipment_item_id: number
+              stock_id: number
+              unit_cost_amount: number
+            }[]
+          }
       list_billing_balances: {
         Args: { p_search?: string; p_tenant_id: number }
         Returns: Json
@@ -9600,6 +11092,15 @@ export type Database = {
           source_id: number
           source_type: string
         }[]
+      }
+      list_child_stock_atp: {
+        Args: {
+          p_child_tenant_id: number
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+        }
+        Returns: Json
       }
       list_child_tenant_ids: {
         Args: { p_parent_tenant_id: number }
@@ -9702,6 +11203,26 @@ export type Database = {
           module_key: string
         }[]
       }
+      list_customer_order_backlog_items: {
+        Args: { p_billing_profile_id: number; p_tenant_id: number }
+        Returns: {
+          backlog_status: string
+          barcode: string
+          billing_profile_id: number
+          created_at: string
+          fulfilled_quantity: number
+          id: number
+          image_url: string
+          name: string
+          open_quantity: number
+          order_id: number
+          order_item_id: number
+          product_code: string
+          product_id: number
+          requested_quantity: number
+          tenant_id: number
+        }[]
+      }
       list_dropship_shop_orders_for_staff: {
         Args: {
           p_limit?: number
@@ -9778,6 +11299,33 @@ export type Database = {
           transaction_rate: number
         }[]
       }
+      list_global_shipment_cost_entries: {
+        Args: { p_shipment_id: number }
+        Returns: {
+          allocation: string | null
+          amount: number
+          cost_type: Database["public"]["Enums"]["global_shipment_cost_type"]
+          created_at: string
+          currency_id: number | null
+          entity_id: number | null
+          entity_type: string | null
+          exchange_rate: number
+          id: number
+          metadata: Json
+          parent_tenant_id: number
+          payment_source: string | null
+          settled_at: string | null
+          settlement_ledger_id: string | null
+          shipment_id: number
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "global_shipment_cost_entries"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       list_global_shipments_paginated: {
         Args: {
           p_page?: number
@@ -9801,8 +11349,10 @@ export type Database = {
       }
       list_global_stocks_paginated: {
         Args: {
+          p_availability?: Database["public"]["Enums"]["stock_availability"]
           p_hide_zero_stock?: boolean
           p_is_sellable?: boolean
+          p_location_id?: number
           p_page?: number
           p_page_size?: number
           p_search?: string
@@ -9958,6 +11508,15 @@ export type Database = {
           p_page_size?: number
           p_search?: string
           p_tenant_id: number
+        }
+        Returns: Json
+      }
+      list_listable_stock_for_shop: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_shop_id: number
         }
         Returns: Json
       }
@@ -10286,6 +11845,33 @@ export type Database = {
           tenant_id: number
         }[]
       }
+      list_stock_locations: {
+        Args: { p_include_inactive?: boolean; p_parent_tenant_id: number }
+        Returns: {
+          code: string
+          created_at: string
+          id: number
+          is_active: boolean
+          is_default: boolean
+          is_pickable: boolean
+          kind: Database["public"]["Enums"]["stock_location_kind"]
+          name: string
+          parent_location_id: number | null
+          parent_tenant_id: number
+          sort_order: number
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "stock_locations"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      list_stock_movements: {
+        Args: { p_limit?: number; p_offset?: number; p_tenant_id: number }
+        Returns: Json
+      }
       list_store_product_pricing: {
         Args: {
           p_page?: number
@@ -10435,6 +12021,32 @@ export type Database = {
         }
         Returns: Json
       }
+      list_thrift_sales_invoices_paginated: {
+        Args: {
+          p_delivery_status?: string
+          p_page?: number
+          p_page_size?: number
+          p_payment_status?: string
+          p_search?: string
+          p_status?: string
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
+      list_thrift_sales_returns_paginated: {
+        Args: {
+          p_date_from?: string
+          p_date_to?: string
+          p_has_damaged?: boolean
+          p_invoice_id?: number
+          p_page?: number
+          p_page_size?: number
+          p_search?: string
+          p_skip_count?: boolean
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
       list_thrift_stocks_paginated: {
         Args: {
           p_condition?: string
@@ -10472,6 +12084,7 @@ export type Database = {
           created_at: string
           email: string | null
           id: number
+          is_default: boolean
           market_code: string
           name: string
           parent_tenant_id: number | null
@@ -10526,6 +12139,7 @@ export type Database = {
         Returns: number
       }
       normalize_bd_mobile: { Args: { p_phone: string }; Returns: string }
+      normalize_thrift_phone: { Args: { p_phone: string }; Returns: string }
       parent_tenant_has_module_action: {
         Args: {
           p_action: string
@@ -10533,6 +12147,10 @@ export type Database = {
           p_parent_tenant_id: number
         }
         Returns: boolean
+      }
+      pay_settle_shipment_costs: {
+        Args: { p_cost_entry_ids?: number[]; p_shipment_id: number }
+        Returns: Json
       }
       place_commerce_order: {
         Args: {
@@ -10579,6 +12197,7 @@ export type Database = {
         Args: { p_invoice_id: number }
         Returns: undefined
       }
+      post_stock_movement: { Args: { p_movement_id: number }; Returns: Json }
       process_courier_bulk_remittance_batch: {
         Args: { p_batch_id: number }
         Returns: Json
@@ -10736,31 +12355,11 @@ export type Database = {
           p_metadata?: Json
           p_source_id?: string
           p_source_type?: string
+          p_target_bucket?: string
           p_tenant_id: number
           p_type: string
         }
-        Returns: {
-          amount: number
-          balance_after: number
-          base_amount: number
-          created_at: string
-          currency_code: string
-          entity_id: number
-          entity_type: string
-          exchange_rate: number
-          id: string
-          metadata: Json
-          source_id: string | null
-          source_type: string
-          tenant_id: number
-          type: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "universal_wallet_ledger"
-          isOneToOne: true
-          isSetofReturn: false
-        }
+        Returns: Json
       }
       record_recipient_invoice_collection: {
         Args: {
@@ -10811,6 +12410,40 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      record_thrift_cod_remittance: {
+        Args: {
+          p_actor: string
+          p_invoice_id: number
+          p_notes?: string
+          p_outcome?: string
+          p_remittance_ref?: string
+          p_remitted_amount: number
+          p_remitted_at?: string
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
+      record_vendor_grn_payable: {
+        Args: {
+          p_amount: number
+          p_metadata?: Json
+          p_source_id: string
+          p_tenant_id: number
+          p_vendor_id: number
+        }
+        Returns: Json
+      }
+      record_vendor_payment_outflow: {
+        Args: {
+          p_amount: number
+          p_note?: string
+          p_payment_method?: string
+          p_reference?: string
+          p_tenant_id: number
+          p_vendor_id: number
+        }
+        Returns: Json
       }
       refresh_commerce_inventory_product_summaries: {
         Args: { p_tenant_id?: number }
@@ -10891,6 +12524,10 @@ export type Database = {
             }
             Returns: number
           }
+      release_thrift_stock_hold: {
+        Args: { p_stock_id: number; p_tenant_id: number }
+        Returns: Json
+      }
       remove_global_invoice_item: {
         Args: { p_invoice_item_id: number }
         Returns: undefined
@@ -10932,6 +12569,26 @@ export type Database = {
         Args: { p_scanned_value: string; p_tenant_id: number }
         Returns: string
       }
+      return_shipment_to_vendor: {
+        Args: { p_items_qty: Json; p_outcome: string; p_shipment_id: number }
+        Returns: Json
+      }
+      revert_thrift_sales_invoice: {
+        Args: {
+          p_force?: boolean
+          p_invoice_id: number
+          p_notes?: string
+          p_reason: string
+          p_return_courier_amount?: number
+          p_reverted_by?: string
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
+      revise_global_shipment_costs: {
+        Args: { p_entries: Json; p_shipment_id: number }
+        Returns: Json
+      }
       revoke_costing_file_viewer: {
         Args: { p_costing_file_id: number; p_membership_id: number }
         Returns: {
@@ -10961,6 +12618,7 @@ export type Database = {
         }
         Returns: {
           allocated_qty: number
+          available_atp: number
           barcode: string
           box_damage_qty: number
           box_less_qty: number
@@ -10975,6 +12633,8 @@ export type Database = {
           image_url: string
           is_own_tenant: boolean
           is_pickable: boolean
+          location_id: number
+          location_name: string
           name: string
           ordered_quantity: number
           package_weight: number
@@ -10997,9 +12657,45 @@ export type Database = {
           transaction_rate: number
         }[]
       }
+      search_thrift_available_stocks_for_sale: {
+        Args: {
+          p_customer_phone?: string
+          p_limit?: number
+          p_search?: string
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
       seed_tenant_roles_and_grants: {
         Args: { p_tenant_id: number }
         Returns: undefined
+      }
+      set_default_stock_location: {
+        Args: { p_id: number }
+        Returns: {
+          code: string
+          created_at: string
+          id: number
+          is_active: boolean
+          is_default: boolean
+          is_pickable: boolean
+          kind: Database["public"]["Enums"]["stock_location_kind"]
+          name: string
+          parent_location_id: number | null
+          parent_tenant_id: number
+          sort_order: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "stock_locations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      set_global_shipment_progress_tag: {
+        Args: { p_shipment_id: number; p_tag_id?: number }
+        Returns: Json
       }
       set_tenant_module_submodule_for_superadmin: {
         Args: {
@@ -11024,9 +12720,38 @@ export type Database = {
         Args: { p_items: Json; p_order_id: number }
         Returns: undefined
       }
-      staff_price_shop_order: {
+      staff_finalize_catalog_prices: {
         Args: { p_items: Json; p_order_id: number }
         Returns: undefined
+      }
+      staff_price_shop_order:
+        | { Args: { p_items: Json; p_order_id: number }; Returns: undefined }
+        | {
+            Args: {
+              p_cargo_rate?: number
+              p_fx_rate?: number
+              p_items: Json
+              p_order_id: number
+              p_profit_basis?: string
+              p_profit_pct?: number
+            }
+            Returns: undefined
+          }
+      staff_set_catalog_delivered_qty: {
+        Args: { p_items: Json; p_order_id: number }
+        Returns: undefined
+      }
+      staff_set_catalog_ordered_qty: {
+        Args: { p_items: Json; p_order_id: number }
+        Returns: undefined
+      }
+      staff_start_catalog_procurement: {
+        Args: { p_order_id: number }
+        Returns: undefined
+      }
+      stamp_global_shipment_landed_costs: {
+        Args: { p_shipment_id: number }
+        Returns: number
       }
       submit_shop_order_from_cart:
         | {
@@ -11073,6 +12798,20 @@ export type Database = {
           sort_seq: number
           sort_year: string
         }[]
+      }
+      transfer_wallet_balance: {
+        Args: {
+          p_amount: number
+          p_currency_code?: string
+          p_entity_id: number
+          p_entity_type: string
+          p_from_bucket: string
+          p_metadata?: Json
+          p_notes?: string
+          p_tenant_id: number
+          p_to_bucket: string
+        }
+        Returns: Json
       }
       unpost_global_invoice: {
         Args: { p_invoice_id: number }
@@ -11544,6 +13283,15 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      update_thrift_sales_delivery_status: {
+        Args: {
+          p_actor?: string
+          p_delivery_status: string
+          p_invoice_id: number
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
       upsert_customer_group_member_grant: {
         Args: {
           p_action: string
@@ -11600,6 +13348,45 @@ export type Database = {
           to: "customer_group_shop_profiles"
           isOneToOne: false
           isSetofReturn: true
+        }
+      }
+      upsert_global_shipment_cost_entry: {
+        Args: {
+          p_allocation?: string
+          p_amount: number
+          p_cost_type: Database["public"]["Enums"]["global_shipment_cost_type"]
+          p_currency_id?: number
+          p_entity_id?: number
+          p_entity_type?: string
+          p_exchange_rate?: number
+          p_id?: number
+          p_metadata?: Json
+          p_payment_source?: string
+          p_shipment_id: number
+        }
+        Returns: {
+          allocation: string | null
+          amount: number
+          cost_type: Database["public"]["Enums"]["global_shipment_cost_type"]
+          created_at: string
+          currency_id: number | null
+          entity_id: number | null
+          entity_type: string | null
+          exchange_rate: number
+          id: number
+          metadata: Json
+          parent_tenant_id: number
+          payment_source: string | null
+          settled_at: string | null
+          settlement_ledger_id: string | null
+          shipment_id: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "global_shipment_cost_entries"
+          isOneToOne: true
+          isSetofReturn: false
         }
       }
       upsert_global_stock_allocation: {
@@ -12043,6 +13830,51 @@ export type Database = {
         | {
             Args: {
               p_display_quantity_override?: number
+              p_global_stock_allocation_id?: number
+              p_global_stock_id?: number
+              p_id?: number
+              p_is_active?: boolean
+              p_is_price_locked?: boolean
+              p_is_quantity_locked?: boolean
+              p_minimum_sell_price_amount?: number
+              p_minimum_sell_price_currency_id?: number
+              p_quantity_override_type?: string
+              p_sell_price_amount?: number
+              p_sell_price_currency_id?: number
+              p_shop_id: number
+              p_show_quantity?: boolean
+              p_tenant_id: number
+            }
+            Returns: {
+              created_at: string
+              display_quantity_override: number | null
+              global_stock_allocation_id: number | null
+              global_stock_id: number
+              id: number
+              is_active: boolean
+              is_price_locked: boolean
+              is_quantity_locked: boolean
+              minimum_sell_price_amount: number | null
+              minimum_sell_price_currency_id: number | null
+              product_id: number
+              quantity_override_type: string
+              sell_price_amount: number
+              sell_price_currency_id: number
+              shop_id: number
+              show_quantity: boolean | null
+              tenant_id: number
+              updated_at: string
+            }[]
+            SetofOptions: {
+              from: "*"
+              to: "shop_product_listings"
+              isOneToOne: false
+              isSetofReturn: true
+            }
+          }
+        | {
+            Args: {
+              p_display_quantity_override?: number
               p_global_stock_allocation_id: number
               p_id?: number
               p_is_active?: boolean
@@ -12057,7 +13889,7 @@ export type Database = {
             Returns: {
               created_at: string
               display_quantity_override: number | null
-              global_stock_allocation_id: number
+              global_stock_allocation_id: number | null
               global_stock_id: number
               id: number
               is_active: boolean
@@ -12101,7 +13933,7 @@ export type Database = {
             Returns: {
               created_at: string
               display_quantity_override: number | null
-              global_stock_allocation_id: number
+              global_stock_allocation_id: number | null
               global_stock_id: number
               id: number
               is_active: boolean
@@ -12125,6 +13957,40 @@ export type Database = {
               isSetofReturn: true
             }
           }
+      upsert_stock_location: {
+        Args: {
+          p_code: string
+          p_id?: number
+          p_is_active?: boolean
+          p_is_default?: boolean
+          p_is_pickable?: boolean
+          p_kind?: Database["public"]["Enums"]["stock_location_kind"]
+          p_name: string
+          p_parent_location_id?: number
+          p_parent_tenant_id: number
+          p_sort_order?: number
+        }
+        Returns: {
+          code: string
+          created_at: string
+          id: number
+          is_active: boolean
+          is_default: boolean
+          is_pickable: boolean
+          kind: Database["public"]["Enums"]["stock_location_kind"]
+          name: string
+          parent_location_id: number | null
+          parent_tenant_id: number
+          sort_order: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "stock_locations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       upsert_tenant_role_grant: {
         Args: {
           p_action: string
@@ -12168,7 +14034,14 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "superadmin" | "admin" | "manager" | "staff" | "cashier" | "viewer" | "investor"
+      app_role:
+        | "superadmin"
+        | "admin"
+        | "staff"
+        | "viewer"
+        | "investor"
+        | "manager"
+        | "cashier"
       collection_source_type: "billing_profile" | "recipient"
       commerce_order_status:
         | "placed"
@@ -12191,8 +14064,17 @@ export type Database = {
       global_fulfillment_status: "pending" | "packed" | "shipped" | "delivered"
       global_invoice_status: "draft" | "posted" | "voided"
       global_invoice_type: "wholesale" | "retail" | "dropship"
+      global_shipment_cost_type:
+        | "product"
+        | "cargo"
+        | "duty"
+        | "insurance"
+        | "labor"
+        | "washing"
+        | "transport"
+        | "handling"
       global_shipment_item_add_method: "order" | "costing" | "manual"
-      global_shipment_type: "domestic" | "international"
+      global_shipment_type: "local" | "international" | "transfer" | "thrift"
       global_source_module: "wholesale" | "retail" | "commerce"
       investor_payment_method: "cash" | "bank" | "mobile_banking" | "other"
       investor_transaction_type:
@@ -12244,7 +14126,21 @@ export type Database = {
         | "payment_received"
         | "ready_for_pickup"
         | "returned"
+        | "costing_pending"
+        | "countered"
+        | "final_offered"
+        | "procuring"
+        | "ordered"
       shop_type_enum: "vendor_catalog" | "fixed_price" | "dropship"
+      stock_availability: "sellable" | "held" | "unsellable"
+      stock_location_kind: "shelf" | "slot" | "box" | "returns"
+      stock_movement_type:
+        | "receive_putaway"
+        | "location_transfer"
+        | "availability_transfer"
+        | "adjustment"
+        | "return_inbound"
+        | "receive_rollback"
       thrift_condition: "NEW_WITH_TAGS" | "EXCELLENT" | "GOOD" | "FAIR"
       thrift_delivery_status:
         | "PENDING"
@@ -12258,7 +14154,13 @@ export type Database = {
       thrift_payment_status: "UNPAID" | "PAID" | "REFUNDED"
       thrift_return_action: "RESTOCK" | "WRITE_OFF"
       thrift_section: "MALE" | "FEMALE" | "UNISEX" | "KIDS" | "HOME"
-      thrift_stock_status: "AVAILABLE" | "OUT_OF_STOCK" | "DAMAGED" | "STOLEN"
+      thrift_stock_status:
+        | "AVAILABLE"
+        | "OUT_OF_STOCK"
+        | "DAMAGED"
+        | "STOLEN"
+        | "SOLD"
+        | "RESERVED"
       thrift_stock_type: "SINGLE" | "BULK"
       thrift_transaction_method: "CASH" | "CARD" | "MOBILE_BANKING" | "COD"
     }
@@ -12388,7 +14290,15 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["superadmin", "admin", "manager", "staff", "cashier", "viewer", "investor"],
+      app_role: [
+        "superadmin",
+        "admin",
+        "staff",
+        "viewer",
+        "investor",
+        "manager",
+        "cashier",
+      ],
       collection_source_type: ["billing_profile", "recipient"],
       commerce_order_status: [
         "placed",
@@ -12413,8 +14323,18 @@ export const Constants = {
       global_fulfillment_status: ["pending", "packed", "shipped", "delivered"],
       global_invoice_status: ["draft", "posted", "voided"],
       global_invoice_type: ["wholesale", "retail", "dropship"],
+      global_shipment_cost_type: [
+        "product",
+        "cargo",
+        "duty",
+        "insurance",
+        "labor",
+        "washing",
+        "transport",
+        "handling",
+      ],
       global_shipment_item_add_method: ["order", "costing", "manual"],
-      global_shipment_type: ["domestic", "international"],
+      global_shipment_type: ["local", "international", "transfer", "thrift"],
       global_source_module: ["wholesale", "retail", "commerce"],
       investor_payment_method: ["cash", "bank", "mobile_banking", "other"],
       investor_transaction_type: [
@@ -12470,8 +14390,23 @@ export const Constants = {
         "payment_received",
         "ready_for_pickup",
         "returned",
+        "costing_pending",
+        "countered",
+        "final_offered",
+        "procuring",
+        "ordered",
       ],
       shop_type_enum: ["vendor_catalog", "fixed_price", "dropship"],
+      stock_availability: ["sellable", "held", "unsellable"],
+      stock_location_kind: ["shelf", "slot", "box", "returns"],
+      stock_movement_type: [
+        "receive_putaway",
+        "location_transfer",
+        "availability_transfer",
+        "adjustment",
+        "return_inbound",
+        "receive_rollback",
+      ],
       thrift_condition: ["NEW_WITH_TAGS", "EXCELLENT", "GOOD", "FAIR"],
       thrift_delivery_status: [
         "PENDING",
@@ -12486,7 +14421,14 @@ export const Constants = {
       thrift_payment_status: ["UNPAID", "PAID", "REFUNDED"],
       thrift_return_action: ["RESTOCK", "WRITE_OFF"],
       thrift_section: ["MALE", "FEMALE", "UNISEX", "KIDS", "HOME"],
-      thrift_stock_status: ["AVAILABLE", "OUT_OF_STOCK", "DAMAGED", "STOLEN"],
+      thrift_stock_status: [
+        "AVAILABLE",
+        "OUT_OF_STOCK",
+        "DAMAGED",
+        "STOLEN",
+        "SOLD",
+        "RESERVED",
+      ],
       thrift_stock_type: ["SINGLE", "BULK"],
       thrift_transaction_method: ["CASH", "CARD", "MOBILE_BANKING", "COD"],
     },

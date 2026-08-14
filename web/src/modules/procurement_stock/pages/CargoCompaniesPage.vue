@@ -5,10 +5,13 @@
         <div class="col">
           <div class="text-overline text-primary">Procurement & Stock</div>
           <h1 class="text-h5 text-weight-bold q-my-none">Cargo companies</h1>
+          <div class="text-body2 text-grey-7 q-mt-xs">
+            Freight agents used on inbound shipments.
+          </div>
         </div>
         <div class="col-auto">
           <q-btn
-            v-if="canCreate"
+            v-if="canCreate && store.items.length > 0"
             color="primary"
             unelevated
             no-caps
@@ -51,7 +54,21 @@
         </q-card>
 
         <div v-if="filteredRows.length === 0" class="text-center text-grey-7 q-pa-lg">
-          No cargo companies found.
+          <q-icon name="ph ph-airplane-tilt" size="48px" class="q-mb-sm text-grey-4" />
+          <div class="text-subtitle1 text-weight-medium q-mb-xs">
+            {{ store.items.length === 0 ? 'No cargo companies yet' : 'No cargo companies found' }}
+          </div>
+          <div v-if="store.items.length === 0" class="text-body2 q-mb-md">
+            Add a freight agent to use on inbound shipments.
+          </div>
+          <q-btn
+            v-if="canCreate && store.items.length === 0"
+            color="primary"
+            unelevated
+            no-caps
+            label="Add cargo company"
+            @click="openCreate"
+          />
         </div>
 
         <q-card v-else flat bordered>

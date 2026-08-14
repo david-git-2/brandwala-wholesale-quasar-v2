@@ -20,13 +20,13 @@
     <!-- Step 1 -->
     <div class="bg-blue-1 border-light rounded-borders q-pa-sm q-mb-md">
       <div class="text-caption text-weight-bold text-blue-9 q-mb-xs">
-        1. Enter paid purchase invoice total ({{ purchaseCurrencySymbol }})
+        1. Paid purchase invoice total ({{ purchaseCurrencySymbol }})
       </div>
       <div class="text-caption text-grey-7 q-mb-sm" style="font-size: 11px; line-height: 1.3">
-        Exact amount paid to the vendor. Save first — apply only redistributes line prices.
+        Paid total vs sum of line prices. Save first — apply only redistributes line prices.
       </div>
-      <div class="row q-col-gutter-sm items-center">
-        <div class="col-12 col-sm-8">
+      <div class="row q-col-gutter-sm items-end">
+        <div :class="multiProductRates ? 'col-12 col-sm-6' : 'col-12 col-sm-8'">
           <q-input
             v-model.number="purchaseInvoiceTotal"
             type="number"
@@ -37,9 +37,17 @@
             class="soft-input"
             step="0.01"
             :prefix="purchaseCurrencySymbol"
+            :readonly="multiProductRates"
+            :disable="multiProductRates"
+            :hint="
+              multiProductRates
+                ? 'Sum of product rates (edit split on Landed cost)'
+                : 'Used as product invoice total for costing'
+            "
           >
             <template v-slot:append>
               <q-btn
+                v-if="!multiProductRates"
                 flat
                 round
                 dense
@@ -49,10 +57,23 @@
                 :loading="savingPurchaseInvoiceTotal"
                 @click="savePurchaseInvoiceTotal"
               >
-                <q-tooltip>Save Purchase Invoice Total</q-tooltip>
+                <q-tooltip>Save only</q-tooltip>
               </q-btn>
             </template>
           </q-input>
+        </div>
+        <div v-if="multiProductRates" class="col-12 col-sm-6">
+          <q-btn
+            color="primary"
+            outline
+            unelevated
+            no-caps
+            class="full-width"
+            icon="ph ph-arrow-right"
+            label="Open Landed cost"
+            data-test="purchase-open-landed-cost"
+            @click="emit('go-landed-cost')"
+          />
         </div>
       </div>
     </div>
@@ -216,7 +237,7 @@
       <div class="col-12 col-sm-6">
         <q-btn
           color="primary"
-          label="Save & apply"
+          :label="multiProductRates ? 'Apply purchase balance' : 'Save & apply'"
           class="full-width pill-btn shadow-1"
           unelevated
           no-caps
@@ -242,6 +263,7 @@ import {
   computePurchasePriceAdjustments,
   calculateEstimatedPurchaseTotal,
 } from '../utils/purchaseBalance';
+import { sumProductEntryAmount } from 'src/shared/shipment-engine';
 import {
   showSuccessNotification,
   showErrorNotification,
@@ -254,6 +276,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'applied'): void;
+  (e: 'go-landed-cost'): void;
 }>();
 
 const $q = useQuasar();
@@ -267,6 +290,18 @@ const purchaseCurrencySymbol = ref('£');
 
 const items = computed(() => shipmentStore.currentShipmentItems);
 
+const productEntryCount = computed(
+  () => shipmentStore.currentCostEntries.filter((e) => e.cost_type === 'product').length,
+);
+
+const multiProductRates = computed(() => productEntryCount.value > 1);
+
+const savedProductInvoiceTotal = computed(() => {
+  const fromEntries = sumProductEntryAmount(shipmentStore.currentCostEntries);
+  if (fromEntries > 0) return Math.round(fromEntries * 100) / 100;
+  return 0;
+});
+
 // Estimated total using original prices
 const estimated = computed(() => {
   return calculateEstimatedPurchaseTotal(
@@ -279,11 +314,10 @@ const estimated = computed(() => {
   );
 });
 
-// Watch current shipment's saved invoice total
 watch(
-  () => shipmentStore.currentShipment?.purchase_invoice_total,
+  savedProductInvoiceTotal,
   (newVal) => {
-    purchaseInvoiceTotal.value = newVal ?? null;
+    purchaseInvoiceTotal.value = newVal > 0 ? newVal : null;
   },
   { immediate: true },
 );
@@ -291,6 +325,12 @@ watch(
 // Load currency symbol
 onMounted(async () => {
   try {
+    if (
+      !shipmentStore.currentCostEntries.length &&
+      shipmentStore.currentShipment?.id === props.shipmentId
+    ) {
+      await shipmentStore.fetchCostEntries(props.shipmentId);
+    }
     const currencyId = shipmentStore.currentShipment?.shipment_purchase_currency_id;
     if (currencyId) {
       const list = await globalReferenceRepository.listCurrencies();
@@ -305,6 +345,10 @@ onMounted(async () => {
 });
 
 const savePurchaseInvoiceTotal = async (): Promise<boolean> => {
+  if (multiProductRates.value) {
+    showWarningNotification('Edit product amounts on Landed cost.');
+    return false;
+  }
   const val = purchaseInvoiceTotal.value;
   if (val === null || val <= 0) {
     showWarningNotification('Purchase Invoice Total must be greater than 0.');
@@ -313,30 +357,27 @@ const savePurchaseInvoiceTotal = async (): Promise<boolean> => {
   const rounded = Math.round(val * 100) / 100;
   savingPurchaseInvoiceTotal.value = true;
   try {
-    await shipmentStore.updateShipment(props.shipmentId, { purchase_invoice_total: rounded });
+    await shipmentStore.savePurchaseInvoiceTotal(props.shipmentId, rounded);
     purchaseInvoiceTotal.value = rounded;
-    showSuccessNotification('Purchase Invoice Total updated successfully.');
+    showSuccessNotification('Purchase invoice total saved.');
     return true;
   } catch (error: unknown) {
-    showErrorNotification((error as Error).message || 'Failed to update Purchase Invoice Total.');
+    showErrorNotification((error as Error).message || 'Failed to update purchase invoice total.');
     return false;
   } finally {
     savingPurchaseInvoiceTotal.value = false;
   }
 };
 
-const savedInvoiceTotal = computed(() => {
-  const t = shipmentStore.currentShipment?.purchase_invoice_total;
-  return t != null && t > 0 ? Math.round(t * 100) / 100 : 0;
-});
+const savedInvoiceTotal = computed(() => savedProductInvoiceTotal.value);
 
 const hasUnsavedInvoiceTotal = computed(() => {
-  const saved = shipmentStore.currentShipment?.purchase_invoice_total;
+  if (multiProductRates.value) return false;
+  const saved = savedProductInvoiceTotal.value;
   const draft = purchaseInvoiceTotal.value;
-  if (draft === null || draft <= 0) return saved != null && saved > 0;
+  if (draft === null || draft <= 0) return saved > 0;
   const roundedDraft = Math.round(draft * 100) / 100;
-  const roundedSaved = saved != null ? Math.round(saved * 100) / 100 : null;
-  return roundedSaved === null || roundedDraft !== roundedSaved;
+  return roundedDraft !== saved;
 });
 
 const actual = computed(() => savedInvoiceTotal.value);
@@ -426,15 +467,20 @@ const applyDisabled = computed(() => {
 });
 
 const applyDisabledReason = computed(() => {
-  if (savedInvoiceTotal.value <= 0) return 'Save Purchase Invoice Total before applying balance';
-  if (hasUnsavedInvoiceTotal.value) return 'Save Purchase Invoice Total first — unsaved changes';
+  if (savedInvoiceTotal.value <= 0) {
+    return multiProductRates.value
+      ? 'Set product amounts on Landed cost before applying'
+      : 'Save purchase invoice total before applying';
+  }
+  if (hasUnsavedInvoiceTotal.value) return 'Save purchase invoice total first — unsaved changes';
   if (items.value.length === 0) return 'No line items to distribute cost to';
   if (validationError.value !== null) return validationError.value;
-  if (Math.abs(delta.value) < 0.001) return 'No cost delta to balance';
+  if (Math.abs(delta.value) < 0.001) return 'Purchases already match';
   return '';
 });
 
 const saveAndApplyDisabled = computed(() => {
+  if (multiProductRates.value) return applyDisabled.value;
   const draft = purchaseInvoiceTotal.value;
   if (draft === null || draft <= 0) return true;
   if (items.value.length === 0) return true;
@@ -442,6 +488,7 @@ const saveAndApplyDisabled = computed(() => {
 });
 
 const saveAndApplyDisabledReason = computed(() => {
+  if (multiProductRates.value) return applyDisabledReason.value;
   const draft = purchaseInvoiceTotal.value;
   if (draft === null || draft <= 0) return 'Enter a purchase invoice total greater than 0';
   if (items.value.length === 0) return 'No line items to distribute cost to';
@@ -450,8 +497,10 @@ const saveAndApplyDisabledReason = computed(() => {
 
 const saveAndApply = async () => {
   if (saveAndApplyDisabled.value) return;
-  const saved = await savePurchaseInvoiceTotal();
-  if (!saved) return;
+  if (!multiProductRates.value) {
+    const saved = await savePurchaseInvoiceTotal();
+    if (!saved) return;
+  }
   if (applyDisabled.value) {
     if (Math.abs(delta.value) < 0.001) {
       showSuccessNotification('Purchases already match the invoice.');

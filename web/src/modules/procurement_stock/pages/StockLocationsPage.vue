@@ -5,6 +5,9 @@
         <div class="col">
           <div class="text-overline text-primary">Procurement & Stock</div>
           <h1 class="text-h5 text-weight-bold q-my-none">Shelves & boxes</h1>
+          <div class="text-body2 text-grey-7 q-mt-xs">
+            Shelves and boxes where warehouse stock sits.
+          </div>
         </div>
         <div class="col-auto">
           <q-btn

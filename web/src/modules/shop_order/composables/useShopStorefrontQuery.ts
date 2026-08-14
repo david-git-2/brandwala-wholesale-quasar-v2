@@ -111,7 +111,7 @@ export function useShopStorefrontInfiniteQuery(params: Ref<StorefrontQueryParams
 
     for (const page of pages) {
       for (const item of page.items) {
-        const key = `${item.product_id}-${item.global_stock_allocation_id || ''}`;
+        const key = `${item.product_id}-${item.global_stock_id || ''}`;
         if (!seen.has(key)) {
           seen.add(key);
           items.push(item);

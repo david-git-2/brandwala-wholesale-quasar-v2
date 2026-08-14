@@ -5,13 +5,17 @@
         <div class="col">
           <div class="text-overline text-primary">Procurement & Stock</div>
           <h1 class="text-h5 text-weight-bold q-my-none">Inbound Shipments</h1>
+          <div class="text-body2 text-grey-7 q-mt-xs">
+            Incoming goods from vendors. Open a row to add items and receive them.
+          </div>
         </div>
         <div class="col-auto">
           <q-btn
+            v-if="shipmentStore.total > 0"
             color="primary"
             unelevated
             no-caps
-            label="Add Shipment"
+            label="Add shipment"
             @click="openCreateShipment"
           />
         </div>
@@ -116,6 +120,11 @@
                   {{ formatShipmentStatusLabel(props.row.status) }}
                 </q-chip>
               </q-td>
+              <q-td key="progress" :props="props">
+                <span class="text-caption text-grey-8">
+                  {{ props.row.progress_tag?.name || '—' }}
+                </span>
+              </q-td>
               <q-td key="received_date" :props="props">
                 {{ props.row.received_date || '-' }}
               </q-td>
@@ -125,7 +134,20 @@
           <template #no-data>
             <div class="full-width text-center text-grey-7 q-py-lg">
               <q-icon name="ph ph-truck" size="48px" class="q-mb-sm text-grey-4" />
-              <div>No Inbound Shipments Found.</div>
+              <div class="text-subtitle1 text-weight-medium q-mb-xs">
+                {{ shipmentStore.total === 0 ? 'No shipments yet' : 'No shipments match filters' }}
+              </div>
+              <div v-if="shipmentStore.total === 0" class="text-body2 q-mb-md">
+                Add a shipment to start buying and receiving goods.
+              </div>
+              <q-btn
+                v-if="shipmentStore.total === 0"
+                color="primary"
+                unelevated
+                no-caps
+                label="Add shipment"
+                @click="openCreateShipment"
+              />
             </div>
           </template>
         </q-table>
@@ -169,6 +191,13 @@ const columns: QTableColumn[] = [
   { name: 'name', label: 'Shipment Name', field: 'name', align: 'left', sortable: false },
   { name: 'type', label: 'Type', field: 'type', align: 'left', sortable: false },
   { name: 'status', label: 'Status', field: 'status', align: 'left', sortable: false },
+  {
+    name: 'progress',
+    label: 'Progress',
+    field: (row: { progress_tag?: { name?: string } | null }) => row.progress_tag?.name ?? '—',
+    align: 'left',
+    sortable: false,
+  },
   {
     name: 'received_date',
     label: 'Received Date',

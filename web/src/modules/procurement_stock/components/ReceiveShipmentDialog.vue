@@ -1,13 +1,13 @@
 <template>
   <q-dialog ref="dialogRef" @hide="onDialogHide" persistent>
-    <q-card class="q-dialog-plugin" style="width: 800px; max-width: 95vw">
+    <q-card class="q-dialog-plugin" style="width: 900px; max-width: 95vw">
       <q-card-section class="row items-center q-pb-none">
         <div>
           <div class="text-h6 text-primary text-weight-bold">
             Receive Shipment to Warehouse Stock
           </div>
           <div class="text-caption text-grey-7">
-            Assign item quantities to stock types. Sum of splits must equal ordered quantity.
+            Assign quantities to stock types and put-away locations. Sum of splits must equal ordered quantity.
           </div>
         </div>
         <q-space />
@@ -20,12 +20,32 @@
           {{ error }}
         </q-banner>
 
-        <div v-if="loadingStockTypes" class="text-center q-py-xl">
+        <div v-if="loading" class="text-center q-py-xl">
           <q-spinner color="primary" size="2em" />
-          <div class="text-grey-6 q-mt-sm">Loading stock types...</div>
+          <div class="text-grey-6 q-mt-sm">Loading options...</div>
         </div>
 
         <div v-else class="q-gutter-y-lg">
+          <!-- Shipment-level default location shortcut -->
+          <div class="row items-center q-col-gutter-sm bg-grey-2 q-pa-sm rounded-borders">
+            <div class="col-12 col-sm-6">
+              <q-select
+                v-model="globalDefaultLocationId"
+                :options="locationOptions"
+                label="Shipment Default Location (Apply to all splits)"
+                outlined
+                dense
+                emit-value
+                map-options
+                class="bg-white"
+                @update:model-value="applyGlobalLocationToAll"
+              />
+            </div>
+            <div class="col-12 col-sm-6 text-caption text-grey-7">
+              Select a location above to set the default put-away bin for all stock rows.
+            </div>
+          </div>
+
           <div
             v-for="(item, lineIndex) in lines"
             :key="item.id"
@@ -59,19 +79,30 @@
                 :key="splitIndex"
                 class="row q-col-gutter-sm items-center"
               >
-                <div class="col-12 col-sm-4">
+                <div class="col-12 col-sm-3">
                   <q-select
-                    v-model="split.stock_type_id"
-                    :options="stockTypeOptions"
-                    label="Stock Type *"
+                    v-model="split.availability"
+                    :options="availabilityOptions"
+                    label="Availability *"
                     filled
                     dense
                     emit-value
                     map-options
-                    @update:model-value="onStockTypeSelected(split)"
                   />
                 </div>
-                <div class="col-6 col-sm-3">
+                <div class="col-12 col-sm-4">
+                  <q-select
+                    v-model="split.location_id"
+                    :options="locationOptions"
+                    label="Put-away location *"
+                    filled
+                    dense
+                    emit-value
+                    map-options
+                    :rules="[(val) => !!val || 'Location required']"
+                  />
+                </div>
+                <div class="col-6 col-sm-2">
                   <q-input
                     v-model.number="split.quantity"
                     type="number"
@@ -81,10 +112,10 @@
                     :rules="[(val) => val >= 0 || 'Must be >= 0']"
                   />
                 </div>
-                <div class="col-4 col-sm-3">
+                <div class="col-4 col-sm-2">
                   <q-checkbox v-model="split.is_usable" label="Usable Pool" />
                 </div>
-                <div class="col-2 col-sm-2 text-right">
+                <div class="col-2 col-sm-1 text-right">
                   <q-btn
                     v-if="item.splits.length > 1"
                     flat
@@ -135,11 +166,20 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { useDialogPluginComponent, useQuasar } from 'quasar';
-import { supabase } from 'src/boot/supabase';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
-import { useGlobalStockTypeStore } from '../stores/globalStockTypeStore';
-import type { GlobalShipmentItem } from '../repositories/globalShipmentRepository';
+import { useStockLocationStore } from '../stores/stockLocationStore';
+import {
+  getLeafLocations,
+  getDefaultPutawayLocationId,
+  toLocationSelectOptions,
+} from '../utils/stockLocationOptions';
+import type {
+  FinalizeShipmentStockRow,
+  GlobalShipmentItem,
+} from '../repositories/globalShipmentRepository';
+
+type StockAvailability = 'sellable' | 'held' | 'unsellable';
 
 const props = defineProps<{
   shipmentId: number;
@@ -152,16 +192,18 @@ const { dialogRef, onDialogHide, onDialogOK } = useDialogPluginComponent();
 const $q = useQuasar();
 const authStore = useAuthStore();
 const shipmentStore = useGlobalShipmentStore();
-const stockTypeStore = useGlobalStockTypeStore();
+const locationStore = useStockLocationStore();
 
-const loadingStockTypes = ref(false);
+const loading = ref(false);
 const saving = ref(false);
 const error = ref<string | null>(null);
+const globalDefaultLocationId = ref<number | null>(null);
 
 interface ReceiveSplit {
-  stock_type_id: number;
+  availability: StockAvailability;
   quantity: number;
   is_usable: boolean;
+  location_id: number | null;
 }
 
 interface ReceiveLineItem extends GlobalShipmentItem {
@@ -170,58 +212,82 @@ interface ReceiveLineItem extends GlobalShipmentItem {
 
 const lines = ref<ReceiveLineItem[]>([]);
 
-const stockTypeOptions = computed(() => {
-  return stockTypeStore.items.map((t) => ({
-    label: `${t.description} ${t.is_sellable ? '(Sellable)' : '(Non-Sellable)'}`,
-    value: t.id,
-    is_sellable: t.is_sellable,
-  }));
-});
+const availabilityOptions = [
+  { label: 'Sellable', value: 'sellable' },
+  { label: 'Held', value: 'held' },
+  { label: 'Unsellable', value: 'unsellable' },
+];
+
+const leafLocations = computed(() => getLeafLocations(locationStore.items));
+const locationOptions = computed(() => toLocationSelectOptions(leafLocations.value));
 
 onMounted(async () => {
-  loadingStockTypes.value = true;
+  loading.value = true;
+  error.value = null;
   try {
-    await stockTypeStore.fetchStockTypes(authStore.tenantId);
+    const tenantId = authStore.tenantId;
+    if (!tenantId) return;
 
-    // Find the standard sellable stock type ID to default
-    const standardType = stockTypeStore.items.find((t) => t.description === 'Standard Sellable');
-    const defaultTypeId = standardType?.id || stockTypeStore.items[0]?.id || 0;
-    const defaultIsUsable = standardType?.is_sellable ?? true;
+    await locationStore.fetchLocations(tenantId);
 
-    // Map shipment items
-    lines.value = shipmentStore.currentShipmentItems.map((item) => ({
-      ...item,
-      splits: [
-        {
-          stock_type_id: defaultTypeId,
-          quantity: item.ordered_quantity,
-          is_usable: defaultIsUsable,
-        },
-      ],
-    }));
+    const defaultLocationId = getDefaultPutawayLocationId(locationStore.items);
+    globalDefaultLocationId.value = defaultLocationId;
+
+    const stagingStocks = shipmentStore.currentShipmentStocks || [];
+
+    lines.value = shipmentStore.currentShipmentItems.map((item) => {
+      const itemStaging = stagingStocks.filter(
+        (s) => s.shipment_item_id === item.id && (s.quantity || 0) > 0,
+      );
+
+      if (itemStaging.length > 0) {
+        return {
+          ...item,
+          splits: itemStaging.map((st) => ({
+            availability: (st.availability as StockAvailability) || 'sellable',
+            quantity: st.quantity,
+            is_usable: st.is_usable ?? true,
+            location_id: st.location_id || defaultLocationId,
+          })),
+        };
+      }
+
+      return {
+        ...item,
+        splits: [
+          {
+            availability: 'sellable',
+            quantity: item.ordered_quantity,
+            is_usable: true,
+            location_id: defaultLocationId,
+          },
+        ],
+      };
+    });
   } catch (err: unknown) {
     error.value = (err as Error).message || 'Failed to initialize receive dialog';
   } finally {
-    loadingStockTypes.value = false;
+    loading.value = false;
   }
 });
 
-const onStockTypeSelected = (split: ReceiveSplit) => {
-  const stockType = stockTypeStore.items.find((t) => t.id === split.stock_type_id);
-  if (stockType) {
-    split.is_usable = stockType.is_sellable;
+const applyGlobalLocationToAll = (locationId: number | null) => {
+  if (!locationId) return;
+  for (const line of lines.value) {
+    for (const split of line.splits) {
+      split.location_id = locationId;
+    }
   }
 };
 
 const addSplit = (lineIndex: number) => {
   const item = lines.value[lineIndex];
   if (!item) return;
-  const defaultTypeId = stockTypeStore.items[0]?.id || 0;
-  const defaultIsUsable = stockTypeStore.items[0]?.is_sellable ?? true;
   item.splits.push({
-    stock_type_id: defaultTypeId,
+    availability: 'sellable',
     quantity: 0,
-    is_usable: defaultIsUsable,
+    is_usable: true,
+    location_id: globalDefaultLocationId.value || getDefaultPutawayLocationId(locationStore.items),
   });
 };
 
@@ -244,7 +310,13 @@ const getSplitValidationClass = (item: ReceiveLineItem): string => {
 
 const isValid = computed(() => {
   if (lines.value.length === 0) return false;
-  return lines.value.every((item) => getSumOfSplits(item) === item.ordered_quantity);
+  return lines.value.every((item) => {
+    const sumValid = getSumOfSplits(item) === item.ordered_quantity;
+    const locationsValid = item.splits.every(
+      (s) => s.quantity <= 0 || (s.location_id != null && s.location_id > 0),
+    );
+    return sumValid && locationsValid;
+  });
 });
 
 const onCommit = async () => {
@@ -253,50 +325,26 @@ const onCommit = async () => {
   error.value = null;
 
   try {
-    // 1. Prepare global_stocks insert payload
-    const stockRows: {
-      parent_tenant_id: number;
-      shipment_item_id: number;
-      stock_type_id: number;
-      quantity: number;
-      is_usable: boolean;
-    }[] = [];
+    const stockRows: FinalizeShipmentStockRow[] = [];
     for (const line of lines.value) {
       for (const split of line.splits) {
         if (split.quantity > 0) {
           stockRows.push({
-            parent_tenant_id: authStore.tenantId,
             shipment_item_id: line.id,
-            stock_type_id: split.stock_type_id,
+            availability: split.availability,
             quantity: split.quantity,
             is_usable: split.is_usable,
+            location_id: split.location_id,
           });
         }
       }
     }
 
-    if (stockRows.length === 0) {
-      throw new Error('No quantities received to stock.');
-    }
-
-    // 2. Perform direct insert
-    // Since direct client RLS matches policy global_stocks_all, parent can insert.
-    // Let's run a bulk upsert / insert. To satisfy uniqueness, we use upsert on conflict (shipment_item_id, stock_type_id, is_usable).
-    const { error: insertError } = await supabase
-      .from('global_stocks')
-      .upsert(stockRows, { onConflict: 'shipment_item_id,stock_type_id,is_usable' });
-
-    if (insertError) throw insertError;
-
-    // 3. Promote shipment status to received
-    await shipmentStore.updateShipment(props.shipmentId, {
-      status: 'received',
-      stock_ready: true,
-    });
+    const result = await shipmentStore.finalizeShipment(props.shipmentId, stockRows);
 
     $q.notify({
       type: 'positive',
-      message: 'Shipment received successfully. Stock pools created.',
+      message: `Shipment received. Stamped ${result.items_stamped} items, posted ${result.stock_rows_posted} stock rows.`,
     });
 
     onDialogOK();
@@ -311,8 +359,5 @@ const onCommit = async () => {
 <style scoped>
 .border {
   border: 1px solid var(--q-grey-4, #e0e0e0);
-}
-.scroll-x {
-  overflow-x: auto;
 }
 </style>

@@ -1,30 +1,31 @@
 ---
 name: phase
-description: Execute the next pending phase from task.md
+description: Execute the next pending phase from IMPLEMENTATION_ORDER.md
 ---
 Act as a strict Code Execution Engine. You compile English specifications into code. You do not make decisions.
 
-## Your Task
-1. Read `task.md` from the workspace root.
-2. Find the first phase with status `[Pending]`. That is the active phase.
-3. Read `feature.md` — only the sections relevant to the active phase (Section 4 for API, Section 9 for components, etc.).
-4. Read only the files listed under "Files to Change" in the active phase, plus any type/interface definitions those files import from (read-only, do not modify).
-5. Execute the active phase exactly as specified.
+## Tracker location
 
-## Hard Constraints
-1. You are forbidden from modifying any file not listed under "Files to Change" in the active phase.
-2. You are forbidden from refactoring code outside the scope of the current phase's specification.
-3. You are forbidden from adding features, abstractions, or utilities not explicitly specified.
-4. If a required change requires touching a file not in the "Files to Change" list, DO NOT make that change. Instead, stop, report the blocker, and list which additional files would be needed. Wait for human instruction.
-5. If you encounter existing code that seems wrong or improvable but is outside this phase's scope, do not touch it. Note it at the end of your response as an observation only.
+1. Read **`task.md` at workspace root** — it points to the implementation order.
+2. Open **`doc/procurement_stock/IMPLEMENTATION_ORDER.md`** unless the user names another path.
+3. Find the **first incomplete row** in the **Next** table (currently **W1**). That is the active phase.
+4. Read **Canon** links at the top of that file for specs. **`feature.md` / old `task.md` are retired.**
 
-## Completion Requirements
-When the phase is fully implemented:
-1. List every file you modified and summarize the change in one sentence per file.
-2. Confirm that no files outside the "Files to Change" list were touched.
-3. Update the phase status in `task.md` from `[Pending]` to `[Complete]`.
-4. If this phase is a UI step (Step A), confirm that no API calls or fetch logic were added.
-5. If this phase is an API step (Step B), confirm that no UI component files were modified.
-6. If this phase is a wiring step (Step C), confirm that the mock data file has been deleted.
+## Execution
 
-Do not proceed to the next phase. Stop and wait for human review.
+1. Read only files needed for the active row, plus imports (read-only).
+2. Implement the **Outcome** column for that row.
+3. Run targeted verify (lint/typecheck on touched files; `backend:reset` + `backend:types` if SQL migrations change).
+
+## Hard constraints
+
+1. Touch only files required for the active row.
+2. No refactors outside scope.
+3. **Forbidden:** stub RPCs with fake `wallet_posted: true`; `(supabase as any).rpc`.
+4. **One row per session.** Stop after review.
+
+## Completion
+
+1. List every file modified (one sentence each).
+2. Mark the row **Done** in `IMPLEMENTATION_ORDER.md` (move to Done section or add ✅ on the row) only when verify passes.
+3. Do not start the next row in the same session.

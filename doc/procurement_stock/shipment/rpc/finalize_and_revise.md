@@ -17,7 +17,7 @@ const { data, error } = await supabase.rpc('finalize_global_shipment', {
 // { shipment_id, items_stamped, stock_rows_posted, stock_ready, wallet_posted: false }
 ```
 
-Omit `p_stock_rows` to stamp only (does not set Ready Stock). With rows: upserts `global_stocks` and sets `status = Ready Stock`, `stock_ready = true`.
+Omit `p_stock_rows` to stamp only (does not set stock ready). With rows: upserts `global_stocks` and sets `status = received`, `stock_ready = true`. **No wallet posts** (`wallet_posted: false`).
 
 Already finalized → error; use `revise_global_shipment_costs`.
 

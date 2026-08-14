@@ -26,9 +26,9 @@
           </div>
           <div
             class="text-caption text-grey-6 q-mt-xs"
-            v-if="item.global_stock_allocation_id"
+            v-if="item.global_stock_id"
           >
-            {{ $t('shop.listing_id') }}: {{ item.global_stock_allocation_id }}
+            {{ $t('shop.listing_id') }}: {{ item.global_stock_id }}
           </div>
           <!-- Dropship Selling Price Input -->
           <div v-if="cart?.shop_type === 'dropship'" class="q-mt-sm" style="max-width: 210px">

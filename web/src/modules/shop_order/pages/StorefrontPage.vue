@@ -56,7 +56,7 @@
         <div v-if="catalogItems.length > 0" class="row q-col-gutter-md product-grid">
           <div
             v-for="item in catalogItems"
-            :key="item.product_id + '-' + (item.global_stock_allocation_id || '')"
+            :key="item.product_id + '-' + (item.global_stock_id || '')"
             class="col-xs-12 col-sm-6 col-md-4 col-lg-3 product-grid-item"
           >
             <StorefrontProductCard
@@ -324,7 +324,7 @@ const cartItemFor = (catalogItem: any) => {
   return cartItems.value.find(
     (cartItem) =>
       cartItem.product_id === catalogItem.product_id &&
-      cartItem.global_stock_allocation_id === catalogItem.global_stock_allocation_id,
+      cartItem.global_stock_id === catalogItem.global_stock_id,
   );
 };
 
@@ -345,7 +345,8 @@ const onQuickViewAddToCart = async (payload: { product: any; quantity: number })
     await addItemMutation.mutateAsync({
       shopId: shopDetails.value.id,
       productId: payload.product.product_id,
-      globalStockAllocationId: payload.product.global_stock_allocation_id,
+      globalStockAllocationId: payload.product.global_stock_id ?? null,
+      globalStockId: payload.product.global_stock_id ?? null,
       quantity: payload.quantity,
     });
   }
@@ -366,7 +367,8 @@ const onAddToCart = async (item: any) => {
     await addItemMutation.mutateAsync({
       shopId: shopDetails.value.id,
       productId: item.product_id,
-      globalStockAllocationId: item.global_stock_allocation_id,
+      globalStockAllocationId: item.global_stock_id ?? null,
+      globalStockId: item.global_stock_id ?? null,
       quantity: qty,
     });
     delete selectedQuantities[key];

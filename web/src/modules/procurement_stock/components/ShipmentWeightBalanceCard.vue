@@ -20,10 +20,10 @@
     <!-- Step 1: Enter invoice weight -->
     <div class="bg-blue-1 border-light rounded-borders q-pa-sm q-mb-md">
       <div class="text-caption text-weight-bold text-blue-9 q-mb-xs">
-        1. Enter cargo invoice weight (kg)
+        1. Cargo bill weight (kg)
       </div>
       <div class="text-caption text-grey-7 q-mb-sm" style="font-size: 11px; line-height: 1.3">
-        The weight on the cargo bill. Save it here — applying balance never overwrites this value.
+        Weight on the cargo bill. Apply adjusts package weights only — never overwrites this value.
       </div>
       <div class="row q-col-gutter-sm items-center">
         <div class="col-12 col-sm-8">
@@ -376,7 +376,7 @@
       </q-dialog>
     </div>
 
-    <!-- 4. Apply Action -->
+    <!-- Apply Action -->
     <div class="row q-col-gutter-sm">
       <div class="col-12 col-sm-6">
         <q-btn
@@ -398,7 +398,7 @@
       <div class="col-12 col-sm-6">
         <q-btn
           color="primary"
-          label="Save & apply"
+          label="Save & apply weight"
           class="full-width pill-btn shadow-1"
           unelevated
           no-caps
@@ -608,11 +608,11 @@ const applyDisabled = computed(() => {
 
 const applyDisabledReason = computed(() => {
   if (savedInvoiceWeightKg.value <= 0)
-    return 'Save Cargo Invoice Weight before applying weight balance';
-  if (hasUnsavedInvoiceWeight.value) return 'Save Cargo Invoice Weight first — unsaved changes';
+    return 'Save cargo bill weight before applying';
+  if (hasUnsavedInvoiceWeight.value) return 'Save cargo bill weight first — unsaved changes';
   if (items.value.length === 0) return 'No line items to distribute weight to';
   if (validationError.value !== null) return validationError.value;
-  if (Math.abs(deltaKg.value) < 0.001) return 'No weight delta to balance';
+  if (Math.abs(deltaKg.value) < 0.001) return 'Weights already match';
   return '';
 });
 
@@ -620,21 +620,27 @@ const saveAndApplyDisabled = computed(() => {
   const draft = cargoInvoiceWeight.value;
   if (draft === null || draft <= 0) return true;
   if (items.value.length === 0) return true;
+  // Already matched and nothing unsaved
+  if (!hasUnsavedInvoiceWeight.value && Math.abs(deltaKg.value) < 0.001) return true;
   return false;
 });
 
 const saveAndApplyDisabledReason = computed(() => {
   const draft = cargoInvoiceWeight.value;
-  if (draft === null || draft <= 0) return 'Enter a cargo invoice weight greater than 0';
+  if (draft === null || draft <= 0) return 'Enter a cargo bill weight greater than 0';
   if (items.value.length === 0) return 'No line items to distribute weight to';
+  if (!hasUnsavedInvoiceWeight.value && Math.abs(deltaKg.value) < 0.001) {
+    return 'Weights already match';
+  }
   return '';
 });
 
 const saveAndApply = async () => {
   if (saveAndApplyDisabled.value) return;
-  const saved = await saveCargoInvoiceWeight();
-  if (!saved) return;
-  // After save, apply if there is still a delta (confirmApply checks applyDisabled)
+  if (hasUnsavedInvoiceWeight.value) {
+    const saved = await saveCargoInvoiceWeight();
+    if (!saved) return;
+  }
   if (applyDisabled.value) {
     if (Math.abs(deltaKg.value) < 0.001) {
       showSuccessNotification('Weights already match the invoice.');

@@ -37,7 +37,8 @@ const upsertListing = async (payload: UpsertListingPayload): Promise<ShopProduct
   const { data, error } = await supabase.rpc('upsert_shop_product_listing', {
     p_tenant_id: payload.tenant_id,
     p_shop_id: payload.shop_id,
-    p_global_stock_allocation_id: payload.global_stock_allocation_id,
+    p_global_stock_allocation_id: null,
+    p_global_stock_id: payload.global_stock_id ?? null,
     p_sell_price_amount: payload.sell_price_amount,
     p_sell_price_currency_id: payload.sell_price_currency_id,
     p_minimum_sell_price_amount: minPriceAmount,
@@ -63,11 +64,10 @@ const upsertListing = async (payload: UpsertListingPayload): Promise<ShopProduct
 };
 
 const listCandidateAllocations = async (
-  tenantId: number,
+  _tenantId: number,
   shopId: number,
 ): Promise<CandidateAllocation[]> => {
-  const { data, error } = await supabase.rpc('list_allocations_for_shop_pick', {
-    p_tenant_id: tenantId,
+  const { data, error } = await supabase.rpc('list_listable_stock_for_shop', {
     p_shop_id: shopId,
   });
 
@@ -75,7 +75,23 @@ const listCandidateAllocations = async (
     throw error;
   }
 
-  return (data as CandidateAllocation[] | null) ?? [];
+  const rawRows = (data as any)?.data ?? [];
+  return rawRows.map((r: any) => ({
+    allocation_id: r.global_stock_id,
+    global_stock_id: r.global_stock_id,
+    stock_id: r.global_stock_id,
+    product_id: r.product_id,
+    product_name: r.item_name,
+    product_image_url: r.image_url,
+    product_barcode: r.barcode,
+    product_code: r.product_code,
+    product_brand: null,
+    product_category: null,
+    allocated_quantity: r.available_atp,
+    unit_cost_amount: r.unit_cost_amount,
+    shipment_item_id: r.shipment_item_id,
+    shipment_id: r.shipment_id,
+  }));
 };
 
 import { globalReferenceRepository } from 'src/modules/global_reference/repositories/globalReferenceRepository';

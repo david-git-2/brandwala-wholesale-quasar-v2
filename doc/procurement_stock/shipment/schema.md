@@ -39,6 +39,7 @@ Ops / identity container. **Zero financial rate fields** — money lives in `shi
 | UI rule | At most one active progress tag; optional `sort_order` on tags for stepper |
 | API | List/get expose `status` + current progress tag; filter shipments by tag via `entity_tags` |
 | Optional | Denormalized `progress_tag_id` on header for list speed only — SSOT remains `entity_tags` |
+| Seed | `ensure_shipment_progress_tags(tenant_id)` + `set_global_shipment_progress_tag(shipment_id, tag_id)` |
 
 Decision: [../../PROCUREMENT_STOCK_ISSUES.md](../../PROCUREMENT_STOCK_ISSUES.md) (open) · this schema
 

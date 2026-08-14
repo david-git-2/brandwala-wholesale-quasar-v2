@@ -163,7 +163,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useInvestorCapitalStore } from 'src/modules/investor_capital/stores/investorCapitalStore';
 import { useGlobalShipmentStore } from 'src/modules/procurement_stock/stores/globalShipmentStore';
-import { calculateLineLandedCostBdt } from 'src/modules/procurement_stock/utils/landedCost';
+import { calculateLineLandedCostBdt } from 'src/shared/shipment-engine';
 import type { ShipmentInvestment } from 'src/modules/investor_capital/types';
 import { formatAmountBdt } from 'src/utils/currency';
 import ShipmentShareEditor from '../../components/ShipmentShareEditor.vue';
@@ -191,16 +191,20 @@ const totalShipmentCost = computed(() => {
   const shipment = shipmentStore.currentShipment;
   if (!shipment) return 0;
   return shipmentStore.currentShipmentItems.reduce((sum, item) => {
-    const unitCost = calculateLineLandedCostBdt(
-      {
-        purchase_price: item.purchase_price ?? 0,
-        product_weight: item.product_weight ?? 0,
-        package_weight: item.package_weight ?? 0,
-        ordered_quantity: item.ordered_quantity ?? 0,
-      },
-      shipment,
-      shipmentStore.currentShipmentItems,
-    );
+    const stamp = item.landed_cost_bdt;
+    const unitCost =
+      stamp != null && Number.isFinite(Number(stamp))
+        ? Number(stamp)
+        : calculateLineLandedCostBdt(
+            {
+              purchase_price: item.purchase_price ?? 0,
+              product_weight: item.product_weight ?? 0,
+              package_weight: item.package_weight ?? 0,
+              ordered_quantity: item.ordered_quantity ?? 0,
+            },
+            shipment,
+            shipmentStore.currentShipmentItems,
+          );
     return sum + unitCost * Number(item.ordered_quantity ?? 0);
   }, 0);
 });

@@ -4,7 +4,7 @@ import {
   buildShipmentForLiveCosting,
   type CostingLineItemInput,
   type CostingShipmentInput,
-} from 'src/modules/procurement_stock/utils/landedCost';
+} from 'src/shared/shipment-engine';
 import type { ShipmentItemsCostingCache } from '../composables/useShipmentItemsCostingCache';
 
 export const roundUnitCost = (value: number): number =>
@@ -12,11 +12,7 @@ export const roundUnitCost = (value: number): number =>
 
 export const toCostingShipmentInput = (line: GlobalStockCostingInput): CostingShipmentInput => ({
   type: line.shipment_type,
-  product_conversion_rate: line.product_conversion_rate,
-  cargo_conversion_rate: line.cargo_conversion_rate,
-  cargo_rate: line.cargo_rate,
-  received_weight: line.received_weight,
-  transaction_rate: line.transaction_rate,
+  received_weight: line.received_weight ?? null,
 });
 
 export const toCostingLineItemInput = (line: GlobalStockCostingInput): CostingLineItemInput => ({
@@ -40,10 +36,33 @@ export const isGlobalStockCostingInput = (
     row.shipment_type === 'international' ||
     row.shipment_type === 'transfer');
 
+const resolveStamp = (
+  line: GlobalStockCostingInput,
+  shipmentItems: Array<CostingLineItemInput & { id?: number; landed_cost_bdt?: number | null }>,
+): number | null => {
+  if (line.landed_cost_bdt != null && Number.isFinite(Number(line.landed_cost_bdt))) {
+    return Number(line.landed_cost_bdt);
+  }
+  const match = shipmentItems.find((i) => i.id === line.shipment_item_id);
+  if (match?.landed_cost_bdt != null && Number.isFinite(Number(match.landed_cost_bdt))) {
+    return Number(match.landed_cost_bdt);
+  }
+  return null;
+};
+
+/**
+ * Unit cost for sell / pick / display.
+ * Prefer living stamp (`landed_cost_bdt`); live header-rate recompute only when unstamped (draft).
+ */
 export function resolveGlobalStockUnitCostSync(
   line: GlobalStockCostingInput,
-  shipmentItems: CostingLineItemInput[],
+  shipmentItems: Array<CostingLineItemInput & { id?: number; landed_cost_bdt?: number | null }>,
 ): number {
+  const stamp = resolveStamp(line, shipmentItems);
+  if (stamp != null) {
+    return stamp;
+  }
+
   const shipmentInput = toCostingShipmentInput(line);
   const effectiveShipment =
     shipmentItems.length > 0

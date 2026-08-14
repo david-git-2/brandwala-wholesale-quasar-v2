@@ -86,6 +86,7 @@ export function useShopCartMutations() {
       shopId: number;
       productId: number;
       globalStockAllocationId: number | null;
+      globalStockId?: number | null;
       quantity: number;
       customerSellPriceAmount?: number | null;
       customerSellPriceCurrencyId?: number | null;
@@ -97,6 +98,7 @@ export function useShopCartMutations() {
         params.quantity,
         params.customerSellPriceAmount,
         params.customerSellPriceCurrencyId,
+        params.globalStockId,
       );
       if (!res.success) {
         handleApiFailure(res, res.error);

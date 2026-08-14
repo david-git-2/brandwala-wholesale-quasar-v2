@@ -255,7 +255,7 @@ const createPayload = (listing: ShopProductListing): UpsertListingPayload => ({
   id: listing.id,
   tenant_id: listing.tenant_id,
   shop_id: listing.shop_id,
-  global_stock_allocation_id: listing.global_stock_allocation_id,
+  global_stock_id: listing.global_stock_id,
   sell_price_amount: Number(listing.sell_price_amount),
   sell_price_currency_id: listing.sell_price_currency_id,
   minimum_sell_price_amount: listing.minimum_sell_price_amount

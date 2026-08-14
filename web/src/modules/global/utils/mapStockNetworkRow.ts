@@ -3,6 +3,15 @@ import type { InventoryItemWithStock, Shipment } from '../types';
 import type { GlobalStockRow, StockNetworkRow } from '../types';
 import { mapGlobalStockToInventoryView } from './mapGlobalStockToInventoryView';
 
+/** Prefer shared ATP; fall back to allocation/excellent qty for legacy rows. */
+export const stockNetworkAvailableQty = (row: StockNetworkRow): number => {
+  if (row.available_atp != null && Number.isFinite(row.available_atp)) {
+    return Math.max(0, Math.floor(row.available_atp));
+  }
+  if (row.allocated_qty > 0) return row.allocated_qty;
+  return row.excellent_qty;
+};
+
 export const mapStockNetworkToGlobalStockRow = (row: StockNetworkRow): GlobalStockRow => ({
   id: row.global_stock_id,
   tenant_id: row.holding_tenant_id,
@@ -15,11 +24,8 @@ export const mapStockNetworkToGlobalStockRow = (row: StockNetworkRow): GlobalSto
   product_weight: row.product_weight,
   package_weight: row.package_weight,
   shipment_type: row.shipment_type,
-  product_conversion_rate: row.product_conversion_rate,
-  cargo_conversion_rate: row.cargo_conversion_rate,
-  cargo_rate: row.cargo_rate,
   received_weight: row.received_weight,
-  transaction_rate: row.transaction_rate,
+  landed_cost_bdt: row.landed_cost_bdt,
   product_id: row.product_id,
   barcode: row.barcode,
   product_code: row.product_code,

@@ -275,7 +275,6 @@ import { ref, onMounted, computed } from 'vue';
 import { useDialogPluginComponent, useQuasar } from 'quasar';
 import SmartImage from 'src/components/SmartImage.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import type { GlobalShipmentItem } from '../repositories/globalShipmentRepository';
 import { syncShipmentWeightToProduct } from '../utils/syncShipmentWeightToProduct';
@@ -298,8 +297,13 @@ const { dialogRef, onDialogHide, onDialogOK } = useDialogPluginComponent();
 const $q = useQuasar();
 
 const authStore = useAuthStore();
-const vendorStore = useVendorStore();
 const shipmentStore = useGlobalShipmentStore();
+
+const shipmentVendorId = computed(() => {
+  const ship = shipmentStore.currentShipment;
+  if (ship && ship.id === props.shipmentId) return ship.vendor_id ?? null;
+  return null;
+});
 
 const isEdit = computed(() => !!props.item);
 const submitting = ref(false);
@@ -447,15 +451,13 @@ const onProductSelected = (val: any) => {
 };
 
 onMounted(async () => {
-  if (authStore.tenantId) {
-    void vendorStore.fetchVendors(authStore.tenantId);
-  }
+  form.value.vendor_id = shipmentVendorId.value;
 
   if (props.item) {
     form.value = {
       shipment_id: props.item.shipment_id,
       product_id: props.item.product_id,
-      vendor_id: props.item.vendor_id,
+      vendor_id: shipmentVendorId.value,
       name: props.item.name,
       ordered_quantity: props.item.ordered_quantity,
       purchase_price: props.item.purchase_price,
@@ -491,6 +493,8 @@ const onSubmitSingle = async () => {
   error.value = null;
 
   try {
+    form.value.vendor_id = shipmentVendorId.value;
+
     if (isEdit.value) {
       const updated = await shipmentStore.updateShipmentItem(props.item!.id, form.value);
       const targetProductId = form.value.product_id;
@@ -516,6 +520,7 @@ const onSubmitSingle = async () => {
     } else {
       const payload: Omit<GlobalShipmentItem, 'id' | 'created_at' | 'updated_at'> = {
         ...form.value,
+        vendor_id: shipmentVendorId.value,
         add_method: 'manual',
       };
       const created = await shipmentStore.addShipmentItem(payload);

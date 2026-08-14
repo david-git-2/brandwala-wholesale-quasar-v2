@@ -12,7 +12,7 @@
                 Add Product Listings
               </h1>
               <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-                Select candidate allocations from parent stock pools to feature in your shop.
+                Select listable parent stock rows assigned to this shop.
               </p>
             </div>
           </div>
@@ -99,7 +99,7 @@
           v-model:selected="selectedCandidates"
           flat
           selection="multiple"
-          row-key="allocation_id"
+          row-key="global_stock_id"
           :rows="filteredCandidates"
           :columns="columns"
           :pagination="{ rowsPerPage: 25 }"
@@ -168,7 +168,7 @@
                 size="sm"
                 icon="ph ph-plus"
                 label="Quick Add"
-                :loading="addingId === props.row.allocation_id"
+                :loading="addingId === props.row.global_stock_id"
                 @click="quickAddListing(props.row)"
               />
             </q-td>
@@ -249,12 +249,12 @@ const columns = [
   { name: 'product_code', label: 'Code', field: 'product_code', align: 'left' as const, sortable: true },
   { name: 'shipment_id', label: 'Shipment', field: 'shipment_id', align: 'center' as const, sortable: true },
   { name: 'minimum_sell_price', label: 'Landed Cost / Floor', field: 'minimum_sell_price_amount', align: 'left' as const },
-  { name: 'allocated_quantity', label: 'Allocated Stock', field: 'allocated_quantity', align: 'center' as const, sortable: true },
-  { name: 'actions', label: '', field: 'allocation_id', align: 'right' as const },
+  { name: 'allocated_quantity', label: 'ATP', field: 'allocated_quantity', align: 'center' as const, sortable: true },
+  { name: 'actions', label: '', field: 'global_stock_id', align: 'right' as const },
 ];
 
 const filteredCandidates = computed(() => {
-  let list = candidates.value.filter((c) => !addedAllocationIds.value.has(c.allocation_id));
+  let list = candidates.value.filter((c) => !addedAllocationIds.value.has(c.global_stock_id));
 
   if (selectedShipment.value !== 'all') {
     list = list.filter((c) => c.shipment_id === selectedShipment.value);
@@ -292,7 +292,7 @@ const buildPayload = (candidate: CandidateAllocation) => {
   return {
     tenant_id: tenantId.value,
     shop_id: shopId.value,
-    global_stock_allocation_id: candidate.allocation_id,
+    global_stock_id: candidate.global_stock_id,
     sell_price_amount: sellPrice,
     sell_price_currency_id: defaultCurrId,
     minimum_sell_price_amount: landedCost || null,
@@ -306,12 +306,12 @@ const buildPayload = (candidate: CandidateAllocation) => {
 };
 
 const quickAddListing = async (candidate: CandidateAllocation) => {
-  addingId.value = candidate.allocation_id;
+  addingId.value = candidate.global_stock_id;
   try {
     await saveListingAsync(buildPayload(candidate));
-    addedAllocationIds.value.add(candidate.allocation_id);
+    addedAllocationIds.value.add(candidate.global_stock_id);
     selectedCandidates.value = selectedCandidates.value.filter(
-      (c) => c.allocation_id !== candidate.allocation_id
+      (c) => c.global_stock_id !== candidate.global_stock_id
     );
   } catch (err: any) {
     $q.notify({
@@ -331,10 +331,10 @@ const addSelectedListings = async () => {
   for (const candidate of [...selectedCandidates.value]) {
     try {
       await saveListingAsync(buildPayload(candidate));
-      addedAllocationIds.value.add(candidate.allocation_id);
+      addedAllocationIds.value.add(candidate.global_stock_id);
       successCount++;
     } catch (err: any) {
-      console.error(`Failed to add allocation #${candidate.allocation_id}`, err);
+      console.error(`Failed to add stock #${candidate.global_stock_id}`, err);
     }
   }
 

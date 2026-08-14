@@ -5,6 +5,25 @@
 export type ShopType = 'vendor_catalog' | 'fixed_price' | 'dropship';
 export type ShopOrderMode = 'procurement_intent' | 'checkout_fixed' | 'checkout_wholesale';
 
+/** Row from `browse_shop_catalog` RPC. */
+export interface ShopCatalogItem {
+  product_id: number;
+  product_name: string;
+  product_image_url: string | null;
+  product_barcode: string | null;
+  product_code: string | null;
+  product_brand: string | null;
+  product_category: string | null;
+  vendor_code: string | null;
+  is_available: boolean;
+  unit_price_amount: number | null;
+  unit_price_currency_id: number | null;
+  available_units: number | null;
+  global_stock_allocation_id: number | null;
+  global_stock_id: number | null;
+  minimum_order_quantity: number | null;
+}
+
 export interface Shop {
   id: number;
   tenant_id: number;

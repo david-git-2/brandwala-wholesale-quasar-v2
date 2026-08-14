@@ -1464,6 +1464,7 @@ import NetworkStockSearchPanel from '../components/NetworkStockSearchPanel.vue';
 import InvoiceBulkPasteDialog from '../components/InvoiceBulkPasteDialog.vue';
 import { invoiceGrossProfit, lineMargin } from 'src/modules/reporting_treasury/utils/margin';
 import type { StockNetworkRow } from 'src/modules/global/types';
+import { stockNetworkAvailableQty } from 'src/modules/global/utils/mapStockNetworkRow';
 import { useInvoiceItemUnitCosts } from '../composables/useInvoiceItemUnitCosts';
 import type { GlobalInvoiceDetail, GlobalInvoiceItemRow } from '../types';
 
@@ -1745,17 +1746,20 @@ const refreshInvoiceHeader = async () => {
 
 const onSelectStockRow = (row: StockNetworkRow) => {
   const unitCost = row.resolvedUnitCost ?? 0;
+  const maxQty = stockNetworkAvailableQty(row);
   const existingIdx = stockCart.value.findIndex(
     (item) => item.global_stock_id === row.global_stock_id,
   );
   if (existingIdx > -1) {
     const existing = stockCart.value[existingIdx];
     if (existing) {
+      if (existing.quantity >= maxQty) return;
       existing.quantity++;
       stockCart.value.splice(existingIdx, 1);
       stockCart.value.unshift(existing);
     }
   } else {
+    if (maxQty <= 0) return;
     stockCart.value.unshift({
       global_stock_id: row.global_stock_id,
       product_id: row.product_id,

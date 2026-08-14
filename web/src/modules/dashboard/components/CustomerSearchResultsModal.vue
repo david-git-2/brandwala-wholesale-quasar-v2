@@ -31,7 +31,7 @@
         <div v-else class="q-gutter-y-sm" style="max-height: 60vh; overflow-y: auto;">
           <q-card
             v-for="item in searchResults"
-            :key="item.product_id + '-' + (item.global_stock_allocation_id || '')"
+            :key="item.product_id + '-' + (item.global_stock_id || '')"
             flat
             bordered
             class="q-pa-sm card-hover cursor-pointer"

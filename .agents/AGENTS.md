@@ -5,6 +5,14 @@
 - **Do NOT Scan Migrations**: Do NOT read through all files in `supabase/migrations/*.sql` to determine active database state. Parsing migration history files wastes tokens and causes confusion.
 - **New Migrations Only**: Only inspect or edit `supabase/migrations/*.sql` files when writing a new migration script.
 
+## Procurement module — `doc/procurement_stock/IMPLEMENTATION_ORDER.md`
+Shipment track (7A–14B) is complete. Warehouse work (**W1+**) is next — one row per session.
+When a phase adds SQL migrations:
+- **Read** the migration files you add or replace.
+- **Run** `pnpm run backend:reset` and `pnpm run backend:types` before marking done.
+- Treat **`database.types.ts` as generated output**, not proof migrations are reset-safe.
+- **Never** ship stub RPCs (count-only loops, fake `wallet_posted: true` without `record_ledger_transaction`).
+
 ## API & Network Optimization Rules
 - **Avoid Redundant Calls**: Never make redundant API calls if the data is already available or can be derived from existing state.
 - **Use RPCs for Multiple Operations**: If an action requires multiple database operations (e.g., inserts/updates across multiple tables), create and use a Supabase RPC (Stored Procedure) to handle it in a single network request.

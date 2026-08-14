@@ -4,15 +4,15 @@
       <AppPageHeader
         eyebrow="Procurement & Stock"
         title="Warehouse"
-        subtitle="View physical stock pools and configure stock types"
+        subtitle="What is on the shelves, and whether it can be sold."
       >
         <template #action>
           <q-btn
-            outline
-            color="secondary"
+            flat
+            color="grey-8"
             no-caps
             icon="ph ph-gear"
-            label="Stock Types Config"
+            label="Stock types"
             @click="openStockTypesConfig"
           />
         </template>
@@ -50,14 +50,25 @@
       <FilterSidebar v-model="filterDrawerOpen" title="Filters">
         <div class="q-gutter-y-md q-pa-sm">
           <q-select
-            v-model="draftStockTypeFilter"
-            :options="stockTypeOptions"
+            v-model="draftLocationFilter"
+            :options="locationOptions"
             filled
             dense
             clearable
             emit-value
             map-options
-            label="Stock Type"
+            label="Location"
+          />
+
+          <q-select
+            v-model="draftAvailabilityFilter"
+            :options="availabilityOptions"
+            filled
+            dense
+            clearable
+            emit-value
+            map-options
+            label="Availability"
           />
 
           <q-select
@@ -135,6 +146,25 @@
             </q-td>
           </template>
 
+          <template #body-cell-availability="props">
+            <q-td :props="props">
+              <q-chip
+                v-if="props.row.availability"
+                dense
+                square
+                :label="formatStockAvailability(props.row.availability)"
+                class="text-capitalize"
+              />
+              <span v-else class="text-grey-5">—</span>
+            </q-td>
+          </template>
+
+          <template #body-cell-location="props">
+            <q-td :props="props">
+              {{ props.row.location_name || (props.row.location_id ? `#${props.row.location_id}` : '—') }}
+            </q-td>
+          </template>
+
           <template #body-cell-cost="props">
             <q-td :props="props" class="text-right text-secondary">
               <div>৳{{ formatCost(getUnitCost(props.row)) }}</div>
@@ -152,17 +182,33 @@
 
           <template #body-cell-actions="props">
             <q-td :props="props" class="text-center">
-              <q-btn
-                flat
-                round
-                dense
-                icon="ph ph-git-fork"
-                size="sm"
-                color="primary"
-                @click.stop="openSplitDialog(props.row)"
-              >
-                <q-tooltip>Split Stock Quantity</q-tooltip>
-              </q-btn>
+              <div class="row items-center justify-center q-gutter-x-xs no-wrap">
+                <!-- Transfer location -->
+                <q-btn
+                  flat
+                  round
+                  dense
+                  icon="ph ph-map-pin-line"
+                  size="sm"
+                  color="primary"
+                  @click.stop="openTransferDialog(props.row)"
+                >
+                  <q-tooltip>Transfer location (Draft)</q-tooltip>
+                </q-btn>
+
+                <!-- Change availability -->
+                <q-btn
+                  flat
+                  round
+                  dense
+                  icon="ph ph-tag"
+                  size="sm"
+                  color="secondary"
+                  @click.stop="openAvailabilityDialog(props.row)"
+                >
+                  <q-tooltip>Change availability (Draft)</q-tooltip>
+                </q-btn>
+              </div>
             </q-td>
           </template>
 
@@ -176,6 +222,10 @@
               <!-- shipment -->
               <q-td class="totals-row__cell" />
               <!-- stock type -->
+              <q-td class="totals-row__cell" />
+              <!-- availability -->
+              <q-td class="totals-row__cell" />
+              <!-- location -->
               <q-td class="totals-row__cell" />
               <!-- usable -->
               <q-td
@@ -199,51 +249,96 @@
           <template #no-data>
             <div class="full-width text-center text-grey-7 q-py-lg">
               <q-icon name="ph ph-archive-box" size="48px" class="q-mb-sm text-grey-4" />
-              <div>No Warehouse Stock Found.</div>
+              <div class="text-subtitle1 text-weight-medium q-mb-xs">
+                {{ stockStore.total === 0 ? 'No stock yet' : 'No stock matches filters' }}
+              </div>
+              <div v-if="stockStore.total === 0" class="text-body2 q-mb-md">
+                Receive a shipment first.
+              </div>
+              <q-btn
+                v-if="stockStore.total === 0"
+                color="primary"
+                unelevated
+                no-caps
+                label="Go to shipments"
+                @click="goToShipments"
+              />
             </div>
           </template>
         </q-table>
       </q-card>
     </section>
+
+    <!-- Preset Stock Movement Form Dialog -->
+    <StockMovementFormDialog
+      v-model="movementDialogOpen"
+      :tenant-id="authStore.tenantId"
+      :initial-stock="movementPresetStock"
+      :preset-movement-type="movementPresetType"
+      :lock-fields="true"
+      @created="onMovementDraftCreated"
+    />
   </q-page>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useQuasar, type QTableColumn } from 'quasar';
+import type { Database } from 'src/types/database.types';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useGlobalStockStore } from '../stores/globalStockStore';
 import { useGlobalStockTypeStore } from '../stores/globalStockTypeStore';
+import { useStockLocationStore } from '../stores/stockLocationStore';
+import { getLeafLocations, toLocationSelectOptions } from '../utils/stockLocationOptions';
+import {
+  STOCK_AVAILABILITY_OPTIONS,
+  formatStockAvailability,
+  type StockAvailability,
+} from '../constants/stockAvailability';
 import PageInitialLoader from 'src/components/ui/PageInitialLoader.vue';
 import AppPageHeader from 'src/components/ui/AppPageHeader.vue';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import StockTypeConfigPanel from '../components/StockTypeConfigPanel.vue';
-import GlobalStockSplitDialog from '../components/GlobalStockSplitDialog.vue';
+import StockMovementFormDialog from '../components/StockMovementFormDialog.vue';
 import { createShipmentItemsCostingCache } from 'src/modules/global/composables/useShipmentItemsCostingCache';
 import {
   isGlobalStockCostingInput,
   resolveGlobalStockUnitCostSync,
 } from 'src/modules/global/utils/resolveGlobalStockUnitCost';
+import { showSuccessNotification } from 'src/utils/appFeedback';
 import type { GlobalStock } from '../repositories/globalStockRepository';
 
+type StockMovementType = Database['public']['Enums']['stock_movement_type'];
+
 const authStore = useAuthStore();
+const route = useRoute();
+const router = useRouter();
 const stockStore = useGlobalStockStore();
 const stockTypeStore = useGlobalStockTypeStore();
+const stockLocationStore = useStockLocationStore();
 const $q = useQuasar();
 const costingCache = createShipmentItemsCostingCache();
 
 // Filter State
 const searchText = ref('');
 const filterDrawerOpen = ref(false);
-const stockTypeFilter = ref<number | null>(null);
+const locationFilter = ref<number | null>(null);
+const availabilityFilter = ref<StockAvailability | null>(null);
 const isSellableFilter = ref<boolean | null>(null);
 const shipmentStatusFilter = ref<string | null>(null);
 const hideZeroStockFilter = ref<boolean>(true);
 
-const draftStockTypeFilter = ref<number | null>(null);
+const draftLocationFilter = ref<number | null>(null);
+const draftAvailabilityFilter = ref<StockAvailability | null>(null);
 const draftIsSellableFilter = ref<boolean | null>(null);
 const draftShipmentStatusFilter = ref<string | null>(null);
 const draftHideZeroStockFilter = ref<boolean>(true);
+
+// Movement Dialog Preset State
+const movementDialogOpen = ref(false);
+const movementPresetStock = ref<GlobalStock | null>(null);
+const movementPresetType = ref<StockMovementType>('location_transfer');
 
 const columns: QTableColumn[] = [
   { name: 'image', label: 'Image', field: 'image_url', align: 'left', sortable: false },
@@ -257,6 +352,20 @@ const columns: QTableColumn[] = [
     sortable: false,
   },
   { name: 'usable', label: 'Usable', field: 'is_usable', align: 'center', sortable: false },
+  {
+    name: 'availability',
+    label: 'Availability',
+    field: 'availability',
+    align: 'left',
+    sortable: false,
+  },
+  {
+    name: 'location',
+    label: 'Location',
+    field: 'location_name',
+    align: 'left',
+    sortable: false,
+  },
   {
     name: 'cost',
     label: 'Cost (Est. BDT)',
@@ -298,16 +407,19 @@ const pagination = computed({
 
 const activeFilterCount = computed(() => {
   let count = 0;
-  if (stockTypeFilter.value !== null) count++;
+  if (locationFilter.value !== null) count++;
+  if (availabilityFilter.value !== null) count++;
   if (isSellableFilter.value !== null) count++;
   if (shipmentStatusFilter.value !== null) count++;
   if (!hideZeroStockFilter.value) count++;
   return count;
 });
 
-const stockTypeOptions = computed(() => {
-  return stockTypeStore.items.map((t) => ({ label: t.description, value: t.id }));
-});
+const locationOptions = computed(() =>
+  toLocationSelectOptions(getLeafLocations(stockLocationStore.items)),
+);
+
+const availabilityOptions = STOCK_AVAILABILITY_OPTIONS;
 
 const shipmentStatusOptions = [
   { label: 'All', value: '__all__' },
@@ -348,10 +460,11 @@ const loadStock = async () => {
     page: stockStore.page,
     pageSize: stockStore.pageSize,
     search: searchText.value.trim() || null,
-    stockTypeId: stockTypeFilter.value,
+    availability: availabilityFilter.value,
     isSellable: isSellableFilter.value,
     shipmentStatus: shipmentStatusFilter.value === '__all__' ? null : shipmentStatusFilter.value,
     hideZeroStock: hideZeroStockFilter.value,
+    locationId: locationFilter.value,
   });
   await costingCache.prefetchShipmentItems(stockStore.rows.map((row) => row.shipment_id));
 };
@@ -369,7 +482,8 @@ const onSearch = () => {
 
 // Filter Actions
 const openFilterDrawer = () => {
-  draftStockTypeFilter.value = stockTypeFilter.value;
+  draftLocationFilter.value = locationFilter.value;
+  draftAvailabilityFilter.value = availabilityFilter.value;
   draftIsSellableFilter.value = isSellableFilter.value;
   draftShipmentStatusFilter.value = shipmentStatusFilter.value;
   draftHideZeroStockFilter.value = hideZeroStockFilter.value;
@@ -377,7 +491,8 @@ const openFilterDrawer = () => {
 };
 
 const onApplyDrawerFilters = () => {
-  stockTypeFilter.value = draftStockTypeFilter.value;
+  locationFilter.value = draftLocationFilter.value;
+  availabilityFilter.value = draftAvailabilityFilter.value;
   isSellableFilter.value = draftIsSellableFilter.value;
   shipmentStatusFilter.value = draftShipmentStatusFilter.value;
   hideZeroStockFilter.value = draftHideZeroStockFilter.value;
@@ -387,17 +502,26 @@ const onApplyDrawerFilters = () => {
 };
 
 const onResetFilters = () => {
-  draftStockTypeFilter.value = null;
+  draftLocationFilter.value = null;
+  draftAvailabilityFilter.value = null;
   draftIsSellableFilter.value = null;
   draftShipmentStatusFilter.value = null;
   draftHideZeroStockFilter.value = true;
-  stockTypeFilter.value = null;
+  locationFilter.value = null;
+  availabilityFilter.value = null;
   isSellableFilter.value = null;
   shipmentStatusFilter.value = null;
   hideZeroStockFilter.value = true;
   filterDrawerOpen.value = false;
   stockStore.page = 1;
   void loadStock();
+};
+
+const goToShipments = () => {
+  void router.push({
+    name: 'app-procurement-shipment-list',
+    params: { tenantSlug: route.params.tenantSlug },
+  });
 };
 
 const openStockTypesConfig = () => {
@@ -408,24 +532,29 @@ const openStockTypesConfig = () => {
   });
 };
 
-const openSplitDialog = (row: GlobalStock) => {
-  $q.dialog({
-    component: GlobalStockSplitDialog,
-    componentProps: {
-      shipmentItemId: row.shipment_item_id,
-      itemName: row.item_name,
-      productCode: row.product_code,
-      barcode: row.barcode,
-      imageUrl: row.image_url,
-    },
-  }).onOk(() => {
-    void loadStock();
-  });
+const openTransferDialog = (row: GlobalStock) => {
+  movementPresetStock.value = row;
+  movementPresetType.value = 'location_transfer';
+  movementDialogOpen.value = true;
+};
+
+const openAvailabilityDialog = (row: GlobalStock) => {
+  movementPresetStock.value = row;
+  movementPresetType.value = 'availability_transfer';
+  movementDialogOpen.value = true;
+};
+
+const onMovementDraftCreated = () => {
+  showSuccessNotification('Draft created — post from Movements page');
+  void loadStock();
 };
 
 onMounted(async () => {
   if (authStore.tenantId) {
-    await stockTypeStore.fetchStockTypes(authStore.tenantId);
+    await Promise.all([
+      stockTypeStore.fetchStockTypes(authStore.tenantId),
+      stockLocationStore.fetchLocations(authStore.tenantId),
+    ]);
   }
   void loadStock();
 });

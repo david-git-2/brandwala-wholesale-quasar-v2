@@ -3,8 +3,10 @@ import {
   type GlobalShipment,
   type GlobalShipmentItem,
 } from '../repositories/globalShipmentRepository';
+import { globalShipmentCostEntryRepository } from '../repositories/globalShipmentCostEntryRepository';
 import { computePurchasePriceAdjustments } from './purchaseBalance';
-import { calculateTransactionRate } from './landedCost';
+import { sumProductEntryAmount } from 'src/shared/shipment-engine';
+import type { GlobalShipmentCostEntry } from '../types/shipmentCostEntry';
 
 export interface ApplyPurchaseBalanceResult {
   estimatedTotal: number;
@@ -20,10 +22,12 @@ export interface ApplyPurchaseBalanceResult {
 export interface ApplyPurchaseBalancePreload {
   shipment: GlobalShipment;
   items: GlobalShipmentItem[];
+  costEntries?: GlobalShipmentCostEntry[];
 }
 
 /**
- * Distributes saved purchase invoice total across line purchase_price values.
+ * Distributes Σ(product cost-entry amounts) across line purchase_price values.
+ * Does not write header FX / transaction_rate.
  */
 export async function applyShipmentPurchaseBalance(
   shipmentId: number,
@@ -32,9 +36,17 @@ export async function applyShipmentPurchaseBalance(
   const shipment = preload?.shipment ?? (await globalShipmentRepository.getById(shipmentId));
   const items = preload?.items ?? (await globalShipmentRepository.listShipmentItems(shipmentId));
 
-  const actualTotal = shipment.purchase_invoice_total || 0;
+  let entries = preload?.costEntries;
+  if (!entries) {
+    await globalShipmentCostEntryRepository.ensureFromHeader(shipmentId);
+    entries = await globalShipmentCostEntryRepository.listByShipmentId(shipmentId);
+  }
+
+  const actualTotal = sumProductEntryAmount(entries);
   if (actualTotal <= 0) {
-    throw new Error('Purchase Invoice Total must be saved before applying purchase balance.');
+    throw new Error(
+      'Product cost entry amount must be saved (Match invoices / Landed cost) before applying purchase balance.',
+    );
   }
 
   const adjustments = computePurchasePriceAdjustments(
@@ -47,38 +59,12 @@ export async function applyShipmentPurchaseBalance(
     actualTotal,
   );
 
-  const updatedItems = items.map((item) => {
-    const adj = adjustments.find((a) => a.itemId === item.id);
-    return adj ? { ...item, purchase_price: adj.newPurchasePrice } : item;
-  });
-
-  let transactionRate: number | null = null;
-  if (shipment.type === 'international') {
-    transactionRate = calculateTransactionRate(
-      {
-        type: shipment.type,
-        product_conversion_rate: shipment.product_conversion_rate,
-        cargo_conversion_rate: shipment.cargo_conversion_rate,
-        cargo_rate: shipment.cargo_rate,
-        received_weight: shipment.received_weight,
-        transaction_rate: shipment.transaction_rate,
-      },
-      updatedItems.map((item) => ({
-        purchase_price: item.purchase_price,
-        product_weight: item.product_weight,
-        package_weight: item.package_weight,
-        ordered_quantity: item.ordered_quantity,
-      })),
-    );
-  }
-
   const rpcResult = await globalShipmentRepository.applyPurchaseBalance(
     shipmentId,
     adjustments.map((adj) => ({
       item_id: adj.itemId,
       purchase_price: adj.newPurchasePrice,
     })),
-    transactionRate,
   );
 
   return {

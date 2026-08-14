@@ -418,23 +418,20 @@
       <q-separator class="q-mx-md q-my-sm" />
 
       <q-card-section class="q-py-sm">
-        <!-- Stock Type Splits Inputs -->
+        <!-- Availability splits -->
         <div class="q-gutter-y-md">
           <div
-            v-for="t in stockTypeStore.items"
-            :key="t.id"
+            v-for="opt in STOCK_AVAILABILITY_OPTIONS"
+            :key="opt.value"
             class="row items-center justify-between no-wrap q-py-xs"
           >
             <div class="column text-left">
               <span class="text-weight-bold text-grey-9 text-subtitle2" style="line-height: 1.1">{{
-                t.description
+                opt.label
               }}</span>
-              <span class="text-caption text-grey-6" style="font-size: 11px">
-                {{ t.is_sellable ? 'Sellable Pool' : 'Non-Sellable Pool' }}
-              </span>
             </div>
             <q-input
-              v-model.number="localSplits[activeSplitItem!.id]![t.id]"
+              v-model.number="localSplits[activeSplitItem!.id]![opt.value]"
               type="number"
               dense
               outlined
@@ -482,11 +479,16 @@ import { computed, ref, onMounted, watch } from 'vue';
 import SmartImage from 'src/components/SmartImage.vue';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import type { GlobalShipment, GlobalShipmentItem } from '../repositories/globalShipmentRepository';
-import { calculateLineLandedCostBdt } from '../utils/landedCost';
+import { calculateLineLandedCostBdt } from 'src/shared/shipment-engine';
 import { syncShipmentWeightToProduct } from '../utils/syncShipmentWeightToProduct';
-import { useGlobalStockTypeStore } from '../stores/globalStockTypeStore';
+import { useStockLocationStore } from '../stores/stockLocationStore';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { supabase } from 'src/boot/supabase';
+import {
+  STOCK_AVAILABILITY_OPTIONS,
+  type StockAvailability,
+} from '../constants/stockAvailability';
+import { getDefaultPutawayLocationId } from '../utils/stockLocationOptions';
 import {
   showSuccessNotification,
   showErrorNotification,
@@ -587,10 +589,16 @@ const tableColspan = computed(() => {
   return count;
 });
 
-const stockTypeStore = useGlobalStockTypeStore();
+const locationStore = useStockLocationStore();
 const authStore = useAuthStore();
 
-const localSplits = ref<Record<number, Record<number, number>>>({});
+const emptyAvailabilitySplits = (): Record<StockAvailability, number> => ({
+  sellable: 0,
+  held: 0,
+  unsellable: 0,
+});
+
+const localSplits = ref<Record<number, Record<StockAvailability, number>>>({});
 const savingSplits = ref<Record<number, boolean>>({});
 
 const splitDialogActive = ref(false);
@@ -602,44 +610,35 @@ const openSplitDialog = (item: GlobalShipmentItem) => {
 };
 
 onMounted(async () => {
-  if (stockTypeStore.items.length === 0 && authStore.tenantId) {
-    await stockTypeStore.fetchStockTypes(authStore.tenantId);
+  if (authStore.tenantId && locationStore.items.length === 0) {
+    await locationStore.fetchLocations(authStore.tenantId, false);
   }
 });
 
 const initLocalSplits = () => {
   const stocks = shipmentStore.currentShipmentStocks || [];
   const items = props.items || [];
-  const defaultType =
-    stockTypeStore.items.find((t) => t.description === 'Standard Sellable') ||
-    stockTypeStore.items[0];
-  const defaultTypeId = defaultType?.id || 0;
 
-  const newSplits: Record<number, Record<number, number>> = {};
+  const newSplits: Record<number, Record<StockAvailability, number>> = {};
   for (const item of items) {
     const itemStocks = stocks.filter((s) => s.shipment_item_id === item.id);
-    const splits: Record<number, number> = {};
+    const splits = emptyAvailabilitySplits();
     newSplits[item.id] = splits;
-
-    for (const t of stockTypeStore.items) {
-      splits[t.id] = 0;
-    }
 
     if (itemStocks.length > 0) {
       for (const s of itemStocks) {
-        splits[s.stock_type_id] = s.quantity || 0;
+        const availability = (s.availability || 'sellable') as StockAvailability;
+        splits[availability] = (splits[availability] || 0) + (s.quantity || 0);
       }
     } else {
-      if (defaultTypeId > 0) {
-        splits[defaultTypeId] = item.ordered_quantity;
-      }
+      splits.sellable = item.ordered_quantity;
     }
   }
   localSplits.value = newSplits;
 };
 
 watch(
-  [() => shipmentStore.currentShipmentStocks, () => props.items, () => stockTypeStore.items],
+  [() => shipmentStore.currentShipmentStocks, () => props.items],
   () => {
     initLocalSplits();
   },
@@ -669,20 +668,21 @@ const saveItemSplits = async () => {
 
   savingSplits.value[item.id] = true;
   try {
-    const itemSplits = localSplits.value[item.id] || {};
-    const stockRows = Object.entries(itemSplits)
-      .map(([stockTypeIdStr, qty]) => {
-        const stockTypeId = Number(stockTypeIdStr);
-        const stockType = stockTypeStore.items.find((t) => t.id === stockTypeId);
-        return {
-          parent_tenant_id: authStore.tenantId,
-          shipment_item_id: item.id,
-          stock_type_id: stockTypeId,
-          quantity: qty,
-          is_usable: stockType?.is_sellable ?? true,
-        };
-      })
-      .filter((row) => row.quantity > 0);
+    const locationId = getDefaultPutawayLocationId(locationStore.items);
+    if (!locationId) {
+      showErrorNotification('No default put-away location configured.');
+      return;
+    }
+
+    const itemSplits = localSplits.value[item.id] || emptyAvailabilitySplits();
+    const stockRows = STOCK_AVAILABILITY_OPTIONS.map((opt) => ({
+      parent_tenant_id: authStore.tenantId,
+      shipment_item_id: item.id,
+      availability: opt.value,
+      location_id: locationId,
+      quantity: itemSplits[opt.value] || 0,
+      is_usable: opt.value === 'sellable',
+    })).filter((row) => row.quantity > 0);
 
     const { error: deleteError } = await supabase
       .from('global_stocks')
@@ -723,6 +723,9 @@ const formatPrice = (value: number | null | undefined) => {
 };
 
 const lineCostBdt = (item: GlobalShipmentItem) => {
+  if (item.landed_cost_bdt != null && Number.isFinite(Number(item.landed_cost_bdt))) {
+    return Number(item.landed_cost_bdt);
+  }
   if (!props.shipment) return 0;
   return calculateLineLandedCostBdt(item, props.shipment, props.items);
 };

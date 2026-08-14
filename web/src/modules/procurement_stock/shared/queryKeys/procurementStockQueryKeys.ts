@@ -26,4 +26,14 @@ export const procurementStockQueryKeys = {
 
   cargoCompanies: (tenantId: number, includeInactive?: boolean) =>
     ['procurementStock', 'cargoCompanies', { tenantId, includeInactive }] as const,
+
+  shipmentCostEntries: (shipmentId: number) =>
+    ['procurementStock', 'shipmentCostEntries', { shipmentId }] as const,
+
+  childStockAtp: (params: {
+    childTenantId: number;
+    search?: string | null;
+    limit?: number;
+    offset?: number;
+  }) => ['procurementStock', 'childStockAtp', params] as const,
 };

@@ -5,3 +5,19 @@ export type {
   CargoCompanyCreateInput,
   CargoCompanyUpdateInput,
 } from './cargoCompany';
+export type {
+  CostEntryDraft,
+  CostEntriesSavePayload,
+  GlobalShipmentCostEntry,
+  GlobalShipmentCostType,
+  ReviseShipmentCostEntryInput,
+  ShipmentCostPaymentSource,
+  UpsertShipmentCostEntryPayload,
+} from './shipmentCostEntry';
+export { DAY_ONE_COST_TYPES, STUB_COST_TYPES } from './shipmentCostEntry';
+export {
+  STOCK_AVAILABILITY_OPTIONS,
+  formatStockAvailability,
+  availabilityChipColor,
+  type StockAvailability,
+} from '../constants/stockAvailability';

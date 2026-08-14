@@ -204,6 +204,10 @@ const mapListGlobalInvoiceItemRow = (row: any): GlobalInvoiceItemRow => {
         cargo_rate: Number(row.cargo_rate ?? 0),
         received_weight: row.received_weight == null ? null : Number(row.received_weight),
         transaction_rate: row.transaction_rate == null ? null : Number(row.transaction_rate),
+        landed_cost_bdt:
+          row.landed_cost_bdt == null || row.landed_cost_bdt === undefined
+            ? null
+            : Number(row.landed_cost_bdt),
       }
     : null;
 

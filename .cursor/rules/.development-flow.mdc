@@ -34,7 +34,7 @@ alwaysApply: true
 - Tenants: `doc/TENANT_MODEL_AND_ACCESS.md`
 - Permissions: `doc/PERMISSION_SYSTEM.md`
 - Modules: `doc/PROCUREMENT_STOCK.md`, `doc/SALES_INVOICE.md`, `doc/SHOP_ORDER.md`, `doc/REPORTING_TREASURY.md`, `doc/INVESTOR_CAPITAL.md`, `doc/THRIFT.md`, `doc/GLOBAL_REFERENCE_DATA.md`
-- UI: `docs/UI_CONSISTENCY.md` + `.cursor/rules/.ui-consistency.mdc`
+- UI: `docs/UI_CONSISTENCY.md` + `.cursor/rules/.ui-consistency.mdc`. Pages explain themselves (`.cursor/rules/frictionless-ui.mdc`); Help (`?` drawer) and `doc/` audiences in UI_CONSISTENCY Guidance layers.
 - Workflow: `docs/AI_WORKFLOW_SOP.md`
 
 ## File structure

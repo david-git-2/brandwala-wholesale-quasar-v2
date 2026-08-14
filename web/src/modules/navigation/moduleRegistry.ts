@@ -620,13 +620,13 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'global_shipment',
     name: 'Shipment',
-    description: 'Inbound batches: draft, in transit, finalize, and received.',
+    description: 'Incoming goods from vendors. Open a row to add items and receive them.',
     parentModuleKey: 'procurement_stock',
     routes: [
       {
         scope: 'app',
         title: 'Shipment',
-        caption: 'Inbound procurement batches and finalize',
+        caption: 'Incoming goods from vendors',
         icon: 'ph ph-truck',
         routeSegment: 'procurement/shipment',
         requiredAction: 'view',
@@ -636,13 +636,13 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'global_stock',
     name: 'Warehouse',
-    description: 'Parent warehouse on-hand by availability and location.',
+    description: 'What is on the shelves, and whether it can be sold.',
     parentModuleKey: 'procurement_stock',
     routes: [
       {
         scope: 'app',
         title: 'Warehouse',
-        caption: 'Parent stock pools and stock types',
+        caption: 'What is on the shelves',
         icon: 'ph ph-warehouse',
         routeSegment: 'procurement/stock',
         requiredAction: 'view',
@@ -652,13 +652,13 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'global_stock_movement',
     name: 'Movements',
-    description: 'Warehouse movement documents: location and availability transfers.',
+    description: 'Move stock between shelves or sellable / held / unsellable.',
     parentModuleKey: 'procurement_stock',
     routes: [
       {
         scope: 'app',
         title: 'Movements',
-        caption: 'Post location and availability moves',
+        caption: 'Move stock between shelves',
         icon: 'ph ph-arrows-left-right',
         routeSegment: 'procurement/movements',
         requiredAction: 'view',
@@ -668,13 +668,13 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'global_stock_location',
     name: 'Locations',
-    description: 'Shelves, slots, and boxes for the parent warehouse.',
+    description: 'Shelves and boxes where warehouse stock sits.',
     parentModuleKey: 'procurement_stock',
     routes: [
       {
         scope: 'app',
         title: 'Locations',
-        caption: 'Shelves, slots, and boxes',
+        caption: 'Shelves and boxes',
         icon: 'ph ph-map-pin',
         routeSegment: 'procurement/locations',
         requiredAction: 'view',
@@ -684,13 +684,13 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'cargo_company',
     name: 'Cargo Companies',
-    description: 'Inbound freight / cargo agents for procurement shipments.',
+    description: 'Freight agents used on inbound shipments.',
     parentModuleKey: 'procurement_stock',
     routes: [
       {
         scope: 'app',
         title: 'Cargo Companies',
-        caption: 'Freight agents and default cargo company',
+        caption: 'Freight agents for inbound shipments',
         icon: 'ph ph-airplane-tilt',
         routeSegment: 'procurement/cargo-companies',
         requiredAction: 'view',
@@ -700,13 +700,13 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'inventory',
     name: 'Stock',
-    description: 'Child tenant view of assigned / sellable stock.',
+    description: 'Stock this shop can sell from received shipments.',
     parentModuleKey: 'procurement_stock',
     routes: [
       {
         scope: 'app',
         title: 'Stock',
-        caption: 'View stock available to this sister concern',
+        caption: 'Stock this shop can sell',
         icon: 'ph ph-package',
         routeSegment: 'procurement/child-stock',
         requiredAction: 'view',
@@ -1088,7 +1088,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'shop_cart',
     name: 'Cart',
-    description: 'Per-shop cart with soft stock reservation against global_stock_allocations.',
+    description: 'Per-shop cart with soft stock reservation against global_stock_id ATP.',
     parentModuleKey: 'shop_order',
     routes: [
       {

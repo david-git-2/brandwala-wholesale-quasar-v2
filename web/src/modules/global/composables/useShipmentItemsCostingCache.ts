@@ -1,23 +1,36 @@
 import { globalShipmentRepository } from 'src/modules/procurement_stock/repositories/globalShipmentRepository';
-import type { CostingLineItemInput } from 'src/modules/procurement_stock/utils/landedCost';
+import type { CostingLineItemInput } from 'src/shared/shipment-engine';
+
+/** Line used for live preview fallback + stamp lookup by shipment_item_id. */
+export type ShipmentCostingCacheItem = CostingLineItemInput & {
+  id: number;
+  landed_cost_bdt: number | null;
+};
 
 const mapShipmentItem = (item: {
+  id: number;
   purchase_price: number;
   product_weight: number;
   package_weight: number;
   ordered_quantity: number;
-}): CostingLineItemInput => ({
+  landed_cost_bdt?: number | null;
+}): ShipmentCostingCacheItem => ({
+  id: item.id,
   purchase_price: item.purchase_price,
   product_weight: item.product_weight,
   package_weight: item.package_weight,
   ordered_quantity: item.ordered_quantity,
+  landed_cost_bdt:
+    item.landed_cost_bdt == null || !Number.isFinite(Number(item.landed_cost_bdt))
+      ? null
+      : Number(item.landed_cost_bdt),
 });
 
 export function createShipmentItemsCostingCache() {
-  const cache = new Map<number, CostingLineItemInput[]>();
-  const inflight = new Map<number, Promise<CostingLineItemInput[]>>();
+  const cache = new Map<number, ShipmentCostingCacheItem[]>();
+  const inflight = new Map<number, Promise<ShipmentCostingCacheItem[]>>();
 
-  const ensureShipmentItems = async (shipmentId: number): Promise<CostingLineItemInput[]> => {
+  const ensureShipmentItems = async (shipmentId: number): Promise<ShipmentCostingCacheItem[]> => {
     if (!shipmentId) return [];
 
     const cached = cache.get(shipmentId);
@@ -29,7 +42,16 @@ export function createShipmentItemsCostingCache() {
     const promise = globalShipmentRepository
       .listShipmentItems(shipmentId)
       .then((items) => {
-        const mapped = items.map(mapShipmentItem);
+        const mapped = items.map((item) =>
+          mapShipmentItem({
+            id: item.id,
+            purchase_price: item.purchase_price,
+            product_weight: item.product_weight,
+            package_weight: item.package_weight,
+            ordered_quantity: item.ordered_quantity,
+            landed_cost_bdt: item.landed_cost_bdt ?? null,
+          }),
+        );
         cache.set(shipmentId, mapped);
         inflight.delete(shipmentId);
         return mapped;
@@ -43,7 +65,13 @@ export function createShipmentItemsCostingCache() {
     return promise;
   };
 
-  const getSync = (shipmentId: number): CostingLineItemInput[] => cache.get(shipmentId) ?? [];
+  const getSync = (shipmentId: number): ShipmentCostingCacheItem[] => cache.get(shipmentId) ?? [];
+
+  /** Living stamp for a shipment item, if finalized/revised. */
+  const getStampSync = (shipmentId: number, shipmentItemId: number): number | null => {
+    const row = getSync(shipmentId).find((i) => i.id === shipmentItemId);
+    return row?.landed_cost_bdt ?? null;
+  };
 
   const prefetchShipmentItems = async (shipmentIds: number[]): Promise<void> => {
     const uniqueIds = Array.from(new Set(shipmentIds.filter((id) => id > 0)));
@@ -55,7 +83,7 @@ export function createShipmentItemsCostingCache() {
       toFetchIds.forEach((id) => {
         const promise = batchPromise
           .then((groupedItems) => {
-            const mapped = groupedItems[id] || [];
+            const mapped = (groupedItems[id] || []).map(mapShipmentItem);
             cache.set(id, mapped);
             inflight.delete(id);
             return mapped;
@@ -79,6 +107,7 @@ export function createShipmentItemsCostingCache() {
   return {
     ensureShipmentItems,
     getSync,
+    getStampSync,
     prefetchShipmentItems,
     clear,
   };

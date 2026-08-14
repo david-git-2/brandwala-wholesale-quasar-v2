@@ -148,9 +148,11 @@ Blocked or revision-gated once `inventory_added = true` (product policy).
 
 | Field | When to send |
 | :--- | :--- |
-| `payment_source` | `'cash'` \| `'credit'` \| `'wallet'` — settlement mode for this cost slice |
-| `entity_type` / `entity_id` | Payee (`vendor`, `cargo_company`, …). **Never** `shipment`. Settlement **intent** only day one — no auto wallet post on finalize ([issues §3](../../../PROCUREMENT_STOCK_ISSUES.md)) · [cargo company](../../cargo_company/schema.md) |
+| `payment_source` | `'cash'` \| `'credit'` \| `'wallet'` \| omit/null — settlement mode for this cost slice |
+| `entity_type` / `entity_id` | Payee: **`vendor`** or **`cargo_company`** only. **Never** `shipment`. Both null = costing-only (valid). Settlement **intent** only — no auto wallet post on save / revise / finalize ([issues §3](../../../PROCUREMENT_STOCK_ISSUES.md)) · [cargo company](../../cargo_company/schema.md) |
 | `allocation` | Non-default spread for duty/labor later |
 | `cost_type` beyond product/cargo | When UI enables duty, insurance, etc. |
+
+**UI (Landed cost panel):** each cost-entry row has payee type + payee id + payment source. Prefill may use shipment header `vendor_id` / `cargo_company_id`; staff can clear for costing-only.
 
 Live preview and finalize consume these via [shipment_engine.md](../shipment_engine.md). Costing does not require wallet. Wallet ownership / return-for-credit: [PROCUREMENT_STOCK_ISSUES.md](../../../PROCUREMENT_STOCK_ISSUES.md) §3 · [schema.md](../schema.md) §1.2 money handoff. After finalize, mutation goes through cost revision (re-stamp), not silent upsert.

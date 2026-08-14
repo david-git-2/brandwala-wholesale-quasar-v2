@@ -20,6 +20,23 @@ Screens must feel fast and obvious: fewest steps to complete the task, clear pri
 - Non-blocking loads: `GlobalAjaxBar` for background work; `PageInitialLoader` only for first paint.
 - Icon-only actions need tooltips; hit targets stay touch-friendly.
 
+## Page explains itself
+
+The page is the teacher. Happy path never requires Help or `doc/`. Audiences: [docs/UI_CONSISTENCY.md](../../docs/UI_CONSISTENCY.md) Guidance layers.
+
+- **What:** header subtitle or caption in shop-floor English. No RPC, table, ATP, or entity jargon.
+- **Next:** exactly one next step visible. List pages: subtitle + one primary CTA (empty-state vs header rule above). Detail/workflow pages: `q-banner` under the header when the next step is status-gated.
+- **Disabled why:** if the primary action is disabled, `q-tooltip` (or the banner) says why — same pattern as Receive lock on `ShipmentStatusWorkflowBar.vue`.
+- **Stage-gated:** hide cards that do not apply to the current status (e.g. settle/return only after received).
+
+```vue
+<q-banner class="bg-primary-soft text-primary rounded-borders" dense>
+  Add at least one item, then mark In transit.
+</q-banner>
+```
+
+Do not dump Help-drawer copy on the page. Do not add product tours. Do not send users to `/app/documentation` or `doc/*.md`.
+
 ## Styling stack (in order)
 
 1. **App theme** — `var(--bw-theme-*)` and Quasar `color="primary"` (maps to theme). No hardcoded hex except locked domain table pastels.

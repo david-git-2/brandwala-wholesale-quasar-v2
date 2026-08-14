@@ -458,19 +458,6 @@
     <!-- Catalog Filters Sidebar -->
     <FilterSidebar v-model="filterDrawerOpen" title="Filters" :z-index="7000">
       <div class="q-gutter-y-md q-pa-sm">
-        <!-- Vendor Filter -->
-        <q-select
-          v-model="draftVendorId"
-          :options="vendorOptions"
-          label="Vendor"
-          filled
-          dense
-          emit-value
-          map-options
-          clearable
-          @update:model-value="onDraftVendorChange"
-        />
-
         <!-- Brand Filter -->
         <q-select
           v-model="draftBrand"
@@ -747,11 +734,9 @@ const cartStorageKey = computed(() => `shipment_cart_${props.shipmentId}`);
 
 // Filters State
 const filterDrawerOpen = ref(false);
-const filterVendorId = ref<number | null>(null);
 const filterBrand = ref<string>('');
 const filterCategory = ref<string>('');
 
-const draftVendorId = ref<number | null>(null);
 const draftBrand = ref<string>('');
 const draftCategory = ref<string>('');
 
@@ -764,13 +749,14 @@ const categoryOptions = ref<string[]>([]);
 // New Product Sidebar State
 const showNewProductSidebar = ref(false);
 
-const vendorOptions = computed(() =>
-  vendorStore.items.map((v) => ({ label: v.name, value: v.id })),
-);
+const shipmentVendorId = computed(() => {
+  const ship = shipmentStore.currentShipment;
+  if (ship && ship.id === props.shipmentId) return ship.vendor_id ?? null;
+  return null;
+});
 
 const activeFilterCount = computed(() => {
   let count = 0;
-  if (filterVendorId.value) count++;
   if (filterBrand.value) count++;
   if (filterCategory.value) count++;
   return count;
@@ -795,7 +781,7 @@ const totalCartPriceGbp = computed(() =>
 const formatMoney = (val: number) => val.toFixed(2);
 const lineSubtotal = (item: ShipmentCartItem) => (item.purchase_price || 0) * item.ordered_quantity;
 
-const getDefaultVendorId = () => filterVendorId.value;
+const getDefaultVendorId = () => shipmentVendorId.value;
 
 const getVendorCode = (vendorId: number | null): string | null => {
   if (!vendorId) return null;
@@ -987,12 +973,7 @@ const onBulkAddCodes = async () => {
 let currentQuerySeq = 0;
 
 const loadBrowse = async (append = false) => {
-  if (
-    !browseSearch.value.trim() &&
-    !filterBrand.value &&
-    !filterCategory.value &&
-    !filterVendorId.value
-  ) {
+  if (!browseSearch.value.trim() && !filterBrand.value && !filterCategory.value) {
     browseList.value = [];
     browseTotal.value = 0;
     return;
@@ -1002,9 +983,7 @@ const loadBrowse = async (append = false) => {
   const seq = currentQuerySeq;
   browseLoading.value = true;
   try {
-    const vendorCode = filterVendorId.value
-      ? vendorStore.items.find((v) => v.id === filterVendorId.value)?.code
-      : undefined;
+    const vendorCode = getVendorCode(shipmentVendorId.value) ?? undefined;
 
     const res = await productRepository.listProducts({
       page: browsePage.value,
@@ -1089,21 +1068,12 @@ const onNewProductAdd = (newProduct: Omit<ShipmentCartItem, 'key'>) => {
   // Unshift to put last added item first in the cart stack
   cart.value.unshift({
     ...newProduct,
+    vendor_id: shipmentVendorId.value,
     key: `new_${Date.now()}`,
   });
 };
 
-const openFilterSidebar = () => {
-  draftVendorId.value = filterVendorId.value;
-  draftBrand.value = filterBrand.value;
-  draftCategory.value = filterCategory.value;
-  void onDraftVendorChange(filterVendorId.value);
-  filterDrawerOpen.value = true;
-};
-
-const onDraftVendorChange = async (vendorId: number | null) => {
-  draftBrand.value = '';
-  draftCategory.value = '';
+const loadBrandCategoryOptions = async (vendorId: number | null) => {
   allBrands.value = [];
   allCategories.value = [];
 
@@ -1125,6 +1095,13 @@ const onDraftVendorChange = async (vendorId: number | null) => {
   }
 };
 
+const openFilterSidebar = () => {
+  draftBrand.value = filterBrand.value;
+  draftCategory.value = filterCategory.value;
+  void loadBrandCategoryOptions(shipmentVendorId.value);
+  filterDrawerOpen.value = true;
+};
+
 const filterBrands = (val: string, update: (callback: () => void) => void) => {
   update(() => {
     const needle = val.toLowerCase().trim();
@@ -1144,7 +1121,6 @@ const filterCategories = (val: string, update: (callback: () => void) => void) =
 };
 
 const onApplyFilters = () => {
-  filterVendorId.value = draftVendorId.value;
   filterBrand.value = draftBrand.value;
   filterCategory.value = draftCategory.value;
   filterDrawerOpen.value = false;
@@ -1153,10 +1129,8 @@ const onApplyFilters = () => {
 };
 
 const onResetFilters = () => {
-  draftVendorId.value = null;
   draftBrand.value = '';
   draftCategory.value = '';
-  filterVendorId.value = null;
   filterBrand.value = '';
   filterCategory.value = '';
   filterDrawerOpen.value = false;
@@ -1209,7 +1183,7 @@ const registerProduct = async (item: ShipmentCartItem): Promise<number> => {
     image_url: item.image_url,
     category: item.category,
     brand: item.brand,
-    vendor_code: getVendorCode(item.vendor_id),
+    vendor_code: getVendorCode(shipmentVendorId.value),
     country_of_origin: null,
     available_units: null,
     tariff_code: null,
@@ -1250,7 +1224,7 @@ const onCommitCart = async () => {
       await shipmentStore.addShipmentItem({
         shipment_id: props.shipmentId,
         product_id: productId,
-        vendor_id: item.vendor_id,
+        vendor_id: shipmentVendorId.value,
         name: item.name,
         ordered_quantity: item.ordered_quantity,
         purchase_price: item.purchase_price,
@@ -1303,6 +1277,12 @@ const gbpCurrencyId = ref<number | null>(null);
 
 onMounted(async () => {
   loadCartFromStorage();
+  if (
+    !shipmentStore.currentShipment ||
+    shipmentStore.currentShipment.id !== props.shipmentId
+  ) {
+    void shipmentStore.fetchShipmentDetails(props.shipmentId);
+  }
   if (authStore.tenantId && vendorStore.items.length === 0) {
     void vendorStore.fetchVendors(authStore.tenantId);
   }

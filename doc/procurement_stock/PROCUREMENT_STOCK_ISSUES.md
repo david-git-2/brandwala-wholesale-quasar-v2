@@ -18,7 +18,7 @@ Sell model, assign, ATP (incl. pickable locations), listing FK, availability, **
 
 **Locations catalog (locked names):** table `stock_locations` with SMB hierarchy `shelf` → `slot` → `box` (+ `returns` area), `parent_location_id`; no auto-seed; hard delete via `delete_stock_location` (cascade children). RPCs `list_stock_locations`, `upsert_stock_location`, `set_default_stock_location`, `delete_stock_location` — [stock/api/stock_location_api.md](./stock/api/stock_location_api.md).
 
-**Still open:** movement table/RPC names; `global_stocks.location_id` cutover SQL.
+**Still open:** movement table/RPC names; `global_stocks.location_id` cutover SQL — **location columns + list/movement RPCs shipped** in `20270814000045` / `20270814000210`.
 
 | Gap | Meaning | In first movement cut? |
 | :--- | :--- | :---: |
@@ -47,7 +47,7 @@ Sell model, assign, ATP (incl. pickable locations), listing FK, availability, **
 | Report / investor P&L | `revenue − (current stamp × sold_qty)` — join living stamp, not invoice snapshot |
 | Wallet variance | **Stub-optional** — not required for day-one report truth ([schema §4.2](./v2/shipment/schema.md)) |
 
-**Still open:** which module action may call revise in UI. RPC names locked: `finalize_global_shipment`, `revise_global_shipment_costs`, cost-entry CRUD — see [v2/shipment/rpc/](./v2/shipment/rpc/). Wallet on revise is locked stub-skip — [§3](#3-wallet-posts-on-finalize--revision). Header rate column **drop** waits for UI to read/write entries only ([plan Phase 4](./v2/shipment/)).
+**Still open:** which module action may call revise in UI. RPC names locked: `finalize_global_shipment`, `revise_global_shipment_costs`, `pay_settle_shipment_costs`, cost-entry CRUD — see [v2/shipment/rpc/](./v2/shipment/rpc/). Wallet on revise is locked stub-skip — [§3](#3-wallet-posts-on-finalize--revision). Header rate columns dropped — UI reads cost entries + stamp only.
 
 ---
 
@@ -60,9 +60,9 @@ Sell model, assign, ATP (incl. pickable locations), listing FK, availability, **
 | Finalize — `payment_source` / payee **null** | **Skip** — costing only |
 | Finalize — cash / credit / wallet (+ entity) set | **Stub-skip** — keep intent on cost entry; **do not** post ledger |
 | Cost revision | **Stub-skip** — re-stamp only; no auto wallet delta |
-| Explicit Pay / Settle (later) | **Required** when that action runs — debit/credit tenant + payee; `source_type` / `source_id` = shipment (cost-entry id optional in metadata) |
+| Explicit Pay / Settle | **Required** when that action runs — RPC **`pay_settle_shipment_costs`** (migration `20270814000100`); debit/credit tenant + payee; `source_type` / `source_id` = shipment |
 | Vendor return (cash refund / store credit) | Separate from finalize — see workflow Stage 4 return table |
 
 **Why:** Receive must not depend on treasury readiness; sell-first / cost-later often revises freight after receive; reports join living stamp × sold qty (no variance ledger needed day one).
 
-**Still open:** exact Pay / Settle RPC + UI when AP/cash UX is built. Not required for assign + ATP + finalize cutover.
+**Still open:** exact Pay / Settle UI polish when AP/cash UX expands. RPC **`pay_settle_shipment_costs`** implemented (`20270814000100`).

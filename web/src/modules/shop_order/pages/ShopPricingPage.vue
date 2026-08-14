@@ -588,7 +588,7 @@ const selectedProductCost = ref<string | null>(null);
 const form = ref<UpsertListingPayload>({
   tenant_id: 0,
   shop_id: 0,
-  global_stock_allocation_id: 0,
+  global_stock_id: 0,
   sell_price_amount: 0,
   sell_price_currency_id: 0,
   minimum_sell_price_amount: null,
@@ -796,7 +796,7 @@ const onAllocationPicked = (alloc: CandidateAllocation) => {
   form.value = {
     tenant_id: tenantId.value,
     shop_id: shopId.value,
-    global_stock_allocation_id: alloc.allocation_id,
+    global_stock_id: alloc.global_stock_id,
     sell_price_amount: calculatedSell,
     sell_price_currency_id: shopDefaultCurrencyId.value ?? form.value.sell_price_currency_id ?? null,
     minimum_sell_price_amount: calculatedFloor,
@@ -822,7 +822,7 @@ const openEditListing = (listing: ShopProductListing) => {
     id: listing.id,
     tenant_id: tenantId.value,
     shop_id: shopId.value,
-    global_stock_allocation_id: listing.global_stock_allocation_id,
+    global_stock_id: listing.global_stock_id,
     sell_price_amount: Number(listing.sell_price_amount),
     sell_price_currency_id: listing.sell_price_currency_id || shopDefaultCurrencyId.value || 0,
     minimum_sell_price_amount: listing.minimum_sell_price_amount
@@ -847,8 +847,8 @@ const onSaveListing = () => {
     form.value.minimum_sell_price_currency_id = null;
   }
 
-  if (form.value.global_stock_allocation_id) {
-    const alloc = candidates.value.find((c) => c.allocation_id === form.value.global_stock_allocation_id);
+  if (form.value.global_stock_id) {
+    const alloc = candidates.value.find((c) => c.global_stock_id === form.value.global_stock_id);
     if (alloc && alloc.allocated_quantity <= 0) {
       form.value.is_active = false;
     }
@@ -926,7 +926,7 @@ const onSavePricingRule = (payload: {
             id: item.id,
             tenant_id: tenantId.value,
             shop_id: shopId.value,
-            global_stock_allocation_id: item.global_stock_allocation_id,
+            global_stock_id: item.global_stock_id,
             sell_price_amount: newSellPrice,
             sell_price_currency_id: item.sell_price_currency_id || shopDefaultCurrencyId.value || 0,
             minimum_sell_price_amount: minPriceAmount,
@@ -1037,7 +1037,7 @@ const onInlineCellEdit = (
     id: listing.id,
     tenant_id: tenantId.value,
     shop_id: shopId.value,
-    global_stock_allocation_id: listing.global_stock_allocation_id,
+    global_stock_id: listing.global_stock_id,
     sell_price_amount: field === 'sell_price_amount' ? (val ?? 0) : Number(listing.sell_price_amount),
     sell_price_currency_id: currencyId,
     minimum_sell_price_amount: minPriceAmount,
@@ -1063,7 +1063,7 @@ const onToggleQuantityLock = (listing: ShopProductListing) => {
     id: listing.id,
     tenant_id: tenantId.value,
     shop_id: shopId.value,
-    global_stock_allocation_id: listing.global_stock_allocation_id,
+    global_stock_id: listing.global_stock_id,
     sell_price_amount: Number(listing.sell_price_amount),
     sell_price_currency_id: currencyId,
     minimum_sell_price_amount: minPriceAmount,
@@ -1096,7 +1096,7 @@ const onToggleShowQuantity = (listing: ShopProductListing, showQty: boolean) => 
     id: listing.id,
     tenant_id: tenantId.value,
     shop_id: shopId.value,
-    global_stock_allocation_id: listing.global_stock_allocation_id,
+    global_stock_id: listing.global_stock_id,
     sell_price_amount: Number(listing.sell_price_amount),
     sell_price_currency_id: currencyId,
     minimum_sell_price_amount: minPriceAmount,
@@ -1132,7 +1132,7 @@ const onToggleIsActive = (listing: ShopProductListing, isActive: boolean) => {
     id: listing.id,
     tenant_id: tenantId.value,
     shop_id: shopId.value,
-    global_stock_allocation_id: listing.global_stock_allocation_id,
+    global_stock_id: listing.global_stock_id,
     sell_price_amount: Number(listing.sell_price_amount),
     sell_price_currency_id: currencyId,
     minimum_sell_price_amount: minPriceAmount,

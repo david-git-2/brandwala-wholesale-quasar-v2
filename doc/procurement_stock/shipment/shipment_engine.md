@@ -70,7 +70,7 @@ web/src/shared/shipment-engine/
 
 > Rename from older sketch `costVariance.ts` if present — same helper, clearer job (not “accounting variance table”).
 
-> Located in `shared/` because it is consumed by multiple modules (`procurement_stock`, `thrift`, future v2 shipment module).
+> Located in `web/src/shared/shipment-engine/` — import via `src/shared/shipment-engine` (no procurement module coupling). Day-one live preview uses `costEngine.ts` + `types.ts`; optional `costRevision.ts` for UI stamp deltas. Weight/price balance helpers remain module-local until a later extract.
 
 ---
 
@@ -309,11 +309,12 @@ export interface PriceAdjustment {
 ### Moves into `shared/shipment-engine/`
 | Current File | Becomes |
 |---|---|
-| `procurement_stock/utils/landedCost.ts` | `shipment-engine/costEngine.ts` |
-| `procurement_stock/utils/weightBalance.ts` | `shipment-engine/weightBalance.ts` |
-| `procurement_stock/utils/purchaseBalance.ts` | `shipment-engine/priceBalance.ts` |
-| `procurement_stock/utils/landedCost.test.ts` | `shipment-engine/__tests__/costEngine.test.ts` |
-| `procurement_stock/utils/weightBalance.test.ts` | `shipment-engine/__tests__/weightBalance.test.ts` |
+| `procurement_stock/utils/landedCost.ts` | **Done** → `shipment-engine/costEngine.ts` (+ thin re-export) |
+| `procurement_stock/utils/costEntriesCosting.ts` (pure helpers) | **Done** → `shipment-engine/costEngine.ts` (+ thin adapter for `isShipmentCostFinalized`) |
+| `procurement_stock/utils/landedCost.test.ts` | **Done** → `shipment-engine/__tests__/costEngine.test.ts` |
+| `procurement_stock/utils/weightBalance.ts` | Later extract → `shipment-engine/weightBalance.ts` |
+| `procurement_stock/utils/purchaseBalance.ts` | Later extract → `shipment-engine/priceBalance.ts` |
+| `procurement_stock/utils/weightBalance.test.ts` | Later → `shipment-engine/__tests__/weightBalance.test.ts` |
 
 ### Stays in `procurement_stock/` (module-specific orchestration)
 | File | Reason |
@@ -376,17 +377,21 @@ The engine computes `product_rate`, `cargo_rate`, and `blended_rate` from entrie
 ## 9. Usage Examples
 
 ### 9.1 Vue Component (Live Costing Preview)
-```typescript
-import { computeShipmentCostSummary } from '@/shared/shipment-engine/costEngine';
 
-const summary = computed(() =>
-  computeShipmentCostSummary(
-    costEntries.value,    // from shipment_cost_entries query
-    lineItems.value,      // from shipment_items query
-    { shipment_type: shipment.value.shipment_type, total_weight_kg: shipment.value.total_weight_kg }
-  )
-);
+Day-one live API (header-shaped preview; entry→header via `costingShipmentFromEntries`):
+
+```typescript
+import {
+  calculateShipmentCostSummary,
+  costingShipmentFromEntries,
+} from 'src/shared/shipment-engine';
+
+const costingShipment = costingShipmentFromEntries(shipment, costEntries, lineItems);
+const summary = calculateShipmentCostSummary(costingShipment, lineItems);
+// Preview only — never writes landed_cost_bdt
 ```
+
+Target entry-first signature (`computeShipmentCostSummary`) remains the long-term shape in §4; adapters bridge until header rates are dropped.
 
 ### 9.2 Server RPC (Finalization)
 ```sql

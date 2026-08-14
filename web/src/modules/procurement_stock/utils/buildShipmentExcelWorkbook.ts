@@ -1,5 +1,5 @@
 import type { GlobalShipment, GlobalShipmentItem } from '../repositories/globalShipmentRepository';
-import type { ShipmentCostSummary } from './landedCost';
+import type { ShipmentCostSummary } from 'src/shared/shipment-engine';
 import {
   EXCEL_IMAGE_HEIGHT_PX,
   fetchImageForExcel,
@@ -13,7 +13,7 @@ export interface BuildShipmentExcelInput {
   boxWeightSum: number;
   splitsSummary: {
     breakdown: Array<{
-      id: number;
+      id: number | string;
       description: string;
       is_sellable: boolean;
       quantity: number;
@@ -280,8 +280,13 @@ export async function buildShipmentExcelWorkbook(input: BuildShipmentExcelInput)
   const worksheet = workbook.addWorksheet('Shipment costing');
 
   const conversionRate =
-    input.shipment.type === 'international' ? (input.shipment.product_conversion_rate ?? 140) : 1;
-  const cargoRate = input.shipment.type === 'international' ? (input.shipment.cargo_rate ?? 0) : 0;
+    input.shipment.type === 'international' && input.totals.goodsPurchase > 0
+      ? input.totals.goodsCost / input.totals.goodsPurchase
+      : 1;
+  const cargoRate =
+    input.shipment.type === 'international' && input.totals.cargoWeightKg > 0
+      ? input.totals.cargoPurchase / input.totals.cargoWeightKg
+      : 0;
   const items = input.items;
 
   COLUMN_WIDTHS.forEach((width, index) => {
@@ -510,10 +515,15 @@ export async function buildShipmentExcelWorkbook(input: BuildShipmentExcelInput)
   const FONT_BLACK = 'FF000000';
 
   const productConv =
-    input.shipment.type === 'international' ? toNum(input.shipment.product_conversion_rate) : 1;
+    input.shipment.type === 'international' && input.totals.goodsPurchase > 0
+      ? input.totals.goodsCost / input.totals.goodsPurchase
+      : 1;
   const cargoConv =
-    input.shipment.type === 'international' ? toNum(input.shipment.cargo_conversion_rate) : 1;
-  const cargoRatePerKg = toNum(input.shipment.cargo_rate);
+    input.shipment.type === 'international' && input.totals.cargoPurchase > 0
+      ? input.totals.cargoCost / input.totals.cargoPurchase
+      : 1;
+  const cargoRatePerKg =
+    input.totals.cargoWeightKg > 0 ? input.totals.cargoPurchase / input.totals.cargoWeightKg : 0;
   const goodsGbp = input.totals.goodsPurchase;
   const goodsBdt = input.totals.goodsCost;
   const cargoKg = input.totals.cargoWeightKg;

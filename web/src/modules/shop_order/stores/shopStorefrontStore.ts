@@ -68,15 +68,15 @@ export const useShopStorefrontStore = defineStore('shopStorefront', {
         this.currentPage = meta.page ?? 1;
 
         if (opts.append) {
-          // Prevent duplicates by checking product_id or global_stock_allocation_id
+          // Prevent duplicates by checking product_id + global_stock_id
           const existingIds = new Set(
             this.catalogItems.map(
-              (item) => item.product_id + '-' + (item.global_stock_allocation_id ?? ''),
+              (item) => item.product_id + '-' + (item.global_stock_id ?? ''),
             ),
           );
           const newItems = data.filter(
             (item: any) =>
-              !existingIds.has(item.product_id + '-' + (item.global_stock_allocation_id ?? '')),
+              !existingIds.has(item.product_id + '-' + (item.global_stock_id ?? '')),
           );
           this.catalogItems = [...this.catalogItems, ...newItems];
         } else {

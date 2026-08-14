@@ -32,6 +32,7 @@ const addToCart = async (
   quantity: number,
   customerSellPriceAmount?: number | null,
   customerSellPriceCurrencyId?: number | null,
+  globalStockId?: number | null,
 ): Promise<ShopServiceResult<CartData>> => {
   try {
     const data = await shopCartRepository.addToCart(
@@ -41,6 +42,7 @@ const addToCart = async (
       quantity,
       customerSellPriceAmount,
       customerSellPriceCurrencyId,
+      globalStockId,
     );
     return { success: true, data };
   } catch (error) {

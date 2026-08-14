@@ -75,14 +75,16 @@ const addToCart = async (
   quantity: number,
   customerSellPriceAmount?: number | null,
   customerSellPriceCurrencyId?: number | null,
+  globalStockId?: number | null,
 ): Promise<CartData> => {
   const { data, error } = await supabase.rpc('add_to_shop_cart', {
     p_shop_id: shopId,
     p_product_id: productId,
-    p_global_stock_allocation_id: globalStockAllocationId ?? null,
+    p_global_stock_allocation_id: globalStockAllocationId ?? globalStockId ?? null,
     p_quantity: quantity,
     p_customer_sell_price_amount: customerSellPriceAmount ?? null,
     p_customer_sell_price_currency_id: customerSellPriceCurrencyId ?? null,
+    p_global_stock_id: globalStockId ?? globalStockAllocationId ?? null,
   });
 
   if (error) {
