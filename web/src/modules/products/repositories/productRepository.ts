@@ -672,9 +672,11 @@ const escapePostgrestInValue = (value: string) => `"${value.replace(/"/g, '\\"')
 const lookupProductsByCodes = async ({
   codes,
   tenantId,
+  searchField = 'auto',
 }: {
   codes: string[];
   tenantId: number;
+  searchField?: 'auto' | 'barcode' | 'product_code' | 'id';
 }): Promise<Product[]> => {
   const uniqueCodes = [...new Set(codes.map((c) => c.trim()).filter((c) => c.length > 0))];
   if (uniqueCodes.length === 0) return [];
@@ -686,12 +688,33 @@ const lookupProductsByCodes = async ({
 
   for (let i = 0; i < uniqueCodes.length; i += chunkSize) {
     const chunk = uniqueCodes.slice(i, i + chunkSize);
-    const inList = chunk.map(escapePostgrestInValue).join(',');
+
+    const clauses: string[] = [];
+    if (searchField === 'barcode' || searchField === 'auto') {
+      const inList = chunk.map(escapePostgrestInValue).join(',');
+      clauses.push(`barcode.in.(${inList})`);
+    }
+    if (searchField === 'product_code' || searchField === 'auto') {
+      const inList = chunk.map(escapePostgrestInValue).join(',');
+      clauses.push(`product_code.in.(${inList})`);
+    }
+    if (searchField === 'id' || searchField === 'auto') {
+      const numericIds = chunk
+        .map((c) => c.replace(/^#/, ''))
+        .filter((c) => /^\d+$/.test(c))
+        .map((c) => Number(c));
+      if (numericIds.length > 0) {
+        clauses.push(`id.in.(${numericIds.join(',')})`);
+      }
+    }
+
+    if (clauses.length === 0) continue;
+
     const { data, error } = await supabase
       .from('products')
       .select('*')
       .eq('parent_tenant_id', scopeTenantId)
-      .or(`barcode.in.(${inList}),product_code.in.(${inList})`);
+      .or(clauses.join(','));
 
     if (error) throw error;
 

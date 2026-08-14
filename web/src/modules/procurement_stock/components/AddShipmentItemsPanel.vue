@@ -44,6 +44,9 @@
                   <q-item clickable v-close-popup @click="browseSearchField = 'product_code'">
                     <q-item-section>Product Code</q-item-section>
                   </q-item>
+                  <q-item clickable v-close-popup @click="browseSearchField = 'id'">
+                    <q-item-section>Product ID</q-item-section>
+                  </q-item>
                 </q-list>
               </q-btn-dropdown>
             </div>
@@ -94,6 +97,31 @@
             v-if="showBulkCodes"
             class="column q-gutter-y-sm bulk-codes-box q-pa-sm rounded-borders"
           >
+            <div class="row items-center justify-between q-px-xs">
+              <span class="text-caption text-weight-medium text-grey-8">Paste Mode:</span>
+              <q-btn-dropdown
+                flat
+                dense
+                no-caps
+                :label="bulkSearchFieldLabel"
+                class="text-caption text-weight-medium text-grey-8 search-field-dropdown"
+              >
+                <q-list dense>
+                  <q-item clickable v-close-popup @click="bulkSearchField = 'auto'">
+                    <q-item-section>Auto (All Fields)</q-item-section>
+                  </q-item>
+                  <q-item clickable v-close-popup @click="bulkSearchField = 'product_code'">
+                    <q-item-section>Product Code</q-item-section>
+                  </q-item>
+                  <q-item clickable v-close-popup @click="bulkSearchField = 'barcode'">
+                    <q-item-section>Barcode</q-item-section>
+                  </q-item>
+                  <q-item clickable v-close-popup @click="bulkSearchField = 'id'">
+                    <q-item-section>Product ID</q-item-section>
+                  </q-item>
+                </q-list>
+              </q-btn-dropdown>
+            </div>
             <q-input
               v-model="bulkCodesText"
               type="textarea"
@@ -106,7 +134,7 @@
                 overflowY: 'auto',
                 resize: 'none',
               }"
-              placeholder="Paste one barcode or product code per line&#10;8711000279502&#10;8711000279380"
+              :placeholder="bulkPlaceholder"
             />
             <div class="row items-center q-col-gutter-sm">
               <div class="col-auto">
@@ -177,13 +205,14 @@
                     type="number"
                     outlined
                     dense
-                    placeholder="Qty"
+                    placeholder="1"
                     style="width: 70px"
                     min="1"
                     step="1"
                     @update:model-value="
                       (val) => setBrowseQty(product.id, val === '' ? null : Number(val))
                     "
+                    @keyup.enter="addProductToCart(product, browseQtyById[product.id])"
                   />
                   <q-btn
                     unelevated
@@ -522,7 +551,7 @@ import FilterSidebar from 'src/components/FilterSidebar.vue';
 import SmartImage from 'src/components/SmartImage.vue';
 import NewShipmentProductSidebar from './NewShipmentProductSidebar.vue';
 
-import { globalShipmentRepository } from '../repositories/globalShipmentRepository';
+import { globalShipmentRepository, type GlobalShipmentItem } from '../repositories/globalShipmentRepository';
 
 export interface ShipmentCartItem {
   key: string;
@@ -710,7 +739,7 @@ const submitting = ref(false);
 
 // Catalog browse state
 const browseSearch = ref('');
-const browseSearchField = ref<'name' | 'barcode' | 'product_code'>('name');
+const browseSearchField = ref<'name' | 'barcode' | 'product_code' | 'id'>('name');
 const browseList = ref<ProductItem[]>([]);
 const browseLoading = ref(false);
 const browsePage = ref(1);
@@ -718,13 +747,35 @@ const browseTotal = ref(0);
 const browseQtyById = ref<Record<number, number | null>>({});
 const showBulkCodes = ref(false);
 const bulkCodesText = ref('');
+const bulkSearchField = ref<'auto' | 'product_code' | 'barcode' | 'id'>('auto');
 const bulkDefaultQty = ref(1);
 const bulkLoading = ref(false);
+
+const bulkSearchFieldLabel = computed(() => {
+  if (bulkSearchField.value === 'product_code') return 'Product Code';
+  if (bulkSearchField.value === 'barcode') return 'Barcode';
+  if (bulkSearchField.value === 'id') return 'Product ID';
+  return 'Auto (All)';
+});
+
+const bulkPlaceholder = computed(() => {
+  if (bulkSearchField.value === 'product_code') {
+    return 'Paste one Product Code per line or comma-separated\nPRD-001\nPRD-002';
+  }
+  if (bulkSearchField.value === 'barcode') {
+    return 'Paste one Barcode per line or comma-separated\n8711000279502\n8711000279380';
+  }
+  if (bulkSearchField.value === 'id') {
+    return 'Paste one Product ID per line or comma-separated\n101\n102\n#103';
+  }
+  return 'Paste Barcodes, Product Codes, or IDs (one per line or comma-separated)\n8711000279502\nPRD-001\n#101';
+});
 
 const searchFieldLabel = computed(() => {
   if (browseSearchField.value === 'name') return 'Name';
   if (browseSearchField.value === 'barcode') return 'Barcode';
   if (browseSearchField.value === 'product_code') return 'Product Code';
+  if (browseSearchField.value === 'id') return 'Product ID';
   return 'Name';
 });
 
@@ -860,15 +911,9 @@ const setBrowseQty = (productId: number, qty: number | null) => {
 };
 
 const addProductToCart = (product: ProductItem, qty: number | null | undefined) => {
-  if (!qty || isNaN(qty) || qty < 1) {
-    $q.notify({
-      type: 'warning',
-      message: 'Quantity is required to add product to cart.',
-    });
-    return;
-  }
+  const finalQty = !qty || isNaN(qty) || qty < 1 ? 1 : Math.floor(qty);
 
-  mergeProductIntoCart(product, Math.floor(qty));
+  mergeProductIntoCart(product, finalQty);
   browseQtyById.value[product.id] = null;
   browseSearch.value = '';
 };
@@ -887,7 +932,7 @@ const parseBulkCodes = (raw: string): string[] => {
 const onBulkAddCodes = async () => {
   const codes = parseBulkCodes(bulkCodesText.value);
   if (codes.length === 0) {
-    $q.notify({ type: 'warning', message: 'Paste at least one barcode or product code.' });
+    $q.notify({ type: 'warning', message: 'Paste at least one product code, barcode, or ID.' });
     return;
   }
 
@@ -907,10 +952,13 @@ const onBulkAddCodes = async () => {
     const products = await productRepository.lookupProductsByCodes({
       codes,
       tenantId: authStore.tenantId,
+      searchField: bulkSearchField.value,
     });
 
     const byBarcode = new Map<string, ProductItem>();
     const byProductCode = new Map<string, ProductItem>();
+    const byId = new Map<string, ProductItem>();
+
     for (const p of products) {
       const item: ProductItem = {
         id: p.id,
@@ -924,12 +972,31 @@ const onBulkAddCodes = async () => {
       };
       if (p.barcode?.trim()) byBarcode.set(p.barcode.trim(), item);
       if (p.product_code?.trim()) byProductCode.set(p.product_code.trim(), item);
+      byId.set(String(p.id), item);
     }
 
     const missing: string[] = [];
     let added = 0;
-    for (const code of codes) {
-      const product = byBarcode.get(code) ?? byProductCode.get(code);
+    for (const rawCode of codes) {
+      const code = rawCode.trim();
+      const cleanId = code.replace(/^#/, '');
+      let product: ProductItem | undefined;
+
+      if (bulkSearchField.value === 'product_code') {
+        product = byProductCode.get(code) ?? byProductCode.get(cleanId);
+      } else if (bulkSearchField.value === 'barcode') {
+        product = byBarcode.get(code) ?? byBarcode.get(cleanId);
+      } else if (bulkSearchField.value === 'id') {
+        product = byId.get(cleanId);
+      } else {
+        product =
+          byBarcode.get(code) ??
+          byProductCode.get(code) ??
+          byBarcode.get(cleanId) ??
+          byProductCode.get(cleanId) ??
+          byId.get(cleanId);
+      }
+
       if (!product) {
         missing.push(code);
         continue;
@@ -985,10 +1052,13 @@ const loadBrowse = async (append = false) => {
   try {
     const vendorCode = getVendorCode(shipmentVendorId.value) ?? undefined;
 
+    const rawSearch = browseSearch.value.trim();
+    const cleanSearch = browseSearchField.value === 'id' ? rawSearch.replace(/^#/, '') : rawSearch;
+
     const res = await productRepository.listProducts({
       page: browsePage.value,
       pageSize: 15,
-      search: browseSearch.value.trim() || undefined,
+      search: cleanSearch || undefined,
       searchField: browseSearchField.value,
       vendorCode,
       brand: filterBrand.value || undefined,
@@ -1019,12 +1089,14 @@ const debouncedLoadBrowse = () => {
   searchDebounceTimer = setTimeout(() => void loadBrowse(), 300);
 };
 
-// Watcher to auto-detect search field type (e.g. numeric barcode vs name)
+// Watcher to auto-detect search field type (e.g. numeric barcode vs product ID vs name)
 watch(browseSearch, (newVal) => {
   const query = (newVal || '').trim();
   if (query) {
-    let detectedField: 'name' | 'barcode' | 'product_code' | null = null;
-    if (/^\d{6,}$/.test(query)) {
+    let detectedField: 'name' | 'barcode' | 'product_code' | 'id' | null = null;
+    if (/^#\d+$/.test(query)) {
+      detectedField = 'id';
+    } else if (/^\d{6,}$/.test(query)) {
       detectedField = 'barcode';
     } else if (/^[A-Za-z0-9\-_]{3,}$/.test(query) && /\d/.test(query) && /[A-Za-z]/.test(query)) {
       detectedField = 'product_code';
@@ -1211,17 +1283,53 @@ const onCommitCart = async () => {
   if (cart.value.length === 0) return;
 
   submitting.value = true;
-  let savedCount = 0;
   let registeredCount = 0;
 
   try {
-    // Reverse the cart array before entry so that the first added item (last in stack) is entered first
     const reversedCart = [...cart.value].reverse();
-    for (const item of reversedCart) {
-      const { productId, registered } = await resolveProductId(item);
-      if (registered) registeredCount++;
 
-      await shipmentStore.addShipmentItem({
+    // 1. Single bulk lookup for existing products in catalog
+    const unlinkedItems = reversedCart.filter((item) => !item.product_id || item.isNewProduct);
+    const uniqueCodesToLookup = [
+      ...new Set(
+        unlinkedItems
+          .flatMap((item) => [item.barcode?.trim(), item.product_code?.trim()])
+          .filter((c): c is string => Boolean(c && c.length > 0)),
+      ),
+    ];
+
+    const catalogMap = new Map<string, number>();
+    if (uniqueCodesToLookup.length > 0 && authStore.tenantId) {
+      const matchedProducts = await productRepository.lookupProductsByCodes({
+        codes: uniqueCodesToLookup,
+        tenantId: authStore.tenantId,
+        searchField: 'auto',
+      });
+      for (const p of matchedProducts) {
+        if (p.barcode?.trim()) catalogMap.set(p.barcode.trim(), p.id);
+        if (p.product_code?.trim()) catalogMap.set(p.product_code.trim(), p.id);
+      }
+    }
+
+    // Prepare item payloads for atomic RPC bulk insert
+    const itemPayloads: Omit<GlobalShipmentItem, 'id' | 'created_at' | 'updated_at' | 'sort_order'>[] = [];
+
+    for (const item of reversedCart) {
+      let productId = item.product_id;
+      if (!productId || item.isNewProduct) {
+        const foundId =
+          (item.barcode?.trim() ? catalogMap.get(item.barcode.trim()) : undefined) ??
+          (item.product_code?.trim() ? catalogMap.get(item.product_code.trim()) : undefined);
+
+        if (foundId) {
+          productId = foundId;
+        } else {
+          productId = await registerProduct(item);
+          registeredCount++;
+        }
+      }
+
+      itemPayloads.push({
         shipment_id: props.shipmentId,
         product_id: productId,
         vendor_id: shipmentVendorId.value,
@@ -1238,20 +1346,22 @@ const onCommitCart = async () => {
         source_type: null,
         source_id: null,
       });
-      savedCount++;
     }
+
+    // 2. Single atomic RPC bulk insert
+    await shipmentStore.addShipmentItemsBulk(props.shipmentId, itemPayloads);
 
     sessionStorage.removeItem(cartStorageKey.value);
     cart.value = [];
 
-    let msg = `Added ${savedCount} item${savedCount === 1 ? '' : 's'}.`;
+    let msg = `Added ${itemPayloads.length} item${itemPayloads.length === 1 ? '' : 's'}.`;
     if (registeredCount > 0)
-      msg += ` ${registeredCount} new product${registeredCount === 1 ? '' : 's'} registered.`;
+      msg += ` Registered ${registeredCount} new product${registeredCount === 1 ? '' : 's'} in catalog.`;
     $q.notify({ type: 'positive', message: msg });
     emit('saved');
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    $q.notify({ type: 'negative', message: savedCount > 0 ? `${msg} (${savedCount} saved)` : msg });
+    $q.notify({ type: 'negative', message: msg });
   } finally {
     submitting.value = false;
   }

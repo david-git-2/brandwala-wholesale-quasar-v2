@@ -341,13 +341,13 @@ const showToAvailability = computed(() =>
 
 const fromLocationLabel = computed(() => {
   if (!form.from_location_id) return 'No location';
-  const loc = locations.value.find((l) => l.id === form.from_location_id);
+  const loc = locations.value.find((l: any) => l.id === form.from_location_id);
   return loc ? `${loc.code} — ${loc.name}` : `#${form.from_location_id}`;
 });
 
 const returnLocations = computed(() =>
   locations.value.filter(
-    (l) => l.is_active && (l.kind === 'returns' || l.code.toLowerCase().includes('return')),
+    (l: any) => l.is_active && (l.kind === 'returns' || l.code.toLowerCase().includes('return')),
   ),
 );
 

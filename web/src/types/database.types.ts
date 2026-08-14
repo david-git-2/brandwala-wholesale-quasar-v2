@@ -9319,6 +9319,37 @@ export type Database = {
         }
         Returns: Json
       }
+      bulk_add_global_shipment_items: {
+        Args: { p_items: Json; p_shipment_id: number }
+        Returns: {
+          add_method: Database["public"]["Enums"]["global_shipment_item_add_method"]
+          barcode: string | null
+          created_at: string
+          id: number
+          image_url: string | null
+          landed_cost_bdt: number | null
+          name: string
+          ordered_quantity: number
+          package_weight: number
+          product_code: string | null
+          product_id: number | null
+          product_weight: number
+          purchase_price: number
+          shipment_id: number
+          sort_order: number
+          source_child_tenant_id: number | null
+          source_id: number | null
+          source_type: string | null
+          updated_at: string
+          vendor_id: number | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "global_shipment_items"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       bulk_add_shipment_items_from_product_ids: {
         Args: { p_items: Json; p_shipment_id: number }
         Returns: {
@@ -9392,6 +9423,37 @@ export type Database = {
       bulk_delete_shipment_items_by_product_id: {
         Args: { p_items: Json; p_shipment_id: number }
         Returns: number
+      }
+      bulk_update_global_shipment_items: {
+        Args: { p_shipment_id: number; p_updates: Json }
+        Returns: {
+          add_method: Database["public"]["Enums"]["global_shipment_item_add_method"]
+          barcode: string | null
+          created_at: string
+          id: number
+          image_url: string | null
+          landed_cost_bdt: number | null
+          name: string
+          ordered_quantity: number
+          package_weight: number
+          product_code: string | null
+          product_id: number | null
+          product_weight: number
+          purchase_price: number
+          shipment_id: number
+          sort_order: number
+          source_child_tenant_id: number | null
+          source_id: number | null
+          source_type: string | null
+          updated_at: string
+          vendor_id: number | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "global_shipment_items"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       bulk_update_order_item_offers: {
         Args: { p_items: Json }

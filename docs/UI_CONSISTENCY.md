@@ -268,3 +268,16 @@ For tables or list grids displaying users, customers, or billing profiles, rende
   };
   ```
 - **Text Layout**: Wrap the name (bold) and secondary subtitle (such as email or phone number in `.text-caption.text-grey-7.text-xs`) next to the avatar inside a flex row container.
+
+## List Table Layout & Design System Standards
+
+Canonical design rules for list table pages (Inbound Shipments, Invoices, Orders, Stock Lists):
+- **Fixed Outer Page Height**: Set container height to `calc(100vh - 55px)` with `overflow: hidden` (`.page-fixed-layout`). Outer document must not scroll.
+- **Internal Table Scroll & Sticky Headers**: The table wrapper (`.treasury-table-wrap`) must flex (`flex: 1 1 0%`) and scroll internally with sticky headers (`thead tr th { position: sticky; top: 0; z-index: 2; }`).
+- **Primary Action Buttons**: Action buttons (e.g. "Add Shipment", "Create Invoice") MUST use **rounded-corner square** styling (`border-radius: 8px`), NOT pill shapes (`border-radius: 999px`).
+- **Search Inputs**: Search inputs MUST use `<q-input outlined rounded dense placeholder="...">`.
+- **Status Row Hues & Left Accent Bars**: Rows MUST feature soft light background hues corresponding to their status (soft amber for Draft, soft orange for In Transit, soft green for Received/Paid, soft red for Cancelled) with inset left accent bars (`boxShadow: inset 3px 0 0 <color>`).
+- **High-Visibility Status Badges**: Render status with a prominent pill badge featuring a status icon (`ph ph-note-pencil`, `ph ph-truck`, `ph ph-check-circle`, `ph ph-x-circle`), bold uppercase text, and pill border.
+- **Neutral Vendor/Entity Avatars**: Vendor/entity avatars use neutral grey styling (`color="grey-3" text-color="grey-9"`).
+- **Single-Location Information**: Do not duplicate status or type info inside ID columns if dedicated columns exist.
+

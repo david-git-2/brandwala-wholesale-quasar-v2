@@ -21,3 +21,12 @@ When a phase adds SQL migrations:
 - **Optimistic Updates**: Provide immediate UI feedback by optimistically updating the local state before the API call completes, rolling back if it fails.
 - **Debounce Input-Driven Requests**: For search inputs or rapid toggles, debounce the API calls to prevent spamming the backend.
 - **Batch Operations**: When performing the same action on multiple items (e.g., bulk delete), use a single bulk API call rather than iterating and sending individual requests.
+
+## List Table UI & Layout Design System Rule
+- **Canonical Design Rule**: Follow `.agents/rules/table_list_design_system.md` for all list table pages.
+- **Non-Scrolling Page Container**: Lock `q-page` height to `calc(100vh - 55px)` with `overflow: hidden`.
+- **Internal Table Scroll**: Use sticky headers (`thead tr th`) and let table middle scroll internally (`.q-table__middle { overflow-y: auto }`).
+- **Status Row Hues**: Apply soft status background hues and inset left accent borders (`boxShadow: inset 3px 0 0 ...`).
+- **Rounded Square Buttons**: Primary action buttons MUST use rounded square corners (`border-radius: 8px`), NOT pill shapes.
+- **Outlined Search Input**: Search inputs MUST use `outlined rounded dense`.
+- **Neutral Avatars**: Entity/vendor avatars MUST use neutral grey tones (`color="grey-3" text-color="grey-9"`).

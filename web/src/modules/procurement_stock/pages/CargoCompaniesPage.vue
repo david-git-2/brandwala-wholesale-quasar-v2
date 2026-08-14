@@ -224,7 +224,7 @@ const onSave = async (payload: {
         phone: payload.phone,
         address: payload.address,
         notes: payload.notes,
-        is_active: payload.is_active,
+        ...(payload.is_active !== undefined ? { is_active: payload.is_active } : {}),
       });
       showSuccessNotification('Cargo company updated');
     } else {

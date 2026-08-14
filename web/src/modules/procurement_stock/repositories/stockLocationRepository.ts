@@ -1,5 +1,6 @@
 import { supabase } from 'src/boot/supabase';
 import type { StockLocation, UpsertStockLocationPayload } from '../types/stockLocation';
+export type { StockLocation };
 
 const db = supabase as any;
 

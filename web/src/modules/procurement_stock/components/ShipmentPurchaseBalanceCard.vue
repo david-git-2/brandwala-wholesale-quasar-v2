@@ -291,7 +291,7 @@ const purchaseCurrencySymbol = ref('£');
 const items = computed(() => shipmentStore.currentShipmentItems);
 
 const productEntryCount = computed(
-  () => shipmentStore.currentCostEntries.filter((e) => e.cost_type === 'product').length,
+  () => shipmentStore.currentCostEntries.filter((e: any) => e.cost_type === 'product').length,
 );
 
 const multiProductRates = computed(() => productEntryCount.value > 1);

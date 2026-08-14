@@ -69,6 +69,7 @@ const HEADERS = [
   'REMARKS',
   'Barcode',
   'Product code',
+  'Product ID',
 ] as const;
 
 const COLUMN_LETTERS = [
@@ -95,12 +96,13 @@ const COLUMN_LETTERS = [
   'U',
   'V',
   'W',
+  'X',
 ] as const;
 
 const COLUMN_WIDTHS = [
   3.6640625, 13.19921875, 16.19921875, 8.19921875, 8.19921875, 6.46484375, 6.46484375, 7.59765625,
   6.06640625, 7.86328125, 6.59765625, 7.796875, 7.46484375, 8.19921875, 8.19921875, 7.86328125, 6,
-  9.19921875, 8.19921875, 8, 10, 8.6640625, 8.6640625,
+  9.19921875, 8.19921875, 8, 10, 8.6640625, 8.6640625, 8.6640625,
 ];
 
 const COLORED_COLUMNS: Record<string, string> = {
@@ -333,6 +335,7 @@ export async function buildShipmentExcelWorkbook(input: BuildShipmentExcelInput)
       '', // REMARKS: empty string
       item.barcode ?? '',
       item.product_code ?? '',
+      item.product_id ?? '',
     ]);
 
     row.getCell('H').value = { formula: `F${r}+G${r}` };
@@ -482,7 +485,7 @@ export async function buildShipmentExcelWorkbook(input: BuildShipmentExcelInput)
   });
 
   const overviewData = [
-    { label: 'Shipment ID', val: `#${input.shipment.tenant_shipment_id || input.shipment.id}` },
+    { label: 'Shipment ID', val: `#${(input.shipment as any).tenant_shipment_id || input.shipment.id}` },
     { label: 'Name', val: input.shipment.name },
     { label: 'Type', val: input.shipment.type.toUpperCase() },
     { label: 'Status', val: input.shipment.status },

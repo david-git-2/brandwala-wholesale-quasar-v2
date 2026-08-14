@@ -136,7 +136,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       try {
         await globalShipmentCostEntryRepository.ensureFromHeader(shipmentId);
         this.currentCostEntries =
-          await globalShipmentCostEntryRepository.listByShipmentId(shipmentId);
+          (await globalShipmentCostEntryRepository.listByShipmentId(shipmentId)) as any;
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to load cost entries';
         this.currentCostEntries = [];
@@ -176,13 +176,13 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
           }));
           await globalShipmentCostEntryRepository.revise(shipmentId, payload);
         } else {
-          const existingIds = new Set(this.currentCostEntries.map((e) => e.id));
+          const existingIds = new Set(this.currentCostEntries.map((e: any) => e.id));
           const keptIds = new Set(
             drafts.map((d) => d.id).filter((id): id is number => typeof id === 'number'),
           );
 
           for (const id of existingIds) {
-            if (!keptIds.has(id)) {
+            if (typeof id === 'number' && !keptIds.has(id)) {
               await globalShipmentCostEntryRepository.remove(id);
             }
           }
@@ -206,7 +206,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         }
 
         this.currentCostEntries =
-          await globalShipmentCostEntryRepository.listByShipmentId(shipmentId);
+          (await globalShipmentCostEntryRepository.listByShipmentId(shipmentId)) as any;
 
         if (finalized) {
           this.currentShipmentItems =
@@ -224,33 +224,27 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
      * Match invoices: write paid purchase total to the single product cost entry.
      * Multiple product FX rows → edit on Landed cost instead.
      */
-    async savePurchaseInvoiceTotal(shipmentId: number, amount: number) {
+    async savePurchaseInvoiceTotal(shipmentId: number, total: number) {
       const shipment = this.currentShipment;
       if (!shipment || shipment.id !== shipmentId) {
-        throw new Error('Shipment not loaded');
+        throw new Error('Current shipment not loaded');
       }
-      if (amount <= 0) {
-        throw new Error('Purchase Invoice Total must be greater than 0.');
+
+      const count = this.currentCostEntries.filter((e) => e.cost_type === 'product').length;
+      if (count > 1) {
+        throw new Error(
+          'Multiple product cost entries exist. Update on Landed cost tab directly.',
+        );
       }
 
       this.costEntriesSaving = true;
       this.error = null;
       try {
-        await globalShipmentCostEntryRepository.ensureFromHeader(shipmentId);
-        const entries = await globalShipmentCostEntryRepository.listByShipmentId(shipmentId);
-        const productRows = entries.filter((e) => e.cost_type === 'product');
-
-        if (productRows.length > 1) {
-          throw new Error(
-            'Multiple product FX rates exist. Edit amounts on the Landed cost tab.',
-          );
-        }
-
-        const rounded = Math.round(amount * 100) / 100;
-        const existing = productRows[0];
+        const existing = this.currentCostEntries.find((e) => e.cost_type === 'product');
+        const rounded = Math.round(total * 100) / 100;
         await globalShipmentCostEntryRepository.upsert({
           shipment_id: shipmentId,
-          id: existing?.id ?? null,
+          id: existing?.id,
           cost_type: 'product',
           amount: rounded,
           exchange_rate: existing ? Number(existing.exchange_rate) || 1 : 1,
@@ -265,7 +259,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         });
 
         this.currentCostEntries =
-          await globalShipmentCostEntryRepository.listByShipmentId(shipmentId);
+          (await globalShipmentCostEntryRepository.listByShipmentId(shipmentId)) as any;
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to save purchase invoice total';
         throw err;
@@ -448,35 +442,89 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       }
     },
 
+    async addShipmentItemsBulk(
+      shipmentId: number,
+      items: Omit<GlobalShipmentItem, 'id' | 'created_at' | 'updated_at' | 'sort_order'>[],
+    ) {
+      if (items.length === 0) return [];
+      this.saving = true;
+      this.error = null;
+      try {
+        const addedItems = await globalShipmentRepository.createShipmentItemsBulk(
+          shipmentId,
+          items as any,
+        );
+        if (this.currentShipment?.id === shipmentId) {
+          const itemMap = new Map(this.currentShipmentItems.map((item) => [item.id, item]));
+          for (const newItem of addedItems) {
+            itemMap.set(newItem.id, newItem);
+          }
+          this.currentShipmentItems = Array.from(itemMap.values()).sort(
+            (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
+          );
+        }
+        return addedItems;
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to add shipment items in bulk';
+        throw err;
+      } finally {
+        this.saving = false;
+      }
+    },
+
     async updateShipmentItem(
       id: number,
       payload: Partial<
         Omit<GlobalShipmentItem, 'id' | 'created_at' | 'updated_at' | 'shipment_id'>
       >,
     ) {
-      this.loading = true;
+      const index = this.currentShipmentItems.findIndex((item) => item.id === id);
+      if (index === -1) {
+        throw new Error('Item not found in current shipment');
+      }
+      const existingItem = this.currentShipmentItems[index];
+      if (!existingItem) {
+        throw new Error('Item not found in current shipment');
+      }
+
+      // Snapshot previous item state for rollback if API call fails
+      const previousItem = { ...existingItem };
+
+      // Optimistically update local store state instantly (0ms delay)
+      const optimisticItem = { ...previousItem, ...payload } as GlobalShipmentItem;
+      const optimisticItems = [...this.currentShipmentItems];
+      optimisticItems[index] = optimisticItem;
+      this.currentShipmentItems = optimisticItems;
+
+      this.saving = true;
       this.error = null;
+
       try {
         const updated = await globalShipmentRepository.updateShipmentItem(id, payload);
-        const index = this.currentShipmentItems.findIndex((item) => item.id === id);
-        if (index !== -1) {
-          const newItems = [...this.currentShipmentItems];
-          newItems[index] = updated;
-          this.currentShipmentItems = newItems;
-        }
-        if (this.currentShipment?.id) {
-          await this.fetchShipmentDetails(this.currentShipment.id);
+        const syncItems = [...this.currentShipmentItems];
+        const syncIndex = syncItems.findIndex((item) => item.id === id);
+        if (syncIndex !== -1) {
+          syncItems[syncIndex] = { ...syncItems[syncIndex], ...updated };
+          this.currentShipmentItems = syncItems;
         }
         return updated;
       } catch (err: unknown) {
+        // Rollback optimistic update on error
+        const rollbackItems = [...this.currentShipmentItems];
+        const rollbackIndex = rollbackItems.findIndex((item) => item.id === id);
+        if (rollbackIndex !== -1) {
+          rollbackItems[rollbackIndex] = previousItem;
+          this.currentShipmentItems = rollbackItems;
+        }
         this.error = (err as Error).message || 'Failed to update shipment item';
         throw err;
       } finally {
-        this.loading = false;
+        this.saving = false;
       }
     },
 
     async updateShipmentItemsBulk(
+      shipmentId: number,
       updates: Array<{
         id: number;
         payload: Partial<
@@ -484,14 +532,26 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         >;
       }>,
     ) {
+      if (updates.length === 0) return [];
       this.saving = true;
       this.error = null;
       try {
-        await Promise.all(
-          updates.map((u) => globalShipmentRepository.updateShipmentItem(u.id, u.payload)),
+        const updatedItems = await globalShipmentRepository.updateShipmentItemsBulk(
+          shipmentId,
+          updates,
         );
 
-        // Sync modified weight fields to the products catalog
+        if (this.currentShipment?.id === shipmentId) {
+          const itemMap = new Map(this.currentShipmentItems.map((item) => [item.id, item]));
+          for (const updated of updatedItems) {
+            itemMap.set(updated.id, updated);
+          }
+          this.currentShipmentItems = Array.from(itemMap.values()).sort(
+            (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
+          );
+        }
+
+        // Sync modified weight fields to the products catalog in background
         const productUpdates: Promise<void>[] = [];
         for (const u of updates) {
           const item = this.currentShipmentItems.find((item) => item.id === u.id);
@@ -517,28 +577,12 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
           }
         }
         if (productUpdates.length > 0) {
-          await Promise.all(productUpdates);
+          void Promise.all(productUpdates);
         }
 
-        const newItems = [...this.currentShipmentItems];
-        for (const u of updates) {
-          const index = newItems.findIndex((item) => item.id === u.id);
-          if (index !== -1) {
-            const item = newItems[index];
-            if (item) {
-              newItems[index] = {
-                ...item,
-                ...u.payload,
-              };
-            }
-          }
-        }
-        this.currentShipmentItems = newItems;
-        if (this.currentShipment?.id) {
-          await this.fetchShipmentDetails(this.currentShipment.id);
-        }
+        return updatedItems;
       } catch (err: unknown) {
-        this.error = (err as Error).message || 'Failed to update shipment items';
+        this.error = (err as Error).message || 'Failed to update shipment items in bulk';
         throw err;
       } finally {
         this.saving = false;
@@ -654,9 +698,10 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
           };
         }
         const idx = this.rows.findIndex((r) => r.id === shipmentId);
-        if (idx >= 0) {
+        const existingRow = this.rows[idx];
+        if (existingRow) {
           this.rows[idx] = {
-            ...this.rows[idx],
+            ...existingRow,
             progress_tag: progressTag,
             progress_tag_id: progressTag?.id ?? null,
           };

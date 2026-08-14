@@ -250,7 +250,7 @@ watch(normalizedCode, () => {
 const onSubmit = () => {
   if (!canSubmit.value) return;
   emit('save', {
-    id: props.initialData?.id,
+    ...(props.initialData?.id != null ? { id: props.initialData.id } : {}),
     name: form.name.trim(),
     code: normalizedCode.value,
     email: form.email.trim() || null,

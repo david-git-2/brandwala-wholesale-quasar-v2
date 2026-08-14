@@ -59,7 +59,7 @@
             <div class="col-12 col-sm-8 q-gutter-y-sm">
               <q-select
                 v-model="form.product_id"
-                label="Link Catalog Product (Search by Name/Code/Barcode)"
+                label="Link Catalog Product (Search by Name/Code/Barcode/ID)"
                 filled
                 dense
                 use-input
@@ -387,34 +387,52 @@ const form = ref({
 const productOptions = ref<any[]>([]);
 
 const filterProducts = async (val: string, update: any) => {
-  if (val.trim().length < 2) {
+  const queryText = val.trim();
+  if (queryText.length < 1) {
     update(() => {
       productOptions.value = [];
     });
     return;
   }
 
-  try {
-    const res = await productRepository.listProducts({
-      search: val.trim(),
-      searchField: 'name',
-      tenantId: authStore.tenantId,
-      pageSize: 30,
-    });
+  const cleanId = queryText.replace(/^#/, '');
+  const isNumeric = /^\d+$/.test(cleanId);
 
-    let data = res.data;
+  try {
+    let data: any[] = [];
+    if (isNumeric) {
+      const resId = await productRepository.listProducts({
+        search: cleanId,
+        searchField: 'id',
+        tenantId: authStore.tenantId,
+        pageSize: 30,
+      });
+      data = resId.data;
+    }
+
+    if (data.length === 0) {
+      const resName = await productRepository.listProducts({
+        search: queryText,
+        searchField: 'name',
+        tenantId: authStore.tenantId,
+        pageSize: 30,
+      });
+      data = resName.data;
+    }
+
     if (data.length === 0) {
       const resCode = await productRepository.listProducts({
-        search: val.trim(),
+        search: queryText,
         searchField: 'product_code',
         tenantId: authStore.tenantId,
         pageSize: 30,
       });
       data = resCode.data;
     }
+
     if (data.length === 0) {
       const resBarcode = await productRepository.listProducts({
-        search: val.trim(),
+        search: queryText,
         searchField: 'barcode',
         tenantId: authStore.tenantId,
         pageSize: 30,

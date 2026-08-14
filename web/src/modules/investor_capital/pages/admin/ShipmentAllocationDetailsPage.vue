@@ -20,7 +20,7 @@
 
     <div v-if="shipmentStore.currentShipment" class="q-mb-md">
       <div class="text-h6 text-weight-bold">
-        #{{ shipmentStore.currentShipment.tenant_shipment_id ?? shipmentStore.currentShipment.id }}
+        #{{ (shipmentStore.currentShipment as any).tenant_shipment_id ?? shipmentStore.currentShipment.id }}
         {{ shipmentStore.currentShipment.name }}
       </div>
       <div class="text-body2 text-grey-8">Status: {{ shipmentStore.currentShipment.status }}</div>

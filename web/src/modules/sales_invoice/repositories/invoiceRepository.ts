@@ -199,11 +199,7 @@ const mapListGlobalInvoiceItemRow = (row: any): GlobalInvoiceItemRow => {
         package_weight: Number(row.package_weight ?? 0),
         ordered_quantity: Number(row.ordered_quantity ?? 0),
         shipment_type: shipmentType as 'international' | 'local' | 'transfer',
-        product_conversion_rate: Number(row.product_conversion_rate ?? 1),
-        cargo_conversion_rate: Number(row.cargo_conversion_rate ?? 1),
-        cargo_rate: Number(row.cargo_rate ?? 0),
         received_weight: row.received_weight == null ? null : Number(row.received_weight),
-        transaction_rate: row.transaction_rate == null ? null : Number(row.transaction_rate),
         landed_cost_bdt:
           row.landed_cost_bdt == null || row.landed_cost_bdt === undefined
             ? null

@@ -9,7 +9,7 @@
         v-for="slot in blockSlots"
         :key="slot.id"
         :item="slot"
-        :tenant-slug="tenantSlug"
+        v-bind="tenantSlug ? { tenantSlug } : {}"
       />
     </div>
 
@@ -18,7 +18,7 @@
         v-for="slot in tileSlots"
         :key="slot.id"
         :item="slot"
-        :tenant-slug="tenantSlug"
+        v-bind="tenantSlug ? { tenantSlug } : {}"
       />
     </div>
   </section>

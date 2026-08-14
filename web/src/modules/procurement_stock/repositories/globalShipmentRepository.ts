@@ -414,6 +414,44 @@ const updateShipmentItem = async (
   return data as GlobalShipmentItem;
 };
 
+const createShipmentItemsBulk = async (
+  shipmentId: number,
+  items: Omit<GlobalShipmentItem, 'id' | 'created_at' | 'updated_at'>[],
+): Promise<GlobalShipmentItem[]> => {
+  if (items.length === 0) return [];
+  const { data, error } = await db.rpc('bulk_add_global_shipment_items', {
+    p_shipment_id: shipmentId,
+    p_items: items as any,
+  });
+
+  if (error) throw error;
+  return (data as GlobalShipmentItem[] | null) ?? [];
+};
+
+const updateShipmentItemsBulk = async (
+  shipmentId: number,
+  updates: Array<{
+    id: number;
+    payload: Partial<
+      Omit<GlobalShipmentItem, 'id' | 'created_at' | 'updated_at' | 'shipment_id'>
+    >;
+  }>,
+): Promise<GlobalShipmentItem[]> => {
+  if (updates.length === 0) return [];
+  const formattedUpdates = updates.map((u) => ({
+    id: u.id,
+    ...u.payload,
+  }));
+
+  const { data, error } = await db.rpc('bulk_update_global_shipment_items', {
+    p_shipment_id: shipmentId,
+    p_updates: formattedUpdates as any,
+  });
+
+  if (error) throw error;
+  return (data as GlobalShipmentItem[] | null) ?? [];
+};
+
 const deleteShipmentItem = async (id: number): Promise<void> => {
   const { error } = await db.from('global_shipment_items').delete().eq('id', id);
   if (error) throw error;
@@ -632,7 +670,9 @@ export const globalShipmentRepository = {
   listShipmentItems,
   listShipmentItemsBatch,
   createShipmentItem,
+  createShipmentItemsBulk,
   updateShipmentItem,
+  updateShipmentItemsBulk,
   deleteShipmentItem,
   checkShipmentStockReferences,
   checkShipmentItemStockReferences,

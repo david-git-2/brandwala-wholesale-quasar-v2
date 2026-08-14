@@ -180,38 +180,29 @@
             </td>
             <td v-if="isColumnVisible('purchase_price')" class="text-center shipment-price-col">
               <div>
-                <span :class="{ 'cursor-pointer': isEditable }">{{
-                  formatPrice(item.purchase_price)
-                }}</span>
-                <q-popup-edit
+                <q-input
                   v-if="isEditable"
-                  :model-value="item.purchase_price"
-                  buttons
-                  persistent
-                  label-set="Save"
-                  label-cancel="Cancel"
-                  v-slot="scope"
-                  @save="(value) => onNumericSave(item, 'purchase_price', value, { decimals: 2 })"
-                >
-                  <q-input
-                    :model-value="scope.value ?? ''"
-                    type="number"
-                    step="0.01"
-                    dense
-                    outlined
-                    autofocus
-                    @update:model-value="(v) => (scope.value = v === '' ? null : Number(v))"
-                    @keyup.enter="scope.set"
-                  />
-                </q-popup-edit>
+                  :model-value="getDraftValue(item, 'purchase_price')"
+                  type="number"
+                  step="0.01"
+                  dense
+                  outlined
+                  hide-bottom-space
+                  class="bg-white rounded-borders inline-edit-input"
+                  input-class="text-center text-weight-bold"
+                  @update:model-value="(val) => setDraftValue(item, 'purchase_price', val)"
+                  @blur="saveDraftValue(item, 'purchase_price', { decimals: 2 })"
+                  @keyup.enter="(e: any) => (e.target as HTMLElement)?.blur()"
+                />
+                <span v-else>{{ formatPrice(item.purchase_price) }}</span>
               </div>
-              <div class="text-caption text-grey-7 text-weight-normal" style="font-size: 10px">
+              <div class="text-caption text-grey-7 text-weight-normal q-mt-xs" style="font-size: 10px">
                 T: {{ formatFixed2((item.purchase_price || 0) * (item.ordered_quantity || 0)) }}
               </div>
             </td>
             <td v-if="isColumnVisible('cost_bdt')" class="text-center shipment-cost-col">
               <div>{{ formatFixed2(lineCostBdt(item)) }}</div>
-              <div class="text-caption text-grey-7 text-weight-normal" style="font-size: 10px">
+              <div class="text-caption text-grey-7 text-weight-normal q-mt-xs" style="font-size: 10px">
                 T: {{ formatFixed2(lineCostBdt(item) * (item.ordered_quantity || 0)) }}
               </div>
             </td>
@@ -219,61 +210,50 @@
               v-if="isColumnVisible('ordered_quantity')"
               class="text-center shipment-qty-col shipment-qty-col--quantity"
             >
-              <span :class="{ 'cursor-pointer': isEditable }">{{ item.ordered_quantity }}</span>
-              <q-popup-edit
-                v-if="isEditable"
-                :model-value="item.ordered_quantity"
-                buttons
-                persistent
-                label-set="Save"
-                label-cancel="Cancel"
-                v-slot="scope"
-                @save="(value) => onNumericSave(item, 'ordered_quantity', value)"
-              >
+              <div>
                 <q-input
-                  :model-value="scope.value ?? ''"
+                  v-if="isEditable"
+                  :model-value="getDraftValue(item, 'ordered_quantity')"
                   type="number"
-                  dense
-                  outlined
-                  autofocus
                   min="1"
                   step="1"
-                  @update:model-value="(v) => (scope.value = v === '' ? null : Number(v))"
-                  @keyup.enter="scope.set"
+                  dense
+                  outlined
+                  hide-bottom-space
+                  class="bg-white rounded-borders inline-edit-input"
+                  input-class="text-center text-weight-bold"
+                  @update:model-value="(val) => setDraftValue(item, 'ordered_quantity', val)"
+                  @blur="saveDraftValue(item, 'ordered_quantity')"
+                  @keyup.enter="(e: any) => (e.target as HTMLElement)?.blur()"
                 />
-              </q-popup-edit>
+                <span v-else>{{ item.ordered_quantity }}</span>
+              </div>
+              <div class="text-caption text-transparent q-mt-xs" style="font-size: 10px; user-select: none;">
+                &nbsp;
+              </div>
             </td>
             <td
               v-if="isColumnVisible('product_weight')"
               class="text-center shipment-product-weight-col"
             >
               <div>
-                <span :class="{ 'cursor-pointer': isEditable }">{{
-                  formatDecimal(item.product_weight)
-                }}</span>
-                <q-popup-edit
+                <q-input
                   v-if="isEditable"
-                  :model-value="item.product_weight"
-                  buttons
-                  persistent
-                  label-set="Save"
-                  label-cancel="Cancel"
-                  v-slot="scope"
-                  @save="(value) => onNumericSave(item, 'product_weight', value, { decimals: 3 })"
-                >
-                  <q-input
-                    :model-value="scope.value ?? ''"
-                    type="number"
-                    step="0.001"
-                    dense
-                    outlined
-                    autofocus
-                    @update:model-value="(v) => (scope.value = v === '' ? null : Number(v))"
-                    @keyup.enter="scope.set"
-                  />
-                </q-popup-edit>
+                  :model-value="getDraftValue(item, 'product_weight')"
+                  type="number"
+                  step="0.001"
+                  dense
+                  outlined
+                  hide-bottom-space
+                  class="bg-white rounded-borders inline-edit-input"
+                  input-class="text-center text-weight-bold"
+                  @update:model-value="(val) => setDraftValue(item, 'product_weight', val)"
+                  @blur="saveDraftValue(item, 'product_weight', { decimals: 3 })"
+                  @keyup.enter="(e: any) => (e.target as HTMLElement)?.blur()"
+                />
+                <span v-else>{{ formatDecimal(item.product_weight) }}</span>
               </div>
-              <div class="text-caption text-grey-7 text-weight-normal" style="font-size: 10px">
+              <div class="text-caption text-grey-7 text-weight-normal q-mt-xs" style="font-size: 10px">
                 T: {{ formatFixed2((item.product_weight || 0) * (item.ordered_quantity || 0)) }} gm
               </div>
             </td>
@@ -282,32 +262,23 @@
               class="text-center shipment-package-weight-col"
             >
               <div>
-                <span :class="{ 'cursor-pointer': isEditable }">{{
-                  formatDecimal(item.package_weight)
-                }}</span>
-                <q-popup-edit
+                <q-input
                   v-if="isEditable"
-                  :model-value="item.package_weight"
-                  buttons
-                  persistent
-                  label-set="Save"
-                  label-cancel="Cancel"
-                  v-slot="scope"
-                  @save="(value) => onNumericSave(item, 'package_weight', value, { decimals: 3 })"
-                >
-                  <q-input
-                    :model-value="scope.value ?? ''"
-                    type="number"
-                    step="0.001"
-                    dense
-                    outlined
-                    autofocus
-                    @update:model-value="(v) => (scope.value = v === '' ? null : Number(v))"
-                    @keyup.enter="scope.set"
-                  />
-                </q-popup-edit>
+                  :model-value="getDraftValue(item, 'package_weight')"
+                  type="number"
+                  step="0.001"
+                  dense
+                  outlined
+                  hide-bottom-space
+                  class="bg-white rounded-borders inline-edit-input"
+                  input-class="text-center text-weight-bold"
+                  @update:model-value="(val) => setDraftValue(item, 'package_weight', val)"
+                  @blur="saveDraftValue(item, 'package_weight', { decimals: 3 })"
+                  @keyup.enter="(e: any) => (e.target as HTMLElement)?.blur()"
+                />
+                <span v-else>{{ formatDecimal(item.package_weight) }}</span>
               </div>
-              <div class="text-caption text-grey-7 text-weight-normal" style="font-size: 10px">
+              <div class="text-caption text-grey-7 text-weight-normal q-mt-xs" style="font-size: 10px">
                 T: {{ formatFixed2((item.package_weight || 0) * (item.ordered_quantity || 0)) }} gm
               </div>
             </td>
@@ -332,56 +303,46 @@
             </td>
           </tr>
 
-          <tr v-if="items.length" class="shipment-total-row">
-            <td class="shipment-sl-col" />
-            <td class="shipment-image-col" />
-            <td v-if="isColumnVisible('name')" class="shipment-name-col" />
-            <td v-if="props.shipment?.status === 'in_transit'" class="shipment-split-col" />
-            <td v-if="isColumnVisible('product_id')" />
-            <td v-if="isColumnVisible('barcode')" />
-            <td v-if="isColumnVisible('product_code')" />
-            <td v-if="isColumnVisible('add_method')" />
-            <td
-              v-if="isColumnVisible('purchase_price')"
-              class="text-center text-weight-bold shipment-price-col"
-            >
-              {{ formatFixed2(tableTotals.price_gbp) }}
-            </td>
-            <td
-              v-if="isColumnVisible('cost_bdt')"
-              class="text-center text-weight-bold shipment-cost-col"
-            >
-              {{ formatFixed2(tableTotals.cost_bdt) }}
-            </td>
-            <td
-              v-if="isColumnVisible('ordered_quantity')"
-              class="text-center shipment-qty-col shipment-qty-col--quantity text-weight-bold"
-            >
-              {{ tableTotals.quantity }}
-            </td>
-            <td
-              v-if="isColumnVisible('product_weight')"
-              class="text-center text-weight-bold shipment-product-weight-col"
-            >
-              {{ formatFixed2(tableTotals.product_weight) }} gm
-            </td>
-            <td
-              v-if="isColumnVisible('package_weight')"
-              class="text-center text-weight-bold shipment-package-weight-col"
-            >
-              {{ formatFixed2(tableTotals.package_weight) }} gm
-            </td>
-            <td v-if="isColumnVisible('actions')" />
-          </tr>
-
-          <tr v-if="!items.length && !loading">
-            <td :colspan="tableColspan" class="text-center text-grey-6 q-pa-md">
-              No shipment items yet. Use Add Items to get started.
-            </td>
-          </tr>
         </tbody>
       </q-markup-table>
     </q-card-section>
+
+    <div
+      v-if="items.length"
+      class="shipment-summary-bar row items-center q-gutter-x-md q-px-md q-py-sm wrap"
+    >
+      <span class="text-caption text-grey-7 text-weight-medium">Summary</span>
+      <span
+        v-if="isColumnVisible('purchase_price')"
+        class="text-caption text-weight-bold shipment-summary-stat shipment-summary-stat--price"
+      >
+        Price {{ purchaseCurrencySymbol }} {{ formatFixed2(tableTotals.price_gbp) }}
+      </span>
+      <span
+        v-if="isColumnVisible('cost_bdt')"
+        class="text-caption text-weight-bold shipment-summary-stat shipment-summary-stat--cost"
+      >
+        Cost {{ costCurrencySymbol }} {{ formatFixed2(tableTotals.cost_bdt) }}
+      </span>
+      <span
+        v-if="isColumnVisible('ordered_quantity')"
+        class="text-caption text-weight-bold shipment-summary-stat shipment-summary-stat--qty"
+      >
+        Qty {{ tableTotals.quantity }}
+      </span>
+      <span
+        v-if="isColumnVisible('product_weight')"
+        class="text-caption text-weight-bold shipment-summary-stat shipment-summary-stat--product-wt"
+      >
+        Product {{ formatFixed2(tableTotals.product_weight) }} gm
+      </span>
+      <span
+        v-if="isColumnVisible('package_weight')"
+        class="text-caption text-weight-bold shipment-summary-stat shipment-summary-stat--package-wt"
+      >
+        Package {{ formatFixed2(tableTotals.package_weight) }} gm
+      </span>
+    </div>
   </div>
 
   <!-- Centered Quantity Split Dialog -->
@@ -647,7 +608,7 @@ watch(
 
 const getSumOfSplits = (itemId: number): number => {
   const itemSplits = localSplits.value[itemId] || {};
-  return Object.values(itemSplits).reduce((sum, qty) => sum + (qty || 0), 0);
+  return Object.values(itemSplits).reduce((sum: number, qty) => sum + (Number(qty) || 0), 0);
 };
 
 const isItemSplitsCompleteInDb = (item: GlobalShipmentItem): boolean => {
@@ -753,14 +714,35 @@ const roundTo = (value: number, decimals = 0) => {
   return Math.round(value * factor) / factor;
 };
 
-const onNumericSave = async (
+const activeSaves = new Set<string>();
+const draftValues = ref<Record<string, any>>({});
+
+const getDraftValue = (item: GlobalShipmentItem, field: EditableField) => {
+  const key = `${item.id}:${field}`;
+  if (key in draftValues.value) {
+    return draftValues.value[key];
+  }
+  return item[field] ?? '';
+};
+
+const setDraftValue = (item: GlobalShipmentItem, field: EditableField, val: any) => {
+  const key = `${item.id}:${field}`;
+  draftValues.value[key] = val;
+};
+
+const saveDraftValue = async (
   item: GlobalShipmentItem,
   field: EditableField,
-  value: string | number | null,
   options?: { decimals?: number },
 ) => {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed < 0) {
+  const key = `${item.id}:${field}`;
+  const rawValue = key in draftValues.value ? draftValues.value[key] : item[field];
+  delete draftValues.value[key];
+
+  if (rawValue === null || rawValue === undefined || rawValue === '') return;
+
+  const parsed = Number(rawValue);
+  if (isNaN(parsed) || !Number.isFinite(parsed) || parsed < 0) {
     showWarningNotification('Value must be 0 or greater.');
     return;
   }
@@ -771,14 +753,23 @@ const onNumericSave = async (
     normalized = Math.max(1, Math.floor(parsed));
   }
 
+  const currentValue = Number(item[field] ?? 0);
+  if (currentValue === normalized) return;
+
+  if (activeSaves.has(key)) return;
+  activeSaves.add(key);
+
   try {
     await shipmentStore.updateShipmentItem(item.id, { [field]: normalized });
+    showSuccessNotification(`Updated ${field.replace('_', ' ')}.`);
     if ((field === 'product_weight' || field === 'package_weight') && item.product_id != null) {
       await syncShipmentWeightToProduct(item.product_id, field, normalized);
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Failed to update item.';
     showErrorNotification(msg);
+  } finally {
+    activeSaves.delete(key);
   }
 };
 
@@ -853,17 +844,22 @@ defineExpose({
   text-decoration: underline dashed;
 }
 
+.shipment-line-items {
+  min-width: 0;
+}
+
 .shipment-table-scroll-wrap {
-  overflow: visible;
+  overflow: auto;
   position: relative;
+  max-height: min(78vh, calc(100vh - 280px));
+  background: var(--bw-theme-base, #eef2f5);
 }
 
 .shipment-details-table {
-  min-width: 0;
-  max-width: 100%;
-  height: clamp(400px, calc(100vh - 320px), 80vh);
-  background: var(--bw-theme-base, #eef2f5);
-  overflow: auto;
+  min-width: max-content;
+  width: max-content;
+  height: auto;
+  overflow: visible;
   --sl-col-width: 60px;
 }
 
@@ -877,6 +873,10 @@ defineExpose({
   border-spacing: 0;
   min-width: max-content;
   width: max-content;
+}
+
+.shipment-details-table :deep(tbody td) {
+  vertical-align: middle;
 }
 
 .shipment-details-table :deep(thead tr th) {
@@ -1053,31 +1053,48 @@ defineExpose({
   background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
 }
 
-.shipment-total-row td {
-  background: rgba(255, 255, 255, 0.85);
-  font-weight: 600;
+.shipment-summary-bar {
+  flex-shrink: 0;
+  border-top: 1px solid var(--bw-theme-border, rgba(0, 0, 0, 0.08));
+  background: var(--bw-theme-surface, #fff);
+  row-gap: 6px;
 }
 
-.shipment-total-row td.shipment-qty-col--quantity {
-  background: #d0e6ff;
+.shipment-summary-stat {
+  padding: 2px 8px;
+  border-radius: 4px;
 }
 
-.shipment-total-row td.shipment-package-weight-col {
-  background: #e8d7f7;
-}
-
-.shipment-total-row td.shipment-price-col {
+.shipment-summary-stat--price {
   background: #daf3e4;
 }
 
-.shipment-total-row td.shipment-cost-col {
+.shipment-summary-stat--cost {
   background: #ffe8d1;
 }
 
-@media (max-width: 1023px) {
-  .shipment-details-table {
-    height: clamp(320px, calc(100vh - 260px), 65vh);
-  }
+.shipment-summary-stat--qty {
+  background: #d0e6ff;
+}
+
+.shipment-summary-stat--product-wt {
+  background: #eceff1;
+}
+
+.shipment-summary-stat--package-wt {
+  background: #e8d7f7;
+}
+
+.inline-edit-input :deep(.q-field__control) {
+  height: 28px;
+  min-height: 28px;
+  padding: 0 4px;
+  border-radius: 4px;
+}
+
+.inline-edit-input :deep(.q-field__native) {
+  padding: 0;
+  font-size: 12px;
 }
 
 :deep(input[type='number']::-webkit-outer-spin-button),

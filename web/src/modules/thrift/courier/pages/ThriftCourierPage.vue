@@ -238,7 +238,7 @@ async function save() {
     const existing = editingId.value
       ? rows.value.find((r) => r.id === editingId.value)
       : undefined;
-    const meta = {
+    const meta: Record<string, any> = {
       ...(existing?.meta ?? {}),
       notes: form.value.notes.trim() || undefined,
     };
