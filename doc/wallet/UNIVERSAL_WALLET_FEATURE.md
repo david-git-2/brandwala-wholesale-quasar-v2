@@ -15,7 +15,7 @@ As an admin, staff member, or tenant, I need a centralized, double-entry style w
 `public.wallets`
 - `id`: uuid (PK)
 - `tenant_id`: bigint (FK to tenants, null if it's a global platform wallet)
-- `owner_type`: text (enum: 'tenant', 'billing_profile', 'investor_profile', 'courier_service')
+- `owner_type`: text (enum: 'tenant', 'billing_profile', 'investor_profile', 'courier_service', 'cargo_company')
 - `owner_id`: bigint / uuid (ID corresponding to the owner_type)
 - `balance`: numeric(12,2) (Current computed or strictly tracked balance)
 - `created_at`: timestamptz
@@ -57,20 +57,17 @@ As an admin, staff member, or tenant, I need a centralized, double-entry style w
   - Used for generating the historical statement for a specific wallet.
 
 ## 5. UI & Responsive Design Strategy
-- **Wallet Overview Page (Admin/Staff):** A new responsive data table replacing the Dropship Ledger. It will display a list of all Wallets, grouped by `owner_type` (e.g., A tab for Resellers, a tab for Investors).
-- **Wallet Statement Component:** A reusable Vue component showing a chronological timeline/ledger of transactions, designed to be embedded inside the `BillingProfileDetailsPage`, `TenantDetailsPage`, or `InvestorDetailsPage`.
-- **Bulk Action Dialogs:** Modals for "Manual Adjustment", "Add Funds", and "Settle Payout" that gracefully handle form validation across desktop and mobile.
+- **Wallet Home Picker Page:** Display 6 entity cards: Our company, Customers, Suppliers, Cargo, Couriers, Investors. Caption for Cargo: freight agents for inbound shipments; Couriers: last-mile COD.
+- **Wallet Name List Page:** Searchable name list with total running balance per entity before picking.
+- **Slim Wallet Detail View:** Direct route `/wallet/:walletType/:entityId` displaying default simplified view with balance summary & transactions. Accountant ledger view hidden behind a link.
 
 ## 6. State Management, Module Structure & Routing
-- **Frontend Module:** Create a dedicated top-level module at `web/src/modules/finance_wallet`.
-- **TanStack Query (Services/Hooks):**
-  - `useWalletsQuery(filters)`: Cache key `['wallets', tenantId, filters]`.
-  - `useWalletTransactionsQuery(walletId)`: Cache key `['wallet_transactions', walletId]`.
-- **Pinia:** Not required for this feature, stick to TanStack Query for server state.
-- **Routing (Inside `web/src/modules/finance_wallet/router/index.ts`):** 
-  - Deprecate the old dropship ledger routes (`/dropship/ledger`).
-  - `path: '/finance/wallets', name: 'finance_wallets_list', component: () => import('../pages/WalletListPage.vue')`
-  - `path: '/finance/wallets/:walletId', name: 'finance_wallet_details', component: () => import('../pages/WalletDetailsPage.vue')`
+- **Frontend Module:** `web/src/modules/wallet`
+- **Routing (in `web/src/modules/wallet/routes/index.ts`):** 
+  - `path: ''` (home picker) -> `WalletHomePage.vue` (Title: *Wallets*, Subtitle: *Whose money do you want to see?*)
+  - `path: 'company/:tenantId'` -> `UniversalWalletPage.vue` (Company wallet detail)
+  - `path: ':walletType'` -> `WalletEntityListPage.vue` (Name list with search & balances)
+  - `path: ':walletType/:entityId'` -> `UniversalWalletPage.vue` (Slim detail view)
 
 ## 7. Style Guidelines & Accessibility
 - Follow existing Quasar framework guidelines.

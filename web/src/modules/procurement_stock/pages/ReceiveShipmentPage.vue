@@ -189,7 +189,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import SmartImage from 'src/components/SmartImage.vue';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
-import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';
+import { showSuccessNotification, showErrorNotification, requestConfirmation } from 'src/utils/appFeedback';
 
 interface ReceiveItemDraft {
   id: number;
@@ -305,6 +305,14 @@ const goBack = () => {
 
 const onConfirmReceive = async () => {
   if (!isValid.value || submitting.value) return;
+
+  const confirmed = await requestConfirmation(
+    `Are you sure you want to receive and post stock for ${shipmentName.value}? Total received quantity: ${totalReceivedQty.value} pcs across ${items.value.length} item(s).`,
+    'Confirm Receive Stock',
+    'Confirm & Post',
+  );
+
+  if (!confirmed) return;
 
   submitting.value = true;
   error.value = null;

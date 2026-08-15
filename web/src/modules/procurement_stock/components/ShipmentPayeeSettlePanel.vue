@@ -66,6 +66,15 @@
                 </div>
               </div>
             </div>
+            <div
+              v-if="vendorDueBdt > 0"
+              class="text-caption q-mb-xs"
+              :class="vendorPaidInFull ? 'text-positive' : 'text-grey-7'"
+              data-test="vendor-due-remaining"
+            >
+              <span v-if="vendorPaidInFull">Paid in full · ৳ {{ formatNumber(vendorCoveredBdt) }} of ৳ {{ formatNumber(vendorDueBdt) }}</span>
+              <span v-else>Due ৳ {{ formatNumber(vendorDueBdt) }} · Remaining ৳ {{ formatNumber(vendorRemainingBdt) }}</span>
+            </div>
 
             <!-- Action Selector Toggle -->
             <div class="q-mt-sm">
@@ -87,43 +96,65 @@
                 @update:model-value="onVendorActionChange"
               />
 
-              <!-- Input Row -->
-              <div class="row q-col-gutter-xs items-center">
-                <div class="col-7">
-                  <q-input
-                    v-model.number="vendorAmount"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    :label="vendorActionLabel"
-                    dense
-                    outlined
-                    class="bg-white soft-input"
-                    :prefix="purchaseCurrencySymbol"
-                    :disable="!isVendorEnabled || submitting"
-                    placeholder="0.00"
-                    :error="isVendorUseCreditOverCap"
-                    :error-message="`Exceeds available credit (Max: ${purchaseCurrencySymbol}${formatNumber(vendorMaxUseCreditAmount)})`"
-                    data-test="settle-amount-vendor"
-                  />
-                </div>
-                <div class="col-5 text-right">
-                  <div class="text-caption text-grey-6">Exchange Rate</div>
-                  <div class="text-caption text-weight-medium">
-                    1 : {{ formatRate(vendorRate) }} BDT
-                  </div>
-                </div>
+              <div
+                v-if="vendorAction === 'pay' && vendorPaidInFull && !vendorAddAnotherPay"
+                class="q-pa-sm bg-positive-1 text-positive-10 rounded-borders text-caption"
+                data-test="vendor-paid-in-full"
+              >
+                <div>No remaining vendor amount to pay.</div>
+                <q-btn
+                  flat
+                  dense
+                  no-caps
+                  color="primary"
+                  size="sm"
+                  class="q-px-none"
+                  label="Add another payment"
+                  data-test="vendor-add-another-pay"
+                  @click="vendorAddAnotherPay = true"
+                />
               </div>
 
-              <!-- Converted preview / hint -->
-              <div class="text-caption text-grey-7 q-mt-xs row items-center justify-between">
-                <span>
-                  Converted: <strong class="text-primary">৳ {{ formatNumber(vendorBdtVal) }}</strong> BDT
-                </span>
-                <span v-if="vendorAction === 'record_credit' && vendorShortageDefault > 0" class="text-amber-9 text-weight-medium" style="font-size: 11px">
-                  Shortage default: {{ purchaseCurrencySymbol }}{{ formatNumber(vendorShortageDefault) }}
-                </span>
-              </div>
+              <template v-else>
+                <div class="row q-col-gutter-xs items-center">
+                  <div class="col-7">
+                    <q-input
+                      v-model.number="vendorAmount"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      :label="vendorActionLabel"
+                      dense
+                      outlined
+                      class="bg-white soft-input"
+                      :prefix="purchaseCurrencySymbol"
+                      :disable="!isVendorEnabled || submitting"
+                      placeholder="0.00"
+                      :error="isVendorUseCreditOverCap"
+                      :error-message="`Exceeds available credit (Max: ${purchaseCurrencySymbol}${formatNumber(vendorMaxUseCreditAmount)})`"
+                      data-test="settle-amount-vendor"
+                    />
+                  </div>
+                  <div class="col-5 text-right">
+                    <div class="text-caption text-grey-6">Exchange Rate</div>
+                    <div class="text-caption text-weight-medium">
+                      1 : {{ formatRate(vendorRate) }} BDT
+                    </div>
+                  </div>
+                </div>
+
+                <div class="text-caption text-grey-7 q-mt-xs row items-center justify-between">
+                  <span>
+                    Converted: <strong class="text-primary">৳ {{ formatNumber(vendorBdtVal) }}</strong> BDT
+                  </span>
+                  <span v-if="vendorAction === 'record_credit' && vendorShortageDefault > 0" class="text-amber-9 text-weight-medium" style="font-size: 11px">
+                    Shortage default: {{ purchaseCurrencySymbol }}{{ formatNumber(vendorShortageDefault) }}
+                  </span>
+                  <span v-else-if="vendorAction === 'pay' && vendorRemainingBdt > 0.01" class="text-grey-8" style="font-size: 11px">
+                    Remaining due: ৳ {{ formatNumber(vendorRemainingBdt) }}
+                  </span>
+                </div>
+              </template>
             </div>
 
             <!-- Recent Events Accordion -->
@@ -153,8 +184,7 @@
             </q-expansion-item>
           </div>
 
-          <!-- Submit Button -->
-          <div class="row justify-end q-mt-md q-pt-xs border-top-grey">
+          <div v-if="vendorShowPayForm" class="row justify-end q-mt-md q-pt-xs border-top-grey">
             <q-btn
               :color="vendorButtonColor"
               unelevated
@@ -225,6 +255,15 @@
                 </div>
               </div>
             </div>
+            <div
+              v-if="cargoDueBdt > 0"
+              class="text-caption q-mb-xs"
+              :class="cargoPaidInFull ? 'text-positive' : 'text-grey-7'"
+              data-test="cargo-due-remaining"
+            >
+              <span v-if="cargoPaidInFull">Paid in full · ৳ {{ formatNumber(cargoCoveredBdt) }} of ৳ {{ formatNumber(cargoDueBdt) }}</span>
+              <span v-else>Due ৳ {{ formatNumber(cargoDueBdt) }} · Remaining ৳ {{ formatNumber(cargoRemainingBdt) }}</span>
+            </div>
 
             <!-- Action Selector Toggle -->
             <div class="q-mt-sm">
@@ -246,38 +285,60 @@
                 @update:model-value="onCargoActionChange"
               />
 
-              <!-- Input Row -->
-              <div class="row q-col-gutter-xs items-center">
-                <div class="col-7">
-                  <q-input
-                    v-model.number="cargoAmount"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    :label="cargoActionLabel"
-                    dense
-                    outlined
-                    class="bg-white soft-input"
-                    :prefix="purchaseCurrencySymbol"
-                    :disable="!isCargoEnabled || submitting"
-                    placeholder="0.00"
-                    :error="isCargoUseCreditOverCap"
-                    :error-message="`Exceeds available credit (Max: ${purchaseCurrencySymbol}${formatNumber(cargoMaxUseCreditAmount)})`"
-                    data-test="settle-amount-cargo"
-                  />
-                </div>
-                <div class="col-5 text-right">
-                  <div class="text-caption text-grey-6">Exchange Rate</div>
-                  <div class="text-caption text-weight-medium">
-                    1 : {{ formatRate(cargoRate) }} BDT
-                  </div>
-                </div>
+              <div
+                v-if="cargoAction === 'pay' && cargoPaidInFull && !cargoAddAnotherPay"
+                class="q-pa-sm bg-positive-1 text-positive-10 rounded-borders text-caption"
+                data-test="cargo-paid-in-full"
+              >
+                <div>No remaining cargo amount to pay.</div>
+                <q-btn
+                  flat
+                  dense
+                  no-caps
+                  color="teal-9"
+                  size="sm"
+                  class="q-px-none"
+                  label="Add another payment"
+                  data-test="cargo-add-another-pay"
+                  @click="cargoAddAnotherPay = true"
+                />
               </div>
 
-              <!-- Converted preview -->
-              <div class="text-caption text-grey-7 q-mt-xs">
-                Converted: <strong class="text-primary">৳ {{ formatNumber(cargoBdtVal) }}</strong> BDT
-              </div>
+              <template v-else>
+                <div class="row q-col-gutter-xs items-center">
+                  <div class="col-7">
+                    <q-input
+                      v-model.number="cargoAmount"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      :label="cargoActionLabel"
+                      dense
+                      outlined
+                      class="bg-white soft-input"
+                      :prefix="purchaseCurrencySymbol"
+                      :disable="!isCargoEnabled || submitting"
+                      placeholder="0.00"
+                      :error="isCargoUseCreditOverCap"
+                      :error-message="`Exceeds available credit (Max: ${purchaseCurrencySymbol}${formatNumber(cargoMaxUseCreditAmount)})`"
+                      data-test="settle-amount-cargo"
+                    />
+                  </div>
+                  <div class="col-5 text-right">
+                    <div class="text-caption text-grey-6">Exchange Rate</div>
+                    <div class="text-caption text-weight-medium">
+                      1 : {{ formatRate(cargoRate) }} BDT
+                    </div>
+                  </div>
+                </div>
+
+                <div class="text-caption text-grey-7 q-mt-xs">
+                  Converted: <strong class="text-primary">৳ {{ formatNumber(cargoBdtVal) }}</strong> BDT
+                  <span v-if="cargoAction === 'pay' && cargoRemainingBdt > 0.01" class="q-ml-sm">
+                    · Remaining due: ৳ {{ formatNumber(cargoRemainingBdt) }}
+                  </span>
+                </div>
+              </template>
             </div>
 
             <!-- Recent Events Accordion -->
@@ -307,8 +368,7 @@
             </q-expansion-item>
           </div>
 
-          <!-- Submit Button -->
-          <div class="row justify-end q-mt-md q-pt-xs border-top-grey">
+          <div v-if="cargoShowPayForm" class="row justify-end q-mt-md q-pt-xs border-top-grey">
             <q-btn
               :color="cargoButtonColor"
               unelevated
@@ -350,6 +410,7 @@ const props = defineProps<{
   purchaseCurrencySymbol?: string;
   submitting?: boolean;
   vendorProductTotal?: number;
+  cargoCostTotal?: number;
   goodsPurchaseTotal?: number | undefined;
 }>();
 
@@ -424,6 +485,77 @@ const cargoCreditedBdt = computed(() => cargoSummary.value?.credited_bdt ?? 0);
 const cargoUsedBdt = computed(() => cargoSummary.value?.used_bdt ?? 0);
 const cargoEvents = computed(() => cargoSummary.value?.recent_events ?? []);
 
+const roundMoney = (val: number) => Math.round((val || 0) * 100) / 100;
+
+const vendorDueBdt = computed(() =>
+  roundMoney((props.vendorProductTotal || 0) * vendorRate.value),
+);
+const vendorCoveredBdt = computed(() =>
+  roundMoney(vendorPaidBdt.value + vendorUsedBdt.value),
+);
+const vendorRemainingBdt = computed(() =>
+  vendorDueBdt.value > 0 ? Math.max(0, roundMoney(vendorDueBdt.value - vendorCoveredBdt.value)) : 0,
+);
+const vendorPaidInFull = computed(
+  () => vendorDueBdt.value > 0 && vendorRemainingBdt.value <= 0.01,
+);
+const vendorRemainingSource = computed(() =>
+  vendorRate.value > 0 ? Math.floor((vendorRemainingBdt.value / vendorRate.value) * 100) / 100 : 0,
+);
+
+const cargoDueBdt = computed(() =>
+  roundMoney((props.cargoCostTotal || 0) * cargoRate.value),
+);
+const cargoCoveredBdt = computed(() =>
+  roundMoney(cargoPaidBdt.value + cargoUsedBdt.value),
+);
+const cargoRemainingBdt = computed(() =>
+  cargoDueBdt.value > 0 ? Math.max(0, roundMoney(cargoDueBdt.value - cargoCoveredBdt.value)) : 0,
+);
+const cargoPaidInFull = computed(
+  () => cargoDueBdt.value > 0 && cargoRemainingBdt.value <= 0.01,
+);
+const cargoRemainingSource = computed(() =>
+  cargoRate.value > 0 ? Math.floor((cargoRemainingBdt.value / cargoRate.value) * 100) / 100 : 0,
+);
+
+const vendorAddAnotherPay = ref(false);
+const cargoAddAnotherPay = ref(false);
+
+const vendorShowPayForm = computed(
+  () => vendorAction.value !== 'pay' || !vendorPaidInFull.value || vendorAddAnotherPay.value,
+);
+const cargoShowPayForm = computed(
+  () => cargoAction.value !== 'pay' || !cargoPaidInFull.value || cargoAddAnotherPay.value,
+);
+
+const prefillPayAmounts = () => {
+  if (vendorAction.value === 'pay' && !vendorAddAnotherPay.value) {
+    vendorAmount.value = vendorRemainingSource.value > 0 ? vendorRemainingSource.value : null;
+  }
+  if (cargoAction.value === 'pay' && !cargoAddAnotherPay.value) {
+    cargoAmount.value = cargoRemainingSource.value > 0 ? cargoRemainingSource.value : null;
+  }
+};
+
+watch(settlementsData, () => {
+  prefillPayAmounts();
+});
+
+watch(
+  () => props.submitting,
+  (now, prev) => {
+    if (prev && !now) {
+      vendorAddAnotherPay.value = false;
+      cargoAddAnotherPay.value = false;
+      void fetchSettlements().then(() => {
+        onVendorActionChange(vendorAction.value);
+        onCargoActionChange(cargoAction.value);
+      });
+    }
+  },
+);
+
 // Shortage default calculation for vendor record_credit
 const vendorShortageDefault = computed(() => {
   const prod = props.vendorProductTotal || 0;
@@ -436,21 +568,27 @@ const vendorShortageDefault = computed(() => {
 
 const onVendorActionChange = (action: 'pay' | 'record_credit' | 'use_credit') => {
   if (action === 'record_credit') {
+    vendorAddAnotherPay.value = false;
     vendorAmount.value = vendorShortageDefault.value > 0 ? vendorShortageDefault.value : null;
   } else if (action === 'use_credit') {
+    vendorAddAnotherPay.value = false;
     const maxVal = vendorMaxUseCreditAmount.value;
     vendorAmount.value = maxVal > 0 ? maxVal : null;
   } else {
-    vendorAmount.value = null;
+    vendorAmount.value = vendorRemainingSource.value > 0 ? vendorRemainingSource.value : null;
   }
 };
 
 const onCargoActionChange = (action: 'pay' | 'record_credit' | 'use_credit') => {
   if (action === 'use_credit') {
+    cargoAddAnotherPay.value = false;
     const maxVal = cargoMaxUseCreditAmount.value;
     cargoAmount.value = maxVal > 0 ? maxVal : null;
-  } else {
+  } else if (action === 'record_credit') {
+    cargoAddAnotherPay.value = false;
     cargoAmount.value = null;
+  } else {
+    cargoAmount.value = cargoRemainingSource.value > 0 ? cargoRemainingSource.value : null;
   }
 };
 
@@ -595,8 +733,8 @@ const handleSettle = async (entityType: 'vendor' | 'cargo_company') => {
 };
 
 const resetInputs = () => {
-  vendorAmount.value = null;
-  cargoAmount.value = null;
+  vendorAddAnotherPay.value = false;
+  cargoAddAnotherPay.value = false;
   activeSubmittingType.value = null;
   void fetchSettlements();
 };

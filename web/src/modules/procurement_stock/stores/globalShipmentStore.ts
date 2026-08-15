@@ -836,21 +836,6 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       }
     },
 
-    async paySettleShipmentCosts(shipmentId: number, costEntryIds?: number[] | null) {
-      this.loading = true;
-      this.error = null;
-      try {
-        const res = await globalShipmentRepository.paySettleShipmentCosts(shipmentId, costEntryIds);
-        await this.fetchCostEntries(shipmentId);
-        return res;
-      } catch (err: unknown) {
-        this.error = (err as Error).message || 'Failed to settle shipment costs';
-        throw err;
-      } finally {
-        this.loading = false;
-      }
-    },
-
     async returnShipmentToVendor(
       shipmentId: number,
       itemsQty: Array<{ shipment_item_id: number; quantity: number }>,

@@ -166,6 +166,21 @@
 
     <div class="col-auto row q-gutter-xs items-center">
       <q-btn
+        v-if="shipment.status === 'received' || shipment.stock_ready"
+        outline
+        dense
+        no-caps
+        size="sm"
+        color="primary"
+        icon="ph ph-package"
+        label="Organize Stock"
+        style="border-radius: 8px"
+        class="q-px-xs"
+        @click="$emit('organize-stock')"
+      >
+        <q-tooltip>View & split batch stock in warehouse</q-tooltip>
+      </q-btn>
+      <q-btn
         flat
         dense
         no-caps
@@ -217,6 +232,7 @@ const emit = defineEmits<{
   'ensure-cargo': [];
   'download-excel': [];
   'delete-shipment': [];
+  'organize-stock': [];
 }>();
 
 const inlineNameInput = ref('');

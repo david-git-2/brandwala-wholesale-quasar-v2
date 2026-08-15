@@ -253,6 +253,7 @@
         :purchase-currency-symbol="purchaseCurrencySymbol"
         :submitting="paySettling"
         :vendor-product-total="vendorProductTotal"
+        :cargo-cost-total="cargoCostTotal"
         :goods-purchase-total="goodsPurchaseTotal"
         @settle="(payload) => emit('settle', payload)"
       />
@@ -319,6 +320,10 @@ const cargoRows = computed(() => drafts.value.filter((d) => d.cost_type === 'car
 
 const vendorProductTotal = computed(() =>
   productRows.value.reduce((sum, r) => sum + (Number(r.amount) || 0), 0),
+);
+
+const cargoCostTotal = computed(() =>
+  cargoRows.value.reduce((sum, r) => sum + (Number(r.amount) || 0), 0),
 );
 
 const firstProductRate = computed(() => {

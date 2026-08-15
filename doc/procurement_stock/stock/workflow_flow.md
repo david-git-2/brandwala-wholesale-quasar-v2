@@ -9,11 +9,11 @@ Receive (qty checklist) → stock @ default location + **standard grade** → or
 ## Lifecycle Overview
 
 ```
-[ STAGE 1: AVAILABILITY + GRADE + LOCATION ] ➔ [ STAGE 2: RECEIVE ] ➔ [ STAGE 3: READY + ASSIGN + LIST ]
-  • sellable | held | unsellable              • qty checklist UI       • status → received
-  • grade_tag_id → stock_grade tags           • ordered vs received    • assign one child
-  • stock_locations (bin/zone)                • post sellable +        • listing.global_stock_id
-  • (grade never drives ATP)                    standard @ default     • ATP = pickable sellable − holds
+[ STAGE 1: AVAILABILITY + GRADE + LOCATION ] ➔ [ STAGE 2: RECEIVE ] ➔ [ STAGE 3: READY + ASSIGN + LIST ] ➔ [ STAGE 4: ORGANIZE ] ➔ [ STAGE 5: SELL / RETURN ]
+  • sellable | held | unsellable              • qty checklist UI       • status → received              • movements only         • post deducts
+  • grade_tag_id → stock_grade tags           • ordered vs received    • assign one child               • filter by shipment     • draft/cart = ATP hold
+  • stock_locations (bin/zone)                • post sellable +        • listing.global_stock_id        • bin / grade / held     • return_inbound + grade
+  • (grade never drives ATP)                    standard @ default     • ATP = pickable sellable − holds  • never free-edit
                                                 location
                                               • no damage/grade on recv
 ```
@@ -25,7 +25,16 @@ Receive (qty checklist) → stock @ default location + **standard grade** → or
 * **Sell gate (locked):** `stock_availability` = `sellable` | `held` | `unsellable` on `global_stocks`.
 * **Grade (locked):** `grade_tag_id` → system tag (`module_key = stock_grade`). Warehouse day one: `standard` \| `open_box` \| `box_damage` \| `box_less` \| `badly_damaged`.
 * **Where (locked):** `stock_locations` + required `global_stocks.location_id`. Availability ≠ bin ≠ grade.
-* **ATP (locked):** `availability = sellable` **and** `location.is_pickable` − draft invoice holds − shop cart holds. **Grade does not gate ATP** (open_box etc. stay sellable).
+* **ATP (Available to Promise, locked):** qty that can still be sold now:
+
+  ```text
+  Σ quantity where availability = sellable and location.is_pickable
+  − draft invoice line qty
+  − shop cart reservations
+  ```
+
+  **Grade does not gate ATP** (`open_box` etc. stay sellable).
+* **Two “held”s (locked):** warehouse `availability = held` = quarantine (movement, out of ATP). Order/invoice hold = draft lines + cart reservations (ATP subtract only — **do not** flip warehouse availability).
 * **Live bridge:** `global_stock_types` until W7 cutover — [stock_type_api.md](./api/stock_type_api.md) transitional.
 
 ---
@@ -65,6 +74,21 @@ After receive, all qty / availability / **grade** / **location** changes go thro
 
 > Loss, damage grades, and condition are recorded **here**, not on the shipment receive checklist.
 
+**Organize UI (W8):** warehouse list filtered by `shipment_id` (deep-link from the shipment). Row actions draft a movement. Never type a new qty on the balance row.
+
+---
+
+## Stage 5: Sell, void, return (consumers)
+
+Owned by `sales_invoice` / `shop_order`. Procurement only supplies ATP + movement post.
+
+| Event | Stock effect |
+| :--- | :--- |
+| Draft invoice line / shop cart | ATP hold only — still `sellable` on-hand |
+| Invoice **post** / shop checkout | Decrement picked `global_stock_id` |
+| Invoice **void** (unpaid) | Restore qty onto the same grain |
+| Customer / shop **return** | Posted `return_inbound` movement in the same txn. Default **`held` @ returns** location. Return UI records **grade** + **availability** (sell gate). Do not add qty back onto the original sellable row. Staff may re-bin / re-grade later via Stage 4. |
+
 ---
 
 ## Explicit non-goals (this lifecycle)
@@ -73,7 +97,9 @@ After receive, all qty / availability / **grade** / **location** changes go thro
 * Multi-child same batch / request-reassign (day one)  
 * **Inter-warehouse / multi-site** transfer (day one = one warehouse; bins only)  
 * Reservation ledger in procurement (holds stay on cart / draft invoice)  
+* Flipping `availability` to `held` because an order or draft invoice reserved qty  
 * Return/sold columns on `global_stocks`  
 * Damage / grade / bin splits on the receive checklist (use movements instead)  
+* Free-edit qty / availability / grade / location on warehouse rows  
 * Discount % on grade tags (pricing elsewhere)  
 * Tags as ATP / sell gate (availability only)

@@ -45,6 +45,7 @@
           @ensure-cargo="ensureCargoLoaded"
           @download-excel="downloadExcel"
           @delete-shipment="confirmDeleteShipment"
+          @organize-stock="goToWarehouseStock"
         />
 
         <ShipmentStatusWorkflowBar
@@ -439,7 +440,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 
@@ -459,6 +460,7 @@ import { useInboundShipmentCalculations } from '../composables/useInboundShipmen
 import { useInboundShipmentActions } from '../composables/useInboundShipmentActions';
 
 const route = useRoute();
+const router = useRouter();
 const authStore = useAuthStore();
 const shipmentStore = useGlobalShipmentStore();
 const shipmentId = Number(route.params.id);
@@ -556,6 +558,25 @@ const {
   paySettling,
   confirmSettlePayee,
 } = actions;
+
+const goToWarehouseStock = () => {
+  const tenantSlug = route.params.tenantSlug;
+  const sId = shipmentStore.currentShipment?.id;
+  if (!sId) return;
+
+  if (tenantSlug) {
+    void router.push({
+      name: 'app-procurement-stock-list',
+      params: { tenantSlug },
+      query: { shipment_id: String(sId) },
+    });
+  } else {
+    void router.push({
+      name: 'app-procurement-stock-list',
+      query: { shipment_id: String(sId) },
+    });
+  }
+};
 
 onMounted(() => {
   loadShipmentDetails();

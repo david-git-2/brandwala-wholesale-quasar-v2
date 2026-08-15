@@ -180,17 +180,17 @@ All new/updated pages **must** follow [docs/UI_CONSISTENCY.md](../docs/UI_CONSIS
 
 ### 10.1 Implementation status & next step
 
-**Last updated:** 2026-07-06
+**Last updated:** 2026-08-15
 
 #### Next step (active work)
 
-1. **B8/F8 — Access grants** — Unified permission system (PERM P1→P3 + AC-P1→P4). See [PERMISSION_SYSTEM.md](PERMISSION_SYSTEM.md). **Done.**
+1. **Procurement W7** — stock grades (`grade_tag_id`), then W8 shipment-first organize, W9 return inbound. See [procurement_stock/IMPLEMENTATION_ORDER.md](procurement_stock/IMPLEMENTATION_ORDER.md).
 
 #### Completed (P0 redesign)
 
 | Area | Detail |
 |------|--------|
-| **procurement_stock** | Phases 1–10 done — see [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) §11 |
+| **procurement_stock** | Shipment inbound + W1–W6 warehouse done. **Next: W7 grades.** [IMPLEMENTATION_ORDER.md](procurement_stock/IMPLEMENTATION_ORDER.md) |
 | **thrift_*** | P1–P8 done — see [THRIFT.md](THRIFT.md) §9 |
 | **F1–F3** | Shared UI tokens + procurement/stock admin pages |
 | **shop_order** | P0–P10 done — see [SHOP_ORDER_PHASES.md](SHOP_ORDER_PHASES.md) |
@@ -207,7 +207,7 @@ All new/updated pages **must** follow [docs/UI_CONSISTENCY.md](../docs/UI_CONSIS
 #### Recommended order (after next step)
 
 ```
-B8/F8 permissions (PERM P1→P3 + AC-P1→P4) — done
+W7 stock grades → W8 shipment-first organize → W9 return inbound (grade + availability)
 ```
 
 ---

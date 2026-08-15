@@ -224,7 +224,7 @@ Credit-note style returns. Posted invoice prices stay immutable.
 | `return_charge_amount` | NUMERIC(12,2) | Yes | Default `0` |
 | `unit_cost_snapshot` | NUMERIC(12,2) | No | Copy from invoice line at return (audit) |
 
-On post return: bump `return_quantity`, restore stock, recompute invoice `due_amount` / `payment_status` when credit applies.
+On post return: bump `return_quantity`; post a `return_inbound` movement (default `held` @ returns; staff set **grade** + **availability**); recompute invoice `due_amount` / `payment_status` when credit applies. Do not increment the original sellable row.
 
 ---
 
@@ -295,7 +295,7 @@ Wallet is **not** a chart of accounts. Company actual profit lives in **reports*
 
 ### 5.4 Draft holds → ATP
 
-ATP (stock): `Σ sellable ∧ location.is_pickable − draft invoice line qty − shop cart holds` — [../stock/schema.md](../stock/schema.md).
+ATP (Available to Promise): `Σ sellable ∧ location.is_pickable − draft invoice line qty − shop cart holds` — [stock/schema.md](../../procurement_stock/stock/schema.md). Draft/cart holds never set warehouse `availability = held`.
 
 Invoice side: **query sum** of draft `sales_invoice_items.quantity` by `global_stock_id` (no dedicated hold table day one). Release on post (deduct), void, or delete draft line/invoice. Desk pick shows bin via stock’s `location_id`.
 

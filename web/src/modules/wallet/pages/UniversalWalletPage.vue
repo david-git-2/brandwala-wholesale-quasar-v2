@@ -1,211 +1,81 @@
 <template>
-  <q-page class="wallet-page-container q-pa-md">
+  <q-page class="wallet-page-container q-pa-md bg-grey-1" style="min-height: calc(100vh - 55px)">
     <UniversalWalletPageSkeleton v-if="isInitialLoading" />
 
     <div v-else class="q-gutter-y-md">
-      <!-- Standard Page Header -->
+      <!-- Detail Page Header -->
       <section class="row items-center justify-between q-col-gutter-md">
-        <div class="col">
-          <div class="text-overline text-primary">Wallet &amp; Passbook Ledger</div>
-          <h1 class="text-h5 text-weight-bold q-my-none">Universal Wallet</h1>
-          <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-            Track your 3 money pockets (Available Cash, In Transit, Security Hold) and transaction activity across accounts without complex accounting jargon.
-          </p>
-        </div>
         <div class="col-auto row items-center q-gutter-x-sm">
+          <q-btn
+            flat
+            round
+            dense
+            icon="ph ph-arrow-left"
+            color="grey-8"
+            @click="navigateBack"
+          >
+            <q-tooltip>Back to List</q-tooltip>
+          </q-btn>
+          <div>
+            <div class="row items-center q-gutter-x-xs">
+              <q-chip
+                dense
+                square
+                size="11px"
+                class="bg-primary-soft text-primary text-weight-bold uppercase tracking-wider"
+              >
+                {{ entityTypeLabel }}
+              </q-chip>
+            </div>
+            <h1 class="text-h5 text-weight-bolder text-grey-9 q-my-none">
+              {{ loadedEntityName || 'Wallet Detail' }}
+            </h1>
+          </div>
+        </div>
+
+        <div class="col-auto row items-center q-gutter-x-sm">
+          <!-- Accountant View Toggle Link -->
+          <q-btn
+            flat
+            dense
+            no-caps
+            :icon="isAccountantView ? 'ph ph-sparkle' : 'ph ph-sliders-horizontal'"
+            :label="isAccountantView ? 'Simplified View' : 'Accountant View'"
+            color="grey-8"
+            class="bg-white q-px-sm rounded-borders border-grey-3"
+            @click="isAccountantView = !isAccountantView"
+          />
+
           <LearnMoreHelpBtn
             guide-id="universal_wallet"
-            label="Help Center &amp; Guidelines"
+            label="Help Center"
             icon="ph ph-question-mark"
             color="primary"
             class="bg-primary-soft text-weight-bold q-px-sm rounded-borders"
           />
-          <q-btn
-            unelevated
-            color="primary"
-            icon="ph ph-arrows-left-right"
-            label="Transfer Buckets"
-            no-caps
-            class="text-weight-bold q-px-md rounded-borders"
-            @click="isTransferModalOpen = true"
-          />
-          <q-chip dense flat class="bg-primary-soft text-primary text-weight-bold">
-            <q-icon name="ph ph-buildings" size="14px" class="q-mr-xs" />
-            {{ authStore.selectedTenant?.name || 'Primary Platform' }}
-          </q-chip>
         </div>
       </section>
 
-      <!-- Soft Entity Type Selector Tabs Card -->
-      <q-card flat bordered class="tabs-card q-pa-xs">
-        <q-tabs
-          v-model="activeTab"
-          dense
-          no-caps
-          active-color="primary"
-          indicator-color="transparent"
-          align="left"
-          class="soft-tabs-bar"
-          @update:model-value="onTabChange"
-        >
-          <!-- 1. Tenant -->
-          <q-tab name="tenant" class="soft-tab-btn q-px-md q-py-sm">
-            <div class="row items-center q-gutter-x-sm">
-              <div class="tab-icon-wrapper" :class="{ active: activeTab === 'tenant' }">
-                <q-icon name="ph ph-buildings" size="18px" />
-              </div>
-              <div class="column text-left">
-                <span class="tab-title" :class="{ 'text-weight-bold text-primary': activeTab === 'tenant' }">
-                  Tenant
-                </span>
-                <span class="tab-subtitle">Organization Ledger</span>
-              </div>
-            </div>
-          </q-tab>
+      <!-- Default: Simplified View -->
+      <section v-if="!isAccountantView">
+        <SimplifiedWalletView
+          :key="`simp-${effectiveEntityType}-${effectiveEntityId}`"
+          :account="account"
+          :entity-type="effectiveEntityType"
+          :entity-id="effectiveEntityId"
+          :entity-name="loadedEntityName"
+          :allow-transfer="true"
+          @open-transfer="isTransferModalOpen = true"
+          @open-deposit="isDepositModalOpen = true"
+          @open-withdraw="isWithdrawModalOpen = true"
+          @open-statement="isAccountantView = true; activeSubView = 'statement'"
+        />
+      </section>
 
-          <!-- 2. Billing Profile (Customer / Account) -->
-          <q-tab name="customer" class="soft-tab-btn q-px-md q-py-sm">
-            <div class="row items-center q-gutter-x-sm">
-              <div class="tab-icon-wrapper" :class="{ active: activeTab === 'customer' }">
-                <q-icon name="ph ph-receipt" size="18px" />
-              </div>
-              <div class="column text-left">
-                <span class="tab-title" :class="{ 'text-weight-bold text-primary': activeTab === 'customer' }">
-                  Billing Profile
-                </span>
-                <span class="tab-subtitle">Customer Accounts</span>
-              </div>
-            </div>
-          </q-tab>
-
-          <!-- 3. Vendor -->
-          <q-tab name="vendor" class="soft-tab-btn q-px-md q-py-sm">
-            <div class="row items-center q-gutter-x-sm">
-              <div class="tab-icon-wrapper" :class="{ active: activeTab === 'vendor' }">
-                <q-icon name="ph ph-storefront" size="18px" />
-              </div>
-              <div class="column text-left">
-                <span class="tab-title" :class="{ 'text-weight-bold text-primary': activeTab === 'vendor' }">
-                  Vendor
-                </span>
-                <span class="tab-subtitle">Supplier Wallets</span>
-              </div>
-            </div>
-          </q-tab>
-
-          <!-- 4. Courier -->
-          <q-tab name="courier" class="soft-tab-btn q-px-md q-py-sm">
-            <div class="row items-center q-gutter-x-sm">
-              <div class="tab-icon-wrapper" :class="{ active: activeTab === 'courier' }">
-                <q-icon name="ph ph-truck" size="18px" />
-              </div>
-              <div class="column text-left">
-                <span class="tab-title" :class="{ 'text-weight-bold text-primary': activeTab === 'courier' }">
-                  Courier
-                </span>
-                <span class="tab-subtitle">Delivery Remittance</span>
-              </div>
-            </div>
-          </q-tab>
-
-          <!-- 5. Investor -->
-          <q-tab name="investor" class="soft-tab-btn q-px-md q-py-sm">
-            <div class="row items-center q-gutter-x-sm">
-              <div class="tab-icon-wrapper" :class="{ active: activeTab === 'investor' }">
-                <q-icon name="ph ph-chart-line-up" size="18px" />
-              </div>
-              <div class="column text-left">
-                <span class="tab-title" :class="{ 'text-weight-bold text-primary': activeTab === 'investor' }">
-                  Investor
-                </span>
-                <span class="tab-subtitle">Capital Wallets</span>
-              </div>
-            </div>
-          </q-tab>
-        </q-tabs>
-      </q-card>
-
-      <!-- Soft Selector Card for Non-Tenant Entities -->
-      <transition name="fade-slide">
-        <q-card v-if="activeTab !== 'tenant'" flat bordered class="q-pa-md">
-          <div class="row items-center justify-between q-col-gutter-md">
-            <div class="col-xs-12 col-sm-6 col-md-5">
-              <label class="text-caption text-weight-bold text-muted q-mb-xs block">
-                Target Entity Selection
-              </label>
-              <q-select
-                v-model="selectedEntityId"
-                outlined
-                dense
-                emit-value
-                map-options
-                use-input
-                input-debounce="150"
-                class="gentle-select"
-                :options="filteredEntityOptions"
-                :placeholder="entitySelectLabel"
-                :loading="isEntityLoading"
-                @filter="filterEntities"
-              >
-                <template #prepend>
-                  <q-avatar size="24px" class="bg-primary-soft text-primary">
-                    <q-icon :name="entitySelectIcon" size="14px" />
-                  </q-avatar>
-                </template>
-
-                <template #no-option>
-                  <q-item class="q-py-md text-center">
-                    <q-item-section class="text-caption text-grey-6">
-                      No matching {{ activeTabDisplay }} records found
-                    </q-item-section>
-                  </q-item>
-                </template>
-
-                <template #option="scope">
-                  <q-item v-bind="scope.itemProps" class="soft-option-item q-py-sm">
-                    <q-item-section avatar>
-                      <q-avatar size="32px" class="bg-primary-soft text-primary text-weight-bold font-mono">
-                        {{ scope.opt.label.charAt(0).toUpperCase() }}
-                      </q-avatar>
-                    </q-item-section>
-                    <q-item-section>
-                      <q-item-label class="text-weight-bold text-ink">{{ scope.opt.label }}</q-item-label>
-                      <q-item-label v-if="scope.opt.caption" caption class="text-muted">
-                        {{ scope.opt.caption }}
-                      </q-item-label>
-                    </q-item-section>
-                    <q-item-section side>
-                      <q-chip dense flat class="bg-grey-2 text-grey-8 text-weight-medium font-mono text-caption">
-                        #{{ scope.opt.value }}
-                      </q-chip>
-                    </q-item-section>
-                  </q-item>
-                </template>
-              </q-select>
-            </div>
-
-            <div class="col-xs-12 col-sm-6 col-md-7">
-              <div class="selected-entity-preview row items-center q-pa-sm q-px-md rounded-borders">
-                <div class="row items-center q-gutter-x-sm">
-                  <q-icon name="ph ph-check-circle" color="positive" size="20px" />
-                  <div>
-                    <div class="text-caption text-muted">Active Wallet Focus</div>
-                    <div class="text-subtitle2 text-weight-bolder text-primary">
-                      {{ selectedEntityLabel }}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </q-card>
-      </transition>
-
-      <!-- Navigation Sub-Tabs & View Mode Switcher -->
-      <div class="sub-nav-bar row items-center justify-between q-col-gutter-sm">
-        <div class="col-auto">
+      <!-- Accountant / Advanced View (Hidden behind link) -->
+      <section v-else class="q-gutter-y-md">
+        <div class="row items-center justify-between bg-white q-pa-xs rounded-borders border-grey-3">
           <q-btn-toggle
-            v-if="!isSimplifiedMode"
             v-model="activeSubView"
             dense
             unelevated
@@ -220,104 +90,79 @@
               { label: 'Platform Reports', value: 'reports', icon: 'ph ph-trend-up' },
             ]"
           />
-        </div>
 
-        <div class="col-auto q-ml-auto">
-          <q-btn-toggle
-            v-model="isSimplifiedMode"
-            dense
+          <q-btn
             unelevated
-            toggle-color="primary"
-            toggle-text-color="white"
-            text-color="grey-8"
-            class="bg-grey-2 q-pa-xs rounded-borders"
+            color="primary"
+            icon="ph ph-arrows-left-right"
+            label="Transfer Buckets"
             no-caps
-            :options="[
-              { label: 'Simplified View', value: true, icon: 'ph ph-sparkle' },
-              { label: 'Advanced Audit View', value: false, icon: 'ph ph-sliders-horizontal' },
-            ]"
+            dense
+            class="text-weight-bold q-px-md rounded-borders"
+            @click="isTransferModalOpen = true"
           />
         </div>
-      </div>
 
-      <!-- Simplified View (Clean 3 Pockets + Simple Timeline) -->
-      <section v-if="isSimplifiedMode" class="q-gutter-y-md">
-        <SimplifiedWalletView
-          :key="`simp-${activeTab}-${effectiveEntityId}`"
-          :account="account"
-          :entity-type="activeTab"
-          :entity-id="effectiveEntityId"
-          :entity-name="selectedEntityNameOnly"
-          :allow-transfer="true"
-          @open-transfer="isTransferModalOpen = true"
-          @open-deposit="isDepositModalOpen = true"
-          @open-withdraw="isWithdrawModalOpen = true"
-          @open-statement="activeSubView = 'statement'; isSimplifiedMode = false"
-        />
-      </section>
-
-      <!-- Advanced Audit View (Accounting Sub-tabs) -->
-      <template v-else>
-        <!-- View 1: Ledger Audit -->
-        <section v-if="activeSubView === 'overview'" class="q-gutter-y-md">
+        <!-- Accountant View 1: Ledger Audit -->
+        <div v-if="activeSubView === 'overview'" class="q-gutter-y-md">
           <WalletAccountCard
-            :key="`acc-${activeTab}-${effectiveEntityId}`"
+            :key="`acc-${effectiveEntityType}-${effectiveEntityId}`"
             :account="account"
-            :entity-type="activeTab"
-            :entity-name="selectedEntityNameOnly"
+            :entity-type="effectiveEntityType"
+            :entity-name="loadedEntityName"
             @open-transfer="isTransferModalOpen = true"
           />
 
           <UniversalWallet
-            :key="`${activeTab}-${effectiveEntityId}`"
-            :entity-type="activeTab"
+            :key="`ledger-${effectiveEntityType}-${effectiveEntityId}`"
+            :entity-type="effectiveEntityType"
             :entity-id="effectiveEntityId"
-            :entity-name="selectedEntityNameOnly"
+            :entity-name="loadedEntityName"
             :allow-adjustment="true"
           />
-        </section>
+        </div>
 
-        <!-- View 2: Account Statement -->
-        <section v-else-if="activeSubView === 'statement'">
+        <!-- Accountant View 2: Account Statement -->
+        <div v-else-if="activeSubView === 'statement'">
           <WalletStatementView
-            :key="`stmt-${activeTab}-${effectiveEntityId}`"
-            :entity-type="activeTab"
+            :key="`stmt-${effectiveEntityType}-${effectiveEntityId}`"
+            :entity-type="effectiveEntityType"
             :entity-id="effectiveEntityId"
-            :entity-name="selectedEntityNameOnly"
+            :entity-name="loadedEntityName"
           />
-        </section>
+        </div>
 
-        <!-- View 3: Platform Reports -->
-        <section v-else-if="activeSubView === 'reports'">
+        <!-- Accountant View 3: Platform Reports -->
+        <div v-else-if="activeSubView === 'reports'">
           <WalletReportsView />
-        </section>
-      </template>
+        </div>
+      </section>
     </div>
 
     <!-- Bucket Transfer Modal -->
     <WalletTransferModal
       v-model="isTransferModalOpen"
-      :entity-type="activeTab"
+      :entity-type="effectiveEntityType"
       :entity-id="effectiveEntityId"
-      :entity-name="selectedEntityNameOnly"
+      :entity-name="loadedEntityName"
       @transferred="onTransactionCompleted"
     />
 
     <!-- Deposit Modal -->
     <WalletDepositModal
       v-model="isDepositModalOpen"
-      :entity-type="activeTab"
+      :entity-type="effectiveEntityType"
       :entity-id="effectiveEntityId"
-      :entity-name="selectedEntityNameOnly"
+      :entity-name="loadedEntityName"
       @deposited="onTransactionCompleted"
     />
 
     <!-- Withdraw Modal -->
     <WalletWithdrawModal
       v-model="isWithdrawModalOpen"
-      :entity-type="activeTab"
+      :entity-type="effectiveEntityType"
       :entity-id="effectiveEntityId"
-      :entity-name="selectedEntityNameOnly"
+      :entity-name="loadedEntityName"
       :available-balance="account?.available_balance || 0"
       @withdrawn="onTransactionCompleted"
     />
@@ -326,11 +171,11 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import { supabase } from 'src/boot/supabase';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { vendorService } from 'src/modules/vendor/services/vendorService';
-import { dropshipCourierRepository } from 'src/modules/shop_order/repositories/dropshipCourierRepository';
 import type { UniversalWalletEntityType } from '../types';
+import { getEntityTypeFromSlug, getSlugFromEntityType } from '../utils/walletSlugMap';
 import UniversalWallet from '../components/UniversalWallet.vue';
 import UniversalWalletPageSkeleton from '../components/UniversalWalletPageSkeleton.vue';
 import WalletAccountCard from '../components/WalletAccountCard.vue';
@@ -343,357 +188,152 @@ import SimplifiedWalletView from '../components/SimplifiedWalletView.vue';
 import LearnMoreHelpBtn from 'src/modules/help/components/LearnMoreHelpBtn.vue';
 import { useWalletAccounts } from '../composables/useWalletAccounts';
 
-interface EntityOption {
-  label: string;
-  value: number;
-  caption?: string | undefined;
-  rawName?: string | undefined;
-}
-
+const router = useRouter();
+const route = useRoute();
 const authStore = useAuthStore();
-const activeTab = ref<UniversalWalletEntityType>('tenant');
-const activeSubView = ref<'overview' | 'statement' | 'reports'>('overview');
-const isSimplifiedMode = ref<boolean>(true);
-const selectedEntityId = ref<number>(1);
+
 const isInitialLoading = ref<boolean>(true);
-const isEntityLoading = ref<boolean>(false);
-const filterText = ref<string>('');
+const isAccountantView = ref<boolean>(false);
+const activeSubView = ref<'overview' | 'statement' | 'reports'>('overview');
+const loadedEntityName = ref<string>('');
+
 const isTransferModalOpen = ref<boolean>(false);
 const isDepositModalOpen = ref<boolean>(false);
 const isWithdrawModalOpen = ref<boolean>(false);
 
-// Cached option lists for each entity type
-const billingProfileOptions = ref<EntityOption[]>([]);
-const vendorOptions = ref<EntityOption[]>([]);
-const courierOptions = ref<EntityOption[]>([]);
-const investorOptions = ref<EntityOption[]>([]);
-
-const effectiveEntityId = computed(() => {
-  if (activeTab.value === 'tenant') {
-    return authStore.selectedTenant?.id ?? 1;
+const effectiveEntityType = computed<UniversalWalletEntityType>(() => {
+  if (route.name === 'app-wallet-company-detail' || route.params.tenantId != null) {
+    return 'tenant';
   }
-  return selectedEntityId.value || 1;
+  const typeParam = (route.params.walletType as string) || '';
+  if (typeParam === 'company') return 'tenant';
+  const mapped = getEntityTypeFromSlug(typeParam);
+  if (mapped) return mapped;
+  return (typeParam as UniversalWalletEntityType) || 'tenant';
+});
+
+const effectiveEntityId = computed<number>(() => {
+  if (effectiveEntityType.value === 'tenant') {
+    if (route.params.tenantId) return Number(route.params.tenantId);
+    return authStore.selectedTenant?.id || 1;
+  }
+  return Number(route.params.entityId) || 1;
+});
+
+const walletSlug = computed<string>(() => {
+  return getSlugFromEntityType(effectiveEntityType.value) || 'company';
+});
+
+const entityTypeLabel = computed<string>(() => {
+  switch (effectiveEntityType.value) {
+    case 'tenant':        return 'Company Wallet';
+    case 'customer':      return 'Customer Wallet';
+    case 'vendor':        return 'Supplier Wallet';
+    case 'cargo_company': return 'Cargo Wallet';
+    case 'courier':       return 'Courier Wallet';
+    case 'investor':      return 'Investor Wallet';
+    default:              return 'Entity Wallet';
+  }
 });
 
 const { account, refetchAccount } = useWalletAccounts(
-  () => activeTab.value,
+  () => effectiveEntityType.value,
   () => effectiveEntityId.value,
 );
 
-const currentEntityOptions = computed<EntityOption[]>(() => {
-  switch (activeTab.value) {
-    case 'customer': return billingProfileOptions.value;
-    case 'vendor':   return vendorOptions.value;
-    case 'courier':  return courierOptions.value;
-    case 'investor': return investorOptions.value;
-    default:         return [];
+function navigateBack() {
+  if (effectiveEntityType.value === 'tenant') {
+    void router.push({
+      name: 'app-wallet-home-page',
+      params: route.params,
+    });
+  } else {
+    void router.push({
+      name: 'app-wallet-entity-list-page',
+      params: {
+        ...route.params,
+        walletType: walletSlug.value,
+      },
+    });
   }
-});
-
-const filteredEntityOptions = computed<EntityOption[]>(() => {
-  if (!filterText.value) return currentEntityOptions.value;
-  const query = filterText.value.toLowerCase();
-  return currentEntityOptions.value.filter(
-    (opt) =>
-      opt.label.toLowerCase().includes(query) ||
-      (opt.caption && opt.caption.toLowerCase().includes(query)),
-  );
-});
-
-const activeTabDisplay = computed(() => {
-  switch (activeTab.value) {
-    case 'tenant':   return 'Tenant';
-    case 'customer': return 'Billing Profile';
-    case 'vendor':   return 'Vendor';
-    case 'courier':  return 'Courier';
-    case 'investor': return 'Investor';
-    default:         return 'Entity';
-  }
-});
-
-const entitySelectLabel = computed(() => {
-  switch (activeTab.value) {
-    case 'customer': return 'Search Billing Profile / Customer...';
-    case 'vendor':   return 'Search Vendor / Supplier...';
-    case 'courier':  return 'Search Courier Partner...';
-    case 'investor': return 'Search Capital Investor...';
-    default:         return 'Select Entity...';
-  }
-});
-
-const entitySelectIcon = computed(() => {
-  switch (activeTab.value) {
-    case 'customer': return 'ph ph-receipt';
-    case 'vendor':   return 'ph ph-storefront';
-    case 'courier':  return 'ph ph-truck';
-    case 'investor': return 'ph ph-chart-line-up';
-    default:         return 'ph ph-buildings';
-  }
-});
-
-const selectedEntityLabel = computed(() => {
-  if (activeTab.value === 'tenant') {
-    return authStore.selectedTenant?.name || 'Organization Ledger';
-  }
-  const matched = currentEntityOptions.value.find((opt) => opt.value === selectedEntityId.value);
-  if (matched) return `${matched.label} (#${matched.value})`;
-  return `ID #${selectedEntityId.value}`;
-});
-
-const selectedEntityNameOnly = computed(() => {
-  if (activeTab.value === 'tenant') {
-    return authStore.selectedTenant?.name || 'Tenant';
-  }
-  const matched = currentEntityOptions.value.find((opt) => opt.value === selectedEntityId.value);
-  return matched?.rawName || matched?.label || '';
-});
-
-function filterEntities(val: string, update: (callback: () => void) => void) {
-  update(() => {
-    filterText.value = val;
-  });
 }
 
 function onTransactionCompleted() {
   void refetchAccount();
 }
 
-// Data loaders for entities
-async function loadBillingProfiles() {
-  const tenantId = authStore.selectedTenant?.id;
-  if (!tenantId) return;
-  isEntityLoading.value = true;
-  try {
-    const { data } = await supabase
-      .from('billing_profiles')
-      .select('id, name, email, phone, customer_groups(name)')
-      .eq('tenant_id', tenantId)
-      .order('name', { ascending: true });
+async function fetchEntityName() {
+  const type = effectiveEntityType.value;
+  const id = effectiveEntityId.value;
 
-    if (data && data.length > 0) {
-      billingProfileOptions.value = data.map((bp) => {
-        const groupName = (bp as { customer_groups?: { name?: string } | null }).customer_groups?.name;
-        const baseName = bp.name || `Profile #${bp.id}`;
-        return {
-          label: groupName ? `${groupName} · ${baseName}` : baseName,
-          value: Number(bp.id),
-          caption: [bp.phone, bp.email].filter(Boolean).join(' • ') || undefined,
-          rawName: baseName,
-        };
-      });
-    } else {
-      billingProfileOptions.value = [];
+  if (type === 'tenant') {
+    loadedEntityName.value = authStore.selectedTenant?.name || 'Our Company';
+    return;
+  }
+
+  try {
+    if (type === 'customer') {
+      const { data } = await supabase
+        .from('billing_profiles')
+        .select('name')
+        .eq('id', id)
+        .maybeSingle();
+      loadedEntityName.value = data?.name || `Customer #${id}`;
+    } else if (type === 'vendor') {
+      const { data } = await supabase
+        .from('vendors')
+        .select('name')
+        .eq('id', id)
+        .maybeSingle();
+      loadedEntityName.value = data?.name || `Vendor #${id}`;
+    } else if (type === 'cargo_company') {
+      const { data } = await supabase
+        .from('cargo_companies')
+        .select('name')
+        .eq('id', id)
+        .maybeSingle();
+      loadedEntityName.value = data?.name || `Cargo #${id}`;
+    } else if (type === 'courier') {
+      const { data } = await supabase
+        .from('courier_services')
+        .select('name')
+        .or(`wallet_entity_id.eq.${id},id.eq.${id}`)
+        .maybeSingle();
+      loadedEntityName.value = data?.name || `Courier #${id}`;
+    } else if (type === 'investor') {
+      const { data } = await supabase
+        .from('investors')
+        .select('name')
+        .eq('id', id)
+        .maybeSingle();
+      loadedEntityName.value = data?.name || `Investor #${id}`;
     }
   } catch (err) {
-    console.error('[UniversalWalletPage] Failed to load billing profiles:', err);
-  } finally {
-    isEntityLoading.value = false;
+    console.error('[UniversalWalletPage] Failed to fetch entity name:', err);
+    loadedEntityName.value = `Entity #${id}`;
   }
 }
 
-async function loadVendors() {
-  const tenantId = authStore.selectedTenant?.id;
-  isEntityLoading.value = true;
-  try {
-    const res = await vendorService.listVendors(tenantId);
-    if (res.success && res.data) {
-      vendorOptions.value = res.data.map((v) => ({
-        label: `${v.name}${v.code ? ` (${v.code})` : ''}`,
-        value: Number(v.id),
-        caption: v.phone || v.email || undefined,
-        rawName: v.name,
-      }));
-    } else {
-      vendorOptions.value = [];
-    }
-  } catch (err) {
-    console.error('[UniversalWalletPage] Failed to load vendors:', err);
-  } finally {
-    isEntityLoading.value = false;
-  }
-}
-
-async function loadCouriers() {
-  isEntityLoading.value = true;
-  try {
-    const { data: services, error } = await supabase
-      .from('courier_services')
-      .select('id, name, code, wallet_entity_id, notes, is_active')
-      .eq('is_active', true)
-      .order('name', { ascending: true });
-
-    if (error) throw error;
-
-    courierOptions.value = (services || [])
-      .filter((c) => c.wallet_entity_id != null)
-      .map((c) => ({
-        label: `${c.name}${c.code ? ` (${String(c.code).toUpperCase()})` : ''}`,
-        value: Number(c.wallet_entity_id),
-        caption: c.notes || `Service ${c.code || c.id}`,
-        rawName: c.name,
-      }));
-  } catch (err) {
-    console.error('[UniversalWalletPage] Failed to load couriers:', err);
-    try {
-      const couriers = await dropshipCourierRepository.listCouriers();
-      courierOptions.value = couriers.map((c, index) => ({
-        label: `${c.name}${c.code ? ` (${c.code.toUpperCase()})` : ''}`,
-        value: index + 1,
-        caption: c.notes || undefined,
-        rawName: c.name,
-      }));
-    } catch {
-      courierOptions.value = [];
-    }
-  } finally {
-    isEntityLoading.value = false;
-  }
-}
-
-async function loadInvestors() {
-  const tenantId = authStore.selectedTenant?.id;
-  if (!tenantId) return;
-  isEntityLoading.value = true;
-  try {
-    const { data } = await supabase
-      .from('investors')
-      .select('id, name, phone, email')
-      .eq('tenant_id', tenantId)
-      .order('name', { ascending: true });
-
-    if (data && data.length > 0) {
-      investorOptions.value = data.map((inv) => ({
-        label: inv.name || `Investor #${inv.id}`,
-        value: Number(inv.id),
-        caption: [inv.phone, inv.email].filter(Boolean).join(' • ') || undefined,
-        rawName: inv.name || `Investor #${inv.id}`,
-      }));
-    } else {
-      investorOptions.value = [];
-    }
-  } catch (err) {
-    console.error('[UniversalWalletPage] Failed to load investors:', err);
-    investorOptions.value = [];
-  } finally {
-    isEntityLoading.value = false;
-  }
-}
-
-function selectDefaultEntityForTab() {
-  const opts = currentEntityOptions.value;
-  if (opts.length > 0 && opts[0]) {
-    selectedEntityId.value = opts[0].value;
-  } else {
-    selectedEntityId.value = 1;
-  }
-}
-
-function onTabChange() {
-  filterText.value = '';
-  selectDefaultEntityForTab();
+async function initializePage() {
+  isInitialLoading.value = true;
+  await fetchEntityName();
+  isInitialLoading.value = false;
 }
 
 watch(
-  () => authStore.selectedTenant?.id,
+  [() => route.params.walletType, () => route.params.entityId, () => route.params.tenantId],
   () => {
-    void loadBillingProfiles();
-    void loadVendors();
-    void loadCouriers();
-    void loadInvestors();
+    void initializePage();
   },
 );
 
-onMounted(async () => {
-  isInitialLoading.value = true;
-  try {
-    await Promise.all([loadBillingProfiles(), loadVendors(), loadCouriers(), loadInvestors()]);
-    selectDefaultEntityForTab();
-  } finally {
-    isInitialLoading.value = false;
-  }
+onMounted(() => {
+  void initializePage();
 });
 </script>
 
-<style scoped>
-.wallet-page-container {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.text-ink {
-  color: var(--bw-theme-ink, #1e293b);
-}
-
-.text-muted {
-  color: var(--bw-theme-muted, #64748b);
-}
-
-.bg-primary-soft {
-  background: rgba(var(--q-primary-rgb, 59, 130, 246), 0.08) !important;
-}
-
-/* Tabs Styling */
-.tabs-card {
-  overflow-x: auto;
-}
-
-.soft-tabs-bar {
-  background: transparent;
-}
-
-.soft-tab-btn {
-  border-radius: 8px;
-  margin: 2px;
-  transition: all 0.2s ease;
-}
-
-.soft-tab-btn:hover {
-  background: rgba(241, 245, 249, 0.6);
-}
-
-.tab-icon-wrapper {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(241, 245, 249, 1);
-  color: #64748b;
-  transition: all 0.2s ease;
-}
-
-.tab-icon-wrapper.active {
-  background: var(--q-primary, #3b82f6);
-  color: #ffffff;
-}
-
-.tab-title {
-  font-size: 0.875rem;
-  color: #334155;
-  line-height: 1.2;
-}
-
-.tab-subtitle {
-  font-size: 0.72rem;
-  color: #94a3b8;
-  line-height: 1.1;
-}
-
-.selected-entity-preview {
-  background: rgba(241, 245, 249, 0.6);
-  border: 1px dashed rgba(203, 213, 225, 0.8);
-  border-radius: 8px;
-}
-
-.fade-slide-enter-active,
-.fade-slide-leave-active {
-  transition: all 0.2s ease;
-}
-
-.fade-slide-enter-from,
-.fade-slide-leave-to {
-  opacity: 0;
-  transform: translateY(-4px);
+<style scoped lang="scss">
+.border-grey-3 {
+  border: 1px solid #e2e8f0;
 }
 </style>

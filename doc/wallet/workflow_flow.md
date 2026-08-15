@@ -4,6 +4,21 @@ This document details the step-by-step business flow and maps each lifecycle sta
 
 ---
 
+## UI Navigation & Picker Flow
+
+```mermaid
+flowchart LR
+  Home["/wallet (Picker Home)"] --> Company["/wallet/company/:id"]
+  Home --> List["/wallet/:type (Entity List)"]
+  List --> Detail["/wallet/:type/:id (Wallet Detail)"]
+```
+
+1. **Picker Home (`/wallet`)**: User picks entity type card (Our company, Customers, Suppliers, Cargo, Couriers, Investors).
+2. **Entity List (`/wallet/:type`)**: User searches and picks an entity by name with live total balances.
+3. **Wallet Detail (`/wallet/:type/:id`)**: Simplified wallet view with balance summary and chronological transaction history. Company routes directly from picker home.
+
+---
+
 ## Lifecycle Overview
 
 ```
@@ -16,7 +31,7 @@ This document details the step-by-step business flow and maps each lifecycle sta
 
 ## Stage 1: Account Inquiry & Balance Bucket Fetching
 
-* **Action**: User or module fetches the current balance buckets for an entity (Vendor, Courier, Customer, Middleman, Tenant, Investor).
+* **Action**: User or module fetches the current balance buckets for an entity (Vendor, Courier, Customer, Middleman, Tenant, Investor, Cargo Company).
 * **Execution**: Retrieves `available_balance`, `locked_balance`, and `pending_balance` along with total balance.
 * **APIs / RPCs Used**:
   * [get_wallet_account_balances.md](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/v2/wallet/rpc/get_wallet_account_balances.md) (`supabase.rpc('get_wallet_account_balances', ...)`)
@@ -29,7 +44,7 @@ This document details the step-by-step business flow and maps each lifecycle sta
 * **Action**: System records a money movement (credit or debit) triggered by shop orders, vendor purchases, **inbound shipments**, shipment returns, **desk sales invoices**, sales returns, payouts, adjustments, or intercompany operations.
 * **Execution**: Atomic RPC function inserts an immutable entry into `universal_wallet_ledger` and updates the target bucket in `wallet_accounts`. *(**Concurrency Note**: The underlying PostgreSQL RPC must utilize row-level locks via `SELECT ... FOR UPDATE` or direct atomic increments to prevent race conditions during high-concurrency balance updates.)*
 * **Shipment rule**: Wallets belong to **tenant / vendor / cargo agent** — never the shipment. Use `source_type` ∈ (`shipment`, `shipment_return`, `vendor_purchase`) + `source_id`.
-* **Shipment day one ([issues §3](../../PROCUREMENT_STOCK_ISSUES.md)):** Finalize and cost revision **do not** call this stage. Ledger rows for procurement cash/credit come only from a later **Pay / Settle** (or return) action — not from receive.
+* **Shipment day one ([issues §3](../../PROCUREMENT_STOCK_ISSUES.md)):** Finalize and cost revision **do not** call this stage. Ledger rows for procurement cash/credit come only from per-payee **`settle_shipment_payee`** (Pay / Record credit / Use credit) or a return action — not from receive, not bulk settle-all.
 * **Desk sales rule**: Wallets belong to **tenant / billing profile (customer) / middleman** — never “the invoice” as an entity. Use `source_type = 'sales_invoice'` + `source_id = sales_invoices.id` (or `'sales_invoice_return'` + return id).
 * **Desk sales day one ([invoice schema §5.2](../invoice/schema.md)):** Post invoice **does not** call this stage (stub-skip receivable). Ledger rows come only from explicit **Pay / allocate** (or refund after return) — same pattern as shipment Pay / Settle.
 * **APIs / RPCs Used**:

@@ -9,7 +9,7 @@ import { globalShipmentRepository } from '../repositories/globalShipmentReposito
 import { tenantRepository } from 'src/modules/tenant/repositories/tenantRepository';
 import { procurementStockQueryKeys } from '../shared/queryKeys/procurementStockQueryKeys';
 import type { GlobalShipmentItem } from '../repositories/globalShipmentRepository';
-import type { GlobalShipmentCostEntry, CostEntriesSavePayload } from '../types/shipmentCostEntry';
+import type { CostEntriesSavePayload } from '../types/shipmentCostEntry';
 import type { ReturnLineDraft } from '../components/ShipmentVendorReturnCard.vue';
 import ShipmentItemFormDialog from '../components/ShipmentItemFormDialog.vue';
 import AddShipmentItemsDrawer from '../components/AddShipmentItemsDrawer.vue';
@@ -178,13 +178,6 @@ export function useInboundShipmentActions(options: {
     { label: 'Cash refund (tenant cash)', value: 'cash_refund' as const },
   ];
 
-  const settleEntryColumns: QTableColumn<GlobalShipmentCostEntry>[] = [
-    { name: 'cost_type', label: 'Type', field: 'cost_type', align: 'left' },
-    { name: 'amount', label: 'Amount (BDT)', field: 'amount', align: 'right' },
-    { name: 'payment_source', label: 'Source', field: 'payment_source', align: 'left' },
-    { name: 'entity_type', label: 'Payee', field: 'entity_type', align: 'left' },
-  ];
-
   const returnLineColumns: QTableColumn<ReturnLineDraft>[] = [
     { name: 'name', label: 'Product', field: 'name', align: 'left' },
     { name: 'max_qty', label: 'Ordered', field: 'max_qty', align: 'right' },
@@ -210,15 +203,6 @@ export function useInboundShipmentActions(options: {
       }));
     },
     { immediate: true },
-  );
-
-  const settleableEntries = computed(() =>
-    shipmentStore.currentCostEntries.filter(
-      (e: any) =>
-        e.payment_source &&
-        e.entity_type &&
-        (e.entity_type === 'vendor' || e.entity_type === 'cargo_company'),
-    ),
   );
 
   const hasReturnQty = computed(() => returnLines.value.some((l) => l.return_qty > 0));
@@ -273,30 +257,6 @@ export function useInboundShipmentActions(options: {
         `${actionLabel} of ৳ ${res.amount_bdt.toLocaleString(undefined, { minimumFractionDigits: 2 })} BDT recorded.`,
       );
       return res;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      showErrorNotification(msg || 'Settlement failed');
-    } finally {
-      paySettling.value = false;
-    }
-  };
-
-  const confirmPaySettleAll = async () => {
-    const ok = await requestConfirmation(
-      `Pay ${settleableEntries.value.length} cost${settleableEntries.value.length === 1 ? '' : 's'} to the vendor or cargo company?`,
-      'Pay costs',
-      'Pay',
-    );
-    if (!ok) return;
-
-    paySettling.value = true;
-    try {
-      const res = await shipmentStore.paySettleShipmentCosts(shipmentId);
-      showSuccessNotification(
-        res.wallet_posted
-          ? `Settled ${res.settled_entries_count} entries — wallet posted.`
-          : `Processed ${res.settled_entries_count} entries.`,
-      );
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       showErrorNotification(msg || 'Settlement failed');
@@ -493,35 +453,29 @@ export function useInboundShipmentActions(options: {
     }
     if (status === 'received') {
       const assigned = shipmentStore.currentShipment?.assigned_child_tenant_id;
-      if (!assigned && childTenantOptions.value.length > 0) {
-        return {
-          message: 'Assign to a shop so they can sell it.',
-          label: 'Assign',
-          disabled: false,
-          reason: '',
-          action: () => assignShopCard.value?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
-        };
-      }
-      if (settleableEntries.value.length > 0) {
-        return {
-          message: 'Pay the vendor or cargo company.',
-          label: 'Pay',
-          disabled: false,
-          reason: '',
-          action: () => {
-            activeTab.value = 'cost';
-            setTimeout(() => {
-              paySettleCard.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 100);
-          },
-        };
-      }
+      const childText = !assigned && childTenantOptions.value.length > 0
+        ? ' Assign listing permission to a child tenant below if needed.'
+        : '';
       return {
-        message: 'Goods are in the warehouse. Assign, pay, or return below if needed.',
-        label: null,
-        disabled: true,
+        message: `Goods received in warehouse. Organize bin locations and condition grades.${childText}`,
+        label: 'Organize Stock',
+        disabled: false,
         reason: '',
-        action: null,
+        action: () => {
+          const tenantSlug = router.currentRoute.value.params.tenantSlug;
+          if (tenantSlug) {
+            void router.push({
+              name: 'app-procurement-stock-list',
+              params: { tenantSlug },
+              query: { shipment_id: String(shipmentId) },
+            });
+          } else {
+            void router.push({
+              name: 'app-procurement-stock-list',
+              query: { shipment_id: String(shipmentId) },
+            });
+          }
+        },
       };
     }
     if (!calculations.hasLineItems.value) {
@@ -748,13 +702,10 @@ export function useInboundShipmentActions(options: {
     returnOutcome,
     returnOutcomeOptions,
     returnLines,
-    settleEntryColumns,
     returnLineColumns,
-    settleableEntries,
     hasReturnQty,
     saveAssignChild,
     clearAssignChild,
-    confirmPaySettleAll,
     confirmSettlePayee,
     confirmVendorReturn,
     loadShipmentDetails,

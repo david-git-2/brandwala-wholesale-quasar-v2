@@ -13,7 +13,7 @@ This document answers:
 
 Related: [MASTER_PLAN.md](MASTER_PLAN.md) (§16 redesign), [PROCUREMENT_STOCK_ISSUES.md](PROCUREMENT_STOCK_ISSUES.md) (redesign — cost, money, status, **one vendor/shipment**, **shipment→child assign + shared ATP**), [REPORTING_TREASURY.md](REPORTING_TREASURY.md), [TENANT_MODEL_AND_ACCESS.md](TENANT_MODEL_AND_ACCESS.md), [APP_SCOPES_AND_ACCESS.md](APP_SCOPES_AND_ACCESS.md), [GLOBAL_REFERENCE_DATA.md](GLOBAL_REFERENCE_DATA.md), [vendor/](./vendor/), [cargo_company/](./cargo_company/), [shipment/](./shipment/), [stock/](./stock/).
 
-> **Target (v2):** one vendor per shipment; parent owns `global_stocks`; assign Option A + listing `global_stock_id`; sell = shared ATP; availability `sellable|held|unsellable` — [v2/stock/schema.md](./v2/stock/schema.md) · [PROCUREMENT_STOCK_ISSUES.md](./PROCUREMENT_STOCK_ISSUES.md). Live schema below may still show line vendors + qty allocations until cutover.
+> **Target (v2):** one vendor per shipment; parent owns `global_stocks`; assign Option A + listing `global_stock_id`; sell = shared ATP; availability `sellable|held|unsellable`; grade tag on stock — [stock/schema.md](./stock/schema.md) · [IMPLEMENTATION_ORDER.md](./IMPLEMENTATION_ORDER.md) · [PROCUREMENT_STOCK_ISSUES.md](./PROCUREMENT_STOCK_ISSUES.md). Live schema below may still show line vendors + qty allocations until cutover.
 
 ---
 
@@ -635,34 +635,34 @@ Commerce does not create inbound lines (**D2**).
 
 ## 11. Implementation progress
 
-Master implementation plan: `.cursor/plans/procurement_stock_phases_181806ae.plan.md`
+Master implementation plan: [IMPLEMENTATION_ORDER.md](./IMPLEMENTATION_ORDER.md)
 
-Tracks [procurement_stock_phases plan] Phases 1–10. Update this section when a phase exits.
+Phases 1–10 (legacy tracker) done. Current track: **W7 → W8 → W9**.
 
 ### Done
 
 | Phase | Deliverable | Status |
 |-------|-------------|--------|
-| **1** | Schema (line `vendor_id`, no header vendor), module hierarchy, empty `/app/procurement/*` pages | Done |
-| **2** | Paginated list RPCs + shipment / warehouse / tenant stock list pages | Done |
-| **3** | Shipment CRUD, line items with `vendor_id`, stock types config | Done |
-| **4** | Shipment details page, `landedCost.ts` preview, status workflow | Done |
-| **5** | Receive workflow (Warehouse Received → Ready Stock), list cost joins, route cutover | Done |
-| **6** | Remove legacy header vendor (`shipments.vendor_*`), doc D-PS12 | Done |
-| **7** | `FilterSidebar` filters on all procurement list pages (costing-file state pattern) | Done |
-| **8** | Allocate Stock UI + backend (RPCs, reconciliation, parent-only page) | Done |
-| **9** | Parent vs child nav (4 links parent, Tenant Stock only for child) | Done |
-| **10** | Global stock network search (own tenant first, other tenants labeled) + this progress section | Done |
+| **1–10** | Initial procurement UI + schema (see rows below) | Done |
+| **7A–14B** | One vendor/shipment, cost stamp, assign, ATP, movements, pay/settle | Done |
+| **W1–W6** | Movements UX, receive checklist, grain cutover, allocation retirement | Done |
+| **T1** | Tag catalog `stock_grade` + `color` seeds | Done |
 
 ### Remaining
 
-*(None)*
+| Phase | Deliverable | Status |
+|-------|-------------|--------|
+| **W7a–c** | `grade_tag_id` grain; receive posts `standard`; movements change grade | Next |
+| **W8** | Shipment-first warehouse organize UI | After W7 |
+| **W9** | Sales/shop return → `return_inbound` (grade + availability) | After W8 |
 
 ### Out of scope (separate tracks)
 
 | Track | Deliverable | Status |
 |-------|-------------|--------|
-| Downstream | Invoice / commerce / accounting retarget to new `global_*` tables | Deferred |
+| Desk / shop deduct | Invoice post + shop checkout decrement `global_stock_id` | Live (keep aligned after W7) |
+| Order / draft holds | ATP subtract only — not warehouse `held` | Locked |
+| Downstream rename | `global_invoices*` → `sales_invoices*` | See sales_invoice issues |
 
 ---
 

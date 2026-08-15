@@ -18,6 +18,7 @@ export const useGlobalStockStore = defineStore('global_stock', {
     hideZeroStockFilter: true,
     locationFilter: null as number | null,
     availabilityFilter: null as StockAvailability | null,
+    shipmentIdFilter: null as number | null,
   }),
 
   actions: {
@@ -33,6 +34,7 @@ export const useGlobalStockStore = defineStore('global_stock', {
         hideZeroStock?: boolean;
         locationId?: number | null;
         availability?: StockAvailability | null;
+        shipmentId?: number | null;
       },
     ) {
       this.loading = true;
@@ -55,6 +57,8 @@ export const useGlobalStockStore = defineStore('global_stock', {
           options?.locationId !== undefined ? options.locationId : this.locationFilter;
         const availability =
           options?.availability !== undefined ? options.availability : this.availabilityFilter;
+        const shipmentId =
+          options?.shipmentId !== undefined ? options.shipmentId : this.shipmentIdFilter;
 
         const result = await globalStockRepository.listPaginated(
           tenantId,
@@ -67,6 +71,7 @@ export const useGlobalStockStore = defineStore('global_stock', {
           hideZeroStock,
           locationId,
           availability,
+          shipmentId,
         );
 
         this.rows = result.data;

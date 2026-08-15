@@ -39,12 +39,16 @@ export const universalWalletGuide: ModuleGuide = {
       title: { en: 'Viewing different party wallets (Admins)', bn: 'বিভিন্ন পক্ষের ওয়ালেট দেখা (অ্যাডমিনদের জন্য)' },
       steps: [
         {
-          en: 'Click the top party tabs (Tenant, Billing Profile, Vendor, Courier) to select whose wallet to inspect.',
-          bn: 'কার ওয়ালেট পরীক্ষা করবেন তা নির্বাচন করতে ওপরের পার্টি ট্যাবে (টেন্যান্ট, কাস্টমার, ভেন্ডর, কুরিয়ার) ক্লিক করুন।',
+          en: '1. On Wallets, pick whose money (Our company, Customers, Suppliers, Cargo, Couriers, Investors).',
+          bn: '১. ওয়ালেট পেজে কার টাকা দেখতে চান বেছে নিন (আওয়ার কোম্পানি, কাস্টমারস, সাপ্লায়ারস, কার্গো, কুরিয়ারস, ইনভেস্টরস)।',
         },
         {
-          en: 'Use the view toggle to switch between "Simplified View" (for everyday check) and "Advanced Audit View" (for raw accounting ledgers).',
-          bn: '"সিম্পলিফাইড ভিউ" (দৈনন্দিন চেক) এবং "অ্যাডভান্সড অডিট ভিউ" (র অ্যাকাউন্টিং লেজার) এর মধ্যে সুইচ করতে টগল ব্যবহার করুন।',
+          en: '2. Pick a name. Company skips this step.',
+          bn: '২. একটি নাম বেছে নিন। কোম্পানি ওয়ালেটের ক্ষেত্রে এই ধাপের প্রয়োজন নেই।',
+        },
+        {
+          en: '3. Cargo = inbound freight. Couriers = last-mile COD.',
+          bn: '৩. কার্গো = ইনবাউন্ড ফ্রেইট agent। কুরিয়ারস = লাস্ট-মাইল COD।',
         },
       ],
     },
@@ -126,12 +130,12 @@ export const universalWalletGuide: ModuleGuide = {
     },
     {
       question: {
-        en: 'What is the difference between Simplified View and Advanced Audit View?',
-        bn: 'সিম্পলিফাইড ভিউ এবং অ্যাডভান্সড অডিট ভিউয়ের মধ্যে পার্থক্য কী?',
+        en: 'What is Accountant View?',
+        bn: 'একাউন্টেন্ট ভিউ কী?',
       },
       answer: {
-        en: 'Simplified View shows big clear balance cards and a human-readable activity timeline. Advanced Audit View is designed for professional accountants to inspect raw double-entry ledger journals.',
-        bn: 'সিম্পলিফাইড ভিউ বড় ব্যালেন্স কার্ড এবং সাধারণ মানুষের পড়ার মতো কাজের টাইমলাইন দেখায়। অ্যাডভান্সড অডিট ভিউ প্রফেশনাল একাউন্টেন্টদের জন্য র অ্যাকাউন্টিং জার্নাল দেখায়।',
+        en: 'Simplified View shows clear balance cards and human-readable activity timeline. Accountant View is designed for professional accountants to inspect raw ledger journals.',
+        bn: 'সিম্পলিফাইড ভিউ বড় ব্যালেন্স কার্ড এবং সাধারণ মানুষের পড়ার মতো কাজের টাইমলাইন দেখায়। একাউন্টেন্ট ভিউ প্রফেশনাল একাউন্টেন্টদের জন্য র লেজার জার্নাল দেখায়।',
       },
     },
   ],

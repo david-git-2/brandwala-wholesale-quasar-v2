@@ -79,7 +79,8 @@ After post: no silent rewrite of `unit_price` or `landed_cost_bdt`. Shipment cos
 ### Returns
 
 * Create `sales_invoice_returns` + lines (credit-note style).
-* Restore stock; bump line `return_quantity`.
+* **Stock (locked):** post a `return_inbound` movement in the same txn — [stock/workflow_flow.md](../../procurement_stock/stock/workflow_flow.md) Stage 5. Default **`held` @ returns** location. Return UI records **grade** + **availability** (sell gate). Do **not** increment the original sellable row; staff may re-bin / re-grade later via warehouse movements.
+* Bump line `return_quantity`.
 * Dropship may set `return_face_amount` ≠ `return_amount`.
 * Recompute invoice due / payment_status when credit applies.
 
@@ -101,11 +102,13 @@ Same `sales_invoices.id`. Never post a second sales invoice only to show differe
 * Thrift counter sales on this pack
 * Soft-allocation qty as a second warehouse
 * Day-one dedicated hold table (query draft lines instead)
+* Flipping warehouse `availability` to `held` for draft invoices or shop carts
+* Direct increment of the original sellable stock row on return (use `return_inbound`)
 
 ---
 
 ## Open (see issues)
 
-Exact RPC names/args, migration rename `global_invoices*` → `sales_invoices*`, treasury tables vs wallet-only allocate, return stock via movement doc vs direct restore: [SALES_INVOICE_ISSUES.md](../../SALES_INVOICE_ISSUES.md).
+Exact RPC names/args, migration rename `global_invoices*` → `sales_invoices*`, treasury tables vs wallet-only allocate: [SALES_INVOICE_ISSUES.md](../../SALES_INVOICE_ISSUES.md). Return stock path is **locked** (`return_inbound` movement).
 
 **Wallet keys locked:** Pay → `sales_invoice` + invoice id; refund → `sales_invoice_return` + return id.

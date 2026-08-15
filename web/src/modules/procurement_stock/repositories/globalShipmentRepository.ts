@@ -617,24 +617,6 @@ const assignShipmentToChild = async (
   return data;
 };
 
-export interface PaySettleShipmentCostsResult {
-  shipment_id: number;
-  settled_entries_count: number;
-  wallet_posted: boolean;
-}
-
-const paySettleShipmentCosts = async (
-  shipmentId: number,
-  costEntryIds?: number[] | null,
-): Promise<PaySettleShipmentCostsResult> => {
-  const { data, error } = await db.rpc('pay_settle_shipment_costs', {
-    p_shipment_id: shipmentId,
-    p_cost_entry_ids: costEntryIds ?? null,
-  });
-  if (error) throw error;
-  return data as PaySettleShipmentCostsResult;
-};
-
 export interface ReturnShipmentItemQty {
   shipment_item_id: number;
   quantity: number;
@@ -744,7 +726,6 @@ export const globalShipmentRepository = {
   ensureShipmentProgressTags,
   setShipmentProgressTag,
   assignShipmentToChild,
-  paySettleShipmentCosts,
   returnShipmentToVendor,
   settleShipmentPayee,
   listShipmentPayeeSettlements,

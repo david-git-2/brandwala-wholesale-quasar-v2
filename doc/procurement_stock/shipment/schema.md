@@ -314,7 +314,7 @@ Wallet variance posts (delta × qty) are an **optional stub** for cash/ledger UX
 | Must go through one server revision path (not raw upsert after finalize) | Exact RPC name, args, return / error shape |
 | Recompute engine server-side → re-stamp all affected items | Which `module_action` / role may revise |
 | Invoice snapshots stay frozen; UI may show old→new delta | — |
-| Wallet on revise = **stub-skip** ([issues §3](../../PROCUREMENT_STOCK_ISSUES.md)) | Pay / Settle RPC later |
+| Wallet on revise = **stub-skip** ([issues §3](../../PROCUREMENT_STOCK_ISSUES.md)) | Per-payee `settle_shipment_payee` after `received` (not bulk cost-entry settle) |
 
 Execution steps: [workflow Stage 4](./workflow_flow.md). Preview / delta helper: [shipment_engine.md](./shipment_engine.md).
 

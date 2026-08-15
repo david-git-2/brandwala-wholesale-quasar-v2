@@ -762,14 +762,14 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   },
   {
     key: 'universal_wallet',
-    name: 'Universal Wallet Ledger',
-    description: 'Unified multi-currency single/double-entry financial ledger across entities.',
+    name: 'Wallets',
+    description: 'Balances for the company, customers, suppliers, cargo, couriers, and investors.',
     navIcon: 'ph ph-wallet',
     routes: [
       {
         scope: 'app',
-        title: 'Wallet Ledger',
-        caption: 'View entity ledger transactions and balances',
+        title: 'Wallets',
+        caption: 'Whose money do you want to see?',
         icon: 'ph ph-wallet',
         routeSegment: 'wallet',
         requiredAction: 'view',

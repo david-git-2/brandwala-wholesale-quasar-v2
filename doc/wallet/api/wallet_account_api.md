@@ -10,7 +10,7 @@ This document details the direct API operations for the `wallet_accounts` record
 
 ### Query Parameters / Filters
 * `tenant_id`: Scope to tenant
-* `entity_type`: Target entity classification (`vendor`, `customer`, `courier`, `middleman`, `tenant`, `investor`)
+* `entity_type`: Target entity classification (`vendor`, `customer`, `courier`, `middleman`, `tenant`, `investor`, `cargo_company`)
 * `entity_id`: Primary ID of target entity
 * `currency_code`: Currency filter (default `'BDT'`)
 

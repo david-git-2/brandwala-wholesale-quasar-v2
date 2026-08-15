@@ -13,10 +13,11 @@ Parent warehouse qty + **shelf / slot / box location** (SMB) + how a child shop 
 | **Physical on-hand** | `global_stocks` | Parent-owned. **Sole** inventory qty truth. |
 | **Where (shelf/slot/box)** | `stock_locations` + `global_stocks.location_id` | Place inside the one parent warehouse |
 | **Who may list** | `shipments.assigned_child_tenant_id` (Option A) | List permission only — not a qty ledger. |
-| **Sell truth (ATP)** | pickable sellable on-hand − draft invoice holds − shop cart holds | Desk + assigned shop share this. |
+| **Sell truth (ATP)** | Available to Promise: pickable sellable on-hand − draft invoice holds − shop cart holds | Desk + assigned shop share this. |
 | **Shop display** | Real ATP **or** `display_quantity_override` | Cosmetics — checkout never trusts dummy. |
-| **Holds** | Shop cart / invoice draft | Soft reservations — not a stock table. |
-| **Warehouse ops** | Movement docs → update `quantity` / location / availability (§2.5) | Put-away, location transfer, availability transfer, return-in |
+| **Order holds** | Shop cart / invoice draft | Soft reservations — **not** `availability = held`. Do not flip warehouse availability for a cart or draft. |
+| **Warehouse `held`** | `availability = held` on `global_stocks` | Quarantine / inspection / return pending — out of ATP |
+| **Warehouse ops** | Movement docs → update `quantity` / location / availability / grade (§2.5) | Put-away, bin transfer, availability + grade transfer, return-in |
 | **Multi-warehouse** | Deferred | Inter-site transfer later — day one = one warehouse per parent |
 
 **Retired:** soft qty on `global_stock_allocations`.
@@ -154,7 +155,7 @@ Unit cost: join `shipment_item_id` → `landed_cost_bdt` ([../shipment/schema.md
 
 No `quantity` on assign. Qty always from `global_stocks`.
 
-**ATP (locked):**
+**ATP (Available to Promise, locked):**
 
 ```text
 Σ quantity
@@ -163,6 +164,8 @@ No `quantity` on assign. Qty always from `global_stocks`.
 − draft invoice holds
 − shop cart holds
 ```
+
+Draft / cart holds never write `availability = held`. Warehouse `held` is quarantine only.
 
 **Listings (locked):** `shop_product_listings.global_stock_id` → this table. UNIQUE `(shop_id, global_stock_id)`.
 
@@ -217,7 +220,8 @@ Do not extend soft-qty semantics. Replace with §2.3 + listing `global_stock_id`
 | Receive put-away | Create/add qty at chosen or **default** location + usually `sellable` | Yes (with receive) |
 | Location transfer | Same availability: bin A → bin B | Yes |
 | Availability transfer / adjustment | Same location: sellable ↔ held ↔ unsellable; write-off / cycle count | Yes |
-| Return inbound | Add qty onto `held` @ returns (or chosen) location | Yes |
+| Grade transfer | Same or paired with availability: e.g. `standard` → `open_box` (stay sellable); → `badly_damaged` + `unsellable` | W7c |
+| Return inbound | Customer/shop return posts this movement. Default **`held` @ returns** (or chosen) location. Staff set **grade** + **to_availability** on the movement. Do not increment the original sellable row. | W9 |
 | Receive rollback | Reverse a receive post (qty + related stamps) cleanly | Yes |
 | Partial receive cost share | Fair cost when only part of batch arrives | Later |
 | Weight / cost input audit | History for package weight & cost revisions | Later |
@@ -225,7 +229,7 @@ Do not extend soft-qty semantics. Replace with §2.3 + listing `global_stock_id`
 
 #### Line grain (sketch)
 
-Each movement line references enough keys to resolve/create the balance row: `shipment_item_id` (or `global_stock_id`), `qty`, `from_availability` / `to_availability`, `from_location_id` / `to_location_id` as needed by type. Header: `parent_tenant_id`, `type`, `status` (`draft` \| `posted`), optional `shipment_id` / reason, audit fields.
+Each movement line references enough keys to resolve/create the balance row: `shipment_item_id` (or `global_stock_id`), `qty`, `from_availability` / `to_availability`, `from_location_id` / `to_location_id`, and after W7 `from_grade_tag_id` / `to_grade_tag_id`, as needed by type. Header: `parent_tenant_id`, `type`, `status` (`draft` \| `posted`), optional `shipment_id` / reason, audit fields.
 
 Exact table/RPC names left open until implementation; this section locks the **pattern**.
 

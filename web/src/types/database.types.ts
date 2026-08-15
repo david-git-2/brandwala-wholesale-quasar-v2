@@ -2618,6 +2618,7 @@ export type Database = {
         Row: {
           availability: Database["public"]["Enums"]["stock_availability"]
           created_at: string
+          grade_tag_id: number | null
           id: number
           is_usable: boolean
           location_id: number | null
@@ -2630,6 +2631,7 @@ export type Database = {
         Insert: {
           availability?: Database["public"]["Enums"]["stock_availability"]
           created_at?: string
+          grade_tag_id?: number | null
           id?: number
           is_usable?: boolean
           location_id?: number | null
@@ -2642,6 +2644,7 @@ export type Database = {
         Update: {
           availability?: Database["public"]["Enums"]["stock_availability"]
           created_at?: string
+          grade_tag_id?: number | null
           id?: number
           is_usable?: boolean
           location_id?: number | null
@@ -2652,6 +2655,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "global_stocks_grade_tag_id_fkey"
+            columns: ["grade_tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "global_stocks_location_id_fkey"
             columns: ["location_id"]
@@ -6386,6 +6396,7 @@ export type Database = {
           from_availability:
             | Database["public"]["Enums"]["stock_availability"]
             | null
+          from_grade_tag_id: number | null
           from_location_id: number | null
           id: number
           movement_id: number
@@ -6394,6 +6405,7 @@ export type Database = {
           to_availability:
             | Database["public"]["Enums"]["stock_availability"]
             | null
+          to_grade_tag_id: number | null
           to_location_id: number | null
         }
         Insert: {
@@ -6401,6 +6413,7 @@ export type Database = {
           from_availability?:
             | Database["public"]["Enums"]["stock_availability"]
             | null
+          from_grade_tag_id?: number | null
           from_location_id?: number | null
           id?: number
           movement_id: number
@@ -6409,6 +6422,7 @@ export type Database = {
           to_availability?:
             | Database["public"]["Enums"]["stock_availability"]
             | null
+          to_grade_tag_id?: number | null
           to_location_id?: number | null
         }
         Update: {
@@ -6416,6 +6430,7 @@ export type Database = {
           from_availability?:
             | Database["public"]["Enums"]["stock_availability"]
             | null
+          from_grade_tag_id?: number | null
           from_location_id?: number | null
           id?: number
           movement_id?: number
@@ -6424,9 +6439,17 @@ export type Database = {
           to_availability?:
             | Database["public"]["Enums"]["stock_availability"]
             | null
+          to_grade_tag_id?: number | null
           to_location_id?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "stock_movement_lines_from_grade_tag_id_fkey"
+            columns: ["from_grade_tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "stock_movement_lines_from_location_id_fkey"
             columns: ["from_location_id"]
@@ -6446,6 +6469,13 @@ export type Database = {
             columns: ["stock_id"]
             isOneToOne: false
             referencedRelation: "global_stocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movement_lines_to_grade_tag_id_fkey"
+            columns: ["to_grade_tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
             referencedColumns: ["id"]
           },
           {
@@ -9825,6 +9855,19 @@ export type Database = {
         }
         Returns: number
       }
+      create_and_post_stock_movement: {
+        Args: {
+          p_movement_type?: Database["public"]["Enums"]["stock_movement_type"]
+          p_notes?: string
+          p_quantity: number
+          p_stock_id: number
+          p_tenant_id: number
+          p_to_availability?: Database["public"]["Enums"]["stock_availability"]
+          p_to_grade_tag_id?: number
+          p_to_location_id?: number
+        }
+        Returns: Json
+      }
       create_billing_profile_payment_with_allocations: {
         Args: {
           p_allocations: Json
@@ -10372,6 +10415,7 @@ export type Database = {
         Args: { p_tenant_id: number }
         Returns: number
       }
+      default_stock_grade_tag_id: { Args: never; Returns: number }
       delete_customer_group_member_grant: {
         Args: { p_action: string; p_cgm_id: number; p_module_key: string }
         Returns: undefined
@@ -10460,6 +10504,10 @@ export type Database = {
         Returns: Json
       }
       ensure_default_cargo_company: {
+        Args: { p_tenant_id: number }
+        Returns: number
+      }
+      ensure_default_stock_location: {
         Args: { p_tenant_id: number }
         Returns: number
       }
@@ -11503,21 +11551,38 @@ export type Database = {
         }
         Returns: Json
       }
-      list_global_stocks_paginated: {
-        Args: {
-          p_availability?: Database["public"]["Enums"]["stock_availability"]
-          p_hide_zero_stock?: boolean
-          p_is_sellable?: boolean
-          p_location_id?: number
-          p_page?: number
-          p_page_size?: number
-          p_search?: string
-          p_shipment_status?: string
-          p_stock_type_id?: number
-          p_tenant_id: number
-        }
-        Returns: Json
-      }
+      list_global_stocks_paginated:
+        | {
+            Args: {
+              p_availability?: Database["public"]["Enums"]["stock_availability"]
+              p_hide_zero_stock?: boolean
+              p_is_sellable?: boolean
+              p_location_id?: number
+              p_page?: number
+              p_page_size?: number
+              p_search?: string
+              p_shipment_status?: string
+              p_stock_type_id?: number
+              p_tenant_id: number
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_availability?: Database["public"]["Enums"]["stock_availability"]
+              p_hide_zero_stock?: boolean
+              p_is_sellable?: boolean
+              p_location_id?: number
+              p_page?: number
+              p_page_size?: number
+              p_search?: string
+              p_shipment_id?: number
+              p_shipment_status?: string
+              p_stock_type_id?: number
+              p_tenant_id: number
+            }
+            Returns: Json
+          }
       list_inventory_items_with_stock: {
         Args: {
           p_filters?: Json
@@ -14318,6 +14383,7 @@ export type Database = {
         | "adjustment"
         | "return_inbound"
         | "receive_rollback"
+        | "grade_change"
       thrift_condition: "NEW_WITH_TAGS" | "EXCELLENT" | "GOOD" | "FAIR"
       thrift_delivery_status:
         | "PENDING"
@@ -14583,6 +14649,7 @@ export const Constants = {
         "adjustment",
         "return_inbound",
         "receive_rollback",
+        "grade_change",
       ],
       thrift_condition: ["NEW_WITH_TAGS", "EXCELLENT", "GOOD", "FAIR"],
       thrift_delivery_status: [

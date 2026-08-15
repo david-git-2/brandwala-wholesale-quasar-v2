@@ -46,6 +46,7 @@ const listPaginated = async (
   hideZeroStock: boolean = true,
   locationId?: number | null,
   availability?: Database['public']['Enums']['stock_availability'] | null,
+  shipmentId?: number | null,
 ): Promise<PaginatedResult<GlobalStock>> => {
   const { data, error } = await db.rpc('list_global_stocks_paginated', {
     p_tenant_id: tenantId,
@@ -58,6 +59,7 @@ const listPaginated = async (
     p_hide_zero_stock: hideZeroStock,
     p_location_id: locationId || null,
     p_availability: availability || null,
+    p_shipment_id: shipmentId || null,
   });
 
   if (error) {
@@ -117,8 +119,36 @@ const saveStockSplits = async (
   }
 };
 
+const createAndPostMovement = async (payload: {
+  tenantId: number;
+  stockId: number;
+  quantity: number;
+  toLocationId?: number | null;
+  toAvailability?: Database['public']['Enums']['stock_availability'] | null;
+  toGradeTagId?: number | null;
+  movementType?: Database['public']['Enums']['stock_movement_type'];
+  notes?: string | null;
+}): Promise<{ success: boolean; movement_id: number; movement_no: string }> => {
+  const { data, error } = await db.rpc('create_and_post_stock_movement', {
+    p_tenant_id: payload.tenantId,
+    p_stock_id: payload.stockId,
+    p_quantity: payload.quantity,
+    p_to_location_id: payload.toLocationId || null,
+    p_to_availability: payload.toAvailability || null,
+    p_to_grade_tag_id: payload.toGradeTagId || null,
+    p_movement_type: payload.movementType || 'grade_change',
+    p_notes: payload.notes || null,
+  });
+
+  if (error) {
+    throw error;
+  }
+  return data;
+};
+
 export const globalStockRepository = {
   listPaginated,
   fetchStocksByShipmentItem,
   saveStockSplits,
+  createAndPostMovement,
 };

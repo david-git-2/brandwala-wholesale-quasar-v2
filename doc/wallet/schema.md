@@ -3,20 +3,18 @@
 ## 1. Schema Fields
 
 ### 1.1 `wallet_accounts`
-Stores current balance buckets (`available_balance`, `locked_balance`, `pending_balance`) per entity (`vendor`, `customer`, `courier`, `middleman`, `tenant`, `investor`).
+Stores current balance buckets (`available_balance`, `locked_balance`, `pending_balance`) per entity (`vendor`, `customer`, `courier`, `middleman`, `tenant`, `investor`, `cargo_company`).
 
 | Field | Type | Required | Description |
 | :--- | :--- | :---: | :--- |
 | `id` | BIGINT | Yes | Primary Key |
 | `tenant_id` | BIGINT | Yes | FK to `tenants.id` (Tenant anchor) |
-| `entity_type` | TEXT | Yes | Entity classification (`'vendor'`, `'customer'`, `'courier'`, `'middleman'`, `'tenant'`, `'investor'`) |
+| `entity_type` | TEXT | Yes | Entity classification (`'vendor'`, `'customer'`, `'courier'`, `'middleman'`, `'tenant'`, `'investor'`, `'cargo_company'`) |
 | `entity_id` | BIGINT | Yes | Primary Key ID of target entity |
 | `currency_code` | TEXT | Yes | Currency code (Default: `'BDT'`) |
 | `available_balance` | NUMERIC | Yes | Unrestricted funds ready for payout or transaction (Default: `0.00`) |
 | `locked_balance` | NUMERIC | Yes | Funds locked for escrow, security, or active orders (Default: `0.00`) |
 | `pending_balance` | NUMERIC | Yes | Unsettled incoming/outgoing funds awaiting release (Default: `0.00`) |
-| `deleted_at` | TIMESTAMPTZ | No | Timestamp of soft deletion |
-| `deleted_by` | UUID | No | FK to auth.users (soft deleted by) |
 | `created_at` | TIMESTAMPTZ | No | Creation timestamp |
 | `updated_at` | TIMESTAMPTZ | No | Last update timestamp |
 
@@ -31,7 +29,7 @@ Immutable double-entry transaction history log for auditing, reporting, and acco
 | :--- | :--- | :---: | :--- |
 | `id` | UUID | Yes | Primary Key (`gen_random_uuid()`) |
 | `tenant_id` | BIGINT | Yes | FK to `tenants.id` |
-| `entity_type` | TEXT | Yes | Entity classification (`'vendor'`, `'customer'`, `'courier'`, `'middleman'`, `'tenant'`, `'investor'`) |
+| `entity_type` | TEXT | Yes | Entity classification (`'vendor'`, `'customer'`, `'courier'`, `'middleman'`, `'tenant'`, `'investor'`, `'cargo_company'`) |
 | `entity_id` | BIGINT | Yes | Primary Key ID of target entity |
 | `type` | TEXT | Yes | Transaction type (`'credit'` or `'debit'`) |
 | `amount` | NUMERIC | Yes | Transaction amount in transaction currency |
@@ -61,8 +59,6 @@ CREATE TABLE wallet_accounts (
   available_balance NUMERIC NOT NULL DEFAULT 0.00,
   locked_balance    NUMERIC NOT NULL DEFAULT 0.00,
   pending_balance   NUMERIC NOT NULL DEFAULT 0.00,
-  deleted_at        TIMESTAMPTZ,
-  deleted_by        UUID,
   created_at        TIMESTAMPTZ DEFAULT NOW(),
   updated_at        TIMESTAMPTZ DEFAULT NOW(),
   CONSTRAINT uq_wallet_account UNIQUE (tenant_id, entity_type, entity_id, currency_code)

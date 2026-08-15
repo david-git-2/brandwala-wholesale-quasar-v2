@@ -97,4 +97,35 @@ export const walletAccountRepository = {
       customer_deposits_total: 0,
     };
   },
+
+  /**
+   * List all wallet accounts for a tenant filtered by entity_type.
+   */
+  async listAccountsByType(
+    tenantId: number,
+    entityType: UniversalWalletEntityType,
+  ): Promise<WalletAccount[]> {
+    const { data, error } = await supabase
+      .from('wallet_accounts')
+      .select('*')
+      .eq('tenant_id', tenantId)
+      .eq('entity_type', entityType);
+
+    if (error) {
+      console.error('[walletAccountRepository.listAccountsByType error]:', error);
+      throw error;
+    }
+
+    return (data || []).map((row) => ({
+      ...row,
+      entity_type: row.entity_type as UniversalWalletEntityType,
+      available_balance: Number(row.available_balance || 0),
+      pending_balance: Number(row.pending_balance || 0),
+      locked_balance: Number(row.locked_balance || 0),
+      total_balance:
+        Number(row.available_balance || 0) +
+        Number(row.pending_balance || 0) +
+        Number(row.locked_balance || 0),
+    }));
+  },
 };
