@@ -138,6 +138,7 @@ export interface UpdateShopPayload {
   deduct_charges_from_margin?: boolean;
   deduct_print_from_margin?: boolean;
   deduct_packing_from_margin?: boolean;
+  vendor_code?: string | null;
   vendor_filters?: Array<{ vendor_code: string; brands: string[] }> | null;
   description?: string | null;
   category_ids?: number[];

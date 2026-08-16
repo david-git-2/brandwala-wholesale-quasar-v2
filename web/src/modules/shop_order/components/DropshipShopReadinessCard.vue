@@ -111,8 +111,9 @@ const checkItems = computed<CheckItem[]>(() => {
       label: 'Access group with dropship price permission',
       passed: r.has_access_group_with_price,
       actionLabel: 'Setup Access Matrix',
-      routeName: 'app-shop-access-matrix-page',
+      routeName: 'app-shop-settings-page',
       routeParams: { tenantSlug: props.tenantSlug, shopId: String(props.shopId) },
+      routeQuery: { tab: 'access' },
     },
     {
       id: 'customer_group_with_members',
@@ -135,8 +136,9 @@ const checkItems = computed<CheckItem[]>(() => {
       label: 'Active product listing with floor price set',
       passed: r.has_listing_with_floor,
       actionLabel: 'Manage Shop Pricing',
-      routeName: 'app-shop-pricing-page',
+      routeName: 'app-shop-settings-page',
       routeParams: { tenantSlug: props.tenantSlug, shopId: String(props.shopId) },
+      routeQuery: { tab: 'listings' },
     },
     {
       id: 'active_courier',

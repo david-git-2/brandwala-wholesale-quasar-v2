@@ -75,7 +75,6 @@ begin
         'total_stock_qty', gs.quantity,
         'unit_cost_amount', coalesce(
           public.calculate_landed_unit_cost(gsi.id),
-          gsi.purchase_price * coalesce(gship.product_conversion_rate, 1.0),
           0.00
         )
       ) as row_json
@@ -313,7 +312,6 @@ begin
     greatest(0, floor(public.global_stock_atp_qty(coalesce(l.global_stock_id, gs.id))))::integer as available_to_sell,
     coalesce(
       public.calculate_landed_unit_cost(gs.shipment_item_id),
-      gsi.purchase_price * coalesce(gship.product_conversion_rate, 1.0),
       0.00
     )::numeric as unit_cost_amount,
     gs.shipment_item_id as shipment_item_id,

@@ -3,8 +3,20 @@
     <div class="q-gutter-y-md">
       <section class="row items-center justify-between q-col-gutter-md">
         <div class="col">
-          <div class="text-overline text-primary">{{ $t('shop_admin.shop_and_order') }}</div>
-          <h1 class="text-h5 text-weight-bold q-my-none">{{ $t('navigation.shops') }}</h1>
+          <div class="row items-center q-gutter-x-sm">
+            <q-btn
+              flat
+              dense
+              round
+              icon="ph ph-arrow-left"
+              color="grey-7"
+              :to="{ name: 'app-shop-shops-page', params: { tenantSlug } }"
+            />
+            <div>
+              <div class="text-overline text-primary">{{ $t('shop_admin.shop_and_order') }}</div>
+              <h1 class="text-h5 text-weight-bold q-my-none">{{ $t('navigation.shops') }}</h1>
+            </div>
+          </div>
         </div>
         <div class="col-auto row items-center q-gutter-x-sm">
           <LearnMoreHelpBtn guide-id="shop_management" tab="workflows" />
@@ -84,115 +96,56 @@
           />
         </q-card>
 
-        <div v-else class="q-gutter-y-md">
-          <q-card v-for="shop in shops" :key="shop.id" flat bordered class="shop-card full-width">
-            <q-card-section>
-              <div class="row items-center justify-between q-col-gutter-sm">
-                <div class="col-12 col-md-4">
-                  <div class="row items-center q-gutter-x-sm">
-                    <div class="text-subtitle1 text-weight-bold" :title="shop.name">
-                      {{ shop.name }}
-                    </div>
-                    <q-chip
-                      dense
-                      size="sm"
-                      :color="shopTypeColor(shop.shop_type)"
-                      text-color="white"
-                      class="text-weight-medium"
-                    >
-                      {{ shopTypeLabel(shop.shop_type) }}
-                    </q-chip>
-                  </div>
-                  <div class="text-caption text-grey-6 font-monospace q-mt-xs">/{{ shop.slug }}</div>
-                </div>
-
-                <div class="col-12 col-md-5">
-                  <div class="row items-center q-gutter-x-md text-caption">
-                    <div>
-                      <span class="text-grey-7">{{ $t('shop_admin.col_vendor') }}: </span>
-                      <span class="text-weight-medium">{{ getVendorName(shop.vendor_code) }}</span>
-                    </div>
-                    <div>
-                      <span class="text-grey-7">{{ $t('shop_admin.col_order_mode') }}: </span>
-                      <q-chip dense outline size="xs" :label="orderModeLabel(shop.order_mode)" />
-                    </div>
-                  </div>
-                  <div class="row items-center q-gutter-x-md text-caption q-mt-xs">
-                    <div class="row items-center q-gutter-x-xs">
-                      <span class="text-grey-7">{{ $t('shop_admin.col_negotiable') }}:</span>
-                      <q-icon
-                        :name="shop.is_negotiable ? 'check_circle' : 'remove'"
-                        :color="shop.is_negotiable ? 'positive' : 'grey-4'"
-                        size="16px"
-                      />
-                    </div>
-                    <div class="row items-center q-gutter-x-xs">
-                      <span class="text-grey-7">{{ $t('shop_admin.active') }}:</span>
-                      <q-chip
-                        dense
-                        size="xs"
-                        :color="shop.is_active ? 'positive' : 'grey-5'"
-                        text-color="white"
-                      >
-                        {{ shop.is_active ? $t('shop_admin.active') : $t('shop_admin.inactive') }}
-                      </q-chip>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="col-12 col-md-3 row items-center justify-end q-gutter-x-xs">
-                  <q-btn
-                    v-if="shop.shop_type !== 'vendor_catalog'"
-                    flat
-                    round
+        <div v-else class="q-gutter-y-sm">
+          <q-card
+            v-for="shop in shops"
+            :key="shop.id"
+            flat
+            bordered
+            class="shop-card cursor-pointer"
+            @click="goToSetup(shop.id)"
+          >
+            <q-card-section class="row items-center no-wrap">
+              <div class="col">
+                <div class="row items-center q-gutter-x-sm">
+                  <div class="text-subtitle1 text-weight-bold">{{ shop.name }}</div>
+                  <q-chip
                     dense
-                    icon="ph ph-tag"
-                    color="orange"
-                    @click="goToPricing(shop.id)"
+                    size="sm"
+                    :color="shopTypeColor(shop.shop_type)"
+                    text-color="white"
                   >
-                    <q-tooltip>{{ $t('shop_admin.manage_pricing') }}</q-tooltip>
-                  </q-btn>
-
-                  <q-btn
-                    flat
-                    round
+                    {{ shopTypeLabel(shop.shop_type) }}
+                  </q-chip>
+                  <q-chip
                     dense
-                    icon="ph ph-shield"
-                    color="teal"
-                    @click="goToAccessMatrix(shop.id)"
+                    size="sm"
+                    :color="shop.is_active ? 'positive' : 'grey-4'"
+                    :text-color="shop.is_active ? 'white' : 'grey-8'"
                   >
-                    <q-tooltip>{{ $t('shop_admin.manage_access_matrix') }}</q-tooltip>
-                  </q-btn>
-
-                  <q-btn flat round dense icon="ph ph-dots-three-vertical" color="grey-7">
-                    <q-menu auto-close anchor="bottom right" self="top right">
-                      <q-list style="min-width: 140px">
-                        <q-item clickable @click="openEdit(shop)">
-                          <q-item-section avatar min-width="24px">
-                            <q-icon name="ph ph-pencil-simple" color="primary" size="18px" />
-                          </q-item-section>
-                          <q-item-section>{{ $t('shop_admin.edit') }}</q-item-section>
-                        </q-item>
-
-                        <q-item clickable @click="confirmDeleteShop(shop)">
-                          <q-item-section avatar min-width="24px">
-                            <q-icon name="ph ph-trash" color="negative" size="18px" />
-                          </q-item-section>
-                          <q-item-section class="text-negative">{{ $t('shop_admin.delete') }}</q-item-section>
-                        </q-item>
-                      </q-list>
-                    </q-menu>
-                  </q-btn>
+                    {{ shop.is_active ? $t('shop_admin.public') : $t('shop_admin.draft') }}
+                  </q-chip>
                 </div>
               </div>
-            </q-card-section>
-
-            <!-- Dropship Go-Live Readiness Card (Dropship shops only) -->
-            <q-card-section v-if="shop.shop_type === 'dropship'" class="q-pt-none">
-              <DropshipShopReadinessCard
-                :shop-id="shop.id"
-                :tenant-slug="tenantSlug"
-              />
+              <q-btn
+                flat
+                round
+                dense
+                icon="ph ph-dots-three-vertical"
+                color="grey-7"
+                @click.stop
+              >
+                <q-menu auto-close>
+                  <q-list style="min-width: 140px">
+                    <q-item clickable @click="confirmDeleteShop(shop)">
+                      <q-item-section avatar min-width="24px">
+                        <q-icon name="ph ph-trash" color="negative" size="18px" />
+                      </q-item-section>
+                      <q-item-section class="text-negative">{{ $t('shop_admin.delete') }}</q-item-section>
+                    </q-item>
+                  </q-list>
+                </q-menu>
+              </q-btn>
             </q-card-section>
           </q-card>
         </div>
@@ -201,7 +154,6 @@
 
     <ShopFormDialog
       v-model="dialogOpen"
-      :initial-data="editingShop"
       :tenant-id="tenantId"
       :saving="isSaving"
       :save-error="dialogError"
@@ -218,17 +170,10 @@ import { useQuasar } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import LearnMoreHelpBtn from 'src/modules/help/components/LearnMoreHelpBtn.vue';
 import ShopFormDialog from 'src/modules/shop_order/components/ShopFormDialog.vue';
-import DropshipShopReadinessCard from 'src/modules/shop_order/components/DropshipShopReadinessCard.vue';
-import { useShopListQuery, useVendorListQuery } from '../composables/useShopQuery';
+import { useShopListQuery } from '../composables/useShopQuery';
 import { useSaveShopMutation, useDeleteShopMutation } from '../composables/useShopMutations';
 import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';
-import type {
-  Shop,
-  ShopType,
-  ShopOrderMode,
-  CreateShopPayload,
-  UpdateShopPayload,
-} from 'src/modules/shop_order/types';
+import type { Shop, ShopType, CreateShopPayload } from 'src/modules/shop_order/types';
 
 const $q = useQuasar();
 const authStore = useAuthStore();
@@ -248,36 +193,28 @@ const queryParams = computed(() => ({
 }));
 
 const { data: shops, isLoading, isError, error } = useShopListQuery(queryParams);
-const { data: vendors } = useVendorListQuery(tenantId);
 const { mutate: saveShopMutation, isPending: isSaving } = useSaveShopMutation();
 const { mutate: deleteShopMutation } = useDeleteShopMutation();
 
-const getVendorName = (code: string | null) => {
-  if (!code) return '—';
-  const vendor = vendors.value?.find((v) => v.code === code);
-  return vendor ? `${vendor.name} (${code})` : code;
-};
-
 const filterOptions = computed(() => [
   { value: null, label: t('shop_admin.all') },
-  { value: true, label: t('shop_admin.active') },
-  { value: false, label: t('shop_admin.inactive') },
+  { value: true, label: t('shop_admin.public') },
+  { value: false, label: t('shop_admin.draft') },
 ]);
 
 const dialogOpen = ref(false);
-const editingShop = ref<Shop | null>(null);
 const dialogError = ref<string | null>(null);
 
 const openCreate = () => {
-  editingShop.value = null;
   dialogError.value = null;
   dialogOpen.value = true;
 };
 
-const openEdit = (shop: Shop) => {
-  editingShop.value = shop;
-  dialogError.value = null;
-  dialogOpen.value = true;
+const goToSetup = (shopId: number) => {
+  void router.push({
+    name: 'app-shop-settings-page',
+    params: { tenantSlug: tenantSlug.value, shopId: String(shopId) },
+  });
 };
 
 const confirmDeleteShop = (shop: Shop) => {
@@ -310,37 +247,24 @@ const confirmDeleteShop = (shop: Shop) => {
   });
 };
 
-const onSave = (payload: CreateShopPayload | UpdateShopPayload) => {
+const onSave = (payload: CreateShopPayload) => {
   dialogError.value = null;
   saveShopMutation(payload, {
-    onSuccess: () => {
+    onSuccess: (shop) => {
       dialogOpen.value = false;
+      goToSetup(shop.id);
     },
     onError: (err: Error) => {
-      dialogError.value = err.message || 'Failed to save shop.';
+      dialogError.value = err.message || t('shop_admin.shop_setup_save_failed');
     },
-  });
-};
-
-const goToAccessMatrix = (shopId: number) => {
-  void router.push({
-    name: 'app-shop-access-matrix-page',
-    params: { tenantSlug: tenantSlug.value, shopId: String(shopId) },
-  });
-};
-
-const goToPricing = (shopId: number) => {
-  void router.push({
-    name: 'app-shop-pricing-page',
-    params: { tenantSlug: tenantSlug.value, shopId: String(shopId) },
   });
 };
 
 const shopTypeLabel = (type: ShopType) => {
   const map: Record<ShopType, string> = {
-    vendor_catalog: t('shop_admin.shop_type_vendor_catalog'),
-    fixed_price: t('shop_admin.shop_type_fixed_price'),
-    dropship: t('shop_admin.shop_type_dropship'),
+    vendor_catalog: t('shop_admin.create_type_catalog'),
+    fixed_price: t('shop_admin.create_type_stock'),
+    dropship: t('shop_admin.create_type_dropship'),
   };
   return map[type] ?? type;
 };
@@ -351,13 +275,4 @@ const shopTypeColor = (type: ShopType) =>
     fixed_price: 'teal',
     dropship: 'deep-orange',
   })[type] ?? 'grey';
-
-const orderModeLabel = (mode: ShopOrderMode) => {
-  const map: Record<ShopOrderMode, string> = {
-    procurement_intent: t('shop_admin.order_mode_procurement_intent'),
-    checkout_fixed: t('shop_admin.order_mode_checkout_fixed'),
-    checkout_wholesale: t('shop_admin.order_mode_checkout_wholesale'),
-  };
-  return map[mode] ?? mode;
-};
 </script>

@@ -27,8 +27,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, computed, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useThriftCurrenciesQuery } from 'src/modules/thrift/currency/composables/useThriftCurrenciesQuery';
 import { useShopListQuery } from '../composables/useShopQuery';
@@ -40,6 +40,7 @@ import ShopOrdersTable from '../components/ShopOrdersTable.vue';
 import ShopOrdersSkeleton from '../components/ShopOrdersSkeleton.vue';
 
 const router = useRouter();
+const route = useRoute();
 const authStore = useAuthStore();
 
 const tenantId = computed(() => authStore.tenantId as number);
@@ -53,7 +54,16 @@ const shops = computed(() => shopsData.value || []);
 
 const search = ref('');
 const statusFilter = ref<string | null>(null);
-const shopTypeFilter = ref<string | null>(null);
+const shopTypeFilter = ref<string | null>(
+  typeof route.query.shopType === 'string' ? route.query.shopType : null,
+);
+
+watch(
+  () => route.query.shopType,
+  (value) => {
+    shopTypeFilter.value = typeof value === 'string' ? value : null;
+  },
+);
 const selectedShopId = ref<number | null>(null);
 
 const orderParams = computed(() => ({
@@ -90,7 +100,7 @@ const addToDropshipDesk = async (orderId: number) => {
   const res = await processDropship(orderId);
   if (res?.success) {
     const slug = tenantSlug.value ? `/${tenantSlug.value}` : '';
-    void router.push(`${slug}/app/shop/dropship/orders/${orderId}`);
+    void router.push(`${slug}/app/shop/dropship/${orderId}`);
   }
 };
 </script>

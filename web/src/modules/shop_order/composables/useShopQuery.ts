@@ -10,6 +10,15 @@ export interface ShopListQueryParams {
   active?: boolean | null;
 }
 
+export function useShopDetailQuery(tenantId: Ref<number>, shopId: Ref<number>) {
+  return useQuery({
+    queryKey: computed(() => shopOrderQueryKeys.shopDetail(tenantId.value, shopId.value)),
+    queryFn: () => shopOrderRepository.getShop(shopId.value, tenantId.value),
+    staleTime: 2 * 60 * 1000,
+    enabled: computed(() => !!tenantId.value && !!shopId.value),
+  });
+}
+
 export function useShopListQuery(params: Ref<ShopListQueryParams>) {
   return useQuery({
     queryKey: computed(() => shopOrderQueryKeys.shopsList(params.value)),

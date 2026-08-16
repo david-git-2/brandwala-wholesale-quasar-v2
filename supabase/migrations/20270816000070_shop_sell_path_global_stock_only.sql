@@ -800,9 +800,29 @@ begin
   v_qty_locked := coalesce(p_is_quantity_locked, v_existing.is_quantity_locked, false);
   v_override_type := coalesce(p_quantity_override_type, v_existing.quantity_override_type, 'absolute');
 
+  if v_existing.id is not null then
+    return query
+    update public.shop_product_listings
+    set
+      sell_price_amount = p_sell_price_amount,
+      sell_price_currency_id = p_sell_price_currency_id,
+      minimum_sell_price_amount = p_minimum_sell_price_amount,
+      minimum_sell_price_currency_id = p_minimum_sell_price_currency_id,
+      show_quantity = coalesce(p_show_quantity, show_quantity),
+      display_quantity_override = p_display_quantity_override,
+      is_active = coalesce(p_is_active, true),
+      is_price_locked = v_price_locked,
+      is_quantity_locked = v_qty_locked,
+      quantity_override_type = v_override_type,
+      global_stock_allocation_id = null,
+      updated_at = now()
+    where id = v_existing.id
+    returning *;
+    return;
+  end if;
+
   return query
   insert into public.shop_product_listings (
-    id,
     tenant_id,
     shop_id,
     global_stock_allocation_id,
@@ -819,7 +839,6 @@ begin
     is_quantity_locked,
     quantity_override_type
   ) values (
-    coalesce(p_id, nextval('public.shop_product_listings_id_seq')),
     p_tenant_id,
     p_shop_id,
     null,
@@ -836,19 +855,6 @@ begin
     v_qty_locked,
     v_override_type
   )
-  on conflict (shop_id, global_stock_id) do update set
-    sell_price_amount = excluded.sell_price_amount,
-    sell_price_currency_id = excluded.sell_price_currency_id,
-    minimum_sell_price_amount = excluded.minimum_sell_price_amount,
-    minimum_sell_price_currency_id = excluded.minimum_sell_price_currency_id,
-    show_quantity = coalesce(excluded.show_quantity, shop_product_listings.show_quantity),
-    display_quantity_override = excluded.display_quantity_override,
-    is_active = excluded.is_active,
-    is_price_locked = excluded.is_price_locked,
-    is_quantity_locked = excluded.is_quantity_locked,
-    quantity_override_type = excluded.quantity_override_type,
-    global_stock_allocation_id = null,
-    updated_at = now()
   returning *;
 end;
 $$;

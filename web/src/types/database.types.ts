@@ -6276,6 +6276,8 @@ export type Database = {
           default_currency_id: number | null
           default_packing_charge_amount: number
           default_print_charge_amount: number
+          deleted_at: string | null
+          deleted_by: string | null
           description: string | null
           global_stock_type_id: number | null
           id: number
@@ -6309,6 +6311,8 @@ export type Database = {
           default_currency_id?: number | null
           default_packing_charge_amount?: number
           default_print_charge_amount?: number
+          deleted_at?: string | null
+          deleted_by?: string | null
           description?: string | null
           global_stock_type_id?: number | null
           id?: never
@@ -6342,6 +6346,8 @@ export type Database = {
           default_currency_id?: number | null
           default_packing_charge_amount?: number
           default_print_charge_amount?: number
+          deleted_at?: string | null
+          deleted_by?: string | null
           description?: string | null
           global_stock_type_id?: number | null
           id?: never
@@ -10967,6 +10973,10 @@ export type Database = {
       }
       current_tenant_id: { Args: never; Returns: number }
       current_user_email: { Args: never; Returns: string }
+      customer_can_select_shop: {
+        Args: { p_shop_id: number; p_tenant_id: number }
+        Returns: boolean
+      }
       customer_confirm_shop_order: {
         Args: { p_order_id: number }
         Returns: undefined
@@ -14405,6 +14415,8 @@ export type Database = {
               default_currency_id: number | null
               default_packing_charge_amount: number
               default_print_charge_amount: number
+              deleted_at: string | null
+              deleted_by: string | null
               description: string | null
               global_stock_type_id: number | null
               id: number
@@ -14474,6 +14486,8 @@ export type Database = {
               default_currency_id: number | null
               default_packing_charge_amount: number
               default_print_charge_amount: number
+              deleted_at: string | null
+              deleted_by: string | null
               description: string | null
               global_stock_type_id: number | null
               id: number

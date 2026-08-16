@@ -268,7 +268,7 @@ export const useShopOrderStore = defineStore('shopOrder', {
           handleApiFailure(res, res.error);
           return res;
         }
-        showSuccessNotification('Added to Dropship Desk successfully.');
+        showSuccessNotification('Order opened for processing.');
         await this.fetchOrderDetails(orderId);
         return res;
       } finally {

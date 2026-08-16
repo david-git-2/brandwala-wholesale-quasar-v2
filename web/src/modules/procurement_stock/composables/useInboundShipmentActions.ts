@@ -162,9 +162,18 @@ export function useInboundShipmentActions(options: {
     enabled: computed(() => !!parentTenantId.value),
   });
 
-  const childTenantOptions = computed(() =>
-    (childTenants.value ?? []).map((t) => ({ label: t.name, value: t.id })),
-  );
+  const childTenantOptions = computed(() => {
+    const current = authStore.selectedTenant;
+    const opts: Array<{ label: string; value: number }> = [];
+    if (current?.id) {
+      opts.push({ label: `${current.name} (this company)`, value: current.id });
+    }
+    for (const t of childTenants.value ?? []) {
+      if (t.id === current?.id) continue;
+      opts.push({ label: t.name, value: t.id });
+    }
+    return opts;
+  });
   const selectedChildTenantId = ref<number | null>(null);
   const assigningChild = ref(false);
   const paySettling = ref(false);
@@ -396,10 +405,30 @@ export function useInboundShipmentActions(options: {
     if (!shipmentStore.currentShipment) return;
 
     $q.dialog({
-      title: 'Rollback Shipment to Draft',
+      title: 'Rollback shipment to draft',
       message:
-        'This will delete all active stock entries and allocations for this shipment. The shipment status will be set back to "Draft". Are you sure you want to proceed?',
-      cancel: true,
+        'This deletes warehouse stock for this shipment and sets it back to Draft. Type rollback to confirm.',
+      prompt: {
+        model: '',
+        type: 'text',
+        isValid: (val: string) => val.trim().toLowerCase() === 'rollback',
+        attrs: {
+          placeholder: 'rollback',
+          dense: true,
+          outlined: true,
+          autocomplete: 'off',
+        },
+      },
+      cancel: {
+        label: 'Cancel',
+        flat: true,
+        color: 'grey-7',
+      },
+      ok: {
+        label: 'Rollback',
+        unelevated: true,
+        color: 'negative',
+      },
       persistent: true,
     }).onOk(() => {
       void (async () => {
@@ -409,8 +438,9 @@ export function useInboundShipmentActions(options: {
           await shipmentStore.rollbackShipmentToDraft(shipmentId);
           showSuccessNotification('Shipment successfully rolled back to Draft.');
           loadShipmentDetails();
-        } catch (err: any) {
-          showErrorNotification(err.message || 'Failed to rollback shipment.');
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : 'Failed to rollback shipment.';
+          showErrorNotification(message);
         } finally {
           updatingStatus.value = false;
           targetUpdatingStatus.value = null;

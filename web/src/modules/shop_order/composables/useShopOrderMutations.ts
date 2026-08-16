@@ -10,7 +10,7 @@ export function useProcessDropshipOrderMutation() {
     mutationFn: (orderId: number) => shopOrderRepository.processDropshipShopOrder(orderId),
     onSuccess: (res, orderId) => {
       if (res.success) {
-        showSuccessNotification('Added to Dropship Desk successfully.');
+        showSuccessNotification('Order opened for processing.');
         void queryClient.invalidateQueries({ queryKey: ['shopOrder', 'staffOrders'] });
         void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetail(orderId) });
       } else {

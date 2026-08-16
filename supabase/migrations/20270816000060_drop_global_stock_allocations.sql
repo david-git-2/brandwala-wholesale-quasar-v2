@@ -2,9 +2,13 @@
 
 begin;
 
--- Drop triggers on global_stock_allocations
+-- Drop triggers on the retired table AND the listing trigger that queried it
+drop trigger if exists trg_sync_shop_listings_on_allocation_qty on public.global_stock_allocations;
 drop trigger if exists trg_sync_shop_listing_active_status on public.global_stock_allocations;
+drop trigger if exists trg_sync_shop_listing_active_status on public.shop_product_listings;
 drop function if exists public.sync_shop_listing_active_status_on_allocation_change();
+drop function if exists public.sync_shop_listing_active_status_on_stock_change();
+drop function if exists public.sync_shop_listings_on_allocation_qty_change();
 
 -- Drop foreign key constraints referencing global_stock_allocations
 alter table if exists public.shop_product_listings

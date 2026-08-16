@@ -460,8 +460,7 @@ const confirmDeleteOrder = () => {
     deleteShopOrder(orderId.value, {
       onSuccess: () => {
         showSuccessNotification('Order deleted successfully');
-        const slug = tenantSlug.value ? `/${tenantSlug.value}` : '';
-        void router.replace(`${slug}/app/shop/dropship`);
+        void router.replace({ name: 'app-shop-orders-page', query: { shopType: 'dropship' } });
       },
       onError: (err: any) => {
         showErrorNotification(err?.message || 'Failed to delete order');

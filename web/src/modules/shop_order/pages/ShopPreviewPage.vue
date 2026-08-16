@@ -10,7 +10,7 @@
       :order-mode="shop.order_mode"
       :pricing-method="shop.pricing_method"
       :markup-percentage="shop.markup_percentage"
-      :is-negotiable="shop.is_negotiable"
+      :is-negotiable="shop.shop_type === 'vendor_catalog'"
       :show-stock-quantity="shop.show_stock_quantity"
       :vendor-filters="shop.vendor_filters ?? null"
       :full-page="true"

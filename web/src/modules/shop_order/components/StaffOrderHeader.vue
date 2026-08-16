@@ -99,7 +99,7 @@
       </template>
       <div class="text-subtitle1 text-weight-bold">Order Confirmed — Action Required</div>
       <div class="text-caption text-grey-8">
-        This order is confirmed and ready for dispatch. Push to Dropship Desk to allocate inventory and begin fulfillment.
+        This order is confirmed and ready for dispatch. Process it to assign courier and start fulfillment.
       </div>
       <template v-slot:action>
         <q-btn

@@ -1,6 +1,6 @@
 # Shop & Order
 
-BrandWala / TradeFlow BD uses a **parent module** for customer-facing storefronts: shop configuration, carts, and orders. **Child tenants** (sister concerns) create and own their shops. Stock-backed shops list from **shipments assigned to that child** and sell against **parent warehouse ATP** (see [v2/stock/schema.md](./v2/stock/schema.md)). **Live** code may still use `global_stock_allocations` qty until cutover. Vendor-catalog shops expose supplier assortment for procurement intent. Fulfillment converges on existing global domains — procurement pull or **`global_invoices`** — not a parallel commerce ledger.
+BrandWala / TradeFlow BD uses a **parent module** for customer-facing storefronts: shop configuration, carts, and orders. **Child tenants** (sister concerns) create and own their shops. Stock-backed shops list from **shipments assigned to that child** (`shop_product_listings.global_stock_id`) and sell against **parent warehouse ATP** (see [stock/schema.md](../procurement_stock/stock/schema.md)). `global_stock_allocations` is **dropped** — do not restore. Vendor-catalog shops expose supplier assortment for procurement intent. Fulfillment converges on existing global domains — procurement pull or **`global_invoices`** — not a parallel commerce ledger.
 
 This document is written as a **reusable domain pattern**: shop types, two-layer customer permissions, multi-currency amounts, and display-vs-sellable quantity are applicable beyond this codebase whenever a B2B portal must serve multiple catalog modes from shared inventory.
 
@@ -13,16 +13,16 @@ Related: [MASTER_PLAN.md](MASTER_PLAN.md), [PROCUREMENT_STOCK.md](PROCUREMENT_ST
 ### Parent — `shop_order` (Shop & Order)
 
 **As a** child-tenant admin,  
-**I want** one nav group for shops, customer-group permissions, pricing, carts, and orders,  
-**So that** each customer segment gets the right catalog, checkout rules, and fulfillment path — without mixing desk sales or parent procurement.
+**I want** one nav group with three items — Shops, Orders, and Shipping —  
+**So that** I set up storefronts, process every shop type on one order list, and share couriers with retail delivery. Dropship is a shop type, not a fourth menu.
 
 ---
 
 ### Submodule — `shop_config` (Shops)
 
 **As a** child-tenant admin,  
-**I want to** create shops under my tenant and choose type plus order behaviour,  
-**So that** I run vendor catalogs, fixed-price storefronts, or dropship portals independently.
+**I want to** create a shop with a name and one of three types, then finish currencies and selling rules on a setup page,  
+**So that** I run vendor catalogs, in-stock storefronts, or dropship portals without a packed create form.
 
 | Shop type | User story |
 |-----------|------------|
@@ -67,26 +67,20 @@ Related: [MASTER_PLAN.md](MASTER_PLAN.md), [PROCUREMENT_STOCK.md](PROCUREMENT_ST
 **So that** fixed-price and dropship orders complete quickly.
 
 **As an** internal staff member,  
-**I want to** review, price, negotiate, approve, or cancel shop orders,  
-**So that** only confirmed lines enter shipment pull or invoicing.
+**I want to** review, price, negotiate, approve, cancel, or process shipping on shop orders,  
+**So that** catalog pull, retail invoice, and dropship consignment all start from the same Orders list.
 
 ---
 
-### Submodule — `shop_fulfillment` (Fulfillment)
+### Submodule — `shop_shipping` (Shipping)
 
 **As a** staff user,  
-**I want to** convert a placed vendor-catalog order into procurement lines or a stock-backed order into a desk invoice,  
-**So that** stock, margin, and payments stay on the global stack.
+**I want** a shared courier catalog and COD remittance,  
+**So that** a retail shop with delivery and a dropship shop use the same Pathao / Steadfast / REDX rules.
 
 ---
 
-### Submodule — `shop_dropship` (Dropship Orders)
-
-**As a** child-tenant admin or staff member,  
-**I want** a dedicated Dropship Orders desk (Process Order → courier → Create Dual Invoice → returns / payout),  
-**So that** dropship ops stay separate from vendor-catalog and fixed-price fulfillment.
-
-Full design: [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md).
+Dropship selling (min sell, reseller payout, dual invoice) is a **shop type** plus extra blocks on the order. Full ops design: [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md). Nav reshape: [SHOP_ORDER_NAV_THREE_MENUS.md](../fix/SHOP_ORDER_NAV_THREE_MENUS.md).
 
 ---
 
@@ -124,9 +118,9 @@ This document answers:
 | Shop pricing | `shop_pricing` | Listings, sell/min prices, display quantity override |
 | Storefront | `shop_storefront` | Customer browse with permission-masked fields |
 | Cart | `shop_cart` | Per-shop cart, reservations against allocations |
-| Orders | `shop_order_mgmt` | Place, negotiate, approve, cancel |
-| Fulfillment | `shop_fulfillment` | Procurement pull or `global_invoice` handoff (fixed / vendor paths) |
-| Dropship ops | `shop_dropship` | Process Order, consignment, dual invoice, return bearer, payout ledger — [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) |
+| Orders | `shop_order_mgmt` | Place, negotiate, approve, cancel; process-order / fulfill on the order page |
+| Shipping | `shop_shipping` | Shared courier catalog + COD remittance (retail delivery and dropship) |
+| Dropship extras | *(shop type, not a nav key)* | Min sell, reseller payout, dual invoice — [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) |
 
 ### What this domain is not
 
@@ -164,7 +158,7 @@ flowchart TB
 
   subgraph sources [Catalog / stock sources]
     products["products by vendor_code"]
-    alloc["global_stock_allocations"]
+    assigned["assigned shipments → global_stocks"]
   end
 
   subgraph downstream [Existing domains]
@@ -174,7 +168,7 @@ flowchart TB
 
   shops --> perms
   shops -->|vendor_catalog| products
-  shops -->|fixed_price / dropship| alloc
+  shops -->|fixed_price / dropship| assigned
   perms --> cart --> order
   order -->|vendor_catalog placed| pull
   order -->|fixed / dropship fulfilled| invoice
@@ -210,24 +204,28 @@ Before starting the full-scale implementation of shop order negotiation features
 
 ## 2. Module hierarchy
 
-**Parent module key (target):** `shop_order`  
+**Parent module key:** `shop_order`  
 **Display name:** Shop & Order  
-**Nav pattern:** Parent group with submodule children (same model as `procurement_stock`, `sales_invoice`, `global_reference`).
+**Staff nav (locked):** three children only — **Shops**, **Orders**, **Shipping**. See [SHOP_ORDER_NAV_THREE_MENUS.md](../fix/SHOP_ORDER_NAV_THREE_MENUS.md).
 
-| Key | Display name | `parent_module_key` | Scope | Nav route (target) |
-|-----|--------------|---------------------|-------|-------------------|
-| `shop_order` | Shop & Order | `null` | — | *(group header)* |
-| `shop_config` | Shops | `shop_order` | app | `shop/shops` |
-| `shop_permissions` | Customer Access | `shop_order` | app | `shop/customer-groups` |
-| `shop_pricing` | Shop Pricing | `shop_order` | app | `shop/shops/:id/pricing` |
-| `shop_storefront` | Storefront | `shop_order` | shop | `shop/browse/:shopSlug` |
-| `shop_cart` | Cart | `shop_order` | shop | `shop/cart` |
-| `shop_order_mgmt` | Orders | `shop_order` | app + shop | `shop/orders`, `app/shop/orders` |
-| `shop_fulfillment` | Fulfillment | `shop_order` | app | `app/shop/orders/:id` |
-| `shop_dropship` | Dropship Orders | `shop_order` | app | `shop/dropship`, `app/shop/dropship` |
+| Key | Display name | `parent_module_key` | Scope | Staff sidebar? | Route |
+|-----|--------------|---------------------|-------|----------------|-------|
+| `shop_order` | Shop & Order | `null` | — | Group header | — |
+| `shop_config` | Shops | `shop_order` | app | **Yes** | `shop/shops` (hub) |
+| `shop_order_mgmt` | Orders | `shop_order` | app + shop | **Yes** (app) | `app/shop/orders`, `shop/orders` |
+| `shop_shipping` | Shipping | `shop_order` | app | **Yes** | `shop/shipping` |
+| `shop_permissions` | Customer groups | `shop_order` | app | No (opened from Shops) | `shop/customer-groups` |
+| `shop_pricing` | Shop pricing | `shop_order` | app | No (opened from Shops) | `shop/shops/:id/pricing` |
+| `shop_category` | Categories | `shop_order` | app | No (opened from Shops) | `shop/categories` |
+| `shop_storefront` | Storefront | `shop_order` | shop | Customer nav | `shop/browse/:shopSlug` |
+| `shop_cart` | Cart | `shop_order` | shop | Customer nav | `shop/cart` |
+| `shop_dropship` | *(legacy)* | `shop_order` | — | **No** | Invoice `source_module` only |
+| `shop_fulfillment` | *(legacy)* | `shop_order` | — | **No** | Fulfill on order page |
 
-Redirect legacy routes when cut over:
+Redirects:
 
+- `/app/shop/dropship` → `/app/shop/orders?shopType=dropship`
+- `/app/shop/fulfillment` → `/app/shop/orders`
 - `/shop/stores` → `/shop/browse`
 - `/app/store/*`, `/app/commerce/*` → `/app/shop/*` (per-tenant flag)
 
@@ -267,14 +265,28 @@ Enable `shop_order` on new tenants first; legacy keys stay for existing tenants 
 
 ## 3. Shop types and order modes
 
-Shop **type** is set at create and **immutable**. Order **mode** and **negotiation** configure checkout behaviour.
+Shop **type** is set at create and **immutable**. Order **mode** and **negotiation** configure checkout behaviour on the **setup page**, not in the create dialog.
+
+### 3.0 Create vs setup (UI)
+
+Create is identity only. Setup is everything else.
+
+| Step | UI | Fields |
+|------|----|--------|
+| **1. Create** | Dialog on shop list | **Name** + type only. Saves as **draft** (`is_active = false`). Slug and currencies are defaulted. Vendor is not required. |
+| **2. Setup** | `/app/shop/shops/:id/setup` | Tabs: **Setup** (currencies, vendor, rules, make public), **Customer access**, **Prices** (in-stock + dropship). Dropship who-can-shop is Customer access; middle-man wallets are Billing Profiles + Finance Hub (not a shop tab). **Make public** requires type-specific fields (catalog: vendor; all types: cost + checkout currency). |
+| **List** | `/app/shop/shops/list` | Name, type, public/draft. Tap opens setup. Delete is soft (`deleted_at`); shop leaves the list. |
+
+Letter scenarios **A–F** in §3.6 are named examples for the setup page and Help — they are **not** create-dialog presets.
+
+Currency defaults on create: cost = GBP (else USD, else first), checkout = BDT (else first). Staff must confirm them on setup before go-live.
 
 ### 3.1 Shop types
 
 | Type | `shop_type` | Catalog source | Stock required | Details / Configurations |
 |------|-------------|----------------|----------------|--------------------------|
 | **Vendor catalog (Procurement)** | `vendor_catalog` | `products` where `vendor_code = shops.vendor_code` and `is_available` | No | Catalog ordering when product is not present. Order negotiable toggle is set based on the user profile for the shop. If negotiable, full negotiation flow is supported. |
-| **Fixed price (Retail)** | `fixed_price` | `shop_product_listings` → assigned shipment / parent stock (**live:** may still use `global_stock_allocations`) | Yes | Stock-backed. Display price (Direct Cost vs Markup) + qty display (real ATP vs custom/dummy override). |
+| **Fixed price (Retail)** | `fixed_price` | `shop_product_listings.global_stock_id` → assigned shipment / parent `global_stocks` | Yes | Stock-backed. Display price (Direct Cost vs Markup) + qty display (real ATP vs custom/dummy override). |
 | **Dropship** | `dropship` | Same as fixed price | Yes | Reseller storefront. Suggested sell price + minimum sell floor. |
 
 ### 3.2 Order modes
@@ -307,10 +319,10 @@ Not every cart produces the same order path — the matrix above is enforced at 
 
 ### 3.5 Shop Currency Settings
 
-Every shop must configure dual currencies to distinguish origin costing from retail pricing:
-1. **Buy Currency** (`buy_currency_id`): The currency in which the product was or will be purchased from suppliers (e.g., GBP, USD). This drives origin costing snapshots.
-2. **Sell Currency** (`sell_currency_id` / `default_currency_id`): The currency in which the product will be listed, sold, and checked out (e.g., BDT).
-3. **Negotiation Currency Rule**: All counter-offers, negotiations, and pricing agreements must happen in the **Sell Currency** (`sell_currency_id`).
+Every shop must configure dual currencies to distinguish origin costing from retail pricing. These are **not** two product prices — only checkout currency is shown to the customer.
+1. **Cost currency** (`buy_currency_id`): The currency in which the product was or will be purchased from suppliers (e.g., GBP, USD). Back-office origin costing snapshots only.
+2. **Checkout currency** (`sell_currency_id` / `default_currency_id`): The currency in which the product is listed, sold, and checked out (e.g., BDT). This is the customer-facing price currency.
+3. **Negotiation Currency Rule**: All counter-offers, negotiations, and pricing agreements must happen in the **checkout currency**.
 
 ### 3.6 Shop Configuration Examples
 
@@ -460,11 +472,11 @@ flowchart TD
 
 ## 4. Stock-backed shops (fixed price & dropship)
 
-### 4.1 Stock-backed listing (target vs live)
+### 4.1 Stock-backed listing
 
-**Target (agreed):** Child lists stock from **shipments assigned** to `shops.tenant_id`. Listing FK = `global_stock_id`. Real sellable qty = shared parent ATP (`sellable` on-hand − holds). Dummy qty = `display_quantity_override` only. [v2/stock/schema.md](./v2/stock/schema.md).
+Child lists stock from **shipments assigned** to `shops.tenant_id`. Listing FK = `global_stock_id`. Real sellable qty = shared parent ATP (`sellable` pickable on-hand − holds). Dummy qty = `display_quantity_override` only. [stock/schema.md](../procurement_stock/stock/schema.md).
 
-**Live (until cutover):** Listings may still FK `global_stock_allocations` with a qty ceiling — do not extend that model.
+`is_active` is a **staff catalog flag** (on the shop / hidden). It is **not** a cache of ATP. Browse and checkout compute availability with `global_stock_atp_qty`. Do not trigger-update `is_active` from stock qty. `global_stock_allocations` is gone — do not restore.
 
 ```mermaid
 flowchart LR
@@ -477,10 +489,10 @@ flowchart LR
 
 | Rule | Detail |
 |------|--------|
-| Listing source (target) | `shop_product_listings.global_stock_id` → parent `global_stocks` |
-| Listing FK (live) | `global_stock_allocation_id` until cutover |
+| Listing source | `shop_product_listings.global_stock_id` → parent `global_stocks` |
+| On the shop | `shop_product_listings.is_active` — staff flag only |
 | Eligibility | Shipment assigned + `received` + stock `availability = sellable` |
-| Deduction | Always parent pool (retire allocation qty touch) |
+| Deduction | Always parent pool ATP |
 
 ### 4.2 Quantity model (display vs sellable)
 
@@ -488,8 +500,7 @@ Three quantities drive behaviour. This separation is **reusable** anywhere UI ma
 
 | Concept | Source | Purpose |
 |---------|--------|---------|
-| **Parent ATP** (target) | `global_stocks.quantity` (− holds) for listed shipment stock | Real sell ceiling |
-| **Legacy allocated qty** | `global_stock_allocations.quantity` | Live only — soft ceiling to retire |
+| **Parent ATP** | `global_stock_atp_qty(global_stock_id)` | Real sell ceiling |
 | **Reserved qty** | `SUM(shop_stock_reservations.quantity)` | Active cart holds |
 | **Pending order qty** | Open order lines not yet fulfilled | Soft commit |
 | **Display override** | `shop_product_listings.display_quantity_override` | Optional dummy qty on the website |
@@ -498,10 +509,7 @@ Three quantities drive behaviour. This separation is **reusable** anywhere UI ma
 
 ```text
 available_to_sell =
-  parent_stock_qty          -- target: global_stocks for the listing’s shipment/stock
-  − reserved_qty
-  − pending_order_qty
-  -- live may still start from allocation.quantity until cutover
+  global_stock_atp_qty(listing.global_stock_id)
 
 display_qty =
   if NOT effective(can_view_quantity) OR NOT shop.show_stock_quantity → null
@@ -673,8 +681,8 @@ WHERE price_gbp IS NOT NULL;
 | `order_mode` | enum | `procurement_intent` \| `checkout_fixed` \| `checkout_wholesale` |
 | `is_negotiable` | boolean | Default false; false forced for dropship |
 | `show_stock_quantity` | boolean | Default true; fixed/dropship display |
-| `buy_currency_id` | bigint FK | Currency product is bought in (e.g., GBP, USD) |
-| `sell_currency_id` | bigint FK | Currency product is sold/negotiated in (e.g., BDT) |
+| `buy_currency_id` | bigint FK | Cost currency — supplier origin (e.g. GBP, USD). Not customer shelf price. |
+| `sell_currency_id` | bigint FK | Checkout currency — customer list / cart / negotiate (e.g. BDT) |
 | `default_currency_id` | bigint FK | Shop display/checkout currency (maps to `sell_currency_id`) |
 | `pricing_method` | text | For retail (`fixed_price`): `direct_cost` \| `markup` |
 | `markup_percentage` | numeric | Used when `pricing_method = markup` |
@@ -697,16 +705,16 @@ See §5.2.
 |-------|------|-------|
 | `id` | bigint PK | |
 | `tenant_id`, `shop_id` | bigint FK | |
-| `global_stock_id` | bigint FK | **Target required** stock-backed → parent `global_stocks` |
-| `global_stock_allocation_id` | bigint FK | **Live only** until cutover — retire |
+| `global_stock_id` | bigint FK | Required stock-backed → parent `global_stocks` |
+| `global_stock_allocation_id` | bigint null | Leftover column — unused; table `global_stock_allocations` dropped |
 | `product_id` | bigint FK | Denormalized |
 | `sell_price_amount`, `sell_price_currency_id` | money pair | |
 | `minimum_sell_price_amount`, `minimum_sell_price_currency_id` | money pair | Dropship only |
 | `show_quantity` | boolean null | Per-line; null = inherit shop |
-| `display_quantity_override` | integer null | Marketing display |
-| `is_active` | boolean | |
+| `display_quantity_override` | integer null | Marketing display — not ATP |
+| `is_active` | boolean | Staff catalog flag — not ATP |
 
-**Unique (target):** `(shop_id, global_stock_id)` · **Live:** `(shop_id, global_stock_allocation_id)` until cutover
+**Unique:** `(shop_id, global_stock_id)`
 
 ### 7.5 `shop_carts` / `shop_cart_items`
 
@@ -718,7 +726,7 @@ shop_carts
   unique (tenant_id, shop_id, customer_group_id) WHERE status = 'active'
 
 shop_cart_items
-  cart_id, product_id, global_stock_id, global_stock_allocation_id
+  cart_id, product_id, global_stock_id
   quantity, minimum_quantity
   -- snapshots at add time (money pairs)
   unit_list_price_*, unit_sell_price_*, unit_minimum_sell_price_*
@@ -731,7 +739,7 @@ shop_cart_items
 | Field | Notes |
 |-------|-------|
 | `cart_item_id` | FK |
-| `global_stock_allocation_id` | FK |
+| `global_stock_id` | FK — parent stock row held |
 | `quantity` | Held until cart converted or abandoned |
 
 ### 7.7 `shop_orders` / `shop_order_items`
@@ -754,7 +762,7 @@ shop_orders
   created_by_email
 
 shop_order_items
-  order_id, product_id, global_stock_id, global_stock_allocation_id
+  order_id, product_id, global_stock_id
   name, image_url, quantity
   -- money pairs: list, sell, min_sell, customer_offer, staff_offer, final
   ordered_quantity, delivered_quantity, returned_quantity
@@ -811,7 +819,7 @@ stateDiagram-v2
 
 | Domain | Integration |
 |--------|-------------|
-| [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) | Stock-backed listings from `global_stock_allocations`; vendor `placed` lines join pull RPC |
+| [PROCUREMENT_STOCK.md](../procurement_stock/PROCUREMENT_STOCK.md) | Stock-backed listings from assigned shipments + parent ATP; vendor `placed` lines join pull RPC |
 | [SALES_INVOICE.md](SALES_INVOICE.md) | Fixed/vendor fulfill → `global_invoices`; dropship dual amounts via Create Dual Invoice |
 | [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) | Dropship Process Order, consignment, return bearer, payout ledger |
 | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) | Payments on fulfilled invoices — no shadow commerce ledger |
@@ -869,25 +877,28 @@ All new pages follow [docs/UI_CONSISTENCY.md](../docs/UI_CONSISTENCY.md).
 
 | Screen | Path | Submodule |
 |--------|------|-----------|
-| Shop list | `/app/shop/shops` | `shop_config` |
+| Shop setup hub | `/app/shop/shops` | `shop_config` — cards: Shops, Categories, Customer groups |
+| Shop list | `/app/shop/shops/list` | `shop_config` — create (name + type); per-shop actions by type |
+| Shop setup | `/app/shop/shops/:id/setup` | `shop_config` — currencies, vendor, pricing rules, charges |
 | Shop access matrix | `/app/shop/shops/:id/access` | `shop_permissions` |
 | Group shop profile | `/app/shop/customer-groups/:id/permissions` | `shop_permissions` |
-| Shop pricing | `/app/shop/shops/:id/pricing` | `shop_pricing` |
+| Shop pricing | `/app/shop/shops/:id/pricing` | `shop_pricing` — retail + dropship only |
 | Allocation picker | `/app/shop/shops/:id/stock-pick` | `shop_pricing` |
 | Customer storefront | `/shop/browse/:shopSlug` | `shop_storefront` |
 | Cart | `/shop/cart` | `shop_cart` |
 | Checkout | `/shop/checkout` | `shop_cart` |
 | Customer orders | `/shop/orders` | `shop_order_mgmt` |
-| Staff order desk | `/app/shop/orders` | `shop_order_mgmt` |
-| Fulfillment | `/app/shop/orders/:id` | `shop_fulfillment` |
-| Dropship Orders | `/app/shop/dropship` | `shop_dropship` |
-| Dropship process desk | `/app/shop/dropship/:id` | `shop_dropship` |
+| Staff order desk | `/app/shop/orders` | `shop_order_mgmt` — all shop types; `?shopType=dropship` filter |
+| Dropship process order | `/app/shop/dropship/:id` | `shop_order_mgmt` — extra blocks when type is dropship |
+| Shipping hub | `/app/shop/shipping` | `shop_shipping` |
+| Couriers | `/app/shop/dropship/couriers` | `shop_shipping` |
+| COD remittance | `/app/shop/dropship/finance-hub` | `shop_shipping` — middle-man payouts here; shop login is Customer access |
 
 ---
 
 ## 12a. Bilingual Information Guide (I Button)
 
-To ensure admin users understand all configuration choices, a bilingual Help Dialog ("I" button) is integrated directly into the Shop Create and Edit forms. The content covers shop types, currencies, and pricing/quantity settings. For complete named configuration examples with all field values, see **§3.6 Shop Configuration Examples**.
+To ensure admin users understand all configuration choices, a bilingual Help Dialog ("I" button) lives on the **shop setup page** (not the create dialog). Create only shows three type cards with a one-line description each. Help covers types, currencies, and pricing/quantity settings. For complete named configuration examples with all field values, see **§3.6 Shop Configuration Examples**.
 
 ### 1. Shop Types (দোকানের ধরন)
 *   **English**: 
@@ -902,14 +913,14 @@ To ensure admin users understand all configuration choices, a bilingual Help Dia
 ### 2. Shop Currencies (দোকানের কারেন্সি সেটিংস)
 *   **English**: 
     *   Every shop operates with two currencies:
-        1. **Buy Currency**: The currency in which the product was or will be purchased from suppliers (e.g. GBP, USD). Used for back-office cost logging.
-        2. **Sell Currency**: The currency in which the customer views prices and completes checkout (e.g. BDT).
-    *   All customer-facing pricing and active negotiations happen in the **Sell Currency**.
+        1. **Cost currency**: The currency in which the product was or will be purchased from suppliers (e.g. GBP, USD). Used for back-office cost logging — not the shelf price.
+        2. **Checkout currency**: The currency in which the customer views prices and completes checkout (e.g. BDT).
+    *   All customer-facing pricing and active negotiations happen in the **checkout currency**.
 *   **Bangla (বাংলা)**:
     *   প্রতিটি দোকানের দুটি কারেন্সি থাকে:
-        ১. **ক্রয় কারেন্সি**: যে কারেন্সিতে পণ্যটি সাপ্লায়ারের কাছ থেকে কেনা হয়েছে বা হবে (যেমন GBP, USD)। এটি ব্যাক-অফিস খরচের হিসাব রাখার জন্য ব্যবহৃত হয়।
-        ২. **বিক্রয় কারেন্সি**: যে কারেন্সিতে কাস্টমার দাম দেখবে এবং পেমেন্ট সম্পন্ন করবে (যেমন BDT)।
-    *   কাস্টমার-ফেসিং সমস্ত প্রাইসিং এবং দরকষাকষি অবশ্যই **বিক্রয় কারেন্সিতে** সম্পন্ন হবে।
+        ১. **খরচের কারেন্সি**: যে কারেন্সিতে পণ্যটি সাপ্লায়ারের কাছ থেকে কেনা হয়েছে বা হবে (যেমন GBP, USD)। এটি ব্যাক-অফিস খরচের হিসাব — কাস্টমারের শেল্ফ প্রাইস নয়।
+        ২. **চেকআউট কারেন্সি**: যে কারেন্সিতে কাস্টমার দাম দেখবে এবং পেমেন্ট সম্পন্ন করবে (যেমন BDT)।
+    *   কাস্টমার-ফেসিং সমস্ত প্রাইসিং এবং দরকষাকষি অবশ্যই **চেকআউট কারেন্সিতে** সম্পন্ন হবে।
 
 ### 3. Retail & Quantity Pricing Configurations (খুচরা মূল্য ও পরিমাণ সেটিংস)
 *   **English**:
@@ -941,7 +952,7 @@ To ensure admin users understand all configuration choices, a bilingual Help Dia
 | # | Topic | Decision |
 |---|-------|----------|
 | D-SH1 | Legacy isolation | New `shop_*` tables only; no FK to legacy shop/order/commerce |
-| D-SH2 | Stock source | **Live:** `global_stock_allocations`. **Target:** assign Option A + shared ATP + `global_stock_id` — [v2/stock/schema.md](./v2/stock/schema.md) |
+| D-SH2 | Stock source | Assign shipment → child; list `global_stock_id`; sell shared parent ATP. `global_stock_allocations` dropped. [stock/schema.md](../procurement_stock/stock/schema.md) |
 | D-SH3 | Vendor downstream | `placed` vendor-catalog lines eligible for parent shipment pull |
 | D-SH4 | Currency | Amount + `global_currencies` FK — no currency-named columns |
 | D-SH5 | Shop type | Immutable after create |
@@ -949,7 +960,7 @@ To ensure admin users understand all configuration choices, a bilingual Help Dia
 | D-SH7 | Invoice handoff | Fulfillment writes `global_invoices` — not `commerce_invoice` |
 | D-SH8 | Negotiation | Only when `is_negotiable` and effective `can_negotiate` |
 | D-SH9 | Shop ownership | Child (or standalone) creates and owns `shops` |
-| D-SH10 | Listing FK | **Target:** `global_stock_id`. **Live:** `global_stock_allocation_id` until cutover |
+| D-SH10 | Listing FK | `global_stock_id` only. `is_active` = staff catalog flag. ATP computed. |
 | D-SH11 | Display qty | Override affects display only; checkout capped by `available_to_sell` |
 | D-SH12 | Dropship | `minimum_sell_price` floor; dual amounts on invoice per **D-SI***; ops desk per [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) **D-SD*** |
 

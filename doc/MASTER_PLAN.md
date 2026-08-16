@@ -243,7 +243,8 @@ Per-tenant assignment table: §15.5 and domain docs.
 | [PROCUREMENT_STOCK_ISSUES.md](PROCUREMENT_STOCK_ISSUES.md) | Redesign — cost, money, status; **one vendor/shipment**; **shipment→child assign + shared ATP**; shop real/dummy display |
 | [SALES_INVOICE.md](SALES_INVOICE.md) | Desk invoices (wholesale, retail account/direct, dropship), billing/recipient profiles |
 | [SHOP_ORDER.md](SHOP_ORDER.md) | Child-owned shops, cart, orders, permissions, allocated-stock storefronts |
-| [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) | Dropship Process Order desk, dual invoice, return bearer, middle-man payout |
+| [fix/SHOP_CREATE_TWO_STEP.md](fix/SHOP_CREATE_TWO_STEP.md) | Create = name + type; setup page for currencies |
+| [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) | Dropship shop type: Process Order on Orders, couriers on Shipping, dual invoice, payout |
 | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) | Margin reports, payments, balances, batch P&L |
 | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) | Investor profiles, capital ledger, portal, cost-share |
 | [wallet/UNIVERSAL_WALLET_LEDGER.md](wallet/UNIVERSAL_WALLET_LEDGER.md) | Universal wallet identity (`entity_type` + `entity_id`), ledger, interim metadata dimensions |
@@ -300,7 +301,7 @@ Per-tenant assignment table: §15.5 and domain docs.
 | 19 | Ledger & Treasury | Accounting (Legacy UI) | accounting | STABLE | app | Child | Legacy tenant accounting views | — |
 | 20 | Ledger & Treasury | Reports & Treasury | reporting_treasury | IN PROGRESS | app | Varies | Margin reports, balances, dashboard | P0 |
 | 21 | Ledger & Treasury | Legacy ledger keys | global_accounting_ledger, global_*_accounting | LEGACY | app | Parent | Being retired — use reporting_treasury | P1 |
-| 22 | Shop & Order | Shop & Order (target) | shop_order | DONE | app+shop | Child | Unified shops, cart, orders; dropship ops → [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) | P0 |
+| 22 | Shop & Order | Shop & Order (target) | shop_order | DONE | app+shop | Child | Staff nav: Shops / Orders / Shipping. Dropship is a shop type. → [SHOP_ORDER.md](SHOP_ORDER.md), [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) | P0 |
 | 23 | Shop & B2B | Store | store | LEGACY | app+shop | Child | Superseded by shop_order | — |
 | 24 | Shop & B2B | Cart | cart | LEGACY | shop | Child | Superseded by shop_order | — |
 | 25 | Commerce | Commerce Shop | commerce_shop | LEGACY | app+shop | Child | Superseded by shop_order | — |
@@ -527,7 +528,7 @@ Child: orders / product costing → Parent: shipment (local or international)
 | Margin report | invoice lines + shipment batch P&L (read) | IN PROGRESS | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) |
 | Investor capital | cost-share → profit refresh → portal | IN PROGRESS | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) |
 | Shop order | shop_cart → shop_order → invoice or procurement pull | DONE | [SHOP_ORDER.md](SHOP_ORDER.md) |
-| Dropship shop order | Process Order → dual invoice → COD / payout / return | NOT STARTED | [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) |
+| Dropship shop order | Orders list → Process Order → dual invoice → COD / payout. Couriers under Shipping. | IN PROGRESS | [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md), [SHOP_ORDER_NAV_THREE_MENUS.md](fix/SHOP_ORDER_NAV_THREE_MENUS.md) |
 | Commerce (legacy) | commerce_cart → order → invoice | LEGACY | → shop_order |
 | Thrift | thrift_shipment → stock → invoice | DONE | [THRIFT.md](THRIFT.md) |
 

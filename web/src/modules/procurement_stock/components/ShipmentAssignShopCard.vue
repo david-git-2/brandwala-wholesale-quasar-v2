@@ -4,7 +4,7 @@
       Assign to shop
     </div>
     <div class="text-caption text-grey-7 q-mb-md">
-      Choose which shop can sell this stock.
+      Which company can list this stock. Save to add, Clear to remove. You can change this anytime.
     </div>
     <div class="row q-col-gutter-sm items-end">
       <div class="col-12 col-sm-8">

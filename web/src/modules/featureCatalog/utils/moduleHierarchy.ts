@@ -59,19 +59,11 @@ const getSubmoduleSectionAndWeight = (
   if (parentKey === 'shop_order') {
     switch (moduleKey) {
       case 'shop_config':
-        return { section: 'Shop Setup', weight: 10 };
-      case 'shop_category':
-        return { section: 'Shop Setup', weight: 20 };
-      case 'shop_permissions':
-        return { section: 'Shop Setup', weight: 30 };
-      case 'shop_pricing':
-        return { section: 'Shop Setup', weight: 40 };
+        return { section: '', weight: 10 };
       case 'shop_order_mgmt':
-        return { section: 'Operations', weight: 50 };
-      case 'shop_fulfillment':
-        return { section: 'Operations', weight: 60 };
-      case 'shop_dropship':
-        return { section: 'Dropship Desk', weight: 70 };
+        return { section: '', weight: 20 };
+      case 'shop_shipping':
+        return { section: '', weight: 30 };
       default:
         return { section: '', weight: 99 };
     }

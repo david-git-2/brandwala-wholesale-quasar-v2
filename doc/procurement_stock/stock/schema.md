@@ -14,6 +14,7 @@ Parent warehouse qty + **shelf / slot / box location** (SMB) + how a child shop 
 | **Where (shelf/slot/box)** | `stock_locations` + `global_stocks.location_id` | Place inside the one parent warehouse |
 | **Who may list** | `shipments.assigned_child_tenant_id` (Option A) | List permission only — not a qty ledger. |
 | **Sell truth (ATP)** | Available to Promise: pickable sellable on-hand − draft invoice holds − shop cart holds | Desk + assigned shop share this. |
+| **Shop listing** | `shop_product_listings.is_active` | Staff catalog flag. **Not** a cache of ATP. Sold-out = ATP 0 at browse/checkout. |
 | **Shop display** | Real ATP **or** `display_quantity_override` | Cosmetics — checkout never trusts dummy. |
 | **Order holds** | Shop cart / invoice draft | Soft reservations — **not** `availability = held`. Do not flip warehouse availability for a cart or draft. |
 | **Warehouse `held`** | `availability = held` on `global_stocks` | Quarantine / inspection / return pending — out of ATP |
@@ -189,9 +190,9 @@ Shop UI does **not** need bin picker day one.
 
 ---
 
-### 2.4 Legacy `global_stock_allocations` (migrate away)
+### 2.4 `global_stock_allocations` — dropped
 
-Do not extend soft-qty semantics. Replace with §2.3 + listing `global_stock_id`.
+Table removed. Soft-qty slices are not coming back. Listing permission = shipment assign; sell = shared ATP; catalog visibility = `shop_product_listings.is_active`.
 
 ---
 

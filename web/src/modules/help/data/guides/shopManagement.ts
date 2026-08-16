@@ -28,16 +28,20 @@ export const shopManagementGuide: ModuleGuide = {
           bn: 'উপরের হেডার থেকে "+ নতুন শপ" বাটনে ক্লিক করুন।',
         },
         {
-          en: 'Enter the shop name, unique slug, and shop type (Vendor Catalog, Fixed Price, or Dropship).',
-          bn: 'শপের নাম, ইউনিক স্লাগ এবং শপ টাইপ (Vendor Catalog, Fixed Price, বা Dropship) নির্বাচন করুন।',
+          en: 'Enter the shop name and pick one type: Catalog, In stock, or Dropship.',
+          bn: 'শপের নাম দিন এবং একটি ধরন বেছে নিন: ক্যাটালগ, স্টকে আছে, বা ড্রপশিপ।',
         },
         {
-          en: 'Configure vendor code, ordering mode, negotiable pricing, and active status.',
-          bn: 'ভেন্ডর কোড, অর্ডারিং মোড, দরদাম সুবিধা (Is Negotiable) এবং সক্রিয় স্ট্যাটাস কনফিগার করুন।',
+          en: 'Click "Create and continue". The shop details page opens with tabs for the rest of setup.',
+          bn: '"তৈরি করে এগোন" ক্লিক করুন। বাকি সেটআপের ট্যাবসহ শপ ডিটেইলস পেজ খুলবে।',
         },
         {
-          en: 'Click "Save" to finish creating the shop.',
-          bn: '"সংরক্ষণ করুন" এ ক্লিক করে শপ তৈরি সম্পন্ন করুন।',
+          en: 'On setup, use tabs: Setup for currencies and selling rules, Customer access for groups, Prices for listings. Shop type cannot change.',
+          bn: 'সেটআপে ট্যাব ব্যবহার করুন: সেটআপ (কারেন্সি ও বিক্রয় নিয়ম), কাস্টমার অ্যাক্সেস, দাম। শপের ধরন পরে বদলানো যায় না।',
+        },
+        {
+          en: 'On Setup, confirm cost currency (what you pay the supplier) and checkout currency (what the customer sees). Add vendor, pricing, or dropship charges as needed.',
+          bn: 'সেটআপে খরচের কারেন্সি (সাপ্লায়ারকে যা দেন) এবং চেকআউট কারেন্সি (কাস্টমার যা দেখে) নিশ্চিত করুন। প্রয়োজনে ভেন্ডর, মূল্য বা ড্রপশিপ চার্জ যোগ করুন।',
         },
       ],
     },
@@ -49,16 +53,16 @@ export const shopManagementGuide: ModuleGuide = {
       },
       steps: [
         {
-          en: 'Look at the action icons on the right side of the shop card.',
-          bn: 'কাঙ্ক্ষিত শপ কার্ডটির ডান পাশের একশন আইকনসমূহ লক্ষ্য করুন।',
+          en: 'Open the shop. Tabs on the details page cover setup, customer access, and prices.',
+          bn: 'শপ খুলুন। ডিটেইলস পেজের ট্যাবে সেটআপ, কাস্টমার অ্যাক্সেস এবং দাম আছে।',
         },
         {
-          en: 'Click the orange "Manage Pricing" (tag) icon to configure pricing.',
-          bn: 'প্রাইসিং কনফিগার করতে কমলা রঙের "Manage Pricing" (ট্যাগ) আইকনে ক্লিক করুন।',
+          en: 'Open the Prices tab to add listings and markup. Catalog shops have no Prices tab.',
+          bn: 'লিস্টিং ও মার্কআপের জন্য দাম ট্যাব খুলুন। ক্যাটালগ শপে দাম ট্যাব নেই।',
         },
         {
-          en: 'Click the teal "Manage Access Matrix" (shield) icon to set permissions by customer group and role.',
-          bn: 'কাস্টমার গ্রুপ ও রোল অনুযায়ী পারমিশন সেট করতে টিল রঙের "Manage Access Matrix" (শীর্ষক/শিল্ড) আইকনে ক্লিক করুন।',
+          en: 'Open the Customer access tab to set permissions by customer group.',
+          bn: 'কাস্টমার গ্রুপ অনুযায়ী পারমিশন সেট করতে কাস্টমার অ্যাক্সেস ট্যাব খুলুন।',
         },
       ],
     },

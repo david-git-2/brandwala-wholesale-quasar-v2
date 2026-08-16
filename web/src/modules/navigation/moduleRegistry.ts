@@ -59,6 +59,7 @@ export type ModuleKey =
   | 'shop_order_mgmt'
   | 'shop_fulfillment'
   | 'shop_dropship'
+  | 'shop_shipping'
   | 'shop_category'
   | 'sales_invoice'
   | 'billing_profile'
@@ -988,7 +989,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     key: 'shop_order',
     name: 'Shop & Order',
     description:
-      'Parent module for shop configuration, customer group permissions, product listings, storefront, carts, orders, and fulfillment.',
+      'Parent module. Staff nav is Shops, Orders, and Shipping. Dropship is a shop type; courier is shared delivery.',
     navIcon: 'ph ph-storefront',
     routes: [],
   },
@@ -996,13 +997,13 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     key: 'shop_config',
     name: 'Shops',
     description:
-      'Create and manage shops — type, order mode, stock display defaults, and vendor link.',
+      'Create shops and manage categories, customer access, and listings.',
     parentModuleKey: 'shop_order',
     routes: [
       {
         scope: 'app',
         title: 'Shops',
-        caption: 'Manage shop configuration and settings',
+        caption: 'Setup hub: shops, categories, customer groups',
         icon: 'ph ph-storefront',
         routeSegment: 'shop/shops',
         requiredAction: 'view',
@@ -1012,52 +1013,23 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'shop_category',
     name: 'Shop Categories',
-    description: 'Manage tenant shop categories displayed across customer storefronts.',
+    description: 'Page guard for shop categories. Opened from Shops, not a sidebar item.',
     parentModuleKey: 'shop_order',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Categories',
-        caption: 'Manage shop categories and icons',
-        icon: 'ph ph-squares-four',
-        routeSegment: 'shop/categories',
-        requiredAction: 'view',
-      },
-    ],
+    routes: [],
   },
   {
     key: 'shop_permissions',
     name: 'Customer Groups',
-    description:
-      'Create customer groups and members. Grant shop access from each shop’s Access Matrix.',
+    description: 'Page guard for customer groups and per-shop access. Opened from Shops.',
     parentModuleKey: 'shop_order',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Customer Groups',
-        caption: 'Add groups and members; configure shop access per shop',
-        icon: 'ph ph-users-three',
-        routeSegment: 'shop/customer-groups',
-        requiredAction: 'view',
-      },
-    ],
+    routes: [],
   },
   {
     key: 'shop_pricing',
     name: 'Shop Pricing',
-    description:
-      'Manage product listings per shop, sell prices, minimum sell prices, and display quantity overrides.',
+    description: 'Page guard for listings and prices. Opened from Shops.',
     parentModuleKey: 'shop_order',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Shop Pricing',
-        caption: 'Manage listings and pricing per shop',
-        icon: 'ph ph-tag',
-        routeSegment: 'shop/pricing',
-        requiredAction: 'view',
-      },
-    ],
+    routes: [],
   },
   {
     key: 'shop_storefront',
@@ -1095,7 +1067,8 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'shop_order_mgmt',
     name: 'Orders',
-    description: 'Place, negotiate, approve, price, confirm, and cancel shop orders.',
+    description:
+      'All shop orders (catalog, retail, wholesale, dropship). Process-order and fulfill live on the order page.',
     parentModuleKey: 'shop_order',
     routes: [
       {
@@ -1118,57 +1091,32 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   },
   {
     key: 'shop_fulfillment',
-    name: 'Fulfillment',
-    description:
-      'Convert placed vendor-catalog orders to procurement lines or stock-backed orders to global invoices.',
+    name: 'Fulfillment (legacy key)',
+    description: 'Retired from nav. Fulfill on the order page under shop_order_mgmt.',
     parentModuleKey: 'shop_order',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Fulfillment',
-        caption: 'Fulfill orders via procurement or invoice',
-        icon: 'ph ph-truck',
-        routeSegment: 'shop/fulfillment',
-        requiredAction: 'view',
-      },
-    ],
+    routes: [],
   },
   {
     key: 'shop_dropship',
-    name: 'Dropship Ops Desk',
-    description: 'Manage dropship consignments, couriers, and return policies.',
+    name: 'Dropship (legacy key)',
+    description:
+      'Retired from nav. Dropship is a shop type; process-order is shop_order_mgmt; couriers are shop_shipping.',
+    parentModuleKey: 'shop_order',
+    routes: [],
+  },
+  {
+    key: 'shop_shipping',
+    name: 'Shipping',
+    description:
+      'Shared courier catalog, pickup, and COD remittance for any delivered shop order.',
     parentModuleKey: 'shop_order',
     routes: [
       {
         scope: 'app',
-        title: 'Dropship Desk',
-        caption: 'Process dropship orders and courier shipments',
+        title: 'Shipping',
+        caption: 'Couriers, pickup, and COD remittance',
         icon: 'ph ph-truck',
-        routeSegment: 'shop/dropship',
-        requiredAction: 'view',
-      },
-      {
-        scope: 'app',
-        title: 'Finance Hub',
-        caption: 'Courier remittances, tenant treasury & merchant payouts',
-        icon: 'ph ph-bank',
-        routeSegment: 'shop/dropship/finance-hub',
-        requiredAction: 'view',
-      },
-      {
-        scope: 'app',
-        title: 'Couriers',
-        caption: 'Courier catalog & return policies',
-        icon: 'ph ph-truck',
-        routeSegment: 'shop/dropship/couriers',
-        requiredAction: 'view',
-      },
-      {
-        scope: 'app',
-        title: 'Merchants & Pickup',
-        caption: 'Manage merchant sender profiles & pickup locations',
-        icon: 'ph ph-storefront',
-        routeSegment: 'shop/dropship/merchants',
+        routeSegment: 'shop/shipping',
         requiredAction: 'view',
       },
     ],

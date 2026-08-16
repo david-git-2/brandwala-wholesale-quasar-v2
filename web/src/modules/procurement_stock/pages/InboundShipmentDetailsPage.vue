@@ -156,7 +156,7 @@
               </q-tab>
               <q-tab v-if="showReceiveTab" name="receive" data-test="tab-receive">
                 <div class="row items-center no-wrap q-gutter-xs">
-                  <span>Add to stock</span>
+                  <span>Warehouse stock</span>
                   <q-badge v-if="receiveNeedsAttention" color="orange" rounded label="!" />
                 </div>
               </q-tab>
@@ -413,8 +413,19 @@
               </div>
             </q-tab-panel>
 
-            <!-- Add to stock -->
+            <!-- Warehouse stock -->
             <q-tab-panel v-if="showReceiveTab" name="receive" class="q-pa-none">
+              <div ref="assignShopCard" class="q-mb-md">
+                <ShipmentAssignShopCard
+                  v-model="selectedChildTenantId"
+                  :child-tenant-options="childTenantOptions"
+                  :child-tenants-loading="childTenantsLoading"
+                  :assigning-child="assigningChild"
+                  :assigned-child-tenant-id="shipmentStore.currentShipment?.assigned_child_tenant_id"
+                  @save="saveAssignChild"
+                  @clear="clearAssignChild"
+                />
+              </div>
               <ShipmentReceiveTabPanel
                 :shipment="shipmentStore.currentShipment"
                 :has-line-items="hasLineItems"
@@ -454,6 +465,7 @@ import ShipmentCostEntriesPanel from '../components/ShipmentCostEntriesPanel.vue
 import ShipmentHeaderBar from '../components/ShipmentHeaderBar.vue';
 import ShipmentLandedCostSummaryCard from '../components/ShipmentLandedCostSummaryCard.vue';
 import ShipmentReceiveTabPanel from '../components/ShipmentReceiveTabPanel.vue';
+import ShipmentAssignShopCard from '../components/ShipmentAssignShopCard.vue';
 
 // Composables
 import { useInboundShipmentCalculations } from '../composables/useInboundShipmentCalculations';
@@ -557,6 +569,12 @@ const {
   onSaveCostEntries,
   paySettling,
   confirmSettlePayee,
+  childTenantOptions,
+  childTenantsLoading,
+  selectedChildTenantId,
+  assigningChild,
+  saveAssignChild,
+  clearAssignChild,
 } = actions;
 
 const goToWarehouseStock = () => {

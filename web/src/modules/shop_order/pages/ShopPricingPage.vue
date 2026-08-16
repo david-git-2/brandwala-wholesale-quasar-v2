@@ -1,8 +1,8 @@
 <template>
-  <q-page class="bw-page">
+  <component :is="embedded ? 'div' : 'q-page'" :class="embedded ? '' : 'bw-page'">
     <section class="bw-page__stack">
       <!-- Header -->
-      <section class="row items-center justify-between q-col-gutter-md">
+      <section v-if="!embedded" class="row items-center justify-between q-col-gutter-md">
         <div class="col">
           <div class="row items-center q-gutter-x-sm">
             <q-btn flat round icon="ph ph-arrow-left" color="grey-7" @click="goBack" />
@@ -42,6 +42,16 @@
               <q-icon name="ph ph-magnifying-glass" />
             </template>
           </q-input>
+        </div>
+        <div v-if="embedded" class="col-auto">
+          <q-btn
+            color="primary"
+            icon="ph ph-plus"
+            :label="$t('shop_admin.add_product_listing')"
+            unelevated
+            no-caps
+            @click="navigateToAddListings"
+          />
         </div>
       </section>
 
@@ -357,7 +367,11 @@
                 @update:model-value="(val) => onToggleIsActive(props.row, val)"
               >
                 <q-tooltip>
-                  {{ props.row.is_active ? 'Listing Active (Visible in Shop Catalog)' : 'Listing Inactive (Hidden from Shop Catalog)' }}
+                  {{
+                    props.row.is_active
+                      ? $t('shop_admin.listing_on_shop')
+                      : $t('shop_admin.listing_off_shop')
+                  }}
                 </q-tooltip>
               </q-toggle>
             </q-td>
@@ -514,7 +528,7 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
-  </q-page>
+  </component>
 </template>
 
 <script setup lang="ts">
@@ -541,6 +555,8 @@ import ShopPricingRuleCard from '../components/ShopPricingRuleCard.vue';
 import ShopPricingBulkActionBar from '../components/ShopPricingBulkActionBar.vue';
 import SmartImage from 'src/components/SmartImage.vue';
 import type { ShopProductListing, CandidateAllocation, UpsertListingPayload } from '../types';
+
+withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false });
 
 const route = useRoute();
 const router = useRouter();
@@ -847,13 +863,6 @@ const onSaveListing = () => {
     form.value.minimum_sell_price_currency_id = null;
   }
 
-  if (form.value.global_stock_id) {
-    const alloc = candidates.value.find((c) => c.global_stock_id === form.value.global_stock_id);
-    if (alloc && alloc.allocated_quantity <= 0) {
-      form.value.is_active = false;
-    }
-  }
-
   saveListing(form.value, {
     onSuccess: () => {
       editDialogOpen.value = false;
@@ -1030,9 +1039,6 @@ const onInlineCellEdit = (
   const isQtyField = field === 'display_quantity_override';
   const isPriceField = field === 'sell_price_amount' || field === 'minimum_sell_price_amount';
 
-  // Automatically make product inactive if actual quantity (available_to_sell) <= 0
-  const nextIsActive = listing.available_to_sell <= 0 ? false : listing.is_active;
-
   const payload: UpsertListingPayload = {
     id: listing.id,
     tenant_id: tenantId.value,
@@ -1045,7 +1051,7 @@ const onInlineCellEdit = (
     show_quantity: listing.show_quantity,
     display_quantity_override:
       field === 'display_quantity_override' ? val : listing.display_quantity_override,
-    is_active: nextIsActive,
+    is_active: listing.is_active,
     is_price_locked: isPriceField && lockOnManualEdit ? true : Boolean(listing.is_price_locked),
     is_quantity_locked: isQtyField && lockOnManualEdit ? true : Boolean(listing.is_quantity_locked),
   };
@@ -1109,15 +1115,6 @@ const onToggleShowQuantity = (listing: ShopProductListing, showQty: boolean) => 
 };
 
 const onToggleIsActive = (listing: ShopProductListing, isActive: boolean) => {
-  if (isActive && listing.available_to_sell <= 0) {
-    $q.notify({
-      type: 'warning',
-      message: 'Cannot activate listing because actual quantity is 0 or less',
-      timeout: 2000,
-    });
-    return;
-  }
-
   const currencyId = listing.sell_price_currency_id || shopDefaultCurrencyId.value || 0;
   const minPriceAmount =
     listing.minimum_sell_price_amount !== null && listing.minimum_sell_price_amount !== undefined
@@ -1179,7 +1176,7 @@ const confirmBulkDeleteListings = () => {
 
 const goBack = () => {
   void router.push({
-    name: 'app-shop-shops-page',
+    name: 'app-shop-shops-list-page',
     params: { tenantSlug: tenantSlug.value },
   });
 };

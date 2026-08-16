@@ -170,9 +170,9 @@
       bordered
       class="q-pa-md"
     >
-      <div class="text-subtitle1 text-weight-bold text-primary q-mb-sm">In stock</div>
+      <div class="text-subtitle1 text-weight-bold text-negative q-mb-sm">Rollback</div>
       <div class="text-body2 text-grey-7 q-mb-md">
-        Stock already posted — editing is locked. Use Rollback only if you need to undo.
+        Stock is already in the warehouse. Rollback deletes that stock and returns this shipment to Draft.
       </div>
       <q-btn
         color="negative"

@@ -4,66 +4,69 @@ export const shopOrderStaffGuide: ModuleGuide = {
   id: 'shop_order_staff',
   title: { en: 'Shop & Orders (Staff)', bn: 'শপ ও অর্ডার (স্টাফ)' },
   caption: {
-    en: 'Process orders, dropship, and settlements',
-    bn: 'অর্ডার প্রসেস, ড্রপশিপ এবং সেটেলমেন্ট',
+    en: 'Process orders, shipping, and dropship settlement',
+    bn: 'অর্ডার প্রসেস, শিপিং এবং ড্রপশিপ সেটেলমেন্ট',
   },
   icon: 'ph ph-storefront',
   scopes: ['app'],
   audiences: ['admin', 'staff', 'viewer'],
   routeMatchers: [
-    '/app/shop/dropship',
     '/app/shop/orders',
-    '/app/shop/fulfillment',
+    '/app/shop/shipping',
+    '/app/shop/dropship',
+    '/app/shop/shops',
   ],
   overview: {
-    en: 'Staff use Shop & Orders to process dropship consignments, confirm costing, and settle courier remittances. Detailed page guides will be added per screen.',
-    bn: 'স্টাফ শপ ও অর্ডার ব্যবহার করে ড্রপশিপ কনসাইনমেন্ট প্রসেস করে, কস্টিং নিশ্চিত করে এবং কুরিয়ার রেমিট্যান্স সেটেল করে। প্রতিটি স্ক্রিনের জন্য বিস্তারিত গাইড পরে যোগ হবে।',
+    en: 'Staff use Shops to set up storefronts, Orders to process every shop type (including dropship), and Shipping for shared couriers and COD remittance.',
+    bn: 'স্টাফ শপস দিয়ে স্টোরফ্রন্ট সেটআপ করে, অর্ডারস দিয়ে সব ধরনের শপ অর্ডার (ড্রপশিপসহ) প্রসেস করে, এবং শিপিং দিয়ে শেয়ার্ড কুরিয়ার ও COD রেমিট্যান্স করে।',
   },
   workflows: [
     {
-      id: 'open-dropship-desk',
-      title: { en: 'Open the Dropship Desk', bn: 'ড্রপশিপ ডেস্ক খুলুন' },
+      id: 'process-orders',
+      title: { en: 'Process an order', bn: 'অর্ডার প্রসেস করুন' },
       steps: [
         {
-          en: 'Go to Shop → Dropship in the sidebar.',
-          bn: 'সাইডবার থেকে Shop → Dropship এ যান।',
+          en: 'Go to Shop & Order → Orders in the sidebar.',
+          bn: 'সাইডবার থেকে Shop & Order → Orders এ যান।',
         },
         {
-          en: 'Open an order to assign courier and advance status.',
-          bn: 'কুরিয়ার অ্যাসাইন ও স্ট্যাটাস এগিয়ে নিতে একটি অর্ডার খুলুন।',
+          en: 'Filter by shop type if you only want dropship (or retail) orders.',
+          bn: 'শুধু ড্রপশিপ (বা খুচরা) দেখতে শপ টাইপ ফিল্টার ব্যবহার করুন।',
         },
         {
-          en: 'Use Finance Hub for costing and remittance when the order is delivered.',
-          bn: 'অর্ডার ডেলিভার হলে কস্টিং ও রেমিট্যান্সের জন্য Finance Hub ব্যবহার করুন।',
+          en: 'Open the order. Dropship extra steps (recipient print, B2B invoice, payout) show on that page. Courier pick is the same block used for retail delivery.',
+          bn: 'অর্ডার খুলুন। ড্রপশিপ অতিরিক্ত ধাপ সেই পেজেই আসে। কুরিয়ার পিক খুচরা ডেলিভারির মতোই।',
+        },
+      ],
+    },
+    {
+      id: 'shipping-setup',
+      title: { en: 'Set up couriers', bn: 'কুরিয়ার সেটআপ' },
+      steps: [
+        {
+          en: 'Go to Shop & Order → Shipping.',
+          bn: 'সাইডবার থেকে Shop & Order → Shipping এ যান।',
+        },
+        {
+          en: 'Edit courier COD and return rules. Use COD remittance after delivery.',
+          bn: 'কুরিয়ার COD ও রিটার্ন নিয়ম সম্পাদনা করুন। ডেলিভারির পর COD রেমিট্যান্স ব্যবহার করুন।',
         },
       ],
     },
   ],
   terms: [
     {
-      term: { en: 'Finance Hub', bn: 'ফাইন্যান্স হাব' },
+      term: { en: 'Shipping', bn: 'শিপিং' },
       definition: {
-        en: 'The desk where delivered costing, courier remittance, and payouts are handled.',
-        bn: 'ডেলিভার্ড কস্টিং, কুরিয়ার রেমিট্যান্স এবং পেআউট পরিচালনার ডেস্ক।',
+        en: 'Shared courier catalog and COD money-in. Not dropship-only — retail delivery uses it too.',
+        bn: 'শেয়ার্ড কুরিয়ার ক্যাটালগ এবং COD টাকা। শুধু ড্রপশিপ নয় — খুচরা ডেলিভারিও এটি ব্যবহার করে।',
       },
     },
     {
-      term: { en: 'Remittance', bn: 'রেমিট্যান্স' },
+      term: { en: 'Dropship', bn: 'ড্রপশিপ' },
       definition: {
-        en: 'Recording cash the courier deposited for delivered COD orders.',
-        bn: 'ডেলিভার্ড COD অর্ডারের জন্য কুরিয়ার জমা দেওয়া নগদ রেকর্ড করা।',
-      },
-    },
-  ],
-  faqs: [
-    {
-      question: {
-        en: 'Why can I not remittance an order yet?',
-        bn: 'কেন এখনো অর্ডারে রেমিট্যান্স করতে পারছি না?',
-      },
-      answer: {
-        en: 'Usually delivered costing must be confirmed first. Open the order or Finance Hub and complete costing, then try remittance again.',
-        bn: 'সাধারণত আগে ডেলিভার্ড কস্টিং নিশ্চিত করতে হয়। অর্ডার বা Finance Hub খুলে কস্টিং সম্পন্ন করুন, তারপর আবার রেমিট্যান্স চেষ্টা করুন।',
+        en: 'A shop type (reseller + two prices + payout), not a separate menu.',
+        bn: 'একটি শপ ধরন (রিসেলার + দুই দাম + পেআউট), আলাদা মেনু নয়।',
       },
     },
   ],

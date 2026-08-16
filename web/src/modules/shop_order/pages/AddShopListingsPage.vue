@@ -198,6 +198,7 @@ const $q = useQuasar();
 const authStore = useAuthStore();
 
 const tenantId = computed(() => authStore.tenantId as number);
+const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '');
 const shopId = computed(() => Number(route.params.shopId));
 
 const search = ref('');
@@ -349,8 +350,9 @@ const addSelectedListings = async () => {
 
 const goBack = () => {
   void router.push({
-    name: 'app-shop-pricing-page',
-    params: { shopId: shopId.value },
+    name: 'app-shop-settings-page',
+    params: { tenantSlug: tenantSlug.value, shopId: shopId.value },
+    query: { tab: 'listings' },
   });
 };
 </script>

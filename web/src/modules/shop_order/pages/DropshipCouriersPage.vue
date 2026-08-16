@@ -4,7 +4,7 @@
       <!-- Header -->
       <section class="row items-center justify-between q-col-gutter-md">
         <div class="col">
-          <h1 class="text-h5 q-my-none">Dropship Service Catalog &amp; Return Policies</h1>
+          <h1 class="text-h5 q-my-none">Courier catalog &amp; return policies</h1>
           <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
             Manage supported courier partners, COD fees, delivery charges, and return policies.
           </p>

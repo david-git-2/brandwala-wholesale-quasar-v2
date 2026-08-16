@@ -1,6 +1,6 @@
 # Shop & Order — Dropship Ops, Invoice Timing & Settlement
 
-BrandWala / TradeFlow BD dropship is a **stock-backed shop type** under the parent module **`shop_order`**. The middle man (reseller) places orders on a dropship storefront with **courier-ready recipient details at checkout**; the seller runs an **ops desk** (Process Order → courier consignment → deliver/return). **Recipient (customer) invoice** is print/download from the order at `processing`. **B2B Sales Invoice** is one posted `global_invoices` dropship row (wholesale goods + packing/print) created at `ready_for_pickup`. After `delivered`, courier remits COD **net of charges** and middle-man profit is settled on the **payout ledger** for reporting.
+BrandWala / TradeFlow BD dropship is a **stock-backed shop type** under the parent module **`shop_order`**. The middle man (reseller) places orders on a dropship storefront with **courier-ready recipient details at checkout**; staff process the **same Orders list** as other shop types (Process Order → courier consignment → deliver/return). Courier catalog and COD remittance live under **Shipping** (`shop_shipping`) because retail delivery can use the same couriers. **Recipient (customer) invoice** is print/download from the order at `processing`. **B2B Sales Invoice** is one posted `global_invoices` dropship row created at `ready_for_pickup`. After `delivered`, courier remits COD **net of charges** and middle-man profit is settled on the **payout ledger**.
 
 This document is the domain design for that ops + settlement path. Catalog, cart, pricing floor, and non-COD outbound charge toggles remain in [SHOP_ORDER.md](SHOP_ORDER.md). Desk invoice field shapes and payment RPCs remain in [SALES_INVOICE.md](SALES_INVOICE.md).
 
@@ -10,11 +10,13 @@ Related: [MASTER_PLAN.md](MASTER_PLAN.md), [SHOP_ORDER.md](SHOP_ORDER.md), [SALE
 
 ## User stories
 
-### Submodule — `shop_dropship` (Dropship Orders)
+### Shop type — dropship (not a nav module)
 
 **As a** child-tenant admin or staff member,  
-**I want** a dedicated Dropship Orders desk under Shop & Order,  
-**So that** I process courier consignments, customer prints, accounting invoices, and settlement without mixing vendor-catalog or fixed-price order workflows.
+**I want** dropship process-order, recipient print, B2B invoice, and payout on the **order page**,  
+**So that** I do not keep a separate Dropship Desk. Couriers belong to **Shipping**.
+
+Staff sidebar: [SHOP_ORDER.md](SHOP_ORDER.md) §2 — Shops / Orders / Shipping.
 
 ---
 
@@ -58,9 +60,9 @@ This document answers:
 |----------|-----------------------------|
 | Scope | Child (or standalone) tenant; `shop_type = dropship` only |
 | Parent module | `shop_order` |
-| Submodule key (target) | `shop_dropship` |
-| Auth surface | App (`memberships`) for ops desk; Shop (`customer_group_members`) for place/track |
-| Primary UI (target) | `/:slug/app/shop/dropship/*` |
+| Submodule keys | Process-order: `shop_order_mgmt`. Couriers / COD: `shop_shipping`. Legacy `shop_dropship` is not assigned. |
+| Auth surface | App (`memberships`) for ops; Shop (`customer_group_members`) for place/track |
+| Primary UI (target) | Orders list `/:slug/app/shop/orders`; process `/:slug/app/shop/dropship/:id`; shipping `/:slug/app/shop/shipping` |
 | Order rows | `shop_orders` / `shop_order_items` (same tables; dropship status + consignment fields) |
 | Courier catalog | `courier_services` — COD + return/attempt/open-box policies |
 | Invoice write | `global_invoices` type `dropship` via **Create B2B Sales Invoice** (standard wholesale model) — sole **invoice** write path (not a parallel commerce ledger) |
@@ -72,7 +74,7 @@ This document answers:
 
 | Capability | Responsibility |
 |------------|----------------|
-| Dropship order list / desk | Ops-first lifecycle for dropship shops only |
+| Dropship order list / desk | **Orders** list filtered to `shop_type_snapshot = dropship` (no separate desk home) |
 | Checkout recipient | Courier-ready recipient block at order confirm |
 | Process Order | Consignment entry; packing slip / label print before pickup |
 | Courier catalog | Per-courier COD + return policies |
@@ -86,7 +88,7 @@ This document answers:
 
 | Topic | Is not |
 |-------|--------|
-| **Vendor-catalog / fixed-price orders** | Stay on `shop_order_mgmt` / `shop_fulfillment` paths |
+| **Vendor-catalog / fixed-price orders** | Stay on `shop_order_mgmt` (list + order page). Delivery uses `shop_shipping` when courier is needed. |
 | **Desk-created dropship without a shop order** | Remains available under `sales_invoice` desk create — this doc covers the **shop-order-originated** path |
 | **Separate recipient invoice table** | Customer copy is **order print**; books are one dropship row with standard B2B amounts (**D-SD1**) |
 | **Shop-owned COD fee rules** | Deprecated for dropship — COD lives on `courier_services` (**D-SD11**) |
@@ -133,19 +135,20 @@ flowchart TB
 
 ## 2. Module hierarchy
 
-Dropship ops is a **submodule of `shop_order`**, not a new parent module.
+Dropship is a **shop type** under `shop_order`, not a sidebar module. Couriers are **`shop_shipping`**.
 
-| Key | Display name | `parent_module_key` | Scope | Nav route (target) |
-|-----|--------------|---------------------|-------|-------------------|
-| `shop_order` | Shop & Order | `null` | — | *(group header)* |
-| … | *(existing submodules — see [SHOP_ORDER.md](SHOP_ORDER.md) §2)* | | | |
-| `shop_dropship` | Dropship Orders | `shop_order` | app (+ shop read of status) | `shop/dropship`, `app/shop/dropship` |
+| Key | Display name | Staff sidebar? | Notes |
+|-----|--------------|----------------|-------|
+| `shop_order` | Shop & Order | Group | Parent |
+| `shop_order_mgmt` | Orders | Yes | Includes dropship process-order |
+| `shop_shipping` | Shipping | Yes | Courier catalog + COD remittance |
+| `shop_dropship` | *(legacy)* | No | Do not assign; invoice `source_module` may still use this string |
 
 | Rule | Detail |
 |------|--------|
-| Assignment | Enabled when parent `shop_order` is assigned; platform may disable via `tenant_module_submodules` |
-| Separation | Generic **Orders** list stays for vendor/fixed paths; **Dropship Orders** filters `shop_type_snapshot = dropship` |
-| Fulfillment | Dropship desk **does not** use the fixed-price “Fulfill to Invoice” as the primary CTA — use **Process Order**; print customer invoice at `processing`; **Create Accounting Invoice** at `ready_for_pickup` |
+| Assignment | Enable parent `shop_order`; `shop_shipping` expands with it |
+| Separation | One **Orders** list; filter `shop_type_snapshot = dropship` when needed |
+| Fulfillment | Do **not** use fixed-price “Fulfill to Invoice” as the primary CTA on dropship — use **Process Order**; print customer invoice at `processing`; **Create Accounting Invoice** at `ready_for_pickup` |
 
 ---
 
@@ -189,7 +192,7 @@ Statuses already seeded include `processing`, `shipped`, `delivered`, `payment_r
 | Status | Meaning |
 |--------|---------|
 | `submitted` / `confirmed` | Middle man checkout complete (lives on Orders / Service Desk queue; not yet on Dropship Operations Desk) |
-| `processing` | Staff clicked **Add to Dropship Desk** (`confirmed` → `processing`); order enters Dropship Operations Desk queue; consignment editable; **Download/Print Customer (recipient) Invoice** available (order face — no books) |
+| `processing` | Staff clicked **Process order** (`confirmed` → `processing`); consignment editable; **Download/Print Customer (recipient) Invoice** available (order face — no books) |
 | `ready_for_pickup` | Parcel packed; packing slip / courier label available; awaiting courier pickup; unlocks **Create Accounting Invoice** (posted dual-amount dropship row) |
 | `shipped` | Courier has the parcel |
 | `delivered` | Successful delivery; stamps `delivered_at`; unlocks **courier remittance / settlement** (not invoice create) |
@@ -609,10 +612,11 @@ Packing slip / courier label / **customer invoice** print is **client-side** fro
 | Screen | Path | Submodule |
 |--------|------|-----------|
 | Dropship order confirm | `/shop/checkout` (dropship shop) | `shop_cart` — full recipient A |
-| Dropship order list | `/app/shop/dropship` | `shop_dropship` |
-| Dropship process desk | `/app/shop/dropship/:id` | `shop_dropship` — Process Order; customer invoice print @ `processing`; accounting invoice @ `ready_for_pickup`; remittance/payout @ `delivered`+ |
-| Courier services admin | `/app/shop/dropship/couriers` | `shop_dropship` |
-| Middle-man payout ledger | `/app/shop/dropship/ledger` | `shop_dropship` — settlement report surface |
+| Dropship (and all) order list | `/app/shop/orders` | `shop_order_mgmt` — `?shopType=dropship` |
+| Dropship process order | `/app/shop/dropship/:id` | `shop_order_mgmt` |
+| Shipping hub | `/app/shop/shipping` | `shop_shipping` |
+| Courier services admin | `/app/shop/dropship/couriers` | `shop_shipping` |
+| COD remittance / payouts | `/app/shop/dropship/finance-hub` | `shop_shipping` — middle-man wallets; shop login is Customer access |
 | Customer order status | `/shop/orders/:id` | `shop_order_mgmt` — status + `tracking_url` |
 | Accounting invoice detail | `/app/sales/invoices/:id` | `global_invoice` — books view after post |
 
@@ -690,7 +694,7 @@ Clickable shells first. No new migrations/RPCs in I0. Enhanced later as fields a
 | | |
 |--|--|
 | **Feature** | Shop-level sender defaults copied onto Process Order (block C) |
-| **Update** | [ShopFormDialog.vue](../web/src/modules/shop_order/components/ShopFormDialog.vue) (dropship section) and/or panel on process desk |
+| **Update** | [ShopSettingsPage.vue](../../web/src/modules/shop_order/pages/ShopSettingsPage.vue) (dropship charges on setup) |
 | **UI** | Fields: sender name, pickup phone, pickup address, payout account type + info. Shown only when `shop_type = dropship`. |
 
 #### 4. Courier service admin
@@ -758,8 +762,8 @@ Clickable shells first. No new migrations/RPCs in I0. Enhanced later as fields a
 
 | File | Change |
 |------|--------|
-| [adminRoutes.ts](../web/src/modules/shop_order/routes/adminRoutes.ts) | Register dropship list, detail, couriers, ledger |
-| [moduleRegistry.ts](../web/src/modules/navigation/moduleRegistry.ts) | Menu under Shop & Order (`shop_dropship` stub grant or reuse `shop_order_mgmt`) |
+| [adminRoutes.ts](../web/src/modules/shop_order/routes/adminRoutes.ts) | Orders list; dropship detail; shipping hub; courier/finance routes |
+| [moduleRegistry.ts](../web/src/modules/navigation/moduleRegistry.ts) | Staff sidebar: Shops (`shop_config`), Orders (`shop_order_mgmt`), Shipping (`shop_shipping`) |
 | [types/index.ts](../web/src/modules/shop_order/types/index.ts) | Client types for consignment A–E + courier mock |
 | i18n `en-US` / `bn` `shop_admin` / `shop` | Labels for new fields and CTAs |
 | Optional mock | `web/src/modules/shop_order/stores/dropshipDummyStore.ts` — in-memory courier + consignment until I2 |
@@ -778,7 +782,7 @@ Clickable shells first. No new migrations/RPCs in I0. Enhanced later as fields a
 | # | Topic | Decision |
 |---|-------|----------|
 | D-SD1 | Invoice storage | Single `global_invoices` dropship row with dual amounts — not two physical invoice tables |
-| D-SD2 | Module home | Feature lives under **`shop_order`** as submodule `shop_dropship` |
+| D-SD2 | Module home | Dropship is a **shop type** under `shop_order`. Staff nav is Shops / Orders / Shipping. Do **not** assign `shop_dropship`. Process-order = `shop_order_mgmt`; couriers = `shop_shipping` |
 | D-SD3 | Primary CTA | **Process Order**; customer print at `processing`; accounting invoice at `ready_for_pickup` |
 | D-SD4 | Invoice timing | **Recipient print** from order at **`processing`+** (no books). **Posted accounting invoice** from **`ready_for_pickup`+**. After **`delivered`**: courier net remittance + middle-man payout on ledger |
 | D-SD5 | Return fee bearer | Shop flag `deduct_return_charge_from_middle_man` default **true**; per-return override |
@@ -805,7 +809,7 @@ Clickable shells first. No new migrations/RPCs in I0. Enhanced later as fields a
 | Topic | Options | Recommendation |
 |-------|---------|----------------|
 | Lost-package policy | Same as return bearer vs dedicated claim flow | Same bearer in v1 |
-| Ledger location | Dropship menu vs billing-profile page | Dropship menu + link from profile |
+| Ledger location | Shipping remittance vs billing-profile page | Shipping hub + link from profile |
 | District/thana source | Static JSON dropdown vs DB geo table | Static → text in v1 |
 
 ---

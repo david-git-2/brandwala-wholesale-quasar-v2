@@ -64,7 +64,6 @@ const { t } = useI18n();
 
 const SHORT_LABEL_KEYS: Record<ShopConfigurationPresetId, string> = {
   A: 'shop_admin.preset_short_a',
-  B: 'shop_admin.preset_short_b',
   C: 'shop_admin.preset_short_c',
   D: 'shop_admin.preset_short_d',
   E: 'shop_admin.preset_short_e',

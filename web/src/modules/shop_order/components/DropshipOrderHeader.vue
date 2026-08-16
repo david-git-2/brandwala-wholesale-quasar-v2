@@ -23,9 +23,15 @@ const emit = defineEmits<{
   <section class="row items-center justify-between q-col-gutter-md">
     <div class="col-12 col-md">
       <div class="row items-center q-gutter-x-sm">
-        <q-btn flat dense icon="ph ph-arrow-left" color="grey-7" :to="{ name: 'app-shop-dropship-orders-page' }" />
+        <q-btn
+          flat
+          dense
+          icon="ph ph-arrow-left"
+          color="grey-7"
+          :to="{ name: 'app-shop-orders-page', query: { shopType: 'dropship' } }"
+        />
         <div>
-          <div class="text-overline text-primary">Dropship Desk</div>
+          <div class="text-overline text-primary">{{ $t('navigation.orders') }}</div>
           <div class="row items-center q-gutter-x-sm wrap">
             <h1 class="text-h5 text-weight-bold q-my-none">Process Order: {{ order?.order_no || 'ORD-DS' }}</h1>
             <DropshipSettlementBadge

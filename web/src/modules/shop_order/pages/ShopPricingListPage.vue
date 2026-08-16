@@ -162,11 +162,12 @@ const filteredShops = computed(() => {
 
 const goToShopPricing = (shopId: number) => {
   void router.push({
-    name: 'app-shop-pricing-page',
+    name: 'app-shop-settings-page',
     params: {
       tenantSlug: tenantSlug.value,
       shopId: String(shopId),
     },
+    query: { tab: 'listings' },
   });
 };
 

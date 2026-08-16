@@ -1,7 +1,4 @@
--- Phase 8: assign_shipment_to_child RPC
--- Spec: doc/procurement_stock/task.md Phase 8
-
-begin;
+-- tenants use parent_id, not parent_tenant_id. Assign may target this company or a child.
 
 create or replace function public.assign_shipment_to_child(
   p_parent_tenant_id bigint,
@@ -61,5 +58,3 @@ end;
 $$;
 
 grant execute on function public.assign_shipment_to_child(bigint, bigint, bigint) to authenticated;
-
-commit;

@@ -26,6 +26,15 @@ const listShops = async (
   return (data as Shop[] | null) ?? [];
 };
 
+const getShop = async (shopId: number, tenantId: number): Promise<Shop> => {
+  const shops = await listShops(tenantId);
+  const shop = shops.find((s) => s.id === shopId);
+  if (!shop) {
+    throw new Error('Shop not found.');
+  }
+  return shop;
+};
+
 const upsertShop = async (payload: CreateShopPayload | UpdateShopPayload): Promise<Shop> => {
   const isEdit = 'id' in payload && typeof (payload as UpdateShopPayload).id === 'number';
 
@@ -39,7 +48,7 @@ const upsertShop = async (payload: CreateShopPayload | UpdateShopPayload): Promi
     p_is_active: payload.is_active,
     // create-only
     p_shop_type: isEdit ? null : (payload as CreateShopPayload).shop_type,
-    p_vendor_code: isEdit ? null : (payload as CreateShopPayload).vendor_code?.trim() || null,
+    p_vendor_code: payload.vendor_code?.trim() || null,
     // optional
     p_id: isEdit ? (payload as UpdateShopPayload).id : null,
     p_default_currency_id: payload.default_currency_id ?? null,
@@ -668,6 +677,7 @@ const updateCatalogOrderItem = async (
 
 export const shopOrderRepository = {
   listShops,
+  getShop,
   upsertShop,
   deleteShop,
   updateShopExtraAttributes,
