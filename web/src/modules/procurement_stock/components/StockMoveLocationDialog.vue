@@ -134,7 +134,7 @@ const onConfirm = async () => {
       quantity: moveQty.value,
       toLocationId: targetLocationId.value,
       toAvailability: props.stockRow.availability ?? null,
-      toGradeTagId: (props.stockRow as any).grade_tag_id ?? null,
+      toGradeTagId: props.stockRow.grade_tag_id ?? null,
       movementType: 'location_transfer',
       notes: notes.value.trim() || null,
     });

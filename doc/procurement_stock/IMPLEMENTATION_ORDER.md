@@ -56,10 +56,10 @@ Thrift shared engine (**7C**) — separate vertical, not in this track.
 |:-:|:---|:---|
 | **W1** ✅ | **Movement UX** | `StockMovementsPage`: correct `sellable \| held \| unsellable` enum, from/to location, from/to availability, movement detail + post flow |
 | **W2** ✅ | **Receive put-away** | `ReceiveShipmentDialog` + finalize: pick leaf `location_id` (default or per split); wire `receive_putaway` *(superseded UX → **W6**)* |
-| **W3** ✅ | **Warehouse list ops** | `WarehouseStockListPage`: filter by location / availability / shipment status; row actions → draft movement (transfer / availability change). Missing: first-class **shipment** picker → **W8** |
+| **W3** ✅ | **Warehouse list ops** | `WarehouseStockListPage`: filter by location / availability / shipment status; row actions → draft movement (transfer / availability change). Shipment picker → **W8**. |
 | **W4** ✅ | **Stock grain cutover** | Migrate balances from `stock_type_id` rows → `(shipment_item_id, availability, location_id)` unique grain |
 | **W5** ✅ | **Allocation retirement** | Drop soft-qty sell path: listings + cart on `global_stock_id` only; retire `AllocateStockPage` when assign + ATP suffices |
-| **W6** ✅ | **Receive qty checklist + `received_quantity`** | Checklist UI (image, name, ordered, received). Persist `shipment_items.received_quantity` on finalize; post that qty as `sellable` @ default location. Grade `standard` → **W7b**. |
+| **W6** ✅ | **Receive qty checklist + `received_quantity`** | Checklist UI (image, name, ordered, received). Persist `shipment_items.received_quantity` on finalize; post that qty as `sellable` @ default location. Grade `standard` via **W7b**. |
 
 ---
 
@@ -69,7 +69,7 @@ System `stock_grade` + `color` seeds + list RPCs. Tenants select only. See [tag/
 
 ---
 
-## 🔜 Next — Stock grades (W7)
+## ✅ Done — Stock grades (W7)
 
 Two layers stay separate:
 
@@ -78,7 +78,7 @@ Two layers stay separate:
 | **Sell gate** | `sellable` \| `held` \| `unsellable` | ATP — already live |
 | **Grade** | tag FK → `stock_grade` catalog | Condition class on the balance row |
 
-**Warehouse preset grades** (system tags — keep these):
+**Warehouse preset grades** (system tags):
 
 | slug | Typical availability |
 |:---|:---|
@@ -88,26 +88,29 @@ Two layers stay separate:
 | `box_less` | sellable |
 | `badly_damaged` | unsellable |
 
-Produce / clothing presets exist in seed for other verticals; BrandWala day one uses **warehouse**.
-
 | # | Focus | Outcome |
 |:-:|:---|:---|
-| **W7a** | **Column + grain** | Add `global_stocks.grade_tag_id` → `tags.id`. Unique grain → `(shipment_item_id, availability, location_id, grade_tag_id)`. Backfill existing rows to warehouse `standard`. |
-| **W7b** | **Receive posts grade** | Finalize / receive checklist posts `sellable` + `standard` (+ default location). No grade picker on receive. |
-| **W7c** | **Movements change grade** | Availability and/or grade transfers via movements (e.g. standard → open_box staying sellable; or → badly_damaged + unsellable). Warehouse list shows grade. |
-
-Spec: [stock/schema.md](./stock/schema.md) · [stock/workflow_flow.md](./stock/workflow_flow.md) · [tag/presets.md](../tag/presets.md)
+| **W7a** ✅ | **Column + grain** | `global_stocks.grade_tag_id` → `tags.id`. Unique grain `(shipment_item_id, availability, location_id, grade_tag_id)`. Backfill to warehouse `standard`. |
+| **W7b** ✅ | **Receive posts grade** | Finalize / receive checklist posts `sellable` + `standard` (+ default location). No grade picker on receive. |
+| **W7c** ✅ | **Movements change grade** | Availability and/or grade transfers via movements. Warehouse list shows grade name + availability. |
 
 ---
 
-## After W7 — Organize + return (W8–W9)
+## ✅ Done — Organize (W8)
 
 | # | Focus | Outcome |
 |:-:|:---|:---|
-| **W8** | **Shipment-first organize UI** | Warehouse list filter by **`shipment_id`** (not only status/search). Deep-link from shipment details → that batch. Staff split qty to bins / `held` / `unsellable` / grades via **movements** only. |
-| **W9** | **Return inbound from sales/shop** | Posting a customer return creates a posted `return_inbound` movement in the same txn. Default **`held` @ returns** location. Return UI sets **grade** + **availability** (sell gate). Then W8 if they still need to re-bin. Do **not** increment the original sellable row. |
+| **W8** ✅ | **Shipment-first organize UI** | Warehouse list filter by **`shipment_id`** (drawer picker + deep-link from shipment details). Staff split qty to bins / `held` / `unsellable` / grades via **movements** only. |
 
-Desk **post** deduct and shop checkout deduct are already live (7A–14B ATP cutover). After W7 they keep targeting `global_stock_id` (now includes grade). Void still restores qty.
+---
+
+## ✅ Done — Return inbound (W9)
+
+| # | Focus | Outcome |
+|:-:|:---|:---|
+| **W9** ✅ | **Return inbound from sales/shop** | Posting a customer return creates a posted `return_inbound` movement in the same txn. Default **`held` @ returns**. Return UI sets **grade** + **availability**. Do **not** increment the original sellable row. |
+
+Desk **post** deduct and shop checkout deduct are already live (7A–14B ATP cutover). They target `global_stock_id` (includes grade). Void still restores qty.
 
 **Do not build:** flipping `availability` to `held` for draft invoices or carts; a reservation ledger in procurement; free-edit qty on warehouse rows.
 
@@ -130,4 +133,4 @@ Desk **post** deduct and shop checkout deduct are already live (7A–14B ATP cut
 
 ## Agent rule
 
-Work **one row** (W7a → W7b → W7c → W8 → W9) per session. Read canon for that row; stop after review — do not stack phases.
+Work **one row** per session. Procurement shipment/warehouse track (7A–14B, W1–W9) is complete.

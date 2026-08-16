@@ -6,7 +6,7 @@
 - **New Migrations Only**: Only inspect or edit `supabase/migrations/*.sql` files when writing a new migration script.
 
 ## Procurement module — `doc/procurement_stock/IMPLEMENTATION_ORDER.md`
-Shipment track (7A–14B) is complete. Warehouse work (**W1+**) is next — one row per session.
+Shipment track (7A–14B) and warehouse W1–W9 are complete.
 When a phase adds SQL migrations:
 - **Read** the migration files you add or replace.
 - **Run** `pnpm run backend:reset` and `pnpm run backend:types` before marking done.

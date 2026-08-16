@@ -637,7 +637,7 @@ Commerce does not create inbound lines (**D2**).
 
 Master implementation plan: [IMPLEMENTATION_ORDER.md](./IMPLEMENTATION_ORDER.md)
 
-Phases 1–10 (legacy tracker) done. Current track: **W7 → W8 → W9**.
+Phases 1–10 (legacy tracker) done. Current track: **complete** (W9 return inbound shipped).
 
 ### Done
 
@@ -647,20 +647,19 @@ Phases 1–10 (legacy tracker) done. Current track: **W7 → W8 → W9**.
 | **7A–14B** | One vendor/shipment, cost stamp, assign, ATP, movements, pay/settle | Done |
 | **W1–W6** | Movements UX, receive checklist, grain cutover, allocation retirement | Done |
 | **T1** | Tag catalog `stock_grade` + `color` seeds | Done |
+| **W7a–c** | `grade_tag_id` grain; receive posts `standard`; movements change grade; warehouse list shows grade | Done |
+| **W8** | Shipment-first warehouse organize UI | Done |
+| **W9** | Sales/shop return → `return_inbound` (grade + availability) | Done |
 
 ### Remaining
 
-| Phase | Deliverable | Status |
-|-------|-------------|--------|
-| **W7a–c** | `grade_tag_id` grain; receive posts `standard`; movements change grade | Next |
-| **W8** | Shipment-first warehouse organize UI | After W7 |
-| **W9** | Sales/shop return → `return_inbound` (grade + availability) | After W8 |
+None on this track. Deferred items stay in [IMPLEMENTATION_ORDER.md](./IMPLEMENTATION_ORDER.md) Later.
 
 ### Out of scope (separate tracks)
 
 | Track | Deliverable | Status |
 |-------|-------------|--------|
-| Desk / shop deduct | Invoice post + shop checkout decrement `global_stock_id` | Live (keep aligned after W7) |
+| Desk / shop deduct | Invoice post + shop checkout decrement `global_stock_id` | Live |
 | Order / draft holds | ATP subtract only — not warehouse `held` | Locked |
 | Downstream rename | `global_invoices*` → `sales_invoices*` | See sales_invoice issues |
 

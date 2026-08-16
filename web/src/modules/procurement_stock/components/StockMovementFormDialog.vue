@@ -87,11 +87,7 @@
               dense
               outlined
               class="soft-input"
-              :rules="[
-                (v) => (v != null && v > 0) || 'Quantity must be > 0',
-                (v) =>
-                  !targetStock || v <= targetStock.quantity || `Max available: ${targetStock.quantity}`,
-              ]"
+              :rules="quantityRules"
             />
 
             <!-- From / To Location Fields -->
@@ -152,6 +148,21 @@
                 />
               </div>
             </div>
+
+            <q-select
+              v-if="showToGrade"
+              v-model="form.to_grade_tag_id"
+              :options="gradeOptions"
+              label="To grade *"
+              dense
+              outlined
+              emit-value
+              map-options
+              option-label="name"
+              option-value="id"
+              class="soft-input"
+              :rules="[(v) => !!v || 'Target grade is required']"
+            />
           </template>
         </q-card-section>
 
@@ -186,6 +197,8 @@ import {
   formatStockAvailability,
   type StockAvailability,
 } from '../constants/stockAvailability';
+import { tagRepository } from 'src/modules/tag/repositories/tagRepository';
+import type { Tag } from 'src/modules/tag/types';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 
 type StockMovementType = Database['public']['Enums']['stock_movement_type'];
@@ -214,6 +227,7 @@ const loading = ref(false);
 const creating = ref(false);
 const stockRows = ref<GlobalStock[]>([]);
 const locations = ref<StockLocation[]>([]);
+const gradeOptions = ref<Tag[]>([]);
 
 const form = reactive({
   movement_type: 'location_transfer' as StockMovementType,
@@ -224,6 +238,7 @@ const form = reactive({
   to_location_id: null as number | null,
   from_availability: null as StockAvailability | null,
   to_availability: null as StockAvailability | null,
+  to_grade_tag_id: null as number | null,
 });
 
 const dialogTitle = computed(() => {
@@ -237,6 +252,7 @@ const resetForm = () => {
   form.notes = '';
   form.to_location_id = null;
   form.to_availability = null;
+  form.to_grade_tag_id = null;
 
   if (props.initialStock) {
     form.stock_id = props.initialStock.id;
@@ -255,7 +271,7 @@ const loadData = async () => {
   if (!props.tenantId) return;
   loading.value = true;
   try {
-    const [stockRes, locRes] = await Promise.all([
+    const [stockRes, locRes, grades] = await Promise.all([
       props.lockFields
         ? Promise.resolve({ data: [] })
         : globalStockRepository.listPaginated(
@@ -269,9 +285,21 @@ const loadData = async () => {
             true,
           ),
       stockLocationRepository.listStockLocations(props.tenantId),
+      tagRepository.listTagsForCategory({ moduleKey: 'stock_grade', code: 'warehouse' }),
     ]);
     stockRows.value = stockRes.data;
     locations.value = locRes;
+    gradeOptions.value = grades;
+    if (form.movement_type === 'return_inbound') {
+      form.to_availability = 'held';
+      if (returnLocations.value.length > 0 && form.to_location_id == null) {
+        form.to_location_id = returnLocations.value[0]?.id ?? null;
+      }
+      if (form.to_grade_tag_id == null) {
+        const standard = gradeOptions.value.find((g) => g.slug === 'standard');
+        form.to_grade_tag_id = standard?.id ?? gradeOptions.value[0]?.id ?? null;
+      }
+    }
   } catch (err) {
     showErrorNotification(err instanceof Error ? err.message : 'Failed to load options');
   } finally {
@@ -311,6 +339,7 @@ watch(
     form.from_availability = (stock.availability as StockAvailability) ?? 'sellable';
     form.to_location_id = null;
     form.to_availability = null;
+    form.to_grade_tag_id = null;
   },
 );
 
@@ -319,6 +348,11 @@ watch(
   (type) => {
     if (type === 'return_inbound') {
       form.to_availability = 'held';
+      if (returnLocations.value.length > 0) {
+        form.to_location_id = returnLocations.value[0]?.id ?? null;
+      }
+      const standard = gradeOptions.value.find((g) => g.slug === 'standard');
+      form.to_grade_tag_id = standard?.id ?? gradeOptions.value[0]?.id ?? null;
     }
   },
 );
@@ -338,6 +372,23 @@ const showFromAvailability = computed(() =>
 const showToAvailability = computed(() =>
   ['availability_transfer', 'return_inbound', 'adjustment'].includes(form.movement_type),
 );
+
+const showToGrade = computed(() => form.movement_type === 'return_inbound');
+
+const quantityRules = computed(() => {
+  const rules: Array<(v: number | null) => true | string> = [
+    (v) => (v != null && v > 0) || 'Quantity must be > 0',
+  ];
+  if (form.movement_type !== 'return_inbound') {
+    rules.push(
+      (v) =>
+        !targetStock.value
+        || (v != null && v <= targetStock.value.quantity)
+        || `Max available: ${targetStock.value?.quantity}`,
+    );
+  }
+  return rules;
+});
 
 const fromLocationLabel = computed(() => {
   if (!form.from_location_id) return 'No location';
@@ -391,7 +442,7 @@ const canCreate = computed(() => {
         form.quantity <= stock.quantity
       );
     case 'return_inbound':
-      return !!form.to_location_id && form.quantity <= stock.quantity;
+      return !!form.to_location_id && !!form.to_availability && !!form.to_grade_tag_id;
     case 'adjustment':
       return form.quantity > 0;
     default:
@@ -416,6 +467,8 @@ const onSubmit = async () => {
           to_location_id: form.to_location_id,
           from_availability: form.from_availability,
           to_availability: form.to_availability,
+          from_grade_tag_id: targetStock.value?.grade_tag_id ?? null,
+          to_grade_tag_id: form.to_grade_tag_id,
         },
       ],
     });

@@ -724,13 +724,13 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'global_invoice',
     name: 'Sales Invoices',
-    description: 'Desk invoices: wholesale, retail, and dropship across sister concerns.',
+    description: 'Desk invoices: wholesale, retail, and dropship.',
     parentModuleKey: 'sales_invoice',
     routes: [
       {
         scope: 'app',
         title: 'Invoices',
-        caption: 'Create and manage desk invoices',
+        caption: 'Child desk sales and parent books',
         icon: 'ph ph-receipt',
         routeSegment: 'sales/invoices',
         requiredAction: 'view',
@@ -795,18 +795,9 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'invoice_brand',
     name: 'Invoice Brands',
-    description: 'Configure invoice branding, logos, layout styles, and details.',
+    description: 'Print layout presets for the issuing child. Config only — no sidebar.',
     parentModuleKey: 'sales_invoice',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Invoice Brands',
-        caption: 'Manage print profiles & names',
-        icon: 'ph ph-stamp',
-        routeSegment: 'sales/invoices/brands',
-        requiredAction: 'view',
-      },
-    ],
+    routes: [],
   },
   {
     key: 'reporting_treasury',

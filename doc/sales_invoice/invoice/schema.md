@@ -13,18 +13,42 @@ Unified desk sales document for **wholesale**, **retail** (account + direct), an
 
 | Layer | Role |
 | :--- | :--- |
-| **`sales_invoices` pack** | Commercial + AR document: who, what, sell prices, provisional COGS, payment balance, ops fulfillment |
+| **`sales_invoices` pack** | One commercial + AR document per sale. **Books owner = parent** (`tenant_id`). **Seller = child** (`issued_by_tenant_id`). |
 | **Wallet / `wallet_ledger`** | Cash & entity money movements on **Pay / allocate** — not full GAAP books |
 | **Shipment stamp** | Living unit cost (`shipment_items.landed_cost_bdt`) |
-| **Reports / treasury** | **Actual** batch / investor P&L = invoice revenue − (current stamp × sold qty) |
-| **Customer-facing print** | Face / end-customer sheet — **same** invoice row, different print mode; never a second stock-deducting invoice |
+| **Reports / treasury** | **Actual** batch / investor P&L = invoice revenue − (current stamp × sold qty). Parent reads `tenant_id`. |
+| **Customer-facing print** | Child brand / face prices — **same** invoice row, different UI/print mode; never a second stock-deducting invoice |
 
 ```text
-Invoice   = sell + frozen provisional cost + AR balances
+Invoice   = sell + frozen provisional cost + AR balances   ← one row, parent-owned
 Wallet    = cash / dues when Pay runs
-Report    = revenue − living stamp × sold qty   ← company actual profit
-Print     = accounting view  OR  customer face view
+Report    = revenue − living stamp × sold qty   ← company actual profit (parent)
+Print/UI  = child customer view  OR  parent accounting view
 ```
+
+### Document ownership (locked)
+
+One sale = **one** `sales_invoices` row. Lines may mix any parent shipments / any sister’s assigned batches. Do **not** split into N invoices per sister or per shipment. Child and parent screens are views of the same row.
+
+| Field | Nested group | Standalone |
+| :--- | :--- | :--- |
+| `tenant_id` | Parent (stock owner, books, number series) | Self |
+| `issued_by_tenant_id` | Selling child (desk/shop create; customer print brand; profile catalog) | Same as `tenant_id` |
+| `parent_tenant_id` | **Not on this pack** — redundant with `tenant_id` | — |
+
+| Who | Sees | Filter |
+| :--- | :--- | :--- |
+| Child desk | Create / list / pay / return / customer print | `issued_by_tenant_id` = that child |
+| Parent | Rollup list, cost, margin, group reports | `tenant_id` = parent |
+| Parent UI issue | **No** — parent does not self-issue desk invoices | — |
+
+**RLS:** Child members: read/write where `issued_by_tenant_id` is a tenant they belong to (cannot see sister invoices). Parent members: read where `tenant_id` = parent.
+
+**Profiles:** `billing_profiles` / `recipient_profiles` stay **per issuing child**. RPC: `profile.tenant_id` must equal `invoice.issued_by_tenant_id` (not `invoice.tenant_id`).
+
+**Number series:** unique `(tenant_id, invoice_no)` — one pool per parent company.
+
+**Cutover from live `global_invoices*`:** `issued_by_tenant_id = old.tenant_id`; `tenant_id = old.parent_tenant_id`. Resolve duplicate `invoice_no` across sisters at migrate (prefix or resequence).
 
 **Not this domain:** chart of accounts, journal vouchers, thrift sales, purchase/AP bills.
 
@@ -108,16 +132,16 @@ One row = one **accounting** sale. Totals cached for reads; derived from lines +
 | Field | Type | Required | Description |
 | :--- | :--- | :---: | :--- |
 | `id` | BIGINT | Yes | Primary key |
-| `tenant_id` | BIGINT | Yes | Issuing child tenant |
-| `parent_tenant_id` | BIGINT | Yes | Parent rollup / stock owner |
-| `invoice_no` | TEXT | Yes | Unique per `(tenant_id, invoice_no)` |
+| `tenant_id` | BIGINT | Yes | **Parent** books owner (stock / reports). Standalone = self |
+| `issued_by_tenant_id` | BIGINT | Yes | Selling **child** (desk/shop). Standalone = `tenant_id` |
+| `invoice_no` | TEXT | Yes | Unique per `(tenant_id, invoice_no)` — company series |
 | `invoice_type` | `invoice_type` | Yes | Channel |
 | `retail_billing_mode` | `retail_billing_mode` | No | Retail only; null otherwise |
 | `invoice_status` | `invoice_status` | Yes | Default `draft` |
 | `fulfillment_status` | `fulfillment_status` | Yes | Ops only; default `pending` — does **not** affect margin/AR |
 | `payment_status` | `payment_status` | Yes | Default `unpaid` |
-| `billing_profile_id` | BIGINT | No | FK `billing_profiles`; must match `tenant_id` when set |
-| `recipient_profile_id` | BIGINT | No | FK `recipient_profiles`; optional catalog link |
+| `billing_profile_id` | BIGINT | No | FK `billing_profiles`; must match `issued_by_tenant_id` when set |
+| `recipient_profile_id` | BIGINT | No | FK `recipient_profiles`; optional; must match `issued_by_tenant_id` when set |
 | `recipient_name` | TEXT | No | Snapshot (audit if profile changes) |
 | `recipient_phone` | TEXT | No | Snapshot |
 | `recipient_address` | TEXT | No | Snapshot |
@@ -153,6 +177,7 @@ Stock pick + accounting sell + provisional COGS snapshot.
 | `invoice_id` | BIGINT | Yes | FK `sales_invoices` |
 | `global_stock_id` | BIGINT | Yes | FK `global_stocks` — ATP / deduct grain |
 | `shipment_item_id` | BIGINT | Yes | FK `shipment_items` — **required** for actual P&L join |
+| `assigned_child_tenant_id` | BIGINT | No | Snapshot of `shipments.assigned_child_tenant_id` at add/post — report “whose batch”, not a second invoice |
 | `name_snapshot` | TEXT | Yes | Product name at sale |
 | `quantity` | INT | Yes | Qty sold |
 | `unit_price` | NUMERIC(12,2) | Yes | **Accounting** unit sell price |
@@ -200,7 +225,8 @@ Credit-note style returns. Posted invoice prices stay immutable.
 | Field | Type | Required | Description |
 | :--- | :--- | :---: | :--- |
 | `id` | BIGINT | Yes | Primary key |
-| `tenant_id` | BIGINT | Yes | Issuing child |
+| `tenant_id` | BIGINT | Yes | Same as invoice — **parent** books owner |
+| `issued_by_tenant_id` | BIGINT | Yes | Selling child (who processed the return) |
 | `invoice_id` | BIGINT | Yes | Original **posted** invoice |
 | `return_no` | TEXT | Yes | Document number |
 | `status` | `sales_return_status` | Yes | `posted` \| `void` |
@@ -232,24 +258,24 @@ On post return: bump `return_quantity`; post a `return_inbound` movement (defaul
 
 | Table | Purpose |
 | :--- | :--- |
-| `billing_profiles` | Buyer / reseller / dropship middle man — AR identity per child tenant |
+| `billing_profiles` | Buyer / reseller / dropship middle man — AR identity **per issuing child** (`issued_by_tenant_id`) |
 | `recipient_profiles` | Reusable delivery parties; invoice always keeps name/phone/address snapshots |
-| `invoice_brands` | Print layout presets (config only) |
+| `invoice_brands` | Print presets **per issuing child** — customer print uses `issued_by_tenant_id` brand |
 
 ---
 
 ## 4. Customer-facing vs accounting document (locked)
 
-**One accounting invoice.** Different numbers for the end customer are a **print / face layer**, not a second `sales_invoices` row that deducts stock.
+**One invoice row.** Child vs parent is **UI / print**, not a second `sales_invoices` row that deducts stock. Different numbers for the end customer are the **face layer** on that same row.
 
-| View | Uses | Stock / AR? |
-| :--- | :--- | :---: |
-| Accounting print | `unit_price`, charge `amount`, AR totals | Yes — source of truth |
-| Customer / face print | `face_unit_price` (fallback `unit_price`), charge `face_amount`, recipient block | No — presentation only |
+| View | Audience | Uses | Stock / AR? |
+| :--- | :--- | :--- | :---: |
+| Child UI + customer print | Selling sister | Child `invoice_brands`; `face_unit_price` / `face_amount` (fallback accounting) | Same row — presentation |
+| Parent UI + accounting print | Finance / books | `unit_price`, charge `amount`, AR totals, COGS | Yes — source of truth |
 
-Shop-originated dropship may still emit a customer sheet from the order earlier in the flow; the desk **accounting** invoice remains this pack. See [SHOP_ORDER_DROPSHIP.md](../../SHOP_ORDER_DROPSHIP.md).
+Shop-originated dropship may still emit a customer sheet from the order earlier in the flow; the desk **accounting** invoice remains this pack. See [SHOP_ORDER_DROPSHIP.md](../../shop_order/SHOP_ORDER_DROPSHIP.md).
 
-Do **not** create two posted sales invoices for the same stock sale.
+Do **not** create two posted sales invoices for the same stock sale. Do **not** auto-split a mixed basket into per-sister or per-shipment invoices.
 
 ---
 
@@ -287,10 +313,10 @@ Wallet is **not** a chart of accounts. Company actual profit lives in **reports*
 
 `post_sales_invoice` in one transaction:
 
-1. Validate `draft`; lines present; situation FKs valid.
+1. Validate `draft`; lines present; situation FKs valid (`profile.tenant_id = issued_by_tenant_id`).
 2. ATP check: pickable sellable qty − other draft holds − shop carts ≥ line qty; `availability = sellable` and location `is_pickable` only.
 3. Set `invoice_status = posted`; stamp `posted_at` / `posted_by`.
-4. Per line: copy `shipment_item_id` from stock if needed; snapshot `landed_cost_bdt` from living stamp; decrement `global_stocks.quantity`.
+4. Per line: copy `shipment_item_id` from stock if needed; snapshot `landed_cost_bdt` from living stamp; snapshot `assigned_child_tenant_id` from the stock’s shipment if null; decrement `global_stocks.quantity`.
 5. Recompute header totals. Do **not** auto-post wallet AR (day one).
 
 ### 5.4 Draft holds → ATP
@@ -310,20 +336,24 @@ Same invoice pack for future desk features:
 | Shop → desk dropship | Create this invoice from order at accounting moment |
 | Settlement / COD variance | Header fields already present |
 
-**Out of band:** thrift, full GL, vendor bills.
+**Out of band:** thrift, full GL, vendor bills, a second customer-invoice table, auto-split invoices per sister/shipment.
 
 ---
 
 ## 6. Entity sketch
 
 ```text
-billing_profiles ──┐
-recipient_profiles ┼──► sales_invoices ──* sales_invoice_items ──► global_stocks
-                   │         │                    │
-                   │         │                    └──► shipment_items (stamp / actual COGS)
-                   │         └──* sales_invoice_charges
-                   │
-                   └──► sales_invoice_returns ──* sales_invoice_return_items
+billing_profiles (child catalog) ──┐
+recipient_profiles (child catalog) ┼──► sales_invoices
+                                   │      tenant_id = parent
+                                   │      issued_by_tenant_id = selling child
+                                   │         │
+                                   │         ├──* sales_invoice_items ──► global_stocks
+                                   │         │         └──► shipment_items (stamp / actual COGS)
+                                   │         │         └── assigned_child_tenant_id (batch listing child)
+                                   │         └──* sales_invoice_charges
+                                   │
+                                   └──► sales_invoice_returns ──* sales_invoice_return_items
 ```
 
 ---

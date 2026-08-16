@@ -2,11 +2,11 @@
 
 **Module:** `sales_invoice`  
 **Architecture (locked):** [invoice/](./invoice/) · [../procurement_stock/stock/](../procurement_stock/stock/) · [../procurement_stock/shipment/](../procurement_stock/shipment/) · [../wallet/](../wallet/)  
-**Updated:** 2026-08-15
+**Updated:** 2026-08-16
 
 Scope: desk sales only. Thrift (`thrift_sales_invoices`) out of scope.
 
-**Decided in v2 (not listed as open):** one invoice pack for wholesale / retail / dropship; flexible charges; required `shipment_item_id`; provisional COGS frozen at post; actual P&L via report join; customer face = print layer; draft holds = query draft lines; post stub-skips wallet AR; Pay uses `source_type = 'sales_invoice'` (+ `sales_invoice_return` for refunds); **return stock = `return_inbound` movement** (default `held` @ returns; staff set grade + availability).
+**Decided in v2 (not listed as open):** one invoice pack for wholesale / retail / dropship; flexible charges; required `shipment_item_id`; provisional COGS frozen at post; actual P&L via report join; customer face = print layer; draft holds = query draft lines; post stub-skips wallet AR; Pay uses `source_type = 'sales_invoice'` (+ `sales_invoice_return` for refunds); **return stock = `return_inbound` movement** (default `held` @ returns; staff set grade + availability); **books owner = parent `tenant_id`**, seller = `issued_by_tenant_id`; one row per sale (no split / no second customer table); number series unique `(tenant_id, invoice_no)`; line `assigned_child_tenant_id` snapshot.
 
 ---
 
@@ -14,7 +14,7 @@ Scope: desk sales only. Thrift (`thrift_sales_invoices`) out of scope.
 
 **Solution locked:** Target family `sales_invoices*` — [schema.md](./invoice/schema.md).
 
-**Still open:** migration path from live `global_invoices*` (rename vs drop-recreate); RPC/UI string updates.
+**Still open:** migration path from live `global_invoices*` (rename vs drop-recreate); RPC/UI string updates; backfill `issued_by_tenant_id = old.tenant_id`, `tenant_id = old.parent_tenant_id`; resolve duplicate `invoice_no` across sisters (company-wide unique).
 
 ---
 
@@ -28,7 +28,7 @@ Scope: desk sales only. Thrift (`thrift_sales_invoices`) out of scope.
 | :--- | :--- | :---: |
 | RPC set | create / item CRUD / post / void / return / pay / fulfillment | Yes |
 | Post ATP | Sellable only; include other drafts + shop carts | Yes |
-| Return stock path | Posted `return_inbound` movement (default `held` @ returns; grade + availability on the movement) — [stock/workflow_flow.md](../procurement_stock/stock/workflow_flow.md) Stage 5 · procurement **W9** | **Locked** — build with W9 |
+| Return stock path | Posted `return_inbound` movement (default `held` @ returns; grade + availability on the movement) — [stock/workflow_flow.md](../procurement_stock/stock/workflow_flow.md) Stage 5 · procurement **W9** | **Done** |
 
 ---
 

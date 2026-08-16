@@ -16,7 +16,7 @@
           <div class="text-subtitle2 text-weight-bold text-grey-9 q-mt-xs">{{ stockRow.item_name }}</div>
           <div class="row items-center justify-between text-caption text-grey-7 q-mt-xs">
             <div>Loc: <strong>{{ stockRow.location_name || 'Main Warehouse' }}</strong></div>
-            <div>Grade: <strong>{{ stockRow.stock_type_description || stockRow.availability || 'Standard' }}</strong></div>
+            <div>Grade: <strong>{{ currentGradeLabel }}</strong></div>
             <div>Qty: <strong class="text-primary">{{ stockRow.quantity }} pcs</strong></div>
           </div>
         </div>
@@ -55,7 +55,7 @@
                 <q-item v-bind="scope.itemProps">
                   <q-item-section>
                     <q-item-label>{{ scope.opt.name }}</q-item-label>
-                    <q-item-label caption>{{ scope.opt.description }}</q-item-label>
+                    <q-item-label v-if="scope.opt.slug" caption>{{ scope.opt.slug }}</q-item-label>
                   </q-item-section>
                 </q-item>
               </template>
@@ -109,6 +109,7 @@
               unelevated
               no-caps
               :loading="submitting"
+              :disable="!selectedGrade"
               label="Confirm Move & Split"
             />
           </div>
@@ -120,15 +121,17 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { supabase } from 'src/boot/supabase';
-import type { Database } from 'src/types/database.types';
 import type { GlobalStock } from '../repositories/globalStockRepository';
 import { globalStockRepository } from '../repositories/globalStockRepository';
 import { useStockLocationStore } from '../stores/stockLocationStore';
 import { getLeafLocations, toLocationSelectOptions } from '../utils/stockLocationOptions';
+import {
+  STOCK_AVAILABILITY_OPTIONS,
+  type StockAvailability,
+} from '../constants/stockAvailability';
+import { tagRepository } from 'src/modules/tag/repositories/tagRepository';
+import type { Tag } from 'src/modules/tag/types';
 import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';
-
-type StockAvailability = Database['public']['Enums']['stock_availability'];
 
 const props = defineProps<{
   modelValue: boolean;
@@ -155,19 +158,14 @@ const targetLocationId = ref<number | null>(null);
 const notes = ref<string>('');
 const submitting = ref<boolean>(false);
 
-const gradeOptions = ref<Array<{ id: number; name: string; code: string; description?: string }>>([
-  { id: 1, name: 'Standard', code: 'standard', description: 'Brand new sellable condition' },
-  { id: 2, name: 'Open Box', code: 'open_box', description: 'Box opened but product intact' },
-  { id: 3, name: 'Box Damage', code: 'box_damage', description: 'Torn/crushed outer box' },
-  { id: 4, name: 'Box Less', code: 'box_less', description: 'No outer packaging' },
-  { id: 5, name: 'Badly Damaged', code: 'badly_damaged', description: 'Defective/broken product' },
-]);
+const gradeOptions = ref<Tag[]>([]);
+const availabilityOptions = STOCK_AVAILABILITY_OPTIONS;
 
-const availabilityOptions = [
-  { label: 'Sellable (Available for listing)', value: 'sellable' },
-  { label: 'Quarantine (Held)', value: 'quarantine' },
-  { label: 'Unsellable (Damaged / Return)', value: 'unsellable' },
-];
+const currentGradeLabel = computed(() => {
+  const id = props.stockRow?.grade_tag_id;
+  const match = gradeOptions.value.find((g) => g.id === id);
+  return match?.name || props.stockRow?.grade_name || 'Standard';
+});
 
 const locationOptions = computed(() =>
   toLocationSelectOptions(getLeafLocations(stockLocationStore.items)),
@@ -175,17 +173,13 @@ const locationOptions = computed(() =>
 
 const fetchSystemGrades = async () => {
   try {
-    const { data, error } = await (supabase as any).rpc('list_tags_for_category', { p_code: 'stock_grade' });
-    if (!error && Array.isArray(data) && data.length > 0) {
-      gradeOptions.value = data.map((t: any) => ({
-        id: t.id,
-        name: t.name,
-        code: t.code,
-        description: t.description || '',
-      }));
-    }
-  } catch {
-    // fallback to static defaults
+    gradeOptions.value = await tagRepository.listTagsForCategory({
+      moduleKey: 'stock_grade',
+      code: 'warehouse',
+    });
+  } catch (err: unknown) {
+    gradeOptions.value = [];
+    showErrorNotification(err instanceof Error ? err.message : 'Failed to load stock grades');
   }
 };
 
@@ -197,27 +191,26 @@ const onShow = async () => {
     targetLocationId.value = props.stockRow.location_id || null;
     notes.value = '';
 
-    // match existing grade tag if available
-    const existing = gradeOptions.value.find((g) => g.id === (props.stockRow as any).grade_tag_id);
-    if (existing) {
-      selectedGrade.value = existing.id;
-    } else {
-      selectedGrade.value = gradeOptions.value[0]?.id || 1;
-    }
+    const existing = gradeOptions.value.find((g) => g.id === props.stockRow?.grade_tag_id);
+    selectedGrade.value = existing?.id ?? gradeOptions.value[0]?.id ?? null;
   }
 };
 
 const onGradeChange = (gradeId: number) => {
   const g = gradeOptions.value.find((opt) => opt.id === gradeId);
-  if (g && (g.code === 'badly_damaged' || g.name.toLowerCase().includes('badly damaged'))) {
+  if (!g) return;
+  if (g.metadata?.maps_to_availability === 'unsellable') {
     targetAvailability.value = 'unsellable';
-  } else if (targetAvailability.value === 'unsellable' && g && g.code === 'standard') {
+  } else if (
+    targetAvailability.value === 'unsellable'
+    && g.metadata?.maps_to_availability === 'sellable'
+  ) {
     targetAvailability.value = 'sellable';
   }
 };
 
 const onConfirm = async () => {
-  if (!props.stockRow || !props.tenantId) return;
+  if (!props.stockRow || !props.tenantId || !selectedGrade.value) return;
 
   submitting.value = true;
   try {

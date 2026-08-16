@@ -35,7 +35,6 @@ Receive (qty checklist) → stock @ default location + **standard grade** → or
 
   **Grade does not gate ATP** (`open_box` etc. stay sellable).
 * **Two “held”s (locked):** warehouse `availability = held` = quarantine (movement, out of ATP). Order/invoice hold = draft lines + cart reservations (ATP subtract only — **do not** flip warehouse availability).
-* **Live bridge:** `global_stock_types` until W7 cutover — [stock_type_api.md](./api/stock_type_api.md) transitional.
 
 ---
 
@@ -74,7 +73,7 @@ After receive, all qty / availability / **grade** / **location** changes go thro
 
 > Loss, damage grades, and condition are recorded **here**, not on the shipment receive checklist.
 
-**Organize UI (W8):** warehouse list filtered by `shipment_id` (deep-link from the shipment). Row actions draft a movement. Never type a new qty on the balance row.
+**Organize UI (W8):** warehouse list filtered by `shipment_id` (drawer picker + deep-link from the shipment). Row actions draft a movement. Never type a new qty on the balance row.
 
 ---
 

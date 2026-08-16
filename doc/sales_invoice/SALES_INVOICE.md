@@ -1,6 +1,6 @@
 # Sales & Invoice
 
-BrandWala / TradeFlow BD uses a **parent module** for desk sales, customer profiles, and invoice output. Sister concerns (child tenants) issue wholesale, retail, and dropship invoices from parent-owned stock. Billing profiles identify the financial account for wholesale and account-based retail; recipient profiles identify the delivery endpoint. **Desk sales are the only invoice issuance path** — all types write to **`global_invoices`**. End-customer direct sales (no billing account) use **retail direct**.
+BrandWala / TradeFlow BD uses a **parent module** for desk sales, customer profiles, and invoice output. Sister concerns (child tenants) **sell** wholesale, retail, and dropship from parent-owned stock; the **invoice row is owned by the parent** (`tenant_id`). The selling child is `issued_by_tenant_id` — one customer-facing UI/print of that same row. Billing profiles identify the financial account for wholesale and account-based retail; recipient profiles identify the delivery endpoint. **Desk sales are the only invoice issuance path** — all types write to **`sales_invoices`** (live: `global_invoices`). End-customer direct sales (no billing account) use **retail direct**. Canonical schema: [invoice/schema.md](./invoice/schema.md).
 
 Related: [MASTER_PLAN.md](MASTER_PLAN.md) (§6.4–6.6, §14 rows 13–17, §16.6–16.9, §17 modules 10–11), [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md), [REPORTING_TREASURY.md](REPORTING_TREASURY.md), [SHOP_ORDER.md](SHOP_ORDER.md), [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) (shop-originated dropship: customer print @ processing, accounting invoice @ ready_for_pickup, courier remittance + middle-man ledger after delivered), [TENANT_MODEL_AND_ACCESS.md](TENANT_MODEL_AND_ACCESS.md), [APP_SCOPES_AND_ACCESS.md](APP_SCOPES_AND_ACCESS.md).
 
@@ -19,8 +19,8 @@ Related: [MASTER_PLAN.md](MASTER_PLAN.md) (§6.4–6.6, §14 rows 13–17, §16.
 ### Submodule — `global_invoice` (Sales Invoices)
 
 **As a** desk salesperson at a sister concern,  
-**I want to** create and post invoices from sellable parent stock,  
-**So that** stock, margin, and payment balances stay correct for every sale type.
+**I want to** create and post invoices from sellable parent stock (including mixed shipments / other sisters’ assigned batches),  
+**So that** the customer sees **one** invoice in my brand, while stock, margin, and payment balances stay on the **parent** books.
 
 | Invoice type | User story |
 |--------------|------------|
@@ -88,14 +88,15 @@ This document answers:
 
 ## 1. Overview
 
-| Property | Desk sales (`global_invoice`) |
+| Property | Desk sales (`global_invoice` → `sales_invoices`) |
 |----------|------------------------------|
-| Scope | Child tenant issues desk invoices from parent stock |
-| `tenant_id` | Issuing sister concern |
+| Scope | Child **sells**; parent **owns** the invoice row; mix any parent stock |
+| `tenant_id` | Parent books owner |
+| `issued_by_tenant_id` | Selling sister (child UI / print / profiles) |
 | Auth surface | App (`memberships`) |
 | Module gating | `global_invoice` submodule under `sales_invoice` parent |
-| Primary UI (target) | `/:slug/app/sales/invoices` |
-| Write target | `global_invoices` |
+| Primary UI (target) | `/:slug/app/sales/invoices` — child: issuer list; parent: rollup |
+| Write target | `sales_invoices` (live `global_invoices`) |
 
 ### What this domain is
 
@@ -163,11 +164,11 @@ Redirect `/app/invoices/*` and `/app/global/invoices/*` → `/app/sales/invoices
 
 | Tenant type | `sales_invoice` / `global_invoice` | `billing_profile` | `recipient_profile` |
 |-------------|-----------------------------------|---------------------|----------------------|
-| Parent company | Optional (rollup read) | Optional | Optional |
-| Child (sister concern) | Yes — primary issuer | Yes | Yes |
-| Standalone | Yes | Yes | Yes |
+| Parent company | Rollup read (no self-issue UI) | Optional | Optional |
+| Child (sister concern) | Yes — primary **seller** (`issued_by_tenant_id`) | Yes | Yes |
+| Standalone | Yes (`tenant_id` = `issued_by_tenant_id`) | Yes | Yes |
 
-**Issuer rule:** Desk invoices are issued by the child `tenant_id`. Parent cannot self-issue via UI. Rollup uses `parent_tenant_id` on invoice rows.
+**Issuer rule (locked):** Desk invoices are **created by the child** (`issued_by_tenant_id`) and **owned by the parent** (`tenant_id`). Parent cannot self-issue via UI. One sale = one row; child customer UI and parent books UI are views of that row. Number series unique per parent `(tenant_id, invoice_no)`. Canonical: [invoice/schema.md](./invoice/schema.md) §0.
 
 ### Profile ownership (billing & recipient)
 
@@ -177,15 +178,15 @@ Redirect `/app/invoices/*` and `/app/global/invoices/*` → `/app/sales/invoices
 |----------|--------|
 | Who owns a profile row? | The **child tenant** (`tenant_id` on the profile) |
 | Is there one catalog for the whole group? | **No** — each sister concern has its own billing and recipient lists |
-| Can Child A use Child B's billing profile on an invoice? | **No** — profile `tenant_id` must match invoice `tenant_id` (issuing child) |
-| Does the parent company maintain profiles? | **Optional** module only; desk sales CRUD is on **child** tenants. Parent rollup reads invoices via `parent_tenant_id`, not a merged profile directory |
+| Can Child A use Child B's billing profile on an invoice? | **No** — profile `tenant_id` must match invoice `issued_by_tenant_id` |
+| Does the parent company maintain profiles? | **Optional** module only; desk sales CRUD is on **child** tenants. Parent rollup reads invoices via invoice `tenant_id` (parent), not a merged profile directory |
 | Same buyer on two children | **Two separate profile rows** (different `id`, different `tenant_id`) — not one shared account |
 
 **Contrast with stock:** Parent owns `global_stocks` (shared pool). Child owns **customer identity** catalogs (bill-to and ship-to). Stock is group-pooled; profiles are per sister concern.
 
-**RPC validation (target):** On create/post invoice, reject `billing_profile_id` or `recipient_profile_id` when `profile.tenant_id <> invoice.tenant_id`.
+**RPC validation (target):** On create/post invoice, reject `billing_profile_id` or `recipient_profile_id` when `profile.tenant_id <> invoice.issued_by_tenant_id`.
 
-**Retail direct:** No `billing_profile_id`. Optional `recipient_profile_id` still follows the same child `tenant_id` rule when linked.
+**Retail direct:** No `billing_profile_id`. Optional `recipient_profile_id` still follows the same `issued_by_tenant_id` rule when linked.
 
 See [TENANT_MODEL_AND_ACCESS.md](TENANT_MODEL_AND_ACCESS.md) for parent vs child data ownership.
 
@@ -595,19 +596,19 @@ Desk sales buyer / middle-man accounts for one sister concern. Submodule key: `b
 
 **Unique:** `(tenant_id, phone)`. Checkout / process-desk upserts via `upsert_recipient_profile_by_phone`; same phone + new address appends to `addresses` and promotes to default columns.
 
-Delivery-party catalog for one sister concern. `recipient_profile_id` on `global_invoices` is optional; snapshots retained at post time for audit. Profile `tenant_id` must match invoice `tenant_id`.
+Delivery-party catalog for one sister concern. `recipient_profile_id` on the invoice is optional; snapshots retained at post time for audit. Profile `tenant_id` must match invoice `issued_by_tenant_id`.
 
 ### 11.3 Global invoice — `global_invoices` [target]
 
 | Field | Notes |
 |-------|-------|
-| `tenant_id`, `parent_tenant_id` | Issuer (`tenant_id` = child) and parent rollup (`parent_tenant_id`) |
-| `invoice_no`, `invoice_type`, `invoice_date` | `wholesale` \| `retail` \| `dropship` |
+| `tenant_id`, `issued_by_tenant_id` | Books owner (`tenant_id` = **parent**); seller (`issued_by_tenant_id` = child). No `parent_tenant_id` on v2 pack |
+| `invoice_no`, `invoice_type`, `invoice_date` | Unique `(tenant_id, invoice_no)`; `wholesale` \| `retail` \| `dropship` |
 | `retail_billing_mode` | `account` \| `direct` — retail only; null otherwise |
 | `invoice_status` | `draft` \| `posted` \| `voided` |
 | `fulfillment_status` | `pending` \| `packed` \| `shipped` \| `delivered` — ops only |
-| `billing_profile_id` | FK — required wholesale/dropship/retail account; **null** retail direct; must match invoice `tenant_id` |
-| `recipient_profile_id` | FK optional; must match invoice `tenant_id` when set; snapshots: `recipient_name`, `recipient_phone`, `recipient_address` |
+| `billing_profile_id` | FK — required wholesale/dropship/retail account; **null** retail direct; must match `issued_by_tenant_id` |
+| `recipient_profile_id` | FK optional; must match `issued_by_tenant_id` when set; snapshots: `recipient_name`, `recipient_phone`, `recipient_address` |
 | `collection_source` | `billing_profile` \| `recipient` |
 | `due_date` | Optional — wholesale and retail account credit terms |
 | `payment_status`, `total_amount`, `due_amount`, `paid_amount` | Balance |
@@ -620,6 +621,7 @@ Delivery-party catalog for one sister concern. `recipient_profile_id` on `global
 |-------|-------|
 | `invoice_id`, `global_stock_id` | FK |
 | `shipment_item_id` | Batch traceability — cost source |
+| `assigned_child_tenant_id` | Snapshot of shipment assign at add/post — report slice, not a second invoice |
 | `name_snapshot`, `quantity` | |
 | `unit_cost_price` | Immutable landed-cost snapshot at post (from shipment item via `landedCost.ts`) |
 | `sell_price_amount` | Accounting sell price |
@@ -771,7 +773,7 @@ Target submodule keys get explicit rows in `modulePermissions.ts` when extracted
 | D7 | Cost at sale | `unit_cost_price` snapshot from shipment-item landed cost on **post** only |
 | D9 | Billing vs recipient | Separate profiles — essential for dropship and retail account |
 | D-SI1 | Parent module | `sales_invoice` + invoice / billing / recipient / brand submodules |
-| D-SI2 | Issuer | Child tenant issues desk invoices; parent rollup via `parent_tenant_id` |
+| D-SI2 | Issuer | Child **sells** (`issued_by_tenant_id`); parent **owns** the row (`tenant_id`). Parent does not self-issue. One row per sale; child vs parent is UI/print only |
 | D-SI3 | Invoice types | `wholesale`, `retail`, `dropship` — three types only |
 | D-SI4 | Billing profiles | One `billing_profiles` catalog **per child tenant** — not parent-owned, not shared across sister concerns |
 | D-SI5 | Desk-only issuance | All invoices via `global_invoice`; end-customer direct sales use retail direct — no shop invoice module in this domain |
@@ -790,5 +792,8 @@ Target submodule keys get explicit rows in `modulePermissions.ts` when extracted
 | D-SI18 | Immutability | Line prices and charges locked after post; void only when unpaid |
 | D-SI19 | Fulfillment | `fulfillment_status` is operational — does not affect margin or AR |
 | D-SI20 | Courier reconcile | `courier_collected_amount` for COD variance reporting — not a second invoice |
-| D-SI21 | Profile ownership | `billing_profiles` and `recipient_profiles` owned by child `tenant_id`; invoice FKs must match issuing child; no parent-wide shared catalog |
+| D-SI21 | Profile ownership | `billing_profiles` and `recipient_profiles` owned by child `tenant_id`; invoice FKs must match `issued_by_tenant_id`; no parent-wide shared catalog |
 | D-SI22 | Settlement discount | Post-post write-off via `settlement_discount_amount`; reduces `total_amount`/`due_amount` to close AR, keeps line/subtotal snapshot; net of discount in Shipment P&L (wholesale/retail; dropship face discount excluded) |
+| D-SI23 | Number series | Unique `(tenant_id, invoice_no)` — one pool per parent company |
+| D-SI24 | No split | Do not auto-split a mixed basket into per-sister or per-shipment invoices; no second customer-invoice table |
+| D-SI25 | Line assign snapshot | `assigned_child_tenant_id` on lines from `shipments.assigned_child_tenant_id` at add/post — reporting only |

@@ -221,7 +221,7 @@ Do not extend soft-qty semantics. Replace with §2.3 + listing `global_stock_id`
 | Location transfer | Same availability: bin A → bin B | Yes |
 | Availability transfer / adjustment | Same location: sellable ↔ held ↔ unsellable; write-off / cycle count | Yes |
 | Grade transfer | Same or paired with availability: e.g. `standard` → `open_box` (stay sellable); → `badly_damaged` + `unsellable` | W7c |
-| Return inbound | Customer/shop return posts this movement. Default **`held` @ returns** (or chosen) location. Staff set **grade** + **to_availability** on the movement. Do not increment the original sellable row. | W9 |
+| Return inbound | Customer/shop return posts this movement. Default **`held` @ returns** (or chosen) location. Staff set **grade** + **to_availability** on the movement. Do not increment the original sellable row. | W9 done |
 | Receive rollback | Reverse a receive post (qty + related stamps) cleanly | Yes |
 | Partial receive cost share | Fair cost when only part of batch arrives | Later |
 | Weight / cost input audit | History for package weight & cost revisions | Later |

@@ -2,7 +2,7 @@
 
 **Module:** `procurement_stock`  
 **Architecture (locked):** [shipment/](./shipment/) · [stock/](./stock/) · [../wallet/](../wallet/)  
-**Updated:** 2026-08-15
+**Updated:** 2026-08-16
 
 Sell model, assign, ATP (incl. pickable locations), listing FK, availability, **stock locations**, soft-allocation retirement, movement **pattern**, **two “held”s**, and **return inbound via movement** are **decided** — not listed here as open design.
 
@@ -13,25 +13,25 @@ Sell model, assign, ATP (incl. pickable locations), listing FK, availability, **
 **Solution locked:** [stock/schema.md](./stock/schema.md) —
 
 * `stock_locations` catalog + required `global_stocks.location_id`
-* Balance grain today `(shipment_item_id, availability, location_id)`; after W7 add `grade_tag_id`
+* Balance grain `(shipment_item_id, availability, location_id, grade_tag_id)`
 * Movements post all qty / availability / location / grade changes; UI never free-edits
 * **ATP** = pickable sellable − draft invoice holds − shop cart holds. Order hold ≠ warehouse `held`.
 * Receive posts `received_quantity` as sellable + `standard` @ default leaf (W7b)
-* Organize by shipment via movements (W8). Customer return → `return_inbound` (W9)
+* Organize by shipment via movements (**W8 done**). Customer return → `return_inbound` (**W9 done**)
 
 **Locations catalog (locked names):** table `stock_locations` with SMB hierarchy `shelf` → `slot` → `box` (+ `returns` area), `parent_location_id`; no auto-seed; hard delete via `delete_stock_location` (cascade children). RPCs `list_stock_locations`, `upsert_stock_location`, `set_default_stock_location`, `delete_stock_location` — [stock/api/stock_location_api.md](./stock/api/stock_location_api.md).
 
-**Still open:** movement table/RPC names; `global_stocks.location_id` cutover SQL — **location columns + list/movement RPCs shipped** in `20270814000045` / `20270814000210`. Grade column = W7a.
+**Still open:** movement table/RPC names; `global_stocks.location_id` cutover SQL — **location columns + list/movement RPCs shipped** in `20270814000045` / `20270814000210`. Grade column = **W7a done**.
 
 | Gap | Meaning | In first movement cut? |
 | :--- | :--- | :---: |
 | Locations CRUD (no seed; hard delete) | SMB shelf/slot/box catalog | **Done** |
-| Receive put-away | Persist `received_quantity` on line (GR); post that qty @ default location; short = ordered − received. Organize bins / damage via movements. UI = qty checklist — [shipment/schema.md](./shipment/schema.md) §1.3 | Yes (UX + column → **W6**); grade `standard` → **W7b** |
+| Receive put-away | Persist `received_quantity` on line (GR); post that qty @ default location; short = ordered − received. Organize bins / damage via movements. UI = qty checklist — [shipment/schema.md](./shipment/schema.md) §1.3 | Yes (UX + column → **W6**); grade `standard` → **W7b done** |
 | Location transfer | Bin A → bin B (same availability) | Yes |
 | Availability transfer / adjustment | sellable ↔ held / unsellable; write-off; cycle count | Yes |
-| Grade transfer | standard → open_box / box_damage / … | **W7c** |
-| Shipment-first organize UI | Filter warehouse by `shipment_id`; deep-link from shipment | **W8** |
-| Return inbound | Sales/shop return doc → posted `return_inbound`; default `held` @ returns; staff set grade + availability | **W9** |
+| Grade transfer | standard → open_box / box_damage / … | **W7c done** |
+| Shipment-first organize UI | Filter warehouse by `shipment_id`; deep-link from shipment | **W8 done** |
+| Return inbound | Sales/shop return doc → posted `return_inbound`; default `held` @ returns; staff set grade + availability | **W9 done** |
 | Receive rollback | Clean reverse of posted stock + stamps | Yes |
 | Partial receive | Cost share when only part of the batch arrives | Later |
 | Weight audit | History when package weights / cost inputs change | Later |

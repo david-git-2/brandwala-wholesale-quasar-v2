@@ -184,7 +184,7 @@ Redirect legacy `/app/accounting/*` and `/app/global/accounting/*` → `/app/fin
 | Child (sister concern) | Yes | Yes | No | Yes | No | No |
 | Standalone | Yes | Yes | Yes | Yes | Yes | Optional |
 
-**Parent rule:** Parent does not issue desk invoices but needs batch P&L and consolidated rollups. Child needs payments and per-invoice margin; shipment P&L is usually parent-only.
+**Parent rule:** Parent does not self-issue desk invoices but **owns** the invoice rows (`tenant_id`) and needs batch P&L plus consolidated rollups. Child creates sales (`issued_by_tenant_id`) and needs payments plus their issuer list; shipment P&L is usually parent-only.
 
 ---
 
@@ -227,8 +227,9 @@ Operational questions this domain answers — not statutory accounting.
 
 | Report | Question |
 |--------|----------|
-| Per-child sales | Which sister concern sold how much? |
-| Consolidated margin | Sum of invoice margins across children |
+| Per-child sales | Which sister **sold** how much? (`issued_by_tenant_id`) |
+| Per-assigned-batch | Whose assigned shipment was sold? (line `assigned_child_tenant_id`) |
+| Consolidated margin | Sum of invoice margins for parent `tenant_id` |
 | Top batches | Shipments with best/worst realized margin |
 
 ### 3.5 Optional — `investor_reports`

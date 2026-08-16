@@ -40,6 +40,8 @@ export interface CreateStockMovementLineInput {
   to_location_id?: number | null;
   from_availability?: StockAvailability | null;
   to_availability?: StockAvailability | null;
+  from_grade_tag_id?: number | null;
+  to_grade_tag_id?: number | null;
 }
 
 export interface CreateStockMovementInput {
@@ -183,6 +185,8 @@ const createMovement = async (input: CreateStockMovementInput): Promise<StockMov
       p_to_location_id: line.to_location_id ?? null,
       p_from_availability: line.from_availability ?? null,
       p_to_availability: line.to_availability ?? null,
+      p_from_grade_tag_id: line.from_grade_tag_id ?? null,
+      p_to_grade_tag_id: line.to_grade_tag_id ?? null,
     });
     if (lineError) throw lineError;
   }

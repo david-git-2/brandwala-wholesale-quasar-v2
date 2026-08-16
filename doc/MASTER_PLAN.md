@@ -14,7 +14,7 @@ One system manages:
 
 - **Procurement** — child orders and product-based costing feed **parent shipments** → [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md)
 - **Stock** — parent-owned inventory with optional **child display allocations** → [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md)
-- **Sales** — parent or child invoices; desk sales from parent stock → [SALES_INVOICE.md](SALES_INVOICE.md)
+- **Sales** — one invoice per sale owned by the parent; child sells and prints the customer view → [SALES_INVOICE.md](SALES_INVOICE.md)
 - **Shop** — child-owned storefronts, cart, orders from allocated stock → [SHOP_ORDER.md](SHOP_ORDER.md); dropship Process Order + dual invoice → [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md)
 - **Reports & treasury** — margin reports and payment settlement (read-side P&L) → [REPORTING_TREASURY.md](REPORTING_TREASURY.md)
 - **Capital** — investors, cost-share per shipment, investor portal → [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md)
@@ -51,7 +51,7 @@ Full scope rules, guards, and redirects: [APP_SCOPES_AND_ACCESS.md](APP_SCOPES_A
 | Role | `tenants.parent_id` | Responsibility |
 |------|---------------------|----------------|
 | **Parent company** | `NULL` | Shipments, stock, investors, consolidated reports, cash dashboard |
-| **Child (sister concern)** | `= parent.id` | Customer groups, orders, costing, commerce, own invoices |
+| **Child (sister concern)** | `= parent.id` | Customer groups, orders, costing, commerce; desk sales (`issued_by`) |
 | **Standalone** | `NULL`, no children | Same global tables; `parent_tenant_id := tenant_id` |
 
 **Constraint:** Only one hierarchy level — a child cannot have children.
@@ -69,8 +69,8 @@ Legacy modules (`inventory`, `invoice`, `accounting`, `shipment`, `investor`) **
 ```
 Child: orders / product costing  →  Parent: shipment (local or international)
   →  Parent: global_stocks  →  child_tenant_stock_allocations (optional)
-  →  Child: global_invoice  →  payments / invoice_payments
-  →  reporting_treasury: margin reports (read)  →  investor profit share
+  →  Child desk: sales_invoices (issued_by = child; tenant_id = parent)  →  payments
+  →  reporting_treasury: margin reports (read, parent books)  →  investor profit share
 ```
 
 **Commerce** does **not** create inbound shipments. It **sells from parent `global_stocks`**.
@@ -128,7 +128,7 @@ Sources for `add_child_line_to_parent_shipment`: `order_items`, `product_based_c
 | Thrift | No phase 1 global integration (D12) |
 | Standalone tenant | `parent_tenant_id = tenant_id` (D5) |
 | Investor remainder | Parent company bears cost-share gap below 100% (D10) |
-| Invoices | Fresh insert on `global_invoices` |
+| Invoices | `tenant_id` = parent books owner; `issued_by_tenant_id` = selling child; one row per sale ([SALES_INVOICE.md](SALES_INVOICE.md) D-SI2) |
 | Cost at sale | `unit_cost_price` immutable snapshot from landed cost (D7) |
 | Costing → order | Not required; optional convert later (D11) |
 | Module enablement | `tenant_modules` per tenant; no inheritance (D13) |
@@ -180,17 +180,17 @@ All new/updated pages **must** follow [docs/UI_CONSISTENCY.md](../docs/UI_CONSIS
 
 ### 10.1 Implementation status & next step
 
-**Last updated:** 2026-08-15
+**Last updated:** 2026-08-16
 
 #### Next step (active work)
 
-1. **Procurement W7** — stock grades (`grade_tag_id`), then W8 shipment-first organize, W9 return inbound. See [procurement_stock/IMPLEMENTATION_ORDER.md](procurement_stock/IMPLEMENTATION_ORDER.md).
+1. Procurement shipment/warehouse track (W1–W9) is complete. See [procurement_stock/IMPLEMENTATION_ORDER.md](procurement_stock/IMPLEMENTATION_ORDER.md).
 
 #### Completed (P0 redesign)
 
 | Area | Detail |
 |------|--------|
-| **procurement_stock** | Shipment inbound + W1–W6 warehouse done. **Next: W7 grades.** [IMPLEMENTATION_ORDER.md](procurement_stock/IMPLEMENTATION_ORDER.md) |
+| **procurement_stock** | Shipment inbound + W1–W9 warehouse/grades/organize/return inbound done. [IMPLEMENTATION_ORDER.md](procurement_stock/IMPLEMENTATION_ORDER.md) |
 | **thrift_*** | P1–P8 done — see [THRIFT.md](THRIFT.md) §9 |
 | **F1–F3** | Shared UI tokens + procurement/stock admin pages |
 | **shop_order** | P0–P10 done — see [SHOP_ORDER_PHASES.md](SHOP_ORDER_PHASES.md) |
@@ -207,7 +207,7 @@ All new/updated pages **must** follow [docs/UI_CONSISTENCY.md](../docs/UI_CONSIS
 #### Recommended order (after next step)
 
 ```
-W7 stock grades → W8 shipment-first organize → W9 return inbound (grade + availability)
+Procurement W1–W9 complete
 ```
 
 ---
@@ -437,7 +437,7 @@ Legend: **view** = access granted | **—** = no access
 | order_management, product_based_costing, costing_file | — | Yes | Yes | Procurement inputs |
 | global_shipment, global_stock, global_stock_type | Yes | — | Yes | Parent owns stock |
 | inventory (Tenant Stock) | Yes | Yes | Yes | Child allocation view |
-| global_invoice, billing_profile, recipient_profile | Optional | Yes | Yes | Child issues desk sales |
+| global_invoice, billing_profile, recipient_profile | Optional (rollup) | Yes | Yes | Child sells; parent owns invoice row |
 | `shop_order` | — | Yes | Yes | Child shops, cart, orders — see SHOP_ORDER |
 | `commerce_*`, `store`, `cart` | — | Yes (legacy) | Yes (legacy) | Retire → `shop_order` |
 | reporting_treasury submodules | Varies | Varies | Yes | See REPORTING_TREASURY §2 |
@@ -514,8 +514,8 @@ Legend: **view** = access granted | **—** = no access
 ```
 Child: orders / product costing → Parent: shipment (local or international)
   → Parent: global_stocks → child_tenant_stock_allocations (optional)
-  → Child: global_invoice → global_payments / invoice_payments
-  → reporting_treasury: margin reports (read) → investor profit share
+  → Child desk: sales_invoices (issued_by = child; tenant_id = parent) → payments
+  → reporting_treasury: margin reports (read, parent books) → investor profit share
 ```
 
 | Flow | Path | Status | Detail |
@@ -523,7 +523,7 @@ Child: orders / product costing → Parent: shipment (local or international)
 | B2B order | cart → order → negotiate → shipment pull | STABLE | §17 #6 |
 | Costing | product_based_costing → shipment line | STABLE | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) |
 | Receive stock | shipment receive → global_stocks | DONE | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) |
-| Desk sale | global_stock → global_invoice → payment allocation | IN PROGRESS | [SALES_INVOICE.md](SALES_INVOICE.md) |
+| Desk sale | global_stock → sales_invoices (parent-owned, child issued_by) → payment | IN PROGRESS | [SALES_INVOICE.md](SALES_INVOICE.md) |
 | Margin report | invoice lines + shipment batch P&L (read) | IN PROGRESS | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) |
 | Investor capital | cost-share → profit refresh → portal | IN PROGRESS | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) |
 | Shop order | shop_cart → shop_order → invoice or procurement pull | DONE | [SHOP_ORDER.md](SHOP_ORDER.md) |

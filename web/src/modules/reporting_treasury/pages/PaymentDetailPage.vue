@@ -322,7 +322,7 @@ const loadPaymentData = async () => {
       .select(
         `
         *,
-        global_invoice:global_invoices(invoice_no, invoice_date, total_amount)
+        global_invoice:sales_invoices(invoice_no, invoice_date, total_amount)
       `,
       )
       .eq('payment_id', id);
@@ -333,7 +333,7 @@ const loadPaymentData = async () => {
     // 3. Get outstanding invoices of same billing profile
     if (payData?.billing_profile_id) {
       const { data: invData, error: invError } = await supabase
-        .from('global_invoices')
+        .from('sales_invoices')
         .select('*')
         .eq('billing_profile_id', payData.billing_profile_id)
         .eq('invoice_status', 'posted')

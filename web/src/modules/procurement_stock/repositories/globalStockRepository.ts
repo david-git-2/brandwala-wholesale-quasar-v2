@@ -31,6 +31,8 @@ export interface GlobalStock {
   availability?: Database['public']['Enums']['stock_availability'] | null;
   location_id?: number | null;
   location_name?: string | null;
+  grade_tag_id?: number | null;
+  grade_name?: string | null;
   stock_type_description: string;
   is_sellable: boolean;
 }

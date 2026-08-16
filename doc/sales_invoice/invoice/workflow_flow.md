@@ -15,14 +15,15 @@ Maps desk-sale stages to schema rules. Schema: [schema.md](./schema.md). Stock A
                         • Totals preview    • No auto wallet AR   • Customer vs accounting print
 ```
 
-**One accounting invoice** for wholesale / retail account / retail direct / dropship. Customer-facing different prices = **print/face**, not a second posted invoice.
+**One accounting invoice** for wholesale / retail account / retail direct / dropship. `tenant_id` = parent books; `issued_by_tenant_id` = selling child. Customer-facing different prices = **print/face**, not a second posted invoice. Child UI and parent UI are views of the same row.
 
 ---
 
 ## Stage 1: Create draft
 
 * Pick `invoice_type` (+ `retail_billing_mode` when retail).
-* Set `tenant_id` / `parent_tenant_id`, `collection_source`, optional profiles.
+* Set `tenant_id` = parent books owner; `issued_by_tenant_id` = selling child (standalone: both = self).
+* `collection_source`, optional profiles (`profile.tenant_id` must equal `issued_by_tenant_id`).
 * Snapshot recipient name/phone/address when known.
 * `invoice_status = draft`; `payment_status = unpaid`; `fulfillment_status = pending`.
 * No stock deduct yet — lines (when added) count toward **draft holds** in ATP.
@@ -31,9 +32,9 @@ Maps desk-sale stages to schema rules. Schema: [schema.md](./schema.md). Stock A
 
 ## Stage 2: Edit lines & charges
 
-* Add/update/remove `sales_invoice_items` against **pickable sellable** `global_stocks` (shows location).
+* Add/update/remove `sales_invoice_items` against **pickable sellable** `global_stocks` (shows location). Mixed shipments / mixed assigned-child batches on one invoice are allowed.
 * ATP check on add/update: pickable sellable − other drafts − shop carts ≥ qty.
-* Copy / require `shipment_item_id` from stock (required column).
+* Copy / require `shipment_item_id` from stock (required column); snapshot `assigned_child_tenant_id` from the shipment assign.
 * Optional `face_unit_price` for customer print; `unit_price` = accounting sell.
 * Charges as rows (`sales_invoice_charges`); allow types per invoice type in RPC.
 * Optional charge `face_amount` for customer print.
@@ -88,10 +89,10 @@ After post: no silent rewrite of `unit_price` or `landed_cost_bdt`. Shipment cos
 
 | Mode | Audience | Numbers |
 | :--- | :--- | :--- |
-| `accounting` | Desk / finance / middle-man AR | `unit_price`, charge `amount`, AR totals |
-| `customer` | End customer | `face_unit_price` / `face_amount` (fallback to accounting) |
+| `customer` (child UI) | End customer / selling sister | Child `invoice_brands`; `face_unit_price` / `face_amount` (fallback to accounting) |
+| `accounting` (parent UI) | Desk / finance | `unit_price`, charge `amount`, AR totals, COGS |
 
-Same `sales_invoices.id`. Never post a second sales invoice only to show different face numbers.
+Same `sales_invoices.id`. Never post a second sales invoice only to show different face numbers or to split mixed stock.
 
 ---
 
@@ -104,6 +105,7 @@ Same `sales_invoices.id`. Never post a second sales invoice only to show differe
 * Day-one dedicated hold table (query draft lines instead)
 * Flipping warehouse `availability` to `held` for draft invoices or shop carts
 * Direct increment of the original sellable stock row on return (use `return_inbound`)
+* A second customer-invoice table, or auto-split of one mixed sale into per-sister / per-shipment invoices
 
 ---
 

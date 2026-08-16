@@ -22,7 +22,7 @@
           dense
           @remove="clearShipmentFilter"
         >
-          Shipment Filter: #{{ shipmentIdFilter }}
+          {{ shipmentChipLabel }}
         </q-chip>
       </div>
 
@@ -74,6 +74,23 @@
             emit-value
             map-options
             label="Availability"
+          />
+
+          <q-select
+            v-model="draftShipmentIdFilter"
+            :options="shipmentSelectOptions"
+            filled
+            dense
+            clearable
+            use-input
+            emit-value
+            map-options
+            fill-input
+            hide-selected
+            input-debounce="300"
+            label="Shipment"
+            :loading="shipmentsLoading"
+            @filter="filterShipments"
           />
 
           <q-select
@@ -184,8 +201,8 @@
               </q-td>
             </template>
 
-            <!-- Combined Stock Type & Location -->
-            <template #body-cell-stock_type="props">
+            <!-- Grade & Location -->
+            <template #body-cell-grade="props">
               <q-td :props="props">
                 <div class="column q-gutter-y-xs">
                   <div>
@@ -194,14 +211,18 @@
                       square
                       color="grey-2"
                       text-color="grey-9"
-                      class="text-weight-medium text-capitalize"
+                      class="text-weight-medium"
                     >
-                      {{ props.row.stock_type_description || props.row.availability || 'Standard' }}
+                      {{ gradeLabel(props.row) }}
                     </q-chip>
                   </div>
                   <div class="text-caption text-grey-7 row items-center q-gutter-x-xs no-wrap">
                     <q-icon name="ph ph-map-pin" size="14px" color="grey-6" />
-                    <span>{{ props.row.location_name || (props.row.location_id ? `#${props.row.location_id}` : '—') }}</span>
+                    <span>
+                      {{ formatStockAvailability(props.row.availability) }}
+                      ·
+                      {{ props.row.location_name || (props.row.location_id ? `#${props.row.location_id}` : '—') }}
+                    </span>
                   </div>
                 </div>
               </q-td>
@@ -330,11 +351,18 @@ import SmartImage from 'src/components/SmartImage.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useGlobalStockStore } from '../stores/globalStockStore';
 import { useStockLocationStore } from '../stores/stockLocationStore';
+import {
+  globalShipmentRepository,
+  type GlobalShipment,
+} from '../repositories/globalShipmentRepository';
 import { getLeafLocations, toLocationSelectOptions } from '../utils/stockLocationOptions';
 import {
   STOCK_AVAILABILITY_OPTIONS,
+  formatStockAvailability,
   type StockAvailability,
 } from '../constants/stockAvailability';
+import { tagRepository } from 'src/modules/tag/repositories/tagRepository';
+import type { Tag } from 'src/modules/tag/types';
 import PageInitialLoader from 'src/components/ui/PageInitialLoader.vue';
 import AppPageHeader from 'src/components/ui/AppPageHeader.vue';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
@@ -371,12 +399,73 @@ const draftLocationFilter = ref<number | null>(null);
 const draftAvailabilityFilter = ref<StockAvailability | null>(null);
 const draftIsSellableFilter = ref<boolean | null>(null);
 const draftShipmentStatusFilter = ref<string | null>(null);
+const draftShipmentIdFilter = ref<number | null>(null);
 const draftHideZeroStockFilter = ref<boolean>(true);
+const shipmentSelectOptions = ref<Array<{ label: string; value: number }>>([]);
+const shipmentsLoading = ref(false);
 
 // Dialog state
 const moveGradeDialogOpen = ref<boolean>(false);
 const locationDialogOpen = ref<boolean>(false);
 const selectedStockRow = ref<GlobalStock | null>(null);
+const gradeTags = ref<Tag[]>([]);
+
+const gradeNameById = computed(() => {
+  const map = new Map<number, string>();
+  for (const tag of gradeTags.value) {
+    map.set(tag.id, tag.name);
+  }
+  return map;
+});
+
+const gradeLabel = (row: GlobalStock): string =>
+  row.grade_name
+  || gradeNameById.value.get(row.grade_tag_id ?? 0)
+  || 'Standard';
+
+const shipmentOptionLabel = (shipment: GlobalShipment): string => {
+  const num = (shipment as GlobalShipment & { tenant_shipment_id?: number | null })
+    .tenant_shipment_id ?? shipment.id;
+  return `#${num} ${shipment.name}`;
+};
+
+const shipmentChipLabel = computed(() => {
+  const id = shipmentIdFilter.value;
+  if (id == null) return '';
+  const match = shipmentSelectOptions.value.find((opt) => opt.value === id);
+  return `Shipment Filter: ${match?.label ?? `#${id}`}`;
+});
+
+const loadShipmentOptions = async (search?: string) => {
+  if (!authStore.tenantId) return;
+  shipmentsLoading.value = true;
+  try {
+    const result = await globalShipmentRepository.listPaginated(
+      authStore.tenantId,
+      1,
+      50,
+      search?.trim() || undefined,
+    );
+    const options = result.data.map((shipment) => ({
+      label: shipmentOptionLabel(shipment),
+      value: shipment.id,
+    }));
+    const selectedId = draftShipmentIdFilter.value ?? shipmentIdFilter.value;
+    if (selectedId != null && !options.some((opt) => opt.value === selectedId)) {
+      const existing = shipmentSelectOptions.value.find((opt) => opt.value === selectedId);
+      if (existing) options.unshift(existing);
+    }
+    shipmentSelectOptions.value = options;
+  } finally {
+    shipmentsLoading.value = false;
+  }
+};
+
+const filterShipments = (val: string, update: (callback: () => void) => void) => {
+  void loadShipmentOptions(val).then(() => {
+    update(() => undefined);
+  });
+};
 
 watch(
   () => route.query.shipment_id,
@@ -389,9 +478,19 @@ watch(
 
 const clearShipmentFilter = () => {
   shipmentIdFilter.value = null;
+  draftShipmentIdFilter.value = null;
   void router.replace({ query: { ...route.query, shipment_id: undefined } });
   stockStore.page = 1;
   void loadStock();
+};
+
+const writeShipmentQuery = (id: number | null): boolean => {
+  const next = id == null ? undefined : String(id);
+  const current = route.query.shipment_id;
+  const currentStr = Array.isArray(current) ? current[0] : current;
+  if ((currentStr ?? undefined) === next) return false;
+  void router.replace({ query: { ...route.query, shipment_id: next } });
+  return true;
 };
 
 const copyText = async (text: string | null) => {
@@ -421,9 +520,9 @@ const columns: QTableColumn[] = [
   { name: 'code', label: 'Code / Barcode', field: 'product_code', align: 'left', sortable: false },
   { name: 'shipment', label: 'Shipment', field: 'shipment_name', align: 'left', sortable: false },
   {
-    name: 'stock_type',
-    label: 'Stock Type & Location',
-    field: 'stock_type_description',
+    name: 'grade',
+    label: 'Grade & Location',
+    field: 'grade_tag_id',
     align: 'left',
     sortable: false,
   },
@@ -549,8 +648,10 @@ const openFilterDrawer = () => {
   draftAvailabilityFilter.value = availabilityFilter.value;
   draftIsSellableFilter.value = isSellableFilter.value;
   draftShipmentStatusFilter.value = shipmentStatusFilter.value;
+  draftShipmentIdFilter.value = shipmentIdFilter.value;
   draftHideZeroStockFilter.value = hideZeroStockFilter.value;
   filterDrawerOpen.value = true;
+  void loadShipmentOptions();
 };
 
 const onApplyDrawerFilters = () => {
@@ -559,9 +660,11 @@ const onApplyDrawerFilters = () => {
   isSellableFilter.value = draftIsSellableFilter.value;
   shipmentStatusFilter.value = draftShipmentStatusFilter.value;
   hideZeroStockFilter.value = draftHideZeroStockFilter.value;
+  shipmentIdFilter.value = draftShipmentIdFilter.value;
   filterDrawerOpen.value = false;
   stockStore.page = 1;
-  void loadStock();
+  const navigated = writeShipmentQuery(draftShipmentIdFilter.value);
+  if (!navigated) void loadStock();
 };
 
 const onResetFilters = () => {
@@ -569,15 +672,18 @@ const onResetFilters = () => {
   draftAvailabilityFilter.value = null;
   draftIsSellableFilter.value = null;
   draftShipmentStatusFilter.value = null;
+  draftShipmentIdFilter.value = null;
   draftHideZeroStockFilter.value = true;
   locationFilter.value = null;
   availabilityFilter.value = null;
   isSellableFilter.value = null;
   shipmentStatusFilter.value = null;
   hideZeroStockFilter.value = true;
+  shipmentIdFilter.value = null;
   filterDrawerOpen.value = false;
   stockStore.page = 1;
-  void loadStock();
+  const navigated = writeShipmentQuery(null);
+  if (!navigated) void loadStock();
 };
 
 const goToShipments = () => {
@@ -590,6 +696,17 @@ const goToShipments = () => {
 onMounted(async () => {
   if (authStore.tenantId) {
     await stockLocationStore.fetchLocations(authStore.tenantId);
+  }
+  try {
+    gradeTags.value = await tagRepository.listTagsForCategory({
+      moduleKey: 'stock_grade',
+      code: 'warehouse',
+    });
+  } catch {
+    gradeTags.value = [];
+  }
+  if (shipmentIdFilter.value != null) {
+    void loadShipmentOptions();
   }
   void loadStock();
 });

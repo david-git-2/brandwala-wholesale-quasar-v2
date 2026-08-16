@@ -87,7 +87,7 @@ export const dropshipFinanceRepository = {
           id,
           name
         ),
-        global_invoices!shop_orders_global_invoice_id_fkey (
+        global_invoices:sales_invoices!shop_orders_global_invoice_id_fkey (
           collection_source,
           total_amount,
           paid_amount

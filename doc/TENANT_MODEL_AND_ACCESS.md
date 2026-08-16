@@ -60,7 +60,7 @@ Owns consolidated operations across sister concerns:
 | Capital | Investors and cash circulation | `global_investor`, `global_investor_shipment`, `investor_portal` |
 | Administration | Parent tenant settings, memberships | Platform-assigned modules; parent `admin` membership |
 
-Parent **does not** self-issue desk invoices via UI (`global_invoice` issues from child `tenant_id`). Parent admins are members of the **parent tenant only** — not automatically members of every child.
+Parent **does not** self-issue desk invoices via UI. The selling child creates the sale (`issued_by_tenant_id`); the invoice row is owned by the parent (`tenant_id`). Parent admins are members of the **parent tenant only** — not automatically members of every child.
 
 ### Child (sister concern)
 
@@ -71,11 +71,11 @@ Operating company facing customers and day-to-day sales:
 | Customer CRM | Customer groups and shop users | `customer_groups`, shop auth |
 | Procurement | Orders, costing files, product-based costing | `order_management`, `costing_file`, `product_based_costing` |
 | Tenant stock | View allocated parent stock | `inventory` (Tenant Stock) |
-| Sales | Desk and commerce invoices | `global_invoice`, `commerce_*` |
+| Sales | Desk sales (child `issued_by`; invoice books on parent) | `global_invoice`, `commerce_*` |
 | Shop | B2B and commerce customer portals | `store`, `cart`, `commerce_shop`, `commerce_cart` |
 | Local accounting views | Tenant shipment/invoice accounting | `accounting`, `commerce_accounting` |
 
-Child business data carries `tenant_id` = child and `parent_tenant_id` = parent for rollup RPCs.
+Child business data usually carries `tenant_id` = child and `parent_tenant_id` = parent for rollup RPCs. Desk invoices are the exception: `tenant_id` = parent, `issued_by_tenant_id` = child.
 
 ### Standalone
 
@@ -92,7 +92,7 @@ flowchart LR
   childOrders["Child: orders / costing"] --> parentShip["Parent: shipment"]
   parentShip --> globalStock["Parent: global_stocks"]
   globalStock --> alloc["child_tenant_stock_allocations"]
-  alloc --> childInvoice["Child or parent: invoice"]
+  alloc --> childInvoice["Child sells: sales_invoices (parent-owned)"]
   childInvoice --> ledger["global_accounting_ledger"]
   ledger --> capital["Parent: cash + investors"]
 ```
@@ -344,6 +344,8 @@ Many global tables carry both:
 - `parent_tenant_id` — rollup parent for consolidated RPCs
 
 Standalone: `parent_tenant_id = tenant_id`.
+
+**Exception — desk sales (`sales_invoices`):** `tenant_id` = **parent** (books owner); `issued_by_tenant_id` = selling child. No `parent_tenant_id` on the v2 pack. See [SALES_INVOICE.md](SALES_INVOICE.md) D-SI2.
 
 ### Stock network
 

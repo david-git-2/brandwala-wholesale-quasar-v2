@@ -2,6 +2,10 @@ import { computed } from 'vue';
 
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
+import {
+  resolveTenantHierarchyKind,
+  type TenantHierarchyKind,
+} from 'src/modules/tenant/utils/tenantHierarchy';
 import type { AccessRole } from 'src/modules/auth/guards/accessGuard';
 import type { AuthScope } from 'src/modules/auth/composables/useOAuthLogin';
 import {
@@ -12,6 +16,27 @@ import {
 } from './moduleRegistry';
 
 const NO_ACCESS: readonly ModuleAction[] = [];
+
+const SALES_CHILD_CATALOG_MODULES: ReadonlySet<ModuleKey> = new Set([
+  'billing_profile',
+  'recipient_profile',
+  'invoice_brand',
+]);
+
+const resolveWorkspaceTenantKind = (
+  tenantId: number | null | undefined,
+): TenantHierarchyKind => {
+  const tenantStore = useTenantStore();
+  const current =
+    tenantStore.selectedTenant ??
+    tenantStore.items.find((tenant) => tenant.id === tenantId) ??
+    tenantStore.availableAdminTenants.find((tenant) => tenant.id === tenantId) ??
+    null;
+  return resolveTenantHierarchyKind(current, [
+    ...tenantStore.availableAdminTenants,
+    ...tenantStore.items,
+  ]);
+};
 
 const isInteractiveScope = (scope: AuthScope | null): scope is InteractiveScope =>
   scope === 'app' || scope === 'shop';
@@ -126,6 +151,13 @@ export const canAccessModule = ({
     }
   }
 
+  // Billing / recipient / print brand catalogs belong to the issuing child.
+  if (SALES_CHILD_CATALOG_MODULES.has(moduleKey)) {
+    if (resolveWorkspaceTenantKind(tenantId) === 'parent') {
+      return false;
+    }
+  }
+
   return (
     hasScopeContext && hasTenantContext && hasCustomerGroupContext && tenantHasModule && roleAllowed
   );
@@ -208,6 +240,13 @@ export const resolveModuleAccess = ({
     if (!current || current.parent_id === null) {
       isBlockedByParentStatus = true;
     }
+  }
+
+  if (
+    SALES_CHILD_CATALOG_MODULES.has(moduleKey) &&
+    resolveWorkspaceTenantKind(tenantId) === 'parent'
+  ) {
+    isBlockedByParentStatus = true;
   }
 
   return {

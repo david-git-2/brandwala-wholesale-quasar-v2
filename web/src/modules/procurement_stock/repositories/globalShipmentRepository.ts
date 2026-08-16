@@ -465,8 +465,8 @@ const checkShipmentInvoiceReferences = async (shipmentId: number): Promise<strin
 
   const itemIds = items.map((i) => i.id);
   const { data, error } = await db
-    .from('global_invoice_items')
-    .select('invoice_id, global_invoices(invoice_no)')
+    .from('sales_invoice_items')
+    .select('invoice_id, sales_invoices(invoice_no)')
     .in('shipment_item_id', itemIds);
 
   if (error) throw error;
@@ -474,7 +474,7 @@ const checkShipmentInvoiceReferences = async (shipmentId: number): Promise<strin
   const invoiceNos = new Set<string>();
   if (data) {
     for (const row of data) {
-      const inv = row.global_invoices as any;
+      const inv = row.sales_invoices as any;
       if (inv && inv.invoice_no) {
         invoiceNos.add(inv.invoice_no);
       }

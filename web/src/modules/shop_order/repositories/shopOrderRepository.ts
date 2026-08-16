@@ -371,7 +371,7 @@ const getShopOrderById = async (
   // Fallback until shop_orders.collection_source is migrated / populated
   if (!order.collection_source && order.global_invoice_id) {
     const { data: inv } = await supabase
-      .from('global_invoices')
+      .from('sales_invoices')
       .select('collection_source')
       .eq('id', order.global_invoice_id)
       .maybeSingle();

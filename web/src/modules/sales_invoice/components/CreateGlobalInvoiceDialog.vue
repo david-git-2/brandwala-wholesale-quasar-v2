@@ -12,7 +12,7 @@
       <q-card-section>
         <q-form class="q-gutter-y-md" @submit.prevent="onSubmit">
           <q-select
-            v-if="allIssuingOptions.length > 1"
+            v-if="showSisterPicker"
             v-model="form.tenant_id"
             :options="allIssuingOptions"
             label="Sister Concern *"
@@ -197,7 +197,21 @@ const allIssuingOptions = computed(() => {
   return [];
 });
 
-const resolveDefaultIssuingTenantId = () => allIssuingOptions.value[0]?.value ?? null;
+const currentDeskTenant = computed(
+  () =>
+    tenantStore.selectedTenant ??
+    tenantStore.items.find((tenant) => tenant.id === tenantStore.selectedTenantId) ??
+    null,
+);
+const isChildDesk = computed(() => currentDeskTenant.value?.parent_id != null);
+const showSisterPicker = computed(
+  () => !isChildDesk.value && allIssuingOptions.value.length > 1,
+);
+
+const resolveDefaultIssuingTenantId = () => {
+  if (isChildDesk.value && currentDeskTenant.value) return currentDeskTenant.value.id;
+  return allIssuingOptions.value[0]?.value ?? currentDeskTenant.value?.id ?? null;
+};
 
 const billingProfileOptions = computed(() =>
   billingProfileStore.items.map((profile) => ({
