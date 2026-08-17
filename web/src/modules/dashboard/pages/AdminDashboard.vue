@@ -14,7 +14,7 @@
             v-for="slot in primaries"
             :key="slot.id"
             :item="slot"
-            :tenant-slug="tenantSlug"
+            v-bind="tenantSlug ? { tenantSlug } : {}"
             emphasis="primary"
           />
         </div>
@@ -26,7 +26,7 @@
         :title="group.title"
         :icon="group.icon"
         :slots="group.slots"
-        :tenant-slug="tenantSlug"
+        v-bind="tenantSlug ? { tenantSlug } : {}"
       />
     </template>
 

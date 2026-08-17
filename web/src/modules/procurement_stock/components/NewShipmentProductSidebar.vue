@@ -45,20 +45,6 @@
           </div>
         </div>
 
-        <!-- Vendor Selection -->
-        <q-select
-          v-model="form.vendor_id"
-          :options="vendorOptions"
-          label="Vendor *"
-          filled
-          dense
-          emit-value
-          map-options
-          clearable
-          :rules="[(v) => !!v || 'Vendor is required']"
-          @update:model-value="onVendorChange"
-        />
-
         <!-- Brand & Category -->
         <div class="row q-col-gutter-xs">
           <div class="col-6">
@@ -165,6 +151,8 @@ import SmartImage from 'src/components/SmartImage.vue';
 import type { ShipmentCartItem } from './AddShipmentItemsPanel.vue';
 import type { QForm } from 'quasar';
 
+import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
+
 const props = defineProps<{
   modelValue: boolean;
   zIndex?: number;
@@ -177,7 +165,10 @@ const emit = defineEmits<{
 
 const authStore = useAuthStore();
 const vendorStore = useVendorStore();
+const shipmentStore = useGlobalShipmentStore();
 const formRef = ref<QForm | null>(null);
+
+const headerVendorId = computed(() => shipmentStore.currentShipment?.vendor_id ?? null);
 
 const form = ref({
   image_url: '',
@@ -280,7 +271,7 @@ const onAdd = () => {
   emit('add', {
     product_id: null,
     isNewProduct: true,
-    vendor_id: form.value.vendor_id,
+    vendor_id: headerVendorId.value,
     name: form.value.name.trim(),
     ordered_quantity: Math.floor(form.value.ordered_quantity),
     purchase_price: form.value.purchase_price,

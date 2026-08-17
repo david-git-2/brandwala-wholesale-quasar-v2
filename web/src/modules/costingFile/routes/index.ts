@@ -1,10 +1,10 @@
 import type { RouteRecordRaw } from 'vue-router';
 
 import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
+import { createShopAccessGuard } from 'src/modules/auth/guards/createShopAccessGuard';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import {
   getAppRouteLocation,
-  getShopLoginRouteLocation,
   getTenantSlugFromRoute,
 } from 'src/modules/tenant/utils/tenantRouteContext';
 
@@ -148,31 +148,13 @@ const costingFileRoutes: RouteRecordRaw[] = [
         path: '',
         name: 'customer-costing-file-page',
         component: () => import('../pages/CustomerCostingFilePage.vue'),
-        beforeEnter: createAccessGuard({
-          loginRoute: (to) =>
-            getShopLoginRouteLocation(to, {
-              redirect: to.fullPath,
-            }),
-          requiredScope: 'shop',
-          requireTenantContext: true,
-          allowedRoles: ['customer_admin', 'customer_negotiator', 'customer_staff'],
-          requiredModule: 'costing_file',
-        }),
+        beforeEnter: createShopAccessGuard({ requiredModule: 'costing_file' }),
       },
       {
         path: ':id',
         name: 'customer-costing-file-details-page',
         component: () => import('../pages/CustomerCostingFileDetailsPage.vue'),
-        beforeEnter: createAccessGuard({
-          loginRoute: (to) =>
-            getShopLoginRouteLocation(to, {
-              redirect: to.fullPath,
-            }),
-          requiredScope: 'shop',
-          requireTenantContext: true,
-          allowedRoles: ['customer_admin', 'customer_negotiator', 'customer_staff'],
-          requiredModule: 'costing_file',
-        }),
+        beforeEnter: createShopAccessGuard({ requiredModule: 'costing_file' }),
       },
     ],
   },
@@ -184,16 +166,7 @@ const costingFileRoutes: RouteRecordRaw[] = [
         path: '',
         name: 'customer-costing-file-preview-page',
         component: () => import('../pages/CustomerCostingFilePreviewPage.vue'),
-        beforeEnter: createAccessGuard({
-          loginRoute: (to) =>
-            getShopLoginRouteLocation(to, {
-              redirect: to.fullPath,
-            }),
-          requiredScope: 'shop',
-          requireTenantContext: true,
-          allowedRoles: ['customer_admin', 'customer_negotiator', 'customer_staff'],
-          requiredModule: 'costing_file',
-        }),
+        beforeEnter: createShopAccessGuard({ requiredModule: 'costing_file' }),
       },
     ],
   },

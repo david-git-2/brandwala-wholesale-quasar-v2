@@ -1,2 +1,23 @@
-// Stub types for procurement_stock module. Will be expanded in later phases.
-export {};
+// Shared procurement_stock types — domain modules import from typed files.
+export type { StockLocation, StockLocationKind, UpsertStockLocationPayload } from './stockLocation';
+export type {
+  CargoCompany,
+  CargoCompanyCreateInput,
+  CargoCompanyUpdateInput,
+} from './cargoCompany';
+export type {
+  CostEntryDraft,
+  CostEntriesSavePayload,
+  GlobalShipmentCostEntry,
+  GlobalShipmentCostType,
+  ReviseShipmentCostEntryInput,
+  ShipmentCostPaymentSource,
+  UpsertShipmentCostEntryPayload,
+} from './shipmentCostEntry';
+export { DAY_ONE_COST_TYPES, STUB_COST_TYPES } from './shipmentCostEntry';
+export {
+  STOCK_AVAILABILITY_OPTIONS,
+  formatStockAvailability,
+  availabilityChipColor,
+  type StockAvailability,
+} from '../constants/stockAvailability';

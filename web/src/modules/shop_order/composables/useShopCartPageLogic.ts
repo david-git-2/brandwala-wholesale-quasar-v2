@@ -1,6 +1,7 @@
 import { computed, ref, watch, type Ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQueryClient } from '@tanstack/vue-query';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import type { ActiveCartItem } from '../repositories/shopCartRepository';
 import { useShopCartMutations } from './useShopCartMutations';
 import { useShopStorefrontStore } from '../stores/shopStorefrontStore';
@@ -8,7 +9,13 @@ import { useShopOrderStore } from '../stores/shopOrderStore';
 import { useThriftCurrenciesQuery } from 'src/modules/thrift/currency/composables/useThriftCurrenciesQuery';
 import { fetchCourierChargeEstimate } from '../services/courierChargeEstimate';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import {
+  getLastVisitedShopSlug,
+  resolveCartShopId,
+  shopCartPath,
+  shopCatalogEntryPath,
+  shopCatalogPath,
+} from '../utils/catalogShop';
 
 export function useShopCartPageLogic(
   activeCarts: Ref<ActiveCartItem[]>,
@@ -34,34 +41,49 @@ export function useShopCartPageLogic(
   watch(
     [() => route.query.shopId, activeCarts, isCartsLoading],
     ([qShopId, carts, loading]) => {
-      if (qShopId) {
-        selectedShopId.value = Number(qShopId);
-      } else if (loading) {
+      const fromQuery = resolveCartShopId(authStore.tenantId, [], qShopId);
+      if (fromQuery) {
+        selectedShopId.value = fromQuery;
+        return;
+      }
+      if (loading) {
         selectedShopId.value = null;
-      } else if (carts.length > 0) {
+        return;
+      }
+      const resolved = resolveCartShopId(authStore.tenantId, carts);
+      if (!resolved) {
         selectedShopId.value = null;
-      } else {
-        selectedShopId.value = null;
+        return;
+      }
+      if (selectedShopId.value !== resolved) {
+        selectedShopId.value = resolved;
+        void router.replace(
+          shopCartPath(route.params.tenantSlug ? String(route.params.tenantSlug) : null, resolved),
+        );
       }
     },
     { immediate: true },
   );
 
   const showCartPicker = computed(() => {
-    return !route.query.shopId && activeCarts.value.length > 0 && !selectedShopId.value;
+    return (
+      !route.query.shopId &&
+      !selectedShopId.value &&
+      !isCartsLoading.value &&
+      activeCarts.value.length > 1
+    );
   });
 
   const currentShopCartInfo = computed(() => {
     return activeCarts.value.find((c) => c.shop_id === selectedShopId.value) ?? null;
   });
 
+  const tenantSlugParam = () =>
+    route.params.tenantSlug ? String(route.params.tenantSlug) : null;
+
   const selectShopCart = (sId: number) => {
     selectedShopId.value = sId;
-    const tenantSlug = route.params.tenantSlug ? `/${String(route.params.tenantSlug)}` : '';
-    void router.replace({
-      path: `${tenantSlug}/shop/cart`,
-      query: { shopId: sId },
-    });
+    void router.replace(shopCartPath(tenantSlugParam(), sId));
   };
 
   const currencySymbol = computed(() => {
@@ -82,28 +104,25 @@ export function useShopCartPageLogic(
   };
 
   const goBack = () => {
-    const tenantSlug = route.params.tenantSlug ? `/${String(route.params.tenantSlug)}` : '';
-
-    if (route.query.shopId || selectedShopId.value) {
-      selectedShopId.value = null;
-      void router.replace({ path: `${tenantSlug}/shop/cart`, query: {} });
+    const slug =
+      currentShopCartInfo.value?.shop_slug || getLastVisitedShopSlug(authStore.tenantId);
+    if (slug) {
+      void router.push(shopCatalogPath(tenantSlugParam(), slug));
       return;
     }
-
-    const lastSlug = localStorage.getItem('last_visited_shop_slug');
-    if (lastSlug) {
-      void router.push(`${tenantSlug}/shop/browse/${lastSlug}`);
-    } else {
-      void router.push(`${tenantSlug}/shop/browse`);
-    }
+    void router.push(shopCatalogEntryPath(tenantSlugParam()));
   };
 
   const goToCheckout = () => {
-    const tenantSlug = route.params.tenantSlug ? `/${String(route.params.tenantSlug)}` : '';
     void router.push({
-      path: `${tenantSlug}/shop/checkout`,
+      path: `${shopScopeBaseFromRoute()}/checkout`,
       query: { shopId: selectedShopId.value },
     });
+  };
+
+  const shopScopeBaseFromRoute = () => {
+    const slug = tenantSlugParam();
+    return slug ? `/${slug}/shop` : '/shop';
   };
 
   const { updateQtyMutation, removeItemMutation, updatePriceMutation } = useShopCartMutations();
@@ -116,37 +135,6 @@ export function useShopCartPageLogic(
   );
 
   const placingOrder = ref(false);
-
-  const handleButtonClick = async () => {
-    if (cart.value?.shop_type === 'vendor_catalog') {
-      placingOrder.value = true;
-      try {
-        const res = await orderStore.submitOrder(
-          cart.value.id,
-          '',
-          '',
-          '',
-          null,
-        );
-        if (res.success) {
-          if (selectedShopId.value) {
-            void queryClient.invalidateQueries({
-              queryKey: shopOrderQueryKeys.cart(authStore.tenantId ?? 0, selectedShopId.value),
-            });
-          }
-          void queryClient.invalidateQueries({
-            queryKey: shopOrderQueryKeys.activeCarts(authStore.tenantId ?? 0),
-          });
-          const tenantSlug = route.params.tenantSlug ? `/${String(route.params.tenantSlug)}` : '';
-          void router.push(`${tenantSlug}/shop/orders`);
-        }
-      } finally {
-        placingOrder.value = false;
-      }
-    } else {
-      goToCheckout();
-    }
-  };
 
   const editedQuantities = ref<Record<number, number>>({});
   const editedPrices = ref<Record<number, number>>({});
@@ -210,12 +198,83 @@ export function useShopCartPageLogic(
   const saveItemPrice = async (item: any) => {
     const targetPrice = editedPrices.value[item.id];
     if (targetPrice === undefined || isNaN(targetPrice) || targetPrice < 0 || !selectedShopId.value) return;
+    const minSell = Number(item.unit_minimum_sell_price_amount || 0);
+    if (minSell > 0 && targetPrice < minSell) return;
     await updatePriceMutation.mutateAsync({
       cartItemId: item.id,
       price: targetPrice,
       shopId: selectedShopId.value,
     });
     delete editedPrices.value[item.id];
+  };
+
+  const isItemPriceBelowFloor = (item: any) => {
+    if (cart.value?.shop_type !== 'dropship') return false;
+    const minSell = Number(item.unit_minimum_sell_price_amount || 0);
+    if (minSell <= 0) return false;
+    return Number(getItemPrice(item)) < minSell;
+  };
+
+  const hasUnsavedEdits = computed(
+    () =>
+      Object.keys(editedQuantities.value).length > 0 ||
+      Object.keys(editedPrices.value).length > 0,
+  );
+
+  const hasFloorViolation = computed(() => items.value.some((item) => isItemPriceBelowFloor(item)));
+
+  const checkoutDisabled = computed(
+    () =>
+      itemCount.value === 0 ||
+      isSaving.value ||
+      placingOrder.value ||
+      hasUnsavedEdits.value ||
+      hasFloorViolation.value,
+  );
+
+  const checkoutDisabledReason = computed(() => {
+    if (hasUnsavedEdits.value) return 'shop.cart_save_edits_first';
+    if (hasFloorViolation.value) return 'shop.cart_price_below_floor';
+    if (itemCount.value === 0) return 'shop.cart_empty';
+    return '';
+  });
+
+  const checkoutLabelKey = computed(() =>
+    cart.value?.shop_type === 'vendor_catalog' ? 'shop.place_order' : 'shop.proceed_to_checkout',
+  );
+
+  const isVendorCatalog = computed(() => cart.value?.shop_type === 'vendor_catalog');
+
+  const handleButtonClick = async () => {
+    if (checkoutDisabled.value) return;
+    if (cart.value?.shop_type === 'vendor_catalog') {
+      placingOrder.value = true;
+      try {
+        const res = await orderStore.submitOrder(
+          cart.value.id,
+          '',
+          '',
+          '',
+          null,
+        );
+        if (res.success) {
+          if (selectedShopId.value) {
+            void queryClient.invalidateQueries({
+              queryKey: shopOrderQueryKeys.cart(authStore.tenantId ?? 0, selectedShopId.value),
+            });
+          }
+          void queryClient.invalidateQueries({
+            queryKey: shopOrderQueryKeys.activeCarts(authStore.tenantId ?? 0),
+          });
+          const slug = tenantSlugParam();
+          void router.push(`${slug ? `/${slug}` : ''}/shop/orders`);
+        }
+      } finally {
+        placingOrder.value = false;
+      }
+    } else {
+      goToCheckout();
+    }
   };
 
   const removeItem = async (item: any) => {
@@ -339,6 +398,11 @@ export function useShopCartPageLogic(
     isSaving,
     placingOrder,
     handleButtonClick,
+    checkoutDisabled,
+    checkoutDisabledReason,
+    checkoutLabelKey,
+    isVendorCatalog,
+    isItemPriceBelowFloor,
     editedQuantities,
     editedPrices,
     getItemQty,

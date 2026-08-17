@@ -8,24 +8,12 @@
             <th class="text-right shipment-sl-col">SL</th>
             <th class="text-left shipment-image-col">Image</th>
             <th v-if="isColumnVisible('name')" class="text-left shipment-name-col">Name</th>
+
             <th
-              v-if="props.shipment?.status === 'Warehouse Received'"
-              class="text-center shipment-split-col"
-              style="width: 80px; min-width: 80px; max-width: 80px"
+              v-if="isColumnVisible('product_codes')"
+              class="text-left shipment-codes-col"
             >
-              Split Qty
-            </th>
-            <th v-if="isColumnVisible('product_id')" class="text-center shipment-product-id-col">
-              Product ID
-            </th>
-            <th v-if="isColumnVisible('barcode')" class="text-left shipment-barcode-col">
-              Barcode
-            </th>
-            <th v-if="isColumnVisible('product_code')" class="text-left shipment-product-code-col">
-              Product Code
-            </th>
-            <th v-if="isColumnVisible('add_method')" class="text-left shipment-method-col">
-              Method
+              Codes
             </th>
             <th v-if="isColumnVisible('purchase_price')" class="text-center shipment-price-col">
               Price {{ purchaseCurrencySymbol }}
@@ -37,7 +25,7 @@
               v-if="isColumnVisible('ordered_quantity')"
               class="text-center shipment-qty-col shipment-qty-col--quantity"
             >
-              Quantity
+              Ordered quantity
             </th>
             <th
               v-if="isColumnVisible('product_weight')"
@@ -135,83 +123,104 @@
             >
               {{ item.name ?? '-' }}
             </td>
+
             <td
-              v-if="props.shipment?.status === 'Warehouse Received'"
-              class="text-center shipment-split-col"
+              v-if="isColumnVisible('product_codes')"
+              class="shipment-codes-col font-mono text-caption"
             >
-              <div class="column items-center q-gutter-y-xs q-py-xs">
-                <q-btn
-                  flat
-                  round
-                  dense
-                  icon="ph ph-git-fork"
-                  :color="isItemSplitsCompleteInDb(item) ? 'green-7' : 'orange-7'"
-                  size="sm"
-                  @click="openSplitDialog(item)"
-                >
-                  <q-tooltip>
-                    {{
-                      isItemSplitsCompleteInDb(item)
-                        ? 'Quantity splits complete.'
-                        : 'Configure quantity splits.'
-                    }}
-                  </q-tooltip>
-                </q-btn>
-                <span
-                  class="text-weight-bold"
-                  style="font-size: 11px; line-height: 1"
-                  :class="isItemSplitsCompleteInDb(item) ? 'text-green-7' : 'text-orange-7'"
-                >
-                  {{ isItemSplitsCompleteInDb(item) ? 'Done' : 'Pending' }}
-                </span>
+              <div class="column q-gutter-y-2xs" style="line-height: 1.1">
+                <div v-if="item.product_code" class="row items-center justify-between no-wrap">
+                  <div class="ellipsis">
+                    <span class="text-grey-6 text-uppercase" style="font-size: 8px">C: </span>
+                    <b class="text-dark" style="font-size: 10px">{{ item.product_code }}</b>
+                  </div>
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    size="xs"
+                    icon="ph ph-copy"
+                    color="grey-7"
+                    style="font-size: 9px; padding: 0"
+                    @click.stop="copyToClipboard(item.product_code, 'Product Code')"
+                  >
+                    <q-tooltip>Copy Code</q-tooltip>
+                  </q-btn>
+                </div>
+
+                <div v-if="item.barcode" class="row items-center justify-between no-wrap">
+                  <div class="ellipsis">
+                    <span class="text-grey-6 text-uppercase" style="font-size: 8px">B: </span>
+                    <span class="text-grey-9" style="font-size: 10px">{{ item.barcode }}</span>
+                  </div>
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    size="xs"
+                    icon="ph ph-copy"
+                    color="grey-7"
+                    style="font-size: 9px; padding: 0"
+                    @click.stop="copyToClipboard(item.barcode, 'Barcode')"
+                  >
+                    <q-tooltip>Copy Barcode</q-tooltip>
+                  </q-btn>
+                </div>
+
+                <div v-if="item.product_id" class="row items-center justify-between no-wrap">
+                  <div class="ellipsis">
+                    <span class="text-grey-6 text-uppercase" style="font-size: 8px">ID: </span>
+                    <span class="text-grey-8" style="font-size: 10px">{{ item.product_id }}</span>
+                  </div>
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    size="xs"
+                    icon="ph ph-copy"
+                    color="grey-7"
+                    style="font-size: 9px; padding: 0"
+                    @click.stop="copyToClipboard(item.product_id, 'Product ID')"
+                  >
+                    <q-tooltip>Copy ID</q-tooltip>
+                  </q-btn>
+                </div>
+
+                <div v-if="item.add_method">
+                  <span
+                    class="text-uppercase text-weight-medium bg-grey-3 text-grey-8 q-px-xs rounded-borders"
+                    style="font-size: 9px"
+                  >
+                    {{ item.add_method }}
+                  </span>
+                </div>
               </div>
-            </td>
-            <td v-if="isColumnVisible('product_id')" class="shipment-product-id-col">
-              {{ item.product_id ?? '-' }}
-            </td>
-            <td v-if="isColumnVisible('barcode')" class="shipment-barcode-col">
-              {{ item.barcode ?? '-' }}
-            </td>
-            <td v-if="isColumnVisible('product_code')" class="shipment-product-code-col">
-              {{ item.product_code ?? '-' }}
-            </td>
-            <td v-if="isColumnVisible('add_method')" class="text-uppercase shipment-method-col">
-              {{ item.add_method ?? '-' }}
             </td>
             <td v-if="isColumnVisible('purchase_price')" class="text-center shipment-price-col">
               <div>
-                <span :class="{ 'cursor-pointer': isEditable }">{{
-                  formatPrice(item.purchase_price)
-                }}</span>
-                <q-popup-edit
+                <q-input
                   v-if="isEditable"
-                  :model-value="item.purchase_price"
-                  buttons
-                  persistent
-                  label-set="Save"
-                  label-cancel="Cancel"
-                  v-slot="scope"
-                  @save="(value) => onNumericSave(item, 'purchase_price', value, { decimals: 2 })"
-                >
-                  <q-input
-                    :model-value="scope.value ?? ''"
-                    type="number"
-                    step="0.01"
-                    dense
-                    outlined
-                    autofocus
-                    @update:model-value="(v) => (scope.value = v === '' ? null : Number(v))"
-                    @keyup.enter="scope.set"
-                  />
-                </q-popup-edit>
+                  :model-value="getDraftValue(item, 'purchase_price')"
+                  type="number"
+                  step="0.01"
+                  dense
+                  outlined
+                  hide-bottom-space
+                  class="bg-white rounded-borders inline-edit-input"
+                  input-class="text-center text-weight-bold"
+                  @update:model-value="(val) => setDraftValue(item, 'purchase_price', val)"
+                  @blur="saveDraftValue(item, 'purchase_price', { decimals: 2 })"
+                  @keyup.enter="(e: any) => (e.target as HTMLElement)?.blur()"
+                />
+                <span v-else>{{ formatPrice(item.purchase_price) }}</span>
               </div>
-              <div class="text-caption text-grey-7 text-weight-normal" style="font-size: 10px">
+              <div class="text-caption text-grey-7 text-weight-normal q-mt-xs" style="font-size: 10px">
                 T: {{ formatFixed2((item.purchase_price || 0) * (item.ordered_quantity || 0)) }}
               </div>
             </td>
             <td v-if="isColumnVisible('cost_bdt')" class="text-center shipment-cost-col">
               <div>{{ formatFixed2(lineCostBdt(item)) }}</div>
-              <div class="text-caption text-grey-7 text-weight-normal" style="font-size: 10px">
+              <div class="text-caption text-grey-7 text-weight-normal q-mt-xs" style="font-size: 10px">
                 T: {{ formatFixed2(lineCostBdt(item) * (item.ordered_quantity || 0)) }}
               </div>
             </td>
@@ -219,61 +228,50 @@
               v-if="isColumnVisible('ordered_quantity')"
               class="text-center shipment-qty-col shipment-qty-col--quantity"
             >
-              <span :class="{ 'cursor-pointer': isEditable }">{{ item.ordered_quantity }}</span>
-              <q-popup-edit
-                v-if="isEditable"
-                :model-value="item.ordered_quantity"
-                buttons
-                persistent
-                label-set="Save"
-                label-cancel="Cancel"
-                v-slot="scope"
-                @save="(value) => onNumericSave(item, 'ordered_quantity', value)"
-              >
+              <div>
                 <q-input
-                  :model-value="scope.value ?? ''"
+                  v-if="isEditable"
+                  :model-value="getDraftValue(item, 'ordered_quantity')"
                   type="number"
-                  dense
-                  outlined
-                  autofocus
                   min="1"
                   step="1"
-                  @update:model-value="(v) => (scope.value = v === '' ? null : Number(v))"
-                  @keyup.enter="scope.set"
+                  dense
+                  outlined
+                  hide-bottom-space
+                  class="bg-white rounded-borders inline-edit-input"
+                  input-class="text-center text-weight-bold"
+                  @update:model-value="(val) => setDraftValue(item, 'ordered_quantity', val)"
+                  @blur="saveDraftValue(item, 'ordered_quantity')"
+                  @keyup.enter="(e: any) => (e.target as HTMLElement)?.blur()"
                 />
-              </q-popup-edit>
+                <span v-else>{{ item.ordered_quantity }}</span>
+              </div>
+              <div class="text-caption text-transparent q-mt-xs" style="font-size: 10px; user-select: none;">
+                &nbsp;
+              </div>
             </td>
             <td
               v-if="isColumnVisible('product_weight')"
               class="text-center shipment-product-weight-col"
             >
               <div>
-                <span :class="{ 'cursor-pointer': isEditable }">{{
-                  formatDecimal(item.product_weight)
-                }}</span>
-                <q-popup-edit
+                <q-input
                   v-if="isEditable"
-                  :model-value="item.product_weight"
-                  buttons
-                  persistent
-                  label-set="Save"
-                  label-cancel="Cancel"
-                  v-slot="scope"
-                  @save="(value) => onNumericSave(item, 'product_weight', value, { decimals: 3 })"
-                >
-                  <q-input
-                    :model-value="scope.value ?? ''"
-                    type="number"
-                    step="0.001"
-                    dense
-                    outlined
-                    autofocus
-                    @update:model-value="(v) => (scope.value = v === '' ? null : Number(v))"
-                    @keyup.enter="scope.set"
-                  />
-                </q-popup-edit>
+                  :model-value="getDraftValue(item, 'product_weight')"
+                  type="number"
+                  step="0.001"
+                  dense
+                  outlined
+                  hide-bottom-space
+                  class="bg-white rounded-borders inline-edit-input"
+                  input-class="text-center text-weight-bold"
+                  @update:model-value="(val) => setDraftValue(item, 'product_weight', val)"
+                  @blur="saveDraftValue(item, 'product_weight', { decimals: 3 })"
+                  @keyup.enter="(e: any) => (e.target as HTMLElement)?.blur()"
+                />
+                <span v-else>{{ formatDecimal(item.product_weight) }}</span>
               </div>
-              <div class="text-caption text-grey-7 text-weight-normal" style="font-size: 10px">
+              <div class="text-caption text-grey-7 text-weight-normal q-mt-xs" style="font-size: 10px">
                 T: {{ formatFixed2((item.product_weight || 0) * (item.ordered_quantity || 0)) }} gm
               </div>
             </td>
@@ -282,32 +280,23 @@
               class="text-center shipment-package-weight-col"
             >
               <div>
-                <span :class="{ 'cursor-pointer': isEditable }">{{
-                  formatDecimal(item.package_weight)
-                }}</span>
-                <q-popup-edit
+                <q-input
                   v-if="isEditable"
-                  :model-value="item.package_weight"
-                  buttons
-                  persistent
-                  label-set="Save"
-                  label-cancel="Cancel"
-                  v-slot="scope"
-                  @save="(value) => onNumericSave(item, 'package_weight', value, { decimals: 3 })"
-                >
-                  <q-input
-                    :model-value="scope.value ?? ''"
-                    type="number"
-                    step="0.001"
-                    dense
-                    outlined
-                    autofocus
-                    @update:model-value="(v) => (scope.value = v === '' ? null : Number(v))"
-                    @keyup.enter="scope.set"
-                  />
-                </q-popup-edit>
+                  :model-value="getDraftValue(item, 'package_weight')"
+                  type="number"
+                  step="0.001"
+                  dense
+                  outlined
+                  hide-bottom-space
+                  class="bg-white rounded-borders inline-edit-input"
+                  input-class="text-center text-weight-bold"
+                  @update:model-value="(val) => setDraftValue(item, 'package_weight', val)"
+                  @blur="saveDraftValue(item, 'package_weight', { decimals: 3 })"
+                  @keyup.enter="(e: any) => (e.target as HTMLElement)?.blur()"
+                />
+                <span v-else>{{ formatDecimal(item.package_weight) }}</span>
               </div>
-              <div class="text-caption text-grey-7 text-weight-normal" style="font-size: 10px">
+              <div class="text-caption text-grey-7 text-weight-normal q-mt-xs" style="font-size: 10px">
                 T: {{ formatFixed2((item.package_weight || 0) * (item.ordered_quantity || 0)) }} gm
               </div>
             </td>
@@ -332,56 +321,46 @@
             </td>
           </tr>
 
-          <tr v-if="items.length" class="shipment-total-row">
-            <td class="shipment-sl-col" />
-            <td class="shipment-image-col" />
-            <td v-if="isColumnVisible('name')" class="shipment-name-col" />
-            <td v-if="props.shipment?.status === 'Warehouse Received'" class="shipment-split-col" />
-            <td v-if="isColumnVisible('product_id')" />
-            <td v-if="isColumnVisible('barcode')" />
-            <td v-if="isColumnVisible('product_code')" />
-            <td v-if="isColumnVisible('add_method')" />
-            <td
-              v-if="isColumnVisible('purchase_price')"
-              class="text-center text-weight-bold shipment-price-col"
-            >
-              {{ formatFixed2(tableTotals.price_gbp) }}
-            </td>
-            <td
-              v-if="isColumnVisible('cost_bdt')"
-              class="text-center text-weight-bold shipment-cost-col"
-            >
-              {{ formatFixed2(tableTotals.cost_bdt) }}
-            </td>
-            <td
-              v-if="isColumnVisible('ordered_quantity')"
-              class="text-center shipment-qty-col shipment-qty-col--quantity text-weight-bold"
-            >
-              {{ tableTotals.quantity }}
-            </td>
-            <td
-              v-if="isColumnVisible('product_weight')"
-              class="text-center text-weight-bold shipment-product-weight-col"
-            >
-              {{ formatFixed2(tableTotals.product_weight) }} gm
-            </td>
-            <td
-              v-if="isColumnVisible('package_weight')"
-              class="text-center text-weight-bold shipment-package-weight-col"
-            >
-              {{ formatFixed2(tableTotals.package_weight) }} gm
-            </td>
-            <td v-if="isColumnVisible('actions')" />
-          </tr>
-
-          <tr v-if="!items.length && !loading">
-            <td :colspan="tableColspan" class="text-center text-grey-6 q-pa-md">
-              No shipment items yet. Use Add Items to get started.
-            </td>
-          </tr>
         </tbody>
       </q-markup-table>
     </q-card-section>
+
+    <div
+      v-if="items.length"
+      class="shipment-summary-bar row items-center q-gutter-x-md q-px-md q-py-sm wrap"
+    >
+      <span class="text-caption text-grey-7 text-weight-medium">Summary</span>
+      <span
+        v-if="isColumnVisible('purchase_price')"
+        class="text-caption text-weight-bold shipment-summary-stat shipment-summary-stat--price"
+      >
+        Price {{ purchaseCurrencySymbol }} {{ formatFixed2(tableTotals.price_gbp) }}
+      </span>
+      <span
+        v-if="isColumnVisible('cost_bdt')"
+        class="text-caption text-weight-bold shipment-summary-stat shipment-summary-stat--cost"
+      >
+        Cost {{ costCurrencySymbol }} {{ formatFixed2(tableTotals.cost_bdt) }}
+      </span>
+      <span
+        v-if="isColumnVisible('ordered_quantity')"
+        class="text-caption text-weight-bold shipment-summary-stat shipment-summary-stat--qty"
+      >
+        Qty {{ tableTotals.quantity }}
+      </span>
+      <span
+        v-if="isColumnVisible('product_weight')"
+        class="text-caption text-weight-bold shipment-summary-stat shipment-summary-stat--product-wt"
+      >
+        Product {{ formatFixed2(tableTotals.product_weight) }} gm
+      </span>
+      <span
+        v-if="isColumnVisible('package_weight')"
+        class="text-caption text-weight-bold shipment-summary-stat shipment-summary-stat--package-wt"
+      >
+        Package {{ formatFixed2(tableTotals.package_weight) }} gm
+      </span>
+    </div>
   </div>
 
   <!-- Centered Quantity Split Dialog -->
@@ -418,23 +397,20 @@
       <q-separator class="q-mx-md q-my-sm" />
 
       <q-card-section class="q-py-sm">
-        <!-- Stock Type Splits Inputs -->
+        <!-- Availability splits -->
         <div class="q-gutter-y-md">
           <div
-            v-for="t in stockTypeStore.items"
-            :key="t.id"
+            v-for="opt in STOCK_AVAILABILITY_OPTIONS"
+            :key="opt.value"
             class="row items-center justify-between no-wrap q-py-xs"
           >
             <div class="column text-left">
               <span class="text-weight-bold text-grey-9 text-subtitle2" style="line-height: 1.1">{{
-                t.description
+                opt.label
               }}</span>
-              <span class="text-caption text-grey-6" style="font-size: 11px">
-                {{ t.is_sellable ? 'Sellable Pool' : 'Non-Sellable Pool' }}
-              </span>
             </div>
             <q-input
-              v-model.number="localSplits[activeSplitItem!.id]![t.id]"
+              v-model.number="localSplits[activeSplitItem!.id]![opt.value]"
               type="number"
               dense
               outlined
@@ -482,11 +458,16 @@ import { computed, ref, onMounted, watch } from 'vue';
 import SmartImage from 'src/components/SmartImage.vue';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import type { GlobalShipment, GlobalShipmentItem } from '../repositories/globalShipmentRepository';
-import { calculateLineLandedCostBdt } from '../utils/landedCost';
+import { calculateLineLandedCostBdt } from 'src/shared/shipment-engine';
 import { syncShipmentWeightToProduct } from '../utils/syncShipmentWeightToProduct';
-import { useGlobalStockTypeStore } from '../stores/globalStockTypeStore';
+import { useStockLocationStore } from '../stores/stockLocationStore';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { supabase } from 'src/boot/supabase';
+import {
+  STOCK_AVAILABILITY_OPTIONS,
+  type StockAvailability,
+} from '../constants/stockAvailability';
+import { getDefaultPutawayLocationId } from '../utils/stockLocationOptions';
 import {
   showSuccessNotification,
   showErrorNotification,
@@ -508,6 +489,12 @@ const props = withDefaults(
   },
 );
 
+const copyToClipboard = (text: any, label: string) => {
+  if (!text) return;
+  void navigator.clipboard.writeText(String(text));
+  showSuccessNotification(`Copied ${label} to clipboard`);
+};
+
 const emit = defineEmits<{
   'edit-details': [item: GlobalShipmentItem];
   delete: [id: number];
@@ -517,13 +504,10 @@ const shipmentStore = useGlobalShipmentStore();
 
 const baseColumnOptions = [
   { label: 'Name', value: 'name' },
-  { label: 'Product ID', value: 'product_id' },
-  { label: 'Barcode', value: 'barcode' },
-  { label: 'Product Code', value: 'product_code' },
-  { label: 'Method', value: 'add_method' },
+  { label: 'Product Identifiers', value: 'product_codes' },
   { label: 'Price GBP', value: 'purchase_price' },
   { label: 'Cost BDT', value: 'cost_bdt' },
-  { label: 'Quantity', value: 'ordered_quantity' },
+  { label: 'Ordered Quantity', value: 'ordered_quantity' },
   { label: 'Product Wt', value: 'product_weight' },
   { label: 'Package Wt', value: 'package_weight' },
   { label: 'Actions', value: 'actions' },
@@ -533,10 +517,7 @@ export type ColumnKey = (typeof baseColumnOptions)[number]['value'];
 
 const internalVisibleColumns = ref<ColumnKey[]>([
   'name',
-  'product_id',
-  'barcode',
-  'product_code',
-  'add_method',
+  'product_codes',
   'purchase_price',
   'cost_bdt',
   'ordered_quantity',
@@ -573,7 +554,7 @@ const columnOptions = computed(() =>
 
 const isEditable = computed(() => {
   if (!props.shipment) return false;
-  return props.shipment.status !== 'Ready Stock' && props.shipment.status !== 'Warehouse Received';
+  return props.shipment.status !== 'received' && props.shipment.status !== 'cancelled';
 });
 
 const isColumnVisible = (column: ColumnKey) => activeVisibleColumns.value.includes(column);
@@ -583,14 +564,20 @@ const tableColspan = computed(() => {
   for (const opt of columnOptions.value) {
     if (isColumnVisible(opt.value)) count++;
   }
-  if (props.shipment?.status === 'Warehouse Received') count++;
+  if (props.shipment?.status === 'in_transit') count++;
   return count;
 });
 
-const stockTypeStore = useGlobalStockTypeStore();
+const locationStore = useStockLocationStore();
 const authStore = useAuthStore();
 
-const localSplits = ref<Record<number, Record<number, number>>>({});
+const emptyAvailabilitySplits = (): Record<StockAvailability, number> => ({
+  sellable: 0,
+  held: 0,
+  unsellable: 0,
+});
+
+const localSplits = ref<Record<number, Record<StockAvailability, number>>>({});
 const savingSplits = ref<Record<number, boolean>>({});
 
 const splitDialogActive = ref(false);
@@ -602,44 +589,35 @@ const openSplitDialog = (item: GlobalShipmentItem) => {
 };
 
 onMounted(async () => {
-  if (stockTypeStore.items.length === 0 && authStore.tenantId) {
-    await stockTypeStore.fetchStockTypes(authStore.tenantId);
+  if (authStore.tenantId && locationStore.items.length === 0) {
+    await locationStore.fetchLocations(authStore.tenantId, false);
   }
 });
 
 const initLocalSplits = () => {
   const stocks = shipmentStore.currentShipmentStocks || [];
   const items = props.items || [];
-  const defaultType =
-    stockTypeStore.items.find((t) => t.description === 'Standard Sellable') ||
-    stockTypeStore.items[0];
-  const defaultTypeId = defaultType?.id || 0;
 
-  const newSplits: Record<number, Record<number, number>> = {};
+  const newSplits: Record<number, Record<StockAvailability, number>> = {};
   for (const item of items) {
     const itemStocks = stocks.filter((s) => s.shipment_item_id === item.id);
-    const splits: Record<number, number> = {};
+    const splits = emptyAvailabilitySplits();
     newSplits[item.id] = splits;
-
-    for (const t of stockTypeStore.items) {
-      splits[t.id] = 0;
-    }
 
     if (itemStocks.length > 0) {
       for (const s of itemStocks) {
-        splits[s.stock_type_id] = s.quantity || 0;
+        const availability = (s.availability || 'sellable') as StockAvailability;
+        splits[availability] = (splits[availability] || 0) + (s.quantity || 0);
       }
     } else {
-      if (defaultTypeId > 0) {
-        splits[defaultTypeId] = item.ordered_quantity;
-      }
+      splits.sellable = item.ordered_quantity;
     }
   }
   localSplits.value = newSplits;
 };
 
 watch(
-  [() => shipmentStore.currentShipmentStocks, () => props.items, () => stockTypeStore.items],
+  [() => shipmentStore.currentShipmentStocks, () => props.items],
   () => {
     initLocalSplits();
   },
@@ -648,7 +626,7 @@ watch(
 
 const getSumOfSplits = (itemId: number): number => {
   const itemSplits = localSplits.value[itemId] || {};
-  return Object.values(itemSplits).reduce((sum, qty) => sum + (qty || 0), 0);
+  return Object.values(itemSplits).reduce((sum: number, qty) => sum + (Number(qty) || 0), 0);
 };
 
 const isItemSplitsCompleteInDb = (item: GlobalShipmentItem): boolean => {
@@ -669,20 +647,21 @@ const saveItemSplits = async () => {
 
   savingSplits.value[item.id] = true;
   try {
-    const itemSplits = localSplits.value[item.id] || {};
-    const stockRows = Object.entries(itemSplits)
-      .map(([stockTypeIdStr, qty]) => {
-        const stockTypeId = Number(stockTypeIdStr);
-        const stockType = stockTypeStore.items.find((t) => t.id === stockTypeId);
-        return {
-          parent_tenant_id: authStore.tenantId,
-          shipment_item_id: item.id,
-          stock_type_id: stockTypeId,
-          quantity: qty,
-          is_usable: stockType?.is_sellable ?? true,
-        };
-      })
-      .filter((row) => row.quantity > 0);
+    const locationId = getDefaultPutawayLocationId(locationStore.items);
+    if (!locationId) {
+      showErrorNotification('No default put-away location configured.');
+      return;
+    }
+
+    const itemSplits = localSplits.value[item.id] || emptyAvailabilitySplits();
+    const stockRows = STOCK_AVAILABILITY_OPTIONS.map((opt) => ({
+      parent_tenant_id: authStore.tenantId,
+      shipment_item_id: item.id,
+      availability: opt.value,
+      location_id: locationId,
+      quantity: itemSplits[opt.value] || 0,
+      is_usable: opt.value === 'sellable',
+    })).filter((row) => row.quantity > 0);
 
     const { error: deleteError } = await supabase
       .from('global_stocks')
@@ -723,6 +702,9 @@ const formatPrice = (value: number | null | undefined) => {
 };
 
 const lineCostBdt = (item: GlobalShipmentItem) => {
+  if (item.landed_cost_bdt != null && Number.isFinite(Number(item.landed_cost_bdt))) {
+    return Number(item.landed_cost_bdt);
+  }
   if (!props.shipment) return 0;
   return calculateLineLandedCostBdt(item, props.shipment, props.items);
 };
@@ -750,14 +732,35 @@ const roundTo = (value: number, decimals = 0) => {
   return Math.round(value * factor) / factor;
 };
 
-const onNumericSave = async (
+const activeSaves = new Set<string>();
+const draftValues = ref<Record<string, any>>({});
+
+const getDraftValue = (item: GlobalShipmentItem, field: EditableField) => {
+  const key = `${item.id}:${field}`;
+  if (key in draftValues.value) {
+    return draftValues.value[key];
+  }
+  return item[field] ?? '';
+};
+
+const setDraftValue = (item: GlobalShipmentItem, field: EditableField, val: any) => {
+  const key = `${item.id}:${field}`;
+  draftValues.value[key] = val;
+};
+
+const saveDraftValue = async (
   item: GlobalShipmentItem,
   field: EditableField,
-  value: string | number | null,
   options?: { decimals?: number },
 ) => {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed < 0) {
+  const key = `${item.id}:${field}`;
+  const rawValue = key in draftValues.value ? draftValues.value[key] : item[field];
+  delete draftValues.value[key];
+
+  if (rawValue === null || rawValue === undefined || rawValue === '') return;
+
+  const parsed = Number(rawValue);
+  if (isNaN(parsed) || !Number.isFinite(parsed) || parsed < 0) {
     showWarningNotification('Value must be 0 or greater.');
     return;
   }
@@ -768,14 +771,23 @@ const onNumericSave = async (
     normalized = Math.max(1, Math.floor(parsed));
   }
 
+  const currentValue = Number(item[field] ?? 0);
+  if (currentValue === normalized) return;
+
+  if (activeSaves.has(key)) return;
+  activeSaves.add(key);
+
   try {
     await shipmentStore.updateShipmentItem(item.id, { [field]: normalized });
+    showSuccessNotification(`Updated ${field.replace('_', ' ')}.`);
     if ((field === 'product_weight' || field === 'package_weight') && item.product_id != null) {
       await syncShipmentWeightToProduct(item.product_id, field, normalized);
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Failed to update item.';
     showErrorNotification(msg);
+  } finally {
+    activeSaves.delete(key);
   }
 };
 
@@ -850,22 +862,27 @@ defineExpose({
   text-decoration: underline dashed;
 }
 
+.shipment-line-items {
+  min-width: 0;
+}
+
 .shipment-table-scroll-wrap {
-  overflow: visible;
+  overflow: auto;
   position: relative;
+  max-height: min(78vh, calc(100vh - 280px));
+  background: var(--bw-theme-base, #eef2f5);
 }
 
 .shipment-details-table {
-  min-width: 0;
-  max-width: 100%;
-  height: clamp(400px, calc(100vh - 320px), 80vh);
-  background: var(--bw-theme-base, #eef2f5);
-  overflow: auto;
+  min-width: max-content;
+  width: max-content;
+  height: auto;
+  overflow: visible;
   --sl-col-width: 60px;
 }
 
 .shipment-details-table.is-editable {
-  --sl-col-width: 90px;
+  --sl-col-width: 60px;
 }
 
 .shipment-details-table :deep(table) {
@@ -874,6 +891,10 @@ defineExpose({
   border-spacing: 0;
   min-width: max-content;
   width: max-content;
+}
+
+.shipment-details-table :deep(tbody td) {
+  vertical-align: middle;
 }
 
 .shipment-details-table :deep(thead tr th) {
@@ -896,11 +917,24 @@ defineExpose({
   background: #f8f9fa;
 }
 
-.shipment-details-table :deep(.shipment-item-image),
+.shipment-details-table :deep(.shipment-item-image-box .smart-image-wrapper) {
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+}
+
+.shipment-details-table :deep(.shipment-item-image) {
+  width: 100%;
+  height: 100%;
+  object-fit: contain !important;
+}
+
 .shipment-details-table :deep(.shipment-item-image-fallback) {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .shipment-item-name-cell {
@@ -922,28 +956,15 @@ defineExpose({
 }
 
 .shipment-name-col {
-  width: 220px;
-  min-width: 220px;
-  max-width: 220px;
+  width: 180px;
+  min-width: 180px;
+  max-width: 180px;
 }
 
-.shipment-product-id-col {
-  width: 110px;
-  min-width: 110px;
-  max-width: 110px;
-}
-
-.shipment-barcode-col,
-.shipment-product-code-col {
-  width: 170px;
-  min-width: 170px;
-  max-width: 170px;
-}
-
-.shipment-method-col {
-  width: 110px;
-  min-width: 110px;
-  max-width: 110px;
+.shipment-codes-col {
+  width: 140px;
+  min-width: 140px;
+  max-width: 140px;
 }
 
 .shipment-price-col,
@@ -1050,31 +1071,48 @@ defineExpose({
   background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
 }
 
-.shipment-total-row td {
-  background: rgba(255, 255, 255, 0.85);
-  font-weight: 600;
+.shipment-summary-bar {
+  flex-shrink: 0;
+  border-top: 1px solid var(--bw-theme-border, rgba(0, 0, 0, 0.08));
+  background: var(--bw-theme-surface, #fff);
+  row-gap: 6px;
 }
 
-.shipment-total-row td.shipment-qty-col--quantity {
-  background: #d0e6ff;
+.shipment-summary-stat {
+  padding: 2px 8px;
+  border-radius: 4px;
 }
 
-.shipment-total-row td.shipment-package-weight-col {
-  background: #e8d7f7;
-}
-
-.shipment-total-row td.shipment-price-col {
+.shipment-summary-stat--price {
   background: #daf3e4;
 }
 
-.shipment-total-row td.shipment-cost-col {
+.shipment-summary-stat--cost {
   background: #ffe8d1;
 }
 
-@media (max-width: 1023px) {
-  .shipment-details-table {
-    height: clamp(320px, calc(100vh - 260px), 65vh);
-  }
+.shipment-summary-stat--qty {
+  background: #d0e6ff;
+}
+
+.shipment-summary-stat--product-wt {
+  background: #eceff1;
+}
+
+.shipment-summary-stat--package-wt {
+  background: #e8d7f7;
+}
+
+.inline-edit-input :deep(.q-field__control) {
+  height: 28px;
+  min-height: 28px;
+  padding: 0 4px;
+  border-radius: 4px;
+}
+
+.inline-edit-input :deep(.q-field__native) {
+  padding: 0;
+  font-size: 12px;
 }
 
 :deep(input[type='number']::-webkit-outer-spin-button),

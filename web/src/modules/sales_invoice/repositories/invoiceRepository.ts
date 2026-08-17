@@ -17,7 +17,10 @@ const localToday = (): string => {
 
 export type ListGlobalInvoicesParams = {
   tenantId?: number;
+  /** Parent company list: all rows for this books owner. */
   parentTenantId?: number;
+  /** Child desk list: invoices this sister sold. */
+  issuedByTenantId?: number;
   page?: number;
   pageSize?: number;
   search?: string;
@@ -40,6 +43,7 @@ const listGlobalInvoices = async (
   const {
     tenantId,
     parentTenantId,
+    issuedByTenantId,
     page = 1,
     pageSize = 10,
     search,
@@ -52,17 +56,20 @@ const listGlobalInvoices = async (
   } = params;
 
   const offset = (page - 1) * pageSize;
-  const targetTenantId = tenantId ?? parentTenantId;
 
   let query = supabase
-    .from('global_invoices')
+    .from('sales_invoices')
     .select(
-      'id, tenant_id, parent_tenant_id, invoice_no, invoice_type, invoice_status, payment_status, invoice_date, due_date, total_amount, due_amount, paid_amount, billing_profile_id, recipient_name, billing_profiles(name, email, color, customer_group_id)',
+      'id, tenant_id, parent_tenant_id, issued_by_tenant_id, invoice_no, invoice_type, invoice_status, payment_status, invoice_date, due_date, total_amount, due_amount, paid_amount, billing_profile_id, recipient_name, billing_profiles(name, email, color, customer_group_id), issued_by:tenants!global_invoices_issued_by_tenant_id_fkey(name)',
       { count: 'exact' },
     );
 
-  if (targetTenantId) {
-    query = query.eq('tenant_id', targetTenantId);
+  if (issuedByTenantId) {
+    query = query.eq('issued_by_tenant_id', issuedByTenantId);
+  } else if (parentTenantId) {
+    query = query.eq('tenant_id', parentTenantId);
+  } else if (tenantId) {
+    query = query.eq('tenant_id', tenantId);
   }
 
   if (paymentStatus) {
@@ -121,12 +128,16 @@ const listGlobalInvoices = async (
 
   type GlobalInvoiceListRow = GlobalInvoiceRow & {
     billing_profiles?: { name: string; email: string | null; color: string | null; customer_group_id: number | null } | { name: string; email: string | null; color: string | null; customer_group_id: number | null }[] | null;
+    issued_by?: { name: string } | { name: string }[] | null;
   };
 
   const rows = ((data as GlobalInvoiceListRow[] | null) ?? []).map((row) => {
     const billingProfile = Array.isArray(row.billing_profiles)
       ? (row.billing_profiles[0] ?? null)
       : (row.billing_profiles ?? null);
+    const issuedBy = Array.isArray(row.issued_by)
+      ? (row.issued_by[0] ?? null)
+      : (row.issued_by ?? null);
 
     return {
       ...row,
@@ -134,6 +145,7 @@ const listGlobalInvoices = async (
       billing_profile_email: billingProfile?.email ?? null,
       billing_profile_color: billingProfile?.color ?? null,
       billing_profile_customer_group_id: billingProfile?.customer_group_id ?? null,
+      issued_by_tenant_name: issuedBy?.name ?? null,
     };
   });
 
@@ -146,7 +158,7 @@ const listGlobalInvoices = async (
 const createGlobalInvoice = async (
   payload: CreateGlobalInvoiceInput,
 ): Promise<GlobalInvoiceCreated> => {
-  const { data, error } = await supabase.rpc('create_global_invoice', {
+  const { data, error } = await supabase.rpc('create_sales_invoice', {
     p_tenant_id: payload.tenant_id,
     p_invoice_no: payload.invoice_no.trim(),
     p_billing_profile_id: payload.billing_profile_id ?? null,
@@ -169,7 +181,7 @@ const createGlobalInvoice = async (
 
 const getGlobalInvoiceById = async (invoiceId: number): Promise<GlobalInvoiceDetail> => {
   const { data, error } = await supabase
-    .from('global_invoices')
+    .from('sales_invoices')
     .select('*, billing_profiles(id, name, email, phone, address, color)')
     .eq('id', invoiceId)
     .single();
@@ -186,7 +198,9 @@ const mapListGlobalInvoiceItemRow = (row: any): GlobalInvoiceItemRow => {
   const hasCosting =
     shipmentItemId !== null &&
     shipmentId !== null &&
-    (shipmentType === 'domestic' || shipmentType === 'international');
+    (shipmentType === 'local' ||
+      shipmentType === 'international' ||
+      shipmentType === 'transfer');
 
   const costing: GlobalStockCostingInput | null = hasCosting
     ? {
@@ -196,12 +210,12 @@ const mapListGlobalInvoiceItemRow = (row: any): GlobalInvoiceItemRow => {
         product_weight: Number(row.product_weight ?? 0),
         package_weight: Number(row.package_weight ?? 0),
         ordered_quantity: Number(row.ordered_quantity ?? 0),
-        shipment_type: shipmentType as 'domestic' | 'international',
-        product_conversion_rate: Number(row.product_conversion_rate ?? 1),
-        cargo_conversion_rate: Number(row.cargo_conversion_rate ?? 1),
-        cargo_rate: Number(row.cargo_rate ?? 0),
+        shipment_type: shipmentType as 'international' | 'local' | 'transfer',
         received_weight: row.received_weight == null ? null : Number(row.received_weight),
-        transaction_rate: row.transaction_rate == null ? null : Number(row.transaction_rate),
+        landed_cost_bdt:
+          row.landed_cost_bdt == null || row.landed_cost_bdt === undefined
+            ? null
+            : Number(row.landed_cost_bdt),
       }
     : null;
 
@@ -337,6 +351,8 @@ const addGlobalReturnItem = async (payload: {
   return_accounting_amount: number;
   return_charge_amount?: number;
   note?: string | null;
+  to_grade_tag_id?: number | null;
+  to_availability?: 'sellable' | 'held' | 'unsellable';
 }) => {
   const { data, error } = await supabase.rpc('add_global_return_item', {
     p_invoice_id: payload.invoice_id,
@@ -346,6 +362,8 @@ const addGlobalReturnItem = async (payload: {
     p_return_accounting_amount: payload.return_accounting_amount,
     p_return_charge_amount: payload.return_charge_amount ?? 0,
     p_note: payload.note ?? null,
+    p_to_grade_tag_id: payload.to_grade_tag_id ?? undefined,
+    p_to_availability: payload.to_availability ?? undefined,
   });
   if (error) throw error;
   return data;
@@ -357,7 +375,7 @@ const getGlobalInvoicesPaidAmounts = async (
   if (!invoiceIds.length) return {};
 
   const { data, error } = await supabase
-    .from('global_invoices')
+    .from('sales_invoices')
     .select('id, paid_amount')
     .in('id', invoiceIds);
 
@@ -457,28 +475,28 @@ const updateGlobalInvoiceHeader = async (payload: {
 };
 
 const postGlobalInvoice = async (invoiceId: number): Promise<void> => {
-  const { error } = await supabase.rpc('post_global_invoice', {
+  const { error } = await supabase.rpc('post_sales_invoice', {
     p_invoice_id: invoiceId,
   });
   if (error) throw error;
 };
 
 const voidGlobalInvoice = async (invoiceId: number): Promise<void> => {
-  const { error } = await supabase.rpc('void_global_invoice', {
+  const { error } = await supabase.rpc('void_sales_invoice', {
     p_invoice_id: invoiceId,
   });
   if (error) throw error;
 };
 
 const unpostGlobalInvoice = async (invoiceId: number): Promise<void> => {
-  const { error } = await supabase.rpc('unpost_global_invoice', {
+  const { error } = await supabase.rpc('unpost_sales_invoice', {
     p_invoice_id: invoiceId,
   });
   if (error) throw error;
 };
 
 const deleteGlobalInvoice = async (invoiceId: number): Promise<void> => {
-  const { error } = await supabase.from('global_invoices').delete().eq('id', invoiceId);
+  const { error } = await supabase.from('sales_invoices').delete().eq('id', invoiceId);
   if (error) throw error;
 };
 

@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
+import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import type { CreateShopPayload, UpdateShopPayload, Shop } from '../types';
 
 export function useSaveShopMutation() {
@@ -19,8 +20,13 @@ export function useSaveShopMutation() {
       }
       return savedShop;
     },
-    onSuccess: async () => {
+    onSuccess: async (shop) => {
       await queryClient.invalidateQueries({ queryKey: ['shopOrder', 'shops'] });
+      if (shop?.id) {
+        await queryClient.invalidateQueries({
+          queryKey: shopOrderQueryKeys.shopDetail(shop.tenant_id, shop.id),
+        });
+      }
     },
   });
 }

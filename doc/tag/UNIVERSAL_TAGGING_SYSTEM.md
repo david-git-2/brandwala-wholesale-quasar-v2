@@ -1,90 +1,45 @@
-# Universal Polymorphic Tagging System
+# Universal Tag Catalog (v2)
 
-> **Single Source of Truth** for the generalized tagging architecture across the entire Brandwala platform.
+> **Single Source of Truth** for Brandwala’s shared tag dictionary.  
+> Schema: [schema.md](./schema.md) · Seeds: [presets.md](./presets.md) · Build order: [IMPLEMENTATION_ORDER.md](./IMPLEMENTATION_ORDER.md)
 
-## 1. Executive Summary
+## 1. What this is
 
-Tags are a **classification** layer — labels for filtering, merchandising, CRM, and expense dimensions. They are **not** entity identity and **not** required for dropship COD, courier remittance, or middleman wallet balances.
+**Platform foundation** (not a sellable SKU). One catalog serves many consumers:
 
-To avoid building redundant category tables per feature, Brandwala may adopt a **Universal Polymorphic Tagging Engine** when **two or more modules** need the same controlled vocabulary.
-
-Instead of hardcoding `product_tags` / `order_tags` tables, the architecture uses a master tag dictionary plus a generic junction that can attach a tag to any entity (products, orders, ledger rows, billing profiles, tickets).
-
-### Status & phasing
-
-| Phase | Scope | Status |
+| Consumer | module_key examples | Role |
 | :--- | :--- | :--- |
-| **Now** | Dropship escrow, courier remittance, middleman wallet | **Tags out of scope** — use wallet `entity_type` + `entity_id` and order status |
-| **Interim (wallet only)** | Light expense / campaign dimensions on ledger rows | Optional `metadata` jsonb on ledger — see [UNIVERSAL_WALLET_LEDGER.md](../wallet/UNIVERSAL_WALLET_LEDGER.md) |
-| **Later** | Shared tags across products, orders, wallets, CRM | Build this document’s `tags` + `entity_tags` model |
+| Stock grade | `stock_grade` | Condition / price class on warehouse balances |
+| Product color | `color` | Filter / display |
+| Shop / sale category | `shop_category`, `sale_category` | Browse filters / stubs |
+| Shipment progress | `shipment_progress` | Soft journey labels (lifecycle stays a column) |
+| Wallet expense (later) | `expense` | Ledger classification only |
 
-### Hybrid ownership model
-
-* **System Tags (Parent-Controlled):** Platform admin. Visible to all tenants; tenants cannot edit (e.g. logistics brand labels, VIP tier templates).
-* **Custom Tags (Tenant-Controlled):** Per-tenant ops needs (e.g. `Summer-Campaign`). Visible only to that tenant.
+**Not** wallet identity, order/shipment lifecycle, permissions, or payment methods — see §4.
 
 ---
 
-## 2. Identity vs classification (locked rule)
+## 2. Control model (locked)
 
-| Job | Question | Correct tool | Tags? |
+| Kind | `tenant_id` | Who edits | Day-one examples |
 | :--- | :--- | :--- | :--- |
-| **Identity** | Whose money / whose record? | `entity_type` + `entity_id` (or real FK) | **Never** |
-| **Lifecycle** | Where is this order in the workflow? | Status enums / state machine | **Never** |
-| **Money math** | Balance, debit, credit | Wallet / ledger | **Never** |
-| **Classification** | What label / campaign / expense bucket? | Tags (or interim ledger `metadata`) | **Yes** |
+| **System** | `NULL` | **Platform superadmin only** (DB seed day one; optional platform UI later) | Stock grade presets, color palette |
+| **Tenant custom** | set | Tenant admin (**later**) | Shop campaigns, local progress names |
 
-**Do not** use a tag as the wallet owner, courier identity, middleman identity, or payment method. Rename/merge of tags must never break balances or FKs.
-
-Related SSOT: [UNIVERSAL_WALLET_LEDGER.md](../wallet/UNIVERSAL_WALLET_LEDGER.md).
+**Day one for `stock_grade` + `color`:** seed only. Tenants **read and select** — they do **not** create/edit/delete those categories or tags.
 
 ---
 
-## 3. Where tags are useful (Brandwala)
+## 3. Identity vs classification (locked)
 
-### 3.1 Wallet / treasury expense dimensions (highest financial value)
+| Job | Tool | Tags? |
+| :--- | :--- | :---: |
+| Money / access / lifecycle identity | FK, status enum, wallet | **Never** |
+| Shared vocabulary / filters / grade **catalog** | `tag_categories` + `tags` | **Yes** |
+| Stock **balance slice** (which grade this qty is) | `global_stocks.grade_tag_id` → `tags.id` | Catalog yes; **attachment = FK column** |
+| Soft multi labels | `entity_tags` | **Yes** |
 
-Tag **ledger rows** (not wallet owners): `Marketing`, `Facebook Ads`, `Rent`, `Courier Extra`, `Eid Campaign`.
-
-Enables: “How much did we spend on ads this month?” without a separate expense-category schema per module.
-
-### 3.2 Shop orders / dropship ops labels
-
-Soft staff labels: `Urgent`, `Call again`, `Fraud watch`, `VIP customer`, `Facebook lead`.
-
-Order **status** still owns workflow (`delivered` → remitted → payout). Tags own human filters and notes.
-
-### 3.3 Products / catalog merchandising
-
-`Eid Sale`, `Clearance`, `New Arrival`, `Wholesale only` — promo and browse filters without proliferating hardcoded category tables.
-
-### 3.4 Middlemen / customers (CRM-lite)
-
-`VIP Reseller`, `Slow payer`, `High volume`, `Dhaka region` — filter and segment people. Wallet identity remains `middleman` / `customer` + real id.
-
-### 3.5 Couriers / logistics (optional system labels)
-
-Parent-controlled labels for filtering/reporting across orders or remittance batches when multiple couriers exist. Courier **account** remains `entity_type = 'courier'` + id.
-
-### 3.6 Support / thrift / tickets (when those grow)
-
-Shared vocabulary: `Damaged`, `Return`, `QC fail` across tickets, thrift lots, shipments.
-
-### 3.7 Inbound shipment progress (customer / customer-group updates)
-
-Soft journey labels shared with customers or a customer group: `UK warehouse`, `On flight`, `Airport`, `Customs cleared`, etc.
-
-| Rule | Detail |
-| :--- | :--- |
-| Tag group | `shipment_progress` — **per-tenant** customize names + optional `sort_order` |
-| Attach | `entity_tags` on `entity_type = 'shipment'` |
-| Cardinality | Prefer **one** active progress tag (UI replaces on change) |
-| Filters | List/filter shipments by tag — primary value of this group |
-| APIs | Shipment list/get expose lifecycle `status` + current progress tag for any surface |
-
-Shipment **lifecycle** stays a solid column: `draft` → `in_transit` → `received` (+ `cancelled`). Progress tags never unlock receive / stock / sell and must not encode payment.
-
-Decision: [v2/shipment/schema.md](../v2/shipment/schema.md).
+**Stock grade:** catalog = tags; ATP still = `availability` (`sellable` \| `held` \| `unsellable`). Tags never replace availability — [procurement stock schema](../procurement_stock/stock/schema.md).
 
 ---
 
@@ -93,72 +48,51 @@ Decision: [v2/shipment/schema.md](../v2/shipment/schema.md).
 | Domain | Use instead |
 | :--- | :--- |
 | Wallet / ledger **owner** | `entity_type` + `entity_id` |
-| Order / remittance / payout **workflow** | Status enums + RPCs |
-| Permissions / modules / roles | Grant system ([PERMISSION_SYSTEM.md](../PERMISSION_SYSTEM.md)) |
-| Payment method (bKash, bank, cash) | `global_payment_methods` / payment rows |
-| Invoice type / shipment type / shipment **lifecycle status** | Existing typed columns / enums |
-| Currency, tenant, shop membership | Real FKs and scope tables |
-| COD amounts, locked vs available balance | Ledger amounts + wallet state |
-| Anything that must survive tag rename/delete as identity | Stable primary keys |
+| Order / remittance / shipment **lifecycle** | Status enums |
+| Permissions / modules | Grant system |
+| Payment method | Payment method tables |
+| Stock sell gate (ATP) | `stock_availability` |
+| Grade qty stored only as `text[]` / jsonb / M2M without FK | **Forbidden** for stock grade |
 
-If removing the tag would break money correctness or access control, it was never a tag.
+If removing the tag would break money or access control, it was never a tag.
 
 ---
 
-## 5. The Data Model (when built)
+## 5. Attachment matrix (locked)
 
-Exactly two tables: master dictionary + polymorphic linker.
-
-### Table 1: `tags` (The Master List)
-
-| Column Name | Data Type | Description |
+| module_key | Cardinality | How stored on the entity |
 | :--- | :--- | :--- |
-| **`id`** | `uuid` (PK) | Unique ID for the tag. |
-| **`tenant_id`** | `bigint` (FK) | **NULLABLE.** `NULL` = global System Tag; set = Custom Tag for that tenant. |
-| **`name`** | `text` | Display name (e.g. `"Eid Sale"`, `"Urgent"`). |
-| **`slug`** | `text` | URL-safe machine name. UNIQUE per `tenant_id` (system tags globally unique). |
-| **`group_name`** | `text` | UI grouping (`"Marketing"`, `"CRM"`, `"Logistics"`, `"Ops"`, `"shipment_progress"`). |
-| **`parent_id`** | `uuid` (FK) | Optional hierarchy (e.g. `"Facebook Ads"` under `"Marketing"`). |
-| **`color`** | `text` | Hex for UI badges. |
-| **`sort_order`** | `int` | Optional — ordered steppers (e.g. shipment progress). Null = unordered / alpha. |
-
-### Table 2: `entity_tags` (The Universal Linker)
-
-| Column Name | Data Type | Description |
-| :--- | :--- | :--- |
-| **`id`** | `uuid` (PK) | Unique link ID. |
-| **`tenant_id`** | `bigint` (FK) | **REQUIRED.** RLS: tenants only see tags on their entities. |
-| **`tag_id`** | `uuid` (FK) | Points to `tags.id`. |
-| **`entity_type`** | `text` | What is tagged (`"shop_order"`, `"product"`, `"wallet_ledger"`, `"billing_profile"`, `"shipment"`). |
-| **`entity_id`** | `text` | Target id as text (UUID or BIGINT). |
-| **`created_at`** | `timestamptz` | When applied. |
-
-> **Performance:** Composite index on `(entity_type, entity_id)`; index on `(tag_id)` for “all entities with this tag”.
+| `stock_grade` | **single** | **`global_stocks.grade_tag_id` → tags.id`** (not array; not entity_tags-only) |
+| `color` | **single** (primary) | Product FK → `tags.id` (preferred) or single entity_tags |
+| `shop_category` / `sale_category` | **many** | `entity_tags` |
+| `shipment_progress` | **single** | `entity_tags` + optional denorm `progress_tag_id` on shipment |
 
 ---
 
-## 6. Worked example: tagging a financial expense
+## 6. Vertical presets (stock grade)
 
-Admin categorizes a 50,000 TK wallet **debit** as Marketing (classification only; owner is still the tenant wallet):
+Grades differ by **business type**, not free-form per tenant:
 
-1. Ensure `"Marketing"` exists in `tags`.
-2. Insert `entity_tags`: `entity_type = 'wallet_ledger'`, `entity_id = <ledger row id>`.
-3. P&L-by-category joins `entity_tags` to the ledger.
+| Category `code` | Use |
+| :--- | :--- |
+| `warehouse` | Import / electronics-style (Standard, Open box, …) |
+| `produce` | Fresh / seconds / waste |
+| `clothing` | New / display / defect / return |
 
-**Interim (before this engine ships):** store `metadata.tags` / expense keys on the ledger row only — see wallet SSOT §4. Promote to `entity_tags` when the shared dictionary is live.
+Parent (or tenant setting) selects **one** `stock_grade` category; stock rows reference tags from that category. Full seed lists: [presets.md](./presets.md).
 
 ---
 
-## 7. When to build the full engine
+## 7. Phasing
 
-Build `tags` + `entity_tags` when **at least two** of these are true:
+| Phase | Scope |
+| :--- | :--- |
+| **T1** | `tag_categories` + normalized `tags`; platform/seed; stock_grade + color seeds |
+| **T2** | Align `shipment_progress` to categories |
+| **T3** | `global_stocks.grade_tag_id` + unique grain + movements |
+| **T4** | Product color + shop/sale filters |
 
-- Same labels needed across products **and** orders **and** expenses
-- Parent-controlled system tags used by multiple tenants
-- Tag filters/reports are daily ops habits
-- Tenants need their own tag dictionaries with RLS
-
-Until then: finish wallet + remittance + dispense; use order status and wallet identity; optional ledger `metadata` for light dimensions.
+Live bridge today: task-era `tags` + `entity_tags` + `group_name` (shipment progress). T1 migrates toward categories without breaking progress.
 
 ---
 
@@ -166,9 +100,9 @@ Until then: finish wallet + remittance + dispense; use order status and wallet i
 
 | Doc | Relationship |
 | :--- | :--- |
-| [UNIVERSAL_WALLET_LEDGER.md](../wallet/UNIVERSAL_WALLET_LEDGER.md) | Money identity + interim metadata dimensions |
-| [v2/shipment/schema.md](../v2/shipment/schema.md) | Shipment lifecycle vs `shipment_progress` tags |
-| [v2/shipment/schema.md](../v2/shipment/schema.md) | Shipment header + progress via `entity_tags` |
-| [COURIER_AND_MIDDLEMAN_FINANCIAL_MASTER_PLAN.md](../COURIER_AND_MIDDLEMAN_FINANCIAL_MASTER_PLAN.md) | Dropship escrow — tags deferred |
-| [SHOP_ORDER_DROPSHIP.md](../SHOP_ORDER_DROPSHIP.md) | Dropship desk / middleman flows |
-| [MASTER_PLAN.md](../MASTER_PLAN.md) | Index; tagging listed under later / optional |
+| [schema.md](./schema.md) | Tables, uniques, RLS sketch |
+| [presets.md](./presets.md) | Seed lists |
+| [IMPLEMENTATION_ORDER.md](./IMPLEMENTATION_ORDER.md) | Build sequence |
+| [../procurement_stock/stock/schema.md](../procurement_stock/stock/schema.md) | Availability + grade FK |
+| [../wallet/UNIVERSAL_WALLET_LEDGER.md](../wallet/UNIVERSAL_WALLET_LEDGER.md) | Money identity; interim ledger metadata |
+| [../MASTER_PLAN.md](../MASTER_PLAN.md) | Index |

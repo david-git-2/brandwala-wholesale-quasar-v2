@@ -100,17 +100,19 @@ export const useShopOrderStore = defineStore('shopOrder', {
       }
     },
 
-    async fetchCustomerOrders(shopId: number, opts?: { limit?: number; offset?: number }) {
+    async fetchCustomerOrders(
+      tenantId: number,
+      opts?: { limit?: number; offset?: number; statusBucket?: string | null },
+    ) {
       this.loading = true;
       this.error = null;
       try {
-        const res = await shopOrderService.fetchCustomerOrders(shopId, opts);
+        const res = await shopOrderService.fetchCustomerOrders(tenantId, opts);
         if (!res.success) {
           this.error = res.error;
           handleApiFailure(res, res.error);
           return res;
         }
-        this.orders = res.data;
         return res;
       } finally {
         this.loading = false;
@@ -268,7 +270,7 @@ export const useShopOrderStore = defineStore('shopOrder', {
           handleApiFailure(res, res.error);
           return res;
         }
-        showSuccessNotification('Added to Dropship Desk successfully.');
+        showSuccessNotification('Order opened for processing.');
         await this.fetchOrderDetails(orderId);
         return res;
       } finally {

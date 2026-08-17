@@ -1,84 +1,148 @@
-# Help Center & Functional Module Guide
+# Help — deferred plan
 
-## 1. Executive Summary
+**Status:** spec only. Do not implement until a dedicated Help pass. Do not add module guides, portal content, or `LearnMoreHelpBtn` under the old model.
 
-The **Brandwala Wholesale System** is an enterprise-grade multi-tenant platform encompassing complex operations across order fulfillment, dropshipping, inventory procurement, universal multi-currency wallets, investor capital, and financial treasury management.
-
-To reduce system complexity for end-users (Admins, Merchants, Vendors, Investors, and Staff) and eliminate reliance on dry developer-centric documentation, this master plan establishes a **User-Centric Help Center & Contextual Module Assistance System**.
+Canon for guidance layers: [docs/UI_CONSISTENCY.md](../docs/UI_CONSISTENCY.md). Page rule: `.cursor/rules/frictionless-ui.mdc`.
 
 ---
 
-## 2. Functional Module Overview
+## 1. What it is
 
-Each module in the platform addresses a distinct operational requirement. The table below outlines user-facing capabilities:
+Help is **recovery on the screen the staff is already on**.
 
-| Module | Core Purpose | Key User Workflows | Primary Roles |
-| :--- | :--- | :--- | :--- |
-| **Shop & Orders (`shop_order`)** | Order placement, lifecycle tracking, dropship order dispatch, courier remittance reconciliation. | • Create / Checkout Orders<br>• Process Dropship Orders<br>• Reconcile Courier Remittances | Admin, Merchant, Customer |
-| **Universal Wallet (`wallet`)** | Multi-currency balance ledgers, entity tracking (Tenant, Vendor, Courier, Middleman), payouts, ledger adjustments. | • View Wallet Balances<br>• Process Merchant/Middleman Payouts<br>• Review Transaction Ledger | Admin, Merchant, Vendor |
-| **Procurement & Stock (`procurement_stock`)** | Vendor management, purchase orders, stock batching, inventory intake & batch costing. | • Create Purchase Orders<br>• Receive Stock Batches<br>• Audit Stock Levels | Admin, Inventory Manager |
-| **Sales Invoice (`sales_invoice`)** | Billing, customer invoicing, line-item adjustments, payment collection tracking. | • Generate Invoices<br>• Reconcile Payments<br>• Issue Credit Notes | Admin, Finance Staff |
-| **Reporting & Treasury (`reporting_treasury`)** | Financial health dashboards, cash balance sheets, treasury accounts, revenue reporting. | • Track Cash Flow<br>• Review Profitability Metrics<br>• Generate Financial Statements | Admin, Executive |
-| **Investor Portal (`investor_portal` / `investor_capital`)** | Investor capital management, capital injection tracking, yield distribution, portfolio tracking. | • Record Capital Injections<br>• View Investor Yields<br>• Distribute Capital Profits | Admin, Investor |
-| **Thrift Management (`thrift`)** | Consignment inventory tracking, thrift item pricing, sales processing, consignment settlement. | • Intake Consignment Items<br>• Price & Tag Thrift Inventory<br>• Settle Consignment Sales | Admin, Store Manager |
-| **Products & Costing (`products` / `product_based_costing`)** | Master product catalog, variant matrix, tier pricing, landed unit costing calculation. | • Manage Catalog & Variants<br>• Set Tiered Pricing<br>• Calculate Product Unit Costing | Admin, Product Manager |
-| **Access & Tenant Control (`tenant` / `access_control`)** | Tenant provisioning, RBAC role assignments, permission scopes, security policies. | • Provision Tenants<br>• Assign Staff Roles<br>• Configure Access Scopes | Super Admin, Tenant Admin |
+| Layer | Audience | Job |
+|---|---|---|
+| **The page** | Staff | Primary teacher: one-line “what this is” + one next action. Happy path never needs Help. |
+| **Help (`?` drawer)** | Same staff, when stuck | 3–8 blockers that match **real buttons** on that page. |
+| **`doc/`** | Developers / agents | How to build it. Never a staff manual. |
+
+One surface: the header **`?` drawer**, resolved from the current route.
+
+Not Help:
+
+- A `/help` portal, module card grid, or searchable textbook
+- A per-nav-group “what each page does” landing
+- Onboarding, product tours, or Help-drawer essays dumped onto the page
+- In-app Documentation (`/app/documentation`) — that is a spec dump for builders; retire it separately, do not replace it with Help
 
 ---
 
-## 3. System Architecture & Components
+## 2. Why
 
-The Help Center ecosystem consists of three unified components:
+The current Help Center is unused because it is the wrong job.
 
-```mermaid
-graph TD
-    A["Per-guide files (data/guides/*) → moduleGuideRegistry.ts"] --> B["Contextual Module Help Drawer (? Header Action)"]
-    A --> C["Dedicated Help Center Page (/app/help)"]
-    A --> D["In-Page Interactive Feature Highlights & Tooltips"]
+| Today | Problem |
+|---|---|
+| `/platform/help`, `/:slug/app/help`, shop/investor copies | Destination. Staff in Shipments never go there. |
+| Module guides (Overview / Workflows / Key Terms / FAQs) | Textbooks. They rot; they do not answer “why is this button off?” |
+| Coverage gaps (no procurement, invoices, treasury) | Proves the encyclopedia does not scale. |
+| Captions already on nav routes, hidden in the sidebar | Orientation belongs on the page and the nav, not in Help. |
+| `docs/OPTIMIZE_HELP_CENTER.md` + registry essays | Taught agents to fill the textbook. Removed. |
+
+Staff skip maps. They open Help when a control is disabled or the next step is unclear. That is the only moment worth writing for.
+
+---
+
+## 3. Target UX (when implemented)
+
+1. Staff are on a working page (list or detail).
+2. Header `?` opens a right drawer for **this page**.
+3. Drawer lists blockers only — questions in shop-floor English, answers that name the same labels as the UI.
+4. If the page has no blockers yet: empty state “This screen explains itself” — no Getting Started meta-guide.
+5. Disabled primary actions still explain themselves on the page (`q-tooltip` / status banner). Help is backup, not the first teacher.
+
+Do **not** add a Help Center nav item. Do **not** add group hub pages.
+
+---
+
+## 4. Data shape (replace `ModuleGuide`)
+
+Keep TypeScript files. No CMS, no DB table, no vue-i18n for body copy.
+
+**Today (retire):** `web/src/modules/help/types.ts` → `ModuleGuide` with `overview`, `workflows`, `terms`, `faqs`. Files under `web/src/modules/help/data/guides/`. Aggregator `moduleGuideRegistry.ts`.
+
+**Target:** one file per **page family**, not per module.
+
+```ts
+type LocalizedText = { en: string; bn: string };
+
+type PageHelp = {
+  id: string;                    // kebab, stable
+  title: LocalizedText;          // page name, not module name
+  routeMatchers: string[];       // path substrings; longest hit wins
+  scopes: Array<'platform' | 'app' | 'shop' | 'investor'>;
+  audiences: Array<'superadmin' | 'admin' | 'staff' | 'viewer' | 'merchant' | 'investor'>;
+  blockers: Array<{
+    id: string;
+    question: LocalizedText;     // "Why is Receive disabled?"
+    answer: LocalizedText;       // names the real button / banner
+  }>;
+};
 ```
 
-1. **Functional Module Registry (`data/guides/*` + `moduleGuideRegistry.ts`)**: Per-guide TypeScript files with bilingual `{ en, bn }` copy; thin aggregator is the import index.
-2. **Contextual Module Help Drawer (`ModuleHelpDrawer.vue`)**: Reusable slide-over panel available on every page header (`? Module Guide` action).
-3. **Help Center Portal (`/app/help`)**: Dedicated search-enabled knowledge base presenting visual module cards, task-oriented guides, and role-filtered help articles.
+Rules:
 
-**Operational AI protocol:** [`docs/OPTIMIZE_HELP_CENTER.md`](../docs/OPTIMIZE_HELP_CENTER.md) — attach a page + this protocol to generate/update registry content and optional Learn-more buttons.
-
----
-
-## 4. Phased Implementation Roadmap
-
-### Phase 0: Data & Registry Specification
-- [ ] Create structured `web/src/modules/documentation/data/moduleGuideRegistry.ts` defining user-friendly metadata for all 10 core modules.
-- [ ] Map user roles (`Admin`, `Merchant`, `Vendor`, `Investor`) to corresponding module guides.
-- [ ] Document common FAQs and step-by-step operational workflows per module.
-
-### Phase 1: Contextual Module Help Drawer Component
-- [ ] Build atomic Quasar presentational component `ModuleHelpDrawer.vue`.
-- [ ] Add `? Module Guide` header button to primary layout / header (`MainLayoutHeader.vue`).
-- [ ] Integrate auto-detection of current active route to open the relevant module guide automatically.
-- [ ] Provide tabbed layout inside drawer: **Overview**, **Workflows**, **Key Terms**, and **FAQs**.
-
-### Phase 2: User Knowledge & Help Center UI
-- [ ] Build `/app/help` main portal page with visual module grid cards.
-- [ ] Implement search bar filtering across all workflows, terms, and FAQs.
-- [ ] Add role-based filtering toggle so users only view guides relevant to their permissions.
-- [ ] Add deep-link sharing capability (e.g. `/app/help?module=wallet&section=payouts`).
-
-### Phase 3: In-Page Tooltip Guides & Onboarding Badges
-- [ ] Add lightweight contextual info tooltips (`q-tooltip` / `q-badge`) to complex page headers (e.g. Universal Wallet balances, Courier Bulk Remittance).
-- [ ] Provide "Learn More" links inside page banners that trigger the relevant Help Drawer directly.
-
-### Phase 4: Legacy Documentation Module Retirement
-- [ ] Review existing legacy `documentation` module components for any remaining references.
-- [ ] Safely deprecate unneeded raw Markdown reader pages.
-- [ ] Update navigation registries to point `/app/documentation` to the new `/app/help` portal.
-- [ ] Run zero-drift validation (`vue-tsc --noEmit` and ESLint audit).
+- 3–8 blockers. If you cannot write three real blockers, the page is not ready for Help — fix the page subtitle / disabled-why first.
+- Every `en` has a `bn`. UI chrome (drawer title, close) stays in vue-i18n.
+- `routeMatchers` must hit the attached page URL. Prefer the most specific path.
+- No Overview, Workflows, or Key Terms tabs.
+- Do not invent RPC/table/ATP jargon in copy.
 
 ---
 
-## 5. Verification & Acceptance Criteria
+## 5. How to update data (Help pass only)
 
-- **Usability**: Users can open module guidance in 1 click from any page without leaving their working workflow.
-- **Searchability**: The `/app/help` center instantly filters articles by keyword and active user role.
-- **Performance**: Zero CLS impact; module guide data loaded lazily via code splitting.
-- **Maintainability**: Adding a new feature guide means one file under `data/guides/` plus a one-line registry import; body copy must include both English and Bangla.
+Do not run this until the drawer + `PageHelp` type exist. Until then, **do not add or rewrite guides**.
+
+1. Attach the live `.vue` page (and the bar/dialog that owns the stuck action).
+2. List real blockers from the UI: disabled CTAs, status gates, empty states people misread.
+3. Upsert `web/src/modules/help/data/pages/<idCamel>.ts` as a `PageHelp` with both locales.
+4. Register it in the aggregator (`moduleGuideRegistry.ts` or its replacement).
+5. Set `routeMatchers` so `?` on that page opens this file.
+6. Do not add `LearnMoreHelpBtn` unless the page has a status-gated action whose tooltip already points at Help.
+
+Prompt shape:
+
+```
+Using doc/HELP_CENTER.md and @InboundShipmentDetailsPage.vue,
+add app/staff blockers for Receive / In transit.
+id: inbound-shipment-details
+```
+
+Do **not** port old module guides. Rewrite from the page. Delete unused `data/guides/*.ts` in the same pass.
+
+---
+
+## 6. Implementation order (later)
+
+| ID | Change | Notes |
+|---|---|---|
+| **H0** | Freeze | This doc. No new guides, no portal polish, no Learn-more buttons. |
+| **H1** | Types + registry | `PageHelp` + `data/pages/`. Stop resolving `ModuleGuide`. |
+| **H2** | Drawer only | Rewrite `ModuleHelpDrawer.vue` to blockers. Remove `HelpCenterPage.vue`, help routes, Help Center nav links in `useWorkspaceNavigation.ts`. |
+| **H3** | Content cutover | Delete `data/guides/*`. Add blockers only for pages touched in that pass. Empty drawer is valid. |
+| **H4** | Cleanup | Drop `HelpTab`, search, locale-on-portal, `helpCenterPathForScope`. Keep `en`/`bn` toggle on the drawer. |
+
+In-app Documentation retirement is **not** H4. Track it on the documentation module when you kill `/app/documentation`.
+
+---
+
+## 7. Out of scope
+
+- Per-nav-group explainer pages
+- Product tours / coach marks
+- Backend or CMS for help articles
+- Filling every module before the drawer works
+- Sending staff to `doc/*.md` or `/app/documentation`
+- Using Help as onboarding
+
+---
+
+## 8. Legacy dropped (this change)
+
+| Removed | Why |
+|---|---|
+| Previous `doc/HELP_CENTER.md` (module encyclopedia + Phases 0–4 portal) | Specified the unused product |
+| `docs/OPTIMIZE_HELP_CENTER.md` | Taught agents to write textbooks |
+
+Code under `web/src/modules/help/` stays until H1–H3. Do not expand it.

@@ -59,7 +59,7 @@
             <div class="col-12 col-sm-8 q-gutter-y-sm">
               <q-select
                 v-model="form.product_id"
-                label="Link Catalog Product (Search by Name/Code/Barcode)"
+                label="Link Catalog Product (Search by Name/Code/Barcode/ID)"
                 filled
                 dense
                 use-input
@@ -275,7 +275,6 @@ import { ref, onMounted, computed } from 'vue';
 import { useDialogPluginComponent, useQuasar } from 'quasar';
 import SmartImage from 'src/components/SmartImage.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import type { GlobalShipmentItem } from '../repositories/globalShipmentRepository';
 import { syncShipmentWeightToProduct } from '../utils/syncShipmentWeightToProduct';
@@ -298,8 +297,13 @@ const { dialogRef, onDialogHide, onDialogOK } = useDialogPluginComponent();
 const $q = useQuasar();
 
 const authStore = useAuthStore();
-const vendorStore = useVendorStore();
 const shipmentStore = useGlobalShipmentStore();
+
+const shipmentVendorId = computed(() => {
+  const ship = shipmentStore.currentShipment;
+  if (ship && ship.id === props.shipmentId) return ship.vendor_id ?? null;
+  return null;
+});
 
 const isEdit = computed(() => !!props.item);
 const submitting = ref(false);
@@ -383,34 +387,52 @@ const form = ref({
 const productOptions = ref<any[]>([]);
 
 const filterProducts = async (val: string, update: any) => {
-  if (val.trim().length < 2) {
+  const queryText = val.trim();
+  if (queryText.length < 1) {
     update(() => {
       productOptions.value = [];
     });
     return;
   }
 
-  try {
-    const res = await productRepository.listProducts({
-      search: val.trim(),
-      searchField: 'name',
-      tenantId: authStore.tenantId,
-      pageSize: 30,
-    });
+  const cleanId = queryText.replace(/^#/, '');
+  const isNumeric = /^\d+$/.test(cleanId);
 
-    let data = res.data;
+  try {
+    let data: any[] = [];
+    if (isNumeric) {
+      const resId = await productRepository.listProducts({
+        search: cleanId,
+        searchField: 'id',
+        tenantId: authStore.tenantId,
+        pageSize: 30,
+      });
+      data = resId.data;
+    }
+
+    if (data.length === 0) {
+      const resName = await productRepository.listProducts({
+        search: queryText,
+        searchField: 'name',
+        tenantId: authStore.tenantId,
+        pageSize: 30,
+      });
+      data = resName.data;
+    }
+
     if (data.length === 0) {
       const resCode = await productRepository.listProducts({
-        search: val.trim(),
+        search: queryText,
         searchField: 'product_code',
         tenantId: authStore.tenantId,
         pageSize: 30,
       });
       data = resCode.data;
     }
+
     if (data.length === 0) {
       const resBarcode = await productRepository.listProducts({
-        search: val.trim(),
+        search: queryText,
         searchField: 'barcode',
         tenantId: authStore.tenantId,
         pageSize: 30,
@@ -447,15 +469,13 @@ const onProductSelected = (val: any) => {
 };
 
 onMounted(async () => {
-  if (authStore.tenantId) {
-    void vendorStore.fetchVendors(authStore.tenantId);
-  }
+  form.value.vendor_id = shipmentVendorId.value;
 
   if (props.item) {
     form.value = {
       shipment_id: props.item.shipment_id,
       product_id: props.item.product_id,
-      vendor_id: props.item.vendor_id,
+      vendor_id: shipmentVendorId.value,
       name: props.item.name,
       ordered_quantity: props.item.ordered_quantity,
       purchase_price: props.item.purchase_price,
@@ -491,6 +511,8 @@ const onSubmitSingle = async () => {
   error.value = null;
 
   try {
+    form.value.vendor_id = shipmentVendorId.value;
+
     if (isEdit.value) {
       const updated = await shipmentStore.updateShipmentItem(props.item!.id, form.value);
       const targetProductId = form.value.product_id;
@@ -516,6 +538,7 @@ const onSubmitSingle = async () => {
     } else {
       const payload: Omit<GlobalShipmentItem, 'id' | 'created_at' | 'updated_at'> = {
         ...form.value,
+        vendor_id: shipmentVendorId.value,
         add_method: 'manual',
       };
       const created = await shipmentStore.addShipmentItem(payload);

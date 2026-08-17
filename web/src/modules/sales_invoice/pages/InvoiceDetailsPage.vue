@@ -132,20 +132,22 @@
           </q-btn>
 
           <q-btn
-            v-if="invoice.invoice_status === 'draft'"
+            v-if="canEditDraft"
             color="primary"
             unelevated
             no-caps
             icon="ph ph-plus"
             label="Add Stock"
+            data-test="add-stock-btn"
             @click="stockDialog = true"
           />
 
           <q-btn
             v-if="
-              invoice.invoice_status === 'draft' ||
+              canMutateInvoice &&
+              (invoice.invoice_status === 'draft' ||
               invoice.invoice_status === 'voided' ||
-              (invoice.invoice_status === 'posted' && canUnpostOrVoid)
+              (invoice.invoice_status === 'posted' && canUnpostOrVoid))
             "
             flat
             dense
@@ -228,7 +230,8 @@
                 no-caps
                 class="q-px-md text-caption text-weight-bold"
                 :loading="(st === 'posted' && postingInvoice) || (st === 'draft' && unpostingInvoice)"
-                :disable="(postingInvoice || unpostingInvoice || voidingInvoice) || isTransitionDisabled(st)"
+                :disable="(postingInvoice || unpostingInvoice || voidingInvoice) || isTransitionDisabled(st) || !canMutateInvoice"
+                :data-test="st === 'posted' ? 'post-invoice-btn' : 'draft-invoice-btn'"
                 @click="changeInvoiceStatus(st)"
               >
                 <q-icon v-if="invoice.invoice_status === st" name="ph ph-check-circle" size="14px" class="q-mr-xs" />
@@ -244,6 +247,7 @@
             </template>
             <q-separator vertical class="q-mx-sm status-workflow-sep" />
             <q-btn
+              v-if="canMutateInvoice"
               :color="invoice.invoice_status === 'voided' ? 'negative' : 'grey-3'"
               :text-color="invoice.invoice_status === 'voided' ? 'white' : 'grey-7'"
               :outline="invoice.invoice_status !== 'voided'"
@@ -251,6 +255,7 @@
               dense
               no-caps
               class="q-px-md text-caption text-weight-bold"
+              data-test="void-invoice-btn"
               :loading="voidingInvoice"
               :disable="(postingInvoice || unpostingInvoice || voidingInvoice) || (isTransitionDisabled('voided') && invoice.invoice_status !== 'voided')"
               @click="changeInvoiceStatus('voided')"
@@ -326,7 +331,7 @@
               <div class="text-subtitle1 text-weight-bold">Invoice Items ({{ items.length }})</div>
               <q-space />
               
-              <div v-if="invoice.invoice_status === 'draft'" class="row q-gutter-sm">
+              <div v-if="canEditDraft" class="row q-gutter-sm">
                 <q-btn
                   v-if="items.length > 0"
                   color="secondary"
@@ -355,11 +360,11 @@
                   <th style="width: 60px"></th>
                   <th class="text-left">Product</th>
                   <th class="text-right">Qty</th>
-                  <th class="text-right">Cost</th>
-                  <th class="text-right">Sell</th>
+                  <th v-if="isParentTenant" class="text-right">Cost</th>
+                  <th class="text-right">{{ isParentTenant ? 'Sell' : 'Price' }}</th>
                   <th class="text-right">Total</th>
-                  <th v-if="invoice.invoice_status === 'posted'" class="text-right">Margin</th>
-                  <th v-if="invoice.invoice_status === 'draft'" style="width: 50px"></th>
+                  <th v-if="isParentTenant && invoice.invoice_status === 'posted'" class="text-right">Margin</th>
+                  <th v-if="canEditDraft" style="width: 50px"></th>
                 </tr>
               </thead>
               <tbody>
@@ -383,14 +388,14 @@
                     <span
                       class="text-weight-bold"
                       :class="{
-                        'cursor-pointer text-underline-dashed text-primary': invoice.invoice_status === 'draft',
+                        'cursor-pointer text-underline-dashed text-primary': canEditDraft,
                       }"
                     >
                       {{ row.quantity }}
-                      <q-icon name="ph ph-pencil-simple" size="10px" class="q-ml-xs text-grey-5" v-if="invoice.invoice_status === 'draft'" />
+                      <q-icon name="ph ph-pencil-simple" size="10px" class="q-ml-xs text-grey-5" v-if="canEditDraft" />
                     </span>
                     <q-popup-edit
-                      v-if="invoice.invoice_status === 'draft'"
+                      v-if="canEditDraft"
                       :model-value="row.quantity"
                       buttons
                       persistent
@@ -418,20 +423,20 @@
                       Returned: {{ row.return_quantity }}
                     </div>
                   </td>
-                  <td class="text-right text-grey-7">
+                  <td v-if="isParentTenant" class="text-right text-grey-7">
                     {{ formatItemUnitCost(row) }}
                   </td>
                   <td class="text-right">
                     <span
                       :class="{
-                        'cursor-pointer text-underline-dashed text-primary': invoice.invoice_status === 'draft',
+                        'cursor-pointer text-underline-dashed text-primary': canEditDraft,
                       }"
                     >
                       {{ formatAmount(row.sell_price_amount) }}
-                      <q-icon name="ph ph-pencil-simple" size="10px" class="q-ml-xs text-grey-5" v-if="invoice.invoice_status === 'draft'" />
+                      <q-icon name="ph ph-pencil-simple" size="10px" class="q-ml-xs text-grey-5" v-if="canEditDraft" />
                     </span>
                     <q-popup-edit
-                      v-if="invoice.invoice_status === 'draft'"
+                      v-if="canEditDraft"
                       :model-value="row.sell_price_amount"
                       buttons
                       persistent
@@ -457,10 +462,10 @@
                   <td class="text-right text-weight-bold">
                     {{ formatAmount(row.line_total_amount) }}
                   </td>
-                  <td v-if="invoice.invoice_status === 'posted'" class="text-right text-positive">
+                  <td v-if="isParentTenant && invoice.invoice_status === 'posted'" class="text-right text-positive">
                     {{ formatAmount(lineMarginForRow(row)) }}
                   </td>
-                  <td v-if="invoice.invoice_status === 'draft'" class="text-right">
+                  <td v-if="canEditDraft" class="text-right">
                     <q-btn
                       flat
                       round
@@ -582,7 +587,7 @@
           </q-card>
 
           <!-- Invoice Information (Draft Only) -->
-          <q-card v-if="invoice.invoice_status === 'draft'" flat class="floating-surface shadow-1 q-pa-md">
+          <q-card v-if="canEditDraft" flat class="floating-surface shadow-1 q-pa-md">
             <div class="text-subtitle2 text-weight-bold q-mb-sm">Invoice Information</div>
             <div class="q-gutter-y-sm">
               <q-input
@@ -982,11 +987,13 @@
           >
             <div class="text-subtitle2 text-weight-bold q-mb-sm">Returns</div>
             <q-btn
+              v-if="canMutateInvoice"
               color="orange"
               no-caps
               outline
               class="pill-btn slim-btn full-width"
               label="Add Return"
+              data-test="add-return-btn"
               @click="returnDialog = true"
             />
           </q-card>
@@ -1356,6 +1363,28 @@
             min="0"
             class="soft-input"
           />
+          <q-select
+            v-model="returnGradeTagId"
+            :options="returnGradeOptions"
+            label="Condition grade"
+            outlined
+            dense
+            emit-value
+            map-options
+            option-label="name"
+            option-value="id"
+            class="soft-input"
+          />
+          <q-select
+            v-model="returnAvailability"
+            :options="returnAvailabilityOptions"
+            label="Availability"
+            outlined
+            dense
+            emit-value
+            map-options
+            class="soft-input"
+          />
           <q-input
             v-model.number="returnFaceAmount"
             type="number"
@@ -1390,6 +1419,7 @@
             color="primary"
             label="Save"
             :loading="returnSaving"
+            :disable="!returnItemId || !returnGradeTagId || returnQty <= 0"
             @click="onAddReturn"
             class="pill-btn"
           />
@@ -1447,6 +1477,7 @@ import { useQueryClient } from '@tanstack/vue-query';
 import RichTextEditor from 'src/components/ui/RichTextEditor.vue';
 import SmartImage from 'src/components/SmartImage.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useInvoiceWorkspace } from '../composables/useInvoiceWorkspace';
 import { supabase } from 'src/boot/supabase';
 import { formatAmountBdt } from 'src/utils/currency';
 import {
@@ -1464,14 +1495,24 @@ import NetworkStockSearchPanel from '../components/NetworkStockSearchPanel.vue';
 import InvoiceBulkPasteDialog from '../components/InvoiceBulkPasteDialog.vue';
 import { invoiceGrossProfit, lineMargin } from 'src/modules/reporting_treasury/utils/margin';
 import type { StockNetworkRow } from 'src/modules/global/types';
+import { stockNetworkAvailableQty } from 'src/modules/global/utils/mapStockNetworkRow';
 import { useInvoiceItemUnitCosts } from '../composables/useInvoiceItemUnitCosts';
 import type { GlobalInvoiceDetail, GlobalInvoiceItemRow } from '../types';
+import { tagRepository } from 'src/modules/tag/repositories/tagRepository';
+import type { Tag } from 'src/modules/tag/types';
+import { STOCK_AVAILABILITY_OPTIONS } from 'src/modules/procurement_stock/constants/stockAvailability';
+import type { StockAvailability } from 'src/modules/procurement_stock/constants/stockAvailability';
 
 const route = useRoute();
 const router = useRouter();
 const $q = useQuasar();
 const authStore = useAuthStore();
+const { isParentTenant } = useInvoiceWorkspace();
 const queryClient = useQueryClient();
+const canEditDraft = computed(
+  () => invoice.value?.invoice_status === 'draft' && !isParentTenant.value,
+);
+const canMutateInvoice = computed(() => !isParentTenant.value);
 
 const goBack = () => {
   void router.push({
@@ -1576,6 +1617,10 @@ const returnFaceAmount = ref(0);
 const returnAccountingAmount = ref(0);
 const returnCharge = ref(0);
 const returnSaving = ref(false);
+const returnGradeTagId = ref<number | null>(null);
+const returnAvailability = ref<StockAvailability>('held');
+const returnGradeOptions = ref<Tag[]>([]);
+const returnAvailabilityOptions = STOCK_AVAILABILITY_OPTIONS;
 
 const postingInvoice = ref(false);
 const voidingInvoice = ref(false);
@@ -1745,17 +1790,20 @@ const refreshInvoiceHeader = async () => {
 
 const onSelectStockRow = (row: StockNetworkRow) => {
   const unitCost = row.resolvedUnitCost ?? 0;
+  const maxQty = stockNetworkAvailableQty(row);
   const existingIdx = stockCart.value.findIndex(
     (item) => item.global_stock_id === row.global_stock_id,
   );
   if (existingIdx > -1) {
     const existing = stockCart.value[existingIdx];
     if (existing) {
+      if (existing.quantity >= maxQty) return;
       existing.quantity++;
       stockCart.value.splice(existingIdx, 1);
       stockCart.value.unshift(existing);
     }
   } else {
+    if (maxQty <= 0) return;
     stockCart.value.unshift({
       global_stock_id: row.global_stock_id,
       product_id: row.product_id,
@@ -2259,6 +2307,8 @@ const onAddReturn = async () => {
       return_face_amount: returnFaceAmount.value,
       return_accounting_amount: returnAccountingAmount.value,
       return_charge_amount: returnCharge.value || 0,
+      to_grade_tag_id: returnGradeTagId.value,
+      to_availability: returnAvailability.value,
     });
     returnDialog.value = false;
     await loadInvoice();
@@ -2273,6 +2323,31 @@ const onAddReturn = async () => {
 watch(stockDialog, (open) => {
   if (!open) {
     stockCart.value = [];
+  }
+});
+
+watch(returnDialog, async (open) => {
+  if (!open) return;
+  returnAvailability.value = 'held';
+  try {
+    returnGradeOptions.value = await tagRepository.listTagsForCategory({
+      moduleKey: 'stock_grade',
+      code: 'warehouse',
+    });
+    const standard = returnGradeOptions.value.find((g) => g.slug === 'standard');
+    returnGradeTagId.value = standard?.id ?? returnGradeOptions.value[0]?.id ?? null;
+  } catch {
+    returnGradeOptions.value = [];
+    returnGradeTagId.value = null;
+  }
+});
+
+watch(returnGradeTagId, (gradeId) => {
+  const g = returnGradeOptions.value.find((opt) => opt.id === gradeId);
+  if (g?.metadata?.maps_to_availability === 'unsellable') {
+    returnAvailability.value = 'unsellable';
+  } else if (returnAvailability.value === 'unsellable') {
+    returnAvailability.value = 'held';
   }
 });
 

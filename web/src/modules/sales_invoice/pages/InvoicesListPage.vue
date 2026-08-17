@@ -1,20 +1,23 @@
 <template>
-  <q-page class="q-pa-md">
-    <div class="q-gutter-y-md">
-      <!-- Page Header -->
-      <section class="row items-center justify-between q-col-gutter-md">
-        <div class="col">
-          <div class="text-overline text-primary">Invoices</div>
-          <h1 class="text-h5 text-weight-bold q-my-none">Sales Invoices</h1>
-        </div>
-        <div class="col-auto">
+  <q-page class="bw-page page-fixed-layout q-pa-md" :data-test="isParentTenant ? 'invoices-parent-list' : 'invoices-child-list'">
+    <section class="bw-page__stack" style="min-width: 0; flex: 1 1 0%; display: flex; flex-direction: column; overflow: hidden;">
+      <AppPageHeader
+        dense
+        eyebrow="Sales & Invoice"
+        title="Sales Invoices"
+        :subtitle="isParentTenant ? 'Company books — every sister’s sales.' : 'Invoices you issued. Mixed shipments on one bill.'"
+        class="q-mb-sm"
+      >
+        <template v-if="!isParentTenant" #actions>
           <q-btn-dropdown
             color="primary"
             unelevated
             no-caps
-            class="pill-btn text-weight-bold"
+            class="text-weight-bold"
+            style="border-radius: 8px"
             label="Create Invoice"
             icon="ph ph-plus"
+            data-test="create-invoice-btn"
           >
             <q-list dense style="min-width: 180px">
               <q-item clickable v-close-popup @click="createWholesaleDialog = true">
@@ -37,8 +40,8 @@
               </q-item>
             </q-list>
           </q-btn-dropdown>
-        </div>
-      </section>
+        </template>
+      </AppPageHeader>
 
       <!-- Dashboard Statistics Cards -->
       <div class="row q-col-gutter-sm">
@@ -326,7 +329,7 @@
       </div>
 
       <!-- Table View -->
-      <div v-else class="treasury-table-wrap">
+      <div v-else class="treasury-table-wrap table-fixed-wrap">
         <q-table
           :rows="filteredInvoices"
           :columns="columns"
@@ -334,6 +337,7 @@
           flat
           bordered
           class="invoice-table"
+          :table-row-class="invoiceRowClass"
           v-model:pagination="tablePagination"
           :loading="invoicesQuery.isFetching.value"
           @request="onTableRequest"
@@ -368,6 +372,13 @@
                   {{ props.row.invoice_type || 'retail' }}
                 </q-chip>
               </div>
+            </q-td>
+          </template>
+
+          <!-- Sold by (parent books) -->
+          <template v-if="isParentTenant" #body-cell-sold_by="props">
+            <q-td :props="props">
+              <span class="text-caption text-weight-medium">{{ props.row.issued_by_tenant_name || '—' }}</span>
             </q-td>
           </template>
 
@@ -562,7 +573,7 @@
           />
         </div>
       </FilterSidebar>
-    </div>
+    </section>
 
     <!-- Dialogs -->
     <CreateGlobalInvoiceDialog
@@ -589,6 +600,7 @@ import { useRouter } from 'vue-router';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
 
 import FilterSidebar from 'src/components/FilterSidebar.vue';
+import AppPageHeader from 'src/components/ui/AppPageHeader.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { useCustomerGroupStore } from 'src/modules/tenant/stores/customerGroupStore';
@@ -600,9 +612,11 @@ import CreateDropshipInvoiceDialog from '../components/CreateDropshipInvoiceDial
 import { invoiceRepository } from '../repositories/invoiceRepository';
 import { salesInvoiceQueryKeys } from '../services/salesInvoiceQueryKeys';
 import type { GlobalInvoiceCreated, GlobalInvoiceRow } from '../types';
+import { useInvoiceWorkspace } from '../composables/useInvoiceWorkspace';
 
 const authStore = useAuthStore();
 const tenantStore = useTenantStore();
+const { isParentTenant } = useInvoiceWorkspace();
 const router = useRouter();
 const queryClient = useQueryClient();
 const customerGroupStore = useCustomerGroupStore();
@@ -684,15 +698,30 @@ const invoiceStatusFilterOptions = [
   { label: 'Voided', value: 'voided' },
 ];
 
-const columns: any[] = [
-  { name: 'invoice_no', label: 'Invoice ID', align: 'left', sortable: true, field: 'invoice_no' },
-  { name: 'customer', label: 'User Info', align: 'left', sortable: true, field: 'billing_profile_name' },
-  { name: 'invoice_date', label: 'Create Date', align: 'left', sortable: true, field: 'invoice_date' },
-  { name: 'due_date', label: 'Due Date', align: 'left', sortable: true, field: 'due_date' },
-  { name: 'amount', label: 'Total Amount', align: 'right', sortable: true, field: 'total_amount' },
-  { name: 'status', label: 'Status', align: 'left', sortable: true, field: 'payment_status' },
-  { name: 'actions', label: '', align: 'right', field: 'id' },
-];
+const columns = computed(() => {
+  const cols: { name: string; label: string; align: string; sortable?: boolean; field: string }[] = [
+    { name: 'invoice_no', label: 'Invoice ID', align: 'left', sortable: true, field: 'invoice_no' },
+    { name: 'customer', label: 'User Info', align: 'left', sortable: true, field: 'billing_profile_name' },
+  ];
+  if (isParentTenant.value) {
+    cols.push({ name: 'sold_by', label: 'Sold by', align: 'left', field: 'issued_by_tenant_name' });
+  }
+  cols.push(
+    { name: 'invoice_date', label: 'Create Date', align: 'left', sortable: true, field: 'invoice_date' },
+    { name: 'due_date', label: 'Due Date', align: 'left', sortable: true, field: 'due_date' },
+    { name: 'amount', label: 'Total Amount', align: 'right', sortable: true, field: 'total_amount' },
+    { name: 'status', label: 'Status', align: 'left', sortable: true, field: 'payment_status' },
+    { name: 'actions', label: '', align: 'right', field: 'id' },
+  );
+  return cols;
+});
+
+const invoiceRowClass = (row: GlobalInvoiceRow) => {
+  if (row.invoice_status === 'draft') return 'invoice-row--draft';
+  if (row.invoice_status === 'posted') return 'invoice-row--posted';
+  if (row.invoice_status === 'voided') return 'invoice-row--voided';
+  return '';
+};
 
 const invoicesQuery = useQuery({
   queryKey: computed(() =>
@@ -713,7 +742,9 @@ const invoicesQuery = useQuery({
     const tenantId = effectiveTenantId.value;
     if (!tenantId) return { data: [], total: 0 };
     return invoiceRepository.listGlobalInvoices({
-      tenantId,
+      ...(isParentTenant.value
+        ? { parentTenantId: tenantId }
+        : { issuedByTenantId: tenantId }),
       page: pagination.value.page,
       pageSize: pagination.value.rowsPerPage,
       search: searchText.value,
@@ -922,6 +953,32 @@ const onResetFilters = () => {
 </script>
 
 <style scoped>
+.page-fixed-layout {
+  height: calc(100vh - 55px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.table-fixed-wrap {
+  flex: 1 1 0%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.table-fixed-wrap :deep(.q-table__card),
+.table-fixed-wrap :deep(.q-table__container) {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.table-fixed-wrap :deep(.q-table__middle) {
+  flex: 1 1 0%;
+  overflow-y: auto;
+}
 .stat-card {
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
@@ -991,6 +1048,24 @@ const onResetFilters = () => {
   letter-spacing: 0.03em;
   padding: 14px 16px;
   border-bottom: 1px solid #f1f5f9;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.invoice-table :deep(tbody tr.invoice-row--draft td) {
+  background: #fffdf5;
+  box-shadow: inset 3px 0 0 #f59e0b;
+}
+
+.invoice-table :deep(tbody tr.invoice-row--posted td) {
+  background: #f6fcf8;
+  box-shadow: inset 3px 0 0 #22c55e;
+}
+
+.invoice-table :deep(tbody tr.invoice-row--voided td) {
+  background: #fef7f7;
+  box-shadow: inset 3px 0 0 #ef4444;
 }
 
 .invoice-table :deep(tbody tr) {

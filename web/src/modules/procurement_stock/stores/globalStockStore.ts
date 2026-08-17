@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { globalStockRepository, type GlobalStock } from '../repositories/globalStockRepository';
+import type { StockAvailability } from '../constants/stockAvailability';
 
 export const useGlobalStockStore = defineStore('global_stock', {
   state: () => ({
@@ -15,6 +16,9 @@ export const useGlobalStockStore = defineStore('global_stock', {
     isSellableFilter: null as boolean | null,
     shipmentStatusFilter: null as string | null,
     hideZeroStockFilter: true,
+    locationFilter: null as number | null,
+    availabilityFilter: null as StockAvailability | null,
+    shipmentIdFilter: null as number | null,
   }),
 
   actions: {
@@ -28,6 +32,9 @@ export const useGlobalStockStore = defineStore('global_stock', {
         isSellable?: boolean | null;
         shipmentStatus?: string | null;
         hideZeroStock?: boolean;
+        locationId?: number | null;
+        availability?: StockAvailability | null;
+        shipmentId?: number | null;
       },
     ) {
       this.loading = true;
@@ -46,6 +53,12 @@ export const useGlobalStockStore = defineStore('global_stock', {
             : this.shipmentStatusFilter;
         const hideZeroStock =
           options?.hideZeroStock !== undefined ? options.hideZeroStock : this.hideZeroStockFilter;
+        const locationId =
+          options?.locationId !== undefined ? options.locationId : this.locationFilter;
+        const availability =
+          options?.availability !== undefined ? options.availability : this.availabilityFilter;
+        const shipmentId =
+          options?.shipmentId !== undefined ? options.shipmentId : this.shipmentIdFilter;
 
         const result = await globalStockRepository.listPaginated(
           tenantId,
@@ -56,6 +69,9 @@ export const useGlobalStockStore = defineStore('global_stock', {
           isSellable,
           shipmentStatus,
           hideZeroStock,
+          locationId,
+          availability,
+          shipmentId,
         );
 
         this.rows = result.data;
@@ -68,6 +84,8 @@ export const useGlobalStockStore = defineStore('global_stock', {
         this.isSellableFilter = isSellable;
         this.shipmentStatusFilter = shipmentStatus;
         this.hideZeroStockFilter = hideZeroStock;
+        this.locationFilter = locationId;
+        this.availabilityFilter = availability;
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to load stock';
       } finally {

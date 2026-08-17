@@ -9,7 +9,11 @@
             <div class="text-overline text-primary">Customer Order</div>
             <h1 class="text-h5 text-weight-bold q-my-none">Order #{{ order.order_no }}</h1>
             <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-              Placed on {{ formatDate(order.created_at) }} • {{ order.shop_name || 'Wholesale Shop' }}
+              {{ $t('shop_admin.placed_on') }} {{ formatDate(order.created_at) }}
+              <span v-if="order.shop_name"> • {{ order.shop_name }}</span>
+              <span v-if="order.shop_type_snapshot">
+                · {{ $t(customerShopTypeI18nKey(order.shop_type_snapshot)) }}
+              </span>
             </p>
           </div>
         </div>
@@ -53,6 +57,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { date } from 'quasar';
+import { customerShopTypeI18nKey } from '../utils/catalogShop';
 
 const props = defineProps<{
   order: any;

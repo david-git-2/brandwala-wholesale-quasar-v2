@@ -23,12 +23,10 @@ export type GlobalStockCostingInput = {
   product_weight: number;
   package_weight: number;
   ordered_quantity: number;
-  shipment_type: 'domestic' | 'international';
-  product_conversion_rate: number;
-  cargo_conversion_rate: number;
-  cargo_rate: number;
-  received_weight: number | null;
-  transaction_rate: number | null;
+  shipment_type: 'international' | 'local' | 'transfer';
+  received_weight?: number | null | undefined;
+  /** Authoritative stamp after finalize/revise — prefer over live recompute. */
+  landed_cost_bdt?: number | null | undefined;
 };
 
 export type StockNetworkRow = GlobalStockCostingInput & {
@@ -55,6 +53,10 @@ export type StockNetworkRow = GlobalStockCostingInput & {
   is_pickable: boolean;
   sort_rank: number;
   product_group_key: string;
+  /** Shared ATP from parent stock pool (authoritative for pick/sell). */
+  available_atp?: number | null;
+  location_id?: number | null;
+  location_name?: string | null;
   resolvedUnitCost?: number;
 };
 

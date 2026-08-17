@@ -30,6 +30,10 @@ export type ModuleKey =
   | 'global_reference_unit_of_measure'
   | 'global_shipment'
   | 'global_stock'
+  | 'global_stock_movement'
+  | 'global_stock_location'
+  | 'cargo_company'
+  | 'inventory'
   | 'global_invoice'
   | 'investor_portal'
   | 'procurement_stock'
@@ -55,6 +59,7 @@ export type ModuleKey =
   | 'shop_order_mgmt'
   | 'shop_fulfillment'
   | 'shop_dropship'
+  | 'shop_shipping'
   | 'shop_category'
   | 'sales_invoice'
   | 'billing_profile'
@@ -615,14 +620,14 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   },
   {
     key: 'global_shipment',
-    name: 'Global Shipment',
-    description: 'Parent-coordinated dispatch, logistics, and delivery.',
+    name: 'Shipment',
+    description: 'Incoming goods from vendors. Open a row to add items and receive them.',
     parentModuleKey: 'procurement_stock',
     routes: [
       {
         scope: 'app',
         title: 'Shipment',
-        caption: 'Track dispatch, handoff, and delivery progress',
+        caption: 'Incoming goods from vendors',
         icon: 'ph ph-truck',
         routeSegment: 'procurement/shipment',
         requiredAction: 'view',
@@ -631,24 +636,80 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   },
   {
     key: 'global_stock',
-    name: 'Global Stock',
-    description: 'Parent-owned stock with child allocation bridge.',
+    name: 'Warehouse',
+    description: 'What is on the shelves, and whether it can be sold.',
     parentModuleKey: 'procurement_stock',
     routes: [
       {
         scope: 'app',
-        title: 'Global Stock',
-        caption: 'Parent stock and child allocations',
-        icon: 'ph ph-archive-box',
+        title: 'Warehouse',
+        caption: 'What is on the shelves',
+        icon: 'ph ph-warehouse',
         routeSegment: 'procurement/stock',
         requiredAction: 'view',
       },
+    ],
+  },
+  {
+    key: 'global_stock_movement',
+    name: 'Movements',
+    description: 'Move stock between shelves or sellable / held / unsellable.',
+    parentModuleKey: 'procurement_stock',
+    routes: [
       {
         scope: 'app',
-        title: 'Allocate Stock',
-        caption: 'Divide global stock quantities to child tenants',
-        icon: 'ph ph-git-fork',
-        routeSegment: 'procurement/stock/allocate',
+        title: 'Movements',
+        caption: 'Move stock between shelves',
+        icon: 'ph ph-arrows-left-right',
+        routeSegment: 'procurement/movements',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'global_stock_location',
+    name: 'Locations',
+    description: 'Shelves and boxes where warehouse stock sits.',
+    parentModuleKey: 'procurement_stock',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Locations',
+        caption: 'Shelves and boxes',
+        icon: 'ph ph-map-pin',
+        routeSegment: 'procurement/locations',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'cargo_company',
+    name: 'Cargo Companies',
+    description: 'Freight agents used on inbound shipments.',
+    parentModuleKey: 'procurement_stock',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Cargo Companies',
+        caption: 'Freight agents for inbound shipments',
+        icon: 'ph ph-airplane-tilt',
+        routeSegment: 'procurement/cargo-companies',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'inventory',
+    name: 'Stock',
+    description: 'Stock this shop can sell from received shipments.',
+    parentModuleKey: 'procurement_stock',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Stock',
+        caption: 'Stock this shop can sell',
+        icon: 'ph ph-package',
+        routeSegment: 'procurement/child-stock',
         requiredAction: 'view',
       },
     ],
@@ -664,13 +725,13 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'global_invoice',
     name: 'Sales Invoices',
-    description: 'Desk invoices: wholesale, retail, and dropship across sister concerns.',
+    description: 'Desk invoices: wholesale, retail, and dropship.',
     parentModuleKey: 'sales_invoice',
     routes: [
       {
         scope: 'app',
         title: 'Invoices',
-        caption: 'Create and manage desk invoices',
+        caption: 'Child desk sales and parent books',
         icon: 'ph ph-receipt',
         routeSegment: 'sales/invoices',
         requiredAction: 'view',
@@ -702,14 +763,14 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   },
   {
     key: 'universal_wallet',
-    name: 'Universal Wallet Ledger',
-    description: 'Unified multi-currency single/double-entry financial ledger across entities.',
+    name: 'Wallets',
+    description: 'Balances for the company, customers, suppliers, cargo, couriers, and investors.',
     navIcon: 'ph ph-wallet',
     routes: [
       {
         scope: 'app',
-        title: 'Wallet Ledger',
-        caption: 'View entity ledger transactions and balances',
+        title: 'Wallets',
+        caption: 'Whose money do you want to see?',
         icon: 'ph ph-wallet',
         routeSegment: 'wallet',
         requiredAction: 'view',
@@ -735,18 +796,9 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'invoice_brand',
     name: 'Invoice Brands',
-    description: 'Configure invoice branding, logos, layout styles, and details.',
+    description: 'Print layout presets for the issuing child. Config only — no sidebar.',
     parentModuleKey: 'sales_invoice',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Invoice Brands',
-        caption: 'Manage print profiles & names',
-        icon: 'ph ph-stamp',
-        routeSegment: 'sales/invoices/brands',
-        requiredAction: 'view',
-      },
-    ],
+    routes: [],
   },
   {
     key: 'reporting_treasury',
@@ -863,7 +915,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     key: 'procurement_stock',
     name: 'Procurement & Stock',
     description:
-      'Parent module for inbound procurement, warehouse pools, and tenant stock allocations.',
+      'Inbound shipments, warehouse stock, movements, locations, cargo companies, and child stock view.',
     navIcon: 'ph ph-truck',
     routes: [],
   },
@@ -937,7 +989,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     key: 'shop_order',
     name: 'Shop & Order',
     description:
-      'Parent module for shop configuration, customer group permissions, product listings, storefront, carts, orders, and fulfillment.',
+      'Parent module. Staff nav is Shops, Orders, and Shipping. Dropship is a shop type; courier is shared delivery.',
     navIcon: 'ph ph-storefront',
     routes: [],
   },
@@ -945,13 +997,13 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     key: 'shop_config',
     name: 'Shops',
     description:
-      'Create and manage shops — type, order mode, stock display defaults, and vendor link.',
+      'Create shops and manage categories, customer access, and listings.',
     parentModuleKey: 'shop_order',
     routes: [
       {
         scope: 'app',
         title: 'Shops',
-        caption: 'Manage shop configuration and settings',
+        caption: 'Setup hub: shops, categories, customer groups',
         icon: 'ph ph-storefront',
         routeSegment: 'shop/shops',
         requiredAction: 'view',
@@ -961,52 +1013,23 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'shop_category',
     name: 'Shop Categories',
-    description: 'Manage tenant shop categories displayed across customer storefronts.',
+    description: 'Page guard for shop categories. Opened from Shops, not a sidebar item.',
     parentModuleKey: 'shop_order',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Categories',
-        caption: 'Manage shop categories and icons',
-        icon: 'ph ph-squares-four',
-        routeSegment: 'shop/categories',
-        requiredAction: 'view',
-      },
-    ],
+    routes: [],
   },
   {
     key: 'shop_permissions',
     name: 'Customer Groups',
-    description:
-      'Create customer groups and members. Grant shop access from each shop’s Access Matrix.',
+    description: 'Page guard for customer groups and per-shop access. Opened from Shops.',
     parentModuleKey: 'shop_order',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Customer Groups',
-        caption: 'Add groups and members; configure shop access per shop',
-        icon: 'ph ph-users-three',
-        routeSegment: 'shop/customer-groups',
-        requiredAction: 'view',
-      },
-    ],
+    routes: [],
   },
   {
     key: 'shop_pricing',
     name: 'Shop Pricing',
-    description:
-      'Manage product listings per shop, sell prices, minimum sell prices, and display quantity overrides.',
+    description: 'Page guard for listings and prices. Opened from Shops.',
     parentModuleKey: 'shop_order',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Shop Pricing',
-        caption: 'Manage listings and pricing per shop',
-        icon: 'ph ph-tag',
-        routeSegment: 'shop/pricing',
-        requiredAction: 'view',
-      },
-    ],
+    routes: [],
   },
   {
     key: 'shop_storefront',
@@ -1017,8 +1040,8 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     routes: [
       {
         scope: 'shop',
-        title: 'Browse',
-        caption: 'Browse available shops and products',
+        title: 'Catalog',
+        caption: 'Browse products and order',
         icon: 'ph ph-storefront',
         routeSegment: 'browse',
         requiredAction: 'view',
@@ -1028,7 +1051,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'shop_cart',
     name: 'Cart',
-    description: 'Per-shop cart with soft stock reservation against global_stock_allocations.',
+    description: 'Per-shop cart with soft stock reservation against global_stock_id ATP.',
     parentModuleKey: 'shop_order',
     routes: [
       {
@@ -1044,7 +1067,8 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'shop_order_mgmt',
     name: 'Orders',
-    description: 'Place, negotiate, approve, price, confirm, and cancel shop orders.',
+    description:
+      'All shop orders (catalog, retail, wholesale, dropship). Process-order and fulfill live on the order page.',
     parentModuleKey: 'shop_order',
     routes: [
       {
@@ -1057,8 +1081,8 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
       },
       {
         scope: 'shop',
-        title: 'My Orders',
-        caption: 'Track your placed and pending orders',
+        title: 'Orders',
+        caption: 'Track and reply',
         icon: 'ph ph-receipt',
         routeSegment: 'orders',
         requiredAction: 'view',
@@ -1067,57 +1091,32 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   },
   {
     key: 'shop_fulfillment',
-    name: 'Fulfillment',
-    description:
-      'Convert placed vendor-catalog orders to procurement lines or stock-backed orders to global invoices.',
+    name: 'Fulfillment (legacy key)',
+    description: 'Retired from nav. Fulfill on the order page under shop_order_mgmt.',
     parentModuleKey: 'shop_order',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Fulfillment',
-        caption: 'Fulfill orders via procurement or invoice',
-        icon: 'ph ph-truck',
-        routeSegment: 'shop/fulfillment',
-        requiredAction: 'view',
-      },
-    ],
+    routes: [],
   },
   {
     key: 'shop_dropship',
-    name: 'Dropship Ops Desk',
-    description: 'Manage dropship consignments, couriers, and return policies.',
+    name: 'Dropship (legacy key)',
+    description:
+      'Retired from nav. Dropship is a shop type; process-order is shop_order_mgmt; couriers are shop_shipping.',
+    parentModuleKey: 'shop_order',
+    routes: [],
+  },
+  {
+    key: 'shop_shipping',
+    name: 'Shipping',
+    description:
+      'Shared courier catalog, pickup, and COD remittance for any delivered shop order.',
     parentModuleKey: 'shop_order',
     routes: [
       {
         scope: 'app',
-        title: 'Dropship Desk',
-        caption: 'Process dropship orders and courier shipments',
+        title: 'Shipping',
+        caption: 'Couriers, pickup, and COD remittance',
         icon: 'ph ph-truck',
-        routeSegment: 'shop/dropship',
-        requiredAction: 'view',
-      },
-      {
-        scope: 'app',
-        title: 'Finance Hub',
-        caption: 'Courier remittances, tenant treasury & merchant payouts',
-        icon: 'ph ph-bank',
-        routeSegment: 'shop/dropship/finance-hub',
-        requiredAction: 'view',
-      },
-      {
-        scope: 'app',
-        title: 'Couriers',
-        caption: 'Courier catalog & return policies',
-        icon: 'ph ph-truck',
-        routeSegment: 'shop/dropship/couriers',
-        requiredAction: 'view',
-      },
-      {
-        scope: 'app',
-        title: 'Merchants & Pickup',
-        caption: 'Manage merchant sender profiles & pickup locations',
-        icon: 'ph ph-storefront',
-        routeSegment: 'shop/dropship/merchants',
+        routeSegment: 'shop/shipping',
         requiredAction: 'view',
       },
     ],
@@ -1129,11 +1128,13 @@ export const MODULE_REGISTRY_KEYS = MODULE_REGISTRY.map((definition) => definiti
 export const GLOBAL_MODULE_KEYS = [
   'global_shipment',
   'global_stock',
+  'global_stock_movement',
+  'global_stock_location',
   'global_invoice',
 ] as const satisfies readonly ModuleKey[];
 
-/** Top-level tenant modules — must never appear under the Global nav group. */
-export const TENANT_STOCK_MODULE_KEY = 'global_stock' as const satisfies ModuleKey;
+/** Child-facing stock sidebar module under procurement. */
+export const TENANT_STOCK_MODULE_KEY = 'inventory' as const satisfies ModuleKey;
 
 /**
  * Sidebar nav families for domain grouping only (Invoices, Commerce, …).

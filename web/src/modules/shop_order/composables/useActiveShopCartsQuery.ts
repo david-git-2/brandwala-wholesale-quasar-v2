@@ -11,7 +11,7 @@ export function useActiveShopCartsQuery() {
   return useQuery({
     queryKey: computed(() => shopOrderQueryKeys.activeCarts(tenantId.value)),
     queryFn: async () => {
-      const res = await shopCartService.listActiveShopCarts();
+      const res = await shopCartService.listActiveShopCarts(tenantId.value);
       if (!res.success) {
         throw new Error(res.error || 'Failed to fetch active shop carts');
       }

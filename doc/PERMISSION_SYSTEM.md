@@ -841,7 +841,7 @@ AC-P3 exit criteria:
      * Restructure RLS policies for investor balance/ledger tables and restrict the investor portal read operations to `investor_portal` scope.
      * Verify that children tenants do not have access to parent investor submodules.
   4. **Batch 4: Shop Admin & Shop Customer**
-     * Seed and verify `module_actions` for `shop_order`, `shop_config`, `shop_permissions`, `shop_pricing`, `shop_order_mgmt`, `shop_fulfillment`, `shop_storefront`, and `shop_cart`.
+     * Seed and verify `module_actions` for `shop_order`, `shop_config`, `shop_permissions`, `shop_pricing`, `shop_order_mgmt`, `shop_shipping`, `shop_storefront`, and `shop_cart`.
      * Transition customer group access policies and shop storefront APIs (e.g. cart reservation, storefront search) to check permissions against shop-scoped roles using `has_module_action()`.
      * Verify storefront access controls and price visibility flags.
   5. **Batch 5: Verticals**
@@ -987,12 +987,14 @@ Legend: **Y** = tenant admin can configure grants for this module. **P** = paren
 
 | module_key | actions | scope | configurable | P | notes |
 |------------|---------|-------|--------------|---|-------|
-| `shop_order` | view | app | Y | — | Parent nav group |
+| `shop_order` | view | app | Y | — | Parent nav group (Shops / Orders / Shipping) |
 | `shop_config` | view, create, edit, configure | app | Y | — | Shop CRUD |
-| `shop_permissions` | view, configure | app | Y | — | Group + access UI |
-| `shop_pricing` | view, create, edit, delete | app | Y | — | Listings/pricing |
-| `shop_order_mgmt` | view, edit, cancel, fulfill | app | Y | — | Admin order desk |
-| `shop_fulfillment` | view, fulfill | app | Y | — | |
+| `shop_permissions` | view, configure | app | Y | — | Group + access UI (from Shops, not sidebar) |
+| `shop_pricing` | view, create, edit, delete | app | Y | — | Listings/pricing (from Shops) |
+| `shop_order_mgmt` | view, edit, cancel, fulfill | app | Y | — | Orders list + dropship process-order |
+| `shop_shipping` | view, configure | app | Y | — | Couriers + COD remittance |
+| `shop_fulfillment` | — | — | N | — | **Legacy.** Do not assign. |
+| `shop_dropship` | — | — | N | — | **Legacy.** Do not assign. |
 
 ### Shop — customer (Shop scope)
 

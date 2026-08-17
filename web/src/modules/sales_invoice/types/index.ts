@@ -4,6 +4,8 @@ export type GlobalInvoiceRow = {
   id: number;
   tenant_id: number;
   parent_tenant_id: number;
+  issued_by_tenant_id: number;
+  issued_by_tenant_name?: string | null;
   invoice_no: string;
   invoice_type: string;
   invoice_status: string;

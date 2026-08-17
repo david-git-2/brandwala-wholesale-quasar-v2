@@ -3,12 +3,26 @@ import { computed, type Ref } from 'vue';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
 import { showSuccessNotification, showWarningDialog } from 'src/utils/appFeedback';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
 
 export function useShopOrderDetailQuery(orderId: Ref<number>) {
+  const authStore = useAuthStore();
+  const tenantId = computed(() => authStore.tenantId ?? null);
   return useQuery({
-    queryKey: computed(() => shopOrderQueryKeys.orderDetail(orderId.value)),
+    queryKey: computed(() => shopOrderQueryKeys.orderDetail(tenantId.value, orderId.value)),
     queryFn: () => shopOrderRepository.getShopOrderById(orderId.value),
-    enabled: computed(() => orderId.value > 0),
+    enabled: computed(() => !!tenantId.value && orderId.value > 0),
+    staleTime: 15 * 1000,
+  });
+}
+
+export function useCustomerShopOrderDetailQuery(orderId: Ref<number>) {
+  const authStore = useAuthStore();
+  const tenantId = computed(() => authStore.tenantId ?? 0);
+  return useQuery({
+    queryKey: computed(() => shopOrderQueryKeys.orderDetail(tenantId.value, orderId.value)),
+    queryFn: () => shopOrderRepository.getCustomerShopOrder(tenantId.value, orderId.value),
+    enabled: computed(() => tenantId.value > 0 && orderId.value > 0),
     staleTime: 15 * 1000,
   });
 }
@@ -28,7 +42,7 @@ export function useSendCustomerCounterMutation() {
     },
     onSuccess: (_, variables) => {
       void queryClient.invalidateQueries({
-        queryKey: shopOrderQueryKeys.orderDetail(variables.orderId),
+        queryKey: shopOrderQueryKeys.orderDetailRoot(),
       });
       showSuccessNotification('Counter offer submitted successfully.');
     },
@@ -47,7 +61,7 @@ export function useCustomerConfirmOrderMutation() {
     },
     onSuccess: (_, orderId) => {
       void queryClient.invalidateQueries({
-        queryKey: shopOrderQueryKeys.orderDetail(orderId),
+        queryKey: shopOrderQueryKeys.orderDetailRoot(),
       });
       showSuccessNotification('Order confirmed successfully!');
     },

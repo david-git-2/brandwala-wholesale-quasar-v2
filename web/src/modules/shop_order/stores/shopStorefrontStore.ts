@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { handleApiFailure } from 'src/utils/appFeedback';
 import { shopOrderService } from '../services/shopOrderService';
 import { supabase } from 'src/boot/supabase';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
 
 export const useShopStorefrontStore = defineStore('shopStorefront', {
   state: () => ({
@@ -35,7 +36,13 @@ export const useShopStorefrontStore = defineStore('shopStorefront', {
       this.error = null;
 
       try {
-        const result = await shopOrderService.browseShopCatalog(shopSlug, {
+        const tenantId = useAuthStore().tenantId;
+        if (!tenantId) {
+          this.error = 'Missing tenant context';
+          return { success: false as const, error: this.error };
+        }
+
+        const result = await shopOrderService.browseShopCatalog(tenantId, shopSlug, {
           search: opts.search ?? null,
           category: opts.category ?? null,
           brand: opts.brand ?? null,
@@ -68,15 +75,15 @@ export const useShopStorefrontStore = defineStore('shopStorefront', {
         this.currentPage = meta.page ?? 1;
 
         if (opts.append) {
-          // Prevent duplicates by checking product_id or global_stock_allocation_id
+          // Prevent duplicates by checking product_id + global_stock_id
           const existingIds = new Set(
             this.catalogItems.map(
-              (item) => item.product_id + '-' + (item.global_stock_allocation_id ?? ''),
+              (item) => item.product_id + '-' + (item.global_stock_id ?? ''),
             ),
           );
           const newItems = data.filter(
             (item: any) =>
-              !existingIds.has(item.product_id + '-' + (item.global_stock_allocation_id ?? '')),
+              !existingIds.has(item.product_id + '-' + (item.global_stock_id ?? '')),
           );
           this.catalogItems = [...this.catalogItems, ...newItems];
         } else {

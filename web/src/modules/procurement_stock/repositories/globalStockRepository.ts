@@ -1,4 +1,5 @@
 import { supabase } from 'src/boot/supabase';
+import type { Database } from 'src/types/database.types';
 import type { PaginatedResult } from './globalShipmentRepository';
 
 const db = supabase as any;
@@ -8,7 +9,7 @@ export interface GlobalStock {
   parent_tenant_id: number;
   shipment_item_id: number;
   shipment_id: number;
-  stock_type_id: number;
+  stock_type_id?: number | null;
   quantity: number;
   is_usable: boolean;
   created_at: string;
@@ -24,13 +25,14 @@ export interface GlobalStock {
   product_weight: number;
   package_weight: number;
   shipment_name: string;
-  shipment_type: 'domestic' | 'international';
+  shipment_type: 'international' | 'local' | 'transfer';
   shipment_status: string;
-  product_conversion_rate: number;
-  cargo_conversion_rate: number;
-  cargo_rate: number;
-  received_weight: number | null;
-  transaction_rate: number | null;
+  received_weight?: number | null;
+  availability?: Database['public']['Enums']['stock_availability'] | null;
+  location_id?: number | null;
+  location_name?: string | null;
+  grade_tag_id?: number | null;
+  grade_name?: string | null;
   stock_type_description: string;
   is_sellable: boolean;
 }
@@ -44,6 +46,9 @@ const listPaginated = async (
   isSellable?: boolean | null,
   shipmentStatus?: string | null,
   hideZeroStock: boolean = true,
+  locationId?: number | null,
+  availability?: Database['public']['Enums']['stock_availability'] | null,
+  shipmentId?: number | null,
 ): Promise<PaginatedResult<GlobalStock>> => {
   const { data, error } = await db.rpc('list_global_stocks_paginated', {
     p_tenant_id: tenantId,
@@ -54,6 +59,9 @@ const listPaginated = async (
     p_is_sellable: isSellable === undefined ? null : isSellable,
     p_shipment_status: shipmentStatus || null,
     p_hide_zero_stock: hideZeroStock,
+    p_location_id: locationId || null,
+    p_availability: availability || null,
+    p_shipment_id: shipmentId || null,
   });
 
   if (error) {
@@ -97,22 +105,52 @@ const saveStockSplits = async (
   stockRows: Array<{
     parent_tenant_id: number;
     shipment_item_id: number;
-    stock_type_id: number;
+    stock_type_id?: number;
+    availability?: Database['public']['Enums']['stock_availability'];
+    location_id?: number;
     quantity: number;
     is_usable: boolean;
   }>,
 ): Promise<void> => {
   const { error } = await supabase
     .from('global_stocks')
-    .upsert(stockRows, { onConflict: 'shipment_item_id,stock_type_id,is_usable' });
+    .upsert(stockRows, { onConflict: 'shipment_item_id,availability,location_id' });
 
   if (error) {
     throw error;
   }
 };
 
+const createAndPostMovement = async (payload: {
+  tenantId: number;
+  stockId: number;
+  quantity: number;
+  toLocationId?: number | null;
+  toAvailability?: Database['public']['Enums']['stock_availability'] | null;
+  toGradeTagId?: number | null;
+  movementType?: Database['public']['Enums']['stock_movement_type'];
+  notes?: string | null;
+}): Promise<{ success: boolean; movement_id: number; movement_no: string }> => {
+  const { data, error } = await db.rpc('create_and_post_stock_movement', {
+    p_tenant_id: payload.tenantId,
+    p_stock_id: payload.stockId,
+    p_quantity: payload.quantity,
+    p_to_location_id: payload.toLocationId || null,
+    p_to_availability: payload.toAvailability || null,
+    p_to_grade_tag_id: payload.toGradeTagId || null,
+    p_movement_type: payload.movementType || 'grade_change',
+    p_notes: payload.notes || null,
+  });
+
+  if (error) {
+    throw error;
+  }
+  return data;
+};
+
 export const globalStockRepository = {
   listPaginated,
   fetchStocksByShipmentItem,
   saveStockSplits,
+  createAndPostMovement,
 };

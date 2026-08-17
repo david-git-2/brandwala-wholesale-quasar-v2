@@ -3,9 +3,9 @@
     <div class="bw-page__stack">
       <!-- Header -->
       <app-page-header
-        title="Dropship Finance Hub"
-        subtitle="Manage Courier Remittances, Tenant Treasury Cash, and Merchant Profit Payouts"
-        eyebrow="DROPSHIP OPERATIONS"
+        title="Courier remittance &amp; payouts"
+        subtitle="Manage courier remittances, tenant cash, and merchant profit payouts"
+        eyebrow="SHIPPING"
       />
 
       <!-- Skeleton Loader -->

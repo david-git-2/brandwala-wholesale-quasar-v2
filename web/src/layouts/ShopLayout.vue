@@ -44,6 +44,7 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useActiveShopCartsQuery } from 'src/modules/shop_order/composables/useActiveShopCartsQuery';
 import { useShopWorkspaceLinks } from 'src/modules/navigation/useWorkspaceNavigation';
 import { useKobaCartStore } from 'src/modules/koba/retail/stores/kobaCartStore';
+import { resolveCartShopId, shopCartPath } from 'src/modules/shop_order/utils/catalogShop';
 
 const authStore = useAuthStore();
 const kobaCartStore = useKobaCartStore();
@@ -102,8 +103,8 @@ const goToCart = async () => {
     }
     return;
   }
-  const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : '';
-  await router.push(`${tenantPrefix}/shop/cart`);
+  const shopId = resolveCartShopId(authStore.tenantId, activeCarts.value ?? []);
+  await router.push(shopCartPath(authStore.tenantSlug, shopId));
 };
 
 watch(

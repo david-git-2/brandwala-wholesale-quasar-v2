@@ -43,6 +43,7 @@ export interface CartData {
     global_stock_allocation_id: number | null;
     quantity: number;
     minimum_quantity: number;
+    minimum_order_quantity?: number | null;
     unit_list_price_amount: number | null;
     unit_list_price_currency_id: number | null;
     unit_sell_price_amount: number | null;
@@ -75,14 +76,16 @@ const addToCart = async (
   quantity: number,
   customerSellPriceAmount?: number | null,
   customerSellPriceCurrencyId?: number | null,
+  globalStockId?: number | null,
 ): Promise<CartData> => {
   const { data, error } = await supabase.rpc('add_to_shop_cart', {
     p_shop_id: shopId,
     p_product_id: productId,
-    p_global_stock_allocation_id: globalStockAllocationId ?? null,
+    p_global_stock_allocation_id: globalStockAllocationId ?? globalStockId ?? null,
     p_quantity: quantity,
     p_customer_sell_price_amount: customerSellPriceAmount ?? null,
     p_customer_sell_price_currency_id: customerSellPriceCurrencyId ?? null,
+    p_global_stock_id: globalStockId ?? globalStockAllocationId ?? null,
   });
 
   if (error) {
@@ -163,8 +166,10 @@ export interface ActiveCartItem {
   updated_at: string;
 }
 
-const listActiveShopCarts = async (): Promise<ActiveCartItem[]> => {
-  const { data, error } = await supabase.rpc('list_active_shop_carts');
+const listActiveShopCarts = async (tenantId: number): Promise<ActiveCartItem[]> => {
+  const { data, error } = await supabase.rpc('list_customer_active_carts', {
+    p_tenant_id: tenantId,
+  });
 
   if (error) {
     throw error;

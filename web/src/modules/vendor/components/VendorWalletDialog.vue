@@ -94,8 +94,7 @@ const onClickOpenFullWallet = () => {
   const tenantSlug = route.params.tenantSlug;
   void router.push({
     name: 'app-universal-wallet-page',
-    params: { tenantSlug },
-    query: { entity_type: 'vendor', entity_id: props.vendor.id },
+    params: { tenantSlug, walletType: 'suppliers', entityId: String(props.vendor.id) },
   });
 };
 </script>

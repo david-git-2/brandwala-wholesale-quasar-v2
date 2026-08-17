@@ -1,7 +1,7 @@
 <template>
   <div class="q-py-md">
     <div class="text-subtitle1 text-grey-7 q-mb-md">
-      You have active items in multiple shop carts. Choose a store to view its cart and proceed to checkout:
+      {{ $t('shop.cart_select_desc') }}
     </div>
     <div class="row q-col-gutter-md">
       <div v-for="c in activeCarts" :key="c.cart_id" class="col-xs-12 col-sm-6 col-md-4">
@@ -19,7 +19,7 @@
             <div class="col">
               <div class="text-subtitle1 text-weight-bold text-grey-9">{{ c.shop_name }}</div>
               <div class="text-caption text-grey-6">
-                {{ c.item_count }} {{ c.item_count === 1 ? 'item' : 'items' }}
+                {{ c.item_count }} {{ c.item_count === 1 ? $t('shop.items').toLowerCase() : $t('shop.items').toLowerCase() }}
                 <template v-if="c.see_price && c.cart_total !== null">
                   ·
                   <span class="text-weight-bold text-grey-9">{{ formatActiveCartTotal(c) }}</span>
@@ -28,7 +28,13 @@
             </div>
           </q-card-section>
           <q-card-actions align="right" class="bg-grey-1 q-px-md">
-            <q-btn flat color="primary" no-caps label="View Cart & Checkout" icon-right="ph ph-arrow-right" />
+            <q-btn
+              flat
+              color="primary"
+              no-caps
+              :label="$t('shop.cart_view_checkout')"
+              icon-right="ph ph-arrow-right"
+            />
           </q-card-actions>
         </q-card>
       </div>

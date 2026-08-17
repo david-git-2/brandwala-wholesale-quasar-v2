@@ -1,4 +1,16 @@
-<template>
+code: "42703", details: null, hint: null, message: "column "product_conversion_rate" does not exist"}
+code
+: 
+"42703"
+details
+: 
+null
+hint
+: 
+null
+message
+: 
+"column \"product_conversion_rate\" does not exist"<template>
   <q-page class="bw-page thrift-shipment-reports-list-page">
     <div class="bw-page__stack">
       <header class="page-nav">
@@ -113,6 +125,7 @@ const teaserByShipmentId = computed(() => {
   const results = teaserQueries.value;
   for (let i = 0; i < rows.length; i += 1) {
     const row = rows[i];
+    if (!row) continue;
     const q = results[i];
     if (!q || q.isLoading || q.isPending) {
       map.set(row.id, { isLoading: true, isError: false, text: '…' });

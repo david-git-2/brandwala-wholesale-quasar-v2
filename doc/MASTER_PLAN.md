@@ -14,8 +14,8 @@ One system manages:
 
 - **Procurement** — child orders and product-based costing feed **parent shipments** → [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md)
 - **Stock** — parent-owned inventory with optional **child display allocations** → [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md)
-- **Sales** — parent or child invoices; desk sales from parent stock → [SALES_INVOICE.md](SALES_INVOICE.md)
-- **Shop** — child-owned storefronts, cart, orders from allocated stock → [SHOP_ORDER.md](SHOP_ORDER.md); dropship Process Order + dual invoice → [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md)
+- **Sales** — one invoice per sale owned by the parent; child sells and prints the customer view → [SALES_INVOICE.md](SALES_INVOICE.md)
+- **Shop** — child-owned storefronts, cart, orders from allocated stock → [SHOP_ORDER.md](shop_order/SHOP_ORDER.md); customer portal home → [SHOP_SCOPE.md](shop_order/SHOP_SCOPE.md); dropship Process Order + dual invoice → [SHOP_ORDER_DROPSHIP.md](shop_order/SHOP_ORDER_DROPSHIP.md)
 - **Reports & treasury** — margin reports and payment settlement (read-side P&L) → [REPORTING_TREASURY.md](REPORTING_TREASURY.md)
 - **Capital** — investors, cost-share per shipment, investor portal → [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md)
 
@@ -51,7 +51,7 @@ Full scope rules, guards, and redirects: [APP_SCOPES_AND_ACCESS.md](APP_SCOPES_A
 | Role | `tenants.parent_id` | Responsibility |
 |------|---------------------|----------------|
 | **Parent company** | `NULL` | Shipments, stock, investors, consolidated reports, cash dashboard |
-| **Child (sister concern)** | `= parent.id` | Customer groups, orders, costing, commerce, own invoices |
+| **Child (sister concern)** | `= parent.id` | Customer groups, orders, costing, commerce; desk sales (`issued_by`) |
 | **Standalone** | `NULL`, no children | Same global tables; `parent_tenant_id := tenant_id` |
 
 **Constraint:** Only one hierarchy level — a child cannot have children.
@@ -69,8 +69,8 @@ Legacy modules (`inventory`, `invoice`, `accounting`, `shipment`, `investor`) **
 ```
 Child: orders / product costing  →  Parent: shipment (local or international)
   →  Parent: global_stocks  →  child_tenant_stock_allocations (optional)
-  →  Child: global_invoice  →  payments / invoice_payments
-  →  reporting_treasury: margin reports (read)  →  investor profit share
+  →  Child desk: sales_invoices (issued_by = child; tenant_id = parent)  →  payments
+  →  reporting_treasury: margin reports (read, parent books)  →  investor profit share
 ```
 
 **Commerce** does **not** create inbound shipments. It **sells from parent `global_stocks`**.
@@ -128,7 +128,7 @@ Sources for `add_child_line_to_parent_shipment`: `order_items`, `product_based_c
 | Thrift | No phase 1 global integration (D12) |
 | Standalone tenant | `parent_tenant_id = tenant_id` (D5) |
 | Investor remainder | Parent company bears cost-share gap below 100% (D10) |
-| Invoices | Fresh insert on `global_invoices` |
+| Invoices | `tenant_id` = parent books owner; `issued_by_tenant_id` = selling child; one row per sale ([SALES_INVOICE.md](SALES_INVOICE.md) D-SI2) |
 | Cost at sale | `unit_cost_price` immutable snapshot from landed cost (D7) |
 | Costing → order | Not required; optional convert later (D11) |
 | Module enablement | `tenant_modules` per tenant; no inheritance (D13) |
@@ -180,17 +180,18 @@ All new/updated pages **must** follow [docs/UI_CONSISTENCY.md](../docs/UI_CONSIS
 
 ### 10.1 Implementation status & next step
 
-**Last updated:** 2026-07-06
+**Last updated:** 2026-08-17
 
 #### Next step (active work)
 
-1. **B8/F8 — Access grants** — Unified permission system (PERM P1→P3 + AC-P1→P4). See [PERMISSION_SYSTEM.md](PERMISSION_SYSTEM.md). **Done.**
+1. **Shop order P15** — staff shop_order orchestration. Isolation track T0–T4 is done: [fix/SHOP_SCOPE_TENANT_ISOLATION.md](fix/SHOP_SCOPE_TENANT_ISOLATION.md). Tracker: [shop_order/SHOP_ORDER_PHASES.md](shop_order/SHOP_ORDER_PHASES.md).
+2. Procurement shipment/warehouse track (W1–W9) is complete. See [procurement_stock/IMPLEMENTATION_ORDER.md](procurement_stock/IMPLEMENTATION_ORDER.md).
 
 #### Completed (P0 redesign)
 
 | Area | Detail |
 |------|--------|
-| **procurement_stock** | Phases 1–10 done — see [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) §11 |
+| **procurement_stock** | Shipment inbound + W1–W9 warehouse/grades/organize/return inbound done. [IMPLEMENTATION_ORDER.md](procurement_stock/IMPLEMENTATION_ORDER.md) |
 | **thrift_*** | P1–P8 done — see [THRIFT.md](THRIFT.md) §9 |
 | **F1–F3** | Shared UI tokens + procurement/stock admin pages |
 | **shop_order** | P0–P10 done — see [SHOP_ORDER_PHASES.md](SHOP_ORDER_PHASES.md) |
@@ -207,7 +208,7 @@ All new/updated pages **must** follow [docs/UI_CONSISTENCY.md](../docs/UI_CONSIS
 #### Recommended order (after next step)
 
 ```
-B8/F8 permissions (PERM P1→P3 + AC-P1→P4) — done
+Procurement W1–W9 complete
 ```
 
 ---
@@ -242,12 +243,15 @@ Per-tenant assignment table: §15.5 and domain docs.
 | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) | Shipments, stock, allocations, landed cost |
 | [PROCUREMENT_STOCK_ISSUES.md](PROCUREMENT_STOCK_ISSUES.md) | Redesign — cost, money, status; **one vendor/shipment**; **shipment→child assign + shared ATP**; shop real/dummy display |
 | [SALES_INVOICE.md](SALES_INVOICE.md) | Desk invoices (wholesale, retail account/direct, dropship), billing/recipient profiles |
-| [SHOP_ORDER.md](SHOP_ORDER.md) | Child-owned shops, cart, orders, permissions, allocated-stock storefronts |
-| [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) | Dropship Process Order desk, dual invoice, return bearer, middle-man payout |
+| [SHOP_ORDER.md](shop_order/SHOP_ORDER.md) | Child-owned shops, cart, orders, permissions, allocated-stock storefronts |
+| [SHOP_SCOPE.md](shop_order/SHOP_SCOPE.md) | Shop login (`/:slug/shop/*`): customer home first, then browse / orders / cart |
+| [fix/SHOP_SCOPE_TENANT_ISOLATION.md](fix/SHOP_SCOPE_TENANT_ISOLATION.md) | **Cross-tenant leak fix (T0–T4):** URL tenant = session, required `p_tenant_id` on customer RPCs, lean customer DTOs, legacy RPC drop |
+| [fix/SHOP_CREATE_TWO_STEP.md](fix/SHOP_CREATE_TWO_STEP.md) | Create = name + type; setup page for currencies |
+| [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) | Dropship shop type: Process Order on Orders, couriers on Shipping, dual invoice, payout |
 | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) | Margin reports, payments, balances, batch P&L |
 | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) | Investor profiles, capital ledger, portal, cost-share |
 | [wallet/UNIVERSAL_WALLET_LEDGER.md](wallet/UNIVERSAL_WALLET_LEDGER.md) | Universal wallet identity (`entity_type` + `entity_id`), ledger, interim metadata dimensions |
-| [tag/UNIVERSAL_TAGGING_SYSTEM.md](tag/UNIVERSAL_TAGGING_SYSTEM.md) | Optional classification tags — use cases, where not to use, deferred until multi-module need |
+| [tag/UNIVERSAL_TAGGING_SYSTEM.md](tag/UNIVERSAL_TAGGING_SYSTEM.md) | Platform tag catalog (`tag_categories` + `tags`) — stock grade, color, shop/sale filters; system seed; [schema](tag/schema.md) · [presets](tag/presets.md) · [order](tag/IMPLEMENTATION_ORDER.md) |
 | [trash/TRASH_AND_SOFT_DELETE.md](trash/TRASH_AND_SOFT_DELETE.md) | Soft delete matrix, `trash_entries` index, central tenant Trash module |
 | [COURIER_AND_MIDDLEMAN_FINANCIAL_MASTER_PLAN.md](COURIER_AND_MIDDLEMAN_FINANCIAL_MASTER_PLAN.md) | Dropship COD escrow, remittance, middleman dispense |
 | [docs/UI_CONSISTENCY.md](../docs/UI_CONSISTENCY.md) | Mandatory UI patterns: `bw-page`, tables, cards, tokens |
@@ -265,7 +269,8 @@ Per-tenant assignment table: §15.5 and domain docs.
 - `is_display_only = false` child sale bridge
 - Merge `invoice_accounting_payments` with `payments`
 - Investor withdrawal request flow (v1 is display-only — see INVESTOR_CAPITAL)
-- **Universal tagging engine** (`tags` + `entity_tags`) — classification only; not wallet identity. Build when 2+ modules need a shared vocabulary; see [tag/UNIVERSAL_TAGGING_SYSTEM.md](tag/UNIVERSAL_TAGGING_SYSTEM.md). Interim expense dimensions may use ledger `metadata` only.
+- Tenant-custom tag CRUD (system `stock_grade` + `color` seeds first — see [tag/IMPLEMENTATION_ORDER.md](tag/IMPLEMENTATION_ORDER.md))
+- Interim expense dimensions may use ledger `metadata` until wallet expense tags (tag T4+)
 
 ---
 
@@ -282,6 +287,7 @@ Per-tenant assignment table: §15.5 and domain docs.
 | 3 | Currency | Global Reference | global_reference | CURRENT | app | All (read) | Currencies, markets, payment methods, units | P0 |
 | 4 | Catalog & Supply | Products | products | STABLE | app | Parent+Child | Product catalog | — |
 | 5 | Catalog & Supply | Vendors | vendor | STABLE | app | Parent+Child | Supplier records | P0 |
+| 5b | Catalog & Supply | Cargo Companies | cargo_company | CURRENT | app | Parent | Inbound freight agents + default row (shipment FK) | P1 |
 | 6 | Procurement Inputs | Order Management | order_management | STABLE | app+shop | Child | B2B purchase intent | P1 |
 | 7 | Procurement Inputs | Costing File | costing_file | STABLE | app+shop | Child | Pre-order costing references | — |
 | 8 | Procurement Inputs | Product Based Costing | product_based_costing | STABLE | app | Child | Batch costing → shipment lines | — |
@@ -298,7 +304,7 @@ Per-tenant assignment table: §15.5 and domain docs.
 | 19 | Ledger & Treasury | Accounting (Legacy UI) | accounting | STABLE | app | Child | Legacy tenant accounting views | — |
 | 20 | Ledger & Treasury | Reports & Treasury | reporting_treasury | IN PROGRESS | app | Varies | Margin reports, balances, dashboard | P0 |
 | 21 | Ledger & Treasury | Legacy ledger keys | global_accounting_ledger, global_*_accounting | LEGACY | app | Parent | Being retired — use reporting_treasury | P1 |
-| 22 | Shop & Order | Shop & Order (target) | shop_order | DONE | app+shop | Child | Unified shops, cart, orders; dropship ops → [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) | P0 |
+| 22 | Shop & Order | Shop & Order (target) | shop_order | DONE | app+shop | Child | Staff nav: Shops / Orders / Shipping. Dropship is a shop type. → [SHOP_ORDER.md](SHOP_ORDER.md), [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) | P0 |
 | 23 | Shop & B2B | Store | store | LEGACY | app+shop | Child | Superseded by shop_order | — |
 | 24 | Shop & B2B | Cart | cart | LEGACY | shop | Child | Superseded by shop_order | — |
 | 25 | Commerce | Commerce Shop | commerce_shop | LEGACY | app+shop | Child | Superseded by shop_order | — |
@@ -435,7 +441,7 @@ Legend: **view** = access granted | **—** = no access
 | order_management, product_based_costing, costing_file | — | Yes | Yes | Procurement inputs |
 | global_shipment, global_stock, global_stock_type | Yes | — | Yes | Parent owns stock |
 | inventory (Tenant Stock) | Yes | Yes | Yes | Child allocation view |
-| global_invoice, billing_profile, recipient_profile | Optional | Yes | Yes | Child issues desk sales |
+| global_invoice, billing_profile, recipient_profile | Optional (rollup) | Yes | Yes | Child sells; parent owns invoice row |
 | `shop_order` | — | Yes | Yes | Child shops, cart, orders — see SHOP_ORDER |
 | `commerce_*`, `store`, `cart` | — | Yes (legacy) | Yes (legacy) | Retire → `shop_order` |
 | reporting_treasury submodules | Varies | Varies | Yes | See REPORTING_TREASURY §2 |
@@ -487,7 +493,8 @@ Legend: **view** = access granted | **—** = no access
 | 2 | modules / tenant_modules | STABLE | [LOGIN_NAV_PERMISSION_FLOW.md](LOGIN_NAV_PERMISSION_FLOW.md) |
 | 3 | global_reference | CURRENT | [GLOBAL_REFERENCE_DATA.md](GLOBAL_REFERENCE_DATA.md) |
 | 4 | products | STABLE | *(no domain doc — catalog CRUD)* |
-| 5 | vendor | STABLE | *(no domain doc — vendor CRUD)* |
+| 5 | vendor | STABLE | [procurement_stock/vendor/](procurement_stock/vendor/) |
+| 5b | cargo_company | CURRENT | [procurement_stock/cargo_company/](procurement_stock/cargo_company/) |
 | 6 | order_management | STABLE | *(no domain doc — B2B orders)* |
 | 7 | costing_file | STABLE | *(no domain doc)* |
 | 8 | product_based_costing | STABLE | *(no domain doc)* |
@@ -511,8 +518,8 @@ Legend: **view** = access granted | **—** = no access
 ```
 Child: orders / product costing → Parent: shipment (local or international)
   → Parent: global_stocks → child_tenant_stock_allocations (optional)
-  → Child: global_invoice → global_payments / invoice_payments
-  → reporting_treasury: margin reports (read) → investor profit share
+  → Child desk: sales_invoices (issued_by = child; tenant_id = parent) → payments
+  → reporting_treasury: margin reports (read, parent books) → investor profit share
 ```
 
 | Flow | Path | Status | Detail |
@@ -520,11 +527,11 @@ Child: orders / product costing → Parent: shipment (local or international)
 | B2B order | cart → order → negotiate → shipment pull | STABLE | §17 #6 |
 | Costing | product_based_costing → shipment line | STABLE | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) |
 | Receive stock | shipment receive → global_stocks | DONE | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) |
-| Desk sale | global_stock → global_invoice → payment allocation | IN PROGRESS | [SALES_INVOICE.md](SALES_INVOICE.md) |
+| Desk sale | global_stock → sales_invoices (parent-owned, child issued_by) → payment | IN PROGRESS | [SALES_INVOICE.md](SALES_INVOICE.md) |
 | Margin report | invoice lines + shipment batch P&L (read) | IN PROGRESS | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) |
 | Investor capital | cost-share → profit refresh → portal | IN PROGRESS | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) |
 | Shop order | shop_cart → shop_order → invoice or procurement pull | DONE | [SHOP_ORDER.md](SHOP_ORDER.md) |
-| Dropship shop order | Process Order → dual invoice → COD / payout / return | NOT STARTED | [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) |
+| Dropship shop order | Orders list → Process Order → dual invoice → COD / payout. Couriers under Shipping. | IN PROGRESS | [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md), [SHOP_ORDER_NAV_THREE_MENUS.md](fix/SHOP_ORDER_NAV_THREE_MENUS.md) |
 | Commerce (legacy) | commerce_cart → order → invoice | LEGACY | → shop_order |
 | Thrift | thrift_shipment → stock → invoice | DONE | [THRIFT.md](THRIFT.md) |
 
@@ -542,8 +549,10 @@ Child: orders / product costing → Parent: shipment (local or international)
 | [GLOBAL_REFERENCE_DATA.md](GLOBAL_REFERENCE_DATA.md) | Reference catalogs |
 | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) | Procurement and stock |
 | [SALES_INVOICE.md](SALES_INVOICE.md) | Sales and invoicing |
-| [SHOP_ORDER.md](SHOP_ORDER.md) | Shops, cart, orders, customer permissions |
-| [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) | Dropship Process Order, dual invoice, returns |
+| [SHOP_ORDER.md](shop_order/SHOP_ORDER.md) | Shops, cart, orders, customer permissions |
+| [SHOP_SCOPE.md](shop_order/SHOP_SCOPE.md) | Customer shop portal — dashboard first |
+| [fix/SHOP_SCOPE_TENANT_ISOLATION.md](fix/SHOP_SCOPE_TENANT_ISOLATION.md) | Shop tenant isolation + customer API cleanup |
+| [SHOP_ORDER_DROPSHIP.md](shop_order/SHOP_ORDER_DROPSHIP.md) | Dropship Process Order, dual invoice, returns |
 | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) | Reports and treasury |
 | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) | Investor capital and portal |
 | [docs/UI_CONSISTENCY.md](../docs/UI_CONSISTENCY.md) | UI patterns |

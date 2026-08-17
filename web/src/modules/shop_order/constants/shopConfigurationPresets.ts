@@ -1,6 +1,6 @@
 import type { ShopType, ShopOrderMode } from '../types';
 
-export type ShopConfigurationPresetId = 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
+export type ShopConfigurationPresetId = 'A' | 'C' | 'D' | 'E' | 'F';
 
 export interface ShopConfigurationPreset {
   id: ShopConfigurationPresetId;
@@ -25,30 +25,13 @@ export const SHOP_CONFIGURATION_PRESETS: ShopConfigurationPreset[] = [
     id: 'A',
     name: 'Scenario A — Supplier Catalog / Procurement Portal',
     nameBn: 'সিনারিও A — সাপ্লায়ার ক্যাটালগ / ক্রয় পোর্টাল',
-    description: "A B2B procurement portal where the customer browses a supplier's catalog for products not yet in local inventory. Customers with negotiation permission can counter-offer on line prices.",
-    descriptionBn: 'একটি B2B ক্রয় পোর্টাল যেখানে কাস্টমার স্থানীয় স্টকে নেই এমন পণ্যের জন্য সাপ্লায়ারের ক্যাটালগ ব্রাউজ করে। দরকষাকষির পারমিশন থাকলে কাস্টমার লাইন প্রাইসে দরকষাকষি করতে পারে।',
+    description: "A B2B procurement portal where the customer browses a supplier's catalog for products not yet in local inventory. Line negotiation is controlled by customer-group permission, not a shop setting.",
+    descriptionBn: 'একটি B2B ক্রয় পোর্টাল যেখানে কাস্টমার স্থানীয় স্টকে নেই এমন পণ্যের জন্য সাপ্লায়ারের ক্যাটালগ ব্রাউজ করে। দরকষাকষি কাস্টমার গ্রুপ পারমিশন দিয়ে নিয়ন্ত্রিত, দোকান সেটিং দিয়ে নয়।',
     downstream: 'Negotiate → placed → procurement pull',
     fields: {
       shop_type: 'vendor_catalog',
       order_mode: 'procurement_intent',
       is_negotiable: true,
-      pricing_method: 'direct_cost',
-      markup_percentage: 0,
-      quantity_display_mode: 'original',
-      show_stock_quantity: true,
-    },
-  },
-  {
-    id: 'B',
-    name: 'Scenario B — Direct Catalog Order',
-    nameBn: 'সিনারিও B — সরাসরি ক্যাটালগ অর্ডার',
-    description: 'A supplier catalog where customers submit intent-to-buy requests without negotiating. Staff review each order, set final prices, confirm with the customer, then place the order.',
-    descriptionBn: 'একটি সাপ্লায়ার ক্যাটালগ যেখানে কাস্টমার দরকষাকষি ছাড়াই ক্রয়ের অনুরোধ জমা দেয়। স্টাফ প্রতিটি অর্ডার পর্যালোচনা করে চূড়ান্ত দাম নির্ধারণ করে এবং নিশ্চিত করে।',
-    downstream: 'Staff prices → confirmed → placed → procurement pull',
-    fields: {
-      shop_type: 'vendor_catalog',
-      order_mode: 'procurement_intent',
-      is_negotiable: false,
       pricing_method: 'direct_cost',
       markup_percentage: 0,
       quantity_display_mode: 'original',
@@ -125,6 +108,46 @@ export const SHOP_CONFIGURATION_PRESETS: ShopConfigurationPreset[] = [
   },
 ];
 
+export function derivedShopIsNegotiable(shopType: ShopType | null | undefined): boolean {
+  return shopType === 'vendor_catalog';
+}
+
+export function slugFromShopName(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+export function createDefaultsForShopType(shopType: ShopType) {
+  const orderModes = getAllowedOrderModes(shopType);
+  return {
+    shop_type: shopType,
+    order_mode: orderModes[0] ?? 'checkout_fixed',
+    is_negotiable: derivedShopIsNegotiable(shopType),
+    show_stock_quantity: true,
+    is_active: false,
+    allow_delivery: false,
+    pricing_method: 'direct_cost' as const,
+    markup_percentage: 0,
+    quantity_display_mode: 'original' as const,
+  };
+}
+
+export function pickShopCurrencyDefaults(
+  currencies: Array<{ id: number; code: string }>,
+): { buy_currency_id: number; sell_currency_id: number } | null {
+  if (!currencies.length) return null;
+  const byCode = (code: string) => currencies.find((c) => c.code === code);
+  const buy = byCode('GBP') ?? byCode('USD') ?? currencies[0];
+  const sell = byCode('BDT') ?? currencies[0];
+  if (!buy || !sell) return null;
+  return { buy_currency_id: buy.id, sell_currency_id: sell.id };
+}
+
 export function getPresetById(id: ShopConfigurationPresetId): ShopConfigurationPreset | undefined {
   return SHOP_CONFIGURATION_PRESETS.find((p) => p.id === id);
 }
@@ -148,7 +171,7 @@ export function applyPresetToForm(form: any, presetId: ShopConfigurationPresetId
 
   form.shop_type = preset.fields.shop_type;
   form.order_mode = preset.fields.order_mode;
-  form.is_negotiable = preset.fields.is_negotiable;
+  form.is_negotiable = derivedShopIsNegotiable(preset.fields.shop_type);
   form.pricing_method = preset.fields.pricing_method;
   form.markup_percentage = preset.fields.markup_percentage;
   form.quantity_display_mode = preset.fields.quantity_display_mode;
@@ -165,15 +188,13 @@ export function detectPresetFromShop(shop: any): ShopConfigurationPresetId | nul
   if (!shop) return null;
 
   for (const preset of SHOP_CONFIGURATION_PRESETS) {
-    const isE = preset.id === 'E';
     const matches =
       shop.shop_type === preset.fields.shop_type &&
       shop.order_mode === preset.fields.order_mode &&
       (shop.pricing_method ?? 'direct_cost') === preset.fields.pricing_method &&
       (shop.markup_percentage ?? 0) === preset.fields.markup_percentage &&
       (shop.quantity_display_mode ?? 'original') === preset.fields.quantity_display_mode &&
-      (shop.show_stock_quantity ?? true) === preset.fields.show_stock_quantity &&
-      (isE || shop.is_negotiable === preset.fields.is_negotiable);
+      (shop.show_stock_quantity ?? true) === preset.fields.show_stock_quantity;
 
     if (matches) {
       return preset.id;
@@ -187,14 +208,12 @@ export function formMatchesPreset(form: any, presetId: ShopConfigurationPresetId
   const preset = getPresetById(presetId);
   if (!preset) return false;
 
-  const isE = presetId === 'E';
   return (
     form.shop_type === preset.fields.shop_type &&
     form.order_mode === preset.fields.order_mode &&
     (form.pricing_method ?? 'direct_cost') === preset.fields.pricing_method &&
     (form.markup_percentage ?? 0) === preset.fields.markup_percentage &&
     (form.quantity_display_mode ?? 'original') === preset.fields.quantity_display_mode &&
-    (form.show_stock_quantity ?? true) === preset.fields.show_stock_quantity &&
-    (isE || form.is_negotiable === preset.fields.is_negotiable)
+    (form.show_stock_quantity ?? true) === preset.fields.show_stock_quantity
   );
 }

@@ -19,6 +19,18 @@
             class="soft-input q-mb-sm"
             @update:model-value="onBrandChanged"
           />
+          <q-btn
+            v-if="isDeskView"
+            flat
+            dense
+            no-caps
+            color="primary"
+            icon="ph ph-stamp"
+            label="Manage print brands"
+            class="q-mb-sm"
+            data-test="manage-invoice-brands-btn"
+            @click="goToInvoiceBrands"
+          />
           <q-input
             v-model="brandName"
             label="Brand Name"
@@ -68,7 +80,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
 import PageInitialLoader from 'src/components/ui/PageInitialLoader.vue';
 import InvoicePrintSheet from 'src/modules/invoice_shared/components/InvoicePrintSheet.vue';
@@ -76,14 +88,17 @@ import type { InvoicePrintModel } from 'src/modules/invoice_shared/types/invoice
 import { invoiceGrossProfit } from 'src/modules/reporting_treasury/utils/margin';
 import { useInvoiceStore } from 'src/modules/sales_invoice/stores/invoiceStore';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useInvoiceWorkspace } from '../composables/useInvoiceWorkspace';
 
 import { invoiceRepository } from '../repositories/invoiceRepository';
 import { useInvoiceItemUnitCosts } from '../composables/useInvoiceItemUnitCosts';
 import type { GlobalInvoiceDetail, GlobalInvoiceItemRow } from '../types';
 
 const route = useRoute();
+const router = useRouter();
 const authStore = useAuthStore();
 const invoiceStore = useInvoiceStore();
+const { isParentTenant, isDeskView } = useInvoiceWorkspace();
 
 const loading = ref(true);
 const invoice = ref<GlobalInvoiceDetail | null>(null);
@@ -115,6 +130,13 @@ const onBrandChanged = (id: number | null) => {
     brandName.value = '';
     brandAddress.value = '';
   }
+};
+
+const goToInvoiceBrands = () => {
+  void router.push({
+    name: 'app-global-invoice-brands',
+    params: { tenantSlug: authStore.tenantSlug || route.params.tenantSlug },
+  });
 };
 
 const combineInvoiceItemsForPreview = (itemList: GlobalInvoiceItemRow[]) => {
@@ -231,8 +253,11 @@ onMounted(async () => {
 
     clientName.value = inv.billing_profiles?.name ?? '';
 
-    if (inv?.tenant_id) {
-      await invoiceStore.fetchInvoiceBrands({ tenant_id: inv.tenant_id });
+    const brandTenantId = isParentTenant.value
+      ? inv.tenant_id
+      : (inv.issued_by_tenant_id ?? inv.tenant_id);
+    if (brandTenantId) {
+      await invoiceStore.fetchInvoiceBrands({ tenant_id: brandTenantId });
     }
 
     if (invoiceStore.brands.length > 0) {

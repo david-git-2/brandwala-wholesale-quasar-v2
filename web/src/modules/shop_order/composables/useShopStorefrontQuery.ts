@@ -3,6 +3,8 @@ import { computed, type Ref } from 'vue';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { shopOrderService } from '../services/shopOrderService';
 import { supabase } from 'src/boot/supabase';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import type { ShopCatalogItem } from '../types';
 
 export interface StorefrontQueryParams {
   shopSlug: string;
@@ -13,9 +15,11 @@ export interface StorefrontQueryParams {
 }
 
 export function useShopStorefrontInfiniteQuery(params: Ref<StorefrontQueryParams>) {
+  const authStore = useAuthStore();
+  const tenantId = computed(() => authStore.tenantId ?? 0);
   const query = useInfiniteQuery({
     queryKey: computed(() =>
-      shopOrderQueryKeys.storefrontCatalog(params.value.shopSlug, {
+      shopOrderQueryKeys.storefrontCatalog(tenantId.value, params.value.shopSlug, {
         search: params.value.search ?? null,
         category: params.value.category ?? null,
         brand: params.value.brand ?? null,
@@ -25,7 +29,7 @@ export function useShopStorefrontInfiniteQuery(params: Ref<StorefrontQueryParams
     queryFn: async ({ pageParam = 0 }) => {
       const limit = params.value.pageSize ?? 24;
 
-      const result = await shopOrderService.browseShopCatalog(params.value.shopSlug, {
+      const result = await shopOrderService.browseShopCatalog(tenantId.value, params.value.shopSlug, {
         search: params.value.search || null,
         category: params.value.category || null,
         brand: params.value.brand || null,
@@ -77,7 +81,7 @@ export function useShopStorefrontInfiniteQuery(params: Ref<StorefrontQueryParams
     initialPageParam: 0,
     staleTime: 2 * 60 * 1000,
     placeholderData: keepPreviousData,
-    enabled: computed(() => Boolean(params.value.shopSlug)),
+    enabled: computed(() => tenantId.value > 0 && Boolean(params.value.shopSlug)),
   });
 
   const shopDetails = computed(() => {
@@ -107,11 +111,11 @@ export function useShopStorefrontInfiniteQuery(params: Ref<StorefrontQueryParams
 
 
     const seen = new Set<string>();
-    const items: any[] = [];
+    const items: ShopCatalogItem[] = [];
 
     for (const page of pages) {
       for (const item of page.items) {
-        const key = `${item.product_id}-${item.global_stock_allocation_id || ''}`;
+        const key = `${item.product_id}-${item.global_stock_id || ''}`;
         if (!seen.has(key)) {
           seen.add(key);
           items.push(item);

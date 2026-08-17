@@ -1,40 +1,37 @@
 <template>
-  <q-page class="bw-page">
-    <section class="bw-page__stack" style="min-width: 0">
+  <q-page class="bw-page page-fixed-layout q-pa-md">
+    <section class="bw-page__stack" style="min-width: 0; flex: 1 1 0%; display: flex; flex-direction: column; overflow: hidden;">
       <AppPageHeader
+        dense
         eyebrow="Procurement & Stock"
-        title="Warehouse Stock"
-        subtitle="View physical stock pools and configure stock types"
-      >
-        <template #action>
-          <q-btn
-            outline
-            color="secondary"
-            no-caps
-            icon="ph ph-gear"
-            label="Stock Types Config"
-            @click="openStockTypesConfig"
-          />
-          <q-btn
-            unelevated
-            color="primary"
-            no-caps
-            icon="ph ph-git-fork"
-            label="Allocate Stock"
-            :to="allocateStockRoute"
-          />
-        </template>
-      </AppPageHeader>
+        title="Warehouse"
+        subtitle="What is on the shelves, and whether it can be sold."
+        class="q-mb-sm"
+      />
 
       <q-banner v-if="stockStore.error" class="bw-status-banner bg-negative text-white q-mb-md">
         {{ stockStore.error }}
       </q-banner>
 
+      <!-- Active Shipment Filter Chip if filtered by shipment_id -->
+      <div v-if="shipmentIdFilter" class="row items-center q-mb-sm">
+        <q-chip
+          removable
+          color="primary"
+          text-color="white"
+          dense
+          @remove="clearShipmentFilter"
+        >
+          {{ shipmentChipLabel }}
+        </q-chip>
+      </div>
+
       <!-- Search & Filters Toolbar -->
       <div class="row items-center q-gutter-sm q-mb-md">
         <q-input
           v-model="searchText"
-          filled
+          outlined
+          rounded
           dense
           clearable
           class="col-grow"
@@ -58,14 +55,42 @@
       <FilterSidebar v-model="filterDrawerOpen" title="Filters">
         <div class="q-gutter-y-md q-pa-sm">
           <q-select
-            v-model="draftStockTypeFilter"
-            :options="stockTypeOptions"
+            v-model="draftLocationFilter"
+            :options="locationOptions"
             filled
             dense
             clearable
             emit-value
             map-options
-            label="Stock Type"
+            label="Location"
+          />
+
+          <q-select
+            v-model="draftAvailabilityFilter"
+            :options="availabilityOptions"
+            filled
+            dense
+            clearable
+            emit-value
+            map-options
+            label="Availability"
+          />
+
+          <q-select
+            v-model="draftShipmentIdFilter"
+            :options="shipmentSelectOptions"
+            filled
+            dense
+            clearable
+            use-input
+            emit-value
+            map-options
+            fill-input
+            hide-selected
+            input-debounce="300"
+            label="Shipment"
+            :loading="shipmentsLoading"
+            @filter="filterShipments"
           />
 
           <q-select
@@ -99,177 +124,413 @@
       <PageInitialLoader v-if="stockStore.loading && !stockStore.rows.length" />
 
       <!-- Stock Table -->
-      <q-card v-else flat bordered class="q-pa-none overflow-hidden" style="min-width: 0">
-        <q-table
-          flat
-          :rows="stockStore.rows"
-          :columns="columns"
-          row-key="id"
-          :loading="stockStore.loading"
-          v-model:pagination="pagination"
-          :rows-per-page-options="[10, 20, 50]"
-          table-style="min-width: 1200px;"
-          @request="onTableRequest"
-        >
-          <template #body-cell-image="props">
-            <q-td :props="props">
-              <q-avatar rounded size="42px" class="bg-grey-2">
-                <img
-                  :src="props.row.image_url || 'https://placehold.co/56x56?text=No+Image'"
-                  alt="Product Image"
-                  style="object-fit: contain"
-                />
-              </q-avatar>
-            </q-td>
-          </template>
+      <div v-else class="table-fixed-wrap">
+        <q-card flat bordered class="q-pa-none overflow-hidden full-height" style="min-width: 0; display: flex; flex-direction: column;">
+          <q-table
+            flat
+            :rows="stockStore.rows"
+            :columns="columns"
+            row-key="id"
+            :loading="stockStore.loading"
+            v-model:pagination="pagination"
+            :rows-per-page-options="[10, 20, 50]"
+            table-style="min-width: 1100px;"
+            @request="onTableRequest"
+          >
+            <!-- Stock ID (1st column) -->
+            <template #body-cell-stock_id="props">
+              <q-td :props="props" class="text-weight-bold text-grey-9">
+                {{ props.row.id }}
+              </q-td>
+            </template>
 
-          <template #body-cell-product="props">
-            <q-td :props="props">
-              <div class="text-weight-bold text-grey-9">{{ props.row.item_name }}</div>
-              <div class="text-caption text-grey-6 row q-gutter-x-sm">
-                <span v-if="props.row.product_code">Code: {{ props.row.product_code }}</span>
-                <span v-if="props.row.barcode">Barcode: {{ props.row.barcode }}</span>
-              </div>
-            </q-td>
-          </template>
-
-          <template #body-cell-usable="props">
-            <q-td :props="props">
-              <q-icon
-                :name="props.row.is_usable ? 'check_circle' : 'cancel'"
-                :color="props.row.is_usable ? 'green-6' : 'red-6'"
-                size="20px"
-              />
-            </q-td>
-          </template>
-
-          <template #body-cell-cost="props">
-            <q-td :props="props" class="text-right text-secondary">
-              <div>৳{{ formatCost(getUnitCost(props.row)) }}</div>
-              <div class="text-caption text-grey-6 text-weight-normal" style="font-size: 10px">
-                T: ৳{{ formatCost(getUnitCost(props.row) * props.row.quantity) }}
-              </div>
-            </q-td>
-          </template>
-
-          <template #body-cell-quantity="props">
-            <q-td :props="props" class="text-weight-bold text-primary">
-              {{ props.row.quantity }} pcs
-            </q-td>
-          </template>
-
-          <template #body-cell-actions="props">
-            <q-td :props="props" class="text-center">
-              <q-btn
-                flat
-                round
-                dense
-                icon="ph ph-git-fork"
-                size="sm"
-                color="primary"
-                @click.stop="openSplitDialog(props.row)"
-              >
-                <q-tooltip>Split Stock Quantity</q-tooltip>
-              </q-btn>
-            </q-td>
-          </template>
-
-          <template #bottom-row>
-            <q-tr class="totals-row">
-              <q-td class="totals-row__cell" />
-              <!-- image -->
-              <q-td class="totals-row__cell text-weight-bold text-grey-9">Total (Page)</q-td>
-              <!-- product name -->
-              <q-td class="totals-row__cell" />
-              <!-- shipment -->
-              <q-td class="totals-row__cell" />
-              <!-- stock type -->
-              <q-td class="totals-row__cell" />
-              <!-- usable -->
-              <q-td
-                class="totals-row__cell text-right stock-cost-col text-weight-bold text-secondary"
-              >
-                <div>৳{{ formatCost(pageTotals.avgUnitCost) }} (avg)</div>
-                <div class="text-caption text-grey-7 text-weight-normal" style="font-size: 10px">
-                  T: ৳{{ formatCost(pageTotals.totalCost) }}
+            <!-- Image (1 inch thumbnail) -->
+            <template #body-cell-image="props">
+              <q-td :props="props">
+                <div class="q-pa-xs border rounded-borders bg-white inline-block">
+                  <SmartImage
+                    :src="props.row.image_url"
+                    :alt="props.row.item_name"
+                    style="width: 80px; height: 80px; object-fit: cover; border-radius: 6px"
+                  />
                 </div>
               </q-td>
-              <!-- cost -->
-              <q-td class="totals-row__cell text-right stock-qty-col text-weight-bold text-primary">
-                {{ pageTotals.totalQty }} pcs
-              </q-td>
-              <!-- quantity -->
-              <q-td class="totals-row__cell" />
-              <!-- actions -->
-            </q-tr>
-          </template>
+            </template>
 
-          <template #no-data>
-            <div class="full-width text-center text-grey-7 q-py-lg">
-              <q-icon name="ph ph-archive-box" size="48px" class="q-mb-sm text-grey-4" />
-              <div>No Warehouse Stock Found.</div>
-            </div>
-          </template>
-        </q-table>
-      </q-card>
+            <!-- Product Details (Multiline Name) -->
+            <template #body-cell-product="props">
+              <q-td :props="props" style="white-space: normal; word-break: break-word; min-width: 220px">
+                <div class="text-weight-bold text-grey-9">{{ props.row.item_name }}</div>
+              </q-td>
+            </template>
+
+            <!-- Code / Barcode (Separate Column with Copy Button) -->
+            <template #body-cell-code="props">
+              <q-td :props="props">
+                <div v-if="props.row.product_code || props.row.barcode" class="column q-gutter-y-2xs">
+                  <div v-if="props.row.product_code" class="row items-center q-gutter-x-xs no-wrap">
+                    <span class="text-weight-medium text-grey-9">{{ props.row.product_code }}</span>
+                    <q-btn
+                      flat
+                      round
+                      dense
+                      icon="ph ph-copy"
+                      size="xs"
+                      color="grey-7"
+                      @click.stop="copyText(props.row.product_code)"
+                    >
+                      <q-tooltip>Copy code</q-tooltip>
+                    </q-btn>
+                  </div>
+                  <div v-if="props.row.barcode" class="row items-center q-gutter-x-xs no-wrap text-caption text-grey-6">
+                    <span>BC: {{ props.row.barcode }}</span>
+                    <q-btn
+                      flat
+                      round
+                      dense
+                      icon="ph ph-copy"
+                      size="xs"
+                      color="grey-6"
+                      @click.stop="copyText(props.row.barcode)"
+                    >
+                      <q-tooltip>Copy barcode</q-tooltip>
+                    </q-btn>
+                  </div>
+                </div>
+                <span v-else class="text-grey-5">—</span>
+              </q-td>
+            </template>
+
+            <!-- Grade & Location -->
+            <template #body-cell-grade="props">
+              <q-td :props="props">
+                <div class="column q-gutter-y-xs">
+                  <div>
+                    <q-chip
+                      dense
+                      square
+                      color="grey-2"
+                      text-color="grey-9"
+                      class="text-weight-medium"
+                    >
+                      {{ gradeLabel(props.row) }}
+                    </q-chip>
+                  </div>
+                  <div class="text-caption text-grey-7 row items-center q-gutter-x-xs no-wrap">
+                    <q-icon name="ph ph-map-pin" size="14px" color="grey-6" />
+                    <span>
+                      {{ formatStockAvailability(props.row.availability) }}
+                      ·
+                      {{ props.row.location_name || (props.row.location_id ? `#${props.row.location_id}` : '—') }}
+                    </span>
+                  </div>
+                </div>
+              </q-td>
+            </template>
+
+            <!-- Cost -->
+            <template #body-cell-cost="props">
+              <q-td :props="props" class="text-center text-secondary">
+                <div>৳{{ formatCost(getUnitCost(props.row)) }}</div>
+                <div class="text-caption text-grey-6 text-weight-normal" style="font-size: 10px">
+                  T: ৳{{ formatCost(getUnitCost(props.row) * props.row.quantity) }}
+                </div>
+              </q-td>
+            </template>
+
+            <!-- Quantity -->
+            <template #body-cell-quantity="props">
+              <q-td :props="props" class="text-center text-weight-bold text-primary">
+                {{ props.row.quantity }}
+              </q-td>
+            </template>
+
+            <!-- Icon Action Buttons Cell -->
+            <template #body-cell-actions="props">
+              <q-td :props="props" class="text-center">
+                <div class="row items-center justify-center q-gutter-x-xs no-wrap">
+                  <!-- Location Transfer icon button -->
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    icon="ph ph-map-pin-line"
+                    size="sm"
+                    color="primary"
+                    @click.stop="openLocationDialog(props.row)"
+                  >
+                    <q-tooltip>Transfer Location</q-tooltip>
+                  </q-btn>
+
+                  <!-- Re-Grade & Split icon button -->
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    icon="ph ph-tag"
+                    size="sm"
+                    color="secondary"
+                    @click.stop="openMoveGradeDialog(props.row)"
+                  >
+                    <q-tooltip>Re-Grade & Split Condition</q-tooltip>
+                  </q-btn>
+                </div>
+              </q-td>
+            </template>
+
+            <template #bottom-row>
+              <q-tr class="totals-row">
+                <q-td class="totals-row__cell text-weight-bold text-grey-9">Total (Page)</q-td>
+                <q-td class="totals-row__cell" />
+                <q-td class="totals-row__cell" />
+                <q-td class="totals-row__cell" />
+                <q-td class="totals-row__cell" />
+                <q-td class="totals-row__cell" />
+                <q-td
+                  class="totals-row__cell text-center stock-cost-col text-weight-bold text-secondary"
+                >
+                  <div>৳{{ formatCost(pageTotals.avgUnitCost) }} (avg)</div>
+                  <div class="text-caption text-grey-7 text-weight-normal" style="font-size: 10px">
+                    T: ৳{{ formatCost(pageTotals.totalCost) }}
+                  </div>
+                </q-td>
+                <q-td class="totals-row__cell text-center stock-qty-col text-weight-bold text-primary">
+                  {{ pageTotals.totalQty }}
+                </q-td>
+                <q-td class="totals-row__cell" />
+              </q-tr>
+            </template>
+
+            <template #no-data>
+              <div class="full-width text-center text-grey-7 q-py-lg">
+                <q-icon name="ph ph-archive-box" size="48px" class="q-mb-sm text-grey-4" />
+                <div class="text-subtitle1 text-weight-medium q-mb-xs">
+                  {{ stockStore.total === 0 ? 'No stock yet' : 'No stock matches filters' }}
+                </div>
+                <div v-if="stockStore.total === 0" class="text-body2 q-mb-md">
+                  Receive a shipment first.
+                </div>
+                <q-btn
+                  v-if="stockStore.total === 0"
+                  color="primary"
+                  unelevated
+                  no-caps
+                  label="Go to shipments"
+                  @click="goToShipments"
+                />
+              </div>
+            </template>
+          </q-table>
+        </q-card>
+      </div>
     </section>
+
+    <!-- Location Transfer Dialog -->
+    <StockMoveLocationDialog
+      v-model="locationDialogOpen"
+      :stock-row="selectedStockRow"
+      :tenant-id="authStore.tenantId || 0"
+      @updated="loadStock"
+    />
+
+    <!-- Unified Move & Re-Grade Dialog -->
+    <StockMoveGradeDialog
+      v-model="moveGradeDialogOpen"
+      :stock-row="selectedStockRow"
+      :tenant-id="authStore.tenantId || 0"
+      @updated="loadStock"
+    />
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
-import { useQuasar, type QTableColumn } from 'quasar';
+import { computed, onMounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { copyToClipboard, type QTableColumn } from 'quasar';
+import SmartImage from 'src/components/SmartImage.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useGlobalStockStore } from '../stores/globalStockStore';
-import { useGlobalStockTypeStore } from '../stores/globalStockTypeStore';
+import { useStockLocationStore } from '../stores/stockLocationStore';
+import {
+  globalShipmentRepository,
+  type GlobalShipment,
+} from '../repositories/globalShipmentRepository';
+import { getLeafLocations, toLocationSelectOptions } from '../utils/stockLocationOptions';
+import {
+  STOCK_AVAILABILITY_OPTIONS,
+  formatStockAvailability,
+  type StockAvailability,
+} from '../constants/stockAvailability';
+import { tagRepository } from 'src/modules/tag/repositories/tagRepository';
+import type { Tag } from 'src/modules/tag/types';
 import PageInitialLoader from 'src/components/ui/PageInitialLoader.vue';
 import AppPageHeader from 'src/components/ui/AppPageHeader.vue';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
-import StockTypeConfigPanel from '../components/StockTypeConfigPanel.vue';
-import GlobalStockSplitDialog from '../components/GlobalStockSplitDialog.vue';
+import StockMoveGradeDialog from '../components/StockMoveGradeDialog.vue';
+import StockMoveLocationDialog from '../components/StockMoveLocationDialog.vue';
 import { createShipmentItemsCostingCache } from 'src/modules/global/composables/useShipmentItemsCostingCache';
 import {
   isGlobalStockCostingInput,
   resolveGlobalStockUnitCostSync,
 } from 'src/modules/global/utils/resolveGlobalStockUnitCost';
+import { showSuccessNotification } from 'src/utils/appFeedback';
 import type { GlobalStock } from '../repositories/globalStockRepository';
 
 const authStore = useAuthStore();
+const route = useRoute();
+const router = useRouter();
 const stockStore = useGlobalStockStore();
-const stockTypeStore = useGlobalStockTypeStore();
-const $q = useQuasar();
+const stockLocationStore = useStockLocationStore();
 const costingCache = createShipmentItemsCostingCache();
 
 // Filter State
 const searchText = ref('');
 const filterDrawerOpen = ref(false);
-const stockTypeFilter = ref<number | null>(null);
+const locationFilter = ref<number | null>(null);
+const availabilityFilter = ref<StockAvailability | null>(null);
 const isSellableFilter = ref<boolean | null>(null);
 const shipmentStatusFilter = ref<string | null>(null);
 const hideZeroStockFilter = ref<boolean>(true);
+const shipmentIdFilter = ref<number | null>(
+  route.query.shipment_id ? Number(route.query.shipment_id) : null,
+);
 
-const draftStockTypeFilter = ref<number | null>(null);
+const draftLocationFilter = ref<number | null>(null);
+const draftAvailabilityFilter = ref<StockAvailability | null>(null);
 const draftIsSellableFilter = ref<boolean | null>(null);
 const draftShipmentStatusFilter = ref<string | null>(null);
+const draftShipmentIdFilter = ref<number | null>(null);
 const draftHideZeroStockFilter = ref<boolean>(true);
+const shipmentSelectOptions = ref<Array<{ label: string; value: number }>>([]);
+const shipmentsLoading = ref(false);
+
+// Dialog state
+const moveGradeDialogOpen = ref<boolean>(false);
+const locationDialogOpen = ref<boolean>(false);
+const selectedStockRow = ref<GlobalStock | null>(null);
+const gradeTags = ref<Tag[]>([]);
+
+const gradeNameById = computed(() => {
+  const map = new Map<number, string>();
+  for (const tag of gradeTags.value) {
+    map.set(tag.id, tag.name);
+  }
+  return map;
+});
+
+const gradeLabel = (row: GlobalStock): string =>
+  row.grade_name
+  || gradeNameById.value.get(row.grade_tag_id ?? 0)
+  || 'Standard';
+
+const shipmentOptionLabel = (shipment: GlobalShipment): string => {
+  const num = (shipment as GlobalShipment & { tenant_shipment_id?: number | null })
+    .tenant_shipment_id ?? shipment.id;
+  return `#${num} ${shipment.name}`;
+};
+
+const shipmentChipLabel = computed(() => {
+  const id = shipmentIdFilter.value;
+  if (id == null) return '';
+  const match = shipmentSelectOptions.value.find((opt) => opt.value === id);
+  return `Shipment Filter: ${match?.label ?? `#${id}`}`;
+});
+
+const loadShipmentOptions = async (search?: string) => {
+  if (!authStore.tenantId) return;
+  shipmentsLoading.value = true;
+  try {
+    const result = await globalShipmentRepository.listPaginated(
+      authStore.tenantId,
+      1,
+      50,
+      search?.trim() || undefined,
+    );
+    const options = result.data.map((shipment) => ({
+      label: shipmentOptionLabel(shipment),
+      value: shipment.id,
+    }));
+    const selectedId = draftShipmentIdFilter.value ?? shipmentIdFilter.value;
+    if (selectedId != null && !options.some((opt) => opt.value === selectedId)) {
+      const existing = shipmentSelectOptions.value.find((opt) => opt.value === selectedId);
+      if (existing) options.unshift(existing);
+    }
+    shipmentSelectOptions.value = options;
+  } finally {
+    shipmentsLoading.value = false;
+  }
+};
+
+const filterShipments = (val: string, update: (callback: () => void) => void) => {
+  void loadShipmentOptions(val).then(() => {
+    update(() => undefined);
+  });
+};
+
+watch(
+  () => route.query.shipment_id,
+  (newVal) => {
+    shipmentIdFilter.value = newVal ? Number(newVal) : null;
+    stockStore.page = 1;
+    void loadStock();
+  },
+);
+
+const clearShipmentFilter = () => {
+  shipmentIdFilter.value = null;
+  draftShipmentIdFilter.value = null;
+  void router.replace({ query: { ...route.query, shipment_id: undefined } });
+  stockStore.page = 1;
+  void loadStock();
+};
+
+const writeShipmentQuery = (id: number | null): boolean => {
+  const next = id == null ? undefined : String(id);
+  const current = route.query.shipment_id;
+  const currentStr = Array.isArray(current) ? current[0] : current;
+  if ((currentStr ?? undefined) === next) return false;
+  void router.replace({ query: { ...route.query, shipment_id: next } });
+  return true;
+};
+
+const copyText = async (text: string | null) => {
+  if (!text) return;
+  try {
+    await copyToClipboard(text);
+    showSuccessNotification('Copied to clipboard');
+  } catch (err) {
+    console.error('Failed to copy', err);
+  }
+};
+
+const openLocationDialog = (row: GlobalStock) => {
+  selectedStockRow.value = row;
+  locationDialogOpen.value = true;
+};
+
+const openMoveGradeDialog = (row: GlobalStock) => {
+  selectedStockRow.value = row;
+  moveGradeDialogOpen.value = true;
+};
 
 const columns: QTableColumn[] = [
+  { name: 'stock_id', label: 'Stock ID', field: 'id', align: 'left', sortable: true },
   { name: 'image', label: 'Image', field: 'image_url', align: 'left', sortable: false },
-  { name: 'product', label: 'Product Details', field: 'item_name', align: 'left', sortable: false },
+  { name: 'product', label: 'Product Name', field: 'item_name', align: 'left', sortable: false },
+  { name: 'code', label: 'Code / Barcode', field: 'product_code', align: 'left', sortable: false },
   { name: 'shipment', label: 'Shipment', field: 'shipment_name', align: 'left', sortable: false },
   {
-    name: 'stock_type',
-    label: 'Stock Type',
-    field: 'stock_type_description',
+    name: 'grade',
+    label: 'Grade & Location',
+    field: 'grade_tag_id',
     align: 'left',
     sortable: false,
   },
-  { name: 'usable', label: 'Usable', field: 'is_usable', align: 'center', sortable: false },
   {
     name: 'cost',
     label: 'Cost (Est. BDT)',
     field: 'id',
-    align: 'right',
+    align: 'center',
     sortable: false,
     classes: 'stock-cost-col',
     headerClasses: 'stock-cost-col',
@@ -278,14 +539,14 @@ const columns: QTableColumn[] = [
     name: 'quantity',
     label: 'Quantity',
     field: 'quantity',
-    align: 'right',
+    align: 'center',
     sortable: false,
     classes: 'stock-qty-col',
     headerClasses: 'stock-qty-col',
   },
   {
     name: 'actions',
-    label: 'Actions',
+    label: 'Action',
     field: 'id',
     align: 'center',
     sortable: false,
@@ -306,21 +567,25 @@ const pagination = computed({
 
 const activeFilterCount = computed(() => {
   let count = 0;
-  if (stockTypeFilter.value !== null) count++;
+  if (locationFilter.value !== null) count++;
+  if (availabilityFilter.value !== null) count++;
   if (isSellableFilter.value !== null) count++;
   if (shipmentStatusFilter.value !== null) count++;
   if (!hideZeroStockFilter.value) count++;
+  if (shipmentIdFilter.value !== null) count++;
   return count;
 });
 
-const stockTypeOptions = computed(() => {
-  return stockTypeStore.items.map((t) => ({ label: t.description, value: t.id }));
-});
+const locationOptions = computed(() =>
+  toLocationSelectOptions(getLeafLocations(stockLocationStore.items)),
+);
+
+const availabilityOptions = STOCK_AVAILABILITY_OPTIONS;
 
 const shipmentStatusOptions = [
   { label: 'All', value: '__all__' },
-  { label: 'Warehouse Received', value: 'Warehouse Received' },
-  { label: 'Ready Stock', value: 'Ready Stock' },
+  { label: 'In transit', value: 'in_transit' },
+  { label: 'Received', value: 'received' },
 ];
 
 const getUnitCost = (row: GlobalStock): number => {
@@ -350,21 +615,18 @@ const pageTotals = computed(() => {
   };
 });
 
-const allocateStockRoute = computed(() => {
-  const slug = authStore.tenantSlug;
-  return slug ? `/${slug}/app/procurement/stock/allocate` : '/app/procurement/stock/allocate';
-});
-
 const loadStock = async () => {
   if (!authStore.tenantId) return;
   await stockStore.fetchStocks(authStore.tenantId, {
     page: stockStore.page,
     pageSize: stockStore.pageSize,
     search: searchText.value.trim() || null,
-    stockTypeId: stockTypeFilter.value,
+    availability: availabilityFilter.value,
     isSellable: isSellableFilter.value,
     shipmentStatus: shipmentStatusFilter.value === '__all__' ? null : shipmentStatusFilter.value,
     hideZeroStock: hideZeroStockFilter.value,
+    locationId: locationFilter.value,
+    shipmentId: shipmentIdFilter.value,
   });
   await costingCache.prefetchShipmentItems(stockStore.rows.map((row) => row.shipment_id));
 };
@@ -382,69 +644,114 @@ const onSearch = () => {
 
 // Filter Actions
 const openFilterDrawer = () => {
-  draftStockTypeFilter.value = stockTypeFilter.value;
+  draftLocationFilter.value = locationFilter.value;
+  draftAvailabilityFilter.value = availabilityFilter.value;
   draftIsSellableFilter.value = isSellableFilter.value;
   draftShipmentStatusFilter.value = shipmentStatusFilter.value;
+  draftShipmentIdFilter.value = shipmentIdFilter.value;
   draftHideZeroStockFilter.value = hideZeroStockFilter.value;
   filterDrawerOpen.value = true;
+  void loadShipmentOptions();
 };
 
 const onApplyDrawerFilters = () => {
-  stockTypeFilter.value = draftStockTypeFilter.value;
+  locationFilter.value = draftLocationFilter.value;
+  availabilityFilter.value = draftAvailabilityFilter.value;
   isSellableFilter.value = draftIsSellableFilter.value;
   shipmentStatusFilter.value = draftShipmentStatusFilter.value;
   hideZeroStockFilter.value = draftHideZeroStockFilter.value;
+  shipmentIdFilter.value = draftShipmentIdFilter.value;
   filterDrawerOpen.value = false;
   stockStore.page = 1;
-  void loadStock();
+  const navigated = writeShipmentQuery(draftShipmentIdFilter.value);
+  if (!navigated) void loadStock();
 };
 
 const onResetFilters = () => {
-  draftStockTypeFilter.value = null;
+  draftLocationFilter.value = null;
+  draftAvailabilityFilter.value = null;
   draftIsSellableFilter.value = null;
   draftShipmentStatusFilter.value = null;
+  draftShipmentIdFilter.value = null;
   draftHideZeroStockFilter.value = true;
-  stockTypeFilter.value = null;
+  locationFilter.value = null;
+  availabilityFilter.value = null;
   isSellableFilter.value = null;
   shipmentStatusFilter.value = null;
   hideZeroStockFilter.value = true;
+  shipmentIdFilter.value = null;
   filterDrawerOpen.value = false;
   stockStore.page = 1;
-  void loadStock();
+  const navigated = writeShipmentQuery(null);
+  if (!navigated) void loadStock();
 };
 
-const openStockTypesConfig = () => {
-  $q.dialog({
-    component: StockTypeConfigPanel,
-  }).onOk(() => {
-    void loadStock();
-  });
-};
-
-const openSplitDialog = (row: GlobalStock) => {
-  $q.dialog({
-    component: GlobalStockSplitDialog,
-    componentProps: {
-      shipmentItemId: row.shipment_item_id,
-      itemName: row.item_name,
-      productCode: row.product_code,
-      barcode: row.barcode,
-      imageUrl: row.image_url,
-    },
-  }).onOk(() => {
-    void loadStock();
+const goToShipments = () => {
+  void router.push({
+    name: 'app-procurement-shipment-list',
+    params: { tenantSlug: route.params.tenantSlug },
   });
 };
 
 onMounted(async () => {
   if (authStore.tenantId) {
-    await stockTypeStore.fetchStockTypes(authStore.tenantId);
+    await stockLocationStore.fetchLocations(authStore.tenantId);
+  }
+  try {
+    gradeTags.value = await tagRepository.listTagsForCategory({
+      moduleKey: 'stock_grade',
+      code: 'warehouse',
+    });
+  } catch {
+    gradeTags.value = [];
+  }
+  if (shipmentIdFilter.value != null) {
+    void loadShipmentOptions();
   }
   void loadStock();
 });
 </script>
 
 <style scoped>
+.page-fixed-layout {
+  height: calc(100vh - 55px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.table-fixed-wrap {
+  flex: 1 1 0%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+:deep(.q-table__card) {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+:deep(.q-table__container) {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+:deep(.q-table__middle) {
+  flex: 1 1 0%;
+  overflow-y: auto;
+}
+
+:deep(thead tr th) {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background-color: #f8fafc !important;
+}
+
 .stock-cost-col {
   background-color: #ffe8d1 !important;
 }

@@ -11,7 +11,7 @@ To track complex financial flows reliably, Brandwala adopts an enterprise-standa
 - **Unified UX:** A single `<UniversalWallet />` component scales across Admin, Vendor, Courier, and Middleman dashboards, significantly reducing frontend duplication.
 - **Future-Proof Extensibility:** Built-in multi-currency, exchange rate lock-ins, and flexible tagging prepare the platform for global expansion without database migrations.
 
-**The Core Rule:** Every entity on the platform (Tenant, Courier, Middleman, Vendor, Customer) gets exactly **ONE** wallet identified by `entity_type` + `entity_id`.
+**The Core Rule: Every entity on the platform (Tenant, Courier, Middleman, Vendor, Customer, Investor, Cargo Company) gets exactly **ONE** wallet identified by `entity_type` + `entity_id`.
 A single wallet only tracks *its own money*. It does not track what it owes to others. **Tags never identify the wallet owner** — see §4 and [UNIVERSAL_TAGGING_SYSTEM.md](../tag/UNIVERSAL_TAGGING_SYSTEM.md).
 
 ### Answering Business Questions via Wallets:
@@ -43,7 +43,7 @@ Because the system relies on permanent Double-Entry / Single-Entry ledger mathem
 
 4. **Shipment purchase (procurement handoff):**
    - Pay vendor $4,000 + cargo $1,000 for an inbound shipment.
-   - Wallet Action: Debit **Tenant** (cash out); settle **Vendor** / **Cargo agent** wallets.
+   - Wallet Action: Debit **Tenant** (cash out); settle **Vendor** / **Cargo agent** (`cargo_company`) wallets.
    - Shipment is **not** a wallet owner — use `source_type = 'shipment'` (or `vendor_purchase`) + `source_id = shipment.id`.
    - Costing (landed cost) lives on `shipment_cost_entries`; wallet is optional day one. See [PROCUREMENT_STOCK_ISSUES.md](../PROCUREMENT_STOCK_ISSUES.md) §3.
 
@@ -71,7 +71,7 @@ This unified table (`universal_wallet_ledger`) replaces any need for separate "C
 | :--- | :--- | :--- |
 | **`id`** | `uuid` (PK) | Unique transaction identifier. |
 | **`tenant_id`** | `bigint` (FK) | Identifies the organization/store. |
-| **`entity_type`** | `text` | The owner category (`'customer'`, `'vendor'`, `'courier'`, `'middleman'`, `'tenant'`). |
+| **`entity_type`** | `text` | The owner category (`'customer'`, `'vendor'`, `'courier'`, `'middleman'`, `'tenant'`, `'investor'`, `'cargo_company'`). |
 | **`entity_id`** | `bigint` | The specific ID of the owner. |
 | **`type`** | `text` | `CHECK IN ('credit', 'debit')` - Money IN or Money OUT. |
 | **`amount`** | `numeric(15,4)` | The raw transaction amount in the local currency (must be positive). |

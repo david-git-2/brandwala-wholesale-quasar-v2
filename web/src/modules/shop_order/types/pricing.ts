@@ -2,7 +2,7 @@ export interface ShopProductListing {
   id: number;
   tenant_id: number;
   shop_id: number;
-  global_stock_allocation_id: number;
+  global_stock_allocation_id?: number | null;
   global_stock_id: number;
   product_id: number;
   sell_price_amount: number;
@@ -33,7 +33,8 @@ export interface ShopProductListing {
 }
 
 export interface CandidateAllocation {
-  allocation_id: number;
+  allocation_id?: number;
+  global_stock_id: number;
   stock_id: number;
   product_id: number;
   product_name: string;
@@ -53,7 +54,8 @@ export interface CandidateAllocation {
 export interface UpsertListingPayload {
   tenant_id: number;
   shop_id: number;
-  global_stock_allocation_id: number;
+  global_stock_allocation_id?: number | null;
+  global_stock_id?: number | null;
   sell_price_amount: number;
   sell_price_currency_id: number;
   minimum_sell_price_amount?: number | null;
@@ -88,4 +90,3 @@ export interface UpsertShopPricingRulePayload {
   default_show_quantity?: boolean;
   default_add_quantity?: number;
 }
-

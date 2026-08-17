@@ -171,8 +171,8 @@ export const customerDashboardGuide: ModuleGuide = {
         bn: 'বিভিন্ন পাইকারি শপের মধ্যে সুইচ করব কীভাবে?',
       },
       answer: {
-        en: 'Click any shop card in the Wholesale Shops grid on your dashboard to enter that specific shop catalog.',
-        bn: 'নির্দিষ্ট শপ ক্যাটালগে প্রবেশ করতে আপনার ড্যাশবোর্ডের Wholesale Shops গ্রিডের যেকোনো শপ কার্ডে ক্লিক করুন।',
+        en: 'Open Catalog. If you have more than one shop, switch from the shop name at the top. You can also open a shop from Home.',
+        bn: 'ক্যাটালগ খুলুন। একাধিক শপ থাকলে উপরে শপের নাম থেকে বদলান। হোম থেকেও একটি শপ খুলতে পারেন।',
       },
     },
     {

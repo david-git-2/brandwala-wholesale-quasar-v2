@@ -1219,7 +1219,7 @@ const invoiceForm = ref({
   district: '',
   thana: '',
   postCode: '',
-  date: new Date().toISOString().split('T')[0],
+  date: new Date().toISOString().split('T')[0] ?? '',
   notes: '',
   courierProviderId: null as number | null,
   trackingId: '',

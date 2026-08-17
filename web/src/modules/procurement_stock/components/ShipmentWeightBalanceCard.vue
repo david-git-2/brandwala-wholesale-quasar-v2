@@ -3,18 +3,30 @@
     <div class="row items-center justify-between q-mb-md">
       <div class="text-subtitle1 text-weight-bold text-primary row items-center q-gutter-xs">
         <q-icon name="ph ph-scales" size="22px" />
-        <span>Shipment Weight Balance</span>
+        <span>Match cargo invoice weight</span>
       </div>
-      <q-badge v-if="hasDelta" :color="deltaColor" class="q-py-xs q-px-sm text-weight-bold">
-        Delta: {{ deltaKg.toFixed(2) }} kg
+      <q-badge
+        v-if="weightsMatch"
+        color="positive"
+        class="q-py-xs q-px-sm text-weight-bold"
+      >
+        Weights match invoice
+      </q-badge>
+      <q-badge v-else-if="hasDelta" :color="deltaColor" class="q-py-xs q-px-sm text-weight-bold">
+        Differs by {{ deltaKg.toFixed(2) }} kg
       </q-badge>
     </div>
 
-    <!-- 0. Cargo Invoice Weight Section -->
+    <!-- Step 1: Enter invoice weight -->
     <div class="bg-blue-1 border-light rounded-borders q-pa-sm q-mb-md">
-      <div class="text-caption text-weight-bold text-blue-9 q-mb-xs">Cargo Invoice Weight (kg)</div>
+      <div class="text-caption text-weight-bold text-blue-9 q-mb-xs">
+        1. Cargo bill weight (kg)
+      </div>
+      <div class="text-caption text-grey-7 q-mb-sm" style="font-size: 11px; line-height: 1.3">
+        Weight on the cargo bill. Apply adjusts package weights only — never overwrites this value.
+      </div>
       <div class="row q-col-gutter-sm items-center">
-        <div class="col-8">
+        <div class="col-12 col-sm-8">
           <q-input
             v-model.number="cargoInvoiceWeight"
             type="number"
@@ -41,23 +53,23 @@
             </template>
           </q-input>
         </div>
-        <div class="col-4 text-caption text-grey-7 q-pl-xs leading-tight" style="font-size: 10px">
-          The weight you paid the cargo bill on. Click save, then apply weight balance to distribute
-          across lines.
-        </div>
       </div>
     </div>
 
-    <!-- 1. Manage Boxes Section -->
-    <div class="bg-grey-1 q-pa-sm rounded-borders border-light q-mb-md">
-      <div
-        class="text-caption text-weight-bold text-grey-9 q-mb-xs row items-center justify-between"
-      >
-        <span>{{
-          editingBoxId !== null ? 'Edit Box Weight' : 'Manage Box Weights (Record Only)'
-        }}</span>
-        <span class="text-grey-6 text-weight-medium">Total: {{ boxTotalKg.toFixed(2) }} kg</span>
-      </div>
+    <!-- Optional boxes (collapsed) -->
+    <q-expansion-item
+      dense
+      class="bg-grey-1 rounded-borders border-light q-mb-md"
+      header-class="text-caption text-weight-bold text-grey-9"
+      expand-icon-class="text-grey-7"
+    >
+      <template #header>
+        <div class="row items-center justify-between full-width q-pr-sm">
+          <span>Box weights — optional check only (does not change cost)</span>
+          <span class="text-grey-6 text-weight-medium">Total: {{ boxTotalKg.toFixed(2) }} kg</span>
+        </div>
+      </template>
+      <div class="q-pa-sm">
       <div class="row q-col-gutter-xs items-center">
         <div class="col-4">
           <q-input
@@ -224,9 +236,15 @@
           </span>
         </q-banner>
       </div>
-    </div>
+      </div>
+    </q-expansion-item>
 
-    <!-- 2. Summary Row -->
+    <!-- Step 2: Review difference -->
+    <div class="text-caption text-weight-bold text-grey-8 q-mb-xs">2. Review the difference</div>
+    <div class="text-caption text-grey-7 q-mb-sm" style="font-size: 11px; line-height: 1.3">
+      Invoice weight vs estimated line weights. Apply spreads the difference into package weights
+      only.
+    </div>
     <div class="row q-col-gutter-xs q-mb-md text-center">
       <div class="col-3">
         <div class="bg-grey-2 q-pa-xs rounded-borders">
@@ -284,7 +302,11 @@
       </q-banner>
     </div>
 
-    <!-- 3. Preview Adjustments Trigger -->
+    <!-- Step 3: Apply -->
+    <div class="text-caption text-weight-bold text-grey-8 q-mb-xs">3. Apply to line items</div>
+    <div class="text-caption text-grey-7 q-mb-sm" style="font-size: 11px; line-height: 1.3">
+      Distributes the weight difference across package weights on each line.
+    </div>
     <div v-if="previewItems.length && !validationError" class="q-mb-sm">
       <q-btn
         outline
@@ -354,21 +376,42 @@
       </q-dialog>
     </div>
 
-    <!-- 4. Apply Action -->
-    <q-btn
-      color="primary"
-      label="Apply Weight Balance"
-      class="full-width pill-btn shadow-1"
-      unelevated
-      no-caps
-      :disable="applyDisabled"
-      :loading="applying"
-      @click="confirmApply"
-    >
-      <q-tooltip v-if="applyDisabled">
-        {{ applyDisabledReason }}
-      </q-tooltip>
-    </q-btn>
+    <!-- Apply Action -->
+    <div class="row q-col-gutter-sm">
+      <div class="col-12 col-sm-6">
+        <q-btn
+          outline
+          color="primary"
+          label="Apply weight balance"
+          class="full-width"
+          unelevated
+          no-caps
+          :disable="applyDisabled"
+          :loading="applying"
+          @click="confirmApply"
+        >
+          <q-tooltip v-if="applyDisabled">
+            {{ applyDisabledReason }}
+          </q-tooltip>
+        </q-btn>
+      </div>
+      <div class="col-12 col-sm-6">
+        <q-btn
+          color="primary"
+          label="Save & apply weight"
+          class="full-width pill-btn shadow-1"
+          unelevated
+          no-caps
+          :disable="saveAndApplyDisabled"
+          :loading="savingCargoInvoiceWeight || applying"
+          @click="saveAndApply"
+        >
+          <q-tooltip v-if="saveAndApplyDisabled">
+            {{ saveAndApplyDisabledReason }}
+          </q-tooltip>
+        </q-btn>
+      </div>
+    </div>
   </q-card>
 </template>
 
@@ -430,11 +473,11 @@ watch(
   { immediate: true },
 );
 
-const saveCargoInvoiceWeight = async () => {
+const saveCargoInvoiceWeight = async (): Promise<boolean> => {
   const val = cargoInvoiceWeight.value;
   if (val === null || val <= 0) {
     showWarningNotification('Cargo Invoice Weight must be greater than 0.');
-    return;
+    return false;
   }
   const roundedKg = Math.round(val * 100) / 100;
   savingCargoInvoiceWeight.value = true;
@@ -442,8 +485,10 @@ const saveCargoInvoiceWeight = async () => {
     await shipmentStore.updateShipment(props.shipmentId, { received_weight: roundedKg });
     cargoInvoiceWeight.value = roundedKg;
     showSuccessNotification('Cargo Invoice Weight updated successfully.');
+    return true;
   } catch (error: unknown) {
     showErrorNotification((error as Error).message || 'Failed to update Cargo Invoice Weight.');
+    return false;
   } finally {
     savingCargoInvoiceWeight.value = false;
   }
@@ -481,6 +526,10 @@ const deltaKg = computed(() => {
 
 const hasDelta = computed(() => {
   return actualKg.value > 0 && Math.abs(deltaKg.value) > 0.001;
+});
+
+const weightsMatch = computed(() => {
+  return actualKg.value > 0 && Math.abs(deltaKg.value) <= 0.001;
 });
 
 // Delta Colors (red/heavy, green/light)
@@ -559,13 +608,47 @@ const applyDisabled = computed(() => {
 
 const applyDisabledReason = computed(() => {
   if (savedInvoiceWeightKg.value <= 0)
-    return 'Save Cargo Invoice Weight before applying weight balance';
-  if (hasUnsavedInvoiceWeight.value) return 'Save Cargo Invoice Weight first — unsaved changes';
+    return 'Save cargo bill weight before applying';
+  if (hasUnsavedInvoiceWeight.value) return 'Save cargo bill weight first — unsaved changes';
   if (items.value.length === 0) return 'No line items to distribute weight to';
   if (validationError.value !== null) return validationError.value;
-  if (Math.abs(deltaKg.value) < 0.001) return 'No weight delta to balance';
+  if (Math.abs(deltaKg.value) < 0.001) return 'Weights already match';
   return '';
 });
+
+const saveAndApplyDisabled = computed(() => {
+  const draft = cargoInvoiceWeight.value;
+  if (draft === null || draft <= 0) return true;
+  if (items.value.length === 0) return true;
+  // Already matched and nothing unsaved
+  if (!hasUnsavedInvoiceWeight.value && Math.abs(deltaKg.value) < 0.001) return true;
+  return false;
+});
+
+const saveAndApplyDisabledReason = computed(() => {
+  const draft = cargoInvoiceWeight.value;
+  if (draft === null || draft <= 0) return 'Enter a cargo bill weight greater than 0';
+  if (items.value.length === 0) return 'No line items to distribute weight to';
+  if (!hasUnsavedInvoiceWeight.value && Math.abs(deltaKg.value) < 0.001) {
+    return 'Weights already match';
+  }
+  return '';
+});
+
+const saveAndApply = async () => {
+  if (saveAndApplyDisabled.value) return;
+  if (hasUnsavedInvoiceWeight.value) {
+    const saved = await saveCargoInvoiceWeight();
+    if (!saved) return;
+  }
+  if (applyDisabled.value) {
+    if (Math.abs(deltaKg.value) < 0.001) {
+      showSuccessNotification('Weights already match the invoice.');
+    }
+    return;
+  }
+  confirmApply();
+};
 
 // Auto-fill box number calculations
 const getNextBoxNumber = (): string => {

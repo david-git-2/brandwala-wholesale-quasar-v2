@@ -1,5 +1,5 @@
 import type { GlobalShipment, GlobalShipmentItem } from '../repositories/globalShipmentRepository';
-import type { ShipmentCostSummary } from './landedCost';
+import type { ShipmentCostSummary } from 'src/shared/shipment-engine';
 import {
   EXCEL_IMAGE_HEIGHT_PX,
   fetchImageForExcel,
@@ -13,7 +13,7 @@ export interface BuildShipmentExcelInput {
   boxWeightSum: number;
   splitsSummary: {
     breakdown: Array<{
-      id: number;
+      id: number | string;
       description: string;
       is_sellable: boolean;
       quantity: number;
@@ -69,6 +69,7 @@ const HEADERS = [
   'REMARKS',
   'Barcode',
   'Product code',
+  'Product ID',
 ] as const;
 
 const COLUMN_LETTERS = [
@@ -95,12 +96,13 @@ const COLUMN_LETTERS = [
   'U',
   'V',
   'W',
+  'X',
 ] as const;
 
 const COLUMN_WIDTHS = [
   3.6640625, 13.19921875, 16.19921875, 8.19921875, 8.19921875, 6.46484375, 6.46484375, 7.59765625,
   6.06640625, 7.86328125, 6.59765625, 7.796875, 7.46484375, 8.19921875, 8.19921875, 7.86328125, 6,
-  9.19921875, 8.19921875, 8, 10, 8.6640625, 8.6640625,
+  9.19921875, 8.19921875, 8, 10, 8.6640625, 8.6640625, 8.6640625,
 ];
 
 const COLORED_COLUMNS: Record<string, string> = {
@@ -280,8 +282,13 @@ export async function buildShipmentExcelWorkbook(input: BuildShipmentExcelInput)
   const worksheet = workbook.addWorksheet('Shipment costing');
 
   const conversionRate =
-    input.shipment.type === 'international' ? (input.shipment.product_conversion_rate ?? 140) : 1;
-  const cargoRate = input.shipment.type === 'international' ? (input.shipment.cargo_rate ?? 0) : 0;
+    input.shipment.type === 'international' && input.totals.goodsPurchase > 0
+      ? input.totals.goodsCost / input.totals.goodsPurchase
+      : 1;
+  const cargoRate =
+    input.shipment.type === 'international' && input.totals.cargoWeightKg > 0
+      ? input.totals.cargoPurchase / input.totals.cargoWeightKg
+      : 0;
   const items = input.items;
 
   COLUMN_WIDTHS.forEach((width, index) => {
@@ -328,6 +335,7 @@ export async function buildShipmentExcelWorkbook(input: BuildShipmentExcelInput)
       '', // REMARKS: empty string
       item.barcode ?? '',
       item.product_code ?? '',
+      item.product_id ?? '',
     ]);
 
     row.getCell('H').value = { formula: `F${r}+G${r}` };
@@ -477,7 +485,7 @@ export async function buildShipmentExcelWorkbook(input: BuildShipmentExcelInput)
   });
 
   const overviewData = [
-    { label: 'Shipment ID', val: `#${input.shipment.tenant_shipment_id || input.shipment.id}` },
+    { label: 'Shipment ID', val: `#${(input.shipment as any).tenant_shipment_id || input.shipment.id}` },
     { label: 'Name', val: input.shipment.name },
     { label: 'Type', val: input.shipment.type.toUpperCase() },
     { label: 'Status', val: input.shipment.status },
@@ -510,10 +518,15 @@ export async function buildShipmentExcelWorkbook(input: BuildShipmentExcelInput)
   const FONT_BLACK = 'FF000000';
 
   const productConv =
-    input.shipment.type === 'international' ? toNum(input.shipment.product_conversion_rate) : 1;
+    input.shipment.type === 'international' && input.totals.goodsPurchase > 0
+      ? input.totals.goodsCost / input.totals.goodsPurchase
+      : 1;
   const cargoConv =
-    input.shipment.type === 'international' ? toNum(input.shipment.cargo_conversion_rate) : 1;
-  const cargoRatePerKg = toNum(input.shipment.cargo_rate);
+    input.shipment.type === 'international' && input.totals.cargoPurchase > 0
+      ? input.totals.cargoCost / input.totals.cargoPurchase
+      : 1;
+  const cargoRatePerKg =
+    input.totals.cargoWeightKg > 0 ? input.totals.cargoPurchase / input.totals.cargoWeightKg : 0;
   const goodsGbp = input.totals.goodsPurchase;
   const goodsBdt = input.totals.goodsCost;
   const cargoKg = input.totals.cargoWeightKg;

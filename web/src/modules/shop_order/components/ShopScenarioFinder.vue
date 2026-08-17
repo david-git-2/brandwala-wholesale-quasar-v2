@@ -60,36 +60,7 @@
         </div>
       </div>
 
-      <!-- Question 2a: Negotiable (for vendor_catalog) -->
-      <div v-if="finderShopType === 'vendor_catalog'" class="q-mb-md">
-        <div class="text-subtitle2 text-grey-8 q-mb-xs">
-          {{ $t('shop_admin.finder_q2_negotiable') }}
-        </div>
-        <div class="row q-col-gutter-sm">
-          <div class="col-6">
-            <q-btn
-              :outline="finderNegotiable !== true"
-              color="primary"
-              class="full-width"
-              :label="$t('shop_admin.yes')"
-              no-caps
-              @click="finderNegotiable = true"
-            />
-          </div>
-          <div class="col-6">
-            <q-btn
-              :outline="finderNegotiable !== false"
-              color="primary"
-              class="full-width"
-              :label="$t('shop_admin.no')"
-              no-caps
-              @click="finderNegotiable = false"
-            />
-          </div>
-        </div>
-      </div>
-
-      <!-- Question 2b: Order Mode (for fixed_price) -->
+      <!-- Question 2: Order Mode (for fixed_price) -->
       <div v-if="finderShopType === 'fixed_price'" class="q-mb-md">
         <div class="text-subtitle2 text-grey-8 q-mb-xs">
           {{ $t('shop_admin.finder_q2_order_mode') }}
@@ -213,10 +184,6 @@
                 <div class="col-4">
                   <strong>{{ $t('shop_admin.field_order_mode') }}</strong> {{ sc.fields.order_mode }}
                 </div>
-                <div class="col-4">
-                  <strong>{{ $t('shop_admin.field_negotiable') }}</strong>
-                  {{ sc.fields.is_negotiable ? $t('shop_admin.yes') : $t('shop_admin.no') }}
-                </div>
                 <div v-if="sc.fields.shop_type === 'fixed_price'" class="col-4">
                   <strong>{{ $t('shop_admin.pricing_method') }}:</strong> {{ sc.fields.pricing_method }}
                 </div>
@@ -285,20 +252,17 @@ const emit = defineEmits<{
 const { presetName, presetDescription } = useShopLocale();
 
 const finderShopType = ref<ShopType | null>(null);
-const finderNegotiable = ref<boolean | null>(null);
 const finderOrderMode = ref<ShopOrderMode | null>(null);
 const finderPricingMethod = ref<'direct_cost' | 'markup' | null>(null);
 
 const resetFinder = () => {
   finderShopType.value = null;
-  finderNegotiable.value = null;
   finderOrderMode.value = null;
   finderPricingMethod.value = null;
 };
 
 const selectShopType = (type: ShopType) => {
   finderShopType.value = type;
-  finderNegotiable.value = null;
   finderOrderMode.value = null;
   finderPricingMethod.value = null;
 };
@@ -312,8 +276,7 @@ const finderResult = computed((): ShopConfigurationPresetId | null => {
   if (!finderShopType.value) return null;
 
   if (finderShopType.value === 'vendor_catalog') {
-    if (finderNegotiable.value === true) return 'A';
-    if (finderNegotiable.value === false) return 'B';
+    return 'A';
   }
 
   if (finderShopType.value === 'fixed_price') {

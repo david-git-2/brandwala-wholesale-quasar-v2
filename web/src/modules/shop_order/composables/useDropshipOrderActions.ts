@@ -122,7 +122,7 @@ export function useDropshipOrderActions(
     }
     try {
       const { data } = await supabase
-        .from('global_invoices')
+        .from('sales_invoices')
         .select('id, billing_profile_id, collection_source')
         .eq('id', invoiceId)
         .maybeSingle();

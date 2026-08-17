@@ -5,6 +5,14 @@
 - **Do NOT Scan Migrations**: Do NOT read through all files in `supabase/migrations/*.sql` to determine active database state. Parsing migration history files wastes tokens and causes confusion.
 - **New Migrations Only**: Only inspect or edit `supabase/migrations/*.sql` files when writing a new migration script.
 
+## Procurement module — `doc/procurement_stock/IMPLEMENTATION_ORDER.md`
+Shipment track (7A–14B) and warehouse W1–W9 are complete.
+When a phase adds SQL migrations:
+- **Read** the migration files you add or replace.
+- **Run** `pnpm run backend:reset` and `pnpm run backend:types` before marking done.
+- Treat **`database.types.ts` as generated output**, not proof migrations are reset-safe.
+- **Never** ship stub RPCs (count-only loops, fake `wallet_posted: true` without `record_ledger_transaction`).
+
 ## API & Network Optimization Rules
 - **Avoid Redundant Calls**: Never make redundant API calls if the data is already available or can be derived from existing state.
 - **Use RPCs for Multiple Operations**: If an action requires multiple database operations (e.g., inserts/updates across multiple tables), create and use a Supabase RPC (Stored Procedure) to handle it in a single network request.
@@ -13,3 +21,12 @@
 - **Optimistic Updates**: Provide immediate UI feedback by optimistically updating the local state before the API call completes, rolling back if it fails.
 - **Debounce Input-Driven Requests**: For search inputs or rapid toggles, debounce the API calls to prevent spamming the backend.
 - **Batch Operations**: When performing the same action on multiple items (e.g., bulk delete), use a single bulk API call rather than iterating and sending individual requests.
+
+## List Table UI & Layout Design System Rule
+- **Canonical Design Rule**: Follow `.agents/rules/table_list_design_system.md` for all list table pages.
+- **Non-Scrolling Page Container**: Lock `q-page` height to `calc(100vh - 55px)` with `overflow: hidden`.
+- **Internal Table Scroll**: Use sticky headers (`thead tr th`) and let table middle scroll internally (`.q-table__middle { overflow-y: auto }`).
+- **Status Row Hues**: Apply soft status background hues and inset left accent borders (`boxShadow: inset 3px 0 0 ...`).
+- **Rounded Square Buttons**: Primary action buttons MUST use rounded square corners (`border-radius: 8px`), NOT pill shapes.
+- **Outlined Search Input**: Search inputs MUST use `outlined rounded dense`.
+- **Neutral Avatars**: Entity/vendor avatars MUST use neutral grey tones (`color="grey-3" text-color="grey-9"`).

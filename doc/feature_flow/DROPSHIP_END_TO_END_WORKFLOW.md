@@ -20,7 +20,7 @@ graph TD
     end
 
     subgraph Fulfillment ["3. Order Fulfillment & Invoicing"]
-        C1["Dropship Desk<br>DropshipOrdersPage.vue"] --> C2["Courier Assignment<br>DropshipOrderDetailPage.vue"]
+        C1["Orders list<br>ShopOrdersPage.vue"] --> C2["Process order<br>DropshipOrderDetailPage.vue"]
         C2 --> C3["Invoicing<br>DropshipOrderRecipientInvoicePreviewPage.vue"]
     end
 
@@ -46,9 +46,9 @@ All app routes require tenant context scoping:
 ### Scope & Permission Requirements
 | Role Scope | Minimum Required Permission | Target Functionality |
 | :--- | :--- | :--- |
-| `shop_dropship` | `dropship_view` / `dropship_manage` | Access Dropship Desk, Couriers, Merchants & Finance Hub |
-| `shop_order_mgmt` | `order_view` / `order_manage` | Staff order detail review, pricing & fulfillment |
-| `shop_admin` | `shop_manage` | Shop creation, product catalog listing, pricing rules |
+| `shop_order_mgmt` | `view` / `fulfill` | Orders list + dropship process-order |
+| `shop_shipping` | `view` / `configure` | Couriers, COD remittance |
+| `shop_config` | `view` | Shop setup |
 | `wallet_admin` | `wallet_manage` | Universal Wallet balance manual adjustments & payout approvals |
 
 ---
@@ -59,10 +59,10 @@ All app routes require tenant context scoping:
 * **URL**: `/:tenantSlug/app/shop/shops`
 * **RPC Called**: `upsert_shop`
 * **Action**:
-  1. Click **Create Shop**.
+  1. Click **New Shop**.
   2. Enter **Shop Name** (e.g. `Main Dropship Hub`).
-  3. Select **Shop Type**: `dropship`.
-  4. Set **Currency**: `BDT`.
+  3. Select type **Dropship**.
+  4. Click **Create and continue**, then on setup confirm **Checkout currency** (e.g. BDT) and **Cost currency**.
 
 ### 3.2 Configure Shop Access Matrix
 * **URL**: `/:tenantSlug/app/shop/shops/:id/pricing`

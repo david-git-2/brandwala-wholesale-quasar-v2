@@ -4,23 +4,26 @@
       <div class="row items-center q-gutter-x-sm">
         <q-btn flat round icon="arrow_back" color="grey-7" @click="$emit('go-back')" />
         <div>
-          <div class="text-overline text-primary">Shop Cart</div>
+          <div class="text-overline text-primary">{{ $t('shop.cart_title') }}</div>
           <h1 class="text-h5 text-weight-bold q-my-none">
-            <template v-if="showCartPicker">Select a Cart</template>
-            <template v-else>Your Cart ({{ itemCount }} items)</template>
+            <template v-if="showCartPicker">{{ $t('shop.cart_select_title') }}</template>
+            <template v-else>{{ $t('shop.cart_title') }}</template>
           </h1>
+          <div v-if="!showCartPicker" class="text-caption text-grey-6">
+            {{ $t('shop.cart_subtitle') }}
+            <template v-if="itemCount > 0"> · {{ itemCount }} {{ $t('shop.items').toLowerCase() }}</template>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Shop Switcher dropdown if multiple carts exist -->
     <div v-if="!showCartPicker && activeCarts.length > 1" class="col-auto">
       <q-btn-dropdown
         outline
         color="primary"
         no-caps
         unelevated
-        :label="currentShopCartInfo ? currentShopCartInfo.shop_name : 'Switch Shop'"
+        :label="currentShopCartInfo ? currentShopCartInfo.shop_name : $t('shop.switch_shop')"
         icon="ph ph-storefront"
       >
         <q-list>
@@ -42,7 +45,7 @@
             <q-item-section>
               <q-item-label class="text-weight-bold">{{ c.shop_name }}</q-item-label>
               <q-item-label caption>
-                {{ c.item_count }} items
+                {{ c.item_count }} {{ $t('shop.items').toLowerCase() }}
                 <template v-if="c.see_price && c.cart_total !== null">
                   · {{ formatActiveCartTotal(c) }}
                 </template>

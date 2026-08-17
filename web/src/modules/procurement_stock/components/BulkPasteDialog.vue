@@ -314,9 +314,9 @@ const onApply = async () => {
   console.log('Updates payload to send:', updates);
 
   try {
-    if (updates.length > 0) {
+    if (updates.length > 0 && shipmentStore.currentShipment?.id) {
       console.log('Calling shipmentStore.updateShipmentItemsBulk...');
-      await shipmentStore.updateShipmentItemsBulk(updates);
+      await shipmentStore.updateShipmentItemsBulk(shipmentStore.currentShipment.id, updates);
       console.log('Bulk update completed successfully');
     } else {
       console.log('No updates compiled to send!');

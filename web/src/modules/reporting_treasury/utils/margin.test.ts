@@ -182,7 +182,7 @@ describe('Reporting Treasury Margin Formulas', () => {
   // 7. Batch P&L
   describe('batchPnl', () => {
     const shipment = {
-      type: 'domestic' as const,
+      type: 'local' as const,
       product_conversion_rate: 1.0,
       cargo_conversion_rate: 1.0,
       cargo_rate: 0.0,

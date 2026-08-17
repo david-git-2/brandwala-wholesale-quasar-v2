@@ -13,6 +13,14 @@
         @select-shop-cart="selectShopCart"
       />
 
+      <q-banner
+        v-if="isVendorCatalog && items.length > 0 && !isCartsLoading && !isCartLoading"
+        class="catalog-banner text-primary rounded-borders"
+        dense
+      >
+        {{ $t('shop.catalog_place_order_banner') }}
+      </q-banner>
+
       <!-- Loading Skeleton State -->
       <ShopCartSkeleton v-if="isCartsLoading || isCartLoading" />
 
@@ -21,17 +29,17 @@
         <q-card-section>
           <q-icon name="ph ph-warning-circle" size="64px" color="negative" class="q-mb-md" />
           <div class="text-h6 text-grey-8 text-weight-bold q-mb-xs">
-            Couldn't load your carts
+            {{ $t('shop.cart_load_error') }}
           </div>
           <div class="text-grey-6 q-mb-md">
-            Something went wrong while loading your shop carts. Please try again.
+            {{ $t('shop.cart_load_error_desc') }}
           </div>
           <q-btn
             color="primary"
             no-caps
             unelevated
             icon="ph ph-arrow-clockwise"
-            label="Retry"
+            :label="$t('shop.cart_retry')"
             @click="() => refetchActiveCarts()"
           />
         </q-card-section>
@@ -64,7 +72,7 @@
       </q-card>
 
       <!-- Cart Content Grid -->
-      <div v-else class="row q-col-gutter-lg">
+      <div v-else class="row q-col-gutter-lg cart-content">
         <!-- Cart Items List (8 cols on desktop) -->
         <div class="col-xs-12 col-md-8">
           <ShopCartItemsList
@@ -83,6 +91,7 @@
             :format-item-total="formatItemTotal"
             :format-buyer-unit-price="formatBuyerUnitPrice"
             :format-buyer-item-total="formatBuyerItemTotal"
+            :is-item-price-below-floor="isItemPriceBelowFloor"
             @update-price-local="updatePriceLocal"
             @save-item-price="saveItemPrice"
             @adjust-qty-local="adjustItemQtyLocal"
@@ -101,21 +110,53 @@
             :print-charge="printCharge"
             :packing-charge="packingCharge"
             :default-packing-charge="defaultPackingCharge"
-            :deduct-print-from-margin="deductPrintFromMargin"
-            :deduct-packing-from-margin="deductPackingFromMargin"
             :courier-estimate="courierEstimate"
             :cod-estimate-summary="codEstimateSummary"
-            :total-deductible-charges="totalDeductibleCharges"
             :buyer-total="buyerTotal"
             :estimated-profit="estimatedProfit"
             :recipient-grand-total="recipientGrandTotal"
             :is-saving="isSaving"
             :placing-order="placingOrder"
+            :checkout-disabled="checkoutDisabled"
+            :checkout-disabled-reason="checkoutDisabledReason"
+            :checkout-label-key="checkoutLabelKey"
             @handle-button-click="handleButtonClick"
           />
         </div>
       </div>
     </div>
+
+    <q-page-sticky
+      v-if="items.length > 0 && !showCartPicker && !isCartsLoading && !isCartLoading"
+      position="bottom"
+      expand
+      class="lt-sm"
+    >
+      <div class="cart-mobile-cta row items-center no-wrap q-px-md q-py-sm">
+        <div class="col">
+          <div class="text-caption text-grey-6">
+            {{ cart?.shop_type === 'dropship' ? $t('shop.recipient_pay_total') : $t('shop.estimated_total') }}
+          </div>
+          <div class="text-subtitle1 text-weight-bold text-primary">
+            {{ cart?.shop_type === 'dropship' ? formatAmount(recipientGrandTotal) : formatCartTotal() }}
+          </div>
+        </div>
+        <span>
+          <q-btn
+            color="primary"
+            unelevated
+            no-caps
+            :label="$t(checkoutLabelKey)"
+            :loading="isSaving || placingOrder"
+            :disable="checkoutDisabled"
+            @click="handleButtonClick"
+          />
+          <q-tooltip v-if="checkoutDisabled && checkoutDisabledReason">
+            {{ $t(checkoutDisabledReason) }}
+          </q-tooltip>
+        </span>
+      </div>
+    </q-page-sticky>
   </q-page>
 </template>
 
@@ -178,6 +219,11 @@ const {
   isSaving,
   placingOrder,
   handleButtonClick,
+  checkoutDisabled,
+  checkoutDisabledReason,
+  checkoutLabelKey,
+  isVendorCatalog,
+  isItemPriceBelowFloor,
   editedQuantities,
   editedPrices,
   getItemQty,
@@ -194,10 +240,7 @@ const {
   defaultPackingCharge,
   printCharge,
   packingCharge,
-  deductPrintFromMargin,
-  deductPackingFromMargin,
   buyerTotal,
-  totalDeductibleCharges,
   courierEstimate,
   codEstimateSummary,
   formatAmount,
@@ -210,3 +253,21 @@ export default {
   name: 'ShopCartPage',
 };
 </script>
+
+<style scoped>
+.catalog-banner {
+  background: var(--bw-theme-primary-soft);
+}
+
+.cart-mobile-cta {
+  background: var(--bw-theme-surface, #ffffff);
+  border-top: 1px solid var(--bw-theme-border, rgba(34, 56, 101, 0.08));
+}
+
+@media (max-width: 599px) {
+  .cart-content {
+    padding-bottom: 72px;
+  }
+}
+</style>
+

@@ -85,6 +85,25 @@ Prefer Quasar defaults. Do not build custom wrappers when `q-card` / `q-table` s
 
 **Page headers & skeletons (LOCKED):** [PAGE_LAYOUT_AND_LOADERS.md](./PAGE_LAYOUT_AND_LOADERS.md) — list golden ref `ProductBasedCostingPage.vue`; detail golden ref `ProductBasedCostingFileDetailsPage.vue`: `q-pa-md` + `q-gutter-y-md` + `text-overline text-primary` + `h1.text-h5`; list CTA `pill-btn`; detail CTA square (no `round`/`pill-btn`); list toolbar in `q-card flat bordered q-pa-sm`; **detail status = workflow button strip** (not chip menu); 1200px white page; no `AppPageHeader` drift.
 
+## Guidance layers (LOCKED)
+
+The page teaches the happy path. Help and `doc/` are not substitutes.
+
+| Layer | Audience | Job | When |
+|---|---|---|---|
+| **The page** | Staff using the product | One-line “what this is” + one next action. Happy path never needs Help. | Apply on pages as they are touched. Rule: `.cursor/rules/frictionless-ui.mdc` |
+| **Help (`?` drawer)** | Same staff, when stuck | Short blockers that match real buttons. Not a textbook, portal, or onboarding. | Later — [HELP_CENTER.md](../doc/HELP_CENTER.md) |
+| **`doc/` + in-app Documentation** | Developers / agents | How to build it. Never a staff manual. In-app markdown viewer is a spec dump; retire separately. | Later |
+
+**Page contract**
+
+- Header subtitle or caption in shop-floor English (no RPC, table, ATP, or entity jargon).
+- Exactly one next step. List: subtitle + one primary CTA (header **or** empty state). Detail/workflow: `q-banner class="bg-primary-soft text-primary rounded-borders" dense` under the header when the next step is status-gated.
+- Disabled primary action says why (`q-tooltip` or the banner).
+- Hide panels that do not apply to the current status.
+
+Do not dump Help-drawer copy on the page, add product tours, or send staff to `/app/documentation` or `doc/*.md`.
+
 ## Component inventory
 
 ### Shared (`web/src/components/`)
@@ -125,7 +144,7 @@ Prefer Quasar defaults. Do not build custom wrappers when `q-card` / `q-table` s
 
 | State | Pattern |
 |-------|---------|
-| Primary | `q-btn color="primary" unelevated` — one per header max |
+| Primary | `q-btn color="primary" unelevated` — one visible at a time (header **or** empty-state CTA) |
 | Secondary | `q-btn flat` or `outline` |
 | Danger | `q-btn color="negative"` or `flat color="negative"` |
 | Disabled | `:disable="true"` on `q-btn` |
@@ -134,6 +153,7 @@ Prefer Quasar defaults. Do not build custom wrappers when `q-card` / `q-table` s
 | Icon-only (dense ops) | `flat round` + `q-tooltip` — secondary header actions |
 
 No default refresh buttons on app management pages. No FABs when header action suffices.
+Never show the same primary create action in both the page header and the empty state.
 
 ## Form input states
 
@@ -158,9 +178,17 @@ No skeleton system app-wide — `PageInitialLoader` is the default for page-leve
 | Pattern | When |
 |---------|------|
 | `.empty-state-block.floating-surface` | List pages with no rows (invoices, catalogs) |
-| `column items-center … empty-state q-pa-xl` | Shop/customer empty lists |
+| `column items-center … empty-state q-pa-xl` | Shop/customer empty lists + in-table `#no-data` |
 | Plain muted text in `q-card` | Simple management screens |
 | `q-banner.bw-status-banner` | Error / warning (not empty data) |
+
+Empty-state composition (first-time / zero rows):
+1. Domain illustration or large muted icon
+2. Short title + one muted supporting line
+3. Primary recovery CTA (`Add …`) in the empty state
+4. **Hide** the matching header Add button until at least one item exists
+
+Filtered-empty (items exist, filters hide all): keep the header Add; show “Clear filters” in the empty body — do not duplicate the create CTA.
 
 ## Toast & alert patterns
 
@@ -240,3 +268,16 @@ For tables or list grids displaying users, customers, or billing profiles, rende
   };
   ```
 - **Text Layout**: Wrap the name (bold) and secondary subtitle (such as email or phone number in `.text-caption.text-grey-7.text-xs`) next to the avatar inside a flex row container.
+
+## List Table Layout & Design System Standards
+
+Canonical design rules for list table pages (Inbound Shipments, Invoices, Orders, Stock Lists):
+- **Fixed Outer Page Height**: Set container height to `calc(100vh - 55px)` with `overflow: hidden` (`.page-fixed-layout`). Outer document must not scroll.
+- **Internal Table Scroll & Sticky Headers**: The table wrapper (`.treasury-table-wrap`) must flex (`flex: 1 1 0%`) and scroll internally with sticky headers (`thead tr th { position: sticky; top: 0; z-index: 2; }`).
+- **Primary Action Buttons**: Action buttons (e.g. "Add Shipment", "Create Invoice") MUST use **rounded-corner square** styling (`border-radius: 8px`), NOT pill shapes (`border-radius: 999px`).
+- **Search Inputs**: Search inputs MUST use `<q-input outlined rounded dense placeholder="...">`.
+- **Status Row Hues & Left Accent Bars**: Rows MUST feature soft light background hues corresponding to their status (soft amber for Draft, soft orange for In Transit, soft green for Received/Paid, soft red for Cancelled) with inset left accent bars (`boxShadow: inset 3px 0 0 <color>`).
+- **High-Visibility Status Badges**: Render status with a prominent pill badge featuring a status icon (`ph ph-note-pencil`, `ph ph-truck`, `ph ph-check-circle`, `ph ph-x-circle`), bold uppercase text, and pill border.
+- **Neutral Vendor/Entity Avatars**: Vendor/entity avatars use neutral grey styling (`color="grey-3" text-color="grey-9"`).
+- **Single-Location Information**: Do not duplicate status or type info inside ID columns if dedicated columns exist.
+

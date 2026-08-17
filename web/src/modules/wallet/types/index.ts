@@ -1,4 +1,11 @@
-export type UniversalWalletEntityType = 'customer' | 'vendor' | 'courier' | 'middleman' | 'tenant' | 'investor';
+export type UniversalWalletEntityType =
+  | 'customer'
+  | 'vendor'
+  | 'courier'
+  | 'middleman'
+  | 'tenant'
+  | 'investor'
+  | 'cargo_company';
 export type UniversalWalletTransactionType = 'credit' | 'debit';
 export type UniversalWalletSourceType = 'shop_order' | 'vendor_purchase' | 'payout' | 'adjustment' | 'bucket_transfer';
 export type WalletBucket = 'available' | 'pending' | 'locked';

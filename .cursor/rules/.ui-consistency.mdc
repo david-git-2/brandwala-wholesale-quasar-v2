@@ -12,12 +12,16 @@ alwaysApply: false
 - Section container: `q-card flat bordered`.
 - List data: `q-table`; card grids: `.bw-entity-grid` with plain `q-card`.
 - Colors: use `var(--bw-theme-*)` tokens from `web/src/css/app.scss`; never hardcode except domain table highlights.
-- Primary button: max one `color="primary" unelevated` per page header.
+- Primary button: max one `color="primary" unelevated` visible at a time (header **or** empty-state CTA — never both).
+- Page explains itself: shop-floor subtitle (what this screen is); exactly one next step; disabled primary actions say why (`q-tooltip` or banner); hide cards that do not apply to the current status.
+- Detail/workflow next step: `q-banner class="bg-primary-soft text-primary rounded-borders" dense` under the header when the action is status-gated.
+- Do not put Help-drawer essays on the page, add product tours, or link staff to `/app/documentation` / `doc/*.md`. See `docs/UI_CONSISTENCY.md` Guidance layers.
 - Secondary: `flat` or `outline`; danger: `color="negative"`.
 - No default refresh buttons on app management pages.
 - No FABs when header action is sufficient.
 - Errors: `q-banner.bw-status-banner` with `bg-negative text-white` (or scope-appropriate).
-- Empty lists: `.empty-state-block.floating-surface` or centered `.empty-state` column with muted text.
+- Empty lists: centered `.empty-state` (or `.empty-state-block.floating-surface`) with illustration/icon, title, muted hint, and recovery CTA.
+- Empty list CTA: when the list has **no rows**, put the primary create action in the empty state and **hide** the header Add button; show the header Add only once items exist.
 - Loading (page): `PageInitialLoader`; background requests: `GlobalAjaxBar`.
 - In-table loading: `q-skeleton` rows only for high-density ops tables (Thrift pattern).
 - Toasts/dialogs: `showSuccessNotification`, `showErrorNotification`, `showWarningNotification`, `requestConfirmation` from `utils/appFeedback.ts` only.

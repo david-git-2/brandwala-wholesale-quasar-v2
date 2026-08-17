@@ -110,13 +110,17 @@ const overlineLabel = computed(() => {
     case 'customer':
       return 'Customer Wallet';
     case 'vendor':
-      return 'Vendor Wallet';
+      return 'Supplier Wallet';
     case 'courier':
       return 'Courier Wallet';
     case 'middleman':
       return 'Middleman Wallet';
     case 'tenant':
-      return 'Tenant Ledger';
+      return 'Company Wallet';
+    case 'cargo_company':
+      return 'Cargo Wallet';
+    case 'investor':
+      return 'Investor Wallet';
     default:
       return 'Wallet Ledger';
   }

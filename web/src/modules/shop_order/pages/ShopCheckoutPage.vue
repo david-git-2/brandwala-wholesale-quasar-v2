@@ -414,6 +414,7 @@ import { showErrorNotification } from 'src/utils/appFeedback';
 import { fetchCourierChargeEstimate } from '../services/courierChargeEstimate';
 import { useRecipientProfileStore } from 'src/modules/sales_invoice/stores/recipientProfileStore';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { getLastVisitedShopSlug } from '../utils/catalogShop';
 import {
   getBDDistricts,
   getBDUpazilas,
@@ -660,7 +661,7 @@ watch(
 onMounted(async () => {
   await loadLocationData();
   if (!storefrontStore.shopDetails) {
-    const lastSlug = localStorage.getItem('last_visited_shop_slug');
+    const lastSlug = getLastVisitedShopSlug(authStore.tenantId);
     if (lastSlug) {
       await storefrontStore.fetchCatalog(lastSlug, { limit: 1, offset: 0 });
     }

@@ -4,7 +4,7 @@
       <section class="row items-center justify-between q-col-gutter-md">
         <div class="col">
           <div class="text-overline text-primary">Merchant portal</div>
-          <h1 class="text-h5 text-weight-bold q-my-none">Merchant wallet</h1>
+          <h1 class="text-h5 text-weight-bold q-my-none">{{ $t('shop_admin.merchant_wallet') }}</h1>
           <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
             Available balance, pending profit, and ledger history for your dropship account.
           </p>
