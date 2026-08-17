@@ -14,6 +14,28 @@ export const workflowStatuses = [
   'delivered',
 ] as const;
 
+export const quoteStatuses = ['pending', 'offered'] as const;
+export const fulfillmentStatuses = [
+  'confirmed',
+  'placing_order',
+  'ready_for_shipment',
+  'invoicing',
+  'delivered',
+] as const;
+
+export const quoteVisibleColumns = [
+  'select',
+  'sl',
+  'image',
+  'name',
+  'qty',
+  'priceGbp',
+  'productWeight',
+  'packageWeight',
+  'offerPriceBdt',
+  'profitRate',
+];
+
 export const allColumnNames = [
   'select',
   'sl',
@@ -44,7 +66,6 @@ export const allColumnNames = [
   'profitBdt',
   'profitRate',
   'status',
-  'action',
 ];
 
 export const alwaysVisibleColumns = ['select', 'sl', 'image', 'name'];
@@ -75,7 +96,6 @@ export const columnSelectorOptions = [
   { label: 'Row Total Profit (BDT)', value: 'profitBdt' },
   { label: 'Profit Rate (%)', value: 'profitRate' },
   { label: 'Status', value: 'status' },
-  { label: 'Action', value: 'action' },
 ];
 
 export function formatMoney(val: number): string {
@@ -83,7 +103,26 @@ export function formatMoney(val: number): string {
 }
 
 export function formatStatusLabel(value: string): string {
-  return value.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+  switch (value) {
+    case 'pending':
+      return 'Draft';
+    case 'offered':
+      return 'Offered';
+    case 'confirmed':
+      return 'Confirmed';
+    case 'placing_order':
+      return 'Placing Order';
+    case 'ready_for_shipment':
+      return 'Ready for Shipment';
+    case 'invoicing':
+      return 'Invoicing';
+    case 'delivered':
+      return 'Delivered';
+    case 'cancelled':
+      return 'Cancelled';
+    default:
+      return value.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+  }
 }
 
 export function isPassedStatus(currentStatus: string, st: string): boolean {
@@ -118,13 +157,27 @@ export function getStatusColor(st: string): string {
   }
 }
 
+export function isFulfillmentStatus(fileStatus: string): boolean {
+  return (fulfillmentStatuses as readonly string[]).includes(fileStatus);
+}
+
 export function getDefaultVisibleColumnsForStatus(fileStatus: string): string[] {
   const baseCols = ['select', 'sl', 'image', 'name'];
   switch (fileStatus) {
     case 'confirmed':
-      return [...baseCols, 'qty', 'confirmedQty', 'status', 'action'];
+      return [
+        ...baseCols,
+        'qty',
+        'confirmedQty',
+        'priceGbp',
+        'productWeight',
+        'packageWeight',
+        'offerPriceBdt',
+        'profitRate',
+      ];
     case 'placing_order':
-      return [...baseCols, 'confirmedQty', 'orderedQty', 'barcodeText', 'status', 'action'];
+    case 'ready_for_shipment':
+      return [...baseCols, 'confirmedQty', 'orderedQty', 'barcodeText', 'status'];
     case 'invoicing':
       return [
         ...baseCols,
@@ -135,12 +188,11 @@ export function getDefaultVisibleColumnsForStatus(fileStatus: string): string[] 
         'priceGbp',
         'costBdt',
         'status',
-        'action',
       ];
     case 'delivered':
       return [...allColumnNames];
     default:
-      return [...allColumnNames];
+      return [...quoteVisibleColumns];
   }
 }
 

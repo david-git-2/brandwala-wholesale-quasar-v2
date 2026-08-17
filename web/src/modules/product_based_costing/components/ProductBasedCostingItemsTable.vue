@@ -8,10 +8,19 @@
       <div class="row items-center q-gutter-sm">
         <q-btn flat no-caps color="grey-8" label="Clear Selection" @click="selectedRowIds = []" />
         <q-btn
+          v-if="selectedRowIds.length === 1"
+          unelevated
+          no-caps
+          color="primary"
+          icon="ph ph-pencil-simple"
+          label="Edit"
+          @click="onEditSelected"
+        />
+        <q-btn
           color="negative"
           no-caps
           icon="ph ph-trash"
-          label="Delete Selected"
+          :label="selectedRowIds.length === 1 ? 'Delete' : 'Delete selected'"
           @click="showBulkDeleteConfirm = true"
         />
       </div>
@@ -64,7 +73,12 @@
     >
       <template #item="slotProps">
         <div class="col-12 col-sm-6 q-pa-xs q-sm-pa-sm">
-          <q-card flat bordered class="costing-item-card floating-surface shadow-1">
+          <q-card
+            flat
+            bordered
+            class="costing-item-card floating-surface shadow-1"
+            :class="{ 'row-incomplete-offer': slotProps.row.offerInputsIncomplete }"
+          >
             <!-- Card Header -->
             <div class="card-header row items-center justify-between q-px-md q-py-sm">
               <div class="row items-center q-gutter-xs">
@@ -76,10 +90,17 @@
                 <q-badge color="grey-3" text-color="grey-9" class="text-weight-bold">
                   #{{ slotProps.row.sl }}
                 </q-badge>
+                <q-badge
+                  v-if="slotProps.row.offerInputsIncomplete"
+                  color="warning"
+                  text-color="grey-9"
+                  class="q-px-xs text-caption"
+                >
+                  Missing £ or weight
+                </q-badge>
               </div>
 
               <div class="row items-center q-gutter-xs">
-                <!-- Status (Dynamic / Auto-derived, Read-only) -->
                 <div
                   v-if="isColumnVisible('status')"
                   class="text-center relative-position"
@@ -92,17 +113,6 @@
                     {{ slotProps.row.status }}
                   </q-badge>
                 </div>
-
-                <!-- Actions -->
-                <q-btn
-                  v-if="isColumnVisible('action')"
-                  icon="ph ph-pencil-simple"
-                  flat
-                  dense
-                  color="blue-10"
-                  size="sm"
-                  @click="onEdit(slotProps.row)"
-                />
               </div>
             </div>
 
@@ -126,7 +136,10 @@
                 <!-- Info -->
                 <div class="col-8 col-sm-9">
                   <div class="row items-start justify-between no-wrap q-gutter-xs">
-                    <span class="card-item-name text-weight-bold">{{ slotProps.row.name }}</span>
+                    <span
+                      class="card-item-name text-weight-bold text-primary cursor-pointer"
+                      @click="onEdit(slotProps.row)"
+                    >{{ slotProps.row.name }}</span>
                     <q-badge
                       v-if="slotProps.row.raw.assigned_shipment_id || slotProps.row.status === 'on_shipment'"
                       color="teal-8"
@@ -217,54 +230,20 @@
               <!-- Note Section -->
               <div
                 v-if="isColumnVisible('note')"
-                class="card-note-section q-mt-md q-pa-sm rounded-borders cursor-pointer bg-grey-1 text-caption"
+                class="card-note-section q-mt-md q-pa-sm rounded-borders bg-grey-1 text-caption"
               >
-                <div class="text-weight-bold text-grey-7 q-mb-xs">Note:</div>
-                <div v-if="slotProps.row.noteHtml" class="item-note-preview">
-                  {{ htmlToPlainText(slotProps.row.noteHtml) }}
-                  <q-tooltip
-                    v-if="isNoteTruncated(slotProps.row.noteHtml)"
-                    anchor="top middle"
-                    self="bottom middle"
-                    :offset="[0, 8]"
-                    max-width="320px"
-                  >
-                    {{ htmlToPlainText(slotProps.row.noteHtml) }}
-                  </q-tooltip>
-                </div>
-                <span v-else class="text-grey-5">No notes. Tap to add one.</span>
-
-                <q-popup-edit
-                  v-slot="scope"
-                  :model-value="slotProps.row.noteHtml"
-                  cover
-                  :content-style="{ minWidth: '300px', maxWidth: '90vw' }"
-                  buttons
-                  persistent
-                  label-set="Save"
-                  label-cancel="Cancel"
-                  @save="
-                    (value) => {
-                      slotProps.row.noteHtml = toText(value, '');
-                      onNoteSave(slotProps.row);
-                    }
-                  "
-                >
-                  <q-editor
-                    v-model="scope.value"
-                    dense
-                    flat
-                    square
-                    min-height="100px"
-                    :toolbar="[
-                      ['bold', 'italic', 'underline'],
-                      ['removeFormat'],
-                      ['unordered', 'ordered'],
-                      ['undo', 'redo'],
-                    ]"
-                    autofocus
-                  />
-                </q-popup-edit>
+                <div class="text-weight-bold text-grey-7 q-mb-xs">Note</div>
+                <q-input
+                  v-model="slotProps.row.noteHtml"
+                  type="textarea"
+                  autogrow
+                  dense
+                  borderless
+                  class="cell-input"
+                  input-class="text-caption"
+                  placeholder="Note"
+                  @blur="onNoteBlur(slotProps.row)"
+                />
               </div>
             </q-card-section>
 
@@ -276,141 +255,81 @@
                 <!-- Qty -->
                 <div
                   v-if="isColumnVisible('qty')"
-                  class="col-6 col-sm-3 cursor-pointer text-center"
+                  class="col-6 col-sm-3 text-center q-pa-xs rounded-borders"
                 >
                   <div class="metric-label">Qty</div>
-                  <div class="metric-value font-mono font-weight-medium">
-                    {{ slotProps.row.qty }}
-                    <q-icon name="ph ph-pencil-simple" size="xs" color="grey-6" class="q-ml-xs" />
-                  </div>
-                  <q-popup-edit
-                    v-slot="scope"
-                    :model-value="slotProps.row.qty"
-                    buttons
-                    persistent
-                    label-set="Save"
-                    label-cancel="Cancel"
-                    @save="
-                      (value) => {
-                        slotProps.row.qty = toNumber(value);
-                        onQtySave(slotProps.row);
-                      }
-                    "
-                  >
-                    <q-input
-                      v-model.number="scope.value"
-                      type="number"
-                      dense
-                      outlined
-                      autofocus
-                      min="0"
-                    />
-                  </q-popup-edit>
+                  <q-input
+                    v-model.number="slotProps.row.qty"
+                    type="number"
+                    dense
+                    borderless
+                    input-class="text-center font-mono"
+                    class="cell-input"
+                    min="0"
+                    step="1"
+                    @blur="onQtyBlur(slotProps.row)"
+                    @keyup.enter="blurInput"
+                  />
                 </div>
 
                 <!-- Confirmed Qty -->
                 <div
                   v-if="isColumnVisible('confirmedQty')"
-                  class="col-6 col-sm-3 cursor-pointer text-center"
+                  class="col-6 col-sm-3 text-center q-pa-xs rounded-borders"
                 >
                   <div class="metric-label">Confirmed Qty</div>
-                  <div class="metric-value font-mono font-weight-medium">
-                    {{ slotProps.row.confirmedQty || '-' }}
-                    <q-icon name="ph ph-pencil-simple" size="xs" color="grey-6" class="q-ml-xs" />
-                  </div>
-                  <q-popup-edit
-                    v-slot="scope"
-                    :model-value="slotProps.row.confirmedQty || ''"
-                    buttons
-                    persistent
-                    label-set="Save"
-                    label-cancel="Cancel"
-                    @save="
-                      (value) => {
-                        slotProps.row.confirmedQty = toNumber(value);
-                        onConfirmedQtySave(slotProps.row);
-                      }
-                    "
-                  >
-                    <q-input
-                      v-model.number="scope.value"
-                      type="number"
-                      dense
-                      outlined
-                      autofocus
-                      min="0"
-                    />
-                  </q-popup-edit>
+                  <q-input
+                    v-model.number="slotProps.row.confirmedQty"
+                    type="number"
+                    dense
+                    borderless
+                    input-class="text-center font-mono"
+                    class="cell-input"
+                    min="0"
+                    step="1"
+                    @blur="onConfirmedQtyBlur(slotProps.row)"
+                    @keyup.enter="blurInput"
+                  />
                 </div>
 
                 <!-- Ordered Qty -->
                 <div
                   v-if="isColumnVisible('orderedQty')"
-                  class="col-6 col-sm-3 cursor-pointer text-center"
+                  class="col-6 col-sm-3 text-center q-pa-xs rounded-borders"
                 >
                   <div class="metric-label">Ordered Qty</div>
-                  <div class="metric-value font-mono font-weight-medium">
-                    {{ slotProps.row.orderedQty }}
-                    <q-icon name="ph ph-pencil-simple" size="xs" color="grey-6" class="q-ml-xs" />
-                  </div>
-                  <q-popup-edit
-                    v-slot="scope"
-                    :model-value="slotProps.row.orderedQty"
-                    buttons
-                    persistent
-                    label-set="Save"
-                    label-cancel="Cancel"
-                    @save="
-                      (value) => {
-                        slotProps.row.orderedQty = toNumber(value);
-                        onOrderedQtySave(slotProps.row);
-                      }
-                    "
-                  >
-                    <q-input
-                      v-model.number="scope.value"
-                      type="number"
-                      dense
-                      outlined
-                      autofocus
-                      min="0"
-                    />
-                  </q-popup-edit>
+                  <q-input
+                    v-model.number="slotProps.row.orderedQty"
+                    type="number"
+                    dense
+                    borderless
+                    input-class="text-center font-mono"
+                    class="cell-input"
+                    min="0"
+                    step="1"
+                    @blur="onOrderedQtyBlur(slotProps.row)"
+                    @keyup.enter="blurInput"
+                  />
                 </div>
 
                 <!-- Delivered Qty -->
                 <div
                   v-if="isColumnVisible('deliveredQty')"
-                  class="col-6 col-sm-3 cursor-pointer text-center"
+                  class="col-6 col-sm-3 text-center q-pa-xs rounded-borders"
                 >
                   <div class="metric-label">Delivered Qty</div>
-                  <div class="metric-value font-mono font-weight-medium">
-                    {{ slotProps.row.deliveredQty }}
-                    <q-icon name="ph ph-pencil-simple" size="xs" color="grey-6" class="q-ml-xs" />
-                  </div>
-                  <q-popup-edit
-                    v-slot="scope"
-                    :model-value="slotProps.row.deliveredQty"
-                    buttons
-                    persistent
-                    label-set="Save"
-                    label-cancel="Cancel"
-                    @save="
-                      (value) => {
-                        slotProps.row.deliveredQty = toNumber(value);
-                        onDeliveredQtySave(slotProps.row);
-                      }
-                    "
-                  >
-                    <q-input
-                      v-model.number="scope.value"
-                      type="number"
-                      dense
-                      outlined
-                      autofocus
-                      min="0"
-                    />
-                  </q-popup-edit>
+                  <q-input
+                    v-model.number="slotProps.row.deliveredQty"
+                    type="number"
+                    dense
+                    borderless
+                    input-class="text-center font-mono"
+                    class="cell-input"
+                    min="0"
+                    step="1"
+                    @blur="onDeliveredQtyBlur(slotProps.row)"
+                    @keyup.enter="blurInput"
+                  />
                 </div>
 
                 <!-- Price GBP -->
@@ -419,44 +338,99 @@
                   class="col-6 col-sm-3 text-center bg-gbp-light q-pa-xs rounded-borders"
                 >
                   <div class="metric-label text-green-9">Price GBP</div>
-                  <div class="metric-value text-green-10 text-weight-bold font-mono">
-                    £{{ formatNumber(slotProps.row.priceGbp) }}
-                  </div>
+                  <q-input
+                    v-model.number="slotProps.row.priceGbp"
+                    type="number"
+                    dense
+                    borderless
+                    input-class="text-center text-green-10 text-weight-bold font-mono"
+                    class="cell-input"
+                    min="0"
+                    step="0.01"
+                    @blur="onPriceGbpBlur(slotProps.row)"
+                    @keyup.enter="blurInput"
+                  />
+                </div>
+
+                <div
+                  v-if="isColumnVisible('productWeight')"
+                  class="col-6 col-sm-3 text-center q-pa-xs rounded-borders"
+                >
+                  <div class="metric-label">Product wt (g)</div>
+                  <q-input
+                    v-model.number="slotProps.row.productWeight"
+                    type="number"
+                    dense
+                    borderless
+                    input-class="text-center font-mono"
+                    class="cell-input"
+                    min="0"
+                    step="1"
+                    @blur="onProductWeightBlur(slotProps.row)"
+                    @keyup.enter="blurInput"
+                  />
+                </div>
+
+                <div
+                  v-if="isColumnVisible('packageWeight')"
+                  class="col-6 col-sm-3 text-center q-pa-xs rounded-borders"
+                >
+                  <div class="metric-label">Package wt (g)</div>
+                  <q-input
+                    v-model.number="slotProps.row.packageWeight"
+                    type="number"
+                    dense
+                    borderless
+                    input-class="text-center font-mono"
+                    class="cell-input"
+                    min="0"
+                    step="1"
+                    @blur="onPackageWeightBlur(slotProps.row)"
+                    @keyup.enter="blurInput"
+                  />
                 </div>
 
                 <!-- Offer Price BDT -->
                 <div
                   v-if="isColumnVisible('offerPriceBdt')"
-                  class="col-6 col-sm-3 cursor-pointer text-center bg-offer-light q-pa-xs rounded-borders"
+                  class="col-6 col-sm-3 text-center bg-offer-light q-pa-xs rounded-borders"
                 >
                   <div class="metric-label text-purple-9">Offer Price BDT</div>
-                  <div class="metric-value text-purple-10 text-weight-bold font-mono">
-                    ৳{{ formatNumber(slotProps.row.offerPriceBdt) }}
-                    <q-icon name="ph ph-pencil-simple" size="xs" color="purple-6" class="q-ml-xs" />
-                  </div>
-                  <q-popup-edit
-                    v-slot="scope"
-                    :model-value="slotProps.row.offerPriceBdt"
-                    buttons
-                    persistent
-                    label-set="Save"
-                    label-cancel="Cancel"
-                    @save="
-                      (value) => {
-                        slotProps.row.offerPriceBdt = toNumber(value);
-                        onOfferPriceBdtSave(slotProps.row);
-                      }
-                    "
-                  >
+                  <div class="row items-center justify-center no-wrap">
+                    <q-icon
+                      v-if="slotProps.row.isOfferPriceManual"
+                      name="ph ph-lock-key"
+                      color="amber-8"
+                      size="16px"
+                    >
+                      <q-tooltip>Offer price manually locked — won't auto-recalculate</q-tooltip>
+                    </q-icon>
                     <q-input
-                      v-model.number="scope.value"
+                      v-model.number="slotProps.row.offerPriceBdt"
                       type="number"
                       dense
-                      outlined
-                      autofocus
+                      borderless
+                      input-class="text-center text-purple-10 text-weight-bold font-mono"
+                      class="cell-input"
                       min="0"
+                      step="1"
+                      @blur="onOfferPriceBlur(slotProps.row)"
+                      @keyup.enter="blurInput"
                     />
-                  </q-popup-edit>
+                    <q-btn
+                      v-if="slotProps.row.isOfferPriceManual"
+                      flat
+                      round
+                      dense
+                      size="xs"
+                      icon="ph ph-arrows-clockwise"
+                      color="grey-7"
+                      aria-label="Unlock offer price"
+                      @click="onUnlockOfferPrice(slotProps.row)"
+                    >
+                      <q-tooltip>Unlock and reset to auto price</q-tooltip>
+                    </q-btn>
+                  </div>
                 </div>
 
                 <!-- Cost BDT -->
@@ -509,7 +483,7 @@
       </template>
 
       <template #body="slotProps">
-        <q-tr :props="slotProps">
+        <q-tr :props="slotProps" :class="{ 'row-incomplete-offer': slotProps.row.offerInputsIncomplete }">
           <q-td key="select" :props="slotProps" class="col-select text-center">
             <q-checkbox
               :model-value="selectedRowIds.includes(slotProps.row.id)"
@@ -532,7 +506,18 @@
 
           <q-td key="name" :props="slotProps" class="col-name">
             <div class="name-cell-content row items-center justify-between no-wrap">
-              <span class="name-cell-text">{{ slotProps.row.name }}</span>
+              <span
+                class="name-cell-text text-primary cursor-pointer"
+                @click="onEdit(slotProps.row)"
+              >{{ slotProps.row.name }}</span>
+              <q-badge
+                v-if="slotProps.row.offerInputsIncomplete"
+                color="warning"
+                text-color="grey-9"
+                class="q-px-xs text-caption q-ml-xs"
+              >
+                Missing £ or weight
+              </q-badge>
               <q-badge
                 v-if="slotProps.row.raw.assigned_shipment_id || slotProps.row.status === 'on_shipment'"
                 color="teal-8"
@@ -555,51 +540,17 @@
             :props="slotProps"
             class="col-note editable-cell"
           >
-            <div v-if="slotProps.row.noteHtml" class="item-note-preview">
-              {{ htmlToPlainText(slotProps.row.noteHtml) }}
-              <q-tooltip
-                v-if="isNoteTruncated(slotProps.row.noteHtml)"
-                anchor="top middle"
-                self="bottom middle"
-                :offset="[0, 8]"
-                max-width="320px"
-              >
-                {{ htmlToPlainText(slotProps.row.noteHtml) }}
-              </q-tooltip>
-            </div>
-            <span v-else class="item-note-empty">-</span>
-
-            <q-popup-edit
-              v-slot="scope"
-              :model-value="slotProps.row.noteHtml"
-              cover
-              :content-style="{ minWidth: '320px', maxWidth: '520px' }"
-              buttons
-              persistent
-              label-set="Save"
-              label-cancel="Cancel"
-              @save="
-                (value) => {
-                  slotProps.row.noteHtml = toText(value, '');
-                  onNoteSave(slotProps.row);
-                }
-              "
-            >
-              <q-editor
-                v-model="scope.value"
-                dense
-                flat
-                square
-                min-height="120px"
-                :toolbar="[
-                  ['bold', 'italic', 'underline'],
-                  ['removeFormat'],
-                  ['unordered', 'ordered'],
-                  ['undo', 'redo'],
-                ]"
-                autofocus
-              />
-            </q-popup-edit>
+            <q-input
+              v-model="slotProps.row.noteHtml"
+              type="textarea"
+              autogrow
+              dense
+              borderless
+              class="cell-input"
+              input-class="text-caption"
+              placeholder="Note"
+              @blur="onNoteBlur(slotProps.row)"
+            />
           </q-td>
 
           <q-td
@@ -608,33 +559,18 @@
             :props="slotProps"
             class="col-qty text-center editable-cell"
           >
-            <div class="editable-value">
-              {{ slotProps.row.qty }}
-            </div>
-
-            <q-popup-edit
-              v-slot="scope"
-              :model-value="slotProps.row.qty"
-              buttons
-              persistent
-              label-set="Save"
-              label-cancel="Cancel"
-              @save="
-                (value) => {
-                  slotProps.row.qty = toNumber(value);
-                  onQtySave(slotProps.row);
-                }
-              "
-            >
-              <q-input
-                v-model.number="scope.value"
-                type="number"
-                dense
-                outlined
-                autofocus
-                min="0"
-              />
-            </q-popup-edit>
+            <q-input
+              v-model.number="slotProps.row.qty"
+              type="number"
+              dense
+              borderless
+              input-class="text-center font-mono"
+              class="cell-input"
+              min="0"
+              step="1"
+              @blur="onQtyBlur(slotProps.row)"
+              @keyup.enter="blurInput"
+            />
           </q-td>
 
           <q-td
@@ -643,33 +579,18 @@
             :props="slotProps"
             class="col-confirmed-qty text-center editable-cell"
           >
-            <div class="editable-value">
-              {{ slotProps.row.confirmedQty || '-' }}
-            </div>
-
-            <q-popup-edit
-              v-slot="scope"
-              :model-value="slotProps.row.confirmedQty || ''"
-              buttons
-              persistent
-              label-set="Save"
-              label-cancel="Cancel"
-              @save="
-                (value) => {
-                  slotProps.row.confirmedQty = toNumber(value);
-                  onConfirmedQtySave(slotProps.row);
-                }
-              "
-            >
-              <q-input
-                v-model.number="scope.value"
-                type="number"
-                dense
-                outlined
-                autofocus
-                min="0"
-              />
-            </q-popup-edit>
+            <q-input
+              v-model.number="slotProps.row.confirmedQty"
+              type="number"
+              dense
+              borderless
+              input-class="text-center font-mono"
+              class="cell-input"
+              min="0"
+              step="1"
+              @blur="onConfirmedQtyBlur(slotProps.row)"
+              @keyup.enter="blurInput"
+            />
           </q-td>
 
           <q-td
@@ -678,33 +599,18 @@
             :props="slotProps"
             class="col-ordered-qty text-center editable-cell"
           >
-            <div class="editable-value">
-              {{ slotProps.row.orderedQty }}
-            </div>
-
-            <q-popup-edit
-              v-slot="scope"
-              :model-value="slotProps.row.orderedQty"
-              buttons
-              persistent
-              label-set="Save"
-              label-cancel="Cancel"
-              @save="
-                (value) => {
-                  slotProps.row.orderedQty = toNumber(value);
-                  onOrderedQtySave(slotProps.row);
-                }
-              "
-            >
-              <q-input
-                v-model.number="scope.value"
-                type="number"
-                dense
-                outlined
-                autofocus
-                min="0"
-              />
-            </q-popup-edit>
+            <q-input
+              v-model.number="slotProps.row.orderedQty"
+              type="number"
+              dense
+              borderless
+              input-class="text-center font-mono"
+              class="cell-input"
+              min="0"
+              step="1"
+              @blur="onOrderedQtyBlur(slotProps.row)"
+              @keyup.enter="blurInput"
+            />
           </q-td>
 
           <q-td
@@ -713,33 +619,18 @@
             :props="slotProps"
             class="col-delivered-qty text-center editable-cell"
           >
-            <div class="editable-value">
-              {{ slotProps.row.deliveredQty }}
-            </div>
-
-            <q-popup-edit
-              v-slot="scope"
-              :model-value="slotProps.row.deliveredQty"
-              buttons
-              persistent
-              label-set="Save"
-              label-cancel="Cancel"
-              @save="
-                (value) => {
-                  slotProps.row.deliveredQty = toNumber(value);
-                  onDeliveredQtySave(slotProps.row);
-                }
-              "
-            >
-              <q-input
-                v-model.number="scope.value"
-                type="number"
-                dense
-                outlined
-                autofocus
-                min="0"
-              />
-            </q-popup-edit>
+            <q-input
+              v-model.number="slotProps.row.deliveredQty"
+              type="number"
+              dense
+              borderless
+              input-class="text-center font-mono"
+              class="cell-input"
+              min="0"
+              step="1"
+              @blur="onDeliveredQtyBlur(slotProps.row)"
+              @keyup.enter="blurInput"
+            />
           </q-td>
 
           <q-td
@@ -824,9 +715,20 @@
             v-if="isColumnVisible('priceGbp')"
             key="priceGbp"
             :props="slotProps"
-            class="col-price-gbp text-right"
+            class="col-price-gbp text-right editable-cell"
           >
-            {{ formatNumber(slotProps.row.priceGbp) }}
+            <q-input
+              v-model.number="slotProps.row.priceGbp"
+              type="number"
+              dense
+              borderless
+              input-class="text-right font-mono"
+              class="cell-input"
+              min="0"
+              step="0.01"
+              @blur="onPriceGbpBlur(slotProps.row)"
+              @keyup.enter="blurInput"
+            />
           </q-td>
 
           <q-td
@@ -844,33 +746,18 @@
             :props="slotProps"
             class="col-product-weight text-right editable-cell"
           >
-            <div class="editable-value">
-              {{ formatNumber(slotProps.row.productWeight) }}
-            </div>
-
-            <q-popup-edit
-              v-slot="scope"
-              :model-value="slotProps.row.productWeight"
-              buttons
-              persistent
-              label-set="Save"
-              label-cancel="Cancel"
-              @save="
-                (value) => {
-                  slotProps.row.productWeight = toNumber(value);
-                  onProductWeightSave(slotProps.row);
-                }
-              "
-            >
-              <q-input
-                v-model.number="scope.value"
-                type="number"
-                dense
-                outlined
-                autofocus
-                min="0"
-              />
-            </q-popup-edit>
+            <q-input
+              v-model.number="slotProps.row.productWeight"
+              type="number"
+              dense
+              borderless
+              input-class="text-right font-mono"
+              class="cell-input"
+              min="0"
+              step="1"
+              @blur="onProductWeightBlur(slotProps.row)"
+              @keyup.enter="blurInput"
+            />
           </q-td>
 
           <q-td
@@ -879,33 +766,18 @@
             :props="slotProps"
             class="col-package-weight text-right editable-cell"
           >
-            <div class="editable-value">
-              {{ formatNumber(slotProps.row.packageWeight) }}
-            </div>
-
-            <q-popup-edit
-              v-slot="scope"
-              :model-value="slotProps.row.packageWeight"
-              buttons
-              persistent
-              label-set="Save"
-              label-cancel="Cancel"
-              @save="
-                (value) => {
-                  slotProps.row.packageWeight = toNumber(value);
-                  onPackageWeightSave(slotProps.row);
-                }
-              "
-            >
-              <q-input
-                v-model.number="scope.value"
-                type="number"
-                dense
-                outlined
-                autofocus
-                min="0"
-              />
-            </q-popup-edit>
+            <q-input
+              v-model.number="slotProps.row.packageWeight"
+              type="number"
+              dense
+              borderless
+              input-class="text-right font-mono"
+              class="cell-input"
+              min="0"
+              step="1"
+              @blur="onPackageWeightBlur(slotProps.row)"
+              @keyup.enter="blurInput"
+            />
           </q-td>
 
           <q-td
@@ -983,15 +855,21 @@
                 name="ph ph-lock-key"
                 color="amber-8"
                 size="16px"
-                class="q-mr-xs"
               >
                 <q-tooltip>Offer price manually locked — won't auto-recalculate</q-tooltip>
               </q-icon>
-
-              <div class="editable-value">
-                {{ formatNumber(slotProps.row.offerPriceBdt) }}
-              </div>
-
+              <q-input
+                v-model.number="slotProps.row.offerPriceBdt"
+                type="number"
+                dense
+                borderless
+                input-class="text-right font-mono"
+                class="cell-input col"
+                min="0"
+                step="1"
+                @blur="onOfferPriceBlur(slotProps.row)"
+                @keyup.enter="blurInput"
+              />
               <q-btn
                 v-if="slotProps.row.isOfferPriceManual"
                 flat
@@ -1000,36 +878,12 @@
                 size="xs"
                 icon="ph ph-arrows-clockwise"
                 color="grey-7"
-                class="q-ml-xs"
+                aria-label="Unlock offer price"
                 @click.stop="onUnlockOfferPrice(slotProps.row)"
               >
-                <q-tooltip>Unlock & reset to auto price</q-tooltip>
+                <q-tooltip>Unlock and reset to auto price</q-tooltip>
               </q-btn>
             </div>
-
-            <q-popup-edit
-              v-slot="scope"
-              :model-value="slotProps.row.offerPriceBdt"
-              buttons
-              persistent
-              label-set="Save"
-              label-cancel="Cancel"
-              @save="
-                (value) => {
-                  slotProps.row.offerPriceBdt = toNumber(value);
-                  onOfferPriceBdtSave(slotProps.row);
-                }
-              "
-            >
-              <q-input
-                v-model.number="scope.value"
-                type="number"
-                dense
-                outlined
-                autofocus
-                min="0"
-              />
-            </q-popup-edit>
           </q-td>
 
           <q-td
@@ -1065,7 +919,7 @@
             :props="slotProps"
             class="col-profit-rate text-right"
           >
-            {{ formatNumber(getProfitRate(slotProps.row)) }}
+            {{ formatNumber(getProfitRate(slotProps.row)) }}%
           </q-td>
 
           <q-td
@@ -1077,18 +931,6 @@
             <q-badge :color="getStatusColor(slotProps.row.status)" outline>
               {{ slotProps.row.status }}
             </q-badge>
-          </q-td>
-
-          <q-td v-if="isColumnVisible('action')" key="action" :props="slotProps" class="col-action">
-            <div class="row items-center justify-center q-gutter-xs">
-              <q-btn
-                icon="ph ph-pencil-simple"
-                flat
-                dense
-                color="blue-10"
-                @click="onEdit(slotProps.row)"
-              />
-            </div>
           </q-td>
         </q-tr>
       </template>
@@ -1107,6 +949,18 @@
           <q-td v-if="isColumnVisible('note')" class="totals-row__cell col-note" />
           <q-td v-if="isColumnVisible('qty')" class="totals-row__cell col-qty text-center">
             {{ formatNumber(totals.qty) }}
+          </q-td>
+          <q-td
+            v-if="isColumnVisible('confirmedQty')"
+            class="totals-row__cell col-confirmed-qty text-center"
+          >
+            {{ formatNumber(totals.confirmedQty) }}
+          </q-td>
+          <q-td
+            v-if="isColumnVisible('orderedQty')"
+            class="totals-row__cell col-ordered-qty text-center"
+          >
+            {{ formatNumber(totals.orderedQty) }}
           </q-td>
           <q-td
             v-if="isColumnVisible('deliveredQty')"
@@ -1232,12 +1086,13 @@
             {{ formatNumber(totals.averageProfitRate) }}
           </q-td>
           <q-td v-if="isColumnVisible('status')" class="totals-row__cell col-status" />
-          <q-td v-if="isColumnVisible('action')" class="totals-row__cell col-action" />
         </q-tr>
       </template>
 
       <template #no-data>
-        <div class="full-width row flex-center q-pa-md text-grey-7">No items found</div>
+        <div class="full-width row flex-center q-pa-md text-grey-7">
+          No products yet. Use Add products above.
+        </div>
       </template>
     </q-table>
 
@@ -1317,6 +1172,7 @@ interface ProductBasedCostingTableRow {
   profitRate: number;
   offerPriceBdt: number;
   isOfferPriceManual: boolean;
+  offerInputsIncomplete: boolean;
   status: string;
   raw: ProductBasedCostingItem;
 }
@@ -1357,7 +1213,8 @@ const emit = defineEmits<{
         | 'confirmed_quantity'
         | 'ordered_quantity'
         | 'product_weight'
-        | 'package_weight';
+        | 'package_weight'
+        | 'price_gbp';
     },
   ): void;
   (
@@ -1406,6 +1263,13 @@ const toText = (value: unknown, fallback = '-') => {
   if (typeof value !== 'string') return fallback;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : fallback;
+};
+
+const htmlToPlainText = (html: string): string => {
+  if (!html) return '';
+  const el = document.createElement('div');
+  el.innerHTML = html;
+  return (el.textContent ?? '').replace(/\s+/g, ' ').trim();
 };
 
 const formatNumber = (value: number | null | undefined) => {
@@ -1503,7 +1367,7 @@ const buildRows = (): ProductBasedCostingTableRow[] => {
       sl: index + 1,
       name: toText(item.name),
       brand: toText(item.brand, ''),
-      noteHtml: item.note ?? '',
+      noteHtml: htmlToPlainText(item.note ?? ''),
       imageUrl: item.image_url ?? null,
       qty,
       confirmedQty,
@@ -1524,6 +1388,7 @@ const buildRows = (): ProductBasedCostingTableRow[] => {
         (item.is_offer_price_manual == null &&
           item.offer_price != null &&
           normalizeOfferPriceBdt(item.offer_price) !== calculatedOfferPriceBdt),
+      offerInputsIncomplete: priceGbp <= 0 || productWeight <= 0,
       offerPriceBdt:
         (item.is_offer_price_manual === true ||
           (item.is_offer_price_manual == null &&
@@ -1825,13 +1690,6 @@ const columns = computed<QTableColumn[]>(() => [
     align: 'center',
     style: 'text-align： center;',
   },
-  {
-    name: 'action',
-    label: 'Action',
-    field: 'action',
-    align: 'center',
-    style: 'text-align： center;',
-  },
 ]);
 
 type ColumnName = string;
@@ -1938,7 +1796,7 @@ const getProfitRate = (row: ProductBasedCostingTableRow) => {
 
 const emitRowChange = (
   row: ProductBasedCostingTableRow,
-  field: 'quantity' | 'confirmed_quantity' | 'ordered_quantity' | 'offer_price' | 'status' | 'note' | 'delivered_quantity',
+  field: 'quantity' | 'confirmed_quantity' | 'ordered_quantity' | 'offer_price' | 'status' | 'note' | 'delivered_quantity' | 'price_gbp',
 ) => {
   const updatedItem: ProductBasedCostingItem = {
     ...row.raw,
@@ -1946,6 +1804,7 @@ const emitRowChange = (
     confirmed_quantity: row.confirmedQty,
     ordered_quantity: row.orderedQty,
     delivered_quantity: row.deliveredQty,
+    price_gbp: row.priceGbp,
     offer_price: row.isOfferPriceManual ? row.offerPriceBdt : null,
     is_offer_price_manual: row.isOfferPriceManual,
     status: row.status,
@@ -2012,6 +1871,12 @@ const onQtySave = (row: ProductBasedCostingTableRow) => {
   emitRowChange(row, 'quantity');
 };
 
+const onQtyBlur = (row: ProductBasedCostingTableRow) => {
+  row.qty = Math.max(0, toNumber(row.qty));
+  if (valuesEqual(row.qty, row.raw.quantity)) return;
+  onQtySave(row);
+};
+
 const onConfirmedQtySave = (row: ProductBasedCostingTableRow) => {
   row.confirmedQty = Math.max(0, toNumber(row.confirmedQty));
   row.status = deriveItemStatusFromQuantities(
@@ -2022,6 +1887,12 @@ const onConfirmedQtySave = (row: ProductBasedCostingTableRow) => {
     row.raw.assigned_shipment_id ?? null,
   );
   emitRowChange(row, 'confirmed_quantity');
+};
+
+const onConfirmedQtyBlur = (row: ProductBasedCostingTableRow) => {
+  row.confirmedQty = Math.max(0, toNumber(row.confirmedQty));
+  if (valuesEqual(row.confirmedQty, row.raw.confirmed_quantity)) return;
+  onConfirmedQtySave(row);
 };
 
 const onOrderedQtySave = (row: ProductBasedCostingTableRow) => {
@@ -2036,15 +1907,45 @@ const onOrderedQtySave = (row: ProductBasedCostingTableRow) => {
   emitRowChange(row, 'ordered_quantity');
 };
 
+const onOrderedQtyBlur = (row: ProductBasedCostingTableRow) => {
+  row.orderedQty = Math.max(0, toNumber(row.orderedQty));
+  if (valuesEqual(row.orderedQty, row.raw.ordered_quantity)) return;
+  onOrderedQtySave(row);
+};
+
 const onDeliveredQtySave = (row: ProductBasedCostingTableRow) => {
   row.deliveredQty = toNumber(row.deliveredQty);
   emitRowChange(row, 'delivered_quantity');
+};
+
+const onDeliveredQtyBlur = (row: ProductBasedCostingTableRow) => {
+  row.deliveredQty = Math.max(0, toNumber(row.deliveredQty));
+  if (valuesEqual(row.deliveredQty, row.raw.delivered_quantity)) return;
+  onDeliveredQtySave(row);
 };
 
 const onOfferPriceBdtSave = (row: ProductBasedCostingTableRow) => {
   row.offerPriceBdt = normalizeOfferPriceBdt(row.offerPriceBdt);
   row.isOfferPriceManual = true;
   emitRowChange(row, 'offer_price');
+};
+
+const onOfferPriceBlur = (row: ProductBasedCostingTableRow) => {
+  const next = normalizeOfferPriceBdt(row.offerPriceBdt);
+  row.offerPriceBdt = next;
+  const autoPrice = calculateOfferPriceBdt({
+    priceGbp: row.priceGbp,
+    productWeight: row.productWeight,
+    packageWeight: row.packageWeight,
+    cargoRate: row.cargoRate,
+    conversionRate: row.conversionRate,
+    profitRate: row.profitRate,
+  });
+  const prev = row.isOfferPriceManual
+    ? normalizeOfferPriceBdt(row.raw.offer_price)
+    : autoPrice;
+  if (next === prev) return;
+  onOfferPriceBdtSave(row);
 };
 
 const onUnlockOfferPrice = (row: ProductBasedCostingTableRow) => {
@@ -2072,15 +1973,50 @@ const onNoteSave = (row: ProductBasedCostingTableRow) => {
   emitRowChange(row, 'note');
 };
 
-const htmlToPlainText = (html: string): string => {
-  if (!html) return '';
-  const el = document.createElement('div');
-  el.innerHTML = html;
-  return (el.textContent ?? '').replace(/\s+/g, ' ').trim();
+const onNoteBlur = (row: ProductBasedCostingTableRow) => {
+  const next = toText(htmlToPlainText(row.noteHtml), '');
+  row.noteHtml = next;
+  const prev = htmlToPlainText(row.raw.note ?? '');
+  if (next === prev) return;
+  onNoteSave(row);
 };
 
-const isNoteTruncated = (html: string): boolean =>
-  htmlToPlainText(html).length > 0 && html.includes('<');
+const blurInput = (event: KeyboardEvent) => {
+  (event.target as HTMLInputElement | null)?.blur();
+};
+
+const valuesEqual = (a: unknown, b: unknown) => toNumber(a) === toNumber(b);
+
+const applyOfferFromInputs = (row: ProductBasedCostingTableRow) => {
+  if (row.isOfferPriceManual) return;
+  row.offerPriceBdt = calculateOfferPriceBdt({
+    priceGbp: row.priceGbp,
+    productWeight: row.productWeight,
+    packageWeight: row.packageWeight,
+    cargoRate: row.cargoRate,
+    conversionRate: row.conversionRate,
+    profitRate: row.profitRate,
+  });
+};
+
+const onPriceGbpBlur = (row: ProductBasedCostingTableRow) => {
+  row.priceGbp = Math.max(0, toNumber(row.priceGbp));
+  if (valuesEqual(row.priceGbp, row.raw.price_gbp)) return;
+  applyOfferFromInputs(row);
+  emitRowChange(row, 'price_gbp');
+};
+
+const onProductWeightBlur = (row: ProductBasedCostingTableRow) => {
+  row.productWeight = Math.max(0, toNumber(row.productWeight));
+  if (valuesEqual(row.productWeight, row.raw.product_weight)) return;
+  onProductWeightSave(row);
+};
+
+const onPackageWeightBlur = (row: ProductBasedCostingTableRow) => {
+  row.packageWeight = Math.max(0, toNumber(row.packageWeight));
+  if (valuesEqual(row.packageWeight, row.raw.package_weight)) return;
+  onPackageWeightSave(row);
+};
 
 const onProductWeightSave = (row: ProductBasedCostingTableRow) => {
   row.productWeight = toNumber(row.productWeight);
@@ -2110,6 +2046,12 @@ const onPackageWeightSave = (row: ProductBasedCostingTableRow) => {
 
 const onEdit = (row: ProductBasedCostingTableRow) => {
   emit('edit', row.raw);
+};
+
+const onEditSelected = () => {
+  if (selectedRowIds.value.length !== 1) return;
+  const row = displayRows.value.find((item) => item.id === selectedRowIds.value[0]);
+  if (row) onEdit(row);
 };
 
 const onToggleRowSelection = (rowId: number, checked: boolean) => {
@@ -2155,6 +2097,8 @@ const getStatusColor = (status: string | null) => {
 const totals = computed(() => {
   const initial = {
     qty: 0,
+    confirmedQty: 0,
+    orderedQty: 0,
     deliveredQty: 0,
     priceGbp: 0,
     totalPurchasePriceGbp: 0,
@@ -2176,6 +2120,8 @@ const totals = computed(() => {
 
   const sum = displayRows.value.reduce((acc, row) => {
     acc.qty += row.qty;
+    acc.confirmedQty += row.confirmedQty;
+    acc.orderedQty += row.orderedQty;
     acc.deliveredQty += row.deliveredQty;
     acc.priceGbp += row.priceGbp;
     acc.totalPurchasePriceGbp += getTotalPurchasePriceGbp(row);
@@ -2303,6 +2249,14 @@ const totals = computed(() => {
   scroll-margin-top: 48px;
 }
 
+.product-based-costing-table :deep(tr.row-incomplete-offer td:first-child) {
+  box-shadow: inset 3px 0 0 var(--q-warning);
+}
+
+.costing-item-card.row-incomplete-offer {
+  border-color: color-mix(in srgb, var(--q-warning) 60%, var(--bw-theme-border, #e2e8f0));
+}
+
 .table-image {
   width: 96px;
   height: 96px;
@@ -2343,7 +2297,40 @@ const totals = computed(() => {
 }
 
 .editable-cell {
-  cursor: pointer;
+  cursor: text;
+}
+
+.editable-cell :deep(.q-field__control) {
+  min-height: 28px;
+  height: 28px;
+  padding: 0 4px;
+}
+
+.editable-cell :deep(.q-field__native) {
+  padding: 0;
+}
+
+.cell-input :deep(.q-field__control) {
+  border: 1px solid transparent;
+  border-radius: 6px;
+  min-height: 28px;
+  height: 28px;
+}
+
+.cell-input.q-field--focused :deep(.q-field__control),
+.cell-input:focus-within :deep(.q-field__control) {
+  border-color: var(--q-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--q-primary) 28%, transparent);
+}
+
+.cell-input :deep(input[type='number']::-webkit-outer-spin-button),
+.cell-input :deep(input[type='number']::-webkit-inner-spin-button) {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.cell-input :deep(input[type='number']) {
+  -moz-appearance: textfield;
 }
 
 .editable-value {
@@ -2564,13 +2551,6 @@ const totals = computed(() => {
   width: 150px;
   max-width: 150px;
   background: #f8f9fa;
-}
-
-.col-action {
-  min-width: 100px;
-  width: 100px;
-  max-width: 100px;
-  background: #ffffff;
 }
 
 .totals-row {

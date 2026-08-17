@@ -3,12 +3,12 @@
     <q-card class="drawer-card column no-wrap">
       <q-card-section class="row items-center q-py-sm q-px-md drawer-header text-white">
         <div class="col">
-          <div class="text-subtitle1 text-weight-bold">Add from Catalog</div>
+          <div class="text-subtitle1 text-weight-bold">Add products</div>
           <div class="text-caption" style="opacity: 0.85">
             {{ fileName }}
           </div>
         </div>
-        <q-btn icon="ph ph-x" flat round dense color="white" v-close-popup />
+        <q-btn icon="ph ph-x" flat round dense color="white" aria-label="Close" @click="onSaved" />
       </q-card-section>
 
       <AddCostingItemsPanel
@@ -16,7 +16,7 @@
         :file-id="fileId"
         layout="drawer"
         @saved="onSaved"
-        @cancel="onCancel"
+        @create-new-product="onCreateNewProduct"
       />
     </q-card>
   </q-dialog>
@@ -45,14 +45,14 @@ const onSaved = () => {
   onDialogOK();
 };
 
-const onCancel = () => {
-  dialogRef.value?.hide();
+const onCreateNewProduct = (name: string) => {
+  onDialogOK({ createProductName: name });
 };
 </script>
 
 <style scoped>
 .drawer-card {
-  width: 1000px;
+  width: 640px;
   max-width: 95vw;
   height: calc(100vh - 24px) !important;
   margin: 12px;

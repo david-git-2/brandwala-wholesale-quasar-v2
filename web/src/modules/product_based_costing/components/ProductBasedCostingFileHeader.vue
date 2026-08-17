@@ -126,9 +126,22 @@
           color="primary"
           unelevated
           no-caps
-          label="Add Item"
-          @click="$emit('open-create-item')"
+          icon="ph ph-plus"
+          label="Add products"
+          @click="$emit('open-catalog')"
         />
+        <span>
+          <q-btn
+            outline
+            color="primary"
+            no-caps
+            icon="ph ph-file-pdf"
+            label="Offer (PDF / Screenshot)"
+            :disable="itemCount === 0"
+            @click="$emit('open-preview')"
+          />
+          <q-tooltip v-if="itemCount === 0">Add at least one product first.</q-tooltip>
+        </span>
         <q-btn flat dense icon="ph ph-dots-three-vertical" aria-label="Actions">
           <q-menu style="min-width: 200px">
             <q-list dense>
@@ -143,12 +156,6 @@
                   <q-icon name="ph ph-clipboard" />
                 </q-item-section>
                 <q-item-section>Bulk Paste</q-item-section>
-              </q-item>
-              <q-item clickable v-close-popup @click="$emit('open-catalog')">
-                <q-item-section avatar>
-                  <q-icon name="ph ph-shopping-cart" />
-                </q-item-section>
-                <q-item-section>Add from Catalog</q-item-section>
               </q-item>
               <q-item clickable>
                 <q-item-section avatar>
@@ -202,12 +209,6 @@
                 </q-menu>
               </q-item>
               <q-separator />
-              <q-item clickable v-close-popup @click="$emit('open-preview')">
-                <q-item-section avatar>
-                  <q-icon name="ph ph-eye" />
-                </q-item-section>
-                <q-item-section>Preview & Print</q-item-section>
-              </q-item>
               <q-item clickable v-close-popup @click="$emit('download-excel')">
                 <q-item-section avatar>
                   <q-icon name="ph ph-table" />
@@ -235,16 +236,20 @@ import {
   columnSelectorOptions,
 } from '../composables/useProductBasedCostingFileDetailsState';
 
-const props = defineProps<{
-  file: ProductBasedCostingFile | null;
-  isLoading: boolean;
-  backlogCount: number;
-  backlogLoading: boolean;
-  visibleColumns: string[];
-  allBillingProfiles: BillingProfile[];
-  loadingProfiles: boolean;
-  savingBillingProfile: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    file: ProductBasedCostingFile | null;
+    isLoading: boolean;
+    backlogCount: number;
+    backlogLoading: boolean;
+    visibleColumns: string[];
+    allBillingProfiles: BillingProfile[];
+    loadingProfiles: boolean;
+    savingBillingProfile: boolean;
+    itemCount?: number;
+  }>(),
+  { itemCount: 0 },
+);
 
 const emit = defineEmits<{
   (e: 'go-back'): void;

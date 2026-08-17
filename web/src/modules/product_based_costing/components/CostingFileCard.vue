@@ -18,7 +18,7 @@
           <div class="row items-center q-gutter-xs">
             <q-chip dense square :style="statusChipStyle(item.status)" class="costing-status-chip">
               <span class="status-dot" :style="{ backgroundColor: statusDotColor(item.status) }" />
-              {{ item.status ?? 'pending' }}
+              {{ formatStatusLabel(item.status ?? 'pending') }}
             </q-chip>
             <q-btn icon="ph ph-dots-three-vertical" flat round dense @click.stop>
               <q-menu auto-close>
@@ -45,6 +45,7 @@
 <script setup lang="ts">
 import { useQuasar } from 'quasar';
 import type { ProductBasedCostingFile } from '../types';
+import { formatStatusLabel } from '../composables/useProductBasedCostingFileDetailsState';
 
 defineProps<{
   items: ProductBasedCostingFile[];
