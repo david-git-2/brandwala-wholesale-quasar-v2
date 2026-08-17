@@ -5,6 +5,9 @@ import type {
   UpdateShopPayload,
   ShopOrder,
   ShopOrderItem,
+  ShopCatalogBrowseResult,
+  CustomerOrderListItem,
+  CustomerOrderDetail,
 } from '../types';
 
 const listShops = async (
@@ -81,6 +84,7 @@ const upsertShop = async (payload: CreateShopPayload | UpdateShopPayload): Promi
 };
 
 const browseShopCatalog = async (
+  tenantId: number,
   shopSlug: string,
   opts: {
     search?: string | null;
@@ -89,8 +93,9 @@ const browseShopCatalog = async (
     limit?: number;
     offset?: number;
   } = {},
-): Promise<any> => {
-  const { data, error } = await supabase.rpc('browse_shop_catalog', {
+): Promise<ShopCatalogBrowseResult> => {
+  const { data, error } = await supabase.rpc('browse_shop_catalog_for_customer', {
+    p_tenant_id: tenantId,
     p_shop_slug: shopSlug,
     p_search: opts.search ?? null,
     p_category: opts.category ?? null,
@@ -103,7 +108,16 @@ const browseShopCatalog = async (
     throw error;
   }
 
-  return data;
+  const payload = (data ?? {}) as ShopCatalogBrowseResult;
+  return {
+    data: payload.data ?? [],
+    meta: payload.meta ?? {
+      total: 0,
+      page: 1,
+      page_size: opts.limit ?? 20,
+      total_pages: 1,
+    },
+  };
 };
 
 export type CustomerAccessibleShop = {
@@ -118,13 +132,14 @@ export type CustomerAccessibleShop = {
   description?: string | null;
   category_ids?: number[] | null;
   categories?: Array<{ id: number; name: string; slug: string; icon: string }> | null;
+  sell_currency_id?: number | null;
+  sell_currency_code?: string | null;
+  sell_currency_symbol?: string | null;
 };
 
-const listShopsForCustomer = async (
-  tenantId?: number | null,
-): Promise<CustomerAccessibleShop[]> => {
-  const { data, error } = await supabase.rpc('list_shops_for_customer', {
-    p_tenant_id: tenantId ?? null,
+const listCustomerShops = async (tenantId: number): Promise<CustomerAccessibleShop[]> => {
+  const { data, error } = await supabase.rpc('list_customer_shops', {
+    p_tenant_id: tenantId,
   });
 
   if (error) {
@@ -303,17 +318,18 @@ const customerConfirmShopOrder = async (orderId: number): Promise<void> => {
   if (error) throw error;
 };
 
-const listShopOrdersForCustomer = async (
-  shopId: number,
-  opts: { limit?: number; offset?: number } = {},
-): Promise<ShopOrder[]> => {
-  const { data, error } = await supabase.rpc('list_shop_orders_for_customer', {
-    p_shop_id: shopId,
+const listCustomerShopOrders = async (
+  tenantId: number,
+  opts: { limit?: number; offset?: number; statusBucket?: string | null } = {},
+): Promise<CustomerOrderListItem[]> => {
+  const { data, error } = await supabase.rpc('list_customer_shop_orders', {
+    p_tenant_id: tenantId,
     p_limit: opts.limit ?? 20,
     p_offset: opts.offset ?? 0,
+    p_status_bucket: opts.statusBucket ?? null,
   });
   if (error) throw error;
-  return (data as ShopOrder[] | null) ?? [];
+  return (data as CustomerOrderListItem[] | null) ?? [];
 };
 
 const listShopOrdersForStaff = async (
@@ -429,6 +445,33 @@ const getShopOrderById = async (
     order,
     items,
   };
+};
+
+const getCustomerShopOrder = async (
+  tenantId: number,
+  orderId: number,
+): Promise<CustomerOrderDetail> => {
+  const { data, error } = await supabase.rpc('get_customer_shop_order', {
+    p_tenant_id: tenantId,
+    p_order_id: orderId,
+  });
+  if (error) throw error;
+
+  const payload = data as { order?: CustomerOrderDetail['order']; items?: ShopOrderItem[] } | null;
+  if (!payload?.order) {
+    throw new Error('Order not found');
+  }
+
+  const items: ShopOrderItem[] = (payload.items ?? []).map((item) => ({
+    ...item,
+    final_offer_amount: item.final_offer_amount ?? item.final_price_amount ?? null,
+    procurement_pulled: item.procurement_pulled ?? false,
+    ordered_quantity: item.ordered_quantity ?? item.quantity,
+    delivered_quantity: item.delivered_quantity ?? 0,
+    returned_quantity: item.returned_quantity ?? 0,
+  }));
+
+  return { order: payload.order, items };
 };
 
 const placeShopOrderForProcurement = async (orderId: number): Promise<void> => {
@@ -682,7 +725,7 @@ export const shopOrderRepository = {
   deleteShop,
   updateShopExtraAttributes,
   browseShopCatalog,
-  listShopsForCustomer,
+  listCustomerShops,
   fetchCustomerShopCategories,
   submitShopOrderFromCart,
   staffPriceShopOrder,
@@ -695,10 +738,11 @@ export const shopOrderRepository = {
   staffSetCatalogOrderedQty,
   staffSetCatalogDeliveredQty,
   listCustomerOrderBacklogItems,
-  listShopOrdersForCustomer,
+  listCustomerShopOrders,
   listShopOrdersForStaff,
   listDropshipShopOrdersForStaff,
   getShopOrderById,
+  getCustomerShopOrder,
   placeShopOrderForProcurement,
   fulfillShopOrderToInvoice,
   deleteShopOrder,

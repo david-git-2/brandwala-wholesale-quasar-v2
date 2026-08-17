@@ -1,6 +1,7 @@
 import type { Router } from 'vue-router';
 import { supabase } from 'src/boot/supabase';
 import { useAuthStore } from '../stores/authStore';
+import { clearShopOrderQueryCache } from 'src/query/queryClient';
 import {
   getAppRouteLocation,
   getShopLoginRouteLocation,
@@ -86,6 +87,9 @@ export async function handleUnauthorizedResponse() {
     }
 
     authStore.clearAccess();
+    if (scope === 'shop') {
+      clearShopOrderQueryCache();
+    }
     await supabase.auth.signOut();
 
     const loginError = 'session_expired';

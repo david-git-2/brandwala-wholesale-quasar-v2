@@ -57,6 +57,19 @@
         </template>
       </q-banner>
 
+      <div class="row justify-end">
+        <q-btn
+          dense
+          outline
+          no-caps
+          size="sm"
+          icon="ph ph-copy"
+          :label="$t('shop_admin.access_login_url_copy')"
+          data-test="access-login-url-copy"
+          @click="copyLoginUrl"
+        />
+      </div>
+
       <q-card v-if="isLoading" flat bordered>
         <q-card-section class="text-center q-pa-xl text-grey-7">
           <q-spinner size="36px" color="primary" class="q-mr-sm" />
@@ -172,18 +185,38 @@
           >
             <template #body-cell-group="props">
               <q-td :props="props">
-                <div class="row items-center no-wrap q-gutter-x-sm">
+                <div
+                  class="row items-center no-wrap q-gutter-x-sm cursor-pointer"
+                  role="button"
+                  tabindex="0"
+                  data-test="access-group-open"
+                  @click="openGroupDetails(props.row)"
+                  @keydown.enter.prevent="openGroupDetails(props.row)"
+                >
                   <div
                     class="accent-swatch"
                     :style="{ backgroundColor: props.row.accent_color || 'var(--bw-theme-primary)' }"
                   />
-                  <div class="text-weight-bold text-body2 text-grey-9">{{ props.row.name }}</div>
+                  <div class="text-weight-bold text-body2 text-primary">{{ props.row.name }}</div>
                 </div>
               </q-td>
             </template>
 
             <template #body-cell-actions="props">
               <q-td :props="props" class="text-right">
+                <q-btn
+                  flat
+                  dense
+                  round
+                  size="sm"
+                  color="grey-8"
+                  icon="ph ph-wallet"
+                  :aria-label="$t('shop_admin.access_wallet')"
+                  data-test="access-wallet-btn"
+                  @click="openWalletDialog(props.row)"
+                >
+                  <q-tooltip>{{ $t('shop_admin.access_wallet') }}</q-tooltip>
+                </q-btn>
                 <q-btn
                   flat
                   dense
@@ -464,6 +497,18 @@
           </q-card-actions>
         </q-card>
       </q-dialog>
+
+      <CustomerGroupWalletDialog
+        v-model="walletDialogOpen"
+        :group-name="selectedWalletGroup?.name ?? ''"
+        :billing-profile-id="selectedWalletProfileId"
+      />
+
+      <CustomerGroupDetailsDrawer
+        v-model="groupDetailsOpen"
+        :group="selectedDetailsGroup"
+        :billing-profile="selectedDetailsProfile"
+      />
     </section>
   </component>
 </template>
@@ -478,7 +523,11 @@ import { useCustomerGroupMutations } from 'src/modules/tenant/composables/useCus
 import type { CustomerGroupCreateInput } from 'src/modules/tenant/types';
 import { useShopPermissionsStore } from '../stores/shopPermissionsStore';
 import type { UpsertAccessPayload, ShopCustomerGroupAccess } from '../types';
-import { showErrorNotification } from 'src/utils/appFeedback';
+import { copyToClipboard } from 'quasar';
+import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
+import { useBillingProfilesQuery } from 'src/modules/sales_invoice/composables/useBillingProfileQuery';
+import CustomerGroupWalletDialog from '../components/CustomerGroupWalletDialog.vue';
+import CustomerGroupDetailsDrawer from '../components/CustomerGroupDetailsDrawer.vue';
 
 withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false });
 
@@ -493,6 +542,22 @@ const tenantId = computed(() => authStore.tenantId as number);
 const shopId = computed(() => Number(route.params.shopId));
 const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '');
 
+const customerLoginUrl = computed(() => {
+  const origin = typeof window === 'undefined' ? '' : window.location.origin;
+  return tenantSlug.value
+    ? `${origin}/${tenantSlug.value}/shop/login`
+    : `${origin}/shop/login`;
+});
+
+const copyLoginUrl = async () => {
+  try {
+    await copyToClipboard(customerLoginUrl.value);
+    showSuccessNotification(t('shop_admin.access_login_url_copied'));
+  } catch {
+    showErrorNotification(t('shop_admin.access_login_url_copy_failed'));
+  }
+};
+
 const shopName = ref('');
 const shopType = ref('');
 const searchQuery = ref('');
@@ -502,6 +567,34 @@ const createDialogOpen = ref(false);
 const selectedGroupId = ref<number | null>(null);
 const drawerOpen = ref(false);
 const activeGroupId = ref<number | null>(null);
+const walletDialogOpen = ref(false);
+const selectedWalletGroup = ref<{ id: number; name: string } | null>(null);
+const groupDetailsOpen = ref(false);
+const selectedDetailsGroup = ref<{
+  id: number;
+  name: string;
+  accent_color: string | null;
+} | null>(null);
+
+const { data: billingProfilesData } = useBillingProfilesQuery(tenantId);
+const billingProfiles = computed(() => billingProfilesData.value?.data ?? []);
+
+const getBillingProfileForGroup = (groupId: number) =>
+  billingProfiles.value.find((p) => p.customer_group_id === groupId) ?? null;
+
+const selectedWalletProfileId = computed(
+  () =>
+    (selectedWalletGroup.value
+      ? getBillingProfileForGroup(selectedWalletGroup.value.id)?.id
+      : null) ?? null,
+);
+
+const selectedDetailsProfile = computed(() => {
+  if (!selectedDetailsGroup.value) return null;
+  const profile = getBillingProfileForGroup(selectedDetailsGroup.value.id);
+  if (!profile) return null;
+  return { name: profile.name, email: profile.email, phone: profile.phone };
+});
 
 const createForm = reactive({
   name: '',
@@ -658,6 +751,16 @@ const createThenGrant = async () => {
     const message = err instanceof Error ? err.message : t('shop_admin.access_create_failed');
     showErrorNotification(message);
   }
+};
+
+const openWalletDialog = (group: { id: number; name: string }) => {
+  selectedWalletGroup.value = group;
+  walletDialogOpen.value = true;
+};
+
+const openGroupDetails = (group: { id: number; name: string; accent_color: string | null }) => {
+  selectedDetailsGroup.value = group;
+  groupDetailsOpen.value = true;
 };
 
 const openEditDrawer = (groupId: number) => {

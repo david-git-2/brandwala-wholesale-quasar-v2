@@ -1,9 +1,9 @@
 import type { RouteRecordRaw } from 'vue-router';
 
 import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
+import { createShopAccessGuard } from 'src/modules/auth/guards/createShopAccessGuard';
 import {
   getAppRouteLocation,
-  getShopLoginRouteLocation,
   getTenantSlugFromRoute,
 } from 'src/modules/tenant/utils/tenantRouteContext';
 
@@ -95,61 +95,25 @@ const kobaRoutes: RouteRecordRaw[] = [
         path: 'retail',
         name: 'shop-koba-retail-page',
         component: () => import('src/modules/koba/retail/pages/KobaRetailProductsPage.vue'),
-        beforeEnter: createAccessGuard({
-          loginRoute: (to) =>
-            getShopLoginRouteLocation(to, {
-              redirect: to.fullPath,
-            }),
-          requiredScope: 'shop',
-          requireTenantContext: true,
-          allowedRoles: ['customer_admin', 'customer_negotiator', 'customer_staff'],
-          requiredModule: 'koba_retail',
-        }),
+        beforeEnter: createShopAccessGuard({ requiredModule: 'koba_retail' }),
       },
       {
         path: 'retail/cart',
         name: 'shop-koba-retail-cart-page',
         component: () => import('src/modules/koba/retail/pages/KobaCartPage.vue'),
-        beforeEnter: createAccessGuard({
-          loginRoute: (to) =>
-            getShopLoginRouteLocation(to, {
-              redirect: to.fullPath,
-            }),
-          requiredScope: 'shop',
-          requireTenantContext: true,
-          allowedRoles: ['customer_admin', 'customer_negotiator', 'customer_staff'],
-          requiredModule: 'koba_retail',
-        }),
+        beforeEnter: createShopAccessGuard({ requiredModule: 'koba_retail' }),
       },
       {
         path: 'retail/orders',
         name: 'shop-koba-retail-orders-page',
         component: () => import('src/modules/koba/retail/pages/KobaOrdersPage.vue'),
-        beforeEnter: createAccessGuard({
-          loginRoute: (to) =>
-            getShopLoginRouteLocation(to, {
-              redirect: to.fullPath,
-            }),
-          requiredScope: 'shop',
-          requireTenantContext: true,
-          allowedRoles: ['customer_admin', 'customer_negotiator', 'customer_staff'],
-          requiredModule: 'koba_retail',
-        }),
+        beforeEnter: createShopAccessGuard({ requiredModule: 'koba_retail' }),
       },
       {
         path: 'retail/orders/:id',
         name: 'shop-koba-retail-order-detail-page',
         component: () => import('src/modules/koba/retail/pages/KobaOrderDetailPage.vue'),
-        beforeEnter: createAccessGuard({
-          loginRoute: (to) =>
-            getShopLoginRouteLocation(to, {
-              redirect: to.fullPath,
-            }),
-          requiredScope: 'shop',
-          requireTenantContext: true,
-          allowedRoles: ['customer_admin', 'customer_negotiator', 'customer_staff'],
-          requiredModule: 'koba_retail',
-        }),
+        beforeEnter: createShopAccessGuard({ requiredModule: 'koba_retail' }),
       },
     ],
   },

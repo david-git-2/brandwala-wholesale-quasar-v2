@@ -29,7 +29,7 @@
     "backend:init": "pnpm exec supabase init",
     "backend:login": "pnpm exec supabase login",
     "backend:link": "pnpm exec supabase link --project-ref \"$SUPABASE_PROJECT_REF\"",
-    "backend:link:push:types": "sh -c 'pnpm run backend:link && pnpm exec supabase db push --linked --include-all && mkdir -p web/src/types && pnpm exec supabase gen types typescript --linked --schema public > web/src/types/supabase.ts'",
+    "backend:link:push:types": "sh -c 'pnpm run backend:link && pnpm exec supabase db push --linked --include-all && mkdir -p web/src/types && pnpm exec supabase gen types typescript --linked --schema public > web/src/types/database.types.ts'",
     "backend:new-migration": "pnpm exec supabase migration new",
     "backend:push": "pnpm exec supabase db push --linked --include-all",
     "backend:push:all": "pnpm exec supabase db push --linked --include-all",

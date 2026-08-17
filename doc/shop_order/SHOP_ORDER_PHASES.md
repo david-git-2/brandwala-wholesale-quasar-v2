@@ -2,11 +2,13 @@
 
 **Agent index (archived):** [docs/archive/shop_order_phased_build_0010b204.plan.md](../docs/archive/shop_order_phased_build_0010b204.plan.md) — canonical tracker is this file.  
 **Canon:** [SHOP_ORDER.md](SHOP_ORDER.md)
+**Shop login (customer home first):** [SHOP_SCOPE.md](SHOP_SCOPE.md) — not P15
+**Customer tenant isolation + customer API cleanup:** [fix/SHOP_SCOPE_TENANT_ISOLATION.md](../fix/SHOP_SCOPE_TENANT_ISOLATION.md) (T0–T4) — **runs before P15**; owns all customer-scope reads. P15 stays staff-only
 **State management canon:** [STATE_MANAGEMENT.md](STATE_MANAGEMENT.md)
 
 Update this file when a phase completes. Agent: set status to `done` and stop.
  
-**Next phase:** P15 (shop_order Server-State Orchestration)
+**Next phase:** P15
  
 ---
  
@@ -352,6 +354,8 @@ Retire the legacy `/app/commerce-shop` and `/shop/commerce-shop/*` paths. Ensure
 ---
 
 ## P15 — shop_order Server-State Orchestration (`shop_order`)
+
+Staff order list/detail cache only. Customer shop home is [SHOP_SCOPE.md](SHOP_SCOPE.md) **S0**; customer read contracts and `select('*')` removal are [fix/SHOP_SCOPE_TENANT_ISOLATION.md](../fix/SHOP_SCOPE_TENANT_ISOLATION.md) **T2** — do not duplicate that work here.
 
 **Read:** [STATE_MANAGEMENT.md](STATE_MANAGEMENT.md), SHOP_ORDER §8
 

@@ -1,5 +1,5 @@
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
-import type { ShopOrder, ShopOrderItem, ShopServiceResult } from '../types';
+import type { ShopOrder, ShopOrderItem, ShopServiceResult, ShopCatalogBrowseResult, CustomerOrderListItem } from '../types';
 
 const submitOrder = async (
   cartId: number,
@@ -145,11 +145,11 @@ const getOrderDetails = async (
 };
 
 const fetchCustomerOrders = async (
-  shopId: number,
-  opts?: { limit?: number; offset?: number },
-): Promise<ShopServiceResult<ShopOrder[]>> => {
+  tenantId: number,
+  opts?: { limit?: number; offset?: number; statusBucket?: string | null },
+): Promise<ShopServiceResult<CustomerOrderListItem[]>> => {
   try {
-    const data = await shopOrderRepository.listShopOrdersForCustomer(shopId, opts);
+    const data = await shopOrderRepository.listCustomerShopOrders(tenantId, opts);
     return { success: true, data };
   } catch (error) {
     return {
@@ -226,6 +226,7 @@ const deleteOrder = async (orderId: number): Promise<ShopServiceResult<void>> =>
 };
 
 const browseShopCatalog = async (
+  tenantId: number,
   shopSlug: string,
   opts?: {
     search?: string | null;
@@ -234,9 +235,9 @@ const browseShopCatalog = async (
     limit?: number;
     offset?: number;
   },
-): Promise<ShopServiceResult<any>> => {
+): Promise<ShopServiceResult<ShopCatalogBrowseResult>> => {
   try {
-    const data = await shopOrderRepository.browseShopCatalog(shopSlug, opts);
+    const data = await shopOrderRepository.browseShopCatalog(tenantId, shopSlug, opts);
     return { success: true, data };
   } catch (error) {
     return {
@@ -246,13 +247,13 @@ const browseShopCatalog = async (
   }
 };
 
-const listShopsForCustomer = async (
-  tenantId?: number | null,
+const listCustomerShops = async (
+  tenantId: number,
 ): Promise<
-  ShopServiceResult<Awaited<ReturnType<typeof shopOrderRepository.listShopsForCustomer>>>
+  ShopServiceResult<Awaited<ReturnType<typeof shopOrderRepository.listCustomerShops>>>
 > => {
   try {
-    const data = await shopOrderRepository.listShopsForCustomer(tenantId);
+    const data = await shopOrderRepository.listCustomerShops(tenantId);
     return { success: true, data };
   } catch (error) {
     return {
@@ -372,7 +373,7 @@ export const shopOrderService = {
   fulfillOrderToInvoice,
   deleteOrder,
   browseShopCatalog,
-  listShopsForCustomer,
+  listCustomerShops,
   listCustomerShopCategories,
   updateOrderCharges,
   processDropshipOrder,

@@ -45,7 +45,11 @@ export function useVendorListQuery(tenantId: Ref<number>) {
 export function useCustomerShopsQuery(tenantId: Ref<number | null>) {
   return useQuery({
     queryKey: computed(() => shopOrderQueryKeys.customerShops(tenantId.value)),
-    queryFn: () => shopOrderRepository.listShopsForCustomer(tenantId.value),
+    queryFn: () => {
+      if (!tenantId.value) return Promise.resolve([]);
+      return shopOrderRepository.listCustomerShops(tenantId.value);
+    },
     staleTime: 2 * 60 * 1000,
+    enabled: computed(() => !!tenantId.value),
   });
 }

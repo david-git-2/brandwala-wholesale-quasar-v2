@@ -7,41 +7,61 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 const defaultFetch: typeof fetch = globalThis.fetch.bind(globalThis);
 const AUTH_RETRY_HEADER = 'x-brandwala-auth-retry';
 
+const readAuthAccessTenantId = (): { scope: string | null; tenantId: string | null } => {
+  const authRaw = window.localStorage.getItem('brandwala.auth.access.v4');
+  if (!authRaw) {
+    return { scope: null, tenantId: null };
+  }
+
+  try {
+    const parsed = JSON.parse(authRaw) as {
+      scope?: string | null;
+      tenant?: { id?: number | null } | null;
+      member?: { tenantId?: number | null } | null;
+    };
+    const tenantId = parsed?.tenant?.id ?? parsed?.member?.tenantId ?? null;
+    return {
+      scope: parsed?.scope ?? null,
+      tenantId: tenantId != null ? String(tenantId) : null,
+    };
+  } catch {
+    return { scope: null, tenantId: null };
+  }
+};
+
+const readWorkspaceSelectedTenantId = (): string | null => {
+  const workspaceRaw = window.localStorage.getItem('brandwala.tenant.workspace.v1');
+  if (!workspaceRaw) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(workspaceRaw) as { selectedTenantId?: number | string | null };
+    if (parsed?.selectedTenantId != null && parsed.selectedTenantId !== '') {
+      return String(parsed.selectedTenantId);
+    }
+  } catch {
+    // Ignore parse errors
+  }
+
+  return null;
+};
+
 const readSelectedTenantIdFromStorage = (): string | null => {
   if (typeof window === 'undefined') {
     return null;
   }
 
-  const workspaceRaw = window.localStorage.getItem('brandwala.tenant.workspace.v1');
-  if (workspaceRaw) {
-    try {
-      const parsed = JSON.parse(workspaceRaw) as { selectedTenantId?: number | string | null };
-      if (parsed?.selectedTenantId != null && parsed.selectedTenantId !== '') {
-        return String(parsed.selectedTenantId);
-      }
-    } catch {
-      // Ignore parse errors
-    }
+  const authAccess = readAuthAccessTenantId();
+  if (authAccess.scope === 'shop') {
+    return authAccess.tenantId;
   }
 
-  // Shop login stores tenant on auth access, not always on workspace selection.
-  const authRaw = window.localStorage.getItem('brandwala.auth.access.v4');
-  if (authRaw) {
-    try {
-      const parsed = JSON.parse(authRaw) as {
-        tenant?: { id?: number | null } | null;
-        member?: { tenantId?: number | null } | null;
-      };
-      const tenantId = parsed?.tenant?.id ?? parsed?.member?.tenantId ?? null;
-      if (tenantId != null) {
-        return String(tenantId);
-      }
-    } catch {
-      // Ignore parse errors
-    }
+  if (authAccess.scope === 'app' || authAccess.scope === 'platform') {
+    return readWorkspaceSelectedTenantId() ?? authAccess.tenantId;
   }
 
-  return null;
+  return readWorkspaceSelectedTenantId() ?? authAccess.tenantId;
 };
 
 const withSelectedTenantHeader = (init?: RequestInit): RequestInit | undefined => {

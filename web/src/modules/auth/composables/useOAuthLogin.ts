@@ -14,6 +14,7 @@ import { tenantService } from 'src/modules/tenant/services/tenantService';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { useTenantPreferenceStore } from 'src/modules/tenant/stores/tenantPreferenceStore';
 import { useMembershipPreferenceStore } from 'src/modules/membership/stores/membershipPreferenceStore';
+import { clearShopOrderQueryCache } from 'src/query/queryClient';
 import {
   useAuthStore,
   type AuthAccessSnapshot,
@@ -98,6 +99,9 @@ export function useOAuthLogin(
   ) => {
     logAuthContext(message, payload);
     authStore.clearAccess();
+    if (resolvedScope === 'shop') {
+      clearShopOrderQueryCache();
+    }
     await supabase.auth.signOut();
 
     const redirectPath =
@@ -184,6 +188,10 @@ export function useOAuthLogin(
       ...payload,
       savedAt: new Date().toISOString(),
     });
+
+    if (payload.scope === 'shop') {
+      clearShopOrderQueryCache();
+    }
 
     if (payload.scope === 'app' || payload.scope === 'shop') {
       tenantStore.hydrateSelectedTenantFromAuth(payload.tenant);

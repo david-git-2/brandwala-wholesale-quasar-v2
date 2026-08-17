@@ -24,12 +24,6 @@
           <div class="text-subtitle2 text-weight-bold text-grey-9 item-name">
             {{ item.name }}
           </div>
-          <div
-            class="text-caption text-grey-6 q-mt-xs"
-            v-if="item.global_stock_id"
-          >
-            {{ $t('shop.listing_id') }}: {{ item.global_stock_id }}
-          </div>
           <!-- Dropship Selling Price Input -->
           <div v-if="cart?.shop_type === 'dropship'" class="q-mt-sm" style="max-width: 210px">
             <div class="column q-gutter-y-xs">
@@ -46,10 +40,15 @@
               />
               <div
                 v-if="item.unit_minimum_sell_price_amount"
-                class="text-caption text-grey-7 row items-center q-gutter-x-xs"
+                class="text-caption row items-center q-gutter-x-xs"
+                :class="isItemPriceBelowFloor(item) ? 'text-negative' : 'text-grey-7'"
                 style="font-size: 11px"
               >
-                <q-icon name="ph ph-info" size="14px" color="grey-6" />
+                <q-icon
+                  :name="isItemPriceBelowFloor(item) ? 'ph ph-warning' : 'ph ph-info'"
+                  size="14px"
+                  :color="isItemPriceBelowFloor(item) ? 'negative' : 'grey-6'"
+                />
                 <span>{{ $t('customer_dashboard.min_sell', { price: `${currencySymbol}${item.unit_minimum_sell_price_amount}` }) }}</span>
               </div>
               <q-btn
@@ -61,8 +60,13 @@
                 class="pill-btn q-px-sm self-start q-mt-xs"
                 :label="$t('shop.save_price')"
                 :loading="isSaving"
+                :disable="isItemPriceBelowFloor(item)"
                 @click="$emit('save-item-price', item)"
-              />
+              >
+                <q-tooltip v-if="isItemPriceBelowFloor(item)">
+                  {{ $t('shop.cart_price_below_floor') }}
+                </q-tooltip>
+              </q-btn>
             </div>
           </div>
         </q-item-section>
@@ -189,6 +193,7 @@ const props = defineProps<{
   formatItemTotal: (item: any) => string;
   formatBuyerUnitPrice: (item: any) => string;
   formatBuyerItemTotal: (item: any) => string;
+  isItemPriceBelowFloor: (item: any) => boolean;
 }>();
 
 defineEmits<{

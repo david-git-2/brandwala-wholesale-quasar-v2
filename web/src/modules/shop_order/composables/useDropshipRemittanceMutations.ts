@@ -1,7 +1,7 @@
 import { type Ref } from 'vue';
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import { courierRemittanceRepository } from '../repositories/courierRemittanceRepository';
-import { shopOrderQueryKeys } from '../services/shopOrderQueryKeys';
+import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { showSuccessNotification, showErrorNotification, parseSupabaseError } from 'src/utils/appFeedback';
 
 export function useDropshipRemittanceMutations(tenantSlug?: Ref<string | null>) {

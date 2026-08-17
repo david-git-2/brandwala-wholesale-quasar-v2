@@ -205,7 +205,7 @@ import { useQuasar } from 'quasar';
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
 import { dropshipCourierService } from '../services/dropshipCourierService';
 import { dropshipMerchantService } from '../services/dropshipMerchantService';
-import { shopOrderQueryKeys } from '../services/shopOrderQueryKeys';
+import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { useDeleteShopOrderMutation } from '../composables/useShopOrderMutations';
 import type { CourierServiceRow } from '../repositories/dropshipCourierRepository';
 import type { MerchantProfileRow } from '../repositories/dropshipMerchantRepository';

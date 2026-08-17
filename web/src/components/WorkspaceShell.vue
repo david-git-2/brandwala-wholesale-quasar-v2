@@ -137,6 +137,7 @@
             </q-menu>
           </q-btn>
           <q-btn
+            v-if="theme !== 'shop'"
             flat
             round
             dense

@@ -34,9 +34,12 @@
       <!-- Shop Header Hero -->
       <StorefrontHeader
         :shop-name="shopName"
+        :current-slug="shopSlug"
+        :shops="shops"
         :active-filter-count="activeFilterCount"
         @back="goDashboard"
         @open-filter="filterDrawerOpen = true"
+        @switch-shop="onSwitchShop"
       />
 
       <!-- Toolbar & Search & Active Filters -->
@@ -136,7 +139,10 @@ import {
 import { useShopCartQuery } from '../composables/useShopCartQuery';
 import { useShopCartMutations } from '../composables/useShopCartMutations';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useCustomerShopsQuery } from '../composables/useShopQuery';
 import { useStorefrontState } from '../composables/useStorefrontState';
+import type { CustomerAccessibleShop } from '../repositories/shopOrderRepository';
+import { rememberCatalogShop, shopCatalogPath } from '../utils/catalogShop';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import ProductQuickView from '../components/ProductQuickView.vue';
 import StorefrontHeader from '../components/StorefrontHeader.vue';
@@ -150,6 +156,7 @@ const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
 const authStore = useAuthStore();
+const sessionTenantId = computed(() => authStore.tenantId ?? 0);
 
 const {
   search,
@@ -209,7 +216,9 @@ const cartSaving = computed(
     removeItemMutation.isPending.value,
 );
 
-const shopName = computed(() => shopDetails.value?.name || 'Wholesale Storefront');
+const shopsQuery = useCustomerShopsQuery(computed(() => authStore.tenantId ?? null));
+const shops = computed(() => shopsQuery.data.value ?? []);
+const shopName = computed(() => shopDetails.value?.name || t('navigation.catalog'));
 const initialLoading = computed(() => isLoading.value && catalogItems.value.length === 0);
 const accessDenied = computed(() => isError.value && error.value?.message?.includes('access denied'));
 const notFound = computed(() => isError.value && !accessDenied.value);
@@ -247,7 +256,17 @@ const filteredCategoryOptions = computed(() => [
 
 const goDashboard = () => {
   const tenantSlug = route.params.tenantSlug ? `/${String(route.params.tenantSlug)}` : '';
-  void router.push(`${tenantSlug}/shop`);
+  void router.push(`${tenantSlug}/shop/dashboard`);
+};
+
+const onSwitchShop = (shop: CustomerAccessibleShop) => {
+  if (!shop.slug || shop.slug === shopSlug.value) return;
+  if (sessionTenantId.value) {
+    rememberCatalogShop(sessionTenantId.value, shop);
+  }
+  const tenantSlug =
+    typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : authStore.tenantSlug;
+  void router.push(shopCatalogPath(tenantSlug, shop.slug));
 };
 
 const goBack = () => {
@@ -404,9 +423,9 @@ watch([category, brand], () => {
 });
 
 watch(shopDetails, (newDetails) => {
-  if (newDetails?.id) {
-    localStorage.setItem('last_visited_shop_id', String(newDetails.id));
-    localStorage.setItem('last_visited_shop_slug', newDetails.slug);
+  const slug = newDetails?.slug || shopSlug.value;
+  if (newDetails?.id && slug && sessionTenantId.value) {
+    rememberCatalogShop(sessionTenantId.value, { id: newDetails.id, slug });
   }
 });
 </script>

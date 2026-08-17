@@ -53,4 +53,6 @@ Group chrome uses `parentGroupKey` → `getModuleDefinition` (name / `navIcon`).
 
 ## Related
 
-Navigation uses the same enablement + grant filter — see [LOGIN_NAV_PERMISSION_FLOW.md](../../LOGIN_NAV_PERMISSION_FLOW.md).
+Navigation uses the same enablement + grant filter — see [LOGIN_NAV_PERMISSION_FLOW.md](../LOGIN_NAV_PERMISSION_FLOW.md).
+
+Shop login home (`/:slug/shop/dashboard`) is **not** this registry. Canon: [SHOP_SCOPE.md](../shop_order/SHOP_SCOPE.md).

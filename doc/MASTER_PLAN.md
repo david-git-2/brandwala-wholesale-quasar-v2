@@ -15,7 +15,7 @@ One system manages:
 - **Procurement** — child orders and product-based costing feed **parent shipments** → [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md)
 - **Stock** — parent-owned inventory with optional **child display allocations** → [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md)
 - **Sales** — one invoice per sale owned by the parent; child sells and prints the customer view → [SALES_INVOICE.md](SALES_INVOICE.md)
-- **Shop** — child-owned storefronts, cart, orders from allocated stock → [SHOP_ORDER.md](SHOP_ORDER.md); dropship Process Order + dual invoice → [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md)
+- **Shop** — child-owned storefronts, cart, orders from allocated stock → [SHOP_ORDER.md](shop_order/SHOP_ORDER.md); customer portal home → [SHOP_SCOPE.md](shop_order/SHOP_SCOPE.md); dropship Process Order + dual invoice → [SHOP_ORDER_DROPSHIP.md](shop_order/SHOP_ORDER_DROPSHIP.md)
 - **Reports & treasury** — margin reports and payment settlement (read-side P&L) → [REPORTING_TREASURY.md](REPORTING_TREASURY.md)
 - **Capital** — investors, cost-share per shipment, investor portal → [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md)
 
@@ -180,11 +180,12 @@ All new/updated pages **must** follow [docs/UI_CONSISTENCY.md](../docs/UI_CONSIS
 
 ### 10.1 Implementation status & next step
 
-**Last updated:** 2026-08-16
+**Last updated:** 2026-08-17
 
 #### Next step (active work)
 
-1. Procurement shipment/warehouse track (W1–W9) is complete. See [procurement_stock/IMPLEMENTATION_ORDER.md](procurement_stock/IMPLEMENTATION_ORDER.md).
+1. **Shop order P15** — staff shop_order orchestration. Isolation track T0–T4 is done: [fix/SHOP_SCOPE_TENANT_ISOLATION.md](fix/SHOP_SCOPE_TENANT_ISOLATION.md). Tracker: [shop_order/SHOP_ORDER_PHASES.md](shop_order/SHOP_ORDER_PHASES.md).
+2. Procurement shipment/warehouse track (W1–W9) is complete. See [procurement_stock/IMPLEMENTATION_ORDER.md](procurement_stock/IMPLEMENTATION_ORDER.md).
 
 #### Completed (P0 redesign)
 
@@ -242,7 +243,9 @@ Per-tenant assignment table: §15.5 and domain docs.
 | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) | Shipments, stock, allocations, landed cost |
 | [PROCUREMENT_STOCK_ISSUES.md](PROCUREMENT_STOCK_ISSUES.md) | Redesign — cost, money, status; **one vendor/shipment**; **shipment→child assign + shared ATP**; shop real/dummy display |
 | [SALES_INVOICE.md](SALES_INVOICE.md) | Desk invoices (wholesale, retail account/direct, dropship), billing/recipient profiles |
-| [SHOP_ORDER.md](SHOP_ORDER.md) | Child-owned shops, cart, orders, permissions, allocated-stock storefronts |
+| [SHOP_ORDER.md](shop_order/SHOP_ORDER.md) | Child-owned shops, cart, orders, permissions, allocated-stock storefronts |
+| [SHOP_SCOPE.md](shop_order/SHOP_SCOPE.md) | Shop login (`/:slug/shop/*`): customer home first, then browse / orders / cart |
+| [fix/SHOP_SCOPE_TENANT_ISOLATION.md](fix/SHOP_SCOPE_TENANT_ISOLATION.md) | **Cross-tenant leak fix (T0–T4):** URL tenant = session, required `p_tenant_id` on customer RPCs, lean customer DTOs, legacy RPC drop |
 | [fix/SHOP_CREATE_TWO_STEP.md](fix/SHOP_CREATE_TWO_STEP.md) | Create = name + type; setup page for currencies |
 | [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) | Dropship shop type: Process Order on Orders, couriers on Shipping, dual invoice, payout |
 | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) | Margin reports, payments, balances, batch P&L |
@@ -546,8 +549,10 @@ Child: orders / product costing → Parent: shipment (local or international)
 | [GLOBAL_REFERENCE_DATA.md](GLOBAL_REFERENCE_DATA.md) | Reference catalogs |
 | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) | Procurement and stock |
 | [SALES_INVOICE.md](SALES_INVOICE.md) | Sales and invoicing |
-| [SHOP_ORDER.md](SHOP_ORDER.md) | Shops, cart, orders, customer permissions |
-| [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) | Dropship Process Order, dual invoice, returns |
+| [SHOP_ORDER.md](shop_order/SHOP_ORDER.md) | Shops, cart, orders, customer permissions |
+| [SHOP_SCOPE.md](shop_order/SHOP_SCOPE.md) | Customer shop portal — dashboard first |
+| [fix/SHOP_SCOPE_TENANT_ISOLATION.md](fix/SHOP_SCOPE_TENANT_ISOLATION.md) | Shop tenant isolation + customer API cleanup |
+| [SHOP_ORDER_DROPSHIP.md](shop_order/SHOP_ORDER_DROPSHIP.md) | Dropship Process Order, dual invoice, returns |
 | [REPORTING_TREASURY.md](REPORTING_TREASURY.md) | Reports and treasury |
 | [INVESTOR_CAPITAL.md](INVESTOR_CAPITAL.md) | Investor capital and portal |
 | [docs/UI_CONSISTENCY.md](../docs/UI_CONSISTENCY.md) | UI patterns |

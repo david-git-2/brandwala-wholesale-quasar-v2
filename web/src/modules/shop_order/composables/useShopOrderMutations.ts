@@ -12,7 +12,7 @@ export function useProcessDropshipOrderMutation() {
       if (res.success) {
         showSuccessNotification('Order opened for processing.');
         void queryClient.invalidateQueries({ queryKey: ['shopOrder', 'staffOrders'] });
-        void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetail(orderId) });
+        void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetailRoot() });
       } else {
         handleApiFailure(res as any, res.error || 'Failed to process dropship order');
       }
@@ -33,7 +33,7 @@ export function useUpdateOrderStatusMutation() {
     onSuccess: (_, variables) => {
       showSuccessNotification('Order status updated successfully.');
       void queryClient.invalidateQueries({ queryKey: ['shopOrder', 'staffOrders'] });
-      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetail(variables.orderId) });
+      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetailRoot() });
     },
     onError: (err: any) => {
       handleApiFailure({ success: false }, err.message || 'Failed to update order status');
@@ -62,7 +62,7 @@ export function useSubmitStaffPricingMutation() {
     },
     onSuccess: (_, variables) => {
       showSuccessNotification('Pricing submitted successfully.');
-      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetail(variables.orderId) });
+      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetailRoot() });
       void queryClient.invalidateQueries({ queryKey: ['shopOrder', 'staffOrders'] });
     },
     onError: (err: any) => {
@@ -78,7 +78,7 @@ export function useConfirmShopOrderMutation() {
     mutationFn: (orderId: number) => shopOrderRepository.confirmShopOrder(orderId),
     onSuccess: (_, orderId) => {
       showSuccessNotification('Order confirmed successfully.');
-      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetail(orderId) });
+      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetailRoot() });
       void queryClient.invalidateQueries({ queryKey: ['shopOrder', 'staffOrders'] });
     },
     onError: (err: any) => {
@@ -94,7 +94,7 @@ export function usePlaceOrderForProcurementMutation() {
     mutationFn: (orderId: number) => shopOrderRepository.placeShopOrderForProcurement(orderId),
     onSuccess: (_, orderId) => {
       showSuccessNotification('Order placed for procurement.');
-      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetail(orderId) });
+      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetailRoot() });
       void queryClient.invalidateQueries({ queryKey: ['shopOrder', 'staffOrders'] });
     },
     onError: (err: any) => {
@@ -110,7 +110,7 @@ export function useFulfillOrderToInvoiceMutation() {
     mutationFn: (orderId: number) => shopOrderRepository.fulfillShopOrderToInvoice(orderId),
     onSuccess: (_, orderId) => {
       showSuccessNotification('Order fulfilled to invoice successfully.');
-      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetail(orderId) });
+      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetailRoot() });
       void queryClient.invalidateQueries({ queryKey: ['shopOrder', 'staffOrders'] });
     },
     onError: (err: any) => {
@@ -143,7 +143,7 @@ export function useUpdateOrderChargesMutation() {
     },
     onSuccess: (_, variables) => {
       showSuccessNotification('Order charges updated successfully.');
-      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetail(variables.orderId) });
+      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetailRoot() });
     },
     onError: (err: any) => {
       handleApiFailure({ success: false }, err.message || 'Failed to update order charges');
@@ -158,7 +158,7 @@ export function useDeleteShopOrderMutation() {
     mutationFn: (orderId: number) => shopOrderRepository.deleteShopOrder(orderId),
     onSuccess: (_, orderId) => {
       showSuccessNotification('Order deleted successfully.');
-      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetail(orderId) });
+      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetailRoot() });
       void queryClient.invalidateQueries({ queryKey: ['shopOrder', 'staffOrders'] });
     },
     onError: (err: any) => {

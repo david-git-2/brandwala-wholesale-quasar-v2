@@ -5,7 +5,7 @@
 export type ShopType = 'vendor_catalog' | 'fixed_price' | 'dropship';
 export type ShopOrderMode = 'procurement_intent' | 'checkout_fixed' | 'checkout_wholesale';
 
-/** Row from `browse_shop_catalog` RPC. */
+/** Row from `browse_shop_catalog_for_customer` RPC. */
 export interface ShopCatalogItem {
   product_id: number;
   product_name: string;
@@ -22,6 +22,18 @@ export interface ShopCatalogItem {
   global_stock_allocation_id: number | null;
   global_stock_id: number | null;
   minimum_order_quantity: number | null;
+}
+
+export interface ShopCatalogBrowseResult {
+  data: ShopCatalogItem[];
+  meta: {
+    total: number;
+    page: number;
+    page_size: number;
+    total_pages: number;
+    shop?: Record<string, unknown> | null;
+    permissions?: Record<string, unknown> | null;
+  };
 }
 
 export interface Shop {
@@ -181,6 +193,83 @@ export type ShopOrderStatus =
   | 'returned'
   | 'payment_received';
 
+export interface CustomerOrderListItem {
+  id: number;
+  shop_id: number;
+  shop_name: string;
+  shop_slug: string;
+  shop_type_snapshot: ShopType;
+  order_no: string;
+  status: ShopOrderStatus;
+  item_count: number;
+  total_amount: number;
+  currency_symbol: string | null;
+  created_at: string;
+}
+
+export interface CustomerOrderDetailOrder {
+  id: number;
+  tenant_id: number;
+  shop_id: number;
+  shop_name: string | null;
+  shop_slug: string | null;
+  customer_group_id: number;
+  cart_id: number | null;
+  order_no: string;
+  name: string;
+  shop_type_snapshot: ShopType;
+  order_mode_snapshot: ShopOrderMode;
+  is_negotiable_snapshot: boolean;
+  status: ShopOrderStatus;
+  negotiate_round: number;
+  cargo_rate: number | null;
+  conversion_rate: number | null;
+  profit_rate: number | null;
+  first_offer_rate: number | null;
+  final_offer_rate: number | null;
+  profit_basis: 'purchase' | 'total_cost' | 'sale_price' | null;
+  package_weight_kg: number | null;
+  recipient_name: string | null;
+  recipient_phone: string | null;
+  recipient_phone_secondary: string | null;
+  shipping_address: string | null;
+  shipping_district: string | null;
+  shipping_thana: string | null;
+  recipient_profile_id: number | null;
+  billing_profile_id: number | null;
+  placed_at: string | null;
+  fulfilled_at: string | null;
+  shop_sell_currency_id: number | null;
+  shop_buy_currency_id: number | null;
+  shop_sell_currency_symbol: string | null;
+  shop_buy_currency_symbol: string | null;
+  created_at: string;
+  updated_at: string;
+  cod_charge_amount: number;
+  delivery_charge_amount: number;
+  print_charge_amount: number;
+  packing_charge_amount: number;
+  discount_amount: number;
+  is_prepaid_snapshot: boolean;
+  delivery_instructions: string | null;
+  deduct_charges_from_margin: boolean;
+  deduct_cod_from_margin: boolean;
+  deduct_delivery_from_margin: boolean;
+  deduct_print_from_margin: boolean;
+  deduct_packing_from_margin: boolean;
+  item_count: number;
+  total_amount: number;
+  cod_collect_amount: number | null;
+  courier_name: string | null;
+  courier_awb_number: string | null;
+  tracking_url: string | null;
+  payout_settlement_status: string | null;
+}
+
+export interface CustomerOrderDetail {
+  order: CustomerOrderDetailOrder;
+  items: ShopOrderItem[];
+}
 
 export interface ShopOrder {
   id: number;

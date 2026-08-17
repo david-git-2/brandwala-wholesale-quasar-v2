@@ -2,7 +2,6 @@ import type { RouteRecordRaw } from 'vue-router';
 
 import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
 import { createInvestorAccessGuard } from 'src/modules/investor_portal/guards/investorAccessGuard';
-import { getShopLoginRouteLocation } from 'src/modules/tenant/utils/tenantRouteContext';
 
 const helpRoutes: RouteRecordRaw[] = [
   {
@@ -42,24 +41,10 @@ const helpRoutes: RouteRecordRaw[] = [
   },
   {
     path: '/:tenantSlug?/shop/help',
-    component: () => import('layouts/ShopLayout.vue'),
-    children: [
-      {
-        path: '',
-        name: 'shop-help-center',
-        component: () => import('../pages/HelpCenterPage.vue'),
-        props: { helpScope: 'shop' },
-        beforeEnter: createAccessGuard({
-          loginRoute: (to) =>
-            getShopLoginRouteLocation(to, {
-              redirect: to.fullPath,
-            }),
-          requiredScope: 'shop',
-          requireTenantContext: true,
-          allowedRoles: ['customer_admin', 'customer_negotiator', 'customer_staff'],
-        }),
-      },
-    ],
+    redirect: (to) => {
+      const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : null;
+      return tenantSlug ? `/${tenantSlug}/shop/dashboard` : '/shop/dashboard';
+    },
   },
   {
     path: '/:tenantSlug?/investor/help',

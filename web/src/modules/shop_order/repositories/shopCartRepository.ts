@@ -43,6 +43,7 @@ export interface CartData {
     global_stock_allocation_id: number | null;
     quantity: number;
     minimum_quantity: number;
+    minimum_order_quantity?: number | null;
     unit_list_price_amount: number | null;
     unit_list_price_currency_id: number | null;
     unit_sell_price_amount: number | null;
@@ -165,8 +166,10 @@ export interface ActiveCartItem {
   updated_at: string;
 }
 
-const listActiveShopCarts = async (): Promise<ActiveCartItem[]> => {
-  const { data, error } = await supabase.rpc('list_active_shop_carts');
+const listActiveShopCarts = async (tenantId: number): Promise<ActiveCartItem[]> => {
+  const { data, error } = await supabase.rpc('list_customer_active_carts', {
+    p_tenant_id: tenantId,
+  });
 
   if (error) {
     throw error;

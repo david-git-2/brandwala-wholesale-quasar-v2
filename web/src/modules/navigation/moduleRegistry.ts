@@ -1040,8 +1040,8 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     routes: [
       {
         scope: 'shop',
-        title: 'Browse',
-        caption: 'Browse available shops and products',
+        title: 'Catalog',
+        caption: 'Browse products and order',
         icon: 'ph ph-storefront',
         routeSegment: 'browse',
         requiredAction: 'view',
@@ -1081,8 +1081,8 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
       },
       {
         scope: 'shop',
-        title: 'My Orders',
-        caption: 'Track your placed and pending orders',
+        title: 'Orders',
+        caption: 'Track and reply',
         icon: 'ph ph-receipt',
         routeSegment: 'orders',
         requiredAction: 'view',

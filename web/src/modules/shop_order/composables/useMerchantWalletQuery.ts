@@ -1,21 +1,25 @@
 import { computed, type Ref } from 'vue';
 import { useQuery } from '@tanstack/vue-query';
-import { shopOrderQueryKeys } from '../services/shopOrderQueryKeys';
+import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { merchantWalletRepository } from '../repositories/merchantWalletRepository';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
 
 export function useMerchantWalletQuery(enabled: Ref<boolean> | boolean = true) {
-  const enabledRef = computed(() =>
-    typeof enabled === 'boolean' ? enabled : enabled.value,
-  );
+  const authStore = useAuthStore();
+  const tenantId = computed(() => authStore.tenantId ?? 0);
+  const enabledRef = computed(() => {
+    const flag = typeof enabled === 'boolean' ? enabled : enabled.value;
+    return flag && tenantId.value > 0;
+  });
 
   const summaryQuery = useQuery({
-    queryKey: shopOrderQueryKeys.merchantWalletSummary(),
+    queryKey: computed(() => shopOrderQueryKeys.merchantWalletSummary(tenantId.value)),
     queryFn: () => merchantWalletRepository.getMySummary(),
     enabled: enabledRef,
   });
 
   const ledgerQuery = useQuery({
-    queryKey: shopOrderQueryKeys.merchantWalletLedger(),
+    queryKey: computed(() => shopOrderQueryKeys.merchantWalletLedger(tenantId.value)),
     queryFn: () => merchantWalletRepository.listMyLedger({ limit: 50, offset: 0 }),
     enabled: enabledRef,
   });

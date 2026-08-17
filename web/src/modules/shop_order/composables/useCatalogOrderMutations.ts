@@ -25,7 +25,7 @@ export function useSaveCatalogRatesMutation() {
     },
     onSuccess: (_, variables) => {
       showSuccessNotification('Order calculation rates updated');
-      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetail(variables.orderId) });
+      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetailRoot() });
     },
     onError: (err: any) => {
       handleApiFailure(err, 'Failed to update order rates');
@@ -70,7 +70,7 @@ export function useStaffPriceCatalogOrderMutation() {
     },
     onSuccess: (_, variables) => {
       showSuccessNotification('Costing and staff offer prices saved (Priced)');
-      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetail(variables.orderId) });
+      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetailRoot() });
     },
     onError: (err: any) => {
       handleApiFailure(err, 'Failed to save staff pricing');
@@ -97,7 +97,7 @@ export function useStaffFinalizeCatalogPricesMutation() {
     },
     onSuccess: (_, variables) => {
       showSuccessNotification('Final offer prices sent to customer');
-      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetail(variables.orderId) });
+      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetailRoot() });
     },
     onError: (err: any) => {
       handleApiFailure(err, 'Failed to finalize offer prices');
@@ -114,7 +114,7 @@ export function useStaffStartCatalogProcurementMutation() {
     },
     onSuccess: (_, orderId) => {
       showSuccessNotification('Order status updated to Procuring');
-      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetail(orderId) });
+      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetailRoot() });
     },
     onError: (err: any) => {
       handleApiFailure(err, 'Failed to start procurement');
@@ -137,7 +137,7 @@ export function useStaffSetCatalogOrderedQtyMutation() {
     },
     onSuccess: (_, variables) => {
       showSuccessNotification('Ordered quantities saved (Ordered)');
-      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetail(variables.orderId) });
+      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetailRoot() });
     },
     onError: (err: any) => {
       handleApiFailure(err, 'Failed to save ordered quantities');
@@ -160,7 +160,7 @@ export function useStaffSetCatalogDeliveredQtyMutation() {
     },
     onSuccess: (_, variables) => {
       showSuccessNotification('Delivered quantities saved (Delivered)');
-      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetail(variables.orderId) });
+      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetailRoot() });
     },
     onError: (err: any) => {
       handleApiFailure(err, 'Failed to save delivered quantities');

@@ -9864,7 +9864,7 @@ export type Database = {
         Returns: Json
       }
       auth_investor_id: { Args: never; Returns: number }
-      browse_shop_catalog: {
+      browse_shop_catalog_for_customer: {
         Args: {
           p_brand?: string
           p_category?: string
@@ -9872,6 +9872,7 @@ export type Database = {
           p_offset?: number
           p_search?: string
           p_shop_slug: string
+          p_tenant_id: number
         }
         Returns: Json
       }
@@ -10971,6 +10972,10 @@ export type Database = {
         Args: { p_costing_file_id: number }
         Returns: string
       }
+      current_customer_group_id: {
+        Args: { p_tenant_id: number }
+        Returns: number
+      }
       current_tenant_id: { Args: never; Returns: number }
       current_user_email: { Args: never; Returns: string }
       customer_can_select_shop: {
@@ -11264,6 +11269,10 @@ export type Database = {
           middleman_margin_total: number
           order_count: number
         }[]
+      }
+      get_customer_shop_order: {
+        Args: { p_order_id: number; p_tenant_id: number }
+        Returns: Json
       }
       get_dropship_shop_readiness: {
         Args: { p_shop_id: number }
@@ -11785,24 +11794,6 @@ export type Database = {
         Returns: boolean
       }
       koba_order_allowed: { Args: { p_order_id: number }; Returns: boolean }
-      list_active_shop_carts: {
-        Args: never
-        Returns: {
-          cart_id: number
-          cart_total: number
-          currency_code: string
-          currency_id: number
-          currency_symbol: string
-          item_count: number
-          see_price: boolean
-          shop_id: number
-          shop_logo_url: string
-          shop_name: string
-          shop_slug: string
-          shop_type: string
-          updated_at: string
-        }[]
-      }
       list_allocatable_stock_paginated: {
         Args: {
           p_page?: number
@@ -11979,6 +11970,24 @@ export type Database = {
             }
             Returns: Json
           }
+      list_customer_active_carts: {
+        Args: { p_tenant_id: number }
+        Returns: {
+          cart_id: number
+          cart_total: number
+          currency_code: string
+          currency_id: number
+          currency_symbol: string
+          item_count: number
+          see_price: boolean
+          shop_id: number
+          shop_logo_url: string
+          shop_name: string
+          shop_slug: string
+          shop_type: string
+          updated_at: string
+        }[]
+      }
       list_customer_group_member_grants: {
         Args: { p_cgm_id: number }
         Returns: {
@@ -12006,6 +12015,46 @@ export type Database = {
           product_code: string
           product_id: number
           requested_quantity: number
+          tenant_id: number
+        }[]
+      }
+      list_customer_shop_orders: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_status_bucket?: string
+          p_tenant_id: number
+        }
+        Returns: {
+          created_at: string
+          currency_symbol: string
+          id: number
+          item_count: number
+          order_no: string
+          shop_id: number
+          shop_name: string
+          shop_slug: string
+          shop_type_snapshot: Database["public"]["Enums"]["shop_type_enum"]
+          status: Database["public"]["Enums"]["shop_order_status"]
+          total_amount: number
+        }[]
+      }
+      list_customer_shops: {
+        Args: { p_tenant_id: number }
+        Returns: {
+          categories: Json
+          category_ids: number[]
+          description: string
+          id: number
+          is_negotiable: boolean
+          name: string
+          order_mode: Database["public"]["Enums"]["shop_order_mode_enum"]
+          see_price: boolean
+          sell_currency_code: string
+          sell_currency_id: number
+          sell_currency_symbol: string
+          shop_type: Database["public"]["Enums"]["shop_type_enum"]
+          slug: string
           tenant_id: number
         }[]
       }
@@ -12524,22 +12573,6 @@ export type Database = {
         }
         Returns: Json
       }
-      list_shop_orders_for_customer: {
-        Args: { p_limit?: number; p_offset?: number; p_shop_id: number }
-        Returns: {
-          created_at: string
-          customer_group_id: number
-          id: number
-          item_count: number
-          name: string
-          order_no: string
-          shop_id: number
-          status: Database["public"]["Enums"]["shop_order_status"]
-          tenant_id: number
-          total_amount: number
-          updated_at: string
-        }[]
-      }
       list_shop_orders_for_staff: {
         Args: {
           p_limit?: number
@@ -12634,22 +12667,6 @@ export type Database = {
           updated_at: string
           vendor_code: string
           vendor_filters: Json
-        }[]
-      }
-      list_shops_for_customer: {
-        Args: { p_tenant_id?: number }
-        Returns: {
-          categories: Json
-          category_ids: number[]
-          description: string
-          id: number
-          is_negotiable: boolean
-          name: string
-          order_mode: Database["public"]["Enums"]["shop_order_mode_enum"]
-          see_price: boolean
-          shop_type: Database["public"]["Enums"]["shop_type_enum"]
-          slug: string
-          tenant_id: number
         }[]
       }
       list_stock_locations: {

@@ -1,6 +1,7 @@
 import type { RouteRecordRaw } from 'vue-router';
 
 import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
+import { validateShopTenantSlug } from 'src/modules/auth/guards/validateShopTenantSlug';
 import {
   getAppRouteLocation,
   getShopDashboardRouteLocation,
@@ -91,35 +92,23 @@ const dashboardRoutes: RouteRecordRaw[] = [
               });
             }
 
-            const routeTenantSlug = getTenantSlugFromRoute(to);
-            const sessionTenantSlug = authStore.tenantSlug;
-
-            if (!sessionTenantSlug) {
-              return getShopLoginRouteLocation(to, {
-                login_error: 'invalid_tenant',
-              });
+            const slugCheck = validateShopTenantSlug({ authStore, to });
+            if (slugCheck !== true) {
+              return slugCheck;
             }
 
-            if (!routeTenantSlug) {
+            const routeTenantSlug = getTenantSlugFromRoute(to);
+            if (!routeTenantSlug && authStore.tenantSlug) {
               return getShopDashboardRouteLocation({
                 ...to,
                 params: {
                   ...(to.params ?? {}),
-                  tenantSlug: sessionTenantSlug,
+                  tenantSlug: authStore.tenantSlug,
                 },
               });
             }
 
-            if (routeTenantSlug === sessionTenantSlug) {
-              return true;
-            }
-
-            return getShopDashboardRouteLocation({
-              ...to,
-              query: {
-                tenant_slug: sessionTenantSlug,
-              },
-            });
+            return true;
           },
         }),
       },

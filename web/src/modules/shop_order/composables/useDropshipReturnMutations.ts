@@ -1,7 +1,7 @@
 import { type Ref } from 'vue';
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import { supabase } from 'src/boot/supabase';
-import { shopOrderQueryKeys } from '../services/shopOrderQueryKeys';
+import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { showSuccessNotification, showErrorNotification, parseSupabaseError } from 'src/utils/appFeedback';
 
 export type ReturnCondition = 'perfect' | 'open_box' | 'damaged';

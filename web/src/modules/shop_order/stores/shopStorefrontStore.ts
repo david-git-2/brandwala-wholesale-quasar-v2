@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { handleApiFailure } from 'src/utils/appFeedback';
 import { shopOrderService } from '../services/shopOrderService';
 import { supabase } from 'src/boot/supabase';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
 
 export const useShopStorefrontStore = defineStore('shopStorefront', {
   state: () => ({
@@ -35,7 +36,13 @@ export const useShopStorefrontStore = defineStore('shopStorefront', {
       this.error = null;
 
       try {
-        const result = await shopOrderService.browseShopCatalog(shopSlug, {
+        const tenantId = useAuthStore().tenantId;
+        if (!tenantId) {
+          this.error = 'Missing tenant context';
+          return { success: false as const, error: this.error };
+        }
+
+        const result = await shopOrderService.browseShopCatalog(tenantId, shopSlug, {
           search: opts.search ?? null,
           category: opts.category ?? null,
           brand: opts.brand ?? null,

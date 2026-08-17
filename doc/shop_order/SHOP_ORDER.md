@@ -4,7 +4,7 @@ BrandWala / TradeFlow BD uses a **parent module** for customer-facing storefront
 
 This document is written as a **reusable domain pattern**: shop types, two-layer customer permissions, multi-currency amounts, and display-vs-sellable quantity are applicable beyond this codebase whenever a B2B portal must serve multiple catalog modes from shared inventory.
 
-Related: [MASTER_PLAN.md](MASTER_PLAN.md), [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md), [SALES_INVOICE.md](SALES_INVOICE.md), [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) (dropship Process Order + dual invoice), [GLOBAL_REFERENCE_DATA.md](GLOBAL_REFERENCE_DATA.md), [TENANT_MODEL_AND_ACCESS.md](TENANT_MODEL_AND_ACCESS.md), [APP_SCOPES_AND_ACCESS.md](APP_SCOPES_AND_ACCESS.md).
+Related: [MASTER_PLAN.md](MASTER_PLAN.md), [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md), [SALES_INVOICE.md](SALES_INVOICE.md), [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) (dropship Process Order + dual invoice), [SHOP_SCOPE.md](SHOP_SCOPE.md) (customer shop login: home first), [GLOBAL_REFERENCE_DATA.md](GLOBAL_REFERENCE_DATA.md), [TENANT_MODEL_AND_ACCESS.md](TENANT_MODEL_AND_ACCESS.md), [APP_SCOPES_AND_ACCESS.md](APP_SCOPES_AND_ACCESS.md).
 
 ---
 
@@ -227,6 +227,7 @@ Redirects:
 - `/app/shop/dropship` → `/app/shop/orders?shopType=dropship`
 - `/app/shop/fulfillment` → `/app/shop/orders`
 - `/shop/stores` → `/shop/browse`
+- `/shop/browse` → last/first accessible shop (`CatalogEntryPage`); products live at `/shop/browse/:shopSlug`
 - `/app/store/*`, `/app/commerce/*` → `/app/shop/*` (per-tenant flag)
 
 ### Assignment rules
@@ -810,8 +811,26 @@ stateDiagram-v2
 | `customer_confirm_shop_order` | Customer | `final_offered` → `confirmed` |
 | `staff_start_catalog_procurement` / ordered / delivered RPCs | Staff | Native Phase 2 — see fix spec |
 | `fulfill_shop_order_to_invoice` | Staff → `global_invoices` | Stock-backed / checkout; catalog deliver may share invoice patterns |
-| `list_shop_orders_for_customer` / `list_shop_orders_for_staff` | Scoped lists | Filter by shop type |
+| `list_customer_shop_orders` / `get_customer_shop_order` | Customer | **Required `p_tenant_id`** (§8.4). One call for all shops; lean list DTO; detail raises on tenant mismatch |
+| `list_shop_orders_for_staff` | Staff | Tenant-scoped desk list; filter by shop type. Never used on shop login |
 | Dropship advance / wallet RPCs | Staff | **Unchanged** — [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) |
+
+### 8.4 Tenant isolation on customer reads (locked)
+
+One write model, **three read shapes**: customer list, customer detail, staff desk. Customer paths never use `select('*')` on `shop_orders`.
+
+| Rule | Detail |
+|------|--------|
+| Session | `(user, tenant_id, customer_group_id)`; `tenant_id` resolves from the URL `:tenantSlug`, not from app-workspace storage |
+| RPC args | Customer RPCs take a **required** `p_tenant_id`. Null → empty. `null` never means "all tenants" |
+| Group | Resolved once by `current_customer_group_id(p_tenant_id)`; `is_cart_owner` delegates to it |
+| Row filter | `tenant_id = p_tenant_id` **and** `customer_group_id = <resolved>` |
+| Shop identity | `(p_tenant_id, slug)` or a `shop_id` verified against `p_tenant_id` — `shops.slug` is unique per `(tenant_id, slug)` only |
+| RLS | Row policies are a backstop for *who*, not a substitute for *which tenant* |
+
+Customer RPC set: `list_customer_shops`, `list_customer_active_carts`, `list_customer_shop_orders`, `get_customer_shop_order`, `browse_shop_catalog_for_customer`. **Retired** (tenant-optional or header-resolved): `list_shops_for_customer`, `list_active_shop_carts`, `list_shop_orders_for_customer`, `browse_shop_catalog(p_shop_slug, …)`.
+
+Full analysis, phases, and drop plan: [fix/SHOP_SCOPE_TENANT_ISOLATION.md](../fix/SHOP_SCOPE_TENANT_ISOLATION.md). Customer portal canon: [SHOP_SCOPE.md](SHOP_SCOPE.md).
 
 ---
 
@@ -884,6 +903,7 @@ All new pages follow [docs/UI_CONSISTENCY.md](../docs/UI_CONSISTENCY.md).
 | Group shop profile | `/app/shop/customer-groups/:id/permissions` | `shop_permissions` |
 | Shop pricing | `/app/shop/shops/:id/pricing` | `shop_pricing` — retail + dropship only |
 | Allocation picker | `/app/shop/shops/:id/stock-pick` | `shop_pricing` |
+| Customer home | `/shop/dashboard` | Shop login landing — shops + next-order. Canon: [SHOP_SCOPE.md](SHOP_SCOPE.md) |
 | Customer storefront | `/shop/browse/:shopSlug` | `shop_storefront` |
 | Cart | `/shop/cart` | `shop_cart` |
 | Checkout | `/shop/checkout` | `shop_cart` |
@@ -963,6 +983,8 @@ To ensure admin users understand all configuration choices, a bilingual Help Dia
 | D-SH10 | Listing FK | `global_stock_id` only. `is_active` = staff catalog flag. ATP computed. |
 | D-SH11 | Display qty | Override affects display only; checkout capped by `available_to_sell` |
 | D-SH12 | Dropship | `minimum_sell_price` floor; dual amounts on invoice per **D-SI***; ops desk per [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) **D-SD*** |
+| D-SH13 | Customer tenancy | Shop session tenant comes from the URL `:tenantSlug`. Customer RPCs require `p_tenant_id`; null denies. Rows filter `tenant_id` **and** `customer_group_id`. RLS is not tenancy — §8.4, [fix/SHOP_SCOPE_TENANT_ISOLATION.md](../fix/SHOP_SCOPE_TENANT_ISOLATION.md) **D-SC1–D-SC5** |
+| D-SH14 | Read shapes | One `shop_orders` write model, three read DTOs (customer list, customer detail, staff desk). No `select('*')` and no per-shop fan-out on customer paths — **D-SC6** |
 
 ---
 
@@ -986,6 +1008,8 @@ To ensure admin users understand all configuration choices, a bilingual Help Dia
 | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) | Allocations, parent pool |
 | [SALES_INVOICE.md](SALES_INVOICE.md) | Desk invoice types, dropship dual totals |
 | [SHOP_ORDER_DROPSHIP.md](SHOP_ORDER_DROPSHIP.md) | Dropship Process Order, dual invoice handoff, returns & deduction |
+| [SHOP_SCOPE.md](SHOP_SCOPE.md) | Customer portal canon (`/:slug/shop/*`): home, nav, customer API surface |
+| [fix/SHOP_SCOPE_TENANT_ISOLATION.md](../fix/SHOP_SCOPE_TENANT_ISOLATION.md) | Cross-tenant leak fix: session boundary, tenant-scoped customer RPCs, legacy drop (§8.4) |
 | [GLOBAL_REFERENCE_DATA.md](GLOBAL_REFERENCE_DATA.md) | Currencies |
 | [TENANT_MODEL_AND_ACCESS.md](TENANT_MODEL_AND_ACCESS.md) | Child tenants, customer groups |
 | [APP_SCOPES_AND_ACCESS.md](APP_SCOPES_AND_ACCESS.md) | Shop scope guards |

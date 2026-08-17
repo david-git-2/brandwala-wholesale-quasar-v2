@@ -1,277 +1,193 @@
 <template>
   <q-page class="q-pa-md bw-page theme-shop">
     <div class="q-gutter-y-md">
-      <!-- Global Search Results Dialog -->
-      <CustomerSearchResultsModal
-        v-model="showSearchResultsModal"
-        :executed-search-query="executedSearchQuery"
-        :searching="searching"
-        :search-results="searchResults"
-        @select-product="goToStorefrontWithProduct"
-      />
+      <CustomerDashboardSkeleton v-if="shopsQuery.isLoading.value" />
 
-      <!-- Skeleton Loading State -->
-      <CustomerDashboardSkeleton v-if="loading" />
-
-      <!-- Error State -->
-      <q-banner v-else-if="error" class="bg-negative text-white" rounded>
-        {{ error }}
+      <q-banner v-else-if="shopsError" class="bw-status-banner bg-negative text-white" rounded>
+        {{ shopsError }}
       </q-banner>
 
       <template v-else>
-        <!-- 1. Hero Welcome & Search Section -->
-        <CustomerDashboardHero
-          v-model:searchQuery="searchQuery"
-          :tenant-name="tenantName"
-          :customer-name="customerName"
-          @search="triggerSearch"
-        />
+        <CustomerDashboardHero :customer-name="customerName" />
 
-        <!-- 3. KPI / Stat Summary Cards -->
-        <CustomerDashboardStatCards
-          v-if="shops.length > 0 || recentOrders.length > 0"
-          :active-shops-count="shops.length"
-          :recent-orders-count="recentOrders.length"
-          :total-outlay="totalOutlay"
-          :currency-symbol="defaultCurrencySymbol"
-        />
-
-        <!-- 4. Wholesale Shops & Categories Grid -->
-        <CustomerDashboardShopsGrid
+        <CustomerDashboardStatusStrip
           v-if="shops.length > 0"
-          :shops="shops"
-          :categories="categories"
-          @open-shop="openShop"
-          @open-shop-category="openShopCategory"
+          :glance="glance"
+          :loading="ordersQuery.isLoading.value"
+          @select-bucket="goOrders"
         />
 
-        <!-- 5. Operational Workspace (Action Hub & Recent Orders) -->
-        <div class="row q-col-gutter-md q-col-gutter-md-lg">
-          <!-- Left: Action Hub -->
-          <div class="col-12 col-md-6">
-            <CustomerDashboardActionHub
-              :latest-order-label="latestOrderLabel"
-              @go-browse="goBrowse"
-              @go-orders="goOrders"
-              @view-latest-order="viewLatestOrder"
-              @go-documentation="goDocumentation"
-            />
-          </div>
-
-          <!-- Right: Recent Activity / Last 3 Orders -->
-          <div class="col-12 col-md-6">
-            <CustomerDashboardRecentOrders
-              :recent-orders="recentOrders"
-              :get-currency-symbol="getCurrencySymbol"
-              @go-orders="goOrders"
-              @go-browse="goBrowse"
-              @view-order-detail="viewOrderDetail"
-            />
-          </div>
+        <div
+          v-if="shops.length === 0"
+          class="column items-center justify-center q-pa-xl text-center empty-state-block floating-surface"
+        >
+          <q-icon name="ph ph-storefront" size="56px" color="grey-4" class="q-mb-sm" />
+          <div class="text-subtitle1 text-weight-bold">{{ $t('customer_dashboard.no_shops_title') }}</div>
+          <p class="text-body2 text-grey-6 q-mb-none">{{ $t('customer_dashboard.no_shops_sub') }}</p>
         </div>
+
+        <CustomerDashboardResumeRow
+          v-else
+          v-model:searchQuery="searchQuery"
+          :continue-shop="continueShop"
+          :cart-item-count="resumeCartCount"
+          :show-search="true"
+          @continue="openContinueShop"
+          @search="triggerSearch"
+          @go-cart="goCart"
+        />
+
+        <CustomerDashboardShopsGrid
+          v-if="shops.length > 1"
+          :shops="shops"
+          :last-visited-shop-id="lastVisitedShopId"
+          @open-shop="openShop"
+        />
+
+        <CustomerDashboardRecentOrders
+          v-if="shops.length > 0"
+          :recent-orders="recentOrders"
+          :loading="ordersQuery.isLoading.value"
+          :error="ordersError"
+          @go-orders="goOrders"
+          @view-order-detail="viewOrderDetail"
+        />
       </template>
     </div>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { shopOrderRepository } from 'src/modules/shop_order/repositories/shopOrderRepository';
 import { useCustomerShopsQuery } from 'src/modules/shop_order/composables/useShopQuery';
-import { useShopCategoryListQuery } from 'src/modules/shop_order/composables/useShopCategoryQuery';
+import { useCustomerDashboardOrdersQuery } from 'src/modules/shop_order/composables/useCustomerOrdersQuery';
+import { useActiveShopCartsQuery } from 'src/modules/shop_order/composables/useActiveShopCartsQuery';
+import type { CustomerAccessibleShop } from 'src/modules/shop_order/repositories/shopOrderRepository';
 import {
-  useCustomerDashboardOrdersQuery,
-  useShopCurrenciesMapQuery,
-} from 'src/modules/shop_order/composables/useCustomerOrdersQuery';
-import { useThriftCurrenciesQuery } from 'src/modules/thrift/currency/composables/useThriftCurrenciesQuery';
-import { handleApiFailure } from 'src/utils/appFeedback';
+  getLastVisitedShopId,
+  rememberCatalogShop,
+  resolveCartShopId,
+  shopCartPath,
+  shopCatalogPath,
+} from 'src/modules/shop_order/utils/catalogShop';
+import { countOrderGlance, isWaitingStatus, type OrderGlanceBucket } from '../utils/customerDashboardStatus';
 
 import CustomerDashboardHero from '../components/CustomerDashboardHero.vue';
-import CustomerSearchResultsModal from '../components/CustomerSearchResultsModal.vue';
-import CustomerDashboardStatCards from '../components/CustomerDashboardStatCards.vue';
+import CustomerDashboardResumeRow from '../components/CustomerDashboardResumeRow.vue';
 import CustomerDashboardShopsGrid from '../components/CustomerDashboardShopsGrid.vue';
-import CustomerDashboardActionHub from '../components/CustomerDashboardActionHub.vue';
 import CustomerDashboardRecentOrders from '../components/CustomerDashboardRecentOrders.vue';
 import CustomerDashboardSkeleton from '../components/CustomerDashboardSkeleton.vue';
+import CustomerDashboardStatusStrip from '../components/CustomerDashboardStatusStrip.vue';
 
 const authStore = useAuthStore();
 const router = useRouter();
 
-const tenantName = computed(() => authStore.tenant?.name ?? 'Tenant workspace');
-const customerName = computed(() => authStore.member?.name || authStore.user?.fullName || 'Valued Customer');
+const customerName = computed(
+  () => authStore.member?.name || authStore.user?.fullName || 'Valued Customer',
+);
 const tenantBase = computed(() => (authStore.tenantSlug ? `/${authStore.tenantSlug}/shop` : '/shop'));
 const tenantId = computed(() => authStore.tenantId ?? null);
-const categoryParams = computed(() => ({ tenantId: authStore.tenantId ?? 0 }));
 
-// Search query & modal state
 const searchQuery = ref('');
-const executedSearchQuery = ref('');
-const showSearchResultsModal = ref(false);
-const searching = ref(false);
-const searchResults = ref<any[]>([]);
+const lastVisitedShopId = ref<string | null>(null);
 
-// 1. Fetch shops customer has access to using TanStack Query
+watch(
+  tenantId,
+  (id) => {
+    lastVisitedShopId.value = getLastVisitedShopId(id);
+  },
+  { immediate: true },
+);
+
 const shopsQuery = useCustomerShopsQuery(tenantId);
 const shops = computed(() => shopsQuery.data.value ?? []);
+const shopsError = computed(() => (shopsQuery.error.value as Error | null)?.message || null);
 
-// Fetch dynamic categories via TanStack Query using shopCategoryRepository
-const categoriesQuery = useShopCategoryListQuery(categoryParams);
-const categories = computed(() => categoriesQuery.data.value ?? []);
+const ordersQuery = useCustomerDashboardOrdersQuery();
+const glanceOrders = computed(() =>
+  (ordersQuery.data.value ?? []).filter((order) => order.status !== 'draft'),
+);
+const glance = computed(() => countOrderGlance(glanceOrders.value));
+const recentOrders = computed(() => {
+  const rows = [...glanceOrders.value];
+  rows.sort((a, b) => {
+    const aWait = isWaitingStatus(a.status) ? 0 : 1;
+    const bWait = isWaitingStatus(b.status) ? 0 : 1;
+    return aWait - bWait;
+  });
+  return rows.slice(0, 3);
+});
+const ordersError = computed(() => (ordersQuery.error.value as Error | null)?.message || null);
 
-// 2. Fetch orders from all accessible shops in parallel using TanStack Query
-const ordersQuery = useCustomerDashboardOrdersQuery(shops);
-const recentOrders = computed(() => ordersQuery.data.value ?? []);
-
-const uniqueShopIds = computed<number[]>(() => {
-  const ids = recentOrders.value.map((o: { shop_id?: number }) => o.shop_id).filter(Boolean) as number[];
-  return [...new Set(ids)];
+const continueShop = computed<CustomerAccessibleShop | null>(() => {
+  const lastId = lastVisitedShopId.value;
+  if (lastId) {
+    const match = shops.value.find((shop) => String(shop.id) === lastId);
+    if (match) return match;
+  }
+  if (shops.value.length === 1) return shops.value[0] ?? null;
+  return null;
 });
 
-const { data: shopCurrenciesData } = useShopCurrenciesMapQuery(uniqueShopIds);
-const shopCurrenciesMap = computed(() => shopCurrenciesData.value ?? {});
+const cartsQuery = useActiveShopCartsQuery();
+const resumeCartCount = computed(() => {
+  const shopId = continueShop.value?.id;
+  if (!shopId) return 0;
+  const cart = (cartsQuery.data.value ?? []).find((c) => c.shop_id === shopId);
+  return cart?.item_count ?? 0;
+});
 
-const { data: currenciesData } = useThriftCurrenciesQuery();
-const currencies = computed(() => currenciesData.value ?? []);
+const searchTargetShop = computed(() => continueShop.value ?? shops.value[0] ?? null);
 
-const getCurrencySymbol = (order?: { shop_id?: number }) => {
-  const shopId = order?.shop_id;
-  if (shopId && shopCurrenciesMap.value[shopId]) {
-    const currId = shopCurrenciesMap.value[shopId];
-    const curr = currencies.value.find((c) => c.id === currId);
-    if (curr?.symbol) return curr.symbol;
+const rememberShop = (shop: CustomerAccessibleShop) => {
+  if (tenantId.value) {
+    rememberCatalogShop(tenantId.value, shop);
   }
-  return '৳';
+  lastVisitedShopId.value = String(shop.id);
 };
 
-const defaultCurrencySymbol = computed(() => {
-  if (recentOrders.value.length > 0) {
-    return getCurrencySymbol(recentOrders.value[0]);
+const browsePath = (shop?: CustomerAccessibleShop | null, query?: string) => {
+  if (shop?.slug) {
+    return shopCatalogPath(authStore.tenantSlug, shop.slug, query);
   }
-  return '৳';
-});
-
-const loading = computed(
-  () => shopsQuery.isLoading.value || ordersQuery.isLoading.value || categoriesQuery.isLoading.value,
-);
-const error = computed(
-  () =>
-    (shopsQuery.error.value as Error | null)?.message ||
-    (ordersQuery.error.value as Error | null)?.message ||
-    (categoriesQuery.error.value as Error | null)?.message ||
-    null,
-);
-
-const totalOutlay = computed(() => {
-  return recentOrders.value.reduce((acc, order) => acc + Number(order.total_amount || 0), 0);
-});
-
-const latestOrderLabel = computed(() => {
-  if (recentOrders.value.length > 0) {
-    return recentOrders.value[0]?.order_no || `#${recentOrders.value[0]?.id}`;
-  }
-  return 'No recent orders';
-});
-
-const goBrowse = () => {
-  void router.push({ path: `${tenantBase.value}/browse` });
+  return { path: `${tenantBase.value}/browse` };
 };
 
-const triggerSearch = async () => {
+const openShop = (shop: CustomerAccessibleShop) => {
+  if (!shop?.slug) return;
+  rememberShop(shop);
+  void router.push(browsePath(shop));
+};
+
+const openContinueShop = () => {
+  if (continueShop.value) openShop(continueShop.value);
+};
+
+const triggerSearch = () => {
   const queryText = searchQuery.value.trim();
-  if (!queryText) return;
-
-  executedSearchQuery.value = queryText;
-  showSearchResultsModal.value = true;
-  searching.value = true;
-  searchResults.value = [];
-
-  try {
-    const accessibleShops = shops.value;
-    if (accessibleShops.length === 0) {
-      searching.value = false;
-      return;
-    }
-
-    const searchPromises = accessibleShops.map((shop) =>
-      shopOrderRepository.browseShopCatalog(shop.slug, {
-        search: queryText,
-        limit: 10,
-      }),
-    );
-
-    const responses = await Promise.all(searchPromises);
-
-    const mergedProducts: any[] = [];
-    responses.forEach((res, idx) => {
-      if (res?.data) {
-        const shop = accessibleShops[idx];
-        const permissions = res.meta?.permissions;
-        res.data.forEach((prod: any) => {
-          mergedProducts.push({
-            ...prod,
-            shop_id: shop?.id,
-            shop_name: shop?.name || 'Shop',
-            shop_slug: shop?.slug || '',
-            shop_type: shop?.shop_type || 'fixed_price',
-            see_price: permissions?.see_price ?? true,
-            can_add_to_cart: permissions?.can_add_to_cart ?? true,
-          });
-        });
-      }
-    });
-
-    searchResults.value = mergedProducts;
-  } catch (err: any) {
-    handleApiFailure(err, err?.message || 'Search failed');
-  } finally {
-    searching.value = false;
-  }
+  if (!queryText || !searchTargetShop.value) return;
+  rememberShop(searchTargetShop.value);
+  void router.push(browsePath(searchTargetShop.value, queryText));
 };
 
-const goToStorefrontWithProduct = (item: any) => {
-  showSearchResultsModal.value = false;
-  if (item && item.shop_slug) {
-    void router.push({
-      path: `${tenantBase.value}/browse/${item.shop_slug}`,
-      query: { q: item.product_name },
-    });
-  }
+const goCart = () => {
+  const shopId =
+    continueShop.value?.id ??
+    resolveCartShopId(tenantId.value, cartsQuery.data.value ?? []);
+  void router.push(shopCartPath(authStore.tenantSlug, shopId));
 };
 
-const openShop = (shop: any) => {
-  if (!shop?.slug) return;
-  localStorage.setItem('last_visited_shop_id', String(shop.id));
-  localStorage.setItem('last_visited_shop_slug', shop.slug);
-  void router.push({ path: `${tenantBase.value}/browse/${shop.slug}` });
-};
-
-const openShopCategory = (shop: any) => {
-  if (!shop?.slug) return;
-  localStorage.setItem('last_visited_shop_id', String(shop.id));
-  localStorage.setItem('last_visited_shop_slug', shop.slug);
-  void router.push({ path: `${tenantBase.value}/browse/${shop.slug}` });
-};
-
-const goOrders = () => {
-  void router.push(`${tenantBase.value}/orders`);
+const goOrders = (bucket?: OrderGlanceBucket) => {
+  void router.push({
+    path: `${tenantBase.value}/orders`,
+    query: bucket ? { bucket } : {},
+  });
 };
 
 const viewOrderDetail = (orderId: number) => {
   void router.push(`${tenantBase.value}/orders/${orderId}`);
-};
-
-const viewLatestOrder = () => {
-  if (recentOrders.value.length > 0 && recentOrders.value[0]?.id) {
-    viewOrderDetail(recentOrders.value[0].id);
-  } else {
-    goOrders();
-  }
-};
-
-const goDocumentation = () => {
-  void router.push(`${authStore.tenantSlug ? `/${authStore.tenantSlug}` : ''}/app/docs`);
 };
 </script>

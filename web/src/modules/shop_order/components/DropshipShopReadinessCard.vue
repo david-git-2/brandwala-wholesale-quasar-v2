@@ -73,7 +73,7 @@ import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuery } from '@tanstack/vue-query';
 import { dropshipShopReadinessRepository } from '../repositories/dropshipShopReadinessRepository';
-import { shopOrderQueryKeys } from '../services/shopOrderQueryKeys';
+import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 
 const props = defineProps<{
   shopId: number;

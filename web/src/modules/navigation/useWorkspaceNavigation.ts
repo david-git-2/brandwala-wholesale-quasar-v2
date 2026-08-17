@@ -123,22 +123,13 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
     route: ({ tenantSlug }) => (tenantSlug ? `/${tenantSlug}/app/help` : '/app/help'),
   },
   {
-    title: 'Dashboard',
-    caption: 'Current orders, approvals, and next actions',
+    title: 'Home',
+    caption: 'Your shops and orders that need you',
     icon: 'ph ph-squares-four',
     scopes: ['shop'],
     allowedRoles: ['customer_admin', 'customer_negotiator', 'customer_staff'],
     requiresTenantContext: true,
     route: ({ tenantSlug }) => (tenantSlug ? `/${tenantSlug}/shop/dashboard` : '/shop/dashboard'),
-  },
-  {
-    title: 'Help Center',
-    caption: 'Guides for ordering and tracking',
-    icon: 'ph ph-question',
-    scopes: ['shop'],
-    allowedRoles: ['customer_admin', 'customer_negotiator', 'customer_staff'],
-    requiresTenantContext: true,
-    route: ({ tenantSlug }) => (tenantSlug ? `/${tenantSlug}/shop/help` : '/shop/help'),
   },
 ] as const;
 
@@ -209,14 +200,18 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
     }));
 
     if (scope === 'shop') {
-      const shopModuleLinks = scopedModuleRouteDefinitions.map((routeDefinition) => ({
+      const shopNavRoutes = scopedModuleRouteDefinitions.filter(
+        (routeDefinition) => routeDefinition.moduleKey !== 'shop_cart',
+      );
+
+      const shopModuleLinks = shopNavRoutes.map((routeDefinition) => ({
         title: routeDefinition.title,
         caption: routeDefinition.caption,
         icon: routeDefinition.icon,
         to: routeDefinition.to,
       }));
 
-      const hasKobaRetailModuleAccess = scopedModuleRouteDefinitions.some(
+      const hasKobaRetailModuleAccess = shopNavRoutes.some(
         (routeDefinition) => routeDefinition.moduleKey === 'koba_retail',
       );
 
@@ -224,7 +219,7 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
         return [...baseLinks, ...shopModuleLinks];
       }
 
-      const moduleLinksWithoutGrouped = scopedModuleRouteDefinitions
+      const moduleLinksWithoutGrouped = shopNavRoutes
         .filter((routeDefinition) => routeDefinition.moduleKey !== 'koba_retail')
         .map((routeDefinition) => ({
           title: routeDefinition.title,
@@ -233,7 +228,7 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
           to: routeDefinition.to,
         }));
 
-      const kobaRetailChildren = scopedModuleRouteDefinitions
+      const kobaRetailChildren = shopNavRoutes
         .filter((routeDefinition) => routeDefinition.moduleKey === 'koba_retail')
         .map((routeDefinition) => ({
           title: routeDefinition.title,

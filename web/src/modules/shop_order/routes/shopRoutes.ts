@@ -1,9 +1,7 @@
 import type { RouteRecordRaw } from 'vue-router';
-import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
-import { getShopLoginRouteLocation } from 'src/modules/tenant/utils/tenantRouteContext';
+import { createShopAccessGuard } from 'src/modules/auth/guards/createShopAccessGuard';
 
 const shopRoutes: RouteRecordRaw[] = [
-  // shop_order_mgmt — Customer Orders (shop scope)
   {
     path: '/:tenantSlug?/shop/orders',
     component: () => import('layouts/ShopLayout.vue'),
@@ -12,89 +10,42 @@ const shopRoutes: RouteRecordRaw[] = [
         path: '',
         name: 'shop-orders-page',
         component: () => import('src/modules/shop_order/pages/CustomerOrdersPage.vue'),
-        beforeEnter: createAccessGuard({
-          loginRoute: (to) =>
-            getShopLoginRouteLocation(to, {
-              redirect: to.fullPath,
-            }),
-          requiredScope: 'shop',
-          requireTenantContext: true,
-          allowedRoles: ['customer_admin', 'customer_negotiator', 'customer_staff'],
-          requiredModule: 'shop_order_mgmt',
-        }),
+        beforeEnter: createShopAccessGuard({ requiredModule: 'shop_order_mgmt' }),
       },
       {
         path: 'wallet',
         name: 'shop-merchant-wallet-page',
         component: () => import('src/modules/shop_order/pages/MerchantWalletPage.vue'),
-        beforeEnter: createAccessGuard({
-          loginRoute: (to) =>
-            getShopLoginRouteLocation(to, {
-              redirect: to.fullPath,
-            }),
-          requiredScope: 'shop',
-          requireTenantContext: true,
-          allowedRoles: ['customer_admin', 'customer_negotiator', 'customer_staff'],
-          requiredModule: 'shop_order_mgmt',
-        }),
+        beforeEnter: createShopAccessGuard({ requiredModule: 'shop_order_mgmt' }),
       },
       {
         path: ':id',
         name: 'shop-order-detail-page',
         component: () => import('src/modules/shop_order/pages/CustomerOrderDetailPage.vue'),
-        beforeEnter: createAccessGuard({
-          loginRoute: (to) =>
-            getShopLoginRouteLocation(to, {
-              redirect: to.fullPath,
-            }),
-          requiredScope: 'shop',
-          requireTenantContext: true,
-          allowedRoles: ['customer_admin', 'customer_negotiator', 'customer_staff'],
-          requiredModule: 'shop_order_mgmt',
-        }),
+        beforeEnter: createShopAccessGuard({ requiredModule: 'shop_order_mgmt' }),
       },
     ],
   },
 
-  // shop_storefront — Customer Storefront (P5)
   {
     path: '/:tenantSlug?/shop/browse',
     component: () => import('layouts/ShopLayout.vue'),
     children: [
       {
         path: '',
-        name: 'shop-storefront-picker-page',
-        component: () => import('src/modules/shop_order/pages/ShopPickerPage.vue'),
-        beforeEnter: createAccessGuard({
-          loginRoute: (to) =>
-            getShopLoginRouteLocation(to, {
-              redirect: to.fullPath,
-            }),
-          requiredScope: 'shop',
-          requireTenantContext: true,
-          allowedRoles: ['customer_admin', 'customer_negotiator', 'customer_staff'],
-          requiredModule: 'shop_storefront',
-        }),
+        name: 'shop-catalog-entry-page',
+        component: () => import('src/modules/shop_order/pages/CatalogEntryPage.vue'),
+        beforeEnter: createShopAccessGuard({ requiredModule: 'shop_storefront' }),
       },
       {
         path: ':shopSlug',
         name: 'shop-storefront-browse-page',
         component: () => import('src/modules/shop_order/pages/StorefrontPage.vue'),
-        beforeEnter: createAccessGuard({
-          loginRoute: (to) =>
-            getShopLoginRouteLocation(to, {
-              redirect: to.fullPath,
-            }),
-          requiredScope: 'shop',
-          requireTenantContext: true,
-          allowedRoles: ['customer_admin', 'customer_negotiator', 'customer_staff'],
-          requiredModule: 'shop_storefront',
-        }),
+        beforeEnter: createShopAccessGuard({ requiredModule: 'shop_storefront' }),
       },
     ],
   },
 
-  // shop_cart — Customer Cart (P6)
   {
     path: '/:tenantSlug?/shop/cart',
     component: () => import('layouts/ShopLayout.vue'),
@@ -103,21 +54,11 @@ const shopRoutes: RouteRecordRaw[] = [
         path: '',
         name: 'shop-cart-page',
         component: () => import('src/modules/shop_order/pages/ShopCartPage.vue'),
-        beforeEnter: createAccessGuard({
-          loginRoute: (to) =>
-            getShopLoginRouteLocation(to, {
-              redirect: to.fullPath,
-            }),
-          requiredScope: 'shop',
-          requireTenantContext: true,
-          allowedRoles: ['customer_admin', 'customer_negotiator', 'customer_staff'],
-          requiredModule: 'shop_cart',
-        }),
+        beforeEnter: createShopAccessGuard({ requiredModule: 'shop_cart' }),
       },
     ],
   },
 
-  // shop_cart — Customer Checkout (P6)
   {
     path: '/:tenantSlug?/shop/checkout',
     component: () => import('layouts/ShopLayout.vue'),
@@ -126,21 +67,11 @@ const shopRoutes: RouteRecordRaw[] = [
         path: '',
         name: 'shop-checkout-page',
         component: () => import('src/modules/shop_order/pages/ShopCheckoutPage.vue'),
-        beforeEnter: createAccessGuard({
-          loginRoute: (to) =>
-            getShopLoginRouteLocation(to, {
-              redirect: to.fullPath,
-            }),
-          requiredScope: 'shop',
-          requireTenantContext: true,
-          allowedRoles: ['customer_admin', 'customer_negotiator', 'customer_staff'],
-          requiredModule: 'shop_cart',
-        }),
+        beforeEnter: createShopAccessGuard({ requiredModule: 'shop_cart' }),
       },
     ],
   },
 
-  // Legacy redirects (Phase 9)
   {
     path: '/:tenantSlug?/shop/commerce/:catchAll(.*)*',
     redirect: (to) => {

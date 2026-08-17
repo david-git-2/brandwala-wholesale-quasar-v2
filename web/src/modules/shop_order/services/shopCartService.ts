@@ -13,9 +13,9 @@ const getOrCreateCart = async (shopId: number): Promise<ShopServiceResult<CartDa
   }
 };
 
-const listActiveShopCarts = async (): Promise<ShopServiceResult<ActiveCartItem[]>> => {
+const listActiveShopCarts = async (tenantId: number): Promise<ShopServiceResult<ActiveCartItem[]>> => {
   try {
-    const data = await shopCartRepository.listActiveShopCarts();
+    const data = await shopCartRepository.listActiveShopCarts(tenantId);
     return { success: true, data };
   } catch (error) {
     return {

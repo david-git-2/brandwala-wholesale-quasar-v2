@@ -9,7 +9,6 @@
     <q-card-section class="q-py-md">
       <template v-if="cart?.see_price_snapshot || cart?.shop_type === 'dropship'">
         <template v-if="cart?.shop_type === 'dropship'">
-          <!-- Recipient Subtotal -->
           <div class="row justify-between q-mb-sm text-body2 text-grey-7">
             <span>{{ $t('shop.items_subtotal') }}</span>
             <span class="text-weight-medium text-grey-9">
@@ -17,70 +16,6 @@
             </span>
           </div>
 
-          <!-- Charges Section -->
-          <div class="column q-mt-sm q-mb-sm bg-grey-1 q-pa-sm rounded-borders" style="border: 1px solid rgba(0,0,0,0.05); border-radius: 8px;">
-            <div class="text-caption text-weight-bold text-grey-7 q-mb-xs row items-center justify-between">
-              <span>{{ $t('shop.dropship_charges') }}</span>
-              <span class="text-caption text-grey-6" style="font-size: 10px;">(Approximate)</span>
-            </div>
-
-            <div class="row justify-between text-caption text-grey-7 q-mb-xs">
-              <span>{{ $t('shop.delivery_charge') }}</span>
-              <span>{{ formatAmount(0) }}</span>
-            </div>
-
-            <div class="row justify-between text-caption text-grey-7 q-mb-xs">
-              <span>{{ $t('shop.cod_fee') }}</span>
-              <span>{{ formatAmount(0) }}</span>
-            </div>
-
-            <div class="row justify-between text-caption text-grey-7 q-mb-xs">
-              <span>
-                {{ $t('shop.print_charge') }}
-                <span class="text-grey-5">({{ deductPrintFromMargin ? 'deducted' : 'customer pays' }})</span>
-              </span>
-              <span>{{ formatAmount(printCharge) }}</span>
-            </div>
-
-            <div class="row justify-between text-caption text-grey-7">
-              <span>
-                {{ $t('shop.packing_charge') }}
-                <span v-if="defaultPackingCharge > 0 && itemCount > 0" class="text-grey-6">
-                  ({{ formatAmount(defaultPackingCharge) }} &times; {{ itemCount }})
-                </span>
-                <span class="text-grey-5">({{ deductPackingFromMargin ? 'deducted' : 'customer pays' }})</span>
-              </span>
-              <span>{{ formatAmount(packingCharge) }}</span>
-            </div>
-
-            <div class="delivery-notice-banner q-pa-sm q-mt-sm rounded-borders bg-amber-1 border-amber text-grey-10 shadow-1 flex flex-column gap-xs">
-              <div class="flex items-center text-weight-bold text-caption text-amber-10">
-                <q-icon name="ph ph-truck text-weight-bold" size="16px" class="q-mr-xs text-amber-9" />
-                <span>Courier &amp; Delivery Notice (Approximate)</span>
-              </div>
-              <div class="text-caption text-grey-9">
-                {{ $t('shop.courier_charges_may_vary') }}
-              </div>
-              <div class="column gap-xs q-mt-xs text-caption">
-                <div class="flex items-center justify-between bg-white q-pa-xs rounded-borders">
-                  <span class="text-grey-8">Estimated delivery:</span>
-                  <strong class="text-primary text-weight-bold">{{ $t('shop.courier_delivery_estimate', { min: formatAmount(courierEstimate.deliveryMin), max: formatAmount(courierEstimate.deliveryMax) }) }}</strong>
-                </div>
-                <div v-if="codEstimateSummary" class="flex items-center justify-between bg-white q-pa-xs rounded-borders">
-                  <span class="text-grey-8">Estimated COD fee:</span>
-                  <strong class="text-indigo-9 text-weight-bold">{{ $t('shop.courier_cod_estimate', { summary: codEstimateSummary }) }}</strong>
-                </div>
-              </div>
-            </div>
-
-            <!-- Sum of Deductible Charges -->
-            <div class="row justify-between text-caption text-grey-9 q-mt-sm q-pt-xs border-top text-weight-bold" style="font-size: 11px;">
-              <span>Total Est. Charges &amp; Deductions:</span>
-              <span class="text-negative">{{ formatAmount(totalDeductibleCharges) }}</span>
-            </div>
-          </div>
-
-          <!-- Buyer Cost -->
           <div class="row justify-between q-mb-sm text-body2 text-grey-7">
             <span>{{ $t('shop.your_cost_buyer') }}</span>
             <span class="text-weight-medium text-grey-9">
@@ -88,27 +23,54 @@
             </span>
           </div>
 
-          <!-- Profit with Explicit Approximate Disclaimer & Sum of Deductions -->
-          <div class="column q-mb-sm bg-green-1 q-pa-sm rounded-borders" style="border: 1px dashed rgba(76, 175, 80, 0.4); border-radius: 8px;">
+          <div class="column q-mb-sm bg-green-1 q-pa-sm rounded-borders">
             <div class="row justify-between items-center text-body2">
               <span class="text-weight-bold text-positive row items-center q-gutter-x-xs">
                 <q-icon name="ph ph-trend-up" size="16px" />
                 <span>{{ $t('shop.estimated_profit') }}</span>
-                <span class="text-caption text-weight-normal text-grey-7">(Approximate)</span>
               </span>
               <span class="text-weight-bold text-positive text-subtitle1">
                 {{ formatAmount(estimatedProfit) }}
               </span>
             </div>
-            <div class="text-caption text-grey-8 q-mt-xs" style="font-size: 11px; line-height: 1.3;">
-              <q-icon name="ph ph-info" size="12px" color="positive" class="q-mr-xs" />
-              Profit is approximate. Delivery &amp; COD fees are estimated and finalized at checkout.
-            </div>
-            <div class="row justify-between text-caption text-grey-8 q-mt-xs q-pt-xs border-top" style="font-size: 11px;">
-              <span>Est. Deductions (Print/Packing/Delivery):</span>
-              <span class="text-weight-bold text-negative">-{{ formatAmount(totalDeductibleCharges) }}</span>
+            <div class="text-caption text-grey-8 q-mt-xs">
+              {{ $t('shop.charges_finalized_checkout') }}
             </div>
           </div>
+
+          <q-expansion-item
+            dense
+            :label="$t('shop.estimated_charges')"
+            header-class="text-caption text-grey-7"
+            class="q-mb-sm"
+          >
+            <div class="column q-pa-sm bg-grey-1 rounded-borders">
+              <div v-if="printCharge > 0" class="row justify-between text-caption text-grey-7 q-mb-xs">
+                <span>{{ $t('shop.print_charge') }}</span>
+                <span>{{ formatAmount(printCharge) }}</span>
+              </div>
+              <div v-if="packingCharge > 0" class="row justify-between text-caption text-grey-7 q-mb-xs">
+                <span>
+                  {{ $t('shop.packing_charge') }}
+                  <span v-if="defaultPackingCharge > 0 && itemCount > 0" class="text-grey-6">
+                    ({{ formatAmount(defaultPackingCharge) }} &times; {{ itemCount }})
+                  </span>
+                </span>
+                <span>{{ formatAmount(packingCharge) }}</span>
+              </div>
+              <div class="row justify-between text-caption text-grey-7 q-mb-xs">
+                <span>{{ $t('shop.delivery_charge') }}</span>
+                <span>{{ formatAmount(courierEstimate.deliveryMin) }}–{{ formatAmount(courierEstimate.deliveryMax) }}</span>
+              </div>
+              <div v-if="codEstimateSummary" class="row justify-between text-caption text-grey-7">
+                <span>{{ $t('shop.cod_fee') }}</span>
+                <span>{{ codEstimateSummary }}</span>
+              </div>
+              <div class="text-caption text-grey-6 q-mt-sm">
+                {{ $t('shop.courier_charges_may_vary') }}
+              </div>
+            </div>
+          </q-expansion-item>
         </template>
         <template v-else>
           <div class="row justify-between q-mb-sm text-body2 text-grey-7">
@@ -131,15 +93,21 @@
         </div>
       </template>
 
-      <q-btn
-        color="primary"
-        unelevated
-        no-caps
-        class="full-width"
-        label="Proceed to Checkout"
-        :loading="isSaving || placingOrder"
-        @click="$emit('handle-button-click')"
-      />
+      <span class="full-width gt-xs block">
+        <q-btn
+          color="primary"
+          unelevated
+          no-caps
+          class="full-width"
+          :label="$t(checkoutLabelKey)"
+          :loading="isSaving || placingOrder"
+          :disable="checkoutDisabled"
+          @click="$emit('handle-button-click')"
+        />
+        <q-tooltip v-if="checkoutDisabled && checkoutDisabledReason">
+          {{ $t(checkoutDisabledReason) }}
+        </q-tooltip>
+      </span>
     </q-card-section>
   </q-card>
 </template>
@@ -153,8 +121,6 @@ defineProps<{
   printCharge: number;
   packingCharge: number;
   defaultPackingCharge: number;
-  deductPrintFromMargin: boolean;
-  deductPackingFromMargin: boolean;
   courierEstimate: {
     deliveryMin: number;
     deliveryMax: number;
@@ -164,12 +130,14 @@ defineProps<{
     codFlatMax: number | null;
   };
   codEstimateSummary: string;
-  totalDeductibleCharges: number;
   buyerTotal: number;
   estimatedProfit: number;
   recipientGrandTotal: number;
   isSaving: boolean;
   placingOrder: boolean;
+  checkoutDisabled: boolean;
+  checkoutDisabledReason: string;
+  checkoutLabelKey: string;
 }>();
 
 defineEmits<{
