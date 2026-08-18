@@ -52,7 +52,7 @@ const onCancel = () => {
 
 <style scoped>
 .drawer-card {
-  width: 1000px;
+  width: 800px;
   max-width: 95vw;
   height: calc(100vh - 24px) !important;
   margin: 12px;

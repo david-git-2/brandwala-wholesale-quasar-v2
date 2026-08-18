@@ -9,6 +9,7 @@ import {
 import type { AccessRole } from 'src/modules/auth/guards/accessGuard';
 import type { AuthScope } from 'src/modules/auth/composables/useOAuthLogin';
 import {
+  getModuleDefinition,
   getModuleRoutesForScope,
   type InteractiveScope,
   type ModuleAction,
@@ -23,6 +24,20 @@ const SALES_CHILD_CATALOG_MODULES: ReadonlySet<ModuleKey> = new Set([
   'invoice_brand',
 ]);
 
+const isShopOrderFamilyModule = (moduleKey: ModuleKey): boolean =>
+  moduleKey === 'shop_order' || getModuleDefinition(moduleKey)?.parentModuleKey === 'shop_order';
+
+const isBlockedOnParentCompany = (
+  moduleKey: ModuleKey,
+  tenantId: number | null | undefined,
+): boolean => {
+  if (!SALES_CHILD_CATALOG_MODULES.has(moduleKey) && !isShopOrderFamilyModule(moduleKey)) {
+    return false;
+  }
+
+  return resolveWorkspaceTenantKind(tenantId) === 'parent';
+};
+
 const resolveWorkspaceTenantKind = (
   tenantId: number | null | undefined,
 ): TenantHierarchyKind => {
@@ -35,6 +50,7 @@ const resolveWorkspaceTenantKind = (
   return resolveTenantHierarchyKind(current, [
     ...tenantStore.availableAdminTenants,
     ...tenantStore.items,
+    ...tenantStore.hierarchyChildRefs,
   ]);
 };
 
@@ -151,11 +167,9 @@ export const canAccessModule = ({
     }
   }
 
-  // Billing / recipient / print brand catalogs belong to the issuing child.
-  if (SALES_CHILD_CATALOG_MODULES.has(moduleKey)) {
-    if (resolveWorkspaceTenantKind(tenantId) === 'parent') {
-      return false;
-    }
+  // Billing catalogs and shop storefronts belong to the issuing child / standalone.
+  if (isBlockedOnParentCompany(moduleKey, tenantId)) {
+    return false;
   }
 
   return (
@@ -242,10 +256,7 @@ export const resolveModuleAccess = ({
     }
   }
 
-  if (
-    SALES_CHILD_CATALOG_MODULES.has(moduleKey) &&
-    resolveWorkspaceTenantKind(tenantId) === 'parent'
-  ) {
+  if (isBlockedOnParentCompany(moduleKey, tenantId)) {
     isBlockedByParentStatus = true;
   }
 

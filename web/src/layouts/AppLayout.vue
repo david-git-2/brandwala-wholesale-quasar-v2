@@ -330,6 +330,8 @@ onMounted(() => {
       await tenantStore.fetchTenantsByMembership({
         email: authStore.user.email,
       });
+    } else if (tenantStore.hierarchyChildRefs.length === 0) {
+      await tenantStore.hydrateHierarchyChildRefs();
     }
 
     await ensureSelectedTenantWorkspace();

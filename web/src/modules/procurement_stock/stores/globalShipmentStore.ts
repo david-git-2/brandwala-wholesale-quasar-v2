@@ -432,6 +432,17 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       }
     },
 
+    mergeShipmentItems(shipmentId: number, items: GlobalShipmentItem[]) {
+      if (this.currentShipment?.id !== shipmentId || items.length === 0) return;
+      const itemMap = new Map(this.currentShipmentItems.map((item) => [item.id, item]));
+      for (const newItem of items) {
+        if (newItem?.id != null) itemMap.set(newItem.id, newItem);
+      }
+      this.currentShipmentItems = Array.from(itemMap.values()).sort(
+        (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
+      );
+    },
+
     async addShipmentItem(
       payload: Omit<GlobalShipmentItem, 'id' | 'created_at' | 'updated_at' | 'sort_order'>,
     ) {
@@ -472,15 +483,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
           shipmentId,
           items as any,
         );
-        if (this.currentShipment?.id === shipmentId) {
-          const itemMap = new Map(this.currentShipmentItems.map((item) => [item.id, item]));
-          for (const newItem of addedItems) {
-            itemMap.set(newItem.id, newItem);
-          }
-          this.currentShipmentItems = Array.from(itemMap.values()).sort(
-            (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
-          );
-        }
+        this.mergeShipmentItems(shipmentId, addedItems);
         return addedItems;
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to add shipment items in bulk';

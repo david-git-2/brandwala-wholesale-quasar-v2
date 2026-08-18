@@ -116,6 +116,8 @@ export interface TenantServiceResult<T = void> {
 export interface TenantStoreState {
   items: Tenant[];
   availableAdminTenants: Tenant[];
+  /** Child ids used only to tell parent vs standalone. Not shown in the tenant picker. */
+  hierarchyChildRefs: Array<{ id: number; parent_id: number }>;
   selectedTenantId: Tenant['id'] | null;
   selectedTenantSlug: Tenant['slug'] | null;
   loading: boolean;

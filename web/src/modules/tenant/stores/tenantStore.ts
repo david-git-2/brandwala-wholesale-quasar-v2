@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback';
+import { tenantRepository } from '../repositories/tenantRepository';
 import { tenantService } from '../services/tenantService';
 import type {
   Tenant,
@@ -66,6 +67,7 @@ export const useTenantStore = defineStore('tenant', {
   state: (): TenantStoreState => ({
     items: [],
     availableAdminTenants: storedWorkspace?.availableAdminTenants ?? [],
+    hierarchyChildRefs: [],
     selectedTenantId: storedWorkspace?.selectedTenantId ?? null,
     selectedTenantSlug: storedWorkspace?.selectedTenantSlug ?? null,
     loading: true,
@@ -89,6 +91,33 @@ export const useTenantStore = defineStore('tenant', {
   },
 
   actions: {
+    async hydrateHierarchyChildRefs() {
+      const roots = [...this.availableAdminTenants, ...this.items].filter(
+        (tenant) => tenant.parent_id === null,
+      );
+      const seen = new Set<number>();
+      const refs: Array<{ id: number; parent_id: number }> = [];
+
+      await Promise.all(
+        roots.map(async (root) => {
+          if (seen.has(root.id)) {
+            return;
+          }
+          seen.add(root.id);
+          try {
+            const childIds = await tenantRepository.listChildTenantIds(root.id);
+            for (const childId of childIds) {
+              refs.push({ id: childId, parent_id: root.id });
+            }
+          } catch {
+            // Hierarchy hide is best-effort; membership list still works.
+          }
+        }),
+      );
+
+      this.hierarchyChildRefs = refs;
+    },
+
     persistWorkspaceState() {
       writeStorage({
         schemaVersion: 1,
@@ -176,6 +205,7 @@ export const useTenantStore = defineStore('tenant', {
 
         this.items = result.data ?? [];
         this.setAvailableAdminTenants(this.items);
+        await this.hydrateHierarchyChildRefs();
         return result;
       } finally {
         this.loading = false;
@@ -196,6 +226,7 @@ export const useTenantStore = defineStore('tenant', {
 
         this.items = result.data ?? [];
         this.setAvailableAdminTenants(this.items);
+        await this.hydrateHierarchyChildRefs();
         return result;
       } finally {
         this.loading = false;
@@ -289,6 +320,7 @@ export const useTenantStore = defineStore('tenant', {
 
         this.items = result.data ?? [];
         this.setAvailableAdminTenants(this.items);
+        await this.hydrateHierarchyChildRefs();
         return result;
       } finally {
         this.loading = false;

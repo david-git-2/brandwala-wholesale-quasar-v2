@@ -20,366 +20,253 @@
       </q-tab>
     </q-tabs>
 
-    <div v-if="activeTab === 'catalog'" class="panel-body col">
-      <!-- LEFT COLUMN: search + catalog -->
-      <div class="search-col column no-wrap">
-        <!-- Top compact toolbar -->
-        <div class="q-pa-md toolbar-section column q-gutter-y-sm">
+    <div v-if="activeTab === 'catalog'" class="panel-body col column no-wrap">
+      <div class="q-pa-md toolbar-section column q-gutter-y-sm">
+        <div class="row items-center q-col-gutter-sm">
+          <div class="col-auto">
+            <q-btn-dropdown
+              flat
+              dense
+              :label="searchFieldLabel"
+              class="text-caption text-weight-medium text-grey-8 search-field-dropdown"
+              no-caps
+            >
+              <q-list dense>
+                <q-item clickable v-close-popup @click="browseSearchField = 'name'">
+                  <q-item-section>Name</q-item-section>
+                </q-item>
+                <q-item clickable v-close-popup @click="browseSearchField = 'barcode'">
+                  <q-item-section>Barcode</q-item-section>
+                </q-item>
+                <q-item clickable v-close-popup @click="browseSearchField = 'product_code'">
+                  <q-item-section>Product Code</q-item-section>
+                </q-item>
+                <q-item clickable v-close-popup @click="browseSearchField = 'id'">
+                  <q-item-section>Product ID</q-item-section>
+                </q-item>
+              </q-list>
+            </q-btn-dropdown>
+          </div>
+          <div class="col">
+            <q-input
+              v-model="browseSearch"
+              :placeholder="`Search catalog by ${searchFieldLabel.toLowerCase()}...`"
+              outlined
+              dense
+              clearable
+              autofocus
+              class="full-width"
+            >
+              <template #prepend>
+                <q-icon name="ph ph-magnifying-glass" />
+              </template>
+            </q-input>
+          </div>
+          <div class="col-auto">
+            <q-btn
+              flat
+              dense
+              no-caps
+              color="grey-8"
+              icon="ph ph-list-plus"
+              label="Bulk codes"
+              @click="showBulkCodes = !showBulkCodes"
+            />
+            <q-btn flat round dense icon="ph ph-funnel" color="grey-8" @click="openFilterSidebar">
+              <q-badge v-if="activeFilterCount > 0" color="primary" rounded floating>
+                {{ activeFilterCount }}
+              </q-badge>
+            </q-btn>
+          </div>
+        </div>
+
+        <q-btn
+          unelevated
+          no-caps
+          color="primary"
+          icon="ph ph-plus"
+          label="New Product"
+          class="new-product-btn full-width"
+          @click="showNewProductSidebar = true"
+        />
+
+        <div
+          v-if="showBulkCodes"
+          class="column q-gutter-y-sm bulk-codes-box q-pa-sm rounded-borders"
+        >
+          <div class="row items-center justify-between q-px-xs">
+            <span class="text-caption text-weight-medium text-grey-8">Paste Mode:</span>
+            <q-btn-dropdown
+              flat
+              dense
+              no-caps
+              :label="bulkSearchFieldLabel"
+              class="text-caption text-weight-medium text-grey-8 search-field-dropdown"
+            >
+              <q-list dense>
+                <q-item clickable v-close-popup @click="bulkSearchField = 'auto'">
+                  <q-item-section>Auto (All Fields)</q-item-section>
+                </q-item>
+                <q-item clickable v-close-popup @click="bulkSearchField = 'product_code'">
+                  <q-item-section>Product Code</q-item-section>
+                </q-item>
+                <q-item clickable v-close-popup @click="bulkSearchField = 'barcode'">
+                  <q-item-section>Barcode</q-item-section>
+                </q-item>
+                <q-item clickable v-close-popup @click="bulkSearchField = 'id'">
+                  <q-item-section>Product ID</q-item-section>
+                </q-item>
+              </q-list>
+            </q-btn-dropdown>
+          </div>
+          <q-input
+            v-model="bulkCodesText"
+            type="textarea"
+            outlined
+            dense
+            class="bulk-codes-input"
+            :input-style="{
+              height: '100px',
+              maxHeight: '100px',
+              overflowY: 'auto',
+              resize: 'none',
+            }"
+            :placeholder="bulkPlaceholder"
+          />
           <div class="row items-center q-col-gutter-sm">
             <div class="col-auto">
-              <q-btn-dropdown
-                flat
-                dense
-                :label="searchFieldLabel"
-                class="text-caption text-weight-medium text-grey-8 search-field-dropdown"
-                no-caps
-              >
-                <q-list dense>
-                  <q-item clickable v-close-popup @click="browseSearchField = 'name'">
-                    <q-item-section>Name</q-item-section>
-                  </q-item>
-                  <q-item clickable v-close-popup @click="browseSearchField = 'barcode'">
-                    <q-item-section>Barcode</q-item-section>
-                  </q-item>
-                  <q-item clickable v-close-popup @click="browseSearchField = 'product_code'">
-                    <q-item-section>Product Code</q-item-section>
-                  </q-item>
-                  <q-item clickable v-close-popup @click="browseSearchField = 'id'">
-                    <q-item-section>Product ID</q-item-section>
-                  </q-item>
-                </q-list>
-              </q-btn-dropdown>
-            </div>
-            <div class="col">
               <q-input
-                v-model="browseSearch"
-                :placeholder="`Search catalog by ${searchFieldLabel.toLowerCase()}...`"
+                v-model.number="bulkDefaultQty"
+                type="number"
                 outlined
                 dense
-                clearable
-                class="full-width"
+                label="Qty"
+                style="width: 90px"
+                min="1"
+                step="1"
               />
             </div>
-            <div class="col-auto">
-              <q-btn flat round dense icon="ph ph-funnel" color="grey-8" @click="openFilterSidebar">
-                <q-badge v-if="activeFilterCount > 0" color="primary" rounded floating>
-                  {{ activeFilterCount }}
-                </q-badge>
-              </q-btn>
-            </div>
-          </div>
-          <div class="row q-col-gutter-sm">
             <div class="col">
               <q-btn
                 unelevated
                 no-caps
                 color="primary"
                 icon="ph ph-plus"
-                label="New Product"
-                class="new-product-btn full-width"
-                @click="showNewProductSidebar = true"
-              />
-            </div>
-            <div class="col-auto">
-              <q-btn
-                outline
-                no-caps
-                icon="ph ph-list-plus"
-                label="Bulk codes"
-                class="full-height"
-                :color="showBulkCodes ? 'secondary' : 'primary'"
-                @click="showBulkCodes = !showBulkCodes"
-              />
-            </div>
-          </div>
-
-          <div
-            v-if="showBulkCodes"
-            class="column q-gutter-y-sm bulk-codes-box q-pa-sm rounded-borders"
-          >
-            <div class="row items-center justify-between q-px-xs">
-              <span class="text-caption text-weight-medium text-grey-8">Paste Mode:</span>
-              <q-btn-dropdown
-                flat
-                dense
-                no-caps
-                :label="bulkSearchFieldLabel"
-                class="text-caption text-weight-medium text-grey-8 search-field-dropdown"
-              >
-                <q-list dense>
-                  <q-item clickable v-close-popup @click="bulkSearchField = 'auto'">
-                    <q-item-section>Auto (All Fields)</q-item-section>
-                  </q-item>
-                  <q-item clickable v-close-popup @click="bulkSearchField = 'product_code'">
-                    <q-item-section>Product Code</q-item-section>
-                  </q-item>
-                  <q-item clickable v-close-popup @click="bulkSearchField = 'barcode'">
-                    <q-item-section>Barcode</q-item-section>
-                  </q-item>
-                  <q-item clickable v-close-popup @click="bulkSearchField = 'id'">
-                    <q-item-section>Product ID</q-item-section>
-                  </q-item>
-                </q-list>
-              </q-btn-dropdown>
-            </div>
-            <q-input
-              v-model="bulkCodesText"
-              type="textarea"
-              outlined
-              dense
-              class="bulk-codes-input"
-              :input-style="{
-                height: '120px',
-                maxHeight: '120px',
-                overflowY: 'auto',
-                resize: 'none',
-              }"
-              :placeholder="bulkPlaceholder"
-            />
-            <div class="row items-center q-col-gutter-sm">
-              <div class="col-auto">
-                <q-input
-                  v-model.number="bulkDefaultQty"
-                  type="number"
-                  outlined
-                  dense
-                  label="Qty"
-                  style="width: 90px"
-                  min="1"
-                  step="1"
-                />
-              </div>
-              <div class="col">
-                <q-btn
-                  unelevated
-                  no-caps
-                  color="secondary"
-                  icon="ph ph-shopping-cart"
-                  label="Add to cart"
-                  class="full-width"
-                  :loading="bulkLoading"
-                  :disable="!bulkCodesText.trim()"
-                  @click="onBulkAddCodes"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Catalog Browse list -->
-        <div class="browse-section col column q-px-md q-pb-sm">
-          <div class="text-subtitle2 text-weight-bold q-mb-xs">Catalog Products</div>
-          <div class="col scroll browse-list-container relative-position">
-            <q-inner-loading :showing="browseLoading" />
-            <q-list dense bordered separator class="rounded-borders browse-list">
-              <q-item v-for="product in browseList" :key="product.id">
-                <q-item-section avatar>
-                  <q-avatar square class="bg-grey-2" style="width: 1in; height: 1in">
-                    <SmartImage
-                      :src="product.image_url"
-                      style="width: 1in; height: 1in; object-fit: contain"
-                      :enable-edit="false"
-                      :enable-lightbox="false"
-                    />
-                  </q-avatar>
-                </q-item-section>
-                <q-item-section>
-                  <q-item-label class="text-weight-medium">{{ product.name }}</q-item-label>
-                  <q-item-label caption>
-                    {{
-                      [product.product_code, product.barcode].filter(Boolean).join(' · ') ||
-                      'No code'
-                    }}
-                  </q-item-label>
-                  <q-item-label
-                    v-if="product.list_price_amount != null"
-                    caption
-                    class="text-secondary"
-                  >
-                    £{{ product.list_price_amount.toFixed(2) }}
-                  </q-item-label>
-                </q-item-section>
-                <q-item-section side class="row no-wrap items-center q-gutter-x-xs">
-                  <q-input
-                    :model-value="browseQtyById[product.id]"
-                    type="number"
-                    outlined
-                    dense
-                    placeholder="1"
-                    style="width: 70px"
-                    min="1"
-                    step="1"
-                    @update:model-value="
-                      (val) => setBrowseQty(product.id, val === '' ? null : Number(val))
-                    "
-                    @keyup.enter="addProductToCart(product, browseQtyById[product.id])"
-                  />
-                  <q-btn
-                    unelevated
-                    dense
-                    no-caps
-                    color="secondary"
-                    icon="ph ph-plus"
-                    class="q-px-sm"
-                    label="Add"
-                    @click="addProductToCart(product, browseQtyById[product.id])"
-                  />
-                </q-item-section>
-              </q-item>
-              <q-item v-if="!browseLoading && browseList.length === 0">
-                <q-item-section class="text-grey-6 text-center q-pa-md"
-                  >No products found</q-item-section
-                >
-              </q-item>
-            </q-list>
-            <div v-if="browseTotal > browseList.length" class="text-center q-mt-sm">
-              <q-btn
-                flat
-                dense
-                no-caps
-                color="primary"
-                label="Load more"
-                :loading="browseLoading"
-                @click="loadMoreBrowse"
+                label="Add to shipment"
+                class="full-width"
+                :loading="bulkLoading"
+                :disable="!bulkCodesText.trim() || submitting"
+                @click="onBulkAddCodes"
               />
             </div>
           </div>
         </div>
       </div>
 
-      <!-- RIGHT COLUMN: cart + footer -->
-      <div class="cart-col column no-wrap">
-        <!-- Cart -->
-        <div class="cart-section col q-pa-md">
-          <div class="row items-center justify-between q-mb-sm">
-            <div class="text-subtitle1 text-weight-bold">
-              Cart
-              <q-badge v-if="cart.length" color="primary" :label="cart.length" class="q-ml-xs" />
-            </div>
+      <div class="browse-section col column q-px-md q-pb-sm">
+        <div class="text-subtitle2 text-weight-bold q-mb-xs">Catalog</div>
+        <div class="col scroll browse-list-container relative-position">
+          <q-inner-loading :showing="browseLoading" />
+          <q-list
+            v-if="browseList.length || !browseSearch.trim()"
+            dense
+            bordered
+            separator
+            class="rounded-borders browse-list"
+          >
+            <q-item v-for="product in browseList" :key="product.id">
+              <q-item-section avatar>
+                <q-avatar square class="bg-grey-2 browse-product-thumb">
+                  <SmartImage
+                    :src="product.image_url"
+                    class="browse-product-thumb__img"
+                    :enable-edit="false"
+                    :enable-lightbox="false"
+                  />
+                </q-avatar>
+              </q-item-section>
+              <q-item-section>
+                <q-item-label class="text-weight-medium">{{ product.name }}</q-item-label>
+                <q-item-label caption>
+                  {{
+                    [product.product_code, product.barcode].filter(Boolean).join(' · ') ||
+                    'No code'
+                  }}
+                </q-item-label>
+                <q-item-label
+                  v-if="product.list_price_amount != null"
+                  caption
+                  class="text-secondary"
+                >
+                  £{{ product.list_price_amount.toFixed(2) }}
+                </q-item-label>
+                <q-item-label v-if="isAlreadyOnShipment(product)" caption class="text-negative">
+                  Already on this shipment
+                </q-item-label>
+              </q-item-section>
+              <q-item-section side class="row no-wrap items-center q-gutter-x-xs">
+                <q-input
+                  :model-value="browseQtyById[product.id]"
+                  type="number"
+                  outlined
+                  dense
+                  placeholder="1"
+                  style="width: 70px"
+                  min="1"
+                  step="1"
+                  :disable="isAlreadyOnShipment(product) || submitting"
+                  @update:model-value="
+                    (val) => setBrowseQty(product.id, val === '' ? null : Number(val))
+                  "
+                  @keyup.enter="addProductToShipment(product, browseQtyById[product.id])"
+                />
+                <q-btn
+                  unelevated
+                  dense
+                  no-caps
+                  color="primary"
+                  icon="ph ph-plus"
+                  class="q-px-sm"
+                  label="Add"
+                  :loading="addingProductId === product.id"
+                  :disable="isAlreadyOnShipment(product) || submitting"
+                  @click="addProductToShipment(product, browseQtyById[product.id])"
+                />
+              </q-item-section>
+            </q-item>
+            <q-item v-if="!browseLoading && browseList.length === 0">
+              <q-item-section class="text-grey-6 text-center q-pa-md">
+                {{
+                  browseSearch.trim() || activeFilterCount
+                    ? 'No products found'
+                    : 'Search the catalog to add items'
+                }}
+              </q-item-section>
+            </q-item>
+          </q-list>
+          <div v-if="browseTotal > browseList.length" class="text-center q-mt-sm">
             <q-btn
-              v-if="cart.length"
               flat
               dense
               no-caps
-              color="negative"
-              label="Clear"
-              @click="confirmClearCart"
-            />
-          </div>
-
-          <div v-if="cart.length === 0" class="text-center text-grey-6 q-py-lg">
-            <q-icon name="ph ph-shopping-cart" size="36px" color="grey-4" />
-            <div class="q-mt-sm">Search catalog or add a new product</div>
-          </div>
-
-          <div v-else class="cart-scroll">
-            <div
-              v-for="item in cart"
-              :key="item.key"
-              class="cart-line q-mb-sm q-pa-sm rounded-borders"
-            >
-              <div class="row items-start no-wrap q-col-gutter-sm">
-                <div class="col-auto">
-                  <q-avatar square class="bg-grey-2" style="width: 1in; height: 1in">
-                    <SmartImage
-                      :src="item.image_url"
-                      style="width: 1in; height: 1in; object-fit: contain"
-                      :enable-edit="false"
-                      :enable-lightbox="false"
-                    />
-                  </q-avatar>
-                </div>
-                <div class="col" style="min-width: 0">
-                  <div class="text-weight-medium ellipsis-2-lines">
-                    {{ item.name }}
-                    <q-badge v-if="item.isNewProduct" color="orange" label="New" class="q-ml-xs" />
-                  </div>
-                  <div class="text-caption text-grey-7">
-                    <span v-if="item.product_code || item.barcode">
-                      {{ [item.product_code, item.barcode].filter(Boolean).join(' · ') }}
-                    </span>
-                    <span class="q-ml-sm text-weight-bold text-grey-6">
-                      (Wt: {{ item.product_weight }}g / Pkg: {{ item.package_weight }}g)
-                    </span>
-                  </div>
-                </div>
-                <div class="col-auto">
-                  <q-btn
-                    flat
-                    round
-                    dense
-                    size="sm"
-                    color="negative"
-                    icon="ph ph-x"
-                    @click="removeFromCart(item)"
-                  />
-                </div>
-              </div>
-              <div class="row q-col-gutter-xs q-mt-xs">
-                <div class="col-6">
-                  <q-input
-                    v-model.number="item.ordered_quantity"
-                    type="number"
-                    label="Qty"
-                    outlined
-                    dense
-                    min="1"
-                    step="1"
-                    @update:model-value="(v) => onCartQtyUpdated(item, Number(v))"
-                  />
-                </div>
-                <div class="col-6">
-                  <q-input
-                    v-model.number="item.purchase_price"
-                    type="number"
-                    step="0.01"
-                    label="Price £"
-                    outlined
-                    dense
-                    min="0"
-                  />
-                </div>
-              </div>
-              <div class="text-caption text-grey-7 text-right q-mt-xs">
-                £{{ formatMoney(lineSubtotal(item)) }}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Footer -->
-        <div class="panel-footer q-pa-md">
-          <div v-if="cart.length" class="row justify-between text-body2 q-mb-xs">
-            <span class="text-grey-7"
-              >{{ totalCartUnits }} units · {{ totalCartWeightKg.toFixed(2) }} kg</span
-            >
-            <span class="text-weight-bold text-primary">£{{ formatMoney(totalCartPriceGbp) }}</span>
-          </div>
-          <div class="row q-gutter-sm">
-            <q-btn
-              v-if="showCancel"
-              flat
-              no-caps
-              color="grey-8"
-              label="Cancel"
-              class="col"
-              @click="onCancel"
-            />
-            <q-btn
-              unelevated
-              no-caps
               color="primary"
-              icon="ph ph-floppy-disk"
-              :label="
-                cart.length ? `Save ${cart.length} item${cart.length === 1 ? '' : 's'}` : 'Save'
-              "
-              class="col"
-              :loading="submitting"
-              :disable="cart.length === 0"
-              @click="onCommitCart"
+              label="Load more"
+              :loading="browseLoading"
+              @click="loadMoreBrowse"
             />
           </div>
         </div>
+      </div>
+
+      <div class="panel-footer q-pa-md">
+        <q-btn
+          unelevated
+          no-caps
+          color="primary"
+          label="Done"
+          class="full-width"
+          @click="onDone"
+        />
       </div>
     </div>
 
@@ -481,6 +368,17 @@
             </q-td>
           </template>
         </q-table>
+      </div>
+
+      <div class="panel-footer q-pa-md">
+        <q-btn
+          unelevated
+          no-caps
+          color="primary"
+          label="Done"
+          class="full-width"
+          @click="onDone"
+        />
       </div>
     </div>
 
@@ -703,21 +601,25 @@ const fetchChildLines = async () => {
 
 const onPullChildFile = async (file: GroupedChildFile) => {
   pullingGroupKey.value = file.group_key;
-  let successCount = 0;
   try {
-    for (const line of file.lines) {
-      await globalShipmentRepository.addChildLineToParentShipment(
-        props.shipmentId,
-        line.source_type,
-        line.source_id,
-      );
-      successCount++;
-    }
+    const results = await Promise.all(
+      file.lines.map((line) =>
+        globalShipmentRepository.addChildLineToParentShipment(
+          props.shipmentId,
+          line.source_type,
+          line.source_id,
+        ),
+      ),
+    );
+    const addedItems = results.flatMap((row) => {
+      if (!row) return [];
+      return (Array.isArray(row) ? row : [row]) as GlobalShipmentItem[];
+    }).filter((item) => item?.id != null);
+    shipmentStore.mergeShipmentItems(props.shipmentId, addedItems);
     $q.notify({
       type: 'positive',
-      message: `Successfully pulled all ${successCount} item(s) from "${file.reference_label}" into shipment.`,
+      message: `Added ${addedItems.length} item${addedItems.length === 1 ? '' : 's'} from "${file.reference_label}".`,
     });
-    await shipmentStore.fetchShipmentDetails(props.shipmentId);
     await fetchChildLines();
   } catch (err) {
     $q.notify({
@@ -736,6 +638,7 @@ watch(activeTab, (tab) => {
 });
 
 const submitting = ref(false);
+const addingProductId = ref<number | null>(null);
 
 // Catalog browse state
 const browseSearch = ref('');
@@ -779,10 +682,6 @@ const searchFieldLabel = computed(() => {
   return 'Name';
 });
 
-// Cart state
-const cart = ref<ShipmentCartItem[]>([]);
-const cartStorageKey = computed(() => `shipment_cart_${props.shipmentId}`);
-
 // Filters State
 const filterDrawerOpen = ref(false);
 const filterBrand = ref<string>('');
@@ -813,25 +712,6 @@ const activeFilterCount = computed(() => {
   return count;
 });
 
-const totalCartUnits = computed(() =>
-  cart.value.reduce((sum, item) => sum + (item.ordered_quantity || 0), 0),
-);
-
-const totalCartWeightKg = computed(() => {
-  let sum = 0;
-  for (const item of cart.value) {
-    sum += ((item.product_weight || 0) + (item.package_weight || 0)) * item.ordered_quantity;
-  }
-  return sum / 1000;
-});
-
-const totalCartPriceGbp = computed(() =>
-  cart.value.reduce((sum, item) => sum + (item.purchase_price || 0) * item.ordered_quantity, 0),
-);
-
-const formatMoney = (val: number) => val.toFixed(2);
-const lineSubtotal = (item: ShipmentCartItem) => (item.purchase_price || 0) * item.ordered_quantity;
-
 const getDefaultVendorId = () => shipmentVendorId.value;
 
 const getVendorCode = (vendorId: number | null): string | null => {
@@ -839,38 +719,16 @@ const getVendorCode = (vendorId: number | null): string | null => {
   return vendorStore.items.find((v) => v.id === vendorId)?.code ?? null;
 };
 
-const saveCartToStorage = () => {
-  const key = cartStorageKey.value;
-  if (cart.value.length === 0) {
-    sessionStorage.removeItem(key);
-  } else {
-    sessionStorage.setItem(key, JSON.stringify(cart.value));
-  }
+const isAlreadyOnShipment = (product: ProductItem) => {
+  return shipmentStore.currentShipmentItems.some((item) => {
+    if (item.product_id != null && item.product_id === product.id) return true;
+    return item.barcode === product.barcode && item.product_code === product.product_code;
+  });
 };
 
-const loadCartFromStorage = () => {
-  try {
-    const raw = sessionStorage.getItem(cartStorageKey.value);
-    if (!raw) return;
-    const parsed = JSON.parse(raw) as ShipmentCartItem[];
-    if (Array.isArray(parsed)) cart.value = parsed;
-  } catch {
-    sessionStorage.removeItem(cartStorageKey.value);
-  }
-};
-
-let saveCartTimer: ReturnType<typeof setTimeout> | null = null;
-const debouncedSaveCart = () => {
-  if (saveCartTimer) clearTimeout(saveCartTimer);
-  saveCartTimer = setTimeout(saveCartToStorage, 500);
-};
-
-watch(cart, debouncedSaveCart, { deep: true });
-
-const buildCatalogCartItem = (product: ProductItem, qty: number): ShipmentCartItem => ({
-  key: `catalog_${product.id}`,
+const buildShipmentItemPayload = (product: ProductItem, qty: number) => ({
+  shipment_id: props.shipmentId,
   product_id: product.id,
-  isNewProduct: false,
   vendor_id: getDefaultVendorId(),
   name: product.name,
   ordered_quantity: qty,
@@ -880,26 +738,19 @@ const buildCatalogCartItem = (product: ProductItem, qty: number): ShipmentCartIt
   barcode: product.barcode,
   product_code: product.product_code,
   image_url: product.image_url,
-  category: null,
-  brand: null,
+  add_method: 'manual' as const,
+  source_child_tenant_id: null,
+  source_type: null,
+  source_id: null,
 });
 
-const mergeProductIntoCart = (product: ProductItem, cleanQty: number) => {
-  const key = `catalog_${product.id}`;
-  const existing = cart.value.find((c) => c.key === key);
-  if (existing) {
-    existing.ordered_quantity += cleanQty;
-    existing.product_weight = product.product_weight ?? 0;
-    existing.package_weight = product.package_weight ?? 0;
-
-    const idx = cart.value.indexOf(existing);
-    if (idx > -1) {
-      cart.value.splice(idx, 1);
-      cart.value.unshift(existing);
-    }
-  } else {
-    cart.value.unshift(buildCatalogCartItem(product, cleanQty));
+const persistProductToShipment = async (product: ProductItem, qty: number) => {
+  if (isAlreadyOnShipment(product)) {
+    return { ok: false as const, skipped: true };
   }
+
+  await shipmentStore.addShipmentItem(buildShipmentItemPayload(product, qty));
+  return { ok: true as const, skipped: false };
 };
 
 const setBrowseQty = (productId: number, qty: number | null) => {
@@ -910,12 +761,27 @@ const setBrowseQty = (productId: number, qty: number | null) => {
   }
 };
 
-const addProductToCart = (product: ProductItem, qty: number | null | undefined) => {
-  const finalQty = !qty || isNaN(qty) || qty < 1 ? 1 : Math.floor(qty);
+const addProductToShipment = async (product: ProductItem, qty: number | null | undefined) => {
+  if (isAlreadyOnShipment(product)) {
+    $q.notify({ type: 'warning', message: `"${product.name}" is already on this shipment.` });
+    return;
+  }
 
-  mergeProductIntoCart(product, finalQty);
-  browseQtyById.value[product.id] = null;
-  browseSearch.value = '';
+  const finalQty = !qty || isNaN(qty) || qty < 1 ? 1 : Math.floor(qty);
+  addingProductId.value = product.id;
+  submitting.value = true;
+  try {
+    await persistProductToShipment(product, finalQty);
+    browseQtyById.value[product.id] = null;
+  } catch (err) {
+    $q.notify({
+      type: 'negative',
+      message: err instanceof Error ? err.message : `Failed to add "${product.name}".`,
+    });
+  } finally {
+    addingProductId.value = null;
+    submitting.value = false;
+  }
 };
 
 const parseBulkCodes = (raw: string): string[] => {
@@ -976,7 +842,9 @@ const onBulkAddCodes = async () => {
     }
 
     const missing: string[] = [];
-    let added = 0;
+    const toAdd: ProductItem[] = [];
+    const seen = new Set<number>();
+    let skipped = 0;
     for (const rawCode of codes) {
       const code = rawCode.trim();
       const cleanId = code.replace(/^#/, '');
@@ -1001,29 +869,43 @@ const onBulkAddCodes = async () => {
         missing.push(code);
         continue;
       }
-      mergeProductIntoCart(product, qty);
-      added += 1;
+      if (seen.has(product.id) || isAlreadyOnShipment(product)) {
+        skipped += 1;
+        continue;
+      }
+      seen.add(product.id);
+      toAdd.push(product);
     }
 
-    if (added > 0) {
-      bulkCodesText.value = '';
+    if (toAdd.length > 0) {
+      await shipmentStore.addShipmentItemsBulk(
+        props.shipmentId,
+        toAdd.map((product) => buildShipmentItemPayload(product, qty)),
+      );
+      bulkCodesText.value = missing.length > 0 ? missing.join('\n') : '';
     }
 
-    if (missing.length === 0) {
+    const skipNote = skipped > 0 ? ` ${skipped} already on shipment.` : '';
+    if (missing.length === 0 && toAdd.length > 0) {
       $q.notify({
         type: 'positive',
-        message: `Added ${added} item${added === 1 ? '' : 's'} to cart.`,
+        message: `Added ${toAdd.length} item${toAdd.length === 1 ? '' : 's'}.${skipNote}`,
       });
-    } else if (added > 0) {
+    } else if (missing.length === 0 && skipped > 0) {
       $q.notify({
         type: 'warning',
-        message: `Added ${added}. Not found: ${missing.join(', ')}`,
+        message: `Skipped ${skipped} already on this shipment.`,
+      });
+    } else if (missing.length > 0 && toAdd.length > 0) {
+      $q.notify({
+        type: 'warning',
+        message: `Added ${toAdd.length}.${skipNote} Not found: ${missing.join(', ')}`,
         timeout: 6000,
       });
     } else {
       $q.notify({
         type: 'negative',
-        message: `Not found: ${missing.join(', ')}`,
+        message: `Not found: ${missing.join(', ')}${skipNote}`,
         timeout: 6000,
       });
     }
@@ -1120,29 +1002,48 @@ watch(browseSearchField, () => {
   void loadBrowse();
 });
 
-const onCartQtyUpdated = (item: ShipmentCartItem, val: number) => {
-  const intVal = Math.floor(val);
-  item.ordered_quantity = intVal;
-  if (intVal <= 0) cart.value = cart.value.filter((c) => c.key !== item.key);
-};
-
-const removeFromCart = (item: ShipmentCartItem) => {
-  cart.value = cart.value.filter((c) => c.key !== item.key);
-};
-
-const confirmClearCart = () => {
-  $q.dialog({ title: 'Clear cart?', message: 'Remove all items?', cancel: true }).onOk(() => {
-    cart.value = [];
-  });
-};
-
-const onNewProductAdd = (newProduct: Omit<ShipmentCartItem, 'key'>) => {
-  // Unshift to put last added item first in the cart stack
-  cart.value.unshift({
-    ...newProduct,
-    vendor_id: shipmentVendorId.value,
-    key: `new_${Date.now()}`,
-  });
+const onNewProductAdd = async (newProduct: Omit<ShipmentCartItem, 'key'>) => {
+  submitting.value = true;
+  try {
+    const item: ShipmentCartItem = {
+      ...newProduct,
+      vendor_id: shipmentVendorId.value,
+      key: 'new',
+      isNewProduct: true,
+    };
+    const productId = (await findExistingProductId(item)) ?? (await registerProduct(item));
+    const already = shipmentStore.currentShipmentItems.some(
+      (row) => row.product_id === productId,
+    );
+    if (already) {
+      $q.notify({ type: 'warning', message: `"${item.name}" is already on this shipment.` });
+      return;
+    }
+    await shipmentStore.addShipmentItem({
+      shipment_id: props.shipmentId,
+      product_id: productId,
+      vendor_id: shipmentVendorId.value,
+      name: item.name,
+      ordered_quantity: item.ordered_quantity || 1,
+      purchase_price: item.purchase_price || 0,
+      product_weight: item.product_weight ?? 0,
+      package_weight: item.package_weight ?? 0,
+      barcode: item.barcode,
+      product_code: item.product_code,
+      image_url: item.image_url,
+      add_method: 'manual',
+      source_child_tenant_id: null,
+      source_type: null,
+      source_id: null,
+    });
+  } catch (err) {
+    $q.notify({
+      type: 'negative',
+      message: err instanceof Error ? err.message : 'Failed to add new product.',
+    });
+  } finally {
+    submitting.value = false;
+  }
 };
 
 const loadBrandCategoryOptions = async (vendorId: number | null) => {
@@ -1269,124 +1170,13 @@ const registerProduct = async (item: ShipmentCartItem): Promise<number> => {
   return created.id;
 };
 
-const resolveProductId = async (item: ShipmentCartItem) => {
-  if (item.product_id && !item.isNewProduct) {
-    return { productId: item.product_id, registered: false };
-  }
-  const existingId = await findExistingProductId(item);
-  if (existingId) return { productId: existingId, registered: false };
-  const productId = await registerProduct(item);
-  return { productId, registered: true };
-};
-
-const onCommitCart = async () => {
-  if (cart.value.length === 0) return;
-
-  submitting.value = true;
-  let registeredCount = 0;
-
-  try {
-    const reversedCart = [...cart.value].reverse();
-
-    // 1. Single bulk lookup for existing products in catalog
-    const unlinkedItems = reversedCart.filter((item) => !item.product_id || item.isNewProduct);
-    const uniqueCodesToLookup = [
-      ...new Set(
-        unlinkedItems
-          .flatMap((item) => [item.barcode?.trim(), item.product_code?.trim()])
-          .filter((c): c is string => Boolean(c && c.length > 0)),
-      ),
-    ];
-
-    const catalogMap = new Map<string, number>();
-    if (uniqueCodesToLookup.length > 0 && authStore.tenantId) {
-      const matchedProducts = await productRepository.lookupProductsByCodes({
-        codes: uniqueCodesToLookup,
-        tenantId: authStore.tenantId,
-        searchField: 'auto',
-      });
-      for (const p of matchedProducts) {
-        if (p.barcode?.trim()) catalogMap.set(p.barcode.trim(), p.id);
-        if (p.product_code?.trim()) catalogMap.set(p.product_code.trim(), p.id);
-      }
-    }
-
-    // Prepare item payloads for atomic RPC bulk insert
-    const itemPayloads: Omit<GlobalShipmentItem, 'id' | 'created_at' | 'updated_at' | 'sort_order'>[] = [];
-
-    for (const item of reversedCart) {
-      let productId = item.product_id;
-      if (!productId || item.isNewProduct) {
-        const foundId =
-          (item.barcode?.trim() ? catalogMap.get(item.barcode.trim()) : undefined) ??
-          (item.product_code?.trim() ? catalogMap.get(item.product_code.trim()) : undefined);
-
-        if (foundId) {
-          productId = foundId;
-        } else {
-          productId = await registerProduct(item);
-          registeredCount++;
-        }
-      }
-
-      itemPayloads.push({
-        shipment_id: props.shipmentId,
-        product_id: productId,
-        vendor_id: shipmentVendorId.value,
-        name: item.name,
-        ordered_quantity: item.ordered_quantity,
-        purchase_price: item.purchase_price,
-        product_weight: item.product_weight,
-        package_weight: item.package_weight,
-        barcode: item.barcode,
-        product_code: item.product_code,
-        image_url: item.image_url,
-        add_method: 'manual',
-        source_child_tenant_id: null,
-        source_type: null,
-        source_id: null,
-      });
-    }
-
-    // 2. Single atomic RPC bulk insert
-    await shipmentStore.addShipmentItemsBulk(props.shipmentId, itemPayloads);
-
-    sessionStorage.removeItem(cartStorageKey.value);
-    cart.value = [];
-
-    let msg = `Added ${itemPayloads.length} item${itemPayloads.length === 1 ? '' : 's'}.`;
-    if (registeredCount > 0)
-      msg += ` Registered ${registeredCount} new product${registeredCount === 1 ? '' : 's'} in catalog.`;
-    $q.notify({ type: 'positive', message: msg });
-    emit('saved');
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    $q.notify({ type: 'negative', message: msg });
-  } finally {
-    submitting.value = false;
-  }
-};
-
-const onCancel = () => {
-  if (cart.value.length === 0) {
-    emit('cancel');
-    return;
-  }
-  $q.dialog({
-    title: 'Discard cart?',
-    message: 'Unsaved items will be lost.',
-    cancel: true,
-  }).onOk(() => {
-    sessionStorage.removeItem(cartStorageKey.value);
-    cart.value = [];
-    emit('cancel');
-  });
+const onDone = () => {
+  emit('saved');
 };
 
 const gbpCurrencyId = ref<number | null>(null);
 
 onMounted(async () => {
-  loadCartFromStorage();
   if (
     !shipmentStore.currentShipment ||
     shipmentStore.currentShipment.id !== props.shipmentId
@@ -1440,40 +1230,6 @@ onMounted(async () => {
 
 .panel-body {
   min-height: 0;
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-}
-
-.search-col {
-  flex: 1 1 58%;
-  min-width: 0;
-  min-height: 0;
-  border-right: 1px solid rgba(226, 232, 240, 0.8);
-}
-
-.cart-col {
-  flex: 1 1 42%;
-  min-width: 0;
-  min-height: 0;
-}
-
-/* Stack to a single column on narrow screens */
-@media (max-width: 900px) {
-  .panel-body {
-    flex-direction: column;
-  }
-  .search-col,
-  .cart-col {
-    flex: 1 1 auto;
-  }
-  .search-col {
-    border-right: none;
-    border-bottom: 1px solid rgba(226, 232, 240, 0.8);
-  }
-  .browse-list-container {
-    max-height: 45vh;
-  }
 }
 
 .toolbar-section {
@@ -1503,34 +1259,20 @@ onMounted(async () => {
   border: 1px solid #e2e8f0;
 }
 
-.cart-section {
-  min-height: 0;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
+.browse-product-thumb {
+  width: 48px;
+  height: 48px;
 }
 
-.cart-scroll {
-  overflow-y: auto;
-  flex: 1;
-}
-
-.cart-line {
-  background: rgba(248, 250, 252, 0.6);
-  border: 1px solid rgba(226, 232, 240, 0.8);
+.browse-product-thumb__img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
 }
 
 .panel-footer {
   border-top: 1px solid rgba(226, 232, 240, 0.8);
   background: rgba(248, 250, 252, 0.5);
-}
-
-.ellipsis-2-lines {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 
 .search-field-dropdown {

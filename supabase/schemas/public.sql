@@ -4893,6 +4893,12 @@ begin
     raise exception 'Child submodules cannot be enabled independently. Please assign the main parent feature "%" instead.', v_parent;
   end if;
 
+  if v_key = 'shop_order' and exists (
+    select 1 from public.tenants child where child.parent_id = p_tenant_id
+  ) then
+    raise exception 'Shop & Order cannot be assigned to a parent company. Assign it on a sister concern or a standalone tenant.';
+  end if;
+
   return query
   insert into public.tenant_modules as tm (tenant_id, module_key, is_active)
   values (p_tenant_id, v_key, coalesce(p_is_active, true))
@@ -8067,13 +8073,38 @@ CREATE OR REPLACE FUNCTION "public"."get_active_module_keys_for_tenant"("p_tenan
     select module_key from active_assignments
     union
     select module_key from expanded_child_keys
+  ),
+  tenant_kind as (
+    select exists (
+      select 1
+      from public.tenants child
+      where child.parent_id = p_tenant_id
+    ) as is_parent_company
+  ),
+  visible as (
+    select c.module_key
+    from combined c
+    cross join tenant_kind k
+    where c.module_key is not null
+      and not (
+        k.is_parent_company
+        and (
+          c.module_key = 'shop_order'
+          or exists (
+            select 1
+            from public.modules mo
+            where mo.key = c.module_key
+              and mo.parent_module_key = 'shop_order'
+          )
+        )
+      )
   )
   select coalesce(
-    array_agg(c.module_key order by c.module_key)
-      filter (where c.module_key is not null),
+    array_agg(v.module_key order by v.module_key)
+      filter (where v.module_key is not null),
     '{}'::text[]
   )
-  from combined c;
+  from visible v;
 $$;
 
 
