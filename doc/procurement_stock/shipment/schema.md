@@ -30,16 +30,17 @@ Ops / identity container. **Zero financial rate fields** — money lives in `shi
 | `deleted_at` / `deleted_by` | TIMESTAMPTZ / UUID | No | Soft delete |
 | `created_at` / `updated_at` | TIMESTAMPTZ | Yes | |
 
-**Progress (customer-facing) — not a column enum**
+**Progress (customer-facing) — flow + stage, not a column enum**
 
 | Mechanism | Detail |
 | :--- | :--- |
-| Tag group | Tenant-custom `shipment_progress` ([UNIVERSAL_TAGGING_SYSTEM.md](../../tag/UNIVERSAL_TAGGING_SYSTEM.md)) |
-| Link | `entity_tags` with `entity_type = 'shipment'`, `entity_id = shipments.id` |
-| UI rule | At most one active progress tag; optional `sort_order` on tags for stepper |
-| API | List/get expose `status` + current progress tag; filter shipments by tag via `entity_tags` |
-| Optional | Denormalized `progress_tag_id` on header for list speed only — SSOT remains `entity_tags` |
-| Seed | `ensure_shipment_progress_tags(tenant_id)` + `set_global_shipment_progress_tag(shipment_id, tag_id)` |
+| Stage catalog | Tenant-owned `shipment_progress` tags keep label/color metadata |
+| Flow header | `shipment_progress_flows` stores multiple named journeys per parent tenant |
+| Flow stages | `shipment_progress_flow_stages` orders stage tags inside one flow |
+| Shipment links | `global_shipments.progress_flow_id` = selected flow, `progress_tag_id` = current stage |
+| UI rule | Exactly one selected flow and at most one current stage; stage must belong to selected flow |
+| API | List/get expose `status`, `progress_flow`, and current progress tag; public tracking returns only the shipment's selected flow |
+| Seed | Migration backfills one tenant default flow from existing `shipment_progress` tags |
 
 Decision: [../../PROCUREMENT_STOCK_ISSUES.md](../../PROCUREMENT_STOCK_ISSUES.md) (open) · this schema
 

@@ -9,6 +9,29 @@ export interface ShipmentProgressTag {
   group_name: string | null;
   sort_order: number | null;
   color?: string | null;
+  is_active?: boolean;
+}
+
+export interface ShipmentProgressFlow {
+  id: number;
+  tenant_id: number;
+  name: string;
+  slug: string;
+  is_active: boolean;
+  is_default: boolean;
+  created_at?: string;
+  stage_count?: number;
+}
+
+export interface ShipmentProgressFlowStage {
+  flow_stage_id: number;
+  flow_id: number;
+  tag_id: number;
+  sort_order: number;
+  name: string;
+  slug: string;
+  color: string | null;
+  is_active: boolean;
 }
 
 export interface GlobalShipment {
@@ -33,8 +56,11 @@ export interface GlobalShipment {
   stock_ready: boolean;
   /** Plan name for stock posted */
   inventory_added?: boolean;
+  progress_flow_id?: number | null;
+  progress_flow?: ShipmentProgressFlow | null;
   progress_tag_id?: number | null;
   progress_tag?: ShipmentProgressTag | null;
+  public_tracking_token?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -86,12 +112,14 @@ const normalizeShipment = (row: GlobalShipment & Record<string, unknown>): Globa
     (row.stock_ready as boolean | undefined) ??
     false;
   const progressRaw = row.progress_tag as ShipmentProgressTag | null | undefined;
+  const progressFlowRaw = row.progress_flow as ShipmentProgressFlow | null | undefined;
   return {
     ...row,
     total_weight_kg: total,
     received_weight: (row.received_weight as number | null | undefined) ?? total,
     inventory_added: inventory,
     stock_ready: (row.stock_ready as boolean | undefined) ?? inventory,
+    progress_flow: progressFlowRaw ?? null,
     progress_tag: progressRaw ?? null,
   };
 };
@@ -99,7 +127,9 @@ const normalizeShipment = (row: GlobalShipment & Record<string, unknown>): Globa
 const getById = async (id: number): Promise<GlobalShipment> => {
   const { data, error } = await db
     .from('global_shipments')
-    .select('*, progress_tag:tags!global_shipments_progress_tag_id_fkey(*)')
+    .select(
+      '*, progress_flow:shipment_progress_flows!global_shipments_progress_flow_id_fkey(*), progress_tag:tags!global_shipments_progress_tag_id_fkey(*)',
+    )
     .eq('id', id)
     .single();
 
@@ -108,11 +138,24 @@ const getById = async (id: number): Promise<GlobalShipment> => {
   }
 
   const row = data as GlobalShipment & {
+    progress_flow?: ShipmentProgressFlow | null;
     progress_tag?: (ShipmentProgressTag & { color?: string | null }) | null;
   };
   const tag = row.progress_tag;
+  const flow = row.progress_flow;
   return normalizeShipment({
     ...row,
+    progress_flow: flow?.id
+      ? {
+          id: flow.id,
+          tenant_id: flow.tenant_id,
+          name: flow.name,
+          slug: flow.slug,
+          is_active: flow.is_active,
+          is_default: flow.is_default,
+          created_at: flow.created_at,
+        }
+      : null,
     progress_tag: tag?.id
       ? {
           id: tag.id,
@@ -575,26 +618,53 @@ const finalizeShipment = async (
   return data as FinalizeShipmentResult;
 };
 
+const normalizeProgressTag = (t: Record<string, unknown>): ShipmentProgressTag => ({
+  id: t.id as number,
+  name: t.name as string,
+  slug: t.slug as string,
+  group_name: (t.group_name as string | null) ?? 'shipment_progress',
+  sort_order: (t.sort_order as number | null) ?? null,
+  color: (t.color as string | null) ?? null,
+  is_active: (t.is_active as boolean | undefined) ?? true,
+});
+
+const normalizeProgressFlow = (row: Record<string, unknown>): ShipmentProgressFlow => ({
+  id: row.id as number,
+  tenant_id: row.tenant_id as number,
+  name: row.name as string,
+  slug: row.slug as string,
+  is_active: (row.is_active as boolean | undefined) ?? true,
+  is_default: (row.is_default as boolean | undefined) ?? false,
+  created_at: row.created_at as string | undefined,
+  stage_count: row.stage_count as number | undefined,
+});
+
+const normalizeProgressFlowStage = (
+  row: Record<string, unknown>,
+): ShipmentProgressFlowStage => ({
+  flow_stage_id: row.flow_stage_id as number,
+  flow_id: row.flow_id as number,
+  tag_id: row.tag_id as number,
+  sort_order: row.sort_order as number,
+  name: row.name as string,
+  slug: row.slug as string,
+  color: (row.color as string | null) ?? null,
+  is_active: (row.is_active as boolean | undefined) ?? true,
+});
+
 const ensureShipmentProgressTags = async (tenantId: number): Promise<ShipmentProgressTag[]> => {
   const { data, error } = await db.rpc('ensure_shipment_progress_tags', {
     p_tenant_id: tenantId,
   });
   if (error) throw error;
-  return ((data as ShipmentProgressTag[] | null) ?? []).map((t) => ({
-    id: t.id,
-    name: t.name,
-    slug: t.slug,
-    group_name: t.group_name ?? 'shipment_progress',
-    sort_order: t.sort_order ?? null,
-    color: (t as ShipmentProgressTag).color ?? null,
-  }));
+  return ((data as Record<string, unknown>[] | null) ?? []).map(normalizeProgressTag);
 };
 
 const setShipmentProgressTag = async (
   shipmentId: number,
   tagId: number | null,
 ): Promise<ShipmentProgressTag | null> => {
-  const { data, error } = await db.rpc('set_global_shipment_progress_tag', {
+  const { data, error } = await db.rpc('set_shipment_progress_stage', {
     p_shipment_id: shipmentId,
     p_tag_id: tagId,
   });
@@ -699,6 +769,223 @@ const listShipmentPayeeSettlements = async (
   return data as ListShipmentPayeeSettlementsResult;
 };
 
+const generateTrackingToken = async (shipmentId: number): Promise<string> => {
+  const { data, error } = await db.rpc('generate_shipment_tracking_token', {
+    p_shipment_id: shipmentId,
+  });
+  if (error) throw error;
+  return data as string;
+};
+
+const revokeTrackingToken = async (shipmentId: number): Promise<void> => {
+  const { error } = await db.rpc('revoke_shipment_tracking_token', {
+    p_shipment_id: shipmentId,
+  });
+  if (error) throw error;
+};
+
+const listShipmentProgressFlows = async (
+  tenantId: number,
+  includeArchived = false,
+): Promise<ShipmentProgressFlow[]> => {
+  const { data, error } = await db.rpc('list_shipment_progress_flows', {
+    p_tenant_id: tenantId,
+    p_include_archived: includeArchived,
+  });
+  if (error) throw error;
+  return ((data as Record<string, unknown>[] | null) ?? []).map(normalizeProgressFlow);
+};
+
+const createShipmentProgressFlow = async (
+  tenantId: number,
+  name: string,
+): Promise<ShipmentProgressFlow> => {
+  const { data, error } = await db.rpc('create_shipment_progress_flow', {
+    p_tenant_id: tenantId,
+    p_name: name,
+  });
+  if (error) throw error;
+  return normalizeProgressFlow(data as Record<string, unknown>);
+};
+
+const updateShipmentProgressFlow = async (
+  flowId: number,
+  name: string,
+): Promise<ShipmentProgressFlow> => {
+  const { data, error } = await db.rpc('update_shipment_progress_flow', {
+    p_flow_id: flowId,
+    p_name: name,
+  });
+  if (error) throw error;
+  return normalizeProgressFlow(data as Record<string, unknown>);
+};
+
+const archiveShipmentProgressFlow = async (
+  flowId: number,
+  archive: boolean,
+): Promise<ShipmentProgressFlow> => {
+  const { data, error } = await db.rpc('archive_shipment_progress_flow', {
+    p_flow_id: flowId,
+    p_archive: archive,
+  });
+  if (error) throw error;
+  return normalizeProgressFlow(data as Record<string, unknown>);
+};
+
+const setDefaultShipmentProgressFlow = async (
+  flowId: number,
+): Promise<ShipmentProgressFlow> => {
+  const { data, error } = await db.rpc('set_default_shipment_progress_flow', {
+    p_flow_id: flowId,
+  });
+  if (error) throw error;
+  return normalizeProgressFlow(data as Record<string, unknown>);
+};
+
+const listShipmentProgressFlowStages = async (
+  flowId: number,
+  includeArchived = true,
+): Promise<ShipmentProgressFlowStage[]> => {
+  const { data, error } = await db.rpc('list_shipment_progress_flow_stages', {
+    p_flow_id: flowId,
+    p_include_archived: includeArchived,
+  });
+  if (error) throw error;
+  return ((data as Record<string, unknown>[] | null) ?? []).map(normalizeProgressFlowStage);
+};
+
+const createShipmentProgressFlowStage = async (
+  flowId: number,
+  name: string,
+  color?: string | null,
+  sortOrder?: number | null,
+): Promise<ShipmentProgressFlowStage> => {
+  const { data, error } = await db.rpc('create_shipment_progress_flow_stage', {
+    p_flow_id: flowId,
+    p_name: name,
+    p_color: color ?? '#64748b',
+    p_sort_order: sortOrder ?? null,
+  });
+  if (error) throw error;
+  const rows = (data as Record<string, unknown>[] | null) ?? [];
+  return normalizeProgressFlowStage(rows[0] ?? {});
+};
+
+const updateShipmentProgressFlowStage = async (
+  flowStageId: number,
+  fields: { name?: string; color?: string | null },
+): Promise<ShipmentProgressFlowStage> => {
+  const { data, error } = await db.rpc('update_shipment_progress_flow_stage', {
+    p_flow_stage_id: flowStageId,
+    p_name: fields.name ?? null,
+    p_color: fields.color ?? null,
+  });
+  if (error) throw error;
+  const rows = (data as Record<string, unknown>[] | null) ?? [];
+  return normalizeProgressFlowStage(rows[0] ?? {});
+};
+
+const archiveShipmentProgressFlowStage = async (
+  flowStageId: number,
+  archive: boolean,
+): Promise<ShipmentProgressFlowStage> => {
+  const { data, error } = await db.rpc('archive_shipment_progress_flow_stage', {
+    p_flow_stage_id: flowStageId,
+    p_archive: archive,
+  });
+  if (error) throw error;
+  const rows = (data as Record<string, unknown>[] | null) ?? [];
+  return normalizeProgressFlowStage(rows[0] ?? {});
+};
+
+const reorderShipmentProgressFlowStages = async (
+  flowId: number,
+  flowStageIds: number[],
+): Promise<void> => {
+  const { error } = await db.rpc('reorder_shipment_progress_flow_stages', {
+    p_flow_id: flowId,
+    p_flow_stage_ids: flowStageIds,
+  });
+  if (error) throw error;
+};
+
+const setShipmentProgressFlow = async (
+  shipmentId: number,
+  flowId: number,
+): Promise<{ shipment_id: number; progress_flow_id: number }> => {
+  const { data, error } = await db.rpc('set_shipment_progress_flow', {
+    p_shipment_id: shipmentId,
+    p_flow_id: flowId,
+  });
+  if (error) throw error;
+  return data as { shipment_id: number; progress_flow_id: number };
+};
+
+const listShipmentProgressTags = async (
+  tenantId: number,
+  includeArchived = false,
+): Promise<ShipmentProgressTag[]> => {
+  const { data, error } = await db.rpc('list_shipment_progress_tags', {
+    p_tenant_id: tenantId,
+    p_include_archived: includeArchived,
+  });
+  if (error) throw error;
+  return ((data as Record<string, unknown>[] | null) ?? []).map(normalizeProgressTag);
+};
+
+const createShipmentProgressTag = async (
+  tenantId: number,
+  name: string,
+  color?: string | null,
+  sortOrder?: number | null,
+): Promise<ShipmentProgressTag> => {
+  const { data, error } = await db.rpc('create_shipment_progress_tag', {
+    p_tenant_id: tenantId,
+    p_name: name,
+    p_color: color ?? '#64748b',
+    p_sort_order: sortOrder ?? null,
+  });
+  if (error) throw error;
+  return normalizeProgressTag(data as Record<string, unknown>);
+};
+
+const updateShipmentProgressTag = async (
+  tagId: number,
+  fields: { name?: string; color?: string; sort_order?: number },
+): Promise<ShipmentProgressTag> => {
+  const { data, error } = await db.rpc('update_shipment_progress_tag', {
+    p_tag_id: tagId,
+    p_name: fields.name ?? null,
+    p_color: fields.color ?? null,
+    p_sort_order: fields.sort_order ?? null,
+  });
+  if (error) throw error;
+  return normalizeProgressTag(data as Record<string, unknown>);
+};
+
+const archiveShipmentProgressTag = async (
+  tagId: number,
+  archive: boolean,
+): Promise<ShipmentProgressTag> => {
+  const { data, error } = await db.rpc('archive_shipment_progress_tag', {
+    p_tag_id: tagId,
+    p_archive: archive,
+  });
+  if (error) throw error;
+  return normalizeProgressTag(data as Record<string, unknown>);
+};
+
+const reorderShipmentProgressTags = async (
+  tenantId: number,
+  tagIds: number[],
+): Promise<void> => {
+  const { error } = await db.rpc('reorder_shipment_progress_tags', {
+    p_tenant_id: tenantId,
+    p_tag_ids: tagIds,
+  });
+  if (error) throw error;
+};
+
 export const globalShipmentRepository = {
   getById,
   listPaginated,
@@ -725,6 +1012,24 @@ export const globalShipmentRepository = {
   finalizeShipment,
   ensureShipmentProgressTags,
   setShipmentProgressTag,
+  listShipmentProgressTags,
+  createShipmentProgressTag,
+  updateShipmentProgressTag,
+  archiveShipmentProgressTag,
+  reorderShipmentProgressTags,
+  generateTrackingToken,
+  revokeTrackingToken,
+  listShipmentProgressFlows,
+  createShipmentProgressFlow,
+  updateShipmentProgressFlow,
+  archiveShipmentProgressFlow,
+  setDefaultShipmentProgressFlow,
+  listShipmentProgressFlowStages,
+  createShipmentProgressFlowStage,
+  updateShipmentProgressFlowStage,
+  archiveShipmentProgressFlowStage,
+  reorderShipmentProgressFlowStages,
+  setShipmentProgressFlow,
   assignShipmentToChild,
   returnShipmentToVendor,
   settleShipmentPayee,

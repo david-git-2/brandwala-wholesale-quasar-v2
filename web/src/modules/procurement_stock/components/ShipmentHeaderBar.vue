@@ -180,6 +180,22 @@
       >
         <q-tooltip>View & split batch stock in warehouse</q-tooltip>
       </q-btn>
+
+      <!-- Share tracking link -->
+      <q-btn
+        flat
+        dense
+        no-caps
+        size="sm"
+        :color="publicTrackingToken ? 'teal-7' : 'grey-7'"
+        :icon="publicTrackingToken ? 'ph ph-share-network' : 'ph ph-link'"
+        :label="publicTrackingToken ? 'Share' : 'Share'"
+        :loading="sharingLoading"
+        @click="onShareClick"
+      >
+        <q-tooltip>{{ publicTrackingToken ? 'Copy or manage tracking link' : 'Generate public tracking link' }}</q-tooltip>
+      </q-btn>
+
       <q-btn
         flat
         dense
@@ -202,12 +218,77 @@
         @click="$emit('delete-shipment')"
       />
     </div>
+
+    <!-- Share menu dialog -->
+    <q-dialog v-model="shareDialogOpen">
+      <q-card style="min-width: 340px">
+        <q-card-section class="row items-center justify-between border-bottom">
+          <div class="text-subtitle1 text-weight-bold">Public Tracking Link</div>
+          <q-btn flat round dense icon="ph ph-x" v-close-popup />
+        </q-card-section>
+
+        <q-card-section class="q-gutter-y-sm">
+          <div v-if="publicTrackingToken">
+            <div class="text-caption text-grey-6 q-mb-xs">Share this link — no login required:</div>
+            <div class="row items-center no-wrap q-gutter-x-xs">
+              <q-input
+                :model-value="trackingUrl"
+                dense
+                outlined
+                readonly
+                class="col soft-input"
+                hide-bottom-space
+              />
+              <q-btn
+                unelevated
+                dense
+                no-caps
+                color="primary"
+                icon="ph ph-copy"
+                @click="copyLink"
+              >
+                <q-tooltip>Copy link</q-tooltip>
+              </q-btn>
+            </div>
+          </div>
+          <div v-else class="text-body2 text-grey-7">
+            No tracking link yet. Generate one to share with buyers or freight forwarders.
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="between" class="q-px-md q-pb-md">
+          <q-btn
+            v-if="publicTrackingToken"
+            flat
+            no-caps
+            dense
+            color="negative"
+            icon="ph ph-link-break"
+            label="Revoke link"
+            :loading="sharingLoading"
+            @click="onRevokeLink"
+          />
+          <q-space v-else />
+          <q-btn
+            unelevated
+            no-caps
+            :color="publicTrackingToken ? 'grey-7' : 'primary'"
+            :icon="publicTrackingToken ? 'ph ph-arrows-clockwise' : 'ph ph-link'"
+            :label="publicTrackingToken ? 'Regenerate' : 'Generate link'"
+            :loading="sharingLoading"
+            @click="onGenerateLink"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </section>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue';
+import { computed, ref, watch, nextTick } from 'vue';
+import { useQuasar } from 'quasar';
 import type { QInput } from 'quasar';
+import { useRouter } from 'vue-router';
 import type { GlobalShipment } from '../repositories/globalShipmentRepository';
 
 const props = defineProps<{
@@ -220,6 +301,8 @@ const props = defineProps<{
   cargoOptions: Array<{ label: string; value: number }>;
   currentCargoLabel: string;
   loadingCargo: boolean;
+  publicTrackingToken?: string | null;
+  sharingLoading?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -233,7 +316,40 @@ const emit = defineEmits<{
   'download-excel': [];
   'delete-shipment': [];
   'organize-stock': [];
+  'generate-tracking-token': [];
+  'revoke-tracking-token': [];
 }>();
+
+const $q = useQuasar();
+const router = useRouter();
+
+const shareDialogOpen = ref(false);
+
+const trackingUrl = computed(() => {
+  if (!props.publicTrackingToken) return '';
+  const base = window.location.origin;
+  const resolved = router.resolve({ name: 'public-shipment-tracking', params: { token: props.publicTrackingToken } });
+  return `${base}${resolved.href}`;
+});
+
+function onShareClick() {
+  shareDialogOpen.value = true;
+}
+
+function copyLink() {
+  if (!trackingUrl.value) return;
+  void navigator.clipboard.writeText(trackingUrl.value);
+  $q.notify({ type: 'positive', message: 'Tracking link copied', timeout: 1500 });
+}
+
+function onGenerateLink() {
+  emit('generate-tracking-token');
+}
+
+function onRevokeLink() {
+  shareDialogOpen.value = false;
+  emit('revoke-tracking-token');
+}
 
 const inlineNameInput = ref('');
 const editingName = ref(false);

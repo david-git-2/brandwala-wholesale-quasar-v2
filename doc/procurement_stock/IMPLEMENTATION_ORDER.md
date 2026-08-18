@@ -116,6 +116,22 @@ Desk **post** deduct and shop checkout deduct are already live (7A–14B ATP cut
 
 ---
 
+## 🚧 Next — Shipment Public Progress Tracking (SP1)
+
+Goal: parent tenant defines multiple shipment progress flows, each shipment chooses one flow + current stage, and staff can share a public no-auth tracking link per shipment.
+
+| # | Focus | Outcome |
+|:-:|:---|:---|
+| **SP1a** | **Progress settings UI** | New procurement settings page to manage shipment progress flows and ordered stages for parent tenant. |
+| **SP1b** | **Progress RPC hardening** | Replace single-list behavior with flow/stage CRUD, default flow selection, shipment flow selection, and stage validation. |
+| **SP1c** | **Public share token + read RPC** | Add shipment public token and `security definer` read RPC that returns shipment-safe progress payload only. |
+| **SP1d** | **Public tracking page** | Public frontend route renders current progress + ordered timeline from the shipment's selected flow only. |
+| **SP1e** | **Internal share UX** | Shipment details adds copy/share link action for staff; no sensitive fields exposed in public payload. |
+
+Spec + phases: [SHIPMENT_PUBLIC_PROGRESS_TRACKING.task.md](./SHIPMENT_PUBLIC_PROGRESS_TRACKING.task.md)
+
+---
+
 ## ⏸ Later (explicit defer)
 
 | Item | Notes |

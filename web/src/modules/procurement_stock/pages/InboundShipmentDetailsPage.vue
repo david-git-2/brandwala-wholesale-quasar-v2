@@ -36,6 +36,8 @@
           :cargo-options="cargoOptions"
           :current-cargo-label="currentCargoLabel"
           :loading-cargo="loadingCargo"
+          :public-tracking-token="shipmentStore.currentShipment.public_tracking_token"
+          :sharing-loading="sharingLoading"
           @go-back="goBack"
           @update-name="saveInlineName"
           @update-type="saveInlineType"
@@ -46,18 +48,23 @@
           @download-excel="downloadExcel"
           @delete-shipment="confirmDeleteShipment"
           @organize-stock="goToWarehouseStock"
+          @generate-tracking-token="generateTrackingToken"
+          @revoke-tracking-token="revokeTrackingToken"
         />
 
         <ShipmentStatusWorkflowBar
           :status="shipmentStore.currentShipment.status"
           :updating="updatingStatus"
           :target-status="targetUpdatingStatus"
+          :flow-options="progressFlowOptions"
+          :progress-flow-id="shipmentStore.currentShipment.progress_flow_id ?? null"
           :progress-options="shipmentStore.progressTags"
           :progress-tag-id="shipmentStore.currentShipment.progress_tag_id ?? shipmentStore.currentShipment.progress_tag?.id ?? null"
           :progress-updating="shipmentStore.progressUpdating"
           :progress-target-id="progressTargetId"
           :show-next="!!nextStep"
           @update-status="changeStatus"
+          @update-flow="changeFlow"
           @update-progress="changeProgress"
         >
           <template #next>
@@ -450,7 +457,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
@@ -471,11 +478,48 @@ import ShipmentAssignShopCard from '../components/ShipmentAssignShopCard.vue';
 import { useInboundShipmentCalculations } from '../composables/useInboundShipmentCalculations';
 import { useInboundShipmentActions } from '../composables/useInboundShipmentActions';
 
+import { showSuccessNotification, showErrorNotification, requestConfirmation } from 'src/utils/appFeedback';
+
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const shipmentStore = useGlobalShipmentStore();
 const shipmentId = Number(route.params.id);
+
+const sharingLoading = ref(false);
+const progressFlowOptions = computed(() =>
+  shipmentStore.progressFlows.filter((flow) => flow.is_active !== false),
+);
+
+const generateTrackingToken = async () => {
+  sharingLoading.value = true;
+  try {
+    await shipmentStore.generateTrackingToken(shipmentId);
+    showSuccessNotification('Tracking link generated');
+  } catch (err) {
+    showErrorNotification(err instanceof Error ? err.message : 'Failed to generate link');
+  } finally {
+    sharingLoading.value = false;
+  }
+};
+
+const revokeTrackingToken = async () => {
+  const ok = await requestConfirmation(
+    'Revoke the tracking link? Anyone with the old link will no longer be able to view the shipment.',
+    'Revoke link',
+    'Revoke',
+  );
+  if (!ok) return;
+  sharingLoading.value = true;
+  try {
+    await shipmentStore.revokeTrackingToken(shipmentId);
+    showSuccessNotification('Tracking link revoked');
+  } catch (err) {
+    showErrorNotification(err instanceof Error ? err.message : 'Failed to revoke link');
+  } finally {
+    sharingLoading.value = false;
+  }
+};
 
 const VIEW_MODE_STORAGE_KEY = 'inbound_shipment_line_items_view_mode';
 const lineItemsViewMode = ref<'table' | 'cards'>('table');
@@ -596,10 +640,35 @@ const goToWarehouseStock = () => {
   }
 };
 
-onMounted(() => {
-  loadShipmentDetails();
-  if (authStore.tenantId) {
-    void shipmentStore.ensureProgressTags(authStore.tenantId);
+const changeFlow = async (flowId: number) => {
+  if (!shipmentStore.currentShipment || shipmentStore.currentShipment.progress_flow_id === flowId) return;
+  try {
+    await shipmentStore.setShipmentFlow(shipmentStore.currentShipment.id, flowId);
+    showSuccessNotification('Shipment flow updated');
+  } catch (err) {
+    showErrorNotification(err instanceof Error ? err.message : 'Failed to update shipment flow');
+  }
+};
+
+onMounted(async () => {
+  await shipmentStore.fetchShipmentDetails(shipmentId);
+  if (!authStore.tenantId) return;
+  await shipmentStore.loadProgressFlows(authStore.tenantId, true);
+  const flowId =
+    shipmentStore.currentShipment?.progress_flow_id ??
+    shipmentStore.progressFlows.find((flow) => flow.is_default)?.id ??
+    null;
+  if (flowId) {
+    await shipmentStore.loadProgressFlowStages(flowId, false);
+    shipmentStore.progressTags = (shipmentStore.progressStagesByFlow[flowId] ?? []).map((stage) => ({
+      id: stage.tag_id,
+      name: stage.name,
+      slug: stage.slug,
+      group_name: 'shipment_progress',
+      sort_order: stage.sort_order,
+      color: stage.color,
+      is_active: stage.is_active,
+    }));
   }
 });
 </script>

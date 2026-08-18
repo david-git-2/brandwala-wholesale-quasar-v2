@@ -5,6 +5,8 @@ import {
   type FinalizeShipmentStockRow,
   type GlobalShipment,
   type GlobalShipmentItem,
+  type ShipmentProgressFlow,
+  type ShipmentProgressFlowStage,
   type ShipmentProgressTag,
 } from '../repositories/globalShipmentRepository';
 import { globalShipmentBoxRepository } from '../repositories/globalShipmentBoxRepository';
@@ -46,6 +48,8 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
     costEntriesLoading: false,
     costEntriesSaving: false,
     progressTags: [] as ShipmentProgressTag[],
+    progressFlows: [] as ShipmentProgressFlow[],
+    progressStagesByFlow: {} as Record<number, ShipmentProgressFlowStage[]>,
     progressUpdating: false,
   }),
 
@@ -676,7 +680,26 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
 
     async ensureProgressTags(tenantId: number) {
       try {
-        this.progressTags = await globalShipmentRepository.ensureShipmentProgressTags(tenantId);
+        this.progressFlows = await globalShipmentRepository.listShipmentProgressFlows(tenantId, true);
+        const flowId =
+          this.currentShipment?.progress_flow_id ??
+          this.progressFlows.find((flow) => flow.is_default)?.id ??
+          null;
+        if (!flowId) {
+          this.progressTags = [];
+          return;
+        }
+        const stages = await globalShipmentRepository.listShipmentProgressFlowStages(flowId, false);
+        this.progressStagesByFlow[flowId] = stages;
+        this.progressTags = stages.map((stage) => ({
+          id: stage.tag_id,
+          name: stage.name,
+          slug: stage.slug,
+          group_name: 'shipment_progress',
+          sort_order: stage.sort_order,
+          color: stage.color,
+          is_active: stage.is_active,
+        }));
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to load progress tags';
         throw err;
@@ -880,6 +903,223 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         throw err;
       } finally {
         this.loading = false;
+      }
+    },
+
+    // --- Public tracking token ---
+
+    async generateTrackingToken(shipmentId: number) {
+      this.error = null;
+      try {
+        const token = await globalShipmentRepository.generateTrackingToken(shipmentId);
+        if (this.currentShipment?.id === shipmentId) {
+          this.currentShipment = { ...this.currentShipment, public_tracking_token: token };
+        }
+        const idx = this.rows.findIndex((r) => r.id === shipmentId);
+        if (idx >= 0) this.rows[idx] = { ...this.rows[idx]!, public_tracking_token: token };
+        return token;
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to generate tracking link';
+        throw err;
+      }
+    },
+
+    async revokeTrackingToken(shipmentId: number) {
+      this.error = null;
+      try {
+        await globalShipmentRepository.revokeTrackingToken(shipmentId);
+        if (this.currentShipment?.id === shipmentId) {
+          this.currentShipment = { ...this.currentShipment, public_tracking_token: null };
+        }
+        const idx = this.rows.findIndex((r) => r.id === shipmentId);
+        if (idx >= 0) this.rows[idx] = { ...this.rows[idx]!, public_tracking_token: null };
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to revoke tracking link';
+        throw err;
+      }
+    },
+
+    // --- Progress flow settings management ---
+
+    async loadProgressFlows(tenantId: number, includeArchived = true) {
+      return this.loadProgressTagsForSettings(tenantId, includeArchived);
+    },
+
+    async loadProgressTagsForSettings(tenantId: number, includeArchived = true) {
+      this.error = null;
+      try {
+        this.progressFlows = await globalShipmentRepository.listShipmentProgressFlows(
+          tenantId,
+          includeArchived,
+        );
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to load progress flows';
+        throw err;
+      }
+    },
+
+    async loadProgressFlowStages(flowId: number, includeArchived = true) {
+      this.error = null;
+      try {
+        const stages = await globalShipmentRepository.listShipmentProgressFlowStages(
+          flowId,
+          includeArchived,
+        );
+        this.progressStagesByFlow[flowId] = stages;
+        return stages;
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to load progress stages';
+        throw err;
+      }
+    },
+
+    async createProgressFlow(tenantId: number, name: string) {
+      this.error = null;
+      try {
+        const flow = await globalShipmentRepository.createShipmentProgressFlow(tenantId, name);
+        this.progressFlows = [...this.progressFlows, flow].sort((a, b) => a.name.localeCompare(b.name));
+        return flow;
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to create progress flow';
+        throw err;
+      }
+    },
+
+    async updateProgressFlow(flowId: number, name: string) {
+      this.error = null;
+      try {
+        const flow = await globalShipmentRepository.updateShipmentProgressFlow(flowId, name);
+        const idx = this.progressFlows.findIndex((item) => item.id === flowId);
+        if (idx >= 0) this.progressFlows[idx] = flow;
+        return flow;
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to update progress flow';
+        throw err;
+      }
+    },
+
+    async archiveProgressFlow(flowId: number, archive: boolean) {
+      this.error = null;
+      try {
+        const flow = await globalShipmentRepository.archiveShipmentProgressFlow(flowId, archive);
+        const idx = this.progressFlows.findIndex((item) => item.id === flowId);
+        if (idx >= 0) this.progressFlows[idx] = flow;
+        return flow;
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to archive progress flow';
+        throw err;
+      }
+    },
+
+    async setDefaultProgressFlow(flowId: number) {
+      this.error = null;
+      try {
+        const flow = await globalShipmentRepository.setDefaultShipmentProgressFlow(flowId);
+        this.progressFlows = this.progressFlows.map((item) => ({
+          ...item,
+          is_default: item.id === flow.id,
+        }));
+        return flow;
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to set default flow';
+        throw err;
+      }
+    },
+
+    async createProgressFlowStage(flowId: number, name: string, color?: string | null) {
+      this.error = null;
+      try {
+        const stage = await globalShipmentRepository.createShipmentProgressFlowStage(flowId, name, color);
+        const list = this.progressStagesByFlow[flowId] ?? [];
+        this.progressStagesByFlow[flowId] = [...list, stage].sort((a, b) => a.sort_order - b.sort_order);
+        return stage;
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to create progress stage';
+        throw err;
+      }
+    },
+
+    async updateProgressFlowStage(flowId: number, flowStageId: number, fields: { name?: string; color?: string | null }) {
+      this.error = null;
+      try {
+        const stage = await globalShipmentRepository.updateShipmentProgressFlowStage(flowStageId, fields);
+        const list = this.progressStagesByFlow[flowId] ?? [];
+        const idx = list.findIndex((item) => item.flow_stage_id === flowStageId);
+        if (idx >= 0) list[idx] = stage;
+        this.progressStagesByFlow[flowId] = [...list];
+        return stage;
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to update progress stage';
+        throw err;
+      }
+    },
+
+    async archiveProgressFlowStage(flowId: number, flowStageId: number, archive: boolean) {
+      this.error = null;
+      try {
+        const stage = await globalShipmentRepository.archiveShipmentProgressFlowStage(flowStageId, archive);
+        const list = this.progressStagesByFlow[flowId] ?? [];
+        const idx = list.findIndex((item) => item.flow_stage_id === flowStageId);
+        if (idx >= 0) list[idx] = stage;
+        this.progressStagesByFlow[flowId] = [...list];
+        return stage;
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to archive progress stage';
+        throw err;
+      }
+    },
+
+    async reorderProgressFlowStages(flowId: number, flowStageIds: number[]) {
+      this.error = null;
+      try {
+        await globalShipmentRepository.reorderShipmentProgressFlowStages(flowId, flowStageIds);
+        const byId = Object.fromEntries(
+          (this.progressStagesByFlow[flowId] ?? []).map((stage) => [stage.flow_stage_id, stage]),
+        );
+        this.progressStagesByFlow[flowId] = flowStageIds
+          .map((id, idx) => ({ ...byId[id], sort_order: idx + 1 }))
+          .filter(Boolean) as ShipmentProgressFlowStage[];
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to reorder progress stages';
+        throw err;
+      }
+    },
+
+    async setShipmentFlow(shipmentId: number, flowId: number) {
+      this.progressUpdating = true;
+      this.error = null;
+      try {
+        await globalShipmentRepository.setShipmentProgressFlow(shipmentId, flowId);
+        const flow = this.progressFlows.find((item) => item.id === flowId) ?? null;
+        const stages = await globalShipmentRepository.listShipmentProgressFlowStages(flowId, false);
+        this.progressStagesByFlow[flowId] = stages;
+        this.progressTags = stages.map((stage) => ({
+          id: stage.tag_id,
+          name: stage.name,
+          slug: stage.slug,
+          group_name: 'shipment_progress',
+          sort_order: stage.sort_order,
+          color: stage.color,
+          is_active: stage.is_active,
+        }));
+        if (this.currentShipment?.id === shipmentId) {
+          const currentStillValid =
+            this.currentShipment.progress_tag_id != null &&
+            stages.some((stage) => stage.tag_id === this.currentShipment?.progress_tag_id);
+          this.currentShipment = {
+            ...this.currentShipment,
+            progress_flow_id: flowId,
+            progress_flow: flow,
+            progress_tag_id: currentStillValid
+              ? this.currentShipment.progress_tag_id
+              : stages[0]?.tag_id ?? null,
+          };
+        }
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to set shipment flow';
+        throw err;
+      } finally {
+        this.progressUpdating = false;
       }
     },
   },

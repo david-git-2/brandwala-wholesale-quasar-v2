@@ -58,6 +58,24 @@
         </q-btn>
       </div>
 
+      <div v-if="flowSelectOptions.length" class="col-auto row items-center q-gutter-xs progress-select-wrap">
+        <span class="text-caption text-grey-7">Flow</span>
+        <q-select
+          :model-value="progressFlowId"
+          :options="flowSelectOptions"
+          dense
+          outlined
+          emit-value
+          map-options
+          options-dense
+          hide-bottom-space
+          class="progress-select soft-input"
+          placeholder="Select flow"
+          :disable="!!progressUpdating"
+          @update:model-value="onFlowSelect"
+        />
+      </div>
+
       <!-- Progress — compact select -->
       <div
         v-if="progressOptions.length"
@@ -92,7 +110,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { ShipmentProgressTag } from '../repositories/globalShipmentRepository';
+import type { ShipmentProgressFlow, ShipmentProgressTag } from '../repositories/globalShipmentRepository';
 
 /** Solid lifecycle — doc/procurement_stock/shipment/schema.md */
 const workflowStatuses = ['draft', 'in_transit', 'received'] as const;
@@ -103,6 +121,8 @@ const props = withDefaults(
     updating?: boolean;
     targetStatus?: string | null;
     lockReceived?: boolean;
+    flowOptions?: ShipmentProgressFlow[];
+    progressFlowId?: number | null;
     progressOptions?: ShipmentProgressTag[];
     progressTagId?: number | null;
     progressUpdating?: boolean;
@@ -111,6 +131,8 @@ const props = withDefaults(
   }>(),
   {
     progressOptions: () => [],
+    flowOptions: () => [],
+    progressFlowId: null,
     progressTagId: null,
     progressUpdating: false,
     progressTargetId: null,
@@ -120,8 +142,18 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   (e: 'update-status', status: string): void;
+  (e: 'update-flow', flowId: number): void;
   (e: 'update-progress', tagId: number | null): void;
 }>();
+
+const flowSelectOptions = computed(() =>
+  props.flowOptions
+    .filter((flow) => flow.is_active !== false)
+    .map((flow) => ({
+      label: flow.name,
+      value: flow.id,
+    })),
+);
 
 const progressSelectOptions = computed(() =>
   props.progressOptions.map((tag) => ({
@@ -132,6 +164,10 @@ const progressSelectOptions = computed(() =>
 
 function onProgressSelect(value: number | null | undefined) {
   emit('update-progress', value ?? null);
+}
+
+function onFlowSelect(value: number | null | undefined) {
+  if (value != null) emit('update-flow', value);
 }
 
 function formatStatusLabel(value: string): string {

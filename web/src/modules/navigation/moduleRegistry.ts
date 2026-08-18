@@ -33,6 +33,7 @@ export type ModuleKey =
   | 'global_stock_movement'
   | 'global_stock_location'
   | 'cargo_company'
+  | 'shipment_progress_settings'
   | 'inventory'
   | 'global_invoice'
   | 'investor_portal'
@@ -694,6 +695,22 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         caption: 'Freight agents for inbound shipments',
         icon: 'ph ph-airplane-tilt',
         routeSegment: 'procurement/cargo-companies',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'shipment_progress_settings',
+    name: 'Shipment Progress',
+    description: 'Configure journey stages shown on shipments and the public tracking page.',
+    parentModuleKey: 'procurement_stock',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Shipment Progress',
+        caption: 'Configure journey stages',
+        icon: 'ph ph-map-trifold',
+        routeSegment: 'procurement/shipment-progress',
         requiredAction: 'view',
       },
     ],

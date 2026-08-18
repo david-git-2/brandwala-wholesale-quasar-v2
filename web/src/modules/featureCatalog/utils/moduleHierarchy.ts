@@ -141,6 +141,8 @@ const getSubmoduleSectionAndWeight = (
         return { section: '', weight: 40 };
       case 'cargo_company':
         return { section: '', weight: 50 };
+      case 'shipment_progress_settings':
+        return { section: '', weight: 55 };
       case 'inventory':
         return { section: '', weight: 60 };
       default:

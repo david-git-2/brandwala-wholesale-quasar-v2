@@ -146,6 +146,30 @@ const procurementStockRoutes: RouteRecordRaw[] = [
       },
     ],
   },
+  {
+    path: '/:tenantSlug?/app/procurement/shipment-progress',
+    component: () => import('layouts/AppLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'app-procurement-shipment-progress-settings',
+        component: () => import('../pages/ShipmentProgressSettingsPage.vue'),
+        beforeEnter: guard('shipment_progress_settings'),
+      },
+    ],
+  },
+  // Public tracking — no auth guard, uses ExternalLayout
+  {
+    path: '/track/shipment/:token',
+    component: () => import('layouts/ExternalLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'public-shipment-tracking',
+        component: () => import('../pages/PublicShipmentTrackingPage.vue'),
+      },
+    ],
+  },
 ];
 
 export default procurementStockRoutes;

@@ -2154,6 +2154,7 @@ export type Database = {
           name: string
           parent_tenant_id: number
           progress_tag_id: number | null
+          public_tracking_token: string | null
           purchase_invoice_total: number | null
           received_date: string | null
           received_weight: number | null
@@ -2177,6 +2178,7 @@ export type Database = {
           name: string
           parent_tenant_id: number
           progress_tag_id?: number | null
+          public_tracking_token?: string | null
           purchase_invoice_total?: number | null
           received_date?: string | null
           received_weight?: number | null
@@ -2200,6 +2202,7 @@ export type Database = {
           name?: string
           parent_tenant_id?: number
           progress_tag_id?: number | null
+          public_tracking_token?: string | null
           purchase_invoice_total?: number | null
           received_date?: string | null
           received_weight?: number | null
@@ -9812,6 +9815,31 @@ export type Database = {
         }
         Returns: Json
       }
+      archive_shipment_progress_tag: {
+        Args: { p_archive?: boolean; p_tag_id: number }
+        Returns: {
+          category_id: number | null
+          color: string
+          created_at: string
+          created_by_email: string
+          group_name: string | null
+          id: number
+          is_active: boolean
+          is_system: boolean
+          metadata: Json
+          name: string
+          slug: string
+          sort_order: number | null
+          tenant_id: number | null
+          type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tags"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       assign_customer_group_member_role: {
         Args: { p_cgm_id: number; p_tenant_role_id: number }
         Returns: {
@@ -10754,6 +10782,7 @@ export type Database = {
           name: string
           parent_tenant_id: number
           progress_tag_id: number | null
+          public_tracking_token: string | null
           purchase_invoice_total: number | null
           received_date: string | null
           received_weight: number | null
@@ -10770,6 +10799,36 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "global_shipments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_shipment_progress_tag: {
+        Args: {
+          p_color?: string
+          p_name: string
+          p_sort_order?: number
+          p_tenant_id: number
+        }
+        Returns: {
+          category_id: number | null
+          color: string
+          created_at: string
+          created_by_email: string
+          group_name: string | null
+          id: number
+          is_active: boolean
+          is_system: boolean
+          metadata: Json
+          name: string
+          slug: string
+          sort_order: number | null
+          tenant_id: number | null
+          type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tags"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -11180,6 +11239,10 @@ export type Database = {
         Args: { p_order_id: number }
         Returns: undefined
       }
+      generate_shipment_tracking_token: {
+        Args: { p_shipment_id: number }
+        Returns: string
+      }
       generate_shop_order_number: {
         Args: { p_shop_id: number; p_tenant_id: number }
         Returns: string
@@ -11446,6 +11509,7 @@ export type Database = {
         Args: { p_shipment_id: number; p_tenant_id: number }
         Returns: Json
       }
+      get_shipment_public_status: { Args: { p_token: string }; Returns: Json }
       get_shop_bootstrap_context: {
         Args: {
           p_customer_group_member_id?: number
@@ -12563,6 +12627,31 @@ export type Database = {
         Args: { p_shipment_id: number }
         Returns: Json
       }
+      list_shipment_progress_tags: {
+        Args: { p_include_archived?: boolean; p_tenant_id: number }
+        Returns: {
+          category_id: number | null
+          color: string
+          created_at: string
+          created_by_email: string
+          group_name: string | null
+          id: number
+          is_active: boolean
+          is_system: boolean
+          metadata: Json
+          name: string
+          slug: string
+          sort_order: number | null
+          tenant_id: number | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "tags"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       list_shipments_paginated: {
         Args: {
           p_page?: number
@@ -13365,6 +13454,10 @@ export type Database = {
         Returns: undefined
       }
       remove_shop_cart_item: { Args: { p_cart_item_id: number }; Returns: Json }
+      reorder_shipment_progress_tags: {
+        Args: { p_tag_ids: number[]; p_tenant_id: number }
+        Returns: undefined
+      }
       resolve_billing_profile_for_customer_group: {
         Args: { p_customer_group_id: number; p_tenant_id: number }
         Returns: number
@@ -13430,6 +13523,10 @@ export type Database = {
           membership_id: number
           updated_at: string
         }[]
+      }
+      revoke_shipment_tracking_token: {
+        Args: { p_shipment_id: number }
+        Returns: undefined
       }
       round_bdt_up_to_zero_or_five: {
         Args: { p_value: number }
@@ -13993,6 +14090,36 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "shipment_investments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_shipment_progress_tag: {
+        Args: {
+          p_color?: string
+          p_name?: string
+          p_sort_order?: number
+          p_tag_id: number
+        }
+        Returns: {
+          category_id: number | null
+          color: string
+          created_at: string
+          created_by_email: string
+          group_name: string | null
+          id: number
+          is_active: boolean
+          is_system: boolean
+          metadata: Json
+          name: string
+          slug: string
+          sort_order: number | null
+          tenant_id: number | null
+          type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tags"
           isOneToOne: true
           isSetofReturn: false
         }

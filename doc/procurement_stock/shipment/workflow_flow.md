@@ -17,9 +17,9 @@ Maps lifecycle stages to APIs / RPCs. Schema: [schema.md](./schema.md) (§4 land
                          • Live cost preview   • Settle intent only
 ```
 
-**Status vs progress:** `status` is the solid lifecycle above. Customer-facing journey labels (UK hub, airport, …) are **progress tags** (`shipment_progress` group via `entity_tags`) — never additional status values. See [schema.md](./schema.md) · [schema.md](./schema.md).
+**Status vs progress:** `status` is the solid lifecycle above. Customer-facing journey labels now run through **shipment progress flows**: parent tenant manages multiple flows, each shipment picks one flow, and `progress_tag_id` points to the current stage inside that flow. These are never additional status values. See [schema.md](./schema.md).
 
-**Stage 2 note:** Editing / receive prep runs while `status = 'in_transit'` (live equivalent of Warehouse Received). Progress tags may change freely during Stages 1–3; they do not unlock finalize.
+**Stage 2 note:** Editing / receive prep runs while `status = 'in_transit'` (live equivalent of Warehouse Received). Shipment flow and current stage may change freely during Stages 1–3; they do not unlock finalize.
 ---
 
 ## Stage 1: Minimal Draft Creation (`status: 'draft'`)

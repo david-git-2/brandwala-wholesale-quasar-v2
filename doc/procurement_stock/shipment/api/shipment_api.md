@@ -108,7 +108,8 @@ const { data, error } = await supabase
 ### Filters
 
 * Columns: `status`, `vendor_id`, `cargo_company_id`, `tenant_id`, `shipment_type`
-* Progress / labels: filter via `entity_tags` (tag group `shipment_progress` or any tag) — see [../schema.md](../schema.md)
+* Progress flow: filter by `progress_flow_id` when you need one named customer journey only
+* Progress stage: filter by `progress_tag_id` (current stage inside the selected flow) — see [../schema.md](../schema.md)
 
 ### Response (shape)
 
