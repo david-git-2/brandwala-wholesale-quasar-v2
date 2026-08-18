@@ -337,9 +337,9 @@ import ShipmentLandedCostSummaryCard from '../components/ShipmentLandedCostSumma
 import ShipmentWeightBalanceCard from '../components/ShipmentWeightBalanceCard.vue';
 import ShipmentPurchaseBalanceCard from '../components/ShipmentPurchaseBalanceCard.vue';
 
-// Composables
 import { useInboundShipmentCalculations } from '../composables/useInboundShipmentCalculations';
 import { useInboundShipmentActions } from '../composables/useInboundShipmentActions';
+import { usePageBreadcrumbs } from 'src/composables/useBreadcrumbs';
 import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';
 
 const route = useRoute();
@@ -347,6 +347,39 @@ const router = useRouter();
 const authStore = useAuthStore();
 const shipmentStore = useGlobalShipmentStore();
 const shipmentId = Number(route.params.id);
+
+const tenantSlug = computed(
+  () => (route.params.tenantSlug as string) || authStore.selectedTenant?.slug || '',
+);
+
+usePageBreadcrumbs(() => [
+  {
+    label: authStore.selectedTenant?.name || 'Workspace',
+    to: tenantSlug.value ? `/${tenantSlug.value}/app/dashboard` : '/app/dashboard',
+    icon: 'ph ph-buildings',
+  },
+  {
+    label: 'Inbound Shipments',
+    to: tenantSlug.value
+      ? `/${tenantSlug.value}/app/procurement/inbound`
+      : '/app/procurement/inbound',
+    icon: 'ph ph-truck',
+  },
+  {
+    label: `#${(shipmentStore.currentShipment as any)?.tenant_shipment_id || shipmentStore.currentShipment?.id || shipmentId} ${shipmentStore.currentShipment?.name || ''}`.trim(),
+    badge: shipmentStore.currentShipment?.status
+      ? {
+          label: shipmentStore.currentShipment.status.replace(/_/g, ' '),
+          color:
+            shipmentStore.currentShipment.status === 'received'
+              ? 'positive'
+              : shipmentStore.currentShipment.status === 'in_transit'
+                ? 'orange-8'
+                : 'primary',
+        }
+      : undefined,
+  },
+]);
 
 const activeTab = ref<'lines' | 'balance' | 'cost' | 'receive'>('cost');
 const ratesSectionEl = ref<HTMLElement | null>(null);

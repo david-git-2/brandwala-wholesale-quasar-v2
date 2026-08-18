@@ -25,6 +25,7 @@ When a phase adds SQL migrations:
 
 ## List Table UI & Layout Design System Rule
 - **Canonical Design Rule**: Follow `.agents/rules/table_list_design_system.md` for all list table pages.
+- **Zero In-Page Headers**: Never render redundant in-page `<h1>` or `text-overline` header banners. Global breadcrumbs in the top header provide page title and hierarchy. Move primary action buttons and search controls directly into the compact table toolbar.
 - **Non-Scrolling Page Container**: Lock `q-page` height to `calc(100vh - 55px)` with `overflow: hidden`.
 - **Internal Table Scroll**: Use sticky headers (`thead tr th`) and let table middle scroll internally (`.q-table__middle { overflow-y: auto }`).
 - **Status Row Hues**: Apply soft status background hues and inset left accent borders (`boxShadow: inset 3px 0 0 ...`).

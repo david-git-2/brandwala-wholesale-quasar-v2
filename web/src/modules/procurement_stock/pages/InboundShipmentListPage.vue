@@ -1,26 +1,6 @@
 <template>
   <q-page class="q-pa-sm page-fixed-layout column no-wrap overflow-hidden">
     <div class="column no-wrap full-height q-gutter-y-xs overflow-hidden">
-      <!-- Header Section -->
-      <section class="row items-center justify-between q-py-xs flex-shrink-0">
-        <div class="col">
-          <div class="text-overline text-primary style-compact-overline">Procurement & Stock</div>
-          <h1 class="text-h6 text-weight-bold q-my-none">Inbound Shipments</h1>
-        </div>
-        <div class="col-auto">
-          <q-btn
-            color="primary"
-            unelevated
-            no-caps
-            dense
-            class="rounded-sq-btn text-weight-bold q-px-sm"
-            label="Add shipment"
-            icon="ph ph-plus"
-            @click="openCreateShipment"
-          />
-        </div>
-      </section>
-
       <q-banner v-if="shipmentStore.error" class="bw-status-banner bg-negative text-white flex-shrink-0" dense rounded>
         {{ shipmentStore.error }}
       </q-banner>
@@ -81,6 +61,17 @@
               </q-badge>
               <q-tooltip>More Filters</q-tooltip>
             </q-btn>
+
+            <q-btn
+              color="primary"
+              unelevated
+              no-caps
+              dense
+              class="rounded-sq-btn text-weight-bold q-px-sm"
+              label="Add shipment"
+              icon="ph ph-plus"
+              @click="openCreateShipment"
+            />
           </div>
         </div>
       </q-card>
@@ -201,7 +192,7 @@
 
                 <!-- Shipment Name Slot -->
                 <q-td key="name" :props="props">
-                  <div class="text-weight-bold text-black line-clamp-1">
+                  <div class="text-weight-bold line-clamp-1">
                     {{ props.row.name ?? '-' }}
                   </div>
                   <div class="text-caption text-grey-6 text-xxs row items-center">
@@ -217,7 +208,7 @@
                     dense
                     :color="getTypeChipStyle(props.row.type).color"
                     :text-color="getTypeChipStyle(props.row.type).textColor"
-                    class="text-weight-bold text-capitalize text-xxs q-ma-none"
+                    class="text-weight-bold text-capitalize text-xxs q-ma-none soft-chip"
                   >
                     {{ props.row.type }}
                   </q-chip>
@@ -227,15 +218,16 @@
                 <q-td key="vendor" :props="props">
                   <div class="row items-center no-wrap">
                     <q-avatar
+                      square
                       size="26px"
-                      color="grey-3"
-                      text-color="grey-9"
-                      class="q-mr-xs text-weight-bold text-xxs"
+                      :color="$q.dark.isActive ? 'grey-9' : 'grey-3'"
+                      :text-color="$q.dark.isActive ? 'grey-3' : 'grey-9'"
+                      class="q-mr-xs text-weight-bold text-xxs avatar-soft-sq"
                     >
                       {{ getInitials(getVendorName(props.row.vendor_id)) }}
                     </q-avatar>
                     <div>
-                      <div class="text-weight-bold text-black text-xs line-clamp-1">
+                      <div class="text-weight-bold text-xs line-clamp-1">
                         {{ getVendorName(props.row.vendor_id) }}
                       </div>
                     </div>
@@ -375,6 +367,18 @@ const getInitials = (name: string | null | undefined): string => {
 };
 
 const getTypeChipStyle = (type: string | null | undefined) => {
+  if ($q.dark.isActive) {
+    switch (type) {
+      case 'international':
+        return { color: 'purple-10', textColor: 'purple-2' };
+      case 'local':
+        return { color: 'teal-10', textColor: 'teal-2' };
+      case 'transfer':
+        return { color: 'indigo-10', textColor: 'indigo-2' };
+      default:
+        return { color: 'grey-9', textColor: 'grey-2' };
+    }
+  }
   switch (type) {
     case 'international':
       return { color: 'purple-1', textColor: 'purple-9' };
@@ -515,6 +519,16 @@ const defaultStatusVisual: ShipmentStatusVisual = {
   icon: 'ph ph-info',
 };
 
+const defaultDarkStatusVisual: ShipmentStatusVisual = {
+  rowBackground: 'transparent',
+  rowAccent: '#475569',
+  chipBackground: 'rgba(255, 255, 255, 0.08)',
+  chipText: '#cbd5e1',
+  chipBorder: 'rgba(255, 255, 255, 0.15)',
+  chipShadow: 'none',
+  icon: 'ph ph-info',
+};
+
 const shipmentStatusVisualMap: Record<string, ShipmentStatusVisual> = {
   draft: {
     rowBackground: '#fffdf5',
@@ -554,6 +568,45 @@ const shipmentStatusVisualMap: Record<string, ShipmentStatusVisual> = {
   },
 };
 
+const darkStatusVisualMap: Record<string, ShipmentStatusVisual> = {
+  draft: {
+    rowBackground: 'transparent',
+    rowAccent: '#f59e0b',
+    chipBackground: 'rgba(245, 158, 11, 0.15)',
+    chipText: '#fbbf24',
+    chipBorder: 'rgba(245, 158, 11, 0.35)',
+    chipShadow: 'none',
+    icon: 'ph ph-note-pencil',
+  },
+  in_transit: {
+    rowBackground: 'transparent',
+    rowAccent: '#f97316',
+    chipBackground: 'rgba(249, 115, 22, 0.15)',
+    chipText: '#fb923c',
+    chipBorder: 'rgba(249, 115, 22, 0.35)',
+    chipShadow: 'none',
+    icon: 'ph ph-truck',
+  },
+  received: {
+    rowBackground: 'transparent',
+    rowAccent: '#3ecf8e',
+    chipBackground: 'rgba(62, 207, 142, 0.15)',
+    chipText: '#3ecf8e',
+    chipBorder: 'rgba(62, 207, 142, 0.35)',
+    chipShadow: 'none',
+    icon: 'ph ph-check-circle',
+  },
+  cancelled: {
+    rowBackground: 'transparent',
+    rowAccent: '#f87171',
+    chipBackground: 'rgba(248, 113, 113, 0.15)',
+    chipText: '#f87171',
+    chipBorder: 'rgba(248, 113, 113, 0.35)',
+    chipShadow: 'none',
+    icon: 'ph ph-x-circle',
+  },
+};
+
 const formatShipmentStatusLabel = (status: string | null | undefined): string => {
   switch ((status ?? '').trim().toLowerCase()) {
     case 'draft':
@@ -571,6 +624,9 @@ const formatShipmentStatusLabel = (status: string | null | undefined): string =>
 
 const getStatusVisual = (status: string | null | undefined): ShipmentStatusVisual => {
   const key = (status ?? '').trim().toLowerCase();
+  if ($q.dark.isActive) {
+    return darkStatusVisualMap[key] ?? defaultDarkStatusVisual;
+  }
   return shipmentStatusVisualMap[key] ?? defaultStatusVisual;
 };
 
@@ -665,7 +721,7 @@ onMounted(() => {
   top: 0;
   z-index: 2;
   font-weight: 700;
-  color: var(--q-primary);
+  color: #0f172a;
   background: #f8fafc;
   font-size: 11px;
   text-transform: uppercase;
@@ -674,12 +730,22 @@ onMounted(() => {
   border-bottom: 1px solid #e2e8f0;
 }
 
+body.body--dark .shipment-table :deep(thead tr th) {
+  background: #1c1c1c;
+  color: #a1a1aa;
+  border-bottom: 1px solid #2e2e2e;
+}
+
 .shipment-table :deep(tbody tr) {
-  transition: background-color 0.2s ease;
+  transition: background-color 0.15s ease;
 }
 
 .shipment-table :deep(tbody tr:hover) {
   background-color: #f1f5f9 !important;
+}
+
+body.body--dark .shipment-table :deep(tbody tr:hover) {
+  background-color: #242424 !important;
 }
 
 .shipment-table :deep(tbody td) {
@@ -688,12 +754,17 @@ onMounted(() => {
   font-size: 12.5px;
 }
 
+body.body--dark .shipment-table :deep(tbody td) {
+  border-bottom: 1px solid #262626;
+  color: #ededed;
+}
+
 .hover-underline:hover {
   text-decoration: underline;
 }
 
 .shipment-status-badge {
-  border-radius: 20px;
+  border-radius: 6px;
   padding: 3px 8px;
   display: inline-flex;
   align-items: center;

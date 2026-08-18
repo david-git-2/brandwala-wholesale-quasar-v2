@@ -1,9 +1,7 @@
 <template>
   <WorkspaceShell :logout-to="logoutTo" theme="shop" :links="links">
     <template #header-left>
-      <div v-if="tenantName" class="shop-context">
-        <div class="shop-context__title">{{ tenantName }}</div>
-      </div>
+      <AppBreadcrumbs />
     </template>
 
     <template #header-extra>
@@ -40,6 +38,7 @@ import { computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import WorkspaceShell from 'src/components/WorkspaceShell.vue';
+import AppBreadcrumbs from 'src/components/navigation/AppBreadcrumbs.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useActiveShopCartsQuery } from 'src/modules/shop_order/composables/useActiveShopCartsQuery';
 import { useShopWorkspaceLinks } from 'src/modules/navigation/useWorkspaceNavigation';

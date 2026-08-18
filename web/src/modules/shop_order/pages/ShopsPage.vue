@@ -1,55 +1,26 @@
 <template>
-  <q-page class="q-pa-md">
-    <div class="q-gutter-y-md">
-      <section class="row items-center justify-between q-col-gutter-md">
-        <div class="col">
-          <div class="row items-center q-gutter-x-sm">
-            <q-btn
-              flat
-              dense
-              round
-              icon="ph ph-arrow-left"
-              color="grey-7"
-              :to="{ name: 'app-shop-shops-page', params: { tenantSlug } }"
-            />
-            <div>
-              <div class="text-overline text-primary">{{ $t('shop_admin.shop_and_order') }}</div>
-              <h1 class="text-h5 text-weight-bold q-my-none">{{ $t('navigation.shops') }}</h1>
-            </div>
-          </div>
-        </div>
-        <div class="col-auto row items-center q-gutter-x-sm">
-          <LearnMoreHelpBtn guide-id="shop_management" tab="workflows" />
-          <q-btn
-            color="primary"
-            unelevated
-            no-caps
-            class="pill-btn"
-            icon="ph ph-plus"
-            :label="$t('shop_admin.new_shop')"
-            @click="openCreate"
-          />
-        </div>
-      </section>
-
-      <q-card flat bordered class="q-pa-sm">
-        <div class="row items-center justify-between q-col-gutter-sm">
-          <div class="col-12 col-sm-5 row items-center q-gutter-sm">
+  <q-page class="shops-page q-pa-sm page-fixed-layout column no-wrap overflow-hidden">
+    <div class="column no-wrap full-height q-gutter-y-xs overflow-hidden">
+      <!-- Compact Unified Table/View Toolbar -->
+      <q-card flat class="floating-surface shadow-1 q-pa-xs flex-shrink-0">
+        <div class="row items-center justify-between q-col-gutter-xs">
+          <!-- Left: Search & Filter Pills -->
+          <div class="col-12 col-sm-auto row items-center q-gutter-x-xs">
             <q-input
               v-model="search"
               clearable
               debounce="350"
               dense
               outlined
-              class="full-width"
+              rounded
+              style="min-width: 240px"
               :placeholder="$t('shop_admin.search_shops_placeholder')"
             >
               <template #prepend>
-                <q-icon name="ph ph-magnifying-glass" />
+                <q-icon name="ph ph-magnifying-glass" size="16px" class="text-grey-6" />
               </template>
             </q-input>
-          </div>
-          <div class="col-auto">
+
             <q-btn-toggle
               v-model="activeFilter"
               dense
@@ -57,95 +28,133 @@
               rounded
               unelevated
               toggle-color="primary"
+              color="grey-2"
+              text-color="grey-8"
               :options="filterOptions"
+            />
+          </div>
+
+          <!-- Right: Guide & Primary Action -->
+          <div class="col-auto row items-center q-gutter-x-xs">
+            <LearnMoreHelpBtn guide-id="shop_management" tab="workflows" />
+            <q-btn
+              color="primary"
+              unelevated
+              no-caps
+              dense
+              class="rounded-sq-btn text-weight-bold q-px-sm"
+              icon="ph ph-plus"
+              :label="$t('shop_admin.new_shop')"
+              @click="openCreate"
             />
           </div>
         </div>
       </q-card>
 
-      <q-banner v-if="isError" class="text-white bg-negative" rounded>
-        {{ error?.message || 'An error occurred while fetching shops.' }}
-      </q-banner>
+      <!-- Scrollable Content Container -->
+      <div class="col scroll q-py-xs">
+        <q-banner v-if="isError" class="text-white bg-negative q-mb-md" rounded>
+          {{ error?.message || 'An error occurred while fetching shops.' }}
+        </q-banner>
 
-      <div v-if="isLoading" class="q-gutter-y-md">
-        <q-card v-for="n in 3" :key="n" flat bordered class="q-pa-md">
-          <div class="row items-center justify-between q-mb-sm">
-            <q-skeleton type="text" width="40%" height="24px" />
-            <q-skeleton type="QBadge" width="80px" height="24px" />
-          </div>
-          <q-skeleton type="text" width="20%" class="q-mb-sm" />
-          <q-separator class="q-my-sm" />
-          <div class="row items-center justify-between">
-            <q-skeleton type="text" width="30%" />
-            <q-skeleton type="QAvatar" size="28px" />
-          </div>
-        </q-card>
-      </div>
+        <div v-if="isLoading" class="q-gutter-y-sm">
+          <q-card v-for="n in 4" :key="n" flat class="floating-surface shadow-1 q-pa-md">
+            <div class="row items-center justify-between q-mb-sm">
+              <q-skeleton type="text" width="30%" height="22px" />
+              <q-skeleton type="QBadge" width="70px" height="22px" />
+            </div>
+            <q-skeleton type="text" width="20%" />
+          </q-card>
+        </div>
 
-      <div v-else>
-        <q-card v-if="!shops || shops.length === 0" flat bordered class="q-pa-xl text-center text-grey-6">
-          <q-icon name="ph ph-storefront" size="48px" class="q-mb-sm block" />
-          {{ $t('shop_admin.no_shops_found') }}
-          <br />
-          <q-btn
-            class="q-mt-md"
-            color="primary"
-            :label="$t('shop_admin.create_first_shop')"
-            unelevated
-            @click="openCreate"
-          />
-        </q-card>
+        <div v-else>
+          <q-card v-if="!shops || shops.length === 0" flat class="floating-surface shadow-1 q-pa-xl text-center text-grey-6">
+            <q-icon name="ph ph-storefront" size="48px" class="q-mb-sm block text-grey-4" />
+            <div class="text-subtitle1 text-weight-medium">{{ $t('shop_admin.no_shops_found') }}</div>
+            <p class="text-caption text-grey-6 q-mt-xs">Get started by creating your first wholesale or retail shop.</p>
+            <q-btn
+              class="q-mt-sm rounded-sq-btn text-weight-bold q-px-sm"
+              color="primary"
+              :label="$t('shop_admin.create_first_shop')"
+              unelevated
+              no-caps
+              icon="ph ph-plus"
+              @click="openCreate"
+            />
+          </q-card>
 
-        <div v-else class="q-gutter-y-sm">
-          <q-card
-            v-for="shop in shops"
-            :key="shop.id"
-            flat
-            bordered
-            class="shop-card cursor-pointer"
-            @click="goToSetup(shop.id)"
-          >
-            <q-card-section class="row items-center no-wrap">
-              <div class="col">
-                <div class="row items-center q-gutter-x-sm">
-                  <div class="text-subtitle1 text-weight-bold">{{ shop.name }}</div>
-                  <q-chip
-                    dense
-                    size="sm"
-                    :color="shopTypeColor(shop.shop_type)"
-                    text-color="white"
-                  >
-                    {{ shopTypeLabel(shop.shop_type) }}
-                  </q-chip>
-                  <q-chip
-                    dense
-                    size="sm"
-                    :color="shop.is_active ? 'positive' : 'grey-4'"
-                    :text-color="shop.is_active ? 'white' : 'grey-8'"
-                  >
-                    {{ shop.is_active ? $t('shop_admin.public') : $t('shop_admin.draft') }}
-                  </q-chip>
+          <div v-else class="q-gutter-y-sm">
+            <q-card
+              v-for="shop in shops"
+              :key="shop.id"
+              flat
+              class="shop-card floating-surface shadow-1 cursor-pointer"
+              @click="goToSetup(shop.id)"
+            >
+              <q-card-section class="row items-center no-wrap q-py-sm q-px-md">
+                <!-- Left: Avatar + Title & Chips -->
+                <div class="row items-center q-gutter-x-md col">
+                  <q-avatar size="36px" color="grey-2" text-color="primary" icon="ph ph-storefront" />
+                  
+                  <div class="min-width-0">
+                    <div class="row items-center q-gutter-x-sm no-wrap">
+                      <span class="text-subtitle2 text-weight-bold text-grey-9 ellipsis">{{ shop.name }}</span>
+                    
+                    <q-badge
+                      :color="shop.is_active ? 'positive' : 'grey-5'"
+                      class="text-uppercase text-bold"
+                      style="font-size: 10px; padding: 2px 6px; border-radius: 4px"
+                    >
+                      {{ shop.is_active ? $t('shop_admin.public') : $t('shop_admin.draft') }}
+                    </q-badge>
+                  </div>
+
+                  <div class="row items-center q-gutter-x-xs q-mt-xs">
+                    <q-chip
+                      dense
+                      square
+                      outline
+                      size="sm"
+                      :color="shopTypeColor(shop.shop_type)"
+                      class="text-capitalize text-weight-medium"
+                    >
+                      {{ shopTypeLabel(shop.shop_type) }}
+                    </q-chip>
+                  </div>
                 </div>
               </div>
-              <q-btn
-                flat
-                round
-                dense
-                icon="ph ph-dots-three-vertical"
-                color="grey-7"
-                @click.stop
-              >
-                <q-menu auto-close>
-                  <q-list style="min-width: 140px">
-                    <q-item clickable @click="confirmDeleteShop(shop)">
-                      <q-item-section avatar min-width="24px">
-                        <q-icon name="ph ph-trash" color="negative" size="18px" />
-                      </q-item-section>
-                      <q-item-section class="text-negative">{{ $t('shop_admin.delete') }}</q-item-section>
-                    </q-item>
-                  </q-list>
-                </q-menu>
-              </q-btn>
+
+              <!-- Right: Actions Menu -->
+              <div class="col-auto">
+                <q-btn
+                  flat
+                  round
+                  dense
+                  icon="ph ph-dots-three-vertical"
+                  color="grey-7"
+                  @click.stop
+                >
+                  <q-menu auto-close style="min-width: 150px">
+                    <q-list dense class="q-py-xs">
+                      <q-item clickable @click="goToSetup(shop.id)">
+                        <q-item-section avatar class="q-pr-none" style="min-width: 28px">
+                          <q-icon name="ph ph-gear" size="xs" color="grey-7" />
+                        </q-item-section>
+                        <q-item-section>Shop Setup</q-item-section>
+                      </q-item>
+
+                      <q-separator class="q-my-xs" />
+
+                      <q-item clickable class="text-negative" @click="confirmDeleteShop(shop)">
+                        <q-item-section avatar class="q-pr-none" style="min-width: 28px">
+                          <q-icon name="ph ph-trash" size="xs" color="negative" />
+                        </q-item-section>
+                        <q-item-section>Delete</q-item-section>
+                      </q-item>
+                    </q-list>
+                  </q-menu>
+                </q-btn>
+              </div>
             </q-card-section>
           </q-card>
         </div>
@@ -271,8 +280,44 @@ const shopTypeLabel = (type: ShopType) => {
 
 const shopTypeColor = (type: ShopType) =>
   ({
-    vendor_catalog: 'indigo',
-    fixed_price: 'teal',
-    dropship: 'deep-orange',
-  })[type] ?? 'grey';
+    vendor_catalog: 'indigo-7',
+    fixed_price: 'teal-7',
+    dropship: 'deep-orange-7',
+  })[type] ?? 'grey-7';
 </script>
+
+<style scoped>
+.action-btn-square {
+  border-radius: 8px;
+  font-weight: 600;
+  padding: 6px 14px;
+}
+
+.border-bottom {
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.shop-card {
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  transition: all 0.15s ease-in-out;
+}
+
+.shop-card:hover {
+  border-color: var(--q-primary, #2563eb);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+body.body--dark .border-bottom {
+  border-color: #334155;
+}
+
+body.body--dark .shop-card {
+  background: #1e293b !important;
+  border-color: #334155;
+}
+
+body.body--dark .shop-card:hover {
+  border-color: #60a5fa;
+}
+</style>

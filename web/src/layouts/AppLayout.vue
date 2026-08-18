@@ -1,180 +1,81 @@
 <template>
   <WorkspaceShell ref="workspaceShellRef" :logout-to="logoutTo" theme="app" :links="links">
     <template #header-left>
-      <div class="row items-center q-gutter-sm">
-        <div v-if="headerTitle && !hasPageToolbar" class="app-context__title">
-          {{ headerTitle }}
+      <AppBreadcrumbs />
+    </template>
+
+    <template #header-center>
+      <!-- Quick Navigation Omnibar Trigger (Cmd + K) -->
+      <button
+        type="button"
+        class="header-search-trigger row items-center justify-between no-wrap q-px-sm"
+        @click="workspaceShellRef?.openCommandPalette()"
+      >
+        <div class="row items-center no-wrap text-grey-7">
+          <q-icon name="ph ph-magnifying-glass" size="13px" class="q-mr-xs text-grey-6" />
+          <span class="header-search-trigger__text">Search pages...</span>
         </div>
-      </div>
+        <kbd class="header-search-trigger__kbd">⌘K</kbd>
+      </button>
     </template>
 
     <template #header-extra>
-      <!-- Mobile Only: Three Dots (Dropdown Menu) -->
-      <div v-if="$q.screen.xs" class="row items-center">
-        <q-btn flat round dense color="primary" icon="ph ph-dots-three-vertical">
-          <q-menu style="min-width: 180px">
-            <q-list class="q-py-xs">
-              <q-item-label
-                header
-                class="text-uppercase text-weight-bold text-grey-7"
-                style="font-size: 10px; letter-spacing: 0.1em"
-                >Quick Actions</q-item-label
-              >
-
-              <!-- Task search on mobile -->
-              <q-item v-if="hasTasksModule" clickable @click="searchDialogOpen = true">
-                <q-item-section avatar class="q-pr-none" style="min-width: 32px">
-                  <q-icon name="ph ph-clipboard-text" size="sm" color="primary" />
-                </q-item-section>
-                <q-item-section>Search Tasks</q-item-section>
-              </q-item>
-
-              <!-- Stock search on mobile -->
-              <q-item v-if="hasGlobalStockModule" clickable @click="stockSearchDialogOpen = true">
-                <q-item-section avatar class="q-pr-none" style="min-width: 32px">
-                  <q-icon name="ph ph-archive-box" size="sm" color="primary" />
-                </q-item-section>
-                <q-item-section>Search Stock</q-item-section>
-              </q-item>
-
-              <template v-if="tenantOptions.length">
-                <q-separator class="q-my-xs" />
-                <q-item-label
-                  header
-                  class="text-uppercase text-weight-bold text-grey-7"
-                  style="font-size: 10px; letter-spacing: 0.1em"
-                  >Workspace</q-item-label
-                >
-                <q-item
-                  v-for="option in tenantOptions"
-                  :key="option.value"
-                  clickable
-                  v-close-popup
-                  :active="option.value === selectedTenantId"
-                  active-class="text-primary text-weight-bold"
-                  :style="{ paddingLeft: 16 + option.depth * 16 + 'px' }"
-                  @click="onSelectTenant(option.value)"
-                >
-                  <q-item-section avatar class="q-pr-none" style="min-width: 32px">
-                    <q-icon
-                      name="ph ph-buildings"
-                      size="sm"
-                      :color="option.value === selectedTenantId ? 'primary' : 'grey-6'"
-                    />
-                  </q-item-section>
-                  <q-item-section>
-                    <span v-if="option.depth > 0" class="text-grey-6 q-mr-xs text-weight-bold"
-                      >↳</span
-                    >
-                    {{ option.label }}
-                  </q-item-section>
-                </q-item>
-              </template>
-
-              <q-separator class="q-my-xs" />
-              <q-item-label
-                header
-                class="text-uppercase text-weight-bold text-grey-7"
-                style="font-size: 10px; letter-spacing: 0.1em"
-                >Appearance</q-item-label
-              >
-
-              <q-item clickable @click="toggleDarkMode">
-                <q-item-section avatar class="q-pr-none" style="min-width: 32px">
-                  <q-icon :name="darkMode ? 'dark_mode' : 'light_mode'" size="sm" color="primary" />
-                </q-item-section>
-                <q-item-section>Dark Mode</q-item-section>
-                <q-item-section side>
-                  <q-toggle :model-value="darkMode" @update:model-value="toggleDarkMode" dense />
-                </q-item-section>
-              </q-item>
-
-              <q-item clickable @click="toggleDensity">
-                <q-item-section avatar class="q-pr-none" style="min-width: 32px">
-                  <q-icon name="ph ph-list" size="sm" color="primary" />
-                </q-item-section>
-                <q-item-section>Compact Rows</q-item-section>
-                <q-item-section side>
-                  <q-toggle
-                    :model-value="density === 'compact'"
-                    @update:model-value="toggleDensity"
-                    dense
-                  />
-                </q-item-section>
-              </q-item>
-
-              <q-separator class="q-my-xs" />
-              <q-item clickable v-close-popup @click="onMobileSignOut">
-                <q-item-section avatar class="q-pr-none" style="min-width: 32px">
-                  <q-icon name="ph ph-sign-out" size="sm" color="grey-7" />
-                </q-item-section>
-                <q-item-section class="text-grey-8 text-weight-medium">Sign out</q-item-section>
-              </q-item>
-            </q-list>
-          </q-menu>
-        </q-btn>
-      </div>
-
-      <!-- Desktop: global actions in the single top bar -->
-      <div v-else class="row items-center q-gutter-sm no-wrap">
-        <q-btn
-          v-if="hasTasksModule"
-          flat
-          round
-          dense
-          size="sm"
-          color="primary"
-          icon="ph ph-clipboard-text"
-          @click="searchDialogOpen = true"
-        >
-          <q-tooltip>Search Tasks</q-tooltip>
-        </q-btn>
-
-        <q-btn
-          v-if="hasGlobalStockModule"
-          flat
-          round
-          dense
-          size="sm"
-          color="primary"
-          icon="ph ph-archive-box"
-          @click="stockSearchDialogOpen = true"
-        >
-          <q-tooltip>Search Stock</q-tooltip>
-        </q-btn>
-
+      <div class="row items-center q-gutter-x-sm no-wrap">
+        <!-- Modernized Workspace / Tenant Switcher Badge -->
         <q-btn-dropdown
           v-if="tenantOptions.length"
-          outline
+          flat
           no-caps
           dense
-          size="sm"
-          color="primary"
-          class="tenant-dropdown-btn pill-btn q-px-md"
-          :label="selectedTenantLabel"
+          class="tenant-switcher-pill q-px-sm"
           :loading="selectingTenantId !== null"
         >
-          <q-list style="min-width: 260px">
+          <template #label>
+            <div class="row items-center no-wrap q-gutter-x-xs">
+              <q-icon name="ph ph-buildings" size="14px" color="primary" />
+              <span class="tenant-switcher-pill__label ellipsis">{{ selectedTenantLabel }}</span>
+            </div>
+          </template>
+
+          <q-list style="min-width: 240px" class="q-py-xs">
+            <q-item-label header class="text-uppercase text-weight-bold text-grey-7" style="font-size: 9px; letter-spacing: 0.1em">
+              Workspaces & Locations
+            </q-item-label>
+
             <q-item
               v-for="option in tenantOptions"
               :key="option.value"
               clickable
+              v-close-popup
               :active="option.value === selectedTenantId"
-              active-class="bg-primary text-white"
-              :style="{ paddingLeft: 16 + option.depth * 16 + 'px' }"
+              active-class="bg-blue-1 text-primary text-weight-bold"
+              :style="{ paddingLeft: 16 + option.depth * 12 + 'px' }"
               @click="onSelectTenant(option.value)"
             >
+              <q-item-section avatar class="q-pr-none" style="min-width: 24px">
+                <q-icon
+                  name="ph ph-buildings"
+                  size="13px"
+                  :color="option.value === selectedTenantId ? 'primary' : 'grey-6'"
+                />
+              </q-item-section>
               <q-item-section>
                 <q-item-label class="row items-center no-wrap">
-                  <span v-if="option.depth > 0" class="text-grey-6 q-mr-xs text-weight-bold"
-                    >↳</span
-                  >
-                  <span>{{ option.label }}</span>
+                  <span v-if="option.depth > 0" class="text-grey-5 q-mr-xs text-caption">↳</span>
+                  <span class="ellipsis text-caption">{{ option.label }}</span>
                 </q-item-label>
+              </q-item-section>
+              <q-item-section side v-if="option.value === selectedTenantId">
+                <q-icon name="ph ph-check" size="xs" color="primary" />
               </q-item-section>
             </q-item>
           </q-list>
         </q-btn-dropdown>
+
+        <q-separator vertical inset class="q-mx-xs text-grey-4 gt-xs" />
+
+        <!-- User Profile Avatar & Menu (Includes Appearance, Language, Help, Logout) -->
+        <UserProfileMenu @sign-out="onMobileSignOut" />
       </div>
 
       <TaskSearchDialog v-if="searchDialogOpen" v-model="searchDialogOpen" />
@@ -187,9 +88,10 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { useRoute } from 'vue-router';
 
 import WorkspaceShell from 'src/components/WorkspaceShell.vue';
+import AppBreadcrumbs from 'src/components/navigation/AppBreadcrumbs.vue';
+import UserProfileMenu from 'src/components/navigation/UserProfileMenu.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useAppWorkspaceLinks } from 'src/modules/navigation/useWorkspaceNavigation';
 import { useAdminTenantSelection } from 'src/modules/tenant/composables/useAdminTenantSelection';
@@ -205,7 +107,8 @@ const authStore = useAuthStore();
 const tenantStore = useTenantStore();
 const tenantPreferenceStore = useTenantPreferenceStore();
 const membershipPreferenceStore = useMembershipPreferenceStore();
-const route = useRoute();
+const { reconcilePreferences } = useAppearance();
+
 // Layout initialized
 const { links } = useAppWorkspaceLinks();
 
@@ -213,24 +116,10 @@ const workspaceShellRef = ref<InstanceType<typeof WorkspaceShell> | null>(null);
 const searchDialogOpen = ref(false);
 const stockSearchDialogOpen = ref(false);
 
-const { darkMode, setDarkMode, density, setDensity, reconcilePreferences } = useAppearance();
-
-const toggleDarkMode = () => {
-  void setDarkMode(!darkMode.value, authStore.membershipId);
-};
-
-const toggleDensity = () => {
-  const nextDensity = density.value === 'compact' ? 'comfortable' : 'compact';
-  void setDensity(nextDensity, authStore.membershipId);
-};
-
-const hasPageToolbar = computed(() => route.meta?.hasPageToolbar === true);
-
 const onMobileSignOut = () => {
   workspaceShellRef.value?.openSignOutDialog();
 };
-const hasTasksModule = computed(() => authStore.activeModuleKeys.includes('tasks'));
-const hasGlobalStockModule = computed(() => authStore.activeModuleKeys.includes('global_stock'));
+
 const logoutTo = computed(() =>
   authStore.tenantSlug ? `/${authStore.tenantSlug}/app/login` : '/app/login',
 );
@@ -270,51 +159,16 @@ const tenantOptions = computed(() => {
   return result;
 });
 
-const tenantMenuOpen = ref(false);
 const selectedTenantLabel = computed(() => {
   const selectedOption =
     tenantOptions.value.find((option) => option.value === selectedTenantId.value) ?? null;
 
-  return selectedOption?.label ?? 'Select tenant';
+  return selectedOption?.label ?? 'Select workspace';
 });
 const { ensureSelectedTenantWorkspace, selectTenantWorkspace, selectingTenantId } =
   useAdminTenantSelection();
 
-const routeName = computed(() => String(route.name ?? ''));
-const routeMetaTitle = computed(() =>
-  typeof route.meta?.title === 'string' ? route.meta.title.trim() : '',
-);
-const routeMetaHeaderTitle = computed(() =>
-  typeof route.meta?.headerTitle === 'string' ? route.meta.headerTitle.trim() : '',
-);
-
-const prettifyRouteName = (name: string) =>
-  name
-    .replace(/-(page|details)$/g, '')
-    .split('-')
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
-
-const headerTitle = computed(() => {
-  if (routeMetaHeaderTitle.value) {
-    return routeMetaHeaderTitle.value;
-  }
-
-  if (routeMetaTitle.value) {
-    return routeMetaTitle.value;
-  }
-
-  if (routeName.value) {
-    return prettifyRouteName(routeName.value);
-  }
-
-  return 'App';
-});
-
 const onSelectTenant = (tenantId: number | null) => {
-  tenantMenuOpen.value = false;
-
   const tenant = tenantStore.availableAdminTenants.find((item) => item.id === tenantId) ?? null;
 
   if (!tenant) {
@@ -358,47 +212,119 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.app-context__title {
-  overflow: hidden;
-  font-size: clamp(0.92rem, 1.35vw, 1.15rem);
-  font-weight: 700;
+.header-search-trigger {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  max-width: 200px;
+  height: 28px;
+  padding: 0 8px;
+  background: color-mix(in srgb, var(--bw-theme-surface, white) 70%, #f1f5f9 30%);
+  border: 1px solid color-mix(in srgb, var(--bw-theme-border, #e2e8f0) 85%, transparent);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+}
+
+.header-search-trigger:hover {
+  background: var(--bw-theme-surface, white);
+  border-color: var(--q-primary, #2563eb);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.header-search-trigger__text {
+  font-size: 0.75rem;
+  color: #64748b;
+  letter-spacing: -0.01em;
+}
+
+.header-search-trigger__kbd {
+  font-size: 0.625rem;
+  font-family: inherit;
+  font-weight: 600;
+  color: #94a3b8;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  padding: 0px 4px;
   line-height: 1.1;
-  color: var(--bw-theme-ink);
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.app-layout__tenant-chip {
-  max-width: min(21rem, 58vw);
+.tenant-switcher-pill {
   font-weight: 600;
+  font-size: 0.8125rem;
+  height: 30px;
   border-radius: 8px;
+  color: #1e293b !important;
+  background: color-mix(in srgb, var(--q-primary, #047857) 10%, #f8fafc);
+  border: 1px solid color-mix(in srgb, var(--q-primary, #047857) 25%, #e2e8f0);
 }
 
-.pill-btn {
-  border-radius: 999px;
+.tenant-switcher-pill:hover {
+  background: color-mix(in srgb, var(--q-primary, #047857) 15%, #f1f5f9);
 }
 
-.slim-btn {
-  min-height: 26px;
-  padding-left: 8px;
-  padding-right: 8px;
+.tenant-switcher-pill :deep(.q-btn__content) {
+  color: #1e293b;
 }
 
-.tenant-dropdown-btn {
-  font-weight: 600;
-  font-size: 0.78rem;
-  min-height: 26px;
+.tenant-switcher-pill :deep(.q-btn-dropdown__arrow) {
+  color: #64748b;
+  margin-left: 2px;
+}
+
+.tenant-switcher-pill__label {
+  color: #1e293b;
+  max-width: 140px;
+}
+
+body.body--dark .tenant-switcher-pill {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f8fafc !important;
+}
+
+body.body--dark .tenant-switcher-pill :deep(.q-btn__content),
+body.body--dark .tenant-switcher-pill__label {
+  color: #f8fafc;
+}
+
+body.body--dark .tenant-switcher-pill :deep(.q-btn-dropdown__arrow) {
+  color: #94a3b8;
+}
+
+body.body--dark .header-search-trigger {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+body.body--dark .header-search-trigger:hover {
+  background: #0f172a;
+  border-color: #60a5fa;
+}
+
+body.body--dark .header-search-trigger__text {
+  color: #94a3b8;
+}
+
+body.body--dark .header-search-trigger__kbd {
+  background: #0f172a;
+  border-color: #334155;
+  color: #64748b;
+}
+
+body.body--dark .tenant-switcher-pill {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+body.body--dark .bg-blue-1 {
+  background: #1e3a8a !important;
 }
 
 @media (max-width: 600px) {
-  .app-context__title {
-    max-width: 100px;
-  }
-  .app-layout__tenant-chip {
-    max-width: 90px !important;
-  }
-  .tenant-dropdown-btn {
-    width: 100%;
+  .tenant-switcher-pill__label {
+    max-width: 90px;
   }
 }
 </style>

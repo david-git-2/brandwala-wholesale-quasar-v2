@@ -97,59 +97,19 @@
           </q-menu>
         </q-btn>
 
+        <q-separator vertical inset class="gt-xs q-mx-xs text-grey-4" />
+
         <div class="workspace-shell__context">
           <slot name="header-left" />
+        </div>
+
+        <div v-if="$slots['header-center']" class="workspace-shell__center gt-sm">
+          <slot name="header-center" />
         </div>
 
         <q-space />
 
         <div class="workspace-shell__actions">
-          <q-btn
-            outline
-            dense
-            no-caps
-            color="primary"
-            class="locale-selector-btn q-mr-sm"
-            padding="xs sm"
-            icon="ph ph-translate"
-          >
-            <span class="locale-selector-btn__label">{{ localeLabel }}</span>
-            <q-icon name="ph ph-caret-down" size="sm" />
-            <q-menu auto-close style="min-width: 140px">
-              <q-list dense class="q-py-xs">
-                <q-item
-                  clickable
-                  :active="locale === 'en-US'"
-                  active-class="bg-primary text-white"
-                  @click="setLocale('en-US')"
-                >
-                  <q-item-section>Eng</q-item-section>
-                </q-item>
-                <q-item
-                  clickable
-                  :active="locale === 'bn'"
-                  active-class="bg-primary text-white"
-                  @click="setLocale('bn')"
-                >
-                  <q-item-section class="locale-bn">বাংলা</q-item-section>
-                </q-item>
-              </q-list>
-            </q-menu>
-          </q-btn>
-          <q-btn
-            v-if="theme !== 'shop'"
-            flat
-            round
-            dense
-            size="sm"
-            color="primary"
-            icon="ph ph-question"
-            aria-label="Module Guide"
-            class="q-mr-xs"
-            @click="openModuleHelp"
-          >
-            <q-tooltip>Module Guide</q-tooltip>
-          </q-btn>
           <slot name="header-extra" />
         </div>
       </q-toolbar>
@@ -159,307 +119,65 @@
       v-if="!useMobileBottomNav"
       v-model="drawerOpen"
       :mini="isMini"
-      mini-to-overlay
-      :mini-width="64"
-      :width="300"
+      @mouseenter="miniState = false"
+      @mouseleave="miniState = true"
+      :mini-width="58"
+      :width="250"
       show-if-above
       bordered
       class="workspace-shell__drawer"
-      @mouseenter="drawerHovered = true"
-      @mouseleave="drawerHovered = false"
     >
-      <div class="workspace-shell__drawer-inner">
-        <div class="workspace-shell__drawer-top">
-          <!-- Pin/Unpin Toggle Button -->
-          <div v-if="!isMini" class="row justify-end q-mb-xs">
-            <q-btn
-              flat
-              round
-              dense
-              icon="ph ph-push-pin"
-              size="sm"
-              :color="navPinned ? 'primary' : 'grey-7'"
-              :style="
-                !navPinned
-                  ? 'transform: rotate(45deg); transition: transform 0.2s;'
-                  : 'transition: transform 0.2s;'
-              "
-              @click="togglePin"
-            >
-              <q-tooltip>{{ navPinned ? 'Collapse sidebar' : 'Pin sidebar' }}</q-tooltip>
-            </q-btn>
+      <div class="workspace-shell__drawer-inner column full-height">
+        <div class="workspace-shell__drawer-top row items-center justify-between q-px-sm q-py-xs">
+          <div v-show="!isMini" class="text-caption text-weight-bold text-grey-7 text-uppercase" style="font-size: 10px; letter-spacing: 0.05em">
+            Navigation
           </div>
-
-          <div
-            class="row items-center no-wrap rounded-borders profile-card"
-            :class="isMini ? 'justify-center q-pa-xs cursor-pointer' : 'q-gutter-sm q-pa-sm'"
-            :style="isMini ? 'border-color: transparent; background: transparent;' : ''"
+          <q-btn
+            flat
+            round
+            dense
+            icon="ph ph-push-pin"
+            size="sm"
+            :color="navPinned ? 'primary' : 'grey-7'"
+            :style="
+              !navPinned
+                ? 'transform: rotate(45deg); transition: transform 0.2s;'
+                : 'transition: transform 0.2s;'
+            "
+            @click="togglePin"
           >
-            <q-avatar size="36px" class="workspace-shell__avatar">
-              <img
-                v-if="userAvatarUrl"
-                :src="userAvatarUrl"
-                class="workspace-shell__avatar-image"
-                referrerpolicy="no-referrer"
-                alt=""
-              />
-              <span v-else class="workspace-shell__avatar-fallback">{{ userInitials }}</span>
-            </q-avatar>
-            <div v-if="!isMini" class="col ellipsis">
-              <div class="text-subtitle2 text-weight-bold ellipsis text-black leading-tight">
-                {{ userName }}
-              </div>
-              <div class="text-caption text-grey-7 ellipsis leading-tight">{{ userEmail }}</div>
-            </div>
-
-            <q-btn v-if="!isMini" flat round dense icon="ph ph-dots-three-vertical" size="sm" color="grey-7">
-              <q-menu style="min-width: 200px">
-                <q-list dense class="q-py-xs">
-                  <q-item-label
-                    header
-                    class="text-uppercase text-weight-bold text-grey-7"
-                    style="font-size: 10px; letter-spacing: 0.1em"
-                    >Session Info</q-item-label
-                  >
-                  <q-item v-if="currentRoleLabel">
-                    <q-item-section avatar class="q-pr-none" style="min-width: 24px">
-                      <q-icon name="ph ph-shield" size="xs" color="grey-6" />
-                    </q-item-section>
-                    <q-item-section>
-                      <q-item-label class="text-caption text-weight-medium">Role</q-item-label>
-                      <q-item-label caption>{{ currentRoleLabel }}</q-item-label>
-                    </q-item-section>
-                  </q-item>
-                  <q-item v-if="contextLabel && contextValue">
-                    <q-item-section avatar class="q-pr-none" style="min-width: 24px">
-                      <q-icon name="ph ph-buildings" size="xs" color="grey-6" />
-                    </q-item-section>
-                    <q-item-section>
-                      <q-item-label class="text-caption text-weight-medium">{{
-                        contextLabel
-                      }}</q-item-label>
-                      <q-item-label caption>{{ contextValue }}</q-item-label>
-                    </q-item-section>
-                  </q-item>
-
-                  <q-separator class="q-my-xs" />
-                  <q-item-label
-                    header
-                    class="text-uppercase text-weight-bold text-grey-7"
-                    style="font-size: 10px; letter-spacing: 0.1em"
-                    >Appearance</q-item-label
-                  >
-                  <q-item clickable @click="toggleDarkMode">
-                    <q-item-section avatar class="q-pr-none" style="min-width: 24px">
-                      <q-icon
-                        :name="darkMode ? 'dark_mode' : 'light_mode'"
-                        size="xs"
-                        color="grey-6"
-                      />
-                    </q-item-section>
-                    <q-item-section>Dark Mode</q-item-section>
-                    <q-item-section side>
-                      <q-toggle
-                        :model-value="darkMode"
-                        @update:model-value="toggleDarkMode"
-                        dense
-                      />
-                    </q-item-section>
-                  </q-item>
-                  <q-item clickable @click="toggleDensity">
-                    <q-item-section avatar class="q-pr-none" style="min-width: 24px">
-                      <q-icon name="ph ph-list" size="xs" color="grey-6" />
-                    </q-item-section>
-                    <q-item-section>Compact Rows</q-item-section>
-                    <q-item-section side>
-                      <q-toggle
-                        :model-value="density === 'compact'"
-                        @update:model-value="toggleDensity"
-                        dense
-                      />
-                    </q-item-section>
-                  </q-item>
-
-                  <q-separator class="q-my-xs" />
-                  <q-item clickable v-close-popup @click="handleLogout">
-                    <q-item-section avatar class="q-pr-none" style="min-width: 24px">
-                      <q-icon name="ph ph-sign-out" size="xs" color="grey-7" />
-                    </q-item-section>
-                    <q-item-section class="text-grey-8 text-weight-medium"
-                      >Sign out</q-item-section
-                    >
-                  </q-item>
-                </q-list>
-              </q-menu>
-            </q-btn>
-            <q-menu v-if="isMini" style="min-width: 200px">
-              <q-list dense class="q-py-xs">
-                <q-item-label
-                  header
-                  class="text-uppercase text-weight-bold text-grey-7"
-                  style="font-size: 10px; letter-spacing: 0.1em"
-                  >Session Info</q-item-label
-                >
-                <q-item v-if="currentRoleLabel">
-                  <q-item-section avatar class="q-pr-none" style="min-width: 24px">
-                    <q-icon name="ph ph-shield" size="xs" color="grey-6" />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label class="text-caption text-weight-medium">Role</q-item-label>
-                    <q-item-label caption>{{ currentRoleLabel }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-                <q-item v-if="contextLabel && contextValue">
-                  <q-item-section avatar class="q-pr-none" style="min-width: 24px">
-                    <q-icon name="ph ph-buildings" size="xs" color="grey-6" />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label class="text-caption text-weight-medium">{{
-                      contextLabel
-                    }}</q-item-label>
-                    <q-item-label caption>{{ contextValue }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-
-                <q-separator class="q-my-xs" />
-                <q-item-label
-                  header
-                  class="text-uppercase text-weight-bold text-grey-7"
-                  style="font-size: 10px; letter-spacing: 0.1em"
-                  >Appearance</q-item-label
-                >
-                <q-item clickable @click="toggleDarkMode">
-                  <q-item-section avatar class="q-pr-none" style="min-width: 24px">
-                    <q-icon
-                      :name="darkMode ? 'dark_mode' : 'light_mode'"
-                      size="xs"
-                      color="grey-6"
-                    />
-                  </q-item-section>
-                  <q-item-section>Dark Mode</q-item-section>
-                  <q-item-section side>
-                    <q-toggle :model-value="darkMode" @update:model-value="toggleDarkMode" dense />
-                  </q-item-section>
-                </q-item>
-                <q-item clickable @click="toggleDensity">
-                  <q-item-section avatar class="q-pr-none" style="min-width: 24px">
-                    <q-icon name="ph ph-list" size="xs" color="grey-6" />
-                  </q-item-section>
-                  <q-item-section>Compact Rows</q-item-section>
-                  <q-item-section side>
-                    <q-toggle
-                      :model-value="density === 'compact'"
-                      @update:model-value="toggleDensity"
-                      dense
-                    />
-                  </q-item-section>
-                </q-item>
-
-                <q-separator class="q-my-xs" />
-                <q-item clickable v-close-popup @click="handleLogout">
-                  <q-item-section avatar class="q-pr-none" style="min-width: 24px">
-                    <q-icon name="ph ph-sign-out" size="xs" color="grey-7" />
-                  </q-item-section>
-                  <q-item-section class="text-grey-8 text-weight-medium">Sign out</q-item-section>
-                </q-item>
-              </q-list>
-            </q-menu>
-          </div>
+            <q-tooltip>{{ navPinned ? 'Collapse sidebar' : 'Pin sidebar' }}</q-tooltip>
+          </q-btn>
         </div>
 
-        <q-scroll-area class="workspace-shell__drawer-scroll">
-          <div class="workspace-shell__nav">
-            <div v-if="!isMini" class="workspace-shell__drawer-search q-mb-md">
-              <q-input
-                filled
-                dense
-                readonly
-                model-value=""
-                placeholder="Search pages... (⌘K)"
-                class="soft-input cursor-pointer"
-                @click="showCommandPalette = true"
-              >
-                <template #prepend>
-                  <q-icon name="ph ph-magnifying-glass" size="xs" />
-                </template>
-                <template #append>
-                  <div class="shortcut-badge">⌘K</div>
-                </template>
-              </q-input>
-            </div>
-
-            <div v-if="!isMini" class="workspace-shell__nav-label">Workspace</div>
-
+        <q-scroll-area class="col fit workspace-shell__drawer-scroll">
+          <div class="workspace-shell__nav q-py-xs">
             <q-list class="workspace-shell__nav-list">
               <template v-for="link in links" :key="link.to || link.title">
-                <!-- Group with children in mini mode (flyout menu) -->
-                <q-item
-                  v-if="link.children?.length && isMini"
-                  clickable
-                  class="workspace-shell__nav-item"
-                >
-                  <q-item-section avatar>
-                    <q-icon :name="link.icon" />
-                  </q-item-section>
-
-                  <q-tooltip anchor="center right" self="center left" :offset="[10, 10]">
-                    {{ translateTitle(link.title) }}
-                  </q-tooltip>
-
-                  <q-menu
-                    anchor="top right"
-                    self="top left"
-                    :offset="[8, 0]"
-                    class="workspace-shell__flyout-menu"
-                  >
-                    <q-list dense class="q-py-xs" style="min-width: 190px">
-                      <q-item-label
-                        header
-                        class="text-uppercase text-weight-bold text-grey-7 q-py-xs"
-                        style="font-size: 10px; letter-spacing: 0.05em"
-                      >
-                        {{ translateTitle(link.title) }}
-                      </q-item-label>
-                      <q-separator class="q-mb-xs" />
-                      
-                      <template v-for="(child, idx) in link.children" :key="child.to ?? child.title">
-                        <div
-                          v-if="shouldShowSectionHeader(link, child, idx)"
-                          class="workspace-shell__nav-sub-header q-px-sm q-pt-sm q-pb-xs text-uppercase"
-                          style="font-size: 9px; font-weight: 700; letter-spacing: 0.05em; color: var(--shell-muted);"
-                        >
-                          {{ child.section }}
-                        </div>
-                        <q-item
-                          clickable
-                          :to="child.to!"
-                          exact
-                          v-close-popup
-                          class="workspace-shell__flyout-sub-item q-mx-xs q-my-xs rounded-borders"
-                          active-class="workspace-shell__nav-item--active"
-                        >
-                          <q-item-section v-if="child.icon" avatar class="q-pr-none" style="min-width: 24px">
-                            <q-icon :name="child.icon" size="14px" color="grey-6" />
-                          </q-item-section>
-                          <q-item-section>
-                            <q-item-label class="text-weight-medium">{{ translateTitle(child.title) }}</q-item-label>
-                          </q-item-section>
-                        </q-item>
-                      </template>
-                    </q-list>
-                  </q-menu>
-                </q-item>
-
-                <!-- Group with children in standard mode (expansion item) -->
+                <!-- Group with children (expansion item) -->
                 <q-expansion-item
-                  v-else-if="link.children?.length"
+                  v-if="link.children?.length"
                   :model-value="expandedGroups[link.title] ?? false"
-                  @update:model-value="(val) => expandedGroups[link.title] = !!val"
+                  @update:model-value="(val) => (expandedGroups[link.title] = !!val)"
                   :icon="link.icon"
                   :label="translateTitle(link.title)"
                   class="workspace-shell__nav-item workspace-shell__nav-group"
+                  :header-class="['workspace-shell__nav-header', { 'workspace-shell__nav-item--active': isGroupActive(link) }]"
                   expand-separator
+                  dense
                 >
+                  <template #header>
+                    <q-item-section avatar style="min-width: 36px">
+                      <q-icon :name="link.icon" size="20px" />
+                    </q-item-section>
+                    <q-item-section>
+                      <q-item-label class="text-weight-medium">{{ translateTitle(link.title) }}</q-item-label>
+                    </q-item-section>
+                    <q-tooltip v-if="isMini" anchor="center right" self="center left" :offset="[10, 10]">
+                      {{ translateTitle(link.title) }}
+                    </q-tooltip>
+                  </template>
+
                   <div class="workspace-shell__nav-sub-list">
                     <template v-for="(child, idx) in link.children" :key="child.to ?? child.title">
                       <div
@@ -468,16 +186,15 @@
                       >
                         {{ child.section }}
                       </div>
-                      
+
                       <q-item
                         clickable
                         :to="child.to!"
-                        exact
                         class="workspace-shell__nav-sub-item"
-                        active-class="workspace-shell__nav-item--active"
+                        :class="{ 'workspace-shell__nav-item--active': isLinkActive(child.to) }"
                       >
                         <q-item-section v-if="child.icon" avatar class="q-pr-none" style="min-width: 28px">
-                          <q-icon :name="child.icon" size="18px" color="grey-6" class="sub-item-icon" />
+                          <q-icon :name="child.icon" size="16px" color="grey-6" class="sub-item-icon" />
                         </q-item-section>
                         <q-item-section>
                           <q-item-label class="text-weight-medium">{{ translateTitle(child.title) }}</q-item-label>
@@ -495,14 +212,14 @@
                   :href="link.target ? link.to : undefined"
                   :target="link.target"
                   class="workspace-shell__nav-item"
-                  active-class="workspace-shell__nav-item--active"
+                  :class="{ 'workspace-shell__nav-item--active': isLinkActive(link.to) }"
                 >
-                  <q-item-section avatar>
-                    <q-icon :name="link.icon" />
+                  <q-item-section avatar style="min-width: 36px">
+                    <q-icon :name="link.icon" size="20px" />
                   </q-item-section>
 
-                  <q-item-section v-if="!isMini">
-                    <q-item-label>{{ translateTitle(link.title) }}</q-item-label>
+                  <q-item-section>
+                    <q-item-label class="text-weight-medium">{{ translateTitle(link.title) }}</q-item-label>
                   </q-item-section>
 
                   <q-tooltip
@@ -519,17 +236,18 @@
           </div>
         </q-scroll-area>
 
-        <div class="workspace-shell__drawer-bottom">
+        <div class="workspace-shell__drawer-bottom q-pa-xs border-top">
           <q-btn
             flat
             dense
             no-caps
-            icon="ph ph-sign-out"
-            :label="isMini ? '' : 'Sign out'"
-            color="grey-7"
-            class="workspace-shell__logout"
+            class="workspace-shell__logout full-width"
             @click="handleLogout"
           >
+            <div class="row items-center no-wrap full-width" :class="isMini ? 'justify-center' : 'q-gutter-x-sm q-px-xs'">
+              <q-icon name="ph ph-sign-out" size="18px" color="grey-7" />
+              <span v-if="!isMini" class="text-grey-8 text-weight-medium text-caption">Sign out</span>
+            </div>
             <q-tooltip v-if="isMini" anchor="center right" self="center left" :offset="[10, 10]">
               Sign out
             </q-tooltip>
@@ -769,7 +487,7 @@ const showLogoutDialog = ref(false);
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
-const { openHelp, setHelpScope } = useModuleHelp();
+const { setHelpScope } = useModuleHelp();
 
 watch(
   () => props.theme,
@@ -779,23 +497,11 @@ watch(
   { immediate: true },
 );
 
-const openModuleHelp = () => {
-  openHelp({ scope: props.theme });
-};
-
 const $q = useQuasar();
 const { navPinned, setNavPinned, darkMode, setDarkMode, density, setDensity } = useAppearance();
-const drawerHovered = ref(false);
+const miniState = ref(true);
 
 const i18n = useI18n();
-const { locale } = i18n;
-
-const localeLabel = computed(() => (locale.value === 'bn' ? 'বাংলা' : 'Eng'));
-
-const setLocale = (lang: string) => {
-  locale.value = lang;
-  localStorage.setItem('locale', lang);
-};
 
 const getTransKey = (title: string) => {
   return title.toLowerCase().replace(/\s+/g, '_');
@@ -814,16 +520,33 @@ const translateCaption = (title: string, defaultCaption: string) => {
 const useMobileBottomNav = computed(() => props.theme === 'shop' && $q.screen.xs);
 
 const isMini = computed(
-  () => !useMobileBottomNav.value && !navPinned.value && !drawerHovered.value && !$q.screen.lt.md,
+  () => !useMobileBottomNav.value && !navPinned.value && miniState.value && !$q.screen.lt.md,
 );
+
+const isLinkActive = (to?: string): boolean => {
+  if (!to) return false;
+  const currentPath = route.path;
+  if (currentPath === to) return true;
+  // Match nested subroutes (e.g. /bw/app/procurement/shipment matches /bw/app/procurement/shipment/14)
+  if (to !== '/app' && to !== '/app/' && to !== '/shop' && to !== '/shop/') {
+    if (currentPath.startsWith(`${to}/`)) {
+      return true;
+    }
+  }
+  return false;
+};
+
+const isGroupActive = (link: WorkspaceLink): boolean => {
+  if (!link.children?.length) return false;
+  return link.children.some((child) => isLinkActive(child.to));
+};
 
 const isBottomNavLinkActive = (link: WorkspaceLink) => {
   if (!link.to || link.target) return false;
-  return route.path === link.to || route.path.startsWith(`${link.to}/`);
+  return isLinkActive(link.to);
 };
 
-const isBottomNavGroupActive = (link: WorkspaceLink) =>
-  !!link.children?.some((child) => isBottomNavLinkActive(child));
+const isBottomNavGroupActive = (link: WorkspaceLink) => isGroupActive(link);
 
 const shouldShowSectionHeader = (link: WorkspaceLink, child: WorkspaceLink, idx: number): boolean => {
   if (!child.section) return false;
@@ -837,9 +560,7 @@ const expandedGroups = ref<Record<string, boolean>>({});
 const autoExpandActiveGroup = () => {
   for (const link of props.links) {
     if (link.children?.length) {
-      const hasActiveChild = link.children.some(
-        (child) => child.to && (route.path === child.to || route.path.startsWith(`${child.to}/`))
-      );
+      const hasActiveChild = link.children.some((child) => isLinkActive(child.to));
       expandedGroups.value[link.title] = hasActiveChild;
     }
   }
@@ -1110,7 +831,14 @@ const handleLogout = () => {
   showLogoutDialog.value = true;
 };
 
-defineExpose({ openSignOutDialog: handleLogout });
+const handleOpenCommandPalette = () => {
+  showCommandPalette.value = true;
+};
+
+defineExpose({
+  openSignOutDialog: handleLogout,
+  openCommandPalette: handleOpenCommandPalette,
+});
 
 const confirmLogout = async () => {
   showLogoutDialog.value = false;
@@ -1165,7 +893,16 @@ const confirmLogout = async () => {
 
 .workspace-shell__context {
   min-width: 0;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
+}
+
+.workspace-shell__center {
+  flex: 0 1 auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  max-width: 260px;
+  margin: 0 auto;
 }
 
 .workspace-shell__actions {
@@ -1332,8 +1069,12 @@ const confirmLogout = async () => {
 }
 
 .workspace-shell__page-container {
-  padding: clamp(0.5rem, 1.2vw, 0.9rem);
-  background: var(--bw-theme-surface, #ffffff);
+  padding: 8px 12px;
+  background: var(--bw-theme-base, rgb(238, 240, 244));
+}
+
+body.body--dark .workspace-shell__page-container {
+  background: var(--bw-brand-base, #171717);
 }
 
 .workspace-shell__bottom-nav {
