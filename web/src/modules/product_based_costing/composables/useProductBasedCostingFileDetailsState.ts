@@ -125,6 +125,96 @@ export function formatStatusLabel(value: string): string {
   }
 }
 
+export type StatusHint = {
+  when: string;
+  does: string;
+};
+
+export function getFileStatusHint(value: string): StatusHint | null {
+  switch (value) {
+    case 'pending':
+      return {
+        when: 'You are making the price list',
+        does: 'Add items. Send the PDF or screenshot.',
+      };
+    case 'offered':
+      return {
+        when: 'You already sent the PDF or screenshot',
+        does: 'Saves that you sent it. Does not send a message.',
+      };
+    case 'confirmed':
+      return {
+        when: 'They said yes',
+        does: 'Saves how many they want. Change the number if they want less.',
+      };
+    case 'placing_order':
+      return {
+        when: 'You are buying the goods',
+        does: 'Type how many you got for each item.',
+      };
+    case 'ready_for_shipment':
+      return {
+        when: 'You know how many you got',
+        does: 'Put those items on a shipment.',
+      };
+    case 'invoicing':
+      return {
+        when: 'The goods have arrived',
+        does: 'Make the bill in sales. Not here.',
+      };
+    case 'delivered':
+      return {
+        when: 'All goods have arrived',
+        does: 'This job is finished.',
+      };
+    case 'cancelled':
+      return {
+        when: 'This job is stopped',
+        does: 'Closes the file.',
+      };
+    default:
+      return null;
+  }
+}
+
+export function getItemStatusHint(value: string): StatusHint | null {
+  switch ((value || '').toLowerCase()) {
+    case 'pending':
+      return {
+        when: 'They have not said yes yet',
+        does: 'This item is only on the price list.',
+      };
+    case 'accepted':
+      return {
+        when: 'They want this item',
+        does: 'Buy it and ship it.',
+      };
+    case 'rejected':
+      return {
+        when: 'They do not want this item',
+        does: 'Skip it. Do not buy it.',
+      };
+    case 'unavailable':
+      return {
+        when: 'You got none of this item',
+        does: 'Keep it for next time.',
+      };
+    case 'partial':
+    case 'partially_available':
+      return {
+        when: 'You got some, but not all',
+        does: 'Keep the rest for next time.',
+      };
+    case 'on_shipment':
+      return {
+        when: 'This item is already on a shipment',
+        does: 'Do not buy it again.',
+      };
+    default:
+      return null;
+  }
+}
+
 export function isPassedStatus(currentStatus: string, st: string): boolean {
   if (currentStatus === 'cancelled') {
     return false;
@@ -173,7 +263,9 @@ export function getDefaultVisibleColumnsForStatus(fileStatus: string): string[] 
         'productWeight',
         'packageWeight',
         'offerPriceBdt',
+        'costBdt',
         'profitRate',
+        'status',
       ];
     case 'placing_order':
     case 'ready_for_shipment':

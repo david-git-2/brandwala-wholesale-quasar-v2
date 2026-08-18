@@ -8,15 +8,14 @@
     class="pbc-backlog-drawer bg-white"
   >
     <div class="column full-height">
-      <!-- Header -->
       <div class="row items-center justify-between q-pa-md bg-grey-1 border-bottom">
         <div>
           <div class="text-subtitle1 text-weight-bold row items-center">
             <q-icon name="ph ph-tray" class="q-mr-xs text-primary" size="20px" />
-            Unfulfilled Backlog
+            Still needed
           </div>
           <div class="text-caption text-grey-7">
-            Open demand for this billing profile
+            Leftover from last quote for this customer
           </div>
         </div>
         <q-btn icon="ph ph-x" flat round dense @click="isOpen = false" />
@@ -24,7 +23,6 @@
 
       <q-separator />
 
-      <!-- Body / List -->
       <div class="col scroll q-pa-md">
         <div v-if="loading" class="q-gutter-y-md">
           <q-card v-for="n in 3" :key="n" flat bordered class="q-pa-sm">
@@ -33,72 +31,117 @@
           </q-card>
         </div>
 
-        <div v-else-if="items.length === 0" class="text-center text-grey-6 q-pa-xl">
+        <div
+          v-else-if="items.length === 0 && alreadyOnFileItems.length === 0"
+          class="text-center text-grey-6 q-pa-xl"
+        >
           <q-icon name="ph ph-check-circle" size="48px" class="q-mb-sm text-grey-4" />
-          <div class="text-body1 text-weight-medium">No open backlog</div>
-          <div class="text-caption">All previous demand for this profile is fulfilled or settled.</div>
+          <div class="text-body1 text-weight-medium">Nothing left to add for this customer.</div>
         </div>
 
         <template v-else>
-          <div class="row items-center justify-between q-mb-sm">
-            <q-checkbox
-              v-model="allSelected"
-              label="Select All"
-              dense
-              class="text-weight-medium"
-            />
-            <span class="text-caption text-grey-7">{{ selectedIds.length }} of {{ items.length }} selected</span>
-          </div>
+          <template v-if="items.length">
+            <div class="text-caption text-weight-medium text-grey-7 q-mb-xs">
+              Not on this file yet
+            </div>
+            <div class="row items-center justify-between q-mb-sm">
+              <q-checkbox
+                v-model="allSelected"
+                label="Select all"
+                dense
+                class="text-weight-medium"
+              />
+              <span class="text-caption text-grey-7">{{ selectedIds.length }} of {{ items.length }} selected</span>
+            </div>
 
-          <div class="q-gutter-y-sm">
-            <q-card
-              v-for="item in items"
-              :key="item.id"
-              flat
-              bordered
-              class="backlog-item-card cursor-pointer"
-              :class="{ 'bg-blue-1 border-primary': selectedIds.includes(item.id) }"
-              @click="toggleSelect(item.id)"
-            >
-              <q-card-section class="q-pa-sm row items-center q-col-gutter-sm">
-                <div class="col-auto" @click.stop>
-                  <q-checkbox
-                    :model-value="selectedIds.includes(item.id)"
-                    @update:model-value="toggleSelect(item.id)"
-                    dense
-                  />
-                </div>
-
-                <div class="col-auto">
-                  <q-avatar square size="42px" class="bg-grey-2 rounded-borders">
-                    <img v-if="item.image_url" :src="item.image_url" :alt="item.name" />
-                    <q-icon v-else name="ph ph-package" color="grey-6" />
-                  </q-avatar>
-                </div>
-
-                <div class="col">
-                  <div class="text-subtitle2 text-weight-bold ellipsis">{{ item.name }}</div>
-                  <div class="row items-center q-gutter-x-xs text-caption text-grey-7">
-                    <span v-if="item.barcode">BC: {{ item.barcode }}</span>
-                    <span v-if="item.barcode && item.price_gbp">•</span>
-                    <span v-if="item.price_gbp">£{{ item.price_gbp }}</span>
+            <div class="q-gutter-y-sm q-mb-md">
+              <q-card
+                v-for="item in items"
+                :key="item.id"
+                flat
+                bordered
+                class="backlog-item-card cursor-pointer"
+                :class="{ 'bg-blue-1 border-primary': selectedIds.includes(item.id) }"
+                @click="toggleSelect(item.id)"
+              >
+                <q-card-section class="q-pa-sm row items-center q-col-gutter-sm">
+                  <div class="col-auto" @click.stop>
+                    <q-checkbox
+                      :model-value="selectedIds.includes(item.id)"
+                      dense
+                      @update:model-value="toggleSelect(item.id)"
+                    />
                   </div>
-                </div>
 
-                <div class="col-auto text-right">
-                  <q-badge color="orange-9" class="text-weight-bold q-px-sm q-py-xs">
-                    Qty: {{ item.open_quantity }}
-                  </q-badge>
-                </div>
-              </q-card-section>
-            </q-card>
-          </div>
+                  <div class="col-auto">
+                    <q-avatar square size="42px" class="bg-grey-2 rounded-borders">
+                      <img v-if="item.image_url" :src="item.image_url" :alt="item.name" />
+                      <q-icon v-else name="ph ph-package" color="grey-6" />
+                    </q-avatar>
+                  </div>
+
+                  <div class="col">
+                    <div class="text-subtitle2 text-weight-bold ellipsis">{{ item.name }}</div>
+                    <div class="row items-center q-gutter-x-xs text-caption text-grey-7">
+                      <span v-if="item.barcode">BC: {{ item.barcode }}</span>
+                      <span v-if="item.barcode && item.price_gbp">•</span>
+                      <span v-if="item.price_gbp">£{{ item.price_gbp }}</span>
+                    </div>
+                  </div>
+
+                  <div class="col-auto text-right">
+                    <q-badge color="orange-9" class="text-weight-bold q-px-sm q-py-xs">
+                      Qty: {{ item.open_quantity }}
+                    </q-badge>
+                  </div>
+                </q-card-section>
+              </q-card>
+            </div>
+          </template>
+
+          <template v-if="alreadyOnFileItems.length">
+            <div class="text-caption text-weight-medium text-grey-7 q-mb-sm">
+              Already on this file
+            </div>
+            <div class="q-gutter-y-sm">
+              <q-card
+                v-for="item in alreadyOnFileItems"
+                :key="item.id"
+                flat
+                bordered
+                class="backlog-item-card backlog-item-card--on-file"
+              >
+                <q-card-section class="q-pa-sm row items-center q-col-gutter-sm">
+                  <div class="col-auto">
+                    <q-avatar square size="42px" class="bg-grey-2 rounded-borders">
+                      <img v-if="item.image_url" :src="item.image_url" :alt="item.name" />
+                      <q-icon v-else name="ph ph-package" color="grey-6" />
+                    </q-avatar>
+                  </div>
+
+                  <div class="col">
+                    <div class="text-subtitle2 text-weight-bold ellipsis">{{ item.name }}</div>
+                    <div class="row items-center q-gutter-x-xs text-caption text-grey-7">
+                      <span v-if="item.barcode">BC: {{ item.barcode }}</span>
+                      <span v-if="item.barcode && item.price_gbp">•</span>
+                      <span v-if="item.price_gbp">£{{ item.price_gbp }}</span>
+                    </div>
+                  </div>
+
+                  <div class="col-auto text-right">
+                    <q-badge outline color="grey-7" class="q-px-sm q-py-xs">
+                      On this file
+                    </q-badge>
+                  </div>
+                </q-card-section>
+              </q-card>
+            </div>
+          </template>
         </template>
       </div>
 
       <q-separator />
 
-      <!-- Footer Actions -->
       <div v-if="items.length > 0" class="q-pa-md bg-grey-1 row items-center justify-between">
         <q-btn
           flat
@@ -142,12 +185,20 @@ export interface BacklogItem {
   note: string | null;
 }
 
-const props = defineProps<{
-  modelValue: boolean;
-  items: BacklogItem[];
-  loading?: boolean;
-  adding?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    modelValue: boolean;
+    items: BacklogItem[];
+    alreadyOnFileItems?: BacklogItem[];
+    loading?: boolean;
+    adding?: boolean;
+  }>(),
+  {
+    alreadyOnFileItems: () => [],
+    loading: false,
+    adding: false,
+  },
+);
 
 const emit = defineEmits<{
   (e: 'update:modelValue', val: boolean): void;
@@ -205,7 +256,10 @@ function onAddAll() {
 .backlog-item-card {
   transition: all 0.2s ease;
 }
-.backlog-item-card:hover {
+.backlog-item-card:not(.backlog-item-card--on-file):hover {
   border-color: var(--q-primary);
+}
+.backlog-item-card--on-file {
+  opacity: 0.72;
 }
 </style>

@@ -107,10 +107,10 @@
             </q-item>
             <q-item v-for="product in browseList" :key="product.id">
               <q-item-section avatar>
-                <q-avatar square class="bg-grey-2" size="48px">
+                <q-avatar square class="bg-grey-2 browse-product-thumb">
                   <SmartImage
                     :src="product.image_url"
-                    style="width: 48px; height: 48px; object-fit: contain"
+                    class="browse-product-thumb__img"
                     :enable-edit="false"
                     :enable-lightbox="false"
                   />
@@ -744,6 +744,21 @@ onMounted(async () => {
 
 .browse-list {
   border: 1px solid #e2e8f0;
+}
+
+.browse-product-thumb {
+  width: 0.8in;
+  height: 0.8in;
+}
+
+:deep(.browse-product-thumb__img) {
+  width: 0.8in;
+  height: 0.8in;
+  display: block;
+}
+
+:deep(.browse-product-thumb__img .smart-image__img) {
+  object-fit: contain;
 }
 
 .panel-footer {

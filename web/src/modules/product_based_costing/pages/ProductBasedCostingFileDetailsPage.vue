@@ -1,19 +1,16 @@
 <template>
-  <q-page class="q-pa-md costing-details-page">
-    <div class="q-gutter-y-md">
+  <q-page class="q-pa-sm costing-details-page">
+    <div class="q-gutter-y-sm">
       <!-- Top Header Bar Component -->
       <ProductBasedCostingFileHeader
         :file="file ?? null"
         :is-loading="isLoading"
-        :backlog-count="backlog.items.value.length"
-        :backlog-loading="backlog.loading.value"
         :visible-columns="visibleColumns"
         :all-billing-profiles="allBillingProfiles"
         :loading-profiles="loadingProfiles"
         :saving-billing-profile="savingBillingProfile"
         :item-count="costingItems.length"
         @go-back="goBack"
-        @open-backlog="openBacklogDrawer"
         @open-create-item="openCreateDialog"
         @open-edit-file="showFileDialog = true"
         @open-bulk-paste="openBulkPaste"
@@ -24,6 +21,36 @@
         @save-inline-name="handleSaveInlineName"
         @update-billing-profile="onInlineBillingProfileChange"
       />
+
+      <q-banner
+        v-if="!isLoading && file && availableBacklogItems.length"
+        dense
+        class="bg-orange-1 text-grey-9 rounded-borders"
+      >
+        <template #avatar>
+          <q-icon name="ph ph-tray" color="orange-9" />
+        </template>
+        {{ stillNeededBannerText }}
+        <template #action>
+          <q-btn
+            flat
+            dense
+            no-caps
+            color="primary"
+            label="Review"
+            @click="openBacklogDrawer"
+          />
+          <q-btn
+            unelevated
+            dense
+            no-caps
+            color="primary"
+            label="Add all"
+            :loading="backlog.saving.value"
+            @click="handleAddAllStillNeeded"
+          />
+        </template>
+      </q-banner>
 
       <q-banner
         v-if="!isLoading && file && nextStepBanner"
@@ -79,6 +106,7 @@
         <PbcBacklogSuggestDrawer
           v-model="showBacklogDrawer"
           :items="availableBacklogItems"
+          :already-on-file-items="alreadyOnFileBacklogItems"
           :loading="backlog.loading.value"
           :adding="backlog.saving.value"
           @add="handleConsumeBacklog"
@@ -136,7 +164,7 @@ import {
 import { productBasedCostingRepository } from '../repositories/productBasedCostingRepository';
 import type { ProductBasedCostingItem } from '../types';
 import { useMembershipColumnPreference } from 'src/modules/membership/composables/useMembershipColumnPreference';
-import { usePbcBacklog } from '../composables/usePbcBacklog';
+import { usePbcBacklog, type BacklogItem } from '../composables/usePbcBacklog';
 import {
   allColumnNames,
   alwaysVisibleColumns,
@@ -176,9 +204,37 @@ const { data: costingItemsData, isLoading: isLoadingItems } = useProductBasedCos
 const isLoading = computed(() => isLoadingFile.value || isLoadingItems.value);
 const costingItems = computed(() => costingItemsData.value ?? []);
 
+function isBacklogItemOnCurrentFile(item: BacklogItem) {
+  if (item.product_id && costingItems.value.some((row) => row.product_id === item.product_id)) {
+    return true;
+  }
+  const barcode = item.barcode?.trim();
+  if (barcode && costingItems.value.some((row) => row.barcode?.trim() === barcode)) {
+    return true;
+  }
+  return false;
+}
+
+const availableBacklogItems = computed(() =>
+  backlog.items.value.filter((item) => !isBacklogItemOnCurrentFile(item)),
+);
+
+const alreadyOnFileBacklogItems = computed(() =>
+  backlog.items.value.filter((item) => isBacklogItemOnCurrentFile(item)),
+);
+
+const stillNeededBannerText = computed(() => {
+  const count = availableBacklogItems.value.length;
+  if (count === 1) {
+    return '1 product still needed for this customer from a previous quote.';
+  }
+  return `${count} products still needed for this customer from a previous quote.`;
+});
+
 const nextStepBanner = computed(() => {
   if (!file.value) return '';
   if (costingItems.value.length === 0) {
+    if (availableBacklogItems.value.length > 0) return '';
     return 'Search the catalog and add products. If a product is missing, create it there.';
   }
   if (status.value === 'pending') {
@@ -190,30 +246,10 @@ const nextStepBanner = computed(() => {
   if (status.value === 'confirmed') {
     return 'Quote accepted. Confirmed qty starts from the offer — edit if they took less. Buy & ship next.';
   }
+  if (status.value === 'placing_order') {
+    return 'Type how many you got in Ordered Qty. Confirmed Qty stays editable if they want a different amount.';
+  }
   return '';
-});
-
-const availableBacklogItems = computed(() => {
-  const currentProductIds = new Set(
-    costingItems.value
-      .map((item) => item.product_id)
-      .filter((id): id is number => id != null),
-  );
-  const currentBarcodes = new Set(
-    costingItems.value
-      .map((item) => item.barcode?.trim())
-      .filter((b): b is string => Boolean(b)),
-  );
-
-  return backlog.items.value.filter((item) => {
-    if (item.product_id && currentProductIds.has(item.product_id)) {
-      return false;
-    }
-    if (item.barcode && currentBarcodes.has(item.barcode.trim())) {
-      return false;
-    }
-    return true;
-  });
 });
 
 // Mutations
@@ -264,7 +300,13 @@ watch(
       if (isLegacyAll) {
         visibleColumns.value = getDefaultVisibleColumnsForStatus(status.value);
       } else if (status.value === 'confirmed') {
-        const mustHave = ['confirmedQty', 'offerPriceBdt', 'priceGbp', 'profitRate'];
+        const mustHave = ['confirmedQty', 'offerPriceBdt', 'priceGbp', 'profitRate', 'costBdt', 'status'];
+        const missing = mustHave.filter((col) => !saved.includes(col));
+        if (missing.length) {
+          visibleColumns.value = [...saved, ...missing];
+        }
+      } else if (status.value === 'placing_order') {
+        const mustHave = ['confirmedQty', 'orderedQty', 'status'];
         const missing = mustHave.filter((col) => !saved.includes(col));
         if (missing.length) {
           visibleColumns.value = [...saved, ...missing];
@@ -442,6 +484,11 @@ function refreshBacklog() {
 function openBacklogDrawer() {
   refreshBacklog();
   showBacklogDrawer.value = true;
+}
+
+async function handleAddAllStillNeeded() {
+  const ids = availableBacklogItems.value.map((item) => item.id);
+  await handleConsumeBacklog(ids);
 }
 
 async function handleConsumeBacklog(backlogIds: number[]) {

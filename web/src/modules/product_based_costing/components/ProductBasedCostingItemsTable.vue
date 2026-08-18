@@ -90,14 +90,6 @@
                 <q-badge color="grey-3" text-color="grey-9" class="text-weight-bold">
                   #{{ slotProps.row.sl }}
                 </q-badge>
-                <q-badge
-                  v-if="slotProps.row.offerInputsIncomplete"
-                  color="warning"
-                  text-color="grey-9"
-                  class="q-px-xs text-caption"
-                >
-                  Missing £ or weight
-                </q-badge>
               </div>
 
               <div class="row items-center q-gutter-xs">
@@ -111,6 +103,23 @@
                     class="q-px-sm q-py-xs"
                   >
                     {{ slotProps.row.status }}
+                    <q-tooltip
+                      v-if="getItemStatusHint(slotProps.row.status)"
+                      class="pbc-status-tooltip"
+                      max-width="280px"
+                      anchor="top middle"
+                      self="bottom middle"
+                      :offset="[0, 8]"
+                    >
+                      <div class="pbc-status-tooltip__k">Use this when</div>
+                      <div class="pbc-status-tooltip__v">
+                        {{ getItemStatusHint(slotProps.row.status)?.when }}
+                      </div>
+                      <div class="pbc-status-tooltip__k pbc-status-tooltip__k--next">This will</div>
+                      <div class="pbc-status-tooltip__v">
+                        {{ getItemStatusHint(slotProps.row.status)?.does }}
+                      </div>
+                    </q-tooltip>
                   </q-badge>
                 </div>
               </div>
@@ -131,6 +140,14 @@
                       fallback-class="card-image-placeholder"
                     />
                   </div>
+                  <q-badge
+                    v-if="slotProps.row.offerInputsIncomplete"
+                    color="warning"
+                    text-color="grey-9"
+                    class="offer-incomplete-badge q-mt-xs"
+                  >
+                    Missing £ or weight
+                  </q-badge>
                 </div>
 
                 <!-- Info -->
@@ -276,8 +293,17 @@
                 <div
                   v-if="isColumnVisible('confirmedQty')"
                   class="col-6 col-sm-3 text-center q-pa-xs rounded-borders"
+                  :class="{ 'qty-col--focus': focusConfirmedQty }"
                 >
-                  <div class="metric-label">Confirmed Qty</div>
+                  <div class="metric-label">
+                    <q-icon
+                      v-if="focusConfirmedQty"
+                      name="ph ph-pencil-simple"
+                      size="12px"
+                      class="q-mr-xs"
+                    />
+                    Confirmed Qty
+                  </div>
                   <q-input
                     v-model.number="slotProps.row.confirmedQty"
                     type="number"
@@ -285,19 +311,32 @@
                     borderless
                     input-class="text-center font-mono"
                     class="cell-input"
+                    :class="{ 'cell-input--review': focusConfirmedQty }"
                     min="0"
                     step="1"
                     @blur="onConfirmedQtyBlur(slotProps.row)"
                     @keyup.enter="blurInput"
                   />
+                  <div v-if="focusConfirmedQty" class="text-caption text-grey-7">
+                    Edit if they took less
+                  </div>
                 </div>
 
                 <!-- Ordered Qty -->
                 <div
                   v-if="isColumnVisible('orderedQty')"
                   class="col-6 col-sm-3 text-center q-pa-xs rounded-borders"
+                  :class="{ 'qty-col--focus': focusOrderedQty }"
                 >
-                  <div class="metric-label">Ordered Qty</div>
+                  <div class="metric-label">
+                    <q-icon
+                      v-if="focusOrderedQty"
+                      name="ph ph-pencil-simple"
+                      size="12px"
+                      class="q-mr-xs"
+                    />
+                    Ordered Qty
+                  </div>
                   <q-input
                     v-model.number="slotProps.row.orderedQty"
                     type="number"
@@ -305,11 +344,15 @@
                     borderless
                     input-class="text-center font-mono"
                     class="cell-input"
+                    :class="{ 'cell-input--review': focusOrderedQty }"
                     min="0"
                     step="1"
                     @blur="onOrderedQtyBlur(slotProps.row)"
                     @keyup.enter="blurInput"
                   />
+                  <div v-if="focusOrderedQty" class="text-caption text-grey-7">
+                    Type how many you got
+                  </div>
                 </div>
 
                 <!-- Delivered Qty -->
@@ -366,6 +409,7 @@
                     class="cell-input"
                     min="0"
                     step="1"
+                    @focus="clearZeroOnFocus(slotProps.row, 'productWeight')"
                     @blur="onProductWeightBlur(slotProps.row)"
                     @keyup.enter="blurInput"
                   />
@@ -385,6 +429,7 @@
                     class="cell-input"
                     min="0"
                     step="1"
+                    @focus="clearZeroOnFocus(slotProps.row, 'packageWeight')"
                     @blur="onPackageWeightBlur(slotProps.row)"
                     @keyup.enter="blurInput"
                   />
@@ -482,6 +527,52 @@
         </q-th>
       </template>
 
+      <template #header-cell-confirmedQty="slotProps">
+        <q-th
+          :props="slotProps"
+          class="col-confirmed-qty text-center"
+          :class="{ 'qty-col--focus': focusConfirmedQty }"
+        >
+          <div class="confirmed-qty-header">
+            <span>
+              <q-icon
+                v-if="focusConfirmedQty"
+                name="ph ph-pencil-simple"
+                size="14px"
+                class="q-mr-xs"
+              />
+              Confirmed Qty
+            </span>
+            <span v-if="focusConfirmedQty" class="text-caption text-grey-7">
+              Edit if they took less
+            </span>
+          </div>
+        </q-th>
+      </template>
+
+      <template #header-cell-orderedQty="slotProps">
+        <q-th
+          :props="slotProps"
+          class="col-ordered-qty text-center"
+          :class="{ 'qty-col--focus': focusOrderedQty }"
+        >
+          <div class="confirmed-qty-header">
+            <span>
+              <q-icon
+                v-if="focusOrderedQty"
+                name="ph ph-pencil-simple"
+                size="14px"
+                class="q-mr-xs"
+              />
+              Ordered Qty
+            </span>
+            <span v-if="focusOrderedQty" class="text-caption text-grey-7">
+              Type how many you got
+            </span>
+          </div>
+        </q-th>
+      </template>
+
       <template #body="slotProps">
         <q-tr :props="slotProps" :class="{ 'row-incomplete-offer': slotProps.row.offerInputsIncomplete }">
           <q-td key="select" :props="slotProps" class="col-select text-center">
@@ -502,27 +593,27 @@
               img-class="table-image"
               fallback-class="table-image-placeholder"
             />
+            <q-badge
+              v-if="slotProps.row.offerInputsIncomplete"
+              color="warning"
+              text-color="grey-9"
+              class="offer-incomplete-badge q-mt-xs"
+            >
+              Missing £ or weight
+            </q-badge>
           </q-td>
 
           <q-td key="name" :props="slotProps" class="col-name">
-            <div class="name-cell-content row items-center justify-between no-wrap">
+            <div class="name-cell-content">
               <span
                 class="name-cell-text text-primary cursor-pointer"
                 @click="onEdit(slotProps.row)"
               >{{ slotProps.row.name }}</span>
               <q-badge
-                v-if="slotProps.row.offerInputsIncomplete"
-                color="warning"
-                text-color="grey-9"
-                class="q-px-xs text-caption q-ml-xs"
-              >
-                Missing £ or weight
-              </q-badge>
-              <q-badge
                 v-if="slotProps.row.raw.assigned_shipment_id || slotProps.row.status === 'on_shipment'"
                 color="teal-8"
                 text-color="white"
-                class="q-px-xs text-caption q-ml-xs"
+                class="q-px-xs text-caption q-mt-xs"
               >
                 <q-icon name="ph ph-truck" class="q-mr-xs" />
                 Added to shipment
@@ -578,6 +669,7 @@
             key="confirmedQty"
             :props="slotProps"
             class="col-confirmed-qty text-center editable-cell"
+            :class="{ 'qty-col--focus': focusConfirmedQty }"
           >
             <q-input
               v-model.number="slotProps.row.confirmedQty"
@@ -586,6 +678,7 @@
               borderless
               input-class="text-center font-mono"
               class="cell-input"
+              :class="{ 'cell-input--review': focusConfirmedQty }"
               min="0"
               step="1"
               @blur="onConfirmedQtyBlur(slotProps.row)"
@@ -598,6 +691,7 @@
             key="orderedQty"
             :props="slotProps"
             class="col-ordered-qty text-center editable-cell"
+            :class="{ 'qty-col--focus': focusOrderedQty }"
           >
             <q-input
               v-model.number="slotProps.row.orderedQty"
@@ -606,6 +700,7 @@
               borderless
               input-class="text-center font-mono"
               class="cell-input"
+              :class="{ 'cell-input--review': focusOrderedQty }"
               min="0"
               step="1"
               @blur="onOrderedQtyBlur(slotProps.row)"
@@ -755,6 +850,7 @@
               class="cell-input"
               min="0"
               step="1"
+              @focus="clearZeroOnFocus(slotProps.row, 'productWeight')"
               @blur="onProductWeightBlur(slotProps.row)"
               @keyup.enter="blurInput"
             />
@@ -775,6 +871,7 @@
               class="cell-input"
               min="0"
               step="1"
+              @focus="clearZeroOnFocus(slotProps.row, 'packageWeight')"
               @blur="onPackageWeightBlur(slotProps.row)"
               @keyup.enter="blurInput"
             />
@@ -930,6 +1027,23 @@
           >
             <q-badge :color="getStatusColor(slotProps.row.status)" outline>
               {{ slotProps.row.status }}
+              <q-tooltip
+                v-if="getItemStatusHint(slotProps.row.status)"
+                class="pbc-status-tooltip"
+                max-width="280px"
+                anchor="top middle"
+                self="bottom middle"
+                :offset="[0, 8]"
+              >
+                <div class="pbc-status-tooltip__k">Use this when</div>
+                <div class="pbc-status-tooltip__v">
+                  {{ getItemStatusHint(slotProps.row.status)?.when }}
+                </div>
+                <div class="pbc-status-tooltip__k pbc-status-tooltip__k--next">This will</div>
+                <div class="pbc-status-tooltip__v">
+                  {{ getItemStatusHint(slotProps.row.status)?.does }}
+                </div>
+              </q-tooltip>
             </q-badge>
           </q-td>
         </q-tr>
@@ -953,12 +1067,14 @@
           <q-td
             v-if="isColumnVisible('confirmedQty')"
             class="totals-row__cell col-confirmed-qty text-center"
+            :class="{ 'qty-col--focus': focusConfirmedQty }"
           >
             {{ formatNumber(totals.confirmedQty) }}
           </q-td>
           <q-td
             v-if="isColumnVisible('orderedQty')"
             class="totals-row__cell col-ordered-qty text-center"
+            :class="{ 'qty-col--focus': focusOrderedQty }"
           >
             {{ formatNumber(totals.orderedQty) }}
           </q-td>
@@ -1122,6 +1238,7 @@ import {
   normalizeOfferPriceBdt,
   toNumberSafe,
 } from '../utils/pricing';
+import { getItemStatusHint } from '../composables/useProductBasedCostingFileDetailsState';
 
 interface ProductBasedCostingItem {
   id: number;
@@ -1195,6 +1312,9 @@ const props = withDefaults(
     shippedItemIds: () => [],
   },
 );
+
+const focusConfirmedQty = computed(() => props.status === 'confirmed');
+const focusOrderedQty = computed(() => props.status === 'placing_order');
 
 const emit = defineEmits<{
   (e: 'edit', item: ProductBasedCostingItem): void;
@@ -1987,6 +2107,14 @@ const blurInput = (event: KeyboardEvent) => {
 
 const valuesEqual = (a: unknown, b: unknown) => toNumber(a) === toNumber(b);
 
+const clearZeroOnFocus = (
+  row: ProductBasedCostingTableRow,
+  field: 'productWeight' | 'packageWeight',
+) => {
+  if (toNumber(row[field]) !== 0) return;
+  row[field] = '' as unknown as number;
+};
+
 const applyOfferFromInputs = (row: ProductBasedCostingTableRow) => {
   if (row.isOfferPriceManual) return;
   row.offerPriceBdt = calculateOfferPriceBdt({
@@ -2323,6 +2451,11 @@ const totals = computed(() => {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--q-primary) 28%, transparent);
 }
 
+.cell-input--review :deep(.q-field__control) {
+  border-color: var(--q-primary);
+  border-style: dashed;
+}
+
 .cell-input :deep(input[type='number']::-webkit-outer-spin-button),
 .cell-input :deep(input[type='number']::-webkit-inner-spin-button) {
   -webkit-appearance: none;
@@ -2369,10 +2502,19 @@ const totals = computed(() => {
 
 .name-cell-content {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
   width: 100%;
+}
+
+.offer-incomplete-badge {
+  display: inline-block;
+  max-width: 100%;
+  white-space: normal;
+  line-height: 1.2;
+  font-size: 10px;
+  padding: 2px 6px;
 }
 
 .name-cell-text {
@@ -2411,6 +2553,25 @@ const totals = computed(() => {
   width: 100px;
   max-width: 100px;
   background: #f8f9fa;
+}
+
+.col-confirmed-qty,
+.col-ordered-qty {
+  min-width: 128px;
+  width: 128px;
+  max-width: 128px;
+}
+
+.qty-col--focus {
+  background: #f8f9fa;
+}
+
+.confirmed-qty-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.2;
+  white-space: normal;
 }
 
 .col-delivered-qty {
@@ -2707,5 +2868,37 @@ const totals = computed(() => {
 
 .bg-bdt-light {
   background-color: color-mix(in srgb, #fff8e1 35%, var(--bw-theme-surface, #fff));
+}
+</style>
+
+<style>
+.pbc-status-tooltip.q-tooltip {
+  background: #fff !important;
+  color: #334155 !important;
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: normal;
+  max-width: 280px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.14);
+}
+
+.pbc-status-tooltip__k {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.pbc-status-tooltip__k--next {
+  margin-top: 8px;
+}
+
+.pbc-status-tooltip__v {
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 </style>
