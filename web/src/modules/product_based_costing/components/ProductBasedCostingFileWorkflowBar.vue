@@ -1,10 +1,9 @@
 <template>
   <div>
-    <!-- Workflow Strip Skeleton -->
     <q-card v-if="isLoading" flat bordered class="q-pa-sm">
       <div class="row items-center justify-between q-col-gutter-sm">
         <div class="col-grow row items-center q-gutter-xs">
-          <q-skeleton v-for="n in 6" :key="n" type="QBtn" width="90px" height="28px" />
+          <q-skeleton v-for="n in 2" :key="n" type="QBtn" width="90px" height="28px" />
         </div>
         <div class="col-auto">
           <q-skeleton type="QBtn" width="80px" height="28px" />
@@ -12,11 +11,31 @@
       </div>
     </q-card>
 
-    <!-- Loaded Workflow Bar -->
-    <q-card v-else-if="file" flat bordered class="q-pa-sm">
+    <q-card v-else-if="file" flat bordered class="q-pa-xs q-px-sm">
+      <div class="row items-center q-gutter-xs q-mb-xs phase-stepper">
+        <div
+          class="text-caption"
+          :class="isQuotePhase ? 'text-weight-bold text-primary' : 'text-grey-6'"
+        >
+          1 Quote
+        </div>
+        <q-icon name="ph ph-caret-right" color="grey-5" size="16px" />
+        <div>
+          <div
+            class="text-caption"
+            :class="isBuyPhase ? 'text-weight-bold text-primary' : 'text-grey-6'"
+          >
+            2 Buy & ship
+          </div>
+          <div v-if="isQuotePhase" class="text-caption text-grey-6">
+            Next — after they accept.
+          </div>
+        </div>
+      </div>
+
       <div class="row items-center justify-between q-col-gutter-sm">
         <div class="col-grow row items-center q-gutter-xs status-workflow-row">
-          <template v-for="(st, idx) in workflowStatuses" :key="st">
+          <template v-for="(st, idx) in visibleWorkflowStatuses" :key="st">
             <q-btn
               :color="status === st ? getStatusColor(st) : isPassedStatus(status, st) ? 'grey-5' : 'grey-3'"
               :text-color="status === st ? 'white' : isPassedStatus(status, st) ? 'grey-9' : 'grey-7'"
@@ -36,9 +55,22 @@
                 class="q-mr-xs"
               />
               {{ formatStatusLabel(st) }}
+              <q-tooltip
+                v-if="getFileStatusHint(st)"
+                class="pbc-status-tooltip"
+                max-width="280px"
+                anchor="top middle"
+                self="bottom middle"
+                :offset="[0, 8]"
+              >
+                <div class="pbc-status-tooltip__k">Use this when</div>
+                <div class="pbc-status-tooltip__v">{{ getFileStatusHint(st)?.when }}</div>
+                <div class="pbc-status-tooltip__k pbc-status-tooltip__k--next">This will</div>
+                <div class="pbc-status-tooltip__v">{{ getFileStatusHint(st)?.does }}</div>
+              </q-tooltip>
             </q-btn>
             <q-icon
-              v-if="idx < workflowStatuses.length - 1"
+              v-if="idx < visibleWorkflowStatuses.length - 1"
               name="ph ph-caret-right"
               color="grey-5"
               size="18px"
@@ -65,6 +97,43 @@
               class="q-mr-xs"
             />
             Cancelled
+            <q-tooltip
+              class="pbc-status-tooltip"
+              max-width="280px"
+              anchor="top middle"
+              self="bottom middle"
+              :offset="[0, 8]"
+            >
+              <div class="pbc-status-tooltip__k">Use this when</div>
+              <div class="pbc-status-tooltip__v">{{ getFileStatusHint('cancelled')?.when }}</div>
+              <div class="pbc-status-tooltip__k pbc-status-tooltip__k--next">This will</div>
+              <div class="pbc-status-tooltip__v">{{ getFileStatusHint('cancelled')?.does }}</div>
+            </q-tooltip>
+          </q-btn>
+          <q-btn
+            v-if="status === 'offered'"
+            unelevated
+            dense
+            no-caps
+            color="primary"
+            class="q-px-md text-caption text-weight-bold"
+            :loading="updatingStatus && targetUpdatingStatus === 'confirmed'"
+            :disable="updatingStatus"
+            label="Confirm order"
+            @click="$emit('update-status', 'confirmed')"
+          >
+            <q-tooltip
+              class="pbc-status-tooltip"
+              max-width="280px"
+              anchor="top middle"
+              self="bottom middle"
+              :offset="[0, 8]"
+            >
+              <div class="pbc-status-tooltip__k">Use this when</div>
+              <div class="pbc-status-tooltip__v">{{ getFileStatusHint('confirmed')?.when }}</div>
+              <div class="pbc-status-tooltip__k pbc-status-tooltip__k--next">This will</div>
+              <div class="pbc-status-tooltip__v">{{ getFileStatusHint('confirmed')?.does }}</div>
+            </q-tooltip>
           </q-btn>
         </div>
 
@@ -85,7 +154,11 @@
         </div>
       </div>
 
-      <div v-if="ratesExpanded" class="row items-end q-col-gutter-sm q-mt-sm">
+      <div class="text-caption text-grey-7 q-mt-xs">
+        Offer ৳ uses GBP price, product + package weight, cargo, conversion rate, and profit.
+      </div>
+
+      <div v-if="ratesExpanded" class="row items-end q-col-gutter-sm q-mt-xs">
         <div class="col-12 col-sm-6 col-md-3">
           <q-input
             v-model.number="conversion_rate"
@@ -93,7 +166,7 @@
             outlined
             type="number"
             class="soft-input"
-            label="Conversion Rate"
+            label="Conversion rate (৳ per £)"
           />
         </div>
         <div class="col-12 col-sm-6 col-md-3">
@@ -103,7 +176,7 @@
             outlined
             type="number"
             class="soft-input"
-            label="Cargo Rate (kg/GBP)"
+            label="Cargo (£ per kg)"
           />
         </div>
         <div class="col-12 col-sm-6 col-md-3">
@@ -113,7 +186,7 @@
             outlined
             type="number"
             class="soft-input"
-            label="Profit Rate"
+            label="Profit (%)"
           />
         </div>
         <div class="col-12 col-sm-6 col-md-3">
@@ -127,6 +200,9 @@
             @click="onRateSave"
           />
         </div>
+        <div v-if="cargoRateValue <= 0" class="col-12 text-caption text-warning">
+          Cargo is 0 — freight is not in the offer.
+        </div>
       </div>
     </q-card>
   </div>
@@ -136,10 +212,13 @@
 import { computed, ref, watch } from 'vue';
 import type { ProductBasedCostingFile } from '../types';
 import {
+  quoteStatuses,
   workflowStatuses,
   formatStatusLabel,
+  getFileStatusHint,
   isPassedStatus,
   getStatusColor,
+  isFulfillmentStatus,
 } from '../composables/useProductBasedCostingFileDetailsState';
 
 const props = defineProps<{
@@ -171,10 +250,18 @@ watch(
   () => props.file,
   (newFile) => {
     if (newFile) {
-      cargo_rate_kg_gbp.value = newFile.cargo_rate_kg_gbp ?? null;
-      conversion_rate.value = newFile.conversion_rate ?? null;
-      profit_rate.value = newFile.profit_rate ?? null;
+      cargo_rate_kg_gbp.value = newFile.cargo_rate_kg_gbp ?? 0;
+      conversion_rate.value = newFile.conversion_rate ?? 140;
+      profit_rate.value = newFile.profit_rate ?? 25;
     }
+  },
+  { immediate: true },
+);
+
+watch(
+  () => props.status,
+  (st) => {
+    if (st === 'pending') ratesExpanded.value = true;
   },
   { immediate: true },
 );
@@ -185,7 +272,14 @@ const profitRateValue = computed(() => profit_rate.value ?? 25);
 
 const ratesSummary = computed(
   () =>
-    `Conv ${conversionRateValue.value} · Cargo ${cargoRateValue.value} · Profit ${profitRateValue.value}%`,
+    `Conversion ${conversionRateValue.value} · Cargo ${cargoRateValue.value} · Profit ${profitRateValue.value}%`,
+);
+
+const isBuyPhase = computed(() => isFulfillmentStatus(props.status));
+const isQuotePhase = computed(() => !isBuyPhase.value);
+
+const visibleWorkflowStatuses = computed(() =>
+  isBuyPhase.value ? [...workflowStatuses] : [...quoteStatuses],
 );
 
 function onRateSave() {
@@ -194,7 +288,9 @@ function onRateSave() {
     cargo_rate_kg_gbp: cargo_rate_kg_gbp.value,
     profit_rate: profit_rate.value,
   });
-  ratesExpanded.value = false;
+  if (props.status !== 'pending') {
+    ratesExpanded.value = false;
+  }
 }
 </script>
 
@@ -226,5 +322,37 @@ function onRateSave() {
   .rates-summary {
     white-space: normal;
   }
+}
+</style>
+
+<style>
+.pbc-status-tooltip.q-tooltip {
+  background: #fff !important;
+  color: #334155 !important;
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: normal;
+  max-width: 280px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.14);
+}
+
+.pbc-status-tooltip__k {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.pbc-status-tooltip__k--next {
+  margin-top: 8px;
+}
+
+.pbc-status-tooltip__v {
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 </style>

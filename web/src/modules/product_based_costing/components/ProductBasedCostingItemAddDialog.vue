@@ -550,6 +550,9 @@ const fillForm = () => {
     });
   } else {
     Object.assign(form, getInitialForm());
+    if (props.itemData?.name) {
+      form.name = props.itemData.name;
+    }
   }
 };
 

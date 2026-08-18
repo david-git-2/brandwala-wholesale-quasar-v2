@@ -1,30 +1,30 @@
 <template>
   <div>
     <!-- Header Skeleton -->
-    <section v-if="isLoading" class="row items-center justify-between q-col-gutter-md">
+    <section v-if="isLoading" class="row items-center justify-between q-col-gutter-sm">
       <div class="col">
         <div class="row items-center q-gutter-x-sm">
-          <q-skeleton type="QBtn" size="32px" flat />
+          <q-skeleton type="QBtn" size="28px" flat />
           <div>
-            <q-skeleton type="text" width="130px" height="14px" class="q-mb-xs" />
-            <q-skeleton type="text" width="240px" height="32px" />
-            <q-skeleton type="text" width="160px" height="14px" class="q-mt-xs" />
+            <q-skeleton type="text" width="110px" height="10px" class="q-mb-xs" />
+            <q-skeleton type="text" width="160px" height="22px" />
+            <q-skeleton type="text" width="180px" height="32px" class="q-mt-xs" />
           </div>
         </div>
       </div>
-      <div class="col-auto row q-gutter-sm items-center">
-        <q-skeleton type="QBtn" width="100px" height="36px" />
-        <q-skeleton type="QBtn" width="36px" height="36px" />
+      <div class="col-auto row q-gutter-xs items-center">
+        <q-skeleton type="QBtn" width="100px" height="32px" />
+        <q-skeleton type="QBtn" width="32px" height="32px" />
       </div>
     </section>
 
     <!-- Loaded Header -->
-    <section v-else class="row items-center justify-between q-col-gutter-md">
+    <section v-else class="row items-center justify-between q-col-gutter-sm costing-file-header">
       <div class="col">
-        <div class="row items-center q-gutter-x-sm">
+        <div class="row items-center q-gutter-x-sm no-wrap">
           <q-btn flat dense icon="ph ph-arrow-left" color="grey-7" @click="$emit('go-back')" />
-          <div>
-            <div class="text-overline text-primary">Product Based Costing</div>
+          <div class="col">
+            <div class="text-caption text-primary text-weight-medium">Product Based Costing</div>
             <div class="row items-center q-gutter-x-xs">
               <template v-if="isEditingName">
                 <q-input
@@ -32,104 +32,109 @@
                   v-model="editingNameValue"
                   dense
                   outlined
+                  hide-bottom-space
                   autofocus
-                  class="text-h5 text-weight-bold name-inline-input"
-                  style="min-width: 220px; max-width: 380px;"
+                  class="text-subtitle1 text-weight-bold name-inline-input"
+                  style="min-width: 180px; max-width: 320px;"
                   :loading="savingName"
                   @blur="saveInlineName"
                   @keyup.enter="saveInlineName"
                   @keyup.esc="cancelInlineName"
                 />
               </template>
-              <template v-else>
-                <h1
-                  class="text-h5 text-weight-bold q-my-none cursor-pointer name-inline-edit row items-center q-gutter-x-xs"
-                  title="Click to edit name"
-                  @click="startInlineNameEdit"
-                >
-                  <span>{{ file?.name ?? 'Costing File' }}</span>
-                  <q-icon name="ph ph-pencil-simple" size="18px" class="q-ml-xs edit-icon text-grey-6" />
-                </h1>
-              </template>
-            </div>
-            <div class="row items-center q-gutter-x-sm q-mt-xs">
-              <q-select
-                v-model="selectedBillingProfile"
-                :options="billingProfileOptions"
-                option-label="name"
-                option-value="id"
-                label="Billing Profile"
-                dense
-                outlined
-                clearable
-                use-input
-                input-debounce="300"
-                :loading="loadingProfiles || savingBillingProfile"
-                style="min-width: 220px; max-width: 320px"
-                @filter="filterBillingProfiles"
-                @update:model-value="onBillingProfileChange"
+              <h1
+                v-else
+                class="text-subtitle1 text-weight-bold q-my-none cursor-pointer name-inline-edit row items-center q-gutter-x-xs"
+                title="Click to edit name"
+                @click="startInlineNameEdit"
               >
-                <template #option="scope">
-                  <q-item v-bind="scope.itemProps" dense class="rounded-borders q-my-xs">
-                    <q-item-section avatar style="min-width: 28px">
-                      <q-icon name="ph ph-user text-primary" size="16px" />
-                    </q-item-section>
-                    <q-item-section>
-                      <q-item-label class="text-weight-medium">{{ scope.opt.name }}</q-item-label>
-                      <q-item-label v-if="scope.opt.email" caption class="text-grey-6">{{ scope.opt.email }}</q-item-label>
-                    </q-item-section>
-                  </q-item>
-                </template>
-
-                <template #no-option>
-                  <q-item dense class="column items-center q-py-md q-gutter-y-xs">
-                    <div class="text-caption text-grey-7">No billing profiles found</div>
-                    <q-btn
-                      color="primary"
-                      unelevated
-                      dense
-                      no-caps
-                      size="sm"
-                      icon="ph ph-plus"
-                      label="Create New Billing Profile"
-                      class="q-px-sm q-mt-xs"
-                      @click="openCreateBillingProfileDialog"
-                    />
-                  </q-item>
-                </template>
-              </q-select>
+                <span>{{ file?.name ?? 'Costing File' }}</span>
+                <q-icon name="ph ph-pencil-simple" size="14px" class="q-ml-xs edit-icon text-grey-6" />
+              </h1>
             </div>
+            <q-select
+              v-model="selectedBillingProfile"
+              :options="billingProfileOptions"
+              option-label="name"
+              option-value="id"
+              label="Billing Profile"
+              dense
+              outlined
+              hide-bottom-space
+              clearable
+              use-input
+              input-debounce="300"
+              :loading="loadingProfiles || savingBillingProfile"
+              class="billing-profile-select q-mt-xs"
+              @filter="filterBillingProfiles"
+              @update:model-value="onBillingProfileChange"
+            >
+              <template #option="scope">
+                <q-item v-bind="scope.itemProps" dense class="rounded-borders q-my-xs">
+                  <q-item-section avatar style="min-width: 28px">
+                    <q-icon name="ph ph-user text-primary" size="16px" />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label class="text-weight-medium">{{ scope.opt.name }}</q-item-label>
+                    <q-item-label v-if="scope.opt.email" caption class="text-grey-6">{{ scope.opt.email }}</q-item-label>
+                  </q-item-section>
+                </q-item>
+              </template>
+
+              <template #no-option>
+                <q-item dense class="column items-center q-py-md q-gutter-y-xs">
+                  <div class="text-caption text-grey-7">No billing profiles found</div>
+                  <q-btn
+                    color="primary"
+                    unelevated
+                    dense
+                    no-caps
+                    size="sm"
+                    icon="ph ph-plus"
+                    label="Create New Billing Profile"
+                    class="q-px-sm q-mt-xs"
+                    @click="openCreateBillingProfileDialog"
+                  />
+                </q-item>
+              </template>
+            </q-select>
           </div>
         </div>
       </div>
-      <div class="col-auto row q-gutter-sm items-center">
-        <q-btn
-          v-if="file?.billing_profile_id"
-          outline
-          color="primary"
-          no-caps
-          icon="ph ph-tray"
-          label="Backlog"
-          :loading="backlogLoading"
-          @click="$emit('open-backlog')"
-        >
-          <q-badge
-            v-if="backlogCount > 0"
-            color="orange-9"
-            floating
-            rounded
-          >
-            {{ backlogCount }}
-          </q-badge>
-        </q-btn>
+      <div class="col-auto row q-gutter-xs items-center">
         <q-btn
           color="primary"
           unelevated
+          dense
           no-caps
-          label="Add Item"
-          @click="$emit('open-create-item')"
+          icon="ph ph-plus"
+          label="Add products"
+          @click="$emit('open-catalog')"
         />
-        <q-btn flat dense icon="ph ph-dots-three-vertical" aria-label="Actions">
+        <q-btn
+          outline
+          color="primary"
+          dense
+          no-caps
+          icon="ph ph-clipboard"
+          label="Bulk paste"
+          @click="$emit('open-bulk-paste')"
+        />
+        <span>
+          <q-btn
+            outline
+            color="primary"
+            dense
+            no-caps
+            icon="ph ph-file-pdf"
+            label="Offer (PDF / Screenshot)"
+            :disable="itemCount === 0"
+            @click="$emit('open-preview')"
+          />
+          <q-tooltip v-if="itemCount === 0">Add at least one product first.</q-tooltip>
+        </span>
+        <q-btn flat dense icon="ph ph-dots-three-vertical" aria-label="More file actions">
+          <q-tooltip>More file actions</q-tooltip>
           <q-menu style="min-width: 200px">
             <q-list dense>
               <q-item clickable v-close-popup @click="$emit('open-edit-file')">
@@ -137,18 +142,6 @@
                   <q-icon name="ph ph-pencil-simple" />
                 </q-item-section>
                 <q-item-section>Edit File Details</q-item-section>
-              </q-item>
-              <q-item clickable v-close-popup @click="$emit('open-bulk-paste')">
-                <q-item-section avatar>
-                  <q-icon name="ph ph-clipboard" />
-                </q-item-section>
-                <q-item-section>Bulk Paste</q-item-section>
-              </q-item>
-              <q-item clickable v-close-popup @click="$emit('open-catalog')">
-                <q-item-section avatar>
-                  <q-icon name="ph ph-shopping-cart" />
-                </q-item-section>
-                <q-item-section>Add from Catalog</q-item-section>
               </q-item>
               <q-item clickable>
                 <q-item-section avatar>
@@ -202,12 +195,6 @@
                 </q-menu>
               </q-item>
               <q-separator />
-              <q-item clickable v-close-popup @click="$emit('open-preview')">
-                <q-item-section avatar>
-                  <q-icon name="ph ph-eye" />
-                </q-item-section>
-                <q-item-section>Preview & Print</q-item-section>
-              </q-item>
               <q-item clickable v-close-popup @click="$emit('download-excel')">
                 <q-item-section avatar>
                   <q-icon name="ph ph-table" />
@@ -235,20 +222,21 @@ import {
   columnSelectorOptions,
 } from '../composables/useProductBasedCostingFileDetailsState';
 
-const props = defineProps<{
-  file: ProductBasedCostingFile | null;
-  isLoading: boolean;
-  backlogCount: number;
-  backlogLoading: boolean;
-  visibleColumns: string[];
-  allBillingProfiles: BillingProfile[];
-  loadingProfiles: boolean;
-  savingBillingProfile: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    file: ProductBasedCostingFile | null;
+    isLoading: boolean;
+    visibleColumns: string[];
+    allBillingProfiles: BillingProfile[];
+    loadingProfiles: boolean;
+    savingBillingProfile: boolean;
+    itemCount?: number;
+  }>(),
+  { itemCount: 0 },
+);
 
 const emit = defineEmits<{
   (e: 'go-back'): void;
-  (e: 'open-backlog'): void;
   (e: 'open-create-item'): void;
   (e: 'open-edit-file'): void;
   (e: 'open-bulk-paste'): void;
@@ -411,11 +399,20 @@ function onBillingProfileChange(val: BillingProfile | null) {
 </script>
 
 <style scoped lang="scss">
+.costing-file-header {
+  min-width: 0;
+}
+
+.billing-profile-select {
+  min-width: 200px;
+  max-width: 280px;
+}
+
 .name-inline-edit {
   border-bottom: 1px dashed transparent;
   transition: all 0.2s ease;
   border-radius: 4px;
-  padding: 2px 4px;
+  padding: 0 2px;
 }
 
 .name-inline-edit:hover {

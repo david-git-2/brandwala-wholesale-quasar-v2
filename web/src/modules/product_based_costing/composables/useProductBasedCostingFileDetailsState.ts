@@ -14,6 +14,28 @@ export const workflowStatuses = [
   'delivered',
 ] as const;
 
+export const quoteStatuses = ['pending', 'offered'] as const;
+export const fulfillmentStatuses = [
+  'confirmed',
+  'placing_order',
+  'ready_for_shipment',
+  'invoicing',
+  'delivered',
+] as const;
+
+export const quoteVisibleColumns = [
+  'select',
+  'sl',
+  'image',
+  'name',
+  'qty',
+  'priceGbp',
+  'productWeight',
+  'packageWeight',
+  'offerPriceBdt',
+  'profitRate',
+];
+
 export const allColumnNames = [
   'select',
   'sl',
@@ -44,7 +66,6 @@ export const allColumnNames = [
   'profitBdt',
   'profitRate',
   'status',
-  'action',
 ];
 
 export const alwaysVisibleColumns = ['select', 'sl', 'image', 'name'];
@@ -75,7 +96,6 @@ export const columnSelectorOptions = [
   { label: 'Row Total Profit (BDT)', value: 'profitBdt' },
   { label: 'Profit Rate (%)', value: 'profitRate' },
   { label: 'Status', value: 'status' },
-  { label: 'Action', value: 'action' },
 ];
 
 export function formatMoney(val: number): string {
@@ -83,7 +103,116 @@ export function formatMoney(val: number): string {
 }
 
 export function formatStatusLabel(value: string): string {
-  return value.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+  switch (value) {
+    case 'pending':
+      return 'Draft';
+    case 'offered':
+      return 'Offered';
+    case 'confirmed':
+      return 'Confirmed';
+    case 'placing_order':
+      return 'Placing Order';
+    case 'ready_for_shipment':
+      return 'Ready for Shipment';
+    case 'invoicing':
+      return 'Invoicing';
+    case 'delivered':
+      return 'Delivered';
+    case 'cancelled':
+      return 'Cancelled';
+    default:
+      return value.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+  }
+}
+
+export type StatusHint = {
+  when: string;
+  does: string;
+};
+
+export function getFileStatusHint(value: string): StatusHint | null {
+  switch (value) {
+    case 'pending':
+      return {
+        when: 'You are making the price list',
+        does: 'Add items. Send the PDF or screenshot.',
+      };
+    case 'offered':
+      return {
+        when: 'You already sent the PDF or screenshot',
+        does: 'Saves that you sent it. Does not send a message.',
+      };
+    case 'confirmed':
+      return {
+        when: 'They said yes',
+        does: 'Saves how many they want. Change the number if they want less.',
+      };
+    case 'placing_order':
+      return {
+        when: 'You are buying the goods',
+        does: 'Type how many you got for each item.',
+      };
+    case 'ready_for_shipment':
+      return {
+        when: 'You know how many you got',
+        does: 'Put those items on a shipment.',
+      };
+    case 'invoicing':
+      return {
+        when: 'The goods have arrived',
+        does: 'Make the bill in sales. Not here.',
+      };
+    case 'delivered':
+      return {
+        when: 'All goods have arrived',
+        does: 'This job is finished.',
+      };
+    case 'cancelled':
+      return {
+        when: 'This job is stopped',
+        does: 'Closes the file.',
+      };
+    default:
+      return null;
+  }
+}
+
+export function getItemStatusHint(value: string): StatusHint | null {
+  switch ((value || '').toLowerCase()) {
+    case 'pending':
+      return {
+        when: 'They have not said yes yet',
+        does: 'This item is only on the price list.',
+      };
+    case 'accepted':
+      return {
+        when: 'They want this item',
+        does: 'Buy it and ship it.',
+      };
+    case 'rejected':
+      return {
+        when: 'They do not want this item',
+        does: 'Skip it. Do not buy it.',
+      };
+    case 'unavailable':
+      return {
+        when: 'You got none of this item',
+        does: 'Keep it for next time.',
+      };
+    case 'partial':
+    case 'partially_available':
+      return {
+        when: 'You got some, but not all',
+        does: 'Keep the rest for next time.',
+      };
+    case 'on_shipment':
+      return {
+        when: 'This item is already on a shipment',
+        does: 'Do not buy it again.',
+      };
+    default:
+      return null;
+  }
 }
 
 export function isPassedStatus(currentStatus: string, st: string): boolean {
@@ -118,13 +247,29 @@ export function getStatusColor(st: string): string {
   }
 }
 
+export function isFulfillmentStatus(fileStatus: string): boolean {
+  return (fulfillmentStatuses as readonly string[]).includes(fileStatus);
+}
+
 export function getDefaultVisibleColumnsForStatus(fileStatus: string): string[] {
   const baseCols = ['select', 'sl', 'image', 'name'];
   switch (fileStatus) {
     case 'confirmed':
-      return [...baseCols, 'qty', 'confirmedQty', 'status', 'action'];
+      return [
+        ...baseCols,
+        'qty',
+        'confirmedQty',
+        'priceGbp',
+        'productWeight',
+        'packageWeight',
+        'offerPriceBdt',
+        'costBdt',
+        'profitRate',
+        'status',
+      ];
     case 'placing_order':
-      return [...baseCols, 'confirmedQty', 'orderedQty', 'barcodeText', 'status', 'action'];
+    case 'ready_for_shipment':
+      return [...baseCols, 'confirmedQty', 'orderedQty', 'barcodeText', 'status'];
     case 'invoicing':
       return [
         ...baseCols,
@@ -135,12 +280,11 @@ export function getDefaultVisibleColumnsForStatus(fileStatus: string): string[] 
         'priceGbp',
         'costBdt',
         'status',
-        'action',
       ];
     case 'delivered':
       return [...allColumnNames];
     default:
-      return [...allColumnNames];
+      return [...quoteVisibleColumns];
   }
 }
 

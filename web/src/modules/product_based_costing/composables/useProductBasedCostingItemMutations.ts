@@ -8,8 +8,42 @@ import type {
   ProductBasedCostingItemUpdateInput,
 } from '../types';
 
-const showMutationWarning = (error: unknown, fallback: string) => {
-  showWarningDialog(parseSupabaseError(error, fallback), 'Request failed');
+function errorText(error: unknown): string {
+  if (typeof error === 'string') return error;
+  if (error && typeof error === 'object' && 'message' in error) {
+    return String((error as { message?: unknown }).message ?? '');
+  }
+  return '';
+}
+
+export function describePbcItemMutationError(
+  error: unknown,
+  fallback: string,
+  kind: 'add' | 'remove' | 'update',
+): { message: string; title: string } {
+  const raw = errorText(error);
+  const lower = raw.toLowerCase();
+  if (kind === 'add' && (lower.includes('v_item') || lower.includes('has no field "status"'))) {
+    return { message: "Couldn't add this product.", title: "Couldn't add this product" };
+  }
+  if (
+    kind === 'remove' &&
+    (lower.includes('v_item') ||
+      lower.includes('has no field "status"') ||
+      /costing item \d+ not found/i.test(raw))
+  ) {
+    return { message: "Couldn't remove this product.", title: "Couldn't remove this product" };
+  }
+  return { message: parseSupabaseError(error, fallback), title: 'Request failed' };
+}
+
+const showMutationWarning = (
+  error: unknown,
+  fallback: string,
+  kind: 'add' | 'remove' | 'update' = 'update',
+) => {
+  const described = describePbcItemMutationError(error, fallback, kind);
+  showWarningDialog(described.message, described.title);
 };
 
 export function useCreateProductBasedCostingItemMutation() {
@@ -28,7 +62,7 @@ export function useCreateProductBasedCostingItemMutation() {
       }
     },
     onError: (error) => {
-      showMutationWarning(error, 'Failed to create costing item.');
+      showMutationWarning(error, 'Failed to create costing item.', 'add');
     },
   });
 }
@@ -72,7 +106,7 @@ export function useDeleteProductBasedCostingItemMutation() {
       }
     },
     onError: (error) => {
-      showMutationWarning(error, 'Failed to delete costing item.');
+      showMutationWarning(error, 'Failed to delete costing item.', 'remove');
     },
   });
 }
@@ -94,7 +128,7 @@ export function useDeleteProductBasedCostingItemsBulkMutation() {
       );
     },
     onError: (error) => {
-      showMutationWarning(error, 'Failed to delete costing items.');
+      showMutationWarning(error, 'Failed to delete costing items.', 'remove');
     },
   });
 }

@@ -497,7 +497,7 @@ Legend: **view** = access granted | **—** = no access
 | 5b | cargo_company | CURRENT | [procurement_stock/cargo_company/](procurement_stock/cargo_company/) |
 | 6 | order_management | STABLE | *(no domain doc — B2B orders)* |
 | 7 | costing_file | STABLE | *(no domain doc)* |
-| 8 | product_based_costing | STABLE | *(no domain doc)* |
+| 8 | product_based_costing | STABLE | [PBC_OFFER_PDF_UX.md](fix/PBC_OFFER_PDF_UX.md) (offer via PDF/screenshot) |
 | 9–12 | global_shipment, global_stock, global_stock_type, inventory | DONE | [PROCUREMENT_STOCK.md](PROCUREMENT_STOCK.md) |
 | 13–14 | billing_profile, recipient_profile | STABLE / IN PROGRESS | [SALES_INVOICE.md](SALES_INVOICE.md) |
 | 15, 17 | global_invoice, invoice (legacy) | IN PROGRESS / LEGACY | [SALES_INVOICE.md](SALES_INVOICE.md) |

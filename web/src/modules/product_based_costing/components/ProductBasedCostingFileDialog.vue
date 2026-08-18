@@ -58,6 +58,7 @@
           <q-input
             v-model="form.order_for"
             label="Created For"
+            hint="This name prints on the PDF / screenshot."
             outlined
             dense
             clearable

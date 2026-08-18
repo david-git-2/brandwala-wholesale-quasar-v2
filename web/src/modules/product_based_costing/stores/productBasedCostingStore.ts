@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback';
 import { productBasedCostingService } from '../services/productBasedCostingService';
+import { describePbcItemMutationError } from '../composables/useProductBasedCostingItemMutations';
 import type {
   ProductBasedCostingFile,
   ProductBasedCostingFileListInput,
@@ -229,8 +230,13 @@ export const useProductBasedCostingStore = defineStore('productBasedCosting', {
         const result = await productBasedCostingService.createProductBasedCostingItem(payload);
 
         if (!result.success) {
-          this.error = result.error ?? 'Failed to create product based costing item.';
-          handleApiFailure(result, this.error);
+          const described = describePbcItemMutationError(
+            result.error ?? 'Failed to create product based costing item.',
+            'Failed to create product based costing item.',
+            'add',
+          );
+          this.error = described.message;
+          handleApiFailure({ success: false, error: described.message }, described.message, described.title);
           return result;
         }
 
@@ -342,8 +348,13 @@ export const useProductBasedCostingStore = defineStore('productBasedCosting', {
         const result = await productBasedCostingService.deleteProductBasedCostingItem(payload);
 
         if (!result.success) {
-          this.error = result.error ?? 'Failed to delete product based costing item.';
-          handleApiFailure(result, this.error);
+          const described = describePbcItemMutationError(
+            result.error ?? 'Failed to delete product based costing item.',
+            'Failed to delete product based costing item.',
+            'remove',
+          );
+          this.error = described.message;
+          handleApiFailure({ success: false, error: described.message }, described.message, described.title);
           return result;
         }
 

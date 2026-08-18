@@ -5,6 +5,9 @@
         <div class="col">
           <div class="text-overline text-primary">Costing</div>
           <h1 class="text-h5 text-weight-bold q-my-none">Product Based Costing</h1>
+          <div class="text-body2 text-grey-7 q-mt-xs">
+            Create a file, add products, then send a screenshot or PDF.
+          </div>
         </div>
         <div class="col-auto">
           <q-btn
@@ -162,7 +165,7 @@
                       class="status-dot"
                       :style="{ backgroundColor: statusDotColor(slotProps.row.status) }"
                     />
-                    {{ slotProps.row.status ?? 'pending' }}
+                    {{ formatStatusLabel(slotProps.row.status ?? 'pending') }}
                   </q-chip>
                 </q-td>
                 <q-td key="actions" :props="slotProps" class="text-right">
@@ -256,6 +259,7 @@ import {
   useDeleteProductBasedCostingFileMutation,
   useCopyProductBasedCostingFileMutation,
 } from '../composables/useProductBasedCostingFileMutations';
+import { formatStatusLabel } from '../composables/useProductBasedCostingFileDetailsState';
 
 const $q = useQuasar();
 const router = useRouter();
@@ -324,7 +328,7 @@ const tableColumns: QTableColumn[] = [
 
 const statusFilterOptions = [
   { label: 'All', value: '__all__' },
-  { label: 'Pending', value: '__pending__' },
+  { label: 'Draft', value: '__pending__' },
   { label: 'Offered', value: 'offered' },
   { label: 'Confirmed', value: 'confirmed' },
   { label: 'Placing Order', value: 'placing_order' },

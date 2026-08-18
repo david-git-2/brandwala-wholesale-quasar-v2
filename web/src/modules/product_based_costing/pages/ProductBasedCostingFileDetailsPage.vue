@@ -1,18 +1,16 @@
 <template>
-  <q-page class="q-pa-md costing-details-page">
-    <div class="q-gutter-y-md">
+  <q-page class="q-pa-sm costing-details-page">
+    <div class="q-gutter-y-sm">
       <!-- Top Header Bar Component -->
       <ProductBasedCostingFileHeader
         :file="file ?? null"
         :is-loading="isLoading"
-        :backlog-count="backlog.items.value.length"
-        :backlog-loading="backlog.loading.value"
         :visible-columns="visibleColumns"
         :all-billing-profiles="allBillingProfiles"
         :loading-profiles="loadingProfiles"
         :saving-billing-profile="savingBillingProfile"
+        :item-count="costingItems.length"
         @go-back="goBack"
-        @open-backlog="openBacklogDrawer"
         @open-create-item="openCreateDialog"
         @open-edit-file="showFileDialog = true"
         @open-bulk-paste="openBulkPaste"
@@ -23,6 +21,44 @@
         @save-inline-name="handleSaveInlineName"
         @update-billing-profile="onInlineBillingProfileChange"
       />
+
+      <q-banner
+        v-if="!isLoading && file && availableBacklogItems.length"
+        dense
+        class="bg-orange-1 text-grey-9 rounded-borders"
+      >
+        <template #avatar>
+          <q-icon name="ph ph-tray" color="orange-9" />
+        </template>
+        {{ stillNeededBannerText }}
+        <template #action>
+          <q-btn
+            flat
+            dense
+            no-caps
+            color="primary"
+            label="Review"
+            @click="openBacklogDrawer"
+          />
+          <q-btn
+            unelevated
+            dense
+            no-caps
+            color="primary"
+            label="Add all"
+            :loading="backlog.saving.value"
+            @click="handleAddAllStillNeeded"
+          />
+        </template>
+      </q-banner>
+
+      <q-banner
+        v-if="!isLoading && file && nextStepBanner"
+        dense
+        class="bg-primary-soft text-primary rounded-borders"
+      >
+        {{ nextStepBanner }}
+      </q-banner>
 
       <template v-if="!isLoading">
         <!-- Workflow Bar Component -->
@@ -70,6 +106,7 @@
         <PbcBacklogSuggestDrawer
           v-model="showBacklogDrawer"
           :items="availableBacklogItems"
+          :already-on-file-items="alreadyOnFileBacklogItems"
           :loading="backlog.loading.value"
           :adding="backlog.saving.value"
           @add="handleConsumeBacklog"
@@ -122,15 +159,16 @@ import {
   useDeleteProductBasedCostingItemMutation,
   useDeleteProductBasedCostingItemsBulkMutation,
   useUpdateProductBasedCostingItemMutation,
-  useUpdateProductBasedCostingItemsByFileIdMutation,
   useRecalculateOfferPricesMutation,
 } from '../composables/useProductBasedCostingItemMutations';
+import { productBasedCostingRepository } from '../repositories/productBasedCostingRepository';
 import type { ProductBasedCostingItem } from '../types';
 import { useMembershipColumnPreference } from 'src/modules/membership/composables/useMembershipColumnPreference';
-import { usePbcBacklog } from '../composables/usePbcBacklog';
+import { usePbcBacklog, type BacklogItem } from '../composables/usePbcBacklog';
 import {
   allColumnNames,
   alwaysVisibleColumns,
+  quoteVisibleColumns,
   getDefaultVisibleColumnsForStatus,
   useProductBasedCostingFileDetailsState,
 } from '../composables/useProductBasedCostingFileDetailsState';
@@ -166,27 +204,52 @@ const { data: costingItemsData, isLoading: isLoadingItems } = useProductBasedCos
 const isLoading = computed(() => isLoadingFile.value || isLoadingItems.value);
 const costingItems = computed(() => costingItemsData.value ?? []);
 
-const availableBacklogItems = computed(() => {
-  const currentProductIds = new Set(
-    costingItems.value
-      .map((item) => item.product_id)
-      .filter((id): id is number => id != null),
-  );
-  const currentBarcodes = new Set(
-    costingItems.value
-      .map((item) => item.barcode?.trim())
-      .filter((b): b is string => Boolean(b)),
-  );
-
-  return backlog.items.value.filter((item) => {
-    if (item.product_id && currentProductIds.has(item.product_id)) {
-      return false;
-    }
-    if (item.barcode && currentBarcodes.has(item.barcode.trim())) {
-      return false;
-    }
+function isBacklogItemOnCurrentFile(item: BacklogItem) {
+  if (item.product_id && costingItems.value.some((row) => row.product_id === item.product_id)) {
     return true;
-  });
+  }
+  const barcode = item.barcode?.trim();
+  if (barcode && costingItems.value.some((row) => row.barcode?.trim() === barcode)) {
+    return true;
+  }
+  return false;
+}
+
+const availableBacklogItems = computed(() =>
+  backlog.items.value.filter((item) => !isBacklogItemOnCurrentFile(item)),
+);
+
+const alreadyOnFileBacklogItems = computed(() =>
+  backlog.items.value.filter((item) => isBacklogItemOnCurrentFile(item)),
+);
+
+const stillNeededBannerText = computed(() => {
+  const count = availableBacklogItems.value.length;
+  if (count === 1) {
+    return '1 product still needed for this customer from a previous quote.';
+  }
+  return `${count} products still needed for this customer from a previous quote.`;
+});
+
+const nextStepBanner = computed(() => {
+  if (!file.value) return '';
+  if (costingItems.value.length === 0) {
+    if (availableBacklogItems.value.length > 0) return '';
+    return 'Search the catalog and add products. If a product is missing, create it there.';
+  }
+  if (status.value === 'pending') {
+    return 'Set Rates and check £ price and weights on each line so the ৳ is right. Then send Offer. Mark Offered after you send.';
+  }
+  if (status.value === 'offered') {
+    return 'Quote stamped as Offered. Confirm order when they accept.';
+  }
+  if (status.value === 'confirmed') {
+    return 'Quote accepted. Confirmed qty starts from the offer — edit if they took less. Buy & ship next.';
+  }
+  if (status.value === 'placing_order') {
+    return 'Type how many you got in Ordered Qty. Confirmed Qty stays editable if they want a different amount.';
+  }
+  return '';
 });
 
 // Mutations
@@ -194,7 +257,6 @@ const updateFileMutation = useUpdateProductBasedCostingFileMutation();
 const updateItemMutation = useUpdateProductBasedCostingItemMutation();
 const deleteItemMutation = useDeleteProductBasedCostingItemMutation();
 const deleteItemsBulkMutation = useDeleteProductBasedCostingItemsBulkMutation();
-const updateItemsByFileIdMutation = useUpdateProductBasedCostingItemsByFileIdMutation();
 const recalculateOfferPricesMutation = useRecalculateOfferPricesMutation();
 
 // Billing Profiles
@@ -207,7 +269,7 @@ const { visibleColumns } = useMembershipColumnPreference({
   preferenceKey: 'ui.productBasedCosting.fileDetailsVisibleColumns',
   allColumnNames,
   alwaysVisibleColumns,
-  defaultVisibleColumns: allColumnNames,
+  defaultVisibleColumns: quoteVisibleColumns,
 });
 
 const onVisibleColumnsUpdate = (columns: string[]) => {
@@ -231,6 +293,25 @@ watch(
   (newFile) => {
     if (newFile) {
       status.value = newFile.status || 'pending';
+      const saved = visibleColumns.value;
+      const isLegacyAll =
+        saved.length === allColumnNames.length &&
+        allColumnNames.every((col) => saved.includes(col));
+      if (isLegacyAll) {
+        visibleColumns.value = getDefaultVisibleColumnsForStatus(status.value);
+      } else if (status.value === 'confirmed') {
+        const mustHave = ['confirmedQty', 'offerPriceBdt', 'priceGbp', 'profitRate', 'costBdt', 'status'];
+        const missing = mustHave.filter((col) => !saved.includes(col));
+        if (missing.length) {
+          visibleColumns.value = [...saved, ...missing];
+        }
+      } else if (status.value === 'placing_order') {
+        const mustHave = ['confirmedQty', 'orderedQty', 'status'];
+        const missing = mustHave.filter((col) => !saved.includes(col));
+        if (missing.length) {
+          visibleColumns.value = [...saved, ...missing];
+        }
+      }
     }
   },
   { immediate: true },
@@ -313,11 +394,16 @@ async function onStatusChange() {
   visibleColumns.value = getDefaultVisibleColumnsForStatus(status.value);
 
   if (status.value === 'confirmed' && costingItems.value.length > 0) {
-    await updateItemsByFileIdMutation.mutateAsync({
-      fileId: fileId.value,
-      payload: {
-        confirmed_quantity: 0,
-      },
+    await Promise.all(
+      costingItems.value.map((item) =>
+        productBasedCostingRepository.updateProductBasedCostingItem({
+          id: item.id,
+          confirmed_quantity: item.quantity ?? 0,
+        }),
+      ),
+    );
+    await queryClient.invalidateQueries({
+      queryKey: productBasedCostingQueryKeys.itemsList(fileId.value),
     });
   }
 
@@ -326,17 +412,45 @@ async function onStatusChange() {
   }
 }
 
-async function onUpdateStatus(nextStatus: string) {
+async function applyStatus(nextStatus: string) {
   if (status.value === nextStatus || updatingStatus.value) return;
   updatingStatus.value = true;
   targetUpdatingStatus.value = nextStatus;
   try {
     status.value = nextStatus;
     await onStatusChange();
+    if (nextStatus === 'offered' && costingItems.value.length > 0) {
+      $q.dialog({
+        title: 'Offered',
+        message:
+          'This stamps the file as Offered. It does not send anything. Open screenshot / PDF to send?',
+        cancel: { label: 'Not now', flat: true },
+        ok: { label: 'Open Offer', unelevated: true, color: 'primary' },
+      }).onOk(() => {
+        openPreviewAndPrint();
+      });
+    }
   } finally {
     updatingStatus.value = false;
     targetUpdatingStatus.value = null;
   }
+}
+
+function onUpdateStatus(nextStatus: string) {
+  if (status.value === nextStatus || updatingStatus.value) return;
+  if (nextStatus === 'confirmed') {
+    $q.dialog({
+      title: 'Confirm order?',
+      message:
+        'They accepted. Offered quantity will be copied to confirmed quantity on every line. You can lower lines after if they took less.',
+      cancel: { label: 'Cancel', flat: true },
+      ok: { label: 'Confirm order', unelevated: true, color: 'primary' },
+    }).onOk(() => {
+      void applyStatus(nextStatus);
+    });
+    return;
+  }
+  void applyStatus(nextStatus);
 }
 
 async function onRateSave(payload: {
@@ -372,6 +486,11 @@ function openBacklogDrawer() {
   showBacklogDrawer.value = true;
 }
 
+async function handleAddAllStillNeeded() {
+  const ids = availableBacklogItems.value.map((item) => item.id);
+  await handleConsumeBacklog(ids);
+}
+
 async function handleConsumeBacklog(backlogIds: number[]) {
   if (!fileId.value) return;
   const addedIds = await backlog.consumeBacklogItems(fileId.value, backlogIds);
@@ -392,8 +511,9 @@ function handleCreated() {
   refreshBacklog();
 }
 
-function openCreateDialog() {
-  selectedItem.value = null;
+function openCreateDialog(name?: string) {
+  const prefill = typeof name === 'string' ? name.trim() : '';
+  selectedItem.value = prefill ? ({ name: prefill } as ProductBasedCostingItem) : null;
   showItemDialog.value = true;
 }
 
@@ -425,12 +545,22 @@ type RowChangePayload = {
 
 async function onRowChange(payload: RowChangePayload) {
   try {
+    if (payload.field === 'price_gbp' && payload.item.product_id) {
+      const res = await productStore.updateProduct({
+        id: payload.item.product_id,
+        list_price_amount: payload.item.price_gbp,
+      });
+      if (res && 'success' in res && !res.success) {
+        throw new Error(res.error || 'Failed to update product price.');
+      }
+    }
     await updateItemMutation.mutateAsync({
       id: payload.item.id,
       quantity: payload.item.quantity,
       confirmed_quantity: payload.item.confirmed_quantity ?? null,
       ordered_quantity: payload.item.ordered_quantity ?? null,
       delivered_quantity: payload.item.delivered_quantity,
+      price_gbp: payload.item.price_gbp,
       offer_price: payload.item.offer_price,
       is_offer_price_manual: payload.item.is_offer_price_manual ?? false,
       product_weight: payload.item.product_weight,
@@ -452,11 +582,14 @@ function openCatalogDialog() {
   $q.dialog({
     component: AddCostingItemsDrawer,
     componentProps: { fileId: fileId.value },
-  }).onOk(() => {
+  }).onOk((result?: { createProductName?: string }) => {
     void queryClient.invalidateQueries({
       queryKey: productBasedCostingQueryKeys.itemsList(fileId.value),
     });
     refreshBacklog();
+    if (result?.createProductName != null) {
+      openCreateDialog(result.createProductName);
+    }
   });
 }
 
@@ -468,7 +601,7 @@ function openBulkPaste() {
   $q.dialog({ component: BulkPasteCostingItemsDialog });
 }
 
-function openPreviewAndPrint() {
+function openPreviewDialog() {
   if (!fileId.value) return;
   $q.dialog({
     component: ProductBasedCostingPreviewColumnSelectorDialog,
@@ -482,6 +615,32 @@ function openPreviewAndPrint() {
     });
     window.open(previewRoute.href, '_blank', 'noopener');
   });
+}
+
+function openPreviewAndPrint() {
+  if (!fileId.value) return;
+  const incompleteCount = costingItems.value.filter((item) => {
+    const price = Number(item.price_gbp ?? 0);
+    const weight = Number(item.product_weight ?? 0);
+    return !(price > 0) || !(weight > 0);
+  }).length;
+  const cargoZero = cargoRateValue.value <= 0;
+  if (incompleteCount > 0 || cargoZero) {
+    const parts = [
+      cargoZero ? 'Cargo rate is 0, so freight is not in the offer.' : '',
+      incompleteCount > 0
+        ? `${incompleteCount} item${incompleteCount === 1 ? '' : 's'} missing GBP price or product weight.`
+        : '',
+    ].filter(Boolean);
+    $q.dialog({
+      title: 'Offer may be incomplete',
+      message: parts.join(' '),
+      cancel: { label: 'Go back', flat: true },
+      ok: { label: 'Open anyway', unelevated: true, color: 'primary' },
+    }).onOk(() => openPreviewDialog());
+    return;
+  }
+  openPreviewDialog();
 }
 
 function handleDownloadExcel() {
@@ -562,5 +721,9 @@ function goBack() {
 
 .costing-items-surface {
   overflow: hidden;
+}
+
+.bg-primary-soft {
+  background: var(--bw-theme-primary-soft, rgb(37 99 235 / 0.12));
 }
 </style>
