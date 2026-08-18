@@ -1,0 +1,38 @@
+---
+description: Explain everything in short, easy English. Always active.
+alwaysApply: true
+---
+
+# Easy English — Always Active
+
+When talking to the user, explain like a teammate who is smart but not living in the code.
+
+## How to talk
+
+- Short words. Short sentences. One idea per sentence.
+- Lead with what it means for them, then the technical name if needed.
+- If you must use a term (RPC, RLS, unique constraint), say what it is in plain words the first time.
+- Prefer “this page”, “this button”, “this link” over file paths unless they asked for a path.
+- Do not pad. Easy English is still short.
+
+## What to avoid
+
+- Stack-trace voice: error codes, constraint names, and SQLSTATE as the opening line.
+- Jargon piles: “SECURITY DEFINER search_path collision on pgcrypto”.
+- Baby talk or filler. Do not say “simply”, “basically”, “just”.
+
+## Shape
+
+1. What happened / where it is / what to do (one line).
+2. Why, in everyday words (one or two lines).
+3. Optional: the exact name or snippet only if they need to look it up.
+
+```text
+❌ The unique index shipment_progress_flow_stages_flow_sort_key rejected
+   the in-place UPDATE because uniqueness is checked per row.
+
+✅ Dragging stages failed because two stages tried to use the same
+   position number at once. Postgres does not allow that.
+```
+
+This rule is for **user-facing** text. Code, SQL, and patches stay precise.

@@ -374,6 +374,7 @@ def main():
 
     DEFAULT_HEADER_ROW = 4
     DEFAULT_IMAGE_COLUMN_INDEX = 14  # 1-based column index (14 = N)
+    DEFAULT_CASE_SIZE_COLUMN_INDEX = 3  # 1-based column index (3 = C, OUTER CASE on current PC sheets)
 
     SHEET_NAME = None
 
@@ -385,15 +386,16 @@ def main():
         "  Required logical fields in the HEADER ROW:\n"
         "    - product_code (e.g. PRODUCT CODE)\n"
         "    - barcode (e.g. BARCODE)\n"
-        "    - case_size (e.g. CASE SIZE / INNER CASE)\n"
         "    - name (e.g. NAME / DESCRIPTION)\n"
         "    - price (e.g. PRICE / PIECE PRICE £)\n"
+        "    - case_size (you will enter the column letter; OUTER CASE, INNER CASE, or CASE SIZE)\n"
         "    - image   (images are embedded in the sheet; you will enter the image column letter)\n"
         "  Optional columns:\n"
         "    - country_of_origin\n"
         "    - brand\n"
         "    - expire_date\n"
         "    - hazardous (rows with YES are skipped)\n"
+        "    - inner_case / outer_case (not required; case size comes from the column you pick)\n"
         "\n"
         "🆔 Product ID:\n"
         "  - product_id = barcode + '_' + product_code\n"
@@ -405,10 +407,15 @@ def main():
         "👉 You will be asked for:\n"
         "  - Header row number (where the column names are)\n"
         "  - Image column letter (A, B, C, ...)\n"
+        "  - Case size column letter (A, B, C, ...)\n"
     )
 
     HEADER_ROW = prompt_int("Enter header row number", DEFAULT_HEADER_ROW)
     IMAGE_COLUMN_INDEX = prompt_excel_column("Enter image column letter (A, B, C, ...)", DEFAULT_IMAGE_COLUMN_INDEX)
+    CASE_SIZE_COLUMN_INDEX = prompt_excel_column(
+        "Enter case size column letter (A, B, C, ...)",
+        DEFAULT_CASE_SIZE_COLUMN_INDEX,
+    )
 
     log(f"\n📄 Excel: {EXCEL_PATH}")
     if not os.path.exists(EXCEL_PATH):
@@ -445,7 +452,6 @@ def main():
     field_candidates = {
         "product_code": ["product_code", "product code", "code"],
         "barcode": ["barcode", "bar code", "ean"],
-        "case_size": ["case_size", "case size", "inner_case", "inner case", "sales_unit", "sales unit"],
         "name": ["name", "description", "product_name", "product name"],
         "price": ["price", "piece_price", "piece price", "piece_price_gbp", "unit_price", "unit price"],
         "country_of_origin": ["country_of_origin", "country of origin", "country"],
@@ -474,14 +480,21 @@ def main():
         for field, candidates in field_candidates.items()
     }
 
-    required = ["product_code", "barcode", "case_size", "name", "price"]
+    required = ["product_code", "barcode", "name", "price"]
     missing_required = [field for field in required if not resolved_headers.get(field)]
     if missing_required:
         raise RuntimeError(
             "❌ Missing required column(s) in header row "
             f"{HEADER_ROW}: {', '.join(missing_required)}\n"
             "Make sure your Excel header row contains matching columns (case-insensitive).\n"
-            "Examples: PRODUCT CODE, BARCODE, INNER CASE, DESCRIPTION, PIECE PRICE £\n"
+            "Examples: PRODUCT CODE, BARCODE, DESCRIPTION, PIECE PRICE £\n"
+        )
+
+    if CASE_SIZE_COLUMN_INDEX > max_col:
+        raise RuntimeError(
+            "❌ Case size column "
+            f"{excel_col_index_to_letters(CASE_SIZE_COLUMN_INDEX)} is outside the sheet "
+            f"(sheet has {max_col} columns)."
         )
 
     missing_optional = [
@@ -494,7 +507,7 @@ def main():
 
     product_code_header_name = resolved_headers["product_code"]
     barcode_header_name = resolved_headers["barcode"]
-    case_size_header_name = resolved_headers["case_size"]
+    case_size_header_name = headers[CASE_SIZE_COLUMN_INDEX - 1]
     name_header_name = resolved_headers["name"]
     price_header_name = resolved_headers["price"]
     country_of_origin_header_name = resolved_headers.get("country_of_origin", "")
@@ -508,8 +521,8 @@ def main():
     log(f"✅ Found product_code column at index: {product_code_col}")
     log(f"✅ Found barcode column at index: {barcode_col}")
     log(
-        f"✅ Found case_size column: {case_size_header_name} | "
-        f"name column: {name_header_name} | price column: {price_header_name}"
+        f"✅ Using case_size column: {excel_col_index_to_letters(CASE_SIZE_COLUMN_INDEX)} "
+        f"({case_size_header_name}) | name column: {name_header_name} | price column: {price_header_name}"
     )
     log(
         f"🖼️ Using image column: {excel_col_index_to_letters(IMAGE_COLUMN_INDEX)} "
@@ -676,6 +689,9 @@ def main():
             "headerRow": HEADER_ROW,
             "imageColumnIndex": IMAGE_COLUMN_INDEX,
             "imageColumnLetter": excel_col_index_to_letters(IMAGE_COLUMN_INDEX),
+            "caseSizeColumnIndex": CASE_SIZE_COLUMN_INDEX,
+            "caseSizeColumnLetter": excel_col_index_to_letters(CASE_SIZE_COLUMN_INDEX),
+            "caseSizeHeader": case_size_header_name,
             "parallelWorkers": 0,
             "storageProvider": "supabase",
             "note": "Image upload moved to sync step (DB product_id based key).",

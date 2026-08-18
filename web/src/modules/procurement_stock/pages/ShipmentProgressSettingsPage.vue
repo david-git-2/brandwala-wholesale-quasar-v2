@@ -1,16 +1,51 @@
 <template>
-  <q-page class="q-pa-md">
-    <div class="q-gutter-y-md">
-      <section class="row items-center justify-between">
-        <div>
-          <div class="text-overline text-primary">Procurement & Stock</div>
-          <h1 class="text-h5 text-weight-bold q-my-none">Shipment Progress</h1>
-          <div class="text-body2 text-grey-7 q-mt-xs">
-            Create multiple shipment journeys, pick a default flow, and manage stages inside each flow.
-          </div>
+  <q-page class="bw-page">
+    <div class="bw-page__stack">
+      <div class="row items-start justify-between q-col-gutter-sm">
+        <div class="col">
+          <AppPageHeader
+            eyebrow="Procurement & Stock"
+            :title="selectedFlow ? selectedFlow.name : 'Shipment Progress'"
+            :subtitle="selectedFlow
+              ? 'Add stages in the order a shipment should move through.'
+              : 'Create a flow, then open it to add stages.'"
+          />
         </div>
-        <q-btn color="primary" unelevated no-caps icon="ph ph-plus" label="Add flow" @click="openFlowDialog()" />
-      </section>
+        <div class="col-auto row items-center q-gutter-sm">
+          <q-btn
+            v-if="selectedFlow"
+            flat
+            no-caps
+            color="primary"
+            icon="ph ph-arrow-left"
+            label="All flows"
+            data-test="back-to-flows"
+            @click="backToFlows"
+          />
+          <q-btn
+            v-if="!selectedFlow && visibleFlows.length"
+            color="primary"
+            unelevated
+            no-caps
+            icon="ph ph-plus"
+            label="Add flow"
+            style="border-radius: 8px"
+            data-test="add-flow"
+            @click="openFlowDialog()"
+          />
+          <q-btn
+            v-if="selectedFlow && visibleStages.length"
+            color="primary"
+            unelevated
+            no-caps
+            icon="ph ph-plus"
+            label="Add stage"
+            style="border-radius: 8px"
+            data-test="add-stage"
+            @click="openStageDialog()"
+          />
+        </div>
+      </div>
 
       <q-banner v-if="shipmentStore.error" class="bg-negative text-white" rounded dense>
         <div class="row items-center justify-between q-gutter-sm">
@@ -19,139 +54,207 @@
         </div>
       </q-banner>
 
-      <div class="row q-col-gutter-md">
-        <div class="col-12 col-md-4">
-          <q-card flat bordered>
-            <q-card-section class="row items-center justify-between q-pb-sm">
-              <div class="text-subtitle2 text-weight-medium">Flows</div>
-              <q-toggle v-model="showArchivedFlows" label="Show archived" dense />
-            </q-card-section>
-            <q-separator />
-            <q-list v-if="visibleFlows.length" separator>
-              <q-item
-                v-for="flow in visibleFlows"
-                :key="flow.id"
-                clickable
-                :active="selectedFlowId === flow.id"
-                active-class="selected-flow-row"
-                @click="selectFlow(flow.id)"
-              >
-                <q-item-section>
-                  <div class="row items-center q-gutter-x-sm">
-                    <span class="text-weight-medium">{{ flow.name }}</span>
-                    <q-badge v-if="flow.is_default" color="primary" label="default" />
-                    <q-badge v-if="!flow.is_active" color="grey-5" text-color="white" label="archived" />
-                  </div>
-                  <div class="text-caption text-grey-6">{{ flow.stage_count ?? 0 }} stages</div>
-                </q-item-section>
-                <q-item-section side>
-                  <div class="row items-center q-gutter-x-xs">
-                    <q-btn flat round dense size="sm" icon="ph ph-pencil-simple" color="primary" @click.stop="openFlowDialog(flow)" />
-                    <q-btn
-                      flat
-                      round
-                      dense
-                      size="sm"
-                      icon="ph ph-star"
-                      color="amber-8"
-                      :disable="flow.is_default"
-                      @click.stop="markDefault(flow.id)"
-                    />
-                    <q-btn
-                      v-if="flow.is_active"
-                      flat round dense size="sm" icon="ph ph-archive" color="grey-7"
-                      @click.stop="toggleFlowArchive(flow.id, true)"
-                    />
-                    <q-btn
-                      v-else
-                      flat round dense size="sm" icon="ph ph-arrow-counter-clockwise" color="positive"
-                      @click.stop="toggleFlowArchive(flow.id, false)"
-                    />
-                  </div>
-                </q-item-section>
-              </q-item>
-            </q-list>
-            <div v-else class="q-pa-lg text-center text-grey-6">
-              <q-icon name="ph ph-git-branch" size="40px" class="q-mb-sm text-grey-4" />
-              <div class="text-subtitle2 q-mb-xs">No flows yet</div>
-              <q-btn color="primary" unelevated no-caps label="Create first flow" @click="openFlowDialog()" />
-            </div>
-          </q-card>
-        </div>
+      <q-card v-if="!selectedFlowId" flat bordered class="relative-position">
+        <q-card-section class="row items-center justify-between q-pb-sm">
+          <div class="text-subtitle2 text-weight-medium">Flows</div>
+          <q-toggle v-model="showArchivedFlows" label="Show archived" dense />
+        </q-card-section>
+        <q-separator />
 
-        <div class="col-12 col-md-8">
-          <q-card flat bordered>
-            <q-card-section class="row items-center justify-between q-pb-sm">
-              <div>
-                <div class="text-subtitle2 text-weight-medium">
-                  {{ selectedFlow?.name || 'Select a flow' }}
-                </div>
-                <div class="text-caption text-grey-6">
-                  Only stages from the selected flow appear in shipment progress and public tracking.
-                </div>
+        <q-inner-loading :showing="loading" />
+
+        <q-list v-if="visibleFlows.length" separator>
+          <q-item
+            v-for="flow in visibleFlows"
+            :key="flow.id"
+            clickable
+            :class="{ 'archived-row': !flow.is_active }"
+            :data-test="`flow-row-${flow.id}`"
+            @click="openFlow(flow.id)"
+          >
+            <q-item-section>
+              <div class="row items-center q-gutter-x-sm">
+                <span class="text-weight-medium">{{ flow.name }}</span>
+                <q-badge v-if="flow.is_default" color="primary" label="default" />
+                <q-badge v-if="!flow.is_active" color="grey-5" text-color="white" label="archived" />
               </div>
-              <div class="row items-center q-gutter-sm">
-                <q-toggle v-model="showArchivedStages" label="Show archived" dense />
+              <div class="text-caption text-grey-6">{{ flow.stage_count ?? 0 }} stages</div>
+            </q-item-section>
+            <q-item-section side>
+              <q-icon name="ph ph-caret-right" color="grey-5" />
+            </q-item-section>
+          </q-item>
+        </q-list>
+
+        <div v-else-if="!loading" class="q-pa-lg text-center text-grey-6">
+          <q-icon name="ph ph-git-branch" size="40px" class="q-mb-sm text-grey-4" />
+          <div class="text-subtitle2 q-mb-xs">No flows yet</div>
+          <div class="text-caption q-mb-md">Create a flow first. You can add stages after that.</div>
+          <q-btn
+            color="primary"
+            unelevated
+            no-caps
+            label="Create first flow"
+            style="border-radius: 8px"
+            data-test="create-first-flow"
+            @click="openFlowDialog()"
+          />
+        </div>
+      </q-card>
+
+      <q-card v-else flat bordered class="relative-position">
+        <q-card-section class="row items-center justify-between q-pb-sm">
+          <div>
+            <div class="row items-center q-gutter-x-sm">
+              <div class="text-subtitle2 text-weight-medium">Stages</div>
+              <q-badge v-if="selectedFlow?.is_default" color="primary" label="default flow" />
+            </div>
+            <div class="text-caption text-grey-6">Only these stages show on shipments using this flow.</div>
+          </div>
+          <div class="row items-center q-gutter-sm">
+            <q-toggle v-model="showArchivedStages" label="Show archived" dense />
+            <q-btn
+              v-if="selectedFlow"
+              flat round dense
+              icon="ph ph-pencil-simple"
+              color="primary"
+              aria-label="Edit flow"
+              @click="openFlowDialog(selectedFlow)"
+            >
+              <q-tooltip>Rename flow</q-tooltip>
+            </q-btn>
+            <q-btn
+              v-if="selectedFlow"
+              flat round dense
+              icon="ph ph-star"
+              color="amber-8"
+              aria-label="Set as default"
+              :disable="selectedFlow.is_default"
+              @click="markDefault(selectedFlow.id)"
+            >
+              <q-tooltip>{{ selectedFlow.is_default ? 'Already default' : 'Set as default' }}</q-tooltip>
+            </q-btn>
+            <q-btn
+              v-if="selectedFlow?.is_active"
+              flat round dense
+              icon="ph ph-archive"
+              color="grey-7"
+              aria-label="Archive flow"
+              @click="toggleFlowArchive(selectedFlow.id, true)"
+            >
+              <q-tooltip>Archive flow</q-tooltip>
+            </q-btn>
+            <q-btn
+              v-else-if="selectedFlow"
+              flat round dense
+              icon="ph ph-arrow-counter-clockwise"
+              color="positive"
+              aria-label="Restore flow"
+              @click="toggleFlowArchive(selectedFlow.id, false)"
+            >
+              <q-tooltip>Restore flow</q-tooltip>
+            </q-btn>
+          </div>
+        </q-card-section>
+        <q-separator />
+
+        <q-inner-loading :showing="loading" />
+
+        <q-list v-if="visibleStages.length" separator>
+          <q-item
+            v-for="(stage, idx) in visibleStages"
+            :key="stage.flow_stage_id"
+            :class="{ 'archived-row': !stage.is_active }"
+          >
+            <q-item-section avatar>
+              <div class="order-badge text-caption text-weight-bold text-grey-6">{{ idx + 1 }}</div>
+            </q-item-section>
+            <q-item-section>
+              <div class="row items-center q-gutter-x-sm">
+                <span class="color-dot" :style="{ background: stage.color || '#64748b' }" />
+                <span class="text-weight-medium">{{ stage.name }}</span>
+                <q-badge v-if="!stage.is_active" color="grey-5" text-color="white" label="archived" />
+              </div>
+            </q-item-section>
+            <q-item-section side>
+              <div class="row items-center q-gutter-x-xs">
                 <q-btn
+                  flat round dense size="sm"
+                  icon="ph ph-arrow-up"
+                  color="grey-6"
+                  aria-label="Move stage up"
+                  :disable="idx === 0 || !stage.is_active"
+                  @click="moveStage(idx, -1)"
+                >
+                  <q-tooltip>Move up</q-tooltip>
+                </q-btn>
+                <q-btn
+                  flat round dense size="sm"
+                  icon="ph ph-arrow-down"
+                  color="grey-6"
+                  aria-label="Move stage down"
+                  :disable="idx === activeStages.length - 1 || !stage.is_active"
+                  @click="moveStage(idx, 1)"
+                >
+                  <q-tooltip>Move down</q-tooltip>
+                </q-btn>
+                <q-btn
+                  flat round dense size="sm"
+                  icon="ph ph-pencil-simple"
                   color="primary"
-                  unelevated
-                  no-caps
-                  icon="ph ph-plus"
-                  label="Add stage"
-                  :disable="!selectedFlow"
-                  @click="openStageDialog()"
-                />
+                  aria-label="Edit stage"
+                  @click="openStageDialog(stage)"
+                >
+                  <q-tooltip>Edit</q-tooltip>
+                </q-btn>
+                <q-btn
+                  v-if="stage.is_active"
+                  flat round dense size="sm"
+                  icon="ph ph-archive"
+                  color="grey-7"
+                  aria-label="Archive stage"
+                  @click="toggleStageArchive(stage.flow_stage_id, true)"
+                >
+                  <q-tooltip>Archive</q-tooltip>
+                </q-btn>
+                <q-btn
+                  v-else
+                  flat round dense size="sm"
+                  icon="ph ph-arrow-counter-clockwise"
+                  color="positive"
+                  aria-label="Restore stage"
+                  @click="toggleStageArchive(stage.flow_stage_id, false)"
+                >
+                  <q-tooltip>Restore</q-tooltip>
+                </q-btn>
               </div>
-            </q-card-section>
-            <q-separator />
+            </q-item-section>
+          </q-item>
+        </q-list>
 
-            <q-list v-if="visibleStages.length" separator>
-              <q-item v-for="(stage, idx) in visibleStages" :key="stage.flow_stage_id" :class="{ 'archived-row': !stage.is_active }">
-                <q-item-section avatar>
-                  <div class="order-badge text-caption text-weight-bold text-grey-6">{{ idx + 1 }}</div>
-                </q-item-section>
-                <q-item-section>
-                  <div class="row items-center q-gutter-x-sm">
-                    <span class="color-dot" :style="{ background: stage.color || '#64748b' }" />
-                    <span class="text-weight-medium">{{ stage.name }}</span>
-                    <q-badge v-if="!stage.is_active" color="grey-5" text-color="white" label="archived" />
-                  </div>
-                </q-item-section>
-                <q-item-section side>
-                  <div class="row items-center q-gutter-x-xs">
-                    <q-btn flat round dense size="sm" icon="ph ph-arrow-up" color="grey-6" :disable="idx === 0 || !stage.is_active" @click="moveStage(idx, -1)" />
-                    <q-btn flat round dense size="sm" icon="ph ph-arrow-down" color="grey-6" :disable="idx === activeStages.length - 1 || !stage.is_active" @click="moveStage(idx, 1)" />
-                    <q-btn flat round dense size="sm" icon="ph ph-pencil-simple" color="primary" @click="openStageDialog(stage)" />
-                    <q-btn
-                      v-if="stage.is_active"
-                      flat round dense size="sm" icon="ph ph-archive" color="grey-7"
-                      @click="toggleStageArchive(stage.flow_stage_id, true)"
-                    />
-                    <q-btn
-                      v-else
-                      flat round dense size="sm" icon="ph ph-arrow-counter-clockwise" color="positive"
-                      @click="toggleStageArchive(stage.flow_stage_id, false)"
-                    />
-                  </div>
-                </q-item-section>
-              </q-item>
-            </q-list>
-            <div v-else class="q-pa-xl text-center text-grey-6">
-              <q-icon name="ph ph-map-trifold" size="40px" class="q-mb-sm text-grey-4" />
-              <div class="text-subtitle2 q-mb-xs">
-                {{ selectedFlow ? 'No stages in this flow yet' : 'Choose a flow to manage stages' }}
-              </div>
-            </div>
-          </q-card>
+        <div v-else-if="!loading" class="q-pa-xl text-center text-grey-6">
+          <q-icon name="ph ph-map-trifold" size="40px" class="q-mb-sm text-grey-4" />
+          <div class="text-subtitle2 q-mb-xs">No stages yet</div>
+          <div class="text-caption q-mb-md">Add the first stage for this flow.</div>
+          <q-btn
+            color="primary"
+            unelevated
+            no-caps
+            icon="ph ph-plus"
+            label="Add stage"
+            style="border-radius: 8px"
+            data-test="add-first-stage"
+            @click="openStageDialog()"
+          />
         </div>
-      </div>
+      </q-card>
     </div>
 
     <q-dialog v-model="flowDialogOpen" persistent>
       <q-card style="min-width: 360px">
         <q-card-section class="row items-center justify-between">
-          <div class="text-h6">{{ editingFlow ? 'Edit flow' : 'Add flow' }}</div>
-          <q-btn flat round dense icon="ph ph-x" v-close-popup />
+          <div class="text-h6">{{ editingFlow ? 'Rename flow' : 'Add flow' }}</div>
+          <q-btn flat round dense icon="ph ph-x" v-close-popup aria-label="Close" />
         </q-card-section>
         <q-card-section>
           <q-input v-model="flowForm.name" label="Flow name" outlined dense autofocus />
@@ -167,7 +270,7 @@
       <q-card style="min-width: 380px">
         <q-card-section class="row items-center justify-between">
           <div class="text-h6">{{ editingStage ? 'Edit stage' : 'Add stage' }}</div>
-          <q-btn flat round dense icon="ph ph-x" v-close-popup />
+          <q-btn flat round dense icon="ph ph-x" v-close-popup aria-label="Close" />
         </q-card-section>
         <q-card-section class="q-gutter-y-sm">
           <q-input v-model="stageForm.name" label="Stage name" outlined dense autofocus />
@@ -191,18 +294,21 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import AppPageHeader from 'src/components/ui/AppPageHeader.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { requestConfirmation, showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 import type { ShipmentProgressFlow, ShipmentProgressFlowStage } from '../repositories/globalShipmentRepository';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 
+const route = useRoute();
+const router = useRouter();
 const authStore = useAuthStore();
 const shipmentStore = useGlobalShipmentStore();
 
 const loading = ref(false);
 const saving = ref(false);
-const selectedFlowId = ref<number | null>(null);
 const showArchivedFlows = ref(false);
 const showArchivedStages = ref(false);
 
@@ -213,6 +319,12 @@ const flowForm = ref({ name: '' });
 const stageDialogOpen = ref(false);
 const editingStage = ref<ShipmentProgressFlowStage | null>(null);
 const stageForm = ref({ name: '', color: '#64748b' });
+
+const selectedFlowId = computed(() => {
+  const raw = route.params.flowId;
+  const id = Number(raw);
+  return Number.isFinite(id) && id > 0 ? id : null;
+});
 
 const flows = computed(() => shipmentStore.progressFlows);
 const selectedFlow = computed(() => flows.value.find((flow) => flow.id === selectedFlowId.value) ?? null);
@@ -225,25 +337,45 @@ const visibleStages = computed(() =>
   showArchivedStages.value ? stages.value : activeStages.value,
 );
 
+function listRoute() {
+  return {
+    name: 'app-procurement-shipment-progress-settings',
+    params: { tenantSlug: route.params.tenantSlug },
+  };
+}
+
+function flowRoute(flowId: number) {
+  return {
+    name: 'app-procurement-shipment-progress-flow',
+    params: { tenantSlug: route.params.tenantSlug, flowId: String(flowId) },
+  };
+}
+
 async function loadFlows() {
   if (!authStore.tenantId) return;
   loading.value = true;
   try {
     await shipmentStore.loadProgressTagsForSettings(authStore.tenantId, true);
-    if (!selectedFlowId.value) {
-      selectedFlowId.value = shipmentStore.progressFlows.find((flow) => flow.is_default)?.id ?? shipmentStore.progressFlows[0]?.id ?? null;
-    }
-    if (selectedFlowId.value) {
-      await shipmentStore.loadProgressFlowStages(selectedFlowId.value, true);
-    }
   } finally {
     loading.value = false;
   }
 }
 
-async function selectFlow(flowId: number) {
-  selectedFlowId.value = flowId;
-  await shipmentStore.loadProgressFlowStages(flowId, true);
+async function loadStages(flowId: number) {
+  loading.value = true;
+  try {
+    await shipmentStore.loadProgressFlowStages(flowId, true);
+  } finally {
+    loading.value = false;
+  }
+}
+
+function openFlow(flowId: number) {
+  void router.push(flowRoute(flowId));
+}
+
+function backToFlows() {
+  void router.push(listRoute());
 }
 
 function openFlowDialog(flow?: ShipmentProgressFlow) {
@@ -265,13 +397,13 @@ async function saveFlow() {
     if (editingFlow.value) {
       await shipmentStore.updateProgressFlow(editingFlow.value.id, flowForm.value.name.trim());
       showSuccessNotification('Flow updated');
+      flowDialogOpen.value = false;
     } else {
       const flow = await shipmentStore.createProgressFlow(authStore.tenantId, flowForm.value.name.trim());
-      selectedFlowId.value = flow.id;
-      await shipmentStore.loadProgressFlowStages(flow.id, true);
       showSuccessNotification('Flow created');
+      flowDialogOpen.value = false;
+      await router.push(flowRoute(flow.id));
     }
-    flowDialogOpen.value = false;
   } catch (err) {
     showErrorNotification(err instanceof Error ? err.message : 'Failed to save flow');
   } finally {
@@ -319,6 +451,7 @@ async function toggleFlowArchive(flowId: number, archive: boolean) {
   try {
     await shipmentStore.archiveProgressFlow(flowId, archive);
     showSuccessNotification(archive ? 'Flow archived' : 'Flow restored');
+    if (archive) backToFlows();
   } catch (err) {
     showErrorNotification(err instanceof Error ? err.message : 'Failed to update flow');
   }
@@ -355,16 +488,17 @@ async function moveStage(idx: number, direction: -1 | 1) {
   }
 }
 
+watch(selectedFlowId, async (flowId) => {
+  if (flowId) await loadStages(flowId);
+});
+
 onMounted(async () => {
   await loadFlows();
+  if (selectedFlowId.value) await loadStages(selectedFlowId.value);
 });
 </script>
 
 <style scoped lang="scss">
-.selected-flow-row {
-  background: rgba(59, 130, 246, 0.08);
-}
-
 .archived-row {
   opacity: 0.6;
 }
@@ -386,6 +520,6 @@ onMounted(async () => {
   width: 24px;
   height: 24px;
   border-radius: 4px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--bw-theme-border);
 }
 </style>

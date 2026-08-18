@@ -223,6 +223,22 @@ cmd_types_local() {
   echo "Wrote web/src/types/database.types.ts from local DB."
 }
 
+SCHEMA_FILE_PUBLIC="${ROOT_DIR}/supabase/schemas/public.sql"
+
+cmd_schema_dump() {
+  require_local_running
+  mkdir -p "${ROOT_DIR}/supabase/schemas"
+  echo "Dumping local public schema → supabase/schemas/public.sql"
+  supabase_cli db dump --local --schema public -f "$SCHEMA_FILE_PUBLIC"
+  echo "Wrote ${SCHEMA_FILE_PUBLIC}"
+}
+
+cmd_schema_diff() {
+  require_local_running
+  echo "Preview only — does not write a migration file."
+  supabase_cli db diff --schema public
+}
+
 confirm_pull() {
   local force="${1:-}"
   if [[ "$force" == "--force" ]]; then
@@ -546,6 +562,8 @@ Commands:
                    Skips auth.custom_oauth_providers (GoTrue drift).
                    --reuse-dumps skips remote dump (uses supabase/.dumps/)
   types:local      Generate database.types.ts from local DB
+  schema:dump      Dump local public schema → supabase/schemas/public.sql
+  schema:diff      Preview schema file vs migrations (no migration file)
 EOF
 }
 
@@ -561,6 +579,8 @@ main() {
     env:print) cmd_env_print "$@" ;;
     pull-prod-data) cmd_pull_prod_data "$@" ;;
     types:local) cmd_types_local "$@" ;;
+    schema:dump) cmd_schema_dump "$@" ;;
+    schema:diff) cmd_schema_diff "$@" ;;
     -h|--help|help|"") usage ;;
     *)
       echo "Unknown command: $cmd" >&2

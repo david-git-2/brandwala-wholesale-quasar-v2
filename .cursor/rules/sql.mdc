@@ -16,6 +16,7 @@ alwaysApply: false
 - For query edits: show only the changed clause(s) when possible. If the full query is needed, show it complete (queries don't usefully diff in pieces).
 
 ## Migrations
+- **Supabase DDL:** edit `supabase/schemas/` then diff — `.cursor/rules/supabase-declarative-schema.mdc`.
 - **Supabase (`supabase/migrations/`):** follow `.cursor/rules/supabase-migrations.mdc` (fresh-reset safety, ordering, `IF EXISTS`, verify with `pnpm run backend:reset`).
 - Prefer a **new** migration for features. Edit an already-applied file only to fix local fresh-reset breakage (never for normal schema work).
 - Match existing migration idioms in this repo (raw SQL, `security definer` RPC patterns, snake_case).

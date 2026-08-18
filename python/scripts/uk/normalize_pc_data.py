@@ -132,7 +132,14 @@ def build_normalized_row(row: dict[str, Any]) -> dict[str, Any]:
     normalized["barcode"] = to_text(get_first_value(row, ["barcode", "BARCODE"], ""))
     normalized["case_size"] = max(
         1,
-        to_int(get_first_value(row, ["case_size", "CASE SIZE", "INNER CASE", "inner_case"], 1), 1),
+        to_int(
+            get_first_value(
+                row,
+                ["case_size", "CASE SIZE", "OUTER CASE", "outer_case", "INNER CASE", "inner_case"],
+                1,
+            ),
+            1,
+        ),
     )
     normalized["name"] = to_text(get_first_value(row, ["name", "title", "DESCRIPTION"], ""))
     normalized["price"] = to_float(get_first_value(row, ["price", "PIECE PRICE £", "piece_price"], 0), 0.0)

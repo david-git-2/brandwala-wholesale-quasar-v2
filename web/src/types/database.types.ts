@@ -2153,6 +2153,7 @@ export type Database = {
           inventory_added: boolean
           name: string
           parent_tenant_id: number
+          progress_flow_id: number | null
           progress_tag_id: number | null
           public_tracking_token: string | null
           purchase_invoice_total: number | null
@@ -2177,6 +2178,7 @@ export type Database = {
           inventory_added?: boolean
           name: string
           parent_tenant_id: number
+          progress_flow_id?: number | null
           progress_tag_id?: number | null
           public_tracking_token?: string | null
           purchase_invoice_total?: number | null
@@ -2201,6 +2203,7 @@ export type Database = {
           inventory_added?: boolean
           name?: string
           parent_tenant_id?: number
+          progress_flow_id?: number | null
           progress_tag_id?: number | null
           public_tracking_token?: string | null
           purchase_invoice_total?: number | null
@@ -2236,6 +2239,13 @@ export type Database = {
             columns: ["parent_tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "global_shipments_progress_flow_id_fkey"
+            columns: ["progress_flow_id"]
+            isOneToOne: false
+            referencedRelation: "shipment_progress_flows"
             referencedColumns: ["id"]
           },
           {
@@ -5064,6 +5074,83 @@ export type Database = {
           {
             foreignKeyName: "shipment_items_source_child_tenant_id_fkey"
             columns: ["source_child_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shipment_progress_flow_stages: {
+        Row: {
+          created_at: string
+          flow_id: number
+          id: number
+          sort_order: number
+          tag_id: number
+        }
+        Insert: {
+          created_at?: string
+          flow_id: number
+          id?: number
+          sort_order?: number
+          tag_id: number
+        }
+        Update: {
+          created_at?: string
+          flow_id?: number
+          id?: number
+          sort_order?: number
+          tag_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipment_progress_flow_stages_flow_id_fkey"
+            columns: ["flow_id"]
+            isOneToOne: false
+            referencedRelation: "shipment_progress_flows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_progress_flow_stages_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shipment_progress_flows: {
+        Row: {
+          created_at: string
+          id: number
+          is_active: boolean
+          is_default: boolean
+          name: string
+          slug: string
+          tenant_id: number
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          is_default?: boolean
+          name: string
+          slug: string
+          tenant_id: number
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          is_default?: boolean
+          name?: string
+          slug?: string
+          tenant_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipment_progress_flows_tenant_id_fkey"
+            columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
@@ -9815,6 +9902,37 @@ export type Database = {
         }
         Returns: Json
       }
+      archive_shipment_progress_flow: {
+        Args: { p_archive?: boolean; p_flow_id: number }
+        Returns: {
+          created_at: string
+          id: number
+          is_active: boolean
+          is_default: boolean
+          name: string
+          slug: string
+          tenant_id: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "shipment_progress_flows"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      archive_shipment_progress_flow_stage: {
+        Args: { p_archive?: boolean; p_flow_stage_id: number }
+        Returns: {
+          color: string
+          flow_id: number
+          flow_stage_id: number
+          is_active: boolean
+          name: string
+          slug: string
+          sort_order: number
+          tag_id: number
+        }[]
+      }
       archive_shipment_progress_tag: {
         Args: { p_archive?: boolean; p_tag_id: number }
         Returns: {
@@ -10781,6 +10899,7 @@ export type Database = {
           inventory_added: boolean
           name: string
           parent_tenant_id: number
+          progress_flow_id: number | null
           progress_tag_id: number | null
           public_tracking_token: string | null
           purchase_invoice_total: number | null
@@ -10802,6 +10921,42 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      create_shipment_progress_flow: {
+        Args: { p_name: string; p_tenant_id: number }
+        Returns: {
+          created_at: string
+          id: number
+          is_active: boolean
+          is_default: boolean
+          name: string
+          slug: string
+          tenant_id: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "shipment_progress_flows"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_shipment_progress_flow_stage: {
+        Args: {
+          p_color?: string
+          p_flow_id: number
+          p_name: string
+          p_sort_order?: number
+        }
+        Returns: {
+          color: string
+          flow_id: number
+          flow_stage_id: number
+          is_active: boolean
+          name: string
+          slug: string
+          sort_order: number
+          tag_id: number
+        }[]
       }
       create_shipment_progress_tag: {
         Args: {
@@ -12627,6 +12782,32 @@ export type Database = {
         Args: { p_shipment_id: number }
         Returns: Json
       }
+      list_shipment_progress_flow_stages: {
+        Args: { p_flow_id: number; p_include_archived?: boolean }
+        Returns: {
+          color: string
+          flow_id: number
+          flow_stage_id: number
+          is_active: boolean
+          name: string
+          slug: string
+          sort_order: number
+          tag_id: number
+        }[]
+      }
+      list_shipment_progress_flows: {
+        Args: { p_include_archived?: boolean; p_tenant_id: number }
+        Returns: {
+          created_at: string
+          id: number
+          is_active: boolean
+          is_default: boolean
+          name: string
+          slug: string
+          stage_count: number
+          tenant_id: number
+        }[]
+      }
       list_shipment_progress_tags: {
         Args: { p_include_archived?: boolean; p_tenant_id: number }
         Returns: {
@@ -13454,6 +13635,10 @@ export type Database = {
         Returns: undefined
       }
       remove_shop_cart_item: { Args: { p_cart_item_id: number }; Returns: Json }
+      reorder_shipment_progress_flow_stages: {
+        Args: { p_flow_id: number; p_flow_stage_ids: number[] }
+        Returns: undefined
+      }
       reorder_shipment_progress_tags: {
         Args: { p_tag_ids: number[]; p_tenant_id: number }
         Returns: undefined
@@ -13599,6 +13784,24 @@ export type Database = {
         Args: { p_tenant_id: number }
         Returns: undefined
       }
+      set_default_shipment_progress_flow: {
+        Args: { p_flow_id: number }
+        Returns: {
+          created_at: string
+          id: number
+          is_active: boolean
+          is_default: boolean
+          name: string
+          slug: string
+          tenant_id: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "shipment_progress_flows"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       set_default_stock_location: {
         Args: { p_id: number }
         Returns: {
@@ -13623,6 +13826,14 @@ export type Database = {
         }
       }
       set_global_shipment_progress_tag: {
+        Args: { p_shipment_id: number; p_tag_id?: number }
+        Returns: Json
+      }
+      set_shipment_progress_flow: {
+        Args: { p_flow_id: number; p_shipment_id: number }
+        Returns: Json
+      }
+      set_shipment_progress_stage: {
         Args: { p_shipment_id: number; p_tag_id?: number }
         Returns: Json
       }
@@ -14093,6 +14304,37 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      update_shipment_progress_flow: {
+        Args: { p_flow_id: number; p_name?: string }
+        Returns: {
+          created_at: string
+          id: number
+          is_active: boolean
+          is_default: boolean
+          name: string
+          slug: string
+          tenant_id: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "shipment_progress_flows"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_shipment_progress_flow_stage: {
+        Args: { p_color?: string; p_flow_stage_id: number; p_name?: string }
+        Returns: {
+          color: string
+          flow_id: number
+          flow_stage_id: number
+          is_active: boolean
+          name: string
+          slug: string
+          sort_order: number
+          tag_id: number
+        }[]
       }
       update_shipment_progress_tag: {
         Args: {

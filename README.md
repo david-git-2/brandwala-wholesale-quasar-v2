@@ -93,7 +93,7 @@ Day-to-day schema/RPC work should hit **local Docker**, not the linked remote. P
 2. `pnpm run env:local` and restart `pnpm run dev`
 3. **Test migrations only (fast):** `pnpm run backend:reset` — replays all migrations, no prod dump. Fix until green.
 4. **Then** load prod rows once: `pnpm run backend:pull-prod-data`
-5. New feature migrations: edit SQL → `pnpm run backend:local` (or `pnpm run backend:reset` for a clean replay) → when ready `pnpm run deploy:backend`
+5. Schema/RPC change: edit `supabase/schemas/` → `pnpm run backend:schema:diff` → `pnpm exec supabase db diff -f <name>` → review the new migration → `pnpm run backend:reset` → when ready `pnpm run deploy:backend`. See [doc/SUPABASE_SCHEMA.md](doc/SUPABASE_SCHEMA.md).
 
 **Useful scripts**
 
@@ -106,6 +106,8 @@ Day-to-day schema/RPC work should hit **local Docker**, not the linked remote. P
 | `backend:local` | Apply pending migrations to local (`migration up --include-all`) |
 | `backend:pull-prod-data` | Opt-in dump linked prod → restore data into local |
 | `backend:types:local` | Generate types from local DB |
+| `backend:schema:dump` | Dump local public schema → `supabase/schemas/public.sql` |
+| `backend:schema:diff` | Preview schemas vs migrations (does not write a file) |
 | `deploy:backend` | Push migrations to **linked production** + regenerate types |
 | `deploy:frontend` | Switches to `env:prod`, builds, deploys to Cloudflare Pages |
 

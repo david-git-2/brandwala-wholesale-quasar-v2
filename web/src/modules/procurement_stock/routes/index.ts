@@ -156,6 +156,12 @@ const procurementStockRoutes: RouteRecordRaw[] = [
         component: () => import('../pages/ShipmentProgressSettingsPage.vue'),
         beforeEnter: guard('shipment_progress_settings'),
       },
+      {
+        path: ':flowId',
+        name: 'app-procurement-shipment-progress-flow',
+        component: () => import('../pages/ShipmentProgressSettingsPage.vue'),
+        beforeEnter: guard('shipment_progress_settings'),
+      },
     ],
   },
   // Public tracking — no auth guard, uses ExternalLayout

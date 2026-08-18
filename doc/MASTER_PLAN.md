@@ -256,6 +256,8 @@ Per-tenant assignment table: §15.5 and domain docs.
 | [COURIER_AND_MIDDLEMAN_FINANCIAL_MASTER_PLAN.md](COURIER_AND_MIDDLEMAN_FINANCIAL_MASTER_PLAN.md) | Dropship COD escrow, remittance, middleman dispense |
 | [docs/UI_CONSISTENCY.md](../docs/UI_CONSISTENCY.md) | Mandatory UI patterns: `bw-page`, tables, cards, tokens |
 | [docs/AI_WORKFLOW_SOP.md](../docs/AI_WORKFLOW_SOP.md) | Deterministic AI development protocol |
+| [SUPABASE_SCHEMA.md](SUPABASE_SCHEMA.md) | Declarative schema: `supabase/schemas/` is current SQL; dump / diff / split / push |
+| [SUPABASE_SCHEMA_SPLIT.md](SUPABASE_SCHEMA_SPLIT.md) | Split one domain folder; say `split schema <domain>` in Agent mode |
 
 **Hierarchy:** This file = index + cross-cutting rules. Domain docs = detailed design per area. Implementation how-to = LOGIN_NAV_PERMISSION_FLOW.
 

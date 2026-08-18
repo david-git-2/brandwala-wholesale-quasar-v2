@@ -82,7 +82,8 @@ alwaysApply: true
 - Entry: `web/src/App.vue`, `web/src/router/`
 - Config: `web/quasar.config.ts`, `web/.env`
 - Auth: `web/src/modules/auth/`
-- Generated types: `web/src/types/supabase.ts`
+- Generated types: `web/src/types/database.types.ts`
+- Current SQL: `supabase/schemas/` ([doc/SUPABASE_SCHEMA.md](../../doc/SUPABASE_SCHEMA.md))
 - Migrations: `supabase/migrations/`
 
 ## Do NOT touch without explicit request

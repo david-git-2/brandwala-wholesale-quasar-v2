@@ -121,11 +121,11 @@ Before implementing any Supabase feature, find the relevant documentation. Use t
 
 ## Making and Committing Schema Changes
 
-First decide which schema workflow the project uses.
+This repo uses **Option A (declarative schemas)**. `supabase/schemas/` exists and `config.toml` sets `schema_paths`. How-to: [doc/SUPABASE_SCHEMA.md](../../../doc/SUPABASE_SCHEMA.md).
 
-### Option A: Declarative schemas
+### Option A: Declarative schemas (this project)
 
-Use this when `supabase/schemas/` exists or `config.toml` sets `schema_paths`. Edit the desired schema state in those files, then generate and review the migration. Do not start by hand-writing a migration. See the [Declarative database schemas guide](https://supabase.com/docs/guides/local-development/declarative-database-schemas).
+Edit the desired schema state in `supabase/schemas/`, then generate and review the migration. Do not start by hand-writing a DDL migration. DML (seeds, backfills) stays hand-written. See the [Declarative database schemas guide](https://supabase.com/docs/guides/local-development/declarative-database-schemas).
 
 ### Option B: Imperative migrations
 

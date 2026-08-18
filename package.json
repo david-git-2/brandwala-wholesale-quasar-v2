@@ -42,6 +42,8 @@
     "backend:pull-prod-data": "bash scripts/supabase-local.sh pull-prod-data",
     "backend:types": "sh -c 'mkdir -p web/src/types && pnpm exec supabase gen types typescript --project-id pqlmomdpuiajhfwwfoqw --schema public > web/src/types/database.types.ts'",
     "backend:types:local": "bash scripts/supabase-local.sh types:local",
+    "backend:schema:dump": "bash scripts/supabase-local.sh schema:dump",
+    "backend:schema:diff": "bash scripts/supabase-local.sh schema:diff",
     "db:schema": "pnpm run backend:types",
     "deploy:backend": "pnpm run backend:push && pnpm run db:schema",
     "backend:all": "pnpm run backend:push:all && pnpm run db:schema"

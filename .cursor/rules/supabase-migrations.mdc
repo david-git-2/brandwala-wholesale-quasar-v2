@@ -43,6 +43,8 @@ pnpm run backend:reset
 
 Must finish with no SQLSTATE errors. Only then run `pnpm run backend:pull-prod-data` (optional data) or `pnpm run deploy:backend`.
 
-## New features
+## New features (DDL)
 
-Prefer a **new** forward migration over editing old applied files. Edit applied files only to fix fresh-reset breakage (ordering / IF EXISTS), not for normal features.
+Edit `supabase/schemas/` then generate a migration (`pnpm run backend:schema:diff`, then `supabase db diff -f <name>`). See `.cursor/rules/supabase-declarative-schema.mdc` and [doc/SUPABASE_SCHEMA.md](../../doc/SUPABASE_SCHEMA.md).
+
+Hand-write a migration only for DML (seeds, backfills). Prefer a **new** forward file over editing old applied files. Edit applied files only to fix fresh-reset breakage (ordering / IF EXISTS), not for normal features.

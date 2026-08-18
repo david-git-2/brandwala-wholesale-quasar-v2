@@ -1,0 +1,25 @@
+---
+description: Declarative schema is the current SQL. Generate migrations with db diff.
+globs: supabase/schemas/**/*.sql
+alwaysApply: false
+---
+
+# Declarative schema (current SQL)
+
+`supabase/schemas/` is the **current** public schema (tables, RPCs, RLS, views, triggers). `supabase/migrations/` is history plus what production runs.
+
+How-to: [doc/SUPABASE_SCHEMA.md](../../doc/SUPABASE_SCHEMA.md)
+
+## Edit
+
+- Change tables / functions / policies **in `supabase/schemas/`**, not by hand-writing a new `CREATE OR REPLACE` migration.
+- Until a module is split, edit `supabase/schemas/public.sql`. Then `pnpm run backend:schema:diff`, review, then `supabase db diff -f <name>`.
+- Split: user says `split schema <domain>` — follow `.agents/skills/schema-split/SKILL.md`. Move objects into `supabase/schemas/<domain>/` and **delete the same objects from `public.sql` in the same PR**. `schemas/` must always be the full public schema or `db diff` will emit `DROP`s.
+- After a re-dump, keep `supabase/schemas/_extensions.sql` (dump omits `CREATE EXTENSION`).
+
+## Do not generate from noise
+
+- Preview with `pnpm run backend:schema:diff` (no `-f`). Do not commit grant/comment/`OWNER TO` noise as a migration.
+- Hand-write migrations for **DML only** (seeds, backfills, permission **rows**). Diff cannot see data.
+- Do not edit already-applied migration files for features.
+- Do not `db reset` or experimental `db diff` against production. Production only gets `pnpm run deploy:backend`.
