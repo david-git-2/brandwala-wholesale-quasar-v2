@@ -237,26 +237,6 @@
           @click="onSave"
         />
       </div>
-
-      <!-- Mounted ShipmentPayeeSettlePanel -->
-      <ShipmentPayeeSettlePanel
-        v-if="shipmentStore.currentShipment"
-        ref="payeeSettlePanelRef"
-        :shipment-id="shipmentStore.currentShipment.id"
-        :status="shipmentStore.currentShipment.status"
-        :vendor-id="shipmentStore.currentShipment.vendor_id"
-        :cargo-company-id="shipmentStore.currentShipment.cargo_company_id"
-        :vendor-name="vendorPayeeLabel"
-        :cargo-company-name="cargoPayeeLabel"
-        :vendor-rate="firstProductRate"
-        :cargo-rate="firstCargoRate"
-        :purchase-currency-symbol="purchaseCurrencySymbol"
-        :submitting="paySettling"
-        :vendor-product-total="vendorProductTotal"
-        :cargo-cost-total="cargoCostTotal"
-        :goods-purchase-total="goodsPurchaseTotal"
-        @settle="(payload) => emit('settle', payload)"
-      />
     </div>
   </q-card>
 </template>
@@ -275,7 +255,6 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
 import { useCargoCompanyStore } from '../stores/cargoCompanyStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
-import ShipmentPayeeSettlePanel from './ShipmentPayeeSettlePanel.vue';
 
 const props = defineProps<{
   entries: GlobalShipmentCostEntry[];

@@ -69,13 +69,55 @@ const procurementStockRoutes: RouteRecordRaw[] = [
       {
         path: ':id',
         name: 'app-procurement-shipment-details',
-        component: () => import('../pages/InboundShipmentDetailsPage.vue'),
+        component: () => import('../pages/ShipmentOverviewDummyPage.vue'),
+        beforeEnter: guard('global_shipment'),
+      },
+      {
+        path: ':id/items',
+        name: 'app-procurement-shipment-items',
+        component: () => import('../pages/ShipmentLineItemsPage.vue'),
+        beforeEnter: guard('global_shipment'),
+      },
+      {
+        path: ':id/lines',
+        name: 'app-procurement-shipment-lines',
+        component: () => import('../pages/ShipmentLineItemsPage.vue'),
         beforeEnter: guard('global_shipment'),
       },
       {
         path: ':id/add-catalog',
         name: 'app-procurement-shipment-add-catalog',
         component: () => import('../pages/ShipmentAddCatalogPage.vue'),
+        beforeEnter: guard('global_shipment'),
+      },
+      {
+        path: ':id/rates',
+        name: 'app-procurement-shipment-rates',
+        component: () => import('../pages/ShipmentRatesPage.vue'),
+        beforeEnter: guard('global_shipment'),
+      },
+      {
+        path: ':id/adjust',
+        name: 'app-procurement-shipment-adjust',
+        component: () => import('../pages/ShipmentAdjustPage.vue'),
+        beforeEnter: guard('global_shipment'),
+      },
+      {
+        path: ':id/settle',
+        name: 'app-procurement-shipment-settle',
+        component: () => import('../pages/ShipmentPayeeSettlePage.vue'),
+        beforeEnter: guard('global_shipment'),
+      },
+      {
+        path: ':id/rates-invoices',
+        name: 'app-procurement-shipment-rates-invoices',
+        component: () => import('../pages/ShipmentRatesInvoicesPage.vue'),
+        beforeEnter: guard('global_shipment'),
+      },
+      {
+        path: ':id/dummy',
+        name: 'app-procurement-shipment-dummy',
+        component: () => import('../pages/ShipmentOverviewDummyPage.vue'),
         beforeEnter: guard('global_shipment'),
       },
       {

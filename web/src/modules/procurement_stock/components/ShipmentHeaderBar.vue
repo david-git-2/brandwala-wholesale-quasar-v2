@@ -166,6 +166,21 @@
 
     <div class="col-auto row q-gutter-xs items-center">
       <q-btn
+        outline
+        dense
+        no-caps
+        size="sm"
+        color="primary"
+        icon="ph ph-receipt"
+        label="Rates & Invoices"
+        style="border-radius: 8px"
+        class="q-px-xs"
+        @click="$emit('open-rates-invoices')"
+      >
+        <q-tooltip>Open dedicated Rates & Match Invoices page</q-tooltip>
+      </q-btn>
+
+      <q-btn
         v-if="shipment.status === 'received' || shipment.stock_ready"
         outline
         dense
@@ -316,6 +331,7 @@ const emit = defineEmits<{
   'download-excel': [];
   'delete-shipment': [];
   'organize-stock': [];
+  'open-rates-invoices': [];
   'generate-tracking-token': [];
   'revoke-tracking-token': [];
 }>();

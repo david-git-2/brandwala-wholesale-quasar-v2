@@ -8,6 +8,7 @@ import {
   type ShipmentProgressFlow,
   type ShipmentProgressFlowStage,
   type ShipmentProgressTag,
+  type ShipmentSummaryKPIs,
 } from '../repositories/globalShipmentRepository';
 import { globalShipmentBoxRepository } from '../repositories/globalShipmentBoxRepository';
 import { type GlobalShipmentBox } from '../repositories/globalShipmentBoxRepository';
@@ -45,6 +46,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
     currentShipmentBoxes: [] as GlobalShipmentBox[],
     currentShipmentStocks: [] as any[],
     currentCostEntries: [] as GlobalShipmentCostEntry[],
+    currentShipmentSummary: null as ShipmentSummaryKPIs | null,
     costEntriesLoading: false,
     costEntriesSaving: false,
     progressTags: [] as ShipmentProgressTag[],
@@ -128,10 +130,21 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         }
         this.currentShipmentStocks = stocks;
         await this.fetchCostEntries(shipmentId);
+        await this.fetchShipmentSummary(shipmentId);
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to load shipment details';
       } finally {
         this.loading = false;
+      }
+    },
+
+    async fetchShipmentSummary(shipmentId: number) {
+      try {
+        this.currentShipmentSummary = await globalShipmentRepository.getShipmentSummary(shipmentId);
+        return this.currentShipmentSummary;
+      } catch (err: unknown) {
+        console.error('Failed to fetch shipment summary', err);
+        return null;
       }
     },
 

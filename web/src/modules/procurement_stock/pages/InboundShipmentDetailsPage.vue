@@ -48,6 +48,7 @@
           @download-excel="downloadExcel"
           @delete-shipment="confirmDeleteShipment"
           @organize-stock="goToWarehouseStock"
+          @open-rates-invoices="goToRatesInvoices"
           @generate-tracking-token="generateTrackingToken"
           @revoke-tracking-token="revokeTrackingToken"
         />
@@ -305,6 +306,24 @@
             <!-- Rates & cost entries -->
             <q-tab-panel name="cost" class="q-pa-none">
               <div class="column q-gutter-y-md">
+                <div class="row items-center justify-between q-py-xs">
+                  <div class="text-caption text-grey-7">
+                    Manage product rates, cargo rates, and expense allocations.
+                  </div>
+                  <q-btn
+                    outline
+                    dense
+                    no-caps
+                    size="sm"
+                    color="primary"
+                    icon="ph ph-arrow-square-out"
+                    label="Open Rates & Invoices Page"
+                    style="border-radius: 8px"
+                    class="q-px-sm"
+                    @click="goToRatesInvoices"
+                  />
+                </div>
+
                 <q-banner
                   v-if="weightNeedsAttention || purchaseNeedsAttention"
                   dense
@@ -363,46 +382,58 @@
             <!-- Match invoices -->
             <q-tab-panel name="balance" class="q-pa-none">
               <div class="column q-gutter-y-md">
-                <div>
+                <div class="row items-center justify-between q-py-xs">
                   <div class="text-body2 text-grey-8">
                     Compare cargo weight and paid purchase to your lines, then apply to fix lines.
                   </div>
-                  <div class="row q-gutter-sm q-mt-sm">
-                    <q-chip
-                      clickable
-                      dense
-                      :color="weightNeedsAttention ? 'orange-1' : hasCargoInvoiceWeight ? 'green-1' : 'grey-2'"
-                      :text-color="weightNeedsAttention ? 'orange-10' : hasCargoInvoiceWeight ? 'green-9' : 'grey-8'"
-                      icon="ph ph-scales"
-                      @click="scrollToBalanceCard('weight')"
-                    >
-                      Weight:
-                      {{
-                        !hasCargoInvoiceWeight
-                          ? 'not set'
-                          : weightNeedsAttention
-                            ? 'needs fix'
-                            : 'matched'
-                      }}
-                    </q-chip>
-                    <q-chip
-                      clickable
-                      dense
-                      :color="purchaseNeedsAttention ? 'orange-1' : hasProductInvoiceTotal ? 'green-1' : 'grey-2'"
-                      :text-color="purchaseNeedsAttention ? 'orange-10' : hasProductInvoiceTotal ? 'green-9' : 'grey-8'"
-                      icon="ph ph-money"
-                      @click="scrollToBalanceCard('purchase')"
-                    >
-                      Purchase:
-                      {{
-                        !hasProductInvoiceTotal
-                          ? 'not set'
-                          : purchaseNeedsAttention
-                            ? 'needs fix'
-                            : 'matched'
-                      }}
-                    </q-chip>
-                  </div>
+                  <q-btn
+                    outline
+                    dense
+                    no-caps
+                    size="sm"
+                    color="primary"
+                    icon="ph ph-arrow-square-out"
+                    label="Open Rates & Invoices Page"
+                    style="border-radius: 8px"
+                    class="q-px-sm"
+                    @click="goToRatesInvoices"
+                  />
+                </div>
+                <div class="row q-gutter-sm q-mt-none">
+                  <q-chip
+                    clickable
+                    dense
+                    :color="weightNeedsAttention ? 'orange-1' : hasCargoInvoiceWeight ? 'green-1' : 'grey-2'"
+                    :text-color="weightNeedsAttention ? 'orange-10' : hasCargoInvoiceWeight ? 'green-9' : 'grey-8'"
+                    icon="ph ph-scales"
+                    @click="scrollToBalanceCard('weight')"
+                  >
+                    Weight:
+                    {{
+                      !hasCargoInvoiceWeight
+                        ? 'not set'
+                        : weightNeedsAttention
+                          ? 'needs fix'
+                          : 'matched'
+                    }}
+                  </q-chip>
+                  <q-chip
+                    clickable
+                    dense
+                    :color="purchaseNeedsAttention ? 'orange-1' : hasProductInvoiceTotal ? 'green-1' : 'grey-2'"
+                    :text-color="purchaseNeedsAttention ? 'orange-10' : hasProductInvoiceTotal ? 'green-9' : 'grey-8'"
+                    icon="ph ph-money"
+                    @click="scrollToBalanceCard('purchase')"
+                  >
+                    Purchase:
+                    {{
+                      !hasProductInvoiceTotal
+                        ? 'not set'
+                        : purchaseNeedsAttention
+                          ? 'needs fix'
+                          : 'matched'
+                    }}
+                  </q-chip>
                 </div>
                 <div ref="weightBalanceCardEl">
                   <ShipmentWeightBalanceCard
@@ -607,7 +638,6 @@ const {
   downloadExcel,
   openAddItems,
   openBulkPaste,
-  autoAcceptSplits,
   openEditItem,
   confirmDeleteItem,
   onSaveCostEntries,
@@ -636,6 +666,24 @@ const goToWarehouseStock = () => {
     void router.push({
       name: 'app-procurement-stock-list',
       query: { shipment_id: String(sId) },
+    });
+  }
+};
+
+const goToRatesInvoices = () => {
+  const tenantSlug = route.params.tenantSlug;
+  const sId = shipmentStore.currentShipment?.id || shipmentId;
+  if (!sId) return;
+
+  if (tenantSlug) {
+    void router.push({
+      name: 'app-procurement-shipment-rates-invoices',
+      params: { tenantSlug, id: sId },
+    });
+  } else {
+    void router.push({
+      name: 'app-procurement-shipment-rates-invoices',
+      params: { id: sId },
     });
   }
 };

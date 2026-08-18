@@ -869,7 +869,7 @@ defineExpose({
 .shipment-table-scroll-wrap {
   overflow: auto;
   position: relative;
-  max-height: min(78vh, calc(100vh - 280px));
+  max-height: min(88vh, calc(100vh - 165px));
   background: var(--bw-theme-base, #eef2f5);
 }
 

@@ -1,4 +1,14 @@
 import { supabase } from 'src/boot/supabase';
+import { globalShipmentCostEntryRepository } from './globalShipmentCostEntryRepository';
+import { globalShipmentBoxRepository } from './globalShipmentBoxRepository';
+import {
+  calculateShipmentCostSummary,
+  costingShipmentFromEntries,
+} from 'src/shared/shipment-engine';
+import {
+  isShipmentCostFinalized,
+  sumProductEntryAmount,
+} from '../utils/costEntriesCosting';
 
 const db = supabase as any;
 
@@ -404,6 +414,101 @@ const applyWeightBalance = async (
 
   if (error) throw error;
   return data as ApplyWeightBalanceRpcResult;
+};
+
+export interface ShipmentSummaryKPIs {
+  total_lines: number;
+  total_ordered_quantity: number;
+  total_received_quantity: number;
+  packaging_weight_kg: number;
+  cargo_weight_kg: number;
+  boxes_weight_kg: number;
+  boxes_count: number;
+  purchase_currency_symbol: string;
+  cost_currency_symbol: string;
+  goods_purchase_total: number;
+  cargo_purchase_total: number;
+  total_purchase_amount: number;
+  goods_cost_bdt: number;
+  cargo_cost_bdt: number;
+  total_landed_cost_bdt: number;
+  avg_cost_per_unit_bdt: number;
+  effective_exchange_rate: number | null;
+  has_cargo_weight: boolean;
+  has_product_invoice: boolean;
+  weight_matched: boolean;
+  purchase_matched: boolean;
+  weight_delta_kg: number;
+  purchase_delta_amount: number;
+  matched_invoices_ratio: string;
+  is_cost_finalized: boolean;
+}
+
+const getShipmentSummary = async (shipmentId: number): Promise<ShipmentSummaryKPIs> => {
+  const [shipment, items, costEntries, boxes] = await Promise.all([
+    getById(shipmentId),
+    listShipmentItems(shipmentId),
+    globalShipmentCostEntryRepository.listByShipmentId(shipmentId),
+    globalShipmentBoxRepository.listByShipmentId(shipmentId),
+  ]);
+
+  const totalLines = items.length;
+  const totalOrderedQty = items.reduce((sum, it) => sum + (Number(it.ordered_quantity) || 0), 0);
+  const totalReceivedQty = items.reduce((sum, it) => sum + (Number(it.received_quantity) || 0), 0);
+  const packagingWeightKg = items.reduce(
+    (sum, it) => sum + (Number(it.ordered_quantity) || 0) * (Number(it.package_weight) || 0),
+    0,
+  );
+  const boxesWeightKg = boxes.reduce((sum, b) => sum + (Number(b.weight_kg) || 0), 0);
+  const cargoWeightKg = Number(shipment.total_weight_kg ?? shipment.received_weight) || 0;
+  const hasCargoWeight = cargoWeightKg > 0;
+
+  const costingShipment = costingShipmentFromEntries(shipment, costEntries as any, items);
+  const costSummary = calculateShipmentCostSummary(costingShipment, items);
+
+  const productCostEntriesTotal = sumProductEntryAmount(costEntries as any);
+  const hasProductInvoice = productCostEntriesTotal > 0;
+
+  const weightDeltaKg = Math.round(Math.abs(packagingWeightKg - cargoWeightKg) * 100) / 100;
+  const purchaseDeltaAmount =
+    Math.round(Math.abs(productCostEntriesTotal - costSummary.goodsPurchase) * 100) / 100;
+
+  const weightMatched = hasCargoWeight && weightDeltaKg <= 0.01;
+  const purchaseMatched = hasProductInvoice && purchaseDeltaAmount <= 0.05;
+
+  let matchCount = 0;
+  if (weightMatched) matchCount++;
+  if (purchaseMatched) matchCount++;
+
+  const avgCost = totalOrderedQty > 0 ? costSummary.totalCost / totalOrderedQty : 0;
+
+  return {
+    total_lines: totalLines,
+    total_ordered_quantity: totalOrderedQty,
+    total_received_quantity: totalReceivedQty,
+    packaging_weight_kg: Math.round(packagingWeightKg * 100) / 100,
+    cargo_weight_kg: Math.round(cargoWeightKg * 100) / 100,
+    boxes_weight_kg: Math.round(boxesWeightKg * 100) / 100,
+    boxes_count: boxes.length,
+    purchase_currency_symbol: '£',
+    cost_currency_symbol: '৳',
+    goods_purchase_total: costSummary.goodsPurchase,
+    cargo_purchase_total: costSummary.cargoPurchase,
+    total_purchase_amount: costSummary.totalPurchase,
+    goods_cost_bdt: costSummary.goodsCost,
+    cargo_cost_bdt: costSummary.cargoCost,
+    total_landed_cost_bdt: costSummary.totalCost,
+    avg_cost_per_unit_bdt: Math.round(avgCost * 100) / 100,
+    effective_exchange_rate: costSummary.transactionRate,
+    has_cargo_weight: hasCargoWeight,
+    has_product_invoice: hasProductInvoice,
+    weight_matched: weightMatched,
+    purchase_matched: purchaseMatched,
+    weight_delta_kg: weightDeltaKg,
+    purchase_delta_amount: purchaseDeltaAmount,
+    matched_invoices_ratio: `${matchCount}/2`,
+    is_cost_finalized: isShipmentCostFinalized(shipment),
+  };
 };
 
 export interface ApplyPurchaseBalanceAdjustment {
@@ -1034,5 +1139,6 @@ export const globalShipmentRepository = {
   returnShipmentToVendor,
   settleShipmentPayee,
   listShipmentPayeeSettlements,
+  getShipmentSummary,
 };
 
