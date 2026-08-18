@@ -3,7 +3,11 @@
     <q-card style="min-width: 500px; max-width: 90vw">
       <q-card-section class="row items-center justify-between">
         <div class="text-h6">
-          {{ isEditMode ? 'Edit Costing File' : 'Create Costing File' }}
+          {{
+            isEditMode
+              ? $t('product_based_costing.edit_costing_file')
+              : $t('product_based_costing.create_file')
+          }}
         </div>
 
         <q-btn icon="ph ph-x" flat round dense v-close-popup />
@@ -15,11 +19,11 @@
         <q-form ref="formRef" @submit.prevent="handleSubmit" class="q-gutter-md">
           <q-input
             v-model="form.name"
-            label="Name"
+            :label="$t('product_based_costing.col_name')"
             outlined
             dense
             clearable
-            :rules="[(val) => !!val || 'Name is required']"
+            :rules="[(val) => !!val || $t('product_based_costing.name_required')]"
           />
 
           <q-select
@@ -27,7 +31,7 @@
             :options="profileOptions"
             option-label="name"
             option-value="id"
-            label="Billing Profile (Customer)"
+            :label="$t('product_based_costing.billing_profile_customer')"
             outlined
             dense
             clearable
@@ -39,7 +43,9 @@
           >
             <template #no-option>
               <q-item dense class="column items-center q-py-md q-gutter-y-xs">
-                <div class="text-caption text-grey-7">No billing profiles found</div>
+                <div class="text-caption text-grey-7">
+                  {{ $t('product_based_costing.no_billing_profiles') }}
+                </div>
                 <q-btn
                   color="primary"
                   unelevated
@@ -47,7 +53,7 @@
                   no-caps
                   size="sm"
                   icon="ph ph-plus"
-                  label="Create New Billing Profile"
+                  :label="$t('product_based_costing.create_billing_profile')"
                   class="q-px-sm q-mt-xs"
                   @click="openCreateBillingProfileDialog"
                 />
@@ -57,26 +63,35 @@
 
           <q-input
             v-model="form.order_for"
-            label="Created For"
-            hint="This name prints on the PDF / screenshot."
+            :label="$t('product_based_costing.col_created_for')"
+            :hint="$t('product_based_costing.created_for_pdf_hint')"
             outlined
             dense
             clearable
-            :rules="[(val) => !!val || 'Created For is required']"
+            :rules="[(val) => !!val || $t('product_based_costing.created_for_required')]"
           />
 
-          <q-input v-model="form.note" label="Note" type="textarea" autogrow outlined dense />
+          <q-input
+            v-model="form.note"
+            :label="$t('product_based_costing.note')"
+            type="textarea"
+            autogrow
+            outlined
+            dense
+          />
         </q-form>
       </q-card-section>
 
       <q-separator />
 
       <q-card-actions align="right">
-        <q-btn flat label="Cancel" color="grey-7" v-close-popup />
+        <q-btn flat :label="$t('product_based_costing.cancel')" color="grey-7" v-close-popup />
         <q-btn
           unelevated
           color="primary"
-          :label="isEditMode ? 'Update' : 'Create'"
+          :label="
+            isEditMode ? $t('product_based_costing.update') : $t('product_based_costing.create')
+          "
           @click="handleSubmit"
         />
       </q-card-actions>
@@ -87,6 +102,7 @@
 <script setup lang="ts">
 import { computed, reactive, watch, ref } from 'vue';
 import { useQuasar } from 'quasar';
+import { useI18n } from 'vue-i18n';
 import {
   type BillingProfile,
 } from 'src/modules/sales_invoice/repositories/billingProfileRepository';
@@ -120,6 +136,7 @@ type FormRef = {
 };
 
 const $q = useQuasar();
+const { t } = useI18n();
 const formRef = ref<FormRef | null>(null);
 
 const emptyForm = (): CostingFileForm => ({
@@ -187,12 +204,12 @@ function filterProfiles(val: string, update: (fn: () => void) => void) {
 
 function openCreateBillingProfileDialog() {
   $q.dialog({
-    title: 'Create Billing Profile',
-    message: 'Enter the name for the new billing profile:',
+    title: t('product_based_costing.create_billing_profile_title'),
+    message: t('product_based_costing.create_billing_profile_message'),
     prompt: {
       model: profileSearchText.value.trim(),
       type: 'text',
-      label: 'Profile Name *',
+      label: t('product_based_costing.profile_name'),
       isValid: (val) => Boolean(val && val.trim().length > 0),
     },
     cancel: true,
@@ -201,7 +218,7 @@ function openCreateBillingProfileDialog() {
     void (async () => {
       const tenantId = tenantStore.selectedTenant?.id;
       if (!tenantId) {
-        showErrorNotification('No active tenant selected.');
+        showErrorNotification(t('product_based_costing.no_active_tenant'));
         return;
       }
       try {
@@ -209,11 +226,13 @@ function openCreateBillingProfileDialog() {
           tenant_id: tenantId,
           name: name.trim(),
         });
-        showSuccessNotification(`Billing profile "${created.name}" created successfully.`);
+        showSuccessNotification(t('product_based_costing.billing_profile_created', { name: created.name }));
         selectedProfile.value = created;
         onProfileChange(created);
       } catch (err: unknown) {
-        showErrorNotification(err instanceof Error ? err.message : 'Failed to create billing profile.');
+        showErrorNotification(
+          err instanceof Error ? err.message : t('product_based_costing.create_billing_profile_failed'),
+        );
       }
     })();
   });

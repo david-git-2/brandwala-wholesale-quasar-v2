@@ -9,12 +9,14 @@
           <div class="col">
             <q-input
               v-model="browseSearch"
-              placeholder="Search name, barcode, or code"
+              :placeholder="$t('product_based_costing.search_name_barcode_code')"
               outlined
               dense
               clearable
+              clear-value=""
               autofocus
               class="full-width"
+              @clear="onClearSearch"
             >
               <template #prepend>
                 <q-icon name="ph ph-magnifying-glass" />
@@ -28,7 +30,7 @@
               no-caps
               color="grey-8"
               icon="ph ph-list-plus"
-              label="Bulk codes"
+              :label="$t('product_based_costing.bulk_codes')"
               @click="showBulkCodes = !showBulkCodes"
             />
             <q-btn flat round dense icon="ph ph-funnel" color="grey-8" @click="openFilterSidebar">
@@ -55,7 +57,7 @@
               overflowY: 'auto',
               resize: 'none',
             }"
-            placeholder="Paste barcodes or product codes, one per line"
+            :placeholder="$t('product_based_costing.paste_codes_placeholder')"
           />
           <div class="row items-center q-col-gutter-sm">
             <div class="col-auto">
@@ -64,7 +66,7 @@
                 type="number"
                 outlined
                 dense
-                label="Qty"
+                :label="$t('product_based_costing.table_col_qty')"
                 style="width: 90px"
                 min="1"
                 step="1"
@@ -76,7 +78,7 @@
                 no-caps
                 color="primary"
                 icon="ph ph-plus"
-                label="Add to file"
+                :label="$t('product_based_costing.add_to_file')"
                 class="full-width"
                 :loading="bulkLoading"
                 :disable="!bulkCodesText.trim() || submitting"
@@ -88,23 +90,16 @@
       </div>
 
       <div class="browse-section col column q-px-md q-pb-sm">
-        <div class="text-subtitle2 text-weight-bold q-mb-xs">Catalog</div>
+        <div class="text-subtitle2 text-weight-bold q-mb-xs">{{ $t('product_based_costing.catalog') }}</div>
         <div class="col scroll browse-list-container relative-position">
           <q-inner-loading :showing="browseLoading" />
-          <q-list dense bordered separator class="rounded-borders browse-list">
-            <q-item
-              v-if="browseSearch.trim()"
-              clickable
-              @click="onCreateMissingProduct"
-            >
-              <q-item-section avatar>
-                <q-avatar square color="primary" text-color="white" icon="ph ph-plus" size="48px" />
-              </q-item-section>
-              <q-item-section>
-                <q-item-label class="text-weight-medium">{{ createMissingProductLabel }}</q-item-label>
-                <q-item-label caption>Not in the catalog? Add it as a new product.</q-item-label>
-              </q-item-section>
-            </q-item>
+          <q-list
+            v-if="browseList.length || !browseSearchQuery"
+            dense
+            bordered
+            separator
+            class="rounded-borders browse-list"
+          >
             <q-item v-for="product in browseList" :key="product.id">
               <q-item-section avatar>
                 <q-avatar square class="bg-grey-2 browse-product-thumb">
@@ -121,7 +116,7 @@
                 <q-item-label caption>
                   {{
                     [product.product_code, product.barcode].filter(Boolean).join(' · ') ||
-                    'No code'
+                    $t('product_based_costing.no_code')
                   }}
                 </q-item-label>
                 <q-item-label
@@ -132,7 +127,7 @@
                   £{{ product.list_price_amount.toFixed(2) }}
                 </q-item-label>
                 <q-item-label v-if="isAlreadyOnFile(product)" caption class="text-negative">
-                  Already on file
+                  {{ $t('product_based_costing.already_on_file_short') }}
                 </q-item-label>
               </q-item-section>
               <q-item-section side>
@@ -142,25 +137,22 @@
                   no-caps
                   color="primary"
                   icon="ph ph-plus"
-                  label="Add"
+                  :label="$t('product_based_costing.add')"
                   :loading="addingProductId === product.id"
                   :disable="isAlreadyOnFile(product) || submitting"
                   @click="addProductToFile(product)"
                 />
               </q-item-section>
             </q-item>
-            <q-item v-if="!browseLoading && browseList.length === 0 && !browseSearch.trim()">
+            <q-item v-if="!browseLoading && browseList.length === 0 && !browseSearchQuery">
               <q-item-section class="text-center q-pa-md">
                 <div class="text-grey-6">
-                  {{ activeFilterCount ? 'No products found' : 'Search the catalog' }}
+                  {{
+                    activeFilterCount
+                      ? $t('product_based_costing.no_products_found')
+                      : $t('product_based_costing.search_catalog')
+                  }}
                 </div>
-              </q-item-section>
-            </q-item>
-            <q-item
-              v-else-if="!browseLoading && browseList.length === 0 && browseSearch.trim()"
-            >
-              <q-item-section class="text-center q-pa-md text-grey-6">
-                No products found
               </q-item-section>
             </q-item>
           </q-list>
@@ -170,11 +162,39 @@
               dense
               no-caps
               color="primary"
-              label="Load more"
+              :label="$t('product_based_costing.load_more')"
               :loading="browseLoading"
               @click="loadMoreBrowse"
             />
           </div>
+          <q-list
+            v-if="browseSearchQuery"
+            dense
+            bordered
+            class="rounded-borders browse-list"
+            :class="{ 'q-mt-sm': browseList.length > 0 || browseTotal > browseList.length }"
+          >
+            <q-item clickable @click="onCreateMissingProduct">
+              <q-item-section avatar>
+                <q-avatar square color="primary" text-color="white" icon="ph ph-plus" size="48px" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label class="text-weight-medium">{{ createMissingProductLabel }}</q-item-label>
+                <q-item-label caption>{{ createMissingProductCaption }}</q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-btn
+                  unelevated
+                  dense
+                  no-caps
+                  color="primary"
+                  icon="ph ph-plus"
+                  :label="$t('product_based_costing.create')"
+                  @click.stop="onCreateMissingProduct"
+                />
+              </q-item-section>
+            </q-item>
+          </q-list>
         </div>
       </div>
 
@@ -183,19 +203,19 @@
           unelevated
           no-caps
           color="primary"
-          label="Done"
+          :label="$t('product_based_costing.done')"
           class="full-width"
           @click="onDone"
         />
       </div>
     </div>
 
-    <FilterSidebar v-model="filterDrawerOpen" title="Filters" :z-index="7000">
+    <FilterSidebar v-model="filterDrawerOpen" :title="$t('product_based_costing.filters')" :z-index="7000">
       <div class="q-gutter-y-md q-pa-sm">
         <q-select
           v-model="draftVendorId"
           :options="vendorOptions"
-          label="Vendor"
+          :label="$t('product_based_costing.vendor')"
           filled
           dense
           emit-value
@@ -207,7 +227,7 @@
         <q-select
           v-model="draftBrand"
           :options="brandOptions"
-          label="Brand"
+          :label="$t('product_based_costing.table_col_brand')"
           filled
           dense
           use-input
@@ -221,7 +241,7 @@
         <q-select
           v-model="draftCategory"
           :options="categoryOptions"
-          label="Category"
+          :label="$t('product_based_costing.category')"
           filled
           dense
           use-input
@@ -233,8 +253,20 @@
         />
 
         <div class="row justify-end q-gutter-x-sm q-mt-md">
-          <q-btn flat no-caps label="Reset" color="grey-7" @click="onResetFilters" />
-          <q-btn unelevated no-caps label="Apply Filters" color="primary" @click="onApplyFilters" />
+          <q-btn
+            flat
+            no-caps
+            :label="$t('product_based_costing.reset')"
+            color="grey-7"
+            @click="onResetFilters"
+          />
+          <q-btn
+            unelevated
+            no-caps
+            :label="$t('product_based_costing.apply_filters')"
+            color="primary"
+            @click="onApplyFilters"
+          />
         </div>
       </div>
     </FilterSidebar>
@@ -244,14 +276,18 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import { useQuasar } from 'quasar';
+import { useI18n } from 'vue-i18n';
+import { useQueryClient } from '@tanstack/vue-query';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
 import { useProductBasedCostingStore } from '../stores/productBasedCostingStore';
 import { describePbcItemMutationError } from '../composables/useProductBasedCostingItemMutations';
+import { productBasedCostingQueryKeys } from '../shared/queryKeys/productBasedCostingQueryKeys';
 import { productRepository } from 'src/modules/products/repositories/productRepository';
 import { productService } from 'src/modules/products/services/productService';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import SmartImage from 'src/components/SmartImage.vue';
+import type { ProductBasedCostingItem } from '../types';
 
 interface ProductItem {
   id: number;
@@ -284,6 +320,8 @@ const emit = defineEmits<{
 }>();
 
 const $q = useQuasar();
+const { t } = useI18n();
+const queryClient = useQueryClient();
 const authStore = useAuthStore();
 const vendorStore = useVendorStore();
 const costingStore = useProductBasedCostingStore();
@@ -292,6 +330,7 @@ const submitting = ref(false);
 const addingProductId = ref<number | null>(null);
 
 const browseSearch = ref('');
+const browseSearchQuery = computed(() => (browseSearch.value ?? '').trim());
 const browseSearchField = ref<'name' | 'barcode' | 'product_code'>('name');
 const browseList = ref<ProductItem[]>([]);
 const browseLoading = ref(false);
@@ -406,6 +445,19 @@ const persistProductToFile = async (product: ProductItem, qty: number) => {
     $q.notify({ type: 'negative', message: described.message });
     return { ok: false as const, skipped: false };
   }
+
+  const created = result.data;
+  if (created) {
+    queryClient.setQueryData<ProductBasedCostingItem[]>(
+      productBasedCostingQueryKeys.itemsList(props.fileId),
+      (oldItems) => {
+        if (!oldItems) return [created];
+        if (oldItems.some((item) => item.id === created.id)) return oldItems;
+        return [...oldItems, created];
+      },
+    );
+  }
+
   return { ok: true as const, skipped: false };
 };
 
@@ -413,7 +465,7 @@ const addProductToFile = async (product: ProductItem) => {
   if (isAlreadyOnFile(product)) {
     $q.notify({
       type: 'warning',
-      message: `"${product.name}" is already on this costing file.`,
+      message: t('product_based_costing.already_on_file_named', { name: product.name }),
     });
     return;
   }
@@ -442,18 +494,18 @@ const parseBulkCodes = (raw: string): string[] => {
 const onBulkAddCodes = async () => {
   const codes = parseBulkCodes(bulkCodesText.value);
   if (codes.length === 0) {
-    $q.notify({ type: 'warning', message: 'Paste at least one barcode or product code.' });
+    $q.notify({ type: 'warning', message: t('product_based_costing.paste_at_least_one_code') });
     return;
   }
 
   const qty = Math.floor(Number(bulkDefaultQty.value));
   if (!qty || isNaN(qty) || qty < 1) {
-    $q.notify({ type: 'warning', message: 'Quantity must be at least 1.' });
+    $q.notify({ type: 'warning', message: t('product_based_costing.quantity_min_1') });
     return;
   }
 
   if (!authStore.tenantId) {
-    $q.notify({ type: 'negative', message: 'Tenant is required to look up products.' });
+    $q.notify({ type: 'negative', message: t('product_based_costing.tenant_required_lookup') });
     return;
   }
 
@@ -497,30 +549,37 @@ const onBulkAddCodes = async () => {
     if (missing.length === 0 && added > 0) {
       $q.notify({
         type: 'positive',
-        message: `Added ${added} item${added === 1 ? '' : 's'} to the file.${skipNote}`,
+        message: t('product_based_costing.added_items_to_file', { count: added, skipNote }),
       });
     } else if (missing.length === 0 && skipped > 0) {
       $q.notify({
         type: 'warning',
-        message: `${skipped} already on this file.`,
+        message: t('product_based_costing.skipped_already_on_file', { count: skipped }),
       });
     } else if (missing.length > 0 && added > 0) {
       $q.notify({
         type: 'warning',
-        message: `Added ${added}.${skipNote} Not found: ${missing.join(', ')}`,
+        message: t('product_based_costing.added_with_missing', {
+          added,
+          skipNote,
+          missing: missing.join(', '),
+        }),
         timeout: 6000,
       });
     } else if (missing.length > 0) {
       $q.notify({
         type: 'negative',
-        message: `Not found: ${missing.join(', ')}${skipNote}`,
+        message: t('product_based_costing.missing_codes', {
+          missing: missing.join(', '),
+          skipNote,
+        }),
         timeout: 6000,
       });
     }
   } catch (err) {
     $q.notify({
       type: 'negative',
-      message: err instanceof Error ? err.message : 'Failed to look up products.',
+      message: err instanceof Error ? err.message : t('product_based_costing.failed_lookup_products'),
     });
   } finally {
     submitting.value = false;
@@ -532,7 +591,7 @@ let currentQuerySeq = 0;
 
 const loadBrowse = async (append = false) => {
   if (
-    !browseSearch.value.trim() &&
+    !browseSearchQuery.value &&
     !filterBrand.value &&
     !filterCategory.value &&
     !filterVendorId.value
@@ -553,7 +612,7 @@ const loadBrowse = async (append = false) => {
     const res = await productRepository.listProducts({
       page: browsePage.value,
       pageSize: 15,
-      search: browseSearch.value.trim() || undefined,
+      search: browseSearchQuery.value || undefined,
       searchField: browseSearchField.value,
       vendorCode,
       brand: filterBrand.value || undefined,
@@ -582,6 +641,13 @@ let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 const debouncedLoadBrowse = () => {
   if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
   searchDebounceTimer = setTimeout(() => void loadBrowse(), 300);
+};
+
+const onClearSearch = () => {
+  browseSearch.value = '';
+  browsePage.value = 1;
+  if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+  void loadBrowse();
 };
 
 watch(browseSearch, (newVal) => {
@@ -686,12 +752,20 @@ const onDone = () => {
 };
 
 const createMissingProductLabel = computed(() => {
-  const q = browseSearch.value.trim();
-  return q ? `Create "${q}" as a new product` : 'Create new product';
+  const q = browseSearchQuery.value;
+  return q
+    ? t('product_based_costing.create_named_product', { name: q })
+    : t('product_based_costing.create_new_product');
 });
 
+const createMissingProductCaption = computed(() =>
+  browseList.value.length
+    ? t('product_based_costing.cant_find_create')
+    : t('product_based_costing.no_catalog_match_create'),
+);
+
 const onCreateMissingProduct = () => {
-  emit('createNewProduct', browseSearch.value.trim());
+  emit('createNewProduct', browseSearchQuery.value);
 };
 
 onMounted(async () => {

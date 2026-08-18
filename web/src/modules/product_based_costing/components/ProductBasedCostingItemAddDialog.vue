@@ -3,7 +3,11 @@
     <q-card style="width: 960px; max-width: 95vw">
       <q-card-section class="row items-center justify-between">
         <div class="text-h6 text-weight-bold">
-          {{ isEditMode ? 'Edit Product Based Costing Item' : 'Add Product Based Costing Item' }}
+          {{
+            isEditMode
+              ? $t('product_based_costing.edit_costing_item')
+              : $t('product_based_costing.add_costing_item')
+          }}
         </div>
 
         <q-btn icon="ph ph-x" flat round dense v-close-popup />
@@ -32,14 +36,14 @@
                 >
                   <div class="column items-center">
                     <q-icon name="ph ph-image" size="48px" />
-                    <div class="text-caption q-mt-sm">No Image Preview</div>
+                    <div class="text-caption q-mt-sm">{{ $t('product_based_costing.no_image_preview') }}</div>
                   </div>
                 </div>
               </div>
 
               <q-input
                 v-model="form.image_url"
-                label="Image URL"
+                :label="$t('product_based_costing.image_url')"
                 outlined
                 dense
                 :disable="isProductListInputType"
@@ -49,7 +53,14 @@
                 </template>
               </q-input>
 
-              <q-input v-model="form.name" label="Name" type="textarea" autogrow outlined dense>
+              <q-input
+                v-model="form.name"
+                :label="$t('product_based_costing.col_name')"
+                type="textarea"
+                autogrow
+                outlined
+                dense
+              >
                 <template #prepend>
                   <q-icon name="ph ph-archive-box" />
                 </template>
@@ -57,7 +68,7 @@
 
               <q-input
                 v-model="form.barcode"
-                label="Barcode"
+                :label="$t('product_based_costing.barcode')"
                 outlined
                 dense
                 :disable="isProductListInputType"
@@ -69,7 +80,7 @@
 
               <q-input
                 v-model="form.product_code"
-                label="Product Code"
+                :label="$t('product_based_costing.product_code')"
                 outlined
                 dense
                 :disable="isProductListInputType"
@@ -79,7 +90,7 @@
                 </template>
               </q-input>
 
-              <q-input v-model="form.web_link" label="Web Link" outlined dense>
+              <q-input v-model="form.web_link" :label="$t('product_based_costing.web_link')" outlined dense>
                 <template #prepend>
                   <q-icon name="ph ph-link" />
                 </template>
@@ -95,7 +106,7 @@
                     :options="vendorOptions"
                     emit-value
                     map-options
-                    label="Vendor"
+                    :label="$t('product_based_costing.vendor')"
                     outlined
                     dense
                     clearable
@@ -114,7 +125,7 @@
                     :options="marketOptions"
                     emit-value
                     map-options
-                    label="Market"
+                    :label="$t('product_based_costing.market')"
                     outlined
                     dense
                     clearable
@@ -143,7 +154,7 @@
                         clearable
                         emit-value
                         map-options
-                        label="Brand"
+                        :label="$t('product_based_costing.table_col_brand')"
                         outlined
                         dense
                         :disable="isProductListInputType || !canPickBrandCategory"
@@ -160,7 +171,7 @@
                         color="primary"
                         no-caps
                         outline
-                        label="Add"
+                        :label="$t('product_based_costing.add')"
                         :disable="isProductListInputType || !canAddBrand"
                         @click="addBrandOption"
                         style="height: 40px"
@@ -182,7 +193,7 @@
                         clearable
                         emit-value
                         map-options
-                        label="Category"
+                        :label="$t('product_based_costing.category')"
                         outlined
                         dense
                         :disable="isProductListInputType || !canPickBrandCategory"
@@ -199,7 +210,7 @@
                         color="primary"
                         no-caps
                         outline
-                        label="Add"
+                        :label="$t('product_based_costing.add')"
                         :disable="isProductListInputType || !canAddCategory"
                         @click="addCategoryOption"
                         style="height: 40px"
@@ -213,7 +224,7 @@
                 <div class="col-12 col-sm-4">
                   <q-input
                     v-model.number="form.quantity"
-                    label="Quantity"
+                    :label="$t('product_based_costing.table_col_qty')"
                     type="number"
                     outlined
                     dense
@@ -227,7 +238,7 @@
                 <div class="col-12 col-sm-4">
                   <q-input
                     v-model.number="form.confirmed_quantity"
-                    label="Confirmed Qty"
+                    :label="$t('product_based_costing.table_col_confirmedQty')"
                     type="number"
                     outlined
                     dense
@@ -241,7 +252,7 @@
                 <div class="col-12 col-sm-4">
                   <q-input
                     v-model.number="form.ordered_quantity"
-                    label="Ordered Qty"
+                    :label="$t('product_based_costing.table_col_orderedQty')"
                     type="number"
                     outlined
                     dense
@@ -257,7 +268,7 @@
                 <div class="col-12">
                   <q-input
                     v-model.number="form.price_gbp"
-                    label="Price GBP"
+                    :label="$t('product_based_costing.bulk_price_gbp')"
                     type="number"
                     outlined
                     dense
@@ -269,7 +280,9 @@
                 </div>
               </div>
               <div class="row items-center justify-between q-mt-sm">
-                <div class="text-subtitle2 text-weight-medium text-grey-8">Weights (g)</div>
+                <div class="text-subtitle2 text-weight-medium text-grey-8">
+                  {{ $t('product_based_costing.weights_g') }}
+                </div>
                 <q-btn
                   color="purple"
                   flat
@@ -277,7 +290,7 @@
                   no-caps
                   size="sm"
                   icon="ph ph-sparkle"
-                  label="Autofill weights via Gemini"
+                  :label="$t('product_based_costing.autofill_weights')"
                   :loading="aiLoading"
                   @click="autofillWeights"
                 />
@@ -287,7 +300,7 @@
                 <div class="col-12 col-sm-6">
                   <q-input
                     v-model.number="form.product_weight"
-                    label="Product Weight"
+                    :label="$t('product_based_costing.bulk_product_weight_g')"
                     type="number"
                     outlined
                     dense
@@ -300,7 +313,7 @@
                 <div class="col-12 col-sm-6">
                   <q-input
                     v-model.number="form.package_weight"
-                    label="Package Weight"
+                    :label="$t('product_based_costing.bulk_package_weight_g')"
                     type="number"
                     outlined
                     dense
@@ -313,7 +326,9 @@
               </div>
 
               <div>
-                <div class="text-subtitle2 q-mb-xs text-weight-medium text-grey-8">Item Note</div>
+                <div class="text-subtitle2 q-mb-xs text-weight-medium text-grey-8">
+                  {{ $t('product_based_costing.item_note') }}
+                </div>
                 <q-editor
                   v-model="form.note"
                   min-height="120px"
@@ -333,10 +348,10 @@
       <q-separator />
 
       <q-card-actions align="right">
-        <q-btn flat label="Cancel" v-close-popup />
+        <q-btn flat :label="$t('product_based_costing.cancel')" v-close-popup />
         <q-btn
           color="primary"
-          :label="isEditMode ? 'Update' : 'Save'"
+          :label="isEditMode ? $t('product_based_costing.update') : $t('shop_admin.save')"
           :loading="store.saving"
           @click="submitForm"
         />
@@ -347,6 +362,7 @@
 
 <script setup lang="ts">
 import { computed, watch, reactive, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useProductBasedCostingStore } from '../stores/productBasedCostingStore';
 import SmartImage from 'src/components/SmartImage.vue';
 import { useProductStore } from 'src/modules/products/stores/productStore';
@@ -402,6 +418,7 @@ const vendorStore = useVendorStore();
 const { data: marketsData } = useGlobalMarketsQuery();
 const authStore = useAuthStore();
 const $q = useQuasar();
+const { t } = useI18n();
 
 const aiLoading = ref(false);
 
@@ -409,7 +426,7 @@ const autofillWeights = async () => {
   if (!form.name || !form.name.trim()) {
     $q.notify({
       type: 'negative',
-      message: 'Please enter a product name first to find its weights.',
+      message: t('product_based_costing.enter_name_first_weight'),
     });
     return;
   }
@@ -421,9 +438,8 @@ const autofillWeights = async () => {
 
   if (!apiKey || !apiKey.trim()) {
     $q.dialog({
-      title: 'Configure Gemini API Key',
-      message:
-        'To use the AI autofill feature for free, please enter your Gemini API Key from Google AI Studio:',
+      title: t('product_based_costing.configure_gemini_api'),
+      message: t('product_based_costing.configure_gemini_api_msg'),
       prompt: {
         model: '',
         type: 'text',
@@ -435,7 +451,7 @@ const autofillWeights = async () => {
       localStorage.setItem('gemini_api_key', key.trim());
       $q.notify({
         type: 'positive',
-        message: 'Gemini API Key saved locally! Retrying...',
+        message: t('product_based_costing.gemini_key_saved_retry'),
       });
       void runAIFill();
     });
@@ -480,14 +496,14 @@ const runAIFill = async () => {
 
     $q.notify({
       type: 'positive',
-      message: 'Weights successfully auto-filled!',
+      message: t('product_based_costing.weights_autofilled'),
     });
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     console.error('Gemini error:', error);
     $q.notify({
       type: 'negative',
-      message: errMsg || 'Failed to fetch weights.',
+      message: errMsg || t('product_based_costing.failed_fetch_weights'),
     });
   } finally {
     aiLoading.value = false;

@@ -2,7 +2,9 @@
   <q-dialog ref="dialogRef" @hide="onDialogHide" persistent>
     <q-card class="q-dialog-plugin" style="width: 800px; max-width: 95vw">
       <q-card-section class="row items-center q-pb-none">
-        <div class="text-h6 text-primary text-weight-bold">Bulk Paste Costing Updates</div>
+        <div class="text-h6 text-primary text-weight-bold">
+          {{ $t('product_based_costing.bulk_paste_title') }}
+        </div>
         <q-space />
         <q-btn icon="ph ph-x" flat round dense v-close-popup />
       </q-card-section>
@@ -12,8 +14,7 @@
           <template #avatar>
             <q-icon name="ph ph-info" size="sm" />
           </template>
-          Copy cells from Excel or Google Sheets (Quantity, Price, Product Weight, or Package
-          Weight) and paste them below. Values are applied to items top to bottom in table order.
+          {{ $t('product_based_costing.bulk_paste_hint') }}
         </q-banner>
 
         <div v-if="!parsedRows.length">
@@ -22,7 +23,7 @@
             type="textarea"
             filled
             rows="10"
-            placeholder="Paste your copied Excel data here..."
+            :placeholder="$t('product_based_costing.bulk_paste_placeholder')"
             @update:model-value="onPasteUpdate"
           />
         </div>
@@ -30,14 +31,19 @@
         <div v-else class="column q-gutter-y-md">
           <div class="row justify-between items-center">
             <div class="text-subtitle2 text-grey-8">
-              Parsed {{ parsedRows.length }} rows with {{ maxColumns }} columns
+              {{
+                $t('product_based_costing.bulk_parsed_rows', {
+                  rows: parsedRows.length,
+                  cols: maxColumns,
+                })
+              }}
             </div>
             <q-btn
               flat
               no-caps
               dense
               color="primary"
-              label="Clear & Paste Again"
+              :label="$t('product_based_costing.bulk_clear_paste_again')"
               icon="ph ph-arrows-clockwise"
               @click="resetPaste"
             />
@@ -45,14 +51,14 @@
 
           <div class="bg-grey-2 q-pa-md rounded-borders">
             <div class="text-caption text-weight-medium text-grey-7 q-mb-sm">
-              Map Columns to Fields:
+              {{ $t('product_based_costing.bulk_map_columns') }}
             </div>
             <div class="row q-col-gutter-sm">
               <div v-for="colIdx in maxColumns" :key="colIdx" class="col-12 col-sm-3">
                 <q-select
                   v-model="colMappings[colIdx - 1]"
                   :options="mappingOptions"
-                  :label="`Column ${colIdx}`"
+                  :label="$t('product_based_costing.bulk_column_n', { n: colIdx })"
                   outlined
                   dense
                   bg-color="white"
@@ -63,12 +69,12 @@
             </div>
           </div>
 
-          <div class="text-subtitle2 text-grey-8 q-mb-xs">Preview Matches & Updates</div>
+          <div class="text-subtitle2 text-grey-8 q-mb-xs">{{ $t('product_based_costing.bulk_preview_updates') }}</div>
           <q-markup-table flat bordered dense class="preview-table">
             <thead>
               <tr>
                 <th class="text-left" style="width: 50px">SL</th>
-                <th class="text-left">Costing Product</th>
+                <th class="text-left">{{ $t('product_based_costing.bulk_costing_product') }}</th>
                 <th v-for="colIdx in maxColumns" :key="colIdx" class="text-center">
                   {{ getColumnLabel(colMappings[colIdx - 1]) }}
                 </th>
@@ -80,8 +86,14 @@
                 <td class="text-left text-weight-medium ellipsis" style="max-width: 250px">
                   {{ item.name }}
                   <div class="text-caption text-grey-6">
-                    Current: Qty {{ item.quantity }} · Price £{{ item.price_gbp }} · Wt
-                    {{ item.product_weight }}g · Pkg Wt {{ item.package_weight }}g
+                    {{
+                      $t('product_based_costing.bulk_current_row', {
+                        qty: item.quantity,
+                        price: item.price_gbp,
+                        weight: item.product_weight,
+                        pkgWeight: item.package_weight,
+                      })
+                    }}
                   </div>
                 </td>
                 <td v-for="colIdx in maxColumns" :key="colIdx" class="text-center font-mono">
@@ -108,8 +120,14 @@
                   <q-icon name="ph ph-warning" size="14px" class="q-mr-xs" />
                   {{
                     parsedRows.length > currentItems.length
-                      ? `You pasted ${parsedRows.length} rows, but this file only has ${currentItems.length} items. Extra rows will be ignored.`
-                      : `You pasted ${parsedRows.length} rows, but this file has ${currentItems.length} items. Remaining items will not be updated.`
+                      ? $t('product_based_costing.bulk_more_rows_than_items', {
+                          rows: parsedRows.length,
+                          items: currentItems.length,
+                        })
+                      : $t('product_based_costing.bulk_fewer_rows_than_items', {
+                          rows: parsedRows.length,
+                          items: currentItems.length,
+                        })
                   }}
                 </td>
               </tr>
@@ -119,11 +137,11 @@
       </q-card-section>
 
       <q-card-actions align="right" class="q-pa-md bg-grey-1">
-        <q-btn flat label="Cancel" color="grey-8" v-close-popup no-caps />
+        <q-btn flat :label="$t('product_based_costing.cancel')" color="grey-8" v-close-popup no-caps />
         <q-btn
           color="primary"
           unelevated
-          label="Apply Updates"
+          :label="$t('product_based_costing.bulk_apply_updates')"
           :disable="!parsedRows.length || !hasActiveMappings"
           :loading="submitting"
           no-caps
@@ -137,6 +155,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { useDialogPluginComponent, useQuasar } from 'quasar';
+import { useI18n } from 'vue-i18n';
 import { useProductBasedCostingStore } from '../stores/productBasedCostingStore';
 import type { ProductBasedCostingItemUpdateInput } from '../types';
 
@@ -145,6 +164,7 @@ defineEmits([...useDialogPluginComponent.emits]);
 const { dialogRef, onDialogHide, onDialogOK } = useDialogPluginComponent();
 const costingStore = useProductBasedCostingStore();
 const $q = useQuasar();
+const { t } = useI18n();
 
 const submitting = ref(false);
 const rawPasteText = ref('');
@@ -160,15 +180,15 @@ const previewRows = computed(() => {
 });
 
 const mappingOptions = [
-  { label: 'Ignore', value: 'ignore' },
-  { label: 'Quantity', value: 'quantity' },
-  { label: 'Price (£)', value: 'price_gbp' },
-  { label: 'Product Weight (g)', value: 'product_weight' },
-  { label: 'Package Weight (g)', value: 'package_weight' },
+  { label: t('product_based_costing.bulk_ignore'), value: 'ignore' },
+  { label: t('product_based_costing.table_col_qty'), value: 'quantity' },
+  { label: t('product_based_costing.bulk_price_gbp'), value: 'price_gbp' },
+  { label: t('product_based_costing.bulk_product_weight_g'), value: 'product_weight' },
+  { label: t('product_based_costing.bulk_package_weight_g'), value: 'package_weight' },
 ];
 
 const getColumnLabel = (mapping?: string) => {
-  return mappingOptions.find((opt) => opt.value === mapping)?.label || 'Ignore';
+  return mappingOptions.find((opt) => opt.value === mapping)?.label || t('product_based_costing.bulk_ignore');
 };
 
 const hasActiveMappings = computed(() => {
@@ -221,7 +241,7 @@ const formatPreviewValue = (val: string | null, mapping?: string): string => {
   const num = Number(val.replace(/[^0-9.-]/g, ''));
   if (isNaN(num)) return val;
 
-  if (mapping === 'quantity') return `${Math.floor(num)} pcs`;
+  if (mapping === 'quantity') return `${Math.floor(num)} ${t('product_based_costing.pcs')}`;
   if (mapping === 'price_gbp') return `£${num.toFixed(2)}`;
   if (mapping === 'product_weight' || mapping === 'package_weight') return `${num} g`;
   return val;
@@ -271,7 +291,7 @@ const onApply = async () => {
       if (!result.success) {
         $q.notify({
           type: 'negative',
-          message: result.error ?? 'Bulk update failed.',
+        message: result.error ?? t('product_based_costing.bulk_update_failed'),
         });
         return;
       }

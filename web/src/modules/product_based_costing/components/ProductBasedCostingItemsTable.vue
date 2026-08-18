@@ -6,21 +6,31 @@
     >
       <div class="text-body2 text-weight-medium">{{ selectedRowIds.length }} item(s) selected</div>
       <div class="row items-center q-gutter-sm">
-        <q-btn flat no-caps color="grey-8" label="Clear Selection" @click="selectedRowIds = []" />
+        <q-btn
+          flat
+          no-caps
+          color="grey-8"
+          :label="$t('product_based_costing.clear_selection')"
+          @click="selectedRowIds = []"
+        />
         <q-btn
           v-if="selectedRowIds.length === 1"
           unelevated
           no-caps
           color="primary"
           icon="ph ph-pencil-simple"
-          label="Edit"
+          :label="$t('product_based_costing.edit')"
           @click="onEditSelected"
         />
         <q-btn
           color="negative"
           no-caps
           icon="ph ph-trash"
-          :label="selectedRowIds.length === 1 ? 'Delete' : 'Delete selected'"
+          :label="
+            selectedRowIds.length === 1
+              ? $t('product_based_costing.delete')
+              : $t('product_based_costing.delete_selected')
+          "
           @click="showBulkDeleteConfirm = true"
         />
       </div>
@@ -37,7 +47,7 @@
           dense
           no-caps
           color="primary"
-          label="All Statuses"
+          :label="$t('product_based_costing.all_statuses')"
           class="q-px-sm text-caption"
           @click="statusFilter = 'all'"
         />
@@ -48,13 +58,22 @@
           no-caps
           color="teal-8"
           icon="ph ph-funnel"
-          :label="status === 'ready_for_shipment' ? 'Hide Rejected & Unavailable' : 'Hide Rejected'"
+          :label="
+            status === 'ready_for_shipment'
+              ? $t('product_based_costing.hide_rejected_unavailable')
+              : $t('product_based_costing.hide_rejected')
+          "
           class="q-px-sm text-caption"
           @click="statusFilter = 'active'"
         />
       </div>
       <div class="text-caption text-grey-7">
-        Showing {{ displayRows.length }} of {{ tableRows.length }} items
+        {{
+          $t('product_based_costing.showing_of_items', {
+            shown: displayRows.length,
+            total: tableRows.length,
+          })
+        }}
       </div>
     </div>
 
@@ -111,11 +130,13 @@
                       self="bottom middle"
                       :offset="[0, 8]"
                     >
-                      <div class="pbc-status-tooltip__k">Use this when</div>
+                      <div class="pbc-status-tooltip__k">{{ $t('product_based_costing.tooltip_use_when') }}</div>
                       <div class="pbc-status-tooltip__v">
                         {{ getItemStatusHint(slotProps.row.status)?.when }}
                       </div>
-                      <div class="pbc-status-tooltip__k pbc-status-tooltip__k--next">This will</div>
+                      <div class="pbc-status-tooltip__k pbc-status-tooltip__k--next">
+                        {{ $t('product_based_costing.tooltip_this_will') }}
+                      </div>
                       <div class="pbc-status-tooltip__v">
                         {{ getItemStatusHint(slotProps.row.status)?.does }}
                       </div>
@@ -135,7 +156,7 @@
                   <div class="card-image-wrapper">
                     <SmartImage
                       :src="slotProps.row.imageUrl"
-                      :alt="slotProps.row.name || 'Product image'"
+                      :alt="slotProps.row.name || $t('product_based_costing.product_image_alt')"
                       img-class="card-image"
                       fallback-class="card-image-placeholder"
                     />
@@ -146,7 +167,7 @@
                     text-color="grey-9"
                     class="offer-incomplete-badge q-mt-xs"
                   >
-                    Missing £ or weight
+                    {{ $t('product_based_costing.missing_price_weight') }}
                   </q-badge>
                 </div>
 
@@ -164,7 +185,7 @@
                       class="q-px-xs text-caption"
                     >
                       <q-icon name="ph ph-truck" class="q-mr-xs" />
-                      Added to shipment
+                      {{ $t('product_based_costing.added_to_shipment') }}
                     </q-badge>
                   </div>
 
@@ -172,7 +193,7 @@
                     v-if="isColumnVisible('brand') && slotProps.row.brand"
                     class="text-caption text-grey-8 q-mt-xs"
                   >
-                    <strong>Brand:</strong> {{ slotProps.row.brand }}
+                    <strong>{{ $t('product_based_costing.table_col_brand') }}:</strong> {{ slotProps.row.brand }}
                   </div>
 
                   <div
@@ -180,7 +201,7 @@
                     class="card-barcode-lines text-caption text-grey-7 q-mt-xs"
                   >
                     <div v-if="slotProps.row.barcode" class="row items-center no-wrap">
-                      <span>Barcode: {{ slotProps.row.barcode }}</span>
+                      <span>{{ $t('product_based_costing.barcode') }}: {{ slotProps.row.barcode }}</span>
                       <q-btn
                         flat
                         round
@@ -189,13 +210,13 @@
                         icon="ph ph-copy"
                         color="grey-6"
                         class="q-ml-xs"
-                        @click="handleCopy(slotProps.row.barcode, 'Barcode')"
+                        @click="handleCopy(slotProps.row.barcode, $t('product_based_costing.barcode'))"
                       >
-                        <q-tooltip>Copy Barcode</q-tooltip>
+                        <q-tooltip>{{ $t('product_based_costing.copy_barcode') }}</q-tooltip>
                       </q-btn>
                     </div>
                     <div v-if="slotProps.row.productCode" class="row items-center no-wrap">
-                      <span>Code: {{ slotProps.row.productCode }}</span>
+                      <span>{{ $t('product_based_costing.code') }}: {{ slotProps.row.productCode }}</span>
                       <q-btn
                         flat
                         round
@@ -204,9 +225,9 @@
                         icon="ph ph-copy"
                         color="grey-6"
                         class="q-ml-xs"
-                        @click="handleCopy(slotProps.row.productCode, 'Code')"
+                        @click="handleCopy(slotProps.row.productCode, $t('product_based_costing.code'))"
                       >
-                        <q-tooltip>Copy Code</q-tooltip>
+                        <q-tooltip>{{ $t('product_based_costing.copy_code') }}</q-tooltip>
                       </q-btn>
                     </div>
                     <div v-if="slotProps.row.productId" class="row items-center no-wrap">
@@ -219,9 +240,9 @@
                         icon="ph ph-copy"
                         color="grey-6"
                         class="q-ml-xs"
-                        @click="handleCopy(String(slotProps.row.productId), 'Product ID')"
+                        @click="handleCopy(String(slotProps.row.productId), $t('product_based_costing.product_id'))"
                       >
-                        <q-tooltip>Copy Product ID</q-tooltip>
+                        <q-tooltip>{{ $t('product_based_costing.copy_product_id') }}</q-tooltip>
                       </q-btn>
                     </div>
                   </div>
@@ -233,7 +254,7 @@
                       no-caps
                       color="primary"
                       icon="ph ph-arrow-up-right"
-                      label="Website"
+                      :label="$t('product_based_costing.table_col_website')"
                       size="xs"
                       type="a"
                       :href="slotProps.row.website"
@@ -249,7 +270,7 @@
                 v-if="isColumnVisible('note')"
                 class="card-note-section q-mt-md q-pa-sm rounded-borders bg-grey-1 text-caption"
               >
-                <div class="text-weight-bold text-grey-7 q-mb-xs">Note</div>
+                <div class="text-weight-bold text-grey-7 q-mb-xs">{{ $t('product_based_costing.note') }}</div>
                 <q-input
                   v-model="slotProps.row.noteHtml"
                   type="textarea"
@@ -258,7 +279,7 @@
                   borderless
                   class="cell-input"
                   input-class="text-caption"
-                  placeholder="Note"
+                  :placeholder="$t('product_based_costing.note')"
                   @blur="onNoteBlur(slotProps.row)"
                 />
               </div>
@@ -274,7 +295,7 @@
                   v-if="isColumnVisible('qty')"
                   class="col-6 col-sm-3 text-center q-pa-xs rounded-borders"
                 >
-                  <div class="metric-label">Qty</div>
+                  <div class="metric-label">{{ $t('product_based_costing.table_col_qty') }}</div>
                   <q-input
                     v-model.number="slotProps.row.qty"
                     type="number"
@@ -302,7 +323,7 @@
                       size="12px"
                       class="q-mr-xs"
                     />
-                    Confirmed Qty
+                    {{ $t('product_based_costing.table_col_confirmedQty') }}
                   </div>
                   <q-input
                     v-model.number="slotProps.row.confirmedQty"
@@ -318,7 +339,7 @@
                     @keyup.enter="blurInput"
                   />
                   <div v-if="focusConfirmedQty" class="text-caption text-grey-7">
-                    Edit if they took less
+                    {{ $t('product_based_costing.edit_if_took_less') }}
                   </div>
                 </div>
 
@@ -335,7 +356,7 @@
                       size="12px"
                       class="q-mr-xs"
                     />
-                    Ordered Qty
+                    {{ $t('product_based_costing.table_col_orderedQty') }}
                   </div>
                   <q-input
                     v-model.number="slotProps.row.orderedQty"
@@ -351,7 +372,7 @@
                     @keyup.enter="blurInput"
                   />
                   <div v-if="focusOrderedQty" class="text-caption text-grey-7">
-                    Type how many you got
+                    {{ $t('product_based_costing.type_how_many_got') }}
                   </div>
                 </div>
 
@@ -360,7 +381,7 @@
                   v-if="isColumnVisible('deliveredQty')"
                   class="col-6 col-sm-3 text-center q-pa-xs rounded-borders"
                 >
-                  <div class="metric-label">Delivered Qty</div>
+                  <div class="metric-label">{{ $t('product_based_costing.table_col_deliveredQty') }}</div>
                   <q-input
                     v-model.number="slotProps.row.deliveredQty"
                     type="number"
@@ -380,7 +401,7 @@
                   v-if="isColumnVisible('priceGbp')"
                   class="col-6 col-sm-3 text-center bg-gbp-light q-pa-xs rounded-borders"
                 >
-                  <div class="metric-label text-green-9">Price GBP</div>
+                  <div class="metric-label text-green-9">{{ $t('product_based_costing.bulk_price_gbp') }}</div>
                   <q-input
                     v-model.number="slotProps.row.priceGbp"
                     type="number"
@@ -399,7 +420,7 @@
                   v-if="isColumnVisible('productWeight')"
                   class="col-6 col-sm-3 text-center q-pa-xs rounded-borders"
                 >
-                  <div class="metric-label">Product wt (g)</div>
+                  <div class="metric-label">{{ $t('product_based_costing.bulk_product_weight_g') }}</div>
                   <q-input
                     v-model.number="slotProps.row.productWeight"
                     type="number"
@@ -419,7 +440,7 @@
                   v-if="isColumnVisible('packageWeight')"
                   class="col-6 col-sm-3 text-center q-pa-xs rounded-borders"
                 >
-                  <div class="metric-label">Package wt (g)</div>
+                  <div class="metric-label">{{ $t('product_based_costing.bulk_package_weight_g') }}</div>
                   <q-input
                     v-model.number="slotProps.row.packageWeight"
                     type="number"
@@ -440,7 +461,7 @@
                   v-if="isColumnVisible('offerPriceBdt')"
                   class="col-6 col-sm-3 text-center bg-offer-light q-pa-xs rounded-borders"
                 >
-                  <div class="metric-label text-purple-9">Offer Price BDT</div>
+                  <div class="metric-label text-purple-9">{{ $t('product_based_costing.preview_offer_price_bdt') }}</div>
                   <div class="row items-center justify-center no-wrap">
                     <q-icon
                       v-if="slotProps.row.isOfferPriceManual"
@@ -448,7 +469,7 @@
                       color="amber-8"
                       size="16px"
                     >
-                      <q-tooltip>Offer price manually locked — won't auto-recalculate</q-tooltip>
+                      <q-tooltip>{{ $t('product_based_costing.offer_locked_tooltip') }}</q-tooltip>
                     </q-icon>
                     <q-input
                       v-model.number="slotProps.row.offerPriceBdt"
@@ -470,10 +491,10 @@
                       size="xs"
                       icon="ph ph-arrows-clockwise"
                       color="grey-7"
-                      aria-label="Unlock offer price"
+                      :aria-label="$t('product_based_costing.unlock_offer_price')"
                       @click="onUnlockOfferPrice(slotProps.row)"
                     >
-                      <q-tooltip>Unlock and reset to auto price</q-tooltip>
+                      <q-tooltip>{{ $t('product_based_costing.unlock_offer_price_tooltip') }}</q-tooltip>
                     </q-btn>
                   </div>
                 </div>
@@ -483,7 +504,7 @@
                   v-if="isColumnVisible('costBdt')"
                   class="col-6 col-sm-3 text-center bg-bdt-light q-pa-xs rounded-borders"
                 >
-                  <div class="metric-label text-amber-9">Cost BDT</div>
+                  <div class="metric-label text-amber-9">{{ $t('product_based_costing.preview_cost_bdt') }}</div>
                   <div class="metric-value text-amber-10 font-mono text-weight-medium">
                     ৳{{ formatNumber(getCostBdt(slotProps.row)) }}
                   </div>
@@ -494,7 +515,7 @@
                   v-if="isColumnVisible('totalCostBdt')"
                   class="col-6 col-sm-3 text-center bg-bdt-light q-pa-xs rounded-borders"
                 >
-                  <div class="metric-label text-amber-9">Total Cost BDT</div>
+                  <div class="metric-label text-amber-9">{{ $t('product_based_costing.table_col_totalCostBdt') }}</div>
                   <div class="metric-value text-amber-10 font-mono text-weight-medium">
                     ৳{{ formatNumber(getTotalCostBdt(slotProps.row)) }}
                   </div>
@@ -502,7 +523,7 @@
 
                 <!-- Profit BDT -->
                 <div v-if="isColumnVisible('profitBdt')" class="col-6 col-sm-3 text-center">
-                  <div class="metric-label">Profit BDT</div>
+                  <div class="metric-label">{{ $t('product_based_costing.preview_profit_bdt') }}</div>
                   <div class="metric-value font-mono">
                     ৳{{ formatNumber(getProfitBdt(slotProps.row)) }}
                   </div>
@@ -510,7 +531,7 @@
 
                 <!-- Profit Rate -->
                 <div v-if="isColumnVisible('profitRate')" class="col-6 col-sm-3 text-center">
-                  <div class="metric-label">Profit Rate</div>
+                  <div class="metric-label">{{ $t('product_based_costing.table_col_profitRate') }}</div>
                   <div class="metric-value font-mono">
                     {{ formatNumber(getProfitRate(slotProps.row)) }}%
                   </div>
@@ -541,10 +562,10 @@
                 size="14px"
                 class="q-mr-xs"
               />
-              Confirmed Qty
+              {{ $t('product_based_costing.table_col_confirmedQty') }}
             </span>
             <span v-if="focusConfirmedQty" class="text-caption text-grey-7">
-              Edit if they took less
+              {{ $t('product_based_costing.edit_if_took_less') }}
             </span>
           </div>
         </q-th>
@@ -564,10 +585,10 @@
                 size="14px"
                 class="q-mr-xs"
               />
-              Ordered Qty
+              {{ $t('product_based_costing.table_col_orderedQty') }}
             </span>
             <span v-if="focusOrderedQty" class="text-caption text-grey-7">
-              Type how many you got
+              {{ $t('product_based_costing.type_how_many_got') }}
             </span>
           </div>
         </q-th>
@@ -589,7 +610,7 @@
           <q-td key="image" :props="slotProps" class="col-image text-center">
             <SmartImage
               :src="slotProps.row.imageUrl"
-              :alt="slotProps.row.name || 'Product image'"
+              :alt="slotProps.row.name || $t('product_based_costing.product_image_alt')"
               img-class="table-image"
               fallback-class="table-image-placeholder"
             />
@@ -599,7 +620,7 @@
               text-color="grey-9"
               class="offer-incomplete-badge q-mt-xs"
             >
-              Missing £ or weight
+              {{ $t('product_based_costing.missing_price_weight') }}
             </q-badge>
           </q-td>
 
@@ -616,7 +637,7 @@
                 class="q-px-xs text-caption q-mt-xs"
               >
                 <q-icon name="ph ph-truck" class="q-mr-xs" />
-                Added to shipment
+                {{ $t('product_based_costing.added_to_shipment') }}
               </q-badge>
             </div>
           </q-td>
@@ -639,7 +660,7 @@
               borderless
               class="cell-input"
               input-class="text-caption"
-              placeholder="Note"
+              :placeholder="$t('product_based_costing.note')"
               @blur="onNoteBlur(slotProps.row)"
             />
           </q-td>
@@ -736,7 +757,7 @@
           >
             <div class="barcode-lines text-caption">
               <div class="row items-center no-wrap">
-                <span class="text-weight-bold">Barcode:</span>
+                <span class="text-weight-bold">{{ $t('product_based_costing.barcode') }}:</span>
                 <span class="q-ml-xs font-mono">{{ slotProps.row.barcode || '-' }}</span>
                 <q-btn
                   v-if="slotProps.row.barcode"
@@ -747,13 +768,13 @@
                   icon="ph ph-copy"
                   color="grey-6"
                   class="q-ml-xs"
-                  @click="handleCopy(slotProps.row.barcode, 'Barcode')"
+                  @click="handleCopy(slotProps.row.barcode, $t('product_based_costing.barcode'))"
                 >
-                  <q-tooltip>Copy Barcode</q-tooltip>
+                  <q-tooltip>{{ $t('product_based_costing.copy_barcode') }}</q-tooltip>
                 </q-btn>
               </div>
               <div class="row items-center no-wrap">
-                <span class="text-weight-bold">Code:</span>
+                <span class="text-weight-bold">{{ $t('product_based_costing.code') }}:</span>
                 <span class="q-ml-xs font-mono">{{ slotProps.row.productCode || '-' }}</span>
                 <q-btn
                   v-if="slotProps.row.productCode"
@@ -764,13 +785,13 @@
                   icon="ph ph-copy"
                   color="grey-6"
                   class="q-ml-xs"
-                  @click="handleCopy(slotProps.row.productCode, 'Code')"
+                  @click="handleCopy(slotProps.row.productCode, $t('product_based_costing.code'))"
                 >
-                  <q-tooltip>Copy Code</q-tooltip>
+                  <q-tooltip>{{ $t('product_based_costing.copy_code') }}</q-tooltip>
                 </q-btn>
               </div>
               <div class="row items-center no-wrap">
-                <span class="text-weight-bold">Product ID:</span>
+                <span class="text-weight-bold">{{ $t('product_based_costing.product_id') }}:</span>
                 <span class="q-ml-xs font-mono">{{ slotProps.row.productId || '-' }}</span>
                 <q-btn
                   v-if="slotProps.row.productId"
@@ -781,9 +802,9 @@
                   icon="ph ph-copy"
                   color="grey-6"
                   class="q-ml-xs"
-                  @click="handleCopy(String(slotProps.row.productId), 'Product ID')"
+                  @click="handleCopy(String(slotProps.row.productId), $t('product_based_costing.product_id'))"
                 >
-                  <q-tooltip>Copy Product ID</q-tooltip>
+                  <q-tooltip>{{ $t('product_based_costing.copy_product_id') }}</q-tooltip>
                 </q-btn>
               </div>
             </div>
@@ -801,7 +822,7 @@
               target="_blank"
               rel="noopener noreferrer"
             >
-              Open
+              {{ $t('product_based_costing.open') }}
             </a>
             <span v-else>-</span>
           </q-td>
@@ -953,7 +974,7 @@
                 color="amber-8"
                 size="16px"
               >
-                <q-tooltip>Offer price manually locked — won't auto-recalculate</q-tooltip>
+                <q-tooltip>{{ $t('product_based_costing.offer_locked_tooltip') }}</q-tooltip>
               </q-icon>
               <q-input
                 v-model.number="slotProps.row.offerPriceBdt"
@@ -975,10 +996,10 @@
                 size="xs"
                 icon="ph ph-arrows-clockwise"
                 color="grey-7"
-                aria-label="Unlock offer price"
+                :aria-label="$t('product_based_costing.unlock_offer_price')"
                 @click.stop="onUnlockOfferPrice(slotProps.row)"
               >
-                <q-tooltip>Unlock and reset to auto price</q-tooltip>
+                <q-tooltip>{{ $t('product_based_costing.unlock_offer_price_tooltip') }}</q-tooltip>
               </q-btn>
             </div>
           </q-td>
@@ -1035,11 +1056,13 @@
                 self="bottom middle"
                 :offset="[0, 8]"
               >
-                <div class="pbc-status-tooltip__k">Use this when</div>
+                <div class="pbc-status-tooltip__k">{{ $t('product_based_costing.tooltip_use_when') }}</div>
                 <div class="pbc-status-tooltip__v">
                   {{ getItemStatusHint(slotProps.row.status)?.when }}
                 </div>
-                <div class="pbc-status-tooltip__k pbc-status-tooltip__k--next">This will</div>
+                <div class="pbc-status-tooltip__k pbc-status-tooltip__k--next">
+                  {{ $t('product_based_costing.tooltip_this_will') }}
+                </div>
                 <div class="pbc-status-tooltip__v">
                   {{ getItemStatusHint(slotProps.row.status)?.does }}
                 </div>
@@ -1053,11 +1076,11 @@
         <q-tr class="totals-row">
           <q-td v-if="isColumnVisible('select')" class="totals-row__cell col-select" />
           <q-td v-if="isColumnVisible('sl')" class="totals-row__cell col-sl text-center">
-            Total
+            {{ $t('product_based_costing.total') }}
           </q-td>
           <q-td v-if="isColumnVisible('image')" class="totals-row__cell col-image" />
           <q-td v-if="isColumnVisible('name')" class="totals-row__cell col-name">
-            {{ tableRows.length }} Items
+            {{ $t('product_based_costing.items_count', { count: tableRows.length }) }}
           </q-td>
           <q-td v-if="isColumnVisible('brand')" class="totals-row__cell col-brand" />
           <q-td v-if="isColumnVisible('note')" class="totals-row__cell col-note" />
@@ -1207,20 +1230,20 @@
 
       <template #no-data>
         <div class="full-width row flex-center q-pa-md text-grey-7">
-          No products yet. Use Add products above.
+          {{ $t('product_based_costing.no_products_yet_add_above') }}
         </div>
       </template>
     </q-table>
 
     <q-dialog v-model="showBulkDeleteConfirm" persistent>
       <q-card style="min-width: 360px; max-width: 92vw">
-        <q-card-section class="text-h6">Delete Selected Items</q-card-section>
+        <q-card-section class="text-h6">{{ $t('product_based_costing.delete_selected_items') }}</q-card-section>
         <q-card-section>
-          Are you sure you want to delete {{ selectedRowIds.length }} selected item(s)?
+          {{ $t('product_based_costing.confirm_delete_selected_items', { count: selectedRowIds.length }) }}
         </q-card-section>
         <q-card-actions align="right">
-          <q-btn flat label="Cancel" @click="showBulkDeleteConfirm = false" />
-          <q-btn color="negative" label="Delete" @click="onConfirmBulkDelete" />
+          <q-btn flat :label="$t('product_based_costing.cancel')" @click="showBulkDeleteConfirm = false" />
+          <q-btn color="negative" :label="$t('product_based_costing.delete')" @click="onConfirmBulkDelete" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -1230,6 +1253,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useQuasar, copyToClipboard, type QTableColumn } from 'quasar';
+import { useI18n } from 'vue-i18n';
 import SmartImage from 'src/components/SmartImage.vue';
 import {
   calculateOfferPriceBdt,
@@ -1358,20 +1382,21 @@ const emit = defineEmits<{
 }>();
 
 const $q = useQuasar();
+const { t } = useI18n();
 
 const handleCopy = (text: string, label: string) => {
   copyToClipboard(text)
     .then(() => {
       $q.notify({
         type: 'positive',
-        message: `${label} copied to clipboard!`,
+        message: t('product_based_costing.copied_to_clipboard', { label }),
         timeout: 1000,
       });
     })
     .catch(() => {
       $q.notify({
         type: 'negative',
-        message: `Failed to copy ${label}`,
+        message: t('product_based_costing.failed_to_copy', { label }),
         timeout: 1000,
       });
     });
@@ -1602,14 +1627,14 @@ const columns = computed<QTableColumn[]>(() => [
   },
   {
     name: 'image',
-    label: 'Image',
+    label: t('product_based_costing.table_image'),
     field: 'imageUrl',
     align: 'center',
     style: 'text-align: center;',
   },
   {
     name: 'name',
-    label: 'Name',
+    label: t('product_based_costing.col_name'),
     field: 'name',
     align: 'left',
     classes: 'col-name-wrap',
@@ -1618,50 +1643,56 @@ const columns = computed<QTableColumn[]>(() => [
   },
   {
     name: 'brand',
-    label: 'Brand',
+    label: t('product_based_costing.table_col_brand'),
     field: 'brand',
     align: 'left',
     style: 'text-align: left;',
   },
   {
     name: 'note',
-    label: 'Note',
+    label: t('product_based_costing.note'),
     field: 'noteHtml',
     align: 'left',
     style: 'text-align: left;',
   },
-  { name: 'qty', label: 'Qty', field: 'qty', align: 'center', style: 'text-align: center;' },
+  {
+    name: 'qty',
+    label: t('product_based_costing.table_col_qty'),
+    field: 'qty',
+    align: 'center',
+    style: 'text-align: center;',
+  },
   {
     name: 'confirmedQty',
-    label: 'Confirmed Qty',
+    label: t('product_based_costing.table_col_confirmedQty'),
     field: 'confirmedQty',
     align: 'center',
     style: 'text-align: center;',
   },
   {
     name: 'orderedQty',
-    label: 'Ordered Qty',
+    label: t('product_based_costing.table_col_orderedQty'),
     field: 'orderedQty',
     align: 'center',
     style: 'text-align: center;',
   },
   {
     name: 'deliveredQty',
-    label: 'Delivered Qty',
+    label: t('product_based_costing.table_col_deliveredQty'),
     field: 'deliveredQty',
     align: 'center',
     style: 'text-align: center;',
   },
   {
     name: 'barcodeText',
-    label: 'Barcode / Code / Product ID',
+    label: t('product_based_costing.table_col_barcodeText'),
     field: 'barcodeText',
     align: 'left',
     style: 'text-align: center;',
   },
   {
     name: 'website',
-    label: 'Website',
+    label: t('product_based_costing.table_col_website'),
     field: 'website',
     align: 'left',
     style: 'text-align: center;',
@@ -1669,7 +1700,7 @@ const columns = computed<QTableColumn[]>(() => [
 
   {
     name: 'priceGbp',
-    label: 'Price (GBP)/Unit',
+    label: t('product_based_costing.table_col_priceGbp'),
     field: 'priceGbp',
     align: 'center',
     classes: 'bg-gbp',
@@ -1678,7 +1709,7 @@ const columns = computed<QTableColumn[]>(() => [
   },
   {
     name: 'totalPurchasePriceGbp',
-    label: 'Total Purchase Price (GBP)',
+    label: t('product_based_costing.table_col_totalPurchasePriceGbp'),
     field: 'totalPurchasePriceGbp',
     align: 'center',
     classes: 'bg-gbp',
@@ -1687,35 +1718,35 @@ const columns = computed<QTableColumn[]>(() => [
   },
   {
     name: 'productWeight',
-    label: 'Product Wt (g/Unit)',
+    label: t('product_based_costing.table_col_productWeight'),
     field: 'productWeight',
     align: 'center',
     style: 'text-align: center;',
   },
   {
     name: 'packageWeight',
-    label: 'Package Wt (g/Unit)',
+    label: t('product_based_costing.table_col_packageWeight'),
     field: 'packageWeight',
     align: 'center',
     style: 'text-align: center;',
   },
   {
     name: 'totalWeight',
-    label: 'Total Wt (g/Unit)',
+    label: t('product_based_costing.table_col_totalWeight'),
     field: 'totalWeight',
     align: 'center',
     style: 'text-align: center;',
   },
   {
     name: 'cargoRate',
-    label: 'Cargo Rate',
+    label: t('product_based_costing.table_col_cargoRate'),
     field: 'cargoRate',
     align: 'center',
     style: 'text-align: center;',
   },
   {
     name: 'cargoCostGbp',
-    label: 'Cargo Cost (GBP/Unit)',
+    label: t('product_based_costing.table_col_cargoCostGbp'),
     field: 'cargoCostGbp',
     align: 'center',
     classes: 'bg-gbp',
@@ -1724,7 +1755,7 @@ const columns = computed<QTableColumn[]>(() => [
   },
   {
     name: 'totalCostGbp',
-    label: 'Total Cost (GBP/Unit)',
+    label: t('product_based_costing.table_col_totalCostGbp'),
     field: 'totalCostGbp',
     align: 'center',
     classes: 'bg-gbp',
@@ -1733,7 +1764,7 @@ const columns = computed<QTableColumn[]>(() => [
   },
   {
     name: 'rowTotalCostGbp',
-    label: 'Row Total Cost (GBP)',
+    label: t('product_based_costing.table_col_rowTotalCostGbp'),
     field: 'rowTotalCostGbp',
     align: 'center',
     classes: 'bg-gbp',
@@ -1743,7 +1774,7 @@ const columns = computed<QTableColumn[]>(() => [
 
   {
     name: 'costBdt',
-    label: 'Cost (BDT/Unit)',
+    label: t('product_based_costing.table_col_costBdt'),
     field: 'costBdt',
     align: 'center',
     classes: 'bg-bdt',
@@ -1752,7 +1783,7 @@ const columns = computed<QTableColumn[]>(() => [
   },
   {
     name: 'totalCostBdt',
-    label: 'Row Total Cost (BDT)',
+    label: t('product_based_costing.table_col_totalCostBdt'),
     field: 'totalCostBdt',
     align: 'center',
     classes: 'bg-bdt',
@@ -1761,7 +1792,7 @@ const columns = computed<QTableColumn[]>(() => [
   },
   {
     name: 'offerPriceBdt',
-    label: 'Offer Price (BDT/Unit)',
+    label: t('product_based_costing.table_col_offerPriceBdt'),
     field: 'offerPriceBdt',
     align: 'center',
     classes: 'bg-offer',
@@ -1770,7 +1801,7 @@ const columns = computed<QTableColumn[]>(() => [
   },
   {
     name: 'totalBdt',
-    label: 'Row Offer Total (BDT)',
+    label: t('product_based_costing.table_col_totalBdt'),
     field: 'totalBdt',
     align: 'center',
     classes: 'bg-offer',
@@ -1779,7 +1810,7 @@ const columns = computed<QTableColumn[]>(() => [
   },
   {
     name: 'profitPerUnitBdt',
-    label: 'Profit (BDT/Unit)',
+    label: t('product_based_costing.table_col_profitPerUnitBdt'),
     field: 'profitPerUnitBdt',
     align: 'center',
     classes: 'bg-bdt',
@@ -1788,7 +1819,7 @@ const columns = computed<QTableColumn[]>(() => [
   },
   {
     name: 'profitBdt',
-    label: 'Row Total Profit (BDT)',
+    label: t('product_based_costing.table_col_profitBdt'),
     field: 'profitBdt',
     align: 'center',
     classes: 'bg-bdt',
@@ -1798,14 +1829,14 @@ const columns = computed<QTableColumn[]>(() => [
 
   {
     name: 'profitRate',
-    label: 'Profit Rate (%)',
+    label: t('product_based_costing.table_col_profitRate'),
     field: 'profitRate',
     align: 'center',
     style: 'text-align: center;',
   },
   {
     name: 'status',
-    label: 'Status',
+    label: t('product_based_costing.col_status'),
     field: 'status',
     align: 'center',
     style: 'text-align： center;',

@@ -16,7 +16,7 @@
             flat
             color="primary"
             icon="ph ph-arrow-left"
-            label="Back"
+            :label="$t('product_based_costing.go_back')"
             class="preview-page__action-btn"
             @click="goBack"
           />
@@ -26,7 +26,7 @@
               :color="mode === 'screenshot' ? 'primary' : 'grey-4'"
               :text-color="mode === 'screenshot' ? 'white' : 'dark'"
               icon="ph ph-camera"
-              label="Screenshot"
+              :label="$t('product_based_costing.preview_screenshot')"
               @click="mode = 'screenshot'"
             />
             <q-btn
@@ -34,7 +34,7 @@
               :color="mode === 'pdf' ? 'primary' : 'grey-4'"
               :text-color="mode === 'pdf' ? 'white' : 'dark'"
               icon="ph ph-file-pdf"
-              label="PDF Mode"
+              :label="$t('product_based_costing.preview_pdf_mode')"
               @click="mode = 'pdf'"
             />
           </q-btn-group>
@@ -44,7 +44,7 @@
           size="sm"
           color="primary"
           icon="ph ph-printer"
-          label="Print"
+          :label="$t('product_based_costing.preview_print')"
           class="preview-page__action-btn preview-page__print-btn"
           @click="printPage"
         />
@@ -60,7 +60,7 @@
           </div>
 
           <template v-if="mode === 'screenshot'">
-            <div class="preview-page__meta-label q-mt-sm">Created For</div>
+            <div class="preview-page__meta-label q-mt-sm">{{ $t('product_based_costing.col_created_for') }}</div>
             <div class="preview-page__meta-value preview-page__meta-value--compact">
               {{ createdFor }}
             </div>
@@ -77,7 +77,12 @@
           <q-icon name="ph ph-warning" color="warning" size="18px" />
         </template>
         <div class="text-caption">
-          <strong>A4 Print Notice:</strong> {{ columns.length }} columns are selected. Standard A4 page print width fits up to 7 columns best. Extra columns may wrap or require Landscape orientation in your print settings.
+          <strong>{{ $t('product_based_costing.preview_a4_notice_title') }}</strong>
+          {{
+            $t('product_based_costing.preview_a4_notice_body', {
+              count: columns.length,
+            })
+          }}
         </div>
       </q-banner>
 
@@ -187,7 +192,7 @@
                     rel="noopener"
                     class="text-primary text-caption"
                   >
-                    Link
+                    {{ $t('product_based_costing.preview_link') }}
                   </a>
                   <span v-else>-</span>
                 </template>
@@ -256,7 +261,9 @@
           </template>
 
           <template #no-data>
-            <div class="full-width row flex-center q-pa-lg text-grey-7">No preview items found</div>
+            <div class="full-width row flex-center q-pa-lg text-grey-7">
+              {{ $t('product_based_costing.preview_no_data') }}
+            </div>
           </template>
         </q-table>
       </q-card>
@@ -271,7 +278,7 @@
         <q-card-section class="q-pa-md">
           <div class="text-subtitle2 text-weight-bold text-grey-9 q-mb-sm row items-center">
             <q-icon name="ph ph-file-text" size="18px" class="q-mr-xs text-primary" />
-            Costing Summary
+            {{ $t('product_based_costing.preview_costing_summary') }}
           </div>
           <div class="row q-col-gutter-sm">
             <div
@@ -306,9 +313,17 @@
           @click="goPrevPage"
         />
         <div class="preview-page__pager-center">
-          <div class="preview-page__pager-label">Page {{ currentPage }} / {{ totalPages }}</div>
+          <div class="preview-page__pager-label">
+            {{ $t('product_based_costing.preview_page_of', { current: currentPage, total: totalPages }) }}
+          </div>
           <div class="preview-page__pager-sub">
-            Showing {{ pageStartIndex }}-{{ pageEndIndex }} of {{ rows.length }}
+            {{
+              $t('product_based_costing.preview_showing_range', {
+                start: pageStartIndex,
+                end: pageEndIndex,
+                total: rows.length,
+              })
+            }}
           </div>
         </div>
         <q-btn
@@ -331,6 +346,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import type { QTableColumn } from 'quasar';
 import { useRoute, useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 
 import SmartImage from 'src/components/SmartImage.vue';
 import { useProductBasedCostingStore } from '../stores/productBasedCostingStore';
@@ -373,6 +389,7 @@ onUnmounted(() => {
 const route = useRoute();
 const router = useRouter();
 const store = useProductBasedCostingStore();
+const { t } = useI18n();
 
 const costingFileId = computed(() => Number(props.id));
 const loading = ref(false);
@@ -388,78 +405,78 @@ interface PreviewColumnDef {
 
 const ALL_PREVIEW_COLUMN_DEFS: Record<string, PreviewColumnDef> = {
   sl: { key: 'sl', label: 'SL', align: 'center', field: 'sl' },
-  image: { key: 'image', label: 'Image', align: 'center', field: 'imageUrl' },
-  name: { key: 'name', label: 'Name', align: 'center', field: 'name' },
-  brand: { key: 'brand', label: 'Brand', align: 'center', field: 'brand' },
-  note: { key: 'note', label: 'Note', align: 'center', field: 'note' },
-  qty: { key: 'qty', label: 'Qty', align: 'center', field: 'quantity' },
+  image: { key: 'image', label: t('product_based_costing.table_image'), align: 'center', field: 'imageUrl' },
+  name: { key: 'name', label: t('product_based_costing.col_name'), align: 'center', field: 'name' },
+  brand: { key: 'brand', label: t('product_based_costing.table_col_brand'), align: 'center', field: 'brand' },
+  note: { key: 'note', label: t('product_based_costing.note'), align: 'center', field: 'note' },
+  qty: { key: 'qty', label: t('product_based_costing.table_col_qty'), align: 'center', field: 'quantity' },
   deliveredQty: {
     key: 'deliveredQty',
-    label: 'Delivered Qty',
+    label: t('product_based_costing.table_col_deliveredQty'),
     align: 'center',
     field: 'delivered_quantity',
   },
   barcodeText: {
     key: 'barcodeText',
-    label: 'Barcode / Code',
+    label: t('product_based_costing.preview_barcode_code'),
     align: 'center',
     field: 'barcodeText',
   },
-  website: { key: 'website', label: 'Website', align: 'center', field: 'website' },
-  priceGbp: { key: 'priceGbp', label: 'Price (GBP)', align: 'center', field: 'priceGbp' },
+  website: { key: 'website', label: t('product_based_costing.table_col_website'), align: 'center', field: 'website' },
+  priceGbp: { key: 'priceGbp', label: t('product_based_costing.preview_price_gbp'), align: 'center', field: 'priceGbp' },
   totalPurchasePriceGbp: {
     key: 'totalPurchasePriceGbp',
-    label: 'Total Purchase (GBP)',
+    label: t('product_based_costing.preview_total_purchase_gbp'),
     align: 'center',
     field: 'totalPurchasePriceGbp',
   },
   productWeight: {
     key: 'productWeight',
-    label: 'Product Wt (kg)',
+    label: t('product_based_costing.preview_product_wt_kg'),
     align: 'center',
     field: 'productWeight',
   },
   packageWeight: {
     key: 'packageWeight',
-    label: 'Package Wt (kg)',
+    label: t('product_based_costing.preview_package_wt_kg'),
     align: 'center',
     field: 'packageWeight',
   },
   totalWeight: {
     key: 'totalWeight',
-    label: 'Total Wt (kg)',
+    label: t('product_based_costing.preview_total_wt_kg'),
     align: 'center',
     field: 'totalWeight',
   },
-  cargoRate: { key: 'cargoRate', label: 'Cargo Rate', align: 'center', field: 'cargoRate' },
+  cargoRate: { key: 'cargoRate', label: t('product_based_costing.table_col_cargoRate'), align: 'center', field: 'cargoRate' },
   cargoCostGbp: {
     key: 'cargoCostGbp',
-    label: 'Cargo Cost (GBP)',
+    label: t('product_based_costing.preview_cargo_cost_gbp'),
     align: 'center',
     field: 'cargoCostGbp',
   },
   totalCostGbp: {
     key: 'totalCostGbp',
-    label: 'Total Cost (GBP)',
+    label: t('product_based_costing.preview_total_cost_gbp'),
     align: 'center',
     field: 'totalCostGbp',
   },
-  costBdt: { key: 'costBdt', label: 'Cost (BDT)', align: 'center', field: 'costBdt' },
+  costBdt: { key: 'costBdt', label: t('product_based_costing.preview_cost_bdt'), align: 'center', field: 'costBdt' },
   offerPriceBdt: {
     key: 'offerPriceBdt',
-    label: 'Offer Price (BDT)',
+    label: t('product_based_costing.preview_offer_price_bdt'),
     align: 'center',
     field: 'offerPriceBdt',
   },
-  totalBdt: { key: 'totalBdt', label: 'Total Offer (BDT)', align: 'center', field: 'totalBdt' },
+  totalBdt: { key: 'totalBdt', label: t('product_based_costing.preview_total_offer_bdt'), align: 'center', field: 'totalBdt' },
   profitPerUnitBdt: {
     key: 'profitPerUnitBdt',
-    label: 'Profit (BDT)',
+    label: t('product_based_costing.preview_profit_bdt'),
     align: 'center',
     field: 'profitPerUnitBdt',
   },
-  profitRate: { key: 'profitRate', label: 'Profit Rate (%)', align: 'center', field: 'profitRate' },
-  status: { key: 'status', label: 'Status', align: 'center', field: 'status' },
+  profitRate: { key: 'profitRate', label: t('product_based_costing.table_col_profitRate'), align: 'center', field: 'profitRate' },
+  status: { key: 'status', label: t('product_based_costing.col_status'), align: 'center', field: 'status' },
 };
 
 const requestedColumnKeys = computed<string[]>(() => {
@@ -672,15 +689,15 @@ const summaryMetrics = computed<SummaryMetric[]>(() => {
   const profitRate = costingFile.value?.profit_rate ?? 0;
 
   metrics.push({
-    label: 'Total Items',
-    value: `${rawItems.value.length} items`,
+    label: t('product_based_costing.preview_total_items'),
+    value: t('product_based_costing.preview_items_count', { count: rawItems.value.length }),
   });
 
   if (visible.has('qty') || visible.has('deliveredQty')) {
     const totalQty = rawItems.value.reduce((acc, item) => acc + (item.quantity ?? 0), 0);
     metrics.push({
-      label: 'Total Quantity',
-      value: `${formatNumber(totalQty)} pcs`,
+      label: t('product_based_costing.total_quantity'),
+      value: `${formatNumber(totalQty)} ${t('product_based_costing.pcs')}`,
     });
   }
 
@@ -690,7 +707,7 @@ const summaryMetrics = computed<SummaryMetric[]>(() => {
       0,
     );
     metrics.push({
-      label: 'Total Purchase (GBP)',
+      label: t('product_based_costing.preview_total_purchase_gbp'),
       value: `£${formatNumber(Math.round(totalGbp * 100) / 100)}`,
     });
   }
@@ -708,7 +725,7 @@ const summaryMetrics = computed<SummaryMetric[]>(() => {
       0,
     );
     metrics.push({
-      label: 'Total Weight',
+      label: t('product_based_costing.preview_total_weight'),
       value: `${(Math.round(totalKg * 100) / 100).toLocaleString('en-US')} kg`,
     });
   }
@@ -733,7 +750,7 @@ const summaryMetrics = computed<SummaryMetric[]>(() => {
     }, 0);
 
     metrics.push({
-      label: 'Landed Cost (BDT)',
+      label: t('product_based_costing.preview_landed_cost_bdt'),
       value: `৳${formatNumber(Math.round(totalCostBdt))}`,
     });
   }
@@ -764,7 +781,7 @@ const summaryMetrics = computed<SummaryMetric[]>(() => {
     }, 0);
 
     metrics.push({
-      label: 'Total Offer (BDT)',
+      label: t('product_based_costing.preview_total_offer_bdt'),
       value: `৳${formatNumber(Math.round(totalOfferBdt))}`,
       highlight: true,
     });
@@ -804,7 +821,7 @@ const summaryMetrics = computed<SummaryMetric[]>(() => {
     }, 0);
 
     metrics.push({
-      label: 'Est. Profit (BDT)',
+      label: t('product_based_costing.preview_est_profit_bdt'),
       value: `৳${formatNumber(Math.round(totalProfitBdt))}`,
       highlight: true,
     });

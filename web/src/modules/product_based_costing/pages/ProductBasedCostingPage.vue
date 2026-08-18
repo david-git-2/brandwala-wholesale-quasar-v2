@@ -3,10 +3,10 @@
     <div class="q-gutter-y-md">
       <section class="row items-center justify-between q-col-gutter-md">
         <div class="col">
-          <div class="text-overline text-primary">Costing</div>
-          <h1 class="text-h5 text-weight-bold q-my-none">Product Based Costing</h1>
+          <div class="text-overline text-primary">{{ $t('product_based_costing.eyebrow') }}</div>
+          <h1 class="text-h5 text-weight-bold q-my-none">{{ $t('product_based_costing.title') }}</h1>
           <div class="text-body2 text-grey-7 q-mt-xs">
-            Create a file, add products, then send a screenshot or PDF.
+            {{ $t('product_based_costing.subtitle') }}
           </div>
         </div>
         <div class="col-auto">
@@ -14,7 +14,7 @@
             color="primary"
             unelevated
             no-caps
-            label="Create Costing File"
+            :label="$t('product_based_costing.create_file')"
             :loading="isCreating"
             @click="openCreateDialog"
           />
@@ -58,7 +58,13 @@
         </q-card>
       </div>
 
-      <div v-else-if="isError">error: {{ error?.message ?? 'Failed to load product based costing files.' }}</div>
+      <div v-else-if="isError">
+        {{
+          $t('product_based_costing.error_prefix', {
+            message: error?.message ?? $t('product_based_costing.load_failed'),
+          })
+        }}
+      </div>
 
       <template v-else>
         <q-card flat bordered class="q-pa-sm">
@@ -70,7 +76,7 @@
                 round
                 dense
                 icon="ph ph-magnifying-glass"
-                aria-label="Show search"
+                :aria-label="$t('product_based_costing.show_search')"
                 @click="showSearchInput = true"
               />
 
@@ -80,7 +86,7 @@
                 outlined
                 dense
                 class="soft-input toolbar-search"
-                label="Search"
+                :label="$t('product_based_costing.search')"
                 clearable
                 autofocus
                 @keyup.enter="onApplyFilters"
@@ -95,7 +101,7 @@
                     round
                     dense
                     icon="ph ph-x"
-                    aria-label="Hide search"
+                    :aria-label="$t('product_based_costing.hide_search')"
                     @click="
                       () => {
                         searchText = '';
@@ -107,7 +113,14 @@
                 </template>
               </q-input>
 
-              <q-btn flat round dense icon="ph ph-funnel" aria-label="Filters" @click="openFilterDrawer">
+              <q-btn
+                flat
+                round
+                dense
+                icon="ph ph-funnel"
+                :aria-label="$t('product_based_costing.filters')"
+                @click="openFilterDrawer"
+              >
                 <q-badge v-if="activeFilterCount > 0" color="primary" rounded floating>
                   {{ activeFilterCount }}
                 </q-badge>
@@ -165,7 +178,7 @@
                       class="status-dot"
                       :style="{ backgroundColor: statusDotColor(slotProps.row.status) }"
                     />
-                    {{ formatStatusLabel(slotProps.row.status ?? 'pending') }}
+                    {{ statusLabel(slotProps.row.status) }}
                   </q-chip>
                 </q-td>
                 <q-td key="actions" :props="slotProps" class="text-right">
@@ -174,19 +187,21 @@
                     round
                     dense
                     icon="ph ph-dots-three-vertical"
-                    aria-label="Costing file actions"
+                    :aria-label="$t('product_based_costing.file_actions')"
                     @click.stop
                   >
                     <q-menu auto-close>
                       <q-list dense style="min-width: 120px">
                         <q-item clickable v-ripple @click="onCopy(slotProps.row)">
-                          <q-item-section>Copy</q-item-section>
+                          <q-item-section>{{ $t('product_based_costing.copy') }}</q-item-section>
                         </q-item>
                         <q-item clickable v-ripple @click="openEditDialog(slotProps.row)">
-                          <q-item-section>Edit</q-item-section>
+                          <q-item-section>{{ $t('product_based_costing.edit') }}</q-item-section>
                         </q-item>
                         <q-item clickable v-ripple @click="onDelete(slotProps.row)">
-                          <q-item-section class="text-negative">Delete</q-item-section>
+                          <q-item-section class="text-negative">{{
+                            $t('product_based_costing.delete')
+                          }}</q-item-section>
                         </q-item>
                       </q-list>
                     </q-menu>
@@ -224,7 +239,7 @@
         @submit="handleDialogSubmit"
       />
 
-      <FilterSidebar v-model="filterDrawerOpen" title="Filters">
+      <FilterSidebar v-model="filterDrawerOpen" :title="$t('product_based_costing.filters')">
         <q-select
           v-model="draftStatusFilter"
           :options="statusFilterOptions"
@@ -233,11 +248,11 @@
           class="soft-input q-mb-md"
           emit-value
           map-options
-          label="Status"
+          :label="$t('product_based_costing.status')"
           @update:model-value="onDrawerStatusChange"
         />
         <div class="row q-gutter-sm justify-end">
-          <q-btn flat no-caps label="Reset" @click="onResetFilters" />
+          <q-btn flat no-caps :label="$t('product_based_costing.reset')" @click="onResetFilters" />
         </div>
       </FilterSidebar>
     </div>
@@ -246,6 +261,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useQuasar, type QTableColumn } from 'quasar';
 import ProductBasedCostingFileDialog from '../components/ProductBasedCostingFileDialog.vue';
 import { useRouter, useRoute } from 'vue-router';
@@ -259,9 +275,9 @@ import {
   useDeleteProductBasedCostingFileMutation,
   useCopyProductBasedCostingFileMutation,
 } from '../composables/useProductBasedCostingFileMutations';
-import { formatStatusLabel } from '../composables/useProductBasedCostingFileDetailsState';
 
 const $q = useQuasar();
+const { t, te } = useI18n();
 const router = useRouter();
 const route = useRoute();
 
@@ -318,25 +334,31 @@ const { mutateAsync: updateCostingFile } = useUpdateProductBasedCostingFileMutat
 const { mutateAsync: deleteCostingFile } = useDeleteProductBasedCostingFileMutation();
 const { mutateAsync: copyCostingFile } = useCopyProductBasedCostingFileMutation();
 
-const tableColumns: QTableColumn[] = [
-  { name: 'id', label: 'ID', field: 'id', align: 'left' },
-  { name: 'name', label: 'Name', field: 'name', align: 'left' },
-  { name: 'order_for', label: 'Created For', field: 'order_for', align: 'left' },
-  { name: 'status', label: 'Status', field: 'status', align: 'left' },
-  { name: 'actions', label: 'Actions', field: 'actions', align: 'right' },
-];
+const tableColumns = computed<QTableColumn[]>(() => [
+  { name: 'id', label: t('product_based_costing.col_id'), field: 'id', align: 'left' },
+  { name: 'name', label: t('product_based_costing.col_name'), field: 'name', align: 'left' },
+  { name: 'order_for', label: t('product_based_costing.col_created_for'), field: 'order_for', align: 'left' },
+  { name: 'status', label: t('product_based_costing.col_status'), field: 'status', align: 'left' },
+  { name: 'actions', label: t('product_based_costing.col_actions'), field: 'actions', align: 'right' },
+]);
 
-const statusFilterOptions = [
-  { label: 'All', value: '__all__' },
-  { label: 'Draft', value: '__pending__' },
-  { label: 'Offered', value: 'offered' },
-  { label: 'Confirmed', value: 'confirmed' },
-  { label: 'Placing Order', value: 'placing_order' },
-  { label: 'Ready for Shipment', value: 'ready_for_shipment' },
-  { label: 'Invoicing', value: 'invoicing' },
-  { label: 'Delivered', value: 'delivered' },
-  { label: 'Cancelled', value: 'cancelled' },
-];
+const statusFilterOptions = computed(() => [
+  { label: t('product_based_costing.filter_all'), value: '__all__' },
+  { label: t('product_based_costing.status_pending'), value: '__pending__' },
+  { label: t('product_based_costing.status_offered'), value: 'offered' },
+  { label: t('product_based_costing.status_confirmed'), value: 'confirmed' },
+  { label: t('product_based_costing.status_placing_order'), value: 'placing_order' },
+  { label: t('product_based_costing.status_ready_for_shipment'), value: 'ready_for_shipment' },
+  { label: t('product_based_costing.status_invoicing'), value: 'invoicing' },
+  { label: t('product_based_costing.status_delivered'), value: 'delivered' },
+  { label: t('product_based_costing.status_cancelled'), value: 'cancelled' },
+]);
+
+const statusLabel = (status: string | null | undefined) => {
+  const value = (status ?? 'pending').trim().toLowerCase() || 'pending';
+  const key = `product_based_costing.status_${value}`;
+  return te(key) ? t(key) : value.replaceAll('_', ' ');
+};
 
 const activeFilterCount = computed(() => (statusFilter.value !== '__all__' ? 1 : 0));
 
@@ -408,8 +430,11 @@ const onSelect = async (item: ProductBasedCostingFile) => {
 
 const onDelete = (item: ProductBasedCostingFile) => {
   $q.dialog({
-    title: 'Confirm Deletion',
-    message: `Are you sure you want to delete costing file #${item.id} (${item.name || 'Untitled'})?`,
+    title: t('product_based_costing.confirm_delete_title'),
+    message: t('product_based_costing.confirm_delete_message', {
+      id: item.id,
+      name: item.name || t('product_based_costing.untitled'),
+    }),
     cancel: true,
     persistent: true,
   }).onOk(() => {

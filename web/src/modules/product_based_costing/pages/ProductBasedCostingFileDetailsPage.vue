@@ -37,7 +37,7 @@
             dense
             no-caps
             color="primary"
-            label="Review"
+            :label="$t('product_based_costing.review')"
             @click="openBacklogDrawer"
           />
           <q-btn
@@ -45,7 +45,7 @@
             dense
             no-caps
             color="primary"
-            label="Add all"
+            :label="$t('product_based_costing.add_all')"
             :loading="backlog.saving.value"
             @click="handleAddAllStillNeeded"
           />
@@ -72,7 +72,7 @@
           @save-rates="onRateSave"
         />
 
-        <div v-if="!file" class="text-negative">File not found.</div>
+        <div v-if="!file" class="text-negative">{{ $t('product_based_costing.file_not_found') }}</div>
 
         <!-- Costing Items Table Card -->
         <q-card v-else flat bordered class="q-pa-none costing-items-surface">
@@ -134,6 +134,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useQuasar } from 'quasar';
 import { useRoute, useRouter } from 'vue-router';
 import { useQueryClient } from '@tanstack/vue-query';
@@ -174,6 +175,7 @@ import {
 } from '../composables/useProductBasedCostingFileDetailsState';
 
 const $q = useQuasar();
+const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const productStore = useProductStore();
@@ -225,30 +227,21 @@ const alreadyOnFileBacklogItems = computed(() =>
 
 const stillNeededBannerText = computed(() => {
   const count = availableBacklogItems.value.length;
-  if (count === 1) {
-    return '1 product still needed for this customer from a previous quote.';
-  }
-  return `${count} products still needed for this customer from a previous quote.`;
+  return count === 1
+    ? t('product_based_costing.still_needed_one')
+    : t('product_based_costing.still_needed', { count });
 });
 
 const nextStepBanner = computed(() => {
   if (!file.value) return '';
   if (costingItems.value.length === 0) {
     if (availableBacklogItems.value.length > 0) return '';
-    return 'Search the catalog and add products. If a product is missing, create it there.';
+    return t('product_based_costing.next_empty');
   }
-  if (status.value === 'pending') {
-    return 'Set Rates and check £ price and weights on each line so the ৳ is right. Then send Offer. Mark Offered after you send.';
-  }
-  if (status.value === 'offered') {
-    return 'Quote stamped as Offered. Confirm order when they accept.';
-  }
-  if (status.value === 'confirmed') {
-    return 'Quote accepted. Confirmed qty starts from the offer — edit if they took less. Buy & ship next.';
-  }
-  if (status.value === 'placing_order') {
-    return 'Type how many you got in Ordered Qty. Confirmed Qty stays editable if they want a different amount.';
-  }
+  if (status.value === 'pending') return t('product_based_costing.next_pending');
+  if (status.value === 'offered') return t('product_based_costing.next_offered');
+  if (status.value === 'confirmed') return t('product_based_costing.next_confirmed');
+  if (status.value === 'placing_order') return t('product_based_costing.next_placing_order');
   return '';
 });
 
@@ -421,11 +414,10 @@ async function applyStatus(nextStatus: string) {
     await onStatusChange();
     if (nextStatus === 'offered' && costingItems.value.length > 0) {
       $q.dialog({
-        title: 'Offered',
-        message:
-          'This stamps the file as Offered. It does not send anything. Open screenshot / PDF to send?',
-        cancel: { label: 'Not now', flat: true },
-        ok: { label: 'Open Offer', unelevated: true, color: 'primary' },
+        title: t('product_based_costing.status_offered'),
+        message: t('product_based_costing.offered_dialog_message'),
+        cancel: { label: t('product_based_costing.not_now'), flat: true },
+        ok: { label: t('product_based_costing.open_offer'), unelevated: true, color: 'primary' },
       }).onOk(() => {
         openPreviewAndPrint();
       });
@@ -440,11 +432,10 @@ function onUpdateStatus(nextStatus: string) {
   if (status.value === nextStatus || updatingStatus.value) return;
   if (nextStatus === 'confirmed') {
     $q.dialog({
-      title: 'Confirm order?',
-      message:
-        'They accepted. Offered quantity will be copied to confirmed quantity on every line. You can lower lines after if they took less.',
-      cancel: { label: 'Cancel', flat: true },
-      ok: { label: 'Confirm order', unelevated: true, color: 'primary' },
+      title: t('product_based_costing.confirm_order_title'),
+      message: t('product_based_costing.confirm_order_message'),
+      cancel: { label: t('product_based_costing.cancel'), flat: true },
+      ok: { label: t('product_based_costing.confirm_order'), unelevated: true, color: 'primary' },
     }).onOk(() => {
       void applyStatus(nextStatus);
     });
@@ -551,7 +542,7 @@ async function onRowChange(payload: RowChangePayload) {
         list_price_amount: payload.item.price_gbp,
       });
       if (res && 'success' in res && !res.success) {
-        throw new Error(res.error || 'Failed to update product price.');
+        throw new Error(res.error || t('product_based_costing.update_price_failed'));
       }
     }
     await updateItemMutation.mutateAsync({
@@ -595,7 +586,7 @@ function openCatalogDialog() {
 
 function openBulkPaste() {
   if (!costingItems.value.length) {
-    $q.notify({ type: 'warning', message: 'No costing items to update.' });
+    $q.notify({ type: 'warning', message: t('product_based_costing.no_items_to_update') });
     return;
   }
   $q.dialog({ component: BulkPasteCostingItemsDialog });
@@ -627,16 +618,18 @@ function openPreviewAndPrint() {
   const cargoZero = cargoRateValue.value <= 0;
   if (incompleteCount > 0 || cargoZero) {
     const parts = [
-      cargoZero ? 'Cargo rate is 0, so freight is not in the offer.' : '',
-      incompleteCount > 0
-        ? `${incompleteCount} item${incompleteCount === 1 ? '' : 's'} missing GBP price or product weight.`
-        : '',
+      cargoZero ? t('product_based_costing.cargo_rate_zero') : '',
+      incompleteCount === 1
+        ? t('product_based_costing.incomplete_item_one')
+        : incompleteCount > 0
+          ? t('product_based_costing.incomplete_items', { count: incompleteCount })
+          : '',
     ].filter(Boolean);
     $q.dialog({
-      title: 'Offer may be incomplete',
+      title: t('product_based_costing.offer_incomplete_title'),
       message: parts.join(' '),
-      cancel: { label: 'Go back', flat: true },
-      ok: { label: 'Open anyway', unelevated: true, color: 'primary' },
+      cancel: { label: t('product_based_costing.go_back'), flat: true },
+      ok: { label: t('product_based_costing.open_anyway'), unelevated: true, color: 'primary' },
     }).onOk(() => openPreviewDialog());
     return;
   }
@@ -665,7 +658,7 @@ async function onProductWeightChange(payload: WeightChangePayload) {
         product_weight: payload.item.product_weight,
       });
       if (res && 'success' in res && !res.success) {
-        throw new Error(res.error || 'Failed to update product weight.');
+        throw new Error(res.error || t('product_based_costing.update_product_weight_failed'));
       }
     }
     await updateItemMutation.mutateAsync({
@@ -691,7 +684,7 @@ async function onPackageWeightChange(payload: WeightChangePayload) {
         package_weight: payload.item.package_weight,
       });
       if (res && 'success' in res && !res.success) {
-        throw new Error(res.error || 'Failed to update package weight.');
+        throw new Error(res.error || t('product_based_costing.update_package_weight_failed'));
       }
     }
     await updateItemMutation.mutateAsync({

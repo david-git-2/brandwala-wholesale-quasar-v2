@@ -17,7 +17,7 @@
           class="text-caption"
           :class="isQuotePhase ? 'text-weight-bold text-primary' : 'text-grey-6'"
         >
-          1 Quote
+          {{ $t('product_based_costing.phase_quote') }}
         </div>
         <q-icon name="ph ph-caret-right" color="grey-5" size="16px" />
         <div>
@@ -25,10 +25,10 @@
             class="text-caption"
             :class="isBuyPhase ? 'text-weight-bold text-primary' : 'text-grey-6'"
           >
-            2 Buy & ship
+            {{ $t('product_based_costing.phase_buy_ship') }}
           </div>
           <div v-if="isQuotePhase" class="text-caption text-grey-6">
-            Next — after they accept.
+            {{ $t('product_based_costing.phase_buy_next') }}
           </div>
         </div>
       </div>
@@ -54,19 +54,21 @@
                 size="14px"
                 class="q-mr-xs"
               />
-              {{ formatStatusLabel(st) }}
+              {{ statusLabel(st) }}
               <q-tooltip
-                v-if="getFileStatusHint(st)"
+                v-if="statusHint(st).when"
                 class="pbc-status-tooltip"
                 max-width="280px"
                 anchor="top middle"
                 self="bottom middle"
                 :offset="[0, 8]"
               >
-                <div class="pbc-status-tooltip__k">Use this when</div>
-                <div class="pbc-status-tooltip__v">{{ getFileStatusHint(st)?.when }}</div>
-                <div class="pbc-status-tooltip__k pbc-status-tooltip__k--next">This will</div>
-                <div class="pbc-status-tooltip__v">{{ getFileStatusHint(st)?.does }}</div>
+                <div class="pbc-status-tooltip__k">{{ $t('product_based_costing.tooltip_use_when') }}</div>
+                <div class="pbc-status-tooltip__v">{{ statusHint(st)?.when }}</div>
+                <div class="pbc-status-tooltip__k pbc-status-tooltip__k--next">
+                  {{ $t('product_based_costing.tooltip_this_will') }}
+                </div>
+                <div class="pbc-status-tooltip__v">{{ statusHint(st)?.does }}</div>
               </q-tooltip>
             </q-btn>
             <q-icon
@@ -96,7 +98,7 @@
               size="14px"
               class="q-mr-xs"
             />
-            Cancelled
+            {{ $t('product_based_costing.status_cancelled') }}
             <q-tooltip
               class="pbc-status-tooltip"
               max-width="280px"
@@ -104,10 +106,12 @@
               self="bottom middle"
               :offset="[0, 8]"
             >
-              <div class="pbc-status-tooltip__k">Use this when</div>
-              <div class="pbc-status-tooltip__v">{{ getFileStatusHint('cancelled')?.when }}</div>
-              <div class="pbc-status-tooltip__k pbc-status-tooltip__k--next">This will</div>
-              <div class="pbc-status-tooltip__v">{{ getFileStatusHint('cancelled')?.does }}</div>
+              <div class="pbc-status-tooltip__k">{{ $t('product_based_costing.tooltip_use_when') }}</div>
+              <div class="pbc-status-tooltip__v">{{ statusHint('cancelled')?.when }}</div>
+              <div class="pbc-status-tooltip__k pbc-status-tooltip__k--next">
+                {{ $t('product_based_costing.tooltip_this_will') }}
+              </div>
+              <div class="pbc-status-tooltip__v">{{ statusHint('cancelled')?.does }}</div>
             </q-tooltip>
           </q-btn>
           <q-btn
@@ -119,7 +123,7 @@
             class="q-px-md text-caption text-weight-bold"
             :loading="updatingStatus && targetUpdatingStatus === 'confirmed'"
             :disable="updatingStatus"
-            label="Confirm order"
+            :label="$t('product_based_costing.confirm_order')"
             @click="$emit('update-status', 'confirmed')"
           >
             <q-tooltip
@@ -129,10 +133,12 @@
               self="bottom middle"
               :offset="[0, 8]"
             >
-              <div class="pbc-status-tooltip__k">Use this when</div>
-              <div class="pbc-status-tooltip__v">{{ getFileStatusHint('confirmed')?.when }}</div>
-              <div class="pbc-status-tooltip__k pbc-status-tooltip__k--next">This will</div>
-              <div class="pbc-status-tooltip__v">{{ getFileStatusHint('confirmed')?.does }}</div>
+              <div class="pbc-status-tooltip__k">{{ $t('product_based_costing.tooltip_use_when') }}</div>
+              <div class="pbc-status-tooltip__v">{{ statusHint('confirmed')?.when }}</div>
+              <div class="pbc-status-tooltip__k pbc-status-tooltip__k--next">
+                {{ $t('product_based_costing.tooltip_this_will') }}
+              </div>
+              <div class="pbc-status-tooltip__v">{{ statusHint('confirmed')?.does }}</div>
             </q-tooltip>
           </q-btn>
         </div>
@@ -147,7 +153,11 @@
             no-caps
             color="primary"
             :icon="ratesExpanded ? 'ph ph-caret-up' : 'ph ph-sliders-horizontal'"
-            :label="ratesExpanded ? 'Hide Rates' : 'Rates'"
+            :label="
+              ratesExpanded
+                ? $t('product_based_costing.hide_rates')
+                : $t('product_based_costing.rates')
+            "
             class="q-px-sm rounded-borders"
             @click="ratesExpanded = !ratesExpanded"
           />
@@ -155,7 +165,7 @@
       </div>
 
       <div class="text-caption text-grey-7 q-mt-xs">
-        Offer ৳ uses GBP price, product + package weight, cargo, conversion rate, and profit.
+        {{ $t('product_based_costing.offer_bdt_help') }}
       </div>
 
       <div v-if="ratesExpanded" class="row items-end q-col-gutter-sm q-mt-xs">
@@ -166,7 +176,7 @@
             outlined
             type="number"
             class="soft-input"
-            label="Conversion rate (৳ per £)"
+            :label="$t('product_based_costing.conversion_rate_label')"
           />
         </div>
         <div class="col-12 col-sm-6 col-md-3">
@@ -176,7 +186,7 @@
             outlined
             type="number"
             class="soft-input"
-            label="Cargo (£ per kg)"
+            :label="$t('product_based_costing.cargo_rate_label')"
           />
         </div>
         <div class="col-12 col-sm-6 col-md-3">
@@ -186,7 +196,7 @@
             outlined
             type="number"
             class="soft-input"
-            label="Profit (%)"
+            :label="$t('product_based_costing.profit_rate_label')"
           />
         </div>
         <div class="col-12 col-sm-6 col-md-3">
@@ -196,12 +206,12 @@
             no-caps
             dense
             class="full-width"
-            label="Save Rates"
+            :label="$t('product_based_costing.save_rates')"
             @click="onRateSave"
           />
         </div>
         <div v-if="cargoRateValue <= 0" class="col-12 text-caption text-warning">
-          Cargo is 0 — freight is not in the offer.
+          {{ $t('product_based_costing.cargo_zero_inline') }}
         </div>
       </div>
     </q-card>
@@ -210,12 +220,11 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import type { ProductBasedCostingFile } from '../types';
 import {
   quoteStatuses,
   workflowStatuses,
-  formatStatusLabel,
-  getFileStatusHint,
   isPassedStatus,
   getStatusColor,
   isFulfillmentStatus,
@@ -240,6 +249,7 @@ const emit = defineEmits<{
     },
   ): void;
 }>();
+const { t } = useI18n();
 
 const ratesExpanded = ref(false);
 const conversion_rate = ref<number | null>(null);
@@ -272,7 +282,11 @@ const profitRateValue = computed(() => profit_rate.value ?? 25);
 
 const ratesSummary = computed(
   () =>
-    `Conversion ${conversionRateValue.value} · Cargo ${cargoRateValue.value} · Profit ${profitRateValue.value}%`,
+    t('product_based_costing.rates_summary', {
+      conversion: conversionRateValue.value,
+      cargo: cargoRateValue.value,
+      profit: profitRateValue.value,
+    }),
 );
 
 const isBuyPhase = computed(() => isFulfillmentStatus(props.status));
@@ -281,6 +295,19 @@ const isQuotePhase = computed(() => !isBuyPhase.value);
 const visibleWorkflowStatuses = computed(() =>
   isBuyPhase.value ? [...workflowStatuses] : [...quoteStatuses],
 );
+
+const statusLabel = (status: string) => {
+  const key = `product_based_costing.status_${status}`;
+  return t(key);
+};
+
+const statusHint = (status: string) => {
+  const base = `product_based_costing.status_hint_${status}`;
+  return {
+    when: t(`${base}_when`),
+    does: t(`${base}_does`),
+  };
+};
 
 function onRateSave() {
   emit('save-rates', {

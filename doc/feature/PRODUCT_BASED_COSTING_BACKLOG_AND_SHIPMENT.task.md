@@ -122,3 +122,16 @@
 - **Rollback:** Revert live wiring.
 - **Review Gate:** Complete flow validation (backlog creation, backlog consumption, batch shipment addition).
 - **Status:** [Done]
+
+---
+
+## Phase 6: Restore backlog on quote-line delete
+- **Goal:** Accidental add-from-backlog then delete on a pending/offered file restores customer demand. No soft-delete.
+- **Depends On:** Phase 2
+- **Files to Change:**
+  - `[NEW]` `supabase/migrations/20270829000070_restore_pbc_backlog_on_quote_line_delete.sql`
+  - `[MODIFY]` `doc/feature/PRODUCT_BASED_COSTING_BACKLOG_AND_SHIPMENT.md`
+- **Specification:** Keep consume-as-delete. On costing-item DELETE with no sibling line: restore backlog from `OLD` when file is `pending`/`offered`, `ordered_quantity = 0`, and open qty > 0. Confirmed-or-later files, or lines with ordered qty, still clear backlog.
+- **Rollback:** Revert trigger to `20270829000050` delete-clears-backlog branch.
+- **Review Gate:** Add from drawer → delete the new line on a pending file → product reappears in backlog. Delete after confirm does not restore.
+- **Status:** [Done]

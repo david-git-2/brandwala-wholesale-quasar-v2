@@ -1,4 +1,5 @@
 import shopAdmin from './shop_admin';
+import productBasedCosting from './product_based_costing';
 
 export default {
   navigation: {
@@ -184,4 +185,5 @@ export default {
     language: 'ভাষা',
   },
   shop_admin: shopAdmin,
+  product_based_costing: productBasedCosting,
 };

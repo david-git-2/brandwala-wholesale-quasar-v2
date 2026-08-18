@@ -32,6 +32,10 @@ flowchart LR
 3. **Quantity Semantics:** Open backlog quantity = `confirmed_quantity - ordered_quantity`.
 4. **Auto-Suggest Drawer/Panel:** When a costing file has a `billing_profile_id` assigned, fetch open backlog items for that profile. Allow selecting items to add into the current file.
 5. **Parent Shipment Pull:** Child PBC files prepare demand and transition to `ready_for_shipment`. Parent inbound shipments pull eligible lines via `list_child_procurement_lines` and `add_child_line_to_parent_shipment`. Child PBC displays a read-only **On Shipment** indicator once pulled.
+6. **Consume vs undo (no soft-delete):** Adding a backlog item onto a costing file **deletes** the backlog row (v1 consumes the full open qty). That is not a recycle bin. If staff then **delete that costing line** and no other line remains for the same `(tenant, billing_profile, product)`:
+   - **Restore** the backlog row from the deleted line (`OLD`) when the file is still a quote (`pending` or `offered`), `ordered_quantity` is 0, and `confirmed_quantity − ordered_quantity > 0`. Accidental add-then-delete returns the customer demand to the drawer.
+   - **Clear** backlog when the file is confirmed-or-later, or the line had `ordered_quantity > 0` (staff dropped fulfilled/in-progress demand).
+   - If another sibling line still exists for that product + customer, upsert from that line instead (unchanged).
 
 ---
 
@@ -97,8 +101,9 @@ CREATE INDEX idx_pbc_backlog_tenant_profile ON product_based_costing_backlog_ite
    - **Behavior:** Selects all active backlog items for tenant and profile ordered by `updated_at DESC`.
 
 3. `add_pbc_backlog_to_costing_file(p_file_id bigint, p_backlog_ids bigint[])`
-   - **Behavior:** Verifies file `billing_profile_id` matches backlog items' `billing_profile_id`. Inserts rows into `product_based_costing_items` (copying product snapshots and setting `quantity = open_quantity`, `status = 'pending'`). Deletes consumed rows from `product_based_costing_backlog_items`.
+   - **Behavior:** Verifies file `billing_profile_id` matches backlog items' `billing_profile_id`. Inserts rows into `product_based_costing_items` (copying product snapshots and setting `quantity` / `confirmed_quantity = open_quantity`). Deletes consumed rows from `product_based_costing_backlog_items`.
    - **Returns:** Set of created `product_based_costing_items.id`.
+   - **Undo:** `trg_fn_auto_upsert_pbc_backlog` AFTER DELETE restores that backlog row from `OLD` on quote files (`pending` / `offered`) when there is no sibling line, nothing was ordered, and open qty > 0. Does not use soft-delete.
 
 4. `add_child_line_to_parent_shipment` (Harden existing RPC)
    - **Costing Branch Validation:** Require item status = `accepted`, `assigned_shipment_id IS NULL`, `product_id IS NOT NULL`.
@@ -152,14 +157,14 @@ CREATE INDEX idx_pbc_backlog_tenant_profile ON product_based_costing_backlog_ite
 ## 10. Explicit Out of Scope
 - Universal tag management.
 - Customer group email or membership automations.
-- Historical backlog audit trail ledger table.
+- Historical backlog audit trail ledger table (no soft-delete / recycle bin).
 - Parent multi-file procurement inbox screen.
 - Partial backlog consume (v1 consumes entire backlog item open quantity).
 
 ---
 
 ## 11. Testing Strategy
-- **Schema & RPC Test:** SQL scripts verifying trigger/RPC behavior for `upsert_pbc_backlog_from_item`, `add_pbc_backlog_to_costing_file`, and `add_child_line_to_parent_shipment`.
+- **Schema & RPC Test:** SQL scripts verifying trigger/RPC behavior for `upsert_pbc_backlog_from_item`, `add_pbc_backlog_to_costing_file`, `add_child_line_to_parent_shipment`, and quote-line delete restoring backlog (`trg_fn_auto_upsert_pbc_backlog`).
 - **UI Test:** Verification of billing profile persistence, backlog suggestion drawer, and shipment batch operations via manual/browser subagent check.
 
 ---

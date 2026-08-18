@@ -12,25 +12,29 @@
           <div>
             <div class="text-h6 text-weight-bold">#{{ item.id }} {{ item.name }}</div>
 
-            <div class="text-subtitle2 q-mt-sm">created for: {{ item.order_for }}</div>
+            <div class="text-subtitle2 q-mt-sm">
+              {{ $t('product_based_costing.created_for', { name: item.order_for || $t('product_based_costing.untitled') }) }}
+            </div>
           </div>
 
           <div class="row items-center q-gutter-xs">
             <q-chip dense square :style="statusChipStyle(item.status)" class="costing-status-chip">
               <span class="status-dot" :style="{ backgroundColor: statusDotColor(item.status) }" />
-              {{ formatStatusLabel(item.status ?? 'pending') }}
+              {{ statusLabel(item.status) }}
             </q-chip>
             <q-btn icon="ph ph-dots-three-vertical" flat round dense @click.stop>
               <q-menu auto-close>
                 <q-list dense style="min-width: 140px">
                   <q-item clickable v-ripple @click="handleCopy(item)">
-                    <q-item-section>Copy</q-item-section>
+                    <q-item-section>{{ $t('product_based_costing.copy') }}</q-item-section>
                   </q-item>
                   <q-item clickable v-ripple @click="handleEdit(item)">
-                    <q-item-section>Edit</q-item-section>
+                    <q-item-section>{{ $t('product_based_costing.edit') }}</q-item-section>
                   </q-item>
                   <q-item clickable v-ripple @click="handleDelete(item)">
-                    <q-item-section class="text-negative">Delete</q-item-section>
+                    <q-item-section class="text-negative">{{
+                      $t('product_based_costing.delete')
+                    }}</q-item-section>
                   </q-item>
                 </q-list>
               </q-menu>
@@ -44,8 +48,8 @@
 
 <script setup lang="ts">
 import { useQuasar } from 'quasar';
+import { useI18n } from 'vue-i18n';
 import type { ProductBasedCostingFile } from '../types';
-import { formatStatusLabel } from '../composables/useProductBasedCostingFileDetailsState';
 
 defineProps<{
   items: ProductBasedCostingFile[];
@@ -59,6 +63,13 @@ const emit = defineEmits<{
 }>();
 
 const $q = useQuasar();
+const { t, te } = useI18n();
+
+const statusLabel = (status: string | null | undefined) => {
+  const value = (status ?? 'pending').trim().toLowerCase() || 'pending';
+  const key = `product_based_costing.status_${value}`;
+  return te(key) ? t(key) : value.replaceAll('_', ' ');
+};
 
 const handleSelect = (item: ProductBasedCostingFile) => {
   emit('select', item);
@@ -74,8 +85,11 @@ const handleCopy = (item: ProductBasedCostingFile) => {
 
 const handleDelete = (item: ProductBasedCostingFile) => {
   $q.dialog({
-    title: 'Confirm Delete',
-    message: `Are you sure you want to delete #${item.id} ${item.name}?`,
+    title: t('product_based_costing.confirm_delete_title'),
+    message: t('product_based_costing.confirm_delete_message', {
+      id: item.id,
+      name: item.name || t('product_based_costing.untitled'),
+    }),
     cancel: true,
     persistent: true,
   }).onOk(() => {

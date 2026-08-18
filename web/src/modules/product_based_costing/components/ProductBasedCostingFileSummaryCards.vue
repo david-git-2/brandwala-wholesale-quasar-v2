@@ -2,7 +2,7 @@
   <div class="q-mt-lg">
     <div class="text-subtitle1 text-weight-bold q-mb-sm text-grey-9 row items-center">
       <q-icon name="ph ph-chart-line-up" class="q-mr-xs text-primary" size="20px" />
-      Summary Metrics & Cost Breakdown
+      {{ $t('product_based_costing.summary_title') }}
     </div>
 
     <div class="row q-col-gutter-md">
@@ -13,26 +13,34 @@
             <div class="metric-icon-badge bg-primary-subtle text-primary q-mr-sm">
               <q-icon name="ph ph-package" size="18px" />
             </div>
-            <div class="text-subtitle2 text-weight-bold text-primary">Goods Cost Summary</div>
+            <div class="text-subtitle2 text-weight-bold text-primary">
+              {{ $t('product_based_costing.goods_cost_summary') }}
+            </div>
           </div>
           <div class="q-gutter-y-sm">
             <div class="row justify-between items-center">
-              <span class="text-caption text-grey-7">Total Quantity</span>
-              <span class="text-body2 text-weight-bold text-grey-9">{{ summaryMetrics.totalQuantity.toLocaleString() }} pcs</span>
+              <span class="text-caption text-grey-7">{{ $t('product_based_costing.total_quantity') }}</span>
+              <span class="text-body2 text-weight-bold text-grey-9"
+                >{{ summaryMetrics.totalQuantity.toLocaleString() }} {{ $t('product_based_costing.pcs') }}</span
+              >
             </div>
             <q-separator light />
             <div class="row justify-between items-center">
-              <span class="text-caption text-grey-7">Total Purchase Price (GBP)</span>
+              <span class="text-caption text-grey-7">{{
+                $t('product_based_costing.total_purchase_price_gbp')
+              }}</span>
               <span class="text-body2 text-weight-bold text-grey-9">£ {{ formatMoney(summaryMetrics.goodsCostGbp) }}</span>
             </div>
             <q-separator light />
             <div class="row justify-between items-center">
-              <span class="text-caption text-grey-7">Conversion Rate</span>
+              <span class="text-caption text-grey-7">{{ $t('product_based_costing.conversion_rate') }}</span>
               <span class="text-body2 text-weight-medium text-grey-8">{{ conversionRate }}</span>
             </div>
             <q-separator light />
             <div class="row justify-between items-center">
-              <span class="text-caption text-weight-medium text-grey-9">Goods Cost (BDT)</span>
+              <span class="text-caption text-weight-medium text-grey-9">{{
+                $t('product_based_costing.goods_cost_bdt')
+              }}</span>
               <span class="text-subtitle2 text-weight-bold text-primary">৳ {{ formatMoney(summaryMetrics.goodsCostBdt) }}</span>
             </div>
           </div>
@@ -46,26 +54,34 @@
             <div class="metric-icon-badge bg-teal-subtle text-teal-9 q-mr-sm">
               <q-icon name="ph ph-truck" size="18px" />
             </div>
-            <div class="text-subtitle2 text-weight-bold text-teal-9">Cargo Cost Summary</div>
+            <div class="text-subtitle2 text-weight-bold text-teal-9">
+              {{ $t('product_based_costing.cargo_cost_summary') }}
+            </div>
           </div>
           <div class="q-gutter-y-sm">
             <div class="row justify-between items-center">
-              <span class="text-caption text-grey-7">Cargo Weight (KG)</span>
-              <span class="text-body2 text-weight-bold text-grey-9">{{ summaryMetrics.cargoWeightKg.toFixed(2) }} kg</span>
+              <span class="text-caption text-grey-7">{{ $t('product_based_costing.cargo_weight_kg') }}</span>
+              <span class="text-body2 text-weight-bold text-grey-9"
+                >{{ summaryMetrics.cargoWeightKg.toFixed(2) }} kg</span
+              >
             </div>
             <q-separator light />
             <div class="row justify-between items-center">
-              <span class="text-caption text-grey-7">Cargo Cost (GBP)</span>
+              <span class="text-caption text-grey-7">{{ $t('product_based_costing.cargo_cost_gbp') }}</span>
               <span class="text-body2 text-weight-bold text-grey-9">£ {{ formatMoney(summaryMetrics.cargoCostGbp) }}</span>
             </div>
             <q-separator light />
             <div class="row justify-between items-center">
-              <span class="text-caption text-grey-7">Cargo Conversion Rate</span>
+              <span class="text-caption text-grey-7">{{
+                $t('product_based_costing.cargo_conversion_rate')
+              }}</span>
               <span class="text-body2 text-weight-medium text-grey-8">{{ conversionRate }}</span>
             </div>
             <q-separator light />
             <div class="row justify-between items-center">
-              <span class="text-caption text-weight-medium text-grey-9">Cargo Cost (BDT)</span>
+              <span class="text-caption text-weight-medium text-grey-9">{{
+                $t('product_based_costing.cargo_cost_bdt')
+              }}</span>
               <span class="text-subtitle2 text-weight-bold text-teal-9">৳ {{ formatMoney(summaryMetrics.cargoCostBdt) }}</span>
             </div>
           </div>
@@ -81,8 +97,12 @@
                 <q-icon name="ph ph-coins" size="20px" />
               </div>
               <div>
-                <div class="text-caption text-uppercase text-weight-bold text-grey-7">Total Landed Cost</div>
-                <div class="text-subtitle2 text-weight-bold text-grey-9">Goods Cost (BDT) + Cargo Cost (BDT)</div>
+                <div class="text-caption text-uppercase text-weight-bold text-grey-7">
+                  {{ $t('product_based_costing.total_landed_cost') }}
+                </div>
+                <div class="text-subtitle2 text-weight-bold text-grey-9">
+                  {{ $t('product_based_costing.total_landed_formula') }}
+                </div>
               </div>
             </div>
             <div class="col-12 col-sm-auto text-right">

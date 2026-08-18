@@ -12,10 +12,10 @@
         <div>
           <div class="text-subtitle1 text-weight-bold row items-center">
             <q-icon name="ph ph-tray" class="q-mr-xs text-primary" size="20px" />
-            Still needed
+            {{ $t('product_based_costing.still_needed_title') }}
           </div>
           <div class="text-caption text-grey-7">
-            Leftover from last quote for this customer
+            {{ $t('product_based_costing.still_needed_subtitle') }}
           </div>
         </div>
         <q-btn icon="ph ph-x" flat round dense @click="isOpen = false" />
@@ -36,22 +36,29 @@
           class="text-center text-grey-6 q-pa-xl"
         >
           <q-icon name="ph ph-check-circle" size="48px" class="q-mb-sm text-grey-4" />
-          <div class="text-body1 text-weight-medium">Nothing left to add for this customer.</div>
+          <div class="text-body1 text-weight-medium">
+            {{ $t('product_based_costing.nothing_left_to_add') }}
+          </div>
         </div>
 
         <template v-else>
           <template v-if="items.length">
             <div class="text-caption text-weight-medium text-grey-7 q-mb-xs">
-              Not on this file yet
+              {{ $t('product_based_costing.not_on_file_yet') }}
             </div>
             <div class="row items-center justify-between q-mb-sm">
               <q-checkbox
                 v-model="allSelected"
-                label="Select all"
+                :label="$t('product_based_costing.select_all')"
                 dense
                 class="text-weight-medium"
               />
-              <span class="text-caption text-grey-7">{{ selectedIds.length }} of {{ items.length }} selected</span>
+              <span class="text-caption text-grey-7">{{
+                $t('product_based_costing.selected_of_total', {
+                  selected: selectedIds.length,
+                  total: items.length,
+                })
+              }}</span>
             </div>
 
             <div class="q-gutter-y-sm q-mb-md">
@@ -91,7 +98,7 @@
 
                   <div class="col-auto text-right">
                     <q-badge color="orange-9" class="text-weight-bold q-px-sm q-py-xs">
-                      Qty: {{ item.open_quantity }}
+                      {{ $t('product_based_costing.qty_badge', { qty: item.open_quantity }) }}
                     </q-badge>
                   </div>
                 </q-card-section>
@@ -101,7 +108,7 @@
 
           <template v-if="alreadyOnFileItems.length">
             <div class="text-caption text-weight-medium text-grey-7 q-mb-sm">
-              Already on this file
+              {{ $t('product_based_costing.already_on_file') }}
             </div>
             <div class="q-gutter-y-sm">
               <q-card
@@ -130,7 +137,7 @@
 
                   <div class="col-auto text-right">
                     <q-badge outline color="grey-7" class="q-px-sm q-py-xs">
-                      On this file
+                      {{ $t('product_based_costing.on_this_file') }}
                     </q-badge>
                   </div>
                 </q-card-section>
@@ -147,7 +154,7 @@
           flat
           dense
           no-caps
-          label="Add All"
+          :label="$t('product_based_costing.add_all')"
           color="primary"
           :loading="adding"
           @click="onAddAll"
@@ -156,7 +163,7 @@
           unelevated
           no-caps
           color="primary"
-          :label="`Add Selected (${selectedIds.length})`"
+          :label="$t('product_based_costing.add_selected', { count: selectedIds.length })"
           :disable="selectedIds.length === 0"
           :loading="adding"
           @click="onAddSelected"
