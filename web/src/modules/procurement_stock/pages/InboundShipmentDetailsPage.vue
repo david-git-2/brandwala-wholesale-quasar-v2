@@ -506,8 +506,11 @@ import ShipmentReceiveTabPanel from '../components/ShipmentReceiveTabPanel.vue';
 import ShipmentAssignShopCard from '../components/ShipmentAssignShopCard.vue';
 
 // Composables
+import { useQuery } from '@tanstack/vue-query';
 import { useInboundShipmentCalculations } from '../composables/useInboundShipmentCalculations';
 import { useInboundShipmentActions } from '../composables/useInboundShipmentActions';
+import { procurementStockQueryKeys } from '../shared/queryKeys/procurementStockQueryKeys';
+import { globalShipmentRepository } from '../repositories/globalShipmentRepository';
 
 import { showSuccessNotification, showErrorNotification, requestConfirmation } from 'src/utils/appFeedback';
 
@@ -516,6 +519,7 @@ const router = useRouter();
 const authStore = useAuthStore();
 const shipmentStore = useGlobalShipmentStore();
 const shipmentId = Number(route.params.id);
+
 
 const sharingLoading = ref(false);
 const progressFlowOptions = computed(() =>
@@ -698,28 +702,78 @@ const changeFlow = async (flowId: number) => {
   }
 };
 
-onMounted(async () => {
-  await shipmentStore.fetchShipmentDetails(shipmentId);
-  if (!authStore.tenantId) return;
-  await shipmentStore.loadProgressFlows(authStore.tenantId, true);
-  const flowId =
+// Query cached progress flows
+const parentTenantId = computed(() => authStore.tenantId);
+
+const { data: cachedProgressFlows } = useQuery({
+  queryKey: computed(() =>
+    procurementStockQueryKeys.progressFlows(parentTenantId.value ?? 0, true),
+  ),
+  queryFn: async () => {
+    if (!parentTenantId.value) return [];
+    return await globalShipmentRepository.listShipmentProgressFlows(parentTenantId.value, true);
+  },
+  staleTime: 10 * 60 * 1000,
+  enabled: computed(() => !!parentTenantId.value),
+});
+
+watch(
+  cachedProgressFlows,
+  (flows) => {
+    if (flows) {
+      shipmentStore.progressFlows = flows;
+    }
+  },
+  { immediate: true },
+);
+
+const activeFlowId = computed(() => {
+  return (
     shipmentStore.currentShipment?.progress_flow_id ??
     shipmentStore.progressFlows.find((flow) => flow.is_default)?.id ??
-    null;
-  if (flowId) {
-    await shipmentStore.loadProgressFlowStages(flowId, false);
-    shipmentStore.progressTags = (shipmentStore.progressStagesByFlow[flowId] ?? []).map((stage) => ({
-      id: stage.tag_id,
-      name: stage.name,
-      slug: stage.slug,
-      group_name: 'shipment_progress',
-      sort_order: stage.sort_order,
-      color: stage.color,
-      is_active: stage.is_active,
-    }));
-  }
+    null
+  );
+});
+
+// Query cached progress stages for current active flow
+const { data: cachedProgressStages } = useQuery({
+  queryKey: computed(() =>
+    procurementStockQueryKeys.progressStages(activeFlowId.value ?? 0, false),
+  ),
+  queryFn: async () => {
+    if (!activeFlowId.value) return [];
+    return await globalShipmentRepository.listShipmentProgressFlowStages(
+      activeFlowId.value,
+      false,
+    );
+  },
+  staleTime: 10 * 60 * 1000,
+  enabled: computed(() => !!activeFlowId.value),
+});
+
+watch(
+  cachedProgressStages,
+  (stages) => {
+    if (stages) {
+      shipmentStore.progressTags = stages.map((stage) => ({
+        id: stage.tag_id,
+        name: stage.name,
+        slug: stage.slug,
+        group_name: 'shipment_progress',
+        sort_order: stage.sort_order,
+        color: stage.color,
+        is_active: stage.is_active,
+      }));
+    }
+  },
+  { immediate: true },
+);
+
+onMounted(async () => {
+  await shipmentStore.fetchShipmentDetails(shipmentId);
 });
 </script>
+
 
 <style scoped>
 .shipment-details-page .min-width-0 {

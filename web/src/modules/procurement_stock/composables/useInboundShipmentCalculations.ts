@@ -1,4 +1,4 @@
-import { computed, ref, onMounted } from 'vue';
+import { computed } from 'vue';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import type { GlobalShipment } from '../repositories/globalShipmentRepository';
 import { STOCK_AVAILABILITY_OPTIONS } from '../constants/stockAvailability';
@@ -7,7 +7,7 @@ import {
   isShipmentCostFinalized,
   sumProductEntryAmount,
 } from '../utils/costEntriesCosting';
-import { globalReferenceRepository } from 'src/modules/global_reference/repositories/globalReferenceRepository';
+import { useGlobalCurrenciesQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
 import type { GlobalCurrency } from 'src/modules/global_reference/types';
 import type { ColumnKey } from '../components/ShipmentLineItemsTable.vue';
 import { useMembershipColumnPreference } from 'src/modules/membership/composables/useMembershipColumnPreference';
@@ -41,24 +41,9 @@ const alwaysVisibleColumns: ColumnKey[] = ['name', 'product_codes', 'actions'];
 
 export function useInboundShipmentCalculations() {
   const shipmentStore = useGlobalShipmentStore();
+  const { data: currenciesData, isLoading: loadingCurrencies } = useGlobalCurrenciesQuery();
 
-  const currenciesList = ref<GlobalCurrency[]>([]);
-  const loadingCurrencies = ref(false);
-
-  const loadCurrencies = async () => {
-    loadingCurrencies.value = true;
-    try {
-      currenciesList.value = await globalReferenceRepository.listCurrencies();
-    } catch (err) {
-      console.error('Failed to load currencies', err);
-    } finally {
-      loadingCurrencies.value = false;
-    }
-  };
-
-  onMounted(() => {
-    void loadCurrencies();
-  });
+  const currenciesList = computed<GlobalCurrency[]>(() => currenciesData.value ?? []);
 
   const currentPurchaseCurrency = computed(() => {
     const currencyId = shipmentStore.currentShipment?.shipment_purchase_currency_id;

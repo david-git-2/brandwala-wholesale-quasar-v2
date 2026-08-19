@@ -30,6 +30,15 @@ export const procurementStockQueryKeys = {
   shipmentCostEntries: (shipmentId: number) =>
     ['procurementStock', 'shipmentCostEntries', { shipmentId }] as const,
 
+  progressFlows: (tenantId: number, includeArchived?: boolean) =>
+    ['procurementStock', 'progressFlows', { tenantId, includeArchived }] as const,
+
+  progressStages: (flowId: number, includeArchived?: boolean) =>
+    ['procurementStock', 'progressStages', { flowId, includeArchived }] as const,
+
+  shipmentOverview: (shipmentId: number) =>
+    ['procurementStock', 'shipmentOverview', { shipmentId }] as const,
+
   childStockAtp: (params: {
     childTenantId: number;
     search?: string | null;

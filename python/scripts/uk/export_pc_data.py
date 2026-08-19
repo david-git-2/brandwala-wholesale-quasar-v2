@@ -1,6 +1,8 @@
+import argparse
 import os
 import re
 import json
+import sys
 import time
 from datetime import date, datetime
 
@@ -16,6 +18,8 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 ROOT_ENV_FILE = os.path.join(ROOT_DIR, ".env")
 WEB_ENV_FILE = os.path.join(ROOT_DIR, "web", ".env")
+sys.path.insert(0, os.path.join(ROOT_DIR, "python"))
+from pc_excel_spec import REQUIRED_PC_COLUMNS, required_field_candidates
 
 
 def load_env_file(path: str):
@@ -138,41 +142,6 @@ def excel_col_index_to_letters(index: int) -> str:
         n, rem = divmod(n - 1, 26)
         letters.append(chr(ord("A") + rem))
     return "".join(reversed(letters))
-
-
-def excel_col_letters_to_index(value: str) -> int:
-    s = str(value or "").strip().upper()
-    if not s or not re.fullmatch(r"[A-Z]+", s):
-        return 0
-    result = 0
-    for ch in s:
-        result = (result * 26) + (ord(ch) - ord("A") + 1)
-    return result
-
-
-def prompt_excel_column(label: str, default_index: int) -> int:
-    default_letters = excel_col_index_to_letters(default_index)
-    import sys
-    if not sys.stdin.isatty():
-        return default_index
-    while True:
-        raw = input(f"{label} [{default_letters}]: ").strip()
-        if raw == "":
-            return default_index
-
-        # Backward-compatible: allow numeric input too.
-        if raw.isdigit():
-            val = int(raw)
-            if val > 0:
-                return val
-            log("❌ Please enter a valid column (A, B, C... or positive number).")
-            continue
-
-        col_idx = excel_col_letters_to_index(raw)
-        if col_idx > 0:
-            return col_idx
-
-        log("❌ Invalid column. Use Excel letters like A, B, C, AA ...")
 
 
 def resolve_header_name(header_to_col: dict, headers: list, candidates: list) -> str:
@@ -364,7 +333,14 @@ def format_duration(seconds: float) -> str:
     return f"{s}s"
 
 
-def main():
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(description="Export PC Excel catalog to JSON.")
+    parser.add_argument("--header-row", type=int, default=None, help="1-based header row (skips prompt)")
+    return parser.parse_args(argv)
+
+
+def main(argv=None):
+    args = parse_args(argv)
     t0 = time.perf_counter()
 
     # ---- CONFIG ----
@@ -373,29 +349,18 @@ def main():
     OUT_IMAGES_DIR = DEFAULT_OUT_IMAGES
 
     DEFAULT_HEADER_ROW = 4
-    DEFAULT_IMAGE_COLUMN_INDEX = 14  # 1-based column index (14 = N)
-    DEFAULT_CASE_SIZE_COLUMN_INDEX = 3  # 1-based column index (3 = C, OUTER CASE on current PC sheets)
 
     SHEET_NAME = None
 
+    required_header_lines = "\n".join(
+        f"    - {col['excel']} → {col['db']}" for col in REQUIRED_PC_COLUMNS
+    )
     log(
         "\n"
         "🚀 PC export starting...\n"
         "\n"
-        "📌 Excel format requirements:\n"
-        "  Required logical fields in the HEADER ROW:\n"
-        "    - product_code (e.g. PRODUCT CODE)\n"
-        "    - barcode (e.g. BARCODE)\n"
-        "    - name (e.g. NAME / DESCRIPTION)\n"
-        "    - price (e.g. PRICE / PIECE PRICE £)\n"
-        "    - case_size (you will enter the column letter; OUTER CASE, INNER CASE, or CASE SIZE)\n"
-        "    - image   (images are embedded in the sheet; you will enter the image column letter)\n"
-        "  Optional columns:\n"
-        "    - country_of_origin\n"
-        "    - brand\n"
-        "    - expire_date\n"
-        "    - hazardous (rows with YES are skipped)\n"
-        "    - inner_case / outer_case (not required; case size comes from the column you pick)\n"
+        "📌 Required headers (header row). Empty columns between them are OK:\n"
+        f"{required_header_lines}\n"
         "\n"
         "🆔 Product ID:\n"
         "  - product_id = barcode + '_' + product_code\n"
@@ -403,19 +368,22 @@ def main():
         "⚡ Speed mode enabled:\n"
         "  - Export extracts images only.\n"
         "  - Upload happens in sync step using DB product_id key.\n"
-        "\n"
-        "👉 You will be asked for:\n"
-        "  - Header row number (where the column names are)\n"
-        "  - Image column letter (A, B, C, ...)\n"
-        "  - Case size column letter (A, B, C, ...)\n"
     )
+    using_cli_flags = args.header_row is not None
+    if using_cli_flags:
+        log("👉 Using CLI flags for header row.\n")
+    else:
+        log(
+            "👉 You will be asked for the header row number.\n"
+            "  Pictures always come from IMAGE. Case size always comes from INNER CASE.\n"
+        )
 
-    HEADER_ROW = prompt_int("Enter header row number", DEFAULT_HEADER_ROW)
-    IMAGE_COLUMN_INDEX = prompt_excel_column("Enter image column letter (A, B, C, ...)", DEFAULT_IMAGE_COLUMN_INDEX)
-    CASE_SIZE_COLUMN_INDEX = prompt_excel_column(
-        "Enter case size column letter (A, B, C, ...)",
-        DEFAULT_CASE_SIZE_COLUMN_INDEX,
-    )
+    if args.header_row is not None:
+        if args.header_row <= 0:
+            raise SystemExit("❌ --header-row must be a positive integer")
+        HEADER_ROW = args.header_row
+    else:
+        HEADER_ROW = prompt_int("Enter header row number", DEFAULT_HEADER_ROW)
 
     log(f"\n📄 Excel: {EXCEL_PATH}")
     if not os.path.exists(EXCEL_PATH):
@@ -435,60 +403,42 @@ def main():
     max_row = sh.max_row
     log(f"📐 Sheet size: rows={max_row}, cols={max_col}")
 
-    # Read headers
     log(f"🏷️ Reading headers from row {HEADER_ROW}...")
     headers = []
     for c in range(1, max_col + 1):
         v = sh.cell(HEADER_ROW, c).value
         headers.append(str(v).strip() if v is not None else f"col_{c}")
 
-    # Build header lookup (normalized -> column index)
     header_to_col = {}
     for idx, h in enumerate(headers, start=1):
         nh = normalize_header(h)
         header_to_col.setdefault(nh, idx)
 
-    # Resolve logical fields from flexible header aliases.
     field_candidates = {
-        "product_code": ["product_code", "product code", "code"],
-        "barcode": ["barcode", "bar code", "ean"],
-        "name": ["name", "description", "product_name", "product name"],
-        "price": ["price", "piece_price", "piece price", "piece_price_gbp", "unit_price", "unit price"],
-        "country_of_origin": ["country_of_origin", "country of origin", "country"],
-        "brand": ["brand"],
-        "expire_date": ["expire_date", "expiry_date", "expiry date", "expiration_date", "exp_date"],
-        "category": ["category"],
-        "available_units": ["available_units", "available units"],
-        "inner_case": ["inner_case", "inner case"],
+        **required_field_candidates(),
         "outer_case": ["outer_case", "outer case"],
         "outer_per_plt": ["outer_per_plt", "outer per plt", "outer per pallet"],
         "tariff_code": ["tariff_code", "tariff code"],
-        "languages": ["languages", "language"],
-        "batch_code_manufacture_date": [
-            "batch_code_manufacture_date",
-            "batch code / manufacture date",
-            "batch code manufacture date",
-            "batch_code",
-            "manufacture_date",
-        ],
-        "hazardous": ["hazardous"],
         "sales_unit": ["sales_unit", "sales unit"],
-        "image": ["image", "image url", "photo"],
     }
     resolved_headers = {
         field: resolve_header_name(header_to_col, headers, candidates)
         for field, candidates in field_candidates.items()
     }
 
-    required = ["product_code", "barcode", "name", "price"]
-    missing_required = [field for field in required if not resolved_headers.get(field)]
+    missing_required = [col["excel"] for col in REQUIRED_PC_COLUMNS if not resolved_headers.get(col["key"])]
     if missing_required:
         raise RuntimeError(
-            "❌ Missing required column(s) in header row "
+            "❌ Missing required header(s) in row "
             f"{HEADER_ROW}: {', '.join(missing_required)}\n"
-            "Make sure your Excel header row contains matching columns (case-insensitive).\n"
-            "Examples: PRODUCT CODE, BARCODE, DESCRIPTION, PIECE PRICE £\n"
+            "Required headers: "
+            + ", ".join(col["excel"] for col in REQUIRED_PC_COLUMNS)
         )
+
+    image_header_col = header_to_col[normalize_header(resolved_headers["image"])]
+    inner_case_col = header_to_col[normalize_header(resolved_headers["inner_case"])]
+    IMAGE_COLUMN_INDEX = image_header_col
+    CASE_SIZE_COLUMN_INDEX = inner_case_col
 
     if CASE_SIZE_COLUMN_INDEX > max_col:
         raise RuntimeError(
@@ -496,14 +446,12 @@ def main():
             f"{excel_col_index_to_letters(CASE_SIZE_COLUMN_INDEX)} is outside the sheet "
             f"(sheet has {max_col} columns)."
         )
-
-    missing_optional = [
-        field
-        for field in ["country_of_origin", "brand", "expire_date", "category", "hazardous"]
-        if not resolved_headers.get(field)
-    ]
-    if missing_optional:
-        log(f"ℹ️ Optional column(s) missing (OK): {', '.join(missing_optional)}")
+    if IMAGE_COLUMN_INDEX > max_col:
+        raise RuntimeError(
+            "❌ Image column "
+            f"{excel_col_index_to_letters(IMAGE_COLUMN_INDEX)} is outside the sheet "
+            f"(sheet has {max_col} columns)."
+        )
 
     product_code_header_name = resolved_headers["product_code"]
     barcode_header_name = resolved_headers["barcode"]
@@ -547,16 +495,34 @@ def main():
 
     log(f"✅ Products loaded: {len(products_by_row)}")
 
-    # Track hazardous items but do not skip them.
-    eligible_rows = set(products_by_row.keys())
-    hazardous_rows_count = 0
-    if hazardous_header_name:
-        for row, obj in products_by_row.items():
-            if is_hazardous_yes(obj.get(hazardous_header_name, "")):
-                hazardous_rows_count += 1
-        log(
-            f"🧪 Hazardous items detected: {hazardous_rows_count}"
-        )
+    required_value_keys = [col["key"] for col in REQUIRED_PC_COLUMNS if col.get("row_required")]
+    skipped_incomplete = 0
+    skipped_hazardous = 0
+    eligible_rows = set()
+    for row, obj in products_by_row.items():
+        missing_cells = []
+        for key in required_value_keys:
+            header_name = resolved_headers.get(key, "")
+            if not header_name:
+                missing_cells.append(key)
+                continue
+            if to_text(obj.get(header_name, "")) == "":
+                missing_cells.append(key)
+        if missing_cells:
+            skipped_incomplete += 1
+            continue
+        if is_hazardous_yes(obj.get(hazardous_header_name, "")):
+            skipped_hazardous += 1
+            continue
+        eligible_rows.add(row)
+    if skipped_incomplete:
+        log(f"⚠️ Skipped {skipped_incomplete} row(s) with empty DESCRIPTION or PRODUCT CODE.")
+    if skipped_hazardous:
+        log(f"⚠️ Skipped {skipped_hazardous} hazardous row(s).")
+    if not eligible_rows:
+        raise RuntimeError("❌ No product rows left after DESCRIPTION/PRODUCT CODE and hazardous filters.")
+
+    hazardous_rows_count = skipped_hazardous
 
     # Extract images
     log(

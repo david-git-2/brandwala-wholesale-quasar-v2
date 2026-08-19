@@ -5,6 +5,15 @@
       <q-markup-table flat class="shipment-details-table" :class="{ 'is-editable': isEditable }">
         <thead>
           <tr>
+            <th class="text-center shipment-select-col">
+              <q-checkbox
+                :model-value="allSelected"
+                :indeterminate="isIndeterminate"
+                dense
+                size="sm"
+                @update:model-value="toggleSelectAll"
+              />
+            </th>
             <th class="text-right shipment-sl-col">SL</th>
             <th class="text-left shipment-image-col">Image</th>
             <th v-if="isColumnVisible('name')" class="text-left shipment-name-col">Name</th>
@@ -51,7 +60,15 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(item, index) in items" :key="item.id">
+          <tr v-for="(item, index) in items" :key="item.id" :class="{ 'row-selected': isItemSelected(item.id) }">
+            <td class="text-center shipment-select-col">
+              <q-checkbox
+                :model-value="isItemSelected(item.id)"
+                dense
+                size="sm"
+                @update:model-value="(val) => toggleItemSelection(item.id, !!val)"
+              />
+            </td>
             <td class="text-right shipment-sl-col">
               <div class="row items-center justify-end no-wrap">
                 <span
@@ -525,10 +542,12 @@ const props = withDefaults(
     visibleColumns?: ColumnKey[];
     purchaseCurrencySymbol?: string;
     costCurrencySymbol?: string;
+    selectedIds?: number[];
   }>(),
   {
     purchaseCurrencySymbol: '£',
     costCurrencySymbol: '৳',
+    selectedIds: () => [],
   },
 );
 
@@ -541,7 +560,46 @@ const copyToClipboard = (text: any, label: string) => {
 const emit = defineEmits<{
   'edit-details': [item: GlobalShipmentItem];
   delete: [id: number];
+  'update:selectedIds': [ids: number[]];
 }>();
+
+const isItemSelected = (id: number): boolean => {
+  return (props.selectedIds ?? []).includes(id);
+};
+
+const allSelected = computed<boolean>(() => {
+  if (!props.items || props.items.length === 0) return false;
+  const currentSet = new Set(props.selectedIds ?? []);
+  return props.items.every((it) => currentSet.has(it.id));
+});
+
+const isIndeterminate = computed<boolean>(() => {
+  if (!props.items || props.items.length === 0) return false;
+  const selectedCount = props.items.filter((it) => (props.selectedIds ?? []).includes(it.id)).length;
+  return selectedCount > 0 && selectedCount < props.items.length;
+});
+
+const toggleSelectAll = (val: boolean | null) => {
+  if (val) {
+    const allItemIds = props.items.map((it) => it.id);
+    const merged = Array.from(new Set([...(props.selectedIds ?? []), ...allItemIds]));
+    emit('update:selectedIds', merged);
+  } else {
+    const itemIdsToRemove = new Set(props.items.map((it) => it.id));
+    const remaining = (props.selectedIds ?? []).filter((id) => !itemIdsToRemove.has(id));
+    emit('update:selectedIds', remaining);
+  }
+};
+
+const toggleItemSelection = (id: number, selected: boolean) => {
+  const current = new Set(props.selectedIds ?? []);
+  if (selected) {
+    current.add(id);
+  } else {
+    current.delete(id);
+  }
+  emit('update:selectedIds', Array.from(current));
+};
 
 const shipmentStore = useGlobalShipmentStore();
 
@@ -605,7 +663,7 @@ const isEditable = computed(() => {
 const isColumnVisible = (column: ColumnKey) => activeVisibleColumns.value.includes(column);
 
 const tableColspan = computed(() => {
-  let count = 2;
+  let count = 3; // select col + sl col + image col
   for (const opt of columnOptions.value) {
     if (isColumnVisible(opt.value)) count++;
   }
@@ -1020,6 +1078,13 @@ defineExpose({
   line-height: 1.25;
 }
 
+.shipment-select-col {
+  width: 44px;
+  min-width: 44px;
+  max-width: 44px;
+  padding: 0 4px !important;
+}
+
 .shipment-sl-col {
   width: var(--sl-col-width);
   min-width: var(--sl-col-width);
@@ -1118,6 +1183,11 @@ defineExpose({
   background: #ffe8d1;
 }
 
+/* Row selection highlight */
+.shipment-details-table :deep(tr.row-selected td) {
+  background: #f0f7ff !important;
+}
+
 .shipment-details-table :deep(td:first-child),
 .shipment-details-table :deep(th:first-child) {
   position: sticky;
@@ -1127,13 +1197,13 @@ defineExpose({
 .shipment-details-table :deep(td:nth-child(2)),
 .shipment-details-table :deep(th:nth-child(2)) {
   position: sticky;
-  left: var(--sl-col-width);
+  left: 44px;
 }
 
 .shipment-details-table :deep(td:nth-child(3)),
 .shipment-details-table :deep(th:nth-child(3)) {
   position: sticky;
-  left: calc(var(--sl-col-width) + 1.2in);
+  left: calc(44px + var(--sl-col-width));
 }
 
 .shipment-details-table :deep(td:first-child) {

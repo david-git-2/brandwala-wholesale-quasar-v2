@@ -88,6 +88,18 @@ Rules:
 - Shop permissions snapshot:
   - `['shop_order', 'permissions', { tenantId, shopId, customerGroupId }]`
 
+### Procurement & Stock Strategy
+
+- Master / reference data (`staleTime: 5-15m`):
+  - Currencies: `['reference', 'currencies']`
+  - Cargo companies: `['procurementStock', 'cargoCompanies', { tenantId, includeInactive }]`
+  - Vendors: `['vendor', 'list', { tenantId }]`
+  - Progress flows / stages: `['procurementStock', 'progressFlows', { tenantId }]`, `['procurementStock', 'progressStages', { flowId }]`
+- Shipment Overview / Details (`staleTime: 30s`):
+  - Consolidated query: `['procurementStock', 'shipmentDetail', { tenantId, shipmentId }]`
+  - Eliminates 17+ fragmented network calls on page open by consolidating items, boxes, sections, stocks, and cost entries.
+
+
 ### Mutation Map (initial)
 
 - Update status / advance status / return:

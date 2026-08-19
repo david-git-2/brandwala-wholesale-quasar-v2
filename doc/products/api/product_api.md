@@ -15,7 +15,7 @@ Retrieves a paginated list of products with search, sorting, and filtering optio
 #### Payload Parameters
 | Parameter | Type | Required | Description |
 | :--- | :--- | :---: | :--- |
-| `p_tenant_id` | INTEGER | No | Tenant ID scoping |
+| `p_tenant_id` | INTEGER | No | Logged-in tenant; server resolves parent and lists `parent_tenant_id` catalog |
 | `p_search` | STRING | No | Search term matching name, code, or barcode |
 | `p_search_field` | STRING | No | Targeted field search (`'name'`, `'product_code'`, `'barcode'`) |
 | `p_brand` | STRING | No | Filter by brand |
@@ -39,7 +39,8 @@ Inserts a new product record into `products`.
 #### Request Payload
 ```json
 {
-  "tenant_id": 15,
+  "parent_tenant_id": 15,
+  "inserted_by_tenant_id": 15,
   "product_code": "PROD-1001",
   "barcode": "501234567890",
   "name": "Organic Honey 500g",
@@ -73,13 +74,15 @@ JSON Array of product objects:
 ```json
 [
   {
-    "tenant_id": 15,
+    "parent_tenant_id": 15,
+    "inserted_by_tenant_id": 15,
     "product_code": "PROD-1001",
     "name": "Organic Honey 500g",
     "list_price_amount": 12.50
   },
   {
-    "tenant_id": 15,
+    "parent_tenant_id": 15,
+    "inserted_by_tenant_id": 15,
     "product_code": "PROD-1002",
     "name": "Olive Oil 1L",
     "list_price_amount": 18.00

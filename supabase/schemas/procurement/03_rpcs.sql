@@ -455,6 +455,7 @@ CREATE OR REPLACE FUNCTION "public"."add_shipment_item_from_product"("p_shipment
 declare
   v_row public.shipment_items;
   v_tenant_id bigint;
+  v_parent bigint;
   v_product record;
   v_quantity integer;
 begin
@@ -469,6 +470,8 @@ begin
   if not public.can_manage_shipment(v_tenant_id) then
     raise exception 'not allowed';
   end if;
+
+  v_parent := public.resolve_parent_tenant_id(v_tenant_id);
 
   v_quantity := coalesce(p_quantity, 0);
   if v_quantity <= 0 then
@@ -487,7 +490,7 @@ begin
   into v_product
   from public.products p
   where p.id = p_product_id
-    and p.tenant_id = v_tenant_id;
+    and p.parent_tenant_id = v_parent;
 
   if v_product.id is null then
     raise exception 'product not found';
@@ -1191,6 +1194,7 @@ begin
   loop
     insert into public.global_shipment_items (
       shipment_id,
+      section_id,
       product_id,
       vendor_id,
       name,
@@ -1209,6 +1213,7 @@ begin
     )
     values (
       p_shipment_id,
+      nullif((v_item->>'section_id'), '')::bigint,
       nullif((v_item->>'product_id'), '')::bigint,
       nullif((v_item->>'vendor_id'), '')::bigint,
       coalesce(v_item->>'name', 'Unnamed Item'),
@@ -1426,6 +1431,14 @@ begin
     if v_id is not null then
       update public.global_shipment_items
       set
+        section_id = case
+          when v_update ? 'section_id' then nullif((v_update->>'section_id'), '')::bigint
+          else section_id
+        end,
+        vendor_id = case
+          when v_update ? 'vendor_id' then nullif((v_update->>'vendor_id'), '')::bigint
+          else vendor_id
+        end,
         ordered_quantity = case
           when v_update ? 'ordered_quantity' and (v_update->>'ordered_quantity') is not null then greatest(1, (v_update->>'ordered_quantity')::integer)
           else ordered_quantity
@@ -8125,12 +8138,10 @@ begin
     from public.vendors v
     where v.id = new.vendor_id;
 
-    if v_tenant_id is not null then
-      new.tenant_id := v_tenant_id;
-    end if;
-
     if v_parent_tenant_id is not null then
-      new.parent_tenant_id := v_parent_tenant_id;
+      new.parent_tenant_id := public.resolve_parent_tenant_id(v_parent_tenant_id);
+    elsif v_tenant_id is not null then
+      new.parent_tenant_id := public.resolve_parent_tenant_id(v_tenant_id);
     end if;
   end if;
 
@@ -9839,5 +9850,204 @@ $$;
 
 
 ALTER FUNCTION "public"."trg_reactive_adjust_child_listing_cost"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_shipment_overview_details"("p_shipment_id" bigint) RETURNS jsonb
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public'
+    AS $$
+declare
+  v_parent bigint;
+  v_ship jsonb;
+  v_sections jsonb;
+  v_items jsonb;
+  v_boxes jsonb;
+  v_cost_entries jsonb;
+  v_flow_stages jsonb;
+  v_progress_flow_id bigint;
+begin
+  select parent_tenant_id, progress_flow_id, to_jsonb(s.*)
+  into v_parent, v_progress_flow_id, v_ship
+  from public.global_shipments s
+  where s.id = p_shipment_id;
+
+  if v_ship is null then
+    raise exception 'shipment not found';
+  end if;
+
+  if not (
+    public.user_can_manage_parent_tenant(v_parent)
+    or exists (
+      select 1 from public.memberships m
+      where m.tenant_id = v_parent
+        and lower(trim(m.email)) = public.current_user_email()
+        and m.is_active = true
+    )
+  ) then
+    raise exception 'not allowed';
+  end if;
+
+  -- Ensure cost entries from header are synced
+  perform public.ensure_global_shipment_cost_entries_from_header(p_shipment_id);
+
+  -- 1. Sections with vendor info
+  select coalesce(
+    jsonb_agg(
+      to_jsonb(sec.*) || jsonb_build_object('vendor', to_jsonb(v.*))
+      order by sec.sort_order asc, sec.id asc
+    ),
+    '[]'::jsonb
+  )
+  into v_sections
+  from public.global_shipment_sections sec
+  left join public.vendors v on v.id = sec.vendor_id
+  where sec.shipment_id = p_shipment_id;
+
+  -- 2. Items
+  select coalesce(
+    jsonb_agg(
+      to_jsonb(i.*)
+      order by coalesce(i.sort_order, 0) asc, i.id asc
+    ),
+    '[]'::jsonb
+  )
+  into v_items
+  from public.global_shipment_items i
+  where i.shipment_id = p_shipment_id;
+
+  -- 3. Boxes
+  select coalesce(
+    jsonb_agg(
+      to_jsonb(b.*)
+      order by b.box_number asc, b.id asc
+    ),
+    '[]'::jsonb
+  )
+  into v_boxes
+  from public.global_shipment_boxes b
+  where b.shipment_id = p_shipment_id;
+
+  -- 4. Cost entries
+  select coalesce(
+    jsonb_agg(
+      to_jsonb(ce.*)
+      order by ce.cost_type asc, ce.id asc
+    ),
+    '[]'::jsonb
+  )
+  into v_cost_entries
+  from public.global_shipment_cost_entries ce
+  where ce.shipment_id = p_shipment_id;
+
+  -- 5. Flow stages if flow assigned
+  if v_progress_flow_id is not null then
+    select coalesce(
+      jsonb_agg(
+        jsonb_build_object(
+          'flow_stage_id', st.id,
+          'flow_id', st.flow_id,
+          'tag_id', st.tag_id,
+          'sort_order', st.sort_order,
+          'name', coalesce(t.name, ''),
+          'slug', coalesce(t.slug, ''),
+          'color', t.color,
+          'is_active', coalesce(st.is_active, true)
+        )
+        order by st.sort_order asc
+      ),
+      '[]'::jsonb
+    )
+    into v_flow_stages
+    from public.shipment_progress_flow_stages st
+    join public.shipment_progress_tags t on t.id = st.tag_id
+    where st.flow_id = v_progress_flow_id and st.is_active = true;
+  else
+    v_flow_stages := '[]'::jsonb;
+  end if;
+
+  return jsonb_build_object(
+    'shipment', v_ship,
+    'sections', v_sections,
+    'items', v_items,
+    'boxes', v_boxes,
+    'cost_entries', v_cost_entries,
+    'flow_stages', v_flow_stages
+  );
+end;
+$$;
+
+
+ALTER FUNCTION "public"."get_shipment_overview_details"("p_shipment_id" bigint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."bulk_delete_global_shipment_items"(
+  "p_shipment_id" bigint,
+  "p_item_ids" bigint[]
+)
+RETURNS bigint
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+declare
+  v_parent bigint;
+  v_deleted_count bigint;
+  v_ref_count bigint;
+begin
+  if p_shipment_id is null then
+    raise exception 'shipment_id is required';
+  end if;
+
+  if p_item_ids is null or array_length(p_item_ids, 1) is null or array_length(p_item_ids, 1) = 0 then
+    return 0;
+  end if;
+
+  -- 1. Check parent tenant & permissions
+  select parent_tenant_id into v_parent
+  from public.global_shipments
+  where id = p_shipment_id;
+
+  if v_parent is null then
+    raise exception 'shipment not found';
+  end if;
+
+  if not (
+    public.user_can_manage_parent_tenant(v_parent)
+    or exists (
+      select 1 from public.memberships m
+      where m.tenant_id = v_parent
+        and lower(trim(m.email)) = public.current_user_email()
+        and m.is_active = true
+    )
+  ) then
+    raise exception 'not allowed';
+  end if;
+
+  -- 2. Verify none of the items are referenced in warehouse stocks
+  select count(*) into v_ref_count
+  from public.global_stocks
+  where shipment_item_id = any(p_item_ids);
+
+  if v_ref_count > 0 then
+    raise exception 'One or more selected items cannot be deleted because they are referenced in Warehouse Stock.';
+  end if;
+
+  -- 3. Delete items in bulk atomically
+  with deleted as (
+    delete from public.global_shipment_items
+    where shipment_id = p_shipment_id
+      and id = any(p_item_ids)
+    returning id
+  )
+  select count(*) into v_deleted_count from deleted;
+
+  return v_deleted_count;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."bulk_delete_global_shipment_items"("p_shipment_id" bigint, "p_item_ids" bigint[]) OWNER TO "postgres";
+
+
 
 

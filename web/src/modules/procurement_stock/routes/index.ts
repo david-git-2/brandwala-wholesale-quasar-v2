@@ -69,7 +69,7 @@ const procurementStockRoutes: RouteRecordRaw[] = [
       {
         path: ':id',
         name: 'app-procurement-shipment-details',
-        component: () => import('../pages/ShipmentOverviewDummyPage.vue'),
+        component: () => import('../pages/ShipmentOverviewPage.vue'),
         beforeEnter: guard('global_shipment'),
       },
       {
@@ -112,12 +112,6 @@ const procurementStockRoutes: RouteRecordRaw[] = [
         path: ':id/rates-invoices',
         name: 'app-procurement-shipment-rates-invoices',
         component: () => import('../pages/ShipmentRatesInvoicesPage.vue'),
-        beforeEnter: guard('global_shipment'),
-      },
-      {
-        path: ':id/dummy',
-        name: 'app-procurement-shipment-dummy',
-        component: () => import('../pages/ShipmentOverviewDummyPage.vue'),
         beforeEnter: guard('global_shipment'),
       },
       {

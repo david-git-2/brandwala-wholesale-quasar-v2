@@ -1,6 +1,8 @@
 import { supabase } from 'src/boot/supabase';
 import { globalShipmentCostEntryRepository } from './globalShipmentCostEntryRepository';
-import { globalShipmentBoxRepository } from './globalShipmentBoxRepository';
+import { globalShipmentBoxRepository, type GlobalShipmentBox } from './globalShipmentBoxRepository';
+import type { ShipmentSection } from '../types/shipmentSection';
+import type { GlobalShipmentCostEntry } from '../types/shipmentCostEntry';
 import {
   calculateShipmentCostSummary,
   costingShipmentFromEntries,
@@ -133,6 +135,38 @@ const normalizeShipment = (row: GlobalShipment & Record<string, unknown>): Globa
     stock_ready: (row.stock_ready as boolean | undefined) ?? inventory,
     progress_flow: progressFlowRaw ?? null,
     progress_tag: progressRaw ?? null,
+  };
+};
+
+export interface ShipmentOverviewDetailsPayload {
+  shipment: GlobalShipment;
+  sections: ShipmentSection[];
+  items: GlobalShipmentItem[];
+  boxes: GlobalShipmentBox[];
+  cost_entries: GlobalShipmentCostEntry[];
+  flow_stages: ShipmentProgressFlowStage[];
+}
+
+const getShipmentOverviewDetails = async (
+  shipmentId: number,
+): Promise<ShipmentOverviewDetailsPayload> => {
+  const { data, error } = await supabase.rpc('get_shipment_overview_details', {
+    p_shipment_id: shipmentId,
+  });
+
+  if (error) throw error;
+  if (!data) throw new Error('Shipment not found');
+
+  const raw = data as any;
+  const shipment = normalizeShipment(raw.shipment);
+
+  return {
+    shipment,
+    sections: (raw.sections ?? []) as ShipmentSection[],
+    items: (raw.items ?? []) as GlobalShipmentItem[],
+    boxes: (raw.boxes ?? []) as GlobalShipmentBox[],
+    cost_entries: (raw.cost_entries ?? []) as GlobalShipmentCostEntry[],
+    flow_stages: (raw.flow_stages ?? []) as ShipmentProgressFlowStage[],
   };
 };
 
@@ -606,6 +640,19 @@ const updateShipmentItemsBulk = async (
 const deleteShipmentItem = async (id: number): Promise<void> => {
   const { error } = await db.from('global_shipment_items').delete().eq('id', id);
   if (error) throw error;
+};
+
+const deleteShipmentItemsBulk = async (
+  shipmentId: number,
+  ids: number[],
+): Promise<number> => {
+  if (ids.length === 0) return 0;
+  const { data, error } = await supabase.rpc('bulk_delete_global_shipment_items', {
+    p_shipment_id: shipmentId,
+    p_item_ids: ids,
+  });
+  if (error) throw error;
+  return Number(data) || 0;
 };
 
 const checkShipmentInvoiceReferences = async (shipmentId: number): Promise<string[]> => {
@@ -1095,6 +1142,7 @@ const reorderShipmentProgressTags = async (
 
 export const globalShipmentRepository = {
   getById,
+  getShipmentOverviewDetails,
   listPaginated,
   createShipment,
   createShipmentDraft,
@@ -1108,6 +1156,7 @@ export const globalShipmentRepository = {
   updateShipmentItem,
   updateShipmentItemsBulk,
   deleteShipmentItem,
+  deleteShipmentItemsBulk,
   checkShipmentStockReferences,
   checkShipmentItemStockReferences,
   checkShipmentInvoiceReferences,

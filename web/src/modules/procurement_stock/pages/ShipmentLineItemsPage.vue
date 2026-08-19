@@ -139,18 +139,71 @@
             </q-menu>
           </q-btn>
 
+          <!-- Selection Actions: 1 Item Selected -> Edit & Delete -->
+          <template v-if="selectedItemIds.length === 1 && isEditable">
+            <q-btn
+              color="primary"
+              icon="ph ph-pencil-simple"
+              label="Edit"
+              unelevated
+              dense
+              no-caps
+              size="sm"
+              class="q-px-sm rounded-sq-btn"
+              style="border-radius: 8px"
+              @click="editSingleSelectedItem"
+            >
+              <q-tooltip>Edit selected item</q-tooltip>
+            </q-btn>
+            <q-btn
+              color="negative"
+              icon="ph ph-trash"
+              label="Delete"
+              outline
+              dense
+              no-caps
+              size="sm"
+              class="q-px-sm rounded-sq-btn"
+              style="border-radius: 8px"
+              @click="deleteSingleSelectedItem"
+            >
+              <q-tooltip>Delete selected item</q-tooltip>
+            </q-btn>
+          </template>
+
+          <!-- Selection Actions: Multiple Items Selected -> Bulk Delete -->
+          <template v-else-if="selectedItemIds.length > 1 && isEditable">
+            <q-btn
+              color="negative"
+              icon="ph ph-trash"
+              :label="`Bulk Delete (${selectedItemIds.length})`"
+              unelevated
+              dense
+              no-caps
+              size="sm"
+              class="q-px-sm rounded-sq-btn"
+              style="border-radius: 8px"
+              @click="bulkDeleteSelectedItems"
+            >
+              <q-tooltip>Delete {{ selectedItemIds.length }} selected items</q-tooltip>
+            </q-btn>
+          </template>
+
           <q-btn
             v-if="isEditable"
             color="secondary"
-            icon="ph ph-clipboard"
-            label="Paste"
+            icon="ph ph-clipboard-text"
+            label="Bulk Paste"
             unelevated
             dense
             no-caps
             size="sm"
-            class="q-px-sm"
-            @click="openBulkPaste"
-          />
+            class="q-px-sm rounded-sq-btn"
+            style="border-radius: 8px"
+            @click="openBulkPaste(selectedSectionId)"
+          >
+            <q-tooltip>Paste multiple values from Excel / Sheets</q-tooltip>
+          </q-btn>
 
           <q-btn
             v-if="isEditable"
@@ -162,7 +215,7 @@
             no-caps
             size="sm"
             class="q-px-sm"
-            @click="openAddItems"
+            @click="openAddItems(selectedSectionId)"
           />
         </div>
       </div>
@@ -193,6 +246,7 @@
         bordered
         class="col column no-wrap q-pa-none bg-white rounded-borders shipment-items-card"
       >
+        <!-- Empty shipment state -->
         <div
           v-if="!hasLineItems && !shipmentStore.loading"
           class="column items-center q-pa-xl text-center"
@@ -210,13 +264,52 @@
             icon="ph ph-plus"
             label="Add items"
             class="q-px-md"
-            @click="openAddItems"
+            @click="openAddItems(selectedSectionId)"
           />
+        </div>
+
+        <!-- Empty section state (shipment has items, but selected section has none) -->
+        <div
+          v-else-if="selectedSectionId != null && displayedItems.length === 0 && !shipmentStore.loading"
+          class="column items-center q-pa-xl text-center"
+        >
+          <q-icon name="ph ph-folder-dashed" size="48px" color="grey-5" />
+          <div class="text-subtitle1 text-weight-bold text-grey-8 q-mt-md">
+            No products in "{{ activeSectionLabel }}"
+          </div>
+          <div class="text-caption text-grey-6 q-mb-md">
+            Add items to this section or view all items across the shipment.
+          </div>
+          <div class="row items-center q-gutter-sm">
+            <q-btn
+              flat
+              no-caps
+              dense
+              size="md"
+              color="grey-8"
+              label="View all items"
+              class="q-px-md"
+              @click="selectSection(null)"
+            />
+            <q-btn
+              v-if="isEditable"
+              color="primary"
+              unelevated
+              no-caps
+              dense
+              size="md"
+              icon="ph ph-plus"
+              label="Add items to section"
+              class="q-px-md"
+              @click="openAddItems(selectedSectionId)"
+            />
+          </div>
         </div>
 
         <div v-else class="col shipment-items-fill">
           <ShipmentLineItemsTable
             v-if="lineItemsViewMode === 'table'"
+            v-model:selected-ids="selectedItemIds"
             :items="displayedItems"
             :shipment="shipmentForLiveCosting"
             :loading="shipmentStore.loading"
@@ -245,7 +338,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 
 // Components
@@ -258,7 +350,6 @@ import { useInboundShipmentActions } from '../composables/useInboundShipmentActi
 
 const route = useRoute();
 const router = useRouter();
-const authStore = useAuthStore();
 const shipmentStore = useGlobalShipmentStore();
 const shipmentId = Number(route.params.id);
 
@@ -298,10 +389,8 @@ const {
 } = calculations;
 
 const {
-  currentVendorLabel,
-  currentCargoLabel,
   loadShipmentDetails,
-  openAddItems: baseOpenAddItems,
+  openAddItems,
   openEditItem,
   confirmDeleteItem,
 } = actions;
@@ -311,6 +400,8 @@ const selectedSectionId = computed<number | null>(() => {
   const q = route.query.sectionId;
   return q ? Number(q) : null;
 });
+
+const selectedItemIds = ref<number[]>([]);
 
 const activeSection = computed(() => {
   if (selectedSectionId.value == null) return null;
@@ -329,10 +420,11 @@ const selectedSectionVendorName = computed(() => {
 const displayedItems = computed(() => {
   const allItems = shipmentStore.currentShipmentItems ?? [];
   if (selectedSectionId.value == null) return allItems;
+  const firstSectionId = shipmentStore.currentShipmentSections[0]?.id ?? null;
   return allItems.filter(
     (it) =>
       it.section_id === selectedSectionId.value ||
-      (shipmentStore.currentShipmentSections.length === 1 && it.section_id == null),
+      (it.section_id == null && selectedSectionId.value === firstSectionId),
   );
 });
 
@@ -346,9 +438,55 @@ const selectSection = (sectionId: number | null) => {
   void router.push({ query });
 };
 
+// Selection state
+
+const editSingleSelectedItem = () => {
+  if (selectedItemIds.value.length !== 1) return;
+  const targetId = selectedItemIds.value[0];
+  const item = (shipmentStore.currentShipmentItems ?? []).find((it) => it.id === targetId);
+  if (item) {
+    openEditItem(item);
+  }
+};
+
+const deleteSingleSelectedItem = () => {
+  if (selectedItemIds.value.length !== 1) return;
+  const targetId = selectedItemIds.value[0];
+  if (targetId != null) {
+    confirmDeleteItem(targetId);
+    selectedItemIds.value = [];
+  }
+};
+
+const bulkDeleteSelectedItems = () => {
+  if (selectedItemIds.value.length === 0 || !shipmentId) return;
+  const count = selectedItemIds.value.length;
+  $q.dialog({
+    title: 'Confirm Bulk Deletion',
+    message: `Are you sure you want to delete ${count} selected item${count === 1 ? '' : 's'}?`,
+    cancel: true,
+    persistent: true,
+    ok: {
+      label: 'Delete',
+      color: 'negative',
+      flat: true,
+    },
+  }).onOk(() => {
+    void (async () => {
+      try {
+        await shipmentStore.deleteShipmentItemsBulk(shipmentId, selectedItemIds.value);
+        showSuccessNotification(`Deleted ${count} item${count === 1 ? '' : 's'} successfully`);
+        selectedItemIds.value = [];
+      } catch (err: unknown) {
+        showErrorNotification((err as Error).message || 'Failed to delete items');
+      }
+    })();
+  });
+};
+
 import { useQuasar } from 'quasar';
 import BulkPasteDialog from '../components/BulkPasteDialog.vue';
-import AddShipmentItemsDrawer from '../components/AddShipmentItemsDrawer.vue';
+import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';
 
 const $q = useQuasar();
 
@@ -359,18 +497,7 @@ const openBulkPaste = () => {
       initialSectionId: selectedSectionId.value,
     },
   }).onOk(() => {
-    void loadShipmentDetails();
-  });
-};
-
-const openAddItems = () => {
-  $q.dialog({
-    component: AddShipmentItemsDrawer,
-    componentProps: {
-      shipmentId,
-    },
-  }).onOk(() => {
-    void loadShipmentDetails();
+    showSuccessNotification('Bulk items imported successfully');
   });
 };
 
@@ -389,8 +516,8 @@ const goBackToShipment = () => {
   }
 };
 
-onMounted(async () => {
-  await loadShipmentDetails();
+onMounted(() => {
+  void loadShipmentDetails();
 });
 </script>
 

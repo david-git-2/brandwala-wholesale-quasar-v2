@@ -2,6 +2,7 @@ requests
 beautifulsoup4
 lxml
 openpyxl
+streamlit
 python-dotenv
 pillow
 google-api-python-client

@@ -145,7 +145,7 @@
 import { ref, computed } from 'vue';
 import { useDialogPluginComponent } from 'quasar';
 import { invoiceRepository } from '../repositories/invoiceRepository';
-import { showWarningNotification } from 'src/utils/notification';
+import { showWarningNotification } from 'src/utils/appFeedback';
 
 defineEmits([...useDialogPluginComponent.emits]);
 

@@ -653,7 +653,7 @@ const onImport = async () => {
   try {
     const payloads = previewItems.value.map((item) => {
       return {
-        tenant_id: authStore.tenantId ?? null,
+        inserted_by_tenant_id: authStore.tenantId ?? null,
         name: item.name,
         product_code: item.product_code || null,
         barcode: item.barcode || null,
@@ -672,7 +672,6 @@ const onImport = async () => {
         available_units: null,
         expire_date: null,
         minimum_order_quantity: null,
-        tariff_code: null,
         languages: null,
         batch_code_manufacture_date: null,
       };

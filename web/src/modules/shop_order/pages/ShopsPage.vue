@@ -100,29 +100,29 @@
                     <div class="row items-center q-gutter-x-sm no-wrap">
                       <span class="text-subtitle2 text-weight-bold text-grey-9 ellipsis">{{ shop.name }}</span>
                     
-                    <q-badge
-                      :color="shop.is_active ? 'positive' : 'grey-5'"
-                      class="text-uppercase text-bold"
-                      style="font-size: 10px; padding: 2px 6px; border-radius: 4px"
-                    >
-                      {{ shop.is_active ? $t('shop_admin.public') : $t('shop_admin.draft') }}
-                    </q-badge>
-                  </div>
+                      <q-badge
+                        :color="shop.is_active ? 'positive' : 'grey-5'"
+                        class="text-uppercase text-bold"
+                        style="font-size: 10px; padding: 2px 6px; border-radius: 4px"
+                      >
+                        {{ shop.is_active ? $t('shop_admin.public') : $t('shop_admin.draft') }}
+                      </q-badge>
+                    </div>
 
-                  <div class="row items-center q-gutter-x-xs q-mt-xs">
-                    <q-chip
-                      dense
-                      square
-                      outline
-                      size="sm"
-                      :color="shopTypeColor(shop.shop_type)"
-                      class="text-capitalize text-weight-medium"
-                    >
-                      {{ shopTypeLabel(shop.shop_type) }}
-                    </q-chip>
+                    <div class="row items-center q-gutter-x-xs q-mt-xs">
+                      <q-chip
+                        dense
+                        square
+                        outline
+                        size="sm"
+                        :color="shopTypeColor(shop.shop_type)"
+                        class="text-capitalize text-weight-medium"
+                      >
+                        {{ shopTypeLabel(shop.shop_type) }}
+                      </q-chip>
+                    </div>
                   </div>
                 </div>
-              </div>
 
               <!-- Right: Actions Menu -->
               <div class="col-auto">
@@ -160,6 +160,7 @@
         </div>
       </div>
     </div>
+  </div>
 
     <ShopFormDialog
       v-model="dialogOpen"

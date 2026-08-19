@@ -1,39 +1,46 @@
 <template>
   <q-dialog ref="dialogRef" @hide="onDialogHide" persistent>
-    <q-card class="q-dialog-plugin column no-wrap" style="width: 800px; max-width: 95vw; max-height: 90vh">
-      <q-card-section class="row items-center q-pb-none col-auto">
-        <div class="text-h6 text-primary text-weight-bold">Bulk Paste Shipment Updates</div>
+    <q-card class="q-dialog-plugin column no-wrap modern-dialog" style="width: 820px; max-width: 95vw; max-height: 90vh; border-radius: 12px">
+      <!-- Header -->
+      <q-card-section class="row items-center q-px-lg q-py-md col-auto border-bottom-subtle">
+        <div class="row items-center q-gutter-x-sm">
+          <q-avatar size="32px" color="grey-2" text-color="grey-9" font-size="18px" icon="ph ph-clipboard-text" square style="border-radius: 6px" />
+          <div>
+            <div class="text-h6 text-weight-bold text-dark" style="color: #0f172a; line-height: 1.2">Bulk Paste Shipment Updates</div>
+            <div class="text-caption text-grey-7">Copy table rows from Excel or Google Sheets to batch update shipment items</div>
+          </div>
+        </div>
         <q-space />
-        <q-btn icon="ph ph-x" flat round dense v-close-popup />
+        <q-btn icon="ph ph-x" flat round dense color="grey-7" v-close-popup />
       </q-card-section>
 
-      <q-card-section class="q-pa-md q-gutter-y-md col scroll">
-        <!-- Banner alert -->
-        <q-banner class="bg-blue-1 text-blue-9 rounded-borders">
-          <template #avatar>
-            <q-icon name="ph ph-info" size="sm" />
-          </template>
-          Copy cells from Excel or Google Sheets (columns containing Quantity, Price, Product
-          Weight, or Package Weight) and paste them below. Values will be applied to items
-          sequentially from top to bottom.
-        </q-banner>
+      <!-- Main Body -->
+      <q-card-section class="q-pa-lg q-gutter-y-md col scroll">
+        <!-- Modern Instruction Banner -->
+        <div class="instruction-box q-pa-md row items-start no-wrap q-gutter-x-md">
+          <q-icon name="ph ph-info" size="20px" class="q-mt-xs text-dark" style="color: #0f172a" />
+          <div class="text-body2 text-dark" style="color: #1e293b; line-height: 1.5">
+            Copy cells from Excel or Google Sheets (columns containing <strong>Quantity</strong>, <strong>Price</strong>, <strong>Product Weight</strong>, or <strong>Package Weight</strong>) and paste them below. Values will be applied to items sequentially from top to bottom.
+          </div>
+        </div>
 
         <!-- Step 1: Text Area for pasting -->
-        <div v-if="!parsedRows.length">
+        <div v-if="!parsedRows.length" class="paste-input-container">
           <q-input
             v-model="rawPasteText"
             type="textarea"
-            filled
+            outlined
             rows="10"
-            placeholder="Paste your copied Excel data here..."
+            placeholder="Paste your copied Excel or Sheets rows here (Ctrl+V / Cmd+V)..."
+            class="modern-paste-textarea"
             @update:model-value="onPasteUpdate"
           />
         </div>
 
         <!-- Step 2: Mapping & Preview -->
         <div v-else class="column q-gutter-y-md">
-          <div class="row justify-between items-center">
-            <div class="text-subtitle2 text-grey-8">
+          <div class="row justify-between items-center q-px-xs">
+            <div class="text-subtitle2 text-weight-bold text-dark" style="color: #0f172a">
               Parsed {{ parsedRows.length }} rows with {{ maxColumns }} columns
             </div>
             <q-btn
@@ -43,12 +50,13 @@
               color="primary"
               label="Clear & Paste Again"
               icon="ph ph-arrows-clockwise"
+              class="text-weight-medium"
               @click="resetPaste"
             />
           </div>
 
           <!-- Section Selector & Column Header Mappings Selector -->
-          <div class="bg-grey-2 q-pa-md rounded-borders column q-gutter-y-sm">
+          <div class="mapping-box q-pa-md rounded-borders column q-gutter-y-sm">
             <div v-if="sectionOptions.length > 0" class="row items-center q-col-gutter-sm">
               <div class="col-12 col-sm-6">
                 <q-select
@@ -62,16 +70,16 @@
                   map-options
                 >
                   <template #prepend>
-                    <q-icon name="ph ph-folder" size="18px" color="grey-6" />
+                    <q-icon name="ph ph-folder" size="18px" color="grey-7" />
                   </template>
                 </q-select>
               </div>
-              <div class="col-12 col-sm-6 text-caption text-grey-7">
+              <div class="col-12 col-sm-6 text-caption text-dark text-weight-medium" style="color: #334155">
                 Items will be filtered or assigned to this section.
               </div>
             </div>
 
-            <div class="text-caption text-weight-medium text-grey-7">
+            <div class="text-caption text-weight-bold text-dark q-mt-xs" style="color: #0f172a">
               Map Columns to Fields:
             </div>
             <div class="row q-col-gutter-sm">
@@ -91,7 +99,11 @@
           </div>
 
           <!-- Preview Table -->
-          <div class="text-subtitle2 text-grey-8 q-mb-xs">Preview Matches & Updates</div>
+          <div class="row items-center justify-between q-mt-sm">
+            <div class="text-subtitle2 text-weight-bold text-dark" style="color: #0f172a">Preview Matches & Updates</div>
+            <div class="text-caption text-grey-7">{{ previewRows.length }} items shown</div>
+          </div>
+
           <q-markup-table flat bordered dense class="preview-table">
             <thead>
               <tr>
@@ -104,17 +116,17 @@
             </thead>
             <tbody>
               <tr v-for="(item, index) in previewRows" :key="item.id">
-                <td class="text-left text-grey-6">{{ index + 1 }}</td>
-                <td class="text-left text-weight-medium ellipsis" style="max-width: 250px">
-                  {{ item.name }}
-                  <div class="text-caption text-grey-6">
+                <td class="text-left text-dark text-weight-medium" style="color: #475569">{{ index + 1 }}</td>
+                <td class="text-left text-weight-medium ellipsis text-dark" style="max-width: 260px; color: #0f172a">
+                  <div>{{ item.name }}</div>
+                  <div class="text-caption text-grey-7">
                     Current: Qty {{ item.ordered_quantity }} · Price £{{ item.purchase_price }} · Wt
                     {{ item.product_weight }}g · Pkg Wt {{ item.package_weight }}g
                   </div>
                 </td>
                 <td v-for="colIdx in maxColumns" :key="colIdx" class="text-center font-mono">
                   <template v-if="getPastedValueForCell(index, colIdx - 1) !== null">
-                    <span class="text-weight-bold text-primary">
+                    <span class="text-weight-bolder text-dark" style="color: #0f172a; font-size: 13px">
                       {{
                         formatPreviewValue(
                           getPastedValueForCell(index, colIdx - 1),
@@ -132,9 +144,10 @@
               <tr v-if="parsedRows.length !== currentItems.length" class="bg-amber-1">
                 <td
                   :colspan="maxColumns + 2"
-                  class="text-center text-amber-9 text-caption text-weight-medium q-py-sm"
+                  class="text-center text-amber-10 text-caption text-weight-bold q-py-sm"
+                  style="color: #78350f"
                 >
-                  <q-icon name="ph ph-warning" size="14px" class="q-mr-xs" />
+                  <q-icon name="ph ph-warning" size="16px" class="q-mr-xs" />
                   {{
                     parsedRows.length > currentItems.length
                       ? `You pasted ${parsedRows.length} rows, but this shipment only has ${currentItems.length} items. Extra rows will be ignored.`
@@ -147,7 +160,8 @@
         </div>
       </q-card-section>
 
-      <q-card-actions align="right" class="q-pa-md bg-grey-1 col-auto">
+      <!-- Footer Actions -->
+      <q-card-actions align="right" class="q-px-lg q-py-md bg-grey-1 col-auto border-top-subtle">
         <q-btn flat label="Cancel" color="grey-8" v-close-popup no-caps />
         <q-btn
           color="primary"
@@ -156,6 +170,8 @@
           :disable="!parsedRows.length || !hasActiveMappings"
           :loading="submitting"
           no-caps
+          class="rounded-sq-btn"
+          style="border-radius: 8px; font-weight: 600"
           @click="onApply"
         />
       </q-card-actions>
@@ -198,12 +214,13 @@ const maxColumns = ref(0);
 const colMappings = ref<string[]>([]);
 
 const currentItems = computed(() => {
-  const all = shipmentStore.currentShipmentItems;
+  const all = shipmentStore.currentShipmentItems ?? [];
   if (targetSectionId.value == null) return all;
+  const firstSectionId = shipmentStore.currentShipmentSections[0]?.id ?? null;
   return all.filter(
     (item) =>
       item.section_id === targetSectionId.value ||
-      (shipmentStore.currentShipmentSections.length === 1 && item.section_id == null),
+      (item.section_id == null && targetSectionId.value === firstSectionId),
   );
 });
 
@@ -378,17 +395,66 @@ const onApply = async () => {
 </script>
 
 <style scoped>
-.preview-table {
-  max-height: 320px;
-  overflow-y: auto;
+.modern-dialog {
+  background: #ffffff;
+  box-shadow: 0 20px 45px -10px rgba(51, 65, 85, 0.15), 0 10px 20px -5px rgba(51, 65, 85, 0.08);
 }
+
+.border-bottom-subtle {
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.border-top-subtle {
+  border-top: 1px solid #e2e8f0;
+}
+
+.instruction-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.mapping-box {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+}
+
+.modern-paste-textarea :deep(.q-field__control) {
+  border-radius: 8px;
+  background-color: #fafafa;
+}
+
+.modern-paste-textarea :deep(textarea) {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  color: #0f172a;
+}
+
+.preview-table {
+  max-height: 340px;
+  overflow-y: auto;
+  border-radius: 8px;
+  border-color: #e2e8f0;
+}
+
 .preview-table :deep(thead th) {
   position: sticky;
   top: 0;
-  z-index: 1;
-  background-color: #fff;
+  z-index: 2;
+  background-color: #f8fafc;
+  color: #0f172a;
+  font-weight: 700;
+  font-size: 12px;
+  border-bottom: 1px solid #cbd5e1;
 }
+
+.preview-table :deep(tbody td) {
+  font-size: 13px;
+  color: #0f172a;
+  border-bottom: 1px solid #f1f5f9;
+}
+
 .font-mono {
-  font-family: monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 </style>

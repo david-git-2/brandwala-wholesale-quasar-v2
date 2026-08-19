@@ -26,8 +26,32 @@ const normalizeText = (value: string | null | undefined) => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
+const applyProductInsertScope = async (
+  payload: ProductCreateInput,
+  resolvedParentByTenant: Map<number, number>,
+): Promise<ProductCreateInput> => {
+  const insertedBy = payload.inserted_by_tenant_id ?? null;
+  let parentTenantId = payload.parent_tenant_id ?? null;
+
+  if (parentTenantId == null && insertedBy != null) {
+    let cached = resolvedParentByTenant.get(insertedBy);
+    if (cached === undefined) {
+      cached = await resolveProductScopeTenantId(insertedBy);
+      resolvedParentByTenant.set(insertedBy, cached);
+    }
+    parentTenantId = cached;
+  }
+
+  return {
+    ...payload,
+    parent_tenant_id: parentTenantId,
+    inserted_by_tenant_id: insertedBy,
+  };
+};
+
 const buildProductPayload = (payload: ProductCreateInput) => ({
-  tenant_id: payload.tenant_id ?? null,
+  parent_tenant_id: payload.parent_tenant_id ?? null,
+  inserted_by_tenant_id: payload.inserted_by_tenant_id ?? null,
   product_code: normalizeText(payload.product_code),
   barcode: normalizeText(payload.barcode),
   name: normalizeText(payload.name),
@@ -39,7 +63,6 @@ const buildProductPayload = (payload: ProductCreateInput) => ({
   brand: normalizeText(payload.brand),
   category: normalizeText(payload.category),
   available_units: payload.available_units ?? null,
-  tariff_code: normalizeText(payload.tariff_code),
   languages: normalizeText(payload.languages),
   batch_code_manufacture_date: payload.batch_code_manufacture_date ?? null,
   image_url: normalizeText(payload.image_url),
@@ -55,8 +78,12 @@ const buildProductPayload = (payload: ProductCreateInput) => ({
 const buildProductUpdatePayload = (payload: Omit<ProductUpdateInput, 'id'>) => {
   const updateData: Record<string, unknown> = {};
 
-  if ('tenant_id' in payload) {
-    updateData.tenant_id = payload.tenant_id ?? null;
+  if ('parent_tenant_id' in payload) {
+    updateData.parent_tenant_id = payload.parent_tenant_id ?? null;
+  }
+
+  if ('inserted_by_tenant_id' in payload) {
+    updateData.inserted_by_tenant_id = payload.inserted_by_tenant_id ?? null;
   }
 
   if ('product_code' in payload) {
@@ -101,10 +128,6 @@ const buildProductUpdatePayload = (payload: Omit<ProductUpdateInput, 'id'>) => {
 
   if ('available_units' in payload) {
     updateData.available_units = payload.available_units ?? null;
-  }
-
-  if ('tariff_code' in payload) {
-    updateData.tariff_code = normalizeText(payload.tariff_code);
   }
 
   if ('languages' in payload) {
@@ -182,10 +205,13 @@ const buildEmptyProductPage = (page: number, pageSize: number): ProductListPage 
   },
 });
 
-const isMissingListProductsRpcError = (error: { code?: string; message?: string } | null) =>
-  error?.code === 'PGRST202' && (error.message ?? '').includes('list_products_paginated');
+const parentTenantIdCache = new Map<number, number>();
 
 const resolveProductScopeTenantId = async (tenantId: number): Promise<number> => {
+  if (parentTenantIdCache.has(tenantId)) {
+    return parentTenantIdCache.get(tenantId)!;
+  }
+
   const { data, error } = await supabase.rpc('resolve_parent_tenant_id', {
     p_tenant_id: tenantId,
   });
@@ -194,7 +220,9 @@ const resolveProductScopeTenantId = async (tenantId: number): Promise<number> =>
     throw error;
   }
 
-  return data as number;
+  const resolved = data as number;
+  parentTenantIdCache.set(tenantId, resolved);
+  return resolved;
 };
 
 const listProductsFallback = async ({
@@ -424,9 +452,10 @@ const listProducts = async ({
 };
 
 const createProduct = async (payload: ProductCreateInput): Promise<Product> => {
+  const scoped = await applyProductInsertScope(payload, new Map());
   const { data, error } = await supabase
     .from('products')
-    .insert([buildProductPayload(payload)])
+    .insert([buildProductPayload(scoped)])
     .select()
     .single();
 
@@ -442,7 +471,12 @@ const createProduct = async (payload: ProductCreateInput): Promise<Product> => {
 };
 
 const bulkCreateProducts = async (payloads: ProductCreateInput[]): Promise<Product[]> => {
-  const formatted = payloads.map(buildProductPayload);
+  const parentCache = new Map<number, number>();
+  const formatted: ReturnType<typeof buildProductPayload>[] = [];
+  for (const payload of payloads) {
+    const scoped = await applyProductInsertScope(payload, parentCache);
+    formatted.push(buildProductPayload(scoped));
+  }
   const { data, error } = await supabase.from('products').insert(formatted).select();
 
   if (error) {

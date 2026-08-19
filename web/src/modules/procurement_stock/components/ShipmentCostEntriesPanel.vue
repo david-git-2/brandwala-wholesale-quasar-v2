@@ -89,6 +89,18 @@
                   :hint="isLocalShipment ? 'Forced to 1.00 for local' : 'Rate to base currency'"
                 />
               </div>
+              <div class="col-12">
+                <q-input
+                  v-model="row.note"
+                  type="text"
+                  label="Notes / Remarks"
+                  placeholder="e.g. Rate notes, section specific remarks"
+                  dense
+                  outlined
+                  class="soft-input"
+                  :disable="!canEdit"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -211,6 +223,18 @@
                   :hint="isLocalShipment ? 'Forced to 1.00 for local' : undefined"
                 />
               </div>
+              <div class="col-12">
+                <q-input
+                  v-model="row.note"
+                  type="text"
+                  label="Notes / Remarks"
+                  placeholder="e.g. Rate notes, freight vendor remarks"
+                  dense
+                  outlined
+                  class="soft-input"
+                  :disable="!canEdit"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -242,18 +266,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type {
   CostEntryDraft,
   CostEntriesSavePayload,
   GlobalShipmentCostEntry,
   ShipmentCostPayeeType,
-  ShipmentCostPaymentSource,
 } from '../types/shipmentCostEntry';
 import { showErrorNotification } from 'src/utils/appFeedback';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
-import { useCargoCompanyStore } from '../stores/cargoCompanyStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 
 const props = defineProps<{
@@ -286,48 +306,12 @@ const emit = defineEmits<{
   'go-match-invoices': [];
 }>();
 
-const authStore = useAuthStore();
-const vendorStore = useVendorStore();
-const cargoCompanyStore = useCargoCompanyStore();
 const shipmentStore = useGlobalShipmentStore();
 
 const drafts = ref<CostEntryDraft[]>([]);
-const payeeSettlePanelRef = ref<InstanceType<typeof ShipmentPayeeSettlePanel> | null>(null);
 
 const productRows = computed(() => drafts.value.filter((d) => d.cost_type === 'product'));
 const cargoRows = computed(() => drafts.value.filter((d) => d.cost_type === 'cargo'));
-
-const vendorProductTotal = computed(() =>
-  productRows.value.reduce((sum, r) => sum + (Number(r.amount) || 0), 0),
-);
-
-const cargoCostTotal = computed(() =>
-  cargoRows.value.reduce((sum, r) => sum + (Number(r.amount) || 0), 0),
-);
-
-const firstProductRate = computed(() => {
-  const p = productRows.value[0];
-  return p ? Number(p.exchange_rate) || 1.0 : 1.0;
-});
-
-const firstCargoRate = computed(() => {
-  const c = cargoRows.value[0];
-  return c ? Number(c.exchange_rate) || 1.0 : 1.0;
-});
-
-const vendorPayeeLabel = computed(() => {
-  const vendorId = shipmentStore.currentShipment?.vendor_id;
-  if (!vendorId) return 'Vendor';
-  const match = vendorStore.items.find((v) => v.id === vendorId);
-  return match ? `${match.name} (${match.code})` : `Vendor #${vendorId}`;
-});
-
-const cargoPayeeLabel = computed(() => {
-  const cargoId = shipmentStore.currentShipment?.cargo_company_id;
-  if (!cargoId) return 'Cargo Agent';
-  const match = cargoCompanyStore.items.find((c) => c.id === cargoId);
-  return match ? match.name : `Cargo Agent #${cargoId}`;
-});
 
 const weightKg = computed(() =>
   props.cargoKg > 0 ? Math.round(props.cargoKg * 100) / 100 : 0,
@@ -356,6 +340,7 @@ const emptyRow = (costType: 'product' | 'cargo'): CostEntryDraft => {
     entity_type,
     entity_id,
     per_kg_rate: null,
+    note: null,
   };
 };
 
@@ -372,19 +357,24 @@ const formatPerKg = (amount: number): string => {
   return v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 });
 };
 
-const entryToDraft = (entry: GlobalShipmentCostEntry): CostEntryDraft => ({
-  localKey: `id-${entry.id}`,
-  id: entry.id,
-  cost_type: entry.cost_type,
-  amount: Number(entry.amount) || 0,
-  exchange_rate: props.isLocalShipment ? 1 : Number(entry.exchange_rate) || 1,
-  payment_source: null,
-  entity_type: entry.cost_type === 'product' ? 'vendor' : 'cargo_company',
-  entity_id: entry.cost_type === 'product'
-    ? (shipmentStore.currentShipment?.vendor_id ?? null)
-    : (shipmentStore.currentShipment?.cargo_company_id ?? null),
-  per_kg_rate: null,
-});
+const entryToDraft = (entry: GlobalShipmentCostEntry): CostEntryDraft => {
+  const meta = (entry.metadata as Record<string, unknown> | null) ?? {};
+  const note = typeof meta.note === 'string' ? meta.note : null;
+  return {
+    localKey: `id-${entry.id}`,
+    id: entry.id,
+    cost_type: entry.cost_type,
+    amount: Number(entry.amount) || 0,
+    exchange_rate: props.isLocalShipment ? 1 : Number(entry.exchange_rate) || 1,
+    payment_source: null,
+    entity_type: entry.cost_type === 'product' ? 'vendor' : 'cargo_company',
+    entity_id: entry.cost_type === 'product'
+      ? (shipmentStore.currentShipment?.vendor_id ?? null)
+      : (shipmentStore.currentShipment?.cargo_company_id ?? null),
+    per_kg_rate: null,
+    note,
+  };
+};
 
 const ensureDayOneShape = (rows: CostEntryDraft[]): CostEntryDraft[] => {
   const next = [...rows];

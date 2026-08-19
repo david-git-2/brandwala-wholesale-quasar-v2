@@ -666,7 +666,7 @@ const onCreateProduct = async () => {
 
   createProductMutation.mutate(
     {
-      tenant_id: authStore.tenantId ?? null,
+      inserted_by_tenant_id: authStore.tenantId ?? null,
       name: createForm.name.trim(),
       product_code: createForm.product_code.trim() || null,
       barcode: createForm.barcode.trim() || null,
@@ -685,7 +685,6 @@ const onCreateProduct = async () => {
       available_units: null,
       expire_date: null,
       minimum_order_quantity: null,
-      tariff_code: null,
       languages: null,
       batch_code_manufacture_date: null,
     },

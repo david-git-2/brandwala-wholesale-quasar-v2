@@ -1408,6 +1408,11 @@ GRANT ALL ON FUNCTION "public"."list_child_allocation_summary"("p_stock_id" bigi
 
 GRANT ALL ON FUNCTION "public"."list_child_procurement_lines"("p_parent_tenant_id" bigint, "p_child_tenant_id" bigint, "p_search" "text", "p_limit" integer, "p_offset" integer) TO "authenticated";
 
+GRANT ALL ON FUNCTION "public"."get_shipment_overview_details"("p_shipment_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."bulk_delete_global_shipment_items"("p_shipment_id" bigint, "p_item_ids" bigint[]) TO "authenticated";
+
+
+
 
 
 CREATE POLICY "batch_code_pc_delete" ON "public"."batch_code_pc" FOR DELETE TO "authenticated" USING ("public"."can_manage_shipment_by_id"("shipment_id"));

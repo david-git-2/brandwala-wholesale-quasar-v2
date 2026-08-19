@@ -336,7 +336,7 @@ const handleCreateProduct = async () => {
   creatingProduct.value = true;
   try {
     const created = await productRepository.createProduct({
-      tenant_id: authStore.tenantId,
+      inserted_by_tenant_id: authStore.tenantId,
       name: newProductForm.value.name,
       product_code: newProductForm.value.product_code || null,
       barcode: newProductForm.value.barcode || null,

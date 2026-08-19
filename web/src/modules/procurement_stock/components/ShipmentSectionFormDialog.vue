@@ -207,6 +207,11 @@ onMounted(async () => {
       form.value.vendor_id = fallbackVendorId;
     }
   }
+
+  if (!isEdit.value && !form.value.title) {
+    const nextIndex = (shipmentStore.currentShipmentSections?.length ?? 0) + 1;
+    form.value.title = `Section ${nextIndex}`;
+  }
 });
 
 const onSubmit = async () => {

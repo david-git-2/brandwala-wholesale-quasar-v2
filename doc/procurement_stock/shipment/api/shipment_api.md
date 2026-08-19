@@ -111,27 +111,18 @@ const { data, error } = await supabase
 * Progress flow: filter by `progress_flow_id` when you need one named customer journey only
 * Progress stage: filter by `progress_tag_id` (current stage inside the selected flow) — see [../schema.md](../schema.md)
 
-### Response (shape)
+---
 
-```json
-[
-  {
-    "id": 88,
-    "tenant_id": 12,
-    "tenant_shipment_id": 104,
-    "name": "UK Apparel Batch #40",
-    "status": "draft",
-    "shipment_type": "international",
-    "vendor_id": 2,
-    "cargo_company_id": 5,
-    "total_weight_kg": null,
-    "inventory_added": false,
-    "progress_tag": { "id": "…", "name": "UK Warehouse", "group_name": "shipment_progress" },
-    "shipment_items": [],
-    "shipment_cost_entries": [],
-    "shipment_boxes": []
-  }
-]
-```
+## 5. Optimized Query & Caching (TanStack Query)
 
-`status` = solid lifecycle. `progress_tag` = optional current tag from group `shipment_progress` (null if none). Expose the same pair on get-by-id for any consumer surface.
+To avoid network waterfalls and duplicate requests when opening shipment details:
+
+- **Reference / Master Data Queries** (`staleTime: 5-15m`):
+  - Currencies: `['reference', 'currencies']`
+  - Cargo Companies: `procurementStockQueryKeys.cargoCompanies(tenantId)`
+  - Vendors: `['vendor', 'list', { tenantId }]`
+  - Progress Flows & Stages: `['procurementStock', 'progressFlows', { tenantId }]`, `['procurementStock', 'progressStages', { flowId }]`
+- **Shipment Overview / Detail Query** (`staleTime: 30s`):
+  - Key: `procurementStockQueryKeys.shipmentDetail(tenantId, shipmentId)`
+  - Prefer consolidated RPC or nested query over multiple uncoordinated REST requests.
+  - Dedupes in-flight requests and eliminates waterfall calls from child components on mount.

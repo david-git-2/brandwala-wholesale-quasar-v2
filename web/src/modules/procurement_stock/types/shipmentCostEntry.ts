@@ -63,6 +63,8 @@ export interface CostEntryDraft {
   entity_id: number | null;
   /** Cargo display helper — computed as amount ÷ weight; optional metadata on save. */
   per_kg_rate: number | null;
+  /** Optional note / remark for this cost entry row */
+  note?: string | null;
 }
 
 export interface CostEntriesSavePayload {

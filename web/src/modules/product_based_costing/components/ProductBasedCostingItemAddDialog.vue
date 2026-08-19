@@ -838,7 +838,7 @@ const submitForm = async () => {
   }
 
   const createProductResult = await productStore.createProduct({
-    tenant_id: authStore.tenantId ?? null,
+    inserted_by_tenant_id: authStore.tenantId ?? null,
     name: form.name || null,
     image_url: form.image_url || null,
     barcode: form.barcode || null,
@@ -848,7 +848,6 @@ const submitForm = async () => {
     brand: form.brand || null,
     category: form.category || null,
     available_units: null,
-    tariff_code: null,
     languages: null,
     batch_code_manufacture_date: null,
     expire_date: null,

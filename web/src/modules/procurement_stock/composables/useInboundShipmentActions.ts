@@ -14,7 +14,7 @@ import type { ReturnLineDraft } from '../components/ShipmentVendorReturnCard.vue
 import ShipmentItemFormDialog from '../components/ShipmentItemFormDialog.vue';
 import AddShipmentItemsDrawer from '../components/AddShipmentItemsDrawer.vue';
 import BulkPasteDialog from '../components/BulkPasteDialog.vue';
-import { buildShipmentExcelWorkbook } from '../utils/buildShipmentExcelWorkbook';
+import type { useInboundShipmentCalculations } from './useInboundShipmentCalculations';
 import {
   showSuccessNotification,
   showErrorNotification,
@@ -25,11 +25,11 @@ import {
 export function useInboundShipmentActions(options: {
   shipmentId: number;
   activeTab: Ref<'lines' | 'balance' | 'cost' | 'receive'>;
-  calculations: ReturnType<typeof import('./useInboundShipmentCalculations').useInboundShipmentCalculations>;
-  assignShopCard: Ref<HTMLElement | null>;
-  paySettleCard: Ref<HTMLElement | null>;
+  calculations: ReturnType<typeof useInboundShipmentCalculations>;
+  assignShopCard?: Ref<HTMLElement | null>;
+  paySettleCard?: Ref<HTMLElement | null>;
 }) {
-  const { shipmentId, activeTab, calculations, assignShopCard, paySettleCard } = options;
+  const { shipmentId, activeTab, calculations } = options;
 
   const router = useRouter();
   const $q = useQuasar();
@@ -69,25 +69,26 @@ export function useInboundShipmentActions(options: {
     return found ? found.name : `Vendor #${vId}`;
   });
 
-  const loadingCargo = ref(false);
-  const cargoCompanies = ref<Array<{ id: number; name: string; code: string }>>([]);
+  const parentTenantId = computed(() => authStore.tenantId);
+
+  const { data: cargoCompaniesData, isLoading: loadingCargo } = useQuery({
+    queryKey: computed(() =>
+      procurementStockQueryKeys.cargoCompanies(parentTenantId.value ?? 0, false),
+    ),
+    queryFn: async () => {
+      if (!parentTenantId.value) return [];
+      return await globalShipmentRepository.listCargoCompaniesForTenant(parentTenantId.value);
+    },
+    staleTime: 10 * 60 * 1000,
+    enabled: computed(() => !!parentTenantId.value),
+  });
+
   const ensureCargoLoaded = async () => {
-    if (authStore.tenantId && cargoCompanies.value.length === 0) {
-      loadingCargo.value = true;
-      try {
-        cargoCompanies.value = await globalShipmentRepository.listCargoCompaniesForTenant(
-          authStore.tenantId,
-        );
-      } catch (err) {
-        console.error('Failed to load cargo companies', err);
-      } finally {
-        loadingCargo.value = false;
-      }
-    }
+    // No-op: TanStack query automatically fetches and caches
   };
 
   const cargoOptions = computed(() =>
-    cargoCompanies.value.map((c) => ({
+    (cargoCompaniesData.value ?? []).map((c) => ({
       label: `${c.name} (${c.code})`,
       value: c.id,
     })),
@@ -96,14 +97,14 @@ export function useInboundShipmentActions(options: {
   const currentCargoLabel = computed(() => {
     const cId = shipmentStore.currentShipment?.cargo_company_id;
     if (!cId) return 'Cargo: None';
-    const found = cargoCompanies.value.find((c) => c.id === cId);
+    const found = (cargoCompaniesData.value ?? []).find((c) => c.id === cId);
     return found ? `Cargo: ${found.name}` : `Cargo #${cId}`;
   });
 
   onMounted(() => {
-    ensureVendorsLoaded();
-    ensureCargoLoaded();
+    void ensureVendorsLoaded();
   });
+
 
   const typeOptions = [
     { label: 'International', value: 'international' as const },
@@ -151,7 +152,6 @@ export function useInboundShipmentActions(options: {
     }
   };
 
-  const parentTenantId = computed(() => authStore.tenantId);
   const { data: childTenants, isLoading: childTenantsLoading } = useQuery({
     queryKey: computed(() => procurementStockQueryKeys.childTenants(parentTenantId.value ?? 0)),
     queryFn: async () => {
@@ -607,16 +607,22 @@ export function useInboundShipmentActions(options: {
     }
   };
 
-  const openAddItems = () => {
+  const openAddItems = (initialSectionId?: number | null) => {
     $q.dialog({
       component: AddShipmentItemsDrawer,
-      componentProps: { shipmentId },
+      componentProps: {
+        shipmentId,
+        initialSectionId,
+      },
     });
   };
 
-  const openBulkPaste = () => {
+  const openBulkPaste = (initialSectionId?: number | null) => {
     $q.dialog({
       component: BulkPasteDialog,
+      componentProps: {
+        initialSectionId,
+      },
     }).onOk(() => {
       loadShipmentDetails();
     });

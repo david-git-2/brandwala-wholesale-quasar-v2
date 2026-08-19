@@ -14,6 +14,7 @@
       <AddShipmentItemsPanel
         class="col"
         :shipment-id="shipmentId"
+        :initial-section-id="initialSectionId"
         layout="drawer"
         @saved="onSaved"
         @cancel="onCancel"
@@ -30,6 +31,7 @@ import AddShipmentItemsPanel from './AddShipmentItemsPanel.vue';
 
 const props = defineProps<{
   shipmentId: number;
+  initialSectionId?: number | null;
 }>();
 
 defineEmits([...useDialogPluginComponent.emits]);

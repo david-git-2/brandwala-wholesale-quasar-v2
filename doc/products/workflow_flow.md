@@ -33,7 +33,7 @@ flowchart TD
 
 ## Stage 1: Product Provisioning & Import
 
-* **Action**: Tenant admin creates a single product or imports a bulk product batch.
+* **Action**: Tenant admin creates a single product, bulk-imports in the app, or loads a PC Excel sheet (`pnpm run pc:uploader`). Sheet headers and DB mapping: [pc_excel_import.md](pc_excel_import.md).
 * **Attributes**: `name`, `product_code`, `barcode`, `market_code`, `vendor_id`, `brand`, `category`.
 * **API Used**:
   * **Single Create**: `supabase.from('products').insert(singleObject)`

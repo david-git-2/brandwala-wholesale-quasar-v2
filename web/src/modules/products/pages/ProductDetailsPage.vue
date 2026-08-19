@@ -275,19 +275,6 @@
                 </div>
                 <div class="col-12 col-sm-6">
                   <q-input
-                    v-model="form.tariff_code"
-                    label="Tariff Code"
-                    outlined
-                    dense
-                    class="soft-input"
-                  >
-                    <template #prepend>
-                      <q-icon name="ph ph-file-text" />
-                    </template>
-                  </q-input>
-                </div>
-                <div class="col-12 col-sm-6">
-                  <q-input
                     v-model="form.languages"
                     label="Languages"
                     outlined
@@ -454,7 +441,6 @@ const form = reactive({
   available_units: null as number | null,
   minimum_order_quantity: null as number | null,
   country_of_origin: '',
-  tariff_code: '',
   languages: '',
   batch_code_manufacture_date: '',
   expire_date: '',
@@ -499,7 +485,6 @@ const detailRows = computed(() => {
     { label: 'Original Stock', value: item.available_units ?? '-' },
     { label: 'Minimum Order Quantity', value: item.minimum_order_quantity ?? '-' },
     { label: 'Country Of Origin', value: item.country_of_origin ?? '-' },
-    { label: 'Tariff Code', value: item.tariff_code ?? '-' },
     { label: 'Languages', value: item.languages ?? '-' },
     { label: 'Batch Code / MFG Date', value: item.batch_code_manufacture_date ?? '-' },
     { label: 'Expire Date', value: item.expire_date ?? '-' },
@@ -601,7 +586,6 @@ const startEdit = () => {
   form.available_units = product.value.available_units;
   form.minimum_order_quantity = product.value.minimum_order_quantity;
   form.country_of_origin = product.value.country_of_origin ?? '';
-  form.tariff_code = product.value.tariff_code ?? '';
   form.languages = product.value.languages ?? '';
   form.batch_code_manufacture_date = product.value.batch_code_manufacture_date ?? '';
   form.expire_date = product.value.expire_date ?? '';
@@ -689,7 +673,6 @@ const onSave = async () => {
       available_units: cleanNumber(form.available_units),
       minimum_order_quantity: cleanNumber(form.minimum_order_quantity),
       country_of_origin: form.country_of_origin.trim() || null,
-      tariff_code: form.tariff_code.trim() || null,
       languages: form.languages.trim() || null,
       batch_code_manufacture_date: form.batch_code_manufacture_date.trim() || null,
       expire_date: form.expire_date.trim() || null,

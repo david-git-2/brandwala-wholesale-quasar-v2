@@ -224,6 +224,7 @@ def main() -> int:
     for row in products:
         if should_skip_row(row):
             hazardous_rows_count += 1
+            continue
 
         next_row = build_normalized_row(row)
         next_minimum = next_row["minimum_quantity"]
@@ -253,7 +254,7 @@ def main() -> int:
     print(f"Output: {output_path}")
     print(f"Rows in: {len(products)}")
     print(f"Rows out: {len(filtered_products)}")
-    print(f"Hazardous rows counted: {hazardous_rows_count}")
+    print(f"Hazardous rows dropped: {hazardous_rows_count}")
     print(f"Rows updated (minimum_quantity set): {updated_rows}")
     if samples:
         print("\nSample updates:")

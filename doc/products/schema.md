@@ -1,13 +1,15 @@
 # Product Database Schema
 
+PC Excel → catalog: [pc_excel_import.md](pc_excel_import.md).
+
 ## 1. Schema Fields
 
 ### 1.1 `products`
 | Field | Type | Required | Description |
 | :--- | :--- | :---: | :--- |
 | `id` | BIGINT | Yes | Primary Key |
-| `tenant_id` | BIGINT | No | FK to `tenants.id` (Tenant anchor) |
-| `parent_tenant_id` | BIGINT | No | FK to `tenants.id` (Parent tenant / platform scope) |
+| `parent_tenant_id` | BIGINT | No | Catalog / warehouse scope. Reads, writes, and row access use this (resolved parent; never a child id). |
+| `inserted_by_tenant_id` | BIGINT | No | FK to `tenants.id` (audit: tenant that created the row; not catalog scope) |
 | `product_code` | TEXT | No | Product SKU / unique item identifier |
 | `barcode` | TEXT | No | UPC / EAN / GTIN Barcode string |
 | `name` | TEXT | No | Product display name |
@@ -25,7 +27,6 @@
 | `product_weight` | NUMERIC | No | Net weight of single unit (in kg or gm) |
 | `package_weight` | NUMERIC | No | Weight of packaging / box contribution |
 | `country_of_origin` | TEXT | No | Origin country (e.g. `UK`, `CN`) |
-| `tariff_code` | TEXT | No | HS / Tariff code for international shipping |
 | `languages` | TEXT | No | Supported / packaging languages |
 | `batch_code_manufacture_date` | TEXT | No | Batch code or manufacturing info |
 | `expire_date` | DATE/TEXT | No | Expiration date string |
@@ -78,7 +79,7 @@
 
 * **Vendor Anchor**: `products.vendor_id` -> `vendors.id` (`products_vendor_id_fkey`)
 * **Market Reference**: `products.market_code` -> `markets.code` (`products_market_code_fkey`)
-* **Tenant Scope**: `products.tenant_id` -> `tenants.id` (`products_tenant_id_fkey`)
+* **Tenant Scope**: `products.parent_tenant_id` -> `tenants.id` (`products_parent_tenant_id_fkey`); `products.inserted_by_tenant_id` -> `tenants.id` (`products_inserted_by_tenant_id_fkey`)
 * **Currency Bindings**:
   * `products.list_price_currency_id` -> `global_currencies.id`
   * `products.reference_cost_currency_id` -> `global_currencies.id`

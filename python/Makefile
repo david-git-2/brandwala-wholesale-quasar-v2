@@ -1,17 +1,19 @@
 PC_JSON ?= ../web/public/uk/pc_data.json
 PC_VENDOR ?= PC
 PC_MARKET ?= GB
+PC_EXPORT_FLAGS ?=
+PC_SYNC_FLAGS ?= --parent-tenant-id 15
 
 WTS_JSON ?= ../web/public/uk/wts_data.json
 WTS_VENDOR ?= WTS
 WTS_MARKET ?= GB
 
 pc:
-	python scripts/uk/export_pc_data.py
+	python scripts/uk/export_pc_data.py $(PC_EXPORT_FLAGS)
 	python scripts/uk/normalize_pc_data.py --input "$(PC_JSON)" --no-backup
 	python scripts/uk/remove_vat_from_names.py --input "$(PC_JSON)" --fields name --no-backup
 	python scripts/uk/move_ml_to_end.py --input "$(PC_JSON)" --fields name --no-backup
-	python scripts/uk/sync_pc_products_to_supabase.py --input "$(PC_JSON)" --vendor "$(PC_VENDOR)" --market "$(PC_MARKET)"
+	python scripts/uk/sync_pc_products_to_supabase.py --input "$(PC_JSON)" --vendor "$(PC_VENDOR)" --market "$(PC_MARKET)" $(PC_SYNC_FLAGS)
 
 pc-csv:
 	python scripts/uk/export_pc_csv.py
@@ -24,20 +26,20 @@ pc-clean-names:
 	python scripts/uk/move_ml_to_end.py --input "$(PC_JSON)" --fields name
 
 pc-sync-db:
-	python scripts/uk/sync_pc_products_to_supabase.py --input "$(PC_JSON)" --vendor "$(PC_VENDOR)" --market "$(PC_MARKET)"
+	python scripts/uk/sync_pc_products_to_supabase.py --input "$(PC_JSON)" --vendor "$(PC_VENDOR)" --market "$(PC_MARKET)" $(PC_SYNC_FLAGS)
 
 wts:
 	python scripts/uk/export_wts_data.py --skip-images
 	python scripts/uk/normalize_pc_data.py --input "$(WTS_JSON)" --no-backup
 	python scripts/uk/remove_vat_from_names.py --input "$(WTS_JSON)" --fields name --no-backup
 	python scripts/uk/move_ml_to_end.py --input "$(WTS_JSON)" --fields name --no-backup
-	python scripts/uk/sync_pc_products_to_supabase.py --input "$(WTS_JSON)" --vendor "$(WTS_VENDOR)" --market "$(WTS_MARKET)" --vendor-id 4 --images-dir images/uk/wts_images --skip-image-upload
+	python scripts/uk/sync_pc_products_to_supabase.py --input "$(WTS_JSON)" --vendor "$(WTS_VENDOR)" --market "$(WTS_MARKET)" --vendor-id 4 --parent-tenant-id 10 --images-dir images/uk/wts_images --skip-image-upload
 
 wts-scrape:
 	python scripts/uk/export_wts_data.py --skip-images
 
 wts-sync:
-	python scripts/uk/sync_pc_products_to_supabase.py --input "$(WTS_JSON)" --vendor "$(WTS_VENDOR)" --market "$(WTS_MARKET)" --vendor-id 4 --images-dir images/uk/wts_images --skip-image-upload
+	python scripts/uk/sync_pc_products_to_supabase.py --input "$(WTS_JSON)" --vendor "$(WTS_VENDOR)" --market "$(WTS_MARKET)" --vendor-id 4 --parent-tenant-id 10 --images-dir images/uk/wts_images --skip-image-upload
 
 KOBA_RETAIL_JSON ?= ../web/public/uk/koba_retail_data.json
 KOBA_RETAIL_VENDOR ?= KOBA_RETAIL
@@ -50,7 +52,7 @@ koba-retail-scrape:
 	python scripts/uk/export_koba_retail_data.py
 
 koba-retail-sync:
-	python scripts/uk/sync_pc_products_to_supabase.py --input "$(KOBA_RETAIL_JSON)" --vendor "$(KOBA_RETAIL_VENDOR)" --market "$(KOBA_RETAIL_MARKET)" --tenant-id 10 --skip-image-upload
+	python scripts/uk/sync_pc_products_to_supabase.py --input "$(KOBA_RETAIL_JSON)" --vendor "$(KOBA_RETAIL_VENDOR)" --market "$(KOBA_RETAIL_MARKET)" --parent-tenant-id 10 --skip-image-upload
 
 KOBA_WHOLESALE_JSON ?= ../web/public/uk/koba_wholesale_data.json
 KOBA_WHOLESALE_VENDOR ?= KOBA_WHOLESALE
@@ -63,7 +65,7 @@ koba-wholesale-scrape:
 	python scripts/uk/export_koba_wholesale_data.py
 
 koba-wholesale-sync:
-	python scripts/uk/sync_pc_products_to_supabase.py --input "$(KOBA_WHOLESALE_JSON)" --vendor "$(KOBA_WHOLESALE_VENDOR)" --market "$(KOBA_WHOLESALE_MARKET)" --tenant-id 10 --skip-image-upload
+	python scripts/uk/sync_pc_products_to_supabase.py --input "$(KOBA_WHOLESALE_JSON)" --vendor "$(KOBA_WHOLESALE_VENDOR)" --market "$(KOBA_WHOLESALE_MARKET)" --parent-tenant-id 10 --skip-image-upload
 
 ELF_JSON ?= ../web/public/uk/elf_data.json
 ELF_VENDOR ?= ELF

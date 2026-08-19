@@ -4,6 +4,7 @@ import { globalReferenceRepository } from '../repositories/globalReferenceReposi
 import { globalReferenceQueryKeys } from '../shared/queryKeys/globalReferenceQueryKeys';
 
 const STALE_TIME = 10 * 60 * 1000; // 10 minutes cache
+const CURRENCY_STALE_TIME = 24 * 60 * 60 * 1000; // 24 hours cache for currencies
 
 // --- Markets ---
 export function useGlobalMarketsQuery() {
@@ -37,7 +38,8 @@ export function useGlobalCurrenciesQuery() {
   return useQuery({
     queryKey: globalReferenceQueryKeys.currencies(),
     queryFn: () => globalReferenceRepository.listCurrencies(),
-    staleTime: STALE_TIME,
+    staleTime: CURRENCY_STALE_TIME,
+    gcTime: CURRENCY_STALE_TIME,
   });
 }
 

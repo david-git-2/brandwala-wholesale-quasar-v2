@@ -5,6 +5,7 @@ import {
   type FinalizeShipmentStockRow,
   type GlobalShipment,
   type GlobalShipmentItem,
+  type SettleShipmentPayeeParams,
   type ShipmentProgressFlow,
   type ShipmentProgressFlowStage,
   type ShipmentProgressTag,
@@ -127,37 +128,26 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       this.loading = true;
       this.error = null;
       try {
-        const [shipment, items, boxes, sections] = await Promise.all([
-          globalShipmentRepository.getById(shipmentId),
-          globalShipmentRepository.listShipmentItems(shipmentId),
-          globalShipmentBoxRepository.listByShipmentId(shipmentId),
-          shipmentSectionRepository.listByShipmentId(shipmentId),
-        ]);
-        this.currentShipment = shipment;
-        this.currentShipmentItems = items;
-        this.currentShipmentBoxes = boxes;
-        this.currentShipmentSections = sections;
+        const overview = await globalShipmentRepository.getShipmentOverviewDetails(shipmentId);
+        this.currentShipment = overview.shipment;
+        this.currentShipmentItems = overview.items;
+        this.currentShipmentBoxes = overview.boxes;
+        this.currentShipmentSections = overview.sections;
+        this.currentCostEntries = overview.cost_entries as any;
 
-        let stocks: any[] = [];
-        if (items.length > 0) {
-          const itemIds = items.map((i) => i.id);
-          const { data, error } = await supabase
-            .from('global_stocks')
-            .select('*')
-            .in('shipment_item_id', itemIds);
-          if (!error && data) {
-            stocks = data;
-          }
+        if (overview.shipment.progress_flow_id && overview.flow_stages?.length) {
+          this.progressStagesByFlow[overview.shipment.progress_flow_id] = overview.flow_stages;
         }
-        this.currentShipmentStocks = stocks;
-        await this.fetchCostEntries(shipmentId);
-        await this.fetchShipmentSummary(shipmentId);
+
+        this.currentShipmentStocks = [];
+        return overview;
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to load shipment details';
       } finally {
         this.loading = false;
       }
     },
+
 
     async fetchShipmentSummary(shipmentId: number) {
       try {
@@ -200,18 +190,24 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         const finalized = isShipmentCostFinalized(shipment);
 
         if (finalized) {
-          const payload: ReviseShipmentCostEntryInput[] = drafts.map((d) => ({
-            cost_type: d.cost_type,
-            amount: Number(d.amount) || 0,
-            exchange_rate: Number(d.exchange_rate) || 1,
-            payment_source: d.payment_source,
-            entity_type: d.entity_type,
-            entity_id: d.entity_type ? d.entity_id : null,
-            metadata:
-              d.cost_type === 'cargo' && d.per_kg_rate != null
-                ? { per_kg_rate: d.per_kg_rate }
-                : {},
-          }));
+          const payload: ReviseShipmentCostEntryInput[] = drafts.map((d) => {
+            const meta: Record<string, unknown> = {};
+            if (d.cost_type === 'cargo' && d.per_kg_rate != null) {
+              meta.per_kg_rate = d.per_kg_rate;
+            }
+            if (d.note != null && d.note.trim() !== '') {
+              meta.note = d.note.trim();
+            }
+            return {
+              cost_type: d.cost_type,
+              amount: Number(d.amount) || 0,
+              exchange_rate: Number(d.exchange_rate) || 1,
+              payment_source: d.payment_source,
+              entity_type: d.entity_type,
+              entity_id: d.entity_type ? d.entity_id : null,
+              metadata: meta,
+            };
+          });
           await globalShipmentCostEntryRepository.revise(shipmentId, payload);
         } else {
           const existingIds = new Set(this.currentCostEntries.map((e: any) => e.id));
@@ -226,6 +222,14 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
           }
 
           for (const d of drafts) {
+            const meta: Record<string, unknown> = {};
+            if (d.cost_type === 'cargo' && d.per_kg_rate != null) {
+              meta.per_kg_rate = d.per_kg_rate;
+            }
+            if (d.note != null && d.note.trim() !== '') {
+              meta.note = d.note.trim();
+            }
+
             await globalShipmentCostEntryRepository.upsert({
               shipment_id: shipmentId,
               id: d.id,
@@ -235,10 +239,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
               payment_source: d.payment_source,
               entity_type: d.entity_type,
               entity_id: d.entity_type ? d.entity_id : null,
-              metadata:
-                d.cost_type === 'cargo' && d.per_kg_rate != null
-                  ? { per_kg_rate: d.per_kg_rate }
-                  : {},
+              metadata: meta,
             });
           }
         }
@@ -475,11 +476,16 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
           this.currentShipmentItems.length > 0
             ? Math.max(...this.currentShipmentItems.map((item) => item.sort_order ?? 0))
             : 0;
-        const sort_order = maxSortOrder + 10;
+        const defaultSectionId =
+          payload.section_id ??
+          (this.currentShipment?.id === payload.shipment_id
+            ? (this.currentShipmentSections[0]?.id ?? null)
+            : null);
 
         const newItem = await globalShipmentRepository.createShipmentItem({
           ...payload,
-          sort_order,
+          section_id: defaultSectionId,
+          sort_order: maxSortOrder + 1,
         });
         if (this.currentShipment?.id === payload.shipment_id) {
           this.currentShipmentItems.push(newItem);
@@ -647,6 +653,22 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         this.currentShipmentItems = this.currentShipmentItems.filter((item) => item.id !== id);
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to delete shipment item';
+        throw err;
+      } finally {
+        this.saving = false;
+      }
+    },
+
+    async deleteShipmentItemsBulk(shipmentId: number, ids: number[]) {
+      if (ids.length === 0) return;
+      this.saving = true;
+      this.error = null;
+      try {
+        await globalShipmentRepository.deleteShipmentItemsBulk(shipmentId, ids);
+        const idSet = new Set(ids);
+        this.currentShipmentItems = this.currentShipmentItems.filter((item) => !idSet.has(item.id));
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to delete selected items';
         throw err;
       } finally {
         this.saving = false;
@@ -916,7 +938,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       }
     },
 
-    async settleShipmentPayee(params: import('../repositories/globalShipmentRepository').SettleShipmentPayeeParams) {
+    async settleShipmentPayee(params: SettleShipmentPayeeParams) {
       this.loading = true;
       this.error = null;
       try {

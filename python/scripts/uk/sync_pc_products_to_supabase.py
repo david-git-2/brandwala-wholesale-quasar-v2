@@ -92,16 +92,16 @@ def parse_args() -> argparse.Namespace:
         help="Market code scope (default: PY_PRODUCTS_MARKET_CODE or GB).",
     )
     parser.add_argument(
+        "--parent-tenant-id",
+        dest="parent_tenant_id",
+        default=os.getenv("PY_PRODUCTS_PARENT_TENANT_ID", "15").strip() or "15",
+        help="Warehouse parent tenant id (default: 15).",
+    )
+    parser.add_argument(
         "--tenant-id",
         dest="tenant_id",
         default=os.getenv("PY_PRODUCTS_TENANT_ID", "").strip(),
-        help="Tenant id scope. Empty value means tenant_id IS NULL.",
-    )
-    parser.add_argument(
-        "--parent-tenant-id",
-        dest="parent_tenant_id",
-        default=os.getenv("PY_PRODUCTS_PARENT_TENANT_ID", "").strip(),
-        help="Parent tenant id for inserts. Empty value means parent_tenant_id IS NULL.",
+        help="Optional. Who ran the sync (inserted_by_tenant_id). Defaults to parent tenant id.",
     )
     parser.add_argument(
         "--vendor-id",
@@ -169,35 +169,6 @@ def parse_args() -> argparse.Namespace:
 
 def to_text(value: Any) -> str:
     return str(value if value is not None else "").strip()
-
-
-def prompt_optional_positive_id(label: str, default_raw: str) -> int | None:
-    """Prompt for a positive int when stdin is a TTY; otherwise use default/env/CLI."""
-    import sys
-
-    default_text = to_text(default_raw)
-    prompt = label
-    if default_text:
-        prompt += f" [{default_text}]"
-    prompt += ": "
-
-    while True:
-        if not sys.stdin.isatty():
-            if default_text.isdigit() and int(default_text) > 0:
-                return int(default_text)
-            return None
-
-        raw = input(prompt).strip()
-        if raw == "":
-            raw = default_text
-
-        if raw == "":
-            return None
-
-        if raw.isdigit() and int(raw) > 0:
-            return int(raw)
-
-        print(f"Invalid {label.lower()}. Use a positive integer, or leave blank for NULL.", flush=True)
 
 
 def to_int_or_none(value: Any) -> int | None:
@@ -305,8 +276,8 @@ def build_sync_payloads(
     vendor_code: str,
     vendor_id: int,
     market_code: str,
-    tenant_id: int | None,
-    parent_tenant_id: int | None,
+    parent_tenant_id: int,
+    inserted_by_tenant_id: int,
     gbp_currency_id: int,
 ) -> tuple[dict[str, Any], dict[str, Any]] | None:
     barcode = to_text(row.get("barcode"))
@@ -326,8 +297,8 @@ def build_sync_payloads(
     # Insert payload can include null-capable values for new rows.
     image_url = row.get("imageUrl") or row.get("image_url") or row.get("original_image_url") or row.get("image")
     insert_payload: dict[str, Any] = {
-        "tenant_id": tenant_id,
         "parent_tenant_id": parent_tenant_id,
+        "inserted_by_tenant_id": inserted_by_tenant_id,
         "vendor_id": vendor_id,
         "vendor_code": vendor_code,
         "market_code": market_code,
@@ -340,7 +311,6 @@ def build_sync_payloads(
         "brand": normalize_nullable_text(row.get("brand")),
         "category": normalize_nullable_text(row.get("category")),
         "available_units": available_units,
-        "tariff_code": normalize_nullable_text(row.get("tariff_code")),
         "languages": normalize_nullable_text(row.get("languages")),
         "batch_code_manufacture_date": normalize_nullable_text(row.get("batch_code_manufacture_date")),
         "expire_date": normalize_nullable_text(row.get("expire_date")),
@@ -356,8 +326,8 @@ def build_sync_payloads(
     update_payload: dict[str, Any] = {}
     for key, value in insert_payload.items():
         if key in (
-            "tenant_id",
             "parent_tenant_id",
+            "inserted_by_tenant_id",
             "vendor_id",
             "vendor_code",
             "market_code",
@@ -446,40 +416,11 @@ class SupabaseRestClient:
         return f"{self.base_url}/storage/v1/object/public/{bucket}/{object_path}"
 
 
-def fetch_all_scoped_products(
-    client: SupabaseRestClient,
-    vendor_id: int,
-    market_code: str,
-    tenant_id: int | None,
-) -> list[dict[str, Any]]:
-    rows: list[dict[str, Any]] = []
-    offset = 0
-    limit = 1000
-    while True:
-        params: dict[str, Any] = {
-            "select": "id,barcode,product_code",
-            "vendor_id": f"eq.{vendor_id}",
-            "market_code": f"eq.{market_code}",
-            "limit": str(limit),
-            "offset": str(offset),
-        }
-        if tenant_id is None:
-            params["tenant_id"] = "is.null"
-        else:
-            params["tenant_id"] = f"eq.{tenant_id}"
-        batch = client.get_rows("products", params)
-        rows.extend(batch)
-        if len(batch) < limit:
-            break
-        offset += limit
-    return rows
-
-
 def fetch_all_scoped_products_full(
     client: SupabaseRestClient,
     vendor_id: int,
     market_code: str,
-    tenant_id: int | None,
+    parent_tenant_id: int,
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     offset = 0
@@ -489,13 +430,10 @@ def fetch_all_scoped_products_full(
             "select": "*",
             "vendor_id": f"eq.{vendor_id}",
             "market_code": f"eq.{market_code}",
+            "parent_tenant_id": f"eq.{parent_tenant_id}",
             "limit": str(limit),
             "offset": str(offset),
         }
-        if tenant_id is None:
-            params["tenant_id"] = "is.null"
-        else:
-            params["tenant_id"] = f"eq.{tenant_id}"
         batch = client.get_rows("products", params)
         rows.extend(batch)
         if len(batch) < limit:
@@ -504,37 +442,16 @@ def fetch_all_scoped_products_full(
     return rows
 
 
-def fetch_vendor_market_rows_any_tenant(
-    client: SupabaseRestClient,
-    vendor_id: int,
-    market_code: str,
-    limit: int = 50,
-) -> list[dict[str, Any]]:
-    return client.get_rows(
-        "products",
-        {
-            "select": "id,tenant_id,barcode,product_code",
-            "vendor_id": f"eq.{vendor_id}",
-            "market_code": f"eq.{market_code}",
-            "limit": str(limit),
-        },
-    )
-
-
 def build_scope_params(
     vendor_id: int,
     market_code: str,
-    tenant_id: int | None,
+    parent_tenant_id: int,
 ) -> dict[str, Any]:
-    params: dict[str, Any] = {
+    return {
         "vendor_id": f"eq.{vendor_id}",
         "market_code": f"eq.{market_code}",
+        "parent_tenant_id": f"eq.{parent_tenant_id}",
     }
-    if tenant_id is None:
-        params["tenant_id"] = "is.null"
-    else:
-        params["tenant_id"] = f"eq.{tenant_id}"
-    return params
 
 
 def ensure_vendor_exists(
@@ -824,14 +741,17 @@ def utc_now() -> datetime:
 def main() -> int:
     args = parse_args()
 
-    print("Tenant scope (required for product inserts):", flush=True)
-    tenant_id = prompt_optional_positive_id("Enter tenant id", to_text(args.tenant_id))
-    parent_tenant_id = prompt_optional_positive_id(
-        "Enter parent tenant id", to_text(args.parent_tenant_id)
+    parent_raw = to_text(args.parent_tenant_id) or "15"
+    if not (parent_raw.isdigit() and int(parent_raw) > 0):
+        raise SystemExit("parent tenant id must be a positive integer (default 15).")
+    parent_tenant_id = int(parent_raw)
+    inserted_raw = to_text(args.tenant_id)
+    inserted_by_tenant_id = (
+        int(inserted_raw) if inserted_raw.isdigit() and int(inserted_raw) > 0 else parent_tenant_id
     )
     print(
-        f"Using tenant_id={'NULL' if tenant_id is None else tenant_id}, "
-        f"parent_tenant_id={'NULL' if parent_tenant_id is None else parent_tenant_id}",
+        f"Using parent_tenant_id={parent_tenant_id}, "
+        f"inserted_by_tenant_id={inserted_by_tenant_id}",
         flush=True,
     )
 
@@ -885,7 +805,9 @@ def main() -> int:
         vendor_row = get_vendor_by_id(client, PC_VENDOR_ID)
         resolved_vendor_id = PC_VENDOR_ID
     else:
-        vendor_row = ensure_vendor_exists(client, vendor_code, market_code, tenant_id, args.dry_run)
+        vendor_row = ensure_vendor_exists(
+            client, vendor_code, market_code, parent_tenant_id, args.dry_run
+        )
         resolved_vendor_id = vendor_row["id"]
 
     resolved_vendor_code = to_text(vendor_row.get("code")).upper() or vendor_code
@@ -908,8 +830,8 @@ def main() -> int:
             resolved_vendor_code,
             resolved_vendor_id,
             market_code,
-            tenant_id,
             parent_tenant_id,
+            inserted_by_tenant_id,
             gbp_currency_id,
         )
         if payloads is None:
@@ -921,21 +843,10 @@ def main() -> int:
         deduped_inserts[key] = insert_payload
         deduped_updates[key] = update_payload
 
-    if tenant_id is None:
-        sample_rows = fetch_vendor_market_rows_any_tenant(client, resolved_vendor_id, market_code, limit=50)
-        tenant_bound = [r for r in sample_rows if r.get("tenant_id") is not None]
-        if tenant_bound:
-            tenant_sample = ", ".join(
-                str(r.get("tenant_id")) for r in tenant_bound[:8]
-            )
-            raise ValueError(
-                "Tenant scope is NULL, but tenant-bound rows already exist for this vendor/market. "
-                f"Sample tenant_id values: {tenant_sample}. "
-                "Set PY_PRODUCTS_TENANT_ID in web/.env (or pass --tenant-id) and rerun."
-            )
-
-    scope_params = build_scope_params(resolved_vendor_id, market_code, tenant_id)
-    existing_rows_full = fetch_all_scoped_products_full(client, resolved_vendor_id, market_code, tenant_id)
+    scope_params = build_scope_params(resolved_vendor_id, market_code, parent_tenant_id)
+    existing_rows_full = fetch_all_scoped_products_full(
+        client, resolved_vendor_id, market_code, parent_tenant_id
+    )
     existing_rows = [
         {
             "id": item.get("id"),
@@ -997,8 +908,8 @@ def main() -> int:
                     updates.append((row_id, final_update_payload))
                     existing_excel_needs_image.add((row_id, key))
         else:
-            insert_payload["tenant_id"] = tenant_id
             insert_payload["parent_tenant_id"] = parent_tenant_id
+            insert_payload["inserted_by_tenant_id"] = inserted_by_tenant_id
             insert_payload["vendor_id"] = resolved_vendor_id
             insert_payload["vendor_code"] = resolved_vendor_code
             insert_payload["is_available"] = is_available
@@ -1018,8 +929,8 @@ def main() -> int:
         "Scope: "
         f"vendor_code={resolved_vendor_code} vendor_id={resolved_vendor_id} "
         f"market={market_code} "
-        f"tenant_id={'NULL' if tenant_id is None else tenant_id} "
-        f"parent_tenant_id={'NULL' if parent_tenant_id is None else parent_tenant_id}"
+        f"parent_tenant_id={parent_tenant_id} "
+        f"inserted_by_tenant_id={inserted_by_tenant_id}"
     )
     print(f"Image upload phase: local_dir={images_dir}")
     print(f"Image URL source: backend storage path ({storage_bucket}/{storage_prefix}/<product_id><ext>)")
@@ -1058,7 +969,7 @@ def main() -> int:
                 "run_id": snapshot_run_id,
                 "captured_at": snapshot_now.isoformat(),
                 "expires_at": snapshot_expires_at.isoformat(),
-                "tenant_id": row.get("tenant_id"),
+                "tenant_id": parent_tenant_id,
                 "vendor_id": row.get("vendor_id"),
                 "vendor_code": resolved_vendor_code,
                 "market_code": market_code,
@@ -1195,9 +1106,10 @@ def main() -> int:
         limit = 1000
         while True:
             params: dict[str, Any] = {
-                "select": "id,barcode,product_code,tenant_id",
+                "select": "id,barcode,product_code,parent_tenant_id",
                 "vendor_id": f"eq.{resolved_vendor_id}",
                 "market_code": f"eq.{market_code}",
+                "parent_tenant_id": f"eq.{parent_tenant_id}",
                 "limit": str(limit),
                 "offset": str(offset),
             }
@@ -1222,7 +1134,15 @@ def main() -> int:
                 missing_image_keys += 1
                 continue
             
-            pids = [int(item["id"]) for item in rows_after_sync if (to_text(item.get("barcode")).upper(), to_text(item.get("product_code")).upper()) == key and item.get("tenant_id") == tenant_id]
+            pids = [
+                int(item["id"])
+                for item in rows_after_sync
+                if (
+                    to_text(item.get("barcode")).upper(),
+                    to_text(item.get("product_code")).upper(),
+                )
+                == key
+            ]
             if not pids:
                 continue
             if len(pids) > 1:

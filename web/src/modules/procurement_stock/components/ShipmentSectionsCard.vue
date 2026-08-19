@@ -260,11 +260,12 @@ interface SectionWithCalculations extends ShipmentSection {
 const sectionsWithCalculations = computed<SectionWithCalculations[]>(() => {
   const sections = shipmentStore.currentShipmentSections ?? [];
   const items = shipmentStore.currentShipmentItems ?? [];
+  const firstSectionId = sections[0]?.id ?? null;
 
   return sections.map((sec) => {
-    // Match items explicitly tagged with section_id or if single section, include untagged items
+    // Match items explicitly tagged with section_id or if untagged, attribute to the first/initial section
     const secItems = items.filter(
-      (item) => item.section_id === sec.id || (sections.length === 1 && item.section_id == null),
+      (item) => item.section_id === sec.id || (item.section_id == null && sec.id === firstSectionId),
     );
     const units = secItems.reduce((acc, it) => acc + (Number(it.ordered_quantity) || 0), 0);
     const weight = secItems.reduce((acc, it) => {
