@@ -41,6 +41,22 @@
             <q-icon name="edit" size="20px" color="grey-6" class="edit-icon" />
           </div>
         </template>
+
+        <q-space />
+
+        <q-btn
+          flat
+          dense
+          no-caps
+          size="sm"
+          color="primary"
+          icon="ph ph-download-simple"
+          label="Excel"
+          :disable="!shipmentStore.currentShipment"
+          @click="downloadExcel"
+        >
+          <q-tooltip>Download shipment Excel</q-tooltip>
+        </q-btn>
       </div>
 
       <!-- Metadata Chips with Tap-to-Change Menus -->
@@ -259,6 +275,18 @@
           </div>
         </template>
       </q-card>
+    </div>
+
+    <!-- Sections & Invoices Section -->
+    <div class="q-px-md q-pt-md">
+      <div class="text-caption text-weight-bold text-grey-7 text-uppercase q-mb-xs" style="letter-spacing: 0.5px">
+        Vendor Sections & Invoices
+      </div>
+      <ShipmentSectionsCard
+        :shipment-id="shipmentId"
+        :loading="shipmentStore.loading"
+        :is-editable="isEditable"
+      />
     </div>
 
     <!-- Summary Metrics Section -->
@@ -573,9 +601,11 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import { globalShipmentRepository } from '../repositories/globalShipmentRepository';
-import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';
+import { showSuccessNotification, showErrorNotification, showWarningNotification } from 'src/utils/appFeedback';
 import ShipmentStatusWorkflowBar from '../components/ShipmentStatusWorkflowBar.vue';
+import ShipmentSectionsCard from '../components/ShipmentSectionsCard.vue';
 import { useInboundShipmentCalculations } from '../composables/useInboundShipmentCalculations';
+import { buildShipmentExcelWorkbook } from '../utils/buildShipmentExcelWorkbook';
 
 const $q = useQuasar();
 const route = useRoute();
@@ -748,7 +778,49 @@ watch(
 
 // Summary KPIs handling
 const calculations = useInboundShipmentCalculations();
-const { currentPurchaseCurrencySymbol, currentCostCurrencySymbol } = calculations;
+const { currentPurchaseCurrencySymbol, currentCostCurrencySymbol, isEditable } = calculations;
+
+const safeNamePart = (value: string) =>
+  value.replace(/[^a-z0-9-_]+/gi, '_').replace(/^_+|_+$/g, '');
+
+const downloadExcel = async () => {
+  if (!shipmentStore.currentShipment) {
+    showWarningNotification('No shipment loaded.');
+    return;
+  }
+
+  const loading = $q.loading.show({ message: 'Generating Excel...' });
+
+  try {
+    const workbook = await buildShipmentExcelWorkbook({
+      shipment: shipmentStore.currentShipment,
+      items: shipmentStore.currentShipmentItems ?? [],
+      totals: calculations.totals.value,
+      boxWeightSum: calculations.currentShipmentBoxesTotal.value,
+      splitsSummary: calculations.splitsSummary.value,
+      purchaseCurrencySymbol: calculations.currentPurchaseCurrencySymbol.value,
+      costCurrencySymbol: calculations.currentCostCurrencySymbol.value,
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    const fileTitle = safeNamePart(
+      shipmentStore.currentShipment.name ?? `shipment_${shipmentStore.currentShipment.id}`,
+    );
+    anchor.href = url;
+    anchor.download = `${fileTitle || `shipment_${shipmentStore.currentShipment.id}`}.xlsx`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    showErrorNotification(error instanceof Error ? error.message : 'Failed to generate Excel.');
+  } finally {
+    loading();
+  }
+};
 
 const summaryKPIs = computed(() => {
   if (shipmentStore.currentShipmentSummary) {

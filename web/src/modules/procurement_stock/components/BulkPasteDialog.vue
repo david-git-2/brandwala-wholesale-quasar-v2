@@ -1,13 +1,13 @@
 <template>
   <q-dialog ref="dialogRef" @hide="onDialogHide" persistent>
-    <q-card class="q-dialog-plugin" style="width: 800px; max-width: 95vw">
-      <q-card-section class="row items-center q-pb-none">
+    <q-card class="q-dialog-plugin column no-wrap" style="width: 800px; max-width: 95vw; max-height: 90vh">
+      <q-card-section class="row items-center q-pb-none col-auto">
         <div class="text-h6 text-primary text-weight-bold">Bulk Paste Shipment Updates</div>
         <q-space />
         <q-btn icon="ph ph-x" flat round dense v-close-popup />
       </q-card-section>
 
-      <q-card-section class="q-pa-md q-gutter-y-md">
+      <q-card-section class="q-pa-md q-gutter-y-md col scroll">
         <!-- Banner alert -->
         <q-banner class="bg-blue-1 text-blue-9 rounded-borders">
           <template #avatar>
@@ -47,9 +47,31 @@
             />
           </div>
 
-          <!-- Column Header Mappings Selector -->
-          <div class="bg-grey-2 q-pa-md rounded-borders">
-            <div class="text-caption text-weight-medium text-grey-7 q-mb-sm">
+          <!-- Section Selector & Column Header Mappings Selector -->
+          <div class="bg-grey-2 q-pa-md rounded-borders column q-gutter-y-sm">
+            <div v-if="sectionOptions.length > 0" class="row items-center q-col-gutter-sm">
+              <div class="col-12 col-sm-6">
+                <q-select
+                  v-model="targetSectionId"
+                  :options="sectionOptions"
+                  label="Target Vendor Section"
+                  outlined
+                  dense
+                  bg-color="white"
+                  emit-value
+                  map-options
+                >
+                  <template #prepend>
+                    <q-icon name="ph ph-folder" size="18px" color="grey-6" />
+                  </template>
+                </q-select>
+              </div>
+              <div class="col-12 col-sm-6 text-caption text-grey-7">
+                Items will be filtered or assigned to this section.
+              </div>
+            </div>
+
+            <div class="text-caption text-weight-medium text-grey-7">
               Map Columns to Fields:
             </div>
             <div class="row q-col-gutter-sm">
@@ -125,7 +147,7 @@
         </div>
       </q-card-section>
 
-      <q-card-actions align="right" class="q-pa-md bg-grey-1">
+      <q-card-actions align="right" class="q-pa-md bg-grey-1 col-auto">
         <q-btn flat label="Cancel" color="grey-8" v-close-popup no-caps />
         <q-btn
           color="primary"
@@ -147,10 +169,27 @@ import { useDialogPluginComponent } from 'quasar';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import type { GlobalShipmentItem } from '../repositories/globalShipmentRepository';
 
+const props = defineProps<{
+  initialSectionId?: number | null;
+}>();
+
 defineEmits([...useDialogPluginComponent.emits]);
 
 const { dialogRef, onDialogHide, onDialogOK } = useDialogPluginComponent();
 const shipmentStore = useGlobalShipmentStore();
+
+const targetSectionId = ref<number | null>(props.initialSectionId ?? null);
+
+const sectionOptions = computed(() => {
+  const sections = shipmentStore.currentShipmentSections ?? [];
+  return [
+    { label: 'All Sections (Sequential across shipment)', value: null },
+    ...sections.map((s) => ({
+      label: s.vendor?.name ? `${s.title} (${s.vendor.name})` : s.title,
+      value: s.id,
+    })),
+  ];
+});
 
 const submitting = ref(false);
 const rawPasteText = ref('');
@@ -158,7 +197,15 @@ const parsedRows = ref<Array<string[]>>([]);
 const maxColumns = ref(0);
 const colMappings = ref<string[]>([]);
 
-const currentItems = computed(() => shipmentStore.currentShipmentItems);
+const currentItems = computed(() => {
+  const all = shipmentStore.currentShipmentItems;
+  if (targetSectionId.value == null) return all;
+  return all.filter(
+    (item) =>
+      item.section_id === targetSectionId.value ||
+      (shipmentStore.currentShipmentSections.length === 1 && item.section_id == null),
+  );
+});
 
 const previewRows = computed(() => {
   // Only show as many preview rows as we have shipment items
@@ -332,8 +379,14 @@ const onApply = async () => {
 
 <style scoped>
 .preview-table {
-  max-height: 350px;
+  max-height: 320px;
   overflow-y: auto;
+}
+.preview-table :deep(thead th) {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: #fff;
 }
 .font-mono {
   font-family: monospace;

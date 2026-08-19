@@ -21,7 +21,7 @@ Ops / identity container. **Zero financial rate fields** — money lives in `shi
 | `name` | TEXT | Yes | Shipment name / batch title |
 | `status` | TEXT | Yes | **Lifecycle only:** `draft` \| `in_transit` \| `received` \| `cancelled`. Gates receive / stock. **Not** UK/airport/payment milestones — see progress tags below |
 | `shipment_type` | TEXT | Yes | Solid enum: `'international'` \| `'local'` \| `'transfer'` \| `'thrift'` (thrift only if sharing this header). Economics branch — not progress labels |
-| `vendor_id` | BIGINT | Yes | **One vendor per shipment** (product rule). Line-level vendor is not the target model |
+| `vendor_id` | BIGINT | No | Primary / default vendor fallback. Line/invoice-level vendor grouping is handled via `shipment_sections` |
 | `assigned_child_tenant_id` | BIGINT | No | Optional: which child may **list** this batch (standalone = self / null). Listing permission only — not a qty ledger. |
 | `cargo_company_id` | BIGINT | No | FK → `cargo_companies.id` (inbound freight agent). Create/dialog + `create_shipment_draft` prefill tenant **default** when omitted — [../cargo_company/schema.md](../cargo_company/schema.md) |
 | `total_weight_kg` | NUMERIC | No | **Cargo invoice weight (kg)** — same role as live `received_weight`. Drives weight balance + cargo weight basis. Set only via explicit save — never overwritten by weight-balance apply |
@@ -70,6 +70,7 @@ Effective rates are **computed by the engine**, never stored on the shipment hea
 | `id` | BIGINT | Yes | PK |
 | `tenant_id` | BIGINT | Yes | Tenant anchor |
 | `shipment_id` | BIGINT | Yes | FK → `shipments.id` (CASCADE) |
+| `section_id` | BIGINT | No | FK → `shipment_sections.id` (CASCADE). Optional: ties this cost slice to a specific vendor invoice/section |
 | `cost_type` | TEXT | Yes | Expense category — see types below |
 | `amount` | NUMERIC | Yes | Total in **entry currency** (goods total or freight total — **not** per-kg) |
 | `currency_id` | BIGINT | No | FK → currencies — currency of `amount` |
@@ -168,7 +169,26 @@ Return of goods for **store credit** (no cash refund): credit **vendor** wallet;
 
 ---
 
-### 1.3 `shipment_items`
+### 1.3 `shipment_sections` (Vendor Invoices / Operational Batches)
+
+Purely an **operational grouping container** within a shipment. It allows one consolidated physical cargo shipment to contain items from multiple vendor invoices / batches without duplicating rate or financial engine logic.
+
+| Field | Type | Required | Description |
+| :--- | :--- | :---: | :--- |
+| `id` | BIGINT | Yes | PK |
+| `tenant_id` | BIGINT | Yes | Multi-tenancy anchor |
+| `shipment_id` | BIGINT | Yes | FK → `shipments.id` (CASCADE) |
+| `vendor_id` | BIGINT | Yes | FK → `vendors.id`. Mandatory vendor for this section/invoice |
+| `title` | TEXT | Yes | Section title / display name (e.g. `Zara Wholesale - Batch 1`) |
+| `sort_order` | INT | No | UI display order (default `0`) |
+| `metadata` | JSONB | No | Flexible key-value store for invoice data (e.g. `{"invoice_number": "INV-102", "invoice_date": "2026-08-19", "notes": "Packed in box A", "custom_fields": {...}}`) |
+| `created_at` / `updated_at` | TIMESTAMPTZ | Yes | |
+
+> **Single Source of Truth Rule:** Rates, currencies, amounts, and payments are **NOT** stored here. All financial rates and money slices live exclusively in `shipment_cost_entries`.
+
+---
+
+### 1.4 `shipment_items`
 
 No separate PO / GR module. **One shipment line plays both roles.**
 
@@ -176,6 +196,7 @@ No separate PO / GR module. **One shipment line plays both roles.**
 | :--- | :--- | :---: | :--- |
 | `id` | BIGINT | Yes | PK |
 | `shipment_id` | BIGINT | Yes | FK → `shipments.id` |
+| `section_id` | BIGINT | No | FK → `shipment_sections.id` (ON DELETE SET NULL). Optional: ties this line item to a specific vendor invoice section |
 | `product_id` | BIGINT | No | FK to product |
 | `ordered_quantity` | INT | Yes | **PO side** — qty bought / expected on this line (was live `ordered_quantity`; schema sketches that said `quantity` mean this) |
 | `received_quantity` | INT | No | **GR side** — qty counted at finalize. Null until receive. Written only on finalize. Stock posts from this value |
@@ -188,14 +209,14 @@ No separate PO / GR module. **One shipment line plays both roles.**
 | Derived | Formula | Use |
 | :--- | :--- | :--- |
 | Short / missing | `ordered_quantity − received_quantity` (when received set) | Vendor gap / door loss — **no extra loss table day one** |
-| Extra | `received_quantity − ordered_quantity` when received &gt; ordered | Overage at dock |
+| Extra | `received_quantity − ordered_quantity` when received > ordered | Overage at dock |
 
 > **Cost lives here — not on stock.** `global_stocks` holds qty + `shipment_item_id` only. Display / sell / reports resolve unit cost via this stamp (see §4).  
 > **Damage / quarantine / write-off** are **not** columns on the line — post-receive via `stock_movements` → `held` / `unsellable` ([../stock/workflow_flow.md](../stock/workflow_flow.md) Stage 4).
 
 ---
 
-### 1.4 `shipment_boxes`
+### 1.5 `shipment_boxes`
 
 | Field | Type | Required | Description |
 | :--- | :--- | :---: | :--- |

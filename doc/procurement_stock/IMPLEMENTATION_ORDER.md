@@ -132,6 +132,22 @@ Spec + phases: [SHIPMENT_PUBLIC_PROGRESS_TRACKING.task.md](./SHIPMENT_PUBLIC_PRO
 
 ---
 
+## 🚧 Next — Shipment Sections & Multi-Vendor Inbound (SS1)
+
+Goal: allow a single physical cargo shipment to contain items and invoices from multiple vendors grouped into operational sections (invoices/batches) while keeping rates in `shipment_cost_entries`.
+
+| # | Focus | Outcome |
+|:-:|:---|:---|
+| **SS1a** | **DB & RPCs** | `shipment_sections` table, `section_id` on items & cost entries, backfill migration, reorder RPC. |
+| **SS1b** | **Types & Store** | TypeScript shapes, repository, and store methods for sections CRUD. |
+| **SS1c** | **Sectioned Details UI** | `ShipmentSectionCard.vue`, section headers with neutral vendor avatars, collapsible groups. |
+| **SS1d** | **Bulk Paste per Section** | Direct bulk paste with section selection pre-filled. |
+| **SS1e** | **Cost & Settle Alignment** | Validate landed cost weighting and multi-payee wallet settlement per vendor section. |
+
+Spec + phases: [SHIPMENT_SECTIONS_MULTI_VENDOR.task.md](./SHIPMENT_SECTIONS_MULTI_VENDOR.task.md)
+
+---
+
 ## ⏸ Later (explicit defer)
 
 | Item | Notes |

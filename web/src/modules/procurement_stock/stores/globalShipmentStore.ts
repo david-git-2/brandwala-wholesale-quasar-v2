@@ -13,11 +13,17 @@ import {
 import { globalShipmentBoxRepository } from '../repositories/globalShipmentBoxRepository';
 import { type GlobalShipmentBox } from '../repositories/globalShipmentBoxRepository';
 import { globalShipmentCostEntryRepository } from '../repositories/globalShipmentCostEntryRepository';
+import { shipmentSectionRepository } from '../repositories/shipmentSectionRepository';
 import type {
   CostEntryDraft,
   GlobalShipmentCostEntry,
   ReviseShipmentCostEntryInput,
 } from '../types/shipmentCostEntry';
+import type {
+  CreateShipmentSectionPayload,
+  ShipmentSection,
+  UpdateShipmentSectionPayload,
+} from '../types/shipmentSection';
 import { isShipmentCostFinalized } from '../utils/costEntriesCosting';
 import { applyShipmentWeightBalance } from '../utils/applyShipmentWeightBalance';
 import { applyShipmentPurchaseBalance } from '../utils/applyShipmentPurchaseBalance';
@@ -42,6 +48,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
 
     // Single shipment states
     currentShipment: null as GlobalShipment | null,
+    currentShipmentSections: [] as ShipmentSection[],
     currentShipmentItems: [] as GlobalShipmentItem[],
     currentShipmentBoxes: [] as GlobalShipmentBox[],
     currentShipmentStocks: [] as any[],
@@ -54,6 +61,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
     progressStagesByFlow: {} as Record<number, ShipmentProgressFlowStage[]>,
     progressUpdating: false,
   }),
+
 
   actions: {
     async fetchShipments(
@@ -104,18 +112,31 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       }
     },
 
+    async fetchShipmentSections(shipmentId: number) {
+      try {
+        const sections = await shipmentSectionRepository.listByShipmentId(shipmentId);
+        this.currentShipmentSections = sections;
+        return sections;
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to load shipment sections';
+        return [];
+      }
+    },
+
     async fetchShipmentDetails(shipmentId: number) {
       this.loading = true;
       this.error = null;
       try {
-        const [shipment, items, boxes] = await Promise.all([
+        const [shipment, items, boxes, sections] = await Promise.all([
           globalShipmentRepository.getById(shipmentId),
           globalShipmentRepository.listShipmentItems(shipmentId),
           globalShipmentBoxRepository.listByShipmentId(shipmentId),
+          shipmentSectionRepository.listByShipmentId(shipmentId),
         ]);
         this.currentShipment = shipment;
         this.currentShipmentItems = items;
         this.currentShipmentBoxes = boxes;
+        this.currentShipmentSections = sections;
 
         let stocks: any[] = [];
         if (items.length > 0) {
@@ -419,6 +440,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         this.rows = this.rows.filter((r) => r.id !== id);
         if (this.currentShipment?.id === id) {
           this.currentShipment = null;
+          this.currentShipmentSections = [];
           this.currentShipmentItems = [];
           this.currentShipmentBoxes = [];
           this.currentShipmentStocks = [];
@@ -1119,16 +1141,17 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
           is_active: stage.is_active,
         }));
         if (this.currentShipment?.id === shipmentId) {
+          const currentTagId = this.currentShipment.progress_tag_id;
           const currentStillValid =
-            this.currentShipment.progress_tag_id != null &&
-            stages.some((stage) => stage.tag_id === this.currentShipment?.progress_tag_id);
+            currentTagId != null &&
+            stages.some((stage) => stage.tag_id === currentTagId);
           this.currentShipment = {
             ...this.currentShipment,
             progress_flow_id: flowId,
             progress_flow: flow,
             progress_tag_id: currentStillValid
-              ? this.currentShipment.progress_tag_id
-              : stages[0]?.tag_id ?? null,
+              ? (currentTagId ?? null)
+              : (stages[0]?.tag_id ?? null),
           };
         }
       } catch (err: unknown) {
@@ -1138,6 +1161,88 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         this.progressUpdating = false;
       }
     },
+
+    async createSection(payload: CreateShipmentSectionPayload) {
+      this.saving = true;
+      this.error = null;
+      try {
+        const newSection = await shipmentSectionRepository.create(payload);
+        if (this.currentShipment?.id === payload.shipment_id) {
+          this.currentShipmentSections.push(newSection);
+          this.currentShipmentSections.sort((a, b) => a.sort_order - b.sort_order);
+        }
+        return newSection;
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to create shipment section';
+        throw err;
+      } finally {
+        this.saving = false;
+      }
+    },
+
+    async updateSection(id: number, payload: UpdateShipmentSectionPayload) {
+      this.saving = true;
+      this.error = null;
+      try {
+        const updated = await shipmentSectionRepository.update(id, payload);
+        const idx = this.currentShipmentSections.findIndex((s) => s.id === id);
+        if (idx >= 0) {
+          this.currentShipmentSections[idx] = updated;
+          this.currentShipmentSections.sort((a, b) => a.sort_order - b.sort_order);
+        }
+        return updated;
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to update shipment section';
+        throw err;
+      } finally {
+        this.saving = false;
+      }
+    },
+
+    async deleteSection(id: number) {
+      this.saving = true;
+      this.error = null;
+      try {
+        await shipmentSectionRepository.delete(id);
+        this.currentShipmentSections = this.currentShipmentSections.filter((s) => s.id !== id);
+        // Clear section_id on local items assigned to this section
+        this.currentShipmentItems = this.currentShipmentItems.map((item) =>
+          item.section_id === id ? { ...item, section_id: null } : item,
+        );
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to delete shipment section';
+        throw err;
+      } finally {
+        this.saving = false;
+      }
+    },
+
+    async reorderSections(shipmentId: number, sectionIds: number[]) {
+      this.saving = true;
+      this.error = null;
+      try {
+        await shipmentSectionRepository.reorder(shipmentId, sectionIds);
+        if (this.currentShipment?.id === shipmentId) {
+          const sectionMap = new Map(this.currentShipmentSections.map((s) => [s.id, s]));
+          this.currentShipmentSections = sectionIds
+            .map((id, idx) => {
+              const sec = sectionMap.get(id);
+              return sec ? { ...sec, sort_order: idx } : null;
+            })
+            .filter((s): s is ShipmentSection => s !== null);
+        }
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to reorder shipment sections';
+        throw err;
+      } finally {
+        this.saving = false;
+      }
+    },
+
+    async moveItemToSection(itemId: number, sectionId: number | null) {
+      return this.updateShipmentItem(itemId, { section_id: sectionId });
+    },
   },
 });
+
 

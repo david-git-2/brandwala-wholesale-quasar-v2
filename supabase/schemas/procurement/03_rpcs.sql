@@ -2223,12 +2223,72 @@ begin
   )
   returning * into v_row;
 
+  -- Auto-create primary default section for this shipment
+  insert into public.global_shipment_sections (
+    parent_tenant_id,
+    shipment_id,
+    vendor_id,
+    title,
+    sort_order,
+    metadata
+  )
+  values (
+    v_stock_parent,
+    v_row.id,
+    v_vendor_id,
+    'Section 1',
+    0,
+    '{}'::jsonb
+  );
+
   return v_row;
 end;
 $$;
 
 
 ALTER FUNCTION "public"."create_shipment_draft"("p_parent_tenant_id" bigint, "p_name" "text", "p_type" "public"."global_shipment_type", "p_vendor_id" bigint, "p_cargo_company_id" bigint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."reorder_shipment_sections"("p_shipment_id" bigint, "p_section_ids" bigint[]) RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_ship public.global_shipments;
+  v_idx integer;
+  v_section_id bigint;
+begin
+  select * into v_ship
+  from public.global_shipments
+  where id = p_shipment_id;
+
+  if not found then
+    raise exception 'shipment not found';
+  end if;
+
+  if not public.user_can_manage_parent_tenant(v_ship.parent_tenant_id)
+     and not public.is_superadmin() then
+    raise exception 'not authorized';
+  end if;
+
+  if p_section_ids is null or array_length(p_section_ids, 1) is null then
+    return;
+  end if;
+
+  for v_idx in 1..array_length(p_section_ids, 1) loop
+    v_section_id := p_section_ids[v_idx];
+
+    update public.global_shipment_sections
+    set sort_order = v_idx - 1,
+        updated_at = now()
+    where id = v_section_id
+      and shipment_id = p_shipment_id;
+  end loop;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."reorder_shipment_sections"("p_shipment_id" bigint, "p_section_ids" bigint[]) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."create_shipment_progress_flow"("p_tenant_id" bigint, "p_name" "text") RETURNS "public"."shipment_progress_flows"

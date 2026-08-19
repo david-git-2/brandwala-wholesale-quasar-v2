@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS "public"."global_shipment_items" (
     "sort_order" integer DEFAULT 0 NOT NULL,
     "landed_cost_bdt" numeric,
     "received_quantity" integer,
+    "section_id" bigint,
     CONSTRAINT "global_shipment_items_name_not_blank" CHECK (("length"(TRIM(BOTH FROM "name")) > 0)),
     CONSTRAINT "global_shipment_items_ordered_quantity_check" CHECK (("ordered_quantity" >= 0)),
     CONSTRAINT "global_shipment_items_received_quantity_check" CHECK ((("received_quantity" IS NULL) OR ("received_quantity" >= 0)))
@@ -32,6 +33,24 @@ ALTER TABLE "public"."global_shipment_items" OWNER TO "postgres";
 
 
 COMMENT ON COLUMN "public"."global_shipment_items"."landed_cost_bdt" IS 'Authoritative per-unit landed BDT. Written only by finalize/revision stamp RPCs. Null while draft.';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."global_shipment_sections" (
+    "id" bigint NOT NULL,
+    "parent_tenant_id" bigint NOT NULL,
+    "shipment_id" bigint NOT NULL,
+    "vendor_id" bigint NOT NULL,
+    "title" "text" NOT NULL,
+    "sort_order" integer DEFAULT 0 NOT NULL,
+    "metadata" "jsonb" DEFAULT '{}'::"jsonb" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "global_shipment_sections_title_not_blank" CHECK (("length"(TRIM(BOTH FROM "title")) > 0))
+);
+
+
+ALTER TABLE "public"."global_shipment_sections" OWNER TO "postgres";
 
 
 
@@ -125,7 +144,7 @@ CREATE TABLE IF NOT EXISTS "public"."global_shipments" (
     "cargo_invoice_total" numeric,
     "purchase_invoice_total" numeric,
     "assigned_child_tenant_id" bigint,
-    "vendor_id" bigint NOT NULL,
+    "vendor_id" bigint,
     "cargo_company_id" bigint,
     "total_weight_kg" numeric,
     "inventory_added" boolean DEFAULT false NOT NULL,
@@ -200,6 +219,7 @@ CREATE TABLE IF NOT EXISTS "public"."global_shipment_cost_entries" (
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "settled_at" timestamp with time zone,
     "settlement_ledger_id" "uuid",
+    "section_id" bigint,
     CONSTRAINT "global_shipment_cost_entries_amount_check" CHECK (("amount" >= (0)::numeric)),
     CONSTRAINT "global_shipment_cost_entries_exchange_rate_check" CHECK (("exchange_rate" > (0)::numeric)),
     CONSTRAINT "global_shipment_cost_entries_payment_source_check" CHECK ((("payment_source" IS NULL) OR ("payment_source" = ANY (ARRAY['cash'::"text", 'credit'::"text", 'wallet'::"text"]))))
@@ -467,6 +487,21 @@ ALTER SEQUENCE "public"."global_shipment_items_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."global_shipment_items_id_seq" OWNED BY "public"."global_shipment_items"."id";
+
+
+
+CREATE SEQUENCE IF NOT EXISTS "public"."global_shipment_sections_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE "public"."global_shipment_sections_id_seq" OWNER TO "postgres";
+
+
+ALTER SEQUENCE "public"."global_shipment_sections_id_seq" OWNED BY "public"."global_shipment_sections"."id";
 
 
 
@@ -858,6 +893,10 @@ ALTER TABLE ONLY "public"."global_shipment_items" ALTER COLUMN "id" SET DEFAULT 
 
 
 
+ALTER TABLE ONLY "public"."global_shipment_sections" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."global_shipment_sections_id_seq"'::"regclass");
+
+
+
 ALTER TABLE ONLY "public"."global_shipments" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."global_shipments_id_seq"'::"regclass");
 
 
@@ -947,6 +986,11 @@ ALTER TABLE ONLY "public"."global_shipment_cost_entries"
 
 ALTER TABLE ONLY "public"."global_shipment_items"
     ADD CONSTRAINT "global_shipment_items_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."global_shipment_sections"
+    ADD CONSTRAINT "global_shipment_sections_pkey" PRIMARY KEY ("id");
 
 
 
@@ -1447,6 +1491,11 @@ ALTER TABLE ONLY "public"."global_shipment_cost_entries"
 
 
 
+ALTER TABLE ONLY "public"."global_shipment_cost_entries"
+    ADD CONSTRAINT "global_shipment_cost_entries_section_id_fkey" FOREIGN KEY ("section_id") REFERENCES "public"."global_shipment_sections"("id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."global_shipment_items"
     ADD CONSTRAINT "global_shipment_items_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE SET NULL;
 
@@ -1454,6 +1503,26 @@ ALTER TABLE ONLY "public"."global_shipment_items"
 
 ALTER TABLE ONLY "public"."global_shipment_items"
     ADD CONSTRAINT "global_shipment_items_shipment_id_fkey" FOREIGN KEY ("shipment_id") REFERENCES "public"."global_shipments"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."global_shipment_items"
+    ADD CONSTRAINT "global_shipment_items_section_id_fkey" FOREIGN KEY ("section_id") REFERENCES "public"."global_shipment_sections"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."global_shipment_sections"
+    ADD CONSTRAINT "global_shipment_sections_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."global_shipment_sections"
+    ADD CONSTRAINT "global_shipment_sections_shipment_id_fkey" FOREIGN KEY ("shipment_id") REFERENCES "public"."global_shipments"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."global_shipment_sections"
+    ADD CONSTRAINT "global_shipment_sections_vendor_id_fkey" FOREIGN KEY ("vendor_id") REFERENCES "public"."vendors"("id") ON DELETE RESTRICT;
 
 
 

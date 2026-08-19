@@ -43,18 +43,7 @@
             </div>
           </div>
 
-          <!-- Vendor (required on create + edit); cargo only on create -->
-          <q-select
-            v-model="form.vendor_id"
-            :options="vendorOptions"
-            label="Vendor *"
-            outlined
-            dense
-            emit-value
-            map-options
-            :loading="loadingVendors"
-            :rules="[(val) => val != null || 'Vendor is required']"
-          />
+          <!-- Cargo Company (only on create) -->
           <q-select
             v-if="!isEdit"
             v-model="form.cargo_company_id"
@@ -66,7 +55,49 @@
             map-options
             clearable
             :loading="loadingCargo"
-          />
+          >
+            <template #prepend>
+              <q-icon name="ph ph-airplane-tilt" size="18px" color="grey-6" />
+            </template>
+          </q-select>
+
+          <!-- Section / Vendor Details (Required on create & edit) -->
+          <div class="text-subtitle2 text-grey-8 q-mt-md q-mb-xs">
+            {{ isEdit ? 'Default Vendor' : 'Initial Section & Vendor' }}
+          </div>
+
+          <div class="row q-col-gutter-sm">
+            <div class="col-12 col-sm-6">
+              <q-select
+                v-model="form.vendor_id"
+                :options="vendorOptions"
+                label="Primary Vendor *"
+                outlined
+                dense
+                emit-value
+                map-options
+                :loading="loadingVendors"
+                :rules="[(val) => val != null || 'Vendor is required']"
+              >
+                <template #prepend>
+                  <q-icon name="ph ph-buildings" size="18px" color="grey-6" />
+                </template>
+              </q-select>
+            </div>
+            <div v-if="!isEdit" class="col-12 col-sm-6">
+              <q-input
+                v-model="form.initial_section_title"
+                label="Initial Section Name"
+                outlined
+                dense
+                placeholder="e.g. Primary Section"
+              >
+                <template #prepend>
+                  <q-icon name="ph ph-folder" size="18px" color="grey-6" />
+                </template>
+              </q-input>
+            </div>
+          </div>
 
           <!-- Currencies (edit only — not on create Stage 1) -->
           <template v-if="isEdit">
@@ -243,6 +274,7 @@ const form = ref({
   name: '',
   type: 'international' as 'international' | 'local' | 'transfer',
   vendor_id: null as number | null,
+  initial_section_title: '',
   cargo_company_id: null as number | null,
   shipment_purchase_currency_id: null as number | null,
   shipment_cost_currency_id: null as number | null,
@@ -322,6 +354,7 @@ onMounted(async () => {
       name: props.shipment.name,
       type: props.shipment.type,
       vendor_id: props.shipment.vendor_id,
+      initial_section_title: '',
       cargo_company_id: props.shipment.cargo_company_id,
       shipment_purchase_currency_id: props.shipment.shipment_purchase_currency_id,
       shipment_cost_currency_id: props.shipment.shipment_cost_currency_id,
@@ -336,18 +369,16 @@ onMounted(async () => {
 });
 
 const onSubmit = async () => {
-  if (!authStore.tenantId) return;
-  submitting.value = true;
   error.value = null;
+  submitting.value = true;
 
   try {
-    if (form.value.vendor_id == null) {
-      error.value = 'Vendor is required.';
-      return;
+    if (!authStore.tenantId) {
+      throw new Error('Tenant context missing.');
     }
 
     if (isEdit.value && props.shipment) {
-      const { cargo_company_id: _cargoCompanyId, ...editPayload } = form.value;
+      const { cargo_company_id: _cargoCompanyId, initial_section_title: _initialSec, ...editPayload } = form.value;
       const updated = await shipmentStore.updateShipment(props.shipment.id, {
         ...editPayload,
         vendor_id: form.value.vendor_id!,
@@ -360,6 +391,21 @@ const onSubmit = async () => {
         vendor_id: form.value.vendor_id,
         cargo_company_id: form.value.cargo_company_id,
       });
+
+      // If a custom initial section title was specified and differs from default, update it
+      if (form.value.initial_section_title.trim() && created?.id) {
+        try {
+          const sections = await shipmentStore.fetchShipmentSections(created.id);
+          if (sections.length > 0 && sections[0]?.id) {
+            await shipmentStore.updateSection(sections[0].id, {
+              title: form.value.initial_section_title.trim(),
+            });
+          }
+        } catch (secErr) {
+          console.error('Failed to set custom section title', secErr);
+        }
+      }
+
       onDialogOK(created);
     }
   } catch (err: unknown) {

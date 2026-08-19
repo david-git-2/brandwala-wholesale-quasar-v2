@@ -27,9 +27,8 @@
 
               <q-img
                 :src="item.image_url || (item as any).image || (item as any).product?.image_url || 'https://cdn.quasar.dev/img/placeholder.png'"
-                style="height: 54px; width: 54px; border-radius: 6px; flex-shrink: 0;"
+                class="shipment-card-image bg-white border-grey"
                 fit="contain"
-                class="bg-white border-grey"
               >
                 <template v-slot:error>
                   <div class="absolute-full flex flex-center bg-grey-3 text-grey-6 text-caption">
@@ -413,6 +412,12 @@ const saveDraftValue = async (item: any, field: string, options?: any) => {
 </script>
 
 <style scoped>
+.shipment-item-card-list {
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+}
+
 .full-width-item-card {
   width: 100%;
   border-radius: 8px;
@@ -437,5 +442,15 @@ const saveDraftValue = async (item: any, field: string, options?: any) => {
 }
 .border-grey {
   border: 1px solid #e2e8f0;
+}
+
+.shipment-card-image {
+  width: 54px;
+  height: 54px;
+  min-width: 54px;
+  min-height: 54px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  overflow: hidden;
 }
 </style>

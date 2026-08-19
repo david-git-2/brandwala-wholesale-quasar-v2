@@ -15,6 +15,12 @@
             >
               Codes
             </th>
+            <th
+              v-if="isColumnVisible('section')"
+              class="text-left shipment-section-col"
+            >
+              Section / Vendor
+            </th>
             <th v-if="isColumnVisible('purchase_price')" class="text-center shipment-price-col">
               Price {{ purchaseCurrencySymbol }}
             </th>
@@ -25,7 +31,7 @@
               v-if="isColumnVisible('ordered_quantity')"
               class="text-center shipment-qty-col shipment-qty-col--quantity"
             >
-              Ordered quantity
+              Ordered Quantity
             </th>
             <th
               v-if="isColumnVisible('product_weight')"
@@ -196,6 +202,23 @@
                 </div>
               </div>
             </td>
+
+            <td
+              v-if="isColumnVisible('section')"
+              class="shipment-section-col font-mono text-caption"
+            >
+              <div class="column q-gutter-y-2xs" style="line-height: 1.2">
+                <div class="row items-center no-wrap q-gutter-x-xs">
+                  <span class="text-weight-bold text-grey-9 ellipsis" style="max-width: 140px">
+                    {{ getSectionTitle(item.section_id) }}
+                  </span>
+                </div>
+                <div v-if="getSectionVendorName(item.section_id)" class="ellipsis text-grey-6" style="font-size: 10px; max-width: 140px">
+                  {{ getSectionVendorName(item.section_id) }}
+                </div>
+              </div>
+            </td>
+
             <td v-if="isColumnVisible('purchase_price')" class="text-center shipment-price-col">
               <div>
                 <q-input
@@ -306,6 +329,26 @@
                   <q-list dense style="min-width: 120px">
                     <q-item clickable @click="emit('edit-details', item)">
                       <q-item-section>Edit details</q-item-section>
+                    </q-item>
+                    <q-item v-if="isEditable && shipmentStore.currentShipmentSections.length > 1" clickable>
+                      <q-item-section>Move to Section</q-item-section>
+                      <q-item-section side>
+                        <q-icon name="ph ph-caret-right" size="14px" />
+                      </q-item-section>
+                      <q-menu anchor="top end" self="top start" dense>
+                        <q-list style="min-width: 160px">
+                          <q-item
+                            v-for="sec in shipmentStore.currentShipmentSections"
+                            :key="sec.id"
+                            clickable
+                            :active="item.section_id === sec.id"
+                            v-close-popup
+                            @click="moveItemToSection(item.id, sec.id)"
+                          >
+                            <q-item-section>{{ sec.title }}</q-item-section>
+                          </q-item>
+                        </q-list>
+                      </q-menu>
                     </q-item>
                     <q-item
                       v-if="isEditable"
@@ -505,6 +548,7 @@ const shipmentStore = useGlobalShipmentStore();
 const baseColumnOptions = [
   { label: 'Name', value: 'name' },
   { label: 'Product Identifiers', value: 'product_codes' },
+  { label: 'Section / Vendor', value: 'section' },
   { label: 'Price GBP', value: 'purchase_price' },
   { label: 'Cost BDT', value: 'cost_bdt' },
   { label: 'Ordered Quantity', value: 'ordered_quantity' },
@@ -518,6 +562,7 @@ export type ColumnKey = (typeof baseColumnOptions)[number]['value'];
 const internalVisibleColumns = ref<ColumnKey[]>([
   'name',
   'product_codes',
+  'section',
   'purchase_price',
   'cost_bdt',
   'ordered_quantity',
@@ -570,6 +615,27 @@ const tableColspan = computed(() => {
 
 const locationStore = useStockLocationStore();
 const authStore = useAuthStore();
+
+const getSectionTitle = (sectionId?: number | null): string => {
+  if (!sectionId) return 'Default Section';
+  const sec = shipmentStore.currentShipmentSections.find((s) => s.id === sectionId);
+  return sec?.title || `Section #${sectionId}`;
+};
+
+const getSectionVendorName = (sectionId?: number | null): string => {
+  if (!sectionId) return '';
+  const sec = shipmentStore.currentShipmentSections.find((s) => s.id === sectionId);
+  return sec?.vendor?.name || '';
+};
+
+const moveItemToSection = async (itemId: number, sectionId: number | null) => {
+  try {
+    await shipmentStore.moveItemToSection(itemId, sectionId);
+    showSuccessNotification('Item moved to section');
+  } catch (err: unknown) {
+    showErrorNotification((err as Error).message || 'Failed to move item');
+  }
+};
 
 const emptyAvailabilitySplits = (): Record<StockAvailability, number> => ({
   sellable: 0,
@@ -864,12 +930,17 @@ defineExpose({
 
 .shipment-line-items {
   min-width: 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .shipment-table-scroll-wrap {
+  flex: 1;
+  min-height: 0;
   overflow: auto;
   position: relative;
-  max-height: min(88vh, calc(100vh - 165px));
   background: var(--bw-theme-base, #eef2f5);
 }
 
@@ -903,11 +974,16 @@ defineExpose({
   z-index: 2;
   background: var(--bw-theme-surface, #fff);
   box-shadow: inset 0 -1px 0 rgba(148, 163, 184, 0.25);
+  white-space: normal;
+  line-height: 1.2;
+  word-break: normal;
+  vertical-align: middle;
 }
 
 .shipment-item-image-box {
   width: 1in;
   height: 1in;
+  flex-shrink: 0;
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid rgba(0, 0, 0, 0.08);
@@ -923,13 +999,14 @@ defineExpose({
   display: block !important;
 }
 
-.shipment-details-table :deep(.shipment-item-image) {
+.shipment-details-table :deep(.shipment-item-image-box .smart-image__img) {
   width: 100%;
   height: 100%;
-  object-fit: contain !important;
+  object-fit: contain;
 }
 
-.shipment-details-table :deep(.shipment-item-image-fallback) {
+.shipment-details-table :deep(.shipment-item-image-fallback),
+.shipment-details-table :deep(.shipment-item-image-box .smart-image__fallback) {
   width: 100%;
   height: 100%;
   display: flex;
@@ -967,6 +1044,12 @@ defineExpose({
   max-width: 140px;
 }
 
+.shipment-section-col {
+  width: 150px;
+  min-width: 150px;
+  max-width: 150px;
+}
+
 .shipment-price-col,
 .shipment-product-weight-col,
 .shipment-package-weight-col {
@@ -988,9 +1071,9 @@ defineExpose({
 }
 
 .shipment-qty-col--quantity {
-  width: 110px;
-  min-width: 110px;
-  max-width: 110px;
+  width: 140px;
+  min-width: 140px;
+  max-width: 140px;
   background: #d0e6ff;
 }
 

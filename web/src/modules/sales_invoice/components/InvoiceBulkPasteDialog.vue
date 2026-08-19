@@ -1,13 +1,13 @@
 <template>
   <q-dialog ref="dialogRef" @hide="onDialogHide" persistent>
-    <q-card class="q-dialog-plugin" style="width: 800px; max-width: 95vw">
-      <q-card-section class="row items-center q-pb-none">
+    <q-card class="q-dialog-plugin column no-wrap" style="width: 800px; max-width: 95vw; max-height: 90vh">
+      <q-card-section class="row items-center q-pb-none col-auto">
         <div class="text-h6 text-primary text-weight-bold">Bulk Paste Invoice Updates</div>
         <q-space />
         <q-btn icon="ph ph-x" flat round dense v-close-popup />
       </q-card-section>
 
-      <q-card-section class="q-pa-md q-gutter-y-md">
+      <q-card-section class="q-pa-md q-gutter-y-md col scroll">
         <!-- Banner alert -->
         <q-banner class="bg-blue-1 text-blue-9 rounded-borders">
           <template #avatar>
@@ -125,7 +125,7 @@
         </div>
       </q-card-section>
 
-      <q-card-actions align="right" class="q-pa-md bg-grey-1">
+      <q-card-actions align="right" class="q-pa-md bg-grey-1 col-auto">
         <q-btn flat label="Cancel" color="grey-8" v-close-popup no-caps />
         <q-btn
           color="primary"
@@ -144,17 +144,21 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { useDialogPluginComponent } from 'quasar';
-import { formatAmountBdt } from 'src/utils/currency';
-import { showWarningNotification } from 'src/utils/appFeedback';
 import { invoiceRepository } from '../repositories/invoiceRepository';
-import type { GlobalInvoiceItemRow } from '../types';
-
-const props = defineProps<{
-  items: GlobalInvoiceItemRow[];
-  isDropship?: boolean;
-}>();
+import { showWarningNotification } from 'src/utils/notification';
 
 defineEmits([...useDialogPluginComponent.emits]);
+
+const props = defineProps<{
+  invoiceId: number;
+  items: Array<{
+    id: number;
+    name: string;
+    quantity: number;
+    sell_price_amount: number;
+    recipient_price_amount?: number;
+  }>;
+}>();
 
 const { dialogRef, onDialogHide, onDialogOK } = useDialogPluginComponent();
 
@@ -164,21 +168,21 @@ const parsedRows = ref<Array<string[]>>([]);
 const maxColumns = ref(0);
 const colMappings = ref<string[]>([]);
 
-const formatAmount = (val: number) => formatAmountBdt(val);
+const formatAmount = (val: number) => `£${val.toFixed(2)}`;
 
 const previewRows = computed(() => {
   const len = Math.max(parsedRows.value.length, props.items.length);
   return props.items.slice(0, len);
 });
 
-const mappingOptions = computed(() => [
+const mappingOptions = [
   { label: 'Ignore', value: 'ignore' },
   { label: 'Quantity', value: 'quantity' },
   { label: 'Sell Price', value: 'sell_price_amount' },
-]);
+];
 
 const getColumnLabel = (mapping?: string) => {
-  return mappingOptions.value.find((opt) => opt.value === mapping)?.label || 'Ignore';
+  return mappingOptions.find((opt) => opt.value === mapping)?.label || 'Ignore';
 };
 
 const hasActiveMappings = computed(() => {
@@ -210,7 +214,6 @@ const onPasteUpdate = (val: string | number | null) => {
   maxColumns.value = maxCols;
 
   const defaultMappings = ['quantity', 'sell_price_amount'];
-
   colMappings.value = Array.from({ length: maxCols }, (_, idx) => {
     return defaultMappings[idx] || 'ignore';
   });
@@ -239,7 +242,7 @@ const formatPreviewValue = (val: string | null, mapping?: string): string => {
     return `${Math.floor(num)} pcs`;
   }
   if (mapping === 'sell_price_amount') {
-    return formatAmount(num);
+    return `£${num.toFixed(2)}`;
   }
   return val;
 };
@@ -262,7 +265,10 @@ const onApply = async () => {
     const item = props.items[i];
     const row = parsedRows.value[i];
     if (!item || !row) continue;
-    const payload: any = {};
+
+    let finalQuantity = item.quantity;
+    let finalSellPrice = item.sell_price_amount;
+    let hasChanged = false;
 
     colMappings.value.forEach((mapping, colIdx) => {
       if (!mapping || mapping === 'ignore' || colIdx >= row.length) return;
@@ -270,26 +276,26 @@ const onApply = async () => {
       if (cellVal === undefined || cellVal === '') return;
 
       const cleaned = cellVal.replace(/[^0-9.-]/g, '');
+      if (cleaned === '') return;
       const numVal = Number(cleaned);
-      if (isNaN(numVal)) {
-        return;
-      }
+      if (isNaN(numVal)) return;
 
       if (mapping === 'quantity') {
-        payload[mapping] = Math.max(1, Math.floor(numVal));
+        finalQuantity = Math.max(1, Math.floor(numVal));
+        hasChanged = true;
       } else if (mapping === 'sell_price_amount') {
-        payload[mapping] = Math.max(0, numVal);
+        finalSellPrice = Math.max(0, numVal);
+        hasChanged = true;
       }
     });
 
-    const finalQuantity = payload.quantity ?? item.quantity;
-    const finalSellPrice = payload.sell_price_amount ?? item.sell_price_amount;
-
-    updates.push({
-      id: item.id,
-      quantity: finalQuantity,
-      sell_price_amount: finalSellPrice,
-    });
+    if (hasChanged) {
+      updates.push({
+        id: item.id,
+        quantity: finalQuantity,
+        sell_price_amount: finalSellPrice,
+      });
+    }
   }
 
   try {
@@ -307,8 +313,14 @@ const onApply = async () => {
 
 <style scoped>
 .preview-table {
-  max-height: 350px;
+  max-height: 320px;
   overflow-y: auto;
+}
+.preview-table :deep(thead th) {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: #fff;
 }
 .font-mono {
   font-family: monospace;

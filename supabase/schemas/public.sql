@@ -14496,6 +14496,8 @@ declare
   v_search_field text;
   v_scope_tenant_id bigint;
   v_result jsonb;
+  v_tokens text[] := '{}'::text[];
+  v_phrase_escaped text;
 begin
   if p_tenant_id is not null and not public.user_can_access_tenant_fetch(p_tenant_id) then
     raise exception 'not allowed';
@@ -14535,63 +14537,102 @@ begin
     v_search_field := 'name';
   end if;
 
+  if v_search_field = 'name' and p_search is not null and trim(p_search) <> '' then
+    v_phrase_escaped := replace(replace(replace(trim(p_search), E'\\', E'\\\\'), '%', E'\\%'), '_', E'\\_');
+
+    select coalesce(array_agg(tok), '{}'::text[])
+    into v_tokens
+    from unnest(regexp_split_to_array(trim(p_search), E'[^[:alnum:]]+')) as tok
+    where tok <> ''
+      and lower(tok) not in ('a', 'an', 'the', 'and', 'or', 'of', 'for', 'to', 'in', 'on');
+
+    if cardinality(v_tokens) = 0 then
+      v_tokens := array[trim(p_search)];
+    end if;
+  end if;
+
   execute format(
-    $sql$
-      with filtered as (
-        select p.*
-        from public.products p
-        where
-          ($1 is null or p.parent_tenant_id = $1)
-          and ($2 is null or trim($2) = '' or (
-            ($3 = 'name' and (
-              select coalesce(bool_and(p.name ilike ('%%' || trim(word) || '%%')), true)
-              from unnest(string_to_array(trim($2), ' ')) as word
-              where trim(word) <> ''
+      $sql$
+        with filtered as (
+          select p.*
+          from public.products p
+          where
+            ($1 is null or p.parent_tenant_id = $1)
+            and ($2 is null or trim($2) = '' or (
+              ($3 = 'name' and (
+                cardinality($11) = 0
+                or (
+                  select coalesce(bool_and(
+                    concat_ws(' ', p.name, p.brand) ~* ('(^|[^[:alnum:]])' || t || '([^[:alnum:]]|$)')
+                  ), true)
+                  from unnest($11) t
+                )
+              ))
+              or ($3 = 'barcode' and p.barcode ilike ('%%' || trim($2) || '%%'))
+              or ($3 = 'product_code' and p.product_code ilike ('%%' || trim($2) || '%%'))
+              or ($3 = 'id' and trim($2) ~ '^[0-9]+$' and p.id = trim($2)::bigint)
             ))
-            or ($3 = 'barcode' and p.barcode ilike ('%%' || trim($2) || '%%'))
-            or ($3 = 'product_code' and p.product_code ilike ('%%' || trim($2) || '%%'))
-            or ($3 = 'id' and trim($2) ~ '^[0-9]+$' and p.id = trim($2)::bigint)
-          ))
-          and ($4 is null or trim($4) = '' or lower(coalesce(p.category, '')) = lower(trim($4)))
-          and ($5 is null or trim($5) = '' or lower(coalesce(p.brand, '')) = lower(trim($5)))
-          and ($6 is null or trim($6) = '' or upper(coalesce(p.vendor_code, '')) = upper(trim($6)))
-          and ($7 is null or trim($7) = '' or upper(coalesce(p.market_code, '')) = upper(trim($7)))
-          and ($8 is null or p.is_available = $8)
-      ),
-      paged as (
-        select f.*
-        from filtered f
-        order by %I %s nulls last, f.id asc
-        limit $9
-        offset $10
-      )
-      select jsonb_build_object(
-        'data',
-        coalesce((select jsonb_agg(to_jsonb(p)) from paged p), '[]'::jsonb),
-        'meta',
-        jsonb_build_object(
-          'total', (select count(*) from filtered),
-          'page', (($10 / $9) + 1),
-          'page_size', $9,
-          'total_pages', greatest(1, ceil((select count(*)::numeric from filtered) / $9::numeric))
+            and ($4 is null or trim($4) = '' or lower(coalesce(p.category, '')) = lower(trim($4)))
+            and ($5 is null or trim($5) = '' or lower(coalesce(p.brand, '')) = lower(trim($5)))
+            and ($6 is null or trim($6) = '' or upper(coalesce(p.vendor_code, '')) = upper(trim($6)))
+            and ($7 is null or trim($7) = '' or upper(coalesce(p.market_code, '')) = upper(trim($7)))
+            and ($8 is null or p.is_available = $8)
+        ),
+        paged as (
+          select
+            f.*,
+            row_number() over (
+              order by
+                (
+                  select count(*)
+                  from unnest($11) t
+                  where concat_ws(' ', f.name, f.brand) ~* ('(^|[^[:alnum:]])' || t || '([^[:alnum:]]|$)')
+                ) desc,
+                case
+                  when $12 is not null
+                    and concat_ws(' ', f.name, f.brand) ilike ('%%' || $12 || '%%') escape E'\\' then 0
+                  else 1
+                end,
+                %I %s nulls last,
+                f.id asc
+            ) as _search_rank
+          from filtered f
+          order by _search_rank
+          limit $9
+          offset $10
         )
-      )
-    $sql$,
-    v_sort_by,
-    v_sort_dir
-  )
-  into v_result
-  using
-    v_scope_tenant_id,
-    p_search,
-    v_search_field,
-    p_category,
-    p_brand,
-    p_vendor_code,
-    p_market_code,
-    p_is_available,
-    v_limit,
-    v_offset;
+        select jsonb_build_object(
+          'data',
+          coalesce((
+            select jsonb_agg((to_jsonb(p) - '_search_rank') order by p._search_rank)
+            from paged p
+          ), '[]'::jsonb),
+          'meta',
+          jsonb_build_object(
+            'total', (select count(*) from filtered),
+            'page', (($10 / $9) + 1),
+            'page_size', $9,
+            'total_pages', greatest(1, ceil((select count(*)::numeric from filtered) / $9::numeric))
+          )
+        )
+      $sql$,
+      v_sort_by,
+      v_sort_dir
+    )
+    into v_result
+    using
+      v_scope_tenant_id,
+      p_search,
+      v_search_field,
+      p_category,
+      p_brand,
+      p_vendor_code,
+      p_market_code,
+      p_is_available,
+      v_limit,
+      v_offset,
+      v_tokens,
+      v_phrase_escaped;
 
   return coalesce(
     v_result,
@@ -20071,7 +20112,8 @@ ALTER FUNCTION "public"."set_order_parent_tenant_id"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."set_parent_tenant_id_from_tenant"() RETURNS "trigger"
-    LANGUAGE "plpgsql"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 declare
   v_parent_id bigint;

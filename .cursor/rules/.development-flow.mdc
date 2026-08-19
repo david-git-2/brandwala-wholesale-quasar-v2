@@ -12,7 +12,7 @@ alwaysApply: true
 - Auth: Google OAuth via Supabase; scoped login (`platform` | `app` | `shop`)
 - Deploy: Cloudflare Pages (`web/` root, `npm run build`, output `dist/spa`)
 - Python ETL: `python/` scripts (PC/WTS product sync) — env shared via `web/.env`
-- Types: generated at `web/src/types/supabase.ts` via `npm run backend:types`
+- Types: generated at `web/src/types/database.types.ts` via `npm run backend:types` (re-export: `web/src/types/supabase.ts`)
 
 ## App surfaces
 - `platform` — superadmin (`/auth/platform/login` → `/platform/dashboard`)
@@ -26,23 +26,13 @@ alwaysApply: true
 - New tables: migration → indexes → RLS → helper functions (`security definer` if cross-table) → RPCs → regenerate types
 - Permissions: `authStore.effectiveGrants` + `createAccessGuard`; server via `has_module_action()` / `membership_has_module_action()`
 - Data contract order: DB schema → UI data shapes → API/RPC contracts (backend fulfills UI, not vice versa)
-- Phased features: read domain doc + phase tracker before implementing (e.g. `doc/SHOP_ORDER_PHASES.md`)
-
-## Domain docs (read before implementing)
-- Index: `doc/MASTER_PLAN.md`
-- Scopes/auth: `doc/APP_SCOPES_AND_ACCESS.md`, `doc/LOGIN_NAV_PERMISSION_FLOW.md`
-- Tenants: `doc/TENANT_MODEL_AND_ACCESS.md`
-- Permissions: `doc/PERMISSION_SYSTEM.md`
-- Modules: `doc/PROCUREMENT_STOCK.md`, `doc/SALES_INVOICE.md`, `doc/SHOP_ORDER.md`, `doc/REPORTING_TREASURY.md`, `doc/INVESTOR_CAPITAL.md`, `doc/THRIFT.md`, `doc/GLOBAL_REFERENCE_DATA.md`
-- UI: `docs/UI_CONSISTENCY.md` + `.cursor/rules/.ui-consistency.mdc`. Pages explain themselves (`.cursor/rules/frictionless-ui.mdc`); Help (`?` drawer) and `doc/` audiences in UI_CONSISTENCY Guidance layers.
-- Workflow: `docs/AI_WORKFLOW_SOP.md`
+- Domain change: open `doc/` for **that** module only (index: `doc/MASTER_PLAN.md`)
 
 ## File structure
 - `web/src/modules/<module>/` — pages, components, stores, services, repositories, routes
 - `web/src/components/` — cross-module shared UI (`ui/` subfolder for primitives)
-- `web/src/css/app.scss` — global tokens, layout utilities, theme scopes
-- `supabase/migrations/` — ordered SQL migrations; must pass fresh local reset (see `.cursor/rules/supabase-migrations.mdc`)
-- `doc/` — domain specifications (not `docs/` except UI + workflow + archive)
+- `supabase/schemas/` — current SQL ([doc/SUPABASE_SCHEMA.md](../../doc/SUPABASE_SCHEMA.md)); `supabase/migrations/` — history
+- `doc/` — domain specs (`docs/` only for UI + workflow + archive)
 
 ## Naming conventions
 - Vue SFCs: PascalCase (`TenantPage.vue`)
@@ -74,18 +64,10 @@ alwaysApply: true
 - Tasks touching >3 files or >150 lines: narrow scope or use phased `task.md` per `docs/AI_WORKFLOW_SOP.md`
 - Do not copy Thrift composable architecture into web — keep module/repository/store pattern
 - Do not add README/docs unless asked
-- Regenerate `supabase.ts` after every schema migration
+- Regenerate types after every schema migration (`pnpm run backend:types`)
 - Deploy backend: `pnpm run deploy:backend` (push migrations + types)
 - Verify migrations locally first: `pnpm run backend:reset` (empty DB replay)
 
-## Key paths
-- Entry: `web/src/App.vue`, `web/src/router/`
-- Config: `web/quasar.config.ts`, `web/.env`
-- Auth: `web/src/modules/auth/`
-- Generated types: `web/src/types/database.types.ts`
-- Current SQL: `supabase/schemas/` ([doc/SUPABASE_SCHEMA.md](../../doc/SUPABASE_SCHEMA.md))
-- Migrations: `supabase/migrations/`
-
 ## Do NOT touch without explicit request
-- Generated `web/src/types/supabase.ts` (edit via migrations + `backend:types`)
+- Generated `web/src/types/database.types.ts` / `web/src/types/supabase.ts` (edit via migrations + `backend:types`)
 - Legacy cutover migrations until tenant cutover (`20260709000600_b7_cleanup.sql` chain)

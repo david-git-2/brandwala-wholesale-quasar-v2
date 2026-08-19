@@ -1,7 +1,7 @@
 <template>
   <q-dialog ref="dialogRef" @hide="onDialogHide" persistent>
-    <q-card class="q-dialog-plugin" style="width: 800px; max-width: 95vw">
-      <q-card-section class="row items-center q-pb-none">
+    <q-card class="q-dialog-plugin column no-wrap" style="width: 800px; max-width: 95vw; max-height: 90vh">
+      <q-card-section class="row items-center q-pb-none col-auto">
         <div class="text-h6 text-primary text-weight-bold">
           {{ $t('product_based_costing.bulk_paste_title') }}
         </div>
@@ -9,7 +9,7 @@
         <q-btn icon="ph ph-x" flat round dense v-close-popup />
       </q-card-section>
 
-      <q-card-section class="q-pa-md q-gutter-y-md">
+      <q-card-section class="q-pa-md q-gutter-y-md col scroll">
         <q-banner class="bg-blue-1 text-blue-9 rounded-borders">
           <template #avatar>
             <q-icon name="ph ph-info" size="sm" />
@@ -49,6 +49,7 @@
             />
           </div>
 
+          <!-- Column Header Mappings Selector -->
           <div class="bg-grey-2 q-pa-md rounded-borders">
             <div class="text-caption text-weight-medium text-grey-7 q-mb-sm">
               {{ $t('product_based_costing.bulk_map_columns') }}
@@ -69,12 +70,17 @@
             </div>
           </div>
 
-          <div class="text-subtitle2 text-grey-8 q-mb-xs">{{ $t('product_based_costing.bulk_preview_updates') }}</div>
+          <!-- Preview Table -->
+          <div class="text-subtitle2 text-grey-8 q-mb-xs">
+            {{ $t('product_based_costing.bulk_preview_updates') }}
+          </div>
           <q-markup-table flat bordered dense class="preview-table">
             <thead>
               <tr>
                 <th class="text-left" style="width: 50px">SL</th>
-                <th class="text-left">{{ $t('product_based_costing.bulk_costing_product') }}</th>
+                <th class="text-left">
+                  {{ $t('product_based_costing.bulk_costing_product') }}
+                </th>
                 <th v-for="colIdx in maxColumns" :key="colIdx" class="text-center">
                   {{ getColumnLabel(colMappings[colIdx - 1]) }}
                 </th>
@@ -136,7 +142,7 @@
         </div>
       </q-card-section>
 
-      <q-card-actions align="right" class="q-pa-md bg-grey-1">
+      <q-card-actions align="right" class="q-pa-md bg-grey-1 col-auto">
         <q-btn flat :label="$t('product_based_costing.cancel')" color="grey-8" v-close-popup no-caps />
         <q-btn
           color="primary"
@@ -305,8 +311,14 @@ const onApply = async () => {
 
 <style scoped>
 .preview-table {
-  max-height: 350px;
+  max-height: 320px;
   overflow-y: auto;
+}
+.preview-table :deep(thead th) {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: #fff;
 }
 .font-mono {
   font-family: monospace;

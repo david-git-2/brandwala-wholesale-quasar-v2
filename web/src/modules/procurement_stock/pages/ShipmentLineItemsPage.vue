@@ -14,6 +14,68 @@
           >
             <q-tooltip>Back to shipment</q-tooltip>
           </q-btn>
+
+          <q-separator vertical inset class="q-mx-xs" />
+
+          <!-- Section Switcher / Breadcrumb -->
+          <div class="row items-center q-gutter-x-xs">
+            <q-icon name="ph ph-folder" size="18px" color="primary" />
+            <q-btn-dropdown
+              flat
+              dense
+              no-caps
+              size="sm"
+              class="text-weight-bold text-subtitle2 text-grey-9 rounded-borders"
+              :label="activeSectionLabel"
+            >
+              <q-list dense style="min-width: 220px">
+                <q-item
+                  clickable
+                  v-close-popup
+                  :active="selectedSectionId == null"
+                  @click="selectSection(null)"
+                >
+                  <q-item-section avatar style="min-width: 28px">
+                    <q-icon name="ph ph-squares-four" size="16px" />
+                  </q-item-section>
+                  <q-item-section>
+                    <div class="text-weight-medium">All Sections (Full Review)</div>
+                    <div class="text-caption text-grey-6">{{ (shipmentStore.currentShipmentItems ?? []).length }} items</div>
+                  </q-item-section>
+                </q-item>
+                <q-separator />
+                <q-item
+                  v-for="sec in shipmentStore.currentShipmentSections"
+                  :key="sec.id"
+                  clickable
+                  v-close-popup
+                  :active="selectedSectionId === sec.id"
+                  @click="selectSection(sec.id)"
+                >
+                  <q-item-section avatar style="min-width: 28px">
+                    <q-icon name="ph ph-folder" size="16px" color="primary" />
+                  </q-item-section>
+                  <q-item-section>
+                    <div class="text-weight-medium">{{ sec.title }}</div>
+                    <div v-if="sec.vendor?.name" class="text-caption text-grey-6">
+                      {{ sec.vendor.name }}
+                      <span v-if="sec.metadata?.invoice_number"> · Inv: {{ sec.metadata.invoice_number }}</span>
+                    </div>
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </q-btn-dropdown>
+
+            <q-badge
+              v-if="selectedSectionVendorName"
+              color="grey-2"
+              text-color="grey-9"
+              class="q-ml-xs text-weight-medium"
+              style="border-radius: 4px; font-size: 11px"
+            >
+              {{ selectedSectionVendorName }}
+            </q-badge>
+          </div>
         </div>
 
         <!-- Right: Actions (View mode, Columns, Bulk paste, Add, Refresh) -->
@@ -107,7 +169,7 @@
     </div>
 
     <!-- Main Content Table/Grid -->
-    <div class="col scroll q-pa-sm">
+    <div class="col column no-wrap q-pa-sm shipment-items-body">
       <!-- Loading State -->
       <div v-if="shipmentStore.loading && !shipmentStore.currentShipment" class="text-center q-pa-xl">
         <q-spinner color="primary" size="3em" />
@@ -125,60 +187,63 @@
       </div>
 
       <!-- Items Content -->
-      <template v-else>
-        <q-card flat bordered class="q-pa-none bg-white rounded-borders full-height">
-          <div
-            v-if="!hasLineItems && !shipmentStore.loading"
-            class="column items-center q-pa-xl text-center"
-          >
-            <q-icon name="ph ph-package" size="48px" color="grey-5" />
-            <div class="text-subtitle1 text-weight-bold text-grey-8 q-mt-md">No products in this shipment yet</div>
-            <div class="text-caption text-grey-6 q-mb-md">Start by adding items or paste them in bulk.</div>
-            <q-btn
-              v-if="isEditable"
-              color="primary"
-              unelevated
-              no-caps
-              dense
-              size="md"
-              icon="ph ph-plus"
-              label="Add items"
-              class="q-px-md"
-              @click="openAddItems"
-            />
-          </div>
+      <q-card
+        v-else
+        flat
+        bordered
+        class="col column no-wrap q-pa-none bg-white rounded-borders shipment-items-card"
+      >
+        <div
+          v-if="!hasLineItems && !shipmentStore.loading"
+          class="column items-center q-pa-xl text-center"
+        >
+          <q-icon name="ph ph-package" size="48px" color="grey-5" />
+          <div class="text-subtitle1 text-weight-bold text-grey-8 q-mt-md">No products in this shipment yet</div>
+          <div class="text-caption text-grey-6 q-mb-md">Start by adding items or paste them in bulk.</div>
+          <q-btn
+            v-if="isEditable"
+            color="primary"
+            unelevated
+            no-caps
+            dense
+            size="md"
+            icon="ph ph-plus"
+            label="Add items"
+            class="q-px-md"
+            @click="openAddItems"
+          />
+        </div>
 
-          <template v-else>
-            <ShipmentLineItemsTable
-              v-if="lineItemsViewMode === 'table'"
-              :items="shipmentStore.currentShipmentItems"
-              :shipment="shipmentForLiveCosting"
-              :loading="shipmentStore.loading"
-              :visible-columns="visibleColumns"
-              :purchase-currency-symbol="currentPurchaseCurrencySymbol"
-              :cost-currency-symbol="currentCostCurrencySymbol"
-              @edit-details="openEditItem"
-              @delete="confirmDeleteItem"
-            />
-            <ShipmentItemCardGrid
-              v-else
-              :items="shipmentStore.currentShipmentItems"
-              :shipment="shipmentForLiveCosting"
-              :loading="shipmentStore.loading"
-              :purchase-currency-symbol="currentPurchaseCurrencySymbol"
-              :cost-currency-symbol="currentCostCurrencySymbol"
-              @edit-details="openEditItem"
-              @delete="confirmDeleteItem"
-            />
-          </template>
-        </q-card>
-      </template>
+        <div v-else class="col shipment-items-fill">
+          <ShipmentLineItemsTable
+            v-if="lineItemsViewMode === 'table'"
+            :items="displayedItems"
+            :shipment="shipmentForLiveCosting"
+            :loading="shipmentStore.loading"
+            :visible-columns="visibleColumns"
+            :purchase-currency-symbol="currentPurchaseCurrencySymbol"
+            :cost-currency-symbol="currentCostCurrencySymbol"
+            @edit-details="openEditItem"
+            @delete="confirmDeleteItem"
+          />
+          <ShipmentItemCardGrid
+            v-else
+            :items="displayedItems"
+            :shipment="shipmentForLiveCosting"
+            :loading="shipmentStore.loading"
+            :purchase-currency-symbol="currentPurchaseCurrencySymbol"
+            :cost-currency-symbol="currentCostCurrencySymbol"
+            @edit-details="openEditItem"
+            @delete="confirmDeleteItem"
+          />
+        </div>
+      </q-card>
     </div>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
@@ -236,11 +301,78 @@ const {
   currentVendorLabel,
   currentCargoLabel,
   loadShipmentDetails,
-  openAddItems,
-  openBulkPaste,
+  openAddItems: baseOpenAddItems,
   openEditItem,
   confirmDeleteItem,
 } = actions;
+
+// Section Filtering Logic
+const selectedSectionId = computed<number | null>(() => {
+  const q = route.query.sectionId;
+  return q ? Number(q) : null;
+});
+
+const activeSection = computed(() => {
+  if (selectedSectionId.value == null) return null;
+  return shipmentStore.currentShipmentSections.find((s) => s.id === selectedSectionId.value) ?? null;
+});
+
+const activeSectionLabel = computed(() => {
+  if (!activeSection.value) return 'All Sections (Full Review)';
+  return activeSection.value.title;
+});
+
+const selectedSectionVendorName = computed(() => {
+  return activeSection.value?.vendor?.name || '';
+});
+
+const displayedItems = computed(() => {
+  const allItems = shipmentStore.currentShipmentItems ?? [];
+  if (selectedSectionId.value == null) return allItems;
+  return allItems.filter(
+    (it) =>
+      it.section_id === selectedSectionId.value ||
+      (shipmentStore.currentShipmentSections.length === 1 && it.section_id == null),
+  );
+});
+
+const selectSection = (sectionId: number | null) => {
+  const query = { ...route.query };
+  if (sectionId == null) {
+    delete query.sectionId;
+  } else {
+    query.sectionId = String(sectionId);
+  }
+  void router.push({ query });
+};
+
+import { useQuasar } from 'quasar';
+import BulkPasteDialog from '../components/BulkPasteDialog.vue';
+import AddShipmentItemsDrawer from '../components/AddShipmentItemsDrawer.vue';
+
+const $q = useQuasar();
+
+const openBulkPaste = () => {
+  $q.dialog({
+    component: BulkPasteDialog,
+    componentProps: {
+      initialSectionId: selectedSectionId.value,
+    },
+  }).onOk(() => {
+    void loadShipmentDetails();
+  });
+};
+
+const openAddItems = () => {
+  $q.dialog({
+    component: AddShipmentItemsDrawer,
+    componentProps: {
+      shipmentId,
+    },
+  }).onOk(() => {
+    void loadShipmentDetails();
+  });
+};
 
 const goBackToShipment = () => {
   const tenantSlug = route.params.tenantSlug;
@@ -263,8 +395,23 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.shipment-items-page .min-width-0 {
+.shipment-items-page .min-width-0,
+.shipment-items-body,
+.shipment-items-card,
+.shipment-items-fill {
   min-width: 0;
+  min-height: 0;
+}
+
+.shipment-items-fill {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.shipment-items-fill > * {
+  flex: 1;
+  min-height: 0;
 }
 
 .border-bottom {

@@ -33,6 +33,7 @@ export interface UpsertShipmentCostEntryPayload {
   allocation?: string | null;
   metadata?: Json;
   id?: number | null;
+  section_id?: number | null;
 }
 
 export interface ReviseShipmentCostEntryInput {
@@ -45,7 +46,9 @@ export interface ReviseShipmentCostEntryInput {
   entity_id?: number | null;
   allocation?: string | null;
   metadata?: Json;
+  section_id?: number | null;
 }
+
 
 /** Local draft row for the Landed cost editor (may be unsaved). */
 export interface CostEntryDraft {

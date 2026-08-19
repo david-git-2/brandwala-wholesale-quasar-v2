@@ -15,6 +15,7 @@ import { useMembershipColumnPreference } from 'src/modules/membership/composable
 const baseColumnOptions = [
   { label: 'Name', value: 'name' as ColumnKey },
   { label: 'Product Identifiers', value: 'product_codes' as ColumnKey },
+  { label: 'Section / Vendor', value: 'section' as ColumnKey },
   { label: 'Price GBP', value: 'purchase_price' as ColumnKey },
   { label: 'Cost BDT', value: 'cost_bdt' as ColumnKey },
   { label: 'Quantity', value: 'ordered_quantity' as ColumnKey },
@@ -26,6 +27,7 @@ const baseColumnOptions = [
 const defaultColumns: ColumnKey[] = [
   'name',
   'product_codes',
+  'section',
   'purchase_price',
   'cost_bdt',
   'ordered_quantity',

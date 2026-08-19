@@ -18,8 +18,8 @@ export interface ShipmentProgressTag {
   slug: string;
   group_name: string | null;
   sort_order: number | null;
-  color?: string | null;
-  is_active?: boolean;
+  color?: string | null | undefined;
+  is_active?: boolean | undefined;
 }
 
 export interface ShipmentProgressFlow {
@@ -29,9 +29,10 @@ export interface ShipmentProgressFlow {
   slug: string;
   is_active: boolean;
   is_default: boolean;
-  created_at?: string;
-  stage_count?: number;
+  created_at?: string | undefined;
+  stage_count?: number | undefined;
 }
+
 
 export interface ShipmentProgressFlowStage {
   flow_stage_id: number;
@@ -96,6 +97,7 @@ export interface GlobalShipmentItem {
   /** Stamped on finalize/revise — null while draft. */
   landed_cost_bdt?: number | null;
   sort_order?: number;
+  section_id?: number | null;
   created_at: string;
   updated_at: string;
 }

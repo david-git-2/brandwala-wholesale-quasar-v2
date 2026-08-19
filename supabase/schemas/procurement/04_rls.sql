@@ -52,6 +52,10 @@ CREATE OR REPLACE TRIGGER "trg_global_shipment_cost_entries_updated_at" BEFORE U
 
 
 
+CREATE OR REPLACE TRIGGER "trg_global_shipment_sections_updated_at" BEFORE UPDATE ON "public"."global_shipment_sections" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
+
+
+
 CREATE OR REPLACE TRIGGER "trg_global_shipment_items_guard_landed_cost" BEFORE INSERT OR UPDATE ON "public"."global_shipment_items" FOR EACH ROW EXECUTE FUNCTION "public"."trg_global_shipment_items_guard_landed_cost"();
 
 
@@ -292,6 +296,20 @@ CREATE POLICY "global_shipment_items_all" ON "public"."global_shipment_items" TO
 CREATE POLICY "global_shipment_items_select" ON "public"."global_shipment_items" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."global_shipments" "gs"
   WHERE ("gs"."id" = "global_shipment_items"."shipment_id"))));
+
+
+
+ALTER TABLE "public"."global_shipment_sections" ENABLE ROW LEVEL SECURITY;
+
+
+
+CREATE POLICY "global_shipment_sections_all" ON "public"."global_shipment_sections" TO "authenticated" USING ("public"."user_can_manage_parent_tenant"("parent_tenant_id")) WITH CHECK ("public"."user_can_manage_parent_tenant"("parent_tenant_id"));
+
+
+
+CREATE POLICY "global_shipment_sections_select" ON "public"."global_shipment_sections" FOR SELECT TO "authenticated" USING (("public"."user_can_manage_parent_tenant"("parent_tenant_id") OR (EXISTS ( SELECT 1
+   FROM "public"."memberships" "m"
+  WHERE (("m"."tenant_id" = "global_shipment_sections"."parent_tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true))))));
 
 
 
@@ -690,6 +708,12 @@ GRANT ALL ON FUNCTION "public"."create_shipment"("p_name" "text", "p_tenant_id" 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."global_shipments" TO "anon";
 GRANT ALL ON TABLE "public"."global_shipments" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."global_shipments" TO "service_role";
+
+
+
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."global_shipment_sections" TO "anon";
+GRANT ALL ON TABLE "public"."global_shipment_sections" TO "authenticated";
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."global_shipment_sections" TO "service_role";
 
 
 
@@ -1117,6 +1141,10 @@ GRANT ALL ON FUNCTION "public"."update_costing_file_status"("p_id" bigint, "p_st
 
 
 GRANT ALL ON FUNCTION "public"."update_global_shipment_items_order"("p_items" "jsonb") TO "authenticated";
+
+
+
+GRANT ALL ON FUNCTION "public"."reorder_shipment_sections"("p_shipment_id" bigint, "p_section_ids" bigint[]) TO "authenticated";
 
 
 
