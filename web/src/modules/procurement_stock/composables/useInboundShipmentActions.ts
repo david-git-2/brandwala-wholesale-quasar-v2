@@ -299,9 +299,9 @@ export function useInboundShipmentActions(options: {
     }
   };
 
-  const loadShipmentDetails = () => {
+  const loadShipmentDetails = async () => {
     if (!Number.isNaN(shipmentId)) {
-      void shipmentStore.fetchShipmentDetails(shipmentId);
+      await shipmentStore.fetchShipmentDetails(shipmentId);
     }
   };
 
@@ -348,7 +348,7 @@ export function useInboundShipmentActions(options: {
           try {
             await shipmentStore.updateShipment(shipmentId, { status: 'cancelled' });
             showSuccessNotification('Shipment cancelled.');
-            loadShipmentDetails();
+            await loadShipmentDetails();
           } catch (err: any) {
             showErrorNotification(err.message || 'Failed to cancel shipment.');
           } finally {
@@ -389,7 +389,7 @@ export function useInboundShipmentActions(options: {
         try {
           await shipmentStore.updateShipment(shipmentId, { status: newStatus });
           showSuccessNotification(`Shipment status updated to: ${newStatus}`);
-          loadShipmentDetails();
+          await loadShipmentDetails();
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
           showErrorNotification(message || 'Failed to update status');
@@ -437,7 +437,7 @@ export function useInboundShipmentActions(options: {
         try {
           await shipmentStore.rollbackShipmentToDraft(shipmentId);
           showSuccessNotification('Shipment successfully rolled back to Draft.');
-          loadShipmentDetails();
+          await loadShipmentDetails();
         } catch (err: unknown) {
           const message = err instanceof Error ? err.message : 'Failed to rollback shipment.';
           showErrorNotification(message);
@@ -624,7 +624,7 @@ export function useInboundShipmentActions(options: {
         initialSectionId,
       },
     }).onOk(() => {
-      loadShipmentDetails();
+      void loadShipmentDetails();
     });
   };
 

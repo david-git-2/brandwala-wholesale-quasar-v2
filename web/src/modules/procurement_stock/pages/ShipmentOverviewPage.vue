@@ -408,7 +408,7 @@
 
             <div class="step-connector col" :class="{ 'is-active': step2Completed }" />
 
-            <!-- Step 3: Rates & Cost Entries -->
+            <!-- Step 3: Rates & Adjustments -->
             <div
               class="action-step-item column items-center cursor-pointer"
               :class="{
@@ -422,13 +422,13 @@
                 <q-icon v-if="step3Completed" name="ph ph-check" size="14px" />
                 <span v-else>3</span>
               </div>
-              <div class="step-label text-center">Rates & FX</div>
-              <div class="step-sub text-grey-6" style="font-size: 10px">Product & cargo rates</div>
+              <div class="step-label text-center">Rates & Adjust</div>
+              <div class="step-sub text-grey-6" style="font-size: 10px">Rates, weights & invoices</div>
             </div>
 
             <div class="step-connector col" :class="{ 'is-active': step3Completed }" />
 
-            <!-- Step 4: Invoice Adjustments -->
+            <!-- Step 4: Receive Stock -->
             <div
               class="action-step-item column items-center cursor-pointer"
               :class="{
@@ -436,34 +436,14 @@
                 'is-active text-primary text-weight-bold': currentStepNumber === 4,
                 'is-pending text-grey-6': currentStepNumber !== 4 && !step4Completed
               }"
-              @click="goToAdjustPage"
+              @click="goToReceivePage"
             >
               <div class="step-circle q-mb-xs row items-center justify-center">
                 <q-icon v-if="step4Completed" name="ph ph-check" size="14px" />
                 <span v-else>4</span>
               </div>
-              <div class="step-label text-center">Match Invoices</div>
-              <div class="step-sub text-grey-6" style="font-size: 10px">Weight & purchase balance</div>
-            </div>
-
-            <div class="step-connector col" :class="{ 'is-active': step4Completed }" />
-
-            <!-- Step 5: Settle & Receive -->
-            <div
-              class="action-step-item column items-center cursor-pointer"
-              :class="{
-                'is-completed text-positive': step5Completed,
-                'is-active text-primary text-weight-bold': currentStepNumber === 5,
-                'is-pending text-grey-6': currentStepNumber !== 5 && !step5Completed
-              }"
-              @click="goToSettlePage"
-            >
-              <div class="step-circle q-mb-xs row items-center justify-center">
-                <q-icon v-if="step5Completed" name="ph ph-check" size="14px" />
-                <span v-else>5</span>
-              </div>
-              <div class="step-label text-center">Settle & Credit</div>
-              <div class="step-sub text-grey-6" style="font-size: 10px">Pay vendors & agents</div>
+              <div class="step-label text-center">Receive Stock</div>
+              <div class="step-sub text-grey-6" style="font-size: 10px">Putaway & finalize inventory</div>
             </div>
           </div>
 
@@ -503,7 +483,7 @@
         </div>
       <div class="row q-col-gutter-sm">
         <!-- List Card -->
-        <div class="col-12 col-sm-6 col-md-3">
+        <div class="col-12 col-sm-4">
           <q-card
             flat
             bordered
@@ -520,8 +500,8 @@
           </q-card>
         </div>
 
-        <!-- Rates Card -->
-        <div class="col-12 col-sm-6 col-md-3">
+        <!-- Rates & Adjust Card -->
+        <div class="col-12 col-sm-4">
           <q-card
             flat
             bordered
@@ -532,44 +512,26 @@
               <div class="card-icon-badge bg-emerald-1 text-teal-9 q-mb-sm" style="background-color: #ecfdf5; color: #059669;">
                 <q-icon name="ph ph-currency-circle-dollar" size="32px" />
               </div>
-              <div class="text-subtitle1 text-weight-bold text-grey-9">Rates</div>
-              <div class="text-caption text-grey-6">Rates & Cost Entries</div>
+              <div class="text-subtitle1 text-weight-bold text-grey-9">Rates & Adjust</div>
+              <div class="text-caption text-grey-6">Rates, Weights & Invoices</div>
             </q-card-section>
           </q-card>
         </div>
 
-        <!-- Adjust Card -->
-        <div class="col-12 col-sm-6 col-md-3">
+        <!-- Receive Card -->
+        <div class="col-12 col-sm-4">
           <q-card
             flat
             bordered
             class="cursor-pointer hover-card text-center q-pa-md"
-            @click="goToAdjustPage"
+            @click="goToReceivePage"
           >
             <q-card-section class="column items-center q-pa-none">
-              <div class="card-icon-badge bg-purple-1 text-purple-9 q-mb-sm" style="background-color: #f5f3ff; color: #7c3aed;">
-                <q-icon name="ph ph-scales" size="32px" />
+              <div class="card-icon-badge bg-indigo-1 text-indigo-9 q-mb-sm" style="background-color: #e0e7ff; color: #3730a3;">
+                <q-icon name="ph ph-warehouse" size="32px" />
               </div>
-              <div class="text-subtitle1 text-weight-bold text-grey-9">Adjust</div>
-              <div class="text-caption text-grey-6">Balance & Invoices Match</div>
-            </q-card-section>
-          </q-card>
-        </div>
-
-        <!-- Settle Card -->
-        <div class="col-12 col-sm-6 col-md-3">
-          <q-card
-            flat
-            bordered
-            class="cursor-pointer hover-card text-center q-pa-md"
-            @click="goToSettlePage"
-          >
-            <q-card-section class="column items-center q-pa-none">
-              <div class="card-icon-badge bg-amber-1 text-amber-9 q-mb-sm" style="background-color: #fef3c7; color: #d97706;">
-                <q-icon name="ph ph-wallet" size="32px" />
-              </div>
-              <div class="text-subtitle1 text-weight-bold text-grey-9">Settle</div>
-              <div class="text-caption text-grey-6">Payees & Store Credit</div>
+              <div class="text-subtitle1 text-weight-bold text-grey-9">Receive</div>
+              <div class="text-caption text-grey-6">Receive & Putaway Stock</div>
             </q-card-section>
           </q-card>
         </div>
@@ -857,23 +819,20 @@ const step2Completed = computed(() => {
   return items.every((it) => (Number(it.purchase_price) || 0) > 0 && (Number(it.package_weight) || 0) > 0);
 });
 
-// Step 3: Rates & Cost Entries configured
+// Step 3: Rates & Adjustments configured & balanced
 const step3Completed = computed(() => {
   const entries = shipmentStore.currentCostEntries;
   if (!entries || entries.length === 0) return false;
   const hasProduct = entries.some((e) => e.cost_type === 'product' && (Number(e.amount) || 0) > 0);
   const hasCargo = entries.some((e) => e.cost_type === 'cargo' && (Number(e.amount) || 0) > 0);
-  return hasProduct && (shipmentStore.currentShipment?.type === 'local' || hasCargo);
-});
-
-// Step 4: Invoice Adjustments Matched (Weight & Purchase balanced)
-const step4Completed = computed(() => {
+  const ratesConfigured = hasProduct && (shipmentStore.currentShipment?.type === 'local' || hasCargo);
   const sum = summaryKPIs.value;
-  return !!sum?.weight_matched && !!sum?.purchase_matched;
+  const invoicesBalanced = (sum?.weight_matched ?? false) || !calculations.hasCargoInvoiceWeight.value;
+  return ratesConfigured && invoicesBalanced;
 });
 
-// Step 5: Payee Settlement & Receive finalized
-const step5Completed = computed(() => {
+// Step 4: Payee Settlement & Receive finalized
+const step4Completed = computed(() => {
   return shipmentStore.currentShipment?.status === 'received' || !!shipmentStore.currentShipment?.stock_ready;
 });
 
@@ -882,8 +841,7 @@ const currentStepNumber = computed(() => {
   if (!step1Completed.value) return 1;
   if (!step2Completed.value) return 2;
   if (!step3Completed.value) return 3;
-  if (!step4Completed.value) return 4;
-  return 5;
+  return 4;
 });
 
 const currentStepTitle = computed(() => {
@@ -893,11 +851,9 @@ const currentStepTitle = computed(() => {
     case 2:
       return 'Set Item Weights & Prices';
     case 3:
-      return 'Configure Rates & FX';
+      return 'Rates & Adjust';
     case 4:
-      return 'Match Invoices & Adjust';
-    case 5:
-      return 'Settle Payees & Finalize';
+      return 'Receive Stock & Finalize';
     default:
       return 'Complete';
   }
@@ -910,11 +866,9 @@ const currentStepActionTitle = computed(() => {
     case 2:
       return 'Step 2: Enter Unit Purchase Prices & Package Weights';
     case 3:
-      return 'Step 3: Enter Product FX & Cargo Freight Rates';
+      return 'Step 3: Configure Rates, Weights & Section Invoices';
     case 4:
-      return 'Step 4: Reconcile & Balance Cargo/Purchase Invoices';
-    case 5:
-      return 'Step 5: Settle Payees & Mark Shipment Received';
+      return 'Step 4: Receive Goods into Warehouse Stock';
     default:
       return 'All Procurement Steps Completed';
   }
@@ -927,13 +881,11 @@ const currentStepDescription = computed(() => {
     case 2:
       return 'Some line items are missing purchase prices or package weights. Update them directly in the List table.';
     case 3:
-      return 'Configure product conversion rate and cargo freight rate in Rates & Cost Entries to calculate landed costs.';
+      return 'Configure product and cargo rates, distribute cargo weight, and balance section supplier invoices.';
     case 4:
-      return 'Lines differ from your invoice totals. Open Adjust to balance package weight deltas and purchase totals.';
-    case 5:
-      return 'Shipment is balanced! Pay vendors or cargo agents via store credit, then mark received to post stock.';
+      return 'Rates and invoices are balanced! Open Receive to check in items and add quantities into warehouse inventory.';
     default:
-      return 'All items, rates, invoices, and settlements are in sync.';
+      return 'All items, rates, and inventory movements are in sync.';
   }
 });
 
@@ -946,9 +898,7 @@ const currentStepColor = computed(() => {
     case 3:
       return 'teal-8';
     case 4:
-      return 'purple-8';
-    case 5:
-      return 'amber-9';
+      return 'indigo-8';
     default:
       return 'positive';
   }
@@ -963,9 +913,7 @@ const currentStepIcon = computed(() => {
     case 3:
       return 'ph ph-currency-circle-dollar';
     case 4:
-      return 'ph ph-sliders';
-    case 5:
-      return 'ph ph-wallet';
+      return 'ph ph-warehouse';
     default:
       return 'ph ph-check-circle';
   }
@@ -978,11 +926,9 @@ const currentStepButtonLabel = computed(() => {
     case 2:
       return 'Edit Weights in List';
     case 3:
-      return 'Set Rates & FX';
+      return 'Set Rates & Adjust';
     case 4:
-      return 'Match Invoices';
-    case 5:
-      return 'Settle & Receive';
+      return 'Receive Stock';
     default:
       return 'View Summary';
   }
@@ -1002,10 +948,7 @@ const handleStepAction = () => {
       goToRatesPage();
       break;
     case 4:
-      goToAdjustPage();
-      break;
-    case 5:
-      goToSettlePage();
+      goToReceivePage();
       break;
     default:
       goToListPage();
@@ -1185,37 +1128,19 @@ const goToRatesPage = () => {
   }
 };
 
-const goToAdjustPage = () => {
+const goToReceivePage = () => {
   const tenantSlug = route.params.tenantSlug;
   const sId = shipmentStore.currentShipment?.id || shipmentId;
   if (!sId) return;
 
   if (tenantSlug) {
     void router.push({
-      name: 'app-procurement-shipment-adjust',
+      name: 'app-procurement-shipment-receive',
       params: { tenantSlug, id: sId },
     });
   } else {
     void router.push({
-      name: 'app-procurement-shipment-adjust',
-      params: { id: sId },
-    });
-  }
-};
-
-const goToSettlePage = () => {
-  const tenantSlug = route.params.tenantSlug;
-  const sId = shipmentStore.currentShipment?.id || shipmentId;
-  if (!sId) return;
-
-  if (tenantSlug) {
-    void router.push({
-      name: 'app-procurement-shipment-settle',
-      params: { tenantSlug, id: sId },
-    });
-  } else {
-    void router.push({
-      name: 'app-procurement-shipment-settle',
+      name: 'app-procurement-shipment-receive',
       params: { id: sId },
     });
   }

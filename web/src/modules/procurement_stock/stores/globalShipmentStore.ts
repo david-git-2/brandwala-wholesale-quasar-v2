@@ -205,6 +205,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
               payment_source: d.payment_source,
               entity_type: d.entity_type,
               entity_id: d.entity_type ? d.entity_id : null,
+              section_id: d.section_id ?? null,
               metadata: meta,
             };
           });
@@ -239,6 +240,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
               payment_source: d.payment_source,
               entity_type: d.entity_type,
               entity_id: d.entity_type ? d.entity_id : null,
+              section_id: d.section_id ?? null,
               metadata: meta,
             });
           }

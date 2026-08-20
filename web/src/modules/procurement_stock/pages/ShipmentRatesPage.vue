@@ -55,7 +55,7 @@
       </div>
 
       <template v-else>
-        <!-- Attention Banner if discrepancy exists -->
+        <!-- Discrepancy warning banner -->
         <q-banner
           v-if="weightNeedsAttention || purchaseNeedsAttention"
           dense
@@ -63,15 +63,7 @@
           class="bg-orange-1 text-orange-10 q-mb-sm"
         >
           <div class="row items-center justify-between q-gutter-sm">
-            <span>Lines don’t match invoices — balance or adjust to reconcile.</span>
-            <q-btn
-              flat
-              dense
-              no-caps
-              color="orange-10"
-              label="Go to Adjust / Invoices"
-              @click="goToAdjustPage"
-            />
+            <span>Lines don’t match invoices — use the <strong>Balance</strong> buttons below to reconcile.</span>
           </div>
         </q-banner>
 
@@ -90,10 +82,8 @@
               :cost-currency-symbol="currentCostCurrencySymbol"
               :goods-purchase-total="totals.goodsPurchase"
               :goods-quantity-total="totals.quantity"
-              :pay-settling="paySettling"
               @save="onSaveCostEntries"
-              @settle="confirmSettlePayee"
-              @go-match-invoices="goToAdjustPage"
+              @weight-distributed="refreshData"
             />
           </div>
 
@@ -109,6 +99,7 @@
               :transaction-rate-weight-label="transactionRateWeightLabel"
               :shipment-type="shipmentStore.currentShipment?.type"
               :is-cost-finalized="isCostFinalized"
+              @section-matched="refreshData"
             />
           </div>
         </div>
@@ -166,8 +157,6 @@ const {
 const {
   loadShipmentDetails,
   onSaveCostEntries,
-  paySettling,
-  confirmSettlePayee,
 } = actions;
 
 const refreshData = async () => {
@@ -187,21 +176,6 @@ const goBackToShipment = () => {
   } else {
     void router.push({
       name: 'app-procurement-shipment-details',
-      params: { id: shipmentId },
-    });
-  }
-};
-
-const goToAdjustPage = () => {
-  const tenantSlug = route.params.tenantSlug;
-  if (tenantSlug) {
-    void router.push({
-      name: 'app-procurement-shipment-rates-invoices',
-      params: { tenantSlug, id: shipmentId },
-    });
-  } else {
-    void router.push({
-      name: 'app-procurement-shipment-rates-invoices',
       params: { id: shipmentId },
     });
   }

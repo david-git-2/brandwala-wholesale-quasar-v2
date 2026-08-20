@@ -65,6 +65,8 @@ export interface CostEntryDraft {
   per_kg_rate: number | null;
   /** Optional note / remark for this cost entry row */
   note?: string | null;
+  /** Optional shipment section association */
+  section_id?: number | null;
 }
 
 export interface CostEntriesSavePayload {

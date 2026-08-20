@@ -283,6 +283,7 @@
                 @save="onSaveCostEntries"
                 @settle="confirmSettlePayee"
                 @go-match-invoices="scrollToSection('weight')"
+                @weight-distributed="refreshRates"
               />
             </div>
             <div class="col-12 col-md-5 col-lg-4">
@@ -295,6 +296,8 @@
                 :cargo-cost-weight-label="cargoCostWeightLabel"
                 :transaction-rate-weight-label="transactionRateWeightLabel"
                 :shipment-type="shipmentStore.currentShipment?.type"
+                :is-cost-finalized="isCostFinalized"
+                @section-matched="refreshRates"
               />
             </div>
           </div>
