@@ -17,7 +17,7 @@ export function useWalletAccounts(
   const authStore = useAuthStore();
   const queryClient = useQueryClient();
 
-  const tenantId = computed(() => authStore.selectedTenant?.id ?? null);
+  const tenantId = computed(() => authStore.selectedTenant?.parent_id ?? authStore.selectedTenant?.id ?? null);
   const entityType = computed(() => (entityTypeInput ? toValue(entityTypeInput) : undefined));
   const entityId = computed(() => (entityIdInput ? toValue(entityIdInput) : undefined));
 

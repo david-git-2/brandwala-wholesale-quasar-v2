@@ -1,10 +1,11 @@
 <template>
-  <q-page class="wallet-page-container q-pa-md bg-grey-1" style="min-height: calc(100vh - 55px)">
-    <UniversalWalletPageSkeleton v-if="isInitialLoading" />
+  <q-page class="wallet-page-container q-pa-md" style="min-height: calc(100vh - 55px)">
+    <UniversalWalletPageSkeleton v-if="isInitialLoading || isAccountLoading" />
 
     <div v-else class="q-gutter-y-md">
-      <!-- Detail Page Header -->
-      <section class="row items-center justify-between q-col-gutter-md">
+      <!-- 1. Header with Entity & 4 Action Buttons -->
+      <section class="row items-center justify-between q-col-gutter-sm">
+        <!-- Back button & Entity Info -->
         <div class="col-auto row items-center q-gutter-x-sm">
           <q-btn
             flat
@@ -16,6 +17,9 @@
           >
             <q-tooltip>Back to List</q-tooltip>
           </q-btn>
+          <q-avatar size="36px" color="grey-3" text-color="grey-9" class="text-weight-bold">
+            <q-icon :name="entityIcon" size="20px" />
+          </q-avatar>
           <div>
             <div class="row items-center q-gutter-x-xs">
               <q-chip
@@ -27,144 +31,155 @@
                 {{ entityTypeLabel }}
               </q-chip>
             </div>
-            <h1 class="text-h5 text-weight-bolder text-grey-9 q-my-none">
-              {{ loadedEntityName || 'Wallet Detail' }}
-            </h1>
+            <div class="text-h6 text-weight-bolder text-grey-9 q-my-none leading-tight">
+              {{ loadedEntityName || 'Wallet' }}
+            </div>
           </div>
         </div>
 
+        <!-- 4 Action Buttons -->
         <div class="col-auto row items-center q-gutter-x-sm">
-          <!-- Accountant View Toggle Link -->
+          <!-- Button 1: Pay -->
           <q-btn
-            flat
-            dense
+            unelevated
             no-caps
-            :icon="isAccountantView ? 'ph ph-sparkle' : 'ph ph-sliders-horizontal'"
-            :label="isAccountantView ? 'Simplified View' : 'Accountant View'"
-            color="grey-8"
-            class="bg-white q-px-sm rounded-borders border-grey-3"
-            @click="isAccountantView = !isAccountantView"
-          />
-
-          <LearnMoreHelpBtn
-            guide-id="universal_wallet"
-            label="Help Center"
-            icon="ph ph-question-mark"
             color="primary"
-            class="bg-primary-soft text-weight-bold q-px-sm rounded-borders"
-          />
+            icon="ph ph-arrow-up-right"
+            label="Pay"
+            class="text-weight-bold q-px-md rounded-btn"
+            @click="onActionClick('pay')"
+          >
+            <q-tooltip>Pay Cash Out / Settle Bill</q-tooltip>
+          </q-btn>
+
+          <!-- Button 2: Deposit -->
+          <q-btn
+            unelevated
+            no-caps
+            color="teal-8"
+            icon="ph ph-plus-circle"
+            label="Deposit"
+            class="text-weight-bold q-px-md rounded-btn"
+            @click="onActionClick('deposit')"
+          >
+            <q-tooltip>Deposit Cash In / Top Up</q-tooltip>
+          </q-btn>
+
+          <!-- Button 3: Credit -->
+          <q-btn
+            unelevated
+            no-caps
+            color="indigo-8"
+            icon="ph ph-tag"
+            label="Credit"
+            class="text-weight-bold q-px-md rounded-btn"
+            @click="onActionClick('credit')"
+          >
+            <q-tooltip>Store Credit / Non-Cash IOU</q-tooltip>
+          </q-btn>
+
+          <!-- Button 4: Withdraw -->
+          <q-btn
+            unelevated
+            no-caps
+            color="positive"
+            icon="ph ph-bank"
+            label="Withdraw"
+            class="text-weight-bold q-px-md rounded-btn"
+            @click="onActionClick('withdraw')"
+          >
+            <q-tooltip>Withdraw / Bank Payout</q-tooltip>
+          </q-btn>
         </div>
       </section>
 
-      <!-- Default: Simplified View -->
-      <section v-if="!isAccountantView">
-        <SimplifiedWalletView
-          :key="`simp-${effectiveEntityType}-${effectiveEntityId}`"
-          :account="account"
-          :entity-type="effectiveEntityType"
-          :entity-id="effectiveEntityId"
-          :entity-name="loadedEntityName"
-          :allow-transfer="true"
-          @open-transfer="isTransferModalOpen = true"
-          @open-deposit="isDepositModalOpen = true"
-          @open-withdraw="isWithdrawModalOpen = true"
-          @open-statement="isAccountantView = true; activeSubView = 'statement'"
+      <!-- 2. Consolidated Wallet Balance Card -->
+      <section>
+        <q-card flat bordered class="q-pa-md rounded-borders bg-white shadow-soft">
+          <div class="row items-center justify-between">
+            <div>
+              <div class="text-caption text-weight-bold text-grey-7 uppercase tracking-wider">
+                💵 Available Wallet Balance
+              </div>
+              <div class="text-h4 text-weight-bolder q-mt-xs font-mono" :class="availableBalanceClass">
+                ৳{{ formatCurrency(account?.available_balance ?? 0) }}
+              </div>
+              <div class="text-caption text-grey-6 q-mt-xs">
+                Real-time available spendable/withdrawable balance
+              </div>
+            </div>
+
+            <!-- Secondary Buckets if any (Pending / Locked) -->
+            <div class="row items-center q-gutter-x-md">
+              <div v-if="(account?.pending_balance ?? 0) !== 0" class="text-right">
+                <div class="text-caption text-grey-6">In Transit (Pending)</div>
+                <div class="text-subtitle1 text-weight-bold text-amber-9 font-mono">
+                  ৳{{ formatCurrency(account?.pending_balance ?? 0) }}
+                </div>
+              </div>
+              <div v-if="(account?.locked_balance ?? 0) !== 0" class="text-right">
+                <div class="text-caption text-grey-6">On Hold (Locked)</div>
+                <div class="text-subtitle1 text-weight-bold text-grey-8 font-mono">
+                  ৳{{ formatCurrency(account?.locked_balance ?? 0) }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </q-card>
+      </section>
+
+      <!-- 3. Transaction List & History -->
+      <section>
+        <!-- Toolbar for search & refresh -->
+        <div class="row items-center justify-between q-mb-sm">
+          <div class="text-subtitle1 text-weight-bold text-grey-9">
+            Transaction History
+          </div>
+          <div class="row items-center q-gutter-x-sm">
+            <q-input
+              v-model="searchQuery"
+              outlined
+              rounded
+              dense
+              placeholder="Search reference, note..."
+              class="bg-white"
+              style="width: 250px"
+            >
+              <template #prepend>
+                <q-icon name="ph ph-magnifying-glass" size="16px" color="grey-6" />
+              </template>
+            </q-input>
+            <q-btn
+              flat
+              dense
+              round
+              icon="ph ph-arrows-clockwise"
+              color="grey-7"
+              :loading="isLedgerFetching"
+              @click="() => { refetchAccount(); refetchLedger(); }"
+            >
+              <q-tooltip>Refresh Ledger</q-tooltip>
+            </q-btn>
+          </div>
+        </div>
+
+        <UniversalWalletLedgerTable
+          :entries="filteredEntries"
+          @revert="onRevertClick"
         />
-      </section>
-
-      <!-- Accountant / Advanced View (Hidden behind link) -->
-      <section v-else class="q-gutter-y-md">
-        <div class="row items-center justify-between bg-white q-pa-xs rounded-borders border-grey-3">
-          <q-btn-toggle
-            v-model="activeSubView"
-            dense
-            unelevated
-            toggle-color="primary"
-            toggle-text-color="white"
-            text-color="grey-8"
-            class="bg-grey-2 q-pa-xs rounded-borders"
-            no-caps
-            :options="[
-              { label: 'Ledger Audit', value: 'overview', icon: 'ph ph-chart-pie-slice' },
-              { label: 'Account Statement', value: 'statement', icon: 'ph ph-receipt' },
-              { label: 'Platform Reports', value: 'reports', icon: 'ph ph-trend-up' },
-            ]"
-          />
-
-          <q-btn
-            unelevated
-            color="primary"
-            icon="ph ph-arrows-left-right"
-            label="Transfer Buckets"
-            no-caps
-            dense
-            class="text-weight-bold q-px-md rounded-borders"
-            @click="isTransferModalOpen = true"
-          />
-        </div>
-
-        <!-- Accountant View 1: Ledger Audit -->
-        <div v-if="activeSubView === 'overview'" class="q-gutter-y-md">
-          <WalletAccountCard
-            :key="`acc-${effectiveEntityType}-${effectiveEntityId}`"
-            :account="account"
-            :entity-type="effectiveEntityType"
-            :entity-name="loadedEntityName"
-            @open-transfer="isTransferModalOpen = true"
-          />
-
-          <UniversalWallet
-            :key="`ledger-${effectiveEntityType}-${effectiveEntityId}`"
-            :entity-type="effectiveEntityType"
-            :entity-id="effectiveEntityId"
-            :entity-name="loadedEntityName"
-            :allow-adjustment="true"
-          />
-        </div>
-
-        <!-- Accountant View 2: Account Statement -->
-        <div v-else-if="activeSubView === 'statement'">
-          <WalletStatementView
-            :key="`stmt-${effectiveEntityType}-${effectiveEntityId}`"
-            :entity-type="effectiveEntityType"
-            :entity-id="effectiveEntityId"
-            :entity-name="loadedEntityName"
-          />
-        </div>
-
-        <!-- Accountant View 3: Platform Reports -->
-        <div v-else-if="activeSubView === 'reports'">
-          <WalletReportsView />
-        </div>
       </section>
     </div>
 
-    <!-- Bucket Transfer Modal -->
-    <WalletTransferModal
-      v-model="isTransferModalOpen"
-      :entity-type="effectiveEntityType"
-      :entity-id="effectiveEntityId"
-      :entity-name="loadedEntityName"
-      @transferred="onTransactionCompleted"
-    />
-
-    <!-- Deposit Modal -->
-    <WalletDepositModal
-      v-model="isDepositModalOpen"
-      :entity-type="effectiveEntityType"
-      :entity-id="effectiveEntityId"
-      :entity-name="loadedEntityName"
-      @deposited="onTransactionCompleted"
-    />
-
-    <!-- Withdraw Modal -->
-    <WalletWithdrawModal
-      v-model="isWithdrawModalOpen"
+    <!-- Unified Wallet Action Modal (Pay / Deposit / Credit / Withdraw) -->
+    <WalletActionModal
+      v-model="isActionModalOpen"
+      :action-type="activeActionType"
       :entity-type="effectiveEntityType"
       :entity-id="effectiveEntityId"
       :entity-name="loadedEntityName"
       :available-balance="account?.available_balance || 0"
-      @withdrawn="onTransactionCompleted"
+      :submitting="isSubmittingAction"
+      @submit="handleActionSubmit"
     />
   </q-page>
 </template>
@@ -172,34 +187,26 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
+import { useQuasar } from 'quasar';
 import { supabase } from 'src/boot/supabase';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import type { UniversalWalletEntityType } from '../types';
+import type { UniversalWalletEntityType, UniversalWalletLedgerEntry } from '../types';
 import { getEntityTypeFromSlug, getSlugFromEntityType } from '../utils/walletSlugMap';
-import UniversalWallet from '../components/UniversalWallet.vue';
 import UniversalWalletPageSkeleton from '../components/UniversalWalletPageSkeleton.vue';
-import WalletAccountCard from '../components/WalletAccountCard.vue';
-import WalletTransferModal from '../components/WalletTransferModal.vue';
-import WalletDepositModal from '../components/WalletDepositModal.vue';
-import WalletWithdrawModal from '../components/WalletWithdrawModal.vue';
-import WalletStatementView from '../components/WalletStatementView.vue';
-import WalletReportsView from '../components/WalletReportsView.vue';
-import SimplifiedWalletView from '../components/SimplifiedWalletView.vue';
-import LearnMoreHelpBtn from 'src/modules/help/components/LearnMoreHelpBtn.vue';
+import UniversalWalletLedgerTable from '../components/UniversalWalletLedgerTable.vue';
+import WalletActionModal, { type WalletModalActionType, type WalletActionPayload } from '../components/WalletActionModal.vue';
 import { useWalletAccounts } from '../composables/useWalletAccounts';
+import { useWalletQuery } from '../composables/useWalletQuery';
+import { walletRepository } from '../repositories/walletRepository';
 
+const $q = useQuasar();
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
 
 const isInitialLoading = ref<boolean>(true);
-const isAccountantView = ref<boolean>(false);
-const activeSubView = ref<'overview' | 'statement' | 'reports'>('overview');
 const loadedEntityName = ref<string>('');
-
-const isTransferModalOpen = ref<boolean>(false);
-const isDepositModalOpen = ref<boolean>(false);
-const isWithdrawModalOpen = ref<boolean>(false);
+const searchQuery = ref<string>('');
 
 const effectiveEntityType = computed<UniversalWalletEntityType>(() => {
   if (route.name === 'app-wallet-company-detail' || route.params.tenantId != null) {
@@ -236,10 +243,55 @@ const entityTypeLabel = computed<string>(() => {
   }
 });
 
-const { account, refetchAccount } = useWalletAccounts(
+const entityIcon = computed<string>(() => {
+  switch (effectiveEntityType.value) {
+    case 'tenant':        return 'ph ph-buildings';
+    case 'customer':      return 'ph ph-user';
+    case 'vendor':        return 'ph ph-storefront';
+    case 'cargo_company': return 'ph ph-airplane-tilt';
+    case 'courier':       return 'ph ph-moped';
+    case 'investor':      return 'ph ph-chart-line-up';
+    default:              return 'ph ph-wallet';
+  }
+});
+
+// Balance query
+const { account, isLoading: isAccountLoading, refetchAccount } = useWalletAccounts(
   () => effectiveEntityType.value,
   () => effectiveEntityId.value,
 );
+
+// Ledger entries query
+const { ledgerEntries, isFetching: isLedgerFetching, refetch: refetchLedger } = useWalletQuery(
+  () => effectiveEntityType.value,
+  () => effectiveEntityId.value,
+);
+
+const filteredEntries = computed(() => {
+  if (!searchQuery.value.trim()) return ledgerEntries.value;
+  const q = searchQuery.value.toLowerCase().trim();
+  return ledgerEntries.value.filter((entry) => {
+    const note = entry.metadata?.note?.toLowerCase() || '';
+    const srcId = String(entry.source_id || '').toLowerCase();
+    const srcType = entry.source_type?.toLowerCase() || '';
+    const section = entry.metadata?.section?.toLowerCase() || '';
+    return note.includes(q) || srcId.includes(q) || srcType.includes(q) || section.includes(q);
+  });
+});
+
+const availableBalanceClass = computed(() => {
+  const bal = account.value?.available_balance ?? 0;
+  if (bal > 0) return 'text-positive';
+  if (bal < 0) return 'text-negative';
+  return 'text-grey-9';
+});
+
+function formatCurrency(val: number): string {
+  return (val || 0).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
 
 function navigateBack() {
   if (effectiveEntityType.value === 'tenant') {
@@ -258,8 +310,89 @@ function navigateBack() {
   }
 }
 
-function onTransactionCompleted() {
-  void refetchAccount();
+const isActionModalOpen = ref<boolean>(false);
+const activeActionType = ref<WalletModalActionType>('pay');
+const isSubmittingAction = ref<boolean>(false);
+
+function onActionClick(action: WalletModalActionType) {
+  activeActionType.value = action;
+  isActionModalOpen.value = true;
+}
+
+async function handleActionSubmit(payload: WalletActionPayload) {
+  isSubmittingAction.value = true;
+  try {
+    // Movement type:
+    // 'pay' -> 'debit' (Cash Out)
+    // 'withdraw' -> 'debit' (Cash Out to Bank)
+    // 'deposit' -> 'credit' (Cash In)
+    // 'credit' -> 'credit' (Store Credit In)
+    const movementType = payload.actionType === 'pay' || payload.actionType === 'withdraw'
+      ? 'debit'
+      : 'credit';
+
+    const sourceType = payload.actionType === 'pay'
+      ? 'vendor_purchase'
+      : payload.actionType === 'withdraw'
+        ? 'payout'
+        : 'adjustment';
+
+    await walletRepository.recordTransaction({
+      entity_type: payload.entityType,
+      entity_id: payload.entityId,
+      type: movementType,
+      amount: payload.amount,
+      currency_code: payload.currency,
+      exchange_rate: payload.exchangeRate,
+      source_type: sourceType,
+      source_id: payload.referenceId || null,
+      target_bucket: 'available',
+      metadata: {
+        section: payload.category,
+        method: payload.paymentMethod,
+        trx_id: payload.referenceId || undefined,
+        note: payload.note || undefined,
+        action_type: payload.actionType,
+        base_amount: payload.baseAmount,
+        payee_type: payload.targetEntityType || undefined,
+        payee_id: payload.targetEntityId || undefined,
+        recorded_by: authStore.user?.email || 'admin',
+      },
+    });
+
+    $q.notify({
+      type: 'positive',
+      message: `Successfully recorded ${payload.actionType.toUpperCase()} of ${payload.currency} ${payload.amount.toLocaleString()} (৳${payload.baseAmount.toLocaleString()} BDT)!`,
+      icon: 'ph ph-check-circle',
+      position: 'top',
+      timeout: 2500,
+    });
+
+    isActionModalOpen.value = false;
+    void refetchAccount();
+    void refetchLedger();
+  } catch (err: any) {
+    console.error('[UniversalWalletPage] Action failed:', err);
+    $q.notify({
+      type: 'negative',
+      message: err.message || `Failed to record ${payload.actionType}.`,
+      icon: 'ph ph-warning',
+      position: 'top',
+      timeout: 3000,
+    });
+  } finally {
+    isSubmittingAction.value = false;
+  }
+}
+
+function onRevertClick(entry: UniversalWalletLedgerEntry) {
+  $q.notify({
+    type: 'warning',
+    message: `Revert requested for transaction #${entry.id.slice(0, 8)}. Cause & revert workflow will be configured next.`,
+    icon: 'ph ph-arrow-counter-clockwise',
+    position: 'top',
+    timeout: 2500,
+  });
 }
 
 async function fetchEntityName() {
@@ -333,7 +466,10 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
-.border-grey-3 {
-  border: 1px solid #e2e8f0;
+.rounded-btn {
+  border-radius: 8px;
+}
+.shadow-soft {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 </style>

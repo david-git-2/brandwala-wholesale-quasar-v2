@@ -57,9 +57,16 @@ As an admin, staff member, or tenant, I need a centralized, double-entry style w
   - Used for generating the historical statement for a specific wallet.
 
 ## 5. UI & Responsive Design Strategy
-- **Wallet Home Picker Page:** Display 6 entity cards: Our company, Customers, Suppliers, Cargo, Couriers, Investors. Caption for Cargo: freight agents for inbound shipments; Couriers: last-mile COD.
+- **Wallet Home Picker Page:** Display 6 entity cards: Our company, Customers, Suppliers, Cargo, Couriers, Investors.
 - **Wallet Name List Page:** Searchable name list with total running balance per entity before picking.
-- **Slim Wallet Detail View:** Direct route `/wallet/:walletType/:entityId` displaying default simplified view with balance summary & transactions. Accountant ledger view hidden behind a link.
+- **Minimal Clean Wallet Detail View (`/wallet/:walletType/:entityId`):**
+  - **4 Top Action Buttons:**
+    1. **`[ Pay ]`**: Real cash out to settle invoices, bills, or vendor purchases.
+    2. **`[ Deposit ]`**: Real cash in to top up wallet balance or record incoming bank/cash deposits.
+    3. **`[ Credit ]`**: Store credit management (Record incoming vendor/customer credit or Use existing store credit without moving bank cash).
+    4. **`[ Withdraw ]`**: Cash out / payout to external bank account or mobile wallet (bKash/Nagad).
+  - **Consolidated Wallet Balance Card:** Boldly displays live `available_balance` (spendable/withdrawable), with subtle status chips for `pending` (in-transit) and `locked` (escrow/hold) when non-zero.
+  - **Transaction History / Ledger Table:** Chronological table displaying all debits/credits with transaction currency, exchange rate, converted BDT base amount, running `balance_after`, and source reference/notes.
 
 ## 6. State Management, Module Structure & Routing
 - **Frontend Module:** `web/src/modules/wallet`
@@ -67,33 +74,37 @@ As an admin, staff member, or tenant, I need a centralized, double-entry style w
   - `path: ''` (home picker) -> `WalletHomePage.vue` (Title: *Wallets*, Subtitle: *Whose money do you want to see?*)
   - `path: 'company/:tenantId'` -> `UniversalWalletPage.vue` (Company wallet detail)
   - `path: ':walletType'` -> `WalletEntityListPage.vue` (Name list with search & balances)
-  - `path: ':walletType/:entityId'` -> `UniversalWalletPage.vue` (Slim detail view)
+  - `path: ':walletType/:entityId'` -> `UniversalWalletPage.vue` (Minimal 4-button detail view)
 
 ## 7. Style Guidelines & Accessibility
-- Follow existing Quasar framework guidelines.
-- **Color Coding:** Use positive (green) styling for credit `amount` and negative (red) for debit `amount` in the transaction history.
-- **Accessibility:** Ensure ARIA labels on complex data tables and proper tab-indexing on the manual adjustment modals.
+- Follow existing Quasar framework guidelines and `.agents/rules/table_list_design_system.md`.
+- **Color Coding:** Use positive (green) styling for credits ($+$) and negative (red/amber) for debits ($-$) in the transaction history.
+- **Accessibility:** Ensure ARIA labels on complex data tables and proper tab-indexing on action dialogs.
 
 ## 8. Network Handling & Loading Strategy
-- Implement optimistic UI updates when a staff member submits a "Settle Payout" action.
-- Use Skeleton loaders for the Wallet Statement component to avoid layout shift when fetching heavy historical transaction logs.
+- Implement optimistic UI updates when a staff member submits a transaction action.
+- Use Skeleton loaders for the Wallet Statement component to avoid layout shift when fetching historical transaction logs.
 
 ## 9. Component Specifications
-All files will reside within the `web/src/modules/finance_wallet/` directory structure:
+All files reside within the `web/src/modules/wallet/` directory structure:
 
 - **Pages (`/pages`):**
-  - `WalletListPage.vue`: The main dashboard page for the `/finance/wallets` route.
-  - `WalletDetailsPage.vue`: The deep-dive ledger page for `/finance/wallets/:walletId`.
+  - `WalletHomePage.vue`: 6-entity card picker dashboard.
+  - `WalletEntityListPage.vue`: Searchable entity name list with live total balances.
+  - `UniversalWalletPage.vue`: The unified minimal wallet detail page.
 
 - **Components (`/components`):**
-  - `WalletListTable.vue`: Accepts `owner_type` as a prop. Handles pagination and filtering.
-  - `WalletStatementCard.vue`: Displays current `balance` boldly at the top and a virtualized list of `wallet_transactions` below. *Designed to be easily exported and embedded into other modules like `TenantDetailsPage` or `BillingProfileDetailsPage`.*
-  - `WalletTransactionDialog.vue`: Reusable dialog for making manual adjustments or recording an external payout, yielding a fresh `wallet_transactions` row.
+  - `WalletActionToolbar.vue`: The 4 primary action buttons (`Pay`, `Deposit`, `Credit`, `Withdraw`).
+  - `WalletBalanceCard.vue`: Consolidated balance card showing available balance, secondary buckets (locked/pending), and multi-currency values.
+  - `UniversalWalletLedgerTable.vue`: Full chronological transaction history with date, action badge, currency amount, exchange rate, base BDT amount, balance after, and source reference.
+  - `WalletPayModal.vue`: Modal for cash-out payments (settle bills/invoices).
+  - `WalletDepositModal.vue`: Modal for cash-in deposits/top-ups.
+  - `WalletCreditModal.vue`: Modal for store credit adjustments (Record Credit / Use Credit).
+  - `WalletWithdrawModal.vue`: Modal for bank/mobile cash payouts.
 
 ## 10. Explicit Out of Scope
-- **Cryptocurrency or External Bank Integrations:** This is an internal ledger only; it does not automatically wire money to external bank accounts via APIs.
-- **Complex Multi-Currency Support:** All balances are assumed to be in the base fiat currency (BDT) of the tenant.
-- **Automated Tax Deductions:** Tax calculations remain at the invoice level; the wallet strictly handles the net cash flow.
+- **Cryptocurrency or Direct External Bank APIs:** Internal ledger only; records cash movements without executing direct automated ACH/wire APIs.
+- **Automated Tax Deductions:** Tax calculations remain at the invoice level; the wallet strictly handles net cash and store credit flow.
 
 ## 11. Testing Strategy
 - **Database/pgTAP:** Write assertions proving that concurrent calls to `record_wallet_transaction` correctly compute `balance_after` without race conditions.

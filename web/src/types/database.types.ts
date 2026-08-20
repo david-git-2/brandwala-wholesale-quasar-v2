@@ -7,6 +7,11 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.4"
+  }
   public: {
     Tables: {
       activity_logs: {
@@ -3037,6 +3042,13 @@ export type Database = {
             referencedRelation: "koba_carts"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "koba_cart_items_koba_product_id_fkey"
+            columns: ["koba_product_id"]
+            isOneToOne: false
+            referencedRelation: "koba_products"
+            referencedColumns: ["id"]
+          },
         ]
       }
       koba_carts: {
@@ -3119,7 +3131,6 @@ export type Database = {
           commission_percentage: number | null
           confirmed_quantity: number | null
           created_at: string
-          custom_price_gbp: number | null
           delivered_quantity: number
           id: number
           image_url: string | null
@@ -3139,7 +3150,6 @@ export type Database = {
           commission_percentage?: number | null
           confirmed_quantity?: number | null
           created_at?: string
-          custom_price_gbp?: number | null
           delivered_quantity?: number
           id?: number
           image_url?: string | null
@@ -3159,7 +3169,6 @@ export type Database = {
           commission_percentage?: number | null
           confirmed_quantity?: number | null
           created_at?: string
-          custom_price_gbp?: number | null
           delivered_quantity?: number
           id?: number
           image_url?: string | null
@@ -4424,6 +4433,7 @@ export type Database = {
           hazardous: boolean | null
           id: number
           image_url: string | null
+          inserted_by_tenant_id: number | null
           is_available: boolean | null
           languages: string | null
           list_price_amount: number | null
@@ -4438,8 +4448,6 @@ export type Database = {
           reference_cost_amount: number | null
           reference_cost_currency_id: number | null
           source: string | null
-          tariff_code: string | null
-          tenant_id: number | null
           updated_at: string
           vendor_code: string | null
           vendor_id: number | null
@@ -4456,6 +4464,7 @@ export type Database = {
           hazardous?: boolean | null
           id?: number
           image_url?: string | null
+          inserted_by_tenant_id?: number | null
           is_available?: boolean | null
           languages?: string | null
           list_price_amount?: number | null
@@ -4470,8 +4479,6 @@ export type Database = {
           reference_cost_amount?: number | null
           reference_cost_currency_id?: number | null
           source?: string | null
-          tariff_code?: string | null
-          tenant_id?: number | null
           updated_at?: string
           vendor_code?: string | null
           vendor_id?: number | null
@@ -4488,6 +4495,7 @@ export type Database = {
           hazardous?: boolean | null
           id?: number
           image_url?: string | null
+          inserted_by_tenant_id?: number | null
           is_available?: boolean | null
           languages?: string | null
           list_price_amount?: number | null
@@ -4502,13 +4510,18 @@ export type Database = {
           reference_cost_amount?: number | null
           reference_cost_currency_id?: number | null
           source?: string | null
-          tariff_code?: string | null
-          tenant_id?: number | null
           updated_at?: string
           vendor_code?: string | null
           vendor_id?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "products_inserted_by_tenant_id_fkey"
+            columns: ["inserted_by_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "products_list_price_currency_id_fkey"
             columns: ["list_price_currency_id"]
@@ -4535,13 +4548,6 @@ export type Database = {
             columns: ["reference_cost_currency_id"]
             isOneToOne: false
             referencedRelation: "global_currencies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "products_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
           {
@@ -5417,6 +5423,8 @@ export type Database = {
           created_at: string
           customer_group_id: number
           deduct_charges_from_margin: boolean
+          deduct_cod_from_margin: boolean
+          deduct_delivery_from_margin: boolean
           deduct_packing_from_margin: boolean
           deduct_print_from_margin: boolean
           delivery_charge_amount: number
@@ -5437,6 +5445,8 @@ export type Database = {
           created_at?: string
           customer_group_id: number
           deduct_charges_from_margin?: boolean
+          deduct_cod_from_margin?: boolean
+          deduct_delivery_from_margin?: boolean
           deduct_packing_from_margin?: boolean
           deduct_print_from_margin?: boolean
           delivery_charge_amount?: number
@@ -5457,6 +5467,8 @@ export type Database = {
           created_at?: string
           customer_group_id?: number
           deduct_charges_from_margin?: boolean
+          deduct_cod_from_margin?: boolean
+          deduct_delivery_from_margin?: boolean
           deduct_packing_from_margin?: boolean
           deduct_print_from_margin?: boolean
           delivery_charge_amount?: number
@@ -6421,6 +6433,8 @@ export type Database = {
           category_ids: number[] | null
           created_at: string
           deduct_charges_from_margin: boolean
+          deduct_cod_from_margin: boolean
+          deduct_delivery_from_margin: boolean
           deduct_packing_from_margin: boolean
           deduct_print_from_margin: boolean
           deduct_return_charge_from_middle_man: boolean | null
@@ -6454,6 +6468,8 @@ export type Database = {
           category_ids?: number[] | null
           created_at?: string
           deduct_charges_from_margin?: boolean
+          deduct_cod_from_margin?: boolean
+          deduct_delivery_from_margin?: boolean
           deduct_packing_from_margin?: boolean
           deduct_print_from_margin?: boolean
           deduct_return_charge_from_middle_man?: boolean | null
@@ -6487,6 +6503,8 @@ export type Database = {
           category_ids?: number[] | null
           created_at?: string
           deduct_charges_from_margin?: boolean
+          deduct_cod_from_margin?: boolean
+          deduct_delivery_from_margin?: boolean
           deduct_packing_from_margin?: boolean
           deduct_print_from_margin?: boolean
           deduct_return_charge_from_middle_man?: boolean | null
@@ -6622,7 +6640,6 @@ export type Database = {
             | null
           to_grade_tag_id: number | null
           to_location_id: number | null
-          updated_at: string
         }
         Insert: {
           created_at?: string
@@ -6640,7 +6657,6 @@ export type Database = {
             | null
           to_grade_tag_id?: number | null
           to_location_id?: number | null
-          updated_at?: string
         }
         Update: {
           created_at?: string
@@ -6658,7 +6674,6 @@ export type Database = {
             | null
           to_grade_tag_id?: number | null
           to_location_id?: number | null
-          updated_at?: string
         }
         Relationships: [
           {
@@ -10186,6 +10201,10 @@ export type Database = {
             }
             Returns: number
           }
+      bulk_delete_global_shipment_items: {
+        Args: { p_item_ids: number[]; p_shipment_id: number }
+        Returns: number
+      }
       bulk_delete_shipment_items_by_product_id: {
         Args: { p_items: Json; p_shipment_id: number }
         Returns: number
@@ -10358,14 +10377,19 @@ export type Database = {
         Args: { p_store_id: number }
         Returns: boolean
       }
-      can_insert_cart: {
-        Args: {
-          p_customer_group_id: number
-          p_store_id?: number
-          p_tenant_id: number
-        }
-        Returns: boolean
-      }
+      can_insert_cart:
+        | {
+            Args: { p_customer_group_id: number; p_tenant_id: number }
+            Returns: boolean
+          }
+        | {
+            Args: {
+              p_customer_group_id: number
+              p_store_id?: number
+              p_tenant_id: number
+            }
+            Returns: boolean
+          }
       can_insert_cart_item: { Args: { p_cart_id: number }; Returns: boolean }
       can_manage_costing: { Args: { p_tenant_id: number }; Returns: boolean }
       can_manage_costing_file_viewers: {
@@ -10389,6 +10413,10 @@ export type Database = {
         Returns: boolean
       }
       can_manage_products: { Args: { p_tenant_id: number }; Returns: boolean }
+      can_manage_products_for_parent: {
+        Args: { p_parent_tenant_id: number }
+        Returns: boolean
+      }
       can_manage_shipment: { Args: { p_tenant_id: number }; Returns: boolean }
       can_manage_shipment_by_id: {
         Args: { p_shipment_id: number }
@@ -10396,6 +10424,10 @@ export type Database = {
       }
       can_manage_store: { Args: { p_tenant_id: number }; Returns: boolean }
       can_staff_access_costing_file: {
+        Args: { p_tenant_id: number }
+        Returns: boolean
+      }
+      can_tenant_view_costing_file_viewer: {
         Args: { p_tenant_id: number }
         Returns: boolean
       }
@@ -10421,6 +10453,10 @@ export type Database = {
       can_view_costing_item: { Args: { p_file_id: number }; Returns: boolean }
       can_view_products_customer: {
         Args: { p_tenant_id: number }
+        Returns: boolean
+      }
+      can_view_products_for_parent: {
+        Args: { p_parent_tenant_id: number }
         Returns: boolean
       }
       can_view_products_internal: {
@@ -11235,6 +11271,7 @@ export type Database = {
         }
         Returns: Json
       }
+      current_authenticated_email: { Args: never; Returns: string }
       current_costing_item_actor_role: {
         Args: { p_costing_file_id: number }
         Returns: string
@@ -11678,6 +11715,7 @@ export type Database = {
           hazardous: boolean | null
           id: number
           image_url: string | null
+          inserted_by_tenant_id: number | null
           is_available: boolean | null
           languages: string | null
           list_price_amount: number | null
@@ -11692,8 +11730,6 @@ export type Database = {
           reference_cost_amount: number | null
           reference_cost_currency_id: number | null
           source: string | null
-          tariff_code: string | null
-          tenant_id: number | null
           updated_at: string
           vendor_code: string | null
           vendor_id: number | null
@@ -11711,6 +11747,10 @@ export type Database = {
       }
       get_shipment_item_invoices: {
         Args: { p_shipment_id: number; p_tenant_id: number }
+        Returns: Json
+      }
+      get_shipment_overview_details: {
+        Args: { p_shipment_id: number }
         Returns: Json
       }
       get_shipment_pnl: {
@@ -13963,26 +14003,44 @@ export type Database = {
         Returns: number
       }
       stock_grade_tag_id_for_slug: { Args: { p_slug: string }; Returns: number }
-      submit_shop_order_from_cart: {
-        Args: {
-          p_billing_profile_id?: number
-          p_cart_id: number
-          p_cod_charge_amount?: number
-          p_delivery_charge_amount?: number
-          p_delivery_instructions?: string
-          p_discount_amount?: number
-          p_is_prepaid?: boolean
-          p_packing_charge_amount?: number
-          p_print_charge_amount?: number
-          p_recipient_name: string
-          p_recipient_phone: string
-          p_recipient_phone_secondary?: string
-          p_shipping_address: string
-          p_shipping_district?: string
-          p_shipping_thana?: string
-        }
-        Returns: Json
-      }
+      submit_shop_order_from_cart:
+        | {
+            Args: {
+              p_billing_profile_id?: number
+              p_cart_id: number
+              p_cod_charge_amount?: number
+              p_delivery_charge_amount?: number
+              p_delivery_instructions?: string
+              p_discount_amount?: number
+              p_is_prepaid?: boolean
+              p_packing_charge_amount?: number
+              p_print_charge_amount?: number
+              p_recipient_name: string
+              p_recipient_phone: string
+              p_shipping_address: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_billing_profile_id?: number
+              p_cart_id: number
+              p_cod_charge_amount?: number
+              p_delivery_charge_amount?: number
+              p_delivery_instructions?: string
+              p_discount_amount?: number
+              p_is_prepaid?: boolean
+              p_packing_charge_amount?: number
+              p_print_charge_amount?: number
+              p_recipient_name: string
+              p_recipient_phone: string
+              p_recipient_phone_secondary?: string
+              p_shipping_address: string
+              p_shipping_district?: string
+              p_shipping_thana?: string
+            }
+            Returns: Json
+          }
       thrift_barcode_sequence_sort_key: {
         Args: { p_barcode_id: string }
         Returns: {
@@ -14796,75 +14854,151 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      upsert_shop: {
-        Args: {
-          p_allow_delivery?: boolean
-          p_buy_currency_id?: number
-          p_category_ids?: number[]
-          p_deduct_charges_from_margin?: boolean
-          p_deduct_packing_from_margin?: boolean
-          p_deduct_print_from_margin?: boolean
-          p_default_currency_id?: number
-          p_default_packing_charge_amount?: number
-          p_default_print_charge_amount?: number
-          p_description?: string
-          p_global_stock_type_id?: number
-          p_id?: number
-          p_is_active: boolean
-          p_is_negotiable: boolean
-          p_markup_percentage?: number
-          p_name: string
-          p_order_mode: Database["public"]["Enums"]["shop_order_mode_enum"]
-          p_pricing_method?: string
-          p_quantity_display_mode?: string
-          p_sell_currency_id?: number
-          p_shop_type?: Database["public"]["Enums"]["shop_type_enum"]
-          p_show_stock_quantity: boolean
-          p_slug: string
-          p_tenant_id: number
-          p_vendor_code?: string
-          p_vendor_filters?: Json
-        }
-        Returns: {
-          allow_delivery: boolean
-          buy_currency_id: number
-          category_ids: number[] | null
-          created_at: string
-          deduct_charges_from_margin: boolean
-          deduct_packing_from_margin: boolean
-          deduct_print_from_margin: boolean
-          deduct_return_charge_from_middle_man: boolean | null
-          default_currency_id: number | null
-          default_packing_charge_amount: number
-          default_print_charge_amount: number
-          deleted_at: string | null
-          deleted_by: string | null
-          description: string | null
-          global_stock_type_id: number | null
-          id: number
-          is_active: boolean
-          is_negotiable: boolean
-          markup_percentage: number
-          name: string
-          order_mode: Database["public"]["Enums"]["shop_order_mode_enum"]
-          pricing_method: string
-          quantity_display_mode: string
-          sell_currency_id: number
-          shop_type: Database["public"]["Enums"]["shop_type_enum"]
-          show_stock_quantity: boolean
-          slug: string
-          tenant_id: number
-          updated_at: string
-          vendor_code: string | null
-          vendor_filters: Json | null
-        }[]
-        SetofOptions: {
-          from: "*"
-          to: "shops"
-          isOneToOne: false
-          isSetofReturn: true
-        }
-      }
+      upsert_shop:
+        | {
+            Args: {
+              p_allow_delivery?: boolean
+              p_buy_currency_id?: number
+              p_deduct_charges_from_margin?: boolean
+              p_deduct_cod_from_margin?: boolean
+              p_deduct_delivery_from_margin?: boolean
+              p_deduct_packing_from_margin?: boolean
+              p_deduct_print_from_margin?: boolean
+              p_default_cod_charge_pct?: number
+              p_default_currency_id?: number
+              p_default_delivery_charge_amount?: number
+              p_default_packing_charge_amount?: number
+              p_default_print_charge_amount?: number
+              p_global_stock_type_id?: number
+              p_id?: number
+              p_is_active: boolean
+              p_is_negotiable: boolean
+              p_markup_percentage?: number
+              p_name: string
+              p_order_mode: Database["public"]["Enums"]["shop_order_mode_enum"]
+              p_pricing_method?: string
+              p_quantity_display_mode?: string
+              p_sell_currency_id?: number
+              p_shop_type?: Database["public"]["Enums"]["shop_type_enum"]
+              p_show_stock_quantity: boolean
+              p_slug: string
+              p_tenant_id: number
+              p_vendor_code?: string
+              p_vendor_filters?: Json
+            }
+            Returns: {
+              allow_delivery: boolean
+              buy_currency_id: number
+              category_ids: number[] | null
+              created_at: string
+              deduct_charges_from_margin: boolean
+              deduct_cod_from_margin: boolean
+              deduct_delivery_from_margin: boolean
+              deduct_packing_from_margin: boolean
+              deduct_print_from_margin: boolean
+              deduct_return_charge_from_middle_man: boolean | null
+              default_currency_id: number | null
+              default_packing_charge_amount: number
+              default_print_charge_amount: number
+              deleted_at: string | null
+              deleted_by: string | null
+              description: string | null
+              global_stock_type_id: number | null
+              id: number
+              is_active: boolean
+              is_negotiable: boolean
+              markup_percentage: number
+              name: string
+              order_mode: Database["public"]["Enums"]["shop_order_mode_enum"]
+              pricing_method: string
+              quantity_display_mode: string
+              sell_currency_id: number
+              shop_type: Database["public"]["Enums"]["shop_type_enum"]
+              show_stock_quantity: boolean
+              slug: string
+              tenant_id: number
+              updated_at: string
+              vendor_code: string | null
+              vendor_filters: Json | null
+            }[]
+            SetofOptions: {
+              from: "*"
+              to: "shops"
+              isOneToOne: false
+              isSetofReturn: true
+            }
+          }
+        | {
+            Args: {
+              p_allow_delivery?: boolean
+              p_buy_currency_id?: number
+              p_category_ids?: number[]
+              p_deduct_charges_from_margin?: boolean
+              p_deduct_packing_from_margin?: boolean
+              p_deduct_print_from_margin?: boolean
+              p_default_currency_id?: number
+              p_default_packing_charge_amount?: number
+              p_default_print_charge_amount?: number
+              p_description?: string
+              p_global_stock_type_id?: number
+              p_id?: number
+              p_is_active: boolean
+              p_is_negotiable: boolean
+              p_markup_percentage?: number
+              p_name: string
+              p_order_mode: Database["public"]["Enums"]["shop_order_mode_enum"]
+              p_pricing_method?: string
+              p_quantity_display_mode?: string
+              p_sell_currency_id?: number
+              p_shop_type?: Database["public"]["Enums"]["shop_type_enum"]
+              p_show_stock_quantity: boolean
+              p_slug: string
+              p_tenant_id: number
+              p_vendor_code?: string
+              p_vendor_filters?: Json
+            }
+            Returns: {
+              allow_delivery: boolean
+              buy_currency_id: number
+              category_ids: number[] | null
+              created_at: string
+              deduct_charges_from_margin: boolean
+              deduct_cod_from_margin: boolean
+              deduct_delivery_from_margin: boolean
+              deduct_packing_from_margin: boolean
+              deduct_print_from_margin: boolean
+              deduct_return_charge_from_middle_man: boolean | null
+              default_currency_id: number | null
+              default_packing_charge_amount: number
+              default_print_charge_amount: number
+              deleted_at: string | null
+              deleted_by: string | null
+              description: string | null
+              global_stock_type_id: number | null
+              id: number
+              is_active: boolean
+              is_negotiable: boolean
+              markup_percentage: number
+              name: string
+              order_mode: Database["public"]["Enums"]["shop_order_mode_enum"]
+              pricing_method: string
+              quantity_display_mode: string
+              sell_currency_id: number
+              shop_type: Database["public"]["Enums"]["shop_type_enum"]
+              show_stock_quantity: boolean
+              slug: string
+              tenant_id: number
+              updated_at: string
+              vendor_code: string | null
+              vendor_filters: Json | null
+            }[]
+            SetofOptions: {
+              from: "*"
+              to: "shops"
+              isOneToOne: false
+              isSetofReturn: true
+            }
+          }
       upsert_shop_customer_group_access: {
         Args: {
           p_can_add_to_cart?: boolean
@@ -15323,13 +15457,12 @@ export type Database = {
       stock_availability: "sellable" | "held" | "unsellable"
       stock_location_kind: "shelf" | "slot" | "box" | "returns"
       stock_movement_type:
-        | "adjustment"
+        | "receive_putaway"
         | "location_transfer"
         | "availability_transfer"
-        | "receive_putaway"
+        | "adjustment"
         | "return_inbound"
         | "receive_rollback"
-        | "vendor_return"
         | "grade_change"
       thrift_condition: "NEW_WITH_TAGS" | "EXCELLENT" | "GOOD" | "FAIR"
       thrift_delivery_status:
@@ -15590,13 +15723,12 @@ export const Constants = {
       stock_availability: ["sellable", "held", "unsellable"],
       stock_location_kind: ["shelf", "slot", "box", "returns"],
       stock_movement_type: [
-        "adjustment",
+        "receive_putaway",
         "location_transfer",
         "availability_transfer",
-        "receive_putaway",
+        "adjustment",
         "return_inbound",
         "receive_rollback",
-        "vendor_return",
         "grade_change",
       ],
       thrift_condition: ["NEW_WITH_TAGS", "EXCELLENT", "GOOD", "FAIR"],
@@ -15626,4 +15758,3 @@ export const Constants = {
     },
   },
 } as const
-

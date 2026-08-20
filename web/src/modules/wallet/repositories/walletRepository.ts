@@ -68,7 +68,7 @@ export const walletRepository = {
     payload: RecordLedgerTransactionPayload,
   ): Promise<UniversalWalletLedgerEntry> {
     const authStore = useAuthStore();
-    const tenantId = payload.tenant_id ?? authStore.selectedTenant?.id;
+    const tenantId = payload.tenant_id ?? authStore.selectedTenant?.parent_id ?? authStore.selectedTenant?.id;
 
     if (!tenantId) {
       throw new Error('Tenant ID is required to record a wallet transaction.');

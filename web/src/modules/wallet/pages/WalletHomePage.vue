@@ -1,5 +1,5 @@
 <template>
-  <q-page class="q-pa-md bg-grey-1" style="min-height: calc(100vh - 55px)">
+  <q-page class="q-pa-md" style="min-height: calc(100vh - 55px)">
     <!-- Header section -->
     <div class="q-mb-lg">
       <div class="text-overline text-primary text-weight-bold tracking-wide">

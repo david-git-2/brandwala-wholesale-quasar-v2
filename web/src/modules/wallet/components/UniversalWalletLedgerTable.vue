@@ -1,34 +1,5 @@
 <template>
   <q-card flat class="soft-table-card shadow-soft">
-    <!-- Beginner Quick-Guide Header Banner -->
-    <div class="ledger-guide-banner q-pa-sm q-px-md bg-grey-1 row items-center justify-between">
-      <div class="row items-center q-gutter-x-md text-caption text-grey-8">
-        <span class="text-weight-bold row items-center">
-          <q-icon name="ph ph-lightbulb" color="amber-9" size="16px" class="q-mr-xs" />
-          Quick Guide:
-        </span>
-        <span class="row items-center">
-          <q-badge color="positive" class="q-mr-xs font-weight-bold">+ Money In</q-badge>
-          Cash Added (Credit)
-        </span>
-        <span class="row items-center">
-          <q-badge color="negative" class="q-mr-xs font-weight-bold">- Money Out</q-badge>
-          Cash Deducted (Debit)
-        </span>
-        <span class="gt-xs text-grey-6">• Wallet Balance After shows remaining cash after that entry</span>
-      </div>
-      <q-btn
-        v-if="showGuide"
-        flat
-        dense
-        round
-        size="xs"
-        icon="ph ph-x"
-        color="grey-6"
-        @click="showGuide = false"
-      />
-    </div>
-
     <div class="treasury-table-wrap">
       <q-table
         flat
@@ -40,116 +11,120 @@
         class="soft-wallet-table"
         no-data-label="No financial transaction records found."
       >
-        <!-- Type / Movement Column Slot -->
-        <template #body-cell-type="props">
+        <!-- Merged Date & Source Column -->
+        <template #body-cell-date_source="props">
           <q-td :props="props">
-            <q-chip
-              dense
-              unelevated
-              :class="props.row.type === 'credit' ? 'soft-chip-credit' : 'soft-chip-debit'"
-              class="text-weight-bolder text-capitalize q-px-sm"
-            >
-              <q-icon
-                :name="props.row.type === 'credit' ? 'ph ph-arrow-down-left' : 'ph ph-arrow-up-right'"
-                size="12px"
-                class="q-mr-xs"
-              />
-              {{ props.row.type === 'credit' ? '+ Money In' : '- Money Out' }}
-              <q-tooltip class="bg-grey-9 text-caption">
-                {{ props.row.type === 'credit' ? 'Credit: Money added to wallet balance' : 'Debit: Money deducted from wallet balance' }}
-              </q-tooltip>
-            </q-chip>
-          </q-td>
-        </template>
-
-        <!-- Amount Column Slot -->
-        <template #body-cell-amount="props">
-          <q-td :props="props">
-            <span
-              :class="props.row.type === 'credit' ? 'text-emerald text-weight-bolder' : 'text-rose text-weight-bolder'"
-              class="font-mono text-body2"
-            >
-              {{ props.row.type === 'credit' ? '+' : '-' }}{{ formatCurrency(props.row.amount, props.row.currency_code) }}
-            </span>
-          </q-td>
-        </template>
-
-        <!-- Balance After Column Slot -->
-        <template #body-cell-balance_after="props">
-          <q-td :props="props" class="text-weight-bolder font-mono text-ink text-body2">
-            {{ formatCurrency(props.row.balance_after, props.row.currency_code) }}
-            <q-tooltip class="bg-grey-9 text-caption">
-              Remaining pocket balance immediately after this transaction
-            </q-tooltip>
-          </q-td>
-        </template>
-
-        <!-- Pocket Column Slot -->
-        <template #body-cell-pocket="props">
-          <q-td :props="props">
-            <q-chip
-              dense
-              flat
-              size="xs"
-              class="text-weight-bold uppercase"
-              :class="getPocketClass(props.row)"
-            >
-              <q-icon :name="getPocketIcon(props.row)" size="12px" class="q-mr-xs" />
-              {{ getPocketLabel(props.row) }}
-            </q-chip>
-          </q-td>
-        </template>
-
-        <!-- Category Column Slot -->
-        <template #body-cell-category="props">
-          <q-td :props="props">
-            <q-chip
-              v-if="props.row.metadata?.section"
-              dense
-              unelevated
-              class="text-weight-bold text-caption"
-              :class="sectionChipClass(props.row.metadata.section)"
-            >
-              {{ sectionLabel(props.row.metadata.section) }}
-            </q-chip>
-            <span v-else class="text-caption text-grey-4">—</span>
-          </q-td>
-        </template>
-
-        <!-- Source Column Slot -->
-        <template #body-cell-source="props">
-          <q-td :props="props">
-            <div class="row items-center q-gutter-x-xs">
-              <q-chip dense flat class="bg-primary-soft text-primary text-weight-bold text-caption">
+            <div class="text-weight-bold text-grey-9 text-caption">
+              {{ formatDate(props.row.created_at) }}
+            </div>
+            <div class="row items-center q-gutter-x-xs q-mt-xs">
+              <q-badge
+                dense
+                rounded
+                class="bg-grey-2 text-grey-8 text-weight-medium"
+                style="font-size: 10px; padding: 2px 6px;"
+              >
                 {{ sourceTypeLabel(props.row.source_type) }}
-              </q-chip>
-              <span v-if="props.row.source_id" class="text-caption text-weight-medium font-mono text-muted">
+              </q-badge>
+              <span v-if="props.row.source_id" class="text-caption font-mono text-grey-6" style="font-size: 11px">
                 #{{ props.row.source_id }}
               </span>
             </div>
           </q-td>
         </template>
 
-        <!-- Created At Column Slot -->
-        <template #body-cell-created_at="props">
-          <q-td :props="props" class="text-muted text-caption">
-            {{ formatDate(props.row.created_at) }}
+        <!-- Merged Movement & Category Column -->
+        <template #body-cell-movement="props">
+          <q-td :props="props">
+            <div class="row items-center q-gutter-x-xs">
+              <q-chip
+                dense
+                unelevated
+                :class="props.row.type === 'credit' ? 'soft-chip-credit' : 'soft-chip-debit'"
+                class="text-weight-bolder text-capitalize q-px-xs q-my-none"
+                style="font-size: 11px; height: 20px"
+              >
+                <q-icon
+                  :name="props.row.type === 'credit' ? 'ph ph-arrow-down-left' : 'ph ph-arrow-up-right'"
+                  size="11px"
+                  class="q-mr-xs"
+                />
+                {{ props.row.type === 'credit' ? '+ Credit' : '- Debit' }}
+              </q-chip>
+              <q-badge
+                dense
+                flat
+                :class="getPocketClass(props.row)"
+                class="text-weight-bold uppercase"
+                style="font-size: 9px; padding: 2px 4px;"
+              >
+                {{ getPocketLabel(props.row) }}
+              </q-badge>
+            </div>
+            <div v-if="props.row.metadata?.section" class="text-caption text-grey-7 q-mt-xs" style="font-size: 11px">
+              {{ sectionLabel(props.row.metadata.section) }}
+            </div>
           </q-td>
         </template>
 
-        <!-- Metadata Column Slot -->
-        <template #body-cell-metadata="props">
+        <!-- Details & Notes Column -->
+        <template #body-cell-details="props">
           <q-td :props="props">
-            <span v-if="props.row.metadata?.approved_by" class="text-caption text-muted">
-              Approved by: {{ props.row.metadata.approved_by }}
-            </span>
-            <span v-else-if="props.row.metadata?.trx_id" class="text-caption text-muted font-mono">
-              Trx: {{ props.row.metadata.trx_id }}
-            </span>
-            <span v-else-if="props.row.metadata?.note" class="text-caption text-muted">
+            <div v-if="props.row.metadata?.note" class="text-caption text-grey-9 text-weight-medium">
               {{ props.row.metadata.note }}
-            </span>
-            <span v-else class="text-caption text-grey-4">-</span>
+            </div>
+            <div class="row items-center q-gutter-x-sm text-caption text-grey-6" style="font-size: 11px">
+              <span v-if="props.row.metadata?.trx_id" class="font-mono">
+                Trx: {{ props.row.metadata.trx_id }}
+              </span>
+              <span v-if="props.row.metadata?.approved_by">
+                By: {{ props.row.metadata.approved_by }}
+              </span>
+              <span v-if="!props.row.metadata?.note && !props.row.metadata?.trx_id && !props.row.metadata?.approved_by" class="text-grey-4">
+                —
+              </span>
+            </div>
+          </q-td>
+        </template>
+
+        <!-- Merged Amount & Rate Column -->
+        <template #body-cell-amount="props">
+          <q-td :props="props">
+            <div
+              :class="props.row.type === 'credit' ? 'text-emerald text-weight-bolder' : 'text-rose text-weight-bolder'"
+              class="font-mono text-body2"
+            >
+              {{ props.row.type === 'credit' ? '+' : '-' }}{{ formatCurrency(props.row.amount, props.row.currency_code) }}
+            </div>
+            <div v-if="props.row.currency_code && props.row.currency_code !== 'BDT' && props.row.exchange_rate" class="text-caption text-grey-6 font-mono" style="font-size: 10px">
+              @ 1:{{ props.row.exchange_rate }} BDT
+            </div>
+          </q-td>
+        </template>
+
+        <!-- Balance After Column -->
+        <template #body-cell-balance_after="props">
+          <q-td :props="props" class="text-weight-bolder font-mono text-ink text-body2">
+            {{ formatCurrency(props.row.balance_after, props.row.currency_code) }}
+          </q-td>
+        </template>
+
+        <!-- Actions Column (Revert) -->
+        <template #body-cell-actions="props">
+          <q-td :props="props" class="text-center">
+            <q-btn
+              flat
+              dense
+              no-caps
+              size="sm"
+              color="negative"
+              icon="ph ph-arrow-counter-clockwise"
+              label="Revert"
+              class="rounded-borders q-px-xs text-weight-medium"
+              @click="$emit('revert', props.row)"
+            >
+              <q-tooltip>Revert transaction with cause</q-tooltip>
+            </q-btn>
           </q-td>
         </template>
       </q-table>
@@ -166,7 +141,9 @@ defineProps<{
   entries: UniversalWalletLedgerEntry[];
 }>();
 
-const showGuide = ref(true);
+defineEmits<{
+  (e: 'revert', entry: UniversalWalletLedgerEntry): void;
+}>();
 
 const pagination = ref({
   rowsPerPage: 15,
@@ -176,18 +153,24 @@ const pagination = ref({
 
 const columns: QTableColumn<UniversalWalletLedgerEntry>[] = [
   {
-    name: 'created_at',
-    label: 'Date & Time',
+    name: 'date_source',
+    label: 'Date & Reference',
     field: 'created_at',
     align: 'left',
     sortable: true,
   },
   {
-    name: 'type',
-    label: 'Money Movement',
+    name: 'movement',
+    label: 'Movement',
     field: 'type',
-    align: 'center',
+    align: 'left',
     sortable: true,
+  },
+  {
+    name: 'details',
+    label: 'Description & Notes',
+    field: (row) => row.metadata?.note || '',
+    align: 'left',
   },
   {
     name: 'amount',
@@ -197,37 +180,17 @@ const columns: QTableColumn<UniversalWalletLedgerEntry>[] = [
     sortable: true,
   },
   {
-    name: 'pocket',
-    label: 'Money Pocket',
-    field: (row) => getPocketLabel(row),
-    align: 'center',
-  },
-  {
     name: 'balance_after',
-    label: 'Wallet Balance After',
+    label: 'Balance After',
     field: 'balance_after',
     align: 'right',
     sortable: true,
   },
   {
-    name: 'category',
-    label: 'Category / Reason',
-    field: (row) => row.metadata?.section ?? '',
-    align: 'left',
-    sortable: true,
-  },
-  {
-    name: 'source',
-    label: 'Source Reference',
-    field: 'source_type',
-    align: 'left',
-    sortable: true,
-  },
-  {
-    name: 'metadata',
-    label: 'Details & Notes',
-    field: 'metadata',
-    align: 'left',
+    name: 'actions',
+    label: 'Action',
+    field: 'id',
+    align: 'center',
   },
 ];
 
@@ -242,17 +205,6 @@ const SECTION_LABELS: Record<string, string> = {
   intercompany: 'Intercompany',
 };
 
-const SECTION_CHIP_CLASSES: Record<string, string> = {
-  receivable: 'chip-orange',
-  payout_earned: 'chip-green',
-  cod_holding: 'chip-blue',
-  delivery_fee: 'chip-grey',
-  revenue: 'chip-teal',
-  adjustment: 'chip-purple',
-  payment_received: 'chip-green',
-  intercompany: 'chip-grey',
-};
-
 const SOURCE_TYPE_LABELS: Record<string, string> = {
   shop_order: 'Sales Order',
   vendor_purchase: 'Vendor Purchase',
@@ -261,7 +213,6 @@ const SOURCE_TYPE_LABELS: Record<string, string> = {
 };
 
 const sectionLabel = (section: string) => SECTION_LABELS[section] ?? section;
-const sectionChipClass = (section: string) => SECTION_CHIP_CLASSES[section] ?? 'chip-grey';
 const sourceTypeLabel = (sourceType: string) => SOURCE_TYPE_LABELS[sourceType] ?? sourceType;
 
 const getPocketLabel = (row: UniversalWalletLedgerEntry): string => {
@@ -269,13 +220,6 @@ const getPocketLabel = (row: UniversalWalletLedgerEntry): string => {
   if (bucket === 'pending') return 'In Transit';
   if (bucket === 'locked') return 'Security Hold';
   return 'Available Cash';
-};
-
-const getPocketIcon = (row: UniversalWalletLedgerEntry): string => {
-  const bucket = (row.metadata as Record<string, any>)?.bucket || 'available';
-  if (bucket === 'pending') return 'ph ph-clock';
-  if (bucket === 'locked') return 'ph ph-lock-key';
-  return 'ph ph-check-circle';
 };
 
 const getPocketClass = (row: UniversalWalletLedgerEntry): string => {

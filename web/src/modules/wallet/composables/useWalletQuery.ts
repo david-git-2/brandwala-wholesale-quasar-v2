@@ -10,7 +10,7 @@ export function useWalletQuery(
   entityIdInput: MaybeRefOrGetter<number>,
 ) {
   const authStore = useAuthStore();
-  const tenantId = computed(() => authStore.selectedTenant?.id ?? null);
+  const tenantId = computed(() => authStore.selectedTenant?.parent_id ?? authStore.selectedTenant?.id ?? null);
   const entityType = computed(() => toValue(entityTypeInput));
   const entityId = computed(() => toValue(entityIdInput));
 

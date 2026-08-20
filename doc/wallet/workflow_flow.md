@@ -15,7 +15,11 @@ flowchart LR
 
 1. **Picker Home (`/wallet`)**: User picks entity type card (Our company, Customers, Suppliers, Cargo, Couriers, Investors).
 2. **Entity List (`/wallet/:type`)**: User searches and picks an entity by name with live total balances.
-3. **Wallet Detail (`/wallet/:type/:id`)**: Simplified wallet view with balance summary and chronological transaction history. Company routes directly from picker home.
+3. **Wallet Detail (`/wallet/:type/:id`)**: Minimal 3-element command center:
+   - **4 Action Buttons:** `Pay` (cash out), `Deposit` (cash in), `Credit` (record/use store credit), `Withdraw` (bank payout).
+   - **Consolidated Balance Card:** Available balance prominently displayed with multi-currency preview.
+   - **Chronological Transaction Ledger:** Full table of debits, credits, FX rates, and balance after.
+   *(Company routes directly from picker home).*
 
 ---
 

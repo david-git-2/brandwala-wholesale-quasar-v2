@@ -48,7 +48,7 @@ export const walletAccountRepository = {
     payload: TransferWalletBalancePayload,
   ): Promise<WalletAccount> {
     const authStore = useAuthStore();
-    const tenantId = payload.tenant_id ?? authStore.selectedTenant?.id;
+    const tenantId = payload.tenant_id ?? authStore.selectedTenant?.parent_id ?? authStore.selectedTenant?.id;
 
     if (!tenantId) {
       throw new Error('Tenant ID is required to transfer wallet balance.');

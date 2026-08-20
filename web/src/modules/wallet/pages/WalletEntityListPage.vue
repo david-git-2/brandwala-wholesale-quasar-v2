@@ -1,5 +1,5 @@
 <template>
-  <q-page class="page-fixed-layout bg-grey-1" style="height: calc(100vh - 55px); overflow: hidden">
+  <q-page class="page-fixed-layout" style="height: calc(100vh - 55px); overflow: hidden">
     <div class="column full-height q-pa-md q-gutter-y-md">
       <!-- Top Header & Search Bar -->
       <div class="row items-center justify-between q-col-gutter-sm">
@@ -135,7 +135,7 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { vendorService } from 'src/modules/vendor/services/vendorService';
 import { cargoCompanyRepository } from 'src/modules/procurement_stock/repositories/cargoCompanyRepository';
 import { walletAccountRepository } from '../repositories/walletAccountRepository';
-import { getEntityTypeFromSlug, type WalletSlug } from '../utils/walletSlugMap';
+import { getEntityTypeFromSlug } from '../utils/walletSlugMap';
 
 interface WalletEntityRow {
   id: number;
@@ -238,6 +238,8 @@ async function loadEntitiesAndBalances() {
   }
 
   const tenantId = authStore.selectedTenant?.id || 1;
+  const parentTenantId = authStore.selectedTenant?.parent_id ?? tenantId;
+
   loading.value = true;
 
   try {
@@ -252,7 +254,7 @@ async function loadEntitiesAndBalances() {
       const { data } = await supabase
         .from('billing_profiles')
         .select('id, name, email, phone, customer_groups(name)')
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', parentTenantId)
         .order('name', { ascending: true });
 
       rawEntities = (data || []).map((bp) => {
@@ -265,7 +267,7 @@ async function loadEntitiesAndBalances() {
         };
       });
     } else if (currentSlug === 'suppliers') {
-      const res = await vendorService.listVendors(tenantId);
+      const res = await vendorService.listVendors(parentTenantId);
       if (res.success && res.data) {
         rawEntities = res.data.map((v) => ({
           id: Number(v.id),
@@ -275,7 +277,7 @@ async function loadEntitiesAndBalances() {
         }));
       }
     } else if (currentSlug === 'cargo') {
-      const companies = await cargoCompanyRepository.listCargoCompanies(tenantId);
+      const companies = await cargoCompanyRepository.listCargoCompanies(parentTenantId);
       rawEntities = companies.map((c) => ({
         id: Number(c.id),
         name: String(c.name),
@@ -301,7 +303,7 @@ async function loadEntitiesAndBalances() {
       const { data } = await supabase
         .from('investors')
         .select('id, name, phone, email')
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', parentTenantId)
         .order('name', { ascending: true });
 
       rawEntities = (data || []).map((inv) => ({
@@ -311,8 +313,8 @@ async function loadEntitiesAndBalances() {
       }));
     }
 
-    // Join balances from WU2 listAccountsByType (no N+1)
-    const accounts = await walletAccountRepository.listAccountsByType(tenantId, entityType);
+    // Join balances from WU2 listAccountsByType scoped to parent tenant
+    const accounts = await walletAccountRepository.listAccountsByType(parentTenantId, entityType);
     const balanceMap = new Map<number, number>();
     for (const acc of accounts) {
       balanceMap.set(Number(acc.entity_id), Number(acc.total_balance || 0));

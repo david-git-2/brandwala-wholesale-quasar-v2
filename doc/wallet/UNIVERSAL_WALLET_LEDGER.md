@@ -122,28 +122,42 @@ Until the shared `tags` + `entity_tags` engine ships, light tracking categories 
 
 ## 5. UI Architecture & Feature Blueprint: `<UniversalWallet />`
 
-Because the backend is generalized, the Frontend UI is equally generalized. The wallet feature will be built as a modular set of components following the `COMPONENT_MODULARIZATION_GUIDE.md` strict sizing rules (max 150 lines per sub-component) to minimize cognitive load and token consumption.
+The Frontend UI provides a minimal, clutter-free financial command center. The layout strictly consists of **3 key areas**:
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│ 1. ACTION TOOLBAR:  [ Pay ]   [ Deposit ]   [ Credit ]   [ Withdraw ]  │
+├────────────────────────────────────────────────────────────────────────┤
+│ 2. WALLET BALANCE CARD:  Available Balance (৳ BDT + Foreign FX values) │
+├────────────────────────────────────────────────────────────────────────┤
+│ 3. TRANSACTION LEDGER:   Full chronological table (Date, Type, Rate,   │
+│                          Amount, Balance After, Reference & Notes)     │
+└────────────────────────────────────────────────────────────────────────┘
+```
 
 ### Component Structure & Layout Integration
-Following `docs/PAGE_LAYOUT_AND_LOADERS.md` and the **Rule of 3**, the `<UniversalWallet :entityType="..." :entityId="..." />` component acts as the container, assembling these distinct visual blocks:
+Following `.agents/rules/table_list_design_system.md` and the **Rule of 3**, the `<UniversalWallet :entityType="..." :entityId="..." />` component acts as the container, assembling these distinct visual blocks:
 
-1. **Entity Selection Dropdowns (`UniversalWalletPage.vue`)**:
-   - **Customer Tab**: Dynamic searchable dropdown mapping to **Billing Profiles** (`billing_profiles` table).
-   - **Vendor Tab**: Dynamic searchable dropdown mapping to **Vendors** (`vendors` table).
-   - **Courier Tab**: Dynamic searchable dropdown mapping to **Courier Services** (`courier_services` table).
-   - **Middleman Tab**: Shared reseller wallet mapping to **Billing Profiles** (`billing_profiles` table).
-   - **Tenant Tab**: Self-contained tenant operational wallet (`tenant_id`).
+1. **`<UniversalWalletHeader />`**: Compact header displaying entity avatar, name, and owner type.
+2. **`<WalletActionToolbar />`**: The 4 primary action buttons (`rounded-borders` 8px radius):
+   - **`[ Pay ]`**: Real cash out (settle bills/invoices/vendor payments).
+   - **`[ Deposit ]`**: Real cash in (bank/cash top-up or customer advance).
+   - **`[ Credit ]`**: Store credit management (Record incoming credit from vendor/customer or use/apply existing store credit).
+   - **`[ Withdraw ]`**: Cash payout to external bank account or mobile wallet.
+3. **`<WalletBalanceCard />`**: Single consolidated balance card boldly showing live `available_balance`, along with foreign currency preview and secondary chips for `pending_balance` and `locked_balance` when non-zero.
+4. **`<UniversalWalletLedgerTable />`**: Quasar internal-scrolling data table (`calc(100vh - 280px)`) displaying ledger rows chronologically:
+   - Date & Time
+   - Action / Type badge (`text-positive` for credit $+$, `text-negative` for debit $-$)
+   - Transaction Amount (with currency symbol)
+   - Exchange Rate locked at transaction time
+   - Converted Base Amount (BDT)
+   - Snapshot `balance_after`
+   - Trigger / Source Reference & Notes
 
-2. **`<UniversalWalletHeader />`**: Contains the overline (e.g., "Courier Wallet") and title (e.g., "Steadfast Ledger").
-3. **`<UniversalWalletToolbar />`**: A `q-card flat bordered class="q-pa-sm"` containing search and filter controls.
-4. **`<UniversalWalletKPICards />`**: Live KPI cards showing **Current Balance**, **Total Debits**, and **Total Credits**.
-5. **`<UniversalWalletLedgerTable />`**: A Quasar data table displaying the ledger rows chronologically, using `text-positive` (green) for credits and `text-negative` (red) for debits.
-
-*Note: All business math (e.g., calculating totals) must be extracted into composables (`composables/useWalletMath.ts`). The Vue templates remain strictly presentational.*
+*Note: All business math (e.g., calculating totals, currency conversions) must be extracted into composables (`composables/useWalletMath.ts`). The Vue templates remain strictly presentational.*
 
 ### Skeleton Loaders (Zero CLS)
-- A dedicated `<UniversalWalletSkeleton />` component will be built in `src/components/skeletons/`.
-- This ensures a seamless transition while data is fetched, mirroring the KPI blocks (`<q-skeleton type="rect" height="100px" />`) and the tabular layout natively. No layout jumps occur on data load.
+- A dedicated `<UniversalWalletSkeleton />` component mirrors the 4-button bar, balance card, and tabular layout natively. No layout jumps occur on data load.
 
 ### State Management & Error Handling
 Following `docs/TANSTACK_QUERY_GUIDE.md` and `docs/ERROR_AND_SUCCESS_MESSAGE_GUIDE.md`:
