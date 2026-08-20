@@ -3,271 +3,323 @@
     <div class="column no-wrap full-width" style="max-width: 1500px; margin: 0 auto">
       <!-- 1. Top Header Toolbar -->
       <div class="row items-center justify-between q-mb-sm">
-        <div class="row items-center q-gutter-sm">
-          <q-btn
-            flat
-            round
-            dense
-            icon="ph ph-arrow-left"
-            size="md"
-            class="text-grey-8"
-            @click="goBack"
-          >
-            <q-tooltip>Back to Invoices</q-tooltip>
-          </q-btn>
-          <div>
-            <div class="text-h6 text-weight-bold text-grey-9 row items-center q-gutter-xs">
-              <span>Create Wholesale Invoice</span>
-              <q-badge color="purple-1" text-color="purple-9" label="Wholesale B2B" class="text-weight-bold q-ml-sm" />
-            </div>
-          </div>
+        <div class="text-h6 text-weight-bold text-grey-9 row items-center q-gutter-xs">
+          <span>{{ isExistingInvoice ? `Wholesale Invoice #${loadedInvoiceNo || existingInvoiceId}` : 'Create Wholesale Invoice' }}</span>
+          <q-badge color="purple-1" text-color="purple-9" label="Wholesale B2B" class="text-weight-bold q-ml-sm" />
         </div>
 
         <div class="row items-center q-gutter-sm">
+          <!-- Preview Proforma Button -->
           <q-btn
-            flat
+            v-if="existingInvoiceId"
+            outline
+            color="primary"
+            icon="ph ph-printer"
+            label="Preview Proforma"
             no-caps
-            label="Cancel"
-            class="text-grey-8 text-weight-medium"
-            @click="goBack"
-          />
+            class="action-btn text-weight-bold"
+            @click="openPreview"
+          >
+            <q-tooltip>Preview and print proforma invoice</q-tooltip>
+          </q-btn>
 
-          <!-- Save Invoice Button opening status options menu on click -->
-          <div class="relative-position">
-            <q-btn-dropdown
-              unelevated
-              color="primary"
-              icon="ph ph-floppy-disk"
-              label="Save Invoice"
-              no-caps
-              class="action-btn text-weight-bold"
-              :disable="!canSaveDraft || isSaving"
-              :loading="isSaving"
-            >
-              <q-list dense style="min-width: 250px" class="q-py-xs">
-                <q-item
-                  clickable
-                  v-close-popup
-                  class="q-py-sm"
-                  @click="handleSaveInvoice('draft')"
-                >
-                  <q-item-section avatar min-width="32px">
-                    <q-avatar size="28px" color="grey-2" text-color="grey-9" icon="ph ph-file-dashed" />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label class="text-weight-bold">Save as Draft</q-item-label>
-                    <q-item-label caption class="text-grey-6">Default (ATP held, no stock deduct)</q-item-label>
-                  </q-item-section>
-                </q-item>
-
-                <q-item
-                  clickable
-                  v-close-popup
-                  class="q-py-sm"
-                  @click="handleSaveInvoice('proforma_generated')"
-                >
-                  <q-item-section avatar min-width="32px">
-                    <q-avatar size="28px" color="blue-1" text-color="blue-9" icon="ph ph-file-text" />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label class="text-weight-bold text-blue-9">Proforma Generated</q-item-label>
-                    <q-item-label caption class="text-grey-6">Quotation sent to customer</q-item-label>
-                  </q-item-section>
-                </q-item>
-
-                <q-item
-                  clickable
-                  v-close-popup
-                  class="q-py-sm"
-                  @click="handleSaveInvoice('issued')"
-                >
-                  <q-item-section avatar min-width="32px">
-                    <q-avatar size="28px" color="green-1" text-color="positive" icon="ph ph-check-circle" />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label class="text-weight-bold text-positive">Save & Issue Invoice</q-item-label>
-                    <q-item-label caption class="text-grey-6">Deduct stock & post to AR</q-item-label>
-                  </q-item-section>
-                </q-item>
-              </q-list>
-            </q-btn-dropdown>
-
-            <!-- Tooltip indicating exact missing steps when button is disabled -->
+          <!-- 1. Initial State: Save as Draft Button -->
+          <q-btn
+            v-if="!existingInvoiceId"
+            unelevated
+            color="primary"
+            icon="ph ph-floppy-disk"
+            label="Save as Draft"
+            no-caps
+            class="action-btn text-weight-bold"
+            :disable="!canSaveDraft || isSaving"
+            :loading="isSaving"
+            @click="handleSaveInvoice('draft')"
+          >
             <q-tooltip v-if="!canSaveDraft" anchor="bottom middle" self="top middle" class="bg-grey-9 text-caption shadow-4">
               <div class="text-weight-bold q-mb-xs text-amber-3">Complete required fields to save:</div>
               <div v-for="(reason, rIdx) in validationReasons" :key="rIdx" class="q-py-xxs text-white">
                 • {{ reason }}
               </div>
             </q-tooltip>
-          </div>
+          </q-btn>
         </div>
       </div>
 
-      <!-- 2. Top Selectors Row: 1. Brand & 2. Billing Profile Side-by-Side -->
-      <q-card flat bordered class="section-card rounded-borders-12 q-pa-sm q-mb-md">
-        <div class="row q-col-gutter-md items-center">
-          <!-- Selector 1: Invoice Brand -->
-          <div class="col-12 col-sm-6">
-            <div class="row items-center justify-between q-mb-xs">
-              <div class="text-caption text-weight-bold text-grey-8 row items-center q-gutter-xs">
-                <q-icon name="ph ph-paint-brush" color="primary" size="16px" />
-                <span>1. Invoice Brand</span>
-              </div>
-              <span class="text-caption text-grey-5 ellipsis" v-if="selectedBrand?.address">
-                {{ selectedBrand.address }}
-              </span>
-            </div>
-            <q-select
-              v-model="selectedBrandId"
-              :options="brandOptions"
-              option-value="id"
-              option-label="name"
-              emit-value
-              map-options
-              outlined
-              dense
-              label="Select Brand *"
-              class="brand-select"
-              :loading="brandsQuery.isLoading.value"
-              :disable="brandsQuery.isLoading.value"
+      <!-- 2. Dedicated Status Workflow Row (Draft -> PF -> Issued) -->
+      <div v-if="existingInvoiceId" class="row items-center justify-between bg-white q-pa-xs q-px-sm rounded-borders-8 border-light q-mb-sm shadow-1">
+        <div class="row items-center q-gutter-xs">
+          <!-- Draft Status -->
+          <q-btn
+            :color="loadedInvoiceStatus === 'draft' ? 'grey-8' : 'grey-4'"
+            :text-color="loadedInvoiceStatus === 'draft' ? 'white' : 'grey-8'"
+            :unelevated="loadedInvoiceStatus === 'draft'"
+            :outline="loadedInvoiceStatus !== 'draft'"
+            dense
+            no-caps
+            class="q-px-sm text-caption text-weight-bold"
+            :loading="isSaving && selectedSaveStatus === 'draft'"
+            :disable="isSaving"
+            @click="handleSaveInvoice('draft')"
+          >
+            <q-icon
+              v-if="loadedInvoiceStatus === 'draft'"
+              name="ph ph-check-circle"
+              size="13px"
+              class="q-mr-xs"
+            />
+            Saved as Draft
+          </q-btn>
+
+          <q-icon name="ph ph-caret-right" color="grey-5" size="14px" />
+
+          <!-- Proforma Status -->
+          <q-btn
+            :color="loadedInvoiceStatus === 'proforma_generated' ? 'primary' : 'grey-4'"
+            :text-color="loadedInvoiceStatus === 'proforma_generated' ? 'white' : 'primary'"
+            :unelevated="loadedInvoiceStatus === 'proforma_generated'"
+            :outline="loadedInvoiceStatus !== 'proforma_generated'"
+            dense
+            no-caps
+            class="q-px-sm text-caption text-weight-bold"
+            :loading="isSaving && selectedSaveStatus === 'proforma_generated'"
+            :disable="isSaving"
+            @click="handleSaveInvoice('proforma_generated')"
+          >
+            <q-icon
+              v-if="loadedInvoiceStatus === 'proforma_generated'"
+              name="ph ph-check-circle"
+              size="13px"
+              class="q-mr-xs"
+            />
+            {{ loadedInvoiceStatus === 'proforma_generated' ? 'PF Generated' : 'Save as PF' }}
+          </q-btn>
+
+          <q-icon name="ph ph-caret-right" color="grey-5" size="14px" />
+
+          <!-- Issued Status -->
+          <q-btn
+            :color="loadedInvoiceStatus === 'posted' || loadedInvoiceStatus === 'issued' ? 'positive' : 'grey-4'"
+            :text-color="loadedInvoiceStatus === 'posted' || loadedInvoiceStatus === 'issued' ? 'white' : 'positive'"
+            :unelevated="loadedInvoiceStatus === 'posted' || loadedInvoiceStatus === 'issued'"
+            :outline="loadedInvoiceStatus !== 'posted' && loadedInvoiceStatus !== 'issued'"
+            dense
+            no-caps
+            class="q-px-sm text-caption text-weight-bold"
+            :loading="isSaving && selectedSaveStatus === 'issued'"
+            :disable="isSaving || loadedInvoiceStatus === 'posted' || loadedInvoiceStatus === 'issued'"
+            @click="handleSaveInvoice('issued')"
+          >
+            <q-icon
+              v-if="loadedInvoiceStatus === 'posted' || loadedInvoiceStatus === 'issued'"
+              name="ph ph-check-circle"
+              size="13px"
+              class="q-mr-xs"
+            />
+            {{ loadedInvoiceStatus === 'posted' || loadedInvoiceStatus === 'issued' ? 'ISSUED' : 'Save as ISSUED' }}
+          </q-btn>
+
+          <!-- Payment Status when Issued -->
+          <template v-if="loadedInvoiceStatus === 'posted' || loadedInvoiceStatus === 'issued'">
+            <q-separator vertical class="q-mx-xs" />
+            <q-badge
+              :color="
+                effectivePaymentStatus === 'paid'
+                  ? 'green-1'
+                  : effectivePaymentStatus === 'partial'
+                    ? 'blue-1'
+                    : 'red-1'
+              "
+              :text-color="
+                effectivePaymentStatus === 'paid'
+                  ? 'green-9'
+                  : effectivePaymentStatus === 'partial'
+                    ? 'blue-9'
+                    : 'red-9'
+              "
+              class="text-weight-bolder text-uppercase q-px-sm q-py-xs"
             >
-              <template #prepend>
-                <q-icon name="ph ph-paint-brush" size="16px" class="text-grey-6" />
-              </template>
-
-              <template #option="scope">
-                <q-item v-bind="scope.itemProps" class="q-py-xs">
-                  <q-item-section avatar min-width="28px">
-                    <q-avatar size="24px" color="grey-3" text-color="grey-9" class="text-caption text-weight-bold">
-                      {{ scope.opt.name?.slice(0, 2).toUpperCase() }}
-                    </q-avatar>
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label class="text-weight-medium">{{ scope.opt.name }}</q-item-label>
-                    <q-item-label caption class="text-grey-6 ellipsis" v-if="scope.opt.address">
-                      {{ scope.opt.address }}
-                    </q-item-label>
-                  </q-item-section>
-                </q-item>
-              </template>
-            </q-select>
-          </div>
-
-          <!-- Selector 2: Billing Profile (Customer) -->
-          <div class="col-12 col-sm-6">
-            <div class="row items-center justify-between q-mb-xs">
-              <div class="text-caption text-weight-bold text-grey-8 row items-center q-gutter-xs">
-                <q-icon name="ph ph-users" color="purple-7" size="16px" />
-                <span>2. Billing Profile (Customer)</span>
-              </div>
-              <q-badge
-                v-if="creatorTenantName"
-                color="purple-1"
-                text-color="purple-9"
-                class="text-caption text-weight-medium"
-              >
-                Created by: {{ creatorTenantName }}
-              </q-badge>
-            </div>
-            <q-select
-              v-model="selectedBillingProfileId"
-              :options="billingProfileOptions"
-              option-value="id"
-              option-label="name"
-              emit-value
-              map-options
-              outlined
-              dense
-              clearable
-              use-input
-              input-debounce="150"
-              label="Select Billing Profile *"
-              class="billing-profile-select"
-              :loading="billingProfilesQuery.isLoading.value"
-              :disable="billingProfilesQuery.isLoading.value"
-              @filter="filterBillingProfiles"
-            >
-              <template #prepend>
-                <q-icon name="ph ph-user" size="16px" class="text-grey-6" />
-              </template>
-
-              <template #no-option>
-                <q-item>
-                  <q-item-section class="text-grey-6 text-caption text-center q-py-sm">
-                    No billing profiles found
-                  </q-item-section>
-                </q-item>
-              </template>
-
-              <template #option="scope">
-                <q-item v-bind="scope.itemProps" class="q-py-xs">
-                  <q-item-section avatar min-width="28px">
-                    <q-avatar size="24px" color="purple-1" text-color="purple-9" class="text-caption text-weight-bold">
-                      {{ scope.opt.name?.slice(0, 2).toUpperCase() }}
-                    </q-avatar>
-                  </q-item-section>
-                  <q-item-section>
-                    <div class="row items-center justify-between no-wrap">
-                      <q-item-label class="text-weight-medium">{{ scope.opt.name }}</q-item-label>
-                      <q-badge
-                        v-if="scope.opt.tenant?.name"
-                        color="grey-2"
-                        text-color="grey-8"
-                        class="text-caption text-weight-medium q-ml-xs"
-                      >
-                        {{ scope.opt.tenant.name }}
-                      </q-badge>
-                    </div>
-                    <q-item-label caption class="text-grey-6 ellipsis">
-                      {{ scope.opt.phone || scope.opt.email || scope.opt.address || 'No details' }}
-                    </q-item-label>
-                  </q-item-section>
-                </q-item>
-              </template>
-            </q-select>
-          </div>
+              <q-icon
+                :name="
+                  effectivePaymentStatus === 'paid'
+                    ? 'ph ph-check-circle'
+                    : effectivePaymentStatus === 'partial'
+                      ? 'ph ph-chart-pie'
+                      : 'ph ph-clock'
+                "
+                size="13px"
+                class="q-mr-xs"
+              />
+              Payment: {{ effectivePaymentStatus }}
+            </q-badge>
+          </template>
         </div>
-      </q-card>
 
-      <!-- 3. Full-Width Main Area: 3. Invoice Items & Live Stock Search Menu -->
+        <div class="row items-center q-gutter-xs">
+          <q-badge
+            v-if="loadedInvoiceStatus"
+            :color="
+              loadedInvoiceStatus === 'posted' || loadedInvoiceStatus === 'issued'
+                ? 'green-1'
+                : loadedInvoiceStatus === 'voided'
+                  ? 'red-1'
+                  : loadedInvoiceStatus === 'proforma_generated'
+                    ? 'blue-1'
+                    : 'amber-1'
+            "
+            :text-color="
+              loadedInvoiceStatus === 'posted' || loadedInvoiceStatus === 'issued'
+                ? 'green-9'
+                : loadedInvoiceStatus === 'voided'
+                  ? 'red-9'
+                  : loadedInvoiceStatus === 'proforma_generated'
+                    ? 'blue-9'
+                    : 'amber-9'
+            "
+            class="text-weight-bold q-px-sm text-capitalize"
+          >
+            Status: {{ loadedInvoiceStatus === 'proforma_generated' ? 'Proforma' : loadedInvoiceStatus }}
+          </q-badge>
+
+          <q-badge
+            v-if="loadedInvoiceStatus === 'posted' || loadedInvoiceStatus === 'issued'"
+            :color="
+              effectivePaymentStatus === 'paid'
+                ? 'green-1'
+                : effectivePaymentStatus === 'partial'
+                  ? 'blue-1'
+                  : 'red-1'
+            "
+            :text-color="
+              effectivePaymentStatus === 'paid'
+                ? 'green-9'
+                : effectivePaymentStatus === 'partial'
+                  ? 'blue-9'
+                  : 'red-9'
+            "
+            class="text-weight-bold q-px-sm text-uppercase"
+          >
+            Payment: {{ effectivePaymentStatus }}
+          </q-badge>
+        </div>
+      </div>
+
+      <!-- Dense Selectors Row: Brand & Billing Profile -->
+      <div class="row q-col-gutter-sm items-center q-mb-sm">
+        <!-- Selector 1: Invoice Brand -->
+        <div class="col-12 col-sm-6">
+          <q-select
+            v-model="selectedBrandId"
+            :options="brandOptions"
+            option-value="id"
+            option-label="name"
+            emit-value
+            map-options
+            outlined
+            dense
+            label="Invoice Brand *"
+            class="brand-select bg-white"
+            :loading="brandsQuery.isLoading.value"
+            :disable="brandsQuery.isLoading.value"
+          >
+            <template #prepend>
+              <q-icon name="ph ph-paint-brush" size="16px" class="text-grey-6" />
+            </template>
+
+            <template #option="scope">
+              <q-item v-bind="scope.itemProps" class="q-py-xs">
+                <q-item-section avatar min-width="28px">
+                  <q-avatar size="24px" color="grey-3" text-color="grey-9" class="text-caption text-weight-bold">
+                    {{ scope.opt.name?.slice(0, 2).toUpperCase() }}
+                  </q-avatar>
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label class="text-weight-medium">{{ scope.opt.name }}</q-item-label>
+                  <q-item-label caption class="text-grey-6 ellipsis" v-if="scope.opt.address">
+                    {{ scope.opt.address }}
+                  </q-item-label>
+                </q-item-section>
+              </q-item>
+            </template>
+          </q-select>
+        </div>
+
+        <!-- Selector 2: Billing Profile (Customer) -->
+        <div class="col-12 col-sm-6">
+          <q-select
+            v-model="selectedBillingProfileId"
+            :options="billingProfileOptions"
+            option-value="id"
+            option-label="name"
+            emit-value
+            map-options
+            outlined
+            dense
+            clearable
+            use-input
+            input-debounce="150"
+            label="Billing Profile (Customer) *"
+            class="billing-profile-select bg-white"
+            :loading="billingProfilesQuery.isLoading.value"
+            :disable="billingProfilesQuery.isLoading.value"
+            @filter="filterBillingProfiles"
+          >
+            <template #prepend>
+              <q-icon name="ph ph-user" size="16px" class="text-grey-6" />
+            </template>
+
+            <template #no-option>
+              <q-item>
+                <q-item-section class="text-grey-6 text-caption text-center q-py-sm">
+                  No billing profiles found
+                </q-item-section>
+              </q-item>
+            </template>
+
+            <template #option="scope">
+              <q-item v-bind="scope.itemProps" class="q-py-xs">
+                <q-item-section avatar min-width="28px">
+                  <q-avatar size="24px" color="purple-1" text-color="purple-9" class="text-caption text-weight-bold">
+                    {{ scope.opt.name?.slice(0, 2).toUpperCase() }}
+                  </q-avatar>
+                </q-item-section>
+                <q-item-section>
+                  <div class="row items-center justify-between no-wrap">
+                    <q-item-label class="text-weight-medium">{{ scope.opt.name }}</q-item-label>
+                    <q-badge
+                      v-if="scope.opt.tenant?.name"
+                      color="grey-2"
+                      text-color="grey-8"
+                      class="text-caption text-weight-medium q-ml-xs"
+                    >
+                      {{ scope.opt.tenant.name }}
+                    </q-badge>
+                  </div>
+                  <q-item-label caption class="text-grey-6 ellipsis">
+                    {{ scope.opt.phone || scope.opt.email || scope.opt.address || 'No details' }}
+                  </q-item-label>
+                </q-item-section>
+              </q-item>
+            </template>
+          </q-select>
+        </div>
+      </div>
+
+      <!-- Main Area: Invoice Items & Live Stock Search Menu -->
       <q-card flat bordered class="section-card rounded-borders-12 full-width column">
-        <q-card-section class="q-pb-sm">
-          <div class="row items-center justify-between q-col-gutter-sm">
-            <!-- Section Title & Badge -->
-            <div class="row items-center q-gutter-sm col-12 col-md-5">
-              <q-avatar size="32px" color="teal-7" text-color="white" icon="ph ph-package" />
-              <div>
-                <div class="row items-center q-gutter-xs">
-                  <span class="text-subtitle2 text-weight-bold text-grey-9">3. Invoice Items</span>
-                  <q-chip
-                    :color="invoiceItems.length ? 'teal-1' : 'grey-2'"
-                    :text-color="invoiceItems.length ? 'teal-9' : 'grey-7'"
-                    size="sm"
-                    class="text-weight-bold"
-                  >
-                    {{ invoiceItems.length }} {{ invoiceItems.length === 1 ? 'Item' : 'Items' }} ({{ totalQuantity }} units)
-                  </q-chip>
-                </div>
-                <div class="text-caption text-grey-6">
-                  FIFO sorted & tenant allocation prioritized
-                </div>
-              </div>
-            </div>
-
-            <!-- Direct Stock Search Bar with Popup Menu Results -->
-            <div class="col-12 col-md-7 row items-center justify-end">
-              <q-input
-                ref="stockSearchInputRef"
-                v-model="stockSearchText"
-                outlined
-                rounded
-                dense
-                placeholder="Search stock by name, barcode, product code..."
-                class="stock-search-input full-width"
-                style="max-width: 440px"
-                @update:model-value="onStockSearchInput"
-                @focus="onSearchFocus"
-              >
+        <div class="q-pa-xs">
+          <!-- Direct Stock Search Bar with Popup Menu Results -->
+          <q-input
+            ref="stockSearchInputRef"
+            v-model="stockSearchText"
+            outlined
+            rounded
+            dense
+            placeholder="Search stock by name, barcode, product code to add items..."
+            class="stock-search-input full-width"
+            @update:model-value="onStockSearchInput"
+            @focus="onSearchFocus"
+          >
                 <template #prepend>
                   <q-icon name="ph ph-magnifying-glass" size="18px" class="text-grey-6" />
                 </template>
@@ -382,9 +434,7 @@
                   </q-list>
                 </q-menu>
               </q-input>
-            </div>
-          </div>
-        </q-card-section>
+        </div>
 
         <q-separator />
 
@@ -562,11 +612,13 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useQuery } from '@tanstack/vue-query';
+import { useQuasar } from 'quasar';
 import { supabase } from 'src/boot/supabase';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
+import { showSuccessNotification, showWarningDialog } from 'src/utils/appFeedback';
 import {
   invoiceRepository,
   type InvoiceBrand,
@@ -574,6 +626,9 @@ import {
 } from '../repositories/invoiceRepository';
 import type { BillingProfile } from '../repositories/billingProfileRepository';
 import { salesInvoiceQueryKeys } from '../services/salesInvoiceQueryKeys';
+import WholesaleIssueConfirmDialog, {
+  type WholesaleIssueDialogItem,
+} from '../components/WholesaleIssueConfirmDialog.vue';
 
 type BillingProfileWithTenant = BillingProfile & {
   tenant?: { id: number; name: string; slug: string } | null;
@@ -581,6 +636,7 @@ type BillingProfileWithTenant = BillingProfile & {
 };
 
 export interface InvoiceLineDraftItem {
+  id?: number;
   global_stock_id: number;
   shipment_item_id: number;
   product_id: number | null;
@@ -600,9 +656,87 @@ export interface InvoiceLineDraftItem {
   is_allocated_to_tenant: boolean;
 }
 
+const $q = useQuasar();
+const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const tenantStore = useTenantStore();
+
+const existingInvoiceId = computed(() => {
+  const qId = route.query.id;
+  if (typeof qId === 'string' && qId) return Number(qId);
+  const pId = route.params.id;
+  if (typeof pId === 'string' && pId) return Number(pId);
+  return null;
+});
+
+const isExistingInvoice = computed(() => Boolean(existingInvoiceId.value));
+const loadedInvoiceNo = ref('');
+const loadedInvoiceStatus = ref('');
+const loadedPaymentStatus = ref('due');
+const effectivePaymentStatus = computed(() => loadedPaymentStatus.value || 'due');
+const isLoadingInvoice = ref(false);
+
+const loadExistingInvoice = async () => {
+  const invId = existingInvoiceId.value;
+  if (!invId) return;
+
+  isLoadingInvoice.value = true;
+  try {
+    const [inv, invItems] = await Promise.all([
+      invoiceRepository.getGlobalInvoiceById(invId),
+      invoiceRepository.listGlobalInvoiceItems(invId),
+    ]);
+
+    if (inv) {
+      loadedInvoiceNo.value = inv.invoice_no;
+      loadedInvoiceStatus.value = inv.invoice_status;
+      loadedPaymentStatus.value = inv.payment_status || 'due';
+      selectedBillingProfileId.value = inv.billing_profile_id ?? null;
+      overallDiscountInput.value = inv.discount_amount ?? 0;
+      if (inv.invoice_status === 'posted') {
+        selectedSaveStatus.value = 'issued';
+      }
+    }
+
+    if (invItems && invItems.length > 0) {
+      invoiceItems.value = invItems.map((item) => ({
+        id: item.id,
+        global_stock_id: item.global_stock_id,
+        shipment_item_id: item.shipment_item_id ?? 0,
+        product_id: null,
+        name: item.name_snapshot,
+        barcode: null,
+        product_code: null,
+        image_url: item.image_url ?? null,
+        quantity: Number(item.quantity),
+        available_atp: Number(item.quantity),
+        unit_cost_price: Number(item.purchase_price ?? 0),
+        sell_price_amount: Number(item.sell_price_amount),
+        line_discount_amount: Number(item.line_discount_amount),
+        shipment_id: item.shipment_id ?? 0,
+        shipment_name: item.shipment_type ?? 'Shipment',
+        holding_tenant_id: effectiveTenantId.value ?? 0,
+        holding_tenant_name: '',
+        is_allocated_to_tenant: true,
+      }));
+    }
+  } catch (err) {
+    console.error('Error loading existing wholesale invoice:', err);
+  } finally {
+    isLoadingInvoice.value = false;
+  }
+};
+
+watch(
+  existingInvoiceId,
+  (newVal) => {
+    if (newVal) {
+      void loadExistingInvoice();
+    }
+  },
+  { immediate: true },
+);
 
 const effectiveTenantId = computed(() => {
   const current =
@@ -644,10 +778,6 @@ const brandsQuery = useQuery({
 const brands = computed(() => brandsQuery.data.value ?? []);
 const brandOptions = computed(() => brands.value);
 const selectedBrandId = ref<number | null>(null);
-
-const selectedBrand = computed<InvoiceBrand | null>(
-  () => brands.value.find((b) => b.id === selectedBrandId.value) || null,
-);
 
 // Auto-select if only 1 brand exists
 watch(
@@ -709,19 +839,6 @@ const filterBillingProfiles = (val: string, update: (fn: () => void) => void) =>
     billingProfileFilterText.value = val;
   });
 };
-
-const selectedBillingProfile = computed<BillingProfileWithTenant | null>(
-  () => billingProfiles.value.find((p) => p.id === selectedBillingProfileId.value) || null,
-);
-
-const creatorTenantName = computed(() => {
-  if (!selectedBillingProfile.value) return null;
-  if (selectedBillingProfile.value.tenant?.name) {
-    return selectedBillingProfile.value.tenant.name;
-  }
-  const match = tenantStore.items.find((t) => t.id === selectedBillingProfile.value?.tenant_id);
-  return match?.name || (selectedBillingProfile.value.tenant_id ? `Workspace #${selectedBillingProfile.value.tenant_id}` : null);
-});
 
 // 3. Invoice Items & Live Stock Search Menu
 const invoiceItems = ref<InvoiceLineDraftItem[]>([]);
@@ -859,9 +976,24 @@ const grandTotalAmount = computed(() => Math.max(0, subtotalAmount.value - total
 
 // Save Invoice States (Default: Draft)
 export type WholesaleInvoiceSaveStatus = 'draft' | 'proforma_generated' | 'issued';
+const selectedSaveStatus = ref<WholesaleInvoiceSaveStatus>('draft');
 const isSaving = ref(false);
 
+const openPreview = () => {
+  const invId = existingInvoiceId.value;
+  if (!invId) return;
+  const routeData = router.resolve({
+    name: 'app-global-invoice-preview',
+    params: {
+      tenantSlug: authStore.tenantSlug || '',
+      id: String(invId),
+    },
+  });
+  window.open(routeData.href, '_blank');
+};
+
 const handleSaveInvoice = async (status: WholesaleInvoiceSaveStatus) => {
+  selectedSaveStatus.value = status;
   if (!canSaveDraft.value || isSaving.value) return;
 
   const tenantId = effectiveTenantId.value;
@@ -870,47 +1002,141 @@ const handleSaveInvoice = async (status: WholesaleInvoiceSaveStatus) => {
 
   isSaving.value = true;
   try {
-    // Generate invoice number
-    const invoiceNo = await invoiceRepository.generateInvoiceNumber(
-      tenantId,
-      'wholesale',
-    );
+    let targetInvoiceId = existingInvoiceId.value;
 
-    // Create the global invoice record
-    const createdInvoice = await invoiceRepository.createGlobalInvoice({
-      tenant_id: tenantId,
-      invoice_no: invoiceNo,
-      invoice_type: 'wholesale',
-      invoice_date: new Date().toISOString().slice(0, 10),
-      billing_profile_id: selectedBillingProfileId.value,
-    });
+    if (!targetInvoiceId) {
+      // Generate invoice number
+      const invoiceNo = await invoiceRepository.generateInvoiceNumber(
+        tenantId,
+        'wholesale',
+      );
 
-    if (createdInvoice?.id) {
-      // Add invoice line items
-      for (const item of invoiceItems.value) {
-        await invoiceRepository.addGlobalInvoiceItem({
-          invoice_id: createdInvoice.id,
-          global_stock_id: item.global_stock_id,
-          quantity: item.quantity,
-          sell_price_amount: item.sell_price_amount,
-          line_discount_amount: item.line_discount_amount || 0,
-        });
+      // Create the global invoice record
+      const createdInvoice = await invoiceRepository.createGlobalInvoice({
+        tenant_id: tenantId,
+        invoice_no: invoiceNo,
+        invoice_type: 'wholesale',
+        invoice_date: new Date().toISOString().slice(0, 10),
+        billing_profile_id: selectedBillingProfileId.value,
+      });
+      targetInvoiceId = createdInvoice?.id ?? null;
+      if (createdInvoice?.invoice_no) {
+        loadedInvoiceNo.value = createdInvoice.invoice_no;
       }
 
-      // If chosen status is issued, call postGlobalInvoice
-      if (status === 'issued') {
-        await invoiceRepository.postGlobalInvoice(createdInvoice.id);
+      if (targetInvoiceId) {
+        // Add invoice line items
+        for (const item of invoiceItems.value) {
+          await invoiceRepository.addGlobalInvoiceItem({
+            invoice_id: targetInvoiceId,
+            global_stock_id: item.global_stock_id,
+            quantity: item.quantity,
+            sell_price_amount: item.sell_price_amount,
+            line_discount_amount: item.line_discount_amount || 0,
+          });
+        }
       }
     }
 
-    void router.push({
-      name: 'app-global-invoices-overview',
-      params: {
-        tenantSlug: authStore.tenantSlug || '',
-      },
-    });
+    if (status === 'proforma_generated') {
+      loadedInvoiceStatus.value = 'proforma_generated';
+      if (targetInvoiceId) {
+        void router.replace({
+          query: { ...route.query, id: String(targetInvoiceId) },
+        });
+      }
+      showSuccessNotification('Proforma invoice generated. Preview is now available.');
+      return;
+    }
+
+    if (status === 'issued') {
+      if (!targetInvoiceId) return;
+
+      // 1. Fetch live available quantities from global_stocks for all line items
+      const stockIds = invoiceItems.value.map((i) => i.global_stock_id);
+      const { data: stocksData, error: stocksError } = await supabase
+        .from('global_stocks')
+        .select('id, quantity')
+        .in('id', stockIds);
+
+      if (stocksError) {
+        console.error('Error fetching stock availability:', stocksError);
+      }
+
+      const stockMap = new Map((stocksData || []).map((s) => [s.id, Number(s.quantity)]));
+
+      // 2. Open WholesaleIssueConfirmDialog
+      $q.dialog({
+        component: WholesaleIssueConfirmDialog,
+        componentProps: {
+          invoiceId: targetInvoiceId,
+          invoiceNo: loadedInvoiceNo.value || String(targetInvoiceId),
+          items: invoiceItems.value.map((i) => ({
+            id: i.id,
+            global_stock_id: i.global_stock_id,
+            name: i.name,
+            image_url: i.image_url,
+            shipment_name: i.shipment_name,
+            available_stock: stockMap.has(i.global_stock_id)
+              ? (stockMap.get(i.global_stock_id) ?? 0)
+              : i.available_atp,
+            quantity: i.quantity,
+          })),
+        },
+      }).onOk((data: { items: WholesaleIssueDialogItem[] }) => {
+        void (async () => {
+          isSaving.value = true;
+          try {
+            // 3. Update local line item quantities
+            for (const updatedItem of data.items) {
+              const existing = invoiceItems.value.find(
+                (i) => i.global_stock_id === updatedItem.global_stock_id,
+              );
+              if (existing) {
+                existing.quantity = updatedItem.quantity;
+              }
+            }
+
+            // 4. Single atomic RPC: updates items in batch, deducts stock, creates movements, and issues invoice
+            await invoiceRepository.issueWholesaleInvoice(
+              targetInvoiceId,
+              data.items.map((i) => ({
+                id: i.id,
+                global_stock_id: i.global_stock_id,
+                quantity: i.quantity,
+              })),
+            );
+
+            loadedInvoiceStatus.value = 'posted';
+            loadedPaymentStatus.value = 'due';
+            if (targetInvoiceId) {
+              void router.replace({
+                query: { ...route.query, id: String(targetInvoiceId) },
+              });
+            }
+            showSuccessNotification('Wholesale invoice issued and stock deducted successfully.');
+          } catch (err) {
+            console.error('Error issuing wholesale invoice:', err);
+            showWarningDialog(err instanceof Error ? err.message : 'Error issuing wholesale invoice');
+          } finally {
+            isSaving.value = false;
+          }
+        })();
+      });
+      return;
+    }
+
+    // Default: Save as draft
+    loadedInvoiceStatus.value = 'draft';
+    if (targetInvoiceId) {
+      void router.replace({
+        query: { ...route.query, id: String(targetInvoiceId) },
+      });
+    }
+    showSuccessNotification('Invoice saved as draft.');
   } catch (err) {
     console.error('Error saving wholesale invoice:', err);
+    showWarningDialog(err instanceof Error ? err.message : 'Error saving wholesale invoice');
   } finally {
     isSaving.value = false;
   }
@@ -929,15 +1155,6 @@ const canSaveDraft = computed(() => validationReasons.value.length === 0);
 const formatDate = (dateStr: string) => {
   if (!dateStr) return '';
   return dateStr.slice(0, 10);
-};
-
-const goBack = () => {
-  void router.push({
-    name: 'app-global-invoices-overview',
-    params: {
-      tenantSlug: authStore.tenantSlug || '',
-    },
-  });
 };
 </script>
 

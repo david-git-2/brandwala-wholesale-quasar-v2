@@ -487,6 +487,17 @@ const postGlobalInvoice = async (invoiceId: number): Promise<void> => {
   if (error) throw error;
 };
 
+const issueWholesaleInvoice = async (
+  invoiceId: number,
+  items?: Array<{ id?: number; global_stock_id: number; quantity: number; sell_price_amount?: number }>,
+): Promise<void> => {
+  const { error } = await supabase.rpc('issue_wholesale_invoice', {
+    p_invoice_id: invoiceId,
+    p_items: items ? (items as unknown as Record<string, unknown>[]) : null,
+  });
+  if (error) throw error;
+};
+
 const voidGlobalInvoice = async (invoiceId: number): Promise<void> => {
   const { error } = await supabase.rpc('void_sales_invoice', {
     p_invoice_id: invoiceId,
@@ -647,6 +658,7 @@ export const invoiceRepository = {
   removeGlobalInvoiceItem,
   updateGlobalInvoiceHeader,
   postGlobalInvoice,
+  issueWholesaleInvoice,
   voidGlobalInvoice,
   unpostGlobalInvoice,
   deleteGlobalInvoice,

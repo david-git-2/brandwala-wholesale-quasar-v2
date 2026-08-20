@@ -1784,24 +1784,30 @@ declare
   v_invoice public.global_invoices;
   v_item public.global_invoice_items%rowtype;
   v_unit_cost numeric;
+  v_mov_id bigint;
+  v_mov_no text;
+  v_parent_id bigint;
+  v_eff_tenant_id bigint;
+  v_stock record;
+  v_qty integer;
 begin
   select * into v_invoice from public.global_invoices where id = p_invoice_id for update;
   if v_invoice.id is null then raise exception 'invoice not found'; end if;
-  if v_invoice.invoice_status <> 'draft'::public.global_invoice_status then
-    raise exception 'only draft invoices can be posted';
+  if v_invoice.invoice_status not in ('draft'::public.global_invoice_status, 'proforma_generated'::public.global_invoice_status) then
+    raise exception 'only draft or proforma invoices can be posted/issued';
   end if;
 
   if not exists (select 1 from public.global_invoice_items where invoice_id = p_invoice_id) then
     raise exception 'cannot post an empty invoice';
   end if;
 
+  v_eff_tenant_id := coalesce(v_invoice.issued_by_tenant_id, v_invoice.parent_tenant_id);
+  v_parent_id := coalesce(v_invoice.parent_tenant_id, v_invoice.issued_by_tenant_id);
+
   -- Validate required fields per invoice type
   if v_invoice.invoice_type = 'wholesale'::public.global_invoice_type then
     if v_invoice.billing_profile_id is null then
       raise exception 'billing profile is required for wholesale invoices';
-    end if;
-    if v_invoice.cod_charge > 0 or v_invoice.wrapping_charge > 0 or v_invoice.print_charge > 0 then
-      raise exception 'wholesale invoices only support shipping charges';
     end if;
   elsif v_invoice.invoice_type = 'retail'::public.global_invoice_type then
     if v_invoice.retail_billing_mode = 'account'::public.retail_billing_mode then
@@ -1829,7 +1835,7 @@ begin
     end if;
   end if;
 
-  -- Snapshot unit costs on line items
+  -- 1. Snapshot unit costs on line items
   for v_item in select * from public.global_invoice_items where invoice_id = p_invoice_id loop
     v_unit_cost := public.calculate_landed_unit_cost(v_item.shipment_item_id);
     update public.global_invoice_items
@@ -1837,13 +1843,70 @@ begin
     where id = v_item.id;
   end loop;
 
-  -- Mark invoice as posted
+  -- 2. Deduct physical stock & write stock movement audit
+  v_mov_no := 'MOV-' || to_char(now(), 'YYYYMMDD') || '-' || lpad(nextval('public.stock_movements_id_seq')::text, 6, '0');
+
+  insert into public.stock_movements (
+    tenant_id,
+    movement_no,
+    movement_type,
+    reference_type,
+    reference_id,
+    notes,
+    created_by_email,
+    is_posted,
+    posted_at
+  ) values (
+    v_parent_id,
+    v_mov_no,
+    'adjustment'::public.stock_movement_type,
+    'sales_invoice',
+    p_invoice_id::text,
+    'Issued ' || upper(v_invoice.invoice_type::text) || ' Invoice #' || coalesce(v_invoice.invoice_no, p_invoice_id::text),
+    public.current_user_email(),
+    true,
+    now()
+  ) returning id into v_mov_id;
+
+  for v_item in select * from public.global_invoice_items where invoice_id = p_invoice_id loop
+    v_qty := ceil(v_item.quantity)::integer;
+
+    select * into v_stock from public.global_stocks where id = v_item.global_stock_id for update;
+    if v_stock.id is not null then
+      -- Deduct from global_stocks
+      update public.global_stocks
+      set quantity = quantity - v_qty
+      where id = v_item.global_stock_id;
+
+      -- Insert movement line
+      insert into public.stock_movement_lines (
+        movement_id,
+        stock_id,
+        quantity,
+        from_location_id,
+        to_location_id,
+        from_availability,
+        to_availability
+      ) values (
+        v_mov_id,
+        v_item.global_stock_id,
+        v_qty,
+        v_stock.location_id,
+        v_stock.location_id,
+        v_stock.availability,
+        v_stock.availability
+      );
+    end if;
+  end loop;
+
+  -- 3. Mark invoice as posted/issued
   update public.global_invoices
   set invoice_status = 'posted'::public.global_invoice_status
   where id = p_invoice_id;
 
-  -- Universal wallet: invoice_billed debit for any account/billing_profile invoice (wholesale, dropship, retail account)
-  if v_invoice.billing_profile_id is not null
+  -- 4. Universal wallet: Only for non-wholesale account invoices
+  if v_invoice.invoice_type <> 'wholesale'::public.global_invoice_type
+     and v_invoice.billing_profile_id is not null
      and coalesce(v_invoice.total_amount, 0) > 0
   then
     if not exists (
@@ -1855,7 +1918,7 @@ begin
         and metadata->>'transaction_type' = 'invoice_billed'
     ) then
       perform public.record_ledger_transaction(
-        p_tenant_id => v_invoice.tenant_id,
+        p_tenant_id => v_eff_tenant_id,
         p_entity_type => 'customer',
         p_entity_id => v_invoice.billing_profile_id,
         p_type => 'debit',
@@ -2439,22 +2502,27 @@ $$;
 ALTER FUNCTION "public"."update_global_invoice_header"("p_invoice_id" bigint, "p_discount_amount" numeric, "p_shipping_charge" numeric, "p_cod_charge" numeric, "p_wrapping_charge" numeric, "p_print_charge" numeric, "p_recipient_name" "text", "p_recipient_phone" "text", "p_recipient_address" "text", "p_note" "text", "p_invoice_no" "text", "p_invoice_date" "date") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."update_global_invoice_item"("p_item_id" bigint, "p_quantity" numeric, "p_sell_price_amount" numeric, "p_recipient_price_amount" numeric DEFAULT NULL::numeric) RETURNS "public"."sales_invoice_items"
+CREATE OR REPLACE FUNCTION "public"."update_global_invoice_item"(
+  "p_item_id" bigint,
+  "p_quantity" numeric,
+  "p_sell_price_amount" numeric,
+  "p_recipient_price_amount" numeric DEFAULT NULL::numeric
+) RETURNS "public"."sales_invoice_items"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
 declare
-  v_item public.global_invoice_items;
-  v_invoice public.global_invoices;
+  v_item public.sales_invoice_items;
+  v_invoice public.sales_invoices;
   v_line_total numeric;
 begin
-  select * into v_item from public.global_invoice_items where id = p_item_id;
+  select * into v_item from public.sales_invoice_items where id = p_item_id;
   if v_item.id is null then raise exception 'Invoice item not found'; end if;
 
-  select * into v_invoice from public.global_invoices where id = v_item.invoice_id;
+  select * into v_invoice from public.sales_invoices where id = v_item.invoice_id;
   if v_invoice.id is null then raise exception 'Invoice not found'; end if;
-  if v_invoice.invoice_status <> 'draft'::public.global_invoice_status then
-    raise exception 'Cannot edit items on a non-draft invoice';
+  if v_invoice.invoice_status not in ('draft'::public.global_invoice_status, 'proforma_generated'::public.global_invoice_status) then
+    raise exception 'Cannot edit items on a posted or voided invoice';
   end if;
 
   if p_quantity <= 0 then
@@ -2467,7 +2535,7 @@ begin
 
   v_line_total := greatest((p_quantity * p_sell_price_amount) - coalesce(v_item.line_discount_amount, 0.00), 0.00);
 
-  update public.global_invoice_items
+  update public.sales_invoice_items
   set
     quantity = p_quantity,
     sell_price_amount = p_sell_price_amount,
@@ -2650,4 +2718,154 @@ end;
 $$;
 
 ALTER FUNCTION "public"."search_sales_invoice_stock"("p_tenant_id" bigint, "p_search" "text", "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
+
+CREATE OR REPLACE FUNCTION "public"."issue_wholesale_invoice"(
+  "p_invoice_id" bigint,
+  "p_items" jsonb DEFAULT NULL
+) RETURNS "public"."sales_invoices"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_invoice public.sales_invoices;
+  v_item_record jsonb;
+  v_item_id bigint;
+  v_item_qty numeric;
+  v_item_price numeric;
+  v_line_total numeric;
+  v_db_item public.sales_invoice_items%rowtype;
+  v_unit_cost numeric;
+  v_mov_id bigint;
+  v_mov_no text;
+  v_parent_id bigint;
+  v_eff_tenant_id bigint;
+  v_stock record;
+  v_qty integer;
+begin
+  select * into v_invoice from public.sales_invoices where id = p_invoice_id for update;
+  if v_invoice.id is null then raise exception 'Invoice not found'; end if;
+  if v_invoice.invoice_status not in ('draft'::public.global_invoice_status, 'proforma_generated'::public.global_invoice_status) then
+    raise exception 'Only draft or proforma invoices can be issued';
+  end if;
+
+  if v_invoice.billing_profile_id is null then
+    raise exception 'Billing profile is required for wholesale invoices';
+  end if;
+
+  v_eff_tenant_id := coalesce(v_invoice.issued_by_tenant_id, v_invoice.parent_tenant_id);
+  v_parent_id := coalesce(v_invoice.parent_tenant_id, v_invoice.issued_by_tenant_id);
+
+  -- 1. Optionally apply batch quantity/price updates from dialog payload
+  if p_items is not null and jsonb_typeof(p_items) = 'array' and jsonb_array_length(p_items) > 0 then
+    for v_item_record in select * from jsonb_array_elements(p_items) loop
+      v_item_id := (v_item_record->>'id')::bigint;
+      v_item_qty := (v_item_record->>'quantity')::numeric;
+      v_item_price := (v_item_record->>'sell_price_amount')::numeric;
+
+      if v_item_id is not null and v_item_qty is not null and v_item_qty > 0 then
+        select * into v_db_item from public.sales_invoice_items where id = v_item_id and invoice_id = p_invoice_id;
+        if v_db_item.id is not null then
+          v_item_price := coalesce(v_item_price, v_db_item.sell_price_amount);
+          v_line_total := greatest((v_item_qty * v_item_price) - coalesce(v_db_item.line_discount_amount, 0.00), 0.00);
+
+          update public.sales_invoice_items
+          set
+            quantity = v_item_qty,
+            sell_price_amount = v_item_price,
+            line_total_amount = v_line_total
+          where id = v_item_id;
+        end if;
+      end if;
+    end loop;
+
+    perform public.recompute_global_invoice_totals(p_invoice_id);
+  end if;
+
+  if not exists (select 1 from public.sales_invoice_items where invoice_id = p_invoice_id) then
+    raise exception 'Cannot issue an empty invoice';
+  end if;
+
+  -- 2. Snapshot unit landed costs on line items
+  for v_db_item in select * from public.sales_invoice_items where invoice_id = p_invoice_id loop
+    v_unit_cost := public.calculate_landed_unit_cost(v_db_item.shipment_item_id);
+    update public.sales_invoice_items
+    set unit_cost_price = v_unit_cost
+    where id = v_db_item.id;
+  end loop;
+
+  -- 3. Create stock movement audit record
+  v_mov_no := 'MOV-' || to_char(now(), 'YYYYMMDD') || '-' || lpad(nextval('public.stock_movements_id_seq')::text, 6, '0');
+
+  insert into public.stock_movements (
+    tenant_id,
+    movement_no,
+    movement_type,
+    reference_type,
+    reference_id,
+    notes,
+    created_by_email,
+    is_posted,
+    posted_at
+  ) values (
+    v_parent_id,
+    v_mov_no,
+    'adjustment'::public.stock_movement_type,
+    'sales_invoice',
+    p_invoice_id::text,
+    'Issued Wholesale Invoice #' || coalesce(v_invoice.invoice_no, p_invoice_id::text),
+    public.current_user_email(),
+    true,
+    now()
+  ) returning id into v_mov_id;
+
+  -- 4. Deduct warehouse stock and record movement lines
+  for v_db_item in select * from public.sales_invoice_items where invoice_id = p_invoice_id loop
+    v_qty := ceil(v_db_item.quantity)::integer;
+
+    select * into v_stock from public.global_stocks where id = v_db_item.global_stock_id for update;
+    if v_stock.id is not null then
+      if v_stock.quantity < v_qty then
+        raise exception 'Insufficient stock for % (requested %, available %)', v_db_item.name_snapshot, v_qty, v_stock.quantity;
+      end if;
+
+      -- Deduct from global_stocks
+      update public.global_stocks
+      set quantity = quantity - v_qty
+      where id = v_db_item.global_stock_id;
+
+      -- Insert movement line
+      insert into public.stock_movement_lines (
+        movement_id,
+        stock_id,
+        quantity,
+        from_location_id,
+        to_location_id,
+        from_availability,
+        to_availability
+      ) values (
+        v_mov_id,
+        v_db_item.global_stock_id,
+        v_qty,
+        v_stock.location_id,
+        v_stock.location_id,
+        v_stock.availability,
+        v_stock.availability
+      );
+    end if;
+  end loop;
+
+  -- 5. Mark invoice as posted/issued (no wallet touch)
+  update public.sales_invoices
+  set
+    invoice_status = 'posted'::public.global_invoice_status,
+    payment_status = coalesce(nullif(payment_status, ''), 'due')
+  where id = p_invoice_id
+  returning * into v_invoice;
+
+  return v_invoice;
+end;
+$$;
+
+ALTER FUNCTION "public"."issue_wholesale_invoice"("p_invoice_id" bigint, "p_items" jsonb) OWNER TO "postgres";
+
 

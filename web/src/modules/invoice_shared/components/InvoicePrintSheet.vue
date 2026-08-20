@@ -2,10 +2,10 @@
   <div class="invoice-sheet shadow-2">
     <div class="row justify-between items-start q-mb-sm">
       <div class="col-7">
-        <div class="text-subtitle1 text-weight-bold brand-title">
+        <div class="text-subtitle1 text-weight-bold brand-title" style="white-space: pre-wrap; word-break: break-word">
           {{ model.brandName || 'COMPANY BRAND' }}
         </div>
-        <div class="text-caption text-grey-9 brand-address" style="white-space: pre-wrap">
+        <div class="text-caption text-grey-9 brand-address" style="white-space: pre-wrap; word-break: break-word">
           {{ model.brandAddress || '' }}
         </div>
       </div>
@@ -19,26 +19,26 @@
     </div>
 
     <div class="billing-profile-box border-light q-pa-sm rounded-borders bg-grey-1 q-mb-sm">
-      <div class="text-weight-bold">{{ model.clientName }}</div>
+      <div class="text-weight-bold" style="white-space: pre-wrap; word-break: break-word">{{ model.clientName }}</div>
       <div v-if="model.clientTr">TR: {{ model.clientTr }}</div>
       <template v-if="!model.isWholesale">
         <div class="q-mt-xs"><strong>Recipient:</strong> {{ model.recipientName }}</div>
         <div v-if="model.recipientPhone">{{ model.recipientPhone }}</div>
-        <div v-if="model.recipientAddress" style="white-space: pre-wrap">
+        <div v-if="model.recipientAddress" style="white-space: pre-wrap; word-break: break-word">
           {{ model.recipientAddress }}
         </div>
       </template>
     </div>
 
-    <q-markup-table flat dense class="invoice-table q-mb-sm">
+    <q-markup-table flat dense wrap-cells class="invoice-table q-mb-sm">
       <thead>
         <tr>
           <th class="text-left" style="width: 40px">SL</th>
           <th v-if="hasImages" class="text-left" style="width: 50px">Image</th>
           <th class="text-left">Item</th>
-          <th class="text-right">Qty</th>
-          <th class="text-right">Rate</th>
-          <th class="text-right">Total</th>
+          <th class="text-right" style="width: 60px">Qty</th>
+          <th class="text-right" style="width: 90px">Rate</th>
+          <th class="text-right" style="width: 100px">Total</th>
         </tr>
       </thead>
       <tbody>
@@ -50,7 +50,7 @@
             </div>
             <div v-else class="print-item-image-box print-item-image-fallback">No Image</div>
           </td>
-          <td>{{ line.name }}</td>
+          <td class="item-name-cell">{{ line.name }}</td>
           <td class="text-right">{{ line.quantity }}</td>
           <td class="text-right">{{ formatAmount(line.unitPrice) }}</td>
           <td class="text-right">{{ formatAmount(line.lineTotal) }}</td>
@@ -145,6 +145,13 @@ const formatAmount = (value: number) => formatAmountBdt(value);
   font-size: 8px;
   color: #888;
   text-align: center;
+}
+
+.item-name-cell {
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+  line-height: 1.35;
 }
 
 @media print {

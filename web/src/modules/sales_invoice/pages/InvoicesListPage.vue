@@ -605,14 +605,26 @@ const getInitials = (name?: string | null) => {
   return ((first.charAt(0) || '') + (last.charAt(0) || '')).toUpperCase() || 'U';
 };
 
-const goToDetails = (row: GlobalInvoiceRow) => {
-  void router.push({
-    name: 'app-global-invoice-details-page',
-    params: {
-      tenantSlug: authStore.tenantSlug,
-      id: row.id,
-    },
-  });
+const goToDetails = (row: GlobalInvoiceRow | GlobalInvoiceCreated) => {
+  if (row.invoice_type === 'wholesale') {
+    void router.push({
+      name: 'app-global-invoices-create-wholesale',
+      params: {
+        tenantSlug: authStore.tenantSlug || '',
+      },
+      query: {
+        id: String(row.id),
+      },
+    });
+  } else {
+    void router.push({
+      name: 'app-global-invoice-details-page',
+      params: {
+        tenantSlug: authStore.tenantSlug,
+        id: row.id,
+      },
+    });
+  }
 };
 
 const onInvoiceCreated = (invoice: GlobalInvoiceCreated) => {

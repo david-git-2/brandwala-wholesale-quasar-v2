@@ -12137,6 +12137,49 @@ export type Database = {
         Args: { p_code: string; p_exclude_id?: number }
         Returns: boolean
       }
+      issue_wholesale_invoice: {
+        Args: { p_invoice_id: number; p_items?: Json }
+        Returns: {
+          billing_profile_id: number | null
+          collection_source: Database["public"]["Enums"]["collection_source_type"]
+          created_at: string
+          created_by: string | null
+          discount_amount: number
+          due_amount: number
+          due_date: string | null
+          fulfillment_status: Database["public"]["Enums"]["global_fulfillment_status"]
+          id: number
+          invoice_date: string
+          invoice_no: string
+          invoice_status: Database["public"]["Enums"]["global_invoice_status"]
+          invoice_type: Database["public"]["Enums"]["global_invoice_type"]
+          issued_by_tenant_id: number
+          note: string | null
+          paid_amount: number
+          parent_tenant_id: number
+          payment_status: string
+          print_charge: number
+          recipient_address: string | null
+          recipient_name: string | null
+          recipient_phone: string | null
+          recipient_profile_id: number | null
+          retail_billing_mode:
+            | Database["public"]["Enums"]["retail_billing_mode"]
+            | null
+          settlement_discount_amount: number
+          shipping_charge: number
+          subtotal_amount: number
+          total_amount: number
+          updated_at: string
+          wrapping_charge: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "sales_invoices"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       koba_cart_allowed: { Args: { p_cart_id: number }; Returns: boolean }
       koba_context_access_allowed: {
         Args: { p_customer_group_id: number; p_tenant_id: number }
@@ -15467,7 +15510,11 @@ export type Database = {
         | "completed"
       customer_group_role: "admin" | "negotiator" | "staff"
       global_fulfillment_status: "pending" | "packed" | "shipped" | "delivered"
-      global_invoice_status: "draft" | "posted" | "voided"
+      global_invoice_status:
+        | "draft"
+        | "proforma_generated"
+        | "posted"
+        | "voided"
       global_invoice_type: "wholesale" | "retail" | "dropship"
       global_shipment_cost_type:
         | "product"
@@ -15727,7 +15774,12 @@ export const Constants = {
       ],
       customer_group_role: ["admin", "negotiator", "staff"],
       global_fulfillment_status: ["pending", "packed", "shipped", "delivered"],
-      global_invoice_status: ["draft", "posted", "voided"],
+      global_invoice_status: [
+        "draft",
+        "proforma_generated",
+        "posted",
+        "voided",
+      ],
       global_invoice_type: ["wholesale", "retail", "dropship"],
       global_shipment_cost_type: [
         "product",
