@@ -6,7 +6,9 @@ import type {
   GlobalInvoiceDetail,
   GlobalInvoiceItemRow,
   GlobalInvoiceRow,
+  GlobalInvoiceType,
 } from '../types';
+
 
 const localToday = (): string => {
   const d = new Date();
@@ -16,11 +18,10 @@ const localToday = (): string => {
 };
 
 export type ListGlobalInvoicesParams = {
-  tenantId?: number;
-  /** Parent company list: all rows for this books owner. */
-  parentTenantId?: number;
-  /** Child desk list: invoices this sister sold. */
-  issuedByTenantId?: number;
+  tenantId?: number | null;
+  parentTenantId?: number | null;
+  issuedByTenantId?: number | null;
+  createdBy?: string | null;
   page?: number;
   pageSize?: number;
   search?: string;
@@ -44,6 +45,7 @@ const listGlobalInvoices = async (
     tenantId,
     parentTenantId,
     issuedByTenantId,
+    createdBy,
     page = 1,
     pageSize = 10,
     search,
@@ -60,16 +62,20 @@ const listGlobalInvoices = async (
   let query = supabase
     .from('sales_invoices')
     .select(
-      'id, tenant_id, parent_tenant_id, issued_by_tenant_id, invoice_no, invoice_type, invoice_status, payment_status, invoice_date, due_date, total_amount, due_amount, paid_amount, billing_profile_id, recipient_name, billing_profiles(name, email, color, customer_group_id), issued_by:tenants!global_invoices_issued_by_tenant_id_fkey(name)',
+      'id, parent_tenant_id, issued_by_tenant_id, invoice_no, invoice_type, invoice_status, payment_status, invoice_date, due_date, total_amount, due_amount, paid_amount, billing_profile_id, recipient_name, created_by, created_at, billing_profiles(name, email, color, customer_group_id), issued_by:tenants!global_invoices_issued_by_tenant_id_fkey(name)',
       { count: 'exact' },
     );
 
   if (issuedByTenantId) {
     query = query.eq('issued_by_tenant_id', issuedByTenantId);
   } else if (parentTenantId) {
-    query = query.eq('tenant_id', parentTenantId);
+    query = query.eq('parent_tenant_id', parentTenantId);
   } else if (tenantId) {
-    query = query.eq('tenant_id', tenantId);
+    query = query.eq('parent_tenant_id', tenantId);
+  }
+
+  if (createdBy) {
+    query = query.eq('created_by', createdBy);
   }
 
   if (paymentStatus) {
@@ -567,9 +573,65 @@ const deleteInvoiceBrand = async (payload: { id: number }): Promise<void> => {
   if (error) throw error;
 };
 
+const generateInvoiceNumber = async (
+  tenantId: number,
+  invoiceType: GlobalInvoiceType = 'wholesale',
+  date?: string,
+): Promise<string> => {
+  const { data, error } = await supabase.rpc('generate_sales_invoice_number', {
+    p_tenant_id: tenantId,
+    p_invoice_type: invoiceType,
+    p_date: date || undefined,
+  });
+
+  if (error) throw error;
+  return data as string;
+};
+
+export type SalesInvoiceStockItem = {
+  global_stock_id: number;
+  shipment_item_id: number;
+  product_id: number | null;
+  name: string;
+  barcode: string | null;
+  product_code: string | null;
+  image_url: string | null;
+  quantity: number;
+  available_atp: number;
+  unit_cost_price: number;
+  suggested_sell_price: number;
+  shipment_id: number;
+  shipment_name: string;
+  holding_tenant_id: number;
+  holding_tenant_name: string;
+  is_allocated_to_tenant: boolean;
+  allocation_rank: number;
+  location_id: number | null;
+  location_name: string | null;
+  stock_created_at: string;
+};
+
+const searchSalesInvoiceStock = async (params: {
+  tenantId: number;
+  search?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<SalesInvoiceStockItem[]> => {
+  const { data, error } = await supabase.rpc('search_sales_invoice_stock', {
+    p_tenant_id: params.tenantId,
+    p_search: params.search?.trim() ? params.search.trim() : undefined,
+    p_limit: params.limit ?? 50,
+    p_offset: params.offset ?? 0,
+  });
+  if (error) throw error;
+  return (data || []) as SalesInvoiceStockItem[];
+};
+
 export const invoiceRepository = {
   listGlobalInvoices,
   createGlobalInvoice,
+  generateInvoiceNumber,
+  searchSalesInvoiceStock,
   getGlobalInvoiceById,
   listGlobalInvoiceItems,
   addGlobalInvoiceItem,
@@ -594,3 +656,5 @@ export const invoiceRepository = {
   updateInvoiceBrand,
   deleteInvoiceBrand,
 };
+
+

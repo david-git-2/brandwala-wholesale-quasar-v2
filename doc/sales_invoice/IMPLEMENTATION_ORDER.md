@@ -8,7 +8,7 @@ Parent-owned invoice + child UI. One sale = one row. Wallet Pay is out of this t
 
 ```text
 One sale = one row
-tenant_id              = parent (books)
+parent_tenant_id       = parent (books / inventory owner)
 issued_by_tenant_id    = selling child (desk / print / profiles)
 Child UI               = customer view of that row
 Parent UI              = books view of that row

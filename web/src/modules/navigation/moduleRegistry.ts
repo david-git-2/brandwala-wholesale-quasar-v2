@@ -63,6 +63,7 @@ export type ModuleKey =
   | 'shop_shipping'
   | 'shop_category'
   | 'sales_invoice'
+  | 'customer'
   | 'billing_profile'
   | 'billing_profile_wallet'
   | 'recipient_profile'
@@ -747,10 +748,34 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     routes: [
       {
         scope: 'app',
-        title: 'Invoices',
-        caption: 'Child desk sales and parent books',
-        icon: 'ph ph-receipt',
+        title: 'Overview',
+        caption: 'Sales & invoice operations overview',
+        icon: 'ph ph-squares-four',
         routeSegment: 'sales/invoices',
+        requiredAction: 'view',
+      },
+      {
+        scope: 'app',
+        title: 'Invoices',
+        caption: 'Issued invoices, status, payment dues',
+        icon: 'ph ph-receipt',
+        routeSegment: 'sales/invoices/list',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'customer',
+    name: 'Customers',
+    description: 'Customer groups, wholesale/retail billing profiles, member access, and automated wallets.',
+    navIcon: 'ph ph-users',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Customers',
+        caption: 'Customer groups, billing profiles & wallets',
+        icon: 'ph ph-users',
+        routeSegment: 'customers',
         requiredAction: 'view',
       },
     ],
@@ -1036,8 +1061,8 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   },
   {
     key: 'shop_permissions',
-    name: 'Customer Groups',
-    description: 'Page guard for customer groups and per-shop access. Opened from Shops.',
+    name: 'Shop Permissions',
+    description: 'Page guard for per-shop storefront access matrix. Opened from Shops.',
     parentModuleKey: 'shop_order',
     routes: [],
   },

@@ -1,31 +1,87 @@
 <template>
-  <q-page class="bw-page page-fixed-layout q-pa-md" :data-test="isParentTenant ? 'invoices-parent-list' : 'invoices-child-list'">
-    <section class="bw-page__stack" style="min-width: 0; flex: 1 1 0%; display: flex; flex-direction: column; overflow: hidden;">
-      <AppPageHeader
-        dense
-        eyebrow="Sales & Invoice"
-        title="Sales Invoices"
-        :subtitle="isParentTenant ? 'Company books — every sister’s sales.' : 'Invoices you issued. Mixed shipments on one bill.'"
-        class="q-mb-sm"
-      >
-        <template v-if="!isParentTenant" #actions>
+  <q-page class="q-pa-sm page-fixed-layout column no-wrap overflow-hidden" :data-test="isParentTenant ? 'invoices-parent-list' : 'invoices-child-list'">
+    <!-- Error banner -->
+    <q-banner v-if="invoicesQuery.error.value" class="bw-status-banner bg-negative text-white q-mb-xs flex-shrink-0" dense rounded>
+      {{ invoicesQuery.error.value }}
+    </q-banner>
+
+    <!-- Toolbar: Status & Payment Status Filters, Search, Actions -->
+    <q-card flat class="floating-surface shadow-1 q-pa-xs flex-shrink-0 q-mb-xs">
+      <div class="row items-center justify-between q-col-gutter-xs">
+        <!-- Two Filters: Status and Payment Status -->
+        <div class="col-12 col-md-auto row items-center q-gutter-x-xs">
+          <q-select
+            v-model="invoiceStatusFilter"
+            :options="invoiceStatusOptions"
+            outlined
+            rounded
+            dense
+            emit-value
+            map-options
+            options-dense
+            style="min-width: 145px"
+            class="dense-filter-select"
+          >
+            <template #prepend>
+              <q-icon name="ph ph-flag" size="14px" />
+            </template>
+          </q-select>
+
+          <q-select
+            v-model="statusFilter"
+            :options="paymentStatusOptions"
+            outlined
+            rounded
+            dense
+            emit-value
+            map-options
+            options-dense
+            style="min-width: 165px"
+            class="dense-filter-select"
+          >
+            <template #prepend>
+              <q-icon name="ph ph-credit-card" size="14px" />
+            </template>
+          </q-select>
+        </div>
+
+        <!-- Search & Action Buttons -->
+        <div class="col-12 col-md-grow row items-center justify-end q-gutter-x-xs">
+          <q-input
+            v-model="searchText"
+            outlined
+            rounded
+            dense
+            clearable
+            style="min-width: 220px"
+            class="col-grow col-sm-auto dense-search-input"
+            placeholder="Search by ID, Customer..."
+            @clear="onSearch"
+          >
+            <template #prepend>
+              <q-icon name="ph ph-magnifying-glass" size="16px" />
+            </template>
+          </q-input>
+
           <q-btn-dropdown
+            v-if="!isParentTenant"
             color="primary"
             unelevated
             no-caps
-            class="text-weight-bold"
-            style="border-radius: 8px"
+            dense
+            class="rounded-sq-btn text-weight-bold q-px-sm"
             label="Create Invoice"
             icon="ph ph-plus"
             data-test="create-invoice-btn"
           >
             <q-list dense style="min-width: 180px">
-              <q-item clickable v-close-popup @click="createWholesaleDialog = true">
+              <q-item clickable v-close-popup @click="goToCreateWholesale">
                 <q-item-section avatar>
                   <q-icon name="ph ph-briefcase" color="purple" size="20px" />
                 </q-item-section>
                 <q-item-section>Wholesale Invoice</q-item-section>
               </q-item>
+
               <q-item clickable v-close-popup @click="createRetailDialog = true">
                 <q-item-section avatar>
                   <q-icon name="ph ph-tote" color="blue" size="20px" />
@@ -40,227 +96,13 @@
               </q-item>
             </q-list>
           </q-btn-dropdown>
-        </template>
-      </AppPageHeader>
-
-      <!-- Dashboard Statistics Cards -->
-      <div class="row q-col-gutter-sm">
-        <!-- Total Receivables Card -->
-        <div class="col-12 col-sm-6 col-md-3">
-          <q-card flat class="stat-card total-receivables-card text-white full-height card-hover">
-            <q-card-section class="q-pa-sm q-pb-none">
-              <div class="row justify-between items-center">
-                <div class="text-caption text-weight-bold opacity-80">Total Receivables</div>
-                <q-avatar size="24px" class="bg-white-20">
-                  <q-icon name="ph ph-wallet" size="14px" />
-                </q-avatar>
-              </div>
-              <div class="text-h6 text-weight-bolder q-mt-xs">
-                {{ formatAmount(totalDue) }}
-              </div>
-            </q-card-section>
-            <q-card-section class="q-pa-sm q-pt-none">
-              <div class="row justify-between items-center text-xxs q-mb-xs opacity-75">
-                <span>Paid Rate</span>
-                <span class="text-weight-bold">{{ paidPercent }}%</span>
-              </div>
-              <div class="receivables-progress">
-                <div class="receivables-progress-fill" :style="{ width: paidPercent + '%' }" />
-              </div>
-            </q-card-section>
-          </q-card>
-        </div>
-
-        <!-- Paid Card -->
-        <div class="col-12 col-sm-6 col-md-3">
-          <q-card flat bordered class="stat-card bg-white full-height card-hover">
-            <q-card-section class="row no-wrap justify-between items-center q-pa-sm">
-              <div>
-                <div class="row items-center q-gutter-xs">
-                  <q-avatar size="24px" color="green-1" text-color="green">
-                    <q-icon name="ph ph-money" size="12px" />
-                  </q-avatar>
-                  <span class="text-caption text-grey-8 text-weight-bold q-ml-xs">Paid</span>
-                </div>
-                <div class="text-h6 text-weight-bolder text-black q-mt-xs">
-                  {{ formatAmount(totalPaid) }}
-                </div>
-                <div class="text-xxs text-green text-weight-bold q-mt-xs row items-center">
-                  <q-icon name="ph ph-trend-up" size="12px" class="q-mr-xs" />
-                  {{ paidPercent }}% collected
-                </div>
-              </div>
-              <!-- Mini SVG Bar Chart -->
-              <div class="chart-container self-center">
-                <svg width="50" height="30" viewBox="0 0 50 30">
-                  <rect x="3" y="10" width="5" height="20" rx="2" fill="#e8f5e9" />
-                  <rect x="11" y="6" width="5" height="24" rx="2" fill="#e8f5e9" />
-                  <rect x="19" y="15" width="5" height="15" rx="2" fill="#e8f5e9" />
-                  <rect x="27" y="3" width="5" height="27" rx="2" fill="#4caf50" />
-                  <rect x="35" y="12" width="5" height="18" rx="2" fill="#4caf50" />
-                </svg>
-              </div>
-            </q-card-section>
-          </q-card>
-        </div>
-
-        <!-- Unpaid Card -->
-        <div class="col-12 col-sm-6 col-md-3">
-          <q-card flat bordered class="stat-card bg-white full-height card-hover">
-            <q-card-section class="row no-wrap justify-between items-center q-pa-sm">
-              <div>
-                <div class="row items-center q-gutter-xs">
-                  <q-avatar size="24px" color="blue-1" text-color="blue">
-                    <q-icon name="ph ph-hourglass-medium" size="12px" />
-                  </q-avatar>
-                  <span class="text-caption text-grey-8 text-weight-bold q-ml-xs">Unpaid</span>
-                </div>
-                <div class="text-h6 text-weight-bolder text-black q-mt-xs">
-                  {{ formatAmount(totalDue) }}
-                </div>
-                <div class="text-xxs text-blue text-weight-bold q-mt-xs row items-center">
-                  <q-icon name="ph ph-arrow-right" size="12px" class="q-mr-xs" />
-                  {{ unpaidPercent }}% outstanding
-                </div>
-              </div>
-              <!-- Mini SVG Line Chart -->
-              <div class="chart-container self-center">
-                <svg width="50" height="30" viewBox="0 0 50 30">
-                  <path
-                    d="M 3,22 Q 11,8 19,18 T 35,4 T 43,15"
-                    fill="none"
-                    stroke="#2196f3"
-                    stroke-width="1.5"
-                    stroke-linecap="round"
-                  />
-                  <path
-                    d="M 3,22 Q 11,8 19,18 T 35,4 T 43,15 L 43,30 L 3,30 Z"
-                    fill="rgba(33, 150, 243, 0.08)"
-                  />
-                </svg>
-              </div>
-            </q-card-section>
-          </q-card>
-        </div>
-
-        <!-- Overdue Card -->
-        <div class="col-12 col-sm-6 col-md-3">
-          <q-card flat bordered class="stat-card bg-white full-height card-hover">
-            <q-card-section class="row no-wrap justify-between items-center q-pa-sm">
-              <div>
-                <div class="row items-center q-gutter-xs">
-                  <q-avatar size="24px" color="red-1" text-color="red">
-                    <q-icon name="ph ph-warning-circle" size="12px" />
-                  </q-avatar>
-                  <span class="text-caption text-grey-8 text-weight-bold q-ml-xs">Overdue</span>
-                </div>
-                <div class="text-h6 text-weight-bolder text-black q-mt-xs">
-                  {{ formatAmount(totalOverdue) }}
-                </div>
-                <div class="text-xxs text-red text-weight-bold q-mt-xs row items-center">
-                  <q-icon name="ph ph-trend-down" size="12px" class="q-mr-xs" />
-                  {{ overduePercent }}% overdue
-                </div>
-              </div>
-              <!-- Mini SVG Bar Chart -->
-              <div class="chart-container self-center">
-                <svg width="50" height="30" viewBox="0 0 50 30">
-                  <rect x="3" y="18" width="5" height="12" rx="2" fill="#ffebee" />
-                  <rect x="11" y="12" width="5" height="18" rx="2" fill="#ffebee" />
-                  <rect x="19" y="5" width="5" height="25" rx="2" fill="#f44336" />
-                  <rect x="27" y="15" width="5" height="15" rx="2" fill="#ffebee" />
-                  <rect x="35" y="8" width="5" height="22" rx="2" fill="#f44336" />
-                </svg>
-              </div>
-            </q-card-section>
-          </q-card>
         </div>
       </div>
+    </q-card>
 
-      <!-- Filters Toolbar -->
-      <q-card flat bordered class="q-pa-sm">
-        <div class="row items-center justify-between q-col-gutter-sm">
-          <!-- Left side segmented filters -->
-          <div class="col-auto row items-center q-gutter-sm">
-            <q-btn-toggle
-              v-model="quickFilter"
-              toggle-color="primary"
-              toggle-text-color="white"
-              text-color="grey-8"
-              flat
-              dense
-              unelevated
-              no-caps
-              :options="[
-                { label: 'All', value: 'all' },
-                { label: 'Paid', value: 'paid' },
-                { label: 'Unpaid', value: 'unpaid' },
-              ]"
-              class="quick-filter-toggle text-weight-bold"
-            />
-          </div>
-
-          <!-- Right side tools (Search, Filter drawer) -->
-          <div class="col-auto row items-center q-gutter-sm">
-            <!-- search control -->
-            <q-btn
-              v-if="!showSearchInput"
-              flat
-              round
-              dense
-              icon="ph ph-magnifying-glass"
-              aria-label="Show search"
-              @click="showSearchInput = true"
-            >
-              <q-tooltip>Search Invoices</q-tooltip>
-            </q-btn>
-            <q-input
-              v-else
-              v-model="searchText"
-              outlined
-              dense
-              clearable
-              class="soft-input"
-              style="width: min(250px, 45vw)"
-              placeholder="Search by ID, Customer..."
-              @clear="onSearchChange"
-              @keyup.enter="onSearchChange"
-            >
-              <template #prepend>
-                <q-icon name="ph ph-magnifying-glass" size="18px" />
-              </template>
-              <template #append>
-                <q-btn
-                  flat
-                  round
-                  dense
-                  icon="ph ph-x"
-                  size="18px"
-                  aria-label="Hide search"
-                  @click="onCloseSearch"
-                />
-              </template>
-            </q-input>
-
-            <q-btn
-              flat
-              round
-              dense
-              icon="ph ph-funnel"
-              aria-label="Filters"
-              @click="filterDrawerOpen = true"
-            >
-              <q-badge v-if="activeFilterCount > 0" color="primary" rounded floating>
-                {{ activeFilterCount }}
-              </q-badge>
-              <q-tooltip>More Filters</q-tooltip>
-            </q-btn>
-          </div>
-        </div>
-      </q-card>
-
-      <!-- Loaders & States -->
-      <q-markup-table v-if="invoicesQuery.isLoading.value && !invoicesList.length" flat bordered class="invoice-table treasury-table-wrap">
+    <!-- Loading Skeleton Table -->
+    <div v-if="invoicesQuery.isLoading.value && !invoicesList.length" class="treasury-table-wrap col">
+      <q-markup-table flat bordered class="invoice-table full-height">
         <thead>
           <tr>
             <th><q-skeleton type="text" width="80px" /></th>
@@ -268,78 +110,81 @@
             <th><q-skeleton type="text" width="80px" /></th>
             <th><q-skeleton type="text" width="80px" /></th>
             <th class="text-right"><q-skeleton type="text" width="90px" class="q-ml-auto" /></th>
-            <th><q-skeleton type="text" width="60px" /></th>
+            <th><q-skeleton type="text" width="80px" /></th>
             <th class="text-right"><q-skeleton type="text" width="40px" class="q-ml-auto" /></th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="n in 6" :key="n">
+          <tr v-for="n in 8" :key="n">
             <td>
-              <q-skeleton type="text" width="90px" height="18px" class="q-mb-xs" />
-              <q-skeleton type="QBadge" width="60px" height="18px" />
+              <q-skeleton type="text" width="90px" height="16px" class="q-mb-xs" />
+              <q-skeleton type="QBadge" width="55px" height="16px" />
             </td>
             <td>
               <div class="row items-center no-wrap">
-                <q-skeleton type="QAvatar" size="36px" class="q-mr-sm" />
+                <q-skeleton type="QAvatar" size="28px" class="q-mr-sm" />
                 <div class="col">
-                  <q-skeleton type="text" width="70%" height="16px" />
-                  <q-skeleton type="text" width="50%" height="12px" />
+                  <q-skeleton type="text" width="70%" height="14px" />
+                  <q-skeleton type="text" width="50%" height="10px" />
                 </div>
               </div>
             </td>
-            <td><q-skeleton type="text" width="75px" height="16px" /></td>
-            <td><q-skeleton type="text" width="75px" height="16px" /></td>
+            <td><q-skeleton type="text" width="75px" height="14px" /></td>
+            <td><q-skeleton type="text" width="75px" height="14px" /></td>
             <td class="text-right">
-              <q-skeleton type="text" width="70px" height="16px" class="q-ml-auto q-mb-xs" />
-              <q-skeleton type="text" width="50px" height="12px" class="q-ml-auto" />
+              <q-skeleton type="text" width="70px" height="14px" class="q-ml-auto q-mb-xs" />
+              <q-skeleton type="text" width="50px" height="10px" class="q-ml-auto" />
             </td>
             <td>
-              <q-skeleton type="QBadge" width="70px" height="22px" class="q-mb-xs" />
+              <q-skeleton type="QBadge" width="70px" height="20px" class="q-mb-xs" />
               <q-skeleton type="text" width="40px" height="10px" />
             </td>
             <td class="text-right">
               <div class="row justify-end q-gutter-x-xs">
-                <q-skeleton type="QBtn" size="sm" width="28px" height="28px" />
-                <q-skeleton type="QBtn" size="sm" width="28px" height="28px" />
+                <q-skeleton type="QBtn" size="sm" width="24px" height="24px" />
               </div>
             </td>
           </tr>
         </tbody>
       </q-markup-table>
+    </div>
 
-      <q-banner v-else-if="invoicesQuery.error.value" class="bg-negative text-white q-mb-md" rounded>
-        {{ invoicesQuery.error.value }}
-      </q-banner>
-
-      <!-- Empty State -->
-      <div
-        v-else-if="!invoicesList.length && activeFilterCount === 0 && quickFilter === 'all'"
-        class="column items-center justify-center q-pa-xl text-grey-6 empty-state-block floating-surface shadow-1"
-      >
-        <q-icon name="ph ph-file-text" size="64px" class="q-mb-sm text-grey-4" />
-        <div class="text-subtitle1 text-weight-medium">No Sales Invoices Found</div>
-        <div class="text-caption text-grey-5">
-          Invoices will appear here once created for this tenant.
-        </div>
+    <!-- Empty State: No data created yet -->
+    <div
+      v-else-if="!invoicesList.length && !hasActiveFilters"
+      class="column items-center justify-center text-center text-grey-6 q-pa-xl floating-surface shadow-1 rounded-borders col"
+    >
+      <q-icon name="ph ph-file-text" size="48px" class="q-mb-sm text-grey-4" />
+      <div class="text-subtitle1 text-weight-medium">No Sales Invoices Found</div>
+      <div class="text-caption text-grey-5">
+        Invoices will appear here once created for this tenant.
       </div>
+    </div>
 
-      <!-- No Matching Filters -->
-      <div v-else-if="!invoicesList.length" class="text-center text-grey-7 q-py-xl">
-        No invoices match current search or filters.
-      </div>
+    <!-- Empty State: No search/filter match -->
+    <div
+      v-else-if="!invoicesList.length"
+      class="column items-center justify-center text-center text-grey-7 q-py-lg floating-surface shadow-1 rounded-borders col"
+    >
+      <q-icon name="ph ph-funnel" size="36px" class="q-mb-xs text-grey-4" />
+      <div class="text-subtitle2 text-weight-medium">No invoices match current filters</div>
+      <div class="text-caption text-grey-6 q-mt-xs">Try clearing search or filters to view all invoices.</div>
+      <q-btn flat dense no-caps color="primary" label="Reset filters" class="q-mt-sm" @click="onResetFilters" />
+    </div>
 
-      <!-- Table View -->
-      <div v-else class="treasury-table-wrap table-fixed-wrap">
+    <!-- Main Table View -->
+    <div v-else class="treasury-table-wrap col">
+      <q-card flat class="floating-surface shadow-1 q-pa-none full-height column no-wrap">
         <q-table
           :rows="filteredInvoices"
           :columns="columns"
           row-key="id"
           flat
-          bordered
-          class="invoice-table"
+          class="invoice-table col"
           :table-row-class="invoiceRowClass"
           v-model:pagination="tablePagination"
           :loading="invoicesQuery.isFetching.value"
+          :rows-per-page-options="[10, 20, 50]"
           @request="onTableRequest"
           @row-click="(evt, row) => goToDetails(row)"
         >
@@ -367,10 +212,35 @@
                         ? 'orange-9'
                         : 'blue-9'
                   "
-                  class="text-weight-bold text-caption text-capitalize q-ma-none text-xxs"
+                  class="text-weight-bold text-capitalize q-ma-none text-xxs soft-chip"
                 >
                   {{ props.row.invoice_type || 'retail' }}
                 </q-chip>
+              </div>
+            </q-td>
+          </template>
+
+          <!-- Customer Info Slot -->
+          <template #body-cell-customer="props">
+            <q-td :props="props">
+              <div class="row items-center no-wrap">
+                <q-avatar
+                  square
+                  size="28px"
+                  :color="$q.dark.isActive ? 'grey-9' : 'grey-3'"
+                  :text-color="$q.dark.isActive ? 'grey-3' : 'grey-9'"
+                  class="q-mr-sm text-weight-bold text-xxs avatar-soft-sq"
+                >
+                  {{ getInitials(props.row.billing_profile_name || props.row.recipient_name) }}
+                </q-avatar>
+                <div class="min-width-0">
+                  <div class="text-weight-bold text-grey-9 text-xs line-clamp-1">
+                    {{ props.row.billing_profile_name || props.row.recipient_name || 'No Customer' }}
+                  </div>
+                  <div class="text-caption text-grey-6 text-xxs line-clamp-1">
+                    {{ props.row.billing_profile_email || '—' }}
+                  </div>
+                </div>
               </div>
             </q-td>
           </template>
@@ -382,41 +252,16 @@
             </q-td>
           </template>
 
-          <!-- Customer Info Slot -->
-          <template #body-cell-customer="props">
-            <q-td :props="props">
-              <div class="row items-center no-wrap">
-                <q-avatar
-                  size="36px"
-                  :color="getAvatarStyleAndColor(props.row).color"
-                  :style="getAvatarStyleAndColor(props.row).style"
-                  text-color="white"
-                  class="q-mr-sm text-weight-bold"
-                >
-                  {{ getInitials(props.row.billing_profile_name || props.row.recipient_name) }}
-                </q-avatar>
-                <div>
-                  <div class="text-weight-bold text-black">
-                    {{ props.row.billing_profile_name || props.row.recipient_name || 'No Customer' }}
-                  </div>
-                  <div class="text-caption text-grey-7 text-xs">
-                    {{ props.row.billing_profile_email || 'no-email@brandwala.com' }}
-                  </div>
-                </div>
-              </div>
-            </q-td>
-          </template>
-
           <!-- Create Date -->
           <template #body-cell-invoice_date="props">
-            <q-td :props="props" class="text-weight-medium text-grey-8">
+            <q-td :props="props" class="text-weight-medium text-grey-8 text-xs">
               {{ props.row.invoice_date || '—' }}
             </q-td>
           </template>
 
           <!-- Due Date -->
           <template #body-cell-due_date="props">
-            <q-td :props="props" class="text-weight-medium text-grey-8">
+            <q-td :props="props" class="text-weight-medium text-grey-8 text-xs">
               {{ props.row.due_date || '—' }}
             </q-td>
           </template>
@@ -424,42 +269,51 @@
           <!-- Grand Total & Due Amount -->
           <template #body-cell-amount="props">
             <q-td :props="props" class="text-right">
-              <div class="text-weight-bold text-black">
+              <div class="text-weight-bold text-grey-9 text-xs">
                 {{ formatAmount(props.row.total_amount) }}
               </div>
               <div
                 v-if="props.row.due_amount > 0"
-                class="text-caption text-red text-weight-bold text-xs"
+                class="text-caption text-negative text-weight-bold text-xxs"
               >
                 Due: {{ formatAmount(props.row.due_amount) }}
               </div>
-              <div v-else class="text-caption text-green text-weight-bold text-xs">
+              <div v-else class="text-caption text-positive text-weight-bold text-xxs">
                 Fully Paid
               </div>
             </q-td>
           </template>
 
-          <!-- Combined Status Slot -->
+          <!-- Status Slot -->
           <template #body-cell-status="props">
             <q-td :props="props">
               <div class="column items-start q-gutter-y-xs">
-                <!-- Payment Status Pill -->
-                <q-chip
-                  square
-                  dense
-                  :style="paymentStatusChipStyle(props.row.payment_status)"
-                  class="status-chip text-weight-bold q-ma-none text-capitalize"
+                <!-- Payment Status Badge -->
+                <div
+                  class="status-badge row inline items-center no-wrap"
+                  :style="paymentStatusBadgeStyle(props.row.payment_status)"
                 >
-                  <span
-                    class="status-chip-dot"
-                    :style="{ backgroundColor: paymentStatusDotColor(props.row.payment_status) }"
+                  <q-icon
+                    :name="getPaymentStatusIcon(props.row.payment_status)"
+                    size="12px"
+                    class="q-mr-xs"
                   />
-                  {{ formatStatusLabel(props.row.payment_status) }}
-                </q-chip>
-                <!-- Invoice Status -->
-                <span class="text-xxs text-weight-bold text-grey-6 text-uppercase q-ml-xs">
-                  {{ props.row.invoice_status }}
-                </span>
+                  <span class="text-weight-bolder text-uppercase text-xxs" style="letter-spacing: 0.04em">
+                    {{ formatStatusLabel(props.row.payment_status) }}
+                  </span>
+                </div>
+                <!-- Invoice Status Pill -->
+                <div class="row items-center q-gutter-x-xs">
+                  <q-chip
+                    square
+                    dense
+                    :color="props.row.invoice_status === 'posted' ? 'green-1' : props.row.invoice_status === 'voided' ? 'red-1' : 'amber-1'"
+                    :text-color="props.row.invoice_status === 'posted' ? 'green-9' : props.row.invoice_status === 'voided' ? 'red-9' : 'amber-9'"
+                    class="text-weight-bold text-uppercase text-xxs q-ma-none soft-chip"
+                  >
+                    {{ props.row.invoice_status || 'draft' }}
+                  </q-chip>
+                </div>
               </div>
             </q-td>
           </template>
@@ -481,8 +335,11 @@
                 </q-btn>
                 <q-btn flat round dense color="grey-7" icon="ph ph-dots-three-vertical" size="sm">
                   <q-menu auto-close>
-                    <q-list dense style="min-width: 120px">
+                    <q-list dense style="min-width: 130px">
                       <q-item clickable @click="goToDetails(props.row)">
+                        <q-item-section avatar style="min-width: 24px">
+                          <q-icon name="ph ph-eye" size="16px" />
+                        </q-item-section>
                         <q-item-section>View Details</q-item-section>
                       </q-item>
                     </q-list>
@@ -492,88 +349,8 @@
             </q-td>
           </template>
         </q-table>
-      </div>
-
-      <!-- Filters Sidebar -->
-      <FilterSidebar v-model="filterDrawerOpen" title="Filters">
-        <q-select
-          v-model="invoiceStatusFilter"
-          :options="invoiceStatusFilterOptions"
-          label="Invoice Status"
-          outlined
-          dense
-          clearable
-          emit-value
-          map-options
-          class="soft-input q-mb-sm"
-        />
-        <q-select
-          v-model="statusFilter"
-          :options="statusFilterOptions"
-          label="Payment Status"
-          outlined
-          dense
-          clearable
-          emit-value
-          map-options
-          class="soft-input q-mb-sm"
-        />
-        <q-select
-          v-model="invoiceTypeFilter"
-          :options="[
-            { label: 'Retail', value: 'retail' },
-            { label: 'Wholesale', value: 'wholesale' },
-            { label: 'Dropship', value: 'dropship' },
-          ]"
-          label="Invoice Type"
-          outlined
-          dense
-          clearable
-          emit-value
-          map-options
-          class="soft-input q-mb-md"
-        />
-
-        <!-- Date Range Filter -->
-        <div class="q-mb-md">
-          <div class="text-caption text-grey-7 q-mb-xs">Invoice Date Range</div>
-          <q-btn
-            outline
-            no-caps
-            class="full-width soft-input text-left justify-start q-px-sm"
-            color="primary"
-            style="min-height: 40px; border-color: rgba(0, 0, 0, 0.12)"
-          >
-            <q-icon name="ph ph-calendar" class="q-mr-xs" color="primary" />
-            <span class="text-caption text-grey-8">{{ dateRangeLabel }}</span>
-            <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-              <q-date v-model="selectedDateRange" range>
-                <div class="row items-center justify-end q-gutter-sm">
-                  <q-btn
-                    v-close-popup
-                    label="Clear"
-                    color="negative"
-                    flat
-                    @click="selectedDateRange = null"
-                  />
-                  <q-btn v-close-popup label="Close" color="primary" flat />
-                </div>
-              </q-date>
-            </q-popup-proxy>
-          </q-btn>
-        </div>
-
-        <div class="row q-gutter-sm justify-end">
-          <q-btn
-            flat
-            no-caps
-            label="Reset"
-            class="text-black text-weight-bold"
-            @click="onResetFilters"
-          />
-        </div>
-      </FilterSidebar>
-    </section>
+      </q-card>
+    </div>
 
     <!-- Dialogs -->
     <CreateGlobalInvoiceDialog
@@ -595,15 +372,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed, ref, watch } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
+import { useQuasar } from 'quasar';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
 
-import FilterSidebar from 'src/components/FilterSidebar.vue';
-import AppPageHeader from 'src/components/ui/AppPageHeader.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
-import { useCustomerGroupStore } from 'src/modules/tenant/stores/customerGroupStore';
 import { formatAmountBdt } from 'src/utils/currency';
 
 import CreateGlobalInvoiceDialog from '../components/CreateGlobalInvoiceDialog.vue';
@@ -614,12 +389,13 @@ import { salesInvoiceQueryKeys } from '../services/salesInvoiceQueryKeys';
 import type { GlobalInvoiceCreated, GlobalInvoiceRow } from '../types';
 import { useInvoiceWorkspace } from '../composables/useInvoiceWorkspace';
 
+const $q = useQuasar();
 const authStore = useAuthStore();
 const tenantStore = useTenantStore();
 const { isParentTenant } = useInvoiceWorkspace();
 const router = useRouter();
+const route = useRoute();
 const queryClient = useQueryClient();
-const customerGroupStore = useCustomerGroupStore();
 
 const effectiveTenantId = computed(() => {
   const current =
@@ -630,14 +406,21 @@ const effectiveTenantId = computed(() => {
   return current.id;
 });
 
-const showSearchInput = ref(false);
-const filterDrawerOpen = ref(false);
-const searchText = ref('');
+const initialSearch = typeof route.query.search === 'string' ? route.query.search : '';
+const searchText = ref(initialSearch);
 const statusFilter = ref<string | null>(null);
 const invoiceStatusFilter = ref<string | null>(null);
-const invoiceTypeFilter = ref<string | null>(null);
-const selectedDateRange = ref<string | { from: string; to: string } | null>(null);
-const quickFilter = ref<'all' | 'paid' | 'unpaid'>('all');
+
+watch(
+  () => route.query.search,
+  (newSearch) => {
+    if (typeof newSearch === 'string') {
+      searchText.value = newSearch;
+    } else if (newSearch === undefined) {
+      searchText.value = '';
+    }
+  },
+);
 
 const pagination = ref({
   page: 1,
@@ -646,62 +429,46 @@ const pagination = ref({
   descending: true,
 });
 
-const dateRange = computed(() => {
-  let from: string | null = null;
-  let to: string | null = null;
-  if (selectedDateRange.value) {
-    if (typeof selectedDateRange.value === 'string') {
-      const formatted = selectedDateRange.value.replace(/\//g, '-');
-      from = formatted;
-      to = formatted;
-    } else if (
-      typeof selectedDateRange.value === 'object' &&
-      selectedDateRange.value.from &&
-      selectedDateRange.value.to
-    ) {
-      from = selectedDateRange.value.from.replace(/\//g, '-');
-      to = selectedDateRange.value.to.replace(/\//g, '-');
-    }
-  }
-  return { from, to };
-});
+const createRetailDialog = ref(route.query.create === 'retail');
+const createDropshipDialog = ref(route.query.create === 'dropship');
 
-const dateRangeLabel = computed(() => {
-  if (!selectedDateRange.value) return 'Any Date';
-  if (typeof selectedDateRange.value === 'string') {
-    return selectedDateRange.value.replace(/\//g, '-');
-  }
-  if (
-    typeof selectedDateRange.value === 'object' &&
-    selectedDateRange.value.from &&
-    selectedDateRange.value.to
-  ) {
-    return `${selectedDateRange.value.from.replace(/\//g, '-')} to ${selectedDateRange.value.to.replace(/\//g, '-')}`;
-  }
-  return 'Any Date';
-});
+const goToCreateWholesale = () => {
+  void router.push({
+    name: 'app-global-invoices-create-wholesale',
+    params: {
+      tenantSlug: authStore.tenantSlug || '',
+    },
+  });
+};
 
-const createWholesaleDialog = ref(false);
-const createRetailDialog = ref(false);
-const createDropshipDialog = ref(false);
+watch(
+  () => route.query.create,
+  (val) => {
+    if (val === 'wholesale') goToCreateWholesale();
+    if (val === 'retail') createRetailDialog.value = true;
+    if (val === 'dropship') createDropshipDialog.value = true;
+  },
+);
 
-const statusFilterOptions = [
+const invoiceStatusOptions = [
+  { label: 'All Statuses', value: null },
+  { label: 'Draft', value: 'draft' },
+  { label: 'Posted', value: 'posted' },
+  { label: 'Voided', value: 'voided' },
+];
+
+const paymentStatusOptions = [
+  { label: 'All Payment Status', value: null },
   { label: 'Paid', value: 'paid' },
   { label: 'Due', value: 'due' },
   { label: 'Partial', value: 'partial' },
   { label: 'Draft', value: 'draft' },
 ];
 
-const invoiceStatusFilterOptions = [
-  { label: 'Draft', value: 'draft' },
-  { label: 'Posted', value: 'posted' },
-  { label: 'Voided', value: 'voided' },
-];
-
 const columns = computed(() => {
-  const cols: { name: string; label: string; align: string; sortable?: boolean; field: string }[] = [
+  const cols: { name: string; label: string; align: 'left' | 'right' | 'center'; sortable?: boolean; field: string }[] = [
     { name: 'invoice_no', label: 'Invoice ID', align: 'left', sortable: true, field: 'invoice_no' },
-    { name: 'customer', label: 'User Info', align: 'left', sortable: true, field: 'billing_profile_name' },
+    { name: 'customer', label: 'Customer', align: 'left', sortable: true, field: 'billing_profile_name' },
   ];
   if (isParentTenant.value) {
     cols.push({ name: 'sold_by', label: 'Sold by', align: 'left', field: 'issued_by_tenant_name' });
@@ -731,10 +498,6 @@ const invoicesQuery = useQuery({
       search: searchText.value,
       paymentStatus: statusFilter.value,
       invoiceStatus: invoiceStatusFilter.value,
-      invoiceType: invoiceTypeFilter.value,
-      fromDate: dateRange.value.from,
-      toDate: dateRange.value.to,
-      quickFilter: quickFilter.value,
     })
   ),
   enabled: computed(() => !!effectiveTenantId.value),
@@ -750,10 +513,6 @@ const invoicesQuery = useQuery({
       search: searchText.value,
       paymentStatus: statusFilter.value,
       invoiceStatus: invoiceStatusFilter.value,
-      invoiceType: invoiceTypeFilter.value,
-      fromDate: dateRange.value.from,
-      toDate: dateRange.value.to,
-      quickFilter: quickFilter.value,
     });
   },
   placeholderData: (prev) => prev,
@@ -761,6 +520,10 @@ const invoicesQuery = useQuery({
 
 const invoicesList = computed(() => invoicesQuery.data.value?.data ?? []);
 const filteredInvoices = computed(() => invoicesList.value);
+
+const hasActiveFilters = computed(() => {
+  return Boolean(statusFilter.value || invoiceStatusFilter.value || searchText.value);
+});
 
 const tablePagination = computed({
   get: () => ({
@@ -782,47 +545,9 @@ const onTableRequest = (props: any) => {
   tablePagination.value = props.pagination;
 };
 
-// Reset page to 1 when any filter changes
-watch(
-  [searchText, statusFilter, invoiceStatusFilter, invoiceTypeFilter, selectedDateRange, quickFilter],
-  () => {
-    pagination.value.page = 1;
-  }
-);
-
-// Computed statistics for dashboard cards
-const totalAmount = computed(() =>
-  invoicesList.value.reduce((sum, r) => sum + (r.total_amount || 0), 0)
-);
-const totalPaid = computed(() =>
-  invoicesList.value.reduce((sum, r) => sum + (r.paid_amount || 0), 0)
-);
-const totalDue = computed(() =>
-  invoicesList.value.reduce((sum, r) => sum + (r.due_amount || 0), 0)
-);
-const totalOverdue = computed(() =>
-  invoicesList.value
-    .filter((r) => r.payment_status === 'overdue' || r.payment_status === 'due')
-    .reduce((sum, r) => sum + (r.due_amount || 0), 0)
-);
-
-const paidPercent = computed(() =>
-  totalAmount.value ? Math.round((totalPaid.value / totalAmount.value) * 100) : 0
-);
-const unpaidPercent = computed(() =>
-  totalAmount.value ? Math.round((totalDue.value / totalAmount.value) * 100) : 0
-);
-const overduePercent = computed(() =>
-  totalAmount.value ? Math.round((totalOverdue.value / totalAmount.value) * 100) : 0
-);
-
-const activeFilterCount = computed(() => {
-  let count = 0;
-  if (statusFilter.value) count += 1;
-  if (invoiceStatusFilter.value) count += 1;
-  if (invoiceTypeFilter.value) count += 1;
-  if (selectedDateRange.value) count += 1;
-  return count;
+// Reset page to 1 when filters change
+watch([searchText, statusFilter, invoiceStatusFilter], () => {
+  pagination.value.page = 1;
 });
 
 const formatAmount = (value: number) => formatAmountBdt(value);
@@ -832,26 +557,43 @@ const formatStatusLabel = (status?: string | null) => {
   return value;
 };
 
-const paymentStatusChipStyle = (status?: string | null) => {
+const getPaymentStatusIcon = (status?: string | null) => {
   const value = (status ?? '').toLowerCase();
-  if (value === 'paid') {
-    return { backgroundColor: '#e8f5e9', color: '#2e7d32', border: '1px solid #c8e6c9' };
-  }
-  if (value === 'due' || value === 'overdue') {
-    return { backgroundColor: '#ffebee', color: '#c62828', border: '1px solid #ffcdd2' };
-  }
-  if (value === 'partial' || value === 'partially_paid') {
-    return { backgroundColor: '#e3f2fd', color: '#1565c0', border: '1px solid #bbdefb' };
-  }
-  return { backgroundColor: '#fff3e0', color: '#ef6c00', border: '1px solid #ffe0b2' };
+  if (value === 'paid') return 'ph ph-check-circle';
+  if (value === 'due' || value === 'overdue') return 'ph ph-warning-circle';
+  if (value === 'partial' || value === 'partially_paid') return 'ph ph-hourglass-medium';
+  return 'ph ph-file-text';
 };
 
-const paymentStatusDotColor = (status?: string | null) => {
+const paymentStatusBadgeStyle = (status?: string | null) => {
+  const isDark = $q.dark.isActive;
   const value = (status ?? '').toLowerCase();
-  if (value === 'paid') return '#4caf50';
-  if (value === 'due' || value === 'overdue') return '#f44336';
-  if (value === 'partial' || value === 'partially_paid') return '#2196f3';
-  return '#ff9800';
+  if (value === 'paid') {
+    return {
+      backgroundColor: isDark ? 'rgba(34, 197, 94, 0.15)' : '#e8f5e9',
+      color: isDark ? '#4ade80' : '#2e7d32',
+      border: `1px solid ${isDark ? 'rgba(34, 197, 94, 0.3)' : '#c8e6c9'}`,
+    };
+  }
+  if (value === 'due' || value === 'overdue') {
+    return {
+      backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#ffebee',
+      color: isDark ? '#f87171' : '#c62828',
+      border: `1px solid ${isDark ? 'rgba(239, 68, 68, 0.3)' : '#ffcdd2'}`,
+    };
+  }
+  if (value === 'partial' || value === 'partially_paid') {
+    return {
+      backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : '#e3f2fd',
+      color: isDark ? '#60a5fa' : '#1565c0',
+      border: `1px solid ${isDark ? 'rgba(59, 130, 246, 0.3)' : '#bbdefb'}`,
+    };
+  }
+  return {
+    backgroundColor: isDark ? 'rgba(245, 158, 11, 0.15)' : '#fff3e0',
+    color: isDark ? '#fbbf24' : '#ef6c00',
+    border: `1px solid ${isDark ? 'rgba(245, 158, 11, 0.3)' : '#ffe0b2'}`,
+  };
 };
 
 const getInitials = (name?: string | null) => {
@@ -862,66 +604,6 @@ const getInitials = (name?: string | null) => {
   if (parts.length === 1) return first.charAt(0).toUpperCase() || 'U';
   return ((first.charAt(0) || '') + (last.charAt(0) || '')).toUpperCase() || 'U';
 };
-
-const getAvatarColor = (name?: string | null) => {
-  if (!name) return 'grey-6';
-  const colors = ['purple-5', 'teal-5', 'blue-5', 'orange-5', 'cyan-5', 'indigo-5', 'green-5'];
-  let sum = 0;
-  for (let i = 0; i < name.length; i++) {
-    sum += name.charCodeAt(i);
-  }
-  return colors[sum % colors.length];
-};
-
-const customerGroupColorMap = computed<Record<number, string | null>>(() =>
-  customerGroupStore.groups.reduce<Record<number, string | null>>((acc, g) => {
-    acc[g.id] = g.accent_color;
-    return acc;
-  }, {}),
-);
-
-const getAvatarStyleAndColor = (row: any) => {
-  const profileColor = row.billing_profile_color;
-  if (profileColor) {
-    if (profileColor.startsWith('#')) {
-      return { style: { backgroundColor: profileColor }, color: undefined };
-    }
-    return { style: {}, color: profileColor };
-  }
-
-  const customerGroupId = row.billing_profile_customer_group_id;
-  if (customerGroupId) {
-    const groupColor = customerGroupColorMap.value[customerGroupId];
-    if (groupColor) {
-      if (groupColor.startsWith('#')) {
-        return { style: { backgroundColor: groupColor }, color: undefined };
-      }
-      return { style: {}, color: groupColor };
-    }
-  }
-
-  const name = row.billing_profile_name || row.recipient_name;
-  const fallbackColor = getAvatarColor(name) || 'grey-6';
-  if (fallbackColor.startsWith('#')) {
-    return { style: { backgroundColor: fallbackColor }, color: undefined };
-  }
-  return { style: {}, color: fallbackColor };
-};
-
-const loadCustomerGroups = async () => {
-  const tenantId = effectiveTenantId.value;
-  if (tenantId) {
-    await customerGroupStore.fetchCustomerGroupsByTenant(tenantId);
-  }
-};
-
-onMounted(loadCustomerGroups);
-
-watch(effectiveTenantId, (newId) => {
-  if (newId) {
-    void customerGroupStore.fetchCustomerGroupsByTenant(newId);
-  }
-});
 
 const goToDetails = (row: GlobalInvoiceRow) => {
   void router.push({
@@ -938,17 +620,12 @@ const onInvoiceCreated = (invoice: GlobalInvoiceCreated) => {
   goToDetails(invoice);
 };
 
-const onSearchChange = () => {};
-const onCloseSearch = () => {
-  showSearchInput.value = false;
-  searchText.value = '';
-};
+const onSearch = () => {};
+
 const onResetFilters = () => {
   statusFilter.value = null;
   invoiceStatusFilter.value = null;
-  invoiceTypeFilter.value = null;
-  selectedDateRange.value = null;
-  quickFilter.value = 'all';
+  searchText.value = '';
 };
 </script>
 
@@ -960,101 +637,110 @@ const onResetFilters = () => {
   flex-direction: column;
 }
 
-.table-fixed-wrap {
+.treasury-table-wrap {
   flex: 1 1 0%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  min-height: 0;
   overflow: hidden;
 }
 
-.table-fixed-wrap :deep(.q-table__card),
-.table-fixed-wrap :deep(.q-table__container) {
+.treasury-table-wrap :deep(.q-table__card),
+.treasury-table-wrap :deep(.q-table__container) {
   display: flex;
   flex-direction: column;
   height: 100%;
+  box-shadow: none;
+  background: transparent;
 }
 
-.table-fixed-wrap :deep(.q-table__middle) {
+.treasury-table-wrap :deep(.q-table__middle) {
   flex: 1 1 0%;
+  min-height: 0;
   overflow-y: auto;
 }
-.stat-card {
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
-  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s ease;
-  overflow: hidden;
-  position: relative;
-}
 
-.total-receivables-card {
-  background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%) !important;
-}
-
-.bg-white-20 {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.opacity-80 {
-  opacity: 0.8;
-}
-
-.opacity-75 {
-  opacity: 0.75;
-}
-
-.receivables-progress {
-  height: 6px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 99px;
-  overflow: hidden;
-}
-
-.receivables-progress-fill {
-  height: 100%;
-  background: #ffffff !important;
-}
-
-.chart-container {
-  height: 40px;
-  display: flex;
-  align-items: flex-end;
-}
-
-.quick-filter-toggle {
-  background: rgba(0, 0, 0, 0.03);
+.floating-surface {
+  background: #ffffff;
   border-radius: 8px;
-  padding: 2px;
+  border: 1px solid rgba(226, 232, 240, 0.6);
 }
 
-.quick-filter-toggle :deep(.q-btn) {
-  border-radius: 6px;
+body.body--dark .floating-surface {
+  background: #1c1c1c;
+  border-color: #2e2e2e;
+}
+
+.dense-filter-select :deep(.q-field__control) {
+  height: 34px;
+  min-height: 34px;
+  border-radius: 8px;
+  padding: 0 8px;
+}
+
+.dense-filter-select :deep(.q-field__marginal) {
+  height: 34px;
+}
+
+.dense-filter-select :deep(.q-field__native) {
+  padding-top: 0;
+  padding-bottom: 0;
+  font-size: 12px;
   font-weight: 600;
-  padding: 4px 16px;
+}
+
+.dense-search-input :deep(.q-field__control) {
+  height: 34px;
+  min-height: 34px;
+  border-radius: 999px;
+  padding: 0 12px;
+}
+
+.dense-search-input :deep(.q-field__marginal) {
+  height: 34px;
+}
+
+.dense-search-input :deep(.q-field__native) {
+  font-size: 12px;
+}
+
+.rounded-sq-btn {
+  border-radius: 8px;
+  height: 34px;
 }
 
 .invoice-table {
-  border-radius: 12px;
-  background: #ffffff;
+  border-radius: 8px;
   overflow: hidden;
 }
 
 .invoice-table :deep(thead tr th) {
-  font-weight: 700;
-  color: var(--q-primary);
-  background: #f8fafc;
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  padding: 14px 16px;
-  border-bottom: 1px solid #f1f5f9;
   position: sticky;
   top: 0;
   z-index: 2;
+  font-weight: 700;
+  color: #0f172a;
+  background: #f8fafc;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 8px 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+body.body--dark .invoice-table :deep(thead tr th) {
+  background: #1c1c1c;
+  color: #a1a1aa;
+  border-bottom: 1px solid #2e2e2e;
 }
 
 .invoice-table :deep(tbody tr.invoice-row--draft td) {
   background: #fffdf5;
+  box-shadow: inset 3px 0 0 #f59e0b;
+}
+
+body.body--dark .invoice-table :deep(tbody tr.invoice-row--draft td) {
+  background: rgba(245, 158, 11, 0.08);
   box-shadow: inset 3px 0 0 #f59e0b;
 }
 
@@ -1063,58 +749,83 @@ const onResetFilters = () => {
   box-shadow: inset 3px 0 0 #22c55e;
 }
 
+body.body--dark .invoice-table :deep(tbody tr.invoice-row--posted td) {
+  background: rgba(34, 197, 94, 0.08);
+  box-shadow: inset 3px 0 0 #22c55e;
+}
+
 .invoice-table :deep(tbody tr.invoice-row--voided td) {
   background: #fef7f7;
   box-shadow: inset 3px 0 0 #ef4444;
 }
 
+body.body--dark .invoice-table :deep(tbody tr.invoice-row--voided td) {
+  background: rgba(239, 68, 68, 0.08);
+  box-shadow: inset 3px 0 0 #ef4444;
+}
+
 .invoice-table :deep(tbody tr) {
-  transition: background-color 0.2s ease;
+  transition: background-color 0.15s ease;
 }
 
 .invoice-table :deep(tbody tr:hover) {
-  background-color: #f8fafc !important;
+  background-color: #f1f5f9 !important;
+}
+
+body.body--dark .invoice-table :deep(tbody tr:hover) {
+  background-color: #242424 !important;
 }
 
 .invoice-table :deep(tbody td) {
-  padding: 12px 16px;
+  padding: 6px 12px;
   border-bottom: 1px solid #f1f5f9;
-  font-size: 13px;
+  font-size: 12.5px;
+}
+
+body.body--dark .invoice-table :deep(tbody td) {
+  border-bottom: 1px solid #262626;
+  color: #ededed;
 }
 
 .hover-underline:hover {
   text-decoration: underline;
 }
 
-.status-chip {
-  border-radius: 20px !important;
-  font-size: 11px;
-  padding: 2px 8px;
+.status-badge {
+  border-radius: 6px;
+  padding: 2px 7px;
+  display: inline-flex;
+  align-items: center;
+  font-weight: 700;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.status-chip-dot {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  margin-right: 6px;
+.status-badge:hover {
+  transform: translateY(-1px);
+}
+
+.soft-chip {
+  border-radius: 6px !important;
+}
+
+.avatar-soft-sq {
+  border-radius: 6px;
+}
+
+.line-clamp-1 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  -webkit-box-orient: vertical;
 }
 
 .text-xxs {
-  font-size: 9px;
-  line-height: 1;
+  font-size: 9.5px;
+  line-height: 1.1;
 }
 
 .text-xs {
-  font-size: 11px;
-}
-
-.card-hover {
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease;
-}
-
-.card-hover:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(34, 56, 101, 0.12) !important;
+  font-size: 11.5px;
 }
 </style>

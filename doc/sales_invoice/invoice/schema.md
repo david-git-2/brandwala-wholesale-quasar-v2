@@ -13,10 +13,10 @@ Unified desk sales document for **wholesale**, **retail** (account + direct), an
 
 | Layer | Role |
 | :--- | :--- |
-| **`sales_invoices` pack** | One commercial + AR document per sale. **Books owner = parent** (`tenant_id`). **Seller = child** (`issued_by_tenant_id`). |
+| **`sales_invoices` pack** | One commercial + AR document per sale. **Books owner = parent** (`parent_tenant_id`). **Seller = child** (`issued_by_tenant_id`). |
 | **Wallet / `wallet_ledger`** | Cash & entity money movements on **Pay / allocate** — not full GAAP books |
 | **Shipment stamp** | Living unit cost (`shipment_items.landed_cost_bdt`) |
-| **Reports / treasury** | **Actual** batch / investor P&L = invoice revenue − (current stamp × sold qty). Parent reads `tenant_id`. |
+| **Reports / treasury** | **Actual** batch / investor P&L = invoice revenue − (current stamp × sold qty). Parent reads `parent_tenant_id`. |
 | **Customer-facing print** | Child brand / face prices — **same** invoice row, different UI/print mode; never a second stock-deducting invoice |
 
 ```text
@@ -32,23 +32,22 @@ One sale = **one** `sales_invoices` row. Lines may mix any parent shipments / an
 
 | Field | Nested group | Standalone |
 | :--- | :--- | :--- |
-| `tenant_id` | Parent (stock owner, books, number series) | Self |
-| `issued_by_tenant_id` | Selling child (desk/shop create; customer print brand; profile catalog) | Same as `tenant_id` |
-| `parent_tenant_id` | **Not on this pack** — redundant with `tenant_id` | — |
+| `parent_tenant_id` | Parent (stock owner, books, number series) | Self |
+| `issued_by_tenant_id` | Selling child (desk/shop create; customer print brand; profile catalog) | Same as `parent_tenant_id` |
 
 | Who | Sees | Filter |
 | :--- | :--- | :--- |
 | Child desk | Create / list / pay / return / customer print | `issued_by_tenant_id` = that child |
-| Parent | Rollup list, cost, margin, group reports | `tenant_id` = parent |
+| Parent | Rollup list, cost, margin, group reports | `parent_tenant_id` = parent |
 | Parent UI issue | **No** — parent does not self-issue desk invoices | — |
 
-**RLS:** Child members: read/write where `issued_by_tenant_id` is a tenant they belong to (cannot see sister invoices). Parent members: read where `tenant_id` = parent.
+**RLS:** Child members: read/write where `issued_by_tenant_id` is a tenant they belong to (cannot see sister invoices). Parent members: read where `parent_tenant_id` = parent.
 
-**Profiles:** `billing_profiles` / `recipient_profiles` stay **per issuing child**. RPC: `profile.tenant_id` must equal `invoice.issued_by_tenant_id` (not `invoice.tenant_id`).
+**Profiles:** `billing_profiles` / `recipient_profiles` stay **per issuing child**. RPC: `profile.tenant_id` must equal `invoice.issued_by_tenant_id`.
 
-**Number series:** unique `(tenant_id, invoice_no)` — one pool per parent company.
+**Number series:** unique `(parent_tenant_id, invoice_no)` — one pool per parent company.
 
-**Cutover from live `global_invoices*`:** `issued_by_tenant_id = old.tenant_id`; `tenant_id = old.parent_tenant_id`. Resolve duplicate `invoice_no` across sisters at migrate (prefix or resequence).
+**Cutover from live `global_invoices*`:** `issued_by_tenant_id = old.tenant_id`; `parent_tenant_id = old.parent_tenant_id`. Resolve duplicate `invoice_no` across sisters at migrate (prefix or resequence).
 
 **Not this domain:** chart of accounts, journal vouchers, thrift sales, purchase/AP bills.
 
@@ -64,9 +63,12 @@ CREATE TYPE invoice_type AS ENUM (
 );
 
 CREATE TYPE invoice_status AS ENUM (
-  'draft',   -- Built; soft-holds ATP; no stock deduct
-  'posted',  -- Stock deducted; prices + provisional cost frozen
-  'void'     -- Cancelled; stock restored (unpaid only)
+  'draft',               -- Initial creation; soft-holds ATP; no stock deduct
+  'revised',             -- Amended draft/proforma with updated items/quantities
+  'proforma_generated',  -- Proforma invoice issued for customer approval/quote
+  'issued',              -- Official commercial invoice issued; physical stock deducted & posted to AR
+  'cancelled',           -- Voided/cancelled before settlement; stock restored, AR cleared
+  'returned'             -- Customer returned items; stock restored & sales credit applied
 );
 
 CREATE TYPE payment_status AS ENUM (
@@ -132,9 +134,9 @@ One row = one **accounting** sale. Totals cached for reads; derived from lines +
 | Field | Type | Required | Description |
 | :--- | :--- | :---: | :--- |
 | `id` | BIGINT | Yes | Primary key |
-| `tenant_id` | BIGINT | Yes | **Parent** books owner (stock / reports). Standalone = self |
-| `issued_by_tenant_id` | BIGINT | Yes | Selling **child** (desk/shop). Standalone = `tenant_id` |
-| `invoice_no` | TEXT | Yes | Unique per `(tenant_id, invoice_no)` — company series |
+| `parent_tenant_id` | BIGINT | Yes | **Parent** books owner (stock / reports). Standalone = self |
+| `issued_by_tenant_id` | BIGINT | Yes | Selling **child** (desk/shop). Standalone = `parent_tenant_id` |
+| `invoice_no` | TEXT | Yes | Unique per `(parent_tenant_id, invoice_no)` — company series |
 | `invoice_type` | `invoice_type` | Yes | Channel |
 | `retail_billing_mode` | `retail_billing_mode` | No | Retail only; null otherwise |
 | `invoice_status` | `invoice_status` | Yes | Default `draft` |
@@ -225,7 +227,7 @@ Credit-note style returns. Posted invoice prices stay immutable.
 | Field | Type | Required | Description |
 | :--- | :--- | :---: | :--- |
 | `id` | BIGINT | Yes | Primary key |
-| `tenant_id` | BIGINT | Yes | Same as invoice — **parent** books owner |
+| `parent_tenant_id` | BIGINT | Yes | Same as invoice — **parent** books owner |
 | `issued_by_tenant_id` | BIGINT | Yes | Selling child (who processed the return) |
 | `invoice_id` | BIGINT | Yes | Original **posted** invoice |
 | `return_no` | TEXT | Yes | Document number |
@@ -345,7 +347,7 @@ Same invoice pack for future desk features:
 ```text
 billing_profiles (child catalog) ──┐
 recipient_profiles (child catalog) ┼──► sales_invoices
-                                   │      tenant_id = parent
+                                   │      parent_tenant_id = parent
                                    │      issued_by_tenant_id = selling child
                                    │         │
                                    │         ├──* sales_invoice_items ──► global_stocks

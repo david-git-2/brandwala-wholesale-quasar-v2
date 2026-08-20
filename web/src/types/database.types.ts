@@ -112,6 +112,7 @@ export type Database = {
           email: string | null
           id: number
           name: string
+          parent_tenant_id: number | null
           phone: string | null
           tenant_id: number
           updated_at: string
@@ -124,6 +125,7 @@ export type Database = {
           email?: string | null
           id?: number
           name: string
+          parent_tenant_id?: number | null
           phone?: string | null
           tenant_id: number
           updated_at?: string
@@ -136,6 +138,7 @@ export type Database = {
           email?: string | null
           id?: number
           name?: string
+          parent_tenant_id?: number | null
           phone?: string | null
           tenant_id?: number
           updated_at?: string
@@ -146,6 +149,13 @@ export type Database = {
             columns: ["customer_group_id"]
             isOneToOne: false
             referencedRelation: "customer_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_profiles_parent_tenant_id_fkey"
+            columns: ["parent_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
           {
@@ -4567,6 +4577,7 @@ export type Database = {
           district: string | null
           id: number
           name: string
+          parent_tenant_id: number | null
           phone: string
           secondary_phone: string | null
           tenant_id: number
@@ -4580,6 +4591,7 @@ export type Database = {
           district?: string | null
           id?: number
           name: string
+          parent_tenant_id?: number | null
           phone: string
           secondary_phone?: string | null
           tenant_id: number
@@ -4593,6 +4605,7 @@ export type Database = {
           district?: string | null
           id?: number
           name?: string
+          parent_tenant_id?: number | null
           phone?: string
           secondary_phone?: string | null
           tenant_id?: number
@@ -4601,7 +4614,49 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "recipient_profiles_parent_tenant_id_fkey"
+            columns: ["parent_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "recipient_profiles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_invoice_counters: {
+        Row: {
+          created_at: string
+          date_key: string
+          invoice_type: Database["public"]["Enums"]["global_invoice_type"]
+          last_value: number
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date_key: string
+          invoice_type: Database["public"]["Enums"]["global_invoice_type"]
+          last_value?: number
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date_key?: string
+          invoice_type?: Database["public"]["Enums"]["global_invoice_type"]
+          last_value?: number
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_invoice_counters_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -4627,7 +4682,6 @@ export type Database = {
           return_quantity: number
           sell_price_amount: number
           shipment_item_id: number | null
-          tenant_id: number
           unit_cost_price: number
           updated_at: string
         }
@@ -4648,7 +4702,6 @@ export type Database = {
           return_quantity?: number
           sell_price_amount?: number
           shipment_item_id?: number | null
-          tenant_id: number
           unit_cost_price?: number
           updated_at?: string
         }
@@ -4669,7 +4722,6 @@ export type Database = {
           return_quantity?: number
           sell_price_amount?: number
           shipment_item_id?: number | null
-          tenant_id?: number
           unit_cost_price?: number
           updated_at?: string
         }
@@ -4723,13 +4775,6 @@ export type Database = {
             referencedRelation: "global_shipment_items"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "global_invoice_items_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
         ]
       }
       sales_invoices: {
@@ -4763,7 +4808,6 @@ export type Database = {
           settlement_discount_amount: number
           shipping_charge: number
           subtotal_amount: number
-          tenant_id: number
           total_amount: number
           updated_at: string
           wrapping_charge: number
@@ -4798,7 +4842,6 @@ export type Database = {
           settlement_discount_amount?: number
           shipping_charge?: number
           subtotal_amount?: number
-          tenant_id: number
           total_amount?: number
           updated_at?: string
           wrapping_charge?: number
@@ -4833,7 +4876,6 @@ export type Database = {
           settlement_discount_amount?: number
           shipping_charge?: number
           subtotal_amount?: number
-          tenant_id?: number
           total_amount?: number
           updated_at?: string
           wrapping_charge?: number
@@ -4867,13 +4909,6 @@ export type Database = {
             referencedRelation: "recipient_profiles"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "global_invoices_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
         ]
       }
       sales_return_items: {
@@ -4887,7 +4922,6 @@ export type Database = {
           parent_tenant_id: number
           quantity: number
           return_charge_amount: number
-          tenant_id: number
           updated_at: string
         }
         Insert: {
@@ -4900,7 +4934,6 @@ export type Database = {
           parent_tenant_id: number
           quantity: number
           return_charge_amount?: number
-          tenant_id: number
           updated_at?: string
         }
         Update: {
@@ -4913,7 +4946,6 @@ export type Database = {
           parent_tenant_id?: number
           quantity?: number
           return_charge_amount?: number
-          tenant_id?: number
           updated_at?: string
         }
         Relationships: [
@@ -4955,13 +4987,6 @@ export type Database = {
           {
             foreignKeyName: "global_return_items_parent_tenant_id_fkey"
             columns: ["parent_tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "global_return_items_tenant_id_fkey"
-            columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
@@ -9212,6 +9237,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "global_invoice_items_parent_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "global_invoice_items_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
@@ -9223,13 +9255,6 @@ export type Database = {
             columns: ["shipment_item_id"]
             isOneToOne: false
             referencedRelation: "global_shipment_items"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "global_invoice_items_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -9387,17 +9412,17 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "global_invoices_parent_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "global_invoices_recipient_profile_id_fkey"
             columns: ["recipient_profile_id"]
             isOneToOne: false
             referencedRelation: "recipient_profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "global_invoices_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -9486,7 +9511,7 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "global_return_items_tenant_id_fkey"
+            foreignKeyName: "global_return_items_parent_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -9576,7 +9601,6 @@ export type Database = {
           return_quantity: number
           sell_price_amount: number
           shipment_item_id: number | null
-          tenant_id: number
           unit_cost_price: number
           updated_at: string
         }
@@ -9606,7 +9630,6 @@ export type Database = {
               parent_tenant_id: number
               quantity: number
               return_charge_amount: number
-              tenant_id: number
               updated_at: string
             }
             SetofOptions: {
@@ -9638,7 +9661,6 @@ export type Database = {
               parent_tenant_id: number
               quantity: number
               return_charge_amount: number
-              tenant_id: number
               updated_at: string
             }
             SetofOptions: {
@@ -9942,7 +9964,6 @@ export type Database = {
           settlement_discount_amount: number
           shipping_charge: number
           subtotal_amount: number
-          tenant_id: number
           total_amount: number
           updated_at: string
           wrapping_charge: number
@@ -10684,6 +10705,18 @@ export type Database = {
               website_url: string
             }[]
           }
+      create_customer_account: {
+        Args: {
+          p_accent_color?: string
+          p_address?: string
+          p_admin_email?: string
+          p_admin_name: string
+          p_group_name: string
+          p_phone?: string
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
       create_dropship_invoice: {
         Args: {
           p_billing_profile_id?: number
@@ -10747,7 +10780,6 @@ export type Database = {
               settlement_discount_amount: number
               shipping_charge: number
               subtotal_amount: number
-              tenant_id: number
               total_amount: number
               updated_at: string
               wrapping_charge: number
@@ -10804,7 +10836,6 @@ export type Database = {
               settlement_discount_amount: number
               shipping_charge: number
               subtotal_amount: number
-              tenant_id: number
               total_amount: number
               updated_at: string
               wrapping_charge: number
@@ -10833,6 +10864,62 @@ export type Database = {
         Returns: Json
       }
       create_sales_invoice:
+        | {
+            Args: {
+              p_billing_profile_id?: number
+              p_due_date?: string
+              p_invoice_date?: string
+              p_invoice_no?: string
+              p_invoice_type?: Database["public"]["Enums"]["global_invoice_type"]
+              p_note?: string
+              p_recipient_address?: string
+              p_recipient_name?: string
+              p_recipient_phone?: string
+              p_recipient_profile_id?: number
+              p_retail_billing_mode?: Database["public"]["Enums"]["retail_billing_mode"]
+              p_tenant_id: number
+            }
+            Returns: {
+              billing_profile_id: number | null
+              collection_source: Database["public"]["Enums"]["collection_source_type"]
+              created_at: string
+              created_by: string | null
+              discount_amount: number
+              due_amount: number
+              due_date: string | null
+              fulfillment_status: Database["public"]["Enums"]["global_fulfillment_status"]
+              id: number
+              invoice_date: string
+              invoice_no: string
+              invoice_status: Database["public"]["Enums"]["global_invoice_status"]
+              invoice_type: Database["public"]["Enums"]["global_invoice_type"]
+              issued_by_tenant_id: number
+              note: string | null
+              paid_amount: number
+              parent_tenant_id: number
+              payment_status: string
+              print_charge: number
+              recipient_address: string | null
+              recipient_name: string | null
+              recipient_phone: string | null
+              recipient_profile_id: number | null
+              retail_billing_mode:
+                | Database["public"]["Enums"]["retail_billing_mode"]
+                | null
+              settlement_discount_amount: number
+              shipping_charge: number
+              subtotal_amount: number
+              total_amount: number
+              updated_at: string
+              wrapping_charge: number
+            }
+            SetofOptions: {
+              from: "*"
+              to: "sales_invoices"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
         | {
             Args: {
               p_billing_profile_id: number
@@ -10877,64 +10964,6 @@ export type Database = {
               settlement_discount_amount: number
               shipping_charge: number
               subtotal_amount: number
-              tenant_id: number
-              total_amount: number
-              updated_at: string
-              wrapping_charge: number
-            }
-            SetofOptions: {
-              from: "*"
-              to: "sales_invoices"
-              isOneToOne: true
-              isSetofReturn: false
-            }
-          }
-        | {
-            Args: {
-              p_billing_profile_id?: number
-              p_due_date?: string
-              p_invoice_date?: string
-              p_invoice_no: string
-              p_invoice_type: Database["public"]["Enums"]["global_invoice_type"]
-              p_note?: string
-              p_recipient_address?: string
-              p_recipient_name?: string
-              p_recipient_phone?: string
-              p_recipient_profile_id?: number
-              p_retail_billing_mode?: Database["public"]["Enums"]["retail_billing_mode"]
-              p_tenant_id: number
-            }
-            Returns: {
-              billing_profile_id: number | null
-              collection_source: Database["public"]["Enums"]["collection_source_type"]
-              created_at: string
-              created_by: string | null
-              discount_amount: number
-              due_amount: number
-              due_date: string | null
-              fulfillment_status: Database["public"]["Enums"]["global_fulfillment_status"]
-              id: number
-              invoice_date: string
-              invoice_no: string
-              invoice_status: Database["public"]["Enums"]["global_invoice_status"]
-              invoice_type: Database["public"]["Enums"]["global_invoice_type"]
-              issued_by_tenant_id: number
-              note: string | null
-              paid_amount: number
-              parent_tenant_id: number
-              payment_status: string
-              print_charge: number
-              recipient_address: string | null
-              recipient_name: string | null
-              recipient_phone: string | null
-              recipient_profile_id: number | null
-              retail_billing_mode:
-                | Database["public"]["Enums"]["retail_billing_mode"]
-                | null
-              settlement_discount_amount: number
-              shipping_charge: number
-              subtotal_amount: number
-              tenant_id: number
               total_amount: number
               updated_at: string
               wrapping_charge: number
@@ -11483,6 +11512,14 @@ export type Database = {
       fulfill_shop_order_to_invoice: {
         Args: { p_order_id: number }
         Returns: undefined
+      }
+      generate_sales_invoice_number: {
+        Args: {
+          p_date?: string
+          p_invoice_type: Database["public"]["Enums"]["global_invoice_type"]
+          p_tenant_id: number
+        }
+        Returns: string
       }
       generate_shipment_tracking_token: {
         Args: { p_shipment_id: number }
@@ -12282,6 +12319,24 @@ export type Database = {
             }
             Returns: Json
           }
+      list_customer_accounts: {
+        Args: { p_search?: string; p_tenant_id: number }
+        Returns: {
+          accent_color: string
+          address: string
+          admin_name: string
+          billing_profile_id: number
+          created_at: string
+          customer_group_id: number
+          email: string
+          group_name: string
+          id: number
+          is_active: boolean
+          member_count: number
+          phone: string
+          wallet_available_balance: number
+        }[]
+      }
       list_customer_active_carts: {
         Args: { p_tenant_id: number }
         Returns: {
@@ -13595,7 +13650,6 @@ export type Database = {
           settlement_discount_amount: number
           shipping_charge: number
           subtotal_amount: number
-          tenant_id: number
           total_amount: number
           updated_at: string
           wrapping_charge: number
@@ -13814,6 +13868,36 @@ export type Database = {
       round_bdt_up_to_zero_or_five: {
         Args: { p_value: number }
         Returns: number
+      }
+      search_sales_invoice_stock: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_tenant_id: number
+        }
+        Returns: {
+          allocation_rank: number
+          available_atp: number
+          barcode: string
+          global_stock_id: number
+          holding_tenant_id: number
+          holding_tenant_name: string
+          image_url: string
+          is_allocated_to_tenant: boolean
+          location_id: number
+          location_name: string
+          name: string
+          product_code: string
+          product_id: number
+          quantity: number
+          shipment_id: number
+          shipment_item_id: number
+          shipment_name: string
+          stock_created_at: string
+          suggested_sell_price: number
+          unit_cost_price: number
+        }[]
       }
       search_stock_network: {
         Args: {
@@ -14305,7 +14389,6 @@ export type Database = {
           return_quantity: number
           sell_price_amount: number
           shipment_item_id: number | null
-          tenant_id: number
           unit_cost_price: number
           updated_at: string
         }

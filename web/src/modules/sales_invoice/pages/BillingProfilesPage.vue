@@ -10,6 +10,7 @@
 
       <q-card flat bordered class="q-pa-sm">
         <div class="row items-center justify-between q-col-gutter-sm">
+          <!-- Left: Search Box -->
           <div class="col-auto row items-center q-gutter-sm">
             <q-btn
               v-if="!showSearchInput"
@@ -45,19 +46,19 @@
                 />
               </template>
             </q-input>
+          </div>
 
+          <!-- Right: Create Customer Action Button -->
+          <div class="col-auto row items-center q-gutter-sm">
             <q-btn
-              flat
-              round
-              dense
-              icon="ph ph-funnel"
-              aria-label="Filters"
-              @click="filterDrawerOpen = true"
-            >
-              <q-badge v-if="activeFilterCount > 0" color="primary" rounded floating>
-                {{ activeFilterCount }}
-              </q-badge>
-            </q-btn>
+              unelevated
+              color="primary"
+              icon="ph ph-plus"
+              label="Create Customer"
+              no-caps
+              class="action-btn text-weight-bold"
+              @click="goToCreateCustomer"
+            />
           </div>
         </div>
       </q-card>
@@ -218,7 +219,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import BillingProfileDetailsDrawer from '../components/BillingProfileDetailsDrawer.vue';
@@ -242,6 +243,13 @@ defineProps<{
 
 const authStore = useAuthStore();
 const route = useRoute();
+const router = useRouter();
+
+const goToCreateCustomer = () => {
+  const slug = route.params.tenantSlug;
+  const prefix = typeof slug === 'string' && slug ? `/${slug}` : '';
+  void router.push(`${prefix}/app/customers/create`);
+};
 
 const tenantId = computed(() => authStore.tenantId as number);
 

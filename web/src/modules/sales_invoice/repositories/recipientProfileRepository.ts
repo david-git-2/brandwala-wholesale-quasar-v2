@@ -10,6 +10,7 @@ const mapProfileJson = (data: Record<string, unknown> | null): RecipientProfile 
   return {
     id: Number(data.id),
     tenant_id: Number(data.tenant_id),
+    parent_tenant_id: data.parent_tenant_id != null ? Number(data.parent_tenant_id) : null,
     name: (data.name as string | null) ?? '',
     phone: (data.phone as string | null) ?? '',
     secondary_phone: (data.secondary_phone as string | null) ?? null,

@@ -2,7 +2,7 @@ import type { GlobalStockCostingInput } from 'src/modules/global/types';
 
 export type GlobalInvoiceRow = {
   id: number;
-  tenant_id: number;
+  tenant_id?: number;
   parent_tenant_id: number;
   issued_by_tenant_id: number;
   issued_by_tenant_name?: string | null;
@@ -21,6 +21,8 @@ export type GlobalInvoiceRow = {
   billing_profile_color?: string | null;
   billing_profile_customer_group_id?: number | null;
   recipient_name?: string | null;
+  created_by?: string | null;
+  created_at?: string;
   settlement_discount_amount?: number;
 };
 

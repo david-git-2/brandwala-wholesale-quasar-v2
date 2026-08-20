@@ -15,14 +15,14 @@ Maps desk-sale stages to schema rules. Schema: [schema.md](./schema.md). Stock A
                         • Totals preview    • No auto wallet AR   • Customer vs accounting print
 ```
 
-**One accounting invoice** for wholesale / retail account / retail direct / dropship. `tenant_id` = parent books; `issued_by_tenant_id` = selling child. Customer-facing different prices = **print/face**, not a second posted invoice. Child UI and parent UI are views of the same row.
+**One accounting invoice** for wholesale / retail account / retail direct / dropship. `parent_tenant_id` = parent books; `issued_by_tenant_id` = selling child. Customer-facing different prices = **print/face**, not a second posted invoice. Child UI and parent UI are views of the same row.
 
 ---
 
 ## Stage 1: Create draft
 
 * Pick `invoice_type` (+ `retail_billing_mode` when retail).
-* Set `tenant_id` = parent books owner; `issued_by_tenant_id` = selling child (standalone: both = self).
+* Set `parent_tenant_id` = parent books owner; `issued_by_tenant_id` = selling child (standalone: both = self).
 * `collection_source`, optional profiles (`profile.tenant_id` must equal `issued_by_tenant_id`).
 * Snapshot recipient name/phone/address when known.
 * `invoice_status = draft`; `payment_status = unpaid`; `fulfillment_status = pending`.

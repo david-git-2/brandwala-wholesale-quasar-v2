@@ -67,6 +67,36 @@ export function useShipmentProgressFlowStagesQuery(
 }
 
 /**
+ * Child Tenants query cached for 20 minutes
+ */
+export function useChildTenantsQuery(
+  parentTenantId: Ref<number | null | undefined> | ComputedRef<number | null | undefined> | number | null | undefined,
+) {
+  const resolvedTenantId = computed(() => {
+    const raw = unref(parentTenantId);
+    return raw && !isNaN(Number(raw)) ? Number(raw) : null;
+  });
+
+  return useQuery({
+    queryKey: computed(() => procurementStockQueryKeys.childTenants(resolvedTenantId.value!)),
+    queryFn: async () => {
+      try {
+        const { tenantRepository } = await import('src/modules/tenant/repositories/tenantRepository');
+        const tenants = await tenantRepository.listTenants();
+        return tenants.filter((t) => t.parent_id === resolvedTenantId.value || t.id === resolvedTenantId.value);
+      } catch {
+        const { tenantRepository } = await import('src/modules/tenant/repositories/tenantRepository');
+        const tenants = await tenantRepository.listTenantsByMembership();
+        return tenants.filter((t) => t.parent_id === resolvedTenantId.value || t.id === resolvedTenantId.value);
+      }
+    },
+    enabled: computed(() => resolvedTenantId.value !== null),
+    staleTime: TWENTY_MINUTES,
+    gcTime: TWENTY_MINUTES * 2,
+  });
+}
+
+/**
  * Consolidated Shipment Overview Details Query (Single RPC)
  */
 export function useShipmentOverviewDetailsQuery(
@@ -84,4 +114,5 @@ export function useShipmentOverviewDetailsQuery(
     staleTime: 30 * 1000, // 30 seconds
   });
 }
+
 

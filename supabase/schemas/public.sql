@@ -22,7 +22,6 @@ ALTER SCHEMA "public" OWNER TO "pg_database_owner";
 COMMENT ON SCHEMA "public" IS 'standard public schema';
 
 
-
 CREATE TYPE "public"."app_role" AS ENUM (
     'superadmin',
     'admin',
@@ -35,15 +34,6 @@ CREATE TYPE "public"."app_role" AS ENUM (
 
 
 ALTER TYPE "public"."app_role" OWNER TO "postgres";
-
-
-CREATE TYPE "public"."collection_source_type" AS ENUM (
-    'billing_profile',
-    'recipient'
-);
-
-
-ALTER TYPE "public"."collection_source_type" OWNER TO "postgres";
 
 
 CREATE TYPE "public"."commerce_order_status" AS ENUM (
@@ -66,47 +56,6 @@ CREATE TYPE "public"."customer_group_role" AS ENUM (
 
 
 ALTER TYPE "public"."customer_group_role" OWNER TO "postgres";
-
-
-CREATE TYPE "public"."global_fulfillment_status" AS ENUM (
-    'pending',
-    'packed',
-    'shipped',
-    'delivered'
-);
-
-
-ALTER TYPE "public"."global_fulfillment_status" OWNER TO "postgres";
-
-
-CREATE TYPE "public"."global_invoice_status" AS ENUM (
-    'draft',
-    'posted',
-    'voided'
-);
-
-
-ALTER TYPE "public"."global_invoice_status" OWNER TO "postgres";
-
-
-CREATE TYPE "public"."global_invoice_type" AS ENUM (
-    'wholesale',
-    'retail',
-    'dropship'
-);
-
-
-ALTER TYPE "public"."global_invoice_type" OWNER TO "postgres";
-
-
-CREATE TYPE "public"."global_source_module" AS ENUM (
-    'wholesale',
-    'retail',
-    'commerce'
-);
-
-
-ALTER TYPE "public"."global_source_module" OWNER TO "postgres";
 
 
 CREATE TYPE "public"."investor_payment_method" AS ENUM (
@@ -133,18 +82,6 @@ CREATE TYPE "public"."investor_transaction_type" AS ENUM (
 
 
 ALTER TYPE "public"."investor_transaction_type" OWNER TO "postgres";
-
-
-CREATE TYPE "public"."invoice_charge_type" AS ENUM (
-    'cod',
-    'packing',
-    'print',
-    'delivery',
-    'other'
-);
-
-
-ALTER TYPE "public"."invoice_charge_type" OWNER TO "postgres";
 
 
 CREATE TYPE "public"."koba_order_status" AS ENUM (
@@ -174,15 +111,6 @@ CREATE TYPE "public"."order_status" AS ENUM (
 
 
 ALTER TYPE "public"."order_status" OWNER TO "postgres";
-
-
-CREATE TYPE "public"."retail_billing_mode" AS ENUM (
-    'account',
-    'direct'
-);
-
-
-ALTER TYPE "public"."retail_billing_mode" OWNER TO "postgres";
 
 
 CREATE TYPE "public"."shop_cart_status" AS ENUM (
@@ -363,253 +291,6 @@ SET default_tablespace = '';
 SET default_table_access_method = "heap";
 
 
-CREATE TABLE IF NOT EXISTS "public"."sales_invoice_items" (
-    "id" bigint NOT NULL,
-    "tenant_id" bigint NOT NULL,
-    "parent_tenant_id" bigint NOT NULL,
-    "invoice_id" bigint NOT NULL,
-    "global_stock_id" bigint NOT NULL,
-    "shipment_item_id" bigint,
-    "product_id" bigint,
-    "name_snapshot" "text" NOT NULL,
-    "barcode_snapshot" "text",
-    "product_code_snapshot" "text",
-    "quantity" numeric(12,3) NOT NULL,
-    "unit_cost_price" numeric(12,2) DEFAULT 0 NOT NULL,
-    "sell_price_amount" numeric(12,2) DEFAULT 0 NOT NULL,
-    "line_discount_amount" numeric(12,2) DEFAULT 0 NOT NULL,
-    "line_total_amount" numeric(12,2) DEFAULT 0 NOT NULL,
-    "return_quantity" numeric(12,3) DEFAULT 0 NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "assigned_child_tenant_id" bigint,
-    CONSTRAINT "global_invoice_items_line_discount_amount_check" CHECK (("line_discount_amount" >= (0)::numeric)),
-    CONSTRAINT "global_invoice_items_line_total_amount_check" CHECK (("line_total_amount" >= (0)::numeric)),
-    CONSTRAINT "global_invoice_items_quantity_check" CHECK (("quantity" > (0)::numeric)),
-    CONSTRAINT "global_invoice_items_return_qty_check" CHECK (("return_quantity" <= "quantity")),
-    CONSTRAINT "global_invoice_items_return_quantity_check" CHECK (("return_quantity" >= (0)::numeric)),
-    CONSTRAINT "global_invoice_items_sell_price_amount_check" CHECK (("sell_price_amount" >= (0)::numeric)),
-    CONSTRAINT "global_invoice_items_unit_cost_price_check" CHECK (("unit_cost_price" >= (0)::numeric))
-);
-
-
-ALTER TABLE "public"."sales_invoice_items" OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."add_global_invoice_item"("p_invoice_id" bigint, "p_global_stock_id" bigint, "p_quantity" numeric, "p_sell_price_amount" numeric, "p_line_discount_amount" numeric DEFAULT 0, "p_recipient_price_amount" numeric DEFAULT NULL::numeric) RETURNS "public"."sales_invoice_items"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_invoice public.global_invoices;
-  v_stock public.global_stocks;
-  v_row public.global_invoice_items;
-  v_name_snapshot text;
-  v_barcode_snapshot text;
-  v_product_code_snapshot text;
-  v_line_total numeric;
-  v_product_id bigint;
-  v_unit_cost numeric;
-  v_qty_remaining numeric;
-  v_avail integer;
-  v_take numeric;
-  v_existing_qty numeric;
-  v_curr_stock_id bigint;
-  v_shipment_item_id bigint;
-  v_assigned_child bigint;
-begin
-  select * into v_invoice from public.global_invoices where id = p_invoice_id;
-  if v_invoice.id is null then raise exception 'invoice not found'; end if;
-  if v_invoice.invoice_status <> 'draft'::public.global_invoice_status then
-    raise exception 'cannot add items to a non-draft invoice';
-  end if;
-
-  select * into v_stock from public.global_stocks where id = p_global_stock_id;
-  if v_stock.id is null then raise exception 'stock not found'; end if;
-  if v_stock.parent_tenant_id <> v_invoice.parent_tenant_id then
-    raise exception 'stock must belong to the same parent tenant group';
-  end if;
-
-  select product_id into v_product_id
-  from public.global_shipment_items
-  where id = v_stock.shipment_item_id;
-
-  v_qty_remaining := p_quantity;
-  v_curr_stock_id := p_global_stock_id;
-
-  v_avail := public.get_available_stock(v_curr_stock_id, v_invoice.tenant_id);
-  select coalesce(sum(quantity), 0) into v_existing_qty
-  from public.global_invoice_items
-  where invoice_id = p_invoice_id and global_stock_id = v_curr_stock_id;
-
-  v_avail := greatest(v_avail - v_existing_qty, 0);
-
-  if v_avail > 0 then
-    v_take := least(v_qty_remaining, v_avail);
-
-    select gsi.name, gsi.barcode, gsi.product_code, gsi.id, sh.assigned_child_tenant_id
-    into v_name_snapshot, v_barcode_snapshot, v_product_code_snapshot, v_shipment_item_id, v_assigned_child
-    from public.global_shipment_items gsi
-    join public.global_shipments sh on sh.id = gsi.shipment_id
-    where gsi.id = (select shipment_item_id from public.global_stocks where id = v_curr_stock_id);
-
-    v_line_total := greatest((v_take * p_sell_price_amount) - coalesce(p_line_discount_amount, 0.00), 0.00);
-    v_unit_cost := coalesce(public.calculate_landed_unit_cost(v_shipment_item_id), 0.00);
-
-    insert into public.global_invoice_items (
-      tenant_id, parent_tenant_id, invoice_id, global_stock_id, shipment_item_id, product_id,
-      name_snapshot, barcode_snapshot, product_code_snapshot, quantity, unit_cost_price,
-      sell_price_amount, line_discount_amount, line_total_amount, return_quantity,
-      assigned_child_tenant_id
-    )
-    values (
-      v_invoice.tenant_id, v_invoice.parent_tenant_id, p_invoice_id, v_curr_stock_id,
-      v_shipment_item_id, v_product_id,
-      v_name_snapshot, v_barcode_snapshot, v_product_code_snapshot, v_take, v_unit_cost,
-      p_sell_price_amount, coalesce(p_line_discount_amount, 0.00), v_line_total, 0.00,
-      v_assigned_child
-    )
-    returning * into v_row;
-
-    v_qty_remaining := v_qty_remaining - v_take;
-  end if;
-
-  if v_qty_remaining > 0 then
-    raise exception 'insufficient stock: requested %, available %', p_quantity, (p_quantity - v_qty_remaining);
-  end if;
-
-  perform public.recompute_global_invoice_totals(p_invoice_id);
-
-  return v_row;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."add_global_invoice_item"("p_invoice_id" bigint, "p_global_stock_id" bigint, "p_quantity" numeric, "p_sell_price_amount" numeric, "p_line_discount_amount" numeric, "p_recipient_price_amount" numeric) OWNER TO "postgres";
-
-
-CREATE TABLE IF NOT EXISTS "public"."sales_return_items" (
-    "id" bigint NOT NULL,
-    "tenant_id" bigint NOT NULL,
-    "parent_tenant_id" bigint NOT NULL,
-    "invoice_id" bigint NOT NULL,
-    "invoice_item_id" bigint NOT NULL,
-    "global_stock_id" bigint NOT NULL,
-    "quantity" numeric(12,3) NOT NULL,
-    "return_charge_amount" numeric(12,2) DEFAULT 0 NOT NULL,
-    "note" "text",
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    CONSTRAINT "global_return_items_quantity_check" CHECK (("quantity" > (0)::numeric)),
-    CONSTRAINT "global_return_items_return_charge_amount_check" CHECK (("return_charge_amount" >= (0)::numeric))
-);
-
-
-ALTER TABLE "public"."sales_return_items" OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."add_global_return_item"("p_invoice_id" bigint, "p_invoice_item_id" bigint, "p_quantity" numeric, "p_return_charge_amount" numeric DEFAULT 0, "p_note" "text" DEFAULT NULL::"text") RETURNS "public"."sales_return_items"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-begin
-  return public.add_global_return_item(
-    p_invoice_id,
-    p_invoice_item_id,
-    p_quantity,
-    0::numeric,
-    0::numeric,
-    p_return_charge_amount,
-    p_note,
-    null::bigint,
-    'held'::public.stock_availability
-  );
-end;
-$$;
-
-
-ALTER FUNCTION "public"."add_global_return_item"("p_invoice_id" bigint, "p_invoice_item_id" bigint, "p_quantity" numeric, "p_return_charge_amount" numeric, "p_note" "text") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."add_global_return_item"("p_invoice_id" bigint, "p_invoice_item_id" bigint, "p_quantity" numeric, "p_return_face_amount" numeric, "p_return_accounting_amount" numeric, "p_return_charge_amount" numeric DEFAULT 0, "p_note" "text" DEFAULT NULL::"text", "p_to_grade_tag_id" bigint DEFAULT NULL::bigint, "p_to_availability" "public"."stock_availability" DEFAULT 'held'::"public"."stock_availability") RETURNS "public"."sales_return_items"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_invoice public.global_invoices;
-  v_item public.global_invoice_items;
-  v_row public.global_return_items;
-  v_parent bigint;
-begin
-  select * into v_invoice from public.global_invoices where id = p_invoice_id for update;
-  if v_invoice.id is null then raise exception 'invoice not found'; end if;
-  if v_invoice.invoice_status <> 'posted'::public.global_invoice_status then
-    raise exception 'cannot return items on a non-posted invoice';
-  end if;
-
-  select * into v_item from public.global_invoice_items where id = p_invoice_item_id for update;
-  if v_item.id is null then raise exception 'invoice item not found'; end if;
-  if v_item.invoice_id <> p_invoice_id then
-    raise exception 'invoice item does not belong to the selected invoice';
-  end if;
-
-  if v_item.return_quantity + p_quantity > v_item.quantity then
-    raise exception 'return quantity exceeds available item quantity';
-  end if;
-
-  insert into public.global_return_items (
-    tenant_id,
-    parent_tenant_id,
-    invoice_id,
-    invoice_item_id,
-    global_stock_id,
-    quantity,
-    return_charge_amount,
-    note
-  )
-  values (
-    v_invoice.tenant_id,
-    v_invoice.parent_tenant_id,
-    p_invoice_id,
-    p_invoice_item_id,
-    v_item.global_stock_id,
-    p_quantity,
-    coalesce(p_return_charge_amount, 0.00),
-    nullif(trim(p_note), '')
-  )
-  returning * into v_row;
-
-  update public.global_invoice_items
-  set return_quantity = return_quantity + p_quantity
-  where id = p_invoice_item_id;
-
-  v_parent := coalesce(v_invoice.parent_tenant_id, public.resolve_parent_tenant_id(v_invoice.tenant_id));
-
-  if v_item.global_stock_id is not null then
-    perform public.create_and_post_stock_movement(
-      v_parent,
-      v_item.global_stock_id,
-      ceil(p_quantity)::integer,
-      public.default_returns_stock_location_id(v_parent),
-      coalesce(p_to_availability, 'held'::public.stock_availability),
-      coalesce(p_to_grade_tag_id, public.default_stock_grade_tag_id()),
-      'return_inbound'::public.stock_movement_type,
-      coalesce(nullif(trim(p_note), ''), 'Invoice return'),
-      'sales_invoice',
-      p_invoice_id::text
-    );
-  end if;
-
-  perform public.recompute_global_invoice_totals(p_invoice_id);
-
-  return v_row;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."add_global_return_item"("p_invoice_id" bigint, "p_invoice_item_id" bigint, "p_quantity" numeric, "p_return_face_amount" numeric, "p_return_accounting_amount" numeric, "p_return_charge_amount" numeric, "p_note" "text", "p_to_grade_tag_id" bigint, "p_to_availability" "public"."stock_availability") OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."add_item_to_cart"("p_tenant_id" bigint, "p_store_id" bigint DEFAULT NULL::bigint, "p_customer_group_id" bigint DEFAULT NULL::bigint, "p_can_see_price" boolean DEFAULT false, "p_product_id" bigint DEFAULT NULL::bigint, "p_name" "text" DEFAULT NULL::"text", "p_image_url" "text" DEFAULT NULL::"text", "p_price_bdt" numeric DEFAULT NULL::numeric, "p_minimum_sell_price_bdt" numeric DEFAULT NULL::numeric, "p_quantity" integer DEFAULT 1, "p_minimum_quantity" integer DEFAULT 1) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -618,7 +299,6 @@ declare
   v_cart public.carts;
   v_item public.cart_items;
   v_existing_item public.cart_items;
-  v_qty integer;
   v_min_qty integer;
   v_name text;
   v_effective_price_bdt numeric;
@@ -644,8 +324,6 @@ begin
       and spp.product_id = p_product_id
       and spp.is_active = true
     limit 1;
-  end if;
-
   -- Removed contradictory check:
   -- (v_effective_price_bdt < v_effective_min_sell_bdt) is natural and correct 
   -- now that price_bdt is wholesale and minimum_sell_price_bdt is retail threshold.
@@ -673,8 +351,6 @@ begin
       coalesce(p_can_see_price, false)
     )
     returning * into v_cart;
-  end if;
-
   if p_product_id is not null then
     select *
     into v_existing_item
@@ -682,8 +358,6 @@ begin
     where ci.cart_id = v_cart.id
       and ci.product_id = p_product_id
     limit 1;
-  end if;
-
   if v_existing_item.id is not null then
     update public.cart_items
     set
@@ -720,16 +394,10 @@ begin
       v_min_qty
     )
     returning * into v_item;
-  end if;
-
   return jsonb_build_object(
     'cart', to_jsonb(v_cart),
     'item', to_jsonb(v_item)
   );
-end;
-$$;
-
-
 ALTER FUNCTION "public"."add_item_to_cart"("p_tenant_id" bigint, "p_store_id" bigint, "p_customer_group_id" bigint, "p_can_see_price" boolean, "p_product_id" bigint, "p_name" "text", "p_image_url" "text", "p_price_bdt" numeric, "p_minimum_sell_price_bdt" numeric, "p_quantity" integer, "p_minimum_quantity" integer) OWNER TO "postgres";
 
 
@@ -740,11 +408,6 @@ CREATE OR REPLACE FUNCTION "public"."add_item_to_commerce_cart"("p_tenant_id" bi
 declare
   v_existing public.commerce_cart;
   v_row public.commerce_cart;
-  v_product_id bigint;
-  v_parent_id bigint;
-begin
-  v_parent_id := public.resolve_parent_tenant_id(p_tenant_id);
-
   select product_id into v_product_id
   from public.global_stocks
   where id = p_global_stock_id
@@ -754,8 +417,6 @@ begin
     select 1 from public.global_stocks where id = p_global_stock_id and parent_tenant_id = v_parent_id
   ) then
     raise exception 'global stock not found for tenant parent';
-  end if;
-
   select *
   into v_existing
   from public.commerce_cart
@@ -788,13 +449,7 @@ begin
       greatest(p_quantity, 1)
     )
     returning * into v_row;
-  end if;
-
   return to_jsonb(v_row);
-end;
-$$;
-
-
 ALTER FUNCTION "public"."add_item_to_commerce_cart"("p_tenant_id" bigint, "p_customer_group_id" bigint, "p_global_stock_id" bigint, "p_quantity" integer) OWNER TO "postgres";
 
 
@@ -828,44 +483,22 @@ declare
 begin
   if p_tenant_id is null or p_payment_id is null or p_invoice_id is null then
     raise exception 'Tenant, payment and invoice are required.';
-  end if;
-
-  if coalesce(p_amount, 0) <= 0 then
-    raise exception 'Allocation amount must be greater than zero.';
-  end if;
-
   select *
   into v_payment
   from public.payments
   where id = p_payment_id
   for update;
 
-  if not found then
-    raise exception 'Payment not found.';
-  end if;
-
   if v_payment.tenant_id <> p_tenant_id then
     raise exception 'Payment does not belong to tenant.';
-  end if;
-
   select *
   into v_invoice
   from public.invoices
   where id = p_invoice_id
   for update;
 
-  if not found then
-    raise exception 'Invoice not found.';
-  end if;
-
   if v_invoice.tenant_id <> p_tenant_id then
     raise exception 'Invoice does not belong to tenant.';
-  end if;
-
-  if coalesce(v_invoice.billing_profile_id, 0) <> coalesce(v_payment.billing_profile_id, 0) then
-    raise exception 'Invoice and payment billing profile mismatch.';
-  end if;
-
   select coalesce(sum(amount), 0)
   into v_allocated_total
   from public.payment_allocations
@@ -874,13 +507,9 @@ begin
   v_remaining := coalesce(v_payment.amount, 0) - coalesce(v_allocated_total, 0);
   if p_amount > v_remaining then
     raise exception 'Allocation amount exceeds payment remaining amount.';
-  end if;
-
   v_due := coalesce(v_invoice.total_amount, 0) - coalesce(v_invoice.paid_amount, 0);
   if p_amount > v_due then
     raise exception 'Allocation amount exceeds invoice due amount.';
-  end if;
-
   insert into public.payment_allocations (
     tenant_id,
     payment_id,
@@ -902,12 +531,7 @@ begin
 
   perform public.recompute_invoice_payment_status(p_invoice_id);
 
-  return v_row;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."add_payment_allocation"("p_tenant_id" bigint, "p_payment_id" bigint, "p_invoice_id" bigint, "p_amount" numeric) OWNER TO "postgres";
+  ALTER FUNCTION "public"."add_payment_allocation"("p_tenant_id" bigint, "p_payment_id" bigint, "p_invoice_id" bigint, "p_amount" numeric) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."add_to_shop_cart"("p_shop_id" bigint, "p_product_id" bigint, "p_global_stock_allocation_id" bigint DEFAULT NULL::bigint, "p_quantity" integer DEFAULT 1, "p_customer_sell_price_amount" numeric DEFAULT NULL::numeric, "p_customer_sell_price_currency_id" bigint DEFAULT NULL::bigint, "p_global_stock_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
@@ -917,7 +541,6 @@ CREATE OR REPLACE FUNCTION "public"."add_to_shop_cart"("p_shop_id" bigint, "p_pr
 declare
   v_cart_res jsonb;
   v_cart_id bigint;
-  v_tenant_id bigint;
   v_shop_type public.shop_type_enum;
   v_pricing_method text;
   v_markup_percentage numeric;
@@ -958,8 +581,6 @@ begin
 
   if coalesce(v_can_add_to_cart, false) is not true then
     raise exception 'cart additions not allowed';
-  end if;
-
   select name, image_url, vendor_code, is_available, list_price_amount, list_price_currency_id
   into v_prod_name, v_prod_image, v_prod_vendor, v_prod_is_available, v_prod_price_amount, v_prod_price_currency_id
   from public.products
@@ -967,15 +588,11 @@ begin
 
   if v_prod_name is null then
     raise exception 'product not found';
-  end if;
-
   v_global_stock_id := coalesce(p_global_stock_id, p_global_stock_allocation_id);
 
   if v_shop_type in ('fixed_price', 'dropship') then
     if v_global_stock_id is null then
       raise exception 'global stock required for this shop type';
-    end if;
-
     select
       l.id, l.global_stock_id, l.sell_price_amount, l.sell_price_currency_id,
       l.minimum_sell_price_amount, l.minimum_sell_price_currency_id, l.display_quantity_override
@@ -990,8 +607,6 @@ begin
 
     if v_listing_id is null then
       raise exception 'active product listing not found on this shop';
-    end if;
-
     if v_shop_type = 'fixed_price' then
       select coalesce(gsi.landed_cost_bdt, public.calculate_landed_unit_cost(gsi.id))
       into v_landed_cost
@@ -1003,10 +618,7 @@ begin
         v_sell_price_amount := v_landed_cost * (1 + v_markup_percentage / 100.0);
       elsif v_pricing_method = 'direct_cost' then
         v_sell_price_amount := v_landed_cost;
-      end if;
-    end if;
-
-    select id, quantity into v_existing_item_id, v_existing_item_qty
+      select id, quantity into v_existing_item_id, v_existing_item_qty
     from public.shop_cart_items
     where cart_id = v_cart_id
       and global_stock_id = v_global_stock_id;
@@ -1017,8 +629,6 @@ begin
 
     if v_target_qty > v_available_to_sell then
       raise exception 'insufficient stock: requested %, available %', v_target_qty, v_available_to_sell;
-    end if;
-
     if v_shop_type = 'dropship' then
       if coalesce(v_can_set_dropship_price, false) then
         if p_customer_sell_price_amount is not null then
@@ -1029,20 +639,14 @@ begin
             v_customer_sell_price_amount := greatest(v_sell_price_amount, coalesce(v_min_sell_price_amount, 0));
           else
             v_customer_sell_price_amount := v_sell_price_amount;
-          end if;
           v_customer_sell_price_currency_id := v_sell_price_currency_id;
-        end if;
-
         if v_customer_sell_price_currency_id = v_min_sell_price_currency_id
            and v_customer_sell_price_amount < v_min_sell_price_amount then
           raise exception 'price cannot be lower than the minimum sell price %', v_min_sell_price_amount;
-        end if;
-      else
+        else
         v_customer_sell_price_amount := v_sell_price_amount;
         v_customer_sell_price_currency_id := v_sell_price_currency_id;
-      end if;
-    end if;
-  else
+      else
     select id, quantity into v_existing_item_id, v_existing_item_qty
     from public.shop_cart_items
     where cart_id = v_cart_id
@@ -1050,8 +654,6 @@ begin
 
     v_existing_item_qty := coalesce(v_existing_item_qty, 0);
     v_target_qty := v_existing_item_qty + p_quantity;
-  end if;
-
   if v_existing_item_id is not null then
     update public.shop_cart_items
     set
@@ -1080,13 +682,7 @@ begin
       v_customer_sell_price_amount, v_customer_sell_price_currency_id,
       v_prod_name, v_prod_image
     );
-  end if;
-
   return public.get_or_create_shop_cart(p_shop_id);
-end;
-$$;
-
-
 ALTER FUNCTION "public"."add_to_shop_cart"("p_shop_id" bigint, "p_product_id" bigint, "p_global_stock_allocation_id" bigint, "p_quantity" integer, "p_customer_sell_price_amount" numeric, "p_customer_sell_price_currency_id" bigint, "p_global_stock_id" bigint) OWNER TO "postgres";
 
 
@@ -1102,8 +698,6 @@ declare
 begin
   if v_remaining = 0 or p_product_id is null then
     return;
-  end if;
-
   if v_remaining > 0 then
     for v_rec in
       select
@@ -1134,8 +728,6 @@ begin
 
       if v_slack <= 0 then
         continue;
-      end if;
-
       v_take := least(v_remaining, v_slack);
 
       update public.inventory_stocks
@@ -1144,12 +736,9 @@ begin
 
       v_remaining := v_remaining - v_take;
       exit when v_remaining = 0;
-    end loop;
-
     if v_remaining > 0 then
       raise exception 'Not enough stock to reserve for product %.', p_product_id;
-    end if;
-  else
+    else
     v_remaining := abs(v_remaining);
 
     for v_rec in
@@ -1173,13 +762,7 @@ begin
 
       v_remaining := v_remaining - v_take;
       exit when v_remaining = 0;
-    end loop;
-  end if;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."adjust_inventory_reserved_for_product"("p_tenant_id" bigint, "p_product_id" bigint, "p_delta" integer) OWNER TO "postgres";
+    ALTER FUNCTION "public"."adjust_inventory_reserved_for_product"("p_tenant_id" bigint, "p_product_id" bigint, "p_delta" integer) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."advance_dropship_order_status"("p_order_id" bigint, "p_target_status" "public"."shop_order_status", "p_remittance_ref" "text" DEFAULT NULL::"text", "p_bank_trx_id" "text" DEFAULT NULL::"text") RETURNS "jsonb"
@@ -1188,10 +771,8 @@ CREATE OR REPLACE FUNCTION "public"."advance_dropship_order_status"("p_order_id"
     AS $$
 declare
   v_order public.shop_orders;
-  v_invoice public.global_invoices;
   v_current_status public.shop_order_status;
   v_is_valid boolean := false;
-  v_billing_profile_id bigint;
   v_profit numeric(12,2) := 0.00;
   v_recipient_subtotal numeric(12,2) := 0;
   v_accounting_subtotal numeric(12,2) := 0;
@@ -1202,34 +783,23 @@ begin
   select * into v_order from public.shop_orders where id = p_order_id for update;
   if v_order.id is null then
     return jsonb_build_object('success', false, 'error', 'Order not found');
-  end if;
-
   if v_order.shop_type_snapshot <> 'dropship' then
     return jsonb_build_object('success', false, 'error', 'Order is not a dropship order');
-  end if;
-
   v_current_status := v_order.status;
   v_currency := 'BDT';
 
   if v_current_status = p_target_status then
     return jsonb_build_object('success', true, 'message', 'Status unchanged', 'new_status', p_target_status);
-  end if;
-
   if v_current_status in ('submitted', 'draft', 'placed', 'confirmed') and p_target_status in ('processing', 'cancelled') then
     v_is_valid := true;
   elsif v_current_status in ('processing', 'ready_for_pickup', 'shipped', 'delivered', 'returned', 'payment_received') then
     if p_target_status in ('processing', 'ready_for_pickup', 'shipped', 'delivered', 'returned', 'payment_received', 'cancelled') then
       v_is_valid := true;
-    end if;
-  end if;
-
-  if not v_is_valid then
+    if not v_is_valid then
     return jsonb_build_object(
       'success', false,
       'error', format('Invalid status transition for dropship order from %s to %s', v_current_status, p_target_status)
     );
-  end if;
-
   update public.shop_orders
   set
     status = p_target_status,
@@ -1248,14 +818,9 @@ begin
       select * into v_invoice from public.global_invoices where id = v_order.global_invoice_id;
       if v_invoice.invoice_status = 'draft'::public.global_invoice_status then
         perform public.post_global_invoice(v_order.global_invoice_id);
-      end if;
-    end if;
-
-    select * into v_order from public.shop_orders where id = p_order_id;
+      select * into v_order from public.shop_orders where id = p_order_id;
     if v_order.global_invoice_id is not null then
       perform public.ensure_dropship_invoice_billed_entry(v_order.global_invoice_id);
-    end if;
-
     v_billing_profile_id := v_order.billing_profile_id;
     if v_billing_profile_id is null and v_order.customer_group_id is not null then
       select id into v_billing_profile_id
@@ -1264,13 +829,9 @@ begin
         and customer_group_id = v_order.customer_group_id
       order by created_at asc
       limit 1;
-    end if;
-
     select * into v_order from public.shop_orders where id = p_order_id;
     if v_order.global_invoice_id is not null then
       select * into v_invoice from public.global_invoices where id = v_order.global_invoice_id;
-    end if;
-
     select
       coalesce(sum(coalesce(customer_sell_price_amount, 0) * quantity), 0),
       coalesce(sum(coalesce(unit_sell_price_amount, unit_list_price_amount, 0) * quantity), 0)
@@ -1318,10 +879,7 @@ begin
             'invoice_id', v_order.global_invoice_id
           )
         );
-      end if;
-    end if;
-
-    if v_tenant_revenue > 0 then
+      if v_tenant_revenue > 0 then
       if not exists (
         select 1 from public.universal_wallet_ledger
         where source_type = 'shop_order'
@@ -1348,16 +906,11 @@ begin
             'invoice_id', v_order.global_invoice_id
           )
         );
-      end if;
-    end if;
-
-  elsif p_target_status = 'processing' then
+      elsif p_target_status = 'processing' then
     if v_order.global_invoice_id is not null then
       select * into v_invoice from public.global_invoices where id = v_order.global_invoice_id;
       if v_invoice.invoice_status = 'posted'::public.global_invoice_status then
         perform public.unpost_global_invoice(v_order.global_invoice_id);
-      end if;
-
       delete from public.universal_wallet_ledger
       where source_type = 'shop_order'
         and (source_id = p_order_id::text or source_id = v_order.order_no)
@@ -1370,82 +923,8 @@ begin
       delete from public.global_return_items where invoice_id = v_order.global_invoice_id;
       delete from public.global_invoice_items where invoice_id = v_order.global_invoice_id;
       delete from public.global_invoices where id = v_order.global_invoice_id;
-    end if;
-  end if;
-
-  return jsonb_build_object('success', true, 'new_status', p_target_status);
-end;
-$$;
-
-
+    return jsonb_build_object('success', true, 'new_status', p_target_status);
 ALTER FUNCTION "public"."advance_dropship_order_status"("p_order_id" bigint, "p_target_status" "public"."shop_order_status", "p_remittance_ref" "text", "p_bank_trx_id" "text") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."allocate_payment_to_global_invoice"("p_tenant_id" bigint, "p_payment_id" bigint, "p_global_invoice_id" bigint, "p_amount" numeric) RETURNS "public"."invoice_payments"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_payment public.global_payments;
-  v_invoice public.global_invoices;
-  v_row public.invoice_payments;
-begin
-  if p_tenant_id is null or p_payment_id is null or p_global_invoice_id is null then
-    raise exception 'Tenant, payment and invoice are required.';
-  end if;
-  if coalesce(p_amount, 0) <= 0 then
-    raise exception 'Allocation amount must be greater than zero.';
-  end if;
-
-  -- Lock payment
-  select * into v_payment from public.global_payments where id = p_payment_id for update;
-  if not found then raise exception 'Payment not found.'; end if;
-  if v_payment.tenant_id <> p_tenant_id then raise exception 'Payment tenant mismatch.'; end if;
-
-  -- Lock invoice
-  select * into v_invoice from public.global_invoices where id = p_global_invoice_id for update;
-  if not found then raise exception 'Invoice not found.'; end if;
-  if v_invoice.tenant_id <> p_tenant_id then raise exception 'Invoice tenant mismatch.'; end if;
-
-  -- Validate same billing profile
-  if coalesce(v_invoice.billing_profile_id, 0) <> coalesce(v_payment.billing_profile_id, 0) then
-    raise exception 'Invoice and payment billing profile mismatch.';
-  end if;
-
-  -- Check payment unallocated amount
-  if p_amount > v_payment.unallocated_amount then
-    raise exception 'Allocation amount % exceeds payment unallocated amount %.', p_amount, v_payment.unallocated_amount;
-  end if;
-
-  -- Check invoice remaining due balance
-  if p_amount > v_invoice.due_amount then
-    raise exception 'Allocation amount % exceeds invoice remaining due balance %.', p_amount, v_invoice.due_amount;
-  end if;
-
-  -- Insert allocation record
-  insert into public.invoice_payments (tenant_id, payment_id, global_invoice_id, amount)
-  values (p_tenant_id, p_payment_id, p_global_invoice_id, p_amount)
-  returning * into v_row;
-
-  -- Update payment unallocated amount
-  update public.global_payments
-  set unallocated_amount = unallocated_amount - p_amount
-  where id = p_payment_id;
-
-  -- Update invoice paid amount
-  update public.global_invoices
-  set paid_amount = coalesce(paid_amount, 0.00) + p_amount, updated_at = now()
-  where id = p_global_invoice_id;
-
-  -- Recompute invoice payment status and due_amount
-  perform public.recompute_global_invoice_payment_status(p_global_invoice_id);
-
-  return v_row;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."allocate_payment_to_global_invoice"("p_tenant_id" bigint, "p_payment_id" bigint, "p_global_invoice_id" bigint, "p_amount" numeric) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."apply_cart_item_inventory_reservation"() RETURNS "trigger"
@@ -1458,43 +937,22 @@ begin
   if tg_op = 'INSERT' then
     if new.product_id is null then
       return new;
-    end if;
-
     select tenant_id into v_tenant_id from public.carts where id = new.cart_id;
     perform public.adjust_inventory_reserved_for_product(v_tenant_id, new.product_id, new.quantity);
-    return new;
-  end if;
-
-  if tg_op = 'UPDATE' then
+    if tg_op = 'UPDATE' then
     select tenant_id into v_tenant_id from public.carts where id = new.cart_id;
 
     if old.product_id is not null then
       perform public.adjust_inventory_reserved_for_product(v_tenant_id, old.product_id, -old.quantity);
-    end if;
-
     if new.product_id is not null then
       perform public.adjust_inventory_reserved_for_product(v_tenant_id, new.product_id, new.quantity);
-    end if;
-
-    return new;
-  end if;
-
-  if tg_op = 'DELETE' then
+    if tg_op = 'DELETE' then
     if old.product_id is null then
       return old;
-    end if;
-
     select tenant_id into v_tenant_id from public.carts where id = old.cart_id;
     perform public.adjust_inventory_reserved_for_product(v_tenant_id, old.product_id, -old.quantity);
     return old;
-  end if;
-
-  return null;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."apply_cart_item_inventory_reservation"() OWNER TO "postgres";
+  ALTER FUNCTION "public"."apply_cart_item_inventory_reservation"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."apply_dropship_payout_settlement_fifo"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_amount" numeric) RETURNS "void"
@@ -1508,8 +966,6 @@ declare
 begin
   if v_remaining <= 0 then
     return;
-  end if;
-
   -- Only fully unpaid orders (partial stays until a later settled_amount column exists)
   for r in
     select o.id
@@ -1538,8 +994,6 @@ begin
           updated_at = now()
       where id = r.id;
       continue;
-    end if;
-
     if v_remaining >= v_profit then
       update public.shop_orders
       set payout_settlement_status = 'paid',
@@ -1552,239 +1006,7 @@ begin
           updated_at = now()
       where id = r.id;
       v_remaining := 0;
-    end if;
-  end loop;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."apply_dropship_payout_settlement_fifo"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_amount" numeric) OWNER TO "postgres";
-
-
-CREATE TABLE IF NOT EXISTS "public"."sales_invoices" (
-    "id" bigint NOT NULL,
-    "tenant_id" bigint NOT NULL,
-    "parent_tenant_id" bigint NOT NULL,
-    "invoice_no" "text" NOT NULL,
-    "invoice_type" "public"."global_invoice_type" DEFAULT 'wholesale'::"public"."global_invoice_type" NOT NULL,
-    "invoice_date" "date" DEFAULT CURRENT_DATE NOT NULL,
-    "retail_billing_mode" "public"."retail_billing_mode",
-    "invoice_status" "public"."global_invoice_status" DEFAULT 'draft'::"public"."global_invoice_status" NOT NULL,
-    "fulfillment_status" "public"."global_fulfillment_status" DEFAULT 'pending'::"public"."global_fulfillment_status" NOT NULL,
-    "billing_profile_id" bigint,
-    "recipient_profile_id" bigint,
-    "recipient_name" "text",
-    "recipient_phone" "text",
-    "recipient_address" "text",
-    "collection_source" "public"."collection_source_type" NOT NULL,
-    "due_date" "date",
-    "payment_status" "text" DEFAULT 'due'::"text" NOT NULL,
-    "total_amount" numeric(12,2) DEFAULT 0 NOT NULL,
-    "due_amount" numeric(12,2) DEFAULT 0 NOT NULL,
-    "paid_amount" numeric(12,2) DEFAULT 0 NOT NULL,
-    "subtotal_amount" numeric(12,2) DEFAULT 0 NOT NULL,
-    "discount_amount" numeric(12,2) DEFAULT 0 NOT NULL,
-    "shipping_charge" numeric(12,2) DEFAULT 0 NOT NULL,
-    "wrapping_charge" numeric(12,2) DEFAULT 0 NOT NULL,
-    "print_charge" numeric(12,2) DEFAULT 0 NOT NULL,
-    "note" "text",
-    "created_by" "uuid",
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "settlement_discount_amount" numeric(12,2) DEFAULT 0 NOT NULL,
-    "issued_by_tenant_id" bigint NOT NULL,
-    CONSTRAINT "global_invoices_discount_amount_check" CHECK (("discount_amount" >= (0)::numeric)),
-    CONSTRAINT "global_invoices_due_amount_check" CHECK (("due_amount" >= (0)::numeric)),
-    CONSTRAINT "global_invoices_paid_amount_check" CHECK (("paid_amount" >= (0)::numeric)),
-    CONSTRAINT "global_invoices_payment_status_check" CHECK (("payment_status" = ANY (ARRAY['due'::"text", 'partially_paid'::"text", 'paid'::"text"]))),
-    CONSTRAINT "global_invoices_print_charge_check" CHECK (("print_charge" >= (0)::numeric)),
-    CONSTRAINT "global_invoices_settlement_discount_amount_check" CHECK (("settlement_discount_amount" >= (0)::numeric)),
-    CONSTRAINT "global_invoices_shipping_charge_check" CHECK (("shipping_charge" >= (0)::numeric)),
-    CONSTRAINT "global_invoices_subtotal_amount_check" CHECK (("subtotal_amount" >= (0)::numeric)),
-    CONSTRAINT "global_invoices_total_amount_check" CHECK (("total_amount" >= (0)::numeric)),
-    CONSTRAINT "global_invoices_wrapping_charge_check" CHECK (("wrapping_charge" >= (0)::numeric))
-);
-
-
-ALTER TABLE "public"."sales_invoices" OWNER TO "postgres";
-
-
-COMMENT ON TABLE "public"."sales_invoices" IS 'Sales invoices. tenant_id = parent books, issued_by_tenant_id = selling child.';
-
-
-
-CREATE OR REPLACE FUNCTION "public"."apply_global_invoice_settlement_discount"("p_invoice_id" bigint, "p_amount" numeric, "p_note" "text" DEFAULT NULL::"text") RETURNS "public"."sales_invoices"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_invoice public.global_invoices;
-begin
-  select * into v_invoice from public.global_invoices where id = p_invoice_id for update;
-  if v_invoice.id is null then raise exception 'invoice not found'; end if;
-  if v_invoice.invoice_status <> 'posted'::public.global_invoice_status then
-    raise exception 'cannot settle a non-posted invoice';
-  end if;
-  if coalesce(p_amount, 0.00) < 0.00 then
-    raise exception 'settlement amount must be 0 or greater';
-  end if;
-  if coalesce(p_amount, 0.00) > coalesce(v_invoice.due_amount, 0.00) then
-    raise exception 'settlement amount exceeds outstanding due';
-  end if;
-
-  update public.global_invoices
-  set
-    settlement_discount_amount = coalesce(settlement_discount_amount, 0.00) + p_amount,
-    note = coalesce(nullif(trim(p_note), ''), note),
-    updated_at = now()
-  where id = p_invoice_id;
-
-  perform public.recompute_global_invoice_totals(p_invoice_id);
-
-  select * into v_invoice from public.global_invoices where id = p_invoice_id;
-
-  -- Record Tenant Revenue Write-Off for settlement discount
-  if p_amount > 0 then
-    perform public.record_ledger_transaction(
-      p_tenant_id => v_invoice.tenant_id,
-      p_entity_type => 'tenant',
-      p_entity_id => v_invoice.tenant_id,
-      p_type => 'debit',
-      p_amount => p_amount,
-      p_currency_code => 'BDT',
-      p_exchange_rate => 1.000000,
-      p_source_type => 'sales_invoice',
-      p_source_id => p_invoice_id::text,
-      p_metadata => jsonb_build_object(
-        'section', 'settlement_discount',
-        'purpose', 'settlement_discount_write_off',
-        'transaction_type', 'settlement_discount',
-        'label', 'Settlement Discount',
-        'invoice_id', p_invoice_id,
-        'invoice_no', v_invoice.invoice_no
-      )
-    );
-  end if;
-
-  return v_invoice;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."apply_global_invoice_settlement_discount"("p_invoice_id" bigint, "p_amount" numeric, "p_note" "text") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."apply_global_invoice_target_total"("p_invoice_id" bigint, "p_target_total" numeric, "p_dry_run" boolean DEFAULT false) RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_invoice public.global_invoices;
-  v_charges_sum numeric(12,2);
-  v_target_line_subtotal numeric(12,2);
-  v_current_subtotal numeric(12,2);
-  v_current_total numeric(12,2);
-  v_count integer;
-  v_index integer := 0;
-  v_running numeric(12,2) := 0.00;
-  v_share numeric(12,2);
-  v_base numeric(12,2);
-  v_old_price numeric(12,2);
-  v_new_price numeric(12,2);
-  v_item record;
-  v_lines jsonb := '[]'::jsonb;
-begin
-  select * into v_invoice from public.global_invoices where id = p_invoice_id;
-  if v_invoice.id is null then raise exception 'invoice not found'; end if;
-  if v_invoice.invoice_status <> 'draft'::public.global_invoice_status then
-    raise exception 'cannot adjust totals on a non-draft invoice';
-  end if;
-  if p_target_total is null or p_target_total < 0 then
-    raise exception 'target total must be 0 or greater';
-  end if;
-
-  v_charges_sum := coalesce(v_invoice.shipping_charge, 0.00)
-    + coalesce(v_invoice.wrapping_charge, 0.00)
-    + coalesce(v_invoice.print_charge, 0.00);
-
-  v_target_line_subtotal := round(p_target_total - v_charges_sum + coalesce(v_invoice.discount_amount, 0.00), 2);
-  if v_target_line_subtotal < 0 then
-    raise exception 'target total too low: charges and discount leave no room for item prices';
-  end if;
-
-  select
-    count(*),
-    coalesce(sum(line_total_amount), 0.00)
-  into v_count, v_current_subtotal
-  from public.global_invoice_items
-  where invoice_id = p_invoice_id;
-
-  if v_count = 0 then raise exception 'invoice has no items to adjust'; end if;
-  if v_current_subtotal <= 0 then
-    raise exception 'current item subtotal is zero; cannot spread proportionally';
-  end if;
-
-  v_current_total := round(coalesce(v_invoice.subtotal_amount, 0.00) + v_charges_sum - coalesce(v_invoice.discount_amount, 0.00), 2);
-
-  for v_item in
-    select id, name_snapshot, quantity, sell_price_amount, line_total_amount, line_discount_amount
-    from public.global_invoice_items
-    where invoice_id = p_invoice_id
-    order by id asc
-  loop
-    v_index := v_index + 1;
-    v_base := v_item.line_total_amount;
-    v_old_price := v_item.sell_price_amount;
-
-    if v_index = v_count then
-      v_share := round(v_target_line_subtotal - v_running, 2);
-    else
-      v_share := round(v_target_line_subtotal * (v_base / v_current_subtotal), 2);
-      v_running := v_running + v_share;
-    end if;
-
-    if v_share < 0 then
-      raise exception 'target total too low: item "%" would need a negative line total', v_item.name_snapshot;
-    end if;
-
-    v_new_price := round((v_share + coalesce(v_item.line_discount_amount, 0.00)) / v_item.quantity, 2);
-    if v_new_price < 0 then
-      raise exception 'target total too low: item "%" would need a negative price', v_item.name_snapshot;
-    end if;
-
-    v_lines := v_lines || jsonb_build_object(
-      'item_id', v_item.id,
-      'name', v_item.name_snapshot,
-      'quantity', v_item.quantity,
-      'old_price', v_old_price,
-      'new_price', v_new_price,
-      'unit_delta', round(v_new_price - v_old_price, 2),
-      'line_delta', round(v_share - v_base, 2)
-    );
-
-    if not p_dry_run then
-      update public.global_invoice_items
-      set sell_price_amount = v_new_price,
-          line_total_amount = v_share
-      where id = v_item.id;
-    end if;
-  end loop;
-
-  if not p_dry_run then
-    perform public.recompute_global_invoice_totals(p_invoice_id);
-  end if;
-
-  return jsonb_build_object(
-    'current_total', v_current_total,
-    'target_total', round(p_target_total, 2),
-    'adjustment', round(p_target_total - v_current_total, 2),
-    'lines', v_lines
-  );
-end;
-$$;
-
-
-ALTER FUNCTION "public"."apply_global_invoice_target_total"("p_invoice_id" bigint, "p_target_total" numeric, "p_dry_run" boolean) OWNER TO "postgres";
+    ALTER FUNCTION "public"."apply_dropship_payout_settlement_fifo"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_amount" numeric) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."current_user_email"() RETURNS "text"
@@ -1847,30 +1069,18 @@ begin
   select * into v_member from public.customer_group_members where id = p_cgm_id;
   if v_member.id is null then
     raise exception 'Customer group member not found';
-  end if;
-
   select * into v_group from public.customer_groups where id = v_member.customer_group_id;
   if v_group.id is null then
     raise exception 'Customer group not found';
-  end if;
-
   if not public.user_is_tenant_admin(v_group.tenant_id) then
     raise exception 'Unauthorized';
-  end if;
-
   select * into v_role from public.tenant_roles where id = p_tenant_role_id;
   if v_role.id is null then
     raise exception 'Role not found';
-  end if;
-
   if v_role.tenant_id <> v_group.tenant_id then
     raise exception 'Role and Customer group member must belong to the same tenant';
-  end if;
-
   if v_role.scope <> 'shop' then
     raise exception 'Role scope must be shop for customer group members';
-  end if;
-
   update public.customer_group_members
   set
     tenant_role_id = p_tenant_role_id,
@@ -1879,10 +1089,6 @@ begin
   returning * into v_member;
 
   return v_member;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."assign_customer_group_member_role"("p_cgm_id" bigint, "p_tenant_role_id" bigint) OWNER TO "postgres";
 
 
@@ -1916,25 +1122,15 @@ begin
   select * into v_member from public.memberships where id = p_membership_id;
   if v_member.id is null then
     raise exception 'Membership not found';
-  end if;
-
   if not public.user_is_tenant_admin(v_member.tenant_id) then
     raise exception 'Unauthorized';
-  end if;
-
   select * into v_role from public.tenant_roles where id = p_tenant_role_id;
   if v_role.id is null then
     raise exception 'Role not found';
-  end if;
-
   if v_role.tenant_id <> v_member.tenant_id then
     raise exception 'Role and Membership must belong to the same tenant';
-  end if;
-
   if v_role.scope <> 'app' then
     raise exception 'Role scope must be app for internal memberships';
-  end if;
-
   update public.memberships
   set
     tenant_role_id = p_tenant_role_id,
@@ -1943,10 +1139,6 @@ begin
   returning * into v_member;
 
   return v_member;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."assign_membership_role"("p_membership_id" bigint, "p_tenant_role_id" bigint) OWNER TO "postgres";
 
 
@@ -1964,24 +1156,13 @@ begin
 
   if v_tenant_id is null then
     raise exception 'customer_group_id % is invalid or has no tenant', new.customer_group_id;
-  end if;
-
   if tg_op = 'UPDATE' and old.tenant_id is not null and old.tenant_id <> v_tenant_id then
     raise exception 'changing order across tenants is not allowed';
-  end if;
-
   new.tenant_id := v_tenant_id;
 
   if new.tenant_order_id is null then
     new.tenant_order_id := public.next_tenant_scoped_counter(new.tenant_id, 'order');
-  end if;
-
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."assign_order_tenant_fields"() OWNER TO "postgres";
+  ALTER FUNCTION "public"."assign_order_tenant_fields"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."auth_investor_id"() RETURNS bigint
@@ -1999,10 +1180,6 @@ begin
   limit 1;
 
   return v_investor_id;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."auth_investor_id"() OWNER TO "postgres";
 
 
@@ -2015,10 +1192,6 @@ begin
   values (NEW.id, 'universal_wallet', true)
   on conflict (tenant_id, module_key) do update set is_active = true;
   return NEW;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."auto_enable_universal_wallet_for_new_tenant"() OWNER TO "postgres";
 
 
@@ -2028,7 +1201,6 @@ CREATE OR REPLACE FUNCTION "public"."browse_shop_catalog_for_customer"("p_tenant
     AS $_$
 declare
   v_shop_id bigint;
-  v_tenant_id bigint;
   v_shop_name text;
   v_shop_type public.shop_type_enum;
   v_vendor_code text;
@@ -2056,12 +1228,8 @@ declare
 begin
   if p_tenant_id is null then
     raise exception 'tenant required';
-  end if;
-
   if public.current_customer_group_id(p_tenant_id) is null then
     raise exception 'access denied';
-  end if;
-
   select
     id, tenant_id, name, shop_type, vendor_code, order_mode,
     is_negotiable, show_stock_quantity, default_currency_id, is_active,
@@ -2079,8 +1247,6 @@ begin
 
   if v_shop_id is null or v_is_active is not true then
     raise exception 'shop not found or inactive';
-  end if;
-
   select
     can_browse, see_price, can_add_to_cart, can_place_order,
     can_negotiate, can_view_quantity, can_set_dropship_price
@@ -2091,8 +1257,6 @@ begin
 
   if coalesce(v_can_browse, false) is not true then
     raise exception 'access denied';
-  end if;
-
   v_limit := greatest(1, least(coalesce(p_limit, 20), 200));
   v_offset := greatest(0, coalesce(p_offset, 0));
 
@@ -2295,8 +1459,6 @@ begin
       v_markup_percentage,
       v_quantity_display_mode,
       v_tenant_id;
-  end if;
-
   v_result := jsonb_set(v_result, '{meta, shop}', jsonb_build_object(
     'id', v_shop_id,
     'name', v_shop_name,
@@ -2317,7 +1479,6 @@ begin
   ));
 
   return v_result;
-end;
 $_$;
 
 
@@ -2336,20 +1497,14 @@ begin
   select tenant_id into v_tenant_id from public.shops where id = p_shop_id;
   if v_tenant_id is null then
     raise exception 'shop not found';
-  end if;
-
   if not public.user_can_manage_shop_tenant(v_tenant_id) then
     raise exception 'not allowed';
-  end if;
-
   -- Use provided markup or lookup from rule
   v_markup := p_markup_percentage;
   if v_markup is null then
     select markup_percentage into v_markup
     from public.shop_pricing_rules
     where shop_id = p_shop_id;
-  end if;
-
   v_markup := coalesce(v_markup, 0.00);
 
   update public.shop_product_listings spl
@@ -2364,10 +1519,6 @@ begin
 
   get diagnostics v_count = row_count;
   return v_count;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."bulk_apply_shop_markup"("p_shop_id" bigint, "p_markup_percentage" numeric, "p_listing_ids" bigint[]) OWNER TO "postgres";
 
 
@@ -2383,19 +1534,13 @@ begin
   select tenant_id into v_tenant_id from public.shops where id = p_shop_id;
   if v_tenant_id is null then
     raise exception 'shop not found';
-  end if;
-
   if not public.user_can_manage_shop_tenant(v_tenant_id) then
     raise exception 'not allowed';
-  end if;
-
   v_amount := p_markup_amount;
   if v_amount is null then
     select markup_percentage into v_amount
     from public.shop_pricing_rules
     where shop_id = p_shop_id;
-  end if;
-
   v_amount := coalesce(v_amount, 0.00);
 
   if p_target_price = 'min_sell_price' then
@@ -2424,14 +1569,8 @@ begin
     where spl.shop_id = p_shop_id
       and (p_listing_ids is null or spl.id = any(p_listing_ids))
       and spl.is_price_locked is false;
-  end if;
-
   get diagnostics v_count = row_count;
   return v_count;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."bulk_apply_shop_markup"("p_shop_id" bigint, "p_markup_amount" numeric, "p_markup_type" "text", "p_target_price" "text", "p_listing_ids" bigint[]) OWNER TO "postgres";
 
 
@@ -2482,8 +1621,6 @@ declare
 begin
   if p_items is null or jsonb_typeof(p_items) <> 'array' then
     raise exception 'p_items must be a JSON array';
-  end if;
-
   for v_item in
     select value
     from jsonb_array_elements(p_items)
@@ -2492,8 +1629,6 @@ begin
 
     if v_id is null then
       continue;
-    end if;
-
     v_first := case
       when v_item ? 'first_offer_bdt' and v_item->>'first_offer_bdt' is not null
         then (v_item->>'first_offer_bdt')::numeric
@@ -2531,14 +1666,7 @@ begin
 
     if v_updated.id is not null then
       return next v_updated;
-    end if;
-  end loop;
-
-  return;
-end;
-$$;
-
-
+    return;
 ALTER FUNCTION "public"."bulk_update_order_item_offers"("p_items" "jsonb") OWNER TO "postgres";
 
 
@@ -2554,8 +1682,6 @@ declare
 begin
   if p_items is null or jsonb_typeof(p_items) <> 'array' then
     raise exception 'p_items must be a JSON array';
-  end if;
-
   for v_item in
     select value
     from jsonb_array_elements(p_items)
@@ -2564,8 +1690,6 @@ begin
 
     if v_id is null then
       continue;
-    end if;
-
     v_patch := v_item
       - 'id'
       - 'created_at'
@@ -2616,14 +1740,7 @@ begin
 
     if v_updated.id is not null then
       return next v_updated;
-    end if;
-  end loop;
-
-  return;
-end;
-$$;
-
-
+    return;
 ALTER FUNCTION "public"."bulk_update_order_items"("p_items" "jsonb") OWNER TO "postgres";
 
 
@@ -2634,10 +1751,7 @@ BEGIN
   UPDATE thrift_stocks
   SET shelf_id = p_shelf_id, box_id = p_box_id, updated_at = now()
   WHERE tenant_id = p_tenant_id AND id = ANY(p_stock_ids);
-END; $$;
-
-
-ALTER FUNCTION "public"."bulk_update_thrift_stock_locations"("p_tenant_id" bigint, "p_stock_ids" bigint[], "p_shelf_id" bigint, "p_box_id" bigint) OWNER TO "postgres";
+END; ALTER FUNCTION "public"."bulk_update_thrift_stock_locations"("p_tenant_id" bigint, "p_stock_ids" bigint[], "p_shelf_id" bigint, "p_box_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."bulk_update_thrift_stock_statuses"("p_tenant_id" bigint, "p_stock_ids" bigint[], "p_status" "text") RETURNS "void"
@@ -2655,9 +1769,6 @@ BEGIN
   WHERE tenant_id = p_tenant_id
     AND id = ANY(p_stock_ids);
 END;
-$$;
-
-
 ALTER FUNCTION "public"."bulk_update_thrift_stock_statuses"("p_tenant_id" bigint, "p_stock_ids" bigint[], "p_status" "text") OWNER TO "postgres";
 
 
@@ -2671,10 +1782,6 @@ begin
   on conflict (tenant_id) do update set
     version = tenant_permission_versions.version + 1,
     updated_at = now();
-end;
-$$;
-
-
 ALTER FUNCTION "public"."bump_tenant_permission_version"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -2688,8 +1795,6 @@ begin
     v_invoice_id := old.invoice_id;
   else
     v_invoice_id := new.invoice_id;
-  end if;
-
   update public.thrift_invoices
   set total_invoice_amount = coalesce((
     select sum(sold_price * quantity)
@@ -2702,12 +1807,7 @@ begin
   + shipping_charge_customer
   where id = v_invoice_id;
 
-  return null;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."calculate_thrift_invoice_total"() OWNER TO "postgres";
+  ALTER FUNCTION "public"."calculate_thrift_invoice_total"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."calculate_thrift_item_net_profit"() RETURNS "trigger"
@@ -2722,18 +1822,11 @@ begin
     new.landed_unit_cost_at_sale := v_landed;
   else
     v_landed := new.landed_unit_cost_at_sale;
-  end if;
-
   new.net_profit := (new.sold_price - v_landed) * new.quantity
                     - new.platform_fees
                     - new.shipping_cost_paid_by_shop;
 
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."calculate_thrift_item_net_profit"() OWNER TO "postgres";
+  ALTER FUNCTION "public"."calculate_thrift_item_net_profit"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."can_access_cart"("p_cart_id" bigint) RETURNS boolean
@@ -2762,9 +1855,6 @@ CREATE OR REPLACE FUNCTION "public"."can_access_cart"("p_cart_id" bigint) RETURN
         )
       )
   );
-$$;
-
-
 ALTER FUNCTION "public"."can_access_cart"("p_cart_id" bigint) OWNER TO "postgres";
 
 
@@ -2795,9 +1885,6 @@ CREATE OR REPLACE FUNCTION "public"."can_access_cart_item"("p_cart_item_id" bigi
         )
       )
   );
-$$;
-
-
 ALTER FUNCTION "public"."can_access_cart_item"("p_cart_item_id" bigint) OWNER TO "postgres";
 
 
@@ -2822,9 +1909,6 @@ CREATE OR REPLACE FUNCTION "public"."can_customer_access_shop"("p_shop_id" bigin
     SET "search_path" TO 'public'
     AS $$
   select coalesce((select can_browse from public.get_shop_permissions_for_customer(p_shop_id)), false);
-$$;
-
-
 ALTER FUNCTION "public"."can_customer_access_shop"("p_shop_id" bigint) OWNER TO "postgres";
 
 
@@ -2853,9 +1937,6 @@ CREATE OR REPLACE FUNCTION "public"."can_customer_negotiate_on_shop"("p_shop_id"
     SET "search_path" TO 'public'
     AS $$
   select coalesce((select can_negotiate from public.get_shop_permissions_for_customer(p_shop_id)), false);
-$$;
-
-
 ALTER FUNCTION "public"."can_customer_negotiate_on_shop"("p_shop_id" bigint) OWNER TO "postgres";
 
 
@@ -2864,9 +1945,6 @@ CREATE OR REPLACE FUNCTION "public"."can_customer_see_shop_price"("p_shop_id" bi
     SET "search_path" TO 'public'
     AS $$
   select coalesce((select see_price from public.get_shop_permissions_for_customer(p_shop_id)), false);
-$$;
-
-
 ALTER FUNCTION "public"."can_customer_see_shop_price"("p_shop_id" bigint) OWNER TO "postgres";
 
 
@@ -2920,9 +1998,6 @@ CREATE OR REPLACE FUNCTION "public"."can_insert_cart"("p_tenant_id" bigint, "p_c
           and cgm.is_active = true
       )
     );
-$$;
-
-
 ALTER FUNCTION "public"."can_insert_cart"("p_tenant_id" bigint, "p_customer_group_id" bigint, "p_store_id" bigint) OWNER TO "postgres";
 
 
@@ -2931,9 +2006,6 @@ CREATE OR REPLACE FUNCTION "public"."can_insert_cart_item"("p_cart_id" bigint) R
     SET "search_path" TO 'public'
     AS $$
   select public.can_access_cart(p_cart_id);
-$$;
-
-
 ALTER FUNCTION "public"."can_insert_cart_item"("p_cart_id" bigint) OWNER TO "postgres";
 
 
@@ -2984,9 +2056,6 @@ CREATE OR REPLACE FUNCTION "public"."can_manage_products"("p_tenant_id" bigint) 
   select
     public.is_superadmin()
     or public.membership_has_module_action(p_tenant_id, 'products', 'edit');
-$$;
-
-
 ALTER FUNCTION "public"."can_manage_products"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -3045,9 +2114,6 @@ CREATE OR REPLACE FUNCTION "public"."can_view_products_internal"("p_tenant_id" b
   select
     public.is_superadmin()
     or public.membership_has_module_action(p_tenant_id, 'products', 'view');
-$$;
-
-
 ALTER FUNCTION "public"."can_view_products_internal"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -3089,9 +2155,6 @@ CREATE OR REPLACE FUNCTION "public"."cart_exists"("p_cart_id" bigint) RETURNS bo
     from public.carts c
     where c.id = p_cart_id
   );
-$$;
-
-
 ALTER FUNCTION "public"."cart_exists"("p_cart_id" bigint) OWNER TO "postgres";
 
 
@@ -3121,14 +2184,10 @@ BEGIN
     century := century + 100;
   END LOOP;
 END;
-$$;
-
-
 ALTER FUNCTION "public"."ceil_thrift_retail_price"("p_price" numeric) OWNER TO "postgres";
 
 
 COMMENT ON FUNCTION "public"."ceil_thrift_retail_price"("p_price" numeric) IS 'Ceil to next thrift retail ending (.50 / .90); matches web ceilThriftRetailPrice.';
-
 
 
 CREATE OR REPLACE FUNCTION "public"."check_login_membership"("p_email" "text", "p_scope" "text") RETURNS TABLE("has_match" boolean, "matched_role" "public"."app_role", "member_id" bigint, "member_email" "text", "member_tenant_id" bigint, "member_is_active" boolean, "member_created_at" timestamp with time zone, "member_updated_at" timestamp with time zone)
@@ -3179,10 +2238,6 @@ begin
 
   has_match := matched_role is not null;
   return next;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."check_login_membership"("p_email" "text", "p_scope" "text") OWNER TO "postgres";
 
 
@@ -3243,10 +2298,6 @@ begin
 
   has_match := member_id is not null;
   return next;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."check_shop_login_access"("p_email" "text", "p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -3276,8 +2327,6 @@ begin
 
   if v_tenant_id is null then
     return false;
-  end if;
-
   select exists (
     select 1
     from public.memberships m
@@ -3289,13 +2338,7 @@ begin
 
   if v_has_internal_access then
     return true;
-  end if;
-
   return public.can_customer_see_store_price(p_store_id);
-end;
-$$;
-
-
 ALTER FUNCTION "public"."check_store_price_access"("p_store_id" bigint) OWNER TO "postgres";
 
 
@@ -3406,9 +2449,6 @@ BEGIN
 
   RETURN COALESCE(v_landed_unit_cost, 0.0);
 END;
-$$;
-
-
 ALTER FUNCTION "public"."compute_thrift_landed_unit_cost"("p_stock_id" bigint) OWNER TO "postgres";
 
 
@@ -3418,37 +2458,25 @@ CREATE OR REPLACE FUNCTION "public"."confirm_courier_remittance_to_tenant"("p_or
     AS $$
 declare
   v_order record;
-  v_invoice record;
   v_cod numeric(12,2) := 0.00;
   v_charge numeric(12,2) := 0.00;
   v_net_remitted numeric(12,2) := 0.00;
   v_ref text;
-begin
-  select * into v_order from public.shop_orders where id = p_order_id;
-  if v_order.id is null then
+if v_order.id is null then
     return jsonb_build_object('success', false, 'error', format('Shop order #%s not found', p_order_id));
-  end if;
-
   if v_order.status <> 'delivered' then
     return jsonb_build_object(
       'success', false,
       'error', format('Order #%s status is "%s" (must be "delivered" to remit)', v_order.order_no, v_order.status)
     );
-  end if;
-
   if v_order.global_invoice_id is null then
     perform public.create_dual_invoice_from_dropship_order(p_order_id);
     select * into v_order from public.shop_orders where id = p_order_id;
-  end if;
-
   if v_order.global_invoice_id is not null then
     select * into v_invoice from public.global_invoices where id = v_order.global_invoice_id;
     if v_invoice.id is not null and v_invoice.invoice_status = 'draft'::public.global_invoice_status then
       perform public.post_global_invoice(v_order.global_invoice_id);
-    end if;
-  end if;
-
-  v_cod := coalesce(v_order.cod_collect_amount, 0.00);
+    v_cod := coalesce(v_order.cod_collect_amount, 0.00);
   v_charge := coalesce(p_courier_charge, 0.00);
   v_net_remitted := greatest(v_cod - v_charge, 0.00);
   v_ref := coalesce(nullif(trim(p_remittance_ref), ''), 'REMIT-' || v_order.order_no);
@@ -3463,10 +2491,6 @@ begin
     p_note => null,
     p_courier_charge => v_charge
   );
-end;
-$$;
-
-
 ALTER FUNCTION "public"."confirm_courier_remittance_to_tenant"("p_order_id" bigint, "p_courier_charge" numeric, "p_remittance_ref" "text", "p_bank_trx_id" "text") OWNER TO "postgres";
 
 
@@ -3487,8 +2511,6 @@ begin
 
   if v_order.id is null then
     return jsonb_build_object('success', false, 'error', format('Shop order #%s not found', p_order_id));
-  end if;
-
   -- Permission check
   if not (
     public.is_superadmin()
@@ -3501,15 +2523,11 @@ begin
     )
   ) then
     return jsonb_build_object('success', false, 'error', format('Permission denied for tenant %s', v_order.tenant_id));
-  end if;
-
   if v_order.status <> 'delivered' and v_order.status <> 'payment_received' then
     return jsonb_build_object(
       'success', false,
       'error', format('Order #%s status is "%s" (must be "delivered" or "payment_received" to confirm costing)', v_order.order_no, v_order.status)
     );
-  end if;
-
   v_cod := coalesce(p_cod_amount, v_order.cod_collect_amount, 0.0000);
   v_delivery_charge := coalesce(p_delivery_charge, v_order.delivery_charge_amount, 0.0000);
 
@@ -3556,8 +2574,6 @@ begin
         'delivery_charge', v_delivery_charge
       )
     );
-  end if;
-
   return jsonb_build_object(
     'success', true,
     'message', 'Delivered costing confirmed and courier wallet credited',
@@ -3565,10 +2581,6 @@ begin
     'cod_amount', v_cod,
     'delivery_charge', v_delivery_charge
   );
-end;
-$$;
-
-
 ALTER FUNCTION "public"."confirm_dropship_delivered_costing"("p_order_id" bigint, "p_cod_amount" numeric, "p_delivery_charge" numeric, "p_courier_notes" "text") OWNER TO "postgres";
 
 
@@ -3584,12 +2596,8 @@ begin
   
   if v_tenant_id is null then
     raise exception 'order not found';
-  end if;
-
   if not public.is_tenant_staff(v_tenant_id) then
     raise exception 'access denied';
-  end if;
-
   -- Finalize pricing: set final price to staff offer or customer offer
   update public.shop_order_items
   set
@@ -3602,47 +2610,7 @@ begin
     status = 'confirmed',
     updated_at = now()
   where id = p_order_id;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."confirm_shop_order"("p_order_id" bigint) OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."convert_wholesale_draft_to_retail"("p_invoice_id" bigint) RETURNS "void"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_invoice public.global_invoices;
-begin
-  -- Fetch the invoice
-  select * into v_invoice from public.global_invoices where id = p_invoice_id;
-  if v_invoice.id is null then 
-    raise exception 'Invoice not found'; 
-  end if;
-
-  -- Verify it is a wholesale invoice and in draft status
-  if v_invoice.invoice_type <> 'wholesale'::public.global_invoice_type then
-    raise exception 'Only wholesale invoices can be converted to retail';
-  end if;
-  
-  if v_invoice.invoice_status <> 'draft'::public.global_invoice_status then
-    raise exception 'Only draft invoices can be converted to retail';
-  end if;
-
-  -- Update invoice type to retail and mode to account
-  update public.global_invoices
-  set
-    invoice_type = 'retail'::public.global_invoice_type,
-    retail_billing_mode = 'account'::public.retail_billing_mode,
-    updated_at = now()
-  where id = p_invoice_id;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."convert_wholesale_draft_to_retail"("p_invoice_id" bigint) OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."global_payments" (
@@ -3665,184 +2633,6 @@ CREATE TABLE IF NOT EXISTS "public"."global_payments" (
 ALTER TABLE "public"."global_payments" OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."create_billing_profile_payment_with_allocations"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_amount" numeric, "p_payment_date" "date", "p_method" "text", "p_reference" "text", "p_note" "text", "p_allocations" "jsonb") RETURNS "public"."global_payments"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_payment public.global_payments;
-  v_alloc jsonb;
-  v_global_invoice_id bigint;
-  v_commerce_invoice_id bigint;
-  v_legacy_invoice_id bigint;
-  v_alloc_amount numeric(12,2);
-  v_total_alloc numeric(12,2) := 0;
-  v_invoice record;
-begin
-  if p_tenant_id is null or p_billing_profile_id is null then
-    raise exception 'Tenant and billing profile are required.';
-  end if;
-  if coalesce(p_amount, 0) <= 0 then
-    raise exception 'Payment amount must be greater than zero.';
-  end if;
-
-  insert into public.global_payments (
-    tenant_id,
-    billing_profile_id,
-    amount,
-    unallocated_amount,
-    payment_date,
-    method,
-    reference,
-    note
-  )
-  values (
-    p_tenant_id,
-    p_billing_profile_id,
-    p_amount,
-    p_amount,
-    coalesce(p_payment_date, current_date),
-    p_method,
-    p_reference,
-    p_note
-  )
-  returning * into v_payment;
-
-  if jsonb_typeof(coalesce(p_allocations, '[]'::jsonb)) <> 'array' then
-    raise exception 'Allocations must be an array.';
-  end if;
-
-  for v_alloc in select * from jsonb_array_elements(coalesce(p_allocations, '[]'::jsonb))
-  loop
-    v_global_invoice_id := nullif(v_alloc->>'global_invoice_id', '')::bigint;
-    v_commerce_invoice_id := nullif(v_alloc->>'commerce_invoice_id', '')::bigint;
-    v_legacy_invoice_id := nullif(v_alloc->>'invoice_id', '')::bigint;
-    v_alloc_amount := coalesce((v_alloc->>'amount')::numeric, 0.00);
-
-    if v_alloc_amount <= 0.00 then continue; end if;
-
-    if v_global_invoice_id is not null then
-      select id, tenant_id, billing_profile_id, total_amount, paid_amount, collection_source
-      into v_invoice
-      from public.global_invoices where id = v_global_invoice_id for update;
-
-      if not found then raise exception 'Global invoice % not found.', v_global_invoice_id; end if;
-      if v_invoice.tenant_id <> p_tenant_id then raise exception 'Invoice tenant mismatch.'; end if;
-      if coalesce(v_invoice.billing_profile_id, 0) <> p_billing_profile_id then
-        raise exception 'Invoice does not belong to billing profile.';
-      end if;
-
-      insert into public.invoice_payments (tenant_id, payment_id, global_invoice_id, amount)
-      values (p_tenant_id, v_payment.id, v_global_invoice_id, v_alloc_amount);
-
-      update public.global_invoices
-      set paid_amount = coalesce(paid_amount, 0.00) + v_alloc_amount, updated_at = now()
-      where id = v_global_invoice_id;
-
-      perform public.recompute_global_invoice_payment_status(v_global_invoice_id);
-
-    elsif v_commerce_invoice_id is not null then
-      select id, tenant_id, billing_profile_id, total_amount, amount_paid as paid_amount
-      into v_invoice
-      from public.commerce_invoices where id = v_commerce_invoice_id for update;
-
-      if not found then raise exception 'Commerce invoice % not found.', v_commerce_invoice_id; end if;
-      if v_invoice.tenant_id <> p_tenant_id then raise exception 'Invoice tenant mismatch.'; end if;
-      if coalesce(v_invoice.billing_profile_id, 0) <> p_billing_profile_id then
-        raise exception 'Invoice does not belong to billing profile.';
-      end if;
-
-      insert into public.invoice_payments (tenant_id, payment_id, commerce_invoice_id, amount)
-      values (p_tenant_id, v_payment.id, v_commerce_invoice_id, v_alloc_amount);
-
-      update public.commerce_invoices
-      set amount_paid = coalesce(amount_paid, 0.00) + v_alloc_amount, updated_at = now()
-      where id = v_commerce_invoice_id;
-
-    elsif v_legacy_invoice_id is not null then
-      select id, tenant_id, billing_profile_id, total_amount, paid_amount
-      into v_invoice
-      from public.invoices where id = v_legacy_invoice_id for update;
-
-      if not found then raise exception 'Legacy invoice % not found.', v_legacy_invoice_id; end if;
-      if v_invoice.tenant_id <> p_tenant_id then raise exception 'Invoice tenant mismatch.'; end if;
-      if coalesce(v_invoice.billing_profile_id, 0) <> p_billing_profile_id then
-        raise exception 'Invoice does not belong to billing profile.';
-      end if;
-
-      insert into public.invoice_payments (tenant_id, payment_id, invoice_id, amount)
-      values (p_tenant_id, v_payment.id, v_legacy_invoice_id, v_alloc_amount);
-
-      update public.invoices
-      set paid_amount = coalesce(paid_amount, 0.00) + v_alloc_amount, updated_at = now()
-      where id = v_legacy_invoice_id;
-
-      perform public.recompute_invoice_payment_status(v_legacy_invoice_id);
-    end if;
-
-    v_total_alloc := v_total_alloc + v_alloc_amount;
-  end loop;
-
-  if v_total_alloc > p_amount then
-    raise exception 'Total allocation exceeds payment amount.';
-  end if;
-
-  update public.global_payments
-  set unallocated_amount = p_amount - v_total_alloc
-  where id = v_payment.id
-  returning * into v_payment;
-
-  -- Universal Wallet 1: Credit Tenant Cash Available (money received)
-  perform public.record_ledger_transaction(
-    p_tenant_id => p_tenant_id,
-    p_entity_type => 'tenant',
-    p_entity_id => p_tenant_id,
-    p_type => 'credit',
-    p_amount => p_amount,
-    p_currency_code => 'BDT',
-    p_exchange_rate => 1.000000,
-    p_source_type => 'sales_invoice',
-    p_source_id => v_payment.id::text,
-    p_metadata => jsonb_build_object(
-      'section', 'payments',
-      'purpose', 'tenant_payment_received',
-      'transaction_type', 'payment_received',
-      'label', 'Payment Received',
-      'payment_id', v_payment.id,
-      'billing_profile_id', p_billing_profile_id,
-      'reference', p_reference
-    )
-  );
-
-  -- Universal Wallet 2: Credit Customer Available (reduces Accounts Receivable)
-  perform public.record_ledger_transaction(
-    p_tenant_id => p_tenant_id,
-    p_entity_type => 'customer',
-    p_entity_id => p_billing_profile_id,
-    p_type => 'credit',
-    p_amount => p_amount,
-    p_currency_code => 'BDT',
-    p_exchange_rate => 1.000000,
-    p_source_type => 'sales_invoice',
-    p_source_id => v_payment.id::text,
-    p_metadata => jsonb_build_object(
-      'section', 'payments',
-      'purpose', 'customer_ar_reduction',
-      'transaction_type', 'payment_received',
-      'label', 'Payment Applied',
-      'payment_id', v_payment.id,
-      'reference', p_reference
-    )
-  );
-
-  return v_payment;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."create_billing_profile_payment_with_allocations"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_amount" numeric, "p_payment_date" "date", "p_method" "text", "p_reference" "text", "p_note" "text", "p_allocations" "jsonb") OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."create_cargo_company_with_wallet"("p_tenant_id" bigint, "p_name" "text", "p_code" "text", "p_email" "text" DEFAULT NULL::"text", "p_phone" "text" DEFAULT NULL::"text", "p_address" "text" DEFAULT NULL::"text", "p_notes" "text" DEFAULT NULL::"text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -3854,8 +2644,6 @@ declare
 begin
   if p_tenant_id is null then
     raise exception 'p_tenant_id is required';
-  end if;
-
   if not (
     public.is_superadmin()
     or public.user_can_manage_parent_tenant(p_tenant_id)
@@ -3869,27 +2657,17 @@ begin
     )
   ) then
     raise exception 'not allowed';
-  end if;
-
   if exists (
     select 1 from public.tenants t where t.id = p_tenant_id and t.parent_id is not null
   ) then
     raise exception 'cargo companies belong on parent tenants only';
-  end if;
-
   v_code := upper(trim(p_code));
   if v_code is null or v_code = '' then
     raise exception 'code is required';
-  end if;
-
   if v_code = 'DEFAULT' then
     raise exception 'code DEFAULT is reserved for the system default cargo company';
-  end if;
-
   if nullif(trim(p_name), '') is null then
     raise exception 'name is required';
-  end if;
-
   insert into public.cargo_companies (
     tenant_id,
     parent_tenant_id,
@@ -3942,260 +2720,7 @@ begin
     'cargo_company', to_jsonb(v_row),
     'wallet', to_jsonb(v_wallet)
   );
-end;
-$$;
-
-
 ALTER FUNCTION "public"."create_cargo_company_with_wallet"("p_tenant_id" bigint, "p_name" "text", "p_code" "text", "p_email" "text", "p_phone" "text", "p_address" "text", "p_notes" "text") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."create_dropship_invoice"("p_order_id" bigint, "p_invoice_no" "text" DEFAULT NULL::"text", "p_billing_profile_id" bigint DEFAULT NULL::bigint, "p_note" "text" DEFAULT NULL::"text") RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-begin
-  return public.create_dual_invoice_from_dropship_order(p_order_id, p_invoice_no, p_billing_profile_id, p_note);
-end;
-$$;
-
-
-ALTER FUNCTION "public"."create_dropship_invoice"("p_order_id" bigint, "p_invoice_no" "text", "p_billing_profile_id" bigint, "p_note" "text") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."create_dual_invoice_from_dropship_order"("p_order_id" bigint, "p_invoice_no" "text" DEFAULT NULL::"text", "p_billing_profile_id" bigint DEFAULT NULL::bigint, "p_note" "text" DEFAULT NULL::"text") RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_order record;
-  v_billing_profile_id bigint;
-  v_profile record;
-  v_parent_tenant_id bigint;
-  v_invoice_no text;
-  v_invoice public.global_invoices;
-  v_item record;
-  v_subtotal numeric(12,2) := 0;
-  v_charges_total numeric(12,2) := 0;
-  v_item_sell_price numeric(12,2);
-  v_item_line_total numeric(12,2);
-  v_assigned_child bigint;
-begin
-  select * into v_order from public.shop_orders where id = p_order_id;
-  if v_order.id is null then
-    raise exception 'Order not found';
-  end if;
-
-  if v_order.shop_type_snapshot <> 'dropship' then
-    raise exception 'Order is not a dropship order';
-  end if;
-
-  if v_order.status not in ('ready_for_pickup', 'shipped', 'delivered', 'payment_received') then
-    raise exception 'Invoice can only be created for orders ready for pickup or later (current status: %)', v_order.status;
-  end if;
-
-  if v_order.global_invoice_id is not null then
-    raise exception 'Invoice already created for this order (invoice_id: %)', v_order.global_invoice_id;
-  end if;
-
-  v_parent_tenant_id := public.resolve_parent_tenant_id(v_order.tenant_id);
-  if not (
-    public.user_can_manage_parent_tenant(v_parent_tenant_id)
-    or exists (
-      select 1 from public.memberships m
-      where m.tenant_id = v_order.tenant_id
-        and lower(trim(m.email)) = public.current_user_email()
-        and m.is_active = true
-        and m.role in ('admin', 'staff')
-    )
-  ) then
-    raise exception 'Permission denied: Staff or Admin role required';
-  end if;
-
-  v_billing_profile_id := coalesce(p_billing_profile_id, v_order.billing_profile_id);
-  if v_billing_profile_id is null then
-    select id into v_billing_profile_id
-    from public.billing_profiles
-    where tenant_id = v_order.tenant_id
-      and customer_group_id = v_order.customer_group_id
-    order by created_at asc
-    limit 1;
-  end if;
-
-  if v_billing_profile_id is null then
-    raise exception 'Billing profile is required for creating invoice';
-  end if;
-
-  select * into v_profile from public.billing_profiles where id = v_billing_profile_id;
-  if v_profile.id is null then
-    raise exception 'Billing profile not found';
-  end if;
-
-  if p_invoice_no is null or trim(p_invoice_no) = '' then
-    v_invoice_no := 'INV-DS-' || v_order.order_no;
-  else
-    v_invoice_no := trim(p_invoice_no);
-  end if;
-
-  select * into v_invoice from public.create_global_invoice(
-    p_tenant_id => v_order.tenant_id,
-    p_invoice_no => v_invoice_no,
-    p_invoice_type => 'dropship'::public.global_invoice_type,
-    p_billing_profile_id => v_billing_profile_id,
-    p_recipient_profile_id => v_order.recipient_profile_id,
-    p_recipient_name => coalesce(v_order.recipient_name, v_order.name),
-    p_recipient_phone => v_order.recipient_phone,
-    p_recipient_address => v_order.shipping_address,
-    p_note => coalesce(p_note, 'B2B Wholesale invoice created from dropship order #' || v_order.order_no)
-  );
-
-  for v_item in (
-    select
-      soi.*,
-      gs.shipment_item_id as stock_shipment_item_id,
-      coalesce(public.calculate_landed_unit_cost(gs.shipment_item_id), 0) as stock_cost,
-      gsi.name as stock_name,
-      gsi.barcode as stock_barcode,
-      gsi.product_code as stock_product_code,
-      sh.assigned_child_tenant_id as stock_assigned_child
-    from public.shop_order_items soi
-    left join public.global_stocks gs on gs.id = soi.global_stock_id
-    left join public.global_shipment_items gsi on gsi.id = gs.shipment_item_id
-    left join public.global_shipments sh on sh.id = gsi.shipment_id
-    where soi.order_id = v_order.id
-  ) loop
-    v_item_sell_price := coalesce(v_item.unit_sell_price_amount, v_item.final_price_amount, 0);
-    v_item_line_total := v_item.quantity * v_item_sell_price;
-    v_assigned_child := v_item.stock_assigned_child;
-
-    insert into public.global_invoice_items (
-      tenant_id,
-      parent_tenant_id,
-      invoice_id,
-      global_stock_id,
-      shipment_item_id,
-      product_id,
-      name_snapshot,
-      barcode_snapshot,
-      product_code_snapshot,
-      quantity,
-      unit_cost_price,
-      sell_price_amount,
-      line_discount_amount,
-      line_total_amount,
-      assigned_child_tenant_id
-    )
-    values (
-      v_invoice.tenant_id,
-      v_invoice.parent_tenant_id,
-      v_invoice.id,
-      v_item.global_stock_id,
-      v_item.stock_shipment_item_id,
-      v_item.product_id,
-      coalesce(v_item.stock_name, v_item.name),
-      v_item.stock_barcode,
-      v_item.stock_product_code,
-      v_item.quantity,
-      coalesce(v_item.stock_cost, 0),
-      v_item_sell_price,
-      0,
-      v_item_line_total,
-      v_assigned_child
-    );
-
-    v_subtotal := v_subtotal + v_item_line_total;
-
-    update public.shop_order_items
-    set delivered_quantity = quantity,
-        updated_at = now()
-    where id = v_item.id;
-  end loop;
-
-  v_charges_total := coalesce(v_order.print_charge_amount, 0) + coalesce(v_order.packing_charge_amount, 0);
-
-  update public.global_invoices
-  set
-    subtotal_amount = v_subtotal,
-    shipping_charge = 0,
-    print_charge = coalesce(v_order.print_charge_amount, 0),
-    wrapping_charge = coalesce(v_order.packing_charge_amount, 0),
-    discount_amount = coalesce(v_order.discount_amount, 0),
-    total_amount = greatest(v_subtotal + v_charges_total - coalesce(v_order.discount_amount, 0), 0),
-    due_amount = greatest(v_subtotal + v_charges_total - coalesce(v_order.discount_amount, 0), 0),
-    collection_source = case
-      when coalesce(v_order.is_prepaid_snapshot, false) then 'billing_profile'::public.collection_source_type
-      else 'recipient'::public.collection_source_type
-    end,
-    invoice_status = 'posted'::public.global_invoice_status,
-    updated_at = now()
-  where id = v_invoice.id;
-
-  update public.shop_orders
-  set
-    global_invoice_id = v_invoice.id,
-    updated_at = now()
-  where id = v_order.id;
-
-  perform public.ensure_dropship_invoice_billed_entry(v_invoice.id);
-
-  return jsonb_build_object(
-    'success', true,
-    'invoice_id', v_invoice.id,
-    'invoice_no', v_invoice_no,
-    'subtotal_amount', v_subtotal,
-    'total_amount', v_subtotal + v_charges_total - coalesce(v_order.discount_amount, 0)
-  );
-end;
-$$;
-
-
-ALTER FUNCTION "public"."create_dual_invoice_from_dropship_order"("p_order_id" bigint, "p_invoice_no" "text", "p_billing_profile_id" bigint, "p_note" "text") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."create_global_invoice"("p_tenant_id" bigint, "p_invoice_no" "text", "p_billing_profile_id" bigint, "p_invoice_type" "public"."global_invoice_type" DEFAULT 'wholesale'::"public"."global_invoice_type", "p_source_module" "public"."global_source_module" DEFAULT 'wholesale'::"public"."global_source_module", "p_recipient_name" "text" DEFAULT NULL::"text", "p_recipient_phone" "text" DEFAULT NULL::"text", "p_recipient_address" "text" DEFAULT NULL::"text", "p_recipient_party_id" bigint DEFAULT NULL::bigint, "p_middle_man_payout_amount" numeric DEFAULT NULL::numeric, "p_note" "text" DEFAULT NULL::"text") RETURNS "public"."sales_invoices"
-    LANGUAGE "sql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-  select * from public.create_sales_invoice(
-    p_tenant_id,
-    p_invoice_no,
-    p_billing_profile_id,
-    p_invoice_type,
-    p_source_module,
-    p_recipient_name,
-    p_recipient_phone,
-    p_recipient_address,
-    p_recipient_party_id,
-    p_middle_man_payout_amount,
-    p_note
-  );
-$$;
-
-
-ALTER FUNCTION "public"."create_global_invoice"("p_tenant_id" bigint, "p_invoice_no" "text", "p_billing_profile_id" bigint, "p_invoice_type" "public"."global_invoice_type", "p_source_module" "public"."global_source_module", "p_recipient_name" "text", "p_recipient_phone" "text", "p_recipient_address" "text", "p_recipient_party_id" bigint, "p_middle_man_payout_amount" numeric, "p_note" "text") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."create_global_invoice"("p_tenant_id" bigint, "p_invoice_no" "text", "p_invoice_type" "public"."global_invoice_type", "p_billing_profile_id" bigint DEFAULT NULL::bigint, "p_recipient_profile_id" bigint DEFAULT NULL::bigint, "p_recipient_name" "text" DEFAULT NULL::"text", "p_recipient_phone" "text" DEFAULT NULL::"text", "p_recipient_address" "text" DEFAULT NULL::"text", "p_retail_billing_mode" "public"."retail_billing_mode" DEFAULT NULL::"public"."retail_billing_mode", "p_due_date" "date" DEFAULT NULL::"date", "p_note" "text" DEFAULT NULL::"text", "p_invoice_date" "date" DEFAULT NULL::"date") RETURNS "public"."sales_invoices"
-    LANGUAGE "sql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-  select * from public.create_sales_invoice(
-    p_tenant_id,
-    p_invoice_no,
-    p_invoice_type,
-    p_billing_profile_id,
-    p_recipient_profile_id,
-    p_recipient_name,
-    p_recipient_phone,
-    p_recipient_address,
-    p_retail_billing_mode,
-    p_due_date,
-    p_note,
-    p_invoice_date
-  );
-$$;
-
-
-ALTER FUNCTION "public"."create_global_invoice"("p_tenant_id" bigint, "p_invoice_no" "text", "p_invoice_type" "public"."global_invoice_type", "p_billing_profile_id" bigint, "p_recipient_profile_id" bigint, "p_recipient_name" "text", "p_recipient_phone" "text", "p_recipient_address" "text", "p_retail_billing_mode" "public"."retail_billing_mode", "p_due_date" "date", "p_note" "text", "p_invoice_date" "date") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."create_or_update_courier_remittance_batch"("p_batch_id" bigint DEFAULT NULL::bigint, "p_tenant_id" bigint DEFAULT NULL::bigint, "p_courier_service_id" "uuid" DEFAULT NULL::"uuid", "p_batch_no" "text" DEFAULT NULL::"text", "p_bank_trx_id" "text" DEFAULT NULL::"text", "p_payment_date" "date" DEFAULT NULL::"date", "p_gross_cod_amount" numeric DEFAULT 0.00, "p_courier_charges_amount" numeric DEFAULT 0.00, "p_net_deposited_amount" numeric DEFAULT 0.00, "p_note" "text" DEFAULT NULL::"text", "p_items" "jsonb" DEFAULT '[]'::"jsonb") RETURNS "jsonb"
@@ -4204,7 +2729,6 @@ CREATE OR REPLACE FUNCTION "public"."create_or_update_courier_remittance_batch"(
     AS $$
 declare
   v_batch_id bigint;
-  v_tenant_id bigint;
   v_courier_id uuid;
   v_batch_no text;
   v_item jsonb;
@@ -4231,21 +2755,14 @@ begin
 
     if v_tenant_id is null then
       raise exception 'Remittance batch #% not found', p_batch_id;
-    end if;
-
     if v_batch_status <> 'draft' then
       raise exception 'Cannot modify a remittance batch that is already %', v_batch_status;
-    end if;
-  else
+    else
     v_tenant_id := p_tenant_id;
     v_courier_id := p_courier_service_id;
     v_batch_no := nullif(trim(p_batch_no), '');
-  end if;
-
   if v_tenant_id is null or v_courier_id is null or v_batch_no is null then
     raise exception 'Tenant ID, Courier Service ID, and Batch Number are required';
-  end if;
-
   -- Verify permissions
   if not (
     public.is_superadmin()
@@ -4258,8 +2775,6 @@ begin
     )
   ) then
     raise exception 'Permission denied: Staff or Admin role required for tenant %', v_tenant_id;
-  end if;
-
   -- Create or update batch header
   if p_batch_id is null then
     insert into public.courier_remittance_batches (
@@ -4310,8 +2825,6 @@ begin
 
     -- Clear existing draft items for resync
     delete from public.courier_remittance_items where batch_id = v_batch_id;
-  end if;
-
   -- Process line items array
   if p_items is not null and jsonb_array_length(p_items) > 0 then
     for v_item in select * from jsonb_array_elements(p_items)
@@ -4337,10 +2850,7 @@ begin
         if not found then
           v_item_status := 'unmatched';
           v_error_msg := 'Order not found in tenant';
-        end if;
-      end if;
-
-      insert into public.courier_remittance_items (
+        insert into public.courier_remittance_items (
         tenant_id,
         batch_id,
         shop_order_id,
@@ -4370,10 +2880,7 @@ begin
       v_tot_allocated := v_tot_allocated + v_net;
       v_tot_cod := v_tot_cod + v_cod;
       v_tot_charge := v_tot_charge + v_charge;
-    end loop;
-  end if;
-
-  -- Recalculate batch totals and variance
+    -- Recalculate batch totals and variance
   update public.courier_remittance_batches
   set
     allocated_amount = v_tot_allocated,
@@ -4389,257 +2896,7 @@ begin
     'allocated_amount', v_tot_allocated,
     'variance_amount', (coalesce(p_net_deposited_amount, 0.00) - v_tot_allocated)
   );
-end;
-$$;
-
-
 ALTER FUNCTION "public"."create_or_update_courier_remittance_batch"("p_batch_id" bigint, "p_tenant_id" bigint, "p_courier_service_id" "uuid", "p_batch_no" "text", "p_bank_trx_id" "text", "p_payment_date" "date", "p_gross_cod_amount" numeric, "p_courier_charges_amount" numeric, "p_net_deposited_amount" numeric, "p_note" "text", "p_items" "jsonb") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."create_sales_invoice"("p_tenant_id" bigint, "p_invoice_no" "text", "p_billing_profile_id" bigint, "p_invoice_type" "public"."global_invoice_type" DEFAULT 'wholesale'::"public"."global_invoice_type", "p_source_module" "public"."global_source_module" DEFAULT 'wholesale'::"public"."global_source_module", "p_recipient_name" "text" DEFAULT NULL::"text", "p_recipient_phone" "text" DEFAULT NULL::"text", "p_recipient_address" "text" DEFAULT NULL::"text", "p_recipient_party_id" bigint DEFAULT NULL::bigint, "p_middle_man_payout_amount" numeric DEFAULT NULL::numeric, "p_note" "text" DEFAULT NULL::"text") RETURNS "public"."sales_invoices"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_row public.global_invoices;
-  v_parent_id bigint;
-  v_issued_by bigint;
-  v_profile public.billing_profiles;
-  v_invoice_type public.global_invoice_type;
-  v_recipient_name text;
-  v_recipient_phone text;
-  v_recipient_address text;
-  v_collection_source text;
-begin
-  if p_billing_profile_id is null then
-    raise exception 'Billing profile is required.';
-  end if;
-
-  v_invoice_type := coalesce(p_invoice_type, 'wholesale');
-  v_issued_by := p_tenant_id;
-  v_parent_id := public.resolve_parent_tenant_id(p_tenant_id);
-
-  if not (
-    public.user_can_manage_parent_tenant(v_parent_id)
-    or exists (
-      select 1 from public.memberships m
-      where m.tenant_id = p_tenant_id
-        and lower(trim(m.email)) = public.current_user_email()
-        and m.is_active = true
-        and m.role in ('admin', 'staff')
-    )
-  ) then
-    raise exception 'not allowed';
-  end if;
-
-  select * into v_profile from public.billing_profiles where id = p_billing_profile_id;
-  if v_profile.id is null then raise exception 'Billing profile not found.'; end if;
-  if v_profile.tenant_id <> v_issued_by then
-    raise exception 'Billing profile does not belong to issuing tenant.';
-  end if;
-
-  if v_invoice_type = 'wholesale' then
-    v_recipient_name := coalesce(nullif(trim(p_recipient_name), ''), v_profile.name);
-    v_recipient_phone := coalesce(nullif(trim(p_recipient_phone), ''), v_profile.phone);
-    v_recipient_address := coalesce(nullif(trim(p_recipient_address), ''), v_profile.address);
-    v_collection_source := 'billing_profile';
-  elsif v_invoice_type = 'retail' then
-    v_recipient_name := nullif(trim(coalesce(p_recipient_name, '')), '');
-    v_recipient_phone := nullif(trim(coalesce(p_recipient_phone, '')), '');
-    v_recipient_address := nullif(trim(coalesce(p_recipient_address, '')), '');
-    if v_recipient_name is null then raise exception 'Recipient name is required for retail.'; end if;
-    v_collection_source := 'billing_profile';
-  elsif v_invoice_type = 'dropship' then
-    v_recipient_name := nullif(trim(coalesce(p_recipient_name, '')), '');
-    v_recipient_phone := nullif(trim(coalesce(p_recipient_phone, '')), '');
-    v_recipient_address := nullif(trim(coalesce(p_recipient_address, '')), '');
-    if v_recipient_name is null then raise exception 'Recipient name is required for dropship.'; end if;
-    v_collection_source := 'billing_profile';
-  else
-    raise exception 'Invalid invoice type.';
-  end if;
-
-  insert into public.global_invoices (
-    tenant_id, parent_tenant_id, issued_by_tenant_id, invoice_no, invoice_type,
-    billing_profile_id,
-    recipient_name, recipient_phone, recipient_address,
-    collection_source, note, due_amount
-  )
-  values (
-    v_parent_id, v_parent_id, v_issued_by, trim(p_invoice_no), v_invoice_type,
-    p_billing_profile_id,
-    v_recipient_name, v_recipient_phone, v_recipient_address,
-    v_collection_source, nullif(trim(coalesce(p_note, '')), ''), 0
-  )
-  returning * into v_row;
-
-  return v_row;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."create_sales_invoice"("p_tenant_id" bigint, "p_invoice_no" "text", "p_billing_profile_id" bigint, "p_invoice_type" "public"."global_invoice_type", "p_source_module" "public"."global_source_module", "p_recipient_name" "text", "p_recipient_phone" "text", "p_recipient_address" "text", "p_recipient_party_id" bigint, "p_middle_man_payout_amount" numeric, "p_note" "text") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."create_sales_invoice"("p_tenant_id" bigint, "p_invoice_no" "text", "p_invoice_type" "public"."global_invoice_type", "p_billing_profile_id" bigint DEFAULT NULL::bigint, "p_recipient_profile_id" bigint DEFAULT NULL::bigint, "p_recipient_name" "text" DEFAULT NULL::"text", "p_recipient_phone" "text" DEFAULT NULL::"text", "p_recipient_address" "text" DEFAULT NULL::"text", "p_retail_billing_mode" "public"."retail_billing_mode" DEFAULT NULL::"public"."retail_billing_mode", "p_due_date" "date" DEFAULT NULL::"date", "p_note" "text" DEFAULT NULL::"text", "p_invoice_date" "date" DEFAULT NULL::"date") RETURNS "public"."sales_invoices"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_row public.global_invoices;
-  v_parent_id bigint;
-  v_issued_by bigint;
-  v_rec_name text;
-  v_rec_phone text;
-  v_rec_address text;
-  v_recipient_name text;
-  v_recipient_phone text;
-  v_recipient_address text;
-  v_bill_name text;
-  v_bill_phone text;
-  v_bill_address text;
-  v_collection_source public.collection_source_type;
-begin
-  v_issued_by := p_tenant_id;
-  v_parent_id := public.resolve_parent_tenant_id(p_tenant_id);
-
-  if not (
-    public.user_can_manage_parent_tenant(v_parent_id)
-    or exists (
-      select 1 from public.memberships m
-      where m.tenant_id = p_tenant_id
-        and lower(trim(m.email)) = public.current_user_email()
-        and m.is_active = true
-        and m.role in ('admin', 'staff')
-    )
-  ) then
-    raise exception 'not allowed';
-  end if;
-
-  if p_billing_profile_id is not null then
-    if not exists (
-      select 1 from public.billing_profiles
-      where id = p_billing_profile_id and tenant_id = v_issued_by
-    ) then
-      raise exception 'billing profile must belong to the issuing tenant';
-    end if;
-  end if;
-
-  if p_recipient_profile_id is not null then
-    if not exists (
-      select 1 from public.recipient_profiles
-      where id = p_recipient_profile_id and tenant_id = v_issued_by
-    ) then
-      raise exception 'recipient profile must belong to the issuing tenant';
-    end if;
-  end if;
-
-  if p_invoice_type = 'wholesale'::public.global_invoice_type then
-    if p_billing_profile_id is null then
-      raise exception 'billing profile is required for wholesale invoices';
-    end if;
-    if p_retail_billing_mode is not null then
-      raise exception 'retail billing mode must be null for wholesale invoices';
-    end if;
-    v_collection_source := 'billing_profile'::public.collection_source_type;
-
-  elsif p_invoice_type = 'retail'::public.global_invoice_type then
-    if p_retail_billing_mode is null then
-      raise exception 'retail billing mode (account or direct) is required for retail invoices';
-    end if;
-
-    if p_retail_billing_mode = 'account'::public.retail_billing_mode then
-      if p_billing_profile_id is null then
-        raise exception 'billing profile is required for retail account invoices';
-      end if;
-      v_collection_source := 'billing_profile'::public.collection_source_type;
-    else
-      if p_billing_profile_id is not null then
-        raise exception 'billing profile must be null for retail direct invoices';
-      end if;
-      v_collection_source := 'recipient'::public.collection_source_type;
-    end if;
-
-  elsif p_invoice_type = 'dropship'::public.global_invoice_type then
-    if p_billing_profile_id is null then
-      raise exception 'billing profile (middle man) is required for dropship invoices';
-    end if;
-    if p_retail_billing_mode is not null then
-      raise exception 'retail billing mode must be null for dropship invoices';
-    end if;
-    v_collection_source := 'recipient'::public.collection_source_type;
-  end if;
-
-  if p_recipient_profile_id is not null then
-    select name, phone, address
-    into v_rec_name, v_rec_phone, v_rec_address
-    from public.recipient_profiles
-    where id = p_recipient_profile_id;
-  end if;
-
-  v_recipient_name := coalesce(nullif(trim(p_recipient_name), ''), v_rec_name);
-  v_recipient_phone := coalesce(nullif(trim(p_recipient_phone), ''), v_rec_phone);
-  v_recipient_address := coalesce(nullif(trim(p_recipient_address), ''), v_rec_address);
-
-  if p_invoice_type = 'wholesale'::public.global_invoice_type and p_billing_profile_id is not null then
-    select name, phone, address
-    into v_bill_name, v_bill_phone, v_bill_address
-    from public.billing_profiles
-    where id = p_billing_profile_id;
-
-    v_recipient_name := coalesce(v_recipient_name, v_bill_name);
-    v_recipient_phone := coalesce(v_recipient_phone, v_bill_phone);
-    v_recipient_address := coalesce(v_recipient_address, v_bill_address);
-  end if;
-
-  insert into public.global_invoices (
-    tenant_id,
-    parent_tenant_id,
-    issued_by_tenant_id,
-    invoice_no,
-    invoice_type,
-    invoice_date,
-    retail_billing_mode,
-    invoice_status,
-    fulfillment_status,
-    billing_profile_id,
-    recipient_profile_id,
-    recipient_name,
-    recipient_phone,
-    recipient_address,
-    collection_source,
-    due_date,
-    payment_status,
-    note
-  )
-  values (
-    v_parent_id,
-    v_parent_id,
-    v_issued_by,
-    trim(p_invoice_no),
-    p_invoice_type,
-    coalesce(p_invoice_date, current_date),
-    p_retail_billing_mode,
-    'draft'::public.global_invoice_status,
-    'pending'::public.global_fulfillment_status,
-    p_billing_profile_id,
-    p_recipient_profile_id,
-    v_recipient_name,
-    v_recipient_phone,
-    v_recipient_address,
-    v_collection_source,
-    p_due_date,
-    'due',
-    nullif(trim(coalesce(p_note, '')), '')
-  )
-  returning * into v_row;
-
-  return v_row;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."create_sales_invoice"("p_tenant_id" bigint, "p_invoice_no" "text", "p_invoice_type" "public"."global_invoice_type", "p_billing_profile_id" bigint, "p_recipient_profile_id" bigint, "p_recipient_name" "text", "p_recipient_phone" "text", "p_recipient_address" "text", "p_retail_billing_mode" "public"."retail_billing_mode", "p_due_date" "date", "p_note" "text", "p_invoice_date" "date") OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."stores" (
@@ -4666,18 +2923,11 @@ declare
 begin
   if not public.can_manage_store(p_tenant_id) then
     raise exception 'not allowed';
-  end if;
-
   insert into public.stores (name, vendor_code, tenant_id)
   values (trim(p_name), nullif(trim(p_vendor_code), ''), p_tenant_id)
   returning * into v_row;
 
-  return v_row;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."create_store"("p_name" "text", "p_vendor_code" "text", "p_tenant_id" bigint) OWNER TO "postgres";
+  ALTER FUNCTION "public"."create_store"("p_name" "text", "p_vendor_code" "text", "p_tenant_id" bigint) OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."store_access" (
@@ -4700,20 +2950,15 @@ CREATE OR REPLACE FUNCTION "public"."create_store_access"("p_store_id" bigint, "
     AS $$
 declare
   v_row public.store_access;
-  v_tenant_id bigint;
-begin
+  begin
   select tenant_id into v_tenant_id
   from public.stores
   where id = p_store_id;
 
   if v_tenant_id is null then
     raise exception 'store not found';
-  end if;
-
   if not public.can_manage_store(v_tenant_id) then
     raise exception 'not allowed';
-  end if;
-
   insert into public.store_access (
     store_id,
     customer_group_id,
@@ -4731,12 +2976,7 @@ begin
     updated_at = now()
   returning * into v_row;
 
-  return v_row;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."create_store_access"("p_store_id" bigint, "p_customer_group_id" bigint, "p_status" boolean) OWNER TO "postgres";
+  ALTER FUNCTION "public"."create_store_access"("p_store_id" bigint, "p_customer_group_id" bigint, "p_status" boolean) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."create_store_access"("p_store_id" bigint, "p_customer_group_id" bigint, "p_status" boolean DEFAULT true, "p_see_price" boolean DEFAULT false) RETURNS "public"."store_access"
@@ -4745,20 +2985,15 @@ CREATE OR REPLACE FUNCTION "public"."create_store_access"("p_store_id" bigint, "
     AS $$
 declare
   v_row public.store_access;
-  v_tenant_id bigint;
-begin
+  begin
   select tenant_id into v_tenant_id
   from public.stores
   where id = p_store_id;
 
   if v_tenant_id is null then
     raise exception 'store not found';
-  end if;
-
   if not public.can_manage_store(v_tenant_id) then
     raise exception 'not allowed';
-  end if;
-
   insert into public.store_access (
     store_id,
     customer_group_id,
@@ -4779,12 +3014,7 @@ begin
     updated_at = now()
   returning * into v_row;
 
-  return v_row;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."create_store_access"("p_store_id" bigint, "p_customer_group_id" bigint, "p_status" boolean, "p_see_price" boolean) OWNER TO "postgres";
+  ALTER FUNCTION "public"."create_store_access"("p_store_id" bigint, "p_customer_group_id" bigint, "p_status" boolean, "p_see_price" boolean) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."create_tenant_for_superadmin"("p_name" "text", "p_slug" "text", "p_is_active" boolean DEFAULT true, "p_public_domain" "text" DEFAULT NULL::"text", "p_parent_id" bigint DEFAULT NULL::bigint) RETURNS TABLE("id" bigint, "name" "text", "slug" "text", "public_domain" "text", "is_active" boolean, "parent_id" bigint, "preference" "jsonb", "created_at" timestamp with time zone, "updated_at" timestamp with time zone)
@@ -4797,15 +3027,12 @@ declare
   v_slug text;
   v_public_domain text;
   v_is_active boolean;
-  v_parent_id bigint;
   v_preference jsonb;
   v_created_at timestamptz;
   v_updated_at timestamptz;
 begin
   if not public.is_superadmin() then
     return;
-  end if;
-
   insert into public.tenants (name, slug, public_domain, is_active, parent_id)
   values (
     trim(p_name),
@@ -4853,8 +3080,6 @@ begin
   if v_parent_id is null then
     perform public.ensure_default_vendor(v_id);
     perform public.ensure_default_cargo_company(v_id);
-  end if;
-
   return query
   select
     v_id,
@@ -4866,7 +3091,6 @@ begin
     v_preference,
     v_created_at,
     v_updated_at;
-end;
 $_$;
 
 
@@ -4883,22 +3107,16 @@ declare
 begin
   if not public.is_superadmin() then
     return;
-  end if;
-
   select mo.parent_module_key into v_parent
   from public.modules mo
   where mo.key = v_key;
 
   if v_parent is not null then
     raise exception 'Child submodules cannot be enabled independently. Please assign the main parent feature "%" instead.', v_parent;
-  end if;
-
   if v_key = 'shop_order' and exists (
     select 1 from public.tenants child where child.parent_id = p_tenant_id
   ) then
     raise exception 'Shop & Order cannot be assigned to a parent company. Assign it on a sister concern or a standalone tenant.';
-  end if;
-
   return query
   insert into public.tenant_modules as tm (tenant_id, module_key, is_active)
   values (p_tenant_id, v_key, coalesce(p_is_active, true))
@@ -4909,10 +3127,6 @@ begin
     tm.is_active,
     tm.created_at,
     tm.updated_at;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."create_tenant_module_for_superadmin"("p_tenant_id" bigint, "p_module_key" "text", "p_is_active" boolean) OWNER TO "postgres";
 
 
@@ -4944,19 +3158,13 @@ declare
 begin
   if not public.user_is_tenant_admin(p_tenant_id) then
     raise exception 'Unauthorized';
-  end if;
-
   if p_scope not in ('app', 'shop') then
     raise exception 'Invalid scope: %', p_scope;
-  end if;
-
   if p_is_admin = true and exists (
     select 1 from public.tenant_roles
     where tenant_id = p_tenant_id and scope = p_scope and is_admin = true
   ) then
     raise exception 'Only one Administrator role is allowed per scope';
-  end if;
-
   insert into public.tenant_roles (
     tenant_id,
     scope,
@@ -4979,12 +3187,7 @@ begin
   )
   returning * into v_row;
 
-  return v_row;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."create_tenant_role"("p_tenant_id" bigint, "p_scope" "text", "p_name" "text", "p_slug" "text", "p_is_admin" boolean) OWNER TO "postgres";
+  ALTER FUNCTION "public"."create_tenant_role"("p_tenant_id" bigint, "p_scope" "text", "p_name" "text", "p_slug" "text", "p_is_admin" boolean) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."create_thrift_sales_invoice"("p_tenant_id" bigint, "p_invoice_number" "text" DEFAULT NULL::"text", "p_customer_name" "text" DEFAULT NULL::"text", "p_customer_phone" "text" DEFAULT NULL::"text", "p_date" timestamp with time zone DEFAULT "now"(), "p_payment_method" "text" DEFAULT NULL::"text", "p_payment_status" "text" DEFAULT NULL::"text", "p_notes" "text" DEFAULT NULL::"text", "p_created_by" "text" DEFAULT 'cashier'::"text", "p_total_invoice_amount" numeric DEFAULT 0.00, "p_items" "jsonb" DEFAULT '[]'::"jsonb", "p_sale_channel" "text" DEFAULT 'IN_STORE'::"text", "p_customer_address" "text" DEFAULT NULL::"text", "p_customer_notes" "text" DEFAULT NULL::"text", "p_courier_amount" numeric DEFAULT 0.00, "p_courier_paid_by" "text" DEFAULT NULL::"text", "p_packing_amount" numeric DEFAULT 0.00, "p_packing_paid_by" "text" DEFAULT NULL::"text", "p_cod_fee_amount" numeric DEFAULT 0.00, "p_cod_fee_paid_by" "text" DEFAULT NULL::"text", "p_courier_provider" "text" DEFAULT NULL::"text", "p_courier_provider_id" bigint DEFAULT NULL::bigint, "p_meta" "jsonb" DEFAULT '{}'::"jsonb", "p_customer_secondary_phone" "text" DEFAULT NULL::"text", "p_customer_address_parts" "jsonb" DEFAULT '{}'::"jsonb", "p_advance_amount" numeric DEFAULT 0.00, "p_advance_note" "text" DEFAULT NULL::"text") RETURNS "jsonb"
@@ -5551,14 +3754,10 @@ BEGIN
     'status', 'success'
   );
 END;
-$$;
-
-
 ALTER FUNCTION "public"."create_thrift_sales_invoice"("p_tenant_id" bigint, "p_invoice_number" "text", "p_customer_name" "text", "p_customer_phone" "text", "p_date" timestamp with time zone, "p_payment_method" "text", "p_payment_status" "text", "p_notes" "text", "p_created_by" "text", "p_total_invoice_amount" numeric, "p_items" "jsonb", "p_sale_channel" "text", "p_customer_address" "text", "p_customer_notes" "text", "p_courier_amount" numeric, "p_courier_paid_by" "text", "p_packing_amount" numeric, "p_packing_paid_by" "text", "p_cod_fee_amount" numeric, "p_cod_fee_paid_by" "text", "p_courier_provider" "text", "p_courier_provider_id" bigint, "p_meta" "jsonb", "p_customer_secondary_phone" "text", "p_customer_address_parts" "jsonb", "p_advance_amount" numeric, "p_advance_note" "text") OWNER TO "postgres";
 
 
 COMMENT ON FUNCTION "public"."create_thrift_sales_invoice"("p_tenant_id" bigint, "p_invoice_number" "text", "p_customer_name" "text", "p_customer_phone" "text", "p_date" timestamp with time zone, "p_payment_method" "text", "p_payment_status" "text", "p_notes" "text", "p_created_by" "text", "p_total_invoice_amount" numeric, "p_items" "jsonb", "p_sale_channel" "text", "p_customer_address" "text", "p_customer_notes" "text", "p_courier_amount" numeric, "p_courier_paid_by" "text", "p_packing_amount" numeric, "p_packing_paid_by" "text", "p_cod_fee_amount" numeric, "p_cod_fee_paid_by" "text", "p_courier_provider" "text", "p_courier_provider_id" bigint, "p_meta" "jsonb", "p_customer_secondary_phone" "text", "p_customer_address_parts" "jsonb", "p_advance_amount" numeric, "p_advance_note" "text") IS 'Create thrift sales invoice. Online COD: optional advance_amount reduces cod_expected (floor 0). IN_STORE rejects non-zero advance. PnL sell lines unchanged.';
-
 
 
 CREATE OR REPLACE FUNCTION "public"."create_thrift_sales_return"("p_tenant_id" bigint, "p_invoice_id" bigint, "p_items" "jsonb", "p_return_courier_amount" numeric DEFAULT 0.00, "p_notes" "text" DEFAULT NULL::"text", "p_created_by" "text" DEFAULT 'cashier'::"text") RETURNS "jsonb"
@@ -6001,14 +4200,10 @@ BEGIN
     'close_reason', v_close_reason
   );
 END;
-$$;
-
-
 ALTER FUNCTION "public"."create_thrift_sales_return"("p_tenant_id" bigint, "p_invoice_id" bigint, "p_items" "jsonb", "p_return_courier_amount" numeric, "p_notes" "text", "p_created_by" "text") OWNER TO "postgres";
 
 
 COMMENT ON FUNCTION "public"."create_thrift_sales_return"("p_tenant_id" bigint, "p_invoice_id" bigint, "p_items" "jsonb", "p_return_courier_amount" numeric, "p_notes" "text", "p_created_by" "text") IS 'Post-pay return: docs + stock + PnL CUSTOMER_RETURN. Ledger REFUND excludes non-refundable advance share.';
-
 
 
 CREATE OR REPLACE FUNCTION "public"."current_customer_group_id"("p_tenant_id" bigint) RETURNS bigint
@@ -6025,9 +4220,6 @@ CREATE OR REPLACE FUNCTION "public"."current_customer_group_id"("p_tenant_id" bi
     and lower(trim(cgm.email)) = public.current_user_email()
   order by cg.id
   limit 1;
-$$;
-
-
 ALTER FUNCTION "public"."current_customer_group_id"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -6062,9 +4254,6 @@ CREATE OR REPLACE FUNCTION "public"."customer_can_select_shop"("p_shop_id" bigin
       and coalesce(profile.is_active, true) = true
       and coalesce(access.can_browse, profile.default_can_browse, false) = true
   );
-$$;
-
-
 ALTER FUNCTION "public"."customer_can_select_shop"("p_shop_id" bigint, "p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -6101,9 +4290,6 @@ BEGIN
     updated_at = now()
   WHERE id = p_order_id;
 END;
-$$;
-
-
 ALTER FUNCTION "public"."customer_confirm_shop_order"("p_order_id" bigint) OWNER TO "postgres";
 
 
@@ -6113,8 +4299,7 @@ CREATE OR REPLACE FUNCTION "public"."customer_counter_offer"("p_order_id" bigint
     AS $$
 DECLARE
   v_order record;
-  v_item record;
-BEGIN
+  BEGIN
   SELECT * INTO v_order FROM public.shop_orders WHERE id = p_order_id;
   
   IF v_order.id IS NULL THEN
@@ -6169,9 +4354,6 @@ BEGIN
     WHERE id = p_order_id;
   END IF;
 END;
-$$;
-
-
 ALTER FUNCTION "public"."customer_counter_offer"("p_order_id" bigint, "p_items" "jsonb") OWNER TO "postgres";
 
 
@@ -6189,22 +4371,14 @@ begin
 
   if v_tenant_id is null then
     raise exception 'Customer group member not found';
-  end if;
-
   if not public.user_is_tenant_admin(v_tenant_id) then
     raise exception 'Unauthorized';
-  end if;
-
   delete from public.customer_group_member_grants
   where customer_group_member_id = p_cgm_id
     and module_key = p_module_key
     and action = p_action;
 
   perform public.bump_tenant_permission_version(v_tenant_id);
-end;
-$$;
-
-
 ALTER FUNCTION "public"."delete_customer_group_member_grant"("p_cgm_id" bigint, "p_module_key" "text", "p_action" "text") OWNER TO "postgres";
 
 
@@ -6221,22 +4395,14 @@ begin
 
   if v_tenant_id is null then
     raise exception 'Membership not found';
-  end if;
-
   if not public.user_is_tenant_admin(v_tenant_id) then
     raise exception 'Unauthorized';
-  end if;
-
   delete from public.membership_grants
   where membership_id = p_membership_id
     and module_key = p_module_key
     and action = p_action;
 
   perform public.bump_tenant_permission_version(v_tenant_id);
-end;
-$$;
-
-
 ALTER FUNCTION "public"."delete_membership_grant"("p_membership_id" bigint, "p_module_key" "text", "p_action" "text") OWNER TO "postgres";
 
 
@@ -6247,8 +4413,6 @@ CREATE OR REPLACE FUNCTION "public"."delete_shop"("p_shop_id" bigint, "p_tenant_
 begin
   if not public.user_can_manage_shop_tenant(p_tenant_id) then
     raise exception 'not allowed';
-  end if;
-
   update public.shops
   set
     deleted_at = now(),
@@ -6260,12 +4424,7 @@ begin
 
   if not found then
     raise exception 'shop not found or already deleted';
-  end if;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."delete_shop"("p_shop_id" bigint, "p_tenant_id" bigint) OWNER TO "postgres";
+  ALTER FUNCTION "public"."delete_shop"("p_shop_id" bigint, "p_tenant_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."delete_shop_order"("p_order_id" bigint) RETURNS "void"
@@ -6274,26 +4433,12 @@ CREATE OR REPLACE FUNCTION "public"."delete_shop_order"("p_order_id" bigint) RET
     AS $$
 declare
   v_order public.shop_orders;
-  v_item record;
   v_allocation_id bigint;
   v_stock_id bigint;
-begin
-  select * into v_order
-  from public.shop_orders
-  where id = p_order_id;
-
-  if v_order.id is null then
-    raise exception 'Order not found';
-  end if;
-
-  if not public.is_tenant_staff(v_order.tenant_id) then
+if not public.is_tenant_staff(v_order.tenant_id) then
     raise exception 'Access denied';
-  end if;
-
   if v_order.status = 'fulfilled' then
     raise exception 'Cannot delete a fulfilled order';
-  end if;
-
   -- Rollback stock for dropship or confirmed shop orders
   for v_item in select * from public.shop_order_items where order_id = p_order_id loop
     -- Resolve allocation and stock IDs if missing
@@ -6308,29 +4453,18 @@ begin
         and product_id = v_item.product_id
         and (v_allocation_id is null or global_stock_allocation_id = v_allocation_id)
         and display_quantity_override is not null;
-    end if;
-
     -- Rollback actual quantity in global_stock_allocations
     if v_allocation_id is not null then
       update public.global_stock_allocations
       set quantity = quantity + v_item.quantity
       where id = v_allocation_id;
-    end if;
-
     -- Rollback actual quantity in global_stocks
     if v_stock_id is not null then
       update public.global_stocks
       set quantity = quantity + v_item.quantity
       where id = v_stock_id;
-    end if;
-  end loop;
-
-  -- Delete the order (cascade deletes items)
+    -- Delete the order (cascade deletes items)
   delete from public.shop_orders where id = p_order_id;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."delete_shop_order"("p_order_id" bigint) OWNER TO "postgres";
 
 
@@ -6341,16 +4475,10 @@ CREATE OR REPLACE FUNCTION "public"."delete_shop_product_listing"("p_listing_id"
 begin
   if not public.user_can_manage_shop_tenant(p_tenant_id) then
     raise exception 'not allowed';
-  end if;
-
   delete from public.shop_product_listings
   where id = p_listing_id and tenant_id = p_tenant_id;
 
   return true;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."delete_shop_product_listing"("p_listing_id" bigint, "p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -6367,17 +4495,9 @@ begin
 
   if v_tenant_id is null then
     raise exception 'store not found';
-  end if;
-
   if not public.can_manage_store(v_tenant_id) then
     raise exception 'not allowed';
-  end if;
-
   delete from public.stores where id = p_id;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."delete_store"("p_id" bigint) OWNER TO "postgres";
 
 
@@ -6395,17 +4515,9 @@ begin
 
   if v_tenant_id is null then
     raise exception 'store access not found';
-  end if;
-
   if not public.can_manage_store(v_tenant_id) then
     raise exception 'not allowed';
-  end if;
-
   delete from public.store_access where id = p_id;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."delete_store_access"("p_id" bigint) OWNER TO "postgres";
 
 
@@ -6443,9 +4555,6 @@ CREATE OR REPLACE FUNCTION "public"."delete_tenant_for_superadmin"("p_tenant_id"
     created_at,
     updated_at
   from deleted;
-$$;
-
-
 ALTER FUNCTION "public"."delete_tenant_for_superadmin"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -6458,8 +4567,6 @@ declare
 begin
   if not public.is_superadmin() then
     return;
-  end if;
-
   delete from public.tenant_modules tm
   where tm.id = p_id
   returning * into v_deleted;
@@ -6468,8 +4575,6 @@ begin
     delete from public.tenant_module_submodules tms
     where tms.tenant_id = v_deleted.tenant_id
       and tms.parent_module_key = v_deleted.module_key;
-  end if;
-
   return query
   select
     v_deleted.id,
@@ -6478,10 +4583,6 @@ begin
     v_deleted.is_active,
     v_deleted.created_at,
     v_deleted.updated_at;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."delete_tenant_module_for_superadmin"("p_id" bigint) OWNER TO "postgres";
 
 
@@ -6496,33 +4597,19 @@ begin
 
   if v_row.id is null then
     raise exception 'Role not found';
-  end if;
-
   if not public.user_is_tenant_admin(v_row.tenant_id) then
     raise exception 'Unauthorized';
-  end if;
-
   if v_row.is_system = true then
     raise exception 'Cannot delete system roles';
-  end if;
-
   if exists (
     select 1 from public.memberships where tenant_role_id = p_role_id
   ) then
     raise exception 'Cannot delete role: members are currently assigned to it';
-  end if;
-
   if exists (
     select 1 from public.customer_group_members where tenant_role_id = p_role_id
   ) then
     raise exception 'Cannot delete role: customer group members are currently assigned to it';
-  end if;
-
   delete from public.tenant_roles where id = p_role_id;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."delete_tenant_role"("p_role_id" bigint) OWNER TO "postgres";
 
 
@@ -6571,9 +4658,6 @@ BEGIN
 
   RETURN jsonb_build_object('deleted', v_deleted);
 END;
-$$;
-
-
 ALTER FUNCTION "public"."delete_thrift_stocks"("p_tenant_id" bigint, "p_stock_ids" bigint[]) OWNER TO "postgres";
 
 
@@ -6588,20 +4672,10 @@ declare
 begin
   if p_billing_profile_id is null then
     raise exception 'Billing Profile ID is required';
-  end if;
-
   if coalesce(p_amount, 0) <= 0 then
     raise exception 'Payout amount must be greater than zero';
-  end if;
-
-  select * into v_profile
-  from public.billing_profiles
-  where id = p_billing_profile_id;
-
   if v_profile.id is null then
     raise exception 'Billing profile #% not found', p_billing_profile_id;
-  end if;
-
   -- Check available balance in ledger
   select balance_after into v_avail_balance
   from public.billing_profile_wallet_ledger
@@ -6615,8 +4689,6 @@ begin
 
   if v_avail_balance < p_amount then
     raise exception 'Insufficient wallet balance. Available balance: %, requested payout: %', v_avail_balance, p_amount;
-  end if;
-
   -- Record payout_paid entry in ledger
   v_entry := public.record_wallet_ledger_entry(
     p_tenant_id => v_profile.tenant_id,
@@ -6634,115 +4706,7 @@ begin
     'amount', p_amount,
     'new_balance', v_entry.balance_after
   );
-end;
-$$;
-
-
 ALTER FUNCTION "public"."dispense_middleman_payout"("p_billing_profile_id" bigint, "p_amount" numeric, "p_method" "text", "p_trx_id" "text") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."dispense_middleman_payout_from_tenant"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_amount" numeric, "p_payout_method" "text" DEFAULT 'bank_transfer'::"text", "p_reference_notes" "text" DEFAULT NULL::"text") RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_profile public.billing_profiles;
-  v_payout_id text;
-begin
-  if p_tenant_id is null then
-    return jsonb_build_object('success', false, 'error', 'Tenant ID is required');
-  end if;
-
-  if p_billing_profile_id is null then
-    return jsonb_build_object('success', false, 'error', 'Billing Profile ID is required');
-  end if;
-
-  if coalesce(p_amount, 0) <= 0 then
-    return jsonb_build_object('success', false, 'error', 'Payout amount must be greater than 0');
-  end if;
-
-  if not (
-    public.is_superadmin()
-    or exists (
-      select 1 from public.memberships m
-      where m.tenant_id = p_tenant_id
-        and lower(trim(m.email)) = public.current_user_email()
-        and m.is_active = true
-        and m.role in ('admin', 'staff')
-    )
-  ) then
-    return jsonb_build_object('success', false, 'error', format('Permission denied for tenant %s', p_tenant_id));
-  end if;
-
-  select * into v_profile
-  from public.billing_profiles
-  where id = p_billing_profile_id and tenant_id = p_tenant_id;
-
-  if v_profile.id is null then
-    return jsonb_build_object('success', false, 'error', format('Billing profile #%s not found for tenant %s', p_billing_profile_id, p_tenant_id));
-  end if;
-
-  v_payout_id := 'PO-' || gen_random_uuid()::text;
-
-  perform public.record_ledger_transaction(
-    p_tenant_id => p_tenant_id,
-    p_entity_type => 'tenant',
-    p_entity_id => p_tenant_id,
-    p_type => 'debit',
-    p_amount => p_amount,
-    p_currency_code => 'BDT',
-    p_exchange_rate => 1.000000,
-    p_source_type => 'payout',
-    p_source_id => v_payout_id,
-    p_metadata => jsonb_build_object(
-      'section', 'payout_earned',
-      'purpose', 'middleman_payout_tenant_debit',
-      'transaction_type', 'profit_paid_out',
-      'label', 'Profit Paid Out',
-      'billing_profile_id', p_billing_profile_id,
-      'billing_profile_name', v_profile.name,
-      'payout_method', p_payout_method,
-      'notes', p_reference_notes
-    )
-  );
-
-  perform public.record_ledger_transaction(
-    p_tenant_id => p_tenant_id,
-    p_entity_type => 'customer',
-    p_entity_id => p_billing_profile_id,
-    p_type => 'debit',
-    p_amount => p_amount,
-    p_currency_code => 'BDT',
-    p_exchange_rate => 1.000000,
-    p_source_type => 'payout',
-    p_source_id => v_payout_id,
-    p_metadata => jsonb_build_object(
-      'section', 'payout_earned',
-      'purpose', 'middleman_payout_debit',
-      'transaction_type', 'profit_paid_out',
-      'label', 'Profit Paid Out',
-      'payout_method', p_payout_method,
-      'notes', p_reference_notes
-    )
-  );
-
-  perform public.apply_dropship_payout_settlement_fifo(
-    p_tenant_id,
-    p_billing_profile_id,
-    p_amount
-  );
-
-  return jsonb_build_object(
-    'success', true,
-    'payout_id', v_payout_id,
-    'billing_profile_id', p_billing_profile_id,
-    'amount', p_amount
-  );
-end;
-$$;
-
-
-ALTER FUNCTION "public"."dispense_middleman_payout_from_tenant"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_amount" numeric, "p_payout_method" "text", "p_reference_notes" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."enforce_customer_group_member_email_unique_per_tenant"() RETURNS "trigger"
@@ -6759,8 +4723,6 @@ begin
 
   if v_tenant_id is null then
     raise exception 'customer group tenant could not be resolved';
-  end if;
-
   v_normalized_email := lower(trim(new.email));
   new.email := v_normalized_email;
 
@@ -6774,14 +4736,7 @@ begin
       and cgm.id <> coalesce(new.id, -1)
   ) then
     raise exception 'This email already belongs to another customer user in the same tenant';
-  end if;
-
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."enforce_customer_group_member_email_unique_per_tenant"() OWNER TO "postgres";
+  ALTER FUNCTION "public"."enforce_customer_group_member_email_unique_per_tenant"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."enforce_tenant_one_layer_hierarchy"() RETURNS "trigger"
@@ -6793,31 +4748,19 @@ begin
   if new.parent_id is not null then
     if new.parent_id = new.id then
       raise exception 'tenant cannot be its own parent';
-    end if;
-
     select parent_id into v_parent_parent_id
     from public.tenants
     where id = new.parent_id;
 
     if v_parent_parent_id is not null then
       raise exception 'parent tenant must be a top-level company (one layer only)';
-    end if;
-
     if exists (
       select 1
       from public.tenants c
       where c.parent_id = new.id
     ) then
       raise exception 'tenant with child companies cannot be assigned a parent';
-    end if;
-  end if;
-
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."enforce_tenant_one_layer_hierarchy"() OWNER TO "postgres";
+    ALTER FUNCTION "public"."enforce_tenant_one_layer_hierarchy"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."ensure_default_cargo_company"("p_tenant_id" bigint) RETURNS bigint
@@ -6830,20 +4773,14 @@ declare
 begin
   if p_tenant_id is null then
     raise exception 'p_tenant_id is required';
-  end if;
-
   select * into v_tenant
   from public.tenants
   where id = p_tenant_id;
 
   if not found then
     raise exception 'tenant % not found', p_tenant_id;
-  end if;
-
   if v_tenant.parent_id is not null then
     raise exception 'ensure_default_cargo_company requires a parent tenant (got child %)', p_tenant_id;
-  end if;
-
   if auth.uid() is not null then
     if not (
       public.is_superadmin()
@@ -6858,10 +4795,7 @@ begin
       )
     ) then
       raise exception 'not allowed';
-    end if;
-  end if;
-
-  select id into v_id
+    select id into v_id
   from public.cargo_companies
   where tenant_id = p_tenant_id
     and is_default = true
@@ -6869,8 +4803,6 @@ begin
 
   if v_id is not null then
     return v_id;
-  end if;
-
   select id into v_id
   from public.cargo_companies
   where tenant_id = p_tenant_id
@@ -6886,8 +4818,6 @@ begin
         updated_at = now()
     where id = v_id;
     return v_id;
-  end if;
-
   insert into public.cargo_companies (
     tenant_id,
     parent_tenant_id,
@@ -6928,65 +4858,7 @@ begin
   do update set updated_at = now();
 
   return v_id;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."ensure_default_cargo_company"("p_tenant_id" bigint) OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."ensure_dropship_invoice_billed_entry"("p_invoice_id" bigint) RETURNS "void"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_invoice public.global_invoices;
-begin
-  select * into v_invoice
-  from public.global_invoices
-  where id = p_invoice_id;
-
-  if v_invoice.id is null then
-    return;
-  end if;
-
-  -- Only applies to posted dropship invoices with a valid billing profile and total > 0
-  if v_invoice.invoice_type = 'dropship'::public.global_invoice_type
-     and v_invoice.invoice_status = 'posted'::public.global_invoice_status
-     and v_invoice.billing_profile_id is not null
-     and v_invoice.total_amount > 0
-  then
-    if not exists (
-      select 1 from public.universal_wallet_ledger
-      where source_type = 'shop_order'
-        and entity_type = 'customer'
-        and entity_id = v_invoice.billing_profile_id
-        and metadata->>'transaction_type' = 'invoice_billed'
-        and (metadata->>'invoice_id' = p_invoice_id::text or source_id = v_invoice.invoice_no)
-    ) then
-      perform public.record_ledger_transaction(
-        p_tenant_id => v_invoice.tenant_id,
-        p_entity_type => 'customer',
-        p_entity_id => v_invoice.billing_profile_id,
-        p_type => 'debit',
-        p_amount => v_invoice.total_amount,
-        p_source_type => 'shop_order',
-        p_source_id => v_invoice.invoice_no,
-        p_metadata => jsonb_build_object(
-          'section', 'receivable',
-          'transaction_type', 'invoice_billed',
-          'label', 'Invoice Billed',
-          'invoice_no', v_invoice.invoice_no,
-          'invoice_id', p_invoice_id
-        )
-      );
-    end if;
-  end if;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."ensure_dropship_invoice_billed_entry"("p_invoice_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."fetch_customer_shop_categories"("p_tenant_id" bigint) RETURNS TABLE("name" "text", "count" bigint)
@@ -7048,10 +4920,6 @@ begin
   from combined_products cp
   group by coalesce(nullif(trim(cp.category), ''), 'Uncategorized')
   order by count(cp.id) desc, name asc;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."fetch_customer_shop_categories"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -7061,8 +4929,6 @@ CREATE OR REPLACE FUNCTION "public"."finalize_dropship_return"("p_order_id" bigi
     AS $$
 declare
   v_order record;
-  v_invoice record;
-  v_parent_tenant_id bigint;
   v_ref text;
   v_item_elem jsonb;
   v_order_item_id bigint;
@@ -7075,7 +4941,6 @@ declare
   v_target_stock_id bigint;
   v_net_delivered numeric;
   v_currency text;
-  v_billing_profile_id bigint;
   v_is_remitted boolean := false;
   v_existing_ref_order_id bigint;
   v_profit numeric(12,2) := 0;
@@ -7089,28 +4954,9 @@ begin
   select * into v_order from public.shop_orders where id = p_order_id for update;
   if v_order.id is null then
     raise exception 'Shop order #% not found', p_order_id;
-  end if;
-
   if v_order.shop_type_snapshot <> 'dropship' then
     raise exception 'Order #% is not a dropship order', p_order_id;
-  end if;
-
   v_currency := 'BDT';
-  v_parent_tenant_id := public.resolve_parent_tenant_id(v_order.tenant_id);
-
-  if not (
-    public.user_can_manage_parent_tenant(v_parent_tenant_id)
-    or exists (
-      select 1 from public.memberships m
-      where m.tenant_id = v_order.tenant_id
-        and lower(trim(m.email)) = public.current_user_email()
-        and m.is_active = true
-        and m.role in ('admin', 'staff')
-    )
-  ) then
-    raise exception 'Permission denied: Staff or Admin role required';
-  end if;
-
   v_ref := nullif(trim(coalesce(p_return_ref, '')), '');
   if v_ref is not null then
     select id into v_existing_ref_order_id
@@ -7128,23 +4974,15 @@ begin
         );
       else
         raise exception 'Duplicate return reference % already used for another return', v_ref;
-      end if;
-    end if;
-  end if;
-
-  if v_order.return_sub_state = 'return_finalized' then
+      if v_order.return_sub_state = 'return_finalized' then
     return jsonb_build_object(
       'success', true,
       'idempotent', true,
       'message', 'Order return is already finalized',
       'order_id', p_order_id
     );
-  end if;
-
   if v_order.global_invoice_id is not null then
     select * into v_invoice from public.global_invoices where id = v_order.global_invoice_id for update;
-  end if;
-
   v_billing_profile_id := v_order.billing_profile_id;
   if v_billing_profile_id is null and v_order.customer_group_id is not null then
     select id into v_billing_profile_id
@@ -7153,8 +4991,6 @@ begin
       and customer_group_id = v_order.customer_group_id
     order by is_default desc, created_at asc
     limit 1;
-  end if;
-
   if p_items is not null and jsonb_array_length(p_items) > 0 then
     for v_item_elem in select * from jsonb_array_elements(p_items) loop
       v_order_item_id := (v_item_elem->>'order_item_id')::bigint;
@@ -7163,21 +4999,15 @@ begin
 
       if v_returned_qty <= 0 then
         continue;
-      end if;
-
       select * into v_order_item
       from public.shop_order_items
       where id = v_order_item_id and order_id = p_order_id for update;
 
       if v_order_item.id is null then
         raise exception 'Order item #% not found on order #%', v_order_item_id, p_order_id;
-      end if;
-
       v_net_delivered := coalesce(v_order_item.delivered_quantity, v_order_item.quantity) - coalesce(v_order_item.returned_quantity, 0);
       if v_returned_qty > v_net_delivered then
         raise exception 'Returned quantity % exceeds net delivered quantity % for item #%', v_returned_qty, v_net_delivered, v_order_item_id;
-      end if;
-
       select * into v_stock from public.global_stocks where id = v_order_item.global_stock_id;
 
       if v_stock.id is not null then
@@ -7202,8 +5032,6 @@ begin
           'shop_order',
           p_order_id::text
         );
-      end if;
-
       update public.shop_order_items
       set returned_quantity = coalesce(returned_quantity, 0) + v_returned_qty, updated_at = now()
       where id = v_order_item_id;
@@ -7229,15 +5057,8 @@ begin
           update public.global_invoice_items
           set return_quantity = coalesce(return_quantity, 0) + v_returned_qty, updated_at = now()
           where id = v_invoice_item.id;
-        end if;
-      end if;
-    end loop;
-  end if;
-
-  if v_invoice.id is not null then
+        if v_invoice.id is not null then
     perform public.recompute_global_invoice_totals(v_invoice.id);
-  end if;
-
   select exists (
     select 1 from public.universal_wallet_ledger
     where tenant_id = v_order.tenant_id
@@ -7291,8 +5112,6 @@ begin
 
   if v_revenue <= 0 then
     v_revenue := coalesce(v_invoice.total_amount, 0.00);
-  end if;
-
   select coalesce((metadata->>'net_remitted')::numeric, amount, 0)
   into v_remit_net
   from public.universal_wallet_ledger
@@ -7399,10 +5218,7 @@ begin
             'return_ref', v_ref
           )
         );
-      end if;
-    end if;
-
-  -- Historical remittance path: invoice_collection posted without invoice_billed.
+      -- Historical remittance path: invoice_collection posted without invoice_billed.
   -- Unwind collection only (no synthetic return_reversal credit).
   elsif v_billing_profile_id is not null
      and exists (
@@ -7450,10 +5266,7 @@ begin
           'return_ref', v_ref
         )
       );
-    end if;
-  end if;
-
-  -- Leg 2: Claw back profit on customer (unified billing-profile wallet)
+    -- Leg 2: Claw back profit on customer (unified billing-profile wallet)
   if v_billing_profile_id is not null and v_has_profit
      and not exists (
        select 1 from public.universal_wallet_ledger
@@ -7479,8 +5292,6 @@ begin
         'return_ref', v_ref
       )
     );
-  end if;
-
   -- Leg 3: Reverse tenant revenue
   if v_revenue > 0
      and not exists (
@@ -7507,8 +5318,6 @@ begin
         'return_ref', v_ref
       )
     );
-  end if;
-
   -- Leg 4: Reverse remittance cash + courier fee if remitted
   if v_is_remitted then
     if coalesce(v_remit_net, 0) > 0
@@ -7537,8 +5346,6 @@ begin
           'return_ref', v_ref
         )
       );
-    end if;
-
     if coalesce(v_courier_charge, 0) > 0
        and not exists (
          select 1 from public.universal_wallet_ledger
@@ -7565,10 +5372,7 @@ begin
           'return_ref', v_ref
         )
       );
-    end if;
-  end if;
-
-  -- Return fee: UWL only (legacy middle_man_payout_ledger was dropped)
+    -- Return fee: UWL only (legacy middle_man_payout_ledger was dropped)
   if p_deduct_from_middle_man
      and p_actual_return_charge > 0
      and v_billing_profile_id is not null
@@ -7598,8 +5402,6 @@ begin
         'invoice_id', v_order.global_invoice_id
       )
     );
-  end if;
-
   update public.shop_orders
   set
     status = 'returned'::public.shop_order_status,
@@ -7619,10 +5421,6 @@ begin
     'return_sub_state', 'return_finalized',
     'return_ref', v_ref
   );
-end;
-$$;
-
-
 ALTER FUNCTION "public"."finalize_dropship_return"("p_order_id" bigint, "p_items" "jsonb", "p_actual_return_charge" numeric, "p_deduct_from_middle_man" boolean, "p_override_reason" "text", "p_return_ref" "text") OWNER TO "postgres";
 
 
@@ -7673,9 +5471,6 @@ CREATE OR REPLACE FUNCTION "public"."find_active_tenant_by_slug"("p_slug" "text"
   where t.is_active = true
     and lower(trim(t.slug)) = nullif(lower(trim(coalesce(p_slug, ''))), '')
   limit 1;
-$$;
-
-
 ALTER FUNCTION "public"."find_active_tenant_by_slug"("p_slug" "text") OWNER TO "postgres";
 
 
@@ -7705,8 +5500,6 @@ begin
     new.total_amount := greatest(0, v_subtotal + coalesce(new.wrapping_charge, 0) + coalesce(new.cod, 0) + coalesce(new.print_charge, 0) - coalesce(new.discount_amount, 0));
   else
     new.total_amount := greatest(0, v_subtotal + coalesce(new.delivery_charge, 0) + coalesce(new.wrapping_charge, 0) + coalesce(new.cod, 0) + coalesce(new.print_charge, 0) - coalesce(new.discount_amount, 0));
-  end if;
-
   -- 4. Calculate amount_due and payment status
   new.amount_due := greatest(0, new.total_amount - coalesce(new.amount_paid, 0));
   new.is_customer_group_paid := coalesce(new.amount_paid, 0) >= new.total_amount;
@@ -7720,12 +5513,7 @@ begin
       shipment_payment = new.total_amount
   where id = new.order_id;
 
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."fn_recalculate_commerce_invoice_totals"() OWNER TO "postgres";
+  ALTER FUNCTION "public"."fn_recalculate_commerce_invoice_totals"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."fn_recalculate_normal_invoice_totals"("p_invoice_id" bigint) RETURNS "void"
@@ -7755,10 +5543,6 @@ begin
   where id = p_invoice_id;
 
   perform public.recompute_invoice_payment_status(p_invoice_id);
-end;
-$$;
-
-
 ALTER FUNCTION "public"."fn_recalculate_normal_invoice_totals"("p_invoice_id" bigint) OWNER TO "postgres";
 
 
@@ -7768,30 +5552,15 @@ CREATE OR REPLACE FUNCTION "public"."fulfill_shop_order_to_invoice"("p_order_id"
     AS $$
 declare
   v_order public.shop_orders;
-  v_invoice public.global_invoices;
-  v_invoice_type public.global_invoice_type;
   v_retail_billing_mode public.retail_billing_mode;
-  v_invoice_no text;
-  v_item record;
-begin
-  select * into v_order from public.shop_orders where id = p_order_id;
-  
   if v_order.id is null then
     raise exception 'order not found';
-  end if;
-
   if not public.is_tenant_staff(v_order.tenant_id) then
     raise exception 'access denied';
-  end if;
-
   if v_order.status <> 'confirmed' then
     raise exception 'only confirmed orders can be fulfilled to an invoice';
-  end if;
-
   if v_order.shop_type_snapshot = 'vendor_catalog' then
     raise exception 'vendor catalog orders cannot be fulfilled to an invoice directly';
-  end if;
-
   if v_order.shop_type_snapshot = 'dropship' then
     v_invoice_type := 'dropship'::public.global_invoice_type;
     v_retail_billing_mode := null;
@@ -7805,11 +5574,7 @@ begin
         v_retail_billing_mode := 'account'::public.retail_billing_mode;
       else
         v_retail_billing_mode := 'direct'::public.retail_billing_mode;
-      end if;
-    end if;
-  end if;
-
-  v_invoice_no := 'INV-SO-' || v_order.order_no;
+      v_invoice_no := 'INV-SO-' || v_order.order_no;
 
   select * into v_invoice from public.create_global_invoice(
     p_tenant_id => v_order.tenant_id,
@@ -7838,8 +5603,6 @@ begin
   for v_item in select * from public.shop_order_items where order_id = p_order_id loop
     if v_item.global_stock_id is null then
       raise exception 'item % is missing global_stock_id association', v_item.name;
-    end if;
-
     perform public.add_global_invoice_item(
       p_invoice_id => v_invoice.id,
       p_global_stock_id => v_item.global_stock_id,
@@ -7849,14 +5612,7 @@ begin
       p_line_discount_amount => 0.00
     );
 
-    update public.shop_order_items
-    set delivered_quantity = quantity,
-        updated_at = now()
-    where id = v_item.id;
-  end loop;
-
-  perform public.recompute_global_invoice_totals(v_invoice.id);
-  perform public.post_global_invoice(v_invoice.id);
+    perform public.post_global_invoice(v_invoice.id);
 
   update public.shop_orders
   set status = 'fulfilled',
@@ -7864,10 +5620,6 @@ begin
       fulfilled_at = now(),
       updated_at = now()
   where id = p_order_id;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."fulfill_shop_order_to_invoice"("p_order_id" bigint) OWNER TO "postgres";
 
 
@@ -7880,10 +5632,6 @@ declare
 begin
   v_order_no := 'ORD-' || to_char(now(), 'YYYYMMDD') || '-' || lpad(floor(random() * 100000)::text, 5, '0');
   return v_order_no;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."generate_shop_order_number"("p_tenant_id" bigint, "p_shop_id" bigint) OWNER TO "postgres";
 
 
@@ -7914,8 +5662,6 @@ begin
   -- Validate quantity
   if p_quantity not in (50, 100, 150, 200, 300, 400, 500) then
     raise exception 'Quantity must be one of 50, 100, 150, 200, 300, 400, 500';
-  end if;
-
   -- Find the latest barcode generated for the current year with the new tenant prefix format
   select barcode_id into v_latest_barcode
   from public.thrift_barcodes
@@ -7944,15 +5690,9 @@ begin
         c1 := c1 + 1;
         if c1 > 90 then
           raise exception 'Maximum barcode prefix ZZ-999999 reached!';
-        end if;
-      end if;
-      
-      v_prefix := chr(c1) || chr(c2);
+        v_prefix := chr(c1) || chr(c2);
       v_max_seq := 0;
-    end if;
-  end if;
-
-  -- Loop and insert p_quantity barcodes
+    -- Loop and insert p_quantity barcodes
   for i in 1..p_quantity loop
     v_barcode_id := v_tenant_prefix || '-' || v_prefix || '-' || v_current_year || '-' || lpad((v_max_seq + i)::text, 6, '0');
     
@@ -7972,13 +5712,7 @@ begin
     );
     
     v_generated := array_append(v_generated, v_barcode_id);
-  end loop;
-
   return v_generated;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."generate_thrift_barcodes"("p_tenant_id" bigint, "p_quantity" integer, "p_inserted_by" "text") OWNER TO "postgres";
 
 
@@ -8005,9 +5739,6 @@ BEGIN
 
   RETURN 'INV-' || v_year_month || '-' || lpad(v_next::TEXT, 5, '0');
 END;
-$$;
-
-
 ALTER FUNCTION "public"."generate_thrift_invoice_number"("p_tenant_id" bigint, "p_date" timestamp with time zone) OWNER TO "postgres";
 
 
@@ -8034,9 +5765,6 @@ BEGIN
 
   RETURN 'RET-' || v_year_month || '-' || lpad(v_next::TEXT, 5, '0');
 END;
-$$;
-
-
 ALTER FUNCTION "public"."generate_thrift_return_number"("p_tenant_id" bigint, "p_date" timestamp with time zone) OWNER TO "postgres";
 
 
@@ -8105,9 +5833,6 @@ CREATE OR REPLACE FUNCTION "public"."get_active_module_keys_for_tenant"("p_tenan
     '{}'::text[]
   )
   from visible v;
-$$;
-
-
 ALTER FUNCTION "public"."get_active_module_keys_for_tenant"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -8157,8 +5882,6 @@ begin
 
   if v_member.id is null then
     return;
-  end if;
-
   select coalesce(
     jsonb_agg(jsonb_build_object('module_key', module_key, 'action', action)),
     '[]'::jsonb
@@ -8173,8 +5896,6 @@ begin
   if v_perm_version is null then
     perform public.bump_tenant_permission_version(v_member.tenant_id);
     v_perm_version := 1;
-  end if;
-
   member_id := v_member.id;
   member_email := v_member.email;
   member_role := v_member.role;
@@ -8192,10 +5913,6 @@ begin
   permission_version := v_perm_version;
 
   return next;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."get_app_bootstrap_context"("p_email" "text", "p_tenant_id" bigint, "p_membership_id" bigint) OWNER TO "postgres";
 
 
@@ -8208,8 +5925,6 @@ declare
 begin
   if not public.can_access_cart(p_cart_id) then
     raise exception 'not authorized to access this cart';
-  end if;
-
   select jsonb_build_object(
     'cart',
     jsonb_build_object(
@@ -8251,18 +5966,11 @@ begin
 
   if v_result is null then
     raise exception 'cart not found';
-  end if;
-
   return v_result;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."get_cart"("p_cart_id" bigint) OWNER TO "postgres";
 
 
 COMMENT ON FUNCTION "public"."get_cart"("p_cart_id" bigint) IS 'Returns a cart and its cart items without product join.';
-
 
 
 CREATE OR REPLACE FUNCTION "public"."get_cart_details"("p_cart_id" bigint) RETURNS "jsonb"
@@ -8274,8 +5982,6 @@ declare
 begin
   if not public.can_access_cart(p_cart_id) then
     raise exception 'not authorized to access this cart';
-  end if;
-
   select jsonb_build_object(
     'cart',
     jsonb_build_object(
@@ -8352,18 +6058,11 @@ begin
 
   if v_result is null then
     raise exception 'cart not found';
-  end if;
-
   return v_result;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."get_cart_details"("p_cart_id" bigint) OWNER TO "postgres";
 
 
 COMMENT ON FUNCTION "public"."get_cart_details"("p_cart_id" bigint) IS 'Returns a cart and its cart items with nested product details.';
-
 
 
 CREATE OR REPLACE FUNCTION "public"."get_courier_unremitted_financial_summary"("p_tenant_id" bigint) RETURNS TABLE("courier_service_id" "uuid", "courier_name" "text", "gross_cod_total" numeric, "company_wholesale_total" numeric, "middleman_margin_total" numeric, "order_count" bigint)
@@ -8373,8 +6072,6 @@ CREATE OR REPLACE FUNCTION "public"."get_courier_unremitted_financial_summary"("
 begin
   if p_tenant_id is null then
     raise exception 'Tenant ID is required';
-  end if;
-
   return query
   select
     so.courier_service_id,
@@ -8394,10 +6091,6 @@ begin
   where so.tenant_id = p_tenant_id
     and so.status = 'delivered'
   group by so.courier_service_id, coalesce(cs.name, so.courier_name, 'Unassigned');
-end;
-$$;
-
-
 ALTER FUNCTION "public"."get_courier_unremitted_financial_summary"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -8421,13 +6114,9 @@ declare
 begin
   if p_tenant_id is null or p_order_id is null then
     raise exception 'tenant required';
-  end if;
-
   v_group_id := public.current_customer_group_id(p_tenant_id);
   if v_group_id is null then
     raise exception 'access denied';
-  end if;
-
   select *
   into v_order
   from public.shop_orders o
@@ -8435,16 +6124,10 @@ begin
 
   if not found then
     raise exception 'order not found';
-  end if;
-
   if v_order.tenant_id is distinct from p_tenant_id then
     raise exception 'tenant mismatch';
-  end if;
-
   if v_order.customer_group_id is distinct from v_group_id then
     raise exception 'order not found';
-  end if;
-
   select
     s.name,
     s.slug,
@@ -8604,10 +6287,6 @@ begin
     'order', v_order_json,
     'items', v_items
   );
-end;
-$$;
-
-
 ALTER FUNCTION "public"."get_customer_shop_order"("p_tenant_id" bigint, "p_order_id" bigint) OWNER TO "postgres";
 
 
@@ -8633,8 +6312,6 @@ begin
 
   if v_tenant_id is null then
     return;
-  end if;
-
   -- 1. Access group with can_set_dropship_price
   select coalesce(bool_or(
     access.status = true and coalesce(access.can_set_dropship_price, profile.default_can_set_dropship_price, false) = true
@@ -8701,10 +6378,6 @@ begin
     v_has_listing_with_floor,
     v_has_active_courier,
     v_ready;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."get_dropship_shop_readiness"("p_shop_id" bigint) OWNER TO "postgres";
 
 
@@ -8735,8 +6408,6 @@ begin
     )
   ) then
     raise exception 'Permission denied: Admin or Staff role required for reconciliation report';
-  end if;
-
   -- 1. Posted dropship invoices missing invoice_billed (P0A contract)
   select count(*) into v_missing_invoice_billed
   from public.global_invoices i
@@ -8849,10 +6520,6 @@ begin
       'missing_or_duplicate_gifts', v_missing_or_duplicate_gifts
     )
   );
-end;
-$$;
-
-
 ALTER FUNCTION "public"."get_dropship_wallet_reconciliation_report"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -8895,8 +6562,6 @@ begin
         )
       );
     return;
-  end if;
-
   return query
   with role_allowed as (
     select rg.module_key, rg.action
@@ -8940,10 +6605,6 @@ begin
         'investor_profiles', 'investor_capital_ledger', 'investor_shipment_share', 'investor_portal'
       )
     );
-end;
-$$;
-
-
 ALTER FUNCTION "public"."get_effective_grants"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -8953,8 +6614,6 @@ CREATE OR REPLACE FUNCTION "public"."get_effective_item_role"("p_item_id" bigint
     AS $$
 declare
   v_role text;
-  v_parent_id bigint;
-  v_tenant_id bigint;
   v_created_by_email text;
   v_user_role_in_tenant text;
   v_is_superadmin boolean;
@@ -8974,8 +6633,6 @@ begin
 
   if v_is_superadmin then
     return 'owner';
-  end if;
-
   -- Get item info
   select parent_id, tenant_id, created_by_email, accessibility, type
   into v_parent_id, v_tenant_id, v_created_by_email, v_accessibility, v_type
@@ -8984,24 +6641,17 @@ begin
 
   if not found then
     return null;
-  end if;
-
   -- PRIVATE accessibility checks (ONLY creator/superadmin)
   if v_accessibility = 'private' then
     if lower(trim(v_created_by_email)) = v_email then
       return 'owner';
     else
       return null;
-    end if;
-  end if;
-
-  -- RESTRICTED accessibility checks (ONLY creator/superadmin, explicit permissions, or assignees)
+    -- RESTRICTED accessibility checks (ONLY creator/superadmin, explicit permissions, or assignees)
   if v_accessibility = 'restricted' then
     -- Check creator
     if lower(trim(v_created_by_email)) = v_email then
       return 'owner';
-    end if;
-
     -- Check explicit permissions on this specific item
     select role into v_role
     from public.item_permissions
@@ -9009,26 +6659,16 @@ begin
 
     if v_role is not null then
       return v_role;
-    end if;
-
     -- Check if user is an assignee
     if exists (
       select 1 from public.item_assignees
       where item_id = p_item_id and lower(trim(user_email)) = v_email
     ) then
       return 'viewer';
-    end if;
-
-    -- Restricted notes do not inherit parent visibility nor do they fallback to tenant memberships
-    return null;
-  end if;
-
-  -- STANDARD PUBLIC accessibility checks
+    -- STANDARD PUBLIC accessibility checks
   -- Check creator
   if lower(trim(v_created_by_email)) = v_email then
     return 'owner';
-  end if;
-
   -- Check explicit permissions on this item
   select role into v_role
   from public.item_permissions
@@ -9036,17 +6676,12 @@ begin
 
   if v_role is not null then
     return v_role;
-  end if;
-
   -- Check recursive parent permissions
   if v_parent_id is not null then
     v_role := public.get_effective_item_role(v_parent_id, v_email);
     if v_role is not null then
       return v_role;
-    end if;
-  end if;
-
-  -- Fallback to tenant memberships
+    -- Fallback to tenant memberships
   if v_tenant_id is not null then
     select m.role::text into v_user_role_in_tenant
     from public.memberships m
@@ -9060,15 +6695,7 @@ begin
       return 'editor';
     elsif v_user_role_in_tenant = 'viewer' then
       return 'viewer';
-    end if;
-  end if;
-
-  return null;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."get_effective_item_role"("p_item_id" bigint, "p_user_email" "text") OWNER TO "postgres";
+    ALTER FUNCTION "public"."get_effective_item_role"("p_item_id" bigint, "p_user_email" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_investor_allocation_detail"("p_tenant_id" bigint, "p_investor_id" bigint, "p_global_shipment_id" bigint) RETURNS "jsonb"
@@ -9085,16 +6712,12 @@ begin
     or (public.auth_investor_id() = p_investor_id)
   ) then
     raise exception 'not allowed';
-  end if;
-
   select * into v_shipment
   from public.global_shipments
   where id = p_global_shipment_id;
 
   if not found then
     return null;
-  end if;
-
   select * into v_investment
   from public.shipment_investments
   where investor_id = p_investor_id
@@ -9103,8 +6726,6 @@ begin
 
   if not found then
     return null;
-  end if;
-
   v_pnl := public.get_shipment_pnl(p_tenant_id, p_global_shipment_id);
 
   return jsonb_build_object(
@@ -9124,10 +6745,6 @@ begin
     'unsold_value', coalesce((v_pnl -> 'totals' ->> 'unsold_value')::numeric, 0.00),
     'shrinkage_value', coalesce((v_pnl -> 'totals' ->> 'shrinkage_value')::numeric, 0.00)
   );
-end;
-$$;
-
-
 ALTER FUNCTION "public"."get_investor_allocation_detail"("p_tenant_id" bigint, "p_investor_id" bigint, "p_global_shipment_id" bigint) OWNER TO "postgres";
 
 
@@ -9141,9 +6758,7 @@ declare
   v_perm_version bigint;
 begin
   select * into v_tenant from public.tenants where id = p_tenant_id;
-  if v_tenant.id is null then raise exception 'tenant not found'; end if;
-
-  select * into v_membership
+  if v_tenant.id is null then raise exception 'tenant not found'; select * into v_membership
   from public.memberships m
   where m.tenant_id = p_tenant_id
     and lower(trim(m.email)) = public.current_user_email()
@@ -9153,8 +6768,6 @@ begin
 
   if v_membership.id is null then
     return jsonb_build_object('authenticated', false, 'tenant', row_to_json(v_tenant));
-  end if;
-
   select version into v_perm_version
   from public.tenant_permission_versions
   where tenant_id = p_tenant_id;
@@ -9162,8 +6775,6 @@ begin
   if v_perm_version is null then
     perform public.bump_tenant_permission_version(p_tenant_id);
     v_perm_version := 1;
-  end if;
-
   return jsonb_build_object(
     'authenticated', true,
     'tenant', row_to_json(v_tenant),
@@ -9178,10 +6789,6 @@ begin
     ),
     'permission_version', v_perm_version
   );
-end;
-$$;
-
-
 ALTER FUNCTION "public"."get_investor_bootstrap_context"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -9204,8 +6811,6 @@ begin
     or (public.auth_investor_id() = p_investor_id)
   ) then
     raise exception 'not allowed';
-  end if;
-
   select coalesce(sum(amount), 0) into v_deposits
   from public.investor_transactions
   where investor_id = p_investor_id
@@ -9257,10 +6862,6 @@ begin
     'profit_earned_sum', v_profit,
     'ending_balance', v_ending_balance
   );
-end;
-$$;
-
-
 ALTER FUNCTION "public"."get_investor_capital_report"("p_tenant_id" bigint, "p_investor_id" bigint, "p_start_date" "date", "p_end_date" "date") OWNER TO "postgres";
 
 
@@ -9281,8 +6882,6 @@ begin
     or (public.auth_investor_id() = p_investor_id)
   ) then
     raise exception 'not allowed';
-  end if;
-
   select coalesce(sum(amount), 0) into v_total_capital_in
   from public.investor_transactions
   where investor_id = p_investor_id
@@ -9317,10 +6916,6 @@ begin
     'withdrawable_balance', v_withdrawable_balance,
     'total_withdrawn', v_total_withdrawn
   );
-end;
-$$;
-
-
 ALTER FUNCTION "public"."get_investor_dashboard_summary"("p_tenant_id" bigint, "p_investor_id" bigint) OWNER TO "postgres";
 
 
@@ -9338,15 +6933,11 @@ declare
   v_unrealized_profit numeric(12,2);
 begin
   select * into v_investor from public.investors where id = p_investor_id;
-  if v_investor.id is null then raise exception 'investor not found'; end if;
-
-  if not (
+  if v_investor.id is null then raise exception 'investor not found'; if not (
     public.user_can_manage_parent_tenant(v_investor.tenant_id)
     or (public.auth_investor_id() = p_investor_id)
   ) then
     raise exception 'not allowed';
-  end if;
-
   -- Total capital in including adjustments
   select coalesce(sum(amount), 0) into v_deposits
   from public.investor_transactions
@@ -9396,99 +6987,7 @@ begin
       where si.investor_id = p_investor_id and si.status = 'active'
     )
   );
-end;
-$$;
-
-
 ALTER FUNCTION "public"."get_investor_portfolio_summary"("p_investor_id" bigint) OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."get_invoice_margin_detail"("p_invoice_id" bigint) RETURNS "jsonb"
-    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_invoice jsonb;
-  v_lines jsonb;
-  v_returns jsonb;
-  v_gross_profit numeric(12,2);
-begin
-  -- 1. Get invoice details
-  select row_to_json(i)::jsonb
-  into v_invoice
-  from public.global_invoices i
-  where i.id = p_invoice_id;
-
-  if v_invoice is null then
-    raise exception 'invoice not found';
-  end if;
-
-  -- 2. Get line margins
-  select coalesce(jsonb_agg(row_to_json(l)), '[]'::jsonb)
-  into v_lines
-  from (
-    select
-      ii.*,
-      ((ii.sell_price_amount - ii.unit_cost_price) * ii.quantity - ii.line_discount_amount) as line_margin
-    from public.global_invoice_items ii
-    where ii.invoice_id = p_invoice_id
-  ) l;
-
-  -- 3. Get return margins
-  select coalesce(jsonb_agg(row_to_json(r)), '[]'::jsonb)
-  into v_returns
-  from (
-    select
-      ri.*,
-      (ri.return_accounting_amount - (ii.unit_cost_price * ri.quantity)) as return_margin
-    from public.global_return_items ri
-    join public.global_invoice_items ii on ii.id = ri.invoice_item_id
-    where ri.invoice_id = p_invoice_id
-  ) r;
-
-  -- 4. Calculate total gross profit
-  declare
-    v_lines_margin numeric(12,2) := 0;
-    v_returns_margin numeric(12,2) := 0;
-    v_discount numeric(12,2);
-    v_charges numeric(12,2);
-  begin
-    select coalesce(sum((sell_price_amount - unit_cost_price) * quantity - line_discount_amount), 0)
-    into v_lines_margin
-    from public.global_invoice_items
-    where invoice_id = p_invoice_id;
-
-    select coalesce(sum(ri.return_accounting_amount - (ii.unit_cost_price * ri.quantity)), 0)
-    into v_returns_margin
-    from public.global_return_items ri
-    join public.global_invoice_items ii on ii.id = ri.invoice_item_id
-    where ri.invoice_id = p_invoice_id;
-
-    select 
-      coalesce(discount_amount, 0),
-      case 
-        when invoice_type = 'wholesale' or invoice_type = 'dropship' then shipping_charge
-        when invoice_type = 'retail' then shipping_charge + cod_charge + print_charge + wrapping_charge
-        else 0.00 
-      end
-    into v_discount, v_charges
-    from public.global_invoices
-    where id = p_invoice_id;
-
-    v_gross_profit := v_lines_margin - v_discount + v_charges - v_returns_margin;
-  end;
-
-  return jsonb_build_object(
-    'invoice', v_invoice,
-    'lines', v_lines,
-    'returns', v_returns,
-    'gross_profit', v_gross_profit
-  );
-end;
-$$;
-
-
-ALTER FUNCTION "public"."get_invoice_margin_detail"("p_invoice_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_item_details"("p_item_id" bigint) RETURNS "jsonb"
@@ -9509,8 +7008,6 @@ begin
   -- Check item exists and permissions allow reading it
   if public.get_effective_item_role(p_item_id, v_email) is null then
     return null;
-  end if;
-
   -- 1. Fetch item details
   select row_to_json(i)
   into v_item
@@ -9569,10 +7066,6 @@ begin
     'permissions', v_permissions,
     'activity_logs', v_activity_logs
   );
-end;
-$$;
-
-
 ALTER FUNCTION "public"."get_item_details"("p_item_id" bigint) OWNER TO "postgres";
 
 
@@ -9597,9 +7090,6 @@ CREATE OR REPLACE FUNCTION "public"."get_koba_cart"("p_tenant_id" bigint, "p_cus
   where c.tenant_id = p_tenant_id
     and c.customer_group_id is not distinct from p_customer_group_id
   limit 1;
-$$;
-
-
 ALTER FUNCTION "public"."get_koba_cart"("p_tenant_id" bigint, "p_customer_group_id" bigint) OWNER TO "postgres";
 
 
@@ -9637,8 +7127,6 @@ begin
     )
   ) then
     raise exception 'access denied';
-  end if;
-
   -- Get overview stats
   select
     max(id) as last_order_id,
@@ -9658,15 +7146,11 @@ begin
     
   if v_total_orders = 0 or v_total_orders is null then
     return null;
-  end if;
-  
   -- Calculate average frequency (days between orders)
   if v_total_orders > 1 then
     v_avg_days_between_orders := (extract(epoch from (v_last_order_date - v_first_order_date)) / 86400.0) / (v_total_orders - 1);
   else
     v_avg_days_between_orders := null;
-  end if;
-  
   -- Get contact details from latest order
   select
     shipping_name,
@@ -9749,10 +7233,6 @@ begin
     'top_products', v_top_products,
     'order_history', v_order_history
   );
-end;
-$$;
-
-
 ALTER FUNCTION "public"."get_koba_customer_profile"("p_tenant_id" bigint, "p_phone" "text") OWNER TO "postgres";
 
 
@@ -9774,8 +7254,6 @@ begin
     )
   ) then
     raise exception 'access denied';
-  end if;
-
   return query
   with customer_phones as (
     select
@@ -9809,10 +7287,6 @@ begin
   join public.koba_orders o on o.id = cp.cp_last_order_id
   order by cp.cp_last_order_date desc
   limit p_limit offset p_offset;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."get_koba_customers_list"("p_tenant_id" bigint, "p_search" "text", "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
 
 
@@ -9822,7 +7296,6 @@ CREATE OR REPLACE FUNCTION "public"."get_my_dropship_wallet_summary"() RETURNS T
     AS $$
 declare
   v_email text := public.current_user_email();
-  v_tenant_id bigint;
   v_group_id bigint;
   v_bp_id bigint;
   v_available numeric := 0;
@@ -9831,8 +7304,6 @@ declare
 begin
   if v_email is null or length(trim(v_email)) = 0 then
     raise exception 'Not authenticated';
-  end if;
-
   select cg.tenant_id, cgm.customer_group_id
   into v_tenant_id, v_group_id
   from public.customer_group_members cgm
@@ -9845,13 +7316,9 @@ begin
 
   if v_tenant_id is null or v_group_id is null then
     raise exception 'No active customer group membership';
-  end if;
-
   v_bp_id := public.resolve_billing_profile_for_customer_group(v_tenant_id, v_group_id);
   if v_bp_id is null then
     raise exception 'No billing profile linked for your customer group';
-  end if;
-
   select coalesce(sum(
     case when u.type = 'credit' then u.amount else -u.amount end
   ), 0)
@@ -9893,10 +7360,6 @@ begin
     v_pending,
     v_locked,
     'BDT'::text;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."get_my_dropship_wallet_summary"() OWNER TO "postgres";
 
 
@@ -9914,8 +7377,6 @@ begin
   select tenant_id into v_tenant_id from public.shops where id = p_shop_id and is_active = true;
   if v_tenant_id is null then
     raise exception 'shop not found or inactive';
-  end if;
-
   select access.customer_group_id, access.see_price into v_customer_group_id, v_see_price_snapshot
   from public.shop_customer_group_access access
   join public.customer_groups cg on cg.id = access.customer_group_id
@@ -9930,12 +7391,8 @@ begin
 
   if v_customer_group_id is null then
     raise exception 'no customer group access found';
-  end if;
-
   if not public.can_customer_access_shop(p_shop_id) then
     raise exception 'access denied';
-  end if;
-
   select id into v_cart_id
   from public.shop_carts
   where tenant_id = v_tenant_id
@@ -9964,8 +7421,6 @@ begin
       deduct_print_from_margin = (select deduct_print_from_margin from public.shops where id = p_shop_id),
       deduct_packing_from_margin = (select deduct_packing_from_margin from public.shops where id = p_shop_id)
     where id = v_cart_id;
-  end if;
-
   select jsonb_build_object(
     'cart', jsonb_build_object(
       'id', c.id,
@@ -10021,10 +7476,6 @@ begin
   where c.id = v_cart_id;
 
   return v_result;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."get_or_create_shop_cart"("p_shop_id" bigint) OWNER TO "postgres";
 
 
@@ -10044,8 +7495,6 @@ declare
 begin
   if not public.user_can_manage_parent_tenant(p_parent_tenant_id) then
     raise exception 'not allowed';
-  end if;
-
   select
     coalesce(sum(case when type in ('deposit', 'capital_in', 'capital_adjustment', 'manual_adjustment') then amount else 0 end), 0),
     coalesce(sum(case when type in ('withdrawal', 'withdrawal_paid') then amount else 0 end), 0)
@@ -10129,10 +7578,6 @@ begin
     'realized_profit_mtd', v_profit_mtd,
     'profit_distributed', v_payouts
   );
-end;
-$$;
-
-
 ALTER FUNCTION "public"."get_parent_cash_circulation"("p_parent_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -10151,8 +7596,6 @@ declare
 begin
   if not public.user_can_manage_parent_tenant(p_parent_tenant_id) then
     raise exception 'not allowed';
-  end if;
-
   select
     coalesce(sum(i.total_amount), 0),
     coalesce(sum(i.due_amount), 0),
@@ -10202,10 +7645,6 @@ begin
     ),
     'type_distribution', v_type_distribution
   );
-end;
-$$;
-
-
 ALTER FUNCTION "public"."get_parent_dashboard"("p_parent_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -10218,9 +7657,6 @@ CREATE OR REPLACE FUNCTION "public"."get_pending_order_qty"("p_allocation_id" bi
   join public.shop_orders o on o.id = oi.order_id
   where oi.global_stock_allocation_id = p_allocation_id
     and o.status not in ('cancelled', 'fulfilled');
-$$;
-
-
 ALTER FUNCTION "public"."get_pending_order_qty"("p_allocation_id" bigint) OWNER TO "postgres";
 
 
@@ -10274,12 +7710,8 @@ declare
 begin
   if p_tenant_id is null then
     raise exception 'tenant_id is required';
-  end if;
-
   if not public.user_can_access_tenant_fetch(p_tenant_id) then
     raise exception 'not allowed';
-  end if;
-
   v_scope_tenant_id := public.resolve_parent_tenant_id(p_tenant_id);
 
   select * into v_row
@@ -10287,74 +7719,7 @@ begin
   where id = p_id
     and parent_tenant_id = v_scope_tenant_id;
 
-  return v_row;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."get_product_for_tenant"("p_id" bigint, "p_tenant_id" bigint) OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."get_recipient_profile_by_phone"("p_tenant_id" bigint, "p_phone" "text") RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_phone text;
-  v_row public.recipient_profiles%rowtype;
-  v_can_access boolean;
-begin
-  if auth.uid() is null then
-    raise exception 'Not authenticated';
-  end if;
-
-  v_can_access := public.is_tenant_staff(p_tenant_id)
-    or exists (
-      select 1
-      from public.customer_group_members cgm
-      join public.customer_groups cg on cg.id = cgm.customer_group_id
-      where cg.tenant_id = p_tenant_id
-        and lower(trim(cgm.email)) = public.current_user_email()
-        and cgm.is_active = true
-        and cg.is_active = true
-    );
-
-  if not v_can_access then
-    raise exception 'access denied';
-  end if;
-
-  begin
-    v_phone := public.normalize_bd_mobile(p_phone);
-  exception when others then
-    return null;
-  end;
-
-  select * into v_row
-  from public.recipient_profiles
-  where tenant_id = p_tenant_id and phone = v_phone;
-
-  if v_row.id is null then
-    return null;
-  end if;
-
-  return jsonb_build_object(
-    'id', v_row.id,
-    'name', v_row.name,
-    'phone', v_row.phone,
-    'secondary_phone', v_row.secondary_phone,
-    'address', v_row.address,
-    'district', v_row.district,
-    'thana', v_row.thana,
-    'addresses', v_row.addresses,
-    'tenant_id', v_row.tenant_id,
-    'created_at', v_row.created_at,
-    'updated_at', v_row.updated_at
-  );
-end;
-$$;
-
-
-ALTER FUNCTION "public"."get_recipient_profile_by_phone"("p_tenant_id" bigint, "p_phone" "text") OWNER TO "postgres";
+  ALTER FUNCTION "public"."get_product_for_tenant"("p_id" bigint, "p_tenant_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_shop_bootstrap_context"("p_email" "text" DEFAULT NULL::"text", "p_tenant_id" bigint DEFAULT NULL::bigint, "p_customer_group_member_id" bigint DEFAULT NULL::bigint) RETURNS TABLE("member_id" bigint, "member_name" "text", "member_email" "text", "member_role" "public"."customer_group_role", "member_is_active" boolean, "customer_group_id" bigint, "customer_group_name" "text", "customer_group_is_active" boolean, "customer_group_accent_color" "text", "tenant_id" bigint, "tenant_name" "text", "tenant_slug" "text", "tenant_is_active" boolean, "active_module_keys" "text"[], "tenant_role_id" bigint, "is_admin" boolean, "effective_grants" "jsonb", "permission_version" bigint)
@@ -10412,8 +7777,6 @@ begin
 
   if v_member.id is null then
     return;
-  end if;
-
   select coalesce(
     jsonb_agg(jsonb_build_object('module_key', module_key, 'action', action)),
     '[]'::jsonb
@@ -10428,8 +7791,6 @@ begin
   if v_perm_version is null then
     perform public.bump_tenant_permission_version(v_member.tenant_id);
     v_perm_version := 1;
-  end if;
-
   return query
   select
     v_member.id as member_id,
@@ -10450,10 +7811,6 @@ begin
     v_member.is_admin,
     v_grants as effective_grants,
     v_perm_version as permission_version;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."get_shop_bootstrap_context"("p_email" "text", "p_tenant_id" bigint, "p_customer_group_member_id" bigint) OWNER TO "postgres";
 
 
@@ -10485,8 +7842,6 @@ begin
       and ma.is_active = true
       and ma.scope = 'shop';
     return;
-  end if;
-
   return query
   with role_allowed as (
     select rg.module_key, rg.action
@@ -10520,10 +7875,6 @@ begin
     and tm.is_active = true
     and ma.is_active = true
     and ma.scope = 'shop';
-end;
-$$;
-
-
 ALTER FUNCTION "public"."get_shop_effective_grants"("p_tenant_id" bigint, "p_customer_group_member_id" bigint) OWNER TO "postgres";
 
 
@@ -10533,7 +7884,6 @@ CREATE OR REPLACE FUNCTION "public"."get_shop_permissions_for_customer"("p_shop_
     AS $$
 declare
   v_shop_active boolean;
-  v_tenant_id bigint;
   v_shop_type public.shop_type_enum;
   v_shop_allows_negotiate boolean;
 begin
@@ -10545,8 +7895,6 @@ begin
   if v_shop_active is not true then
     return query select false, false, false, false, false, false, false;
     return;
-  end if;
-
   v_shop_allows_negotiate := v_shop_type = 'vendor_catalog';
 
   return query
@@ -10608,10 +7956,6 @@ begin
     and cg.is_active = true
     and cgm.is_active = true
     and lower(trim(cgm.email)) = public.current_user_email();
-end;
-$$;
-
-
 ALTER FUNCTION "public"."get_shop_permissions_for_customer"("p_shop_id" bigint) OWNER TO "postgres";
 
 
@@ -10666,8 +8010,6 @@ begin
 
   if v_tenant_id is null then
     raise exception 'store not found';
-  end if;
-
   select exists (
     select 1
     from public.memberships m
@@ -10681,8 +8023,6 @@ begin
 
   if not v_has_internal_access and not v_has_customer_access then
     raise exception 'not allowed';
-  end if;
-
   return query
   select distinct p.brand
   from public.products p
@@ -10691,10 +8031,6 @@ begin
     and p.brand is not null
     and length(trim(p.brand)) > 0
   order by p.brand asc;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."get_store_product_brands"("p_store_id" bigint) OWNER TO "postgres";
 
 
@@ -10715,8 +8051,6 @@ begin
 
   if v_tenant_id is null then
     raise exception 'store not found';
-  end if;
-
   select exists (
     select 1
     from public.memberships m
@@ -10730,8 +8064,6 @@ begin
 
   if not v_has_internal_access and not v_has_customer_access then
     raise exception 'not allowed';
-  end if;
-
   return query
   select distinct p.category
   from public.products p
@@ -10740,10 +8072,6 @@ begin
     and p.category is not null
     and length(trim(p.category)) > 0
   order by p.category asc;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."get_store_product_categories"("p_store_id" bigint) OWNER TO "postgres";
 
 
@@ -10824,9 +8152,6 @@ CREATE OR REPLACE FUNCTION "public"."get_stores_for_customer_v2"("p_tenant_id" b
     s.created_at,
     s.updated_at
   order by s.id asc;
-$$;
-
-
 ALTER FUNCTION "public"."get_stores_for_customer_v2"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -10840,8 +8165,6 @@ declare
 begin
   if p_slug is null then
     return null;
-  end if;
-
   if p_category_id is not null then
     select tc.id into v_category_id
     from public.tag_categories tc
@@ -10865,12 +8188,8 @@ begin
       )
     order by tc.is_system desc, tc.id asc
     limit 1;
-  end if;
-
   if v_category_id is null then
     return null;
-  end if;
-
   select row_to_json(t)
   into v_res
   from (
@@ -10895,10 +8214,6 @@ begin
   ) t;
 
   return v_res;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."get_tag_by_slug"("p_category_id" bigint, "p_module_key" "text", "p_code" "text", "p_slug" "text") OWNER TO "postgres";
 
 
@@ -10927,9 +8242,6 @@ CREATE OR REPLACE FUNCTION "public"."get_tenant_details_by_membership"("p_tenant
     )
     and (p_role is null or m.role = p_role)
   limit 1;
-$$;
-
-
 ALTER FUNCTION "public"."get_tenant_details_by_membership"("p_tenant_id" bigint, "p_email" "text", "p_role" "public"."app_role") OWNER TO "postgres";
 
 
@@ -10948,9 +8260,6 @@ CREATE OR REPLACE FUNCTION "public"."get_tenant_module_by_id"("p_id" bigint) RET
   where tm.id = p_id
     and public.can_view_tenant_modules(tm.tenant_id)
   limit 1;
-$$;
-
-
 ALTER FUNCTION "public"."get_tenant_module_by_id"("p_id" bigint) OWNER TO "postgres";
 
 
@@ -10966,10 +8275,6 @@ begin
   where tenant_id = p_tenant_id;
   
   return coalesce(v_version, 1);
-end;
-$$;
-
-
 ALTER FUNCTION "public"."get_tenant_permission_version"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -10989,13 +8294,7 @@ begin
   
   if v_role is null then
     raise exception 'Role not found';
-  end if;
-  
   return v_role;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."get_tenant_role_detail"("p_role_id" bigint) OWNER TO "postgres";
 
 
@@ -11125,14 +8424,10 @@ BEGIN
     'returns', v_returns
   );
 END;
-$$;
-
-
 ALTER FUNCTION "public"."get_thrift_customer_sales_risk"("p_tenant_id" bigint, "p_phone" "text") OWNER TO "postgres";
 
 
 COMMENT ON FUNCTION "public"."get_thrift_customer_sales_risk"("p_tenant_id" bigint, "p_phone" "text") IS 'Customer RTO + post-pay return history by phone for create-sale risk panel. Separate lists, dated DESC, max 20 each.';
-
 
 
 CREATE OR REPLACE FUNCTION "public"."get_thrift_dashboard_metrics"("p_tenant_id" bigint) RETURNS "jsonb"
@@ -11205,9 +8500,6 @@ BEGIN
     'active_invoices_today', v_active_invoices_today
   );
 END;
-$$;
-
-
 ALTER FUNCTION "public"."get_thrift_dashboard_metrics"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -11452,14 +8744,10 @@ BEGIN
     ))
   );
 END;
-$$;
-
-
 ALTER FUNCTION "public"."get_thrift_sales_report"("p_tenant_id" bigint, "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone, "p_sale_channel" "text", "p_outcome" "text") OWNER TO "postgres";
 
 
 COMMENT ON FUNCTION "public"."get_thrift_sales_report"("p_tenant_id" bigint, "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone, "p_sale_channel" "text", "p_outcome" "text") IS 'Period P&L from thrift_sales_pnl_lines + live COGS (cogs_is_loss). Includes RTO and customer-return cards.';
-
 
 
 CREATE OR REPLACE FUNCTION "public"."get_thrift_shipment_sales_report"("p_tenant_id" bigint, "p_shipment_id" bigint) RETURNS "jsonb"
@@ -11770,14 +9058,10 @@ BEGIN
     'lines', COALESCE(v_lines, '[]'::jsonb)
   );
 END;
-$$;
-
-
 ALTER FUNCTION "public"."get_thrift_shipment_sales_report"("p_tenant_id" bigint, "p_shipment_id" bigint) OWNER TO "postgres";
 
 
 COMMENT ON FUNCTION "public"."get_thrift_shipment_sales_report"("p_tenant_id" bigint, "p_shipment_id" bigint) IS 'Inbound shipment P&L from thrift_sales_pnl_lines + live COGS (includes cogs_is_loss).';
-
 
 
 CREATE OR REPLACE FUNCTION "public"."get_wallet_account_balances"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_currency_code" "text" DEFAULT 'BDT'::"text") RETURNS "jsonb"
@@ -11806,9 +9090,6 @@ BEGIN
 
   RETURN v_result;
 END;
-$$;
-
-
 ALTER FUNCTION "public"."get_wallet_account_balances"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_currency_code" "text") OWNER TO "postgres";
 
 
@@ -11850,9 +9131,6 @@ BEGIN
     'customer_deposits_total', v_customer_deposits
   );
 END;
-$$;
-
-
 ALTER FUNCTION "public"."get_wallet_dashboard_summary"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -11931,25 +9209,7 @@ BEGIN
     'entries', v_entries
   );
 END;
-$$;
-
-
 ALTER FUNCTION "public"."get_wallet_entity_statement"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_start_date" timestamp with time zone, "p_end_date" timestamp with time zone) OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."global_invoices_default_issued_by_tenant_id"() RETURNS "trigger"
-    LANGUAGE "plpgsql"
-    AS $$
-begin
-  if new.issued_by_tenant_id is null then
-    new.issued_by_tenant_id := new.tenant_id;
-  end if;
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."global_invoices_default_issued_by_tenant_id"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."global_search_tasks"("p_query" "text") RETURNS TABLE("id" bigint, "tenant_id" bigint, "tenant_name" "text", "parent_id" bigint, "type" "text", "title" "text", "content" "text", "status" "text", "priority" "text", "created_by_email" "text", "due_date" timestamp with time zone, "start_date" timestamp with time zone, "created_at" timestamp with time zone, "updated_at" timestamp with time zone)
@@ -11992,10 +9252,6 @@ begin
     )
   order by i.updated_at desc
   limit 50;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."global_search_tasks"("p_query" "text") OWNER TO "postgres";
 
 
@@ -12006,12 +9262,8 @@ CREATE OR REPLACE FUNCTION "public"."guard_membership_update"() RETURNS "trigger
 begin
   if public.is_superadmin() then
     return new;
-  end if;
-
   if old.tenant_id is distinct from new.tenant_id then
     raise exception 'Only superadmin can move memberships across tenants';
-  end if;
-
   -- Preference-only self-update (e.g. update_membership_preference_for_self)
   if lower(trim(old.email)) = lower(trim(public.current_user_email()))
     and old.email is not distinct from new.email
@@ -12023,26 +9275,13 @@ begin
     and old.preference is distinct from new.preference
   then
     return new;
-  end if;
-
   if not public.is_tenant_admin(old.tenant_id) then
     raise exception 'Only tenant admins can update tenant memberships';
-  end if;
-
   if old.role not in ('staff', 'viewer') then
     raise exception 'Tenant admins can only update staff or viewer memberships';
-  end if;
-
   if new.role not in ('staff', 'viewer') then
     raise exception 'Tenant admins cannot promote membership role beyond staff/viewer';
-  end if;
-
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."guard_membership_update"() OWNER TO "postgres";
+  ALTER FUNCTION "public"."guard_membership_update"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."handle_koba_retail_settings_updated_at"() RETURNS "trigger"
@@ -12050,12 +9289,7 @@ CREATE OR REPLACE FUNCTION "public"."handle_koba_retail_settings_updated_at"() R
     AS $$
 begin
   new.updated_at = now();
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."handle_koba_retail_settings_updated_at"() OWNER TO "postgres";
+  ALTER FUNCTION "public"."handle_koba_retail_settings_updated_at"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."handle_new_tenant_retail_settings"() RETURNS "trigger"
@@ -12065,12 +9299,7 @@ begin
   insert into public.koba_retail_settings (tenant_id)
   values (new.id)
   on conflict (tenant_id) do nothing;
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."handle_new_tenant_retail_settings"() OWNER TO "postgres";
+  ALTER FUNCTION "public"."handle_new_tenant_retail_settings"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."has_active_tenant_membership"("p_tenant_id" bigint) RETURNS boolean
@@ -12085,9 +9314,6 @@ CREATE OR REPLACE FUNCTION "public"."has_active_tenant_membership"("p_tenant_id"
       and m.is_active = true
   )
   or public.is_superadmin();
-$$;
-
-
 ALTER FUNCTION "public"."has_active_tenant_membership"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -12108,13 +9334,9 @@ begin
   -- Superadmin bypass
   if public.is_superadmin() then
     return true;
-  end if;
-
   -- 1. Check module status for the tenant (supports submodules via expansion helper)
   if not (p_module_key = any(public.get_active_module_keys_for_tenant(p_tenant_id))) then
     return false;
-  end if;
-
   -- 2. parent/child hierarchy blocks module for tenant
   if exists (
     select 1
@@ -12127,8 +9349,6 @@ begin
     'investor_profiles', 'investor_capital_ledger', 'investor_shipment_share', 'investor_portal'
   ) then
     return false;
-  end if;
-
   -- 3. Resolve active action entries in module_actions
   select
     exists(
@@ -12161,8 +9381,6 @@ begin
     -- Administrator shortcut
     if coalesce(v_role_is_admin, false) = true then
       return true;
-    end if;
-
     -- Member overrides
     select effect
     into v_override_effect
@@ -12175,8 +9393,6 @@ begin
       return false;
     elsif v_override_effect = 'allow' then
       return true;
-    end if;
-
     -- Role grants
     select allowed
     into v_role_allowed
@@ -12210,8 +9426,6 @@ begin
         and tr.is_admin = true
     ) then
       return true;
-    end if;
-
     -- Resolve overrides and role grants
     select
       coalesce(
@@ -12235,13 +9449,7 @@ begin
       and lower(trim(cgm.email)) = public.current_user_email();
 
     return coalesce(v_shop_allowed, false);
-  end if;
-
   return false;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."has_module_action"("p_tenant_id" bigint, "p_module_key" "text", "p_action" "text") OWNER TO "postgres";
 
 
@@ -12313,14 +9521,10 @@ BEGIN
     'held_for_phone_normalized', v_phone_normalized
   );
 END;
-$$;
-
-
 ALTER FUNCTION "public"."hold_thrift_stock"("p_tenant_id" bigint, "p_stock_id" bigint, "p_held_for_phone" "text", "p_held_for_name" "text", "p_hold_note" "text", "p_held_by" "text", "p_hold_expires_at" timestamp with time zone) OWNER TO "postgres";
 
 
 COMMENT ON FUNCTION "public"."hold_thrift_stock"("p_tenant_id" bigint, "p_stock_id" bigint, "p_held_for_phone" "text", "p_held_for_name" "text", "p_hold_note" "text", "p_held_by" "text", "p_hold_expires_at" timestamp with time zone) IS 'Place AVAILABLE thrift stock on RESERVED hold for a customer phone (FB/online).';
-
 
 
 CREATE OR REPLACE FUNCTION "public"."investor_tenant_can_view"("p_tenant_id" bigint) RETURNS boolean
@@ -12332,9 +9536,6 @@ CREATE OR REPLACE FUNCTION "public"."investor_tenant_can_view"("p_tenant_id" big
     or public.membership_has_module_action(p_tenant_id, 'investor_capital_ledger', 'view')
     or public.membership_has_module_action(p_tenant_id, 'investor_shipment_share', 'view')
     or public.membership_has_module_action(p_tenant_id, 'investor_reports', 'view');
-$$;
-
-
 ALTER FUNCTION "public"."investor_tenant_can_view"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -12345,9 +9546,6 @@ CREATE OR REPLACE FUNCTION "public"."is_cart_owner"("p_customer_group_id" bigint
   select
     p_customer_group_id is not null
     and public.current_customer_group_id(p_tenant_id) = p_customer_group_id;
-$$;
-
-
 ALTER FUNCTION "public"."is_cart_owner"("p_customer_group_id" bigint, "p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -12359,9 +9557,6 @@ CREATE OR REPLACE FUNCTION "public"."is_child_tenant"("p_tenant_id" bigint) RETU
     (select t.parent_id is not null from public.tenants t where t.id = p_tenant_id),
     false
   );
-$$;
-
-
 ALTER FUNCTION "public"."is_child_tenant"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -12394,9 +9589,6 @@ CREATE OR REPLACE FUNCTION "public"."is_customer_group_member"("p_customer_group
       and lower(trim(email)) = public.current_user_email()
       and is_active = true
   );
-$$;
-
-
 ALTER FUNCTION "public"."is_customer_group_member"("p_customer_group_id" bigint) OWNER TO "postgres";
 
 
@@ -12408,9 +9600,6 @@ CREATE OR REPLACE FUNCTION "public"."is_parent_company"("p_tenant_id" bigint) RE
     (select t.parent_id is null from public.tenants t where t.id = p_tenant_id),
     false
   );
-$$;
-
-
 ALTER FUNCTION "public"."is_parent_company"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -12466,9 +9655,6 @@ CREATE OR REPLACE FUNCTION "public"."is_tenant_staff"("p_tenant_id" bigint) RETU
         or public.has_module_action(p_tenant_id, 'shop_order_mgmt', 'view')
       )
   );
-$$;
-
-
 ALTER FUNCTION "public"."is_tenant_staff"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -12482,9 +9668,6 @@ CREATE OR REPLACE FUNCTION "public"."koba_cart_allowed"("p_cart_id" bigint) RETU
     where c.id = p_cart_id
       and public.koba_context_access_allowed(c.tenant_id, c.customer_group_id)
   );
-$$;
-
-
 ALTER FUNCTION "public"."koba_cart_allowed"("p_cart_id" bigint) OWNER TO "postgres";
 
 
@@ -12499,9 +9682,6 @@ CREATE OR REPLACE FUNCTION "public"."koba_context_access_allowed"("p_tenant_id" 
       p_customer_group_id is not null
       and public.is_customer_group_member(p_customer_group_id)
     );
-$$;
-
-
 ALTER FUNCTION "public"."koba_context_access_allowed"("p_tenant_id" bigint, "p_customer_group_id" bigint) OWNER TO "postgres";
 
 
@@ -12515,9 +9695,6 @@ CREATE OR REPLACE FUNCTION "public"."koba_order_allowed"("p_order_id" bigint) RE
     where o.id = p_order_id
       and public.koba_context_access_allowed(o.tenant_id, o.customer_group_id)
   );
-$$;
-
-
 ALTER FUNCTION "public"."koba_order_allowed"("p_order_id" bigint) OWNER TO "postgres";
 
 
@@ -12534,8 +9711,6 @@ begin
       and m.is_active = true
   ) then
     raise exception 'not allowed';
-  end if;
-
   return query
   select
     gsa.id as allocation_id,
@@ -12573,10 +9748,6 @@ begin
         and spl.global_stock_allocation_id = gsa.id
     )
   order by p.name asc;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."list_allocations_for_shop_pick"("p_tenant_id" bigint, "p_shop_id" bigint) OWNER TO "postgres";
 
 
@@ -12585,64 +9756,7 @@ CREATE OR REPLACE FUNCTION "public"."list_allocations_for_shop_pick"("p_shop_id"
     SET "search_path" TO 'public'
     AS $$
   select jsonb_build_object('data', '[]'::jsonb, 'total', 0);
-$$;
-
-
 ALTER FUNCTION "public"."list_allocations_for_shop_pick"("p_shop_id" bigint, "p_search" "text") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."list_billing_balances"("p_tenant_id" bigint, "p_search" "text" DEFAULT NULL::"text") RETURNS "jsonb"
-    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_data jsonb;
-begin
-  select coalesce(jsonb_agg(row_to_json(r)), '[]'::jsonb)
-  into v_data
-  from (
-    select
-      bp.id,
-      bp.name,
-      bp.email,
-      bp.phone,
-      bp.color,
-      coalesce(sum(i.due_amount), 0.00) as balance_due,
-      coalesce(sum(i.total_amount), 0.00) as total_invoiced,
-      coalesce(sum(i.paid_amount), 0.00) as total_paid
-    from public.billing_profiles bp
-    left join public.global_invoices i on i.billing_profile_id = bp.id and i.invoice_status = 'posted'::public.global_invoice_status
-    where bp.tenant_id = p_tenant_id
-      and (p_search is null or p_search = '' or bp.name ilike '%' || p_search || '%' or bp.email ilike '%' || p_search || '%')
-    group by bp.id
-    
-    union all
-    
-    select
-      -1::bigint as id,
-      'Walk-in / Direct' as name,
-      null::text as email,
-      null::text as phone,
-      '#757575' as color,
-      coalesce(sum(i.due_amount), 0.00) as balance_due,
-      coalesce(sum(i.total_amount), 0.00) as total_invoiced,
-      coalesce(sum(i.paid_amount), 0.00) as total_paid
-    from public.global_invoices i
-    where i.tenant_id = p_tenant_id
-      and i.invoice_status = 'posted'::public.global_invoice_status
-      and i.billing_profile_id is null
-      and (p_search is null or p_search = '' or 'Walk-in / Direct' ilike '%' || p_search || '%')
-    having count(i.id) > 0
-    
-    order by balance_due desc, name asc
-  ) r;
-
-  return v_data;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."list_billing_balances"("p_tenant_id" bigint, "p_search" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."list_cgm_ids_with_overrides"("p_customer_group_id" bigint) RETURNS TABLE("customer_group_member_id" bigint)
@@ -12658,21 +9772,13 @@ begin
 
   if v_tenant_id is null then
     raise exception 'Customer group not found';
-  end if;
-
   if not public.is_superadmin() and not public.user_is_tenant_admin(v_tenant_id) then
     raise exception 'Unauthorized';
-  end if;
-
   return query
   select distinct cgmg.customer_group_member_id
   from public.customer_group_member_grants cgmg
   join public.customer_group_members cgm on cgm.id = cgmg.customer_group_member_id
   where cgm.customer_group_id = p_customer_group_id;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."list_cgm_ids_with_overrides"("p_customer_group_id" bigint) OWNER TO "postgres";
 
 
@@ -12684,9 +9790,6 @@ CREATE OR REPLACE FUNCTION "public"."list_child_tenant_ids"("p_parent_tenant_id"
   from public.tenants t
   where t.parent_id = p_parent_tenant_id
   order by t.id;
-$$;
-
-
 ALTER FUNCTION "public"."list_child_tenant_ids"("p_parent_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -12697,10 +9800,7 @@ CREATE OR REPLACE FUNCTION "public"."list_commerce_global_stock_for_store"("p_te
 declare
   v_parent_id bigint;
   v_rows jsonb;
-begin
-  v_parent_id := public.resolve_parent_tenant_id(p_tenant_id);
-
-  select coalesce(jsonb_agg(row_to_json(t)), '[]'::jsonb) into v_rows
+select coalesce(jsonb_agg(row_to_json(t)), '[]'::jsonb) into v_rows
   from (
     select
       gs.id as global_stock_id,
@@ -12739,10 +9839,6 @@ begin
   ) t;
 
   return jsonb_build_object('items', coalesce(v_rows, '[]'::jsonb));
-end;
-$$;
-
-
 ALTER FUNCTION "public"."list_commerce_global_stock_for_store"("p_tenant_id" bigint, "p_store_id" bigint, "p_search" "text", "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
 
 
@@ -12753,8 +9849,6 @@ CREATE OR REPLACE FUNCTION "public"."list_configurable_module_actions"("p_scope"
 begin
   if p_scope not in ('app', 'shop', 'investor') then
     raise exception 'Invalid scope: %', p_scope;
-  end if;
-
   if not public.is_superadmin() and not exists (
     select 1
     from public.memberships m
@@ -12763,8 +9857,6 @@ begin
       and m.is_active = true
   ) then
     raise exception 'Access denied';
-  end if;
-
   return query
   select
     ma.id,
@@ -12780,10 +9872,6 @@ begin
     and ma.scope = p_scope
     and ma.scope <> 'platform'
     and ma.module_key = any(public.get_active_module_keys_for_tenant(p_tenant_id));
-end;
-$$;
-
-
 ALTER FUNCTION "public"."list_configurable_module_actions"("p_scope" "text", "p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -12826,9 +9914,6 @@ CREATE OR REPLACE FUNCTION "public"."list_customer_active_carts"("p_tenant_id" b
     and c.customer_group_id = public.current_customer_group_id(p_tenant_id)
   group by c.id, s.id, gc.code, gc.symbol
   order by c.updated_at desc;
-$$;
-
-
 ALTER FUNCTION "public"."list_customer_active_carts"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -12846,8 +9931,6 @@ begin
 
   if v_tenant_id is null then
     raise exception 'Customer group member not found';
-  end if;
-
   if not public.is_superadmin() and not exists (
     select 1 from public.memberships m
     where m.tenant_id = v_tenant_id
@@ -12855,16 +9938,10 @@ begin
       and m.is_active = true
   ) then
     raise exception 'Access denied';
-  end if;
-
   return query
   select cgmg.id, cgmg.customer_group_member_id, cgmg.module_key, cgmg.action, cgmg.effect
   from public.customer_group_member_grants cgmg
   where cgmg.customer_group_member_id = p_cgm_id;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."list_customer_group_member_grants"("p_cgm_id" bigint) OWNER TO "postgres";
 
 
@@ -12897,9 +9974,6 @@ BEGIN
     AND b.backlog_status IN ('open', 'partially_fulfilled')
   ORDER BY b.created_at DESC;
 END;
-$$;
-
-
 ALTER FUNCTION "public"."list_customer_order_backlog_items"("p_tenant_id" bigint, "p_billing_profile_id" bigint) OWNER TO "postgres";
 
 
@@ -12914,18 +9988,12 @@ declare
 begin
   if p_tenant_id is null then
     return;
-  end if;
-
   if p_status_bucket is not null
      and p_status_bucket not in ('needs_you', 'in_progress', 'done') then
     return;
-  end if;
-
   v_group_id := public.current_customer_group_id(p_tenant_id);
   if v_group_id is null then
     return;
-  end if;
-
   v_limit := greatest(1, least(coalesce(p_limit, 20), 200));
   v_offset := greatest(0, coalesce(p_offset, 0));
 
@@ -12995,10 +10063,6 @@ begin
   order by o.created_at desc
   limit v_limit
   offset v_offset;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."list_customer_shop_orders"("p_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_status_bucket" "text") OWNER TO "postgres";
 
 
@@ -13070,9 +10134,6 @@ CREATE OR REPLACE FUNCTION "public"."list_customer_shops"("p_tenant_id" bigint) 
     gc.code,
     gc.symbol
   order by s.name asc;
-$$;
-
-
 ALTER FUNCTION "public"."list_customer_shops"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -13083,8 +10144,6 @@ CREATE OR REPLACE FUNCTION "public"."list_dropship_shop_orders_for_staff"("p_ten
 begin
   if not public.is_tenant_staff(p_tenant_id) then
     raise exception 'access denied';
-  end if;
-
   return query
   select
     o.id,
@@ -13153,10 +10212,6 @@ begin
   order by o.created_at desc
   limit p_limit
   offset p_offset;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."list_dropship_shop_orders_for_staff"("p_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_status" "text", "p_search" "text") OWNER TO "postgres";
 
 
@@ -13168,78 +10223,7 @@ CREATE OR REPLACE FUNCTION "public"."list_global_currencies"() RETURNS TABLE("id
   from public.global_currencies gc
   where gc.is_active = true
   order by gc.code asc;
-$$;
-
-
 ALTER FUNCTION "public"."list_global_currencies"() OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."list_global_invoice_items"("p_invoice_id" bigint) RETURNS TABLE("id" bigint, "invoice_id" bigint, "global_stock_id" bigint, "name_snapshot" "text", "quantity" numeric, "sell_price_amount" numeric, "recipient_price_amount" numeric, "line_face_total_amount" numeric, "line_discount_amount" numeric, "line_total_amount" numeric, "return_quantity" numeric, "image_url" "text", "shipment_id" bigint, "shipment_item_id" bigint, "purchase_price" numeric, "product_weight" numeric, "package_weight" numeric, "ordered_quantity" integer, "shipment_type" "text", "product_conversion_rate" numeric, "cargo_conversion_rate" numeric, "cargo_rate" numeric, "received_weight" numeric, "transaction_rate" numeric)
-    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_parent_tenant_id bigint;
-  v_tenant_id bigint;
-  v_issued_by bigint;
-begin
-  select parent_tenant_id, tenant_id, issued_by_tenant_id
-  into v_parent_tenant_id, v_tenant_id, v_issued_by
-  from public.sales_invoices
-  where public.sales_invoices.id = p_invoice_id;
-
-  if not found then
-    raise exception 'Invoice with ID % not found', p_invoice_id;
-  end if;
-
-  if not (
-    public.user_can_manage_parent_tenant(v_parent_tenant_id)
-    or public.user_can_manage_parent_tenant(v_tenant_id)
-    or public.has_active_tenant_membership(v_issued_by)
-    or public.membership_has_module_action(v_issued_by, 'global_invoice', 'view')
-  ) then
-    raise exception 'Access denied for invoice with ID %', p_invoice_id;
-  end if;
-
-  return query
-  select
-    gii.id,
-    gii.invoice_id,
-    gii.global_stock_id,
-    gii.name_snapshot,
-    gii.quantity,
-    gii.sell_price_amount,
-    gii.sell_price_amount as recipient_price_amount,
-    gii.line_total_amount as line_face_total_amount,
-    gii.line_discount_amount,
-    gii.line_total_amount,
-    gii.return_quantity,
-    coalesce(gsi.image_url, p.image_url) as image_url,
-    gsi.shipment_id,
-    gsi.id as shipment_item_id,
-    gsi.purchase_price,
-    gsi.product_weight,
-    gsi.package_weight,
-    gsi.ordered_quantity,
-    gship.type::text as shipment_type,
-    null::numeric as product_conversion_rate,
-    null::numeric as cargo_conversion_rate,
-    null::numeric as cargo_rate,
-    gship.received_weight,
-    null::numeric as transaction_rate
-  from public.sales_invoice_items gii
-  left join public.global_stocks gs on gs.id = gii.global_stock_id
-  left join public.global_shipment_items gsi
-    on gsi.id = coalesce(gii.shipment_item_id, gs.shipment_item_id)
-  left join public.global_shipments gship on gship.id = gsi.shipment_id
-  left join public.products p on p.id = gii.product_id
-  where gii.invoice_id = p_invoice_id
-  order by gii.id;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."list_global_invoice_items"("p_invoice_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."list_investor_allocations"("p_tenant_id" bigint, "p_investor_id" bigint, "p_limit" integer DEFAULT 50, "p_offset" integer DEFAULT 0) RETURNS TABLE("id" bigint, "global_shipment_id" bigint, "shipment_name" "text", "shipment_status" "text", "cost_share_pct" numeric, "allocated_cost" numeric, "computed_profit" numeric, "profit_status" "text", "created_at" timestamp with time zone, "total_count" bigint)
@@ -13254,8 +10238,6 @@ begin
     or (public.auth_investor_id() = p_investor_id)
   ) then
     raise exception 'not allowed';
-  end if;
-
   select count(*) into v_total_count
   from public.shipment_investments si
   where si.investor_id = p_investor_id
@@ -13280,10 +10262,6 @@ begin
   order by si.created_at desc
   limit p_limit
   offset p_offset;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."list_investor_allocations"("p_tenant_id" bigint, "p_investor_id" bigint, "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
 
 
@@ -13296,8 +10274,6 @@ declare
 begin
   if not public.membership_has_module_action(p_tenant_id, 'investor_profiles', 'view') then
     raise exception 'not allowed';
-  end if;
-
   select count(*) into v_total_count
   from public.investors i
   where i.tenant_id = p_tenant_id
@@ -13342,10 +10318,6 @@ begin
   order by i.name asc
   limit p_limit
   offset p_offset;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."list_investor_profiles"("p_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_search" "text") OWNER TO "postgres";
 
 
@@ -13361,8 +10333,6 @@ begin
     or (public.auth_investor_id() = p_investor_id)
   ) then
     raise exception 'not allowed';
-  end if;
-
   select count(*) into v_total_count
   from public.investor_transactions tx
   where tx.investor_id = p_investor_id;
@@ -13382,158 +10352,7 @@ begin
   order by tx.date desc, tx.created_at desc
   limit p_limit
   offset p_offset;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."list_investor_transactions"("p_tenant_id" bigint, "p_investor_id" bigint, "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."list_invoice_margin_report"("p_tenant_id" bigint, "p_page" integer DEFAULT 1, "p_page_size" integer DEFAULT 20, "p_start_date" "date" DEFAULT NULL::"date", "p_end_date" "date" DEFAULT NULL::"date", "p_search" "text" DEFAULT NULL::"text", "p_invoice_type" "text" DEFAULT NULL::"text") RETURNS "jsonb"
-    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_parent_id bigint;
-  v_is_parent boolean;
-  v_total_count bigint;
-  v_data jsonb;
-  v_total_pages integer;
-begin
-  v_parent_id := public.resolve_parent_tenant_id(p_tenant_id);
-  v_is_parent := public.is_parent_company(p_tenant_id);
-
-  -- 1. Get total count of matching posted invoices
-  select count(*)
-  into v_total_count
-  from public.global_invoices i
-  where (
-    (v_is_parent = true and i.parent_tenant_id = v_parent_id)
-    or (v_is_parent = false and i.tenant_id = p_tenant_id)
-  )
-    and i.invoice_status = 'posted'::public.global_invoice_status
-    and (p_start_date is null or i.invoice_date >= p_start_date)
-    and (p_end_date is null or i.invoice_date <= p_end_date)
-    and (p_invoice_type is null or p_invoice_type = '' or p_invoice_type = '__all__' or i.invoice_type::text = p_invoice_type)
-    and (
-      p_search is null or p_search = '' or (
-        i.invoice_no ilike '%' || p_search || '%'
-        or i.recipient_name ilike '%' || p_search || '%'
-      )
-    );
-
-  -- 2. Get paginated records as a jsonb array with derived gross profit
-  select coalesce(jsonb_agg(row_to_json(r)), '[]'::jsonb)
-  into v_data
-  from (
-    with invoice_line_margin as (
-      select
-        invoice_id,
-        sum((sell_price_amount - unit_cost_price) * quantity - line_discount_amount) as lines_margin
-      from public.global_invoice_items
-      group by invoice_id
-    ),
-    invoice_return_margin as (
-      select
-        ri.invoice_id,
-        sum(ri.return_accounting_amount - (ii.unit_cost_price * ri.quantity)) as returns_margin
-      from public.global_return_items ri
-      join public.global_invoice_items ii on ii.id = ri.invoice_item_id
-      group by ri.invoice_id
-    )
-    select
-      i.*,
-      coalesce(lm.lines_margin, 0.00) 
-        - i.discount_amount 
-        + (case 
-             when i.invoice_type = 'wholesale' or i.invoice_type = 'dropship' then i.shipping_charge
-             when i.invoice_type = 'retail' then i.shipping_charge + i.cod_charge + i.print_charge + i.wrapping_charge
-             else 0.00 
-           end)
-        - coalesce(rm.returns_margin, 0.00) as gross_profit
-    from public.global_invoices i
-    left join invoice_line_margin lm on lm.invoice_id = i.id
-    left join invoice_return_margin rm on rm.invoice_id = i.id
-    where (
-      (v_is_parent = true and i.parent_tenant_id = v_parent_id)
-      or (v_is_parent = false and i.tenant_id = p_tenant_id)
-    )
-      and i.invoice_status = 'posted'::public.global_invoice_status
-      and (p_start_date is null or i.invoice_date >= p_start_date)
-      and (p_end_date is null or i.invoice_date <= p_end_date)
-      and (p_invoice_type is null or p_invoice_type = '' or p_invoice_type = '__all__' or i.invoice_type::text = p_invoice_type)
-      and (
-        p_search is null or p_search = '' or (
-          i.invoice_no ilike '%' || p_search || '%'
-          or i.recipient_name ilike '%' || p_search || '%'
-        )
-      )
-    order by i.invoice_date desc, i.id desc
-    limit p_page_size
-    offset (greatest(coalesce(p_page, 1), 1) - 1) * p_page_size
-  ) r;
-
-  -- 3. Calculate total pages
-  if v_total_count = 0 then
-    v_total_pages := 0;
-  else
-    v_total_pages := ceil(v_total_count::float / p_page_size)::integer;
-  end if;
-
-  return jsonb_build_object(
-    'data', v_data,
-    'meta', jsonb_build_object(
-      'total', v_total_count,
-      'page', greatest(coalesce(p_page, 1), 1),
-      'page_size', p_page_size,
-      'total_pages', v_total_pages
-    )
-  );
-end;
-$$;
-
-
-ALTER FUNCTION "public"."list_invoice_margin_report"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_start_date" "date", "p_end_date" "date", "p_search" "text", "p_invoice_type" "text") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."list_invoice_outstanding"("p_tenant_id" bigint, "p_search" "text" DEFAULT NULL::"text") RETURNS "jsonb"
-    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_data jsonb;
-begin
-  select coalesce(jsonb_agg(row_to_json(r)), '[]'::jsonb)
-  into v_data
-  from (
-    select
-      i.id,
-      i.invoice_no,
-      i.invoice_date,
-      i.invoice_type,
-      i.payment_status,
-      i.total_amount,
-      i.due_amount,
-      i.paid_amount,
-      i.recipient_name,
-      i.recipient_phone,
-      i.billing_profile_id,
-      bp.name as billing_profile_name
-    from public.global_invoices i
-    left join public.billing_profiles bp on bp.id = i.billing_profile_id
-    where i.tenant_id = p_tenant_id
-      and i.invoice_status = 'posted'::public.global_invoice_status
-      and i.due_amount > 0
-      and (p_search is null or p_search = '' or i.invoice_no ilike '%' || p_search || '%' or i.recipient_name ilike '%' || p_search || '%')
-    order by i.invoice_date desc, i.id desc
-  ) r;
-
-  return v_data;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."list_invoice_outstanding"("p_tenant_id" bigint, "p_search" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."list_invoices_paginated"("p_tenant_id" bigint, "p_page" integer DEFAULT 1, "p_page_size" integer DEFAULT 20, "p_search" "text" DEFAULT NULL::"text", "p_status" "text" DEFAULT NULL::"text") RETURNS "jsonb"
@@ -13542,9 +10361,7 @@ CREATE OR REPLACE FUNCTION "public"."list_invoices_paginated"("p_tenant_id" bigi
     AS $$
 declare
   v_total_count bigint;
-  v_data jsonb;
-  v_total_pages integer;
-begin
+  begin
   -- 1. Get total count of matching invoices
   select count(*)
   into v_total_count
@@ -13577,27 +10394,7 @@ begin
     offset (greatest(coalesce(p_page, 1), 1) - 1) * p_page_size
   ) r;
 
-  -- 3. Calculate total pages
-  if v_total_count = 0 then
-    v_total_pages := 0;
-  else
-    v_total_pages := ceil(v_total_count::float / p_page_size)::integer;
-  end if;
-
-  return jsonb_build_object(
-    'data', v_data,
-    'meta', jsonb_build_object(
-      'total', v_total_count,
-      'page', greatest(coalesce(p_page, 1), 1),
-      'page_size', p_page_size,
-      'total_pages', v_total_pages
-    )
-  );
-end;
-$$;
-
-
-ALTER FUNCTION "public"."list_invoices_paginated"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_status" "text") OWNER TO "postgres";
+  ALTER FUNCTION "public"."list_invoices_paginated"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_status" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."list_items_paginated"("p_tenant_id" bigint DEFAULT NULL::bigint, "p_page" integer DEFAULT 1, "p_page_size" integer DEFAULT 20, "p_search" "text" DEFAULT NULL::"text", "p_type" "text" DEFAULT NULL::"text", "p_status" "text" DEFAULT NULL::"text", "p_priority" "text" DEFAULT NULL::"text", "p_assignee" "text" DEFAULT NULL::"text", "p_my_tasks_email" "text" DEFAULT NULL::"text", "p_include_parents" boolean DEFAULT false, "p_tag_id" bigint DEFAULT NULL::bigint, "p_date_field" "text" DEFAULT NULL::"text", "p_date_from" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_date_to" timestamp with time zone DEFAULT NULL::timestamp with time zone) RETURNS "jsonb"
@@ -13606,10 +10403,6 @@ CREATE OR REPLACE FUNCTION "public"."list_items_paginated"("p_tenant_id" bigint 
     AS $$
 declare
   v_email text;
-  v_total_count bigint;
-  v_data jsonb;
-  v_total_pages integer;
-  
   -- Status count variables
   v_todo_count bigint;
   v_in_progress_count bigint;
@@ -13854,15 +10647,6 @@ begin
       limit p_page_size
       offset (greatest(coalesce(p_page, 1), 1) - 1) * p_page_size
     ) r;
-  end if;
-
-  -- 3. Calculate total pages
-  if v_total_count = 0 then
-    v_total_pages := 0;
-  else
-    v_total_pages := ceil(v_total_count::float / p_page_size)::integer;
-  end if;
-
   return jsonb_build_object(
     'data', v_data,
     'meta', jsonb_build_object(
@@ -13880,10 +10664,6 @@ begin
       )
     )
   );
-end;
-$$;
-
-
 ALTER FUNCTION "public"."list_items_paginated"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_type" "text", "p_status" "text", "p_priority" "text", "p_assignee" "text", "p_my_tasks_email" "text", "p_include_parents" boolean, "p_tag_id" bigint, "p_date_field" "text", "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone) OWNER TO "postgres";
 
 
@@ -13908,9 +10688,6 @@ CREATE OR REPLACE FUNCTION "public"."list_koba_brands_for_tenant"("p_tenant_id" 
         and kp.source_type = 'retail'
         and kp.in_stock    = true
     );
-$$;
-
-
 ALTER FUNCTION "public"."list_koba_brands_for_tenant"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -13935,9 +10712,6 @@ CREATE OR REPLACE FUNCTION "public"."list_koba_categories_for_tenant"("p_tenant_
         and kp.source_type = 'retail'
         and kp.in_stock    = true
     );
-$$;
-
-
 ALTER FUNCTION "public"."list_koba_categories_for_tenant"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -13987,9 +10761,6 @@ CREATE OR REPLACE FUNCTION "public"."list_koba_orders"("p_tenant_id" bigint, "p_
     )
   )
   from paged;
-$$;
-
-
 ALTER FUNCTION "public"."list_koba_orders"("p_tenant_id" bigint, "p_customer_group_id" bigint, "p_page" integer, "p_page_size" integer, "p_status" "text") OWNER TO "postgres";
 
 
@@ -14062,9 +10833,6 @@ CREATE OR REPLACE FUNCTION "public"."list_koba_retail_products"("p_tenant_id" bi
     )
   )
   from paged;
-$$;
-
-
 ALTER FUNCTION "public"."list_koba_retail_products"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_brand_id" bigint, "p_category_id" bigint) OWNER TO "postgres";
 
 
@@ -14074,23 +10842,17 @@ CREATE OR REPLACE FUNCTION "public"."list_listable_stock_for_shop"("p_shop_id" b
     AS $$
 declare
   v_shop_tenant_id bigint;
-  v_total_count bigint;
-  v_data jsonb;
-begin
+  begin
   select s.tenant_id into v_shop_tenant_id
   from public.shops s
   where s.id = p_shop_id
     and s.deleted_at is null;
   if v_shop_tenant_id is null then
     raise exception 'shop not found';
-  end if;
-
   if not public.has_active_tenant_membership(v_shop_tenant_id)
      and not public.has_active_tenant_membership(public.resolve_parent_tenant_id(v_shop_tenant_id))
      and not public.is_superadmin() then
     raise exception 'not authorized';
-  end if;
-
   select count(distinct gs.id)
   into v_total_count
   from public.global_stocks gs
@@ -14168,10 +10930,6 @@ begin
     'data', v_data,
     'total', v_total_count
   );
-end;
-$$;
-
-
 ALTER FUNCTION "public"."list_listable_stock_for_shop"("p_shop_id" bigint, "p_search" "text", "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
 
 
@@ -14188,8 +10946,6 @@ begin
 
   if v_tenant_id is null then
     raise exception 'Membership not found';
-  end if;
-
   if not public.is_superadmin() and not exists (
     select 1 from public.memberships m
     where m.tenant_id = v_tenant_id
@@ -14197,16 +10953,10 @@ begin
       and m.is_active = true
   ) then
     raise exception 'Access denied';
-  end if;
-
   return query
   select mg.id, mg.membership_id, mg.module_key, mg.action, mg.effect, mg.created_by_email, mg.created_at, mg.updated_at
   from public.membership_grants mg
   where mg.membership_id = p_membership_id;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."list_membership_grants"("p_membership_id" bigint) OWNER TO "postgres";
 
 
@@ -14217,17 +10967,11 @@ CREATE OR REPLACE FUNCTION "public"."list_membership_ids_with_overrides"("p_tena
 begin
   if not public.is_superadmin() and not public.user_is_tenant_admin(p_tenant_id) then
     raise exception 'Unauthorized';
-  end if;
-
   return query
   select distinct mg.membership_id
   from public.membership_grants mg
   join public.memberships m on m.id = mg.membership_id
   where m.tenant_id = p_tenant_id;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."list_membership_ids_with_overrides"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -14255,9 +10999,6 @@ CREATE OR REPLACE FUNCTION "public"."list_my_admin_tenants"() RETURNS TABLE("id"
       and m.is_active = true
   )
   order by t.id asc;
-$$;
-
-
 ALTER FUNCTION "public"."list_my_admin_tenants"() OWNER TO "postgres";
 
 
@@ -14267,14 +11008,11 @@ CREATE OR REPLACE FUNCTION "public"."list_my_dropship_wallet_ledger"("p_limit" i
     AS $_$
 declare
   v_email text := public.current_user_email();
-  v_tenant_id bigint;
   v_group_id bigint;
   v_bp_id bigint;
 begin
   if v_email is null or length(trim(v_email)) = 0 then
     raise exception 'Not authenticated';
-  end if;
-
   select cg.tenant_id, cgm.customer_group_id
   into v_tenant_id, v_group_id
   from public.customer_group_members cgm
@@ -14287,13 +11025,9 @@ begin
 
   if v_tenant_id is null then
     raise exception 'No active customer group membership';
-  end if;
-
   v_bp_id := public.resolve_billing_profile_for_customer_group(v_tenant_id, v_group_id);
   if v_bp_id is null then
     raise exception 'No billing profile linked for your customer group';
-  end if;
-
   return query
   select
     u.id::text,
@@ -14314,7 +11048,6 @@ begin
   order by u.created_at desc, u.id desc
   limit greatest(coalesce(p_limit, 50), 1)
   offset greatest(coalesce(p_offset, 0), 0);
-end;
 $_$;
 
 
@@ -14329,9 +11062,6 @@ CREATE OR REPLACE FUNCTION "public"."list_payment_methods"() RETURNS TABLE("code
   from public.payment_methods pm
   where pm.is_active = true
   order by pm.sort_order asc, pm.name asc;
-$$;
-
-
 ALTER FUNCTION "public"."list_payment_methods"() OWNER TO "postgres";
 
 
@@ -14342,8 +11072,6 @@ CREATE OR REPLACE FUNCTION "public"."list_procurement_shop_order_lines"("p_paren
 begin
   if not public.user_can_manage_parent_tenant(p_parent_tenant_id) then
     raise exception 'not allowed';
-  end if;
-
   return query
   select
     'shop_order_item'::text as source_type,
@@ -14377,10 +11105,6 @@ begin
   order by t.name, oi.id
   limit greatest(coalesce(p_limit, 100), 1)
   offset greatest(coalesce(p_offset, 0), 0);
-end;
-$$;
-
-
 ALTER FUNCTION "public"."list_procurement_shop_order_lines"("p_parent_tenant_id" bigint, "p_child_tenant_id" bigint, "p_search" "text", "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
 
 
@@ -14411,12 +11135,8 @@ declare
 begin
   if p_tenant_id is null then
     raise exception 'tenant_id is required';
-  end if;
-
   if not public.user_can_access_tenant_fetch(p_tenant_id) then
     raise exception 'not allowed';
-  end if;
-
   v_scope_tenant_id := public.resolve_parent_tenant_id(p_tenant_id);
   v_vendor_code := nullif(upper(trim(coalesce(p_vendor_code, ''))), '');
 
@@ -14427,10 +11147,6 @@ begin
     and (v_vendor_code is null or pb.vendor_code = v_vendor_code)
     and (p_vendor_id is null or pb.vendor_id = p_vendor_id)
   order by pb.name asc;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."list_product_brands_for_tenant"("p_tenant_id" bigint, "p_vendor_code" "text", "p_vendor_id" bigint) OWNER TO "postgres";
 
 
@@ -14461,12 +11177,8 @@ declare
 begin
   if p_tenant_id is null then
     raise exception 'tenant_id is required';
-  end if;
-
   if not public.user_can_access_tenant_fetch(p_tenant_id) then
     raise exception 'not allowed';
-  end if;
-
   v_scope_tenant_id := public.resolve_parent_tenant_id(p_tenant_id);
   v_vendor_code := nullif(upper(trim(coalesce(p_vendor_code, ''))), '');
 
@@ -14477,10 +11189,6 @@ begin
     and (v_vendor_code is null or pc.vendor_code = v_vendor_code)
     and (p_vendor_id is null or pc.vendor_id = p_vendor_id)
   order by pc.name asc;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."list_product_categories_for_tenant"("p_tenant_id" bigint, "p_vendor_code" "text", "p_vendor_id" bigint) OWNER TO "postgres";
 
 
@@ -14501,8 +11209,6 @@ declare
 begin
   if p_tenant_id is not null and not public.user_can_access_tenant_fetch(p_tenant_id) then
     raise exception 'not allowed';
-  end if;
-
   v_scope_tenant_id := case
     when p_tenant_id is null then null
     else public.resolve_parent_tenant_id(p_tenant_id)
@@ -14525,18 +11231,12 @@ begin
     'updated_at'
   ])) then
     v_sort_by := 'name';
-  end if;
-
   v_sort_dir := lower(trim(coalesce(p_sort_dir, 'asc')));
   if v_sort_dir not in ('asc', 'desc') then
     v_sort_dir := 'asc';
-  end if;
-
   v_search_field := lower(trim(coalesce(p_search_field, 'name')));
   if v_search_field not in ('name', 'barcode', 'product_code', 'id') then
     v_search_field := 'name';
-  end if;
-
   if v_search_field = 'name' and p_search is not null and trim(p_search) <> '' then
     v_phrase_escaped := replace(replace(replace(trim(p_search), E'\\', E'\\\\'), '%', E'\\%'), '_', E'\\_');
 
@@ -14548,10 +11248,7 @@ begin
 
     if cardinality(v_tokens) = 0 then
       v_tokens := array[trim(p_search)];
-    end if;
-  end if;
-
-  execute format(
+    execute format(
       $sql$
         with filtered as (
           select p.*
@@ -14646,7 +11343,6 @@ begin
       )
     )
   );
-end;
 $_$;
 
 
@@ -14660,8 +11356,6 @@ CREATE OR REPLACE FUNCTION "public"."list_shop_orders_for_staff"("p_tenant_id" b
 begin
   if not public.is_tenant_staff(p_tenant_id) then
     raise exception 'access denied';
-  end if;
-
   return query
   select
     o.id,
@@ -14700,10 +11394,6 @@ begin
   order by o.created_at desc
   limit p_limit
   offset p_offset;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."list_shop_orders_for_staff"("p_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_search" "text", "p_status" "text", "p_shop_id" bigint) OWNER TO "postgres";
 
 
@@ -14720,14 +11410,10 @@ begin
     and s.deleted_at is null;
   if v_tenant_id is null then
     raise exception 'shop not found';
-  end if;
-
   if not public.has_active_tenant_membership(v_tenant_id)
      and not public.has_active_tenant_membership(public.resolve_parent_tenant_id(v_tenant_id))
      and not public.is_superadmin() then
     raise exception 'not allowed';
-  end if;
-
   return query
   select
     l.id,
@@ -14762,10 +11448,6 @@ begin
   left join public.global_shipment_items gsi on gsi.id = gs.shipment_item_id
   where l.shop_id = p_shop_id
   order by gsi.name asc;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."list_shop_product_listings"("p_shop_id" bigint) OWNER TO "postgres";
 
 
@@ -14783,8 +11465,6 @@ begin
       and m.is_active = true
   ) then
     raise exception 'not allowed';
-  end if;
-
   select count(*)
   into v_total
   from public.shops s
@@ -14832,10 +11512,6 @@ begin
   order by s.name asc
   limit  p_limit
   offset p_offset;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."list_shops"("p_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_search" "text", "p_active" boolean) OWNER TO "postgres";
 
 
@@ -14968,10 +11644,6 @@ begin
   into v_result;
 
   return v_result;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."list_store_product_pricing"("p_tenant_id" bigint, "p_store_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_shipment_id" bigint) OWNER TO "postgres";
 
 
@@ -15024,8 +11696,6 @@ begin
 
   if v_tenant_id is null then
     raise exception 'store not found';
-  end if;
-
   select exists (
     select 1
     from public.memberships m
@@ -15039,8 +11709,6 @@ begin
 
   if not v_has_internal_access and not v_has_customer_access then
     raise exception 'not allowed';
-  end if;
-
   v_can_see_price := v_has_internal_access or public.can_customer_see_store_price(p_store_id);
 
   v_sort_by := lower(trim(coalesce(p_sort_by, 'id')));
@@ -15057,13 +11725,9 @@ begin
     'updated_at'
   ])) then
     v_sort_by := 'id';
-  end if;
-
   v_sort_dir := lower(trim(coalesce(p_sort_dir, 'asc')));
   if v_sort_dir not in ('asc', 'desc') then
     v_sort_dir := 'asc';
-  end if;
-
   v_limit := greatest(1, least(coalesce(p_limit, 20), 200));
   v_offset := greatest(0, coalesce(p_offset, 0));
 
@@ -15074,15 +11738,11 @@ begin
 
   if coalesce(array_length(v_selected_fields, 1), 0) = 0 then
     v_selected_fields := array['id', 'name', 'vendor_code', 'brand', 'category'];
-  end if;
-
   if not v_can_see_price then
     select coalesce(array_agg(field_name), '{}'::text[])
     into v_selected_fields
     from unnest(v_selected_fields) as field_name
     where field_name <> 'price_gbp';
-  end if;
-
   execute format(
     $sql$
       with filtered as (
@@ -15178,7 +11838,6 @@ begin
       )
     )
   );
-end;
 $_$;
 
 
@@ -15237,8 +11896,6 @@ begin
 
   if v_tenant_id is null then
     raise exception 'store not found';
-  end if;
-
   select exists (
     select 1
     from public.memberships m
@@ -15252,8 +11909,6 @@ begin
 
   if not v_has_internal_access and not v_has_customer_access then
     raise exception 'not allowed';
-  end if;
-
   v_can_see_price := v_has_internal_access or public.can_customer_see_store_price(p_store_id);
 
   v_sort_by := lower(trim(coalesce(p_sort_by, 'id')));
@@ -15270,13 +11925,9 @@ begin
     'updated_at'
   ])) then
     v_sort_by := 'id';
-  end if;
-
   v_sort_dir := lower(trim(coalesce(p_sort_dir, 'asc')));
   if v_sort_dir not in ('asc', 'desc') then
     v_sort_dir := 'asc';
-  end if;
-
   v_limit := greatest(1, least(coalesce(p_limit, 20), 200));
   v_offset := greatest(0, coalesce(p_offset, 0));
 
@@ -15287,15 +11938,11 @@ begin
 
   if coalesce(array_length(v_selected_fields, 1), 0) = 0 then
     v_selected_fields := array['id', 'name', 'vendor_code', 'brand', 'category', 'available_units', 'stock_override'];
-  end if;
-
   if not v_can_see_price then
     select coalesce(array_agg(field_name), '{}'::text[])
     into v_selected_fields
     from unnest(v_selected_fields) as field_name
     where field_name not in ('price_gbp', 'price_bdt', 'minimum_sell_price_bdt');
-  end if;
-
   execute format(
     $sql$
       with base as (
@@ -15435,7 +12082,6 @@ begin
       )
     )
   );
-end;
 $_$;
 
 
@@ -15475,10 +12121,6 @@ begin
   ) c;
 
   return v_res;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."list_tag_categories"("p_module_key" "text") OWNER TO "postgres";
 
 
@@ -15513,12 +12155,8 @@ begin
       )
     order by tc.is_system desc, tc.id asc
     limit 1;
-  end if;
-
   if v_category_id is null then
     return '[]'::json;
-  end if;
-
   select coalesce(json_agg(row_to_json(t)), '[]'::json)
   into v_res
   from (
@@ -15542,10 +12180,6 @@ begin
   ) t;
 
   return v_res;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."list_tags_for_category"("p_category_id" bigint, "p_module_key" "text", "p_code" "text") OWNER TO "postgres";
 
 
@@ -15567,9 +12201,6 @@ CREATE OR REPLACE FUNCTION "public"."list_tenant_module_submodules_for_superadmi
     and tms.tenant_id = p_tenant_id
     and tms.parent_module_key = lower(trim(p_parent_module_key))
   order by tms.submodule_key asc;
-$$;
-
-
 ALTER FUNCTION "public"."list_tenant_module_submodules_for_superadmin"("p_tenant_id" bigint, "p_parent_module_key" "text") OWNER TO "postgres";
 
 
@@ -15589,9 +12220,6 @@ CREATE OR REPLACE FUNCTION "public"."list_tenant_modules_by_tenant"("p_tenant_id
     and tm.tenant_id = p_tenant_id
     and public.can_view_tenant_modules(tm.tenant_id)
   order by tm.id asc;
-$$;
-
-
 ALTER FUNCTION "public"."list_tenant_modules_by_tenant"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -15608,8 +12236,6 @@ begin
 
   if v_tenant_id is null then
     raise exception 'Role not found';
-  end if;
-
   if not public.is_superadmin() and not exists (
     select 1 from public.memberships m
     where m.tenant_id = v_tenant_id
@@ -15617,16 +12243,10 @@ begin
       and m.is_active = true
   ) then
     raise exception 'Access denied';
-  end if;
-
   return query
   select rg.id, rg.tenant_role_id, rg.module_key, rg.action, rg.allowed, rg.updated_by_email, rg.created_at, rg.updated_at
   from public.tenant_role_grants rg
   where rg.tenant_role_id = p_tenant_role_id;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."list_tenant_role_grants"("p_tenant_role_id" bigint) OWNER TO "postgres";
 
 
@@ -15642,18 +12262,12 @@ begin
       and m.is_active = true
   ) then
     raise exception 'Access denied';
-  end if;
-
   return query
   select r.id, r.tenant_id, r.scope, r.name, r.slug, r.is_system, r.is_admin, r.source_app_role, r.is_active, r.created_at, r.updated_at
   from public.tenant_roles r
   where r.tenant_id = p_tenant_id
     and r.scope = p_scope
     and r.is_active = true;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."list_tenant_roles"("p_tenant_id" bigint, "p_scope" "text") OWNER TO "postgres";
 
 
@@ -15680,9 +12294,6 @@ CREATE OR REPLACE FUNCTION "public"."list_tenant_viewers"("p_tenant_id" bigint) 
     )
     and m.role = 'viewer'
   order by m.created_at asc, m.id asc;
-$$;
-
-
 ALTER FUNCTION "public"."list_tenant_viewers"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -15711,9 +12322,6 @@ CREATE OR REPLACE FUNCTION "public"."list_tenants_by_membership"("p_tenant_id" b
     )
     and (p_role is null or m.role = p_role)
   order by t.id asc;
-$$;
-
-
 ALTER FUNCTION "public"."list_tenants_by_membership"("p_tenant_id" bigint, "p_email" "text", "p_role" "public"."app_role") OWNER TO "postgres";
 
 
@@ -15724,8 +12332,6 @@ CREATE OR REPLACE FUNCTION "public"."list_tenants_for_superadmin"() RETURNS TABL
 begin
   if not public.is_superadmin() then
     return;
-  end if;
-
   return query
   select
     t.id,
@@ -15739,10 +12345,6 @@ begin
     t.updated_at
   from public.tenants t
   order by t.id asc;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."list_tenants_for_superadmin"() OWNER TO "postgres";
 
 
@@ -15753,9 +12355,6 @@ CREATE OR REPLACE FUNCTION "public"."list_thrift_barcodes_paginated"("p_tenant_i
 declare
   v_page integer := greatest(coalesce(p_page, 1), 1);
   v_page_size integer := greatest(coalesce(p_page_size, 50), 1);
-  v_total_count bigint;
-  v_data jsonb;
-  v_total_pages integer;
   v_search text := nullif(trim(coalesce(p_search, '')), '');
   v_status text := nullif(trim(coalesce(p_status, '')), '');
   v_unprinted_total bigint;
@@ -15772,8 +12371,6 @@ begin
       and m.is_active = true
   ) then
     raise exception 'Not authorized for this tenant';
-  end if;
-
   select count(*)
   into v_total_count
   from public.thrift_barcodes b
@@ -15847,12 +12444,8 @@ begin
     limit v_page_size
   ) paged;
 
-  if v_total_count = 0 then
-    v_total_pages := 0;
   else
     v_total_pages := ceil(v_total_count::numeric / v_page_size)::integer;
-  end if;
-
   return jsonb_build_object(
     'data', coalesce(v_data, '[]'::jsonb),
     'meta', jsonb_build_object(
@@ -15866,10 +12459,6 @@ begin
       'latest_current_year_barcode_id', v_latest_current_year
     )
   );
-end;
-$$;
-
-
 ALTER FUNCTION "public"."list_thrift_barcodes_paginated"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_is_printed" smallint, "p_status" "text") OWNER TO "postgres";
 
 
@@ -15989,9 +12578,6 @@ BEGIN
     )
   );
 END;
-$$;
-
-
 ALTER FUNCTION "public"."list_thrift_sales_invoices_paginated"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_payment_status" "text", "p_status" "text", "p_delivery_status" "text") OWNER TO "postgres";
 
 
@@ -16144,14 +12730,10 @@ BEGIN
     )
   );
 END;
-$$;
-
-
 ALTER FUNCTION "public"."list_thrift_sales_returns_paginated"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone, "p_invoice_id" bigint, "p_has_damaged" boolean, "p_skip_count" boolean) OWNER TO "postgres";
 
 
 COMMENT ON FUNCTION "public"."list_thrift_sales_returns_paginated"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone, "p_invoice_id" bigint, "p_has_damaged" boolean, "p_skip_count" boolean) IS 'Paginated thrift post-pay returns list for hub + invoice history.';
-
 
 
 CREATE OR REPLACE FUNCTION "public"."list_thrift_stocks_paginated"("p_tenant_id" bigint, "p_page" integer DEFAULT 1, "p_page_size" integer DEFAULT 20, "p_search" "text" DEFAULT NULL::"text", "p_status" "text" DEFAULT NULL::"text", "p_condition" "text" DEFAULT NULL::"text") RETURNS "jsonb"
@@ -16161,9 +12743,6 @@ CREATE OR REPLACE FUNCTION "public"."list_thrift_stocks_paginated"("p_tenant_id"
 declare
   v_page integer := greatest(coalesce(p_page, 1), 1);
   v_page_size integer := greatest(coalesce(p_page_size, 20), 1);
-  v_total_count bigint;
-  v_data jsonb;
-  v_total_pages integer;
   v_search text := nullif(trim(coalesce(p_search, '')), '');
   v_status text := nullif(trim(coalesce(p_status, '')), '');
   v_condition text := nullif(trim(coalesce(p_condition, '')), '');
@@ -16176,8 +12755,6 @@ begin
       and m.is_active = true
   ) then
     raise exception 'Not authorized for this tenant';
-  end if;
-
   with filtered as materialized (
     select s.*
     from public.thrift_stocks s
@@ -16296,12 +12873,8 @@ begin
     )
   into v_total_count, v_data;
 
-  if v_total_count = 0 then
-    v_total_pages := 0;
   else
     v_total_pages := ceil(v_total_count::numeric / v_page_size)::integer;
-  end if;
-
   return jsonb_build_object(
     'data', coalesce(v_data, '[]'::jsonb),
     'meta', jsonb_build_object(
@@ -16311,10 +12884,6 @@ begin
       'total_pages', v_total_pages
     )
   );
-end;
-$$;
-
-
 ALTER FUNCTION "public"."list_thrift_stocks_paginated"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_status" "text", "p_condition" "text") OWNER TO "postgres";
 
 
@@ -16326,9 +12895,6 @@ CREATE OR REPLACE FUNCTION "public"."list_units_of_measure"() RETURNS TABLE("cod
   from public.units_of_measure u
   where u.is_active = true
   order by u.sort_order asc, u.name asc;
-$$;
-
-
 ALTER FUNCTION "public"."list_units_of_measure"() OWNER TO "postgres";
 
 
@@ -16362,14 +12928,7 @@ begin
         new.inserted_by,
         'Auto-logged loss for stock item status set to ' || new.status || ' (Barcode: ' || coalesce(new.barcode, '') || ')'
       );
-    end if;
-  end if;
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."log_thrift_stock_loss_ledger"() OWNER TO "postgres";
+    ALTER FUNCTION "public"."log_thrift_stock_loss_ledger"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."mark_dropship_order_returned"("p_order_id" bigint, "p_actual_return_charge" numeric, "p_deduct_from_middle_man" boolean, "p_reason" "text" DEFAULT NULL::"text") RETURNS "jsonb"
@@ -16398,10 +12957,6 @@ begin
     p_override_reason => p_reason,
     p_return_ref => 'AUTO-RET-' || p_order_id::text || '-' || extract(epoch from now())::bigint
   );
-end;
-$$;
-
-
 ALTER FUNCTION "public"."mark_dropship_order_returned"("p_order_id" bigint, "p_actual_return_charge" numeric, "p_deduct_from_middle_man" boolean, "p_reason" "text") OWNER TO "postgres";
 
 
@@ -16412,7 +12967,6 @@ declare
   v_invoice_id bigint;
   v_item jsonb;
   v_stock_id bigint;
-  v_qty integer;
   v_sold_price numeric(12,2);
   v_platform_fees numeric(12,2);
   v_ship_paid_by_shop numeric(12,2);
@@ -16465,8 +13019,6 @@ begin
 
     if v_available_qty < v_qty then
       raise exception 'Insufficient stock for stock ID %', v_stock_id;
-    end if;
-
     -- Add item to invoice
     insert into public.thrift_invoice_items (
       invoice_id,
@@ -16494,8 +13046,6 @@ begin
       status = case when (quantity - v_qty) = 0 then 'OUT_OF_STOCK'::public.thrift_stock_status else status end,
       updated_at = now()
     where id = v_stock_id;
-  end loop;
-
   -- 3. Log Revenue (accrual basis)
   insert into public.thrift_accounting_ledger (
     tenant_id,
@@ -16537,18 +13087,11 @@ begin
       p_inserted_by,
       'Auto-logged shipping cost absorbed by shop for Invoice #' || p_invoice_number
     );
-  end if;
-
   return v_invoice_id;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."mark_thrift_items_as_sold"("p_tenant_id" bigint, "p_invoice_number" "text", "p_recipient_name" "text", "p_address" "text", "p_phone" "text", "p_transaction_method" "public"."thrift_transaction_method", "p_cod_charge" numeric, "p_packing_charge" numeric, "p_invoice_print_charge" numeric, "p_shipping_charge_customer" numeric, "p_inserted_by" "text", "p_items" "jsonb") OWNER TO "postgres";
 
 
 COMMENT ON FUNCTION "public"."mark_thrift_items_as_sold"("p_tenant_id" bigint, "p_invoice_number" "text", "p_recipient_name" "text", "p_address" "text", "p_phone" "text", "p_transaction_method" "public"."thrift_transaction_method", "p_cod_charge" numeric, "p_packing_charge" numeric, "p_invoice_print_charge" numeric, "p_shipping_charge_customer" numeric, "p_inserted_by" "text", "p_items" "jsonb") IS 'LEGACY ARCHIVE — execute revoked (P21). Use create_thrift_sales_invoice.';
-
 
 
 CREATE OR REPLACE FUNCTION "public"."membership_has_module_action"("p_tenant_id" bigint, "p_module_key" "text", "p_action" "text") RETURNS boolean
@@ -16566,9 +13109,6 @@ CREATE OR REPLACE FUNCTION "public"."membership_has_module_action"("p_tenant_id"
         or public.has_module_action(p_tenant_id, p_module_key, p_action)
       )
   );
-$$;
-
-
 ALTER FUNCTION "public"."membership_has_module_action"("p_tenant_id" bigint, "p_module_key" "text", "p_action" "text") OWNER TO "postgres";
 
 
@@ -16581,12 +13121,8 @@ declare
 begin
   if p_tenant_id is null then
     raise exception 'tenant_id is required';
-  end if;
-
   if p_scope not in ('shipment', 'order') then
     raise exception 'invalid scope: %', p_scope;
-  end if;
-
   insert into public.tenant_scoped_counters (tenant_id, scope, last_value)
   values (p_tenant_id, p_scope, 1)
   on conflict (tenant_id, scope)
@@ -16595,10 +13131,6 @@ begin
   returning last_value into v_next;
 
   return v_next;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."next_tenant_scoped_counter"("p_tenant_id" bigint, "p_scope" "text") OWNER TO "postgres";
 
 
@@ -16613,12 +13145,9 @@ begin
     v := substring(v from 3);
   elsif left(v, 3) = '880' and length(v) = 13 then
     v := substring(v from 3);
-  end if;
   if v !~ '^01[0-9]{9}$' then
     raise exception 'Invalid BD mobile phone: %', p_phone;
-  end if;
   return v;
-end;
 $_$;
 
 
@@ -16633,28 +13162,17 @@ begin
 
   if new.email = '' then
     raise exception 'membership email cannot be empty';
-  end if;
-
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."normalize_membership_email"() OWNER TO "postgres";
+  ALTER FUNCTION "public"."normalize_membership_email"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."normalize_thrift_phone"("p_phone" "text") RETURNS "text"
     LANGUAGE "sql" IMMUTABLE PARALLEL SAFE
     AS $$
   SELECT regexp_replace(coalesce(p_phone, ''), '[^0-9]', '', 'g');
-$$;
-
-
 ALTER FUNCTION "public"."normalize_thrift_phone"("p_phone" "text") OWNER TO "postgres";
 
 
 COMMENT ON FUNCTION "public"."normalize_thrift_phone"("p_phone" "text") IS 'Digits-only thrift customer phone key; empty/null input → empty string.';
-
 
 
 CREATE OR REPLACE FUNCTION "public"."parent_tenant_has_module_action"("p_parent_tenant_id" bigint, "p_module_key" "text", "p_action" "text") RETURNS boolean
@@ -16662,9 +13180,6 @@ CREATE OR REPLACE FUNCTION "public"."parent_tenant_has_module_action"("p_parent_
     SET "search_path" TO 'public'
     AS $$
   select public.membership_has_module_action(p_parent_tenant_id, p_module_key, p_action);
-$$;
-
-
 ALTER FUNCTION "public"."parent_tenant_has_module_action"("p_parent_tenant_id" bigint, "p_module_key" "text", "p_action" "text") OWNER TO "postgres";
 
 
@@ -16675,7 +13190,6 @@ CREATE OR REPLACE FUNCTION "public"."place_commerce_order"("p_tenant_id" bigint,
 declare
   v_order_id bigint;
   v_item jsonb;
-  v_product_id bigint;
   v_batch_id bigint;
 begin
   -- 1. Insert Commerce Order
@@ -16748,13 +13262,7 @@ begin
     where tenant_id = p_tenant_id
       and customer_group_id = p_customer_group_id
       and inventory_item_id = v_batch_id;
-  end loop;
-
   return v_order_id;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."place_commerce_order"("p_tenant_id" bigint, "p_customer_group_id" bigint, "p_recipient_name" "text", "p_recipient_phone" "text", "p_shipping_address" "text", "p_shipment_payment" numeric, "p_invoice_print_charge" numeric, "p_wrapping_charge" numeric, "p_cod" numeric, "p_delivery_charge" numeric, "p_is_delivery_charge_inclusive" boolean, "p_items" "jsonb") OWNER TO "postgres";
 
 
@@ -16765,15 +13273,12 @@ CREATE OR REPLACE FUNCTION "public"."place_koba_order"("p_tenant_id" bigint, "p_
 declare
   v_cart_id bigint;
   v_order_id bigint;
-  v_subtotal numeric(12,2) := 0;
   v_commission numeric(12,2) := 0;
   v_count integer := 0;
   v_gateway_charge numeric(12,2) := 20.00;
 begin
   if not public.koba_context_access_allowed(p_tenant_id, p_customer_group_id) then
     raise exception 'not allowed';
-  end if;
-
   select id into v_cart_id
   from public.koba_carts
   where tenant_id = p_tenant_id
@@ -16782,16 +13287,12 @@ begin
 
   if v_cart_id is null then
     raise exception 'no cart found for this customer group';
-  end if;
-
   select count(*) into v_count
   from public.koba_cart_items
   where cart_id = v_cart_id;
 
   if v_count = 0 then
     raise exception 'cart is empty';
-  end if;
-
   -- Fetch gateway charge from settings for this tenant
   select coalesce(gateway_charge_flat, 20.00) into v_gateway_charge
   from public.koba_retail_settings
@@ -16800,8 +13301,6 @@ begin
 
   if v_gateway_charge is null then
     v_gateway_charge := 20.00;
-  end if;
-
   -- Calculate totals: subtotal and total_commission (deducting gateway charge per unit)
   select
     coalesce(sum(coalesce(custom_price_gbp, unit_price_gbp, 0) * quantity), 0),
@@ -16897,10 +13396,6 @@ begin
     'total_commission', v_commission,
     'status', 'pending'
   );
-end;
-$$;
-
-
 ALTER FUNCTION "public"."place_koba_order"("p_tenant_id" bigint, "p_customer_group_id" bigint, "p_shipping_name" "text", "p_shipping_phone" "text", "p_shipping_district" "text", "p_shipping_thana" "text", "p_shipping_address" "text", "p_free_delivery" boolean, "p_extra_profit_user" numeric, "p_extra_profit_company" numeric, "p_delivery_adjustment" numeric, "p_cod_charge" numeric, "p_packing_charge" numeric, "p_invoice_charge" numeric, "p_net_order_commission" numeric) OWNER TO "postgres";
 
 
@@ -16920,150 +13415,18 @@ begin
 
   if v_tenant_id is null then
     raise exception 'order not found';
-  end if;
-
   if not public.is_tenant_staff(v_tenant_id) then
     raise exception 'access denied';
-  end if;
-
   if v_type <> 'vendor_catalog' then
     raise exception 'only vendor catalog orders can be placed for procurement';
-  end if;
-
   if v_status <> 'confirmed' then
     raise exception 'order must be confirmed before placing';
-  end if;
-
   update public.shop_orders
   set status = 'placed',
       placed_at = now(),
       updated_at = now()
   where id = p_order_id;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."place_shop_order_for_procurement"("p_order_id" bigint) OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."post_global_invoice"("p_invoice_id" bigint) RETURNS "void"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-begin
-  perform public.post_sales_invoice(p_invoice_id);
-end;
-$$;
-
-
-ALTER FUNCTION "public"."post_global_invoice"("p_invoice_id" bigint) OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."post_sales_invoice"("p_invoice_id" bigint) RETURNS "void"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_invoice public.global_invoices;
-  v_item public.global_invoice_items%rowtype;
-  v_unit_cost numeric;
-begin
-  select * into v_invoice from public.global_invoices where id = p_invoice_id for update;
-  if v_invoice.id is null then raise exception 'invoice not found'; end if;
-  if v_invoice.invoice_status <> 'draft'::public.global_invoice_status then
-    raise exception 'only draft invoices can be posted';
-  end if;
-
-  if not exists (select 1 from public.global_invoice_items where invoice_id = p_invoice_id) then
-    raise exception 'cannot post an empty invoice';
-  end if;
-
-  -- Validate required fields per invoice type
-  if v_invoice.invoice_type = 'wholesale'::public.global_invoice_type then
-    if v_invoice.billing_profile_id is null then
-      raise exception 'billing profile is required for wholesale invoices';
-    end if;
-    if v_invoice.cod_charge > 0 or v_invoice.wrapping_charge > 0 or v_invoice.print_charge > 0 then
-      raise exception 'wholesale invoices only support shipping charges';
-    end if;
-  elsif v_invoice.invoice_type = 'retail'::public.global_invoice_type then
-    if v_invoice.retail_billing_mode = 'account'::public.retail_billing_mode then
-      if v_invoice.billing_profile_id is null then
-        raise exception 'billing profile is required for retail account invoices';
-      end if;
-    elsif v_invoice.retail_billing_mode = 'direct'::public.retail_billing_mode then
-      if v_invoice.billing_profile_id is not null then
-        raise exception 'billing profile must be null for retail direct invoices';
-      end if;
-    end if;
-    if nullif(trim(v_invoice.recipient_name), '') is null or
-       nullif(trim(v_invoice.recipient_phone), '') is null or
-       nullif(trim(v_invoice.recipient_address), '') is null then
-      raise exception 'recipient name, phone, and address are required for retail invoices';
-    end if;
-  elsif v_invoice.invoice_type = 'dropship'::public.global_invoice_type then
-    if v_invoice.billing_profile_id is null then
-      raise exception 'billing profile is required for dropship invoices';
-    end if;
-    if nullif(trim(v_invoice.recipient_name), '') is null or
-       nullif(trim(v_invoice.recipient_phone), '') is null or
-       nullif(trim(v_invoice.recipient_address), '') is null then
-      raise exception 'recipient name, phone, and address are required for dropship invoices';
-    end if;
-  end if;
-
-  -- Snapshot unit costs on line items
-  for v_item in select * from public.global_invoice_items where invoice_id = p_invoice_id loop
-    v_unit_cost := public.calculate_landed_unit_cost(v_item.shipment_item_id);
-    update public.global_invoice_items
-    set unit_cost_price = v_unit_cost
-    where id = v_item.id;
-  end loop;
-
-  -- Mark invoice as posted
-  update public.global_invoices
-  set invoice_status = 'posted'::public.global_invoice_status
-  where id = p_invoice_id;
-
-  -- Universal wallet: invoice_billed debit for any account/billing_profile invoice (wholesale, dropship, retail account)
-  if v_invoice.billing_profile_id is not null
-     and coalesce(v_invoice.total_amount, 0) > 0
-  then
-    if not exists (
-      select 1 from public.universal_wallet_ledger
-      where source_type = 'sales_invoice'
-        and source_id = p_invoice_id::text
-        and entity_type = 'customer'
-        and entity_id = v_invoice.billing_profile_id
-        and metadata->>'transaction_type' = 'invoice_billed'
-    ) then
-      perform public.record_ledger_transaction(
-        p_tenant_id => v_invoice.tenant_id,
-        p_entity_type => 'customer',
-        p_entity_id => v_invoice.billing_profile_id,
-        p_type => 'debit',
-        p_amount => v_invoice.total_amount,
-        p_currency_code => 'BDT',
-        p_exchange_rate => 1.000000,
-        p_source_type => 'sales_invoice',
-        p_source_id => p_invoice_id::text,
-        p_metadata => jsonb_build_object(
-          'section', 'invoices',
-          'purpose', 'invoice_billed',
-          'transaction_type', 'invoice_billed',
-          'label', 'Invoice Billed',
-          'invoice_no', v_invoice.invoice_no,
-          'invoice_id', v_invoice.id,
-          'invoice_type', v_invoice.invoice_type
-        )
-      );
-    end if;
-  end if;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."post_sales_invoice"("p_invoice_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."prevent_item_parent_cycles"() RETURNS "trigger"
@@ -17075,13 +13438,9 @@ declare
 begin
   if new.parent_id is null then
     return new;
-  end if;
-
   if new.id is not null and new.parent_id = new.id then
     raise exception 'An item cannot be its own parent.'
       using errcode = '23514';
-  end if;
-
   with recursive descendants as (
     select i.id, i.parent_id
     from public.items i
@@ -17100,14 +13459,7 @@ begin
   if v_cycle_exists then
     raise exception 'Invalid parent relationship: a parent cannot be assigned to one of its descendants.'
       using errcode = '23514';
-  end if;
-
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."prevent_item_parent_cycles"() OWNER TO "postgres";
+  ALTER FUNCTION "public"."prevent_item_parent_cycles"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."prevent_system_global_currency_mutation"() RETURNS "trigger"
@@ -17117,24 +13469,14 @@ begin
   if tg_op = 'DELETE' then
     if old.is_system then
       raise exception 'System currencies cannot be deleted.';
-    end if;
     return old;
-  end if;
-
   if tg_op = 'UPDATE' and old.is_system and (
     row(new.name, new.country, new.code, new.symbol, new.is_active, new.is_system)
     is distinct from
     row(old.name, old.country, old.code, old.symbol, old.is_active, old.is_system)
   ) then
     raise exception 'System currencies cannot be edited.';
-  end if;
-
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."prevent_system_global_currency_mutation"() OWNER TO "postgres";
+  ALTER FUNCTION "public"."prevent_system_global_currency_mutation"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."prevent_system_market_mutation"() RETURNS "trigger"
@@ -17144,11 +13486,7 @@ begin
   if tg_op = 'DELETE' then
     if old.is_system then
       raise exception 'System markets cannot be deleted.';
-    end if;
-
     return old;
-  end if;
-
   if tg_op = 'UPDATE' then
     if old.is_system and (
       row(new.name, new.code, new.is_active, new.is_system, new.region)
@@ -17156,17 +13494,7 @@ begin
       row(old.name, old.code, old.is_active, old.is_system, old.region)
     ) then
       raise exception 'System markets cannot be edited.';
-    end if;
-
-    return new;
-  end if;
-
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."prevent_system_market_mutation"() OWNER TO "postgres";
+    ALTER FUNCTION "public"."prevent_system_market_mutation"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."prevent_system_payment_method_mutation"() RETURNS "trigger"
@@ -17176,24 +13504,14 @@ begin
   if tg_op = 'DELETE' then
     if old.is_system then
       raise exception 'System payment methods cannot be deleted.';
-    end if;
     return old;
-  end if;
-
   if tg_op = 'UPDATE' and old.is_system and (
     row(new.code, new.name, new.category, new.scope, new.sort_order, new.is_active, new.is_system)
     is distinct from
     row(old.code, old.name, old.category, old.scope, old.sort_order, old.is_active, old.is_system)
   ) then
     raise exception 'System payment methods cannot be edited.';
-  end if;
-
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."prevent_system_payment_method_mutation"() OWNER TO "postgres";
+  ALTER FUNCTION "public"."prevent_system_payment_method_mutation"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."prevent_system_unit_of_measure_mutation"() RETURNS "trigger"
@@ -17203,24 +13521,14 @@ begin
   if tg_op = 'DELETE' then
     if old.is_system then
       raise exception 'System units of measure cannot be deleted.';
-    end if;
     return old;
-  end if;
-
   if tg_op = 'UPDATE' and old.is_system and (
     row(new.code, new.name, new.unit_type, new.symbol, new.sort_order, new.is_active, new.is_system)
     is distinct from
     row(old.code, old.name, old.unit_type, old.symbol, old.sort_order, old.is_active, old.is_system)
   ) then
     raise exception 'System units of measure cannot be edited.';
-  end if;
-
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."prevent_system_unit_of_measure_mutation"() OWNER TO "postgres";
+  ALTER FUNCTION "public"."prevent_system_unit_of_measure_mutation"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."process_courier_bulk_remittance_batch"("p_batch_id" bigint) RETURNS "jsonb"
@@ -17229,10 +13537,7 @@ CREATE OR REPLACE FUNCTION "public"."process_courier_bulk_remittance_batch"("p_b
     AS $$
 declare
   v_batch record;
-  v_item record;
   v_order record;
-  v_invoice record;
-  v_payment_id bigint;
   v_processed_count integer := 0;
   v_error_count integer := 0;
   v_net_remitted numeric(12,2);
@@ -17245,12 +13550,8 @@ begin
 
   if v_batch.id is null then
     raise exception 'Remittance batch #% not found', p_batch_id;
-  end if;
-
   if v_batch.status <> 'draft' then
     raise exception 'Batch #% is already %', v_batch.batch_no, v_batch.status;
-  end if;
-
   -- Permission check
   if not (
     public.is_superadmin()
@@ -17263,8 +13564,6 @@ begin
     )
   ) then
     raise exception 'Permission denied: Staff or Admin role required for tenant %', v_batch.tenant_id;
-  end if;
-
   -- Process line items sequentially
   for v_item in
     select * from public.courier_remittance_items
@@ -17280,8 +13579,6 @@ begin
       where id = v_item.id;
       v_error_count := v_error_count + 1;
       continue;
-    end if;
-
     select * into v_order from public.shop_orders
     where id = v_item.shop_order_id for update;
 
@@ -17291,24 +13588,18 @@ begin
       where id = v_item.id;
       v_error_count := v_error_count + 1;
       continue;
-    end if;
-
     if v_order.status <> 'delivered' then
       update public.courier_remittance_items
       set status = 'error', error_message = 'Order is not in delivered status (current: ' || v_order.status || ')'
       where id = v_item.id;
       v_error_count := v_error_count + 1;
       continue;
-    end if;
-
     if v_order.global_invoice_id is null then
       update public.courier_remittance_items
       set status = 'error', error_message = 'Missing accounting global invoice'
       where id = v_item.id;
       v_error_count := v_error_count + 1;
       continue;
-    end if;
-
     -- Lock & validate global invoice
     select * into v_invoice from public.global_invoices
     where id = v_order.global_invoice_id for update;
@@ -17319,8 +13610,6 @@ begin
       where id = v_item.id;
       v_error_count := v_error_count + 1;
       continue;
-    end if;
-
     -- Create global payment record
     insert into public.global_payments (
       tenant_id,
@@ -17379,8 +13668,6 @@ begin
 
     v_processed_count := v_processed_count + 1;
     v_total_allocated := v_total_allocated + v_net_remitted;
-  end loop;
-
   -- Mark batch header as posted if no fatal block
   update public.courier_remittance_batches
   set
@@ -17400,10 +13687,6 @@ begin
     'allocated_amount', v_total_allocated,
     'status', 'posted'
   );
-end;
-$$;
-
-
 ALTER FUNCTION "public"."process_courier_bulk_remittance_batch"("p_batch_id" bigint) OWNER TO "postgres";
 
 
@@ -17421,8 +13704,6 @@ begin
   select * into v_order from public.shop_orders where id = p_order_id for update;
   if v_order.id is null then
     raise exception 'Shop order #% not found', p_order_id;
-  end if;
-
   v_currency := 'BDT';
   v_cod := coalesce(v_order.cod_collect_amount, 0.00);
   v_charge := coalesce(p_courier_charge, 0.00);
@@ -17435,11 +13716,8 @@ begin
     
     if v_courier_id is null then
       v_courier_id := 0;
-    end if;
-  else
+    else
     v_courier_id := 0;
-  end if;
-
   -- Leg 1: Courier Debit (reduces courier liability)
   if not exists (
     select 1 from public.universal_wallet_ledger
@@ -17468,8 +13746,6 @@ begin
         'courier_service_id', v_order.courier_service_id
       )
     );
-  end if;
-
   -- Leg 2: Tenant Credit (tenant received net remitted cash)
   if not exists (
     select 1 from public.universal_wallet_ledger
@@ -17497,12 +13773,7 @@ begin
         'remittance_ref', p_remittance_ref
       )
     );
-  end if;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."process_dropship_courier_remittance_uwl"("p_order_id" bigint, "p_net_amount" numeric, "p_courier_charge" numeric, "p_remittance_ref" "text") OWNER TO "postgres";
+  ALTER FUNCTION "public"."process_dropship_courier_remittance_uwl"("p_order_id" bigint, "p_net_amount" numeric, "p_courier_charge" numeric, "p_remittance_ref" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."process_dropship_shop_order"("p_order_id" bigint) RETURNS "jsonb"
@@ -17515,16 +13786,10 @@ begin
   select * into v_order from public.shop_orders where id = p_order_id;
   if not found then
     return jsonb_build_object('success', false, 'error', 'Order not found');
-  end if;
-
   if v_order.shop_type_snapshot <> 'dropship' then
     return jsonb_build_object('success', false, 'error', 'Only dropship orders can be handed off to the dropship desk');
-  end if;
-
   if v_order.status <> 'confirmed' then
     return jsonb_build_object('success', false, 'error', 'Only confirmed orders can be handed off to the dropship desk');
-  end if;
-
   -- Update status to processing (merchant details will be added later)
   update public.shop_orders
   set
@@ -17537,86 +13802,7 @@ begin
     'order_id', p_order_id,
     'new_status', 'processing'
   );
-end;
-$$;
-
-
 ALTER FUNCTION "public"."process_dropship_shop_order"("p_order_id" bigint) OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."recompute_global_invoice_payment_status"("p_global_invoice_id" bigint) RETURNS "void"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_total numeric(12,2);
-  v_paid numeric(12,2);
-begin
-  select total_amount, coalesce(paid_amount, 0.00)
-  into v_total, v_paid
-  from public.global_invoices
-  where id = p_global_invoice_id;
-
-  if not found then return; end if;
-
-  update public.global_invoices
-  set
-    payment_status = case
-      when coalesce(v_paid, 0.00) <= 0.00 then 'due'
-      when v_paid >= coalesce(v_total, 0.00) then 'paid'
-      else 'partially_paid'
-    end,
-    due_amount = greatest(coalesce(v_total, 0.00) - coalesce(v_paid, 0.00), 0.00),
-    updated_at = now()
-  where id = p_global_invoice_id;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."recompute_global_invoice_payment_status"("p_global_invoice_id" bigint) OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."recompute_global_invoice_totals"("p_invoice_id" bigint) RETURNS "void"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_invoice public.global_invoices;
-  v_subtotal numeric(12,2) := 0;
-  v_charges numeric(12,2) := 0;
-  v_discount numeric(12,2) := 0;
-  v_paid numeric(12,2) := 0;
-  v_total numeric(12,2) := 0;
-begin
-  select * into v_invoice from public.global_invoices where id = p_invoice_id;
-  if v_invoice.id is null then return; end if;
-
-  select coalesce(sum(line_total_amount), 0)
-  into v_subtotal
-  from public.global_invoice_items
-  where invoice_id = p_invoice_id;
-
-  v_charges := coalesce(v_invoice.shipping_charge, 0) 
-             + coalesce(v_invoice.wrapping_charge, 0) 
-             + coalesce(v_invoice.print_charge, 0);
-
-  v_discount := coalesce(v_invoice.discount_amount, 0);
-  v_paid := coalesce(v_invoice.paid_amount, 0);
-
-  v_total := greatest(v_subtotal + v_charges - v_discount, 0);
-
-  update public.global_invoices
-  set
-    subtotal_amount = v_subtotal,
-    total_amount = v_total,
-    due_amount = greatest(v_total - v_paid, 0),
-    updated_at = now()
-  where id = p_invoice_id;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."recompute_global_invoice_totals"("p_invoice_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."reconcile_single_order_remittance"("p_order_id" bigint, "p_courier_charge" numeric DEFAULT 0.00) RETURNS "jsonb"
@@ -17625,8 +13811,6 @@ CREATE OR REPLACE FUNCTION "public"."reconcile_single_order_remittance"("p_order
     AS $$
 declare
   v_order public.shop_orders;
-  v_invoice public.global_invoices;
-  v_payment_id bigint;
   v_cod numeric(12,2) := 0.00;
   v_charge numeric(12,2) := 0.00;
   v_net_remitted numeric(12,2) := 0.00;
@@ -17637,12 +13821,8 @@ begin
 
   if v_order.id is null then
     raise exception 'Shop order #% not found', p_order_id;
-  end if;
-
   if v_order.status <> 'delivered' then
     raise exception 'Order #% cannot be remitted because current status is "%" (must be "delivered")', v_order.order_no, v_order.status;
-  end if;
-
   -- Permission check
   if not (
     public.is_superadmin()
@@ -17655,18 +13835,12 @@ begin
     )
   ) then
     raise exception 'Permission denied: Staff or Admin role required for tenant %', v_order.tenant_id;
-  end if;
-
   -- Ensure global invoice exists or create it
   if v_order.global_invoice_id is null then
     perform public.create_dual_invoice_from_dropship_order(p_order_id);
     select * into v_order from public.shop_orders where id = p_order_id for update;
-  end if;
-
   if v_order.global_invoice_id is null then
     raise exception 'Failed to resolve accounting invoice for order #%', v_order.order_no;
-  end if;
-
   select * into v_invoice
   from public.global_invoices
   where id = v_order.global_invoice_id for update;
@@ -17727,10 +13901,6 @@ begin
     'new_status', 'payment_received',
     'net_remitted', v_net_remitted
   );
-end;
-$$;
-
-
 ALTER FUNCTION "public"."reconcile_single_order_remittance"("p_order_id" bigint, "p_courier_charge" numeric) OWNER TO "postgres";
 
 
@@ -17740,59 +13910,19 @@ CREATE OR REPLACE FUNCTION "public"."record_dropship_courier_remittance"("p_orde
     AS $$
 declare
   v_order record;
-  v_invoice public.global_invoices;
-  v_parent_tenant_id bigint;
-  v_payment_id bigint;
   v_ref text;
 begin
   select * into v_order from public.shop_orders where id = p_order_id for update;
-  if v_order.id is null then
-    raise exception 'Order not found';
-  end if;
-
-  if v_order.shop_type_snapshot <> 'dropship' then
-    raise exception 'Order is not a dropship order';
-  end if;
-
   if v_order.status <> 'delivered' then
     raise exception 'Courier remittance requires order status delivered (current: %)', v_order.status;
-  end if;
-
   if v_order.global_invoice_id is null then
     raise exception 'Accounting invoice is required before recording courier remittance';
-  end if;
-
   v_ref := nullif(trim(coalesce(p_remittance_ref, '')), '');
   if v_ref is null then
     raise exception 'Remittance reference is required';
-  end if;
-
   if coalesce(p_net_amount, 0.00) <= 0.00 then
     raise exception 'Net remittance amount must be positive';
-  end if;
-
-  v_parent_tenant_id := public.resolve_parent_tenant_id(v_order.tenant_id);
-  if not (
-    public.user_can_manage_parent_tenant(v_parent_tenant_id)
-    or exists (
-      select 1 from public.memberships m
-      where m.tenant_id = v_order.tenant_id
-        and lower(trim(m.email)) = public.current_user_email()
-        and m.is_active = true
-        and m.role in ('admin', 'staff')
-    )
-  ) then
-    raise exception 'Permission denied: Staff or Admin role required';
-  end if;
-
   select * into v_invoice from public.global_invoices where id = v_order.global_invoice_id for update;
-  if v_invoice.id is null then
-    raise exception 'invoice not found';
-  end if;
-  if v_invoice.collection_source <> 'recipient'::public.collection_source_type then
-    raise exception 'This invoice does not collect from recipient.';
-  end if;
-
   -- Same money-in path as record_recipient_invoice_collection
   insert into public.global_payments (
     tenant_id,
@@ -17849,10 +13979,6 @@ begin
     'order_id', p_order_id,
     'status', 'payment_received'
   );
-end;
-$$;
-
-
 ALTER FUNCTION "public"."record_dropship_courier_remittance"("p_order_id" bigint, "p_net_amount" numeric, "p_remittance_ref" "text", "p_bank_trx_id" "text", "p_payment_date" "date", "p_method" "text", "p_note" "text") OWNER TO "postgres";
 
 
@@ -17862,9 +13988,6 @@ CREATE OR REPLACE FUNCTION "public"."record_dropship_courier_remittance"("p_orde
     AS $$
 declare
   v_order record;
-  v_invoice public.global_invoices;
-  v_parent_tenant_id bigint;
-  v_payment_id bigint;
   v_ref text;
   v_cod numeric(12,2);
   v_charge numeric(12,2);
@@ -17875,66 +13998,25 @@ declare
   v_currency text := 'BDT';
 begin
   select * into v_order from public.shop_orders where id = p_order_id for update;
-  if v_order.id is null then
-    raise exception 'Order not found';
-  end if;
-
-  if v_order.shop_type_snapshot <> 'dropship' then
-    raise exception 'Order is not a dropship order';
-  end if;
-
   if v_order.status <> 'delivered' then
     raise exception 'Courier remittance requires order status delivered (current: %)', v_order.status;
-  end if;
-
   if v_order.global_invoice_id is null then
     raise exception 'Accounting invoice is required before recording courier remittance';
-  end if;
-
   v_ref := nullif(trim(coalesce(p_remittance_ref, '')), '');
   if v_ref is null then
     raise exception 'Remittance reference is required';
-  end if;
-
   v_net := coalesce(p_net_amount, 0.00);
   v_charge := coalesce(p_courier_charge, 0.00);
   v_cod := coalesce(v_order.cod_collect_amount, 0.00);
 
   if v_net <= 0.00 then
     raise exception 'Net remittance amount must be positive';
-  end if;
-
   if v_charge < 0.00 then
     raise exception 'Courier charge cannot be negative';
-  end if;
-
   -- Cap: net + charge must not exceed COD collect (full economic remittance)
   if v_cod > 0 and (v_net + v_charge) > (v_cod + 0.01) then
     raise exception 'Remittance net (%) + charge (%) exceeds COD collect (%)', v_net, v_charge, v_cod;
-  end if;
-
-  v_parent_tenant_id := public.resolve_parent_tenant_id(v_order.tenant_id);
-  if not (
-    public.user_can_manage_parent_tenant(v_parent_tenant_id)
-    or exists (
-      select 1 from public.memberships m
-      where m.tenant_id = v_order.tenant_id
-        and lower(trim(m.email)) = public.current_user_email()
-        and m.is_active = true
-        and m.role in ('admin', 'staff')
-    )
-  ) then
-    raise exception 'Permission denied: Staff or Admin role required';
-  end if;
-
   select * into v_invoice from public.global_invoices where id = v_order.global_invoice_id for update;
-  if v_invoice.id is null then
-    raise exception 'Invoice not found';
-  end if;
-  if v_invoice.collection_source <> 'recipient'::public.collection_source_type then
-    raise exception 'This invoice does not collect from recipient.';
-  end if;
-
   v_invoice_due := greatest(coalesce(v_invoice.total_amount, 0.00) - coalesce(v_invoice.paid_amount, 0.00), 0.00);
   v_invoice_pay := least(v_net, v_invoice_due);
   v_profit_hold := greatest(v_net - v_invoice_pay, 0.00);
@@ -18034,10 +14116,7 @@ begin
           'remittance_ref', v_ref
         )
       );
-    end if;
-  end if;
-
-  update public.shop_orders
+    update public.shop_orders
   set
     status = 'payment_received'::public.shop_order_status,
     courier_remittance_ref = v_ref,
@@ -18056,10 +14135,6 @@ begin
     'invoice_allocated', v_invoice_pay,
     'merchant_funds_held', v_profit_hold
   );
-end;
-$$;
-
-
 ALTER FUNCTION "public"."record_dropship_courier_remittance"("p_order_id" bigint, "p_net_amount" numeric, "p_remittance_ref" "text", "p_bank_trx_id" "text", "p_payment_date" "date", "p_method" "text", "p_note" "text", "p_courier_charge" numeric) OWNER TO "postgres";
 
 
@@ -18090,8 +14165,6 @@ declare
 begin
   if not public.membership_has_module_action(p_tenant_id, 'investor_capital_ledger', 'edit') then
     raise exception 'not allowed';
-  end if;
-
   insert into public.investor_transactions (
     tenant_id, investor_id, amount, date, method, type, note
   ) values (
@@ -18099,12 +14172,7 @@ begin
   )
   returning * into v_row;
 
-  return v_row;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."record_investor_capital_adjustment"("p_tenant_id" bigint, "p_investor_id" bigint, "p_amount" numeric, "p_date" "date", "p_method" "public"."investor_payment_method", "p_note" "text") OWNER TO "postgres";
+  ALTER FUNCTION "public"."record_investor_capital_adjustment"("p_tenant_id" bigint, "p_investor_id" bigint, "p_amount" numeric, "p_date" "date", "p_method" "public"."investor_payment_method", "p_note" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."record_investor_capital_in"("p_tenant_id" bigint, "p_investor_id" bigint, "p_amount" numeric, "p_date" "date", "p_method" "public"."investor_payment_method", "p_note" "text") RETURNS "public"."investor_transactions"
@@ -18116,8 +14184,6 @@ declare
 begin
   if not public.user_can_manage_parent_tenant(p_tenant_id) then
     raise exception 'not allowed';
-  end if;
-
   insert into public.investor_transactions (
     tenant_id, investor_id, amount, date, method, type, note
   ) values (
@@ -18166,12 +14232,7 @@ begin
     )
   );
 
-  return v_row;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."record_investor_capital_in"("p_tenant_id" bigint, "p_investor_id" bigint, "p_amount" numeric, "p_date" "date", "p_method" "public"."investor_payment_method", "p_note" "text") OWNER TO "postgres";
+  ALTER FUNCTION "public"."record_investor_capital_in"("p_tenant_id" bigint, "p_investor_id" bigint, "p_amount" numeric, "p_date" "date", "p_method" "public"."investor_payment_method", "p_note" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."record_investor_withdrawal_paid"("p_tenant_id" bigint, "p_investor_id" bigint, "p_amount" numeric, "p_date" "date", "p_method" "public"."investor_payment_method", "p_note" "text") RETURNS "public"."investor_transactions"
@@ -18183,8 +14244,6 @@ declare
 begin
   if not public.user_can_manage_parent_tenant(p_tenant_id) then
     raise exception 'not allowed';
-  end if;
-
   insert into public.investor_transactions (
     tenant_id, investor_id, amount, date, method, type, note
   ) values (
@@ -18233,12 +14292,7 @@ begin
     )
   );
 
-  return v_row;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."record_investor_withdrawal_paid"("p_tenant_id" bigint, "p_investor_id" bigint, "p_amount" numeric, "p_date" "date", "p_method" "public"."investor_payment_method", "p_note" "text") OWNER TO "postgres";
+  ALTER FUNCTION "public"."record_investor_withdrawal_paid"("p_tenant_id" bigint, "p_investor_id" bigint, "p_amount" numeric, "p_date" "date", "p_method" "public"."investor_payment_method", "p_note" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."record_ledger_transaction"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_type" "text", "p_amount" numeric, "p_currency_code" "text" DEFAULT 'BDT'::"text", "p_exchange_rate" numeric DEFAULT 1.000000, "p_source_type" "text" DEFAULT 'adjustment'::"text", "p_source_id" "text" DEFAULT NULL::"text", "p_metadata" "jsonb" DEFAULT '{}'::"jsonb", "p_target_bucket" "text" DEFAULT 'available'::"text", "p_allow_overdraft" boolean DEFAULT false) RETURNS "jsonb"
@@ -18373,92 +14427,7 @@ BEGIN
 
   RETURN v_ledger_entry;
 END;
-$$;
-
-
 ALTER FUNCTION "public"."record_ledger_transaction"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_type" "text", "p_amount" numeric, "p_currency_code" "text", "p_exchange_rate" numeric, "p_source_type" "text", "p_source_id" "text", "p_metadata" "jsonb", "p_target_bucket" "text", "p_allow_overdraft" boolean) OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."record_recipient_invoice_collection"("p_global_invoice_id" bigint, "p_amount" numeric, "p_payment_date" "date" DEFAULT NULL::"date", "p_method" "text" DEFAULT 'cash'::"text", "p_reference" "text" DEFAULT NULL::"text", "p_note" "text" DEFAULT NULL::"text") RETURNS "public"."sales_invoices"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_invoice public.global_invoices;
-  v_payment_id bigint;
-begin
-  select * into v_invoice from public.global_invoices where id = p_global_invoice_id for update;
-  if v_invoice.id is null then raise exception 'invoice not found'; end if;
-  if v_invoice.collection_source <> 'recipient'::public.collection_source_type then
-    raise exception 'This invoice does not collect from recipient.';
-  end if;
-  if coalesce(p_amount, 0.00) <= 0.00 then raise exception 'Amount must be positive.'; end if;
-
-  insert into public.global_payments (
-    tenant_id,
-    billing_profile_id,
-    collection_source,
-    amount,
-    unallocated_amount,
-    payment_date,
-    method,
-    reference,
-    note
-  )
-  values (
-    v_invoice.tenant_id,
-    null,
-    'recipient'::public.collection_source_type,
-    p_amount,
-    0.00,
-    coalesce(p_payment_date, current_date),
-    p_method,
-    p_reference,
-    nullif(trim(p_note), '')
-  )
-  returning id into v_payment_id;
-
-  insert into public.invoice_payments (tenant_id, payment_id, global_invoice_id, amount)
-  values (v_invoice.tenant_id, v_payment_id, p_global_invoice_id, p_amount);
-
-  update public.global_invoices
-  set
-    paid_amount = coalesce(paid_amount, 0.00) + p_amount,
-    note = coalesce(nullif(trim(p_note), ''), note),
-    updated_at = now()
-  where id = p_global_invoice_id
-  returning * into v_invoice;
-
-  perform public.recompute_global_invoice_payment_status(p_global_invoice_id);
-
-  -- Record Tenant Cash Credit for direct cash collection
-  perform public.record_ledger_transaction(
-    p_tenant_id => v_invoice.tenant_id,
-    p_entity_type => 'tenant',
-    p_entity_id => v_invoice.tenant_id,
-    p_type => 'credit',
-    p_amount => p_amount,
-    p_currency_code => 'BDT',
-    p_exchange_rate => 1.000000,
-    p_source_type => 'sales_invoice',
-    p_source_id => p_global_invoice_id::text,
-    p_metadata => jsonb_build_object(
-      'section', 'payments',
-      'purpose', 'recipient_cash_collection',
-      'transaction_type', 'cash_collected',
-      'label', 'Direct Cash Collection',
-      'payment_id', v_payment_id,
-      'invoice_id', p_global_invoice_id,
-      'invoice_no', v_invoice.invoice_no
-    )
-  );
-
-  return v_invoice;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."record_recipient_invoice_collection"("p_global_invoice_id" bigint, "p_amount" numeric, "p_payment_date" "date", "p_method" "text", "p_reference" "text", "p_note" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."record_thrift_cod_remittance"("p_tenant_id" bigint, "p_invoice_id" bigint, "p_remitted_amount" numeric, "p_actor" "text", "p_remitted_at" timestamp with time zone DEFAULT "now"(), "p_remittance_ref" "text" DEFAULT NULL::"text", "p_notes" "text" DEFAULT NULL::"text", "p_outcome" "text" DEFAULT NULL::"text") RETURNS "jsonb"
@@ -18564,14 +14533,10 @@ BEGIN
     'outcome', v_outcome
   );
 END;
-$$;
-
-
 ALTER FUNCTION "public"."record_thrift_cod_remittance"("p_tenant_id" bigint, "p_invoice_id" bigint, "p_remitted_amount" numeric, "p_actor" "text", "p_remitted_at" timestamp with time zone, "p_remittance_ref" "text", "p_notes" "text", "p_outcome" "text") OWNER TO "postgres";
 
 
 COMMENT ON FUNCTION "public"."record_thrift_cod_remittance"("p_tenant_id" bigint, "p_invoice_id" bigint, "p_remitted_amount" numeric, "p_actor" "text", "p_remitted_at" timestamp with time zone, "p_remittance_ref" "text", "p_notes" "text", "p_outcome" "text") IS 'Record Online COD cash on invoice. Outcomes PAID/KEEP_PENDING/WRITTEN_OFF. No ledger/PnL. WRITTEN_OFF requires notes.';
-
 
 
 CREATE OR REPLACE FUNCTION "public"."refresh_commerce_inventory_product_summaries"("p_tenant_id" bigint DEFAULT NULL::bigint) RETURNS "void"
@@ -18588,12 +14553,7 @@ begin
       and (p_tenant_id is null or ii.tenant_id = p_tenant_id)
   loop
     perform public.refresh_commerce_inventory_product_summary_single(v_row.tenant_id, v_row.product_id);
-  end loop;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."refresh_commerce_inventory_product_summaries"("p_tenant_id" bigint) OWNER TO "postgres";
+  ALTER FUNCTION "public"."refresh_commerce_inventory_product_summaries"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."refresh_commerce_inventory_product_summary_single"("p_tenant_id" bigint, "p_product_id" bigint) RETURNS "void"
@@ -18612,8 +14572,6 @@ declare
 begin
   if p_tenant_id is null or p_product_id is null then
     return;
-  end if;
-
   select
     count(*) > 0,
     coalesce(sum(coalesce(st.available_quantity, 0)), 0)::int,
@@ -18655,8 +14613,6 @@ begin
     where tenant_id = p_tenant_id
       and product_id = p_product_id;
     return;
-  end if;
-
   insert into public.commerce_inventory_product_summaries (
     tenant_id,
     product_id,
@@ -18691,10 +14647,6 @@ begin
     open_box_quantity = excluded.open_box_quantity,
     usable_quantity = excluded.usable_quantity,
     updated_at = now();
-end;
-$$;
-
-
 ALTER FUNCTION "public"."refresh_commerce_inventory_product_summary_single"("p_tenant_id" bigint, "p_product_id" bigint) OWNER TO "postgres";
 
 
@@ -18761,10 +14713,6 @@ begin
     total_invested_active = excluded.total_invested_active,
     available_balance = excluded.available_balance,
     updated_at = now();
-end;
-$$;
-
-
 ALTER FUNCTION "public"."refresh_investor_balance"("p_tenant_id" bigint, "p_investor_id" bigint) OWNER TO "postgres";
 
 
@@ -18781,12 +14729,8 @@ declare
 begin
   if trim(coalesce(p_barcode, '')) = '' then
     raise exception 'Barcode is required';
-  end if;
-
   if trim(coalesce(p_image_url, '')) = '' then
     raise exception 'Image URL is required';
-  end if;
-
   v_section := nullif(trim(coalesce(p_section, '')), '')::public.thrift_section;
   v_condition := nullif(trim(coalesce(p_condition, '')), '')::public.thrift_condition;
 
@@ -18799,13 +14743,9 @@ begin
       and m.role in ('admin', 'staff')
   ) then
     raise exception 'Not authorized for this tenant';
-  end if;
-
   v_canonical_barcode := public.resolve_thrift_barcode_id_internal(p_tenant_id, p_barcode);
   if v_canonical_barcode is null then
     raise exception 'Barcode not found in catalog';
-  end if;
-
   select *
   into v_barcode_row
   from public.thrift_barcodes
@@ -18815,8 +14755,6 @@ begin
 
   if not found then
     raise exception 'Barcode not found in catalog';
-  end if;
-
   select id
   into v_stock_id
   from public.thrift_stocks
@@ -18827,8 +14765,6 @@ begin
   if v_stock_id is null then
     if v_barcode_row.status <> 'AVAILABLE' then
       raise exception 'Barcode is already used';
-    end if;
-
     insert into public.thrift_stocks (
       tenant_id,
       shipment_id,
@@ -18896,8 +14832,6 @@ begin
       extra_origin_purchase_expense = p_extra_origin_purchase_expense,
       inserted_by = p_inserted_by
     where id = v_stock_id;
-  end if;
-
   insert into public.thrift_pricings (
     stock_id,
     cost_of_goods_sold,
@@ -18941,18 +14875,12 @@ begin
       true,
       p_inserted_by
     );
-  end if;
-
   update public.thrift_barcodes
   set status = 'USED'
   where tenant_id = p_tenant_id
     and barcode_id = v_canonical_barcode;
 
   return v_stock_id;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."register_thrift_stock_from_app"("p_tenant_id" bigint, "p_barcode" "text", "p_shipment_id" bigint, "p_image_url" "text", "p_brand_name" "text", "p_category_id" bigint, "p_type_id" bigint, "p_section" "text", "p_shelf_id" bigint, "p_color" "text", "p_size" "text", "p_condition" "text", "p_box_id" bigint, "p_product_weight" numeric, "p_extra_weight" numeric, "p_note" "text", "p_origin_purchase_price" numeric, "p_extra_origin_purchase_expense" numeric, "p_cost_of_goods_sold" numeric, "p_target_price" numeric, "p_listed_price" numeric, "p_extra_expense_cost" numeric, "p_inserted_by" "text") OWNER TO "postgres";
 
 
@@ -18969,12 +14897,8 @@ declare
 begin
   if trim(coalesce(p_barcode, '')) = '' then
     raise exception 'Barcode is required';
-  end if;
-
   if trim(coalesce(p_image_url, '')) = '' then
     raise exception 'Image URL is required';
-  end if;
-
   if not exists (
     select 1
     from public.memberships m
@@ -18984,8 +14908,6 @@ begin
       and m.role in ('admin', 'staff')
   ) then
     raise exception 'Not authorized for this tenant';
-  end if;
-
   select *
   into v_barcode_row
   from public.thrift_barcodes
@@ -18995,8 +14917,6 @@ begin
 
   if not found then
     raise exception 'Barcode not found in catalog';
-  end if;
-
   select id
   into v_stock_id
   from public.thrift_stocks
@@ -19007,8 +14927,6 @@ begin
   if v_stock_id is null then
     if v_barcode_row.status <> 'AVAILABLE' then
       raise exception 'Barcode is already used';
-    end if;
-
     insert into public.thrift_stocks (
       tenant_id,
       shipment_id,
@@ -19076,8 +14994,6 @@ begin
       extra_origin_unit_price = v_extra_origin_unit_price,
       inserted_by = p_inserted_by
     where id = v_stock_id;
-  end if;
-
   insert into public.thrift_pricings (
     stock_id,
     listed_unit_price,
@@ -19112,18 +15028,12 @@ begin
       true,
       p_inserted_by
     );
-  end if;
-
   update public.thrift_barcodes
   set status = 'USED'
   where tenant_id = p_tenant_id
     and barcode_id = trim(p_barcode);
 
   return v_stock_id;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."register_thrift_stock_from_app"("p_tenant_id" bigint, "p_barcode" "text", "p_shipment_id" bigint, "p_image_url" "text", "p_brand_name" "text", "p_category_id" bigint, "p_type_id" bigint, "p_section" "text", "p_shelf_id" bigint, "p_color" "text", "p_size" "text", "p_condition" "text", "p_box_id" bigint, "p_product_weight" numeric, "p_extra_weight" numeric, "p_note" "text", "p_origin_purchase_price" numeric, "p_cost_of_goods_sold" numeric, "p_target_price" numeric, "p_listed_price" numeric, "p_inserted_by" "text", "p_origin_unit_price" numeric, "p_extra_origin_unit_price" numeric, "p_listed_unit_price" numeric, "p_extra_origin_purchase_expense" numeric) OWNER TO "postgres";
 
 
@@ -19137,13 +15047,7 @@ begin
     set status = 'AVAILABLE'
     where tenant_id = old.tenant_id
       and barcode_id = trim(old.barcode);
-  end if;
-
   return old;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."release_thrift_barcode_on_stock_delete"() OWNER TO "postgres";
 
 
@@ -19201,42 +15105,10 @@ BEGIN
     'status', 'AVAILABLE'
   );
 END;
-$$;
-
-
 ALTER FUNCTION "public"."release_thrift_stock_hold"("p_tenant_id" bigint, "p_stock_id" bigint) OWNER TO "postgres";
 
 
 COMMENT ON FUNCTION "public"."release_thrift_stock_hold"("p_tenant_id" bigint, "p_stock_id" bigint) IS 'Release RESERVED thrift stock back to AVAILABLE; clears hold metadata via trigger.';
-
-
-
-CREATE OR REPLACE FUNCTION "public"."remove_global_invoice_item"("p_invoice_item_id" bigint) RETURNS "void"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_invoice public.global_invoices;
-begin
-  select gi.* into v_invoice
-  from public.global_invoices gi
-  inner join public.global_invoice_items gii on gii.invoice_id = gi.id
-  where gii.id = p_invoice_item_id;
-
-  if v_invoice.id is null then raise exception 'item not found'; end if;
-  if v_invoice.invoice_status <> 'draft'::public.global_invoice_status then
-    raise exception 'cannot remove items from a non-draft invoice';
-  end if;
-
-  delete from public.global_invoice_items
-  where id = p_invoice_item_id;
-
-  perform public.recompute_global_invoice_totals(v_invoice.id);
-end;
-$$;
-
-
-ALTER FUNCTION "public"."remove_global_invoice_item"("p_invoice_item_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."remove_shop_cart_item"("p_cart_item_id" bigint) RETURNS "jsonb"
@@ -19246,8 +15118,7 @@ CREATE OR REPLACE FUNCTION "public"."remove_shop_cart_item"("p_cart_item_id" big
 declare
   v_cart_id bigint;
   v_shop_id bigint;
-  v_tenant_id bigint;
-begin
+  begin
   select ci.cart_id, c.shop_id, c.tenant_id
   into v_cart_id, v_shop_id, v_tenant_id
   from public.shop_cart_items ci
@@ -19256,43 +15127,13 @@ begin
 
   if v_cart_id is null then
     raise exception 'cart item not found';
-  end if;
-
   -- Access verification
   if not public.is_cart_owner((select customer_group_id from public.shop_carts where id = v_cart_id), v_tenant_id) then
     raise exception 'access denied';
-  end if;
-
   delete from public.shop_cart_items where id = p_cart_item_id;
 
   return public.get_or_create_shop_cart(v_shop_id);
-end;
-$$;
-
-
 ALTER FUNCTION "public"."remove_shop_cart_item"("p_cart_item_id" bigint) OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."resolve_billing_profile_for_customer_group"("p_tenant_id" bigint, "p_customer_group_id" bigint) RETURNS bigint
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_billing_profile_id bigint;
-begin
-  select id into v_billing_profile_id
-  from public.billing_profiles
-  where tenant_id = p_tenant_id
-    and customer_group_id = p_customer_group_id
-  order by id
-  limit 1;
-  
-  return v_billing_profile_id;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."resolve_billing_profile_for_customer_group"("p_tenant_id" bigint, "p_customer_group_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."resolve_parent_tenant_id"("p_tenant_id" bigint) RETURNS bigint
@@ -19303,9 +15144,6 @@ CREATE OR REPLACE FUNCTION "public"."resolve_parent_tenant_id"("p_tenant_id" big
     (select t.parent_id from public.tenants t where t.id = p_tenant_id),
     p_tenant_id
   );
-$$;
-
-
 ALTER FUNCTION "public"."resolve_parent_tenant_id"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -19328,9 +15166,6 @@ CREATE OR REPLACE FUNCTION "public"."resolve_tenant_for_entry"("p_slug" "text" D
   from slug_match
   where not exists (select 1 from domain_match)
   limit 1;
-$$;
-
-
 ALTER FUNCTION "public"."resolve_tenant_for_entry"("p_slug" "text", "p_hostname" "text") OWNER TO "postgres";
 
 
@@ -19349,23 +15184,15 @@ begin
       and m.is_active = true
   ) then
     raise exception 'Not authorized for this tenant';
-  end if;
-
   v_canonical := public.resolve_thrift_barcode_id_internal(p_tenant_id, p_scanned_value);
   if v_canonical is null then
     return;
-  end if;
-
   return query
   select b.barcode_id, b.status
   from public.thrift_barcodes b
   where b.tenant_id = p_tenant_id
     and b.barcode_id = v_canonical
   limit 1;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."resolve_thrift_barcode"("p_tenant_id" bigint, "p_scanned_value" "text") OWNER TO "postgres";
 
 
@@ -19383,8 +15210,6 @@ begin
   v_raw := upper(trim(regexp_replace(coalesce(p_scanned_value, ''), '[^A-Za-z0-9-]', '', 'g')));
   if v_raw = '' then
     return null;
-  end if;
-
   v_tenant_prefix := lpad(p_tenant_id::text, 2, '0');
   v_candidates := array_append(v_candidates, v_raw);
 
@@ -19394,8 +15219,6 @@ begin
       split_part(v_raw, '-', 2) || '-' ||
       split_part(v_raw, '-', 3) || '-' ||
       lpad(split_part(v_raw, '-', 4), 6, '0'));
-  end if;
-
   if v_raw ~ '^[A-Z]{2}-\d{2}-\d+$' then
     v_candidates := array_append(v_candidates, v_tenant_prefix || '-' || v_raw);
     v_candidates := array_append(v_candidates,
@@ -19403,14 +15226,10 @@ begin
       split_part(v_raw, '-', 1) || '-' ||
       split_part(v_raw, '-', 2) || '-' ||
       lpad(split_part(v_raw, '-', 3), 6, '0'));
-  end if;
-
   v_compact := regexp_match(v_raw, '^(\d+)([A-Z]{2})(\d{2})(\d+)$');
   if v_compact is not null then
     v_candidates := array_append(v_candidates,
       v_compact[1] || '-' || v_compact[2] || '-' || v_compact[3] || '-' || lpad(v_compact[4], 6, '0'));
-  end if;
-
   select b.barcode_id
   into v_match
   from public.thrift_barcodes b
@@ -19420,7 +15239,6 @@ begin
   limit 1;
 
   return v_match;
-end;
 $_$;
 
 
@@ -19808,14 +15626,10 @@ BEGIN
     'deleted', false
   );
 END;
-$$;
-
-
 ALTER FUNCTION "public"."revert_thrift_sales_invoice"("p_tenant_id" bigint, "p_invoice_id" bigint, "p_reason" "text", "p_reverted_by" "text", "p_notes" "text", "p_force" boolean, "p_return_courier_amount" numeric) OWNER TO "postgres";
 
 
 COMMENT ON FUNCTION "public"."revert_thrift_sales_invoice"("p_tenant_id" bigint, "p_invoice_id" bigint, "p_reason" "text", "p_reverted_by" "text", "p_notes" "text", "p_force" boolean, "p_return_courier_amount" numeric) IS 'RTO: soft-close; ledger REFUND excludes advance_amount (non-refundable). STAFF_MISTAKE: hard-delete. Legacy RETURN→RTO.';
-
 
 
 CREATE OR REPLACE FUNCTION "public"."round_bdt_up_to_zero_or_five"("p_value" numeric) RETURNS integer
@@ -19830,13 +15644,7 @@ begin
 
   if v_remainder = 0 then
     return v_rounded_up;
-  end if;
-
   return v_rounded_up + (5 - v_remainder);
-end;
-$$;
-
-
 ALTER FUNCTION "public"."round_bdt_up_to_zero_or_five"("p_value" numeric) OWNER TO "postgres";
 
 
@@ -19998,14 +15806,10 @@ BEGIN
 
   RETURN COALESCE(v_result, '[]'::jsonb);
 END;
-$$;
-
-
 ALTER FUNCTION "public"."search_thrift_available_stocks_for_sale"("p_tenant_id" bigint, "p_search" "text", "p_customer_phone" "text", "p_limit" integer) OWNER TO "postgres";
 
 
 COMMENT ON FUNCTION "public"."search_thrift_available_stocks_for_sale"("p_tenant_id" bigint, "p_search" "text", "p_customer_phone" "text", "p_limit" integer) IS 'POS stock picker: default_sell_price = manual listed else ceil_thrift_retail_price(landed*(1+markup)); hold-aware.';
-
 
 
 CREATE OR REPLACE FUNCTION "public"."seed_tenant_roles_and_grants"("p_tenant_id" bigint) RETURNS "void"
@@ -20042,12 +15846,7 @@ begin
     from public.system_role_templates t
     where t.scope = v_role.scope and t.role_slug = v_role.slug
     on conflict (tenant_role_id, module_key, action) do nothing;
-  end loop;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."seed_tenant_roles_and_grants"("p_tenant_id" bigint) OWNER TO "postgres";
+  ALTER FUNCTION "public"."seed_tenant_roles_and_grants"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."set_customer_group_shop_profiles_updated_at"() RETURNS "trigger"
@@ -20055,12 +15854,7 @@ CREATE OR REPLACE FUNCTION "public"."set_customer_group_shop_profiles_updated_at
     AS $$
 begin
   new.updated_at = now();
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."set_customer_group_shop_profiles_updated_at"() OWNER TO "postgres";
+  ALTER FUNCTION "public"."set_customer_group_shop_profiles_updated_at"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."set_order_item_product_identity"() RETURNS "trigger"
@@ -20072,8 +15866,6 @@ declare
 begin
   if new.product_id is null then
     return new;
-  end if;
-
   select p.barcode, p.product_code
   into v_product
   from public.products p
@@ -20082,14 +15874,7 @@ begin
   if found then
     new.barcode := coalesce(new.barcode, v_product.barcode);
     new.product_code := coalesce(new.product_code, v_product.product_code);
-  end if;
-
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."set_order_item_product_identity"() OWNER TO "postgres";
+  ALTER FUNCTION "public"."set_order_item_product_identity"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."set_order_parent_tenant_id"() RETURNS "trigger"
@@ -20103,12 +15888,7 @@ begin
   where id = new.tenant_id;
 
   new.parent_tenant_id := coalesce(v_parent_id, new.tenant_id);
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."set_order_parent_tenant_id"() OWNER TO "postgres";
+  ALTER FUNCTION "public"."set_order_parent_tenant_id"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."set_parent_tenant_id_from_tenant"() RETURNS "trigger"
@@ -20124,14 +15904,7 @@ begin
     where id = new.tenant_id;
 
     new.parent_tenant_id := coalesce(v_parent_id, new.tenant_id);
-  end if;
-
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."set_parent_tenant_id_from_tenant"() OWNER TO "postgres";
+  ALTER FUNCTION "public"."set_parent_tenant_id_from_tenant"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."set_product_lookup_updated_at_timestamp"() RETURNS "trigger"
@@ -20139,12 +15912,7 @@ CREATE OR REPLACE FUNCTION "public"."set_product_lookup_updated_at_timestamp"() 
     AS $$
 begin
   new.updated_at := now();
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."set_product_lookup_updated_at_timestamp"() OWNER TO "postgres";
+  ALTER FUNCTION "public"."set_product_lookup_updated_at_timestamp"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."set_shop_customer_group_access_updated_at"() RETURNS "trigger"
@@ -20152,12 +15920,7 @@ CREATE OR REPLACE FUNCTION "public"."set_shop_customer_group_access_updated_at"(
     AS $$
 begin
   new.updated_at = now();
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."set_shop_customer_group_access_updated_at"() OWNER TO "postgres";
+  ALTER FUNCTION "public"."set_shop_customer_group_access_updated_at"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."set_shop_order_updated_at"() RETURNS "trigger"
@@ -20165,12 +15928,7 @@ CREATE OR REPLACE FUNCTION "public"."set_shop_order_updated_at"() RETURNS "trigg
     AS $$
 begin
   new.updated_at = now();
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."set_shop_order_updated_at"() OWNER TO "postgres";
+  ALTER FUNCTION "public"."set_shop_order_updated_at"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."set_shop_pricing_rules_updated_at"() RETURNS "trigger"
@@ -20178,12 +15936,7 @@ CREATE OR REPLACE FUNCTION "public"."set_shop_pricing_rules_updated_at"() RETURN
     AS $$
 begin
   new.updated_at = now();
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."set_shop_pricing_rules_updated_at"() OWNER TO "postgres";
+  ALTER FUNCTION "public"."set_shop_pricing_rules_updated_at"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."set_shop_product_listings_updated_at"() RETURNS "trigger"
@@ -20191,12 +15944,7 @@ CREATE OR REPLACE FUNCTION "public"."set_shop_product_listings_updated_at"() RET
     AS $$
 begin
   new.updated_at = now();
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."set_shop_product_listings_updated_at"() OWNER TO "postgres";
+  ALTER FUNCTION "public"."set_shop_product_listings_updated_at"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."set_shops_updated_at"() RETURNS "trigger"
@@ -20204,12 +15952,7 @@ CREATE OR REPLACE FUNCTION "public"."set_shops_updated_at"() RETURNS "trigger"
     AS $$
 begin
   new.updated_at = now();
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."set_shops_updated_at"() OWNER TO "postgres";
+  ALTER FUNCTION "public"."set_shops_updated_at"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."set_tenant_id_on_insert"() RETURNS "trigger"
@@ -20219,13 +15962,7 @@ CREATE OR REPLACE FUNCTION "public"."set_tenant_id_on_insert"() RETURNS "trigger
 begin
   if new.tenant_id is null then
     new.tenant_id := public.current_tenant_id();
-  end if;
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."set_tenant_id_on_insert"() OWNER TO "postgres";
+  ALTER FUNCTION "public"."set_tenant_id_on_insert"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."set_tenant_module_submodule_for_superadmin"("p_tenant_id" bigint, "p_parent_module_key" "text", "p_submodule_key" "text", "p_is_enabled" boolean) RETURNS TABLE("id" bigint, "tenant_id" bigint, "parent_module_key" "text", "submodule_key" "text", "is_enabled" boolean, "created_at" timestamp with time zone, "updated_at" timestamp with time zone)
@@ -20279,9 +16016,6 @@ CREATE OR REPLACE FUNCTION "public"."set_tenant_module_submodule_for_superadmin"
     created_at,
     updated_at
   from upserted;
-$$;
-
-
 ALTER FUNCTION "public"."set_tenant_module_submodule_for_superadmin"("p_tenant_id" bigint, "p_parent_module_key" "text", "p_submodule_key" "text", "p_is_enabled" boolean) OWNER TO "postgres";
 
 
@@ -20290,12 +16024,7 @@ CREATE OR REPLACE FUNCTION "public"."set_updated_at"() RETURNS "trigger"
     AS $$
 begin
   new.updated_at = now();
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."set_updated_at"() OWNER TO "postgres";
+  ALTER FUNCTION "public"."set_updated_at"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."shops_derive_is_negotiable"() RETURNS "trigger"
@@ -20306,13 +16035,7 @@ begin
     new.is_negotiable := true;
   else
     new.is_negotiable := false;
-  end if;
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."shops_derive_is_negotiable"() OWNER TO "postgres";
+  ALTER FUNCTION "public"."shops_derive_is_negotiable"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."staff_counter_offer"("p_order_id" bigint, "p_items" "jsonb") RETURNS "void"
@@ -20321,35 +16044,24 @@ CREATE OR REPLACE FUNCTION "public"."staff_counter_offer"("p_order_id" bigint, "
     AS $$
 declare
   v_tenant_id bigint;
-  v_item record;
-begin
+  begin
   select tenant_id into v_tenant_id from public.shop_orders where id = p_order_id;
   
   if v_tenant_id is null then
     raise exception 'order not found';
-  end if;
-
   if not public.is_tenant_staff(v_tenant_id) then
     raise exception 'access denied';
-  end if;
-
   for v_item in select * from jsonb_to_recordset(p_items) as x(id bigint, staff_offer_amount numeric, staff_offer_currency_id bigint) loop
     update public.shop_order_items
     set
       staff_offer_amount = v_item.staff_offer_amount,
       staff_offer_currency_id = v_item.staff_offer_currency_id
     where id = v_item.id and order_id = p_order_id;
-  end loop;
-
   update public.shop_orders
   set
     status = 'negotiating',
     updated_at = now()
   where id = p_order_id;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."staff_counter_offer"("p_order_id" bigint, "p_items" "jsonb") OWNER TO "postgres";
 
 
@@ -20393,9 +16105,6 @@ BEGIN
     updated_at = now()
   WHERE id = p_order_id;
 END;
-$$;
-
-
 ALTER FUNCTION "public"."staff_finalize_catalog_prices"("p_order_id" bigint, "p_items" "jsonb") OWNER TO "postgres";
 
 
@@ -20406,18 +16115,13 @@ CREATE OR REPLACE FUNCTION "public"."staff_price_shop_order"("p_order_id" bigint
 declare
   v_tenant_id bigint;
   v_is_negotiable boolean;
-  v_item record;
-begin
+  begin
   select tenant_id, is_negotiable_snapshot into v_tenant_id, v_is_negotiable from public.shop_orders where id = p_order_id;
   
   if v_tenant_id is null then
     raise exception 'order not found';
-  end if;
-
   if not public.is_tenant_staff(v_tenant_id) then
     raise exception 'access denied';
-  end if;
-
   for v_item in select * from jsonb_to_recordset(p_items) as x(id bigint, staff_offer_amount numeric, staff_offer_currency_id bigint) loop
     update public.shop_order_items
     set
@@ -20426,17 +16130,11 @@ begin
       final_price_amount = case when not v_is_negotiable then v_item.staff_offer_amount else final_price_amount end,
       final_price_currency_id = case when not v_is_negotiable then v_item.staff_offer_currency_id else final_price_currency_id end
     where id = v_item.id and order_id = p_order_id;
-  end loop;
-
   update public.shop_orders
   set
     status = case when v_is_negotiable then 'negotiating'::public.shop_order_status else 'priced'::public.shop_order_status end,
     updated_at = now()
   where id = p_order_id;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."staff_price_shop_order"("p_order_id" bigint, "p_items" "jsonb") OWNER TO "postgres";
 
 
@@ -20487,9 +16185,6 @@ BEGIN
     WHERE id = v_item_id AND order_id = p_order_id;
   END LOOP;
 END;
-$$;
-
-
 ALTER FUNCTION "public"."staff_price_shop_order"("p_order_id" bigint, "p_items" "jsonb", "p_profit_basis" "text", "p_fx_rate" numeric, "p_cargo_rate" numeric, "p_profit_pct" numeric) OWNER TO "postgres";
 
 
@@ -20532,9 +16227,6 @@ BEGIN
     updated_at = now()
   WHERE id = p_order_id;
 END;
-$$;
-
-
 ALTER FUNCTION "public"."staff_set_catalog_delivered_qty"("p_order_id" bigint, "p_items" "jsonb") OWNER TO "postgres";
 
 
@@ -20615,9 +16307,6 @@ BEGIN
     updated_at = now()
   WHERE id = p_order_id;
 END;
-$$;
-
-
 ALTER FUNCTION "public"."staff_set_catalog_ordered_qty"("p_order_id" bigint, "p_items" "jsonb") OWNER TO "postgres";
 
 
@@ -20656,9 +16345,6 @@ BEGIN
     updated_at = now()
   WHERE id = p_order_id;
 END;
-$$;
-
-
 ALTER FUNCTION "public"."staff_start_catalog_procurement"("p_order_id" bigint) OWNER TO "postgres";
 
 
@@ -20797,9 +16483,6 @@ BEGIN
     'status', v_initial_status
   );
 END;
-$$;
-
-
 ALTER FUNCTION "public"."submit_shop_order_from_cart"("p_cart_id" bigint, "p_recipient_name" "text", "p_recipient_phone" "text", "p_shipping_address" "text", "p_recipient_phone_secondary" "text", "p_shipping_district" "text", "p_shipping_thana" "text", "p_billing_profile_id" bigint, "p_is_prepaid" boolean, "p_delivery_instructions" "text", "p_cod_charge_amount" numeric, "p_delivery_charge_amount" numeric, "p_print_charge_amount" numeric, "p_packing_charge_amount" numeric, "p_discount_amount" numeric) OWNER TO "postgres";
 
 
@@ -20811,20 +16494,11 @@ begin
   if tg_op = 'DELETE' then
     perform public.refresh_commerce_inventory_product_summary_single(old.tenant_id, old.product_id);
     return old;
-  end if;
-
   perform public.refresh_commerce_inventory_product_summary_single(new.tenant_id, new.product_id);
 
   if tg_op = 'UPDATE' and (old.product_id is distinct from new.product_id) then
     perform public.refresh_commerce_inventory_product_summary_single(old.tenant_id, old.product_id);
-  end if;
-
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."sync_commerce_summary_from_inventory_items"() OWNER TO "postgres";
+  ALTER FUNCTION "public"."sync_commerce_summary_from_inventory_items"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."sync_commerce_summary_from_inventory_stocks"() RETURNS "trigger"
@@ -20833,9 +16507,7 @@ CREATE OR REPLACE FUNCTION "public"."sync_commerce_summary_from_inventory_stocks
     AS $$
 declare
   v_inventory_item_id bigint;
-  v_tenant_id bigint;
-  v_product_id bigint;
-begin
+  begin
   v_inventory_item_id := coalesce(new.inventory_item_id, old.inventory_item_id);
 
   select ii.tenant_id, ii.product_id
@@ -20845,10 +16517,6 @@ begin
 
   perform public.refresh_commerce_inventory_product_summary_single(v_tenant_id, v_product_id);
   return coalesce(new, old);
-end;
-$$;
-
-
 ALTER FUNCTION "public"."sync_commerce_summary_from_inventory_stocks"() OWNER TO "postgres";
 
 
@@ -20857,12 +16525,7 @@ CREATE OR REPLACE FUNCTION "public"."sync_investor_balance_from_investors"() RET
     AS $$
 begin
   perform public.refresh_investor_balance(new.tenant_id, new.id);
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."sync_investor_balance_from_investors"() OWNER TO "postgres";
+  ALTER FUNCTION "public"."sync_investor_balance_from_investors"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."sync_investor_balance_from_transactions"() RETURNS "trigger"
@@ -20872,19 +16535,10 @@ begin
   if tg_op = 'DELETE' then
     perform public.refresh_investor_balance(old.tenant_id, old.investor_id);
     return old;
-  end if;
-
   if tg_op = 'UPDATE' and (old.tenant_id <> new.tenant_id or old.investor_id <> new.investor_id) then
     perform public.refresh_investor_balance(old.tenant_id, old.investor_id);
-  end if;
-
   perform public.refresh_investor_balance(new.tenant_id, new.investor_id);
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."sync_investor_balance_from_transactions"() OWNER TO "postgres";
+  ALTER FUNCTION "public"."sync_investor_balance_from_transactions"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."sync_lookup_tenant_id"() RETURNS "trigger"
@@ -20892,8 +16546,7 @@ CREATE OR REPLACE FUNCTION "public"."sync_lookup_tenant_id"() RETURNS "trigger"
     AS $$
 declare
   v_tenant_id bigint;
-  v_parent_tenant_id bigint;
-begin
+  begin
   if new.vendor_id is not null then
     select tenant_id, parent_tenant_id
     into v_tenant_id, v_parent_tenant_id
@@ -20902,19 +16555,9 @@ begin
 
     if v_tenant_id is not null then
       new.tenant_id := v_tenant_id;
-    end if;
-
     if v_parent_tenant_id is not null then
       new.parent_tenant_id := v_parent_tenant_id;
-    end if;
-  end if;
-
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."sync_lookup_tenant_id"() OWNER TO "postgres";
+    ALTER FUNCTION "public"."sync_lookup_tenant_id"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."sync_shop_cart_item_reservation"() RETURNS "trigger"
@@ -20924,8 +16567,6 @@ begin
   if tg_op = 'DELETE' then
     delete from public.shop_stock_reservations where cart_item_id = old.id;
     return old;
-  end if;
-
   if new.quantity > 0 and new.global_stock_id is not null then
     insert into public.shop_stock_reservations (cart_item_id, global_stock_id, global_stock_allocation_id, quantity)
     values (new.id, new.global_stock_id, null, new.quantity)
@@ -20935,51 +16576,7 @@ begin
       quantity = excluded.quantity;
   else
     delete from public.shop_stock_reservations where cart_item_id = new.id;
-  end if;
-
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."sync_shop_cart_item_reservation"() OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."sync_shop_order_collection_source_from_invoice"() RETURNS "trigger"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_src public.collection_source_type;
-begin
-  if new.global_invoice_id is null then
-    return new;
-  end if;
-
-  if tg_op = 'UPDATE'
-     and old.global_invoice_id is not distinct from new.global_invoice_id
-     and new.collection_source is not null then
-    return new;
-  end if;
-
-  select collection_source into v_src
-  from public.global_invoices
-  where id = new.global_invoice_id;
-
-  if v_src is not null then
-    new.collection_source := v_src;
-    if new.payout_settlement_status is null
-       and new.shop_type_snapshot = 'dropship' then
-      new.payout_settlement_status := 'unpaid';
-    end if;
-  end if;
-
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."sync_shop_order_collection_source_from_invoice"() OWNER TO "postgres";
+  ALTER FUNCTION "public"."sync_shop_cart_item_reservation"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."thrift_barcode_sequence_sort_key"("p_barcode_id" "text") RETURNS TABLE("sort_prefix" "text", "sort_year" "text", "sort_seq" integer)
@@ -21039,9 +16636,6 @@ BEGIN
 
   RETURN NEW;
 END;
-$$;
-
-
 ALTER FUNCTION "public"."thrift_courier_providers_guard_system"() OWNER TO "postgres";
 
 
@@ -21076,9 +16670,6 @@ BEGIN
 
   RETURN NEW;
 END;
-$$;
-
-
 ALTER FUNCTION "public"."thrift_stocks_enforce_hold_metadata"() OWNER TO "postgres";
 
 
@@ -21200,51 +16791,7 @@ BEGIN
 
   RETURN v_result;
 END;
-$$;
-
-
 ALTER FUNCTION "public"."transfer_wallet_balance"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_from_bucket" "text", "p_to_bucket" "text", "p_amount" numeric, "p_currency_code" "text", "p_notes" "text", "p_metadata" "jsonb") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."trg_auto_create_billing_profile_for_customer_group"() RETURNS "trigger"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-begin
-  if not exists (
-    select 1 from public.billing_profiles
-    where tenant_id = new.tenant_id
-      and customer_group_id = new.id
-  ) then
-    insert into public.billing_profiles (
-      tenant_id,
-      customer_group_id,
-      name,
-      email,
-      phone,
-      address,
-      color,
-      created_at,
-      updated_at
-    )
-    values (
-      new.tenant_id,
-      new.id,
-      new.name,
-      null,
-      null,
-      null,
-      new.accent_color,
-      now(),
-      now()
-    );
-  end if;
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."trg_auto_create_billing_profile_for_customer_group"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."trg_auto_publish_dropship_listing"() RETURNS "trigger"
@@ -21256,7 +16803,6 @@ declare
   v_rule record;
   v_landed_cost numeric;
   v_currency_id bigint;
-  v_product_id bigint;
   v_stock_id bigint;
   v_sell_price numeric;
 begin
@@ -21318,16 +16864,7 @@ begin
             else shop_product_listings.sell_price_amount
           end,
           updated_at = now();
-      end if;
-    end if;
-  end loop;
-
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."trg_auto_publish_dropship_listing"() OWNER TO "postgres";
+      ALTER FUNCTION "public"."trg_auto_publish_dropship_listing"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."trg_fn_assign_default_customer_role"() RETURNS "trigger"
@@ -21359,14 +16896,7 @@ begin
         and slug = v_role_slug;
 
       new.tenant_role_id := v_role_id;
-    end if;
-  end if;
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."trg_fn_assign_default_customer_role"() OWNER TO "postgres";
+    ALTER FUNCTION "public"."trg_fn_assign_default_customer_role"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."trg_fn_assign_default_membership_role"() RETURNS "trigger"
@@ -21392,13 +16922,7 @@ begin
       and slug = v_role_slug;
 
     new.tenant_role_id := v_role_id;
-  end if;
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."trg_fn_assign_default_membership_role"() OWNER TO "postgres";
+  ALTER FUNCTION "public"."trg_fn_assign_default_membership_role"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."trg_fn_bump_cgm_grant_tenant_version"() RETURNS "trigger"
@@ -21417,20 +16941,13 @@ begin
     from public.customer_group_members cgm
     join public.customer_groups cg on cg.id = cgm.customer_group_id
     where cgm.id = new.customer_group_member_id;
-  end if;
   if v_tenant_id is not null then
     perform public.bump_tenant_permission_version(v_tenant_id);
-  end if;
   if tg_op = 'DELETE' then
     return old;
   else
     return new;
-  end if;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."trg_fn_bump_cgm_grant_tenant_version"() OWNER TO "postgres";
+  ALTER FUNCTION "public"."trg_fn_bump_cgm_grant_tenant_version"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."trg_fn_bump_cgm_version"() RETURNS "trigger"
@@ -21443,22 +16960,14 @@ begin
     select tenant_id into v_tenant_id from public.customer_groups where id = old.customer_group_id;
   else
     select tenant_id into v_tenant_id from public.customer_groups where id = new.customer_group_id;
-  end if;
   if v_tenant_id is not null then
     if tg_op = 'DELETE' or tg_op = 'INSERT' or coalesce(old.tenant_role_id, 0) <> coalesce(new.tenant_role_id, 0) or old.is_active <> new.is_active or old.role <> new.role then
       perform public.bump_tenant_permission_version(v_tenant_id);
-    end if;
-  end if;
-  if tg_op = 'DELETE' then
+    if tg_op = 'DELETE' then
     return old;
   else
     return new;
-  end if;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."trg_fn_bump_cgm_version"() OWNER TO "postgres";
+  ALTER FUNCTION "public"."trg_fn_bump_cgm_version"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."trg_fn_bump_grant_tenant_version"() RETURNS "trigger"
@@ -21471,20 +16980,13 @@ begin
     select tenant_id into v_tenant_id from public.tenant_roles where id = old.tenant_role_id;
   else
     select tenant_id into v_tenant_id from public.tenant_roles where id = new.tenant_role_id;
-  end if;
   if v_tenant_id is not null then
     perform public.bump_tenant_permission_version(v_tenant_id);
-  end if;
   if tg_op = 'DELETE' then
     return old;
   else
     return new;
-  end if;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."trg_fn_bump_grant_tenant_version"() OWNER TO "postgres";
+  ALTER FUNCTION "public"."trg_fn_bump_grant_tenant_version"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."trg_fn_bump_membership_grant_tenant_version"() RETURNS "trigger"
@@ -21497,20 +16999,13 @@ begin
     select tenant_id into v_tenant_id from public.memberships where id = old.membership_id;
   else
     select tenant_id into v_tenant_id from public.memberships where id = new.membership_id;
-  end if;
   if v_tenant_id is not null then
     perform public.bump_tenant_permission_version(v_tenant_id);
-  end if;
   if tg_op = 'DELETE' then
     return old;
   else
     return new;
-  end if;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."trg_fn_bump_membership_grant_tenant_version"() OWNER TO "postgres";
+  ALTER FUNCTION "public"."trg_fn_bump_membership_grant_tenant_version"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."trg_fn_bump_membership_version"() RETURNS "trigger"
@@ -21522,17 +17017,9 @@ begin
     return old;
   elsif tg_op = 'INSERT' then
     perform public.bump_tenant_permission_version(new.tenant_id);
-    return new;
-  elsif coalesce(old.tenant_role_id, 0) <> coalesce(new.tenant_role_id, 0) or old.is_active <> new.is_active or old.role <> new.role then
+    elsif coalesce(old.tenant_role_id, 0) <> coalesce(new.tenant_role_id, 0) or old.is_active <> new.is_active or old.role <> new.role then
     perform public.bump_tenant_permission_version(new.tenant_id);
-    return new;
-  end if;
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."trg_fn_bump_membership_version"() OWNER TO "postgres";
+    ALTER FUNCTION "public"."trg_fn_bump_membership_version"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."trg_fn_bump_role_tenant_version"() RETURNS "trigger"
@@ -21544,13 +17031,7 @@ begin
     return old;
   else
     perform public.bump_tenant_permission_version(new.tenant_id);
-    return new;
-  end if;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."trg_fn_bump_role_tenant_version"() OWNER TO "postgres";
+    ALTER FUNCTION "public"."trg_fn_bump_role_tenant_version"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."trg_fn_bump_tenant_modules_version"() RETURNS "trigger"
@@ -21562,13 +17043,7 @@ begin
     return old;
   else
     perform public.bump_tenant_permission_version(new.tenant_id);
-    return new;
-  end if;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."trg_fn_bump_tenant_modules_version"() OWNER TO "postgres";
+    ALTER FUNCTION "public"."trg_fn_bump_tenant_modules_version"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."trg_fn_cgm_permission_guardrails"() RETURNS "trigger"
@@ -21590,176 +17065,9 @@ begin
 
     if v_role_tenant <> v_cg_tenant then
       raise exception 'Cross-tenant role assignment is not allowed';
-    end if;
-
     if v_role_scope <> 'shop' then
       raise exception 'Scope mismatch: customer group member cannot be assigned a % scoped role', v_role_scope;
-    end if;
-  end if;
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."trg_fn_cgm_permission_guardrails"() OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."trg_fn_global_invoice_items_stock_sync"() RETURNS "trigger"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_status public.global_invoice_status;
-  v_qty integer;
-  v_diff integer;
-  v_target_tenant_id bigint;
-begin
-  if TG_OP = 'INSERT' then
-    select invoice_status, tenant_id into v_status, v_target_tenant_id
-    from public.global_invoices where id = NEW.invoice_id;
-    
-    if v_status in ('draft'::public.global_invoice_status, 'posted'::public.global_invoice_status) then
-      v_qty := ceil(NEW.quantity)::integer;
-      
-      update public.global_stocks
-      set quantity = quantity - v_qty
-      where id = NEW.global_stock_id;
-
-      if exists (
-        select 1 from public.global_stock_allocations
-        where child_tenant_id = v_target_tenant_id and stock_id = NEW.global_stock_id
-      ) then
-        update public.global_stock_allocations
-        set quantity = quantity - v_qty
-        where child_tenant_id = v_target_tenant_id and stock_id = NEW.global_stock_id;
-      end if;
-    end if;
-    
-  elsif TG_OP = 'UPDATE' then
-    select invoice_status, tenant_id into v_status, v_target_tenant_id
-    from public.global_invoices where id = NEW.invoice_id;
-    
-    if v_status in ('draft'::public.global_invoice_status, 'posted'::public.global_invoice_status) then
-      if NEW.global_stock_id <> OLD.global_stock_id then
-        -- Return old quantity to OLD stock ID
-        v_qty := ceil(OLD.quantity)::integer;
-        update public.global_stocks
-        set quantity = quantity + v_qty
-        where id = OLD.global_stock_id;
-
-        if exists (
-          select 1 from public.global_stock_allocations
-          where child_tenant_id = v_target_tenant_id and stock_id = OLD.global_stock_id
-        ) then
-          update public.global_stock_allocations
-          set quantity = quantity + v_qty
-          where child_tenant_id = v_target_tenant_id and stock_id = OLD.global_stock_id;
-        end if;
-
-        -- Deduct new quantity from NEW stock ID
-        v_qty := ceil(NEW.quantity)::integer;
-        update public.global_stocks
-        set quantity = quantity - v_qty
-        where id = NEW.global_stock_id;
-
-        if exists (
-          select 1 from public.global_stock_allocations
-          where child_tenant_id = v_target_tenant_id and stock_id = NEW.global_stock_id
-        ) then
-          update public.global_stock_allocations
-          set quantity = quantity - v_qty
-          where child_tenant_id = v_target_tenant_id and stock_id = NEW.global_stock_id;
-        end if;
-      else
-        -- Adjust by the quantity difference
-        v_diff := ceil(NEW.quantity)::integer - ceil(OLD.quantity)::integer;
-        if v_diff <> 0 then
-          update public.global_stocks
-          set quantity = quantity - v_diff
-          where id = NEW.global_stock_id;
-
-          if exists (
-            select 1 from public.global_stock_allocations
-            where child_tenant_id = v_target_tenant_id and stock_id = NEW.global_stock_id
-          ) then
-            update public.global_stock_allocations
-            set quantity = quantity - v_diff
-            where child_tenant_id = v_target_tenant_id and stock_id = NEW.global_stock_id;
-          end if;
-        end if;
-      end if;
-    end if;
-    
-  elsif TG_OP = 'DELETE' then
-    select invoice_status, tenant_id into v_status, v_target_tenant_id
-    from public.global_invoices where id = OLD.invoice_id;
-    
-    if v_status in ('draft'::public.global_invoice_status, 'posted'::public.global_invoice_status) then
-      v_qty := ceil(OLD.quantity)::integer;
-      
-      update public.global_stocks
-      set quantity = quantity + v_qty
-      where id = OLD.global_stock_id;
-
-      if exists (
-        select 1 from public.global_stock_allocations
-        where child_tenant_id = v_target_tenant_id and stock_id = OLD.global_stock_id
-      ) then
-        update public.global_stock_allocations
-        set quantity = quantity + v_qty
-        where child_tenant_id = v_target_tenant_id and stock_id = OLD.global_stock_id;
-      end if;
-    end if;
-  end if;
-  
-  return null;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."trg_fn_global_invoice_items_stock_sync"() OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."trg_fn_global_invoices_stock_sync"() RETURNS "trigger"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_item record;
-  v_qty integer;
-begin
-  -- Detect transition from active (draft, posted) to voided
-  if (OLD.invoice_status in ('draft'::public.global_invoice_status, 'posted'::public.global_invoice_status)) 
-     and (NEW.invoice_status = 'voided'::public.global_invoice_status) then
-     
-    for v_item in 
-      select global_stock_id, quantity
-      from public.global_invoice_items
-      where invoice_id = NEW.id
-    loop
-      v_qty := ceil(v_item.quantity)::integer;
-      
-      update public.global_stocks
-      set quantity = quantity + v_qty
-      where id = v_item.global_stock_id;
-
-      if exists (
-        select 1 from public.global_stock_allocations
-        where child_tenant_id = NEW.tenant_id and stock_id = v_item.global_stock_id
-      ) then
-        update public.global_stock_allocations
-        set quantity = quantity + v_qty
-        where child_tenant_id = NEW.tenant_id and stock_id = v_item.global_stock_id;
-      end if;
-    end loop;
-  end if;
-  
-  return null;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."trg_fn_global_invoices_stock_sync"() OWNER TO "postgres";
+    ALTER FUNCTION "public"."trg_fn_cgm_permission_guardrails"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."trg_fn_memberships_permission_guardrails"() RETURNS "trigger"
@@ -21778,14 +17086,9 @@ begin
 
     if v_role_tenant <> new.tenant_id then
       raise exception 'Cross-tenant role assignment is not allowed';
-    end if;
-
     if v_role_scope <> 'app' then
       raise exception 'Scope mismatch: app membership cannot be assigned a % scoped role', v_role_scope;
-    end if;
-  end if;
-
-  if tg_op = 'UPDATE' and old.is_active = true then
+    if tg_op = 'UPDATE' and old.is_active = true then
     declare
       v_was_admin boolean;
       v_is_admin boolean;
@@ -21808,17 +17111,7 @@ begin
 
         if v_active_admins = 0 then
           raise exception 'Cannot downgrade or deactivate the last active administrator for this tenant';
-        end if;
-      end if;
-    end;
-  end if;
-
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."trg_fn_memberships_permission_guardrails"() OWNER TO "postgres";
+        ALTER FUNCTION "public"."trg_fn_memberships_permission_guardrails"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."trg_fn_seed_new_tenant"() RETURNS "trigger"
@@ -21827,12 +17120,7 @@ CREATE OR REPLACE FUNCTION "public"."trg_fn_seed_new_tenant"() RETURNS "trigger"
     AS $$
 begin
   perform public.seed_tenant_roles_and_grants(new.id);
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."trg_fn_seed_new_tenant"() OWNER TO "postgres";
+  ALTER FUNCTION "public"."trg_fn_seed_new_tenant"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."trg_fn_sync_cgm_tenant_role"() RETURNS "trigger"
@@ -21867,16 +17155,7 @@ begin
 
       if v_role_id is not null then
         new.tenant_role_id := v_role_id;
-      end if;
-    end if;
-  end if;
-
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."trg_fn_sync_cgm_tenant_role"() OWNER TO "postgres";
+      ALTER FUNCTION "public"."trg_fn_sync_cgm_tenant_role"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."trg_fn_tenant_modules_disable_guardrails"() RETURNS "trigger"
@@ -21896,8 +17175,6 @@ begin
 
       if v_has_grants then
         raise exception 'Cannot disable module %: active role grants depend on it. Use force to override.', old.module_key;
-      end if;
-
       select exists (
         select 1 from public.membership_grants mg
         join public.memberships m on m.id = mg.membership_id
@@ -21906,15 +17183,7 @@ begin
 
       if v_has_overrides then
         raise exception 'Cannot disable module %: active member overrides depend on it. Use force to override.', old.module_key;
-      end if;
-    end if;
-  end if;
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."trg_fn_tenant_modules_disable_guardrails"() OWNER TO "postgres";
+      ALTER FUNCTION "public"."trg_fn_tenant_modules_disable_guardrails"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."trg_fn_tenant_role_guardrails"() RETURNS "trigger"
@@ -21926,7 +17195,6 @@ begin
   if tg_op = 'DELETE' then
     if old.is_admin = true and old.is_active = true then
       raise exception 'Cannot delete the final active admin role for this scope';
-    end if;
     return old;
   elsif tg_op = 'UPDATE' then
     if old.is_admin = true and old.is_active = true and (new.is_admin = false or new.is_active = false) then
@@ -21939,120 +17207,7 @@ begin
         and id <> old.id;
       if v_count = 0 then
         raise exception 'Cannot deactivate or downgrade the final active admin role for this scope';
-      end if;
-    end if;
-    return new;
-  end if;
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."trg_fn_tenant_role_guardrails"() OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."trg_invoice_parent_tenant_alias"() RETURNS "trigger"
-    LANGUAGE "plpgsql"
-    AS $$
-begin
-  new.parent_tenant_id := new.tenant_id;
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."trg_invoice_parent_tenant_alias"() OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."trg_validate_global_invoice_profiles"() RETURNS "trigger"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    AS $$
-begin
-  if new.billing_profile_id is not null then
-    if not exists (
-      select 1 from public.billing_profiles bp
-      where bp.id = new.billing_profile_id
-        and bp.tenant_id = new.issued_by_tenant_id
-    ) then
-      raise exception 'Billing profile tenant_id must match invoice issued_by_tenant_id';
-    end if;
-  end if;
-
-  if new.recipient_profile_id is not null then
-    if not exists (
-      select 1 from public.recipient_profiles rp
-      where rp.id = new.recipient_profile_id
-        and rp.tenant_id = new.issued_by_tenant_id
-    ) then
-      raise exception 'Recipient profile tenant_id must match invoice issued_by_tenant_id';
-    end if;
-  end if;
-
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."trg_validate_global_invoice_profiles"() OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."unpost_global_invoice"("p_invoice_id" bigint) RETURNS "void"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-begin
-  perform public.unpost_sales_invoice(p_invoice_id);
-end;
-$$;
-
-
-ALTER FUNCTION "public"."unpost_global_invoice"("p_invoice_id" bigint) OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."unpost_sales_invoice"("p_invoice_id" bigint) RETURNS "void"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_invoice public.global_invoices;
-  v_item public.global_invoice_items%rowtype;
-  v_unit_cost numeric;
-begin
-  select * into v_invoice from public.global_invoices where id = p_invoice_id for update;
-  if v_invoice.id is null then raise exception 'invoice not found'; end if;
-  
-  if v_invoice.invoice_status <> 'posted'::public.global_invoice_status then
-    raise exception 'only posted invoices can be unposted';
-  end if;
-  
-  if v_invoice.paid_amount > 0 then
-    raise exception 'cannot unpost a paid or partially paid invoice; reverse collections/payments first';
-  end if;
-
-  if exists (select 1 from public.global_return_items where invoice_id = p_invoice_id) then
-    raise exception 'cannot unpost an invoice with return items; remove return items first';
-  end if;
-
-  -- Recalculate unit costs (stock stays deducted since status transitions back to draft)
-  for v_item in select * from public.global_invoice_items where invoice_id = p_invoice_id loop
-    v_unit_cost := coalesce(public.calculate_landed_unit_cost(v_item.shipment_item_id), 0.00);
-    
-    update public.global_invoice_items
-    set unit_cost_price = v_unit_cost
-    where id = v_item.id;
-  end loop;
-
-  -- Mark invoice as draft
-  update public.global_invoices
-  set invoice_status = 'draft'::public.global_invoice_status
-  where id = p_invoice_id;
-
-  perform public.recompute_global_invoice_totals(p_invoice_id);
-end;
-$$;
-
-
-ALTER FUNCTION "public"."unpost_sales_invoice"("p_invoice_id" bigint) OWNER TO "postgres";
+      ALTER FUNCTION "public"."trg_fn_tenant_role_guardrails"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."update_dropship_consignment"("p_order_id" bigint, "p_cod_collect_amount" numeric DEFAULT 0.00, "p_package_weight_band" "text" DEFAULT 'under_1kg'::"text", "p_item_category" "text" DEFAULT NULL::"text", "p_parcel_description" "text" DEFAULT NULL::"text", "p_courier_order_ref" "text" DEFAULT NULL::"text", "p_delivery_zone" "text" DEFAULT 'inside_dhaka'::"text", "p_sender_name" "text" DEFAULT NULL::"text", "p_pickup_phone" "text" DEFAULT NULL::"text", "p_pickup_address" "text" DEFAULT NULL::"text", "p_payout_account_type" "text" DEFAULT 'bank'::"text", "p_payout_account_info" "text" DEFAULT NULL::"text", "p_allow_open_box" boolean DEFAULT false, "p_delivery_instruction_notes" "text" DEFAULT NULL::"text", "p_courier_service_id" "uuid" DEFAULT NULL::"uuid", "p_courier_tracking_number" "text" DEFAULT NULL::"text", "p_courier_awb_number" "text" DEFAULT NULL::"text", "p_courier_consignment_id" "text" DEFAULT NULL::"text", "p_tracking_url" "text" DEFAULT NULL::"text", "p_courier_cost_amount" numeric DEFAULT 0.00, "p_recipient_name" "text" DEFAULT NULL::"text", "p_recipient_phone" "text" DEFAULT NULL::"text", "p_recipient_phone_secondary" "text" DEFAULT NULL::"text", "p_shipping_address" "text" DEFAULT NULL::"text", "p_shipping_district" "text" DEFAULT NULL::"text", "p_shipping_thana" "text" DEFAULT NULL::"text", "p_delivery_charge_amount" numeric DEFAULT NULL::numeric, "p_cod_charge_amount" numeric DEFAULT NULL::numeric) RETURNS "jsonb"
@@ -22065,16 +17220,8 @@ declare
   v_recipient_profile_id bigint;
   v_delivery_charge numeric;
   v_cod_charge numeric;
-begin
-  select * into v_order from public.shop_orders where id = p_order_id;
-  if v_order.id is null then
-    raise exception 'Order not found';
-  end if;
-
-  if not public.is_tenant_staff(v_order.tenant_id) then
+if not public.is_tenant_staff(v_order.tenant_id) then
     raise exception 'access denied';
-  end if;
-
   v_delivery_charge := coalesce(p_delivery_charge_amount, p_courier_cost_amount, 0.00);
   v_cod_charge := coalesce(p_cod_charge_amount, 0.00);
 
@@ -22127,96 +17274,8 @@ begin
       recipient_profile_id = v_recipient_profile_id,
       updated_at = now()
     where id = p_order_id;
-  end if;
-
   return jsonb_build_object('success', true);
-end;
-$$;
-
-
 ALTER FUNCTION "public"."update_dropship_consignment"("p_order_id" bigint, "p_cod_collect_amount" numeric, "p_package_weight_band" "text", "p_item_category" "text", "p_parcel_description" "text", "p_courier_order_ref" "text", "p_delivery_zone" "text", "p_sender_name" "text", "p_pickup_phone" "text", "p_pickup_address" "text", "p_payout_account_type" "text", "p_payout_account_info" "text", "p_allow_open_box" boolean, "p_delivery_instruction_notes" "text", "p_courier_service_id" "uuid", "p_courier_tracking_number" "text", "p_courier_awb_number" "text", "p_courier_consignment_id" "text", "p_tracking_url" "text", "p_courier_cost_amount" numeric, "p_recipient_name" "text", "p_recipient_phone" "text", "p_recipient_phone_secondary" "text", "p_shipping_address" "text", "p_shipping_district" "text", "p_shipping_thana" "text", "p_delivery_charge_amount" numeric, "p_cod_charge_amount" numeric) OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."update_global_invoice_header"("p_invoice_id" bigint, "p_discount_amount" numeric DEFAULT NULL::numeric, "p_shipping_charge" numeric DEFAULT NULL::numeric, "p_cod_charge" numeric DEFAULT NULL::numeric, "p_wrapping_charge" numeric DEFAULT NULL::numeric, "p_print_charge" numeric DEFAULT NULL::numeric, "p_recipient_name" "text" DEFAULT NULL::"text", "p_recipient_phone" "text" DEFAULT NULL::"text", "p_recipient_address" "text" DEFAULT NULL::"text", "p_note" "text" DEFAULT NULL::"text", "p_invoice_no" "text" DEFAULT NULL::"text", "p_invoice_date" "date" DEFAULT NULL::"date") RETURNS "void"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_invoice public.global_invoices;
-begin
-  select * into v_invoice from public.global_invoices where id = p_invoice_id;
-  if v_invoice.id is null then raise exception 'invoice not found'; end if;
-  if v_invoice.invoice_status <> 'draft'::public.global_invoice_status then
-    raise exception 'cannot update header of a non-draft invoice';
-  end if;
-
-  update public.global_invoices
-  set
-    discount_amount = coalesce(p_discount_amount, discount_amount),
-    shipping_charge = coalesce(p_shipping_charge, shipping_charge),
-    cod_charge = coalesce(p_cod_charge, cod_charge),
-    wrapping_charge = coalesce(p_wrapping_charge, wrapping_charge),
-    print_charge = coalesce(p_print_charge, print_charge),
-    recipient_name = coalesce(nullif(trim(p_recipient_name), ''), recipient_name),
-    recipient_phone = coalesce(nullif(trim(p_recipient_phone), ''), recipient_phone),
-    recipient_address = coalesce(nullif(trim(p_recipient_address), ''), recipient_address),
-    note = coalesce(nullif(trim(p_note), ''), note),
-    invoice_no = coalesce(nullif(trim(p_invoice_no), ''), invoice_no),
-    invoice_date = coalesce(p_invoice_date, invoice_date)
-  where id = p_invoice_id;
-
-  perform public.recompute_global_invoice_totals(p_invoice_id);
-end;
-$$;
-
-
-ALTER FUNCTION "public"."update_global_invoice_header"("p_invoice_id" bigint, "p_discount_amount" numeric, "p_shipping_charge" numeric, "p_cod_charge" numeric, "p_wrapping_charge" numeric, "p_print_charge" numeric, "p_recipient_name" "text", "p_recipient_phone" "text", "p_recipient_address" "text", "p_note" "text", "p_invoice_no" "text", "p_invoice_date" "date") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."update_global_invoice_item"("p_item_id" bigint, "p_quantity" numeric, "p_sell_price_amount" numeric, "p_recipient_price_amount" numeric DEFAULT NULL::numeric) RETURNS "public"."sales_invoice_items"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_item public.global_invoice_items;
-  v_invoice public.global_invoices;
-  v_line_total numeric;
-begin
-  select * into v_item from public.global_invoice_items where id = p_item_id;
-  if v_item.id is null then raise exception 'Invoice item not found'; end if;
-
-  select * into v_invoice from public.global_invoices where id = v_item.invoice_id;
-  if v_invoice.id is null then raise exception 'Invoice not found'; end if;
-  if v_invoice.invoice_status <> 'draft'::public.global_invoice_status then
-    raise exception 'Cannot edit items on a non-draft invoice';
-  end if;
-
-  if p_quantity <= 0 then
-    raise exception 'Quantity must be greater than 0';
-  end if;
-
-  if p_sell_price_amount < 0 then
-    raise exception 'Sell price cannot be negative';
-  end if;
-
-  v_line_total := greatest((p_quantity * p_sell_price_amount) - coalesce(v_item.line_discount_amount, 0.00), 0.00);
-
-  update public.global_invoice_items
-  set
-    quantity = p_quantity,
-    sell_price_amount = p_sell_price_amount,
-    line_total_amount = v_line_total
-  where id = p_item_id
-  returning * into v_item;
-
-  perform public.recompute_global_invoice_totals(v_item.invoice_id);
-
-  return v_item;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."update_global_invoice_item"("p_item_id" bigint, "p_quantity" numeric, "p_sell_price_amount" numeric, "p_recipient_price_amount" numeric) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."update_membership_preference_for_self"("p_membership_id" bigint, "p_preference" "jsonb") RETURNS TABLE("id" bigint, "email" "text", "role" "public"."app_role", "is_active" boolean, "tenant_id" bigint, "preference" "jsonb", "created_at" timestamp with time zone, "updated_at" timestamp with time zone)
@@ -22232,12 +17291,8 @@ begin
       and m.is_active = true
   ) then
     raise exception 'Unauthorized to update this membership preference';
-  end if;
-
   if jsonb_typeof(p_preference) is distinct from 'object' then
     raise exception 'Membership preference must be a JSON object';
-  end if;
-
   return query
   update public.memberships as m
   set preference = p_preference
@@ -22251,10 +17306,6 @@ begin
     m.preference,
     m.created_at,
     m.updated_at;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."update_membership_preference_for_self"("p_membership_id" bigint, "p_preference" "jsonb") OWNER TO "postgres";
 
 
@@ -22273,12 +17324,6 @@ declare
 begin
   if p_tenant_id is null or p_allocation_id is null then
     raise exception 'Tenant and allocation are required.';
-  end if;
-
-  if coalesce(p_amount, 0) <= 0 then
-    raise exception 'Allocation amount must be greater than zero.';
-  end if;
-
   select *
   into v_alloc
   from public.payment_allocations
@@ -22287,21 +17332,13 @@ begin
 
   if not found then
     raise exception 'Allocation not found.';
-  end if;
-
   if v_alloc.tenant_id <> p_tenant_id then
     raise exception 'Allocation does not belong to tenant.';
-  end if;
-
   select *
   into v_payment
   from public.payments
   where id = v_alloc.payment_id
   for update;
-
-  if not found then
-    raise exception 'Payment not found.';
-  end if;
 
   select *
   into v_invoice
@@ -22309,14 +17346,8 @@ begin
   where id = v_alloc.invoice_id
   for update;
 
-  if not found then
-    raise exception 'Invoice not found.';
-  end if;
-
   if coalesce(v_payment.billing_profile_id, 0) <> coalesce(v_invoice.billing_profile_id, 0) then
     raise exception 'Payment and invoice billing profile mismatch.';
-  end if;
-
   select coalesce(sum(amount), 0)
   into v_other_allocated
   from public.payment_allocations
@@ -22326,14 +17357,10 @@ begin
   v_remaining := coalesce(v_payment.amount, 0) - coalesce(v_other_allocated, 0);
   if p_amount > v_remaining then
     raise exception 'Allocation amount exceeds payment remaining amount.';
-  end if;
-
   v_due_excluding_current :=
     coalesce(v_invoice.total_amount, 0) - (coalesce(v_invoice.paid_amount, 0) - coalesce(v_alloc.amount, 0));
   if p_amount > v_due_excluding_current then
     raise exception 'Allocation amount exceeds invoice due amount.';
-  end if;
-
   v_delta := p_amount - coalesce(v_alloc.amount, 0);
 
   update public.payment_allocations
@@ -22349,10 +17376,6 @@ begin
   perform public.recompute_invoice_payment_status(v_invoice.id);
 
   return v_alloc;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."update_payment_allocation_amount"("p_tenant_id" bigint, "p_allocation_id" bigint, "p_amount" numeric) OWNER TO "postgres";
 
 
@@ -22363,7 +17386,6 @@ CREATE OR REPLACE FUNCTION "public"."update_shop_cart_item_price"("p_cart_item_i
 declare
   v_cart_id bigint;
   v_shop_id bigint;
-  v_tenant_id bigint;
   v_shop_type public.shop_type_enum;
   v_global_stock_allocation_id bigint;
   v_sell_price_amount numeric;
@@ -22385,35 +17407,21 @@ begin
 
   if v_cart_id is null then
     raise exception 'cart item not found';
-  end if;
-
   if not public.is_cart_owner((select customer_group_id from public.shop_carts where id = v_cart_id), v_tenant_id) then
     raise exception 'access denied';
-  end if;
-
   if v_shop_type <> 'dropship' then
     raise exception 'price updates only allowed for dropship shops';
-  end if;
-
   if p_price < 0 then
     raise exception 'price cannot be negative';
-  end if;
-
   -- Enforce minimum sell price floor
   if v_customer_sell_price_currency_id = v_min_sell_price_currency_id 
      and p_price < v_min_sell_price_amount then
     raise exception 'price cannot be lower than the minimum sell price %', v_min_sell_price_amount;
-  end if;
-
   update public.shop_cart_items
   set customer_sell_price_amount = p_price, updated_at = now()
   where id = p_cart_item_id;
 
   return public.get_or_create_shop_cart(v_shop_id);
-end;
-$$;
-
-
 ALTER FUNCTION "public"."update_shop_cart_item_price"("p_cart_item_id" bigint, "p_price" numeric) OWNER TO "postgres";
 
 
@@ -22424,7 +17432,6 @@ CREATE OR REPLACE FUNCTION "public"."update_shop_cart_item_qty"("p_cart_item_id"
 declare
   v_cart_id bigint;
   v_shop_id bigint;
-  v_tenant_id bigint;
   v_shop_type public.shop_type_enum;
   v_global_stock_allocation_id bigint;
   v_allocated_qty integer;
@@ -22433,8 +17440,6 @@ declare
 begin
   if p_quantity <= 0 then
     return public.remove_shop_cart_item(p_cart_item_id);
-  end if;
-
   select ci.cart_id, ci.global_stock_allocation_id, c.shop_id, c.tenant_id, s.shop_type
   into v_cart_id, v_global_stock_allocation_id, v_shop_id, v_tenant_id, v_shop_type
   from public.shop_cart_items ci
@@ -22444,13 +17449,9 @@ begin
 
   if v_cart_id is null then
     raise exception 'cart item not found';
-  end if;
-
   -- Access verification via is_cart_owner RLS trigger fallback check
   if not public.is_cart_owner((select customer_group_id from public.shop_carts where id = v_cart_id), v_tenant_id) then
     raise exception 'access denied';
-  end if;
-
   -- Verify stock if stock-backed
   if v_shop_type in ('fixed_price', 'dropship') and v_global_stock_allocation_id is not null then
     select quantity into v_allocated_qty
@@ -22467,18 +17468,11 @@ begin
 
     if p_quantity > v_available_to_sell then
       raise exception 'insufficient stock: requested %, available %', p_quantity, greatest(0, v_available_to_sell);
-    end if;
-  end if;
-
-  update public.shop_cart_items
+    update public.shop_cart_items
   set quantity = p_quantity, updated_at = now()
   where id = p_cart_item_id;
 
   return public.get_or_create_shop_cart(v_shop_id);
-end;
-$$;
-
-
 ALTER FUNCTION "public"."update_shop_cart_item_qty"("p_cart_item_id" bigint, "p_quantity" integer) OWNER TO "postgres";
 
 
@@ -22488,20 +17482,15 @@ CREATE OR REPLACE FUNCTION "public"."update_store"("p_id" bigint, "p_name" "text
     AS $$
 declare
   v_row public.stores;
-  v_tenant_id bigint;
-begin
+  begin
   select tenant_id into v_tenant_id
   from public.stores
   where id = p_id;
 
   if v_tenant_id is null then
     raise exception 'store not found';
-  end if;
-
   if not public.can_manage_store(v_tenant_id) then
     raise exception 'not allowed';
-  end if;
-
   update public.stores
   set
     name = trim(p_name),
@@ -22509,12 +17498,7 @@ begin
   where id = p_id
   returning * into v_row;
 
-  return v_row;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."update_store"("p_id" bigint, "p_name" "text", "p_vendor_code" "text") OWNER TO "postgres";
+  ALTER FUNCTION "public"."update_store"("p_id" bigint, "p_name" "text", "p_vendor_code" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."update_store_access"("p_id" bigint, "p_status" boolean) RETURNS "public"."store_access"
@@ -22523,8 +17507,7 @@ CREATE OR REPLACE FUNCTION "public"."update_store_access"("p_id" bigint, "p_stat
     AS $$
 declare
   v_row public.store_access;
-  v_tenant_id bigint;
-begin
+  begin
   select s.tenant_id into v_tenant_id
   from public.store_access sa
   join public.stores s on s.id = sa.store_id
@@ -22532,23 +17515,14 @@ begin
 
   if v_tenant_id is null then
     raise exception 'store access not found';
-  end if;
-
   if not public.can_manage_store(v_tenant_id) then
     raise exception 'not allowed';
-  end if;
-
   update public.store_access
   set status = p_status
   where id = p_id
   returning * into v_row;
 
-  return v_row;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."update_store_access"("p_id" bigint, "p_status" boolean) OWNER TO "postgres";
+  ALTER FUNCTION "public"."update_store_access"("p_id" bigint, "p_status" boolean) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."update_store_access_fields"("p_id" bigint, "p_status" boolean DEFAULT NULL::boolean, "p_see_price" boolean DEFAULT NULL::boolean) RETURNS "public"."store_access"
@@ -22557,8 +17531,7 @@ CREATE OR REPLACE FUNCTION "public"."update_store_access_fields"("p_id" bigint, 
     AS $$
 declare
   v_row public.store_access;
-  v_tenant_id bigint;
-begin
+  begin
   select s.tenant_id into v_tenant_id
   from public.store_access sa
   join public.stores s on s.id = sa.store_id
@@ -22566,12 +17539,8 @@ begin
 
   if v_tenant_id is null then
     raise exception 'store access not found';
-  end if;
-
   if not public.can_manage_store(v_tenant_id) then
     raise exception 'not allowed';
-  end if;
-
   update public.store_access
   set
     status = coalesce(p_status, status),
@@ -22579,12 +17548,7 @@ begin
   where id = p_id
   returning * into v_row;
 
-  return v_row;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."update_store_access_fields"("p_id" bigint, "p_status" boolean, "p_see_price" boolean) OWNER TO "postgres";
+  ALTER FUNCTION "public"."update_store_access_fields"("p_id" bigint, "p_status" boolean, "p_see_price" boolean) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."update_tenant_for_superadmin"("p_tenant_id" bigint, "p_name" "text", "p_slug" "text", "p_is_active" boolean, "p_public_domain" "text" DEFAULT NULL::"text", "p_parent_id" bigint DEFAULT NULL::bigint) RETURNS TABLE("id" bigint, "name" "text", "slug" "text", "public_domain" "text", "is_active" boolean, "parent_id" bigint, "preference" "jsonb", "created_at" timestamp with time zone, "updated_at" timestamp with time zone)
@@ -22680,9 +17644,6 @@ CREATE OR REPLACE FUNCTION "public"."update_tenant_module_for_superadmin"("p_id"
     created_at,
     updated_at
   from updated;
-$$;
-
-
 ALTER FUNCTION "public"."update_tenant_module_for_superadmin"("p_id" bigint, "p_tenant_id" bigint, "p_module_key" "text", "p_is_active" boolean) OWNER TO "postgres";
 
 
@@ -22696,12 +17657,8 @@ begin
     or public.is_tenant_admin(p_tenant_id)
   ) then
     return;
-  end if;
-
   if jsonb_typeof(p_preference) is distinct from 'object' then
     raise exception 'Tenant preference must be a JSON object';
-  end if;
-
   return query
   update public.tenants as t
   set preference = p_preference
@@ -22716,10 +17673,6 @@ begin
     t.preference,
     t.created_at,
     t.updated_at;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."update_tenant_preference_for_admin"("p_tenant_id" bigint, "p_preference" "jsonb") OWNER TO "postgres";
 
 
@@ -22734,23 +17687,15 @@ begin
 
   if v_row.id is null then
     raise exception 'Role not found';
-  end if;
-
   if not public.user_is_tenant_admin(v_row.tenant_id) then
     raise exception 'Unauthorized';
-  end if;
-
   if p_is_admin = true and v_row.is_admin = false and exists (
     select 1 from public.tenant_roles
     where tenant_id = v_row.tenant_id and scope = v_row.scope and is_admin = true and id <> p_role_id
   ) then
     raise exception 'Only one Administrator role is allowed per scope';
-  end if;
-
   if v_row.is_system = true and v_row.is_admin <> p_is_admin then
     raise exception 'Cannot modify admin status of system roles';
-  end if;
-
   update public.tenant_roles
   set
     name = trim(p_name),
@@ -22759,12 +17704,7 @@ begin
   where id = p_role_id
   returning * into v_row;
 
-  return v_row;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."update_tenant_role"("p_role_id" bigint, "p_name" "text", "p_is_admin" boolean) OWNER TO "postgres";
+  ALTER FUNCTION "public"."update_tenant_role"("p_role_id" bigint, "p_name" "text", "p_is_admin" boolean) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."update_thrift_sales_delivery_status"("p_tenant_id" bigint, "p_invoice_id" bigint, "p_delivery_status" "text", "p_actor" "text" DEFAULT 'cashier'::"text") RETURNS "jsonb"
@@ -23047,14 +17987,10 @@ BEGIN
     END
   );
 END;
-$$;
-
-
 ALTER FUNCTION "public"."update_thrift_sales_delivery_status"("p_tenant_id" bigint, "p_invoice_id" bigint, "p_delivery_status" "text", "p_actor" "text") OWNER TO "postgres";
 
 
 COMMENT ON FUNCTION "public"."update_thrift_sales_delivery_status"("p_tenant_id" bigint, "p_invoice_id" bigint, "p_delivery_status" "text", "p_actor" "text") IS 'Advance Online parcel status. First DELIVERED inserts thrift_sales_pnl_lines (shop-paid fees) and sets economics_closed_at. DELIVERED→IN_TRANSIT deletes DELIVERED PnL and clears economics_closed_at. Never changes payment_status. RETURNED requires revert RTO.';
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."customer_group_member_grants" (
@@ -23084,32 +18020,20 @@ begin
   select * into v_member from public.customer_group_members where id = p_cgm_id;
   if v_member.id is null then
     raise exception 'Customer group member not found';
-  end if;
-
   select * into v_group from public.customer_groups where id = v_member.customer_group_id;
   if v_group.id is null then
     raise exception 'Customer group not found';
-  end if;
-
   if not public.user_is_tenant_admin(v_group.tenant_id) then
     raise exception 'Unauthorized';
-  end if;
-
   if p_effect not in ('allow', 'deny') then
     raise exception 'Invalid effect: %', p_effect;
-  end if;
-
   if not (p_module_key = any(public.get_active_module_keys_for_tenant(v_group.tenant_id))) then
     raise exception 'Module is not active for this tenant';
-  end if;
-
   if not exists (
     select 1 from public.module_actions
     where module_key = p_module_key and action = p_action and is_active = true
   ) then
     raise exception 'Invalid or inactive action: % for module %', p_action, p_module_key;
-  end if;
-
   insert into public.customer_group_member_grants (
     customer_group_member_id,
     module_key,
@@ -23127,12 +18051,7 @@ begin
   returning * into v_row;
 
   perform public.bump_tenant_permission_version(v_group.tenant_id);
-  return v_row;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."upsert_customer_group_member_grant"("p_cgm_id" bigint, "p_module_key" "text", "p_action" "text", "p_effect" "text") OWNER TO "postgres";
+  ALTER FUNCTION "public"."upsert_customer_group_member_grant"("p_cgm_id" bigint, "p_module_key" "text", "p_action" "text", "p_effect" "text") OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."customer_group_shop_profiles" (
@@ -23162,8 +18081,6 @@ CREATE OR REPLACE FUNCTION "public"."upsert_customer_group_shop_profile"("p_tena
 begin
   if not public.user_can_manage_shop_tenant(p_tenant_id) then
     raise exception 'not allowed';
-  end if;
-
   return query
   insert into public.customer_group_shop_profiles (
     tenant_id,
@@ -23200,10 +18117,6 @@ begin
     default_can_set_dropship_price = excluded.default_can_set_dropship_price,
     updated_at = now()
   returning *;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."upsert_customer_group_shop_profile"("p_tenant_id" bigint, "p_customer_group_id" bigint, "p_is_active" boolean, "p_default_can_browse" boolean, "p_default_see_price" boolean, "p_default_can_add_to_cart" boolean, "p_default_can_place_order" boolean, "p_default_can_negotiate" boolean, "p_default_can_view_quantity" boolean, "p_default_can_set_dropship_price" boolean) OWNER TO "postgres";
 
 
@@ -23236,8 +18149,6 @@ begin
   v_action := case when p_id is null then 'create' else 'edit' end;
   if not public.membership_has_module_action(p_tenant_id, 'investor_profiles', v_action) then
     raise exception 'not allowed';
-  end if;
-
   if p_id is not null then
     update public.investors
     set
@@ -23258,14 +18169,7 @@ begin
       p_tenant_id, p_name, p_phone, p_email, p_address, p_is_active, p_currency_code, p_notes
     )
     returning * into v_row;
-  end if;
-
-  return v_row;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."upsert_investor_profile"("p_id" bigint, "p_tenant_id" bigint, "p_name" "text", "p_phone" "text", "p_email" "text", "p_address" "text", "p_is_active" boolean, "p_currency_code" "text", "p_notes" "text") OWNER TO "postgres";
+  ALTER FUNCTION "public"."upsert_investor_profile"("p_id" bigint, "p_tenant_id" bigint, "p_name" "text", "p_phone" "text", "p_email" "text", "p_address" "text", "p_is_active" boolean, "p_currency_code" "text", "p_notes" "text") OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."membership_grants" (
@@ -23295,27 +18199,17 @@ begin
   select * into v_member from public.memberships where id = p_membership_id;
   if v_member.id is null then
     raise exception 'Membership not found';
-  end if;
-
   if not public.user_is_tenant_admin(v_member.tenant_id) then
     raise exception 'Unauthorized';
-  end if;
-
   if p_effect not in ('allow', 'deny') then
     raise exception 'Invalid effect: %', p_effect;
-  end if;
-
   if not (p_module_key = any(public.get_active_module_keys_for_tenant(v_member.tenant_id))) then
     raise exception 'Module is not active for this tenant';
-  end if;
-
   if not exists (
     select 1 from public.module_actions
     where module_key = p_module_key and action = p_action and is_active = true
   ) then
     raise exception 'Invalid or inactive action: % for module %', p_action, p_module_key;
-  end if;
-
   insert into public.membership_grants (
     membership_id,
     module_key,
@@ -23337,12 +18231,7 @@ begin
   returning * into v_row;
 
   perform public.bump_tenant_permission_version(v_member.tenant_id);
-  return v_row;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."upsert_membership_grant"("p_membership_id" bigint, "p_module_key" "text", "p_action" "text", "p_effect" "text") OWNER TO "postgres";
+  ALTER FUNCTION "public"."upsert_membership_grant"("p_membership_id" bigint, "p_module_key" "text", "p_action" "text", "p_effect" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."upsert_recipient_profile_and_address"("p_tenant_id" bigint, "p_name" "text", "p_phone" "text", "p_phone_secondary" "text" DEFAULT NULL::"text", "p_address" "text" DEFAULT NULL::"text", "p_district" "text" DEFAULT NULL::"text", "p_thana" "text" DEFAULT NULL::"text") RETURNS "jsonb"
@@ -23359,10 +18248,6 @@ begin
     p_district => p_district,
     p_thana => p_thana
   );
-end;
-$$;
-
-
 ALTER FUNCTION "public"."upsert_recipient_profile_and_address"("p_tenant_id" bigint, "p_name" "text", "p_phone" "text", "p_phone_secondary" "text", "p_address" "text", "p_district" "text", "p_thana" "text") OWNER TO "postgres";
 
 
@@ -23382,39 +18267,13 @@ declare
   v_next jsonb := '[]'::jsonb;
   v_elem jsonb;
   v_matched boolean := false;
-  v_row public.recipient_profiles%rowtype;
-  v_can_access boolean;
-begin
-  if auth.uid() is null then
-    raise exception 'Not authenticated';
-  end if;
-
-  v_can_access := public.is_tenant_staff(p_tenant_id)
-    or exists (
-      select 1
-      from public.customer_group_members cgm
-      join public.customer_groups cg on cg.id = cgm.customer_group_id
-      where cg.tenant_id = p_tenant_id
-        and lower(trim(cgm.email)) = public.current_user_email()
-        and cgm.is_active = true
-        and cg.is_active = true
-    );
-
-  if not v_can_access then
-    raise exception 'access denied';
-  end if;
-
   v_phone := public.normalize_bd_mobile(p_phone);
   v_name := nullif(trim(coalesce(p_name, '')), '');
   if v_name is null then
     raise exception 'Recipient name is required';
-  end if;
-
   v_address := nullif(trim(coalesce(p_address, '')), '');
   if v_address is null then
     raise exception 'Recipient address is required';
-  end if;
-
   v_district := nullif(trim(coalesce(p_district, '')), '');
   v_thana := nullif(trim(coalesce(p_thana, '')), '');
 
@@ -23423,11 +18282,8 @@ begin
       v_secondary := public.normalize_bd_mobile(p_secondary_phone);
     exception when others then
       v_secondary := nullif(trim(p_secondary_phone), '');
-    end;
-  else
+    else
     v_secondary := null;
-  end if;
-
   v_entry := jsonb_build_object(
     'id', gen_random_uuid()::text,
     'line', v_address,
@@ -23474,13 +18330,8 @@ begin
         v_next := v_next || jsonb_build_array(
           jsonb_set(v_elem, '{is_default}', 'false'::jsonb)
         );
-      end if;
-    end loop;
-
-    if not v_matched then
+      if not v_matched then
       v_next := v_next || jsonb_build_array(v_entry);
-    end if;
-
     update public.recipient_profiles
     set
       name = v_name,
@@ -23492,26 +18343,7 @@ begin
       updated_at = now()
     where id = v_row.id
     returning * into v_row;
-  end if;
-
-  return jsonb_build_object(
-    'id', v_row.id,
-    'name', v_row.name,
-    'phone', v_row.phone,
-    'secondary_phone', v_row.secondary_phone,
-    'address', v_row.address,
-    'district', v_row.district,
-    'thana', v_row.thana,
-    'addresses', v_row.addresses,
-    'tenant_id', v_row.tenant_id,
-    'created_at', v_row.created_at,
-    'updated_at', v_row.updated_at
-  );
-end;
-$$;
-
-
-ALTER FUNCTION "public"."upsert_recipient_profile_by_phone"("p_tenant_id" bigint, "p_name" "text", "p_phone" "text", "p_secondary_phone" "text", "p_address" "text", "p_district" "text", "p_thana" "text") OWNER TO "postgres";
+  ALTER FUNCTION "public"."upsert_recipient_profile_by_phone"("p_tenant_id" bigint, "p_name" "text", "p_phone" "text", "p_secondary_phone" "text", "p_address" "text", "p_district" "text", "p_thana" "text") OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."shops" (
@@ -23569,35 +18401,23 @@ declare
 begin
   if not public.user_can_manage_shop_tenant(p_tenant_id) then
     raise exception 'not allowed';
-  end if;
-
   if p_pricing_method is not null and p_pricing_method not in ('direct_cost', 'markup') then
     raise exception 'invalid pricing method';
-  end if;
   if p_quantity_display_mode is not null and p_quantity_display_mode not in ('original', 'custom_override') then
     raise exception 'invalid quantity display mode';
-  end if;
   if p_markup_percentage < 0 then
     raise exception 'markup percentage must be non-negative';
-  end if;
-
   v_vendor_code := nullif(trim(coalesce(p_vendor_code, '')), '');
   if v_vendor_code is null
      and p_vendor_filters is not null
      and jsonb_typeof(p_vendor_filters) = 'array'
      and jsonb_array_length(p_vendor_filters) > 0 then
     v_vendor_code := nullif(trim(coalesce(p_vendor_filters->0->>'vendor_code', '')), '');
-  end if;
-
   if p_id is null then
     if p_shop_type is null then
       raise exception 'shop_type is required when creating a shop';
-    end if;
-
     if p_shop_type = 'dropship' and p_is_negotiable then
       raise exception 'dropship shops cannot be negotiable';
-    end if;
-
     insert into public.shops (
       tenant_id,
       name,
@@ -23662,12 +18482,8 @@ begin
 
     if v_shop_type is null then
       raise exception 'shop not found';
-    end if;
-
     if v_shop_type = 'dropship' and p_is_negotiable then
       raise exception 'dropship shops cannot be negotiable';
-    end if;
-
     update public.shops
     set
       name                            = trim(p_name),
@@ -23705,14 +18521,7 @@ begin
 
     if v_result is null then
       raise exception 'shop not found or update failed';
-    end if;
-  end if;
-
-  return next v_result;
-end;
-$$;
-
-
+    return next v_result;
 ALTER FUNCTION "public"."upsert_shop"("p_tenant_id" bigint, "p_name" "text", "p_slug" "text", "p_order_mode" "public"."shop_order_mode_enum", "p_is_negotiable" boolean, "p_show_stock_quantity" boolean, "p_is_active" boolean, "p_shop_type" "public"."shop_type_enum", "p_vendor_code" "text", "p_id" bigint, "p_default_currency_id" bigint, "p_global_stock_type_id" bigint, "p_allow_delivery" boolean, "p_buy_currency_id" bigint, "p_sell_currency_id" bigint, "p_pricing_method" "text", "p_markup_percentage" numeric, "p_quantity_display_mode" "text", "p_default_print_charge_amount" numeric, "p_default_packing_charge_amount" numeric, "p_deduct_charges_from_margin" boolean, "p_vendor_filters" "jsonb", "p_deduct_print_from_margin" boolean, "p_deduct_packing_from_margin" boolean, "p_description" "text", "p_category_ids" bigint[]) OWNER TO "postgres";
 
 
@@ -23753,16 +18562,10 @@ begin
 
   if v_tenant_id is null then
     raise exception 'shop not found';
-  end if;
-
   if not public.user_can_manage_shop_tenant(v_tenant_id) then
     raise exception 'not allowed';
-  end if;
-
   if (p_credit_limit_amount is null) <> (p_credit_limit_currency_id is null) then
     raise exception 'both credit_limit_amount and credit_limit_currency_id must be provided together or be null';
-  end if;
-
   return query
   insert into public.shop_customer_group_access (
     shop_id,
@@ -23808,10 +18611,6 @@ begin
     credit_limit_currency_id = excluded.credit_limit_currency_id,
     updated_at = now()
   returning *;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."upsert_shop_customer_group_access"("p_shop_id" bigint, "p_customer_group_id" bigint, "p_status" boolean, "p_can_browse" boolean, "p_see_price" boolean, "p_can_add_to_cart" boolean, "p_can_place_order" boolean, "p_can_negotiate" boolean, "p_can_view_quantity" boolean, "p_can_set_dropship_price" boolean, "p_price_tier_code" "text", "p_credit_limit_amount" numeric, "p_credit_limit_currency_id" bigint) OWNER TO "postgres";
 
 
@@ -23844,12 +18643,8 @@ begin
   select tenant_id into v_tenant_id from public.shops where id = p_shop_id;
   if v_tenant_id is null then
     raise exception 'shop not found';
-  end if;
-
   if not public.user_can_manage_shop_tenant(v_tenant_id) then
     raise exception 'not allowed';
-  end if;
-
   return query
   insert into public.shop_pricing_rules (
     tenant_id,
@@ -23868,10 +18663,6 @@ begin
     is_auto_publish = excluded.is_auto_publish,
     updated_at = now()
   returning *;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."upsert_shop_pricing_rule"("p_shop_id" bigint, "p_markup_percentage" numeric, "p_is_auto_publish" boolean) OWNER TO "postgres";
 
 
@@ -23885,12 +18676,8 @@ begin
   select tenant_id into v_tenant_id from public.shops where id = p_shop_id;
   if v_tenant_id is null then
     raise exception 'shop not found';
-  end if;
-
   if not public.user_can_manage_shop_tenant(v_tenant_id) then
     raise exception 'not allowed';
-  end if;
-
   return query
   insert into public.shop_pricing_rules (
     tenant_id,
@@ -23912,10 +18699,6 @@ begin
     default_show_quantity = excluded.default_show_quantity,
     updated_at = now()
   returning *;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."upsert_shop_pricing_rule"("p_shop_id" bigint, "p_markup_percentage" numeric, "p_is_auto_publish" boolean, "p_default_show_quantity" boolean) OWNER TO "postgres";
 
 
@@ -23929,12 +18712,8 @@ begin
   select tenant_id into v_tenant_id from public.shops where id = p_shop_id;
   if v_tenant_id is null then
     raise exception 'shop not found';
-  end if;
-
   if not public.user_can_manage_shop_tenant(v_tenant_id) then
     raise exception 'not allowed';
-  end if;
-
   return query
   insert into public.shop_pricing_rules (
     tenant_id,
@@ -23959,10 +18738,6 @@ begin
     default_add_quantity = excluded.default_add_quantity,
     updated_at = now()
   returning *;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."upsert_shop_pricing_rule"("p_shop_id" bigint, "p_markup_percentage" numeric, "p_is_auto_publish" boolean, "p_default_show_quantity" boolean, "p_default_add_quantity" integer) OWNER TO "postgres";
 
 
@@ -23976,12 +18751,8 @@ begin
   select tenant_id into v_tenant_id from public.shops where id = p_shop_id;
   if v_tenant_id is null then
     raise exception 'shop not found';
-  end if;
-
   if not public.user_can_manage_shop_tenant(v_tenant_id) then
     raise exception 'not allowed';
-  end if;
-
   return query
   insert into public.shop_pricing_rules (
     tenant_id,
@@ -24009,10 +18780,6 @@ begin
     dropship_markup_percentage = excluded.dropship_markup_percentage,
     updated_at = now()
   returning *;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."upsert_shop_pricing_rule"("p_shop_id" bigint, "p_markup_percentage" numeric, "p_is_auto_publish" boolean, "p_default_show_quantity" boolean, "p_default_add_quantity" integer, "p_dropship_markup_percentage" numeric) OWNER TO "postgres";
 
 
@@ -24049,13 +18816,10 @@ CREATE OR REPLACE FUNCTION "public"."upsert_shop_product_listing"("p_tenant_id" 
     AS $$
 declare
   v_global_stock_id bigint;
-  v_product_id bigint;
-begin
+  begin
   -- Caller must be admin/staff of this tenant
   if not public.user_can_manage_shop_tenant(p_tenant_id) then
     raise exception 'not allowed';
-  end if;
-
   -- Resolve denormalized IDs
   select gsa.stock_id, gsi.product_id
   into v_global_stock_id, v_product_id
@@ -24066,13 +18830,9 @@ begin
 
   if v_global_stock_id is null or v_product_id is null then
     raise exception 'invalid global stock allocation';
-  end if;
-
   -- Dropship dual money constraint
   if (p_minimum_sell_price_amount is null) <> (p_minimum_sell_price_currency_id is null) then
     raise exception 'both minimum_sell_price_amount and minimum_sell_price_currency_id must be provided together or be null';
-  end if;
-
   return query
   insert into public.shop_product_listings (
     id,
@@ -24115,10 +18875,6 @@ begin
     is_active = excluded.is_active,
     updated_at = now()
   returning *;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."upsert_shop_product_listing"("p_tenant_id" bigint, "p_shop_id" bigint, "p_global_stock_allocation_id" bigint, "p_sell_price_amount" numeric, "p_sell_price_currency_id" bigint, "p_minimum_sell_price_amount" numeric, "p_minimum_sell_price_currency_id" bigint, "p_show_quantity" boolean, "p_display_quantity_override" integer, "p_is_active" boolean, "p_id" bigint) OWNER TO "postgres";
 
 
@@ -24136,8 +18892,6 @@ declare
 begin
   if not public.user_can_manage_shop_tenant(p_tenant_id) then
     raise exception 'not allowed';
-  end if;
-
   -- Resolve stock & product id from allocation by joining global_stocks and global_shipment_items
   select gsa.stock_id, gsi.product_id
   into v_global_stock_id, v_product_id
@@ -24148,15 +18902,11 @@ begin
 
   if v_global_stock_id is null then
     raise exception 'allocation not found';
-  end if;
-
   if p_id is not null then
     select * into v_existing from public.shop_product_listings where id = p_id;
   else
     select * into v_existing from public.shop_product_listings
     where shop_id = p_shop_id and global_stock_allocation_id = p_global_stock_allocation_id;
-  end if;
-
   v_price_locked := coalesce(p_is_price_locked, v_existing.is_price_locked, false);
   v_qty_locked := coalesce(p_is_quantity_locked, v_existing.is_quantity_locked, false);
   v_override_type := coalesce(p_quantity_override_type, v_existing.quantity_override_type, 'absolute');
@@ -24215,12 +18965,7 @@ begin
       v_override_type
     )
     returning *;
-  end if;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."upsert_shop_product_listing"("p_tenant_id" bigint, "p_shop_id" bigint, "p_global_stock_allocation_id" bigint, "p_sell_price_amount" numeric, "p_sell_price_currency_id" bigint, "p_minimum_sell_price_amount" numeric, "p_minimum_sell_price_currency_id" bigint, "p_show_quantity" boolean, "p_display_quantity_override" integer, "p_is_active" boolean, "p_id" bigint, "p_is_price_locked" boolean, "p_is_quantity_locked" boolean, "p_quantity_override_type" "text") OWNER TO "postgres";
+  ALTER FUNCTION "public"."upsert_shop_product_listing"("p_tenant_id" bigint, "p_shop_id" bigint, "p_global_stock_allocation_id" bigint, "p_sell_price_amount" numeric, "p_sell_price_currency_id" bigint, "p_minimum_sell_price_amount" numeric, "p_minimum_sell_price_currency_id" bigint, "p_show_quantity" boolean, "p_display_quantity_override" integer, "p_is_active" boolean, "p_id" bigint, "p_is_price_locked" boolean, "p_is_quantity_locked" boolean, "p_quantity_override_type" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."upsert_shop_product_listing"("p_tenant_id" bigint, "p_shop_id" bigint, "p_global_stock_allocation_id" bigint DEFAULT NULL::bigint, "p_sell_price_amount" numeric DEFAULT NULL::numeric, "p_sell_price_currency_id" bigint DEFAULT NULL::bigint, "p_minimum_sell_price_amount" numeric DEFAULT NULL::numeric, "p_minimum_sell_price_currency_id" bigint DEFAULT NULL::bigint, "p_show_quantity" boolean DEFAULT NULL::boolean, "p_display_quantity_override" integer DEFAULT NULL::integer, "p_is_active" boolean DEFAULT true, "p_id" bigint DEFAULT NULL::bigint, "p_is_price_locked" boolean DEFAULT NULL::boolean, "p_is_quantity_locked" boolean DEFAULT NULL::boolean, "p_quantity_override_type" "text" DEFAULT NULL::"text", "p_global_stock_id" bigint DEFAULT NULL::bigint) RETURNS SETOF "public"."shop_product_listings"
@@ -24239,14 +18984,10 @@ begin
      and not public.user_can_manage_shop_tenant(public.resolve_parent_tenant_id(p_tenant_id))
      and not public.is_superadmin() then
     raise exception 'not allowed';
-  end if;
-
   v_target_stock_id := coalesce(p_global_stock_id, p_global_stock_allocation_id);
 
   if v_target_stock_id is null then
     raise exception 'global stock not found';
-  end if;
-
   select gsi.product_id into v_product_id
   from public.global_stocks gs
   join public.global_shipment_items gsi on gsi.id = gs.shipment_item_id
@@ -24254,15 +18995,11 @@ begin
 
   if v_product_id is null then
     raise exception 'global stock not found';
-  end if;
-
   if p_id is not null then
     select * into v_existing from public.shop_product_listings where id = p_id;
   else
     select * into v_existing from public.shop_product_listings
     where shop_id = p_shop_id and global_stock_id = v_target_stock_id;
-  end if;
-
   v_price_locked := coalesce(p_is_price_locked, v_existing.is_price_locked, false);
   v_qty_locked := coalesce(p_is_quantity_locked, v_existing.is_quantity_locked, false);
   v_override_type := coalesce(p_quantity_override_type, v_existing.quantity_override_type, 'absolute');
@@ -24286,8 +19023,6 @@ begin
     where id = v_existing.id
     returning *;
     return;
-  end if;
-
   return query
   insert into public.shop_product_listings (
     tenant_id,
@@ -24323,10 +19058,6 @@ begin
     v_override_type
   )
   returning *;
-end;
-$$;
-
-
 ALTER FUNCTION "public"."upsert_shop_product_listing"("p_tenant_id" bigint, "p_shop_id" bigint, "p_global_stock_allocation_id" bigint, "p_sell_price_amount" numeric, "p_sell_price_currency_id" bigint, "p_minimum_sell_price_amount" numeric, "p_minimum_sell_price_currency_id" bigint, "p_show_quantity" boolean, "p_display_quantity_override" integer, "p_is_active" boolean, "p_id" bigint, "p_is_price_locked" boolean, "p_is_quantity_locked" boolean, "p_quantity_override_type" "text", "p_global_stock_id" bigint) OWNER TO "postgres";
 
 
@@ -24357,27 +19088,17 @@ begin
 
   if v_role.id is null then
     raise exception 'Role not found';
-  end if;
-
   if not public.user_is_tenant_admin(v_role.tenant_id) then
     raise exception 'Unauthorized';
-  end if;
-
   if v_role.is_admin = true then
     raise exception 'Cannot assign explicit grants to an Administrator role';
-  end if;
-
   if not (p_module_key = any(public.get_active_module_keys_for_tenant(v_role.tenant_id))) then
     raise exception 'Module is not active for this tenant';
-  end if;
-
   if not exists (
     select 1 from public.module_actions
     where module_key = p_module_key and action = p_action and is_active = true
   ) then
     raise exception 'Invalid or inactive action: % for module %', p_action, p_module_key;
-  end if;
-
   insert into public.tenant_role_grants (
     tenant_role_id,
     module_key,
@@ -24398,12 +19119,7 @@ begin
     updated_at = now()
   returning * into v_row;
 
-  return v_row;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."upsert_tenant_role_grant"("p_tenant_role_id" bigint, "p_module_key" "text", "p_action" "text", "p_allowed" boolean) OWNER TO "postgres";
+  ALTER FUNCTION "public"."upsert_tenant_role_grant"("p_tenant_role_id" bigint, "p_module_key" "text", "p_action" "text", "p_allowed" boolean) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."user_can_access_tenant_fetch"("p_tenant_id" bigint) RETURNS boolean
@@ -24429,9 +19145,6 @@ CREATE OR REPLACE FUNCTION "public"."user_can_access_tenant_fetch"("p_tenant_id"
         and cgm.is_active = true
         and cg.is_active = true
     );
-$$;
-
-
 ALTER FUNCTION "public"."user_can_access_tenant_fetch"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -24450,9 +19163,6 @@ CREATE OR REPLACE FUNCTION "public"."user_can_manage_parent_tenant"("p_parent_te
         or public.has_module_action(p_parent_tenant_id, 'procurement_stock', 'manage')
       )
   );
-$$;
-
-
 ALTER FUNCTION "public"."user_can_manage_parent_tenant"("p_parent_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -24468,9 +19178,6 @@ CREATE OR REPLACE FUNCTION "public"."user_can_manage_shop_tenant"("p_tenant_id" 
       and m.is_active = true
       and m.role in ('admin', 'staff')
   );
-$$;
-
-
 ALTER FUNCTION "public"."user_can_manage_shop_tenant"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -24481,8 +19188,6 @@ CREATE OR REPLACE FUNCTION "public"."user_is_tenant_admin"("p_tenant_id" bigint)
 begin
   if public.is_superadmin() then
     return true;
-  end if;
-
   return exists (
     select 1
     from public.memberships m
@@ -24495,53 +19200,7 @@ begin
         or tr.is_admin = true
       )
   );
-end;
-$$;
-
-
 ALTER FUNCTION "public"."user_is_tenant_admin"("p_tenant_id" bigint) OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."void_global_invoice"("p_invoice_id" bigint) RETURNS "void"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-begin
-  perform public.void_sales_invoice(p_invoice_id);
-end;
-$$;
-
-
-ALTER FUNCTION "public"."void_global_invoice"("p_invoice_id" bigint) OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."void_sales_invoice"("p_invoice_id" bigint) RETURNS "void"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_invoice public.global_invoices;
-begin
-  select * into v_invoice from public.global_invoices where id = p_invoice_id for update;
-  if v_invoice.id is null then raise exception 'invoice not found'; end if;
-  if v_invoice.invoice_status <> 'posted'::public.global_invoice_status then
-    raise exception 'only posted invoices can be voided';
-  end if;
-  if v_invoice.paid_amount > 0 then
-    raise exception 'cannot void a paid or partially paid invoice; reverse collections/payments first';
-  end if;
-
-  -- Mark invoice as voided (Trigger on global_invoices handles restoring stock)
-  update public.global_invoices
-  set
-    invoice_status = 'voided'::public.global_invoice_status,
-    due_amount = 0.00
-  where id = p_invoice_id;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."void_sales_invoice"("p_invoice_id" bigint) OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."activity_logs" (
@@ -24572,7 +19231,6 @@ ALTER SEQUENCE "public"."activity_logs_id_seq" OWNER TO "postgres";
 ALTER SEQUENCE "public"."activity_logs_id_seq" OWNED BY "public"."activity_logs"."id";
 
 
-
 CREATE TABLE IF NOT EXISTS "public"."batch_code_pc" (
     "id" bigint NOT NULL,
     "shipment_id" bigint NOT NULL,
@@ -24601,39 +19259,6 @@ ALTER SEQUENCE "public"."batch_code_pc_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."batch_code_pc_id_seq" OWNED BY "public"."batch_code_pc"."id";
-
-
-
-CREATE TABLE IF NOT EXISTS "public"."billing_profiles" (
-    "id" bigint NOT NULL,
-    "tenant_id" bigint NOT NULL,
-    "name" "text" NOT NULL,
-    "email" "text",
-    "customer_group_id" bigint,
-    "phone" "text",
-    "address" "text",
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "color" "text"
-);
-
-
-ALTER TABLE "public"."billing_profiles" OWNER TO "postgres";
-
-
-CREATE SEQUENCE IF NOT EXISTS "public"."billing_profiles_id_seq"
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE "public"."billing_profiles_id_seq" OWNER TO "postgres";
-
-
-ALTER SEQUENCE "public"."billing_profiles_id_seq" OWNED BY "public"."billing_profiles"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."business_parties" (
@@ -24670,7 +19295,6 @@ ALTER SEQUENCE "public"."business_parties_id_seq" OWNER TO "postgres";
 ALTER SEQUENCE "public"."business_parties_id_seq" OWNED BY "public"."business_parties"."id";
 
 
-
 CREATE TABLE IF NOT EXISTS "public"."cargo_companies" (
     "id" bigint NOT NULL,
     "tenant_id" bigint,
@@ -24697,7 +19321,6 @@ ALTER TABLE "public"."cargo_companies" OWNER TO "postgres";
 COMMENT ON COLUMN "public"."cargo_companies"."is_default" IS 'True for the tenant system default cargo company (code DEFAULT). At most one per tenant_id.';
 
 
-
 CREATE SEQUENCE IF NOT EXISTS "public"."cargo_companies_id_seq"
     START WITH 1
     INCREMENT BY 1
@@ -24710,7 +19333,6 @@ ALTER SEQUENCE "public"."cargo_companies_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."cargo_companies_id_seq" OWNED BY "public"."cargo_companies"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."cart_items" (
@@ -24737,7 +19359,6 @@ ALTER TABLE "public"."cart_items" OWNER TO "postgres";
 COMMENT ON TABLE "public"."cart_items" IS 'Shopping cart line items. Stores snapshot values plus optional product reference.';
 
 
-
 CREATE SEQUENCE IF NOT EXISTS "public"."cart_items_id_seq"
     START WITH 1
     INCREMENT BY 1
@@ -24750,7 +19371,6 @@ ALTER SEQUENCE "public"."cart_items_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."cart_items_id_seq" OWNED BY "public"."cart_items"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."carts" (
@@ -24770,7 +19390,6 @@ ALTER TABLE "public"."carts" OWNER TO "postgres";
 COMMENT ON TABLE "public"."carts" IS 'Shopping cart header table. Stores tenant, store, customer group and visibility settings.';
 
 
-
 CREATE SEQUENCE IF NOT EXISTS "public"."carts_id_seq"
     START WITH 1
     INCREMENT BY 1
@@ -24783,7 +19402,6 @@ ALTER SEQUENCE "public"."carts_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."carts_id_seq" OWNED BY "public"."carts"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."comments" (
@@ -24815,7 +19433,6 @@ ALTER SEQUENCE "public"."comments_id_seq" OWNER TO "postgres";
 ALTER SEQUENCE "public"."comments_id_seq" OWNED BY "public"."comments"."id";
 
 
-
 CREATE TABLE IF NOT EXISTS "public"."commerce_cart" (
     "id" bigint NOT NULL,
     "product_id" bigint,
@@ -24845,7 +19462,6 @@ ALTER SEQUENCE "public"."commerce_cart_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."commerce_cart_id_seq" OWNED BY "public"."commerce_cart"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."commerce_inventory_product_summaries" (
@@ -24880,7 +19496,6 @@ ALTER SEQUENCE "public"."commerce_inventory_product_summaries_id_seq" OWNER TO "
 ALTER SEQUENCE "public"."commerce_inventory_product_summaries_id_seq" OWNED BY "public"."commerce_inventory_product_summaries"."id";
 
 
-
 CREATE TABLE IF NOT EXISTS "public"."commerce_invoice_boxes" (
     "id" bigint NOT NULL,
     "tenant_id" bigint NOT NULL,
@@ -24908,7 +19523,6 @@ ALTER SEQUENCE "public"."commerce_invoice_boxes_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."commerce_invoice_boxes_id_seq" OWNED BY "public"."commerce_invoice_boxes"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."commerce_invoices" (
@@ -24966,7 +19580,6 @@ ALTER SEQUENCE "public"."commerce_invoices_id_seq" OWNER TO "postgres";
 ALTER SEQUENCE "public"."commerce_invoices_id_seq" OWNED BY "public"."commerce_invoices"."id";
 
 
-
 CREATE TABLE IF NOT EXISTS "public"."commerce_order_items" (
     "id" bigint NOT NULL,
     "order_id" bigint,
@@ -25004,7 +19617,6 @@ ALTER SEQUENCE "public"."commerce_order_items_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."commerce_order_items_id_seq" OWNED BY "public"."commerce_order_items"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."commerce_order_settings" (
@@ -25060,7 +19672,6 @@ ALTER SEQUENCE "public"."commerce_orders_id_seq" OWNER TO "postgres";
 ALTER SEQUENCE "public"."commerce_orders_id_seq" OWNED BY "public"."commerce_orders"."id";
 
 
-
 CREATE TABLE IF NOT EXISTS "public"."courier_remittance_batches" (
     "id" bigint NOT NULL,
     "tenant_id" bigint NOT NULL,
@@ -25101,7 +19712,6 @@ ALTER TABLE "public"."courier_remittance_batches" ALTER COLUMN "id" ADD GENERATE
 );
 
 
-
 CREATE TABLE IF NOT EXISTS "public"."courier_remittance_items" (
     "id" bigint NOT NULL,
     "tenant_id" bigint NOT NULL,
@@ -25134,7 +19744,6 @@ ALTER TABLE "public"."courier_remittance_items" ALTER COLUMN "id" ADD GENERATED 
     NO MAXVALUE
     CACHE 1
 );
-
 
 
 CREATE SEQUENCE IF NOT EXISTS "public"."courier_wallet_entity_id_seq"
@@ -25195,7 +19804,6 @@ ALTER SEQUENCE "public"."customer_group_member_grants_id_seq" OWNER TO "postgres
 ALTER SEQUENCE "public"."customer_group_member_grants_id_seq" OWNED BY "public"."customer_group_member_grants"."id";
 
 
-
 CREATE SEQUENCE IF NOT EXISTS "public"."customer_group_members_id_seq"
     START WITH 1
     INCREMENT BY 1
@@ -25210,7 +19818,6 @@ ALTER SEQUENCE "public"."customer_group_members_id_seq" OWNER TO "postgres";
 ALTER SEQUENCE "public"."customer_group_members_id_seq" OWNED BY "public"."customer_group_members"."id";
 
 
-
 ALTER TABLE "public"."customer_group_shop_profiles" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDENTITY (
     SEQUENCE NAME "public"."customer_group_shop_profiles_id_seq"
     START WITH 1
@@ -25219,7 +19826,6 @@ ALTER TABLE "public"."customer_group_shop_profiles" ALTER COLUMN "id" ADD GENERA
     NO MAXVALUE
     CACHE 1
 );
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."customer_groups" (
@@ -25248,7 +19854,6 @@ ALTER SEQUENCE "public"."customer_groups_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."customer_groups_id_seq" OWNED BY "public"."customer_groups"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."customer_order_backlog_items" (
@@ -25282,7 +19887,6 @@ ALTER TABLE "public"."customer_order_backlog_items" ALTER COLUMN "id" ADD GENERA
 );
 
 
-
 CREATE TABLE IF NOT EXISTS "public"."entity_tags" (
     "id" bigint NOT NULL,
     "tenant_id" bigint NOT NULL,
@@ -25310,7 +19914,6 @@ ALTER SEQUENCE "public"."entity_tags_id_seq" OWNER TO "postgres";
 ALTER SEQUENCE "public"."entity_tags_id_seq" OWNED BY "public"."entity_tags"."id";
 
 
-
 CREATE TABLE IF NOT EXISTS "public"."gift_rule_items" (
     "id" bigint NOT NULL,
     "rule_id" bigint NOT NULL,
@@ -25334,7 +19937,6 @@ ALTER TABLE "public"."gift_rule_items" ALTER COLUMN "id" ADD GENERATED ALWAYS AS
 );
 
 
-
 CREATE TABLE IF NOT EXISTS "public"."gift_rule_redemptions" (
     "id" bigint NOT NULL,
     "order_id" bigint NOT NULL,
@@ -25354,7 +19956,6 @@ ALTER TABLE "public"."gift_rule_redemptions" ALTER COLUMN "id" ADD GENERATED ALW
     NO MAXVALUE
     CACHE 1
 );
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."gift_rules" (
@@ -25381,7 +19982,6 @@ ALTER TABLE "public"."gift_rules" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDEN
     NO MAXVALUE
     CACHE 1
 );
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."global_currencies" (
@@ -25412,134 +20012,6 @@ ALTER SEQUENCE "public"."global_currencies_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."global_currencies_id_seq" OWNED BY "public"."global_currencies"."id";
-
-
-
-CREATE OR REPLACE VIEW "public"."global_invoice_items" WITH ("security_invoker"='false') AS
- SELECT "id",
-    "tenant_id",
-    "parent_tenant_id",
-    "invoice_id",
-    "global_stock_id",
-    "shipment_item_id",
-    "product_id",
-    "name_snapshot",
-    "barcode_snapshot",
-    "product_code_snapshot",
-    "quantity",
-    "unit_cost_price",
-    "sell_price_amount",
-    "line_discount_amount",
-    "line_total_amount",
-    "return_quantity",
-    "created_at",
-    "updated_at",
-    "assigned_child_tenant_id"
-   FROM "public"."sales_invoice_items";
-
-
-ALTER VIEW "public"."global_invoice_items" OWNER TO "postgres";
-
-
-CREATE SEQUENCE IF NOT EXISTS "public"."global_invoice_items_id_seq"
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE "public"."global_invoice_items_id_seq" OWNER TO "postgres";
-
-
-ALTER SEQUENCE "public"."global_invoice_items_id_seq" OWNED BY "public"."sales_invoice_items"."id";
-
-
-
-CREATE OR REPLACE VIEW "public"."global_invoices" WITH ("security_invoker"='false') AS
- SELECT "id",
-    "tenant_id",
-    "parent_tenant_id",
-    "invoice_no",
-    "invoice_type",
-    "invoice_date",
-    "retail_billing_mode",
-    "invoice_status",
-    "fulfillment_status",
-    "billing_profile_id",
-    "recipient_profile_id",
-    "recipient_name",
-    "recipient_phone",
-    "recipient_address",
-    "collection_source",
-    "due_date",
-    "payment_status",
-    "total_amount",
-    "due_amount",
-    "paid_amount",
-    "subtotal_amount",
-    "discount_amount",
-    "shipping_charge",
-    "wrapping_charge",
-    "print_charge",
-    "note",
-    "created_by",
-    "created_at",
-    "updated_at",
-    "settlement_discount_amount",
-    "issued_by_tenant_id"
-   FROM "public"."sales_invoices";
-
-
-ALTER VIEW "public"."global_invoices" OWNER TO "postgres";
-
-
-CREATE SEQUENCE IF NOT EXISTS "public"."global_invoices_id_seq"
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE "public"."global_invoices_id_seq" OWNER TO "postgres";
-
-
-ALTER SEQUENCE "public"."global_invoices_id_seq" OWNED BY "public"."sales_invoices"."id";
-
-
-
-CREATE OR REPLACE VIEW "public"."global_return_items" WITH ("security_invoker"='false') AS
- SELECT "id",
-    "tenant_id",
-    "parent_tenant_id",
-    "invoice_id",
-    "invoice_item_id",
-    "global_stock_id",
-    "quantity",
-    "return_charge_amount",
-    "note",
-    "created_at",
-    "updated_at"
-   FROM "public"."sales_return_items";
-
-
-ALTER VIEW "public"."global_return_items" OWNER TO "postgres";
-
-
-CREATE SEQUENCE IF NOT EXISTS "public"."global_return_items_id_seq"
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE "public"."global_return_items_id_seq" OWNER TO "postgres";
-
-
-ALTER SEQUENCE "public"."global_return_items_id_seq" OWNED BY "public"."sales_return_items"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."investor_balances" (
@@ -25577,7 +20049,6 @@ ALTER SEQUENCE "public"."investor_balances_id_seq" OWNER TO "postgres";
 ALTER SEQUENCE "public"."investor_balances_id_seq" OWNED BY "public"."investor_balances"."id";
 
 
-
 CREATE SEQUENCE IF NOT EXISTS "public"."investor_transactions_id_seq"
     START WITH 1
     INCREMENT BY 1
@@ -25592,7 +20063,6 @@ ALTER SEQUENCE "public"."investor_transactions_id_seq" OWNER TO "postgres";
 ALTER SEQUENCE "public"."investor_transactions_id_seq" OWNED BY "public"."investor_transactions"."id";
 
 
-
 CREATE SEQUENCE IF NOT EXISTS "public"."investors_id_seq"
     START WITH 1
     INCREMENT BY 1
@@ -25605,7 +20075,6 @@ ALTER SEQUENCE "public"."investors_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."investors_id_seq" OWNED BY "public"."investors"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."invoice_boxes" (
@@ -25637,35 +20106,6 @@ ALTER SEQUENCE "public"."invoice_boxes_id_seq" OWNER TO "postgres";
 ALTER SEQUENCE "public"."invoice_boxes_id_seq" OWNED BY "public"."invoice_boxes"."id";
 
 
-
-CREATE TABLE IF NOT EXISTS "public"."invoice_brands" (
-    "id" bigint NOT NULL,
-    "tenant_id" bigint NOT NULL,
-    "name" "text" NOT NULL,
-    "address" "text" NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
-);
-
-
-ALTER TABLE "public"."invoice_brands" OWNER TO "postgres";
-
-
-CREATE SEQUENCE IF NOT EXISTS "public"."invoice_brands_id_seq"
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE "public"."invoice_brands_id_seq" OWNER TO "postgres";
-
-
-ALTER SEQUENCE "public"."invoice_brands_id_seq" OWNED BY "public"."invoice_brands"."id";
-
-
-
 CREATE TABLE IF NOT EXISTS "public"."item_assignees" (
     "id" bigint NOT NULL,
     "item_id" bigint NOT NULL,
@@ -25690,7 +20130,6 @@ ALTER SEQUENCE "public"."item_assignees_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."item_assignees_id_seq" OWNED BY "public"."item_assignees"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."item_permissions" (
@@ -25720,7 +20159,6 @@ ALTER SEQUENCE "public"."item_permissions_id_seq" OWNER TO "postgres";
 ALTER SEQUENCE "public"."item_permissions_id_seq" OWNED BY "public"."item_permissions"."id";
 
 
-
 CREATE TABLE IF NOT EXISTS "public"."item_tags" (
     "id" bigint NOT NULL,
     "item_id" bigint NOT NULL,
@@ -25744,7 +20182,6 @@ ALTER SEQUENCE "public"."item_tags_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."item_tags_id_seq" OWNED BY "public"."item_tags"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."items" (
@@ -25788,7 +20225,6 @@ ALTER SEQUENCE "public"."items_id_seq" OWNER TO "postgres";
 ALTER SEQUENCE "public"."items_id_seq" OWNED BY "public"."items"."id";
 
 
-
 CREATE TABLE IF NOT EXISTS "public"."koba_brands" (
     "id" bigint NOT NULL,
     "tenant_id" bigint NOT NULL,
@@ -25813,7 +20249,6 @@ ALTER SEQUENCE "public"."koba_brands_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."koba_brands_id_seq" OWNED BY "public"."koba_brands"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."koba_cart_items" (
@@ -25845,7 +20280,6 @@ ALTER TABLE "public"."koba_cart_items" OWNER TO "postgres";
 COMMENT ON TABLE "public"."koba_cart_items" IS 'Line items in a koba cart. Stores full product snapshot for cart resilience.';
 
 
-
 CREATE SEQUENCE IF NOT EXISTS "public"."koba_cart_items_id_seq"
     START WITH 1
     INCREMENT BY 1
@@ -25858,7 +20292,6 @@ ALTER SEQUENCE "public"."koba_cart_items_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."koba_cart_items_id_seq" OWNED BY "public"."koba_cart_items"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."koba_carts" (
@@ -25876,7 +20309,6 @@ ALTER TABLE "public"."koba_carts" OWNER TO "postgres";
 COMMENT ON TABLE "public"."koba_carts" IS 'Active shopping carts for Koba retail, one per user+market+tenant.';
 
 
-
 CREATE SEQUENCE IF NOT EXISTS "public"."koba_carts_id_seq"
     START WITH 1
     INCREMENT BY 1
@@ -25889,7 +20321,6 @@ ALTER SEQUENCE "public"."koba_carts_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."koba_carts_id_seq" OWNED BY "public"."koba_carts"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."koba_categories" (
@@ -25916,7 +20347,6 @@ ALTER SEQUENCE "public"."koba_categories_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."koba_categories_id_seq" OWNED BY "public"."koba_categories"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."koba_order_items" (
@@ -25950,7 +20380,6 @@ ALTER TABLE "public"."koba_order_items" OWNER TO "postgres";
 COMMENT ON TABLE "public"."koba_order_items" IS 'Immutable line-item snapshot of a koba order.';
 
 
-
 CREATE SEQUENCE IF NOT EXISTS "public"."koba_order_items_id_seq"
     START WITH 1
     INCREMENT BY 1
@@ -25963,7 +20392,6 @@ ALTER SEQUENCE "public"."koba_order_items_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."koba_order_items_id_seq" OWNED BY "public"."koba_order_items"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."koba_orders" (
@@ -26000,7 +20428,6 @@ ALTER TABLE "public"."koba_orders" OWNER TO "postgres";
 COMMENT ON TABLE "public"."koba_orders" IS 'Confirmed koba retail orders. Created from koba_carts via place_koba_order().';
 
 
-
 CREATE SEQUENCE IF NOT EXISTS "public"."koba_orders_id_seq"
     START WITH 1
     INCREMENT BY 1
@@ -26013,7 +20440,6 @@ ALTER SEQUENCE "public"."koba_orders_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."koba_orders_id_seq" OWNED BY "public"."koba_orders"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."koba_products" (
@@ -26080,7 +20506,6 @@ ALTER SEQUENCE "public"."koba_retail_settings_id_seq" OWNER TO "postgres";
 ALTER SEQUENCE "public"."koba_retail_settings_id_seq" OWNED BY "public"."koba_retail_settings"."id";
 
 
-
 CREATE TABLE IF NOT EXISTS "public"."markets" (
     "id" bigint NOT NULL,
     "name" "text" NOT NULL,
@@ -26111,7 +20536,6 @@ ALTER SEQUENCE "public"."markets_id_seq" OWNER TO "postgres";
 ALTER SEQUENCE "public"."markets_id_seq" OWNED BY "public"."markets"."id";
 
 
-
 CREATE SEQUENCE IF NOT EXISTS "public"."membership_grants_id_seq"
     START WITH 1
     INCREMENT BY 1
@@ -26126,7 +20550,6 @@ ALTER SEQUENCE "public"."membership_grants_id_seq" OWNER TO "postgres";
 ALTER SEQUENCE "public"."membership_grants_id_seq" OWNED BY "public"."membership_grants"."id";
 
 
-
 CREATE SEQUENCE IF NOT EXISTS "public"."memberships_id_seq"
     START WITH 1
     INCREMENT BY 1
@@ -26139,7 +20562,6 @@ ALTER SEQUENCE "public"."memberships_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."memberships_id_seq" OWNED BY "public"."memberships"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."merchant_profiles" (
@@ -26193,7 +20615,6 @@ ALTER SEQUENCE "public"."module_actions_id_seq" OWNER TO "postgres";
 ALTER SEQUENCE "public"."module_actions_id_seq" OWNED BY "public"."module_actions"."id";
 
 
-
 CREATE TABLE IF NOT EXISTS "public"."modules" (
     "id" bigint NOT NULL,
     "key" "text" NOT NULL,
@@ -26223,7 +20644,6 @@ ALTER SEQUENCE "public"."modules_id_seq" OWNER TO "postgres";
 ALTER SEQUENCE "public"."modules_id_seq" OWNED BY "public"."modules"."id";
 
 
-
 CREATE SEQUENCE IF NOT EXISTS "public"."order_items_id_seq"
     START WITH 1
     INCREMENT BY 1
@@ -26236,7 +20656,6 @@ ALTER SEQUENCE "public"."order_items_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."order_items_id_seq" OWNED BY "public"."order_items"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."orders" (
@@ -26277,7 +20696,6 @@ ALTER SEQUENCE "public"."orders_id_seq" OWNER TO "postgres";
 ALTER SEQUENCE "public"."orders_id_seq" OWNED BY "public"."orders"."id";
 
 
-
 CREATE SEQUENCE IF NOT EXISTS "public"."payment_allocations_id_seq"
     START WITH 1
     INCREMENT BY 1
@@ -26290,7 +20708,6 @@ ALTER SEQUENCE "public"."payment_allocations_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."payment_allocations_id_seq" OWNED BY "public"."invoice_payments"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."payment_methods" (
@@ -26327,7 +20744,6 @@ ALTER SEQUENCE "public"."payment_methods_id_seq" OWNER TO "postgres";
 ALTER SEQUENCE "public"."payment_methods_id_seq" OWNED BY "public"."payment_methods"."id";
 
 
-
 CREATE SEQUENCE IF NOT EXISTS "public"."payments_id_seq"
     START WITH 1
     INCREMENT BY 1
@@ -26340,7 +20756,6 @@ ALTER SEQUENCE "public"."payments_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."payments_id_seq" OWNED BY "public"."global_payments"."id";
-
 
 
 CREATE SEQUENCE IF NOT EXISTS "public"."product_brands_id_seq"
@@ -26357,7 +20772,6 @@ ALTER SEQUENCE "public"."product_brands_id_seq" OWNER TO "postgres";
 ALTER SEQUENCE "public"."product_brands_id_seq" OWNED BY "public"."product_brands"."id";
 
 
-
 CREATE SEQUENCE IF NOT EXISTS "public"."product_categories_id_seq"
     START WITH 1
     INCREMENT BY 1
@@ -26370,7 +20784,6 @@ ALTER SEQUENCE "public"."product_categories_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."product_categories_id_seq" OWNED BY "public"."product_categories"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."product_sync_snapshots" (
@@ -26406,7 +20819,6 @@ ALTER SEQUENCE "public"."product_sync_snapshots_id_seq" OWNER TO "postgres";
 ALTER SEQUENCE "public"."product_sync_snapshots_id_seq" OWNED BY "public"."product_sync_snapshots"."id";
 
 
-
 CREATE SEQUENCE IF NOT EXISTS "public"."products_id_seq"
     START WITH 1
     INCREMENT BY 1
@@ -26419,40 +20831,6 @@ ALTER SEQUENCE "public"."products_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."products_id_seq" OWNED BY "public"."products"."id";
-
-
-
-CREATE TABLE IF NOT EXISTS "public"."recipient_profiles" (
-    "id" bigint NOT NULL,
-    "tenant_id" bigint NOT NULL,
-    "name" "text" NOT NULL,
-    "address" "text" NOT NULL,
-    "phone" "text" NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "secondary_phone" "text",
-    "district" "text",
-    "thana" "text",
-    "addresses" "jsonb" DEFAULT '[]'::"jsonb" NOT NULL
-);
-
-
-ALTER TABLE "public"."recipient_profiles" OWNER TO "postgres";
-
-
-CREATE SEQUENCE IF NOT EXISTS "public"."recipient_profiles_id_seq"
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE "public"."recipient_profiles_id_seq" OWNER TO "postgres";
-
-
-ALTER SEQUENCE "public"."recipient_profiles_id_seq" OWNED BY "public"."recipient_profiles"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."shop_cart_items" (
@@ -26493,7 +20871,6 @@ ALTER TABLE "public"."shop_cart_items" ALTER COLUMN "id" ADD GENERATED ALWAYS AS
 );
 
 
-
 CREATE TABLE IF NOT EXISTS "public"."shop_carts" (
     "id" bigint NOT NULL,
     "tenant_id" bigint NOT NULL,
@@ -26529,7 +20906,6 @@ ALTER TABLE "public"."shop_carts" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDEN
 );
 
 
-
 CREATE TABLE IF NOT EXISTS "public"."shop_categories" (
     "id" bigint NOT NULL,
     "tenant_id" bigint NOT NULL,
@@ -26556,7 +20932,6 @@ ALTER TABLE "public"."shop_categories" ALTER COLUMN "id" ADD GENERATED ALWAYS AS
 );
 
 
-
 ALTER TABLE "public"."shop_customer_group_access" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDENTITY (
     SEQUENCE NAME "public"."shop_customer_group_access_id_seq"
     START WITH 1
@@ -26565,7 +20940,6 @@ ALTER TABLE "public"."shop_customer_group_access" ALTER COLUMN "id" ADD GENERATE
     NO MAXVALUE
     CACHE 1
 );
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."shop_order_items" (
@@ -26624,7 +20998,6 @@ ALTER TABLE "public"."shop_order_items" ALTER COLUMN "id" ADD GENERATED ALWAYS A
     NO MAXVALUE
     CACHE 1
 );
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."shop_orders" (
@@ -26725,9 +21098,7 @@ ALTER TABLE "public"."shop_orders" OWNER TO "postgres";
 COMMENT ON COLUMN "public"."shop_orders"."collection_source" IS 'Copied from linked global_invoices.collection_source for dropship COD vs prepaid gates';
 
 
-
 COMMENT ON COLUMN "public"."shop_orders"."payout_settlement_status" IS 'Merchant profit settlement: unpaid | partial | paid (order-level)';
-
 
 
 ALTER TABLE "public"."shop_orders" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDENTITY (
@@ -26740,7 +21111,6 @@ ALTER TABLE "public"."shop_orders" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDE
 );
 
 
-
 ALTER TABLE "public"."shop_pricing_rules" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDENTITY (
     SEQUENCE NAME "public"."shop_pricing_rules_id_seq"
     START WITH 1
@@ -26751,7 +21121,6 @@ ALTER TABLE "public"."shop_pricing_rules" ALTER COLUMN "id" ADD GENERATED ALWAYS
 );
 
 
-
 ALTER TABLE "public"."shop_product_listings" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDENTITY (
     SEQUENCE NAME "public"."shop_product_listings_id_seq"
     START WITH 1
@@ -26760,7 +21129,6 @@ ALTER TABLE "public"."shop_product_listings" ALTER COLUMN "id" ADD GENERATED ALW
     NO MAXVALUE
     CACHE 1
 );
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."shop_product_offers" (
@@ -26790,7 +21158,6 @@ ALTER TABLE "public"."shop_product_offers" ALTER COLUMN "id" ADD GENERATED ALWAY
 );
 
 
-
 CREATE TABLE IF NOT EXISTS "public"."shop_stock_reservations" (
     "cart_item_id" bigint NOT NULL,
     "global_stock_allocation_id" bigint,
@@ -26815,7 +21182,6 @@ ALTER TABLE "public"."shops" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDENTITY 
 );
 
 
-
 CREATE SEQUENCE IF NOT EXISTS "public"."store_access_id_seq"
     START WITH 1
     INCREMENT BY 1
@@ -26828,7 +21194,6 @@ ALTER SEQUENCE "public"."store_access_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."store_access_id_seq" OWNED BY "public"."store_access"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."store_product_prices" (
@@ -26867,7 +21232,6 @@ ALTER SEQUENCE "public"."store_product_prices_id_seq" OWNER TO "postgres";
 ALTER SEQUENCE "public"."store_product_prices_id_seq" OWNED BY "public"."store_product_prices"."id";
 
 
-
 CREATE SEQUENCE IF NOT EXISTS "public"."stores_id_seq"
     START WITH 1
     INCREMENT BY 1
@@ -26880,7 +21244,6 @@ ALTER SEQUENCE "public"."stores_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."stores_id_seq" OWNED BY "public"."stores"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."system_role_templates" (
@@ -26913,7 +21276,6 @@ ALTER SEQUENCE "public"."system_role_templates_id_seq" OWNER TO "postgres";
 ALTER SEQUENCE "public"."system_role_templates_id_seq" OWNED BY "public"."system_role_templates"."id";
 
 
-
 CREATE TABLE IF NOT EXISTS "public"."tag_categories" (
     "id" bigint NOT NULL,
     "module_key" "text" NOT NULL,
@@ -26942,7 +21304,6 @@ ALTER TABLE "public"."tag_categories" ALTER COLUMN "id" ADD GENERATED BY DEFAULT
 );
 
 
-
 CREATE SEQUENCE IF NOT EXISTS "public"."tags_id_seq"
     START WITH 1
     INCREMENT BY 1
@@ -26955,7 +21316,6 @@ ALTER SEQUENCE "public"."tags_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."tags_id_seq" OWNED BY "public"."tags"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."tenant_module_submodules" (
@@ -26986,7 +21346,6 @@ ALTER SEQUENCE "public"."tenant_module_submodules_id_seq" OWNER TO "postgres";
 ALTER SEQUENCE "public"."tenant_module_submodules_id_seq" OWNED BY "public"."tenant_module_submodules"."id";
 
 
-
 CREATE TABLE IF NOT EXISTS "public"."tenant_modules" (
     "id" bigint NOT NULL,
     "tenant_id" bigint NOT NULL,
@@ -27014,7 +21373,6 @@ ALTER SEQUENCE "public"."tenant_modules_id_seq" OWNER TO "postgres";
 ALTER SEQUENCE "public"."tenant_modules_id_seq" OWNED BY "public"."tenant_modules"."id";
 
 
-
 CREATE TABLE IF NOT EXISTS "public"."tenant_permission_versions" (
     "tenant_id" bigint NOT NULL,
     "version" bigint DEFAULT 1 NOT NULL,
@@ -27039,7 +21397,6 @@ ALTER SEQUENCE "public"."tenant_role_grants_id_seq" OWNER TO "postgres";
 ALTER SEQUENCE "public"."tenant_role_grants_id_seq" OWNED BY "public"."tenant_role_grants"."id";
 
 
-
 CREATE SEQUENCE IF NOT EXISTS "public"."tenant_roles_id_seq"
     START WITH 1
     INCREMENT BY 1
@@ -27052,7 +21409,6 @@ ALTER SEQUENCE "public"."tenant_roles_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."tenant_roles_id_seq" OWNED BY "public"."tenant_roles"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."tenant_scoped_counters" (
@@ -27100,7 +21456,6 @@ ALTER SEQUENCE "public"."tenants_id_seq" OWNER TO "postgres";
 ALTER SEQUENCE "public"."tenants_id_seq" OWNED BY "public"."tenants"."id";
 
 
-
 CREATE TABLE IF NOT EXISTS "public"."thrift_accounting_ledger" (
     "id" bigint NOT NULL,
     "tenant_id" bigint NOT NULL,
@@ -27134,7 +21489,6 @@ ALTER SEQUENCE "public"."thrift_accounting_ledger_id_seq" OWNER TO "postgres";
 ALTER SEQUENCE "public"."thrift_accounting_ledger_id_seq" OWNED BY "public"."thrift_accounting_ledger"."id";
 
 
-
 CREATE TABLE IF NOT EXISTS "public"."thrift_barcodes" (
     "id" bigint NOT NULL,
     "tenant_id" bigint NOT NULL,
@@ -27163,7 +21517,6 @@ ALTER SEQUENCE "public"."thrift_barcodes_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."thrift_barcodes_id_seq" OWNED BY "public"."thrift_barcodes"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."thrift_boxes" (
@@ -27196,7 +21549,6 @@ ALTER SEQUENCE "public"."thrift_boxes_id_seq" OWNER TO "postgres";
 ALTER SEQUENCE "public"."thrift_boxes_id_seq" OWNED BY "public"."thrift_boxes"."id";
 
 
-
 CREATE TABLE IF NOT EXISTS "public"."thrift_categories" (
     "id" bigint NOT NULL,
     "tenant_id" bigint,
@@ -27227,7 +21579,6 @@ ALTER SEQUENCE "public"."thrift_categories_id_seq" OWNER TO "postgres";
 ALTER SEQUENCE "public"."thrift_categories_id_seq" OWNED BY "public"."thrift_categories"."id";
 
 
-
 CREATE TABLE IF NOT EXISTS "public"."thrift_courier_providers" (
     "id" bigint NOT NULL,
     "tenant_id" bigint,
@@ -27252,9 +21603,7 @@ ALTER TABLE "public"."thrift_courier_providers" OWNER TO "postgres";
 COMMENT ON TABLE "public"."thrift_courier_providers" IS 'System (tenant_id null, is_system) BD catalog + tenant custom couriers for Online sales.';
 
 
-
 COMMENT ON COLUMN "public"."thrift_courier_providers"."meta" IS 'JSONB extension bag for future extras (notes, website, support_phone, tracking_url_template). Not fee math.';
-
 
 
 CREATE SEQUENCE IF NOT EXISTS "public"."thrift_courier_providers_id_seq"
@@ -27269,7 +21618,6 @@ ALTER SEQUENCE "public"."thrift_courier_providers_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."thrift_courier_providers_id_seq" OWNED BY "public"."thrift_courier_providers"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."thrift_customers" (
@@ -27295,9 +21643,7 @@ ALTER TABLE "public"."thrift_customers" OWNER TO "postgres";
 COMMENT ON COLUMN "public"."thrift_customers"."secondary_phone" IS 'Optional alternate phone (not unique; primary phone_normalized remains upsert key).';
 
 
-
 COMMENT ON COLUMN "public"."thrift_customers"."address_parts" IS 'BD location parts from static district/thana/postcode catalogs: { district, thana, post_code }. Freeform street stays in address.';
-
 
 
 CREATE SEQUENCE IF NOT EXISTS "public"."thrift_customers_id_seq"
@@ -27312,7 +21658,6 @@ ALTER SEQUENCE "public"."thrift_customers_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."thrift_customers_id_seq" OWNED BY "public"."thrift_customers"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."thrift_invoice_counters" (
@@ -27361,7 +21706,6 @@ ALTER TABLE "public"."thrift_invoice_items" OWNER TO "postgres";
 COMMENT ON TABLE "public"."thrift_invoice_items" IS 'LEGACY ARCHIVE — read-only (P21). Active sales use thrift_sales_invoice_items.';
 
 
-
 CREATE SEQUENCE IF NOT EXISTS "public"."thrift_invoice_items_id_seq"
     START WITH 1
     INCREMENT BY 1
@@ -27374,7 +21718,6 @@ ALTER SEQUENCE "public"."thrift_invoice_items_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."thrift_invoice_items_id_seq" OWNED BY "public"."thrift_invoice_items"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."thrift_invoices" (
@@ -27409,7 +21752,6 @@ ALTER TABLE "public"."thrift_invoices" OWNER TO "postgres";
 COMMENT ON TABLE "public"."thrift_invoices" IS 'LEGACY ARCHIVE — read-only (P21). Active sales use thrift_sales_invoices.';
 
 
-
 CREATE SEQUENCE IF NOT EXISTS "public"."thrift_invoices_id_seq"
     START WITH 1
     INCREMENT BY 1
@@ -27422,7 +21764,6 @@ ALTER SEQUENCE "public"."thrift_invoices_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."thrift_invoices_id_seq" OWNED BY "public"."thrift_invoices"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."thrift_pricings" (
@@ -27450,13 +21791,10 @@ ALTER TABLE "public"."thrift_pricings" OWNER TO "postgres";
 COMMENT ON COLUMN "public"."thrift_pricings"."cost_of_goods_sold" IS 'DEPRECATED (P22) — do not use as sale/report COGS. Source of truth: compute_thrift_landed_unit_cost + thrift_sales_invoice_items.landed_unit_cost_at_sale. Column retained until Wave 2+ drop.';
 
 
-
 COMMENT ON COLUMN "public"."thrift_pricings"."target_price" IS 'DEPRECATED (P22) — prefer listed_unit_price + engine suggested sell. Column retained until Wave 2+ drop.';
 
 
-
 COMMENT ON COLUMN "public"."thrift_pricings"."extra_expense_cost" IS 'DEPRECATED (P22) — not used by costing engine. Column retained until Wave 2+ drop.';
-
 
 
 CREATE SEQUENCE IF NOT EXISTS "public"."thrift_pricings_id_seq"
@@ -27471,7 +21809,6 @@ ALTER SEQUENCE "public"."thrift_pricings_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."thrift_pricings_id_seq" OWNED BY "public"."thrift_pricings"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."thrift_return_counters" (
@@ -27519,7 +21856,6 @@ ALTER SEQUENCE "public"."thrift_sales_invoice_items_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."thrift_sales_invoice_items_id_seq" OWNED BY "public"."thrift_sales_invoice_items"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."thrift_sales_invoices" (
@@ -27596,93 +21932,70 @@ ALTER TABLE "public"."thrift_sales_invoices" OWNER TO "postgres";
 COMMENT ON COLUMN "public"."thrift_sales_invoices"."customer_name" IS 'Customer full name for thrift invoice';
 
 
-
 COMMENT ON COLUMN "public"."thrift_sales_invoices"."customer_phone" IS 'Customer phone number for thrift invoice';
-
 
 
 COMMENT ON COLUMN "public"."thrift_sales_invoices"."sale_channel" IS 'Hybrid desk channel: IN_STORE | ONLINE';
 
 
-
 COMMENT ON COLUMN "public"."thrift_sales_invoices"."customer_id" IS 'Linked thrift_customers row when phone was present at sale';
-
 
 
 COMMENT ON COLUMN "public"."thrift_sales_invoices"."customer_address" IS 'Sale-day address snapshot';
 
 
-
 COMMENT ON COLUMN "public"."thrift_sales_invoices"."courier_cod_amount" IS 'DEPRECATED — use courier_amount. Retained for historical rows / reports.';
-
 
 
 COMMENT ON COLUMN "public"."thrift_sales_invoices"."other_expense_amount" IS 'DEPRECATED — no longer written by create_thrift_sales_invoice.';
 
 
-
 COMMENT ON COLUMN "public"."thrift_sales_invoices"."courier_amount" IS 'Courier fee amount (>= 0). Offline always 0.';
-
 
 
 COMMENT ON COLUMN "public"."thrift_sales_invoices"."courier_paid_by" IS 'CUSTOMER | SHOP when courier_amount > 0; null when amount is 0.';
 
 
-
 COMMENT ON COLUMN "public"."thrift_sales_invoices"."cod_expected" IS 'COD cash expected from courier (Online COD_PENDING). Null offline / paid-at-create.';
-
 
 
 COMMENT ON COLUMN "public"."thrift_sales_invoices"."delivery_status" IS 'Parcel track for Online invoices. Null for Offline. Independent of payment_status.';
 
 
-
 COMMENT ON COLUMN "public"."thrift_sales_invoices"."courier_provider" IS 'Online optional courier company name; Offline null.';
-
 
 
 COMMENT ON COLUMN "public"."thrift_sales_invoices"."cod_fee_amount" IS 'Courier COD service fee (staff-entered ৳), not a stored %.';
 
 
-
 COMMENT ON COLUMN "public"."thrift_sales_invoices"."packing_amount" IS 'Packing / print charge.';
-
 
 
 COMMENT ON COLUMN "public"."thrift_sales_invoices"."return_courier_amount" IS 'RTO / no-pickup return courier billed to shop (post-pay returns use thrift_sales_returns).';
 
 
-
 COMMENT ON COLUMN "public"."thrift_sales_invoices"."close_reason" IS 'RTO | CUSTOMER_RETURN when fully closed; null while open or partially returned.';
-
 
 
 COMMENT ON COLUMN "public"."thrift_sales_invoices"."economics_closed_at" IS 'Last time thrift_sales_pnl_lines were written/updated for this invoice.';
 
 
-
 COMMENT ON COLUMN "public"."thrift_sales_invoices"."courier_provider_id" IS 'Optional FK to thrift_courier_providers; name also snapshotted in courier_provider.';
-
 
 
 COMMENT ON COLUMN "public"."thrift_sales_invoices"."meta" IS 'Optional Online extras (tracking_id, tracking_url). Not fee amounts.';
 
 
-
 COMMENT ON COLUMN "public"."thrift_sales_invoices"."customer_secondary_phone" IS 'Snapshot of customer secondary phone at create.';
-
 
 
 COMMENT ON COLUMN "public"."thrift_sales_invoices"."customer_address_parts" IS 'Snapshot of address_parts at create: { district, thana, post_code }.';
 
 
-
 COMMENT ON COLUMN "public"."thrift_sales_invoices"."advance_amount" IS 'Customer advance collected at create (online COD only). Deducted from cod_expected; non-refundable. Offline always 0.';
 
 
-
 COMMENT ON COLUMN "public"."thrift_sales_invoices"."advance_note" IS 'Optional note for advance (e.g. payment ref). Null when unused.';
-
 
 
 CREATE SEQUENCE IF NOT EXISTS "public"."thrift_sales_invoices_id_seq"
@@ -27697,7 +22010,6 @@ ALTER SEQUENCE "public"."thrift_sales_invoices_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."thrift_sales_invoices_id_seq" OWNED BY "public"."thrift_sales_invoices"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."thrift_sales_pnl_lines" (
@@ -27738,7 +22050,6 @@ ALTER TABLE "public"."thrift_sales_pnl_lines" OWNER TO "postgres";
 COMMENT ON TABLE "public"."thrift_sales_pnl_lines" IS 'Per invoice-line economics fact for reports. COGS stays live via stock→inbound shipment.';
 
 
-
 CREATE SEQUENCE IF NOT EXISTS "public"."thrift_sales_pnl_lines_id_seq"
     START WITH 1
     INCREMENT BY 1
@@ -27751,7 +22062,6 @@ ALTER SEQUENCE "public"."thrift_sales_pnl_lines_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."thrift_sales_pnl_lines_id_seq" OWNED BY "public"."thrift_sales_pnl_lines"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."thrift_sales_return_items" (
@@ -27787,7 +22097,6 @@ ALTER SEQUENCE "public"."thrift_sales_return_items_id_seq" OWNER TO "postgres";
 ALTER SEQUENCE "public"."thrift_sales_return_items_id_seq" OWNED BY "public"."thrift_sales_return_items"."id";
 
 
-
 CREATE TABLE IF NOT EXISTS "public"."thrift_sales_returns" (
     "id" bigint NOT NULL,
     "tenant_id" bigint NOT NULL,
@@ -27812,7 +22121,6 @@ ALTER TABLE "public"."thrift_sales_returns" OWNER TO "postgres";
 COMMENT ON TABLE "public"."thrift_sales_returns" IS 'Post-pay / post-delivery returns (partial or full). Not used for RTO no-pickup.';
 
 
-
 CREATE SEQUENCE IF NOT EXISTS "public"."thrift_sales_returns_id_seq"
     START WITH 1
     INCREMENT BY 1
@@ -27825,7 +22133,6 @@ ALTER SEQUENCE "public"."thrift_sales_returns_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."thrift_sales_returns_id_seq" OWNED BY "public"."thrift_sales_returns"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."thrift_settings" (
@@ -27850,9 +22157,7 @@ ALTER TABLE "public"."thrift_settings" OWNER TO "postgres";
 COMMENT ON COLUMN "public"."thrift_settings"."marketing_tag_config" IS 'Per-tenant marketing sticker layout settings.';
 
 
-
 COMMENT ON COLUMN "public"."thrift_settings"."return_window_days" IS 'Customer RETURN eligibility window (days) from invoice date; 0 = no customer returns';
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."thrift_shelves" (
@@ -27884,7 +22189,6 @@ ALTER SEQUENCE "public"."thrift_shelves_id_seq" OWNER TO "postgres";
 ALTER SEQUENCE "public"."thrift_shelves_id_seq" OWNED BY "public"."thrift_shelves"."id";
 
 
-
 CREATE TABLE IF NOT EXISTS "public"."thrift_shipments" (
     "id" bigint NOT NULL,
     "tenant_id" bigint NOT NULL,
@@ -27912,7 +22216,6 @@ ALTER TABLE "public"."thrift_shipments" OWNER TO "postgres";
 COMMENT ON COLUMN "public"."thrift_shipments"."marketing_tag_config" IS 'Per-shipment marketing sticker layout: shop brand and field visibility.';
 
 
-
 CREATE SEQUENCE IF NOT EXISTS "public"."thrift_shipments_id_seq"
     START WITH 1
     INCREMENT BY 1
@@ -27925,7 +22228,6 @@ ALTER SEQUENCE "public"."thrift_shipments_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."thrift_shipments_id_seq" OWNED BY "public"."thrift_shipments"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."thrift_stock_images" (
@@ -27955,7 +22257,6 @@ ALTER SEQUENCE "public"."thrift_stock_images_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."thrift_stock_images_id_seq" OWNED BY "public"."thrift_stock_images"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."thrift_stock_measurements" (
@@ -28036,13 +22337,10 @@ ALTER TABLE "public"."thrift_stocks" OWNER TO "postgres";
 COMMENT ON COLUMN "public"."thrift_stocks"."name" IS 'Optional display name for the stock item.';
 
 
-
 COMMENT ON COLUMN "public"."thrift_stocks"."held_for_phone_normalized" IS 'Digits-only hold key (normalize_thrift_phone). Required when status=RESERVED; sale convert requires invoice phone match.';
 
 
-
 COMMENT ON COLUMN "public"."thrift_stocks"."hold_expires_at" IS 'Optional advisory expiry (v1). No auto-release job.';
-
 
 
 CREATE SEQUENCE IF NOT EXISTS "public"."thrift_stocks_id_seq"
@@ -28057,7 +22355,6 @@ ALTER SEQUENCE "public"."thrift_stocks_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."thrift_stocks_id_seq" OWNED BY "public"."thrift_stocks"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."thrift_types" (
@@ -28091,7 +22388,6 @@ ALTER SEQUENCE "public"."thrift_types_id_seq" OWNER TO "postgres";
 ALTER SEQUENCE "public"."thrift_types_id_seq" OWNED BY "public"."thrift_types"."id";
 
 
-
 CREATE TABLE IF NOT EXISTS "public"."units_of_measure" (
     "id" bigint NOT NULL,
     "code" "text" NOT NULL,
@@ -28123,7 +22419,6 @@ ALTER SEQUENCE "public"."units_of_measure_id_seq" OWNER TO "postgres";
 
 
 ALTER SEQUENCE "public"."units_of_measure_id_seq" OWNED BY "public"."units_of_measure"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."universal_wallet_ledger" (
@@ -28179,3907 +22474,2812 @@ ALTER TABLE "public"."wallet_accounts" ALTER COLUMN "id" ADD GENERATED ALWAYS AS
 );
 
 
-
 ALTER TABLE ONLY "public"."activity_logs" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."activity_logs_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."batch_code_pc" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."batch_code_pc_id_seq"'::"regclass");
 
 
-
-ALTER TABLE ONLY "public"."billing_profiles" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."billing_profiles_id_seq"'::"regclass");
-
-
-
 ALTER TABLE ONLY "public"."business_parties" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."business_parties_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."cargo_companies" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."cargo_companies_id_seq"'::"regclass");
 
 
-
 ALTER TABLE ONLY "public"."cart_items" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."cart_items_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."carts" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."carts_id_seq"'::"regclass");
 
 
-
 ALTER TABLE ONLY "public"."comments" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."comments_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."commerce_cart" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."commerce_cart_id_seq"'::"regclass");
 
 
-
 ALTER TABLE ONLY "public"."commerce_inventory_product_summaries" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."commerce_inventory_product_summaries_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."commerce_invoice_boxes" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."commerce_invoice_boxes_id_seq"'::"regclass");
 
 
-
 ALTER TABLE ONLY "public"."commerce_invoices" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."commerce_invoices_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."commerce_order_items" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."commerce_order_items_id_seq"'::"regclass");
 
 
-
 ALTER TABLE ONLY "public"."commerce_orders" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."commerce_orders_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."customer_group_member_grants" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."customer_group_member_grants_id_seq"'::"regclass");
 
 
-
 ALTER TABLE ONLY "public"."customer_group_members" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."customer_group_members_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."customer_groups" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."customer_groups_id_seq"'::"regclass");
 
 
-
 ALTER TABLE ONLY "public"."entity_tags" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."entity_tags_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."global_currencies" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."global_currencies_id_seq"'::"regclass");
 
 
-
 ALTER TABLE ONLY "public"."global_payments" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."payments_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."investor_balances" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."investor_balances_id_seq"'::"regclass");
 
 
-
 ALTER TABLE ONLY "public"."investor_transactions" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."investor_transactions_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."investors" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."investors_id_seq"'::"regclass");
 
 
-
 ALTER TABLE ONLY "public"."invoice_boxes" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."invoice_boxes_id_seq"'::"regclass");
-
-
-
-ALTER TABLE ONLY "public"."invoice_brands" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."invoice_brands_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."invoice_payments" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."payment_allocations_id_seq"'::"regclass");
 
 
-
 ALTER TABLE ONLY "public"."item_assignees" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."item_assignees_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."item_permissions" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."item_permissions_id_seq"'::"regclass");
 
 
-
 ALTER TABLE ONLY "public"."item_tags" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."item_tags_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."items" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."items_id_seq"'::"regclass");
 
 
-
 ALTER TABLE ONLY "public"."koba_brands" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."koba_brands_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."koba_cart_items" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."koba_cart_items_id_seq"'::"regclass");
 
 
-
 ALTER TABLE ONLY "public"."koba_carts" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."koba_carts_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."koba_categories" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."koba_categories_id_seq"'::"regclass");
 
 
-
 ALTER TABLE ONLY "public"."koba_order_items" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."koba_order_items_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."koba_orders" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."koba_orders_id_seq"'::"regclass");
 
 
-
 ALTER TABLE ONLY "public"."koba_retail_settings" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."koba_retail_settings_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."markets" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."markets_id_seq"'::"regclass");
 
 
-
 ALTER TABLE ONLY "public"."membership_grants" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."membership_grants_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."memberships" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."memberships_id_seq"'::"regclass");
 
 
-
 ALTER TABLE ONLY "public"."module_actions" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."module_actions_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."modules" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."modules_id_seq"'::"regclass");
 
 
-
 ALTER TABLE ONLY "public"."order_items" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."order_items_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."orders" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."orders_id_seq"'::"regclass");
 
 
-
 ALTER TABLE ONLY "public"."payment_methods" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."payment_methods_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."product_brands" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."product_brands_id_seq"'::"regclass");
 
 
-
 ALTER TABLE ONLY "public"."product_categories" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."product_categories_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."product_sync_snapshots" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."product_sync_snapshots_id_seq"'::"regclass");
 
 
-
 ALTER TABLE ONLY "public"."products" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."products_id_seq"'::"regclass");
-
-
-
-ALTER TABLE ONLY "public"."recipient_profiles" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."recipient_profiles_id_seq"'::"regclass");
-
-
-
-ALTER TABLE ONLY "public"."sales_invoice_items" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."global_invoice_items_id_seq"'::"regclass");
-
-
-
-ALTER TABLE ONLY "public"."sales_invoices" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."global_invoices_id_seq"'::"regclass");
-
-
-
-ALTER TABLE ONLY "public"."sales_return_items" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."global_return_items_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."store_access" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."store_access_id_seq"'::"regclass");
 
 
-
 ALTER TABLE ONLY "public"."store_product_prices" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."store_product_prices_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."stores" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."stores_id_seq"'::"regclass");
 
 
-
 ALTER TABLE ONLY "public"."system_role_templates" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."system_role_templates_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."tags" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."tags_id_seq"'::"regclass");
 
 
-
 ALTER TABLE ONLY "public"."tenant_module_submodules" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."tenant_module_submodules_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."tenant_modules" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."tenant_modules_id_seq"'::"regclass");
 
 
-
 ALTER TABLE ONLY "public"."tenant_role_grants" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."tenant_role_grants_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."tenant_roles" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."tenant_roles_id_seq"'::"regclass");
 
 
-
 ALTER TABLE ONLY "public"."tenants" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."tenants_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."thrift_accounting_ledger" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."thrift_accounting_ledger_id_seq"'::"regclass");
 
 
-
 ALTER TABLE ONLY "public"."thrift_barcodes" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."thrift_barcodes_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."thrift_boxes" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."thrift_boxes_id_seq"'::"regclass");
 
 
-
 ALTER TABLE ONLY "public"."thrift_categories" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."thrift_categories_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."thrift_courier_providers" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."thrift_courier_providers_id_seq"'::"regclass");
 
 
-
 ALTER TABLE ONLY "public"."thrift_customers" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."thrift_customers_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."thrift_invoice_items" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."thrift_invoice_items_id_seq"'::"regclass");
 
 
-
 ALTER TABLE ONLY "public"."thrift_invoices" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."thrift_invoices_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."thrift_pricings" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."thrift_pricings_id_seq"'::"regclass");
 
 
-
 ALTER TABLE ONLY "public"."thrift_sales_invoice_items" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."thrift_sales_invoice_items_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."thrift_sales_invoices" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."thrift_sales_invoices_id_seq"'::"regclass");
 
 
-
 ALTER TABLE ONLY "public"."thrift_sales_pnl_lines" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."thrift_sales_pnl_lines_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."thrift_sales_return_items" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."thrift_sales_return_items_id_seq"'::"regclass");
 
 
-
 ALTER TABLE ONLY "public"."thrift_sales_returns" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."thrift_sales_returns_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."thrift_shelves" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."thrift_shelves_id_seq"'::"regclass");
 
 
-
 ALTER TABLE ONLY "public"."thrift_shipments" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."thrift_shipments_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."thrift_stock_images" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."thrift_stock_images_id_seq"'::"regclass");
 
 
-
 ALTER TABLE ONLY "public"."thrift_stocks" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."thrift_stocks_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."thrift_types" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."thrift_types_id_seq"'::"regclass");
 
 
-
 ALTER TABLE ONLY "public"."units_of_measure" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."units_of_measure_id_seq"'::"regclass");
-
 
 
 ALTER TABLE ONLY "public"."activity_logs"
     ADD CONSTRAINT "activity_logs_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."batch_code_pc"
     ADD CONSTRAINT "batch_code_pc_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "public"."billing_profiles"
-    ADD CONSTRAINT "billing_profiles_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."business_parties"
     ADD CONSTRAINT "business_parties_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."cargo_companies"
     ADD CONSTRAINT "cargo_companies_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."cart_items"
     ADD CONSTRAINT "cart_items_cart_product_unique" UNIQUE ("cart_id", "product_id");
 
 
-
 ALTER TABLE ONLY "public"."cart_items"
     ADD CONSTRAINT "cart_items_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."carts"
     ADD CONSTRAINT "carts_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."comments"
     ADD CONSTRAINT "comments_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."commerce_cart"
     ADD CONSTRAINT "commerce_cart_customer_inventory_item_unique" UNIQUE ("tenant_id", "customer_group_id", "inventory_item_id");
 
 
-
 ALTER TABLE ONLY "public"."commerce_cart"
     ADD CONSTRAINT "commerce_cart_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."commerce_inventory_product_summaries"
     ADD CONSTRAINT "commerce_inventory_product_summaries_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."commerce_inventory_product_summaries"
     ADD CONSTRAINT "commerce_inventory_product_summaries_tenant_id_product_id_key" UNIQUE ("tenant_id", "product_id");
-
 
 
 ALTER TABLE ONLY "public"."commerce_invoice_boxes"
     ADD CONSTRAINT "commerce_invoice_boxes_invoice_id_box_number_key" UNIQUE ("invoice_id", "box_number");
 
 
-
 ALTER TABLE ONLY "public"."commerce_invoice_boxes"
     ADD CONSTRAINT "commerce_invoice_boxes_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."commerce_invoices"
     ADD CONSTRAINT "commerce_invoices_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."commerce_order_items"
     ADD CONSTRAINT "commerce_order_items_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."commerce_order_settings"
     ADD CONSTRAINT "commerce_order_settings_pkey" PRIMARY KEY ("tenant_id");
 
 
-
 ALTER TABLE ONLY "public"."commerce_orders"
     ADD CONSTRAINT "commerce_orders_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."courier_remittance_batches"
     ADD CONSTRAINT "courier_remittance_batches_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."courier_remittance_items"
     ADD CONSTRAINT "courier_remittance_items_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."courier_services"
     ADD CONSTRAINT "courier_services_code_key" UNIQUE ("code");
 
 
-
 ALTER TABLE ONLY "public"."courier_services"
     ADD CONSTRAINT "courier_services_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."customer_group_member_grants"
     ADD CONSTRAINT "customer_group_member_grants_cgm_module_action_unique" UNIQUE ("customer_group_member_id", "module_key", "action");
 
 
-
 ALTER TABLE ONLY "public"."customer_group_member_grants"
     ADD CONSTRAINT "customer_group_member_grants_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."customer_group_members"
     ADD CONSTRAINT "customer_group_members_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."customer_group_shop_profiles"
     ADD CONSTRAINT "customer_group_shop_profiles_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."customer_group_shop_profiles"
     ADD CONSTRAINT "customer_group_shop_profiles_unique_tenant_group" UNIQUE ("tenant_id", "customer_group_id");
 
 
-
 ALTER TABLE ONLY "public"."customer_groups"
     ADD CONSTRAINT "customer_groups_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."customer_order_backlog_items"
     ADD CONSTRAINT "customer_order_backlog_items_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."entity_tags"
     ADD CONSTRAINT "entity_tags_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."entity_tags"
     ADD CONSTRAINT "entity_tags_tenant_id_tag_id_entity_type_entity_id_key" UNIQUE ("tenant_id", "tag_id", "entity_type", "entity_id");
 
 
-
 ALTER TABLE ONLY "public"."gift_rule_items"
     ADD CONSTRAINT "gift_rule_items_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."gift_rule_redemptions"
     ADD CONSTRAINT "gift_rule_redemptions_order_rule_key" UNIQUE ("order_id", "rule_id");
 
 
-
 ALTER TABLE ONLY "public"."gift_rule_redemptions"
     ADD CONSTRAINT "gift_rule_redemptions_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."gift_rules"
     ADD CONSTRAINT "gift_rules_pkey" PRIMARY KEY ("id");
 
 
-
-ALTER TABLE ONLY "public"."sales_invoice_items"
-    ADD CONSTRAINT "global_invoice_items_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "public"."sales_invoices"
-    ADD CONSTRAINT "global_invoices_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "public"."sales_invoices"
-    ADD CONSTRAINT "global_invoices_tenant_id_invoice_no_key" UNIQUE ("tenant_id", "invoice_no");
-
-
-
-ALTER TABLE ONLY "public"."sales_return_items"
-    ADD CONSTRAINT "global_return_items_pkey" PRIMARY KEY ("id");
-
-
-
 ALTER TABLE ONLY "public"."investor_balances"
     ADD CONSTRAINT "investor_balances_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."investor_balances"
     ADD CONSTRAINT "investor_balances_tenant_id_investor_id_key" UNIQUE ("tenant_id", "investor_id");
 
 
-
 ALTER TABLE ONLY "public"."investor_transactions"
     ADD CONSTRAINT "investor_transactions_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."investors"
     ADD CONSTRAINT "investors_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."invoice_boxes"
     ADD CONSTRAINT "invoice_boxes_invoice_id_box_number_key" UNIQUE ("invoice_id", "box_number");
-
 
 
 ALTER TABLE ONLY "public"."invoice_boxes"
     ADD CONSTRAINT "invoice_boxes_pkey" PRIMARY KEY ("id");
 
 
-
-ALTER TABLE ONLY "public"."invoice_brands"
-    ADD CONSTRAINT "invoice_brands_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "public"."invoice_brands"
-    ADD CONSTRAINT "invoice_brands_tenant_id_name_key" UNIQUE ("tenant_id", "name");
-
-
-
 ALTER TABLE ONLY "public"."item_assignees"
     ADD CONSTRAINT "item_assignees_item_id_user_email_key" UNIQUE ("item_id", "user_email");
-
 
 
 ALTER TABLE ONLY "public"."item_assignees"
     ADD CONSTRAINT "item_assignees_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."item_permissions"
     ADD CONSTRAINT "item_permissions_item_id_user_email_key" UNIQUE ("item_id", "user_email");
-
 
 
 ALTER TABLE ONLY "public"."item_permissions"
     ADD CONSTRAINT "item_permissions_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."item_tags"
     ADD CONSTRAINT "item_tags_item_id_tag_id_key" UNIQUE ("item_id", "tag_id");
-
 
 
 ALTER TABLE ONLY "public"."item_tags"
     ADD CONSTRAINT "item_tags_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."items"
     ADD CONSTRAINT "items_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."koba_brands"
     ADD CONSTRAINT "koba_brands_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."koba_cart_items"
     ADD CONSTRAINT "koba_cart_items_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."koba_carts"
     ADD CONSTRAINT "koba_carts_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."koba_categories"
     ADD CONSTRAINT "koba_categories_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."koba_order_items"
     ADD CONSTRAINT "koba_order_items_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."koba_orders"
     ADD CONSTRAINT "koba_orders_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."koba_products"
     ADD CONSTRAINT "koba_products_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."koba_retail_settings"
     ADD CONSTRAINT "koba_retail_settings_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."koba_retail_settings"
     ADD CONSTRAINT "koba_retail_settings_tenant_id_key" UNIQUE ("tenant_id");
 
 
-
 ALTER TABLE ONLY "public"."markets"
     ADD CONSTRAINT "markets_code_key" UNIQUE ("code");
-
 
 
 ALTER TABLE ONLY "public"."markets"
     ADD CONSTRAINT "markets_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."membership_grants"
     ADD CONSTRAINT "membership_grants_membership_module_action_unique" UNIQUE ("membership_id", "module_key", "action");
-
 
 
 ALTER TABLE ONLY "public"."membership_grants"
     ADD CONSTRAINT "membership_grants_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."memberships"
     ADD CONSTRAINT "memberships_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."merchant_profiles"
     ADD CONSTRAINT "merchant_profiles_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."module_actions"
     ADD CONSTRAINT "module_actions_module_key_action_scope_unique" UNIQUE ("module_key", "action", "scope");
-
 
 
 ALTER TABLE ONLY "public"."module_actions"
     ADD CONSTRAINT "module_actions_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."modules"
     ADD CONSTRAINT "modules_key_key" UNIQUE ("key");
-
 
 
 ALTER TABLE ONLY "public"."modules"
     ADD CONSTRAINT "modules_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."order_items"
     ADD CONSTRAINT "order_items_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."orders"
     ADD CONSTRAINT "orders_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."invoice_payments"
     ADD CONSTRAINT "payment_allocations_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."payment_methods"
     ADD CONSTRAINT "payment_methods_code_key" UNIQUE ("code");
 
 
-
 ALTER TABLE ONLY "public"."payment_methods"
     ADD CONSTRAINT "payment_methods_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."global_payments"
     ADD CONSTRAINT "payments_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."product_brands"
     ADD CONSTRAINT "product_brands_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."product_categories"
     ADD CONSTRAINT "product_categories_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."product_sync_snapshots"
     ADD CONSTRAINT "product_sync_snapshots_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."products"
     ADD CONSTRAINT "products_pkey" PRIMARY KEY ("id");
 
 
-
-ALTER TABLE ONLY "public"."recipient_profiles"
-    ADD CONSTRAINT "recipient_profiles_pkey" PRIMARY KEY ("id");
-
-
-
 ALTER TABLE ONLY "public"."shop_cart_items"
     ADD CONSTRAINT "shop_cart_items_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."shop_carts"
     ADD CONSTRAINT "shop_carts_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."shop_categories"
     ADD CONSTRAINT "shop_categories_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."shop_customer_group_access"
     ADD CONSTRAINT "shop_customer_group_access_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."shop_customer_group_access"
     ADD CONSTRAINT "shop_customer_group_access_unique_shop_group" UNIQUE ("shop_id", "customer_group_id");
-
 
 
 ALTER TABLE ONLY "public"."shop_order_items"
     ADD CONSTRAINT "shop_order_items_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."shop_orders"
     ADD CONSTRAINT "shop_orders_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."shop_pricing_rules"
     ADD CONSTRAINT "shop_pricing_rules_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."shop_pricing_rules"
     ADD CONSTRAINT "shop_pricing_rules_unique_shop" UNIQUE ("shop_id");
-
 
 
 ALTER TABLE ONLY "public"."shop_product_listings"
     ADD CONSTRAINT "shop_product_listings_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."shop_product_listings"
     ADD CONSTRAINT "shop_product_listings_shop_stock_unique" UNIQUE ("shop_id", "global_stock_id");
-
 
 
 ALTER TABLE ONLY "public"."shop_product_listings"
     ADD CONSTRAINT "shop_product_listings_unique_shop_alloc" UNIQUE ("shop_id", "global_stock_allocation_id");
 
 
-
 ALTER TABLE ONLY "public"."shop_product_offers"
     ADD CONSTRAINT "shop_product_offers_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."shop_product_offers"
     ADD CONSTRAINT "shop_product_offers_shop_prod_cond_key" UNIQUE ("shop_id", "product_id", "condition_bucket");
 
 
-
 ALTER TABLE ONLY "public"."shop_stock_reservations"
     ADD CONSTRAINT "shop_stock_reservations_pkey" PRIMARY KEY ("cart_item_id");
-
 
 
 ALTER TABLE ONLY "public"."shops"
     ADD CONSTRAINT "shops_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."store_access"
     ADD CONSTRAINT "store_access_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."store_access"
     ADD CONSTRAINT "store_access_store_customer_group_unique" UNIQUE ("store_id", "customer_group_id");
 
 
-
 ALTER TABLE ONLY "public"."store_product_prices"
     ADD CONSTRAINT "store_product_prices_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."store_product_prices"
     ADD CONSTRAINT "store_product_prices_unique_store_inventory_item" UNIQUE ("tenant_id", "store_id", "inventory_item_id");
 
 
-
 ALTER TABLE ONLY "public"."stores"
     ADD CONSTRAINT "stores_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."system_role_templates"
     ADD CONSTRAINT "system_role_templates_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."system_role_templates"
     ADD CONSTRAINT "system_role_templates_scope_slug_module_action_unique" UNIQUE ("scope", "role_slug", "module_key", "action");
-
 
 
 ALTER TABLE ONLY "public"."tag_categories"
     ADD CONSTRAINT "tag_categories_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."tags"
     ADD CONSTRAINT "tags_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."tenant_module_submodules"
     ADD CONSTRAINT "tenant_module_submodules_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."tenant_module_submodules"
     ADD CONSTRAINT "tenant_module_submodules_tenant_id_submodule_key_key" UNIQUE ("tenant_id", "submodule_key");
-
 
 
 ALTER TABLE ONLY "public"."tenant_modules"
     ADD CONSTRAINT "tenant_modules_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."tenant_modules"
     ADD CONSTRAINT "tenant_modules_tenant_id_module_key_key" UNIQUE ("tenant_id", "module_key");
-
 
 
 ALTER TABLE ONLY "public"."tenant_permission_versions"
     ADD CONSTRAINT "tenant_permission_versions_pkey" PRIMARY KEY ("tenant_id");
 
 
-
 ALTER TABLE ONLY "public"."tenant_role_grants"
     ADD CONSTRAINT "tenant_role_grants_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."tenant_role_grants"
     ADD CONSTRAINT "tenant_role_grants_role_module_action_unique" UNIQUE ("tenant_role_id", "module_key", "action");
 
 
-
 ALTER TABLE ONLY "public"."tenant_roles"
     ADD CONSTRAINT "tenant_roles_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."tenant_roles"
     ADD CONSTRAINT "tenant_roles_tenant_scope_slug_unique" UNIQUE ("tenant_id", "scope", "slug");
 
 
-
 ALTER TABLE ONLY "public"."tenant_scoped_counters"
     ADD CONSTRAINT "tenant_scoped_counters_pkey" PRIMARY KEY ("tenant_id", "scope");
-
 
 
 ALTER TABLE ONLY "public"."tenants"
     ADD CONSTRAINT "tenants_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."tenants"
     ADD CONSTRAINT "tenants_slug_key" UNIQUE ("slug");
-
 
 
 ALTER TABLE ONLY "public"."thrift_accounting_ledger"
     ADD CONSTRAINT "thrift_accounting_ledger_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."thrift_barcodes"
     ADD CONSTRAINT "thrift_barcodes_barcode_id_tenant_unique" UNIQUE ("tenant_id", "barcode_id");
-
 
 
 ALTER TABLE ONLY "public"."thrift_barcodes"
     ADD CONSTRAINT "thrift_barcodes_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."thrift_boxes"
     ADD CONSTRAINT "thrift_boxes_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."thrift_categories"
     ADD CONSTRAINT "thrift_categories_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."thrift_courier_providers"
     ADD CONSTRAINT "thrift_courier_providers_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."global_currencies"
     ADD CONSTRAINT "thrift_currencies_code_key" UNIQUE ("code");
 
 
-
 ALTER TABLE ONLY "public"."global_currencies"
     ADD CONSTRAINT "thrift_currencies_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."thrift_customers"
     ADD CONSTRAINT "thrift_customers_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."thrift_customers"
     ADD CONSTRAINT "thrift_customers_tenant_phone_normalized_key" UNIQUE ("tenant_id", "phone_normalized");
-
 
 
 ALTER TABLE ONLY "public"."thrift_invoice_counters"
     ADD CONSTRAINT "thrift_invoice_counters_pkey" PRIMARY KEY ("tenant_id", "year_month");
 
 
-
 ALTER TABLE ONLY "public"."thrift_invoice_items"
     ADD CONSTRAINT "thrift_invoice_items_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."thrift_invoices"
     ADD CONSTRAINT "thrift_invoices_number_tenant_unique" UNIQUE ("tenant_id", "invoice_number");
 
 
-
 ALTER TABLE ONLY "public"."thrift_invoices"
     ADD CONSTRAINT "thrift_invoices_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."thrift_pricings"
     ADD CONSTRAINT "thrift_pricings_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."thrift_pricings"
     ADD CONSTRAINT "thrift_pricings_stock_id_key" UNIQUE ("stock_id");
-
 
 
 ALTER TABLE ONLY "public"."thrift_return_counters"
     ADD CONSTRAINT "thrift_return_counters_pkey" PRIMARY KEY ("tenant_id", "year_month");
 
 
-
 ALTER TABLE ONLY "public"."thrift_sales_invoice_items"
     ADD CONSTRAINT "thrift_sales_invoice_items_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."thrift_sales_invoices"
     ADD CONSTRAINT "thrift_sales_invoices_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."thrift_sales_invoices"
     ADD CONSTRAINT "thrift_sales_invoices_tenant_num_key" UNIQUE ("tenant_id", "invoice_number");
-
 
 
 ALTER TABLE ONLY "public"."thrift_sales_pnl_lines"
     ADD CONSTRAINT "thrift_sales_pnl_lines_invoice_item_key" UNIQUE ("invoice_item_id");
 
 
-
 ALTER TABLE ONLY "public"."thrift_sales_pnl_lines"
     ADD CONSTRAINT "thrift_sales_pnl_lines_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."thrift_sales_return_items"
     ADD CONSTRAINT "thrift_sales_return_items_invoice_item_key" UNIQUE ("invoice_item_id");
 
 
-
 ALTER TABLE ONLY "public"."thrift_sales_return_items"
     ADD CONSTRAINT "thrift_sales_return_items_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."thrift_sales_returns"
     ADD CONSTRAINT "thrift_sales_returns_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."thrift_sales_returns"
     ADD CONSTRAINT "thrift_sales_returns_tenant_number_key" UNIQUE ("tenant_id", "return_number");
-
 
 
 ALTER TABLE ONLY "public"."thrift_shelves"
     ADD CONSTRAINT "thrift_shelves_code_tenant_unique" UNIQUE ("tenant_id", "shelf_code");
 
 
-
 ALTER TABLE ONLY "public"."thrift_shelves"
     ADD CONSTRAINT "thrift_shelves_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."thrift_shipments"
     ADD CONSTRAINT "thrift_shipments_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."thrift_stock_images"
     ADD CONSTRAINT "thrift_stock_images_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."thrift_stock_measurements"
     ADD CONSTRAINT "thrift_stock_measurements_pkey" PRIMARY KEY ("stock_id");
 
 
-
 ALTER TABLE ONLY "public"."thrift_settings"
     ADD CONSTRAINT "thrift_stock_settings_pkey" PRIMARY KEY ("tenant_id");
-
 
 
 ALTER TABLE ONLY "public"."thrift_stocks"
     ADD CONSTRAINT "thrift_stocks_barcode_tenant_unique" UNIQUE ("tenant_id", "barcode");
 
 
-
 ALTER TABLE ONLY "public"."thrift_stocks"
     ADD CONSTRAINT "thrift_stocks_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."thrift_types"
     ADD CONSTRAINT "thrift_types_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."units_of_measure"
     ADD CONSTRAINT "units_of_measure_code_key" UNIQUE ("code");
-
 
 
 ALTER TABLE ONLY "public"."units_of_measure"
     ADD CONSTRAINT "units_of_measure_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "public"."universal_wallet_ledger"
     ADD CONSTRAINT "universal_wallet_ledger_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "public"."customer_order_backlog_items"
     ADD CONSTRAINT "uq_customer_backlog_item" UNIQUE ("tenant_id", "billing_profile_id", "product_id");
 
 
-
 ALTER TABLE ONLY "public"."koba_brands"
     ADD CONSTRAINT "uq_koba_brands_name" UNIQUE ("tenant_id", "name");
-
 
 
 ALTER TABLE ONLY "public"."koba_cart_items"
     ADD CONSTRAINT "uq_koba_cart_items_product" UNIQUE ("cart_id", "product_id");
 
 
-
 ALTER TABLE ONLY "public"."koba_carts"
     ADD CONSTRAINT "uq_koba_carts_customer_group" UNIQUE ("tenant_id", "customer_group_id");
-
 
 
 ALTER TABLE ONLY "public"."koba_categories"
     ADD CONSTRAINT "uq_koba_categories_name" UNIQUE ("tenant_id", "name");
 
 
-
 ALTER TABLE ONLY "public"."koba_products"
     ADD CONSTRAINT "uq_koba_products_source" UNIQUE ("tenant_id", "source_type", "source_id");
-
 
 
 ALTER TABLE ONLY "public"."shop_categories"
     ADD CONSTRAINT "uq_shop_categories_tenant_slug" UNIQUE ("tenant_id", "slug");
 
 
-
 ALTER TABLE ONLY "public"."courier_remittance_batches"
     ADD CONSTRAINT "uq_tenant_courier_batch_no" UNIQUE ("tenant_id", "courier_service_id", "batch_no");
-
 
 
 ALTER TABLE ONLY "public"."wallet_accounts"
     ADD CONSTRAINT "wallet_accounts_entity_currency_key" UNIQUE ("tenant_id", "entity_type", "entity_id", "currency_code");
 
 
-
 ALTER TABLE ONLY "public"."wallet_accounts"
     ADD CONSTRAINT "wallet_accounts_pkey" PRIMARY KEY ("id");
-
 
 
 CREATE INDEX "activity_logs_item_id_idx" ON "public"."activity_logs" USING "btree" ("item_id");
 
 
-
 CREATE INDEX "batch_code_pc_batch_id_idx" ON "public"."batch_code_pc" USING "btree" ("batch_id");
-
 
 
 CREATE INDEX "batch_code_pc_product_code_idx" ON "public"."batch_code_pc" USING "btree" ("product_code");
 
 
-
 CREATE INDEX "batch_code_pc_shipment_id_idx" ON "public"."batch_code_pc" USING "btree" ("shipment_id");
-
 
 
 CREATE INDEX "batch_code_pc_shipment_item_id_idx" ON "public"."batch_code_pc" USING "btree" ("shipment_item_id");
 
 
-
-CREATE INDEX "billing_profiles_customer_group_id_idx" ON "public"."billing_profiles" USING "btree" ("customer_group_id");
-
-
-
-CREATE INDEX "billing_profiles_name_idx" ON "public"."billing_profiles" USING "btree" ("name");
-
-
-
-CREATE INDEX "billing_profiles_tenant_id_idx" ON "public"."billing_profiles" USING "btree" ("tenant_id");
-
-
-
 CREATE INDEX "business_parties_parent_tenant_id_idx" ON "public"."business_parties" USING "btree" ("parent_tenant_id");
-
 
 
 CREATE INDEX "business_parties_tenant_id_idx" ON "public"."business_parties" USING "btree" ("tenant_id");
 
 
-
 CREATE UNIQUE INDEX "cargo_companies_one_default_per_tenant_idx" ON "public"."cargo_companies" USING "btree" ("tenant_id") WHERE (("is_default" = true) AND ("tenant_id" IS NOT NULL));
-
 
 
 CREATE INDEX "cargo_companies_parent_tenant_id_idx" ON "public"."cargo_companies" USING "btree" ("parent_tenant_id");
 
 
-
 CREATE UNIQUE INDEX "cargo_companies_tenant_code_idx" ON "public"."cargo_companies" USING "btree" ("tenant_id", "upper"(TRIM(BOTH FROM "code"))) WHERE ("tenant_id" IS NOT NULL);
-
 
 
 CREATE INDEX "cargo_companies_tenant_id_idx" ON "public"."cargo_companies" USING "btree" ("tenant_id");
 
 
-
 CREATE INDEX "cart_items_cart_id_idx" ON "public"."cart_items" USING "btree" ("cart_id");
-
 
 
 CREATE INDEX "cart_items_name_idx" ON "public"."cart_items" USING "btree" ("name");
 
 
-
 CREATE INDEX "cart_items_product_id_idx" ON "public"."cart_items" USING "btree" ("product_id");
-
 
 
 CREATE INDEX "carts_customer_group_id_idx" ON "public"."carts" USING "btree" ("customer_group_id");
 
 
-
 CREATE INDEX "carts_store_id_idx" ON "public"."carts" USING "btree" ("store_id");
-
 
 
 CREATE INDEX "carts_tenant_id_idx" ON "public"."carts" USING "btree" ("tenant_id");
 
 
-
 CREATE INDEX "comments_item_id_idx" ON "public"."comments" USING "btree" ("item_id");
-
 
 
 CREATE INDEX "comments_parent_comment_id_idx" ON "public"."comments" USING "btree" ("parent_comment_id");
 
 
-
 CREATE INDEX "commerce_cart_customer_group_idx" ON "public"."commerce_cart" USING "btree" ("customer_group_id");
-
 
 
 CREATE INDEX "commerce_cart_inventory_item_idx" ON "public"."commerce_cart" USING "btree" ("inventory_item_id");
 
 
-
 CREATE INDEX "commerce_cart_product_idx" ON "public"."commerce_cart" USING "btree" ("product_id");
-
 
 
 CREATE INDEX "commerce_cart_tenant_idx" ON "public"."commerce_cart" USING "btree" ("tenant_id");
 
 
-
 CREATE INDEX "commerce_inventory_product_summaries_product_idx" ON "public"."commerce_inventory_product_summaries" USING "btree" ("product_id");
-
 
 
 CREATE INDEX "commerce_inventory_product_summaries_tenant_idx" ON "public"."commerce_inventory_product_summaries" USING "btree" ("tenant_id");
 
 
-
 CREATE INDEX "commerce_invoices_billing_profile_idx" ON "public"."commerce_invoices" USING "btree" ("billing_profile_id");
-
 
 
 CREATE INDEX "commerce_invoices_order_idx" ON "public"."commerce_invoices" USING "btree" ("order_id");
 
 
-
 CREATE INDEX "commerce_invoices_tenant_idx" ON "public"."commerce_invoices" USING "btree" ("tenant_id");
-
 
 
 CREATE INDEX "commerce_order_items_global_stock_id_idx" ON "public"."commerce_order_items" USING "btree" ("global_stock_id");
 
 
-
 CREATE INDEX "commerce_order_items_inventory_item_idx" ON "public"."commerce_order_items" USING "btree" ("inventory_item_id");
-
 
 
 CREATE INDEX "commerce_order_items_invoice_idx" ON "public"."commerce_order_items" USING "btree" ("invoice_id");
 
 
-
 CREATE INDEX "commerce_order_items_order_idx" ON "public"."commerce_order_items" USING "btree" ("order_id");
-
 
 
 CREATE INDEX "commerce_order_items_product_idx" ON "public"."commerce_order_items" USING "btree" ("product_id");
 
 
-
 CREATE INDEX "commerce_order_items_shipment_item_idx" ON "public"."commerce_order_items" USING "btree" ("shipment_item_id");
-
 
 
 CREATE INDEX "commerce_orders_customer_group_idx" ON "public"."commerce_orders" USING "btree" ("customer_group_id");
 
 
-
 CREATE INDEX "commerce_orders_status_idx" ON "public"."commerce_orders" USING "btree" ("status");
-
 
 
 CREATE INDEX "commerce_orders_tenant_idx" ON "public"."commerce_orders" USING "btree" ("tenant_id");
 
 
-
 CREATE INDEX "customer_group_members_email_active_idx" ON "public"."customer_group_members" USING "btree" ("lower"(TRIM(BOTH FROM "email")), "is_active");
-
 
 
 CREATE INDEX "customer_group_members_email_idx" ON "public"."customer_group_members" USING "btree" ("lower"(TRIM(BOTH FROM "email")));
 
 
-
 CREATE UNIQUE INDEX "customer_group_members_group_email_unique" ON "public"."customer_group_members" USING "btree" ("customer_group_id", "lower"(TRIM(BOTH FROM "email")));
-
 
 
 CREATE INDEX "customer_group_members_group_id_idx" ON "public"."customer_group_members" USING "btree" ("customer_group_id");
 
 
-
 CREATE INDEX "customer_group_members_tenant_role_id_idx" ON "public"."customer_group_members" USING "btree" ("tenant_role_id");
-
 
 
 CREATE INDEX "customer_groups_tenant_id_idx" ON "public"."customer_groups" USING "btree" ("tenant_id");
 
 
-
 CREATE INDEX "entity_tags_entity_idx" ON "public"."entity_tags" USING "btree" ("entity_type", "entity_id");
-
 
 
 CREATE INDEX "entity_tags_tag_id_idx" ON "public"."entity_tags" USING "btree" ("tag_id");
 
 
-
 CREATE INDEX "entity_tags_tenant_idx" ON "public"."entity_tags" USING "btree" ("tenant_id");
-
-
-
-CREATE INDEX "global_invoice_items_global_stock_id_idx" ON "public"."sales_invoice_items" USING "btree" ("global_stock_id");
-
-
-
-CREATE INDEX "global_invoice_items_invoice_id_idx" ON "public"."sales_invoice_items" USING "btree" ("invoice_id");
-
-
-
-CREATE INDEX "global_invoices_billing_profile_id_idx" ON "public"."sales_invoices" USING "btree" ("billing_profile_id");
-
-
-
-CREATE INDEX "global_invoices_issued_by_tenant_id_idx" ON "public"."sales_invoices" USING "btree" ("issued_by_tenant_id");
-
-
-
-CREATE INDEX "global_invoices_parent_tenant_id_idx" ON "public"."sales_invoices" USING "btree" ("parent_tenant_id");
-
-
-
-CREATE INDEX "global_invoices_recipient_profile_id_idx" ON "public"."sales_invoices" USING "btree" ("recipient_profile_id");
-
-
-
-CREATE INDEX "global_invoices_tenant_id_idx" ON "public"."sales_invoices" USING "btree" ("tenant_id");
-
-
-
-CREATE INDEX "global_return_items_invoice_id_idx" ON "public"."sales_return_items" USING "btree" ("invoice_id");
-
-
-
-CREATE INDEX "global_return_items_invoice_item_id_idx" ON "public"."sales_return_items" USING "btree" ("invoice_item_id");
-
 
 
 CREATE INDEX "idx_courier_remittance_batches_courier" ON "public"."courier_remittance_batches" USING "btree" ("courier_service_id");
 
 
-
 CREATE INDEX "idx_courier_remittance_batches_status" ON "public"."courier_remittance_batches" USING "btree" ("tenant_id", "status");
-
 
 
 CREATE INDEX "idx_courier_remittance_batches_tenant" ON "public"."courier_remittance_batches" USING "btree" ("tenant_id");
 
 
-
 CREATE INDEX "idx_courier_remittance_items_batch" ON "public"."courier_remittance_items" USING "btree" ("batch_id");
-
 
 
 CREATE INDEX "idx_courier_remittance_items_invoice" ON "public"."courier_remittance_items" USING "btree" ("global_invoice_id");
 
 
-
 CREATE INDEX "idx_courier_remittance_items_order" ON "public"."courier_remittance_items" USING "btree" ("shop_order_id");
-
 
 
 CREATE INDEX "idx_courier_remittance_items_tenant" ON "public"."courier_remittance_items" USING "btree" ("tenant_id");
 
 
-
 CREATE INDEX "idx_courier_remittance_items_tracking" ON "public"."courier_remittance_items" USING "btree" ("tracking_number");
-
-
-
-CREATE INDEX "idx_global_invoice_items_shipment" ON "public"."sales_invoice_items" USING "btree" ("shipment_item_id");
-
-
-
-CREATE INDEX "idx_global_invoices_billing_profile" ON "public"."sales_invoices" USING "btree" ("billing_profile_id");
-
-
-
-CREATE INDEX "idx_global_invoices_scoping" ON "public"."sales_invoices" USING "btree" ("parent_tenant_id", "tenant_id", "invoice_status", "invoice_date");
-
 
 
 CREATE INDEX "idx_merchant_profiles_tenant" ON "public"."merchant_profiles" USING "btree" ("tenant_id");
 
 
-
 CREATE INDEX "idx_shop_categories_tenant" ON "public"."shop_categories" USING "btree" ("tenant_id", "is_active");
-
 
 
 CREATE UNIQUE INDEX "idx_shop_orders_tenant_return_ref" ON "public"."shop_orders" USING "btree" ("tenant_id", "return_ref") WHERE ("return_ref" IS NOT NULL);
 
 
-
 CREATE INDEX "idx_shops_category_ids" ON "public"."shops" USING "gin" ("category_ids");
-
 
 
 CREATE INDEX "idx_thrift_courier_providers_picker" ON "public"."thrift_courier_providers" USING "btree" ("is_active", "sort_order", "name");
 
 
-
 CREATE INDEX "idx_thrift_customers_tenant_name" ON "public"."thrift_customers" USING "btree" ("tenant_id", "name");
-
 
 
 CREATE INDEX "idx_thrift_customers_tenant_updated" ON "public"."thrift_customers" USING "btree" ("tenant_id", "updated_at" DESC);
 
 
-
 CREATE INDEX "idx_thrift_sales_invoice_items_invoice" ON "public"."thrift_sales_invoice_items" USING "btree" ("invoice_id");
-
 
 
 CREATE INDEX "idx_thrift_sales_invoice_items_stock" ON "public"."thrift_sales_invoice_items" USING "btree" ("stock_id");
 
 
-
 CREATE INDEX "idx_thrift_sales_invoices_courier_provider" ON "public"."thrift_sales_invoices" USING "btree" ("courier_provider_id") WHERE ("courier_provider_id" IS NOT NULL);
-
 
 
 CREATE INDEX "idx_thrift_sales_invoices_tenant_close_reason" ON "public"."thrift_sales_invoices" USING "btree" ("tenant_id", "close_reason") WHERE ("close_reason" IS NOT NULL);
 
 
-
 CREATE INDEX "idx_thrift_sales_invoices_tenant_customer" ON "public"."thrift_sales_invoices" USING "btree" ("tenant_id", "customer_id") WHERE ("customer_id" IS NOT NULL);
-
 
 
 CREATE INDEX "idx_thrift_sales_invoices_tenant_date" ON "public"."thrift_sales_invoices" USING "btree" ("tenant_id", "date" DESC);
 
 
-
 CREATE INDEX "idx_thrift_sales_invoices_tenant_delivery_status" ON "public"."thrift_sales_invoices" USING "btree" ("tenant_id", "delivery_status") WHERE ("delivery_status" IS NOT NULL);
-
 
 
 CREATE INDEX "idx_thrift_sales_invoices_tenant_status" ON "public"."thrift_sales_invoices" USING "btree" ("tenant_id", "status");
 
 
-
 CREATE INDEX "idx_thrift_sales_pnl_lines_invoice" ON "public"."thrift_sales_pnl_lines" USING "btree" ("invoice_id");
-
 
 
 CREATE INDEX "idx_thrift_sales_pnl_lines_outcome" ON "public"."thrift_sales_pnl_lines" USING "btree" ("tenant_id", "outcome");
 
 
-
 CREATE INDEX "idx_thrift_sales_pnl_lines_shipment" ON "public"."thrift_sales_pnl_lines" USING "btree" ("tenant_id", "inbound_shipment_id", "event_date" DESC);
-
 
 
 CREATE INDEX "idx_thrift_sales_pnl_lines_tenant_event_date" ON "public"."thrift_sales_pnl_lines" USING "btree" ("tenant_id", "event_date" DESC);
 
 
-
 CREATE INDEX "idx_thrift_sales_return_items_return" ON "public"."thrift_sales_return_items" USING "btree" ("return_id");
-
 
 
 CREATE INDEX "idx_thrift_sales_return_items_stock" ON "public"."thrift_sales_return_items" USING "btree" ("stock_id");
 
 
-
 CREATE INDEX "idx_thrift_sales_returns_invoice" ON "public"."thrift_sales_returns" USING "btree" ("invoice_id");
-
 
 
 CREATE INDEX "idx_thrift_sales_returns_tenant_created" ON "public"."thrift_sales_returns" USING "btree" ("tenant_id", "created_at" DESC);
 
 
-
 CREATE INDEX "idx_thrift_stock_measurements_bust" ON "public"."thrift_stock_measurements" USING "btree" ("tenant_id", "bust_in");
-
 
 
 CREATE INDEX "idx_thrift_stock_measurements_hips" ON "public"."thrift_stock_measurements" USING "btree" ("tenant_id", "hips_in");
 
 
-
 CREATE INDEX "idx_thrift_stock_measurements_waist" ON "public"."thrift_stock_measurements" USING "btree" ("tenant_id", "waist_in");
-
 
 
 CREATE INDEX "idx_universal_wallet_ledger_lookup" ON "public"."universal_wallet_ledger" USING "btree" ("tenant_id", "entity_type", "entity_id", "created_at" DESC, "id" DESC);
 
 
-
 CREATE INDEX "idx_universal_wallet_ledger_source" ON "public"."universal_wallet_ledger" USING "btree" ("source_type", "source_id");
-
 
 
 CREATE INDEX "idx_wallet_accounts_tenant_entity" ON "public"."wallet_accounts" USING "btree" ("tenant_id", "entity_type", "entity_id");
 
 
-
 CREATE INDEX "investor_balances_investor_id_idx" ON "public"."investor_balances" USING "btree" ("investor_id");
-
 
 
 CREATE INDEX "investor_balances_tenant_id_idx" ON "public"."investor_balances" USING "btree" ("tenant_id");
 
 
-
 CREATE INDEX "investor_transactions_investor_id_idx" ON "public"."investor_transactions" USING "btree" ("investor_id");
-
 
 
 CREATE INDEX "investor_transactions_tenant_id_idx" ON "public"."investor_transactions" USING "btree" ("tenant_id");
 
 
-
 CREATE INDEX "investors_tenant_id_idx" ON "public"."investors" USING "btree" ("tenant_id");
-
 
 
 CREATE INDEX "item_assignees_item_id_idx" ON "public"."item_assignees" USING "btree" ("item_id");
 
 
-
 CREATE INDEX "item_assignees_user_email_idx" ON "public"."item_assignees" USING "btree" ("user_email");
-
 
 
 CREATE INDEX "item_permissions_item_id_idx" ON "public"."item_permissions" USING "btree" ("item_id");
 
 
-
 CREATE INDEX "item_permissions_user_email_idx" ON "public"."item_permissions" USING "btree" ("user_email");
-
 
 
 CREATE INDEX "item_tags_item_id_idx" ON "public"."item_tags" USING "btree" ("item_id");
 
 
-
 CREATE INDEX "item_tags_tag_id_idx" ON "public"."item_tags" USING "btree" ("tag_id");
-
 
 
 CREATE INDEX "items_created_by_email_idx" ON "public"."items" USING "btree" ("created_by_email");
 
 
-
 CREATE INDEX "items_parent_id_idx" ON "public"."items" USING "btree" ("parent_id");
-
 
 
 CREATE INDEX "items_tenant_id_idx" ON "public"."items" USING "btree" ("tenant_id");
 
 
-
 CREATE INDEX "koba_brands_tenant_idx" ON "public"."koba_brands" USING "btree" ("tenant_id");
-
 
 
 CREATE INDEX "koba_cart_items_cart_id_idx" ON "public"."koba_cart_items" USING "btree" ("cart_id");
 
 
-
 CREATE INDEX "koba_cart_items_product_id_idx" ON "public"."koba_cart_items" USING "btree" ("product_id");
-
 
 
 CREATE INDEX "koba_carts_customer_group_id_idx" ON "public"."koba_carts" USING "btree" ("customer_group_id");
 
 
-
 CREATE INDEX "koba_carts_tenant_idx" ON "public"."koba_carts" USING "btree" ("tenant_id");
-
 
 
 CREATE INDEX "koba_categories_tenant_idx" ON "public"."koba_categories" USING "btree" ("tenant_id");
 
 
-
 CREATE INDEX "koba_order_items_order_id_idx" ON "public"."koba_order_items" USING "btree" ("order_id");
-
 
 
 CREATE INDEX "koba_order_items_product_id_idx" ON "public"."koba_order_items" USING "btree" ("product_id");
 
 
-
 CREATE INDEX "koba_orders_customer_group_id_idx" ON "public"."koba_orders" USING "btree" ("customer_group_id");
-
 
 
 CREATE INDEX "koba_orders_status_idx" ON "public"."koba_orders" USING "btree" ("status");
 
 
-
 CREATE INDEX "koba_orders_tenant_idx" ON "public"."koba_orders" USING "btree" ("tenant_id");
-
 
 
 CREATE INDEX "koba_orders_tenant_phone_idx" ON "public"."koba_orders" USING "btree" ("tenant_id", "shipping_phone") WHERE (("shipping_phone" IS NOT NULL) AND ("shipping_phone" <> ''::"text"));
 
 
-
 CREATE INDEX "koba_products_barcode_idx" ON "public"."koba_products" USING "btree" ("barcode");
-
 
 
 CREATE INDEX "koba_products_sku_idx" ON "public"."koba_products" USING "btree" ("sku");
 
 
-
 CREATE INDEX "koba_products_source_type_idx" ON "public"."koba_products" USING "btree" ("source_type");
-
 
 
 CREATE INDEX "koba_products_tenant_id_idx" ON "public"."koba_products" USING "btree" ("tenant_id");
 
 
-
 CREATE INDEX "markets_code_idx" ON "public"."markets" USING "btree" ("code");
-
 
 
 CREATE INDEX "markets_region_idx" ON "public"."markets" USING "btree" ("region");
 
 
-
 CREATE INDEX "memberships_email_idx" ON "public"."memberships" USING "btree" ("lower"(TRIM(BOTH FROM "email")));
-
 
 
 CREATE UNIQUE INDEX "memberships_email_tenant_unique" ON "public"."memberships" USING "btree" ("lower"(TRIM(BOTH FROM "email")), COALESCE("tenant_id", ('-1'::integer)::bigint));
 
 
-
 CREATE INDEX "memberships_role_idx" ON "public"."memberships" USING "btree" ("role");
-
 
 
 CREATE UNIQUE INDEX "memberships_superadmin_email_unique" ON "public"."memberships" USING "btree" ("lower"(TRIM(BOTH FROM "email"))) WHERE (("role" = 'superadmin'::"public"."app_role") AND ("tenant_id" IS NULL));
 
 
-
 CREATE INDEX "memberships_tenant_id_idx" ON "public"."memberships" USING "btree" ("tenant_id");
-
 
 
 CREATE INDEX "memberships_tenant_role_id_idx" ON "public"."memberships" USING "btree" ("tenant_role_id");
 
 
-
 CREATE INDEX "modules_parent_module_key_idx" ON "public"."modules" USING "btree" ("parent_module_key");
-
 
 
 CREATE INDEX "order_items_barcode_idx" ON "public"."order_items" USING "btree" ("barcode");
 
 
-
 CREATE INDEX "order_items_name_idx" ON "public"."order_items" USING "btree" ("name");
-
 
 
 CREATE INDEX "order_items_order_id_idx" ON "public"."order_items" USING "btree" ("order_id");
 
 
-
 CREATE INDEX "order_items_product_code_idx" ON "public"."order_items" USING "btree" ("product_code");
-
 
 
 CREATE INDEX "order_items_product_id_idx" ON "public"."order_items" USING "btree" ("product_id");
 
 
-
 CREATE INDEX "order_items_shipment_id_idx" ON "public"."order_items" USING "btree" ("shipment_id");
-
 
 
 CREATE INDEX "orders_customer_group_id_idx" ON "public"."orders" USING "btree" ("customer_group_id");
 
 
-
 CREATE INDEX "orders_invoice_id_idx" ON "public"."orders" USING "btree" ("invoice_id");
-
 
 
 CREATE INDEX "orders_name_idx" ON "public"."orders" USING "btree" ("name");
 
 
-
 CREATE INDEX "orders_parent_tenant_id_idx" ON "public"."orders" USING "btree" ("parent_tenant_id");
-
 
 
 CREATE INDEX "orders_status_idx" ON "public"."orders" USING "btree" ("status");
 
 
-
 CREATE INDEX "orders_store_id_idx" ON "public"."orders" USING "btree" ("store_id");
-
 
 
 CREATE INDEX "orders_tenant_id_idx" ON "public"."orders" USING "btree" ("tenant_id");
 
 
-
 CREATE UNIQUE INDEX "orders_tenant_id_tenant_order_id_uidx" ON "public"."orders" USING "btree" ("tenant_id", "tenant_order_id");
-
 
 
 CREATE INDEX "orders_tenant_order_id_idx" ON "public"."orders" USING "btree" ("tenant_order_id");
 
 
-
 CREATE INDEX "payment_allocations_commerce_invoice_id_idx" ON "public"."invoice_payments" USING "btree" ("commerce_invoice_id");
-
 
 
 CREATE INDEX "payment_allocations_global_invoice_id_idx" ON "public"."invoice_payments" USING "btree" ("global_invoice_id");
 
 
-
 CREATE INDEX "payment_allocations_invoice_id_idx" ON "public"."invoice_payments" USING "btree" ("invoice_id");
-
 
 
 CREATE INDEX "payment_allocations_payment_id_idx" ON "public"."invoice_payments" USING "btree" ("payment_id");
 
 
-
 CREATE INDEX "payment_allocations_tenant_id_idx" ON "public"."invoice_payments" USING "btree" ("tenant_id");
-
 
 
 CREATE INDEX "payment_methods_category_idx" ON "public"."payment_methods" USING "btree" ("category");
 
 
-
 CREATE INDEX "payment_methods_scope_idx" ON "public"."payment_methods" USING "btree" ("scope");
-
 
 
 CREATE INDEX "payments_billing_profile_id_idx" ON "public"."global_payments" USING "btree" ("billing_profile_id");
 
 
-
 CREATE INDEX "payments_payment_date_idx" ON "public"."global_payments" USING "btree" ("payment_date");
-
 
 
 CREATE INDEX "payments_tenant_id_idx" ON "public"."global_payments" USING "btree" ("tenant_id");
 
 
-
 CREATE INDEX "product_brands_parent_tenant_id_idx" ON "public"."product_brands" USING "btree" ("parent_tenant_id");
-
 
 
 CREATE INDEX "product_brands_tenant_id_idx" ON "public"."product_brands" USING "btree" ("tenant_id");
 
 
-
 CREATE INDEX "product_brands_vendor_code_idx" ON "public"."product_brands" USING "btree" ("vendor_code");
-
 
 
 CREATE INDEX "product_brands_vendor_id_idx" ON "public"."product_brands" USING "btree" ("vendor_id");
 
 
-
 CREATE INDEX "product_brands_vendor_id_value_idx" ON "public"."product_brands" USING "btree" ("vendor_id", "value");
-
 
 
 CREATE UNIQUE INDEX "product_brands_vendor_value_unique" ON "public"."product_brands" USING "btree" (COALESCE("upper"(TRIM(BOTH FROM "vendor_code")), ''::"text"), "value");
 
 
-
 CREATE INDEX "product_categories_parent_tenant_id_idx" ON "public"."product_categories" USING "btree" ("parent_tenant_id");
-
 
 
 CREATE INDEX "product_categories_tenant_id_idx" ON "public"."product_categories" USING "btree" ("tenant_id");
 
 
-
 CREATE INDEX "product_categories_vendor_code_idx" ON "public"."product_categories" USING "btree" ("vendor_code");
-
 
 
 CREATE INDEX "product_categories_vendor_id_idx" ON "public"."product_categories" USING "btree" ("vendor_id");
 
 
-
 CREATE INDEX "product_categories_vendor_id_value_idx" ON "public"."product_categories" USING "btree" ("vendor_id", "value");
-
 
 
 CREATE UNIQUE INDEX "product_categories_vendor_value_unique" ON "public"."product_categories" USING "btree" (COALESCE("upper"(TRIM(BOTH FROM "vendor_code")), ''::"text"), "value");
 
 
-
 CREATE INDEX "product_sync_snapshots_expires_at_idx" ON "public"."product_sync_snapshots" USING "btree" ("expires_at");
-
 
 
 CREATE INDEX "product_sync_snapshots_product_id_idx" ON "public"."product_sync_snapshots" USING "btree" ("product_id");
 
 
-
 CREATE INDEX "product_sync_snapshots_run_id_idx" ON "public"."product_sync_snapshots" USING "btree" ("run_id");
-
 
 
 CREATE INDEX "product_sync_snapshots_scope_idx" ON "public"."product_sync_snapshots" USING "btree" ("tenant_id", "vendor_code", "market_code");
 
 
-
 CREATE INDEX "product_sync_snapshots_vendor_id_idx" ON "public"."product_sync_snapshots" USING "btree" ("vendor_id");
-
 
 
 CREATE INDEX "products_barcode_idx" ON "public"."products" USING "btree" ("barcode");
 
 
-
 CREATE INDEX "products_brand_idx" ON "public"."products" USING "btree" ("brand");
-
 
 
 CREATE INDEX "products_category_idx" ON "public"."products" USING "btree" ("category");
 
 
-
 CREATE INDEX "products_list_price_currency_id_idx" ON "public"."products" USING "btree" ("list_price_currency_id");
-
 
 
 CREATE INDEX "products_market_code_idx" ON "public"."products" USING "btree" ("market_code");
 
 
-
 CREATE INDEX "products_name_idx" ON "public"."products" USING "btree" ("name");
-
 
 
 CREATE INDEX "products_parent_tenant_id_idx" ON "public"."products" USING "btree" ("parent_tenant_id");
 
 
-
 CREATE INDEX "products_product_code_idx" ON "public"."products" USING "btree" ("product_code");
-
 
 
 CREATE INDEX "products_reference_cost_currency_id_idx" ON "public"."products" USING "btree" ("reference_cost_currency_id");
 
 
-
 CREATE INDEX "products_tenant_id_idx" ON "public"."products" USING "btree" ("tenant_id");
-
 
 
 CREATE INDEX "products_vendor_code_idx" ON "public"."products" USING "btree" ("vendor_code");
 
 
-
 CREATE INDEX "products_vendor_id_idx" ON "public"."products" USING "btree" ("vendor_id");
-
-
-
-CREATE INDEX "recipient_profiles_name_idx" ON "public"."recipient_profiles" USING "btree" ("name");
-
-
-
-CREATE INDEX "recipient_profiles_tenant_id_idx" ON "public"."recipient_profiles" USING "btree" ("tenant_id");
-
-
-
-CREATE UNIQUE INDEX "recipient_profiles_tenant_phone_uidx" ON "public"."recipient_profiles" USING "btree" ("tenant_id", "phone");
-
 
 
 CREATE UNIQUE INDEX "shop_carts_active_unique_idx" ON "public"."shop_carts" USING "btree" ("tenant_id", "shop_id", "customer_group_id") WHERE ("status" = 'active'::"public"."shop_cart_status");
 
 
-
 CREATE UNIQUE INDEX "shop_orders_order_no_unique_idx" ON "public"."shop_orders" USING "btree" ("tenant_id", "order_no");
-
 
 
 CREATE INDEX "shop_orders_recipient_profile_id_idx" ON "public"."shop_orders" USING "btree" ("recipient_profile_id");
 
 
-
 CREATE INDEX "shops_tenant_live_idx" ON "public"."shops" USING "btree" ("tenant_id") WHERE ("deleted_at" IS NULL);
-
 
 
 CREATE UNIQUE INDEX "shops_unique_live_slug" ON "public"."shops" USING "btree" ("tenant_id", "slug") WHERE ("deleted_at" IS NULL);
 
 
-
 CREATE INDEX "store_access_customer_group_id_idx" ON "public"."store_access" USING "btree" ("customer_group_id");
-
 
 
 CREATE INDEX "store_access_store_id_idx" ON "public"."store_access" USING "btree" ("store_id");
 
 
-
 CREATE INDEX "store_product_prices_inventory_item_idx" ON "public"."store_product_prices" USING "btree" ("inventory_item_id");
-
 
 
 CREATE INDEX "store_product_prices_product_id_idx" ON "public"."store_product_prices" USING "btree" ("product_id");
 
 
-
 CREATE INDEX "store_product_prices_store_id_idx" ON "public"."store_product_prices" USING "btree" ("store_id");
-
 
 
 CREATE INDEX "stores_tenant_id_idx" ON "public"."stores" USING "btree" ("tenant_id");
 
 
-
 CREATE INDEX "stores_vendor_code_idx" ON "public"."stores" USING "btree" ("vendor_code");
-
 
 
 CREATE INDEX "stores_vendor_id_idx" ON "public"."stores" USING "btree" ("vendor_id");
 
 
-
 CREATE UNIQUE INDEX "tag_categories_system_unique" ON "public"."tag_categories" USING "btree" ("module_key", "code") WHERE ("tenant_id" IS NULL);
-
 
 
 CREATE UNIQUE INDEX "tag_categories_tenant_unique" ON "public"."tag_categories" USING "btree" ("tenant_id", "module_key", "code") WHERE ("tenant_id" IS NOT NULL);
 
 
-
 CREATE UNIQUE INDEX "tags_category_slug_unique" ON "public"."tags" USING "btree" ("category_id", "slug") WHERE ("category_id" IS NOT NULL);
-
 
 
 CREATE INDEX "tags_created_by_email_idx" ON "public"."tags" USING "btree" ("created_by_email");
 
 
-
 CREATE INDEX "tags_tenant_group_idx" ON "public"."tags" USING "btree" ("tenant_id", "group_name");
-
 
 
 CREATE INDEX "tags_tenant_id_idx" ON "public"."tags" USING "btree" ("tenant_id");
 
 
-
 CREATE UNIQUE INDEX "tags_tenant_slug_email_unique" ON "public"."tags" USING "btree" ("tenant_id", "slug", "created_by_email") WHERE ("tenant_id" IS NOT NULL);
-
 
 
 CREATE INDEX "tenant_module_submodules_tenant_parent_idx" ON "public"."tenant_module_submodules" USING "btree" ("tenant_id", "parent_module_key");
 
 
-
 CREATE INDEX "tenant_modules_module_key_idx" ON "public"."tenant_modules" USING "btree" ("module_key");
-
 
 
 CREATE INDEX "tenant_modules_tenant_id_idx" ON "public"."tenant_modules" USING "btree" ("tenant_id");
 
 
-
 CREATE UNIQUE INDEX "tenant_roles_one_active_admin_idx" ON "public"."tenant_roles" USING "btree" ("tenant_id", "scope") WHERE (("is_admin" = true) AND ("is_active" = true));
-
 
 
 CREATE INDEX "tenant_scoped_counters_scope_idx" ON "public"."tenant_scoped_counters" USING "btree" ("scope");
 
 
-
 CREATE INDEX "tenants_parent_id_idx" ON "public"."tenants" USING "btree" ("parent_id");
-
 
 
 CREATE UNIQUE INDEX "tenants_public_domain_unique_idx" ON "public"."tenants" USING "btree" ("lower"(TRIM(BOTH FROM "public_domain"))) WHERE (NULLIF(TRIM(BOTH FROM "public_domain"), ''::"text") IS NOT NULL);
 
 
-
 CREATE UNIQUE INDEX "thrift_categories_global_name_unique" ON "public"."thrift_categories" USING "btree" ("name") WHERE ("is_global" = true);
-
 
 
 CREATE UNIQUE INDEX "thrift_categories_tenant_name_unique" ON "public"."thrift_categories" USING "btree" ("tenant_id", "name") WHERE ("is_global" = false);
 
 
-
 CREATE UNIQUE INDEX "thrift_courier_providers_system_code_uidx" ON "public"."thrift_courier_providers" USING "btree" ("code") WHERE ("tenant_id" IS NULL);
-
 
 
 CREATE UNIQUE INDEX "thrift_courier_providers_tenant_code_uidx" ON "public"."thrift_courier_providers" USING "btree" ("tenant_id", "code") WHERE ("tenant_id" IS NOT NULL);
 
 
-
 CREATE INDEX "thrift_stock_images_stock_primary_idx" ON "public"."thrift_stock_images" USING "btree" ("stock_id") WHERE ("is_primary" = true);
-
 
 
 CREATE INDEX "thrift_stocks_barcode_trgm_idx" ON "public"."thrift_stocks" USING "gin" ("barcode" "public"."gin_trgm_ops");
 
 
-
 CREATE INDEX "thrift_stocks_brand_trgm_idx" ON "public"."thrift_stocks" USING "gin" ("brand_name" "public"."gin_trgm_ops");
-
 
 
 CREATE INDEX "thrift_stocks_name_trgm_idx" ON "public"."thrift_stocks" USING "gin" ("name" "public"."gin_trgm_ops");
 
 
-
 CREATE INDEX "thrift_stocks_tenant_condition_created_at_idx" ON "public"."thrift_stocks" USING "btree" ("tenant_id", "condition", "created_at" DESC);
-
 
 
 CREATE INDEX "thrift_stocks_tenant_created_at_idx" ON "public"."thrift_stocks" USING "btree" ("tenant_id", "created_at" DESC);
 
 
-
 CREATE INDEX "thrift_stocks_tenant_deleted_at_idx" ON "public"."thrift_stocks" USING "btree" ("tenant_id", "deleted_at") WHERE ("deleted_at" IS NULL);
-
 
 
 CREATE INDEX "thrift_stocks_tenant_reserved_phone_idx" ON "public"."thrift_stocks" USING "btree" ("tenant_id", "held_for_phone_normalized") WHERE ("status" = 'RESERVED'::"public"."thrift_stock_status");
 
 
-
 CREATE INDEX "thrift_stocks_tenant_status_created_at_idx" ON "public"."thrift_stocks" USING "btree" ("tenant_id", "status", "created_at" DESC);
-
 
 
 CREATE UNIQUE INDEX "thrift_types_global_name_unique" ON "public"."thrift_types" USING "btree" ("name") WHERE ("is_global" = true);
 
 
-
 CREATE UNIQUE INDEX "thrift_types_tenant_name_unique" ON "public"."thrift_types" USING "btree" ("tenant_id", "name") WHERE ("is_global" = false);
-
 
 
 CREATE INDEX "units_of_measure_unit_type_idx" ON "public"."units_of_measure" USING "btree" ("unit_type");
 
 
-
 CREATE UNIQUE INDEX "uq_courier_services_wallet_entity_id" ON "public"."courier_services" USING "btree" ("wallet_entity_id");
-
 
 
 CREATE OR REPLACE TRIGGER "on_tenant_created_retail_settings" AFTER INSERT ON "public"."tenants" FOR EACH ROW EXECUTE FUNCTION "public"."handle_new_tenant_retail_settings"();
 
 
-
 CREATE OR REPLACE TRIGGER "set_koba_retail_settings_updated_at" BEFORE UPDATE ON "public"."koba_retail_settings" FOR EACH ROW EXECUTE FUNCTION "public"."handle_koba_retail_settings_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "thrift_stocks_enforce_hold_metadata_trg" BEFORE INSERT OR UPDATE OF "status", "held_for_phone", "held_for_phone_normalized", "held_at" ON "public"."thrift_stocks" FOR EACH ROW EXECUTE FUNCTION "public"."thrift_stocks_enforce_hold_metadata"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_after_tenant_insert" AFTER INSERT ON "public"."tenants" FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_seed_new_tenant"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_assign_order_tenant_fields" BEFORE INSERT OR UPDATE ON "public"."orders" FOR EACH ROW EXECUTE FUNCTION "public"."assign_order_tenant_fields"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_auto_enable_universal_wallet" AFTER INSERT ON "public"."tenants" FOR EACH ROW EXECUTE FUNCTION "public"."auto_enable_universal_wallet_for_new_tenant"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_batch_code_pc_set_updated_at" BEFORE UPDATE ON "public"."batch_code_pc" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_before_customer_member_insert" BEFORE INSERT ON "public"."customer_group_members" FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_assign_default_customer_role"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_before_membership_insert" BEFORE INSERT ON "public"."memberships" FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_assign_default_membership_role"();
 
 
-
-CREATE OR REPLACE TRIGGER "trg_billing_profiles_set_updated_at" BEFORE UPDATE ON "public"."billing_profiles" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
-
-
 CREATE OR REPLACE TRIGGER "trg_business_parties_set_updated_at" BEFORE UPDATE ON "public"."business_parties" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_cargo_companies_updated_at" BEFORE UPDATE ON "public"."cargo_companies" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_cart_items_set_updated_at" BEFORE UPDATE ON "public"."cart_items" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_carts_set_updated_at" BEFORE UPDATE ON "public"."carts" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_cgm_bump_version" AFTER INSERT OR DELETE OR UPDATE ON "public"."customer_group_members" FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_bump_cgm_version"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_cgm_grants_bump_version" AFTER INSERT OR DELETE OR UPDATE ON "public"."customer_group_member_grants" FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_bump_cgm_grant_tenant_version"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_cgm_permission_guardrails" BEFORE INSERT OR UPDATE ON "public"."customer_group_members" FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_cgm_permission_guardrails"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_cgm_sync_tenant_role" BEFORE INSERT OR UPDATE ON "public"."customer_group_members" FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_sync_cgm_tenant_role"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_comments_updated_at" BEFORE UPDATE ON "public"."comments" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_commerce_cart_updated_at" BEFORE UPDATE ON "public"."commerce_cart" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_commerce_invoice_boxes_set_updated_at" BEFORE UPDATE ON "public"."commerce_invoice_boxes" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_commerce_invoices_updated_at" BEFORE UPDATE ON "public"."commerce_invoices" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_commerce_order_items_updated_at" BEFORE UPDATE ON "public"."commerce_order_items" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_commerce_order_settings_updated_at" BEFORE UPDATE ON "public"."commerce_order_settings" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_commerce_orders_updated_at" BEFORE UPDATE ON "public"."commerce_orders" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_customer_group_member_grants_updated_at" BEFORE UPDATE ON "public"."customer_group_member_grants" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_customer_group_members_email_unique_per_tenant" BEFORE INSERT OR UPDATE ON "public"."customer_group_members" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_customer_group_member_email_unique_per_tenant"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_customer_group_members_updated_at" BEFORE UPDATE ON "public"."customer_group_members" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_customer_group_shop_profiles_updated_at" BEFORE UPDATE ON "public"."customer_group_shop_profiles" FOR EACH ROW EXECUTE FUNCTION "public"."set_customer_group_shop_profiles_updated_at"();
-
-
-
-CREATE OR REPLACE TRIGGER "trg_customer_groups_auto_billing_profile" AFTER INSERT ON "public"."customer_groups" FOR EACH ROW EXECUTE FUNCTION "public"."trg_auto_create_billing_profile_for_customer_group"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_customer_groups_updated_at" BEFORE UPDATE ON "public"."customer_groups" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_global_currencies_protect_system_rows" BEFORE DELETE OR UPDATE ON "public"."global_currencies" FOR EACH ROW EXECUTE FUNCTION "public"."prevent_system_global_currency_mutation"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_global_currencies_updated_at" BEFORE UPDATE ON "public"."global_currencies" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
-
-CREATE OR REPLACE TRIGGER "trg_global_invoice_items_parent_tenant_alias" BEFORE INSERT OR UPDATE OF "tenant_id", "parent_tenant_id" ON "public"."sales_invoice_items" FOR EACH ROW EXECUTE FUNCTION "public"."trg_invoice_parent_tenant_alias"();
-
-
-
-CREATE OR REPLACE TRIGGER "trg_global_invoice_items_set_updated_at" BEFORE UPDATE ON "public"."sales_invoice_items" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
-
-
-CREATE OR REPLACE TRIGGER "trg_global_invoice_items_stock_sync" AFTER INSERT OR DELETE OR UPDATE ON "public"."sales_invoice_items" FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_global_invoice_items_stock_sync"();
-
-
-
-CREATE OR REPLACE TRIGGER "trg_global_invoices_default_issued_by" BEFORE INSERT ON "public"."sales_invoices" FOR EACH ROW EXECUTE FUNCTION "public"."global_invoices_default_issued_by_tenant_id"();
-
-
-
-CREATE OR REPLACE TRIGGER "trg_global_invoices_parent_tenant_alias" BEFORE INSERT OR UPDATE OF "tenant_id", "parent_tenant_id" ON "public"."sales_invoices" FOR EACH ROW EXECUTE FUNCTION "public"."trg_invoice_parent_tenant_alias"();
-
-
-
-CREATE OR REPLACE TRIGGER "trg_global_invoices_set_updated_at" BEFORE UPDATE ON "public"."sales_invoices" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
-
-
-CREATE OR REPLACE TRIGGER "trg_global_invoices_stock_sync" AFTER UPDATE ON "public"."sales_invoices" FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_global_invoices_stock_sync"();
-
-
-
-CREATE OR REPLACE TRIGGER "trg_global_return_items_parent_tenant_alias" BEFORE INSERT OR UPDATE OF "tenant_id", "parent_tenant_id" ON "public"."sales_return_items" FOR EACH ROW EXECUTE FUNCTION "public"."trg_invoice_parent_tenant_alias"();
-
-
-
-CREATE OR REPLACE TRIGGER "trg_global_return_items_set_updated_at" BEFORE UPDATE ON "public"."sales_return_items" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
-
-
 CREATE OR REPLACE TRIGGER "trg_investor_balances_set_updated_at" BEFORE UPDATE ON "public"."investor_balances" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_investor_transactions_set_updated_at" BEFORE UPDATE ON "public"."investor_transactions" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_investors_set_updated_at" BEFORE UPDATE ON "public"."investors" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_invoice_boxes_set_updated_at" BEFORE UPDATE ON "public"."invoice_boxes" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
-
-CREATE OR REPLACE TRIGGER "trg_invoice_brands_set_updated_at" BEFORE UPDATE ON "public"."invoice_brands" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
-
-
 CREATE OR REPLACE TRIGGER "trg_items_updated_at" BEFORE UPDATE ON "public"."items" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_koba_brands_updated_at" BEFORE UPDATE ON "public"."koba_brands" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_koba_cart_items_updated_at" BEFORE UPDATE ON "public"."koba_cart_items" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_koba_carts_updated_at" BEFORE UPDATE ON "public"."koba_carts" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_koba_categories_updated_at" BEFORE UPDATE ON "public"."koba_categories" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_koba_order_items_updated_at" BEFORE UPDATE ON "public"."koba_order_items" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_koba_orders_updated_at" BEFORE UPDATE ON "public"."koba_orders" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_koba_products_updated_at" BEFORE UPDATE ON "public"."koba_products" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_markets_protect_system_rows" BEFORE DELETE OR UPDATE ON "public"."markets" FOR EACH ROW EXECUTE FUNCTION "public"."prevent_system_market_mutation"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_markets_updated_at" BEFORE UPDATE ON "public"."markets" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_membership_grants_bump_version" AFTER INSERT OR DELETE OR UPDATE ON "public"."membership_grants" FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_bump_membership_grant_tenant_version"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_membership_grants_updated_at" BEFORE UPDATE ON "public"."membership_grants" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_memberships_bump_version" AFTER INSERT OR DELETE OR UPDATE ON "public"."memberships" FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_bump_membership_version"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_memberships_guard_update" BEFORE UPDATE ON "public"."memberships" FOR EACH ROW EXECUTE FUNCTION "public"."guard_membership_update"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_memberships_normalize_email" BEFORE INSERT OR UPDATE OF "email" ON "public"."memberships" FOR EACH ROW EXECUTE FUNCTION "public"."normalize_membership_email"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_memberships_permission_guardrails" BEFORE INSERT OR UPDATE ON "public"."memberships" FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_memberships_permission_guardrails"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_memberships_updated_at" BEFORE UPDATE ON "public"."memberships" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_module_actions_updated_at" BEFORE UPDATE ON "public"."module_actions" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_modules_updated_at" BEFORE UPDATE ON "public"."modules" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_order_items_set_product_identity" BEFORE INSERT OR UPDATE OF "product_id" ON "public"."order_items" FOR EACH ROW EXECUTE FUNCTION "public"."set_order_item_product_identity"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_order_items_set_updated_at" BEFORE UPDATE ON "public"."order_items" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_orders_set_parent_tenant_id" BEFORE INSERT OR UPDATE OF "tenant_id" ON "public"."orders" FOR EACH ROW EXECUTE FUNCTION "public"."set_order_parent_tenant_id"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_orders_set_updated_at" BEFORE UPDATE ON "public"."orders" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_payment_methods_protect_system_rows" BEFORE DELETE OR UPDATE ON "public"."payment_methods" FOR EACH ROW EXECUTE FUNCTION "public"."prevent_system_payment_method_mutation"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_payment_methods_updated_at" BEFORE UPDATE ON "public"."payment_methods" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_prevent_item_parent_cycles" BEFORE INSERT OR UPDATE OF "parent_id" ON "public"."items" FOR EACH ROW EXECUTE FUNCTION "public"."prevent_item_parent_cycles"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_product_brands_set_parent_tenant_id" BEFORE INSERT OR UPDATE OF "tenant_id" ON "public"."product_brands" FOR EACH ROW EXECUTE FUNCTION "public"."set_parent_tenant_id_from_tenant"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_product_brands_set_updated_at" BEFORE UPDATE ON "public"."product_brands" FOR EACH ROW EXECUTE FUNCTION "public"."set_product_lookup_updated_at_timestamp"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_product_brands_sync_tenant_id" BEFORE INSERT OR UPDATE OF "vendor_id" ON "public"."product_brands" FOR EACH ROW EXECUTE FUNCTION "public"."sync_lookup_tenant_id"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_product_categories_set_parent_tenant_id" BEFORE INSERT OR UPDATE OF "tenant_id" ON "public"."product_categories" FOR EACH ROW EXECUTE FUNCTION "public"."set_parent_tenant_id_from_tenant"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_product_categories_set_updated_at" BEFORE UPDATE ON "public"."product_categories" FOR EACH ROW EXECUTE FUNCTION "public"."set_product_lookup_updated_at_timestamp"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_product_categories_sync_tenant_id" BEFORE INSERT OR UPDATE OF "vendor_id" ON "public"."product_categories" FOR EACH ROW EXECUTE FUNCTION "public"."sync_lookup_tenant_id"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_products_set_parent_tenant_id" BEFORE INSERT OR UPDATE OF "tenant_id" ON "public"."products" FOR EACH ROW EXECUTE FUNCTION "public"."set_parent_tenant_id_from_tenant"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_products_set_tenant_id" BEFORE INSERT ON "public"."products" FOR EACH ROW EXECUTE FUNCTION "public"."set_tenant_id_on_insert"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_products_set_updated_at" BEFORE UPDATE ON "public"."products" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
-
-
-CREATE OR REPLACE TRIGGER "trg_recipient_profiles_set_updated_at" BEFORE UPDATE ON "public"."recipient_profiles" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_release_thrift_barcode_on_stock_delete" AFTER DELETE ON "public"."thrift_stocks" FOR EACH ROW EXECUTE FUNCTION "public"."release_thrift_barcode_on_stock_delete"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_shop_cart_items_updated_at" BEFORE UPDATE ON "public"."shop_cart_items" FOR EACH ROW EXECUTE FUNCTION "public"."set_shop_order_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_shop_carts_updated_at" BEFORE UPDATE ON "public"."shop_carts" FOR EACH ROW EXECUTE FUNCTION "public"."set_shop_order_updated_at"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_shop_customer_group_access_updated_at" BEFORE UPDATE ON "public"."shop_customer_group_access" FOR EACH ROW EXECUTE FUNCTION "public"."set_shop_customer_group_access_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_shop_order_items_updated_at" BEFORE UPDATE ON "public"."shop_order_items" FOR EACH ROW EXECUTE FUNCTION "public"."set_shop_order_updated_at"();
 
 
-
-CREATE OR REPLACE TRIGGER "trg_shop_orders_sync_collection_source" BEFORE INSERT OR UPDATE OF "global_invoice_id" ON "public"."shop_orders" FOR EACH ROW EXECUTE FUNCTION "public"."sync_shop_order_collection_source_from_invoice"();
-
-
-
 CREATE OR REPLACE TRIGGER "trg_shop_orders_updated_at" BEFORE UPDATE ON "public"."shop_orders" FOR EACH ROW EXECUTE FUNCTION "public"."set_shop_order_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_shop_pricing_rules_updated_at" BEFORE UPDATE ON "public"."shop_pricing_rules" FOR EACH ROW EXECUTE FUNCTION "public"."set_shop_pricing_rules_updated_at"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_shop_product_listings_updated_at" BEFORE UPDATE ON "public"."shop_product_listings" FOR EACH ROW EXECUTE FUNCTION "public"."set_shop_product_listings_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_shop_stock_reservations_updated_at" BEFORE UPDATE ON "public"."shop_stock_reservations" FOR EACH ROW EXECUTE FUNCTION "public"."set_shop_order_updated_at"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_shops_derive_is_negotiable" BEFORE INSERT OR UPDATE OF "shop_type", "is_negotiable" ON "public"."shops" FOR EACH ROW EXECUTE FUNCTION "public"."shops_derive_is_negotiable"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_shops_updated_at" BEFORE UPDATE ON "public"."shops" FOR EACH ROW EXECUTE FUNCTION "public"."set_shops_updated_at"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_store_access_updated_at" BEFORE UPDATE ON "public"."store_access" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_store_product_prices_set_updated_at" BEFORE UPDATE ON "public"."store_product_prices" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_stores_updated_at" BEFORE UPDATE ON "public"."stores" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_sync_investor_balance_investors" AFTER INSERT ON "public"."investors" FOR EACH ROW EXECUTE FUNCTION "public"."sync_investor_balance_from_investors"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_sync_investor_balance_transactions" AFTER INSERT OR DELETE OR UPDATE ON "public"."investor_transactions" FOR EACH ROW EXECUTE FUNCTION "public"."sync_investor_balance_from_transactions"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_sync_shop_cart_item_reservation" AFTER INSERT OR DELETE OR UPDATE ON "public"."shop_cart_items" FOR EACH ROW EXECUTE FUNCTION "public"."sync_shop_cart_item_reservation"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_system_role_templates_updated_at" BEFORE UPDATE ON "public"."system_role_templates" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_tenant_module_submodules_updated_at" BEFORE UPDATE ON "public"."tenant_module_submodules" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_tenant_modules_bump_version" AFTER INSERT OR DELETE OR UPDATE ON "public"."tenant_modules" FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_bump_tenant_modules_version"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_tenant_modules_disable_guardrails" BEFORE UPDATE ON "public"."tenant_modules" FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_tenant_modules_disable_guardrails"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_tenant_modules_updated_at" BEFORE UPDATE ON "public"."tenant_modules" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_tenant_role_grants_bump_version" AFTER INSERT OR DELETE OR UPDATE ON "public"."tenant_role_grants" FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_bump_grant_tenant_version"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_tenant_role_grants_updated_at" BEFORE UPDATE ON "public"."tenant_role_grants" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_tenant_roles_bump_version" AFTER INSERT OR DELETE OR UPDATE ON "public"."tenant_roles" FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_bump_role_tenant_version"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_tenant_roles_guardrails" BEFORE DELETE OR UPDATE ON "public"."tenant_roles" FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_tenant_role_guardrails"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_tenant_roles_updated_at" BEFORE UPDATE ON "public"."tenant_roles" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_tenant_scoped_counters_set_updated_at" BEFORE UPDATE ON "public"."tenant_scoped_counters" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_tenants_enforce_one_layer_hierarchy" BEFORE INSERT OR UPDATE OF "parent_id" ON "public"."tenants" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_tenant_one_layer_hierarchy"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_tenants_updated_at" BEFORE UPDATE ON "public"."tenants" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_thrift_accounting_ledger_updated_at" BEFORE UPDATE ON "public"."thrift_accounting_ledger" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_thrift_barcodes_updated_at" BEFORE UPDATE ON "public"."thrift_barcodes" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_thrift_boxes_updated_at" BEFORE UPDATE ON "public"."thrift_boxes" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_thrift_categories_updated_at" BEFORE UPDATE ON "public"."thrift_categories" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_thrift_courier_providers_guard_system" BEFORE DELETE OR UPDATE ON "public"."thrift_courier_providers" FOR EACH ROW EXECUTE FUNCTION "public"."thrift_courier_providers_guard_system"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_thrift_courier_providers_set_updated_at" BEFORE UPDATE ON "public"."thrift_courier_providers" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_thrift_customers_updated_at" BEFORE UPDATE ON "public"."thrift_customers" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_thrift_invoice_counters_set_updated_at" BEFORE UPDATE ON "public"."thrift_invoice_counters" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_thrift_invoice_items_profit" BEFORE INSERT OR UPDATE ON "public"."thrift_invoice_items" FOR EACH ROW EXECUTE FUNCTION "public"."calculate_thrift_item_net_profit"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_thrift_invoice_items_total" AFTER INSERT OR DELETE OR UPDATE ON "public"."thrift_invoice_items" FOR EACH ROW EXECUTE FUNCTION "public"."calculate_thrift_invoice_total"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_thrift_invoice_items_updated_at" BEFORE UPDATE ON "public"."thrift_invoice_items" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_thrift_invoices_updated_at" BEFORE UPDATE ON "public"."thrift_invoices" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_thrift_pricings_updated_at" BEFORE UPDATE ON "public"."thrift_pricings" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_thrift_return_counters_set_updated_at" BEFORE UPDATE ON "public"."thrift_return_counters" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_thrift_sales_pnl_lines_set_updated_at" BEFORE UPDATE ON "public"."thrift_sales_pnl_lines" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_thrift_sales_returns_set_updated_at" BEFORE UPDATE ON "public"."thrift_sales_returns" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_thrift_settings_updated_at" BEFORE UPDATE ON "public"."thrift_settings" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_thrift_shelves_updated_at" BEFORE UPDATE ON "public"."thrift_shelves" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_thrift_shipments_updated_at" BEFORE UPDATE ON "public"."thrift_shipments" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_thrift_stock_images_updated_at" BEFORE UPDATE ON "public"."thrift_stock_images" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_thrift_stock_loss_ledger" AFTER UPDATE ON "public"."thrift_stocks" FOR EACH ROW EXECUTE FUNCTION "public"."log_thrift_stock_loss_ledger"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_thrift_stock_measurements_updated_at" BEFORE UPDATE ON "public"."thrift_stock_measurements" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_thrift_stocks_updated_at" BEFORE UPDATE ON "public"."thrift_stocks" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_thrift_types_updated_at" BEFORE UPDATE ON "public"."thrift_types" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
 
 
 CREATE OR REPLACE TRIGGER "trg_units_of_measure_protect_system_rows" BEFORE DELETE OR UPDATE ON "public"."units_of_measure" FOR EACH ROW EXECUTE FUNCTION "public"."prevent_system_unit_of_measure_mutation"();
 
 
-
 CREATE OR REPLACE TRIGGER "trg_units_of_measure_updated_at" BEFORE UPDATE ON "public"."units_of_measure" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
-
-
-
-CREATE OR REPLACE TRIGGER "trg_validate_global_invoice_profiles_insert_update" BEFORE INSERT OR UPDATE ON "public"."sales_invoices" FOR EACH ROW EXECUTE FUNCTION "public"."trg_validate_global_invoice_profiles"();
-
 
 
 ALTER TABLE ONLY "public"."activity_logs"
     ADD CONSTRAINT "activity_logs_item_id_fkey" FOREIGN KEY ("item_id") REFERENCES "public"."items"("id") ON DELETE CASCADE;
 
 
-
-ALTER TABLE ONLY "public"."billing_profiles"
-    ADD CONSTRAINT "billing_profiles_customer_group_id_fkey" FOREIGN KEY ("customer_group_id") REFERENCES "public"."customer_groups"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."billing_profiles"
-    ADD CONSTRAINT "billing_profiles_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
-
-
 ALTER TABLE ONLY "public"."business_parties"
     ADD CONSTRAINT "business_parties_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."business_parties"
     ADD CONSTRAINT "business_parties_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."cargo_companies"
     ADD CONSTRAINT "cargo_companies_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."cargo_companies"
     ADD CONSTRAINT "cargo_companies_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."cart_items"
     ADD CONSTRAINT "cart_items_cart_id_fkey" FOREIGN KEY ("cart_id") REFERENCES "public"."carts"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."cart_items"
     ADD CONSTRAINT "cart_items_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE SET NULL;
 
 
-
 ALTER TABLE ONLY "public"."carts"
     ADD CONSTRAINT "carts_customer_group_id_fkey" FOREIGN KEY ("customer_group_id") REFERENCES "public"."customer_groups"("id") ON DELETE SET NULL;
-
 
 
 ALTER TABLE ONLY "public"."carts"
     ADD CONSTRAINT "carts_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."comments"
     ADD CONSTRAINT "comments_item_id_fkey" FOREIGN KEY ("item_id") REFERENCES "public"."items"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."comments"
     ADD CONSTRAINT "comments_parent_comment_id_fkey" FOREIGN KEY ("parent_comment_id") REFERENCES "public"."comments"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."commerce_cart"
     ADD CONSTRAINT "commerce_cart_customer_group_id_fkey" FOREIGN KEY ("customer_group_id") REFERENCES "public"."customer_groups"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."commerce_cart"
     ADD CONSTRAINT "commerce_cart_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."commerce_cart"
     ADD CONSTRAINT "commerce_cart_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."commerce_inventory_product_summaries"
     ADD CONSTRAINT "commerce_inventory_product_summaries_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."commerce_inventory_product_summaries"
     ADD CONSTRAINT "commerce_inventory_product_summaries_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."commerce_invoice_boxes"
     ADD CONSTRAINT "commerce_invoice_boxes_invoice_id_fkey" FOREIGN KEY ("invoice_id") REFERENCES "public"."commerce_invoices"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."commerce_invoice_boxes"
     ADD CONSTRAINT "commerce_invoice_boxes_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."commerce_invoices"
     ADD CONSTRAINT "commerce_invoices_billing_profile_id_fkey" FOREIGN KEY ("billing_profile_id") REFERENCES "public"."billing_profiles"("id") ON DELETE SET NULL;
 
 
-
 ALTER TABLE ONLY "public"."commerce_invoices"
     ADD CONSTRAINT "commerce_invoices_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "public"."commerce_orders"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."commerce_invoices"
     ADD CONSTRAINT "commerce_invoices_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."commerce_order_items"
     ADD CONSTRAINT "commerce_order_items_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "public"."commerce_orders"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."commerce_order_items"
     ADD CONSTRAINT "commerce_order_items_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."commerce_order_settings"
     ADD CONSTRAINT "commerce_order_settings_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."commerce_orders"
     ADD CONSTRAINT "commerce_orders_customer_group_id_fkey" FOREIGN KEY ("customer_group_id") REFERENCES "public"."customer_groups"("id") ON DELETE SET NULL;
 
 
-
 ALTER TABLE ONLY "public"."commerce_orders"
     ADD CONSTRAINT "commerce_orders_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."courier_remittance_batches"
     ADD CONSTRAINT "courier_remittance_batches_courier_service_id_fkey" FOREIGN KEY ("courier_service_id") REFERENCES "public"."courier_services"("id") ON DELETE RESTRICT;
 
 
-
 ALTER TABLE ONLY "public"."courier_remittance_batches"
     ADD CONSTRAINT "courier_remittance_batches_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
-
 
 
 ALTER TABLE ONLY "public"."courier_remittance_batches"
     ADD CONSTRAINT "courier_remittance_batches_posted_by_fkey" FOREIGN KEY ("posted_by") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
 
 
-
 ALTER TABLE ONLY "public"."courier_remittance_batches"
     ADD CONSTRAINT "courier_remittance_batches_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."courier_remittance_items"
     ADD CONSTRAINT "courier_remittance_items_batch_id_fkey" FOREIGN KEY ("batch_id") REFERENCES "public"."courier_remittance_batches"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."courier_remittance_items"
     ADD CONSTRAINT "courier_remittance_items_global_invoice_id_fkey" FOREIGN KEY ("global_invoice_id") REFERENCES "public"."sales_invoices"("id") ON DELETE SET NULL;
-
 
 
 ALTER TABLE ONLY "public"."courier_remittance_items"
     ADD CONSTRAINT "courier_remittance_items_shop_order_id_fkey" FOREIGN KEY ("shop_order_id") REFERENCES "public"."shop_orders"("id") ON DELETE SET NULL;
 
 
-
 ALTER TABLE ONLY "public"."courier_remittance_items"
     ADD CONSTRAINT "courier_remittance_items_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."courier_services"
     ADD CONSTRAINT "courier_services_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."customer_group_member_grants"
     ADD CONSTRAINT "customer_group_member_grants_customer_group_member_id_fkey" FOREIGN KEY ("customer_group_member_id") REFERENCES "public"."customer_group_members"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."customer_group_member_grants"
     ADD CONSTRAINT "customer_group_member_grants_module_key_fkey" FOREIGN KEY ("module_key") REFERENCES "public"."modules"("key") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."customer_group_members"
     ADD CONSTRAINT "customer_group_members_customer_group_id_fkey" FOREIGN KEY ("customer_group_id") REFERENCES "public"."customer_groups"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."customer_group_members"
     ADD CONSTRAINT "customer_group_members_tenant_role_id_fkey" FOREIGN KEY ("tenant_role_id") REFERENCES "public"."tenant_roles"("id") ON DELETE RESTRICT;
 
 
-
 ALTER TABLE ONLY "public"."customer_group_shop_profiles"
     ADD CONSTRAINT "customer_group_shop_profiles_customer_group_id_fkey" FOREIGN KEY ("customer_group_id") REFERENCES "public"."customer_groups"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."customer_group_shop_profiles"
     ADD CONSTRAINT "customer_group_shop_profiles_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."customer_groups"
     ADD CONSTRAINT "customer_groups_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."customer_order_backlog_items"
     ADD CONSTRAINT "customer_order_backlog_items_billing_profile_id_fkey" FOREIGN KEY ("billing_profile_id") REFERENCES "public"."billing_profiles"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."customer_order_backlog_items"
     ADD CONSTRAINT "customer_order_backlog_items_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "public"."shop_orders"("id") ON DELETE SET NULL;
-
 
 
 ALTER TABLE ONLY "public"."customer_order_backlog_items"
     ADD CONSTRAINT "customer_order_backlog_items_order_item_id_fkey" FOREIGN KEY ("order_item_id") REFERENCES "public"."shop_order_items"("id") ON DELETE SET NULL;
 
 
-
 ALTER TABLE ONLY "public"."customer_order_backlog_items"
     ADD CONSTRAINT "customer_order_backlog_items_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."customer_order_backlog_items"
     ADD CONSTRAINT "customer_order_backlog_items_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."entity_tags"
     ADD CONSTRAINT "entity_tags_tag_id_fkey" FOREIGN KEY ("tag_id") REFERENCES "public"."tags"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."entity_tags"
     ADD CONSTRAINT "entity_tags_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."shop_orders"
     ADD CONSTRAINT "fk_shop_orders_courier_service" FOREIGN KEY ("courier_service_id") REFERENCES "public"."courier_services"("id") ON DELETE SET NULL;
-
 
 
 ALTER TABLE ONLY "public"."gift_rule_items"
     ADD CONSTRAINT "gift_rule_items_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."gift_rule_items"
     ADD CONSTRAINT "gift_rule_items_rule_id_fkey" FOREIGN KEY ("rule_id") REFERENCES "public"."gift_rules"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."gift_rule_redemptions"
     ADD CONSTRAINT "gift_rule_redemptions_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "public"."shop_orders"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."gift_rule_redemptions"
     ADD CONSTRAINT "gift_rule_redemptions_rule_id_fkey" FOREIGN KEY ("rule_id") REFERENCES "public"."gift_rules"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."gift_rules"
     ADD CONSTRAINT "gift_rules_customer_group_id_fkey" FOREIGN KEY ("customer_group_id") REFERENCES "public"."customer_groups"("id") ON DELETE CASCADE;
 
 
-
-ALTER TABLE ONLY "public"."sales_invoice_items"
-    ADD CONSTRAINT "global_invoice_items_assigned_child_tenant_id_fkey" FOREIGN KEY ("assigned_child_tenant_id") REFERENCES "public"."tenants"("id");
-
-
-
-ALTER TABLE ONLY "public"."sales_invoice_items"
-    ADD CONSTRAINT "global_invoice_items_invoice_id_fkey" FOREIGN KEY ("invoice_id") REFERENCES "public"."sales_invoices"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."sales_invoice_items"
-    ADD CONSTRAINT "global_invoice_items_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."sales_invoice_items"
-    ADD CONSTRAINT "global_invoice_items_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE SET NULL;
-
-
-
-ALTER TABLE ONLY "public"."sales_invoice_items"
-    ADD CONSTRAINT "global_invoice_items_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."sales_invoices"
-    ADD CONSTRAINT "global_invoices_billing_profile_id_fkey" FOREIGN KEY ("billing_profile_id") REFERENCES "public"."billing_profiles"("id") ON DELETE RESTRICT;
-
-
-
-ALTER TABLE ONLY "public"."sales_invoices"
-    ADD CONSTRAINT "global_invoices_issued_by_tenant_id_fkey" FOREIGN KEY ("issued_by_tenant_id") REFERENCES "public"."tenants"("id");
-
-
-
-ALTER TABLE ONLY "public"."sales_invoices"
-    ADD CONSTRAINT "global_invoices_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."sales_invoices"
-    ADD CONSTRAINT "global_invoices_recipient_profile_id_fkey" FOREIGN KEY ("recipient_profile_id") REFERENCES "public"."recipient_profiles"("id") ON DELETE RESTRICT;
-
-
-
-ALTER TABLE ONLY "public"."sales_invoices"
-    ADD CONSTRAINT "global_invoices_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."sales_return_items"
-    ADD CONSTRAINT "global_return_items_invoice_id_fkey" FOREIGN KEY ("invoice_id") REFERENCES "public"."sales_invoices"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."sales_return_items"
-    ADD CONSTRAINT "global_return_items_invoice_item_id_fkey" FOREIGN KEY ("invoice_item_id") REFERENCES "public"."sales_invoice_items"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."sales_return_items"
-    ADD CONSTRAINT "global_return_items_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."sales_return_items"
-    ADD CONSTRAINT "global_return_items_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
-
-
 ALTER TABLE ONLY "public"."investor_balances"
     ADD CONSTRAINT "investor_balances_investor_id_fkey" FOREIGN KEY ("investor_id") REFERENCES "public"."investors"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."investor_balances"
     ADD CONSTRAINT "investor_balances_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."investor_transactions"
     ADD CONSTRAINT "investor_transactions_investor_id_fkey" FOREIGN KEY ("investor_id") REFERENCES "public"."investors"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."investor_transactions"
     ADD CONSTRAINT "investor_transactions_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."investors"
     ADD CONSTRAINT "investors_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."invoice_boxes"
     ADD CONSTRAINT "invoice_boxes_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 
-
-ALTER TABLE ONLY "public"."invoice_brands"
-    ADD CONSTRAINT "invoice_brands_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
-
-
 ALTER TABLE ONLY "public"."item_assignees"
     ADD CONSTRAINT "item_assignees_item_id_fkey" FOREIGN KEY ("item_id") REFERENCES "public"."items"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."item_permissions"
     ADD CONSTRAINT "item_permissions_item_id_fkey" FOREIGN KEY ("item_id") REFERENCES "public"."items"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."item_tags"
     ADD CONSTRAINT "item_tags_item_id_fkey" FOREIGN KEY ("item_id") REFERENCES "public"."items"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."item_tags"
     ADD CONSTRAINT "item_tags_tag_id_fkey" FOREIGN KEY ("tag_id") REFERENCES "public"."tags"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."items"
     ADD CONSTRAINT "items_parent_id_fkey" FOREIGN KEY ("parent_id") REFERENCES "public"."items"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."items"
     ADD CONSTRAINT "items_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."koba_brands"
     ADD CONSTRAINT "koba_brands_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."koba_cart_items"
     ADD CONSTRAINT "koba_cart_items_cart_id_fkey" FOREIGN KEY ("cart_id") REFERENCES "public"."koba_carts"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."koba_carts"
     ADD CONSTRAINT "koba_carts_customer_group_id_fkey" FOREIGN KEY ("customer_group_id") REFERENCES "public"."customer_groups"("id") ON DELETE SET NULL;
-
 
 
 ALTER TABLE ONLY "public"."koba_carts"
     ADD CONSTRAINT "koba_carts_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."koba_categories"
     ADD CONSTRAINT "koba_categories_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."koba_order_items"
     ADD CONSTRAINT "koba_order_items_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "public"."koba_orders"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."koba_orders"
     ADD CONSTRAINT "koba_orders_customer_group_id_fkey" FOREIGN KEY ("customer_group_id") REFERENCES "public"."customer_groups"("id") ON DELETE SET NULL;
-
 
 
 ALTER TABLE ONLY "public"."koba_orders"
     ADD CONSTRAINT "koba_orders_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."koba_products"
     ADD CONSTRAINT "koba_products_brand_id_fkey" FOREIGN KEY ("brand_id") REFERENCES "public"."koba_brands"("id") ON DELETE SET NULL;
-
 
 
 ALTER TABLE ONLY "public"."koba_products"
     ADD CONSTRAINT "koba_products_category_id_fkey" FOREIGN KEY ("category_id") REFERENCES "public"."koba_categories"("id") ON DELETE SET NULL;
 
 
-
 ALTER TABLE ONLY "public"."koba_products"
     ADD CONSTRAINT "koba_products_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."koba_retail_settings"
     ADD CONSTRAINT "koba_retail_settings_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."membership_grants"
     ADD CONSTRAINT "membership_grants_membership_id_fkey" FOREIGN KEY ("membership_id") REFERENCES "public"."memberships"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."membership_grants"
     ADD CONSTRAINT "membership_grants_module_key_fkey" FOREIGN KEY ("module_key") REFERENCES "public"."modules"("key") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."memberships"
     ADD CONSTRAINT "memberships_investor_id_fkey" FOREIGN KEY ("investor_id") REFERENCES "public"."investors"("id") ON DELETE SET NULL;
-
 
 
 ALTER TABLE ONLY "public"."memberships"
     ADD CONSTRAINT "memberships_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."memberships"
     ADD CONSTRAINT "memberships_tenant_role_id_fkey" FOREIGN KEY ("tenant_role_id") REFERENCES "public"."tenant_roles"("id") ON DELETE RESTRICT;
-
 
 
 ALTER TABLE ONLY "public"."merchant_profiles"
     ADD CONSTRAINT "merchant_profiles_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."module_actions"
     ADD CONSTRAINT "module_actions_module_key_fkey" FOREIGN KEY ("module_key") REFERENCES "public"."modules"("key") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."modules"
     ADD CONSTRAINT "modules_parent_module_key_fkey" FOREIGN KEY ("parent_module_key") REFERENCES "public"."modules"("key") ON DELETE SET NULL;
 
 
-
 ALTER TABLE ONLY "public"."order_items"
     ADD CONSTRAINT "order_items_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."order_items"
     ADD CONSTRAINT "order_items_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE SET NULL;
 
 
-
 ALTER TABLE ONLY "public"."orders"
     ADD CONSTRAINT "orders_customer_group_id_fkey" FOREIGN KEY ("customer_group_id") REFERENCES "public"."customer_groups"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."orders"
     ADD CONSTRAINT "orders_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE SET NULL;
 
 
-
 ALTER TABLE ONLY "public"."orders"
     ADD CONSTRAINT "orders_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."invoice_payments"
     ADD CONSTRAINT "payment_allocations_commerce_invoice_id_fkey" FOREIGN KEY ("commerce_invoice_id") REFERENCES "public"."commerce_invoices"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."invoice_payments"
     ADD CONSTRAINT "payment_allocations_global_invoice_id_fkey" FOREIGN KEY ("global_invoice_id") REFERENCES "public"."sales_invoices"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."invoice_payments"
     ADD CONSTRAINT "payment_allocations_payment_id_fkey" FOREIGN KEY ("payment_id") REFERENCES "public"."global_payments"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."invoice_payments"
     ADD CONSTRAINT "payment_allocations_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."global_payments"
     ADD CONSTRAINT "payments_billing_profile_id_fkey" FOREIGN KEY ("billing_profile_id") REFERENCES "public"."billing_profiles"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."global_payments"
     ADD CONSTRAINT "payments_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."product_brands"
     ADD CONSTRAINT "product_brands_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE SET NULL;
 
 
-
 ALTER TABLE ONLY "public"."product_brands"
     ADD CONSTRAINT "product_brands_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."product_categories"
     ADD CONSTRAINT "product_categories_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE SET NULL;
 
 
-
 ALTER TABLE ONLY "public"."product_categories"
     ADD CONSTRAINT "product_categories_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."products"
     ADD CONSTRAINT "products_list_price_currency_id_fkey" FOREIGN KEY ("list_price_currency_id") REFERENCES "public"."global_currencies"("id") ON DELETE SET NULL;
 
 
-
 ALTER TABLE ONLY "public"."products"
     ADD CONSTRAINT "products_market_code_fkey" FOREIGN KEY ("market_code") REFERENCES "public"."markets"("code") ON DELETE SET NULL;
-
 
 
 ALTER TABLE ONLY "public"."products"
     ADD CONSTRAINT "products_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE SET NULL;
 
 
-
 ALTER TABLE ONLY "public"."products"
     ADD CONSTRAINT "products_reference_cost_currency_id_fkey" FOREIGN KEY ("reference_cost_currency_id") REFERENCES "public"."global_currencies"("id") ON DELETE SET NULL;
-
 
 
 ALTER TABLE ONLY "public"."products"
     ADD CONSTRAINT "products_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 
-
-ALTER TABLE ONLY "public"."recipient_profiles"
-    ADD CONSTRAINT "recipient_profiles_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
-
-
 ALTER TABLE ONLY "public"."shop_cart_items"
     ADD CONSTRAINT "shop_cart_items_cart_id_fkey" FOREIGN KEY ("cart_id") REFERENCES "public"."shop_carts"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."shop_cart_items"
     ADD CONSTRAINT "shop_cart_items_customer_sell_price_currency_id_fkey" FOREIGN KEY ("customer_sell_price_currency_id") REFERENCES "public"."global_currencies"("id");
 
 
-
 ALTER TABLE ONLY "public"."shop_cart_items"
     ADD CONSTRAINT "shop_cart_items_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."shop_cart_items"
     ADD CONSTRAINT "shop_cart_items_unit_list_price_currency_id_fkey" FOREIGN KEY ("unit_list_price_currency_id") REFERENCES "public"."global_currencies"("id");
 
 
-
 ALTER TABLE ONLY "public"."shop_cart_items"
     ADD CONSTRAINT "shop_cart_items_unit_minimum_sell_price_currency_id_fkey" FOREIGN KEY ("unit_minimum_sell_price_currency_id") REFERENCES "public"."global_currencies"("id");
-
 
 
 ALTER TABLE ONLY "public"."shop_cart_items"
     ADD CONSTRAINT "shop_cart_items_unit_sell_price_currency_id_fkey" FOREIGN KEY ("unit_sell_price_currency_id") REFERENCES "public"."global_currencies"("id");
 
 
-
 ALTER TABLE ONLY "public"."shop_carts"
     ADD CONSTRAINT "shop_carts_customer_group_id_fkey" FOREIGN KEY ("customer_group_id") REFERENCES "public"."customer_groups"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."shop_carts"
     ADD CONSTRAINT "shop_carts_shop_id_fkey" FOREIGN KEY ("shop_id") REFERENCES "public"."shops"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."shop_carts"
     ADD CONSTRAINT "shop_carts_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."shop_categories"
     ADD CONSTRAINT "shop_categories_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."shop_customer_group_access"
     ADD CONSTRAINT "shop_customer_group_access_credit_limit_currency_id_fkey" FOREIGN KEY ("credit_limit_currency_id") REFERENCES "public"."global_currencies"("id");
-
 
 
 ALTER TABLE ONLY "public"."shop_customer_group_access"
     ADD CONSTRAINT "shop_customer_group_access_customer_group_id_fkey" FOREIGN KEY ("customer_group_id") REFERENCES "public"."customer_groups"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."shop_customer_group_access"
     ADD CONSTRAINT "shop_customer_group_access_shop_id_fkey" FOREIGN KEY ("shop_id") REFERENCES "public"."shops"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."shop_order_items"
     ADD CONSTRAINT "shop_order_items_cost_price_currency_id_fkey" FOREIGN KEY ("cost_price_currency_id") REFERENCES "public"."global_currencies"("id");
 
 
-
 ALTER TABLE ONLY "public"."shop_order_items"
     ADD CONSTRAINT "shop_order_items_customer_offer_currency_id_fkey" FOREIGN KEY ("customer_offer_currency_id") REFERENCES "public"."global_currencies"("id");
-
 
 
 ALTER TABLE ONLY "public"."shop_order_items"
     ADD CONSTRAINT "shop_order_items_customer_sell_price_currency_id_fkey" FOREIGN KEY ("customer_sell_price_currency_id") REFERENCES "public"."global_currencies"("id");
 
 
-
 ALTER TABLE ONLY "public"."shop_order_items"
     ADD CONSTRAINT "shop_order_items_final_price_currency_id_fkey" FOREIGN KEY ("final_price_currency_id") REFERENCES "public"."global_currencies"("id");
-
 
 
 ALTER TABLE ONLY "public"."shop_order_items"
     ADD CONSTRAINT "shop_order_items_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "public"."shop_orders"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."shop_order_items"
     ADD CONSTRAINT "shop_order_items_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."shop_order_items"
     ADD CONSTRAINT "shop_order_items_staff_offer_currency_id_fkey" FOREIGN KEY ("staff_offer_currency_id") REFERENCES "public"."global_currencies"("id");
 
 
-
 ALTER TABLE ONLY "public"."shop_order_items"
     ADD CONSTRAINT "shop_order_items_unit_list_price_currency_id_fkey" FOREIGN KEY ("unit_list_price_currency_id") REFERENCES "public"."global_currencies"("id");
-
 
 
 ALTER TABLE ONLY "public"."shop_order_items"
     ADD CONSTRAINT "shop_order_items_unit_minimum_sell_price_currency_id_fkey" FOREIGN KEY ("unit_minimum_sell_price_currency_id") REFERENCES "public"."global_currencies"("id");
 
 
-
 ALTER TABLE ONLY "public"."shop_order_items"
     ADD CONSTRAINT "shop_order_items_unit_sell_price_currency_id_fkey" FOREIGN KEY ("unit_sell_price_currency_id") REFERENCES "public"."global_currencies"("id");
-
 
 
 ALTER TABLE ONLY "public"."shop_orders"
     ADD CONSTRAINT "shop_orders_billing_profile_id_fkey" FOREIGN KEY ("billing_profile_id") REFERENCES "public"."billing_profiles"("id") ON DELETE SET NULL;
 
 
-
 ALTER TABLE ONLY "public"."shop_orders"
     ADD CONSTRAINT "shop_orders_cart_id_fkey" FOREIGN KEY ("cart_id") REFERENCES "public"."shop_carts"("id") ON DELETE SET NULL;
-
 
 
 ALTER TABLE ONLY "public"."shop_orders"
     ADD CONSTRAINT "shop_orders_customer_group_id_fkey" FOREIGN KEY ("customer_group_id") REFERENCES "public"."customer_groups"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."shop_orders"
     ADD CONSTRAINT "shop_orders_global_invoice_id_fkey" FOREIGN KEY ("global_invoice_id") REFERENCES "public"."sales_invoices"("id") ON DELETE SET NULL;
-
 
 
 ALTER TABLE ONLY "public"."shop_orders"
     ADD CONSTRAINT "shop_orders_recipient_profile_id_fkey" FOREIGN KEY ("recipient_profile_id") REFERENCES "public"."recipient_profiles"("id") ON DELETE RESTRICT;
 
 
-
 ALTER TABLE ONLY "public"."shop_orders"
     ADD CONSTRAINT "shop_orders_replacement_of_order_id_fkey" FOREIGN KEY ("replacement_of_order_id") REFERENCES "public"."shop_orders"("id");
-
 
 
 ALTER TABLE ONLY "public"."shop_orders"
     ADD CONSTRAINT "shop_orders_shop_id_fkey" FOREIGN KEY ("shop_id") REFERENCES "public"."shops"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."shop_orders"
     ADD CONSTRAINT "shop_orders_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."shop_pricing_rules"
     ADD CONSTRAINT "shop_pricing_rules_shop_id_fkey" FOREIGN KEY ("shop_id") REFERENCES "public"."shops"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."shop_pricing_rules"
     ADD CONSTRAINT "shop_pricing_rules_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."shop_product_listings"
     ADD CONSTRAINT "shop_product_listings_minimum_sell_price_currency_id_fkey" FOREIGN KEY ("minimum_sell_price_currency_id") REFERENCES "public"."global_currencies"("id");
 
 
-
 ALTER TABLE ONLY "public"."shop_product_listings"
     ADD CONSTRAINT "shop_product_listings_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."shop_product_listings"
     ADD CONSTRAINT "shop_product_listings_sell_price_currency_id_fkey" FOREIGN KEY ("sell_price_currency_id") REFERENCES "public"."global_currencies"("id");
 
 
-
 ALTER TABLE ONLY "public"."shop_product_listings"
     ADD CONSTRAINT "shop_product_listings_shop_id_fkey" FOREIGN KEY ("shop_id") REFERENCES "public"."shops"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."shop_product_listings"
     ADD CONSTRAINT "shop_product_listings_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."shop_product_offers"
     ADD CONSTRAINT "shop_product_offers_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."shop_product_offers"
     ADD CONSTRAINT "shop_product_offers_shop_id_fkey" FOREIGN KEY ("shop_id") REFERENCES "public"."shops"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."shop_stock_reservations"
     ADD CONSTRAINT "shop_stock_reservations_cart_item_id_fkey" FOREIGN KEY ("cart_item_id") REFERENCES "public"."shop_cart_items"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."shops"
     ADD CONSTRAINT "shops_buy_currency_id_fkey" FOREIGN KEY ("buy_currency_id") REFERENCES "public"."global_currencies"("id");
 
 
-
 ALTER TABLE ONLY "public"."shops"
     ADD CONSTRAINT "shops_default_currency_id_fkey" FOREIGN KEY ("default_currency_id") REFERENCES "public"."global_currencies"("id");
-
 
 
 ALTER TABLE ONLY "public"."shops"
     ADD CONSTRAINT "shops_sell_currency_id_fkey" FOREIGN KEY ("sell_currency_id") REFERENCES "public"."global_currencies"("id");
 
 
-
 ALTER TABLE ONLY "public"."shops"
     ADD CONSTRAINT "shops_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."store_access"
     ADD CONSTRAINT "store_access_customer_group_id_fkey" FOREIGN KEY ("customer_group_id") REFERENCES "public"."customer_groups"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."store_access"
     ADD CONSTRAINT "store_access_store_id_fkey" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."store_product_prices"
     ADD CONSTRAINT "store_product_prices_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."store_product_prices"
     ADD CONSTRAINT "store_product_prices_store_id_fkey" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."store_product_prices"
     ADD CONSTRAINT "store_product_prices_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."stores"
     ADD CONSTRAINT "stores_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."system_role_templates"
     ADD CONSTRAINT "system_role_templates_module_key_fkey" FOREIGN KEY ("module_key") REFERENCES "public"."modules"("key") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."tag_categories"
     ADD CONSTRAINT "tag_categories_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."tags"
     ADD CONSTRAINT "tags_category_id_fkey" FOREIGN KEY ("category_id") REFERENCES "public"."tag_categories"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."tags"
     ADD CONSTRAINT "tags_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."tenant_module_submodules"
     ADD CONSTRAINT "tenant_module_submodules_parent_module_key_fkey" FOREIGN KEY ("parent_module_key") REFERENCES "public"."modules"("key") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."tenant_module_submodules"
     ADD CONSTRAINT "tenant_module_submodules_submodule_key_fkey" FOREIGN KEY ("submodule_key") REFERENCES "public"."modules"("key") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."tenant_module_submodules"
     ADD CONSTRAINT "tenant_module_submodules_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."tenant_modules"
     ADD CONSTRAINT "tenant_modules_module_key_fkey" FOREIGN KEY ("module_key") REFERENCES "public"."modules"("key") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."tenant_modules"
     ADD CONSTRAINT "tenant_modules_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."tenant_permission_versions"
     ADD CONSTRAINT "tenant_permission_versions_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."tenant_role_grants"
     ADD CONSTRAINT "tenant_role_grants_module_key_fkey" FOREIGN KEY ("module_key") REFERENCES "public"."modules"("key") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."tenant_role_grants"
     ADD CONSTRAINT "tenant_role_grants_tenant_role_id_fkey" FOREIGN KEY ("tenant_role_id") REFERENCES "public"."tenant_roles"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."tenant_roles"
     ADD CONSTRAINT "tenant_roles_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."tenant_scoped_counters"
     ADD CONSTRAINT "tenant_scoped_counters_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."tenants"
     ADD CONSTRAINT "tenants_parent_id_fkey" FOREIGN KEY ("parent_id") REFERENCES "public"."tenants"("id") ON DELETE SET NULL;
 
 
-
 ALTER TABLE ONLY "public"."thrift_accounting_ledger"
     ADD CONSTRAINT "thrift_accounting_ledger_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."thrift_barcodes"
     ADD CONSTRAINT "thrift_barcodes_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."thrift_boxes"
     ADD CONSTRAINT "thrift_boxes_shipment_id_fkey" FOREIGN KEY ("shipment_id") REFERENCES "public"."thrift_shipments"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."thrift_boxes"
     ADD CONSTRAINT "thrift_boxes_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."thrift_categories"
     ADD CONSTRAINT "thrift_categories_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."thrift_courier_providers"
     ADD CONSTRAINT "thrift_courier_providers_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."thrift_customers"
     ADD CONSTRAINT "thrift_customers_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."thrift_invoice_counters"
     ADD CONSTRAINT "thrift_invoice_counters_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."thrift_invoice_items"
     ADD CONSTRAINT "thrift_invoice_items_invoice_id_fkey" FOREIGN KEY ("invoice_id") REFERENCES "public"."thrift_invoices"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."thrift_invoice_items"
     ADD CONSTRAINT "thrift_invoice_items_stock_id_fkey" FOREIGN KEY ("stock_id") REFERENCES "public"."thrift_stocks"("id");
 
 
-
 ALTER TABLE ONLY "public"."thrift_invoices"
     ADD CONSTRAINT "thrift_invoices_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."thrift_pricings"
     ADD CONSTRAINT "thrift_pricings_stock_id_fkey" FOREIGN KEY ("stock_id") REFERENCES "public"."thrift_stocks"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."thrift_return_counters"
     ADD CONSTRAINT "thrift_return_counters_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."thrift_sales_invoice_items"
     ADD CONSTRAINT "thrift_sales_invoice_items_invoice_id_fkey" FOREIGN KEY ("invoice_id") REFERENCES "public"."thrift_sales_invoices"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."thrift_sales_invoice_items"
     ADD CONSTRAINT "thrift_sales_invoice_items_stock_id_fkey" FOREIGN KEY ("stock_id") REFERENCES "public"."thrift_stocks"("id") ON DELETE SET NULL;
-
 
 
 ALTER TABLE ONLY "public"."thrift_sales_invoice_items"
     ADD CONSTRAINT "thrift_sales_invoice_items_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."thrift_sales_invoices"
     ADD CONSTRAINT "thrift_sales_invoices_courier_provider_id_fkey" FOREIGN KEY ("courier_provider_id") REFERENCES "public"."thrift_courier_providers"("id") ON DELETE SET NULL;
-
 
 
 ALTER TABLE ONLY "public"."thrift_sales_invoices"
     ADD CONSTRAINT "thrift_sales_invoices_customer_id_fkey" FOREIGN KEY ("customer_id") REFERENCES "public"."thrift_customers"("id") ON DELETE SET NULL;
 
 
-
 ALTER TABLE ONLY "public"."thrift_sales_invoices"
     ADD CONSTRAINT "thrift_sales_invoices_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."thrift_sales_pnl_lines"
     ADD CONSTRAINT "thrift_sales_pnl_lines_inbound_shipment_id_fkey" FOREIGN KEY ("inbound_shipment_id") REFERENCES "public"."thrift_shipments"("id") ON DELETE RESTRICT;
 
 
-
 ALTER TABLE ONLY "public"."thrift_sales_pnl_lines"
     ADD CONSTRAINT "thrift_sales_pnl_lines_invoice_id_fkey" FOREIGN KEY ("invoice_id") REFERENCES "public"."thrift_sales_invoices"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."thrift_sales_pnl_lines"
     ADD CONSTRAINT "thrift_sales_pnl_lines_invoice_item_id_fkey" FOREIGN KEY ("invoice_item_id") REFERENCES "public"."thrift_sales_invoice_items"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."thrift_sales_pnl_lines"
     ADD CONSTRAINT "thrift_sales_pnl_lines_return_id_fkey" FOREIGN KEY ("return_id") REFERENCES "public"."thrift_sales_returns"("id") ON DELETE SET NULL;
-
 
 
 ALTER TABLE ONLY "public"."thrift_sales_pnl_lines"
     ADD CONSTRAINT "thrift_sales_pnl_lines_stock_id_fkey" FOREIGN KEY ("stock_id") REFERENCES "public"."thrift_stocks"("id") ON DELETE RESTRICT;
 
 
-
 ALTER TABLE ONLY "public"."thrift_sales_pnl_lines"
     ADD CONSTRAINT "thrift_sales_pnl_lines_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."thrift_sales_return_items"
     ADD CONSTRAINT "thrift_sales_return_items_invoice_item_id_fkey" FOREIGN KEY ("invoice_item_id") REFERENCES "public"."thrift_sales_invoice_items"("id") ON DELETE RESTRICT;
 
 
-
 ALTER TABLE ONLY "public"."thrift_sales_return_items"
     ADD CONSTRAINT "thrift_sales_return_items_return_id_fkey" FOREIGN KEY ("return_id") REFERENCES "public"."thrift_sales_returns"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."thrift_sales_return_items"
     ADD CONSTRAINT "thrift_sales_return_items_stock_id_fkey" FOREIGN KEY ("stock_id") REFERENCES "public"."thrift_stocks"("id") ON DELETE RESTRICT;
 
 
-
 ALTER TABLE ONLY "public"."thrift_sales_return_items"
     ADD CONSTRAINT "thrift_sales_return_items_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."thrift_sales_returns"
     ADD CONSTRAINT "thrift_sales_returns_invoice_id_fkey" FOREIGN KEY ("invoice_id") REFERENCES "public"."thrift_sales_invoices"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."thrift_sales_returns"
     ADD CONSTRAINT "thrift_sales_returns_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."thrift_settings"
     ADD CONSTRAINT "thrift_settings_hand_tag_unit_currency_id_fkey" FOREIGN KEY ("hand_tag_unit_currency_id") REFERENCES "public"."global_currencies"("id") ON DELETE SET NULL;
 
 
-
 ALTER TABLE ONLY "public"."thrift_settings"
     ADD CONSTRAINT "thrift_settings_sticker_unit_currency_id_fkey" FOREIGN KEY ("sticker_unit_currency_id") REFERENCES "public"."global_currencies"("id") ON DELETE SET NULL;
-
 
 
 ALTER TABLE ONLY "public"."thrift_settings"
     ADD CONSTRAINT "thrift_settings_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."thrift_shelves"
     ADD CONSTRAINT "thrift_shelves_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."thrift_shipments"
     ADD CONSTRAINT "thrift_shipments_cost_currency_id_fkey" FOREIGN KEY ("cost_currency_id") REFERENCES "public"."global_currencies"("id");
 
 
-
 ALTER TABLE ONLY "public"."thrift_shipments"
     ADD CONSTRAINT "thrift_shipments_purchase_currency_id_fkey" FOREIGN KEY ("purchase_currency_id") REFERENCES "public"."global_currencies"("id");
-
 
 
 ALTER TABLE ONLY "public"."thrift_shipments"
     ADD CONSTRAINT "thrift_shipments_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."thrift_stock_images"
     ADD CONSTRAINT "thrift_stock_images_stock_id_fkey" FOREIGN KEY ("stock_id") REFERENCES "public"."thrift_stocks"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."thrift_stock_measurements"
     ADD CONSTRAINT "thrift_stock_measurements_stock_id_fkey" FOREIGN KEY ("stock_id") REFERENCES "public"."thrift_stocks"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."thrift_stocks"
     ADD CONSTRAINT "thrift_stocks_box_id_fkey" FOREIGN KEY ("box_id") REFERENCES "public"."thrift_boxes"("id") ON DELETE SET NULL;
-
 
 
 ALTER TABLE ONLY "public"."thrift_stocks"
     ADD CONSTRAINT "thrift_stocks_category_id_fkey" FOREIGN KEY ("category_id") REFERENCES "public"."thrift_categories"("id");
 
 
-
 ALTER TABLE ONLY "public"."thrift_stocks"
     ADD CONSTRAINT "thrift_stocks_shelf_id_fkey" FOREIGN KEY ("shelf_id") REFERENCES "public"."thrift_shelves"("id");
-
 
 
 ALTER TABLE ONLY "public"."thrift_stocks"
     ADD CONSTRAINT "thrift_stocks_shipment_id_fkey" FOREIGN KEY ("shipment_id") REFERENCES "public"."thrift_shipments"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."thrift_stocks"
     ADD CONSTRAINT "thrift_stocks_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."thrift_stocks"
     ADD CONSTRAINT "thrift_stocks_type_id_fkey" FOREIGN KEY ("type_id") REFERENCES "public"."thrift_types"("id");
 
 
-
 ALTER TABLE ONLY "public"."thrift_types"
     ADD CONSTRAINT "thrift_types_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "public"."universal_wallet_ledger"
     ADD CONSTRAINT "universal_wallet_ledger_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "public"."wallet_accounts"
     ADD CONSTRAINT "wallet_accounts_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id");
 
 
-
 CREATE POLICY "Allow authenticated users to read permission versions" ON "public"."tenant_permission_versions" FOR SELECT TO "authenticated" USING (true);
-
 
 
 CREATE POLICY "Authenticated users can select tenant merchant profiles" ON "public"."merchant_profiles" FOR SELECT TO "authenticated" USING ((("tenant_id" = ( SELECT ("current_setting"('app.current_tenant_id'::"text", true))::bigint AS "current_setting")) OR (EXISTS ( SELECT 1
@@ -32087,17 +25287,14 @@ CREATE POLICY "Authenticated users can select tenant merchant profiles" ON "publ
   WHERE (("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."tenant_id" = "merchant_profiles"."tenant_id") AND ("m"."is_active" = true))))));
 
 
-
 CREATE POLICY "Members can delete merchant profiles" ON "public"."merchant_profiles" FOR DELETE TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."tenant_id" = "merchant_profiles"."tenant_id") AND ("m"."is_active" = true)))));
 
 
-
 CREATE POLICY "Members can insert merchant profiles" ON "public"."merchant_profiles" FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."tenant_id" = "merchant_profiles"."tenant_id") AND ("m"."is_active" = true)))));
-
 
 
 CREATE POLICY "Members can update merchant profiles" ON "public"."merchant_profiles" FOR UPDATE TO "authenticated" USING ((EXISTS ( SELECT 1
@@ -32107,11 +25304,9 @@ CREATE POLICY "Members can update merchant profiles" ON "public"."merchant_profi
   WHERE (("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."tenant_id" = "merchant_profiles"."tenant_id") AND ("m"."is_active" = true)))));
 
 
-
 CREATE POLICY "Members can view thrift sales invoice items" ON "public"."thrift_sales_invoice_items" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("m"."tenant_id" = "thrift_sales_invoice_items"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true)))));
-
 
 
 CREATE POLICY "Members can view thrift sales invoices for their tenant" ON "public"."thrift_sales_invoices" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
@@ -32119,11 +25314,9 @@ CREATE POLICY "Members can view thrift sales invoices for their tenant" ON "publ
   WHERE (("m"."tenant_id" = "thrift_sales_invoices"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true)))));
 
 
-
 CREATE POLICY "Staff and Admins can insert thrift sales invoice items" ON "public"."thrift_sales_invoice_items" FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("m"."tenant_id" = "thrift_sales_invoice_items"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true) AND ("m"."role" = ANY (ARRAY['superadmin'::"public"."app_role", 'admin'::"public"."app_role", 'manager'::"public"."app_role", 'staff'::"public"."app_role", 'cashier'::"public"."app_role"]))))));
-
 
 
 CREATE POLICY "Staff and Admins can insert thrift sales invoices" ON "public"."thrift_sales_invoices" FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
@@ -32131,11 +25324,9 @@ CREATE POLICY "Staff and Admins can insert thrift sales invoices" ON "public"."t
   WHERE (("m"."tenant_id" = "thrift_sales_invoices"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true) AND ("m"."role" = ANY (ARRAY['superadmin'::"public"."app_role", 'admin'::"public"."app_role", 'manager'::"public"."app_role", 'staff'::"public"."app_role", 'cashier'::"public"."app_role"]))))));
 
 
-
 CREATE POLICY "Staff and Admins can update thrift sales invoices" ON "public"."thrift_sales_invoices" FOR UPDATE TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("m"."tenant_id" = "thrift_sales_invoices"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true) AND ("m"."role" = ANY (ARRAY['superadmin'::"public"."app_role", 'admin'::"public"."app_role", 'manager'::"public"."app_role", 'staff'::"public"."app_role", 'cashier'::"public"."app_role"]))))));
-
 
 
 CREATE POLICY "Users can read retail settings for their tenant" ON "public"."koba_retail_settings" FOR SELECT TO "authenticated" USING (("public"."is_superadmin"() OR (EXISTS ( SELECT 1
@@ -32143,9 +25334,7 @@ CREATE POLICY "Users can read retail settings for their tenant" ON "public"."kob
   WHERE (("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."tenant_id" = "koba_retail_settings"."tenant_id") AND ("m"."is_active" = true))))));
 
 
-
 CREATE POLICY "Users can update retail settings for their tenant" ON "public"."koba_retail_settings" FOR UPDATE TO "authenticated" USING (("public"."is_superadmin"() OR "public"."is_tenant_admin"("tenant_id"))) WITH CHECK (("public"."is_superadmin"() OR "public"."is_tenant_admin"("tenant_id")));
-
 
 
 ALTER TABLE "public"."activity_logs" ENABLE ROW LEVEL SECURITY;
@@ -32156,27 +25345,12 @@ CREATE POLICY "activity_logs_insert" ON "public"."activity_logs" FOR INSERT TO "
   WHERE ("items"."id" = "activity_logs"."item_id"))));
 
 
-
 CREATE POLICY "activity_logs_select" ON "public"."activity_logs" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."items"
   WHERE ("items"."id" = "activity_logs"."item_id"))));
 
 
-
 ALTER TABLE "public"."batch_code_pc" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."billing_profiles" ENABLE ROW LEVEL SECURITY;
-
-
-CREATE POLICY "billing_profiles_select" ON "public"."billing_profiles" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
-   FROM "public"."memberships" "m"
-  WHERE (("m"."tenant_id" = "billing_profiles"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true)))));
-
-
-
-CREATE POLICY "billing_profiles_write" ON "public"."billing_profiles" TO "authenticated" USING ("public"."membership_has_module_action"("tenant_id", 'billing_profile'::"text", 'edit'::"text")) WITH CHECK ("public"."membership_has_module_action"("tenant_id", 'billing_profile'::"text", 'edit'::"text"));
-
 
 
 ALTER TABLE "public"."business_parties" ENABLE ROW LEVEL SECURITY;
@@ -32187,9 +25361,7 @@ CREATE POLICY "business_parties_select" ON "public"."business_parties" FOR SELEC
   WHERE (("m"."tenant_id" = "business_parties"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true)))) OR "public"."user_can_manage_parent_tenant"("parent_tenant_id")));
 
 
-
 CREATE POLICY "business_parties_write" ON "public"."business_parties" TO "authenticated" USING ("public"."membership_has_module_action"("tenant_id", 'vendor'::"text", 'edit'::"text")) WITH CHECK ("public"."membership_has_module_action"("tenant_id", 'vendor'::"text", 'edit'::"text"));
-
 
 
 ALTER TABLE "public"."cargo_companies" ENABLE ROW LEVEL SECURITY;
@@ -32198,17 +25370,13 @@ ALTER TABLE "public"."cargo_companies" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "cargo_companies_delete_policy" ON "public"."cargo_companies" FOR DELETE USING ((("tenant_id" = "public"."current_tenant_id"()) OR ("parent_tenant_id" = "public"."current_tenant_id"())));
 
 
-
 CREATE POLICY "cargo_companies_insert_policy" ON "public"."cargo_companies" FOR INSERT WITH CHECK ((("tenant_id" = "public"."current_tenant_id"()) OR ("parent_tenant_id" = "public"."current_tenant_id"())));
-
 
 
 CREATE POLICY "cargo_companies_select_policy" ON "public"."cargo_companies" FOR SELECT USING ((("tenant_id" IS NULL) OR ("tenant_id" = "public"."current_tenant_id"()) OR ("parent_tenant_id" = "public"."current_tenant_id"())));
 
 
-
 CREATE POLICY "cargo_companies_update_policy" ON "public"."cargo_companies" FOR UPDATE USING ((("tenant_id" = "public"."current_tenant_id"()) OR ("parent_tenant_id" = "public"."current_tenant_id"())));
-
 
 
 ALTER TABLE "public"."cart_items" ENABLE ROW LEVEL SECURITY;
@@ -32217,17 +25385,13 @@ ALTER TABLE "public"."cart_items" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "cart_items_delete" ON "public"."cart_items" FOR DELETE TO "authenticated" USING (true);
 
 
-
 CREATE POLICY "cart_items_insert_public" ON "public"."cart_items" FOR INSERT TO "authenticated" WITH CHECK (true);
-
 
 
 CREATE POLICY "cart_items_select" ON "public"."cart_items" FOR SELECT TO "authenticated" USING (true);
 
 
-
 CREATE POLICY "cart_items_update" ON "public"."cart_items" FOR UPDATE TO "authenticated" USING (true) WITH CHECK (true);
-
 
 
 ALTER TABLE "public"."carts" ENABLE ROW LEVEL SECURITY;
@@ -32236,17 +25400,13 @@ ALTER TABLE "public"."carts" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "carts_delete" ON "public"."carts" FOR DELETE TO "authenticated" USING (true);
 
 
-
 CREATE POLICY "carts_insert_public" ON "public"."carts" FOR INSERT TO "authenticated" WITH CHECK (true);
-
 
 
 CREATE POLICY "carts_select" ON "public"."carts" FOR SELECT TO "authenticated" USING (true);
 
 
-
 CREATE POLICY "carts_update" ON "public"."carts" FOR UPDATE TO "authenticated" USING (true) WITH CHECK (true);
-
 
 
 CREATE POLICY "cg_profiles_select_tenant_member" ON "public"."customer_group_shop_profiles" FOR SELECT USING (("tenant_id" IN ( SELECT "tm"."tenant_id"
@@ -32254,17 +25414,14 @@ CREATE POLICY "cg_profiles_select_tenant_member" ON "public"."customer_group_sho
   WHERE (("lower"(TRIM(BOTH FROM "tm"."email")) = "public"."current_user_email"()) AND ("tm"."is_active" = true)))));
 
 
-
 CREATE POLICY "cg_profiles_superadmin_all" ON "public"."customer_group_shop_profiles" USING ((EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."role" = 'superadmin'::"public"."app_role") AND ("m"."is_active" = true)))));
 
 
-
 CREATE POLICY "cg_profiles_write_tenant_admin_staff" ON "public"."customer_group_shop_profiles" USING (("tenant_id" IN ( SELECT "m"."tenant_id"
    FROM "public"."memberships" "m"
   WHERE (("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."role" = ANY (ARRAY['admin'::"public"."app_role", 'staff'::"public"."app_role"])) AND ("m"."is_active" = true)))));
-
 
 
 ALTER TABLE "public"."comments" ENABLE ROW LEVEL SECURITY;
@@ -32273,9 +25430,7 @@ ALTER TABLE "public"."comments" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "comments_delete" ON "public"."comments" FOR DELETE TO "authenticated" USING ((("user_email" = "public"."current_user_email"()) OR ("public"."get_effective_item_role"("item_id", "public"."current_user_email"()) = ANY (ARRAY['owner'::"text", 'manager'::"text"]))));
 
 
-
 CREATE POLICY "comments_insert" ON "public"."comments" FOR INSERT TO "authenticated" WITH CHECK (("public"."get_effective_item_role"("item_id", "public"."current_user_email"()) = ANY (ARRAY['owner'::"text", 'manager'::"text", 'editor'::"text", 'commenter'::"text"])));
-
 
 
 CREATE POLICY "comments_select" ON "public"."comments" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
@@ -32283,9 +25438,7 @@ CREATE POLICY "comments_select" ON "public"."comments" FOR SELECT TO "authentica
   WHERE ("items"."id" = "comments"."item_id"))));
 
 
-
 CREATE POLICY "comments_update" ON "public"."comments" FOR UPDATE TO "authenticated" USING ((("user_email" = "public"."current_user_email"()) OR ("public"."get_effective_item_role"("item_id", "public"."current_user_email"()) = ANY (ARRAY['owner'::"text", 'manager'::"text"]))));
-
 
 
 ALTER TABLE "public"."commerce_cart" ENABLE ROW LEVEL SECURITY;
@@ -32294,17 +25447,13 @@ ALTER TABLE "public"."commerce_cart" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "commerce_cart_delete" ON "public"."commerce_cart" FOR DELETE TO "authenticated" USING (true);
 
 
-
 CREATE POLICY "commerce_cart_insert" ON "public"."commerce_cart" FOR INSERT TO "authenticated" WITH CHECK (true);
-
 
 
 CREATE POLICY "commerce_cart_select" ON "public"."commerce_cart" FOR SELECT TO "authenticated" USING (true);
 
 
-
 CREATE POLICY "commerce_cart_update" ON "public"."commerce_cart" FOR UPDATE TO "authenticated" USING (true);
-
 
 
 ALTER TABLE "public"."commerce_inventory_product_summaries" ENABLE ROW LEVEL SECURITY;
@@ -32315,7 +25464,6 @@ CREATE POLICY "commerce_inventory_product_summaries_select" ON "public"."commerc
   WHERE (("s"."tenant_id" = "commerce_inventory_product_summaries"."tenant_id") AND "public"."can_customer_access_store"("s"."id"))))));
 
 
-
 ALTER TABLE "public"."commerce_invoice_boxes" ENABLE ROW LEVEL SECURITY;
 
 
@@ -32324,17 +25472,14 @@ CREATE POLICY "commerce_invoice_boxes_delete" ON "public"."commerce_invoice_boxe
   WHERE (("m"."tenant_id" = "commerce_invoice_boxes"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true) AND ("m"."role" = ANY (ARRAY['admin'::"public"."app_role", 'staff'::"public"."app_role"]))))));
 
 
-
 CREATE POLICY "commerce_invoice_boxes_insert" ON "public"."commerce_invoice_boxes" FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("m"."tenant_id" = "commerce_invoice_boxes"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true) AND ("m"."role" = ANY (ARRAY['admin'::"public"."app_role", 'staff'::"public"."app_role"]))))));
 
 
-
 CREATE POLICY "commerce_invoice_boxes_select" ON "public"."commerce_invoice_boxes" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("m"."tenant_id" = "commerce_invoice_boxes"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true)))));
-
 
 
 CREATE POLICY "commerce_invoice_boxes_update" ON "public"."commerce_invoice_boxes" FOR UPDATE TO "authenticated" USING ((EXISTS ( SELECT 1
@@ -32344,24 +25489,19 @@ CREATE POLICY "commerce_invoice_boxes_update" ON "public"."commerce_invoice_boxe
   WHERE (("m"."tenant_id" = "commerce_invoice_boxes"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true) AND ("m"."role" = ANY (ARRAY['admin'::"public"."app_role", 'staff'::"public"."app_role"]))))));
 
 
-
 ALTER TABLE "public"."commerce_invoices" ENABLE ROW LEVEL SECURITY;
 
 
 CREATE POLICY "commerce_invoices_delete" ON "public"."commerce_invoices" FOR DELETE TO "authenticated" USING (true);
 
 
-
 CREATE POLICY "commerce_invoices_insert" ON "public"."commerce_invoices" FOR INSERT TO "authenticated" WITH CHECK (true);
-
 
 
 CREATE POLICY "commerce_invoices_select" ON "public"."commerce_invoices" FOR SELECT TO "authenticated" USING (true);
 
 
-
 CREATE POLICY "commerce_invoices_update" ON "public"."commerce_invoices" FOR UPDATE TO "authenticated" USING (true);
-
 
 
 ALTER TABLE "public"."commerce_order_items" ENABLE ROW LEVEL SECURITY;
@@ -32370,17 +25510,13 @@ ALTER TABLE "public"."commerce_order_items" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "commerce_order_items_delete" ON "public"."commerce_order_items" FOR DELETE TO "authenticated" USING (true);
 
 
-
 CREATE POLICY "commerce_order_items_insert" ON "public"."commerce_order_items" FOR INSERT TO "authenticated" WITH CHECK (true);
-
 
 
 CREATE POLICY "commerce_order_items_select" ON "public"."commerce_order_items" FOR SELECT TO "authenticated" USING (true);
 
 
-
 CREATE POLICY "commerce_order_items_update" ON "public"."commerce_order_items" FOR UPDATE TO "authenticated" USING (true);
-
 
 
 ALTER TABLE "public"."commerce_order_settings" ENABLE ROW LEVEL SECURITY;
@@ -32389,17 +25525,13 @@ ALTER TABLE "public"."commerce_order_settings" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "commerce_order_settings_delete" ON "public"."commerce_order_settings" FOR DELETE TO "authenticated" USING (true);
 
 
-
 CREATE POLICY "commerce_order_settings_insert" ON "public"."commerce_order_settings" FOR INSERT TO "authenticated" WITH CHECK (true);
-
 
 
 CREATE POLICY "commerce_order_settings_select" ON "public"."commerce_order_settings" FOR SELECT TO "authenticated" USING (true);
 
 
-
 CREATE POLICY "commerce_order_settings_update" ON "public"."commerce_order_settings" FOR UPDATE TO "authenticated" USING (true);
-
 
 
 ALTER TABLE "public"."commerce_orders" ENABLE ROW LEVEL SECURITY;
@@ -32408,17 +25540,13 @@ ALTER TABLE "public"."commerce_orders" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "commerce_orders_delete" ON "public"."commerce_orders" FOR DELETE TO "authenticated" USING (true);
 
 
-
 CREATE POLICY "commerce_orders_insert" ON "public"."commerce_orders" FOR INSERT TO "authenticated" WITH CHECK (true);
-
 
 
 CREATE POLICY "commerce_orders_select" ON "public"."commerce_orders" FOR SELECT TO "authenticated" USING (true);
 
 
-
 CREATE POLICY "commerce_orders_update" ON "public"."commerce_orders" FOR UPDATE TO "authenticated" USING (true);
-
 
 
 ALTER TABLE "public"."courier_remittance_batches" ENABLE ROW LEVEL SECURITY;
@@ -32431,7 +25559,6 @@ CREATE POLICY "courier_remittance_batches_tenant_isolation" ON "public"."courier
   WHERE (("m"."tenant_id" = "courier_remittance_batches"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true))))));
 
 
-
 ALTER TABLE "public"."courier_remittance_items" ENABLE ROW LEVEL SECURITY;
 
 
@@ -32440,7 +25567,6 @@ CREATE POLICY "courier_remittance_items_tenant_isolation" ON "public"."courier_r
   WHERE (("m"."tenant_id" = "courier_remittance_items"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true)))))) WITH CHECK (("public"."is_superadmin"() OR (EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("m"."tenant_id" = "courier_remittance_items"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true))))));
-
 
 
 ALTER TABLE "public"."customer_group_member_grants" ENABLE ROW LEVEL SECURITY;
@@ -32452,17 +25578,13 @@ ALTER TABLE "public"."customer_group_members" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "customer_group_members_delete" ON "public"."customer_group_members" FOR DELETE TO "authenticated" USING ("public"."can_manage_customer_group_member"("customer_group_id"));
 
 
-
 CREATE POLICY "customer_group_members_insert" ON "public"."customer_group_members" FOR INSERT TO "authenticated" WITH CHECK ("public"."can_manage_customer_group_member"("customer_group_id"));
-
 
 
 CREATE POLICY "customer_group_members_select" ON "public"."customer_group_members" FOR SELECT TO "authenticated" USING ("public"."can_manage_customer_group_member"("customer_group_id"));
 
 
-
 CREATE POLICY "customer_group_members_update" ON "public"."customer_group_members" FOR UPDATE TO "authenticated" USING ("public"."can_manage_customer_group_member"("customer_group_id")) WITH CHECK ("public"."can_manage_customer_group_member"("customer_group_id"));
-
 
 
 ALTER TABLE "public"."customer_group_shop_profiles" ENABLE ROW LEVEL SECURITY;
@@ -32474,17 +25596,13 @@ ALTER TABLE "public"."customer_groups" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "customer_groups_delete" ON "public"."customer_groups" FOR DELETE TO "authenticated" USING ("public"."can_manage_customer_group"("tenant_id"));
 
 
-
 CREATE POLICY "customer_groups_insert" ON "public"."customer_groups" FOR INSERT TO "authenticated" WITH CHECK ("public"."can_manage_customer_group"("tenant_id"));
-
 
 
 CREATE POLICY "customer_groups_select" ON "public"."customer_groups" FOR SELECT TO "authenticated" USING (("public"."can_manage_customer_group"("tenant_id") OR "public"."is_tenant_staff"("tenant_id")));
 
 
-
 CREATE POLICY "customer_groups_update" ON "public"."customer_groups" FOR UPDATE TO "authenticated" USING ("public"."can_manage_customer_group"("tenant_id")) WITH CHECK ("public"."can_manage_customer_group"("tenant_id"));
-
 
 
 ALTER TABLE "public"."customer_order_backlog_items" ENABLE ROW LEVEL SECURITY;
@@ -32493,16 +25611,13 @@ ALTER TABLE "public"."customer_order_backlog_items" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "customer_order_backlog_items_tenant_isolation" ON "public"."customer_order_backlog_items" USING (("tenant_id" = ("current_setting"('app.current_tenant_id'::"text", true))::bigint));
 
 
-
 ALTER TABLE "public"."entity_tags" ENABLE ROW LEVEL SECURITY;
 
 
 CREATE POLICY "entity_tags_all" ON "public"."entity_tags" TO "authenticated" USING ("public"."user_can_manage_parent_tenant"("tenant_id")) WITH CHECK ("public"."user_can_manage_parent_tenant"("tenant_id"));
 
 
-
 CREATE POLICY "entity_tags_select" ON "public"."entity_tags" FOR SELECT TO "authenticated" USING (("public"."user_can_manage_parent_tenant"("tenant_id") OR "public"."has_active_tenant_membership"("tenant_id")));
-
 
 
 ALTER TABLE "public"."gift_rule_items" ENABLE ROW LEVEL SECURITY;
@@ -32511,9 +25626,7 @@ ALTER TABLE "public"."gift_rule_items" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "gift_rule_items_all_staff" ON "public"."gift_rule_items" USING (("auth"."role"() = 'authenticated'::"text"));
 
 
-
 CREATE POLICY "gift_rule_items_select" ON "public"."gift_rule_items" FOR SELECT USING (true);
-
 
 
 ALTER TABLE "public"."gift_rule_redemptions" ENABLE ROW LEVEL SECURITY;
@@ -32522,9 +25635,7 @@ ALTER TABLE "public"."gift_rule_redemptions" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "gift_rule_redemptions_all_staff" ON "public"."gift_rule_redemptions" USING (("auth"."role"() = 'authenticated'::"text"));
 
 
-
 CREATE POLICY "gift_rule_redemptions_select" ON "public"."gift_rule_redemptions" FOR SELECT USING (true);
-
 
 
 ALTER TABLE "public"."gift_rules" ENABLE ROW LEVEL SECURITY;
@@ -32533,39 +25644,13 @@ ALTER TABLE "public"."gift_rules" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "gift_rules_all_staff" ON "public"."gift_rules" USING (("auth"."role"() = 'authenticated'::"text"));
 
 
-
 CREATE POLICY "gift_rules_select" ON "public"."gift_rules" FOR SELECT USING (true);
-
 
 
 ALTER TABLE "public"."global_currencies" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "global_invoice_items_all" ON "public"."sales_invoice_items" TO "authenticated" USING ((EXISTS ( SELECT 1
-   FROM "public"."sales_invoices" "gi"
-  WHERE ("gi"."id" = "sales_invoice_items"."invoice_id")))) WITH CHECK ((EXISTS ( SELECT 1
-   FROM "public"."sales_invoices" "gi"
-  WHERE ("gi"."id" = "sales_invoice_items"."invoice_id"))));
-
-
-
-CREATE POLICY "global_invoices_select" ON "public"."sales_invoices" FOR SELECT TO "authenticated" USING (("public"."has_active_tenant_membership"("issued_by_tenant_id") OR "public"."user_can_manage_parent_tenant"("parent_tenant_id") OR "public"."user_can_manage_parent_tenant"("tenant_id")));
-
-
-
-CREATE POLICY "global_invoices_write" ON "public"."sales_invoices" TO "authenticated" USING (("public"."membership_has_module_action"("issued_by_tenant_id", 'global_invoice'::"text", 'edit'::"text") OR "public"."user_can_manage_parent_tenant"("parent_tenant_id") OR "public"."user_can_manage_parent_tenant"("tenant_id"))) WITH CHECK (("public"."membership_has_module_action"("issued_by_tenant_id", 'global_invoice'::"text", 'edit'::"text") OR "public"."user_can_manage_parent_tenant"("parent_tenant_id") OR "public"."user_can_manage_parent_tenant"("tenant_id")));
-
-
-
 ALTER TABLE "public"."global_payments" ENABLE ROW LEVEL SECURITY;
-
-
-CREATE POLICY "global_return_items_all" ON "public"."sales_return_items" TO "authenticated" USING ((EXISTS ( SELECT 1
-   FROM "public"."sales_invoices" "gi"
-  WHERE ("gi"."id" = "sales_return_items"."invoice_id")))) WITH CHECK ((EXISTS ( SELECT 1
-   FROM "public"."sales_invoices" "gi"
-  WHERE ("gi"."id" = "sales_return_items"."invoice_id"))));
-
 
 
 ALTER TABLE "public"."investor_balances" ENABLE ROW LEVEL SECURITY;
@@ -32576,11 +25661,9 @@ CREATE POLICY "investor_balances_delete" ON "public"."investor_balances" FOR DEL
   WHERE (("m"."tenant_id" = "investor_balances"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true) AND ("m"."role" = ANY (ARRAY['admin'::"public"."app_role", 'staff'::"public"."app_role"]))))));
 
 
-
 CREATE POLICY "investor_balances_insert" ON "public"."investor_balances" FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("m"."tenant_id" = "investor_balances"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true) AND ("m"."role" = ANY (ARRAY['admin'::"public"."app_role", 'staff'::"public"."app_role"]))))));
-
 
 
 CREATE POLICY "investor_balances_select" ON "public"."investor_balances" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
@@ -32588,13 +25671,11 @@ CREATE POLICY "investor_balances_select" ON "public"."investor_balances" FOR SEL
   WHERE (("m"."tenant_id" = "investor_balances"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true)))));
 
 
-
 CREATE POLICY "investor_balances_update" ON "public"."investor_balances" FOR UPDATE TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("m"."tenant_id" = "investor_balances"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true) AND ("m"."role" = ANY (ARRAY['admin'::"public"."app_role", 'staff'::"public"."app_role"])))))) WITH CHECK ((EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("m"."tenant_id" = "investor_balances"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true) AND ("m"."role" = ANY (ARRAY['admin'::"public"."app_role", 'staff'::"public"."app_role"]))))));
-
 
 
 ALTER TABLE "public"."investor_transactions" ENABLE ROW LEVEL SECURITY;
@@ -32605,15 +25686,12 @@ CREATE POLICY "investor_transactions_delete" ON "public"."investor_transactions"
   WHERE (("m"."tenant_id" = "investor_transactions"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true) AND ("m"."role" = ANY (ARRAY['admin'::"public"."app_role", 'staff'::"public"."app_role"]))))));
 
 
-
 CREATE POLICY "investor_transactions_insert" ON "public"."investor_transactions" FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("m"."tenant_id" = "investor_transactions"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true) AND ("m"."role" = ANY (ARRAY['admin'::"public"."app_role", 'staff'::"public"."app_role"]))))));
 
 
-
 CREATE POLICY "investor_transactions_select" ON "public"."investor_transactions" FOR SELECT TO "authenticated" USING (("public"."investor_tenant_can_view"("tenant_id") OR ("public"."auth_investor_id"() = "investor_id")));
-
 
 
 CREATE POLICY "investor_transactions_update" ON "public"."investor_transactions" FOR UPDATE TO "authenticated" USING ((EXISTS ( SELECT 1
@@ -32621,7 +25699,6 @@ CREATE POLICY "investor_transactions_update" ON "public"."investor_transactions"
   WHERE (("m"."tenant_id" = "investor_transactions"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true) AND ("m"."role" = ANY (ARRAY['admin'::"public"."app_role", 'staff'::"public"."app_role"])))))) WITH CHECK ((EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("m"."tenant_id" = "investor_transactions"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true) AND ("m"."role" = ANY (ARRAY['admin'::"public"."app_role", 'staff'::"public"."app_role"]))))));
-
 
 
 ALTER TABLE "public"."investors" ENABLE ROW LEVEL SECURITY;
@@ -32632,15 +25709,12 @@ CREATE POLICY "investors_delete" ON "public"."investors" FOR DELETE TO "authenti
   WHERE (("m"."tenant_id" = "investors"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true) AND ("m"."role" = ANY (ARRAY['admin'::"public"."app_role", 'staff'::"public"."app_role"]))))));
 
 
-
 CREATE POLICY "investors_insert" ON "public"."investors" FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("m"."tenant_id" = "investors"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true) AND ("m"."role" = ANY (ARRAY['admin'::"public"."app_role", 'staff'::"public"."app_role"]))))));
 
 
-
 CREATE POLICY "investors_select" ON "public"."investors" FOR SELECT TO "authenticated" USING (("public"."investor_tenant_can_view"("tenant_id") OR ("public"."auth_investor_id"() = "id")));
-
 
 
 CREATE POLICY "investors_update" ON "public"."investors" FOR UPDATE TO "authenticated" USING ((EXISTS ( SELECT 1
@@ -32648,7 +25722,6 @@ CREATE POLICY "investors_update" ON "public"."investors" FOR UPDATE TO "authenti
   WHERE (("m"."tenant_id" = "investors"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true) AND ("m"."role" = ANY (ARRAY['admin'::"public"."app_role", 'staff'::"public"."app_role"])))))) WITH CHECK ((EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("m"."tenant_id" = "investors"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true) AND ("m"."role" = ANY (ARRAY['admin'::"public"."app_role", 'staff'::"public"."app_role"]))))));
-
 
 
 ALTER TABLE "public"."invoice_boxes" ENABLE ROW LEVEL SECURITY;
@@ -32659,11 +25732,9 @@ CREATE POLICY "invoice_boxes_delete" ON "public"."invoice_boxes" FOR DELETE TO "
   WHERE (("m"."tenant_id" = "invoice_boxes"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true) AND ("m"."role" = ANY (ARRAY['admin'::"public"."app_role", 'staff'::"public"."app_role"]))))));
 
 
-
 CREATE POLICY "invoice_boxes_insert" ON "public"."invoice_boxes" FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("m"."tenant_id" = "invoice_boxes"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true) AND ("m"."role" = ANY (ARRAY['admin'::"public"."app_role", 'staff'::"public"."app_role"]))))));
-
 
 
 CREATE POLICY "invoice_boxes_select" ON "public"."invoice_boxes" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
@@ -32671,46 +25742,11 @@ CREATE POLICY "invoice_boxes_select" ON "public"."invoice_boxes" FOR SELECT TO "
   WHERE (("m"."tenant_id" = "invoice_boxes"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true)))));
 
 
-
 CREATE POLICY "invoice_boxes_update" ON "public"."invoice_boxes" FOR UPDATE TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("m"."tenant_id" = "invoice_boxes"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true) AND ("m"."role" = ANY (ARRAY['admin'::"public"."app_role", 'staff'::"public"."app_role"])))))) WITH CHECK ((EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("m"."tenant_id" = "invoice_boxes"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true) AND ("m"."role" = ANY (ARRAY['admin'::"public"."app_role", 'staff'::"public"."app_role"]))))));
-
-
-
-ALTER TABLE "public"."invoice_brands" ENABLE ROW LEVEL SECURITY;
-
-
-CREATE POLICY "invoice_brands_delete" ON "public"."invoice_brands" FOR DELETE TO "authenticated" USING ((EXISTS ( SELECT 1
-   FROM "public"."memberships" "m"
-  WHERE (("m"."tenant_id" = "invoice_brands"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true) AND ("m"."role" = ANY (ARRAY['admin'::"public"."app_role", 'staff'::"public"."app_role"]))))));
-
-
-
-CREATE POLICY "invoice_brands_insert" ON "public"."invoice_brands" FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
-   FROM "public"."memberships" "m"
-  WHERE (("m"."tenant_id" = "invoice_brands"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true) AND ("m"."role" = ANY (ARRAY['admin'::"public"."app_role", 'staff'::"public"."app_role"]))))));
-
-
-
-CREATE POLICY "invoice_brands_select" ON "public"."invoice_brands" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
-   FROM "public"."memberships" "m"
-  WHERE (("m"."tenant_id" = "invoice_brands"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true)))));
-
-
-
-CREATE POLICY "invoice_brands_update" ON "public"."invoice_brands" FOR UPDATE TO "authenticated" USING ((EXISTS ( SELECT 1
-   FROM "public"."memberships" "m"
-  WHERE (("m"."tenant_id" = "invoice_brands"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true) AND ("m"."role" = ANY (ARRAY['admin'::"public"."app_role", 'staff'::"public"."app_role"])))))) WITH CHECK ((EXISTS ( SELECT 1
-   FROM "public"."memberships" "m"
-  WHERE (("m"."tenant_id" = "invoice_brands"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true) AND ("m"."role" = ANY (ARRAY['admin'::"public"."app_role", 'staff'::"public"."app_role"]))))));
-
-
-
-CREATE POLICY "invoice_brands_write" ON "public"."invoice_brands" TO "authenticated" USING ("public"."membership_has_module_action"("tenant_id", 'invoice_brand'::"text", 'edit'::"text")) WITH CHECK ("public"."membership_has_module_action"("tenant_id", 'invoice_brand'::"text", 'edit'::"text"));
-
 
 
 ALTER TABLE "public"."invoice_payments" ENABLE ROW LEVEL SECURITY;
@@ -32722,11 +25758,9 @@ ALTER TABLE "public"."item_assignees" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "item_assignees_all" ON "public"."item_assignees" TO "authenticated" USING (("public"."get_effective_item_role"("item_id", "public"."current_user_email"()) = ANY (ARRAY['owner'::"text", 'manager'::"text"])));
 
 
-
 CREATE POLICY "item_assignees_select" ON "public"."item_assignees" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."items"
   WHERE ("items"."id" = "item_assignees"."item_id"))));
-
 
 
 ALTER TABLE "public"."item_permissions" ENABLE ROW LEVEL SECURITY;
@@ -32735,11 +25769,9 @@ ALTER TABLE "public"."item_permissions" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "item_permissions_all" ON "public"."item_permissions" TO "authenticated" USING (("public"."get_effective_item_role"("item_id", "public"."current_user_email"()) = ANY (ARRAY['owner'::"text", 'manager'::"text"])));
 
 
-
 CREATE POLICY "item_permissions_select" ON "public"."item_permissions" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."items"
   WHERE ("items"."id" = "item_permissions"."item_id"))));
-
 
 
 ALTER TABLE "public"."item_tags" ENABLE ROW LEVEL SECURITY;
@@ -32748,11 +25780,9 @@ ALTER TABLE "public"."item_tags" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "item_tags_all" ON "public"."item_tags" TO "authenticated" USING (("public"."get_effective_item_role"("item_id", "public"."current_user_email"()) = ANY (ARRAY['owner'::"text", 'manager'::"text", 'editor'::"text"])));
 
 
-
 CREATE POLICY "item_tags_select" ON "public"."item_tags" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."items"
   WHERE ("items"."id" = "item_tags"."item_id"))));
-
 
 
 ALTER TABLE "public"."items" ENABLE ROW LEVEL SECURITY;
@@ -32761,17 +25791,13 @@ ALTER TABLE "public"."items" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "items_delete" ON "public"."items" FOR DELETE TO "authenticated" USING (("public"."get_effective_item_role"("id", "public"."current_user_email"()) = ANY (ARRAY['owner'::"text", 'manager'::"text"])));
 
 
-
 CREATE POLICY "items_insert" ON "public"."items" FOR INSERT TO "authenticated" WITH CHECK (((("parent_id" IS NULL) AND (("tenant_id" IS NULL) OR ("public"."has_active_tenant_membership"("tenant_id") AND "public"."membership_has_module_action"("tenant_id", 'tasks'::"text", 'create'::"text")))) OR (("parent_id" IS NOT NULL) AND ("public"."get_effective_item_role"("parent_id", "public"."current_user_email"()) = ANY (ARRAY['owner'::"text", 'manager'::"text", 'editor'::"text"])))));
-
 
 
 CREATE POLICY "items_select" ON "public"."items" FOR SELECT TO "authenticated" USING (("public"."get_effective_item_role"("id", "public"."current_user_email"()) IS NOT NULL));
 
 
-
 CREATE POLICY "items_update" ON "public"."items" FOR UPDATE TO "authenticated" USING (("public"."get_effective_item_role"("id", "public"."current_user_email"()) = ANY (ARRAY['owner'::"text", 'manager'::"text", 'editor'::"text"]))) WITH CHECK (("public"."get_effective_item_role"("id", "public"."current_user_email"()) = ANY (ARRAY['owner'::"text", 'manager'::"text", 'editor'::"text"])));
-
 
 
 ALTER TABLE "public"."koba_brands" ENABLE ROW LEVEL SECURITY;
@@ -32780,24 +25806,19 @@ ALTER TABLE "public"."koba_brands" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "koba_brands_admin_all" ON "public"."koba_brands" TO "authenticated" USING (("public"."is_superadmin"() OR "public"."is_tenant_admin"("tenant_id"))) WITH CHECK (("public"."is_superadmin"() OR "public"."is_tenant_admin"("tenant_id")));
 
 
-
 ALTER TABLE "public"."koba_cart_items" ENABLE ROW LEVEL SECURITY;
 
 
 CREATE POLICY "koba_cart_items_delete" ON "public"."koba_cart_items" FOR DELETE TO "authenticated" USING ("public"."koba_cart_allowed"("cart_id"));
 
 
-
 CREATE POLICY "koba_cart_items_insert" ON "public"."koba_cart_items" FOR INSERT TO "authenticated" WITH CHECK ("public"."koba_cart_allowed"("cart_id"));
-
 
 
 CREATE POLICY "koba_cart_items_select" ON "public"."koba_cart_items" FOR SELECT TO "authenticated" USING ("public"."koba_cart_allowed"("cart_id"));
 
 
-
 CREATE POLICY "koba_cart_items_update" ON "public"."koba_cart_items" FOR UPDATE TO "authenticated" USING ("public"."koba_cart_allowed"("cart_id")) WITH CHECK ("public"."koba_cart_allowed"("cart_id"));
-
 
 
 ALTER TABLE "public"."koba_carts" ENABLE ROW LEVEL SECURITY;
@@ -32806,17 +25827,13 @@ ALTER TABLE "public"."koba_carts" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "koba_carts_delete" ON "public"."koba_carts" FOR DELETE TO "authenticated" USING ("public"."koba_context_access_allowed"("tenant_id", "customer_group_id"));
 
 
-
 CREATE POLICY "koba_carts_insert" ON "public"."koba_carts" FOR INSERT TO "authenticated" WITH CHECK ("public"."koba_context_access_allowed"("tenant_id", "customer_group_id"));
-
 
 
 CREATE POLICY "koba_carts_select" ON "public"."koba_carts" FOR SELECT TO "authenticated" USING ("public"."koba_context_access_allowed"("tenant_id", "customer_group_id"));
 
 
-
 CREATE POLICY "koba_carts_update" ON "public"."koba_carts" FOR UPDATE TO "authenticated" USING ("public"."koba_context_access_allowed"("tenant_id", "customer_group_id")) WITH CHECK ("public"."koba_context_access_allowed"("tenant_id", "customer_group_id"));
-
 
 
 ALTER TABLE "public"."koba_categories" ENABLE ROW LEVEL SECURITY;
@@ -32825,24 +25842,19 @@ ALTER TABLE "public"."koba_categories" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "koba_categories_admin_all" ON "public"."koba_categories" TO "authenticated" USING (("public"."is_superadmin"() OR "public"."is_tenant_admin"("tenant_id"))) WITH CHECK (("public"."is_superadmin"() OR "public"."is_tenant_admin"("tenant_id")));
 
 
-
 ALTER TABLE "public"."koba_order_items" ENABLE ROW LEVEL SECURITY;
 
 
 CREATE POLICY "koba_order_items_delete" ON "public"."koba_order_items" FOR DELETE TO "authenticated" USING ("public"."koba_order_allowed"("order_id"));
 
 
-
 CREATE POLICY "koba_order_items_insert" ON "public"."koba_order_items" FOR INSERT TO "authenticated" WITH CHECK ("public"."koba_order_allowed"("order_id"));
-
 
 
 CREATE POLICY "koba_order_items_select" ON "public"."koba_order_items" FOR SELECT TO "authenticated" USING ("public"."koba_order_allowed"("order_id"));
 
 
-
 CREATE POLICY "koba_order_items_update" ON "public"."koba_order_items" FOR UPDATE TO "authenticated" USING ("public"."koba_order_allowed"("order_id")) WITH CHECK ("public"."koba_order_allowed"("order_id"));
-
 
 
 ALTER TABLE "public"."koba_orders" ENABLE ROW LEVEL SECURITY;
@@ -32851,17 +25863,13 @@ ALTER TABLE "public"."koba_orders" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "koba_orders_delete" ON "public"."koba_orders" FOR DELETE TO "authenticated" USING (("public"."is_superadmin"() OR "public"."is_tenant_admin"("tenant_id")));
 
 
-
 CREATE POLICY "koba_orders_insert" ON "public"."koba_orders" FOR INSERT TO "authenticated" WITH CHECK ("public"."koba_context_access_allowed"("tenant_id", "customer_group_id"));
-
 
 
 CREATE POLICY "koba_orders_select" ON "public"."koba_orders" FOR SELECT TO "authenticated" USING ("public"."koba_context_access_allowed"("tenant_id", "customer_group_id"));
 
 
-
 CREATE POLICY "koba_orders_update" ON "public"."koba_orders" FOR UPDATE TO "authenticated" USING ("public"."koba_context_access_allowed"("tenant_id", "customer_group_id")) WITH CHECK ("public"."koba_context_access_allowed"("tenant_id", "customer_group_id"));
-
 
 
 ALTER TABLE "public"."koba_products" ENABLE ROW LEVEL SECURITY;
@@ -32870,9 +25878,7 @@ ALTER TABLE "public"."koba_products" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "koba_products_admin_all" ON "public"."koba_products" TO "authenticated" USING (("public"."is_superadmin"() OR "public"."is_tenant_admin"("tenant_id"))) WITH CHECK (("public"."is_superadmin"() OR "public"."is_tenant_admin"("tenant_id")));
 
 
-
 CREATE POLICY "koba_products_tenant_member_read" ON "public"."koba_products" FOR SELECT TO "authenticated" USING (("public"."is_superadmin"() OR "public"."is_tenant_admin"("tenant_id") OR ("tenant_id" = "public"."current_tenant_id"())));
-
 
 
 ALTER TABLE "public"."koba_retail_settings" ENABLE ROW LEVEL SECURITY;
@@ -32883,11 +25889,9 @@ CREATE POLICY "listings_select_tenant_member" ON "public"."shop_product_listings
   WHERE (("lower"(TRIM(BOTH FROM "tm"."email")) = "public"."current_user_email"()) AND ("tm"."is_active" = true)))));
 
 
-
 CREATE POLICY "listings_superadmin_all" ON "public"."shop_product_listings" USING ((EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."role" = 'superadmin'::"public"."app_role") AND ("m"."is_active" = true)))));
-
 
 
 CREATE POLICY "listings_write_tenant_admin_staff" ON "public"."shop_product_listings" USING (("tenant_id" IN ( SELECT "m"."tenant_id"
@@ -32895,9 +25899,7 @@ CREATE POLICY "listings_write_tenant_admin_staff" ON "public"."shop_product_list
   WHERE (("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."role" = ANY (ARRAY['admin'::"public"."app_role", 'staff'::"public"."app_role"])) AND ("m"."is_active" = true)))));
 
 
-
 CREATE POLICY "manage_global_currencies" ON "public"."global_currencies" TO "authenticated" USING ("public"."is_superadmin"()) WITH CHECK ("public"."is_superadmin"());
-
 
 
 ALTER TABLE "public"."markets" ENABLE ROW LEVEL SECURITY;
@@ -32906,7 +25908,6 @@ ALTER TABLE "public"."markets" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "members_can_view_tenants" ON "public"."tenants" FOR SELECT TO "authenticated" USING (("public"."is_superadmin"() OR (EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("m"."tenant_id" = "tenants"."id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true))))));
-
 
 
 ALTER TABLE "public"."membership_grants" ENABLE ROW LEVEL SECURITY;
@@ -32918,21 +25919,16 @@ ALTER TABLE "public"."memberships" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "memberships_delete" ON "public"."memberships" FOR DELETE TO "authenticated" USING ("public"."can_update_membership_row"("tenant_id", "role"));
 
 
-
 CREATE POLICY "memberships_insert" ON "public"."memberships" FOR INSERT TO "authenticated" WITH CHECK ("public"."can_assign_membership_role"("tenant_id", "role"));
-
 
 
 CREATE POLICY "memberships_select" ON "public"."memberships" FOR SELECT TO "authenticated" USING (("public"."is_superadmin"() OR "public"."has_active_tenant_membership"("tenant_id")));
 
 
-
 CREATE POLICY "memberships_select_own" ON "public"."memberships" FOR SELECT TO "authenticated" USING (("lower"(TRIM(BOTH FROM "email")) = "public"."current_user_email"()));
 
 
-
 CREATE POLICY "memberships_update" ON "public"."memberships" FOR UPDATE TO "authenticated" USING ("public"."can_update_membership_row"("tenant_id", "role")) WITH CHECK ("public"."can_assign_membership_role"("tenant_id", "role"));
-
 
 
 ALTER TABLE "public"."merchant_profiles" ENABLE ROW LEVEL SECURITY;
@@ -32944,9 +25940,7 @@ ALTER TABLE "public"."module_actions" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "module_actions_select_all" ON "public"."module_actions" FOR SELECT TO "authenticated" USING (true);
 
 
-
 CREATE POLICY "module_actions_write_superadmin" ON "public"."module_actions" TO "authenticated" USING ("public"."is_superadmin"()) WITH CHECK ("public"."is_superadmin"());
-
 
 
 ALTER TABLE "public"."modules" ENABLE ROW LEVEL SECURITY;
@@ -32958,17 +25952,13 @@ ALTER TABLE "public"."order_items" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "order_items_delete" ON "public"."order_items" FOR DELETE TO "authenticated" USING (true);
 
 
-
 CREATE POLICY "order_items_insert" ON "public"."order_items" FOR INSERT TO "authenticated" WITH CHECK (true);
-
 
 
 CREATE POLICY "order_items_select" ON "public"."order_items" FOR SELECT TO "authenticated" USING (true);
 
 
-
 CREATE POLICY "order_items_update" ON "public"."order_items" FOR UPDATE TO "authenticated" USING (true) WITH CHECK (true);
-
 
 
 ALTER TABLE "public"."orders" ENABLE ROW LEVEL SECURITY;
@@ -32977,17 +25967,13 @@ ALTER TABLE "public"."orders" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "orders_delete" ON "public"."orders" FOR DELETE TO "authenticated" USING (true);
 
 
-
 CREATE POLICY "orders_insert" ON "public"."orders" FOR INSERT TO "authenticated" WITH CHECK (true);
-
 
 
 CREATE POLICY "orders_select" ON "public"."orders" FOR SELECT TO "authenticated" USING (true);
 
 
-
 CREATE POLICY "orders_update" ON "public"."orders" FOR UPDATE TO "authenticated" USING (true) WITH CHECK (true);
-
 
 
 CREATE POLICY "payment_allocations_delete" ON "public"."invoice_payments" FOR DELETE TO "authenticated" USING ((EXISTS ( SELECT 1
@@ -32995,17 +25981,14 @@ CREATE POLICY "payment_allocations_delete" ON "public"."invoice_payments" FOR DE
   WHERE (("p"."id" = "invoice_payments"."payment_id") AND "public"."membership_has_module_action"("p"."tenant_id", 'payments'::"text", 'void'::"text")))));
 
 
-
 CREATE POLICY "payment_allocations_insert" ON "public"."invoice_payments" FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
    FROM "public"."global_payments" "p"
   WHERE (("p"."id" = "invoice_payments"."payment_id") AND "public"."membership_has_module_action"("p"."tenant_id", 'payments'::"text", 'allocate_payment'::"text")))));
 
 
-
 CREATE POLICY "payment_allocations_select" ON "public"."invoice_payments" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("m"."tenant_id" = "invoice_payments"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true)))));
-
 
 
 CREATE POLICY "payment_allocations_update" ON "public"."invoice_payments" FOR UPDATE TO "authenticated" USING ((EXISTS ( SELECT 1
@@ -33015,16 +25998,13 @@ CREATE POLICY "payment_allocations_update" ON "public"."invoice_payments" FOR UP
   WHERE (("p"."id" = "invoice_payments"."payment_id") AND "public"."membership_has_module_action"("p"."tenant_id", 'payments'::"text", 'allocate_payment'::"text")))));
 
 
-
 ALTER TABLE "public"."payment_methods" ENABLE ROW LEVEL SECURITY;
 
 
 CREATE POLICY "payments_delete" ON "public"."global_payments" FOR DELETE TO "authenticated" USING ("public"."membership_has_module_action"("tenant_id", 'payments'::"text", 'void'::"text"));
 
 
-
 CREATE POLICY "payments_insert" ON "public"."global_payments" FOR INSERT TO "authenticated" WITH CHECK ("public"."membership_has_module_action"("tenant_id", 'payments'::"text", 'collect_payment'::"text"));
-
 
 
 CREATE POLICY "payments_select" ON "public"."global_payments" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
@@ -33032,9 +26012,7 @@ CREATE POLICY "payments_select" ON "public"."global_payments" FOR SELECT TO "aut
   WHERE (("m"."tenant_id" = "global_payments"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true)))));
 
 
-
 CREATE POLICY "payments_update" ON "public"."global_payments" FOR UPDATE TO "authenticated" USING ("public"."membership_has_module_action"("tenant_id", 'payments'::"text", 'allocate_payment'::"text")) WITH CHECK ("public"."membership_has_module_action"("tenant_id", 'payments'::"text", 'allocate_payment'::"text"));
-
 
 
 ALTER TABLE "public"."product_brands" ENABLE ROW LEVEL SECURITY;
@@ -33043,9 +26021,7 @@ ALTER TABLE "public"."product_brands" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "product_brands_delete_authenticated" ON "public"."product_brands" FOR DELETE TO "authenticated" USING (true);
 
 
-
 CREATE POLICY "product_brands_insert_authenticated" ON "public"."product_brands" FOR INSERT TO "authenticated" WITH CHECK (true);
-
 
 
 CREATE POLICY "product_brands_read_authenticated" ON "public"."product_brands" FOR SELECT TO "authenticated" USING (((EXISTS ( SELECT 1
@@ -33053,9 +26029,7 @@ CREATE POLICY "product_brands_read_authenticated" ON "public"."product_brands" F
   WHERE (("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true) AND ("m"."tenant_id" IS NOT NULL) AND ("product_brands"."tenant_id" = "m"."tenant_id")))) OR (("parent_tenant_id" IS NOT NULL) AND "public"."user_can_manage_parent_tenant"("parent_tenant_id"))));
 
 
-
 CREATE POLICY "product_brands_update_authenticated" ON "public"."product_brands" FOR UPDATE TO "authenticated" USING (true) WITH CHECK (true);
-
 
 
 ALTER TABLE "public"."product_categories" ENABLE ROW LEVEL SECURITY;
@@ -33064,9 +26038,7 @@ ALTER TABLE "public"."product_categories" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "product_categories_delete_authenticated" ON "public"."product_categories" FOR DELETE TO "authenticated" USING (true);
 
 
-
 CREATE POLICY "product_categories_insert_authenticated" ON "public"."product_categories" FOR INSERT TO "authenticated" WITH CHECK (true);
-
 
 
 CREATE POLICY "product_categories_read_authenticated" ON "public"."product_categories" FOR SELECT TO "authenticated" USING (((EXISTS ( SELECT 1
@@ -33074,9 +26046,7 @@ CREATE POLICY "product_categories_read_authenticated" ON "public"."product_categ
   WHERE (("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true) AND ("m"."tenant_id" IS NOT NULL) AND ("product_categories"."tenant_id" = "m"."tenant_id")))) OR (("parent_tenant_id" IS NOT NULL) AND "public"."user_can_manage_parent_tenant"("parent_tenant_id"))));
 
 
-
 CREATE POLICY "product_categories_update_authenticated" ON "public"."product_categories" FOR UPDATE TO "authenticated" USING (true) WITH CHECK (true);
-
 
 
 ALTER TABLE "public"."products" ENABLE ROW LEVEL SECURITY;
@@ -33085,43 +26055,16 @@ ALTER TABLE "public"."products" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "products_delete" ON "public"."products" FOR DELETE TO "authenticated" USING ("public"."can_manage_products"("tenant_id"));
 
 
-
 CREATE POLICY "products_insert" ON "public"."products" FOR INSERT TO "authenticated" WITH CHECK ("public"."can_manage_products"("tenant_id"));
-
 
 
 CREATE POLICY "products_select" ON "public"."products" FOR SELECT TO "authenticated" USING (("public"."can_view_products_internal"("tenant_id") OR "public"."can_view_products_customer"("tenant_id") OR (("parent_tenant_id" IS NOT NULL) AND "public"."user_can_manage_parent_tenant"("parent_tenant_id"))));
 
 
-
 CREATE POLICY "products_update" ON "public"."products" FOR UPDATE TO "authenticated" USING ("public"."can_manage_products"("tenant_id")) WITH CHECK ("public"."can_manage_products"("tenant_id"));
 
 
-
-ALTER TABLE "public"."recipient_profiles" ENABLE ROW LEVEL SECURITY;
-
-
-CREATE POLICY "recipient_profiles_select" ON "public"."recipient_profiles" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
-   FROM "public"."memberships" "m"
-  WHERE (("m"."tenant_id" = "recipient_profiles"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true)))));
-
-
-
-CREATE POLICY "recipient_profiles_write" ON "public"."recipient_profiles" TO "authenticated" USING ("public"."membership_has_module_action"("tenant_id", 'recipient_profile'::"text", 'edit'::"text")) WITH CHECK ("public"."membership_has_module_action"("tenant_id", 'recipient_profile'::"text", 'edit'::"text"));
-
-
-
-ALTER TABLE "public"."sales_invoice_items" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."sales_invoices" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."sales_return_items" ENABLE ROW LEVEL SECURITY;
-
-
 CREATE POLICY "select_global_currencies" ON "public"."global_currencies" FOR SELECT TO "authenticated" USING (("is_active" = true));
-
 
 
 CREATE POLICY "select_thrift_barcodes" ON "public"."thrift_barcodes" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
@@ -33129,11 +26072,9 @@ CREATE POLICY "select_thrift_barcodes" ON "public"."thrift_barcodes" FOR SELECT 
   WHERE (("m"."tenant_id" = "thrift_barcodes"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true)))));
 
 
-
 CREATE POLICY "select_thrift_boxes" ON "public"."thrift_boxes" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("m"."tenant_id" = "thrift_boxes"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true)))));
-
 
 
 CREATE POLICY "select_thrift_categories" ON "public"."thrift_categories" FOR SELECT TO "authenticated" USING ((("is_global" = true) OR (EXISTS ( SELECT 1
@@ -33141,9 +26082,7 @@ CREATE POLICY "select_thrift_categories" ON "public"."thrift_categories" FOR SEL
   WHERE (("m"."tenant_id" = "thrift_categories"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true))))));
 
 
-
 CREATE POLICY "select_thrift_customers" ON "public"."thrift_customers" FOR SELECT TO "authenticated" USING (("public"."membership_has_module_action"("tenant_id", 'thrift_customers'::"text", 'view'::"text") OR "public"."membership_has_module_action"("tenant_id", 'thrift_sales'::"text", 'view'::"text")));
-
 
 
 CREATE POLICY "select_thrift_invoice_items" ON "public"."thrift_invoice_items" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
@@ -33152,17 +26091,14 @@ CREATE POLICY "select_thrift_invoice_items" ON "public"."thrift_invoice_items" F
   WHERE (("i"."id" = "thrift_invoice_items"."invoice_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true)))));
 
 
-
 CREATE POLICY "select_thrift_invoices" ON "public"."thrift_invoices" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("m"."tenant_id" = "thrift_invoices"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true)))));
 
 
-
 CREATE POLICY "select_thrift_ledger" ON "public"."thrift_accounting_ledger" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("m"."tenant_id" = "thrift_accounting_ledger"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true)))));
-
 
 
 CREATE POLICY "select_thrift_pricings" ON "public"."thrift_pricings" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
@@ -33171,11 +26107,9 @@ CREATE POLICY "select_thrift_pricings" ON "public"."thrift_pricings" FOR SELECT 
   WHERE (("s"."id" = "thrift_pricings"."stock_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true)))));
 
 
-
 CREATE POLICY "select_thrift_settings" ON "public"."thrift_settings" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("m"."tenant_id" = "thrift_settings"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true)))));
-
 
 
 CREATE POLICY "select_thrift_shelves" ON "public"."thrift_shelves" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
@@ -33183,11 +26117,9 @@ CREATE POLICY "select_thrift_shelves" ON "public"."thrift_shelves" FOR SELECT TO
   WHERE (("m"."tenant_id" = "thrift_shelves"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true)))));
 
 
-
 CREATE POLICY "select_thrift_shipments" ON "public"."thrift_shipments" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("m"."tenant_id" = "thrift_shipments"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true)))));
-
 
 
 CREATE POLICY "select_thrift_stock_images" ON "public"."thrift_stock_images" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
@@ -33196,11 +26128,9 @@ CREATE POLICY "select_thrift_stock_images" ON "public"."thrift_stock_images" FOR
   WHERE (("s"."id" = "thrift_stock_images"."stock_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true)))));
 
 
-
 CREATE POLICY "select_thrift_stock_measurements" ON "public"."thrift_stock_measurements" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("m"."tenant_id" = "thrift_stock_measurements"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true)))));
-
 
 
 CREATE POLICY "select_thrift_stocks" ON "public"."thrift_stocks" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
@@ -33208,11 +26138,9 @@ CREATE POLICY "select_thrift_stocks" ON "public"."thrift_stocks" FOR SELECT TO "
   WHERE (("m"."tenant_id" = "thrift_stocks"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true)))));
 
 
-
 CREATE POLICY "select_thrift_types" ON "public"."thrift_types" FOR SELECT TO "authenticated" USING ((("is_global" = true) OR (EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("m"."tenant_id" = "thrift_types"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true))))));
-
 
 
 ALTER TABLE "public"."shop_cart_items" ENABLE ROW LEVEL SECURITY;
@@ -33225,11 +26153,9 @@ CREATE POLICY "shop_cart_items_customer_owner" ON "public"."shop_cart_items" USI
   WHERE (("c"."id" = "shop_cart_items"."cart_id") AND "public"."is_cart_owner"("c"."customer_group_id", "c"."tenant_id")))));
 
 
-
 CREATE POLICY "shop_cart_items_staff_view" ON "public"."shop_cart_items" FOR SELECT USING ((EXISTS ( SELECT 1
    FROM "public"."shop_carts" "c"
   WHERE (("c"."id" = "shop_cart_items"."cart_id") AND "public"."is_tenant_staff"("c"."tenant_id")))));
-
 
 
 ALTER TABLE "public"."shop_carts" ENABLE ROW LEVEL SECURITY;
@@ -33238,9 +26164,7 @@ ALTER TABLE "public"."shop_carts" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "shop_carts_customer_owner" ON "public"."shop_carts" USING ("public"."is_cart_owner"("customer_group_id", "tenant_id")) WITH CHECK ("public"."is_cart_owner"("customer_group_id", "tenant_id"));
 
 
-
 CREATE POLICY "shop_carts_staff_view" ON "public"."shop_carts" FOR SELECT USING ("public"."is_tenant_staff"("tenant_id"));
-
 
 
 ALTER TABLE "public"."shop_categories" ENABLE ROW LEVEL SECURITY;
@@ -33251,9 +26175,7 @@ CREATE POLICY "shop_categories_select_policy" ON "public"."shop_categories" FOR 
   WHERE (("m"."tenant_id" = "shop_categories"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true))))));
 
 
-
 CREATE POLICY "shop_categories_service_role_policy" ON "public"."shop_categories" TO "service_role" USING (true) WITH CHECK (true);
-
 
 
 CREATE POLICY "shop_categories_staff_manage_policy" ON "public"."shop_categories" TO "authenticated" USING (("public"."is_superadmin"() OR (EXISTS ( SELECT 1
@@ -33263,12 +26185,10 @@ CREATE POLICY "shop_categories_staff_manage_policy" ON "public"."shop_categories
   WHERE (("m"."tenant_id" = "shop_categories"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true) AND ("m"."role" = ANY (ARRAY['admin'::"public"."app_role", 'staff'::"public"."app_role", 'superadmin'::"public"."app_role"])))))));
 
 
-
 CREATE POLICY "shop_cg_access_select_tenant_member" ON "public"."shop_customer_group_access" FOR SELECT USING ((EXISTS ( SELECT 1
    FROM ("public"."shops" "s"
      JOIN "public"."memberships" "tm" ON (("tm"."tenant_id" = "s"."tenant_id")))
   WHERE (("s"."id" = "shop_customer_group_access"."shop_id") AND ("lower"(TRIM(BOTH FROM "tm"."email")) = "public"."current_user_email"()) AND ("tm"."is_active" = true)))));
-
 
 
 CREATE POLICY "shop_cg_access_superadmin_all" ON "public"."shop_customer_group_access" USING ((EXISTS ( SELECT 1
@@ -33276,13 +26196,11 @@ CREATE POLICY "shop_cg_access_superadmin_all" ON "public"."shop_customer_group_a
   WHERE (("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."role" = 'superadmin'::"public"."app_role") AND ("m"."is_active" = true)))));
 
 
-
 CREATE POLICY "shop_cg_access_write_tenant_admin_staff" ON "public"."shop_customer_group_access" USING ((EXISTS ( SELECT 1
    FROM "public"."shops" "s"
   WHERE (("s"."id" = "shop_customer_group_access"."shop_id") AND "public"."membership_has_module_action"("s"."tenant_id", 'shop_permissions'::"text", 'configure'::"text"))))) WITH CHECK ((EXISTS ( SELECT 1
    FROM "public"."shops" "s"
   WHERE (("s"."id" = "shop_customer_group_access"."shop_id") AND "public"."membership_has_module_action"("s"."tenant_id", 'shop_permissions'::"text", 'configure'::"text")))));
-
 
 
 ALTER TABLE "public"."shop_customer_group_access" ENABLE ROW LEVEL SECURITY;
@@ -33298,13 +26216,11 @@ CREATE POLICY "shop_order_items_customer_owner" ON "public"."shop_order_items" U
   WHERE (("o"."id" = "shop_order_items"."order_id") AND "public"."is_cart_owner"("o"."customer_group_id", "o"."tenant_id")))));
 
 
-
 CREATE POLICY "shop_order_items_staff_all" ON "public"."shop_order_items" USING ((EXISTS ( SELECT 1
    FROM "public"."shop_orders" "o"
   WHERE (("o"."id" = "shop_order_items"."order_id") AND "public"."is_tenant_staff"("o"."tenant_id"))))) WITH CHECK ((EXISTS ( SELECT 1
    FROM "public"."shop_orders" "o"
   WHERE (("o"."id" = "shop_order_items"."order_id") AND "public"."is_tenant_staff"("o"."tenant_id")))));
-
 
 
 ALTER TABLE "public"."shop_orders" ENABLE ROW LEVEL SECURITY;
@@ -33313,9 +26229,7 @@ ALTER TABLE "public"."shop_orders" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "shop_orders_customer_owner" ON "public"."shop_orders" USING ("public"."is_cart_owner"("customer_group_id", "tenant_id")) WITH CHECK ("public"."is_cart_owner"("customer_group_id", "tenant_id"));
 
 
-
 CREATE POLICY "shop_orders_staff_all" ON "public"."shop_orders" USING ("public"."is_tenant_staff"("tenant_id")) WITH CHECK ("public"."is_tenant_staff"("tenant_id"));
-
 
 
 ALTER TABLE "public"."shop_pricing_rules" ENABLE ROW LEVEL SECURITY;
@@ -33326,9 +26240,7 @@ CREATE POLICY "shop_pricing_rules_select" ON "public"."shop_pricing_rules" FOR S
   WHERE (("lower"(TRIM(BOTH FROM "tm"."email")) = "public"."current_user_email"()) AND ("tm"."is_active" = true)))));
 
 
-
 CREATE POLICY "shop_pricing_rules_write" ON "public"."shop_pricing_rules" USING ("public"."user_can_manage_shop_tenant"("tenant_id")) WITH CHECK ("public"."user_can_manage_shop_tenant"("tenant_id"));
-
 
 
 ALTER TABLE "public"."shop_product_listings" ENABLE ROW LEVEL SECURITY;
@@ -33340,9 +26252,7 @@ ALTER TABLE "public"."shop_product_offers" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "shop_product_offers_all_staff" ON "public"."shop_product_offers" USING (("auth"."role"() = 'authenticated'::"text"));
 
 
-
 CREATE POLICY "shop_product_offers_select" ON "public"."shop_product_offers" FOR SELECT USING (true);
-
 
 
 ALTER TABLE "public"."shop_stock_reservations" ENABLE ROW LEVEL SECURITY;
@@ -33357,12 +26267,10 @@ CREATE POLICY "shop_stock_reservations_customer_owner" ON "public"."shop_stock_r
   WHERE (("ci"."id" = "shop_stock_reservations"."cart_item_id") AND "public"."is_cart_owner"("c"."customer_group_id", "c"."tenant_id")))));
 
 
-
 CREATE POLICY "shop_stock_reservations_staff_view" ON "public"."shop_stock_reservations" FOR SELECT USING ((EXISTS ( SELECT 1
    FROM ("public"."shop_cart_items" "ci"
      JOIN "public"."shop_carts" "c" ON (("c"."id" = "ci"."cart_id")))
   WHERE (("ci"."id" = "shop_stock_reservations"."cart_item_id") AND "public"."is_tenant_staff"("c"."tenant_id")))));
-
 
 
 ALTER TABLE "public"."shops" ENABLE ROW LEVEL SECURITY;
@@ -33371,13 +26279,10 @@ ALTER TABLE "public"."shops" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "shops_delete_tenant_admin" ON "public"."shops" FOR DELETE USING ("public"."membership_has_module_action"("tenant_id", 'shop_config'::"text", 'delete'::"text"));
 
 
-
 CREATE POLICY "shops_insert_tenant_admin_staff" ON "public"."shops" FOR INSERT WITH CHECK ("public"."membership_has_module_action"("tenant_id", 'shop_config'::"text", 'create'::"text"));
 
 
-
 CREATE POLICY "shops_select_customer_group" ON "public"."shops" FOR SELECT USING ((("is_active" = true) AND "public"."customer_can_select_shop"("id", "tenant_id")));
-
 
 
 CREATE POLICY "shops_select_tenant_member" ON "public"."shops" FOR SELECT USING (("tenant_id" IN ( SELECT "tm"."tenant_id"
@@ -33385,15 +26290,12 @@ CREATE POLICY "shops_select_tenant_member" ON "public"."shops" FOR SELECT USING 
   WHERE (("lower"(TRIM(BOTH FROM "tm"."email")) = "public"."current_user_email"()) AND ("tm"."is_active" = true)))));
 
 
-
 CREATE POLICY "shops_superadmin_all" ON "public"."shops" USING ((EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
   WHERE (("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."role" = 'superadmin'::"public"."app_role") AND ("m"."is_active" = true)))));
 
 
-
 CREATE POLICY "shops_update_tenant_admin_staff" ON "public"."shops" FOR UPDATE USING ("public"."membership_has_module_action"("tenant_id", 'shop_config'::"text", 'edit'::"text"));
-
 
 
 ALTER TABLE "public"."store_access" ENABLE ROW LEVEL SECURITY;
@@ -33402,9 +26304,7 @@ ALTER TABLE "public"."store_access" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "store_access_modify" ON "public"."store_access" TO "authenticated" USING (false) WITH CHECK (false);
 
 
-
 CREATE POLICY "store_access_select" ON "public"."store_access" FOR SELECT TO "authenticated" USING (true);
-
 
 
 ALTER TABLE "public"."store_product_prices" ENABLE ROW LEVEL SECURITY;
@@ -33413,17 +26313,13 @@ ALTER TABLE "public"."store_product_prices" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "store_product_prices_delete" ON "public"."store_product_prices" FOR DELETE TO "authenticated" USING ("public"."has_active_tenant_membership"("tenant_id"));
 
 
-
 CREATE POLICY "store_product_prices_insert" ON "public"."store_product_prices" FOR INSERT TO "authenticated" WITH CHECK ("public"."has_active_tenant_membership"("tenant_id"));
-
 
 
 CREATE POLICY "store_product_prices_select" ON "public"."store_product_prices" FOR SELECT TO "authenticated" USING (("public"."has_active_tenant_membership"("tenant_id") OR "public"."can_customer_access_store"("store_id")));
 
 
-
 CREATE POLICY "store_product_prices_update" ON "public"."store_product_prices" FOR UPDATE TO "authenticated" USING ("public"."has_active_tenant_membership"("tenant_id")) WITH CHECK ("public"."has_active_tenant_membership"("tenant_id"));
-
 
 
 ALTER TABLE "public"."stores" ENABLE ROW LEVEL SECURITY;
@@ -33432,33 +26328,25 @@ ALTER TABLE "public"."stores" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "stores_modify" ON "public"."stores" TO "authenticated" USING (false) WITH CHECK (false);
 
 
-
 CREATE POLICY "stores_select" ON "public"."stores" FOR SELECT TO "authenticated" USING (("public"."can_manage_store"("tenant_id") OR "public"."can_customer_access_store"("id")));
-
 
 
 CREATE POLICY "superadmin_can_manage_markets" ON "public"."markets" TO "authenticated" USING ("public"."is_superadmin"()) WITH CHECK ("public"."is_superadmin"());
 
 
-
 CREATE POLICY "superadmin_can_manage_modules" ON "public"."modules" TO "authenticated" USING ("public"."is_superadmin"()) WITH CHECK ("public"."is_superadmin"());
-
 
 
 CREATE POLICY "superadmin_can_manage_payment_methods" ON "public"."payment_methods" TO "authenticated" USING ("public"."is_superadmin"()) WITH CHECK ("public"."is_superadmin"());
 
 
-
 CREATE POLICY "superadmin_can_manage_tenant_modules" ON "public"."tenant_modules" TO "authenticated" USING ("public"."is_superadmin"()) WITH CHECK ("public"."is_superadmin"());
-
 
 
 CREATE POLICY "superadmin_can_manage_tenants" ON "public"."tenants" TO "authenticated" USING ("public"."is_superadmin"()) WITH CHECK ("public"."is_superadmin"());
 
 
-
 CREATE POLICY "superadmin_can_manage_units_of_measure" ON "public"."units_of_measure" TO "authenticated" USING ("public"."is_superadmin"()) WITH CHECK ("public"."is_superadmin"());
-
 
 
 ALTER TABLE "public"."system_role_templates" ENABLE ROW LEVEL SECURITY;
@@ -33467,9 +26355,7 @@ ALTER TABLE "public"."system_role_templates" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "system_role_templates_select_all" ON "public"."system_role_templates" FOR SELECT TO "authenticated" USING (true);
 
 
-
 CREATE POLICY "system_role_templates_write_superadmin" ON "public"."system_role_templates" TO "authenticated" USING ("public"."is_superadmin"()) WITH CHECK ("public"."is_superadmin"());
-
 
 
 ALTER TABLE "public"."tag_categories" ENABLE ROW LEVEL SECURITY;
@@ -33478,17 +26364,13 @@ ALTER TABLE "public"."tag_categories" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "tag_categories_delete" ON "public"."tag_categories" FOR DELETE TO "authenticated" USING ((("is_system" = false) AND ("tenant_id" IS NOT NULL) AND "public"."has_active_tenant_membership"("tenant_id")));
 
 
-
 CREATE POLICY "tag_categories_insert" ON "public"."tag_categories" FOR INSERT TO "authenticated" WITH CHECK ((("is_system" = false) AND ("tenant_id" IS NOT NULL) AND "public"."has_active_tenant_membership"("tenant_id")));
-
 
 
 CREATE POLICY "tag_categories_select" ON "public"."tag_categories" FOR SELECT TO "authenticated" USING ((("is_system" = true) OR ("tenant_id" IS NULL) OR (("tenant_id" IS NOT NULL) AND "public"."has_active_tenant_membership"("tenant_id"))));
 
 
-
 CREATE POLICY "tag_categories_update" ON "public"."tag_categories" FOR UPDATE TO "authenticated" USING ((("is_system" = false) AND ("tenant_id" IS NOT NULL) AND "public"."has_active_tenant_membership"("tenant_id")));
-
 
 
 ALTER TABLE "public"."tags" ENABLE ROW LEVEL SECURITY;
@@ -33497,24 +26379,19 @@ ALTER TABLE "public"."tags" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "tags_delete" ON "public"."tags" FOR DELETE TO "authenticated" USING (((COALESCE("is_system", false) = false) AND (("created_by_email" = "public"."current_user_email"()) OR (("tenant_id" IS NOT NULL) AND "public"."is_tenant_admin"("tenant_id")))));
 
 
-
 CREATE POLICY "tags_insert" ON "public"."tags" FOR INSERT TO "authenticated" WITH CHECK (((COALESCE("is_system", false) = false) AND (("created_by_email" = "public"."current_user_email"()) OR (("tenant_id" IS NOT NULL) AND "public"."is_tenant_admin"("tenant_id")))));
-
 
 
 CREATE POLICY "tags_select" ON "public"."tags" FOR SELECT TO "authenticated" USING ((("is_system" = true) OR ("tenant_id" IS NULL) OR (("tenant_id" IS NOT NULL) AND "public"."has_active_tenant_membership"("tenant_id")) OR ("created_by_email" = "public"."current_user_email"())));
 
 
-
 CREATE POLICY "tags_update" ON "public"."tags" FOR UPDATE TO "authenticated" USING (((COALESCE("is_system", false) = false) AND (("created_by_email" = "public"."current_user_email"()) OR (("tenant_id" IS NOT NULL) AND "public"."is_tenant_admin"("tenant_id"))))) WITH CHECK ((COALESCE("is_system", false) = false));
-
 
 
 ALTER TABLE "public"."tenant_module_submodules" ENABLE ROW LEVEL SECURITY;
 
 
 CREATE POLICY "tenant_module_submodules_superadmin_all" ON "public"."tenant_module_submodules" TO "authenticated" USING ("public"."is_superadmin"()) WITH CHECK ("public"."is_superadmin"());
-
 
 
 ALTER TABLE "public"."tenant_modules" ENABLE ROW LEVEL SECURITY;
@@ -33550,9 +26427,7 @@ ALTER TABLE "public"."thrift_courier_providers" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "thrift_courier_providers_delete" ON "public"."thrift_courier_providers" FOR DELETE TO "authenticated" USING ((("is_system" = false) AND ("tenant_id" IS NOT NULL) AND ("public"."membership_has_module_action"("tenant_id", 'thrift_sales'::"text", 'edit'::"text") OR "public"."membership_has_module_action"("tenant_id", 'thrift_sales'::"text", 'delete'::"text") OR "public"."membership_has_module_action"("tenant_id", 'thrift_settings'::"text", 'edit'::"text"))));
 
 
-
 CREATE POLICY "thrift_courier_providers_insert" ON "public"."thrift_courier_providers" FOR INSERT TO "authenticated" WITH CHECK ((("is_system" = false) AND ("tenant_id" IS NOT NULL) AND ("public"."membership_has_module_action"("tenant_id", 'thrift_sales'::"text", 'create'::"text") OR "public"."membership_has_module_action"("tenant_id", 'thrift_sales'::"text", 'edit'::"text") OR "public"."membership_has_module_action"("tenant_id", 'thrift_settings'::"text", 'edit'::"text"))));
-
 
 
 CREATE POLICY "thrift_courier_providers_select" ON "public"."thrift_courier_providers" FOR SELECT TO "authenticated" USING (((("tenant_id" IS NULL) AND ("is_system" = true) AND (EXISTS ( SELECT 1
@@ -33560,9 +26435,7 @@ CREATE POLICY "thrift_courier_providers_select" ON "public"."thrift_courier_prov
   WHERE (("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true))))) OR (("tenant_id" IS NOT NULL) AND ("public"."membership_has_module_action"("tenant_id", 'thrift_sales'::"text", 'view'::"text") OR "public"."membership_has_module_action"("tenant_id", 'thrift_settings'::"text", 'view'::"text")))));
 
 
-
 CREATE POLICY "thrift_courier_providers_update" ON "public"."thrift_courier_providers" FOR UPDATE TO "authenticated" USING ((("is_system" = false) AND ("tenant_id" IS NOT NULL) AND ("public"."membership_has_module_action"("tenant_id", 'thrift_sales'::"text", 'create'::"text") OR "public"."membership_has_module_action"("tenant_id", 'thrift_sales'::"text", 'edit'::"text") OR "public"."membership_has_module_action"("tenant_id", 'thrift_settings'::"text", 'edit'::"text")))) WITH CHECK ((("is_system" = false) AND ("tenant_id" IS NOT NULL) AND ("public"."membership_has_module_action"("tenant_id", 'thrift_sales'::"text", 'create'::"text") OR "public"."membership_has_module_action"("tenant_id", 'thrift_sales'::"text", 'edit'::"text") OR "public"."membership_has_module_action"("tenant_id", 'thrift_settings'::"text", 'edit'::"text"))));
-
 
 
 ALTER TABLE "public"."thrift_customers" ENABLE ROW LEVEL SECURITY;
@@ -33595,17 +26468,13 @@ ALTER TABLE "public"."thrift_sales_pnl_lines" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "thrift_sales_pnl_lines_delete" ON "public"."thrift_sales_pnl_lines" FOR DELETE TO "authenticated" USING ("public"."membership_has_module_action"("tenant_id", 'thrift_sales'::"text", 'staff_mistake'::"text"));
 
 
-
 CREATE POLICY "thrift_sales_pnl_lines_insert" ON "public"."thrift_sales_pnl_lines" FOR INSERT TO "authenticated" WITH CHECK (("public"."membership_has_module_action"("tenant_id", 'thrift_sales'::"text", 'create'::"text") OR "public"."membership_has_module_action"("tenant_id", 'thrift_sales'::"text", 'return'::"text") OR "public"."membership_has_module_action"("tenant_id", 'thrift_sales'::"text", 'edit'::"text")));
-
 
 
 CREATE POLICY "thrift_sales_pnl_lines_select" ON "public"."thrift_sales_pnl_lines" FOR SELECT TO "authenticated" USING (("public"."membership_has_module_action"("tenant_id", 'thrift_sales'::"text", 'view'::"text") OR "public"."membership_has_module_action"("tenant_id", 'thrift_reports'::"text", 'view'::"text")));
 
 
-
 CREATE POLICY "thrift_sales_pnl_lines_update" ON "public"."thrift_sales_pnl_lines" FOR UPDATE TO "authenticated" USING (("public"."membership_has_module_action"("tenant_id", 'thrift_sales'::"text", 'return'::"text") OR "public"."membership_has_module_action"("tenant_id", 'thrift_sales'::"text", 'edit'::"text") OR "public"."membership_has_module_action"("tenant_id", 'thrift_sales'::"text", 'create'::"text"))) WITH CHECK (("public"."membership_has_module_action"("tenant_id", 'thrift_sales'::"text", 'return'::"text") OR "public"."membership_has_module_action"("tenant_id", 'thrift_sales'::"text", 'edit'::"text") OR "public"."membership_has_module_action"("tenant_id", 'thrift_sales'::"text", 'create'::"text")));
-
 
 
 ALTER TABLE "public"."thrift_sales_return_items" ENABLE ROW LEVEL SECURITY;
@@ -33614,9 +26483,7 @@ ALTER TABLE "public"."thrift_sales_return_items" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "thrift_sales_return_items_insert" ON "public"."thrift_sales_return_items" FOR INSERT TO "authenticated" WITH CHECK (("public"."membership_has_module_action"("tenant_id", 'thrift_sales'::"text", 'return'::"text") OR "public"."membership_has_module_action"("tenant_id", 'thrift_sales'::"text", 'force_return'::"text")));
 
 
-
 CREATE POLICY "thrift_sales_return_items_select" ON "public"."thrift_sales_return_items" FOR SELECT TO "authenticated" USING (("public"."membership_has_module_action"("tenant_id", 'thrift_sales'::"text", 'view'::"text") OR "public"."membership_has_module_action"("tenant_id", 'thrift_reports'::"text", 'view'::"text")));
-
 
 
 ALTER TABLE "public"."thrift_sales_returns" ENABLE ROW LEVEL SECURITY;
@@ -33625,13 +26492,10 @@ ALTER TABLE "public"."thrift_sales_returns" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "thrift_sales_returns_insert" ON "public"."thrift_sales_returns" FOR INSERT TO "authenticated" WITH CHECK (("public"."membership_has_module_action"("tenant_id", 'thrift_sales'::"text", 'return'::"text") OR "public"."membership_has_module_action"("tenant_id", 'thrift_sales'::"text", 'force_return'::"text")));
 
 
-
 CREATE POLICY "thrift_sales_returns_select" ON "public"."thrift_sales_returns" FOR SELECT TO "authenticated" USING (("public"."membership_has_module_action"("tenant_id", 'thrift_sales'::"text", 'view'::"text") OR "public"."membership_has_module_action"("tenant_id", 'thrift_reports'::"text", 'view'::"text")));
 
 
-
 CREATE POLICY "thrift_sales_returns_update" ON "public"."thrift_sales_returns" FOR UPDATE TO "authenticated" USING (("public"."membership_has_module_action"("tenant_id", 'thrift_sales'::"text", 'return'::"text") OR "public"."membership_has_module_action"("tenant_id", 'thrift_sales'::"text", 'force_return'::"text"))) WITH CHECK (("public"."membership_has_module_action"("tenant_id", 'thrift_sales'::"text", 'return'::"text") OR "public"."membership_has_module_action"("tenant_id", 'thrift_sales'::"text", 'force_return'::"text")));
-
 
 
 ALTER TABLE "public"."thrift_settings" ENABLE ROW LEVEL SECURITY;
@@ -33666,28 +26530,22 @@ CREATE POLICY "universal_wallet_ledger_select" ON "public"."universal_wallet_led
   WHERE (("m"."tenant_id" = "universal_wallet_ledger"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true))))));
 
 
-
 ALTER TABLE "public"."wallet_accounts" ENABLE ROW LEVEL SECURITY;
 
 
 CREATE POLICY "wallet_accounts_authenticated_policy" ON "public"."wallet_accounts" TO "authenticated" USING (true) WITH CHECK (true);
 
 
-
 CREATE POLICY "write_thrift_barcodes" ON "public"."thrift_barcodes" TO "authenticated" USING ("public"."membership_has_module_action"("tenant_id", 'thrift_barcode'::"text", 'edit'::"text"));
-
 
 
 CREATE POLICY "write_thrift_boxes" ON "public"."thrift_boxes" TO "authenticated" USING ("public"."membership_has_module_action"("tenant_id", 'thrift_box'::"text", 'edit'::"text"));
 
 
-
 CREATE POLICY "write_thrift_categories" ON "public"."thrift_categories" TO "authenticated" USING ("public"."membership_has_module_action"("tenant_id", 'thrift_category'::"text", 'edit'::"text"));
 
 
-
 CREATE POLICY "write_thrift_customers" ON "public"."thrift_customers" TO "authenticated" USING ("public"."membership_has_module_action"("tenant_id", 'thrift_sales'::"text", 'edit'::"text")) WITH CHECK ("public"."membership_has_module_action"("tenant_id", 'thrift_sales'::"text", 'edit'::"text"));
-
 
 
 CREATE POLICY "write_thrift_ledger" ON "public"."thrift_accounting_ledger" TO "authenticated" USING ((EXISTS ( SELECT 1
@@ -33695,11 +26553,9 @@ CREATE POLICY "write_thrift_ledger" ON "public"."thrift_accounting_ledger" TO "a
   WHERE (("m"."tenant_id" = "thrift_accounting_ledger"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true) AND ("m"."role" = ANY (ARRAY['admin'::"public"."app_role", 'staff'::"public"."app_role"]))))));
 
 
-
 CREATE POLICY "write_thrift_pricings" ON "public"."thrift_pricings" TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."thrift_stocks" "s"
   WHERE (("s"."id" = "thrift_pricings"."stock_id") AND "public"."membership_has_module_action"("s"."tenant_id", 'thrift_stock'::"text", 'edit'::"text")))));
-
 
 
 CREATE POLICY "write_thrift_settings" ON "public"."thrift_settings" TO "authenticated" USING ((EXISTS ( SELECT 1
@@ -33707,13 +26563,10 @@ CREATE POLICY "write_thrift_settings" ON "public"."thrift_settings" TO "authenti
   WHERE (("m"."tenant_id" = "thrift_settings"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true) AND ("m"."role" = ANY (ARRAY['admin'::"public"."app_role", 'staff'::"public"."app_role"]))))));
 
 
-
 CREATE POLICY "write_thrift_shelves" ON "public"."thrift_shelves" TO "authenticated" USING ("public"."membership_has_module_action"("tenant_id", 'thrift_shelf'::"text", 'edit'::"text"));
 
 
-
 CREATE POLICY "write_thrift_shipments" ON "public"."thrift_shipments" TO "authenticated" USING ("public"."membership_has_module_action"("tenant_id", 'thrift_shipment'::"text", 'edit'::"text"));
-
 
 
 CREATE POLICY "write_thrift_stock_images" ON "public"."thrift_stock_images" TO "authenticated" USING ((EXISTS ( SELECT 1
@@ -33721,17 +26574,13 @@ CREATE POLICY "write_thrift_stock_images" ON "public"."thrift_stock_images" TO "
   WHERE (("s"."id" = "thrift_stock_images"."stock_id") AND "public"."membership_has_module_action"("s"."tenant_id", 'thrift_stock'::"text", 'edit'::"text")))));
 
 
-
 CREATE POLICY "write_thrift_stock_measurements" ON "public"."thrift_stock_measurements" TO "authenticated" USING ("public"."membership_has_module_action"("tenant_id", 'thrift_stock'::"text", 'edit'::"text"));
-
 
 
 CREATE POLICY "write_thrift_stocks" ON "public"."thrift_stocks" TO "authenticated" USING ("public"."membership_has_module_action"("tenant_id", 'thrift_stock'::"text", 'edit'::"text"));
 
 
-
 CREATE POLICY "write_thrift_types" ON "public"."thrift_types" TO "authenticated" USING ("public"."membership_has_module_action"("tenant_id", 'thrift_type'::"text", 'edit'::"text"));
-
 
 
 GRANT USAGE ON SCHEMA "public" TO "postgres";
@@ -33740,37 +26589,10 @@ GRANT USAGE ON SCHEMA "public" TO "authenticated";
 GRANT USAGE ON SCHEMA "public" TO "service_role";
 
 
-
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."sales_invoice_items" TO "anon";
-GRANT ALL ON TABLE "public"."sales_invoice_items" TO "authenticated";
-GRANT ALL ON TABLE "public"."sales_invoice_items" TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."add_global_invoice_item"("p_invoice_id" bigint, "p_global_stock_id" bigint, "p_quantity" numeric, "p_sell_price_amount" numeric, "p_line_discount_amount" numeric, "p_recipient_price_amount" numeric) TO "authenticated";
-
-
-
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."sales_return_items" TO "anon";
-GRANT ALL ON TABLE "public"."sales_return_items" TO "authenticated";
-GRANT ALL ON TABLE "public"."sales_return_items" TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."add_global_return_item"("p_invoice_id" bigint, "p_invoice_item_id" bigint, "p_quantity" numeric, "p_return_charge_amount" numeric, "p_note" "text") TO "authenticated";
-
-
-
-GRANT ALL ON FUNCTION "public"."add_global_return_item"("p_invoice_id" bigint, "p_invoice_item_id" bigint, "p_quantity" numeric, "p_return_face_amount" numeric, "p_return_accounting_amount" numeric, "p_return_charge_amount" numeric, "p_note" "text", "p_to_grade_tag_id" bigint, "p_to_availability" "public"."stock_availability") TO "authenticated";
-
-
-
 GRANT ALL ON FUNCTION "public"."add_item_to_cart"("p_tenant_id" bigint, "p_store_id" bigint, "p_customer_group_id" bigint, "p_can_see_price" boolean, "p_product_id" bigint, "p_name" "text", "p_image_url" "text", "p_price_bdt" numeric, "p_minimum_sell_price_bdt" numeric, "p_quantity" integer, "p_minimum_quantity" integer) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."add_item_to_commerce_cart"("p_tenant_id" bigint, "p_customer_group_id" bigint, "p_global_stock_id" bigint, "p_quantity" integer) TO "authenticated";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."invoice_payments" TO "anon";
@@ -33778,17 +26600,13 @@ GRANT ALL ON TABLE "public"."invoice_payments" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."invoice_payments" TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."add_payment_allocation"("p_tenant_id" bigint, "p_payment_id" bigint, "p_invoice_id" bigint, "p_amount" numeric) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."add_to_shop_cart"("p_shop_id" bigint, "p_product_id" bigint, "p_global_stock_allocation_id" bigint, "p_quantity" integer, "p_customer_sell_price_amount" numeric, "p_customer_sell_price_currency_id" bigint, "p_global_stock_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."advance_dropship_order_status"("p_order_id" bigint, "p_target_status" "public"."shop_order_status", "p_remittance_ref" "text", "p_bank_trx_id" "text") TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."allocate_payment_to_global_invoice"("p_tenant_id" bigint, "p_payment_id" bigint, "p_global_invoice_id" bigint, "p_amount" numeric) TO "authenticated";
@@ -33796,26 +26614,9 @@ GRANT ALL ON FUNCTION "public"."allocate_payment_to_global_invoice"("p_tenant_id
 GRANT ALL ON FUNCTION "public"."allocate_payment_to_global_invoice"("p_tenant_id" bigint, "p_payment_id" bigint, "p_global_invoice_id" bigint, "p_amount" numeric) TO "service_role";
 
 
-
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."sales_invoices" TO "anon";
-GRANT ALL ON TABLE "public"."sales_invoices" TO "authenticated";
-GRANT ALL ON TABLE "public"."sales_invoices" TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."apply_global_invoice_settlement_discount"("p_invoice_id" bigint, "p_amount" numeric, "p_note" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."apply_global_invoice_settlement_discount"("p_invoice_id" bigint, "p_amount" numeric, "p_note" "text") TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."apply_global_invoice_target_total"("p_invoice_id" bigint, "p_target_total" numeric, "p_dry_run" boolean) TO "authenticated";
-
-
-
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."tags" TO "anon";
 GRANT ALL ON TABLE "public"."tags" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."tags" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."customer_group_members" TO "anon";
@@ -33823,9 +26624,7 @@ GRANT ALL ON TABLE "public"."customer_group_members" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."customer_group_members" TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."assign_customer_group_member_role"("p_cgm_id" bigint, "p_tenant_role_id" bigint) TO "authenticated";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."memberships" TO "anon";
@@ -33833,26 +26632,20 @@ GRANT ALL ON TABLE "public"."memberships" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."memberships" TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."assign_membership_role"("p_membership_id" bigint, "p_tenant_role_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."auth_investor_id"() TO "authenticated";
-
 
 
 REVOKE ALL ON FUNCTION "public"."browse_shop_catalog_for_customer"("p_tenant_id" bigint, "p_shop_slug" "text", "p_search" "text", "p_category" "text", "p_brand" "text", "p_limit" integer, "p_offset" integer) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."browse_shop_catalog_for_customer"("p_tenant_id" bigint, "p_shop_slug" "text", "p_search" "text", "p_category" "text", "p_brand" "text", "p_limit" integer, "p_offset" integer) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."bulk_apply_shop_markup"("p_shop_id" bigint, "p_markup_percentage" numeric, "p_listing_ids" bigint[]) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."bulk_apply_shop_markup"("p_shop_id" bigint, "p_markup_amount" numeric, "p_markup_type" "text", "p_target_price" "text", "p_listing_ids" bigint[]) TO "authenticated";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."order_items" TO "anon";
@@ -33860,103 +26653,78 @@ GRANT ALL ON TABLE "public"."order_items" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."order_items" TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."bulk_update_order_item_offers"("p_items" "jsonb") TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."bulk_update_order_items"("p_items" "jsonb") TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."bulk_update_thrift_stock_locations"("p_tenant_id" bigint, "p_stock_ids" bigint[], "p_shelf_id" bigint, "p_box_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."bulk_update_thrift_stock_locations"("p_tenant_id" bigint, "p_stock_ids" bigint[], "p_shelf_id" bigint, "p_box_id" bigint) TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."bulk_update_thrift_stock_statuses"("p_tenant_id" bigint, "p_stock_ids" bigint[], "p_status" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."bulk_update_thrift_stock_statuses"("p_tenant_id" bigint, "p_stock_ids" bigint[], "p_status" "text") TO "service_role";
-
 
 
 GRANT ALL ON FUNCTION "public"."can_assign_membership_role"("p_target_tenant_id" bigint, "p_target_role" "public"."app_role") TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."can_customer_access_shop"("p_shop_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."can_customer_access_store"("p_store_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."can_customer_negotiate_on_shop"("p_shop_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."can_customer_see_shop_price"("p_shop_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."can_customer_see_store_price"("p_store_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."can_insert_cart"("p_tenant_id" bigint, "p_customer_group_id" bigint, "p_store_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."can_manage_customer_group"("p_tenant_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."can_manage_customer_group_member"("p_customer_group_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."can_manage_membership"("p_target_tenant_id" bigint, "p_target_role" "public"."app_role") TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."can_manage_products"("p_tenant_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."can_update_membership_row"("p_existing_tenant_id" bigint, "p_existing_role" "public"."app_role") TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."can_view_products_customer"("p_tenant_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."can_view_products_internal"("p_tenant_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."can_view_tenant_modules"("p_tenant_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."cart_exists"("p_cart_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."check_shop_login_access"("p_email" "text", "p_tenant_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."check_store_access"("p_store_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."check_store_price_access"("p_store_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."compute_thrift_landed_unit_cost"("p_stock_id" bigint) TO "authenticated";
-
 
 
 REVOKE ALL ON FUNCTION "public"."confirm_courier_remittance_to_tenant"("p_order_id" bigint, "p_courier_charge" numeric, "p_remittance_ref" "text", "p_bank_trx_id" "text") FROM PUBLIC;
@@ -33964,18 +26732,11 @@ GRANT ALL ON FUNCTION "public"."confirm_courier_remittance_to_tenant"("p_order_i
 GRANT ALL ON FUNCTION "public"."confirm_courier_remittance_to_tenant"("p_order_id" bigint, "p_courier_charge" numeric, "p_remittance_ref" "text", "p_bank_trx_id" "text") TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."confirm_dropship_delivered_costing"("p_order_id" bigint, "p_cod_amount" numeric, "p_delivery_charge" numeric, "p_courier_notes" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."confirm_dropship_delivered_costing"("p_order_id" bigint, "p_cod_amount" numeric, "p_delivery_charge" numeric, "p_courier_notes" "text") TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."confirm_shop_order"("p_order_id" bigint) TO "authenticated";
-
-
-
-GRANT ALL ON FUNCTION "public"."convert_wholesale_draft_to_retail"("p_invoice_id" bigint) TO "authenticated";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."global_payments" TO "anon";
@@ -33983,10 +26744,8 @@ GRANT ALL ON TABLE "public"."global_payments" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."global_payments" TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."create_billing_profile_payment_with_allocations"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_amount" numeric, "p_payment_date" "date", "p_method" "text", "p_reference" "text", "p_note" "text", "p_allocations" "jsonb") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."create_billing_profile_payment_with_allocations"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_amount" numeric, "p_payment_date" "date", "p_method" "text", "p_reference" "text", "p_note" "text", "p_allocations" "jsonb") TO "service_role";
-
 
 
 REVOKE ALL ON FUNCTION "public"."create_cargo_company_with_wallet"("p_tenant_id" bigint, "p_name" "text", "p_code" "text", "p_email" "text", "p_phone" "text", "p_address" "text", "p_notes" "text") FROM PUBLIC;
@@ -33994,37 +26753,13 @@ GRANT ALL ON FUNCTION "public"."create_cargo_company_with_wallet"("p_tenant_id" 
 GRANT ALL ON FUNCTION "public"."create_cargo_company_with_wallet"("p_tenant_id" bigint, "p_name" "text", "p_code" "text", "p_email" "text", "p_phone" "text", "p_address" "text", "p_notes" "text") TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."create_dropship_invoice"("p_order_id" bigint, "p_invoice_no" "text", "p_billing_profile_id" bigint, "p_note" "text") TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."create_dual_invoice_from_dropship_order"("p_order_id" bigint, "p_invoice_no" "text", "p_billing_profile_id" bigint, "p_note" "text") TO "authenticated";
 
 
-
-GRANT ALL ON FUNCTION "public"."create_global_invoice"("p_tenant_id" bigint, "p_invoice_no" "text", "p_billing_profile_id" bigint, "p_invoice_type" "public"."global_invoice_type", "p_source_module" "public"."global_source_module", "p_recipient_name" "text", "p_recipient_phone" "text", "p_recipient_address" "text", "p_recipient_party_id" bigint, "p_middle_man_payout_amount" numeric, "p_note" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."create_global_invoice"("p_tenant_id" bigint, "p_invoice_no" "text", "p_billing_profile_id" bigint, "p_invoice_type" "public"."global_invoice_type", "p_source_module" "public"."global_source_module", "p_recipient_name" "text", "p_recipient_phone" "text", "p_recipient_address" "text", "p_recipient_party_id" bigint, "p_middle_man_payout_amount" numeric, "p_note" "text") TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."create_global_invoice"("p_tenant_id" bigint, "p_invoice_no" "text", "p_invoice_type" "public"."global_invoice_type", "p_billing_profile_id" bigint, "p_recipient_profile_id" bigint, "p_recipient_name" "text", "p_recipient_phone" "text", "p_recipient_address" "text", "p_retail_billing_mode" "public"."retail_billing_mode", "p_due_date" "date", "p_note" "text", "p_invoice_date" "date") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."create_global_invoice"("p_tenant_id" bigint, "p_invoice_no" "text", "p_invoice_type" "public"."global_invoice_type", "p_billing_profile_id" bigint, "p_recipient_profile_id" bigint, "p_recipient_name" "text", "p_recipient_phone" "text", "p_recipient_address" "text", "p_retail_billing_mode" "public"."retail_billing_mode", "p_due_date" "date", "p_note" "text", "p_invoice_date" "date") TO "service_role";
-
-
-
 GRANT ALL ON FUNCTION "public"."create_or_update_courier_remittance_batch"("p_batch_id" bigint, "p_tenant_id" bigint, "p_courier_service_id" "uuid", "p_batch_no" "text", "p_bank_trx_id" "text", "p_payment_date" "date", "p_gross_cod_amount" numeric, "p_courier_charges_amount" numeric, "p_net_deposited_amount" numeric, "p_note" "text", "p_items" "jsonb") TO "authenticated";
-
-
-
-GRANT ALL ON FUNCTION "public"."create_sales_invoice"("p_tenant_id" bigint, "p_invoice_no" "text", "p_billing_profile_id" bigint, "p_invoice_type" "public"."global_invoice_type", "p_source_module" "public"."global_source_module", "p_recipient_name" "text", "p_recipient_phone" "text", "p_recipient_address" "text", "p_recipient_party_id" bigint, "p_middle_man_payout_amount" numeric, "p_note" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."create_sales_invoice"("p_tenant_id" bigint, "p_invoice_no" "text", "p_billing_profile_id" bigint, "p_invoice_type" "public"."global_invoice_type", "p_source_module" "public"."global_source_module", "p_recipient_name" "text", "p_recipient_phone" "text", "p_recipient_address" "text", "p_recipient_party_id" bigint, "p_middle_man_payout_amount" numeric, "p_note" "text") TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."create_sales_invoice"("p_tenant_id" bigint, "p_invoice_no" "text", "p_invoice_type" "public"."global_invoice_type", "p_billing_profile_id" bigint, "p_recipient_profile_id" bigint, "p_recipient_name" "text", "p_recipient_phone" "text", "p_recipient_address" "text", "p_retail_billing_mode" "public"."retail_billing_mode", "p_due_date" "date", "p_note" "text", "p_invoice_date" "date") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."create_sales_invoice"("p_tenant_id" bigint, "p_invoice_no" "text", "p_invoice_type" "public"."global_invoice_type", "p_billing_profile_id" bigint, "p_recipient_profile_id" bigint, "p_recipient_name" "text", "p_recipient_phone" "text", "p_recipient_address" "text", "p_retail_billing_mode" "public"."retail_billing_mode", "p_due_date" "date", "p_note" "text", "p_invoice_date" "date") TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."stores" TO "anon";
@@ -34032,9 +26767,7 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."stores" TO "authen
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."stores" TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."create_store"("p_name" "text", "p_vendor_code" "text", "p_tenant_id" bigint) TO "authenticated";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."store_access" TO "anon";
@@ -34042,30 +26775,23 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."store_access" TO "
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."store_access" TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."create_store_access"("p_store_id" bigint, "p_customer_group_id" bigint, "p_status" boolean) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."create_store_access"("p_store_id" bigint, "p_customer_group_id" bigint, "p_status" boolean, "p_see_price" boolean) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."create_tenant_for_superadmin"("p_name" "text", "p_slug" "text", "p_is_active" boolean, "p_public_domain" "text", "p_parent_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."create_tenant_module_for_superadmin"("p_tenant_id" bigint, "p_module_key" "text", "p_is_active" boolean) TO "authenticated";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."tenant_roles" TO "anon";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."tenant_roles" TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."create_tenant_role"("p_tenant_id" bigint, "p_scope" "text", "p_name" "text", "p_slug" "text", "p_is_admin" boolean) TO "authenticated";
-
 
 
 REVOKE ALL ON FUNCTION "public"."create_thrift_sales_invoice"("p_tenant_id" bigint, "p_invoice_number" "text", "p_customer_name" "text", "p_customer_phone" "text", "p_date" timestamp with time zone, "p_payment_method" "text", "p_payment_status" "text", "p_notes" "text", "p_created_by" "text", "p_total_invoice_amount" numeric, "p_items" "jsonb", "p_sale_channel" "text", "p_customer_address" "text", "p_customer_notes" "text", "p_courier_amount" numeric, "p_courier_paid_by" "text", "p_packing_amount" numeric, "p_packing_paid_by" "text", "p_cod_fee_amount" numeric, "p_cod_fee_paid_by" "text", "p_courier_provider" "text", "p_courier_provider_id" bigint, "p_meta" "jsonb", "p_customer_secondary_phone" "text", "p_customer_address_parts" "jsonb", "p_advance_amount" numeric, "p_advance_note" "text") FROM PUBLIC;
@@ -34073,69 +26799,53 @@ GRANT ALL ON FUNCTION "public"."create_thrift_sales_invoice"("p_tenant_id" bigin
 GRANT ALL ON FUNCTION "public"."create_thrift_sales_invoice"("p_tenant_id" bigint, "p_invoice_number" "text", "p_customer_name" "text", "p_customer_phone" "text", "p_date" timestamp with time zone, "p_payment_method" "text", "p_payment_status" "text", "p_notes" "text", "p_created_by" "text", "p_total_invoice_amount" numeric, "p_items" "jsonb", "p_sale_channel" "text", "p_customer_address" "text", "p_customer_notes" "text", "p_courier_amount" numeric, "p_courier_paid_by" "text", "p_packing_amount" numeric, "p_packing_paid_by" "text", "p_cod_fee_amount" numeric, "p_cod_fee_paid_by" "text", "p_courier_provider" "text", "p_courier_provider_id" bigint, "p_meta" "jsonb", "p_customer_secondary_phone" "text", "p_customer_address_parts" "jsonb", "p_advance_amount" numeric, "p_advance_note" "text") TO "service_role";
 
 
-
 REVOKE ALL ON FUNCTION "public"."create_thrift_sales_return"("p_tenant_id" bigint, "p_invoice_id" bigint, "p_items" "jsonb", "p_return_courier_amount" numeric, "p_notes" "text", "p_created_by" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."create_thrift_sales_return"("p_tenant_id" bigint, "p_invoice_id" bigint, "p_items" "jsonb", "p_return_courier_amount" numeric, "p_notes" "text", "p_created_by" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."create_thrift_sales_return"("p_tenant_id" bigint, "p_invoice_id" bigint, "p_items" "jsonb", "p_return_courier_amount" numeric, "p_notes" "text", "p_created_by" "text") TO "service_role";
-
 
 
 REVOKE ALL ON FUNCTION "public"."current_customer_group_id"("p_tenant_id" bigint) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."current_customer_group_id"("p_tenant_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."current_tenant_id"() TO "authenticated";
-
 
 
 REVOKE ALL ON FUNCTION "public"."customer_can_select_shop"("p_shop_id" bigint, "p_tenant_id" bigint) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."customer_can_select_shop"("p_shop_id" bigint, "p_tenant_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."customer_counter_offer"("p_order_id" bigint, "p_items" "jsonb") TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."delete_customer_group_member_grant"("p_cgm_id" bigint, "p_module_key" "text", "p_action" "text") TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."delete_membership_grant"("p_membership_id" bigint, "p_module_key" "text", "p_action" "text") TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."delete_shop"("p_shop_id" bigint, "p_tenant_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."delete_shop_order"("p_order_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."delete_shop_product_listing"("p_listing_id" bigint, "p_tenant_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."delete_store"("p_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."delete_store_access"("p_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."delete_tenant_for_superadmin"("p_tenant_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."delete_tenant_module_for_superadmin"("p_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."delete_tenant_role"("p_role_id" bigint) TO "authenticated";
-
 
 
 REVOKE ALL ON FUNCTION "public"."delete_thrift_stocks"("p_tenant_id" bigint, "p_stock_ids" bigint[]) FROM PUBLIC;
@@ -34143,15 +26853,8 @@ GRANT ALL ON FUNCTION "public"."delete_thrift_stocks"("p_tenant_id" bigint, "p_s
 GRANT ALL ON FUNCTION "public"."delete_thrift_stocks"("p_tenant_id" bigint, "p_stock_ids" bigint[]) TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."dispense_middleman_payout"("p_billing_profile_id" bigint, "p_amount" numeric, "p_method" "text", "p_trx_id" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."dispense_middleman_payout"("p_billing_profile_id" bigint, "p_amount" numeric, "p_method" "text", "p_trx_id" "text") TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."dispense_middleman_payout_from_tenant"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_amount" numeric, "p_payout_method" "text", "p_reference_notes" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."dispense_middleman_payout_from_tenant"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_amount" numeric, "p_payout_method" "text", "p_reference_notes" "text") TO "service_role";
-
 
 
 REVOKE ALL ON FUNCTION "public"."ensure_default_cargo_company"("p_tenant_id" bigint) FROM PUBLIC;
@@ -34159,41 +26862,28 @@ GRANT ALL ON FUNCTION "public"."ensure_default_cargo_company"("p_tenant_id" bigi
 GRANT ALL ON FUNCTION "public"."ensure_default_cargo_company"("p_tenant_id" bigint) TO "service_role";
 
 
-
-GRANT ALL ON FUNCTION "public"."ensure_dropship_invoice_billed_entry"("p_invoice_id" bigint) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."ensure_dropship_invoice_billed_entry"("p_invoice_id" bigint) TO "service_role";
-
-
-
 GRANT ALL ON FUNCTION "public"."fetch_customer_shop_categories"("p_tenant_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."finalize_dropship_return"("p_order_id" bigint, "p_items" "jsonb", "p_actual_return_charge" numeric, "p_deduct_from_middle_man" boolean, "p_override_reason" "text", "p_return_ref" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."finalize_dropship_return"("p_order_id" bigint, "p_items" "jsonb", "p_actual_return_charge" numeric, "p_deduct_from_middle_man" boolean, "p_override_reason" "text", "p_return_ref" "text") TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."find_active_tenant_by_public_domain"("p_public_domain" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."find_active_tenant_by_public_domain"("p_public_domain" "text") TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."find_active_tenant_by_slug"("p_slug" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."find_active_tenant_by_slug"("p_slug" "text") TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."fulfill_shop_order_to_invoice"("p_order_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."generate_shop_order_number"("p_tenant_id" bigint, "p_shop_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."generate_thrift_barcodes"("p_tenant_id" bigint, "p_quantity" integer, "p_inserted_by" "text") TO "authenticated";
-
 
 
 REVOKE ALL ON FUNCTION "public"."generate_thrift_invoice_number"("p_tenant_id" bigint, "p_date" timestamp with time zone) FROM PUBLIC;
@@ -34201,115 +26891,84 @@ GRANT ALL ON FUNCTION "public"."generate_thrift_invoice_number"("p_tenant_id" bi
 GRANT ALL ON FUNCTION "public"."generate_thrift_invoice_number"("p_tenant_id" bigint, "p_date" timestamp with time zone) TO "service_role";
 
 
-
 REVOKE ALL ON FUNCTION "public"."generate_thrift_return_number"("p_tenant_id" bigint, "p_date" timestamp with time zone) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."generate_thrift_return_number"("p_tenant_id" bigint, "p_date" timestamp with time zone) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."generate_thrift_return_number"("p_tenant_id" bigint, "p_date" timestamp with time zone) TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."get_active_module_keys_for_tenant"("p_tenant_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."get_app_bootstrap_context"("p_email" "text", "p_tenant_id" bigint, "p_membership_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."get_cart"("p_cart_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."get_cart_details"("p_cart_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."get_courier_unremitted_financial_summary"("p_tenant_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_courier_unremitted_financial_summary"("p_tenant_id" bigint) TO "service_role";
 
 
-
 REVOKE ALL ON FUNCTION "public"."get_customer_shop_order"("p_tenant_id" bigint, "p_order_id" bigint) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_customer_shop_order"("p_tenant_id" bigint, "p_order_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."get_dropship_shop_readiness"("p_shop_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."get_dropship_wallet_reconciliation_report"("p_tenant_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_dropship_wallet_reconciliation_report"("p_tenant_id" bigint) TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."get_effective_grants"("p_tenant_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."get_effective_item_role"("p_item_id" bigint, "p_user_email" "text") TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."get_investor_allocation_detail"("p_tenant_id" bigint, "p_investor_id" bigint, "p_global_shipment_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."get_investor_bootstrap_context"("p_tenant_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."get_investor_capital_report"("p_tenant_id" bigint, "p_investor_id" bigint, "p_start_date" "date", "p_end_date" "date") TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."get_investor_dashboard_summary"("p_tenant_id" bigint, "p_investor_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."get_investor_portfolio_summary"("p_investor_id" bigint) TO "authenticated";
 
 
-
-GRANT ALL ON FUNCTION "public"."get_invoice_margin_detail"("p_invoice_id" bigint) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_invoice_margin_detail"("p_invoice_id" bigint) TO "anon";
-GRANT ALL ON FUNCTION "public"."get_invoice_margin_detail"("p_invoice_id" bigint) TO "service_role";
-
-
-
 GRANT ALL ON FUNCTION "public"."get_item_details"("p_item_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."get_koba_cart"("p_tenant_id" bigint, "p_customer_group_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_koba_cart"("p_tenant_id" bigint, "p_customer_group_id" bigint) TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."get_koba_customer_profile"("p_tenant_id" bigint, "p_phone" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_koba_customer_profile"("p_tenant_id" bigint, "p_phone" "text") TO "service_role";
-
 
 
 GRANT ALL ON FUNCTION "public"."get_koba_customers_list"("p_tenant_id" bigint, "p_search" "text", "p_limit" integer, "p_offset" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_koba_customers_list"("p_tenant_id" bigint, "p_search" "text", "p_limit" integer, "p_offset" integer) TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."get_my_dropship_wallet_summary"() TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."get_or_create_shop_cart"("p_shop_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."get_parent_cash_circulation"("p_parent_tenant_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."get_parent_dashboard"("p_parent_tenant_id" bigint) TO "authenticated";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."products" TO "anon";
@@ -34317,74 +26976,53 @@ GRANT ALL ON TABLE "public"."products" TO "authenticated";
 GRANT SELECT,INSERT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN,UPDATE ON TABLE "public"."products" TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."get_product_for_tenant"("p_id" bigint, "p_tenant_id" bigint) TO "authenticated";
-
-
-
-GRANT ALL ON FUNCTION "public"."get_recipient_profile_by_phone"("p_tenant_id" bigint, "p_phone" "text") TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."get_shop_bootstrap_context"("p_email" "text", "p_tenant_id" bigint, "p_customer_group_member_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."get_shop_effective_grants"("p_tenant_id" bigint, "p_customer_group_member_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."get_shop_permissions_for_customer"("p_shop_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."get_store_access_admin"("p_store_id" bigint, "p_tenant_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."get_store_access_admin_v2"("p_store_id" bigint, "p_tenant_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."get_store_product_brands"("p_store_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."get_store_product_categories"("p_store_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."get_stores_admin"("p_tenant_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."get_stores_for_customer"() TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."get_stores_for_customer_v2"("p_tenant_id" bigint) TO "authenticated";
-
 
 
 REVOKE ALL ON FUNCTION "public"."get_tag_by_slug"("p_category_id" bigint, "p_module_key" "text", "p_code" "text", "p_slug" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_tag_by_slug"("p_category_id" bigint, "p_module_key" "text", "p_code" "text", "p_slug" "text") TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."get_tenant_details_by_membership"("p_tenant_id" bigint, "p_email" "text", "p_role" "public"."app_role") TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."get_tenant_module_by_id"("p_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."get_tenant_permission_version"("p_tenant_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."get_tenant_role_detail"("p_role_id" bigint) TO "authenticated";
-
 
 
 REVOKE ALL ON FUNCTION "public"."get_thrift_customer_sales_risk"("p_tenant_id" bigint, "p_phone" "text") FROM PUBLIC;
@@ -34392,10 +27030,8 @@ GRANT ALL ON FUNCTION "public"."get_thrift_customer_sales_risk"("p_tenant_id" bi
 GRANT ALL ON FUNCTION "public"."get_thrift_customer_sales_risk"("p_tenant_id" bigint, "p_phone" "text") TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."get_thrift_dashboard_metrics"("p_tenant_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_thrift_dashboard_metrics"("p_tenant_id" bigint) TO "service_role";
-
 
 
 REVOKE ALL ON FUNCTION "public"."get_thrift_sales_report"("p_tenant_id" bigint, "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone, "p_sale_channel" "text", "p_outcome" "text") FROM PUBLIC;
@@ -34403,33 +27039,26 @@ GRANT ALL ON FUNCTION "public"."get_thrift_sales_report"("p_tenant_id" bigint, "
 GRANT ALL ON FUNCTION "public"."get_thrift_sales_report"("p_tenant_id" bigint, "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone, "p_sale_channel" "text", "p_outcome" "text") TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."get_thrift_shipment_sales_report"("p_tenant_id" bigint, "p_shipment_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_thrift_shipment_sales_report"("p_tenant_id" bigint, "p_shipment_id" bigint) TO "service_role";
-
 
 
 GRANT ALL ON FUNCTION "public"."get_wallet_account_balances"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_currency_code" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_wallet_account_balances"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_currency_code" "text") TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."get_wallet_dashboard_summary"("p_tenant_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_wallet_dashboard_summary"("p_tenant_id" bigint) TO "service_role";
-
 
 
 GRANT ALL ON FUNCTION "public"."get_wallet_entity_statement"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_start_date" timestamp with time zone, "p_end_date" timestamp with time zone) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_wallet_entity_statement"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_start_date" timestamp with time zone, "p_end_date" timestamp with time zone) TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."global_search_tasks"("p_query" "text") TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."has_module_action"("p_tenant_id" bigint, "p_module_key" "text", "p_action" "text") TO "authenticated";
-
 
 
 REVOKE ALL ON FUNCTION "public"."hold_thrift_stock"("p_tenant_id" bigint, "p_stock_id" bigint, "p_held_for_phone" "text", "p_held_for_name" "text", "p_hold_note" "text", "p_held_by" "text", "p_hold_expires_at" timestamp with time zone) FROM PUBLIC;
@@ -34437,116 +27066,71 @@ GRANT ALL ON FUNCTION "public"."hold_thrift_stock"("p_tenant_id" bigint, "p_stoc
 GRANT ALL ON FUNCTION "public"."hold_thrift_stock"("p_tenant_id" bigint, "p_stock_id" bigint, "p_held_for_phone" "text", "p_held_for_name" "text", "p_hold_note" "text", "p_held_by" "text", "p_hold_expires_at" timestamp with time zone) TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."investor_tenant_can_view"("p_tenant_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."is_child_tenant"("p_tenant_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."is_customer_group_admin_or_negotiator"("p_customer_group_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."is_customer_group_member"("p_customer_group_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."is_parent_company"("p_tenant_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."is_tenant_staff"("p_tenant_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."list_allocations_for_shop_pick"("p_tenant_id" bigint, "p_shop_id" bigint) TO "authenticated";
-
-
-
-GRANT ALL ON FUNCTION "public"."list_billing_balances"("p_tenant_id" bigint, "p_search" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."list_billing_balances"("p_tenant_id" bigint, "p_search" "text") TO "anon";
-GRANT ALL ON FUNCTION "public"."list_billing_balances"("p_tenant_id" bigint, "p_search" "text") TO "service_role";
-
 
 
 GRANT ALL ON FUNCTION "public"."list_cgm_ids_with_overrides"("p_customer_group_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."list_child_tenant_ids"("p_parent_tenant_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."list_commerce_global_stock_for_store"("p_tenant_id" bigint, "p_store_id" bigint, "p_search" "text", "p_limit" integer, "p_offset" integer) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."list_configurable_module_actions"("p_scope" "text", "p_tenant_id" bigint) TO "authenticated";
-
 
 
 REVOKE ALL ON FUNCTION "public"."list_customer_active_carts"("p_tenant_id" bigint) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."list_customer_active_carts"("p_tenant_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."list_customer_group_member_grants"("p_cgm_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."list_customer_order_backlog_items"("p_tenant_id" bigint, "p_billing_profile_id" bigint) TO "authenticated";
-
 
 
 REVOKE ALL ON FUNCTION "public"."list_customer_shop_orders"("p_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_status_bucket" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."list_customer_shop_orders"("p_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_status_bucket" "text") TO "authenticated";
 
 
-
 REVOKE ALL ON FUNCTION "public"."list_customer_shops"("p_tenant_id" bigint) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."list_customer_shops"("p_tenant_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."list_dropship_shop_orders_for_staff"("p_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_status" "text", "p_search" "text") TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."list_global_currencies"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."list_global_currencies"() TO "service_role";
 
 
-
-GRANT ALL ON FUNCTION "public"."list_global_invoice_items"("p_invoice_id" bigint) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."list_global_invoice_items"("p_invoice_id" bigint) TO "service_role";
-
-
-
 GRANT ALL ON FUNCTION "public"."list_investor_allocations"("p_tenant_id" bigint, "p_investor_id" bigint, "p_limit" integer, "p_offset" integer) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."list_investor_profiles"("p_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_search" "text") TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."list_investor_transactions"("p_tenant_id" bigint, "p_investor_id" bigint, "p_limit" integer, "p_offset" integer) TO "authenticated";
-
-
-
-GRANT ALL ON FUNCTION "public"."list_invoice_margin_report"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_start_date" "date", "p_end_date" "date", "p_search" "text", "p_invoice_type" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."list_invoice_margin_report"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_start_date" "date", "p_end_date" "date", "p_search" "text", "p_invoice_type" "text") TO "anon";
-GRANT ALL ON FUNCTION "public"."list_invoice_margin_report"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_start_date" "date", "p_end_date" "date", "p_search" "text", "p_invoice_type" "text") TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."list_invoice_outstanding"("p_tenant_id" bigint, "p_search" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."list_invoice_outstanding"("p_tenant_id" bigint, "p_search" "text") TO "anon";
-GRANT ALL ON FUNCTION "public"."list_invoice_outstanding"("p_tenant_id" bigint, "p_search" "text") TO "service_role";
-
 
 
 GRANT ALL ON FUNCTION "public"."list_invoices_paginated"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_status" "text") TO "authenticated";
@@ -34554,59 +27138,46 @@ GRANT ALL ON FUNCTION "public"."list_invoices_paginated"("p_tenant_id" bigint, "
 GRANT ALL ON FUNCTION "public"."list_invoices_paginated"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_status" "text") TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."list_items_paginated"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_type" "text", "p_status" "text", "p_priority" "text", "p_assignee" "text", "p_my_tasks_email" "text", "p_include_parents" boolean, "p_tag_id" bigint, "p_date_field" "text", "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."list_items_paginated"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_type" "text", "p_status" "text", "p_priority" "text", "p_assignee" "text", "p_my_tasks_email" "text", "p_include_parents" boolean, "p_tag_id" bigint, "p_date_field" "text", "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone) TO "anon";
 GRANT ALL ON FUNCTION "public"."list_items_paginated"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_type" "text", "p_status" "text", "p_priority" "text", "p_assignee" "text", "p_my_tasks_email" "text", "p_include_parents" boolean, "p_tag_id" bigint, "p_date_field" "text", "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone) TO "service_role";
-
 
 
 GRANT ALL ON FUNCTION "public"."list_koba_brands_for_tenant"("p_tenant_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."list_koba_brands_for_tenant"("p_tenant_id" bigint) TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."list_koba_categories_for_tenant"("p_tenant_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."list_koba_categories_for_tenant"("p_tenant_id" bigint) TO "service_role";
-
 
 
 GRANT ALL ON FUNCTION "public"."list_koba_orders"("p_tenant_id" bigint, "p_customer_group_id" bigint, "p_page" integer, "p_page_size" integer, "p_status" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."list_koba_orders"("p_tenant_id" bigint, "p_customer_group_id" bigint, "p_page" integer, "p_page_size" integer, "p_status" "text") TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."list_koba_retail_products"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_brand_id" bigint, "p_category_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."list_koba_retail_products"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_brand_id" bigint, "p_category_id" bigint) TO "service_role";
-
 
 
 GRANT ALL ON FUNCTION "public"."list_listable_stock_for_shop"("p_shop_id" bigint, "p_search" "text", "p_limit" integer, "p_offset" integer) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."list_membership_grants"("p_membership_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."list_membership_ids_with_overrides"("p_tenant_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."list_my_admin_tenants"() TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."list_my_dropship_wallet_ledger"("p_limit" integer, "p_offset" integer) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."list_payment_methods"() TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."list_procurement_shop_order_lines"("p_parent_tenant_id" bigint, "p_child_tenant_id" bigint, "p_search" "text", "p_limit" integer, "p_offset" integer) TO "authenticated";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."product_brands" TO "anon";
@@ -34614,9 +27185,7 @@ GRANT ALL ON TABLE "public"."product_brands" TO "authenticated";
 GRANT ALL ON TABLE "public"."product_brands" TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."list_product_brands_for_tenant"("p_tenant_id" bigint, "p_vendor_code" "text", "p_vendor_id" bigint) TO "authenticated";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."product_categories" TO "anon";
@@ -34624,71 +27193,54 @@ GRANT ALL ON TABLE "public"."product_categories" TO "authenticated";
 GRANT ALL ON TABLE "public"."product_categories" TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."list_product_categories_for_tenant"("p_tenant_id" bigint, "p_vendor_code" "text", "p_vendor_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."list_products_paginated"("p_tenant_id" bigint, "p_search" "text", "p_search_field" "text", "p_category" "text", "p_brand" "text", "p_vendor_code" "text", "p_market_code" "text", "p_is_available" boolean, "p_sort_by" "text", "p_sort_dir" "text", "p_limit" integer, "p_offset" integer) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."list_shop_orders_for_staff"("p_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_search" "text", "p_status" "text", "p_shop_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."list_shop_product_listings"("p_shop_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."list_shops"("p_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_search" "text", "p_active" boolean) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."list_store_products"("p_store_id" bigint, "p_fields" "text"[], "p_search" "text", "p_category" "text", "p_brand" "text", "p_is_available" boolean, "p_sort_by" "text", "p_sort_dir" "text", "p_limit" integer, "p_offset" integer) TO "authenticated";
-
 
 
 REVOKE ALL ON FUNCTION "public"."list_tag_categories"("p_module_key" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."list_tag_categories"("p_module_key" "text") TO "authenticated";
 
 
-
 REVOKE ALL ON FUNCTION "public"."list_tags_for_category"("p_category_id" bigint, "p_module_key" "text", "p_code" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."list_tags_for_category"("p_category_id" bigint, "p_module_key" "text", "p_code" "text") TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."list_tenant_module_submodules_for_superadmin"("p_tenant_id" bigint, "p_parent_module_key" "text") TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."list_tenant_modules_by_tenant"("p_tenant_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."list_tenant_role_grants"("p_tenant_role_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."list_tenant_roles"("p_tenant_id" bigint, "p_scope" "text") TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."list_tenant_viewers"("p_tenant_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."list_tenants_by_membership"("p_tenant_id" bigint, "p_email" "text", "p_role" "public"."app_role") TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."list_tenants_for_superadmin"() TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."list_thrift_barcodes_paginated"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_is_printed" smallint, "p_status" "text") TO "authenticated";
-
 
 
 REVOKE ALL ON FUNCTION "public"."list_thrift_sales_invoices_paginated"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_payment_status" "text", "p_status" "text", "p_delivery_status" "text") FROM PUBLIC;
@@ -34696,36 +27248,28 @@ GRANT ALL ON FUNCTION "public"."list_thrift_sales_invoices_paginated"("p_tenant_
 GRANT ALL ON FUNCTION "public"."list_thrift_sales_invoices_paginated"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_payment_status" "text", "p_status" "text", "p_delivery_status" "text") TO "service_role";
 
 
-
 REVOKE ALL ON FUNCTION "public"."list_thrift_sales_returns_paginated"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone, "p_invoice_id" bigint, "p_has_damaged" boolean, "p_skip_count" boolean) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."list_thrift_sales_returns_paginated"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone, "p_invoice_id" bigint, "p_has_damaged" boolean, "p_skip_count" boolean) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."list_thrift_sales_returns_paginated"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone, "p_invoice_id" bigint, "p_has_damaged" boolean, "p_skip_count" boolean) TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."list_thrift_stocks_paginated"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_status" "text", "p_condition" "text") TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."list_units_of_measure"() TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."mark_dropship_order_returned"("p_order_id" bigint, "p_actual_return_charge" numeric, "p_deduct_from_middle_man" boolean, "p_reason" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."mark_dropship_order_returned"("p_order_id" bigint, "p_actual_return_charge" numeric, "p_deduct_from_middle_man" boolean, "p_reason" "text") TO "service_role";
 
 
-
 REVOKE ALL ON FUNCTION "public"."mark_thrift_items_as_sold"("p_tenant_id" bigint, "p_invoice_number" "text", "p_recipient_name" "text", "p_address" "text", "p_phone" "text", "p_transaction_method" "public"."thrift_transaction_method", "p_cod_charge" numeric, "p_packing_charge" numeric, "p_invoice_print_charge" numeric, "p_shipping_charge_customer" numeric, "p_inserted_by" "text", "p_items" "jsonb") FROM PUBLIC;
-
 
 
 GRANT ALL ON FUNCTION "public"."membership_has_module_action"("p_tenant_id" bigint, "p_module_key" "text", "p_action" "text") TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."next_tenant_scoped_counter"("p_tenant_id" bigint, "p_scope" "text") TO "authenticated";
-
 
 
 REVOKE ALL ON FUNCTION "public"."normalize_thrift_phone"("p_phone" "text") FROM PUBLIC;
@@ -34733,58 +27277,38 @@ GRANT ALL ON FUNCTION "public"."normalize_thrift_phone"("p_phone" "text") TO "au
 GRANT ALL ON FUNCTION "public"."normalize_thrift_phone"("p_phone" "text") TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."parent_tenant_has_module_action"("p_parent_tenant_id" bigint, "p_module_key" "text", "p_action" "text") TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."place_commerce_order"("p_tenant_id" bigint, "p_customer_group_id" bigint, "p_recipient_name" "text", "p_recipient_phone" "text", "p_shipping_address" "text", "p_shipment_payment" numeric, "p_invoice_print_charge" numeric, "p_wrapping_charge" numeric, "p_cod" numeric, "p_delivery_charge" numeric, "p_is_delivery_charge_inclusive" boolean, "p_items" "jsonb") TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."place_koba_order"("p_tenant_id" bigint, "p_customer_group_id" bigint, "p_shipping_name" "text", "p_shipping_phone" "text", "p_shipping_district" "text", "p_shipping_thana" "text", "p_shipping_address" "text", "p_free_delivery" boolean, "p_extra_profit_user" numeric, "p_extra_profit_company" numeric, "p_delivery_adjustment" numeric, "p_cod_charge" numeric, "p_packing_charge" numeric, "p_invoice_charge" numeric, "p_net_order_commission" numeric) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."place_koba_order"("p_tenant_id" bigint, "p_customer_group_id" bigint, "p_shipping_name" "text", "p_shipping_phone" "text", "p_shipping_district" "text", "p_shipping_thana" "text", "p_shipping_address" "text", "p_free_delivery" boolean, "p_extra_profit_user" numeric, "p_extra_profit_company" numeric, "p_delivery_adjustment" numeric, "p_cod_charge" numeric, "p_packing_charge" numeric, "p_invoice_charge" numeric, "p_net_order_commission" numeric) TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."place_shop_order_for_procurement"("p_order_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."post_global_invoice"("p_invoice_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."post_global_invoice"("p_invoice_id" bigint) TO "service_role";
 
 
-
-GRANT ALL ON FUNCTION "public"."post_sales_invoice"("p_invoice_id" bigint) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."post_sales_invoice"("p_invoice_id" bigint) TO "service_role";
-
-
-
 GRANT ALL ON FUNCTION "public"."process_courier_bulk_remittance_batch"("p_batch_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."process_dropship_courier_remittance_uwl"("p_order_id" bigint, "p_net_amount" numeric, "p_courier_charge" numeric, "p_remittance_ref" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."process_dropship_courier_remittance_uwl"("p_order_id" bigint, "p_net_amount" numeric, "p_courier_charge" numeric, "p_remittance_ref" "text") TO "service_role";
 
 
-
-GRANT ALL ON FUNCTION "public"."recompute_global_invoice_payment_status"("p_global_invoice_id" bigint) TO "authenticated";
-
-
-
 GRANT ALL ON FUNCTION "public"."reconcile_single_order_remittance"("p_order_id" bigint, "p_courier_charge" numeric) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."reconcile_single_order_remittance"("p_order_id" bigint, "p_courier_charge" numeric) TO "service_role";
-
 
 
 GRANT ALL ON FUNCTION "public"."record_dropship_courier_remittance"("p_order_id" bigint, "p_net_amount" numeric, "p_remittance_ref" "text", "p_bank_trx_id" "text", "p_payment_date" "date", "p_method" "text", "p_note" "text") TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."record_dropship_courier_remittance"("p_order_id" bigint, "p_net_amount" numeric, "p_remittance_ref" "text", "p_bank_trx_id" "text", "p_payment_date" "date", "p_method" "text", "p_note" "text", "p_courier_charge" numeric) TO "authenticated";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."investor_transactions" TO "anon";
@@ -34792,50 +27316,35 @@ GRANT ALL ON TABLE "public"."investor_transactions" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."investor_transactions" TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."record_investor_capital_adjustment"("p_tenant_id" bigint, "p_investor_id" bigint, "p_amount" numeric, "p_date" "date", "p_method" "public"."investor_payment_method", "p_note" "text") TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."record_investor_capital_in"("p_tenant_id" bigint, "p_investor_id" bigint, "p_amount" numeric, "p_date" "date", "p_method" "public"."investor_payment_method", "p_note" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."record_investor_capital_in"("p_tenant_id" bigint, "p_investor_id" bigint, "p_amount" numeric, "p_date" "date", "p_method" "public"."investor_payment_method", "p_note" "text") TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."record_investor_withdrawal_paid"("p_tenant_id" bigint, "p_investor_id" bigint, "p_amount" numeric, "p_date" "date", "p_method" "public"."investor_payment_method", "p_note" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."record_investor_withdrawal_paid"("p_tenant_id" bigint, "p_investor_id" bigint, "p_amount" numeric, "p_date" "date", "p_method" "public"."investor_payment_method", "p_note" "text") TO "service_role";
-
 
 
 GRANT ALL ON FUNCTION "public"."record_ledger_transaction"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_type" "text", "p_amount" numeric, "p_currency_code" "text", "p_exchange_rate" numeric, "p_source_type" "text", "p_source_id" "text", "p_metadata" "jsonb", "p_target_bucket" "text", "p_allow_overdraft" boolean) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."record_ledger_transaction"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_type" "text", "p_amount" numeric, "p_currency_code" "text", "p_exchange_rate" numeric, "p_source_type" "text", "p_source_id" "text", "p_metadata" "jsonb", "p_target_bucket" "text", "p_allow_overdraft" boolean) TO "service_role";
 
 
-
-GRANT ALL ON FUNCTION "public"."record_recipient_invoice_collection"("p_global_invoice_id" bigint, "p_amount" numeric, "p_payment_date" "date", "p_method" "text", "p_reference" "text", "p_note" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."record_recipient_invoice_collection"("p_global_invoice_id" bigint, "p_amount" numeric, "p_payment_date" "date", "p_method" "text", "p_reference" "text", "p_note" "text") TO "service_role";
-
-
-
 GRANT ALL ON FUNCTION "public"."record_thrift_cod_remittance"("p_tenant_id" bigint, "p_invoice_id" bigint, "p_remitted_amount" numeric, "p_actor" "text", "p_remitted_at" timestamp with time zone, "p_remittance_ref" "text", "p_notes" "text", "p_outcome" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."record_thrift_cod_remittance"("p_tenant_id" bigint, "p_invoice_id" bigint, "p_remitted_amount" numeric, "p_actor" "text", "p_remitted_at" timestamp with time zone, "p_remittance_ref" "text", "p_notes" "text", "p_outcome" "text") TO "service_role";
-
 
 
 GRANT ALL ON FUNCTION "public"."refresh_commerce_inventory_product_summaries"("p_tenant_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."refresh_commerce_inventory_product_summary_single"("p_tenant_id" bigint, "p_product_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."register_thrift_stock_from_app"("p_tenant_id" bigint, "p_barcode" "text", "p_shipment_id" bigint, "p_image_url" "text", "p_brand_name" "text", "p_category_id" bigint, "p_type_id" bigint, "p_section" "text", "p_shelf_id" bigint, "p_color" "text", "p_size" "text", "p_condition" "text", "p_box_id" bigint, "p_product_weight" numeric, "p_extra_weight" numeric, "p_note" "text", "p_origin_purchase_price" numeric, "p_extra_origin_purchase_expense" numeric, "p_cost_of_goods_sold" numeric, "p_target_price" numeric, "p_listed_price" numeric, "p_extra_expense_cost" numeric, "p_inserted_by" "text") TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."register_thrift_stock_from_app"("p_tenant_id" bigint, "p_barcode" "text", "p_shipment_id" bigint, "p_image_url" "text", "p_brand_name" "text", "p_category_id" bigint, "p_type_id" bigint, "p_section" "text", "p_shelf_id" bigint, "p_color" "text", "p_size" "text", "p_condition" "text", "p_box_id" bigint, "p_product_weight" numeric, "p_extra_weight" numeric, "p_note" "text", "p_origin_purchase_price" numeric, "p_cost_of_goods_sold" numeric, "p_target_price" numeric, "p_listed_price" numeric, "p_inserted_by" "text", "p_origin_unit_price" numeric, "p_extra_origin_unit_price" numeric, "p_listed_unit_price" numeric, "p_extra_origin_purchase_expense" numeric) TO "authenticated";
-
 
 
 REVOKE ALL ON FUNCTION "public"."release_thrift_stock_hold"("p_tenant_id" bigint, "p_stock_id" bigint) FROM PUBLIC;
@@ -34843,30 +27352,17 @@ GRANT ALL ON FUNCTION "public"."release_thrift_stock_hold"("p_tenant_id" bigint,
 GRANT ALL ON FUNCTION "public"."release_thrift_stock_hold"("p_tenant_id" bigint, "p_stock_id" bigint) TO "service_role";
 
 
-
-GRANT ALL ON FUNCTION "public"."remove_global_invoice_item"("p_invoice_item_id" bigint) TO "authenticated";
-
-
-
 GRANT ALL ON FUNCTION "public"."remove_shop_cart_item"("p_cart_item_id" bigint) TO "authenticated";
 
 
-
-GRANT ALL ON FUNCTION "public"."resolve_billing_profile_for_customer_group"("p_tenant_id" bigint, "p_customer_group_id" bigint) TO "authenticated";
-
-
-
 GRANT ALL ON FUNCTION "public"."resolve_parent_tenant_id"("p_tenant_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."resolve_tenant_for_entry"("p_slug" "text", "p_hostname" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."resolve_tenant_for_entry"("p_slug" "text", "p_hostname" "text") TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."resolve_thrift_barcode"("p_tenant_id" bigint, "p_scanned_value" "text") TO "authenticated";
-
 
 
 REVOKE ALL ON FUNCTION "public"."revert_thrift_sales_invoice"("p_tenant_id" bigint, "p_invoice_id" bigint, "p_reason" "text", "p_reverted_by" "text", "p_notes" "text", "p_force" boolean, "p_return_courier_amount" numeric) FROM PUBLIC;
@@ -34874,118 +27370,80 @@ GRANT ALL ON FUNCTION "public"."revert_thrift_sales_invoice"("p_tenant_id" bigin
 GRANT ALL ON FUNCTION "public"."revert_thrift_sales_invoice"("p_tenant_id" bigint, "p_invoice_id" bigint, "p_reason" "text", "p_reverted_by" "text", "p_notes" "text", "p_force" boolean, "p_return_courier_amount" numeric) TO "service_role";
 
 
-
 REVOKE ALL ON FUNCTION "public"."search_thrift_available_stocks_for_sale"("p_tenant_id" bigint, "p_search" "text", "p_customer_phone" "text", "p_limit" integer) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."search_thrift_available_stocks_for_sale"("p_tenant_id" bigint, "p_search" "text", "p_customer_phone" "text", "p_limit" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."search_thrift_available_stocks_for_sale"("p_tenant_id" bigint, "p_search" "text", "p_customer_phone" "text", "p_limit" integer) TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."seed_tenant_roles_and_grants"("p_tenant_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."set_tenant_id_on_insert"() TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."set_tenant_module_submodule_for_superadmin"("p_tenant_id" bigint, "p_parent_module_key" "text", "p_submodule_key" "text", "p_is_enabled" boolean) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."staff_counter_offer"("p_order_id" bigint, "p_items" "jsonb") TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."staff_price_shop_order"("p_order_id" bigint, "p_items" "jsonb") TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."staff_set_catalog_delivered_qty"("p_order_id" bigint, "p_items" "jsonb") TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."staff_set_catalog_ordered_qty"("p_order_id" bigint, "p_items" "jsonb") TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."staff_start_catalog_procurement"("p_order_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."submit_shop_order_from_cart"("p_cart_id" bigint, "p_recipient_name" "text", "p_recipient_phone" "text", "p_shipping_address" "text", "p_recipient_phone_secondary" "text", "p_shipping_district" "text", "p_shipping_thana" "text", "p_billing_profile_id" bigint, "p_is_prepaid" boolean, "p_delivery_instructions" "text", "p_cod_charge_amount" numeric, "p_delivery_charge_amount" numeric, "p_print_charge_amount" numeric, "p_packing_charge_amount" numeric, "p_discount_amount" numeric) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."transfer_wallet_balance"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_from_bucket" "text", "p_to_bucket" "text", "p_amount" numeric, "p_currency_code" "text", "p_notes" "text", "p_metadata" "jsonb") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."transfer_wallet_balance"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_from_bucket" "text", "p_to_bucket" "text", "p_amount" numeric, "p_currency_code" "text", "p_notes" "text", "p_metadata" "jsonb") TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."unpost_global_invoice"("p_invoice_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."unpost_global_invoice"("p_invoice_id" bigint) TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."unpost_sales_invoice"("p_invoice_id" bigint) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."unpost_sales_invoice"("p_invoice_id" bigint) TO "service_role";
-
 
 
 GRANT ALL ON FUNCTION "public"."update_dropship_consignment"("p_order_id" bigint, "p_cod_collect_amount" numeric, "p_package_weight_band" "text", "p_item_category" "text", "p_parcel_description" "text", "p_courier_order_ref" "text", "p_delivery_zone" "text", "p_sender_name" "text", "p_pickup_phone" "text", "p_pickup_address" "text", "p_payout_account_type" "text", "p_payout_account_info" "text", "p_allow_open_box" boolean, "p_delivery_instruction_notes" "text", "p_courier_service_id" "uuid", "p_courier_tracking_number" "text", "p_courier_awb_number" "text", "p_courier_consignment_id" "text", "p_tracking_url" "text", "p_courier_cost_amount" numeric, "p_recipient_name" "text", "p_recipient_phone" "text", "p_recipient_phone_secondary" "text", "p_shipping_address" "text", "p_shipping_district" "text", "p_shipping_thana" "text", "p_delivery_charge_amount" numeric, "p_cod_charge_amount" numeric) TO "authenticated";
 
 
-
-GRANT ALL ON FUNCTION "public"."update_global_invoice_header"("p_invoice_id" bigint, "p_discount_amount" numeric, "p_shipping_charge" numeric, "p_cod_charge" numeric, "p_wrapping_charge" numeric, "p_print_charge" numeric, "p_recipient_name" "text", "p_recipient_phone" "text", "p_recipient_address" "text", "p_note" "text", "p_invoice_no" "text", "p_invoice_date" "date") TO "authenticated";
-
-
-
-GRANT ALL ON FUNCTION "public"."update_global_invoice_item"("p_item_id" bigint, "p_quantity" numeric, "p_sell_price_amount" numeric, "p_recipient_price_amount" numeric) TO "authenticated";
-
-
-
 GRANT ALL ON FUNCTION "public"."update_membership_preference_for_self"("p_membership_id" bigint, "p_preference" "jsonb") TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."update_payment_allocation_amount"("p_tenant_id" bigint, "p_allocation_id" bigint, "p_amount" numeric) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."update_shop_cart_item_price"("p_cart_item_id" bigint, "p_price" numeric) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."update_shop_cart_item_qty"("p_cart_item_id" bigint, "p_quantity" integer) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."update_store"("p_id" bigint, "p_name" "text", "p_vendor_code" "text") TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."update_store_access"("p_id" bigint, "p_status" boolean) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."update_store_access_fields"("p_id" bigint, "p_status" boolean, "p_see_price" boolean) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."update_tenant_for_superadmin"("p_tenant_id" bigint, "p_name" "text", "p_slug" "text", "p_is_active" boolean, "p_public_domain" "text", "p_parent_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."update_tenant_module_for_superadmin"("p_id" bigint, "p_tenant_id" bigint, "p_module_key" "text", "p_is_active" boolean) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."update_tenant_preference_for_admin"("p_tenant_id" bigint, "p_preference" "jsonb") TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."update_tenant_role"("p_role_id" bigint, "p_name" "text", "p_is_admin" boolean) TO "authenticated";
-
 
 
 REVOKE ALL ON FUNCTION "public"."update_thrift_sales_delivery_status"("p_tenant_id" bigint, "p_invoice_id" bigint, "p_delivery_status" "text", "p_actor" "text") FROM PUBLIC;
@@ -34993,14 +27451,11 @@ GRANT ALL ON FUNCTION "public"."update_thrift_sales_delivery_status"("p_tenant_i
 GRANT ALL ON FUNCTION "public"."update_thrift_sales_delivery_status"("p_tenant_id" bigint, "p_invoice_id" bigint, "p_delivery_status" "text", "p_actor" "text") TO "service_role";
 
 
-
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."customer_group_member_grants" TO "anon";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."customer_group_member_grants" TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."upsert_customer_group_member_grant"("p_cgm_id" bigint, "p_module_key" "text", "p_action" "text", "p_effect" "text") TO "authenticated";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."customer_group_shop_profiles" TO "anon";
@@ -35008,9 +27463,7 @@ GRANT ALL ON TABLE "public"."customer_group_shop_profiles" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."customer_group_shop_profiles" TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."upsert_customer_group_shop_profile"("p_tenant_id" bigint, "p_customer_group_id" bigint, "p_is_active" boolean, "p_default_can_browse" boolean, "p_default_see_price" boolean, "p_default_can_add_to_cart" boolean, "p_default_can_place_order" boolean, "p_default_can_negotiate" boolean, "p_default_can_view_quantity" boolean, "p_default_can_set_dropship_price" boolean) TO "authenticated";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."investors" TO "anon";
@@ -35018,26 +27471,20 @@ GRANT ALL ON TABLE "public"."investors" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."investors" TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."upsert_investor_profile"("p_id" bigint, "p_tenant_id" bigint, "p_name" "text", "p_phone" "text", "p_email" "text", "p_address" "text", "p_is_active" boolean, "p_currency_code" "text", "p_notes" "text") TO "authenticated";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."membership_grants" TO "anon";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."membership_grants" TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."upsert_membership_grant"("p_membership_id" bigint, "p_module_key" "text", "p_action" "text", "p_effect" "text") TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."upsert_recipient_profile_and_address"("p_tenant_id" bigint, "p_name" "text", "p_phone" "text", "p_phone_secondary" "text", "p_address" "text", "p_district" "text", "p_thana" "text") TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."upsert_recipient_profile_by_phone"("p_tenant_id" bigint, "p_name" "text", "p_phone" "text", "p_secondary_phone" "text", "p_address" "text", "p_district" "text", "p_thana" "text") TO "authenticated";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shops" TO "anon";
@@ -35045,9 +27492,7 @@ GRANT ALL ON TABLE "public"."shops" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shops" TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."upsert_shop"("p_tenant_id" bigint, "p_name" "text", "p_slug" "text", "p_order_mode" "public"."shop_order_mode_enum", "p_is_negotiable" boolean, "p_show_stock_quantity" boolean, "p_is_active" boolean, "p_shop_type" "public"."shop_type_enum", "p_vendor_code" "text", "p_id" bigint, "p_default_currency_id" bigint, "p_global_stock_type_id" bigint, "p_allow_delivery" boolean, "p_buy_currency_id" bigint, "p_sell_currency_id" bigint, "p_pricing_method" "text", "p_markup_percentage" numeric, "p_quantity_display_mode" "text", "p_default_print_charge_amount" numeric, "p_default_packing_charge_amount" numeric, "p_deduct_charges_from_margin" boolean, "p_vendor_filters" "jsonb", "p_deduct_print_from_margin" boolean, "p_deduct_packing_from_margin" boolean, "p_description" "text", "p_category_ids" bigint[]) TO "authenticated";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shop_customer_group_access" TO "anon";
@@ -35055,9 +27500,7 @@ GRANT ALL ON TABLE "public"."shop_customer_group_access" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shop_customer_group_access" TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."upsert_shop_customer_group_access"("p_shop_id" bigint, "p_customer_group_id" bigint, "p_status" boolean, "p_can_browse" boolean, "p_see_price" boolean, "p_can_add_to_cart" boolean, "p_can_place_order" boolean, "p_can_negotiate" boolean, "p_can_view_quantity" boolean, "p_can_set_dropship_price" boolean, "p_price_tier_code" "text", "p_credit_limit_amount" numeric, "p_credit_limit_currency_id" bigint) TO "authenticated";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shop_pricing_rules" TO "anon";
@@ -35065,21 +27508,16 @@ GRANT ALL ON TABLE "public"."shop_pricing_rules" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shop_pricing_rules" TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."upsert_shop_pricing_rule"("p_shop_id" bigint, "p_markup_percentage" numeric, "p_is_auto_publish" boolean) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."upsert_shop_pricing_rule"("p_shop_id" bigint, "p_markup_percentage" numeric, "p_is_auto_publish" boolean, "p_default_show_quantity" boolean) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."upsert_shop_pricing_rule"("p_shop_id" bigint, "p_markup_percentage" numeric, "p_is_auto_publish" boolean, "p_default_show_quantity" boolean, "p_default_add_quantity" integer) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."upsert_shop_pricing_rule"("p_shop_id" bigint, "p_markup_percentage" numeric, "p_is_auto_publish" boolean, "p_default_show_quantity" boolean, "p_default_add_quantity" integer, "p_dropship_markup_percentage" numeric) TO "authenticated";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shop_product_listings" TO "anon";
@@ -35087,52 +27525,36 @@ GRANT ALL ON TABLE "public"."shop_product_listings" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shop_product_listings" TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."upsert_shop_product_listing"("p_tenant_id" bigint, "p_shop_id" bigint, "p_global_stock_allocation_id" bigint, "p_sell_price_amount" numeric, "p_sell_price_currency_id" bigint, "p_minimum_sell_price_amount" numeric, "p_minimum_sell_price_currency_id" bigint, "p_show_quantity" boolean, "p_display_quantity_override" integer, "p_is_active" boolean, "p_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."upsert_shop_product_listing"("p_tenant_id" bigint, "p_shop_id" bigint, "p_global_stock_allocation_id" bigint, "p_sell_price_amount" numeric, "p_sell_price_currency_id" bigint, "p_minimum_sell_price_amount" numeric, "p_minimum_sell_price_currency_id" bigint, "p_show_quantity" boolean, "p_display_quantity_override" integer, "p_is_active" boolean, "p_id" bigint, "p_is_price_locked" boolean, "p_is_quantity_locked" boolean, "p_quantity_override_type" "text") TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."upsert_shop_product_listing"("p_tenant_id" bigint, "p_shop_id" bigint, "p_global_stock_allocation_id" bigint, "p_sell_price_amount" numeric, "p_sell_price_currency_id" bigint, "p_minimum_sell_price_amount" numeric, "p_minimum_sell_price_currency_id" bigint, "p_show_quantity" boolean, "p_display_quantity_override" integer, "p_is_active" boolean, "p_id" bigint, "p_is_price_locked" boolean, "p_is_quantity_locked" boolean, "p_quantity_override_type" "text", "p_global_stock_id" bigint) TO "authenticated";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."tenant_role_grants" TO "anon";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."tenant_role_grants" TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."upsert_tenant_role_grant"("p_tenant_role_id" bigint, "p_module_key" "text", "p_action" "text", "p_allowed" boolean) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."user_can_access_tenant_fetch"("p_tenant_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."user_can_manage_parent_tenant"("p_parent_tenant_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."user_can_manage_shop_tenant"("p_tenant_id" bigint) TO "authenticated";
 
 
-
 GRANT ALL ON FUNCTION "public"."user_is_tenant_admin"("p_tenant_id" bigint) TO "authenticated";
-
 
 
 GRANT ALL ON FUNCTION "public"."void_global_invoice"("p_invoice_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."void_global_invoice"("p_invoice_id" bigint) TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."void_sales_invoice"("p_invoice_id" bigint) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."void_sales_invoice"("p_invoice_id" bigint) TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."activity_logs" TO "anon";
@@ -35140,11 +27562,9 @@ GRANT SELECT,INSERT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."acti
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."activity_logs" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."activity_logs_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."activity_logs_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."activity_logs_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."batch_code_pc" TO "anon";
@@ -35152,23 +27572,9 @@ GRANT ALL ON TABLE "public"."batch_code_pc" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."batch_code_pc" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."batch_code_pc_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."batch_code_pc_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."batch_code_pc_id_seq" TO "service_role";
-
-
-
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."billing_profiles" TO "anon";
-GRANT ALL ON TABLE "public"."billing_profiles" TO "authenticated";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."billing_profiles" TO "service_role";
-
-
-
-GRANT UPDATE ON SEQUENCE "public"."billing_profiles_id_seq" TO "anon";
-GRANT ALL ON SEQUENCE "public"."billing_profiles_id_seq" TO "authenticated";
-GRANT UPDATE ON SEQUENCE "public"."billing_profiles_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."business_parties" TO "anon";
@@ -35176,11 +27582,9 @@ GRANT ALL ON TABLE "public"."business_parties" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."business_parties" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."business_parties_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."business_parties_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."business_parties_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."cargo_companies" TO "anon";
@@ -35188,11 +27592,9 @@ GRANT ALL ON TABLE "public"."cargo_companies" TO "authenticated";
 GRANT ALL ON TABLE "public"."cargo_companies" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."cargo_companies_id_seq" TO "anon";
 GRANT UPDATE ON SEQUENCE "public"."cargo_companies_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."cargo_companies_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."cart_items" TO "anon";
@@ -35200,11 +27602,9 @@ GRANT ALL ON TABLE "public"."cart_items" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."cart_items" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."cart_items_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."cart_items_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."cart_items_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."carts" TO "anon";
@@ -35212,11 +27612,9 @@ GRANT ALL ON TABLE "public"."carts" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."carts" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."carts_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."carts_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."carts_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."comments" TO "anon";
@@ -35224,11 +27622,9 @@ GRANT ALL ON TABLE "public"."comments" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."comments" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."comments_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."comments_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."comments_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."commerce_cart" TO "anon";
@@ -35236,11 +27632,9 @@ GRANT ALL ON TABLE "public"."commerce_cart" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."commerce_cart" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."commerce_cart_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."commerce_cart_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."commerce_cart_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."commerce_inventory_product_summaries" TO "anon";
@@ -35248,11 +27642,9 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."commerce_inventory
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."commerce_inventory_product_summaries" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."commerce_inventory_product_summaries_id_seq" TO "anon";
 GRANT UPDATE ON SEQUENCE "public"."commerce_inventory_product_summaries_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."commerce_inventory_product_summaries_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."commerce_invoice_boxes" TO "anon";
@@ -35260,11 +27652,9 @@ GRANT ALL ON TABLE "public"."commerce_invoice_boxes" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."commerce_invoice_boxes" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."commerce_invoice_boxes_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."commerce_invoice_boxes_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."commerce_invoice_boxes_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."commerce_invoices" TO "anon";
@@ -35272,11 +27662,9 @@ GRANT ALL ON TABLE "public"."commerce_invoices" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."commerce_invoices" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."commerce_invoices_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."commerce_invoices_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."commerce_invoices_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."commerce_order_items" TO "anon";
@@ -35284,11 +27672,9 @@ GRANT ALL ON TABLE "public"."commerce_order_items" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."commerce_order_items" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."commerce_order_items_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."commerce_order_items_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."commerce_order_items_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."commerce_order_settings" TO "anon";
@@ -35296,11 +27682,9 @@ GRANT ALL ON TABLE "public"."commerce_order_settings" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."commerce_order_settings" TO "service_role";
 
 
-
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."commerce_orders" TO "anon";
 GRANT ALL ON TABLE "public"."commerce_orders" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."commerce_orders" TO "service_role";
-
 
 
 GRANT UPDATE ON SEQUENCE "public"."commerce_orders_id_seq" TO "anon";
@@ -35308,10 +27692,8 @@ GRANT ALL ON SEQUENCE "public"."commerce_orders_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."commerce_orders_id_seq" TO "service_role";
 
 
-
 GRANT ALL ON TABLE "public"."courier_remittance_batches" TO "authenticated";
 GRANT ALL ON TABLE "public"."courier_remittance_batches" TO "service_role";
-
 
 
 GRANT UPDATE ON SEQUENCE "public"."courier_remittance_batches_id_seq" TO "anon";
@@ -35319,10 +27701,8 @@ GRANT UPDATE ON SEQUENCE "public"."courier_remittance_batches_id_seq" TO "authen
 GRANT UPDATE ON SEQUENCE "public"."courier_remittance_batches_id_seq" TO "service_role";
 
 
-
 GRANT ALL ON TABLE "public"."courier_remittance_items" TO "authenticated";
 GRANT ALL ON TABLE "public"."courier_remittance_items" TO "service_role";
-
 
 
 GRANT UPDATE ON SEQUENCE "public"."courier_remittance_items_id_seq" TO "anon";
@@ -35330,11 +27710,9 @@ GRANT UPDATE ON SEQUENCE "public"."courier_remittance_items_id_seq" TO "authenti
 GRANT UPDATE ON SEQUENCE "public"."courier_remittance_items_id_seq" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."courier_wallet_entity_id_seq" TO "anon";
 GRANT UPDATE ON SEQUENCE "public"."courier_wallet_entity_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."courier_wallet_entity_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."courier_services" TO "anon";
@@ -35342,11 +27720,9 @@ GRANT ALL ON TABLE "public"."courier_services" TO "authenticated";
 GRANT ALL ON TABLE "public"."courier_services" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."customer_group_member_grants_id_seq" TO "anon";
 GRANT UPDATE ON SEQUENCE "public"."customer_group_member_grants_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."customer_group_member_grants_id_seq" TO "service_role";
-
 
 
 GRANT UPDATE ON SEQUENCE "public"."customer_group_members_id_seq" TO "anon";
@@ -35354,11 +27730,9 @@ GRANT ALL ON SEQUENCE "public"."customer_group_members_id_seq" TO "authenticated
 GRANT UPDATE ON SEQUENCE "public"."customer_group_members_id_seq" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."customer_group_shop_profiles_id_seq" TO "anon";
 GRANT UPDATE ON SEQUENCE "public"."customer_group_shop_profiles_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."customer_group_shop_profiles_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."customer_groups" TO "anon";
@@ -35366,11 +27740,9 @@ GRANT ALL ON TABLE "public"."customer_groups" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."customer_groups" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."customer_groups_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."customer_groups_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."customer_groups_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."customer_order_backlog_items" TO "anon";
@@ -35378,11 +27750,9 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."customer_order_bac
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."customer_order_backlog_items" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."customer_order_backlog_items_id_seq" TO "anon";
 GRANT UPDATE ON SEQUENCE "public"."customer_order_backlog_items_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."customer_order_backlog_items_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."entity_tags" TO "anon";
@@ -35390,11 +27760,9 @@ GRANT ALL ON TABLE "public"."entity_tags" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."entity_tags" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."entity_tags_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."entity_tags_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."entity_tags_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."gift_rule_items" TO "anon";
@@ -35402,11 +27770,9 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."gift_rule_items" T
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."gift_rule_items" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."gift_rule_items_id_seq" TO "anon";
 GRANT UPDATE ON SEQUENCE "public"."gift_rule_items_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."gift_rule_items_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."gift_rule_redemptions" TO "anon";
@@ -35414,11 +27780,9 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."gift_rule_redempti
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."gift_rule_redemptions" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."gift_rule_redemptions_id_seq" TO "anon";
 GRANT UPDATE ON SEQUENCE "public"."gift_rule_redemptions_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."gift_rule_redemptions_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."gift_rules" TO "anon";
@@ -35426,11 +27790,9 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."gift_rules" TO "au
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."gift_rules" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."gift_rules_id_seq" TO "anon";
 GRANT UPDATE ON SEQUENCE "public"."gift_rules_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."gift_rules_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."global_currencies" TO "anon";
@@ -35438,41 +27800,9 @@ GRANT ALL ON TABLE "public"."global_currencies" TO "authenticated";
 GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."global_currencies" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."global_currencies_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."global_currencies_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."global_currencies_id_seq" TO "service_role";
-
-
-
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."global_invoice_items" TO "service_role";
-
-
-
-GRANT UPDATE ON SEQUENCE "public"."global_invoice_items_id_seq" TO "anon";
-GRANT ALL ON SEQUENCE "public"."global_invoice_items_id_seq" TO "authenticated";
-GRANT UPDATE ON SEQUENCE "public"."global_invoice_items_id_seq" TO "service_role";
-
-
-
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."global_invoices" TO "service_role";
-
-
-
-GRANT UPDATE ON SEQUENCE "public"."global_invoices_id_seq" TO "anon";
-GRANT ALL ON SEQUENCE "public"."global_invoices_id_seq" TO "authenticated";
-GRANT UPDATE ON SEQUENCE "public"."global_invoices_id_seq" TO "service_role";
-
-
-
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."global_return_items" TO "service_role";
-
-
-
-GRANT UPDATE ON SEQUENCE "public"."global_return_items_id_seq" TO "anon";
-GRANT ALL ON SEQUENCE "public"."global_return_items_id_seq" TO "authenticated";
-GRANT UPDATE ON SEQUENCE "public"."global_return_items_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."investor_balances" TO "anon";
@@ -35480,11 +27810,9 @@ GRANT ALL ON TABLE "public"."investor_balances" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."investor_balances" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."investor_balances_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."investor_balances_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."investor_balances_id_seq" TO "service_role";
-
 
 
 GRANT UPDATE ON SEQUENCE "public"."investor_transactions_id_seq" TO "anon";
@@ -35492,11 +27820,9 @@ GRANT ALL ON SEQUENCE "public"."investor_transactions_id_seq" TO "authenticated"
 GRANT UPDATE ON SEQUENCE "public"."investor_transactions_id_seq" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."investors_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."investors_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."investors_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."invoice_boxes" TO "anon";
@@ -35504,23 +27830,9 @@ GRANT ALL ON TABLE "public"."invoice_boxes" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."invoice_boxes" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."invoice_boxes_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."invoice_boxes_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."invoice_boxes_id_seq" TO "service_role";
-
-
-
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."invoice_brands" TO "anon";
-GRANT ALL ON TABLE "public"."invoice_brands" TO "authenticated";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."invoice_brands" TO "service_role";
-
-
-
-GRANT UPDATE ON SEQUENCE "public"."invoice_brands_id_seq" TO "anon";
-GRANT ALL ON SEQUENCE "public"."invoice_brands_id_seq" TO "authenticated";
-GRANT UPDATE ON SEQUENCE "public"."invoice_brands_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."item_assignees" TO "anon";
@@ -35528,11 +27840,9 @@ GRANT ALL ON TABLE "public"."item_assignees" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."item_assignees" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."item_assignees_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."item_assignees_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."item_assignees_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."item_permissions" TO "anon";
@@ -35540,11 +27850,9 @@ GRANT ALL ON TABLE "public"."item_permissions" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."item_permissions" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."item_permissions_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."item_permissions_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."item_permissions_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."item_tags" TO "anon";
@@ -35552,11 +27860,9 @@ GRANT ALL ON TABLE "public"."item_tags" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."item_tags" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."item_tags_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."item_tags_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."item_tags_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."items" TO "anon";
@@ -35564,11 +27870,9 @@ GRANT ALL ON TABLE "public"."items" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."items" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."items_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."items_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."items_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."koba_brands" TO "anon";
@@ -35576,11 +27880,9 @@ GRANT ALL ON TABLE "public"."koba_brands" TO "authenticated";
 GRANT ALL ON TABLE "public"."koba_brands" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."koba_brands_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."koba_brands_id_seq" TO "authenticated";
 GRANT ALL ON SEQUENCE "public"."koba_brands_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."koba_cart_items" TO "anon";
@@ -35588,11 +27890,9 @@ GRANT ALL ON TABLE "public"."koba_cart_items" TO "authenticated";
 GRANT ALL ON TABLE "public"."koba_cart_items" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."koba_cart_items_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."koba_cart_items_id_seq" TO "authenticated";
 GRANT ALL ON SEQUENCE "public"."koba_cart_items_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."koba_carts" TO "anon";
@@ -35600,11 +27900,9 @@ GRANT ALL ON TABLE "public"."koba_carts" TO "authenticated";
 GRANT ALL ON TABLE "public"."koba_carts" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."koba_carts_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."koba_carts_id_seq" TO "authenticated";
 GRANT ALL ON SEQUENCE "public"."koba_carts_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."koba_categories" TO "anon";
@@ -35612,11 +27910,9 @@ GRANT ALL ON TABLE "public"."koba_categories" TO "authenticated";
 GRANT ALL ON TABLE "public"."koba_categories" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."koba_categories_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."koba_categories_id_seq" TO "authenticated";
 GRANT ALL ON SEQUENCE "public"."koba_categories_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."koba_order_items" TO "anon";
@@ -35624,11 +27920,9 @@ GRANT ALL ON TABLE "public"."koba_order_items" TO "authenticated";
 GRANT ALL ON TABLE "public"."koba_order_items" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."koba_order_items_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."koba_order_items_id_seq" TO "authenticated";
 GRANT ALL ON SEQUENCE "public"."koba_order_items_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."koba_orders" TO "anon";
@@ -35636,11 +27930,9 @@ GRANT ALL ON TABLE "public"."koba_orders" TO "authenticated";
 GRANT ALL ON TABLE "public"."koba_orders" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."koba_orders_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."koba_orders_id_seq" TO "authenticated";
 GRANT ALL ON SEQUENCE "public"."koba_orders_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."koba_products" TO "anon";
@@ -35648,11 +27940,9 @@ GRANT ALL ON TABLE "public"."koba_products" TO "authenticated";
 GRANT ALL ON TABLE "public"."koba_products" TO "service_role";
 
 
-
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."koba_retail_settings" TO "anon";
 GRANT ALL ON TABLE "public"."koba_retail_settings" TO "authenticated";
 GRANT ALL ON TABLE "public"."koba_retail_settings" TO "service_role";
-
 
 
 GRANT UPDATE ON SEQUENCE "public"."koba_retail_settings_id_seq" TO "anon";
@@ -35660,11 +27950,9 @@ GRANT USAGE,UPDATE ON SEQUENCE "public"."koba_retail_settings_id_seq" TO "authen
 GRANT USAGE,UPDATE ON SEQUENCE "public"."koba_retail_settings_id_seq" TO "service_role";
 
 
-
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."markets" TO "anon";
 GRANT ALL ON TABLE "public"."markets" TO "authenticated";
 GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."markets" TO "service_role";
-
 
 
 GRANT UPDATE ON SEQUENCE "public"."markets_id_seq" TO "anon";
@@ -35672,11 +27960,9 @@ GRANT ALL ON SEQUENCE "public"."markets_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."markets_id_seq" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."membership_grants_id_seq" TO "anon";
 GRANT UPDATE ON SEQUENCE "public"."membership_grants_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."membership_grants_id_seq" TO "service_role";
-
 
 
 GRANT UPDATE ON SEQUENCE "public"."memberships_id_seq" TO "anon";
@@ -35684,11 +27970,9 @@ GRANT ALL ON SEQUENCE "public"."memberships_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."memberships_id_seq" TO "service_role";
 
 
-
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."merchant_profiles" TO "anon";
 GRANT ALL ON TABLE "public"."merchant_profiles" TO "authenticated";
 GRANT ALL ON TABLE "public"."merchant_profiles" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."module_actions" TO "anon";
@@ -35696,11 +27980,9 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."module_actions" TO
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."module_actions" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."module_actions_id_seq" TO "anon";
 GRANT UPDATE ON SEQUENCE "public"."module_actions_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."module_actions_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."modules" TO "anon";
@@ -35708,11 +27990,9 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."modules" TO "authe
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."modules" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."modules_id_seq" TO "anon";
 GRANT UPDATE ON SEQUENCE "public"."modules_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."modules_id_seq" TO "service_role";
-
 
 
 GRANT UPDATE ON SEQUENCE "public"."order_items_id_seq" TO "anon";
@@ -35720,11 +28000,9 @@ GRANT ALL ON SEQUENCE "public"."order_items_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."order_items_id_seq" TO "service_role";
 
 
-
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."orders" TO "anon";
 GRANT ALL ON TABLE "public"."orders" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."orders" TO "service_role";
-
 
 
 GRANT UPDATE ON SEQUENCE "public"."orders_id_seq" TO "anon";
@@ -35732,11 +28010,9 @@ GRANT ALL ON SEQUENCE "public"."orders_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."orders_id_seq" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."payment_allocations_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."payment_allocations_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."payment_allocations_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."payment_methods" TO "anon";
@@ -35744,11 +28020,9 @@ GRANT ALL ON TABLE "public"."payment_methods" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."payment_methods" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."payment_methods_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."payment_methods_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."payment_methods_id_seq" TO "service_role";
-
 
 
 GRANT UPDATE ON SEQUENCE "public"."payments_id_seq" TO "anon";
@@ -35756,11 +28030,9 @@ GRANT ALL ON SEQUENCE "public"."payments_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."payments_id_seq" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."product_brands_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."product_brands_id_seq" TO "authenticated";
 GRANT ALL ON SEQUENCE "public"."product_brands_id_seq" TO "service_role";
-
 
 
 GRANT UPDATE ON SEQUENCE "public"."product_categories_id_seq" TO "anon";
@@ -35768,13 +28040,10 @@ GRANT ALL ON SEQUENCE "public"."product_categories_id_seq" TO "authenticated";
 GRANT ALL ON SEQUENCE "public"."product_categories_id_seq" TO "service_role";
 
 
-
 GRANT SELECT,INSERT,REFERENCES,DELETE,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."product_sync_snapshots" TO "service_role";
 
 
-
 GRANT ALL ON SEQUENCE "public"."product_sync_snapshots_id_seq" TO "service_role";
-
 
 
 GRANT UPDATE ON SEQUENCE "public"."products_id_seq" TO "anon";
@@ -35782,23 +28051,9 @@ GRANT ALL ON SEQUENCE "public"."products_id_seq" TO "authenticated";
 GRANT ALL ON SEQUENCE "public"."products_id_seq" TO "service_role";
 
 
-
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."recipient_profiles" TO "anon";
-GRANT ALL ON TABLE "public"."recipient_profiles" TO "authenticated";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."recipient_profiles" TO "service_role";
-
-
-
-GRANT UPDATE ON SEQUENCE "public"."recipient_profiles_id_seq" TO "anon";
-GRANT ALL ON SEQUENCE "public"."recipient_profiles_id_seq" TO "authenticated";
-GRANT UPDATE ON SEQUENCE "public"."recipient_profiles_id_seq" TO "service_role";
-
-
-
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shop_cart_items" TO "anon";
 GRANT ALL ON TABLE "public"."shop_cart_items" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shop_cart_items" TO "service_role";
-
 
 
 GRANT UPDATE ON SEQUENCE "public"."shop_cart_items_id_seq" TO "anon";
@@ -35806,11 +28061,9 @@ GRANT UPDATE ON SEQUENCE "public"."shop_cart_items_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."shop_cart_items_id_seq" TO "service_role";
 
 
-
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shop_carts" TO "anon";
 GRANT ALL ON TABLE "public"."shop_carts" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shop_carts" TO "service_role";
-
 
 
 GRANT UPDATE ON SEQUENCE "public"."shop_carts_id_seq" TO "anon";
@@ -35818,11 +28071,9 @@ GRANT UPDATE ON SEQUENCE "public"."shop_carts_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."shop_carts_id_seq" TO "service_role";
 
 
-
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shop_categories" TO "anon";
 GRANT ALL ON TABLE "public"."shop_categories" TO "authenticated";
 GRANT ALL ON TABLE "public"."shop_categories" TO "service_role";
-
 
 
 GRANT UPDATE ON SEQUENCE "public"."shop_categories_id_seq" TO "anon";
@@ -35830,11 +28081,9 @@ GRANT UPDATE ON SEQUENCE "public"."shop_categories_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."shop_categories_id_seq" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."shop_customer_group_access_id_seq" TO "anon";
 GRANT UPDATE ON SEQUENCE "public"."shop_customer_group_access_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."shop_customer_group_access_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shop_order_items" TO "anon";
@@ -35842,11 +28091,9 @@ GRANT ALL ON TABLE "public"."shop_order_items" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shop_order_items" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."shop_order_items_id_seq" TO "anon";
 GRANT UPDATE ON SEQUENCE "public"."shop_order_items_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."shop_order_items_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shop_orders" TO "anon";
@@ -35854,11 +28101,9 @@ GRANT ALL ON TABLE "public"."shop_orders" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shop_orders" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."shop_orders_id_seq" TO "anon";
 GRANT UPDATE ON SEQUENCE "public"."shop_orders_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."shop_orders_id_seq" TO "service_role";
-
 
 
 GRANT UPDATE ON SEQUENCE "public"."shop_pricing_rules_id_seq" TO "anon";
@@ -35866,11 +28111,9 @@ GRANT UPDATE ON SEQUENCE "public"."shop_pricing_rules_id_seq" TO "authenticated"
 GRANT UPDATE ON SEQUENCE "public"."shop_pricing_rules_id_seq" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."shop_product_listings_id_seq" TO "anon";
 GRANT UPDATE ON SEQUENCE "public"."shop_product_listings_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."shop_product_listings_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shop_product_offers" TO "anon";
@@ -35878,11 +28121,9 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shop_product_offer
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shop_product_offers" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."shop_product_offers_id_seq" TO "anon";
 GRANT UPDATE ON SEQUENCE "public"."shop_product_offers_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."shop_product_offers_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shop_stock_reservations" TO "anon";
@@ -35890,11 +28131,9 @@ GRANT ALL ON TABLE "public"."shop_stock_reservations" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shop_stock_reservations" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."shops_id_seq" TO "anon";
 GRANT UPDATE ON SEQUENCE "public"."shops_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."shops_id_seq" TO "service_role";
-
 
 
 GRANT UPDATE ON SEQUENCE "public"."store_access_id_seq" TO "anon";
@@ -35902,11 +28141,9 @@ GRANT UPDATE ON SEQUENCE "public"."store_access_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."store_access_id_seq" TO "service_role";
 
 
-
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."store_product_prices" TO "anon";
 GRANT ALL ON TABLE "public"."store_product_prices" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."store_product_prices" TO "service_role";
-
 
 
 GRANT UPDATE ON SEQUENCE "public"."store_product_prices_id_seq" TO "anon";
@@ -35914,11 +28151,9 @@ GRANT ALL ON SEQUENCE "public"."store_product_prices_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."store_product_prices_id_seq" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."stores_id_seq" TO "anon";
 GRANT UPDATE ON SEQUENCE "public"."stores_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."stores_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."system_role_templates" TO "anon";
@@ -35926,11 +28161,9 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."system_role_templa
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."system_role_templates" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."system_role_templates_id_seq" TO "anon";
 GRANT UPDATE ON SEQUENCE "public"."system_role_templates_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."system_role_templates_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."tag_categories" TO "anon";
@@ -35938,11 +28171,9 @@ GRANT ALL ON TABLE "public"."tag_categories" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."tag_categories" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."tag_categories_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."tag_categories_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."tag_categories_id_seq" TO "service_role";
-
 
 
 GRANT UPDATE ON SEQUENCE "public"."tags_id_seq" TO "anon";
@@ -35950,11 +28181,9 @@ GRANT ALL ON SEQUENCE "public"."tags_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."tags_id_seq" TO "service_role";
 
 
-
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."tenant_module_submodules" TO "anon";
 GRANT ALL ON TABLE "public"."tenant_module_submodules" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."tenant_module_submodules" TO "service_role";
-
 
 
 GRANT UPDATE ON SEQUENCE "public"."tenant_module_submodules_id_seq" TO "anon";
@@ -35962,11 +28191,9 @@ GRANT ALL ON SEQUENCE "public"."tenant_module_submodules_id_seq" TO "authenticat
 GRANT UPDATE ON SEQUENCE "public"."tenant_module_submodules_id_seq" TO "service_role";
 
 
-
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."tenant_modules" TO "anon";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."tenant_modules" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."tenant_modules" TO "service_role";
-
 
 
 GRANT UPDATE ON SEQUENCE "public"."tenant_modules_id_seq" TO "anon";
@@ -35974,11 +28201,9 @@ GRANT UPDATE ON SEQUENCE "public"."tenant_modules_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."tenant_modules_id_seq" TO "service_role";
 
 
-
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."tenant_permission_versions" TO "anon";
 GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."tenant_permission_versions" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."tenant_permission_versions" TO "service_role";
-
 
 
 GRANT UPDATE ON SEQUENCE "public"."tenant_role_grants_id_seq" TO "anon";
@@ -35986,11 +28211,9 @@ GRANT UPDATE ON SEQUENCE "public"."tenant_role_grants_id_seq" TO "authenticated"
 GRANT UPDATE ON SEQUENCE "public"."tenant_role_grants_id_seq" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."tenant_roles_id_seq" TO "anon";
 GRANT UPDATE ON SEQUENCE "public"."tenant_roles_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."tenant_roles_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."tenant_scoped_counters" TO "anon";
@@ -35998,11 +28221,9 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."tenant_scoped_coun
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."tenant_scoped_counters" TO "service_role";
 
 
-
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."tenants" TO "anon";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."tenants" TO "authenticated";
 GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."tenants" TO "service_role";
-
 
 
 GRANT UPDATE ON SEQUENCE "public"."tenants_id_seq" TO "anon";
@@ -36010,11 +28231,9 @@ GRANT UPDATE ON SEQUENCE "public"."tenants_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."tenants_id_seq" TO "service_role";
 
 
-
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_accounting_ledger" TO "anon";
 GRANT ALL ON TABLE "public"."thrift_accounting_ledger" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_accounting_ledger" TO "service_role";
-
 
 
 GRANT UPDATE ON SEQUENCE "public"."thrift_accounting_ledger_id_seq" TO "anon";
@@ -36022,11 +28241,9 @@ GRANT ALL ON SEQUENCE "public"."thrift_accounting_ledger_id_seq" TO "authenticat
 GRANT UPDATE ON SEQUENCE "public"."thrift_accounting_ledger_id_seq" TO "service_role";
 
 
-
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_barcodes" TO "anon";
 GRANT ALL ON TABLE "public"."thrift_barcodes" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_barcodes" TO "service_role";
-
 
 
 GRANT UPDATE ON SEQUENCE "public"."thrift_barcodes_id_seq" TO "anon";
@@ -36034,11 +28251,9 @@ GRANT ALL ON SEQUENCE "public"."thrift_barcodes_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."thrift_barcodes_id_seq" TO "service_role";
 
 
-
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_boxes" TO "anon";
 GRANT ALL ON TABLE "public"."thrift_boxes" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_boxes" TO "service_role";
-
 
 
 GRANT UPDATE ON SEQUENCE "public"."thrift_boxes_id_seq" TO "anon";
@@ -36046,11 +28261,9 @@ GRANT ALL ON SEQUENCE "public"."thrift_boxes_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."thrift_boxes_id_seq" TO "service_role";
 
 
-
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_categories" TO "anon";
 GRANT ALL ON TABLE "public"."thrift_categories" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_categories" TO "service_role";
-
 
 
 GRANT UPDATE ON SEQUENCE "public"."thrift_categories_id_seq" TO "anon";
@@ -36058,11 +28271,9 @@ GRANT ALL ON SEQUENCE "public"."thrift_categories_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."thrift_categories_id_seq" TO "service_role";
 
 
-
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_courier_providers" TO "anon";
 GRANT ALL ON TABLE "public"."thrift_courier_providers" TO "authenticated";
 GRANT ALL ON TABLE "public"."thrift_courier_providers" TO "service_role";
-
 
 
 GRANT UPDATE ON SEQUENCE "public"."thrift_courier_providers_id_seq" TO "anon";
@@ -36070,11 +28281,9 @@ GRANT ALL ON SEQUENCE "public"."thrift_courier_providers_id_seq" TO "authenticat
 GRANT UPDATE ON SEQUENCE "public"."thrift_courier_providers_id_seq" TO "service_role";
 
 
-
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_customers" TO "anon";
 GRANT ALL ON TABLE "public"."thrift_customers" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_customers" TO "service_role";
-
 
 
 GRANT UPDATE ON SEQUENCE "public"."thrift_customers_id_seq" TO "anon";
@@ -36082,9 +28291,7 @@ GRANT ALL ON SEQUENCE "public"."thrift_customers_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."thrift_customers_id_seq" TO "service_role";
 
 
-
 GRANT ALL ON TABLE "public"."thrift_invoice_counters" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_invoice_items" TO "anon";
@@ -36092,11 +28299,9 @@ GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_invo
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_invoice_items" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."thrift_invoice_items_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."thrift_invoice_items_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."thrift_invoice_items_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_invoices" TO "anon";
@@ -36104,11 +28309,9 @@ GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_invo
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_invoices" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."thrift_invoices_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."thrift_invoices_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."thrift_invoices_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_pricings" TO "anon";
@@ -36116,15 +28319,12 @@ GRANT ALL ON TABLE "public"."thrift_pricings" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_pricings" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."thrift_pricings_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."thrift_pricings_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."thrift_pricings_id_seq" TO "service_role";
 
 
-
 GRANT ALL ON TABLE "public"."thrift_return_counters" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_sales_invoice_items" TO "anon";
@@ -36132,11 +28332,9 @@ GRANT ALL ON TABLE "public"."thrift_sales_invoice_items" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_sales_invoice_items" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."thrift_sales_invoice_items_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."thrift_sales_invoice_items_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."thrift_sales_invoice_items_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_sales_invoices" TO "anon";
@@ -36144,11 +28342,9 @@ GRANT ALL ON TABLE "public"."thrift_sales_invoices" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_sales_invoices" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."thrift_sales_invoices_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."thrift_sales_invoices_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."thrift_sales_invoices_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_sales_pnl_lines" TO "anon";
@@ -36156,11 +28352,9 @@ GRANT ALL ON TABLE "public"."thrift_sales_pnl_lines" TO "authenticated";
 GRANT ALL ON TABLE "public"."thrift_sales_pnl_lines" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."thrift_sales_pnl_lines_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."thrift_sales_pnl_lines_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."thrift_sales_pnl_lines_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_sales_return_items" TO "anon";
@@ -36168,11 +28362,9 @@ GRANT ALL ON TABLE "public"."thrift_sales_return_items" TO "authenticated";
 GRANT ALL ON TABLE "public"."thrift_sales_return_items" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."thrift_sales_return_items_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."thrift_sales_return_items_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."thrift_sales_return_items_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_sales_returns" TO "anon";
@@ -36180,11 +28372,9 @@ GRANT ALL ON TABLE "public"."thrift_sales_returns" TO "authenticated";
 GRANT ALL ON TABLE "public"."thrift_sales_returns" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."thrift_sales_returns_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."thrift_sales_returns_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."thrift_sales_returns_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_settings" TO "anon";
@@ -36192,11 +28382,9 @@ GRANT ALL ON TABLE "public"."thrift_settings" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_settings" TO "service_role";
 
 
-
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_shelves" TO "anon";
 GRANT ALL ON TABLE "public"."thrift_shelves" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_shelves" TO "service_role";
-
 
 
 GRANT UPDATE ON SEQUENCE "public"."thrift_shelves_id_seq" TO "anon";
@@ -36204,11 +28392,9 @@ GRANT ALL ON SEQUENCE "public"."thrift_shelves_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."thrift_shelves_id_seq" TO "service_role";
 
 
-
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_shipments" TO "anon";
 GRANT ALL ON TABLE "public"."thrift_shipments" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_shipments" TO "service_role";
-
 
 
 GRANT UPDATE ON SEQUENCE "public"."thrift_shipments_id_seq" TO "anon";
@@ -36216,11 +28402,9 @@ GRANT ALL ON SEQUENCE "public"."thrift_shipments_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."thrift_shipments_id_seq" TO "service_role";
 
 
-
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_stock_images" TO "anon";
 GRANT ALL ON TABLE "public"."thrift_stock_images" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_stock_images" TO "service_role";
-
 
 
 GRANT UPDATE ON SEQUENCE "public"."thrift_stock_images_id_seq" TO "anon";
@@ -36228,11 +28412,9 @@ GRANT ALL ON SEQUENCE "public"."thrift_stock_images_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."thrift_stock_images_id_seq" TO "service_role";
 
 
-
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_stock_measurements" TO "anon";
 GRANT ALL ON TABLE "public"."thrift_stock_measurements" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_stock_measurements" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_stocks" TO "anon";
@@ -36240,11 +28422,9 @@ GRANT ALL ON TABLE "public"."thrift_stocks" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_stocks" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."thrift_stocks_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."thrift_stocks_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."thrift_stocks_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_types" TO "anon";
@@ -36252,11 +28432,9 @@ GRANT ALL ON TABLE "public"."thrift_types" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."thrift_types" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."thrift_types_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."thrift_types_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."thrift_types_id_seq" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."units_of_measure" TO "anon";
@@ -36264,16 +28442,13 @@ GRANT ALL ON TABLE "public"."units_of_measure" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."units_of_measure" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."units_of_measure_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."units_of_measure_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."units_of_measure_id_seq" TO "service_role";
 
 
-
 GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."universal_wallet_ledger" TO "authenticated";
 GRANT ALL ON TABLE "public"."universal_wallet_ledger" TO "service_role";
-
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."wallet_accounts" TO "anon";
@@ -36281,11 +28456,9 @@ GRANT ALL ON TABLE "public"."wallet_accounts" TO "authenticated";
 GRANT ALL ON TABLE "public"."wallet_accounts" TO "service_role";
 
 
-
 GRANT UPDATE ON SEQUENCE "public"."wallet_accounts_id_seq" TO "anon";
 GRANT UPDATE ON SEQUENCE "public"."wallet_accounts_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."wallet_accounts_id_seq" TO "service_role";
-
 
 
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "postgres";
@@ -36294,26 +28467,13 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT UPDATE ON 
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT UPDATE ON SEQUENCES TO "service_role";
 
 
-
-
-
-
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "postgres";
-
-
-
-
 
 
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "postgres";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLES TO "anon";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLES TO "authenticated";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLES TO "service_role";
-
-
-
-
-
 
 
 CREATE OR REPLACE FUNCTION "public"."restock_dropship_order_on_delete"() RETURNS "trigger"
@@ -36332,8 +28492,6 @@ begin
     select (shop_type = 'dropship') into v_is_dropship
     from public.shops
     where id = OLD.shop_id;
-  end if;
-
   if coalesce(v_is_dropship, false) then
     for v_item in select * from public.shop_order_items where order_id = OLD.id loop
       -- Restock display quantity override on shop listing (if set)
@@ -36344,22 +28502,16 @@ begin
           and product_id = v_item.product_id
           and global_stock_allocation_id = v_item.global_stock_allocation_id
           and display_quantity_override is not null;
-      end if;
-
       -- Restock original quantity in stock allocation
       if v_item.global_stock_allocation_id is not null then
         update public.global_stock_allocations
         set quantity = quantity + v_item.quantity
         where id = v_item.global_stock_allocation_id;
-      end if;
-
       -- Restock original quantity in global stocks
       if v_item.global_stock_id is not null then
         update public.global_stocks
         set quantity = quantity + v_item.quantity
         where id = v_item.global_stock_id;
-      end if;
-
       -- Check updated available stock & override quantity; reactivate listing if > 0
       if v_item.product_id is not null and v_item.global_stock_allocation_id is not null then
         select gsa.quantity into v_new_alloc_qty
@@ -36378,20 +28530,10 @@ begin
           where shop_id = OLD.shop_id
             and product_id = v_item.product_id
             and global_stock_allocation_id = v_item.global_stock_allocation_id;
-        end if;
-      end if;
-    end loop;
-  end if;
-
-  return OLD;
-end;
-$$;
-
-
+        return OLD;
 ALTER FUNCTION "public"."restock_dropship_order_on_delete"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE TRIGGER "trg_restock_dropship_order_on_delete" BEFORE DELETE ON "public"."shop_orders" FOR EACH ROW EXECUTE FUNCTION "public"."restock_dropship_order_on_delete"();
-
 
 

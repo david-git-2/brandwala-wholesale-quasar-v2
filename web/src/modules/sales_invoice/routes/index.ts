@@ -54,6 +54,12 @@ const salesInvoiceRoutes: RouteRecordRaw[] = [
     children: [
       {
         path: '',
+        name: 'app-global-invoices-overview',
+        component: () => import('../pages/InvoiceOverviewPage.vue'),
+        beforeEnter: guard('global_invoice'),
+      },
+      {
+        path: 'list',
         name: 'app-global-invoices-page',
         component: () => import('../pages/InvoicesListPage.vue'),
         meta: {
@@ -62,13 +68,19 @@ const salesInvoiceRoutes: RouteRecordRaw[] = [
         beforeEnter: guard('global_invoice'),
       },
       {
+        path: 'overview',
+        redirect: (to) => {
+          const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : '';
+          return tenantSlug ? `/${tenantSlug}/app/sales/invoices` : '/app/sales/invoices';
+        },
+      },
+      {
         path: 'billing-profiles',
         name: 'app-global-billing-profiles',
-        component: () => import('../pages/CustomerBillingHubPage.vue'),
-        meta: {
-          hasPageToolbar: true,
+        redirect: (to) => {
+          const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : '';
+          return tenantSlug ? `/${tenantSlug}/app/customers` : '/app/customers';
         },
-        beforeEnter: guard('billing_profile'),
       },
       {
         path: 'wallets',
@@ -91,11 +103,18 @@ const salesInvoiceRoutes: RouteRecordRaw[] = [
         beforeEnter: guard('invoice_brand'),
       },
       {
+        path: 'create-wholesale',
+        name: 'app-global-invoices-create-wholesale',
+        component: () => import('../pages/CreateWholesaleInvoicePage.vue'),
+        beforeEnter: guard('global_invoice'),
+      },
+      {
         path: ':id',
         name: 'app-global-invoice-details-page',
         component: () => import('../pages/InvoiceDetailsPage.vue'),
         beforeEnter: guard('global_invoice'),
       },
+
     ],
   },
   {

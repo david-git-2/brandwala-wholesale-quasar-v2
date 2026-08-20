@@ -132,6 +132,72 @@
               </q-list>
             </q-menu>
           </q-chip>
+
+          <!-- Shop / Assigned Tenant Chip -->
+          <q-chip
+            clickable
+            :label="currentShopLabel"
+            icon-right="arrow_drop_down"
+            :color="shipmentStore.currentShipment?.assigned_child_tenant_id ? 'primary' : undefined"
+            :text-color="shipmentStore.currentShipment?.assigned_child_tenant_id ? 'white' : undefined"
+            :outline="!shipmentStore.currentShipment?.assigned_child_tenant_id"
+          >
+            <q-menu auto-close>
+              <q-list dense style="min-width: 220px; max-height: 300px" class="scroll">
+                <q-item-label header class="text-caption text-weight-bold text-grey-8 q-py-xs">
+                  Assign Shop (Listing Permission)
+                </q-item-label>
+
+                <div
+                  v-if="shipmentStore.currentShipment?.status !== 'received'"
+                  class="q-px-sm q-py-xs bg-amber-1 text-amber-10 text-caption rounded-borders q-mx-xs q-mb-xs"
+                >
+                  <q-icon name="ph ph-info" size="14px" class="q-mr-xs" />
+                  Shipment must be received into stock before shop assignment.
+                </div>
+
+                <q-item v-if="loadingChildTenants" dense>
+                  <q-item-section class="text-grey-6">Loading shops…</q-item-section>
+                </q-item>
+
+                <!-- Clear / Unassign -->
+                <q-item
+                  v-if="shipmentStore.currentShipment?.assigned_child_tenant_id"
+                  clickable
+                  :disable="shipmentStore.currentShipment?.status !== 'received' || savingShop"
+                  @click="saveInlineShop(null)"
+                >
+                  <q-item-section avatar style="min-width: 28px">
+                    <q-icon name="ph ph-x-circle" size="16px" color="grey-6" />
+                  </q-item-section>
+                  <q-item-section class="text-grey-7">Unassign (Clear)</q-item-section>
+                </q-item>
+
+                <!-- Child / Sister Tenants -->
+                <q-item
+                  v-for="opt in childTenantOptions"
+                  :key="opt.value"
+                  clickable
+                  :active="shipmentStore.currentShipment?.assigned_child_tenant_id === opt.value"
+                  :disable="shipmentStore.currentShipment?.status !== 'received' || savingShop"
+                  @click="saveInlineShop(opt.value)"
+                >
+                  <q-item-section avatar style="min-width: 28px">
+                    <q-icon
+                      :name="shipmentStore.currentShipment?.assigned_child_tenant_id === opt.value ? 'ph ph-check-circle' : 'ph ph-storefront'"
+                      size="16px"
+                      :color="shipmentStore.currentShipment?.assigned_child_tenant_id === opt.value ? 'primary' : 'grey-6'"
+                    />
+                  </q-item-section>
+                  <q-item-section>{{ opt.label }}</q-item-section>
+                </q-item>
+
+                <q-item v-if="!loadingChildTenants && !childTenantOptions.length" dense>
+                  <q-item-section class="text-grey-6">No sister shops available</q-item-section>
+                </q-item>
+              </q-list>
+            </q-menu>
+          </q-chip>
         </div>
       </div>
 
@@ -481,63 +547,223 @@
         <div class="text-caption text-weight-bold text-grey-7 text-uppercase q-mb-xs" style="letter-spacing: 0.5px">
           Modules & Actions
         </div>
-      <div class="row q-col-gutter-sm">
-        <!-- List Card -->
-        <div class="col-12 col-sm-4">
-          <q-card
-            flat
-            bordered
-            class="cursor-pointer hover-card text-center q-pa-md"
-            @click="goToListPage"
-          >
-            <q-card-section class="column items-center q-pa-none">
-              <div class="card-icon-badge bg-blue-1 text-primary q-mb-sm">
-                <q-icon name="ph ph-package" size="32px" />
-              </div>
-              <div class="text-subtitle1 text-weight-bold text-grey-9">List</div>
-              <div class="text-caption text-grey-6">Items & Packing List</div>
-            </q-card-section>
-          </q-card>
-        </div>
+        <div class="row q-col-gutter-sm">
+          <!-- List Card -->
+          <div class="col-12 col-sm-6 col-md-3">
+            <q-card
+              flat
+              bordered
+              class="cursor-pointer hover-card text-center q-pa-md"
+              @click="goToListPage"
+            >
+              <q-card-section class="column items-center q-pa-none">
+                <div class="card-icon-badge bg-blue-1 text-primary q-mb-sm">
+                  <q-icon name="ph ph-package" size="32px" />
+                </div>
+                <div class="text-subtitle1 text-weight-bold text-grey-9">List</div>
+                <div class="text-caption text-grey-6">Items & Packing List</div>
+              </q-card-section>
+            </q-card>
+          </div>
 
-        <!-- Rates & Adjust Card -->
-        <div class="col-12 col-sm-4">
-          <q-card
-            flat
-            bordered
-            class="cursor-pointer hover-card text-center q-pa-md"
-            @click="goToRatesPage"
-          >
-            <q-card-section class="column items-center q-pa-none">
-              <div class="card-icon-badge bg-emerald-1 text-teal-9 q-mb-sm" style="background-color: #ecfdf5; color: #059669;">
-                <q-icon name="ph ph-currency-circle-dollar" size="32px" />
-              </div>
-              <div class="text-subtitle1 text-weight-bold text-grey-9">Rates & Adjust</div>
-              <div class="text-caption text-grey-6">Rates, Weights & Invoices</div>
-            </q-card-section>
-          </q-card>
-        </div>
+          <!-- Rates & Adjust Card -->
+          <div class="col-12 col-sm-6 col-md-3">
+            <q-card
+              flat
+              bordered
+              class="cursor-pointer hover-card text-center q-pa-md"
+              @click="goToRatesPage"
+            >
+              <q-card-section class="column items-center q-pa-none">
+                <div class="card-icon-badge bg-emerald-1 text-teal-9 q-mb-sm" style="background-color: #ecfdf5; color: #059669;">
+                  <q-icon name="ph ph-currency-circle-dollar" size="32px" />
+                </div>
+                <div class="text-subtitle1 text-weight-bold text-grey-9">Rates & Adjust</div>
+                <div class="text-caption text-grey-6">Rates, Weights & Invoices</div>
+              </q-card-section>
+            </q-card>
+          </div>
 
-        <!-- Receive Card -->
-        <div class="col-12 col-sm-4">
-          <q-card
-            flat
-            bordered
-            class="cursor-pointer hover-card text-center q-pa-md"
-            @click="goToReceivePage"
-          >
-            <q-card-section class="column items-center q-pa-none">
-              <div class="card-icon-badge bg-indigo-1 text-indigo-9 q-mb-sm" style="background-color: #e0e7ff; color: #3730a3;">
-                <q-icon name="ph ph-warehouse" size="32px" />
-              </div>
-              <div class="text-subtitle1 text-weight-bold text-grey-9">Receive</div>
-              <div class="text-caption text-grey-6">Receive & Putaway Stock</div>
-            </q-card-section>
-          </q-card>
+          <!-- Receive Card -->
+          <div class="col-12 col-sm-6 col-md-3">
+            <q-card
+              flat
+              bordered
+              class="cursor-pointer hover-card text-center q-pa-md"
+              @click="goToReceivePage"
+            >
+              <q-card-section class="column items-center q-pa-none">
+                <div class="card-icon-badge bg-indigo-1 text-indigo-9 q-mb-sm" style="background-color: #e0e7ff; color: #3730a3;">
+                  <q-icon name="ph ph-warehouse" size="32px" />
+                </div>
+                <div class="text-subtitle1 text-weight-bold text-grey-9">Receive</div>
+                <div class="text-caption text-grey-6">Receive & Putaway Stock</div>
+              </q-card-section>
+            </q-card>
+          </div>
+
+          <!-- Shop Allocation Card -->
+          <div class="col-12 col-sm-6 col-md-3">
+            <q-card
+              flat
+              bordered
+              class="cursor-pointer hover-card text-center q-pa-md"
+              @click="openAllocationDialog"
+            >
+              <q-card-section class="column items-center q-pa-none">
+                <div class="card-icon-badge bg-purple-1 text-purple-9 q-mb-sm" style="background-color: #f3e8ff; color: #7e22ce;">
+                  <q-icon name="ph ph-storefront" size="32px" />
+                </div>
+                <div class="text-subtitle1 text-weight-bold text-grey-9">Shop Allocation</div>
+                <div class="text-caption text-grey-6">
+                  {{ shipmentStore.currentShipment?.assigned_child_tenant_id ? 'Assigned to shop' : 'Listing permission & ATP' }}
+                </div>
+              </q-card-section>
+            </q-card>
+          </div>
         </div>
       </div>
     </div>
-    </div>
+
+    <!-- Allocation Details & Mechanism Dialog -->
+    <q-dialog v-model="showAllocationDialog" persistent>
+      <q-card style="width: 580px; max-width: 95vw; border-radius: 12px">
+        <q-card-section class="row items-center justify-between border-bottom q-pb-sm">
+          <div class="row items-center q-gutter-x-sm">
+            <div class="card-icon-badge bg-primary text-white row items-center justify-center" style="width: 32px; height: 32px; border-radius: 8px">
+              <q-icon name="ph ph-storefront" size="18px" />
+            </div>
+            <div>
+              <div class="text-subtitle1 text-weight-bold text-grey-9">Shop Allocation & Listing</div>
+              <div class="text-caption text-grey-6">Shipment-to-Shop batch permission & live ATP</div>
+            </div>
+          </div>
+          <q-btn v-close-popup icon="ph ph-x" flat round dense color="grey-7" />
+        </q-card-section>
+
+        <q-card-section class="q-pt-md">
+          <!-- Architecture Mechanism Banner -->
+          <div class="bg-blue-1 text-primary q-pa-sm rounded-borders q-mb-md border-light text-caption" style="line-height: 1.4">
+            <div class="text-weight-bold row items-center q-gutter-x-xs q-mb-xs">
+              <q-icon name="ph ph-info" size="16px" />
+              <span>How Stock Allocation Works (v2 Architecture)</span>
+            </div>
+            <div>
+              Physical stock is held centrally in the warehouse (<code>global_stocks</code>). Assigning this received shipment gives the selected shop permission to list and sell items. The shop sells in real-time from shared Available-to-Promise (ATP) stock without duplicate inventory rows.
+            </div>
+          </div>
+
+          <!-- Current Shipment Status Alert if not received -->
+          <q-banner
+            v-if="shipmentStore.currentShipment?.status !== 'received'"
+            class="bg-amber-1 text-amber-10 rounded-borders q-mb-md q-py-xs"
+            dense
+            rounded
+          >
+            <template #avatar>
+              <q-icon name="ph ph-warning" size="20px" />
+            </template>
+            <span class="text-caption text-weight-medium">
+              Shipment status is currently <strong>{{ shipmentStore.currentShipment?.status }}</strong>. Physical stock must be checked in and received into the warehouse before it can be assigned to a shop.
+            </span>
+          </q-banner>
+
+          <!-- Current Assignment Form -->
+          <div class="q-mb-md">
+            <div class="text-caption text-weight-bold text-grey-8 q-mb-xs">Assigned Sister Concern / Shop</div>
+            <div class="row q-col-gutter-sm items-center">
+              <div class="col">
+                <q-select
+                  v-model="selectedDialogShopId"
+                  :options="childTenantOptions"
+                  dense
+                  outlined
+                  emit-value
+                  map-options
+                  clearable
+                  options-dense
+                  :loading="loadingChildTenants"
+                  placeholder="Select shop or keep unassigned"
+                  :disable="shipmentStore.currentShipment?.status !== 'received' || savingShop"
+                />
+              </div>
+              <div class="col-auto row q-gutter-xs">
+                <q-btn
+                  color="primary"
+                  unelevated
+                  dense
+                  no-caps
+                  label="Save Assign"
+                  class="q-px-sm"
+                  style="border-radius: 8px"
+                  :loading="savingShop"
+                  :disable="shipmentStore.currentShipment?.status !== 'received'"
+                  @click="saveInlineShop(selectedDialogShopId)"
+                />
+                <q-btn
+                  flat
+                  dense
+                  no-caps
+                  label="Clear"
+                  color="grey-7"
+                  class="q-px-sm"
+                  style="border-radius: 8px"
+                  :loading="savingShop"
+                  :disable="!shipmentStore.currentShipment?.assigned_child_tenant_id || shipmentStore.currentShipment?.status !== 'received'"
+                  @click="saveInlineShop(null); selectedDialogShopId = null"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- Live Stock & ATP Summary for this batch -->
+          <div class="bg-grey-1 rounded-borders q-pa-sm border-light q-mb-md">
+            <div class="text-caption text-weight-bold text-grey-7 q-mb-xs text-uppercase" style="font-size: 10.5px">
+              Batch Stock Summary
+            </div>
+            <div class="row text-center q-col-gutter-xs">
+              <div class="col-4">
+                <div class="text-caption text-grey-6">Ordered Qty</div>
+                <div class="text-weight-bold text-grey-9">{{ summaryKPIs?.total_ordered_quantity ?? 0 }} pcs</div>
+              </div>
+              <div class="col-4">
+                <div class="text-caption text-grey-6">Received Qty</div>
+                <div class="text-weight-bold text-positive">{{ summaryKPIs?.total_received_quantity ?? 0 }} pcs</div>
+              </div>
+              <div class="col-4">
+                <div class="text-caption text-grey-6">Active Shop</div>
+                <div class="text-weight-bold text-primary">
+                  {{ shipmentStore.currentShipment?.assigned_child_tenant_id ? currentShopLabel.replace('Shop: ', '') : 'None (Unassigned)' }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="between" class="bg-grey-1 q-pa-sm border-top">
+          <q-btn
+            flat
+            no-caps
+            dense
+            color="primary"
+            icon="ph ph-arrow-square-out"
+            label="Open Location Stock View"
+            class="q-px-xs"
+            @click="goToChildStockPage"
+          />
+          <q-btn
+            v-close-popup
+            unelevated
+            dense
+            no-caps
+            label="Close"
+            color="grey-8"
+            class="q-px-md"
+            style="border-radius: 8px"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -555,6 +781,7 @@ import { useInboundShipmentCalculations } from '../composables/useInboundShipmen
 import { buildShipmentExcelWorkbook } from '../utils/buildShipmentExcelWorkbook';
 import {
   useCargoCompaniesQuery,
+  useChildTenantsQuery,
   useShipmentProgressFlowsQuery,
   useShipmentProgressFlowStagesQuery,
 } from '../composables/useProcurementStockQuery';
@@ -571,9 +798,73 @@ const dummyStatus = ref<'draft' | 'ordered' | 'shipped' | 'customs' | 'received'
 const updatingStatus = ref(false);
 const targetUpdatingStatus = ref<string | null>(null);
 
+const goToListPage = () => {
+  const tenantSlug = route.params.tenantSlug;
+  const sId = shipmentStore.currentShipment?.id || shipmentId;
+  if (!sId) return;
+
+  if (tenantSlug) {
+    void router.push({
+      name: 'app-procurement-shipment-items',
+      params: { tenantSlug, id: sId },
+    });
+  } else {
+    void router.push({
+      name: 'app-procurement-shipment-items',
+      params: { id: sId },
+    });
+  }
+};
+
+const goToRatesPage = () => {
+  const tenantSlug = route.params.tenantSlug;
+  const sId = shipmentStore.currentShipment?.id || shipmentId;
+  if (!sId) return;
+
+  if (tenantSlug) {
+    void router.push({
+      name: 'app-procurement-shipment-rates',
+      params: { tenantSlug, id: sId },
+    });
+  } else {
+    void router.push({
+      name: 'app-procurement-shipment-rates',
+      params: { id: sId },
+    });
+  }
+};
+
+const goToReceivePage = () => {
+  const tenantSlug = route.params.tenantSlug;
+  const sId = shipmentStore.currentShipment?.id || shipmentId;
+  if (!sId) return;
+
+  if (tenantSlug) {
+    void router.push({
+      name: 'app-procurement-shipment-receive',
+      params: { tenantSlug, id: sId },
+    });
+  } else {
+    void router.push({
+      name: 'app-procurement-shipment-receive',
+      params: { id: sId },
+    });
+  }
+};
+
 const changeStatus = (newStatus: string) => {
   const current = shipmentStore.currentShipment?.status || dummyStatus.value;
   if (current === newStatus) return;
+
+  if (current === 'cancelled') {
+    showWarningNotification('Cancelled shipments cannot change status.');
+    return;
+  }
+
+  if (newStatus === 'received') {
+    goToReceivePage();
+    return;
+  }
 
   $q.dialog({
     title: 'Confirm Status Change',
@@ -692,6 +983,79 @@ const saveInlineCargo = async (val: number | null) => {
     showSuccessNotification('Cargo vendor updated');
   } catch (err: any) {
     showErrorNotification(err.message || 'Failed to update cargo vendor');
+  }
+};
+
+// Shop / Sister Tenant handling (Cached with TanStack Query - 20m)
+const { data: childTenantsData, isLoading: loadingChildTenants } = useChildTenantsQuery(currentTenantId);
+
+const childTenants = computed(() => childTenantsData.value ?? []);
+
+const childTenantOptions = computed(() => {
+  const current = authStore.selectedTenant;
+  const opts: Array<{ label: string; value: number }> = [];
+  if (current?.id) {
+    opts.push({ label: `${current.name} (Main Warehouse / Self)`, value: current.id });
+  }
+  for (const t of childTenants.value) {
+    if (t.id === current?.id) continue;
+    opts.push({ label: t.name, value: t.id });
+  }
+  return opts;
+});
+
+const currentShopLabel = computed(() => {
+  const sId = shipmentStore.currentShipment?.assigned_child_tenant_id;
+  if (!sId) return 'Select Shop (Unassigned)';
+  if (sId === authStore.tenantId) {
+    return `Shop: ${authStore.selectedTenant?.name || 'Main Warehouse'} (Self)`;
+  }
+  const found = childTenants.value.find((t) => t.id === sId);
+  return found ? `Shop: ${found.name}` : `Shop #${sId}`;
+});
+
+const savingShop = ref(false);
+const saveInlineShop = async (val: number | null) => {
+  if (!shipmentId) return;
+  if (shipmentStore.currentShipment?.status !== 'received') {
+    showWarningNotification('Shipment must be received into warehouse stock before assigning to a shop.');
+    return;
+  }
+  savingShop.value = true;
+  try {
+    if (authStore.tenantId) {
+      await shipmentStore.assignShipmentToChild(authStore.tenantId, val, shipmentId);
+      showSuccessNotification(val ? 'Shipment assigned to shop' : 'Shop assignment cleared');
+    }
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    showErrorNotification(msg || 'Failed to update shop assignment');
+  } finally {
+    savingShop.value = false;
+  }
+};
+
+// Shop Allocation Details Dialog
+const showAllocationDialog = ref(false);
+const selectedDialogShopId = ref<number | null>(null);
+
+const openAllocationDialog = () => {
+  selectedDialogShopId.value = shipmentStore.currentShipment?.assigned_child_tenant_id ?? null;
+  showAllocationDialog.value = true;
+};
+
+const goToChildStockPage = () => {
+  showAllocationDialog.value = false;
+  const tenantSlug = route.params.tenantSlug;
+  if (tenantSlug) {
+    void router.push({
+      name: 'app-procurement-child-stock',
+      params: { tenantSlug },
+    });
+  } else {
+    void router.push({
+      name: 'app-procurement-child-stock',
+    });
   }
 };
 
@@ -1089,60 +1453,6 @@ const commitNameEdit = async () => {
   } else {
     originalName.value = trimmed;
     showSuccessNotification('Shipment name updated');
-  }
-};
-
-const goToListPage = () => {
-  const tenantSlug = route.params.tenantSlug;
-  const sId = shipmentStore.currentShipment?.id || shipmentId;
-  if (!sId) return;
-
-  if (tenantSlug) {
-    void router.push({
-      name: 'app-procurement-shipment-items',
-      params: { tenantSlug, id: sId },
-    });
-  } else {
-    void router.push({
-      name: 'app-procurement-shipment-items',
-      params: { id: sId },
-    });
-  }
-};
-
-const goToRatesPage = () => {
-  const tenantSlug = route.params.tenantSlug;
-  const sId = shipmentStore.currentShipment?.id || shipmentId;
-  if (!sId) return;
-
-  if (tenantSlug) {
-    void router.push({
-      name: 'app-procurement-shipment-rates',
-      params: { tenantSlug, id: sId },
-    });
-  } else {
-    void router.push({
-      name: 'app-procurement-shipment-rates',
-      params: { id: sId },
-    });
-  }
-};
-
-const goToReceivePage = () => {
-  const tenantSlug = route.params.tenantSlug;
-  const sId = shipmentStore.currentShipment?.id || shipmentId;
-  if (!sId) return;
-
-  if (tenantSlug) {
-    void router.push({
-      name: 'app-procurement-shipment-receive',
-      params: { tenantSlug, id: sId },
-    });
-  } else {
-    void router.push({
-      name: 'app-procurement-shipment-receive',
-      params: { id: sId },
-    });
   }
 };
 

@@ -23,6 +23,7 @@ import investorCapitalAdminRoutes from 'src/modules/investor_capital/routes/admi
 import shopOrderRoutes from 'src/modules/shop_order/routes';
 import accessControlRoutes from 'src/modules/access_control/routes';
 import walletRoutes from 'src/modules/wallet/routes';
+import customerRoutes from 'src/modules/customer/routes';
 
 const routes: RouteRecordRaw[] = [
   {
@@ -99,6 +100,7 @@ const routes: RouteRecordRaw[] = [
   ...investorCapitalAdminRoutes,
   ...accessControlRoutes,
   ...walletRoutes,
+  ...customerRoutes,
 
   // Always leave this as last one
   {

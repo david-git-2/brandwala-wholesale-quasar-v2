@@ -23,7 +23,7 @@ One row per session. Move-only (no new migration unless you also asked for a beh
 | investor | `supabase/schemas/investor/` | Stub |
 | wallet | `supabase/schemas/wallet/` | Stub |
 | thrift | `supabase/schemas/thrift/` | Stub |
-| sales_invoice | `supabase/schemas/sales_invoice/` | Stub |
+| sales_invoice | `supabase/schemas/sales_invoice/` | Split |
 | shop | `supabase/schemas/shop/` | Stub |
 | shop_order | `supabase/schemas/shop_order/` | Stub |
 | procurement | `supabase/schemas/procurement/` | Split |

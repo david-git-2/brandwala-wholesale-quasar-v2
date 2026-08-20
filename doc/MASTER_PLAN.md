@@ -69,7 +69,7 @@ Legacy modules (`inventory`, `invoice`, `accounting`, `shipment`, `investor`) **
 ```
 Child: orders / product costing  →  Parent: shipment (local or international)
   →  Parent: global_stocks  →  child_tenant_stock_allocations (optional)
-  →  Child desk: sales_invoices (issued_by = child; tenant_id = parent)  →  payments
+  →  Child desk: sales_invoices (issued_by = child; parent_tenant_id = parent)  →  payments
   →  reporting_treasury: margin reports (read, parent books)  →  investor profit share
 ```
 
@@ -520,7 +520,7 @@ Legend: **view** = access granted | **—** = no access
 ```
 Child: orders / product costing → Parent: shipment (local or international)
   → Parent: global_stocks → child_tenant_stock_allocations (optional)
-  → Child desk: sales_invoices (issued_by = child; tenant_id = parent) → payments
+  → Child desk: sales_invoices (issued_by = child; parent_tenant_id = parent) → payments
   → reporting_treasury: margin reports (read, parent books) → investor profit share
 ```
 

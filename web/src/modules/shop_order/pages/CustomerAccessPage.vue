@@ -510,15 +510,8 @@ const toggleGroupActive = async (group: any, activeVal: boolean) => {
 };
 
 const openCreateDialog = () => {
-  form.id = null;
-  form.name = '';
-  form.accentColor = '';
-  form.adminName = '';
-  form.adminEmail = '';
-  form.phone = '';
-  form.address = '';
-  form.isActive = true;
-  dialogOpen.value = true;
+  const prefix = tenantSlug.value ? `/${tenantSlug.value}` : '';
+  void router.push(`${prefix}/app/customers/create`);
 };
 
 const openEditDialog = (group: {

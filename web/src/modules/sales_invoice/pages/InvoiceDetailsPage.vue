@@ -1026,7 +1026,7 @@
               <NetworkStockSearchPanel
                 v-if="invoice && stockDialog"
                 mode="invoice"
-                :context-tenant-id="invoice.tenant_id"
+                :context-tenant-id="invoice.issued_by_tenant_id || invoice.parent_tenant_id"
                 selectable
                 :show-search-controls="true"
                 @select="onSelectStockRow"
@@ -2221,7 +2221,7 @@ const onRecordPayment = async () => {
   paymentSaving.value = true;
   try {
     await invoiceRepository.recordBillingProfilePayment({
-      tenant_id: invoice.value.tenant_id,
+      tenant_id: invoice.value.issued_by_tenant_id || invoice.value.parent_tenant_id,
       billing_profile_id: invoice.value.billing_profile_id,
       amount: paymentAmount.value,
       payment_date: paymentDate.value,
@@ -2281,7 +2281,7 @@ const onRecordPayout = async () => {
   paymentSaving.value = true;
   try {
     await invoiceRepository.createMiddleManPayout({
-      tenant_id: invoice.value.tenant_id,
+      tenant_id: invoice.value.issued_by_tenant_id || invoice.value.parent_tenant_id,
       billing_profile_id: invoice.value.billing_profile_id,
       global_invoice_id: invoice.value.id,
       amount: payoutAmount.value,
