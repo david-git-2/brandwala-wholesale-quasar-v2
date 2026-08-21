@@ -153,6 +153,22 @@
               Payment: {{ effectivePaymentStatus }}
             </q-badge>
           </template>
+          <!-- Return Action Button when Issued -->
+          <template v-if="loadedInvoiceStatus === 'posted' || loadedInvoiceStatus === 'issued'">
+            <q-separator vertical class="q-mx-xs" />
+            <q-btn
+              flat
+              dense
+              no-caps
+              color="purple"
+              icon="ph ph-arrow-u-down-left"
+              label="Process Return"
+              class="q-px-sm text-caption text-weight-bold"
+              @click="goToProcessReturn"
+            >
+              <q-tooltip>Record wholesale item returns & issue credit note</q-tooltip>
+            </q-btn>
+          </template>
         </div>
 
         <div class="row items-center q-gutter-xs">
@@ -180,6 +196,7 @@
           >
             Status: {{ loadedInvoiceStatus === 'proforma_generated' ? 'Proforma' : loadedInvoiceStatus }}
           </q-badge>
+
 
           <q-badge
             v-if="loadedInvoiceStatus === 'posted' || loadedInvoiceStatus === 'issued'"
@@ -979,6 +996,18 @@ export type WholesaleInvoiceSaveStatus = 'draft' | 'proforma_generated' | 'issue
 const selectedSaveStatus = ref<WholesaleInvoiceSaveStatus>('draft');
 const isSaving = ref(false);
 
+const goToProcessReturn = () => {
+  const invId = existingInvoiceId.value;
+  if (!invId) return;
+  void router.push({
+    name: 'app-global-invoice-return-page',
+    params: {
+      tenantSlug: authStore.tenantSlug || '',
+      id: String(invId),
+    },
+  });
+};
+
 const openPreview = () => {
   const invId = existingInvoiceId.value;
   if (!invId) return;
@@ -986,6 +1015,7 @@ const openPreview = () => {
     name: 'app-global-invoice-preview',
     params: {
       tenantSlug: authStore.tenantSlug || '',
+
       id: String(invId),
     },
   });

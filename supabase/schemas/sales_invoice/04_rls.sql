@@ -230,3 +230,7 @@ GRANT EXECUTE ON FUNCTION "public"."generate_sales_invoice_number"("p_tenant_id"
 GRANT ALL ON FUNCTION "public"."search_sales_invoice_stock"("p_tenant_id" bigint, "p_search" "text", "p_limit" integer, "p_offset" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."search_sales_invoice_stock"("p_tenant_id" bigint, "p_search" "text", "p_limit" integer, "p_offset" integer) TO "service_role";
 
+GRANT ALL ON FUNCTION "public"."process_wholesale_invoice_return"("p_invoice_id" bigint, "p_items" jsonb, "p_return_charge_amount" numeric, "p_refund_method" "text", "p_payout_account_id" bigint, "p_note" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."process_wholesale_invoice_return"("p_invoice_id" bigint, "p_items" jsonb, "p_return_charge_amount" numeric, "p_refund_method" "text", "p_payout_account_id" bigint, "p_note" "text") TO "service_role";
+
+

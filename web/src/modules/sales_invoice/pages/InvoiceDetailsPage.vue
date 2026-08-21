@@ -263,7 +263,23 @@
               <q-icon v-if="invoice.invoice_status === 'voided'" name="ph ph-x-circle" size="14px" class="q-mr-xs" />
               Voided
             </q-btn>
+            <template v-if="invoice.invoice_status === 'posted' && canMutateInvoice">
+              <q-separator vertical class="q-mx-xs" />
+              <q-btn
+                dense
+                no-caps
+                flat
+                color="purple"
+                icon="ph ph-arrow-u-down-left"
+                label="Process Return"
+                class="q-px-sm text-caption text-weight-bold"
+                @click="goToProcessReturn"
+              >
+                <q-tooltip>Record items return & issue credit</q-tooltip>
+              </q-btn>
+            </template>
           </div>
+
           <div class="col-auto row items-center q-gutter-sm">
             <q-chip square dense class="status-chip text-weight-bold text-capitalize">
               {{ invoice.invoice_type }}
@@ -988,15 +1004,17 @@
             <div class="text-subtitle2 text-weight-bold q-mb-sm">Returns</div>
             <q-btn
               v-if="canMutateInvoice"
-              color="orange"
+              color="purple"
               no-caps
               outline
-              class="pill-btn slim-btn full-width"
-              label="Add Return"
+              class="pill-btn slim-btn full-width text-weight-bold"
+              icon="ph ph-arrow-u-down-left"
+              label="Process Return"
               data-test="add-return-btn"
-              @click="returnDialog = true"
+              @click="invoice.invoice_type === 'wholesale' ? goToProcessReturn() : (returnDialog = true)"
             />
           </q-card>
+
         </div>
       </div>
     </div>
@@ -1609,6 +1627,18 @@ const openCodDialog = () => {
   codMethod.value = 'cash';
   codDialog.value = true;
 };
+
+const goToProcessReturn = () => {
+  if (!invoice.value?.id) return;
+  void router.push({
+    name: 'app-global-invoice-return-page',
+    params: {
+      tenantSlug: authStore.tenantSlug || '',
+      id: String(invoice.value.id),
+    },
+  });
+};
+
 
 const returnDialog = ref(false);
 const returnItemId = ref<number | null>(null);

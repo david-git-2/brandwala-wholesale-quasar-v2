@@ -638,6 +638,32 @@ const searchSalesInvoiceStock = async (params: {
   return (data || []) as SalesInvoiceStockItem[];
 };
 
+const processWholesaleInvoiceReturn = async (payload: {
+  invoice_id: number;
+  items: Array<{
+    invoice_item_id: number;
+    quantity: number;
+    to_availability?: 'held' | 'sellable' | 'unsellable';
+    to_grade_tag_id?: number | null;
+    note?: string | null;
+  }>;
+  return_charge_amount?: number;
+  refund_method?: 'wallet_credit' | 'payout' | null;
+  payout_account_id?: number | null;
+  note?: string | null;
+}) => {
+  const { data, error } = await supabase.rpc('process_wholesale_invoice_return', {
+    p_invoice_id: payload.invoice_id,
+    p_items: payload.items,
+    p_return_charge_amount: payload.return_charge_amount ?? 0,
+    p_refund_method: payload.refund_method ?? undefined,
+    p_payout_account_id: payload.payout_account_id ?? undefined,
+    p_note: payload.note ?? undefined,
+  });
+  if (error) throw error;
+  return data;
+};
+
 export const invoiceRepository = {
   listGlobalInvoices,
   createGlobalInvoice,
@@ -654,6 +680,7 @@ export const invoiceRepository = {
   applySettlementDiscount,
   createMiddleManPayout,
   addGlobalReturnItem,
+  processWholesaleInvoiceReturn,
   getGlobalInvoicesPaidAmounts,
   removeGlobalInvoiceItem,
   updateGlobalInvoiceHeader,

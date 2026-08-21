@@ -83,6 +83,8 @@ export type GlobalInvoiceItemRow = {
   invoice_id: number;
   global_stock_id: number;
   name_snapshot: string;
+  barcode_snapshot?: string | null;
+  product_code_snapshot?: string | null;
   quantity: number;
   sell_price_amount: number;
   line_discount_amount: number;
@@ -92,6 +94,7 @@ export type GlobalInvoiceItemRow = {
   return_quantity: number;
   image_url?: string | null | undefined;
 };
+
 
 export type InvoiceChargeLineRow = {
   id: number;
@@ -112,3 +115,39 @@ export type BusinessPartyRow = {
   address: string | null;
   is_active: boolean;
 };
+
+export interface WholesaleReturnItemInput {
+  invoice_item_id: number;
+  quantity: number;
+  to_availability: 'held' | 'sellable' | 'unsellable';
+  to_grade_tag_id: number | null;
+  note?: string | null;
+}
+
+export interface WholesaleReturnPreviewSummary {
+  originalSubtotal: number;
+  originalTotal: number;
+  originalPaid: number;
+  originalDue: number;
+
+  totalReturnValue: number;
+  returnCharge: number;
+  netReturnCredit: number;
+
+  newSubtotal: number;
+  newTotal: number;
+  newDue: number;
+  excessPaidRefund: number;
+
+  settlementType: 'no_money_exchanged' | 'reduce_due_only' | 'refund_required';
+  lineSummaries: Array<{
+    invoice_item_id: number;
+    invoiced_qty: number;
+    return_qty: number;
+    retained_qty: number;
+    unit_price: number;
+    line_return_value: number;
+    new_line_total: number;
+  }>;
+}
+

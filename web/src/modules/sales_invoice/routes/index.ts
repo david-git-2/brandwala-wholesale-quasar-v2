@@ -109,6 +109,12 @@ const salesInvoiceRoutes: RouteRecordRaw[] = [
         beforeEnter: guard('global_invoice'),
       },
       {
+        path: ':id/return',
+        name: 'app-global-invoice-return-page',
+        component: () => import('../pages/WholesaleInvoiceReturnPage.vue'),
+        beforeEnter: guard('global_invoice'),
+      },
+      {
         path: ':id',
         name: 'app-global-invoice-details-page',
         component: () => import('../pages/InvoiceDetailsPage.vue'),
@@ -117,6 +123,7 @@ const salesInvoiceRoutes: RouteRecordRaw[] = [
 
     ],
   },
+
   {
     path: '/:tenantSlug?/app/sales/invoices/:id/preview',
     component: () => import('layouts/ExternalLayout.vue'),

@@ -1,706 +1,118 @@
-# Procurement & Stock
+# Procurement & Stock Module
 
-BrandWala / TradeFlow BD uses a **parent module** for inbound procurement and warehouse inventory. Parent companies receive shipment batches, compute landed cost, and create sellable stock pools. Sister concerns (child tenants) consume stock through allocations and sales modules — they do not own physical inventory.
-
-This document answers:
-
-- What is the Procurement & Stock domain and how does it relate to shipment and stock?
-- Which module keys, routes, and tables are used?
-- What is the target schema and business flow?
-- How is landed cost calculated by shipment type, and where is it stored?
-- How should implementation start fresh (drop-and-recreate)?
-- How is the module designed to grow with new features?
-
-Related: [MASTER_PLAN.md](MASTER_PLAN.md) (§16 redesign), [PROCUREMENT_STOCK_ISSUES.md](PROCUREMENT_STOCK_ISSUES.md) (redesign — cost, money, status, **one vendor/shipment**, **shipment→child assign + shared ATP**), [REPORTING_TREASURY.md](REPORTING_TREASURY.md), [TENANT_MODEL_AND_ACCESS.md](TENANT_MODEL_AND_ACCESS.md), [APP_SCOPES_AND_ACCESS.md](APP_SCOPES_AND_ACCESS.md), [GLOBAL_REFERENCE_DATA.md](GLOBAL_REFERENCE_DATA.md), [vendor/](./vendor/), [cargo_company/](./cargo_company/), [shipment/](./shipment/), [stock/](./stock/).
-
-> **Target (v2):** one vendor per shipment; parent owns `global_stocks`; assign Option A + listing `global_stock_id`; sell = shared ATP; availability `sellable|held|unsellable`; grade tag on stock — [stock/schema.md](./stock/schema.md) · [IMPLEMENTATION_ORDER.md](./IMPLEMENTATION_ORDER.md) · [PROCUREMENT_STOCK_ISSUES.md](./PROCUREMENT_STOCK_ISSUES.md). Live schema below may still show line vendors + qty allocations until cutover.
+The **Procurement & Stock** domain manages inbound international shipments, freight cargo logistics, landed cost calculation, warehouse inventory pooling, hierarchical bin locations, and child-tenant stock allocations.
 
 ---
 
-## 1. Overview
+## 1. Domain Architecture & Multi-Tenant Model
 
-| Property | Procurement & Stock | Tenant Stock (`inventory`) |
-|----------|---------------------|----------------------------|
-| Scope | Parent tenant (physical pool) + child allocation bridge | Child tenant (virtual slice view) |
-| `tenant_id` | `parent_tenant_id` on stock rows | Child via `child_tenant_id` on allocations |
-| Auth surface | App (`memberships` on parent) | App (parent + child) |
-| Module gating | `procurement_stock` parent + submodules | `inventory` submodule under same parent |
-| Primary UI | `/:slug/app/procurement/*` | `/:slug/app/procurement/tenant-stock` |
+### Parent Ownership & Virtual Child Allocation
 
-### What this domain is
+Physical stock is owned strictly at the **Parent** tenant level. Sister concerns (child tenants) receive virtual allocation slices for sales execution:
 
-| Capability | Submodule | Responsibility |
-|------------|-----------|----------------|
-| Inbound batch | `global_shipment` | Group purchases under a customs/cargo batch; capture FX rates, **vendor**, and **cargo company** |
-| Freight agents | `cargo_company` *(catalog)* | Parent-scoped inbound cargo/freight providers + default row — [cargo_company/schema.md](./cargo_company/schema.md) |
-| Warehouse pool | `global_stock` | Parent-owned quantity pools; **Allocate Stock** UI writes child slices |
-| Tenant allocation view | `inventory` | Child (and parent) read allocated slices from `global_stock_allocations` |
-| Stock behaviour | `global_stock_type` *(config, no nav)* | Classify sellable vs damaged/quarantine; gates invoice pick |
+```mermaid
+flowchart TD
+    Vendor["Vendor (Foreign/Domestic)"] --> Inbound["Parent Shipment (global_shipments)"]
+    Cargo["Cargo / Freight Company"] --> Inbound
+    
+    subgraph ParentWarehouse ["Parent Physical Warehouse Pool"]
+        Inbound -->|Receive & Calculate Landed Cost| GS["Warehouse Stock (global_stocks)"]
+        GS --> LOC["Hierarchical Locations (Warehouse -> Room -> Shelf -> Bin)"]
+        GS --> MOV["Stock Movements & Grade Changes"]
+    end
 
-### What this domain is not
+    subgraph ChildTenants ["Sister Concerns (Child Tenants)"]
+        GS -->|bulk_allocate_shipment_stock| ALLOC["Stock Allocations (global_stock_allocations)"]
+        ALLOC --> SALES["Wholesale / Retail / Dropship Sales Desk"]
+    end
+```
 
-| Topic | Is not |
-|-------|--------|
-| **Tenant Stock** | Duplicate physical inventory per child — `global_stock_allocations` are virtual slices of parent `global_stocks` |
-| **Commerce inbound** | Commerce does **not** create shipments (locked decision **D2**) |
-| **Desk sales** | Invoice creation lives under `global_invoice`; this domain only supplies stock |
-| **Reports & treasury** | Shipment P&L and parent dashboards live under `reporting_treasury` — see [REPORTING_TREASURY.md](REPORTING_TREASURY.md) |
-| **Last-mile courier** | COD remittance `entity_type = 'courier'` is not inbound `cargo_companies` — [cargo_company/schema.md](./cargo_company/schema.md) |
-| **Child procurement** | Orders and costing files are child inputs (`order_management`, `product_based_costing`) — not part of this parent module |
-| **Custom formula builder** | Cost math is **hardcoded** in `landedCost.ts` — admins edit inputs on the shipment UI, not the equation |
+### Core Entity Relationships
 
-### End-to-end flow
+| Entity | Table | Responsibility |
+| :--- | :--- | :--- |
+| **Global Shipment** | `global_shipments` | Inbound customs batch, vendor/cargo link, FX rates, status lifecycle. |
+| **Shipment Item** | `global_shipment_items` | Catalog/manual products in batch with stamped `landed_cost_bdt`. |
+| **Cost Entries** | `global_shipment_cost_entries` | Itemized charges (goods cost, freight, customs, local delivery). |
+| **Global Stock** | `global_stocks` | Physical inventory row (`quantity`, `available_atp`, `availability`, `location_id`). |
+| **Stock Location** | `stock_locations` | Hierarchical tree (`warehouse` $\rightarrow$ `room` $\rightarrow$ `shelf` $\rightarrow$ `bin`). |
+| **Stock Movement** | `stock_movements` | Immutable audit log of stock transfers, grade changes, and re-allocations. |
+| **Cargo Company** | `cargo_companies` | Inbound freight/customs providers with wallet accounts for payout. |
+
+---
+
+## 2. Core Domain Engines & Business Algorithms
+
+### 2.1 Landed Cost Engine (`shipment_engine`)
+Calculates the landed unit cost in BDT for every line item in a shipment:
 
 ```mermaid
 flowchart LR
-  childInput["Child: orders / costing"] --> inbound["Parent: global_shipments"]
-  inbound --> items["global_shipment_items"]
-  items --> receive["Receive to stock"]
-  receive --> pool["global_stocks"]
-  pool --> alloc["global_stock_allocations"]
-  alloc --> sales["Invoice / commerce pick"]
+    A["Cost Entries (Goods, Freight, Customs)"] --> B["Compute Effective FX & Weight Surcharges"]
+    B --> C["Apportion Freight by Product/Package Weight"]
+    C --> D["Calculate Landed Unit Cost (BDT)"]
+    D --> E["Stamp landed_cost_bdt on Shipment Items @ Finalize"]
 ```
 
-Commerce and desk invoices **sell from** `global_stocks`; they do not create inbound batches.
+* **Formula**:
+  $$\text{Landed Cost (BDT)} = (\text{Purchase Price} \times \text{FX Rate}) + \text{Apportioned Cargo Charge} + \text{Customs Surcharge}$$
+* **Dual-Phase Design**: Pure in-memory calculation for live preview in UI; authoritative stamp written to `global_shipment_items.landed_cost_bdt` upon shipment finalization.
+
+### 2.2 Warehouse Location Hierarchy & Leaf Validation
+Locations follow a strict 4-tier nesting structure: `warehouse` $\rightarrow$ `room` $\rightarrow$ `shelf` $\rightarrow$ `bin`.
+* **Leaf Constraint**: Physical stock can only be stored in **leaf-level locations** (`_stock_location_is_leaf`).
+* **Nesting Rule**: Enforced by database trigger (`_validate_stock_location_nesting`).
+
+### 2.3 Stock Availability & Movement Lifecycle
+Stock rows transition across 3 availability states:
+* `sellable`: Available for invoice allocation and desk sales.
+* `held`: Temporarily reserved for inspection, returns, or pending batches.
+* `unsellable`: Quarantined, damaged, or lost inventory.
 
 ---
 
-## 2. Module hierarchy
+## 3. Page & Component Inventory
 
-**Parent module key:** `procurement_stock`  
-**Display name:** Procurement & Stock  
-**Nav pattern:** Parent group with submodule children (same model as `global_reference`).
-
-| Key | Display name | `parent_module_key` | Nav route | Page |
-|-----|--------------|---------------------|-----------|------|
-| `procurement_stock` | Procurement & Stock | `null` | *(none — group header only)* | — |
-| `global_shipment` | Shipment | `procurement_stock` | `procurement/shipment` | Existing inbound shipment UI |
-| `global_stock` | Warehouse | `procurement_stock` | `procurement/stock` | Existing warehouse stock list |
-| `global_stock_movement` | Movements | `procurement_stock` | `procurement/movements` | New stub (v2 movements) |
-| `global_stock_location` | Locations | `procurement_stock` | `procurement/locations` | Shelves & boxes ([StockLocationsPage.vue](../../web/src/modules/procurement_stock/pages/StockLocationsPage.vue)) |
-| `cargo_company` | Cargo Companies | `procurement_stock` *(or top-level like `vendor`)* | `procurement/cargo-companies` *(planned)* | Inbound freight agents + default — [cargo_company/](./cargo_company/) |
-| `inventory` | Stock | `procurement_stock` | `procurement/child-stock` | New stub (child ATP view) |
-| `global_stock_type` | Stock Types | `procurement_stock` | *(config inside Warehouse — no sidebar link)* | — |
-
-**Removed from sidebar:** Allocate Stock (`procurement/stock/allocate` redirects to Warehouse).
-
-### Tenant stock allocation (legacy — retiring)
-
-Soft qty on `global_stock_allocations` is **legacy**. v2 uses assign + shared ATP; child **Stock** nav is the future ATP view (stub for now).
-
-| Layer | Table / UI | Who |
-|-------|------------|-----|
-| Physical pool | `global_stocks` | Parent (Warehouse) |
-| Where | `stock_locations` | Parent (Locations) |
-| Moves | Movement docs (planned) | Parent (Movements) |
-| Child read | Assigned / ATP | Child (Stock) |
-
-Redirect `/app/stock` and `/app/procurement/tenant-stock` → `/app/procurement/child-stock`.
-
-
-### Assignment rules
-
-- Superadmin assigns **`procurement_stock`** on a tenant via `tenant_modules`.
-- `get_active_module_keys_for_tenant` expands the parent → enabled submodule keys (the parent key itself is not emitted to route guards).
-- Platform can disable individual submodules per tenant via `tenant_module_submodules` without removing the parent.
-- Submodule keys cannot be assigned directly — assign the parent (enforced by `create_tenant_module` RPC).
-
-### Tenant eligibility
-
-| Tenant type | `procurement_stock` | `global_shipment` | `global_stock` | Movements / Locations | `inventory` (Stock) |
-|-------------|---------------------|-------------------|----------------|----------------------|---------------------|
-| Parent company | Yes | Yes | Yes | Yes | Optional |
-| Child (sister concern) | Yes (group) | No | No | No | Yes |
-| Standalone | Yes | Yes | Yes | Yes | Yes |
-
-### Legacy keys (transition)
-
-| Legacy key | Status | Notes |
-|------------|--------|-------|
-| `shipment` | Retire | Superseded by `global_shipment` under `procurement_stock` |
-| Old `global_stocks` + `global_stock_quantities` shape | Replace | Dropped and recreated per §3 — not migrated |
+| Route | Main Page | Key Child Components & Dialogs |
+| :--- | :--- | :--- |
+| `/:tenantSlug?/app/procurement/shipment` | [`InboundShipmentListPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/pages/InboundShipmentListPage.vue) | Compact table toolbar, filter chips, shipment status pills, [`ShipmentFormDialog.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/ShipmentFormDialog.vue) |
+| `/:tenantSlug?/app/procurement/shipment/:id` | [`ShipmentOverviewPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/pages/ShipmentOverviewPage.vue) | [`ShipmentStatusWorkflowBar.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/ShipmentStatusWorkflowBar.vue), [`ShipmentLandedCostSummaryCard.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/ShipmentLandedCostSummaryCard.vue), [`ShipmentCostEntriesPanel.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/ShipmentCostEntriesPanel.vue) |
+| `/:tenantSlug?/app/procurement/shipment/:id/items` | [`ShipmentLineItemsPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/pages/ShipmentLineItemsPage.vue) | [`ShipmentLineItemsTable.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/ShipmentLineItemsTable.vue), [`AddShipmentItemsDrawer.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/AddShipmentItemsDrawer.vue), [`BulkPasteDialog.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/BulkPasteDialog.vue) |
+| `/:tenantSlug?/app/procurement/shipment/:id/receive` | [`ReceiveShipmentPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/pages/ReceiveShipmentPage.vue) | [`ShipmentReceiveTabPanel.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/ShipmentReceiveTabPanel.vue), physical variance checklist |
+| `/:tenantSlug?/app/procurement/stock` | [`WarehouseStockListPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/pages/WarehouseStockListPage.vue) | Stock location badge, availability chips, [`StockMoveLocationDialog.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/StockMoveLocationDialog.vue), [`StockMoveGradeDialog.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/StockMoveGradeDialog.vue) |
+| `/:tenantSlug?/app/procurement/locations` | [`StockLocationsPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/pages/StockLocationsPage.vue) | Tree hierarchy viewer, [`StockLocationFormDialog.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/StockLocationFormDialog.vue) |
+| `/:tenantSlug?/app/procurement/movements` | [`StockMovementsPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/pages/StockMovementsPage.vue) | Audit history log, [`StockMovementDetailDialog.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/StockMovementDetailDialog.vue) |
+| `/:tenantSlug?/app/procurement/cargo-companies` | [`CargoCompaniesPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/pages/CargoCompaniesPage.vue) | [`CargoCompanyFormDialog.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/CargoCompanyFormDialog.vue), currency configuration |
+| `/:tenantSlug?/app/procurement/child-stock` | [`ChildStockPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/pages/ChildStockPage.vue) | Allocated stock view for child sister concerns |
 
 ---
 
-## 3. Fresh start — drop and recreate
+## 4. Page to API / RPC Matrix
 
-Implementation uses **§16 target tables only**. There is **no data migration** from legacy `shipments`, `shipment_items`, or the interim `global_stocks` / `global_stock_quantities` model.
-
-When a migration creates objects that share a name with an existing table, view, enum, or RPC:
-
-1. **Drop dependents first** (FK order) or use `CASCADE` in a controlled migration.
-2. **Recreate** with the schema documented below.
-3. **Do not dual-write** to old and new tables (locked decision **D1**).
-
-### Objects to replace (same name, new shape)
-
-| Object | Action |
-|--------|--------|
-| `global_stocks` | `DROP … CASCADE` → recreate per §5.5 (quantity pool only — no cost/display copies) |
-| `global_stock_quantities` | `DROP` (quantities live on `global_stocks`) |
-| `child_tenant_stock_allocations` | `DROP` → replace with `global_stock_allocations` |
-| Legacy stock/shipment RPCs | `DROP` — phase 1 uses **direct table access** + frontend joins (see §5.0, §6) |
-
-### Objects to keep (legacy, separate stack)
-
-| Object | Reason |
-|--------|--------|
-| `shipments`, `shipment_items` | Legacy stack; not wired when `procurement_stock` is enabled |
-| `shipment` module key | Empty registry; no new tenants |
-| `recalculate_shipment_transaction_rate` | Legacy DB trigger only — **do not port** |
-
-### Objects to create (new names)
-
-| Object | Notes |
-|--------|-------|
-| `global_shipments`, `global_shipment_items` | New inbound stack |
-| `global_stock_types`, `global_stock_allocations` | Stock behaviour + child slices |
-| Costing | **Frontend `landedCost.ts` only** — hardcoded formulas; no DB triggers or costing RPCs |
-
-### Drop order (reference migration script)
-
-```text
-1. Drop legacy RPCs that reference old stock/shipment tables
-2. Drop views depending on global_stocks / allocations
-3. DROP TABLE global_stock_allocations OR child_tenant_stock_allocations CASCADE
-4. DROP TABLE global_stock_quantities CASCADE
-5. DROP TABLE global_stocks CASCADE
-6. DROP TYPE global_stock_status (if unused elsewhere)
-7. CREATE enums → tables → indexes → RLS → grants
-```
-
-> **No costing triggers** on the new stack.
-
-> **Warning:** Dropping `global_stocks` breaks FKs from `global_invoices`, `commerce_*`, and ledger tables until retargeted.
+| Component | Action / Trigger | Hook / Endpoint | Caching Strategy |
+| :--- | :--- | :--- | :--- |
+| **`InboundShipmentListPage`** | Mount / Filter Change | `useQuery` $\rightarrow$ `Table: global_shipments` | `staleTime: 30s`, Key: `['procurementStock', 'shipments', tenantId]` |
+| **`ShipmentFormDialog`** | Create Shipment Draft | `useMutation` $\rightarrow$ `RPC: create_shipment_draft` | Invalidates `['procurementStock', 'shipments']` |
+| **`ShipmentLineItemsPage`** | Add Catalog Product Line | `useMutation` $\rightarrow$ `RPC: add_shipment_item_from_product` | Invalidates `['procurementStock', 'shipmentOverview', id]` |
+| **`ShipmentLineItemsPage`** | Add Child Line Item | `useMutation` $\rightarrow$ `RPC: add_child_line_to_parent_shipment` | Invalidates `['procurementStock', 'shipmentOverview', id]` |
+| **`ShipmentOverviewPage`** | Settle Vendor / Cargo Payee | `useMutation` $\rightarrow$ `RPC: settle_shipment_payee` | Invalidates shipment & wallet ledger caches |
+| **`ReceiveShipmentPage`** | Finalize Inbound Batch | `useMutation` $\rightarrow$ `RPC: finalize_and_revise` | Stamps `landed_cost_bdt`, populates `global_stocks` |
+| **`WarehouseStockListPage`** | Mount / Filter Change | `useQuery` $\rightarrow$ `Table: global_stocks` | `staleTime: 30s`, Key: `['procurementStock', 'allocatableStockList', params]` |
+| **`StockMoveLocationDialog`** | Transfer Bin Location | `useMutation` $\rightarrow$ `RPC: create_and_post_stock_movement` | Invalidates stock list & movements |
+| **`StockMoveGradeDialog`** | Change Condition Grade | `useMutation` $\rightarrow$ `RPC: create_and_post_stock_movement` | Invalidates stock list & movements |
+| **`ShipmentAssignShopCard`** | Bulk Allocate to Child | `useMutation` $\rightarrow$ `RPC: bulk_allocate_shipment_stock` | Invalidates allocations & child stock |
+| **`StockLocationsPage`** | Mount / Expand Tree | `useQuery` $\rightarrow$ `Table: stock_locations` | `staleTime: 5m`, Key: `['procurementStock', 'stockLocations', tenantId]` |
+| **`CargoCompaniesPage`** | Add / Update Cargo Agent | `useMutation` $\rightarrow$ `RPC: create_cargo_company_with_wallet` | Invalidates `['procurementStock', 'cargoCompanies']` |
 
 ---
 
-## 4. Extensibility design
-
-### 4.1 Parent + submodule pattern
-
-Follow **`global_reference`** as the template (one assignable parent, granular submodule keys, `tenant_module_submodules` overrides).
-
-### 4.2 Future submodules (planned slots)
-
-| Future `module_key` | Target table(s) | Purpose |
-|---------------------|-----------------|---------|
-| `global_stock_transfer` | `global_stock_transfers`, `global_stock_transfer_items` | Move qty between pools or child tenants |
-| `global_stock_adjustment` | `global_stock_adjustments` | Cycle count, write-off, corrections |
-| `global_stock_reservation` | `global_stock_reservations` | Hold qty for pending orders/invoices |
-| `global_shipment_inspection` | `global_shipment_inspections`, `global_shipment_inspection_items` | QC before receive |
-| `global_shipment_document` | `global_shipment_documents` | Customs / proforma attachments |
-| `global_shipment_cost_line` | — | **Superseded** — use `global_shipment_cost_entries` (v2 §5.1); do not add duty/insurance beside header rates |
-| `global_batch_code` | `global_batch_codes` | Batch / barcode PC labels |
-| `global_warehouse_location` | `global_warehouse_locations`, `global_stock_locations` | Bin / shelf tracking |
-| `global_reorder_point` | `global_reorder_rules` | Low-stock alerts |
-| `global_shipment_box` | `global_shipment_boxes` | Physical box weight tracking (Implemented) |
-| `global_stock_return_inbound` | `global_stock_return_receipts` | Return goods back into stock |
-
-### 4.3 Table design for growth
-
-| Pattern | Use |
-|---------|-----|
-| `global_stocks.shipment_item_id` FK | Cost and display via join — no copies on stock |
-| Inputs on header + line only | Rates can change; derived BDT cost in frontend |
-| Hardcoded `landedCost.ts` | Two branches: domestic / international — same structure |
-
-### 4.4 Data access — no costing RPCs (phase 1)
-
-| Concern | Approach |
-|---------|----------|
-| Landed cost math | **Frontend** — `web/src/modules/procurement_stock/utils/landedCost.ts` |
-| Stock list / search / invoice pick | `.select()` with join `global_shipment_items` → `global_shipments`; sellable pick when shipment is **`Ready Stock`** |
-| Receive | At **`Warehouse Received`**: split line qty by `global_stock_type`; `.insert()` on `global_stocks`; then **`Ready Stock`** |
-| DB triggers | **None** for costing |
-| Tenant formula UI | **No** — essential input fields on shipment details only |
-
-### 4.5 Shipment UI inputs (what admins edit)
-
-Hardcoded math; **rich input form** on shipment header + lines:
-
-| Field | Header / line | Domestic | International |
-|-------|---------------|----------|-----------------|
-| `type` | Header | `domestic` | `international` |
-| `purchase_price` | Line | BDT | Purchase currency |
-| `product_weight`, `package_weight` | Line | Yes | Yes |
-| `cargo_rate` | Header | Yes | Yes |
-| `received_weight` | Header | Yes (for header `transaction_rate`) | Yes |
-| `product_conversion_rate` | Header | Forced `1.0` | Yes |
-| `cargo_conversion_rate` | Header | Forced `1.0` | Yes |
-| `transaction_rate` | Header | Not used | Computed in frontend (see §5.0) |
-| Currency FKs | Header | BDT typical | GBP / other |
-
-Show a **live preview** column (computed BDT per unit) while editing — preview only, not stored on stock.
-
-**When to edit:** Header and line rate fields are entered and revised while the shipment is in workflow, especially at **`Warehouse Received`** before receive. Reuse the existing shipment details page layout (`AdminShipmentDetailsPage`) — same field groups and preview behaviour, wired to `global_*` tables and `landedCost.ts`.
-
-### 4.6 Frontend module boundary
-
-```
-web/src/modules/procurement_stock/utils/landedCost.ts   # hardcoded formulas
-web/src/modules/shipment/                             # Inbound Shipment UI
-web/src/modules/global/                               # Warehouse Stock UI
-```
-
-### 4.7 Route namespace
-
-All routes under `/app/procurement/*` (shipment, stock, stock/allocate, tenant-stock). Redirects from `/app/global/*` and `/app/stock`.
-
----
-
-## 5. Data schema (target — §16)
-
-### 5.0 Landed cost and read model
-
-Shipment rates **can change at any time**. Stock rows must **not** cache cost or display fields.
-
-#### Design principles
-
-| Principle | Rule |
-|-----------|------|
-| Formula | **Hardcoded** in `landedCost.ts` — no per-tenant formula builder |
-| International | Same structure as legacy `costing.ts` |
-| Domestic | **Same structure** as international; conversion rates forced to `1.0`; `cargo_rate` still applies |
-| Storage | Inputs on header + line only; **no** derived cost on stock or items |
-| At sale | Snapshot `unit_cost_price` on `global_invoice_items` only |
-
-#### Shipment type
-
-| `global_shipments.type` | UI label | Legacy `shipment_type` |
-|---------------------------|----------|-------------------------|
-| `domestic` | Local | `local` |
-| `international` | International | `international` |
-
-#### What is stored (inputs only)
-
-| Table | Fields |
-|-------|--------|
-| `global_shipments` | `type`, `product_conversion_rate`, `cargo_conversion_rate`, `cargo_rate`, `received_weight`, `transaction_rate` (intl, optional cache), currency FKs |
-| `global_shipment_items` | `purchase_price`, `product_weight`, `package_weight`, `name`, `product_code`, `barcode`, `image_url` |
-| `global_stocks` | `quantity`, `stock_type_id`, `is_usable`, `shipment_item_id` only |
-
-#### What is **not** stored
-
-| Location | Excluded | Reason |
-|----------|----------|--------|
-| `global_stocks` | `unit_cost`, name, codes, barcode, image | Join + calculate when rates change |
-| `global_shipment_items` | `calculated_landed_cost` | Derived in frontend |
-
-#### Hardcoded formula (per unit, BDT)
-
-**Shared base** (domestic and international use the **same structure**):
-
-```text
-base = purchase_price
-       + ((product_weight + package_weight) / 1000) × cargo_rate
-```
-
-Weights are in **grams**; divide by 1000 for kg (matches legacy `costing.ts`).
-
-**Domestic** (`type = 'domestic'`):
-
-- `product_conversion_rate` and `cargo_conversion_rate` are forced to **`1.0`** (UI may hide or lock these fields).
-- `transaction_rate` is **not used**.
-- `effective_rate = 1.0`
-
-```text
-landed_cost_bdt = base
-```
-
-**International** (`type = 'international'`):
-
-- Uses legacy `calculateCostBdt` logic (basis: `web/src/modules/shipment/utils/costing.ts`).
-- `effective_rate` =
-  - header `transaction_rate` when set, else
-  - `(product_conversion_rate + cargo_conversion_rate) / 2`
-
-```text
-landed_cost_bdt = base × effective_rate
-```
-
-#### Header `transaction_rate` (international only, frontend)
-
-Recompute in the frontend when header rates, `received_weight`, or line totals change (replaces legacy DB trigger — **no Supabase function**):
-
-```text
-goods_purchase = Σ (purchase_price × ordered_quantity)
-goods_bdt      = goods_purchase × product_conversion_rate
-cargo_purchase = received_weight × cargo_rate
-cargo_bdt      = cargo_purchase × cargo_conversion_rate
-
-transaction_rate = (goods_bdt + cargo_bdt) / (goods_purchase + cargo_purchase)
-                   — when denominator > 0; else average of conversion rates
-```
-
-Persist `transaction_rate` on `global_shipments` as a **cached input** for line previews (optional column). Domestic shipments keep `transaction_rate` null.
-
-#### When calculation runs
-
-| When | Action |
-|------|--------|
-| Editing shipment | Live preview column — not written to stock |
-| Stock / shipment list | Join item + header → `landedCost.ts` in repository mapper |
-| Invoice pick | Join + calc for display |
-| **At sale** | Snapshot `unit_cost_price` on `global_invoice_items` — past invoices do not change when rates are edited |
-
-#### Join path for stock reads
-
-```mermaid
-flowchart LR
-  stock[global_stocks]
-  item[global_shipment_items]
-  ship[global_shipments]
-  calc[landedCost.ts]
-  stock --> item --> ship
-  item --> calc
-  ship --> calc
-```
-
-```text
-global_stocks
-  → global_shipment_items (name, codes, prices, weights)
-    → global_shipments (type, rates, received_weight, transaction_rate)
-```
-
-Index `global_stocks.shipment_item_id`.
-
----
-
-### 5.1 Enums and status
-
-| Kind | Name | Values |
-|------|------|--------|
-| Enum | `global_shipment_type` | `domestic`, `international` |
-| Enum | `global_shipment_item_add_method` | `order`, `costing`, `manual` |
-| Text + CHECK | `global_shipments.status` | Workflow statuses (Draft → Ready Stock) — see table below |
-
-`global_shipments.status` is **`text not null default 'Draft'`** with a CHECK constraint on the values below.
-
-> **Redesign target:** collapse to solid `draft` \| `in_transit` \| `received` \| `cancelled`. Mid-ops labels (UK warehouse, airport, Payment Done, …) move to tenant-custom **progress tags** (`shipment_progress`) — [v2/stock/schema.md](./v2/stock/schema.md) · [PROCUREMENT_STOCK_ISSUES.md](./PROCUREMENT_STOCK_ISSUES.md). Live product still uses the table below until cutover.
-
-Based on legacy `SHIPMENT_STATUS_OPTIONS` in `web/src/modules/shipment/types/index.ts`, with the **final receive milestone renamed** for the new stack:
-
-| # | Status | Typical use |
-|---|--------|-------------|
-| 1 | `Draft` | New batch |
-| 2 | `Order Placed` | Supplier order sent |
-| 3 | `Proforma Generated` | Proforma received |
-| 4 | `Payment Done` | Payment cleared |
-| 5 | `Delivery Date Received` | Supplier confirmed delivery |
-| 6 | `Uk Warehouse Delivery Received` | UK hub received (international path) |
-| 7 | `Air Shipment Date Set` | Flight booked |
-| 8 | `Airport Arrival` | Cargo at airport |
-| 9 | `Airport Released` | Customs cleared |
-| 10 | `Warehouse Received` | Goods at parent warehouse — **edit rates, weights, and costs**; run **receive** to split qty into stock by type (see §5.1.1) |
-| 11 | `Ready Stock` | Receive completed — `global_stocks` exist; **allocate**, **global search**, and **invoice** pick enabled (replaces legacy `Added to Inventory`) |
-
-#### 5.1.1 Warehouse Received → Ready Stock workflow
-
-Two statuses gate the inbound-to-sellable path. Behaviour follows the existing shipment details UI (`AdminShipmentDetailsPage`) for rate entry and cost preview.
-
-```mermaid
-stateDiagram-v2
-  direction LR
-  warehouseReceived: Warehouse Received
-  readyStock: Ready Stock
-
-  warehouseReceived --> readyStock: Receive splits qty by stock type
-
-  note right of warehouseReceived
-    Edit rates and weights
-    Live landed-cost preview
-    No sellable pool yet
-  end note
-
-  note right of readyStock
-    Allocate to children
-    Global stock search
-    Invoice pick and qty changes
-  end note
-```
-
-##### While status is `Warehouse Received`
-
-| What | Detail |
-|------|--------|
-| **Who** | Parent admin / staff on `global_shipment` |
-| **`stock_ready`** | `false` — not yet sellable |
-| **Rates & costing inputs** | Edit header fields (`cargo_rate`, `product_conversion_rate`, `cargo_conversion_rate`, `received_weight`, `transaction_rate`, currencies) and line fields (`purchase_price`, weights). **Follow existing shipment details UI** for layout and live BDT preview (`landedCost.ts`). |
-| **Receive action** | Enabled — opens receive dialog (same UX pattern as legacy `receiving_splits`) |
-| **Not allowed yet** | Child allocation, invoice pick, commerce sell from this batch |
-
-##### Receive: split quantity into stock by type
-
-Performed **only** when status is `Warehouse Received`. For each `global_shipment_item`, the user splits `ordered_quantity` across **`global_stock_types`** (e.g. Standard Sellable, Box Less, Box Damage, Expired).
-
-| Input | Output |
-|-------|--------|
-| Shipment line + qty per type | One `global_stocks` row per **(shipment_item_id × stock_type_id × is_usable)** |
-| Sum of splits per line | Must equal line `ordered_quantity` |
-
-On successful receive:
-
-1. `.insert` rows on `global_stocks` (quantity + FKs only — §5.5)
-2. Set `status = 'Ready Stock'`
-3. Set `stock_ready = true`
-
-##### While status is `Ready Stock`
-
-| Capability | Scope | Detail |
-|------------|-------|--------|
-| **Allocate to child** | Parent only | **Allocate Stock** UI writes `global_stock_allocations`. Typically allocate `is_sellable` stock types to sister concerns. |
-| **Global stock search** | Parent + child | Joined stock query with `landedCost.ts` for cost/display. **Parent:** full pool. **Child:** own allocation slices + network search when own slice is empty (same idea as legacy `search_stock_network` — modes `page`, `search`, `invoice`). |
-| **Invoice module** | Child (and parent context) | Pick lines from `global_stocks` where shipment is `Ready Stock` and type is sellable. **Reduce** parent/allocated quantity on sale; **increase** on returns or adjustments per `global_invoice` rules. Snapshot `unit_cost_price` on invoice line at sale (§5.0). |
-
-Rates on the shipment may still be edited after `Ready Stock`; displayed cost recalculates via join — stock rows are not duplicated (§5.0). Physical **quantity** changes on stock come from allocation, invoice sale, and returns — not from re-receiving the same batch.
-
-**Automation rules:**
-
-- Default on create: `Draft`
-- Receive is allowed when status is **`Warehouse Received`** (recommended gate; UI may also require this before opening receive dialog)
-- Receive success → **`Ready Stock`** + `stock_ready = true`
-- **Allocate, global search (sellable pick), and invoice pick** require **`Ready Stock`** + `stock_ready = true`
-- Shipment list filters may include `Warehouse Received` for in-progress batches and `Ready Stock` for sellable batches
-
-> **Legacy mapping:** Old `shipments.status = 'Added to Inventory'` and `inventory_added = true` map to `Ready Stock` + `stock_ready` on `global_shipments`. Legacy `receiving_splits` on `shipment_items` maps to per-type qty on receive into `global_stocks`.
-
-##### Weight Balance Flow (Warehouse Received)
-At the warehouse, the **Cargo Invoice Weight** (saved to `global_shipments.received_weight`) is the actual weight billed by the cargo company and drives weight balance and cargo costing. Physical box weights can be logged in `global_shipment_boxes` for verification only — they do not drive balance or cost.
-
-Upon applying weight balance, the difference between the saved cargo invoice weight and estimated item weight is distributed proportionally across all line items by adjusting `package_weight` only. The updated weights are synchronized with the `products` catalog and saved to `global_shipment_items`. `transaction_rate` is recomputed for international shipments. **`received_weight` is not modified by apply** — it is set only via explicit save on the Weight Balance card. Cargo purchase and transaction rate use `received_weight` when set; otherwise estimated packaging weight from line items is used.
-
-### 5.2 `global_shipments`
-
-| Field | Type | Notes |
-|-------|------|-------|
-| `id` | bigint PK | |
-| `parent_tenant_id` | bigint FK → `tenants` | Owner |
-| `name` | text | Batch identifier |
-| `tenant_shipment_id` | int | Per-parent display sequence |
-| `type` | `global_shipment_type` | Drives cost branch — §5.0 |
-| `status` | text | Workflow CHECK — §5.1 |
-| `vendor_id` | bigint FK → `vendors` | One vendor per shipment (header); create falls back to tenant **default** — [vendor/schema.md](./vendor/schema.md) |
-| `cargo_company_id` | bigint FK → `cargo_companies` nullable | Inbound freight agent; create prefills tenant **default** — [cargo_company/schema.md](./cargo_company/schema.md) |
-| `shipment_purchase_currency_id` | bigint FK → `global_currencies` | Goods currency |
-| `shipment_cost_currency_id` | bigint FK → `global_currencies` | Freight currency |
-| `product_conversion_rate` | numeric | Forced `1.0` when domestic (**D6**) |
-| `cargo_conversion_rate` | numeric | Forced `1.0` when domestic |
-| `cargo_rate` | numeric | Freight per kg — **both** domestic and international |
-| `received_weight` | numeric | Cargo invoice weight (kg); drives weight balance and cargo costing |
-| `received_date` | date nullable | Date when the shipment was received at the warehouse |
-| `transaction_rate` | numeric nullable | International only; frontend-computed cache |
-| `stock_ready` | boolean | `true` when status is `Ready Stock` — parent pool is sellable |
-| `created_at`, `updated_at` | timestamptz | |
-
-### 5.3 `global_shipment_items`
-
-| Field | Type | Notes |
-|-------|------|-------|
-| `id` | bigint PK | |
-| `shipment_id` | bigint FK → `global_shipments` | |
-| `product_id` | bigint FK → `products` nullable | |
-| `vendor_id` | bigint FK → `vendors` nullable | Supplier |
-| `name` | text | Snapshot at purchase |
-| `ordered_quantity` | int | |
-| `image_url` | text | |
-| `add_method` | `global_shipment_item_add_method` | |
-| `purchase_price` | numeric | In purchase currency |
-| `product_weight` | numeric | Grams |
-| `package_weight` | numeric | Grams |
-| `barcode`, `product_code` | text | |
-| `source_child_tenant_id` | bigint FK nullable | |
-| `source_type`, `source_id` | text / bigint nullable | Procurement trace |
-
-No `calculated_landed_cost` column — §5.0.
-
-### 5.4 `global_stock_types`
-
-| Field | Type | Notes |
-|-------|------|-------|
-| `id` | bigint PK | |
-| `parent_tenant_id` | bigint FK | |
-| `description` | text | |
-| `is_sellable` | boolean | Gates invoice/commerce pick |
-| `sort_order` | int | |
-
-**Default seed:** Standard Sellable, Box Less, Box Damage, Expired, Reserved (sellable); Stolen (not sellable).
-
-### 5.5 `global_stocks`
-
-Quantity pool only — **no cost or display denormalization**.
-
-| Field | Type | Notes |
-|-------|------|-------|
-| `id` | bigint PK | |
-| `parent_tenant_id` | bigint FK | |
-| `shipment_item_id` | bigint FK → `global_shipment_items` | Join for cost + display |
-| `stock_type_id` | bigint FK → `global_stock_types` | |
-| `quantity` | int | ≥ 0 |
-| `is_usable` | boolean | |
-| `created_at`, `updated_at` | timestamptz | |
-
-One row = shipment line × stock type × usable flag.
-
-### 5.6 `global_stock_allocations`
-
-| Field | Type | Notes |
-|-------|------|-------|
-| `id` | bigint PK | |
-| `parent_tenant_id` | bigint FK | |
-| `child_tenant_id` | bigint FK | |
-| `stock_id` | bigint FK → `global_stocks` | |
-| `quantity` | int | ≤ parent pool qty |
-| `created_at`, `updated_at` | timestamptz | |
-
-### 5.7 `global_shipment_boxes`
-
-| Field | Type | Notes |
-|-------|------|-------|
-| `id` | bigint PK | |
-| `parent_tenant_id` | bigint FK → `tenants` | Denormalized for RLS |
-| `shipment_id` | bigint FK → `global_shipments` ON DELETE CASCADE | |
-| `box_number` | text | Unique per shipment |
-| `weight_kg` | numeric | ≥ 0 |
-| `created_at`, `updated_at` | timestamptz | |
-
----
-
-## 6. Data access catalog (phase 1)
-
-Direct Supabase client + RLS. **No costing RPCs or triggers.**
-
-| Operation | Approach |
-|-----------|----------|
-| Shipment CRUD | `.insert` / `.update` / `.delete` on `global_shipments`, `global_shipment_items` |
-| Receive (Warehouse Received → Ready Stock) | Split each line qty by `global_stock_types`; `.insert` on `global_stocks`; set `Ready Stock` + `stock_ready = true` |
-| List / search stock | `.select` with nested join; map cost via `landedCost.ts`; **Ready Stock** rows only for sellable pick |
-| Global search | Parent: full `Ready Stock` pool. Child: allocations + network pick (`page` / `search` / `invoice` modes) |
-| Allocate | `.insert` / `.update` / `.delete` on `global_stock_allocations` — **Ready Stock** + sellable types |
-| Invoice consumption | Pick `global_stocks`; decrement qty on sale; increment on return — shipment must be `Ready Stock` |
-| `transaction_rate` (intl) | Recompute in frontend on header/line change; optional `.update` on shipment row |
-
-Optional later: pagination-only RPCs. **Excluded:** `recalculate_*` DB functions.
-
----
-
-## 7. Permissions
-
-| module_key | superadmin | admin | staff | viewer |
-|------------|------------|-------|-------|--------|
-| `global_shipment` | view | view | view | — |
-| `global_stock` | view | view | view | — |
-| `inventory` | view | view | view | — |
-
-Parent: CRUD via client + RLS. Child: read allocations + joined stock.
-
----
-
-## 8. UI surfaces
-
-| Surface | Path | Module key |
-|---------|------|------------|
-| Inbound Shipment list | `/:slug/app/procurement/shipment` | `global_shipment` |
-| Shipment details (rates + receive) | `/:slug/app/procurement/shipment/:id` | `global_shipment` |
-| Warehouse Stock list | `/:slug/app/procurement/stock` | `global_stock` |
-| Allocate to children | `/:slug/app/procurement/stock/allocate` | `global_stock` |
-| Tenant Stock | `/:slug/app/procurement/tenant-stock` | `inventory` |
-| Sidebar | **Procurement & Stock** group | `procurement_stock` |
-
-**UI reuse:** `AdminShipmentDetailsPage` — rates, live cost preview, and receive-by-type dialog at **`Warehouse Received`**. `GlobalStockPage` — list, allocate, global search. New repositories only; no legacy `shipments` / `stocks` tables.
-
----
-
-## 9. Procurement inputs
-
-| Source | `add_method` | Approach |
-|--------|--------------|----------|
-| `order_items` | `order` | Insert `global_shipment_items` |
-| `product_based_costing_items` | `costing` | Same |
-
-Commerce does not create inbound lines (**D2**).
-
----
-
-## 10. Downstream consumers
-
-| Module | Integration |
-|--------|-------------|
-| `global_invoice` | Pick `global_stocks` from **`Ready Stock`** shipments only; join + `landedCost.ts` for display; **reduce** stock qty on sale, **increase** on return; snapshot `unit_cost_price` **at sale only** |
-| `commerce_shop` | Sell from parent **`Ready Stock`** pool; snapshot at line |
-| `reporting_treasury` | Shipment P&L via join + `landedCost.ts` — see [REPORTING_TREASURY.md](REPORTING_TREASURY.md) |
-| `inventory` | Child allocations + joined **`Ready Stock`** rows via global search |
-
----
-
-## 11. Implementation progress
-
-Master implementation plan: [IMPLEMENTATION_ORDER.md](./IMPLEMENTATION_ORDER.md)
-
-Phases 1–10 (legacy tracker) done. Current track: **complete** (W9 return inbound shipped).
-
-### Done
-
-| Phase | Deliverable | Status |
-|-------|-------------|--------|
-| **1–10** | Initial procurement UI + schema (see rows below) | Done |
-| **7A–14B** | One vendor/shipment, cost stamp, assign, ATP, movements, pay/settle | Done |
-| **W1–W6** | Movements UX, receive checklist, grain cutover, allocation retirement | Done |
-| **T1** | Tag catalog `stock_grade` + `color` seeds | Done |
-| **W7a–c** | `grade_tag_id` grain; receive posts `standard`; movements change grade; warehouse list shows grade | Done |
-| **W8** | Shipment-first warehouse organize UI | Done |
-| **W9** | Sales/shop return → `return_inbound` (grade + availability) | Done |
-
-### Remaining
-
-None on this track. Deferred items stay in [IMPLEMENTATION_ORDER.md](./IMPLEMENTATION_ORDER.md) Later.
-
-### Out of scope (separate tracks)
-
-| Track | Deliverable | Status |
-|-------|-------------|--------|
-| Desk / shop deduct | Invoice post + shop checkout decrement `global_stock_id` | Live |
-| Order / draft holds | ATP subtract only — not warehouse `held` | Locked |
-| Downstream rename | `global_invoices*` → `sales_invoices*` | See sales_invoice issues |
-
----
-
-## 12. Code references
-
-| Area | Path |
-|------|------|
-| Legacy costing (international basis) | `web/src/modules/shipment/utils/costing.ts` |
-| Landed cost (target) | `web/src/modules/procurement_stock/utils/landedCost.ts` |
-| Shipment type helpers | `web/src/modules/shipment/utils/shipmentType.ts` |
-| Legacy shipment UI | `web/src/modules/shipment/` |
-| Legacy stock UI | `web/src/modules/global/pages/GlobalStockPage.vue` |
-| Module registry | `web/src/modules/navigation/moduleRegistry.ts` |
-
----
-
-## 13. Locked decisions (this domain)
-
-| # | Topic | Decision |
-|---|-------|----------|
-| D1 | Write model | §16 tables only; no dual-write |
-| D2 | Commerce inbound | No inbound shipments from commerce |
-| D6 | Domestic | FX rates forced to 1.0; **cargo_rate still applies** |
-| D7 | Cost at sale | Join + frontend calc; snapshot on **invoice line at sale only** |
-| D-PS1 | Tables | Drop-recreate; no migration |
-| D-PS2 | Parent module | `procurement_stock` + shipment / stock / inventory submodules |
-| D-PS3 | Allocation | **Live:** qty rows in `global_stock_allocations`. **Target (v2):** assign **shipment → child** for listing only; sell from **shared parent ATP**; no soft allocation qty — [v2/stock/schema.md](./v2/stock/schema.md) · [PROCUREMENT_STOCK_ISSUES.md](./PROCUREMENT_STOCK_ISSUES.md) |
-| D-PS4 | Routes | `/app/procurement/*` |
-| D-PS5 | Status | **Live:** Draft → Ready Stock checklist (§5.1). **Target (v2):** solid `draft` \| `in_transit` \| `received` \| `cancelled`; customer progress via tags group `shipment_progress` — [v2/stock/schema.md](./v2/stock/schema.md) · [PROCUREMENT_STOCK_ISSUES.md](./PROCUREMENT_STOCK_ISSUES.md) |
-| D-PS10 | Receive split | Qty per line split across `global_stock_types` into `global_stocks` rows |
-| D-PS11 | Sellable gate | Allocate, global search pick, and invoice only when `Ready Stock` + `stock_ready` (**live**). **Target:** sellable when `status = received` + `inventory_added` |
-| D-PS6 | Costing | **Live:** hardcoded `landedCost.ts` (frontend). **Target (v2):** `global_shipment_cost_entries` + server stamp `landed_cost_bdt` — [v2/shipment/schema.md](./v2/shipment/schema.md) |
-| D-PS7 | Stock shape | Quantity + FKs only; no cost/display copies on `global_stocks` |
-| D-PS8 | Formula | **No** tenant formula builder — essential input UI on shipment only |
-| D-PS9 | Domestic vs intl | **Same formula structure**; domestic uses `effective_rate = 1`; international follows legacy `costing.ts`. **Target types:** solid enum incl. `transfer` — progress labels are tags, not types ([v2/shipment/schema.md](./v2/shipment/schema.md)) |
-| D-PS12 | Vendor scoping | **Live:** line-level `vendor_id` on items. **Target (v2):** **one vendor per shipment** on header (`shipments.vendor_id`); multi-vendor lines are not the product rule — [shipment/schema.md](./shipment/schema.md) · [vendor/schema.md](./vendor/schema.md) |
-| D-PS13 | Weight balance | Package-weight-only distribution of weight delta; no audit trail v1 |
-| D-PS14 | Received weight | `received_weight` is the cargo invoice weight; set only via explicit save on the Weight Balance card (never overwritten by apply); box weights are verification-only |
-| D-PS15 | Money handoff | Cost entries ≠ cash. Wallets on **tenant + vendor / cargo_company** only; shipment = `source_*`. Optional posts; store-credit returns credit vendor wallet (no tenant cash). See [cargo_company/schema.md](./cargo_company/schema.md) · [PROCUREMENT_STOCK_ISSUES.md](./PROCUREMENT_STOCK_ISSUES.md) §3 |
-| D-PS16 | Shop qty display | Real ATP from assigned shipment’s parent stock **or** dummy via `display_quantity_override`. Checkout always uses real ATP — [v2/stock/schema.md](./v2/stock/schema.md) · [PROCUREMENT_STOCK_ISSUES.md](./PROCUREMENT_STOCK_ISSUES.md) |
-| D-PS17 | Cargo company default | Per parent tenant: `code = 'DEFAULT'`, `is_default = true`, via `ensure_default_cargo_company` (mirror vendor). Shipment create prefills / draft RPC falls back when `cargo_company_id` omitted — [cargo_company/](./cargo_company/) |
-
+## 5. Query Keys & Server State
+
+Server state keys are centralized in [`procurementStockQueryKeys.ts`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/shared/queryKeys/procurementStockQueryKeys.ts):
+
+* `procurementStockQueryKeys.shipments(tenantId)` $\rightarrow$ `['procurementStock', 'shipments', { tenantId }]`
+* `procurementStockQueryKeys.shipmentOverview(shipmentId)` $\rightarrow$ `['procurementStock', 'shipmentOverview', { shipmentId }]`
+* `procurementStockQueryKeys.allocatableStockList(params)` $\rightarrow$ `['procurementStock', 'allocatableStockList', params]`
+* `procurementStockQueryKeys.stockLocations(tenantId)` $\rightarrow$ `['procurementStock', 'stockLocations', { tenantId }]`
+* `procurementStockQueryKeys.cargoCompanies(tenantId)` $\rightarrow$ `['procurementStock', 'cargoCompanies', { tenantId }]`
+* `procurementStockQueryKeys.childStockAtp(params)` $\rightarrow$ `['procurementStock', 'childStockAtp', params]`
