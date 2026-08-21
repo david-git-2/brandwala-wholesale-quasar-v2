@@ -34,33 +34,33 @@ flowchart LR
 
 ---
 
-## 3. Canonical Module Index (`doc_v2/`)
+## 3. Canonical Module Index (`doc/`)
 
 All domain specifications, page matrices, and engine algorithms are maintained across these 17 canonical documents:
 
 ### Core Governance & Infrastructure
-* [`doc_v2/tenant_auth/TENANT_AUTH.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc_v2/tenant_auth/TENANT_AUTH.md): Multi-tenancy, 4 application scopes (`app`, `shop`, `investor`, `superadmin`), OAuth lifecycle, and RBAC action permissions.
-* [`doc_v2/global_reference/GLOBAL_REFERENCE.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc_v2/global_reference/GLOBAL_REFERENCE.md): Platform currencies, markets, payment methods, units of measure, and country registries.
-* [`doc_v2/tag/TAG.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc_v2/tag/TAG.md): Universal taxonomy dictionary, stock grading presets, color swatches, and classification rules.
-* [`doc_v2/trash/TRASH.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc_v2/trash/TRASH.md): Tenant-scoped soft-deletion, `trash_entries` directory index, 30-day retention policies.
-* [`doc_v2/dashboard/DASHBOARD.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc_v2/dashboard/DASHBOARD.md): Decentralized widget slot registry, permission-gated home surfaces, and shop glance KPI panels.
+* [`doc/tenant_auth/TENANT_AUTH.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/tenant_auth/TENANT_AUTH.md): Multi-tenancy, 4 application scopes (`app`, `shop`, `investor`, `superadmin`), OAuth lifecycle, and RBAC action permissions.
+* [`doc/global_reference/GLOBAL_REFERENCE.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/global_reference/GLOBAL_REFERENCE.md): Platform currencies, markets, payment methods, units of measure, and country registries.
+* [`doc/tag/TAG.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/tag/TAG.md): Universal taxonomy dictionary, stock grading presets, color swatches, and classification rules.
+* [`doc/trash/TRASH.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/trash/TRASH.md): Tenant-scoped soft-deletion, `trash_entries` directory index, 30-day retention policies.
+* [`doc/dashboard/DASHBOARD.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/dashboard/DASHBOARD.md): Decentralized widget slot registry, permission-gated home surfaces, and shop glance KPI panels.
 
 ### Procurement & Warehouse Operations
-* [`doc_v2/procurement_stock/PROCUREMENT_STOCK.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc_v2/procurement_stock/PROCUREMENT_STOCK.md): International shipment intake, 4-tier bin location hierarchy, stock movements, and Landed Cost Engine (`shipment_engine`).
-* [`doc_v2/products/PRODUCTS.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc_v2/products/PRODUCTS.md): Master merchandise catalog, brand/category taxonomies, and the Price Check (PC) Excel bulk import pipeline.
-* [`doc_v2/product_based_costing/PBC_COSTING.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc_v2/product_based_costing/PBC_COSTING.md): Pre-order costing files, customer demand backlog auto-suggest drawer, and parent shipment handoff.
+* [`doc/procurement_stock/PROCUREMENT_STOCK.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/procurement_stock/PROCUREMENT_STOCK.md): International shipment intake, 4-tier bin location hierarchy, stock movements, and Landed Cost Engine (`shipment_engine`).
+* [`doc/products/PRODUCTS.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/products/PRODUCTS.md): Master merchandise catalog, brand/category taxonomies, and the Price Check (PC) Excel bulk import pipeline.
+* [`doc/product_based_costing/PBC_COSTING.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/product_based_costing/PBC_COSTING.md): Pre-order costing files, customer demand backlog auto-suggest drawer, and parent shipment handoff.
 
 ### Commercial Sales & Customer Desks
-* [`doc_v2/sales_invoice/SALES_INVOICE.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc_v2/sales_invoice/SALES_INVOICE.md): Wholesale POS invoicing desk, FIFO stock allocation search engine, and return restocking calculations.
-* [`doc_v2/customer/CUSTOMER.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc_v2/customer/CUSTOMER.md): Customer billing profiles, credit limits, delivery addresses, and customer group membership.
-* [`doc_v2/shop_order/SHOP_ORDER.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc_v2/shop_order/SHOP_ORDER.md): B2B storefront commerce (`shop` scope) and Dropship Reseller Desk (`app` scope) with the 3-step Dropship Finance Hub.
+* [`doc/sales_invoice/SALES_INVOICE.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/sales_invoice/SALES_INVOICE.md): Wholesale POS invoicing desk, FIFO stock allocation search engine, and return restocking calculations.
+* [`doc/customer/CUSTOMER.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/customer/CUSTOMER.md): Customer billing profiles, credit limits, delivery addresses, and customer group membership.
+* [`doc/shop_order/SHOP_ORDER.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/shop_order/SHOP_ORDER.md): B2B storefront commerce (`shop` scope) and Dropship Reseller Desk (`app` scope) with the 3-step Dropship Finance Hub.
 
 ### Financial Management & Capital
-* [`doc_v2/wallet/WALLET.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc_v2/wallet/WALLET.md): Universal multi-currency double-entry ledger, entity wallet statements, and atomic transfers.
-* [`doc_v2/reporting_treasury/REPORTING_TREASURY.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc_v2/reporting_treasury/REPORTING_TREASURY.md): Read-side invoice gross margins, shipment P&L shrinkage audits, AR allocations, and Courier Bulk Remittance reconciliation.
-* [`doc_v2/investor_capital/INVESTOR_CAPITAL.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc_v2/investor_capital/INVESTOR_CAPITAL.md): External partner capital pools, shipment batch cost-sharing allocations, and read-side yield calculation.
+* [`doc/wallet/WALLET.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/wallet/WALLET.md): Universal multi-currency double-entry ledger, entity wallet statements, and atomic transfers.
+* [`doc/reporting_treasury/REPORTING_TREASURY.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/reporting_treasury/REPORTING_TREASURY.md): Read-side invoice gross margins, shipment P&L shrinkage audits, AR allocations, and Courier Bulk Remittance reconciliation.
+* [`doc/investor_capital/INVESTOR_CAPITAL.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/investor_capital/INVESTOR_CAPITAL.md): External partner capital pools, shipment batch cost-sharing allocations, and read-side yield calculation.
 
 ### Specialized Verticals & Collaboration
-* [`doc_v2/thrift/THRIFT.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc_v2/thrift/THRIFT.md): Complete second-hand vertical: consignment shipments, thermal barcode generation, garment measurements, POS desk, and returns.
-* [`doc_v2/koba/KOBA.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc_v2/koba/KOBA.md): Cross-border UK catalog scraping, custom retail markups, commission sharing, and customer address CRM.
-* [`doc_v2/tasks/TASKS.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc_v2/tasks/TASKS.md): Internal task tracking, subtask nesting, assignee multi-casting, comments, and audit logs.
+* [`doc/thrift/THRIFT.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/thrift/THRIFT.md): Complete second-hand vertical: consignment shipments, thermal barcode generation, garment measurements, POS desk, and returns.
+* [`doc/koba/KOBA.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/koba/KOBA.md): Cross-border UK catalog scraping, custom retail markups, commission sharing, and customer address CRM.
+* [`doc/tasks/TASKS.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/tasks/TASKS.md): Internal task tracking, subtask nesting, assignee multi-casting, comments, and audit logs.
