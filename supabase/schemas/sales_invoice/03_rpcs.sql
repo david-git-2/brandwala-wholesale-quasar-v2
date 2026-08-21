@@ -1554,16 +1554,17 @@ $$;
 ALTER FUNCTION "public"."list_billing_balances"("p_tenant_id" bigint, "p_search" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_global_invoice_items"("p_invoice_id" bigint) RETURNS TABLE("id" bigint, "invoice_id" bigint, "global_stock_id" bigint, "name_snapshot" "text", "quantity" numeric, "sell_price_amount" numeric, "recipient_price_amount" numeric, "line_face_total_amount" numeric, "line_discount_amount" numeric, "line_total_amount" numeric, "return_quantity" numeric, "image_url" "text", "shipment_id" bigint, "shipment_item_id" bigint, "purchase_price" numeric, "product_weight" numeric, "package_weight" numeric, "ordered_quantity" integer, "shipment_type" "text", "product_conversion_rate" numeric, "cargo_conversion_rate" numeric, "cargo_rate" numeric, "received_weight" numeric, "transaction_rate" numeric)
+CREATE OR REPLACE FUNCTION "public"."list_global_invoice_items"("p_invoice_id" bigint) RETURNS TABLE("id" bigint, "invoice_id" bigint, "global_stock_id" bigint, "name_snapshot" "text", "quantity" numeric, "sell_price_amount" numeric, "recipient_price_amount" numeric, "line_face_total_amount" numeric, "line_discount_amount" numeric, "line_total_amount" numeric, "return_quantity" numeric, "image_url" "text", "shipment_id" bigint, "shipment_item_id" bigint, "purchase_price" numeric, "product_weight" numeric, "package_weight" numeric, "ordered_quantity" integer, "shipment_type" "text", "product_conversion_rate" numeric, "cargo_conversion_rate" numeric, "cargo_rate" numeric, "received_weight" numeric, "transaction_rate" numeric, "available_atp" numeric, "unit_cost_price" numeric)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
 declare
   v_parent_tenant_id bigint;
   v_issued_by bigint;
+  v_invoice_status public.global_invoice_status;
 begin
-  select parent_tenant_id, issued_by_tenant_id
-  into v_parent_tenant_id, v_issued_by
+  select parent_tenant_id, issued_by_tenant_id, invoice_status
+  into v_parent_tenant_id, v_issued_by, v_invoice_status
   from public.sales_invoices
   where public.sales_invoices.id = p_invoice_id;
 
@@ -1604,7 +1605,15 @@ begin
     null::numeric as cargo_conversion_rate,
     null::numeric as cargo_rate,
     gship.received_weight,
-    null::numeric as transaction_rate
+    null::numeric as transaction_rate,
+    case
+      when gii.global_stock_id is null then 0::numeric
+      -- For draft invoices, ATP available to this line includes warehouse stock + current draft qty
+      when v_invoice_status in ('draft'::public.global_invoice_status, 'proforma_generated'::public.global_invoice_status)
+        then (coalesce(public.global_stock_atp_qty(gii.global_stock_id), gs.quantity, 0) + gii.quantity)::numeric
+      else (coalesce(public.global_stock_atp_qty(gii.global_stock_id), gs.quantity, 0))::numeric
+    end as available_atp,
+    coalesce(gii.unit_cost_price, gsi.landed_cost_bdt, gsi.purchase_price, 0)::numeric as unit_cost_price
   from public.sales_invoice_items gii
   left join public.global_stocks gs on gs.id = gii.global_stock_id
   left join public.global_shipment_items gsi

@@ -92,6 +92,7 @@ export type GlobalInvoiceItemRow = {
   unit_cost_price?: number | null;
   costing?: GlobalStockCostingInput | null;
   return_quantity: number;
+  available_atp?: number | null;
   image_url?: string | null | undefined;
 };
 

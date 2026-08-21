@@ -430,15 +430,18 @@
                     <div style="white-space: normal; word-break: break-word; min-width: 150px; max-width: 300px;">{{ row.name_snapshot }}</div>
                   </td>
                   <td class="text-right">
-                    <span
-                      class="text-weight-bold"
-                      :class="{
-                        'cursor-pointer text-underline-dashed text-primary': canEditDraft,
-                      }"
-                    >
-                      {{ row.quantity }}
-                      <q-icon name="ph ph-pencil-simple" size="10px" class="q-ml-xs text-grey-5" v-if="canEditDraft" />
-                    </span>
+                    <div class="row items-center justify-end no-wrap">
+                      <span
+                        class="text-weight-bold"
+                        :class="{
+                          'cursor-pointer text-underline-dashed text-primary': canEditDraft,
+                          'text-strike text-grey-6': row.return_quantity > 0 && (row.quantity - row.return_quantity) <= 0,
+                        }"
+                      >
+                        {{ row.quantity }}
+                        <q-icon name="ph ph-pencil-simple" size="10px" class="q-ml-xs text-grey-5" v-if="canEditDraft" />
+                      </span>
+                    </div>
                     <q-popup-edit
                       v-if="canEditDraft"
                       :model-value="row.quantity"
@@ -463,9 +466,14 @@
                     </q-popup-edit>
                     <div
                       v-if="row.return_quantity > 0"
-                      class="text-caption text-orange text-weight-bold"
+                      class="q-mt-xs"
                     >
-                      Returned: {{ row.return_quantity }}
+                      <q-badge color="purple-1" text-color="purple-9" class="text-weight-bold text-caption q-px-xs">
+                        Returned: {{ row.return_quantity }}
+                      </q-badge>
+                      <div class="text-caption text-grey-7 text-weight-medium q-mt-xs">
+                        Retained: {{ row.quantity - row.return_quantity }}
+                      </div>
                     </div>
                   </td>
                   <td v-if="isParentTenant" class="text-right text-grey-7">
@@ -505,7 +513,17 @@
                   </td>
 
                   <td class="text-right text-weight-bold">
-                    {{ formatAmount(row.line_total_amount) }}
+                    <template v-if="row.return_quantity > 0">
+                      <div class="text-caption text-grey-6 text-strike">
+                        {{ formatAmount(row.quantity * row.sell_price_amount - (row.line_discount_amount || 0)) }}
+                      </div>
+                      <div class="text-weight-bold text-purple-9">
+                        {{ formatAmount(row.line_total_amount) }}
+                      </div>
+                    </template>
+                    <template v-else>
+                      {{ formatAmount(row.line_total_amount) }}
+                    </template>
                   </td>
                   <td v-if="isParentTenant && invoice.invoice_status === 'issued'" class="text-right text-positive">
                     {{ formatAmount(lineMarginForRow(row)) }}
@@ -561,6 +579,44 @@
             >
               View full note
             </div>
+          </q-card>
+
+          <!-- Return History Card -->
+          <q-card v-if="returnHistory.length > 0" flat class="floating-surface shadow-1 q-pa-md">
+            <div class="row items-center justify-between no-wrap q-mb-sm">
+              <div class="row items-center q-gutter-xs">
+                <q-icon name="ph ph-arrow-u-down-left" color="purple-9" size="18px" />
+                <span class="text-subtitle2 text-weight-bold text-grey-9">Return Activity History ({{ returnHistory.length }})</span>
+              </div>
+              <q-badge color="purple-1" text-color="purple-9" class="text-weight-bold">
+                Total Returned: {{ totalReturnQuantity }} units
+              </q-badge>
+            </div>
+            
+            <q-separator class="q-my-xs" />
+
+            <q-list dense class="q-py-xs">
+              <q-item v-for="ret in returnHistory" :key="ret.id" class="q-px-none q-py-sm border-bottom">
+                <q-item-section avatar top style="min-width: 32px">
+                  <q-avatar size="28px" color="purple-1" text-color="purple-9" icon="ph ph-package" />
+                </q-item-section>
+                <q-item-section>
+                  <div class="row items-center justify-between">
+                    <span class="text-body2 text-weight-bold text-grey-9">
+                      {{ getItemNameForReturn(ret.invoice_item_id) }}
+                    </span>
+                    <span class="text-caption text-weight-bolder text-purple-9">
+                      -{{ ret.quantity }} units
+                    </span>
+                  </div>
+                  <div class="text-caption text-grey-6 row items-center q-gutter-xs q-mt-xs">
+                    <span>Date: {{ formatReturnDate(ret.created_at) }}</span>
+                    <span v-if="ret.note">•</span>
+                    <span v-if="ret.note" class="italic">Reason: "{{ ret.note }}"</span>
+                  </div>
+                </q-item-section>
+              </q-item>
+            </q-list>
           </q-card>
         </div>
 
@@ -944,15 +1000,33 @@
 
           <!-- Totals Breakdown Card -->
           <q-card flat class="floating-surface shadow-1 q-pa-md q-gutter-y-xs">
-            <div class="row justify-between text-body2">
-              <span>Subtotal</span><span>{{ formatAmount(invoice.subtotal_amount) }}</span>
+            <template v-if="totalReturnQuantity > 0">
+              <div class="row justify-between text-body2 text-grey-8">
+                <span>Gross Subtotal</span>
+                <span>{{ formatAmount(originalGrossSubtotal) }}</span>
+              </div>
+              <div class="row justify-between text-body2 text-purple-9 text-weight-bold">
+                <span>Less Returns & Adjustments</span>
+                <span>-{{ formatAmount(totalReturnDeduction) }}</span>
+              </div>
+              <q-separator class="q-my-xs" />
+            </template>
+            <div class="row justify-between text-body2" :class="{ 'text-weight-bold': totalReturnQuantity > 0 }">
+              <span>{{ totalReturnQuantity > 0 ? 'Net Subtotal' : 'Subtotal' }}</span>
+              <span>{{ formatAmount(invoice.subtotal_amount) }}</span>
             </div>
 
             <div class="row justify-between text-body2 text-grey-8">
               <span>Total Cost</span><span>{{ formatAmount(totalCost) }}</span>
             </div>
             <div class="row justify-between text-body2 text-grey-8">
-              <span>Total Qty</span><span>{{ totalQuantity }}</span>
+              <span>Total Qty</span>
+              <span>
+                {{ totalQuantity }}
+                <span v-if="totalReturnQuantity > 0" class="text-caption text-purple-9 q-ml-xs">
+                  (-{{ totalReturnQuantity }} returned)
+                </span>
+              </span>
             </div>
             <q-separator class="q-my-xs" />
             <div
@@ -1694,7 +1768,11 @@ const targetPreviewing = ref(false);
 const applyingTarget = ref(false);
 let targetDebounce: ReturnType<typeof setTimeout> | null = null;
 
-const showPreview = true;
+const showPreview = computed(() => {
+  if (!invoice.value) return false;
+  // Proforma or Issued invoices can be previewed/printed
+  return invoice.value.invoice_status === 'proforma_generated' || invoice.value.invoice_status === 'issued';
+});
 const showPayments = true;
 const showReturns = true;
 const showSidebar = ref(true);
@@ -1744,6 +1822,21 @@ const returnItemOptions = computed(() =>
 
 const formatAmount = (value: number) => formatAmountBdt(value);
 
+const getItemNameForReturn = (invoiceItemId: number) => {
+  const item = items.value.find((i) => i.id === invoiceItemId);
+  return item?.name_snapshot || `Item #${invoiceItemId}`;
+};
+
+const formatReturnDate = (dateStr: string) => {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr);
+  return Number.isNaN(d.getTime()) ? dateStr : d.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+};
+
 const formatItemUnitCost = (row: GlobalInvoiceItemRow) => {
   const unitCost = getItemUnitCost(row);
   return unitCost == null ? '—' : formatAmount(unitCost);
@@ -1757,11 +1850,31 @@ const lineMarginForRow = (row: GlobalInvoiceItemRow) =>
     line_discount_amount: row.line_discount_amount,
   });
 
+const returnHistory = ref<any[]>([]);
+
+const totalReturnQuantity = computed(() => {
+  return items.value.reduce((sum, row) => sum + (row.return_quantity || 0), 0);
+});
+
+const originalGrossSubtotal = computed(() => {
+  return items.value.reduce(
+    (sum, row) => sum + (row.quantity * row.sell_price_amount - (row.line_discount_amount || 0)),
+    0,
+  );
+});
+
+const totalReturnDeduction = computed(() => {
+  return items.value.reduce(
+    (sum, row) => sum + ((row.return_quantity || 0) * row.sell_price_amount),
+    0,
+  );
+});
+
 const totalCost = computed(() => {
-  return items.value.reduce((sum, row) => sum + (getItemUnitCost(row) ?? 0) * row.quantity, 0);
+  return items.value.reduce((sum, row) => sum + (getItemUnitCost(row) ?? 0) * (row.quantity - (row.return_quantity || 0)), 0);
 });
 const totalQuantity = computed(() => {
-  return items.value.reduce((sum, row) => sum + row.quantity, 0);
+  return items.value.reduce((sum, row) => sum + (row.quantity - (row.return_quantity || 0)), 0);
 });
 const estimatedProfit = computed(() => {
   if (!invoice.value) return 0;
@@ -1779,6 +1892,7 @@ const estimatedProfit = computed(() => {
     items.value.map((row) => ({
       ...row,
       id: row.id,
+      quantity: row.quantity - (row.return_quantity || 0),
       unit_cost_price: getItemUnitCost(row) ?? 0,
     })),
   );
@@ -1796,12 +1910,14 @@ const loadInvoice = async () => {
   loading.value = true;
   error.value = null;
   try {
-    const [inv, invItems] = await Promise.all([
+    const [inv, invItems, retItems] = await Promise.all([
       invoiceRepository.getGlobalInvoiceById(invoiceId.value),
       invoiceRepository.listGlobalInvoiceItems(invoiceId.value),
+      invoiceRepository.listSalesReturnItems(invoiceId.value).catch(() => []),
     ]);
     invoice.value = inv;
     items.value = invItems;
+    returnHistory.value = retItems;
     await resolveItemUnitCosts(invItems);
     await loadLinkedOrderRemittance(inv);
 

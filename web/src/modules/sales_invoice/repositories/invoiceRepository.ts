@@ -235,6 +235,8 @@ const mapListGlobalInvoiceItemRow = (row: any): GlobalInvoiceItemRow => {
     line_discount_amount: Number(row.line_discount_amount),
     line_total_amount: Number(row.line_total_amount),
     return_quantity: Number(row.return_quantity),
+    available_atp: row.available_atp == null ? null : Number(row.available_atp),
+    unit_cost_price: row.unit_cost_price == null ? null : Number(row.unit_cost_price),
     costing,
     image_url: row.image_url || null,
   };
@@ -638,6 +640,37 @@ const searchSalesInvoiceStock = async (params: {
   return (data || []) as SalesInvoiceStockItem[];
 };
 
+export type SalesReturnItemRow = {
+  id: number;
+  invoice_id: number;
+  invoice_item_id: number;
+  global_stock_id: number;
+  quantity: number;
+  return_charge_amount: number;
+  note: string | null;
+  created_at: string;
+};
+
+const listSalesReturnItems = async (invoiceId: number): Promise<SalesReturnItemRow[]> => {
+  const { data, error } = await supabase
+    .from('sales_return_items')
+    .select('id, invoice_id, invoice_item_id, global_stock_id, quantity, return_charge_amount, note, created_at')
+    .eq('invoice_id', invoiceId)
+    .order('id', { ascending: false });
+
+  if (error) throw error;
+  return ((data as any[]) || []).map((row) => ({
+    id: Number(row.id),
+    invoice_id: Number(row.invoice_id),
+    invoice_item_id: Number(row.invoice_item_id),
+    global_stock_id: Number(row.global_stock_id),
+    quantity: Number(row.quantity),
+    return_charge_amount: Number(row.return_charge_amount || 0),
+    note: row.note || null,
+    created_at: row.created_at,
+  }));
+};
+
 const processWholesaleInvoiceReturn = async (payload: {
   invoice_id: number;
   items: Array<{
@@ -680,6 +713,7 @@ export const invoiceRepository = {
   applySettlementDiscount,
   createMiddleManPayout,
   addGlobalReturnItem,
+  listSalesReturnItems,
   processWholesaleInvoiceReturn,
   getGlobalInvoicesPaidAmounts,
   removeGlobalInvoiceItem,

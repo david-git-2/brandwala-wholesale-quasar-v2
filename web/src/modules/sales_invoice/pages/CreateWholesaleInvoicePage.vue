@@ -9,9 +9,9 @@
         </div>
 
         <div class="row items-center q-gutter-sm">
-          <!-- Preview Proforma Button -->
+          <!-- Preview Proforma Button: Only shown when status is proforma_generated -->
           <q-btn
-            v-if="existingInvoiceId"
+            v-if="existingInvoiceId && loadedInvoiceStatus === 'proforma_generated'"
             outline
             color="primary"
             icon="ph ph-printer"
@@ -702,7 +702,7 @@ const loadExistingInvoice = async () => {
         product_code: null,
         image_url: item.image_url ?? null,
         quantity: Number(item.quantity),
-        available_atp: Number(item.quantity),
+        available_atp: item.available_atp != null ? Number(item.available_atp) : Number(item.quantity),
         unit_cost_price: Number(item.unit_cost_price ?? 0),
         sell_price_amount: Number(item.sell_price_amount),
         line_discount_amount: Number(item.line_discount_amount),

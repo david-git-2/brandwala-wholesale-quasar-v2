@@ -64,6 +64,11 @@ flowchart TD
   * **Rank 1**: Items in general warehouse pool (`assigned_child_tenant_id IS NULL`).
   * **Rank 2**: Items assigned to another sister concern (visible only in parent books context).
 * **FIFO Sorting**: `ORDER BY allocation_rank ASC, gs.created_at ASC, gs.id ASC` ensures aging stock is sold first.
+* **Line Item ATP Resolution (`list_global_invoice_items`)**:
+  * For draft / proforma invoices, returns live available stock + the draft line's quantity:
+    $$\text{available\_atp} = \text{global\_stock\_atp\_qty}(\text{global\_stock\_id}) + \text{draft\_item.quantity}$$
+  * For issued / voided invoices, returns the current warehouse ATP:
+    $$\text{available\_atp} = \text{global\_stock\_atp\_qty}(\text{global\_stock\_id})$$
 
 ---
 
@@ -97,10 +102,16 @@ flowchart LR
 
 * **Quantity Bounding**: $0 \le \text{return\_qty} \le (\text{invoiced\_qty} - \text{previously\_returned\_qty})$.
 * **Financial Recalculation**:
+  $$\text{Original Gross Subtotal} = \sum (\text{Original Qty} \times \text{Unit Sell Price} - \text{Line Discount})$$
+  $$\text{Return Deduction} = \sum (\text{Return Qty} \times \text{Unit Sell Price})$$
   $$\text{New Subtotal} = \sum (\text{Retained Qty} \times \text{Unit Sell Price} - \text{Line Discount})$$
   $$\text{New Total} = \max(\text{New Subtotal} - \text{Header Discount} + \text{Return Charge}, 0)$$
   $$\text{New Due} = \max(\text{New Total} - \text{Paid Amount}, 0)$$
   $$\text{Refund Due to Customer} = \max(\text{Paid Amount} - \text{New Total}, 0)$$
+* **Transparency & Invoice Presentation**:
+  - **Line Items**: Displays both billed quantity and returned quantity badge (`Returned: X`), striking through returned units.
+  - **Totals Summary**: Explicitly details `Original Subtotal`, `Less Returns & Adjustments (-X BDT)`, `Net Subtotal`, `Discount`, `Charges`, `Total Amount`, `Paid`, and `Balance Due`.
+  - **Returns Log Card**: Displays itemized return log history (date, item, quantity returned, note, and return restocking target).
 * **Inventory Restoration**: Returned physical items are restored to inventory with `held` availability for quality inspection.
 
 ---
