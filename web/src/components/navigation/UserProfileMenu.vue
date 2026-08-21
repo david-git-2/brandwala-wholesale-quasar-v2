@@ -110,13 +110,13 @@
             </q-item-section>
           </q-item>
 
-          <!-- Resources & Documentation -->
+          <!-- About System -->
           <q-separator class="q-my-xs" />
-          <q-item clickable v-close-popup :to="{ name: 'help-center-page' }">
+          <q-item clickable v-close-popup @click="showAboutDialog = true">
             <q-item-section avatar class="q-pr-none" style="min-width: 28px">
-              <q-icon name="ph ph-book-open" size="xs" color="grey-7" />
+              <q-icon name="ph ph-info" size="xs" color="primary" />
             </q-item-section>
-            <q-item-section>Help & Guides</q-item-section>
+            <q-item-section>About System</q-item-section>
           </q-item>
 
           <!-- Sign Out -->
@@ -130,14 +130,20 @@
         </q-list>
       </q-menu>
     </q-btn>
+
+    <!-- About System Dialog -->
+    <AboutSystemDialog v-model="showAboutDialog" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useAppearance } from 'src/composables/useAppearance';
+import AboutSystemDialog from 'src/components/navigation/AboutSystemDialog.vue';
+
+const showAboutDialog = ref(false);
 
 const emit = defineEmits<{
   (e: 'sign-out'): void;

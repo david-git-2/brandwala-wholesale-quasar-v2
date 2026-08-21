@@ -9,7 +9,6 @@
           <h1 class="text-h5 text-weight-bold q-my-none">Thrift Shipments</h1>
         </div>
         <div class="col-auto row q-gutter-sm items-center">
-          <LearnMoreHelpBtn guide-id="thrift_shipment" />
           <q-btn
             v-if="canCreate"
             color="primary"
@@ -285,7 +284,6 @@ import { useQuasar, type QTableColumn } from 'quasar';
 import type { ThriftShipment } from '../types';
 import ShipmentImageDownloadDialog from '../components/ShipmentImageDownloadDialog.vue';
 import ThriftShipmentSkeleton from '../components/ThriftShipmentSkeleton.vue';
-import LearnMoreHelpBtn from 'src/modules/help/components/LearnMoreHelpBtn.vue';
 import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
 
 const $q = useQuasar();

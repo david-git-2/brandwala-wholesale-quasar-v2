@@ -15,7 +15,6 @@
       </div>
     </div>
     <div class="col-auto row q-gutter-sm items-center">
-      <LearnMoreHelpBtn guide-id="thrift_shipment" tab="workflows" />
       <template v-if="shipmentName">
         <q-badge outline color="primary" class="q-pa-xs">
           Purchase: {{ purchaseCurrencyCode }}
@@ -29,8 +28,6 @@
 </template>
 
 <script setup lang="ts">
-import LearnMoreHelpBtn from '@/modules/help/components/LearnMoreHelpBtn.vue';
-
 defineProps<{
   shipmentName?: string | null | undefined;
   purchaseCurrencyCode?: string | undefined;

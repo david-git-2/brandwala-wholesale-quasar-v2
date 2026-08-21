@@ -86,6 +86,15 @@
                 </q-item-section>
               </q-item>
 
+              <!-- About System -->
+              <q-separator class="q-my-xs" />
+              <q-item clickable v-close-popup @click="showAboutDialog = true">
+                <q-item-section avatar class="q-pr-none" style="min-width: 24px">
+                  <q-icon name="ph ph-info" size="xs" color="primary" />
+                </q-item-section>
+                <q-item-section class="text-caption text-weight-medium">About System</q-item-section>
+              </q-item>
+
               <q-separator class="q-my-xs" />
               <q-item clickable v-close-popup @click="handleLogout">
                 <q-item-section avatar class="q-pr-none" style="min-width: 24px">
@@ -315,8 +324,6 @@
       <slot />
     </q-page-container>
 
-    <ModuleHelpDrawer />
-
     <!-- Command Palette Dialog -->
     <q-dialog
       v-model="showCommandPalette"
@@ -448,6 +455,8 @@
         </div>
       </div>
     </q-dialog>
+
+    <AboutSystemDialog v-model="showAboutDialog" />
   </q-layout>
 </template>
 
@@ -461,8 +470,9 @@ import { useI18n } from 'vue-i18n';
 import { supabase } from 'src/boot/supabase';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useAppearance } from 'src/composables/useAppearance';
-import ModuleHelpDrawer from 'src/modules/help/components/ModuleHelpDrawer.vue';
-import { useModuleHelp } from 'src/modules/help/composables/useModuleHelp';
+import AboutSystemDialog from 'src/components/navigation/AboutSystemDialog.vue';
+
+const showAboutDialog = ref(false);
 
 export interface WorkspaceLink {
   title: string;
@@ -487,15 +497,6 @@ const showLogoutDialog = ref(false);
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
-const { setHelpScope } = useModuleHelp();
-
-watch(
-  () => props.theme,
-  (theme) => {
-    setHelpScope(theme);
-  },
-  { immediate: true },
-);
 
 const $q = useQuasar();
 const { navPinned, setNavPinned, darkMode, setDarkMode, density, setDensity } = useAppearance();

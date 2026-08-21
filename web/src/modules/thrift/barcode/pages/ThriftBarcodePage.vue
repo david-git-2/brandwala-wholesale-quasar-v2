@@ -8,7 +8,6 @@
           <h1 class="text-h5 text-weight-bold q-my-none">Thrift Barcodes</h1>
         </div>
         <div class="col-auto row items-center q-gutter-x-sm">
-          <LearnMoreHelpBtn guide-id="thrift_barcode" tab="workflows" />
           <q-btn
             color="primary"
             unelevated
@@ -387,7 +386,6 @@ import { useGenerateBarcodesMutation } from '../composables/useThriftBarcodeMuta
 import { thriftBarcodeRepository } from '../repositories/thriftBarcodeRepository';
 import BarcodeRenderer from '../components/BarcodeRenderer.vue';
 import ThriftBarcodeSkeleton from '../components/ThriftBarcodeSkeleton.vue';
-import LearnMoreHelpBtn from 'src/modules/help/components/LearnMoreHelpBtn.vue';
 import type { ThriftBarcode, ThriftBarcodeListMeta } from '../types';
 import { isBarcodePrintEligible } from '../types';
 import { formatThriftActionableError } from 'src/modules/thrift/shared/utils/formatThriftActionableError';

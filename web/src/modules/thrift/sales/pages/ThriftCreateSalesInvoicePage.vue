@@ -23,7 +23,6 @@
         </div>
 
         <div class="col-12 col-sm-auto row q-gutter-sm items-center justify-end">
-          <LearnMoreHelpBtn guide-id="thrift_sales" class="gt-xs" />
           <q-btn
             v-if="isOnline && thriftCreateInvoiceDraftHasContent({ form: invoiceForm, items: selectedItems })"
             flat
@@ -1145,7 +1144,6 @@
 import { ref, computed, watch, onBeforeUnmount, onMounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
-import LearnMoreHelpBtn from 'src/modules/help/components/LearnMoreHelpBtn.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
 import { requestConfirmation } from 'src/utils/appFeedback';

@@ -73,23 +73,6 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
     route: () => '/platform/superadmins',
   },
   {
-    title: 'Documentation',
-    caption: 'Global platform & module manuals',
-    icon: 'ph ph-book-open',
-    scopes: ['platform'],
-    allowedRoles: ['superadmin'],
-    route: () => '/platform/documentation',
-    target: '_blank',
-  },
-  {
-    title: 'Help Center',
-    caption: 'How-to guides for platform tools',
-    icon: 'ph ph-question',
-    scopes: ['platform'],
-    allowedRoles: ['superadmin'],
-    route: () => '/platform/help',
-  },
-  {
     title: 'Dashboard',
     caption: 'Internal activity and quick actions',
     icon: 'ph ph-chart-line-up',

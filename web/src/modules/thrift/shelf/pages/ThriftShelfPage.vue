@@ -8,7 +8,6 @@
           <h1 class="text-h5 text-weight-bold q-my-none">Thrift Shelves</h1>
         </div>
         <div class="col-auto row items-center q-gutter-x-sm">
-          <LearnMoreHelpBtn guide-id="thrift_shelf" tab="workflows" />
           <q-btn
             color="primary"
             unelevated
@@ -143,7 +142,6 @@ import { useThriftShelvesQuery } from '../../shared/composables/useThriftMasterD
 import { useQuasar, type QTableColumn } from 'quasar';
 import type { ThriftShelf } from '../types';
 import ThriftShelfSkeleton from '../components/ThriftShelfSkeleton.vue';
-import LearnMoreHelpBtn from 'src/modules/help/components/LearnMoreHelpBtn.vue';
 
 const $q = useQuasar();
 const authStore = useAuthStore();

@@ -34,9 +34,8 @@
             />
           </div>
 
-          <!-- Right: Guide & Primary Action -->
+          <!-- Right: Primary Action -->
           <div class="col-auto row items-center q-gutter-x-xs">
-            <LearnMoreHelpBtn guide-id="shop_management" tab="workflows" />
             <q-btn
               color="primary"
               unelevated
@@ -178,7 +177,6 @@ import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import LearnMoreHelpBtn from 'src/modules/help/components/LearnMoreHelpBtn.vue';
 import ShopFormDialog from 'src/modules/shop_order/components/ShopFormDialog.vue';
 import { useShopListQuery } from '../composables/useShopQuery';
 import { useSaveShopMutation, useDeleteShopMutation } from '../composables/useShopMutations';

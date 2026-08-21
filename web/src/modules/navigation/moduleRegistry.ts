@@ -9,7 +9,6 @@ export type ModuleKey =
   | 'koba_retail'
   | 'koba_wholesale'
   | 'tasks'
-  | 'documentation'
   | 'thrift'
   | 'thrift_sales'
   | 'thrift_customers'
@@ -314,21 +313,6 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         caption: 'Manage tasks and project hierarchy',
         icon: 'ph ph-clipboard-text',
         routeSegment: 'tasks',
-        requiredAction: 'view',
-      },
-    ],
-  },
-  {
-    key: 'documentation',
-    name: 'Documentation',
-    description: 'User guides and feature manuals.',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Documentation',
-        caption: 'User guides and feature manuals',
-        icon: 'ph ph-book-open',
-        routeSegment: 'documentation',
         requiredAction: 'view',
       },
     ],

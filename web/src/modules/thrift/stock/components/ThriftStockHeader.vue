@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import LearnMoreHelpBtn from '@/modules/help/components/LearnMoreHelpBtn.vue';
-
 defineProps<{
   canCreate?: boolean;
 }>();
@@ -17,7 +15,6 @@ defineEmits<{
       <h1 class="text-h5 text-weight-bold q-my-none">Thrift Stock</h1>
     </div>
     <div class="col-auto row items-center q-gutter-sm">
-      <LearnMoreHelpBtn guide-id="thrift_stock" tab="workflows" />
       <q-btn
         v-if="canCreate"
         color="primary"

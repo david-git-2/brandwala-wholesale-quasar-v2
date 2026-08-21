@@ -8,7 +8,6 @@
           <h1 class="text-h5 text-weight-bold q-my-none">Sales & Invoices</h1>
         </div>
         <div class="col-auto row q-gutter-sm items-center">
-          <LearnMoreHelpBtn guide-id="thrift_sales" />
           <q-btn
             flat
             no-caps
@@ -219,7 +218,6 @@ import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { type QTableColumn } from 'quasar';
-import LearnMoreHelpBtn from 'src/modules/help/components/LearnMoreHelpBtn.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
 import { formatThriftAmount } from 'src/modules/thrift/currency/utils/formatMoney';

@@ -220,7 +220,6 @@ import type {
   WalletAccount,
 } from '../types';
 import { useWalletQuery } from '../composables/useWalletQuery';
-import { useModuleHelp } from 'src/modules/help/composables/useModuleHelp';
 import UniversalWalletLedgerTable from './UniversalWalletLedgerTable.vue';
 
 const props = defineProps<{
@@ -238,7 +237,6 @@ defineEmits<{
   (e: 'open-deposit'): void;
 }>();
 
-useModuleHelp();
 const showAdvanced = ref(false);
 
 const { ledgerEntries, isLoading } = useWalletQuery(
