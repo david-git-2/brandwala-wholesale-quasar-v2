@@ -5,6 +5,7 @@
 - **TypeScript shapes**: `web/src/types/database.types.ts` (tables, columns, enums, RPC signatures — not function bodies or RLS).
 - **Do NOT Scan Migrations**: Do NOT read through all files in `supabase/migrations/*.sql` to determine active database state.
 - **New Migrations Only**: Only inspect or edit `supabase/migrations/*.sql` when writing/reviewing a generated or DML migration.
+- **Migration Source of Truth**: When creating new RPC migrations, **ALWAYS** copy the function body from the active declarative schema in `supabase/schemas/<domain>/03_rpcs.sql`, NEVER from historical migration files in `supabase/migrations/` (to prevent resurrecting deprecated enum values like `'posted'`).
 
 ## Procurement module — `doc/procurement_stock/IMPLEMENTATION_ORDER.md`
 Shipment track (7A–14B) and warehouse W1–W9 are complete.

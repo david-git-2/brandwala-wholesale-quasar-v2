@@ -118,6 +118,9 @@ flowchart LR
 
 ## 3. Page & Component Inventory
 
+> [!NOTE]
+> For the step-by-step user interaction flow, state transitions, and button visibility rules, see [`UI_FLOW.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/sales_invoice/UI_FLOW.md).
+
 The Sales Invoices module uses a single unified navigation entry (`/app/sales/invoices`) that opens the **Invoice Overview Hub**. Sub-views (Invoices list, Create Wholesale, Brands, Recipient Profiles, etc.) are accessed directly through the Overview Hub cards and action controls:
 
 | Route | Main Page | Key Child Components & Dialogs |
