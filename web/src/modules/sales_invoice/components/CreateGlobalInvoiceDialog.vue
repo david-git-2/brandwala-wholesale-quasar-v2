@@ -243,7 +243,6 @@ const loadBillingProfiles = async (tenantId: number | null) => {
   loadingProfiles.value = true;
   try {
     await billingProfileStore.fetchBillingProfiles({ tenant_id: tenantId, page_size: 200 });
-    updateInvoiceNoPrefill();
   } finally {
     loadingProfiles.value = false;
   }
@@ -252,7 +251,6 @@ const loadBillingProfiles = async (tenantId: number | null) => {
 const onIssuingTenantChange = async (tenantId: number | null) => {
   form.billing_profile_id = null;
   await loadBillingProfiles(tenantId);
-  updateInvoiceNoPrefill();
 };
 
 const onCancel = () => {

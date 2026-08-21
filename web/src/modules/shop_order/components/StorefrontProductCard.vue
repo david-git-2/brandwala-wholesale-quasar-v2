@@ -169,7 +169,7 @@ import { computed } from 'vue';
 const props = defineProps<{
   item: any;
   permissions?: any;
-  shopType?: string | null;
+  shopType?: string | null | undefined;
   selectedQty?: number | undefined;
   inCart?: boolean | undefined;
   loading?: boolean | undefined;

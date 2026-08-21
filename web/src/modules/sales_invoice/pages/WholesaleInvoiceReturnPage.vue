@@ -611,8 +611,8 @@ const loadData = async () => {
       return;
     }
 
-    if (invData.invoice_status !== 'posted') {
-      errorMessage.value = 'Only issued/posted wholesale invoices can process returns.';
+    if (invData.invoice_status !== 'issued') {
+      errorMessage.value = 'Only issued wholesale invoices can process returns.';
       return;
     }
 

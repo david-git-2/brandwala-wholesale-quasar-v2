@@ -201,7 +201,7 @@ const printModel = computed<InvoicePrintModel>(() => {
       print_charge: inv?.print_charge,
       wrapping_charge: inv?.wrapping_charge,
       discount_amount: inv?.discount_amount,
-      invoice_status: 'posted', // bypass check
+      invoice_status: 'issued', // bypass check
     },
     items.value.map((row) => ({
       ...row,

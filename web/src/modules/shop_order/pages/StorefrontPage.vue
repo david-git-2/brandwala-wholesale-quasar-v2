@@ -259,7 +259,7 @@ const goDashboard = () => {
   void router.push(`${tenantSlug}/shop/dashboard`);
 };
 
-const onSwitchShop = (shop: CustomerAccessibleShop) => {
+const onSwitchShop = (shop: { id: number; slug: string; name: string } | CustomerAccessibleShop) => {
   if (!shop.slug || shop.slug === shopSlug.value) return;
   if (sessionTenantId.value) {
     rememberCatalogShop(sessionTenantId.value, shop);

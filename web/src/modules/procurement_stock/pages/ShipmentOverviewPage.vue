@@ -105,7 +105,7 @@
             :label="currentCargoLabel"
             icon-right="arrow_drop_down"
           >
-            <q-menu auto-close @before-show="ensureCargoLoaded">
+            <q-menu auto-close>
               <q-list dense style="min-width: 180px; max-height: 280px" class="scroll">
                 <q-item v-if="loadingCargo" dense>
                   <q-item-section class="text-grey-6">Loading cargo…</q-item-section>

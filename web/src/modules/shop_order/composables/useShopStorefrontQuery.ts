@@ -4,7 +4,7 @@ import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { shopOrderService } from '../services/shopOrderService';
 import { supabase } from 'src/boot/supabase';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import type { ShopCatalogItem } from '../types';
+import type { ShopCatalogItem, Shop } from '../types';
 
 export interface StorefrontQueryParams {
   shopSlug: string;
@@ -46,12 +46,6 @@ export function useShopStorefrontInfiniteQuery(params: Ref<StorefrontQueryParams
       let permissions = meta.permissions ?? null;
       const shopDetails = meta.shop ?? null;
 
-      // Reuse permissions from previous page if already loaded and missing in meta
-      const pages = query.data?.value?.pages;
-      if (!permissions && pageParam > 0 && pages && pages.length > 0) {
-        permissions = pages[0]?.permissions ?? null;
-      }
-
       if (!permissions && shopDetails?.id) {
         const { data: permData } = await supabase.rpc('get_shop_permissions_for_customer', {
           p_shop_id: shopDetails.id,
@@ -84,7 +78,7 @@ export function useShopStorefrontInfiniteQuery(params: Ref<StorefrontQueryParams
     enabled: computed(() => tenantId.value > 0 && Boolean(params.value.shopSlug)),
   });
 
-  const shopDetails = computed(() => {
+  const shopDetails = computed<Shop | null>(() => {
     const dataVal = query.data?.value;
     const pages = dataVal?.pages;
     return pages && pages.length > 0 ? pages[0]?.shopDetails ?? null : null;

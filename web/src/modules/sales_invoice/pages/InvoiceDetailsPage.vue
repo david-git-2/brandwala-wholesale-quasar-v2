@@ -147,7 +147,7 @@
               canMutateInvoice &&
               (invoice.invoice_status === 'draft' ||
               invoice.invoice_status === 'voided' ||
-              (invoice.invoice_status === 'posted' && canUnpostOrVoid))
+              (invoice.invoice_status === 'issued' && canUnpostOrVoid))
             "
             flat
             dense
@@ -186,7 +186,7 @@
                 </q-item>
 
                 <q-item
-                  v-if="invoice.invoice_status === 'posted' && canUnpostOrVoid"
+                  v-if="invoice.invoice_status === 'issued' && canUnpostOrVoid"
                   clickable
                   class="text-negative"
                   :disable="voidingInvoice"
@@ -199,7 +199,7 @@
                 </q-item>
 
                 <q-item
-                  v-if="invoice.invoice_status === 'posted' && canUnpostOrVoid"
+                  v-if="invoice.invoice_status === 'issued' && canUnpostOrVoid"
                   clickable
                   class="text-warning"
                   :disable="unpostingInvoice"
@@ -220,18 +220,18 @@
       <q-card flat bordered class="q-pa-sm q-mb-md">
         <div class="row items-center justify-between q-col-gutter-sm">
           <div class="col-grow row items-center q-gutter-xs status-workflow-row">
-            <template v-for="(st, idx) in ['draft', 'posted']" :key="st">
+            <template v-for="(st, idx) in ['draft', 'issued']" :key="st">
               <q-btn
-                :color="invoice.invoice_status === st ? (st === 'posted' ? 'positive' : 'orange') : (invoice.invoice_status === 'posted' && st === 'draft' ? 'grey-5' : 'grey-3')"
-                :text-color="invoice.invoice_status === st ? 'white' : (invoice.invoice_status === 'posted' && st === 'draft' ? 'grey-9' : 'grey-7')"
+                :color="invoice.invoice_status === st ? (st === 'issued' ? 'positive' : 'orange') : (invoice.invoice_status === 'issued' && st === 'draft' ? 'grey-5' : 'grey-3')"
+                :text-color="invoice.invoice_status === st ? 'white' : (invoice.invoice_status === 'issued' && st === 'draft' ? 'grey-9' : 'grey-7')"
                 :outline="invoice.invoice_status !== st"
                 :unelevated="invoice.invoice_status === st"
                 dense
                 no-caps
                 class="q-px-md text-caption text-weight-bold"
-                :loading="(st === 'posted' && postingInvoice) || (st === 'draft' && unpostingInvoice)"
+                :loading="(st === 'issued' && postingInvoice) || (st === 'draft' && unpostingInvoice)"
                 :disable="(postingInvoice || unpostingInvoice || voidingInvoice) || isTransitionDisabled(st) || !canMutateInvoice"
-                :data-test="st === 'posted' ? 'post-invoice-btn' : 'draft-invoice-btn'"
+                :data-test="st === 'issued' ? 'post-invoice-btn' : 'draft-invoice-btn'"
                 @click="changeInvoiceStatus(st)"
               >
                 <q-icon v-if="invoice.invoice_status === st" name="ph ph-check-circle" size="14px" class="q-mr-xs" />
@@ -263,29 +263,58 @@
               <q-icon v-if="invoice.invoice_status === 'voided'" name="ph ph-x-circle" size="14px" class="q-mr-xs" />
               Voided
             </q-btn>
-            <template v-if="invoice.invoice_status === 'posted' && canMutateInvoice">
+            <template v-if="invoice.invoice_status === 'issued'">
               <q-separator vertical class="q-mx-xs" />
-              <q-btn
-                dense
-                no-caps
-                flat
-                color="purple"
-                icon="ph ph-arrow-u-down-left"
-                label="Process Return"
-                class="q-px-sm text-caption text-weight-bold"
-                @click="goToProcessReturn"
+              <q-badge
+                :color="
+                  invoice.payment_status === 'paid'
+                    ? 'green-1'
+                    : invoice.payment_status === 'partial'
+                      ? 'blue-1'
+                      : 'red-1'
+                "
+                :text-color="
+                  invoice.payment_status === 'paid'
+                    ? 'green-9'
+                    : invoice.payment_status === 'partial'
+                      ? 'blue-9'
+                      : 'red-9'
+                "
+                class="text-weight-bolder text-uppercase q-px-sm q-py-xs rounded-borders"
+                style="font-size: 11px; height: 28px; line-height: 20px"
               >
-                <q-tooltip>Record items return & issue credit</q-tooltip>
-              </q-btn>
+                <q-icon
+                  :name="
+                    invoice.payment_status === 'paid'
+                      ? 'ph ph-check-circle'
+                      : invoice.payment_status === 'partial'
+                        ? 'ph ph-chart-pie'
+                        : 'ph ph-clock'
+                  "
+                  size="13px"
+                  class="q-mr-xs"
+                />
+                PAYMENT: {{ invoice.payment_status }}
+              </q-badge>
             </template>
           </div>
 
           <div class="col-auto row items-center q-gutter-sm">
+            <q-btn
+              v-if="invoice.invoice_status === 'issued' && canMutateInvoice"
+              dense
+              no-caps
+              flat
+              color="purple"
+              icon="ph ph-arrow-u-down-left"
+              label="Process Return"
+              class="q-px-sm text-caption text-weight-bold"
+              @click="goToProcessReturn"
+            >
+              <q-tooltip>Record items return & issue credit</q-tooltip>
+            </q-btn>
             <q-chip square dense class="status-chip text-weight-bold text-capitalize">
               {{ invoice.invoice_type }}
-            </q-chip>
-            <q-chip square dense class="status-chip text-weight-bold text-uppercase">
-              {{ invoice.payment_status }}
             </q-chip>
           </div>
         </div>
@@ -379,7 +408,7 @@
                   <th v-if="isParentTenant" class="text-right">Cost</th>
                   <th class="text-right">{{ isParentTenant ? 'Sell' : 'Price' }}</th>
                   <th class="text-right">Total</th>
-                  <th v-if="isParentTenant && invoice.invoice_status === 'posted'" class="text-right">Margin</th>
+                  <th v-if="isParentTenant && invoice.invoice_status === 'issued'" class="text-right">Margin</th>
                   <th v-if="canEditDraft" style="width: 50px"></th>
                 </tr>
               </thead>
@@ -478,7 +507,7 @@
                   <td class="text-right text-weight-bold">
                     {{ formatAmount(row.line_total_amount) }}
                   </td>
-                  <td v-if="isParentTenant && invoice.invoice_status === 'posted'" class="text-right text-positive">
+                  <td v-if="isParentTenant && invoice.invoice_status === 'issued'" class="text-right text-positive">
                     {{ formatAmount(lineMarginForRow(row)) }}
                   </td>
                   <td v-if="canEditDraft" class="text-right">
@@ -550,14 +579,14 @@
                   icon="ph ph-paper-plane-right"
                   label="POST INVOICE"
                   :loading="postingInvoice"
-                  @click="changeInvoiceStatus('posted')"
+                  @click="changeInvoiceStatus('issued')"
                 />
                 <div class="text-caption text-grey-7 text-center q-px-xs">
                   Note: Once posted, this invoice will be committed to the stock ledger and marked as current.
                 </div>
               </template>
               
-              <template v-else-if="invoice.invoice_status === 'posted'">
+              <template v-else-if="invoice.invoice_status === 'issued'">
                 <template v-if="invoice.due_amount > 0">
                   <q-btn
                     color="primary"
@@ -818,7 +847,7 @@
           <q-card
             v-if="
               showPayments &&
-              invoice.invoice_status === 'posted' &&
+              invoice.invoice_status === 'issued' &&
               invoice.due_amount > 0
             "
             flat
@@ -937,7 +966,7 @@
             </div>
             <q-separator class="q-my-xs" />
             <div class="row justify-between text-body2 text-weight-medium">
-              <span>{{ invoice.invoice_status === 'posted' ? 'Gross Profit' : 'Est. Gross Profit' }}</span>
+              <span>{{ invoice.invoice_status === 'issued' ? 'Gross Profit' : 'Est. Gross Profit' }}</span>
               <span :class="estimatedProfit >= 0 ? 'text-positive' : 'text-negative'">
                 {{ formatAmount(estimatedProfit) }}
               </span>
@@ -997,7 +1026,7 @@
 
           <!-- Returns Card -->
           <q-card
-            v-if="showReturns && invoice.invoice_status === 'posted'"
+            v-if="showReturns && invoice.invoice_status === 'issued'"
             flat
             class="floating-surface shadow-1 q-pa-md"
           >
@@ -1745,7 +1774,7 @@ const estimatedProfit = computed(() => {
       wrapping_charge: invoice.value.wrapping_charge,
       discount_amount: invoice.value.discount_amount,
       settlement_discount_amount: invoice.value.settlement_discount_amount,
-      invoice_status: 'posted', // force posted to calculate profit
+      invoice_status: 'issued', // force posted to calculate profit
     },
     items.value.map((row) => ({
       ...row,
@@ -2138,9 +2167,9 @@ const isTransitionDisabled = (targetStatus: string) => {
   if (current === targetStatus) return true;
 
   if (current === 'draft') {
-    return targetStatus !== 'posted';
+    return targetStatus !== 'issued';
   }
-  if (current === 'posted') {
+  if (current === 'issued') {
     if (targetStatus === 'draft' || targetStatus === 'voided') {
       return !canUnpostOrVoid.value;
     }
@@ -2157,7 +2186,7 @@ const changeInvoiceStatus = (newStatus: string) => {
   const current = invoice.value.invoice_status;
   if (current === newStatus) return;
 
-  if (newStatus === 'posted') {
+  if (newStatus === 'issued') {
     $q.dialog({
       title: 'Post Invoice',
       message:

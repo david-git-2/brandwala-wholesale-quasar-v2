@@ -238,7 +238,7 @@
                 dense
                 no-caps
                 size="sm"
-                @click="openBulkPaste"
+                @click="openBulkPaste()"
               />
               <q-btn
                 v-if="isEditable"
@@ -249,7 +249,7 @@
                 dense
                 no-caps
                 size="sm"
-                @click="openAddItems"
+                @click="openAddItems()"
               />
             </div>
           </div>
@@ -274,7 +274,7 @@
                     size="sm"
                     icon="ph ph-plus"
                     label="Add items"
-                    @click="openAddItems"
+                    @click="openAddItems()"
                   />
                 </div>
                 <template v-else>
@@ -491,7 +491,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
@@ -758,7 +758,7 @@ watch(
   cachedProgressStages,
   (stages) => {
     if (stages) {
-      shipmentStore.progressTags = stages.map((stage) => ({
+      shipmentStore.progressTags = stages.map((stage: any) => ({
         id: stage.tag_id,
         name: stage.name,
         slug: stage.slug,

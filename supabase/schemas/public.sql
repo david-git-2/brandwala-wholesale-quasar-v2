@@ -909,7 +909,7 @@ begin
       elsif p_target_status = 'processing' then
     if v_order.global_invoice_id is not null then
       select * into v_invoice from public.global_invoices where id = v_order.global_invoice_id;
-      if v_invoice.invoice_status = 'posted'::public.global_invoice_status then
+      if v_invoice.invoice_status = 'issued'::public.global_invoice_status then
         perform public.unpost_global_invoice(v_order.global_invoice_id);
       delete from public.universal_wallet_ledger
       where source_type = 'shop_order'
@@ -7529,7 +7529,7 @@ begin
     from public.global_invoice_items ii
     join public.global_invoices i on i.id = ii.invoice_id
     where i.parent_tenant_id = p_parent_tenant_id
-      and i.invoice_status = 'posted'::public.global_invoice_status
+      and i.invoice_status = 'issued'::public.global_invoice_status
       and i.invoice_date >= date_trunc('month', current_date)::date
     group by ii.invoice_id
   ),
@@ -7541,7 +7541,7 @@ begin
     join public.global_invoice_items ii on ii.id = ri.invoice_item_id
     join public.global_invoices i on i.id = ri.invoice_id
     where i.parent_tenant_id = p_parent_tenant_id
-      and i.invoice_status = 'posted'::public.global_invoice_status
+      and i.invoice_status = 'issued'::public.global_invoice_status
       and i.invoice_date >= date_trunc('month', current_date)::date
     group by ri.invoice_id
   )
@@ -7559,7 +7559,7 @@ begin
   left join invoice_line_margin lm on lm.invoice_id = i.id
   left join invoice_return_margin rm on rm.invoice_id = i.id
   where i.parent_tenant_id = p_parent_tenant_id
-    and i.invoice_status = 'posted'::public.global_invoice_status
+    and i.invoice_status = 'issued'::public.global_invoice_status
     and i.invoice_date >= date_trunc('month', current_date)::date;
 
   select coalesce(sum(amount), 0) into v_payouts
@@ -7610,7 +7610,7 @@ begin
   into v_revenue, v_active_ar, v_middleman_total, v_middleman_liability
   from public.global_invoices i
   where i.parent_tenant_id = p_parent_tenant_id
-    and i.invoice_status = 'posted'::public.global_invoice_status;
+    and i.invoice_status = 'issued'::public.global_invoice_status;
 
   select
     coalesce(sum(gp.amount), 0),
@@ -7630,7 +7630,7 @@ begin
       coalesce(sum(i.total_amount), 0) as amount
     from public.global_invoices i
     where i.parent_tenant_id = p_parent_tenant_id
-      and i.invoice_status = 'posted'::public.global_invoice_status
+      and i.invoice_status = 'issued'::public.global_invoice_status
     group by i.invoice_type
   ) r;
 

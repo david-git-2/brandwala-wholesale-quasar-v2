@@ -62,7 +62,7 @@ flowchart LR
 | **Costing Files & Items** | `deleted_at` (Parent covers items) | **YES** $\rightarrow$ One parent trash entry |
 | **Draft Shop Orders** | `deleted_at` | **YES** $\rightarrow$ Allowed prior to fulfillment |
 | **Fulfilled / Shipped Orders** | Order Cancellation | **NO** $\rightarrow$ Use order cancel flow |
-| **Posted Sales Invoices** | Voiding (`void_global_invoice`) | **NO** $\rightarrow$ Immutable audit trail; void only |
+| **Issued Sales Invoices** | Voiding (`void_global_invoice`) | **NO** $\rightarrow$ Immutable audit trail; void only |
 | **Universal Wallet Ledger** | Reversal Transaction | **NO** $\rightarrow$ Append-only immutable ledger |
 | **Global References (Currencies, Payment Methods)** | `is_active = false` | **NO** $\rightarrow$ Platform deactivation only |
 

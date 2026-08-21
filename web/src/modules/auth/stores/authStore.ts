@@ -34,6 +34,7 @@ export interface AuthTenantSnapshot {
   name: string;
   slug: string;
   isActive: boolean;
+  parent_id?: number | null;
 }
 
 export interface AuthCustomerGroupSnapshot {

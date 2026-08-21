@@ -13507,6 +13507,17 @@ export type Database = {
         Args: { p_order_id: number }
         Returns: Json
       }
+      process_wholesale_invoice_return: {
+        Args: {
+          p_invoice_id: number
+          p_items: Json
+          p_note?: string
+          p_payout_account_id?: number
+          p_refund_method?: string
+          p_return_charge_amount?: number
+        }
+        Returns: Json
+      }
       recalculate_product_based_costing_file_offer_prices: {
         Args: { p_file_id: number }
         Returns: undefined
@@ -15513,7 +15524,7 @@ export type Database = {
       global_invoice_status:
         | "draft"
         | "proforma_generated"
-        | "posted"
+        | "issued"
         | "voided"
       global_invoice_type: "wholesale" | "retail" | "dropship"
       global_shipment_cost_type:
@@ -15777,7 +15788,7 @@ export const Constants = {
       global_invoice_status: [
         "draft",
         "proforma_generated",
-        "posted",
+        "issued",
         "voided",
       ],
       global_invoice_type: ["wholesale", "retail", "dropship"],

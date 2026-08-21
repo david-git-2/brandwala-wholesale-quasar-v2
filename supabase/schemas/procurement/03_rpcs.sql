@@ -3857,7 +3857,7 @@ begin
     inner join public.global_invoices inv on inv.id = ii.invoice_id
     left join public.billing_profiles bp on bp.id = inv.billing_profile_id
     where si.shipment_id = p_shipment_id
-      and inv.invoice_status = 'posted'::public.global_invoice_status
+      and inv.invoice_status = 'issued'::public.global_invoice_status
   ) r;
 
   return v_rows;
@@ -3937,7 +3937,7 @@ begin
       (si.ordered_quantity - coalesce(sum(ii.quantity - ii.return_quantity), 0) - coalesce(disp.sellable_qty, 0) - coalesce(disp.stolen_qty, 0) - coalesce(disp.box_damage_qty, 0) - coalesce(disp.expired_qty, 0) - coalesce(disp.reserved_qty, 0)) as reconciliation_gap
     from public.global_shipment_items si
     left join public.global_invoice_items ii on ii.shipment_item_id = si.id
-    left join public.global_invoices inv on inv.id = ii.invoice_id and inv.invoice_status = 'posted'::public.global_invoice_status
+    left join public.global_invoices inv on inv.id = ii.invoice_id and inv.invoice_status = 'issued'::public.global_invoice_status
     left join lateral (
       select coalesce(sum(x.line_total_amount), 0.00) as inv_line_subtotal
       from public.global_invoice_items x
@@ -4001,7 +4001,7 @@ begin
       (si.ordered_quantity - coalesce(sum(ii.quantity - ii.return_quantity), 0) - coalesce(disp.sellable_qty, 0) - coalesce(disp.stolen_qty, 0) - coalesce(disp.box_damage_qty, 0) - coalesce(disp.expired_qty, 0) - coalesce(disp.reserved_qty, 0)) as reconciliation_gap
     from public.global_shipment_items si
     left join public.global_invoice_items ii on ii.shipment_item_id = si.id
-    left join public.global_invoices inv on inv.id = ii.invoice_id and inv.invoice_status = 'posted'::public.global_invoice_status
+    left join public.global_invoices inv on inv.id = ii.invoice_id and inv.invoice_status = 'issued'::public.global_invoice_status
     left join lateral (
       select coalesce(sum(x.line_total_amount), 0.00) as inv_line_subtotal
       from public.global_invoice_items x
@@ -6881,7 +6881,7 @@ begin
       coalesce(sum(ii.quantity - ii.return_quantity), 0) as sold_qty
     from public.global_shipment_items si
     left join public.global_invoice_items ii on ii.shipment_item_id = si.id
-    left join public.global_invoices inv on inv.id = ii.invoice_id and inv.invoice_status = 'posted'::public.global_invoice_status
+    left join public.global_invoices inv on inv.id = ii.invoice_id and inv.invoice_status = 'issued'::public.global_invoice_status
     where si.shipment_id = p_global_shipment_id
     group by si.id, si.ordered_quantity
   ) t;

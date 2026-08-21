@@ -205,6 +205,16 @@ const buildEmptyProductPage = (page: number, pageSize: number): ProductListPage 
   },
 });
 
+const isMissingListProductsRpcError = (error: any): boolean => {
+  if (!error) return false;
+  const msg = String(error.message || '').toLowerCase();
+  return (
+    error.code === 'PGRST202' ||
+    msg.includes('function public.list_products_paginated') ||
+    msg.includes('could not find the function')
+  );
+};
+
 const parentTenantIdCache = new Map<number, number>();
 
 const resolveProductScopeTenantId = async (tenantId: number): Promise<number> => {

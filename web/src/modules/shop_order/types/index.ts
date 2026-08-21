@@ -31,8 +31,8 @@ export interface ShopCatalogBrowseResult {
     page: number;
     page_size: number;
     total_pages: number;
-    shop?: Record<string, unknown> | null;
-    permissions?: Record<string, unknown> | null;
+    shop?: Shop | null;
+    permissions?: any | null;
   };
 }
 

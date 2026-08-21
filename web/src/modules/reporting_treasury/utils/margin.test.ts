@@ -67,7 +67,7 @@ describe('Reporting Treasury Margin Formulas', () => {
       invoice_type: 'wholesale',
       shipping_charge: 100,
       discount_amount: 50,
-      invoice_status: 'posted',
+      invoice_status: 'issued',
     };
 
     const lines: (LineInput & { id: number })[] = [
@@ -103,7 +103,7 @@ describe('Reporting Treasury Margin Formulas', () => {
       print_charge: 15,
       wrapping_charge: 25,
       discount_amount: 0,
-      invoice_status: 'posted',
+      invoice_status: 'issued',
     };
 
     const lines: (LineInput & { id: number })[] = [
@@ -124,7 +124,7 @@ describe('Reporting Treasury Margin Formulas', () => {
       invoice_type: 'wholesale',
       shipping_charge: 0,
       discount_amount: 0,
-      invoice_status: 'posted',
+      invoice_status: 'issued',
     };
 
     const lines: (LineInput & { id: number })[] = [
@@ -154,7 +154,7 @@ describe('Reporting Treasury Margin Formulas', () => {
       invoice_type: 'dropship',
       shipping_charge: 100,
       discount_amount: 0,
-      invoice_status: 'posted',
+      invoice_status: 'issued',
     };
 
     const lines: (LineInput & { id: number })[] = [

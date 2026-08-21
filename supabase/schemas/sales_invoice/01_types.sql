@@ -21,7 +21,7 @@ ALTER TYPE "public"."global_fulfillment_status" OWNER TO "postgres";
 CREATE TYPE "public"."global_invoice_status" AS ENUM (
     'draft',
     'proforma_generated',
-    'posted',
+    'issued',
     'voided'
 );
 

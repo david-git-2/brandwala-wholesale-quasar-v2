@@ -31,7 +31,7 @@ import AddShipmentItemsPanel from './AddShipmentItemsPanel.vue';
 
 const props = defineProps<{
   shipmentId: number;
-  initialSectionId?: number | null;
+  initialSectionId?: number | null | undefined;
 }>();
 
 defineEmits([...useDialogPluginComponent.emits]);

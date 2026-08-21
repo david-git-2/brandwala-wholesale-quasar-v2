@@ -39,12 +39,12 @@
             <div class="row items-center justify-between q-mb-xs">
               <div class="row items-center q-gutter-xs">
                 <div
-                  v-if="sec.color"
+                  v-if="(sec as any).color"
                   class="rounded-borders"
                   :style="{
                     width: '10px',
                     height: '10px',
-                    backgroundColor: sec.color || '#9e9e9e',
+                    backgroundColor: (sec as any).color || '#9e9e9e',
                   }"
                 />
                 <span class="text-subtitle2 text-weight-bold text-grey-9">

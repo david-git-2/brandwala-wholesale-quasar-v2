@@ -89,7 +89,7 @@ const listChildTenantIds = async (parentTenantId: number): Promise<number[]> => 
     throw error;
   }
 
-  return (data ?? []).map((id) => Number(id));
+  return (data ?? []).map((id: any) => Number(id));
 };
 
 const listTenantsByMembership = async (payload?: {

@@ -748,18 +748,10 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     routes: [
       {
         scope: 'app',
-        title: 'Overview',
-        caption: 'Sales & invoice operations overview',
-        icon: 'ph ph-squares-four',
-        routeSegment: 'sales/invoices',
-        requiredAction: 'view',
-      },
-      {
-        scope: 'app',
         title: 'Invoices',
-        caption: 'Issued invoices, status, payment dues',
+        caption: 'Sales & invoice operations hub',
         icon: 'ph ph-receipt',
-        routeSegment: 'sales/invoices/list',
+        routeSegment: 'sales/invoices',
         requiredAction: 'view',
       },
     ],

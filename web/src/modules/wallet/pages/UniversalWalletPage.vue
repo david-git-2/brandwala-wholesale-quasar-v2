@@ -256,7 +256,7 @@ const entityIcon = computed<string>(() => {
 });
 
 // Balance query
-const { account, isLoading: isAccountLoading, refetchAccount } = useWalletAccounts(
+const { account, isAccountLoading, refetchAccount } = useWalletAccounts(
   () => effectiveEntityType.value,
   () => effectiveEntityId.value,
 );

@@ -18,7 +18,7 @@ export function createShopAccessGuard(opts: { requiredModule?: ModuleKey } = {})
     requiredScope: 'shop',
     requireTenantContext: true,
     allowedRoles: SHOP_CUSTOMER_ROLES,
-    requiredModule: opts.requiredModule,
+    ...(opts.requiredModule ? { requiredModule: opts.requiredModule } : {}),
     validateAccess: validateShopTenantSlug,
   });
 }

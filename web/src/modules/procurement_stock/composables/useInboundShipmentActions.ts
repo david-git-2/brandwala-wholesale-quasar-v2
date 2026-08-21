@@ -21,6 +21,10 @@ import {
   showWarningNotification,
   requestConfirmation,
 } from 'src/utils/appFeedback';
+import { buildShipmentExcelWorkbook } from '../utils/buildShipmentExcelWorkbook';
+
+const safeNamePart = (value: string) =>
+  value.replace(/[^a-z0-9-_]+/gi, '_').replace(/^_+|_+$/g, '');
 
 export function useInboundShipmentActions(options: {
   shipmentId: number;
@@ -418,7 +422,7 @@ export function useInboundShipmentActions(options: {
           outlined: true,
           autocomplete: 'off',
         },
-      },
+      } as any,
       cancel: {
         label: 'Cancel',
         flat: true,

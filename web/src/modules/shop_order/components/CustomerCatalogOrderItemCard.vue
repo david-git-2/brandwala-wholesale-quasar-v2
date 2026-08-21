@@ -265,12 +265,12 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import type { ShopOrderItem, ShopOrder } from '../types';
+import type { ShopOrderItem, ShopOrder, CustomerOrderDetailOrder } from '../types';
 import { calculateItemFirstOfferPrice } from '../utils/catalogPricingUtils';
 
 const props = defineProps<{
   item: ShopOrderItem;
-  order?: ShopOrder | null;
+  order?: ShopOrder | CustomerOrderDetailOrder | null;
   status: string;
   isNegotiable: boolean;
   currencySymbol: string;

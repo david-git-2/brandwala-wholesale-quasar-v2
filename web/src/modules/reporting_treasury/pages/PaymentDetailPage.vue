@@ -336,7 +336,7 @@ const loadPaymentData = async () => {
         .from('sales_invoices')
         .select('*')
         .eq('billing_profile_id', payData.billing_profile_id)
-        .eq('invoice_status', 'posted')
+        .eq('invoice_status', 'issued')
         .gt('due_amount', 0)
         .order('invoice_date', { ascending: true });
 

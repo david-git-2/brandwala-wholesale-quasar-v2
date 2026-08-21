@@ -22,12 +22,12 @@ One Sale = One Row in `sales_invoices`
 ```mermaid
 stateDiagram-v2
     [*] --> Draft : Create Invoice
-    Draft --> Posted : Post / Finalize (Locks stock, creates AR)
+    Draft --> Issued : Issue / Finalize (Locks stock, creates AR)
     Draft --> Void : Void mistake
-    Posted --> PartiallyPaid : Record Payment Allocation
+    Issued --> PartiallyPaid : Record Payment Allocation
     PartiallyPaid --> Paid : Balance Cleared
-    Posted --> Returned : Full / Partial Return (Restores stock)
-    Posted --> Void : Void (if uncollected)
+    Issued --> Returned : Full / Partial Return (Restores stock)
+    Issued --> Void : Void (if uncollected)
 ```
 
 ### Multi-Channel Invoice Types
@@ -107,9 +107,11 @@ flowchart LR
 
 ## 3. Page & Component Inventory
 
+The Sales Invoices module uses a single unified navigation entry (`/app/sales/invoices`) that opens the **Invoice Overview Hub**. Sub-views (Invoices list, Create Wholesale, Brands, Recipient Profiles, etc.) are accessed directly through the Overview Hub cards and action controls:
+
 | Route | Main Page | Key Child Components & Dialogs |
 | :--- | :--- | :--- |
-| `/:tenantSlug?/app/sales/invoices` | [`InvoiceOverviewPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/sales_invoice/pages/InvoiceOverviewPage.vue) | High-level metrics, daily invoice counts, quick actions |
+| `/:tenantSlug?/app/sales/invoices` | [`InvoiceOverviewPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/sales_invoice/pages/InvoiceOverviewPage.vue) | High-level metrics, hub cards (Wholesale, Retail, Dropship, Invoices List), quick actions |
 | `/:tenantSlug?/app/sales/invoices/list` | [`InvoicesListPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/sales_invoice/pages/InvoicesListPage.vue) | Compact table toolbar, filter chips, invoice status badges |
 | `/:tenantSlug?/app/sales/invoices/create-wholesale` | [`CreateWholesaleInvoicePage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/sales_invoice/pages/CreateWholesaleInvoicePage.vue) | [`NetworkStockSearchPanel.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/sales_invoice/components/NetworkStockSearchPanel.vue), [`InvoiceBulkPasteDialog.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/sales_invoice/components/InvoiceBulkPasteDialog.vue) |
 | `/:tenantSlug?/app/sales/invoices/:id` | [`InvoiceDetailsPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/sales_invoice/pages/InvoiceDetailsPage.vue) | [`WholesaleIssueConfirmDialog.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/sales_invoice/components/WholesaleIssueConfirmDialog.vue), [`BillingProfileEditDialog.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/sales_invoice/components/BillingProfileEditDialog.vue) |
@@ -128,7 +130,7 @@ flowchart LR
 | **`CreateWholesaleInvoicePage`** | Search Stock Barcode/Name | `useQuery` $\rightarrow$ `RPC: search_sales_invoice_stock` | `staleTime: 10s`, Key: `['sales_invoice', 'stock_search', tenantId, query]` |
 | **`CreateWholesaleInvoicePage`** | Click "Issue Invoice" | `useMutation` $\rightarrow$ `RPC: issue_wholesale_invoice` | Invalidates `['sales_invoice', 'list']`, navigates to detail |
 | **`InvoiceDetailsPage`** | Mount / Refresh | `useQuery` $\rightarrow$ `RPC: list_global_invoice_items` | `staleTime: 30s`, Key: `['sales_invoice', 'detail', invoiceId]` |
-| **`InvoiceDetailsPage`** | Click "Post Invoice" | `useMutation` $\rightarrow$ `RPC: post_sales_invoice` | Invalidates `['sales_invoice', 'detail', id]` and `['sales_invoice', 'list']` |
+| **`InvoiceDetailsPage`** | Click "Issue Invoice" | `useMutation` $\rightarrow$ `RPC: issue_sales_invoice` / `issue_wholesale_invoice` | Invalidates `['sales_invoice', 'detail', id]` and `['sales_invoice', 'list']` |
 | **`InvoiceDetailsPage`** | Click "Void Invoice" | `useMutation` $\rightarrow$ `RPC: void_sales_invoice` | Invalidates `['sales_invoice', 'detail', id]` and `['sales_invoice', 'list']` |
 | **`InvoiceDetailsPage`** | Apply Settlement Discount | `useMutation` $\rightarrow$ `RPC: apply_global_invoice_settlement_discount` | Invalidates `['sales_invoice', 'detail', id]` |
 | **`WholesaleInvoiceReturnPage`** | Submit Return | `useMutation` $\rightarrow$ `RPC: process_wholesale_invoice_return` | Invalidates `['sales_invoice', 'detail', id]` & stock caches |

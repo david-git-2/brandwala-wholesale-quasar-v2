@@ -379,7 +379,7 @@ const selectedSectionId = ref<number | null>(props.initialSectionId ?? null);
 watch(
   () => shipmentStore.currentShipmentSections,
   (sections) => {
-    if (selectedSectionId.value == null && sections && sections.length > 0) {
+    if (selectedSectionId.value == null && sections && sections.length > 0 && sections[0]) {
       selectedSectionId.value = sections[0].id;
     }
   },

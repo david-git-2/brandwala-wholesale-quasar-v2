@@ -125,7 +125,7 @@ declare
 begin
   select * into v_invoice from public.global_invoices where id = p_invoice_id for update;
   if v_invoice.id is null then raise exception 'invoice not found'; end if;
-  if v_invoice.invoice_status <> 'posted'::public.global_invoice_status then
+  if v_invoice.invoice_status <> 'issued'::public.global_invoice_status then
     raise exception 'cannot return items on a non-posted invoice';
   end if;
 
@@ -266,7 +266,7 @@ declare
 begin
   select * into v_invoice from public.global_invoices where id = p_invoice_id for update;
   if v_invoice.id is null then raise exception 'invoice not found'; end if;
-  if v_invoice.invoice_status <> 'posted'::public.global_invoice_status then
+  if v_invoice.invoice_status <> 'issued'::public.global_invoice_status then
     raise exception 'cannot settle a non-posted invoice';
   end if;
   if coalesce(p_amount, 0.00) < 0.00 then
@@ -816,7 +816,7 @@ begin
       when coalesce(v_order.is_prepaid_snapshot, false) then 'billing_profile'::public.collection_source_type
       else 'recipient'::public.collection_source_type
     end,
-    invoice_status = 'posted'::public.global_invoice_status,
+    invoice_status = 'issued'::public.global_invoice_status,
     updated_at = now()
   where id = v_invoice.id;
 
@@ -1303,7 +1303,7 @@ begin
 
   -- Only applies to posted dropship invoices with a valid billing profile and total > 0
   if v_invoice.invoice_type = 'dropship'::public.global_invoice_type
-     and v_invoice.invoice_status = 'posted'::public.global_invoice_status
+     and v_invoice.invoice_status = 'issued'::public.global_invoice_status
      and v_invoice.billing_profile_id is not null
      and v_invoice.total_amount > 0
   then
@@ -1521,7 +1521,7 @@ begin
       coalesce(sum(i.total_amount), 0.00) as total_invoiced,
       coalesce(sum(i.paid_amount), 0.00) as total_paid
     from public.billing_profiles bp
-    left join public.global_invoices i on i.billing_profile_id = bp.id and i.invoice_status = 'posted'::public.global_invoice_status
+    left join public.global_invoices i on i.billing_profile_id = bp.id and i.invoice_status = 'issued'::public.global_invoice_status
     where bp.tenant_id = p_tenant_id
       and (p_search is null or p_search = '' or bp.name ilike '%' || p_search || '%' or bp.email ilike '%' || p_search || '%')
     group by bp.id
@@ -1539,7 +1539,7 @@ begin
       coalesce(sum(i.paid_amount), 0.00) as total_paid
     from public.global_invoices i
     where i.tenant_id = p_tenant_id
-      and i.invoice_status = 'posted'::public.global_invoice_status
+      and i.invoice_status = 'issued'::public.global_invoice_status
       and i.billing_profile_id is null
       and (p_search is null or p_search = '' or 'Walk-in / Direct' ilike '%' || p_search || '%')
     having count(i.id) > 0
@@ -1641,7 +1641,7 @@ begin
     (v_is_parent = true and i.parent_tenant_id = v_parent_id)
     or (v_is_parent = false and i.tenant_id = p_tenant_id)
   )
-    and i.invoice_status = 'posted'::public.global_invoice_status
+    and i.invoice_status = 'issued'::public.global_invoice_status
     and (p_start_date is null or i.invoice_date >= p_start_date)
     and (p_end_date is null or i.invoice_date <= p_end_date)
     and (p_invoice_type is null or p_invoice_type = '' or p_invoice_type = '__all__' or i.invoice_type::text = p_invoice_type)
@@ -1688,7 +1688,7 @@ begin
       (v_is_parent = true and i.parent_tenant_id = v_parent_id)
       or (v_is_parent = false and i.tenant_id = p_tenant_id)
     )
-      and i.invoice_status = 'posted'::public.global_invoice_status
+      and i.invoice_status = 'issued'::public.global_invoice_status
       and (p_start_date is null or i.invoice_date >= p_start_date)
       and (p_end_date is null or i.invoice_date <= p_end_date)
       and (p_invoice_type is null or p_invoice_type = '' or p_invoice_type = '__all__' or i.invoice_type::text = p_invoice_type)
@@ -1751,7 +1751,7 @@ begin
     from public.global_invoices i
     left join public.billing_profiles bp on bp.id = i.billing_profile_id
     where i.tenant_id = p_tenant_id
-      and i.invoice_status = 'posted'::public.global_invoice_status
+      and i.invoice_status = 'issued'::public.global_invoice_status
       and i.due_amount > 0
       and (p_search is null or p_search = '' or i.invoice_no ilike '%' || p_search || '%' or i.recipient_name ilike '%' || p_search || '%')
     order by i.invoice_date desc, i.id desc
@@ -1901,7 +1901,7 @@ begin
 
   -- 3. Mark invoice as posted/issued
   update public.global_invoices
-  set invoice_status = 'posted'::public.global_invoice_status
+  set invoice_status = 'issued'::public.global_invoice_status
   where id = p_invoice_id;
 
   -- 4. Universal wallet: Only for non-wholesale account invoices
@@ -2237,7 +2237,7 @@ begin
     select invoice_status, tenant_id into v_status, v_target_tenant_id
     from public.global_invoices where id = NEW.invoice_id;
     
-    if v_status in ('draft'::public.global_invoice_status, 'posted'::public.global_invoice_status) then
+    if v_status in ('draft'::public.global_invoice_status, 'issued'::public.global_invoice_status) then
       v_qty := ceil(NEW.quantity)::integer;
       
       update public.global_stocks
@@ -2258,7 +2258,7 @@ begin
     select invoice_status, tenant_id into v_status, v_target_tenant_id
     from public.global_invoices where id = NEW.invoice_id;
     
-    if v_status in ('draft'::public.global_invoice_status, 'posted'::public.global_invoice_status) then
+    if v_status in ('draft'::public.global_invoice_status, 'issued'::public.global_invoice_status) then
       if NEW.global_stock_id <> OLD.global_stock_id then
         -- Return old quantity to OLD stock ID
         v_qty := ceil(OLD.quantity)::integer;
@@ -2313,7 +2313,7 @@ begin
     select invoice_status, tenant_id into v_status, v_target_tenant_id
     from public.global_invoices where id = OLD.invoice_id;
     
-    if v_status in ('draft'::public.global_invoice_status, 'posted'::public.global_invoice_status) then
+    if v_status in ('draft'::public.global_invoice_status, 'issued'::public.global_invoice_status) then
       v_qty := ceil(OLD.quantity)::integer;
       
       update public.global_stocks
@@ -2347,7 +2347,7 @@ declare
   v_qty integer;
 begin
   -- Detect transition from active (draft, posted) to voided
-  if (OLD.invoice_status in ('draft'::public.global_invoice_status, 'posted'::public.global_invoice_status)) 
+  if (OLD.invoice_status in ('draft'::public.global_invoice_status, 'issued'::public.global_invoice_status)) 
      and (NEW.invoice_status = 'voided'::public.global_invoice_status) then
      
     for v_item in 
@@ -2434,7 +2434,7 @@ begin
   select * into v_invoice from public.global_invoices where id = p_invoice_id for update;
   if v_invoice.id is null then raise exception 'invoice not found'; end if;
   
-  if v_invoice.invoice_status <> 'posted'::public.global_invoice_status then
+  if v_invoice.invoice_status <> 'issued'::public.global_invoice_status then
     raise exception 'only posted invoices can be unposted';
   end if;
   
@@ -2573,7 +2573,7 @@ declare
 begin
   select * into v_invoice from public.global_invoices where id = p_invoice_id for update;
   if v_invoice.id is null then raise exception 'invoice not found'; end if;
-  if v_invoice.invoice_status <> 'posted'::public.global_invoice_status then
+  if v_invoice.invoice_status <> 'issued'::public.global_invoice_status then
     raise exception 'only posted invoices can be voided';
   end if;
   if v_invoice.paid_amount > 0 then
@@ -2857,7 +2857,7 @@ begin
   -- 5. Mark invoice as posted/issued (no wallet touch)
   update public.sales_invoices
   set
-    invoice_status = 'posted'::public.global_invoice_status,
+    invoice_status = 'issued'::public.global_invoice_status,
     payment_status = coalesce(nullif(payment_status, ''), 'due')
   where id = p_invoice_id
   returning * into v_invoice;
@@ -2919,7 +2919,7 @@ begin
     raise exception 'Invoice not found';
   end if;
 
-  if v_invoice.invoice_status <> 'posted'::public.global_invoice_status then
+  if v_invoice.invoice_status <> 'issued'::public.global_invoice_status then
     raise exception 'Returns can only be processed on issued/posted invoices';
   end if;
 

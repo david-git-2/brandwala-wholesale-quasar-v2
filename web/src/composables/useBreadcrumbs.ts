@@ -138,12 +138,12 @@ export function useBreadcrumbs() {
 
     const prefix = tenantSlug ? `/${tenantSlug}${scopePrefix.slice(0, -1)}` : scopePrefix.slice(0, -1);
 
-    const firstSeg = segments[0];
-    const isDomainGroup = Boolean(DOMAIN_GROUPS[firstSeg]);
+    const firstSeg = segments[0] || '';
+    const isDomainGroup = Boolean(firstSeg && DOMAIN_GROUPS[firstSeg]);
 
     // Add Domain Group if present (Unclickable category)
-    if (isDomainGroup) {
-      const domainTitle = DOMAIN_GROUPS[firstSeg];
+    if (isDomainGroup && firstSeg) {
+      const domainTitle = DOMAIN_GROUPS[firstSeg] || firstSeg;
       if (segments.length === 1) {
         items.push({ label: domainTitle });
         return items;
@@ -160,7 +160,8 @@ export function useBreadcrumbs() {
     let lastEntitySingular = 'Item';
 
     for (let i = 0; i < remainingSegments.length; i++) {
-      const seg = remainingSegments[i];
+      const seg = remainingSegments[i] || '';
+      if (!seg) continue;
       const isLeaf = i === remainingSegments.length - 1;
       accumulatedPath += `/${seg}`;
 
@@ -180,7 +181,7 @@ export function useBreadcrumbs() {
         });
       } else if (ENTITY_MAP[seg]) {
         // Known Entity segment (e.g. 'shipment', 'shops', 'orders')
-        const entity = ENTITY_MAP[seg];
+        const entity = ENTITY_MAP[seg]!;
         lastEntitySingular = entity.singular;
 
         items.push({
@@ -190,7 +191,7 @@ export function useBreadcrumbs() {
       } else if (ACTION_MAP[seg]) {
         // Action / Subpage segment (e.g. 'rates-invoices', 'items', 'settings')
         items.push({
-          label: ACTION_MAP[seg],
+          label: ACTION_MAP[seg]!,
           to: isLeaf ? undefined : accumulatedPath,
         });
       } else {

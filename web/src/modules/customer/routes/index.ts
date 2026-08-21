@@ -11,13 +11,9 @@ const customerRoutes: RouteRecordRaw[] = [
         name: 'app-customers',
         component: () => import('../pages/CustomerHubPage.vue'),
         beforeEnter: createAccessGuard({
-          scope: 'app',
-          moduleKey: 'customer',
-          requiredAction: 'view',
-          breadcrumbs: [
-            { label: 'Dashboard', to: '/app/dashboard' },
-            { label: 'Customers' },
-          ],
+          requiredScope: 'app',
+          requiredModule: 'customer',
+          loginRoute: (to) => ({ name: 'login', query: { redirect: to.fullPath } }),
         }),
       },
       {
@@ -25,14 +21,10 @@ const customerRoutes: RouteRecordRaw[] = [
         name: 'app-customers-create',
         component: () => import('../pages/CreateCustomerPage.vue'),
         beforeEnter: createAccessGuard({
-          scope: 'app',
-          moduleKey: 'customer',
-          requiredAction: 'create',
-          breadcrumbs: [
-            { label: 'Dashboard', to: '/app/dashboard' },
-            { label: 'Customers', to: '/app/customers' },
-            { label: 'Create Customer' },
-          ],
+          requiredScope: 'app',
+          requiredModule: 'customer',
+          requiredModuleAction: 'create',
+          loginRoute: (to) => ({ name: 'login', query: { redirect: to.fullPath } }),
         }),
       },
     ],

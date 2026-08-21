@@ -490,11 +490,11 @@ import { showSuccessNotification, showErrorNotification } from 'src/utils/appFee
 
 const $q = useQuasar();
 
-const openBulkPaste = () => {
+const openBulkPaste = (sectionId?: number | null) => {
   $q.dialog({
     component: BulkPasteDialog,
     componentProps: {
-      initialSectionId: selectedSectionId.value,
+      initialSectionId: sectionId !== undefined ? sectionId : selectedSectionId.value,
     },
   }).onOk(() => {
     showSuccessNotification('Bulk items imported successfully');

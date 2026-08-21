@@ -316,7 +316,7 @@ const props = defineProps<{
   cargoOptions: Array<{ label: string; value: number }>;
   currentCargoLabel: string;
   loadingCargo: boolean;
-  publicTrackingToken?: string | null;
+  publicTrackingToken?: string | null | undefined;
   sharingLoading?: boolean;
 }>();
 

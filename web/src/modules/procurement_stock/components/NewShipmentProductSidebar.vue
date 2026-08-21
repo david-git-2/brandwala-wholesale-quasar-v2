@@ -148,7 +148,7 @@ import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
 import { productService } from 'src/modules/products/services/productService';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import SmartImage from 'src/components/SmartImage.vue';
-import type { ShipmentCartItem } from './AddShipmentItemsPanel.vue';
+import type { ShipmentCartItem } from './AddShipmentCatalogTab.vue';
 import type { QForm } from 'quasar';
 
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';

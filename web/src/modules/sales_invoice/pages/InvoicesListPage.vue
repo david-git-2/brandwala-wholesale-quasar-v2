@@ -307,8 +307,8 @@
                   <q-chip
                     square
                     dense
-                    :color="props.row.invoice_status === 'posted' ? 'green-1' : props.row.invoice_status === 'voided' ? 'red-1' : 'amber-1'"
-                    :text-color="props.row.invoice_status === 'posted' ? 'green-9' : props.row.invoice_status === 'voided' ? 'red-9' : 'amber-9'"
+                    :color="props.row.invoice_status === 'issued' ? 'green-1' : props.row.invoice_status === 'voided' ? 'red-1' : 'amber-1'"
+                    :text-color="props.row.invoice_status === 'issued' ? 'green-9' : props.row.invoice_status === 'voided' ? 'red-9' : 'amber-9'"
                     class="text-weight-bold text-uppercase text-xxs q-ma-none soft-chip"
                   >
                     {{ props.row.invoice_status || 'draft' }}
@@ -429,6 +429,7 @@ const pagination = ref({
   descending: true,
 });
 
+const createWholesaleDialog = ref(false);
 const createRetailDialog = ref(route.query.create === 'retail');
 const createDropshipDialog = ref(route.query.create === 'dropship');
 
@@ -453,7 +454,7 @@ watch(
 const invoiceStatusOptions = [
   { label: 'All Statuses', value: null },
   { label: 'Draft', value: 'draft' },
-  { label: 'Posted', value: 'posted' },
+  { label: 'Issued', value: 'issued' },
   { label: 'Voided', value: 'voided' },
 ];
 
@@ -485,7 +486,7 @@ const columns = computed(() => {
 
 const invoiceRowClass = (row: GlobalInvoiceRow) => {
   if (row.invoice_status === 'draft') return 'invoice-row--draft';
-  if (row.invoice_status === 'posted') return 'invoice-row--posted';
+  if (row.invoice_status === 'issued') return 'invoice-row--posted';
   if (row.invoice_status === 'voided') return 'invoice-row--voided';
   return '';
 };

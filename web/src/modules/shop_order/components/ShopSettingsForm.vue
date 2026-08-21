@@ -739,7 +739,7 @@ function buildPayload(): UpdateShopPayload | null {
     deduct_packing_from_margin: form.deduct_packing_from_margin,
     vendor_code:
       form.shop_type === 'vendor_catalog' ? form.vendor_code.trim() || null : null,
-    vendor_filters: form.shop_type === 'vendor_catalog' ? form.vendor_filters : null,
+    vendor_filters: form.shop_type === 'vendor_catalog' ? (form.vendor_filters ?? null) : null,
   };
 }
 

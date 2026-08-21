@@ -594,21 +594,23 @@ function formatNumber(val: number): string {
 function handleSubmit() {
   if (!amount.value || amount.value <= 0) return;
 
-  emit('submit', {
+  const payload: WalletActionPayload = {
     actionType: props.actionType,
     entityType: props.entityType,
     entityId: props.entityId,
-    targetEntityType: props.entityType === 'tenant' ? destinationType.value : undefined,
-    targetEntityId: props.entityType === 'tenant' && destinationEntityId.value ? destinationEntityId.value : undefined,
+    ...(props.entityType === 'tenant' && destinationType.value ? { targetEntityType: destinationType.value } : {}),
+    ...(props.entityType === 'tenant' && destinationEntityId.value ? { targetEntityId: destinationEntityId.value } : {}),
     amount: amount.value,
     currency: currency.value,
     exchangeRate: currency.value === 'BDT' ? 1.0 : exchangeRate.value || 1.0,
     baseAmount: convertedBdt.value,
     category: category.value,
     paymentMethod: paymentMethod.value,
-    referenceId: referenceId.value.trim() || undefined,
-    note: note.value.trim() || undefined,
-  });
+    ...(referenceId.value.trim() ? { referenceId: referenceId.value.trim() } : {}),
+    ...(note.value.trim() ? { note: note.value.trim() } : {}),
+  };
+
+  emit('submit', payload);
 }
 </script>
 

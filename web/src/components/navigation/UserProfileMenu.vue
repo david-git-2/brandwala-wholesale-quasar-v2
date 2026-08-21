@@ -148,23 +148,19 @@ const { locale } = useI18n();
 const { darkMode, setDarkMode, density, setDensity } = useAppearance();
 
 const userName = computed(() => {
-  const meta = authStore.user?.user_metadata as Record<string, unknown> | undefined;
-  if (meta?.full_name && typeof meta.full_name === 'string') return meta.full_name;
-  if (meta?.name && typeof meta.name === 'string') return meta.name;
-  return authStore.user?.email?.split('@')[0] ?? 'User';
+  return authStore.user?.fullName || authStore.user?.email?.split('@')[0] || 'User';
 });
 
 const userEmail = computed(() => authStore.user?.email ?? '');
 const userAvatarUrl = computed(() => {
-  const meta = authStore.user?.user_metadata as Record<string, unknown> | undefined;
-  return (meta?.avatar_url as string | undefined) ?? null;
+  return authStore.user?.avatarUrl ?? null;
 });
 
 const userInitials = computed(() => {
   const name = userName.value.trim();
   if (!name) return 'U';
   const parts = name.split(/\s+/).filter(Boolean);
-  if (parts.length >= 2) {
+  if (parts.length >= 2 && parts[0] && parts[1]) {
     return `${parts[0].charAt(0)}${parts[1].charAt(0)}`.toUpperCase();
   }
   return name.slice(0, 2).toUpperCase();

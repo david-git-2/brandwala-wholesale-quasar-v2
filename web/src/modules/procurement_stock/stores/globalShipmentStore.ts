@@ -206,7 +206,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
               entity_type: d.entity_type,
               entity_id: d.entity_type ? d.entity_id : null,
               section_id: d.section_id ?? null,
-              metadata: meta,
+              metadata: meta as any,
             };
           });
           await globalShipmentCostEntryRepository.revise(shipmentId, payload);
@@ -241,7 +241,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
               entity_type: d.entity_type,
               entity_id: d.entity_type ? d.entity_id : null,
               section_id: d.section_id ?? null,
-              metadata: meta,
+              metadata: meta as any,
             });
           }
         }

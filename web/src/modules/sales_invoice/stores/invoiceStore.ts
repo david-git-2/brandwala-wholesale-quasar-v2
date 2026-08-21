@@ -14,7 +14,7 @@ type InvoiceStoreState = {
 
 const toInvoiceRow = (invoice: GlobalInvoiceCreated): GlobalInvoiceRow => ({
   id: invoice.id,
-  tenant_id: invoice.tenant_id,
+  ...(invoice.tenant_id ? { tenant_id: invoice.tenant_id } : {}),
   parent_tenant_id: invoice.parent_tenant_id,
   issued_by_tenant_id: invoice.issued_by_tenant_id,
   invoice_no: invoice.invoice_no,

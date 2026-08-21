@@ -433,6 +433,10 @@ const {
   paySettling,
 } = actions;
 
+const refreshRates = () => {
+  void loadShipmentDetails();
+};
+
 const progressFlowOptions = computed(() =>
   shipmentStore.progressFlows.filter((flow) => flow.is_active !== false),
 );

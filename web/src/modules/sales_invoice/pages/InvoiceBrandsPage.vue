@@ -268,9 +268,9 @@ const form = ref({
 const brandsQuery = useQuery({
   queryKey: computed(() => salesInvoiceQueryKeys.brands(effectiveTenantId.value)),
   queryFn: async () => {
-    return invoiceRepository.listInvoiceBrands({
-      tenant_id: effectiveTenantId.value ?? undefined,
-    });
+    return invoiceRepository.listInvoiceBrands(
+      effectiveTenantId.value ? { tenant_id: effectiveTenantId.value } : {},
+    );
   },
   enabled: computed(() => !!effectiveTenantId.value),
   placeholderData: (prev) => prev,

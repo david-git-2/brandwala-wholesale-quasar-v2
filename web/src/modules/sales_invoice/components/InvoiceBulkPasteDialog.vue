@@ -84,7 +84,7 @@
               <tr v-for="(item, index) in previewRows" :key="item.id">
                 <td class="text-left text-grey-6">{{ index + 1 }}</td>
                 <td class="text-left text-weight-medium ellipsis" style="max-width: 250px">
-                  {{ item.name_snapshot }}
+                  {{ item.name }}
                   <div class="text-caption text-grey-6">
                     Current: Qty {{ item.quantity }} · Sell
                     {{ formatAmount(item.sell_price_amount) }}

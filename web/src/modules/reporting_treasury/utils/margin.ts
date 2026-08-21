@@ -96,14 +96,14 @@ export const chargeEffect = (invoice: InvoiceInput): number => {
 /**
  * Calculates the gross profit for an invoice.
  * Formula: Σ line margin - discount + charge_effect - return_margin_total
- * Filters: invoice_status = 'posted' only; voided/drafts return 0.
+ * Filters: invoice_status = 'issued' only; voided/drafts return 0.
  */
 export const invoiceGrossProfit = (
   invoice: InvoiceInput,
   lines: (LineInput & { id: number })[],
   returns: ReturnInput[] = [],
 ): number => {
-  if (invoice.invoice_status !== undefined && invoice.invoice_status !== 'posted') {
+  if (invoice.invoice_status !== undefined && invoice.invoice_status !== 'issued') {
     return 0;
   }
 

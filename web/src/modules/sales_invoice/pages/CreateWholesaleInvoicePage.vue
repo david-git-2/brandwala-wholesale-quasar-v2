@@ -99,28 +99,28 @@
 
           <!-- Issued Status -->
           <q-btn
-            :color="loadedInvoiceStatus === 'posted' || loadedInvoiceStatus === 'issued' ? 'positive' : 'grey-4'"
-            :text-color="loadedInvoiceStatus === 'posted' || loadedInvoiceStatus === 'issued' ? 'white' : 'positive'"
-            :unelevated="loadedInvoiceStatus === 'posted' || loadedInvoiceStatus === 'issued'"
-            :outline="loadedInvoiceStatus !== 'posted' && loadedInvoiceStatus !== 'issued'"
+            :color="loadedInvoiceStatus === 'issued' ? 'positive' : 'grey-4'"
+            :text-color="loadedInvoiceStatus === 'issued' ? 'white' : 'positive'"
+            :unelevated="loadedInvoiceStatus === 'issued'"
+            :outline="loadedInvoiceStatus !== 'issued'"
             dense
             no-caps
             class="q-px-sm text-caption text-weight-bold"
             :loading="isSaving && selectedSaveStatus === 'issued'"
-            :disable="isSaving || loadedInvoiceStatus === 'posted' || loadedInvoiceStatus === 'issued'"
+            :disable="isSaving || loadedInvoiceStatus === 'issued'"
             @click="handleSaveInvoice('issued')"
           >
             <q-icon
-              v-if="loadedInvoiceStatus === 'posted' || loadedInvoiceStatus === 'issued'"
+              v-if="loadedInvoiceStatus === 'issued'"
               name="ph ph-check-circle"
               size="13px"
               class="q-mr-xs"
             />
-            {{ loadedInvoiceStatus === 'posted' || loadedInvoiceStatus === 'issued' ? 'ISSUED' : 'Save as ISSUED' }}
+            {{ loadedInvoiceStatus === 'issued' ? 'ISSUED' : 'Save as ISSUED' }}
           </q-btn>
 
-          <!-- Payment Status when Issued -->
-          <template v-if="loadedInvoiceStatus === 'posted' || loadedInvoiceStatus === 'issued'">
+          <!-- Payment Status Button-like badge when Issued -->
+          <template v-if="loadedInvoiceStatus === 'issued'">
             <q-separator vertical class="q-mx-xs" />
             <q-badge
               :color="
@@ -137,7 +137,8 @@
                     ? 'blue-9'
                     : 'red-9'
               "
-              class="text-weight-bolder text-uppercase q-px-sm q-py-xs"
+              class="text-weight-bolder text-uppercase q-px-sm q-py-xs rounded-borders"
+              style="font-size: 11px; height: 28px; line-height: 20px"
             >
               <q-icon
                 :name="
@@ -150,74 +151,26 @@
                 size="13px"
                 class="q-mr-xs"
               />
-              Payment: {{ effectivePaymentStatus }}
+              PAYMENT: {{ effectivePaymentStatus }}
             </q-badge>
-          </template>
-          <!-- Return Action Button when Issued -->
-          <template v-if="loadedInvoiceStatus === 'posted' || loadedInvoiceStatus === 'issued'">
-            <q-separator vertical class="q-mx-xs" />
-            <q-btn
-              flat
-              dense
-              no-caps
-              color="purple"
-              icon="ph ph-arrow-u-down-left"
-              label="Process Return"
-              class="q-px-sm text-caption text-weight-bold"
-              @click="goToProcessReturn"
-            >
-              <q-tooltip>Record wholesale item returns & issue credit note</q-tooltip>
-            </q-btn>
           </template>
         </div>
 
+        <!-- Right Side: Process Return Button -->
         <div class="row items-center q-gutter-xs">
-          <q-badge
-            v-if="loadedInvoiceStatus"
-            :color="
-              loadedInvoiceStatus === 'posted' || loadedInvoiceStatus === 'issued'
-                ? 'green-1'
-                : loadedInvoiceStatus === 'voided'
-                  ? 'red-1'
-                  : loadedInvoiceStatus === 'proforma_generated'
-                    ? 'blue-1'
-                    : 'amber-1'
-            "
-            :text-color="
-              loadedInvoiceStatus === 'posted' || loadedInvoiceStatus === 'issued'
-                ? 'green-9'
-                : loadedInvoiceStatus === 'voided'
-                  ? 'red-9'
-                  : loadedInvoiceStatus === 'proforma_generated'
-                    ? 'blue-9'
-                    : 'amber-9'
-            "
-            class="text-weight-bold q-px-sm text-capitalize"
+          <q-btn
+            v-if="loadedInvoiceStatus === 'issued'"
+            flat
+            dense
+            no-caps
+            color="purple"
+            icon="ph ph-arrow-u-down-left"
+            label="Process Return"
+            class="q-px-sm text-caption text-weight-bold"
+            @click="goToProcessReturn"
           >
-            Status: {{ loadedInvoiceStatus === 'proforma_generated' ? 'Proforma' : loadedInvoiceStatus }}
-          </q-badge>
-
-
-          <q-badge
-            v-if="loadedInvoiceStatus === 'posted' || loadedInvoiceStatus === 'issued'"
-            :color="
-              effectivePaymentStatus === 'paid'
-                ? 'green-1'
-                : effectivePaymentStatus === 'partial'
-                  ? 'blue-1'
-                  : 'red-1'
-            "
-            :text-color="
-              effectivePaymentStatus === 'paid'
-                ? 'green-9'
-                : effectivePaymentStatus === 'partial'
-                  ? 'blue-9'
-                  : 'red-9'
-            "
-            class="text-weight-bold q-px-sm text-uppercase"
-          >
-            Payment: {{ effectivePaymentStatus }}
-          </q-badge>
+            <q-tooltip>Record wholesale item returns & issue credit note</q-tooltip>
+          </q-btn>
         </div>
       </div>
 
@@ -646,6 +599,7 @@ import { salesInvoiceQueryKeys } from '../services/salesInvoiceQueryKeys';
 import WholesaleIssueConfirmDialog, {
   type WholesaleIssueDialogItem,
 } from '../components/WholesaleIssueConfirmDialog.vue';
+import { usePageBreadcrumbs } from 'src/composables/useBreadcrumbs';
 
 type BillingProfileWithTenant = BillingProfile & {
   tenant?: { id: number; name: string; slug: string } | null;
@@ -679,6 +633,27 @@ const router = useRouter();
 const authStore = useAuthStore();
 const tenantStore = useTenantStore();
 
+usePageBreadcrumbs(() => {
+  const tenantSlug = authStore.selectedTenant?.slug || (route.params.tenantSlug as string);
+  const basePrefix = tenantSlug ? `/${tenantSlug}/app/sales/invoices` : '/app/sales/invoices';
+  return [
+    {
+      label: authStore.selectedTenant?.name || 'Workspace',
+      icon: 'ph ph-buildings',
+    },
+    {
+      label: 'Sales',
+    },
+    {
+      label: 'Invoices',
+      to: `${basePrefix}/list`,
+    },
+    {
+      label: 'Invoice Details',
+    },
+  ];
+});
+
 const existingInvoiceId = computed(() => {
   const qId = route.query.id;
   if (typeof qId === 'string' && qId) return Number(qId);
@@ -711,7 +686,7 @@ const loadExistingInvoice = async () => {
       loadedPaymentStatus.value = inv.payment_status || 'due';
       selectedBillingProfileId.value = inv.billing_profile_id ?? null;
       overallDiscountInput.value = inv.discount_amount ?? 0;
-      if (inv.invoice_status === 'posted') {
+      if (inv.invoice_status === 'issued') {
         selectedSaveStatus.value = 'issued';
       }
     }
@@ -720,7 +695,7 @@ const loadExistingInvoice = async () => {
       invoiceItems.value = invItems.map((item) => ({
         id: item.id,
         global_stock_id: item.global_stock_id,
-        shipment_item_id: item.shipment_item_id ?? 0,
+        shipment_item_id: 0,
         product_id: null,
         name: item.name_snapshot,
         barcode: null,
@@ -728,11 +703,11 @@ const loadExistingInvoice = async () => {
         image_url: item.image_url ?? null,
         quantity: Number(item.quantity),
         available_atp: Number(item.quantity),
-        unit_cost_price: Number(item.purchase_price ?? 0),
+        unit_cost_price: Number(item.unit_cost_price ?? 0),
         sell_price_amount: Number(item.sell_price_amount),
         line_discount_amount: Number(item.line_discount_amount),
-        shipment_id: item.shipment_id ?? 0,
-        shipment_name: item.shipment_type ?? 'Shipment',
+        shipment_id: 0,
+        shipment_name: 'Shipment',
         holding_tenant_id: effectiveTenantId.value ?? 0,
         holding_tenant_name: '',
         is_allocated_to_tenant: true,
@@ -950,7 +925,7 @@ const calculateLineTotal = (item: InvoiceLineDraftItem): number => {
 
 const overallDiscountInput = ref<number | null>(null);
 
-const applyOverallDiscountEqually = (val: number | null) => {
+const applyOverallDiscountEqually = (val: string | number | null) => {
   const count = invoiceItems.value.length;
   if (!count) return;
 
@@ -1131,13 +1106,13 @@ const handleSaveInvoice = async (status: WholesaleInvoiceSaveStatus) => {
             await invoiceRepository.issueWholesaleInvoice(
               targetInvoiceId,
               data.items.map((i) => ({
-                id: i.id,
+                ...(i.id ? { id: i.id } : {}),
                 global_stock_id: i.global_stock_id,
                 quantity: i.quantity,
               })),
             );
 
-            loadedInvoiceStatus.value = 'posted';
+            loadedInvoiceStatus.value = 'issued';
             loadedPaymentStatus.value = 'due';
             if (targetInvoiceId) {
               void router.replace({

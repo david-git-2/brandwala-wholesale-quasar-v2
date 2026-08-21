@@ -187,7 +187,12 @@ defineProps<{
   currentCostCurrencySymbol: string;
   cargoCostWeightLabel: string;
   transactionRateWeightLabel: string;
-  shipmentType?: 'international' | 'local' | 'transfer';
+  shipmentType?: 'international' | 'local' | 'transfer' | undefined;
+  isCostFinalized?: boolean;
+}>();
+
+defineEmits<{
+  (e: 'section-matched'): void;
 }>();
 </script>
 

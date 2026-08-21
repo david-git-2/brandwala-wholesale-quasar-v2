@@ -154,7 +154,7 @@ const statCards = computed(() => [
   {
     label: 'Consolidated Sales',
     value: totals.value.revenue,
-    caption: 'All posted invoices subtotal',
+    caption: 'All issued invoices subtotal',
   },
   {
     label: 'Total Cash Collected',

@@ -44,7 +44,7 @@ import AddShipmentChildLinesTab from './AddShipmentChildLinesTab.vue';
 withDefaults(
   defineProps<{
     shipmentId: number;
-    initialSectionId?: number | null;
+    initialSectionId?: number | null | undefined;
     layout?: 'drawer' | 'page';
     showCancel?: boolean;
   }>(),
