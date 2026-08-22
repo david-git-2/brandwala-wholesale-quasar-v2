@@ -10525,6 +10525,16 @@ export type Database = {
         Args: { p_store_id: number }
         Returns: boolean
       }
+      collect_wholesale_invoice_payment: {
+        Args: {
+          p_cash_amount?: number
+          p_cash_method?: string
+          p_invoice_id: number
+          p_settlement_amount?: number
+          p_wallet_amount?: number
+        }
+        Returns: Json
+      }
       compute_thrift_landed_unit_cost: {
         Args: { p_stock_id: number }
         Returns: number
@@ -11675,10 +11685,6 @@ export type Database = {
         Args: { p_investor_id: number }
         Returns: Json
       }
-      get_invoice_margin_detail: {
-        Args: { p_invoice_id: number }
-        Returns: Json
-      }
       get_item_details: { Args: { p_item_id: number }; Returns: Json }
       get_koba_cart: {
         Args: { p_customer_group_id?: number; p_tenant_id: number }
@@ -11718,10 +11724,6 @@ export type Database = {
       }
       get_or_create_shop_cart: { Args: { p_shop_id: number }; Returns: Json }
       get_parent_cash_circulation: {
-        Args: { p_parent_tenant_id: number }
-        Returns: Json
-      }
-      get_parent_dashboard: {
         Args: { p_parent_tenant_id: number }
         Returns: Json
       }
@@ -11780,10 +11782,6 @@ export type Database = {
       }
       get_recipient_profile_by_phone: {
         Args: { p_phone: string; p_tenant_id: number }
-        Returns: Json
-      }
-      get_shipment_item_invoices: {
-        Args: { p_shipment_id: number; p_tenant_id: number }
         Returns: Json
       }
       get_shipment_overview_details: {
@@ -12219,10 +12217,6 @@ export type Database = {
               unit_cost_amount: number
             }[]
           }
-      list_billing_balances: {
-        Args: { p_search?: string; p_tenant_id: number }
-        Returns: Json
-      }
       list_cgm_ids_with_overrides: {
         Args: { p_customer_group_id: number }
         Returns: {
@@ -12701,22 +12695,6 @@ export type Database = {
           total_count: number
           type: Database["public"]["Enums"]["investor_transaction_type"]
         }[]
-      }
-      list_invoice_margin_report: {
-        Args: {
-          p_end_date?: string
-          p_invoice_type?: string
-          p_page?: number
-          p_page_size?: number
-          p_search?: string
-          p_start_date?: string
-          p_tenant_id: number
-        }
-        Returns: Json
-      }
-      list_invoice_outstanding: {
-        Args: { p_search?: string; p_tenant_id: number }
-        Returns: Json
       }
       list_invoices_paginated: {
         Args: {

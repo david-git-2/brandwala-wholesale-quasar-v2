@@ -178,26 +178,10 @@ GRANT ALL ON FUNCTION "public"."dispense_middleman_payout_from_tenant"("p_tenant
 GRANT ALL ON FUNCTION "public"."ensure_dropship_invoice_billed_entry"("p_invoice_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."ensure_dropship_invoice_billed_entry"("p_invoice_id" bigint) TO "service_role";
 
-GRANT ALL ON FUNCTION "public"."get_invoice_margin_detail"("p_invoice_id" bigint) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_invoice_margin_detail"("p_invoice_id" bigint) TO "anon";
-GRANT ALL ON FUNCTION "public"."get_invoice_margin_detail"("p_invoice_id" bigint) TO "service_role";
-
 GRANT ALL ON FUNCTION "public"."get_recipient_profile_by_phone"("p_tenant_id" bigint, "p_phone" "text") TO "authenticated";
-
-GRANT ALL ON FUNCTION "public"."list_billing_balances"("p_tenant_id" bigint, "p_search" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."list_billing_balances"("p_tenant_id" bigint, "p_search" "text") TO "anon";
-GRANT ALL ON FUNCTION "public"."list_billing_balances"("p_tenant_id" bigint, "p_search" "text") TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."list_global_invoice_items"("p_invoice_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."list_global_invoice_items"("p_invoice_id" bigint) TO "service_role";
-
-GRANT ALL ON FUNCTION "public"."list_invoice_margin_report"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_start_date" "date", "p_end_date" "date", "p_search" "text", "p_invoice_type" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."list_invoice_margin_report"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_start_date" "date", "p_end_date" "date", "p_search" "text", "p_invoice_type" "text") TO "anon";
-GRANT ALL ON FUNCTION "public"."list_invoice_margin_report"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_start_date" "date", "p_end_date" "date", "p_search" "text", "p_invoice_type" "text") TO "service_role";
-
-GRANT ALL ON FUNCTION "public"."list_invoice_outstanding"("p_tenant_id" bigint, "p_search" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."list_invoice_outstanding"("p_tenant_id" bigint, "p_search" "text") TO "anon";
-GRANT ALL ON FUNCTION "public"."list_invoice_outstanding"("p_tenant_id" bigint, "p_search" "text") TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."post_sales_invoice"("p_invoice_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."post_sales_invoice"("p_invoice_id" bigint) TO "service_role";
@@ -232,5 +216,8 @@ GRANT ALL ON FUNCTION "public"."search_sales_invoice_stock"("p_tenant_id" bigint
 
 GRANT ALL ON FUNCTION "public"."process_wholesale_invoice_return"("p_invoice_id" bigint, "p_items" jsonb, "p_return_charge_amount" numeric, "p_refund_method" "text", "p_payout_account_id" bigint, "p_note" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."process_wholesale_invoice_return"("p_invoice_id" bigint, "p_items" jsonb, "p_return_charge_amount" numeric, "p_refund_method" "text", "p_payout_account_id" bigint, "p_note" "text") TO "service_role";
+
+GRANT ALL ON FUNCTION "public"."collect_wholesale_invoice_payment"("p_invoice_id" bigint, "p_cash_amount" numeric, "p_cash_method" "text", "p_wallet_amount" numeric, "p_settlement_amount" numeric) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."collect_wholesale_invoice_payment"("p_invoice_id" bigint, "p_cash_amount" numeric, "p_cash_method" "text", "p_wallet_amount" numeric, "p_settlement_amount" numeric) TO "service_role";
 
 

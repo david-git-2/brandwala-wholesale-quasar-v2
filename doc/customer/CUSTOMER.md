@@ -1,6 +1,6 @@
 # Customer Module
 
-The **Customer** domain consolidates B2B customer accounts, storefront access tiers, billing identities, contact members, and financial wallet linkage into a unified module.
+The **Customer** domain consolidates B2B customer accounts, storefront access tiers, billing identities, delivery recipients, contact members, and financial wallet linkage into a unified module.
 
 ---
 
@@ -24,6 +24,7 @@ flowchart TD
 | **Billing Profile** | `billing_profiles` | Financial account for wholesale and retail invoices, AR balances, and ledger accounting. |
 | **Customer Member** | `customer_group_members` | Contact persons and login users attached to the customer group. |
 | **Wallet Account** | `wallet_accounts` | Universal wallet balance (`entity_type = 'customer'`, `entity_id = billing_profile_id`). |
+| **Recipient Profile** | `recipient_profiles` | Delivery endpoint (name, phone, address). Used by invoices and shop orders. Grant key: `recipient_profile`. |
 
 ---
 
@@ -33,6 +34,7 @@ flowchart TD
 | :--- | :--- | :--- |
 | `/:tenantSlug?/app/customers` | [`CustomerHubPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/customer/pages/CustomerHubPage.vue) | [`CustomerDetailDrawer.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/customer/components/CustomerDetailDrawer.vue), search box, count badge, status chip. |
 | `/:tenantSlug?/app/customers/create` | [`CreateCustomerPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/customer/pages/CreateCustomerPage.vue) | Multi-column customer identity form card, color picker, live preview card. |
+| `/:tenantSlug?/app/customers/recipient-profiles` | [`RecipientProfilesPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/sales_invoice/pages/RecipientProfilesPage.vue) | Delivery recipient address book |
 
 ---
 

@@ -26,7 +26,7 @@ const salesInvoiceRoutes: RouteRecordRaw[] = [
   },
   {
     path: '/:tenantSlug?/app/invoices/recipient-profiles',
-    redirect: (to) => `${getTenantSlugPrefix(to.params)}/app/sales/invoices/recipient-profiles`,
+    redirect: (to) => `${getTenantSlugPrefix(to.params)}/app/customers/recipient-profiles`,
   },
   {
     path: '/:tenantSlug?/app/invoices/brands',
@@ -92,9 +92,12 @@ const salesInvoiceRoutes: RouteRecordRaw[] = [
       },
       {
         path: 'recipient-profiles',
-        name: 'app-global-recipient-profiles',
-        component: () => import('../pages/RecipientProfilesPage.vue'),
-        beforeEnter: guard('recipient_profile'),
+        redirect: (to) => {
+          const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : '';
+          return tenantSlug
+            ? `/${tenantSlug}/app/customers/recipient-profiles`
+            : '/app/customers/recipient-profiles';
+        },
       },
       {
         path: 'brands',

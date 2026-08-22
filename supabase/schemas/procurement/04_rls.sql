@@ -832,12 +832,6 @@ GRANT ALL ON FUNCTION "public"."get_costing_file_by_id"("p_id" bigint) TO "authe
 
 
 
-GRANT ALL ON FUNCTION "public"."get_shipment_item_invoices"("p_tenant_id" bigint, "p_shipment_id" bigint) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_shipment_item_invoices"("p_tenant_id" bigint, "p_shipment_id" bigint) TO "anon";
-GRANT ALL ON FUNCTION "public"."get_shipment_item_invoices"("p_tenant_id" bigint, "p_shipment_id" bigint) TO "service_role";
-
-
-
 GRANT ALL ON FUNCTION "public"."get_shipment_pnl"("p_tenant_id" bigint, "p_shipment_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_shipment_pnl"("p_tenant_id" bigint, "p_shipment_id" bigint) TO "anon";
 GRANT ALL ON FUNCTION "public"."get_shipment_pnl"("p_tenant_id" bigint, "p_shipment_id" bigint) TO "service_role";

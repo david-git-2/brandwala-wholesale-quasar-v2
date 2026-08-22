@@ -71,15 +71,8 @@ const getSubmoduleSectionAndWeight = (
 
   if (parentKey === 'reporting_treasury') {
     switch (moduleKey) {
-      case 'parent_dashboard':
-      case 'billing_balances':
-        return { section: 'Overview', weight: 10 };
       case 'payments':
         return { section: 'Transactions', weight: 20 };
-      case 'invoice_reports':
-      case 'shipment_reports':
-      case 'investor_reports':
-        return { section: 'Reports', weight: 30 };
       default:
         return { section: '', weight: 99 };
     }
@@ -89,10 +82,19 @@ const getSubmoduleSectionAndWeight = (
     switch (moduleKey) {
       case 'global_invoice':
         return { section: 'Invoicing', weight: 10 };
-      case 'billing_profile':
-      case 'recipient_profile':
       case 'invoice_brand':
         return { section: 'Profiles & Brands', weight: 20 };
+      default:
+        return { section: '', weight: 99 };
+    }
+  }
+
+  if (parentKey === 'customer') {
+    switch (moduleKey) {
+      case 'customer':
+        return { section: '', weight: 10 };
+      case 'recipient_profile':
+        return { section: '', weight: 20 };
       default:
         return { section: '', weight: 99 };
     }
@@ -176,9 +178,12 @@ export const buildNavLinksFromModuleHierarchy = (
 
     if (childRoutes.length === 0) continue;
 
-    childRoutes.forEach((route) => routesInHierarchy.add(route.moduleKey));
+    const parentOwnRoutes = accessibleRoutes.filter((route) => route.moduleKey === parentKey);
+    const groupedRoutes = [...parentOwnRoutes, ...childRoutes];
 
-    const mappedChildren = childRoutes
+    groupedRoutes.forEach((route) => routesInHierarchy.add(route.moduleKey));
+
+    const mappedChildren = groupedRoutes
       .map((route) => {
         const { section, weight } = getSubmoduleSectionAndWeight(parentKey, route.moduleKey);
         return {

@@ -1339,92 +1339,6 @@ $$;
 ALTER FUNCTION "public"."ensure_dropship_invoice_billed_entry"("p_invoice_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_invoice_margin_detail"("p_invoice_id" bigint) RETURNS "jsonb"
-    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_invoice jsonb;
-  v_lines jsonb;
-  v_returns jsonb;
-  v_gross_profit numeric(12,2);
-begin
-  -- 1. Get invoice details
-  select row_to_json(i)::jsonb
-  into v_invoice
-  from public.global_invoices i
-  where i.id = p_invoice_id;
-
-  if v_invoice is null then
-    raise exception 'invoice not found';
-  end if;
-
-  -- 2. Get line margins
-  select coalesce(jsonb_agg(row_to_json(l)), '[]'::jsonb)
-  into v_lines
-  from (
-    select
-      ii.*,
-      ((ii.sell_price_amount - ii.unit_cost_price) * ii.quantity - ii.line_discount_amount) as line_margin
-    from public.global_invoice_items ii
-    where ii.invoice_id = p_invoice_id
-  ) l;
-
-  -- 3. Get return margins
-  select coalesce(jsonb_agg(row_to_json(r)), '[]'::jsonb)
-  into v_returns
-  from (
-    select
-      ri.*,
-      (ri.return_accounting_amount - (ii.unit_cost_price * ri.quantity)) as return_margin
-    from public.global_return_items ri
-    join public.global_invoice_items ii on ii.id = ri.invoice_item_id
-    where ri.invoice_id = p_invoice_id
-  ) r;
-
-  -- 4. Calculate total gross profit
-  declare
-    v_lines_margin numeric(12,2) := 0;
-    v_returns_margin numeric(12,2) := 0;
-    v_discount numeric(12,2);
-    v_charges numeric(12,2);
-  begin
-    select coalesce(sum((sell_price_amount - unit_cost_price) * quantity - line_discount_amount), 0)
-    into v_lines_margin
-    from public.global_invoice_items
-    where invoice_id = p_invoice_id;
-
-    select coalesce(sum(ri.return_accounting_amount - (ii.unit_cost_price * ri.quantity)), 0)
-    into v_returns_margin
-    from public.global_return_items ri
-    join public.global_invoice_items ii on ii.id = ri.invoice_item_id
-    where ri.invoice_id = p_invoice_id;
-
-    select 
-      coalesce(discount_amount, 0),
-      case 
-        when invoice_type = 'wholesale' or invoice_type = 'dropship' then shipping_charge
-        when invoice_type = 'retail' then shipping_charge + cod_charge + print_charge + wrapping_charge
-        else 0.00 
-      end
-    into v_discount, v_charges
-    from public.global_invoices
-    where id = p_invoice_id;
-
-    v_gross_profit := v_lines_margin - v_discount + v_charges - v_returns_margin;
-  end;
-
-  return jsonb_build_object(
-    'invoice', v_invoice,
-    'lines', v_lines,
-    'returns', v_returns,
-    'gross_profit', v_gross_profit
-  );
-end;
-$$;
-
-ALTER FUNCTION "public"."get_invoice_margin_detail"("p_invoice_id" bigint) OWNER TO "postgres";
-
 
 CREATE OR REPLACE FUNCTION "public"."get_recipient_profile_by_phone"("p_tenant_id" bigint, "p_phone" "text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
@@ -1501,58 +1415,6 @@ $$;
 ALTER FUNCTION "public"."global_invoices_default_issued_by_tenant_id"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_billing_balances"("p_tenant_id" bigint, "p_search" "text" DEFAULT NULL::"text") RETURNS "jsonb"
-    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_data jsonb;
-begin
-  select coalesce(jsonb_agg(row_to_json(r)), '[]'::jsonb)
-  into v_data
-  from (
-    select
-      bp.id,
-      bp.name,
-      bp.email,
-      bp.phone,
-      bp.color,
-      coalesce(sum(i.due_amount), 0.00) as balance_due,
-      coalesce(sum(i.total_amount), 0.00) as total_invoiced,
-      coalesce(sum(i.paid_amount), 0.00) as total_paid
-    from public.billing_profiles bp
-    left join public.global_invoices i on i.billing_profile_id = bp.id and i.invoice_status = 'issued'::public.global_invoice_status
-    where bp.tenant_id = p_tenant_id
-      and (p_search is null or p_search = '' or bp.name ilike '%' || p_search || '%' or bp.email ilike '%' || p_search || '%')
-    group by bp.id
-    
-    union all
-    
-    select
-      -1::bigint as id,
-      'Walk-in / Direct' as name,
-      null::text as email,
-      null::text as phone,
-      '#757575' as color,
-      coalesce(sum(i.due_amount), 0.00) as balance_due,
-      coalesce(sum(i.total_amount), 0.00) as total_invoiced,
-      coalesce(sum(i.paid_amount), 0.00) as total_paid
-    from public.global_invoices i
-    where i.tenant_id = p_tenant_id
-      and i.invoice_status = 'issued'::public.global_invoice_status
-      and i.billing_profile_id is null
-      and (p_search is null or p_search = '' or 'Walk-in / Direct' ilike '%' || p_search || '%')
-    having count(i.id) > 0
-    
-    order by balance_due desc, name asc
-  ) r;
-
-  return v_data;
-end;
-$$;
-
-ALTER FUNCTION "public"."list_billing_balances"("p_tenant_id" bigint, "p_search" "text") OWNER TO "postgres";
-
 
 CREATE OR REPLACE FUNCTION "public"."list_global_invoice_items"("p_invoice_id" bigint) RETURNS TABLE("id" bigint, "invoice_id" bigint, "global_stock_id" bigint, "name_snapshot" "text", "quantity" numeric, "sell_price_amount" numeric, "recipient_price_amount" numeric, "line_face_total_amount" numeric, "line_discount_amount" numeric, "line_total_amount" numeric, "return_quantity" numeric, "image_url" "text", "shipment_id" bigint, "shipment_item_id" bigint, "purchase_price" numeric, "product_weight" numeric, "package_weight" numeric, "ordered_quantity" integer, "shipment_type" "text", "product_conversion_rate" numeric, "cargo_conversion_rate" numeric, "cargo_rate" numeric, "received_weight" numeric, "transaction_rate" numeric, "available_atp" numeric, "unit_cost_price" numeric)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
@@ -1628,149 +1490,6 @@ $$;
 ALTER FUNCTION "public"."list_global_invoice_items"("p_invoice_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_invoice_margin_report"("p_tenant_id" bigint, "p_page" integer DEFAULT 1, "p_page_size" integer DEFAULT 20, "p_start_date" "date" DEFAULT NULL::"date", "p_end_date" "date" DEFAULT NULL::"date", "p_search" "text" DEFAULT NULL::"text", "p_invoice_type" "text" DEFAULT NULL::"text") RETURNS "jsonb"
-    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_parent_id bigint;
-  v_is_parent boolean;
-  v_total_count bigint;
-  v_data jsonb;
-  v_total_pages integer;
-begin
-  v_parent_id := public.resolve_parent_tenant_id(p_tenant_id);
-  v_is_parent := public.is_parent_company(p_tenant_id);
-
-  -- 1. Get total count of matching posted invoices
-  select count(*)
-  into v_total_count
-  from public.global_invoices i
-  where (
-    (v_is_parent = true and i.parent_tenant_id = v_parent_id)
-    or (v_is_parent = false and i.tenant_id = p_tenant_id)
-  )
-    and i.invoice_status = 'issued'::public.global_invoice_status
-    and (p_start_date is null or i.invoice_date >= p_start_date)
-    and (p_end_date is null or i.invoice_date <= p_end_date)
-    and (p_invoice_type is null or p_invoice_type = '' or p_invoice_type = '__all__' or i.invoice_type::text = p_invoice_type)
-    and (
-      p_search is null or p_search = '' or (
-        i.invoice_no ilike '%' || p_search || '%'
-        or i.recipient_name ilike '%' || p_search || '%'
-      )
-    );
-
-  -- 2. Get paginated records as a jsonb array with derived gross profit
-  select coalesce(jsonb_agg(row_to_json(r)), '[]'::jsonb)
-  into v_data
-  from (
-    with invoice_line_margin as (
-      select
-        invoice_id,
-        sum((sell_price_amount - unit_cost_price) * quantity - line_discount_amount) as lines_margin
-      from public.global_invoice_items
-      group by invoice_id
-    ),
-    invoice_return_margin as (
-      select
-        ri.invoice_id,
-        sum(ri.return_accounting_amount - (ii.unit_cost_price * ri.quantity)) as returns_margin
-      from public.global_return_items ri
-      join public.global_invoice_items ii on ii.id = ri.invoice_item_id
-      group by ri.invoice_id
-    )
-    select
-      i.*,
-      coalesce(lm.lines_margin, 0.00) 
-        - i.discount_amount 
-        + (case 
-             when i.invoice_type = 'wholesale' or i.invoice_type = 'dropship' then i.shipping_charge
-             when i.invoice_type = 'retail' then i.shipping_charge + i.cod_charge + i.print_charge + i.wrapping_charge
-             else 0.00 
-           end)
-        - coalesce(rm.returns_margin, 0.00) as gross_profit
-    from public.global_invoices i
-    left join invoice_line_margin lm on lm.invoice_id = i.id
-    left join invoice_return_margin rm on rm.invoice_id = i.id
-    where (
-      (v_is_parent = true and i.parent_tenant_id = v_parent_id)
-      or (v_is_parent = false and i.tenant_id = p_tenant_id)
-    )
-      and i.invoice_status = 'issued'::public.global_invoice_status
-      and (p_start_date is null or i.invoice_date >= p_start_date)
-      and (p_end_date is null or i.invoice_date <= p_end_date)
-      and (p_invoice_type is null or p_invoice_type = '' or p_invoice_type = '__all__' or i.invoice_type::text = p_invoice_type)
-      and (
-        p_search is null or p_search = '' or (
-          i.invoice_no ilike '%' || p_search || '%'
-          or i.recipient_name ilike '%' || p_search || '%'
-        )
-      )
-    order by i.invoice_date desc, i.id desc
-    limit p_page_size
-    offset (greatest(coalesce(p_page, 1), 1) - 1) * p_page_size
-  ) r;
-
-  -- 3. Calculate total pages
-  if v_total_count = 0 then
-    v_total_pages := 0;
-  else
-    v_total_pages := ceil(v_total_count::float / p_page_size)::integer;
-  end if;
-
-  return jsonb_build_object(
-    'data', v_data,
-    'meta', jsonb_build_object(
-      'total', v_total_count,
-      'page', greatest(coalesce(p_page, 1), 1),
-      'page_size', p_page_size,
-      'total_pages', v_total_pages
-    )
-  );
-end;
-$$;
-
-ALTER FUNCTION "public"."list_invoice_margin_report"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_start_date" "date", "p_end_date" "date", "p_search" "text", "p_invoice_type" "text") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."list_invoice_outstanding"("p_tenant_id" bigint, "p_search" "text" DEFAULT NULL::"text") RETURNS "jsonb"
-    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_data jsonb;
-begin
-  select coalesce(jsonb_agg(row_to_json(r)), '[]'::jsonb)
-  into v_data
-  from (
-    select
-      i.id,
-      i.invoice_no,
-      i.invoice_date,
-      i.invoice_type,
-      i.payment_status,
-      i.total_amount,
-      i.due_amount,
-      i.paid_amount,
-      i.recipient_name,
-      i.recipient_phone,
-      i.billing_profile_id,
-      bp.name as billing_profile_name
-    from public.global_invoices i
-    left join public.billing_profiles bp on bp.id = i.billing_profile_id
-    where i.tenant_id = p_tenant_id
-      and i.invoice_status = 'issued'::public.global_invoice_status
-      and i.due_amount > 0
-      and (p_search is null or p_search = '' or i.invoice_no ilike '%' || p_search || '%' or i.recipient_name ilike '%' || p_search || '%')
-    order by i.invoice_date desc, i.id desc
-  ) r;
-
-  return v_data;
-end;
-$$;
-
-ALTER FUNCTION "public"."list_invoice_outstanding"("p_tenant_id" bigint, "p_search" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."post_global_invoice"("p_invoice_id" bigint) RETURNS "void"
@@ -2999,10 +2718,16 @@ begin
       v_item_note
     );
 
-    -- Update sales_invoice_items cumulative return_quantity
+    -- Update sales_invoice_items cumulative return_quantity; sold quantity stays.
+    -- line_total_amount is the net after return credit (kept qty × price − line discount).
     update public.sales_invoice_items
     set
       return_quantity = return_quantity + v_return_qty,
+      line_total_amount = greatest(
+        (v_db_item.quantity - (v_db_item.return_quantity + v_return_qty)) * v_db_item.sell_price_amount
+        - coalesce(v_db_item.line_discount_amount, 0),
+        0
+      ),
       updated_at = now()
     where id = v_item_id;
 
@@ -3146,6 +2871,170 @@ end;
 $$;
 
 ALTER FUNCTION "public"."process_wholesale_invoice_return"(bigint, jsonb, numeric, text, bigint, text) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."collect_wholesale_invoice_payment"(
+  "p_invoice_id" bigint,
+  "p_cash_amount" numeric DEFAULT 0,
+  "p_cash_method" text DEFAULT 'cash',
+  "p_wallet_amount" numeric DEFAULT 0,
+  "p_settlement_amount" numeric DEFAULT 0
+) RETURNS jsonb
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_invoice public.sales_invoices;
+  v_cash numeric(12,2);
+  v_wallet numeric(12,2);
+  v_settle numeric(12,2);
+  v_due numeric(12,2);
+  v_tenant_id bigint;
+  v_payment_id bigint;
+begin
+  if p_invoice_id is null then
+    raise exception 'Invoice ID is required';
+  end if;
+
+  v_cash := greatest(coalesce(p_cash_amount, 0.00), 0.00);
+  v_wallet := greatest(coalesce(p_wallet_amount, 0.00), 0.00);
+  v_settle := greatest(coalesce(p_settlement_amount, 0.00), 0.00);
+
+  if v_cash <= 0 and v_wallet <= 0 and v_settle <= 0 then
+    raise exception 'Enter cash, store credit, or settlement';
+  end if;
+
+  select * into v_invoice
+  from public.sales_invoices
+  where id = p_invoice_id
+  for update;
+
+  if v_invoice.id is null then
+    raise exception 'Invoice not found';
+  end if;
+
+  if v_invoice.invoice_status <> 'issued'::public.global_invoice_status then
+    raise exception 'Payments can only be recorded on issued invoices';
+  end if;
+
+  if v_invoice.billing_profile_id is null then
+    raise exception 'Billing profile is required';
+  end if;
+
+  v_due := coalesce(v_invoice.due_amount, 0.00);
+  if (v_cash + v_wallet + v_settle) > v_due then
+    raise exception 'Cash + credit + settlement cannot exceed due';
+  end if;
+
+  v_tenant_id := coalesce(v_invoice.parent_tenant_id, v_invoice.tenant_id);
+
+  if v_cash > 0 then
+    insert into public.global_payments (
+      tenant_id, billing_profile_id, amount, unallocated_amount,
+      payment_date, method, note
+    ) values (
+      v_tenant_id, v_invoice.billing_profile_id, v_cash, 0.00,
+      current_date, coalesce(nullif(trim(p_cash_method), ''), 'cash'),
+      'Wholesale invoice collect (cash)'
+    ) returning id into v_payment_id;
+
+    insert into public.invoice_payments (tenant_id, payment_id, global_invoice_id, amount)
+    values (v_tenant_id, v_payment_id, p_invoice_id, v_cash);
+
+    update public.sales_invoices
+    set paid_amount = coalesce(paid_amount, 0.00) + v_cash, updated_at = now()
+    where id = p_invoice_id;
+
+    perform public.recompute_global_invoice_payment_status(p_invoice_id);
+
+    perform public.record_ledger_transaction(
+      p_tenant_id => v_tenant_id,
+      p_entity_type => 'tenant',
+      p_entity_id => v_tenant_id,
+      p_type => 'credit',
+      p_amount => v_cash,
+      p_currency_code => 'BDT',
+      p_exchange_rate => 1.000000,
+      p_source_type => 'sales_invoice',
+      p_source_id => v_payment_id::text,
+      p_metadata => jsonb_build_object(
+        'section', 'payments',
+        'purpose', 'tenant_payment_received',
+        'transaction_type', 'payment_received',
+        'label', 'Payment Received',
+        'invoice_id', p_invoice_id,
+        'payment_id', v_payment_id
+      )
+    );
+  end if;
+
+  if v_wallet > 0 then
+    insert into public.wallet_accounts (
+      tenant_id, entity_type, entity_id, currency_code,
+      available_balance, locked_balance, pending_balance
+    ) values (
+      v_tenant_id, 'customer', v_invoice.billing_profile_id, 'BDT',
+      0.0000, 0.0000, 0.0000
+    ) on conflict (tenant_id, entity_type, entity_id, currency_code) do nothing;
+
+    insert into public.global_payments (
+      tenant_id, billing_profile_id, amount, unallocated_amount,
+      payment_date, method, note
+    ) values (
+      v_tenant_id, v_invoice.billing_profile_id, v_wallet, 0.00,
+      current_date, 'wallet_credit',
+      'Wholesale invoice collect (store credit)'
+    ) returning id into v_payment_id;
+
+    insert into public.invoice_payments (tenant_id, payment_id, global_invoice_id, amount)
+    values (v_tenant_id, v_payment_id, p_invoice_id, v_wallet);
+
+    update public.sales_invoices
+    set paid_amount = coalesce(paid_amount, 0.00) + v_wallet, updated_at = now()
+    where id = p_invoice_id;
+
+    perform public.recompute_global_invoice_payment_status(p_invoice_id);
+
+    perform public.record_ledger_transaction(
+      p_tenant_id => v_tenant_id,
+      p_entity_type => 'customer',
+      p_entity_id => v_invoice.billing_profile_id,
+      p_type => 'debit',
+      p_amount => v_wallet,
+      p_currency_code => 'BDT',
+      p_exchange_rate => 1.000000,
+      p_source_type => 'sales_invoice',
+      p_source_id => v_payment_id::text,
+      p_allow_overdraft => false,
+      p_metadata => jsonb_build_object(
+        'section', 'payments',
+        'purpose', 'apply_store_credit',
+        'transaction_type', 'wallet_credit',
+        'label', 'Applied store credit',
+        'invoice_id', p_invoice_id,
+        'payment_id', v_payment_id
+      )
+    );
+  end if;
+
+  if v_settle > 0 then
+    perform public.apply_global_invoice_settlement_discount(p_invoice_id, v_settle, 'Wholesale collect settlement');
+  end if;
+
+  select * into v_invoice from public.sales_invoices where id = p_invoice_id;
+
+  return jsonb_build_object(
+    'success', true,
+    'invoice_id', v_invoice.id,
+    'paid_amount', v_invoice.paid_amount,
+    'due_amount', v_invoice.due_amount,
+    'payment_status', v_invoice.payment_status,
+    'settlement_discount_amount', v_invoice.settlement_discount_amount
+  );
+end;
+$$;
+
+ALTER FUNCTION "public"."collect_wholesale_invoice_payment"(bigint, numeric, text, numeric, numeric) OWNER TO "postgres";
 
 
 

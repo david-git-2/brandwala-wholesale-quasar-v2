@@ -253,7 +253,7 @@
             class="workspace-shell__logout full-width"
             @click="handleLogout"
           >
-            <div class="row items-center no-wrap full-width" :class="isMini ? 'justify-center' : 'q-gutter-x-sm q-px-xs'">
+            <div class="row items-center justify-center no-wrap q-gutter-x-sm">
               <q-icon name="ph ph-sign-out" size="18px" color="grey-7" />
               <span v-if="!isMini" class="text-grey-8 text-weight-medium text-caption">Sign out</span>
             </div>
@@ -1220,6 +1220,11 @@ body.body--dark .workspace-shell__page-container {
   padding: 0.45rem 0.6rem;
   border-radius: 0.5rem;
   font-weight: 600;
+}
+
+.workspace-shell__logout :deep(.q-btn__content) {
+  justify-content: center;
+  width: 100%;
 }
 
 .workspace-shell__drawer-bottom {

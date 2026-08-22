@@ -41,11 +41,6 @@ export type ModuleKey =
   | 'invoice_brand'
   | 'reporting_treasury'
   | 'payments'
-  | 'invoice_reports'
-  | 'shipment_reports'
-  | 'billing_balances'
-  | 'parent_dashboard'
-  | 'investor_reports'
   | 'investor_capital'
   | 'investor_profiles'
   | 'investor_capital_ledger'
@@ -719,8 +714,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'sales_invoice',
     name: 'Sales & Invoice',
-    description:
-      'Parent module for sales invoices, billing profiles, recipient profiles, and invoice brands.',
+    description: 'Parent module for sales invoices and invoice brands.',
     navIcon: 'ph ph-receipt',
     routes: [],
   },
@@ -743,13 +737,14 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'customer',
     name: 'Customers',
-    description: 'Customer groups, wholesale/retail billing profiles, member access, and automated wallets.',
+    description:
+      'Customer groups, billing profiles, delivery recipients, member access, and wallets.',
     navIcon: 'ph ph-users',
     routes: [
       {
         scope: 'app',
         title: 'Customers',
-        caption: 'Customer groups, billing profiles & wallets',
+        caption: 'Accounts, billing, and delivery recipients',
         icon: 'ph ph-users',
         routeSegment: 'customers',
         requiredAction: 'view',
@@ -759,18 +754,9 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'billing_profile',
     name: 'Billing Profiles',
-    description: 'Manage billing profiles and customer group configurations.',
-    parentModuleKey: 'sales_invoice',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Billing Profiles',
-        caption: 'Manage billing profiles for sales invoices',
-        icon: 'ph ph-address-book',
-        routeSegment: 'sales/invoices/billing-profiles',
-        requiredAction: 'view',
-      },
-    ],
+    description: 'Financial identity for invoices. Opened from Customers, not a sidebar item.',
+    parentModuleKey: 'customer',
+    routes: [],
   },
   {
     key: 'billing_profile_wallet',
@@ -799,14 +785,14 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     key: 'recipient_profile',
     name: 'Recipient Profiles',
     description: 'Manage end-customer delivery and drop-ship target profiles.',
-    parentModuleKey: 'sales_invoice',
+    parentModuleKey: 'customer',
     routes: [
       {
         scope: 'app',
-        title: 'Recipient Profiles',
-        caption: 'Manage delivery and drop-ship targets',
+        title: 'Recipients',
+        caption: 'Delivery and drop-ship addresses',
         icon: 'ph ph-identification-badge',
-        routeSegment: 'sales/invoices/recipient-profiles',
+        routeSegment: 'customers/recipient-profiles',
         requiredAction: 'view',
       },
     ],
@@ -821,7 +807,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'reporting_treasury',
     name: 'Reports & Treasury',
-    description: 'Parent module for payments, balances, and margin reports.',
+    description: 'Parent module for payments and collection.',
     navIcon: 'ph ph-bank',
     routes: [],
   },
@@ -837,86 +823,6 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         caption: 'Create customer payments and allocate across invoices',
         icon: 'ph ph-money',
         routeSegment: 'finance/payments',
-        requiredAction: 'view',
-      },
-    ],
-  },
-  {
-    key: 'invoice_reports',
-    name: 'Invoice Reports',
-    description: 'Invoice margins and gross profit reports.',
-    parentModuleKey: 'reporting_treasury',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Invoice Reports',
-        caption: 'Invoice margins and gross profit reports',
-        icon: 'ph ph-file-text',
-        routeSegment: 'finance/invoices',
-        requiredAction: 'view',
-      },
-    ],
-  },
-  {
-    key: 'shipment_reports',
-    name: 'Shipment Reports',
-    description: 'Shipment batch landed cost vs realized margin P&L.',
-    parentModuleKey: 'reporting_treasury',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Shipment P&L',
-        caption: 'Shipment batch landed cost vs realized margin P&L',
-        icon: 'ph ph-truck',
-        routeSegment: 'finance/shipments',
-        requiredAction: 'view',
-      },
-    ],
-  },
-  {
-    key: 'billing_balances',
-    name: 'Customer Balances',
-    description: 'Total amount due per billing profile.',
-    parentModuleKey: 'reporting_treasury',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Customer Balances',
-        caption: 'Total amount due per billing profile',
-        icon: 'ph ph-wallet',
-        routeSegment: 'finance/balances',
-        requiredAction: 'view',
-      },
-    ],
-  },
-  {
-    key: 'parent_dashboard',
-    name: 'Consolidated Dashboard',
-    description: 'Roll up sales and margin across sister concerns.',
-    parentModuleKey: 'reporting_treasury',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Consolidated Dashboard',
-        caption: 'Roll up sales and margin across sister concerns',
-        icon: 'ph ph-squares-four',
-        routeSegment: 'finance/dashboard',
-        requiredAction: 'view',
-      },
-    ],
-  },
-  {
-    key: 'investor_reports',
-    name: 'Investor Reports',
-    description: 'Profit share per shipment batch for investors.',
-    parentModuleKey: 'reporting_treasury',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Investor Reports',
-        caption: 'Profit share per shipment batch for investors',
-        icon: 'ph ph-piggy-bank',
-        routeSegment: 'finance/investors',
         requiredAction: 'view',
       },
     ],

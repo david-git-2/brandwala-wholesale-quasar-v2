@@ -159,6 +159,17 @@
         <!-- Right Side: Process Return Button -->
         <div class="row items-center q-gutter-xs">
           <q-btn
+            v-if="canRecordPayment"
+            flat
+            dense
+            no-caps
+            color="primary"
+            icon="ph ph-money"
+            label="Record Payment"
+            class="q-px-sm text-caption text-weight-bold"
+            @click="openCollectDialog"
+          />
+          <q-btn
             v-if="loadedInvoiceStatus === 'issued'"
             flat
             dense
@@ -429,6 +440,7 @@
                 <th class="text-right" style="width: 120px">Unit Cost</th>
                 <th class="text-right" style="width: 140px">Sell Price (BDT) *</th>
                 <th class="text-center" style="width: 120px">Qty *</th>
+                <th v-if="hasReturnedItems" class="text-center" style="width: 110px">Returned</th>
                 <th class="text-right" style="width: 130px">Discount (BDT)</th>
                 <th class="text-right" style="width: 140px">Line Total (BDT)</th>
                 <th class="text-center" style="width: 50px"></th>
@@ -492,6 +504,16 @@
                   />
                 </td>
 
+                <td v-if="hasReturnedItems" class="text-center">
+                  <template v-if="(item.return_quantity || 0) > 0">
+                    <q-chip dense square color="purple-1" text-color="purple-9" class="text-weight-bold text-caption">
+                      {{ item.return_quantity }}
+                    </q-chip>
+                    <div class="text-caption text-grey-6 q-mt-xs">Kept {{ item.quantity - item.return_quantity }}</div>
+                  </template>
+                  <span v-else class="text-caption text-grey-5">—</span>
+                </td>
+
                 <!-- Line Discount Input -->
                 <td class="text-right">
                   <q-input
@@ -507,7 +529,13 @@
 
                 <!-- Line Total Amount -->
                 <td class="text-right text-weight-bold text-grey-9 text-body2">
-                  ৳{{ calculateLineTotal(item).toFixed(2) }}
+                  <template v-if="(item.return_quantity || 0) > 0">
+                    <div class="text-caption text-grey-6 text-strike">৳{{ calculateLineGross(item).toFixed(2) }}</div>
+                    <div class="text-purple-9">৳{{ calculateLineTotal(item).toFixed(2) }}</div>
+                  </template>
+                  <template v-else>
+                    ৳{{ calculateLineTotal(item).toFixed(2) }}
+                  </template>
                 </td>
 
                 <!-- Remove Action -->
@@ -537,6 +565,9 @@
               <div class="text-caption text-grey-7">
                 Total Units: <strong class="text-grey-9">{{ totalQuantity }}</strong>
               </div>
+              <div v-if="hasReturnedItems" class="text-caption text-purple-9">
+                Returned: <strong>{{ totalReturnQuantity }}</strong>
+              </div>
             </div>
 
             <div class="row items-center q-gutter-md">
@@ -557,12 +588,17 @@
                   placeholder="0.00"
                   style="width: 120px"
                   class="bg-white"
+                  :disable="loadedInvoiceStatus === 'issued'"
                   @update:model-value="applyOverallDiscountEqually"
                 >
                   <template #prepend>
                     <span class="text-caption text-grey-6">৳</span>
                   </template>
                 </q-input>
+              </div>
+
+              <div class="text-caption text-negative" v-if="totalReturnCredit > 0">
+                Return credit: <strong>−৳{{ totalReturnCredit.toFixed(2) }}</strong>
               </div>
 
               <div class="text-caption text-negative" v-if="totalDiscountAmount > 0">
@@ -577,6 +613,15 @@
         </div>
       </q-card>
     </div>
+
+    <WholesaleCollectPaymentDialog
+      v-model="collectDialogOpen"
+      :due-amount="loadedDueAmount"
+      :paid-amount="loadedPaidAmount"
+      :store-credit="storeCreditBalance"
+      :saving="collectSaving"
+      @submit="onCollectPayment"
+    />
   </q-page>
 </template>
 
@@ -596,6 +641,8 @@ import {
 } from '../repositories/invoiceRepository';
 import type { BillingProfile } from '../repositories/billingProfileRepository';
 import { salesInvoiceQueryKeys } from '../services/salesInvoiceQueryKeys';
+import WholesaleCollectPaymentDialog from '../components/WholesaleCollectPaymentDialog.vue';
+import { walletRepository } from 'src/modules/wallet/repositories/walletRepository';
 import WholesaleIssueConfirmDialog, {
   type WholesaleIssueDialogItem,
 } from '../components/WholesaleIssueConfirmDialog.vue';
@@ -619,6 +666,7 @@ export interface InvoiceLineDraftItem {
   available_atp: number;
   unit_cost_price: number;
   sell_price_amount: number;
+  return_quantity: number;
   line_discount_amount: number;
   shipment_id: number;
   shipment_name: string;
@@ -666,7 +714,18 @@ const isExistingInvoice = computed(() => Boolean(existingInvoiceId.value));
 const loadedInvoiceNo = ref('');
 const loadedInvoiceStatus = ref('');
 const loadedPaymentStatus = ref('due');
+const loadedDueAmount = ref(0);
+const loadedPaidAmount = ref(0);
+const collectDialogOpen = ref(false);
+const collectSaving = ref(false);
+const storeCreditBalance = ref(0);
 const effectivePaymentStatus = computed(() => loadedPaymentStatus.value || 'due');
+const canRecordPayment = computed(() => {
+  if (loadedInvoiceStatus.value !== 'issued') return false;
+  if ((loadedDueAmount.value || 0) <= 0) return false;
+  const ps = loadedPaymentStatus.value;
+  return ps === 'due' || ps === 'partial' || ps === 'partially_paid';
+});
 const isLoadingInvoice = ref(false);
 
 const loadExistingInvoice = async () => {
@@ -684,6 +743,8 @@ const loadExistingInvoice = async () => {
       loadedInvoiceNo.value = inv.invoice_no;
       loadedInvoiceStatus.value = inv.invoice_status;
       loadedPaymentStatus.value = inv.payment_status || 'due';
+      loadedDueAmount.value = Number(inv.due_amount ?? 0);
+      loadedPaidAmount.value = Number(inv.paid_amount ?? 0);
       selectedBillingProfileId.value = inv.billing_profile_id ?? null;
       overallDiscountInput.value = inv.discount_amount ?? 0;
       if (inv.invoice_status === 'issued') {
@@ -705,6 +766,7 @@ const loadExistingInvoice = async () => {
         available_atp: item.available_atp != null ? Number(item.available_atp) : Number(item.quantity),
         unit_cost_price: Number(item.unit_cost_price ?? 0),
         sell_price_amount: Number(item.sell_price_amount),
+        return_quantity: Number(item.return_quantity ?? 0),
         line_discount_amount: Number(item.line_discount_amount),
         shipment_id: 0,
         shipment_name: 'Shipment',
@@ -834,6 +896,9 @@ const filterBillingProfiles = (val: string, update: (fn: () => void) => void) =>
 
 // 3. Invoice Items & Live Stock Search Menu
 const invoiceItems = ref<InvoiceLineDraftItem[]>([]);
+const hasReturnedItems = computed(() =>
+  invoiceItems.value.some((item) => (item.return_quantity || 0) > 0),
+);
 const stockSearchText = ref('');
 const stockMenuOpen = ref(false);
 const isSearchingStock = ref(false);
@@ -904,6 +969,7 @@ const addStockToInvoice = (stock: SalesInvoiceStockItem) => {
     available_atp: Number(stock.available_atp) || 1,
     unit_cost_price: cost,
     sell_price_amount: Number(defaultSellPrice) || 0,
+    return_quantity: 0,
     line_discount_amount: 0,
     shipment_id: stock.shipment_id,
     shipment_name: stock.shipment_name,
@@ -917,8 +983,14 @@ const removeInvoiceItem = (index: number) => {
   invoiceItems.value.splice(index, 1);
 };
 
-const calculateLineTotal = (item: InvoiceLineDraftItem): number => {
+const calculateLineGross = (item: InvoiceLineDraftItem): number => {
   const sub = (item.quantity || 0) * (item.sell_price_amount || 0);
+  return Math.max(0, sub - (item.line_discount_amount || 0));
+};
+
+const calculateLineTotal = (item: InvoiceLineDraftItem): number => {
+  const kept = Math.max((item.quantity || 0) - (item.return_quantity || 0), 0);
+  const sub = kept * (item.sell_price_amount || 0);
   const total = sub - (item.line_discount_amount || 0);
   return Math.max(0, total);
 };
@@ -953,6 +1025,17 @@ const totalQuantity = computed(() =>
   invoiceItems.value.reduce((acc, item) => acc + (Number(item.quantity) || 0), 0),
 );
 
+const totalReturnQuantity = computed(() =>
+  invoiceItems.value.reduce((acc, item) => acc + (Number(item.return_quantity) || 0), 0),
+);
+
+const totalReturnCredit = computed(() =>
+  invoiceItems.value.reduce(
+    (acc, item) => acc + (Number(item.return_quantity) || 0) * (Number(item.sell_price_amount) || 0),
+    0,
+  ),
+);
+
 const subtotalAmount = computed(() =>
   invoiceItems.value.reduce(
     (acc, item) => acc + (Number(item.quantity) || 0) * (Number(item.sell_price_amount) || 0),
@@ -964,12 +1047,60 @@ const totalDiscountAmount = computed(() =>
   invoiceItems.value.reduce((acc, item) => acc + (Number(item.line_discount_amount) || 0), 0),
 );
 
-const grandTotalAmount = computed(() => Math.max(0, subtotalAmount.value - totalDiscountAmount.value));
+const grandTotalAmount = computed(() =>
+  Math.max(0, subtotalAmount.value - totalDiscountAmount.value - totalReturnCredit.value),
+);
 
 // Save Invoice States (Default: Draft)
 export type WholesaleInvoiceSaveStatus = 'draft' | 'proforma_generated' | 'issued';
 const selectedSaveStatus = ref<WholesaleInvoiceSaveStatus>('draft');
 const isSaving = ref(false);
+
+const openCollectDialog = async () => {
+  collectDialogOpen.value = true;
+  const profileId = selectedBillingProfileId.value;
+  const tenantId = effectiveParentTenantId.value;
+  if (!profileId || !tenantId) {
+    storeCreditBalance.value = 0;
+    return;
+  }
+  try {
+    storeCreditBalance.value = await walletRepository.fetchLatestBalance({
+      tenantId,
+      entityType: 'customer',
+      entityId: profileId,
+    });
+  } catch {
+    storeCreditBalance.value = 0;
+  }
+};
+
+const onCollectPayment = async (payload: {
+  cashAmount: number;
+  cashMethod: string;
+  walletAmount: number;
+  settlementAmount: number;
+}) => {
+  const invId = existingInvoiceId.value;
+  if (!invId) return;
+  collectSaving.value = true;
+  try {
+    await invoiceRepository.collectWholesaleInvoicePayment({
+      invoice_id: invId,
+      cash_amount: payload.cashAmount,
+      cash_method: payload.cashMethod,
+      wallet_amount: payload.walletAmount,
+      settlement_amount: payload.settlementAmount,
+    });
+    collectDialogOpen.value = false;
+    await loadExistingInvoice();
+    showSuccessNotification('Payment recorded.');
+  } catch (e) {
+    showWarningDialog(e instanceof Error ? e.message : 'Payment failed.');
+  } finally {
+    collectSaving.value = false;
+  }
+};
 
 const goToProcessReturn = () => {
   const invId = existingInvoiceId.value;

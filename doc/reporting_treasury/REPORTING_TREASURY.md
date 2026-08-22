@@ -32,7 +32,7 @@ flowchart TD
 
 | Settlement Channel | Target Scope | Execution Mechanism |
 | :--- | :--- | :--- |
-| **1. Billing Profile AR Allocations** | B2B Wholesale / Resellers | Single payment recorded against a customer account and allocated across open invoices (`create_billing_profile_payment_with_allocations`). |
+| **1. Billing Profile AR Allocations** | B2B Wholesale / Resellers | Single payment recorded against a customer account and allocated across open invoices (`create_billing_profile_payment_with_allocations`). Same channel as the wholesale **Record Payment** dialog (cash + optional wallet apply). Settlement write-off is invoice-level, not a payment row. |
 | **2. Recipient Direct / COD** | Retail Direct / Dropship | Cash/COD received directly from customer or courier recorded against invoice balance (`record_recipient_invoice_collection`). |
 | **3. Courier Bulk Remittance** | Multi-Order Dropship Batch | Batch settlement matching total bank net deposits against dozens of delivered orders with automated variance checks. |
 

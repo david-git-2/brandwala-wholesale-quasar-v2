@@ -581,6 +581,28 @@
             </div>
           </q-card>
 
+          <!-- Payment history -->
+          <q-card v-if="collectionHistoryDisplay.length > 0" flat class="floating-surface shadow-1 q-pa-md">
+            <div class="row items-center q-gutter-xs q-mb-sm">
+              <q-icon name="ph ph-receipt" color="primary" size="18px" />
+              <span class="text-subtitle2 text-weight-bold text-grey-9">Payment history</span>
+            </div>
+            <q-separator class="q-my-xs" />
+            <q-list dense>
+              <q-item v-for="row in collectionHistoryDisplay" :key="row.id" class="q-px-none q-py-sm">
+                <q-item-section>
+                  <div class="row items-center justify-between">
+                    <span class="text-body2 text-weight-bold">{{ row.kindLabel }}</span>
+                    <span class="text-body2 text-weight-bold">{{ formatAmount(row.amount) }}</span>
+                  </div>
+                  <div class="text-caption text-grey-6">
+                    {{ row.method || '—' }} · {{ formatReturnDate(row.created_at) }}
+                  </div>
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </q-card>
+
           <!-- Return History Card -->
           <q-card v-if="returnHistory.length > 0" flat class="floating-surface shadow-1 q-pa-md">
             <div class="row items-center justify-between no-wrap q-mb-sm">
@@ -1295,57 +1317,14 @@
       </q-card>
     </q-dialog>
 
-    <!-- Record Payment Dialog -->
-    <q-dialog v-model="paymentDialog" persistent>
-      <q-card class="q-pa-md" style="min-width: 360px; border-radius: 16px">
-        <q-card-section class="text-h6 text-weight-bold">Record Payment</q-card-section>
-        <q-card-section class="q-gutter-md">
-          <q-input
-            v-model.number="paymentAmount"
-            type="number"
-            label="Amount"
-            outlined
-            dense
-            min="0"
-            class="soft-input"
-          />
-          <q-input
-            v-model="paymentDate"
-            label="Payment Date"
-            outlined
-            dense
-            readonly
-            class="soft-input"
-          >
-            <template #append>
-              <q-icon name="ph ph-calendar" class="cursor-pointer">
-                <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                  <q-date v-model="paymentDate" mask="YYYY-MM-DD" />
-                </q-popup-proxy>
-              </q-icon>
-            </template>
-          </q-input>
-          <q-select
-            v-model="paymentMethod"
-            :options="paymentMethodOptions"
-            label="Method"
-            outlined
-            dense
-            class="soft-input"
-          />
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="Cancel" v-close-popup class="pill-btn" />
-          <q-btn
-            color="primary"
-            label="Save"
-            :loading="paymentSaving"
-            @click="onRecordPayment"
-            class="pill-btn"
-          />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+    <WholesaleCollectPaymentDialog
+      v-model="paymentDialog"
+      :due-amount="invoice?.due_amount ?? 0"
+      :paid-amount="invoice?.paid_amount ?? 0"
+      :store-credit="storeCreditBalance"
+      :saving="paymentSaving"
+      @submit="onCollectPayment"
+    />
 
     <!-- Record COD Dialog -->
     <q-dialog v-model="codDialog" persistent>
@@ -1614,6 +1593,9 @@ import type { TargetTotalSummary } from '../repositories/invoiceRepository';
 import { salesInvoiceQueryKeys } from '../services/salesInvoiceQueryKeys';
 import NetworkStockSearchPanel from '../components/NetworkStockSearchPanel.vue';
 import InvoiceBulkPasteDialog from '../components/InvoiceBulkPasteDialog.vue';
+import WholesaleCollectPaymentDialog from '../components/WholesaleCollectPaymentDialog.vue';
+import { walletRepository } from 'src/modules/wallet/repositories/walletRepository';
+import type { InvoiceCollectionHistoryRow } from '../repositories/invoiceRepository';
 import { invoiceGrossProfit, lineMargin } from 'src/modules/reporting_treasury/utils/margin';
 import type { StockNetworkRow } from 'src/modules/global/types';
 import { stockNetworkAvailableQty } from 'src/modules/global/utils/mapStockNetworkRow';
@@ -1700,7 +1682,6 @@ const paymentDialog = ref(false);
 const codDialog = ref(false);
 const settleDialog = ref(false);
 const payoutDialog = ref(false);
-const paymentAmount = ref(0);
 const codAmount = ref(0);
 const settleAmount = ref(0);
 const payoutAmount = ref(0);
@@ -1713,16 +1694,26 @@ const localToday = (): string => {
   return `${d.getFullYear()}-${m}-${day}`;
 };
 const paymentMethodOptions = ['cash', 'bkash', 'bank_transfer', 'nagad'];
-const paymentDate = ref(localToday());
-const paymentMethod = ref('cash');
 const codDate = ref(localToday());
 const codMethod = ref('cash');
 
-const openPaymentDialog = () => {
-  paymentAmount.value = 0;
-  paymentDate.value = localToday();
-  paymentMethod.value = 'cash';
+const openPaymentDialog = async () => {
   paymentDialog.value = true;
+  const profileId = invoice.value?.billing_profile_id;
+  const tenantId = invoice.value?.parent_tenant_id ?? invoice.value?.tenant_id;
+  if (!profileId || !tenantId) {
+    storeCreditBalance.value = 0;
+    return;
+  }
+  try {
+    storeCreditBalance.value = await walletRepository.fetchLatestBalance({
+      tenantId,
+      entityType: 'customer',
+      entityId: profileId,
+    });
+  } catch {
+    storeCreditBalance.value = 0;
+  }
 };
 const openCodDialog = () => {
   codAmount.value = 0;
@@ -1851,6 +1842,29 @@ const lineMarginForRow = (row: GlobalInvoiceItemRow) =>
   });
 
 const returnHistory = ref<any[]>([]);
+const collectionHistory = ref<InvoiceCollectionHistoryRow[]>([]);
+const storeCreditBalance = ref(0);
+
+const collectionHistoryDisplay = computed(() => {
+  const rows = collectionHistory.value.map((row) => ({
+    id: `p-${row.id}`,
+    created_at: row.created_at,
+    kindLabel: row.kind === 'wallet_credit' ? 'Store credit' : 'Cash / bank',
+    method: row.method,
+    amount: row.amount,
+  }));
+  const settle = Number(invoice.value?.settlement_discount_amount ?? 0);
+  if (settle > 0) {
+    rows.push({
+      id: 'settlement',
+      created_at: invoice.value?.created_at || '',
+      kindLabel: 'Settlement',
+      method: 'write-off',
+      amount: settle,
+    });
+  }
+  return rows;
+});
 
 const totalReturnQuantity = computed(() => {
   return items.value.reduce((sum, row) => sum + (row.return_quantity || 0), 0);
@@ -1910,14 +1924,16 @@ const loadInvoice = async () => {
   loading.value = true;
   error.value = null;
   try {
-    const [inv, invItems, retItems] = await Promise.all([
+    const [inv, invItems, retItems, payItems] = await Promise.all([
       invoiceRepository.getGlobalInvoiceById(invoiceId.value),
       invoiceRepository.listGlobalInvoiceItems(invoiceId.value),
       invoiceRepository.listSalesReturnItems(invoiceId.value).catch(() => []),
+      invoiceRepository.listInvoiceCollectionHistory(invoiceId.value).catch(() => []),
     ]);
     invoice.value = inv;
     items.value = invItems;
     returnHistory.value = retItems;
+    collectionHistory.value = payItems;
     await resolveItemUnitCosts(invItems);
     await loadLinkedOrderRemittance(inv);
 
@@ -2391,20 +2407,24 @@ const openPreview = () => {
   });
 };
 
-const onRecordPayment = async () => {
-  if (!invoice.value?.billing_profile_id) return;
+const onCollectPayment = async (payload: {
+  cashAmount: number;
+  cashMethod: string;
+  walletAmount: number;
+  settlementAmount: number;
+}) => {
+  if (!invoice.value) return;
   paymentSaving.value = true;
   try {
-    await invoiceRepository.recordBillingProfilePayment({
-      tenant_id: invoice.value.issued_by_tenant_id || invoice.value.parent_tenant_id,
-      billing_profile_id: invoice.value.billing_profile_id,
-      amount: paymentAmount.value,
-      payment_date: paymentDate.value,
-      method: paymentMethod.value,
-      allocations: [{ global_invoice_id: invoice.value.id, amount: paymentAmount.value }],
+    await invoiceRepository.collectWholesaleInvoicePayment({
+      invoice_id: invoice.value.id,
+      cash_amount: payload.cashAmount,
+      cash_method: payload.cashMethod,
+      wallet_amount: payload.walletAmount,
+      settlement_amount: payload.settlementAmount,
     });
     paymentDialog.value = false;
-    await refreshInvoiceHeader();
+    await loadInvoice();
     showSuccessNotification('Payment recorded.');
   } catch (e) {
     showWarningDialog(e instanceof Error ? e.message : 'Payment failed.');

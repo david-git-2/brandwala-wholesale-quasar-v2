@@ -27,17 +27,6 @@
               class="action-btn text-weight-bold"
               @click="goToCustomers"
             />
-
-            <!-- Button 3: Recipient Profiles -->
-            <q-btn
-              unelevated
-              color="teal-7"
-              icon="ph ph-identification-badge"
-              label="Recipient Profiles"
-              no-caps
-              class="action-btn text-weight-bold"
-              @click="goToRecipientProfiles"
-            />
           </div>
 
           <!-- Right: Outlined Rounded Search Box -->
@@ -360,10 +349,6 @@ const goToBrands = () => {
 
 const goToCustomers = () => {
   void router.push(`${getTenantPrefix()}/app/customers`);
-};
-
-const goToRecipientProfiles = () => {
-  void router.push(`${getTenantPrefix()}/app/sales/invoices/recipient-profiles`);
 };
 
 const goToCreateWholesale = () => {

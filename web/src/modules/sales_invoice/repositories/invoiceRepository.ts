@@ -329,6 +329,52 @@ const applySettlementDiscount = async (invoiceId: number, amount: number, note?:
   return data;
 };
 
+const collectWholesaleInvoicePayment = async (payload: {
+  invoice_id: number;
+  cash_amount?: number;
+  cash_method?: string;
+  wallet_amount?: number;
+  settlement_amount?: number;
+}) => {
+  const { data, error } = await supabase.rpc('collect_wholesale_invoice_payment', {
+    p_invoice_id: payload.invoice_id,
+    p_cash_amount: payload.cash_amount ?? 0,
+    p_cash_method: payload.cash_method ?? 'cash',
+    p_wallet_amount: payload.wallet_amount ?? 0,
+    p_settlement_amount: payload.settlement_amount ?? 0,
+  });
+  if (error) throw error;
+  return data;
+};
+
+export type InvoiceCollectionHistoryRow = {
+  id: number;
+  created_at: string;
+  kind: string;
+  method: string | null;
+  amount: number;
+  note: string | null;
+};
+
+const listInvoiceCollectionHistory = async (
+  invoiceId: number,
+): Promise<InvoiceCollectionHistoryRow[]> => {
+  const { data, error } = await supabase
+    .from('invoice_payments')
+    .select('id, amount, created_at, global_payments(method, note, created_at)')
+    .eq('global_invoice_id', invoiceId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return ((data as any[]) ?? []).map((row) => ({
+    id: Number(row.id),
+    created_at: String(row.global_payments?.created_at ?? row.created_at),
+    kind: row.global_payments?.method === 'wallet_credit' ? 'wallet_credit' : 'cash',
+    method: row.global_payments?.method ?? null,
+    amount: Number(row.amount),
+    note: row.global_payments?.note ?? null,
+  }));
+};
+
 const createMiddleManPayout = async (payload: {
   tenant_id: number;
   billing_profile_id: number;
@@ -711,6 +757,8 @@ export const invoiceRepository = {
   recordBillingProfilePayment,
   recordRecipientInvoiceCollection,
   applySettlementDiscount,
+  collectWholesaleInvoicePayment,
+  listInvoiceCollectionHistory,
   createMiddleManPayout,
   addGlobalReturnItem,
   listSalesReturnItems,

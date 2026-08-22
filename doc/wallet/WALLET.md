@@ -54,6 +54,20 @@ flowchart LR
     B --> C["3. Merchant Payout<br/>- Tenant Cash<br/>+ Merchant Wallet"]
 ```
 
+### 2.4 Wholesale invoice vs customer store credit
+
+Wholesale invoices **do not** bill the customer wallet on issue. Due is invoice AR.
+
+| Event | Customer wallet | Tenant wallet |
+| :--- | :--- | :--- |
+| Issue wholesale | No write | No write |
+| Collect cash/bank on invoice | No write | **Credit** (cash in) |
+| Apply store credit to invoice | **Debit** | No write |
+| Return leftover after due is zero (overpaid) | **Credit** (store credit) | No write unless cash payout |
+| Settlement write-off | No write | No write |
+
+See [`doc/sales_invoice/SALES_INVOICE.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/sales_invoice/SALES_INVOICE.md) §2.4.
+
 ---
 
 ## 3. Page & Component Inventory
