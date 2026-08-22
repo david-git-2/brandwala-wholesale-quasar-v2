@@ -53,6 +53,33 @@ export interface ShopCatalogBrowseResult {
   };
 }
 
+/** Row from `search_shop_catalog_for_customer` RPC. */
+export interface ShopCatalogSearchItem {
+  shop_id: number;
+  shop_slug: string;
+  shop_name: string;
+  product_id: number;
+  product_name: string;
+  product_image_url: string | null;
+  product_barcode: string | null;
+  product_code: string | null;
+  product_brand: string | null;
+  product_category: string | null;
+  unit_price_amount: number | null;
+  unit_price_currency_id: number | null;
+  unit_price_currency_symbol: string | null;
+}
+
+export interface ShopCatalogSearchResult {
+  data: ShopCatalogSearchItem[];
+  meta: {
+    total: number;
+    page: number;
+    page_size: number;
+    total_pages: number;
+  };
+}
+
 export interface Shop {
   id: number;
   tenant_id: number;

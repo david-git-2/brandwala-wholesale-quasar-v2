@@ -63,9 +63,9 @@
                   <dt>{{ $t('shop.brand') }}</dt>
                   <dd>{{ product.product_brand }}</dd>
                 </div>
-                <div v-if="product.product_category" class="product-detail__spec-row">
+                <div v-if="productCategoryLabel" class="product-detail__spec-row">
                   <dt>{{ $t('shop.category') }}</dt>
-                  <dd>{{ product.product_category }}</dd>
+                  <dd>{{ productCategoryLabel }}</dd>
                 </div>
                 <div v-if="product.country_of_origin" class="product-detail__spec-row">
                   <dt>{{ $t('shop.product_detail_origin') }}</dt>
@@ -78,6 +78,38 @@
                 <div class="product-detail__spec-row">
                   <dt>{{ $t('shop.product_detail_moq') }}</dt>
                   <dd>{{ product.minimum_order_quantity || 1 }}</dd>
+                </div>
+                <div class="product-detail__cart-actions">
+                  <div class="row items-center q-col-gutter-sm no-wrap">
+                    <div class="col-auto">
+                      <div class="row items-center no-wrap quantity-stepper">
+                        <q-btn
+                          flat
+                          dense
+                          round
+                          icon="ph ph-minus"
+                          size="sm"
+                          :disable="quantity <= moq"
+                          @click="decrementQty"
+                        />
+                        <span class="text-weight-bold q-px-sm">{{ quantity }}</span>
+                        <q-btn flat dense round icon="ph ph-plus" size="sm" @click="incrementQty" />
+                      </div>
+                    </div>
+                    <div class="col">
+                      <q-btn
+                        color="primary"
+                        unelevated
+                        no-caps
+                        class="full-width"
+                        icon="ph ph-shopping-cart"
+                        :label="cartItem ? $t('shop.update_cart') : $t('shop.add_to_cart')"
+                        :loading="cartSaving"
+                        :disable="!permissions?.can_add_to_cart || product.available_units === 0"
+                        @click="onAddToCart"
+                      />
+                    </div>
+                  </div>
                 </div>
                 <div v-if="product.product_code" class="product-detail__spec-row">
                   <dt>{{ $t('shop.product_detail_code') }}</dt>
@@ -161,52 +193,20 @@
           </div>
         </section>
       </div>
-
-      <div class="product-detail__action-bar">
-        <div class="product-detail__action-inner row items-center q-col-gutter-sm">
-          <div class="col-auto">
-            <div class="row items-center no-wrap quantity-stepper">
-              <q-btn
-                flat
-                dense
-                round
-                icon="ph ph-minus"
-                size="sm"
-                :disable="quantity <= moq"
-                @click="decrementQty"
-              />
-              <span class="text-weight-bold q-px-sm">{{ quantity }}</span>
-              <q-btn flat dense round icon="ph ph-plus" size="sm" @click="incrementQty" />
-            </div>
-          </div>
-          <div class="col">
-            <q-btn
-              color="primary"
-              unelevated
-              no-caps
-              class="full-width"
-              icon="ph ph-shopping-cart"
-              :label="cartItem ? $t('shop.update_cart') : $t('shop.add_to_cart')"
-              :loading="cartSaving"
-              :disable="!permissions?.can_add_to_cart || product.available_units === 0"
-              @click="onAddToCart"
-            />
-          </div>
-        </div>
-      </div>
     </template>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 
 import PageInitialLoader from 'src/components/PageInitialLoader.vue';
-import { usePageBreadcrumbs } from 'src/composables/useBreadcrumbs';
+import { useBreadcrumbs } from 'src/composables/useBreadcrumbs';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { showSuccessNotification } from 'src/utils/appFeedback';
+import { isExcelFormulaText } from 'src/utils/excelCellText';
 import { useShopProductDetailQuery } from '../composables/useShopProductDetailQuery';
 import { useShopCartQuery } from '../composables/useShopCartQuery';
 import { useShopCartMutations } from '../composables/useShopCartMutations';
@@ -244,6 +244,13 @@ const shopName = computed(() => shopDetails.value?.name || shopSlug.value);
 const shopType = computed(() => shopDetails.value?.shop_type ?? null);
 const moq = computed(() => product.value?.minimum_order_quantity || 1);
 
+const productCategoryLabel = computed(() => {
+  const raw = product.value?.product_category?.trim();
+  if (!raw) return null;
+  if (isExcelFormulaText(raw)) return t('shop.none');
+  return raw;
+});
+
 const cartSaving = computed(
   () => addItemMutation.isPending.value || updateQtyMutation.isPending.value,
 );
@@ -259,31 +266,24 @@ const cartItem = computed(() => {
   );
 });
 
-usePageBreadcrumbs(() => {
-  const catalogTo = shopCatalogPath(tenantSlug.value, shopSlug.value);
-  const items = [
-    {
-      label: authStore.tenant?.name || t('shop.title'),
-      icon: 'ph ph-storefront',
-      to: undefined,
-    },
-    {
-      label: shopName.value,
-      to: catalogTo,
-    },
-  ];
-  if (product.value?.product_category) {
-    items.push({
-      label: product.value.product_category,
-      to: catalogTo,
-    });
-  }
-  items.push({
-    label: product.value?.product_name || t('shop.product_detail_not_found'),
+const breadcrumbItems = computed(() => [
+  {
+    label: shopName.value,
+    to: shopCatalogPath(tenantSlug.value, shopSlug.value),
+  },
+  {
+    label: t('shop.product_detail_breadcrumb'),
     to: undefined,
-  });
-  return items;
-});
+  },
+  {
+    label: productId.value ? String(productId.value) : '—',
+    to: undefined,
+  },
+]);
+
+const { setCustomBreadcrumbs, clearCustomBreadcrumbs } = useBreadcrumbs();
+watch(breadcrumbItems, (items) => setCustomBreadcrumbs(items), { immediate: true });
+onBeforeUnmount(() => clearCustomBreadcrumbs());
 
 watch(
   [product, cartItem],
@@ -353,11 +353,11 @@ async function onAddToCart() {
 
 <style scoped>
 .product-detail-page {
-  padding-bottom: 88px;
+  padding-bottom: 24px;
 }
 
 .product-detail__gallery {
-  background: color-mix(in srgb, var(--bw-theme-base, #fafafa) 90%, var(--bw-theme-surface, #fff) 10%);
+  background: #fff;
   border: 1px solid var(--bw-theme-border, rgba(34, 56, 101, 0.12));
   min-height: 280px;
 }
@@ -422,41 +422,14 @@ async function onAddToCart() {
   color: #b45309;
 }
 
+.product-detail__cart-actions {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--bw-theme-border, rgba(34, 56, 101, 0.08));
+}
+
 .quantity-stepper {
   border: 1.5px solid var(--bw-theme-border, rgba(34, 56, 101, 0.18));
   border-radius: 8px;
   padding: 2px 4px;
-}
-
-.product-detail__action-bar {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 100;
-  padding: 12px 16px;
-  padding-bottom: max(12px, env(safe-area-inset-bottom));
-  background: var(--bw-theme-surface, #fff);
-  border-top: 1px solid var(--bw-theme-border, rgba(34, 56, 101, 0.12));
-  box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.06);
-}
-
-.product-detail__action-inner {
-  max-width: 960px;
-  margin: 0 auto;
-}
-
-@media (min-width: 1024px) {
-  .product-detail-page {
-    padding-bottom: 24px;
-  }
-
-  .product-detail__action-bar {
-    position: sticky;
-    bottom: 0;
-    margin-top: 24px;
-    border-radius: 12px;
-    box-shadow: var(--bw-theme-shadow, 0 8px 24px rgba(15, 23, 42, 0.08));
-  }
 }
 </style>

@@ -18218,6 +18218,7 @@ CREATE INDEX "products_vendor_code_idx" ON "public"."products" USING "btree" ("v
 CREATE INDEX "products_vendor_id_idx" ON "public"."products" USING "btree" ("vendor_id");
 
 
+CREATE UNIQUE INDEX "uq_products_vendor_catalog_full_key" ON "public"."products" USING "btree" ("parent_tenant_id", "vendor_id", "market_code", "barcode", "product_code") WHERE (("vendor_id" IS NOT NULL) AND ("parent_tenant_id" IS NOT NULL) AND ("market_code" IS NOT NULL) AND (btrim(COALESCE("barcode", ''::"text")) <> ''::"text") AND (btrim(COALESCE("product_code", ''::"text")) <> ''::"text"));
 
 
 CREATE INDEX "store_access_store_id_idx" ON "public"."store_access" USING "btree" ("store_id");

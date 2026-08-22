@@ -6,6 +6,7 @@ import type {
   ShopOrder,
   ShopOrderItem,
   ShopCatalogBrowseResult,
+  ShopCatalogSearchResult,
   ShopCatalogProductDetailResult,
   CustomerOrderListItem,
   CustomerOrderDetail,
@@ -123,6 +124,34 @@ const browseShopCatalog = async (
       total: 0,
       page: 1,
       page_size: opts.limit ?? 20,
+      total_pages: 1,
+    },
+  };
+};
+
+const searchShopCatalog = async (
+  tenantId: number,
+  search: string,
+  opts: { limit?: number; offset?: number } = {},
+): Promise<ShopCatalogSearchResult> => {
+  const { data, error } = await supabase.rpc('search_shop_catalog_for_customer', {
+    p_tenant_id: tenantId,
+    p_search: search,
+    p_limit: opts.limit ?? 15,
+    p_offset: opts.offset ?? 0,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  const payload = (data ?? {}) as ShopCatalogSearchResult;
+  return {
+    data: payload.data ?? [],
+    meta: payload.meta ?? {
+      total: 0,
+      page: 1,
+      page_size: opts.limit ?? 15,
       total_pages: 1,
     },
   };
@@ -756,6 +785,7 @@ export const shopOrderRepository = {
   deleteShop,
   updateShopExtraAttributes,
   browseShopCatalog,
+  searchShopCatalog,
   getShopCatalogProduct,
   listCustomerShops,
   fetchCustomerShopCategories,

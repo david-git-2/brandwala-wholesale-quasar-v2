@@ -1,5 +1,5 @@
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
-import type { ShopOrder, ShopOrderItem, ShopServiceResult, ShopCatalogBrowseResult, ShopCatalogProductDetailResult, CustomerOrderListItem } from '../types';
+import type { ShopOrder, ShopOrderItem, ShopServiceResult, ShopCatalogBrowseResult, ShopCatalogSearchResult, ShopCatalogProductDetailResult, CustomerOrderListItem } from '../types';
 
 const submitOrder = async (
   cartId: number,
@@ -247,6 +247,22 @@ const browseShopCatalog = async (
   }
 };
 
+const searchShopCatalog = async (
+  tenantId: number,
+  search: string,
+  opts?: { limit?: number; offset?: number },
+): Promise<ShopServiceResult<ShopCatalogSearchResult>> => {
+  try {
+    const data = await shopOrderRepository.searchShopCatalog(tenantId, search, opts);
+    return { success: true, data };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to search catalog.',
+    };
+  }
+};
+
 const getShopCatalogProduct = async (
   tenantId: number,
   shopSlug: string,
@@ -389,6 +405,7 @@ export const shopOrderService = {
   fulfillOrderToInvoice,
   deleteOrder,
   browseShopCatalog,
+  searchShopCatalog,
   getShopCatalogProduct,
   listCustomerShops,
   listCustomerShopCategories,

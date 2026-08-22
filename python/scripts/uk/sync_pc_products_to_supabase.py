@@ -331,6 +331,7 @@ def build_sync_payloads(
             "vendor_id",
             "vendor_code",
             "market_code",
+            "category",
             "barcode",
             "product_code",
         ):

@@ -173,6 +173,7 @@ flowchart LR
 | **`CustomerDashboard`** | Shops | `useCustomerShopsQuery` → `RPC: list_customer_shops` | Key: `['shopOrder', 'customerShops', { tenantId }]` |
 | **`CustomerDashboard`** | Active carts | `useActiveShopCartsQuery` → `RPC: list_customer_active_carts` | After shops load; Key: `activeCarts` |
 | **`StorefrontPage`** | Catalog | `browseShopCatalog` → `RPC: browse_shop_catalog_for_customer` | Key: `shopOrderQueryKeys.storefrontCatalog(...)` |
+| **`ShopHeaderProductSearch`** | Typeahead | `searchShopCatalog` → `RPC: search_shop_catalog_for_customer` | Key: `shopOrderQueryKeys.catalogSearch(...)` |
 | **`StorefrontProductDetailPage`** | Mount | `getShopCatalogProduct` → `RPC: get_shop_catalog_product_for_customer` | Key: `shopOrderQueryKeys.storefrontProduct(tenantId, shopSlug, productId)` |
 | **`StorefrontPage`** | Permissions | `useCustomerShopPermissionsQuery` (seeded from browse `meta.permissions`) | Key: `customerShopPermissions(shopId)` |
 | **`ShopCartPage`** | Load cart | `RPC: get_or_create_shop_cart` | Key: `shopOrderQueryKeys.cart(tenantId, shopId)` |
@@ -214,6 +215,89 @@ flowchart LR
 
 * `dropshipFinanceQueryKeys.summary(tenantId)` → `['dropshipFinance', 'summary', { tenantId }]`
 * `dropshipFinanceQueryKeys.queue(step, tenantId)` → `['dropshipFinance', 'queue', { step, tenantId }]`
+
+---
+
+## 7. RPC: `browse_shop_catalog_for_customer`
+
+Customer storefront catalog (`StorefrontPage`). Returns paginated product rows plus `meta.shop` and `meta.permissions`.
+
+### Signature
+
+```sql
+browse_shop_catalog_for_customer(
+  p_tenant_id   bigint,
+  p_shop_slug   text,
+  p_search      text    default null,
+  p_category    text    default null,
+  p_brand       text    default null,
+  p_limit       integer default 20,
+  p_offset      integer default 0
+) returns jsonb
+```
+
+### Product visibility (all shop types)
+
+Every row in `data` must satisfy:
+
+| Rule | SQL |
+| :--- | :--- |
+| Available | `products.is_available = true` |
+| Not hazardous | `coalesce(products.hazardous, false) = false` |
+
+`null` hazardous is treated as not hazardous. Hazardous products never appear in browse or product-detail catalog RPCs.
+
+Additional scope (not request filters):
+
+- **`vendor_catalog`:** parent tenant + shop vendor / `vendor_filters`
+- **`fixed_price` / `dropship`:** active listing, received stock, shop listing rules
+
+### Request filters (optional args)
+
+| Arg | Matches |
+| :--- | :--- |
+| `p_search` | `name`, `product_code`, `barcode` (case-insensitive) |
+| `p_category` | exact `category` (case-insensitive) |
+| `p_brand` | exact `brand` (case-insensitive) |
+
+`p_limit` clamped 1–200; `p_offset` for pagination.
+
+---
+
+## 7b. RPC: `search_shop_catalog_for_customer`
+
+Cross-shop product search for the **shop scope header** (typeahead). User must **click a result** to open the product detail page — no submit-on-Enter behavior.
+
+### Signature
+
+```sql
+search_shop_catalog_for_customer(
+  p_tenant_id   bigint,
+  p_search      text    default null,
+  p_limit       integer default 20,
+  p_offset      integer default 0
+) returns jsonb
+```
+
+### Visibility (same as browse)
+
+- Customer must have `can_browse` on the shop
+- `products.is_available = true`
+- `coalesce(products.hazardous, false) = false`
+- `vendor_catalog`: parent-tenant vendor scope + `vendor_filters`
+- `fixed_price` / `dropship`: active listing + received stock
+
+### Search
+
+Matches `p_search` against `name`, `product_code`, `barcode` (case-insensitive). Empty/blank search returns an empty list.
+
+### Dedupe
+
+One row per `product_id`. If the same product appears in multiple shops, keep the row from the **first shop** (`shop_name`, then `shop_id`).
+
+### Response `data[]` fields
+
+Each hit includes `shop_id`, `shop_slug`, `shop_name`, product fields, and `unit_price_*` (null when `see_price` is false for that shop).
 
 ---
 
@@ -278,6 +362,7 @@ get_shop_catalog_product_for_customer(
 
 | Field | Rule |
 | :--- | :--- |
+| Product visibility | Same as browse: `is_available = true` and `coalesce(hazardous, false) = false` |
 | `unit_price_amount`, currency fields | `null` when `see_price = false` |
 | `minimum_sell_price_*` | Only when `shop_type = dropship` and `see_price = true` |
 | `available_units` | `null` when `can_view_quantity = false` or shop hides qty; catalog shops return `null` |

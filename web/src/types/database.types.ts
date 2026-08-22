@@ -13949,6 +13949,15 @@ export type Database = {
           unit_cost_price: number
         }[]
       }
+      search_shop_catalog_for_customer: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
       search_stock_network: {
         Args: {
           p_context_tenant_id: number
