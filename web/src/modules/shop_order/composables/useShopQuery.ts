@@ -19,7 +19,8 @@ export function useShopDetailQuery(tenantId: Ref<number>, shopId: Ref<number>) {
   });
 }
 
-export function useShopListQuery(params: Ref<ShopListQueryParams>) {
+export function useShopListQuery(params: Ref<ShopListQueryParams>, enabled?: Ref<boolean>) {
+  const enabledRef = enabled ?? computed(() => true);
   return useQuery({
     queryKey: computed(() => shopOrderQueryKeys.shopsList(params.value)),
     queryFn: () =>
@@ -29,7 +30,7 @@ export function useShopListQuery(params: Ref<ShopListQueryParams>) {
       }),
     staleTime: 2 * 60 * 1000,
     placeholderData: keepPreviousData,
-    enabled: computed(() => !!params.value.tenantId),
+    enabled: computed(() => enabledRef.value && !!params.value.tenantId),
   });
 }
 

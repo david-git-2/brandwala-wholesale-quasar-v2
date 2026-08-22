@@ -1,7 +1,7 @@
 <template>
   <div class="column q-gutter-y-md">
     <!-- Shops Filter Button Group -->
-    <div v-if="shops.length > 0" class="row items-center q-mb-xs">
+    <div class="row items-center q-mb-xs">
       <div class="col-12">
         <q-btn-toggle
           :model-value="selectedShopId"
@@ -13,8 +13,10 @@
           text-color="primary"
           class="soft-btn-toggle border-all-1"
           :options="shopToggleOptions"
+          @click="emit('shop-filter-open')"
           @update:model-value="(val) => emit('update:selectedShopId', val)"
         />
+        <q-spinner v-if="shopsLoading" size="20px" color="primary" class="q-ml-sm" />
       </div>
     </div>
 
@@ -78,6 +80,7 @@ const props = defineProps<{
   search: string;
   statusFilter: string | null;
   shopTypeFilter?: string | null;
+  shopsLoading?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -85,6 +88,7 @@ const emit = defineEmits<{
   (e: 'update:search', value: string): void;
   (e: 'update:statusFilter', value: string | null): void;
   (e: 'update:shopTypeFilter', value: string | null): void;
+  (e: 'shop-filter-open'): void;
 }>();
 
 const { t } = useI18n();

@@ -16,7 +16,7 @@
           @click="toggleDrawerOrPin"
         />
 
-        <q-btn v-else flat round dense class="workspace-shell__menu" padding="none">
+        <q-btn v-else-if="!useHeaderProfile" flat round dense class="workspace-shell__menu" padding="none">
           <q-avatar size="32px" class="workspace-shell__avatar">
             <img
               v-if="userAvatarUrl"
@@ -112,7 +112,11 @@
           <slot name="header-left" />
         </div>
 
-        <div v-if="$slots['header-center']" class="workspace-shell__center gt-sm">
+        <div
+          v-if="$slots['header-center']"
+          class="workspace-shell__center"
+          :class="{ 'workspace-shell__center--shop': theme === 'shop', 'gt-sm': theme !== 'shop' }"
+        >
           <slot name="header-center" />
         </div>
 
@@ -488,6 +492,7 @@ const props = defineProps<{
   logoutTo: string;
   theme: 'platform' | 'app' | 'shop' | 'investor';
   links: WorkspaceLink[];
+  useHeaderProfile?: boolean;
 }>();
 
 const WORKSPACE_THEME_CLASSES = ['theme-platform', 'theme-app', 'theme-shop', 'theme-investor'];
@@ -904,6 +909,12 @@ const confirmLogout = async () => {
   align-items: center;
   max-width: 260px;
   margin: 0 auto;
+}
+
+.workspace-shell__center--shop {
+  flex: 1 1 auto;
+  max-width: min(100%, 320px);
+  min-width: 0;
 }
 
 .workspace-shell__actions {

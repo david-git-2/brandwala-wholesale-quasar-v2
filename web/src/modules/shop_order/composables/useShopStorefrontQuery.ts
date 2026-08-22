@@ -1,10 +1,10 @@
-import { useInfiniteQuery, keepPreviousData } from '@tanstack/vue-query';
+import { useInfiniteQuery, keepPreviousData, useQueryClient } from '@tanstack/vue-query';
 import { computed, type Ref } from 'vue';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { shopOrderService } from '../services/shopOrderService';
-import { supabase } from 'src/boot/supabase';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import type { ShopCatalogItem, Shop } from '../types';
+import { seedCustomerShopPermissions } from './useCustomerShopPermissionsQuery';
 
 export interface StorefrontQueryParams {
   shopSlug: string;
@@ -16,6 +16,7 @@ export interface StorefrontQueryParams {
 
 export function useShopStorefrontInfiniteQuery(params: Ref<StorefrontQueryParams>) {
   const authStore = useAuthStore();
+  const queryClient = useQueryClient();
   const tenantId = computed(() => authStore.tenantId ?? 0);
   const query = useInfiniteQuery({
     queryKey: computed(() =>
@@ -43,28 +44,19 @@ export function useShopStorefrontInfiniteQuery(params: Ref<StorefrontQueryParams
 
       const meta = result.data?.meta ?? {};
       const data = result.data?.data ?? [];
-      let permissions = meta.permissions ?? null;
       const shopDetails = meta.shop ?? null;
 
-      if (!permissions && shopDetails?.id) {
-        const { data: permData } = await supabase.rpc('get_shop_permissions_for_customer', {
-          p_shop_id: shopDetails.id,
-        });
-        if (permData && permData.length > 0) {
-          permissions = permData[0];
-        }
+      if (shopDetails?.id && meta.permissions) {
+        seedCustomerShopPermissions(queryClient, shopDetails.id, meta.permissions);
       }
 
       return {
         items: data,
         shopDetails,
-        permissions,
         total: meta.total ?? 0,
         pageSize: meta.page_size ?? limit,
         nextOffset: (pageParam as number) + data.length,
       };
-
-
     },
     getNextPageParam: (lastPage) => {
       if (lastPage.nextOffset < lastPage.total && lastPage.items.length > 0) {
@@ -82,12 +74,6 @@ export function useShopStorefrontInfiniteQuery(params: Ref<StorefrontQueryParams
     const dataVal = query.data?.value;
     const pages = dataVal?.pages;
     return pages && pages.length > 0 ? pages[0]?.shopDetails ?? null : null;
-  });
-
-  const permissions = computed(() => {
-    const dataVal = query.data?.value;
-    const pages = dataVal?.pages;
-    return pages && pages.length > 0 ? pages[0]?.permissions ?? null : null;
   });
 
   const totalItems = computed(() => {
@@ -122,7 +108,6 @@ export function useShopStorefrontInfiniteQuery(params: Ref<StorefrontQueryParams
   return {
     ...query,
     shopDetails,
-    permissions,
     totalItems,
     catalogItems,
   };

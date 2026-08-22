@@ -6,6 +6,7 @@ import type {
   ShopOrder,
   ShopOrderItem,
   ShopCatalogBrowseResult,
+  ShopCatalogProductDetailResult,
   CustomerOrderListItem,
   CustomerOrderDetail,
 } from '../types';
@@ -29,13 +30,20 @@ const listShops = async (
   return (data as Shop[] | null) ?? [];
 };
 
+const SHOP_DETAIL_SELECT =
+  'id, tenant_id, name, slug, shop_type, vendor_code, order_mode, is_negotiable, show_stock_quantity, default_currency_id, global_stock_type_id, is_active, allow_delivery, buy_currency_id, sell_currency_id, pricing_method, markup_percentage, quantity_display_mode, default_print_charge_amount, default_packing_charge_amount, deduct_charges_from_margin, vendor_filters, deduct_print_from_margin, deduct_packing_from_margin, description, category_ids, created_at, updated_at';
+
 const getShop = async (shopId: number, tenantId: number): Promise<Shop> => {
-  const shops = await listShops(tenantId);
-  const shop = shops.find((s) => s.id === shopId);
-  if (!shop) {
-    throw new Error('Shop not found.');
-  }
-  return shop;
+  const { data, error } = await supabase
+    .from('shops')
+    .select(SHOP_DETAIL_SELECT)
+    .eq('id', shopId)
+    .eq('tenant_id', tenantId)
+    .is('deleted_at', null)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error('Shop not found.');
+  return data as Shop;
 };
 
 const upsertShop = async (payload: CreateShopPayload | UpdateShopPayload): Promise<Shop> => {
@@ -118,6 +126,29 @@ const browseShopCatalog = async (
       total_pages: 1,
     },
   };
+};
+
+const getShopCatalogProduct = async (
+  tenantId: number,
+  shopSlug: string,
+  productId: number,
+): Promise<ShopCatalogProductDetailResult> => {
+  const { data, error } = await supabase.rpc('get_shop_catalog_product_for_customer', {
+    p_tenant_id: tenantId,
+    p_shop_slug: shopSlug,
+    p_product_id: productId,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  const payload = (data ?? {}) as ShopCatalogProductDetailResult;
+  if (!payload.data) {
+    throw new Error('Product not found.');
+  }
+
+  return payload;
 };
 
 export type CustomerAccessibleShop = {
@@ -725,6 +756,7 @@ export const shopOrderRepository = {
   deleteShop,
   updateShopExtraAttributes,
   browseShopCatalog,
+  getShopCatalogProduct,
   listCustomerShops,
   fetchCustomerShopCategories,
   submitShopOrderFromCart,

@@ -71,7 +71,7 @@
           />
         </q-tabs>
 
-        <q-tab-panels v-model="activeTab" animated keep-alive class="bg-transparent">
+        <q-tab-panels v-model="activeTab" animated class="bg-transparent">
           <q-tab-panel name="setup" class="q-pa-none q-pt-md">
             <DropshipShopReadinessCard
               v-if="shop.shop_type === 'dropship'"
@@ -134,11 +134,11 @@
           </q-tab-panel>
 
           <q-tab-panel v-if="showAccessTab" name="access" class="q-pa-none q-pt-md">
-            <ShopAccessMatrixPage embedded />
+            <ShopAccessMatrixPage v-if="activeTab === 'access'" embedded :shop="shop" />
           </q-tab-panel>
 
           <q-tab-panel v-if="showListingsTab" name="listings" class="q-pa-none q-pt-md">
-            <ShopPricingPage embedded />
+            <ShopPricingPage v-if="activeTab === 'listings'" embedded :shop="shop" />
           </q-tab-panel>
         </q-tab-panels>
       </template>

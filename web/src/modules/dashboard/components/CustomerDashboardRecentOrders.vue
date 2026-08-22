@@ -1,5 +1,5 @@
 <template>
-  <div v-if="loading || recentOrders.length > 0 || error">
+  <div>
     <div class="row items-center justify-between q-mb-sm">
       <span class="text-subtitle1 text-weight-bold">{{ $t('customer_dashboard.recent_orders_title') }}</span>
       <q-btn
@@ -15,7 +15,7 @@
     </div>
 
     <div v-if="loading" class="q-gutter-y-sm">
-      <q-card v-for="n in 2" :key="n" flat bordered class="q-pa-md">
+      <q-card v-for="n in 5" :key="n" flat bordered class="q-pa-md">
         <div class="row items-center justify-between">
           <div>
             <q-skeleton type="text" width="110px" height="18px" class="q-mb-xs" />
@@ -29,6 +29,10 @@
     <q-banner v-else-if="error" class="bw-status-banner bg-negative text-white" rounded>
       {{ error }}
     </q-banner>
+
+    <q-card v-else-if="recentOrders.length === 0" flat bordered class="recent-orders-card q-pa-lg text-center">
+      <div class="text-body2 text-grey-6">{{ $t('customer_dashboard.no_recent_orders') }}</div>
+    </q-card>
 
     <q-card v-else flat bordered class="recent-orders-card">
       <q-list separator>

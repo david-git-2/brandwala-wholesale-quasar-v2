@@ -1,11 +1,21 @@
 <template>
-  <WorkspaceShell :logout-to="logoutTo" theme="shop" :links="links">
+  <WorkspaceShell
+    ref="workspaceShellRef"
+    :logout-to="logoutTo"
+    theme="shop"
+    :links="links"
+    use-header-profile
+  >
     <template #header-left>
       <AppBreadcrumbs />
     </template>
 
+    <template #header-center>
+      <ShopHeaderProductSearch />
+    </template>
+
     <template #header-extra>
-      <div class="row items-center q-gutter-sm">
+      <div class="row items-center q-gutter-x-sm no-wrap">
         <q-btn
           v-if="canShowCartIcon"
           color="primary"
@@ -16,6 +26,7 @@
           :unelevated="!isKobaActive"
           :class="isKobaActive ? '' : 'shop-cart-btn'"
           no-caps
+          aria-label="Cart"
           @click="goToCart"
         >
           <q-badge
@@ -26,6 +37,10 @@
             :label="cartItemCount"
           />
         </q-btn>
+
+        <q-separator vertical inset class="q-mx-xs text-grey-4 gt-xs" />
+
+        <UserProfileMenu @sign-out="onSignOut" />
       </div>
     </template>
 
@@ -34,11 +49,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import WorkspaceShell from 'src/components/WorkspaceShell.vue';
 import AppBreadcrumbs from 'src/components/navigation/AppBreadcrumbs.vue';
+import UserProfileMenu from 'src/components/navigation/UserProfileMenu.vue';
+import ShopHeaderProductSearch from 'src/modules/shop_order/components/ShopHeaderProductSearch.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useActiveShopCartsQuery } from 'src/modules/shop_order/composables/useActiveShopCartsQuery';
 import { useShopWorkspaceLinks } from 'src/modules/navigation/useWorkspaceNavigation';
@@ -47,16 +64,19 @@ import { resolveCartShopId, shopCartPath } from 'src/modules/shop_order/utils/ca
 
 const authStore = useAuthStore();
 const kobaCartStore = useKobaCartStore();
-// ShopLayout setup
+const workspaceShellRef = ref<InstanceType<typeof WorkspaceShell> | null>(null);
 const { data: activeCarts } = useActiveShopCartsQuery();
 const router = useRouter();
 const route = useRoute();
 const { links } = useShopWorkspaceLinks();
 
-const tenantName = computed(() => authStore.tenant?.name ?? '');
 const logoutTo = computed(() =>
   authStore.tenantSlug ? `/${authStore.tenantSlug}/shop/login` : '/shop/login',
 );
+
+const onSignOut = () => {
+  workspaceShellRef.value?.openSignOutDialog();
+};
 
 const isKobaActive = computed(() => {
   return !!(route.name && String(route.name).includes('koba'));

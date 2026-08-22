@@ -554,9 +554,12 @@ import AllocationPickDialog from '../components/AllocationPickDialog.vue';
 import ShopPricingRuleCard from '../components/ShopPricingRuleCard.vue';
 import ShopPricingBulkActionBar from '../components/ShopPricingBulkActionBar.vue';
 import SmartImage from 'src/components/SmartImage.vue';
-import type { ShopProductListing, CandidateAllocation, UpsertListingPayload } from '../types';
+import type { ShopProductListing, CandidateAllocation, UpsertListingPayload, Shop } from '../types';
 
-withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false });
+const props = withDefaults(defineProps<{ embedded?: boolean; shop?: Shop | null }>(), {
+  embedded: false,
+  shop: null,
+});
 
 const route = useRoute();
 const router = useRouter();
@@ -574,7 +577,12 @@ const selectedListings = ref<ShopProductListing[]>([]);
 // TanStack Queries
 const { data: rawListings, isLoading: isLoadingListings, error: listingsError } = useShopPricingListingsQuery(shopId);
 
-const { data: rawCandidates } = useShopPricingCandidatesQuery(tenantId, shopId);
+const pickDialogOpen = ref(false);
+const { data: rawCandidates } = useShopPricingCandidatesQuery(
+  tenantId,
+  shopId,
+  computed(() => pickDialogOpen.value),
+);
 const { data: rawCurrencies } = useShopCurrenciesQuery();
 const { data: pricingRule } = useShopPricingRuleQuery(shopId);
 
@@ -594,7 +602,6 @@ const shopDefaultCurrencyId = ref<number | null>(null);
 const search = ref<string>('');
 
 // Form & Dialog controls
-const pickDialogOpen = ref(false);
 const editDialogOpen = ref(false);
 const selectedProductName = ref('');
 const selectedProductDetails = ref('');
@@ -759,6 +766,14 @@ const filteredListings = computed(() => {
     );
   });
 });
+
+const initShopFromProp = (shop: Shop) => {
+  shopName.value = shop.name;
+  shopType.value = shop.shop_type;
+  shopDefaultCurrencyId.value = shop.default_currency_id ?? null;
+  form.value.sell_price_currency_id = shop.default_currency_id || 0;
+  form.value.minimum_sell_price_currency_id = shop.default_currency_id || null;
+};
 
 const loadShopDetails = async () => {
   if (!shopId.value) return;
@@ -1181,7 +1196,13 @@ const goBack = () => {
   });
 };
 
-onMounted(loadShopDetails);
+onMounted(() => {
+  if (props.shop) {
+    initShopFromProp(props.shop);
+  } else {
+    void loadShopDetails();
+  }
+});
 </script>
 
 <style scoped>

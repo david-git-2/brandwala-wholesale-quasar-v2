@@ -1,6 +1,6 @@
 <template>
   <q-card flat bordered class="product-card">
-    <div class="product-image-wrapper cursor-pointer" @click="$emit('quick-view', item)">
+    <div class="product-image-wrapper cursor-pointer" @click="$emit('open-detail', item)">
       <img
         v-if="item.product_image_url && !isImageBroken"
         :src="item.product_image_url"
@@ -20,7 +20,7 @@
       </div>
       <div
         class="product-name text-subtitle2 text-weight-bold cursor-pointer"
-        @click="$emit('quick-view', item)"
+        @click="$emit('open-detail', item)"
       >
         {{ item.product_name }}
       </div>
@@ -178,7 +178,7 @@ const props = defineProps<{
 }>();
 
 defineEmits<{
-  (e: 'quick-view', item: any): void;
+  (e: 'open-detail', item: any): void;
   (e: 'image-error'): void;
   (e: 'increment', item: any): void;
   (e: 'decrement', item: any): void;
@@ -214,11 +214,7 @@ const minQty = computed(() => {
   position: relative;
   height: 160px;
   flex: 0 0 160px;
-  background: color-mix(
-    in srgb,
-    var(--bw-theme-base, #fafafa) 90%,
-    var(--bw-theme-surface, #fff) 10%
-  );
+  background: var(--bw-theme-surface, #ffffff);
   border-bottom: 1px solid var(--bw-theme-border, rgba(34, 56, 101, 0.05));
   display: flex;
   align-items: center;
@@ -238,11 +234,7 @@ const minQty = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: color-mix(
-    in srgb,
-    var(--bw-theme-base, #eef2f6) 88%,
-    var(--bw-theme-surface, #fff) 12%
-  );
+  background: var(--bw-theme-surface, #ffffff);
   border-radius: 8px;
 }
 .product-body {

@@ -24,6 +24,23 @@ export interface ShopCatalogItem {
   minimum_order_quantity: number | null;
 }
 
+/** Row from `get_shop_catalog_product_for_customer` RPC. */
+export interface ShopCatalogProductDetail extends ShopCatalogItem {
+  country_of_origin: string | null;
+  expire_date: string | null;
+  unit_price_currency_code?: string | null;
+  unit_price_currency_symbol?: string | null;
+  minimum_sell_price_amount?: number | null;
+  minimum_sell_price_currency_id?: number | null;
+  minimum_sell_price_currency_code?: string | null;
+  minimum_sell_price_currency_symbol?: string | null;
+}
+
+export interface ShopCatalogProductDetailResult {
+  data: ShopCatalogProductDetail;
+  meta: ShopCatalogBrowseResult['meta'];
+}
+
 export interface ShopCatalogBrowseResult {
   data: ShopCatalogItem[];
   meta: {

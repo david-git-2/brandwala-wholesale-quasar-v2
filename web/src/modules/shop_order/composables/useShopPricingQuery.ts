@@ -14,15 +14,22 @@ export function useShopPricingListingsQuery(shopId: Ref<number | null | undefine
 
 export function useShopPricingCandidatesQuery(
   tenantId: Ref<number | null | undefined>,
-  shopId: Ref<number | null | undefined>
+  shopId: Ref<number | null | undefined>,
+  enabled?: Ref<boolean>,
 ) {
+  const enabledRef = enabled ?? computed(() => true);
   return useQuery({
     queryKey: computed(() =>
       shopOrderQueryKeys.pricingCandidates(tenantId.value ?? 0, shopId.value ?? 0)
     ),
     queryFn: () => shopPricingRepository.listCandidateAllocations(tenantId.value!, shopId.value!),
     enabled: computed(
-      () => !!tenantId.value && tenantId.value > 0 && !!shopId.value && shopId.value > 0
+      () =>
+        enabledRef.value &&
+        !!tenantId.value &&
+        tenantId.value > 0 &&
+        !!shopId.value &&
+        shopId.value > 0
     ),
     staleTime: 2 * 60 * 1000,
   });

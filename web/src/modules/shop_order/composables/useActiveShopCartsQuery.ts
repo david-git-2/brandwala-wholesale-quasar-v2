@@ -1,12 +1,13 @@
 import { useQuery } from '@tanstack/vue-query';
-import { computed } from 'vue';
+import { computed, type Ref } from 'vue';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { shopCartService } from '../services/shopCartService';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 
-export function useActiveShopCartsQuery() {
+export function useActiveShopCartsQuery(enabled?: Ref<boolean>) {
   const authStore = useAuthStore();
   const tenantId = computed(() => authStore.tenantId ?? 0);
+  const enabledRef = enabled ?? computed(() => true);
 
   return useQuery({
     queryKey: computed(() => shopOrderQueryKeys.activeCarts(tenantId.value)),
@@ -18,6 +19,6 @@ export function useActiveShopCartsQuery() {
       return res.data ?? [];
     },
     staleTime: 60 * 1000,
-    enabled: computed(() => !!tenantId.value),
+    enabled: computed(() => enabledRef.value && !!tenantId.value),
   });
 }

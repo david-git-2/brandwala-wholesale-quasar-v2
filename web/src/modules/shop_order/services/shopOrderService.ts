@@ -1,5 +1,5 @@
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
-import type { ShopOrder, ShopOrderItem, ShopServiceResult, ShopCatalogBrowseResult, CustomerOrderListItem } from '../types';
+import type { ShopOrder, ShopOrderItem, ShopServiceResult, ShopCatalogBrowseResult, ShopCatalogProductDetailResult, CustomerOrderListItem } from '../types';
 
 const submitOrder = async (
   cartId: number,
@@ -247,6 +247,22 @@ const browseShopCatalog = async (
   }
 };
 
+const getShopCatalogProduct = async (
+  tenantId: number,
+  shopSlug: string,
+  productId: number,
+): Promise<ShopServiceResult<ShopCatalogProductDetailResult>> => {
+  try {
+    const data = await shopOrderRepository.getShopCatalogProduct(tenantId, shopSlug, productId);
+    return { success: true, data };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to fetch product.',
+    };
+  }
+};
+
 const listCustomerShops = async (
   tenantId: number,
 ): Promise<
@@ -373,6 +389,7 @@ export const shopOrderService = {
   fulfillOrderToInvoice,
   deleteOrder,
   browseShopCatalog,
+  getShopCatalogProduct,
   listCustomerShops,
   listCustomerShopCategories,
   updateOrderCharges,

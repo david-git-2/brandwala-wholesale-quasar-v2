@@ -71,7 +71,7 @@
               :loading="isCartPendingForItem(item)"
               :is-image-broken="brokenImages[itemKey(item)]"
               :format-money="formatMoney"
-              @quick-view="openQuickView"
+              @open-detail="goToProductDetail"
               @image-error="brokenImages[itemKey(item)] = true"
               @increment="incrementQty"
               @decrement="decrementQty"
@@ -113,17 +113,6 @@
         @apply="filterDrawerOpen = false"
       />
     </FilterSidebar>
-
-    <!-- PRODUCT QUICK VIEW DRAWER / BOTTOM SHEET -->
-    <ProductQuickView
-      v-model="quickViewOpen"
-      :product="selectedQuickViewProduct"
-      :shop-details="shopDetails"
-      :permissions="permissions"
-      :cart-item="selectedQuickViewProduct ? cartItemFor(selectedQuickViewProduct) : null"
-      :saving="cartSaving"
-      @add-to-cart="onQuickViewAddToCart"
-    />
   </q-page>
 </template>
 
@@ -137,14 +126,14 @@ import {
   useShopCategoryOptionsQuery,
 } from '../composables/useShopLookupOptionsQuery';
 import { useShopCartQuery } from '../composables/useShopCartQuery';
+import { useCustomerShopPermissionsQuery } from '../composables/useCustomerShopPermissionsQuery';
 import { useShopCartMutations } from '../composables/useShopCartMutations';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useCustomerShopsQuery } from '../composables/useShopQuery';
 import { useStorefrontState } from '../composables/useStorefrontState';
 import type { CustomerAccessibleShop } from '../repositories/shopOrderRepository';
-import { rememberCatalogShop, shopCatalogPath } from '../utils/catalogShop';
+import { rememberCatalogShop, shopCatalogPath, shopCatalogProductPath } from '../utils/catalogShop';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
-import ProductQuickView from '../components/ProductQuickView.vue';
 import StorefrontHeader from '../components/StorefrontHeader.vue';
 import StorefrontSearchToolbar from '../components/StorefrontSearchToolbar.vue';
 import StorefrontFilterDrawer from '../components/StorefrontFilterDrawer.vue';
@@ -182,7 +171,6 @@ const queryParams = computed(() => ({
 const {
   catalogItems,
   shopDetails,
-  permissions,
   isLoading,
   isFetching,
   isFetchingNextPage,
@@ -193,8 +181,6 @@ const {
 } = useShopStorefrontInfiniteQuery(queryParams);
 
 const filterDrawerOpen = ref(false);
-const quickViewOpen = ref(false);
-const selectedQuickViewProduct = ref<any>(null);
 
 const lookupParams = computed(() => ({
   vendorCode: shopDetails.value?.vendor_code ?? null,
@@ -206,6 +192,7 @@ const { brands: brandNames } = useShopBrandOptionsQuery(lookupParams);
 const { categories: categoryNames } = useShopCategoryOptionsQuery(lookupParams);
 
 const activeShopId = computed(() => shopDetails.value?.id ?? null);
+const { data: permissions } = useCustomerShopPermissionsQuery(activeShopId);
 const { items: cartItems } = useShopCartQuery(activeShopId);
 const { addItemMutation, updateQtyMutation, removeItemMutation } = useShopCartMutations();
 
@@ -334,9 +321,8 @@ const incrementQty = (item: any) => {
   }
 };
 
-const openQuickView = (item: any) => {
-  selectedQuickViewProduct.value = item;
-  quickViewOpen.value = true;
+const goToProductDetail = (item: any) => {
+  void router.push(shopCatalogProductPath(authStore.tenantSlug, shopSlug.value, item.product_id));
 };
 
 const cartItemFor = (catalogItem: any) => {
@@ -349,26 +335,6 @@ const cartItemFor = (catalogItem: any) => {
 
 const isInCart = (catalogItem: any) => {
   return !!cartItemFor(catalogItem);
-};
-
-const onQuickViewAddToCart = async (payload: { product: any; quantity: number }) => {
-  if (!shopDetails.value) return;
-  const existing = cartItemFor(payload.product);
-  if (existing) {
-    await updateQtyMutation.mutateAsync({
-      cartItemId: existing.id,
-      quantity: payload.quantity,
-      shopId: shopDetails.value.id,
-    });
-  } else {
-    await addItemMutation.mutateAsync({
-      shopId: shopDetails.value.id,
-      productId: payload.product.product_id,
-      globalStockAllocationId: payload.product.global_stock_id ?? null,
-      globalStockId: payload.product.global_stock_id ?? null,
-      quantity: payload.quantity,
-    });
-  }
 };
 
 const pendingCartItems = reactive(new Set<string>());

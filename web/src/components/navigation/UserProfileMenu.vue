@@ -74,7 +74,7 @@
             </q-item-section>
           </q-item>
 
-          <q-item clickable @click="toggleDensity">
+          <q-item v-if="!isShopScope" clickable @click="toggleDensity">
             <q-item-section avatar class="q-pr-none" style="min-width: 28px">
               <q-icon name="ph ph-rows" size="xs" color="grey-7" />
             </q-item-section>
@@ -111,13 +111,15 @@
           </q-item>
 
           <!-- About System -->
-          <q-separator class="q-my-xs" />
-          <q-item clickable v-close-popup @click="showAboutDialog = true">
-            <q-item-section avatar class="q-pr-none" style="min-width: 28px">
-              <q-icon name="ph ph-info" size="xs" color="primary" />
-            </q-item-section>
-            <q-item-section>About System</q-item-section>
-          </q-item>
+          <template v-if="!isShopScope">
+            <q-separator class="q-my-xs" />
+            <q-item clickable v-close-popup @click="showAboutDialog = true">
+              <q-item-section avatar class="q-pr-none" style="min-width: 28px">
+                <q-icon name="ph ph-info" size="xs" color="primary" />
+              </q-item-section>
+              <q-item-section>About System</q-item-section>
+            </q-item>
+          </template>
 
           <!-- Sign Out -->
           <q-separator class="q-my-xs" />
@@ -132,7 +134,7 @@
     </q-btn>
 
     <!-- About System Dialog -->
-    <AboutSystemDialog v-model="showAboutDialog" />
+    <AboutSystemDialog v-if="!isShopScope" v-model="showAboutDialog" />
   </div>
 </template>
 
@@ -152,6 +154,8 @@ const emit = defineEmits<{
 const authStore = useAuthStore();
 const { locale } = useI18n();
 const { darkMode, setDarkMode, density, setDensity } = useAppearance();
+
+const isShopScope = computed(() => authStore.scope === 'shop');
 
 const userName = computed(() => {
   return authStore.user?.fullName || authStore.user?.email?.split('@')[0] || 'User';
@@ -178,7 +182,12 @@ const currentRoleLabel = computed(() => {
   return role.charAt(0).toUpperCase() + role.slice(1);
 });
 
-const contextValue = computed(() => authStore.selectedTenant?.name ?? authStore.tenant?.name ?? null);
+const contextValue = computed(() => {
+  if (authStore.scope === 'shop') {
+    return authStore.customerGroup?.name ?? authStore.tenant?.name ?? null;
+  }
+  return authStore.selectedTenant?.name ?? authStore.tenant?.name ?? null;
+});
 
 const toggleDarkMode = () => {
   void setDarkMode(!darkMode.value, authStore.membershipId);

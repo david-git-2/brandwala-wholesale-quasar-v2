@@ -38,6 +38,12 @@ const shopRoutes: RouteRecordRaw[] = [
         beforeEnter: createShopAccessGuard({ requiredModule: 'shop_storefront' }),
       },
       {
+        path: ':shopSlug/product/:productId',
+        name: 'shop-storefront-product-detail-page',
+        component: () => import('src/modules/shop_order/pages/StorefrontProductDetailPage.vue'),
+        beforeEnter: createShopAccessGuard({ requiredModule: 'shop_storefront' }),
+      },
+      {
         path: ':shopSlug',
         name: 'shop-storefront-browse-page',
         component: () => import('src/modules/shop_order/pages/StorefrontPage.vue'),

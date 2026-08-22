@@ -11,6 +11,8 @@
         v-model:status-filter="statusFilter"
         v-model:shop-type-filter="shopTypeFilter"
         :shops="shops"
+        :shops-loading="isLoadingShops"
+        @shop-filter-open="shopFilterOpen = true"
       />
 
       <ShopOrdersTable
@@ -46,10 +48,16 @@ const authStore = useAuthStore();
 const tenantId = computed(() => authStore.tenantId as number);
 const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '');
 
+const shopFilterOpen = ref(false);
+const selectedShopId = ref<number | null>(null);
+
 const shopParams = computed(() => ({
   tenantId: tenantId.value,
 }));
-const { data: shopsData } = useShopListQuery(shopParams);
+const { data: shopsData, isLoading: isLoadingShops } = useShopListQuery(
+  shopParams,
+  computed(() => shopFilterOpen.value || !!selectedShopId.value),
+);
 const shops = computed(() => shopsData.value || []);
 
 const search = ref('');
@@ -64,7 +72,6 @@ watch(
     shopTypeFilter.value = typeof value === 'string' ? value : null;
   },
 );
-const selectedShopId = ref<number | null>(null);
 
 const orderParams = computed(() => ({
   tenantId: tenantId.value,

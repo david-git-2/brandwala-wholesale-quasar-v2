@@ -3,7 +3,6 @@ import { computed, type Ref } from 'vue';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { shopCartService } from '../services/shopCartService';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { supabase } from 'src/boot/supabase';
 
 export function useShopCartQuery(shopId: Ref<number | null>) {
   const authStore = useAuthStore();
@@ -16,18 +15,6 @@ export function useShopCartQuery(shopId: Ref<number | null>) {
       const res = await shopCartService.getOrCreateCart(shopId.value);
       if (!res.success) {
         throw new Error(res.error || 'Failed to fetch cart');
-      }
-
-      let permissions = null;
-      try {
-        const { data: permData } = await supabase.rpc('get_shop_permissions_for_customer', {
-          p_shop_id: shopId.value,
-        });
-        if (permData && permData.length > 0) {
-          permissions = permData[0];
-        }
-      } catch {
-        // Fallback if RPC fails
       }
 
       const enrichedItems = (res.data?.items ?? []).map((i) => {
@@ -43,7 +30,6 @@ export function useShopCartQuery(shopId: Ref<number | null>) {
       return {
         ...res.data,
         items: enrichedItems,
-        permissions,
       };
     },
     staleTime: 15 * 1000,
@@ -52,7 +38,6 @@ export function useShopCartQuery(shopId: Ref<number | null>) {
 
   const cart = computed(() => query.data.value?.cart ?? null);
   const items = computed(() => (query.data.value?.items ?? []).slice().sort((a, b) => a.id - b.id));
-  const permissions = computed(() => query.data.value?.permissions ?? null);
 
   const itemCount = computed(() => items.value.reduce((sum, item) => sum + item.quantity, 0));
 
@@ -118,6 +103,5 @@ export function useShopCartQuery(shopId: Ref<number | null>) {
     chargeTotal,
     recipientGrandTotal,
     estimatedProfit,
-    permissions,
   };
 }

@@ -164,6 +164,7 @@
 import { computed, ref, watch } from 'vue';
 import { useActiveShopCartsQuery } from '../composables/useActiveShopCartsQuery';
 import { useShopCartQuery } from '../composables/useShopCartQuery';
+import { useCustomerShopPermissionsQuery } from '../composables/useCustomerShopPermissionsQuery';
 import { useShopCartPageLogic } from '../composables/useShopCartPageLogic';
 import ShopCartHeader from '../components/ShopCartHeader.vue';
 import ShopCartPickerView from '../components/ShopCartPickerView.vue';
@@ -189,9 +190,10 @@ const {
   buyerCartTotal,
   recipientGrandTotal,
   estimatedProfit,
-  permissions,
   isLoading: isCartLoading,
 } = useShopCartQuery(selectedShopIdRef);
+
+const { data: permissions } = useCustomerShopPermissionsQuery(selectedShopIdRef);
 
 const logic = useShopCartPageLogic(
   activeCarts,

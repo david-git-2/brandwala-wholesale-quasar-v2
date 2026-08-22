@@ -4,6 +4,8 @@ The **Shop Order & Dropship** domain powers B2B storefront commerce (`shop` scop
 
 Customer group provisioning lives in [`CUSTOMER.md`](../customer/CUSTOMER.md). Shop hub **Customer Groups** opens that module.
 
+**UI flows, button rules, and validation matrices:** [`UI_FLOW.md`](./UI_FLOW.md)
+
 ---
 
 ## 1. Shop Setup Operator Journey (`shop_config`)
@@ -134,6 +136,7 @@ flowchart LR
 | :--- | :--- | :--- |
 | `/:tenantSlug?/shop/dashboard` | [`CustomerDashboard.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/dashboard/pages/CustomerDashboard.vue) | Resume cart, shop grid, recent orders |
 | `/:tenantSlug?/shop/browse/:shopSlug` | [`StorefrontPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/StorefrontPage.vue) | `StorefrontHeader.vue`, `StorefrontProductCard.vue`, `StorefrontFilterDrawer.vue` |
+| `/:tenantSlug?/shop/browse/:shopSlug/product/:productId` | `StorefrontProductDetailPage.vue` (planned) | `ProductDetailGallery`, `ProductDetailSummary`, `ProductDetailSpecs`, `ProductDetailPricing`, `ProductDetailActionBar`, `ProductDetailRelated` (dummy v1) |
 | `/:tenantSlug?/shop/cart` | [`ShopCartPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/ShopCartPage.vue) | `ShopCartItemsList.vue`, `ShopCartSummaryCard.vue` |
 | `/:tenantSlug?/shop/checkout` | [`ShopCheckoutPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/ShopCheckoutPage.vue) | Delivery address selector, payment options |
 | `/:tenantSlug?/shop/orders` | [`CustomerOrdersPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/CustomerOrdersPage.vue) | Order tracking list with status badges |
@@ -151,7 +154,7 @@ flowchart LR
 | **`ShopsPage`** | Mount / filter | `useShopListQuery` → `RPC: list_shops` | `staleTime: 2m`, Key: `['shopOrder', 'shops', params]` |
 | **`ShopFormDialog`** | Create shop | `useSaveShopMutation` → `RPC: upsert_shop` | Invalidates `['shopOrder', 'shops']` |
 | **`ShopsPage`** | Delete shop | `useDeleteShopMutation` → `RPC: delete_shop` | Invalidates `['shopOrder', 'shops']` |
-| **`ShopSettingsPage`** | Load shop | `useShopDetailQuery` → `RPC: list_shops` (by id) | Key: `['shopOrder', 'shop', { tenantId, shopId }]` |
+| **`ShopSettingsPage`** | Load shop | `useShopDetailQuery` → `Table: shops` (single row) | Key: `['shopOrder', 'shop', { tenantId, shopId }]` |
 | **`ShopSettingsForm`** | Save | `useSaveShopMutation` → `RPC: upsert_shop` + `Table: shops` (`description`, `category_ids`) | Invalidates shop detail + list |
 | **`ShopSettingsForm`** | Vendors (catalog) | `vendorService.listVendors` | Key: `['vendor', 'list', { tenantId }]` |
 | **`ShopSettingsForm`** | Brands per vendor | `productService.listBrands({ vendorCode })` | On-demand |
@@ -168,13 +171,18 @@ flowchart LR
 | Component | Action / Trigger | Hook / Endpoint | Caching Strategy |
 | :--- | :--- | :--- | :--- |
 | **`CustomerDashboard`** | Shops | `useCustomerShopsQuery` → `RPC: list_customer_shops` | Key: `['shopOrder', 'customerShops', { tenantId }]` |
+| **`CustomerDashboard`** | Active carts | `useActiveShopCartsQuery` → `RPC: list_customer_active_carts` | After shops load; Key: `activeCarts` |
 | **`StorefrontPage`** | Catalog | `browseShopCatalog` → `RPC: browse_shop_catalog_for_customer` | Key: `shopOrderQueryKeys.storefrontCatalog(...)` |
-| **`StorefrontPage`** | Permissions | `RPC: get_shop_permissions_for_customer` | Per shop |
+| **`StorefrontProductDetailPage`** | Mount | `getShopCatalogProduct` → `RPC: get_shop_catalog_product_for_customer` | Key: `shopOrderQueryKeys.storefrontProduct(tenantId, shopSlug, productId)` |
+| **`StorefrontPage`** | Permissions | `useCustomerShopPermissionsQuery` (seeded from browse `meta.permissions`) | Key: `customerShopPermissions(shopId)` |
 | **`ShopCartPage`** | Load cart | `RPC: get_or_create_shop_cart` | Key: `shopOrderQueryKeys.cart(tenantId, shopId)` |
+| **`ShopCartPage`** | Permissions | `useCustomerShopPermissionsQuery` | Shared cache with storefront |
+| **`ShopOrdersPage`** | Shop filter | `useShopListQuery` → `RPC: list_shops` | Deferred until shop filter opened |
+| **`ShopPricingPage`** | Listings | `RPC: list_shop_product_listings` | Per shop |
+| **`ShopPricingPage`** | Candidates | `RPC: list_listable_stock_for_shop` | Deferred until add-listing pick dialog opens |
 | **`ShopCartPage`** | Add / qty / remove | `add_to_shop_cart`, `update_shop_cart_item_qty`, `remove_shop_cart_item` | Optimistic + invalidate cart |
 | **`ShopCheckoutPage`** | Submit | `RPC: submit_shop_order_from_cart` | Invalidates orders + cart |
-| **`ShopPricingPage`** | Listings | `RPC: list_shop_product_listings`, `list_listable_stock_for_shop` | Per shop |
-| **`ShopPricingPage`** | Upsert listing / markup | `upsert_shop_product_listing`, `bulk_apply_shop_markup` | Invalidates pricing keys |
+| **`DropshipFinanceHubPage`** | Hub load | `RPC: get_dropship_finance_hub_data` | KPIs + queue + merchants in one call |
 
 ### Dropship desk
 
@@ -199,6 +207,7 @@ flowchart LR
 * `shopOrderQueryKeys.customerShops(tenantId)` → `['shopOrder', 'customerShops', { tenantId }]`
 * `shopOrderQueryKeys.cart(tenantId, shopId)` → `['shopOrder', 'cart', { tenantId, shopId }]`
 * `shopOrderQueryKeys.storefrontCatalog(...)` → browse cache
+* `shopOrderQueryKeys.storefrontProduct(tenantId, shopSlug, productId)` → product detail cache
 * `shopOrderQueryKeys.readiness(shopId)` → dropship readiness
 
 [`dropshipFinanceQueryKeys.ts`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/shared/queryKeys/dropshipFinanceQueryKeys.ts):
@@ -208,7 +217,93 @@ flowchart LR
 
 ---
 
-## 7. Schema
+## 8. RPC: `get_shop_catalog_product_for_customer`
+
+Single-product fetch for the customer product detail page. Mirrors pricing, stock, and permission rules from `browse_shop_catalog_for_customer` for one `product_id` in a shop.
+
+**UI spec:** [`UI_FLOW.md`](./UI_FLOW.md) §12
+
+### Signature
+
+```sql
+get_shop_catalog_product_for_customer(
+  p_tenant_id   bigint,
+  p_shop_slug   text,
+  p_product_id  bigint
+) returns jsonb
+```
+
+- **Security:** `SECURITY DEFINER`, same access checks as browse (`current_customer_group_id`, `get_shop_permissions_for_customer`, `can_browse`)
+- **Shop types:** `vendor_catalog`, `fixed_price`, `dropship` — same row logic as browse list, filtered to one product
+- **Errors:** `tenant required`, `access denied`, `shop not found or inactive`, `product not found` (when product not in shop catalog)
+
+### Response shape
+
+```jsonc
+{
+  "data": {
+    // All ShopCatalogItem fields from browse, plus detail-only fields:
+    "product_id": 123,
+    "product_name": "Protein Bar 60g",
+    "product_image_url": "https://…",
+    "product_barcode": "890…",
+    "product_code": "ABC-123",
+    "product_brand": "Nike",
+    "product_category": "Snacks",
+    "vendor_code": null,              // internal; omit from UI unless needed later
+    "is_available": true,
+    "country_of_origin": "UK",        // NEW — from products.country_of_origin
+    "expire_date": "2027-01-31",      // NEW — from products.expire_date (text)
+    "unit_price_amount": 125.00,      // null when see_price = false
+    "unit_price_currency_id": 1,
+    "unit_price_currency_code": "BDT",
+    "unit_price_currency_symbol": "৳",
+    "minimum_sell_price_amount": null, // dropship + see_price only
+    "minimum_sell_price_currency_id": null,
+    "minimum_sell_price_currency_code": null,
+    "minimum_sell_price_currency_symbol": null,
+    "available_units": 240,           // null when can_view_quantity false or catalog shop
+    "global_stock_allocation_id": 456,
+    "global_stock_id": 456,
+    "minimum_order_quantity": 12
+  },
+  "meta": {
+    "shop": { /* same shop object as browse meta.shop */ },
+    "permissions": { /* same permissions object as browse meta.permissions */ }
+  }
+}
+```
+
+### Field rules (same as browse)
+
+| Field | Rule |
+| :--- | :--- |
+| `unit_price_amount`, currency fields | `null` when `see_price = false` |
+| `minimum_sell_price_*` | Only when `shop_type = dropship` and `see_price = true` |
+| `available_units` | `null` when `can_view_quantity = false` or shop hides qty; catalog shops return `null` |
+| `country_of_origin`, `expire_date` | From `products`; return `null` when empty |
+| Cost / landed cost / `reference_cost_*` | **Never exposed** |
+| `tariff_code` | **Dropped** — do not return |
+
+### Frontend wiring (planned)
+
+| Layer | Name |
+| :--- | :--- |
+| Repository | `shopOrderRepository.getShopCatalogProduct(tenantId, shopSlug, productId)` |
+| Service | `shopOrderService.getShopCatalogProduct(...)` |
+| Composable | `useShopProductDetailQuery(shopSlug, productId)` |
+| Query key | `shopOrderQueryKeys.storefrontProduct(tenantId, shopSlug, productId)` |
+| Type | Extend `ShopCatalogItem` → `ShopCatalogProductDetail` with `country_of_origin`, `expire_date` |
+
+### Related products (deferred)
+
+v1 UI shows a **dummy** `ProductDetailRelated` section. No RPC in v1.
+
+Future option: `related_products` array on this RPC (same category/brand, limit 4) or separate `list_related_shop_catalog_products_for_customer`.
+
+---
+
+## 9. Schema
 
 Live SQL: [`supabase/schemas/shop_order/`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/supabase/schemas/shop_order/) (`01_types.sql` → `04_rls.sql`).
 

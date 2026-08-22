@@ -11629,6 +11629,10 @@ export type Database = {
         Args: { p_order_id: number; p_tenant_id: number }
         Returns: Json
       }
+      get_dropship_finance_hub_data: {
+        Args: { p_tenant_id: number }
+        Returns: Json
+      }
       get_dropship_shop_readiness: {
         Args: { p_shop_id: number }
         Returns: {
@@ -11819,6 +11823,10 @@ export type Database = {
           tenant_role_id: number
           tenant_slug: string
         }[]
+      }
+      get_shop_catalog_product_for_customer: {
+        Args: { p_product_id: number; p_shop_slug: string; p_tenant_id: number }
+        Returns: Json
       }
       get_shop_effective_grants: {
         Args: { p_customer_group_member_id: number; p_tenant_id: number }

@@ -32,6 +32,21 @@ export function shopCatalogPath(
   };
 }
 
+export function shopCatalogProductPath(
+  tenantSlug: string | null | undefined,
+  shopSlug: string,
+  productId: number | string,
+) {
+  return {
+    name: 'shop-storefront-product-detail-page' as const,
+    params: {
+      ...(tenantSlug ? { tenantSlug } : {}),
+      shopSlug,
+      productId: String(productId),
+    },
+  };
+}
+
 export function shopCartPath(
   tenantSlug: string | null | undefined,
   shopId?: number | null,

@@ -7,6 +7,8 @@ export const shopOrderQueryKeys = {
   shopDetail: (tenantId: number, shopId: number) =>
     ['shopOrder', 'shop', { tenantId, shopId }] as const,
   customerShops: (tenantId: number | null) => ['shopOrder', 'customerShops', { tenantId }] as const,
+  customerShopPermissions: (shopId: number) =>
+    [...shopOrderQueryKeys.root, 'customerShopPermissions', shopId] as const,
   vendorsList: (tenantId: number) => ['vendor', 'list', { tenantId }] as const,
   activeCarts: (tenantId: number) => ['shopOrder', 'activeCarts', { tenantId }] as const,
   cart: (tenantId: number, shopId: number) => ['shopOrder', 'cart', { tenantId, shopId }] as const,
@@ -21,6 +23,8 @@ export const shopOrderQueryKeys = {
       offset?: number;
     },
   ) => ['shopOrder', 'storefrontCatalog', { tenantId, shopSlug, ...filters }] as const,
+  storefrontProduct: (tenantId: number, shopSlug: string, productId: number) =>
+    ['shopOrder', 'storefrontProduct', { tenantId, shopSlug, productId }] as const,
   brandOptions: (params: { vendorCode?: string | null; tenantId?: number | null }) =>
     ['shopOrder', 'brandOptions', params] as const,
   categoryOptions: (params: { vendorCode?: string | null; tenantId?: number | null }) =>

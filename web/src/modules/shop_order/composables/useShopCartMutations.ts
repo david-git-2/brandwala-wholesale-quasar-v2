@@ -31,7 +31,6 @@ export function useShopCartMutations() {
             ...oldData,
             ...data,
             items: enrichedItems,
-            permissions: oldData.permissions ?? data.permissions ?? null,
           };
         },
       );

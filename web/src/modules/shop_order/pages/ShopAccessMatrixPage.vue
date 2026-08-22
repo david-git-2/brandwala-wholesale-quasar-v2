@@ -522,14 +522,17 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useCustomerGroupMutations } from 'src/modules/tenant/composables/useCustomerGroupMutations';
 import type { CustomerGroupCreateInput } from 'src/modules/tenant/types';
 import { useShopPermissionsStore } from '../stores/shopPermissionsStore';
-import type { UpsertAccessPayload, ShopCustomerGroupAccess } from '../types';
+import type { UpsertAccessPayload, ShopCustomerGroupAccess, Shop } from '../types';
 import { copyToClipboard } from 'quasar';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 import { useBillingProfilesQuery } from 'src/modules/sales_invoice/composables/useBillingProfileQuery';
 import CustomerGroupWalletDialog from '../components/CustomerGroupWalletDialog.vue';
 import CustomerGroupDetailsDrawer from '../components/CustomerGroupDetailsDrawer.vue';
 
-withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false });
+const props = withDefaults(defineProps<{ embedded?: boolean; shop?: Shop | null }>(), {
+  embedded: false,
+  shop: null,
+});
 
 const route = useRoute();
 const router = useRouter();
@@ -806,14 +809,19 @@ const onDrawerSave = async () => {
 const load = async () => {
   if (!tenantId.value || !shopId.value) return;
 
-  const { data: shopData } = await supabase
-    .from('shops')
-    .select('name, shop_type')
-    .eq('id', shopId.value)
-    .single();
-  if (shopData) {
-    shopName.value = shopData.name;
-    shopType.value = shopData.shop_type;
+  if (props.shop?.name) {
+    shopName.value = props.shop.name;
+    shopType.value = props.shop.shop_type;
+  } else {
+    const { data: shopData } = await supabase
+      .from('shops')
+      .select('name, shop_type')
+      .eq('id', shopId.value)
+      .single();
+    if (shopData) {
+      shopName.value = shopData.name;
+      shopType.value = shopData.shop_type;
+    }
   }
 
   void store.fetchCustomerGroups(tenantId.value);
