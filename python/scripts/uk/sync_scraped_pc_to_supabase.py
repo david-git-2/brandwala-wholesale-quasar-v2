@@ -26,7 +26,8 @@ INPUT_JSON = ROOT_DIR / "web" / "public" / "uk" / "pc_scraped_data.json"
 PC_VENDOR_ID = 3
 PC_VENDOR_CODE = "PC"
 MARKET_CODE = "GB"
-TENANT_ID = 10
+PARENT_TENANT_ID = 15
+INSERTED_BY_TENANT_ID = 10
 
 def load_env_file(path: Path) -> None:
     if not path.exists():
@@ -151,7 +152,7 @@ def ensure_lookups(client: SupabaseRestClient, products: list[dict[str, Any]]) -
                     "name": b_name,
                     "vendor_id": PC_VENDOR_ID,
                     "vendor_code": PC_VENDOR_CODE,
-                    "tenant_id": TENANT_ID,
+                    "parent_tenant_id": PARENT_TENANT_ID,
                 })
 
         if c_name:
@@ -162,7 +163,7 @@ def ensure_lookups(client: SupabaseRestClient, products: list[dict[str, Any]]) -
                     "name": c_name,
                     "vendor_id": PC_VENDOR_ID,
                     "vendor_code": PC_VENDOR_CODE,
-                    "tenant_id": TENANT_ID,
+                    "parent_tenant_id": PARENT_TENANT_ID,
                 })
 
     if missing_brands:
@@ -238,7 +239,7 @@ def main():
             "select": "id,barcode,product_code",
             "vendor_id": f"eq.{PC_VENDOR_ID}",
             "market_code": f"eq.{MARKET_CODE}",
-            "tenant_id": f"eq.{TENANT_ID}",
+            "parent_tenant_id": f"eq.{PARENT_TENANT_ID}",
             "limit": str(limit),
             "offset": str(offset),
         }
@@ -263,7 +264,7 @@ def main():
     client.update_rows("products", {
         "vendor_id": f"eq.{PC_VENDOR_ID}",
         "market_code": f"eq.{MARKET_CODE}",
-        "tenant_id": f"eq.{TENANT_ID}",
+        "parent_tenant_id": f"eq.{PARENT_TENANT_ID}",
     }, {"is_available": False})
 
     # 4. Prepare updates and inserts
@@ -303,7 +304,8 @@ def main():
             # New product: insert it
             insert_payload = dict(payload)
             insert_payload.update({
-                "tenant_id": TENANT_ID,
+                "parent_tenant_id": PARENT_TENANT_ID,
+                "inserted_by_tenant_id": INSERTED_BY_TENANT_ID,
                 "vendor_id": PC_VENDOR_ID,
                 "vendor_code": PC_VENDOR_CODE,
                 "market_code": MARKET_CODE,
