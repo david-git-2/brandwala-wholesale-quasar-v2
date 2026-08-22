@@ -41,6 +41,13 @@ export interface ShopCatalogProductDetailResult {
   meta: ShopCatalogBrowseResult['meta'];
 }
 
+export interface ShopCatalogRelatedResult {
+  data: ShopCatalogItem[];
+  meta: {
+    category: string | null;
+  };
+}
+
 export interface ShopCatalogBrowseResult {
   data: ShopCatalogItem[];
   meta: {

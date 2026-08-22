@@ -260,8 +260,8 @@ Legacy courier-remittance URLs redirect to this hub with `step=courier_remittanc
 
 ### 11.7 Product detail (`/shop/browse/:shopSlug/product/:productId`)
 - **Page:** `StorefrontProductDetailPage.vue` (planned)
-- **Components:** `ProductDetailGallery`, `ProductDetailSummary`, `ProductDetailSpecs`, `ProductDetailPricing`, `ProductDetailActionBar`, `ProductDetailRelated` (dummy v1)
-- **RPC:** `get_shop_catalog_product_for_customer` — see [`SHOP_ORDER.md`](./SHOP_ORDER.md) §8
+- **Components:** `ProductDetailGallery`, `ProductDetailSummary`, `ProductDetailSpecs`, `ProductDetailPricing`, `ProductDetailActionBar`, `ProductDetailRelated`
+- **RPCs:** `get_shop_catalog_product_for_customer` (§8), `list_related_shop_catalog_products_for_customer` (§9) — see [`SHOP_ORDER.md`](./SHOP_ORDER.md)
 - **Entry points:** product card click, quick-view “View details”, direct URL, copy-link share
 
 ### 11.8 Dropship Order Detail (`/app/shop/dropship/:id`)
@@ -290,7 +290,7 @@ StorefrontProductDetailPage
 │       ├── ProductDetailSpecs        — dl rows (see field table below)
 │       ├── ProductDetailPricing      — unit price + currency symbol (see_price)
 │       └── ProductDetailStock        — available badge (can_view_quantity)
-├── ProductDetailRelated              — dummy placeholder cards (v1; real query later)
+├── ProductDetailRelated              — same-category cards (`vendor_catalog` only; RPC §9)
 └── ProductDetailActionBar (sticky)   — qty stepper + Add to cart / Update cart
 ```
 
@@ -313,7 +313,7 @@ StorefrontProductDetailPage
 | Stock | `available_units` | `can_view_quantity` and value not null |
 | Qty stepper + cart CTA | — | `can_add_to_cart`; disabled when `available_units = 0` |
 | Copy link | current URL | Always |
-| Related products | dummy data | Always (placeholder grid; logic TBD) |
+| Related products | `list_related_shop_catalog_products_for_customer` | `vendor_catalog` + non-empty category + RPC returns rows |
 
 ### Interactions
 
@@ -324,7 +324,8 @@ StorefrontProductDetailPage
 | **Back to catalog** | Breadcrumb or browser back | Return to `StorefrontPage` (preserve `?search=` / filter query when possible) |
 | **Add to cart** | Sticky action bar | `add_to_shop_cart` with selected qty; toast; optional badge update |
 | **Update cart** | When line already in cart | `update_shop_cart_item_qty` |
-| **Related card click** | Placeholder card (v1) | No-op or navigate to same page with different id (deferred) |
+| **Related card click** | Related product card | Navigate to `/shop/browse/:shopSlug/product/:productId` |
+| **View all in category** | Link in related header | `StorefrontPage` with `?category={product_category}` |
 
 ### Shop-type notes
 

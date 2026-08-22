@@ -57,19 +57,6 @@
         </template>
       </q-banner>
 
-      <div class="row justify-end">
-        <q-btn
-          dense
-          outline
-          no-caps
-          size="sm"
-          icon="ph ph-copy"
-          :label="$t('shop_admin.access_login_url_copy')"
-          data-test="access-login-url-copy"
-          @click="copyLoginUrl"
-        />
-      </div>
-
       <q-card v-if="isLoading" flat bordered>
         <q-card-section class="text-center q-pa-xl text-grey-7">
           <q-spinner size="36px" color="primary" class="q-mr-sm" />
@@ -185,51 +172,42 @@
           >
             <template #body-cell-group="props">
               <q-td :props="props">
-                <div
-                  class="row items-center no-wrap q-gutter-x-sm cursor-pointer"
-                  role="button"
-                  tabindex="0"
-                  data-test="access-group-open"
-                  @click="openGroupDetails(props.row)"
-                  @keydown.enter.prevent="openGroupDetails(props.row)"
-                >
+                <div class="row items-center no-wrap q-gutter-x-sm">
                   <div
                     class="accent-swatch"
                     :style="{ backgroundColor: props.row.accent_color || 'var(--bw-theme-primary)' }"
                   />
-                  <div class="text-weight-bold text-body2 text-primary">{{ props.row.name }}</div>
+                  <div class="text-weight-bold text-body2 text-grey-9">{{ props.row.name }}</div>
                 </div>
               </q-td>
             </template>
 
             <template #body-cell-actions="props">
               <q-td :props="props" class="text-right">
-                <q-btn
-                  flat
-                  dense
-                  round
-                  size="sm"
-                  color="grey-8"
-                  icon="ph ph-wallet"
-                  :aria-label="$t('shop_admin.access_wallet')"
-                  data-test="access-wallet-btn"
-                  @click="openWalletDialog(props.row)"
-                >
-                  <q-tooltip>{{ $t('shop_admin.access_wallet') }}</q-tooltip>
-                </q-btn>
-                <q-btn
-                  flat
-                  dense
-                  round
-                  size="sm"
-                  color="grey-8"
-                  icon="ph ph-gear"
-                  :aria-label="$t('shop_admin.configure')"
-                  data-test="access-configure-btn"
-                  @click="openEditDrawer(props.row.id)"
-                >
-                  <q-tooltip>{{ $t('shop_admin.configure') }}</q-tooltip>
-                </q-btn>
+                <div class="row items-center justify-end no-wrap q-gutter-x-xs">
+                  <q-btn
+                    flat
+                    dense
+                    no-caps
+                    size="sm"
+                    color="primary"
+                    icon="ph ph-users"
+                    :label="$t('shop_admin.members')"
+                    data-test="access-members-btn"
+                    @click="openGroupDetails(props.row)"
+                  />
+                  <q-btn
+                    flat
+                    dense
+                    no-caps
+                    size="sm"
+                    color="grey-8"
+                    icon="ph ph-gear"
+                    :label="$t('shop_admin.configure')"
+                    data-test="access-configure-btn"
+                    @click="openEditDrawer(props.row.id)"
+                  />
+                </div>
               </q-td>
             </template>
           </q-table>
@@ -403,11 +381,13 @@
                   color="primary"
                 />
                 <q-toggle
+                  v-if="shopType === 'dropship'"
                   v-model="editForm.can_set_dropship_price"
                   :label="$t('shop_admin.set_dropship_price')"
                   color="primary"
                 />
                 <q-input
+                  v-if="shopType !== 'vendor_catalog'"
                   v-model="editForm.price_tier_code"
                   :label="$t('shop_admin.price_tier_code')"
                   outlined
@@ -498,12 +478,6 @@
         </q-card>
       </q-dialog>
 
-      <CustomerGroupWalletDialog
-        v-model="walletDialogOpen"
-        :group-name="selectedWalletGroup?.name ?? ''"
-        :billing-profile-id="selectedWalletProfileId"
-      />
-
       <CustomerGroupDetailsDrawer
         v-model="groupDetailsOpen"
         :group="selectedDetailsGroup"
@@ -523,10 +497,8 @@ import { useCustomerGroupMutations } from 'src/modules/tenant/composables/useCus
 import type { CustomerGroupCreateInput } from 'src/modules/tenant/types';
 import { useShopPermissionsStore } from '../stores/shopPermissionsStore';
 import type { UpsertAccessPayload, ShopCustomerGroupAccess, Shop } from '../types';
-import { copyToClipboard } from 'quasar';
-import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
+import { showErrorNotification } from 'src/utils/appFeedback';
 import { useBillingProfilesQuery } from 'src/modules/sales_invoice/composables/useBillingProfileQuery';
-import CustomerGroupWalletDialog from '../components/CustomerGroupWalletDialog.vue';
 import CustomerGroupDetailsDrawer from '../components/CustomerGroupDetailsDrawer.vue';
 
 const props = withDefaults(defineProps<{ embedded?: boolean; shop?: Shop | null }>(), {
@@ -545,22 +517,6 @@ const tenantId = computed(() => authStore.tenantId as number);
 const shopId = computed(() => Number(route.params.shopId));
 const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '');
 
-const customerLoginUrl = computed(() => {
-  const origin = typeof window === 'undefined' ? '' : window.location.origin;
-  return tenantSlug.value
-    ? `${origin}/${tenantSlug.value}/shop/login`
-    : `${origin}/shop/login`;
-});
-
-const copyLoginUrl = async () => {
-  try {
-    await copyToClipboard(customerLoginUrl.value);
-    showSuccessNotification(t('shop_admin.access_login_url_copied'));
-  } catch {
-    showErrorNotification(t('shop_admin.access_login_url_copy_failed'));
-  }
-};
-
 const shopName = ref('');
 const shopType = ref('');
 const searchQuery = ref('');
@@ -570,8 +526,6 @@ const createDialogOpen = ref(false);
 const selectedGroupId = ref<number | null>(null);
 const drawerOpen = ref(false);
 const activeGroupId = ref<number | null>(null);
-const walletDialogOpen = ref(false);
-const selectedWalletGroup = ref<{ id: number; name: string } | null>(null);
 const groupDetailsOpen = ref(false);
 const selectedDetailsGroup = ref<{
   id: number;
@@ -584,13 +538,6 @@ const billingProfiles = computed(() => billingProfilesData.value?.data ?? []);
 
 const getBillingProfileForGroup = (groupId: number) =>
   billingProfiles.value.find((p) => p.customer_group_id === groupId) ?? null;
-
-const selectedWalletProfileId = computed(
-  () =>
-    (selectedWalletGroup.value
-      ? getBillingProfileForGroup(selectedWalletGroup.value.id)?.id
-      : null) ?? null,
-);
 
 const selectedDetailsProfile = computed(() => {
   if (!selectedDetailsGroup.value) return null;
@@ -681,7 +628,7 @@ const activeGroupName = computed(() => {
 
 const matrixColumns = computed(() => [
   { name: 'group', label: t('shop_admin.access_col_group'), align: 'left' as const, field: 'name' },
-  { name: 'actions', label: '', align: 'right' as const, field: 'id' },
+  { name: 'actions', label: t('shop_admin.actions'), align: 'right' as const, field: 'id' },
 ]);
 
 const coerceBool = (value: boolean | null | undefined, fallback = false) =>
@@ -756,11 +703,6 @@ const createThenGrant = async () => {
   }
 };
 
-const openWalletDialog = (group: { id: number; name: string }) => {
-  selectedWalletGroup.value = group;
-  walletDialogOpen.value = true;
-};
-
 const openGroupDetails = (group: { id: number; name: string; accent_color: string | null }) => {
   selectedDetailsGroup.value = group;
   groupDetailsOpen.value = true;
@@ -800,6 +742,12 @@ const onDrawerSave = async () => {
   }
 
   editForm.value.status = true;
+  if (shopType.value !== 'dropship') {
+    editForm.value.can_set_dropship_price = false;
+  }
+  if (shopType.value === 'vendor_catalog') {
+    editForm.value.price_tier_code = null;
+  }
   const res = await store.saveAccessOverride(editForm.value);
   if (res.success) {
     drawerOpen.value = false;

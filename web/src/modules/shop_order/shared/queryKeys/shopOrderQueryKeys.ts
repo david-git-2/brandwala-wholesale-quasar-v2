@@ -25,6 +25,8 @@ export const shopOrderQueryKeys = {
   ) => ['shopOrder', 'storefrontCatalog', { tenantId, shopSlug, ...filters }] as const,
   storefrontProduct: (tenantId: number, shopSlug: string, productId: number) =>
     ['shopOrder', 'storefrontProduct', { tenantId, shopSlug, productId }] as const,
+  storefrontProductRelated: (tenantId: number, shopSlug: string, productId: number) =>
+    ['shopOrder', 'storefrontProductRelated', { tenantId, shopSlug, productId }] as const,
   catalogSearch: (tenantId: number, search: string, limit?: number) =>
     ['shopOrder', 'catalogSearch', { tenantId, search, limit: limit ?? 15 }] as const,
   brandOptions: (params: { vendorCode?: string | null; tenantId?: number | null }) =>

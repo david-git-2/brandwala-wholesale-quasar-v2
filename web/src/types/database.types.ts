@@ -12956,6 +12956,15 @@ export type Database = {
         }
         Returns: Json
       }
+      list_related_shop_catalog_products_for_customer: {
+        Args: {
+          p_limit?: number
+          p_product_id: number
+          p_shop_slug: string
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
       list_shipment_items_for_shipments: {
         Args: { p_shipment_ids: number[] }
         Returns: {

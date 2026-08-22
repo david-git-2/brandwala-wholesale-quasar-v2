@@ -1,5 +1,5 @@
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
-import type { ShopOrder, ShopOrderItem, ShopServiceResult, ShopCatalogBrowseResult, ShopCatalogSearchResult, ShopCatalogProductDetailResult, CustomerOrderListItem } from '../types';
+import type { ShopOrder, ShopOrderItem, ShopServiceResult, ShopCatalogBrowseResult, ShopCatalogSearchResult, ShopCatalogProductDetailResult, ShopCatalogRelatedResult, CustomerOrderListItem } from '../types';
 
 const submitOrder = async (
   cartId: number,
@@ -279,6 +279,28 @@ const getShopCatalogProduct = async (
   }
 };
 
+const listRelatedShopCatalogProducts = async (
+  tenantId: number,
+  shopSlug: string,
+  productId: number,
+  limit = 4,
+): Promise<ShopServiceResult<ShopCatalogRelatedResult>> => {
+  try {
+    const data = await shopOrderRepository.listRelatedShopCatalogProducts(
+      tenantId,
+      shopSlug,
+      productId,
+      limit,
+    );
+    return { success: true, data };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to fetch related products.',
+    };
+  }
+};
+
 const listCustomerShops = async (
   tenantId: number,
 ): Promise<
@@ -407,6 +429,7 @@ export const shopOrderService = {
   browseShopCatalog,
   searchShopCatalog,
   getShopCatalogProduct,
+  listRelatedShopCatalogProducts,
   listCustomerShops,
   listCustomerShopCategories,
   updateOrderCharges,

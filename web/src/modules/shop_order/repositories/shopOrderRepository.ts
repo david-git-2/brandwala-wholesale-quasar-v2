@@ -8,6 +8,7 @@ import type {
   ShopCatalogBrowseResult,
   ShopCatalogSearchResult,
   ShopCatalogProductDetailResult,
+  ShopCatalogRelatedResult,
   CustomerOrderListItem,
   CustomerOrderDetail,
 } from '../types';
@@ -178,6 +179,32 @@ const getShopCatalogProduct = async (
   }
 
   return payload;
+};
+
+const listRelatedShopCatalogProducts = async (
+  tenantId: number,
+  shopSlug: string,
+  productId: number,
+  limit = 4,
+): Promise<ShopCatalogRelatedResult> => {
+  const { data, error } = await supabase.rpc('list_related_shop_catalog_products_for_customer', {
+    p_tenant_id: tenantId,
+    p_shop_slug: shopSlug,
+    p_product_id: productId,
+    p_limit: limit,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  const payload = (data ?? {}) as ShopCatalogRelatedResult;
+  return {
+    data: payload.data ?? [],
+    meta: {
+      category: payload.meta?.category ?? null,
+    },
+  };
 };
 
 export type CustomerAccessibleShop = {
@@ -787,6 +814,7 @@ export const shopOrderRepository = {
   browseShopCatalog,
   searchShopCatalog,
   getShopCatalogProduct,
+  listRelatedShopCatalogProducts,
   listCustomerShops,
   fetchCustomerShopCategories,
   submitShopOrderFromCart,

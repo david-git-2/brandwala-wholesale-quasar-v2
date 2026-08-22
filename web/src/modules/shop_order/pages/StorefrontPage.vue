@@ -1,5 +1,5 @@
 <template>
-  <q-page class="q-pa-md storefront-page">
+  <q-page class="q-pa-md bw-page theme-shop storefront-page">
     <!-- ACCESS DENIED STATE -->
     <div
       v-if="accessDenied"
@@ -30,20 +30,11 @@
     <StorefrontSkeletonGrid v-else-if="initialLoading" initial />
 
     <!-- STOREFRONT MAIN CONTENT -->
-    <div v-else class="q-gutter-y-md">
-      <!-- Shop Header Hero -->
-      <StorefrontHeader
+    <div v-else class="bw-page__stack">
+      <StorefrontSearchToolbar
         :shop-name="shopName"
         :current-slug="shopSlug"
         :shops="shops"
-        :active-filter-count="activeFilterCount"
-        @back="goDashboard"
-        @open-filter="filterDrawerOpen = true"
-        @switch-shop="onSwitchShop"
-      />
-
-      <!-- Toolbar & Search & Active Filters -->
-      <StorefrontSearchToolbar
         v-model:search="search"
         v-model:brand="brand"
         v-model:category="category"
@@ -52,6 +43,7 @@
         @search="onSearchClick"
         @open-filter="filterDrawerOpen = true"
         @reset-filters="onResetFilters"
+        @switch-shop="onSwitchShop"
       />
 
       <!-- PRODUCT GRID WITH INFINITE SCROLL -->
@@ -134,7 +126,6 @@ import { useStorefrontState } from '../composables/useStorefrontState';
 import type { CustomerAccessibleShop } from '../repositories/shopOrderRepository';
 import { rememberCatalogShop, shopCatalogPath, shopCatalogProductPath } from '../utils/catalogShop';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
-import StorefrontHeader from '../components/StorefrontHeader.vue';
 import StorefrontSearchToolbar from '../components/StorefrontSearchToolbar.vue';
 import StorefrontFilterDrawer from '../components/StorefrontFilterDrawer.vue';
 import StorefrontProductCard from '../components/StorefrontProductCard.vue';
@@ -240,11 +231,6 @@ const filteredCategoryOptions = computed(() => [
   allCategoryOption.value,
   ...filteredCategoryNames.value.map((item) => ({ label: item, value: item })),
 ]);
-
-const goDashboard = () => {
-  const tenantSlug = route.params.tenantSlug ? `/${String(route.params.tenantSlug)}` : '';
-  void router.push(`${tenantSlug}/shop/dashboard`);
-};
 
 const onSwitchShop = (shop: { id: number; slug: string; name: string } | CustomerAccessibleShop) => {
   if (!shop.slug || shop.slug === shopSlug.value) return;

@@ -45,7 +45,7 @@
         no-caps
         :label="$t('shop.apply')"
         color="primary"
-        class="pill-btn"
+        class="storefront-apply-btn"
         @click="$emit('apply')"
       />
     </div>
@@ -86,5 +86,9 @@ const categoryModel = computed({
 .soft-input :deep(.q-field__control) {
   border-radius: 12px;
   background: color-mix(in srgb, var(--bw-theme-surface, #fff) 82%, transparent);
+}
+
+.storefront-apply-btn {
+  border-radius: 8px;
 }
 </style>

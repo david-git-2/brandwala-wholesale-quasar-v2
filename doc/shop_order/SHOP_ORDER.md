@@ -175,6 +175,7 @@ flowchart LR
 | **`StorefrontPage`** | Catalog | `browseShopCatalog` → `RPC: browse_shop_catalog_for_customer` | Key: `shopOrderQueryKeys.storefrontCatalog(...)` |
 | **`ShopHeaderProductSearch`** | Typeahead | `searchShopCatalog` → `RPC: search_shop_catalog_for_customer` | Key: `shopOrderQueryKeys.catalogSearch(...)` |
 | **`StorefrontProductDetailPage`** | Mount | `getShopCatalogProduct` → `RPC: get_shop_catalog_product_for_customer` | Key: `shopOrderQueryKeys.storefrontProduct(tenantId, shopSlug, productId)` |
+| **`StorefrontProductDetailPage`** | Related strip (`vendor_catalog`) | `listRelatedShopCatalogProducts` → `RPC: list_related_shop_catalog_products_for_customer` | Key: `shopOrderQueryKeys.storefrontProductRelated(tenantId, shopSlug, productId)` |
 | **`StorefrontPage`** | Permissions | `useCustomerShopPermissionsQuery` (seeded from browse `meta.permissions`) | Key: `customerShopPermissions(shopId)` |
 | **`ShopCartPage`** | Load cart | `RPC: get_or_create_shop_cart` | Key: `shopOrderQueryKeys.cart(tenantId, shopId)` |
 | **`ShopCartPage`** | Permissions | `useCustomerShopPermissionsQuery` | Shared cache with storefront |
@@ -209,6 +210,7 @@ flowchart LR
 * `shopOrderQueryKeys.cart(tenantId, shopId)` → `['shopOrder', 'cart', { tenantId, shopId }]`
 * `shopOrderQueryKeys.storefrontCatalog(...)` → browse cache
 * `shopOrderQueryKeys.storefrontProduct(tenantId, shopSlug, productId)` → product detail cache
+* `shopOrderQueryKeys.storefrontProductRelated(tenantId, shopSlug, productId)` → related products strip
 * `shopOrderQueryKeys.readiness(shopId)` → dropship readiness
 
 [`dropshipFinanceQueryKeys.ts`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/shared/queryKeys/dropshipFinanceQueryKeys.ts):
@@ -380,15 +382,58 @@ get_shop_catalog_product_for_customer(
 | Query key | `shopOrderQueryKeys.storefrontProduct(tenantId, shopSlug, productId)` |
 | Type | Extend `ShopCatalogItem` → `ShopCatalogProductDetail` with `country_of_origin`, `expire_date` |
 
-### Related products (deferred)
+### Related products
 
-v1 UI shows a **dummy** `ProductDetailRelated` section. No RPC in v1.
-
-Future option: `related_products` array on this RPC (same category/brand, limit 4) or separate `list_related_shop_catalog_products_for_customer`.
+See §9 — separate RPC; not embedded in this response.
 
 ---
 
-## 9. Schema
+## 9. RPC: `list_related_shop_catalog_products_for_customer`
+
+Category-based related products for the product detail page. **v1 scope:** `vendor_catalog` shops only; other shop types return an empty list.
+
+### Signature
+
+```sql
+list_related_shop_catalog_products_for_customer(
+  p_tenant_id   bigint,
+  p_shop_slug   text,
+  p_product_id  bigint,
+  p_limit       integer DEFAULT 4
+) returns jsonb
+```
+
+- **Security:** `SECURITY DEFINER`, same access checks as browse/detail (`current_customer_group_id`, `get_shop_permissions_for_customer`, `can_browse`)
+- **Match rule:** same shop catalog scope as browse, **same category** (case-insensitive exact match on `products.category`), **exclude** `p_product_id`
+- **Skip when:** current product has no category, blank category, or category text starts with `=` (Excel formula junk)
+- **Order:** `name asc`, `id asc`
+- **Limit:** `greatest(1, least(coalesce(p_limit, 4), 12))`
+- **Row shape:** same as `browse_shop_catalog_for_customer` `data[]` items (`ShopCatalogItem`)
+
+### Response shape
+
+```jsonc
+{
+  "data": [ /* ShopCatalogItem[] */ ],
+  "meta": {
+    "category": "Snacks"   // null when no category match attempted
+  }
+}
+```
+
+### Frontend wiring
+
+| Layer | Name |
+| :--- | :--- |
+| Repository | `shopOrderRepository.listRelatedShopCatalogProducts(tenantId, shopSlug, productId, limit?)` |
+| Service | `shopOrderService.listRelatedShopCatalogProducts(...)` |
+| Composable | `useShopProductRelatedQuery(shopSlug, productId)` |
+| Query key | `shopOrderQueryKeys.storefrontProductRelated(tenantId, shopSlug, productId)` |
+| UI | `StorefrontProductDetailPage` — related strip when `shop_type = vendor_catalog` and `data.length > 0`; “View all” → catalog with `?category=` |
+
+---
+
+## 10. Schema
 
 Live SQL: [`supabase/schemas/shop_order/`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/supabase/schemas/shop_order/) (`01_types.sql` → `04_rls.sql`).
 

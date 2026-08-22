@@ -209,6 +209,8 @@ REVOKE ALL ON FUNCTION "public"."search_shop_catalog_for_customer"("p_tenant_id"
 GRANT ALL ON FUNCTION "public"."search_shop_catalog_for_customer"("p_tenant_id" bigint, "p_search" "text", "p_limit" integer, "p_offset" integer) TO "authenticated";
 REVOKE ALL ON FUNCTION "public"."get_shop_catalog_product_for_customer"("p_tenant_id" bigint, "p_shop_slug" "text", "p_product_id" bigint) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_shop_catalog_product_for_customer"("p_tenant_id" bigint, "p_shop_slug" "text", "p_product_id" bigint) TO "authenticated";
+REVOKE ALL ON FUNCTION "public"."list_related_shop_catalog_products_for_customer"("p_tenant_id" bigint, "p_shop_slug" "text", "p_product_id" bigint, "p_limit" integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."list_related_shop_catalog_products_for_customer"("p_tenant_id" bigint, "p_shop_slug" "text", "p_product_id" bigint, "p_limit" integer) TO "authenticated";
 
 
 GRANT ALL ON FUNCTION "public"."bulk_apply_shop_markup"("p_shop_id" bigint, "p_markup_percentage" numeric, "p_listing_ids" bigint[]) TO "authenticated";

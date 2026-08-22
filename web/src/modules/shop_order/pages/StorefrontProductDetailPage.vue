@@ -111,14 +111,6 @@
                     </div>
                   </div>
                 </div>
-                <div v-if="product.product_code" class="product-detail__spec-row">
-                  <dt>{{ $t('shop.product_detail_code') }}</dt>
-                  <dd class="text-mono">{{ product.product_code }}</dd>
-                </div>
-                <div v-if="product.product_barcode" class="product-detail__spec-row">
-                  <dt>{{ $t('shop.product_detail_barcode') }}</dt>
-                  <dd class="text-mono">{{ product.product_barcode }}</dd>
-                </div>
               </dl>
 
               <q-card
@@ -175,18 +167,78 @@
           </div>
         </div>
 
-        <section class="product-detail__related q-mt-xl">
-          <div class="text-subtitle1 text-weight-bold q-mb-xs">
-            {{ $t('shop.product_detail_related') }}
+        <section
+          v-if="showRelatedSection"
+          class="product-detail__related q-mt-xl"
+        >
+          <div class="row items-center justify-between q-mb-md">
+            <div class="text-subtitle1 text-weight-bold">
+              {{
+                relatedCategory
+                  ? $t('shop.product_detail_related_in_category', { category: relatedCategory })
+                  : $t('shop.product_detail_related')
+              }}
+            </div>
+            <q-btn
+              v-if="relatedCategory"
+              flat
+              dense
+              no-caps
+              color="primary"
+              :label="$t('shop.product_detail_view_category')"
+              @click="goCategoryCatalog"
+            />
           </div>
-          <p class="text-caption text-grey-6 q-mb-md">{{ $t('shop.product_detail_related_soon') }}</p>
-          <div class="row q-col-gutter-md">
+          <div v-if="isRelatedLoading" class="row q-col-gutter-md">
             <div v-for="n in 4" :key="n" class="col-6 col-sm-3">
               <q-card flat bordered class="product-detail__related-card">
                 <q-skeleton type="rect" height="96px" square />
                 <div class="q-pa-sm">
                   <q-skeleton type="text" width="60%" />
                   <q-skeleton type="text" width="40%" class="q-mt-xs" />
+                </div>
+              </q-card>
+            </div>
+          </div>
+          <div v-else class="row q-col-gutter-md">
+            <div
+              v-for="item in relatedProducts"
+              :key="item.product_id"
+              class="col-6 col-sm-3"
+            >
+              <q-card
+                flat
+                bordered
+                class="product-detail__related-card cursor-pointer"
+                @click="goToRelatedProduct(item.product_id)"
+              >
+                <div class="product-detail__related-image-wrap">
+                  <img
+                    v-if="item.product_image_url"
+                    :src="item.product_image_url"
+                    :alt="item.product_name || 'Product'"
+                    class="product-detail__related-image"
+                  />
+                  <div
+                    v-else
+                    class="product-detail__related-image-fallback column flex-center"
+                  >
+                    <q-icon name="ph ph-image-square" size="28px" color="grey-5" />
+                  </div>
+                </div>
+                <div class="q-pa-sm">
+                  <div class="text-caption text-uppercase text-grey-7">
+                    {{ item.product_brand || 'Generic' }}
+                  </div>
+                  <div class="text-body2 text-weight-bold product-detail__related-name">
+                    {{ item.product_name }}
+                  </div>
+                  <div
+                    v-if="permissions?.see_price && item.unit_price_amount != null"
+                    class="text-body2 text-primary text-weight-bold q-mt-xs"
+                  >
+                    {{ formatMoney(item.unit_price_amount, item.unit_price_currency_symbol) }}
+                  </div>
                 </div>
               </q-card>
             </div>
@@ -208,9 +260,10 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { showSuccessNotification } from 'src/utils/appFeedback';
 import { isExcelFormulaText } from 'src/utils/excelCellText';
 import { useShopProductDetailQuery } from '../composables/useShopProductDetailQuery';
+import { useShopProductRelatedQuery } from '../composables/useShopProductRelatedQuery';
 import { useShopCartQuery } from '../composables/useShopCartQuery';
 import { useShopCartMutations } from '../composables/useShopCartMutations';
-import { shopCatalogPath } from '../utils/catalogShop';
+import { shopCatalogPath, shopCatalogProductPath } from '../utils/catalogShop';
 
 const route = useRoute();
 const router = useRouter();
@@ -236,12 +289,23 @@ const {
   isError,
 } = useShopProductDetailQuery(shopSlug, productId);
 
+const {
+  relatedProducts,
+  relatedCategory,
+  isLoading: isRelatedLoading,
+} = useShopProductRelatedQuery(shopSlug, productId);
+
 const activeShopId = computed(() => shopDetails.value?.id ?? null);
 const { items: cartItems } = useShopCartQuery(activeShopId);
 const { addItemMutation, updateQtyMutation } = useShopCartMutations();
 
 const shopName = computed(() => shopDetails.value?.name || shopSlug.value);
 const shopType = computed(() => shopDetails.value?.shop_type ?? null);
+const showRelatedSection = computed(
+  () =>
+    shopType.value === 'vendor_catalog' &&
+    (isRelatedLoading.value || relatedProducts.value.length > 0),
+);
 const moq = computed(() => product.value?.minimum_order_quantity || 1);
 
 const productCategoryLabel = computed(() => {
@@ -306,6 +370,18 @@ function formatMoney(amount?: number | null, symbol?: string | null): string {
 
 function goCatalog() {
   void router.push(shopCatalogPath(tenantSlug.value, shopSlug.value));
+}
+
+function goCategoryCatalog() {
+  if (!relatedCategory.value) return;
+  void router.push({
+    path: shopCatalogPath(tenantSlug.value, shopSlug.value).path,
+    query: { category: relatedCategory.value },
+  });
+}
+
+function goToRelatedProduct(targetProductId: number) {
+  void router.push(shopCatalogProductPath(tenantSlug.value, shopSlug.value, targetProductId));
 }
 
 async function copyLink() {
@@ -412,6 +488,37 @@ async function onAddToCart() {
 .product-detail__related-card {
   border-radius: 12px;
   overflow: hidden;
+}
+
+.product-detail__related-image-wrap {
+  height: 96px;
+  background: #fff;
+  border-bottom: 1px solid var(--bw-theme-border, rgba(34, 56, 101, 0.08));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+}
+
+.product-detail__related-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.product-detail__related-image-fallback {
+  width: 100%;
+  height: 100%;
+}
+
+.product-detail__related-name {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.35;
 }
 
 .bg-warning-soft {

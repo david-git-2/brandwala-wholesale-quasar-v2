@@ -2,7 +2,8 @@
   <div class="app-page-header" :class="{ 'app-page-header--dense': dense }">
     <div class="app-page-header__copy">
       <p v-if="eyebrow" class="app-page-header__eyebrow">{{ eyebrow }}</p>
-      <h1 class="app-page-header__title">{{ title }}</h1>
+      <h1 v-if="!$slots.title" class="app-page-header__title">{{ title }}</h1>
+      <slot v-else name="title" />
       <p v-if="subtitle" class="app-page-header__subtitle">{{ subtitle }}</p>
     </div>
     <div v-if="$slots.action" class="app-page-header__action">

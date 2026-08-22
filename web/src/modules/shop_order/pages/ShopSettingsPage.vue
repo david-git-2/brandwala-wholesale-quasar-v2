@@ -1,41 +1,33 @@
 <template>
-  <q-page class="q-pa-md">
-    <div class="q-gutter-y-md">
-      <section class="row items-center justify-between q-col-gutter-md">
-        <div class="col">
-          <div class="row items-center q-gutter-x-sm">
-            <q-btn
-              flat
-              dense
-              round
-              icon="ph ph-arrow-left"
-              color="grey-7"
-              :to="{ name: 'app-shop-shops-list-page', params: { tenantSlug } }"
-            />
-            <div>
-              <div class="text-overline text-primary">{{ $t('navigation.shops') }}</div>
-              <h1 class="text-h5 text-weight-bold q-my-none">
-                {{ shop?.name || $t('shop_admin.shop_setup_title') }}
-              </h1>
-              <p class="text-caption text-grey-7 q-mb-none">
-                {{ $t('shop_admin.shop_setup_subtitle') }}
-              </p>
-            </div>
-          </div>
-        </div>
-        <div class="col-auto row items-center q-gutter-x-sm">
+  <q-page class="bw-page q-pa-md">
+    <section class="bw-page__stack">
+      <div class="shop-settings-header row items-center justify-between q-col-gutter-sm q-mb-sm">
+        <h1 class="shop-settings-header__title col min-width-0">{{ pageTitle }}</h1>
+        <div class="col-auto row items-center q-gutter-sm no-wrap">
           <q-btn
-            v-if="activeTab === 'setup'"
+            v-if="shop?.slug"
+            flat
+            dense
+            no-caps
+            outline
+            color="primary"
+            icon="ph ph-copy"
+            :label="$t('shop_admin.shop_catalog_url_copy')"
+            data-test="shop-catalog-url-copy"
+            @click="copyShopUrl"
+          />
+          <q-btn
+            v-if="shop && activeTab === 'setup'"
             color="primary"
             unelevated
             no-caps
+            style="border-radius: 8px"
             :label="$t('shop_admin.save')"
             :loading="isSaving"
-            :disable="!shop"
             @click="onSave"
           />
         </div>
-      </section>
+      </div>
 
       <q-banner v-if="isError" class="text-white bg-negative" rounded>
         {{ error?.message || $t('shop_admin.shop_setup_load_failed') }}
@@ -44,32 +36,35 @@
       <ShopSettingsSkeleton v-if="isLoading" is-loading />
 
       <template v-else-if="shop">
-        <q-tabs
-          v-model="activeTab"
-          dense
-          no-caps
-          align="left"
-          active-color="primary"
-          indicator-color="primary"
-          class="text-grey-8"
-          narrow-indicator
-          outside-arrows
-          mobile-arrows
-        >
-          <q-tab name="setup" icon="ph ph-gear" :label="$t('shop_admin.shop_tab_setup')" />
-          <q-tab
-            v-if="showAccessTab"
-            name="access"
-            icon="ph ph-shield"
-            :label="$t('shop_admin.shop_tab_access')"
-          />
-          <q-tab
-            v-if="showListingsTab"
-            name="listings"
-            icon="ph ph-tag"
-            :label="$t('shop_admin.shop_tab_listings')"
-          />
-        </q-tabs>
+        <q-card flat bordered class="shop-settings-tabs-card">
+          <q-tabs
+            v-model="activeTab"
+            inline-label
+            dense
+            no-caps
+            align="left"
+            active-color="primary"
+            indicator-color="primary"
+            class="shop-settings-tabs text-grey-8"
+            narrow-indicator
+            outside-arrows
+            mobile-arrows
+          >
+            <q-tab name="setup" icon="ph ph-gear" :label="$t('shop_admin.shop_tab_setup')" />
+            <q-tab
+              v-if="showAccessTab"
+              name="access"
+              icon="ph ph-shield"
+              :label="$t('shop_admin.shop_tab_access')"
+            />
+            <q-tab
+              v-if="showListingsTab"
+              name="listings"
+              icon="ph ph-tag"
+              :label="$t('shop_admin.shop_tab_listings')"
+            />
+          </q-tabs>
+        </q-card>
 
         <q-tab-panels v-model="activeTab" animated class="bg-transparent">
           <q-tab-panel name="setup" class="q-pa-none q-pt-md">
@@ -142,7 +137,7 @@
           </q-tab-panel>
         </q-tab-panels>
       </template>
-    </div>
+    </section>
   </q-page>
 </template>
 
@@ -150,6 +145,7 @@
 import { computed, defineAsyncComponent, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
+import { copyToClipboard } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
 import ShopSettingsForm from 'src/modules/shop_order/components/ShopSettingsForm.vue';
@@ -157,6 +153,7 @@ import ShopSettingsSkeleton from 'src/modules/shop_order/components/ShopSettings
 import DropshipShopReadinessCard from 'src/modules/shop_order/components/DropshipShopReadinessCard.vue';
 import { useShopDetailQuery } from '../composables/useShopQuery';
 import { useSaveShopMutation, useDeleteShopMutation } from '../composables/useShopMutations';
+import { shopCatalogPath } from '../utils/catalogShop';
 import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';
 import type { UpdateShopPayload } from 'src/modules/shop_order/types';
 
@@ -180,6 +177,9 @@ const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '');
 const shopId = computed(() => Number(route.params.shopId));
 
 const { data: shop, isLoading, isError, error } = useShopDetailQuery(tenantId, shopId);
+const pageTitle = computed(
+  () => shop.value?.name || t('shop_admin.shop_setup_title'),
+);
 const { mutate: saveShopMutation, isPending: isSaving } = useSaveShopMutation();
 const { mutate: deleteShopMutation, isPending: isDeleting } = useDeleteShopMutation();
 
@@ -235,6 +235,18 @@ const onSave = () => {
   });
 };
 
+const copyShopUrl = async () => {
+  if (!shop.value?.slug) return;
+  const origin = typeof window === 'undefined' ? '' : window.location.origin;
+  const url = `${origin}${shopCatalogPath(tenantSlug.value, shop.value.slug).path}`;
+  try {
+    await copyToClipboard(url);
+    showSuccessNotification(t('shop_admin.shop_catalog_url_copied'));
+  } catch {
+    showErrorNotification(t('shop_admin.shop_catalog_url_copy_failed'));
+  }
+};
+
 const deleteShop = () => {
   if (!canDeleteShop.value || !shop.value) return;
 
@@ -257,6 +269,23 @@ const deleteShop = () => {
 </script>
 
 <style scoped>
+.shop-settings-header__title {
+  margin: 0;
+  font-size: clamp(1rem, 1.4vw, 1.2rem);
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--bw-theme-ink, #171412);
+}
+
+.shop-settings-tabs-card {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.shop-settings-tabs :deep(.q-tab__icon) {
+  font-size: 18px;
+}
+
 .shop-danger-zone {
   background: #fff5f5;
   border-radius: 8px;
