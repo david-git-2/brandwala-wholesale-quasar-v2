@@ -87,35 +87,19 @@ const adminRoutes: RouteRecordRaw[] = [
     ],
   },
 
-  // shop_permissions — Customer Access
   {
     path: '/:tenantSlug?/app/shop/customer-groups',
-    component: () => import('layouts/AppLayout.vue'),
-    children: [
-      {
-        path: '',
-        name: 'app-shop-customer-groups-page',
-        component: () => import('src/modules/shop_order/pages/CustomerAccessPage.vue'),
-        beforeEnter: guard('shop_permissions'),
-      },
-      {
-        path: ':groupId/members',
-        name: 'app-shop-customer-group-members-page',
-        component: () => import('src/modules/shop_order/pages/CustomerGroupMembersPage.vue'),
-        beforeEnter: guard('shop_permissions'),
-      },
-      {
-        path: ':groupId/permissions',
-        name: 'app-shop-customer-group-permissions-page',
-        redirect: (to) => ({
-          name: 'app-shop-customer-group-members-page',
-          params: {
-            tenantSlug: to.params.tenantSlug,
-            groupId: to.params.groupId,
-          },
-        }),
-      },
-    ],
+    redirect: (to) => ({
+      name: 'app-customers',
+      params: { tenantSlug: to.params.tenantSlug },
+    }),
+  },
+  {
+    path: '/:tenantSlug?/app/shop/customer-groups/:pathMatch(.*)*',
+    redirect: (to) => ({
+      name: 'app-customers',
+      params: { tenantSlug: to.params.tenantSlug },
+    }),
   },
 
   // shop_pricing — Shop Pricing

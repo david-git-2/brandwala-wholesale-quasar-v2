@@ -16,10 +16,14 @@ major_version = 17
 schema_paths = [
   "./schemas/_extensions.sql",
   "./schemas/procurement/01_types.sql",
+  "./schemas/shop_order/01_types.sql",
   "./schemas/public.sql",
   "./schemas/procurement/02_tables.sql",
+  "./schemas/shop_order/02_tables.sql",
   "./schemas/procurement/03_rpcs.sql",
+  "./schemas/shop_order/03_rpcs.sql",
   "./schemas/procurement/04_rls.sql",
+  "./schemas/shop_order/04_rls.sql",
 ]
 
 [studio]

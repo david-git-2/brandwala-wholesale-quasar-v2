@@ -110,7 +110,7 @@ const WORKSPACE_NAV_REGISTRY: readonly BaseWorkspaceLinkDefinition[] = [
     caption: 'Your shops and orders that need you',
     icon: 'ph ph-squares-four',
     scopes: ['shop'],
-    allowedRoles: ['customer_admin', 'customer_negotiator', 'customer_staff'],
+    allowedRoles: ['customer_admin', 'customer_manager', 'customer_staff'],
     requiresTenantContext: true,
     route: ({ tenantSlug }) => (tenantSlug ? `/${tenantSlug}/shop/dashboard` : '/shop/dashboard'),
   },

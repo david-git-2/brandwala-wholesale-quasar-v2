@@ -5,7 +5,7 @@ import type { ModuleKey } from 'src/modules/navigation/modulePermissions';
 
 const SHOP_CUSTOMER_ROLES: AccessRole[] = [
   'customer_admin',
-  'customer_negotiator',
+  'customer_manager',
   'customer_staff',
 ];
 

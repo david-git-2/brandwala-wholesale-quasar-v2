@@ -50,7 +50,7 @@ ALTER TYPE "public"."commerce_order_status" OWNER TO "postgres";
 
 CREATE TYPE "public"."customer_group_role" AS ENUM (
     'admin',
-    'negotiator',
+    'manager',
     'staff'
 );
 
@@ -662,6 +662,197 @@ begin
 
   return v_member;
 ALTER FUNCTION "public"."assign_customer_group_member_role"("p_cgm_id" bigint, "p_tenant_role_id" bigint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."create_customer_account"("p_tenant_id" bigint, "p_group_name" text, "p_admin_name" text, "p_admin_email" text DEFAULT NULL::text, "p_phone" text DEFAULT NULL::text, "p_address" text DEFAULT NULL::text, "p_accent_color" text DEFAULT '#B45F34'::text) RETURNS jsonb
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_group public.customer_groups;
+  v_billing_profile public.billing_profiles;
+  v_clean_email text;
+  v_clean_phone text;
+  v_clean_address text;
+  v_clean_color text;
+  v_clean_group_name text;
+  v_clean_admin_name text;
+begin
+  v_clean_group_name := trim(coalesce(p_group_name, ''));
+  v_clean_admin_name := trim(coalesce(p_admin_name, ''));
+  if v_clean_group_name = '' then
+    raise exception 'Group / Company name is required';
+  end if;
+  if v_clean_admin_name = '' then
+    raise exception 'Primary contact / Admin name is required';
+  end if;
+
+  v_clean_email := nullif(lower(trim(coalesce(p_admin_email, ''))), '');
+  v_clean_phone := nullif(trim(coalesce(p_phone, '')), '');
+  v_clean_address := nullif(trim(coalesce(p_address, '')), '');
+  v_clean_color := coalesce(nullif(trim(coalesce(p_accent_color, '')), ''), '#B45F34');
+
+  insert into public.customer_groups (
+    tenant_id,
+    name,
+    accent_color,
+    is_active
+  ) values (
+    p_tenant_id,
+    v_clean_group_name,
+    v_clean_color,
+    true
+  )
+  returning * into v_group;
+
+  if v_clean_email is not null then
+    insert into public.customer_group_members (
+      customer_group_id,
+      name,
+      email,
+      role,
+      is_active
+    ) values (
+      v_group.id,
+      v_clean_admin_name,
+      v_clean_email,
+      'admin',
+      true
+    );
+  end if;
+
+  insert into public.billing_profiles (
+    tenant_id,
+    customer_group_id,
+    name,
+    email,
+    phone,
+    address,
+    color,
+    created_at,
+    updated_at
+  ) values (
+    p_tenant_id,
+    v_group.id,
+    v_clean_admin_name,
+    v_clean_email,
+    v_clean_phone,
+    v_clean_address,
+    v_clean_color,
+    now(),
+    now()
+  )
+  on conflict (id) do nothing
+  returning * into v_billing_profile;
+
+  if v_billing_profile.id is null then
+    select * into v_billing_profile
+    from public.billing_profiles
+    where tenant_id = p_tenant_id and customer_group_id = v_group.id
+    order by id asc limit 1;
+
+    update public.billing_profiles
+    set
+      name = v_clean_admin_name,
+      email = v_clean_email,
+      phone = v_clean_phone,
+      address = v_clean_address,
+      color = v_clean_color,
+      updated_at = now()
+    where id = v_billing_profile.id
+    returning * into v_billing_profile;
+  end if;
+
+  insert into public.wallet_accounts (
+    tenant_id,
+    entity_type,
+    entity_id,
+    currency_code,
+    available_balance,
+    locked_balance,
+    pending_balance
+  ) values (
+    p_tenant_id,
+    'customer',
+    v_billing_profile.id,
+    'BDT',
+    0.0000,
+    0.0000,
+    0.0000
+  )
+  on conflict (tenant_id, entity_type, entity_id, currency_code) do nothing;
+
+  return jsonb_build_object(
+    'id', v_group.id,
+    'customer_group_id', v_group.id,
+    'billing_profile_id', v_billing_profile.id,
+    'group_name', v_group.name,
+    'admin_name', v_billing_profile.name,
+    'email', v_billing_profile.email,
+    'phone', v_billing_profile.phone,
+    'address', v_billing_profile.address,
+    'accent_color', v_group.accent_color,
+    'is_active', v_group.is_active,
+    'created_at', v_group.created_at
+  );
+end;
+$$;
+
+
+ALTER FUNCTION "public"."create_customer_account"("p_tenant_id" bigint, "p_group_name" text, "p_admin_name" text, "p_admin_email" text, "p_phone" text, "p_address" text, "p_accent_color" text) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."list_customer_accounts"("p_tenant_id" bigint, "p_search" text DEFAULT NULL::text)
+    RETURNS TABLE("id" bigint, "customer_group_id" bigint, "billing_profile_id" bigint, "group_name" text, "admin_name" text, "email" text, "phone" text, "address" text, "accent_color" text, "is_active" boolean, "member_count" bigint, "wallet_available_balance" numeric, "created_at" timestamp with time zone)
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+begin
+  return query
+  select
+    cg.id,
+    cg.id as customer_group_id,
+    bp.id as billing_profile_id,
+    cg.name as group_name,
+    coalesce(bp.name, cg.name) as admin_name,
+    bp.email,
+    bp.phone,
+    bp.address,
+    coalesce(cg.accent_color, bp.color, '#B45F34') as accent_color,
+    cg.is_active,
+    coalesce(mem.cnt, 0::bigint) as member_count,
+    coalesce(wa.available_balance, 0.00) as wallet_available_balance,
+    cg.created_at
+  from public.customer_groups cg
+  left join public.billing_profiles bp
+    on bp.customer_group_id = cg.id and bp.tenant_id = p_tenant_id
+  left join (
+    select cgm.customer_group_id as c_group_id, count(*) as cnt
+    from public.customer_group_members cgm
+    group by cgm.customer_group_id
+  ) mem on mem.c_group_id = cg.id
+  left join public.wallet_accounts wa
+    on wa.tenant_id = p_tenant_id
+   and wa.entity_type = 'customer'
+   and wa.entity_id = bp.id
+   and wa.currency_code = 'BDT'
+  where cg.tenant_id = p_tenant_id
+    and (
+      p_search is null
+      or trim(p_search) = ''
+      or cg.name ilike '%' || trim(p_search) || '%'
+      or bp.name ilike '%' || trim(p_search) || '%'
+      or bp.email ilike '%' || trim(p_search) || '%'
+      or bp.phone ilike '%' || trim(p_search) || '%'
+      or bp.address ilike '%' || trim(p_search) || '%'
+    )
+  order by cg.id desc;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."list_customer_accounts"("p_tenant_id" bigint, "p_search" text) OWNER TO "postgres";
+
 
 
 CREATE TABLE IF NOT EXISTS "public"."memberships" (
@@ -3219,6 +3410,70 @@ $$;
 ALTER FUNCTION "public"."current_tenant_id"() OWNER TO "postgres";
 
 
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_order record;
+  BEGIN
+  SELECT * INTO v_order FROM public.shop_orders WHERE id = p_order_id;
+  
+  IF v_order.id IS NULL THEN
+    RAISE EXCEPTION 'order not found';
+  END IF;
+
+  IF v_order.shop_type_snapshot = 'vendor_catalog' THEN
+    IF NOT COALESCE(v_order.is_negotiable_snapshot, false) THEN
+      RAISE EXCEPTION 'Order % is not negotiable', p_order_id;
+    END IF;
+
+    IF v_order.status <> 'priced' THEN
+      RAISE EXCEPTION 'Catalog order % cannot be countered from status %', p_order_id, v_order.status;
+    END IF;
+
+    FOR v_item IN SELECT * FROM jsonb_to_recordset(p_items) AS x(id bigint, customer_offer_amount numeric, customer_offer_currency_id bigint) LOOP
+      UPDATE public.shop_order_items
+      SET
+        customer_offer_amount = v_item.customer_offer_amount,
+        customer_offer_currency_id = v_item.customer_offer_currency_id,
+        customer_counter_at = now(),
+        updated_at = now()
+      WHERE id = v_item.id AND order_id = p_order_id;
+    END LOOP;
+
+    UPDATE public.shop_orders
+    SET
+      status = 'countered'::public.shop_order_status,
+      negotiate_round = negotiate_round + 1,
+      updated_at = now()
+    WHERE id = p_order_id;
+  ELSE
+    -- Legacy / non-catalog fallback behavior
+    IF NOT public.is_cart_owner(v_order.customer_group_id, v_order.tenant_id) THEN
+      RAISE EXCEPTION 'access denied';
+    END IF;
+
+    FOR v_item IN SELECT * FROM jsonb_to_recordset(p_items) AS x(id bigint, customer_offer_amount numeric, customer_offer_currency_id bigint) LOOP
+      UPDATE public.shop_order_items
+      SET
+        customer_offer_amount = v_item.customer_offer_amount,
+        customer_offer_currency_id = v_item.customer_offer_currency_id,
+        updated_at = now()
+      WHERE id = v_item.id AND order_id = p_order_id;
+    END LOOP;
+
+    UPDATE public.shop_orders
+    SET
+      status = 'negotiating'::public.shop_order_status,
+      negotiate_round = negotiate_round + 1,
+      updated_at = now()
+    WHERE id = p_order_id;
+  END IF;
+END;
+ALTER FUNCTION "public"."customer_counter_offer"("p_order_id" bigint, "p_items" "jsonb") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."delete_customer_group_member_grant"("p_cgm_id" bigint, "p_module_key" "text", "p_action" "text") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -6883,7 +7138,7 @@ CREATE OR REPLACE FUNCTION "public"."is_customer_group_admin_or_negotiator"("p_c
     from public.customer_group_members cgm
     where cgm.customer_group_id = p_customer_group_id
       and lower(trim(cgm.email)) = public.current_user_email()
-      and cgm.role in ('admin', 'negotiator')
+      and cgm.role in ('admin', 'manager')
       and cgm.is_active = true
   )
 $$;
@@ -7127,6 +7382,49 @@ begin
 ALTER FUNCTION "public"."list_configurable_module_actions"("p_scope" "text", "p_tenant_id" bigint) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."list_customer_active_carts"("p_tenant_id" bigint) RETURNS TABLE("cart_id" bigint, "shop_id" bigint, "shop_name" "text", "shop_slug" "text", "shop_logo_url" "text", "shop_type" "text", "see_price" boolean, "currency_id" bigint, "currency_code" "text", "currency_symbol" "text", "item_count" bigint, "cart_total" numeric, "updated_at" timestamp with time zone)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  select
+    c.id as cart_id,
+    s.id as shop_id,
+    s.name as shop_name,
+    s.slug as shop_slug,
+    null::text as shop_logo_url,
+    s.shop_type::text as shop_type,
+    c.see_price_snapshot as see_price,
+    s.sell_currency_id as currency_id,
+    gc.code as currency_code,
+    gc.symbol as currency_symbol,
+    coalesce(sum(ci.quantity), 0)::bigint as item_count,
+    case
+      when c.see_price_snapshot then
+        sum(
+          ci.quantity * coalesce(
+            ci.customer_sell_price_amount,
+            ci.unit_sell_price_amount,
+            ci.unit_list_price_amount,
+            0
+          )
+        )::numeric
+      else null
+    end as cart_total,
+    c.updated_at
+  from public.shop_carts c
+  join public.shops s on s.id = c.shop_id
+  join public.shop_cart_items ci on ci.cart_id = c.id
+  left join public.global_currencies gc on gc.id = s.sell_currency_id
+  where p_tenant_id is not null
+    and c.status = 'active'
+    and c.tenant_id = p_tenant_id
+    and c.customer_group_id = public.current_customer_group_id(p_tenant_id)
+  group by c.id, s.id, gc.code, gc.symbol
+  order by c.updated_at desc;
+ALTER FUNCTION "public"."list_customer_active_carts"("p_tenant_id" bigint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."list_customer_group_member_grants"("p_cgm_id" bigint) RETURNS TABLE("id" bigint, "customer_group_member_id" bigint, "module_key" "text", "action" "text", "effect" "text")
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -12001,7 +12299,7 @@ begin
   insert into public.tenant_roles (tenant_id, scope, name, slug, is_system, is_admin, source_app_role)
   values
     (p_tenant_id, 'shop', 'Customer Admin', 'customer-admin', true, false, null),
-    (p_tenant_id, 'shop', 'Negotiator', 'negotiator', true, false, null),
+    (p_tenant_id, 'shop', 'Customer Manager', 'manager', true, false, null),
     (p_tenant_id, 'shop', 'Customer Staff', 'customer-staff', true, false, null)
   on conflict (tenant_id, scope, slug) do nothing;
 
@@ -12147,6 +12445,33 @@ begin
   ALTER FUNCTION "public"."set_updated_at"() OWNER TO "postgres";
 
 
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_tenant_id bigint;
+  begin
+  select tenant_id into v_tenant_id from public.shop_orders where id = p_order_id;
+  
+  if v_tenant_id is null then
+    raise exception 'order not found';
+  if not public.is_tenant_staff(v_tenant_id) then
+    raise exception 'access denied';
+  for v_item in select * from jsonb_to_recordset(p_items) as x(id bigint, staff_offer_amount numeric, staff_offer_currency_id bigint) loop
+    update public.shop_order_items
+    set
+      staff_offer_amount = v_item.staff_offer_amount,
+      staff_offer_currency_id = v_item.staff_offer_currency_id
+    where id = v_item.id and order_id = p_order_id;
+  update public.shop_orders
+  set
+    status = 'negotiating',
+    updated_at = now()
+  where id = p_order_id;
+ALTER FUNCTION "public"."staff_counter_offer"("p_order_id" bigint, "p_items" "jsonb") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."staff_finalize_catalog_prices"("p_order_id" bigint, "p_items" "jsonb") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
 DECLARE
@@ -12651,7 +12976,7 @@ begin
     if v_tenant_id is not null then
       v_role_slug := case new.role
         when 'admin' then 'customer-admin'
-        when 'negotiator' then 'negotiator'
+        when 'manager' then 'manager'
         when 'staff' then 'customer-staff'
         else 'customer-staff'
       end;
@@ -12907,7 +13232,7 @@ begin
     if v_tenant_id is not null then
       v_target_slug := case new.role
         when 'admin' then 'customer-admin'
-        when 'negotiator' then 'negotiator'
+        when 'manager' then 'manager'
         when 'staff' then 'customer-staff'
         else 'customer-staff'
       end;
@@ -14619,6 +14944,17 @@ ALTER SEQUENCE "public"."customer_group_members_id_seq" OWNER TO "postgres";
 ALTER SEQUENCE "public"."customer_group_members_id_seq" OWNED BY "public"."customer_group_members"."id";
 
 
+ALTER TABLE "public"."customer_group_shop_profiles" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME "public"."customer_group_shop_profiles_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+CREATE TABLE IF NOT EXISTS "public"."customer_groups" (
     "id" bigint NOT NULL,
     "name" "text" NOT NULL,
     "tenant_id" bigint NOT NULL,
@@ -17817,6 +18153,7 @@ CREATE INDEX "customer_group_members_email_active_idx" ON "public"."customer_gro
 CREATE INDEX "customer_group_members_email_idx" ON "public"."customer_group_members" USING "btree" ("lower"(TRIM(BOTH FROM "email")));
 
 
+-- Case-insensitive unique email per group. Do not ON CONFLICT (customer_group_id, email).
 CREATE UNIQUE INDEX "customer_group_members_group_email_unique" ON "public"."customer_group_members" USING "btree" ("customer_group_id", "lower"(TRIM(BOTH FROM "email")));
 
 
@@ -18415,6 +18752,10 @@ CREATE OR REPLACE TRIGGER "trg_customer_group_members_email_unique_per_tenant" B
 CREATE OR REPLACE TRIGGER "trg_customer_group_members_updated_at" BEFORE UPDATE ON "public"."customer_group_members" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
+CREATE OR REPLACE TRIGGER "trg_customer_group_shop_profiles_updated_at" BEFORE UPDATE ON "public"."customer_group_shop_profiles" FOR EACH ROW EXECUTE FUNCTION "public"."set_customer_group_shop_profiles_updated_at"();
+
+
+CREATE OR REPLACE TRIGGER "trg_customer_groups_updated_at" BEFORE UPDATE ON "public"."customer_groups" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
 CREATE OR REPLACE TRIGGER "trg_global_currencies_protect_system_rows" BEFORE DELETE OR UPDATE ON "public"."global_currencies" FOR EACH ROW EXECUTE FUNCTION "public"."prevent_system_global_currency_mutation"();
@@ -18543,6 +18884,37 @@ CREATE OR REPLACE TRIGGER "trg_products_set_updated_at" BEFORE UPDATE ON "public
 CREATE OR REPLACE TRIGGER "trg_release_thrift_barcode_on_stock_delete" AFTER DELETE ON "public"."thrift_stocks" FOR EACH ROW EXECUTE FUNCTION "public"."release_thrift_barcode_on_stock_delete"();
 
 
+CREATE OR REPLACE TRIGGER "trg_shop_cart_items_updated_at" BEFORE UPDATE ON "public"."shop_cart_items" FOR EACH ROW EXECUTE FUNCTION "public"."set_shop_order_updated_at"();
+
+
+CREATE OR REPLACE TRIGGER "trg_shop_carts_updated_at" BEFORE UPDATE ON "public"."shop_carts" FOR EACH ROW EXECUTE FUNCTION "public"."set_shop_order_updated_at"();
+
+
+CREATE OR REPLACE TRIGGER "trg_shop_customer_group_access_updated_at" BEFORE UPDATE ON "public"."shop_customer_group_access" FOR EACH ROW EXECUTE FUNCTION "public"."set_shop_customer_group_access_updated_at"();
+
+
+CREATE OR REPLACE TRIGGER "trg_shop_order_items_updated_at" BEFORE UPDATE ON "public"."shop_order_items" FOR EACH ROW EXECUTE FUNCTION "public"."set_shop_order_updated_at"();
+
+
+CREATE OR REPLACE TRIGGER "trg_shop_orders_updated_at" BEFORE UPDATE ON "public"."shop_orders" FOR EACH ROW EXECUTE FUNCTION "public"."set_shop_order_updated_at"();
+
+
+CREATE OR REPLACE TRIGGER "trg_shop_pricing_rules_updated_at" BEFORE UPDATE ON "public"."shop_pricing_rules" FOR EACH ROW EXECUTE FUNCTION "public"."set_shop_pricing_rules_updated_at"();
+
+
+CREATE OR REPLACE TRIGGER "trg_shop_product_listings_updated_at" BEFORE UPDATE ON "public"."shop_product_listings" FOR EACH ROW EXECUTE FUNCTION "public"."set_shop_product_listings_updated_at"();
+
+
+CREATE OR REPLACE TRIGGER "trg_shop_stock_reservations_updated_at" BEFORE UPDATE ON "public"."shop_stock_reservations" FOR EACH ROW EXECUTE FUNCTION "public"."set_shop_order_updated_at"();
+
+
+CREATE OR REPLACE TRIGGER "trg_shops_derive_is_negotiable" BEFORE INSERT OR UPDATE OF "shop_type", "is_negotiable" ON "public"."shops" FOR EACH ROW EXECUTE FUNCTION "public"."shops_derive_is_negotiable"();
+
+
+CREATE OR REPLACE TRIGGER "trg_shops_updated_at" BEFORE UPDATE ON "public"."shops" FOR EACH ROW EXECUTE FUNCTION "public"."set_shops_updated_at"();
+
+
+CREATE OR REPLACE TRIGGER "trg_store_access_updated_at" BEFORE UPDATE ON "public"."store_access" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
 CREATE OR REPLACE TRIGGER "trg_store_product_prices_set_updated_at" BEFORE UPDATE ON "public"."store_product_prices" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
@@ -18557,6 +18929,10 @@ CREATE OR REPLACE TRIGGER "trg_sync_investor_balance_investors" AFTER INSERT ON 
 CREATE OR REPLACE TRIGGER "trg_sync_investor_balance_transactions" AFTER INSERT OR DELETE OR UPDATE ON "public"."investor_transactions" FOR EACH ROW EXECUTE FUNCTION "public"."sync_investor_balance_from_transactions"();
 
 
+CREATE OR REPLACE TRIGGER "trg_sync_shop_cart_item_reservation" AFTER INSERT OR DELETE OR UPDATE ON "public"."shop_cart_items" FOR EACH ROW EXECUTE FUNCTION "public"."sync_shop_cart_item_reservation"();
+
+
+CREATE OR REPLACE TRIGGER "trg_system_role_templates_updated_at" BEFORE UPDATE ON "public"."system_role_templates" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
 CREATE OR REPLACE TRIGGER "trg_tenant_module_submodules_updated_at" BEFORE UPDATE ON "public"."tenant_module_submodules" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
@@ -19498,6 +19874,9 @@ CREATE POLICY "carts_update" ON "public"."carts" FOR UPDATE TO "authenticated" U
 
 
 
+CREATE POLICY "comments_delete" ON "public"."comments" FOR DELETE TO "authenticated" USING ((("user_email" = "public"."current_user_email"()) OR ("public"."get_effective_item_role"("item_id", "public"."current_user_email"()) = ANY (ARRAY['owner'::"text", 'manager'::"text"]))));
+
+
 CREATE POLICY "comments_insert" ON "public"."comments" FOR INSERT TO "authenticated" WITH CHECK (("public"."get_effective_item_role"("item_id", "public"."current_user_email"()) = ANY (ARRAY['owner'::"text", 'manager'::"text", 'editor'::"text", 'commenter'::"text"])));
 
 
@@ -19655,6 +20034,9 @@ CREATE POLICY "customer_group_members_select" ON "public"."customer_group_member
 CREATE POLICY "customer_group_members_update" ON "public"."customer_group_members" FOR UPDATE TO "authenticated" USING ("public"."can_manage_customer_group_member"("customer_group_id")) WITH CHECK ("public"."can_manage_customer_group_member"("customer_group_id"));
 
 
+
+
+CREATE POLICY "customer_groups_delete" ON "public"."customer_groups" FOR DELETE TO "authenticated" USING ("public"."can_manage_customer_group"("tenant_id"));
 
 
 CREATE POLICY "customer_groups_insert" ON "public"."customer_groups" FOR INSERT TO "authenticated" WITH CHECK ("public"."can_manage_customer_group"("tenant_id"));
@@ -20190,6 +20572,9 @@ CREATE POLICY "select_thrift_types" ON "public"."thrift_types" FOR SELECT TO "au
 
 
 
+CREATE POLICY "store_access_modify" ON "public"."store_access" TO "authenticated" USING (false) WITH CHECK (false);
+
+
 CREATE POLICY "store_access_select" ON "public"."store_access" FOR SELECT TO "authenticated" USING (true);
 
 
@@ -20506,6 +20891,12 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."customer_group_mem
 GRANT ALL ON FUNCTION "public"."assign_customer_group_member_role"("p_cgm_id" bigint, "p_tenant_role_id" bigint) TO "authenticated";
 
 
+GRANT ALL ON FUNCTION "public"."create_customer_account"("p_tenant_id" bigint, "p_group_name" text, "p_admin_name" text, "p_admin_email" text, "p_phone" text, "p_address" text, "p_accent_color" text) TO "authenticated";
+
+
+GRANT ALL ON FUNCTION "public"."list_customer_accounts"("p_tenant_id" bigint, "p_search" text) TO "authenticated";
+
+
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."memberships" TO "anon";
 GRANT ALL ON TABLE "public"."memberships" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."memberships" TO "service_role";
@@ -20517,6 +20908,7 @@ GRANT ALL ON FUNCTION "public"."assign_membership_role"("p_membership_id" bigint
 GRANT ALL ON FUNCTION "public"."auth_investor_id"() TO "authenticated";
 
 
+REVOKE ALL ON FUNCTION "public"."browse_shop_catalog_for_customer"("p_tenant_id" bigint, "p_shop_slug" "text", "p_search" "text", "p_category" "text", "p_brand" "text", "p_limit" integer, "p_offset" integer) FROM PUBLIC;
 GRANT ALL ON TABLE "public"."order_items" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."order_items" TO "service_role";
 
@@ -20649,6 +21041,10 @@ GRANT ALL ON FUNCTION "public"."current_customer_group_id"("p_tenant_id" bigint)
 GRANT ALL ON FUNCTION "public"."current_tenant_id"() TO "authenticated";
 
 
+REVOKE ALL ON FUNCTION "public"."customer_can_select_shop"("p_shop_id" bigint, "p_tenant_id" bigint) FROM PUBLIC;
+
+
+GRANT ALL ON FUNCTION "public"."delete_customer_group_member_grant"("p_cgm_id" bigint, "p_module_key" "text", "p_action" "text") TO "authenticated";
 
 
 GRANT ALL ON FUNCTION "public"."delete_membership_grant"("p_membership_id" bigint, "p_module_key" "text", "p_action" "text") TO "authenticated";
@@ -20717,6 +21113,7 @@ GRANT ALL ON FUNCTION "public"."get_courier_unremitted_financial_summary"("p_ten
 GRANT ALL ON FUNCTION "public"."get_courier_unremitted_financial_summary"("p_tenant_id" bigint) TO "service_role";
 
 
+REVOKE ALL ON FUNCTION "public"."get_customer_shop_order"("p_tenant_id" bigint, "p_order_id" bigint) FROM PUBLIC;
 
 
 GRANT ALL ON FUNCTION "public"."get_effective_item_role"("p_item_id" bigint, "p_user_email" "text") TO "authenticated";
@@ -20872,11 +21269,17 @@ GRANT ALL ON FUNCTION "public"."list_commerce_global_stock_for_store"("p_tenant_
 GRANT ALL ON FUNCTION "public"."list_configurable_module_actions"("p_scope" "text", "p_tenant_id" bigint) TO "authenticated";
 
 
+REVOKE ALL ON FUNCTION "public"."list_customer_active_carts"("p_tenant_id" bigint) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."list_customer_active_carts"("p_tenant_id" bigint) TO "authenticated";
+
+
+GRANT ALL ON FUNCTION "public"."list_customer_group_member_grants"("p_cgm_id" bigint) TO "authenticated";
 
 
 GRANT ALL ON FUNCTION "public"."list_customer_order_backlog_items"("p_tenant_id" bigint, "p_billing_profile_id" bigint) TO "authenticated";
 
 
+REVOKE ALL ON FUNCTION "public"."list_customer_shop_orders"("p_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_status_bucket" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."list_global_currencies"() TO "service_role";
 
 
@@ -20995,9 +21398,6 @@ GRANT ALL ON FUNCTION "public"."list_units_of_measure"() TO "authenticated";
 
 
 
-GRANT ALL ON FUNCTION "public"."membership_has_module_action"("p_tenant_id" bigint, "p_module_key" "text", "p_action" "text") TO "authenticated";
-
-
 GRANT ALL ON FUNCTION "public"."next_tenant_scoped_counter"("p_tenant_id" bigint, "p_scope" "text") TO "authenticated";
 
 
@@ -21091,6 +21491,9 @@ GRANT ALL ON FUNCTION "public"."set_tenant_id_on_insert"() TO "authenticated";
 
 
 GRANT ALL ON FUNCTION "public"."set_tenant_module_submodule_for_superadmin"("p_tenant_id" bigint, "p_parent_module_key" "text", "p_submodule_key" "text", "p_is_enabled" boolean) TO "authenticated";
+
+
+GRANT ALL ON FUNCTION "public"."staff_counter_offer"("p_order_id" bigint, "p_items" "jsonb") TO "authenticated";
 
 
 

@@ -504,6 +504,11 @@ export default {
   delete_shop_confirm_msg: 'Remove "{name}" from the shop list? This does not wipe orders. You can create a new shop with the same name later.',
   delete_shop_success: 'Shop removed.',
   delete_shop_failed: 'Failed to delete shop.',
+  danger_zone_title: 'Danger zone',
+  danger_zone_delete_caption: 'Deleting a shop removes it from your shop list. Existing orders are kept.',
+  danger_zone_type_delete: 'Type DELETE',
+  danger_zone_type_shop_name: 'Type shop name: {name}',
+  danger_zone_delete_btn: 'Delete this shop',
 
   // Global Pricing & Grid view
   global_pricing_rule: 'Global Pricing Strategy',

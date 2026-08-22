@@ -492,6 +492,11 @@ export default {
   delete_shop_confirm_msg: '"{name}" শপ তালিকা থেকে সরাতে চান? অর্ডার মুছে যাবে না। পরে একই নামে নতুন শপ তৈরি করা যাবে।',
   delete_shop_success: 'শপ সরানো হয়েছে।',
   delete_shop_failed: 'শপ মুছতে ব্যর্থ হয়েছে।',
+  danger_zone_title: 'বিপজ্জনক অঞ্চল',
+  danger_zone_delete_caption: 'শপ মুছলে তালিকা থেকে সরে যায়। আগের অর্ডার থাকে।',
+  danger_zone_type_delete: 'DELETE লিখুন',
+  danger_zone_type_shop_name: 'শপের নাম লিখুন: {name}',
+  danger_zone_delete_btn: 'এই শপ মুছুন',
 
   // Global Pricing & Grid view
   global_pricing_rule: 'গ্লোবাল মূল্য নির্ধারণ কৌশল',

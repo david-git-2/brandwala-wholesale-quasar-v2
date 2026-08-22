@@ -51,7 +51,7 @@
             flat
             bordered
             class="cursor-pointer full-height"
-            @click="go('app-shop-customer-groups-page')"
+            @click="go('app-customers')"
           >
             <q-card-section>
               <q-icon name="ph ph-users-three" size="28px" color="primary" />

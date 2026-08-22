@@ -171,7 +171,7 @@
                         ? shopRoles.map((r: any) => ({ label: r.name, value: r.id }))
                         : [
                             { label: 'Customer Staff', value: 'staff' },
-                            { label: 'Customer Negotiator', value: 'negotiator' },
+                            { label: 'Customer Manager', value: 'manager' },
                             { label: 'Customer Admin', value: 'admin' },
                           ]
                     "

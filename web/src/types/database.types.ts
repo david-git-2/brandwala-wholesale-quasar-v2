@@ -11938,6 +11938,14 @@ export type Database = {
         }
         Returns: Json
       }
+      get_tenant_cash_in_report: {
+        Args: {
+          p_end_date?: string
+          p_start_date?: string
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
       get_tenant_details_by_membership: {
         Args: {
           p_email?: string
@@ -15499,7 +15507,7 @@ export type Database = {
         | "po_placed"
         | "cancelled"
         | "completed"
-      customer_group_role: "admin" | "negotiator" | "staff"
+      customer_group_role: "admin" | "manager" | "staff"
       global_fulfillment_status: "pending" | "packed" | "shipped" | "delivered"
       global_invoice_status:
         | "draft"
@@ -15763,7 +15771,7 @@ export const Constants = {
         "cancelled",
         "completed",
       ],
-      customer_group_role: ["admin", "negotiator", "staff"],
+      customer_group_role: ["admin", "manager", "staff"],
       global_fulfillment_status: ["pending", "packed", "shipped", "delivered"],
       global_invoice_status: [
         "draft",

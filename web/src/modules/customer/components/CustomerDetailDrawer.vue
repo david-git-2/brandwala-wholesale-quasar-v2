@@ -309,7 +309,7 @@
             outlined
             dense
             label="Role *"
-            :options="['admin', 'negotiator', 'staff']"
+            :options="['admin', 'manager', 'staff']"
             class="rounded-field"
           />
           <div class="row items-center justify-between q-pt-xs">
@@ -379,7 +379,7 @@ const form = reactive({
 const memberForm = reactive({
   name: '',
   email: '',
-  role: 'staff' as 'admin' | 'negotiator' | 'staff',
+  role: 'staff' as 'admin' | 'manager' | 'staff',
   is_active: true,
 });
 

@@ -25,16 +25,6 @@
         </div>
         <div class="col-auto row items-center q-gutter-x-sm">
           <q-btn
-            flat
-            no-caps
-            color="negative"
-            icon="ph ph-trash"
-            :label="$t('shop_admin.delete')"
-            :loading="isDeleting"
-            :disable="!shop || isDeleting"
-            @click="confirmDelete"
-          />
-          <q-btn
             v-if="activeTab === 'setup'"
             color="primary"
             unelevated
@@ -90,6 +80,57 @@
               :tenant-slug="tenantSlug"
             />
             <ShopSettingsForm ref="formRef" :shop="shop" />
+
+            <q-card flat class="shop-danger-zone q-mt-md">
+              <q-card-section>
+                <div class="text-subtitle2 text-weight-bold text-negative">
+                  {{ $t('shop_admin.danger_zone_title') }}
+                </div>
+                <p class="text-body2 text-grey-8 q-mt-xs q-mb-none">
+                  {{ $t('shop_admin.danger_zone_delete_caption') }}
+                </p>
+                <p class="text-caption text-grey-7 q-mt-sm q-mb-md">
+                  {{ $t('shop_admin.delete_shop_confirm_msg', { name: shop.name }) }}
+                </p>
+
+                <div class="row q-col-gutter-md">
+                  <div class="col-12 col-md-6">
+                    <q-input
+                      v-model="deleteKeyword"
+                      outlined
+                      dense
+                      autocomplete="off"
+                      :label="$t('shop_admin.danger_zone_type_delete')"
+                      data-test="shop-delete-keyword"
+                    />
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <q-input
+                      v-model="deleteShopName"
+                      outlined
+                      dense
+                      autocomplete="off"
+                      :label="$t('shop_admin.danger_zone_type_shop_name', { name: shop.name })"
+                      data-test="shop-delete-name"
+                    />
+                  </div>
+                </div>
+
+                <div class="row justify-end q-mt-md">
+                  <q-btn
+                    color="negative"
+                    unelevated
+                    no-caps
+                    icon="ph ph-trash"
+                    :label="$t('shop_admin.danger_zone_delete_btn')"
+                    :loading="isDeleting"
+                    :disable="!canDeleteShop || isDeleting"
+                    data-test="shop-delete-submit"
+                    @click="deleteShop"
+                  />
+                </div>
+              </q-card-section>
+            </q-card>
           </q-tab-panel>
 
           <q-tab-panel v-if="showAccessTab" name="access" class="q-pa-none q-pt-md">
@@ -106,10 +147,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineAsyncComponent, ref } from 'vue';
+import { computed, defineAsyncComponent, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import { useQuasar } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
 import ShopSettingsForm from 'src/modules/shop_order/components/ShopSettingsForm.vue';
@@ -131,7 +171,6 @@ type ShopDetailTab = 'setup' | 'access' | 'listings';
 
 const route = useRoute();
 const router = useRouter();
-const $q = useQuasar();
 const { t } = useI18n();
 const authStore = useAuthStore();
 const { hasModuleAccess } = useModulePermissions();
@@ -145,6 +184,18 @@ const { mutate: saveShopMutation, isPending: isSaving } = useSaveShopMutation();
 const { mutate: deleteShopMutation, isPending: isDeleting } = useDeleteShopMutation();
 
 const formRef = ref<{ buildPayload: () => UpdateShopPayload | null } | null>(null);
+const deleteKeyword = ref('');
+const deleteShopName = ref('');
+
+watch(shopId, () => {
+  deleteKeyword.value = '';
+  deleteShopName.value = '';
+});
+
+const canDeleteShop = computed(() => {
+  const name = shop.value?.name?.trim() ?? '';
+  return deleteKeyword.value.trim() === 'DELETE' && deleteShopName.value.trim() === name && name.length > 0;
+});
 
 const showAccessTab = computed(() => hasModuleAccess('shop_permissions'));
 const showListingsTab = computed(
@@ -184,38 +235,37 @@ const onSave = () => {
   });
 };
 
-const confirmDelete = () => {
-  const name = shop.value?.name ?? '';
-  $q.dialog({
-    title: t('shop_admin.delete_shop_title'),
-    message: t('shop_admin.delete_shop_confirm_msg', { name }),
-    cancel: {
-      label: t('shop_admin.cancel'),
-      flat: true,
-      color: 'grey-7',
-    },
-    ok: {
-      label: t('shop_admin.delete'),
-      unelevated: true,
-      color: 'negative',
-    },
-    persistent: true,
-  }).onOk(() => {
-    deleteShopMutation(
-      { shopId: shopId.value, tenantId: tenantId.value },
-      {
-        onSuccess: () => {
-          showSuccessNotification(t('shop_admin.delete_shop_success'));
-          void router.push({
-            name: 'app-shop-shops-list-page',
-            params: { tenantSlug: tenantSlug.value },
-          });
-        },
-        onError: (err: Error) => {
-          showErrorNotification(err.message || t('shop_admin.delete_shop_failed'));
-        },
+const deleteShop = () => {
+  if (!canDeleteShop.value || !shop.value) return;
+
+  deleteShopMutation(
+    { shopId: shopId.value, tenantId: tenantId.value },
+    {
+      onSuccess: () => {
+        showSuccessNotification(t('shop_admin.delete_shop_success'));
+        void router.push({
+          name: 'app-shop-shops-list-page',
+          params: { tenantSlug: tenantSlug.value },
+        });
       },
-    );
-  });
+      onError: (err: Error) => {
+        showErrorNotification(err.message || t('shop_admin.delete_shop_failed'));
+      },
+    },
+  );
 };
 </script>
+
+<style scoped>
+.shop-danger-zone {
+  background: #fff5f5;
+  border-radius: 8px;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  box-shadow: none;
+}
+
+body.body--dark .shop-danger-zone {
+  background: rgba(127, 29, 29, 0.12);
+  border-color: rgba(248, 113, 113, 0.28);
+}
+</style>

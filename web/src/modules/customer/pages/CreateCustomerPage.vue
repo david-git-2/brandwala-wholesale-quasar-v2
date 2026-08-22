@@ -126,16 +126,15 @@
 
               <!-- Address -->
               <div>
-                <label class="field-label text-weight-medium text-grey-8 q-mb-xs block">Billing &amp; Delivery Address *</label>
+                <label class="field-label text-weight-medium text-grey-8 q-mb-xs block">Billing &amp; Delivery Address</label>
                 <q-input
                   v-model="form.address"
                   outlined
                   dense
                   type="textarea"
                   rows="3"
-                  placeholder="Enter full office / shop address..."
+                  placeholder="Office / shop address (optional)"
                   class="rounded-field"
-                  :rules="[(val) => !!val?.trim() || 'Address is required']"
                 >
                   <template #prepend>
                     <q-icon name="ph ph-map-pin" size="18px" class="text-grey-6" />

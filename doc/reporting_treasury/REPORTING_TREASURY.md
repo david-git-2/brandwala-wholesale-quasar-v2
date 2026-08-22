@@ -4,6 +4,8 @@ The **Reports & Treasury** domain provides parent-level financial visibility, tr
 
 **Cash in (report 1):** till view of tenant-wallet credits. Spec [`CASH_IN.md`](CASH_IN.md). RPC `get_tenant_cash_in_report`. Route `/app/wallet/cash-in`. Store credit apply is not cash in.
 
+**Customer dues (report 2):** who owes now, aging, credit limit. Spec [`CUSTOMER_DUES.md`](CUSTOMER_DUES.md). RPC `get_customer_dues_report`. Route `/app/finance/reports/customer-dues`. Customer wallet is not the bill.
+
 ---
 
 ## 1. Domain Architecture & Financial Model

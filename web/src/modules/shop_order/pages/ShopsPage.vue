@@ -2,7 +2,7 @@
   <q-page class="shops-page q-pa-sm page-fixed-layout column no-wrap overflow-hidden">
     <div class="column no-wrap full-height q-gutter-y-xs overflow-hidden">
       <!-- Compact Unified Table/View Toolbar -->
-      <q-card flat class="floating-surface shadow-1 q-pa-xs flex-shrink-0">
+      <q-card flat class="floating-surface q-pa-xs flex-shrink-0">
         <div class="row items-center justify-between q-col-gutter-xs">
           <!-- Left: Search & Filter Pills -->
           <div class="col-12 col-sm-auto row items-center q-gutter-x-xs">
@@ -56,18 +56,27 @@
           {{ error?.message || 'An error occurred while fetching shops.' }}
         </q-banner>
 
-        <div v-if="isLoading" class="q-gutter-y-sm">
-          <q-card v-for="n in 4" :key="n" flat class="floating-surface shadow-1 q-pa-md">
-            <div class="row items-center justify-between q-mb-sm">
-              <q-skeleton type="text" width="30%" height="22px" />
-              <q-skeleton type="QBadge" width="70px" height="22px" />
-            </div>
-            <q-skeleton type="text" width="20%" />
+        <div v-if="isLoading" class="shops-list-wrap col">
+          <q-card flat class="floating-surface q-pa-none full-height column no-wrap">
+            <q-list separator>
+              <q-item v-for="n in 4" :key="n" class="q-py-sm">
+                <q-item-section avatar>
+                  <q-skeleton type="QAvatar" size="36px" />
+                </q-item-section>
+                <q-item-section>
+                  <q-skeleton type="text" width="30%" height="18px" class="q-mb-xs" />
+                  <q-skeleton type="QBadge" width="70px" height="20px" />
+                </q-item-section>
+              </q-item>
+            </q-list>
           </q-card>
         </div>
 
-        <div v-else>
-          <q-card v-if="!shops || shops.length === 0" flat class="floating-surface shadow-1 q-pa-xl text-center text-grey-6">
+        <div v-else class="shops-list-wrap col">
+          <div
+            v-if="!shops || shops.length === 0"
+            class="column items-center justify-center text-center text-grey-6 q-pa-xl floating-surface col"
+          >
             <q-icon name="ph ph-storefront" size="48px" class="q-mb-sm block text-grey-4" />
             <div class="text-subtitle1 text-weight-medium">{{ $t('shop_admin.no_shops_found') }}</div>
             <p class="text-caption text-grey-6 q-mt-xs">Get started by creating your first wholesale or retail shop.</p>
@@ -80,86 +89,83 @@
               icon="ph ph-plus"
               @click="openCreate"
             />
-          </q-card>
+          </div>
 
-          <div v-else class="q-gutter-y-sm">
-            <q-card
-              v-for="shop in shops"
-              :key="shop.id"
-              flat
-              class="shop-card floating-surface shadow-1 cursor-pointer"
-              @click="goToSetup(shop.id)"
-            >
-              <q-card-section class="row items-center no-wrap q-py-sm q-px-md">
-                <!-- Left: Avatar + Title & Chips -->
-                <div class="row items-center q-gutter-x-md col">
+          <q-card v-else flat class="floating-surface q-pa-none full-height column no-wrap">
+            <q-list separator class="col scroll">
+              <q-item
+                v-for="shop in shops"
+                :key="shop.id"
+                clickable
+                v-ripple
+                class="q-py-sm"
+                @click="goToSetup(shop.id)"
+              >
+                <q-item-section avatar>
                   <q-avatar size="36px" color="grey-2" text-color="primary" icon="ph ph-storefront" />
-                  
-                  <div class="min-width-0">
-                    <div class="row items-center q-gutter-x-sm no-wrap">
-                      <span class="text-subtitle2 text-weight-bold text-grey-9 ellipsis">{{ shop.name }}</span>
-                    
-                      <q-badge
-                        :color="shop.is_active ? 'positive' : 'grey-5'"
-                        class="text-uppercase text-bold"
-                        style="font-size: 10px; padding: 2px 6px; border-radius: 4px"
-                      >
-                        {{ shop.is_active ? $t('shop_admin.public') : $t('shop_admin.draft') }}
-                      </q-badge>
-                    </div>
+                </q-item-section>
 
-                    <div class="row items-center q-gutter-x-xs q-mt-xs">
-                      <q-chip
-                        dense
-                        square
-                        outline
-                        size="sm"
-                        :color="shopTypeColor(shop.shop_type)"
-                        class="text-capitalize text-weight-medium"
-                      >
-                        {{ shopTypeLabel(shop.shop_type) }}
-                      </q-chip>
-                    </div>
+                <q-item-section>
+                  <div class="row items-center q-gutter-x-sm no-wrap">
+                    <span class="text-subtitle2 text-weight-bold text-grey-9 ellipsis">{{ shop.name }}</span>
+                    <q-badge
+                      :color="shop.is_active ? 'positive' : 'grey-5'"
+                      class="text-uppercase text-bold"
+                      style="font-size: 10px; padding: 2px 6px; border-radius: 4px"
+                    >
+                      {{ shop.is_active ? $t('shop_admin.public') : $t('shop_admin.draft') }}
+                    </q-badge>
                   </div>
-                </div>
+                  <div class="row items-center q-gutter-x-xs q-mt-xs">
+                    <q-chip
+                      dense
+                      square
+                      outline
+                      size="sm"
+                      :color="shopTypeColor(shop.shop_type)"
+                      class="text-capitalize text-weight-medium"
+                    >
+                      {{ shopTypeLabel(shop.shop_type) }}
+                    </q-chip>
+                  </div>
+                </q-item-section>
 
-              <!-- Right: Actions Menu -->
-              <div class="col-auto">
-                <q-btn
-                  flat
-                  round
-                  dense
-                  icon="ph ph-dots-three-vertical"
-                  color="grey-7"
-                  @click.stop
-                >
-                  <q-menu auto-close style="min-width: 150px">
-                    <q-list dense class="q-py-xs">
-                      <q-item clickable @click="goToSetup(shop.id)">
-                        <q-item-section avatar class="q-pr-none" style="min-width: 28px">
-                          <q-icon name="ph ph-gear" size="xs" color="grey-7" />
-                        </q-item-section>
-                        <q-item-section>Shop Setup</q-item-section>
-                      </q-item>
+                <q-item-section side>
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    icon="ph ph-dots-three-vertical"
+                    color="grey-7"
+                    @click.stop
+                  >
+                    <q-menu auto-close style="min-width: 150px">
+                      <q-list dense class="q-py-xs">
+                        <q-item clickable @click="goToSetup(shop.id)">
+                          <q-item-section avatar class="q-pr-none" style="min-width: 28px">
+                            <q-icon name="ph ph-gear" size="xs" color="grey-7" />
+                          </q-item-section>
+                          <q-item-section>Shop Setup</q-item-section>
+                        </q-item>
 
-                      <q-separator class="q-my-xs" />
+                        <q-separator class="q-my-xs" />
 
-                      <q-item clickable class="text-negative" @click="confirmDeleteShop(shop)">
-                        <q-item-section avatar class="q-pr-none" style="min-width: 28px">
-                          <q-icon name="ph ph-trash" size="xs" color="negative" />
-                        </q-item-section>
-                        <q-item-section>Delete</q-item-section>
-                      </q-item>
-                    </q-list>
-                  </q-menu>
-                </q-btn>
-              </div>
-            </q-card-section>
+                        <q-item clickable class="text-negative" @click="confirmDeleteShop(shop)">
+                          <q-item-section avatar class="q-pr-none" style="min-width: 28px">
+                            <q-icon name="ph ph-trash" size="xs" color="negative" />
+                          </q-item-section>
+                          <q-item-section>Delete</q-item-section>
+                        </q-item>
+                      </q-list>
+                    </q-menu>
+                  </q-btn>
+                </q-item-section>
+              </q-item>
+            </q-list>
           </q-card>
         </div>
       </div>
     </div>
-  </div>
 
     <ShopFormDialog
       v-model="dialogOpen"
@@ -286,37 +292,18 @@ const shopTypeColor = (type: ShopType) =>
 </script>
 
 <style scoped>
-.action-btn-square {
+.shops-list-wrap {
+  min-height: 0;
+}
+
+.floating-surface {
+  background: #ffffff;
   border-radius: 8px;
-  font-weight: 600;
-  padding: 6px 14px;
+  border: none;
+  box-shadow: none;
 }
 
-.border-bottom {
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.shop-card {
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-  transition: all 0.15s ease-in-out;
-}
-
-.shop-card:hover {
-  border-color: var(--q-primary, #2563eb);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-body.body--dark .border-bottom {
-  border-color: #334155;
-}
-
-body.body--dark .shop-card {
-  background: #1e293b !important;
-  border-color: #334155;
-}
-
-body.body--dark .shop-card:hover {
-  border-color: #60a5fa;
+body.body--dark .floating-surface {
+  background: #1c1c1c;
 }
 </style>

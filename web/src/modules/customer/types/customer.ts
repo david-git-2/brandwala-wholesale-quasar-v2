@@ -29,7 +29,7 @@ export interface CustomerGroupMember {
   customer_group_id: number;
   name: string;
   email: string;
-  role: 'admin' | 'negotiator' | 'staff';
+  role: 'admin' | 'manager' | 'staff';
   is_active: boolean;
   tenant_role_id?: number | null;
   created_at?: string;
@@ -40,7 +40,7 @@ export interface CustomerGroupMemberCreateInput {
   customer_group_id: number;
   name: string;
   email: string;
-  role: 'admin' | 'negotiator' | 'staff';
+  role: 'admin' | 'manager' | 'staff';
   is_active: boolean;
   tenant_role_id?: number | null;
 }
@@ -50,7 +50,7 @@ export interface CustomerGroupMemberUpdateInput {
   customer_group_id?: number;
   name?: string;
   email?: string;
-  role?: 'admin' | 'negotiator' | 'staff';
+  role?: 'admin' | 'manager' | 'staff';
   is_active?: boolean;
   tenant_role_id?: number | null;
 }

@@ -81,7 +81,7 @@ const dashboardRoutes: RouteRecordRaw[] = [
             }),
           requiredScope: 'shop',
           requireTenantContext: true,
-          allowedRoles: ['customer_admin', 'customer_negotiator', 'customer_staff'],
+          allowedRoles: ['customer_admin', 'customer_manager', 'customer_staff'],
           validateAccess: ({ authStore, to }) => {
             if (
               authStore.actorType !== 'customer_group_member' ||

@@ -807,25 +807,25 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'reporting_treasury',
     name: 'Reports & Treasury',
-    description: 'Parent module for payments and collection.',
+    description: 'Cash, dues, sales, and profit reports.',
     navIcon: 'ph ph-bank',
-    routes: [],
+    routes: [
+      {
+        scope: 'app',
+        title: 'Reports',
+        caption: 'Cash, dues, sales, and profit',
+        icon: 'ph ph-chart-bar',
+        routeSegment: 'finance/reports',
+        requiredAction: 'view',
+      },
+    ],
   },
   {
     key: 'payments',
     name: 'Payments & Collection',
     description: 'Record payments and allocate to invoices.',
     parentModuleKey: 'reporting_treasury',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Payments',
-        caption: 'Create customer payments and allocate across invoices',
-        icon: 'ph ph-money',
-        routeSegment: 'finance/payments',
-        requiredAction: 'view',
-      },
-    ],
+    routes: [],
   },
 
   {
@@ -927,7 +927,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
       {
         scope: 'app',
         title: 'Shops',
-        caption: 'Setup hub: shops, categories, customer groups',
+        caption: 'Setup hub: shops, categories, customers',
         icon: 'ph ph-storefront',
         routeSegment: 'shop/shops',
         requiredAction: 'view',

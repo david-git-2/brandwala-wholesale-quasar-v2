@@ -1,1 +1,1 @@
-Objects for this module still live in `../public.sql`. When you change this module, move the live SQL here and delete the same objects from `public.sql` in the same PR.
+`01_types.sql` → `02_tables.sql` → `03_rpcs.sql` → `04_rls.sql`

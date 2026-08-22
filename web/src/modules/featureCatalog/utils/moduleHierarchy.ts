@@ -71,8 +71,8 @@ const getSubmoduleSectionAndWeight = (
 
   if (parentKey === 'reporting_treasury') {
     switch (moduleKey) {
-      case 'payments':
-        return { section: 'Transactions', weight: 20 };
+      case 'reporting_treasury':
+        return { section: '', weight: 10 };
       default:
         return { section: '', weight: 99 };
     }

@@ -21,7 +21,7 @@ export type AccessRole =
   | 'staff'
   | 'viewer'
   | 'customer_admin'
-  | 'customer_negotiator'
+  | 'customer_manager'
   | 'customer_staff'
   | 'investor_portal';
 
@@ -29,14 +29,18 @@ export const mapShopRoleToAccessRole = (role: string): AccessRole | null => {
   switch (role) {
     case 'admin':
       return 'customer_admin';
+    case 'manager':
+      return 'customer_manager';
     case 'negotiator':
-      return 'customer_negotiator';
+      return 'customer_manager';
     case 'staff':
       return 'customer_staff';
     case 'customer_admin':
-    case 'customer_negotiator':
+    case 'customer_manager':
     case 'customer_staff':
       return role;
+    case 'customer_negotiator':
+      return 'customer_manager';
     default:
       return null;
   }
