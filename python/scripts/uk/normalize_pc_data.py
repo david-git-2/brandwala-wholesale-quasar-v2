@@ -6,17 +6,20 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(ROOT_DIR / "python"))
+from pc_excel_spec import sanitize_cell_text
 DEFAULT_INPUT = ROOT_DIR / "web" / "public" / "uk" / "pc_data.json"
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Normalize UK PC JSON with minimum_quantity and hazardous filtering.",
+        description="Normalize UK PC JSON with minimum_quantity and hazardous flags.",
     )
     parser.add_argument(
         "--input",
@@ -98,23 +101,12 @@ def normalize_hazardous_value(value: Any) -> str:
     return to_text(value).upper().replace(" ", "")
 
 
-def should_skip_row(row: dict[str, Any]) -> bool:
-    hazardous_value = get_first_value(row, ["HAZARDOUS", "Hazardous", "hazardous"], "")
-    normalized = normalize_hazardous_value(hazardous_value)
+def is_hazardous_yes_value(value: Any) -> bool:
+    normalized = normalize_hazardous_value(value)
     return normalized in {"YES", "Y", "TRUE", "1"}
 
 
-def compute_minimum_quantity(row: dict[str, Any]) -> int:
-    sales_unit = to_text(get_first_value(row, ["sales_unit", "SALES UNIT"], "")).upper()
-    outer_case = max(0, to_int(get_first_value(row, ["outer_case", "OUTER CASE"], 0), 0))
-    inner_case = max(0, to_int(get_first_value(row, ["inner_case", "INNER CASE"], 0), 0))
-
-    # Source files use OUTER/INNER while some legacy exports use CASE/INNER.
-    if sales_unit in {"CASE", "OUTER"}:
-        return outer_case if outer_case > 0 else 1
-    if sales_unit == "INNER":
-        return 6 if inner_case < 6 else inner_case
-    return 1
+DEFAULT_MINIMUM_QUANTITY = 6
 
 
 def format_optional_expire_date(value: Any) -> str:
@@ -147,7 +139,7 @@ def build_normalized_row(row: dict[str, Any]) -> dict[str, Any]:
         get_first_value(row, ["country_of_origin", "COUNTRY OF ORIGIN"], "")
     )
     normalized["brand"] = to_text(get_first_value(row, ["brand", "BRAND"], ""))
-    normalized["category"] = to_text(get_first_value(row, ["category", "CATEGORY"], ""))
+    normalized["category"] = sanitize_cell_text(get_first_value(row, ["category", "CATEGORY"], ""))
     normalized["available_units"] = to_text(
         get_first_value(row, ["available_units", "AVAILABLE UNITS"], "")
     )
@@ -178,21 +170,16 @@ def build_normalized_row(row: dict[str, Any]) -> dict[str, Any]:
         product_id = f"{normalized['barcode']}_{normalized['product_code']}"
     normalized["product_id"] = product_id
     
-    normalized["minimum_quantity"] = to_int(get_first_value(row, ["minimum_quantity", "minimum_order_quantity"]), 0)
-    if normalized["minimum_quantity"] <= 0:
-        if to_text(normalized.get("sales_unit")) != "":
-            normalized["minimum_quantity"] = compute_minimum_quantity(normalized)
-        else:
-            normalized["minimum_quantity"] = normalized["case_size"]
-            
+    normalized["minimum_quantity"] = DEFAULT_MINIMUM_QUANTITY
+
     normalized["source"] = to_text(get_first_value(row, ["source", "SOURCE"], "excel"))
     hazardous_val = get_first_value(row, ["HAZARDOUS", "Hazardous", "hazardous"], None)
     if isinstance(hazardous_val, bool):
         normalized["hazardous"] = hazardous_val
     elif hazardous_val is not None and to_text(hazardous_val).strip() != "":
-        normalized["hazardous"] = normalize_hazardous_value(hazardous_val) in {"YES", "Y", "TRUE", "1"}
+        normalized["hazardous"] = is_hazardous_yes_value(hazardous_val)
     else:
-        normalized["hazardous"] = None
+        normalized["hazardous"] = False
 
     return normalized
 
@@ -222,11 +209,9 @@ def main() -> int:
     samples: list[tuple[str, int, int]] = []
 
     for row in products:
-        if should_skip_row(row):
-            hazardous_rows_count += 1
-            continue
-
         next_row = build_normalized_row(row)
+        if next_row.get("hazardous"):
+            hazardous_rows_count += 1
         next_minimum = next_row["minimum_quantity"]
         prev_minimum = row.get("minimum_quantity")
         filtered_products.append(next_row)
@@ -245,7 +230,7 @@ def main() -> int:
         meta["normalizedAt"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         meta["normalizedStage"] = "minimum_quantity"
         meta["hazardousRowsCount"] = hazardous_rows_count
-        meta["minimumQuantityRule"] = "OUTER/CASE -> outer_case; INNER -> max(inner_case, 6); otherwise 1"
+        meta["minimumQuantityRule"] = f"fixed {DEFAULT_MINIMUM_QUANTITY} for all products"
         normalized_payload["meta"] = meta
     else:
         normalized_payload = filtered_products
@@ -254,7 +239,7 @@ def main() -> int:
     print(f"Output: {output_path}")
     print(f"Rows in: {len(products)}")
     print(f"Rows out: {len(filtered_products)}")
-    print(f"Hazardous rows dropped: {hazardous_rows_count}")
+    print(f"Hazardous rows in export: {hazardous_rows_count}")
     print(f"Rows updated (minimum_quantity set): {updated_rows}")
     if samples:
         print("\nSample updates:")

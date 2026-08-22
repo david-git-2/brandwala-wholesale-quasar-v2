@@ -399,6 +399,7 @@ declare
   v_limit integer;
   v_offset integer;
   v_result jsonb;
+  v_parent_tenant_id bigint;
 begin
   if p_tenant_id is null then
     raise exception 'tenant required';
@@ -439,6 +440,7 @@ begin
     raise exception 'access denied';
   end if;
 
+  v_parent_tenant_id := public.resolve_parent_tenant_id(v_tenant_id);
   v_limit := greatest(1, least(coalesce(p_limit, 20), 200));
   v_offset := greatest(0, coalesce(p_offset, 0));
 
@@ -449,7 +451,7 @@ begin
           select p.*
           from public.products p
           where p.is_available = true
-            and (p.tenant_id = $2 or p.parent_tenant_id = $2)
+            and p.parent_tenant_id = $2
             and (
               (($9 is null or jsonb_array_length($9) = 0) and p.vendor_code = $1)
               or
@@ -517,7 +519,7 @@ begin
     into v_result
     using
       v_vendor_code,
-      v_tenant_id,
+      v_parent_tenant_id,
       p_search,
       p_category,
       p_brand,
@@ -685,6 +687,8 @@ CREATE OR REPLACE FUNCTION "public"."get_shop_catalog_product_for_customer"("p_t
     AS $_$
 declare
   v_shop_id bigint;
+  v_shop_tenant_id bigint;
+  v_parent_tenant_id bigint;
   v_shop_name text;
   v_shop_type public.shop_type_enum;
   v_vendor_code text;
@@ -724,7 +728,7 @@ begin
     buy_currency_id, sell_currency_id, pricing_method, markup_percentage, quantity_display_mode,
     vendor_filters
   into
-    v_shop_id, p_tenant_id, v_shop_name, v_shop_type, v_vendor_code, v_order_mode,
+    v_shop_id, v_shop_tenant_id, v_shop_name, v_shop_type, v_vendor_code, v_order_mode,
     v_is_negotiable, v_show_stock_quantity, v_default_currency_id, v_is_active,
     v_buy_currency_id, v_sell_currency_id, v_pricing_method, v_markup_percentage, v_quantity_display_mode,
     v_vendor_filters
@@ -748,6 +752,8 @@ begin
   if coalesce(v_can_browse, false) is not true then
     raise exception 'access denied';
   end if;
+
+  v_parent_tenant_id := public.resolve_parent_tenant_id(v_shop_tenant_id);
 
   if v_shop_type = 'vendor_catalog' then
     select jsonb_build_object(
@@ -779,7 +785,7 @@ begin
     from public.products p
     where p.id = p_product_id
       and p.is_available = true
-      and (p.parent_tenant_id = p_tenant_id)
+      and p.parent_tenant_id = v_parent_tenant_id
       and (
         ((v_vendor_filters is null or jsonb_array_length(v_vendor_filters) = 0) and p.vendor_code = v_vendor_code)
         or
@@ -858,7 +864,7 @@ begin
       join public.global_stocks gs on gs.id = l.global_stock_id
       left join public.global_shipment_items gsi on gsi.id = gs.shipment_item_id
       left join public.global_shipments gship on gship.id = gsi.shipment_id
-        and gship.assigned_child_tenant_id = p_tenant_id
+        and gship.assigned_child_tenant_id = v_shop_tenant_id
       where l.shop_id = v_shop_id
         and l.product_id = p_product_id
         and l.global_stock_id is not null

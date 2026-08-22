@@ -19,7 +19,7 @@ ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "
 ROOT_ENV_FILE = os.path.join(ROOT_DIR, ".env")
 WEB_ENV_FILE = os.path.join(ROOT_DIR, "web", ".env")
 sys.path.insert(0, os.path.join(ROOT_DIR, "python"))
-from pc_excel_spec import REQUIRED_PC_COLUMNS, required_field_candidates
+from pc_excel_spec import REQUIRED_PC_COLUMNS, required_field_candidates, sanitize_cell_text
 
 
 def load_env_file(path: str):
@@ -394,8 +394,8 @@ def main(argv=None):
     log(f"📁 Output images folder: {OUT_IMAGES_DIR}")
     log(f"🧾 Output JSON: {OUT_JSON_PATH}\n")
 
-    log("📥 Loading workbook...")
-    wb = openpyxl.load_workbook(EXCEL_PATH)
+    log("📥 Loading workbook (cached cell values)...")
+    wb = openpyxl.load_workbook(EXCEL_PATH, data_only=True)
     sh = wb[SHEET_NAME] if SHEET_NAME else wb[wb.sheetnames[0]]
     log(f"✅ Using sheet: {sh.title}")
 
@@ -497,7 +497,7 @@ def main(argv=None):
 
     required_value_keys = [col["key"] for col in REQUIRED_PC_COLUMNS if col.get("row_required")]
     skipped_incomplete = 0
-    skipped_hazardous = 0
+    hazardous_rows_count = 0
     eligible_rows = set()
     for row, obj in products_by_row.items():
         missing_cells = []
@@ -512,17 +512,14 @@ def main(argv=None):
             skipped_incomplete += 1
             continue
         if is_hazardous_yes(obj.get(hazardous_header_name, "")):
-            skipped_hazardous += 1
-            continue
+            hazardous_rows_count += 1
         eligible_rows.add(row)
     if skipped_incomplete:
         log(f"⚠️ Skipped {skipped_incomplete} row(s) with empty DESCRIPTION or PRODUCT CODE.")
-    if skipped_hazardous:
-        log(f"⚠️ Skipped {skipped_hazardous} hazardous row(s).")
+    if hazardous_rows_count:
+        log(f"☣️ Hazardous rows in export: {hazardous_rows_count}")
     if not eligible_rows:
-        raise RuntimeError("❌ No product rows left after DESCRIPTION/PRODUCT CODE and hazardous filters.")
-
-    hazardous_rows_count = skipped_hazardous
+        raise RuntimeError("❌ No product rows left after DESCRIPTION/PRODUCT CODE filters.")
 
     # Extract images
     log(
@@ -589,6 +586,7 @@ def main(argv=None):
     # Build JSON (field names come from Excel header row)
     log("🧾 Building JSON payload...")
     products = []
+    formula_category_rows = 0
 
     for row, obj in products_by_row.items():
         if row not in eligible_rows:
@@ -609,7 +607,14 @@ def main(argv=None):
         out["price"] = to_float_or_default(obj.get(price_header_name, 0), 0)
         out["country_of_origin"] = to_text(obj.get(country_of_origin_header_name, "")) if country_of_origin_header_name else ""
         out["brand"] = to_text(obj.get(brand_header_name, "")) if brand_header_name else ""
-        out["category"] = to_text(obj.get(category_header_name, "")) if category_header_name else ""
+        if category_header_name:
+            raw_category = obj.get(category_header_name, "")
+            category = sanitize_cell_text(raw_category)
+            if to_text(raw_category) and not category:
+                formula_category_rows += 1
+            out["category"] = category
+        else:
+            out["category"] = ""
 
         # Additional normalized keys from the provided UK sheet.
         out["available_units"] = to_text(obj.get(resolved_headers.get("available_units", ""), "")) if resolved_headers.get("available_units") else ""
@@ -663,6 +668,7 @@ def main(argv=None):
             "note": "Image upload moved to sync step (DB product_id based key).",
             "productIdRule": "product_id = barcode + '_' + product_code",
             "hazardousRowsCount": hazardous_rows_count,
+            "formulaCategoryRowsSkipped": formula_category_rows,
         },
         "products": products,
     }
@@ -683,6 +689,11 @@ def main(argv=None):
 
     log("\n✅ Done")
     log(f"- Products: {len(products)}")
+    if formula_category_rows:
+        log(
+            f"- ⚠️ Category formulas skipped: {formula_category_rows} row(s). "
+            "Open the sheet in Excel, recalculate, save, then re-upload."
+        )
     log(
         f"- Images extracted: rows={len(image_key_by_row)}, "
         f"unique_keys={len(local_path_by_key)} -> {OUT_IMAGES_DIR}"

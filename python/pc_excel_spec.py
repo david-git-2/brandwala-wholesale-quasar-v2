@@ -1,5 +1,25 @@
 """Required PC Excel headers and how they map to products."""
 
+import re
+
+FORMULA_TEXT_RE = re.compile(
+    r"^=|_xlfn\.|\b(?:XLOOKUP|VLOOKUP|HLOOKUP|INDEX|MATCH)\s*\(",
+    re.IGNORECASE,
+)
+
+
+def sanitize_cell_text(value) -> str:
+    """Return cell text; empty when missing or an unresolved Excel formula."""
+    if value is None:
+        return ""
+    text = str(value).strip()
+    if not text:
+        return ""
+    if FORMULA_TEXT_RE.search(text):
+        return ""
+    return text
+
+
 REQUIRED_PC_COLUMNS = [
     {
         "key": "available_units",
@@ -10,9 +30,9 @@ REQUIRED_PC_COLUMNS = [
     {
         "key": "inner_case",
         "excel": "INNER CASE",
-        "db": "products.minimum_order_quantity",
+        "db": "products.case_size (via export)",
         "aliases": ["inner_case", "inner case"],
-        "note": "Case size / MOQ. Always INNER CASE.",
+        "note": "Case size from sheet. MOQ is always 6 after normalize.",
     },
     {
         "key": "name",
@@ -98,7 +118,7 @@ REQUIRED_PC_COLUMNS = [
         "excel": "HAZARDOUS",
         "db": "products.hazardous",
         "aliases": ["hazardous"],
-        "note": "YES / Y / TRUE / 1 → drop the row.",
+        "note": "YES / Y / TRUE / 1 → hazardous=true on sync (scope reset first).",
     },
     {
         "key": "category",

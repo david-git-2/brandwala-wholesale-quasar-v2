@@ -874,7 +874,6 @@ def main() -> int:
             fallback_key = (key[0], "")
             existing_items = existing_by_key.get(fallback_key, [])
 
-        is_hazardous = insert_payload.get("hazardous") is True
         is_available = True
 
         if existing_items:
@@ -902,11 +901,12 @@ def main() -> int:
                         del final_update_payload["image_url"]
                     updates.append((row_id, final_update_payload))
                 else:
-                    # If the source is not website (e.g. excel), we update the image.
+                    # Excel source: keep existing image_url; upload only when missing.
                     if "image_url" in final_update_payload:
                         del final_update_payload["image_url"]
                     updates.append((row_id, final_update_payload))
-                    existing_excel_needs_image.add((row_id, key))
+                    if not normalize_nullable_text(db_image_url):
+                        existing_excel_needs_image.add((row_id, key))
         else:
             insert_payload["parent_tenant_id"] = parent_tenant_id
             insert_payload["inserted_by_tenant_id"] = inserted_by_tenant_id
@@ -922,7 +922,7 @@ def main() -> int:
     print(f"Duplicate barcode+product_code keys in input: {duplicate_input_keys}")
     print(f"Skipped missing barcode/product_code: {skipped_missing_key}")
     print(f"Existing scoped products: {len(existing_rows)}")
-    print(f"Planned availability reset to false: {len(existing_rows)}")
+    print(f"Planned scope reset (is_available=false, hazardous=false): {len(existing_rows)}")
     print(f"Planned updates: {len(updates)}")
     print(f"Planned inserts: {len(inserts)}")
     print(
@@ -1017,12 +1017,13 @@ def main() -> int:
                 f"Snapshot failed for {snapshot_failures} batch(es). Sync aborted to keep rollback safety."
             )
 
-    # Availability reset rule:
-    # 1) Mark every scoped product unavailable.
-    # 2) Products present in current JSON will be set available=true via update/insert.
-    print("Applying availability reset (set false for current scope)...", flush=True)
-    client.update_rows("products", scope_params, {"is_available": False})
-    print("Availability reset complete.", flush=True)
+    # Scope reset:
+    # 1) Mark every scoped product unavailable and non-hazardous.
+    # 2) Products in current JSON are updated/inserted with is_available=true
+    #    and hazardous=true only when marked yes in Excel.
+    print("Applying scope reset (is_available=false, hazardous=false)...", flush=True)
+    client.update_rows("products", scope_params, {"is_available": False, "hazardous": False})
+    print("Scope reset complete.", flush=True)
 
     ensure_lookup_rows_for_new_inserts(
         client=client,

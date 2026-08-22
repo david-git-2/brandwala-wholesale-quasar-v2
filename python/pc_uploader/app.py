@@ -120,7 +120,8 @@ st.title("PC Excel uploader")
 st.write(
     "Drop the spreadsheet, then enter the **header row** (the row with column names). "
     "Every listed header must exist. Each row needs **DESCRIPTION** and **PRODUCT CODE**. "
-    "HAZARDOUS = yes is skipped. Pictures come from **IMAGE**. Case size from **INNER CASE**. "
+    "HAZARDOUS = yes marks the product hazardous on sync. Pictures come from **IMAGE**. MOQ is always **6**. "
+    "INNER CASE is still stored as case size. "
     "Warehouse parent tenant defaults to **15**."
 )
 
