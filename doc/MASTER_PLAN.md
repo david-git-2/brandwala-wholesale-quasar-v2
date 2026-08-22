@@ -56,8 +56,8 @@ All domain specifications, page matrices, and engine algorithms are maintained a
 * [`doc/shop_order/SHOP_ORDER.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/shop_order/SHOP_ORDER.md): B2B storefront commerce (`shop` scope) and Dropship Reseller Desk (`app` scope) with the 3-step Dropship Finance Hub.
 
 ### Financial Management & Capital
-* [`doc/wallet/WALLET.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/wallet/WALLET.md): Universal multi-currency double-entry ledger, entity wallet statements, and atomic transfers.
-* [`doc/reporting_treasury/REPORTING_TREASURY.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/reporting_treasury/REPORTING_TREASURY.md): Read-side invoice gross margins, shipment P&L shrinkage audits, AR allocations, and Courier Bulk Remittance reconciliation.
+* [`doc/wallet/WALLET.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/wallet/WALLET.md): Universal multi-currency double-entry ledger, entity wallet statements, Cash in (`get_tenant_cash_in_report`), and atomic transfers.
+* [`doc/reporting_treasury/REPORTING_TREASURY.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/reporting_treasury/REPORTING_TREASURY.md): Payments collection, Cash in report, and remaining finance routes. Eight-report list: [`REPORTS_PLAN.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/REPORTS_PLAN.md). Cash in spec: [`doc/reporting_treasury/CASH_IN.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/reporting_treasury/CASH_IN.md).
 * [`doc/investor_capital/INVESTOR_CAPITAL.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/investor_capital/INVESTOR_CAPITAL.md): External partner capital pools, shipment batch cost-sharing allocations, and read-side yield calculation.
 
 ### Specialized Verticals & Collaboration

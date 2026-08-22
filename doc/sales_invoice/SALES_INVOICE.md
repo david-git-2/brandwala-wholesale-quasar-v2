@@ -147,7 +147,7 @@ flowchart TD
 
 | Pot | Field | Wallet effect | Invoice effect |
 | :--- | :--- | :--- | :--- |
-| **Cash / bank** | Amount + payment method | Credit **tenant** wallet | Payment allocation; `paid_amount` up |
+| **Cash / bank** | Amount + payment method | Credit **tenant** wallet (`metadata.method` for Cash in) | Payment allocation; `paid_amount` up |
 | **From credit** | Amount only (max = min(store credit, remaining due)) | Debit **customer** wallet | Payment allocation; no tenant cash |
 | **Settlement** | Amount (max = leftover due after cash + credit) | None | `settlement_amount` (or equivalent) write-off; **must not** mutate header `discount_amount` |
 

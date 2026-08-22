@@ -2,6 +2,8 @@
 
 The **Reports & Treasury** domain provides parent-level financial visibility, transaction margin auditing, customer AR balance tracking, and cash collection settlements (including Courier Bulk Remittances).
 
+**Cash in (report 1):** till view of tenant-wallet credits. Spec [`CASH_IN.md`](CASH_IN.md). RPC `get_tenant_cash_in_report`. Route `/app/wallet/cash-in`. Store credit apply is not cash in.
+
 ---
 
 ## 1. Domain Architecture & Financial Model

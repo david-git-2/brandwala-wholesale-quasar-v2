@@ -8,7 +8,7 @@ These are questions with numbers, not 31 pages. **Eight reports.** Filters and d
 
 | # | Report | What you see | Why it exists |
 |---|---|---|---|
-| 1 | **Cash in** | Money that arrived (cash / bank / wallet apply), by day and method | Know what hit the till |
+| 1 | **Cash in** | Tenant-wallet **credits** only (cash / bank / remit), by day and method | Know what hit the till. Spec: [`doc/reporting_treasury/CASH_IN.md`](doc/reporting_treasury/CASH_IN.md) |
 | 2 | **Customer dues** | Who owes, how old, credit limit | Chase list |
 | 3 | **Invoice book** | Invoices issued, paid, due, returned | The sales record |
 | 4 | **Invoice / product profit** | Sell vs cost, after returns, by invoice and SKU | Catch selling at a loss |

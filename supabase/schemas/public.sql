@@ -9147,6 +9147,124 @@ END;
 ALTER FUNCTION "public"."get_wallet_entity_statement"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_start_date" timestamp with time zone, "p_end_date" timestamp with time zone) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."get_tenant_cash_in_report"(
+  "p_tenant_id" bigint,
+  "p_start_date" timestamp with time zone DEFAULT NULL::timestamp with time zone,
+  "p_end_date" timestamp with time zone DEFAULT NULL::timestamp with time zone
+) RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_books_id bigint;
+  v_cash_in numeric(18,4) := 0.0000;
+  v_count integer := 0;
+  v_by_method jsonb;
+  v_entries jsonb;
+BEGIN
+  IF p_tenant_id IS NULL THEN
+    RAISE EXCEPTION 'Tenant ID is required';
+  END IF;
+
+  SELECT coalesce(t.parent_id, t.id)
+  INTO v_books_id
+  FROM public.tenants t
+  WHERE t.id = p_tenant_id;
+
+  IF v_books_id IS NULL THEN
+    RAISE EXCEPTION 'Tenant not found';
+  END IF;
+
+  IF NOT (
+    public.membership_has_module_action(p_tenant_id, 'universal_wallet', 'view')
+    OR public.membership_has_module_action(v_books_id, 'universal_wallet', 'view')
+  ) THEN
+    RAISE EXCEPTION 'Not authorized';
+  END IF;
+
+  WITH lined AS (
+    SELECT
+      l.id,
+      l.amount,
+      l.source_type,
+      l.source_id,
+      l.metadata,
+      l.created_at,
+      coalesce(
+        nullif(trim(l.metadata->>'method'), ''),
+        nullif(trim(gp.method), ''),
+        'other'
+      ) AS method,
+      nullif(l.metadata->>'label', '') AS label,
+      CASE
+        WHEN (l.metadata->>'invoice_id') ~ '^[0-9]+$' THEN (l.metadata->>'invoice_id')::bigint
+        ELSE NULL
+      END AS invoice_id
+    FROM public.universal_wallet_ledger l
+    LEFT JOIN public.global_payments gp
+      ON l.source_id ~ '^[0-9]+$'
+     AND gp.id = l.source_id::bigint
+     AND gp.tenant_id = v_books_id
+    WHERE l.tenant_id = v_books_id
+      AND l.entity_type = 'tenant'
+      AND l.entity_id = v_books_id
+      AND l.type = 'credit'
+      AND coalesce(l.metadata->>'purpose', '') <> 'apply_store_credit'
+      AND (p_start_date IS NULL OR l.created_at >= p_start_date)
+      AND (p_end_date IS NULL OR l.created_at <= p_end_date)
+  )
+  SELECT
+    coalesce(sum(amount), 0.0000),
+    count(*)::integer,
+    coalesce(
+      (
+        SELECT jsonb_agg(jsonb_build_object(
+          'method', m.method,
+          'amount', m.amt,
+          'count', m.cnt
+        ) ORDER BY m.amt DESC)
+        FROM (
+          SELECT method, sum(amount) AS amt, count(*)::integer AS cnt
+          FROM lined
+          GROUP BY method
+        ) m
+      ),
+      '[]'::jsonb
+    ),
+    coalesce(
+      (
+        SELECT jsonb_agg(jsonb_build_object(
+          'id', e.id,
+          'amount', e.amount,
+          'method', e.method,
+          'source_type', e.source_type,
+          'source_id', e.source_id,
+          'label', e.label,
+          'invoice_id', e.invoice_id,
+          'created_at', e.created_at
+        ) ORDER BY e.created_at DESC, e.id DESC)
+        FROM lined e
+      ),
+      '[]'::jsonb
+    )
+  INTO v_cash_in, v_count, v_by_method, v_entries
+  FROM lined;
+
+  RETURN jsonb_build_object(
+    'tenant_id', v_books_id,
+    'start_date', p_start_date,
+    'end_date', p_end_date,
+    'cash_in_total', v_cash_in,
+    'entry_count', v_count,
+    'by_method', v_by_method,
+    'entries', v_entries
+  );
+END;
+$$;
+
+ALTER FUNCTION "public"."get_tenant_cash_in_report"("p_tenant_id" bigint, "p_start_date" timestamp with time zone, "p_end_date" timestamp with time zone) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."global_search_tasks"("p_query" "text") RETURNS TABLE("id" bigint, "tenant_id" bigint, "tenant_name" "text", "parent_id" bigint, "type" "text", "title" "text", "content" "text", "status" "text", "priority" "text", "created_by_email" "text", "due_date" timestamp with time zone, "start_date" timestamp with time zone, "created_at" timestamp with time zone, "updated_at" timestamp with time zone)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -26973,6 +27091,10 @@ GRANT ALL ON FUNCTION "public"."get_thrift_sales_report"("p_tenant_id" bigint, "
 
 GRANT ALL ON FUNCTION "public"."get_thrift_shipment_sales_report"("p_tenant_id" bigint, "p_shipment_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_thrift_shipment_sales_report"("p_tenant_id" bigint, "p_shipment_id" bigint) TO "service_role";
+
+
+GRANT ALL ON FUNCTION "public"."get_tenant_cash_in_report"("p_tenant_id" bigint, "p_start_date" timestamp with time zone, "p_end_date" timestamp with time zone) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_tenant_cash_in_report"("p_tenant_id" bigint, "p_start_date" timestamp with time zone, "p_end_date" timestamp with time zone) TO "service_role";
 
 
 GRANT ALL ON FUNCTION "public"."get_wallet_account_balances"("p_tenant_id" bigint, "p_entity_type" "text", "p_entity_id" bigint, "p_currency_code" "text") TO "authenticated";

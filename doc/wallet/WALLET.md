@@ -61,12 +61,14 @@ Wholesale invoices **do not** bill the customer wallet on issue. Due is invoice 
 | Event | Customer wallet | Tenant wallet |
 | :--- | :--- | :--- |
 | Issue wholesale | No write | No write |
-| Collect cash/bank on invoice | No write | **Credit** (cash in) |
+| Collect cash/bank on invoice | No write | **Credit** (cash in). `metadata.method` set for Cash in report. |
 | Apply store credit to invoice | **Debit** | No write |
 | Return leftover after due is zero (overpaid) | **Credit** (store credit) | No write unless cash payout |
 | Settlement write-off | No write | No write |
 
 See [`doc/sales_invoice/SALES_INVOICE.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/sales_invoice/SALES_INVOICE.md) §2.4.
+
+See [`doc/reporting_treasury/CASH_IN.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/reporting_treasury/CASH_IN.md). RPC `get_tenant_cash_in_report` is live. **UI later.**
 
 ---
 
@@ -74,7 +76,8 @@ See [`doc/sales_invoice/SALES_INVOICE.md`](file:///Users/daviditc/Documents/pers
 
 | Route | Main Page | Key Child Components & Dialogs |
 | :--- | :--- | :--- |
-| `/:tenantSlug?/app/wallet` | [`UniversalWalletPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/wallet/pages/UniversalWalletPage.vue) | [`UniversalWallet.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/wallet/components/UniversalWallet.vue), [`UniversalWalletKPICards.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/wallet/components/UniversalWalletKPICards.vue), [`UniversalWalletLedgerTable.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/wallet/components/UniversalWalletLedgerTable.vue), [`WalletDepositModal.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/wallet/components/WalletDepositModal.vue), [`WalletWithdrawModal.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/wallet/components/WalletWithdrawModal.vue) |
+| `/:tenantSlug?/app/wallet` | [`WalletHomePage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/wallet/pages/WalletHomePage.vue) | Entity picker cards |
+| `/:tenantSlug?/app/wallet/company/:tenantId` | [`UniversalWalletPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/wallet/pages/UniversalWalletPage.vue) | [`UniversalWallet.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/wallet/components/UniversalWallet.vue), ledger table, deposit/withdraw |
 | `/:tenantSlug?/app/wallet/entities` | [`WalletEntityListPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/wallet/pages/WalletEntityListPage.vue) | Directory list of all active entity wallets with balances |
 | `/:tenantSlug?/shop/wallet` | [`MerchantWalletPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/MerchantWalletPage.vue) | Storefront merchant earnings statement & payout withdrawal requests |
 | Modal Embeds | In-Context Dialogs | [`VendorWalletDialog.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/vendor/components/VendorWalletDialog.vue), [`CustomerGroupWalletDialog.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/components/CustomerGroupWalletDialog.vue) |

@@ -90,7 +90,8 @@ begin
         'transaction_type', 'payment_received',
         'label', 'Payment Received',
         'invoice_id', p_invoice_id,
-        'payment_id', v_payment_id
+        'payment_id', v_payment_id,
+        'method', coalesce(nullif(trim(p_cash_method), ''), 'cash')
       )
     );
   end if;
