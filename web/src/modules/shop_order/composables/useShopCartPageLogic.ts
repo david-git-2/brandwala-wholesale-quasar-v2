@@ -16,6 +16,7 @@ import {
   shopCatalogEntryPath,
   shopCatalogPath,
 } from '../utils/catalogShop';
+import { adjustQtyByMoq, resolveShopCartItemMoq } from '../utils/cartQuantityUtils';
 
 export function useShopCartPageLogic(
   activeCarts: Ref<ActiveCartItem[]>,
@@ -152,15 +153,8 @@ export function useShopCartPageLogic(
   };
 
   const adjustItemQtyLocal = (item: any, delta: number) => {
-    const rawMin =
-      cart.value?.shop_type === 'dropship'
-        ? 1
-        : item.minimum_quantity ?? item.minimum_order_quantity ?? item.moq ?? 1;
-    const minQty = Number(rawMin) || 1;
-    const stepDelta = Number(delta) || minQty;
-    const currentVal = Number(getItemQty(item)) || minQty;
-    let newVal = currentVal + stepDelta;
-    if (newVal < minQty) newVal = minQty;
+    const moq = resolveShopCartItemMoq(item, { dropship: cart.value?.shop_type === 'dropship' });
+    const newVal = adjustQtyByMoq(getItemQty(item), delta, moq);
 
     if (newVal === item.quantity) {
       delete editedQuantities.value[item.id];

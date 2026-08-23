@@ -361,6 +361,7 @@
                     color="primary"
                   />
                   <q-toggle
+                    v-if="shopType !== 'vendor_catalog'"
                     v-model="editForm.can_view_quantity"
                     :label="$t('shop_admin.view_stock_qty')"
                     color="primary"

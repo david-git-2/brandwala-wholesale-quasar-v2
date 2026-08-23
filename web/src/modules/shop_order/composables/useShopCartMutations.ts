@@ -5,6 +5,7 @@ import { shopCartService } from '../services/shopCartService';
 import type { CartChargesPayload } from '../repositories/shopCartRepository';
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { resolveShopCartItemMoq } from '../utils/cartQuantityUtils';
 
 export function useShopCartMutations() {
   const queryClient = useQueryClient();
@@ -18,9 +19,13 @@ export function useShopCartMutations() {
         (oldData: any) => {
           if (!oldData) return data;
           const oldItemsMap = new Map((oldData.items ?? []).map((i: any) => [i.id, i]));
+          const shopType = data.cart?.shop_type ?? oldData.cart?.shop_type;
           const enrichedItems = (data.items ?? []).map((i: any) => {
             const oldItem = oldItemsMap.get(i.id) as Record<string, any> | undefined;
-            const moq = oldItem?.minimum_quantity ?? oldItem?.minimum_order_quantity ?? i.minimum_quantity ?? 1;
+            const moq = resolveShopCartItemMoq(
+              { ...oldItem, ...i },
+              { dropship: shopType === 'dropship' },
+            );
             return {
               ...i,
               minimum_quantity: moq,

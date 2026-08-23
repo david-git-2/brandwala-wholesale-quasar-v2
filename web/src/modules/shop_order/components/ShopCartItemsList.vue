@@ -176,6 +176,7 @@
 
 <script setup lang="ts">
 import type { ActiveCartItem } from '../repositories/shopCartRepository';
+import { resolveShopCartItemMoq } from '../utils/cartQuantityUtils';
 
 const props = defineProps<{
   items: any[];
@@ -204,11 +205,8 @@ defineEmits<{
   (e: 'remove-item', item: any): void;
 }>();
 
-const getItemMinQty = (item: any) => {
-  if (props.cart?.shop_type === 'dropship') return 1;
-  const val = item?.minimum_quantity ?? item?.minimum_order_quantity ?? item?.moq ?? 1;
-  return Number(val) || 1;
-};
+const getItemMinQty = (item: any) =>
+  resolveShopCartItemMoq(item, { dropship: props.cart?.shop_type === 'dropship' });
 </script>
 
 <style scoped>

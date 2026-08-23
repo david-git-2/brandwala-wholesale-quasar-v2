@@ -354,7 +354,7 @@
               {{ publicToggleDisabled ? publishBlockedReason : $t('shop_admin.make_public_hint') }}
             </div>
           </div>
-          <div>
+          <div v-if="form.shop_type !== 'vendor_catalog'">
             <q-toggle v-model="form.show_stock_quantity" :label="$t('shop_admin.show_stock_qty')" color="primary" />
             <div class="text-caption text-grey-7 q-ml-lg">{{ $t('shop_admin.help_show_stock_qty_desc') }}</div>
           </div>

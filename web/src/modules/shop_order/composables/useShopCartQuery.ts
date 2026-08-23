@@ -3,6 +3,7 @@ import { computed, type Ref } from 'vue';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { shopCartService } from '../services/shopCartService';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { resolveShopCartItemMoq } from '../utils/cartQuantityUtils';
 
 export function useShopCartQuery(shopId: Ref<number | null>) {
   const authStore = useAuthStore();
@@ -18,8 +19,7 @@ export function useShopCartQuery(shopId: Ref<number | null>) {
       }
 
       const enrichedItems = (res.data?.items ?? []).map((i) => {
-        const productMoq = i.minimum_order_quantity ?? 0;
-        const moq = productMoq > 1 ? productMoq : i.minimum_quantity || 1;
+        const moq = resolveShopCartItemMoq(i);
         return {
           ...i,
           minimum_quantity: moq,
