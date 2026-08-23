@@ -1506,9 +1506,11 @@ export type Database = {
           default_can_browse: boolean
           default_can_negotiate: boolean
           default_can_place_order: boolean
+          default_can_see_buy_price: boolean
+          default_can_see_resell_minimum_price: boolean
+          default_can_see_sell_price: boolean
           default_can_set_dropship_price: boolean
           default_can_view_quantity: boolean
-          default_see_price: boolean
           id: number
           is_active: boolean
           tenant_id: number
@@ -1521,9 +1523,11 @@ export type Database = {
           default_can_browse?: boolean
           default_can_negotiate?: boolean
           default_can_place_order?: boolean
+          default_can_see_buy_price?: boolean
+          default_can_see_resell_minimum_price?: boolean
+          default_can_see_sell_price?: boolean
           default_can_set_dropship_price?: boolean
           default_can_view_quantity?: boolean
-          default_see_price?: boolean
           id?: never
           is_active?: boolean
           tenant_id: number
@@ -1536,9 +1540,11 @@ export type Database = {
           default_can_browse?: boolean
           default_can_negotiate?: boolean
           default_can_place_order?: boolean
+          default_can_see_buy_price?: boolean
+          default_can_see_resell_minimum_price?: boolean
+          default_can_see_sell_price?: boolean
           default_can_set_dropship_price?: boolean
           default_can_view_quantity?: boolean
-          default_see_price?: boolean
           id?: never
           is_active?: boolean
           tenant_id?: number
@@ -5444,6 +5450,8 @@ export type Database = {
       }
       shop_carts: {
         Row: {
+          can_see_buy_price_snapshot: boolean
+          can_see_sell_price_snapshot: boolean
           cod_charge_amount: number
           created_at: string
           customer_group_id: number
@@ -5459,13 +5467,14 @@ export type Database = {
           is_prepaid: boolean
           packing_charge_amount: number
           print_charge_amount: number
-          see_price_snapshot: boolean
           shop_id: number
           status: Database["public"]["Enums"]["shop_cart_status"]
           tenant_id: number
           updated_at: string
         }
         Insert: {
+          can_see_buy_price_snapshot?: boolean
+          can_see_sell_price_snapshot?: boolean
           cod_charge_amount?: number
           created_at?: string
           customer_group_id: number
@@ -5481,13 +5490,14 @@ export type Database = {
           is_prepaid?: boolean
           packing_charge_amount?: number
           print_charge_amount?: number
-          see_price_snapshot?: boolean
           shop_id: number
           status?: Database["public"]["Enums"]["shop_cart_status"]
           tenant_id: number
           updated_at?: string
         }
         Update: {
+          can_see_buy_price_snapshot?: boolean
+          can_see_sell_price_snapshot?: boolean
           cod_charge_amount?: number
           created_at?: string
           customer_group_id?: number
@@ -5503,7 +5513,6 @@ export type Database = {
           is_prepaid?: boolean
           packing_charge_amount?: number
           print_charge_amount?: number
-          see_price_snapshot?: boolean
           shop_id?: number
           status?: Database["public"]["Enums"]["shop_cart_status"]
           tenant_id?: number
@@ -5583,6 +5592,9 @@ export type Database = {
           can_browse: boolean | null
           can_negotiate: boolean | null
           can_place_order: boolean | null
+          can_see_buy_price: boolean | null
+          can_see_resell_minimum_price: boolean | null
+          can_see_sell_price: boolean | null
           can_set_dropship_price: boolean | null
           can_view_quantity: boolean | null
           created_at: string
@@ -5591,7 +5603,6 @@ export type Database = {
           customer_group_id: number
           id: number
           price_tier_code: string | null
-          see_price: boolean | null
           shop_id: number
           status: boolean
           updated_at: string
@@ -5601,6 +5612,9 @@ export type Database = {
           can_browse?: boolean | null
           can_negotiate?: boolean | null
           can_place_order?: boolean | null
+          can_see_buy_price?: boolean | null
+          can_see_resell_minimum_price?: boolean | null
+          can_see_sell_price?: boolean | null
           can_set_dropship_price?: boolean | null
           can_view_quantity?: boolean | null
           created_at?: string
@@ -5609,7 +5623,6 @@ export type Database = {
           customer_group_id: number
           id?: never
           price_tier_code?: string | null
-          see_price?: boolean | null
           shop_id: number
           status?: boolean
           updated_at?: string
@@ -5619,6 +5632,9 @@ export type Database = {
           can_browse?: boolean | null
           can_negotiate?: boolean | null
           can_place_order?: boolean | null
+          can_see_buy_price?: boolean | null
+          can_see_resell_minimum_price?: boolean | null
+          can_see_sell_price?: boolean | null
           can_set_dropship_price?: boolean | null
           can_view_quantity?: boolean | null
           created_at?: string
@@ -5627,7 +5643,6 @@ export type Database = {
           customer_group_id?: number
           id?: never
           price_tier_code?: string | null
-          see_price?: boolean | null
           shop_id?: number
           status?: boolean
           updated_at?: string
@@ -11842,9 +11857,11 @@ export type Database = {
           can_browse: boolean
           can_negotiate: boolean
           can_place_order: boolean
+          can_see_buy_price: boolean
+          can_see_resell_minimum_price: boolean
+          can_see_sell_price: boolean
           can_set_dropship_price: boolean
           can_view_quantity: boolean
-          see_price: boolean
         }[]
       }
       get_store_access_admin: {
@@ -12393,13 +12410,14 @@ export type Database = {
       list_customer_active_carts: {
         Args: { p_tenant_id: number }
         Returns: {
+          can_see_buy_price: boolean
+          can_see_sell_price: boolean
           cart_id: number
           cart_total: number
           currency_code: string
           currency_id: number
           currency_symbol: string
           item_count: number
-          see_price: boolean
           shop_id: number
           shop_logo_url: string
           shop_name: string
@@ -12462,6 +12480,8 @@ export type Database = {
       list_customer_shops: {
         Args: { p_tenant_id: number }
         Returns: {
+          can_see_buy_price: boolean
+          can_see_sell_price: boolean
           categories: Json
           category_ids: number[]
           description: string
@@ -12469,7 +12489,6 @@ export type Database = {
           is_negotiable: boolean
           name: string
           order_mode: Database["public"]["Enums"]["shop_order_mode_enum"]
-          see_price: boolean
           sell_currency_code: string
           sell_currency_id: number
           sell_currency_symbol: string
@@ -14789,9 +14808,10 @@ export type Database = {
           p_default_can_browse: boolean
           p_default_can_negotiate: boolean
           p_default_can_place_order: boolean
+          p_default_can_see_buy_price: boolean
+          p_default_can_see_sell_price: boolean
           p_default_can_set_dropship_price: boolean
           p_default_can_view_quantity: boolean
-          p_default_see_price: boolean
           p_is_active: boolean
           p_tenant_id: number
         }
@@ -14802,9 +14822,11 @@ export type Database = {
           default_can_browse: boolean
           default_can_negotiate: boolean
           default_can_place_order: boolean
+          default_can_see_buy_price: boolean
+          default_can_see_resell_minimum_price: boolean
+          default_can_see_sell_price: boolean
           default_can_set_dropship_price: boolean
           default_can_view_quantity: boolean
-          default_see_price: boolean
           id: number
           is_active: boolean
           tenant_id: number
@@ -15156,13 +15178,14 @@ export type Database = {
           p_can_browse?: boolean
           p_can_negotiate?: boolean
           p_can_place_order?: boolean
+          p_can_see_buy_price?: boolean
+          p_can_see_sell_price?: boolean
           p_can_set_dropship_price?: boolean
           p_can_view_quantity?: boolean
           p_credit_limit_amount?: number
           p_credit_limit_currency_id?: number
           p_customer_group_id: number
           p_price_tier_code?: string
-          p_see_price?: boolean
           p_shop_id: number
           p_status: boolean
         }
@@ -15171,6 +15194,9 @@ export type Database = {
           can_browse: boolean | null
           can_negotiate: boolean | null
           can_place_order: boolean | null
+          can_see_buy_price: boolean | null
+          can_see_resell_minimum_price: boolean | null
+          can_see_sell_price: boolean | null
           can_set_dropship_price: boolean | null
           can_view_quantity: boolean | null
           created_at: string
@@ -15179,7 +15205,6 @@ export type Database = {
           customer_group_id: number
           id: number
           price_tier_code: string | null
-          see_price: boolean | null
           shop_id: number
           status: boolean
           updated_at: string

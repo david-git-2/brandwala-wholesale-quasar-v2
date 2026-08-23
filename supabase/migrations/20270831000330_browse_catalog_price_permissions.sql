@@ -10,12 +10,15 @@ update public.shop_customer_group_access
 set can_see_resell_minimum_price = coalesce(can_see_sell_price, true)
 where can_see_resell_minimum_price is null;
 
+DROP FUNCTION IF EXISTS public.get_shop_permissions_for_customer(bigint);
+
 CREATE OR REPLACE FUNCTION "public"."get_shop_permissions_for_customer"("p_shop_id" bigint) RETURNS TABLE("can_browse" boolean, "can_see_buy_price" boolean, "can_see_sell_price" boolean, "can_see_resell_minimum_price" boolean, "can_add_to_cart" boolean, "can_place_order" boolean, "can_negotiate" boolean, "can_view_quantity" boolean, "can_set_dropship_price" boolean)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
 declare
   v_shop_active boolean;
+  v_tenant_id bigint;
   v_shop_type public.shop_type_enum;
   v_shop_allows_negotiate boolean;
 begin
