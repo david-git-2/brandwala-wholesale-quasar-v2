@@ -80,6 +80,7 @@
             :item-count="itemCount"
             :current-shop-cart-info="currentShopCartInfo"
             :cart="cart"
+            :can-see-price="canSeePrice"
             :currency-symbol="currencySymbol"
             :permissions="permissions"
             :edited-quantities="editedQuantities"
@@ -104,6 +105,7 @@
         <div class="col-xs-12 col-md-4">
           <ShopCartSummaryCard
             :cart="cart"
+            :can-see-price="canSeePrice"
             :item-count="itemCount"
             :format-cart-total="formatCartTotal"
             :format-amount="formatAmount"
@@ -133,7 +135,7 @@
       class="lt-sm"
     >
       <div class="cart-mobile-cta row items-center no-wrap q-px-md q-py-sm">
-        <div class="col">
+        <div v-if="canSeePrice" class="col">
           <div class="text-caption text-grey-6">
             {{ cart?.shop_type === 'dropship' ? $t('shop.recipient_pay_total') : $t('shop.estimated_total') }}
           </div>
@@ -194,6 +196,12 @@ const {
 } = useShopCartQuery(selectedShopIdRef);
 
 const { data: permissions } = useCustomerShopPermissionsQuery(selectedShopIdRef);
+
+const canSeePrice = computed(() => {
+  if (cart.value?.shop_type === 'dropship') return true;
+  if (permissions.value?.see_price != null) return permissions.value.see_price;
+  return !!cart.value?.see_price_snapshot;
+});
 
 const logic = useShopCartPageLogic(
   activeCarts,

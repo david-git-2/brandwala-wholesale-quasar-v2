@@ -115,7 +115,7 @@
 
         <!-- Price and Subtotal -->
         <q-item-section
-          v-if="cart?.see_price_snapshot || cart?.shop_type === 'dropship'"
+          v-if="canSeePrice"
           side
           class="text-right subtotal-section item-price-section"
         >
@@ -183,6 +183,7 @@ const props = defineProps<{
   itemCount: number;
   currentShopCartInfo: ActiveCartItem | null;
   cart: any;
+  canSeePrice: boolean;
   currencySymbol: string;
   permissions: any;
   editedQuantities: Record<number, number>;

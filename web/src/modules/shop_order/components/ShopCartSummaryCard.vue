@@ -7,7 +7,7 @@
     </q-card-section>
 
     <q-card-section class="q-py-md">
-      <template v-if="cart?.see_price_snapshot || cart?.shop_type === 'dropship'">
+      <template v-if="canSeePrice">
         <template v-if="cart?.shop_type === 'dropship'">
           <div class="row justify-between q-mb-sm text-body2 text-grey-7">
             <span>{{ $t('shop.items_subtotal') }}</span>
@@ -115,6 +115,7 @@
 <script setup lang="ts">
 defineProps<{
   cart: any;
+  canSeePrice: boolean;
   itemCount: number;
   formatCartTotal: () => string;
   formatAmount: (val: any) => string;
