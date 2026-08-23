@@ -80,16 +80,28 @@ const listAdminTenantsByEmail = async (): Promise<Tenant[]> => {
   return data;
 };
 
-const listChildTenantIds = async (parentTenantId: number): Promise<number[]> => {
-  const { data, error } = await supabase.rpc('list_child_tenant_ids', {
-    p_parent_tenant_id: parentTenantId,
+export type TenantHierarchyChildRef = {
+  id: number;
+  parent_id: number;
+};
+
+const listChildTenantRefs = async (parentTenantIds: number[]): Promise<TenantHierarchyChildRef[]> => {
+  if (!parentTenantIds.length) {
+    return [];
+  }
+
+  const { data, error } = await supabase.rpc('list_child_tenant_refs', {
+    p_parent_tenant_ids: parentTenantIds,
   });
 
   if (error) {
     throw error;
   }
 
-  return (data ?? []).map((id: any) => Number(id));
+  return (data ?? []).map((row) => ({
+    id: Number(row.id),
+    parent_id: Number(row.parent_id),
+  }));
 };
 
 const listTenantsByMembership = async (payload?: {
@@ -379,7 +391,7 @@ export const tenantRepository = {
   listTenantModuleSubmodules,
   setTenantModuleSubmodule,
   listAdminTenantsByEmail,
-  listChildTenantIds,
+  listChildTenantRefs,
   listTenantsByMembership,
   getTenantDetailsByMembership,
 };

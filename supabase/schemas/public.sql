@@ -7042,7 +7042,20 @@ CREATE OR REPLACE FUNCTION "public"."list_child_tenant_ids"("p_parent_tenant_id"
   from public.tenants t
   where t.parent_id = p_parent_tenant_id
   order by t.id;
+$$;
 ALTER FUNCTION "public"."list_child_tenant_ids"("p_parent_tenant_id" bigint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."list_child_tenant_refs"("p_parent_tenant_ids" bigint[]) RETURNS TABLE("id" bigint, "parent_id" bigint)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  select t.id, t.parent_id
+  from public.tenants t
+  where t.parent_id = any (coalesce(p_parent_tenant_ids, array[]::bigint[]))
+  order by t.parent_id, t.id;
+$$;
+ALTER FUNCTION "public"."list_child_tenant_refs"(bigint[]) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."list_commerce_global_stock_for_store"("p_tenant_id" bigint, "p_store_id" bigint, "p_search" "text" DEFAULT NULL::"text", "p_limit" integer DEFAULT 50, "p_offset" integer DEFAULT 0) RETURNS "jsonb"
@@ -20865,6 +20878,7 @@ GRANT ALL ON FUNCTION "public"."is_tenant_staff"("p_tenant_id" bigint) TO "authe
 
 
 GRANT ALL ON FUNCTION "public"."list_child_tenant_ids"("p_parent_tenant_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."list_child_tenant_refs"(bigint[]) TO "authenticated";
 
 
 GRANT ALL ON FUNCTION "public"."list_commerce_global_stock_for_store"("p_tenant_id" bigint, "p_store_id" bigint, "p_search" "text", "p_limit" integer, "p_offset" integer) TO "authenticated";

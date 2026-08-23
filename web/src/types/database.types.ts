@@ -12302,6 +12302,13 @@ export type Database = {
         Args: { p_parent_tenant_id: number }
         Returns: number[]
       }
+      list_child_tenant_refs: {
+        Args: { p_parent_tenant_ids: number[] }
+        Returns: {
+          id: number
+          parent_id: number
+        }[]
+      }
       list_commerce_global_stock_for_store: {
         Args: {
           p_limit?: number

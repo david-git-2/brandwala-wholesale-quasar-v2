@@ -109,3 +109,56 @@ Action Grant Hierarchy:
 | `/:tenantSlug?/app/settings/members` | `MembersPage.vue` | Staff invitation modal, role selector (`admin` vs `staff`), granular module action toggle matrix |
 | `/:tenantSlug?/app/settings/tenants` | `TenantsPage.vue` | Child tenant creation, module enablement checklist |
 | `/superadmin/tenants` | `SuperadminTenantsPage.vue` | Platform-wide tenant provisioning and domain setup |
+
+---
+
+## 6. Workspace hierarchy bootstrap (app layout)
+
+On `/:slug/app/*` load, `AppLayout` ensures the Pinia `tenantStore` knows which workspaces are **parents** vs **children** vs **standalone**. That drives nav filtering (`modulePermissions.ts`) — e.g. hiding shop-order modules on a parent company desk.
+
+### Data flow
+
+```mermaid
+flowchart LR
+  A["AppLayout onMounted"] --> B["list_tenants_by_membership<br/>(if needed)"]
+  B --> C["hydrateHierarchyChildRefs()"]
+  C --> D["RPC: list_child_tenant_refs"]
+  D --> E["tenantStore.hierarchyChildRefs"]
+  E --> F["resolveTenantHierarchyKind()<br/>module nav gating"]
+```
+
+| Step | Source | Notes |
+| :--- | :--- | :--- |
+| Membership tenants | `list_tenants_by_membership` | Only tenants the user belongs to; each row has `parent_id`. |
+| Child refs | `list_child_tenant_refs` | **One batched call** for all root (`parent_id IS NULL`) workspaces in the membership list. |
+| Store field | `tenantStore.hierarchyChildRefs` | `{ id: childTenantId, parent_id: rootTenantId }[]` |
+| Consumer | `resolveTenantHierarchyKind()` | Merges membership tenants + child refs to classify current workspace as `parent` \| `child` \| `standalone`. |
+
+`AppLayout` calls `hydrateHierarchyChildRefs()` when tenants are already cached but `hierarchyChildRefs` is empty. `fetchTenantsByMembership` also calls it after loading tenants.
+
+### RPC: `list_child_tenant_refs`
+
+Replaces N parallel `list_child_tenant_ids(parent_id)` calls on layout boot.
+
+```sql
+list_child_tenant_refs(p_parent_tenant_ids bigint[])
+returns table (id bigint, parent_id bigint)
+```
+
+- **Security:** `SECURITY DEFINER`, `STABLE`
+- **Input:** distinct root tenant ids from the user's admin workspace list (parents only)
+- **Output:** every child tenant row whose `parent_id` is in the input array
+- **Legacy:** `list_child_tenant_ids(bigint)` remains for single-parent lookups; the web app uses the batch RPC only
+
+### Frontend wiring
+
+| Layer | Name |
+| :--- | :--- |
+| Repository | `tenantRepository.listChildTenantRefs(parentTenantIds)` |
+| Store | `tenantStore.hydrateHierarchyChildRefs()` |
+| Layout | `AppLayout.vue` (on mount) |
+| Permissions | `modulePermissions.ts` → `resolveWorkspaceTenantKind()` |
+
+### Why a separate RPC (not only membership)
+
+`list_tenants_by_membership` returns tenants the user **belongs to**. A user may belong only to a **parent** company, not each child sister concern. Child refs are still needed so the parent workspace is classified as `parent` (has children) and module rules like `isBlockedOnParentCompany` apply correctly.

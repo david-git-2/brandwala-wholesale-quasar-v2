@@ -95,27 +95,19 @@ export const useTenantStore = defineStore('tenant', {
       const roots = [...this.availableAdminTenants, ...this.items].filter(
         (tenant) => tenant.parent_id === null,
       );
-      const seen = new Set<number>();
-      const refs: Array<{ id: number; parent_id: number }> = [];
+      const parentIds = [...new Set(roots.map((tenant) => tenant.id))];
 
-      await Promise.all(
-        roots.map(async (root) => {
-          if (seen.has(root.id)) {
-            return;
-          }
-          seen.add(root.id);
-          try {
-            const childIds = await tenantRepository.listChildTenantIds(root.id);
-            for (const childId of childIds) {
-              refs.push({ id: childId, parent_id: root.id });
-            }
-          } catch {
-            // Hierarchy hide is best-effort; membership list still works.
-          }
-        }),
-      );
+      if (!parentIds.length) {
+        this.hierarchyChildRefs = [];
+        return;
+      }
 
-      this.hierarchyChildRefs = refs;
+      try {
+        this.hierarchyChildRefs = await tenantRepository.listChildTenantRefs(parentIds);
+      } catch {
+        // Hierarchy hide is best-effort; membership list still works.
+        this.hierarchyChildRefs = [];
+      }
     },
 
     persistWorkspaceState() {
