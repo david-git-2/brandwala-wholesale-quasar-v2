@@ -5,6 +5,14 @@
 export type ShopType = 'vendor_catalog' | 'fixed_price' | 'dropship';
 export type ShopOrderMode = 'procurement_intent' | 'checkout_fixed' | 'checkout_wholesale';
 
+/** Nested price object from browse/detail catalog RPCs. */
+export interface ShopCatalogPrice {
+  amount: number | null;
+  currency_id: number | null;
+  code: string | null;
+  symbol: string | null;
+}
+
 /** Row from `browse_shop_catalog_for_customer` RPC. */
 export interface ShopCatalogItem {
   product_id: number;
@@ -16,8 +24,9 @@ export interface ShopCatalogItem {
   product_category: string | null;
   vendor_code: string | null;
   is_available: boolean;
-  unit_price_amount: number | null;
-  unit_price_currency_id: number | null;
+  unit_price: ShopCatalogPrice | null;
+  sell_price: ShopCatalogPrice | null;
+  resell_minimum_price: ShopCatalogPrice | null;
   available_units: number | null;
   global_stock_allocation_id: number | null;
   global_stock_id: number | null;
@@ -253,7 +262,10 @@ export interface CustomerOrderListItem {
   order_no: string;
   status: ShopOrderStatus;
   item_count: number;
-  total_amount: number;
+  can_see_buy_price: boolean;
+  can_see_sell_price: boolean;
+  sell_currency_id: number | null;
+  total_amount: number | null;
   currency_symbol: string | null;
   created_at: string;
 }

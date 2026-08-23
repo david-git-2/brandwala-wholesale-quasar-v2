@@ -2,13 +2,22 @@ import { computed, ref, watch, type Ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQueryClient } from '@tanstack/vue-query';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import type { ActiveCartItem } from '../repositories/shopCartRepository';
+import type { ActiveCartItem, ShopCartItem } from '../repositories/shopCartRepository';
 import { useShopCartMutations } from './useShopCartMutations';
-import { useShopStorefrontStore } from '../stores/shopStorefrontStore';
 import { useShopOrderStore } from '../stores/shopOrderStore';
-import { useThriftCurrenciesQuery } from 'src/modules/thrift/currency/composables/useThriftCurrenciesQuery';
 import { fetchCourierChargeEstimate } from '../services/courierChargeEstimate';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
+import {
+  getCartDisplayUnitAmount,
+  getCartItemBuyAmount,
+  getCartItemMinSellAmount,
+  getCartItemSellAmount,
+  getCartLineBuyerSubtotalAmount,
+  getCartLineSubtotalAmount,
+  pickCartItemPriceForDisplay,
+  resolveCartCurrencySymbol,
+  formatCartPriceAmount,
+} from '../utils/cartPriceUtils';
 import {
   getLastVisitedShopSlug,
   resolveCartShopId,
@@ -22,7 +31,7 @@ export function useShopCartPageLogic(
   activeCarts: Ref<ActiveCartItem[]>,
   isCartsLoading: Ref<boolean>,
   cart: Ref<any>,
-  items: Ref<any[]>,
+  items: Ref<ShopCartItem[]>,
   itemCount: Ref<number>,
   cartTotal: Ref<number>,
   buyerCartTotal: Ref<number>,
@@ -32,10 +41,6 @@ export function useShopCartPageLogic(
   const queryClient = useQueryClient();
   const authStore = useAuthStore();
   const orderStore = useShopOrderStore();
-  const storefrontStore = useShopStorefrontStore();
-
-  const { data: currenciesData } = useThriftCurrenciesQuery();
-  const currencies = computed(() => currenciesData.value || []);
 
   const selectedShopId = ref<number | null>(null);
 
@@ -87,17 +92,9 @@ export function useShopCartPageLogic(
     void router.replace(shopCartPath(tenantSlugParam(), sId));
   };
 
-  const currencySymbol = computed(() => {
-    if (currentShopCartInfo.value?.currency_symbol) {
-      return currentShopCartInfo.value.currency_symbol;
-    }
-    const shop = storefrontStore.shopDetails;
-    if (shop?.sell_currency_id) {
-      const curr = currencies.value.find((c) => c.id === shop.sell_currency_id);
-      if (curr?.symbol) return curr.symbol;
-    }
-    return '৳';
-  });
+  const currencySymbol = computed(() =>
+    resolveCartCurrencySymbol(items.value, currentShopCartInfo.value),
+  );
 
   const formatActiveCartTotal = (activeCart: ActiveCartItem) => {
     const currency = activeCart.currency_symbol || activeCart.currency_code || '';
@@ -146,10 +143,11 @@ export function useShopCartPageLogic(
       : item.quantity;
   };
 
-  const getItemPrice = (item: any) => {
-    return editedPrices.value[item.id] !== undefined
-      ? editedPrices.value[item.id]
-      : item.customer_sell_price_amount;
+  const getItemPrice = (item: ShopCartItem) => {
+    if (editedPrices.value[item.id] !== undefined) {
+      return editedPrices.value[item.id];
+    }
+    return getCartItemSellAmount(item);
   };
 
   const adjustItemQtyLocal = (item: any, delta: number) => {
@@ -182,17 +180,17 @@ export function useShopCartPageLogic(
     const numVal = Number(val);
     if (isNaN(numVal) || numVal < 0) return;
 
-    if (numVal === item.customer_sell_price_amount) {
+    if (numVal === getCartItemSellAmount(item)) {
       delete editedPrices.value[item.id];
     } else {
       editedPrices.value[item.id] = numVal;
     }
   };
 
-  const saveItemPrice = async (item: any) => {
+  const saveItemPrice = async (item: ShopCartItem) => {
     const targetPrice = editedPrices.value[item.id];
     if (targetPrice === undefined || isNaN(targetPrice) || targetPrice < 0 || !selectedShopId.value) return;
-    const minSell = Number(item.unit_minimum_sell_price_amount || 0);
+    const minSell = getCartItemMinSellAmount(item);
     if (minSell > 0 && targetPrice < minSell) return;
     await updatePriceMutation.mutateAsync({
       cartItemId: item.id,
@@ -202,9 +200,9 @@ export function useShopCartPageLogic(
     delete editedPrices.value[item.id];
   };
 
-  const isItemPriceBelowFloor = (item: any) => {
+  const isItemPriceBelowFloor = (item: ShopCartItem) => {
     if (cart.value?.shop_type !== 'dropship') return false;
-    const minSell = Number(item.unit_minimum_sell_price_amount || 0);
+    const minSell = getCartItemMinSellAmount(item);
     if (minSell <= 0) return false;
     return Number(getItemPrice(item)) < minSell;
   };
@@ -233,15 +231,18 @@ export function useShopCartPageLogic(
     return '';
   });
 
-  const checkoutLabelKey = computed(() =>
-    cart.value?.shop_type === 'vendor_catalog' ? 'shop.place_order' : 'shop.proceed_to_checkout',
+  const placesOrderFromCart = computed(
+    () =>
+      cart.value?.shop_type === 'vendor_catalog' || cart.value?.shop_type === 'fixed_price',
   );
 
-  const isVendorCatalog = computed(() => cart.value?.shop_type === 'vendor_catalog');
+  const checkoutLabelKey = computed(() =>
+    placesOrderFromCart.value ? 'shop.place_order' : 'shop.proceed_to_checkout',
+  );
 
   const handleButtonClick = async () => {
     if (checkoutDisabled.value) return;
-    if (cart.value?.shop_type === 'vendor_catalog') {
+    if (placesOrderFromCart.value) {
       placingOrder.value = true;
       try {
         const res = await orderStore.submitOrder(
@@ -281,36 +282,30 @@ export function useShopCartPageLogic(
     });
   };
 
-  const formatUnitPrice = (item: any) => {
-    const price =
-      item.customer_sell_price_amount ??
-      item.unit_sell_price_amount ??
-      item.unit_list_price_amount ??
-      0;
-    return `${currencySymbol.value}${Number(price).toFixed(2)}`;
+  const formatUnitPrice = (item: ShopCartItem) => {
+    const edited = editedPrices.value[item.id];
+    const amount = getCartDisplayUnitAmount(cart.value?.shop_type, item, edited);
+    const price = pickCartItemPriceForDisplay(cart.value?.shop_type, item);
+    return formatCartPriceAmount(amount, price, currencySymbol.value);
   };
 
-  const formatItemTotal = (item: any) => {
-    const price =
-      item.customer_sell_price_amount ??
-      item.unit_sell_price_amount ??
-      item.unit_list_price_amount ??
-      0;
+  const formatItemTotal = (item: ShopCartItem) => {
+    const edited = editedPrices.value[item.id];
     const qty = getItemQty(item);
-    const total = price * qty;
-    return `${currencySymbol.value}${total.toFixed(2)}`;
+    const amount = getCartLineSubtotalAmount(cart.value?.shop_type, item, qty, edited);
+    const price = pickCartItemPriceForDisplay(cart.value?.shop_type, item);
+    return formatCartPriceAmount(amount, price, currencySymbol.value);
   };
 
-  const formatBuyerUnitPrice = (item: any) => {
-    const price = item.unit_sell_price_amount ?? item.unit_list_price_amount ?? 0;
-    return `${currencySymbol.value}${Number(price).toFixed(2)}`;
+  const formatBuyerUnitPrice = (item: ShopCartItem) => {
+    const amount = getCartItemBuyAmount(item);
+    return formatCartPriceAmount(amount, item.unit_price, currencySymbol.value);
   };
 
-  const formatBuyerItemTotal = (item: any) => {
-    const price = item.unit_sell_price_amount ?? item.unit_list_price_amount ?? 0;
+  const formatBuyerItemTotal = (item: ShopCartItem) => {
     const qty = getItemQty(item);
-    const total = price * qty;
-    return `${currencySymbol.value}${total.toFixed(2)}`;
+    const amount = getCartLineBuyerSubtotalAmount(cart.value?.shop_type, item, qty);
+    return formatCartPriceAmount(amount, item.unit_price, currencySymbol.value);
   };
 
   const defaultPrintCharge = computed(() => Number(cart.value?.default_print_charge_amount || 0));
@@ -395,7 +390,7 @@ export function useShopCartPageLogic(
     checkoutDisabled,
     checkoutDisabledReason,
     checkoutLabelKey,
-    isVendorCatalog,
+    placesOrderFromCart,
     isItemPriceBelowFloor,
     editedQuantities,
     editedPrices,

@@ -6,6 +6,8 @@ import type { CartChargesPayload } from '../repositories/shopCartRepository';
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { resolveShopCartItemMoq } from '../utils/cartQuantityUtils';
+import { sumCartSubtotal } from '../utils/cartPriceUtils';
+import type { ShopType } from '../types';
 
 export function useShopCartMutations() {
   const queryClient = useQueryClient();
@@ -35,6 +37,7 @@ export function useShopCartMutations() {
           return {
             ...oldData,
             ...data,
+            permissions: data.permissions ?? oldData.permissions,
             items: enrichedItems,
           };
         },
@@ -59,14 +62,8 @@ export function useShopCartMutations() {
         (old: any[] | undefined) => {
           if (!old) return old;
           const itemCount = data.items.reduce((sum: number, i: any) => sum + i.quantity, 0);
-          const cartTotal = data.items.reduce((sum: number, i: any) => {
-            const price =
-              i.customer_sell_price_amount ??
-              i.unit_sell_price_amount ??
-              i.unit_list_price_amount ??
-              0;
-            return sum + price * i.quantity;
-          }, 0);
+          const shopType = data.cart?.shop_type as ShopType | undefined;
+          const cartTotal = sumCartSubtotal(shopType, data.items);
 
           return old.map((c) => {
             if (c.shop_id === shopId) {

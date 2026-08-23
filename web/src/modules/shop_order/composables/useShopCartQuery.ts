@@ -1,12 +1,16 @@
-import { useQuery } from '@tanstack/vue-query';
+import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import { computed, type Ref } from 'vue';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { shopCartService } from '../services/shopCartService';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { resolveShopCartItemMoq } from '../utils/cartQuantityUtils';
+import { seedCustomerShopPermissions } from './useCustomerShopPermissionsQuery';
+import { sumCartBuyerSubtotal, sumCartSubtotal } from '../utils/cartPriceUtils';
+import type { ShopType } from '../types';
 
 export function useShopCartQuery(shopId: Ref<number | null>) {
   const authStore = useAuthStore();
+  const queryClient = useQueryClient();
   const tenantId = computed(() => authStore.tenantId ?? 0);
 
   const query = useQuery({
@@ -16,6 +20,10 @@ export function useShopCartQuery(shopId: Ref<number | null>) {
       const res = await shopCartService.getOrCreateCart(shopId.value);
       if (!res.success) {
         throw new Error(res.error || 'Failed to fetch cart');
+      }
+
+      if (res.data?.permissions) {
+        seedCustomerShopPermissions(queryClient, shopId.value, res.data.permissions);
       }
 
       const enrichedItems = (res.data?.items ?? []).map((i) => {
@@ -37,27 +45,15 @@ export function useShopCartQuery(shopId: Ref<number | null>) {
   });
 
   const cart = computed(() => query.data.value?.cart ?? null);
+  const permissions = computed(() => query.data.value?.permissions ?? null);
   const items = computed(() => (query.data.value?.items ?? []).slice().sort((a, b) => a.id - b.id));
+  const shopType = computed(() => cart.value?.shop_type as ShopType | undefined);
 
   const itemCount = computed(() => items.value.reduce((sum, item) => sum + item.quantity, 0));
 
-  const cartTotal = computed(() => {
-    return items.value.reduce((sum, item) => {
-      const price =
-        item.customer_sell_price_amount ??
-        item.unit_sell_price_amount ??
-        item.unit_list_price_amount ??
-        0;
-      return sum + price * item.quantity;
-    }, 0);
-  });
+  const cartTotal = computed(() => sumCartSubtotal(shopType.value, items.value));
 
-  const buyerCartTotal = computed(() => {
-    return items.value.reduce((sum, item) => {
-      const price = item.unit_sell_price_amount ?? item.unit_list_price_amount ?? 0;
-      return sum + price * item.quantity;
-    }, 0);
-  });
+  const buyerCartTotal = computed(() => sumCartBuyerSubtotal(shopType.value, items.value));
 
   const chargeTotal = computed(() => {
     if (!cart.value) return 0;
@@ -96,6 +92,7 @@ export function useShopCartQuery(shopId: Ref<number | null>) {
   return {
     ...query,
     cart,
+    permissions,
     items,
     itemCount,
     cartTotal,

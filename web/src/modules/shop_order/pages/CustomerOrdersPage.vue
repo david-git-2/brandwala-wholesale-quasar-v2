@@ -103,12 +103,27 @@
               <q-item-section>
                 <div class="row items-center justify-between no-wrap q-col-gutter-sm">
                   <div class="column overflow-hidden">
-                    <span class="text-weight-bold ellipsis">{{ order.order_no }}</span>
+                    <div class="row items-center no-wrap q-gutter-x-xs">
+                      <span class="text-weight-bold ellipsis">{{ order.order_no }}</span>
+                      <q-btn
+                        flat
+                        dense
+                        round
+                        size="sm"
+                        icon="ph ph-copy"
+                        color="grey-6"
+                        :aria-label="$t('shop_admin.copy_order_no')"
+                        @click.stop="copyOrderNo(order.order_no)"
+                      />
+                    </div>
                     <span class="text-caption text-grey-6 ellipsis">{{ order.shop_name }}</span>
                   </div>
                   <div class="column text-right">
-                    <span class="text-subtitle2 text-weight-bold text-primary">
-                      {{ order.currency_symbol || '৳' }}{{ Number(order.total_amount || 0).toFixed(2) }}
+                    <span
+                      v-if="order.can_see_sell_price && order.total_amount != null"
+                      class="text-subtitle2 text-weight-bold text-primary"
+                    >
+                      {{ order.currency_symbol || '৳' }}{{ Number(order.total_amount).toFixed(2) }}
                     </span>
                     <span class="text-caption text-grey-6">{{ formatDate(order.created_at) }}</span>
                   </div>
@@ -133,7 +148,8 @@
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
-import { date } from 'quasar';
+import { copyToClipboard, date } from 'quasar';
+import { showSuccessNotification } from 'src/utils/appFeedback';
 import { useCustomerOrdersQuery } from '../composables/useCustomerOrdersQuery';
 import { shopCatalogEntryPath } from '../utils/catalogShop';
 import {
@@ -194,6 +210,12 @@ const goToOrderDetails = (orderId: number) => {
 };
 
 const formatDate = (dateStr: string) => date.formatDate(dateStr, 'D MMM YYYY');
+
+const copyOrderNo = (orderNo: string) => {
+  void copyToClipboard(orderNo).then(() => {
+    showSuccessNotification(t('shop_admin.order_no_copied'));
+  });
+};
 
 const statusLabel = (status: string) => {
   const actionKey = waitingActionI18nKey(status);

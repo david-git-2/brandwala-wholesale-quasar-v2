@@ -141,8 +141,9 @@ flowchart TD
     B --> P["Product detail<br/>/shop/browse/:shopSlug/product/:productId"]
     P --> B
     B --> C["Cart<br/>/shop/cart"]
-    C --> K["Checkout<br/>/shop/checkout"]
-    K --> O["Orders<br/>/shop/orders"]
+    C -->|"vendor_catalog / fixed_price"| O["Orders<br/>/shop/orders"]
+    C -->|dropship| K["Checkout<br/>/shop/checkout"]
+    K --> O
     O --> W["Merchant wallet<br/>/shop/orders/wallet"]
 ```
 
@@ -151,8 +152,8 @@ flowchart TD
 | **Catalog entry** | `shop_storefront` | Redirect hub before slug browse |
 | **Storefront** | `shop_storefront` | Permissions from `get_shop_permissions_for_customer`; unit + sell price groups (§5) |
 | **Product detail** | `shop_storefront` | `get_shop_catalog_product_for_customer`; same permission gates as catalog; shareable URL |
-| **Cart** | `shop_cart` | Per-shop cart via `get_or_create_shop_cart` |
-| **Checkout** | `shop_cart` | See §7 |
+| **Cart** | `shop_cart` | Per-shop cart via `get_or_create_shop_cart`; **`vendor_catalog`** and **`fixed_price`** submit from cart (Place Order) |
+| **Checkout** | `shop_cart` | **`dropship`** only — see §7 |
 | **Orders** | `shop_order_mgmt` | Customer order list + detail |
 | **Wallet** | `shop_order_mgmt` | Dropship merchant ledger |
 
@@ -160,12 +161,25 @@ flowchart TD
 
 ## 7. Checkout — Validation & Submit
 
-[`ShopCheckoutPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/ShopCheckoutPage.vue)
+[`ShopCheckoutPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/ShopCheckoutPage.vue) — **dropship shops only**. `vendor_catalog` and `fixed_price` place orders from [`ShopCartPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/ShopCartPage.vue) with empty delivery fields (banner: no delivery form on cart).
+
+### Cart — direct place order (`vendor_catalog`, `fixed_price`)
+
+[`ShopCartPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/ShopCartPage.vue)
+
+| Shop type | CTA | On submit |
+| :--- | :--- | :--- |
+| **`vendor_catalog`** | Place Order | `submit_shop_order_from_cart` → status `submitted` → `/shop/orders` |
+| **`fixed_price`** | Place Order | `submit_shop_order_from_cart` → status `draft` → `/shop/orders` |
+| **`dropship`** | Proceed to Checkout | Navigate to checkout (§7 below) |
+
+Place order disabled when cart empty, unsaved qty/price edits, save in progress, or (dropship cart only) sell price below floor.
+
+### Checkout — dropship
 
 | Shop type | Delivery form | Place order disabled when |
 | :--- | :--- | :--- |
-| **`vendor_catalog`** / **`fixed_price`** | Optional (`requestDelivery` off by default) | Delivery requested but name, phone (`01[3-9]########`), or address missing |
-| **`dropship`** | **Required** (auto-enabled) | Same delivery fields required |
+| **`dropship`** | **Required** (auto-enabled) | Name, phone (`01[3-9]########`), or address missing; or sell price below floor |
 
 **On submit (`submit_shop_order_from_cart`):**
 
@@ -181,10 +195,14 @@ flowchart TD
 
 [`ShopOrdersPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/ShopOrdersPage.vue)
 
+Loads `list_shop_orders_for_staff` on mount (no `total_amount`, no `global_currencies`). Compact toolbar: search, **shop** (`p_shop_id`), shop type, and status filters. Shop list loads via `list_shops` for the shop dropdown.
+
 | Filter | Source | Effect |
 | :--- | :--- | :--- |
-| Status | Tab / dropdown | Filters order list |
-| Shop type | `?shopType=dropship` query | Filters by `shop_type_snapshot` (legacy `/app/shop/dropship` redirects here) |
+| Shop | `q-select` → `p_shop_id` on RPC | Server-side shop filter |
+| Shop type | `q-select` or `?shopType=` query | Client-side via loaded shops' `shop_type` |
+| Status | `q-select` → `p_status` on RPC | Server-side status filter |
+| Search | debounced input → `p_search` on RPC | Server-side text search |
 
 Row click → `StaffOrderDetailPage` (B2B) or `DropshipOrderDetailPage` (dropship URL under `/app/shop/dropship/:id`).
 

@@ -119,6 +119,7 @@ import {
 } from '../composables/useShopLookupOptionsQuery';
 import { useShopCartQuery } from '../composables/useShopCartQuery';
 import { useCustomerShopPermissionsQuery } from '../composables/useCustomerShopPermissionsQuery';
+import type { CustomerShopPermissions } from '../composables/useCustomerShopPermissionsQuery';
 import { useShopCartMutations } from '../composables/useShopCartMutations';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useCustomerShopsQuery } from '../composables/useShopQuery';
@@ -130,6 +131,7 @@ import StorefrontSearchToolbar from '../components/StorefrontSearchToolbar.vue';
 import StorefrontFilterDrawer from '../components/StorefrontFilterDrawer.vue';
 import StorefrontProductCard from '../components/StorefrontProductCard.vue';
 import StorefrontSkeletonGrid from '../components/StorefrontSkeletonGrid.vue';
+import type { ShopCatalogItem } from '../types';
 import type { QInfiniteScroll } from 'quasar';
 
 const route = useRoute();
@@ -162,6 +164,7 @@ const queryParams = computed(() => ({
 const {
   catalogItems,
   shopDetails,
+  catalogPermissions,
   isLoading,
   isFetching,
   isFetchingNextPage,
@@ -183,7 +186,10 @@ const { brands: brandNames } = useShopBrandOptionsQuery(lookupParams);
 const { categories: categoryNames } = useShopCategoryOptionsQuery(lookupParams);
 
 const activeShopId = computed(() => shopDetails.value?.id ?? null);
-const { data: permissions } = useCustomerShopPermissionsQuery(activeShopId);
+const { data: fetchedPermissions } = useCustomerShopPermissionsQuery(activeShopId);
+const permissions = computed<CustomerShopPermissions | null | undefined>(
+  () => catalogPermissions.value ?? fetchedPermissions.value,
+);
 const { items: cartItems } = useShopCartQuery(activeShopId);
 const { addItemMutation, updateQtyMutation, removeItemMutation } = useShopCartMutations();
 
@@ -284,12 +290,12 @@ const onResetFilters = () => {
   resetInfiniteScroll();
 };
 
-const getMinQty = (item: any) => {
+const getMinQty = (item: ShopCatalogItem) => {
   if (shopDetails.value?.shop_type === 'dropship') return 1;
   return item.minimum_order_quantity || 1;
 };
 
-const decrementQty = (item: any) => {
+const decrementQty = (item: ShopCatalogItem) => {
   const key = itemKey(item);
   const min = getMinQty(item);
   const current = selectedQuantities[key] || min;
@@ -298,7 +304,7 @@ const decrementQty = (item: any) => {
   }
 };
 
-const incrementQty = (item: any) => {
+const incrementQty = (item: ShopCatalogItem) => {
   const key = itemKey(item);
   const min = getMinQty(item);
   const current = selectedQuantities[key] || min;
@@ -307,11 +313,11 @@ const incrementQty = (item: any) => {
   }
 };
 
-const goToProductDetail = (item: any) => {
+const goToProductDetail = (item: ShopCatalogItem) => {
   void router.push(shopCatalogProductPath(authStore.tenantSlug, shopSlug.value, item.product_id));
 };
 
-const cartItemFor = (catalogItem: any) => {
+const cartItemFor = (catalogItem: ShopCatalogItem) => {
   return cartItems.value.find(
     (cartItem) =>
       cartItem.product_id === catalogItem.product_id &&
@@ -319,17 +325,17 @@ const cartItemFor = (catalogItem: any) => {
   );
 };
 
-const isInCart = (catalogItem: any) => {
+const isInCart = (catalogItem: ShopCatalogItem) => {
   return !!cartItemFor(catalogItem);
 };
 
 const pendingCartItems = reactive(new Set<string>());
 
-const isCartPendingForItem = (item: any) => {
+const isCartPendingForItem = (item: ShopCatalogItem) => {
   return pendingCartItems.has(itemKey(item));
 };
 
-const onAddToCart = async (item: any) => {
+const onAddToCart = async (item: ShopCatalogItem) => {
   if (!shopDetails.value) return;
   const key = itemKey(item);
   const qty = selectedQuantities[key] || getMinQty(item);
@@ -348,7 +354,7 @@ const onAddToCart = async (item: any) => {
   }
 };
 
-const onRemoveFromCart = async (catalogItem: any) => {
+const onRemoveFromCart = async (catalogItem: ShopCatalogItem) => {
   if (!shopDetails.value) return;
   const cartItem = cartItemFor(catalogItem);
   if (!cartItem) return;

@@ -12464,11 +12464,14 @@ export type Database = {
           p_tenant_id: number
         }
         Returns: {
+          can_see_buy_price: boolean
+          can_see_sell_price: boolean
           created_at: string
           currency_symbol: string
           id: number
           item_count: number
           order_no: string
+          sell_currency_id: number
           shop_id: number
           shop_name: string
           shop_slug: string
@@ -13080,7 +13083,6 @@ export type Database = {
           shop_name: string
           status: Database["public"]["Enums"]["shop_order_status"]
           tenant_id: number
-          total_amount: number
           updated_at: string
         }[]
       }
@@ -15179,6 +15181,7 @@ export type Database = {
           p_can_negotiate?: boolean
           p_can_place_order?: boolean
           p_can_see_buy_price?: boolean
+          p_can_see_resell_minimum_price?: boolean
           p_can_see_sell_price?: boolean
           p_can_set_dropship_price?: boolean
           p_can_view_quantity?: boolean

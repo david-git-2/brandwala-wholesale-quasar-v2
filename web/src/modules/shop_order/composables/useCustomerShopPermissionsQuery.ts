@@ -7,6 +7,7 @@ export interface CustomerShopPermissions {
   can_browse?: boolean;
   can_see_buy_price?: boolean;
   can_see_sell_price?: boolean;
+  can_see_resell_minimum_price?: boolean;
   can_add_to_cart?: boolean;
   can_place_order?: boolean;
   can_negotiate?: boolean;

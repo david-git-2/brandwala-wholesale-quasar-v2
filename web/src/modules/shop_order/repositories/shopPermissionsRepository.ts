@@ -100,6 +100,7 @@ const upsertAccessOverride = async (
     p_can_browse: payload.can_browse,
     p_can_see_buy_price: payload.can_see_buy_price,
     p_can_see_sell_price: payload.can_see_sell_price,
+    p_can_see_resell_minimum_price: payload.can_see_resell_minimum_price,
     p_can_add_to_cart: payload.can_add_to_cart,
     p_can_place_order: payload.can_place_order,
     p_can_negotiate: payload.can_negotiate,

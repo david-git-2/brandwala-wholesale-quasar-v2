@@ -14,11 +14,11 @@
       />
 
       <q-banner
-        v-if="isVendorCatalog && items.length > 0 && !isCartsLoading && !isCartLoading"
+        v-if="placesOrderFromCart && items.length > 0 && !isCartsLoading && !isCartLoading"
         class="catalog-banner text-primary rounded-borders"
         dense
       >
-        {{ $t('shop.catalog_place_order_banner') }}
+        {{ $t('shop.cart_place_order_banner') }}
       </q-banner>
 
       <!-- Loading Skeleton State -->
@@ -137,7 +137,7 @@
       class="lt-sm"
     >
       <div class="cart-mobile-cta row items-center no-wrap q-px-md q-py-sm">
-        <div v-if="canSeeSellPrice" class="col">
+        <div v-if="canSeePrices" class="col">
           <div class="text-caption text-grey-6">
             {{ cart?.shop_type === 'dropship' ? $t('shop.recipient_pay_total') : $t('shop.estimated_total') }}
           </div>
@@ -168,7 +168,6 @@
 import { computed, ref, watch } from 'vue';
 import { useActiveShopCartsQuery } from '../composables/useActiveShopCartsQuery';
 import { useShopCartQuery } from '../composables/useShopCartQuery';
-import { useCustomerShopPermissionsQuery } from '../composables/useCustomerShopPermissionsQuery';
 import { useShopCartPageLogic } from '../composables/useShopCartPageLogic';
 import ShopCartHeader from '../components/ShopCartHeader.vue';
 import ShopCartPickerView from '../components/ShopCartPickerView.vue';
@@ -194,22 +193,13 @@ const {
   buyerCartTotal,
   recipientGrandTotal,
   estimatedProfit,
+  permissions,
   isLoading: isCartLoading,
 } = useShopCartQuery(selectedShopIdRef);
 
-const { data: permissions } = useCustomerShopPermissionsQuery(selectedShopIdRef);
-
-const canSeeBuyPrice = computed(() => {
-  if (cart.value?.shop_type === 'dropship') return true;
-  if (permissions.value?.can_see_buy_price != null) return permissions.value.can_see_buy_price;
-  return !!cart.value?.can_see_buy_price_snapshot;
-});
-
-const canSeeSellPrice = computed(() => {
-  if (cart.value?.shop_type === 'dropship') return true;
-  if (permissions.value?.can_see_sell_price != null) return permissions.value.can_see_sell_price;
-  return !!cart.value?.can_see_sell_price_snapshot;
-});
+const canSeeBuyPrice = computed(() => !!permissions.value?.can_see_buy_price);
+const canSeeSellPrice = computed(() => !!permissions.value?.can_see_sell_price);
+const canSeePrices = computed(() => canSeeBuyPrice.value || canSeeSellPrice.value);
 
 const logic = useShopCartPageLogic(
   activeCarts,
@@ -240,7 +230,7 @@ const {
   checkoutDisabled,
   checkoutDisabledReason,
   checkoutLabelKey,
-  isVendorCatalog,
+  placesOrderFromCart,
   isItemPriceBelowFloor,
   editedQuantities,
   editedPrices,

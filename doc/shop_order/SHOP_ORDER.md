@@ -165,8 +165,8 @@ flowchart LR
 | `/:tenantSlug?/shop/dashboard` | [`CustomerDashboard.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/dashboard/pages/CustomerDashboard.vue) | Resume cart, shop grid, recent orders |
 | `/:tenantSlug?/shop/browse/:shopSlug` | [`StorefrontPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/StorefrontPage.vue) | `StorefrontHeader.vue`, `StorefrontProductCard.vue`, `StorefrontFilterDrawer.vue` |
 | `/:tenantSlug?/shop/browse/:shopSlug/product/:productId` | `StorefrontProductDetailPage.vue` (planned) | `ProductDetailGallery`, `ProductDetailSummary`, `ProductDetailSpecs`, `ProductDetailPricing`, `ProductDetailActionBar`, `ProductDetailRelated` (dummy v1) |
-| `/:tenantSlug?/shop/cart` | [`ShopCartPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/ShopCartPage.vue) | `ShopCartItemsList.vue`, `ShopCartSummaryCard.vue` |
-| `/:tenantSlug?/shop/checkout` | [`ShopCheckoutPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/ShopCheckoutPage.vue) | Delivery address selector, payment options |
+| `/:tenantSlug?/shop/cart` | [`ShopCartPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/ShopCartPage.vue) | `ShopCartItemsList.vue`, `ShopCartSummaryCard.vue`; **`vendor_catalog`** and **`fixed_price`** place order here (no delivery form) |
+| `/:tenantSlug?/shop/checkout` | [`ShopCheckoutPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/ShopCheckoutPage.vue) | **`dropship`** only — delivery, charges, payment options |
 | `/:tenantSlug?/shop/orders` | [`CustomerOrdersPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/CustomerOrdersPage.vue) | Order tracking list with status badges |
 | `/:tenantSlug?/shop/orders/wallet` | [`MerchantWalletPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/MerchantWalletPage.vue) | Merchant wallet statement & available balance |
 
@@ -205,16 +205,30 @@ flowchart LR
 | **`StorefrontProductDetailPage`** | Mount | `getShopCatalogProduct` → `RPC: get_shop_catalog_product_for_customer` | Key: `shopOrderQueryKeys.storefrontProduct(tenantId, shopSlug, productId)` |
 | **`StorefrontProductDetailPage`** | Related strip (`vendor_catalog`) | `listRelatedShopCatalogProducts` → `RPC: list_related_shop_catalog_products_for_customer` | Key: `shopOrderQueryKeys.storefrontProductRelated(tenantId, shopSlug, productId)` |
 | **`StorefrontPage`** | Permissions | `useCustomerShopPermissionsQuery` (seeded from browse `meta.permissions`) | Key: `customerShopPermissions(shopId)` |
-| **`ShopCartPage`** | Load cart | `RPC: get_or_create_shop_cart` | Key: `shopOrderQueryKeys.cart(tenantId, shopId)` |
-| **`ShopCartPage`** | Permissions | `useCustomerShopPermissionsQuery` | Shared cache with storefront; gates price display (`can_see_buy_price`, `can_see_sell_price`) |
-| **`ShopOrdersPage`** | Shop filter | `useShopListQuery` → `RPC: list_shops` | Deferred until shop filter opened |
+| **`ShopCartPage`** | Load cart + permissions | `useShopCartQuery` → `RPC: get_or_create_shop_cart` | Key: `shopOrderQueryKeys.cart(tenantId, shopId)`; items use catalog-shaped prices; no separate permissions or `global_currencies` call |
+| **`ShopOrdersPage`** | Order list | `useStaffOrdersQuery` → `RPC: list_shop_orders_for_staff` | Key: `staffOrders`; filters: shop (`p_shop_id`), status (`p_status`), type (client via `list_shops`) |
+| **`ShopOrdersPage`** | Shop filter options | `useShopListQuery` → `RPC: list_shops` | Loaded on mount for shop dropdown |
 | **`ShopPricingPage`** | Listings | `RPC: list_shop_product_listings` | Per shop |
 | **`ShopPricingPage`** | Candidates | `RPC: list_listable_stock_for_shop` | Deferred until add-listing pick dialog opens |
 | **`ShopCartPage`** | Add / qty / remove | `add_to_shop_cart`, `update_shop_cart_item_qty`, `remove_shop_cart_item` | Optimistic + invalidate cart |
-| **`ShopCheckoutPage`** | Submit | `RPC: submit_shop_order_from_cart` | Invalidates orders + cart |
+| **`ShopCartPage`** | Place order (`vendor_catalog`, `fixed_price`) | `submit_shop_order_from_cart` via `orderStore.submitOrder` | Empty delivery fields; invalidates cart + active carts → `/shop/orders` |
+| **`ShopCheckoutPage`** | Submit (`dropship`) | `RPC: submit_shop_order_from_cart` | Invalidates orders + cart |
 | **`CustomerOrdersPage`** | List orders | `RPC: list_customer_shop_orders` | Key: `['shopOrder', 'customerOrders', { tenantId, bucket }]` |
 | **`CustomerOrderDetailPage`** | Order detail | `RPC: get_customer_shop_order` | Per `orderId` |
 | **`DropshipFinanceHubPage`** | Hub load | `RPC: get_dropship_finance_hub_data` | KPIs + queue + merchants in one call |
+
+### Cart page loading (Option A)
+
+`ShopCartPage` uses **two** RPCs on load:
+
+| Call | When | Payload |
+| :--- | :--- | :--- |
+| `list_customer_active_carts` | Always on mount | Multi-shop picker + header summary; each row includes `currency_code` / `currency_symbol` |
+| `get_or_create_shop_cart` | After `shopId` resolves | `cart`, `items`, live `permissions` |
+
+`get_or_create_shop_cart` resolves `get_shop_permissions_for_customer` server-side and echoes live flags as `permissions`. Item prices use the same nested shape as `browse_shop_catalog_for_customer` — no root `currency` object (each price carries `currency_id`, `code`, `symbol`).
+
+See **§ RPC: `get_or_create_shop_cart`** below for the response contract.
 
 ### Dropship desk
 
@@ -424,6 +438,94 @@ Each hit includes `shop_id`, `shop_slug`, `shop_name`, product fields, and `unit
 
 ---
 
+## 7c. RPC: `get_or_create_shop_cart`
+
+Loads or creates the active cart for one shop. Used by `ShopCartPage`, checkout, and cart mutations (all return this shape).
+
+### Signature
+
+```sql
+get_or_create_shop_cart(p_shop_id bigint) returns jsonb
+```
+
+### Access
+
+- Shop must be active; caller must belong to a customer group with access (`can_customer_access_shop`).
+- Live permissions from `get_shop_permissions_for_customer` are echoed as `permissions`.
+
+### Item price gating (same rules as browse)
+
+Prices are snapshotted on `shop_cart_items` at add-to-cart time; the RPC gates **display** with live permissions.
+
+| `shop_type` | `unit_price` | `sell_price` | `resell_minimum_price` |
+| :--- | :--- | :--- | :--- |
+| `vendor_catalog` | `can_see_buy_price` → snap `unit_list_price_*` | `null` | `null` |
+| `fixed_price` | `null` | `can_see_sell_price` → snap `unit_sell_price_*` | `null` |
+| `dropship` | `can_see_buy_price` → snap `unit_list_price_*` | `can_see_sell_price` → snap `customer_sell_price_*` else `unit_sell_price_*` | `can_see_resell_minimum_price` → snap `unit_minimum_sell_price_*` |
+
+Nested price object (or `null`):
+
+```json
+{ "amount": 120.0, "currency_id": 1, "code": "BDT", "symbol": "৳" }
+```
+
+No root `currency` — formatting uses the nested object on each line (same as catalog). Header/picker currency comes from `list_customer_active_carts`.
+
+### Response shape
+
+```jsonc
+{
+  "cart": {
+    "id": 55,
+    "tenant_id": 12,
+    "shop_id": 8,
+    "customer_group_id": 3,
+    "status": "active",
+    "shop_type": "vendor_catalog",
+    "allow_delivery": true,
+    "default_print_charge_amount": 0,
+    "default_packing_charge_amount": 0,
+    "deduct_charges_from_margin": false,
+    "deduct_print_from_margin": false,
+    "deduct_packing_from_margin": false,
+    "created_at": "…",
+    "updated_at": "…"
+  },
+  "items": [
+    {
+      "id": 101,
+      "cart_id": 55,
+      "product_id": 9001,
+      "global_stock_id": null,
+      "global_stock_allocation_id": null,
+      "quantity": 2,
+      "minimum_quantity": 1,
+      "minimum_order_quantity": 1,
+      "name": "Widget A",
+      "image_url": "https://…",
+      "unit_price": { "amount": 120.0, "currency_id": 1, "code": "BDT", "symbol": "৳" },
+      "sell_price": null,
+      "resell_minimum_price": null
+    }
+  ],
+  "permissions": {
+    "can_browse": true,
+    "can_see_buy_price": true,
+    "can_see_sell_price": false,
+    "can_see_resell_minimum_price": false,
+    "can_add_to_cart": true,
+    "can_place_order": true,
+    "can_negotiate": true,
+    "can_view_quantity": true,
+    "can_set_dropship_price": false
+  }
+}
+```
+
+Charges (COD, delivery, print, packing, discount) remain on the `shop_carts` row in the DB; expose on `cart` when the checkout flow needs them.
+
+---
+
 ## 8. RPC: `get_shop_catalog_product_for_customer`
 
 Single-product fetch for the customer product detail page. Mirrors pricing, stock, and permission rules from `browse_shop_catalog_for_customer` for one `product_id` in a shop.
@@ -554,7 +656,55 @@ list_related_shop_catalog_products_for_customer(
 
 ---
 
-## 10. RPC: `list_customer_shop_orders`
+## 10. RPC: `list_shop_orders_for_staff`
+
+Staff order list (`ShopOrdersPage`). One row per order for tenant staff.
+
+### Signature
+
+```sql
+list_shop_orders_for_staff(
+  p_tenant_id bigint,
+  p_limit         integer default 20,
+  p_offset        integer default 0,
+  p_search        text    default null,
+  p_status        text    default null,
+  p_shop_id       bigint  default null
+) returns table (...)
+```
+
+- **Security:** `SECURITY DEFINER`; requires `is_tenant_staff(p_tenant_id)`
+- **No `total_amount`:** list is a lightweight index; monetary totals and currency formatting live on `StaffOrderDetailPage` / `get_shop_order_by_id` (or dropship detail RPCs).
+
+### Response columns
+
+| Column | Type | Notes |
+| :--- | :--- | :--- |
+| `id` | bigint | Order id |
+| `tenant_id` | bigint | Tenant |
+| `shop_id` | bigint | Shop |
+| `shop_name` | text | From `shops.name` |
+| `customer_group_id` | bigint | Customer group |
+| `customer_group_name` | text | From `customer_groups.name` |
+| `order_no` | text | Display reference |
+| `name` | text | Order label |
+| `status` | `shop_order_status` | Current workflow status |
+| `created_at` | timestamptz | Order created |
+| `updated_at` | timestamptz | Last update |
+| `item_count` | bigint | Count of `shop_order_items` rows |
+
+### Frontend wiring
+
+| Layer | Name |
+| :--- | :--- |
+| Repository | `shopOrderRepository.listShopOrdersForStaff(tenantId, opts)` |
+| Composable | `useStaffOrdersQuery` |
+| Type | `ShopOrder` (list subset) in `web/src/modules/shop_order/types/index.ts` |
+| UI | `ShopOrdersPage` → `ShopOrdersTable` (no total column; no `global_currencies` call) |
+
+---
+
+## 11. RPC: `list_customer_shop_orders`
 
 Customer order list across all shops (`CustomerOrdersPage`). One row per order for the logged-in customer group.
 
@@ -648,7 +798,7 @@ When `can_see_sell_price = true`, `total_amount` is a number (may be `0`).
 | Repository | `shopOrderRepository.listCustomerShopOrders(tenantId, opts)` |
 | Service | `shopOrderService.listCustomerShopOrders(...)` |
 | Type | `CustomerOrderListItem` in `web/src/modules/shop_order/types/index.ts` |
-| UI | `CustomerOrdersPage` — show total only when `order.can_see_sell_price`; format with `order.currency_symbol` |
+| UI | `CustomerOrdersPage` — show total only when `order.can_see_sell_price`; format with `order.currency_symbol`; copy button beside `order_no` |
 
 ### Related: `get_customer_shop_order`
 
@@ -656,7 +806,7 @@ Order **detail** RPC already returns `shop_sell_currency_id`, `shop_buy_currency
 
 ---
 
-## 11. Schema
+## 12. Schema
 
 Live SQL: [`supabase/schemas/shop_order/`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/supabase/schemas/shop_order/) (`01_types.sql` → `04_rls.sql`).
 

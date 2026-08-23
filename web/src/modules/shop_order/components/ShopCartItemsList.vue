@@ -33,13 +33,13 @@
                 :label="$t('shop.your_selling_price')"
                 outlined
                 dense
-                :prefix="currencySymbol"
-                :min="item.unit_minimum_sell_price_amount || 0"
+                :prefix="sellPriceSymbol(item)"
+                :min="getCartItemMinSellAmount(item) || 0"
                 :disable="!permissions?.can_set_dropship_price"
                 @update:model-value="(val: string | number | null) => $emit('update-price-local', item, val)"
               />
               <div
-                v-if="item.unit_minimum_sell_price_amount"
+                v-if="item.resell_minimum_price?.amount != null"
                 class="text-caption row items-center q-gutter-x-xs"
                 :class="isItemPriceBelowFloor(item) ? 'text-negative' : 'text-grey-7'"
                 style="font-size: 11px"
@@ -49,10 +49,10 @@
                   size="14px"
                   :color="isItemPriceBelowFloor(item) ? 'negative' : 'grey-6'"
                 />
-                <span>{{ $t('customer_dashboard.min_sell', { price: `${currencySymbol}${item.unit_minimum_sell_price_amount}` }) }}</span>
+                <span>{{ $t('customer_dashboard.min_sell', { price: formatMinSellPrice(item) }) }}</span>
               </div>
               <q-btn
-                v-if="editedPrices[item.id] !== undefined && editedPrices[item.id] !== item.customer_sell_price_amount"
+                v-if="editedPrices[item.id] !== undefined && editedPrices[item.id] !== getItemSellAmount(item)"
                 color="primary"
                 size="xs"
                 unelevated
@@ -129,10 +129,10 @@
                 {{ formatBuyerUnitPrice(item) }} {{ $t('shop.each') }}
               </div>
             </div>
-            <div v-if="canSeeSellPrice && item.unit_minimum_sell_price_amount" class="q-mb-xs">
+            <div v-if="canSeeSellPrice && item.resell_minimum_price?.amount != null" class="q-mb-xs">
               <span class="text-caption text-grey-6 block" style="font-size: 10px; margin-bottom: 2px;">Min Sell Price</span>
               <div class="text-caption text-weight-medium text-grey-8" style="line-height: 1.2">
-                {{ currencySymbol }}{{ Number(item.unit_minimum_sell_price_amount).toFixed(2) }} {{ $t('shop.each') }}
+                {{ formatMinSellPrice(item) }} {{ $t('shop.each') }}
               </div>
             </div>
             <div v-if="canSeeSellPrice" class="q-mt-xs">
@@ -145,7 +145,7 @@
               </div>
             </div>
           </template>
-          <template v-else-if="canSeeSellPrice">
+          <template v-else-if="canSeeSellPrice || canSeeBuyPrice">
             <div class="text-subtitle2 text-weight-bold text-grey-9">
               {{ formatItemTotal(item) }}
             </div>
@@ -175,11 +175,17 @@
 </template>
 
 <script setup lang="ts">
-import type { ActiveCartItem } from '../repositories/shopCartRepository';
+import type { ActiveCartItem, ShopCartItem } from '../repositories/shopCartRepository';
 import { resolveShopCartItemMoq } from '../utils/cartQuantityUtils';
+import {
+  cartPriceSymbol,
+  formatCartPriceAmount,
+  getCartItemMinSellAmount,
+  getCartItemSellAmount,
+} from '../utils/cartPriceUtils';
 
 const props = defineProps<{
-  items: any[];
+  items: ShopCartItem[];
   itemCount: number;
   currentShopCartInfo: ActiveCartItem | null;
   cart: any;
@@ -190,22 +196,30 @@ const props = defineProps<{
   editedQuantities: Record<number, number>;
   editedPrices: Record<number, number>;
   isSaving: boolean;
-  getItemQty: (item: any) => number;
-  getItemPrice: (item: any) => number;
-  formatUnitPrice: (item: any) => string;
-  formatItemTotal: (item: any) => string;
-  formatBuyerUnitPrice: (item: any) => string;
-  formatBuyerItemTotal: (item: any) => string;
-  isItemPriceBelowFloor: (item: any) => boolean;
+  getItemQty: (item: ShopCartItem) => number;
+  getItemPrice: (item: ShopCartItem) => number;
+  formatUnitPrice: (item: ShopCartItem) => string;
+  formatItemTotal: (item: ShopCartItem) => string;
+  formatBuyerUnitPrice: (item: ShopCartItem) => string;
+  formatBuyerItemTotal: (item: ShopCartItem) => string;
+  isItemPriceBelowFloor: (item: ShopCartItem) => boolean;
 }>();
 
 defineEmits<{
-  (e: 'update-price-local', item: any, val: string | number | null): void;
-  (e: 'save-item-price', item: any): void;
-  (e: 'adjust-qty-local', item: any, delta: number): void;
-  (e: 'save-item-qty', item: any): void;
-  (e: 'remove-item', item: any): void;
+  (e: 'update-price-local', item: ShopCartItem, val: string | number | null): void;
+  (e: 'save-item-price', item: ShopCartItem): void;
+  (e: 'adjust-qty-local', item: ShopCartItem, delta: number): void;
+  (e: 'save-item-qty', item: ShopCartItem): void;
+  (e: 'remove-item', item: ShopCartItem): void;
 }>();
+
+const sellPriceSymbol = (item: ShopCartItem) =>
+  cartPriceSymbol(item.sell_price ?? item.unit_price);
+
+const getItemSellAmount = (item: ShopCartItem) => getCartItemSellAmount(item);
+
+const formatMinSellPrice = (item: ShopCartItem) =>
+  formatCartPriceAmount(getCartItemMinSellAmount(item), item.resell_minimum_price);
 
 const getItemMinQty = (item: any) =>
   resolveShopCartItemMoq(item, { dropship: props.cart?.shop_type === 'dropship' });

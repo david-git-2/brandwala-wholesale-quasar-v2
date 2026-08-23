@@ -274,7 +274,7 @@
                       {{ $t('shop.pay_label') }} {{ formatItemTotal(item) }}
                     </div>
                   </template>
-                  <template v-else-if="canSeeSellPrice">
+                  <template v-else-if="canSeeSellPrice || canSeeBuyPrice">
                     <div class="text-caption text-weight-bold text-grey-9">
                       {{ formatItemTotal(item) }}
                     </div>
@@ -367,7 +367,7 @@
                   cart?.shop_type === 'dropship' ? $t('shop.recipient_pay_total') : $t('shop.estimated_total')
                 }}</span>
                 <span
-                  v-if="canSeeSellPrice"
+                  v-if="canSeePrices"
                   class="text-h6 text-weight-bold text-primary"
                 >
                   {{ cart?.shop_type === 'dropship' ? formatAmount(calculatedRecipientGrandTotal) : formatCartTotal() }}
@@ -407,8 +407,15 @@ import { useQueryClient } from '@tanstack/vue-query';
 import { useShopCartQuery } from '../composables/useShopCartQuery';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { useShopOrderStore } from '../stores/shopOrderStore';
-import { useShopStorefrontStore } from '../stores/shopStorefrontStore';
-import { useThriftCurrenciesQuery } from 'src/modules/thrift/currency/composables/useThriftCurrenciesQuery';
+import {
+  getCartItemMinSellAmount,
+  getCartItemSellAmount,
+  getCartLineBuyerSubtotalAmount,
+  getCartLineSubtotalAmount,
+  resolveCartCurrencySymbol,
+  formatCartPriceAmount,
+  pickCartItemPriceForDisplay,
+} from '../utils/cartPriceUtils';
 
 import { showErrorNotification } from 'src/utils/appFeedback';
 import { fetchCourierChargeEstimate } from '../services/courierChargeEstimate';
@@ -440,12 +447,10 @@ const {
   cartTotal,
   buyerCartTotal,
   recipientGrandTotal,
+  permissions,
 } = useShopCartQuery(shopId);
 
 const orderStore = useShopOrderStore();
-const storefrontStore = useShopStorefrontStore();
-const { data: currenciesData } = useThriftCurrenciesQuery();
-const currencies = computed(() => currenciesData.value || []);
 const recipientProfileStore = useRecipientProfileStore();
 const lastLookupPhone = ref('');
 
@@ -473,15 +478,9 @@ const postcodeOptions = ref<(BDPostcodeOption & { displayLabel: string })[]>([])
 const shopType = computed(() => cart.value?.shop_type);
 const allowDelivery = computed(() => cart.value?.allow_delivery);
 
-const canSeeBuyPrice = computed(() => {
-  if (cart.value?.shop_type === 'dropship') return true;
-  return !!cart.value?.can_see_buy_price_snapshot;
-});
-
-const canSeeSellPrice = computed(() => {
-  if (cart.value?.shop_type === 'dropship') return true;
-  return !!cart.value?.can_see_sell_price_snapshot;
-});
+const canSeeBuyPrice = computed(() => !!permissions.value?.can_see_buy_price);
+const canSeeSellPrice = computed(() => !!permissions.value?.can_see_sell_price);
+const canSeePrices = computed(() => canSeeBuyPrice.value || canSeeSellPrice.value);
 
 // Load BD Districts and Upazilas
 const loadLocationData = async () => {
@@ -560,17 +559,7 @@ const filterPostcode = (val: string, update: (fn: () => void) => void) => {
   });
 };
 
-const currencySymbol = computed(() => {
-  if ((cart.value as any)?.currency_symbol) {
-    return (cart.value as any).currency_symbol;
-  }
-  const shop = storefrontStore.shopDetails;
-  if (shop?.sell_currency_id) {
-    const curr = currencies.value.find((c) => c.id === shop.sell_currency_id);
-    if (curr?.symbol) return curr.symbol;
-  }
-  return '৳';
-});
+const currencySymbol = computed(() => resolveCartCurrencySymbol(items.value));
 
 const createPostcode = (val: string, done: (item: any) => void) => {
   const custom = {
@@ -725,13 +714,13 @@ const submitOrder = async () => {
 
   if (shopType.value === 'dropship') {
     for (const item of items.value) {
-      const minPrice = item.unit_minimum_sell_price_amount || 0;
-      const sellPrice = item.customer_sell_price_amount ?? 0;
-      if (sellPrice < minPrice) {
+      const minPrice = getCartItemMinSellAmount(item);
+      const sellPrice = getCartItemSellAmount(item);
+      if (minPrice > 0 && sellPrice < minPrice) {
         showErrorNotification(
           t('shop.price_below_min', {
             name: item.name,
-            amount: `${currencySymbol.value}${minPrice.toFixed(2)}`,
+            amount: formatCartPriceAmount(minPrice, item.resell_minimum_price, currencySymbol.value),
           }),
         );
         return;
@@ -805,20 +794,15 @@ const formatAmount = (val: any) => {
   return `${currencySymbol.value}${num.toFixed(2)}`;
 };
 
-const formatItemTotal = (item: any) => {
-  const price =
-    item.customer_sell_price_amount ??
-    item.unit_sell_price_amount ??
-    item.unit_list_price_amount ??
-    0;
-  const total = price * item.quantity;
-  return `${currencySymbol.value}${total.toFixed(2)}`;
+const formatItemTotal = (item: (typeof items.value)[number]) => {
+  const total = getCartLineSubtotalAmount(shopType.value, item, item.quantity);
+  const price = pickCartItemPriceForDisplay(shopType.value, item);
+  return formatCartPriceAmount(total, price, currencySymbol.value);
 };
 
-const formatBuyerItemTotal = (item: any) => {
-  const price = item.unit_sell_price_amount ?? item.unit_list_price_amount ?? 0;
-  const total = price * item.quantity;
-  return `${currencySymbol.value}${total.toFixed(2)}`;
+const formatBuyerItemTotal = (item: (typeof items.value)[number]) => {
+  const total = getCartLineBuyerSubtotalAmount(shopType.value, item, item.quantity);
+  return formatCartPriceAmount(total, item.unit_price, currencySymbol.value);
 };
 
 const formatCartTotal = () => {

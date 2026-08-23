@@ -377,13 +377,21 @@
               </div>
               <q-card flat bordered class="q-pa-md q-gutter-y-sm">
                 <q-toggle
+                  v-if="showPurchasePriceToggle"
                   v-model="editForm.can_see_buy_price"
                   :label="$t('shop_admin.can_see_buy_price')"
                   color="primary"
                 />
                 <q-toggle
+                  v-if="showSellPriceToggle"
                   v-model="editForm.can_see_sell_price"
                   :label="$t('shop_admin.can_see_sell_price')"
+                  color="primary"
+                />
+                <q-toggle
+                  v-if="showResellMinimumToggle"
+                  v-model="editForm.can_see_resell_minimum_price"
+                  :label="$t('shop_admin.can_see_resell_minimum_price')"
                   color="primary"
                 />
                 <q-toggle
@@ -524,8 +532,16 @@ const shopId = computed(() => Number(route.params.shopId));
 const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '');
 
 const shopName = ref('');
-const shopType = ref('');
+const shopType = ref<Shop['shop_type'] | ''>('');
 const searchQuery = ref('');
+
+const showPurchasePriceToggle = computed(
+  () => shopType.value === 'vendor_catalog' || shopType.value === 'dropship',
+);
+const showSellPriceToggle = computed(
+  () => shopType.value === 'fixed_price' || shopType.value === 'dropship',
+);
+const showResellMinimumToggle = computed(() => shopType.value === 'dropship');
 
 const addDialogOpen = ref(false);
 const createDialogOpen = ref(false);
@@ -577,6 +593,7 @@ const editForm = ref<UpsertAccessPayload>({
   can_browse: true,
   can_see_buy_price: true,
   can_see_sell_price: true,
+  can_see_resell_minimum_price: true,
   can_add_to_cart: true,
   can_place_order: true,
   can_negotiate: false,
@@ -643,13 +660,17 @@ const coerceBool = (value: boolean | null | undefined, fallback = false) =>
 
 const standardGrantPayload = (groupId: number): UpsertAccessPayload => {
   const row = getAccessRow(groupId);
+  const isCatalog = shopType.value === 'vendor_catalog';
+  const isFixed = shopType.value === 'fixed_price';
+  const isDropship = shopType.value === 'dropship';
   return {
     shop_id: shopId.value,
     customer_group_id: groupId,
     status: true,
     can_browse: true,
-    can_see_buy_price: true,
-    can_see_sell_price: true,
+    can_see_buy_price: isCatalog || isDropship,
+    can_see_sell_price: isFixed || isDropship,
+    can_see_resell_minimum_price: isDropship,
     can_view_quantity: true,
     can_add_to_cart: true,
     can_place_order: true,
@@ -659,6 +680,21 @@ const standardGrantPayload = (groupId: number): UpsertAccessPayload => {
     credit_limit_amount: row?.credit_limit_amount ? Number(row.credit_limit_amount) : null,
     credit_limit_currency_id: row?.credit_limit_currency_id ?? null,
   };
+};
+
+const normalizePricePermissionsForShopType = (form: UpsertAccessPayload) => {
+  if (shopType.value === 'vendor_catalog') {
+    form.can_see_sell_price = false;
+    form.can_see_resell_minimum_price = false;
+  }
+  if (shopType.value === 'fixed_price') {
+    form.can_see_buy_price = false;
+    form.can_see_resell_minimum_price = false;
+  }
+  if (shopType.value !== 'dropship') {
+    form.can_see_resell_minimum_price = false;
+    form.can_set_dropship_price = false;
+  }
 };
 
 const openAddDialog = () => {
@@ -727,6 +763,7 @@ const openEditDrawer = (groupId: number) => {
     can_browse: coerceBool(row?.can_browse, true),
     can_see_buy_price: coerceBool(row?.can_see_buy_price, true),
     can_see_sell_price: coerceBool(row?.can_see_sell_price, true),
+    can_see_resell_minimum_price: coerceBool(row?.can_see_resell_minimum_price, true),
     can_add_to_cart: coerceBool(row?.can_add_to_cart, true),
     can_place_order: coerceBool(row?.can_place_order, true),
     can_negotiate: coerceBool(row?.can_negotiate, false),
@@ -751,9 +788,7 @@ const onDrawerSave = async () => {
   }
 
   editForm.value.status = true;
-  if (shopType.value !== 'dropship') {
-    editForm.value.can_set_dropship_price = false;
-  }
+  normalizePricePermissionsForShopType(editForm.value);
   if (shopType.value === 'vendor_catalog') {
     editForm.value.price_tier_code = null;
   }

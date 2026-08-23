@@ -4,7 +4,10 @@ import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { shopOrderService } from '../services/shopOrderService';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import type { ShopCatalogItem, Shop } from '../types';
-import { seedCustomerShopPermissions } from './useCustomerShopPermissionsQuery';
+import {
+  seedCustomerShopPermissions,
+  type CustomerShopPermissions,
+} from './useCustomerShopPermissionsQuery';
 
 export interface StorefrontQueryParams {
   shopSlug: string;
@@ -51,8 +54,9 @@ export function useShopStorefrontInfiniteQuery(params: Ref<StorefrontQueryParams
       }
 
       return {
-        items: data,
+        items: data as ShopCatalogItem[],
         shopDetails,
+        permissions: (meta.permissions ?? null) as CustomerShopPermissions | null,
         total: meta.total ?? 0,
         pageSize: meta.page_size ?? limit,
         nextOffset: (pageParam as number) + data.length,
@@ -105,10 +109,16 @@ export function useShopStorefrontInfiniteQuery(params: Ref<StorefrontQueryParams
     return items;
   });
 
+  const catalogPermissions = computed<CustomerShopPermissions | null>(() => {
+    const pages = query.data.value?.pages;
+    return pages?.[0]?.permissions ?? null;
+  });
+
   return {
     ...query,
     shopDetails,
     totalItems,
     catalogItems,
+    catalogPermissions,
   };
 }

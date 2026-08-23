@@ -23,6 +23,7 @@ export interface ShopCustomerGroupAccess {
   can_browse: boolean | null;
   can_see_buy_price: boolean | null;
   can_see_sell_price: boolean | null;
+  can_see_resell_minimum_price: boolean | null;
   can_add_to_cart: boolean | null;
   can_place_order: boolean | null;
   can_negotiate: boolean | null;
@@ -56,6 +57,7 @@ export interface UpsertAccessPayload {
   can_browse: boolean | null;
   can_see_buy_price: boolean | null;
   can_see_sell_price: boolean | null;
+  can_see_resell_minimum_price: boolean | null;
   can_add_to_cart: boolean | null;
   can_place_order: boolean | null;
   can_negotiate: boolean | null;

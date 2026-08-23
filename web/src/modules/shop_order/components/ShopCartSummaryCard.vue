@@ -80,10 +80,18 @@
             </span>
           </div>
         </template>
+        <template v-else-if="canSeeBuyPrice">
+          <div class="row justify-between q-mb-sm text-body2 text-grey-7">
+            <span>{{ $t('shop.subtotal') }} ({{ itemCount }} {{ $t('shop.items').toLowerCase() }})</span>
+            <span class="text-weight-medium">
+              {{ formatCartTotal() }}
+            </span>
+          </div>
+        </template>
 
         <q-separator class="q-my-md" />
 
-        <div v-if="canSeeSellPrice" class="row justify-between items-baseline q-mb-lg">
+        <div v-if="canSeeSellPrice || canSeeBuyPrice" class="row justify-between items-baseline q-mb-lg">
           <span class="text-subtitle1 text-weight-bold text-grey-9">{{
             cart?.shop_type === 'dropship' ? $t('shop.recipient_pay_total') : $t('shop.estimated_total')
           }}</span>

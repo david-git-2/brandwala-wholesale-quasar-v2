@@ -1,76 +1,91 @@
 <template>
-  <div class="column q-gutter-y-md">
-    <!-- Shops Filter Button Group -->
-    <div class="row items-center q-mb-xs">
-      <div class="col-12">
-        <q-btn-toggle
+  <q-card flat class="floating-surface q-pa-xs flex-shrink-0">
+    <div class="row items-center q-col-gutter-xs">
+      <div class="col-12 row items-center q-gutter-x-xs">
+        <q-input
+          :model-value="search"
+          clearable
+          debounce="350"
+          dense
+          outlined
+          rounded
+          style="min-width: 220px"
+          class="col-grow col-sm-auto"
+          :placeholder="$t('shop_admin.search_orders_placeholder')"
+          data-test="shop-orders-search"
+          @update:model-value="(val) => emit('update:search', (val as string) || '')"
+        >
+          <template #prepend>
+            <q-icon name="ph ph-magnifying-glass" size="16px" class="text-grey-6" />
+          </template>
+        </q-input>
+
+        <q-select
           :model-value="selectedShopId"
           dense
-          unelevated
-          no-caps
-          toggle-color="primary"
-          color="white"
-          text-color="primary"
-          class="soft-btn-toggle border-all-1"
-          :options="shopToggleOptions"
-          @click="emit('shop-filter-open')"
+          outlined
+          rounded
+          emit-value
+          map-options
+          clearable
+          use-input
+          input-debounce="200"
+          :label="$t('shop_admin.filter_by_shop')"
+          :options="filteredShopOptions"
+          :loading="shopsLoading"
+          style="min-width: 180px"
+          class="col-grow col-sm-auto"
+          data-test="shop-orders-shop-filter"
+          @filter="filterShops"
           @update:model-value="(val) => emit('update:selectedShopId', val)"
+        >
+          <template #no-option>
+            <q-item>
+              <q-item-section class="text-grey-6">
+                {{ shopsLoading ? $t('shop_admin.loading_orders') : $t('shop_admin.no_shops_found') }}
+              </q-item-section>
+            </q-item>
+          </template>
+        </q-select>
+
+        <q-select
+          :model-value="shopTypeFilter"
+          dense
+          outlined
+          rounded
+          emit-value
+          map-options
+          clearable
+          :label="$t('shop_admin.shop_type_filter')"
+          :options="shopTypeOptions"
+          style="min-width: 160px"
+          class="col-grow col-sm-auto"
+          data-test="shop-orders-type-filter"
+          @update:model-value="(val) => emit('update:shopTypeFilter', val)"
         />
-        <q-spinner v-if="shopsLoading" size="20px" color="primary" class="q-ml-sm" />
+
+        <q-select
+          :model-value="statusFilter"
+          dense
+          outlined
+          rounded
+          emit-value
+          map-options
+          clearable
+          :label="$t('shop_admin.filter_by_status')"
+          :options="statusOptions"
+          style="min-width: 160px"
+          class="col-grow col-sm-auto"
+          data-test="shop-orders-status-filter"
+          @update:model-value="(val) => emit('update:statusFilter', val)"
+        />
       </div>
     </div>
-
-    <!-- Filters Toolbar -->
-    <q-card flat bordered class="q-pa-sm">
-      <section class="row items-center q-col-gutter-md">
-        <div class="col-12 col-sm-4">
-          <q-input
-            :model-value="search"
-            clearable
-            debounce="350"
-            dense
-            outlined
-            :placeholder="$t('shop_admin.search_orders_placeholder')"
-            @update:model-value="(val) => emit('update:search', (val as string) || '')"
-          >
-            <template #prepend>
-              <q-icon name="ph ph-magnifying-glass" />
-            </template>
-          </q-input>
-        </div>
-        <div class="col-auto">
-          <q-select
-            :model-value="shopTypeFilter"
-            dense
-            outlined
-            emit-value
-            map-options
-            :label="$t('shop_admin.shop_type_filter')"
-            :options="shopTypeOptions"
-            style="min-width: 160px"
-            @update:model-value="(val) => emit('update:shopTypeFilter', val)"
-          />
-        </div>
-        <div class="col-auto">
-          <q-select
-            :model-value="statusFilter"
-            dense
-            outlined
-            emit-value
-            map-options
-            :label="$t('shop_admin.filter_by_status')"
-            :options="statusOptions"
-            style="min-width: 160px"
-            @update:model-value="(val) => emit('update:statusFilter', val)"
-          />
-        </div>
-      </section>
-    </q-card>
-  </div>
+  </q-card>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { Shop } from '../types';
 
@@ -88,10 +103,11 @@ const emit = defineEmits<{
   (e: 'update:search', value: string): void;
   (e: 'update:statusFilter', value: string | null): void;
   (e: 'update:shopTypeFilter', value: string | null): void;
-  (e: 'shop-filter-open'): void;
 }>();
 
 const { t } = useI18n();
+
+const shopSearch = ref('');
 
 const shopTypeOptions = computed(() => [
   { label: t('shop_admin.all_shop_types'), value: null },
@@ -120,12 +136,37 @@ const statusOptions = computed(() => [
   { label: t('shop_admin.status_cancelled'), value: 'cancelled' },
 ]);
 
-const shopToggleOptions = computed(() => {
-  const options: Array<{ label: string; value: number | null }> = [{ label: t('shop_admin.all_shops'), value: null }];
-  props.shops.forEach((shop) => {
-    options.push({ label: shop.name, value: shop.id });
-  });
-  return options;
+const shopOptions = computed(() =>
+  props.shops.map((shop) => ({
+    label: shop.name,
+    value: shop.id,
+  })),
+);
+
+const filteredShopOptions = computed(() => {
+  const needle = shopSearch.value.trim().toLowerCase();
+  if (!needle) {
+    return shopOptions.value;
+  }
+  return shopOptions.value.filter((opt) => opt.label.toLowerCase().includes(needle));
 });
+
+const filterShops = (val: string, update: (cb: () => void) => void) => {
+  update(() => {
+    shopSearch.value = val;
+  });
+};
 </script>
 
+<style scoped>
+.floating-surface {
+  background: #ffffff;
+  border-radius: 8px;
+  border: none;
+  box-shadow: none;
+}
+
+body.body--dark .floating-surface {
+  background: #1c1c1c;
+}
+</style>

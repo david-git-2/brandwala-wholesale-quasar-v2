@@ -1,4 +1,6 @@
 import { supabase } from 'src/boot/supabase';
+import type { CustomerShopPermissions } from '../composables/useCustomerShopPermissionsQuery';
+import type { ShopCatalogPrice } from '../types';
 
 export interface CartChargesPayload {
   cod_charge_amount?: number;
@@ -10,14 +12,28 @@ export interface CartChargesPayload {
   delivery_instructions?: string | null;
 }
 
+export interface ShopCartItem {
+  id: number;
+  cart_id: number;
+  product_id: number;
+  global_stock_id: number | null;
+  global_stock_allocation_id: number | null;
+  quantity: number;
+  minimum_quantity: number;
+  minimum_order_quantity?: number | null;
+  name: string;
+  image_url: string | null;
+  unit_price: ShopCatalogPrice | null;
+  sell_price: ShopCatalogPrice | null;
+  resell_minimum_price: ShopCatalogPrice | null;
+}
+
 export interface CartData {
   cart: {
     id: number;
     tenant_id: number;
     shop_id: number;
     customer_group_id: number;
-    can_see_buy_price_snapshot: boolean;
-    can_see_sell_price_snapshot: boolean;
     status: 'active' | 'converted' | 'abandoned';
     shop_type: 'vendor_catalog' | 'fixed_price' | 'dropship';
     allow_delivery: boolean;
@@ -36,26 +52,8 @@ export interface CartData {
     deduct_print_from_margin?: boolean;
     deduct_packing_from_margin?: boolean;
   };
-  items: Array<{
-    id: number;
-    cart_id: number;
-    product_id: number;
-    global_stock_id: number | null;
-    global_stock_allocation_id: number | null;
-    quantity: number;
-    minimum_quantity: number;
-    minimum_order_quantity?: number | null;
-    unit_list_price_amount: number | null;
-    unit_list_price_currency_id: number | null;
-    unit_sell_price_amount: number | null;
-    unit_sell_price_currency_id: number | null;
-    unit_minimum_sell_price_amount: number | null;
-    unit_minimum_sell_price_currency_id: number | null;
-    customer_sell_price_amount: number | null;
-    customer_sell_price_currency_id: number | null;
-    name: string;
-    image_url: string | null;
-  }>;
+  items: ShopCartItem[];
+  permissions?: CustomerShopPermissions | null;
 }
 
 const getOrCreateCart = async (shopId: number): Promise<CartData> => {

@@ -3659,7 +3659,7 @@ CREATE OR REPLACE FUNCTION "public"."list_customer_active_carts"("p_tenant_id" b
 ALTER FUNCTION "public"."list_customer_active_carts"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_customer_shop_orders"("p_tenant_id" bigint, "p_limit" integer DEFAULT 20, "p_offset" integer DEFAULT 0, "p_status_bucket" "text" DEFAULT NULL::"text") RETURNS TABLE("id" bigint, "shop_id" bigint, "shop_name" "text", "shop_slug" "text", "shop_type_snapshot" "public"."shop_type_enum", "order_no" "text", "status" "public"."shop_order_status", "item_count" bigint, "total_amount" numeric, "currency_symbol" "text", "created_at" timestamp with time zone)
+CREATE OR REPLACE FUNCTION "public"."list_customer_shop_orders"("p_tenant_id" bigint, "p_limit" integer DEFAULT 20, "p_offset" integer DEFAULT 0, "p_status_bucket" "text" DEFAULT NULL::"text") RETURNS TABLE("id" bigint, "shop_id" bigint, "shop_name" "text", "shop_slug" "text", "shop_type_snapshot" "public"."shop_type_enum", "order_no" "text", "status" "public"."shop_order_status", "item_count" bigint, "can_see_buy_price" boolean, "can_see_sell_price" boolean, "sell_currency_id" bigint, "currency_symbol" "text", "total_amount" numeric, "created_at" timestamp with time zone)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -3670,12 +3670,18 @@ declare
 begin
   if p_tenant_id is null then
     return;
+  end if;
+
   if p_status_bucket is not null
      and p_status_bucket not in ('needs_you', 'in_progress', 'done') then
     return;
+  end if;
+
   v_group_id := public.current_customer_group_id(p_tenant_id);
   if v_group_id is null then
     return;
+  end if;
+
   v_limit := greatest(1, least(coalesce(p_limit, 20), 200));
   v_offset := greatest(0, coalesce(p_offset, 0));
 
@@ -3693,25 +3699,52 @@ begin
       from public.shop_order_items soi
       where soi.order_id = o.id
     ) as item_count,
-    coalesce(
-      (
-        select sum(
-          coalesce(
-            soi.final_price_amount,
-            soi.customer_offer_amount,
-            soi.unit_sell_price_amount,
-            soi.unit_list_price_amount
-          ) * soi.quantity
-        )
-        from public.shop_order_items soi
-        where soi.order_id = o.id
-      ),
-      0
-    )::numeric as total_amount,
+    case
+      when o.shop_type_snapshot = 'dropship' then true
+      when o.cart_id is not null then coalesce(c.can_see_buy_price_snapshot, false)
+      else coalesce(live_perm.can_see_buy_price, false)
+    end as can_see_buy_price,
+    case
+      when o.shop_type_snapshot = 'dropship' then true
+      when o.cart_id is not null then coalesce(c.can_see_sell_price_snapshot, false)
+      else coalesce(live_perm.can_see_sell_price, false)
+    end as can_see_sell_price,
+    s.sell_currency_id,
     gc.symbol as currency_symbol,
+    case
+      when (
+        case
+          when o.shop_type_snapshot = 'dropship' then true
+          when o.cart_id is not null then coalesce(c.can_see_sell_price_snapshot, false)
+          else coalesce(live_perm.can_see_sell_price, false)
+        end
+      ) then
+        coalesce(
+          (
+            select sum(
+              coalesce(
+                soi.final_price_amount,
+                soi.customer_offer_amount,
+                soi.unit_sell_price_amount,
+                soi.unit_list_price_amount
+              ) * soi.quantity
+            )
+            from public.shop_order_items soi
+            where soi.order_id = o.id
+          ),
+          0
+        )::numeric
+      else null
+    end as total_amount,
     o.created_at
   from public.shop_orders o
   join public.shops s on s.id = o.shop_id
+  left join public.shop_carts c on c.id = o.cart_id
+  left join lateral (
+    select p.can_see_buy_price, p.can_see_sell_price
+    from public.get_shop_permissions_for_customer(o.shop_id) p
+    limit 1
+  ) live_perm on true
   left join public.global_currencies gc on gc.id = s.sell_currency_id
   where o.tenant_id = p_tenant_id
     and o.customer_group_id = v_group_id
@@ -3745,6 +3778,8 @@ begin
   order by o.created_at desc
   limit v_limit
   offset v_offset;
+end;
+$$;
 ALTER FUNCTION "public"."list_customer_shop_orders"("p_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_status_bucket" "text") OWNER TO "postgres";
 
 
@@ -4097,13 +4132,15 @@ begin
 ALTER FUNCTION "public"."list_procurement_shop_order_lines"("p_parent_tenant_id" bigint, "p_child_tenant_id" bigint, "p_search" "text", "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_shop_orders_for_staff"("p_tenant_id" bigint, "p_limit" integer DEFAULT 20, "p_offset" integer DEFAULT 0, "p_search" "text" DEFAULT NULL::"text", "p_status" "text" DEFAULT NULL::"text", "p_shop_id" bigint DEFAULT NULL::bigint) RETURNS TABLE("id" bigint, "tenant_id" bigint, "shop_id" bigint, "shop_name" "text", "customer_group_id" bigint, "customer_group_name" "text", "order_no" "text", "name" "text", "status" "public"."shop_order_status", "created_at" timestamp with time zone, "updated_at" timestamp with time zone, "item_count" bigint, "total_amount" numeric)
+CREATE OR REPLACE FUNCTION "public"."list_shop_orders_for_staff"("p_tenant_id" bigint, "p_limit" integer DEFAULT 20, "p_offset" integer DEFAULT 0, "p_search" "text" DEFAULT NULL::"text", "p_status" "text" DEFAULT NULL::"text", "p_shop_id" bigint DEFAULT NULL::bigint) RETURNS TABLE("id" bigint, "tenant_id" bigint, "shop_id" bigint, "shop_name" "text", "customer_group_id" bigint, "customer_group_name" "text", "order_no" "text", "name" "text", "status" "public"."shop_order_status", "created_at" timestamp with time zone, "updated_at" timestamp with time zone, "item_count" bigint)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
 begin
   if not public.is_tenant_staff(p_tenant_id) then
     raise exception 'access denied';
+  end if;
+
   return query
   select
     o.id,
@@ -4117,15 +4154,7 @@ begin
     o.status,
     o.created_at,
     o.updated_at,
-    (select count(*)::bigint from public.shop_order_items where order_id = o.id) as item_count,
-    coalesce(
-      (
-        select sum(coalesce(final_price_amount, staff_offer_amount, customer_offer_amount, unit_sell_price_amount, unit_list_price_amount) * quantity)
-        from public.shop_order_items
-        where order_id = o.id
-      ),
-      0
-    )::numeric as total_amount
+    (select count(*)::bigint from public.shop_order_items where order_id = o.id) as item_count
   from public.shop_orders o
   join public.shops s on s.id = o.shop_id
   join public.customer_groups cg on cg.id = o.customer_group_id
@@ -4133,7 +4162,7 @@ begin
     and (p_status is null or o.status::text = p_status)
     and (p_shop_id is null or o.shop_id = p_shop_id)
     and (
-      p_search is null 
+      p_search is null
       or o.order_no ilike ('%' || p_search || '%')
       or o.name ilike ('%' || p_search || '%')
       or s.name ilike ('%' || p_search || '%')
@@ -4142,6 +4171,8 @@ begin
   order by o.created_at desc
   limit p_limit
   offset p_offset;
+end;
+$$;
 ALTER FUNCTION "public"."list_shop_orders_for_staff"("p_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_search" "text", "p_status" "text", "p_shop_id" bigint) OWNER TO "postgres";
 
 

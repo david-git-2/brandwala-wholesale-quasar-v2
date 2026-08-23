@@ -25,7 +25,6 @@
         {{ item.product_name }}
       </div>
 
-      <!-- Available Quantity -->
       <div
         v-if="
           permissions?.can_view_quantity &&
@@ -44,52 +43,45 @@
         {{ item.available_units }} {{ $t('shop.avail') }}
       </div>
 
-      <!-- Pricing Section -->
       <div class="product-pricing q-mt-sm">
         <div
-          v-if="showUnitPrice"
+          v-if="unitPriceText"
           class="text-subtitle1 text-weight-bold text-primary"
         >
           <span
-            v-if="shopType === 'dropship'"
+            v-if="unitPriceLabel"
             class="text-caption text-grey-6 block text-weight-medium"
           >
-            {{ $t('shop.wholesale_price') }}
+            {{ unitPriceLabel }}
           </span>
-          {{ formatMoney(item.unit_price_amount, item.unit_price_currency_symbol) }}
+          {{ unitPriceText }}
         </div>
+
         <div
-          v-if="showMinSellPrice"
+          v-if="sellPriceText"
+          class="text-subtitle1 text-weight-bold text-primary"
+          :class="{ 'q-mt-xs': unitPriceText }"
+        >
+          <span
+            v-if="sellPriceLabel"
+            class="text-caption text-grey-6 block text-weight-medium"
+          >
+            {{ sellPriceLabel }}
+          </span>
+          {{ sellPriceText }}
+        </div>
+
+        <div
+          v-if="resellMinimumText"
           class="text-body2 text-grey-9 text-weight-medium q-mt-xs"
         >
-            <template v-if="shopType === 'dropship'">
-              {{ $t('shop.min_sell_price') }}:
-              <span class="text-secondary text-weight-bold">
-                {{
-                  formatMoney(
-                    item.minimum_sell_price_amount,
-                    item.minimum_sell_price_currency_symbol,
-                  )
-                }}
-              </span>
-            </template>
-            <template v-else>
-              {{
-                $t('shop.min_price_hint', {
-                  amount: formatMoney(
-                    item.minimum_sell_price_amount,
-                    item.minimum_sell_price_currency_symbol,
-                  ),
-                })
-              }}
-            </template>
-          </div>
+          {{ $t('shop.min_sell_price') }}
+          <span class="text-secondary text-weight-bold">{{ resellMinimumText }}</span>
+        </div>
       </div>
 
-      <!-- Separate Actions Row below everything -->
       <div class="product-actions q-mt-auto q-pt-sm">
         <div class="row items-center no-wrap justify-between q-gutter-x-xs">
-          <!-- Qty adjuster shown only when NOT in cart -->
           <div
             v-if="!inCart"
             class="row items-center no-wrap quantity-controls col-auto"
@@ -166,11 +158,15 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
+import type { CustomerShopPermissions } from '../composables/useCustomerShopPermissionsQuery';
+import type { ShopCatalogItem, ShopType } from '../types';
+import { formatCatalogPrice, hasCatalogPrice } from '../utils/catalogPriceUtils';
 
 const props = defineProps<{
-  item: any;
-  permissions?: any;
-  shopType?: string | null | undefined;
+  item: ShopCatalogItem;
+  permissions?: CustomerShopPermissions | null;
+  shopType?: ShopType | null;
   selectedQty?: number | undefined;
   inCart?: boolean | undefined;
   loading?: boolean | undefined;
@@ -179,29 +175,48 @@ const props = defineProps<{
 }>();
 
 defineEmits<{
-  (e: 'open-detail', item: any): void;
+  (e: 'open-detail', item: ShopCatalogItem): void;
   (e: 'image-error'): void;
-  (e: 'increment', item: any): void;
-  (e: 'decrement', item: any): void;
-  (e: 'add-to-cart', item: any): void;
-  (e: 'remove-from-cart', item: any): void;
+  (e: 'increment', item: ShopCatalogItem): void;
+  (e: 'decrement', item: ShopCatalogItem): void;
+  (e: 'add-to-cart', item: ShopCatalogItem): void;
+  (e: 'remove-from-cart', item: ShopCatalogItem): void;
 }>();
+
+const { t } = useI18n();
 
 const minQty = computed(() => {
   if (props.shopType === 'dropship') return 1;
   return props.item.minimum_order_quantity || 1;
 });
 
-const showUnitPrice = computed(() => {
-  if (props.item.unit_price_amount == null) return false;
-  if (props.shopType === 'fixed_price') return !!props.permissions?.can_see_sell_price;
-  return !!props.permissions?.can_see_buy_price;
+const formatItemPrice = (price: ShopCatalogItem['unit_price']) =>
+  formatCatalogPrice(price, props.formatMoney);
+
+const unitPriceLabel = computed(() => {
+  if (!hasCatalogPrice(props.item.unit_price)) return null;
+  if (props.shopType === 'dropship') return t('shop.wholesale_price');
+  if (props.shopType === 'vendor_catalog') return t('shop.unit_price');
+  return null;
 });
 
-const showMinSellPrice = computed(
-  () =>
-    props.item.minimum_sell_price_amount != null && !!props.permissions?.can_see_sell_price,
-);
+const unitPriceText = computed(() => {
+  if (props.shopType === 'fixed_price') return null;
+  return formatItemPrice(props.item.unit_price);
+});
+
+const sellPriceLabel = computed(() => {
+  if (!hasCatalogPrice(props.item.sell_price)) return null;
+  if (props.shopType === 'dropship') return t('shop.sell_price');
+  return null;
+});
+
+const sellPriceText = computed(() => formatItemPrice(props.item.sell_price));
+
+const resellMinimumText = computed(() => {
+  if (props.shopType !== 'dropship') return null;
+  return formatItemPrice(props.item.resell_minimum_price);
+});
 </script>
 
 <style scoped>
