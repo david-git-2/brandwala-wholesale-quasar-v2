@@ -49,18 +49,37 @@ Per shop, staff grant **customer groups** on the **Access** tab ([`ShopAccessMat
 
 - **Add group** — pick existing group → `upsert_shop_customer_group_access`
 - **Create group** — inline form → `create_customer_account` (see `CUSTOMER.md`) then grant access
-- Capabilities: browse, **can see buy price** (`unit_price_*`), **can see sell price** (sell totals / dropship floor), cart, place order, negotiate, view qty, dropship price tier, credit limit
+- Capabilities: browse, **can see purchase price** (`unit_price`), **can see sell price** (`sell_price`), **can see resell minimum price** (`resell_minimum_price`), cart, place order, negotiate, view qty, dropship price tier, credit limit
 
 Group-wide defaults: `customer_group_shop_profiles` via `upsert_customer_group_shop_profile`.
 
-**Buy vs sell price permissions** (per group × shop):
+**Price permissions** (per group × shop):
 
-| Toggle | RPC flag | Controls |
+| Toggle | RPC flag | Gates object |
 | :--- | :--- | :--- |
-| **Can see buy price** | `can_see_buy_price` | `unit_price_amount` and `unit_price_currency_*` on catalog browse/detail/search |
-| **Can see sell price** | `can_see_sell_price` | Sell-side amounts: `minimum_sell_price_*` (dropship only), cart totals, checkout sell totals, order `total_amount`, `customer_sell_price_amount` |
+| **Can see purchase price** | `can_see_buy_price` | `unit_price` |
+| **Can see sell price** | `can_see_sell_price` | `sell_price` |
+| **Can see resell minimum price** | `can_see_resell_minimum_price` | `resell_minimum_price` |
 
-`vendor_catalog` shops have **no sell-price surface** on the storefront: browse/detail RPCs always return `minimum_sell_price_*` as `null` and never use `can_see_sell_price` for `unit_price_*`. Sell-price permission only matters for stock-backed / dropship flows.
+Cart/checkout sell totals still use `can_see_sell_price`.
+
+### Price visibility (permissions)
+
+Permissions come from `get_shop_permissions_for_customer(shop_id)` and are echoed in `meta.permissions`.
+
+Each price is a nested object: `{ amount, currency_id, code, symbol }`. When permission is denied or not applicable for that shop type, the whole object is `null`.
+
+| Permission | Object | `vendor_catalog` | `fixed_price` | `dropship` |
+| :--- | :--- | :--- | :--- | :--- |
+| `can_see_buy_price` | `unit_price` | List price | `null` | Landed cost + buy currency |
+| `can_see_sell_price` | `sell_price` | `null` | Computed listing price | Listing `sell_price_amount` |
+| `can_see_resell_minimum_price` | `resell_minimum_price` | `null` | `null` | Listing `minimum_sell_price_amount` |
+
+**Summary by shop type on browse:**
+
+- **`vendor_catalog`:** `unit_price` only
+- **`fixed_price`:** `sell_price` only
+- **`dropship`:** `unit_price` + `sell_price` + `resell_minimum_price` (each gated by its own permission)
 
 Grant key: `shop_permissions` (tab) / `shop_config` (shop CRUD).
 
@@ -275,23 +294,96 @@ Additional scope (not request filters):
 
 `p_limit` clamped 1–200; `p_offset` for pagination.
 
-### Price visibility (buy vs sell)
+### Price visibility (permissions)
 
-Permissions come from `get_shop_permissions_for_customer(shop_id)` and are echoed in `meta.permissions`.
+See §1 for the permission × shop-type matrix. On browse:
 
-| Field group | Gated by | Shop types |
-| :--- | :--- | :--- |
-| `unit_price_amount`, `unit_price_currency_*` | `can_see_buy_price` (`vendor_catalog`, `dropship`); `can_see_sell_price` (`fixed_price`) |
-| `minimum_sell_price_*` | `can_see_sell_price` | `dropship` only |
-| Cart / order sell totals | `can_see_sell_price` | Cart, checkout, orders (not browse rows) |
+| Object | Permission |
+| :--- | :--- |
+| `unit_price` | `can_see_buy_price` |
+| `sell_price` | `can_see_sell_price` |
+| `resell_minimum_price` | `can_see_resell_minimum_price` |
 
-**`vendor_catalog`:** list/buy price only. RPCs omit sell-price fields (`minimum_sell_price_*` always `null`). `can_see_sell_price` does not gate catalog `unit_price_*`.
+### Response shape
 
-**`fixed_price`:** `unit_price_*` is the listing sell price to the customer, gated by `can_see_sell_price` (no `minimum_sell_price_*` on browse).
+Non-price fields are unchanged: `product_id`, `product_name`, `product_image_url`, `product_barcode`, `product_code`, `product_brand`, `product_category`, `vendor_code`, `is_available`, `available_units`, `global_stock_allocation_id`, `global_stock_id`, `minimum_order_quantity`.
 
-**`dropship`:** `unit_price_*` is wholesale / buy-side (`can_see_buy_price`). `minimum_sell_price_*` is the customer sell floor (`can_see_sell_price`).
+```jsonc
+{
+  "data": [
+    {
+      "product_id": 456,
+      "product_name": "Wireless Earbuds",
+      "product_image_url": "https://…",
+      "product_barcode": "890…",
+      "product_code": "WE-001",
+      "product_brand": "Sony",
+      "product_category": "Electronics",
+      "vendor_code": "V001",
+      "is_available": true,
+      "unit_price": {
+        "amount": 850.00,
+        "currency_id": 1,
+        "code": "BDT",
+        "symbol": "৳"
+      },
+      "sell_price": {
+        "amount": 1200.00,
+        "currency_id": 1,
+        "code": "BDT",
+        "symbol": "৳"
+      },
+      "resell_minimum_price": {
+        "amount": 1000.00,
+        "currency_id": 1,
+        "code": "BDT",
+        "symbol": "৳"
+      },
+      "available_units": 42,
+      "global_stock_allocation_id": 789,
+      "global_stock_id": 789,
+      "minimum_order_quantity": 1
+    }
+  ],
+  "meta": {
+    "total": 120,
+    "page": 1,
+    "page_size": 20,
+    "total_pages": 6,
+    "shop": {
+      "id": 12,
+      "name": "My Dropship Shop",
+      "slug": "my-dropship",
+      "shop_type": "dropship",
+      "vendor_code": null,
+      "order_mode": "checkout_fixed",
+      "is_negotiable": false,
+      "show_stock_quantity": true,
+      "default_currency_id": 1,
+      "is_active": true,
+      "buy_currency_id": 1,
+      "sell_currency_id": 1,
+      "pricing_method": null,
+      "markup_percentage": null,
+      "quantity_display_mode": "original",
+      "vendor_filters": null
+    },
+    "permissions": {
+      "can_browse": true,
+      "can_see_buy_price": true,
+      "can_see_sell_price": true,
+      "can_see_resell_minimum_price": true,
+      "can_add_to_cart": true,
+      "can_place_order": true,
+      "can_negotiate": false,
+      "can_view_quantity": true,
+      "can_set_dropship_price": true
+    }
+  }
+}
+```
 
-When the matching permission is `false`, the RPC returns `null` for those fields (product row stays).
+`vendor_catalog` / `fixed_price` rows: only the applicable price object(s) are populated; others are `null` (see §1 matrix).
 
 ---
 

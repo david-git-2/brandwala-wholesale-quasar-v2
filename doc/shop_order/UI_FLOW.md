@@ -112,12 +112,18 @@ flowchart LR
 
 ### Capability toggles (per group × shop)
 
-| Toggle | Default (new grant) | Effect on storefront |
+Price visibility uses two **field groups** (see [`SHOP_ORDER.md`](./SHOP_ORDER.md) §1). Access-matrix toggles map to each group:
+
+| Toggle | Default | Field group | Effect on storefront |
+| :--- | :--- | :--- | :--- |
+| Can see purchase price | `true` | **Unit** | `unit_price_*` on browse/detail/search (`vendor_catalog`, `dropship`) |
+| Can see sell price | `true` | **Sell** | Line sell amounts + cart/checkout/order totals; `unit_price_*` on `fixed_price` browse |
+| Can see resell minimum price | `true` | **Sell** (resell minimum) | `minimum_sell_price_*` on browse/detail, `unit_minimum_sell_price_*` in cart (`dropship`). *(Planned `can_see_resell_minimum_price`; today still tied to sell price in code.)* |
+
+| Toggle | Default | Effect on storefront |
 | :--- | :--- | :--- |
 | Browse catalog | `true` | Can open `StorefrontPage` |
 | View quantity | `true` | Stock/qty visible when shop allows |
-| Can see buy price | `true` | `unit_price_amount` and `unit_price_currency_*` on browse/detail/search |
-| Can see sell price | `true` | Sell-side amounts: dropship `minimum_sell_price_*`, cart totals, checkout sell totals, order totals. **Not used on `vendor_catalog` browse** |
 | Add to cart | `true` | Add-to-cart actions enabled |
 | Place order | `true` | Checkout submit allowed |
 | Negotiate | `false` | Counter-offer UI (catalog shops) |
@@ -143,7 +149,7 @@ flowchart TD
 | Screen | Grant key | Key rules |
 | :--- | :--- | :--- |
 | **Catalog entry** | `shop_storefront` | Redirect hub before slug browse |
-| **Storefront** | `shop_storefront` | Permissions from `get_shop_permissions_for_customer`; `can_see_buy_price` gates `unit_price_*`; `can_see_sell_price` gates sell-side amounts (not used on catalog browse) |
+| **Storefront** | `shop_storefront` | Permissions from `get_shop_permissions_for_customer`; unit + sell price groups (§5) |
 | **Product detail** | `shop_storefront` | `get_shop_catalog_product_for_customer`; same permission gates as catalog; shareable URL |
 | **Cart** | `shop_cart` | Per-shop cart via `get_or_create_shop_cart` |
 | **Checkout** | `shop_cart` | See §7 |
@@ -289,7 +295,7 @@ StorefrontProductDetailPage
 │       ├── name (h1)
 │       ├── copy-link button
 │       ├── ProductDetailSpecs        — dl rows (see field table below)
-│       ├── ProductDetailPricing      — unit price + currency symbol (buy/sell permissions)
+│       ├── ProductDetailPricing      — unit price group + sell group (resell minimum on dropship)
 │       └── ProductDetailStock        — available badge (can_view_quantity)
 ├── ProductDetailRelated              — same-category cards (`vendor_catalog` only; RPC §9)
 └── ProductDetailActionBar (sticky)   — qty stepper + Add to cart / Update cart
@@ -308,13 +314,24 @@ StorefrontProductDetailPage
 | MOQ | `minimum_order_quantity` | Always; banner when > 1 |
 | Product code | `product_code` | When non-null |
 | Barcode | `product_barcode` | When non-null |
-| Unit price | `unit_price_amount` | `can_see_buy_price` (`vendor_catalog`, `dropship`); `can_see_sell_price` (`fixed_price`) |
-| Currency symbol | `unit_price_currency_symbol` | With unit price (`can_see_buy_price`) |
-| Min sell price | `minimum_sell_price_amount` | `can_see_sell_price` **and** `shop.shop_type = dropship` (never on `vendor_catalog`) |
 | Stock | `available_units` | `can_view_quantity` and value not null |
 | Qty stepper + cart CTA | — | `can_add_to_cart`; disabled when `available_units = 0` |
 | Copy link | current URL | Always |
 | Related products | `list_related_shop_catalog_products_for_customer` | `vendor_catalog` + non-empty category + RPC returns rows |
+
+#### Unit price group
+
+| Field | Show when |
+| :--- | :--- |
+| `unit_price_amount` | `can_see_buy_price` (`vendor_catalog`, `dropship`); `can_see_sell_price` (`fixed_price`) |
+| `unit_price_currency_symbol` | With unit price (same permission) |
+
+#### Sell price group
+
+| Field | Show when |
+| :--- | :--- |
+| `sell_price_amount` (+ currency fields) | `can_see_sell_price` **and** `shop.shop_type = dropship` |
+| `resell_minimum_price_amount` (+ currency fields) | `can_see_resell_minimum_price` *(planned)* **and** `shop.shop_type = dropship` |
 
 ### Interactions
 
@@ -328,13 +345,13 @@ StorefrontProductDetailPage
 | **Related card click** | Related product card | Navigate to `/shop/browse/:shopSlug/product/:productId` |
 | **View all in category** | Link in related header | `StorefrontPage` with `?category={product_category}` |
 
-### Shop-type notes
+### Shop-type notes (price groups)
 
-| Shop type | Unit price (`can_see_buy_price`) | Sell-side fields (`can_see_sell_price`) | Stock |
+| Shop type | Unit price group | Sell price group | Stock |
 | :--- | :--- | :--- | :--- |
-| `vendor_catalog` | List / buy price | None — no min sell or sell totals on catalog | Usually hidden (`available_units` null) |
-| `fixed_price` | Listing unit price | None on browse | ATP when listing + permissions allow |
-| `dropship` | Wholesale / buy price | Min sell floor on detail; cart/checkout sell amounts | Same as fixed_price |
+| `vendor_catalog` | List / purchase price (`can_see_buy_price`) | None on browse; totals in cart/checkout if `can_see_sell_price` | Usually hidden (`available_units` null) |
+| `fixed_price` | Listing price via **sell** permission (`can_see_sell_price`) | No resell minimum on browse | ATP when listing + permissions allow |
+| `dropship` | Landed cost + buy currency (`can_see_buy_price`) | `sell_price_*` + `resell_minimum_price_*` on browse/detail | Same as `fixed_price` |
 
 ### Error states
 
@@ -342,6 +359,7 @@ StorefrontProductDetailPage
 | :--- | :--- |
 | Loading | Page skeleton (image + spec rows) |
 | Product not found / no browse access | `q-banner` + link back to catalog |
-| `can_see_buy_price` off | Hide unit price block; specs and add-to-cart still shown if allowed |
-| `can_see_sell_price` off (dropship) | Hide min sell floor; cart/checkout sell totals hidden per cart rules |
+| `can_see_buy_price` off | Hide **unit price group**; specs and add-to-cart still shown if allowed |
+| `can_see_resell_minimum_price` off (dropship) | Hide **sell group — resell minimum** on browse/detail/cart |
+| `can_see_sell_price` off | Hide **sell group** (line sell amounts + totals) on cart/checkout/orders |
 | Out of stock | Stock badge red; Add to cart disabled |

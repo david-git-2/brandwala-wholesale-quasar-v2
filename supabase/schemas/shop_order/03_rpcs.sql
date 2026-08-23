@@ -392,6 +392,7 @@ declare
   v_can_browse boolean;
   v_can_see_buy_price boolean;
   v_can_see_sell_price boolean;
+  v_can_see_resell_minimum_price boolean;
   v_can_add_to_cart boolean;
   v_can_place_order boolean;
   v_can_negotiate boolean;
@@ -430,10 +431,12 @@ begin
   end if;
 
   select
-    can_browse, can_see_buy_price, can_see_sell_price, can_add_to_cart, can_place_order,
+    can_browse, can_see_buy_price, can_see_sell_price, can_see_resell_minimum_price,
+    can_add_to_cart, can_place_order,
     can_negotiate, can_view_quantity, can_set_dropship_price
   into
-    v_can_browse, v_can_see_buy_price, v_can_see_sell_price, v_can_add_to_cart, v_can_place_order,
+    v_can_browse, v_can_see_buy_price, v_can_see_sell_price, v_can_see_resell_minimum_price,
+    v_can_add_to_cart, v_can_place_order,
     v_can_negotiate, v_can_view_quantity, v_can_set_dropship_price
   from public.get_shop_permissions_for_customer(v_shop_id);
 
@@ -490,14 +493,17 @@ begin
                   'product_category', p.category,
                   'vendor_code', p.vendor_code,
                   'is_available', p.is_available,
-                  'unit_price_amount', case when $8 then p.list_price_amount else null end,
-                  'unit_price_currency_id', case when $8 then p.list_price_currency_id else null end,
-                  'unit_price_currency_code', case when $8 then (select code from public.global_currencies where id = p.list_price_currency_id) else null end,
-                  'unit_price_currency_symbol', case when $8 then (select symbol from public.global_currencies where id = p.list_price_currency_id) else null end,
-                  'minimum_sell_price_amount', null,
-                  'minimum_sell_price_currency_id', null,
-                  'minimum_sell_price_currency_code', null,
-                  'minimum_sell_price_currency_symbol', null,
+                  'unit_price', case
+                    when $8 then jsonb_build_object(
+                      'amount', p.list_price_amount,
+                      'currency_id', p.list_price_currency_id,
+                      'code', (select code from public.global_currencies where id = p.list_price_currency_id),
+                      'symbol', (select symbol from public.global_currencies where id = p.list_price_currency_id)
+                    )
+                    else null
+                  end,
+                  'sell_price', null,
+                  'resell_minimum_price', null,
                   'available_units', null,
                   'global_stock_allocation_id', null,
                   'global_stock_id', null,
@@ -544,6 +550,9 @@ begin
               else
                 l.sell_price_amount
             end as computed_sell_price,
+            coalesce(gsi.landed_cost_bdt, public.calculate_landed_unit_cost(gsi.id)) as computed_unit_cost,
+            l.sell_price_amount as listing_sell_price_amount,
+            l.sell_price_currency_id as listing_sell_price_currency_id,
             l.sell_price_currency_id,
             l.minimum_sell_price_amount,
             l.minimum_sell_price_currency_id,
@@ -598,30 +607,39 @@ begin
                   'product_category', p.product_category,
                   'vendor_code', p.product_vendor_code,
                   'is_available', p.product_is_available,
-                  'unit_price_amount', case
-                    when $8 = 'dropship' and $15 then p.computed_sell_price
-                    when $8 = 'fixed_price' and $7 then p.computed_sell_price
+                  'unit_price', case
+                    when $8 = 'dropship' and $15 then jsonb_build_object(
+                      'amount', p.computed_unit_cost,
+                      'currency_id', $16,
+                      'code', (select code from public.global_currencies where id = $16),
+                      'symbol', (select symbol from public.global_currencies where id = $16)
+                    )
                     else null
                   end,
-                  'unit_price_currency_id', case
-                    when $8 = 'dropship' and $15 then p.sell_price_currency_id
-                    when $8 = 'fixed_price' and $7 then p.sell_price_currency_id
+                  'sell_price', case
+                    when $7 and $8 = 'fixed_price' then jsonb_build_object(
+                      'amount', p.computed_sell_price,
+                      'currency_id', p.sell_price_currency_id,
+                      'code', (select code from public.global_currencies where id = p.sell_price_currency_id),
+                      'symbol', (select symbol from public.global_currencies where id = p.sell_price_currency_id)
+                    )
+                    when $7 and $8 = 'dropship' then jsonb_build_object(
+                      'amount', p.listing_sell_price_amount,
+                      'currency_id', p.listing_sell_price_currency_id,
+                      'code', (select code from public.global_currencies where id = p.listing_sell_price_currency_id),
+                      'symbol', (select symbol from public.global_currencies where id = p.listing_sell_price_currency_id)
+                    )
                     else null
                   end,
-                  'unit_price_currency_code', case
-                    when $8 = 'dropship' and $15 then (select code from public.global_currencies where id = p.sell_price_currency_id)
-                    when $8 = 'fixed_price' and $7 then (select code from public.global_currencies where id = p.sell_price_currency_id)
+                  'resell_minimum_price', case
+                    when $17 and $8 = 'dropship' then jsonb_build_object(
+                      'amount', p.minimum_sell_price_amount,
+                      'currency_id', p.minimum_sell_price_currency_id,
+                      'code', (select code from public.global_currencies where id = p.minimum_sell_price_currency_id),
+                      'symbol', (select symbol from public.global_currencies where id = p.minimum_sell_price_currency_id)
+                    )
                     else null
                   end,
-                  'unit_price_currency_symbol', case
-                    when $8 = 'dropship' and $15 then (select symbol from public.global_currencies where id = p.sell_price_currency_id)
-                    when $8 = 'fixed_price' and $7 then (select symbol from public.global_currencies where id = p.sell_price_currency_id)
-                    else null
-                  end,
-                  'minimum_sell_price_amount', case when $7 and $8 = 'dropship' then p.minimum_sell_price_amount else null end,
-                  'minimum_sell_price_currency_id', case when $7 and $8 = 'dropship' then p.minimum_sell_price_currency_id else null end,
-                  'minimum_sell_price_currency_code', case when $7 and $8 = 'dropship' then (select code from public.global_currencies where id = p.minimum_sell_price_currency_id) else null end,
-                  'minimum_sell_price_currency_symbol', case when $7 and $8 = 'dropship' then (select symbol from public.global_currencies where id = p.minimum_sell_price_currency_id) else null end,
                   'available_units', case
                     when not $9 or not coalesce(p.listing_show_quantity, $10) then null
                     when $13 = 'original' then greatest(0, p.available_qty)
@@ -663,7 +681,9 @@ begin
       v_markup_percentage,
       v_quantity_display_mode,
       v_tenant_id,
-      v_can_see_buy_price;
+      v_can_see_buy_price,
+      v_buy_currency_id,
+      v_can_see_resell_minimum_price;
   end if;
 
   v_result := jsonb_set(v_result, '{meta, shop}', jsonb_build_object(
@@ -688,6 +708,7 @@ begin
     'can_browse', v_can_browse,
     'can_see_buy_price', v_can_see_buy_price,
     'can_see_sell_price', v_can_see_sell_price,
+    'can_see_resell_minimum_price', v_can_see_resell_minimum_price,
     'can_add_to_cart', v_can_add_to_cart,
     'can_place_order', v_can_place_order,
     'can_negotiate', v_can_negotiate,
@@ -970,6 +991,7 @@ declare
   v_can_browse boolean;
   v_can_see_buy_price boolean;
   v_can_see_sell_price boolean;
+  v_can_see_resell_minimum_price boolean;
   v_can_add_to_cart boolean;
   v_can_place_order boolean;
   v_can_negotiate boolean;
@@ -1007,10 +1029,12 @@ begin
   end if;
 
   select
-    can_browse, can_see_buy_price, can_see_sell_price, can_add_to_cart, can_place_order,
+    can_browse, can_see_buy_price, can_see_sell_price, can_see_resell_minimum_price,
+    can_add_to_cart, can_place_order,
     can_negotiate, can_view_quantity, can_set_dropship_price
   into
-    v_can_browse, v_can_see_buy_price, v_can_see_sell_price, v_can_add_to_cart, v_can_place_order,
+    v_can_browse, v_can_see_buy_price, v_can_see_sell_price, v_can_see_resell_minimum_price,
+    v_can_add_to_cart, v_can_place_order,
     v_can_negotiate, v_can_view_quantity, v_can_set_dropship_price
   from public.get_shop_permissions_for_customer(v_shop_id);
 
@@ -3420,7 +3444,7 @@ begin
 ALTER FUNCTION "public"."get_shop_effective_grants"("p_tenant_id" bigint, "p_customer_group_member_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_shop_permissions_for_customer"("p_shop_id" bigint) RETURNS TABLE("can_browse" boolean, "can_see_buy_price" boolean, "can_see_sell_price" boolean, "can_add_to_cart" boolean, "can_place_order" boolean, "can_negotiate" boolean, "can_view_quantity" boolean, "can_set_dropship_price" boolean)
+CREATE OR REPLACE FUNCTION "public"."get_shop_permissions_for_customer"("p_shop_id" bigint) RETURNS TABLE("can_browse" boolean, "can_see_buy_price" boolean, "can_see_sell_price" boolean, "can_see_resell_minimum_price" boolean, "can_add_to_cart" boolean, "can_place_order" boolean, "can_negotiate" boolean, "can_view_quantity" boolean, "can_set_dropship_price" boolean)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -3435,8 +3459,9 @@ begin
   where id = p_shop_id;
 
   if v_shop_active is not true then
-    return query select false, false, false, false, false, false, false, false;
+    return query select false, false, false, false, false, false, false, false, false;
     return;
+  end if;
   v_shop_allows_negotiate := v_shop_type = 'vendor_catalog';
 
   return query
@@ -3464,6 +3489,12 @@ begin
         end
       end
     ), false) as can_see_sell_price,
+
+    coalesce(bool_or(
+      case when access.status = false or profile.is_active = false then false
+      else coalesce(access.can_see_resell_minimum_price, profile.default_can_see_resell_minimum_price, false)
+      end
+    ), false) as can_see_resell_minimum_price,
 
     coalesce(bool_or(
       case when access.status = false or profile.is_active = false then false
@@ -3507,6 +3538,10 @@ begin
     and cg.is_active = true
     and cgm.is_active = true
     and lower(trim(cgm.email)) = public.current_user_email();
+end;
+$$;
+
+
 ALTER FUNCTION "public"."get_shop_permissions_for_customer"("p_shop_id" bigint) OWNER TO "postgres";
 
 
