@@ -265,16 +265,16 @@
                     {{ $t('shop.qty') }}: {{ item.quantity }}
                   </div>
                 </q-item-section>
-                <q-item-section side v-if="cart?.see_price_snapshot || cart?.shop_type === 'dropship'">
+                <q-item-section side v-if="canSeeBuyPrice || canSeeSellPrice">
                   <template v-if="cart?.shop_type === 'dropship'">
-                    <div class="text-caption text-grey-6 text-right" style="font-size: 10px;">
+                    <div v-if="canSeeBuyPrice" class="text-caption text-grey-6 text-right" style="font-size: 10px;">
                       {{ $t('shop.cost_label') }} {{ formatBuyerItemTotal(item) }}
                     </div>
-                    <div class="text-caption text-weight-bold text-primary text-right">
+                    <div v-if="canSeeSellPrice" class="text-caption text-weight-bold text-primary text-right">
                       {{ $t('shop.pay_label') }} {{ formatItemTotal(item) }}
                     </div>
                   </template>
-                  <template v-else>
+                  <template v-else-if="canSeeSellPrice">
                     <div class="text-caption text-weight-bold text-grey-9">
                       {{ formatItemTotal(item) }}
                     </div>
@@ -367,7 +367,7 @@
                   cart?.shop_type === 'dropship' ? $t('shop.recipient_pay_total') : $t('shop.estimated_total')
                 }}</span>
                 <span
-                  v-if="cart?.see_price_snapshot || cart?.shop_type === 'dropship'"
+                  v-if="canSeeSellPrice"
                   class="text-h6 text-weight-bold text-primary"
                 >
                   {{ cart?.shop_type === 'dropship' ? formatAmount(calculatedRecipientGrandTotal) : formatCartTotal() }}
@@ -472,6 +472,16 @@ const postcodeOptions = ref<(BDPostcodeOption & { displayLabel: string })[]>([])
 
 const shopType = computed(() => cart.value?.shop_type);
 const allowDelivery = computed(() => cart.value?.allow_delivery);
+
+const canSeeBuyPrice = computed(() => {
+  if (cart.value?.shop_type === 'dropship') return true;
+  return !!cart.value?.can_see_buy_price_snapshot;
+});
+
+const canSeeSellPrice = computed(() => {
+  if (cart.value?.shop_type === 'dropship') return true;
+  return !!cart.value?.can_see_sell_price_snapshot;
+});
 
 // Load BD Districts and Upazilas
 const loadLocationData = async () => {

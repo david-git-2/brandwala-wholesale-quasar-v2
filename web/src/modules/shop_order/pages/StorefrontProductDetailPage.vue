@@ -114,7 +114,7 @@
               </dl>
 
               <q-card
-                v-if="permissions?.see_price && product.unit_price_amount != null"
+                v-if="showProductUnitPrice"
                 flat
                 bordered
                 class="q-pa-sm q-mb-sm product-detail__price-card"
@@ -126,7 +126,7 @@
                   {{ formatMoney(product.unit_price_amount, product.unit_price_currency_symbol) }}
                 </div>
                 <div
-                  v-if="product.minimum_sell_price_amount != null"
+                  v-if="product.minimum_sell_price_amount != null && permissions?.can_see_sell_price"
                   class="text-body2 text-grey-8 q-mt-xs"
                 >
                   {{ $t('shop.min_sell_price') }}
@@ -234,7 +234,7 @@
                     {{ item.product_name }}
                   </div>
                   <div
-                    v-if="permissions?.see_price && item.unit_price_amount != null"
+                    v-if="showRelatedUnitPrice(item)"
                     class="text-body2 text-primary text-weight-bold q-mt-xs"
                   >
                     {{ formatMoney(item.unit_price_amount, item.unit_price_currency_symbol) }}
@@ -301,6 +301,18 @@ const { addItemMutation, updateQtyMutation } = useShopCartMutations();
 
 const shopName = computed(() => shopDetails.value?.name || shopSlug.value);
 const shopType = computed(() => shopDetails.value?.shop_type ?? null);
+
+const showProductUnitPrice = computed(() => {
+  if (!product.value?.unit_price_amount) return false;
+  if (shopType.value === 'fixed_price') return !!permissions.value?.can_see_sell_price;
+  return !!permissions.value?.can_see_buy_price;
+});
+
+const showRelatedUnitPrice = (item: { unit_price_amount?: number | null }) => {
+  if (item.unit_price_amount == null) return false;
+  return !!permissions.value?.can_see_buy_price;
+};
+
 const showRelatedSection = computed(
   () =>
     shopType.value === 'vendor_catalog' &&

@@ -49,9 +49,18 @@ Per shop, staff grant **customer groups** on the **Access** tab ([`ShopAccessMat
 
 - **Add group** — pick existing group → `upsert_shop_customer_group_access`
 - **Create group** — inline form → `create_customer_account` (see `CUSTOMER.md`) then grant access
-- Capabilities: browse, see price, cart, place order, negotiate, view qty, dropship price tier, credit limit
+- Capabilities: browse, **can see buy price** (`unit_price_*`), **can see sell price** (sell totals / dropship floor), cart, place order, negotiate, view qty, dropship price tier, credit limit
 
 Group-wide defaults: `customer_group_shop_profiles` via `upsert_customer_group_shop_profile`.
+
+**Buy vs sell price permissions** (per group × shop):
+
+| Toggle | RPC flag | Controls |
+| :--- | :--- | :--- |
+| **Can see buy price** | `can_see_buy_price` | `unit_price_amount` and `unit_price_currency_*` on catalog browse/detail/search |
+| **Can see sell price** | `can_see_sell_price` | Sell-side amounts: `minimum_sell_price_*` (dropship only), cart totals, checkout sell totals, order `total_amount`, `customer_sell_price_amount` |
+
+`vendor_catalog` shops have **no sell-price surface** on the storefront: browse/detail RPCs always return `minimum_sell_price_*` as `null` and never use `can_see_sell_price` for `unit_price_*`. Sell-price permission only matters for stock-backed / dropship flows.
 
 Grant key: `shop_permissions` (tab) / `shop_config` (shop CRUD).
 
@@ -178,12 +187,14 @@ flowchart LR
 | **`StorefrontProductDetailPage`** | Related strip (`vendor_catalog`) | `listRelatedShopCatalogProducts` → `RPC: list_related_shop_catalog_products_for_customer` | Key: `shopOrderQueryKeys.storefrontProductRelated(tenantId, shopSlug, productId)` |
 | **`StorefrontPage`** | Permissions | `useCustomerShopPermissionsQuery` (seeded from browse `meta.permissions`) | Key: `customerShopPermissions(shopId)` |
 | **`ShopCartPage`** | Load cart | `RPC: get_or_create_shop_cart` | Key: `shopOrderQueryKeys.cart(tenantId, shopId)` |
-| **`ShopCartPage`** | Permissions | `useCustomerShopPermissionsQuery` | Shared cache with storefront |
+| **`ShopCartPage`** | Permissions | `useCustomerShopPermissionsQuery` | Shared cache with storefront; gates price display (`can_see_buy_price`, `can_see_sell_price`) |
 | **`ShopOrdersPage`** | Shop filter | `useShopListQuery` → `RPC: list_shops` | Deferred until shop filter opened |
 | **`ShopPricingPage`** | Listings | `RPC: list_shop_product_listings` | Per shop |
 | **`ShopPricingPage`** | Candidates | `RPC: list_listable_stock_for_shop` | Deferred until add-listing pick dialog opens |
 | **`ShopCartPage`** | Add / qty / remove | `add_to_shop_cart`, `update_shop_cart_item_qty`, `remove_shop_cart_item` | Optimistic + invalidate cart |
 | **`ShopCheckoutPage`** | Submit | `RPC: submit_shop_order_from_cart` | Invalidates orders + cart |
+| **`CustomerOrdersPage`** | List orders | `RPC: list_customer_shop_orders` | Key: `['shopOrder', 'customerOrders', { tenantId, bucket }]` |
+| **`CustomerOrderDetailPage`** | Order detail | `RPC: get_customer_shop_order` | Per `orderId` |
 | **`DropshipFinanceHubPage`** | Hub load | `RPC: get_dropship_finance_hub_data` | KPIs + queue + merchants in one call |
 
 ### Dropship desk
@@ -264,6 +275,24 @@ Additional scope (not request filters):
 
 `p_limit` clamped 1–200; `p_offset` for pagination.
 
+### Price visibility (buy vs sell)
+
+Permissions come from `get_shop_permissions_for_customer(shop_id)` and are echoed in `meta.permissions`.
+
+| Field group | Gated by | Shop types |
+| :--- | :--- | :--- |
+| `unit_price_amount`, `unit_price_currency_*` | `can_see_buy_price` (`vendor_catalog`, `dropship`); `can_see_sell_price` (`fixed_price`) |
+| `minimum_sell_price_*` | `can_see_sell_price` | `dropship` only |
+| Cart / order sell totals | `can_see_sell_price` | Cart, checkout, orders (not browse rows) |
+
+**`vendor_catalog`:** list/buy price only. RPCs omit sell-price fields (`minimum_sell_price_*` always `null`). `can_see_sell_price` does not gate catalog `unit_price_*`.
+
+**`fixed_price`:** `unit_price_*` is the listing sell price to the customer, gated by `can_see_sell_price` (no `minimum_sell_price_*` on browse).
+
+**`dropship`:** `unit_price_*` is wholesale / buy-side (`can_see_buy_price`). `minimum_sell_price_*` is the customer sell floor (`can_see_sell_price`).
+
+When the matching permission is `false`, the RPC returns `null` for those fields (product row stays).
+
 ---
 
 ## 7b. RPC: `search_shop_catalog_for_customer`
@@ -299,7 +328,7 @@ One row per `product_id`. If the same product appears in multiple shops, keep th
 
 ### Response `data[]` fields
 
-Each hit includes `shop_id`, `shop_slug`, `shop_name`, product fields, and `unit_price_*` (null when `see_price` is false for that shop).
+Each hit includes `shop_id`, `shop_slug`, `shop_name`, product fields, and `unit_price_*` (`null` when `can_see_buy_price` is false for that shop). No `minimum_sell_price_*` on search hits.
 
 ---
 
@@ -340,11 +369,11 @@ get_shop_catalog_product_for_customer(
     "is_available": true,
     "country_of_origin": "UK",        // NEW — from products.country_of_origin
     "expire_date": "2027-01-31",      // NEW — from products.expire_date (text)
-    "unit_price_amount": 125.00,      // null when see_price = false
+    "unit_price_amount": 125.00,      // null when can_see_buy_price = false
     "unit_price_currency_id": 1,
     "unit_price_currency_code": "BDT",
     "unit_price_currency_symbol": "৳",
-    "minimum_sell_price_amount": null, // dropship + see_price only
+    "minimum_sell_price_amount": null, // dropship only; null when can_see_sell_price = false; always null for vendor_catalog
     "minimum_sell_price_currency_id": null,
     "minimum_sell_price_currency_code": null,
     "minimum_sell_price_currency_symbol": null,
@@ -365,8 +394,8 @@ get_shop_catalog_product_for_customer(
 | Field | Rule |
 | :--- | :--- |
 | Product visibility | Same as browse: `is_available = true` and `coalesce(hazardous, false) = false` |
-| `unit_price_amount`, currency fields | `null` when `see_price = false` |
-| `minimum_sell_price_*` | Only when `shop_type = dropship` and `see_price = true` |
+| `unit_price_amount`, `unit_price_currency_*` | `vendor_catalog` / `dropship`: `null` when `can_see_buy_price = false`. `fixed_price`: `null` when `can_see_sell_price = false` |
+| `minimum_sell_price_*` | Only when `shop_type = dropship` and `can_see_sell_price = true`; **never** returned for `vendor_catalog` |
 | `available_units` | `null` when `can_view_quantity = false` or shop hides qty; catalog shops return `null` |
 | `country_of_origin`, `expire_date` | From `products`; return `null` when empty |
 | Cost / landed cost / `reference_cost_*` | **Never exposed** |
@@ -433,7 +462,109 @@ list_related_shop_catalog_products_for_customer(
 
 ---
 
-## 10. Schema
+## 10. RPC: `list_customer_shop_orders`
+
+Customer order list across all shops (`CustomerOrdersPage`). One row per order for the logged-in customer group.
+
+### Signature
+
+```sql
+list_customer_shop_orders(
+  p_tenant_id     bigint,
+  p_limit         integer default 20,
+  p_offset        integer default 0,
+  p_status_bucket text    default null   -- 'needs_you' | 'in_progress' | 'done' | null
+) returns table (...)
+```
+
+- **Security:** `SECURITY DEFINER`; scoped to `current_customer_group_id(p_tenant_id)`
+- **Excludes:** `draft` orders
+- **`p_status_bucket`:** optional filter — `needs_you` (priced / negotiating / countered / final_offered), `in_progress` (everything else active), `done` (fulfilled / delivered / payment_received / cancelled / returned)
+
+### Order snapshots vs live shop data
+
+| Field source | What it is |
+| :--- | :--- |
+| `shop_type_snapshot` | Frozen on `shop_orders` at placement (`submit_shop_order_from_cart`). Does not change if shop type is edited later. |
+| `can_see_buy_price` | Whether this customer may see wholesale / buy-side amounts for that order's shop. |
+| `can_see_sell_price` | Whether this customer may see sell-side amounts and order totals. See rules below. |
+| `sell_currency_id`, `currency_symbol` | Checkout currency from the **live** `shops` row (same shop as `shop_id`). Symbol is the display helper for `sell_currency_id`. |
+| `total_amount` | Sum of line totals from `shop_order_items`; **null when `can_see_sell_price = false`**. |
+
+`shop_orders` does **not** yet store price-permission snapshots. Until those columns exist, `can_see_buy_price` / `can_see_sell_price` are resolved at read time (see below). Long-term: copy both flags from the cart into `shop_orders` at submit so historical orders stay stable.
+
+### Price permission resolution (list row)
+
+Same mental model as storefront / cart:
+
+| Condition | `can_see_buy_price` | `can_see_sell_price` |
+| :--- | :--- | :--- |
+| `shop_type_snapshot = dropship` | `true` (always) | `true` (always) |
+| Linked cart exists (`shop_orders.cart_id` → `shop_carts` snapshots) | `can_see_buy_price_snapshot` | `can_see_sell_price_snapshot` |
+| Otherwise | live `get_shop_permissions_for_customer(shop_id)` | same RPC |
+
+UI must hide `total_amount` (and any currency-formatted sell total) when `can_see_sell_price = false`, matching `StorefrontProductCard` and `ShopCartSummaryCard`.
+
+### Response columns
+
+| Column | Type | Notes |
+| :--- | :--- | :--- |
+| `id` | bigint | Order id |
+| `shop_id` | bigint | Shop |
+| `shop_name` | text | From `shops.name` |
+| `shop_slug` | text | From `shops.slug` |
+| `shop_type_snapshot` | `shop_type_enum` | `vendor_catalog` \| `fixed_price` \| `dropship` at placement |
+| `order_no` | text | Display reference |
+| `status` | `shop_order_status` | Current workflow status |
+| `item_count` | bigint | Count of `shop_order_items` rows |
+| `can_see_buy_price` | boolean | Customer may view buy / wholesale amounts |
+| `can_see_sell_price` | boolean | Customer may view sell amounts and order totals |
+| `sell_currency_id` | bigint | Shop checkout currency (`shops.sell_currency_id`) |
+| `currency_symbol` | text | Symbol for `sell_currency_id` (e.g. `৳`) |
+| `total_amount` | numeric \| null | Line subtotal; **null when `can_see_sell_price = false`** |
+| `created_at` | timestamptz | Order created |
+
+`total_amount` uses the first non-null per line: `final_price_amount` → `customer_offer_amount` → `unit_sell_price_amount` → `unit_list_price_amount`, times `quantity`.
+
+### Example row
+
+```jsonc
+{
+  "id": 42,
+  "shop_id": 7,
+  "shop_name": "Acme Catalog",
+  "shop_slug": "acme",
+  "shop_type_snapshot": "vendor_catalog",
+  "order_no": "ORD-20260823-00421",
+  "status": "submitted",
+  "item_count": 3,
+  "can_see_buy_price": false,
+  "can_see_sell_price": false,
+  "sell_currency_id": 1,
+  "currency_symbol": "৳",
+  "total_amount": null,
+  "created_at": "2026-08-23T06:30:00Z"
+}
+```
+
+When `can_see_sell_price = true`, `total_amount` is a number (may be `0`).
+
+### Frontend wiring
+
+| Layer | Name |
+| :--- | :--- |
+| Repository | `shopOrderRepository.listCustomerShopOrders(tenantId, opts)` |
+| Service | `shopOrderService.listCustomerShopOrders(...)` |
+| Type | `CustomerOrderListItem` in `web/src/modules/shop_order/types/index.ts` |
+| UI | `CustomerOrdersPage` — show total only when `order.can_see_sell_price`; format with `order.currency_symbol` |
+
+### Related: `get_customer_shop_order`
+
+Order **detail** RPC already returns `shop_sell_currency_id`, `shop_buy_currency_id`, and currency symbols on the `order` object. It should gain the same buy/sell permission rules and null out price fields on items / `total_amount` when `can_see_sell_price = false` (aligned with this list contract).
+
+---
+
+## 11. Schema
 
 Live SQL: [`supabase/schemas/shop_order/`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/supabase/schemas/shop_order/) (`01_types.sql` → `04_rls.sql`).
 

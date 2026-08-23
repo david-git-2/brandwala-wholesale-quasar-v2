@@ -4,7 +4,8 @@ export interface CustomerGroupShopProfile {
   customer_group_id: number;
   is_active: boolean;
   default_can_browse: boolean;
-  default_see_price: boolean;
+  default_can_see_buy_price: boolean;
+  default_can_see_sell_price: boolean;
   default_can_add_to_cart: boolean;
   default_can_place_order: boolean;
   default_can_negotiate: boolean;
@@ -20,7 +21,8 @@ export interface ShopCustomerGroupAccess {
   customer_group_id: number;
   status: boolean;
   can_browse: boolean | null;
-  see_price: boolean | null;
+  can_see_buy_price: boolean | null;
+  can_see_sell_price: boolean | null;
   can_add_to_cart: boolean | null;
   can_place_order: boolean | null;
   can_negotiate: boolean | null;
@@ -38,7 +40,8 @@ export interface UpsertProfilePayload {
   customer_group_id: number;
   is_active: boolean;
   default_can_browse: boolean;
-  default_see_price: boolean;
+  default_can_see_buy_price: boolean;
+  default_can_see_sell_price: boolean;
   default_can_add_to_cart: boolean;
   default_can_place_order: boolean;
   default_can_negotiate: boolean;
@@ -51,7 +54,8 @@ export interface UpsertAccessPayload {
   customer_group_id: number;
   status: boolean;
   can_browse: boolean | null;
-  see_price: boolean | null;
+  can_see_buy_price: boolean | null;
+  can_see_sell_price: boolean | null;
   can_add_to_cart: boolean | null;
   can_place_order: boolean | null;
   can_negotiate: boolean | null;

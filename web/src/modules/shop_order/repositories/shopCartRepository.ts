@@ -16,7 +16,8 @@ export interface CartData {
     tenant_id: number;
     shop_id: number;
     customer_group_id: number;
-    see_price_snapshot: boolean;
+    can_see_buy_price_snapshot: boolean;
+    can_see_sell_price_snapshot: boolean;
     status: 'active' | 'converted' | 'abandoned';
     shop_type: 'vendor_catalog' | 'fixed_price' | 'dropship';
     allow_delivery: boolean;
@@ -157,7 +158,8 @@ export interface ActiveCartItem {
   shop_slug: string;
   shop_logo_url: string | null;
   shop_type: 'vendor_catalog' | 'fixed_price' | 'dropship';
-  see_price: boolean;
+  can_see_buy_price: boolean;
+  can_see_sell_price: boolean;
   currency_id: number | null;
   currency_code: string | null;
   currency_symbol: string | null;
@@ -182,7 +184,8 @@ const listActiveShopCarts = async (tenantId: number): Promise<ActiveCartItem[]> 
     shop_slug: row.shop_slug,
     shop_logo_url: row.shop_logo_url ?? null,
     shop_type: row.shop_type as ActiveCartItem['shop_type'],
-    see_price: row.see_price,
+    can_see_buy_price: row.can_see_buy_price,
+    can_see_sell_price: row.can_see_sell_price,
     currency_id: row.currency_id ?? null,
     currency_code: row.currency_code ?? null,
     currency_symbol: row.currency_symbol ?? null,

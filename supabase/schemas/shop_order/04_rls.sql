@@ -381,7 +381,7 @@ GRANT ALL ON TABLE "public"."customer_group_shop_profiles" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."customer_group_shop_profiles" TO "service_role";
 
 
-GRANT ALL ON FUNCTION "public"."upsert_customer_group_shop_profile"("p_tenant_id" bigint, "p_customer_group_id" bigint, "p_is_active" boolean, "p_default_can_browse" boolean, "p_default_see_price" boolean, "p_default_can_add_to_cart" boolean, "p_default_can_place_order" boolean, "p_default_can_negotiate" boolean, "p_default_can_view_quantity" boolean, "p_default_can_set_dropship_price" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."upsert_customer_group_shop_profile"("p_tenant_id" bigint, "p_customer_group_id" bigint, "p_is_active" boolean, "p_default_can_browse" boolean, "p_default_can_see_buy_price" boolean, "p_default_can_see_sell_price" boolean, "p_default_can_add_to_cart" boolean, "p_default_can_place_order" boolean, "p_default_can_negotiate" boolean, "p_default_can_view_quantity" boolean, "p_default_can_set_dropship_price" boolean) TO "authenticated";
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shops" TO "anon";
@@ -397,7 +397,7 @@ GRANT ALL ON TABLE "public"."shop_customer_group_access" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shop_customer_group_access" TO "service_role";
 
 
-GRANT ALL ON FUNCTION "public"."upsert_shop_customer_group_access"("p_shop_id" bigint, "p_customer_group_id" bigint, "p_status" boolean, "p_can_browse" boolean, "p_see_price" boolean, "p_can_add_to_cart" boolean, "p_can_place_order" boolean, "p_can_negotiate" boolean, "p_can_view_quantity" boolean, "p_can_set_dropship_price" boolean, "p_price_tier_code" "text", "p_credit_limit_amount" numeric, "p_credit_limit_currency_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."upsert_shop_customer_group_access"("p_shop_id" bigint, "p_customer_group_id" bigint, "p_status" boolean, "p_can_browse" boolean, "p_can_see_buy_price" boolean, "p_can_see_sell_price" boolean, "p_can_add_to_cart" boolean, "p_can_place_order" boolean, "p_can_negotiate" boolean, "p_can_view_quantity" boolean, "p_can_set_dropship_price" boolean, "p_price_tier_code" "text", "p_credit_limit_amount" numeric, "p_credit_limit_currency_id" bigint) TO "authenticated";
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shop_pricing_rules" TO "anon";

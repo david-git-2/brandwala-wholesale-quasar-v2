@@ -20,7 +20,7 @@
               <div class="text-subtitle1 text-weight-bold text-grey-9">{{ c.shop_name }}</div>
               <div class="text-caption text-grey-6">
                 {{ c.item_count }} {{ c.item_count === 1 ? $t('shop.items').toLowerCase() : $t('shop.items').toLowerCase() }}
-                <template v-if="c.see_price && c.cart_total !== null">
+                <template v-if="c.can_see_sell_price && c.cart_total !== null">
                   ·
                   <span class="text-weight-bold text-grey-9">{{ formatActiveCartTotal(c) }}</span>
                 </template>

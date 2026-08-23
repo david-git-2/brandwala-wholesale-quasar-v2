@@ -7,23 +7,23 @@
     </q-card-section>
 
     <q-card-section class="q-py-md">
-      <template v-if="canSeePrice">
+      <template v-if="canSeeBuyPrice || canSeeSellPrice">
         <template v-if="cart?.shop_type === 'dropship'">
-          <div class="row justify-between q-mb-sm text-body2 text-grey-7">
+          <div v-if="canSeeSellPrice" class="row justify-between q-mb-sm text-body2 text-grey-7">
             <span>{{ $t('shop.items_subtotal') }}</span>
             <span class="text-weight-medium text-grey-9">
               {{ formatCartTotal() }}
             </span>
           </div>
 
-          <div class="row justify-between q-mb-sm text-body2 text-grey-7">
+          <div v-if="canSeeBuyPrice" class="row justify-between q-mb-sm text-body2 text-grey-7">
             <span>{{ $t('shop.your_cost_buyer') }}</span>
             <span class="text-weight-medium text-grey-9">
               {{ formatAmount(buyerTotal) }}
             </span>
           </div>
 
-          <div class="column q-mb-sm bg-green-1 q-pa-sm rounded-borders">
+          <div v-if="canSeeBuyPrice && canSeeSellPrice" class="column q-mb-sm bg-green-1 q-pa-sm rounded-borders">
             <div class="row justify-between items-center text-body2">
               <span class="text-weight-bold text-positive row items-center q-gutter-x-xs">
                 <q-icon name="ph ph-trend-up" size="16px" />
@@ -72,7 +72,7 @@
             </div>
           </q-expansion-item>
         </template>
-        <template v-else>
+        <template v-else-if="canSeeSellPrice">
           <div class="row justify-between q-mb-sm text-body2 text-grey-7">
             <span>{{ $t('shop.subtotal') }} ({{ itemCount }} {{ $t('shop.items').toLowerCase() }})</span>
             <span class="text-weight-medium">
@@ -83,7 +83,7 @@
 
         <q-separator class="q-my-md" />
 
-        <div class="row justify-between items-baseline q-mb-lg">
+        <div v-if="canSeeSellPrice" class="row justify-between items-baseline q-mb-lg">
           <span class="text-subtitle1 text-weight-bold text-grey-9">{{
             cart?.shop_type === 'dropship' ? $t('shop.recipient_pay_total') : $t('shop.estimated_total')
           }}</span>
@@ -115,7 +115,8 @@
 <script setup lang="ts">
 defineProps<{
   cart: any;
-  canSeePrice: boolean;
+  canSeeBuyPrice: boolean;
+  canSeeSellPrice: boolean;
   itemCount: number;
   formatCartTotal: () => string;
   formatAmount: (val: any) => string;

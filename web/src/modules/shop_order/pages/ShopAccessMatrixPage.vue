@@ -377,8 +377,13 @@
               </div>
               <q-card flat bordered class="q-pa-md q-gutter-y-sm">
                 <q-toggle
-                  v-model="editForm.see_price"
-                  :label="$t('shop_admin.see_prices')"
+                  v-model="editForm.can_see_buy_price"
+                  :label="$t('shop_admin.can_see_buy_price')"
+                  color="primary"
+                />
+                <q-toggle
+                  v-model="editForm.can_see_sell_price"
+                  :label="$t('shop_admin.can_see_sell_price')"
                   color="primary"
                 />
                 <q-toggle
@@ -570,7 +575,8 @@ const editForm = ref<UpsertAccessPayload>({
   customer_group_id: 0,
   status: true,
   can_browse: true,
-  see_price: true,
+  can_see_buy_price: true,
+  can_see_sell_price: true,
   can_add_to_cart: true,
   can_place_order: true,
   can_negotiate: false,
@@ -642,7 +648,8 @@ const standardGrantPayload = (groupId: number): UpsertAccessPayload => {
     customer_group_id: groupId,
     status: true,
     can_browse: true,
-    see_price: true,
+    can_see_buy_price: true,
+    can_see_sell_price: true,
     can_view_quantity: true,
     can_add_to_cart: true,
     can_place_order: true,
@@ -718,7 +725,8 @@ const openEditDrawer = (groupId: number) => {
     customer_group_id: groupId,
     status: true,
     can_browse: coerceBool(row?.can_browse, true),
-    see_price: coerceBool(row?.see_price, true),
+    can_see_buy_price: coerceBool(row?.can_see_buy_price, true),
+    can_see_sell_price: coerceBool(row?.can_see_sell_price, true),
     can_add_to_cart: coerceBool(row?.can_add_to_cart, true),
     can_place_order: coerceBool(row?.can_place_order, true),
     can_negotiate: coerceBool(row?.can_negotiate, false),

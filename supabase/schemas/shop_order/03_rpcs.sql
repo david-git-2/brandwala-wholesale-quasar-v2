@@ -390,7 +390,8 @@ declare
   v_quantity_display_mode text;
   v_vendor_filters jsonb;
   v_can_browse boolean;
-  v_see_price boolean;
+  v_can_see_buy_price boolean;
+  v_can_see_sell_price boolean;
   v_can_add_to_cart boolean;
   v_can_place_order boolean;
   v_can_negotiate boolean;
@@ -429,10 +430,10 @@ begin
   end if;
 
   select
-    can_browse, see_price, can_add_to_cart, can_place_order,
+    can_browse, can_see_buy_price, can_see_sell_price, can_add_to_cart, can_place_order,
     can_negotiate, can_view_quantity, can_set_dropship_price
   into
-    v_can_browse, v_see_price, v_can_add_to_cart, v_can_place_order,
+    v_can_browse, v_can_see_buy_price, v_can_see_sell_price, v_can_add_to_cart, v_can_place_order,
     v_can_negotiate, v_can_view_quantity, v_can_set_dropship_price
   from public.get_shop_permissions_for_customer(v_shop_id);
 
@@ -526,7 +527,7 @@ begin
       p_brand,
       v_limit,
       v_offset,
-      v_see_price,
+      v_can_see_buy_price,
       v_vendor_filters;
   else
     execute format(
@@ -597,10 +598,26 @@ begin
                   'product_category', p.product_category,
                   'vendor_code', p.product_vendor_code,
                   'is_available', p.product_is_available,
-                  'unit_price_amount', case when $7 then p.computed_sell_price else null end,
-                  'unit_price_currency_id', case when $7 then p.sell_price_currency_id else null end,
-                  'unit_price_currency_code', case when $7 then (select code from public.global_currencies where id = p.sell_price_currency_id) else null end,
-                  'unit_price_currency_symbol', case when $7 then (select symbol from public.global_currencies where id = p.sell_price_currency_id) else null end,
+                  'unit_price_amount', case
+                    when $8 = 'dropship' and $15 then p.computed_sell_price
+                    when $8 = 'fixed_price' and $7 then p.computed_sell_price
+                    else null
+                  end,
+                  'unit_price_currency_id', case
+                    when $8 = 'dropship' and $15 then p.sell_price_currency_id
+                    when $8 = 'fixed_price' and $7 then p.sell_price_currency_id
+                    else null
+                  end,
+                  'unit_price_currency_code', case
+                    when $8 = 'dropship' and $15 then (select code from public.global_currencies where id = p.sell_price_currency_id)
+                    when $8 = 'fixed_price' and $7 then (select code from public.global_currencies where id = p.sell_price_currency_id)
+                    else null
+                  end,
+                  'unit_price_currency_symbol', case
+                    when $8 = 'dropship' and $15 then (select symbol from public.global_currencies where id = p.sell_price_currency_id)
+                    when $8 = 'fixed_price' and $7 then (select symbol from public.global_currencies where id = p.sell_price_currency_id)
+                    else null
+                  end,
                   'minimum_sell_price_amount', case when $7 and $8 = 'dropship' then p.minimum_sell_price_amount else null end,
                   'minimum_sell_price_currency_id', case when $7 and $8 = 'dropship' then p.minimum_sell_price_currency_id else null end,
                   'minimum_sell_price_currency_code', case when $7 and $8 = 'dropship' then (select code from public.global_currencies where id = p.minimum_sell_price_currency_id) else null end,
@@ -638,14 +655,15 @@ begin
       p_brand,
       v_limit,
       v_offset,
-      v_see_price,
+      v_can_see_sell_price,
       v_shop_type,
       v_can_view_quantity,
       v_show_stock_quantity,
       v_pricing_method,
       v_markup_percentage,
       v_quantity_display_mode,
-      v_tenant_id;
+      v_tenant_id,
+      v_can_see_buy_price;
   end if;
 
   v_result := jsonb_set(v_result, '{meta, shop}', jsonb_build_object(
@@ -668,7 +686,8 @@ begin
   ));
   v_result := jsonb_set(v_result, '{meta, permissions}', jsonb_build_object(
     'can_browse', v_can_browse,
-    'see_price', v_see_price,
+    'can_see_buy_price', v_can_see_buy_price,
+    'can_see_sell_price', v_can_see_sell_price,
     'can_add_to_cart', v_can_add_to_cart,
     'can_place_order', v_can_place_order,
     'can_negotiate', v_can_negotiate,
@@ -735,9 +754,17 @@ begin
       bool_or(
         case
           when access.status = false or coalesce(profile.is_active, true) = false then false
-          else coalesce(access.see_price, profile.default_see_price, false)
+          when s.shop_type = 'dropship' then true
+          else coalesce(access.can_see_buy_price, profile.default_can_see_buy_price, false)
         end
-      ) as see_price
+      ) as can_see_buy_price,
+      bool_or(
+        case
+          when access.status = false or coalesce(profile.is_active, true) = false then false
+          when s.shop_type = 'dropship' then true
+          else coalesce(access.can_see_sell_price, profile.default_can_see_sell_price, false)
+        end
+      ) as can_see_sell_price
     from public.shops s
     join public.shop_customer_group_access access on access.shop_id = s.id
     join public.customer_groups cg on cg.id = access.customer_group_id
@@ -774,9 +801,9 @@ begin
       p.product_code as product_code,
       p.brand as product_brand,
       p.category as product_category,
-      case when s.see_price then p.list_price_amount else null end as unit_price_amount,
-      case when s.see_price then p.list_price_currency_id else null end as unit_price_currency_id,
-      case when s.see_price then gc.symbol else null end as unit_price_currency_symbol
+      case when s.can_see_buy_price then p.list_price_amount else null end as unit_price_amount,
+      case when s.can_see_buy_price then p.list_price_currency_id else null end as unit_price_currency_id,
+      case when s.can_see_buy_price then gc.symbol else null end as unit_price_currency_symbol
     from accessible_shops s
     join public.products p on p.parent_tenant_id = v_parent_tenant_id
     left join public.global_currencies gc on gc.id = p.list_price_currency_id
@@ -813,15 +840,24 @@ begin
       p.brand as product_brand,
       p.category as product_category,
       case
-        when not s.see_price then null
+        when s.shop_type = 'dropship' and not s.can_see_buy_price then null
+        when s.shop_type = 'fixed_price' and not s.can_see_sell_price then null
         when s.shop_type = 'fixed_price' and s.pricing_method = 'markup' then
           coalesce(gsi.landed_cost_bdt, public.calculate_landed_unit_cost(gsi.id)) * (1 + s.markup_percentage / 100.0)
         when s.shop_type = 'fixed_price' and s.pricing_method = 'direct_cost' then
           coalesce(gsi.landed_cost_bdt, public.calculate_landed_unit_cost(gsi.id))
         else l.sell_price_amount
       end as unit_price_amount,
-      case when s.see_price then l.sell_price_currency_id else null end as unit_price_currency_id,
-      case when s.see_price then gc.symbol else null end as unit_price_currency_symbol
+      case
+        when s.shop_type = 'dropship' and s.can_see_buy_price then l.sell_price_currency_id
+        when s.shop_type = 'fixed_price' and s.can_see_sell_price then l.sell_price_currency_id
+        else null
+      end as unit_price_currency_id,
+      case
+        when s.shop_type = 'dropship' and s.can_see_buy_price then gc.symbol
+        when s.shop_type = 'fixed_price' and s.can_see_sell_price then gc.symbol
+        else null
+      end as unit_price_currency_symbol
     from accessible_shops s
     join public.shop_product_listings l on l.shop_id = s.id
     join public.products p on p.id = l.product_id
@@ -932,7 +968,8 @@ declare
   v_quantity_display_mode text;
   v_vendor_filters jsonb;
   v_can_browse boolean;
-  v_see_price boolean;
+  v_can_see_buy_price boolean;
+  v_can_see_sell_price boolean;
   v_can_add_to_cart boolean;
   v_can_place_order boolean;
   v_can_negotiate boolean;
@@ -970,10 +1007,10 @@ begin
   end if;
 
   select
-    can_browse, see_price, can_add_to_cart, can_place_order,
+    can_browse, can_see_buy_price, can_see_sell_price, can_add_to_cart, can_place_order,
     can_negotiate, can_view_quantity, can_set_dropship_price
   into
-    v_can_browse, v_see_price, v_can_add_to_cart, v_can_place_order,
+    v_can_browse, v_can_see_buy_price, v_can_see_sell_price, v_can_add_to_cart, v_can_place_order,
     v_can_negotiate, v_can_view_quantity, v_can_set_dropship_price
   from public.get_shop_permissions_for_customer(v_shop_id);
 
@@ -996,10 +1033,10 @@ begin
       'is_available', p.is_available,
       'country_of_origin', p.country_of_origin,
       'expire_date', p.expire_date,
-      'unit_price_amount', case when v_see_price then p.list_price_amount else null end,
-      'unit_price_currency_id', case when v_see_price then p.list_price_currency_id else null end,
-      'unit_price_currency_code', case when v_see_price then (select code from public.global_currencies where id = p.list_price_currency_id) else null end,
-      'unit_price_currency_symbol', case when v_see_price then (select symbol from public.global_currencies where id = p.list_price_currency_id) else null end,
+      'unit_price_amount', case when v_can_see_buy_price then p.list_price_amount else null end,
+      'unit_price_currency_id', case when v_can_see_buy_price then p.list_price_currency_id else null end,
+      'unit_price_currency_code', case when v_can_see_buy_price then (select code from public.global_currencies where id = p.list_price_currency_id) else null end,
+      'unit_price_currency_symbol', case when v_can_see_buy_price then (select symbol from public.global_currencies where id = p.list_price_currency_id) else null end,
       'minimum_sell_price_amount', null,
       'minimum_sell_price_currency_id', null,
       'minimum_sell_price_currency_code', null,
@@ -1039,14 +1076,30 @@ begin
       'is_available', row.product_is_available,
       'country_of_origin', row.country_of_origin,
       'expire_date', row.expire_date,
-      'unit_price_amount', case when v_see_price then row.computed_sell_price else null end,
-      'unit_price_currency_id', case when v_see_price then row.sell_price_currency_id else null end,
-      'unit_price_currency_code', case when v_see_price then (select code from public.global_currencies where id = row.sell_price_currency_id) else null end,
-      'unit_price_currency_symbol', case when v_see_price then (select symbol from public.global_currencies where id = row.sell_price_currency_id) else null end,
-      'minimum_sell_price_amount', case when v_see_price and v_shop_type = 'dropship' then row.minimum_sell_price_amount else null end,
-      'minimum_sell_price_currency_id', case when v_see_price and v_shop_type = 'dropship' then row.minimum_sell_price_currency_id else null end,
-      'minimum_sell_price_currency_code', case when v_see_price and v_shop_type = 'dropship' then (select code from public.global_currencies where id = row.minimum_sell_price_currency_id) else null end,
-      'minimum_sell_price_currency_symbol', case when v_see_price and v_shop_type = 'dropship' then (select symbol from public.global_currencies where id = row.minimum_sell_price_currency_id) else null end,
+      'unit_price_amount', case
+        when v_shop_type = 'dropship' and v_can_see_buy_price then row.computed_sell_price
+        when v_shop_type = 'fixed_price' and v_can_see_sell_price then row.computed_sell_price
+        else null
+      end,
+      'unit_price_currency_id', case
+        when v_shop_type = 'dropship' and v_can_see_buy_price then row.sell_price_currency_id
+        when v_shop_type = 'fixed_price' and v_can_see_sell_price then row.sell_price_currency_id
+        else null
+      end,
+      'unit_price_currency_code', case
+        when v_shop_type = 'dropship' and v_can_see_buy_price then (select code from public.global_currencies where id = row.sell_price_currency_id)
+        when v_shop_type = 'fixed_price' and v_can_see_sell_price then (select code from public.global_currencies where id = row.sell_price_currency_id)
+        else null
+      end,
+      'unit_price_currency_symbol', case
+        when v_shop_type = 'dropship' and v_can_see_buy_price then (select symbol from public.global_currencies where id = row.sell_price_currency_id)
+        when v_shop_type = 'fixed_price' and v_can_see_sell_price then (select symbol from public.global_currencies where id = row.sell_price_currency_id)
+        else null
+      end,
+      'minimum_sell_price_amount', case when v_can_see_sell_price and v_shop_type = 'dropship' then row.minimum_sell_price_amount else null end,
+      'minimum_sell_price_currency_id', case when v_can_see_sell_price and v_shop_type = 'dropship' then row.minimum_sell_price_currency_id else null end,
+      'minimum_sell_price_currency_code', case when v_can_see_sell_price and v_shop_type = 'dropship' then (select code from public.global_currencies where id = row.minimum_sell_price_currency_id) else null end,
+      'minimum_sell_price_currency_symbol', case when v_can_see_sell_price and v_shop_type = 'dropship' then (select symbol from public.global_currencies where id = row.minimum_sell_price_currency_id) else null end,
       'available_units', case
         when not v_can_view_quantity or not coalesce(row.listing_show_quantity, v_show_stock_quantity) then null
         when v_quantity_display_mode = 'original' then greatest(0, row.available_qty)
@@ -1133,7 +1186,8 @@ begin
       ),
       'permissions', jsonb_build_object(
         'can_browse', v_can_browse,
-        'see_price', v_see_price,
+        'can_see_buy_price', v_can_see_buy_price,
+    'can_see_sell_price', v_can_see_sell_price,
         'can_add_to_cart', v_can_add_to_cart,
         'can_place_order', v_can_place_order,
         'can_negotiate', v_can_negotiate,
@@ -1162,7 +1216,7 @@ declare
   v_is_active boolean;
   v_vendor_filters jsonb;
   v_can_browse boolean;
-  v_see_price boolean;
+  v_can_see_buy_price boolean;
   v_category text;
   v_limit integer;
   v_data jsonb;
@@ -1208,8 +1262,8 @@ begin
   v_parent_tenant_id := public.resolve_parent_tenant_id(v_shop_tenant_id);
   v_limit := greatest(1, least(coalesce(p_limit, 4), 12));
 
-  select see_price
-  into v_see_price
+  select can_see_buy_price
+  into v_can_see_buy_price
   from public.get_shop_permissions_for_customer(v_shop_id);
 
   select p.category
@@ -1251,10 +1305,10 @@ begin
           'product_category', rel.category,
           'vendor_code', rel.vendor_code,
           'is_available', rel.is_available,
-          'unit_price_amount', case when v_see_price then rel.list_price_amount else null end,
-          'unit_price_currency_id', case when v_see_price then rel.list_price_currency_id else null end,
-          'unit_price_currency_code', case when v_see_price then (select code from public.global_currencies where id = rel.list_price_currency_id) else null end,
-          'unit_price_currency_symbol', case when v_see_price then (select symbol from public.global_currencies where id = rel.list_price_currency_id) else null end,
+          'unit_price_amount', case when v_can_see_buy_price then rel.list_price_amount else null end,
+          'unit_price_currency_id', case when v_can_see_buy_price then rel.list_price_currency_id else null end,
+          'unit_price_currency_code', case when v_can_see_buy_price then (select code from public.global_currencies where id = rel.list_price_currency_id) else null end,
+          'unit_price_currency_symbol', case when v_can_see_buy_price then (select symbol from public.global_currencies where id = rel.list_price_currency_id) else null end,
           'minimum_sell_price_amount', null,
           'minimum_sell_price_currency_id', null,
           'minimum_sell_price_currency_code', null,
@@ -1412,7 +1466,7 @@ CREATE OR REPLACE FUNCTION "public"."can_customer_see_shop_price"("p_shop_id" bi
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
-  select coalesce((select see_price from public.get_shop_permissions_for_customer(p_shop_id)), false);
+  select coalesce((select can_see_buy_price from public.get_shop_permissions_for_customer(p_shop_id)), false);
 ALTER FUNCTION "public"."can_customer_see_shop_price"("p_shop_id" bigint) OWNER TO "postgres";
 
 
@@ -3094,14 +3148,15 @@ CREATE OR REPLACE FUNCTION "public"."get_or_create_shop_cart"("p_shop_id" bigint
 declare
   v_tenant_id         bigint;
   v_customer_group_id bigint;
-  v_see_price_snapshot boolean;
+  v_can_see_buy_price_snapshot boolean;
+  v_can_see_sell_price_snapshot boolean;
   v_cart_id           bigint;
   v_result            jsonb;
 begin
   select tenant_id into v_tenant_id from public.shops where id = p_shop_id and is_active = true;
   if v_tenant_id is null then
     raise exception 'shop not found or inactive';
-  select access.customer_group_id, access.see_price into v_customer_group_id, v_see_price_snapshot
+  select access.customer_group_id into v_customer_group_id
   from public.shop_customer_group_access access
   join public.customer_groups cg on cg.id = access.customer_group_id
   join public.customer_group_members cgm on cgm.customer_group_id = cg.id
@@ -3117,6 +3172,11 @@ begin
     raise exception 'no customer group access found';
   if not public.can_customer_access_shop(p_shop_id) then
     raise exception 'access denied';
+
+  select can_see_buy_price, can_see_sell_price
+  into v_can_see_buy_price_snapshot, v_can_see_sell_price_snapshot
+  from public.get_shop_permissions_for_customer(p_shop_id);
+
   select id into v_cart_id
   from public.shop_carts
   where tenant_id = v_tenant_id
@@ -3128,11 +3188,11 @@ begin
 
   if v_cart_id is null then
     insert into public.shop_carts (
-      tenant_id, shop_id, customer_group_id, see_price_snapshot, status, deduct_charges_from_margin,
+      tenant_id, shop_id, customer_group_id, can_see_buy_price_snapshot, can_see_sell_price_snapshot, status, deduct_charges_from_margin,
       deduct_print_from_margin, deduct_packing_from_margin
     )
     values (
-      v_tenant_id, p_shop_id, v_customer_group_id, v_see_price_snapshot, 'active',
+      v_tenant_id, p_shop_id, v_customer_group_id, v_can_see_buy_price_snapshot, v_can_see_sell_price_snapshot, 'active',
       (select deduct_charges_from_margin from public.shops where id = p_shop_id),
       (select deduct_print_from_margin from public.shops where id = p_shop_id),
       (select deduct_packing_from_margin from public.shops where id = p_shop_id)
@@ -3151,7 +3211,8 @@ begin
       'tenant_id', c.tenant_id,
       'shop_id', c.shop_id,
       'customer_group_id', c.customer_group_id,
-      'see_price_snapshot', c.see_price_snapshot,
+      'can_see_buy_price_snapshot', c.can_see_buy_price_snapshot,
+      'can_see_sell_price_snapshot', c.can_see_sell_price_snapshot,
       'status', c.status,
       'created_at', c.created_at,
       'updated_at', c.updated_at,
@@ -3175,14 +3236,14 @@ begin
             'quantity', ci.quantity,
             'minimum_quantity', ci.minimum_quantity,
             'minimum_order_quantity', p.minimum_order_quantity,
-            'unit_list_price_amount', ci.unit_list_price_amount,
-            'unit_list_price_currency_id', ci.unit_list_price_currency_id,
-            'unit_sell_price_amount', ci.unit_sell_price_amount,
-            'unit_sell_price_currency_id', ci.unit_sell_price_currency_id,
-            'unit_minimum_sell_price_amount', ci.unit_minimum_sell_price_amount,
-            'unit_minimum_sell_price_currency_id', ci.unit_minimum_sell_price_currency_id,
-            'customer_sell_price_amount', ci.customer_sell_price_amount,
-            'customer_sell_price_currency_id', ci.customer_sell_price_currency_id,
+            'unit_list_price_amount', case when c.can_see_buy_price_snapshot then ci.unit_list_price_amount else null end,
+            'unit_list_price_currency_id', case when c.can_see_buy_price_snapshot then ci.unit_list_price_currency_id else null end,
+            'unit_sell_price_amount', case when c.can_see_sell_price_snapshot then ci.unit_sell_price_amount else null end,
+            'unit_sell_price_currency_id', case when c.can_see_sell_price_snapshot then ci.unit_sell_price_currency_id else null end,
+            'unit_minimum_sell_price_amount', case when c.can_see_sell_price_snapshot then ci.unit_minimum_sell_price_amount else null end,
+            'unit_minimum_sell_price_currency_id', case when c.can_see_sell_price_snapshot then ci.unit_minimum_sell_price_currency_id else null end,
+            'customer_sell_price_amount', case when c.can_see_sell_price_snapshot then ci.customer_sell_price_amount else null end,
+            'customer_sell_price_currency_id', case when c.can_see_sell_price_snapshot then ci.customer_sell_price_currency_id else null end,
             'name', ci.name,
             'image_url', ci.image_url
           )
@@ -3359,7 +3420,7 @@ begin
 ALTER FUNCTION "public"."get_shop_effective_grants"("p_tenant_id" bigint, "p_customer_group_member_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_shop_permissions_for_customer"("p_shop_id" bigint) RETURNS TABLE("can_browse" boolean, "see_price" boolean, "can_add_to_cart" boolean, "can_place_order" boolean, "can_negotiate" boolean, "can_view_quantity" boolean, "can_set_dropship_price" boolean)
+CREATE OR REPLACE FUNCTION "public"."get_shop_permissions_for_customer"("p_shop_id" bigint) RETURNS TABLE("can_browse" boolean, "can_see_buy_price" boolean, "can_see_sell_price" boolean, "can_add_to_cart" boolean, "can_place_order" boolean, "can_negotiate" boolean, "can_view_quantity" boolean, "can_set_dropship_price" boolean)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -3374,7 +3435,7 @@ begin
   where id = p_shop_id;
 
   if v_shop_active is not true then
-    return query select false, false, false, false, false, false, false;
+    return query select false, false, false, false, false, false, false, false;
     return;
   v_shop_allows_negotiate := v_shop_type = 'vendor_catalog';
 
@@ -3390,10 +3451,19 @@ begin
       case when access.status = false or profile.is_active = false then false
       else
         case when v_shop_type = 'dropship' then true
-        else coalesce(access.see_price, profile.default_see_price, false)
+        else coalesce(access.can_see_buy_price, profile.default_can_see_buy_price, false)
         end
       end
-    ), false) as see_price,
+    ), false) as can_see_buy_price,
+
+    coalesce(bool_or(
+      case when access.status = false or profile.is_active = false then false
+      else
+        case when v_shop_type = 'dropship' then true
+        else coalesce(access.can_see_sell_price, profile.default_can_see_sell_price, false)
+        end
+      end
+    ), false) as can_see_sell_price,
 
     coalesce(bool_or(
       case when access.status = false or profile.is_active = false then false
@@ -3511,7 +3581,7 @@ CREATE OR REPLACE FUNCTION "public"."list_allocations_for_shop_pick"("p_shop_id"
 ALTER FUNCTION "public"."list_allocations_for_shop_pick"("p_shop_id" bigint, "p_search" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_customer_active_carts"("p_tenant_id" bigint) RETURNS TABLE("cart_id" bigint, "shop_id" bigint, "shop_name" "text", "shop_slug" "text", "shop_logo_url" "text", "shop_type" "text", "see_price" boolean, "currency_id" bigint, "currency_code" "text", "currency_symbol" "text", "item_count" bigint, "cart_total" numeric, "updated_at" timestamp with time zone)
+CREATE OR REPLACE FUNCTION "public"."list_customer_active_carts"("p_tenant_id" bigint) RETURNS TABLE("cart_id" bigint, "shop_id" bigint, "shop_name" "text", "shop_slug" "text", "shop_logo_url" "text", "shop_type" "text", "can_see_buy_price" boolean, "can_see_sell_price" boolean, "currency_id" bigint, "currency_code" "text", "currency_symbol" "text", "item_count" bigint, "cart_total" numeric, "updated_at" timestamp with time zone)
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -3522,13 +3592,14 @@ CREATE OR REPLACE FUNCTION "public"."list_customer_active_carts"("p_tenant_id" b
     s.slug as shop_slug,
     null::text as shop_logo_url,
     s.shop_type::text as shop_type,
-    c.see_price_snapshot as see_price,
+    c.can_see_buy_price_snapshot as can_see_buy_price,
+    c.can_see_sell_price_snapshot as can_see_sell_price,
     s.sell_currency_id as currency_id,
     gc.code as currency_code,
     gc.symbol as currency_symbol,
     coalesce(sum(ci.quantity), 0)::bigint as item_count,
     case
-      when c.see_price_snapshot then
+      when c.can_see_sell_price_snapshot then
         sum(
           ci.quantity * coalesce(
             ci.customer_sell_price_amount,
@@ -3642,7 +3713,7 @@ begin
 ALTER FUNCTION "public"."list_customer_shop_orders"("p_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_status_bucket" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_customer_shops"("p_tenant_id" bigint) RETURNS TABLE("id" bigint, "tenant_id" bigint, "name" "text", "slug" "text", "shop_type" "public"."shop_type_enum", "order_mode" "public"."shop_order_mode_enum", "is_negotiable" boolean, "see_price" boolean, "description" "text", "category_ids" bigint[], "categories" "jsonb", "sell_currency_id" bigint, "sell_currency_code" "text", "sell_currency_symbol" "text")
+CREATE OR REPLACE FUNCTION "public"."list_customer_shops"("p_tenant_id" bigint) RETURNS TABLE("id" bigint, "tenant_id" bigint, "name" "text", "slug" "text", "shop_type" "public"."shop_type_enum", "order_mode" "public"."shop_order_mode_enum", "is_negotiable" boolean, "can_see_buy_price" boolean, "can_see_sell_price" boolean, "description" "text", "category_ids" bigint[], "categories" "jsonb", "sell_currency_id" bigint, "sell_currency_code" "text", "sell_currency_symbol" "text")
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -3657,9 +3728,17 @@ CREATE OR REPLACE FUNCTION "public"."list_customer_shops"("p_tenant_id" bigint) 
     bool_or(
       case
         when access.status = false or coalesce(profile.is_active, true) = false then false
-        else coalesce(access.see_price, profile.default_see_price, false)
+        when s.shop_type = 'dropship' then true
+        else coalesce(access.can_see_buy_price, profile.default_can_see_buy_price, false)
       end
-    ) as see_price,
+    ) as can_see_buy_price,
+    bool_or(
+      case
+        when access.status = false or coalesce(profile.is_active, true) = false then false
+        when s.shop_type = 'dropship' then true
+        else coalesce(access.can_see_sell_price, profile.default_can_see_sell_price, false)
+      end
+    ) as can_see_sell_price,
     s.description,
     s.category_ids,
     coalesce(
@@ -5143,7 +5222,7 @@ begin
 ALTER FUNCTION "public"."update_shop_cart_item_qty"("p_cart_item_id" bigint, "p_quantity" integer) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."upsert_customer_group_shop_profile"("p_tenant_id" bigint, "p_customer_group_id" bigint, "p_is_active" boolean, "p_default_can_browse" boolean, "p_default_see_price" boolean, "p_default_can_add_to_cart" boolean, "p_default_can_place_order" boolean, "p_default_can_negotiate" boolean, "p_default_can_view_quantity" boolean, "p_default_can_set_dropship_price" boolean) RETURNS SETOF "public"."customer_group_shop_profiles"
+CREATE OR REPLACE FUNCTION "public"."upsert_customer_group_shop_profile"("p_tenant_id" bigint, "p_customer_group_id" bigint, "p_is_active" boolean, "p_default_can_browse" boolean, "p_default_can_see_buy_price" boolean, "p_default_can_see_sell_price" boolean, "p_default_can_add_to_cart" boolean, "p_default_can_place_order" boolean, "p_default_can_negotiate" boolean, "p_default_can_view_quantity" boolean, "p_default_can_set_dropship_price" boolean) RETURNS SETOF "public"."customer_group_shop_profiles"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -5156,7 +5235,8 @@ begin
     customer_group_id,
     is_active,
     default_can_browse,
-    default_see_price,
+    default_can_see_buy_price,
+    default_can_see_sell_price,
     default_can_add_to_cart,
     default_can_place_order,
     default_can_negotiate,
@@ -5168,7 +5248,8 @@ begin
     p_customer_group_id,
     p_is_active,
     p_default_can_browse,
-    p_default_see_price,
+    p_default_can_see_buy_price,
+    p_default_can_see_sell_price,
     p_default_can_add_to_cart,
     p_default_can_place_order,
     p_default_can_negotiate,
@@ -5178,7 +5259,8 @@ begin
   on conflict (tenant_id, customer_group_id) do update set
     is_active = excluded.is_active,
     default_can_browse = excluded.default_can_browse,
-    default_see_price = excluded.default_see_price,
+    default_can_see_buy_price = excluded.default_can_see_buy_price,
+    default_can_see_sell_price = excluded.default_can_see_sell_price,
     default_can_add_to_cart = excluded.default_can_add_to_cart,
     default_can_place_order = excluded.default_can_place_order,
     default_can_negotiate = excluded.default_can_negotiate,
@@ -5186,7 +5268,7 @@ begin
     default_can_set_dropship_price = excluded.default_can_set_dropship_price,
     updated_at = now()
   returning *;
-ALTER FUNCTION "public"."upsert_customer_group_shop_profile"("p_tenant_id" bigint, "p_customer_group_id" bigint, "p_is_active" boolean, "p_default_can_browse" boolean, "p_default_see_price" boolean, "p_default_can_add_to_cart" boolean, "p_default_can_place_order" boolean, "p_default_can_negotiate" boolean, "p_default_can_view_quantity" boolean, "p_default_can_set_dropship_price" boolean) OWNER TO "postgres";
+ALTER FUNCTION "public"."upsert_customer_group_shop_profile"("p_tenant_id" bigint, "p_customer_group_id" bigint, "p_is_active" boolean, "p_default_can_browse" boolean, "p_default_can_see_buy_price" boolean, "p_default_can_see_sell_price" boolean, "p_default_can_add_to_cart" boolean, "p_default_can_place_order" boolean, "p_default_can_negotiate" boolean, "p_default_can_view_quantity" boolean, "p_default_can_set_dropship_price" boolean) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."upsert_shop"("p_tenant_id" bigint, "p_name" "text", "p_slug" "text", "p_order_mode" "public"."shop_order_mode_enum", "p_is_negotiable" boolean, "p_show_stock_quantity" boolean, "p_is_active" boolean, "p_shop_type" "public"."shop_type_enum" DEFAULT NULL::"public"."shop_type_enum", "p_vendor_code" "text" DEFAULT NULL::"text", "p_id" bigint DEFAULT NULL::bigint, "p_default_currency_id" bigint DEFAULT NULL::bigint, "p_global_stock_type_id" bigint DEFAULT NULL::bigint, "p_allow_delivery" boolean DEFAULT false, "p_buy_currency_id" bigint DEFAULT NULL::bigint, "p_sell_currency_id" bigint DEFAULT NULL::bigint, "p_pricing_method" "text" DEFAULT NULL::"text", "p_markup_percentage" numeric DEFAULT 0, "p_quantity_display_mode" "text" DEFAULT NULL::"text", "p_default_print_charge_amount" numeric DEFAULT 0, "p_default_packing_charge_amount" numeric DEFAULT 0, "p_deduct_charges_from_margin" boolean DEFAULT false, "p_vendor_filters" "jsonb" DEFAULT NULL::"jsonb", "p_deduct_print_from_margin" boolean DEFAULT false, "p_deduct_packing_from_margin" boolean DEFAULT false, "p_description" "text" DEFAULT NULL::"text", "p_category_ids" bigint[] DEFAULT '{}'::bigint[]) RETURNS SETOF "public"."shops"
@@ -5324,7 +5406,7 @@ begin
 ALTER FUNCTION "public"."upsert_shop"("p_tenant_id" bigint, "p_name" "text", "p_slug" "text", "p_order_mode" "public"."shop_order_mode_enum", "p_is_negotiable" boolean, "p_show_stock_quantity" boolean, "p_is_active" boolean, "p_shop_type" "public"."shop_type_enum", "p_vendor_code" "text", "p_id" bigint, "p_default_currency_id" bigint, "p_global_stock_type_id" bigint, "p_allow_delivery" boolean, "p_buy_currency_id" bigint, "p_sell_currency_id" bigint, "p_pricing_method" "text", "p_markup_percentage" numeric, "p_quantity_display_mode" "text", "p_default_print_charge_amount" numeric, "p_default_packing_charge_amount" numeric, "p_deduct_charges_from_margin" boolean, "p_vendor_filters" "jsonb", "p_deduct_print_from_margin" boolean, "p_deduct_packing_from_margin" boolean, "p_description" "text", "p_category_ids" bigint[]) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."upsert_shop_customer_group_access"("p_shop_id" bigint, "p_customer_group_id" bigint, "p_status" boolean, "p_can_browse" boolean DEFAULT NULL::boolean, "p_see_price" boolean DEFAULT NULL::boolean, "p_can_add_to_cart" boolean DEFAULT NULL::boolean, "p_can_place_order" boolean DEFAULT NULL::boolean, "p_can_negotiate" boolean DEFAULT NULL::boolean, "p_can_view_quantity" boolean DEFAULT NULL::boolean, "p_can_set_dropship_price" boolean DEFAULT NULL::boolean, "p_price_tier_code" "text" DEFAULT NULL::"text", "p_credit_limit_amount" numeric DEFAULT NULL::numeric, "p_credit_limit_currency_id" bigint DEFAULT NULL::bigint) RETURNS SETOF "public"."shop_customer_group_access"
+CREATE OR REPLACE FUNCTION "public"."upsert_shop_customer_group_access"("p_shop_id" bigint, "p_customer_group_id" bigint, "p_status" boolean, "p_can_browse" boolean DEFAULT NULL::boolean, "p_can_see_buy_price" boolean DEFAULT NULL::boolean, "p_can_see_sell_price" boolean DEFAULT NULL::boolean, "p_can_add_to_cart" boolean DEFAULT NULL::boolean, "p_can_place_order" boolean DEFAULT NULL::boolean, "p_can_negotiate" boolean DEFAULT NULL::boolean, "p_can_view_quantity" boolean DEFAULT NULL::boolean, "p_can_set_dropship_price" boolean DEFAULT NULL::boolean, "p_price_tier_code" "text" DEFAULT NULL::"text", "p_credit_limit_amount" numeric DEFAULT NULL::numeric, "p_credit_limit_currency_id" bigint DEFAULT NULL::bigint) RETURNS SETOF "public"."shop_customer_group_access"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -5347,7 +5429,8 @@ begin
     customer_group_id,
     status,
     can_browse,
-    see_price,
+    can_see_buy_price,
+    can_see_sell_price,
     can_add_to_cart,
     can_place_order,
     can_negotiate,
@@ -5362,7 +5445,8 @@ begin
     p_customer_group_id,
     p_status,
     p_can_browse,
-    p_see_price,
+    p_can_see_buy_price,
+    p_can_see_sell_price,
     p_can_add_to_cart,
     p_can_place_order,
     p_can_negotiate,
@@ -5375,7 +5459,8 @@ begin
   on conflict (shop_id, customer_group_id) do update set
     status = excluded.status,
     can_browse = excluded.can_browse,
-    see_price = excluded.see_price,
+    can_see_buy_price = excluded.can_see_buy_price,
+    can_see_sell_price = excluded.can_see_sell_price,
     can_add_to_cart = excluded.can_add_to_cart,
     can_place_order = excluded.can_place_order,
     can_negotiate = excluded.can_negotiate,
@@ -5386,7 +5471,7 @@ begin
     credit_limit_currency_id = excluded.credit_limit_currency_id,
     updated_at = now()
   returning *;
-ALTER FUNCTION "public"."upsert_shop_customer_group_access"("p_shop_id" bigint, "p_customer_group_id" bigint, "p_status" boolean, "p_can_browse" boolean, "p_see_price" boolean, "p_can_add_to_cart" boolean, "p_can_place_order" boolean, "p_can_negotiate" boolean, "p_can_view_quantity" boolean, "p_can_set_dropship_price" boolean, "p_price_tier_code" "text", "p_credit_limit_amount" numeric, "p_credit_limit_currency_id" bigint) OWNER TO "postgres";
+ALTER FUNCTION "public"."upsert_shop_customer_group_access"("p_shop_id" bigint, "p_customer_group_id" bigint, "p_status" boolean, "p_can_browse" boolean, "p_can_see_buy_price" boolean, "p_can_see_sell_price" boolean, "p_can_add_to_cart" boolean, "p_can_place_order" boolean, "p_can_negotiate" boolean, "p_can_view_quantity" boolean, "p_can_set_dropship_price" boolean, "p_price_tier_code" "text", "p_credit_limit_amount" numeric, "p_credit_limit_currency_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."upsert_shop_pricing_rule"("p_shop_id" bigint, "p_markup_percentage" numeric, "p_is_auto_publish" boolean) RETURNS SETOF "public"."shop_pricing_rules"

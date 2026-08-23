@@ -115,12 +115,12 @@
 
         <!-- Price and Subtotal -->
         <q-item-section
-          v-if="canSeePrice"
+          v-if="canSeeBuyPrice || canSeeSellPrice"
           side
           class="text-right subtotal-section item-price-section"
         >
           <template v-if="cart?.shop_type === 'dropship'">
-            <div class="q-mb-xs">
+            <div v-if="canSeeBuyPrice" class="q-mb-xs">
               <span class="text-caption text-grey-6 block" style="font-size: 10px; margin-bottom: 2px;">{{ $t('shop.your_cost') }}</span>
               <div class="text-subtitle2 text-weight-bold text-grey-9" style="line-height: 1.2">
                 {{ formatBuyerItemTotal(item) }}
@@ -129,13 +129,13 @@
                 {{ formatBuyerUnitPrice(item) }} {{ $t('shop.each') }}
               </div>
             </div>
-            <div v-if="item.unit_minimum_sell_price_amount" class="q-mb-xs">
+            <div v-if="canSeeSellPrice && item.unit_minimum_sell_price_amount" class="q-mb-xs">
               <span class="text-caption text-grey-6 block" style="font-size: 10px; margin-bottom: 2px;">Min Sell Price</span>
               <div class="text-caption text-weight-medium text-grey-8" style="line-height: 1.2">
                 {{ currencySymbol }}{{ Number(item.unit_minimum_sell_price_amount).toFixed(2) }} {{ $t('shop.each') }}
               </div>
             </div>
-            <div class="q-mt-xs">
+            <div v-if="canSeeSellPrice" class="q-mt-xs">
               <span class="text-caption text-grey-6 block" style="font-size: 10px; margin-bottom: 2px;">{{ $t('shop.recipient_pay') }}</span>
               <div class="text-subtitle2 text-weight-bold text-primary" style="line-height: 1.2">
                 {{ formatItemTotal(item) }}
@@ -145,7 +145,7 @@
               </div>
             </div>
           </template>
-          <template v-else>
+          <template v-else-if="canSeeSellPrice">
             <div class="text-subtitle2 text-weight-bold text-grey-9">
               {{ formatItemTotal(item) }}
             </div>
@@ -183,7 +183,8 @@ const props = defineProps<{
   itemCount: number;
   currentShopCartInfo: ActiveCartItem | null;
   cart: any;
-  canSeePrice: boolean;
+  canSeeBuyPrice: boolean;
+  canSeeSellPrice: boolean;
   currencySymbol: string;
   permissions: any;
   editedQuantities: Record<number, number>;

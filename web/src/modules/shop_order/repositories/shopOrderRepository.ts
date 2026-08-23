@@ -215,7 +215,8 @@ export type CustomerAccessibleShop = {
   shop_type: string;
   order_mode: string;
   is_negotiable: boolean;
-  see_price: boolean;
+  can_see_buy_price: boolean;
+  can_see_sell_price: boolean;
   description?: string | null;
   category_ids?: number[] | null;
   categories?: Array<{ id: number; name: string; slug: string; icon: string }> | null;

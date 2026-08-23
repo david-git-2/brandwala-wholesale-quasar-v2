@@ -46,7 +46,7 @@
               <q-item-label class="text-weight-bold">{{ c.shop_name }}</q-item-label>
               <q-item-label caption>
                 {{ c.item_count }} {{ $t('shop.items').toLowerCase() }}
-                <template v-if="c.see_price && c.cart_total !== null">
+                <template v-if="c.can_see_sell_price && c.cart_total !== null">
                   · {{ formatActiveCartTotal(c) }}
                 </template>
               </q-item-label>

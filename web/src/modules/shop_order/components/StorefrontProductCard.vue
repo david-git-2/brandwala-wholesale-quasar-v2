@@ -46,20 +46,22 @@
 
       <!-- Pricing Section -->
       <div class="product-pricing q-mt-sm">
-        <template v-if="permissions?.see_price">
-          <div class="text-subtitle1 text-weight-bold text-primary">
-            <span
-              v-if="shopType === 'dropship'"
-              class="text-caption text-grey-6 block text-weight-medium"
-            >
-              {{ $t('shop.wholesale_price') }}
-            </span>
-            {{ formatMoney(item.unit_price_amount, item.unit_price_currency_symbol) }}
-          </div>
-          <div
-            v-if="item.minimum_sell_price_amount != null"
-            class="text-body2 text-grey-9 text-weight-medium q-mt-xs"
+        <div
+          v-if="showUnitPrice"
+          class="text-subtitle1 text-weight-bold text-primary"
+        >
+          <span
+            v-if="shopType === 'dropship'"
+            class="text-caption text-grey-6 block text-weight-medium"
           >
+            {{ $t('shop.wholesale_price') }}
+          </span>
+          {{ formatMoney(item.unit_price_amount, item.unit_price_currency_symbol) }}
+        </div>
+        <div
+          v-if="showMinSellPrice"
+          class="text-body2 text-grey-9 text-weight-medium q-mt-xs"
+        >
             <template v-if="shopType === 'dropship'">
               {{ $t('shop.min_sell_price') }}:
               <span class="text-secondary text-weight-bold">
@@ -82,7 +84,6 @@
               }}
             </template>
           </div>
-        </template>
       </div>
 
       <!-- Separate Actions Row below everything -->
@@ -190,6 +191,17 @@ const minQty = computed(() => {
   if (props.shopType === 'dropship') return 1;
   return props.item.minimum_order_quantity || 1;
 });
+
+const showUnitPrice = computed(() => {
+  if (props.item.unit_price_amount == null) return false;
+  if (props.shopType === 'fixed_price') return !!props.permissions?.can_see_sell_price;
+  return !!props.permissions?.can_see_buy_price;
+});
+
+const showMinSellPrice = computed(
+  () =>
+    props.item.minimum_sell_price_amount != null && !!props.permissions?.can_see_sell_price,
+);
 </script>
 
 <style scoped>

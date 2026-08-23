@@ -80,7 +80,8 @@
             :item-count="itemCount"
             :current-shop-cart-info="currentShopCartInfo"
             :cart="cart"
-            :can-see-price="canSeePrice"
+            :can-see-buy-price="canSeeBuyPrice"
+            :can-see-sell-price="canSeeSellPrice"
             :currency-symbol="currencySymbol"
             :permissions="permissions"
             :edited-quantities="editedQuantities"
@@ -105,7 +106,8 @@
         <div class="col-xs-12 col-md-4">
           <ShopCartSummaryCard
             :cart="cart"
-            :can-see-price="canSeePrice"
+            :can-see-buy-price="canSeeBuyPrice"
+            :can-see-sell-price="canSeeSellPrice"
             :item-count="itemCount"
             :format-cart-total="formatCartTotal"
             :format-amount="formatAmount"
@@ -135,7 +137,7 @@
       class="lt-sm"
     >
       <div class="cart-mobile-cta row items-center no-wrap q-px-md q-py-sm">
-        <div v-if="canSeePrice" class="col">
+        <div v-if="canSeeSellPrice" class="col">
           <div class="text-caption text-grey-6">
             {{ cart?.shop_type === 'dropship' ? $t('shop.recipient_pay_total') : $t('shop.estimated_total') }}
           </div>
@@ -197,10 +199,16 @@ const {
 
 const { data: permissions } = useCustomerShopPermissionsQuery(selectedShopIdRef);
 
-const canSeePrice = computed(() => {
+const canSeeBuyPrice = computed(() => {
   if (cart.value?.shop_type === 'dropship') return true;
-  if (permissions.value?.see_price != null) return permissions.value.see_price;
-  return !!cart.value?.see_price_snapshot;
+  if (permissions.value?.can_see_buy_price != null) return permissions.value.can_see_buy_price;
+  return !!cart.value?.can_see_buy_price_snapshot;
+});
+
+const canSeeSellPrice = computed(() => {
+  if (cart.value?.shop_type === 'dropship') return true;
+  if (permissions.value?.can_see_sell_price != null) return permissions.value.can_see_sell_price;
+  return !!cart.value?.can_see_sell_price_snapshot;
 });
 
 const logic = useShopCartPageLogic(
