@@ -15,7 +15,7 @@ export type StaffCatalogPrimaryAction =
   | 'send_first_offer'
   | 'send_final_offer'
   | 'start_procurement'
-  | 'mark_ordered'
+  | 'mark_ready_for_shipment'
   | 'mark_delivered';
 
 /** Map legacy statuses onto the catalog negotiation model. */
@@ -23,6 +23,7 @@ export function normalizeCatalogOrderStatus(status: string | null | undefined): 
   const st = String(status || 'submitted');
   if (st === 'costing_pending') return 'submitted';
   if (st === 'negotiating') return 'priced';
+  if (st === 'ordered') return 'ready_for_shipment';
   return st;
 }
 
@@ -31,7 +32,7 @@ export function mapStatusToProgressKey(
   isNegotiable: boolean,
 ): CatalogProgressKey {
   const st = normalizeCatalogOrderStatus(status);
-  if (st === 'procuring' || st === 'ordered' || st === 'delivered') return 'fulfillment';
+  if (st === 'procuring' || st === 'ready_for_shipment' || st === 'delivered') return 'fulfillment';
   if (!isNegotiable && st === 'countered') return 'priced';
   if (!isNegotiable && st === 'final_offered') return 'priced';
   if (CATALOG_NEGOTIATION_PROGRESS_KEYS.includes(st as CatalogProgressKey)) {
@@ -48,7 +49,7 @@ const STAFF_STATUS_LABELS: Record<string, string> = {
   final_offered: 'Final offer sent — awaiting confirmation',
   confirmed: 'Confirmed — start procurement',
   procuring: 'Procuring',
-  ordered: 'Ordered',
+  ready_for_shipment: 'Ready for shipment',
   delivered: 'Delivered',
   cancelled: 'Cancelled',
 };
@@ -60,7 +61,7 @@ const CUSTOMER_STATUS_LABELS: Record<string, string> = {
   final_offered: 'Confirm price & quantity',
   confirmed: 'Order confirmed',
   procuring: "We're sourcing your items",
-  ordered: 'Order placed with supplier',
+  ready_for_shipment: 'Ready to ship',
   delivered: 'Delivered',
   cancelled: 'Cancelled',
 };
@@ -121,8 +122,8 @@ export function getStaffCatalogPrimaryAction(
     case 'confirmed':
       return 'start_procurement';
     case 'procuring':
-      return 'mark_ordered';
-    case 'ordered':
+      return 'mark_ready_for_shipment';
+    case 'ready_for_shipment':
       return 'mark_delivered';
     default:
       return null;
@@ -137,8 +138,8 @@ export function getStaffCatalogPrimaryActionLabel(action: StaffCatalogPrimaryAct
       return 'Send final offer';
     case 'start_procurement':
       return 'Start procurement';
-    case 'mark_ordered':
-      return 'Mark ordered';
+    case 'mark_ready_for_shipment':
+      return 'Mark ready for shipment';
     case 'mark_delivered':
       return 'Mark delivered';
     default:
@@ -148,9 +149,18 @@ export function getStaffCatalogPrimaryActionLabel(action: StaffCatalogPrimaryAct
 
 export function getCustomerCatalogStatusSequence(isNegotiable: boolean): string[] {
   if (isNegotiable) {
-    return ['submitted', 'priced', 'countered', 'final_offered', 'confirmed', 'procuring', 'ordered', 'delivered'];
+    return [
+      'submitted',
+      'priced',
+      'countered',
+      'final_offered',
+      'confirmed',
+      'procuring',
+      'ready_for_shipment',
+      'delivered',
+    ];
   }
-  return ['submitted', 'priced', 'confirmed', 'procuring', 'ordered', 'delivered'];
+  return ['submitted', 'priced', 'confirmed', 'procuring', 'ready_for_shipment', 'delivered'];
 }
 
 /** Lock purchase price and 1st offer while the customer reviews or staff reviews a counter. */
@@ -164,15 +174,17 @@ export function isCatalogFinalOfferEditable(status: string | null | undefined): 
   return normalizeCatalogOrderStatus(status) === 'countered';
 }
 
-/** Only ordered qty is editable once the customer has confirmed the order. */
-export function isCatalogOrderedQtyEditable(status: string | null | undefined): boolean {
-  return normalizeCatalogOrderStatus(status) === 'confirmed';
+/** Procured qty is entered when marking ready for shipment (not stored on the line). */
+export function isCatalogProcuredQtyEditable(status: string | null | undefined): boolean {
+  const st = normalizeCatalogOrderStatus(status);
+  return st === 'confirmed' || st === 'procuring';
 }
 
-/** Delivered qty is editable during procurement / ordered fulfillment. */
-export function isCatalogDeliveredQtyEditable(status: string | null | undefined): boolean {
-  const st = normalizeCatalogOrderStatus(status);
-  return st === 'procuring' || st === 'ordered';
+/** @deprecated use isCatalogProcuredQtyEditable */
+export const isCatalogOrderedQtyEditable = isCatalogProcuredQtyEditable;
+
+export function isCatalogDeliveredQtyEditable(_status: string | null | undefined): boolean {
+  return false;
 }
 
 export function isCatalogProgressStepComplete(

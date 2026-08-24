@@ -35,7 +35,19 @@ const productRoutes: RouteRecordRaw[] = [
     children: [
       {
         path: '',
+        name: 'app-products-overview',
+        component: () => import('../pages/ProductsOverviewPage.vue'),
+      },
+      {
+        path: 'list',
         component: () => import('../pages/ProductsPage.vue'),
+      },
+      {
+        path: 'overview',
+        redirect: (to) => {
+          const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : '';
+          return tenantSlug ? `/${tenantSlug}/app/products` : '/app/products';
+        },
       },
       {
         path: 'brands',

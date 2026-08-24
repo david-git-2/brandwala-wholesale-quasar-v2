@@ -107,8 +107,10 @@ const formatStatusLabel = (st: string) => {
       return 'Confirmed';
     case 'procuring':
       return 'Procuring';
+    case 'ready_for_shipment':
+      return 'Ready for shipment';
     case 'ordered':
-      return 'Ordered';
+      return 'Ready for shipment';
     case 'negotiating':
       return 'Negotiating';
     case 'placed':
@@ -153,6 +155,7 @@ const getStatusColor = (status: string) => {
       return 'green-7';
     case 'procuring':
       return 'blue-9';
+    case 'ready_for_shipment':
     case 'ordered':
       return 'indigo-7';
     case 'placed':

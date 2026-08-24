@@ -189,14 +189,6 @@ const buildProductBasedCostingItemUpdatePayload = (
     updatePayload.confirmed_quantity = sanitizeNumeric(payload.confirmed_quantity);
   }
 
-  if (payload.ordered_quantity !== undefined) {
-    updatePayload.ordered_quantity = sanitizeNumeric(payload.ordered_quantity);
-  }
-
-  if (payload.delivered_quantity !== undefined) {
-    updatePayload.delivered_quantity = sanitizeNumeric(payload.delivered_quantity);
-  }
-
   if (payload.offer_price !== undefined) {
     updatePayload.offer_price = sanitizeNumeric(payload.offer_price);
   }

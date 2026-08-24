@@ -222,7 +222,7 @@ const isNegotiationOpen = computed(() => {
 });
 
 const getDisplayUnitPrice = (item: any) => {
-  if (normalizedStatus.value === 'final_offered' || ['confirmed', 'procuring', 'ordered', 'delivered'].includes(normalizedStatus.value)) {
+  if (normalizedStatus.value === 'final_offered' || ['confirmed', 'procuring', 'ready_for_shipment', 'delivered'].includes(normalizedStatus.value)) {
     if (item.final_price_amount != null && item.final_price_amount > 0) {
       return Number(item.final_price_amount);
     }
@@ -230,7 +230,7 @@ const getDisplayUnitPrice = (item: any) => {
       return Number(item.final_offer_amount);
     }
   }
-  if (['priced', 'countered', 'final_offered', 'confirmed', 'procuring', 'ordered', 'delivered'].includes(normalizedStatus.value)) {
+  if (['priced', 'countered', 'final_offered', 'confirmed', 'procuring', 'ready_for_shipment', 'delivered'].includes(normalizedStatus.value)) {
     if (item.staff_offer_amount != null && item.staff_offer_amount > 0) {
       return Number(item.staff_offer_amount);
     }

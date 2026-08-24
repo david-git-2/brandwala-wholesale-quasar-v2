@@ -8,13 +8,24 @@ const accessControlRoutes: RouteRecordRaw[] = [
     children: [
       {
         path: '',
+        name: 'admin-access-control-overview',
+        component: () => import('../pages/AccessControlOverviewPage.vue'),
+        beforeEnter: createAccessGuard({
+          loginRoute: 'admin-login-page',
+          requiredScope: 'app',
+          allowedRoles: ['admin'],
+          requireTenantContext: true,
+        }),
+      },
+      {
+        path: 'overview',
         redirect: (to) => {
           const tenantSlug = Array.isArray(to.params.tenantSlug)
             ? to.params.tenantSlug[0]
             : to.params.tenantSlug;
           return tenantSlug
-            ? `/${tenantSlug}/app/access-control/modules`
-            : '/app/access-control/modules';
+            ? `/${tenantSlug}/app/access-control`
+            : '/app/access-control';
         },
       },
       {

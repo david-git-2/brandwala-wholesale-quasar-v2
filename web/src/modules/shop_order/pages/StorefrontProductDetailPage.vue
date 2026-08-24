@@ -349,10 +349,6 @@ const breadcrumbItems = computed(() => [
     to: shopCatalogPath(tenantSlug.value, shopSlug.value),
   },
   {
-    label: t('shop.product_detail_breadcrumb'),
-    to: undefined,
-  },
-  {
     label: productId.value ? String(productId.value) : '—',
     to: undefined,
   },

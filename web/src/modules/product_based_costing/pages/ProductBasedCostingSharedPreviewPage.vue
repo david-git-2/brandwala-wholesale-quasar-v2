@@ -410,12 +410,6 @@ const ALL_PREVIEW_COLUMN_DEFS: Record<string, PreviewColumnDef> = {
   brand: { key: 'brand', label: t('product_based_costing.table_col_brand'), align: 'center', field: 'brand' },
   note: { key: 'note', label: t('product_based_costing.note'), align: 'center', field: 'note' },
   qty: { key: 'qty', label: t('product_based_costing.table_col_qty'), align: 'center', field: 'quantity' },
-  deliveredQty: {
-    key: 'deliveredQty',
-    label: t('product_based_costing.table_col_deliveredQty'),
-    align: 'center',
-    field: 'delivered_quantity',
-  },
   barcodeText: {
     key: 'barcodeText',
     label: t('product_based_costing.preview_barcode_code'),
@@ -643,7 +637,6 @@ const tableRows = computed(() => {
       imageUrl: item.image_url || '',
       qty,
       quantity: qty,
-      delivered_quantity: item.delivered_quantity ?? '-',
       barcodeText: item.barcode || item.product_code || '-',
       website: item.web_link || '',
       priceGbp,
@@ -693,7 +686,7 @@ const summaryMetrics = computed<SummaryMetric[]>(() => {
     value: t('product_based_costing.preview_items_count', { count: rawItems.value.length }),
   });
 
-  if (visible.has('qty') || visible.has('deliveredQty')) {
+  if (visible.has('qty')) {
     const totalQty = rawItems.value.reduce((acc, item) => acc + (item.quantity ?? 0), 0);
     metrics.push({
       label: t('product_based_costing.total_quantity'),

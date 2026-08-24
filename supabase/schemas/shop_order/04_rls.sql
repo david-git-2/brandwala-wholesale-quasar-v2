@@ -277,6 +277,10 @@ REVOKE ALL ON FUNCTION "public"."get_customer_shop_order"("p_tenant_id" bigint, 
 GRANT ALL ON FUNCTION "public"."get_customer_shop_order"("p_tenant_id" bigint, "p_order_id" bigint) TO "authenticated";
 
 
+REVOKE ALL ON FUNCTION "public"."get_customer_dashboard_summary"("p_tenant_id" bigint) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."get_customer_dashboard_summary"("p_tenant_id" bigint) TO "authenticated";
+
+
 REVOKE ALL ON FUNCTION "public"."get_shop_order_for_staff"("p_tenant_id" bigint, "p_order_id" bigint) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_shop_order_for_staff"("p_tenant_id" bigint, "p_order_id" bigint) TO "authenticated";
 
@@ -535,4 +539,26 @@ GRANT UPDATE ON SEQUENCE "public"."shops_id_seq" TO "anon";
 GRANT UPDATE ON SEQUENCE "public"."shops_id_seq" TO "authenticated";
 GRANT UPDATE ON SEQUENCE "public"."shops_id_seq" TO "service_role";
 
+
+ALTER TABLE "public"."customer_demand_bucket_items" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "customer_demand_bucket_items_tenant_isolation" ON "public"."customer_demand_bucket_items" USING (("tenant_id" = (NULLIF("current_setting"('app.current_tenant_id'::"text", true), ''::"text"))::bigint));
+
+
+GRANT SELECT,INSERT,UPDATE,DELETE ON TABLE "public"."customer_demand_bucket_items" TO "authenticated";
+GRANT ALL ON TABLE "public"."customer_demand_bucket_items" TO "service_role";
+
+
+GRANT USAGE,SELECT ON SEQUENCE "public"."customer_demand_bucket_items_id_seq" TO "authenticated";
+GRANT ALL ON SEQUENCE "public"."customer_demand_bucket_items_id_seq" TO "service_role";
+
+
+GRANT ALL ON FUNCTION "public"."can_access_demand_bucket_profile"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_staff_only" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."add_demand_bucket_item"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_product_id" bigint, "p_source_type" "public"."demand_bucket_source_type", "p_source_id" bigint, "p_snapshot" "jsonb", "p_quantity" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."list_demand_bucket_items"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_status" "public"."demand_bucket_status", "p_limit" integer, "p_offset" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."pop_demand_bucket_item"("p_bucket_item_id" bigint, "p_popped_into_type" "text", "p_popped_into_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."pop_demand_bucket_items"("p_bucket_item_ids" bigint[], "p_popped_into_type" "text", "p_popped_into_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."cancel_demand_bucket_item"("p_bucket_item_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."purge_popped_demand_bucket_items"("p_tenant_id" bigint, "p_retention_days" integer) TO "authenticated";
 

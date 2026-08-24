@@ -84,8 +84,6 @@ const allCatalogColumns = [
   { label: 'Note', value: 'note' },
   { label: 'Barcode / Code / ID', value: 'code_barcode_id' },
   { label: 'Qty (Customer)', value: 'qty_customer' },
-  { label: 'Ordered Qty', value: 'ordered_qty' },
-  { label: 'Delivered Qty', value: 'delivered_qty' },
   { label: 'Price (Purchase) / Unit', value: 'purchase_price_unit' },
   { label: 'Total Purchase Price', value: 'purchase_price_total' },
   { label: 'Product Weight (gm)', value: 'product_weight_gm' },

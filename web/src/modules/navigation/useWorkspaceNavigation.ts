@@ -242,29 +242,13 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
       MODULE_REGISTRY,
     );
 
-    const hasProductsModuleAccess = scopedModuleRouteDefinitions.some(
-      (routeDefinition) =>
-        routeDefinition.scope === 'app' && routeDefinition.moduleKey === 'products',
-    );
     const hasKobaRetailModuleAccess = scopedModuleRouteDefinitions.some(
       (routeDefinition) =>
         routeDefinition.scope === 'app' && routeDefinition.moduleKey === 'koba_retail',
     );
 
     const flatLinks = remainingRoutes
-      .filter(
-        (routeDefinition) =>
-          routeDefinition.moduleKey !== 'products' && routeDefinition.moduleKey !== 'koba_retail',
-      )
-      .map((routeDefinition) => ({
-        title: routeDefinition.title,
-        caption: routeDefinition.caption,
-        icon: routeDefinition.icon,
-        to: routeDefinition.to,
-      }));
-
-    const productsChildren = remainingRoutes
-      .filter((routeDefinition) => routeDefinition.moduleKey === 'products')
+      .filter((routeDefinition) => routeDefinition.moduleKey !== 'koba_retail')
       .map((routeDefinition) => ({
         title: routeDefinition.title,
         caption: routeDefinition.caption,
@@ -291,16 +275,6 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
 
     const groupedLinks = [
       ...flatLinks,
-      ...(hasProductsModuleAccess
-        ? [
-            {
-              title: 'Product',
-              caption: 'Product module',
-              icon: 'ph ph-archive-box',
-              children: productsChildren,
-            },
-          ]
-        : []),
       ...(hasKobaRetailModuleAccess
         ? [
             {
@@ -314,53 +288,7 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
       ...hierarchyLinks,
     ];
 
-    const baseLinksMapped = baseLinks.map((link) => {
-      if (link.title === 'Access Control') {
-        const basePath = authStore.tenantSlug
-          ? `/${authStore.tenantSlug}/app/access-control`
-          : '/app/access-control';
-        return {
-          title: 'Access Control',
-          caption: link.caption,
-          icon: link.icon,
-          children: [
-            {
-              title: 'Modules',
-              caption: 'Workspace features',
-              icon: 'ph ph-puzzle-piece',
-              to: `${basePath}/modules`,
-            },
-            {
-              title: 'Roles',
-              caption: 'Workspace roles',
-              icon: 'ph ph-shield-check',
-              to: `${basePath}/roles`,
-            },
-            {
-              title: 'Team',
-              caption: 'Workspace team',
-              icon: 'ph ph-users',
-              to: `${basePath}/team`,
-            },
-            {
-              title: 'Customer Groups',
-              caption: 'Workspace customer groups',
-              icon: 'ph ph-users-three',
-              to: `${basePath}/customer-groups`,
-            },
-            {
-              title: 'Investor Access',
-              caption: 'Workspace investor access',
-              icon: 'ph ph-piggy-bank',
-              to: `${basePath}/investors`,
-            },
-          ],
-        };
-      }
-      return link;
-    });
-
-    return [...baseLinksMapped, ...groupedLinks];
+    return [...baseLinks, ...groupedLinks];
   });
 
   return {

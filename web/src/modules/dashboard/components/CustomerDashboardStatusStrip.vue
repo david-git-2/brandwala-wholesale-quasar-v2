@@ -4,7 +4,7 @@
       {{ $t('customer_dashboard.glance_title') }}
     </div>
 
-    <div v-if="loading" class="glance-layout">
+    <div v-if="!segments" class="glance-layout">
       <div class="column q-gutter-sm">
         <q-skeleton v-for="n in 5" :key="n" type="rect" height="36px" class="rounded-borders" />
       </div>
@@ -13,10 +13,14 @@
       </div>
     </div>
 
+    <div v-else-if="total === 0" class="text-body2 text-grey-6">
+      {{ $t('customer_dashboard.no_recent_orders') }}
+    </div>
+
     <div v-else class="glance-layout">
       <div class="column q-gutter-xs">
         <button
-          v-for="seg in segments"
+          v-for="seg in segmentRows"
           :key="seg.id"
           type="button"
           class="glance-legend"
@@ -58,29 +62,28 @@ import { Doughnut } from 'vue-chartjs';
 import type { ChartData, ChartOptions } from 'chart.js';
 import { useI18n } from 'vue-i18n';
 
+import type { OrderGlanceSegments } from '../types/customerDashboard';
 import type { OrderGlanceBucket } from '../utils/customerDashboardStatus';
 
 ChartJS.register(ArcElement, DoughnutController, Tooltip);
 
 type ChartBucket = OrderGlanceBucket | 'delivered' | 'paid' | 'payment_needed';
 
-/** Dummy mix until customer-dashboard RPC lands. */
-const DUMMY_SEGMENTS: ReadonlyArray<{
+const SEGMENT_META: ReadonlyArray<{
   id: ChartBucket;
-  count: number;
   color: string;
   labelKey: string;
   hot?: boolean;
 }> = [
-  { id: 'needs_you', count: 3, color: '#d97706', labelKey: 'customer_dashboard.glance_needs_you', hot: true },
-  { id: 'in_progress', count: 8, color: '#1e3a8a', labelKey: 'customer_dashboard.glance_in_progress' },
-  { id: 'delivered', count: 11, color: '#0284c7', labelKey: 'customer_dashboard.glance_delivered' },
-  { id: 'paid', count: 17, color: '#059669', labelKey: 'customer_dashboard.glance_paid' },
-  { id: 'payment_needed', count: 4, color: '#dc2626', labelKey: 'customer_dashboard.glance_payment_needed', hot: true },
+  { id: 'needs_you', color: '#d97706', labelKey: 'customer_dashboard.glance_needs_you', hot: true },
+  { id: 'in_progress', color: '#1e3a8a', labelKey: 'customer_dashboard.glance_in_progress' },
+  { id: 'delivered', color: '#0284c7', labelKey: 'customer_dashboard.glance_delivered' },
+  { id: 'paid', color: '#059669', labelKey: 'customer_dashboard.glance_paid' },
+  { id: 'payment_needed', color: '#dc2626', labelKey: 'customer_dashboard.glance_payment_needed', hot: true },
 ];
 
-defineProps<{
-  loading: boolean;
+const props = defineProps<{
+  segments: OrderGlanceSegments | null;
 }>();
 
 const emit = defineEmits<{
@@ -89,10 +92,19 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const segments = DUMMY_SEGMENTS;
-const total = DUMMY_SEGMENTS.reduce((sum, seg) => sum + seg.count, 0);
+const segmentRows = computed(() =>
+  SEGMENT_META.map((meta) => ({
+    ...meta,
+    count: props.segments?.[meta.id] ?? 0,
+  })),
+);
 
-const share = (count: number) => `${Math.max(8, Math.round((count / total) * 100))}%`;
+const total = computed(() => props.segments?.total ?? 0);
+
+const share = (count: number) => {
+  if (total.value <= 0) return '0%';
+  return `${Math.max(8, Math.round((count / total.value) * 100))}%`;
+};
 
 const onSelect = (id: ChartBucket) => {
   if (id === 'needs_you' || id === 'in_progress') {
@@ -103,11 +115,11 @@ const onSelect = (id: ChartBucket) => {
 };
 
 const donutData = computed<ChartData<'doughnut'>>(() => ({
-  labels: DUMMY_SEGMENTS.map((seg) => t(seg.labelKey)),
+  labels: segmentRows.value.map((seg) => t(seg.labelKey)),
   datasets: [
     {
-      data: DUMMY_SEGMENTS.map((seg) => seg.count),
-      backgroundColor: DUMMY_SEGMENTS.map((seg) => seg.color),
+      data: segmentRows.value.map((seg) => seg.count),
+      backgroundColor: segmentRows.value.map((seg) => seg.color),
       borderWidth: 0,
       spacing: 3,
       borderRadius: 5,
@@ -116,14 +128,14 @@ const donutData = computed<ChartData<'doughnut'>>(() => ({
   ],
 }));
 
-const donutOptions: ChartOptions<'doughnut'> = {
+const donutOptions = computed<ChartOptions<'doughnut'>>(() => ({
   responsive: true,
   maintainAspectRatio: false,
   cutout: '74%',
   onClick: (_event, elements) => {
     const index = elements[0]?.index;
     if (index == null) return;
-    const seg = DUMMY_SEGMENTS[index];
+    const seg = segmentRows.value[index];
     if (seg) onSelect(seg.id);
   },
   onHover: (event, elements) => {
@@ -138,7 +150,7 @@ const donutOptions: ChartOptions<'doughnut'> = {
       },
     },
   },
-};
+}));
 </script>
 
 <style scoped>

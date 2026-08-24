@@ -52,8 +52,6 @@ export interface ProductBasedCostingItem {
   note: string | null;
   quantity: number | null;
   confirmed_quantity?: number | null;
-  ordered_quantity?: number | null;
-  delivered_quantity: number | null;
   barcode: string | null;
   product_code: string | null;
   brand?: string | null;
@@ -79,8 +77,6 @@ export interface ProductBasedCostingItemCreateInput {
   note?: string | null;
   quantity?: number | null;
   confirmed_quantity?: number | null;
-  ordered_quantity?: number | null;
-  delivered_quantity?: number | null;
   barcode?: string | null;
   product_code?: string | null;
   brand?: string | null;

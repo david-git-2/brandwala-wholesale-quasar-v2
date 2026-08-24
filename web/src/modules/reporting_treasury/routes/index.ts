@@ -33,7 +33,7 @@ const reportingTreasuryRoutes: RouteRecordRaw[] = [
   },
   {
     path: '/:tenantSlug?/app/accounting/shipment',
-    redirect: (to) => accountingRedirect(to, '/procurement/shipment'),
+    redirect: (to) => accountingRedirect(to, '/procurement'),
   },
   {
     path: '/:tenantSlug?/app/accounting/shipment/:id',
@@ -45,7 +45,7 @@ const reportingTreasuryRoutes: RouteRecordRaw[] = [
   },
   {
     path: '/:tenantSlug?/app/accounting/inventory-shipment',
-    redirect: (to) => accountingRedirect(to, '/procurement/shipment'),
+    redirect: (to) => accountingRedirect(to, '/procurement'),
   },
   {
     path: '/:tenantSlug?/app/finance',

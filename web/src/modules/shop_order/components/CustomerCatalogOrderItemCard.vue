@@ -221,22 +221,12 @@
         </span>
       </div>
 
-      <!-- Progress Tracking Post-Confirmed (procuring, ordered, delivered) -->
+      <!-- Progress Tracking Post-Confirmed -->
       <div v-if="isConfirmedOrBeyond && status !== 'confirmed'" class="progress-section q-pa-xs bg-grey-2 rounded-borders text-caption text-grey-8 item-card__full-width">
-        <div class="row items-center justify-around text-center">
+        <div class="row items-center justify-center text-center">
           <div>
             <div class="text-weight-bold">{{ item.quantity }}</div>
             <div style="font-size: 10px;" class="text-grey-6">Quantity</div>
-          </div>
-          <q-separator vertical />
-          <div>
-            <div class="text-weight-bold text-indigo-8">{{ item.ordered_quantity ?? 0 }}</div>
-            <div style="font-size: 10px;" class="text-grey-6">Ordered</div>
-          </div>
-          <q-separator vertical />
-          <div>
-            <div class="text-weight-bold text-positive">{{ item.delivered_quantity ?? 0 }}</div>
-            <div style="font-size: 10px;" class="text-grey-6">Delivered</div>
           </div>
         </div>
       </div>
@@ -248,6 +238,7 @@
 import { ref, computed, watch } from 'vue';
 import type { ShopOrderItem, ShopOrder, CustomerOrderDetailOrder } from '../types';
 import { calculateItemFirstOfferPrice } from '../utils/catalogPricingUtils';
+import { normalizeCatalogOrderStatus } from '../utils/catalogOrderStatus';
 
 const props = defineProps<{
   item: ShopOrderItem;
@@ -293,7 +284,9 @@ watch(
 );
 
 const isConfirmedOrBeyond = computed(() => {
-  return ['confirmed', 'procuring', 'ordered', 'delivered'].includes(props.status);
+  return ['confirmed', 'procuring', 'ready_for_shipment', 'delivered'].includes(
+    normalizeCatalogOrderStatus(props.status),
+  );
 });
 
 const staffOfferAmount = computed(() => {

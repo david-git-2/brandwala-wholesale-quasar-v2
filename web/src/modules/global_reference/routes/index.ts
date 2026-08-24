@@ -1,5 +1,8 @@
-import type { RouteRecordRaw } from 'vue-router';
+import type { NavigationGuard, RouteRecordRaw } from 'vue-router';
 import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { canAccessModule } from 'src/modules/navigation/modulePermissions';
+import type { ModuleKey } from 'src/modules/navigation/moduleRegistry';
 
 const platformGuard = createAccessGuard({
   loginRoute: 'superadmin-login-page',
@@ -21,6 +24,36 @@ const appGuard = (
     requireTenantContext: true,
     requiredModule,
   });
+
+const REFERENCE_OVERVIEW_MODULE_KEYS = [
+  'global_reference_currency',
+  'global_reference_market',
+  'global_reference_payment_method',
+  'global_reference_unit_of_measure',
+] as const satisfies readonly ModuleKey[];
+
+const referenceOverviewGuard: NavigationGuard = (to, from, next) => {
+  const authStore = useAuthStore();
+  const hasAnyReferenceAccess = REFERENCE_OVERVIEW_MODULE_KEYS.some((moduleKey) =>
+    canAccessModule({
+      scope: authStore.scope,
+      tenantId: authStore.tenantId,
+      customerGroupId: authStore.customerGroupId,
+      role: authStore.matchedRole,
+      moduleKey,
+      activeModuleKeys: authStore.activeModuleKeys,
+      effectiveGrants: authStore.access?.effectiveGrants,
+      isAdmin: authStore.access?.isAdmin,
+    }),
+  );
+
+  if (hasAnyReferenceAccess) {
+    next();
+    return;
+  }
+
+  return appGuard('global_reference_currency')(to, from, next);
+};
 
 const globalReferenceRoutes: RouteRecordRaw[] = [
   {
@@ -65,6 +98,19 @@ const globalReferenceRoutes: RouteRecordRaw[] = [
       const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : null;
       return tenantSlug ? `/${tenantSlug}/app/reference/currencies` : '/app/reference/currencies';
     },
+  },
+  {
+    path: '/:tenantSlug?/app/reference',
+    component: () => import('layouts/AppLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'app-reference-overview',
+        component: () => import('../pages/AppReferenceOverviewPage.vue'),
+        beforeEnter: referenceOverviewGuard,
+        meta: { title: 'Reference', headerTitle: 'Reference' },
+      },
+    ],
   },
   {
     path: '/:tenantSlug?/app/reference/currencies',

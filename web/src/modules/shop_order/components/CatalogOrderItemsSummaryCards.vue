@@ -25,15 +25,6 @@
               <span class="text-body2 text-weight-bold text-grey-9">{{ formatQty(totals.totalQuantity) }}</span>
             </div>
             <q-separator light />
-            <div class="row justify-between items-center">
-              <span class="text-caption text-grey-7">Ordered qty</span>
-              <span class="text-body2 text-weight-bold text-indigo-9">{{ formatQty(totals.totalOrderedQty) }}</span>
-            </div>
-            <q-separator light />
-            <div class="row justify-between items-center">
-              <span class="text-caption text-grey-7">Delivered qty</span>
-              <span class="text-body2 text-weight-bold text-positive">{{ formatQty(totals.totalDeliveredQty) }}</span>
-            </div>
           </div>
         </q-card>
       </div>
@@ -123,8 +114,6 @@ defineProps<{
   cargoRate: number;
   totals: {
     totalQuantity: number;
-    totalOrderedQty: number;
-    totalDeliveredQty: number;
     totalWeightGm: number;
     grandTotalPurchasePrice: number;
     grandTotalLandedPurchase: number;

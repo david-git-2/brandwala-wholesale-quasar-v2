@@ -1399,6 +1399,91 @@ export type Database = {
           },
         ]
       }
+      customer_demand_bucket_items: {
+        Row: {
+          barcode: string | null
+          billing_profile_id: number
+          created_at: string
+          id: number
+          image_url: string | null
+          name: string
+          note: string | null
+          popped_at: string | null
+          popped_into_id: number | null
+          popped_into_type: string | null
+          product_code: string | null
+          product_id: number
+          quantity: number
+          source_id: number | null
+          source_type: Database["public"]["Enums"]["demand_bucket_source_type"]
+          status: Database["public"]["Enums"]["demand_bucket_status"]
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          barcode?: string | null
+          billing_profile_id: number
+          created_at?: string
+          id?: never
+          image_url?: string | null
+          name: string
+          note?: string | null
+          popped_at?: string | null
+          popped_into_id?: number | null
+          popped_into_type?: string | null
+          product_code?: string | null
+          product_id: number
+          quantity?: number
+          source_id?: number | null
+          source_type: Database["public"]["Enums"]["demand_bucket_source_type"]
+          status?: Database["public"]["Enums"]["demand_bucket_status"]
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          barcode?: string | null
+          billing_profile_id?: number
+          created_at?: string
+          id?: never
+          image_url?: string | null
+          name?: string
+          note?: string | null
+          popped_at?: string | null
+          popped_into_id?: number | null
+          popped_into_type?: string | null
+          product_code?: string | null
+          product_id?: number
+          quantity?: number
+          source_id?: number | null
+          source_type?: Database["public"]["Enums"]["demand_bucket_source_type"]
+          status?: Database["public"]["Enums"]["demand_bucket_status"]
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_demand_bucket_items_billing_profile_id_fkey"
+            columns: ["billing_profile_id"]
+            isOneToOne: false
+            referencedRelation: "billing_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_demand_bucket_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_demand_bucket_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_group_member_grants: {
         Row: {
           action: string
@@ -4158,7 +4243,6 @@ export type Database = {
           brand: string | null
           confirmed_quantity: number | null
           created_at: string
-          delivered_quantity: number | null
           id: number
           image_url: string | null
           input_type: string | null
@@ -4167,7 +4251,6 @@ export type Database = {
           name: string | null
           note: string | null
           offer_price: number | null
-          ordered_quantity: number | null
           package_weight: number | null
           price_gbp: number | null
           product_based_costing_file_id: number | null
@@ -4186,7 +4269,6 @@ export type Database = {
           brand?: string | null
           confirmed_quantity?: number | null
           created_at?: string
-          delivered_quantity?: number | null
           id?: number
           image_url?: string | null
           input_type?: string | null
@@ -4195,7 +4277,6 @@ export type Database = {
           name?: string | null
           note?: string | null
           offer_price?: number | null
-          ordered_quantity?: number | null
           package_weight?: number | null
           price_gbp?: number | null
           product_based_costing_file_id?: number | null
@@ -4214,7 +4295,6 @@ export type Database = {
           brand?: string | null
           confirmed_quantity?: number | null
           created_at?: string
-          delivered_quantity?: number | null
           id?: number
           image_url?: string | null
           input_type?: string | null
@@ -4223,7 +4303,6 @@ export type Database = {
           name?: string | null
           note?: string | null
           offer_price?: number | null
-          ordered_quantity?: number | null
           package_weight?: number | null
           price_gbp?: number | null
           product_based_costing_file_id?: number | null
@@ -5684,7 +5763,6 @@ export type Database = {
           customer_offer_currency_id: number | null
           customer_sell_price_amount: number | null
           customer_sell_price_currency_id: number | null
-          delivered_quantity: number
           final_offer_at: string | null
           final_price_amount: number | null
           final_price_currency_id: number | null
@@ -5697,7 +5775,6 @@ export type Database = {
           name: string
           negotiation_status: string | null
           order_id: number
-          ordered_quantity: number
           procurement_pulled: boolean
           product_id: number
           quantity: number
@@ -5726,7 +5803,6 @@ export type Database = {
           customer_offer_currency_id?: number | null
           customer_sell_price_amount?: number | null
           customer_sell_price_currency_id?: number | null
-          delivered_quantity?: number
           final_offer_at?: string | null
           final_price_amount?: number | null
           final_price_currency_id?: number | null
@@ -5739,7 +5815,6 @@ export type Database = {
           name: string
           negotiation_status?: string | null
           order_id: number
-          ordered_quantity: number
           procurement_pulled?: boolean
           product_id: number
           quantity: number
@@ -5768,7 +5843,6 @@ export type Database = {
           customer_offer_currency_id?: number | null
           customer_sell_price_amount?: number | null
           customer_sell_price_currency_id?: number | null
-          delivered_quantity?: number
           final_offer_at?: string | null
           final_price_amount?: number | null
           final_price_currency_id?: number | null
@@ -5781,7 +5855,6 @@ export type Database = {
           name?: string
           negotiation_status?: string | null
           order_id?: number
-          ordered_quantity?: number
           procurement_pulled?: boolean
           product_id?: number
           quantity?: number
@@ -9590,6 +9663,80 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      add_demand_bucket_item: {
+        Args: {
+          p_billing_profile_id: number
+          p_product_id: number
+          p_quantity?: number
+          p_snapshot?: Json
+          p_source_id?: number
+          p_source_type: Database["public"]["Enums"]["demand_bucket_source_type"]
+          p_tenant_id: number
+        }
+        Returns: {
+          barcode: string | null
+          billing_profile_id: number
+          created_at: string
+          id: number
+          image_url: string | null
+          name: string
+          note: string | null
+          popped_at: string | null
+          popped_into_id: number | null
+          popped_into_type: string | null
+          product_code: string | null
+          product_id: number
+          quantity: number
+          source_id: number | null
+          source_type: Database["public"]["Enums"]["demand_bucket_source_type"]
+          status: Database["public"]["Enums"]["demand_bucket_status"]
+          tenant_id: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "customer_demand_bucket_items"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      add_demand_bucket_item_internal: {
+        Args: {
+          p_billing_profile_id: number
+          p_product_id: number
+          p_quantity?: number
+          p_snapshot?: Json
+          p_source_id?: number
+          p_source_type: Database["public"]["Enums"]["demand_bucket_source_type"]
+          p_tenant_id: number
+        }
+        Returns: {
+          barcode: string | null
+          billing_profile_id: number
+          created_at: string
+          id: number
+          image_url: string | null
+          name: string
+          note: string | null
+          popped_at: string | null
+          popped_into_id: number | null
+          popped_into_type: string | null
+          product_code: string | null
+          product_id: number
+          quantity: number
+          source_id: number | null
+          source_type: Database["public"]["Enums"]["demand_bucket_source_type"]
+          status: Database["public"]["Enums"]["demand_bucket_status"]
+          tenant_id: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "customer_demand_bucket_items"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       add_global_invoice_item: {
         Args: {
           p_global_stock_id: number
@@ -10378,6 +10525,14 @@ export type Database = {
         Args: { p_cart_item_id: number }
         Returns: boolean
       }
+      can_access_demand_bucket_profile: {
+        Args: {
+          p_billing_profile_id: number
+          p_staff_only?: boolean
+          p_tenant_id: number
+        }
+        Returns: boolean
+      }
       can_admin_manage_costing_file: {
         Args: { p_tenant_id: number }
         Returns: boolean
@@ -10502,6 +10657,35 @@ export type Database = {
       can_view_tenant_modules: {
         Args: { p_tenant_id: number }
         Returns: boolean
+      }
+      cancel_demand_bucket_item: {
+        Args: { p_bucket_item_id: number }
+        Returns: {
+          barcode: string | null
+          billing_profile_id: number
+          created_at: string
+          id: number
+          image_url: string | null
+          name: string
+          note: string | null
+          popped_at: string | null
+          popped_into_id: number | null
+          popped_into_type: string | null
+          product_code: string | null
+          product_id: number
+          quantity: number
+          source_id: number | null
+          source_type: Database["public"]["Enums"]["demand_bucket_source_type"]
+          status: Database["public"]["Enums"]["demand_bucket_status"]
+          tenant_id: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "customer_demand_bucket_items"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       cart_exists: { Args: { p_cart_id: number }; Returns: boolean }
       ceil_thrift_retail_price: { Args: { p_price: number }; Returns: number }
@@ -11640,8 +11824,16 @@ export type Database = {
           order_count: number
         }[]
       }
+      get_customer_dashboard_summary: {
+        Args: { p_tenant_id: number }
+        Returns: Json
+      }
       get_customer_shop_order: {
         Args: { p_order_id: number; p_tenant_id: number }
+        Returns: Json
+      }
+      get_customer_dashboard_summary: {
+        Args: { p_tenant_id: number }
         Returns: Json
       }
       get_dropship_finance_hub_data: {
@@ -12511,6 +12703,35 @@ export type Database = {
           tenant_id: number
         }[]
       }
+      list_demand_bucket_items: {
+        Args: {
+          p_billing_profile_id: number
+          p_limit?: number
+          p_offset?: number
+          p_status?: Database["public"]["Enums"]["demand_bucket_status"]
+          p_tenant_id: number
+        }
+        Returns: {
+          barcode: string
+          billing_profile_id: number
+          created_at: string
+          id: number
+          image_url: string
+          name: string
+          note: string
+          popped_at: string
+          popped_into_id: number
+          popped_into_type: string
+          product_code: string
+          product_id: number
+          quantity: number
+          source_id: number
+          source_type: Database["public"]["Enums"]["demand_bucket_source_type"]
+          status: Database["public"]["Enums"]["demand_bucket_status"]
+          tenant_id: number
+          updated_at: string
+        }[]
+      }
       list_dropship_shop_orders_for_staff: {
         Args: {
           p_limit?: number
@@ -12889,6 +13110,17 @@ export type Database = {
           tenant_id: number
           updated_at: string
         }[]
+      }
+      list_procurement_demand_groups: {
+        Args: {
+          p_child_tenant_id?: number
+          p_limit?: number
+          p_offset?: number
+          p_procurement_status?: string
+          p_search?: string
+          p_tenant_id: number
+        }
+        Returns: Json
       }
       list_procurement_shop_order_lines: {
         Args: {
@@ -13521,6 +13753,47 @@ export type Database = {
         Args: { p_order_id: number }
         Returns: undefined
       }
+      pop_demand_bucket_item: {
+        Args: {
+          p_bucket_item_id: number
+          p_popped_into_id: number
+          p_popped_into_type: string
+        }
+        Returns: {
+          barcode: string | null
+          billing_profile_id: number
+          created_at: string
+          id: number
+          image_url: string | null
+          name: string
+          note: string | null
+          popped_at: string | null
+          popped_into_id: number | null
+          popped_into_type: string | null
+          product_code: string | null
+          product_id: number
+          quantity: number
+          source_id: number | null
+          source_type: Database["public"]["Enums"]["demand_bucket_source_type"]
+          status: Database["public"]["Enums"]["demand_bucket_status"]
+          tenant_id: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "customer_demand_bucket_items"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      pop_demand_bucket_items: {
+        Args: {
+          p_bucket_item_ids: number[]
+          p_popped_into_id: number
+          p_popped_into_type: string
+        }
+        Returns: Json
+      }
       post_global_invoice: {
         Args: { p_invoice_id: number }
         Returns: undefined
@@ -13553,6 +13826,10 @@ export type Database = {
           p_refund_method?: string
           p_return_charge_amount?: number
         }
+        Returns: Json
+      }
+      purge_popped_demand_bucket_items: {
+        Args: { p_retention_days?: number; p_tenant_id: number }
         Returns: Json
       }
       recalculate_product_based_costing_file_offer_prices: {
@@ -14169,7 +14446,7 @@ export type Database = {
         Returns: Json
       }
       staff_set_catalog_delivered_qty: {
-        Args: { p_items: Json; p_order_id: number }
+        Args: { p_items?: Json; p_order_id: number }
         Returns: Json
       }
       staff_set_catalog_ordered_qty: {
@@ -14178,6 +14455,15 @@ export type Database = {
       }
       staff_start_catalog_procurement: {
         Args: { p_order_id: number }
+        Returns: Json
+      }
+      staff_update_catalog_order_item_for_staff: {
+        Args: {
+          p_item_id: number
+          p_order_id: number
+          p_payload: Json
+          p_tenant_id: number
+        }
         Returns: Json
       }
       stamp_global_shipment_landed_costs: {
@@ -15592,6 +15878,11 @@ export type Database = {
         | "cancelled"
         | "completed"
       customer_group_role: "admin" | "manager" | "staff"
+      demand_bucket_source_type:
+        | "shop_order_item"
+        | "pbc_costing_item"
+        | "manual"
+      demand_bucket_status: "open" | "popped" | "cancelled"
       global_fulfillment_status: "pending" | "packed" | "shipped" | "delivered"
       global_invoice_status:
         | "draft"
@@ -15666,6 +15957,7 @@ export type Database = {
         | "final_offered"
         | "procuring"
         | "ordered"
+        | "ready_for_shipment"
       shop_type_enum: "vendor_catalog" | "fixed_price" | "dropship"
       stock_availability: "sellable" | "held" | "unsellable"
       stock_location_kind: "shelf" | "slot" | "box" | "returns"
@@ -15856,6 +16148,12 @@ export const Constants = {
         "completed",
       ],
       customer_group_role: ["admin", "manager", "staff"],
+      demand_bucket_source_type: [
+        "shop_order_item",
+        "pbc_costing_item",
+        "manual",
+      ],
+      demand_bucket_status: ["open", "popped", "cancelled"],
       global_fulfillment_status: ["pending", "packed", "shipped", "delivered"],
       global_invoice_status: [
         "draft",
@@ -15936,6 +16234,7 @@ export const Constants = {
         "final_offered",
         "procuring",
         "ordered",
+        "ready_for_shipment",
       ],
       shop_type_enum: ["vendor_catalog", "fixed_price", "dropship"],
       stock_availability: ["sellable", "held", "unsellable"],

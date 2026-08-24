@@ -79,11 +79,32 @@ The **Thrift** vertical is the reference implementation of the dashboard registr
 | :--- | :--- | :--- | :--- |
 | **`AdminDashboard`** | Mount / Tenant Switch | `useDashboardSlots()` | Client-side computed from permissions & registry |
 | **`ThriftInsightsPanel`** | Mount / Period Poll | `useThriftDashboardMetricsQuery()` $\rightarrow$ `RPC: get_thrift_dashboard_metrics` | `staleTime: 30s`, Key: `['thrift', 'dashboard_metrics', tenantId]` |
-| **`CustomerDashboard`** | Mount / Profile Load | `useQuery` $\rightarrow$ `RPC: get_customer_dashboard_summary` | `staleTime: 60s`, Key: `['customer', 'dashboard', customerId]` |
+| **`CustomerDashboard`** | Mount / Profile Load | `useCustomerDashboardQuery` → `RPC: get_customer_dashboard_summary` | `staleTime: 60s`, Key: `['customer', 'dashboard', { tenantId }]` |
 
 ---
 
-## 5. How to Register Widgets for a New Module
+## 5. Customer Dashboard RPC (`get_customer_dashboard_summary`)
+
+Single RPC for `/:tenantSlug?/shop/dashboard`. Replaces separate `list_customer_shops` + `list_customer_shop_orders` calls on mount.
+
+**Signature:** `get_customer_dashboard_summary(p_tenant_id bigint) → jsonb`
+
+| Field | Type | Notes |
+| :--- | :--- | :--- |
+| `tenant_id` | `bigint` | Echo of input |
+| `customer_group_id` | `bigint \| null` | Resolved via `current_customer_group_id` |
+| `shops` | `array` | Same shape as `list_customer_shops` |
+| `categories` | `array` | Distinct shop categories `{ id, name, slug, icon }` |
+| `order_glance.buckets` | `object` | `needs_you`, `in_progress`, `done`, `total` — matches `CustomerOrdersPage` filters |
+| `order_glance.segments` | `object` | `needs_you`, `in_progress`, `delivered`, `paid`, `payment_needed`, `total` — feeds status-strip donut |
+| `recent_orders` | `array` | Top 5 non-draft orders: `id`, `shop_id`, `shop_name`, `shop_slug`, `order_no`, `status`, `currency_symbol`, `created_at` |
+| `active_carts` | `array` | Same shape as `list_customer_active_carts` (for future resume-cart row) |
+
+No access (`customer_group_id` null): empty arrays and zero counts, not an error.
+
+---
+
+## 6. How to Register Widgets for a New Module
 
 1. Create `web/src/modules/<module>/dashboard/<module>DashboardSlots.ts` exporting `readonly DashboardSlot[]`.
 2. Import and register the array in [`dashboardSlotRegistry.ts`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/dashboard/registry/dashboardSlotRegistry.ts).

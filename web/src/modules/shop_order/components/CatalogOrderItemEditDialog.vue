@@ -39,7 +39,7 @@
         <div class="q-gutter-y-md">
           <!-- Quantities Row -->
           <div class="row q-col-gutter-sm">
-            <div class="col-12 col-sm-4">
+            <div class="col-12">
               <q-input
                 :model-value="form.quantity"
                 label="Customer Qty"
@@ -47,30 +47,6 @@
                 outlined
                 readonly
                 class="bg-grey-2"
-              />
-            </div>
-            <div class="col-12 col-sm-4">
-              <q-input
-                v-model.number="form.ordered_quantity"
-                label="Ordered Qty"
-                dense
-                outlined
-                type="number"
-                min="0"
-                :readonly="!isOrderedQtyEditable"
-                :class="{ 'bg-grey-2': !isOrderedQtyEditable }"
-              />
-            </div>
-            <div class="col-12 col-sm-4">
-              <q-input
-                v-model.number="form.delivered_quantity"
-                label="Delivered Qty"
-                dense
-                outlined
-                type="number"
-                min="0"
-                :readonly="!isDeliveredQtyEditable"
-                :class="{ 'bg-grey-2': !isDeliveredQtyEditable }"
               />
             </div>
           </div>
@@ -86,8 +62,7 @@
                 type="number"
                 step="1"
                 min="0"
-                :readonly="isFulfillmentQtyOnly"
-                :class="{ 'bg-grey-2': isFulfillmentQtyOnly }"
+                :readonly="false"
                 @update:model-value="recalculateOffer"
               >
                 <template #append>
@@ -104,8 +79,7 @@
                 type="number"
                 step="1"
                 min="0"
-                :readonly="isFulfillmentQtyOnly"
-                :class="{ 'bg-grey-2': isFulfillmentQtyOnly }"
+                :readonly="false"
                 @update:model-value="recalculateOffer"
               >
                 <template #append>
@@ -141,8 +115,8 @@
                 step="0.01"
                 min="0"
                 class="text-weight-bold"
-                :readonly="isFirstOfferLocked || isFulfillmentQtyOnly"
-                :class="{ 'bg-grey-2': isFirstOfferLocked || isFulfillmentQtyOnly }"
+                :readonly="isFirstOfferLocked"
+                :class="{ 'bg-grey-2': isFirstOfferLocked }"
                 @update:model-value="recalculateOffer"
               />
             </div>
@@ -170,8 +144,8 @@
                 step="1"
                 min="0"
                 class="text-weight-bold text-deep-purple-9"
-                :readonly="isFirstOfferLocked || isFulfillmentQtyOnly"
-                :class="{ 'bg-grey-2': isFirstOfferLocked || isFulfillmentQtyOnly }"
+                :readonly="isFirstOfferLocked"
+                :class="{ 'bg-grey-2': isFirstOfferLocked }"
               />
             </div>
             <div class="col-12 col-sm-5">
@@ -206,8 +180,8 @@
                 step="1"
                 min="0"
                 class="text-weight-bold text-green-10"
-                :readonly="!isFinalOfferEditable || isFulfillmentQtyOnly"
-                :class="{ 'bg-grey-2': !isFinalOfferEditable || isFulfillmentQtyOnly }"
+                :readonly="!isFinalOfferEditable"
+                :class="{ 'bg-grey-2': !isFinalOfferEditable }"
               />
             </div>
           </div>
@@ -234,7 +208,7 @@
 import { ref, computed, watch } from 'vue';
 import SmartImage from 'src/components/SmartImage.vue';
 import type { ShopOrder, ShopOrderItem } from '../types';
-import { isCatalogFirstOfferLocked, isCatalogFinalOfferEditable, isCatalogOrderedQtyEditable, isCatalogDeliveredQtyEditable } from '../utils/catalogOrderStatus';
+import { isCatalogFirstOfferLocked, isCatalogFinalOfferEditable } from '../utils/catalogOrderStatus';
 
 const props = defineProps<{
   modelValue: boolean;
@@ -257,9 +231,6 @@ const profitRate = computed(() => props.order?.profit_rate ?? 25);
 const profitBasis = computed(() => props.order?.profit_basis || 'total_cost');
 const isFirstOfferLocked = computed(() => isCatalogFirstOfferLocked(props.order?.status));
 const isFinalOfferEditable = computed(() => isCatalogFinalOfferEditable(props.order?.status));
-const isOrderedQtyEditable = computed(() => isCatalogOrderedQtyEditable(props.order?.status));
-const isDeliveredQtyEditable = computed(() => isCatalogDeliveredQtyEditable(props.order?.status));
-const isFulfillmentQtyOnly = computed(() => isOrderedQtyEditable.value || isDeliveredQtyEditable.value);
 
 watch(
   () => props.item,

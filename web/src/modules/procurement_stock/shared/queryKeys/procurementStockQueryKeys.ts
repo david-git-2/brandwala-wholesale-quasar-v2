@@ -45,4 +45,13 @@ export const procurementStockQueryKeys = {
     limit?: number;
     offset?: number;
   }) => ['procurementStock', 'childStockAtp', params] as const,
+
+  demandGroups: (params: {
+    tenantId: number;
+    procurementStatus: string;
+    search?: string | null;
+    childTenantId?: number | null;
+    limit?: number;
+    offset?: number;
+  }) => ['procurementStock', 'demandGroups', params] as const,
 };

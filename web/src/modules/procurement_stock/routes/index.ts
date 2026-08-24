@@ -1,5 +1,7 @@
-import type { RouteRecordRaw } from 'vue-router';
+import type { NavigationGuard, RouteRecordRaw } from 'vue-router';
 import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { canAccessModule } from 'src/modules/navigation/modulePermissions';
 import type { ModuleKey } from 'src/modules/navigation/moduleRegistry';
 
 const guard = (requiredModule: ModuleKey) =>
@@ -9,6 +11,40 @@ const guard = (requiredModule: ModuleKey) =>
     requireTenantContext: true,
     requiredModule,
   });
+
+const PROCUREMENT_OVERVIEW_MODULE_KEYS = [
+  'procurement_demand',
+  'global_shipment',
+  'global_stock',
+  'global_stock_movement',
+  'global_stock_location',
+  'cargo_company',
+  'shipment_progress_settings',
+  'inventory',
+] as const satisfies readonly ModuleKey[];
+
+const procurementOverviewGuard: NavigationGuard = (to, from, next) => {
+  const authStore = useAuthStore();
+  const hasAnyProcurementAccess = PROCUREMENT_OVERVIEW_MODULE_KEYS.some((moduleKey) =>
+    canAccessModule({
+      scope: authStore.scope,
+      tenantId: authStore.tenantId,
+      customerGroupId: authStore.customerGroupId,
+      role: authStore.matchedRole,
+      moduleKey,
+      activeModuleKeys: authStore.activeModuleKeys,
+      effectiveGrants: authStore.access?.effectiveGrants,
+      isAdmin: authStore.access?.isAdmin,
+    }),
+  );
+
+  if (hasAnyProcurementAccess) {
+    next();
+    return;
+  }
+
+  return guard('global_shipment')(to, from, next);
+};
 
 const withTenantSlug = (to: { params: { tenantSlug?: string | string[] } }, path: string) => {
   const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : null;
@@ -57,14 +93,46 @@ const procurementStockRoutes: RouteRecordRaw[] = [
 
   // Active Routes
   {
+    path: '/:tenantSlug?/app/procurement',
+    component: () => import('layouts/AppLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'app-procurement-overview',
+        component: () => import('../pages/ProcurementOverviewPage.vue'),
+        beforeEnter: procurementOverviewGuard,
+      },
+    ],
+  },
+  {
+    path: '/:tenantSlug?/app/procurement/demand',
+    component: () => import('layouts/AppLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'app-procurement-demand',
+        component: () => import('../pages/ProcurementDemandPage.vue'),
+        beforeEnter: guard('procurement_demand'),
+      },
+    ],
+  },
+  {
     path: '/:tenantSlug?/app/procurement/shipment',
     component: () => import('layouts/AppLayout.vue'),
     children: [
       {
         path: '',
+        redirect: (to) => withTenantSlug(to, '/app/procurement/shipment/list'),
+      },
+      {
+        path: 'list',
         name: 'app-procurement-shipment-list',
         component: () => import('../pages/InboundShipmentListPage.vue'),
         beforeEnter: guard('global_shipment'),
+      },
+      {
+        path: 'overview',
+        redirect: (to) => withTenantSlug(to, '/app/procurement'),
       },
       {
         path: ':id',

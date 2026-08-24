@@ -118,6 +118,7 @@ const getStatusColor = (status: string) => {
       return 'green-7';
     case 'procuring':
       return 'blue-9';
+    case 'ready_for_shipment':
     case 'ordered':
       return 'indigo-7';
     case 'placed':

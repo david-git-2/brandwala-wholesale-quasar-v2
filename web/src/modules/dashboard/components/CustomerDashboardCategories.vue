@@ -29,41 +29,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-import type { CustomerAccessibleShop } from 'src/modules/shop_order/repositories/shopOrderRepository';
+import type { CustomerDashboardCategory } from '../types/customerDashboard';
 
-type DashboardCategory = {
-  id: number | string;
-  name: string;
-  icon?: string | null;
-};
-
-/** Dummy mix until customer-category RPC lands. */
-const DUMMY_CATEGORIES: DashboardCategory[] = [
-  { id: 'apparel', name: 'Apparel', icon: 'ph ph-t-shirt' },
-  { id: 'footwear', name: 'Footwear', icon: 'ph ph-sneaker' },
-  { id: 'accessories', name: 'Accessories', icon: 'ph ph-watch' },
-  { id: 'home', name: 'Home', icon: 'ph ph-house' },
-  { id: 'kids', name: 'Kids', icon: 'ph ph-baby' },
-  { id: 'beauty', name: 'Beauty', icon: 'ph ph-sparkle' },
-];
-
-const props = defineProps<{
-  shops: CustomerAccessibleShop[];
+defineProps<{
+  categories: CustomerDashboardCategory[];
 }>();
-
-const categories = computed(() => {
-  const seen = new Map<number, DashboardCategory>();
-  props.shops.forEach((shop) => {
-    (shop.categories ?? []).forEach((cat) => {
-      if (!seen.has(cat.id)) {
-        seen.set(cat.id, { id: cat.id, name: cat.name, icon: cat.icon });
-      }
-    });
-  });
-  const fromShops = [...seen.values()];
-  return fromShops.length > 0 ? fromShops : DUMMY_CATEGORIES;
-});
 </script>
 
 <style scoped>

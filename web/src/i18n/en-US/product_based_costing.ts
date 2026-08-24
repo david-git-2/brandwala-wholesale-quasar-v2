@@ -33,9 +33,9 @@ export default {
   status_pending: 'Draft',
   status_offered: 'Offered',
   status_confirmed: 'Confirmed',
-  status_placing_order: 'Placing Order',
+  status_procuring: 'Procuring',
+  status_placing_order: 'Procuring',
   status_ready_for_shipment: 'Ready for Shipment',
-  status_invoicing: 'Invoicing',
   status_delivered: 'Delivered',
   status_cancelled: 'Cancelled',
   review: 'Review',
@@ -53,6 +53,8 @@ export default {
   next_offered: 'Quote stamped as Offered. Confirm order when they accept.',
   next_confirmed:
     'Quote accepted. Confirmed qty starts from the offer — edit if they took less. Buy & ship next.',
+  next_procuring:
+    'Type how many you got in Ordered Qty. Confirmed Qty stays editable if they want a different amount.',
   next_placing_order:
     'Type how many you got in Ordered Qty. Confirmed Qty stays editable if they want a different amount.',
   offered_dialog_message:
@@ -118,6 +120,8 @@ export default {
   status_hint_offered_does: 'Saves that you sent it. Does not send a message.',
   status_hint_confirmed_when: 'They said yes',
   status_hint_confirmed_does: 'Saves how many they want. Change the number if they want less.',
+  status_hint_procuring_when: 'You are buying the goods',
+  status_hint_procuring_does: 'Type how many you got for each item.',
   status_hint_placing_order_when: 'You are buying the goods',
   status_hint_placing_order_does: 'Type how many you got for each item.',
   status_hint_ready_for_shipment_when: 'You know how many you got',

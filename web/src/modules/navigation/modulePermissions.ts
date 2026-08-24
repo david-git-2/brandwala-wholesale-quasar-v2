@@ -9,12 +9,114 @@ import {
 import type { AccessRole } from 'src/modules/auth/guards/accessGuard';
 import type { AuthScope } from 'src/modules/auth/composables/useOAuthLogin';
 import {
+  buildModuleRoutePath,
   getModuleDefinition,
   getModuleRoutesForScope,
   type InteractiveScope,
   type ModuleAction,
   type ModuleKey,
 } from './moduleRegistry';
+
+const PROCUREMENT_HUB_MODULE_KEYS: readonly ModuleKey[] = [
+  'procurement_demand',
+  'global_shipment',
+  'global_stock',
+  'global_stock_movement',
+  'global_stock_location',
+  'cargo_company',
+  'shipment_progress_settings',
+  'inventory',
+];
+
+const REFERENCE_HUB_MODULE_KEYS: readonly ModuleKey[] = [
+  'global_reference_currency',
+  'global_reference_market',
+  'global_reference_payment_method',
+  'global_reference_unit_of_measure',
+];
+
+type ModuleHubConfig = {
+  routeSegment: string;
+  anchorModuleKey: ModuleKey;
+  hubModuleKeys: readonly ModuleKey[];
+};
+
+const MODULE_HUB_CONFIGS: readonly ModuleHubConfig[] = [
+  {
+    routeSegment: 'procurement',
+    anchorModuleKey: 'procurement_stock',
+    hubModuleKeys: PROCUREMENT_HUB_MODULE_KEYS,
+  },
+  {
+    routeSegment: 'reference',
+    anchorModuleKey: 'global_reference_currency',
+    hubModuleKeys: REFERENCE_HUB_MODULE_KEYS,
+  },
+];
+
+const isProcurementHubModuleKey = (moduleKey: ModuleKey): boolean =>
+  (PROCUREMENT_HUB_MODULE_KEYS as readonly ModuleKey[]).includes(moduleKey);
+
+const isTenantModuleActive = (
+  moduleKey: ModuleKey,
+  activeModuleKeys: readonly string[],
+): boolean => {
+  if (activeModuleKeys.includes(moduleKey)) {
+    return true;
+  }
+
+  if (moduleKey === 'procurement_demand') {
+    return activeModuleKeys.includes('global_shipment');
+  }
+
+  if (moduleKey === 'procurement_stock') {
+    return PROCUREMENT_HUB_MODULE_KEYS.some((key) => activeModuleKeys.includes(key));
+  }
+
+  return false;
+};
+
+const hasModuleRoleGrant = ({
+  moduleKey,
+  action,
+  role,
+  effectiveGrants,
+  isAdmin,
+}: {
+  moduleKey: ModuleKey;
+  action: ModuleAction;
+  role: AccessRole | null | undefined;
+  effectiveGrants?: readonly { module_key: string; action: string }[] | null | undefined;
+  isAdmin?: boolean | null | undefined;
+}): boolean => {
+  if (role === 'superadmin' || isAdmin === true) {
+    return true;
+  }
+
+  if (!effectiveGrants) {
+    return false;
+  }
+
+  if (
+    effectiveGrants.some((grant) => grant.module_key === moduleKey && grant.action === action)
+  ) {
+    return true;
+  }
+
+  if (moduleKey === 'procurement_demand') {
+    return effectiveGrants.some(
+      (grant) => grant.module_key === 'global_shipment' && grant.action === action,
+    );
+  }
+
+  if (moduleKey === 'procurement_stock') {
+    return effectiveGrants.some(
+      (grant) => grant.module_key === 'global_shipment' && grant.action === action,
+    );
+  }
+
+  return false;
+};
 
 const NO_ACCESS: readonly ModuleAction[] = [];
 
@@ -122,24 +224,18 @@ export const canAccessModule = ({
     scope,
     customerGroupId,
   });
-  const tenantHasModule = activeModuleKeys.includes(moduleKey);
+  const tenantHasModule = isTenantModuleActive(moduleKey, activeModuleKeys);
 
-  let roleAllowed = false;
-  if (role === 'superadmin' || isAdmin === true) {
-    roleAllowed = true;
-  } else if (effectiveGrants) {
-    roleAllowed = effectiveGrants.some(
-      (grant) => grant.module_key === moduleKey && grant.action === action,
-    );
-  }
+  const roleAllowed = hasModuleRoleGrant({
+    moduleKey,
+    action,
+    role,
+    effectiveGrants,
+    isAdmin,
+  });
 
   if (
-    moduleKey === 'global_shipment' ||
-    moduleKey === 'global_stock' ||
-    moduleKey === 'global_stock_movement' ||
-    moduleKey === 'global_stock_location' ||
-    moduleKey === 'cargo_company' ||
-    moduleKey === 'shipment_progress_settings' ||
+    isProcurementHubModuleKey(moduleKey) ||
     moduleKey === 'investor_capital' ||
     moduleKey === 'investor_profiles' ||
     moduleKey === 'investor_capital_ledger' ||
@@ -205,7 +301,7 @@ export const resolveModuleAccess = ({
     scope,
     customerGroupId,
   });
-  const moduleEnabled = activeModuleKeys.includes(moduleKey);
+  const moduleEnabled = isTenantModuleActive(moduleKey, activeModuleKeys);
 
   let roleAllowed = false;
   let allowedActions: readonly ModuleAction[] = [];
@@ -216,7 +312,22 @@ export const resolveModuleAccess = ({
     allowedActions = effectiveGrants
       .filter((grant) => grant.module_key === moduleKey)
       .map((grant) => grant.action as ModuleAction);
-    roleAllowed = allowedActions.includes(action);
+    roleAllowed = hasModuleRoleGrant({
+      moduleKey,
+      action,
+      role,
+      effectiveGrants,
+      isAdmin,
+    });
+    if (
+      moduleKey === 'procurement_demand' &&
+      allowedActions.length === 0 &&
+      effectiveGrants.some((grant) => grant.module_key === 'global_shipment')
+    ) {
+      allowedActions = effectiveGrants
+        .filter((grant) => grant.module_key === 'global_shipment')
+        .map((grant) => grant.action as ModuleAction);
+    }
   } else {
     allowedActions = NO_ACCESS;
     roleAllowed = false;
@@ -224,12 +335,7 @@ export const resolveModuleAccess = ({
 
   let isBlockedByChildStatus = false;
   if (
-    moduleKey === 'global_shipment' ||
-    moduleKey === 'global_stock' ||
-    moduleKey === 'global_stock_movement' ||
-    moduleKey === 'global_stock_location' ||
-    moduleKey === 'cargo_company' ||
-    moduleKey === 'shipment_progress_settings' ||
+    isProcurementHubModuleKey(moduleKey) ||
     moduleKey === 'investor_capital' ||
     moduleKey === 'investor_profiles' ||
     moduleKey === 'investor_capital_ledger' ||
@@ -303,7 +409,7 @@ export const getAccessibleModuleRoutes = ({
     return [];
   }
 
-  return getModuleRoutesForScope(scope, { tenantSlug }).filter(
+  const accessibleRoutes = getModuleRoutesForScope(scope, { tenantSlug }).filter(
     (routeDefinition) =>
       resolveModuleAccess({
         scope,
@@ -317,6 +423,62 @@ export const getAccessibleModuleRoutes = ({
         isAdmin,
       }).allowed,
   );
+
+  if (scope !== 'app') {
+    return accessibleRoutes;
+  }
+
+  const accessContext = {
+    scope,
+    tenantId,
+    customerGroupId,
+    role,
+    activeModuleKeys,
+    effectiveGrants,
+    isAdmin,
+  };
+
+  let routes = [...accessibleRoutes];
+
+  for (const hubConfig of MODULE_HUB_CONFIGS) {
+    const hubPath = buildModuleRoutePath({
+      scope: 'app',
+      routeSegment: hubConfig.routeSegment,
+      tenantSlug,
+    });
+
+    if (routes.some((route) => route.to === hubPath)) {
+      continue;
+    }
+
+    const hasAnyHubAccess = hubConfig.hubModuleKeys.some((moduleKey) =>
+      resolveModuleAccess({
+        ...accessContext,
+        moduleKey,
+        action: 'view',
+      }).allowed,
+    );
+
+    if (!hasAnyHubAccess) {
+      continue;
+    }
+
+    const hubDefinition = getModuleDefinition(hubConfig.anchorModuleKey);
+    const hubRoute = hubDefinition.routes.find((routeDefinition) => routeDefinition.scope === 'app');
+
+    if (!hubRoute) {
+      continue;
+    }
+
+    routes.push({
+      moduleKey: hubConfig.anchorModuleKey,
+      moduleName: hubDefinition.name,
+      to: hubPath,
+      ...hubRoute,
+    });
+  }
+
+  return routes.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }));
 };
 
 export const useModulePermissions = () => {

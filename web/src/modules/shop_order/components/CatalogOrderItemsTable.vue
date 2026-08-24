@@ -104,53 +104,7 @@
               {{ slotProps.row.quantity }}
             </q-td>
 
-            <!-- 8. Ordered Qty -->
-            <q-td v-if="isColVisible('ordered_qty')" key="ordered_qty" :props="slotProps" class="sec-qty text-center" :class="{ 'editable-cell col-editable-qty': isOrderedQtyEditable }">
-              <span
-                v-if="!isOrderedQtyEditable"
-                class="font-mono text-weight-bold text-indigo-9"
-              >
-                {{ slotProps.row.ordered_quantity ?? 0 }}
-              </span>
-              <q-input
-                v-else
-                v-model.number="slotProps.row.ordered_quantity"
-                type="number"
-                dense
-                borderless
-                input-class="text-center font-mono text-weight-bold text-indigo-9"
-                class="cell-input"
-                min="0"
-                step="1"
-                @blur="onOrderedQtyBlur(slotProps.row)"
-                @keyup.enter="blurInput"
-              />
-            </q-td>
-
-            <!-- 9. Delivered Qty -->
-            <q-td v-if="isColVisible('delivered_qty')" key="delivered_qty" :props="slotProps" class="sec-qty text-center" :class="{ 'editable-cell col-editable-qty': isDeliveredQtyEditable }">
-              <span
-                v-if="!isDeliveredQtyEditable"
-                class="font-mono text-weight-bold text-positive"
-              >
-                {{ slotProps.row.delivered_quantity ?? 0 }}
-              </span>
-              <q-input
-                v-else
-                v-model.number="slotProps.row.delivered_quantity"
-                type="number"
-                dense
-                borderless
-                input-class="text-center font-mono text-weight-bold text-positive"
-                class="cell-input"
-                min="0"
-                step="1"
-                @blur="onDeliveredQtyBlur(slotProps.row)"
-                @keyup.enter="blurInput"
-              />
-            </q-td>
-
-            <!-- 10. Purchase Price Unit -->
+            <!-- 8. Purchase Price Unit -->
             <q-td v-if="isColVisible('purchase_price_unit')" key="purchase_price_unit" :props="slotProps" class="sec-purchase text-center bg-purchase-accent" :class="{ 'editable-cell col-editable-money': !isFirstOfferLocked }">
               <span
                 v-if="isFirstOfferLocked"
@@ -449,7 +403,7 @@ import {
   getFinalOfferUnitAmount as catalogGetFinalOfferUnitAmount,
   getFinalOfferMargin as catalogGetFinalOfferMargin,
 } from '../utils/catalogPricingUtils';
-import { normalizeCatalogOrderStatus, isCatalogFirstOfferLocked, isCatalogFinalOfferEditable, isCatalogOrderedQtyEditable, isCatalogDeliveredQtyEditable } from '../utils/catalogOrderStatus';
+import { normalizeCatalogOrderStatus, isCatalogFirstOfferLocked, isCatalogFinalOfferEditable } from '../utils/catalogOrderStatus';
 
 const props = defineProps<{
   order: ShopOrder | null;
@@ -476,8 +430,6 @@ const emit = defineEmits<{
         is_first_offer_manual?: boolean | null | undefined;
         final_price_amount?: number | null | undefined;
         is_final_offer_manual?: boolean | null | undefined;
-        ordered_quantity?: number | null | undefined;
-        delivered_quantity?: number | null | undefined;
       };
     },
   ): void;
@@ -503,18 +455,6 @@ function emitItemUpdate(item: ShopOrderItem, payload: Record<string, any>) {
 function handleSaveEditedItem(updated: ShopOrderItem) {
   const target = props.items.find((i) => i.id === updated.id);
   if (!target) return;
-
-  if (isOrderedQtyEditable.value) {
-    target.ordered_quantity = updated.ordered_quantity ?? 0;
-    emitItemUpdate(target, { ordered_quantity: target.ordered_quantity });
-    return;
-  }
-
-  if (isDeliveredQtyEditable.value) {
-    target.delivered_quantity = updated.delivered_quantity ?? 0;
-    emitItemUpdate(target, { delivered_quantity: target.delivered_quantity });
-    return;
-  }
 
   target.weight_kg = updated.weight_kg ?? null;
   target.product_weight_gm = updated.product_weight_gm ?? null;
@@ -592,8 +532,6 @@ const tableColumns = computed<QTableColumn[]>(() => [
 
   // 2. Quantities Section (sec-qty)
   { name: 'qty_customer', label: 'Qty (Customer)', field: 'quantity', align: 'center', style: editableColWidths.qty, headerStyle: editableColWidths.qty },
-  { name: 'ordered_qty', label: 'Ordered Qty', field: 'ordered_quantity', align: 'center', style: editableColWidths.qty, headerStyle: editableColWidths.qty },
-  { name: 'delivered_qty', label: 'Delivered Qty', field: 'delivered_quantity', align: 'center', style: editableColWidths.qty, headerStyle: editableColWidths.qty },
 
   // 3. Purchase & Freight Section (sec-purchase)
   { name: 'purchase_price_unit', label: `Price (${buyCurrency.value}) / Unit`, field: 'cost_price_amount', align: 'center', style: editableColWidths.money, headerStyle: editableColWidths.money },
@@ -636,8 +574,6 @@ const defaultVisibleColumns = [
   'name',
   'brand',
   'qty_customer',
-  'ordered_qty',
-  'delivered_qty',
   'code_barcode_id',
   'purchase_price_unit',
   'purchase_price_total',
@@ -669,8 +605,6 @@ const LEGACY_COLUMN_MAPPING: Record<string, string[]> = {
   customer_offer: ['counter_offer_unit', 'counter_offer_row', 'counter_offer_margin'],
   final_price: ['final_offer_unit', 'final_offer_row', 'final_offer_margin'],
   confirmed_quantity: ['qty_customer'],
-  ordered_quantity: ['ordered_qty'],
-  delivered_quantity: ['delivered_qty'],
   quantity: ['qty_customer'],
 };
 
@@ -706,7 +640,7 @@ function isColVisible(colKey: string): boolean {
 
 function getHeaderSectionClass(colName: string): string {
   if (['sl', 'image', 'name', 'brand', 'note', 'code_barcode_id'].includes(colName)) return 'sec-info-hdr';
-  if (['qty_customer', 'ordered_qty', 'delivered_qty'].includes(colName)) return 'sec-qty-hdr';
+  if (colName === 'qty_customer') return 'sec-qty-hdr';
   if (['purchase_price_unit', 'purchase_price_total', 'cargo_rate', 'cargo_cost_unit_purchase'].includes(colName)) return 'sec-purchase-hdr';
   if (['product_weight_gm', 'package_weight_gm', 'total_weight_gm'].includes(colName)) return 'sec-weight-hdr';
   if (['landed_cost_unit_purchase', 'landed_cost_row_purchase', 'landed_cost_unit_sell', 'landed_cost_row_sell'].includes(colName)) return 'sec-landed-hdr';
@@ -726,8 +660,6 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
   const sell = sellCurrency.value;
   const labels: Record<string, string> = {
     qty_customer: 'Qty\n(Customer)',
-    ordered_qty: 'Ordered\nQty',
-    delivered_qty: 'Delivered\nQty',
     code_barcode_id: 'Barcode /\nCode / ID',
     purchase_price_unit: `Price\n(${buy})\n/ Unit`,
     purchase_price_total: `Total\nPurchase\n(${buy})`,
@@ -757,8 +689,6 @@ const status = computed(() => props.order?.status || 'submitted');
 const isCostingMode = computed(() => normalizeCatalogOrderStatus(status.value) === 'submitted');
 const isFirstOfferLocked = computed(() => isCatalogFirstOfferLocked(status.value));
 const isFinalOfferEditable = computed(() => isCatalogFinalOfferEditable(status.value));
-const isOrderedQtyEditable = computed(() => isCatalogOrderedQtyEditable(status.value));
-const isDeliveredQtyEditable = computed(() => isCatalogDeliveredQtyEditable(status.value));
 
 const FX = computed(() => props.order?.conversion_rate ?? 140);
 const cargoRate = computed(() => props.order?.cargo_rate ?? 0);
@@ -924,18 +854,6 @@ function clearZeroOnFocus(item: ShopOrderItem, field: 'product_weight_gm' | 'pac
   (item as any)[field] = null;
 }
 
-function onOrderedQtyBlur(item: ShopOrderItem) {
-  if (!isOrderedQtyEditable.value) return;
-  item.ordered_quantity = Math.max(0, Number(item.ordered_quantity) || 0);
-  emitItemUpdate(item, { ordered_quantity: item.ordered_quantity });
-}
-
-function onDeliveredQtyBlur(item: ShopOrderItem) {
-  if (!isDeliveredQtyEditable.value) return;
-  item.delivered_quantity = Math.max(0, Number(item.delivered_quantity) || 0);
-  emitItemUpdate(item, { delivered_quantity: item.delivered_quantity });
-}
-
 const firstOfferSaveTimers = new Map<number, ReturnType<typeof setTimeout>>();
 
 function persistFirstOfferManual(item: ShopOrderItem) {
@@ -1081,8 +999,6 @@ function onItemPackageWeightBlur(item: ShopOrderItem) {
 
 // Totals calculations
 const totalQuantity = computed(() => props.items.reduce((sum, i) => sum + (i.quantity || 0), 0));
-const totalOrderedQty = computed(() => props.items.reduce((sum, i) => sum + (i.ordered_quantity || 0), 0));
-const totalDeliveredQty = computed(() => props.items.reduce((sum, i) => sum + (i.delivered_quantity || 0), 0));
 
 const totalWeightGm = computed(() => props.items.reduce((sum, i) => sum + (getTotalWeightGm(i) * i.quantity), 0));
 
@@ -1110,8 +1026,6 @@ const overallFinalOfferMargin = computed(() => {
 
 const summaryTotals = computed(() => ({
   totalQuantity: totalQuantity.value,
-  totalOrderedQty: totalOrderedQty.value,
-  totalDeliveredQty: totalDeliveredQty.value,
   totalWeightGm: totalWeightGm.value,
   grandTotalPurchasePrice: grandTotalPurchasePrice.value,
   grandTotalLandedPurchase: grandTotalLandedPurchase.value,

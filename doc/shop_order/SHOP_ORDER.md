@@ -10,6 +10,8 @@ Customer group provisioning lives in [`CUSTOMER.md`](../customer/CUSTOMER.md). S
 
 **Customer demand bucket (shared waiting list, add / soft pop / purge):** [`DEMAND_BUCKET.md`](./DEMAND_BUCKET.md)
 
+**Procurement demand list (aggregated shop order + PBC lines):** [`PROCUREMENT_DEMAND_LIST.md`](./PROCUREMENT_DEMAND_LIST.md)
+
 ---
 
 ## 1. Shop Setup Operator Journey (`shop_config`)
@@ -202,8 +204,7 @@ flowchart LR
 
 | Component | Action / Trigger | Hook / Endpoint | Caching Strategy |
 | :--- | :--- | :--- | :--- |
-| **`CustomerDashboard`** | Shops | `useCustomerShopsQuery` → `RPC: list_customer_shops` | Key: `['shopOrder', 'customerShops', { tenantId }]` |
-| **`CustomerDashboard`** | Active carts | `useActiveShopCartsQuery` → `RPC: list_customer_active_carts` | After shops load; Key: `activeCarts` |
+| **`CustomerDashboard`** | Mount | `useCustomerDashboardQuery` → `RPC: get_customer_dashboard_summary` | Key: `['customer', 'dashboard', { tenantId }]`; `staleTime: 60s` |
 | **`StorefrontPage`** | Catalog | `browseShopCatalog` → `RPC: browse_shop_catalog_for_customer` | Key: `shopOrderQueryKeys.storefrontCatalog(...)` |
 | **`ShopHeaderProductSearch`** | Typeahead | `searchShopCatalog` → `RPC: search_shop_catalog_for_customer` | Key: `shopOrderQueryKeys.catalogSearch(...)` |
 | **`StorefrontProductDetailPage`** | Mount | `getShopCatalogProduct` → `RPC: get_shop_catalog_product_for_customer` | Key: `shopOrderQueryKeys.storefrontProduct(tenantId, shopSlug, productId)` |

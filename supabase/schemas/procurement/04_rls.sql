@@ -84,7 +84,7 @@ CREATE OR REPLACE TRIGGER "trg_pbc_files_auto_tenant_id" BEFORE INSERT OR UPDATE
 
 
 
-CREATE OR REPLACE TRIGGER "trg_pbc_items_auto_backlog" AFTER INSERT OR DELETE OR UPDATE OF "quantity", "confirmed_quantity", "ordered_quantity", "product_id", "price_gbp" ON "public"."product_based_costing_items" FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_auto_upsert_pbc_backlog"();
+CREATE OR REPLACE TRIGGER "trg_pbc_items_auto_backlog" AFTER INSERT OR DELETE OR UPDATE OF "quantity", "confirmed_quantity", "product_id", "price_gbp" ON "public"."product_based_costing_items" FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_auto_upsert_pbc_backlog"();
 
 
 

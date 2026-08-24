@@ -184,8 +184,6 @@ function mapStaffShopOrderDetailItemToFlat(item: StaffShopOrderDetailItem): Shop
     staff_offer_at: negotiation.staff_offer?.at ?? null,
     customer_counter_at: negotiation.customer_offer?.at ?? null,
     final_offer_at: negotiation.final_offer?.at ?? null,
-    ordered_quantity: fulfillment.ordered,
-    delivered_quantity: fulfillment.delivered,
     returned_quantity: fulfillment.returned,
     procurement_pulled: fulfillment.procurement_pulled,
     sku: product.sku,

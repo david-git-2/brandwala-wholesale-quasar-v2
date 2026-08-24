@@ -98,6 +98,8 @@ flowchart LR
 
 **Parent shipment pull** still requires `ready_for_shipment` (`add_child_line_to_parent_shipment`).
 
+**Aggregated procurement desk:** [`PROCUREMENT_DEMAND_LIST.md`](../shop_order/PROCUREMENT_DEMAND_LIST.md) — RPC `list_procurement_demand_groups`.
+
 ---
 
 ## 3. Page & Component Inventory

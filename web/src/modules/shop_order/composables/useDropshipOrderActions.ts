@@ -12,9 +12,7 @@ import {
 } from './useDropshipReturnMutations';
 
 function returnableQty(item: ShopOrderItem): number {
-  const delivered = Number(
-    item.delivered_quantity ?? item.ordered_quantity ?? item.quantity ?? 0,
-  );
+  const delivered = Number(item.confirmed_quantity ?? item.quantity ?? 0);
   const returned = Number(item.returned_quantity ?? 0);
   return Math.max(0, delivered - returned);
 }

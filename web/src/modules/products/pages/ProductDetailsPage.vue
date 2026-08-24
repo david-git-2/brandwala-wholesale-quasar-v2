@@ -633,7 +633,7 @@ const onDelete = async () => {
     }
     showSuccessNotification('Product deleted successfully.');
     const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : '';
-    await router.push(`${tenantPrefix}/app/products`);
+    await router.push(`${tenantPrefix}/app/products/list`);
   } catch (err) {
     console.error('Error deleting product:', err);
     error.value = err instanceof Error ? err.message : String(err);

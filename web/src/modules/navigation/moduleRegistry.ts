@@ -28,6 +28,7 @@ export type ModuleKey =
   | 'global_reference_payment_method'
   | 'global_reference_unit_of_measure'
   | 'global_shipment'
+  | 'procurement_demand'
   | 'global_stock'
   | 'global_stock_movement'
   | 'global_stock_location'
@@ -145,29 +146,14 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     key: 'products',
     name: 'Products',
     description: 'Manage the product catalog and product-level records.',
+    navIcon: 'ph ph-archive-box',
     routes: [
       {
         scope: 'app',
         title: 'Products',
-        caption: 'Manage tenant product catalog',
+        caption: 'Catalog, brands, and categories hub',
         icon: 'ph ph-package',
         routeSegment: 'products',
-        requiredAction: 'view',
-      },
-      {
-        scope: 'app',
-        title: 'Brands',
-        caption: 'Manage product brands',
-        icon: 'ph ph-tag',
-        routeSegment: 'products/brands',
-        requiredAction: 'view',
-      },
-      {
-        scope: 'app',
-        title: 'Categories',
-        caption: 'Manage product categories',
-        icon: 'ph ph-folders',
-        routeSegment: 'products/categories',
         requiredAction: 'view',
       },
     ],
@@ -515,22 +501,22 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'global_reference',
     name: 'Global Reference',
-    description: 'Platform-wide reference catalogs shared across tenants.',
-    navIcon: 'ph ph-books',
+    description:
+      'Feature-catalog parent for reference submodules. No sidebar link — use global_reference_currency.',
     routes: [],
   },
   {
     key: 'global_reference_currency',
-    name: 'Currencies',
+    name: 'Reference',
     description: 'Global currency catalog for shipments, pricing, and money display.',
-    parentModuleKey: 'global_reference',
+    navIcon: 'ph ph-books',
     routes: [
       {
         scope: 'app',
-        title: 'Currencies',
-        caption: 'Currency catalog',
-        icon: 'ph ph-money',
-        routeSegment: 'reference/currencies',
+        title: 'Reference',
+        caption: 'Currencies, markets, payment methods, and units',
+        icon: 'ph ph-books',
+        routeSegment: 'reference',
         requiredAction: 'view',
       },
     ],
@@ -539,49 +525,19 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     key: 'global_reference_market',
     name: 'Markets',
     description: 'ISO-style market and country reference catalog.',
-    parentModuleKey: 'global_reference',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Markets',
-        caption: 'Market catalog',
-        icon: 'ph ph-globe',
-        routeSegment: 'reference/markets',
-        requiredAction: 'view',
-      },
-    ],
+    routes: [],
   },
   {
     key: 'global_reference_payment_method',
     name: 'Payment Methods',
     description: 'Bangladesh and international payment method reference catalog.',
-    parentModuleKey: 'global_reference',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Payment Methods',
-        caption: 'Payment method catalog',
-        icon: 'ph ph-wallet',
-        routeSegment: 'reference/payment-methods',
-        requiredAction: 'view',
-      },
-    ],
+    routes: [],
   },
   {
     key: 'global_reference_unit_of_measure',
     name: 'Units of Measure',
     description: 'Weight, count, length, volume, and packaging units.',
-    parentModuleKey: 'global_reference',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Units of Measure',
-        caption: 'Unit catalog',
-        icon: 'ph ph-ruler',
-        routeSegment: 'reference/units',
-        requiredAction: 'view',
-      },
-    ],
+    routes: [],
   },
   {
     key: 'thrift_barcode',
@@ -600,17 +556,33 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     ],
   },
   {
-    key: 'global_shipment',
-    name: 'Shipment',
-    description: 'Incoming goods from vendors. Open a row to add items and receive them.',
+    key: 'procurement_demand',
+    name: 'Demand',
+    description: 'Aggregated line items from shop orders and costing files in procurement.',
     parentModuleKey: 'procurement_stock',
     routes: [
       {
         scope: 'app',
-        title: 'Shipment',
-        caption: 'Incoming goods from vendors',
+        title: 'Demand',
+        caption: 'Items to source from orders and costing files',
+        icon: 'ph ph-list-checks',
+        routeSegment: 'procurement/demand',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'global_shipment',
+    name: 'Shipments',
+    description: 'Inbound shipments from vendors — add items and receive stock.',
+    parentModuleKey: 'procurement_stock',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Shipments',
+        caption: 'Inbound goods from vendors',
         icon: 'ph ph-truck',
-        routeSegment: 'procurement/shipment',
+        routeSegment: 'procurement/shipment/list',
         requiredAction: 'view',
       },
     ],
@@ -624,7 +596,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
       {
         scope: 'app',
         title: 'Warehouse',
-        caption: 'What is on the shelves',
+        caption: 'Shelf stock and sellable quantities',
         icon: 'ph ph-warehouse',
         routeSegment: 'procurement/stock',
         requiredAction: 'view',
@@ -640,7 +612,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
       {
         scope: 'app',
         title: 'Movements',
-        caption: 'Move stock between shelves',
+        caption: 'Move stock between shelves or states',
         icon: 'ph ph-arrows-left-right',
         routeSegment: 'procurement/movements',
         requiredAction: 'view',
@@ -656,7 +628,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
       {
         scope: 'app',
         title: 'Locations',
-        caption: 'Shelves and boxes',
+        caption: 'Shelves and boxes for warehouse stock',
         icon: 'ph ph-map-pin',
         routeSegment: 'procurement/locations',
         requiredAction: 'view',
@@ -688,7 +660,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
       {
         scope: 'app',
         title: 'Shipment Progress',
-        caption: 'Configure journey stages',
+        caption: 'Journey stages and public tracking',
         icon: 'ph ph-map-trifold',
         routeSegment: 'procurement/shipment-progress',
         requiredAction: 'view',
@@ -703,7 +675,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     routes: [
       {
         scope: 'app',
-        title: 'Stock',
+        title: 'Shop Stock',
         caption: 'Stock this shop can sell',
         icon: 'ph ph-package',
         routeSegment: 'procurement/child-stock',
@@ -714,15 +686,15 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'sales_invoice',
     name: 'Sales & Invoice',
-    description: 'Parent module for sales invoices and invoice brands.',
-    navIcon: 'ph ph-receipt',
+    description:
+      'Feature-catalog parent for invoice submodules. No sidebar link — use global_invoice.',
     routes: [],
   },
   {
     key: 'global_invoice',
     name: 'Sales Invoices',
     description: 'Desk invoices: wholesale, retail, and dropship.',
-    parentModuleKey: 'sales_invoice',
+    navIcon: 'ph ph-receipt',
     routes: [
       {
         scope: 'app',
@@ -839,9 +811,18 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     key: 'procurement_stock',
     name: 'Procurement & Stock',
     description:
-      'Inbound shipments, warehouse stock, movements, locations, cargo companies, and child stock view.',
+      'Demand desk, inbound shipments, warehouse stock, movements, and procurement operations.',
     navIcon: 'ph ph-truck',
-    routes: [],
+    routes: [
+      {
+        scope: 'app',
+        title: 'Overview',
+        caption: 'Procurement and stock operations hub',
+        icon: 'ph ph-truck',
+        routeSegment: 'procurement',
+        requiredAction: 'view',
+      },
+    ],
   },
   {
     key: 'global_stock_type',

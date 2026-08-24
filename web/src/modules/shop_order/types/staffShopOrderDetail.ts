@@ -128,8 +128,6 @@ export interface StaffShopOrderDetailItem {
     confirmed_quantity: number | null;
   };
   fulfillment: {
-    ordered: number;
-    delivered: number;
     returned: number;
     procurement_pulled: boolean;
   };

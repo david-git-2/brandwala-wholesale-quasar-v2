@@ -140,8 +140,6 @@ const sections: ColumnSection[] = [
     badgeColor: 'amber-10',
     columns: [
       { label: 'Qty (Customer)', value: 'qty_customer' },
-      { label: 'Ordered Qty', value: 'ordered_qty' },
-      { label: 'Delivered Qty', value: 'delivered_qty' },
     ],
   },
   {
@@ -223,8 +221,7 @@ const defaultColumns = [
   'name',
   'brand',
   'qty_customer',
-  'ordered_qty',
-  'delivered_qty',
+  'qty_customer',
   'code_barcode_id',
   'purchase_price_unit',
   'purchase_price_total',

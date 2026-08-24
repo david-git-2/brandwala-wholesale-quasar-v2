@@ -50,6 +50,7 @@
 import { useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
 import type { ProductBasedCostingFile } from '../types';
+import { normalizePbcFileStatus } from '../composables/useProductBasedCostingFileDetailsState';
 
 defineProps<{
   items: ProductBasedCostingFile[];
@@ -66,7 +67,7 @@ const $q = useQuasar();
 const { t, te } = useI18n();
 
 const statusLabel = (status: string | null | undefined) => {
-  const value = (status ?? 'pending').trim().toLowerCase() || 'pending';
+  const value = normalizePbcFileStatus((status ?? 'pending').trim().toLowerCase() || 'pending');
   const key = `product_based_costing.status_${value}`;
   return te(key) ? t(key) : value.replaceAll('_', ' ');
 };
@@ -97,10 +98,8 @@ const handleDelete = (item: ProductBasedCostingFile) => {
   });
 };
 
-const normalizeStatus = (status: string | null | undefined) => {
-  const value = (status ?? '').trim().toLowerCase();
-  return value || 'pending';
-};
+const normalizeStatus = (status: string | null | undefined) =>
+  normalizePbcFileStatus((status ?? '').trim().toLowerCase() || 'pending');
 
 const statusSurfaceStyle = (status: string | null | undefined) => {
   const value = normalizeStatus(status);
@@ -122,7 +121,7 @@ const statusSurfaceStyle = (status: string | null | undefined) => {
       boxShadow: 'inset 6px 0 0 #1890ff',
     };
   }
-  if (value === 'placing_order') {
+  if (value === 'procuring') {
     return {
       backgroundColor: '#f0f5ff',
       boxShadow: 'inset 6px 0 0 #2f54eb',
@@ -132,12 +131,6 @@ const statusSurfaceStyle = (status: string | null | undefined) => {
     return {
       backgroundColor: '#f6ffed',
       boxShadow: 'inset 6px 0 0 #52c41a',
-    };
-  }
-  if (value === 'invoicing') {
-    return {
-      backgroundColor: '#f8f9fa',
-      boxShadow: 'inset 6px 0 0 #722ed1',
     };
   }
   if (value === 'delivered') {
@@ -184,7 +177,7 @@ const statusChipStyle = (status: string | null | undefined) => {
       boxShadow: '0 1px 2px rgba(0, 80, 179, 0.18)',
     };
   }
-  if (value === 'placing_order') {
+  if (value === 'procuring') {
     return {
       backgroundColor: '#d6e4ff',
       color: '#10239e',
@@ -198,14 +191,6 @@ const statusChipStyle = (status: string | null | undefined) => {
       color: '#237804',
       border: '1px solid #b7eb8f',
       boxShadow: '0 1px 2px rgba(35, 120, 4, 0.18)',
-    };
-  }
-  if (value === 'invoicing') {
-    return {
-      backgroundColor: '#efdbff',
-      color: '#391085',
-      border: '1px solid #d3ade6',
-      boxShadow: '0 1px 2px rgba(57, 16, 133, 0.18)',
     };
   }
   if (value === 'delivered') {
@@ -237,9 +222,8 @@ const statusDotColor = (status: string | null | undefined) => {
   if (value === 'pending') return '#9a6a24';
   if (value === 'offered') return '#3f67b3';
   if (value === 'confirmed') return '#1890ff';
-  if (value === 'placing_order') return '#2f54eb';
+  if (value === 'procuring') return '#2f54eb';
   if (value === 'ready_for_shipment') return '#52c41a';
-  if (value === 'invoicing') return '#722ed1';
   if (value === 'delivered') return '#13c2c2';
   if (value === 'cancelled') return '#a64c62';
   return '#66758c';

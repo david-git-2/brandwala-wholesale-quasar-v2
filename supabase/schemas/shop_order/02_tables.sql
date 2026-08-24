@@ -281,8 +281,6 @@ CREATE TABLE IF NOT EXISTS "public"."shop_order_items" (
     "staff_offer_currency_id" bigint,
     "final_price_amount" numeric(12,4),
     "final_price_currency_id" bigint,
-    "ordered_quantity" integer NOT NULL,
-    "delivered_quantity" integer DEFAULT 0 NOT NULL,
     "returned_quantity" integer DEFAULT 0 NOT NULL,
     "procurement_pulled" boolean DEFAULT false NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
@@ -842,4 +840,67 @@ ALTER TABLE ONLY "public"."shops"
 
 CREATE OR REPLACE TRIGGER "trg_restock_dropship_order_on_delete" BEFORE DELETE ON "public"."shop_orders" FOR EACH ROW EXECUTE FUNCTION "public"."restock_dropship_order_on_delete"();
 
+
+CREATE TABLE IF NOT EXISTS "public"."customer_demand_bucket_items" (
+    "id" bigint NOT NULL,
+    "tenant_id" bigint NOT NULL,
+    "billing_profile_id" bigint NOT NULL,
+    "product_id" bigint NOT NULL,
+    "source_type" "public"."demand_bucket_source_type" NOT NULL,
+    "source_id" bigint,
+    "name" "text" NOT NULL,
+    "image_url" "text",
+    "barcode" "text",
+    "product_code" "text",
+    "note" "text",
+    "quantity" integer DEFAULT 1 NOT NULL,
+    "status" "public"."demand_bucket_status" DEFAULT 'open'::"public"."demand_bucket_status" NOT NULL,
+    "popped_at" timestamp with time zone,
+    "popped_into_type" "text",
+    "popped_into_id" bigint,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "customer_demand_bucket_items_quantity_check" CHECK (("quantity" > 0))
+);
+
+
+ALTER TABLE "public"."customer_demand_bucket_items" OWNER TO "postgres";
+
+
+ALTER TABLE "public"."customer_demand_bucket_items" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME "public"."customer_demand_bucket_items_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+ALTER TABLE ONLY "public"."customer_demand_bucket_items"
+    ADD CONSTRAINT "customer_demand_bucket_items_pkey" PRIMARY KEY ("id");
+
+
+CREATE INDEX "idx_demand_bucket_open_profile" ON "public"."customer_demand_bucket_items" USING "btree" ("tenant_id", "billing_profile_id") WHERE ("status" = 'open'::"public"."demand_bucket_status");
+
+
+CREATE INDEX "idx_demand_bucket_popped_purge" ON "public"."customer_demand_bucket_items" USING "btree" ("popped_at") WHERE ("status" = 'popped'::"public"."demand_bucket_status");
+
+
+CREATE INDEX "idx_demand_bucket_source" ON "public"."customer_demand_bucket_items" USING "btree" ("source_type", "source_id") WHERE ("source_id" IS NOT NULL);
+
+
+ALTER TABLE ONLY "public"."customer_demand_bucket_items"
+    ADD CONSTRAINT "customer_demand_bucket_items_billing_profile_id_fkey" FOREIGN KEY ("billing_profile_id") REFERENCES "public"."billing_profiles"("id") ON DELETE CASCADE;
+
+
+ALTER TABLE ONLY "public"."customer_demand_bucket_items"
+    ADD CONSTRAINT "customer_demand_bucket_items_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE CASCADE;
+
+
+ALTER TABLE ONLY "public"."customer_demand_bucket_items"
+    ADD CONSTRAINT "customer_demand_bucket_items_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
+
+
+CREATE OR REPLACE TRIGGER "trg_customer_demand_bucket_items_set_updated_at" BEFORE UPDATE ON "public"."customer_demand_bucket_items" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 

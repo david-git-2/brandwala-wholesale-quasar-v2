@@ -273,7 +273,7 @@ export async function buildCostingExcelWorkbook(input: BuildCostingExcelInput) {
       '',
       item.name ?? '',
       toNum(item.quantity),
-      toNum(item.delivered_quantity),
+      toNum(item.confirmed_quantity ?? item.quantity),
       toWeight(item.product_weight),
       toWeight(item.package_weight),
       null,

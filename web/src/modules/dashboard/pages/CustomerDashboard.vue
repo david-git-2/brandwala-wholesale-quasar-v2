@@ -1,10 +1,10 @@
 <template>
   <q-page class="q-pa-md bw-page theme-shop">
     <div class="q-gutter-y-md">
-      <CustomerDashboardSkeleton v-if="shopsQuery.isLoading.value" />
+      <CustomerDashboardSkeleton v-if="dashboardQuery.isLoading.value" />
 
-      <q-banner v-else-if="shopsError" class="bw-status-banner bg-negative text-white" rounded>
-        {{ shopsError }}
+      <q-banner v-else-if="dashboardError" class="bw-status-banner bg-negative text-white" rounded>
+        {{ dashboardError }}
       </q-banner>
 
       <template v-else>
@@ -12,7 +12,7 @@
 
         <CustomerDashboardStatusStrip
           v-if="shops.length > 0"
-          :loading="ordersQuery.isLoading.value"
+          :segments="orderGlanceSegments"
           @select-bucket="goOrders"
         />
 
@@ -32,15 +32,13 @@
         />
 
         <CustomerDashboardCategories
-          v-if="shops.length > 0"
-          :shops="shops"
+          v-if="shops.length > 0 && categories.length > 0"
+          :categories="categories"
         />
 
         <CustomerDashboardRecentOrders
           v-if="shops.length > 0"
           :recent-orders="recentOrders"
-          :loading="ordersQuery.isLoading.value"
-          :error="ordersError"
           @go-orders="goOrders"
           @view-order-detail="viewOrderDetail"
         />
@@ -54,8 +52,6 @@ import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useCustomerShopsQuery } from 'src/modules/shop_order/composables/useShopQuery';
-import { useCustomerDashboardOrdersQuery } from 'src/modules/shop_order/composables/useCustomerOrdersQuery';
 import type { CustomerAccessibleShop } from 'src/modules/shop_order/repositories/shopOrderRepository';
 import {
   getLastVisitedShopId,
@@ -63,6 +59,7 @@ import {
   shopCatalogPath,
 } from 'src/modules/shop_order/utils/catalogShop';
 import { type OrderGlanceBucket } from '../utils/customerDashboardStatus';
+import { useCustomerDashboardQuery } from '../composables/useCustomerDashboardQuery';
 
 import CustomerDashboardHero from '../components/CustomerDashboardHero.vue';
 import CustomerDashboardShopsGrid from '../components/CustomerDashboardShopsGrid.vue';
@@ -90,24 +87,14 @@ watch(
   { immediate: true },
 );
 
-const shopsQuery = useCustomerShopsQuery(tenantId);
-const shops = computed(() => shopsQuery.data.value ?? []);
-const shopsError = computed(() => (shopsQuery.error.value as Error | null)?.message || null);
+const dashboardQuery = useCustomerDashboardQuery(tenantId);
+const dashboard = computed(() => dashboardQuery.data.value);
+const dashboardError = computed(() => (dashboardQuery.error.value as Error | null)?.message || null);
 
-const ordersQuery = useCustomerDashboardOrdersQuery();
-const glanceOrders = computed(() =>
-  (ordersQuery.data.value ?? []).filter((order) => order.status !== 'draft'),
-);
-const recentOrders = computed(() => {
-  const rows = [...glanceOrders.value];
-  rows.sort((a, b) => {
-    const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
-    const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
-    return bTime - aTime;
-  });
-  return rows.slice(0, 5);
-});
-const ordersError = computed(() => (ordersQuery.error.value as Error | null)?.message || null);
+const shops = computed(() => dashboard.value?.shops ?? []);
+const categories = computed(() => dashboard.value?.categories ?? []);
+const recentOrders = computed(() => dashboard.value?.recent_orders ?? []);
+const orderGlanceSegments = computed(() => dashboard.value?.order_glance.segments ?? null);
 
 const rememberShop = (shop: CustomerAccessibleShop) => {
   if (tenantId.value) {

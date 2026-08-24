@@ -171,6 +171,7 @@ import {
   alwaysVisibleColumns,
   quoteVisibleColumns,
   getDefaultVisibleColumnsForStatus,
+  normalizePbcFileStatus,
   useProductBasedCostingFileDetailsState,
 } from '../composables/useProductBasedCostingFileDetailsState';
 
@@ -241,7 +242,7 @@ const nextStepBanner = computed(() => {
   if (status.value === 'pending') return t('product_based_costing.next_pending');
   if (status.value === 'offered') return t('product_based_costing.next_offered');
   if (status.value === 'confirmed') return t('product_based_costing.next_confirmed');
-  if (status.value === 'placing_order') return t('product_based_costing.next_placing_order');
+  if (status.value === 'procuring') return t('product_based_costing.next_procuring');
   return '';
 });
 
@@ -285,7 +286,7 @@ watch(
   file,
   (newFile) => {
     if (newFile) {
-      status.value = newFile.status || 'pending';
+      status.value = normalizePbcFileStatus(newFile.status || 'pending');
       const saved = visibleColumns.value;
       const isLegacyAll =
         saved.length === allColumnNames.length &&
@@ -298,8 +299,8 @@ watch(
         if (missing.length) {
           visibleColumns.value = [...saved, ...missing];
         }
-      } else if (status.value === 'placing_order') {
-        const mustHave = ['confirmedQty', 'orderedQty', 'status'];
+      } else if (status.value === 'procuring') {
+        const mustHave = ['confirmedQty', 'status'];
         const missing = mustHave.filter((col) => !saved.includes(col));
         if (missing.length) {
           visibleColumns.value = [...saved, ...missing];
@@ -549,8 +550,6 @@ async function onRowChange(payload: RowChangePayload) {
       id: payload.item.id,
       quantity: payload.item.quantity,
       confirmed_quantity: payload.item.confirmed_quantity ?? null,
-      ordered_quantity: payload.item.ordered_quantity ?? null,
-      delivered_quantity: payload.item.delivered_quantity,
       price_gbp: payload.item.price_gbp,
       offer_price: payload.item.offer_price,
       is_offer_price_manual: payload.item.is_offer_price_manual ?? false,

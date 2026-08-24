@@ -37,7 +37,7 @@
     </div>
 
     <div
-      v-if="status === 'placing_order' || status === 'ready_for_shipment'"
+      v-if="normalizedFileStatus === 'procuring' || normalizedFileStatus === 'ready_for_shipment'"
       class="row items-center justify-between q-pa-sm q-mb-sm bg-grey-1 rounded-borders border-grey-3"
     >
       <div class="row items-center q-gutter-xs">
@@ -343,59 +343,6 @@
                   </div>
                 </div>
 
-                <!-- Ordered Qty -->
-                <div
-                  v-if="isColumnVisible('orderedQty')"
-                  class="col-6 col-sm-3 text-center q-pa-xs rounded-borders"
-                  :class="{ 'qty-col--focus': focusOrderedQty }"
-                >
-                  <div class="metric-label">
-                    <q-icon
-                      v-if="focusOrderedQty"
-                      name="ph ph-pencil-simple"
-                      size="12px"
-                      class="q-mr-xs"
-                    />
-                    {{ $t('product_based_costing.table_col_orderedQty') }}
-                  </div>
-                  <q-input
-                    v-model.number="slotProps.row.orderedQty"
-                    type="number"
-                    dense
-                    borderless
-                    input-class="text-center font-mono"
-                    class="cell-input"
-                    :class="{ 'cell-input--review': focusOrderedQty }"
-                    min="0"
-                    step="1"
-                    @blur="onOrderedQtyBlur(slotProps.row)"
-                    @keyup.enter="blurInput"
-                  />
-                  <div v-if="focusOrderedQty" class="text-caption text-grey-7">
-                    {{ $t('product_based_costing.type_how_many_got') }}
-                  </div>
-                </div>
-
-                <!-- Delivered Qty -->
-                <div
-                  v-if="isColumnVisible('deliveredQty')"
-                  class="col-6 col-sm-3 text-center q-pa-xs rounded-borders"
-                >
-                  <div class="metric-label">{{ $t('product_based_costing.table_col_deliveredQty') }}</div>
-                  <q-input
-                    v-model.number="slotProps.row.deliveredQty"
-                    type="number"
-                    dense
-                    borderless
-                    input-class="text-center font-mono"
-                    class="cell-input"
-                    min="0"
-                    step="1"
-                    @blur="onDeliveredQtyBlur(slotProps.row)"
-                    @keyup.enter="blurInput"
-                  />
-                </div>
-
                 <!-- Price GBP -->
                 <div
                   v-if="isColumnVisible('priceGbp')"
@@ -571,29 +518,6 @@
         </q-th>
       </template>
 
-      <template #header-cell-orderedQty="slotProps">
-        <q-th
-          :props="slotProps"
-          class="col-ordered-qty text-center"
-          :class="{ 'qty-col--focus': focusOrderedQty }"
-        >
-          <div class="confirmed-qty-header">
-            <span>
-              <q-icon
-                v-if="focusOrderedQty"
-                name="ph ph-pencil-simple"
-                size="14px"
-                class="q-mr-xs"
-              />
-              {{ $t('product_based_costing.table_col_orderedQty') }}
-            </span>
-            <span v-if="focusOrderedQty" class="text-caption text-grey-7">
-              {{ $t('product_based_costing.type_how_many_got') }}
-            </span>
-          </div>
-        </q-th>
-      </template>
-
       <template #body="slotProps">
         <q-tr :props="slotProps" :class="{ 'row-incomplete-offer': slotProps.row.offerInputsIncomplete }">
           <q-td key="select" :props="slotProps" class="col-select text-center">
@@ -703,48 +627,6 @@
               min="0"
               step="1"
               @blur="onConfirmedQtyBlur(slotProps.row)"
-              @keyup.enter="blurInput"
-            />
-          </q-td>
-
-          <q-td
-            v-if="isColumnVisible('orderedQty')"
-            key="orderedQty"
-            :props="slotProps"
-            class="col-ordered-qty text-center editable-cell"
-            :class="{ 'qty-col--focus': focusOrderedQty }"
-          >
-            <q-input
-              v-model.number="slotProps.row.orderedQty"
-              type="number"
-              dense
-              borderless
-              input-class="text-center font-mono"
-              class="cell-input"
-              :class="{ 'cell-input--review': focusOrderedQty }"
-              min="0"
-              step="1"
-              @blur="onOrderedQtyBlur(slotProps.row)"
-              @keyup.enter="blurInput"
-            />
-          </q-td>
-
-          <q-td
-            v-if="isColumnVisible('deliveredQty')"
-            key="deliveredQty"
-            :props="slotProps"
-            class="col-delivered-qty text-center editable-cell"
-          >
-            <q-input
-              v-model.number="slotProps.row.deliveredQty"
-              type="number"
-              dense
-              borderless
-              input-class="text-center font-mono"
-              class="cell-input"
-              min="0"
-              step="1"
-              @blur="onDeliveredQtyBlur(slotProps.row)"
               @keyup.enter="blurInput"
             />
           </q-td>
@@ -1094,19 +976,6 @@
           >
             {{ formatNumber(totals.confirmedQty) }}
           </q-td>
-          <q-td
-            v-if="isColumnVisible('orderedQty')"
-            class="totals-row__cell col-ordered-qty text-center"
-            :class="{ 'qty-col--focus': focusOrderedQty }"
-          >
-            {{ formatNumber(totals.orderedQty) }}
-          </q-td>
-          <q-td
-            v-if="isColumnVisible('deliveredQty')"
-            class="totals-row__cell col-delivered-qty text-center"
-          >
-            {{ formatNumber(totals.deliveredQty) }}
-          </q-td>
           <q-td v-if="isColumnVisible('barcodeText')" class="totals-row__cell col-barcode" />
           <q-td v-if="isColumnVisible('website')" class="totals-row__cell col-website" />
           <q-td
@@ -1262,7 +1131,7 @@ import {
   normalizeOfferPriceBdt,
   toNumberSafe,
 } from '../utils/pricing';
-import { getItemStatusHint } from '../composables/useProductBasedCostingFileDetailsState';
+import { getItemStatusHint, normalizePbcFileStatus } from '../composables/useProductBasedCostingFileDetailsState';
 
 interface ProductBasedCostingItem {
   id: number;
@@ -1273,8 +1142,6 @@ interface ProductBasedCostingItem {
   note: string | null;
   quantity: number | null;
   confirmed_quantity?: number | null;
-  ordered_quantity?: number | null;
-  delivered_quantity: number | null;
   barcode: string | null;
   product_code: string | null;
   brand?: string | null;
@@ -1299,8 +1166,6 @@ interface ProductBasedCostingTableRow {
   imageUrl: string | null;
   qty: number;
   confirmedQty: number;
-  orderedQty: number;
-  deliveredQty: number;
   barcode: string;
   productCode: string;
   productId: string;
@@ -1337,8 +1202,9 @@ const props = withDefaults(
   },
 );
 
-const focusConfirmedQty = computed(() => props.status === 'confirmed');
-const focusOrderedQty = computed(() => props.status === 'placing_order');
+const normalizedFileStatus = computed(() => normalizePbcFileStatus(props.status ?? 'pending'));
+
+const focusConfirmedQty = computed(() => normalizedFileStatus.value === 'confirmed');
 
 const emit = defineEmits<{
   (e: 'edit', item: ProductBasedCostingItem): void;
@@ -1353,9 +1219,7 @@ const emit = defineEmits<{
         | 'offer_price'
         | 'status'
         | 'note'
-        | 'delivered_quantity'
         | 'confirmed_quantity'
-        | 'ordered_quantity'
         | 'product_weight'
         | 'package_weight'
         | 'price_gbp';
@@ -1459,11 +1323,9 @@ const getUnitCostBdt = (
     conversionRate,
   });
 
-const deriveItemStatusFromQuantities = (
+const deriveItemStatus = (
   currentStatus: string,
   confirmedQty: number,
-  orderedQty: number,
-  fileStatus?: string,
   assignedShipmentId?: number | null,
 ): string => {
   if (assignedShipmentId) {
@@ -1472,15 +1334,10 @@ const deriveItemStatusFromQuantities = (
   if (confirmedQty === 0) {
     return 'rejected';
   }
-  if (fileStatus === 'placing_order' || fileStatus === 'ready_for_shipment') {
-    if (orderedQty === 0) return 'unavailable';
-    if (orderedQty < confirmedQty) return 'partially_available';
-    return 'accepted';
-  }
   if (confirmedQty > 0 && currentStatus === 'pending') {
     return 'accepted';
   }
-  return currentStatus;
+  return currentStatus || 'pending';
 };
 
 const buildRows = (): ProductBasedCostingTableRow[] => {
@@ -1490,8 +1347,6 @@ const buildRows = (): ProductBasedCostingTableRow[] => {
     const productId = item.product_id != null ? String(item.product_id) : '';
     const qty = toNumber(item.quantity);
     const confirmedQty = item.confirmed_quantity != null ? toNumber(item.confirmed_quantity) : 0;
-    const orderedQty = item.ordered_quantity != null ? toNumber(item.ordered_quantity) : 0;
-    const deliveredQty = toNumber(item.delivered_quantity);
     const priceGbp = toNumber(item.price_gbp);
     const productWeight = toNumber(item.product_weight);
     const packageWeight = toNumber(item.package_weight);
@@ -1516,8 +1371,6 @@ const buildRows = (): ProductBasedCostingTableRow[] => {
       imageUrl: item.image_url ?? null,
       qty,
       confirmedQty,
-      orderedQty,
-      deliveredQty,
       barcode,
       productCode,
       productId,
@@ -1542,11 +1395,9 @@ const buildRows = (): ProductBasedCostingTableRow[] => {
         item.offer_price != null
           ? normalizeOfferPriceBdt(item.offer_price)
           : calculatedOfferPriceBdt,
-      status: deriveItemStatusFromQuantities(
+      status: deriveItemStatus(
         item.status ?? 'pending',
         confirmedQty,
-        orderedQty,
-        props.status,
         item.assigned_shipment_id ?? null,
       ),
       raw: { ...item },
@@ -1558,7 +1409,7 @@ const tableRows = ref<ProductBasedCostingTableRow[]>([]);
 const statusFilter = ref<'all' | 'active'>('active');
 
 const displayRows = computed(() => {
-  if (props.status === 'ready_for_shipment') {
+  if (normalizedFileStatus.value === 'ready_for_shipment') {
     if (statusFilter.value === 'all') {
       return tableRows.value;
     }
@@ -1566,7 +1417,7 @@ const displayRows = computed(() => {
       (row) => row.status !== 'rejected' && row.status !== 'unavailable',
     );
   }
-  if (props.status === 'placing_order') {
+  if (normalizedFileStatus.value === 'procuring') {
     if (statusFilter.value === 'all') {
       return tableRows.value;
     }
@@ -1666,20 +1517,6 @@ const columns = computed<QTableColumn[]>(() => [
     name: 'confirmedQty',
     label: t('product_based_costing.table_col_confirmedQty'),
     field: 'confirmedQty',
-    align: 'center',
-    style: 'text-align: center;',
-  },
-  {
-    name: 'orderedQty',
-    label: t('product_based_costing.table_col_orderedQty'),
-    field: 'orderedQty',
-    align: 'center',
-    style: 'text-align: center;',
-  },
-  {
-    name: 'deliveredQty',
-    label: t('product_based_costing.table_col_deliveredQty'),
-    field: 'deliveredQty',
     align: 'center',
     style: 'text-align: center;',
   },
@@ -1947,14 +1784,12 @@ const getProfitRate = (row: ProductBasedCostingTableRow) => {
 
 const emitRowChange = (
   row: ProductBasedCostingTableRow,
-  field: 'quantity' | 'confirmed_quantity' | 'ordered_quantity' | 'offer_price' | 'status' | 'note' | 'delivered_quantity' | 'price_gbp',
+  field: 'quantity' | 'confirmed_quantity' | 'offer_price' | 'status' | 'note' | 'price_gbp',
 ) => {
   const updatedItem: ProductBasedCostingItem = {
     ...row.raw,
     quantity: row.qty,
     confirmed_quantity: row.confirmedQty,
-    ordered_quantity: row.orderedQty,
-    delivered_quantity: row.deliveredQty,
     price_gbp: row.priceGbp,
     offer_price: row.isOfferPriceManual ? row.offerPriceBdt : null,
     is_offer_price_manual: row.isOfferPriceManual,
@@ -1978,7 +1813,6 @@ const emitProductWeightChange = (row: ProductBasedCostingTableRow) => {
     ...row.raw,
     quantity: row.qty,
     confirmed_quantity: row.confirmedQty,
-    ordered_quantity: row.orderedQty,
     offer_price: row.offerPriceBdt,
     is_offer_price_manual: row.isOfferPriceManual,
     status: row.status,
@@ -2000,7 +1834,6 @@ const emitPackageWeightChange = (row: ProductBasedCostingTableRow) => {
     ...row.raw,
     quantity: row.qty,
     confirmed_quantity: row.confirmedQty,
-    ordered_quantity: row.orderedQty,
     offer_price: row.offerPriceBdt,
     is_offer_price_manual: row.isOfferPriceManual,
     status: row.status,
@@ -2030,11 +1863,9 @@ const onQtyBlur = (row: ProductBasedCostingTableRow) => {
 
 const onConfirmedQtySave = (row: ProductBasedCostingTableRow) => {
   row.confirmedQty = Math.max(0, toNumber(row.confirmedQty));
-  row.status = deriveItemStatusFromQuantities(
+  row.status = deriveItemStatus(
     row.status,
     row.confirmedQty,
-    row.orderedQty,
-    props.status,
     row.raw.assigned_shipment_id ?? null,
   );
   emitRowChange(row, 'confirmed_quantity');
@@ -2044,35 +1875,6 @@ const onConfirmedQtyBlur = (row: ProductBasedCostingTableRow) => {
   row.confirmedQty = Math.max(0, toNumber(row.confirmedQty));
   if (valuesEqual(row.confirmedQty, row.raw.confirmed_quantity)) return;
   onConfirmedQtySave(row);
-};
-
-const onOrderedQtySave = (row: ProductBasedCostingTableRow) => {
-  row.orderedQty = toNumber(row.orderedQty);
-  row.status = deriveItemStatusFromQuantities(
-    row.status,
-    row.confirmedQty,
-    row.orderedQty,
-    props.status,
-    row.raw.assigned_shipment_id ?? null,
-  );
-  emitRowChange(row, 'ordered_quantity');
-};
-
-const onOrderedQtyBlur = (row: ProductBasedCostingTableRow) => {
-  row.orderedQty = Math.max(0, toNumber(row.orderedQty));
-  if (valuesEqual(row.orderedQty, row.raw.ordered_quantity)) return;
-  onOrderedQtySave(row);
-};
-
-const onDeliveredQtySave = (row: ProductBasedCostingTableRow) => {
-  row.deliveredQty = toNumber(row.deliveredQty);
-  emitRowChange(row, 'delivered_quantity');
-};
-
-const onDeliveredQtyBlur = (row: ProductBasedCostingTableRow) => {
-  row.deliveredQty = Math.max(0, toNumber(row.deliveredQty));
-  if (valuesEqual(row.deliveredQty, row.raw.delivered_quantity)) return;
-  onDeliveredQtySave(row);
 };
 
 const onOfferPriceBdtSave = (row: ProductBasedCostingTableRow) => {
@@ -2257,8 +2059,6 @@ const totals = computed(() => {
   const initial = {
     qty: 0,
     confirmedQty: 0,
-    orderedQty: 0,
-    deliveredQty: 0,
     priceGbp: 0,
     totalPurchasePriceGbp: 0,
     productWeight: 0,
@@ -2280,8 +2080,6 @@ const totals = computed(() => {
   const sum = displayRows.value.reduce((acc, row) => {
     acc.qty += row.qty;
     acc.confirmedQty += row.confirmedQty;
-    acc.orderedQty += row.orderedQty;
-    acc.deliveredQty += row.deliveredQty;
     acc.priceGbp += row.priceGbp;
     acc.totalPurchasePriceGbp += getTotalPurchasePriceGbp(row);
     acc.productWeight += row.productWeight;

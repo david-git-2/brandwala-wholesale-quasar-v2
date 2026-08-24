@@ -145,10 +145,10 @@ export function useStaffSetCatalogOrderedQtyMutation() {
     }) => shopOrderRepository.staffSetCatalogOrderedQty(orderId, items),
     onSuccess: (data, variables) => {
       patchStaffOrderDetailCache(queryClient, variables.orderId, data);
-      showSuccessNotification('Ordered quantities saved (Ordered)');
+      showSuccessNotification('Order marked ready for shipment');
     },
     onError: (err: any) => {
-      handleApiFailure(err, 'Failed to save ordered quantities');
+      handleApiFailure(err, 'Failed to mark order ready for shipment');
     },
   });
 }
@@ -157,19 +157,14 @@ export function useStaffSetCatalogDeliveredQtyMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      orderId,
-      items,
-    }: {
-      orderId: number;
-      items: Array<{ id: number; delivered_quantity: number }>;
-    }) => shopOrderRepository.staffSetCatalogDeliveredQty(orderId, items),
+    mutationFn: async ({ orderId }: { orderId: number }) =>
+      shopOrderRepository.staffSetCatalogDeliveredQty(orderId),
     onSuccess: (data, variables) => {
       patchStaffOrderDetailCache(queryClient, variables.orderId, data);
-      showSuccessNotification('Delivered quantities saved (Delivered)');
+      showSuccessNotification('Order marked delivered');
     },
     onError: (err: any) => {
-      handleApiFailure(err, 'Failed to save delivered quantities');
+      handleApiFailure(err, 'Failed to mark order delivered');
     },
   });
 }
@@ -202,8 +197,6 @@ export function useUpdateCatalogOrderItemMutation() {
         customer_offer_currency_id?: number | null;
         confirmed_quantity?: number | null;
         quantity?: number | null;
-        ordered_quantity?: number | null;
-        delivered_quantity?: number | null;
       };
     }) => {
       if (tenantId) {

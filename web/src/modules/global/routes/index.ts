@@ -61,7 +61,7 @@ const globalRoutes: RouteRecordRaw[] = [
     path: '/:tenantSlug?/app/global/accounting/shipments',
     redirect: (to) => {
       const prefix = getTenantSlugPrefix(to.params);
-      return `${prefix}/app/procurement/shipment`;
+      return `${prefix}/app/procurement`;
     },
   },
   {

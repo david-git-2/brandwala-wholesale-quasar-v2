@@ -154,8 +154,8 @@ BEGIN
       RAISE EXCEPTION 'costing file must be in ready_for_shipment status to pull items';
     END IF;
 
-    IF coalesce(v_costing_item.ordered_quantity, 0) <= 0 THEN
-      RAISE EXCEPTION 'costing item ordered_quantity must be greater than 0';
+    IF coalesce(v_costing_item.confirmed_quantity, v_costing_item.quantity::integer, 0) <= 0 THEN
+      RAISE EXCEPTION 'costing item confirmed quantity must be greater than 0';
     END IF;
 
     IF v_costing_item.assigned_shipment_id IS NOT NULL THEN
@@ -192,7 +192,7 @@ BEGIN
       p_parent_shipment_id,
       v_costing_item.product_id,
       v_costing_item.name,
-      v_costing_item.ordered_quantity,
+      greatest(coalesce(v_costing_item.confirmed_quantity, v_costing_item.quantity::integer, 0), 0),
       v_costing_item.image_url,
       'costing'::public.global_shipment_item_add_method,
       coalesce(v_costing_item.price_gbp, 0.00),
@@ -327,7 +327,6 @@ BEGIN
       image_url,
       quantity,
       confirmed_quantity,
-      delivered_quantity,
       price_gbp,
       product_weight,
       package_weight,
@@ -341,7 +340,6 @@ BEGIN
       v_backlog.image_url,
       v_backlog.open_quantity,
       v_backlog.open_quantity,
-      NULL,
       v_backlog.price_gbp,
       v_backlog.product_weight::integer,
       v_backlog.package_weight::integer,
@@ -411,7 +409,6 @@ BEGIN
       image_url,
       quantity,
       confirmed_quantity,
-      delivered_quantity,
       price_gbp,
       product_weight,
       package_weight,
@@ -425,7 +422,6 @@ BEGIN
       v_backlog.image_url,
       v_backlog.open_quantity,
       v_backlog.open_quantity,
-      NULL,
       v_backlog.price_gbp,
       v_backlog.product_weight::integer,
       v_backlog.package_weight::integer,
@@ -8157,7 +8153,6 @@ DECLARE
   v_file public.product_based_costing_files%ROWTYPE;
   v_tenant_id bigint;
   v_other_id bigint;
-  v_ordered_qty numeric;
   v_open_qty numeric;
   v_prod RECORD;
   v_price_gbp numeric;
@@ -8189,11 +8184,9 @@ BEGIN
         IF v_other_id IS NOT NULL THEN
           PERFORM public.upsert_pbc_backlog_from_item(v_other_id);
         ELSIF v_tenant_id IS NOT NULL AND v_file.billing_profile_id IS NOT NULL THEN
-          v_ordered_qty := coalesce(OLD.ordered_quantity, 0);
-          v_open_qty := coalesce(OLD.confirmed_quantity, OLD.quantity, 0) - v_ordered_qty;
+          v_open_qty := coalesce(OLD.confirmed_quantity, OLD.quantity, 0);
 
           IF coalesce(v_file.status, 'pending') IN ('pending', 'offered')
-             AND v_ordered_qty <= 0
              AND v_open_qty > 0
           THEN
             SELECT
@@ -9107,7 +9100,6 @@ DECLARE
   v_file public.product_based_costing_files%ROWTYPE;
   v_prod RECORD;
   v_confirmed_qty numeric;
-  v_ordered_qty numeric;
   v_open_qty numeric;
   v_backlog_row public.product_based_costing_backlog_items;
   v_tenant_id bigint;
@@ -9148,8 +9140,11 @@ BEGIN
   END IF;
 
   v_confirmed_qty := coalesce(v_item.confirmed_quantity, v_item.quantity, 0);
-  v_ordered_qty := coalesce(v_item.ordered_quantity, 0);
-  v_open_qty := v_confirmed_qty - v_ordered_qty;
+  v_open_qty := case
+    when v_item.assigned_shipment_id is not null then 0
+    when coalesce(v_file.status, 'pending') in ('pending', 'offered') then v_confirmed_qty
+    else 0
+  end;
 
   IF v_confirmed_qty <= 0 OR v_open_qty <= 0 THEN
     DELETE FROM public.product_based_costing_backlog_items
@@ -9668,7 +9663,7 @@ BEGIN
       t.name AS child_tenant_name,
       oi.name,
       oi.product_id,
-      greatest(coalesce(oi.ordered_quantity, 0), 0)::integer AS quantity,
+      greatest(coalesce(oi.confirmed_quantity, oi.quantity, 0), 0)::integer AS quantity,
       oi.cost_bdt,
       oi.price_gbp,
       oi.image_url,
@@ -9682,7 +9677,7 @@ BEGIN
       AND t.parent_id = p_parent_tenant_id
       AND (p_child_tenant_id IS NULL OR o.tenant_id = p_child_tenant_id)
       AND oi.shipment_id IS NULL
-      AND coalesce(oi.ordered_quantity, 0) > 0
+      AND coalesce(oi.confirmed_quantity, oi.quantity, 0) > 0
       AND (
         p_search IS NULL OR trim(p_search) = ''
         OR oi.name ILIKE '%' || trim(p_search) || '%'
@@ -9698,7 +9693,7 @@ BEGIN
       t.name AS child_tenant_name,
       pci.name,
       pci.product_id,
-      greatest(coalesce(pci.ordered_quantity, 0), 0)::integer AS quantity,
+      greatest(coalesce(pci.confirmed_quantity, pci.quantity::integer, 0), 0)::integer AS quantity,
       pci.offer_price AS cost_bdt,
       pci.price_gbp,
       pci.image_url,
@@ -9713,7 +9708,7 @@ BEGIN
       AND pcf.status = 'ready_for_shipment'
       AND pci.assigned_shipment_id IS NULL
       AND pci.product_id IS NOT NULL
-      AND coalesce(pci.ordered_quantity, 0) > 0
+      AND coalesce(pci.confirmed_quantity, pci.quantity::integer, 0) > 0
       AND (
         p_search IS NULL OR trim(p_search) = ''
         OR pci.name ILIKE '%' || trim(p_search) || '%'
@@ -9729,7 +9724,7 @@ BEGIN
       t.name AS child_tenant_name,
       oi.name,
       oi.product_id,
-      greatest(coalesce(oi.ordered_quantity, 0), 0)::integer AS quantity,
+      greatest(coalesce(oi.confirmed_quantity, oi.quantity, 0), 0)::integer AS quantity,
       CASE WHEN gc.code = 'BDT' THEN oi.final_price_amount ELSE NULL::numeric END AS cost_bdt,
       CASE WHEN gc.code = 'GBP' THEN oi.final_price_amount ELSE NULL::numeric END AS price_gbp,
       oi.image_url,

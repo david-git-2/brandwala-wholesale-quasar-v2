@@ -2054,7 +2054,7 @@ begin
 
       if v_order_item.id is null then
         raise exception 'Order item #% not found on order #%', v_order_item_id, p_order_id;
-      v_net_delivered := coalesce(v_order_item.delivered_quantity, v_order_item.quantity) - coalesce(v_order_item.returned_quantity, 0);
+      v_net_delivered := coalesce(v_order_item.confirmed_quantity, v_order_item.quantity) - coalesce(v_order_item.returned_quantity, 0);
       if v_returned_qty > v_net_delivered then
         raise exception 'Returned quantity % exceeds net delivered quantity % for item #%', v_returned_qty, v_net_delivered, v_order_item_id;
       select * into v_stock from public.global_stocks where id = v_order_item.global_stock_id;
@@ -2670,8 +2670,6 @@ begin
         'staff_offer_at', soi.staff_offer_at,
         'customer_counter_at', soi.customer_counter_at,
         'final_offer_at', soi.final_offer_at,
-        'ordered_quantity', soi.ordered_quantity,
-        'delivered_quantity', soi.delivered_quantity,
         'returned_quantity', soi.returned_quantity,
         'sku', p.product_code,
         'brand', p.brand,
@@ -2993,8 +2991,6 @@ begin
           'confirmed_quantity', soi.confirmed_quantity
         ),
         'fulfillment', jsonb_build_object(
-          'ordered', soi.ordered_quantity,
-          'delivered', soi.delivered_quantity,
           'returned', soi.returned_quantity,
           'procurement_pulled', soi.procurement_pulled
         ),
@@ -4315,6 +4311,301 @@ CREATE OR REPLACE FUNCTION "public"."list_customer_shops"("p_tenant_id" bigint) 
 ALTER FUNCTION "public"."list_customer_shops"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."get_customer_dashboard_summary"("p_tenant_id" bigint) RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_group_id bigint;
+  v_shops jsonb := '[]'::jsonb;
+  v_categories jsonb := '[]'::jsonb;
+  v_recent_orders jsonb := '[]'::jsonb;
+  v_active_carts jsonb := '[]'::jsonb;
+  v_buckets jsonb;
+begin
+  if p_tenant_id is null then
+    return jsonb_build_object(
+      'tenant_id', null,
+      'customer_group_id', null,
+      'shops', '[]'::jsonb,
+      'categories', '[]'::jsonb,
+      'order_glance', jsonb_build_object(
+        'buckets', jsonb_build_object('needs_you', 0, 'in_progress', 0, 'done', 0, 'total', 0),
+        'segments', jsonb_build_object(
+          'needs_you', 0,
+          'in_progress', 0,
+          'delivered', 0,
+          'paid', 0,
+          'payment_needed', 0,
+          'total', 0
+        )
+      ),
+      'recent_orders', '[]'::jsonb,
+      'active_carts', '[]'::jsonb
+    );
+  end if;
+
+  v_group_id := public.current_customer_group_id(p_tenant_id);
+  if v_group_id is null then
+    return jsonb_build_object(
+      'tenant_id', p_tenant_id,
+      'customer_group_id', null,
+      'shops', '[]'::jsonb,
+      'categories', '[]'::jsonb,
+      'order_glance', jsonb_build_object(
+        'buckets', jsonb_build_object('needs_you', 0, 'in_progress', 0, 'done', 0, 'total', 0),
+        'segments', jsonb_build_object(
+          'needs_you', 0,
+          'in_progress', 0,
+          'delivered', 0,
+          'paid', 0,
+          'payment_needed', 0,
+          'total', 0
+        )
+      ),
+      'recent_orders', '[]'::jsonb,
+      'active_carts', '[]'::jsonb
+    );
+  end if;
+
+  select coalesce(jsonb_agg(row_to_json(shop_row) order by shop_row.name), '[]'::jsonb)
+  into v_shops
+  from (
+    select
+      s.id,
+      s.tenant_id,
+      s.name,
+      s.slug,
+      s.shop_type,
+      s.order_mode,
+      s.is_negotiable,
+      bool_or(
+        case
+          when access.status = false or coalesce(profile.is_active, true) = false then false
+          when s.shop_type = 'dropship' then true
+          else coalesce(access.can_see_buy_price, profile.default_can_see_buy_price, false)
+        end
+      ) as can_see_buy_price,
+      bool_or(
+        case
+          when access.status = false or coalesce(profile.is_active, true) = false then false
+          when s.shop_type = 'dropship' then true
+          else coalesce(access.can_see_sell_price, profile.default_can_see_sell_price, false)
+        end
+      ) as can_see_sell_price,
+      s.description,
+      s.category_ids,
+      coalesce(
+        (
+          select jsonb_agg(
+            jsonb_build_object(
+              'id', c.id,
+              'name', c.name,
+              'slug', c.slug,
+              'icon', c.icon
+            )
+            order by c.name
+          )
+          from public.shop_categories c
+          where c.id = any(s.category_ids)
+            and c.is_active = true
+        ),
+        '[]'::jsonb
+      ) as categories,
+      s.sell_currency_id,
+      gc.code as sell_currency_code,
+      gc.symbol as sell_currency_symbol
+    from public.shops s
+    join public.shop_customer_group_access access on access.shop_id = s.id
+    join public.customer_groups cg on cg.id = access.customer_group_id
+    left join public.customer_group_shop_profiles profile
+      on profile.customer_group_id = cg.id and profile.tenant_id = s.tenant_id
+    left join public.global_currencies gc on gc.id = s.sell_currency_id
+    where s.is_active = true
+      and s.deleted_at is null
+      and s.tenant_id = p_tenant_id
+      and cg.id = v_group_id
+      and cg.is_active = true
+      and access.status = true
+      and coalesce(profile.is_active, true) = true
+      and coalesce(access.can_browse, profile.default_can_browse, false) = true
+    group by
+      s.id,
+      s.tenant_id,
+      s.name,
+      s.slug,
+      s.shop_type,
+      s.order_mode,
+      s.is_negotiable,
+      s.description,
+      s.category_ids,
+      s.sell_currency_id,
+      gc.code,
+      gc.symbol
+  ) shop_row;
+
+  select coalesce(jsonb_agg(cat order by cat ->> 'name'), '[]'::jsonb)
+  into v_categories
+  from (
+    select distinct on ((cat ->> 'id')::bigint) cat
+    from (
+      select jsonb_array_elements(coalesce(shop_elem -> 'categories', '[]'::jsonb)) as cat
+      from jsonb_array_elements(v_shops) shop_elem
+    ) cats
+    order by (cat ->> 'id')::bigint
+  ) deduped;
+
+  select jsonb_build_object(
+    'buckets', jsonb_build_object(
+      'needs_you', coalesce(count(*) filter (
+        where o.status in ('priced', 'negotiating', 'countered', 'final_offered')
+      ), 0),
+      'in_progress', coalesce(count(*) filter (
+        where o.status not in (
+          'draft',
+          'priced',
+          'negotiating',
+          'countered',
+          'final_offered',
+          'fulfilled',
+          'delivered',
+          'payment_received',
+          'cancelled',
+          'returned'
+        )
+      ), 0),
+      'done', coalesce(count(*) filter (
+        where o.status in ('fulfilled', 'delivered', 'payment_received', 'cancelled', 'returned')
+      ), 0),
+      'total', coalesce(count(*) filter (where o.status is distinct from 'draft'), 0)
+    ),
+    'segments', jsonb_build_object(
+      'needs_you', coalesce(count(*) filter (
+        where o.status in ('priced', 'negotiating', 'countered', 'final_offered')
+      ), 0),
+      'in_progress', coalesce(count(*) filter (
+        where o.status in (
+          'submitted',
+          'costing_pending',
+          'procuring',
+          'ordered',
+          'processing',
+          'shipped',
+          'ready_for_shipment',
+          'ready_for_pickup',
+          'fulfilled'
+        )
+      ), 0),
+      'delivered', coalesce(count(*) filter (where o.status = 'delivered'), 0),
+      'paid', coalesce(count(*) filter (where o.status = 'payment_received'), 0),
+      'payment_needed', coalesce(count(*) filter (
+        where o.status in ('confirmed', 'placed')
+      ), 0),
+      'total', coalesce(count(*) filter (
+        where o.status not in ('draft', 'cancelled', 'returned')
+          and o.status in (
+            'priced',
+            'negotiating',
+            'countered',
+            'final_offered',
+            'submitted',
+            'costing_pending',
+            'procuring',
+            'ordered',
+            'processing',
+            'shipped',
+            'ready_for_shipment',
+            'ready_for_pickup',
+            'fulfilled',
+            'delivered',
+            'payment_received',
+            'confirmed',
+            'placed'
+          )
+      ), 0)
+    )
+  )
+  into v_buckets
+  from public.shop_orders o
+  where o.tenant_id = p_tenant_id
+    and o.customer_group_id = v_group_id
+    and o.status is distinct from 'draft';
+
+  select coalesce(jsonb_agg(row_to_json(order_row) order by order_row.created_at desc), '[]'::jsonb)
+  into v_recent_orders
+  from (
+    select
+      o.id,
+      o.shop_id,
+      s.name as shop_name,
+      s.slug as shop_slug,
+      o.order_no,
+      o.status,
+      gc.symbol as currency_symbol,
+      o.created_at
+    from public.shop_orders o
+    join public.shops s on s.id = o.shop_id
+    left join public.global_currencies gc on gc.id = s.sell_currency_id
+    where o.tenant_id = p_tenant_id
+      and o.customer_group_id = v_group_id
+      and o.status is distinct from 'draft'
+    order by o.created_at desc
+    limit 5
+  ) order_row;
+
+  select coalesce(jsonb_agg(row_to_json(cart_row) order by cart_row.updated_at desc), '[]'::jsonb)
+  into v_active_carts
+  from (
+    select
+      c.id as cart_id,
+      s.id as shop_id,
+      s.name as shop_name,
+      s.slug as shop_slug,
+      null::text as shop_logo_url,
+      s.shop_type::text as shop_type,
+      c.can_see_buy_price_snapshot as can_see_buy_price,
+      c.can_see_sell_price_snapshot as can_see_sell_price,
+      s.sell_currency_id as currency_id,
+      gc.code as currency_code,
+      gc.symbol as currency_symbol,
+      coalesce(sum(ci.quantity), 0)::bigint as item_count,
+      case
+        when c.can_see_sell_price_snapshot then
+          sum(
+            ci.quantity * coalesce(
+              ci.customer_sell_price_amount,
+              ci.unit_sell_price_amount,
+              ci.unit_list_price_amount,
+              0
+            )
+          )::numeric
+        else null
+      end as cart_total,
+      c.updated_at
+    from public.shop_carts c
+    join public.shops s on s.id = c.shop_id
+    join public.shop_cart_items ci on ci.cart_id = c.id
+    left join public.global_currencies gc on gc.id = s.sell_currency_id
+    where c.status = 'active'
+      and c.tenant_id = p_tenant_id
+      and c.customer_group_id = v_group_id
+    group by c.id, s.id, gc.code, gc.symbol
+  ) cart_row;
+
+  return jsonb_build_object(
+    'tenant_id', p_tenant_id,
+    'customer_group_id', v_group_id,
+    'shops', v_shops,
+    'categories', v_categories,
+    'order_glance', v_buckets,
+    'recent_orders', v_recent_orders,
+    'active_carts', v_active_carts
+  );
+end;
+$$;
+ALTER FUNCTION "public"."get_customer_dashboard_summary"("p_tenant_id" bigint) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."list_dropship_shop_orders_for_staff"("p_tenant_id" bigint, "p_limit" integer DEFAULT 20, "p_offset" integer DEFAULT 0, "p_status" "text" DEFAULT NULL::"text", "p_search" "text" DEFAULT NULL::"text") RETURNS TABLE("id" bigint, "order_no" "text", "status" "public"."shop_order_status", "created_at" timestamp with time zone, "customer_group_name" "text", "created_by_email" "text", "recipient_name" "text", "recipient_phone" "text", "courier_name" "text", "courier_awb_number" "text", "cod_collect_amount" numeric, "total_amount" numeric, "global_invoice_id" bigint, "courier_remittance_ref" "text", "collection_source" "public"."collection_source_type", "payout_settlement_status" "text")
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -4557,7 +4848,7 @@ begin
     t.name as child_tenant_name,
     oi.name,
     oi.product_id,
-    greatest(coalesce(oi.ordered_quantity, 0), 0)::integer as quantity,
+    greatest(coalesce(oi.confirmed_quantity, oi.quantity, 0), 0)::integer as quantity,
     case when gc.code = 'BDT' then oi.final_price_amount else null::numeric end as cost_bdt,
     case when gc.code = 'GBP' then oi.final_price_amount else null::numeric end as price_gbp,
     oi.image_url,
@@ -4757,7 +5048,7 @@ begin
   select jsonb_agg(
     jsonb_build_object(
       'order_item_id', id,
-      'returned_qty', greatest(coalesce(delivered_quantity, quantity) - coalesce(returned_quantity, 0), 0),
+      'returned_qty', greatest(coalesce(confirmed_quantity, quantity) - coalesce(returned_quantity, 0), 0),
       'condition', 'perfect'
     )
   )
@@ -5418,8 +5709,6 @@ begin
     is_final_offer_manual = case when p_payload ? 'is_final_offer_manual' then coalesce((p_payload->>'is_final_offer_manual')::boolean, false) else soi.is_final_offer_manual end,
     confirmed_quantity = case when p_payload ? 'confirmed_quantity' then (p_payload->>'confirmed_quantity')::integer else soi.confirmed_quantity end,
     quantity = case when p_payload ? 'quantity' then (p_payload->>'quantity')::integer else soi.quantity end,
-    ordered_quantity = case when p_payload ? 'ordered_quantity' then (p_payload->>'ordered_quantity')::integer else soi.ordered_quantity end,
-    delivered_quantity = case when p_payload ? 'delivered_quantity' then (p_payload->>'delivered_quantity')::integer else soi.delivered_quantity end,
     updated_at = now()
   where soi.id = p_item_id and soi.order_id = p_order_id;
 
@@ -5712,6 +6001,7 @@ declare
   v_item_row record;
   v_target_qty integer;
   v_shortfall integer;
+  v_product record;
 begin
   select * into v_order from public.shop_orders where id = p_order_id;
   if not found then
@@ -5733,16 +6023,31 @@ begin
     select * into v_item_row from public.shop_order_items where id = v_item_id and order_id = p_order_id;
 
     if v_item_row.id is not null then
-      update public.shop_order_items
-      set
-        ordered_quantity = coalesce(v_ordered_qty, 0),
-        updated_at = now()
-      where id = v_item_id;
-
       v_target_qty := coalesce(v_item_row.confirmed_quantity, v_item_row.quantity, 0);
       v_shortfall := v_target_qty - coalesce(v_ordered_qty, 0);
 
       if v_shortfall > 0 and v_order.billing_profile_id is not null then
+        select p.barcode, p.product_code
+        into v_product
+        from public.products p
+        where p.id = v_item_row.product_id;
+
+        perform public.add_demand_bucket_item_internal(
+          p_tenant_id => v_order.tenant_id,
+          p_billing_profile_id => v_order.billing_profile_id,
+          p_product_id => v_item_row.product_id,
+          p_source_type => 'shop_order_item',
+          p_source_id => v_item_id,
+          p_snapshot => jsonb_build_object(
+            'name', coalesce(v_item_row.name, ''),
+            'image_url', v_item_row.image_url,
+            'barcode', v_product.barcode,
+            'product_code', v_product.product_code,
+            'note', null
+          ),
+          p_quantity => v_shortfall
+        );
+
         insert into public.customer_order_backlog_items (
           tenant_id,
           billing_profile_id,
@@ -5773,7 +6078,7 @@ begin
 
   update public.shop_orders
   set
-    status = 'ordered'::public.shop_order_status,
+    status = 'ready_for_shipment'::public.shop_order_status,
     placed_at = coalesce(placed_at, now()),
     updated_at = now()
   where id = p_order_id;
@@ -5784,7 +6089,7 @@ $$;
 
 create or replace function public.staff_set_catalog_delivered_qty(
   p_order_id bigint,
-  p_items jsonb
+  p_items jsonb default '[]'::jsonb
 )
 returns jsonb
 language plpgsql
@@ -5793,9 +6098,6 @@ set search_path = public
 as $$
 declare
   v_order record;
-  v_elem jsonb;
-  v_item_id bigint;
-  v_delivered_qty integer;
 begin
   select * into v_order from public.shop_orders where id = p_order_id;
   if not found then
@@ -5809,17 +6111,6 @@ begin
   if v_order.shop_type_snapshot <> 'vendor_catalog' then
     raise exception 'staff_set_catalog_delivered_qty is only valid for vendor_catalog orders.';
   end if;
-
-  for v_elem in select * from jsonb_array_elements(p_items) loop
-    v_item_id := (v_elem->>'id')::bigint;
-    v_delivered_qty := (v_elem->>'delivered_quantity')::integer;
-
-    update public.shop_order_items
-    set
-      delivered_quantity = coalesce(v_delivered_qty, 0),
-      updated_at = now()
-    where id = v_item_id and order_id = p_order_id;
-  end loop;
 
   update public.shop_orders
   set
@@ -5935,8 +6226,7 @@ BEGIN
     unit_minimum_sell_price_amount, unit_minimum_sell_price_currency_id,
     customer_sell_price_amount, customer_sell_price_currency_id,
     customer_offer_amount, customer_offer_currency_id,
-    final_price_amount, final_price_currency_id,
-    ordered_quantity
+    final_price_amount, final_price_currency_id
   )
   SELECT
     v_order_id, ci.product_id, ci.global_stock_id, ci.global_stock_allocation_id,
@@ -5954,8 +6244,7 @@ BEGIN
     CASE
       WHEN v_initial_status = 'confirmed' THEN COALESCE(ci.customer_sell_price_currency_id, ci.unit_sell_price_currency_id, ci.unit_list_price_currency_id)
       ELSE NULL
-    END,
-    ci.quantity
+    END
   FROM public.shop_cart_items ci
   WHERE ci.cart_id = p_cart_id;
 
@@ -6954,3 +7243,425 @@ begin
 ALTER FUNCTION "public"."restock_dropship_order_on_delete"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."can_access_demand_bucket_profile"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_staff_only" boolean DEFAULT false) RETURNS boolean
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_profile record;
+  v_is_parent boolean;
+begin
+  if p_tenant_id is null or p_billing_profile_id is null then
+    return false;
+  end if;
+
+  select bp.id, bp.tenant_id, bp.customer_group_id
+  into v_profile
+  from public.billing_profiles bp
+  where bp.id = p_billing_profile_id;
+
+  if not found then
+    return false;
+  end if;
+
+  if v_profile.tenant_id <> p_tenant_id then
+    if not exists (
+      select 1
+      from public.tenants t
+      where t.id = v_profile.tenant_id
+        and t.parent_id = p_tenant_id
+    ) then
+      return false;
+    end if;
+  end if;
+
+  select (t.parent_id is null) into v_is_parent
+  from public.tenants t
+  where t.id = p_tenant_id;
+
+  if coalesce(v_is_parent, false) then
+    if public.user_can_manage_parent_tenant(p_tenant_id) then
+      return true;
+    end if;
+  elsif public.is_tenant_staff(p_tenant_id)
+     or public.is_tenant_staff(v_profile.tenant_id) then
+    return true;
+  end if;
+
+  if p_staff_only then
+    return false;
+  end if;
+
+  if v_profile.customer_group_id is not null
+     and public.is_customer_group_member(v_profile.customer_group_id) then
+    return exists (
+      select 1
+      from public.customer_groups cg
+      where cg.id = v_profile.customer_group_id
+        and cg.tenant_id = p_tenant_id
+        and cg.is_active = true
+    );
+  end if;
+
+  return false;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."can_access_demand_bucket_profile"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_staff_only" boolean) OWNER TO "postgres";
+
+-- 4. Internal add (no auth — callers must validate)
+create or replace function public.add_demand_bucket_item_internal(
+  p_tenant_id bigint,
+  p_billing_profile_id bigint,
+  p_product_id bigint,
+  p_source_type public.demand_bucket_source_type,
+  p_source_id bigint default null,
+  p_snapshot jsonb default '{}'::jsonb,
+  p_quantity integer default 1
+)
+returns public.customer_demand_bucket_items
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_row public.customer_demand_bucket_items;
+  v_name text;
+  v_image_url text;
+  v_barcode text;
+  v_product_code text;
+  v_note text;
+  v_quantity integer;
+begin
+  if p_tenant_id is null or p_billing_profile_id is null or p_product_id is null then
+    raise exception 'tenant_id, billing_profile_id, and product_id are required';
+  end if;
+
+  v_quantity := greatest(coalesce(p_quantity, 1), 1);
+
+  v_name := nullif(trim(coalesce(p_snapshot->>'name', '')), '');
+  v_image_url := nullif(trim(coalesce(p_snapshot->>'image_url', '')), '');
+  v_barcode := nullif(trim(coalesce(p_snapshot->>'barcode', '')), '');
+  v_product_code := nullif(trim(coalesce(p_snapshot->>'product_code', '')), '');
+  v_note := nullif(trim(coalesce(p_snapshot->>'note', '')), '');
+
+  if v_name is null then
+    select
+      coalesce(p.name, 'Item'),
+      p.image_url,
+      p.barcode,
+      p.product_code
+    into v_name, v_image_url, v_barcode, v_product_code
+    from public.products p
+    where p.id = p_product_id;
+  end if;
+
+  insert into public.customer_demand_bucket_items (
+    tenant_id,
+    billing_profile_id,
+    product_id,
+    source_type,
+    source_id,
+    name,
+    image_url,
+    barcode,
+    product_code,
+    note,
+    quantity,
+    status
+  ) values (
+    p_tenant_id,
+    p_billing_profile_id,
+    p_product_id,
+    p_source_type,
+    p_source_id,
+    coalesce(v_name, 'Item'),
+    v_image_url,
+    v_barcode,
+    v_product_code,
+    v_note,
+    v_quantity,
+    'open'
+  )
+  returning * into v_row;
+
+  return v_row;
+end;
+$$;
+
+create or replace function public.add_demand_bucket_item(
+  p_tenant_id bigint,
+  p_billing_profile_id bigint,
+  p_product_id bigint,
+  p_source_type public.demand_bucket_source_type,
+  p_source_id bigint default null,
+  p_snapshot jsonb default '{}'::jsonb,
+  p_quantity integer default 1
+)
+returns public.customer_demand_bucket_items
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.can_access_demand_bucket_profile(p_tenant_id, p_billing_profile_id, true) then
+    raise exception 'access denied';
+  end if;
+
+  return public.add_demand_bucket_item_internal(
+    p_tenant_id,
+    p_billing_profile_id,
+    p_product_id,
+    p_source_type,
+    p_source_id,
+    p_snapshot,
+    p_quantity
+  );
+end;
+$$;
+
+create or replace function public.list_demand_bucket_items(
+  p_tenant_id bigint,
+  p_billing_profile_id bigint,
+  p_status public.demand_bucket_status default 'open',
+  p_limit integer default 100,
+  p_offset integer default 0
+)
+returns table (
+  id bigint,
+  tenant_id bigint,
+  billing_profile_id bigint,
+  product_id bigint,
+  source_type public.demand_bucket_source_type,
+  source_id bigint,
+  name text,
+  image_url text,
+  barcode text,
+  product_code text,
+  note text,
+  quantity integer,
+  status public.demand_bucket_status,
+  popped_at timestamptz,
+  popped_into_type text,
+  popped_into_id bigint,
+  created_at timestamptz,
+  updated_at timestamptz
+)
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_limit integer := greatest(coalesce(p_limit, 100), 1);
+  v_offset integer := greatest(coalesce(p_offset, 0), 0);
+begin
+  if not public.can_access_demand_bucket_profile(p_tenant_id, p_billing_profile_id, false) then
+    raise exception 'access denied';
+  end if;
+
+  return query
+  select
+    b.id,
+    b.tenant_id,
+    b.billing_profile_id,
+    b.product_id,
+    b.source_type,
+    b.source_id,
+    b.name,
+    b.image_url,
+    b.barcode,
+    b.product_code,
+    b.note,
+    b.quantity,
+    b.status,
+    b.popped_at,
+    b.popped_into_type,
+    b.popped_into_id,
+    b.created_at,
+    b.updated_at
+  from public.customer_demand_bucket_items b
+  where b.billing_profile_id = p_billing_profile_id
+    and (p_status is null or b.status = p_status)
+  order by b.created_at desc, b.id desc
+  limit v_limit
+  offset v_offset;
+end;
+$$;
+
+create or replace function public.pop_demand_bucket_item(
+  p_bucket_item_id bigint,
+  p_popped_into_type text,
+  p_popped_into_id bigint
+)
+returns public.customer_demand_bucket_items
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_row public.customer_demand_bucket_items;
+begin
+  if p_bucket_item_id is null then
+    raise exception 'bucket_item_id is required';
+  end if;
+  if nullif(trim(coalesce(p_popped_into_type, '')), '') is null
+     or p_popped_into_id is null then
+    raise exception 'popped_into_type and popped_into_id are required';
+  end if;
+
+  select * into v_row
+  from public.customer_demand_bucket_items
+  where id = p_bucket_item_id;
+
+  if not found then
+    raise exception 'bucket item not found: %', p_bucket_item_id;
+  end if;
+
+  if v_row.status <> 'open' then
+    raise exception 'bucket item % is not open', p_bucket_item_id;
+  end if;
+
+  if not public.can_access_demand_bucket_profile(v_row.tenant_id, v_row.billing_profile_id, false) then
+    raise exception 'access denied';
+  end if;
+
+  update public.customer_demand_bucket_items
+  set
+    status = 'popped',
+    popped_at = now(),
+    popped_into_type = trim(p_popped_into_type),
+    popped_into_id = p_popped_into_id,
+    updated_at = now()
+  where id = p_bucket_item_id
+  returning * into v_row;
+
+  return v_row;
+end;
+$$;
+
+create or replace function public.pop_demand_bucket_items(
+  p_bucket_item_ids bigint[],
+  p_popped_into_type text,
+  p_popped_into_id bigint
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_id bigint;
+  v_row public.customer_demand_bucket_items;
+  v_items jsonb := '[]'::jsonb;
+begin
+  if p_bucket_item_ids is null or cardinality(p_bucket_item_ids) = 0 then
+    return jsonb_build_object('items', '[]'::jsonb, 'count', 0);
+  end if;
+
+  foreach v_id in array p_bucket_item_ids loop
+    v_row := public.pop_demand_bucket_item(v_id, p_popped_into_type, p_popped_into_id);
+    v_items := v_items || jsonb_build_array(to_jsonb(v_row));
+  end loop;
+
+  return jsonb_build_object(
+    'items', v_items,
+    'count', jsonb_array_length(v_items)
+  );
+end;
+$$;
+
+create or replace function public.cancel_demand_bucket_item(
+  p_bucket_item_id bigint
+)
+returns public.customer_demand_bucket_items
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_row public.customer_demand_bucket_items;
+begin
+  select * into v_row
+  from public.customer_demand_bucket_items
+  where id = p_bucket_item_id;
+
+  if not found then
+    raise exception 'bucket item not found: %', p_bucket_item_id;
+  end if;
+
+  if v_row.status <> 'open' then
+    raise exception 'bucket item % is not open', p_bucket_item_id;
+  end if;
+
+  if not public.can_access_demand_bucket_profile(v_row.tenant_id, v_row.billing_profile_id, true) then
+    raise exception 'access denied';
+  end if;
+
+  update public.customer_demand_bucket_items
+  set
+    status = 'cancelled',
+    updated_at = now()
+  where id = p_bucket_item_id
+  returning * into v_row;
+
+  return v_row;
+end;
+$$;
+
+create or replace function public.purge_popped_demand_bucket_items(
+  p_tenant_id bigint,
+  p_retention_days integer default 90
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_cutoff timestamptz;
+  v_deleted integer;
+  v_is_parent boolean;
+begin
+  if p_tenant_id is null then
+    raise exception 'tenant_id is required';
+  end if;
+
+  select (t.parent_id is null) into v_is_parent
+  from public.tenants t
+  where t.id = p_tenant_id;
+
+  if coalesce(v_is_parent, false) then
+    if not public.user_can_manage_parent_tenant(p_tenant_id) then
+      raise exception 'access denied';
+    end if;
+  elsif not public.is_tenant_staff(p_tenant_id) then
+    raise exception 'access denied';
+  end if;
+
+  v_cutoff := now() - make_interval(days => greatest(coalesce(p_retention_days, 90), 1));
+
+  delete from public.customer_demand_bucket_items b
+  where b.status = 'popped'
+    and b.popped_at is not null
+    and b.popped_at < v_cutoff
+    and (
+      b.tenant_id = p_tenant_id
+      or exists (
+        select 1
+        from public.tenants t
+        where t.id = b.tenant_id
+          and t.parent_id = p_tenant_id
+      )
+    );
+
+  get diagnostics v_deleted = row_count;
+
+  return jsonb_build_object(
+    'tenant_id', p_tenant_id,
+    'retention_days', greatest(coalesce(p_retention_days, 90), 1),
+    'deleted_count', v_deleted
+  );
+end;
+$$;

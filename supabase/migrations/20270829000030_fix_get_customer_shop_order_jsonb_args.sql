@@ -127,8 +127,6 @@ begin
         'staff_offer_at', soi.staff_offer_at,
         'customer_counter_at', soi.customer_counter_at,
         'final_offer_at', soi.final_offer_at,
-        'ordered_quantity', soi.ordered_quantity,
-        'delivered_quantity', soi.delivered_quantity,
         'returned_quantity', soi.returned_quantity,
         'sku', p.product_code,
         'brand', p.brand,

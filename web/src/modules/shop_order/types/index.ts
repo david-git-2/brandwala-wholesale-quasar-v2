@@ -238,6 +238,7 @@ export type ShopOrderStatus =
   | 'final_offered'
   | 'confirmed'
   | 'procuring'
+  | 'ready_for_shipment'
   | 'ordered'
   | 'cancelled'
   | 'negotiating'
@@ -435,8 +436,6 @@ export interface ShopOrderItem {
   staff_offer_at?: string | null;
   customer_counter_at?: string | null;
   final_offer_at?: string | null;
-  ordered_quantity: number;
-  delivered_quantity: number;
   returned_quantity: number;
   procurement_pulled: boolean;
   sku?: string | null;

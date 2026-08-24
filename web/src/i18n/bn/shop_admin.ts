@@ -454,6 +454,7 @@ export default {
   status_final_offered: 'ফাইনাল অফার',
   status_confirmed: 'নিশ্চিত',
   status_procuring: 'সংগ্রহ প্রক্রিয়াধীন',
+  status_ready_for_shipment: 'শিপমেন্টের জন্য প্রস্তুত',
   status_ordered: 'অর্ডার করা হয়েছে',
   status_placed: 'প্লেসড',
   status_fulfilled: 'পূরণ হয়েছে',

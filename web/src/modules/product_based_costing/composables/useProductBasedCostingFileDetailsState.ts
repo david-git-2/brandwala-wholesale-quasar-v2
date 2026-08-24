@@ -8,20 +8,25 @@ export const workflowStatuses = [
   'pending',
   'offered',
   'confirmed',
-  'placing_order',
+  'procuring',
   'ready_for_shipment',
-  'invoicing',
   'delivered',
 ] as const;
 
 export const quoteStatuses = ['pending', 'offered'] as const;
 export const fulfillmentStatuses = [
   'confirmed',
-  'placing_order',
+  'procuring',
   'ready_for_shipment',
-  'invoicing',
   'delivered',
 ] as const;
+
+export function normalizePbcFileStatus(status: string): string {
+  const st = (status || '').toLowerCase();
+  if (st === 'placing_order') return 'procuring';
+  if (st === 'invoicing') return 'delivered';
+  return st;
+}
 
 export const quoteVisibleColumns = [
   'select',
@@ -45,8 +50,6 @@ export const allColumnNames = [
   'note',
   'qty',
   'confirmedQty',
-  'orderedQty',
-  'deliveredQty',
   'barcodeText',
   'website',
   'priceGbp',
@@ -75,8 +78,6 @@ export const columnSelectorOptions = [
   { label: 'Note', value: 'note' },
   { label: 'Qty', value: 'qty' },
   { label: 'Confirmed Qty', value: 'confirmedQty' },
-  { label: 'Ordered Qty', value: 'orderedQty' },
-  { label: 'Delivered Qty', value: 'deliveredQty' },
   { label: 'Barcode / Code / Product ID', value: 'barcodeText' },
   { label: 'Website', value: 'website' },
   { label: 'Price (GBP)/Unit', value: 'priceGbp' },
@@ -103,19 +104,17 @@ export function formatMoney(val: number): string {
 }
 
 export function formatStatusLabel(value: string): string {
-  switch (value) {
+  switch (normalizePbcFileStatus(value)) {
     case 'pending':
       return 'Draft';
     case 'offered':
       return 'Offered';
     case 'confirmed':
       return 'Confirmed';
-    case 'placing_order':
-      return 'Placing Order';
+    case 'procuring':
+      return 'Procuring';
     case 'ready_for_shipment':
       return 'Ready for Shipment';
-    case 'invoicing':
-      return 'Invoicing';
     case 'delivered':
       return 'Delivered';
     case 'cancelled':
@@ -131,7 +130,7 @@ export type StatusHint = {
 };
 
 export function getFileStatusHint(value: string): StatusHint | null {
-  switch (value) {
+  switch (normalizePbcFileStatus(value)) {
     case 'pending':
       return {
         when: 'You are making the price list',
@@ -147,7 +146,7 @@ export function getFileStatusHint(value: string): StatusHint | null {
         when: 'They said yes',
         does: 'Saves how many they want. Change the number if they want less.',
       };
-    case 'placing_order':
+    case 'procuring':
       return {
         when: 'You are buying the goods',
         does: 'Type how many you got for each item.',
@@ -156,11 +155,6 @@ export function getFileStatusHint(value: string): StatusHint | null {
       return {
         when: 'You know how many you got',
         does: 'Put those items on a shipment.',
-      };
-    case 'invoicing':
-      return {
-        when: 'The goods have arrived',
-        does: 'Make the bill in sales. Not here.',
       };
     case 'delivered':
       return {
@@ -216,28 +210,30 @@ export function getItemStatusHint(value: string): StatusHint | null {
 }
 
 export function isPassedStatus(currentStatus: string, st: string): boolean {
-  if (currentStatus === 'cancelled') {
+  if (normalizePbcFileStatus(currentStatus) === 'cancelled') {
     return false;
   }
-  const currentIdx = workflowStatuses.indexOf(currentStatus as (typeof workflowStatuses)[number]);
-  const targetIdx = workflowStatuses.indexOf(st as (typeof workflowStatuses)[number]);
+  const currentIdx = workflowStatuses.indexOf(
+    normalizePbcFileStatus(currentStatus) as (typeof workflowStatuses)[number],
+  );
+  const targetIdx = workflowStatuses.indexOf(
+    normalizePbcFileStatus(st) as (typeof workflowStatuses)[number],
+  );
   return currentIdx > -1 && targetIdx > -1 && targetIdx < currentIdx;
 }
 
 export function getStatusColor(st: string): string {
-  switch (st) {
+  switch (normalizePbcFileStatus(st)) {
     case 'pending':
       return 'orange-8';
     case 'offered':
       return 'blue-8';
     case 'confirmed':
       return 'blue-9';
-    case 'placing_order':
+    case 'procuring':
       return 'indigo-8';
     case 'ready_for_shipment':
       return 'green-8';
-    case 'invoicing':
-      return 'purple-8';
     case 'delivered':
       return 'teal-9';
     case 'cancelled':
@@ -253,7 +249,7 @@ export function isFulfillmentStatus(fileStatus: string): boolean {
 
 export function getDefaultVisibleColumnsForStatus(fileStatus: string): string[] {
   const baseCols = ['select', 'sl', 'image', 'name'];
-  switch (fileStatus) {
+  switch (normalizePbcFileStatus(fileStatus)) {
     case 'confirmed':
       return [
         ...baseCols,
@@ -267,20 +263,9 @@ export function getDefaultVisibleColumnsForStatus(fileStatus: string): string[] 
         'profitRate',
         'status',
       ];
-    case 'placing_order':
+    case 'procuring':
     case 'ready_for_shipment':
-      return [...baseCols, 'confirmedQty', 'orderedQty', 'barcodeText', 'status'];
-    case 'invoicing':
-      return [
-        ...baseCols,
-        'confirmedQty',
-        'orderedQty',
-        'deliveredQty',
-        'barcodeText',
-        'priceGbp',
-        'costBdt',
-        'status',
-      ];
+      return [...baseCols, 'confirmedQty', 'barcodeText', 'status'];
     case 'delivered':
       return [...allColumnNames];
     default:

@@ -39,6 +39,7 @@ CREATE TYPE "public"."shop_order_status" AS ENUM (
     'countered',
     'final_offered',
     'procuring',
+    'ready_for_shipment',
     'ordered'
 );
 
@@ -55,4 +56,23 @@ CREATE TYPE "public"."shop_type_enum" AS ENUM (
 
 ALTER TYPE "public"."shop_type_enum" OWNER TO "postgres";
 
+
+CREATE TYPE "public"."demand_bucket_status" AS ENUM (
+    'open',
+    'popped',
+    'cancelled'
+);
+
+
+ALTER TYPE "public"."demand_bucket_status" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."demand_bucket_source_type" AS ENUM (
+    'shop_order_item',
+    'pbc_costing_item',
+    'manual'
+);
+
+
+ALTER TYPE "public"."demand_bucket_source_type" OWNER TO "postgres";
 

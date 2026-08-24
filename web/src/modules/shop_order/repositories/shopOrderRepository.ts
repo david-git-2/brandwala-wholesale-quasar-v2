@@ -444,8 +444,6 @@ const getCustomerShopOrder = async (
     ...item,
     final_offer_amount: item.final_offer_amount ?? item.final_price_amount ?? null,
     procurement_pulled: item.procurement_pulled ?? false,
-    ordered_quantity: item.ordered_quantity ?? item.quantity,
-    delivered_quantity: item.delivered_quantity ?? 0,
     returned_quantity: item.returned_quantity ?? 0,
   }));
 
@@ -627,11 +625,9 @@ const staffSetCatalogOrderedQty = async (
 
 const staffSetCatalogDeliveredQty = async (
   orderId: number,
-  items: Array<{ id: number; delivered_quantity: number }>,
 ): Promise<StaffShopOrderDetailResponse> => {
   const { data, error } = await supabase.rpc('staff_set_catalog_delivered_qty', {
     p_order_id: orderId,
-    p_items: items,
   });
   if (error) throw error;
   return parseStaffShopOrderDetailResponse(data);
@@ -666,8 +662,6 @@ const updateCatalogOrderItemForStaff = async (
     customer_offer_currency_id?: number | null;
     confirmed_quantity?: number | null;
     quantity?: number | null;
-    ordered_quantity?: number | null;
-    delivered_quantity?: number | null;
   },
 ): Promise<StaffShopOrderDetailResponse> => {
   const { data, error } = await supabase.rpc('update_catalog_order_item_for_staff', {
@@ -698,8 +692,6 @@ const updateCatalogOrderItem = async (
     customer_offer_currency_id?: number | null;
     confirmed_quantity?: number | null;
     quantity?: number | null;
-    ordered_quantity?: number | null;
-    delivered_quantity?: number | null;
   },
 ): Promise<void> => {
   const itemUpdates: Record<string, any> = {};
@@ -713,8 +705,6 @@ const updateCatalogOrderItem = async (
   if (payload.is_final_offer_manual !== undefined) itemUpdates.is_final_offer_manual = payload.is_final_offer_manual;
   if (payload.confirmed_quantity !== undefined) itemUpdates.confirmed_quantity = payload.confirmed_quantity;
   if (payload.quantity !== undefined) itemUpdates.quantity = payload.quantity;
-  if (payload.ordered_quantity !== undefined) itemUpdates.ordered_quantity = payload.ordered_quantity;
-  if (payload.delivered_quantity !== undefined) itemUpdates.delivered_quantity = payload.delivered_quantity;
 
   if (Object.keys(itemUpdates).length > 0) {
     const { error: itemErr } = await supabase

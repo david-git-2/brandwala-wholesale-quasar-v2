@@ -251,22 +251,6 @@
                 </div>
                 <div class="col-12 col-sm-4">
                   <q-input
-                    v-model.number="form.ordered_quantity"
-                    :label="$t('product_based_costing.table_col_orderedQty')"
-                    type="number"
-                    outlined
-                    dense
-                    @wheel.prevent
-                  >
-                    <template #prepend>
-                      <q-icon name="ph ph-shopping-bag" />
-                    </template>
-                  </q-input>
-                </div>
-              </div>
-              <div class="row q-col-gutter-sm q-mt-xs">
-                <div class="col-12">
-                  <q-input
                     v-model.number="form.price_gbp"
                     :label="$t('product_based_costing.bulk_price_gbp')"
                     type="number"
@@ -389,7 +373,6 @@ interface ProductBasedCostingItemFormData {
   market_code?: string | null;
   quantity?: number | null;
   confirmed_quantity?: number | null;
-  ordered_quantity?: number | null;
   web_link?: string | null;
   price_gbp?: number | null;
   product_weight?: number | null;
@@ -531,7 +514,6 @@ const getInitialForm = () => ({
   market_code: props.defaultMarketCode ?? null,
   quantity: null as number | null,
   confirmed_quantity: null as number | null,
-  ordered_quantity: null as number | null,
   web_link: '',
   price_gbp: null as number | null,
   product_weight: null as number | null,
@@ -557,7 +539,6 @@ const fillForm = () => {
       market_code: props.itemData.market_code ?? null,
       quantity: props.itemData.quantity ?? null,
       confirmed_quantity: props.itemData.confirmed_quantity ?? null,
-      ordered_quantity: props.itemData.ordered_quantity ?? null,
       web_link: props.itemData.web_link ?? '',
       price_gbp: props.itemData.price_gbp ?? null,
       product_weight: props.itemData.product_weight ?? null,

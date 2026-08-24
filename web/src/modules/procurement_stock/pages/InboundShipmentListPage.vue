@@ -282,8 +282,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed, onMounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useQuasar, type QTableColumn } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
@@ -296,10 +296,13 @@ const authStore = useAuthStore();
 const shipmentStore = useGlobalShipmentStore();
 const vendorStore = useVendorStore();
 const router = useRouter();
+const route = useRoute();
 const $q = useQuasar();
 
 // Filter & Quick Tab State
-const searchText = ref('');
+const searchText = ref(
+  typeof route.query.search === 'string' ? route.query.search : '',
+);
 const filterDrawerOpen = ref(false);
 const quickFilter = ref<string>('all');
 const statusFilter = ref<string | null>(null);
@@ -656,6 +659,19 @@ onMounted(() => {
   void loadShipments();
   void loadVendorData();
 });
+
+watch(
+  () => route.query.search,
+  (value) => {
+    const nextSearch = typeof value === 'string' ? value : '';
+    if (searchText.value === nextSearch) {
+      return;
+    }
+    searchText.value = nextSearch;
+    shipmentStore.page = 1;
+    void loadShipments();
+  },
+);
 </script>
 
 <style scoped>

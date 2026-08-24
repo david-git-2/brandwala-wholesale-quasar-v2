@@ -162,8 +162,6 @@ import {
 } from '../utils/catalogPricingUtils';
 import {
   isCatalogFirstOfferLocked,
-  isCatalogOrderedQtyEditable,
-  isCatalogDeliveredQtyEditable,
   getStaffCatalogPrimaryAction,
   normalizeCatalogOrderStatus,
   type StaffCatalogPrimaryAction,
@@ -253,14 +251,6 @@ const handleUpdateCatalogOrderItem = ({
     if (!Object.keys(nextPayload).length) return;
   }
 
-  if (isCatalogOrderedQtyEditable(currentOrder.value?.status)) {
-    if (payload?.ordered_quantity === undefined) return;
-    nextPayload = { ordered_quantity: payload.ordered_quantity };
-  } else if (isCatalogDeliveredQtyEditable(currentOrder.value?.status)) {
-    if (payload?.delivered_quantity === undefined) return;
-    nextPayload = { delivered_quantity: payload.delivered_quantity };
-  }
-
   updateCatalogOrderItem({
     tenantId: authStore.tenantId,
     orderId: orderId.value,
@@ -284,8 +274,6 @@ const catalogAllColumnNames = [
   'note',
   'code_barcode_id',
   'qty_customer',
-  'ordered_qty',
-  'delivered_qty',
   'purchase_price_unit',
   'purchase_price_total',
   'product_weight_gm',
@@ -318,8 +306,6 @@ const catalogDefaultVisibleColumns = [
   'name',
   'brand',
   'qty_customer',
-  'ordered_qty',
-  'delivered_qty',
   'code_barcode_id',
   'purchase_price_unit',
   'purchase_price_total',
@@ -395,10 +381,13 @@ const confirmedModeColumns = [
   'brand',
   'code_barcode_id',
   'qty_customer',
-  'ordered_qty',
   'status',
   'action',
 ];
+
+const procuringModeColumns = [...confirmedModeColumns];
+
+const readyForShipmentModeColumns = [...confirmedModeColumns];
 
 const catalogOrderStatus = computed(() =>
   normalizeCatalogOrderStatus(currentOrder.value?.status),
@@ -415,10 +404,14 @@ const catalogVisibleColumns = computed<string[]>({
     if (catalogOrderStatus.value === 'confirmed') {
       return confirmedModeColumns;
     }
+    if (catalogOrderStatus.value === 'procuring') {
+      return procuringModeColumns;
+    }
+    if (catalogOrderStatus.value === 'ready_for_shipment') {
+      return readyForShipmentModeColumns;
+    }
     if (catalogOrderStatus.value === 'priced') {
       const hiddenInPriced = [
-        'ordered_qty',
-        'delivered_qty',
         'counter_offer_unit',
         'counter_offer_row',
         'counter_offer_margin',
@@ -524,21 +517,10 @@ function buildFinalOfferPayload() {
   }));
 }
 
-function buildOrderedQtyPayload() {
+function buildProcuredQtyPayload() {
   return orderItems.value.map((item) => ({
     id: item.id,
-    ordered_quantity: Number(
-      item.ordered_quantity ?? item.confirmed_quantity ?? item.quantity ?? 0,
-    ),
-  }));
-}
-
-function buildDeliveredQtyPayload() {
-  return orderItems.value.map((item) => ({
-    id: item.id,
-    delivered_quantity: Number(
-      item.delivered_quantity ?? item.ordered_quantity ?? item.confirmed_quantity ?? item.quantity ?? 0,
-    ),
+    ordered_quantity: Number(item.confirmed_quantity ?? item.quantity ?? 0),
   }));
 }
 
@@ -601,19 +583,16 @@ const handleCatalogPrimaryAction = async (action: StaffCatalogPrimaryAction) => 
     return;
   }
 
-  if (action === 'mark_ordered') {
+  if (action === 'mark_ready_for_shipment') {
     staffSetOrderedQty({
       orderId: orderId.value,
-      items: buildOrderedQtyPayload(),
+      items: buildProcuredQtyPayload(),
     });
     return;
   }
 
   if (action === 'mark_delivered') {
-    staffSetDeliveredQty({
-      orderId: orderId.value,
-      items: buildDeliveredQtyPayload(),
-    });
+    staffSetDeliveredQty({ orderId: orderId.value });
   }
 };
 

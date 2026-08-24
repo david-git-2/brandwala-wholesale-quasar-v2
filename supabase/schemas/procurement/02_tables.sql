@@ -665,10 +665,8 @@ CREATE TABLE IF NOT EXISTS "public"."product_based_costing_items" (
     "brand" "text",
     "assigned_shipment_id" bigint,
     "vendor_id" bigint,
-    "delivered_quantity" numeric(12,3) DEFAULT 0.000,
     "is_offer_price_manual" boolean DEFAULT false NOT NULL,
     "confirmed_quantity" integer,
-    "ordered_quantity" integer,
     CONSTRAINT "product_based_costing_items_input_type_check" CHECK ((("input_type" = ANY (ARRAY['manual'::"text", 'product_list'::"text"])) OR ("input_type" IS NULL)))
 );
 

@@ -78,17 +78,6 @@ const getSubmoduleSectionAndWeight = (
     }
   }
 
-  if (parentKey === 'sales_invoice') {
-    switch (moduleKey) {
-      case 'global_invoice':
-        return { section: 'Invoicing', weight: 10 };
-      case 'invoice_brand':
-        return { section: 'Profiles & Brands', weight: 20 };
-      default:
-        return { section: '', weight: 99 };
-    }
-  }
-
   if (parentKey === 'customer') {
     switch (moduleKey) {
       case 'customer':
@@ -133,20 +122,24 @@ const getSubmoduleSectionAndWeight = (
 
   if (parentKey === 'procurement_stock') {
     switch (moduleKey) {
-      case 'global_shipment':
+      case 'procurement_stock':
+        return { section: '', weight: 5 };
+      case 'procurement_demand':
         return { section: '', weight: 10 };
-      case 'global_stock':
+      case 'global_shipment':
         return { section: '', weight: 20 };
-      case 'global_stock_movement':
+      case 'global_stock':
         return { section: '', weight: 30 };
-      case 'global_stock_location':
+      case 'global_stock_movement':
         return { section: '', weight: 40 };
-      case 'cargo_company':
+      case 'global_stock_location':
         return { section: '', weight: 50 };
-      case 'shipment_progress_settings':
-        return { section: '', weight: 55 };
-      case 'inventory':
+      case 'cargo_company':
         return { section: '', weight: 60 };
+      case 'shipment_progress_settings':
+        return { section: '', weight: 70 };
+      case 'inventory':
+        return { section: '', weight: 80 };
       default:
         return { section: '', weight: 99 };
     }

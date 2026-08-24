@@ -92,7 +92,7 @@ const columnSelectorOptions = [
   { label: t('product_based_costing.table_col_brand'), value: 'brand' },
   { label: t('product_based_costing.note'), value: 'note' },
   { label: t('product_based_costing.table_col_qty'), value: 'qty' },
-  { label: t('product_based_costing.table_col_deliveredQty'), value: 'deliveredQty' },
+  { label: t('product_based_costing.table_col_confirmedQty'), value: 'confirmedQty' },
   { label: t('product_based_costing.preview_barcode_code'), value: 'barcodeText' },
   { label: t('product_based_costing.preview_website_link'), value: 'website' },
   { label: t('product_based_costing.preview_price_gbp'), value: 'priceGbp' },
