@@ -119,12 +119,6 @@
                     <span class="text-caption text-grey-6 ellipsis">{{ order.shop_name }}</span>
                   </div>
                   <div class="column text-right">
-                    <span
-                      v-if="order.can_see_sell_price && order.total_amount != null"
-                      class="text-subtitle2 text-weight-bold text-primary"
-                    >
-                      {{ order.currency_symbol || '৳' }}{{ Number(order.total_amount).toFixed(2) }}
-                    </span>
                     <span class="text-caption text-grey-6">{{ formatDate(order.created_at) }}</span>
                   </div>
                   <q-badge
