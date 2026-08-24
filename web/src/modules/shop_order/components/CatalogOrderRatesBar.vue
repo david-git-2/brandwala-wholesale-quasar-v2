@@ -51,7 +51,7 @@
         />
       </div>
 
-      <div class="col-12 col-sm-6 col-md-2">
+      <div v-if="showFinalOfferRate" class="col-12 col-sm-6 col-md-2">
         <q-input
           v-model.number="final_offer_rate"
           dense
@@ -97,6 +97,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import type { ShopOrder } from '../types';
+import { normalizeCatalogOrderStatus } from '../utils/catalogOrderStatus';
 
 const props = defineProps<{
   order: ShopOrder | null;
@@ -134,6 +135,10 @@ const profit_rate = ref<number | null>(null);
 const first_offer_rate = ref<number | null>(null);
 const final_offer_rate = ref<number | null>(null);
 const profit_basis = ref<'purchase' | 'total_cost'>('total_cost');
+
+const showFinalOfferRate = computed(
+  () => normalizeCatalogOrderStatus(props.order?.status) !== 'submitted',
+);
 
 const basisOptions = [
   { label: 'Total Cost', value: 'total_cost' },

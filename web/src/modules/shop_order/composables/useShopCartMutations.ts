@@ -2,7 +2,11 @@ import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import { computed } from 'vue';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { shopCartService } from '../services/shopCartService';
-import type { CartChargesPayload } from '../repositories/shopCartRepository';
+import type {
+  ActiveCartItem,
+  ActiveCartShopMeta,
+  CartChargesPayload,
+} from '../repositories/shopCartRepository';
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { resolveShopCartItemMoq } from '../utils/cartQuantityUtils';
@@ -55,31 +59,75 @@ export function useShopCartMutations() {
     });
   };
 
-  const updateActiveCartsCache = (shopId: number, data: any) => {
-    if (data && data.items && data.items.length > 0) {
+  const buildActiveCartEntry = (
+    shopId: number,
+    data: any,
+    shopMeta: ActiveCartShopMeta,
+  ): ActiveCartItem => {
+    const itemCount = data.items.reduce((sum: number, i: any) => sum + i.quantity, 0);
+    const shopType = data.cart?.shop_type as ShopType;
+    const cartTotal = sumCartSubtotal(shopType, data.items);
+
+    return {
+      cart_id: data.cart.id,
+      shop_id: shopId,
+      shop_name: shopMeta.shop_name,
+      shop_slug: shopMeta.shop_slug,
+      shop_logo_url: shopMeta.shop_logo_url,
+      shop_type: shopType,
+      can_see_buy_price: Boolean(
+        data.cart?.can_see_buy_price_snapshot ?? data.permissions?.can_see_buy_price,
+      ),
+      can_see_sell_price: Boolean(
+        data.cart?.can_see_sell_price_snapshot ?? data.permissions?.can_see_sell_price,
+      ),
+      currency_id: shopMeta.currency_id,
+      currency_code: shopMeta.currency_code,
+      currency_symbol: shopMeta.currency_symbol,
+      item_count: itemCount,
+      cart_total: cartTotal,
+      updated_at: data.cart?.updated_at ?? new Date().toISOString(),
+    };
+  };
+
+  const updateActiveCartsCache = (shopId: number, data: any, shopMeta?: ActiveCartShopMeta) => {
+    if (data?.items?.length > 0) {
+      const itemCount = data.items.reduce((sum: number, i: any) => sum + i.quantity, 0);
+      const shopType = data.cart?.shop_type as ShopType | undefined;
+      const cartTotal = sumCartSubtotal(shopType, data.items);
+
       queryClient.setQueryData(
         shopOrderQueryKeys.activeCarts(tenantId.value),
-        (old: any[] | undefined) => {
-          if (!old) return old;
-          const itemCount = data.items.reduce((sum: number, i: any) => sum + i.quantity, 0);
-          const shopType = data.cart?.shop_type as ShopType | undefined;
-          const cartTotal = sumCartSubtotal(shopType, data.items);
+        (old: ActiveCartItem[] | undefined) => {
+          if (!old) {
+            return shopMeta ? [buildActiveCartEntry(shopId, data, shopMeta)] : old;
+          }
 
-          return old.map((c) => {
-            if (c.shop_id === shopId) {
-              return {
-                ...c,
-                item_count: itemCount,
-                cart_total: cartTotal,
-              };
-            }
-            return c;
-          });
+          const hasShop = old.some((c) => c.shop_id === shopId);
+          if (hasShop) {
+            return old.map((c) =>
+              c.shop_id === shopId ? { ...c, item_count: itemCount, cart_total: cartTotal } : c,
+            );
+          }
+
+          if (shopMeta) {
+            return [buildActiveCartEntry(shopId, data, shopMeta), ...old];
+          }
+
+          invalidateActiveCarts();
+          return old;
         },
       );
-    } else {
-      invalidateActiveCarts();
+      return;
     }
+
+    queryClient.setQueryData(
+      shopOrderQueryKeys.activeCarts(tenantId.value),
+      (old: ActiveCartItem[] | undefined) => {
+        if (!old) return old;
+        return old.filter((c) => c.shop_id !== shopId);
+      },
+    );
   };
 
   const addItemMutation = useMutation({
@@ -91,6 +139,7 @@ export function useShopCartMutations() {
       quantity: number;
       customerSellPriceAmount?: number | null;
       customerSellPriceCurrencyId?: number | null;
+      shopMeta?: ActiveCartShopMeta;
     }) => {
       const res = await shopCartService.addToCart(
         params.shopId,
@@ -105,11 +154,11 @@ export function useShopCartMutations() {
         handleApiFailure(res, res.error);
         throw new Error(res.error || 'Failed to add item to cart');
       }
-      return { data: res.data, shopId: params.shopId };
+      return { data: res.data, shopId: params.shopId, shopMeta: params.shopMeta };
     },
-    onSuccess: ({ data, shopId }) => {
+    onSuccess: ({ data, shopId, shopMeta }) => {
       updateCartCache(shopId, data);
-      invalidateActiveCarts();
+      updateActiveCartsCache(shopId, data, shopMeta);
       showSuccessNotification('Item added to cart.');
     },
   });

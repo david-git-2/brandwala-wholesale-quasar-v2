@@ -299,7 +299,7 @@ CREATE TABLE IF NOT EXISTS "public"."shop_order_items" (
     "staff_offer_at" timestamp with time zone,
     "customer_counter_at" timestamp with time zone,
     "final_offer_at" timestamp with time zone,
-    CONSTRAINT "shop_order_items_qty_positive" CHECK (("quantity" > 0))
+    CONSTRAINT "shop_order_items_qty_non_negative" CHECK (("quantity" >= 0))
 );
 
 

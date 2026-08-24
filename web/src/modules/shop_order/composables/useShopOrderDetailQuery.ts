@@ -44,7 +44,7 @@ export function useSendCustomerCounterMutation() {
       void queryClient.invalidateQueries({
         queryKey: shopOrderQueryKeys.orderDetailRoot(),
       });
-      showSuccessNotification('Counter offer submitted successfully.');
+      showSuccessNotification('Your response was sent.');
     },
     onError: (error: Error) => {
       showWarningDialog(error.message || 'Failed to submit counter offer.', 'Action Failed');

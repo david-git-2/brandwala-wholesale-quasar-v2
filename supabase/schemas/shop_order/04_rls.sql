@@ -362,6 +362,8 @@ GRANT ALL ON FUNCTION "public"."staff_counter_offer"("p_order_id" bigint, "p_ite
 
 
 GRANT ALL ON FUNCTION "public"."staff_price_shop_order"("p_order_id" bigint, "p_items" "jsonb") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."staff_price_shop_order"("p_order_id" bigint, "p_items" "jsonb", "p_profit_basis" "text", "p_fx_rate" numeric, "p_cargo_rate" numeric, "p_profit_pct" numeric) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."staff_finalize_catalog_prices"("p_order_id" bigint, "p_items" "jsonb") TO "authenticated";
 
 
 GRANT ALL ON FUNCTION "public"."submit_shop_order_from_cart"("p_cart_id" bigint, "p_recipient_name" "text", "p_recipient_phone" "text", "p_shipping_address" "text", "p_recipient_phone_secondary" "text", "p_shipping_district" "text", "p_shipping_thana" "text", "p_billing_profile_id" bigint, "p_is_prepaid" boolean, "p_delivery_instructions" "text", "p_cod_charge_amount" numeric, "p_delivery_charge_amount" numeric, "p_print_charge_amount" numeric, "p_packing_charge_amount" numeric, "p_discount_amount" numeric) TO "authenticated";

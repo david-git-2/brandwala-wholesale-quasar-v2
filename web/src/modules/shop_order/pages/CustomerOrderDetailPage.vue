@@ -1,5 +1,5 @@
 <template>
-  <q-page class="q-pa-md page-container">
+  <q-page class="q-pa-md page-container customer-order-detail-page">
     <!-- Loading Skeleton State -->
     <CustomerOrderDetailSkeleton v-if="isLoading" />
 
@@ -20,7 +20,6 @@
         :status-sequence="statusSequence"
         :terminal-statuses="terminalStatuses"
         :normalized-status="normalizedStatus"
-        @back="goOrders"
       />
 
       <div v-if="showMerchantWallet" class="row justify-end">
@@ -149,6 +148,10 @@ import type { ShopOrderItem } from '../types';
 import { calculateItemFirstOfferPrice } from '../utils/catalogPricingUtils';
 import { requestConfirmation } from 'src/utils/appFeedback';
 import { useMerchantWalletQuery } from '../composables/useMerchantWalletQuery';
+import {
+  getCustomerCatalogStatusSequence,
+  normalizeCatalogOrderStatus,
+} from '../utils/catalogOrderStatus';
 
 import CustomerOrderDetailSkeleton from '../components/CustomerOrderDetailSkeleton.vue';
 import CustomerOrderHeader from '../components/CustomerOrderHeader.vue';
@@ -200,7 +203,7 @@ const buyCurrencySymbol = computed(() => {
 
 const isNegotiationOpen = computed(() => {
   const o = currentOrder.value;
-  return !!(o && o.is_negotiable_snapshot && (o.status === 'negotiating' || o.status === 'priced'));
+  return !!(o && o.is_negotiable_snapshot && normalizeCatalogOrderStatus(o.status) === 'priced');
 });
 
 const getDisplayUnitPrice = (item: any) => {
@@ -304,9 +307,9 @@ const submitCounterOffer = async () => {
   if (!orderId.value) return;
 
   const confirmed = await requestConfirmation(
-    'Are you sure you want to submit your counter offer for all items? Once submitted, the staff will review your request.',
-    'Submit Counter Offer',
-    'Submit Counter',
+    'Send your response for all items? If you accepted every line, the order will be confirmed. If you countered any line, staff will send a final offer.',
+    'Send my response',
+    'Send response',
   );
 
   if (!confirmed) return;
@@ -403,7 +406,7 @@ const normalizedStatus = computed(() => {
   if (status === 'pending') return 'submitted';
   if (status === 'approved') return 'confirmed';
   if (status === 'payment_received') return 'delivered';
-  return status;
+  return normalizeCatalogOrderStatus(status);
 });
 
 const isBeforePickup = computed(() => {
@@ -418,10 +421,7 @@ const statusSequence = computed(() => {
     return ['confirmed', 'processing', 'ready_for_pickup', 'shipped', 'delivered'];
   }
   if (shopType === 'vendor_catalog') {
-    if (order.value.is_negotiable_snapshot) {
-      return ['submitted', 'costing_pending', 'priced', 'countered', 'final_offered', 'confirmed', 'procuring', 'ordered', 'delivered'];
-    }
-    return ['submitted', 'costing_pending', 'priced', 'final_offered', 'confirmed', 'procuring', 'ordered', 'delivered'];
+    return getCustomerCatalogStatusSequence(!!order.value.is_negotiable_snapshot);
   }
   return ['confirmed', 'fulfilled'];
 });
@@ -444,4 +444,10 @@ export default {
   name: 'CustomerOrderDetailPage',
 };
 </script>
+
+<style scoped>
+.customer-order-detail-page {
+  padding-bottom: 88px;
+}
+</style>
 

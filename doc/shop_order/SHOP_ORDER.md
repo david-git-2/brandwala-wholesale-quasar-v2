@@ -6,6 +6,8 @@ Customer group provisioning lives in [`CUSTOMER.md`](../customer/CUSTOMER.md). S
 
 **UI flows, button rules, and validation matrices:** [`UI_FLOW.md`](./UI_FLOW.md)
 
+**Catalog negotiation (status model, labels, transitions):** [`CATALOG_NEGOTIATION.md`](./CATALOG_NEGOTIATION.md)
+
 ---
 
 ## 1. Shop Setup Operator Journey (`shop_config`)
@@ -205,12 +207,14 @@ flowchart LR
 | **`StorefrontProductDetailPage`** | Mount | `getShopCatalogProduct` → `RPC: get_shop_catalog_product_for_customer` | Key: `shopOrderQueryKeys.storefrontProduct(tenantId, shopSlug, productId)` |
 | **`StorefrontProductDetailPage`** | Related strip (`vendor_catalog`) | `listRelatedShopCatalogProducts` → `RPC: list_related_shop_catalog_products_for_customer` | Key: `shopOrderQueryKeys.storefrontProductRelated(tenantId, shopSlug, productId)` |
 | **`StorefrontPage`** | Permissions | `useCustomerShopPermissionsQuery` (seeded from browse `meta.permissions`) | Key: `customerShopPermissions(shopId)` |
+| **`StorefrontPage`** | Add to cart | `add_to_shop_cart` via `useShopCartMutations` | One RPC; patches `cart` + `activeCarts` TanStack cache (no `list_customer_active_carts` refetch) |
+| **`StorefrontProductDetailPage`** | Add to cart | `add_to_shop_cart` via `useShopCartMutations` | Same cache patch as storefront grid |
 | **`ShopCartPage`** | Load cart + permissions | `useShopCartQuery` → `RPC: get_or_create_shop_cart` | Key: `shopOrderQueryKeys.cart(tenantId, shopId)`; items use catalog-shaped prices; no separate permissions or `global_currencies` call |
 | **`ShopOrdersPage`** | Order list | `useStaffOrdersQuery` → `RPC: list_shop_orders_for_staff` | Key: `staffOrders`; filters: shop (`p_shop_id`), status (`p_status`), type (client via `list_shops`) |
 | **`ShopOrdersPage`** | Shop filter options | `useShopListQuery` → `RPC: list_shops` | Loaded on mount for shop dropdown |
 | **`ShopPricingPage`** | Listings | `RPC: list_shop_product_listings` | Per shop |
 | **`ShopPricingPage`** | Candidates | `RPC: list_listable_stock_for_shop` | Deferred until add-listing pick dialog opens |
-| **`ShopCartPage`** | Add / qty / remove | `add_to_shop_cart`, `update_shop_cart_item_qty`, `remove_shop_cart_item` | Optimistic + invalidate cart |
+| **`ShopCartPage`** | Add / qty / remove | `add_to_shop_cart`, `update_shop_cart_item_qty`, `remove_shop_cart_item` | Patches `cart` + `activeCarts` cache from RPC response (`useShopCartMutations`) |
 | **`ShopCartPage`** | Place order (`vendor_catalog`, `fixed_price`) | `submit_shop_order_from_cart` via `orderStore.submitOrder` | Empty delivery fields; invalidates cart + active carts → `/shop/orders` |
 | **`ShopCheckoutPage`** | Submit (`dropship`) | `RPC: submit_shop_order_from_cart` | Invalidates orders + cart |
 | **`CustomerOrdersPage`** | List orders | `RPC: list_customer_shop_orders` | Key: `['shopOrder', 'customerOrders', { tenantId, bucket }]` |
@@ -227,6 +231,17 @@ flowchart LR
 | `get_or_create_shop_cart` | After `shopId` resolves | `cart`, `items`, live `permissions` |
 
 `get_or_create_shop_cart` resolves `get_shop_permissions_for_customer` server-side and echoes live flags as `permissions`. Item prices use the same nested shape as `browse_shop_catalog_for_customer` — no root `currency` object (each price carries `currency_id`, `code`, `symbol`).
+
+### Cart mutation cache (`useShopCartMutations`)
+
+`add_to_shop_cart`, `update_shop_cart_item_qty`, `remove_shop_cart_item`, and charge/price updates all return the `get_or_create_shop_cart` shape. On success:
+
+| Query key | Update |
+| :--- | :--- |
+| `cart(tenantId, shopId)` | `setQueryData` — merge `cart` + `items` (+ MOQ enrichment) |
+| `activeCarts(tenantId)` | `setQueryData` — update `item_count` / `cart_total`; **upsert** shop row on first add when caller passes `shopMeta`; **remove** shop row when cart becomes empty |
+
+Storefront add passes `shopMeta` from browse `meta.shop` so the header badge (`ShopLayout`) updates without calling `list_customer_active_carts`. Qty/remove reuse the same patch path.
 
 See **§ RPC: `get_or_create_shop_cart`** below for the response contract.
 
@@ -252,6 +267,7 @@ See **§ RPC: `get_or_create_shop_cart`** below for the response contract.
 * `shopOrderQueryKeys.categories(tenantId)` → `['shopOrder', 'categories', { tenantId }]`
 * `shopOrderQueryKeys.customerShops(tenantId)` → `['shopOrder', 'customerShops', { tenantId }]`
 * `shopOrderQueryKeys.cart(tenantId, shopId)` → `['shopOrder', 'cart', { tenantId, shopId }]`
+* `shopOrderQueryKeys.activeCarts(tenantId)` → `['shopOrder', 'activeCarts', { tenantId }]` — loaded in `ShopLayout` / cart picker; **patched** on cart mutations (not refetched on add/qty/remove)
 * `shopOrderQueryKeys.storefrontCatalog(...)` → browse cache
 * `shopOrderQueryKeys.storefrontProduct(tenantId, shopSlug, productId)` → product detail cache
 * `shopOrderQueryKeys.storefrontProductRelated(tenantId, shopSlug, productId)` → related products strip

@@ -264,6 +264,7 @@ import { useShopProductRelatedQuery } from '../composables/useShopProductRelated
 import { useShopCartQuery } from '../composables/useShopCartQuery';
 import { useShopCartMutations } from '../composables/useShopCartMutations';
 import { shopCatalogPath, shopCatalogProductPath } from '../utils/catalogShop';
+import { activeCartShopMetaFromShop } from '../utils/activeCartCacheUtils';
 
 const route = useRoute();
 const router = useRouter();
@@ -435,6 +436,10 @@ async function onAddToCart() {
     globalStockAllocationId: product.value.global_stock_id ?? null,
     globalStockId: product.value.global_stock_id ?? null,
     quantity: quantity.value,
+    shopMeta: activeCartShopMetaFromShop(
+      shopDetails.value,
+      product.value.sell_price ?? product.value.unit_price,
+    ),
   });
 }
 </script>

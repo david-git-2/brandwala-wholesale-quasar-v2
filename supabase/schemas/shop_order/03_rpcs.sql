@@ -1738,9 +1738,11 @@ CREATE OR REPLACE FUNCTION "public"."customer_counter_offer"("p_order_id" bigint
     AS $$
 DECLARE
   v_order record;
-  BEGIN
+  v_item record;
+  v_has_counter boolean := false;
+BEGIN
   SELECT * INTO v_order FROM public.shop_orders WHERE id = p_order_id;
-  
+
   IF v_order.id IS NULL THEN
     RAISE EXCEPTION 'order not found';
   END IF;
@@ -1750,11 +1752,17 @@ DECLARE
       RAISE EXCEPTION 'Order % is not negotiable', p_order_id;
     END IF;
 
-    IF v_order.status <> 'priced' THEN
-      RAISE EXCEPTION 'Catalog order % cannot be countered from status %', p_order_id, v_order.status;
+    IF v_order.status <> 'priced'::public.shop_order_status THEN
+      RAISE EXCEPTION 'Catalog order % cannot respond from status %', p_order_id, v_order.status;
     END IF;
 
-    FOR v_item IN SELECT * FROM jsonb_to_recordset(p_items) AS x(id bigint, customer_offer_amount numeric, customer_offer_currency_id bigint) LOOP
+    FOR v_item IN
+      SELECT * FROM jsonb_to_recordset(p_items) AS x(
+        id bigint,
+        customer_offer_amount numeric,
+        customer_offer_currency_id bigint
+      )
+    LOOP
       UPDATE public.shop_order_items
       SET
         customer_offer_amount = v_item.customer_offer_amount,
@@ -1764,19 +1772,48 @@ DECLARE
       WHERE id = v_item.id AND order_id = p_order_id;
     END LOOP;
 
-    UPDATE public.shop_orders
-    SET
-      status = 'countered'::public.shop_order_status,
-      negotiate_round = negotiate_round + 1,
-      updated_at = now()
-    WHERE id = p_order_id;
+    SELECT EXISTS (
+      SELECT 1
+      FROM public.shop_order_items soi
+      WHERE soi.order_id = p_order_id
+        AND soi.customer_offer_amount IS NOT NULL
+        AND soi.staff_offer_amount IS NOT NULL
+        AND soi.customer_offer_amount <> soi.staff_offer_amount
+    )
+    INTO v_has_counter;
+
+    IF v_has_counter THEN
+      UPDATE public.shop_orders
+      SET
+        status = 'countered'::public.shop_order_status,
+        negotiate_round = negotiate_round + 1,
+        updated_at = now()
+      WHERE id = p_order_id;
+    ELSE
+      UPDATE public.shop_order_items
+      SET
+        confirmed_quantity = COALESCE(confirmed_quantity, quantity),
+        updated_at = now()
+      WHERE order_id = p_order_id;
+
+      UPDATE public.shop_orders
+      SET
+        status = 'confirmed'::public.shop_order_status,
+        updated_at = now()
+      WHERE id = p_order_id;
+    END IF;
   ELSE
-    -- Legacy / non-catalog fallback behavior
     IF NOT public.is_cart_owner(v_order.customer_group_id, v_order.tenant_id) THEN
       RAISE EXCEPTION 'access denied';
     END IF;
 
-    FOR v_item IN SELECT * FROM jsonb_to_recordset(p_items) AS x(id bigint, customer_offer_amount numeric, customer_offer_currency_id bigint) LOOP
+    FOR v_item IN
+      SELECT * FROM jsonb_to_recordset(p_items) AS x(
+        id bigint,
+        customer_offer_amount numeric,
+        customer_offer_currency_id bigint
+      )
+    LOOP
       UPDATE public.shop_order_items
       SET
         customer_offer_amount = v_item.customer_offer_amount,
@@ -1793,6 +1830,7 @@ DECLARE
     WHERE id = p_order_id;
   END IF;
 END;
+$$;
 ALTER FUNCTION "public"."customer_counter_offer"("p_order_id" bigint, "p_items" "jsonb") OWNER TO "postgres";
 
 
@@ -3753,7 +3791,7 @@ begin
       p_status_bucket is null
       or (
         p_status_bucket = 'needs_you'
-        and o.status in ('priced', 'negotiating', 'countered', 'final_offered')
+        and o.status in ('priced', 'countered', 'final_offered')
       )
       or (
         p_status_bucket = 'done'
@@ -4852,8 +4890,7 @@ DECLARE
   v_item_id bigint;
   v_offer_amount numeric;
   v_offer_currency_id bigint;
-  v_gross_weight numeric;
-  v_cbm numeric;
+  v_weight_kg numeric;
 BEGIN
   SELECT * INTO v_order FROM public.shop_orders WHERE id = p_order_id;
   IF NOT FOUND THEN
@@ -4864,33 +4901,94 @@ BEGIN
     RAISE EXCEPTION 'staff_price_shop_order is only valid for vendor_catalog orders.';
   END IF;
 
+  IF v_order.status NOT IN ('submitted'::public.shop_order_status, 'costing_pending'::public.shop_order_status) THEN
+    RAISE EXCEPTION 'Order % cannot send first offer from status %', p_order_id, v_order.status;
+  END IF;
+
   -- Update order level rates if provided
   UPDATE public.shop_orders
   SET
     profit_basis = COALESCE(p_profit_basis, profit_basis),
+    conversion_rate = COALESCE(p_fx_rate, conversion_rate),
+    cargo_rate = COALESCE(p_cargo_rate, cargo_rate),
+    first_offer_rate = COALESCE(p_profit_pct, first_offer_rate),
+    profit_rate = COALESCE(p_profit_pct, profit_rate),
     status = 'priced'::public.shop_order_status,
     updated_at = now()
   WHERE id = p_order_id;
 
-  -- Update item pricing & weights
+  -- Update item pricing & weights (shop_order_items.weight_kg — not gross_weight_kg)
   FOR v_elem IN SELECT * FROM jsonb_array_elements(p_items) LOOP
     v_item_id := (v_elem->>'id')::bigint;
     v_offer_amount := (v_elem->>'staff_offer_amount')::numeric;
     v_offer_currency_id := (v_elem->>'staff_offer_currency_id')::bigint;
-    v_gross_weight := CASE WHEN v_elem ? 'gross_weight_kg' THEN (v_elem->>'gross_weight_kg')::numeric ELSE NULL END;
-    v_cbm := CASE WHEN v_elem ? 'cbm' THEN (v_elem->>'cbm')::numeric ELSE NULL END;
+    v_weight_kg := COALESCE(
+      NULLIF(v_elem->>'weight_kg', '')::numeric,
+      NULLIF(v_elem->>'gross_weight_kg', '')::numeric,
+      NULL
+    );
 
     UPDATE public.shop_order_items
     SET
       staff_offer_amount = v_offer_amount,
       staff_offer_currency_id = v_offer_currency_id,
-      gross_weight_kg = COALESCE(v_gross_weight, gross_weight_kg),
-      cbm = COALESCE(v_cbm, cbm),
+      weight_kg = COALESCE(v_weight_kg, weight_kg),
+      staff_offer_at = now(),
       updated_at = now()
     WHERE id = v_item_id AND order_id = p_order_id;
   END LOOP;
 END;
 ALTER FUNCTION "public"."staff_price_shop_order"("p_order_id" bigint, "p_items" "jsonb", "p_profit_basis" "text", "p_fx_rate" numeric, "p_cargo_rate" numeric, "p_profit_pct" numeric) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."staff_finalize_catalog_prices"("p_order_id" bigint, "p_items" "jsonb") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_order record;
+  v_elem jsonb;
+  v_item_id bigint;
+  v_final_amount numeric;
+  v_final_currency_id bigint;
+BEGIN
+  SELECT * INTO v_order FROM public.shop_orders WHERE id = p_order_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Order not found: %', p_order_id;
+  END IF;
+
+  IF v_order.shop_type_snapshot <> 'vendor_catalog' THEN
+    RAISE EXCEPTION 'staff_finalize_catalog_prices is only valid for vendor_catalog orders.';
+  END IF;
+
+  IF v_order.status <> 'countered'::public.shop_order_status THEN
+    RAISE EXCEPTION 'Order % cannot send final offer from status %', p_order_id, v_order.status;
+  END IF;
+
+  FOR v_elem IN SELECT * FROM jsonb_array_elements(p_items) LOOP
+    v_item_id := (v_elem->>'id')::bigint;
+    v_final_amount := (v_elem->>'final_offer_amount')::numeric;
+    v_final_currency_id := (v_elem->>'final_offer_currency_id')::bigint;
+
+    UPDATE public.shop_order_items
+    SET
+      final_price_amount = v_final_amount,
+      final_price_currency_id = v_final_currency_id,
+      final_offer_at = now(),
+      updated_at = now()
+    WHERE id = v_item_id AND order_id = p_order_id;
+  END LOOP;
+
+  UPDATE public.shop_orders
+  SET
+    status = 'final_offered'::public.shop_order_status,
+    updated_at = now()
+  WHERE id = p_order_id;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."staff_finalize_catalog_prices"("p_order_id" bigint, "p_items" "jsonb") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."submit_shop_order_from_cart"("p_cart_id" bigint, "p_recipient_name" "text", "p_recipient_phone" "text", "p_shipping_address" "text", "p_recipient_phone_secondary" "text" DEFAULT NULL::"text", "p_shipping_district" "text" DEFAULT NULL::"text", "p_shipping_thana" "text" DEFAULT NULL::"text", "p_billing_profile_id" bigint DEFAULT NULL::bigint, "p_is_prepaid" boolean DEFAULT false, "p_delivery_instructions" "text" DEFAULT NULL::"text", "p_cod_charge_amount" numeric DEFAULT 0, "p_delivery_charge_amount" numeric DEFAULT 0, "p_print_charge_amount" numeric DEFAULT 0, "p_packing_charge_amount" numeric DEFAULT 0, "p_discount_amount" numeric DEFAULT 0) RETURNS "jsonb"

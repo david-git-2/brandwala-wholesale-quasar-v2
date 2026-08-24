@@ -47,7 +47,7 @@ const submitOrder = async (
 
 const staffPriceOrder = async (
   orderId: number,
-  items: Array<{ id: number; staff_offer_amount: number; staff_offer_currency_id: number; gross_weight_kg?: number | null; cbm?: number | null }>,
+  items: Array<{ id: number; staff_offer_amount: number; staff_offer_currency_id: number; weight_kg?: number | null }>,
   profitBasis?: string | null,
 ): Promise<ShopServiceResult<void>> => {
   try {

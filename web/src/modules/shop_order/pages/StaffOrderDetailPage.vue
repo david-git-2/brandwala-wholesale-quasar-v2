@@ -1,5 +1,5 @@
 <template>
-  <q-page class="q-pa-md">
+  <q-page class="q-pa-md staff-order-detail-page">
     <div class="q-gutter-y-md">
       <!-- Loading Skeleton -->
       <StaffOrderDetailSkeleton v-if="isLoading" />
@@ -12,15 +12,13 @@
       </div>
 
       <template v-else-if="currentOrder">
-        <!-- Header & Dropship Banner -->
+        <!-- Dropship banner (non-catalog shops) -->
         <StaffOrderHeader
+          v-if="!isCatalogShop"
           :order="currentOrder"
           :can-fulfill="canFulfill"
           :is-processing-dropship="isProcessingDropship"
-          :visible-columns="catalogVisibleColumns"
-          @go-back="goBack"
           @add-to-dropship="addToDropshipDesk"
-          @update:visible-columns="onCatalogVisibleColumnsUpdate"
         />
 
         <!-- VENDOR CATALOG S1 SPECIFIC LAYOUT -->
@@ -30,9 +28,9 @@
             :order="currentOrder"
             v-model:rates-expanded="ratesExpanded"
             :is-loading="isLoading"
-            :updating-status="isUpdatingStatus"
-            :target-updating-status="targetUpdatingStatus"
-            @change-status="changeOrderStatus"
+            :visible-columns="catalogVisibleColumns"
+            @update:visible-columns="onCatalogVisibleColumnsUpdate"
+            @override-status="showStatusOverrideDialog = true"
           />
 
           <!-- Rates Panel -->
@@ -56,8 +54,16 @@
             @update-item="handleUpdateCatalogOrderItem"
           />
 
-
-
+          <CatalogOrderStaffActions
+            :status="currentOrder.status"
+            :show-cancel="currentOrder.status !== 'delivered' && currentOrder.status !== 'cancelled'"
+            :is-deleting="isDeletingOrder"
+            :is-primary-loading="isCatalogPrimaryLoading"
+            :primary-disabled="catalogPrimaryDisabled"
+            :primary-disabled-reason="catalogPrimaryDisabledReason"
+            @primary-action="handleCatalogPrimaryAction"
+            @cancel-order="confirmDeleteOrder"
+          />
         </template>
 
         <!-- OTHER SHOP TYPES (Dropship/Fixed) -->
@@ -115,6 +121,14 @@
       :tenant-id="currentOrder.tenant_id"
       :billing-profile-id="currentOrder.billing_profile_id"
     />
+
+    <CatalogOrderStatusOverrideDialog
+      v-if="currentOrder"
+      v-model="showStatusOverrideDialog"
+      :order="currentOrder"
+      :loading="isUpdatingStatus"
+      @apply="handleStatusOverride"
+    />
   </q-page>
 </template>
 
@@ -138,11 +152,24 @@ import {
 import {
   useSaveCatalogRatesMutation,
   useUpdateCatalogOrderItemMutation,
+  useStaffPriceCatalogOrderMutation,
+  useStaffFinalizeCatalogPricesMutation,
+  useStaffStartCatalogProcurementMutation,
+  useStaffSetCatalogOrderedQtyMutation,
+  useStaffSetCatalogDeliveredQtyMutation,
 } from '../composables/useCatalogOrderMutations';
 import {
   calculateItemFirstOfferPrice,
   calculateItemFinalOfferPrice,
+  getFirstOfferUnitAmount,
+  getFinalOfferUnitAmount,
 } from '../utils/catalogPricingUtils';
+import {
+  normalizeCatalogOrderStatus,
+  getStaffCatalogPrimaryAction,
+  type StaffCatalogPrimaryAction,
+} from '../utils/catalogOrderStatus';
+import { requestConfirmation } from 'src/utils/appFeedback';
 
 import StaffOrderHeader from '../components/StaffOrderHeader.vue';
 import StaffOrderStatusWorkflow from '../components/StaffOrderStatusWorkflow.vue';
@@ -154,6 +181,8 @@ import StaffOrderDetailSkeleton from '../components/StaffOrderDetailSkeleton.vue
 import CatalogOrderWorkflowBar from '../components/CatalogOrderWorkflowBar.vue';
 import CatalogOrderRatesBar from '../components/CatalogOrderRatesBar.vue';
 import CatalogOrderItemsTable from '../components/CatalogOrderItemsTable.vue';
+import CatalogOrderStaffActions from '../components/CatalogOrderStaffActions.vue';
+import CatalogOrderStatusOverrideDialog from '../components/CatalogOrderStatusOverrideDialog.vue';
 import CatalogBacklogDrawer from '../components/CatalogBacklogDrawer.vue';
 import { useMembershipColumnPreference } from 'src/modules/membership/composables/useMembershipColumnPreference';
 
@@ -186,6 +215,15 @@ const { mutate: processDropshipOrder, isPending: isProcessingDropship } = usePro
 // Catalog Specific Mutations
 const { mutate: saveCatalogRates, isPending: isSavingRates } = useSaveCatalogRatesMutation();
 const { mutate: updateCatalogOrderItem } = useUpdateCatalogOrderItemMutation();
+const { mutate: staffPriceCatalog, isPending: isStaffPricingCatalog } = useStaffPriceCatalogOrderMutation();
+const { mutate: staffFinalizeCatalog, isPending: isStaffFinalizingCatalog } =
+  useStaffFinalizeCatalogPricesMutation();
+const { mutate: staffStartProcurement, isPending: isStaffStartingProcurement } =
+  useStaffStartCatalogProcurementMutation();
+const { mutate: staffSetOrderedQty, isPending: isStaffMarkingOrdered } =
+  useStaffSetCatalogOrderedQtyMutation();
+const { mutate: staffSetDeliveredQty, isPending: isStaffMarkingDelivered } =
+  useStaffSetCatalogDeliveredQtyMutation();
 
 const handleUpdateCatalogOrderItem = ({
   itemId,
@@ -206,6 +244,7 @@ const handleUpdateCatalogOrderItem = ({
 };
 
 const showBacklogDrawer = ref(false);
+const showStatusOverrideDialog = ref(false);
 
 const { data: currenciesData } = useThriftCurrenciesQuery();
 const currencies = computed(() => currenciesData.value || []);
@@ -289,7 +328,7 @@ const { visibleColumns: rawCatalogVisibleColumns } = useMembershipColumnPreferen
   defaultVisibleColumns: catalogDefaultVisibleColumns,
 });
 
-const submittedModeColumns = [
+const processingModeColumns = [
   'sl',
   'image',
   'name',
@@ -298,8 +337,18 @@ const submittedModeColumns = [
   'code_barcode_id',
   'qty_customer',
   'purchase_price_unit',
+  'purchase_price_total',
   'product_weight_gm',
   'package_weight_gm',
+  'total_weight_gm',
+  'cargo_cost_unit_purchase',
+  'landed_cost_unit_purchase',
+  'landed_cost_row_purchase',
+  'landed_cost_unit_sell',
+  'landed_cost_row_sell',
+  'first_offer_unit',
+  'first_offer_row',
+  'first_offer_margin',
   'status',
   'action',
 ];
@@ -331,18 +380,201 @@ const confirmedModeColumns = [
   'action',
 ];
 
+const catalogOrderStatus = computed(() =>
+  normalizeCatalogOrderStatus(currentOrder.value?.status),
+);
+
+const catalogRatesParams = computed(() => ({
+  conversion_rate: currentOrder.value?.conversion_rate,
+  cargo_rate: currentOrder.value?.cargo_rate,
+  first_offer_rate: currentOrder.value?.first_offer_rate ?? currentOrder.value?.profit_rate,
+  final_offer_rate: currentOrder.value?.final_offer_rate,
+  profit_rate: currentOrder.value?.profit_rate,
+  profit_basis: currentOrder.value?.profit_basis,
+}));
+
+const isCatalogPrimaryLoading = computed(
+  () =>
+    isStaffPricingCatalog.value ||
+    isStaffFinalizingCatalog.value ||
+    isStaffStartingProcurement.value ||
+    isStaffMarkingOrdered.value ||
+    isStaffMarkingDelivered.value,
+);
+
+const catalogPrimaryDisabled = computed(() => {
+  const action = getStaffCatalogPrimaryAction(currentOrder.value?.status);
+  if (!action || !orderItems.value.length) return true;
+  if (action === 'send_first_offer') {
+    return !orderItems.value.every(
+      (item) =>
+        getFirstOfferUnitAmount(
+          item,
+          catalogRatesParams.value,
+          currentOrder.value?.package_weight_kg,
+        ) > 0,
+    );
+  }
+  if (action === 'send_final_offer') {
+    return !orderItems.value.every(
+      (item) =>
+        getFinalOfferUnitAmount(
+          item,
+          catalogRatesParams.value,
+          currentOrder.value?.package_weight_kg,
+        ) > 0,
+    );
+  }
+  return false;
+});
+
+const catalogPrimaryDisabledReason = computed(() => {
+  const action = getStaffCatalogPrimaryAction(currentOrder.value?.status);
+  if (action === 'send_first_offer' && catalogPrimaryDisabled.value) {
+    return 'Complete costing and first-offer prices for all lines';
+  }
+  if (action === 'send_final_offer' && catalogPrimaryDisabled.value) {
+    return 'Set final offer prices for all lines';
+  }
+  return '';
+});
+
+function buildStaffOfferPayload() {
+  return orderItems.value.map((item) => ({
+    id: item.id,
+    staff_offer_amount: getFirstOfferUnitAmount(
+      item,
+      catalogRatesParams.value,
+      currentOrder.value?.package_weight_kg,
+    ),
+    staff_offer_currency_id:
+      item.staff_offer_currency_id ||
+      item.unit_sell_price_currency_id ||
+      item.unit_list_price_currency_id,
+    is_first_offer_manual: item.is_first_offer_manual,
+  }));
+}
+
+function buildFinalOfferPayload() {
+  return orderItems.value.map((item) => ({
+    id: item.id,
+    final_offer_amount: getFinalOfferUnitAmount(
+      item,
+      catalogRatesParams.value,
+      currentOrder.value?.package_weight_kg,
+    ),
+    final_offer_currency_id:
+      item.staff_offer_currency_id ||
+      item.unit_sell_price_currency_id ||
+      item.unit_list_price_currency_id,
+  }));
+}
+
+function buildOrderedQtyPayload() {
+  return orderItems.value.map((item) => ({
+    id: item.id,
+    ordered_quantity: Number(
+      item.ordered_quantity ?? item.confirmed_quantity ?? item.quantity ?? 0,
+    ),
+  }));
+}
+
+function buildDeliveredQtyPayload() {
+  return orderItems.value.map((item) => ({
+    id: item.id,
+    delivered_quantity: Number(
+      item.delivered_quantity ?? item.ordered_quantity ?? item.confirmed_quantity ?? item.quantity ?? 0,
+    ),
+  }));
+}
+
+const handleStatusOverride = ({
+  status,
+  reason,
+}: {
+  status: string;
+  reason: string;
+}) => {
+  if (!orderId.value) return;
+  updateOrderStatus(
+    { orderId: orderId.value, status },
+    {
+      onSuccess: () => {
+        showStatusOverrideDialog.value = false;
+        $q.notify({
+          type: 'info',
+          message: `Status overridden to ${status}. ${reason}`,
+        });
+      },
+    },
+  );
+};
+
+const handleCatalogPrimaryAction = async (action: StaffCatalogPrimaryAction) => {
+  if (!orderId.value) return;
+
+  if (action === 'send_first_offer') {
+    const ok = await requestConfirmation(
+      'Send the first offer to the customer? They will be able to accept or counter each line.',
+      'Send first offer',
+      'Send offer',
+    );
+    if (!ok) return;
+    staffPriceCatalog({
+      orderId: orderId.value,
+      items: buildStaffOfferPayload(),
+      profitBasis: currentOrder.value?.profit_basis,
+    });
+    return;
+  }
+
+  if (action === 'send_final_offer') {
+    const ok = await requestConfirmation(
+      'Send the final offer to the customer?',
+      'Send final offer',
+      'Send final offer',
+    );
+    if (!ok) return;
+    staffFinalizeCatalog({
+      orderId: orderId.value,
+      items: buildFinalOfferPayload(),
+    });
+    return;
+  }
+
+  if (action === 'start_procurement') {
+    staffStartProcurement(orderId.value);
+    return;
+  }
+
+  if (action === 'mark_ordered') {
+    staffSetOrderedQty({
+      orderId: orderId.value,
+      items: buildOrderedQtyPayload(),
+    });
+    return;
+  }
+
+  if (action === 'mark_delivered') {
+    staffSetDeliveredQty({
+      orderId: orderId.value,
+      items: buildDeliveredQtyPayload(),
+    });
+  }
+};
+
 const catalogVisibleColumns = computed<string[]>({
   get: () => {
-    if (currentOrder.value?.status === 'submitted') {
-      return submittedModeColumns;
+    if (catalogOrderStatus.value === 'submitted') {
+      return processingModeColumns;
     }
-    if (currentOrder.value?.status === 'countered') {
+    if (catalogOrderStatus.value === 'countered') {
       return counteredModeColumns;
     }
-    if (currentOrder.value?.status === 'confirmed') {
+    if (catalogOrderStatus.value === 'confirmed') {
       return confirmedModeColumns;
     }
-    if (['priced', 'costing_pending'].includes(currentOrder.value?.status || '')) {
+    if (catalogOrderStatus.value === 'priced') {
       const hiddenInPriced = [
         'ordered_qty',
         'delivered_qty',
@@ -658,3 +890,9 @@ export default {
   name: 'StaffOrderDetailPage',
 };
 </script>
+
+<style scoped>
+.staff-order-detail-page {
+  padding-bottom: 88px;
+}
+</style>

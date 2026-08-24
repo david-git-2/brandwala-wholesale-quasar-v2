@@ -1,63 +1,49 @@
 <template>
   <div>
-    <!-- Header -->
-    <section class="row items-center justify-between q-col-gutter-md">
-      <div class="col">
-        <div class="row items-center q-gutter-x-sm">
-          <q-btn flat dense icon="ph ph-arrow-left" color="grey-7" @click="emit('back')" />
-          <div>
-            <div class="text-overline text-primary">Customer Order</div>
-            <h1 class="text-h5 text-weight-bold q-my-none">Order #{{ order.order_no }}</h1>
-            <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-              {{ $t('shop_admin.placed_on') }} {{ formatDate(order.created_at) }}
-              <span v-if="order.shop_name"> • {{ order.shop_name }}</span>
-              <span v-if="order.shop_type_snapshot">
-                · {{ $t(customerShopTypeI18nKey(order.shop_type_snapshot)) }}
-              </span>
-            </p>
+    <CatalogOrderProgressBar
+      v-if="isVendorCatalog"
+      variant="customer"
+      :order="order"
+    />
+
+    <template v-else>
+      <p v-if="metaLine" class="text-caption text-grey-7 q-mb-sm">{{ metaLine }}</p>
+      <q-card flat bordered class="q-pa-sm bg-grey-1">
+        <div class="row items-center justify-between no-wrap q-gutter-x-xs">
+          <div class="col text-center">
+            <q-badge
+              unelevated
+              :color="getStatusColor(normalizedStatus)"
+              class="q-pa-xs text-weight-bold text-caption shadow-1 full-width justify-center status-badge"
+            >
+              <q-icon name="ph ph-clock text-white q-mr-xs" size="14px" />
+              {{ formatStatusLabel(normalizedStatus) }}
+            </q-badge>
+          </div>
+
+          <q-icon v-if="focusedSteps.next" name="ph ph-caret-right" color="grey-5" size="16px" />
+
+          <div v-if="focusedSteps.next" class="col-auto">
+            <q-chip dense outline color="grey-6" class="text-caption q-ma-none">
+              Next: {{ formatStatusLabel(focusedSteps.next) }}
+            </q-chip>
           </div>
         </div>
-      </div>
-    </section>
-
-    <!-- Status Workflow Strip (Shows Current Active -> Next) -->
-    <q-card flat bordered class="q-pa-sm q-mt-md bg-grey-1">
-      <div class="row items-center justify-between no-wrap q-gutter-x-xs">
-        <!-- 1. Current Active Step (Highlighted with Action Badge) -->
-        <div class="col text-center">
-          <q-badge
-            unelevated
-            :color="getStatusColor(normalizedStatus)"
-            class="q-pa-xs text-weight-bold text-caption shadow-1 full-width justify-center"
-            style="font-size: 12px;"
-          >
-            <q-icon name="ph ph-clock text-white q-mr-xs" size="14px" />
-            {{ formatStatusLabel(normalizedStatus) }}
-          </q-badge>
-        </div>
-
-        <q-icon v-if="focusedSteps.next" name="ph ph-caret-right" color="grey-5" size="16px" />
-
-        <!-- 2. Next Step (Upcoming) -->
-        <div v-if="focusedSteps.next" class="col-auto">
-          <q-chip
-            dense
-            outline
-            color="grey-6"
-            class="text-caption q-ma-none"
-          >
-            Next: {{ formatStatusLabel(focusedSteps.next) }}
-          </q-chip>
-        </div>
-      </div>
-    </q-card>
+      </q-card>
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
 import { date } from 'quasar';
+import { useI18n } from 'vue-i18n';
 import { customerShopTypeI18nKey } from '../utils/catalogShop';
+import {
+  getCustomerCatalogStatusLabel,
+  normalizeCatalogOrderStatus,
+} from '../utils/catalogOrderStatus';
+import CatalogOrderProgressBar from './CatalogOrderProgressBar.vue';
 
 const props = defineProps<{
   order: any;
@@ -66,13 +52,28 @@ const props = defineProps<{
   normalizedStatus: string;
 }>();
 
-const emit = defineEmits<{
-  (e: 'back'): void;
-}>();
+const { t } = useI18n();
+
+const isVendorCatalog = computed(() => props.order?.shop_type_snapshot === 'vendor_catalog');
+
+const metaLine = computed(() => {
+  const parts: string[] = [];
+  if (props.order?.created_at) {
+    parts.push(`${t('shop_admin.placed_on')} ${formatDate(props.order.created_at)}`);
+  }
+  if (props.order?.shop_name) {
+    parts.push(props.order.shop_name);
+  }
+  if (props.order?.shop_type_snapshot) {
+    parts.push(t(customerShopTypeI18nKey(props.order.shop_type_snapshot)));
+  }
+  return parts.join(' · ');
+});
 
 const focusedSteps = computed(() => {
   const seq = props.statusSequence || [];
-  const idx = seq.indexOf(props.normalizedStatus);
+  const lookupStatus = normalizeCatalogOrderStatus(props.normalizedStatus);
+  const idx = seq.indexOf(lookupStatus);
   if (idx === -1) {
     return { prev: null, next: null };
   }
@@ -82,14 +83,15 @@ const focusedSteps = computed(() => {
   };
 });
 
-
-
 const formatDate = (dateStr?: string) => {
   if (!dateStr) return '';
   return date.formatDate(dateStr, 'D MMM YYYY, HH:mm');
 };
 
 const formatStatusLabel = (st: string) => {
+  if (props.order?.shop_type_snapshot === 'vendor_catalog') {
+    return getCustomerCatalogStatusLabel(st);
+  }
   switch (st) {
     case 'submitted':
       return 'Submitted';
@@ -182,3 +184,10 @@ export default {
   name: 'CustomerOrderHeader',
 };
 </script>
+
+<style scoped>
+.status-badge {
+  border-radius: 999px;
+  font-size: 12px;
+}
+</style>

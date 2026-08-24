@@ -133,6 +133,7 @@ import StorefrontProductCard from '../components/StorefrontProductCard.vue';
 import StorefrontSkeletonGrid from '../components/StorefrontSkeletonGrid.vue';
 import type { ShopCatalogItem } from '../types';
 import type { QInfiniteScroll } from 'quasar';
+import { activeCartShopMetaFromShop } from '../utils/activeCartCacheUtils';
 
 const route = useRoute();
 const router = useRouter();
@@ -347,6 +348,7 @@ const onAddToCart = async (item: ShopCatalogItem) => {
       globalStockAllocationId: item.global_stock_id ?? null,
       globalStockId: item.global_stock_id ?? null,
       quantity: qty,
+      shopMeta: activeCartShopMetaFromShop(shopDetails.value, item.sell_price ?? item.unit_price),
     });
     delete selectedQuantities[key];
   } finally {

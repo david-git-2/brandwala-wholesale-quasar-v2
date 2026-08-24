@@ -4,6 +4,8 @@ This document defines user interaction flows, route navigation, button visibilit
 
 For RPC/API contracts and query keys, see [`SHOP_ORDER.md`](./SHOP_ORDER.md). Customer group creation is in [`CUSTOMER.md`](../customer/CUSTOMER.md).
 
+**Catalog negotiation status model and user-facing labels:** [`CATALOG_NEGOTIATION.md`](./CATALOG_NEGOTIATION.md)
+
 ---
 
 ## 1. Shop Setup Operator Journey (`shop_config`)
@@ -358,7 +360,7 @@ StorefrontProductDetailPage
 | **Open detail** | Product card click or quick-view link | Navigate to `/shop/browse/:shopSlug/product/:productId` |
 | **Copy link** | Link icon in summary | Copy `window.location.href` → toast “Link copied” |
 | **Back to catalog** | Breadcrumb or browser back | Return to `StorefrontPage` (preserve `?search=` / filter query when possible) |
-| **Add to cart** | Sticky action bar | `add_to_shop_cart` with selected qty; toast; optional badge update |
+| **Add to cart** | Sticky action bar | `add_to_shop_cart` with selected qty; toast; header badge via TanStack `activeCarts` cache patch (no extra list RPC) |
 | **Update cart** | When line already in cart | `update_shop_cart_item_qty` |
 | **Related card click** | Related product card | Navigate to `/shop/browse/:shopSlug/product/:productId` |
 | **View all in category** | Link in related header | `StorefrontPage` with `?category={product_category}` |

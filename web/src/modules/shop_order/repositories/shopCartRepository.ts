@@ -166,6 +166,11 @@ export interface ActiveCartItem {
   updated_at: string;
 }
 
+export type ActiveCartShopMeta = Pick<
+  ActiveCartItem,
+  'shop_name' | 'shop_slug' | 'shop_logo_url' | 'currency_id' | 'currency_code' | 'currency_symbol'
+>;
+
 const listActiveShopCarts = async (tenantId: number): Promise<ActiveCartItem[]> => {
   const { data, error } = await supabase.rpc('list_customer_active_carts', {
     p_tenant_id: tenantId,
