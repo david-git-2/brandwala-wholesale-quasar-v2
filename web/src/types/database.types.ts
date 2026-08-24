@@ -14253,6 +14253,19 @@ export type Database = {
         Args: { p_invoice_id: number }
         Returns: undefined
       }
+      update_catalog_order_item_for_staff: {
+        Args: {
+          p_item_id: number
+          p_order_id: number
+          p_payload: Json
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
+      update_catalog_order_rates_for_staff: {
+        Args: { p_order_id: number; p_payload: Json; p_tenant_id: number }
+        Returns: Json
+      }
       update_costing_file: {
         Args: {
           p_customer_group_id?: number
@@ -14412,23 +14425,6 @@ export type Database = {
           status: Database["public"]["Enums"]["costing_file_status"]
           updated_at: string
         }[]
-      }
-      update_catalog_order_item_for_staff: {
-        Args: {
-          p_item_id: number
-          p_order_id: number
-          p_payload: Json
-          p_tenant_id: number
-        }
-        Returns: Json
-      }
-      update_catalog_order_rates_for_staff: {
-        Args: {
-          p_order_id: number
-          p_payload: Json
-          p_tenant_id: number
-        }
-        Returns: Json
       }
       update_dropship_consignment: {
         Args: {
@@ -14670,6 +14666,14 @@ export type Database = {
         Args: { p_cart_item_id: number; p_quantity: number }
         Returns: Json
       }
+      update_shop_order_charges_for_staff: {
+        Args: { p_order_id: number; p_payload: Json; p_tenant_id: number }
+        Returns: Json
+      }
+      update_shop_order_status_for_staff: {
+        Args: { p_order_id: number; p_status: string; p_tenant_id: number }
+        Returns: Json
+      }
       update_store: {
         Args: { p_id: number; p_name: string; p_vendor_code: string }
         Returns: {
@@ -14828,22 +14832,6 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
-      }
-      update_shop_order_charges_for_staff: {
-        Args: {
-          p_order_id: number
-          p_payload: Json
-          p_tenant_id: number
-        }
-        Returns: Json
-      }
-      update_shop_order_status_for_staff: {
-        Args: {
-          p_order_id: number
-          p_status: string
-          p_tenant_id: number
-        }
-        Returns: Json
       }
       upsert_customer_group_shop_profile: {
         Args: {

@@ -1,7 +1,7 @@
 <template>
   <q-page class="q-pa-md page-container customer-order-detail-page">
     <!-- Loading Skeleton State -->
-    <CustomerOrderDetailSkeleton v-if="isLoading" />
+    <CustomerOrderDetailSkeleton v-if="isLoading" :variant="skeletonVariant" />
 
     <!-- Error State -->
     <div class="q-gutter-y-md" v-else-if="isError">
@@ -175,6 +175,11 @@ const route = useRoute();
 const router = useRouter();
 
 const orderId = computed(() => Number(route.params.id || 0));
+
+const skeletonVariant = computed<'catalog' | 'dropship'>(() => {
+  const state = history.state as { shopTypeSnapshot?: string } | null;
+  return state?.shopTypeSnapshot === 'vendor_catalog' ? 'catalog' : 'dropship';
+});
 
 const { data: orderDetailsData, isLoading, isError, error } = useCustomerShopOrderDetailQuery(orderId);
 const { mutate: sendCustomerCounter, isPending: isSendingCounter } = useSendCustomerCounterMutation();

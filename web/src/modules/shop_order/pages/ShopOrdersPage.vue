@@ -101,7 +101,10 @@ const goToOrderDetails = (orderId: number) => {
   if (shopType === 'dropship') {
     void router.push(`${slug}/app/shop/dropship/${orderId}`);
   } else {
-    void router.push(`${slug}/app/shop/orders/${orderId}`);
+    void router.push({
+      path: `${slug}/app/shop/orders/${orderId}`,
+      state: { shopTypeSnapshot: shopType ?? undefined },
+    });
   }
 };
 

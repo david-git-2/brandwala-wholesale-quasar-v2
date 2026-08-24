@@ -153,6 +153,28 @@ export function getCustomerCatalogStatusSequence(isNegotiable: boolean): string[
   return ['submitted', 'priced', 'confirmed', 'procuring', 'ordered', 'delivered'];
 }
 
+/** Lock purchase price and 1st offer while the customer reviews or staff reviews a counter. */
+export function isCatalogFirstOfferLocked(status: string | null | undefined): boolean {
+  const st = normalizeCatalogOrderStatus(status);
+  return st === 'priced' || st === 'countered';
+}
+
+/** Staff may edit final-offer prices only after the customer counters. */
+export function isCatalogFinalOfferEditable(status: string | null | undefined): boolean {
+  return normalizeCatalogOrderStatus(status) === 'countered';
+}
+
+/** Only ordered qty is editable once the customer has confirmed the order. */
+export function isCatalogOrderedQtyEditable(status: string | null | undefined): boolean {
+  return normalizeCatalogOrderStatus(status) === 'confirmed';
+}
+
+/** Delivered qty is editable during procurement / ordered fulfillment. */
+export function isCatalogDeliveredQtyEditable(status: string | null | undefined): boolean {
+  const st = normalizeCatalogOrderStatus(status);
+  return st === 'procuring' || st === 'ordered';
+}
+
 export function isCatalogProgressStepComplete(
   stepKey: CatalogProgressKey,
   currentProgressKey: CatalogProgressKey,

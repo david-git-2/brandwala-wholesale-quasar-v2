@@ -98,7 +98,7 @@
               v-ripple
               class="q-py-md order-item"
               :class="{ 'order-waiting': isWaitingStatus(order.status) }"
-              @click="goToOrderDetails(order.id)"
+              @click="goToOrderDetails(order)"
             >
               <q-item-section>
                 <div class="row items-center justify-between no-wrap q-col-gutter-sm">
@@ -146,6 +146,7 @@ import { copyToClipboard, date } from 'quasar';
 import { showSuccessNotification } from 'src/utils/appFeedback';
 import { useCustomerOrdersQuery } from '../composables/useCustomerOrdersQuery';
 import { shopCatalogEntryPath } from '../utils/catalogShop';
+import type { CustomerOrderListItem } from '../types';
 import {
   isWaitingStatus,
   parseOrderGlanceBucket,
@@ -198,9 +199,12 @@ const goCatalog = () => {
   void router.push(shopCatalogEntryPath(tenantSlug));
 };
 
-const goToOrderDetails = (orderId: number) => {
+const goToOrderDetails = (order: CustomerOrderListItem) => {
   const tenantSlug = route.params.tenantSlug ? `/${String(route.params.tenantSlug)}` : '';
-  void router.push(`${tenantSlug}/shop/orders/${orderId}`);
+  void router.push({
+    path: `${tenantSlug}/shop/orders/${order.id}`,
+    state: { shopTypeSnapshot: order.shop_type_snapshot },
+  });
 };
 
 const formatDate = (dateStr: string) => date.formatDate(dateStr, 'D MMM YYYY');

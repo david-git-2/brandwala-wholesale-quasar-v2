@@ -105,8 +105,15 @@
             </q-td>
 
             <!-- 8. Ordered Qty -->
-            <q-td v-if="isColVisible('ordered_qty')" key="ordered_qty" :props="slotProps" class="sec-qty text-center editable-cell col-editable-qty">
+            <q-td v-if="isColVisible('ordered_qty')" key="ordered_qty" :props="slotProps" class="sec-qty text-center" :class="{ 'editable-cell col-editable-qty': isOrderedQtyEditable }">
+              <span
+                v-if="!isOrderedQtyEditable"
+                class="font-mono text-weight-bold text-indigo-9"
+              >
+                {{ slotProps.row.ordered_quantity ?? 0 }}
+              </span>
               <q-input
+                v-else
                 v-model.number="slotProps.row.ordered_quantity"
                 type="number"
                 dense
@@ -121,8 +128,15 @@
             </q-td>
 
             <!-- 9. Delivered Qty -->
-            <q-td v-if="isColVisible('delivered_qty')" key="delivered_qty" :props="slotProps" class="sec-qty text-center editable-cell col-editable-qty">
+            <q-td v-if="isColVisible('delivered_qty')" key="delivered_qty" :props="slotProps" class="sec-qty text-center" :class="{ 'editable-cell col-editable-qty': isDeliveredQtyEditable }">
+              <span
+                v-if="!isDeliveredQtyEditable"
+                class="font-mono text-weight-bold text-positive"
+              >
+                {{ slotProps.row.delivered_quantity ?? 0 }}
+              </span>
               <q-input
+                v-else
                 v-model.number="slotProps.row.delivered_quantity"
                 type="number"
                 dense
@@ -137,8 +151,15 @@
             </q-td>
 
             <!-- 10. Purchase Price Unit -->
-            <q-td v-if="isColVisible('purchase_price_unit')" key="purchase_price_unit" :props="slotProps" class="sec-purchase text-center bg-purchase-accent editable-cell col-editable-money">
+            <q-td v-if="isColVisible('purchase_price_unit')" key="purchase_price_unit" :props="slotProps" class="sec-purchase text-center bg-purchase-accent" :class="{ 'editable-cell col-editable-money': !isFirstOfferLocked }">
+              <span
+                v-if="isFirstOfferLocked"
+                class="font-mono text-weight-bold text-green-10"
+              >
+                {{ formatAmount(slotProps.row.cost_price_amount || 0) }}
+              </span>
               <q-input
+                v-else
                 v-model.number="slotProps.row.cost_price_amount"
                 type="number"
                 dense
@@ -229,8 +250,14 @@
             </q-td>
 
             <!-- 21. First Offer Unit (Selling Currency) -->
-            <q-td v-if="isColVisible('first_offer_unit')" key="first_offer_unit" :props="slotProps" class="sec-first-offer text-center bg-offer editable-cell col-editable-offer">
-              <div class="row items-center justify-center no-wrap q-gutter-x-xs">
+            <q-td v-if="isColVisible('first_offer_unit')" key="first_offer_unit" :props="slotProps" class="sec-first-offer text-center bg-offer" :class="{ 'editable-cell col-editable-offer': !isFirstOfferLocked }">
+              <span
+                v-if="isFirstOfferLocked"
+                class="text-deep-purple-9 text-weight-bold font-mono"
+              >
+                {{ formatAmount(getFirstOfferUnitAmount(slotProps.row)) }}
+              </span>
+              <div v-else class="row items-center justify-center no-wrap q-gutter-x-xs">
                 <q-icon
                   v-if="slotProps.row.is_first_offer_manual"
                   name="ph ph-lock-key"
@@ -297,8 +324,14 @@
             </q-td>
 
             <!-- 27. Final Offer Unit -->
-            <q-td v-if="isColVisible('final_offer_unit')" key="final_offer_unit" :props="slotProps" class="sec-final-offer text-center bg-final-offer editable-cell col-editable-offer">
-              <div class="row items-center justify-center no-wrap q-gutter-x-xs">
+            <q-td v-if="isColVisible('final_offer_unit')" key="final_offer_unit" :props="slotProps" class="sec-final-offer text-center bg-final-offer" :class="{ 'editable-cell col-editable-offer': isFinalOfferEditable }">
+              <span
+                v-if="!isFinalOfferEditable"
+                class="text-green-10 text-weight-bold font-mono"
+              >
+                {{ formatAmount(getFinalOfferUnitAmount(slotProps.row)) }}
+              </span>
+              <div v-else class="row items-center justify-center no-wrap q-gutter-x-xs">
                 <q-icon
                   v-if="slotProps.row.is_final_offer_manual"
                   name="ph ph-lock-key"
@@ -370,49 +403,17 @@
           </q-tr>
         </template>
 
-        <!-- Summary Totals Row Slot -->
-        <template #bottom-row>
-          <q-tr class="totals-summary-row">
-            <td v-if="isColVisible('sl')" class="sec-info text-center text-weight-bold">Total</td>
-            <td v-if="isColVisible('image')" class="sec-info" />
-            <td v-if="isColVisible('name')" class="sec-info text-weight-bold text-left q-px-sm">{{ items.length }} Items</td>
-            <td v-if="isColVisible('brand')" class="sec-info" />
-            <td v-if="isColVisible('note')" class="sec-info" />
-            <td v-if="isColVisible('code_barcode_id')" class="sec-info" />
-
-            <td v-if="isColVisible('qty_customer')" class="sec-qty text-center font-mono text-weight-bold text-amber-10">{{ totalQuantity }}</td>
-            <td v-if="isColVisible('ordered_qty')" class="sec-qty text-center font-mono text-weight-bold text-indigo-9">{{ totalOrderedQty }}</td>
-            <td v-if="isColVisible('delivered_qty')" class="sec-qty text-center font-mono text-weight-bold text-positive">{{ totalDeliveredQty }}</td>
-
-            <td v-if="isColVisible('purchase_price_unit')" class="sec-purchase bg-purchase-accent" />
-            <td v-if="isColVisible('purchase_price_total')" class="sec-purchase text-center font-mono text-weight-bold text-green-9 bg-purchase-accent">{{ formatAmount(grandTotalPurchasePrice) }}</td>
-            <td v-if="isColVisible('product_weight_gm')" class="sec-weight" />
-            <td v-if="isColVisible('package_weight_gm')" class="sec-weight" />
-            <td v-if="isColVisible('total_weight_gm')" class="sec-weight text-center font-mono text-weight-bold">{{ totalWeightGm.toLocaleString() }} g</td>
-            <td v-if="isColVisible('cargo_rate')" class="sec-purchase" />
-            <td v-if="isColVisible('cargo_cost_unit_purchase')" class="sec-purchase" />
-
-            <td v-if="isColVisible('landed_cost_unit_purchase')" class="sec-landed" />
-            <td v-if="isColVisible('landed_cost_row_purchase')" class="sec-landed text-center font-mono text-weight-bold text-teal-9">{{ formatAmount(grandTotalLandedPurchase) }}</td>
-            <td v-if="isColVisible('landed_cost_unit_sell')" class="sec-landed" />
-            <td v-if="isColVisible('landed_cost_row_sell')" class="sec-landed text-center font-mono text-weight-bold text-teal-9">{{ formatAmount(grandTotalLandedSell) }}</td>
-
-            <td v-if="isColVisible('first_offer_unit')" class="sec-first-offer bg-offer" />
-            <td v-if="isColVisible('first_offer_row')" class="sec-first-offer text-center font-mono text-weight-bold text-deep-purple-9 bg-offer">{{ formatAmount(grandTotalFirstOffer) }}</td>
-            <td v-if="isColVisible('first_offer_margin')" class="sec-first-offer text-center font-mono text-weight-bold bg-offer">{{ overallFirstOfferMargin.toFixed(1) }}%</td>
-
-            <td v-if="isColVisible('counter_offer_unit')" class="sec-counter-offer" />
-            <td v-if="isColVisible('counter_offer_row')" class="sec-counter-offer text-center font-mono text-weight-bold text-orange-9">{{ formatAmount(grandTotalCounterOffer) }}</td>
-            <td v-if="isColVisible('counter_offer_margin')" class="sec-counter-offer text-center font-mono text-weight-bold">{{ overallCounterOfferMargin.toFixed(1) }}%</td>
-
-            <td v-if="isColVisible('final_offer_unit')" class="sec-final-offer bg-final-offer" />
-            <td v-if="isColVisible('final_offer_row')" class="sec-final-offer text-center font-mono text-weight-bold text-green-9 bg-final-offer">{{ formatAmount(grandTotalFinalOffer) }}</td>
-            <td v-if="isColVisible('final_offer_margin')" class="sec-final-offer text-center font-mono text-weight-bold bg-final-offer">{{ overallFinalOfferMargin.toFixed(1) }}%</td>
-
-            <td v-if="isColVisible('status')" class="sec-action" />
-          </q-tr>
-        </template>
       </q-table>
+
+    <CatalogOrderItemsSummaryCards
+      v-if="items.length"
+      :item-count="items.length"
+      :buy-currency-symbol="buyCurrency"
+      :sell-currency-symbol="sellCurrency"
+      :conversion-rate="FX"
+      :cargo-rate="cargoRate"
+      :totals="summaryTotals"
+    />
 
     <!-- On-Tap Edit Dialog -->
     <CatalogOrderItemEditDialog
@@ -432,6 +433,7 @@ import { useQuasar, copyToClipboard, type QTableColumn } from 'quasar';
 import SmartImage from 'src/components/SmartImage.vue';
 import type { ShopOrder, ShopOrderItem } from '../types';
 import CatalogOrderItemEditDialog from './CatalogOrderItemEditDialog.vue';
+import CatalogOrderItemsSummaryCards from './CatalogOrderItemsSummaryCards.vue';
 import {
   getProductWeightGm as catalogGetProductWeightGm,
   getPackageWeightGm as catalogGetPackageWeightGm,
@@ -447,7 +449,7 @@ import {
   getFinalOfferUnitAmount as catalogGetFinalOfferUnitAmount,
   getFinalOfferMargin as catalogGetFinalOfferMargin,
 } from '../utils/catalogPricingUtils';
-import { normalizeCatalogOrderStatus } from '../utils/catalogOrderStatus';
+import { normalizeCatalogOrderStatus, isCatalogFirstOfferLocked, isCatalogFinalOfferEditable, isCatalogOrderedQtyEditable, isCatalogDeliveredQtyEditable } from '../utils/catalogOrderStatus';
 
 const props = defineProps<{
   order: ShopOrder | null;
@@ -500,27 +502,43 @@ function emitItemUpdate(item: ShopOrderItem, payload: Record<string, any>) {
 
 function handleSaveEditedItem(updated: ShopOrderItem) {
   const target = props.items.find((i) => i.id === updated.id);
-  if (target) {
-    target.weight_kg = updated.weight_kg ?? null;
-    target.product_weight_gm = updated.product_weight_gm ?? null;
-    target.package_weight_gm = updated.package_weight_gm ?? null;
+  if (!target) return;
+
+  if (isOrderedQtyEditable.value) {
+    target.ordered_quantity = updated.ordered_quantity ?? 0;
+    emitItemUpdate(target, { ordered_quantity: target.ordered_quantity });
+    return;
+  }
+
+  if (isDeliveredQtyEditable.value) {
+    target.delivered_quantity = updated.delivered_quantity ?? 0;
+    emitItemUpdate(target, { delivered_quantity: target.delivered_quantity });
+    return;
+  }
+
+  target.weight_kg = updated.weight_kg ?? null;
+  target.product_weight_gm = updated.product_weight_gm ?? null;
+  target.package_weight_gm = updated.package_weight_gm ?? null;
+
+  const payload: Parameters<typeof emitItemUpdate>[1] = {
+    product_weight_gm: target.product_weight_gm,
+    package_weight_gm: target.package_weight_gm,
+    weight_kg: target.weight_kg,
+  };
+
+  if (!isFirstOfferLocked.value) {
     target.cost_price_amount = updated.cost_price_amount ?? null;
     target.staff_offer_amount = updated.staff_offer_amount ?? null;
-    target.final_price_amount = updated.final_price_amount ?? null;
-    target.ordered_quantity = updated.ordered_quantity ?? 0;
-    target.delivered_quantity = updated.delivered_quantity ?? 0;
-
-    emitItemUpdate(target, {
-      product_weight_gm: target.product_weight_gm,
-      package_weight_gm: target.package_weight_gm,
-      weight_kg: target.weight_kg,
-      cost_price_amount: target.cost_price_amount,
-      staff_offer_amount: target.staff_offer_amount,
-      final_price_amount: target.final_price_amount,
-      ordered_quantity: target.ordered_quantity,
-      delivered_quantity: target.delivered_quantity,
-    });
+    payload.cost_price_amount = target.cost_price_amount;
+    payload.staff_offer_amount = target.staff_offer_amount;
   }
+
+  if (isFinalOfferEditable.value) {
+    target.final_price_amount = updated.final_price_amount ?? null;
+    payload.final_price_amount = target.final_price_amount;
+  }
+
+  emitItemUpdate(target, payload);
 }
 
 const buyCurrency = computed(() => props.buyCurrencySymbol || '£');
@@ -737,6 +755,10 @@ function formatTableHeaderLabel(colName: string, fallback: string): string {
 
 const status = computed(() => props.order?.status || 'submitted');
 const isCostingMode = computed(() => normalizeCatalogOrderStatus(status.value) === 'submitted');
+const isFirstOfferLocked = computed(() => isCatalogFirstOfferLocked(status.value));
+const isFinalOfferEditable = computed(() => isCatalogFinalOfferEditable(status.value));
+const isOrderedQtyEditable = computed(() => isCatalogOrderedQtyEditable(status.value));
+const isDeliveredQtyEditable = computed(() => isCatalogDeliveredQtyEditable(status.value));
 
 const FX = computed(() => props.order?.conversion_rate ?? 140);
 const cargoRate = computed(() => props.order?.cargo_rate ?? 0);
@@ -903,11 +925,13 @@ function clearZeroOnFocus(item: ShopOrderItem, field: 'product_weight_gm' | 'pac
 }
 
 function onOrderedQtyBlur(item: ShopOrderItem) {
+  if (!isOrderedQtyEditable.value) return;
   item.ordered_quantity = Math.max(0, Number(item.ordered_quantity) || 0);
   emitItemUpdate(item, { ordered_quantity: item.ordered_quantity });
 }
 
 function onDeliveredQtyBlur(item: ShopOrderItem) {
+  if (!isDeliveredQtyEditable.value) return;
   item.delivered_quantity = Math.max(0, Number(item.delivered_quantity) || 0);
   emitItemUpdate(item, { delivered_quantity: item.delivered_quantity });
 }
@@ -925,6 +949,7 @@ function persistFirstOfferManual(item: ShopOrderItem) {
 }
 
 function onFirstOfferManualUpdate(item: ShopOrderItem, val: string | number | null) {
+  if (isFirstOfferLocked.value) return;
   item.staff_offer_amount = Math.max(0, Number(val) || 0);
   item.is_first_offer_manual = true;
 
@@ -950,6 +975,7 @@ function onFirstOfferBlur(item: ShopOrderItem) {
 }
 
 function onFinalOfferBlur(item: ShopOrderItem) {
+  if (!isFinalOfferEditable.value) return;
   const next = Math.max(0, Number(item.final_price_amount) || 0);
   const auto = catalogGetFinalOfferUnitAmount(
     { ...item, is_final_offer_manual: false, final_price_amount: null },
@@ -967,6 +993,7 @@ function onFinalOfferBlur(item: ShopOrderItem) {
 }
 
 function onUnlockFirstOffer(item: ShopOrderItem) {
+  if (isFirstOfferLocked.value) return;
   const pending = firstOfferSaveTimers.get(item.id);
   if (pending) {
     clearTimeout(pending);
@@ -982,6 +1009,7 @@ function onUnlockFirstOffer(item: ShopOrderItem) {
 }
 
 function onFinalOfferPriceSave(item: ShopOrderItem, val: any) {
+  if (!isFinalOfferEditable.value) return;
   const newPrice = Number(val) || 0;
   item.final_price_amount = newPrice;
   item.is_final_offer_manual = true;
@@ -992,6 +1020,7 @@ function onFinalOfferPriceSave(item: ShopOrderItem, val: any) {
 }
 
 function onUnlockFinalOffer(item: ShopOrderItem) {
+  if (!isFinalOfferEditable.value) return;
   item.is_final_offer_manual = false;
   const autoOffer = catalogGetFinalOfferUnitAmount(
     { ...item, is_final_offer_manual: false, final_price_amount: null },
@@ -1012,6 +1041,7 @@ function onUnlockFinalOffer(item: ShopOrderItem) {
 }
 
 function onItemCostBlur(item: ShopOrderItem) {
+  if (isFirstOfferLocked.value) return;
   item.cost_price_amount = Math.max(0, Number(item.cost_price_amount) || 0);
   if (isCostingMode.value && !item.is_first_offer_manual) {
     item.staff_offer_amount = calculateItemOffer(item);
@@ -1077,6 +1107,22 @@ const overallFinalOfferMargin = computed(() => {
   if (grandTotalLandedSell.value <= 0) return 0;
   return ((grandTotalFinalOffer.value - grandTotalLandedSell.value) / grandTotalLandedSell.value) * 100;
 });
+
+const summaryTotals = computed(() => ({
+  totalQuantity: totalQuantity.value,
+  totalOrderedQty: totalOrderedQty.value,
+  totalDeliveredQty: totalDeliveredQty.value,
+  totalWeightGm: totalWeightGm.value,
+  grandTotalPurchasePrice: grandTotalPurchasePrice.value,
+  grandTotalLandedPurchase: grandTotalLandedPurchase.value,
+  grandTotalLandedSell: grandTotalLandedSell.value,
+  grandTotalFirstOffer: grandTotalFirstOffer.value,
+  overallFirstOfferMargin: overallFirstOfferMargin.value,
+  grandTotalCounterOffer: grandTotalCounterOffer.value,
+  overallCounterOfferMargin: overallCounterOfferMargin.value,
+  grandTotalFinalOffer: grandTotalFinalOffer.value,
+  overallFinalOfferMargin: overallFinalOfferMargin.value,
+}));
 
 function formatAmount(val: number | null | undefined): string {
   if (val == null || Number.isNaN(val)) return '0.00';
@@ -1353,13 +1399,6 @@ function handleCopy(text: string, label: string) {
 
 .cell-input :deep(input[type='number']) {
   -moz-appearance: textfield;
-}
-
-.totals-summary-row td {
-  font-weight: 700;
-  padding: 10px 12px;
-  font-size: 12px;
-  border-top: 2px solid #cbd5e1;
 }
 
 .text-2xs {

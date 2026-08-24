@@ -20,6 +20,8 @@
           step="0.01"
           class="bg-white soft-input"
           label="Conversion Rate (FX)"
+          :readonly="isFirstOfferLocked"
+          :class="{ 'bg-grey-2': isFirstOfferLocked }"
           @update:model-value="onRateChange"
         />
       </div>
@@ -33,6 +35,8 @@
           step="0.01"
           class="bg-white soft-input"
           label="Cargo Rate (kg/GBP)"
+          :readonly="isFirstOfferLocked"
+          :class="{ 'bg-grey-2': isFirstOfferLocked }"
           @update:model-value="onRateChange"
         />
       </div>
@@ -47,6 +51,8 @@
           step="0.01"
           class="bg-white soft-input"
           label="1st Offer Profit Rate (%)"
+          :readonly="isFirstOfferLocked"
+          :class="{ 'bg-grey-2': isFirstOfferLocked }"
           @update:model-value="onRateChange"
         />
       </div>
@@ -74,6 +80,8 @@
           :options="basisOptions"
           class="bg-white soft-input"
           label="Profit Basis"
+          :readonly="isFirstOfferLocked"
+          :disable="isFirstOfferLocked"
           @update:model-value="onRateChange"
         />
       </div>
@@ -97,7 +105,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import type { ShopOrder } from '../types';
-import { normalizeCatalogOrderStatus } from '../utils/catalogOrderStatus';
+import { normalizeCatalogOrderStatus, isCatalogFirstOfferLocked } from '../utils/catalogOrderStatus';
 
 const props = defineProps<{
   order: ShopOrder | null;
@@ -140,6 +148,8 @@ const showFinalOfferRate = computed(
   () => normalizeCatalogOrderStatus(props.order?.status) !== 'submitted',
 );
 
+const isFirstOfferLocked = computed(() => isCatalogFirstOfferLocked(props.order?.status));
+
 const basisOptions = [
   { label: 'Total Cost', value: 'total_cost' },
   { label: 'Purchase Only', value: 'purchase' },
@@ -168,6 +178,18 @@ const formulaExplanation = computed(() => {
 });
 
 function onRateChange() {
+  if (isFirstOfferLocked.value) {
+    emit('change-rates', {
+      conversion_rate: props.order?.conversion_rate ?? conversion_rate.value,
+      cargo_rate: props.order?.cargo_rate ?? cargo_rate.value,
+      profit_rate: props.order?.profit_rate ?? profit_rate.value,
+      first_offer_rate: props.order?.first_offer_rate ?? first_offer_rate.value,
+      final_offer_rate: final_offer_rate.value,
+      profit_basis: (props.order?.profit_basis as 'purchase' | 'total_cost') || profit_basis.value,
+    });
+    return;
+  }
+
   emit('change-rates', {
     conversion_rate: conversion_rate.value,
     cargo_rate: cargo_rate.value,
@@ -179,6 +201,18 @@ function onRateChange() {
 }
 
 function onSave() {
+  if (isFirstOfferLocked.value) {
+    emit('save-rates', {
+      conversion_rate: props.order?.conversion_rate ?? conversion_rate.value,
+      cargo_rate: props.order?.cargo_rate ?? cargo_rate.value,
+      profit_rate: props.order?.profit_rate ?? profit_rate.value,
+      first_offer_rate: props.order?.first_offer_rate ?? first_offer_rate.value,
+      final_offer_rate: final_offer_rate.value,
+      profit_basis: (props.order?.profit_basis as 'purchase' | 'total_cost') || profit_basis.value,
+    });
+    return;
+  }
+
   emit('save-rates', {
     conversion_rate: conversion_rate.value,
     cargo_rate: cargo_rate.value,

@@ -57,6 +57,8 @@
                 outlined
                 type="number"
                 min="0"
+                :readonly="!isOrderedQtyEditable"
+                :class="{ 'bg-grey-2': !isOrderedQtyEditable }"
               />
             </div>
             <div class="col-12 col-sm-4">
@@ -67,6 +69,8 @@
                 outlined
                 type="number"
                 min="0"
+                :readonly="!isDeliveredQtyEditable"
+                :class="{ 'bg-grey-2': !isDeliveredQtyEditable }"
               />
             </div>
           </div>
@@ -82,6 +86,8 @@
                 type="number"
                 step="1"
                 min="0"
+                :readonly="isFulfillmentQtyOnly"
+                :class="{ 'bg-grey-2': isFulfillmentQtyOnly }"
                 @update:model-value="recalculateOffer"
               >
                 <template #append>
@@ -98,6 +104,8 @@
                 type="number"
                 step="1"
                 min="0"
+                :readonly="isFulfillmentQtyOnly"
+                :class="{ 'bg-grey-2': isFulfillmentQtyOnly }"
                 @update:model-value="recalculateOffer"
               >
                 <template #append>
@@ -133,6 +141,8 @@
                 step="0.01"
                 min="0"
                 class="text-weight-bold"
+                :readonly="isFirstOfferLocked || isFulfillmentQtyOnly"
+                :class="{ 'bg-grey-2': isFirstOfferLocked || isFulfillmentQtyOnly }"
                 @update:model-value="recalculateOffer"
               />
             </div>
@@ -160,6 +170,8 @@
                 step="1"
                 min="0"
                 class="text-weight-bold text-deep-purple-9"
+                :readonly="isFirstOfferLocked || isFulfillmentQtyOnly"
+                :class="{ 'bg-grey-2': isFirstOfferLocked || isFulfillmentQtyOnly }"
               />
             </div>
             <div class="col-12 col-sm-5">
@@ -194,6 +206,8 @@
                 step="1"
                 min="0"
                 class="text-weight-bold text-green-10"
+                :readonly="!isFinalOfferEditable || isFulfillmentQtyOnly"
+                :class="{ 'bg-grey-2': !isFinalOfferEditable || isFulfillmentQtyOnly }"
               />
             </div>
           </div>
@@ -220,7 +234,7 @@
 import { ref, computed, watch } from 'vue';
 import SmartImage from 'src/components/SmartImage.vue';
 import type { ShopOrder, ShopOrderItem } from '../types';
-import { getFinalOfferUnitAmount } from '../utils/catalogPricingUtils';
+import { isCatalogFirstOfferLocked, isCatalogFinalOfferEditable, isCatalogOrderedQtyEditable, isCatalogDeliveredQtyEditable } from '../utils/catalogOrderStatus';
 
 const props = defineProps<{
   modelValue: boolean;
@@ -241,6 +255,11 @@ const FX = computed(() => props.order?.conversion_rate ?? 140);
 const cargoRate = computed(() => props.order?.cargo_rate ?? 0);
 const profitRate = computed(() => props.order?.profit_rate ?? 25);
 const profitBasis = computed(() => props.order?.profit_basis || 'total_cost');
+const isFirstOfferLocked = computed(() => isCatalogFirstOfferLocked(props.order?.status));
+const isFinalOfferEditable = computed(() => isCatalogFinalOfferEditable(props.order?.status));
+const isOrderedQtyEditable = computed(() => isCatalogOrderedQtyEditable(props.order?.status));
+const isDeliveredQtyEditable = computed(() => isCatalogDeliveredQtyEditable(props.order?.status));
+const isFulfillmentQtyOnly = computed(() => isOrderedQtyEditable.value || isDeliveredQtyEditable.value);
 
 watch(
   () => props.item,
@@ -300,7 +319,7 @@ const marginColorClass = computed(() => {
 });
 
 function recalculateOffer() {
-  if (!form.value) return;
+  if (!form.value || isFirstOfferLocked.value) return;
   const purchasePrice = Number(form.value.cost_price_amount || 0);
   const weightKg = calculatedTotalWeightGm.value / 1000;
   const cargoCostBuy = weightKg * cargoRate.value;

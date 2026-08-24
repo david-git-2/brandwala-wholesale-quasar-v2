@@ -8,6 +8,8 @@ Customer group provisioning lives in [`CUSTOMER.md`](../customer/CUSTOMER.md). S
 
 **Catalog negotiation (status model, labels, transitions):** [`CATALOG_NEGOTIATION.md`](./CATALOG_NEGOTIATION.md)
 
+**Customer demand bucket (shared waiting list, add / soft pop / purge):** [`DEMAND_BUCKET.md`](./DEMAND_BUCKET.md)
+
 ---
 
 ## 1. Shop Setup Operator Journey (`shop_config`)
@@ -757,7 +759,7 @@ get_shop_order_for_staff(
 | `product` | `sku`, `brand`, `barcode`, weights, `minimum_order_quantity` |
 | `pricing` | `cost`, `list`, `sell`, `minimum_sell` — each `{ amount, currency: { id, code, symbol } }` |
 | `negotiation` | offers, decision status, `weight_kg`, `confirmed_quantity` |
-| `fulfillment` | `ordered`, `delivered`, `returned`, `procurement_pulled` |
+| `fulfillment` | `procuring`, `ready_for_shipment`, `delivered`, `returned`, `procurement_pulled` |
 | `stock` | `global_stock_id`, `shipment_item_id`, `shipment_id` (null when not stock-backed) |
 
 ### Example (abbreviated)

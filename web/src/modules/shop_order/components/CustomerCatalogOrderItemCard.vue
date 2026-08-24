@@ -43,38 +43,21 @@
         </div>
       </div>
 
-      <!-- Pricing Summary Badges (1st Offer + Counter Pill side by side) -->
-      <div v-if="status === 'priced' || status === 'countered' || status === 'final_offered' || isConfirmedOrBeyond" class="price-chips-container q-pa-xs rounded-borders bg-grey-1 item-card__full-width">
-        <div class="row items-center justify-start q-gutter-x-sm">
-          <!-- 1st Offer Unit Price -->
-          <div class="col-auto">
-            <div class="price-pill bg-white q-px-sm q-py-xs rounded-borders border-grey">
-              <span class="text-caption text-grey-7 display-block">1st Offer / Unit</span>
-              <span class="text-subtitle2 text-weight-bolder text-primary">
-                {{ currencySymbol }}{{ staffOfferAmount.toFixed(2) }}
-              </span>
-            </div>
-          </div>
+      <!-- Pricing Summary (table-style colored cells) -->
+      <div v-if="status === 'priced' || status === 'countered' || status === 'final_offered' || isConfirmedOrBeyond" class="price-cells-row row no-wrap q-col-gutter-xs item-card__full-width">
+        <div class="col price-cell price-cell--first-offer">
+          <span class="price-cell__label">1st Offer / Unit</span>
+          <span class="price-cell__value">{{ currencySymbol }}{{ staffOfferAmount.toFixed(2) }}</span>
+        </div>
 
-          <!-- Counter Price Badge (Shown beside 1st Offer whenever customer_offer_amount is set) -->
-          <div v-if="hasCustomerCounter" class="col-auto">
-            <div class="price-pill bg-amber-1 q-px-sm q-py-xs rounded-borders border-amber column">
-              <span class="text-caption text-amber-9 display-block" style="font-size: 10px; line-height: 1.1;">Your Counter</span>
-              <span class="text-subtitle2 text-weight-bolder text-amber-10">
-                {{ currencySymbol }}{{ Number(item.customer_offer_amount).toFixed(2) }}
-              </span>
-            </div>
-          </div>
+        <div v-if="hasCustomerCounter" class="col price-cell price-cell--counter">
+          <span class="price-cell__label">Your Counter</span>
+          <span class="price-cell__value">{{ currencySymbol }}{{ Number(item.customer_offer_amount).toFixed(2) }}</span>
+        </div>
 
-          <!-- Final Offered Price -->
-          <div v-if="status === 'final_offered' || isConfirmedOrBeyond" class="col-auto">
-            <div class="price-pill bg-green-1 q-px-sm q-py-xs rounded-borders border-green">
-              <span class="text-caption text-green-9 display-block">Final Offer</span>
-              <span class="text-subtitle2 text-weight-bolder text-positive">
-                {{ currencySymbol }}{{ Number(item.final_offer_amount || item.staff_offer_amount || 0).toFixed(2) }}
-              </span>
-            </div>
-          </div>
+        <div v-if="status === 'final_offered' || isConfirmedOrBeyond" class="col price-cell price-cell--final">
+          <span class="price-cell__label">Final Offer</span>
+          <span class="price-cell__value">{{ currencySymbol }}{{ Number(item.final_offer_amount || item.staff_offer_amount || 0).toFixed(2) }}</span>
         </div>
       </div>
 
@@ -483,6 +466,74 @@ export default {
   display: block;
 }
 
+.price-cells-row {
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.price-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 8px 10px;
+  text-align: center;
+}
+
+.price-cell__label {
+  font-size: 10px;
+  line-height: 1.2;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.price-cell__value {
+  font-size: 0.95rem;
+  line-height: 1.2;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.price-cell--first-offer {
+  background-color: #f3e5f5;
+}
+
+.price-cell--first-offer .price-cell__label {
+  color: #7b1fa2;
+}
+
+.price-cell--first-offer .price-cell__value {
+  color: #4a148c;
+}
+
+.price-cell--counter {
+  background-color: #fff8f0;
+}
+
+.price-cell--counter .price-cell__label {
+  color: #e65100;
+}
+
+.price-cell--counter .price-cell__value {
+  color: #bf360c;
+}
+
+.price-cell--final {
+  background-color: #e8f5e9;
+}
+
+.price-cell--final .price-cell__label {
+  color: #2e7d32;
+}
+
+.price-cell--final .price-cell__value {
+  color: #1b5e20;
+}
+
 .bg-blue-1-soft {
   background: #f0f7ff;
 }
@@ -536,37 +587,21 @@ export default {
     line-height: 1.35;
   }
 
-  .price-chips-container {
-    background: transparent;
-    padding: 0;
-  }
-
-  .price-chips-container .row {
+  .price-cells-row {
     flex-wrap: wrap;
-    gap: 4px 16px;
   }
 
-  .price-pill {
-    background: transparent !important;
-    border: none !important;
-    padding: 0 !important;
-    display: inline-flex;
-    align-items: baseline;
-    gap: 4px;
+  .price-cell {
+    flex: 1 1 auto;
+    min-width: 120px;
+    padding: 6px 8px;
   }
 
-  .price-pill .display-block {
-    display: inline;
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.02em;
+  .price-cell__label {
+    font-size: 9px;
   }
 
-  .price-pill .display-block::after {
-    content: ':';
-  }
-
-  .price-pill .text-subtitle2 {
+  .price-cell__value {
     font-size: 0.9rem;
   }
 

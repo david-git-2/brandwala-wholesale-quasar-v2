@@ -35,23 +35,31 @@ Use these enum values for **`vendor_catalog`** negotiation. They are **system id
 | `countered` | 3 | Staff | Customer submitted at least one counter. Staff prepares final offer. |
 | `final_offered` | 4 | Customer | Final offer published. Customer confirms price + final quantity. |
 | `confirmed` | 5 (start) | Staff | Deal locked (`confirmed_quantity` set). Procurement may start. |
-| `procuring` | 5 | Staff | Buying from vendor / internal procurement. |
-| `ordered` | 5 | Staff | PO or vendor order placed. |
+| `procuring` | 5 | Staff | Buying from vendor / placing order with supplier. |
+| `ready_for_shipment` | 5 | Staff | Procurement complete; lines eligible for inbound shipment handoff. |
 | `delivered` | 5 | Staff | Goods received / order closed from customer view. |
-| `cancelled` | — | Either | Rejected or voided at any negotiation step. |
+| `cancelled` | — | Either | Rejected or voided at any step (negotiation or procurement). |
+
+**Shared procurement phase** (aligned with PBC — see [`PBC_COSTING.md`](../product_based_costing/PBC_COSTING.md) §2.3):
+
+```text
+procuring → ready_for_shipment → delivered
+```
+
+(`cancelled` can occur from any status above.)
 
 ### 2.2 Status flow
 
 **Negotiation path** (customer counters at least one line):
 
 ```text
-submitted → priced → countered → final_offered → confirmed → procuring → ordered → delivered
+submitted → priced → countered → final_offered → confirmed → procuring → ready_for_shipment → delivered
 ```
 
 **Happy path** (customer accepts all first-offer prices — no counter):
 
 ```text
-submitted → priced → confirmed → procuring → ordered → delivered
+submitted → priced → confirmed → procuring → ready_for_shipment → delivered
 ```
 
 Steps `countered` and `final_offered` are **skipped** when every line accepts the first offer.
@@ -66,8 +74,8 @@ flowchart TD
   F -->|confirm + final qty| C
   F -->|reject| CN
   C --> PR["procuring"]
-  PR --> O["ordered"]
-  O --> D["delivered"]
+  PR --> RFS["ready_for_shipment"]
+  RFS --> D["delivered"]
 ```
 
 ### 2.3 Transition rules
@@ -82,8 +90,8 @@ flowchart TD
 | `final_offered` | Customer **confirm** + final qty | `confirmed` | RPC: `customer_confirm_shop_order` |
 | `final_offered` | Customer **reject** | `cancelled` | |
 | `confirmed` | Staff **Start procurement** | `procuring` | RPC: `staff_start_catalog_procurement` |
-| `procuring` | Staff marks ordered | `ordered` | |
-| `ordered` | Staff marks delivered | `delivered` | |
+| `procuring` | Staff marks **ready for shipment** | `ready_for_shipment` | Target RPC TBD (replaces legacy `staff_set_catalog_ordered_qty` → `ordered`) |
+| `ready_for_shipment` | Staff marks delivered | `delivered` | Target RPC TBD (replaces legacy `staff_set_catalog_delivered_qty`) |
 
 ### 2.4 Statuses to stop using in catalog flow
 
@@ -91,6 +99,7 @@ flowchart TD
 | :--- | :--- |
 | `costing_pending` | Treat as `submitted` — costing is step 1, not a separate customer-visible step. |
 | `negotiating` | Legacy non-catalog path; do not use for `vendor_catalog`. |
+| `ordered` | Legacy catalog procurement step — migrate to `ready_for_shipment`. |
 | Manual status chip clicks | Replace with action buttons that call the RPCs above (see §5). |
 
 Existing rows may still carry these values until migrated or displayed via alias mapping.
@@ -111,7 +120,7 @@ Customers and staff should **never** see raw enum names as primary copy. One map
 | `final_offered` | **Confirm price & quantity** | Confirm order; adjust qty |
 | `confirmed` | **Order confirmed** | Wait |
 | `procuring` | **We're sourcing your items** | Wait |
-| `ordered` | **Order placed with supplier** | Wait |
+| `ready_for_shipment` | **On the way** | Wait |
 | `delivered` | **Delivered** | — |
 | `cancelled` | **Cancelled** | — |
 
@@ -132,8 +141,8 @@ Map multiple DB statuses onto one progress step where helpful (e.g. `submitted` 
 | `countered` | **Customer countered — set final offer** | Send final offer |
 | `final_offered` | **Final offer sent — awaiting confirmation** | — |
 | `confirmed` | **Confirmed — start procurement** | Start procurement |
-| `procuring` | **Procuring** | Mark ordered |
-| `ordered` | **Ordered** | Mark delivered |
+| `procuring` | **Procuring** | Mark ready for shipment |
+| `ready_for_shipment` | **Ready for shipment** | Mark delivered |
 | `delivered` | **Delivered** | — |
 | `cancelled` | **Cancelled** | — |
 
@@ -142,7 +151,7 @@ Map multiple DB statuses onto one progress step where helpful (e.g. `submitted` 
 | Bucket | Include statuses | Label |
 | :--- | :--- | :--- |
 | `needs_you` | `priced`, `final_offered` | Needs your action |
-| `in_progress` | `submitted`, `countered`, `confirmed`, `procuring`, `ordered` | In progress |
+| `in_progress` | `submitted`, `countered`, `confirmed`, `procuring`, `ready_for_shipment` | In progress |
 | `done` | `delivered`, `cancelled` | Done |
 
 Drop `negotiating` from bucket logic for catalog once legacy rows are cleared.
@@ -248,7 +257,7 @@ Priority changes to reduce perceived steps **without** changing the business mod
 When `is_negotiable_snapshot = false`:
 
 ```text
-submitted → priced → confirmed → procuring → ordered → delivered
+submitted → priced → confirmed → procuring → ready_for_shipment → delivered
 ```
 
 Customer confirms from `priced` with no counter UI. Same staff step 1 (costing + first offer).

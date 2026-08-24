@@ -16,12 +16,12 @@ flowchart TD
     end
 
     subgraph BacklogEngine ["2. Demand Backlog Engine"]
-        QUOTE -->|confirmed_qty - ordered_qty| BL["Open Backlog (product_based_costing_backlog_items)"]
+        QUOTE -->|confirmed_qty - ordered_qty| BL["Open Backlog (customer_demand_bucket_items — see DEMAND_BUCKET.md)"]
         BL -->|Auto-Suggest Drawer| CF
     end
 
     subgraph ParentHandoff ["3. Parent Inbound Shipment Handoff"]
-        QUOTE -->|File reaches ready_for_shipment| READY["Ready for Shipment Queue"]
+        QUOTE -->|File reaches procuring then ready_for_shipment| READY["Ready for Shipment Queue"]
         READY -->|add_child_line_to_parent_shipment| SHIP["Parent Inbound Shipment (global_shipment_items)"]
         SHIP --> STAMP["Child Item marked on_shipment + assigned_shipment_id"]
     end
@@ -39,7 +39,9 @@ $$\text{Item Unit Cost GBP} = \text{Web Base Price} + \text{Delivery Surcharge} 
 $$\text{Quoted Unit Price BDT} = (\text{Item Unit Cost GBP} \times \text{FX Transaction Rate}) \times (1 + \text{Customer Group Markup Rate})$$
 
 ### 2.2 Demand Backlog Engine
-Unfulfilled customer demand automatically forms a reusable demand backlog attached to the customer's `billing_profile_id`:
+Unfulfilled customer demand automatically forms a reusable demand backlog attached to the customer's `billing_profile_id`. **Target shared model:** [`doc/shop_order/DEMAND_BUCKET.md`](../shop_order/DEMAND_BUCKET.md) (`customer_demand_bucket_items`). Until migration, PBC uses `product_based_costing_backlog_items`.
+
+Legacy PBC-only rules (to be unified):
 
 | Line Outcome | Item Status | Backlog Action | Eligible for Parent Shipment |
 | :--- | :--- | :--- | :---: |
@@ -49,6 +51,52 @@ Unfulfilled customer demand automatically forms a reusable demand backlog attach
 | **Customer Rejected** | `rejected` | None | **NO** |
 
 * **One-Click Add**: The auto-suggest drawer ([`PbcBacklogSuggestDrawer.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/product_based_costing/components/PbcBacklogSuggestDrawer.vue)) enables ops staff to pull open backlog into new costing batches with zero retyping.
+
+### 2.3 Costing file status model (`product_based_costing_files.status`)
+
+Quote and negotiation phases are **unchanged**. Procurement phases are **aligned with catalog shop orders** ([`CATALOG_NEGOTIATION.md`](../shop_order/CATALOG_NEGOTIATION.md) §2.1).
+
+#### Quote phase (unchanged)
+
+| Status | Who acts | Meaning |
+| :--- | :--- | :--- |
+| `pending` | Staff / customer | Draft — building the quote |
+| `offered` | Customer | Quote sent — customer review |
+| `confirmed` | Staff | Customer accepted — procurement may start |
+
+#### Procurement phase (shared with catalog orders)
+
+| Status | Who acts | Meaning |
+| :--- | :--- | :--- |
+| `procuring` | Staff | Buying from vendor / placing order with supplier |
+| `ready_for_shipment` | Staff | Procurement complete; lines eligible for parent inbound shipment pull |
+| `delivered` | Staff | Goods received / file closed from customer view |
+| `cancelled` | Either | Voided at any step |
+
+```text
+pending → offered → confirmed → procuring → ready_for_shipment → delivered
+```
+
+(`cancelled` can occur from any status above.)
+
+```mermaid
+flowchart LR
+  P["pending"] --> O["offered"]
+  O --> C["confirmed"]
+  C --> PR["procuring"]
+  PR --> RFS["ready_for_shipment"]
+  RFS --> D["delivered"]
+```
+
+#### Statuses to stop using (procurement only)
+
+| Legacy status | Action |
+| :--- | :--- |
+| `placing_order` | Rename / migrate to `procuring` |
+| `invoicing` | Remove from file workflow — billing via `global_invoices` (see [`SALES_INVOICE.md`](../sales_invoice/SALES_INVOICE.md)) |
+| `ordered` | Do not use on PBC files (catalog legacy only) |
+
+**Parent shipment pull** still requires `ready_for_shipment` (`add_child_line_to_parent_shipment`).
 
 ---
 

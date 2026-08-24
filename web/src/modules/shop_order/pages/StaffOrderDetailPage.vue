@@ -2,7 +2,7 @@
   <q-page class="q-pa-md staff-order-detail-page">
     <div class="q-gutter-y-md">
       <!-- Loading Skeleton -->
-      <StaffOrderDetailSkeleton v-if="isLoading" />
+      <StaffOrderDetailSkeleton v-if="isLoading" :variant="skeletonVariant" />
 
       <!-- Error State -->
       <div v-else-if="isError" class="column items-center justify-center q-pa-xl text-center">
@@ -26,16 +26,13 @@
           <!-- Catalog Workflow Statuses Strip -->
           <CatalogOrderWorkflowBar
             :order="currentOrder"
-            v-model:rates-expanded="ratesExpanded"
             :is-loading="isLoading"
             :visible-columns="catalogVisibleColumns"
             @update:visible-columns="onCatalogVisibleColumnsUpdate"
             @override-status="showStatusOverrideDialog = true"
           />
 
-          <!-- Rates Panel -->
           <CatalogOrderRatesBar
-            v-if="ratesExpanded"
             :order="currentOrder"
             :saving="isSavingRates"
             @save-rates="handleSaveRates"
@@ -49,7 +46,6 @@
             :currency-symbol="currencySymbol"
             :buy-currency-symbol="buyCurrencySymbol"
             :visible-columns="catalogVisibleColumns"
-            @open-column-selector="openColumnSelector"
             @update:visible-columns="onCatalogVisibleColumnsUpdate"
             @update-item="handleUpdateCatalogOrderItem"
           />
@@ -165,8 +161,11 @@ import {
   getFinalOfferUnitAmount,
 } from '../utils/catalogPricingUtils';
 import {
-  normalizeCatalogOrderStatus,
+  isCatalogFirstOfferLocked,
+  isCatalogOrderedQtyEditable,
+  isCatalogDeliveredQtyEditable,
   getStaffCatalogPrimaryAction,
+  normalizeCatalogOrderStatus,
   type StaffCatalogPrimaryAction,
 } from '../utils/catalogOrderStatus';
 import { requestConfirmation } from 'src/utils/appFeedback';
@@ -196,6 +195,11 @@ const orderId = computed(() => Number(route.params.id || 0));
 const tenantSlug = computed(() =>
   typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : '',
 );
+
+const skeletonVariant = computed<'catalog' | 'dropship'>(() => {
+  const state = history.state as { shopTypeSnapshot?: string } | null;
+  return state?.shopTypeSnapshot === 'vendor_catalog' ? 'catalog' : 'dropship';
+});
 
 const { data: orderDetailsData, isLoading, isError, error } = useShopOrderDetailQuery(orderId);
 const currentOrder = computed(() => orderDetailsData.value?.order || null);
@@ -236,12 +240,33 @@ const handleUpdateCatalogOrderItem = ({
   payload: any;
 }) => {
   if (!orderId.value) return;
+
+  let nextPayload = payload;
+  if (isCatalogFirstOfferLocked(currentOrder.value?.status)) {
+    const {
+      cost_price_amount: _cost,
+      staff_offer_amount: _staff,
+      is_first_offer_manual: _manual,
+      ...rest
+    } = payload ?? {};
+    nextPayload = rest;
+    if (!Object.keys(nextPayload).length) return;
+  }
+
+  if (isCatalogOrderedQtyEditable(currentOrder.value?.status)) {
+    if (payload?.ordered_quantity === undefined) return;
+    nextPayload = { ordered_quantity: payload.ordered_quantity };
+  } else if (isCatalogDeliveredQtyEditable(currentOrder.value?.status)) {
+    if (payload?.delivered_quantity === undefined) return;
+    nextPayload = { delivered_quantity: payload.delivered_quantity };
+  }
+
   updateCatalogOrderItem({
     tenantId: authStore.tenantId,
     orderId: orderId.value,
     itemId,
     productId,
-    payload,
+    payload: nextPayload,
   });
 };
 
@@ -250,8 +275,6 @@ const showStatusOverrideDialog = ref(false);
 
 const targetUpdatingStatus = ref<string | null>(null);
 const orderItems = ref<any[]>([]);
-
-const ratesExpanded = ref(false);
 
 const catalogAllColumnNames = [
   'sl',
@@ -380,6 +403,37 @@ const confirmedModeColumns = [
 const catalogOrderStatus = computed(() =>
   normalizeCatalogOrderStatus(currentOrder.value?.status),
 );
+
+const catalogVisibleColumns = computed<string[]>({
+  get: () => {
+    if (catalogOrderStatus.value === 'submitted') {
+      return processingModeColumns;
+    }
+    if (catalogOrderStatus.value === 'countered') {
+      return counteredModeColumns;
+    }
+    if (catalogOrderStatus.value === 'confirmed') {
+      return confirmedModeColumns;
+    }
+    if (catalogOrderStatus.value === 'priced') {
+      const hiddenInPriced = [
+        'ordered_qty',
+        'delivered_qty',
+        'counter_offer_unit',
+        'counter_offer_row',
+        'counter_offer_margin',
+        'final_offer_unit',
+        'final_offer_row',
+        'final_offer_margin',
+      ];
+      return rawCatalogVisibleColumns.value.filter((col) => !hiddenInPriced.includes(col));
+    }
+    return rawCatalogVisibleColumns.value;
+  },
+  set: (val: string[]) => {
+    rawCatalogVisibleColumns.value = val;
+  },
+});
 
 const catalogRatesParams = computed(() => ({
   conversion_rate: currentOrder.value?.conversion_rate,
@@ -563,37 +617,6 @@ const handleCatalogPrimaryAction = async (action: StaffCatalogPrimaryAction) => 
   }
 };
 
-const catalogVisibleColumns = computed<string[]>({
-  get: () => {
-    if (catalogOrderStatus.value === 'submitted') {
-      return processingModeColumns;
-    }
-    if (catalogOrderStatus.value === 'countered') {
-      return counteredModeColumns;
-    }
-    if (catalogOrderStatus.value === 'confirmed') {
-      return confirmedModeColumns;
-    }
-    if (catalogOrderStatus.value === 'priced') {
-      const hiddenInPriced = [
-        'ordered_qty',
-        'delivered_qty',
-        'counter_offer_unit',
-        'counter_offer_row',
-        'counter_offer_margin',
-        'final_offer_unit',
-        'final_offer_row',
-        'final_offer_margin',
-      ];
-      return rawCatalogVisibleColumns.value.filter((col) => !hiddenInPriced.includes(col));
-    }
-    return rawCatalogVisibleColumns.value;
-  },
-  set: (val: string[]) => {
-    rawCatalogVisibleColumns.value = val;
-  },
-});
-
 const onCatalogVisibleColumnsUpdate = (columns: string[]) => {
   catalogVisibleColumns.value = columns;
 };
@@ -696,8 +719,9 @@ const recalculateOffers = (rates: {
   final_offer_rate?: number | null;
   profit_basis: 'purchase' | 'total_cost';
 }) => {
+  const firstOfferLocked = isCatalogFirstOfferLocked(currentOrder.value?.status);
   orderItems.value.forEach((item) => {
-    if (!item.is_first_offer_manual) {
+    if (!firstOfferLocked && !item.is_first_offer_manual) {
       item.staff_offer_amount = calculateItemFirstOfferPrice(
         item,
         {
@@ -751,10 +775,6 @@ const handleSaveRates = (payload: {
   if (!orderId.value) return;
   recalculateOffers(payload);
   saveCatalogRates({ orderId: orderId.value, payload });
-};
-
-const openColumnSelector = () => {
-  // Column selector handled via top header 3-dot menu
 };
 
 const handlePlaceForProcurement = () => {
