@@ -1,6 +1,49 @@
 <template>
   <q-card flat bordered class="catalog-progress-bar q-pa-sm" :class="cardClass">
-    <div class="row items-center justify-between q-col-gutter-sm">
+    <!-- Mobile customer: compact current-step view -->
+    <div v-if="isCompactCustomer" class="column q-gutter-y-xs">
+      <div class="row items-center justify-between no-wrap q-gutter-x-sm">
+        <div class="column col">
+          <span class="text-subtitle2 text-weight-bold text-grey-9">{{ currentStepLabel }}</span>
+          <span class="text-caption text-grey-6">Step {{ stepIndex.current }} of {{ stepIndex.total }}</span>
+        </div>
+        <q-btn
+          flat
+          dense
+          no-caps
+          color="primary"
+          class="text-caption"
+          :label="stepsExpanded ? 'Hide steps' : 'All steps'"
+          @click="stepsExpanded = !stepsExpanded"
+        />
+      </div>
+      <q-linear-progress
+        :value="stepIndex.current / stepIndex.total"
+        rounded
+        size="6px"
+        color="primary"
+        track-color="grey-3"
+      />
+      <div v-if="stepsExpanded" class="row items-center q-gutter-xs progress-row q-pt-xs">
+        <template v-for="(stepKey, idx) in progressSteps" :key="stepKey">
+          <div
+            class="progress-step q-px-sm q-py-xs text-caption text-weight-bold"
+            :class="progressStepClass(stepKey)"
+          >
+            {{ progressStepLabel(stepKey) }}
+          </div>
+          <q-icon
+            v-if="idx < progressSteps.length - 1"
+            name="ph ph-caret-right"
+            color="grey-5"
+            size="14px"
+          />
+        </template>
+      </div>
+    </div>
+
+    <!-- Desktop / staff: full stepper -->
+    <div v-else class="row items-center justify-between q-col-gutter-sm">
       <div class="col-grow">
         <div class="row items-center q-gutter-xs progress-row">
           <template v-for="(stepKey, idx) in progressSteps" :key="stepKey">
@@ -35,13 +78,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
+import { useQuasar } from 'quasar';
 import type { ShopOrder } from '../types';
 import {
   getCatalogProgressCustomerLabel,
   getCatalogProgressStaffLabel,
   getCatalogProgressSteps,
-  isCatalogProgressStepComplete,
+  getCatalogProgressStepIndex,
   isCatalogProgressStepCurrent,
   mapStatusToProgressKey,
   type CatalogProgressKey,
@@ -55,10 +99,25 @@ const props = withDefaults(
   { variant: 'staff' },
 );
 
+const $q = useQuasar();
+const stepsExpanded = ref(false);
+
 const isNegotiable = computed(() => !!props.order?.is_negotiable_snapshot);
 const progressSteps = computed(() => getCatalogProgressSteps(isNegotiable.value));
 const currentProgressKey = computed(() =>
   mapStatusToProgressKey(props.order?.status, isNegotiable.value),
+);
+
+const stepIndex = computed(() =>
+  getCatalogProgressStepIndex(currentProgressKey.value, isNegotiable.value),
+);
+
+const isCompactCustomer = computed(
+  () => props.variant === 'customer' && $q.screen.lt.md,
+);
+
+const currentStepLabel = computed(() =>
+  getCatalogProgressCustomerLabel(currentProgressKey.value),
 );
 
 const cardClass = computed(() =>
@@ -116,6 +175,22 @@ function progressStepClass(stepKey: CatalogProgressKey): string {
 .progress-step--upcoming {
   background: #fafafa;
   color: rgba(0, 0, 0, 0.45);
+}
+
+@media (min-width: 600px) {
+  .catalog-progress-bar {
+    padding: 8px 10px !important;
+  }
+
+  .progress-step {
+    padding: 4px 8px;
+    font-size: 11px;
+    line-height: 1.3;
+  }
+
+  .progress-chevron {
+    font-size: 14px !important;
+  }
 }
 
 @media (max-width: 599px) {

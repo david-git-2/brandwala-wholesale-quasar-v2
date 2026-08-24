@@ -167,3 +167,19 @@ export function isCatalogProgressStepCurrent(
 ): boolean {
   return stepKey === currentProgressKey;
 }
+
+export function getCatalogProgressStepIndex(
+  currentProgressKey: CatalogProgressKey,
+  isNegotiable: boolean,
+): { current: number; total: number } {
+  const steps = getCatalogProgressSteps(isNegotiable);
+  const idx = Math.max(0, steps.indexOf(currentProgressKey));
+  return { current: idx + 1, total: steps.length };
+}
+
+/** Customer has accepted or countered this line during priced negotiation. */
+export function isCustomerCatalogItemDecided(item: {
+  customer_offer_amount?: number | null;
+}): boolean {
+  return item.customer_offer_amount != null && Number(item.customer_offer_amount) > 0;
+}

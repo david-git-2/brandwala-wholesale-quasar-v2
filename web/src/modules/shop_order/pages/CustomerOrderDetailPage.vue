@@ -14,8 +14,8 @@
 
     <!-- Loaded Content State -->
     <div class="q-gutter-y-md" v-else-if="currentOrder">
-      <!-- Header & Status Workflow Component -->
       <CustomerOrderHeader
+        v-if="!isVendorCatalog"
         :order="currentOrder"
         :status-sequence="statusSequence"
         :terminal-statuses="terminalStatuses"
@@ -34,21 +34,30 @@
         />
       </div>
 
-      <!-- Catalog Shop Order View (Mobile Card List + Sticky Bottom Actions) -->
+      <!-- Catalog Shop Order View -->
       <template v-if="isVendorCatalog">
-        <div class="row q-col-gutter-lg">
-          <!-- Item Cards List (8 cols on desktop, 12 on mobile) -->
-          <div class="col-xs-12 col-md-8">
-            <div class="row items-center justify-between q-mb-sm">
+        <div class="row justify-center">
+          <div class="col-12 catalog-order-shell column q-gutter-y-md">
+            <CustomerOrderHeader
+              :order="currentOrder"
+              :status-sequence="statusSequence"
+              :terminal-statuses="terminalStatuses"
+              :normalized-status="normalizedStatus"
+            />
+
+            <div class="row items-center justify-between q-col-gutter-sm">
               <div class="text-subtitle1 text-weight-bold text-grey-9">
                 Items in Order ({{ orderItems.length }})
               </div>
-              <div v-if="currentOrder.is_negotiable_snapshot" class="text-caption text-amber-9 text-weight-bold">
-                Round {{ currentOrder.negotiate_round || 1 }}
+              <div
+                v-if="showItemDecisionProgress"
+                class="text-caption text-weight-bold gt-sm"
+                :class="isAllItemsDecided ? 'text-positive' : 'text-amber-9'"
+              >
+                {{ itemsDecidedCount }} / {{ orderItems.length }} decided
               </div>
             </div>
 
-            <!-- Cards loop -->
             <CustomerCatalogOrderItemCard
               v-for="item in orderItems"
               :key="item.id"
@@ -63,28 +72,28 @@
               @update:customer-offer="handleCustomerOfferUpdate"
               @save-item-counter="handleSaveItemCounter"
             />
-          </div>
 
-          <!-- Sidebar (Shipping) -->
-          <div v-if="currentOrder.recipient_name || currentOrder.shipping_address" class="col-xs-12 col-md-4">
-            <div class="column q-gutter-md">
-              <CustomerOrderShippingCard :order="currentOrder" />
-            </div>
+            <CustomerOrderShippingCard
+              v-if="currentOrder.recipient_name || currentOrder.shipping_address"
+              :order="currentOrder"
+            />
+
+            <CustomerOrderStickyActions
+              :status="normalizedStatus"
+              :is-negotiable="!!currentOrder.is_negotiable_snapshot"
+              :total-amount="orderTotal"
+              :currency-symbol="currencySymbol"
+              :decided-count="itemsDecidedCount"
+              :total-items="orderItems.length"
+              :negotiate-round="currentOrder.negotiate_round || 1"
+              :can-submit-counter="isAllItemsDecided"
+              :is-submitting-counter="isSendingCounter"
+              :is-confirming="isConfirming"
+              @submit-counter="submitCounterOffer"
+              @confirm-order="confirmOrder"
+            />
           </div>
         </div>
-
-        <!-- Sticky Bottom CTA Action Bar for Mobile/Catalog -->
-        <CustomerOrderStickyActions
-          :status="normalizedStatus"
-          :is-negotiable="!!currentOrder.is_negotiable_snapshot"
-          :total-amount="orderTotal"
-          :currency-symbol="currencySymbol"
-          :can-submit-counter="isAllItemsDecided"
-          :is-submitting-counter="isSendingCounter"
-          :is-confirming="isConfirming"
-          @submit-counter="submitCounterOffer"
-          @confirm-order="confirmOrder"
-        />
       </template>
 
       <!-- Dropship / Other Order View (Original layout) -->
@@ -150,6 +159,7 @@ import { requestConfirmation } from 'src/utils/appFeedback';
 import { useMerchantWalletQuery } from '../composables/useMerchantWalletQuery';
 import {
   getCustomerCatalogStatusSequence,
+  isCustomerCatalogItemDecided,
   normalizeCatalogOrderStatus,
 } from '../utils/catalogOrderStatus';
 
@@ -243,10 +253,17 @@ const getDisplayUnitPrice = (item: any) => {
 
 const isAllItemsDecided = computed(() => {
   if (orderItems.value.length === 0) return false;
-  return orderItems.value.every(
-    (item) => item.customer_offer_amount != null && Number(item.customer_offer_amount) > 0,
-  );
+  return orderItems.value.every((item) => isCustomerCatalogItemDecided(item));
 });
+
+const itemsDecidedCount = computed(() =>
+  orderItems.value.filter((item) => isCustomerCatalogItemDecided(item)).length,
+);
+
+const showItemDecisionProgress = computed(
+  () =>
+    !!currentOrder.value?.is_negotiable_snapshot && normalizedStatus.value === 'priced',
+);
 
 const orderTotal = computed(() => {
   return orderItems.value.reduce((sum, item) => {
@@ -447,7 +464,23 @@ export default {
 
 <style scoped>
 .customer-order-detail-page {
-  padding-bottom: 88px;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+}
+
+.catalog-order-shell {
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+@media (min-width: 600px) {
+  .catalog-order-shell {
+    max-width: 720px;
+  }
+
+  .catalog-order-shell :deep(.catalog-progress-bar) {
+    padding: 10px 12px;
+  }
 }
 </style>
 
