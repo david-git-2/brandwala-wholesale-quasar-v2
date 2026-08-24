@@ -137,6 +137,7 @@ import { ref, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useQuasar } from 'quasar';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useShopOrderDetailQuery } from '../composables/useShopOrderDetailQuery';
 import {
   useUpdateOrderStatusMutation,
@@ -187,6 +188,7 @@ import { useMembershipColumnPreference } from 'src/modules/membership/composable
 
 const route = useRoute();
 const router = useRouter();
+const authStore = useAuthStore();
 const { t } = useI18n();
 const $q = useQuasar();
 
@@ -235,6 +237,7 @@ const handleUpdateCatalogOrderItem = ({
 }) => {
   if (!orderId.value) return;
   updateCatalogOrderItem({
+    tenantId: authStore.tenantId,
     orderId: orderId.value,
     itemId,
     productId,
@@ -446,6 +449,9 @@ function buildStaffOfferPayload() {
       item.unit_sell_price_currency_id ||
       item.unit_list_price_currency_id,
     is_first_offer_manual: item.is_first_offer_manual,
+    weight_kg: item.weight_kg,
+    product_weight_gm: item.product_weight_gm,
+    package_weight_gm: item.package_weight_gm,
   }));
 }
 

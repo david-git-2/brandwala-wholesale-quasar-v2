@@ -1,7 +1,19 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
-import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { showSuccessNotification, handleApiFailure } from 'src/utils/appFeedback';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { applyStaffOrderDetailToCache } from '../utils/staffOrderDetailCacheUtils';
+
+function patchStaffOrderDetailCache(
+  queryClient: ReturnType<typeof useQueryClient>,
+  orderId: number,
+  data: Awaited<ReturnType<typeof shopOrderRepository.staffPriceShopOrder>> | undefined,
+) {
+  const tenantId = useAuthStore().tenantId;
+  if (tenantId && data) {
+    applyStaffOrderDetailToCache(queryClient, tenantId, orderId, data);
+  }
+}
 
 export function useSaveCatalogRatesMutation() {
   const queryClient = useQueryClient();
@@ -21,11 +33,13 @@ export function useSaveCatalogRatesMutation() {
         profit_basis?: 'purchase' | 'total_cost' | null;
       };
     }) => {
-      await shopOrderRepository.updateCatalogOrderRates(orderId, payload);
+      const tenantId = useAuthStore().tenantId;
+      if (!tenantId) throw new Error('Tenant context required.');
+      return shopOrderRepository.updateCatalogOrderRates(tenantId, orderId, payload);
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (data, variables) => {
       showSuccessNotification('Order calculation rates updated');
-      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetailRoot() });
+      patchStaffOrderDetailCache(queryClient, variables.orderId, data);
     },
     onError: (err: any) => {
       handleApiFailure(err, 'Failed to update order rates');
@@ -60,17 +74,17 @@ export function useStaffPriceCatalogOrderMutation() {
         profit_rate?: number | null;
       };
     }) => {
-      if (rates) {
-        await shopOrderRepository.updateCatalogOrderRates(orderId, {
-          ...rates,
-          profit_basis: (profitBasis as any) || undefined,
-        });
-      }
-      await shopOrderRepository.staffPriceShopOrder(orderId, items as any, profitBasis);
+      return shopOrderRepository.staffPriceShopOrder(
+        orderId,
+        items as any,
+        profitBasis,
+        rates,
+      );
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (data, variables) => {
+      patchStaffOrderDetailCache(queryClient, variables.orderId, data);
       showSuccessNotification('Costing and staff offer prices saved (Priced)');
-      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetailRoot() });
+      void queryClient.invalidateQueries({ queryKey: ['shopOrder', 'staffOrders'] });
     },
     onError: (err: any) => {
       handleApiFailure(err, 'Failed to save staff pricing');
@@ -92,12 +106,10 @@ export function useStaffFinalizeCatalogPricesMutation() {
         final_offer_amount: number;
         final_offer_currency_id: number;
       }>;
-    }) => {
-      await shopOrderRepository.staffFinalizeCatalogPrices(orderId, items);
-    },
-    onSuccess: (_, variables) => {
+    }) => shopOrderRepository.staffFinalizeCatalogPrices(orderId, items),
+    onSuccess: (data, variables) => {
+      patchStaffOrderDetailCache(queryClient, variables.orderId, data);
       showSuccessNotification('Final offer prices sent to customer');
-      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetailRoot() });
     },
     onError: (err: any) => {
       handleApiFailure(err, 'Failed to finalize offer prices');
@@ -109,12 +121,10 @@ export function useStaffStartCatalogProcurementMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (orderId: number) => {
-      await shopOrderRepository.staffStartCatalogProcurement(orderId);
-    },
-    onSuccess: (_, orderId) => {
+    mutationFn: (orderId: number) => shopOrderRepository.staffStartCatalogProcurement(orderId),
+    onSuccess: (data, orderId) => {
+      patchStaffOrderDetailCache(queryClient, orderId, data);
       showSuccessNotification('Order status updated to Procuring');
-      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetailRoot() });
     },
     onError: (err: any) => {
       handleApiFailure(err, 'Failed to start procurement');
@@ -132,12 +142,10 @@ export function useStaffSetCatalogOrderedQtyMutation() {
     }: {
       orderId: number;
       items: Array<{ id: number; ordered_quantity: number }>;
-    }) => {
-      await shopOrderRepository.staffSetCatalogOrderedQty(orderId, items);
-    },
-    onSuccess: (_, variables) => {
+    }) => shopOrderRepository.staffSetCatalogOrderedQty(orderId, items),
+    onSuccess: (data, variables) => {
+      patchStaffOrderDetailCache(queryClient, variables.orderId, data);
       showSuccessNotification('Ordered quantities saved (Ordered)');
-      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetailRoot() });
     },
     onError: (err: any) => {
       handleApiFailure(err, 'Failed to save ordered quantities');
@@ -155,12 +163,10 @@ export function useStaffSetCatalogDeliveredQtyMutation() {
     }: {
       orderId: number;
       items: Array<{ id: number; delivered_quantity: number }>;
-    }) => {
-      await shopOrderRepository.staffSetCatalogDeliveredQty(orderId, items);
-    },
-    onSuccess: (_, variables) => {
+    }) => shopOrderRepository.staffSetCatalogDeliveredQty(orderId, items),
+    onSuccess: (data, variables) => {
+      patchStaffOrderDetailCache(queryClient, variables.orderId, data);
       showSuccessNotification('Delivered quantities saved (Delivered)');
-      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetailRoot() });
     },
     onError: (err: any) => {
       handleApiFailure(err, 'Failed to save delivered quantities');
@@ -169,13 +175,17 @@ export function useStaffSetCatalogDeliveredQtyMutation() {
 }
 
 export function useUpdateCatalogOrderItemMutation() {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async ({
+      tenantId,
       orderId,
       itemId,
       productId,
       payload,
     }: {
+      tenantId?: number | null;
       orderId: number;
       itemId: number;
       productId: number | null;
@@ -196,14 +206,29 @@ export function useUpdateCatalogOrderItemMutation() {
         delivered_quantity?: number | null;
       };
     }) => {
+      if (tenantId) {
+        return shopOrderRepository.updateCatalogOrderItemForStaff(
+          tenantId,
+          orderId,
+          itemId,
+          payload,
+        );
+      }
       await shopOrderRepository.updateCatalogOrderItem(orderId, itemId, productId, payload);
+      return null;
     },
-    onSuccess: () => {
-      // Intentionally not invalidating query list on single cell edits to preserve local UI state
+    onSuccess: (data, variables) => {
+      if (variables.tenantId && data) {
+        applyStaffOrderDetailToCache(
+          queryClient,
+          variables.tenantId,
+          variables.orderId,
+          data,
+        );
+      }
     },
     onError: (err: any) => {
       handleApiFailure(err, 'Failed to update item');
     },
   });
 }
-

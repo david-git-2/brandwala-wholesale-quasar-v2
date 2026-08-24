@@ -299,7 +299,12 @@ export const useShopOrderStore = defineStore('shopOrder', {
       this.saving = true;
       this.error = null;
       try {
-        const res = await shopOrderService.updateOrderCharges(orderId, payload);
+        const tenantId = useAuthStore().tenantId;
+        if (!tenantId) {
+          this.error = 'Tenant context required.';
+          return { success: false, error: this.error };
+        }
+        const res = await shopOrderService.updateOrderCharges(tenantId, orderId, payload);
         if (!res.success) {
           this.error = res.error;
           handleApiFailure(res, res.error);

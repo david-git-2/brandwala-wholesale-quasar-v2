@@ -250,7 +250,7 @@
                   class="cell-input"
                   min="0"
                   step="1"
-                  @update:model-value="(val) => { slotProps.row.staff_offer_amount = Number(val) || 0; }"
+                  @update:model-value="(val) => onFirstOfferManualUpdate(slotProps.row, val)"
                   @blur="onFirstOfferBlur(slotProps.row)"
                   @keyup.enter="blurInput"
                 />
@@ -565,48 +565,47 @@ const tableColumns = computed<QTableColumn[]>(() => [
     label: 'Name',
     field: 'name',
     align: 'left',
-    sortable: true,
     style: `width: ${COL_WIDTH.name}px; min-width: ${COL_WIDTH.name}px; max-width: ${COL_WIDTH.nameMax}px;`,
     headerStyle: `width: ${COL_WIDTH.name}px; min-width: ${COL_WIDTH.name}px; max-width: ${COL_WIDTH.nameMax}px;`,
   },
-  { name: 'brand', label: 'Brand', field: 'brand', align: 'center', sortable: true, style: infoColWidths, headerStyle: infoColWidths },
+  { name: 'brand', label: 'Brand', field: 'brand', align: 'center', style: infoColWidths, headerStyle: infoColWidths },
   { name: 'note', label: 'Note', field: 'note', align: 'center', style: infoColWidths, headerStyle: infoColWidths },
   { name: 'code_barcode_id', label: 'Barcode / Code / ID', field: 'barcode', align: 'center', style: infoColWidths, headerStyle: infoColWidths },
 
   // 2. Quantities Section (sec-qty)
-  { name: 'qty_customer', label: 'Qty (Customer)', field: 'quantity', align: 'center', sortable: true, style: editableColWidths.qty, headerStyle: editableColWidths.qty },
-  { name: 'ordered_qty', label: 'Ordered Qty', field: 'ordered_quantity', align: 'center', sortable: true, style: editableColWidths.qty, headerStyle: editableColWidths.qty },
-  { name: 'delivered_qty', label: 'Delivered Qty', field: 'delivered_quantity', align: 'center', sortable: true, style: editableColWidths.qty, headerStyle: editableColWidths.qty },
+  { name: 'qty_customer', label: 'Qty (Customer)', field: 'quantity', align: 'center', style: editableColWidths.qty, headerStyle: editableColWidths.qty },
+  { name: 'ordered_qty', label: 'Ordered Qty', field: 'ordered_quantity', align: 'center', style: editableColWidths.qty, headerStyle: editableColWidths.qty },
+  { name: 'delivered_qty', label: 'Delivered Qty', field: 'delivered_quantity', align: 'center', style: editableColWidths.qty, headerStyle: editableColWidths.qty },
 
   // 3. Purchase & Freight Section (sec-purchase)
-  { name: 'purchase_price_unit', label: `Price (${buyCurrency.value}) / Unit`, field: 'cost_price_amount', align: 'center', sortable: true, style: editableColWidths.money, headerStyle: editableColWidths.money },
-  { name: 'purchase_price_total', label: `Total Purchase (${buyCurrency.value})`, field: (row) => (row.cost_price_amount || 0) * row.quantity, align: 'center', sortable: true, style: colWidthStyle(COL_WIDTH.money + 12), headerStyle: colWidthStyle(COL_WIDTH.money + 12) },
-  { name: 'product_weight_gm', label: 'Product Weight (gm)', field: (row) => getProductWeightGm(row), align: 'center', sortable: true, style: editableColWidths.weight, headerStyle: editableColWidths.weight },
-  { name: 'package_weight_gm', label: 'Package Weight (gm)', field: (row) => getPackageWeightGm(row), align: 'center', sortable: true, style: editableColWidths.weight, headerStyle: editableColWidths.weight },
-  { name: 'total_weight_gm', label: 'Total Weight (gm)', field: (row) => getTotalWeightGm(row), align: 'center', sortable: true, style: colWidthStyle(COL_WIDTH.weight), headerStyle: colWidthStyle(COL_WIDTH.weight) },
+  { name: 'purchase_price_unit', label: `Price (${buyCurrency.value}) / Unit`, field: 'cost_price_amount', align: 'center', style: editableColWidths.money, headerStyle: editableColWidths.money },
+  { name: 'purchase_price_total', label: `Total Purchase (${buyCurrency.value})`, field: (row) => (row.cost_price_amount || 0) * row.quantity, align: 'center', style: colWidthStyle(COL_WIDTH.money + 12), headerStyle: colWidthStyle(COL_WIDTH.money + 12) },
+  { name: 'product_weight_gm', label: 'Product Weight (gm)', field: (row) => getProductWeightGm(row), align: 'center', style: editableColWidths.weight, headerStyle: editableColWidths.weight },
+  { name: 'package_weight_gm', label: 'Package Weight (gm)', field: (row) => getPackageWeightGm(row), align: 'center', style: editableColWidths.weight, headerStyle: editableColWidths.weight },
+  { name: 'total_weight_gm', label: 'Total Weight (gm)', field: (row) => getTotalWeightGm(row), align: 'center', style: colWidthStyle(COL_WIDTH.weight), headerStyle: colWidthStyle(COL_WIDTH.weight) },
   { name: 'cargo_rate', label: `Cargo Rate (${buyCurrency.value}/kg)`, field: () => cargoRate.value, align: 'center', style: numericColWidths, headerStyle: numericColWidths },
   { name: 'cargo_cost_unit_purchase', label: `Cargo Cost (${buyCurrency.value}) / Unit`, field: (row) => getCargoCostUnitPurchase(row), align: 'center', style: numericColWidths, headerStyle: numericColWidths },
 
   // 4. Landed Cost Section (sec-landed)
-  { name: 'landed_cost_unit_purchase', label: `Total Cost (${buyCurrency.value})`, field: (row) => getLandedCostUnitPurchase(row), align: 'center', sortable: true, style: numericColWidths, headerStyle: numericColWidths },
-  { name: 'landed_cost_row_purchase', label: `Row Total Cost (${buyCurrency.value})`, field: (row) => getLandedCostRowPurchase(row), align: 'center', sortable: true, style: numericColWidths, headerStyle: numericColWidths },
-  { name: 'landed_cost_unit_sell', label: `Cost (${sellCurrency.value})`, field: (row) => getLandedCostUnitSell(row), align: 'center', sortable: true, style: numericColWidths, headerStyle: numericColWidths },
-  { name: 'landed_cost_row_sell', label: `Row Total Cost (${sellCurrency.value})`, field: (row) => getLandedCostRowSell(row), align: 'center', sortable: true, style: numericColWidths, headerStyle: numericColWidths },
+  { name: 'landed_cost_unit_purchase', label: `Total Cost (${buyCurrency.value})`, field: (row) => getLandedCostUnitPurchase(row), align: 'center', style: numericColWidths, headerStyle: numericColWidths },
+  { name: 'landed_cost_row_purchase', label: `Row Total Cost (${buyCurrency.value})`, field: (row) => getLandedCostRowPurchase(row), align: 'center', style: numericColWidths, headerStyle: numericColWidths },
+  { name: 'landed_cost_unit_sell', label: `Cost (${sellCurrency.value})`, field: (row) => getLandedCostUnitSell(row), align: 'center', style: numericColWidths, headerStyle: numericColWidths },
+  { name: 'landed_cost_row_sell', label: `Row Total Cost (${sellCurrency.value})`, field: (row) => getLandedCostRowSell(row), align: 'center', style: numericColWidths, headerStyle: numericColWidths },
 
   // 5. First Offer Section (sec-first-offer)
-  { name: 'first_offer_unit', label: `1st Offer Unit (${sellCurrency.value})`, field: (row) => getFirstOfferUnitAmount(row), align: 'center', sortable: true, style: editableColWidths.offer, headerStyle: editableColWidths.offer },
-  { name: 'first_offer_row', label: `Row Total 1st Offer (${sellCurrency.value})`, field: (row) => getFirstOfferUnitAmount(row) * row.quantity, align: 'center', sortable: true, style: numericColWidths, headerStyle: numericColWidths },
-  { name: 'first_offer_margin', label: 'Profit Margin %', field: (row) => getFirstOfferMargin(row), align: 'center', sortable: true, style: colWidthStyle(COL_WIDTH.qty), headerStyle: colWidthStyle(COL_WIDTH.qty) },
+  { name: 'first_offer_unit', label: `1st Offer Unit (${sellCurrency.value})`, field: (row) => getFirstOfferUnitAmount(row), align: 'center', style: editableColWidths.offer, headerStyle: editableColWidths.offer },
+  { name: 'first_offer_row', label: `Row Total 1st Offer (${sellCurrency.value})`, field: (row) => getFirstOfferUnitAmount(row) * row.quantity, align: 'center', style: numericColWidths, headerStyle: numericColWidths },
+  { name: 'first_offer_margin', label: 'Profit Margin %', field: (row) => getFirstOfferMargin(row), align: 'center', style: colWidthStyle(COL_WIDTH.qty), headerStyle: colWidthStyle(COL_WIDTH.qty) },
 
   // 6. Counter Offer Section (sec-counter-offer)
-  { name: 'counter_offer_unit', label: `Counter Offer (${sellCurrency.value}) / Unit`, field: 'customer_offer_amount', align: 'center', sortable: true, style: numericColWidths, headerStyle: numericColWidths },
-  { name: 'counter_offer_row', label: `Row Total Counter (${sellCurrency.value})`, field: (row) => (row.customer_offer_amount || 0) * row.quantity, align: 'center', sortable: true, style: numericColWidths, headerStyle: numericColWidths },
-  { name: 'counter_offer_margin', label: 'Profit Margin %', field: (row) => getCounterOfferMargin(row), align: 'center', sortable: true, style: colWidthStyle(COL_WIDTH.qty), headerStyle: colWidthStyle(COL_WIDTH.qty) },
+  { name: 'counter_offer_unit', label: `Counter Offer (${sellCurrency.value}) / Unit`, field: 'customer_offer_amount', align: 'center', style: numericColWidths, headerStyle: numericColWidths },
+  { name: 'counter_offer_row', label: `Row Total Counter (${sellCurrency.value})`, field: (row) => (row.customer_offer_amount || 0) * row.quantity, align: 'center', style: numericColWidths, headerStyle: numericColWidths },
+  { name: 'counter_offer_margin', label: 'Profit Margin %', field: (row) => getCounterOfferMargin(row), align: 'center', style: colWidthStyle(COL_WIDTH.qty), headerStyle: colWidthStyle(COL_WIDTH.qty) },
 
   // 7. Final Offer Section (sec-final-offer)
-  { name: 'final_offer_unit', label: `Final Offer (${sellCurrency.value})`, field: 'final_price_amount', align: 'center', sortable: true, style: editableColWidths.offer, headerStyle: editableColWidths.offer },
-  { name: 'final_offer_row', label: `Row Total Final (${sellCurrency.value})`, field: (row) => (row.final_price_amount || 0) * row.quantity, align: 'center', sortable: true, style: numericColWidths, headerStyle: numericColWidths },
-  { name: 'final_offer_margin', label: 'Profit Margin %', field: (row) => getFinalOfferMargin(row), align: 'center', sortable: true, style: colWidthStyle(COL_WIDTH.qty), headerStyle: colWidthStyle(COL_WIDTH.qty) },
+  { name: 'final_offer_unit', label: `Final Offer (${sellCurrency.value})`, field: 'final_price_amount', align: 'center', style: editableColWidths.offer, headerStyle: editableColWidths.offer },
+  { name: 'final_offer_row', label: `Row Total Final (${sellCurrency.value})`, field: (row) => (row.final_price_amount || 0) * row.quantity, align: 'center', style: numericColWidths, headerStyle: numericColWidths },
+  { name: 'final_offer_margin', label: 'Profit Margin %', field: (row) => getFinalOfferMargin(row), align: 'center', style: colWidthStyle(COL_WIDTH.qty), headerStyle: colWidthStyle(COL_WIDTH.qty) },
 
   // 8. Status & Action Section (sec-action)
   { name: 'status', label: 'Status', field: 'negotiation_status', align: 'center', style: colWidthStyle(COL_WIDTH.status), headerStyle: colWidthStyle(COL_WIDTH.status) },
@@ -913,11 +912,41 @@ function onDeliveredQtyBlur(item: ShopOrderItem) {
   emitItemUpdate(item, { delivered_quantity: item.delivered_quantity });
 }
 
+const firstOfferSaveTimers = new Map<number, ReturnType<typeof setTimeout>>();
+
+function persistFirstOfferManual(item: ShopOrderItem) {
+  const newPrice = Math.max(0, Number(item.staff_offer_amount) || 0);
+  item.staff_offer_amount = newPrice;
+  item.is_first_offer_manual = true;
+  emitItemUpdate(item, {
+    staff_offer_amount: newPrice,
+    is_first_offer_manual: true,
+  });
+}
+
+function onFirstOfferManualUpdate(item: ShopOrderItem, val: string | number | null) {
+  item.staff_offer_amount = Math.max(0, Number(val) || 0);
+  item.is_first_offer_manual = true;
+
+  const pending = firstOfferSaveTimers.get(item.id);
+  if (pending) clearTimeout(pending);
+  firstOfferSaveTimers.set(
+    item.id,
+    setTimeout(() => {
+      firstOfferSaveTimers.delete(item.id);
+      persistFirstOfferManual(item);
+    }, 400),
+  );
+}
+
 function onFirstOfferBlur(item: ShopOrderItem) {
-  const next = Math.max(0, Number(item.staff_offer_amount) || 0);
-  const auto = calculateItemOffer(item);
-  if (!item.is_first_offer_manual && next === auto) return;
-  onFirstOfferPriceSave(item, next);
+  const pending = firstOfferSaveTimers.get(item.id);
+  if (pending) {
+    clearTimeout(pending);
+    firstOfferSaveTimers.delete(item.id);
+  }
+  if (!item.is_first_offer_manual) return;
+  persistFirstOfferManual(item);
 }
 
 function onFinalOfferBlur(item: ShopOrderItem) {
@@ -937,17 +966,12 @@ function onFinalOfferBlur(item: ShopOrderItem) {
   onFinalOfferPriceSave(item, next);
 }
 
-function onFirstOfferPriceSave(item: ShopOrderItem, val: any) {
-  const newPrice = Number(val) || 0;
-  item.staff_offer_amount = newPrice;
-  item.is_first_offer_manual = true;
-  emitItemUpdate(item, {
-    staff_offer_amount: newPrice,
-    is_first_offer_manual: true,
-  });
-}
-
 function onUnlockFirstOffer(item: ShopOrderItem) {
+  const pending = firstOfferSaveTimers.get(item.id);
+  if (pending) {
+    clearTimeout(pending);
+    firstOfferSaveTimers.delete(item.id);
+  }
   item.is_first_offer_manual = false;
   const autoOffer = calculateItemOffer(item);
   item.staff_offer_amount = autoOffer;

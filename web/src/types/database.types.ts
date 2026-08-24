@@ -14155,32 +14155,30 @@ export type Database = {
       }
       staff_finalize_catalog_prices: {
         Args: { p_items: Json; p_order_id: number }
-        Returns: undefined
+        Returns: Json
       }
-      staff_price_shop_order:
-        | { Args: { p_items: Json; p_order_id: number }; Returns: undefined }
-        | {
-            Args: {
-              p_cargo_rate?: number
-              p_fx_rate?: number
-              p_items: Json
-              p_order_id: number
-              p_profit_basis?: string
-              p_profit_pct?: number
-            }
-            Returns: undefined
-          }
+      staff_price_shop_order: {
+        Args: {
+          p_cargo_rate?: number
+          p_fx_rate?: number
+          p_items: Json
+          p_order_id: number
+          p_profit_basis?: string
+          p_profit_pct?: number
+        }
+        Returns: Json
+      }
       staff_set_catalog_delivered_qty: {
         Args: { p_items: Json; p_order_id: number }
-        Returns: undefined
+        Returns: Json
       }
       staff_set_catalog_ordered_qty: {
         Args: { p_items: Json; p_order_id: number }
-        Returns: undefined
+        Returns: Json
       }
       staff_start_catalog_procurement: {
         Args: { p_order_id: number }
-        Returns: undefined
+        Returns: Json
       }
       stamp_global_shipment_landed_costs: {
         Args: { p_shipment_id: number }
@@ -14414,6 +14412,23 @@ export type Database = {
           status: Database["public"]["Enums"]["costing_file_status"]
           updated_at: string
         }[]
+      }
+      update_catalog_order_item_for_staff: {
+        Args: {
+          p_item_id: number
+          p_order_id: number
+          p_payload: Json
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
+      update_catalog_order_rates_for_staff: {
+        Args: {
+          p_order_id: number
+          p_payload: Json
+          p_tenant_id: number
+        }
+        Returns: Json
       }
       update_dropship_consignment: {
         Args: {
@@ -14813,6 +14828,22 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      update_shop_order_charges_for_staff: {
+        Args: {
+          p_order_id: number
+          p_payload: Json
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
+      update_shop_order_status_for_staff: {
+        Args: {
+          p_order_id: number
+          p_status: string
+          p_tenant_id: number
+        }
+        Returns: Json
       }
       upsert_customer_group_shop_profile: {
         Args: {

@@ -319,6 +319,7 @@ const listCustomerShops = async (
 };
 
 const updateOrderCharges = async (
+  tenantId: number,
   orderId: number,
   payload: {
     delivery_charge_amount: number;
@@ -332,7 +333,7 @@ const updateOrderCharges = async (
   },
 ): Promise<ShopServiceResult<void>> => {
   try {
-    await shopOrderRepository.updateOrderCharges(orderId, payload);
+    await shopOrderRepository.updateOrderCharges(tenantId, orderId, payload);
     return { success: true, data: undefined };
   } catch (error) {
     return {

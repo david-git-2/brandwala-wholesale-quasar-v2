@@ -197,12 +197,14 @@ Use **only columns that exist** on `shop_order_items`. Line costing edits (purch
 
 | RPC | JSON item keys (in) | Columns written |
 | :--- | :--- | :--- |
-| `staff_price_shop_order` | `id`, `staff_offer_amount`, `staff_offer_currency_id`, optional `weight_kg` (legacy alias `gross_weight_kg` accepted) | `staff_offer_amount`, `staff_offer_currency_id`, `weight_kg`, `staff_offer_at` |
+| `staff_price_shop_order` | `id`, `staff_offer_amount`, `staff_offer_currency_id`, optional `weight_kg`, `is_first_offer_manual`, `product_weight_gm`, `package_weight_gm` | `staff_offer_amount`, `staff_offer_currency_id`, `weight_kg`, `is_first_offer_manual`, `negotiation_status`, `staff_offer_at`; syncs `products.product_weight` / `package_weight` when provided |
 | `staff_finalize_catalog_prices` | `id`, `final_offer_amount`, `final_offer_currency_id` | `final_price_amount`, `final_price_currency_id`, `final_offer_at` |
 
 **Do not use** non-existent columns: `gross_weight_kg`, `cbm`, `final_offer_amount`, `final_offer_currency_id` on `shop_order_items`. Weight is stored as **`weight_kg`** (total kg per unit). Final offer is stored as **`final_price_amount`**.
 
 Optional order-level args on `staff_price_shop_order`: `p_profit_basis`, `p_fx_rate`, `p_cargo_rate`, `p_profit_pct` → `shop_orders.profit_basis`, `conversion_rate`, `cargo_rate`, `first_offer_rate` / `profit_rate`.
+
+**Returns:** same nested `{ order, items }` JSON as `get_shop_order_for_staff` (one round trip — no client-side item/product updates or detail refetch).
 
 ### 5.3 Target staff UX
 

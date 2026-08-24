@@ -12,6 +12,7 @@ import type {
   CustomerOrderListItem,
   CustomerOrderDetail,
 } from '../types';
+import type { StaffShopOrderDetailResponse } from '../types/staffShopOrderDetail';
 import {
   mapStaffShopOrderDetailToFlat,
   parseStaffShopOrderDetailResponse,
@@ -297,64 +298,34 @@ const staffPriceShopOrder = async (
     package_weight_gm?: number | null;
   }>,
   profitBasis?: string | null,
-): Promise<void> => {
-  const { error } = await supabase.rpc('staff_price_shop_order', {
+  rates?: {
+    conversion_rate?: number | null;
+    cargo_rate?: number | null;
+    profit_rate?: number | null;
+  },
+): Promise<StaffShopOrderDetailResponse> => {
+  const { data, error } = await supabase.rpc('staff_price_shop_order', {
     p_order_id: orderId,
     p_items: items,
     p_profit_basis: profitBasis ?? null,
+    p_fx_rate: rates?.conversion_rate ?? null,
+    p_cargo_rate: rates?.cargo_rate ?? null,
+    p_profit_pct: rates?.profit_rate ?? null,
   });
   if (error) throw error;
-
-  // Persist is_first_offer_manual status for each item
-  for (const item of items) {
-    if (item.is_first_offer_manual !== undefined && item.is_first_offer_manual !== null) {
-      await supabase
-        .from('shop_order_items')
-        .update({ is_first_offer_manual: item.is_first_offer_manual })
-        .eq('id', item.id);
-    }
-  }
-
-  // Sync updated price/unit (reference_cost_amount), product_weight, and package_weight back to products table
-  const { data: orderItemRows } = await supabase
-    .from('shop_order_items')
-    .select('id, product_id, weight_kg')
-    .eq('order_id', orderId);
-
-  if (orderItemRows && orderItemRows.length > 0) {
-    const itemMap = new Map(items.map((i) => [i.id, i]));
-    for (const itemRow of orderItemRows) {
-      const payloadItem = itemMap.get(itemRow.id);
-      const productId = itemRow.product_id || payloadItem?.product_id;
-      if (!productId) continue;
-
-      const productUpdates: Record<string, any> = {};
-      if (payloadItem?.product_weight_gm !== undefined && payloadItem.product_weight_gm !== null && payloadItem.product_weight_gm > 0) {
-        productUpdates.product_weight = payloadItem.product_weight_gm;
-      }
-      if (payloadItem?.package_weight_gm !== undefined && payloadItem.package_weight_gm !== null && payloadItem.package_weight_gm > 0) {
-        productUpdates.package_weight = payloadItem.package_weight_gm;
-      }
-
-      if (Object.keys(productUpdates).length > 0) {
-        await supabase
-          .from('products')
-          .update(productUpdates)
-          .eq('id', productId);
-      }
-    }
-  }
+  return parseStaffShopOrderDetailResponse(data);
 };
 
 const staffFinalizeCatalogPrices = async (
   orderId: number,
   items: Array<{ id: number; final_offer_amount: number; final_offer_currency_id: number }>,
-): Promise<void> => {
-  const { error } = await supabase.rpc('staff_finalize_catalog_prices', {
+): Promise<StaffShopOrderDetailResponse> => {
+  const { data, error } = await supabase.rpc('staff_finalize_catalog_prices', {
     p_order_id: orderId,
     p_items: items,
   });
   if (error) throw error;
+  return parseStaffShopOrderDetailResponse(data);
 };
 
 const customerCounterOffer = async (
@@ -387,23 +358,6 @@ const confirmShopOrder = async (orderId: number): Promise<void> => {
 };
 
 const customerConfirmShopOrder = async (orderId: number): Promise<void> => {
-  // Ensure all order items have confirmed_quantity set (defaulting to item quantity if null)
-  const { data: items } = await supabase
-    .from('shop_order_items')
-    .select('id, quantity, confirmed_quantity')
-    .eq('order_id', orderId);
-
-  if (items && items.length > 0) {
-    for (const item of items) {
-      if (item.confirmed_quantity == null) {
-        await supabase
-          .from('shop_order_items')
-          .update({ confirmed_quantity: item.quantity })
-          .eq('id', item.id);
-      }
-    }
-  }
-
   const { error } = await supabase.rpc('customer_confirm_shop_order', {
     p_order_id: orderId,
   });
@@ -513,6 +467,7 @@ const fulfillShopOrderToInvoice = async (orderId: number): Promise<void> => {
 };
 
 const updateOrderCharges = async (
+  tenantId: number,
   orderId: number,
   payload: {
     delivery_charge_amount: number;
@@ -524,12 +479,14 @@ const updateOrderCharges = async (
     packing_charge_amount: number;
     deduct_packing_from_margin: boolean;
   },
-): Promise<void> => {
-  const { error } = await supabase
-    .from('shop_orders')
-    .update(payload)
-    .eq('id', orderId);
+): Promise<StaffShopOrderDetailResponse> => {
+  const { data, error } = await supabase.rpc('update_shop_order_charges_for_staff', {
+    p_tenant_id: tenantId,
+    p_order_id: orderId,
+    p_payload: payload,
+  });
   if (error) throw error;
+  return parseStaffShopOrderDetailResponse(data);
 };
 
 const deleteShopOrder = async (orderId: number): Promise<void> => {
@@ -593,12 +550,18 @@ const deleteShop = async (shopId: number, tenantId: number): Promise<void> => {
   }
 };
 
-const updateOrderStatus = async (orderId: number, status: string): Promise<void> => {
-  const { error } = await supabase
-    .from('shop_orders')
-    .update({ status })
-    .eq('id', orderId);
+const updateOrderStatus = async (
+  tenantId: number,
+  orderId: number,
+  status: string,
+): Promise<StaffShopOrderDetailResponse> => {
+  const { data, error } = await supabase.rpc('update_shop_order_status_for_staff', {
+    p_tenant_id: tenantId,
+    p_order_id: orderId,
+    p_status: status,
+  });
   if (error) throw error;
+  return parseStaffShopOrderDetailResponse(data);
 };
 
 const getShopCurrencies = async (
@@ -622,6 +585,7 @@ const getShopSellCurrencyId = async (shopId: number): Promise<number | null> => 
 };
 
 const updateCatalogOrderRates = async (
+  tenantId: number,
   orderId: number,
   payload: {
     conversion_rate?: number | null;
@@ -631,41 +595,46 @@ const updateCatalogOrderRates = async (
     final_offer_rate?: number | null;
     profit_basis?: 'purchase' | 'total_cost' | null;
   },
-): Promise<void> => {
-  const { error } = await supabase
-    .from('shop_orders')
-    .update(payload)
-    .eq('id', orderId);
+): Promise<StaffShopOrderDetailResponse> => {
+  const { data, error } = await supabase.rpc('update_catalog_order_rates_for_staff', {
+    p_tenant_id: tenantId,
+    p_order_id: orderId,
+    p_payload: payload,
+  });
   if (error) throw error;
+  return parseStaffShopOrderDetailResponse(data);
 };
 
-const staffStartCatalogProcurement = async (orderId: number): Promise<void> => {
-  const { error } = await supabase.rpc('staff_start_catalog_procurement', {
+const staffStartCatalogProcurement = async (orderId: number): Promise<StaffShopOrderDetailResponse> => {
+  const { data, error } = await supabase.rpc('staff_start_catalog_procurement', {
     p_order_id: orderId,
   });
   if (error) throw error;
+  return parseStaffShopOrderDetailResponse(data);
 };
 
 const staffSetCatalogOrderedQty = async (
   orderId: number,
   items: Array<{ id: number; ordered_quantity: number }>,
-): Promise<void> => {
-  const { error } = await supabase.rpc('staff_set_catalog_ordered_qty', {
+): Promise<StaffShopOrderDetailResponse> => {
+  const { data, error } = await supabase.rpc('staff_set_catalog_ordered_qty', {
     p_order_id: orderId,
     p_items: items,
   });
   if (error) throw error;
+  return parseStaffShopOrderDetailResponse(data);
 };
 
 const staffSetCatalogDeliveredQty = async (
   orderId: number,
   items: Array<{ id: number; delivered_quantity: number }>,
-): Promise<void> => {
-  const { error } = await supabase.rpc('staff_set_catalog_delivered_qty', {
+): Promise<StaffShopOrderDetailResponse> => {
+  const { data, error } = await supabase.rpc('staff_set_catalog_delivered_qty', {
     p_order_id: orderId,
     p_items: items,
   });
   if (error) throw error;
+  return parseStaffShopOrderDetailResponse(data);
 };
 
 const listCustomerOrderBacklogItems = async (
@@ -680,6 +649,38 @@ const listCustomerOrderBacklogItems = async (
   return (data as any[] | null) ?? [];
 };
 
+const updateCatalogOrderItemForStaff = async (
+  tenantId: number,
+  orderId: number,
+  itemId: number,
+  payload: {
+    product_weight_gm?: number | null;
+    package_weight_gm?: number | null;
+    weight_kg?: number | null;
+    cost_price_amount?: number | null;
+    staff_offer_amount?: number | null;
+    is_first_offer_manual?: boolean | null;
+    final_price_amount?: number | null;
+    is_final_offer_manual?: boolean | null;
+    customer_offer_amount?: number | null;
+    customer_offer_currency_id?: number | null;
+    confirmed_quantity?: number | null;
+    quantity?: number | null;
+    ordered_quantity?: number | null;
+    delivered_quantity?: number | null;
+  },
+): Promise<StaffShopOrderDetailResponse> => {
+  const { data, error } = await supabase.rpc('update_catalog_order_item_for_staff', {
+    p_tenant_id: tenantId,
+    p_order_id: orderId,
+    p_item_id: itemId,
+    p_payload: payload,
+  });
+  if (error) throw error;
+  return parseStaffShopOrderDetailResponse(data);
+};
+
+/** Customer-scope inline edits (shop RLS). Staff catalog edits use updateCatalogOrderItemForStaff. */
 const updateCatalogOrderItem = async (
   orderId: number,
   itemId: number,
@@ -780,6 +781,7 @@ export const shopOrderRepository = {
   getShopSellCurrencyId,
   updateCatalogOrderRates,
   updateCatalogOrderItem,
+  updateCatalogOrderItemForStaff,
 };
 
 

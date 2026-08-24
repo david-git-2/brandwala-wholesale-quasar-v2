@@ -2,6 +2,8 @@ import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { applyStaffOrderDetailToCache } from '../utils/staffOrderDetailCacheUtils';
 
 export function useProcessDropshipOrderMutation() {
   const queryClient = useQueryClient();
@@ -28,12 +30,17 @@ export function useUpdateOrderStatusMutation() {
 
   return useMutation({
     mutationFn: async ({ orderId, status }: { orderId: number; status: string }) => {
-      await shopOrderRepository.updateOrderStatus(orderId, status);
+      const tenantId = useAuthStore().tenantId;
+      if (!tenantId) throw new Error('Tenant context required.');
+      return shopOrderRepository.updateOrderStatus(tenantId, orderId, status);
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (data, variables) => {
       showSuccessNotification('Order status updated successfully.');
+      const tenantId = useAuthStore().tenantId;
+      if (tenantId && data) {
+        applyStaffOrderDetailToCache(queryClient, tenantId, variables.orderId, data);
+      }
       void queryClient.invalidateQueries({ queryKey: ['shopOrder', 'staffOrders'] });
-      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetailRoot() });
     },
     onError: (err: any) => {
       handleApiFailure({ success: false }, err.message || 'Failed to update order status');
@@ -55,14 +62,19 @@ export function useSubmitStaffPricingMutation() {
       isInitialSubmission: boolean;
     }) => {
       if (isInitialSubmission) {
-        await shopOrderRepository.staffPriceShopOrder(orderId, items);
-      } else {
-        await shopOrderRepository.staffCounterOffer(orderId, items);
+        return shopOrderRepository.staffPriceShopOrder(orderId, items);
       }
+      await shopOrderRepository.staffCounterOffer(orderId, items);
+      return null;
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (data, variables) => {
       showSuccessNotification('Pricing submitted successfully.');
-      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetailRoot() });
+      const tenantId = useAuthStore().tenantId;
+      if (tenantId && data) {
+        applyStaffOrderDetailToCache(queryClient, tenantId, variables.orderId, data);
+      } else if (!data) {
+        void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetailRoot() });
+      }
       void queryClient.invalidateQueries({ queryKey: ['shopOrder', 'staffOrders'] });
     },
     onError: (err: any) => {
@@ -139,11 +151,16 @@ export function useUpdateOrderChargesMutation() {
         deduct_packing_from_margin: boolean;
       };
     }) => {
-      await shopOrderRepository.updateOrderCharges(orderId, payload);
+      const tenantId = useAuthStore().tenantId;
+      if (!tenantId) throw new Error('Tenant context required.');
+      return shopOrderRepository.updateOrderCharges(tenantId, orderId, payload);
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (data, variables) => {
       showSuccessNotification('Order charges updated successfully.');
-      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetailRoot() });
+      const tenantId = useAuthStore().tenantId;
+      if (tenantId && data) {
+        applyStaffOrderDetailToCache(queryClient, tenantId, variables.orderId, data);
+      }
     },
     onError: (err: any) => {
       handleApiFailure({ success: false }, err.message || 'Failed to update order charges');
