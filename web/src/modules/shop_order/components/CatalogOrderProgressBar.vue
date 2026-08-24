@@ -2,34 +2,6 @@
   <q-card flat bordered class="catalog-progress-bar q-pa-sm" :class="cardClass">
     <div class="row items-center justify-between q-col-gutter-sm">
       <div class="col-grow">
-        <div class="row items-center q-gutter-xs q-mb-sm">
-          <q-badge
-            :color="statusBadgeColor"
-            class="status-badge q-px-sm q-py-xs text-caption text-weight-bold"
-          >
-            <q-icon v-if="variant === 'customer'" name="ph ph-clock" size="14px" class="q-mr-xs" />
-            {{ statusLabel }}
-          </q-badge>
-          <q-chip
-            v-if="order?.is_negotiable_snapshot && variant === 'staff'"
-            dense
-            outline
-            color="amber-9"
-            class="text-caption q-ma-none"
-          >
-            Round {{ order?.negotiate_round || 1 }}
-          </q-chip>
-          <q-chip
-            v-if="order?.is_negotiable_snapshot && variant === 'customer'"
-            dense
-            outline
-            color="amber-9"
-            class="text-caption q-ma-none"
-          >
-            Negotiation
-          </q-chip>
-        </div>
-
         <div class="row items-center q-gutter-xs progress-row">
           <template v-for="(stepKey, idx) in progressSteps" :key="stepKey">
             <div
@@ -69,12 +41,9 @@ import {
   getCatalogProgressCustomerLabel,
   getCatalogProgressStaffLabel,
   getCatalogProgressSteps,
-  getCustomerCatalogStatusLabel,
-  getStaffCatalogStatusLabel,
   isCatalogProgressStepComplete,
   isCatalogProgressStepCurrent,
   mapStatusToProgressKey,
-  normalizeCatalogOrderStatus,
   type CatalogProgressKey,
 } from '../utils/catalogOrderStatus';
 
@@ -91,42 +60,10 @@ const progressSteps = computed(() => getCatalogProgressSteps(isNegotiable.value)
 const currentProgressKey = computed(() =>
   mapStatusToProgressKey(props.order?.status, isNegotiable.value),
 );
-const normalizedStatus = computed(() => normalizeCatalogOrderStatus(props.order?.status));
-
-const statusLabel = computed(() =>
-  props.variant === 'customer'
-    ? getCustomerCatalogStatusLabel(props.order?.status)
-    : getStaffCatalogStatusLabel(props.order?.status),
-);
 
 const cardClass = computed(() =>
   props.variant === 'customer' ? 'catalog-progress-bar--customer bg-grey-1' : '',
 );
-
-const statusBadgeColor = computed(() => {
-  switch (normalizedStatus.value) {
-    case 'submitted':
-      return props.variant === 'customer' ? 'blue-7' : 'info';
-    case 'priced':
-      return props.variant === 'customer' ? 'cyan-8' : 'secondary';
-    case 'countered':
-      return 'amber-9';
-    case 'final_offered':
-      return 'purple-7';
-    case 'confirmed':
-      return 'green-7';
-    case 'procuring':
-      return 'indigo-7';
-    case 'ordered':
-      return 'indigo-7';
-    case 'delivered':
-      return 'positive';
-    case 'cancelled':
-      return 'negative';
-    default:
-      return 'grey-7';
-  }
-});
 
 function progressStepLabel(stepKey: CatalogProgressKey): string {
   return props.variant === 'customer'
@@ -151,10 +88,6 @@ function progressStepClass(stepKey: CatalogProgressKey): string {
 <style scoped lang="scss">
 .catalog-progress-bar {
   border-radius: 10px;
-}
-
-.status-badge {
-  border-radius: 999px;
 }
 
 .progress-row {
