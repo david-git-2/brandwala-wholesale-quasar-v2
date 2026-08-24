@@ -207,6 +207,7 @@ import { dropshipCourierService } from '../services/dropshipCourierService';
 import { dropshipMerchantService } from '../services/dropshipMerchantService';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { useDeleteShopOrderMutation } from '../composables/useShopOrderMutations';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import type { CourierServiceRow } from '../repositories/dropshipCourierRepository';
 import type { MerchantProfileRow } from '../repositories/dropshipMerchantRepository';
 import type { ShopOrder, ShopOrderItem } from '../types';
@@ -233,6 +234,8 @@ const route = useRoute();
 const router = useRouter();
 const $q = useQuasar();
 const queryClient = useQueryClient();
+const authStore = useAuthStore();
+const tenantId = computed(() => authStore.tenantId ?? 0);
 const { mutate: deleteShopOrder, isPending: isDeletingOrder } = useDeleteShopOrderMutation();
 const tenantSlug = computed(() =>
   typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : null,
@@ -302,10 +305,10 @@ const {
 
 const orderDetailQuery = useQuery({
   queryKey: computed(() => shopOrderQueryKeys.detail(tenantSlug.value, orderId.value)),
-  enabled: computed(() => orderId.value > 0),
+  enabled: computed(() => tenantId.value > 0 && orderId.value > 0),
   staleTime: 15_000,
   queryFn: async () => {
-    return await shopOrderRepository.getShopOrderById(orderId.value);
+    return await shopOrderRepository.getShopOrderById(tenantId.value, orderId.value);
   },
 });
 

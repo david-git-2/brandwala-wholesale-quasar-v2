@@ -11850,6 +11850,10 @@ export type Database = {
           module_key: string
         }[]
       }
+      get_shop_order_for_staff: {
+        Args: { p_order_id: number; p_tenant_id: number }
+        Returns: Json
+      }
       get_shop_permissions_for_customer: {
         Args: { p_shop_id: number }
         Returns: {

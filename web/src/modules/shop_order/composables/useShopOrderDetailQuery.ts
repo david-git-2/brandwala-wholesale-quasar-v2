@@ -10,7 +10,7 @@ export function useShopOrderDetailQuery(orderId: Ref<number>) {
   const tenantId = computed(() => authStore.tenantId ?? null);
   return useQuery({
     queryKey: computed(() => shopOrderQueryKeys.orderDetail(tenantId.value, orderId.value)),
-    queryFn: () => shopOrderRepository.getShopOrderById(orderId.value),
+    queryFn: () => shopOrderRepository.getShopOrderById(tenantId.value!, orderId.value),
     enabled: computed(() => !!tenantId.value && orderId.value > 0),
     staleTime: 15 * 1000,
   });

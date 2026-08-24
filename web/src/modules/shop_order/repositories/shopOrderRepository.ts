@@ -12,6 +12,10 @@ import type {
   CustomerOrderListItem,
   CustomerOrderDetail,
 } from '../types';
+import {
+  mapStaffShopOrderDetailToFlat,
+  parseStaffShopOrderDetailResponse,
+} from '../utils/staffShopOrderDetailMapper';
 
 const listShops = async (
   tenantId: number,
@@ -452,87 +456,19 @@ const listDropshipShopOrdersForStaff = async (
 };
 
 const getShopOrderById = async (
+  tenantId: number,
   orderId: number,
 ): Promise<{
   order: ShopOrder & { shop_sell_currency_id?: number | null; shop_buy_currency_id?: number | null };
   items: ShopOrderItem[];
 }> => {
-  const { data: orderRow, error: orderErr } = await supabase
-    .from('shop_orders')
-    .select('*, customer_groups(name), shops(sell_currency_id, buy_currency_id, sell_currency:global_currencies!shops_sell_currency_id_fkey(id, code, symbol), buy_currency:global_currencies!shops_buy_currency_id_fkey(id, code, symbol))')
-    .eq('id', orderId)
-    .single();
-
-  if (orderErr) throw orderErr;
-
-  const order: ShopOrder & {
-    shop_sell_currency_id?: number | null;
-    shop_buy_currency_id?: number | null;
-    shop_sell_currency_symbol?: string | null;
-    shop_buy_currency_symbol?: string | null;
-  } = {
-    ...orderRow,
-    customer_group_name: (orderRow as any).customer_groups?.name ?? orderRow.customer_group_name,
-    shop_sell_currency_id: (orderRow as any).shops?.sell_currency_id ?? null,
-    shop_buy_currency_id: (orderRow as any).shops?.buy_currency_id ?? null,
-    shop_sell_currency_symbol: (orderRow as any).shops?.sell_currency?.symbol ?? null,
-    shop_buy_currency_symbol: (orderRow as any).shops?.buy_currency?.symbol ?? null,
-  };
-  delete (order as any).customer_groups;
-  delete (order as any).shops;
-
-  // Fallback until shop_orders.collection_source is migrated / populated
-  if (!order.collection_source && order.global_invoice_id) {
-    const { data: inv } = await supabase
-      .from('sales_invoices')
-      .select('collection_source')
-      .eq('id', order.global_invoice_id)
-      .maybeSingle();
-    if (inv?.collection_source) {
-      order.collection_source = inv.collection_source;
-    }
-  } else if (!order.collection_source && order.is_prepaid_snapshot) {
-    order.collection_source = 'billing_profile';
-  }
-
-  const { data: rawItems, error: itemsErr } = await supabase
-    .from('shop_order_items')
-    .select('*, products(product_code, brand, barcode, product_weight, package_weight, reference_cost_amount, minimum_order_quantity)')
-    .eq('order_id', orderId)
-    .order('created_at', { ascending: true });
-
-  if (itemsErr) throw itemsErr;
-
-  const items: ShopOrderItem[] = (rawItems || []).map((row: any) => {
-    const sku = row.products?.product_code ?? null;
-    const brand = row.products?.brand ?? null;
-    const barcode = row.products?.barcode ?? null;
-    const product_weight_gm = row.products?.product_weight ?? null;
-    const package_weight_gm = row.products?.package_weight ?? null;
-    const minimum_order_quantity = row.products?.minimum_order_quantity ?? 1;
-    const cost_price_amount =
-      row.cost_price_amount ??
-      row.unit_list_price_amount ??
-      row.products?.reference_cost_amount ??
-      null;
-    const item = {
-      ...row,
-      cost_price_amount,
-      sku,
-      brand,
-      barcode,
-      product_weight_gm,
-      package_weight_gm,
-      minimum_order_quantity,
-    };
-    delete item.products;
-    return item as ShopOrderItem;
+  const { data, error } = await supabase.rpc('get_shop_order_for_staff', {
+    p_tenant_id: tenantId,
+    p_order_id: orderId,
   });
+  if (error) throw error;
 
-  return {
-    order,
-    items,
-  };
+  return mapStaffShopOrderDetailToFlat(parseStaffShopOrderDetailResponse(data));
 };
 
 const getCustomerShopOrder = async (

@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { shopOrderService } from '../services/shopOrderService';
 import type { Shop, ShopOrder, ShopOrderItem } from '../types';
 
@@ -86,7 +87,11 @@ export const useShopOrderStore = defineStore('shopOrder', {
       this.loading = true;
       this.error = null;
       try {
-        const res = await shopOrderService.getOrderDetails(orderId);
+        const tenantId = useAuthStore().tenantId;
+        if (!tenantId) {
+          throw new Error('Tenant context required.');
+        }
+        const res = await shopOrderService.getOrderDetails(tenantId, orderId);
         if (!res.success) {
           this.error = res.error;
           handleApiFailure(res, res.error);

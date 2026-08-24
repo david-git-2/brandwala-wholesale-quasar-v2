@@ -131,10 +131,11 @@ const customerConfirmCatalogOrder = async (orderId: number): Promise<ShopService
 };
 
 const getOrderDetails = async (
+  tenantId: number,
   orderId: number,
 ): Promise<ShopServiceResult<{ order: ShopOrder; items: ShopOrderItem[] }>> => {
   try {
-    const data = await shopOrderRepository.getShopOrderById(orderId);
+    const data = await shopOrderRepository.getShopOrderById(tenantId, orderId);
     return { success: true, data };
   } catch (error) {
     return {

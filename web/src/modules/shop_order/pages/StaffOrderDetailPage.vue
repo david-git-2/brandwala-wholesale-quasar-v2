@@ -137,7 +137,6 @@ import { ref, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useQuasar } from 'quasar';
-import { useThriftCurrenciesQuery } from 'src/modules/thrift/currency/composables/useThriftCurrenciesQuery';
 import { useShopOrderDetailQuery } from '../composables/useShopOrderDetailQuery';
 import {
   useUpdateOrderStatusMutation,
@@ -246,13 +245,8 @@ const handleUpdateCatalogOrderItem = ({
 const showBacklogDrawer = ref(false);
 const showStatusOverrideDialog = ref(false);
 
-const { data: currenciesData } = useThriftCurrenciesQuery();
-const currencies = computed(() => currenciesData.value || []);
-
 const targetUpdatingStatus = ref<string | null>(null);
 const orderItems = ref<any[]>([]);
-const shopSellCurrencyId = ref<number | null>(null);
-const shopBuyCurrencyId = ref<number | null>(null);
 
 const ratesExpanded = ref(false);
 
@@ -626,8 +620,6 @@ watch(
         return res;
       });
 
-      shopSellCurrencyId.value = newData.order?.shop_sell_currency_id ?? null;
-      shopBuyCurrencyId.value = newData.order?.shop_buy_currency_id ?? null;
     }
   },
   { immediate: true },
@@ -657,36 +649,13 @@ const workflowStatuses = computed(() => {
   ];
 });
 
-const currencySymbol = computed(() => {
-  if (shopSellCurrencyId.value) {
-    const curr = currencies.value.find((c) => c.id === shopSellCurrencyId.value);
-    if (curr?.symbol) return curr.symbol;
-  }
-  const firstItem = orderItems.value?.[0];
-  const currId =
-    firstItem?.unit_sell_price_currency_id ||
-    firstItem?.customer_offer_currency_id ||
-    firstItem?.unit_list_price_currency_id;
-  if (currId) {
-    const curr = currencies.value.find((c) => c.id === currId);
-    if (curr?.symbol) return curr.symbol;
-  }
-  return '৳';
-});
+const currencySymbol = computed(
+  () => currentOrder.value?.shop_sell_currency_symbol || '৳',
+);
 
-const buyCurrencySymbol = computed(() => {
-  if (shopBuyCurrencyId.value) {
-    const curr = currencies.value.find((c) => c.id === shopBuyCurrencyId.value);
-    if (curr?.symbol) return curr.symbol;
-  }
-  const firstItem = orderItems.value?.[0];
-  const currId = firstItem?.cost_price_currency_id || firstItem?.unit_list_price_currency_id;
-  if (currId) {
-    const curr = currencies.value.find((c) => c.id === currId);
-    if (curr?.symbol) return curr.symbol;
-  }
-  return '£';
-});
+const buyCurrencySymbol = computed(
+  () => currentOrder.value?.shop_buy_currency_symbol || '£',
+);
 
 const canAction = computed(() => {
   const o = currentOrder.value;

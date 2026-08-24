@@ -124,6 +124,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { supabase } from 'src/boot/supabase';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
 import InvoicePrintSheet from 'src/modules/invoice_shared/components/InvoicePrintSheet.vue';
 import DropshipOrderRecipientInvoicePreviewSkeleton from '../components/DropshipOrderRecipientInvoicePreviewSkeleton.vue';
@@ -244,10 +245,11 @@ const printInvoice = () => {
 
 onMounted(async () => {
   const id = Number(route.params.id);
-  if (!id) return;
+  const tenantId = useAuthStore().tenantId;
+  if (!id || !tenantId) return;
 
   try {
-    const orderRes = await shopOrderRepository.getShopOrderById(id);
+    const orderRes = await shopOrderRepository.getShopOrderById(tenantId, id);
     order.value = orderRes.order;
     items.value = orderRes.items;
 

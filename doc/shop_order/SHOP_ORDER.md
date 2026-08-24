@@ -690,7 +690,7 @@ list_shop_orders_for_staff(
 ```
 
 - **Security:** `SECURITY DEFINER`; requires `is_tenant_staff(p_tenant_id)`
-- **No `total_amount`:** list is a lightweight index; monetary totals and currency formatting live on `StaffOrderDetailPage` / `get_shop_order_by_id` (or dropship detail RPCs).
+- **No `total_amount`:** list is a lightweight index; monetary totals and currency formatting live on `StaffOrderDetailPage` via `get_shop_order_for_staff`.
 
 ### Response columns
 
@@ -717,6 +717,100 @@ list_shop_orders_for_staff(
 | Composable | `useStaffOrdersQuery` |
 | Type | `ShopOrder` (list subset) in `web/src/modules/shop_order/types/index.ts` |
 | UI | `ShopOrdersPage` → `ShopOrdersTable` (no total column; no `global_currencies` call) |
+
+---
+
+## 10.1 RPC: `get_shop_order_for_staff`
+
+Staff order detail (`StaffOrderDetailPage`, `DropshipOrderDetailPage`, dropship invoice preview). One nested JSON payload replaces separate `shop_orders`, `shop_order_items`, and `global_currencies` reads.
+
+### Signature
+
+```sql
+get_shop_order_for_staff(
+  p_tenant_id bigint,
+  p_order_id  bigint
+) returns jsonb
+```
+
+- **Security:** `SECURITY DEFINER`; requires `is_tenant_staff(p_tenant_id)` and order `tenant_id` match
+- **Top-level keys:** `{ order, items }` only (no separate `currencies` array)
+
+### Nested `order` groups
+
+| Group | Contents |
+| :--- | :--- |
+| `shop` | `id`, `name`, `type`, `order_mode`, `is_negotiable`, `sell_currency`, `buy_currency` |
+| `customer` | `group_id`, `group_name` |
+| `status` | `value`, `negotiate_round` |
+| `rates` | catalog pricing knobs (`cargo`, `conversion`, `profit`, …) |
+| `recipient` | delivery / billing contact |
+| `charges` | line charges + `deduct_from_margin` flags |
+| `totals` | `item_count`, `amount`, `currency` |
+| `courier` / `pickup` / `payout` / `parcel` / `return_info` | dropship operational fields |
+| `links` | `invoices: [{ id }]`, `shipments: [{ id }]` — v1 IDs only; v2 adds invoice/shipment detail inline |
+
+### Nested `items[]` groups
+
+| Group | Contents |
+| :--- | :--- |
+| `product` | `sku`, `brand`, `barcode`, weights, `minimum_order_quantity` |
+| `pricing` | `cost`, `list`, `sell`, `minimum_sell` — each `{ amount, currency: { id, code, symbol } }` |
+| `negotiation` | offers, decision status, `weight_kg`, `confirmed_quantity` |
+| `fulfillment` | `ordered`, `delivered`, `returned`, `procurement_pulled` |
+| `stock` | `global_stock_id`, `shipment_item_id`, `shipment_id` (null when not stock-backed) |
+
+### Example (abbreviated)
+
+```jsonc
+{
+  "order": {
+    "id": 29,
+    "order_no": "SO-2026-0042",
+    "shop": {
+      "id": 5,
+      "name": "Vendor Catalog Shop",
+      "type": "vendor_catalog",
+      "sell_currency": { "id": 1, "code": "BDT", "symbol": "৳" },
+      "buy_currency": { "id": 2, "code": "CNY", "symbol": "¥" }
+    },
+    "customer": { "group_id": 12, "group_name": "Dhaka Retailers" },
+    "status": { "value": "negotiating", "negotiate_round": 2 },
+    "rates": { "cargo": 850, "conversion": 1, "profit": 12.5 },
+    "totals": {
+      "item_count": 2,
+      "amount": 15420,
+      "currency": { "id": 1, "code": "BDT", "symbol": "৳" }
+    },
+    "links": {
+      "invoices": [{ "id": 501 }],
+      "shipments": [{ "id": 88 }, { "id": 91 }]
+    }
+  },
+  "items": [
+    {
+      "id": 101,
+      "quantity": 10,
+      "product": { "id": 5001, "sku": "WB-PRO-01" },
+      "pricing": {
+        "cost": { "amount": 820, "currency": { "id": 2, "code": "CNY", "symbol": "¥" } }
+      },
+      "stock": { "global_stock_id": 4402, "shipment_id": 88 }
+    }
+  ]
+}
+```
+
+### Frontend wiring
+
+| Layer | Name |
+| :--- | :--- |
+| RPC | `get_shop_order_for_staff` |
+| Types | `StaffShopOrderDetailResponse` in `types/staffShopOrderDetail.ts` |
+| Mapper | `mapStaffShopOrderDetailToFlat()` → existing `ShopOrder` / `ShopOrderItem` for UI |
+| Repository | `shopOrderRepository.getShopOrderById(tenantId, orderId)` |
+| Composable | `useShopOrderDetailQuery` |
+| UI | `StaffOrderDetailPage` — no `useThriftCurrenciesQuery`; symbols from `order.shop.sell_currency` / `buy_currency` via flat mapper |
 
 ---
 
