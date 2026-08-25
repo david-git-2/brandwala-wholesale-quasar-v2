@@ -1,4 +1,4 @@
-import { Dialog, Notify } from 'quasar';
+import { Dialog, Notify, type QNotifyCreateOptions } from 'quasar';
 
 type ApiResultLike = {
   success: boolean;
@@ -7,34 +7,28 @@ type ApiResultLike = {
 
 const DEFAULT_ERROR_MESSAGE = 'Something went wrong. Please try again.';
 
-export const showSuccessNotification = (message: string) => {
+const showNotification = (
+  type: 'positive' | 'negative' | 'warning',
+  message: string,
+  timeout: number,
+) => {
   Notify.create({
-    type: 'positive',
+    type,
     message,
-    position: 'top-right',
-    timeout: 2200,
-    progress: true,
-  });
+    timeout,
+  } satisfies QNotifyCreateOptions);
+};
+
+export const showSuccessNotification = (message: string) => {
+  showNotification('positive', message, 2800);
 };
 
 export const showErrorNotification = (message: string) => {
-  Notify.create({
-    type: 'negative',
-    message,
-    position: 'top-right',
-    timeout: 3000,
-    progress: true,
-  });
+  showNotification('negative', message, 4000);
 };
 
 export const showWarningNotification = (message: string) => {
-  Notify.create({
-    type: 'warning',
-    message,
-    position: 'top-right',
-    timeout: 2500,
-    progress: true,
-  });
+  showNotification('warning', message, 3200);
 };
 
 export const showWarningDialog = (message: string, title = 'Warning') => {

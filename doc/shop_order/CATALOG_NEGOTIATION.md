@@ -191,7 +191,7 @@ Per `shop_order_items` during steps 2–4:
 
 | RPC | Sets status | Step |
 | :--- | :--- | :--- |
-| `submit_shop_order_from_cart` | `submitted` | Place order |
+| `submit_shop_order_from_cart` | `submitted` (all `vendor_catalog`, negotiable or not) | Place order |
 | `staff_price_shop_order` | `priced` | 1 → 2 |
 | `customer_counter_offer` | `countered` | 2 (counter path) |
 | `customer_confirm_shop_order` | `confirmed` | 2 (accept-all) or 4 |

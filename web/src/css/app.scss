@@ -909,3 +909,45 @@ body.body--compact {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Bottom-center app snackbars (Quasar Notify) */
+.q-notifications__list--bottom {
+  bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  width: min(420px, calc(100vw - 32px));
+  max-width: 100%;
+}
+
+.q-notification.app-notify {
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgb(15 23 42 / 0.18);
+  font-weight: 500;
+  min-height: 48px;
+}
+
+.q-notification.app-notify .q-notification__message {
+  padding-right: 4px;
+}
+
+.q-notification.app-notify .q-notification__progress {
+  opacity: 0.9;
+  height: 3px;
+}
+
+.q-notification.app-notify--positive {
+  background: #059669 !important;
+}
+
+.q-notification.app-notify--positive .q-notification__progress {
+  background: rgb(255 255 255 / 0.45) !important;
+}
+
+body.body--dark .q-notification.app-notify {
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.45);
+}
+
+body.body--dark .q-notification.app-notify--positive {
+  background: #10b981 !important;
+}

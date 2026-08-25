@@ -11832,10 +11832,6 @@ export type Database = {
         Args: { p_order_id: number; p_tenant_id: number }
         Returns: Json
       }
-      get_customer_dashboard_summary: {
-        Args: { p_tenant_id: number }
-        Returns: Json
-      }
       get_dropship_finance_hub_data: {
         Args: { p_tenant_id: number }
         Returns: Json
