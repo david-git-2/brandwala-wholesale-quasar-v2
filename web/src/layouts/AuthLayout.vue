@@ -12,14 +12,25 @@
         <div class="auth-layout__inner">
           <!-- ── Left: full-bleed dark canvas ───────────────── -->
           <div class="auth-canvas">
-            <!-- Brand wordmark — top left -->
-            <div class="auth-canvas__brand">
-              <img
-                :src="brandLogoSrc"
-                class="auth-canvas__brand-logo"
-                alt="TradeFlow BD — Enterprise resource planning, B2B commerce"
-                decoding="async"
-              />
+            <!-- Brand lockup — compact mark + wordmark (fits dark editorial canvas) -->
+            <div
+              class="auth-canvas__brand"
+              aria-label="TradeFlow BD — B2B commerce platform"
+            >
+              <div class="auth-canvas__brand-mark-wrap" aria-hidden="true">
+                <img
+                  :src="BRAND_LOGO_MARK_DARK_SRC"
+                  class="auth-canvas__brand-mark"
+                  alt=""
+                  decoding="async"
+                />
+              </div>
+              <div class="auth-canvas__brand-text">
+                <p class="auth-canvas__brand-name">
+                  TradeFlow<span class="auth-canvas__brand-name-accent">BD</span>
+                </p>
+                <p class="auth-canvas__brand-sub">B2B commerce platform</p>
+              </div>
             </div>
 
             <!-- Giant ghost word — centred vertically -->
@@ -47,10 +58,9 @@
 <script setup lang="ts">
 import { computed, provide, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import { useBrandAssets } from 'src/composables/useBrandAssets';
+import { BRAND_LOGO_MARK_DARK_SRC } from 'src/constants/brandAssets';
 
 const route = useRoute();
-const { brandLogoSrc } = useBrandAssets();
 
 // Injected by AuthLoginPanel so the headline can use the real store name
 const panelTitle = ref('');
@@ -224,17 +234,66 @@ const tagline = computed(() => {
   );
 }
 
-/* ── Brand wordmark ──────────────────────────────────── */
+/* ── Brand lockup ────────────────────────────────────── */
 .auth-canvas__brand {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
+  gap: 0.85rem;
   flex-shrink: 0;
 }
 
-.auth-canvas__brand-logo {
+.auth-canvas__brand-mark-wrap {
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  padding: 2px;
+  background: linear-gradient(
+    145deg,
+    var(--auth-accent) 0%,
+    rgb(255 255 255 / 0.08) 55%,
+    transparent 100%
+  );
+  box-shadow: 0 0 28px var(--auth-glow);
+}
+
+.auth-canvas__brand-mark {
   display: block;
-  width: min(220px, 52vw);
-  height: auto;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--auth-bg);
+}
+
+.auth-canvas__brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.auth-canvas__brand-name {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 1.05;
+  color: rgb(255 255 255 / 0.94);
+}
+
+.auth-canvas__brand-name-accent {
+  color: var(--auth-accent);
+}
+
+.auth-canvas__brand-sub {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.34);
+  line-height: 1.2;
 }
 
 /* ── Giant ghost word ────────────────────────────────── */
