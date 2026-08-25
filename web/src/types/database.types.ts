@@ -4044,6 +4044,79 @@ export type Database = {
         }
         Relationships: []
       }
+      procurement_placements: {
+        Row: {
+          created_at: string
+          global_shipment_item_id: number | null
+          id: number
+          notes: string | null
+          placed_at: string
+          placed_by_user_id: string | null
+          quantity: number
+          source_id: number
+          source_type: Database["public"]["Enums"]["procurement_placement_source_type"]
+          status: string
+          tenant_id: number
+          updated_at: string
+          vendor_code: string | null
+          vendor_id: number | null
+        }
+        Insert: {
+          created_at?: string
+          global_shipment_item_id?: number | null
+          id?: never
+          notes?: string | null
+          placed_at?: string
+          placed_by_user_id?: string | null
+          quantity: number
+          source_id: number
+          source_type: Database["public"]["Enums"]["procurement_placement_source_type"]
+          status?: string
+          tenant_id: number
+          updated_at?: string
+          vendor_code?: string | null
+          vendor_id?: number | null
+        }
+        Update: {
+          created_at?: string
+          global_shipment_item_id?: number | null
+          id?: never
+          notes?: string | null
+          placed_at?: string
+          placed_by_user_id?: string | null
+          quantity?: number
+          source_id?: number
+          source_type?: Database["public"]["Enums"]["procurement_placement_source_type"]
+          status?: string
+          tenant_id?: number
+          updated_at?: string
+          vendor_code?: string | null
+          vendor_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procurement_placements_global_shipment_item_id_fkey"
+            columns: ["global_shipment_item_id"]
+            isOneToOne: false
+            referencedRelation: "global_shipment_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "procurement_placements_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "procurement_placements_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_based_costing_backlog_items: {
         Row: {
           barcode: string | null
@@ -9613,6 +9686,10 @@ export type Database = {
         Args: { p_parent_tenant_id: number }
         Returns: undefined
       }
+      _can_view_parent_warehouse_stock: {
+        Args: { p_parent_tenant_id: number }
+        Returns: boolean
+      }
       _can_view_stock_locations: {
         Args: { p_parent_tenant_id: number }
         Returns: boolean
@@ -10533,6 +10610,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      can_access_procurement_placement_tenant: {
+        Args: { p_tenant_id: number }
+        Returns: boolean
+      }
       can_admin_manage_costing_file: {
         Args: { p_tenant_id: number }
         Returns: boolean
@@ -10683,6 +10764,31 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "customer_demand_bucket_items"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      cancel_procurement_placement: {
+        Args: { p_placement_id: number; p_tenant_id: number }
+        Returns: {
+          created_at: string
+          global_shipment_item_id: number | null
+          id: number
+          notes: string | null
+          placed_at: string
+          placed_by_user_id: string | null
+          quantity: number
+          source_id: number
+          source_type: Database["public"]["Enums"]["procurement_placement_source_type"]
+          status: string
+          tenant_id: number
+          updated_at: string
+          vendor_code: string | null
+          vendor_id: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "procurement_placements"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -11946,6 +12052,17 @@ export type Database = {
       get_pending_order_qty: {
         Args: { p_allocation_id: number }
         Returns: number
+      }
+      get_procurement_demand_open_qty: {
+        Args: {
+          p_source_id: number
+          p_source_type: Database["public"]["Enums"]["procurement_placement_source_type"]
+        }
+        Returns: {
+          document_status: string
+          open_qty: number
+          tenant_id: number
+        }[]
       }
       get_product_for_tenant: {
         Args: { p_id: number; p_tenant_id: number }
@@ -13975,6 +14092,39 @@ export type Database = {
         }
         Returns: Json
       }
+      record_procurement_placement: {
+        Args: {
+          p_notes?: string
+          p_quantity: number
+          p_source_id: number
+          p_source_type: Database["public"]["Enums"]["procurement_placement_source_type"]
+          p_tenant_id: number
+          p_vendor_code?: string
+          p_vendor_id?: number
+        }
+        Returns: {
+          created_at: string
+          global_shipment_item_id: number | null
+          id: number
+          notes: string | null
+          placed_at: string
+          placed_by_user_id: string | null
+          quantity: number
+          source_id: number
+          source_type: Database["public"]["Enums"]["procurement_placement_source_type"]
+          status: string
+          tenant_id: number
+          updated_at: string
+          vendor_code: string | null
+          vendor_id: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "procurement_placements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       record_recipient_invoice_collection: {
         Args: {
           p_amount: number
@@ -15917,6 +16067,7 @@ export type Database = {
         | "processing"
         | "invoicing"
         | "invoiced"
+      procurement_placement_source_type: "shop_order_item" | "pbc_costing_item"
       retail_billing_mode: "account" | "direct"
       shipment_investment_status: "active" | "closed" | "cancelled"
       shop_cart_status: "active" | "converted" | "abandoned"
@@ -16192,6 +16343,10 @@ export const Constants = {
         "processing",
         "invoicing",
         "invoiced",
+      ],
+      procurement_placement_source_type: [
+        "shop_order_item",
+        "pbc_costing_item",
       ],
       retail_billing_mode: ["account", "direct"],
       shipment_investment_status: ["active", "closed", "cancelled"],
