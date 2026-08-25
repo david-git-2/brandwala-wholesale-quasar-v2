@@ -142,8 +142,16 @@
     >
       <div class="workspace-shell__drawer-inner column full-height">
         <div class="workspace-shell__drawer-top row items-center justify-between q-px-sm q-py-xs">
-          <div v-show="!isMini" class="text-caption text-weight-bold text-grey-7 text-uppercase" style="font-size: 10px; letter-spacing: 0.05em">
-            Navigation
+          <div
+            class="workspace-shell__brand"
+            :class="{ 'workspace-shell__brand--mini': isMini }"
+          >
+            <img
+              :src="isMini ? brandLogoMarkSrc : brandLogoSrc"
+              alt="TradeFlow BD"
+              class="workspace-shell__brand-logo"
+              decoding="async"
+            />
           </div>
           <q-btn
             flat
@@ -474,6 +482,7 @@ import { useI18n } from 'vue-i18n';
 import { supabase } from 'src/boot/supabase';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useAppearance } from 'src/composables/useAppearance';
+import { useBrandAssets } from 'src/composables/useBrandAssets';
 import AboutSystemDialog from 'src/components/navigation/AboutSystemDialog.vue';
 
 const showAboutDialog = ref(false);
@@ -505,6 +514,7 @@ const authStore = useAuthStore();
 
 const $q = useQuasar();
 const { navPinned, setNavPinned, darkMode, setDarkMode, density, setDensity } = useAppearance();
+const { brandLogoSrc, brandLogoMarkSrc } = useBrandAssets();
 const miniState = ref(true);
 
 const i18n = useI18n();
@@ -989,6 +999,31 @@ const confirmLogout = async () => {
 .workspace-shell__drawer-top,
 .workspace-shell__drawer-bottom {
   padding: 0.75rem;
+}
+
+.workspace-shell__brand {
+  flex: 1;
+  min-width: 0;
+  padding-right: 4px;
+}
+
+.workspace-shell__brand--mini {
+  display: flex;
+  justify-content: center;
+  padding-right: 0;
+}
+
+.workspace-shell__brand-logo {
+  display: block;
+  width: 100%;
+  max-width: 168px;
+  height: auto;
+  border-radius: 8px;
+}
+
+.workspace-shell__brand--mini .workspace-shell__brand-logo {
+  width: 36px;
+  max-width: 36px;
 }
 
 .profile-card {

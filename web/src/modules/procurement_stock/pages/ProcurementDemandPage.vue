@@ -141,6 +141,12 @@
                       <div class="text-caption text-grey-7">
                         {{ item.product_code || item.barcode || '—' }}
                       </div>
+                      <div
+                        v-if="(item.placements?.length ?? 0) > 1"
+                        class="text-caption text-grey-6 q-mt-xs placement-summary"
+                      >
+                        {{ placementsSummary(item) }}
+                      </div>
                     </td>
                     <td class="text-center demand-qty-col text-weight-medium">{{ needQty(item) }}</td>
                     <td class="text-center demand-qty-col text-primary text-weight-medium">
@@ -151,7 +157,7 @@
                     </td>
                     <td class="demand-vendor-col">
                       <q-select
-                        v-if="canManagePlacements && remainingQty(item) > 0"
+                        v-if="showRowInputs(item)"
                         :model-value="getDraft(group, item).vendorId"
                         :options="vendorOptions"
                         option-value="id"
@@ -164,17 +170,20 @@
                         clearable
                         use-input
                         input-debounce="200"
-                        placeholder="Vendor"
+                        placeholder="Vendor (optional)"
                         class="demand-field"
                         data-test="placement-vendor-select"
                         @filter="filterVendors"
                         @update:model-value="(v) => setDraftVendor(group, item, v)"
                       />
+                      <div v-else-if="latestPlacement(item)" class="demand-readonly-cell">
+                        {{ placementVendorLabel(latestPlacement(item)!) }}
+                      </div>
                       <span v-else class="text-grey-6">—</span>
                     </td>
                     <td class="text-center demand-input-col">
                       <q-input
-                        v-if="canManagePlacements && remainingQty(item) > 0"
+                        v-if="showRowInputs(item)"
                         :model-value="getDraft(group, item).quantity"
                         type="number"
                         min="1"
@@ -185,24 +194,44 @@
                         data-test="placement-quantity"
                         @update:model-value="(v) => setDraftQuantity(group, item, v)"
                       />
+                      <div v-else-if="latestPlacement(item)" class="demand-readonly-cell text-center">
+                        {{ latestPlacement(item)!.quantity }}
+                      </div>
                       <span v-else class="text-grey-6">—</span>
                     </td>
                     <td class="demand-note-col">
                       <q-input
-                        v-if="canManagePlacements && remainingQty(item) > 0"
+                        v-if="showRowInputs(item)"
                         :model-value="getDraft(group, item).notes"
                         dense
                         outlined
                         hide-bottom-space
-                        placeholder="PO ref, notes..."
+                        placeholder="Notes (optional)"
                         class="demand-field"
                         data-test="placement-notes"
                         @update:model-value="(v) => setDraftNotes(group, item, v)"
                       />
+                      <div v-else-if="latestPlacement(item)" class="demand-readonly-cell">
+                        {{ latestPlacement(item)!.notes || '—' }}
+                      </div>
                       <span v-else class="text-grey-6">—</span>
                     </td>
                     <td class="text-center demand-status-col">
+                      <q-select
+                        v-if="canManagePlacements && latestPlacement(item) && !latestPlacement(item)!.global_shipment_item_id"
+                        :model-value="'active'"
+                        :options="placementStatusOptions"
+                        dense
+                        outlined
+                        hide-bottom-space
+                        emit-value
+                        map-options
+                        class="demand-field demand-field--status"
+                        :loading="cancellingPlacementId === latestPlacement(item)!.id"
+                        @update:model-value="(v) => onPlacementStatusChange(latestPlacement(item)!.id, v)"
+                      />
                       <q-chip
+                        v-else
                         dense
                         square
                         size="sm"
@@ -210,12 +239,16 @@
                         :text-color="lineStatusChip(item).textColor"
                         class="text-weight-bold"
                       >
-                        {{ lineStatusChip(item).label }}
+                        {{
+                          latestPlacement(item)?.global_shipment_item_id
+                            ? 'On shipment'
+                            : lineStatusChip(item).label
+                        }}
                       </q-chip>
                     </td>
                     <td class="text-center demand-action-col">
                       <q-btn
-                        v-if="canManagePlacements && remainingQty(item) > 0"
+                        v-if="showRowInputs(item)"
                         flat
                         round
                         dense
@@ -229,55 +262,6 @@
                         <q-tooltip>Save placement</q-tooltip>
                       </q-btn>
                     </td>
-                  </tr>
-
-                  <tr
-                    v-for="placement in item.placements ?? []"
-                    :key="placement.id"
-                    class="demand-placement-row"
-                  >
-                    <td />
-                    <td class="demand-product-col text-caption text-grey-7">
-                      ↳ {{ placementVendorLabel(placement) }}
-                    </td>
-                    <td class="text-center text-grey-5">—</td>
-                    <td class="text-center text-grey-5">—</td>
-                    <td class="text-center text-grey-5">—</td>
-                    <td class="demand-vendor-col text-caption text-grey-9">
-                      {{ placementVendorLabel(placement) }}
-                    </td>
-                    <td class="text-center demand-input-col text-weight-medium">
-                      {{ placement.quantity }}
-                    </td>
-                    <td class="demand-note-col text-caption text-grey-8">
-                      {{ placement.notes || '—' }}
-                    </td>
-                    <td class="text-center demand-status-col">
-                      <q-select
-                        v-if="canManagePlacements && !placement.global_shipment_item_id"
-                        :model-value="'active'"
-                        :options="placementStatusOptions"
-                        dense
-                        outlined
-                        hide-bottom-space
-                        emit-value
-                        map-options
-                        class="demand-field demand-field--status"
-                        :loading="cancellingPlacementId === placement.id"
-                        @update:model-value="(v) => onPlacementStatusChange(placement.id, v)"
-                      />
-                      <q-chip
-                        v-else
-                        dense
-                        square
-                        size="sm"
-                        color="grey-2"
-                        text-color="grey-9"
-                      >
-                        {{ placement.global_shipment_item_id ? 'On shipment' : 'Active' }}
-                      </q-chip>
-                    </td>
-                    <td />
                   </tr>
                 </template>
                 </template>
@@ -416,13 +400,30 @@ const needQty = (item: ProcurementDemandItem) => getItemNeedQuantity(item);
 const placedQty = (item: ProcurementDemandItem) => getItemPlacedQuantity(item);
 const remainingQty = (item: ProcurementDemandItem) => getItemRemainingQuantity(item);
 
+const placementVendorLabel = (placement: ProcurementPlacement) =>
+  placement.vendor_name || placement.vendor_code || '—';
+
+const latestPlacement = (item: ProcurementDemandItem): ProcurementPlacement | null => {
+  const list = item.placements ?? [];
+  return list.length ? list[list.length - 1]! : null;
+};
+
+const showRowInputs = (item: ProcurementDemandItem) =>
+  canManagePlacements.value && remainingQty(item) > 0;
+
+const placementsSummary = (item: ProcurementDemandItem) =>
+  (item.placements ?? [])
+    .map((p) => `${placementVendorLabel(p)} ×${p.quantity}`)
+    .join(' · ');
+
 const getDraft = (group: ProcurementDemandGroup, item: ProcurementDemandItem): ItemDraft => {
   const key = itemRowKey(item);
   if (!drafts[key]) {
+    const latest = latestPlacement(item);
     drafts[key] = {
-      vendorId: group.vendor?.id ?? null,
-      quantity: remainingQty(item),
-      notes: '',
+      vendorId: latest?.vendor_id ?? group.vendor?.id ?? null,
+      quantity: remainingQty(item) > 0 ? remainingQty(item) : (latest?.quantity ?? 1),
+      notes: latest?.notes ?? '',
     };
   }
   return drafts[key];
@@ -444,7 +445,7 @@ const setDraftNotes = (group: ProcurementDemandGroup, item: ProcurementDemandIte
 const canSaveDraft = (group: ProcurementDemandGroup, item: ProcurementDemandItem) => {
   const draft = getDraft(group, item);
   const qty = Number(draft.quantity);
-  return draft.vendorId !== null && Number.isFinite(qty) && qty > 0 && qty <= remainingQty(item);
+  return Number.isFinite(qty) && qty > 0 && qty <= remainingQty(item);
 };
 
 const filterVendors = (val: string, update: (fn: () => void) => void) => {
@@ -501,9 +502,6 @@ const groupTitle = (group: ProcurementDemandGroup) => {
   return `Costing file #${group.document_id}`;
 };
 
-const placementVendorLabel = (placement: ProcurementPlacement) =>
-  placement.vendor_name || placement.vendor_code || 'Vendor';
-
 const saveDraft = async (group: ProcurementDemandGroup, item: ProcurementDemandItem) => {
   if (!tenantId.value || !canSaveDraft(group, item)) return;
 
@@ -523,7 +521,7 @@ const saveDraft = async (group: ProcurementDemandGroup, item: ProcurementDemandI
     });
     showSuccessNotification('Vendor order recorded');
     delete drafts[key];
-    getDraft(group, item);
+    await refetch();
   } catch (err) {
     showErrorNotification(err instanceof Error ? err.message : 'Failed to record placement');
   } finally {
@@ -602,14 +600,22 @@ body.body--dark .demand-group-row td {
   border-bottom-color: #2e2e2e;
 }
 
-.demand-placement-row td {
-  background: #fafbfc;
-  padding-top: 2px !important;
-  padding-bottom: 2px !important;
+.demand-readonly-cell {
+  min-height: 30px;
+  padding: 4px 8px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #334155;
+  word-break: break-word;
 }
 
-body.body--dark .demand-placement-row td {
-  background: #1f1f1f;
+body.body--dark .demand-readonly-cell {
+  color: #ededed;
+}
+
+.placement-summary {
+  line-height: 1.3;
+  word-break: break-word;
 }
 
 .demand-image-col {
@@ -673,8 +679,8 @@ body.body--dark .demand-placement-row td {
 }
 
 .demand-input-col {
-  width: 72px;
-  min-width: 72px;
+  width: 100px;
+  min-width: 100px;
 }
 
 .demand-note-col {
@@ -701,7 +707,19 @@ body.body--dark .demand-placement-row td {
 }
 
 .demand-field--qty {
-  max-width: 72px;
+  min-width: 92px;
+  max-width: 100px;
+}
+
+.demand-field--qty :deep(input[type='number']::-webkit-outer-spin-button),
+.demand-field--qty :deep(input[type='number']::-webkit-inner-spin-button) {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.demand-field--qty :deep(input[type='number']) {
+  -moz-appearance: textfield;
+  text-align: center;
 }
 
 .demand-field--status {

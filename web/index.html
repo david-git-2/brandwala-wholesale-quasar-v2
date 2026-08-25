@@ -12,7 +12,7 @@
       content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width<% if (ctx.mode.cordova || ctx.mode.capacitor) { %>, viewport-fit=cover<% } %>"
     />
 
-    <link id="dynamic-favicon" rel="icon" type="image/svg+xml" href="favicon.ico" />
+    <link id="dynamic-favicon" rel="icon" type="image/png" href="/brand/favicon-light.png" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -22,17 +22,17 @@
       #app-splash {
         --splash-bg: #fbfaf7;
         --splash-surface: #ffffff;
-        --splash-mid: #ede9fe;
-        --splash-accent: #7c3aed;
-        --splash-accent-rgb: 124 58 237;
+        --splash-mid: #d1fae5;
+        --splash-accent: #0d6b5c;
+        --splash-accent-rgb: 13 107 92;
         --splash-ink: #171412;
         --splash-muted: #736a61;
         --splash-glow: rgb(var(--splash-accent-rgb) / 0.35);
-        --splash-blob-1: #c4b5fd;
-        --splash-blob-3: #ddd6fe;
-        --splash-gradient-end: #f3efff;
-        --splash-accent-dark: #5b21b6;
-        --splash-icon-tint: #faf8ff;
+        --splash-blob-1: #6ee7b7;
+        --splash-blob-3: #a7f3d0;
+        --splash-gradient-end: #f0fdf9;
+        --splash-accent-dark: #0a5248;
+        --splash-icon-tint: #f8fffc;
 
         position: fixed;
         inset: 0;
@@ -146,77 +146,14 @@
         animation: app-splash-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
       }
 
-      .app-splash__icon-wrap {
-        position: relative;
-        width: 6.5rem;
-        height: 6.5rem;
-        display: grid;
-        place-items: center;
-      }
-
-      .app-splash__ring {
-        position: absolute;
-        inset: 0;
-        border-radius: 1.35rem;
-        border: 1px solid rgb(var(--splash-accent-rgb) / 0.18);
-      }
-
-      .app-splash__ring--2 {
-        inset: -0.65rem;
-        border-radius: 1.65rem;
-        border-color: rgb(var(--splash-accent-rgb) / 0.08);
-      }
-
-      .app-splash__icon-card {
-        position: relative;
-        width: 5rem;
-        height: 5rem;
-        display: grid;
-        place-items: center;
-        border-radius: 1.15rem;
-        background: linear-gradient(145deg, #ffffff, var(--splash-icon-tint));
-        border: 1px solid rgb(var(--splash-accent-rgb) / 0.12);
-        box-shadow:
-          0 0 0 1px rgb(255 255 255 / 0.9),
-          0 14px 40px rgb(var(--splash-accent-rgb) / 0.12),
-          0 4px 16px rgb(23 20 18 / 0.06);
-      }
-
-      .app-splash__icon-card svg {
-        width: 2.6rem;
-        height: 2.6rem;
-        filter: drop-shadow(0 4px 10px rgb(var(--splash-accent-rgb) / 0.2));
-      }
-
-      .app-splash__copy {
-        text-align: center;
-      }
-
-      .app-splash__name {
+      .app-splash__logo {
+        width: min(300px, 78vw);
+        height: auto;
         display: block;
-        font-family:
-          'Plus Jakarta Sans',
-          system-ui,
-          -apple-system,
-          'Segoe UI',
-          Roboto,
-          sans-serif;
-        font-size: clamp(1.35rem, 3.8vw, 1.75rem);
-        font-weight: 700;
-        letter-spacing: -0.03em;
-        background: linear-gradient(
-          120deg,
-          var(--splash-ink) 0%,
-          var(--splash-accent-dark) 55%,
-          var(--splash-accent) 100%
-        );
-        -webkit-background-clip: text;
-        background-clip: text;
-        color: transparent;
       }
 
-      .app-splash__tagline {
-        margin: 0.45rem 0 0;
+      .app-splash__tenant {
+        margin: 0;
         font-family:
           'Plus Jakarta Sans',
           system-ui,
@@ -224,11 +161,13 @@
           'Segoe UI',
           Roboto,
           sans-serif;
-        font-size: 0.82rem;
-        font-weight: 500;
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
+        font-size: 0.9rem;
+        font-weight: 600;
         color: var(--splash-muted);
+      }
+
+      .app-splash__tenant[hidden] {
+        display: none;
       }
 
       .app-splash__loader {
@@ -269,16 +208,14 @@
       </div>
 
       <div class="app-splash__content">
-        <div class="app-splash__icon-wrap">
-          <div class="app-splash__ring app-splash__ring--2" aria-hidden="true"></div>
-          <div class="app-splash__ring" aria-hidden="true"></div>
-          <div class="app-splash__icon-card" id="app-splash-icon"></div>
-        </div>
-
-        <div class="app-splash__copy">
-          <span class="app-splash__name" id="app-splash-name">TradeFlowBD</span>
-          <p class="app-splash__tagline" id="app-splash-tagline">Run your business</p>
-        </div>
+        <img
+          id="app-splash-logo"
+          class="app-splash__logo"
+          src="/brand/logo-light.png"
+          alt="TradeFlow BD — Enterprise resource planning, B2B commerce"
+          decoding="async"
+        />
+        <p class="app-splash__tenant" id="app-splash-tenant" hidden></p>
 
         <div class="app-splash__loader" aria-hidden="true">
           <span class="app-splash__dot"></span>
@@ -342,14 +279,14 @@
             tagline: 'Your portfolio',
           },
           default: {
-            accent: '#7c3aed',
-            accentRgb: '124 58 237',
-            mid: '#ede9fe',
-            blob1: '#c4b5fd',
-            blob3: '#ddd6fe',
-            gradientEnd: '#f3efff',
-            accentDark: '#5b21b6',
-            iconTint: '#faf8ff',
+            accent: '#0d6b5c',
+            accentRgb: '13 107 92',
+            mid: '#d1fae5',
+            blob1: '#6ee7b7',
+            blob3: '#a7f3d0',
+            gradientEnd: '#f0fdf9',
+            accentDark: '#0a5248',
+            iconTint: '#f8fffc',
             ghost: 'Operations',
             tagline: 'Run your business',
           },
@@ -421,49 +358,25 @@
           return null;
         }
 
-        function buildIconMarkup(color) {
-          return (
-            '<svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
-            '<rect width="28" height="28" rx="7" fill="' +
-            color +
-            '" fill-opacity="0.15" />' +
-            '<path d="M7 9.5C7 8.12 8.12 7 9.5 7H14V14H7V9.5Z" fill="' +
-            color +
-            '" />' +
-            '<path d="M14 7H18.5C19.88 7 21 8.12 21 9.5V14H14V7Z" fill="' +
-            color +
-            '" fill-opacity="0.7" />' +
-            '<path d="M7 14H14V21H9.5C8.12 21 7 19.88 7 18.5V14Z" fill="' +
-            color +
-            '" fill-opacity="0.7" />' +
-            '<path d="M14 14H21V18.5C21 19.88 19.88 21 18.5 21H14V14Z" fill="' +
-            color +
-            '" fill-opacity="0.45" />' +
-            '</svg>'
-          );
+        function isDarkAppearance() {
+          try {
+            var localDark = localStorage.getItem('brandwala.appearance.darkMode');
+            if (localDark === 'true') return true;
+            if (localDark === 'false') return false;
+          } catch (error) {
+            // ignore
+          }
+          return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
         }
 
-        function buildFaviconHref(color) {
-          var svg =
-            '<svg width="32" height="32" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">' +
-            '<rect width="28" height="28" rx="7" fill="' +
-            color +
-            '" fill-opacity="0.18"/>' +
-            '<path d="M7 9.5C7 8.12 8.12 7 9.5 7H14V14H7V9.5Z" fill="' +
-            color +
-            '"/>' +
-            '<path d="M14 7H18.5C19.88 7 21 8.12 21 9.5V14H14V7Z" fill="' +
-            color +
-            '" fill-opacity="0.7"/>' +
-            '<path d="M7 14H14V21H9.5C8.12 21 7 19.88 7 18.5V14Z" fill="' +
-            color +
-            '" fill-opacity="0.7"/>' +
-            '<path d="M14 14H21V18.5C21 19.88 19.88 21 18.5 21H14V14Z" fill="' +
-            color +
-            '" fill-opacity="0.45"/>' +
-            '</svg>';
-          return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
-        }
+        var BRAND_LOGO_LIGHT_SRC = '/brand/logo-light.png';
+        var BRAND_LOGO_DARK_SRC = '/brand/logo-dark.png';
+        var BRAND_FAVICON_LIGHT_SRC = '/brand/favicon-light.png';
+        var BRAND_FAVICON_DARK_SRC = '/brand/favicon-dark.png';
+
+        var splashDark = isDarkAppearance();
+        var BRAND_LOGO_SRC = splashDark ? BRAND_LOGO_DARK_SRC : BRAND_LOGO_LIGHT_SRC;
+        var BRAND_FAVICON_SRC = splashDark ? BRAND_FAVICON_DARK_SRC : BRAND_FAVICON_LIGHT_SRC;
 
         var splash = document.getElementById('app-splash');
         if (!splash) return;
@@ -480,6 +393,12 @@
         var tenantName = resolveTenantName(scope, auth, workspace, path);
 
         splash.dataset.scope = scope;
+        if (splashDark) {
+          splash.style.setProperty('--splash-bg', '#171412');
+          splash.style.setProperty('--splash-surface', '#1f1c19');
+          splash.style.setProperty('--splash-ink', '#f5f2ec');
+          splash.style.setProperty('--splash-muted', '#a89f94');
+        }
         splash.style.setProperty('--splash-accent', theme.accent);
         splash.style.setProperty('--splash-accent-rgb', theme.accentRgb);
         splash.style.setProperty('--splash-mid', theme.mid);
@@ -493,19 +412,29 @@
         var ghost = document.getElementById('app-splash-ghost');
         if (ghost) ghost.textContent = theme.ghost;
 
-        var name = document.getElementById('app-splash-name');
-        if (name) name.textContent = tenantName || 'TradeFlowBD';
+        var tenantLine = document.getElementById('app-splash-tenant');
+        if (tenantLine) {
+          if (tenantName && tenantName !== 'TradeFlowBD' && tenantName !== 'TradeFlow BD') {
+            tenantLine.textContent = tenantName;
+            tenantLine.hidden = false;
+          } else {
+            tenantLine.textContent = '';
+            tenantLine.hidden = true;
+          }
+        }
 
-        var tagline = document.getElementById('app-splash-tagline');
-        if (tagline) tagline.textContent = theme.tagline;
-
-        var icon = document.getElementById('app-splash-icon');
-        if (icon) icon.innerHTML = buildIconMarkup(theme.accent);
+        var logo = document.getElementById('app-splash-logo');
+        if (logo) logo.src = BRAND_LOGO_SRC;
 
         var favicon = document.getElementById('dynamic-favicon');
         if (favicon) {
-          favicon.type = 'image/svg+xml';
-          favicon.href = buildFaviconHref(theme.accent);
+          favicon.type = 'image/png';
+          favicon.href = BRAND_FAVICON_SRC;
+        }
+
+        if (splashDark) {
+          var themeColor = document.querySelector('meta[name="theme-color"]');
+          if (themeColor) themeColor.setAttribute('content', '#171412');
         }
 
         var metaTheme = document.querySelector('meta[name="theme-color"]');

@@ -24,7 +24,7 @@
           clearable
           use-input
           input-debounce="200"
-          label="Vendor"
+          label="Vendor (optional)"
           :loading="vendorsLoading"
           data-test="placement-vendor-select"
           @filter="filterVendors"
@@ -55,7 +55,7 @@
           autogrow
           outlined
           dense
-          label="Notes"
+          label="Notes (optional)"
           placeholder="PO reference, urgency, substitute info..."
           data-test="placement-notes"
         />
@@ -129,8 +129,7 @@ const vendorOptions = computed(() => {
 
 const canSubmit = computed(() => {
   const qty = Number(quantity.value);
-  const hasVendor = selectedVendorId.value !== null || vendorCode.value.trim().length > 0;
-  return hasVendor && Number.isFinite(qty) && qty > 0;
+  return Number.isFinite(qty) && qty > 0;
 });
 
 const resetForm = () => {

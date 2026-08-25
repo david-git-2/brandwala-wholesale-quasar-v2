@@ -144,17 +144,14 @@ CREATE TABLE public.procurement_placements (
   global_shipment_item_id     bigint REFERENCES public.global_shipment_items(id) ON DELETE SET NULL,
   created_at                  timestamptz NOT NULL DEFAULT now(),
   updated_at                  timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT procurement_placements_quantity_check CHECK (quantity > 0),
-  CONSTRAINT procurement_placements_vendor_present_check CHECK (
-    vendor_id IS NOT NULL OR nullif(trim(vendor_code), '') IS NOT NULL
-  )
+  CONSTRAINT procurement_placements_quantity_check CHECK (quantity > 0)
 );
 ```
 
 | Column | Notes |
 | :--- | :--- |
 | `tenant_id` | Child tenant that owns the demand line (resolved from source row on insert) |
-| `vendor_id` / `vendor_code` | At least one required; `vendor_code` is display snapshot |
+| `vendor_id` / `vendor_code` | Optional; either or both may be null |
 | `quantity` | Units ordered in **this** placement (multiple rows per line allowed) |
 | `notes` | Staff note (PO ref, urgency, substitute, etc.) |
 | `status` | `active` counts toward `placed_quantity`; `cancelled` is audit-only |
@@ -476,8 +473,8 @@ record_procurement_placement(
 | `p_tenant_id` | ✓ | Child tenant (or parent context — resolve source line tenant) |
 | `p_source_type` | ✓ | `shop_order_item` \| `pbc_costing_item` |
 | `p_source_id` | ✓ | Line id |
-| `p_vendor_id` | | At least one of `p_vendor_id` or `p_vendor_code` |
-| `p_vendor_code` | | |
+| `p_vendor_id` | | Optional |
+| `p_vendor_code` | | Optional |
 | `p_quantity` | ✓ | Must be &gt; 0 |
 | `p_notes` | | Optional |
 

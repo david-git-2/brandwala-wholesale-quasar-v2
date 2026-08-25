@@ -14,34 +14,12 @@
           <div class="auth-canvas">
             <!-- Brand wordmark — top left -->
             <div class="auth-canvas__brand">
-              <div class="auth-canvas__brand-mark" aria-hidden="true">
-                <svg
-                  width="24"
-                  height="24"
-                  viewBox="0 0 28 28"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <rect width="28" height="28" rx="7" fill="currentColor" fill-opacity="0.2" />
-                  <path d="M7 9.5C7 8.12 8.12 7 9.5 7H14V14H7V9.5Z" fill="currentColor" />
-                  <path
-                    d="M14 7H18.5C19.88 7 21 8.12 21 9.5V14H14V7Z"
-                    fill="currentColor"
-                    fill-opacity="0.7"
-                  />
-                  <path
-                    d="M7 14H14V21H9.5C8.12 21 7 19.88 7 18.5V14Z"
-                    fill="currentColor"
-                    fill-opacity="0.7"
-                  />
-                  <path
-                    d="M14 14H21V18.5C21 19.88 19.88 21 18.5 21H14V14Z"
-                    fill="currentColor"
-                    fill-opacity="0.45"
-                  />
-                </svg>
-              </div>
-              <span class="auth-canvas__brand-name">TradeFlowBD</span>
+              <img
+                :src="brandLogoSrc"
+                class="auth-canvas__brand-logo"
+                alt="TradeFlow BD — Enterprise resource planning, B2B commerce"
+                decoding="async"
+              />
             </div>
 
             <!-- Giant ghost word — centred vertically -->
@@ -52,7 +30,7 @@
             <!-- Bottom tagline -->
             <div class="auth-canvas__footer">
               <p class="auth-canvas__tagline">{{ tagline }}</p>
-              <p class="auth-canvas__credit">Powered by TradeFlowBD</p>
+              <p class="auth-canvas__credit">Powered by TradeFlow BD</p>
             </div>
           </div>
 
@@ -69,8 +47,10 @@
 <script setup lang="ts">
 import { computed, provide, ref } from 'vue';
 import { useRoute } from 'vue-router';
+import { useBrandAssets } from 'src/composables/useBrandAssets';
 
 const route = useRoute();
+const { brandLogoSrc } = useBrandAssets();
 
 // Injected by AuthLoginPanel so the headline can use the real store name
 const panelTitle = ref('');
@@ -247,24 +227,14 @@ const tagline = computed(() => {
 /* ── Brand wordmark ──────────────────────────────────── */
 .auth-canvas__brand {
   display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  color: var(--auth-accent);
+  align-items: flex-start;
   flex-shrink: 0;
 }
 
-.auth-canvas__brand-mark {
-  display: flex;
-  align-items: center;
-  color: var(--auth-accent);
-}
-
-.auth-canvas__brand-name {
-  font-size: 0.82rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: rgb(255 255 255 / 0.65);
+.auth-canvas__brand-logo {
+  display: block;
+  width: min(220px, 52vw);
+  height: auto;
 }
 
 /* ── Giant ghost word ────────────────────────────────── */

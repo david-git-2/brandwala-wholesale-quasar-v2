@@ -1,5 +1,6 @@
 import { ref } from 'vue';
 import { Dark } from 'quasar';
+import { syncFaviconWithAppearance } from 'src/composables/useDynamicFavicon';
 import { useMembershipPreferenceStore } from '../modules/membership/stores/membershipPreferenceStore';
 import type { MembershipPreferenceSchema } from '../modules/membership/types/preferences';
 
@@ -17,6 +18,7 @@ export const applyDarkMode = (val: boolean) => {
   darkMode.value = val;
   Dark.set(val);
   setLocalStorage('brandwala.appearance.darkMode', val ? 'true' : 'false');
+  syncFaviconWithAppearance();
 };
 
 export const applyDensity = (val: 'comfortable' | 'compact') => {

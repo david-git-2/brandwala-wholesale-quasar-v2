@@ -4,19 +4,15 @@
       <!-- Header banner -->
       <div class="about-header q-pa-lg text-white">
         <div class="row items-center justify-between no-wrap">
-          <div class="row items-center q-gutter-x-md no-wrap">
-            <q-avatar size="48px" class="bg-white text-primary shadow-2">
-              <q-icon name="ph ph-buildings" size="26px" />
-            </q-avatar>
-            <div>
-              <div class="row items-center q-gutter-x-xs">
-                <span class="text-h6 text-weight-bold">Brandwala Commerce OS</span>
-                <q-badge color="white" text-color="primary" class="text-weight-bold text-caption q-ml-xs">v2.0</q-badge>
-              </div>
-              <div class="text-caption text-blue-1 text-weight-medium">
-                Enterprise Wholesale, Supply Chain & Financial ERP
-              </div>
-            </div>
+          <div class="about-header__logo-wrap">
+            <img
+              :src="brandLogoSrc"
+              alt="TradeFlow BD — Enterprise resource planning, B2B commerce"
+              class="about-header__logo-full"
+              decoding="async"
+            />
+            <q-badge color="primary" text-color="white" class="about-header__version text-weight-bold text-caption"
+              >v2.0</q-badge>
           </div>
           <q-btn flat round dense icon="ph ph-x" color="white" v-close-popup />
         </div>
@@ -26,8 +22,8 @@
       <q-card-section class="q-pa-md q-gutter-y-md">
         <!-- Overview summary -->
         <p class="text-body2 text-grey-8 q-mb-none line-height-relaxed">
-          Brandwala is an integrated enterprise operations platform unifying international procurement,
-          serialized multi-warehouse inventory, B2B wholesale distribution, retail commerce, and real-time subledger accounting.
+          TradeFlow BD is an integrated enterprise operations platform unifying international procurement,
+          multi-warehouse inventory, B2B wholesale distribution, storefront commerce, and real-time ledger accounting.
         </p>
 
         <!-- Core Modules Grid -->
@@ -76,6 +72,10 @@
 </template>
 
 <script setup lang="ts">
+import { useBrandAssets } from 'src/composables/useBrandAssets';
+
+const { brandLogoSrc } = useBrandAssets();
+
 defineProps<{
   modelValue: boolean;
 }>();
@@ -132,7 +132,25 @@ const modules = [
 
 <style scoped>
 .about-header {
-  background: linear-gradient(135deg, #1976d2 0%, #0d47a1 100%);
+  background: linear-gradient(135deg, #0d6b5c 0%, #0f5c5a 100%);
+}
+
+.about-header__logo-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.about-header__logo-full {
+  display: block;
+  width: min(260px, 100%);
+  height: auto;
+}
+
+.about-header__version {
+  position: absolute;
+  top: -6px;
+  right: -6px;
 }
 
 .capability-card {
