@@ -61,14 +61,17 @@
       </q-banner>
 
       <template v-if="!isLoading">
-        <!-- Workflow Bar Component -->
         <ProductBasedCostingFileWorkflowBar
           :file="file ?? null"
           :is-loading="isLoading"
           :status="status"
-          :updating-status="updatingStatus"
-          :target-updating-status="targetUpdatingStatus"
-          @update-status="onUpdateStatus"
+          @override-status="showStatusOverrideDialog = true"
+        />
+
+        <ProductBasedCostingRatesBar
+          v-if="file"
+          :file="file"
+          :status="status"
           @save-rates="onRateSave"
         />
 
@@ -102,6 +105,18 @@
           :conversion-rate="conversionRateValue"
         />
 
+        <ProductBasedCostingStaffActions
+          v-if="file"
+          :status="status"
+          :show-cancel="status !== 'delivered' && status !== 'cancelled'"
+          :is-primary-loading="updatingStatus"
+          :is-cancelling="updatingStatus && targetUpdatingStatus === 'cancelled'"
+          :primary-disabled="pbcPrimaryDisabled"
+          :primary-disabled-reason="pbcPrimaryDisabledReason"
+          @primary-action="handlePbcPrimaryAction"
+          @cancel-file="onCancelFile"
+        />
+
         <!-- Drawers & Dialogs -->
         <PbcBacklogSuggestDrawer
           v-model="showBacklogDrawer"
@@ -127,6 +142,14 @@
           @created="handleCreated"
           @updated="handleUpdated"
         />
+
+        <ProductBasedCostingStatusOverrideDialog
+          v-if="file"
+          v-model="showStatusOverrideDialog"
+          :file="file"
+          :loading="updatingStatus"
+          @apply="onStatusOverride"
+        />
       </template>
     </div>
   </q-page>
@@ -140,6 +163,9 @@ import { useRoute, useRouter } from 'vue-router';
 import { useQueryClient } from '@tanstack/vue-query';
 import ProductBasedCostingFileHeader from '../components/ProductBasedCostingFileHeader.vue';
 import ProductBasedCostingFileWorkflowBar from '../components/ProductBasedCostingFileWorkflowBar.vue';
+import ProductBasedCostingRatesBar from '../components/ProductBasedCostingRatesBar.vue';
+import ProductBasedCostingStaffActions from '../components/ProductBasedCostingStaffActions.vue';
+import ProductBasedCostingStatusOverrideDialog from '../components/ProductBasedCostingStatusOverrideDialog.vue';
 import ProductBasedCostingFileSummaryCards from '../components/ProductBasedCostingFileSummaryCards.vue';
 import ProductBasedCostingFileDialog from '../components/ProductBasedCostingFileDialog.vue';
 import ProductBasedCostingItemAddDialog from '../components/ProductBasedCostingItemAddDialog.vue';
@@ -174,6 +200,11 @@ import {
   normalizePbcFileStatus,
   useProductBasedCostingFileDetailsState,
 } from '../composables/useProductBasedCostingFileDetailsState';
+import {
+  getStaffPbcPrimaryAction,
+  getStaffPbcPrimaryActionTargetStatus,
+  type StaffPbcPrimaryAction,
+} from '../utils/pbcFileStatus';
 
 const $q = useQuasar();
 const { t } = useI18n();
@@ -187,6 +218,7 @@ const backlog = usePbcBacklog();
 const showBacklogDrawer = ref(false);
 const showFileDialog = ref(false);
 const showItemDialog = ref(false);
+const showStatusOverrideDialog = ref(false);
 const selectedItem = ref<ProductBasedCostingItem | null>(null);
 const savingBillingProfile = ref(false);
 
@@ -243,6 +275,37 @@ const nextStepBanner = computed(() => {
   if (status.value === 'offered') return t('product_based_costing.next_offered');
   if (status.value === 'confirmed') return t('product_based_costing.next_confirmed');
   if (status.value === 'procuring') return t('product_based_costing.next_procuring');
+  return '';
+});
+
+const incompleteOfferItemCount = computed(
+  () =>
+    costingItems.value.filter((item) => {
+      const price = Number(item.price_gbp ?? 0);
+      const weight = Number(item.product_weight ?? 0);
+      return !(price > 0) || !(weight > 0);
+    }).length,
+);
+
+const pbcPrimaryDisabled = computed(() => {
+  const action = getStaffPbcPrimaryAction(status.value);
+  if (!action) return true;
+  if (!costingItems.value.length) return true;
+  if (action === 'send_offer') {
+    return incompleteOfferItemCount.value > 0 || cargoRateValue.value <= 0;
+  }
+  return false;
+});
+
+const pbcPrimaryDisabledReason = computed(() => {
+  const action = getStaffPbcPrimaryAction(status.value);
+  if (!costingItems.value.length) {
+    return t('product_based_costing.primary_disabled_no_items');
+  }
+  if (action === 'send_offer' && pbcPrimaryDisabled.value) {
+    if (cargoRateValue.value <= 0) return t('product_based_costing.cargo_rate_zero');
+    return t('product_based_costing.primary_disabled_incomplete');
+  }
   return '';
 });
 
@@ -429,9 +492,10 @@ async function applyStatus(nextStatus: string) {
   }
 }
 
-function onUpdateStatus(nextStatus: string) {
-  if (status.value === nextStatus || updatingStatus.value) return;
-  if (nextStatus === 'confirmed') {
+function handlePbcPrimaryAction(action: StaffPbcPrimaryAction) {
+  const nextStatus = getStaffPbcPrimaryActionTargetStatus(action);
+  if (action === 'confirm_order') {
+    if (status.value === nextStatus || updatingStatus.value) return;
     $q.dialog({
       title: t('product_based_costing.confirm_order_title'),
       message: t('product_based_costing.confirm_order_message'),
@@ -443,6 +507,43 @@ function onUpdateStatus(nextStatus: string) {
     return;
   }
   void applyStatus(nextStatus);
+}
+
+function onCancelFile() {
+  if (updatingStatus.value) return;
+  $q.dialog({
+    title: t('product_based_costing.cancel_file_title'),
+    message: t('product_based_costing.cancel_file_message'),
+    cancel: { label: t('product_based_costing.not_now'), flat: true },
+    ok: {
+      label: t('product_based_costing.cancel_file'),
+      color: 'negative',
+      unelevated: true,
+    },
+  }).onOk(() => {
+    void applyStatus('cancelled');
+  });
+}
+
+async function onStatusOverride(payload: { status: string; reason: string }) {
+  if (updatingStatus.value || status.value === payload.status) return;
+  updatingStatus.value = true;
+  targetUpdatingStatus.value = payload.status;
+  try {
+    status.value = payload.status;
+    await onStatusChange();
+    showStatusOverrideDialog.value = false;
+    $q.notify({
+      type: 'info',
+      message: t('product_based_costing.override_applied', {
+        status: t(`product_based_costing.status_${normalizePbcFileStatus(payload.status)}`),
+        reason: payload.reason,
+      }),
+    });
+  } finally {
+    updatingStatus.value = false;
+    targetUpdatingStatus.value = null;
+  }
 }
 
 async function onRateSave(payload: {
