@@ -1,6 +1,6 @@
 <template>
-  <q-page class="q-pa-md costing-details-page">
-    <div class="q-gutter-y-md">
+  <q-page class="costing-details-page q-pa-sm column no-wrap">
+    <div class="col overflow-auto costing-details-page__stack q-gutter-y-sm">
       <ProductBasedCostingFileHeader
         :file="file ?? null"
         :is-loading="isLoading"
@@ -23,7 +23,8 @@
       <q-banner
         v-if="!isLoading && file && availableBacklogItems.length"
         dense
-        class="bg-orange-1 text-grey-9 rounded-borders"
+        rounded
+        class="bg-orange-1 text-grey-9 rounded-borders compact-banner"
       >
         <template #avatar>
           <q-icon name="ph ph-tray" color="orange-9" />
@@ -53,25 +54,21 @@
       </q-banner>
 
       <q-banner
-        v-if="!isLoading && file && nextStepBanner"
+        v-if="!isLoading && file && showEmptyNextStepBanner"
         dense
-        class="bg-primary-soft text-primary rounded-borders"
+        rounded
+        class="bg-primary-soft text-primary rounded-borders compact-banner"
       >
         {{ nextStepBanner }}
       </q-banner>
 
       <template v-if="!isLoading">
         <ProductBasedCostingFileWorkflowBar
-          :file="file ?? null"
+          v-if="file"
+          :file="file"
           :is-loading="isLoading"
           :status="status"
           @override-status="showStatusOverrideDialog = true"
-        />
-
-        <ProductBasedCostingRatesBar
-          v-if="file"
-          :file="file"
-          :status="status"
           @save-rates="onRateSave"
         />
 
@@ -104,20 +101,23 @@
           :summary-metrics="summaryMetrics"
           :conversion-rate="conversionRateValue"
         />
+      </template>
+    </div>
 
-        <ProductBasedCostingStaffActions
-          v-if="file"
-          :status="status"
-          :show-cancel="status !== 'delivered' && status !== 'cancelled'"
-          :is-primary-loading="updatingStatus"
-          :is-cancelling="updatingStatus && targetUpdatingStatus === 'cancelled'"
-          :primary-disabled="pbcPrimaryDisabled"
-          :primary-disabled-reason="pbcPrimaryDisabledReason"
-          @primary-action="handlePbcPrimaryAction"
-          @cancel-file="onCancelFile"
-        />
+    <ProductBasedCostingStaffActions
+      v-if="file && !isLoading"
+      class="col-auto"
+      :status="status"
+      :show-cancel="status !== 'delivered' && status !== 'cancelled'"
+      :is-primary-loading="updatingStatus"
+      :is-cancelling="updatingStatus && targetUpdatingStatus === 'cancelled'"
+      :primary-disabled="pbcPrimaryDisabled"
+      :primary-disabled-reason="pbcPrimaryDisabledReason"
+      @primary-action="handlePbcPrimaryAction"
+      @cancel-file="onCancelFile"
+    />
 
-        <!-- Drawers & Dialogs -->
+    <template v-if="!isLoading">
         <PbcBacklogSuggestDrawer
           v-model="showBacklogDrawer"
           :items="availableBacklogItems"
@@ -150,8 +150,7 @@
           :loading="updatingStatus"
           @apply="onStatusOverride"
         />
-      </template>
-    </div>
+    </template>
   </q-page>
 </template>
 
@@ -163,7 +162,6 @@ import { useRoute, useRouter } from 'vue-router';
 import { useQueryClient } from '@tanstack/vue-query';
 import ProductBasedCostingFileHeader from '../components/ProductBasedCostingFileHeader.vue';
 import ProductBasedCostingFileWorkflowBar from '../components/ProductBasedCostingFileWorkflowBar.vue';
-import ProductBasedCostingRatesBar from '../components/ProductBasedCostingRatesBar.vue';
 import ProductBasedCostingStaffActions from '../components/ProductBasedCostingStaffActions.vue';
 import ProductBasedCostingStatusOverrideDialog from '../components/ProductBasedCostingStatusOverrideDialog.vue';
 import ProductBasedCostingFileSummaryCards from '../components/ProductBasedCostingFileSummaryCards.vue';
@@ -271,12 +269,12 @@ const nextStepBanner = computed(() => {
     if (availableBacklogItems.value.length > 0) return '';
     return t('product_based_costing.next_empty');
   }
-  if (status.value === 'pending') return t('product_based_costing.next_pending');
-  if (status.value === 'offered') return t('product_based_costing.next_offered');
-  if (status.value === 'confirmed') return t('product_based_costing.next_confirmed');
-  if (status.value === 'procuring') return t('product_based_costing.next_procuring');
   return '';
 });
+
+const showEmptyNextStepBanner = computed(
+  () => !!nextStepBanner.value && costingItems.value.length === 0,
+);
 
 const incompleteOfferItemCount = computed(
   () =>
@@ -807,6 +805,16 @@ async function onPackageWeightChange(payload: WeightChangePayload) {
 <style scoped lang="scss">
 .costing-details-page {
   background: transparent;
+  min-height: inherit;
+}
+
+.costing-details-page__stack {
+  min-height: 0;
+}
+
+.compact-banner :deep(.q-banner) {
+  min-height: 0;
+  padding: 6px 10px;
 }
 
 .costing-items-surface {

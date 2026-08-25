@@ -1,41 +1,38 @@
 <template>
-  <q-card flat bordered class="pbc-staff-actions q-pa-md">
-    <div class="row items-center justify-between q-col-gutter-sm">
-      <div class="col-auto">
-        <q-btn
-          v-if="showCancel"
-          outline
-          color="negative"
-          no-caps
-          icon="ph ph-x-circle"
-          :label="$t('product_based_costing.cancel_file')"
-          class="text-weight-bold action-btn square-btn"
-          :loading="isCancelling"
-          @click="emit('cancel-file')"
-        />
-      </div>
-
-      <div class="col row items-center justify-end q-gutter-sm">
-        <span v-if="waitMessage" class="text-caption text-grey-7 text-right wait-copy">
-          {{ waitMessage }}
-        </span>
-        <q-btn
-          v-if="primaryAction"
-          unelevated
-          color="primary"
-          no-caps
-          icon-right="ph ph-arrow-right"
-          class="text-weight-bold q-px-lg action-btn square-btn"
-          :label="primaryActionLabel"
-          :loading="isPrimaryLoading"
-          :disable="primaryDisabled"
-          @click="emit('primary-action', primaryAction)"
-        >
-          <q-tooltip v-if="primaryDisabledReason">{{ primaryDisabledReason }}</q-tooltip>
-        </q-btn>
-      </div>
+  <div class="pbc-staff-actions">
+    <div class="pbc-staff-actions__inner row items-center justify-end q-gutter-sm">
+      <span v-if="waitMessage" class="text-caption text-grey-7 wait-copy">
+        {{ waitMessage }}
+      </span>
+      <q-btn
+        v-if="showCancel"
+        outline
+        color="negative"
+        dense
+        no-caps
+        icon="ph ph-x-circle"
+        :label="$t('product_based_costing.cancel_file')"
+        class="text-weight-bold action-btn square-btn"
+        :loading="isCancelling"
+        @click="emit('cancel-file')"
+      />
+      <q-btn
+        v-if="primaryAction"
+        unelevated
+        color="primary"
+        dense
+        no-caps
+        icon-right="ph ph-arrow-right"
+        class="text-weight-bold q-px-md action-btn square-btn"
+        :label="primaryActionLabel"
+        :loading="isPrimaryLoading"
+        :disable="primaryDisabled"
+        @click="emit('primary-action', primaryAction)"
+      >
+        <q-tooltip v-if="primaryDisabledReason">{{ primaryDisabledReason }}</q-tooltip>
+      </q-btn>
     </div>
-  </q-card>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -87,8 +84,15 @@ const waitMessage = computed(() => {
   bottom: 0;
   z-index: 10;
   background: #fff;
-  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
+  margin: 0 -8px -8px;
   border-radius: 10px 10px 0 0;
+}
+
+.pbc-staff-actions__inner {
+  padding: 8px 12px;
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
 }
 
 .action-btn {
@@ -96,6 +100,8 @@ const waitMessage = computed(() => {
 }
 
 .wait-copy {
-  max-width: 280px;
+  max-width: 240px;
+  text-align: right;
+  margin-right: auto;
 }
 </style>

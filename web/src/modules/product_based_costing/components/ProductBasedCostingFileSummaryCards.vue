@@ -1,5 +1,5 @@
 <template>
-  <div class="q-mt-lg">
+  <div class="q-mt-sm">
     <div class="text-subtitle1 text-weight-bold q-mb-sm text-grey-9 row items-center">
       <q-icon name="ph ph-chart-line-up" class="q-mr-xs text-primary" size="20px" />
       {{ $t('product_based_costing.summary_title') }}
