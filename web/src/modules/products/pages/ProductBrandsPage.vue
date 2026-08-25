@@ -296,7 +296,7 @@ onMounted(async () => {
   border-radius: 16px;
 }
 .pill-btn {
-  border-radius: 999px;
+  border-radius: 8px;
 }
 .slim-btn {
   min-height: 32px;

@@ -284,7 +284,7 @@ const customerGroupMemberColumns = [
 
 <style scoped>
 .pill-btn {
-  border-radius: 999px;
+  border-radius: 8px;
 }
 
 .customer-group-chip {

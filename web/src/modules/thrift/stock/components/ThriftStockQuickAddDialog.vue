@@ -327,7 +327,7 @@ function updateFormField<K extends keyof QuickAddForm>(key: K, val: QuickAddForm
 }
 
 .pill-btn {
-  border-radius: 999px;
+  border-radius: 8px;
 }
 
 .slim-btn {

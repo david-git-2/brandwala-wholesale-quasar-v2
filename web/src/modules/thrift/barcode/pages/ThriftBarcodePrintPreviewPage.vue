@@ -184,7 +184,7 @@ const closePostPrint = async (markAsPrinted: boolean) => {
 }
 
 .pill-btn {
-  border-radius: 999px;
+  border-radius: 8px;
 }
 
 /* 3 columns grid for printable labels */

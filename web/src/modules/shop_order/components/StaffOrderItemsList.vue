@@ -189,7 +189,7 @@ const emit = defineEmits<{
 }
 
 .pill-btn {
-  border-radius: 30px;
+  border-radius: 8px;
 }
 
 .counter-input :deep(.q-field__control) {

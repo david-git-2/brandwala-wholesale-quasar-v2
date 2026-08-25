@@ -14,7 +14,7 @@ These canonical rules govern the layout, density, and styling of table list and 
 
 ## 3. Compact & Denser Controls
 - **Search Input**: Use `outlined rounded dense` inputs (`<q-input outlined rounded dense placeholder="...">`).
-- **Primary Action Buttons**: Primary buttons (e.g., "Add Shipment", "Create Invoice") MUST use **rounded-corner square** styling (`border-radius: 8px`), NOT pill shapes (`border-radius: 999px`).
+- **Primary Action Buttons**: All buttons use **rounded square** corners (`border-radius: 8px`) globally via `.q-btn`, `.pill-btn`, and `.square-btn` in `app.scss`. Do not override with pill/circle shapes.
 
 ## 4. Status High-Visibility & Row Background Hues
 - **Status Background Hues**: Table rows (`<q-tr>`) MUST feature a subtle background hue/tint based on the record's status, with full dark mode support:

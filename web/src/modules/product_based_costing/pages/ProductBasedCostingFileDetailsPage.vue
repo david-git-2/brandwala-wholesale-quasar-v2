@@ -1,7 +1,6 @@
 <template>
-  <q-page class="q-pa-sm costing-details-page">
-    <div class="q-gutter-y-sm">
-      <!-- Top Header Bar Component -->
+  <q-page class="q-pa-md costing-details-page">
+    <div class="q-gutter-y-md">
       <ProductBasedCostingFileHeader
         :file="file ?? null"
         :is-loading="isLoading"
@@ -10,7 +9,6 @@
         :loading-profiles="loadingProfiles"
         :saving-billing-profile="savingBillingProfile"
         :item-count="costingItems.length"
-        @go-back="goBack"
         @open-create-item="openCreateDialog"
         @open-edit-file="showFileDialog = true"
         @open-bulk-paste="openBulkPaste"
@@ -37,6 +35,7 @@
             dense
             no-caps
             color="primary"
+            class="square-btn"
             :label="$t('product_based_costing.review')"
             @click="openBacklogDrawer"
           />
@@ -45,6 +44,7 @@
             dense
             no-caps
             color="primary"
+            class="square-btn"
             :label="$t('product_based_costing.add_all')"
             :loading="backlog.saving.value"
             @click="handleAddAllStillNeeded"
@@ -701,9 +701,6 @@ async function onPackageWeightChange(payload: WeightChangePayload) {
   }
 }
 
-function goBack() {
-  void router.push({ name: 'product-based-costing-page' });
-}
 </script>
 
 <style scoped lang="scss">

@@ -387,6 +387,6 @@ const saveCharges = () => {
 }
 
 .pill-btn {
-  border-radius: 30px;
+  border-radius: 8px;
 }
 </style>

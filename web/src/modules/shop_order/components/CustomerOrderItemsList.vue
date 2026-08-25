@@ -154,7 +154,7 @@ export default {
 }
 
 .pill-btn {
-  border-radius: 30px;
+  border-radius: 8px;
 }
 
 .negotiate-action-card {

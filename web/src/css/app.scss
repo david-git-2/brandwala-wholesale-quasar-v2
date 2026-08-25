@@ -325,6 +325,17 @@ body {
   &:active {
     transform: scale(0.98);
   }
+
+  &.q-btn--round {
+    border-radius: 8px !important;
+  }
+}
+
+.pill-btn,
+.square-btn,
+.rounded-btn {
+  border-radius: 8px !important;
+  font-weight: 600;
 }
 
 /* 6. Chips & Badges */
@@ -449,11 +460,6 @@ body.body--dark {
 
 .hero-surface {
   border-radius: 8px;
-}
-
-.pill-btn {
-  border-radius: 999px !important;
-  font-weight: 600;
 }
 
 .soft-input .q-field__control {

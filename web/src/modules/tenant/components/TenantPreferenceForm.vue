@@ -87,7 +87,7 @@ function updateField(key: string, value: unknown) {
 
 <style scoped>
 .pill-btn {
-  border-radius: 999px;
+  border-radius: 8px;
 }
 
 .slim-btn {

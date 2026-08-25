@@ -546,7 +546,7 @@ const onSave = async () => {
 }
 
 .pill-btn {
-  border-radius: 999px;
+  border-radius: 8px;
   font-weight: 600;
 }
 

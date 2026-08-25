@@ -259,7 +259,7 @@ function openConfigDialog() {
 }
 
 .pill-btn {
-  border-radius: 999px;
+  border-radius: 8px;
 }
 
 .tag-sheet {

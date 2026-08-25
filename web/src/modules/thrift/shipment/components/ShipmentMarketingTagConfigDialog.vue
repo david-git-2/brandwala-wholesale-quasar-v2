@@ -138,7 +138,7 @@ async function onSave() {
 
 <style scoped>
 .pill-btn {
-  border-radius: 999px;
+  border-radius: 8px;
 }
 .soft-input :deep(.q-field__control) {
   border-radius: 12px;

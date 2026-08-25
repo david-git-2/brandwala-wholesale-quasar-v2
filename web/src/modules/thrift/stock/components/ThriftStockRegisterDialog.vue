@@ -487,7 +487,7 @@ function updateFormField<K extends keyof RegisterForm>(key: K, val: RegisterForm
 }
 
 .pill-btn {
-  border-radius: 999px;
+  border-radius: 8px;
 }
 
 .slim-btn {

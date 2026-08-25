@@ -1,33 +1,28 @@
 <template>
   <div>
     <!-- Header Skeleton -->
-    <section v-if="isLoading" class="row items-center justify-between q-col-gutter-sm">
-      <div class="col">
-        <div class="row items-center q-gutter-x-sm">
-          <q-skeleton type="QBtn" size="28px" flat />
-          <div>
-            <q-skeleton type="text" width="110px" height="10px" class="q-mb-xs" />
-            <q-skeleton type="text" width="160px" height="22px" />
-            <q-skeleton type="text" width="180px" height="32px" class="q-mt-xs" />
+    <q-card v-if="isLoading" flat class="floating-surface hero-surface shadow-1">
+      <q-card-section class="q-py-sm">
+        <div class="row items-center justify-between q-col-gutter-sm">
+          <div class="col min-width-0">
+            <q-skeleton type="text" width="200px" height="24px" class="q-mb-xs" />
+            <q-skeleton type="QInput" width="220px" height="32px" />
+          </div>
+          <div class="col-auto row q-gutter-xs items-center">
+            <q-skeleton type="QBtn" width="110px" height="32px" />
+            <q-skeleton type="QBtn" width="90px" height="32px" />
+            <q-skeleton type="QBtn" width="32px" height="32px" />
           </div>
         </div>
-      </div>
-      <div class="col-auto row q-gutter-xs items-center">
-        <q-skeleton type="QBtn" width="100px" height="32px" />
-        <q-skeleton type="QBtn" width="32px" height="32px" />
-      </div>
-    </section>
+      </q-card-section>
+    </q-card>
 
     <!-- Loaded Header -->
-    <section v-else class="row items-center justify-between q-col-gutter-sm costing-file-header">
-      <div class="col">
-        <div class="row items-center q-gutter-x-sm no-wrap">
-          <q-btn flat dense icon="ph ph-arrow-left" color="grey-7" @click="$emit('go-back')" />
-          <div class="col">
-            <div class="text-caption text-primary text-weight-medium">
-              {{ $t('product_based_costing.title') }}
-            </div>
-            <div class="row items-center q-gutter-x-xs">
+    <q-card v-else flat class="floating-surface hero-surface shadow-1 costing-file-header-card">
+      <q-card-section class="q-py-sm">
+        <div class="row items-center justify-between q-col-gutter-sm">
+          <div class="col min-width-0">
+            <div class="row items-center q-gutter-x-xs no-wrap">
               <template v-if="isEditingName">
                 <q-input
                   ref="nameInputRef"
@@ -36,24 +31,24 @@
                   outlined
                   hide-bottom-space
                   autofocus
-                  class="text-subtitle1 text-weight-bold name-inline-input"
-                  style="min-width: 180px; max-width: 320px;"
+                  class="text-h6 text-weight-bold name-inline-input col"
                   :loading="savingName"
                   @blur="saveInlineName"
                   @keyup.enter="saveInlineName"
                   @keyup.esc="cancelInlineName"
                 />
               </template>
-              <h1
+              <div
                 v-else
-                class="text-subtitle1 text-weight-bold q-my-none cursor-pointer name-inline-edit row items-center q-gutter-x-xs"
+                class="text-h6 text-weight-bold ellipsis cursor-pointer name-inline-edit row items-center q-gutter-x-xs no-wrap"
                 :title="$t('product_based_costing.click_to_edit_name')"
                 @click="startInlineNameEdit"
               >
-                <span>{{ file?.name ?? $t('product_based_costing.costing_file_default') }}</span>
-                <q-icon name="ph ph-pencil-simple" size="14px" class="q-ml-xs edit-icon text-grey-6" />
-              </h1>
+                <span class="ellipsis">{{ file?.name ?? $t('product_based_costing.costing_file_default') }}</span>
+                <q-icon name="ph ph-pencil-simple" size="14px" class="edit-icon text-grey-6 flex-shrink-0" />
+              </div>
             </div>
+
             <q-select
               v-model="selectedBillingProfile"
               :options="billingProfileOptions"
@@ -96,124 +91,129 @@
                     size="sm"
                     icon="ph ph-plus"
                     :label="$t('product_based_costing.create_billing_profile')"
-                    class="q-px-sm q-mt-xs"
+                    class="square-btn q-px-sm q-mt-xs"
                     @click="openCreateBillingProfileDialog"
                   />
                 </q-item>
               </template>
             </q-select>
           </div>
+
+          <div class="col-auto row q-gutter-xs items-center flex-shrink-0 header-actions">
+            <q-btn
+              color="primary"
+              unelevated
+              no-caps
+              size="sm"
+              icon="ph ph-plus"
+              :label="$t('product_based_costing.add_products')"
+              class="square-btn slim-btn"
+              @click="$emit('open-catalog')"
+            />
+            <q-btn
+              outline
+              color="primary"
+              no-caps
+              size="sm"
+              icon="ph ph-columns"
+              :label="$t('product_based_costing.columns')"
+              class="square-btn slim-btn"
+            >
+              <q-menu>
+                <q-list style="min-width: 260px; max-height: 400px" class="q-pa-xs">
+                  <q-item class="q-pb-none">
+                    <q-item-section>
+                      <div class="text-subtitle2 q-mb-xs">{{ $t('product_based_costing.show_columns') }}</div>
+                      <q-input
+                        v-model="columnSearchQuery"
+                        dense
+                        outlined
+                        :placeholder="$t('product_based_costing.search_columns')"
+                        clearable
+                      >
+                        <template #prepend>
+                          <q-icon name="ph ph-magnifying-glass" size="16px" />
+                        </template>
+                      </q-input>
+                    </q-item-section>
+                  </q-item>
+                  <q-item clickable class="q-py-xs">
+                    <q-item-section>
+                      <q-checkbox
+                        v-model="allSelectableColumnsSelected"
+                        :label="$t('product_based_costing.select_deselect_all')"
+                      />
+                    </q-item-section>
+                  </q-item>
+                  <q-separator class="q-my-xs" />
+                  <q-item class="q-py-none">
+                    <q-item-section>
+                      <div v-if="!filteredColumnSelectorOptions.length" class="text-caption text-grey-6 q-pa-sm">
+                        {{ $t('product_based_costing.no_matching_columns') }}
+                      </div>
+                      <q-option-group
+                        v-else
+                        v-model="localVisibleColumns"
+                        type="checkbox"
+                        :options="filteredColumnSelectorOptions"
+                      />
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+              </q-menu>
+            </q-btn>
+            <span>
+              <q-btn
+                outline
+                color="primary"
+                no-caps
+                size="sm"
+                icon="ph ph-file-pdf"
+                :label="$t('product_based_costing.offer_pdf_screenshot')"
+                class="square-btn slim-btn"
+                :disable="itemCount === 0"
+                @click="$emit('open-preview')"
+              />
+              <q-tooltip v-if="itemCount === 0">{{
+                $t('product_based_costing.add_product_first_tooltip')
+              }}</q-tooltip>
+            </span>
+            <q-btn
+              flat
+              dense
+              icon="ph ph-dots-three-vertical"
+              class="square-btn icon-only-btn"
+              :aria-label="$t('product_based_costing.more_file_actions')"
+            >
+              <q-tooltip>{{ $t('product_based_costing.more_file_actions') }}</q-tooltip>
+              <q-menu style="min-width: 200px">
+                <q-list dense>
+                  <q-item clickable v-close-popup @click="$emit('open-edit-file')">
+                    <q-item-section avatar>
+                      <q-icon name="ph ph-pencil-simple" />
+                    </q-item-section>
+                    <q-item-section>{{ $t('product_based_costing.edit_file_details') }}</q-item-section>
+                  </q-item>
+                  <q-item clickable v-close-popup @click="$emit('open-bulk-paste')">
+                    <q-item-section avatar>
+                      <q-icon name="ph ph-clipboard" />
+                    </q-item-section>
+                    <q-item-section>{{ $t('product_based_costing.bulk_paste') }}</q-item-section>
+                  </q-item>
+                  <q-separator />
+                  <q-item clickable v-close-popup @click="$emit('download-excel')">
+                    <q-item-section avatar>
+                      <q-icon name="ph ph-table" />
+                    </q-item-section>
+                    <q-item-section>{{ $t('product_based_costing.download_excel') }}</q-item-section>
+                  </q-item>
+                </q-list>
+              </q-menu>
+            </q-btn>
+          </div>
         </div>
-      </div>
-      <div class="col-auto row q-gutter-xs items-center">
-        <q-btn
-          color="primary"
-          unelevated
-          dense
-          no-caps
-          icon="ph ph-plus"
-          :label="$t('product_based_costing.add_products')"
-          @click="$emit('open-catalog')"
-        />
-        <q-btn
-          outline
-          color="primary"
-          dense
-          no-caps
-          icon="ph ph-columns"
-          :label="$t('product_based_costing.columns')"
-        >
-          <q-menu>
-            <q-list style="min-width: 260px; max-height: 400px" class="q-pa-xs">
-              <q-item class="q-pb-none">
-                <q-item-section>
-                  <div class="text-subtitle2 q-mb-xs">{{ $t('product_based_costing.show_columns') }}</div>
-                  <q-input
-                    v-model="columnSearchQuery"
-                    dense
-                    outlined
-                    :placeholder="$t('product_based_costing.search_columns')"
-                    clearable
-                  >
-                    <template #prepend>
-                      <q-icon name="ph ph-magnifying-glass" size="16px" />
-                    </template>
-                  </q-input>
-                </q-item-section>
-              </q-item>
-              <q-item clickable class="q-py-xs">
-                <q-item-section>
-                  <q-checkbox
-                    v-model="allSelectableColumnsSelected"
-                    :label="$t('product_based_costing.select_deselect_all')"
-                  />
-                </q-item-section>
-              </q-item>
-              <q-separator class="q-my-xs" />
-              <q-item class="q-py-none">
-                <q-item-section>
-                  <div v-if="!filteredColumnSelectorOptions.length" class="text-caption text-grey-6 q-pa-sm">
-                    {{ $t('product_based_costing.no_matching_columns') }}
-                  </div>
-                  <q-option-group
-                    v-else
-                    v-model="localVisibleColumns"
-                    type="checkbox"
-                    :options="filteredColumnSelectorOptions"
-                  />
-                </q-item-section>
-              </q-item>
-            </q-list>
-          </q-menu>
-        </q-btn>
-        <span>
-          <q-btn
-            outline
-            color="primary"
-            dense
-            no-caps
-            icon="ph ph-file-pdf"
-            :label="$t('product_based_costing.offer_pdf_screenshot')"
-            :disable="itemCount === 0"
-            @click="$emit('open-preview')"
-          />
-          <q-tooltip v-if="itemCount === 0">{{
-            $t('product_based_costing.add_product_first_tooltip')
-          }}</q-tooltip>
-        </span>
-        <q-btn
-          flat
-          dense
-          icon="ph ph-dots-three-vertical"
-          :aria-label="$t('product_based_costing.more_file_actions')"
-        >
-          <q-tooltip>{{ $t('product_based_costing.more_file_actions') }}</q-tooltip>
-          <q-menu style="min-width: 200px">
-            <q-list dense>
-              <q-item clickable v-close-popup @click="$emit('open-edit-file')">
-                <q-item-section avatar>
-                  <q-icon name="ph ph-pencil-simple" />
-                </q-item-section>
-                <q-item-section>{{ $t('product_based_costing.edit_file_details') }}</q-item-section>
-              </q-item>
-              <q-item clickable v-close-popup @click="$emit('open-bulk-paste')">
-                <q-item-section avatar>
-                  <q-icon name="ph ph-clipboard" />
-                </q-item-section>
-                <q-item-section>{{ $t('product_based_costing.bulk_paste') }}</q-item-section>
-              </q-item>
-              <q-separator />
-              <q-item clickable v-close-popup @click="$emit('download-excel')">
-                <q-item-section avatar>
-                  <q-icon name="ph ph-table" />
-                </q-item-section>
-                <q-item-section>{{ $t('product_based_costing.download_excel') }}</q-item-section>
-              </q-item>
-            </q-list>
-          </q-menu>
-        </q-btn>
-      </div>
-    </section>
+      </q-card-section>
+    </q-card>
   </div>
 </template>
 
@@ -245,7 +245,6 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
-  (e: 'go-back'): void;
   (e: 'open-create-item'): void;
   (e: 'open-edit-file'): void;
   (e: 'open-bulk-paste'): void;
@@ -422,7 +421,7 @@ function onBillingProfileChange(val: BillingProfile | null) {
 </script>
 
 <style scoped lang="scss">
-.costing-file-header {
+.costing-file-header-card {
   min-width: 0;
 }
 
@@ -441,5 +440,16 @@ function onBillingProfileChange(val: BillingProfile | null) {
 .name-inline-edit:hover {
   background: rgba(var(--q-primary-rgb, 15, 98, 254), 0.06);
   border-bottom-color: var(--q-primary);
+}
+
+.slim-btn {
+  min-height: 32px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.icon-only-btn {
+  min-width: 32px;
+  padding: 0;
 }
 </style>

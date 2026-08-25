@@ -148,7 +148,7 @@ const internalMemberColumns = [
 
 <style scoped>
 .pill-btn {
-  border-radius: 999px;
+  border-radius: 8px;
 }
 
 .soft-input {

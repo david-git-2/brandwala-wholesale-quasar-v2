@@ -11,7 +11,7 @@
       </div>
     </q-card>
 
-    <q-card v-else-if="file" flat bordered class="q-pa-xs q-px-sm">
+    <q-card v-else-if="file" flat bordered class="q-pa-xs q-px-sm pbc-workflow-bar">
       <div class="row items-center q-gutter-xs q-mb-xs phase-stepper">
         <div
           class="text-caption"
@@ -43,7 +43,7 @@
               :unelevated="status === st"
               dense
               no-caps
-              class="q-px-md text-caption text-weight-bold"
+              class="q-px-md text-caption text-weight-bold square-btn"
               :loading="updatingStatus && targetUpdatingStatus === st"
               :disable="updatingStatus && targetUpdatingStatus !== st"
               @click="$emit('update-status', st)"
@@ -87,7 +87,7 @@
             :unelevated="status === 'cancelled'"
             dense
             no-caps
-            class="q-px-md text-caption text-weight-bold"
+            class="q-px-md text-caption text-weight-bold square-btn"
             :loading="updatingStatus && targetUpdatingStatus === 'cancelled'"
             :disable="updatingStatus && targetUpdatingStatus !== 'cancelled'"
             @click="$emit('update-status', 'cancelled')"
@@ -120,7 +120,7 @@
             dense
             no-caps
             color="primary"
-            class="q-px-md text-caption text-weight-bold"
+            class="q-px-md text-caption text-weight-bold square-btn"
             :loading="updatingStatus && targetUpdatingStatus === 'confirmed'"
             :disable="updatingStatus"
             :label="$t('product_based_costing.confirm_order')"
@@ -158,7 +158,7 @@
                 ? $t('product_based_costing.hide_rates')
                 : $t('product_based_costing.rates')
             "
-            class="q-px-sm rounded-borders"
+            class="q-px-sm square-btn"
             @click="ratesExpanded = !ratesExpanded"
           />
         </div>
@@ -205,7 +205,7 @@
             unelevated
             no-caps
             dense
-            class="full-width"
+            class="full-width square-btn"
             :label="$t('product_based_costing.save_rates')"
             @click="onRateSave"
           />
