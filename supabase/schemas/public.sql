@@ -3493,12 +3493,59 @@ begin
 ALTER FUNCTION "public"."dispense_middleman_payout"("p_billing_profile_id" bigint, "p_amount" numeric, "p_method" "text", "p_trx_id" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."enforce_customer_group_member_email_unique_per_tenant"() RETURNS "trigger"
+CREATE OR REPLACE FUNCTION "public"."find_customer_admin_email_conflict"("p_tenant_id" bigint, "p_email" "text", "p_exclude_billing_profile_id" bigint DEFAULT NULL::bigint, "p_exclude_member_id" bigint DEFAULT NULL::bigint) RETURNS "text"
+    LANGUAGE "plpgsql" STABLE
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_normalized_email text;
+  v_group_name text;
+begin
+  v_normalized_email := nullif(lower(trim(coalesce(p_email, ''))), '');
+  if v_normalized_email is null then
+    return null;
+  end if;
+
+  select cg.name
+  into v_group_name
+  from public.billing_profiles bp
+  join public.customer_groups cg on cg.id = bp.customer_group_id
+  where bp.tenant_id = p_tenant_id
+    and lower(trim(bp.email)) = v_normalized_email
+    and bp.id <> coalesce(p_exclude_billing_profile_id, -1)
+  order by cg.id asc
+  limit 1;
+
+  if v_group_name is not null then
+    return v_group_name;
+  end if;
+
+  select cg.name
+  into v_group_name
+  from public.customer_group_members cgm
+  join public.customer_groups cg on cg.id = cgm.customer_group_id
+  where cg.tenant_id = p_tenant_id
+    and cgm.role = 'admin'::public.customer_group_role
+    and lower(trim(cgm.email)) = v_normalized_email
+    and cgm.id <> coalesce(p_exclude_member_id, -1)
+  order by cg.id asc
+  limit 1;
+
+  return v_group_name;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."find_customer_admin_email_conflict"("p_tenant_id" bigint, "p_email" "text", "p_exclude_billing_profile_id" bigint, "p_exclude_member_id" bigint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."enforce_customer_group_member_email_rules"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     AS $$
 declare
   v_tenant_id bigint;
   v_normalized_email text;
+  v_conflict_group_name text;
 begin
   select cg.tenant_id
   into v_tenant_id
@@ -3507,20 +3554,40 @@ begin
 
   if v_tenant_id is null then
     raise exception 'customer group tenant could not be resolved';
+  end if;
+
   v_normalized_email := lower(trim(new.email));
   new.email := v_normalized_email;
 
   if exists (
     select 1
     from public.customer_group_members cgm
-    join public.customer_groups cg
-      on cg.id = cgm.customer_group_id
-    where cg.tenant_id = v_tenant_id
+    where cgm.customer_group_id = new.customer_group_id
       and lower(trim(cgm.email)) = v_normalized_email
       and cgm.id <> coalesce(new.id, -1)
   ) then
-    raise exception 'This email already belongs to another customer user in the same tenant';
-  ALTER FUNCTION "public"."enforce_customer_group_member_email_unique_per_tenant"() OWNER TO "postgres";
+    raise exception 'This email is already used in this group';
+  end if;
+
+  if new.role = 'admin'::public.customer_group_role then
+    v_conflict_group_name := public.find_customer_admin_email_conflict(
+      v_tenant_id,
+      v_normalized_email,
+      null,
+      new.id
+    );
+
+    if v_conflict_group_name is not null then
+      raise exception 'This email is already admin of group "%".', v_conflict_group_name;
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."enforce_customer_group_member_email_rules"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."enforce_tenant_one_layer_hierarchy"() RETURNS "trigger"
@@ -18423,7 +18490,7 @@ CREATE OR REPLACE TRIGGER "trg_commerce_orders_updated_at" BEFORE UPDATE ON "pub
 CREATE OR REPLACE TRIGGER "trg_customer_group_member_grants_updated_at" BEFORE UPDATE ON "public"."customer_group_member_grants" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
-CREATE OR REPLACE TRIGGER "trg_customer_group_members_email_unique_per_tenant" BEFORE INSERT OR UPDATE ON "public"."customer_group_members" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_customer_group_member_email_unique_per_tenant"();
+CREATE OR REPLACE TRIGGER "trg_customer_group_members_email_rules" BEFORE INSERT OR UPDATE ON "public"."customer_group_members" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_customer_group_member_email_rules"();
 
 
 CREATE OR REPLACE TRIGGER "trg_customer_group_members_updated_at" BEFORE UPDATE ON "public"."customer_group_members" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();

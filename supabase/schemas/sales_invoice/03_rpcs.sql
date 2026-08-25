@@ -1906,6 +1906,39 @@ $$;
 ALTER FUNCTION "public"."sync_shop_order_collection_source_from_invoice"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."enforce_billing_profile_admin_email_unique_per_tenant"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+declare
+  v_normalized_email text;
+  v_conflict_group_name text;
+begin
+  v_normalized_email := nullif(lower(trim(coalesce(new.email, ''))), '');
+  new.email := v_normalized_email;
+
+  if v_normalized_email is null then
+    return new;
+  end if;
+
+  v_conflict_group_name := public.find_customer_admin_email_conflict(
+    new.tenant_id,
+    v_normalized_email,
+    new.id,
+    null
+  );
+
+  if v_conflict_group_name is not null then
+    raise exception 'This email is already admin of group "%".', v_conflict_group_name;
+  end if;
+
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."enforce_billing_profile_admin_email_unique_per_tenant"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."trg_auto_create_billing_profile_for_customer_group"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'

@@ -11820,6 +11820,15 @@ export type Database = {
           slug: string
         }[]
       }
+      find_customer_admin_email_conflict: {
+        Args: {
+          p_email: string
+          p_exclude_billing_profile_id?: number
+          p_exclude_member_id?: number
+          p_tenant_id: number
+        }
+        Returns: string
+      }
       fn_recalculate_normal_invoice_totals: {
         Args: { p_invoice_id: number }
         Returns: undefined

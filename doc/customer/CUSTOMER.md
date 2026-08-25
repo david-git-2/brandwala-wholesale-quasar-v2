@@ -41,9 +41,15 @@ flowchart TD
 
 ### Member email uniqueness
 
-- Per group: unique index `customer_group_members_group_email_unique` on `(customer_group_id, lower(trim(email)))`.
-- Per tenant: trigger `trg_customer_group_members_email_unique_per_tenant` stores email as `lower(trim(email))` and blocks the same address on another customer user in that tenant.
+- **Per group (all roles):** unique index `customer_group_members_group_email_unique` on `(customer_group_id, lower(trim(email)))`. Trigger `trg_customer_group_members_email_rules` also raises `This email is already used in this group` before the index fires.
+- **Per tenant (admin email only):** one email cannot be the primary admin contact on more than one customer group in the same tenant. Enforced on:
+  - `billing_profiles.email` (hub “admin email”, General tab) — trigger `trg_billing_profiles_admin_email_unique_per_tenant`
+  - `customer_group_members` where `role = 'admin'` — same trigger function family via `enforce_customer_group_member_email_rules`
+  - Shared resolver: `find_customer_admin_email_conflict(tenant_id, email, …)` returns the conflicting group name.
+- **Across groups (staff / manager):** the same email may appear on members in different groups within one tenant. Only blocked inside a single group.
+- **Conflict message:** `This email is already admin of group "Acme Wholesale".` — surfaced in the UI via `error.message` on create customer, General tab save, and Members tab save.
 - `create_customer_account` inserts the first admin member only when email is present. It does **not** use `ON CONFLICT` on members.
+- Shop login (`check_shop_login_access`) still returns one match when the same email is staff in multiple groups (`limit 1` by `customer_group_id`).
 
 ### Shop member roles
 

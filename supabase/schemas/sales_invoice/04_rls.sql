@@ -1,3 +1,6 @@
+CREATE OR REPLACE TRIGGER "trg_billing_profiles_admin_email_unique_per_tenant" BEFORE INSERT OR UPDATE ON "public"."billing_profiles" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_billing_profile_admin_email_unique_per_tenant"();
+
+
 CREATE OR REPLACE TRIGGER "trg_billing_profiles_set_updated_at" BEFORE UPDATE ON "public"."billing_profiles" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 CREATE OR REPLACE TRIGGER "trg_recipient_profiles_set_updated_at" BEFORE UPDATE ON "public"."recipient_profiles" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
