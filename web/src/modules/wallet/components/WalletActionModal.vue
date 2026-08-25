@@ -4,7 +4,7 @@
       <!-- Modal Header -->
       <q-card-section class="row items-center justify-between q-pb-none">
         <div class="row items-center q-gutter-x-sm">
-          <q-avatar size="38px" :class="actionConfig.avatarBgClass" :text-color="actionConfig.color" class="font-mono text-weight-bold">
+          <q-avatar size="38px" :class="actionConfig.avatarBgClass" :text-color="actionConfig.color" class="bw-tabular text-weight-bold">
             <q-icon :name="actionConfig.icon" size="20px" />
           </q-avatar>
           <div>
@@ -212,7 +212,7 @@
               </div>
               <div class="col-6 text-right">
                 <div class="text-caption text-grey-6">Converted Base Value</div>
-                <div class="text-subtitle1 text-weight-bolder text-primary font-mono">
+                <div class="text-subtitle1 text-weight-bolder text-primary bw-tabular">
                   ৳ {{ formatNumber(convertedBdt) }} BDT
                 </div>
               </div>

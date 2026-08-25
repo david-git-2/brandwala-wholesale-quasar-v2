@@ -25,9 +25,9 @@ export const applyDensity = (val: 'comfortable' | 'compact') => {
   density.value = val;
   if (typeof document !== 'undefined') {
     if (val === 'compact') {
-      document.body.classList.add('body--compact');
+      document.body.classList.add('body--compact', 'bw-density-compact');
     } else {
-      document.body.classList.remove('body--compact');
+      document.body.classList.remove('body--compact', 'bw-density-compact');
     }
   }
   setLocalStorage('brandwala.appearance.density', val);

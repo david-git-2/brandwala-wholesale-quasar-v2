@@ -7,11 +7,11 @@ $accent: #d9a441; // warm highlight
 $dark: #1d1d1d;
 $dark-page: #121212;
 
-/* Semantic colors (modern + toned, not harsh) */
-$positive: #059669; // emerald success (snackbars + semantic)
-$negative: #c84b4b; // soft red (less aggressive)
-$info: #3b82f6; // clean blue (modern UI standard)
-$warning: #d4a017; // warm amber (not too bright)
+/* Semantic colors — aligned with --bw-* tokens in app.scss */
+$positive: #1a7f4b;
+$negative: #b83a3a;
+$info: #2563eb;
+$warning: #b45309;
 
 /* Radius */
 $generic-border-radius: 14px;

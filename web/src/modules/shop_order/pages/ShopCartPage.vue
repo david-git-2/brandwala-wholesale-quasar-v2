@@ -1,5 +1,5 @@
 <template>
-  <q-page class="q-pa-md">
+  <q-page class="q-pa-md shop-commerce-page">
     <div class="q-gutter-y-md">
       <!-- Standard Page Header -->
       <ShopCartHeader

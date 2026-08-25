@@ -30,6 +30,7 @@ When a phase adds SQL migrations:
 - **Non-Scrolling Page Container**: Lock `q-page` height to `calc(100vh - 55px)` with `overflow: hidden`.
 - **Internal Table Scroll**: Use sticky headers (`thead tr th`) and let table middle scroll internally (`.q-table__middle { overflow-y: auto }`).
 - **Status Row Hues**: Apply soft status background hues and inset left accent borders (`boxShadow: inset 3px 0 0 ...`).
+- **Flat table surfaces**: Ops list tables use global flat `.q-table__container` styling — not heavy `.floating-surface.shadow-1` stacks (see `docs/UI_CONSISTENCY.md` elevation rules).
 - **Rounded Square Buttons**: Primary action buttons MUST use rounded square corners (`border-radius: 8px`), NOT pill shapes.
 - **Outlined Search Input**: Search inputs MUST use `outlined rounded dense`.
 - **Neutral Avatars**: Entity/vendor avatars MUST use neutral grey tones (`color="grey-3" text-color="grey-9"`).

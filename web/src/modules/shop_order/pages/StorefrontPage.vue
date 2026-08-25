@@ -415,7 +415,6 @@ watch(shopDetails, (newDetails) => {
   background: color-mix(in srgb, var(--bw-theme-surface, #fff) 60%, transparent);
   border-radius: 16px;
   border: 1px dashed var(--bw-theme-border, rgba(34, 56, 101, 0.12));
-  backdrop-filter: blur(4px);
   color: var(--bw-theme-ink, #1f2937);
 }
 

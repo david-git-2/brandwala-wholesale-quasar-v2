@@ -10,7 +10,7 @@ These canonical rules govern the layout, density, and styling of table list and 
 ## 2. Fixed Outer Layout & Internal Table Scroll
 - **Zero Outer Page Scroll**: Set `q-page` container height to `calc(100vh - 55px)` with `overflow: hidden` (`.page-fixed-layout` or `.bg-grey-1 column no-wrap`). The outer browser window should never scroll on table list pages.
 - **Internal Table Scroll**: The table wrapper (`.treasury-table-wrap`) must flex to take up remaining height (`flex: 1 1 0%`, `overflow: hidden`), allowing `.q-table__middle` to scroll internally.
-- **Sticky Column Headers**: Table headers must remain pinned at the top while table body rows scroll (`thead tr th { position: sticky; top: 0; z-index: 2; color: #0f172a; font-weight: 700; background: #f8fafc; }`). Use default black text (`#0f172a` / `#171412`) for the header text.
+- **Sticky Column Headers**: Table headers must remain pinned at the top while table body rows scroll (`thead tr th { position: sticky; top: 0; z-index: 2; }`). Use `--bw-neutral-chrome` for header text and a surface mix for header background — see `docs/UI_CONSISTENCY.md`.
 
 ## 3. Compact & Denser Controls
 - **Search Input**: Use `outlined rounded dense` inputs (`<q-input outlined rounded dense placeholder="...">`).
@@ -30,7 +30,8 @@ These canonical rules govern the layout, density, and styling of table list and 
 - **Entity & Vendor Avatars**: Render entity/vendor avatars using a **square avatar with soft radius** (`square` or `rounded` with `border-radius: 6px`), with clean neutral grey tones (`q-avatar` with `color="grey-3" text-color="grey-9"`).
 - **Row Actions Column**: Always include a right-aligned actions column (`ph ph-dots-three-vertical`) with dropdown options (*View Details*, *Edit Details*).
 
-## 6. Floating Surface & Ambient Shadow Elevation Aesthetic
-- **Canvas Backdrop Contrast**: The page container features the modern neutral canvas background (`rgb(238, 240, 244)` / `var(--bw-brand-base)` / `#eef0f4`).
-- **Floating Surface & Rounded Cards**: Tables, primary toolbars, and content surfaces MUST use `.floating-surface.shadow-1` (or sleek rounded corners `border-radius: 8px`, subtle border `1px solid rgba(226, 232, 240, 0.6)`, pure white surface `background: #ffffff`, and diffused ambient floating shadow `box-shadow: 0 20px 45px -10px rgba(51, 65, 85, 0.10), 0 10px 20px -5px rgba(51, 65, 85, 0.05), 0 2px 6px 0 rgba(51, 65, 85, 0.03)`).
-- **Supabase Studio Dark Standard**: In dark mode, the canvas is Supabase Studio dark (`#171717`), surfaces adopt `#1c1c1c` with border `#2e2e2e`, row borders `#262626`, table header text in `#a1a1aa`, primary text in crisp `#ededed`, and emerald accents (`#3ecf8e`).
+## 6. Flat Surfaces & Canvas (Brand tokens)
+- **Canvas Backdrop**: Page container uses warm stone `--bw-neutral-canvas` / `var(--bw-brand-base)` (`#fbfaf7` light).
+- **Flat table surfaces**: Prefer global `.q-table__container` styling (border + `0 1px 2px` shadow). Avoid triple-stack marketing shadows on ops lists. Toolbars: `.bw-page-toolbar` or `q-card flat bordered` — flat, not floating cards.
+- **Dark mode**: Canvas `#141210`, surface `#1c1917`, border `#2a2622`, ink `#f5f5f4`, muted `#a8a29e`. Scope primary comes from `.theme-*` classes — not Supabase neon emerald.
+- **Raised only when interactive**: Dialogs, drawers, clickable product cards, empty-state CTAs — see elevation rules in `docs/UI_CONSISTENCY.md`.

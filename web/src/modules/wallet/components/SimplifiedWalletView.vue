@@ -59,7 +59,7 @@
               <q-icon name="ph ph-check-circle" size="16px" />
             </q-avatar>
           </div>
-          <div class="text-h4 text-weight-bolder text-positive q-my-xs font-mono">
+          <div class="text-h4 text-weight-bolder text-positive q-my-xs bw-tabular">
             ৳{{ formatCurrency(account?.available_balance ?? 0) }}
           </div>
           <div class="text-caption text-grey-7">
@@ -77,7 +77,7 @@
               <q-icon name="ph ph-truck" size="16px" />
             </q-avatar>
           </div>
-          <div class="text-h4 text-weight-bolder text-amber-9 q-my-xs font-mono">
+          <div class="text-h4 text-weight-bolder text-amber-9 q-my-xs bw-tabular">
             ৳{{ formatCurrency(account?.pending_balance ?? 0) }}
           </div>
           <div class="text-caption text-grey-7">
@@ -95,7 +95,7 @@
               <q-icon name="ph ph-lock-key" size="16px" />
             </q-avatar>
           </div>
-          <div class="text-h4 text-weight-bolder text-grey-8 q-my-xs font-mono">
+          <div class="text-h4 text-weight-bolder text-grey-8 q-my-xs bw-tabular">
             ৳{{ formatCurrency(account?.locked_balance ?? 0) }}
           </div>
           <div class="text-caption text-grey-7">
@@ -174,12 +174,12 @@
             <!-- Amount Section -->
             <q-item-section side class="text-right">
               <div
-                class="text-subtitle1 text-weight-bolder font-mono"
+                class="text-subtitle1 text-weight-bolder bw-tabular"
                 :class="entry.type === 'credit' ? 'text-positive' : 'text-negative'"
               >
                 {{ entry.type === 'credit' ? '+ Money In' : '- Money Out' }} ৳{{ formatCurrency(Math.abs(entry.amount)) }}
               </div>
-              <div class="text-caption text-grey-6 font-mono">
+              <div class="text-caption text-grey-6 bw-tabular">
                 Remaining: ৳{{ formatCurrency(entry.balance_after) }}
               </div>
             </q-item-section>

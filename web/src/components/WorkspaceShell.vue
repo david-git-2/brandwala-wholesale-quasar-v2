@@ -143,15 +143,11 @@
       <div class="workspace-shell__drawer-inner column full-height">
         <div class="workspace-shell__drawer-top row items-center justify-between q-px-sm q-py-xs">
           <div
-            class="workspace-shell__brand"
-            :class="{ 'workspace-shell__brand--mini': isMini }"
+            v-show="!isMini"
+            class="text-caption text-weight-bold text-grey-7 text-uppercase"
+            style="font-size: 10px; letter-spacing: 0.05em"
           >
-            <img
-              :src="isMini ? brandLogoMarkSrc : brandLogoSrc"
-              alt="TradeFlow BD"
-              class="workspace-shell__brand-logo"
-              decoding="async"
-            />
+            Navigation
           </div>
           <q-btn
             flat
@@ -482,7 +478,6 @@ import { useI18n } from 'vue-i18n';
 import { supabase } from 'src/boot/supabase';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useAppearance } from 'src/composables/useAppearance';
-import { useBrandAssets } from 'src/composables/useBrandAssets';
 import AboutSystemDialog from 'src/components/navigation/AboutSystemDialog.vue';
 
 const showAboutDialog = ref(false);
@@ -514,7 +509,6 @@ const authStore = useAuthStore();
 
 const $q = useQuasar();
 const { navPinned, setNavPinned, darkMode, setDarkMode, density, setDensity } = useAppearance();
-const { brandLogoSrc, brandLogoMarkSrc } = useBrandAssets();
 const miniState = ref(true);
 
 const i18n = useI18n();
@@ -949,7 +943,6 @@ const confirmLogout = async () => {
 
 .locale-bn {
   font-size: 1.05rem;
-  font-weight: 600;
   letter-spacing: 0.01em;
 }
 
@@ -999,31 +992,6 @@ const confirmLogout = async () => {
 .workspace-shell__drawer-top,
 .workspace-shell__drawer-bottom {
   padding: 0.75rem;
-}
-
-.workspace-shell__brand {
-  flex: 1;
-  min-width: 0;
-  padding-right: 4px;
-}
-
-.workspace-shell__brand--mini {
-  display: flex;
-  justify-content: center;
-  padding-right: 0;
-}
-
-.workspace-shell__brand-logo {
-  display: block;
-  width: 100%;
-  max-width: 168px;
-  height: auto;
-  border-radius: 8px;
-}
-
-.workspace-shell__brand--mini .workspace-shell__brand-logo {
-  width: 36px;
-  max-width: 36px;
 }
 
 .profile-card {
@@ -1121,7 +1089,7 @@ const confirmLogout = async () => {
 }
 
 body.body--dark .workspace-shell__page-container {
-  background: var(--bw-brand-base, #171717);
+  background: var(--bw-neutral-canvas, #141210);
 }
 
 .workspace-shell__bottom-nav {
@@ -1172,6 +1140,7 @@ body.body--dark .workspace-shell__page-container {
 .workspace-shell__bottom-nav-item--active {
   color: var(--shell-ink);
   background: var(--shell-accent-soft);
+  border-radius: 999px;
 }
 
 @media (max-width: 599px) {
@@ -1451,8 +1420,18 @@ body.body--dark .workspace-shell__page-container {
   justify-content: center;
 }
 
+.workspace-shell--mini .workspace-shell__drawer-top {
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: center !important;
+}
+
 .workspace-shell--mini .workspace-shell__nav {
-  padding: 0 0.25rem 0.75rem;
+  padding: 0 0 0.75rem;
+}
+
+.workspace-shell--mini .workspace-shell__nav-list {
+  align-items: center;
 }
 
 .workspace-shell--mini .profile-card {
@@ -1464,14 +1443,44 @@ body.body--dark .workspace-shell__page-container {
   align-items: center;
 }
 
-.workspace-shell--mini .workspace-shell__nav-item {
-  display: flex;
+.workspace-shell--mini .workspace-shell__nav-item,
+.workspace-shell--mini .workspace-shell__nav-group {
+  width: 100%;
   justify-content: center;
 }
 
-.workspace-shell--mini .workspace-shell__nav-item :deep(.q-item__section--avatar) {
-  min-width: unset;
-  padding: 0;
+.workspace-shell--mini .workspace-shell__nav-item :deep(> .q-item),
+.workspace-shell--mini .workspace-shell__nav-group :deep(.q-expansion-item__container > .q-item) {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.workspace-shell--mini .workspace-shell__nav-item :deep(.q-item__section--main),
+.workspace-shell--mini .workspace-shell__nav-group :deep(.q-item__section--main),
+.workspace-shell--mini .workspace-shell__nav-group :deep(.q-expansion-item__toggle-icon),
+.workspace-shell--mini .workspace-shell__nav-group :deep(.q-item__section--side) {
+  display: none !important;
+}
+
+.workspace-shell--mini .workspace-shell__nav-item :deep(.q-item__section--avatar),
+.workspace-shell--mini .workspace-shell__nav-group :deep(.q-item__section--avatar) {
+  min-width: 0 !important;
+  padding-right: 0 !important;
+  margin-inline: auto;
+  justify-content: center;
+}
+
+.workspace-shell--mini .workspace-shell__nav-sub-list {
+  display: none;
+}
+
+.workspace-shell--mini .workspace-shell__logout {
+  min-width: 0;
+  padding-left: 0;
+  padding-right: 0;
 }
 
 .workspace-shell__flyout-sub-item {

@@ -301,7 +301,7 @@
                     type="number"
                     dense
                     borderless
-                    input-class="text-center font-mono"
+                    input-class="text-center bw-tabular"
                     class="cell-input"
                     min="0"
                     step="1"
@@ -330,7 +330,7 @@
                     type="number"
                     dense
                     borderless
-                    input-class="text-center font-mono"
+                    input-class="text-center bw-tabular"
                     class="cell-input"
                     :class="{ 'cell-input--review': focusConfirmedQty }"
                     min="0"
@@ -354,7 +354,7 @@
                     type="number"
                     dense
                     borderless
-                    input-class="text-center text-green-10 text-weight-bold font-mono"
+                    input-class="text-center text-green-10 text-weight-bold bw-tabular"
                     class="cell-input"
                     min="0"
                     step="0.01"
@@ -373,7 +373,7 @@
                     type="number"
                     dense
                     borderless
-                    input-class="text-center font-mono"
+                    input-class="text-center bw-tabular"
                     class="cell-input"
                     min="0"
                     step="1"
@@ -393,7 +393,7 @@
                     type="number"
                     dense
                     borderless
-                    input-class="text-center font-mono"
+                    input-class="text-center bw-tabular"
                     class="cell-input"
                     min="0"
                     step="1"
@@ -423,7 +423,7 @@
                       type="number"
                       dense
                       borderless
-                      input-class="text-center text-purple-10 text-weight-bold font-mono"
+                      input-class="text-center text-purple-10 text-weight-bold bw-tabular"
                       class="cell-input"
                       min="0"
                       step="1"
@@ -452,7 +452,7 @@
                   class="col-6 col-sm-3 text-center bg-bdt-light q-pa-xs rounded-borders"
                 >
                   <div class="metric-label text-amber-9">{{ $t('product_based_costing.preview_cost_bdt') }}</div>
-                  <div class="metric-value text-amber-10 font-mono text-weight-medium">
+                  <div class="metric-value text-amber-10 bw-tabular text-weight-medium">
                     ৳{{ formatNumber(getCostBdt(slotProps.row)) }}
                   </div>
                 </div>
@@ -463,7 +463,7 @@
                   class="col-6 col-sm-3 text-center bg-bdt-light q-pa-xs rounded-borders"
                 >
                   <div class="metric-label text-amber-9">{{ $t('product_based_costing.table_col_totalCostBdt') }}</div>
-                  <div class="metric-value text-amber-10 font-mono text-weight-medium">
+                  <div class="metric-value text-amber-10 bw-tabular text-weight-medium">
                     ৳{{ formatNumber(getTotalCostBdt(slotProps.row)) }}
                   </div>
                 </div>
@@ -471,7 +471,7 @@
                 <!-- Profit BDT -->
                 <div v-if="isColumnVisible('profitBdt')" class="col-6 col-sm-3 text-center">
                   <div class="metric-label">{{ $t('product_based_costing.preview_profit_bdt') }}</div>
-                  <div class="metric-value font-mono">
+                  <div class="metric-value bw-tabular">
                     ৳{{ formatNumber(getProfitBdt(slotProps.row)) }}
                   </div>
                 </div>
@@ -479,7 +479,7 @@
                 <!-- Profit Rate -->
                 <div v-if="isColumnVisible('profitRate')" class="col-6 col-sm-3 text-center">
                   <div class="metric-label">{{ $t('product_based_costing.table_col_profitRate') }}</div>
-                  <div class="metric-value font-mono">
+                  <div class="metric-value bw-tabular">
                     {{ formatNumber(getProfitRate(slotProps.row)) }}%
                   </div>
                 </div>
@@ -600,7 +600,7 @@
               type="number"
               dense
               borderless
-              input-class="text-center font-mono"
+              input-class="text-center bw-tabular"
               class="cell-input"
               min="0"
               step="1"
@@ -621,7 +621,7 @@
               type="number"
               dense
               borderless
-              input-class="text-center font-mono"
+              input-class="text-center bw-tabular"
               class="cell-input"
               :class="{ 'cell-input--review': focusConfirmedQty }"
               min="0"
@@ -640,7 +640,7 @@
             <div class="barcode-lines text-caption">
               <div class="row items-center no-wrap">
                 <span class="text-weight-bold">{{ $t('product_based_costing.barcode') }}:</span>
-                <span class="q-ml-xs font-mono">{{ slotProps.row.barcode || '-' }}</span>
+                <span class="q-ml-xs bw-tabular">{{ slotProps.row.barcode || '-' }}</span>
                 <q-btn
                   v-if="slotProps.row.barcode"
                   flat
@@ -657,7 +657,7 @@
               </div>
               <div class="row items-center no-wrap">
                 <span class="text-weight-bold">{{ $t('product_based_costing.code') }}:</span>
-                <span class="q-ml-xs font-mono">{{ slotProps.row.productCode || '-' }}</span>
+                <span class="q-ml-xs bw-tabular">{{ slotProps.row.productCode || '-' }}</span>
                 <q-btn
                   v-if="slotProps.row.productCode"
                   flat
@@ -674,7 +674,7 @@
               </div>
               <div class="row items-center no-wrap">
                 <span class="text-weight-bold">{{ $t('product_based_costing.product_id') }}:</span>
-                <span class="q-ml-xs font-mono">{{ slotProps.row.productId || '-' }}</span>
+                <span class="q-ml-xs bw-tabular">{{ slotProps.row.productId || '-' }}</span>
                 <q-btn
                   v-if="slotProps.row.productId"
                   flat
@@ -720,7 +720,7 @@
               type="number"
               dense
               borderless
-              input-class="text-right font-mono"
+              input-class="text-right bw-tabular"
               class="cell-input"
               min="0"
               step="0.01"
@@ -749,7 +749,7 @@
               type="number"
               dense
               borderless
-              input-class="text-right font-mono"
+              input-class="text-right bw-tabular"
               class="cell-input"
               min="0"
               step="1"
@@ -770,7 +770,7 @@
               type="number"
               dense
               borderless
-              input-class="text-right font-mono"
+              input-class="text-right bw-tabular"
               class="cell-input"
               min="0"
               step="1"
@@ -863,7 +863,7 @@
                 type="number"
                 dense
                 borderless
-                input-class="text-right font-mono"
+                input-class="text-right bw-tabular"
                 class="cell-input col"
                 min="0"
                 step="1"

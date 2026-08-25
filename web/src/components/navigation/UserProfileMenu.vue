@@ -201,6 +201,8 @@ const toggleDensity = () => {
 const setLocale = (newLocale: string) => {
   locale.value = newLocale;
   localStorage.setItem('bw_locale', newLocale);
+  localStorage.setItem('locale', newLocale);
+  document.documentElement.lang = newLocale === 'bn' ? 'bn' : 'en';
 };
 
 const onSignOut = () => {
@@ -239,10 +241,6 @@ const onSignOut = () => {
 
 .border-bottom {
   border-bottom: 1px solid #e2e8f0;
-}
-
-.locale-bn {
-  font-weight: 600;
 }
 
 body.body--dark .border-bottom {

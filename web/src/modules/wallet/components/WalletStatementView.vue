@@ -74,7 +74,7 @@
       <div class="col-xs-6 col-sm-3">
         <q-card flat bordered class="q-pa-sm text-center bg-grey-1">
           <div class="text-caption text-grey-7">Opening Balance</div>
-          <div class="text-subtitle1 text-weight-bolder font-mono text-grey-9">
+          <div class="text-subtitle1 text-weight-bolder bw-tabular text-grey-9">
             ৳{{ formatCurrency(statement?.opening_balance || 0) }}
           </div>
         </q-card>
@@ -83,7 +83,7 @@
       <div class="col-xs-6 col-sm-3">
         <q-card flat bordered class="q-pa-sm text-center bg-green-1">
           <div class="text-caption text-positive text-weight-bold">Total Credits (+)</div>
-          <div class="text-subtitle1 text-weight-bolder font-mono text-positive">
+          <div class="text-subtitle1 text-weight-bolder bw-tabular text-positive">
             +৳{{ formatCurrency(statement?.total_credits || 0) }}
           </div>
         </q-card>
@@ -92,7 +92,7 @@
       <div class="col-xs-6 col-sm-3">
         <q-card flat bordered class="q-pa-sm text-center bg-red-1">
           <div class="text-caption text-negative text-weight-bold">Total Debits (-)</div>
-          <div class="text-subtitle1 text-weight-bolder font-mono text-negative">
+          <div class="text-subtitle1 text-weight-bolder bw-tabular text-negative">
             -৳{{ formatCurrency(statement?.total_debits || 0) }}
           </div>
         </q-card>
@@ -101,7 +101,7 @@
       <div class="col-xs-6 col-sm-3">
         <q-card flat bordered class="q-pa-sm text-center bg-blue-1">
           <div class="text-caption text-primary text-weight-bold">Closing Balance</div>
-          <div class="text-subtitle1 text-weight-bolder font-mono text-primary">
+          <div class="text-subtitle1 text-weight-bolder bw-tabular text-primary">
             ৳{{ formatCurrency(statement?.closing_balance || 0) }}
           </div>
         </q-card>
@@ -125,7 +125,7 @@
             <q-chip
               dense
               flat
-              class="font-mono text-weight-bold text-caption"
+              class="bw-tabular text-weight-bold text-caption"
               :class="props.row.type === 'credit' ? 'bg-positive-soft text-positive' : 'bg-negative-soft text-negative'"
             >
               <q-icon
@@ -139,7 +139,7 @@
         </template>
 
         <template #body-cell-amount="props">
-          <q-td :props="props" class="font-mono text-weight-bold">
+          <q-td :props="props" class="bw-tabular text-weight-bold">
             <span :class="props.row.type === 'credit' ? 'text-positive' : 'text-negative'">
               {{ props.row.type === 'credit' ? '+' : '-' }}৳{{ formatCurrency(props.row.amount) }}
             </span>
@@ -147,7 +147,7 @@
         </template>
 
         <template #body-cell-balance_after="props">
-          <q-td :props="props" class="font-mono text-weight-bold text-primary">
+          <q-td :props="props" class="bw-tabular text-weight-bold text-primary">
             ৳{{ formatCurrency(props.row.balance_after) }}
           </q-td>
         </template>

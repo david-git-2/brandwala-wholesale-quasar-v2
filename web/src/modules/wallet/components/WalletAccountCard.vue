@@ -6,14 +6,14 @@
           <q-icon name="ph ph-wallet" size="20px" />
         </q-avatar>
         <div>
-          <div class="text-caption text-grey-7 font-mono uppercase tracking-wider">3-Bucket Balance State</div>
+          <div class="text-caption text-grey-7 bw-tabular uppercase tracking-wider">3-Bucket Balance State</div>
           <div class="text-subtitle1 text-weight-bolder text-ink">
             {{ entityName || entityType.toUpperCase() }} Financial Account
           </div>
         </div>
       </div>
       <div class="row items-center q-gutter-x-sm">
-        <q-chip dense flat class="bg-grey-2 text-grey-8 font-mono text-weight-bold">
+        <q-chip dense flat class="bg-grey-2 text-grey-8 bw-tabular text-weight-bold">
           {{ currencyCode }}
         </q-chip>
         <q-btn
@@ -40,7 +40,7 @@
             <span class="bucket-label text-positive text-weight-bold">Available Balance</span>
             <q-icon name="ph ph-check-circle" color="positive" size="18px" />
           </div>
-          <div class="bucket-amount text-h6 text-weight-bolder font-mono text-positive">
+          <div class="bucket-amount text-h6 text-weight-bolder bw-tabular text-positive">
             {{ formatCurrency(account?.available_balance || 0) }}
           </div>
           <div class="bucket-subtext text-caption text-grey-6">
@@ -56,7 +56,7 @@
             <span class="bucket-label text-warning text-weight-bold">Pending Balance</span>
             <q-icon name="ph ph-clock-clockwise" color="warning" size="18px" />
           </div>
-          <div class="bucket-amount text-h6 text-weight-bolder font-mono text-warning">
+          <div class="bucket-amount text-h6 text-weight-bolder bw-tabular text-warning">
             {{ formatCurrency(account?.pending_balance || 0) }}
           </div>
           <div class="bucket-subtext text-caption text-grey-6">
@@ -72,7 +72,7 @@
             <span class="bucket-label text-indigo text-weight-bold">Locked Balance</span>
             <q-icon name="ph ph-lock-key" color="indigo" size="18px" />
           </div>
-          <div class="bucket-amount text-h6 text-weight-bolder font-mono text-indigo">
+          <div class="bucket-amount text-h6 text-weight-bolder bw-tabular text-indigo">
             {{ formatCurrency(account?.locked_balance || 0) }}
           </div>
           <div class="bucket-subtext text-caption text-grey-6">
@@ -85,7 +85,7 @@
     <!-- Net Total Bar -->
     <div class="net-total-bar row items-center justify-between q-mt-md q-px-md q-py-sm rounded-borders">
       <div class="text-caption text-weight-bold text-grey-8">Total Net Entity Balance</div>
-      <div class="text-subtitle1 text-weight-bolder font-mono text-primary">
+      <div class="text-subtitle1 text-weight-bolder bw-tabular text-primary">
         {{ formatCurrency(totalNetBalance) }} {{ currencyCode }}
       </div>
     </div>

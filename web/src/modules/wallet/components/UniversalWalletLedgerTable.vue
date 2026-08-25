@@ -26,7 +26,7 @@
               >
                 {{ sourceTypeLabel(props.row.source_type) }}
               </q-badge>
-              <span v-if="props.row.source_id" class="text-caption font-mono text-grey-6" style="font-size: 11px">
+              <span v-if="props.row.source_id" class="text-caption bw-tabular text-grey-6" style="font-size: 11px">
                 #{{ props.row.source_id }}
               </span>
             </div>
@@ -74,7 +74,7 @@
               {{ props.row.metadata.note }}
             </div>
             <div class="row items-center q-gutter-x-sm text-caption text-grey-6" style="font-size: 11px">
-              <span v-if="props.row.metadata?.trx_id" class="font-mono">
+              <span v-if="props.row.metadata?.trx_id" class="bw-tabular">
                 Trx: {{ props.row.metadata.trx_id }}
               </span>
               <span v-if="props.row.metadata?.approved_by">
@@ -92,11 +92,11 @@
           <q-td :props="props">
             <div
               :class="props.row.type === 'credit' ? 'text-emerald text-weight-bolder' : 'text-rose text-weight-bolder'"
-              class="font-mono text-body2"
+              class="bw-tabular text-body2"
             >
               {{ props.row.type === 'credit' ? '+' : '-' }}{{ formatCurrency(props.row.amount, props.row.currency_code) }}
             </div>
-            <div v-if="props.row.currency_code && props.row.currency_code !== 'BDT' && props.row.exchange_rate" class="text-caption text-grey-6 font-mono" style="font-size: 10px">
+            <div v-if="props.row.currency_code && props.row.currency_code !== 'BDT' && props.row.exchange_rate" class="text-caption text-grey-6 bw-tabular" style="font-size: 10px">
               @ 1:{{ props.row.exchange_rate }} BDT
             </div>
           </q-td>
@@ -104,7 +104,7 @@
 
         <!-- Balance After Column -->
         <template #body-cell-balance_after="props">
-          <q-td :props="props" class="text-weight-bolder font-mono text-ink text-body2">
+          <q-td :props="props" class="text-weight-bolder bw-tabular text-ink text-body2">
             {{ formatCurrency(props.row.balance_after, props.row.currency_code) }}
           </q-td>
         </template>

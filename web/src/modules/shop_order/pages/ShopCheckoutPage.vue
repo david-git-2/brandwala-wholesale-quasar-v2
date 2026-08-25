@@ -1,5 +1,5 @@
 <template>
-  <q-page class="q-pa-md">
+  <q-page class="q-pa-md shop-commerce-page">
     <div class="q-gutter-y-md">
       <!-- Header -->
       <section class="row items-center justify-between q-col-gutter-md">

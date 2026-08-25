@@ -2,25 +2,23 @@
 
 Plan to unify **theme**, **color**, **font**, **splash screen**, and **brand logo** for BrandWala / TradeFlow BD.
 
-**Status:** Partial — **P2 logo (light theme PNG)** and **P3 splash** shipped. P0 color tokens, P1 fonts, P4 theme polish still open.
+**Status:** **Complete** — P0–P5 shipped (color, fonts, logo, splash, theme polish, doc sync).
 
-**Related docs:** [`docs/UI_CONSISTENCY.md`](./../docs/UI_CONSISTENCY.md) (canonical tokens after rollout), [`doc/tenant_auth/TENANT_AUTH.md`](./tenant_auth/TENANT_AUTH.md) (four app scopes).
+**Canonical token reference:** [`docs/UI_CONSISTENCY.md`](./../docs/UI_CONSISTENCY.md)
 
 ---
 
-## Problem (why this plan exists)
+## Problem (resolved 2026-08-25)
 
-Today the product tells **three different brand stories** at once:
+Previously the product told **three different brand stories** at once (violet splash, terracotta Quasar vars, cool-slate / Supabase-green app chrome). That drift showed on every load: splash → first screen.
 
-| Layer | Current palette | Feeling |
-|-------|-------------------|---------|
-| Splash (`web/index.html`) | Warm stone + violet `#7c3aed` | Boutique / fintech |
-| `quasar.variables.scss` | Terracotta `#b85c3c` | Warm wholesale |
-| `app.scss` scopes | Cool slate + Supabase emerald `#047857` | Generic dev-tool |
+**Shipped north star:** One warm, ledger-trustworthy canvas; four quiet accent lanes for *place*; one strict semantic palette for *state*; Plus Jakarta for words, IBM Plex Mono for money.
 
-Users feel that drift on every load: splash → first screen. Docs still say Roboto + warm stone; the app runs Plus Jakarta + cool slate. Scope reds and navies also read like **error** or **corporate law**, not “where I am in the product.”
-
-**North star:** One warm, ledger-trustworthy canvas; four quiet accent lanes for *place*; one strict semantic palette for *state*; Jakarta for words, mono for money.
+| Layer (before) | Issue | Shipped |
+|----------------|-------|---------|
+| Splash | Violet / heavy blobs | Warm stone canvas, compact logo, scope tagline |
+| `app.scss` | Cool slate + Supabase emerald scopes | Warm neutrals + oxide burgundy / trade teal / commerce indigo / capital teal |
+| Fonts | Roboto bundle + misaligned decimals | Jakarta + Plex Mono (`.bw-tabular`) + Noto Sans Bengali |
 
 ---
 
@@ -40,12 +38,12 @@ Users feel that drift on every load: splash → first screen. Docs still say Rob
 
 | Phase | Focus | Risk | Est. files |
 |-------|--------|------|------------|
-| **P0** | Color tokens + semantic layer | Low — CSS variables only | ~4 |
-| **P1** | Fonts | Low — font load + CSS | ~4 |
+| **P0** | Color tokens + semantic layer | Done | ~4 |
+| **P1** | Fonts | Done | ~4 |
 | **P2** | Light-theme logo + favicon (PNG) | Done — raster assets + references | ~8 |
 | **P3** | Splash screen | Done — full lockup on splash | ~2 |
-| **P4** | Theme polish (shell, tables, shop) | Medium — visual QA across scopes | ~5 |
-| **P5** | Doc sync | Low | ~2 |
+| **P4** | Theme polish (shell, tables, shop) | Done | ~5 |
+| **P5** | Doc sync | Done | ~2 |
 
 Implement P0 → P1 → P2 → P3 in order. P4 can ship incrementally per module.
 
@@ -104,10 +102,10 @@ Map existing `--bw-brand-*` and `--bw-theme-*` to these names (or alias them) so
 
 ### Acceptance
 
-- [ ] Light and dark neutrals feel warm, not Supabase-gray
-- [ ] Platform nav does not look like an error state
-- [ ] Green snackbar, green stat card, and app scope primary are visually distinct roles
-- [ ] No new hardcoded hex in touched components (tokens only)
+- [x] Light and dark neutrals feel warm, not Supabase-gray
+- [x] Platform nav does not look like an error state
+- [x] Green snackbar, green stat card, and app scope primary are visually distinct roles
+- [x] No new hardcoded hex in touched components (tokens only)
 
 ---
 
@@ -119,10 +117,7 @@ Scopes already swap `--bw-theme-primary`, but surfaces, shadows, and density are
 
 ### What
 
-1. **Scope chrome** — thin persistent signal of “where I am”:
-   - 4px left rail on `WorkspaceShell` drawer OR 2px header hairline in scope primary
-   - Header pill: `APP · Tenant Name` / `SHOP · Store` on scope-soft background
-
+1. **Scope identity** — scope primary on nav active soft-fill, shop bottom-nav pill, and splash accent glow (no header badge or drawer rail).
 2. **Elevation rules**
    - **Flat:** data tables, list toolbars (border + single subtle shadow or inset only)
    - **Raised:** dialogs, drawers, clickable product cards, empty-state CTAs
@@ -143,7 +138,7 @@ Scopes already swap `--bw-theme-primary`, but surfaces, shadows, and density are
 
 | File | Change |
 |------|--------|
-| `web/src/components/WorkspaceShell.vue` | Scope rail or hairline; header scope badge; nav active states use primary-soft |
+| `web/src/components/WorkspaceShell.vue` | Nav active + shop bottom nav use `--bw-theme-primary-soft`; mini drawer icon centering |
 | `web/src/css/app.scss` | Flatten `.q-table__container` shadow stack; card hover only on `.cursor-pointer` |
 | `web/src/composables/useAppearance.ts` | Optional: density affects CSS class on `body` (`bw-density-compact`) |
 | Shop pages under `web/src/modules/shop_order/pages/` | Spacing + title scale via `.theme-shop` scoped rules |
@@ -151,9 +146,9 @@ Scopes already swap `--bw-theme-primary`, but surfaces, shadows, and density are
 
 ### Acceptance
 
-- [ ] User can identify scope within 2 seconds without reading the URL
-- [ ] 40-row ops table feels stable (no “floating spreadsheet”)
-- [ ] Shop catalog feels slightly more open than app invoice desk
+- [x] User can identify scope within 2 seconds without reading the URL
+- [x] 40-row ops table feels stable (no “floating spreadsheet”)
+- [x] Shop catalog feels slightly more open than app invoice desk
 
 ---
 
@@ -208,9 +203,9 @@ Change table body from `0.84rem` → `0.875rem`. Reserve **700** for titles and 
 
 ### Acceptance
 
-- [ ] Ledger and invoice columns align on decimal places
-- [ ] Bengali header/locale selector does not look cramped
-- [ ] Font payload reduced or flat (no duplicate Latin stacks)
+- [x] Ledger and invoice columns align on decimal places
+- [x] Bengali header/locale selector does not look cramped
+- [x] Font payload reduced or flat (no duplicate Latin stacks)
 
 ---
 
@@ -226,10 +221,11 @@ Splash is the first brand moment. Scope accent blobs still differ from `app.scss
 2. **Neutral canvas** matches app: warm stone gradient, not violet-by-default.
 3. **Logo** from `web/public/brand/logo-light.png` (full lockup with emblem + wordmark).
 4. **Copy**
-   - Product name is baked into the logo image; show tenant name below when resolved
-   - Scope ghost word + taglines stay scope-specific in JS (`SCOPE_THEMES`)
-5. **Motion** — keep rise animation; reduce blob opacity in dark mode preference (`prefers-color-scheme: dark` before auth boot).
-6. **Favicon** — `favicon-light.png` / `favicon-dark.png` via `useDynamicFavicon` + `useAppearance` toggle.
+   - Product name is baked into the logo image; show tenant name when resolved
+   - Scope-specific tagline from `SCOPE_THEMES` (no giant ghost word, no accent blobs)
+5. **Motion** — subtle rise animation; reduced glow in dark mode
+6. **Logo size** — compact lockup (`~44–58px` height), not full-bleed hero
+7. **Favicon** — `favicon-light.png` / `favicon-dark.png` via `useDynamicFavicon` + `useAppearance`
 
 ### What to change
 
@@ -247,8 +243,8 @@ Splash is the first brand moment. Scope accent blobs still differ from `app.scss
 
 - [x] Splash shows official TradeFlow BD lockup (not inline SVG builder)
 - [x] Favicon uses emblem PNG in light appearance
-- [ ] Splash → first painted app screen: no visible color jump on neutrals (needs P0)
-- [ ] Platform / app / shop / investor splash accents match in-app scope primary
+- [x] Splash → first painted app screen: no visible color jump on neutrals (needs P0)
+- [x] Platform / app / shop / investor splash accents match in-app scope primary
 
 ---
 
@@ -280,7 +276,7 @@ The product needed one official mark. Generated SVG iterations were removed. The
 | `web/public/brand/*.png` | Official raster assets (SVGs removed) |
 | `web/src/constants/brandAssets.ts` | **Created** path constants |
 | `web/index.html` | Splash + default favicon |
-| `web/src/composables/useDynamicFavicon.ts` | Light → PNG; dark → scope SVG |
+| `web/src/composables/useDynamicFavicon.ts` | Light/dark PNG favicons from `brandAssets.ts` |
 | `web/src/composables/useAppearance.ts` | Re-sync favicon on dark-mode toggle |
 | `web/src/layouts/AuthLayout.vue` | Full lockup on login canvas |
 | `web/src/components/WorkspaceShell.vue` | Drawer logo when light mode |
@@ -288,9 +284,25 @@ The product needed one official mark. Generated SVG iterations were removed. The
 
 ### Acceptance
 
-- [x] Logo readable at favicon (32px) and splash (~300px)
+- [x] Logo readable at favicon (32px) and splash (compact lockup)
 - [x] Light-theme surfaces use PNG lockup via shared constants
 - [x] Dark-theme surfaces use matching dark PNG lockup
+
+---
+
+## P5 — Doc sync
+
+| File | Change |
+|------|--------|
+| `docs/UI_CONSISTENCY.md` | Canonical neutrals, semantic, scope, typography, elevation, shop rhythm, brand assets |
+| `.cursor/rules/.ui-consistency.mdc` | Token + elevation rules for agents |
+| `.agents/rules/table_list_design_system.md` | Canvas / dark mode / flat table surfaces |
+| `doc/BRAND_THEME_PLAN.md` | This file — status + shipped vs planned notes |
+
+### Acceptance
+
+- [x] No doc still prescribes Roboto, Supabase-gray canvas, or old scope hex as canonical
+- [x] `docs/UI_CONSISTENCY.md` matches `web/src/css/app.scss` token names
 
 ---
 
@@ -348,8 +360,10 @@ doc/BRAND_THEME_PLAN.md           ← this file (update status when done)
 | 2026-08-25 | Evolve 4-tile mark into shared SVG; drop inline `buildIconMarkup` |
 | 2026-08-25 | Product display name on splash: **TradeFlow BD** unless tenant resolved |
 | 2026-08-25 | Ship official TradeFlow BD PNG lockup for light theme; remove generated SVGs |
-| 2026-08-25 | Ship matching dark-theme PNG lockup + `useBrandAssets` composable |
+| 2026-08-25 | Splash redesign: compact logo, tagline, warm glow (no blobs/ghost) |
+| 2026-08-25 | Scope chrome: soft nav fill only (no header badge / drawer rail) |
 
 ---
 
-*When implementation starts, mark phases complete in this doc and update [`docs/UI_CONSISTENCY.md`](./../docs/UI_CONSISTENCY.md) as the single token reference.*
+| 2026-08-25 | Ship matching dark-theme PNG lockup + `useBrandAssets` composable |
+| 2026-08-25 | P5 doc sync — `UI_CONSISTENCY.md` + agent rules aligned to shipped tokens |

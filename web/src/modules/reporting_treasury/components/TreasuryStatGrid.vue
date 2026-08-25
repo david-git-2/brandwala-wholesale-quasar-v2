@@ -5,7 +5,7 @@
         <div class="text-caption text-grey-7 text-uppercase tracking-wider">
           {{ card.label }}
         </div>
-        <div class="text-h5 text-weight-bolder q-mt-xs text-primary" :class="card.valueClass">
+        <div class="text-h5 text-weight-bolder q-mt-xs text-primary bw-tabular" :class="card.valueClass">
           {{ formatCardValue(card.value, card.format) }}
         </div>
         <div v-if="card.caption" class="text-caption text-grey-5 q-mt-xs">

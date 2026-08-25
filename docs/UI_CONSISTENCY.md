@@ -7,45 +7,96 @@ Canonical UI rules for the Quasar app. Machine-readable rules: `.cursor/rules/.u
 
 ## Color tokens
 
-### Brand (light `:root`)
-| Token | Value |
-|-------|-------|
-| `--bw-brand-base` | `#fbfaf7` |
-| `--bw-brand-surface` | `#ffffff` |
-| `--bw-brand-border` | `#e7e1d8` |
-| `--bw-brand-ink` | `#171412` |
-| `--bw-brand-muted` | `#736a61` |
-| `--bw-brand-accent` | `#7c3aed` |
+### Neutrals (light `:root`)
 
-### Brand (dark `body.body--dark`)
+| Token | Value | Legacy alias |
+|-------|-------|--------------|
+| `--bw-neutral-canvas` | `#fbfaf7` | `--bw-brand-base` |
+| `--bw-neutral-surface` | `#ffffff` | `--bw-brand-surface` |
+| `--bw-neutral-border` | `#e7e1d8` | `--bw-brand-border` |
+| `--bw-neutral-ink` | `#171412` | `--bw-brand-ink` |
+| `--bw-neutral-muted` | `#736a61` | `--bw-brand-muted` |
+| `--bw-neutral-chrome` | `#64748b` | table headers, overlines |
+
+Default accent (unscoped): `--bw-brand-accent` → `#0d6b5c` (trade teal)
+
+### Neutrals (dark `body.body--dark`)
+
 | Token | Value |
 |-------|-------|
-| `--bw-brand-base` | `#0c0a09` |
-| `--bw-brand-surface` | `#1c1917` |
-| `--bw-brand-border` | `#292524` |
-| `--bw-brand-ink` | `#f5f5f4` |
-| `--bw-brand-muted` | `#a8a29e` |
-| `--bw-brand-accent` | `#a78bfa` |
+| `--bw-neutral-canvas` | `#141210` |
+| `--bw-neutral-surface` | `#1c1917` |
+| `--bw-neutral-border` | `#2a2622` |
+| `--bw-neutral-ink` | `#f5f5f4` |
+| `--bw-neutral-muted` | `#a8a29e` |
+| `--bw-neutral-chrome` | `#94a3b8` |
+
+### Semantic state (never scope primary)
+
+| Token | Light | Use |
+|-------|-------|-----|
+| `--bw-success` | `#1a7f4b` | Posted, paid, in stock |
+| `--bw-warning` | `#b45309` | Pending, low stock, draft |
+| `--bw-error` | `#b83a3a` | Failed, voided, overdue |
+| `--bw-info` | `#2563eb` | Info banners, links |
+| `--bw-*-soft` | 12% color-mix on surface | Row hues, banners, stat cards |
+
+Quasar `$positive` / `$negative` / `$warning` / `$info` in `quasar.variables.scss` match these values.
+
+### Scope accents (place — four app surfaces)
+
+| Scope | Light primary | Dark primary |
+|-------|---------------|--------------|
+| Platform | `#6b2d3c` oxide burgundy | `#e8a0a8` |
+| App | `#0d6b5c` trade teal | `#4db8a4` |
+| Shop | `#3d52b0` commerce indigo | `#7ba3f0` |
+| Investor | `#0f5c5a` capital teal | `#5ecfc4` |
 
 ### Semantic theme (use these in components)
 - `--bw-theme-base`, `--bw-theme-surface`, `--bw-theme-border`, `--bw-theme-ink`, `--bw-theme-muted`
 - `--bw-theme-primary`, `--bw-theme-primary-soft`, `--bw-theme-shadow`
 - `--q-primary` maps to `--bw-theme-primary`
-- Scope overrides: `.theme-platform` (red), `.theme-app` (emerald), `.theme-shop` (blue), `.theme-investor` (`#0f766e`)
 
 ### Domain table highlights (high-density ops tables only)
-- Package weight: `#e8d7f7` | Price: `#daf3e4` | Cost: `#ffe8d1` | Quantity: `#d0e6ff`
+
+Use `.bw-ops-col-tint--*` utilities (6% hue + 1px left accent):
+
+| Utility | Hue anchor | Column |
+|---------|------------|--------|
+| `--bw-ops-hue-weight` / `.bw-ops-col-tint--weight` | `#e8d7f7` | Package weight |
+| `--bw-ops-hue-price` / `.bw-ops-col-tint--price` | `#daf3e4` | Price |
+| `--bw-ops-hue-cost` / `.bw-ops-col-tint--cost` | `#ffe8d1` | Cost |
+| `--bw-ops-hue-qty` / `.bw-ops-col-tint--qty` | `#d0e6ff` | Quantity |
 
 Source: `web/src/css/app.scss`, `web/src/components/WorkspaceShell.vue`
 
 ## Typography
 
-- Font family: **Roboto** (Quasar `roboto-font` extras)
+| Role | Family | Weights | Use |
+|------|--------|---------|-----|
+| UI | Plus Jakarta Sans | 400, 500, 600, 700 | All interface text |
+| Data / money | IBM Plex Mono | 400, 500, 600 | Currency, qty, cost, barcodes (`.bw-tabular`) |
+| Bengali | Noto Sans Bengali | 400, 600 | `html[lang="bn"]`, `.locale-bn` |
+
+CSS variables: `--bw-font-ui`, `--bw-font-mono`, `--bw-font-bn` in `web/src/css/app.scss`.
+
+Legacy alias: `.font-mono` maps to `.bw-tabular` (prefer `.bw-tabular` in new code).
+
+Google Fonts loaded in `web/index.html`; Roboto Quasar extra removed.
+
+### Type scale
+
+| Tier | Size | Weight | Use |
+|------|------|--------|-----|
+| Display | `1.25–1.35rem` | 700 | Page title, hero KPI, `.stat-value` |
+| Body | `0.875rem` (14px) | 400–500 | Tables, forms |
+| Meta | `0.6875rem` (11px) | 600 + tracking | Overlines, column headers, `.stat-label` |
+
 - Mobile base: `html { font-size: 14px }` below 600px
 - Page title (`AppPageHeader`): `1.35rem` / weight 700
 - Eyebrow: `0.75rem`, uppercase, `--bw-theme-muted`
-- Stat labels: `11px` | Stat values: `20px` / weight 700
-- Table density: `11–13px` in compact operational tables
+- Stat labels: `.stat-label` meta tier | Stat values: `.stat-value` mono + tabular
+- Table density: `0.875rem` body in global `q-table`; compact ops tables may use `11–13px`
 - Muted text utility: `.bw-text-muted` → `--bw-theme-muted`
 
 ## Spacing
@@ -70,6 +121,37 @@ Source: `web/src/css/app.scss`, `web/src/components/WorkspaceShell.vue`
 | `.square-chip` | `4px` |
 
 Shadow: `--bw-theme-shadow` (scope-specific; light: soft stone tint, dark: deeper black)
+
+### Elevation rules
+
+| Tier | Use | Treatment |
+|------|-----|-----------|
+| **Flat** | Data tables (`.q-table__container`), list toolbars (`.bw-page-toolbar`), default `.floating-surface` | Border + `0 1px 2px` subtle shadow only |
+| **Raised** | Dialogs (`.q-dialog__inner > .q-card`), drawers, empty-state CTAs (`.empty-state-block.floating-surface`), clickable cards (`.q-card.cursor-pointer:hover`) | Stronger shadow stack |
+
+Scope identity: nav active + shop bottom nav use `--bw-theme-primary-soft` fill (no header badge or drawer accent rail).
+
+Compact density: `body.body--compact` / `body.bw-density-compact` → 13px body, 11px meta, tighter `.stat-value`.
+
+### Shop rhythm (`body.theme-shop`)
+
+- Catalog, product detail, cart/checkout (`.shop-commerce-page`): extra page padding via `clamp(1.25rem, 3vw, 2.5rem)`
+- Product titles (`.product-name`, `.product-detail__title`): `1.125rem / 600`
+- Mobile bottom nav active item: soft filled pill on `--bw-theme-primary-soft`
+
+## Brand assets & splash
+
+**Constants:** `web/src/constants/brandAssets.ts` — paths for logo, mark, favicon (light + dark).
+
+**Composable:** `web/src/composables/useBrandAssets.ts` — picks assets from appearance dark mode.
+
+| Asset | Path | Use |
+|-------|------|-----|
+| Full lockup | `/brand/logo-light.png` / `logo-dark.png` | Auth, splash, About, drawer (expanded) |
+| Emblem | `/brand/logo-mark-light.png` / `logo-mark-dark.png` | Drawer mini, compact surfaces |
+| Favicon | `/brand/favicon-light.png` / `favicon-dark.png` | Tab icon |
+
+**Splash (`web/index.html`):** Warm stone canvas, compact logo (~44–58px height), tenant name when resolved, scope tagline + accent glow from `SCOPE_THEMES`. Hidden by `web/src/boot/splash.ts` after first paint.
 
 ## Standard page flow
 

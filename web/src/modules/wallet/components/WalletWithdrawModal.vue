@@ -3,7 +3,7 @@
     <q-card style="width: 480px; max-width: 95vw" class="rounded-borders">
       <q-card-section class="row items-center justify-between q-pb-none">
         <div class="row items-center q-gutter-x-sm">
-          <q-avatar size="36px" class="bg-positive-soft text-positive font-mono text-weight-bold">
+          <q-avatar size="36px" class="bg-positive-soft text-positive bw-tabular text-weight-bold">
             <q-icon name="ph ph-bank" size="20px" />
           </q-avatar>
           <div>
@@ -23,7 +23,7 @@
             <span class="text-caption text-weight-bold text-positive">
               Money You Have (Available Cash)
             </span>
-            <span class="text-subtitle1 text-weight-bolder text-positive font-mono">
+            <span class="text-subtitle1 text-weight-bolder text-positive bw-tabular">
               ৳{{ formatCurrency(availableBalance) }}
             </span>
           </div>
@@ -62,7 +62,7 @@
               ]"
             >
               <template #append>
-                <span class="text-caption text-grey-6 font-mono">BDT</span>
+                <span class="text-caption text-grey-6 bw-tabular">BDT</span>
               </template>
             </q-input>
           </div>

@@ -15,7 +15,7 @@
               <q-icon :name="tile.icon" size="20px" />
             </div>
           </div>
-          <div class="text-h4 text-weight-bolder font-mono q-my-xs" :class="tile.valueClass">
+          <div class="text-h4 text-weight-bolder bw-tabular q-my-xs" :class="tile.valueClass">
             {{ tile.prefix }}{{ formatCurrency(tile.value) }}
           </div>
           <div class="row items-center text-caption text-muted q-mt-xs">

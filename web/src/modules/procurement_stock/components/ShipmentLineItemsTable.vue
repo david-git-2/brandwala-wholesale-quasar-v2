@@ -30,15 +30,15 @@
             >
               Section / Vendor
             </th>
-            <th v-if="isColumnVisible('purchase_price')" class="text-center shipment-price-col">
+            <th v-if="isColumnVisible('purchase_price')" class="text-center shipment-price-col bw-ops-col-tint--price">
               Price {{ purchaseCurrencySymbol }}
             </th>
-            <th v-if="isColumnVisible('cost_bdt')" class="text-center shipment-cost-col">
+            <th v-if="isColumnVisible('cost_bdt')" class="text-center shipment-cost-col bw-ops-col-tint--cost">
               Cost {{ costCurrencySymbol }}
             </th>
             <th
               v-if="isColumnVisible('ordered_quantity')"
-              class="text-center shipment-qty-col shipment-qty-col--quantity"
+              class="text-center shipment-qty-col shipment-qty-col--quantity bw-ops-col-tint--qty"
             >
               Ordered Quantity
             </th>
@@ -50,7 +50,7 @@
             </th>
             <th
               v-if="isColumnVisible('package_weight')"
-              class="text-center shipment-package-weight-col"
+              class="text-center shipment-package-weight-col bw-ops-col-tint--weight"
             >
               Package Wt
             </th>
@@ -236,7 +236,7 @@
               </div>
             </td>
 
-            <td v-if="isColumnVisible('purchase_price')" class="text-center shipment-price-col">
+            <td v-if="isColumnVisible('purchase_price')" class="text-center shipment-price-col bw-ops-col-tint--price">
               <div>
                 <q-input
                   v-if="isEditable"
@@ -258,7 +258,7 @@
                 T: {{ formatFixed2((item.purchase_price || 0) * (item.ordered_quantity || 0)) }}
               </div>
             </td>
-            <td v-if="isColumnVisible('cost_bdt')" class="text-center shipment-cost-col">
+            <td v-if="isColumnVisible('cost_bdt')" class="text-center shipment-cost-col bw-ops-col-tint--cost">
               <div>{{ formatFixed2(lineCostBdt(item)) }}</div>
               <div class="text-caption text-grey-7 text-weight-normal q-mt-xs" style="font-size: 10px">
                 T: {{ formatFixed2(lineCostBdt(item) * (item.ordered_quantity || 0)) }}
@@ -266,7 +266,7 @@
             </td>
             <td
               v-if="isColumnVisible('ordered_quantity')"
-              class="text-center shipment-qty-col shipment-qty-col--quantity"
+              class="text-center shipment-qty-col shipment-qty-col--quantity bw-ops-col-tint--qty"
             >
               <div>
                 <q-input
@@ -317,7 +317,7 @@
             </td>
             <td
               v-if="isColumnVisible('package_weight')"
-              class="text-center shipment-package-weight-col"
+              class="text-center shipment-package-weight-col bw-ops-col-tint--weight"
             >
               <div>
                 <q-input
@@ -1139,48 +1139,6 @@ defineExpose({
   width: 140px;
   min-width: 140px;
   max-width: 140px;
-  background: #d0e6ff;
-}
-
-.shipment-details-table :deep(td.shipment-qty-col--quantity) {
-  background: #d0e6ff;
-}
-
-.shipment-details-table :deep(thead tr th.shipment-qty-col--quantity) {
-  background: #d0e6ff;
-}
-
-/* Package Weight Column - Light Purple */
-.shipment-package-weight-col {
-  background: #e8d7f7;
-}
-.shipment-details-table :deep(td.shipment-package-weight-col) {
-  background: #e8d7f7;
-}
-.shipment-details-table :deep(thead tr th.shipment-package-weight-col) {
-  background: #e8d7f7;
-}
-
-/* Price Column - Light Green */
-.shipment-price-col {
-  background: #daf3e4;
-}
-.shipment-details-table :deep(td.shipment-price-col) {
-  background: #daf3e4;
-}
-.shipment-details-table :deep(thead tr th.shipment-price-col) {
-  background: #daf3e4;
-}
-
-/* Cost Column - Light Orange */
-.shipment-cost-col {
-  background: #ffe8d1;
-}
-.shipment-details-table :deep(td.shipment-cost-col) {
-  background: #ffe8d1;
-}
-.shipment-details-table :deep(thead tr th.shipment-cost-col) {
-  background: #ffe8d1;
 }
 
 /* Row selection highlight */
@@ -1237,15 +1195,18 @@ defineExpose({
 }
 
 .shipment-summary-stat--price {
-  background: #daf3e4;
+  background: color-mix(in srgb, var(--bw-theme-surface) 94%, var(--bw-ops-hue-price) 6%);
+  box-shadow: inset 1px 0 0 var(--bw-ops-hue-price);
 }
 
 .shipment-summary-stat--cost {
-  background: #ffe8d1;
+  background: color-mix(in srgb, var(--bw-theme-surface) 94%, var(--bw-ops-hue-cost) 6%);
+  box-shadow: inset 1px 0 0 var(--bw-ops-hue-cost);
 }
 
 .shipment-summary-stat--qty {
-  background: #d0e6ff;
+  background: color-mix(in srgb, var(--bw-theme-surface) 94%, var(--bw-ops-hue-qty) 6%);
+  box-shadow: inset 1px 0 0 var(--bw-ops-hue-qty);
 }
 
 .shipment-summary-stat--product-wt {
@@ -1253,7 +1214,8 @@ defineExpose({
 }
 
 .shipment-summary-stat--package-wt {
-  background: #e8d7f7;
+  background: color-mix(in srgb, var(--bw-theme-surface) 94%, var(--bw-ops-hue-weight) 6%);
+  box-shadow: inset 1px 0 0 var(--bw-ops-hue-weight);
 }
 
 .inline-edit-input :deep(.q-field__control) {

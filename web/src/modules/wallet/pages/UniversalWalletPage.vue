@@ -101,7 +101,7 @@
               <div class="text-caption text-weight-bold text-grey-7 uppercase tracking-wider">
                 💵 Available Wallet Balance
               </div>
-              <div class="text-h4 text-weight-bolder q-mt-xs font-mono" :class="availableBalanceClass">
+              <div class="text-h4 text-weight-bolder q-mt-xs bw-tabular" :class="availableBalanceClass">
                 ৳{{ formatCurrency(account?.available_balance ?? 0) }}
               </div>
               <div class="text-caption text-grey-6 q-mt-xs">
@@ -113,13 +113,13 @@
             <div class="row items-center q-gutter-x-md">
               <div v-if="(account?.pending_balance ?? 0) !== 0" class="text-right">
                 <div class="text-caption text-grey-6">In Transit (Pending)</div>
-                <div class="text-subtitle1 text-weight-bold text-amber-9 font-mono">
+                <div class="text-subtitle1 text-weight-bold text-amber-9 bw-tabular">
                   ৳{{ formatCurrency(account?.pending_balance ?? 0) }}
                 </div>
               </div>
               <div v-if="(account?.locked_balance ?? 0) !== 0" class="text-right">
                 <div class="text-caption text-grey-6">On Hold (Locked)</div>
-                <div class="text-subtitle1 text-weight-bold text-grey-8 font-mono">
+                <div class="text-subtitle1 text-weight-bold text-grey-8 bw-tabular">
                   ৳{{ formatCurrency(account?.locked_balance ?? 0) }}
                 </div>
               </div>

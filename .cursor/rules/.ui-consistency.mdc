@@ -11,7 +11,8 @@ alwaysApply: false
 - Page header: `AppPageHeader` from `components/ui/AppPageHeader.vue` with `action` slot.
 - Section container: `q-card flat bordered`.
 - List data: `q-table`; card grids: `.bw-entity-grid` with plain `q-card`.
-- Colors: use `var(--bw-theme-*)` tokens from `web/src/css/app.scss`; never hardcode except domain table highlights.
+- Colors: use `var(--bw-theme-*)` and `var(--bw-success|warning|error|info*)` tokens from `web/src/css/app.scss`; never hardcode except `--bw-ops-hue-*` anchors in global tint utilities.
+- Data/money columns: `.bw-tabular` (IBM Plex Mono + tabular nums); legacy `.font-mono` alias still works.
 - Primary button: max one `color="primary" unelevated` visible at a time (header **or** empty-state CTA — never both).
 - Page explains itself: shop-floor subtitle (what this screen is); exactly one next step; disabled primary actions say why (`q-tooltip` or banner); hide cards that do not apply to the current status.
 - Detail/workflow next step: `q-banner class="bg-primary-soft text-primary rounded-borders" dense` under the header when the action is status-gated.
@@ -32,7 +33,9 @@ alwaysApply: false
 - Treasury pages: `TreasuryPageShell` > `TreasuryStatGrid` > `TreasuryTableWrap` > `q-table` with explicit `min-width`.
 - Dense ops detail: follow `docs/PAGE_HEADER.md` DETAIL + status workflow strip (not chip menus); rates/secondary editors collapsed by default; table full width.
 - Page headers (list/detail): prefer `docs/PAGE_HEADER.md` over `AppPageHeader` for new app management pages.
-- High-density table column pastels: weight `#e8d7f7`, price `#daf3e4`, cost `#ffe8d1`, qty `#d0e6ff`.
+- High-density table column pastels: `.bw-ops-col-tint--weight|price|cost|qty` (6% hue + inset left accent).
+- Elevation: flat tables/toolbars; raised dialogs, drawers, clickable cards, empty-state CTAs (see `docs/UI_CONSISTENCY.md`).
+- Scope identity: nav/bottom-nav active states use `--bw-theme-primary-soft`; prefer tokens from `docs/UI_CONSISTENCY.md`.
 - No `backdrop-filter` on static headers/cards/toolbars.
 - New shared component only if used on 2+ pages; place in `web/src/components/ui/`.
 - Reference implementations: `TenantPage.vue`, `AdminTenantPage.vue`, `ModulesPage.vue`.

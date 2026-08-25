@@ -551,8 +551,8 @@ const columns = computed<QTableColumn[]>(() => {
       field: 'id',
       align: 'center',
       sortable: false,
-      classes: 'stock-cost-col',
-      headerClasses: 'stock-cost-col',
+      classes: 'stock-cost-col bw-ops-col-tint--cost',
+      headerClasses: 'stock-cost-col bw-ops-col-tint--cost',
     },
     {
       name: 'quantity',
@@ -560,8 +560,8 @@ const columns = computed<QTableColumn[]>(() => {
       field: 'quantity',
       align: 'center',
       sortable: false,
-      classes: 'stock-qty-col',
-      headerClasses: 'stock-qty-col',
+      classes: 'stock-qty-col bw-ops-col-tint--qty',
+      headerClasses: 'stock-qty-col bw-ops-col-tint--qty',
     },
   ];
 
@@ -774,17 +774,8 @@ onMounted(async () => {
   position: sticky;
   top: 0;
   z-index: 2;
-  background-color: #f8fafc !important;
+  background-color: color-mix(in srgb, var(--bw-theme-surface) 92%, var(--bw-theme-base) 8%) !important;
 }
-
-.stock-cost-col {
-  background-color: #ffe8d1 !important;
-}
-
-.stock-qty-col {
-  background-color: #d0e6ff !important;
-}
-
 .totals-row {
   font-weight: 600;
   background-color: rgba(0, 0, 0, 0.02);

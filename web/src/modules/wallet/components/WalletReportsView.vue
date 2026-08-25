@@ -32,7 +32,7 @@
             <span class="text-caption text-weight-bold text-primary">Platform Bank Cash</span>
             <q-icon name="ph ph-bank" color="primary" size="20px" />
           </div>
-          <div class="text-h5 text-weight-bolder font-mono text-primary q-my-xs">
+          <div class="text-h5 text-weight-bolder bw-tabular text-primary q-my-xs">
             ৳{{ formatCurrency(dashboardSummary?.tenant_cash_total || 0) }}
           </div>
           <div class="text-caption text-grey-7">Actual bank cash received from courier remittances</div>
@@ -46,7 +46,7 @@
             <span class="text-caption text-weight-bold text-warning">Courier COD Holdings</span>
             <q-icon name="ph ph-truck" color="warning" size="20px" />
           </div>
-          <div class="text-h5 text-weight-bolder font-mono text-warning q-my-xs">
+          <div class="text-h5 text-weight-bolder bw-tabular text-warning q-my-xs">
             ৳{{ formatCurrency(dashboardSummary?.courier_cod_holding_total || 0) }}
           </div>
           <div class="text-caption text-grey-7">Cash collected by delivery partners awaiting remittance</div>
@@ -60,7 +60,7 @@
             <span class="text-caption text-weight-bold text-deep-purple">Merchant Pending Margins</span>
             <q-icon name="ph ph-clock" color="deep-purple" size="20px" />
           </div>
-          <div class="text-h5 text-weight-bolder font-mono text-deep-purple q-my-xs">
+          <div class="text-h5 text-weight-bolder bw-tabular text-deep-purple q-my-xs">
             ৳{{ formatCurrency(dashboardSummary?.merchant_pending_total || 0) }}
           </div>
           <div class="text-caption text-grey-7">Accrued profits on delivered orders awaiting cash settlement</div>
@@ -74,7 +74,7 @@
             <span class="text-caption text-weight-bold text-positive">Merchant Available Balance</span>
             <q-icon name="ph ph-currency-circle-dollar" color="positive" size="20px" />
           </div>
-          <div class="text-h5 text-weight-bolder font-mono text-positive q-my-xs">
+          <div class="text-h5 text-weight-bolder bw-tabular text-positive q-my-xs">
             ৳{{ formatCurrency(dashboardSummary?.merchant_available_total || 0) }}
           </div>
           <div class="text-caption text-grey-7">Withdrawable merchant profit available for payout</div>
@@ -88,7 +88,7 @@
             <span class="text-caption text-weight-bold text-teal">Vendor Payables</span>
             <q-icon name="ph ph-storefront" color="teal" size="20px" />
           </div>
-          <div class="text-h5 text-weight-bolder font-mono text-teal q-my-xs">
+          <div class="text-h5 text-weight-bolder bw-tabular text-teal q-my-xs">
             ৳{{ formatCurrency(dashboardSummary?.vendor_payables_total || 0) }}
           </div>
           <div class="text-caption text-grey-7">Total payables owed to stock procurement suppliers</div>
@@ -102,7 +102,7 @@
             <span class="text-caption text-weight-bold text-indigo">Customer Prepayments</span>
             <q-icon name="ph ph-receipt" color="indigo" size="20px" />
           </div>
-          <div class="text-h5 text-weight-bolder font-mono text-indigo q-my-xs">
+          <div class="text-h5 text-weight-bolder bw-tabular text-indigo q-my-xs">
             ৳{{ formatCurrency(dashboardSummary?.customer_deposits_total || 0) }}
           </div>
           <div class="text-caption text-grey-7">Store credits and customer deposit balances</div>

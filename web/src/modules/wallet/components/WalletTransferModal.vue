@@ -3,7 +3,7 @@
     <q-card style="width: 480px; max-width: 95vw" class="rounded-borders">
       <q-card-section class="row items-center justify-between q-pb-none">
         <div class="row items-center q-gutter-x-sm">
-          <q-avatar size="32px" class="bg-primary-soft text-primary font-mono text-weight-bold">
+          <q-avatar size="32px" class="bg-primary-soft text-primary bw-tabular text-weight-bold">
             <q-icon name="ph ph-arrows-left-right" size="18px" />
           </q-avatar>
           <div>
@@ -84,7 +84,7 @@
               :rules="[(val) => (val && val > 0) || 'Enter amount greater than zero']"
             >
               <template #append>
-                <span class="text-caption text-grey-6 font-mono">BDT</span>
+                <span class="text-caption text-grey-6 bw-tabular">BDT</span>
               </template>
             </q-input>
           </div>
