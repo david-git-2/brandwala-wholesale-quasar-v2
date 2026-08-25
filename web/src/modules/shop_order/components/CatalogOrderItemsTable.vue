@@ -1,20 +1,20 @@
 <template>
   <q-card flat bordered class="catalog-items-card q-pa-none costing-items-surface shadow-1">
-    <!-- Filter Header Bar when order status is confirmed -->
-    <div v-if="order?.status === 'confirmed'" class="row items-center justify-between q-px-md q-py-sm bg-grey-2 border-bottom">
+    <!-- Quantity filter -->
+    <div class="row items-center justify-between q-px-md q-py-sm bg-grey-2 border-bottom">
       <div class="row items-center q-gutter-x-sm">
-        <span class="text-caption text-weight-bold text-grey-8">Filter Status:</span>
+        <span class="text-caption text-weight-bold text-grey-8">Quantity:</span>
         <q-btn-toggle
-          v-model="statusFilter"
+          v-model="quantityFilter"
           dense
           unelevated
           toggle-color="primary"
           color="white"
           text-color="grey-9"
           :options="[
-            { label: 'Accepted Only', value: 'accepted' },
-            { label: 'Rejected Only', value: 'rejected' },
-            { label: 'All Items', value: 'all' },
+            { label: 'Has quantity', value: 'non_zero' },
+            { label: 'Zero quantity', value: 'zero' },
+            { label: 'All items', value: 'all' },
           ]"
           class="shadow-1"
         />
@@ -71,16 +71,32 @@
 
             <!-- 3. Name (Wrapped) -->
             <q-td v-if="isColVisible('name')" key="name" :props="slotProps" class="sec-info col-name-wrap text-left">
-              <div class="name-cell-wrap text-weight-bold text-grey-9 text-body2">
-                {{ slotProps.row.name }}
+              <div class="name-cell-wrap row items-start no-wrap q-gutter-x-xs">
+                <div class="col name-cell-text text-weight-bold text-grey-9 text-body2">
+                  {{ slotProps.row.name }}
+                </div>
+                <q-btn
+                  flat
+                  round
+                  dense
+                  icon="ph ph-copy"
+                  size="xs"
+                  color="grey-7"
+                  class="col-auto name-copy-btn"
+                  @click.stop="handleCopy(slotProps.row.name, 'Name')"
+                >
+                  <q-tooltip>Copy Item Name</q-tooltip>
+                </q-btn>
               </div>
             </q-td>
 
             <!-- 4. Brand -->
-            <q-td v-if="isColVisible('brand')" key="brand" :props="slotProps" class="sec-info text-center col-info-meta">
-              <q-badge outline color="blue-grey-8" class="text-caption font-mono">
-                {{ slotProps.row.brand || '—' }}
-              </q-badge>
+            <q-td v-if="isColVisible('brand')" key="brand" :props="slotProps" class="sec-info text-center col-brand">
+              <div class="brand-cell">
+                <q-badge outline color="blue-grey-8" class="text-caption font-mono">
+                  {{ slotProps.row.brand || '—' }}
+                </q-badge>
+              </div>
             </q-td>
 
             <!-- 5. Note -->
@@ -89,13 +105,64 @@
             </q-td>
 
             <!-- 6. Code / Barcode / Product ID -->
-            <q-td v-if="isColVisible('code_barcode_id')" key="code_barcode_id" :props="slotProps" class="sec-info text-center col-info-meta">
+            <q-td v-if="isColVisible('code_barcode_id')" key="code_barcode_id" :props="slotProps" class="sec-info text-center col-code-barcode">
               <div class="column q-gutter-y-2xs font-mono text-caption items-center">
-                <span v-if="slotProps.row.barcode" class="text-weight-medium text-grey-9">
-                  <q-icon name="ph ph-barcode" size="14px" /> {{ slotProps.row.barcode }}
-                </span>
-                <span v-if="slotProps.row.sku" class="text-grey-7">SKU: {{ slotProps.row.sku }}</span>
-                <span class="text-grey-6 text-2xs">ID: #{{ slotProps.row.product_id }}</span>
+                <div
+                  v-if="slotProps.row.barcode"
+                  class="row items-center justify-center no-wrap q-gutter-x-xs"
+                >
+                  <span class="text-weight-medium text-grey-9">
+                    <q-icon name="ph ph-barcode" size="14px" /> {{ slotProps.row.barcode }}
+                  </span>
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    icon="ph ph-copy"
+                    size="xs"
+                    color="grey-7"
+                    class="name-copy-btn"
+                    @click.stop="handleCopy(slotProps.row.barcode, 'Barcode')"
+                  >
+                    <q-tooltip>Copy Barcode</q-tooltip>
+                  </q-btn>
+                </div>
+                <div
+                  v-if="slotProps.row.sku"
+                  class="row items-center justify-center no-wrap q-gutter-x-xs"
+                >
+                  <span class="text-grey-7">SKU: {{ slotProps.row.sku }}</span>
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    icon="ph ph-copy"
+                    size="xs"
+                    color="grey-7"
+                    class="name-copy-btn"
+                    @click.stop="handleCopy(slotProps.row.sku, 'SKU')"
+                  >
+                    <q-tooltip>Copy SKU</q-tooltip>
+                  </q-btn>
+                </div>
+                <div
+                  v-if="slotProps.row.product_id"
+                  class="row items-center justify-center no-wrap q-gutter-x-xs"
+                >
+                  <span class="text-grey-6 text-2xs">ID: #{{ slotProps.row.product_id }}</span>
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    icon="ph ph-copy"
+                    size="xs"
+                    color="grey-7"
+                    class="name-copy-btn"
+                    @click.stop="handleCopy(String(slotProps.row.product_id), 'Product ID')"
+                  >
+                    <q-tooltip>Copy Product ID</q-tooltip>
+                  </q-btn>
+                </div>
               </div>
             </q-td>
 
@@ -133,8 +200,12 @@
             </q-td>
 
             <!-- 12. Product Weight (gm) -->
-            <q-td v-if="isColVisible('product_weight_gm')" key="product_weight_gm" :props="slotProps" class="sec-weight text-center font-mono editable-cell col-editable-weight">
+            <q-td v-if="isColVisible('product_weight_gm')" key="product_weight_gm" :props="slotProps" class="sec-weight text-center font-mono" :class="{ 'editable-cell col-editable-weight': !isStaffReadOnly }">
+              <span v-if="isStaffReadOnly" class="font-mono">
+                {{ Math.round(slotProps.row.product_weight_gm ?? getProductWeightGm(slotProps.row)) }}
+              </span>
               <q-input
+                v-else
                 :model-value="slotProps.row.product_weight_gm ?? getProductWeightGm(slotProps.row)"
                 type="number"
                 dense
@@ -151,8 +222,12 @@
             </q-td>
 
             <!-- 13. Package Weight (gm) -->
-            <q-td v-if="isColVisible('package_weight_gm')" key="package_weight_gm" :props="slotProps" class="sec-weight text-center font-mono editable-cell col-editable-weight">
+            <q-td v-if="isColVisible('package_weight_gm')" key="package_weight_gm" :props="slotProps" class="sec-weight text-center font-mono" :class="{ 'editable-cell col-editable-weight': !isStaffReadOnly }">
+              <span v-if="isStaffReadOnly" class="font-mono">
+                {{ Math.round(slotProps.row.package_weight_gm ?? getPackageWeightGm(slotProps.row)) }}
+              </span>
               <q-input
+                v-else
                 :model-value="slotProps.row.package_weight_gm ?? getPackageWeightGm(slotProps.row)"
                 type="number"
                 dense
@@ -338,22 +413,11 @@
 
             <!-- 30. Status -->
             <q-td v-if="isColVisible('status')" key="status" :props="slotProps" class="sec-action text-center">
-              <q-chip dense outline :color="getItemStatusColor(slotProps.row)" class="text-caption text-weight-bold uppercase">
+              <q-chip dense outline :color="getItemStatusColor(slotProps.row)" class="text-caption text-weight-bold status-chip">
                 {{ getItemStatusLabel(slotProps.row) }}
               </q-chip>
             </q-td>
 
-            <!-- 31. Action -->
-            <q-td v-if="isColVisible('action')" key="action" :props="slotProps" class="sec-action text-center">
-              <div class="row items-center justify-center q-gutter-x-2xs">
-                <q-btn flat round dense icon="ph ph-pencil-simple" size="xs" color="blue-9" @click.stop="openEditDialog(slotProps.row)">
-                  <q-tooltip>Edit Item Details</q-tooltip>
-                </q-btn>
-                <q-btn flat round dense icon="ph ph-copy" size="xs" color="grey-7" @click.stop="handleCopy(slotProps.row.name, 'Name')">
-                  <q-tooltip>Copy Item Name</q-tooltip>
-                </q-btn>
-              </div>
-            </q-td>
           </q-tr>
         </template>
 
@@ -369,15 +433,6 @@
       :totals="summaryTotals"
     />
 
-    <!-- On-Tap Edit Dialog -->
-    <CatalogOrderItemEditDialog
-      v-model="showEditDialog"
-      :item="editingItem"
-      :order="order"
-      :currency-symbol="currencySymbol"
-      :buy-currency-symbol="buyCurrencySymbol"
-      @save-item="handleSaveEditedItem"
-    />
   </q-card>
 </template>
 
@@ -386,7 +441,6 @@ import { ref, computed } from 'vue';
 import { useQuasar, copyToClipboard, type QTableColumn } from 'quasar';
 import SmartImage from 'src/components/SmartImage.vue';
 import type { ShopOrder, ShopOrderItem } from '../types';
-import CatalogOrderItemEditDialog from './CatalogOrderItemEditDialog.vue';
 import CatalogOrderItemsSummaryCards from './CatalogOrderItemsSummaryCards.vue';
 import {
   getProductWeightGm as catalogGetProductWeightGm,
@@ -403,7 +457,7 @@ import {
   getFinalOfferUnitAmount as catalogGetFinalOfferUnitAmount,
   getFinalOfferMargin as catalogGetFinalOfferMargin,
 } from '../utils/catalogPricingUtils';
-import { normalizeCatalogOrderStatus, isCatalogFirstOfferLocked, isCatalogFinalOfferEditable } from '../utils/catalogOrderStatus';
+import { normalizeCatalogOrderStatus, isCatalogFirstOfferLocked, isCatalogFinalOfferEditable, isCatalogStaffReadOnly, getCatalogItemNegotiationStatusLabel } from '../utils/catalogOrderStatus';
 
 const props = defineProps<{
   order: ShopOrder | null;
@@ -436,13 +490,6 @@ const emit = defineEmits<{
 }>();
 
 const $q = useQuasar();
-const showEditDialog = ref(false);
-const editingItem = ref<ShopOrderItem | null>(null);
-
-function openEditDialog(item: ShopOrderItem) {
-  editingItem.value = item;
-  showEditDialog.value = true;
-}
 
 function emitItemUpdate(item: ShopOrderItem, payload: Record<string, any>) {
   emit('update-item', {
@@ -450,35 +497,6 @@ function emitItemUpdate(item: ShopOrderItem, payload: Record<string, any>) {
     productId: item.product_id ?? null,
     payload,
   });
-}
-
-function handleSaveEditedItem(updated: ShopOrderItem) {
-  const target = props.items.find((i) => i.id === updated.id);
-  if (!target) return;
-
-  target.weight_kg = updated.weight_kg ?? null;
-  target.product_weight_gm = updated.product_weight_gm ?? null;
-  target.package_weight_gm = updated.package_weight_gm ?? null;
-
-  const payload: Parameters<typeof emitItemUpdate>[1] = {
-    product_weight_gm: target.product_weight_gm,
-    package_weight_gm: target.package_weight_gm,
-    weight_kg: target.weight_kg,
-  };
-
-  if (!isFirstOfferLocked.value) {
-    target.cost_price_amount = updated.cost_price_amount ?? null;
-    target.staff_offer_amount = updated.staff_offer_amount ?? null;
-    payload.cost_price_amount = target.cost_price_amount;
-    payload.staff_offer_amount = target.staff_offer_amount;
-  }
-
-  if (isFinalOfferEditable.value) {
-    target.final_price_amount = updated.final_price_amount ?? null;
-    payload.final_price_amount = target.final_price_amount;
-  }
-
-  emitItemUpdate(target, payload);
 }
 
 const buyCurrency = computed(() => props.buyCurrencySymbol || '£');
@@ -492,13 +510,13 @@ const COL_WIDTH = {
   name: 230,
   nameMax: 260,
   infoMeta: 150,
+  codeBarcode: 190,
   qty: 101,
   money: 113,
   weight: 109,
   offer: 133,
   numeric: 118,
-  status: 96,
-  action: 72,
+  status: 120,
   offerInput: 97,
 } as const;
 
@@ -512,6 +530,7 @@ const editableColWidths = {
 } as const;
 
 const infoColWidths = colWidthStyle(COL_WIDTH.infoMeta);
+const codeBarcodeColWidths = colWidthStyle(COL_WIDTH.codeBarcode);
 const numericColWidths = colWidthStyle(COL_WIDTH.numeric);
 
 const tableColumns = computed<QTableColumn[]>(() => [
@@ -528,7 +547,7 @@ const tableColumns = computed<QTableColumn[]>(() => [
   },
   { name: 'brand', label: 'Brand', field: 'brand', align: 'center', style: infoColWidths, headerStyle: infoColWidths },
   { name: 'note', label: 'Note', field: 'note', align: 'center', style: infoColWidths, headerStyle: infoColWidths },
-  { name: 'code_barcode_id', label: 'Barcode / Code / ID', field: 'barcode', align: 'center', style: infoColWidths, headerStyle: infoColWidths },
+  { name: 'code_barcode_id', label: 'Barcode / Code / ID', field: 'barcode', align: 'center', style: codeBarcodeColWidths, headerStyle: codeBarcodeColWidths },
 
   // 2. Quantities Section (sec-qty)
   { name: 'qty_customer', label: 'Qty (Customer)', field: 'quantity', align: 'center', style: editableColWidths.qty, headerStyle: editableColWidths.qty },
@@ -563,9 +582,8 @@ const tableColumns = computed<QTableColumn[]>(() => [
   { name: 'final_offer_row', label: `Row Total Final (${sellCurrency.value})`, field: (row) => (row.final_price_amount || 0) * row.quantity, align: 'center', style: numericColWidths, headerStyle: numericColWidths },
   { name: 'final_offer_margin', label: 'Profit Margin %', field: (row) => getFinalOfferMargin(row), align: 'center', style: colWidthStyle(COL_WIDTH.qty), headerStyle: colWidthStyle(COL_WIDTH.qty) },
 
-  // 8. Status & Action Section (sec-action)
+  // 8. Status Section (sec-action)
   { name: 'status', label: 'Status', field: 'negotiation_status', align: 'center', style: colWidthStyle(COL_WIDTH.status), headerStyle: colWidthStyle(COL_WIDTH.status) },
-  { name: 'action', label: 'Action', field: 'id', align: 'center', style: colWidthStyle(COL_WIDTH.action), headerStyle: colWidthStyle(COL_WIDTH.action) },
 ]);
 
 const defaultVisibleColumns = [
@@ -592,7 +610,6 @@ const defaultVisibleColumns = [
   'final_offer_row',
   'final_offer_margin',
   'status',
-  'action',
 ];
 
 const LEGACY_COLUMN_MAPPING: Record<string, string[]> = {
@@ -620,7 +637,6 @@ const resolvedVisibleColumns = computed<string[]>(() => {
   mapped.add('image');
   mapped.add('name');
   mapped.add('status');
-  mapped.add('action');
 
   props.visibleColumns.forEach((col) => {
     if (validColumnNames.value.includes(col)) {
@@ -689,6 +705,7 @@ const status = computed(() => props.order?.status || 'submitted');
 const isCostingMode = computed(() => normalizeCatalogOrderStatus(status.value) === 'submitted');
 const isFirstOfferLocked = computed(() => isCatalogFirstOfferLocked(status.value));
 const isFinalOfferEditable = computed(() => isCatalogFinalOfferEditable(status.value));
+const isStaffReadOnly = computed(() => isCatalogStaffReadOnly(status.value));
 
 const FX = computed(() => props.order?.conversion_rate ?? 140);
 const cargoRate = computed(() => props.order?.cargo_rate ?? 0);
@@ -794,23 +811,28 @@ function getFinalOfferMargin(item: ShopOrderItem): number {
   );
 }
 
-const statusFilter = ref<'accepted' | 'rejected' | 'all'>('accepted');
+const quantityFilter = ref<'non_zero' | 'zero' | 'all'>('non_zero');
+
+const getItemLineQuantity = (item: ShopOrderItem): number => Number(item.quantity ?? 0);
 
 const getItemStatusLabel = (item: ShopOrderItem): string => {
   if (props.order?.status === 'confirmed') {
-    const qty = Number(item.quantity || 0);
-    return qty > 0 ? 'accepted' : 'rejected';
+    return getCatalogItemNegotiationStatusLabel(
+      getItemLineQuantity(item) > 0 ? 'accepted' : 'rejected',
+    );
   }
-  return item.negotiation_status || item.customer_decision_status || 'Submitted';
+  return getCatalogItemNegotiationStatusLabel(
+    item.negotiation_status || item.customer_decision_status || 'pending',
+  );
 };
 
 const filteredRows = computed(() => {
-  if (props.order?.status !== 'confirmed' || statusFilter.value === 'all') {
+  if (quantityFilter.value === 'all') {
     return props.items;
   }
   return props.items.filter((item) => {
-    const isAccepted = Number(item.quantity || 0) > 0;
-    return statusFilter.value === 'accepted' ? isAccepted : !isAccepted;
+    const hasQty = getItemLineQuantity(item) > 0;
+    return quantityFilter.value === 'non_zero' ? hasQty : !hasQty;
   });
 });
 
@@ -822,12 +844,13 @@ function getMarginColorClass(margin: number): string {
 
 function getItemStatusColor(item: ShopOrderItem): string {
   if (props.order?.status === 'confirmed') {
-    return Number(item.quantity || 0) > 0 ? 'positive' : 'negative';
+    return getItemLineQuantity(item) > 0 ? 'positive' : 'negative';
   }
   const st = item.negotiation_status || item.customer_decision_status;
   if (st === 'confirmed' || st === 'accepted') return 'positive';
   if (st === 'countered') return 'orange';
   if (st === 'priced') return 'primary';
+  if (st === 'final_offered') return 'purple-7';
   return 'grey-7';
 }
 
@@ -968,6 +991,7 @@ function onItemCostBlur(item: ShopOrderItem) {
 }
 
 function onItemProductWeightBlur(item: ShopOrderItem) {
+  if (isStaffReadOnly.value) return;
   const prodGm = Math.max(0, Number(item.product_weight_gm ?? getProductWeightGm(item)) || 0);
   item.product_weight_gm = prodGm;
   const pkgGm = getPackageWeightGm(item);
@@ -983,6 +1007,7 @@ function onItemProductWeightBlur(item: ShopOrderItem) {
 }
 
 function onItemPackageWeightBlur(item: ShopOrderItem) {
+  if (isStaffReadOnly.value) return;
   const pkgGm = Math.max(0, Number(item.package_weight_gm ?? getPackageWeightGm(item)) || 0);
   item.package_weight_gm = pkgGm;
   const prodGm = getProductWeightGm(item);
@@ -1325,11 +1350,47 @@ function handleCopy(text: string, label: string) {
   min-width: 230px !important;
   max-width: 260px !important;
   text-align: left !important;
+}
+
+.name-cell-text {
   white-space: normal !important;
   word-break: break-word !important;
   overflow-wrap: anywhere !important;
   line-height: 1.3;
   font-size: 13px;
+  min-width: 0;
+}
+
+.name-copy-btn {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.col-brand {
+  width: 150px;
+  min-width: 150px;
+  max-width: 150px;
+  text-align: center !important;
+  vertical-align: middle;
+}
+
+.brand-cell {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.col-code-barcode {
+  width: 190px;
+  min-width: 190px;
+  max-width: 190px;
+  text-align: center !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+  line-height: 1.3;
+  vertical-align: top;
 }
 
 .col-info-meta {
@@ -1342,5 +1403,17 @@ function handleCopy(text: string, label: string) {
   overflow-wrap: anywhere !important;
   line-height: 1.3;
   vertical-align: top;
+}
+
+.status-chip {
+  max-width: 100%;
+  height: auto;
+  min-height: 24px;
+}
+
+.status-chip :deep(.q-chip__content) {
+  white-space: normal;
+  line-height: 1.2;
+  text-align: center;
 }
 </style>

@@ -203,13 +203,12 @@ const sections: ColumnSection[] = [
     ],
   },
   {
-    title: '8. Status & Actions',
+    title: '8. Status',
     bgClass: 'bg-grey-4',
     textClass: 'text-grey-10',
     badgeColor: 'grey-10',
     columns: [
       { label: 'Status', value: 'status' },
-      { label: 'Action', value: 'action' },
     ],
   },
 ];
@@ -240,7 +239,6 @@ const defaultColumns = [
   'final_offer_row',
   'final_offer_margin',
   'status',
-  'action',
 ];
 
 const selectedColumns = ref<string[]>([...(props.visibleColumns?.length ? props.visibleColumns : defaultColumns)]);

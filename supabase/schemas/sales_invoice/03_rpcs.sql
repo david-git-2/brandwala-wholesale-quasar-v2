@@ -794,11 +794,6 @@ begin
     );
 
     v_subtotal := v_subtotal + v_item_line_total;
-
-    update public.shop_order_items
-    set delivered_quantity = quantity,
-        updated_at = now()
-    where id = v_item.id;
   end loop;
 
   v_charges_total := coalesce(v_order.print_charge_amount, 0) + coalesce(v_order.packing_charge_amount, 0);

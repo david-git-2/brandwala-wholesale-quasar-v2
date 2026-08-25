@@ -47,7 +47,7 @@
 
             <div class="row items-center justify-between q-col-gutter-sm">
               <div class="text-subtitle1 text-weight-bold text-grey-9">
-                Items in Order ({{ orderItems.length }})
+                Items in Order ({{ displayOrderItems.length }})
               </div>
               <div
                 v-if="showItemDecisionProgress"
@@ -59,7 +59,7 @@
             </div>
 
             <CustomerCatalogOrderItemCard
-              v-for="item in orderItems"
+              v-for="item in displayOrderItems"
               :key="item.id"
               :item="item"
               :order="currentOrder"
@@ -84,7 +84,7 @@
               :total-amount="orderTotal"
               :currency-symbol="currencySymbol"
               :decided-count="itemsDecidedCount"
-              :total-items="orderItems.length"
+              :total-items="displayOrderItems.length"
               :negotiate-round="currentOrder.negotiate_round || 1"
               :can-submit-counter="isAllItemsDecided"
               :is-submitting-counter="isSendingCounter"
@@ -159,6 +159,8 @@ import { requestConfirmation } from 'src/utils/appFeedback';
 import { useMerchantWalletQuery } from '../composables/useMerchantWalletQuery';
 import {
   getCustomerCatalogStatusSequence,
+  getCustomerCatalogItemDisplayQuantity,
+  isCatalogCustomerFulfillmentPhase,
   isCustomerCatalogItemDecided,
   normalizeCatalogOrderStatus,
 } from '../utils/catalogOrderStatus';
@@ -207,6 +209,15 @@ watch(
   },
   { immediate: true },
 );
+
+const displayOrderItems = computed(() => {
+  if (!isCatalogCustomerFulfillmentPhase(normalizedStatus.value)) {
+    return orderItems.value;
+  }
+  return orderItems.value.filter(
+    (item) => getCustomerCatalogItemDisplayQuantity(item) > 0,
+  );
+});
 
 const currencySymbol = computed(() => {
   return currentOrder.value?.shop_sell_currency_symbol || '৳';
@@ -271,6 +282,11 @@ const showItemDecisionProgress = computed(
 );
 
 const orderTotal = computed(() => {
+  if (isVendorCatalog.value) {
+    return displayOrderItems.value.reduce((sum, item) => {
+      return sum + getDisplayUnitPrice(item) * getCustomerCatalogItemDisplayQuantity(item);
+    }, 0);
+  }
   return orderItems.value.reduce((sum, item) => {
     return sum + getDisplayUnitPrice(item) * item.quantity;
   }, 0);

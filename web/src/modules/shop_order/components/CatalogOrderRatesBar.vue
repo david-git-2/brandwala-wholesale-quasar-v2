@@ -66,6 +66,8 @@
           step="0.01"
           class="bg-white soft-input"
           label="Final Offer Profit Rate (%)"
+          :readonly="isStaffReadOnly"
+          :class="{ 'bg-grey-2': isStaffReadOnly }"
           @update:model-value="onRateChange"
         />
       </div>
@@ -95,8 +97,11 @@
           class="full-width q-py-xs"
           label="Apply Rates"
           :loading="saving"
+          :disable="isStaffReadOnly"
           @click="onSave"
-        />
+        >
+          <q-tooltip v-if="isStaffReadOnly">Rates are locked while the customer reviews the offer</q-tooltip>
+        </q-btn>
       </div>
     </div>
   </q-card>
@@ -105,7 +110,11 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import type { ShopOrder } from '../types';
-import { normalizeCatalogOrderStatus, isCatalogFirstOfferLocked } from '../utils/catalogOrderStatus';
+import {
+  normalizeCatalogOrderStatus,
+  isCatalogFirstOfferLocked,
+  isCatalogStaffReadOnly,
+} from '../utils/catalogOrderStatus';
 
 const props = defineProps<{
   order: ShopOrder | null;
@@ -149,6 +158,7 @@ const showFinalOfferRate = computed(
 );
 
 const isFirstOfferLocked = computed(() => isCatalogFirstOfferLocked(props.order?.status));
+const isStaffReadOnly = computed(() => isCatalogStaffReadOnly(props.order?.status));
 
 const basisOptions = [
   { label: 'Total Cost', value: 'total_cost' },
@@ -178,6 +188,10 @@ const formulaExplanation = computed(() => {
 });
 
 function onRateChange() {
+  if (isStaffReadOnly.value) {
+    return;
+  }
+
   if (isFirstOfferLocked.value) {
     emit('change-rates', {
       conversion_rate: props.order?.conversion_rate ?? conversion_rate.value,
@@ -201,6 +215,10 @@ function onRateChange() {
 }
 
 function onSave() {
+  if (isStaffReadOnly.value) {
+    return;
+  }
+
   if (isFirstOfferLocked.value) {
     emit('save-rates', {
       conversion_rate: props.order?.conversion_rate ?? conversion_rate.value,

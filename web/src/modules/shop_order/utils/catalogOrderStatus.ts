@@ -163,10 +163,47 @@ export function getCustomerCatalogStatusSequence(isNegotiable: boolean): string[
   return ['submitted', 'priced', 'confirmed', 'procuring', 'ready_for_shipment', 'delivered'];
 }
 
-/** Lock purchase price and 1st offer while the customer reviews or staff reviews a counter. */
+/** Lock purchase price, rates, and 1st offer once an offer is sent or negotiation advances. */
 export function isCatalogFirstOfferLocked(status: string | null | undefined): boolean {
   const st = normalizeCatalogOrderStatus(status);
-  return st === 'priced' || st === 'countered';
+  return st === 'priced' || st === 'countered' || st === 'final_offered';
+}
+
+/** Customer-facing "On the way" step (procuring through delivered). */
+export function isCatalogCustomerFulfillmentPhase(status: string | null | undefined): boolean {
+  const st = normalizeCatalogOrderStatus(status);
+  return st === 'procuring' || st === 'ready_for_shipment' || st === 'delivered';
+}
+
+/** Effective qty shown to the customer after confirm (0 = line rejected). */
+export function getCustomerCatalogItemDisplayQuantity(item: {
+  quantity?: number | null;
+  confirmed_quantity?: number | null;
+}): number {
+  const qty = item.confirmed_quantity ?? item.quantity ?? 0;
+  return Math.max(0, Number(qty) || 0);
+}
+
+/** Human-readable label for per-line negotiation / decision status in admin tables. */
+export function getCatalogItemNegotiationStatusLabel(status: string | null | undefined): string {
+  const st = String(status || 'pending').toLowerCase();
+  const labels: Record<string, string> = {
+    pending: 'Pending',
+    submitted: 'Submitted',
+    priced: 'Priced',
+    countered: 'Countered',
+    final_offered: 'Final offer',
+    confirmed: 'Confirmed',
+    accepted: 'Accepted',
+    rejected: 'Rejected',
+  };
+  return labels[st] ?? st.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/** Staff cannot edit lines or rates while the customer reviews a sent offer. */
+export function isCatalogStaffReadOnly(status: string | null | undefined): boolean {
+  const st = normalizeCatalogOrderStatus(status);
+  return st === 'priced' || st === 'final_offered';
 }
 
 /** Staff may edit final-offer prices only after the customer counters. */

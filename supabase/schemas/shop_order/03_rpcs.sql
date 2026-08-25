@@ -4840,6 +4840,7 @@ CREATE OR REPLACE FUNCTION "public"."list_procurement_shop_order_lines"("p_paren
 begin
   if not public.user_can_manage_parent_tenant(p_parent_tenant_id) then
     raise exception 'not allowed';
+  end if;
   return query
   select
     'shop_order_item'::text as source_type,
@@ -4873,6 +4874,9 @@ begin
   order by t.name, oi.id
   limit greatest(coalesce(p_limit, 100), 1)
   offset greatest(coalesce(p_offset, 0), 0);
+end;
+$$;
+
 ALTER FUNCTION "public"."list_procurement_shop_order_lines"("p_parent_tenant_id" bigint, "p_child_tenant_id" bigint, "p_search" "text", "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
 
 

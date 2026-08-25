@@ -295,10 +295,9 @@ const catalogAllColumnNames = [
   'final_offer_row',
   'final_offer_margin',
   'status',
-  'action',
 ];
 
-const catalogAlwaysVisibleColumns = ['sl', 'image', 'name', 'status', 'action'];
+const catalogAlwaysVisibleColumns = ['sl', 'image', 'name', 'status'];
 
 const catalogDefaultVisibleColumns = [
   'sl',
@@ -324,7 +323,6 @@ const catalogDefaultVisibleColumns = [
   'final_offer_row',
   'final_offer_margin',
   'status',
-  'action',
 ];
 
 const { visibleColumns: rawCatalogVisibleColumns } = useMembershipColumnPreference({
@@ -356,7 +354,6 @@ const processingModeColumns = [
   'first_offer_row',
   'first_offer_margin',
   'status',
-  'action',
 ];
 
 const counteredModeColumns = [
@@ -371,7 +368,6 @@ const counteredModeColumns = [
   'final_offer_unit',
   'final_offer_margin',
   'status',
-  'action',
 ];
 
 const confirmedModeColumns = [
@@ -382,7 +378,6 @@ const confirmedModeColumns = [
   'code_barcode_id',
   'qty_customer',
   'status',
-  'action',
 ];
 
 const procuringModeColumns = [...confirmedModeColumns];

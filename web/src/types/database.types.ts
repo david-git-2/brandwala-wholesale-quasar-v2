@@ -14453,15 +14453,6 @@ export type Database = {
         Args: { p_order_id: number }
         Returns: Json
       }
-      staff_update_catalog_order_item_for_staff: {
-        Args: {
-          p_item_id: number
-          p_order_id: number
-          p_payload: Json
-          p_tenant_id: number
-        }
-        Returns: Json
-      }
       stamp_global_shipment_landed_costs: {
         Args: { p_shipment_id: number }
         Returns: number

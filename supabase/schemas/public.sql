@@ -5097,7 +5097,7 @@ CREATE OR REPLACE FUNCTION "public"."get_pending_order_qty"("p_allocation_id" bi
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
-  select coalesce(sum(oi.quantity - oi.delivered_quantity)::integer, 0)
+  select coalesce(sum(oi.quantity)::integer, 0)
   from public.shop_order_items oi
   join public.shop_orders o on o.id = oi.order_id
   where oi.global_stock_allocation_id = p_allocation_id

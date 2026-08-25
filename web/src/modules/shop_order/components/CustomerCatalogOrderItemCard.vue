@@ -237,7 +237,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import type { ShopOrderItem, ShopOrder, CustomerOrderDetailOrder } from '../types';
-import { calculateItemFirstOfferPrice } from '../utils/catalogPricingUtils';
+import { getFirstOfferUnitAmount } from '../utils/catalogPricingUtils';
 import { normalizeCatalogOrderStatus } from '../utils/catalogOrderStatus';
 
 const props = defineProps<{
@@ -290,26 +290,24 @@ const isConfirmedOrBeyond = computed(() => {
 });
 
 const staffOfferAmount = computed(() => {
-  if (props.item.is_first_offer_manual && props.item.staff_offer_amount != null) {
-    return Number(props.item.staff_offer_amount);
-  }
-  if (props.order) {
-    const computedOffer = calculateItemFirstOfferPrice(
-      props.item,
-      {
-        conversion_rate: props.order.conversion_rate,
-        cargo_rate: props.order.cargo_rate,
-        first_offer_rate: props.order.first_offer_rate ?? props.order.profit_rate,
-        profit_basis: props.order.profit_basis,
-      },
-      props.order.package_weight_kg,
+  if (!props.order) {
+    return Number(
+      props.item.staff_offer_amount ||
+        props.item.unit_sell_price_amount ||
+        props.item.unit_list_price_amount ||
+        0,
     );
-    if (computedOffer > 0) return computedOffer;
   }
-  if (props.item.staff_offer_amount != null && props.item.staff_offer_amount > 0) {
-    return Number(props.item.staff_offer_amount);
-  }
-  return Number(props.item.unit_sell_price_amount || props.item.unit_list_price_amount || 0);
+  return getFirstOfferUnitAmount(
+    props.item,
+    {
+      conversion_rate: props.order.conversion_rate,
+      cargo_rate: props.order.cargo_rate,
+      first_offer_rate: props.order.first_offer_rate ?? props.order.profit_rate,
+      profit_basis: props.order.profit_basis,
+    },
+    props.order.package_weight_kg,
+  );
 });
 
 const isEditingCounter = ref<boolean>(false);

@@ -105,7 +105,6 @@ const allCatalogColumns = [
   { label: 'Final Offer Row Total', value: 'final_offer_row' },
   { label: 'Final Offer Margin %', value: 'final_offer_margin' },
   { label: 'Status', value: 'status' },
-  { label: 'Action', value: 'action' },
 ];
 
 const resolvedVisibleColumns = computed<string[]>(() => {
@@ -123,7 +122,7 @@ const allQuickColumnsSelected = computed({
   set: (val: boolean) => {
     const next = val
       ? allCatalogColumns.map((c) => c.value)
-      : ['sl', 'image', 'name', 'qty_customer', 'final_offer_unit', 'action'];
+      : ['sl', 'image', 'name', 'qty_customer', 'final_offer_unit'];
     emit('update:visible-columns', next);
   },
 });

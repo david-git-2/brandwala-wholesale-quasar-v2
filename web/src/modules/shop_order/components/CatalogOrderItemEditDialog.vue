@@ -62,7 +62,8 @@
                 type="number"
                 step="1"
                 min="0"
-                :readonly="false"
+                :readonly="isStaffReadOnly"
+                :class="{ 'bg-grey-2': isStaffReadOnly }"
                 @update:model-value="recalculateOffer"
               >
                 <template #append>
@@ -79,7 +80,8 @@
                 type="number"
                 step="1"
                 min="0"
-                :readonly="false"
+                :readonly="isStaffReadOnly"
+                :class="{ 'bg-grey-2': isStaffReadOnly }"
                 @update:model-value="recalculateOffer"
               >
                 <template #append>
@@ -192,6 +194,7 @@
       <q-card-actions align="right" class="q-pa-md bg-grey-1 border-top">
         <q-btn flat label="Cancel" color="grey-8" v-close-popup no-caps />
         <q-btn
+          v-if="!isStaffReadOnly"
           color="primary"
           unelevated
           icon="ph ph-check"
@@ -208,7 +211,7 @@
 import { ref, computed, watch } from 'vue';
 import SmartImage from 'src/components/SmartImage.vue';
 import type { ShopOrder, ShopOrderItem } from '../types';
-import { isCatalogFirstOfferLocked, isCatalogFinalOfferEditable } from '../utils/catalogOrderStatus';
+import { isCatalogFirstOfferLocked, isCatalogFinalOfferEditable, isCatalogStaffReadOnly } from '../utils/catalogOrderStatus';
 
 const props = defineProps<{
   modelValue: boolean;
@@ -231,6 +234,7 @@ const profitRate = computed(() => props.order?.profit_rate ?? 25);
 const profitBasis = computed(() => props.order?.profit_basis || 'total_cost');
 const isFirstOfferLocked = computed(() => isCatalogFirstOfferLocked(props.order?.status));
 const isFinalOfferEditable = computed(() => isCatalogFinalOfferEditable(props.order?.status));
+const isStaffReadOnly = computed(() => isCatalogStaffReadOnly(props.order?.status));
 
 watch(
   () => props.item,
