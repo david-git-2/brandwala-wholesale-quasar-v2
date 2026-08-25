@@ -214,35 +214,6 @@ const tenantRoutes: RouteRecordRaw[] = [
       },
     ],
   },
-  // SHOP ROLES ROUTE
-  {
-    path: '/:tenantSlug?/app/shop',
-    component: () => import('layouts/AppLayout.vue'),
-    name: 'admin-shop-settings',
-    children: [
-      {
-        path: 'roles',
-        name: 'admin-shop-roles',
-        redirect: (to) => {
-          const tenantSlug = getTenantSlugFromRoute(to);
-          return tenantSlug
-            ? `/${tenantSlug}/app/access-control/roles`
-            : '/app/access-control/roles';
-        },
-      },
-      {
-        path: 'roles/:id/grants',
-        name: 'admin-shop-role-grants',
-        redirect: (to) => {
-          const tenantSlug = getTenantSlugFromRoute(to);
-          const id = String(to.params.id);
-          return tenantSlug
-            ? `/${tenantSlug}/app/access-control/roles/${id}/grants`
-            : `/app/access-control/roles/${id}/grants`;
-        },
-      },
-    ],
-  },
 ];
 
 export default tenantRoutes;

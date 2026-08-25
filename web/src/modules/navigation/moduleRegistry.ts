@@ -644,7 +644,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
       {
         scope: 'app',
         title: 'Customers',
-        caption: 'Accounts, billing, and delivery recipients',
+        caption: 'Accounts, billing profiles, and delivery recipients hub',
         icon: 'ph ph-users',
         routeSegment: 'customers',
         requiredAction: 'view',
@@ -686,16 +686,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     name: 'Recipient Profiles',
     description: 'Manage end-customer delivery and drop-ship target profiles.',
     parentModuleKey: 'customer',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Recipients',
-        caption: 'Delivery and drop-ship addresses',
-        icon: 'ph ph-identification-badge',
-        routeSegment: 'customers/recipient-profiles',
-        requiredAction: 'view',
-      },
-    ],
+    routes: [],
   },
   {
     key: 'invoice_brand',
@@ -824,7 +815,16 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     description:
       'Parent module. Staff nav is Shops, Orders, and Shipping. Dropship is a shop type; courier is shared delivery.',
     navIcon: 'ph ph-storefront',
-    routes: [],
+    routes: [
+      {
+        scope: 'app',
+        title: 'Shop & Order',
+        caption: 'Shops, orders, pricing, and shipping hub',
+        icon: 'ph ph-storefront',
+        routeSegment: 'shop',
+        requiredAction: 'view',
+      },
+    ],
   },
   {
     key: 'shop_config',
@@ -832,16 +832,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     description:
       'Create shops and manage categories, customer access, and listings.',
     parentModuleKey: 'shop_order',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Shops',
-        caption: 'Setup hub: shops, categories, customers',
-        icon: 'ph ph-storefront',
-        routeSegment: 'shop/shops',
-        requiredAction: 'view',
-      },
-    ],
+    routes: [],
   },
   {
     key: 'shop_category',
@@ -905,14 +896,6 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     parentModuleKey: 'shop_order',
     routes: [
       {
-        scope: 'app',
-        title: 'Orders',
-        caption: 'Review and manage shop orders',
-        icon: 'ph ph-receipt',
-        routeSegment: 'shop/orders',
-        requiredAction: 'view',
-      },
-      {
         scope: 'shop',
         title: 'Orders',
         caption: 'Track and reply',
@@ -943,16 +926,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     description:
       'Shared courier catalog, pickup, and COD remittance for any delivered shop order.',
     parentModuleKey: 'shop_order',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Shipping',
-        caption: 'Couriers, pickup, and COD remittance',
-        icon: 'ph ph-truck',
-        routeSegment: 'shop/shipping',
-        requiredAction: 'view',
-      },
-    ],
+    routes: [],
   },
 ] as const;
 

@@ -48,6 +48,7 @@ const ENTITY_MAP: Record<string, { label: string; singular: string; defaultSubPa
   'cargo-companies': { label: 'Cargo Companies', singular: 'Cargo Company' },
   'shipment-progress': { label: 'Shipment Progress', singular: 'Shipment Progress' },
   shops: { label: 'Shops', singular: 'Shop' },
+  shipping: { label: 'Shipping', singular: 'Shipping' },
   orders: { label: 'Orders', singular: 'Order' },
   'dropship-orders': { label: 'Dropship Orders', singular: 'Dropship Order' },
   'customer-groups': { label: 'Customer Groups', singular: 'Customer Group' },
@@ -141,16 +142,19 @@ export function useBreadcrumbs() {
     const firstSeg = segments[0] || '';
     const isDomainGroup = Boolean(firstSeg && DOMAIN_GROUPS[firstSeg]);
 
-    // Add Domain Group if present (Unclickable category)
+    // Add Domain Group if present — link to module hub when on a sub-page
     if (isDomainGroup && firstSeg) {
       const domainTitle = DOMAIN_GROUPS[firstSeg] || firstSeg;
+      const hubPath = `${prefix}/${firstSeg}`;
+
       if (segments.length === 1) {
         items.push({ label: domainTitle });
         return items;
       }
+
       items.push({
         label: domainTitle,
-        to: undefined,
+        to: hubPath,
       });
     }
 

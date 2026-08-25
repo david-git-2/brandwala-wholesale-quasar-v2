@@ -120,7 +120,7 @@ const checkItems = computed<CheckItem[]>(() => {
       label: 'Customer group with active members attached',
       passed: r.has_customer_group_with_members,
       actionLabel: 'Manage Customer Groups',
-      routeName: 'app-customers',
+      routeName: 'app-customers-list',
       routeParams: { tenantSlug: props.tenantSlug },
     },
     {

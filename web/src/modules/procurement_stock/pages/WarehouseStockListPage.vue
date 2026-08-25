@@ -5,16 +5,27 @@
         dense
         eyebrow="Procurement & Stock"
         title="Warehouse"
-        subtitle="What is on the shelves, and whether it can be sold."
+        :subtitle="isWarehouseReadOnly
+          ? 'Parent company warehouse stock (view only).'
+          : 'What is on the shelves, and whether it can be sold.'"
         class="q-mb-sm"
       />
+
+      <q-banner
+        v-if="isWarehouseReadOnly"
+        dense
+        rounded
+        class="bg-blue-1 text-blue-9 q-mb-sm"
+      >
+        View only — you cannot move or re-grade stock from a child company workspace.
+      </q-banner>
 
       <q-banner v-if="stockStore.error" class="bw-status-banner bg-negative text-white q-mb-md">
         {{ stockStore.error }}
       </q-banner>
 
       <!-- Active Shipment Filter Chip if filtered by shipment_id -->
-      <div v-if="shipmentIdFilter" class="row items-center q-mb-sm">
+      <div v-if="shipmentIdFilter && !isWarehouseReadOnly" class="row items-center q-mb-sm">
         <q-chip
           removable
           color="primary"
@@ -77,6 +88,7 @@
           />
 
           <q-select
+            v-if="!isWarehouseReadOnly"
             v-model="draftShipmentIdFilter"
             :options="shipmentSelectOptions"
             filled
@@ -247,7 +259,7 @@
 
             <!-- Icon Action Buttons Cell -->
             <template #body-cell-actions="props">
-              <q-td :props="props" class="text-center">
+              <q-td v-if="!isWarehouseReadOnly" :props="props" class="text-center">
                 <div class="row items-center justify-center q-gutter-x-xs no-wrap">
                   <!-- Location Transfer icon button -->
                   <q-btn
@@ -297,7 +309,7 @@
                 <q-td class="totals-row__cell text-center stock-qty-col text-weight-bold text-primary">
                   {{ pageTotals.totalQty }}
                 </q-td>
-                <q-td class="totals-row__cell" />
+                <q-td v-if="!isWarehouseReadOnly" class="totals-row__cell" />
               </q-tr>
             </template>
 
@@ -311,7 +323,7 @@
                   Receive a shipment first.
                 </div>
                 <q-btn
-                  v-if="stockStore.total === 0"
+                  v-if="stockStore.total === 0 && !isWarehouseReadOnly"
                   color="primary"
                   unelevated
                   no-caps
@@ -327,17 +339,18 @@
 
     <!-- Location Transfer Dialog -->
     <StockMoveLocationDialog
+      v-if="!isWarehouseReadOnly"
       v-model="locationDialogOpen"
       :stock-row="selectedStockRow"
-      :tenant-id="authStore.tenantId || 0"
+      :tenant-id="warehouseTenantId || 0"
       @updated="loadStock"
     />
 
-    <!-- Unified Move & Re-Grade Dialog -->
     <StockMoveGradeDialog
+      v-if="!isWarehouseReadOnly"
       v-model="moveGradeDialogOpen"
       :stock-row="selectedStockRow"
-      :tenant-id="authStore.tenantId || 0"
+      :tenant-id="warehouseTenantId || 0"
       @updated="loadStock"
     />
   </q-page>
@@ -382,6 +395,11 @@ const router = useRouter();
 const stockStore = useGlobalStockStore();
 const stockLocationStore = useStockLocationStore();
 const costingCache = createShipmentItemsCostingCache();
+
+const isWarehouseReadOnly = computed(() => authStore.selectedTenant?.parent_id != null);
+const warehouseTenantId = computed(
+  () => authStore.selectedTenant?.parent_id ?? authStore.tenantId ?? null,
+);
 
 // Filter State
 const searchText = ref('');
@@ -437,11 +455,11 @@ const shipmentChipLabel = computed(() => {
 });
 
 const loadShipmentOptions = async (search?: string) => {
-  if (!authStore.tenantId) return;
+  if (!warehouseTenantId.value || isWarehouseReadOnly.value) return;
   shipmentsLoading.value = true;
   try {
     const result = await globalShipmentRepository.listPaginated(
-      authStore.tenantId,
+      warehouseTenantId.value,
       1,
       50,
       search?.trim() || undefined,
@@ -513,45 +531,52 @@ const openMoveGradeDialog = (row: GlobalStock) => {
   moveGradeDialogOpen.value = true;
 };
 
-const columns: QTableColumn[] = [
-  { name: 'stock_id', label: 'Stock ID', field: 'id', align: 'left', sortable: true },
-  { name: 'image', label: 'Image', field: 'image_url', align: 'left', sortable: false },
-  { name: 'product', label: 'Product Name', field: 'item_name', align: 'left', sortable: false },
-  { name: 'code', label: 'Code / Barcode', field: 'product_code', align: 'left', sortable: false },
-  { name: 'shipment', label: 'Shipment', field: 'shipment_name', align: 'left', sortable: false },
-  {
-    name: 'grade',
-    label: 'Grade & Location',
-    field: 'grade_tag_id',
-    align: 'left',
-    sortable: false,
-  },
-  {
-    name: 'cost',
-    label: 'Cost (Est. BDT)',
-    field: 'id',
-    align: 'center',
-    sortable: false,
-    classes: 'stock-cost-col',
-    headerClasses: 'stock-cost-col',
-  },
-  {
-    name: 'quantity',
-    label: 'Quantity',
-    field: 'quantity',
-    align: 'center',
-    sortable: false,
-    classes: 'stock-qty-col',
-    headerClasses: 'stock-qty-col',
-  },
-  {
-    name: 'actions',
-    label: 'Action',
-    field: 'id',
-    align: 'center',
-    sortable: false,
-  },
-];
+const columns = computed<QTableColumn[]>(() => {
+  const base: QTableColumn[] = [
+    { name: 'stock_id', label: 'Stock ID', field: 'id', align: 'left', sortable: true },
+    { name: 'image', label: 'Image', field: 'image_url', align: 'left', sortable: false },
+    { name: 'product', label: 'Product Name', field: 'item_name', align: 'left', sortable: false },
+    { name: 'code', label: 'Code / Barcode', field: 'product_code', align: 'left', sortable: false },
+    { name: 'shipment', label: 'Shipment', field: 'shipment_name', align: 'left', sortable: false },
+    {
+      name: 'grade',
+      label: 'Grade & Location',
+      field: 'grade_tag_id',
+      align: 'left',
+      sortable: false,
+    },
+    {
+      name: 'cost',
+      label: 'Cost (Est. BDT)',
+      field: 'id',
+      align: 'center',
+      sortable: false,
+      classes: 'stock-cost-col',
+      headerClasses: 'stock-cost-col',
+    },
+    {
+      name: 'quantity',
+      label: 'Quantity',
+      field: 'quantity',
+      align: 'center',
+      sortable: false,
+      classes: 'stock-qty-col',
+      headerClasses: 'stock-qty-col',
+    },
+  ];
+
+  if (!isWarehouseReadOnly.value) {
+    base.push({
+      name: 'actions',
+      label: 'Action',
+      field: 'id',
+      align: 'center',
+      sortable: false,
+    });
+  }
+
+  return base;
+});
 
 const pagination = computed({
   get: () => ({
@@ -616,8 +641,8 @@ const pageTotals = computed(() => {
 });
 
 const loadStock = async () => {
-  if (!authStore.tenantId) return;
-  await stockStore.fetchStocks(authStore.tenantId, {
+  if (!warehouseTenantId.value) return;
+  await stockStore.fetchStocks(warehouseTenantId.value, {
     page: stockStore.page,
     pageSize: stockStore.pageSize,
     search: searchText.value.trim() || null,
@@ -694,8 +719,8 @@ const goToShipments = () => {
 };
 
 onMounted(async () => {
-  if (authStore.tenantId) {
-    await stockLocationStore.fetchLocations(authStore.tenantId);
+  if (warehouseTenantId.value) {
+    await stockLocationStore.fetchLocations(warehouseTenantId.value);
   }
   try {
     gradeTags.value = await tagRepository.listTagsForCategory({

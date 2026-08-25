@@ -35,6 +35,15 @@ const REFERENCE_HUB_MODULE_KEYS: readonly ModuleKey[] = [
   'global_reference_unit_of_measure',
 ];
 
+const SHOP_ORDER_HUB_MODULE_KEYS: readonly ModuleKey[] = [
+  'shop_config',
+  'shop_category',
+  'shop_permissions',
+  'shop_pricing',
+  'shop_order_mgmt',
+  'shop_shipping',
+];
+
 type ModuleHubConfig = {
   routeSegment: string;
   anchorModuleKey: ModuleKey;
@@ -57,6 +66,31 @@ const MODULE_HUB_CONFIGS: readonly ModuleHubConfig[] = [
 const isProcurementHubModuleKey = (moduleKey: ModuleKey): boolean =>
   (PROCUREMENT_HUB_MODULE_KEYS as readonly ModuleKey[]).includes(moduleKey);
 
+/** Child tenants may view parent warehouse stock only — all other procurement hub modules stay blocked. */
+const isProcurementBlockedOnChildTenant = (
+  moduleKey: ModuleKey,
+  action: ModuleAction = 'view',
+): boolean => {
+  if (!isProcurementHubModuleKey(moduleKey)) {
+    return false;
+  }
+  if (moduleKey === 'global_stock' && action === 'view') {
+    return false;
+  }
+  return true;
+};
+
+const resolveTenantForModuleAccess = (
+  tenantId: number | null | undefined,
+): { parent_id: number | null } | null => {
+  const tenantStore = useTenantStore();
+  return (
+    tenantStore.selectedTenant ??
+    tenantStore.items.find((tenant) => tenant.id === tenantId) ??
+    null
+  );
+};
+
 const isTenantModuleActive = (
   moduleKey: ModuleKey,
   activeModuleKeys: readonly string[],
@@ -71,6 +105,10 @@ const isTenantModuleActive = (
 
   if (moduleKey === 'procurement_stock') {
     return PROCUREMENT_HUB_MODULE_KEYS.some((key) => activeModuleKeys.includes(key));
+  }
+
+  if (moduleKey === 'shop_order') {
+    return SHOP_ORDER_HUB_MODULE_KEYS.some((key) => activeModuleKeys.includes(key));
   }
 
   return false;
@@ -112,6 +150,12 @@ const hasModuleRoleGrant = ({
   if (moduleKey === 'procurement_stock') {
     return effectiveGrants.some(
       (grant) => grant.module_key === 'global_shipment' && grant.action === action,
+    );
+  }
+
+  if (moduleKey === 'shop_order') {
+    return SHOP_ORDER_HUB_MODULE_KEYS.some((hubKey) =>
+      effectiveGrants.some((grant) => grant.module_key === hubKey && grant.action === action),
     );
   }
 
@@ -234,20 +278,17 @@ export const canAccessModule = ({
     isAdmin,
   });
 
-  if (
-    isProcurementHubModuleKey(moduleKey) ||
-    moduleKey === 'investor_capital' ||
-    moduleKey === 'investor_profiles' ||
-    moduleKey === 'investor_capital_ledger' ||
-    moduleKey === 'investor_shipment_share' ||
-    moduleKey === 'investor_portal'
-  ) {
-    const tenantStore = useTenantStore();
-    const current =
-      tenantStore.selectedTenant ??
-      tenantStore.items.find((tenant) => tenant.id === tenantId) ??
-      null;
-    if (current && current.parent_id !== null) {
+  const currentTenant = resolveTenantForModuleAccess(tenantId);
+  if (currentTenant?.parent_id != null) {
+    const blockedOnChild =
+      (isProcurementHubModuleKey(moduleKey) &&
+        isProcurementBlockedOnChildTenant(moduleKey, action)) ||
+      moduleKey === 'investor_capital' ||
+      moduleKey === 'investor_profiles' ||
+      moduleKey === 'investor_capital_ledger' ||
+      moduleKey === 'investor_shipment_share' ||
+      moduleKey === 'investor_portal';
+    if (blockedOnChild) {
       return false;
     }
   }
@@ -333,22 +374,25 @@ export const resolveModuleAccess = ({
     roleAllowed = false;
   }
 
+  const currentTenant = resolveTenantForModuleAccess(tenantId);
+  const isChildTenant = currentTenant?.parent_id != null;
+
   let isBlockedByChildStatus = false;
-  if (
-    isProcurementHubModuleKey(moduleKey) ||
-    moduleKey === 'investor_capital' ||
-    moduleKey === 'investor_profiles' ||
-    moduleKey === 'investor_capital_ledger' ||
-    moduleKey === 'investor_shipment_share' ||
-    moduleKey === 'investor_portal'
-  ) {
-    const tenantStore = useTenantStore();
-    const current =
-      tenantStore.selectedTenant ??
-      tenantStore.items.find((tenant) => tenant.id === tenantId) ??
-      null;
-    if (current && current.parent_id !== null) {
-      isBlockedByChildStatus = true;
+  if (isChildTenant) {
+    isBlockedByChildStatus =
+      (isProcurementHubModuleKey(moduleKey) &&
+        isProcurementBlockedOnChildTenant(moduleKey, action)) ||
+      moduleKey === 'investor_capital' ||
+      moduleKey === 'investor_profiles' ||
+      moduleKey === 'investor_capital_ledger' ||
+      moduleKey === 'investor_shipment_share' ||
+      moduleKey === 'investor_portal';
+  }
+
+  if (isChildTenant && moduleKey === 'global_stock') {
+    allowedActions = allowedActions.filter((grantAction) => grantAction === 'view');
+    if (action !== 'view') {
+      roleAllowed = false;
     }
   }
 

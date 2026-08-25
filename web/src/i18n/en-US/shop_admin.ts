@@ -503,6 +503,12 @@ export default {
   prices: 'Prices',
   who_can_access: 'Who can access',
   shop_setup_hub_caption: 'Shared setup for every shop. Open a shop on the list for prices or access.',
+  shop_order_overview_empty_title: 'No shop modules available here',
+  shop_order_overview_empty_caption:
+    'Shop & Order runs on a child shop tenant. Switch workspace to a sister concern, or ask an admin to enable shop modules for this tenant.',
+  shop_store_overview_empty_title: 'No shop setup modules available',
+  shop_store_overview_empty_caption:
+    'Ask an admin to enable shops, categories, customer groups, or shop pricing for this tenant.',
   shop_hub_shops_caption: 'Create storefronts. Prices and customer access sit on each shop.',
   shop_hub_categories_caption: 'Group shops on the customer browse page.',
   shop_hub_groups_caption: 'Who can log in. You then attach a group to each shop.',

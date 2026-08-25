@@ -34,7 +34,7 @@ CREATE OR REPLACE FUNCTION "public"."_can_view_stock_locations"("p_parent_tenant
     SET "search_path" TO 'public'
     AS $$
   select
-    public.user_can_manage_parent_tenant(p_parent_tenant_id)
+    public._can_view_parent_warehouse_stock(p_parent_tenant_id)
     or public.membership_has_module_action(p_parent_tenant_id, 'global_stock_location', 'view')
     or exists (
       select 1 from public.memberships m
@@ -46,6 +46,29 @@ $$;
 
 
 ALTER FUNCTION "public"."_can_view_stock_locations"("p_parent_tenant_id" bigint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."_can_view_parent_warehouse_stock"("p_parent_tenant_id" bigint) RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  select
+    public.is_superadmin()
+    or public.user_can_manage_parent_tenant(p_parent_tenant_id)
+    or public.membership_has_module_action(p_parent_tenant_id, 'global_stock', 'view')
+    or exists (
+      select 1
+      from public.tenants child
+      inner join public.memberships m on m.tenant_id = child.id
+      where child.parent_id = p_parent_tenant_id
+        and lower(trim(m.email)) = public.current_user_email()
+        and m.is_active = true
+        and public.membership_has_module_action(child.id, 'global_stock', 'view')
+    );
+$$;
+
+
+ALTER FUNCTION "public"."_can_view_parent_warehouse_stock"("p_parent_tenant_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."_stock_location_is_leaf"("p_id" bigint) RETURNS boolean
@@ -5021,6 +5044,10 @@ declare
   v_data jsonb;
   v_total_pages integer;
 begin
+  if not public._can_view_parent_warehouse_stock(p_tenant_id) then
+    raise exception 'not allowed';
+  end if;
+
   select count(*)
   into v_total_count
   from public.global_stocks gs
@@ -5138,6 +5165,10 @@ declare
   v_data jsonb;
   v_total_pages integer;
 begin
+  if not public._can_view_parent_warehouse_stock(p_tenant_id) then
+    raise exception 'not allowed';
+  end if;
+
   select count(*)
   into v_total_count
   from public.global_stocks gs

@@ -259,7 +259,7 @@ const getTenantPrefix = () => {
 };
 
 const goBack = () => {
-  void router.push(`${getTenantPrefix()}/app/customers`);
+  void router.push(`${getTenantPrefix()}/app/customers/list`);
 };
 
 const submitForm = async () => {

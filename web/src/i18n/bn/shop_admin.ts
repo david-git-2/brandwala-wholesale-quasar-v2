@@ -491,6 +491,12 @@ export default {
   prices: 'দাম',
   who_can_access: 'কে দেখতে পাবে',
   shop_setup_hub_caption: 'সব শপের জন্য সাধারণ সেটআপ। দাম বা অ্যাক্সেস প্রতি শপের তালিকায়।',
+  shop_order_overview_empty_title: 'এখানে কোনো শপ মডিউল নেই',
+  shop_order_overview_empty_caption:
+    'শপ ও অর্ডার চাইল্ড শপ টেন্যান্টে চলে। সিস্টার কনসার্নে ওয়ার্কস্পেস বদলান, অথবা অ্যাডমিনকে এই টেন্যান্টে শপ মডিউল চালু করতে বলুন।',
+  shop_store_overview_empty_title: 'কোনো শপ সেটআপ মডিউল নেই',
+  shop_store_overview_empty_caption:
+    'শপ, ক্যাটাগরি, কাস্টমার গ্রুপ, অথবা শপ প্রাইসিং চালু করতে অ্যাডমিনকে বলুন।',
   shop_hub_shops_caption: 'স্টোরফ্রন্ট তৈরি করুন। দাম ও কাস্টমার অ্যাক্সেস প্রতি শপে।',
   shop_hub_categories_caption: 'কাস্টমার ব্রাউজে শপগুলো গ্রুপ করুন।',
   shop_hub_groups_caption: 'কে লগইন করতে পারবে। তারপর প্রতি শপে গ্রুপ যোগ করুন।',

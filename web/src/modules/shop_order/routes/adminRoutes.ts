@@ -1,10 +1,28 @@
-import type { RouteRecordRaw } from 'vue-router';
+import type { NavigationGuard, RouteRecordRaw } from 'vue-router';
 import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { canAccessModule } from 'src/modules/navigation/modulePermissions';
 import type { ModuleKey } from 'src/modules/navigation/moduleRegistry';
 import {
   getAppRouteLocation,
   getTenantSlugFromRoute,
 } from 'src/modules/tenant/utils/tenantRouteContext';
+
+const SHOP_OVERVIEW_MODULE_KEYS = [
+  'shop_config',
+  'shop_category',
+  'shop_permissions',
+  'shop_pricing',
+  'shop_order_mgmt',
+  'shop_shipping',
+] as const satisfies readonly ModuleKey[];
+
+const SHOP_STORE_OVERVIEW_MODULE_KEYS = [
+  'shop_config',
+  'shop_category',
+  'customer',
+  'shop_pricing',
+] as const satisfies readonly ModuleKey[];
 
 const guard = (requiredModule: ModuleKey) =>
   createAccessGuard({
@@ -29,7 +47,93 @@ const guard = (requiredModule: ModuleKey) =>
     },
   });
 
+const shopOverviewGuard: NavigationGuard = async (to, from) => {
+  const authStore = useAuthStore();
+  const hasAnyShopAccess = SHOP_OVERVIEW_MODULE_KEYS.some((moduleKey) =>
+    canAccessModule({
+      scope: authStore.scope,
+      tenantId: authStore.tenantId,
+      customerGroupId: authStore.customerGroupId,
+      role: authStore.matchedRole,
+      moduleKey,
+      activeModuleKeys: authStore.activeModuleKeys,
+      effectiveGrants: authStore.access?.effectiveGrants,
+      isAdmin: authStore.access?.isAdmin,
+    }),
+  );
+
+  if (hasAnyShopAccess) {
+    return true;
+  }
+
+  return guard('shop_order_mgmt')(to);
+};
+
+const shopStoreOverviewGuard: NavigationGuard = async (to, from) => {
+  const authStore = useAuthStore();
+  const hasAnyStoreAccess = SHOP_STORE_OVERVIEW_MODULE_KEYS.some((moduleKey) =>
+    canAccessModule({
+      scope: authStore.scope,
+      tenantId: authStore.tenantId,
+      customerGroupId: authStore.customerGroupId,
+      role: authStore.matchedRole,
+      moduleKey,
+      activeModuleKeys: authStore.activeModuleKeys,
+      effectiveGrants: authStore.access?.effectiveGrants,
+      isAdmin: authStore.access?.isAdmin,
+    }),
+  );
+
+  if (hasAnyStoreAccess) {
+    return true;
+  }
+
+  return guard('shop_config')(to);
+};
+
 const adminRoutes: RouteRecordRaw[] = [
+  {
+    path: '/:tenantSlug?/app/shop',
+    component: () => import('layouts/AppLayout.vue'),
+    name: 'admin-shop-settings',
+    children: [
+      {
+        path: '',
+        name: 'app-shop-overview-page',
+        component: () => import('src/modules/shop_order/pages/ShopOrderOverviewPage.vue'),
+        beforeEnter: shopOverviewGuard,
+      },
+      {
+        path: 'overview',
+        redirect: (to) => {
+          const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : '';
+          return `${tenantSlug}/app/shop`;
+        },
+      },
+      {
+        path: 'roles',
+        name: 'admin-shop-roles',
+        redirect: (to) => {
+          const tenantSlug = getTenantSlugFromRoute(to);
+          return tenantSlug
+            ? `/${tenantSlug}/app/access-control/roles`
+            : '/app/access-control/roles';
+        },
+      },
+      {
+        path: 'roles/:id/grants',
+        name: 'admin-shop-role-grants',
+        redirect: (to) => {
+          const tenantSlug = getTenantSlugFromRoute(to);
+          const id = String(to.params.id);
+          return tenantSlug
+            ? `/${tenantSlug}/app/access-control/roles/${id}/grants`
+            : `/app/access-control/roles/${id}/grants`;
+        },
+      },
+    ],
+  },
+
   // shop_config — Shops
   {
     path: '/:tenantSlug?/app/shop/shops',
@@ -38,8 +142,8 @@ const adminRoutes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'app-shop-shops-page',
-        component: () => import('src/modules/shop_order/pages/ShopSetupHubPage.vue'),
-        beforeEnter: guard('shop_config'),
+        component: () => import('src/modules/shop_order/pages/ShopStoreOverviewPage.vue'),
+        beforeEnter: shopStoreOverviewGuard,
       },
       {
         path: 'list',
@@ -90,14 +194,14 @@ const adminRoutes: RouteRecordRaw[] = [
   {
     path: '/:tenantSlug?/app/shop/customer-groups',
     redirect: (to) => ({
-      name: 'app-customers',
+      name: 'app-customers-list',
       params: { tenantSlug: to.params.tenantSlug },
     }),
   },
   {
     path: '/:tenantSlug?/app/shop/customer-groups/:pathMatch(.*)*',
     redirect: (to) => ({
-      name: 'app-customers',
+      name: 'app-customers-list',
       params: { tenantSlug: to.params.tenantSlug },
     }),
   },
@@ -278,7 +382,7 @@ const adminRoutes: RouteRecordRaw[] = [
     path: '/:tenantSlug?/app/commerce/shop',
     redirect: (to) => {
       const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : '';
-      return `${tenantSlug}/app/shop/shops`;
+      return `${tenantSlug}/app/shop`;
     },
   },
   {
@@ -292,14 +396,14 @@ const adminRoutes: RouteRecordRaw[] = [
     path: '/:tenantSlug?/app/commerce-shop/:catchAll(.*)*',
     redirect: (to) => {
       const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : '';
-      return `${tenantSlug}/app/shop/shops`;
+      return `${tenantSlug}/app/shop`;
     },
   },
   {
     path: '/:tenantSlug?/app/stores/:catchAll(.*)*',
     redirect: (to) => {
       const tenantSlug = to.params.tenantSlug ? `/${String(to.params.tenantSlug)}` : '';
-      return `${tenantSlug}/app/shop/shops`;
+      return `${tenantSlug}/app/shop`;
     },
   },
 ];
