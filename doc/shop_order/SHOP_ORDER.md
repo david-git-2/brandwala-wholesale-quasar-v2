@@ -217,6 +217,7 @@ flowchart LR
 | **`ShopOrdersPage`** | Shop filter options | `useShopListQuery` → `RPC: list_shops` | Loaded on mount for shop dropdown |
 | **`ShopSettingsPage`** (Storefront tab) | Listings grid | `RPC: list_shop_storefront_listings_for_admin` | Key: `shopOrderQueryKeys.storefrontAdminListings(shopId, search)` |
 | **`ShopSettingsPage`** (Storefront tab) | Toggle active / remove / copy grade | `upsert_shop_product_listing`, `delete_shop_product_listing` | Patches `storefrontAdminListings` cache; invalidates `pricingListings` |
+| **`ShopSettingsPage`** (Storefront tab) | Calculate sell price | `get_shop_storefront_listing_price_calculation` → save `upsert_shop_product_listing` | Key: `storefrontListingPriceCalc(shopId, listingId)` |
 | **`ShopPricingPage`** | Listings | `RPC: list_shop_product_listings` | Per shop |
 | **`ShopPricingPage`** | Candidates | `RPC: list_listable_stock_for_shop` | Deferred until add-listing pick dialog opens |
 | **`ShopCartPage`** | Add / qty / remove | `add_to_shop_cart`, `update_shop_cart_item_qty`, `remove_shop_cart_item` | Patches `cart` + `activeCarts` cache from RPC response (`useShopCartMutations`) |
@@ -274,6 +275,7 @@ See **§ RPC: `get_or_create_shop_cart`** below for the response contract.
 * `shopOrderQueryKeys.cart(tenantId, shopId)` → `['shopOrder', 'cart', { tenantId, shopId }]`
 * `shopOrderQueryKeys.activeCarts(tenantId)` → `['shopOrder', 'activeCarts', { tenantId }]` — loaded in `ShopLayout` / cart picker; **patched** on cart mutations (not refetched on add/qty/remove)
 * `shopOrderQueryKeys.storefrontAdminListings(shopId, search)` → admin storefront tab cache
+* `shopOrderQueryKeys.storefrontListingPriceCalc(shopId, listingId)` → calculate sell price drawer
 * `shopOrderQueryKeys.storefrontCatalog(...)` → browse cache
 * `shopOrderQueryKeys.storefrontProduct(tenantId, shopSlug, productId)` → product detail cache
 * `shopOrderQueryKeys.storefrontProductRelated(tenantId, shopSlug, productId)` → related products strip
@@ -368,12 +370,41 @@ Active tenant membership on the shop tenant (or parent), or superadmin. Returns 
 | :--- | :--- |
 | Repository | `shopStorefrontAdminRepository.listStorefrontAdminListings` |
 | Query | `useShopStorefrontAdminListingsQuery` |
-| Mutations | `useToggleShopStorefrontListingMutation`, `useDeleteShopStorefrontListingMutation`, `useCopyShopStorefrontGradeMutation` |
+| Mutations | `useToggleShopStorefrontListingMutation`, `useDeleteShopStorefrontListingMutation`, `useCopyShopStorefrontGradeMutation`, `useSaveShopStorefrontListingPricingMutation` |
 | Type | `ShopStorefrontAdminListing` in `web/src/modules/shop_order/types/index.ts` |
 | Query key | `shopOrderQueryKeys.storefrontAdminListings(shopId, search)` |
 | UI | `ShopSettingsPage` Storefront tab → `StorefrontProductCard` (admin props) |
 
 `list_listable_stock_for_shop` rows now include optional `stock_grade` for copy-grade and add-product flows.
+
+---
+
+## 7c. RPC: `get_shop_storefront_listing_price_calculation`
+
+Powers the **Calculate sell price** drawer (`ShopStorefrontCalculateSellPriceDrawer`). Aggregates shipment landed costs for the listing’s **product + grade** across received sellable child-tenant stock. Avg cost is **quantity-weighted** across shipment rows.
+
+### Signature
+
+```sql
+get_shop_storefront_listing_price_calculation(
+  p_shop_id    bigint,
+  p_listing_id bigint
+) returns jsonb
+```
+
+### Save
+
+Drawer **Save** calls existing `upsert_shop_product_listing` (`display_quantity_override`, sell/min resell, `is_price_locked = true`).
+
+### Frontend wiring
+
+| Layer | Name |
+| :--- | :--- |
+| Repository | `shopStorefrontAdminRepository.getStorefrontListingPriceCalculation` |
+| Query | `useShopStorefrontListingPriceCalcQuery` |
+| Mutation | `useSaveShopStorefrontListingPricingMutation` |
+| Type | `ShopStorefrontListingPriceCalculation` |
+| Query key | `shopOrderQueryKeys.storefrontListingPriceCalc(shopId, listingId)` |
 
 ---
 

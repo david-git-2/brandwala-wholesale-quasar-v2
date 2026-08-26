@@ -12182,6 +12182,10 @@ export type Database = {
           can_view_quantity: boolean
         }[]
       }
+      get_shop_storefront_listing_price_calculation: {
+        Args: { p_listing_id: number; p_shop_id: number }
+        Returns: Json
+      }
       get_store_access_admin: {
         Args: { p_store_id?: number; p_tenant_id?: number }
         Returns: {

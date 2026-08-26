@@ -83,6 +83,48 @@ export interface ShopStorefrontAdminListingsResult {
   };
 }
 
+export interface ShopStorefrontShipmentCostRow {
+  shipment_id: number;
+  shipment_no: string;
+  shipment_name: string;
+  quantity: number;
+  unit_cost_amount: number;
+}
+
+/** Response from `get_shop_storefront_listing_price_calculation` RPC. */
+export interface ShopStorefrontListingPriceCalculation {
+  listing: {
+    listing_id: number;
+    shop_id: number;
+    product_id: number;
+    product_name: string;
+    product_code: string | null;
+    product_image_url: string | null;
+    global_stock_id: number;
+    grade_tag_id: number | null;
+    stock_grade: ShopCatalogStockGrade | null;
+    is_active: boolean;
+    is_price_locked: boolean;
+  };
+  shipment_costs: ShopStorefrontShipmentCostRow[];
+  totals: {
+    total_quantity: number;
+    real_available_units: number;
+    weighted_avg_cost: ShopCatalogPrice | null;
+  };
+  pricing: {
+    display_quantity_override: number | null;
+    suggested_display_quantity: number;
+    sell_price: ShopCatalogPrice | null;
+    suggested_sell_price: ShopCatalogPrice | null;
+    resell_minimum_price: ShopCatalogPrice | null;
+  };
+  shop: Pick<
+    Shop,
+    'id' | 'shop_type' | 'pricing_method' | 'markup_percentage' | 'sell_currency_id' | 'buy_currency_id'
+  >;
+}
+
 /** Row from `get_shop_catalog_product_for_customer` RPC. */
 export interface ShopCatalogProductDetail extends ShopCatalogItem {
   country_of_origin: string | null;

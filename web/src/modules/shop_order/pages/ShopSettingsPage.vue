@@ -226,8 +226,11 @@
         <ShopStorefrontAddProductDrawer v-model="storefrontAddProductDrawerOpen" />
         <ShopStorefrontCalculateSellPriceDrawer
           v-model="calculateSellPriceDrawerOpen"
-          :product="calculateSellPriceProduct"
+          :shop-id="shopId"
+          :tenant-id="tenantId"
+          :listing-id="calculateSellPriceListingId"
           :shop-type="shop.shop_type"
+          @saved="onStorefrontPricingSaved"
         />
       </template>
     </section>
@@ -297,7 +300,7 @@ const deleteShopName = ref('');
 const storefrontSearch = ref('');
 const storefrontAddProductDrawerOpen = ref(false);
 const calculateSellPriceDrawerOpen = ref(false);
-const calculateSellPriceProduct = ref<ShopStorefrontAdminListing | null>(null);
+const calculateSellPriceListingId = ref<number | null>(null);
 
 const isStorefrontTabActive = computed(() => {
   const tab = typeof route.query.tab === 'string' ? route.query.tab : 'setup';
@@ -422,8 +425,14 @@ const copyProductWithGrade = (source: ShopStorefrontAdminListing, grade: ShopCat
 };
 
 const openCalculateSellPriceDrawer = (item: ShopStorefrontAdminListing) => {
-  calculateSellPriceProduct.value = item;
+  calculateSellPriceListingId.value = item.listing_id;
   calculateSellPriceDrawerOpen.value = true;
+};
+
+const onStorefrontPricingSaved = () => {
+  void queryClient.invalidateQueries({
+    queryKey: ['shopOrder', 'storefrontAdminListings', { shopId: shopId.value }],
+  });
 };
 
 const toggleStorefrontListingStatus = (item: ShopStorefrontAdminListing, isActive: boolean) => {
@@ -460,9 +469,9 @@ const removeStorefrontProduct = async (item: ShopStorefrontAdminListing) => {
     },
     {
       onSuccess: () => {
-        if (calculateSellPriceProduct.value?.listing_id === item.listing_id) {
+        if (calculateSellPriceListingId.value === item.listing_id) {
           calculateSellPriceDrawerOpen.value = false;
-          calculateSellPriceProduct.value = null;
+          calculateSellPriceListingId.value = null;
         }
         showSuccessNotification(t('shop_admin.storefront_remove_product_success'));
       },
@@ -476,7 +485,7 @@ watch(shopId, () => {
   storefrontSearch.value = '';
   storefrontAddProductDrawerOpen.value = false;
   calculateSellPriceDrawerOpen.value = false;
-  calculateSellPriceProduct.value = null;
+  calculateSellPriceListingId.value = null;
 });
 
 const canDeleteShop = computed(() => {

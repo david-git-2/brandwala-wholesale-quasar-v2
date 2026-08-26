@@ -156,3 +156,28 @@ export function patchStorefrontListingActive(
     ),
   }));
 }
+
+export function useSaveShopStorefrontListingPricingMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: UpsertListingPayload) => shopPricingRepository.upsertListing(payload),
+    onSuccess: (_data, payload) => {
+      void queryClient.invalidateQueries({
+        queryKey: ['shopOrder', 'storefrontAdminListings', { shopId: payload.shop_id }],
+      });
+      if (payload.id) {
+        void queryClient.invalidateQueries({
+          queryKey: shopOrderQueryKeys.storefrontListingPriceCalc(payload.shop_id, payload.id),
+        });
+      }
+      void queryClient.invalidateQueries({
+        queryKey: shopOrderQueryKeys.pricingListings(payload.shop_id),
+      });
+      showSuccessNotification('Listing pricing saved.');
+    },
+    onError: (error: Error) => {
+      showWarningDialog(error.message || 'Failed to save listing pricing.', 'Save Failed');
+    },
+  });
+}

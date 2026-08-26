@@ -57,7 +57,7 @@ Data: `list_shop_storefront_listings_for_admin` → `ShopStorefrontAdminListing[
 | Active toggle | `upsert_shop_product_listing` (`is_active`) |
 | Remove | `delete_shop_product_listing` |
 | Copy grade | `list_listable_stock_for_shop` (match `product_id` + grade) → `upsert_shop_product_listing` |
-| Calculate sell price | Drawer UI (save TBD) |
+| Calculate sell price | `get_shop_storefront_listing_price_calculation` → save `upsert_shop_product_listing` |
 
 Uniqueness: one listing per `(shop_id, product_id, grade_slug)` enforced in UI when copying grades.
 

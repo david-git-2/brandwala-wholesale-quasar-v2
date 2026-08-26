@@ -1,5 +1,9 @@
 import { supabase } from 'src/boot/supabase';
-import type { ShopStorefrontAdminListing, ShopStorefrontAdminListingsResult } from '../types';
+import type {
+  ShopStorefrontAdminListing,
+  ShopStorefrontAdminListingsResult,
+  ShopStorefrontListingPriceCalculation,
+} from '../types';
 
 const listStorefrontAdminListings = async (
   shopId: number,
@@ -29,8 +33,25 @@ const listStorefrontAdminListings = async (
   };
 };
 
+const getStorefrontListingPriceCalculation = async (
+  shopId: number,
+  listingId: number,
+): Promise<ShopStorefrontListingPriceCalculation> => {
+  const { data, error } = await supabase.rpc('get_shop_storefront_listing_price_calculation', {
+    p_shop_id: shopId,
+    p_listing_id: listingId,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return data as ShopStorefrontListingPriceCalculation;
+};
+
 export const shopStorefrontAdminRepository = {
   listStorefrontAdminListings,
+  getStorefrontListingPriceCalculation,
 };
 
 export type { ShopStorefrontAdminListing };
