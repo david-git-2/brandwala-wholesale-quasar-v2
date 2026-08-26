@@ -34,6 +34,8 @@ export const shopOrderQueryKeys = {
   categoryOptions: (params: { vendorCode?: string | null; tenantId?: number | null }) =>
     ['shopOrder', 'categoryOptions', params] as const,
   pricingListings: (shopId: number) => ['shopOrder', 'pricingListings', { shopId }] as const,
+  storefrontAdminListings: (shopId: number, search?: string | null) =>
+    ['shopOrder', 'storefrontAdminListings', { shopId, search: search ?? null }] as const,
   pricingCandidates: (tenantId: number, shopId: number) =>
     ['shopOrder', 'pricingCandidates', { tenantId, shopId }] as const,
   currencies: () => ['shopOrder', 'currencies'] as const,

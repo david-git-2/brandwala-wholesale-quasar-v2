@@ -215,6 +215,8 @@ flowchart LR
 | **`ShopCartPage`** | Load cart + permissions | `useShopCartQuery` → `RPC: get_or_create_shop_cart` | Key: `shopOrderQueryKeys.cart(tenantId, shopId)`; items use catalog-shaped prices; no separate permissions or `global_currencies` call |
 | **`ShopOrdersPage`** | Order list | `useStaffOrdersQuery` → `RPC: list_shop_orders_for_staff` | Key: `staffOrders`; filters: shop (`p_shop_id`), status (`p_status`), type (client via `list_shops`) |
 | **`ShopOrdersPage`** | Shop filter options | `useShopListQuery` → `RPC: list_shops` | Loaded on mount for shop dropdown |
+| **`ShopSettingsPage`** (Storefront tab) | Listings grid | `RPC: list_shop_storefront_listings_for_admin` | Key: `shopOrderQueryKeys.storefrontAdminListings(shopId, search)` |
+| **`ShopSettingsPage`** (Storefront tab) | Toggle active / remove / copy grade | `upsert_shop_product_listing`, `delete_shop_product_listing` | Patches `storefrontAdminListings` cache; invalidates `pricingListings` |
 | **`ShopPricingPage`** | Listings | `RPC: list_shop_product_listings` | Per shop |
 | **`ShopPricingPage`** | Candidates | `RPC: list_listable_stock_for_shop` | Deferred until add-listing pick dialog opens |
 | **`ShopCartPage`** | Add / qty / remove | `add_to_shop_cart`, `update_shop_cart_item_qty`, `remove_shop_cart_item` | Patches `cart` + `activeCarts` cache from RPC response (`useShopCartMutations`) |
@@ -271,6 +273,7 @@ See **§ RPC: `get_or_create_shop_cart`** below for the response contract.
 * `shopOrderQueryKeys.customerShops(tenantId)` → `['shopOrder', 'customerShops', { tenantId }]`
 * `shopOrderQueryKeys.cart(tenantId, shopId)` → `['shopOrder', 'cart', { tenantId, shopId }]`
 * `shopOrderQueryKeys.activeCarts(tenantId)` → `['shopOrder', 'activeCarts', { tenantId }]` — loaded in `ShopLayout` / cart picker; **patched** on cart mutations (not refetched on add/qty/remove)
+* `shopOrderQueryKeys.storefrontAdminListings(shopId, search)` → admin storefront tab cache
 * `shopOrderQueryKeys.storefrontCatalog(...)` → browse cache
 * `shopOrderQueryKeys.storefrontProduct(tenantId, shopSlug, productId)` → product detail cache
 * `shopOrderQueryKeys.storefrontProductRelated(tenantId, shopSlug, productId)` → related products strip
@@ -280,6 +283,97 @@ See **§ RPC: `get_or_create_shop_cart`** below for the response contract.
 
 * `dropshipFinanceQueryKeys.summary(tenantId)` → `['dropshipFinance', 'summary', { tenantId }]`
 * `dropshipFinanceQueryKeys.queue(step, tenantId)` → `['dropshipFinance', 'queue', { step, tenantId }]`
+
+---
+
+---
+
+## 7b. RPC: `list_shop_storefront_listings_for_admin`
+
+Staff **Storefront** tab on shop settings (`ShopSettingsPage`, `?tab=storefront`). Returns customer-style catalog rows for admin curation (grade chip, actual/display qty, avg cost, sell price, active state).
+
+### Signature
+
+```sql
+list_shop_storefront_listings_for_admin(
+  p_shop_id   bigint,
+  p_search    text    default null,
+  p_limit     integer default 200,
+  p_offset    integer default 0
+) returns jsonb
+```
+
+### Auth
+
+Active tenant membership on the shop tenant (or parent), or superadmin. Returns empty `data` for `vendor_catalog` shops.
+
+### Response shape
+
+```json
+{
+  "data": [
+    {
+      "listing_id": 8842,
+      "product_id": 1001,
+      "product_name": "Premium Cotton T-Shirt — Navy Blue",
+      "product_image_url": null,
+      "product_barcode": "8901234567890",
+      "product_code": "TSH-NVY-001",
+      "product_brand": "BrandWala",
+      "product_category": "Apparel",
+      "vendor_code": "BW",
+      "is_available": true,
+      "minimum_order_quantity": 1,
+      "global_stock_id": 5001,
+      "global_stock_allocation_id": null,
+      "real_available_units": 120,
+      "display_quantity_override": 100,
+      "available_units": 100,
+      "listing_status": "active",
+      "stock_grade": { "slug": "standard", "label": "Standard", "color": "#22c55e" },
+      "unit_price": null,
+      "sell_price": { "amount": 620, "currency_id": 1, "code": "BDT", "symbol": "৳" },
+      "resell_minimum_price": null,
+      "avg_cost": { "amount": 418.5, "currency_id": 1, "code": "BDT", "symbol": "৳" },
+      "show_quantity": true,
+      "sell_price_amount": 620,
+      "sell_price_currency_id": 1,
+      "minimum_sell_price_amount": null,
+      "minimum_sell_price_currency_id": null
+    }
+  ],
+  "meta": {
+    "total": 1,
+    "page": 1,
+    "page_size": 200,
+    "total_pages": 1,
+    "shop": {
+      "id": 42,
+      "name": "Dhaka Wholesale Shop",
+      "slug": "dhaka-wholesale",
+      "shop_type": "dropship",
+      "sell_currency_id": 1,
+      "buy_currency_id": 1,
+      "pricing_method": "markup",
+      "markup_percentage": 15,
+      "quantity_display_mode": "original"
+    }
+  }
+}
+```
+
+### Frontend wiring
+
+| Layer | Name |
+| :--- | :--- |
+| Repository | `shopStorefrontAdminRepository.listStorefrontAdminListings` |
+| Query | `useShopStorefrontAdminListingsQuery` |
+| Mutations | `useToggleShopStorefrontListingMutation`, `useDeleteShopStorefrontListingMutation`, `useCopyShopStorefrontGradeMutation` |
+| Type | `ShopStorefrontAdminListing` in `web/src/modules/shop_order/types/index.ts` |
+| Query key | `shopOrderQueryKeys.storefrontAdminListings(shopId, search)` |
+| UI | `ShopSettingsPage` Storefront tab → `StorefrontProductCard` (admin props) |
+
+`list_listable_stock_for_shop` rows now include optional `stock_grade` for copy-grade and add-product flows.
 
 ---
 

@@ -49,9 +49,8 @@ export interface CandidateAllocation {
   unit_cost_amount?: number | null;
   shipment_item_id?: number | null;
   shipment_id?: number | null;
+  stock_grade?: { slug: string; label: string; color?: string | null } | null;
 }
-
-export interface UpsertListingPayload {
   tenant_id: number;
   shop_id: number;
   global_stock_allocation_id?: number | null;

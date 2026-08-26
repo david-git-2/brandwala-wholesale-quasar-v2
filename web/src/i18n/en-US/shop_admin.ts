@@ -78,6 +78,7 @@ export default {
   storefront_remove_product_title: 'Remove product',
   storefront_remove_product_confirm: 'Remove "{name}" from this shop?',
   storefront_remove_product_success: 'Product removed from shop.',
+  storefront_load_failed: 'Could not load storefront products.',
   storefront_calc_shipment_costs: 'Shipment costs',
   storefront_calc_shipment_no: 'Shipment no.',
   storefront_calc_shipment_name: 'Name',

@@ -51,6 +51,38 @@ export interface ShopCatalogItem {
   minimum_order_quantity: number | null;
 }
 
+/** Row from `list_shop_storefront_listings_for_admin` RPC (admin Storefront tab). */
+export interface ShopStorefrontAdminListing extends ShopCatalogItem {
+  listing_id: number;
+  show_quantity?: boolean | null;
+  sell_price_amount?: number;
+  sell_price_currency_id?: number;
+  minimum_sell_price_amount?: number | null;
+  minimum_sell_price_currency_id?: number | null;
+}
+
+export interface ShopStorefrontAdminListingsResult {
+  data: ShopStorefrontAdminListing[];
+  meta: {
+    total: number;
+    page: number;
+    page_size: number;
+    total_pages: number;
+    shop?: Pick<
+      Shop,
+      | 'id'
+      | 'name'
+      | 'slug'
+      | 'shop_type'
+      | 'sell_currency_id'
+      | 'buy_currency_id'
+      | 'pricing_method'
+      | 'markup_percentage'
+      | 'quantity_display_mode'
+    > | null;
+  };
+}
+
 /** Row from `get_shop_catalog_product_for_customer` RPC. */
 export interface ShopCatalogProductDetail extends ShopCatalogItem {
   country_of_origin: string | null;

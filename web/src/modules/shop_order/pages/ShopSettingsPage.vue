@@ -162,11 +162,15 @@
               </div>
             </section>
 
-            <div class="theme-shop storefront-preview q-mt-md">
-              <div v-if="filteredStorefrontProducts.length > 0" class="row q-col-gutter-md storefront-product-grid">
+            <div class="theme-shop storefront-preview q-mt-md relative-position">
+              <q-inner-loading :showing="storefrontLoading" color="primary" />
+              <div
+                v-if="storefrontProducts.length > 0"
+                class="row q-col-gutter-md storefront-product-grid"
+              >
                 <div
-                  v-for="item in filteredStorefrontProducts"
-                  :key="`${item.product_id}-${item.stock_grade?.slug ?? 'none'}-${item.global_stock_id}`"
+                  v-for="item in storefrontProducts"
+                  :key="`${item.product_id}-${item.stock_grade?.slug ?? 'none'}-${item.listing_id}`"
                   class="col-xs-12 col-sm-6 col-md-4 col-lg-3 storefront-product-grid-item"
                 >
                   <StorefrontProductCard
@@ -193,7 +197,17 @@
               </div>
 
               <div
-                v-else
+                v-else-if="storefrontIsError"
+                class="column items-center justify-center storefront-preview-empty q-pa-xl text-center"
+              >
+                <q-icon name="ph ph-warning-circle" size="64px" color="negative" class="q-mb-md" />
+                <div class="text-body1 text-grey-8">
+                  {{ storefrontError?.message || $t('shop_admin.storefront_load_failed') }}
+                </div>
+              </div>
+
+              <div
+                v-else-if="!storefrontLoading"
                 class="column items-center justify-center storefront-preview-empty q-pa-xl text-center"
               >
                 <q-icon name="ph ph-tote" size="64px" color="grey-5" class="q-mb-md" />
@@ -224,6 +238,7 @@
 import { computed, defineAsyncComponent, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
+import { useQueryClient } from '@tanstack/vue-query';
 import { copyToClipboard } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
@@ -235,13 +250,20 @@ import ShopStorefrontAddProductDrawer from 'src/modules/shop_order/components/Sh
 import ShopStorefrontCalculateSellPriceDrawer from 'src/modules/shop_order/components/ShopStorefrontCalculateSellPriceDrawer.vue';
 import { useShopDetailQuery } from '../composables/useShopQuery';
 import { useSaveShopMutation, useDeleteShopMutation } from '../composables/useShopMutations';
+import { useShopStorefrontAdminListingsQuery } from '../composables/useShopStorefrontAdminQuery';
+import {
+  patchStorefrontListingActive,
+  useCopyShopStorefrontGradeMutation,
+  useDeleteShopStorefrontListingMutation,
+  useToggleShopStorefrontListingMutation,
+} from '../composables/useShopStorefrontAdminMutations';
+import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import { shopCatalogPath } from '../utils/catalogShop';
 import { showSuccessNotification, showErrorNotification, requestConfirmation } from 'src/utils/appFeedback';
 import type { CustomerShopPermissions } from '../composables/useCustomerShopPermissionsQuery';
 import type {
-  ShopCatalogItem,
-  ShopCatalogPrice,
   ShopCatalogStockGrade,
+  ShopStorefrontAdminListing,
   UpdateShopPayload,
 } from 'src/modules/shop_order/types';
 
@@ -257,6 +279,7 @@ type ShopDetailTab = 'setup' | 'access' | 'storefront' | 'listings';
 const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
+const queryClient = useQueryClient();
 const authStore = useAuthStore();
 const { hasModuleAccess } = useModulePermissions();
 
@@ -274,7 +297,27 @@ const deleteShopName = ref('');
 const storefrontSearch = ref('');
 const storefrontAddProductDrawerOpen = ref(false);
 const calculateSellPriceDrawerOpen = ref(false);
-const calculateSellPriceProduct = ref<ShopCatalogItem | null>(null);
+const calculateSellPriceProduct = ref<ShopStorefrontAdminListing | null>(null);
+
+const isStorefrontTabActive = computed(() => {
+  const tab = typeof route.query.tab === 'string' ? route.query.tab : 'setup';
+  return tab === 'storefront';
+});
+const {
+  data: storefrontListingsResult,
+  isLoading: storefrontLoading,
+  isError: storefrontIsError,
+  error: storefrontError,
+} = useShopStorefrontAdminListingsQuery(shopId, storefrontSearch, isStorefrontTabActive);
+
+const { mutate: toggleStorefrontListingMutation } = useToggleShopStorefrontListingMutation();
+const { mutate: deleteStorefrontListingMutation, isPending: isDeletingStorefrontListing } =
+  useDeleteShopStorefrontListingMutation();
+const { mutate: copyStorefrontGradeMutation } = useCopyShopStorefrontGradeMutation();
+
+const storefrontProducts = computed(
+  () => storefrontListingsResult.value?.data ?? [],
+);
 
 const storefrontPreviewPermissions: CustomerShopPermissions = {
   can_browse: true,
@@ -286,117 +329,12 @@ const storefrontPreviewPermissions: CustomerShopPermissions = {
   can_view_quantity: true,
 };
 
-const dummyCatalogPrice = (amount: number): ShopCatalogPrice => ({
-  amount,
-  currency_id: 1,
-  code: 'BDT',
-  symbol: '৳',
-});
-
 const STOREFRONT_WAREHOUSE_GRADES: ShopCatalogStockGrade[] = [
   { slug: 'standard', label: 'Standard', color: '#22c55e' },
   { slug: 'open_box', label: 'Open box', color: '#3b82f6' },
   { slug: 'box_damage', label: 'Box damage', color: '#f59e0b' },
   { slug: 'box_less', label: 'Box less', color: '#8b5cf6' },
 ];
-
-const createInitialStorefrontProducts = (): ShopCatalogItem[] => [
-  {
-    product_id: 1001,
-    product_name: 'Premium Cotton T-Shirt — Navy Blue',
-    product_image_url: null,
-    product_barcode: '8901234567890',
-    product_code: 'TSH-NVY-001',
-    product_brand: 'BrandWala',
-    product_category: 'Apparel',
-    vendor_code: 'BW',
-    is_available: true,
-    unit_price: dummyCatalogPrice(450),
-    avg_cost: dummyCatalogPrice(418.5),
-    sell_price: dummyCatalogPrice(620),
-    resell_minimum_price: dummyCatalogPrice(580),
-    available_units: 100,
-    real_available_units: 120,
-    display_quantity_override: 100,
-    listing_status: 'active',
-    stock_grade: { slug: 'standard', label: 'Standard', color: '#22c55e' },
-    global_stock_allocation_id: null,
-    global_stock_id: 5001,
-    minimum_order_quantity: 1,
-  },
-  {
-    product_id: 1002,
-    product_name: 'Wireless Bluetooth Earbuds Pro',
-    product_image_url: null,
-    product_barcode: '8901234567891',
-    product_code: 'AUD-BT-200',
-    product_brand: 'SoundMax',
-    product_category: 'Electronics',
-    vendor_code: 'SM',
-    is_available: true,
-    unit_price: dummyCatalogPrice(1250),
-    avg_cost: dummyCatalogPrice(1188.75),
-    sell_price: dummyCatalogPrice(1699),
-    resell_minimum_price: dummyCatalogPrice(1550),
-    available_units: 48,
-    real_available_units: 48,
-    display_quantity_override: null,
-    listing_status: 'active',
-    stock_grade: { slug: 'standard', label: 'Standard', color: '#22c55e' },
-    global_stock_allocation_id: null,
-    global_stock_id: 5002,
-    minimum_order_quantity: 1,
-  },
-  {
-    product_id: 1003,
-    product_name: 'Stainless Steel Water Bottle 1L',
-    product_image_url: null,
-    product_barcode: '8901234567892',
-    product_code: 'BTL-SS-1L',
-    product_brand: 'HydroLife',
-    product_category: 'Home & Kitchen',
-    vendor_code: 'HL',
-    is_available: true,
-    unit_price: dummyCatalogPrice(320),
-    avg_cost: dummyCatalogPrice(305.2),
-    sell_price: dummyCatalogPrice(449),
-    resell_minimum_price: dummyCatalogPrice(400),
-    available_units: 150,
-    real_available_units: 200,
-    display_quantity_override: 150,
-    listing_status: 'active',
-    stock_grade: { slug: 'standard', label: 'Standard', color: '#22c55e' },
-    global_stock_allocation_id: null,
-    global_stock_id: 5003,
-    minimum_order_quantity: 2,
-  },
-  {
-    product_id: 1004,
-    product_name: 'Organic Green Tea — 100 Bags',
-    product_image_url: null,
-    product_barcode: '8901234567893',
-    product_code: 'TEA-GRN-100',
-    product_brand: 'Leaf & Co',
-    product_category: 'Grocery',
-    vendor_code: 'LC',
-    is_available: true,
-    unit_price: dummyCatalogPrice(280),
-    avg_cost: dummyCatalogPrice(265),
-    sell_price: dummyCatalogPrice(385),
-    resell_minimum_price: dummyCatalogPrice(350),
-    available_units: 0,
-    real_available_units: 0,
-    display_quantity_override: null,
-    listing_status: 'active',
-    stock_grade: { slug: 'standard', label: 'Standard', color: '#22c55e' },
-    global_stock_allocation_id: null,
-    global_stock_id: 5004,
-    minimum_order_quantity: 1,
-  },
-];
-
-const dummyStorefrontProducts = ref<ShopCatalogItem[]>(createInitialStorefrontProducts());
-let nextStorefrontStockId = 5005;
 
 const formatStorefrontMoney = (amount: unknown, symbol?: string | null) => {
   const n = Number(amount);
@@ -409,25 +347,17 @@ const formatStorefrontMoney = (amount: unknown, symbol?: string | null) => {
   return `${sym} ${formatted}`;
 };
 
-const filteredStorefrontProducts = computed(() => {
-  const query = storefrontSearch.value.trim().toLowerCase();
-  const products = dummyStorefrontProducts.value;
-  if (!query) return products;
+const storefrontSearchParam = computed(() => storefrontSearch.value.trim() || null);
 
-  return products.filter((item) => {
-    const haystack = [
-      item.product_name,
-      item.product_brand,
-      item.product_code,
-      item.product_barcode,
-      item.product_category,
-      item.stock_grade?.label,
-    ]
-      .filter(Boolean)
-      .join(' ')
-      .toLowerCase();
-    return haystack.includes(query);
+const catalogGradeOptions = computed(() => {
+  const bySlug = new Map<string, ShopCatalogStockGrade>();
+  STOREFRONT_WAREHOUSE_GRADES.forEach((grade) => bySlug.set(grade.slug, grade));
+  storefrontProducts.value.forEach((item) => {
+    if (item.stock_grade?.slug) {
+      bySlug.set(item.stock_grade.slug, item.stock_grade);
+    }
   });
+  return [...bySlug.values()];
 });
 
 const storefrontProductGradeKey = (productId: number, gradeSlug: string | null | undefined) =>
@@ -439,57 +369,79 @@ const isStorefrontProductGradeTaken = (
 ): boolean => {
   if (!gradeSlug) return false;
   const key = storefrontProductGradeKey(productId, gradeSlug);
-  return dummyStorefrontProducts.value.some(
+  return storefrontProducts.value.some(
     (row) => storefrontProductGradeKey(row.product_id, row.stock_grade?.slug) === key,
   );
 };
 
-const availableGradesForProduct = (item: ShopCatalogItem): ShopCatalogStockGrade[] =>
-  STOREFRONT_WAREHOUSE_GRADES.filter(
+const availableGradesForProduct = (item: ShopStorefrontAdminListing): ShopCatalogStockGrade[] =>
+  catalogGradeOptions.value.filter(
     (grade) => !isStorefrontProductGradeTaken(item.product_id, grade.slug),
   );
 
-const copyProductWithGrade = (source: ShopCatalogItem, grade: ShopCatalogStockGrade) => {
-  if (!grade.slug) {
+const buildStorefrontListingUpsertPayload = (
+  item: ShopStorefrontAdminListing,
+  isActive: boolean,
+) => ({
+  id: item.listing_id,
+  tenant_id: tenantId.value,
+  shop_id: shopId.value,
+  global_stock_id: item.global_stock_id ?? undefined,
+  sell_price_amount: Number(item.sell_price_amount ?? item.sell_price?.amount ?? 0),
+  sell_price_currency_id: Number(
+    item.sell_price_currency_id ?? item.sell_price?.currency_id ?? 0,
+  ),
+  minimum_sell_price_amount: item.minimum_sell_price_amount ?? null,
+  minimum_sell_price_currency_id: item.minimum_sell_price_currency_id ?? null,
+  show_quantity: item.show_quantity ?? true,
+  display_quantity_override: item.display_quantity_override ?? null,
+  is_active: isActive,
+});
+
+const copyProductWithGrade = (source: ShopStorefrontAdminListing, grade: ShopCatalogStockGrade) => {
+  if (!grade.slug || isStorefrontProductGradeTaken(source.product_id, grade.slug)) {
     showErrorNotification(t('shop_admin.storefront_grade_variant_duplicate'));
     return;
   }
 
-  if (isStorefrontProductGradeTaken(source.product_id, grade.slug)) {
-    showErrorNotification(t('shop_admin.storefront_grade_variant_duplicate'));
-    return;
-  }
-
-  const copy: ShopCatalogItem = {
-    ...source,
-    global_stock_id: nextStorefrontStockId++,
-    stock_grade: { ...grade },
-    listing_status: 'active',
-  };
-
-  dummyStorefrontProducts.value = [...dummyStorefrontProducts.value, copy];
-  showSuccessNotification(
-    t('shop_admin.storefront_grade_variant_added', { grade: grade.label }),
+  copyStorefrontGradeMutation(
+    {
+      shopId: shopId.value,
+      tenantId: tenantId.value,
+      source,
+      grade,
+    },
+    {
+      onSuccess: () => {
+        showSuccessNotification(
+          t('shop_admin.storefront_grade_variant_added', { grade: grade.label }),
+        );
+      },
+    },
   );
 };
 
-const openCalculateSellPriceDrawer = (item: ShopCatalogItem) => {
+const openCalculateSellPriceDrawer = (item: ShopStorefrontAdminListing) => {
   calculateSellPriceProduct.value = item;
   calculateSellPriceDrawerOpen.value = true;
 };
 
-const toggleStorefrontListingStatus = (item: ShopCatalogItem, isActive: boolean) => {
-  dummyStorefrontProducts.value = dummyStorefrontProducts.value.map((row) =>
-    row.global_stock_id === item.global_stock_id
-      ? { ...row, listing_status: isActive ? 'active' : 'inactive' }
-      : row,
-  );
+const toggleStorefrontListingStatus = (item: ShopStorefrontAdminListing, isActive: boolean) => {
+  const search = storefrontSearchParam.value;
+  patchStorefrontListingActive(queryClient, shopId.value, search, item.listing_id, isActive);
+  toggleStorefrontListingMutation(buildStorefrontListingUpsertPayload(item, isActive), {
+    onError: () => {
+      void queryClient.invalidateQueries({
+        queryKey: shopOrderQueryKeys.storefrontAdminListings(shopId.value, search),
+      });
+    },
+  });
 };
 
-const storefrontProductLabel = (item: ShopCatalogItem) =>
+const storefrontProductLabel = (item: ShopStorefrontAdminListing) =>
   [item.product_name, item.stock_grade?.label].filter(Boolean).join(' · ');
 
-const removeStorefrontProduct = async (item: ShopCatalogItem) => {
+const removeStorefrontProduct = async (item: ShopStorefrontAdminListing) => {
   const confirmed = await requestConfirmation(
     t('shop_admin.storefront_remove_product_confirm', {
       name: storefrontProductLabel(item),
@@ -497,18 +449,25 @@ const removeStorefrontProduct = async (item: ShopCatalogItem) => {
     t('shop_admin.storefront_remove_product_title'),
     t('shop_admin.storefront_remove_product'),
   );
-  if (!confirmed) return;
+  if (!confirmed || isDeletingStorefrontListing.value) return;
 
-  dummyStorefrontProducts.value = dummyStorefrontProducts.value.filter(
-    (row) => row.global_stock_id !== item.global_stock_id,
+  deleteStorefrontListingMutation(
+    {
+      listingId: item.listing_id,
+      tenantId: tenantId.value,
+      shopId: shopId.value,
+      search: storefrontSearchParam.value,
+    },
+    {
+      onSuccess: () => {
+        if (calculateSellPriceProduct.value?.listing_id === item.listing_id) {
+          calculateSellPriceDrawerOpen.value = false;
+          calculateSellPriceProduct.value = null;
+        }
+        showSuccessNotification(t('shop_admin.storefront_remove_product_success'));
+      },
+    },
   );
-
-  if (calculateSellPriceProduct.value?.global_stock_id === item.global_stock_id) {
-    calculateSellPriceDrawerOpen.value = false;
-    calculateSellPriceProduct.value = null;
-  }
-
-  showSuccessNotification(t('shop_admin.storefront_remove_product_success'));
 };
 
 watch(shopId, () => {
@@ -518,8 +477,6 @@ watch(shopId, () => {
   storefrontAddProductDrawerOpen.value = false;
   calculateSellPriceDrawerOpen.value = false;
   calculateSellPriceProduct.value = null;
-  dummyStorefrontProducts.value = createInitialStorefrontProducts();
-  nextStorefrontStockId = 5005;
 });
 
 const canDeleteShop = computed(() => {

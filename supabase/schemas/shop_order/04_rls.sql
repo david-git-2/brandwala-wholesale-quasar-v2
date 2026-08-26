@@ -341,6 +341,7 @@ GRANT ALL ON FUNCTION "public"."list_shop_orders_for_staff"("p_tenant_id" bigint
 
 
 GRANT ALL ON FUNCTION "public"."list_shop_product_listings"("p_shop_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."list_shop_storefront_listings_for_admin"("p_shop_id" bigint, "p_search" "text", "p_limit" integer, "p_offset" integer) TO "authenticated";
 
 
 GRANT ALL ON FUNCTION "public"."list_shops"("p_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_search" "text", "p_active" boolean) TO "authenticated";

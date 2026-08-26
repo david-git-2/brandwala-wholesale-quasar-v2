@@ -91,6 +91,7 @@ const listCandidateAllocations = async (
     unit_cost_amount: r.unit_cost_amount,
     shipment_item_id: r.shipment_item_id,
     shipment_id: r.shipment_id,
+    stock_grade: r.stock_grade ?? null,
   }));
 };
 

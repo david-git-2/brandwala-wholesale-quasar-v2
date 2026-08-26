@@ -20,6 +20,7 @@ flowchart TD
     L --> D["Create Shop Dialog<br/>name + pick 1 of 3 types"]
     D --> S["Shop Settings<br/>/app/shop/shops/:id/setup"]
     S --> A["Access tab<br/>grant customer groups"]
+    S --> F["Storefront tab<br/>fixed_price / dropship"]
     S --> P["Listings tab<br/>fixed_price / dropship only"]
     G -.->|"groups must exist first"| A
     C -.->|"tag shops on setup form"| S
@@ -43,7 +44,22 @@ flowchart TD
 | :--- | :--- | :--- | :--- |
 | **Setup** | Always | **Save** (calls `ShopSettingsForm.buildPayload` → `upsert_shop`) | `ShopSettingsForm` + danger zone |
 | **Access** | `shop_permissions` grant | None (actions inside matrix) | `ShopAccessMatrixPage` (`embedded`) |
+| **Storefront** | shop type is `fixed_price` or `dropship` | **Add product** (drawer) | Customer-style product cards + admin actions |
 | **Listings** | `shop_pricing` grant **and** shop type ≠ `vendor_catalog` | None (actions inside pricing page) | `ShopPricingPage` (`embedded`) |
+
+### Storefront tab (`?tab=storefront`)
+
+Data: `list_shop_storefront_listings_for_admin` → `ShopStorefrontAdminListing[]` (one card per listing = product + warehouse grade).
+
+| Card action | RPC / mutation |
+| :--- | :--- |
+| Search | `p_search` on list RPC |
+| Active toggle | `upsert_shop_product_listing` (`is_active`) |
+| Remove | `delete_shop_product_listing` |
+| Copy grade | `list_listable_stock_for_shop` (match `product_id` + grade) → `upsert_shop_product_listing` |
+| Calculate sell price | Drawer UI (save TBD) |
+
+Uniqueness: one listing per `(shop_id, product_id, grade_slug)` enforced in UI when copying grades.
 
 ### Danger zone (Setup tab only)
 

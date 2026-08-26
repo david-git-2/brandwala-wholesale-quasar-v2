@@ -77,6 +77,7 @@ export default {
   storefront_remove_product_title: 'পণ্য সরান',
   storefront_remove_product_confirm: '"{name}" এই শপ থেকে সরাতে চান?',
   storefront_remove_product_success: 'পণ্য শপ থেকে সরানো হয়েছে।',
+  storefront_load_failed: 'স্টোরফ্রন্ট পণ্য লোড করা যায়নি।',
   storefront_calc_shipment_costs: 'শিপমেন্ট খরচ',
   storefront_calc_shipment_no: 'শিপমেন্ট নং',
   storefront_calc_shipment_name: 'নাম',
