@@ -40,91 +40,119 @@
 
       <q-separator />
 
-      <div v-if="!showCreateForm" class="col scroll q-pa-md column q-gutter-y-md">
-        <q-input
-          v-model="search"
-          outlined
-          dense
-          clearable
-          autofocus
-          :placeholder="$t('shop_admin.storefront_add_product_search_placeholder')"
-        >
-          <template #prepend>
-            <q-icon name="ph ph-magnifying-glass" />
-          </template>
-        </q-input>
-
-        <q-list v-if="searchResults.length > 0" dense bordered separator class="rounded-borders">
-          <q-item v-for="product in searchResults" :key="product.id" clickable>
-            <q-item-section avatar>
-              <q-avatar square size="48px" class="bg-grey-2">
-                <q-icon name="ph ph-package" color="grey-6" />
-              </q-avatar>
-            </q-item-section>
-            <q-item-section>
-              <q-item-label class="text-weight-medium">{{ product.name }}</q-item-label>
-              <q-item-label caption>
-                {{ [product.product_code, product.barcode].filter(Boolean).join(' · ') }}
-              </q-item-label>
-            </q-item-section>
-            <q-item-section side>
-              <q-btn
-                unelevated
-                dense
-                no-caps
-                color="primary"
-                icon="ph ph-plus"
-                :label="$t('shop_admin.storefront_add_product')"
-              />
-            </q-item-section>
-          </q-item>
-        </q-list>
-
-        <q-list
-          v-if="search.trim().length > 0"
-          dense
-          bordered
-          class="rounded-borders"
-          :class="{ 'q-mt-sm': searchResults.length > 0 }"
-        >
-          <q-item clickable @click="openCreateForm()">
-            <q-item-section avatar>
-              <q-avatar square color="primary" text-color="white" icon="ph ph-plus" size="48px" />
-            </q-item-section>
-            <q-item-section>
-              <q-item-label class="text-weight-medium">{{ createNewProductLabel }}</q-item-label>
-              <q-item-label caption>{{ $t('shop_admin.storefront_cant_find_create_product') }}</q-item-label>
-            </q-item-section>
-            <q-item-section side>
-              <q-btn
-                unelevated
-                dense
-                no-caps
-                color="primary"
-                icon="ph ph-plus"
-                :label="$t('shop_admin.storefront_add_new_product')"
-                @click.stop="openCreateForm()"
-              />
-            </q-item-section>
-          </q-item>
-        </q-list>
-
-        <div
-          v-if="search.trim().length > 0 && searchResults.length === 0"
-          class="text-center text-grey-6 q-pa-lg"
-        >
-          {{ $t('shop_admin.storefront_no_products_found') }}
+      <div v-if="!showCreateForm" class="col column min-height-0">
+        <div class="q-pa-md">
+          <q-input
+            v-model="search"
+            outlined
+            dense
+            clearable
+            autofocus
+            class="full-width"
+            :placeholder="$t('shop_admin.storefront_add_product_search_placeholder')"
+          >
+            <template #prepend>
+              <q-icon name="ph ph-magnifying-glass" />
+            </template>
+          </q-input>
         </div>
 
-        <div v-else-if="search.trim().length === 0" class="text-center text-grey-6 q-pa-lg">
-          {{ $t('shop_admin.storefront_search_to_find_products') }}
+        <div class="col scroll q-px-md q-pb-md relative-position min-width-0">
+          <q-inner-loading :showing="isSearching" color="primary" />
+
+          <div
+            v-if="search.trim().length === 0"
+            class="text-center text-grey-6 q-pa-lg"
+          >
+            {{ $t('shop_admin.storefront_search_to_find_products') }}
+          </div>
+
+          <div
+            v-else-if="!isSearching && searchResults.length === 0"
+            class="column q-gutter-y-md"
+          >
+            <div class="text-center text-grey-6 q-pa-lg">
+              {{ $t('shop_admin.storefront_no_products_found') }}
+            </div>
+            <q-card flat bordered class="add-product-create-card" clickable @click="openCreateForm()">
+              <q-card-section class="row items-center no-wrap q-col-gutter-sm">
+                <div class="col-auto">
+                  <q-avatar square color="primary" text-color="white" icon="ph ph-plus" size="48px" />
+                </div>
+                <div class="col min-width-0">
+                  <div class="text-weight-medium ellipsis">{{ createNewProductLabel }}</div>
+                  <div class="text-caption text-grey-7">
+                    {{ $t('shop_admin.storefront_cant_find_create_product') }}
+                  </div>
+                </div>
+              </q-card-section>
+            </q-card>
+          </div>
+
+          <div v-else class="column q-gutter-y-sm full-width">
+            <q-card
+              v-for="product in searchResults"
+              :key="product.id"
+              flat
+              bordered
+              class="add-product-result-card"
+            >
+              <q-card-section class="row items-center no-wrap q-col-gutter-sm">
+                <div class="col-auto">
+                  <q-avatar square size="48px" class="bg-grey-2 rounded-borders">
+                    <img
+                      v-if="product.image_url"
+                      :src="product.image_url"
+                      :alt="product.name ?? ''"
+                    />
+                    <q-icon v-else name="ph ph-package" color="grey-6" />
+                  </q-avatar>
+                </div>
+                <div class="col min-width-0">
+                  <div class="text-weight-medium ellipsis-2-lines">{{ product.name }}</div>
+                  <div class="text-caption text-grey-7 ellipsis">
+                    {{ [product.product_code, product.barcode].filter(Boolean).join(' · ') }}
+                  </div>
+                </div>
+                <div class="col-auto">
+                  <q-btn
+                    unelevated
+                    dense
+                    round
+                    color="primary"
+                    icon="ph ph-plus"
+                    :loading="addingProductId === product.id"
+                    @click="onAddProduct(product)"
+                  >
+                    <q-tooltip>{{ $t('shop_admin.storefront_add_product') }}</q-tooltip>
+                  </q-btn>
+                </div>
+              </q-card-section>
+            </q-card>
+
+            <q-card flat bordered class="add-product-create-card" clickable @click="openCreateForm()">
+              <q-card-section class="row items-center no-wrap q-col-gutter-sm">
+                <div class="col-auto">
+                  <q-avatar square color="primary" text-color="white" icon="ph ph-plus" size="48px" />
+                </div>
+                <div class="col min-width-0">
+                  <div class="text-weight-medium ellipsis">{{ createNewProductLabel }}</div>
+                  <div class="text-caption text-grey-7">
+                    {{ $t('shop_admin.storefront_cant_find_create_product') }}
+                  </div>
+                </div>
+              </q-card-section>
+            </q-card>
+          </div>
         </div>
       </div>
 
       <div v-else class="col scroll q-pa-md">
         <ShopStorefrontCreateProductForm
           :initial-name="createFormInitialName"
+          :tenant-id="tenantId"
           @cancel="closeCreateForm"
+          @saved="onProductCreated"
         />
       </div>
 
@@ -141,27 +169,68 @@
         </div>
       </template>
     </div>
+
+    <q-dialog v-model="gradePickerOpen">
+      <q-card style="min-width: 320px">
+        <q-card-section>
+          <div class="text-subtitle1 text-weight-bold">
+            {{ $t('shop_admin.storefront_pick_grade_title') }}
+          </div>
+          <div class="text-caption text-grey-7 q-mt-xs">
+            {{ $t('shop_admin.storefront_pick_grade_hint') }}
+          </div>
+        </q-card-section>
+        <q-separator />
+        <q-list dense>
+          <q-item
+            v-for="row in gradePickerOptions"
+            :key="row.global_stock_id"
+            clickable
+            v-close-popup
+            @click="confirmAddWithStock(row)"
+          >
+            <q-item-section>
+              <q-item-label>{{ row.stock_grade?.label ?? $t('shop_admin.storefront_grade_standard') }}</q-item-label>
+              <q-item-label caption>
+                {{ $t('shop_admin.storefront_qty_available', { qty: row.allocated_quantity }) }}
+              </q-item-label>
+            </q-item-section>
+          </q-item>
+        </q-list>
+        <q-card-actions align="right">
+          <q-btn flat no-caps :label="$t('shop_admin.cancel')" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-drawer>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import type { Product } from 'src/modules/products/types';
+import type { ShopType } from '../types';
+import type { CandidateAllocation } from '../types/pricing';
 import ShopStorefrontCreateProductForm from './ShopStorefrontCreateProductForm.vue';
-
-interface DrawerProductOption {
-  id: number;
-  name: string;
-  product_code: string | null;
-  barcode: string | null;
-}
+import { useShopStorefrontCatalogSearchQuery } from '../composables/useShopStorefrontCatalogSearchQuery';
+import { useShopPricingCandidatesQuery, useShopPricingRuleQuery } from '../composables/useShopPricingQuery';
+import { useAddShopStorefrontListingMutation } from '../composables/useShopStorefrontAdminMutations';
+import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 
 const props = defineProps<{
   modelValue: boolean;
+  shopId: number | null;
+  tenantId: number | null;
+  shopType?: ShopType | null;
+  sellCurrencyId?: number | null;
+  markupPercentage?: number | null;
+  listedGradeKeys?: string[];
+  listedProductIds?: number[];
 }>();
 
 const emit = defineEmits<{
   (event: 'update:modelValue', value: boolean): void;
+  (event: 'saved'): void;
 }>();
 
 const { t } = useI18n();
@@ -169,39 +238,29 @@ const { t } = useI18n();
 const search = ref('');
 const showCreateForm = ref(false);
 const createFormInitialName = ref('');
+const addingProductId = ref<number | null>(null);
+const gradePickerOpen = ref(false);
+const gradePickerOptions = ref<CandidateAllocation[]>([]);
 
-const catalogOptions: DrawerProductOption[] = [
-  {
-    id: 1,
-    name: 'Premium Cotton T-Shirt — Navy Blue',
-    product_code: 'TSH-NVY-001',
-    barcode: '8901234567890',
-  },
-  {
-    id: 2,
-    name: 'Wireless Bluetooth Earbuds Pro',
-    product_code: 'AUD-BT-200',
-    barcode: '8901234567891',
-  },
-  {
-    id: 3,
-    name: 'Stainless Steel Water Bottle 1L',
-    product_code: 'BTL-SS-1L',
-    barcode: '8901234567892',
-  },
-  {
-    id: 4,
-    name: 'Organic Green Tea — 100 Bags',
-    product_code: 'TEA-GRN-100',
-    barcode: '8901234567893',
-  },
-  {
-    id: 5,
-    name: 'Running Shoes — Size 42',
-    product_code: 'SHO-RUN-42',
-    barcode: '8901234567894',
-  },
-];
+const shopIdRef = computed(() => props.shopId);
+const tenantIdRef = computed(() => props.tenantId);
+const drawerEnabled = computed(() => props.modelValue);
+
+const { data: catalogResult, isFetching: isSearching } = useShopStorefrontCatalogSearchQuery(
+  tenantIdRef,
+  search,
+  drawerEnabled,
+);
+
+const { data: candidates } = useShopPricingCandidatesQuery(
+  tenantIdRef,
+  shopIdRef,
+  drawerEnabled,
+);
+
+const { data: pricingRule } = useShopPricingRuleQuery(shopIdRef);
+
+const { mutate: addListing, isPending: isAddingListing } = useAddShopStorefrontListingMutation();
 
 const isOpen = computed({
   get: () => props.modelValue,
@@ -210,18 +269,10 @@ const isOpen = computed({
 
 const drawerWidth = computed(() => (showCreateForm.value ? 720 : 520));
 
-const searchResults = computed(() => {
-  const query = search.value.trim().toLowerCase();
-  if (!query) return [];
+const searchResults = computed(() => catalogResult.value?.data ?? []);
 
-  return catalogOptions.filter((product) => {
-    const haystack = [product.name, product.product_code, product.barcode]
-      .filter(Boolean)
-      .join(' ')
-      .toLowerCase();
-    return haystack.includes(query);
-  });
-});
+const listedGradeKeySet = computed(() => new Set(props.listedGradeKeys ?? []));
+const listedProductIdSet = computed(() => new Set(props.listedProductIds ?? []));
 
 const createNewProductLabel = computed(() => {
   const query = search.value.trim();
@@ -229,6 +280,101 @@ const createNewProductLabel = computed(() => {
     ? t('shop_admin.storefront_create_named_product', { name: query })
     : t('shop_admin.storefront_add_new_product');
 });
+
+const gradeKey = (productId: number, gradeSlug: string | null | undefined) =>
+  `${productId}:${gradeSlug ?? 'standard'}`;
+
+const availableStockForProduct = (productId: number): CandidateAllocation[] => {
+  const rows = (candidates.value ?? []).filter((row) => row.product_id === productId);
+  return rows.filter((row) => !listedGradeKeySet.value.has(gradeKey(productId, row.stock_grade?.slug)));
+};
+
+const submitStockListing = (stock: CandidateAllocation) => {
+  if (!props.shopId || !props.tenantId || props.sellCurrencyId == null) return;
+
+  addListing(
+    {
+      mode: 'stock',
+      shopId: props.shopId,
+      tenantId: props.tenantId,
+      stock,
+      sellCurrencyId: props.sellCurrencyId,
+      shopType: props.shopType ?? 'fixed_price',
+      markupPercentage: Number(props.markupPercentage ?? pricingRule.value?.markup_percentage ?? 0),
+      dropshipMarkupPercentage: Number(pricingRule.value?.dropship_markup_percentage ?? 0),
+    },
+    {
+      onSuccess: () => {
+        addingProductId.value = null;
+        showSuccessNotification(t('shop_admin.storefront_listing_added'));
+        emit('saved');
+        isOpen.value = false;
+      },
+      onError: (error: Error) => {
+        addingProductId.value = null;
+        showErrorNotification(error.message || t('shop_admin.storefront_listing_add_failed'));
+      },
+    },
+  );
+};
+
+const submitProductListing = (product: Product) => {
+  if (!props.shopId || !props.tenantId || props.sellCurrencyId == null) return;
+
+  addListing(
+    {
+      mode: 'product',
+      shopId: props.shopId,
+      tenantId: props.tenantId,
+      product,
+      sellCurrencyId: props.sellCurrencyId,
+    },
+    {
+      onSuccess: () => {
+        addingProductId.value = null;
+        showSuccessNotification(t('shop_admin.storefront_listing_added_inactive'));
+        emit('saved');
+        isOpen.value = false;
+      },
+      onError: (error: Error) => {
+        addingProductId.value = null;
+        showErrorNotification(error.message || t('shop_admin.storefront_listing_add_failed'));
+      },
+    },
+  );
+};
+
+const confirmAddWithStock = (stock: CandidateAllocation) => {
+  if (isAddingListing.value) return;
+  submitStockListing(stock);
+};
+
+const onAddProduct = (product: Product) => {
+  if (!props.shopId || !props.tenantId) return;
+
+  addingProductId.value = product.id;
+  const available = availableStockForProduct(product.id);
+
+  if (available.length > 1) {
+    addingProductId.value = null;
+    gradePickerOptions.value = available;
+    gradePickerOpen.value = true;
+    return;
+  }
+
+  if (available.length === 1) {
+    submitStockListing(available[0]!);
+    return;
+  }
+
+  if (listedProductIdSet.value.has(product.id)) {
+    addingProductId.value = null;
+    showErrorNotification(t('shop_admin.storefront_product_already_listed'));
+    return;
+  }
+
+  submitProductListing(product);
+};
 
 const openCreateForm = () => {
   createFormInitialName.value = search.value.trim();
@@ -240,10 +386,19 @@ const closeCreateForm = () => {
   createFormInitialName.value = '';
 };
 
+const onProductCreated = (_product: Product) => {
+  showSuccessNotification(t('shop_admin.storefront_product_created_no_stock'));
+  closeCreateForm();
+  search.value = _product.name ?? '';
+};
+
 const resetDrawer = () => {
   search.value = '';
   showCreateForm.value = false;
   createFormInitialName.value = '';
+  addingProductId.value = null;
+  gradePickerOpen.value = false;
+  gradePickerOptions.value = [];
 };
 
 watch(isOpen, (open) => {
@@ -256,5 +411,24 @@ watch(isOpen, (open) => {
 <style scoped>
 .border-bottom {
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.add-product-result-card,
+.add-product-create-card {
+  border-radius: 8px;
+  width: 100%;
+}
+
+.ellipsis-2-lines {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+</style>
+
+<style>
+.shop-storefront-add-product-drawer .q-drawer__content {
+  overflow: hidden;
 }
 </style>

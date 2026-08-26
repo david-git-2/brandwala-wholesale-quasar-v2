@@ -45,11 +45,12 @@ const upsertListing = async (payload: UpsertListingPayload): Promise<ShopProduct
     p_minimum_sell_price_currency_id: minPriceCurrencyId,
     p_show_quantity: payload.show_quantity ?? null,
     p_display_quantity_override: payload.display_quantity_override ?? null,
-    p_is_active: payload.is_active ?? true,
+    p_is_active: payload.is_active ?? null,
     p_id: payload.id ?? null,
     p_is_price_locked: payload.is_price_locked ?? null,
     p_is_quantity_locked: payload.is_quantity_locked ?? null,
     p_quantity_override_type: payload.quantity_override_type ?? null,
+    p_product_id: payload.product_id ?? null,
   });
 
   if (error) {

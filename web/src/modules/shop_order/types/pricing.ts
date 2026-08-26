@@ -51,6 +51,8 @@ export interface CandidateAllocation {
   shipment_id?: number | null;
   stock_grade?: { slug: string; label: string; color?: string | null } | null;
 }
+
+export interface UpsertListingPayload {
   tenant_id: number;
   shop_id: number;
   global_stock_allocation_id?: number | null;
@@ -66,6 +68,7 @@ export interface CandidateAllocation {
   is_price_locked?: boolean;
   is_quantity_locked?: boolean;
   quantity_override_type?: 'absolute' | 'relative';
+  product_id?: number | null;
 }
 
 export interface ShopPricingRule {

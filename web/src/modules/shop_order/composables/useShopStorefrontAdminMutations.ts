@@ -8,6 +8,8 @@ import type {
   ShopStorefrontAdminListingsResult,
   UpsertListingPayload,
 } from '../types';
+import type { Product } from 'src/modules/products/types';
+import type { CandidateAllocation } from '../types/pricing';
 
 type StorefrontListingsCache = ShopStorefrontAdminListingsResult | undefined;
 
@@ -178,6 +180,100 @@ export function useSaveShopStorefrontListingPricingMutation() {
     },
     onError: (error: Error) => {
       showWarningDialog(error.message || 'Failed to save listing pricing.', 'Save Failed');
+    },
+  });
+}
+
+const roundNearest5or0 = (val: number): number => {
+  if (!val || val <= 0) return 0;
+  return Math.round(val / 5) * 5;
+};
+
+const roundNearest50or100 = (val: number): number => {
+  if (!val || val <= 0) return 0;
+  return Math.round(val / 50) * 50;
+};
+
+export function useAddShopStorefrontListingMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (
+      input:
+        | {
+            mode: 'stock';
+            shopId: number;
+            tenantId: number;
+            stock: CandidateAllocation;
+            sellCurrencyId: number;
+            shopType: 'fixed_price' | 'dropship' | 'vendor_catalog';
+            markupPercentage: number;
+            dropshipMarkupPercentage: number;
+          }
+        | {
+            mode: 'product';
+            shopId: number;
+            tenantId: number;
+            product: Pick<Product, 'id' | 'list_price_amount' | 'reference_cost_amount'>;
+            sellCurrencyId: number;
+          },
+    ) => {
+      if (input.mode === 'product') {
+        const sellAmount = Number(
+          input.product.list_price_amount ?? input.product.reference_cost_amount ?? 0,
+        );
+        const payload: UpsertListingPayload = {
+          tenant_id: input.tenantId,
+          shop_id: input.shopId,
+          product_id: input.product.id,
+          global_stock_id: null,
+          sell_price_amount: Number.isFinite(sellAmount) ? sellAmount : 0,
+          sell_price_currency_id: input.sellCurrencyId,
+          minimum_sell_price_amount: null,
+          minimum_sell_price_currency_id: null,
+          show_quantity: true,
+          display_quantity_override: null,
+          is_active: false,
+        };
+        return shopPricingRepository.upsertListing(payload);
+      }
+
+      const { stock, shopType, markupPercentage, dropshipMarkupPercentage, sellCurrencyId } = input;
+      const unitCost = Number(stock.unit_cost_amount ?? 0);
+      const sellMarkupPct = Number(markupPercentage ?? 0);
+      const dropshipMarkupPct = Number(dropshipMarkupPercentage ?? 0);
+      const rawSell = unitCost > 0 ? unitCost * (1 + sellMarkupPct / 100) : 0;
+      const calculatedSell = rawSell > 0 ? roundNearest5or0(rawSell) : 0;
+      const rawFloor = unitCost > 0 ? unitCost * (1 + dropshipMarkupPct / 100) : 0;
+      const calculatedFloor = rawFloor > 0 ? roundNearest50or100(rawFloor) : null;
+
+      const payload: UpsertListingPayload = {
+        tenant_id: input.tenantId,
+        shop_id: input.shopId,
+        global_stock_id: stock.global_stock_id,
+        sell_price_amount: calculatedSell,
+        sell_price_currency_id: sellCurrencyId,
+        minimum_sell_price_amount:
+          shopType === 'dropship' ? calculatedFloor : null,
+        minimum_sell_price_currency_id:
+          shopType === 'dropship' ? sellCurrencyId : null,
+        show_quantity: true,
+        display_quantity_override: null,
+        is_active: true,
+      };
+
+      return shopPricingRepository.upsertListing(payload);
+    },
+    onSuccess: (_, variables) => {
+      void queryClient.invalidateQueries({
+        queryKey: ['shopOrder', 'storefrontAdminListings', { shopId: variables.shopId }],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: shopOrderQueryKeys.pricingListings(variables.shopId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: shopOrderQueryKeys.pricingCandidates(variables.tenantId, variables.shopId),
+      });
     },
   });
 }

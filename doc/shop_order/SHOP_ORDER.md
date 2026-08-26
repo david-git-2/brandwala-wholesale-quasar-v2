@@ -218,6 +218,7 @@ flowchart LR
 | **`ShopSettingsPage`** (Storefront tab) | Listings grid | `RPC: list_shop_storefront_listings_for_admin` | Key: `shopOrderQueryKeys.storefrontAdminListings(shopId, search)` |
 | **`ShopSettingsPage`** (Storefront tab) | Toggle active / remove / copy grade | `upsert_shop_product_listing`, `delete_shop_product_listing` | Patches `storefrontAdminListings` cache; invalidates `pricingListings` |
 | **`ShopSettingsPage`** (Storefront tab) | Calculate sell price | `get_shop_storefront_listing_price_calculation` → save `upsert_shop_product_listing` | Key: `storefrontListingPriceCalc(shopId, listingId)` |
+| **`ShopSettingsPage`** (Storefront tab) | Add product drawer | Search: `list_products_paginated` → list: `list_listable_stock_for_shop` → `upsert_shop_product_listing`; create: `useCreateProductMutation` | Keys: `storefrontCatalogSearch`, `pricingCandidates` |
 | **`ShopPricingPage`** | Listings | `RPC: list_shop_product_listings` | Per shop |
 | **`ShopPricingPage`** | Candidates | `RPC: list_listable_stock_for_shop` | Deferred until add-listing pick dialog opens |
 | **`ShopCartPage`** | Add / qty / remove | `add_to_shop_cart`, `update_shop_cart_item_qty`, `remove_shop_cart_item` | Patches `cart` + `activeCarts` cache from RPC response (`useShopCartMutations`) |
@@ -276,6 +277,7 @@ See **§ RPC: `get_or_create_shop_cart`** below for the response contract.
 * `shopOrderQueryKeys.activeCarts(tenantId)` → `['shopOrder', 'activeCarts', { tenantId }]` — loaded in `ShopLayout` / cart picker; **patched** on cart mutations (not refetched on add/qty/remove)
 * `shopOrderQueryKeys.storefrontAdminListings(shopId, search)` → admin storefront tab cache
 * `shopOrderQueryKeys.storefrontListingPriceCalc(shopId, listingId)` → calculate sell price drawer
+* `shopOrderQueryKeys.storefrontCatalogSearch(tenantId, search)` → add-product drawer catalog search
 * `shopOrderQueryKeys.storefrontCatalog(...)` → browse cache
 * `shopOrderQueryKeys.storefrontProduct(tenantId, shopSlug, productId)` → product detail cache
 * `shopOrderQueryKeys.storefrontProductRelated(tenantId, shopSlug, productId)` → related products strip
@@ -370,7 +372,7 @@ Active tenant membership on the shop tenant (or parent), or superadmin. Returns 
 | :--- | :--- |
 | Repository | `shopStorefrontAdminRepository.listStorefrontAdminListings` |
 | Query | `useShopStorefrontAdminListingsQuery` |
-| Mutations | `useToggleShopStorefrontListingMutation`, `useDeleteShopStorefrontListingMutation`, `useCopyShopStorefrontGradeMutation`, `useSaveShopStorefrontListingPricingMutation` |
+| Mutations | `useToggleShopStorefrontListingMutation`, `useDeleteShopStorefrontListingMutation`, `useCopyShopStorefrontGradeMutation`, `useSaveShopStorefrontListingPricingMutation`, `useAddShopStorefrontListingMutation` |
 | Type | `ShopStorefrontAdminListing` in `web/src/modules/shop_order/types/index.ts` |
 | Query key | `shopOrderQueryKeys.storefrontAdminListings(shopId, search)` |
 | UI | `ShopSettingsPage` Storefront tab → `StorefrontProductCard` (admin props) |
@@ -405,6 +407,39 @@ Drawer **Save** calls existing `upsert_shop_product_listing` (`display_quantity_
 | Mutation | `useSaveShopStorefrontListingPricingMutation` |
 | Type | `ShopStorefrontListingPriceCalculation` |
 | Query key | `shopOrderQueryKeys.storefrontListingPriceCalc(shopId, listingId)` |
+
+---
+
+## 7d. Storefront tab — Add product drawer
+
+`ShopStorefrontAddProductDrawer` reuses existing catalog and listing APIs (no new RPC in v1).
+
+### Search catalog
+
+`list_products_paginated(p_tenant_id := shop tenant)` — scopes to parent warehouse catalog via `resolve_parent_tenant_id`.
+
+| Layer | Name |
+| :--- | :--- |
+| Query | `useShopStorefrontCatalogSearchQuery` |
+| Repository | `productRepository.listProducts` |
+| Query key | `shopOrderQueryKeys.storefrontCatalogSearch(tenantId, search)` |
+
+### Add listing
+
+1. `list_listable_stock_for_shop(p_shop_id)` — filter by `product_id`, exclude grades already listed.
+2. If multiple grades → staff picks grade in drawer.
+3. `upsert_shop_product_listing` with default sell/min prices from shop markup rules.
+
+When **no allocated stock** exists for the product, the drawer creates a **product-only** listing (`global_stock_id` null) with `is_active = false`. Staff can activate it later from the card toggle once stock is linked.
+
+| Layer | Name |
+| :--- | :--- |
+| Query | `useShopPricingCandidatesQuery` |
+| Mutation | `useAddShopStorefrontListingMutation` |
+
+### Create new catalog product
+
+`useCreateProductMutation` → `productRepository.createProduct` (`inserted_by_tenant_id` sets `parent_tenant_id` via DB trigger). New products appear on the storefront only after stock is allocated to the child tenant.
 
 ---
 

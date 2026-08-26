@@ -6421,7 +6421,7 @@ export type Database = {
           created_at: string
           display_quantity_override: number | null
           global_stock_allocation_id: number | null
-          global_stock_id: number
+          global_stock_id: number | null
           id: number
           is_active: boolean
           is_price_locked: boolean
@@ -6441,7 +6441,7 @@ export type Database = {
           created_at?: string
           display_quantity_override?: number | null
           global_stock_allocation_id?: number | null
-          global_stock_id: number
+          global_stock_id?: number | null
           id?: never
           is_active?: boolean
           is_price_locked?: boolean
@@ -6461,7 +6461,7 @@ export type Database = {
           created_at?: string
           display_quantity_override?: number | null
           global_stock_allocation_id?: number | null
-          global_stock_id?: number
+          global_stock_id?: number | null
           id?: never
           is_active?: boolean
           is_price_locked?: boolean
@@ -15813,6 +15813,7 @@ export type Database = {
               p_is_quantity_locked?: boolean
               p_minimum_sell_price_amount?: number
               p_minimum_sell_price_currency_id?: number
+              p_product_id?: number
               p_quantity_override_type?: string
               p_sell_price_amount?: number
               p_sell_price_currency_id?: number
@@ -15824,7 +15825,52 @@ export type Database = {
               created_at: string
               display_quantity_override: number | null
               global_stock_allocation_id: number | null
-              global_stock_id: number
+              global_stock_id: number | null
+              id: number
+              is_active: boolean
+              is_price_locked: boolean
+              is_quantity_locked: boolean
+              minimum_sell_price_amount: number | null
+              minimum_sell_price_currency_id: number | null
+              product_id: number
+              quantity_override_type: string
+              sell_price_amount: number
+              sell_price_currency_id: number
+              shop_id: number
+              show_quantity: boolean | null
+              tenant_id: number
+              updated_at: string
+            }[]
+            SetofOptions: {
+              from: "*"
+              to: "shop_product_listings"
+              isOneToOne: false
+              isSetofReturn: true
+            }
+          }
+        | {
+            Args: {
+              p_display_quantity_override?: number
+              p_global_stock_allocation_id?: number
+              p_global_stock_id?: number
+              p_id?: number
+              p_is_active?: boolean
+              p_is_price_locked?: boolean
+              p_is_quantity_locked?: boolean
+              p_minimum_sell_price_amount?: number
+              p_minimum_sell_price_currency_id?: number
+              p_quantity_override_type?: string
+              p_sell_price_amount?: number
+              p_sell_price_currency_id?: number
+              p_shop_id: number
+              p_show_quantity?: boolean
+              p_tenant_id: number
+            }
+            Returns: {
+              created_at: string
+              display_quantity_override: number | null
+              global_stock_allocation_id: number | null
+              global_stock_id: number | null
               id: number
               is_active: boolean
               is_price_locked: boolean
@@ -15865,7 +15911,7 @@ export type Database = {
               created_at: string
               display_quantity_override: number | null
               global_stock_allocation_id: number | null
-              global_stock_id: number
+              global_stock_id: number | null
               id: number
               is_active: boolean
               is_price_locked: boolean
@@ -15909,7 +15955,7 @@ export type Database = {
               created_at: string
               display_quantity_override: number | null
               global_stock_allocation_id: number | null
-              global_stock_id: number
+              global_stock_id: number | null
               id: number
               is_active: boolean
               is_price_locked: boolean

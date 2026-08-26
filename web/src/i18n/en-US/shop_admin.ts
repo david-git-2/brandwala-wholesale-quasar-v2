@@ -65,6 +65,20 @@ export default {
   storefront_cant_find_create_product: 'Cannot find it? Create a new product.',
   storefront_search_to_find_products: 'Search the product catalog to add items to this shop.',
   storefront_no_products_found: 'No products match your search.',
+  storefront_no_listable_stock:
+    'This product is in the catalog but has no allocated stock available for this shop yet.',
+  storefront_listing_added: 'Product added to storefront.',
+  storefront_listing_added_inactive:
+    'Product added to storefront as inactive. Turn it on when stock is ready.',
+  storefront_listing_add_failed: 'Could not add product to storefront.',
+  storefront_product_already_listed: 'This product is already on the storefront.',
+  storefront_product_created_no_stock:
+    'Product saved to catalog. It will appear here once stock is allocated to this shop.',
+  storefront_pick_grade_title: 'Choose warehouse grade',
+  storefront_pick_grade_hint: 'This product has stock in more than one grade. Pick which to list.',
+  storefront_grade_standard: 'Standard',
+  storefront_qty_available: '{qty} available',
+  storefront_product_name_required: 'Name is required.',
   storefront_search_placeholder: 'Search products…',
   storefront_no_products: 'No products match your search.',
   storefront_qty_auto: 'auto',

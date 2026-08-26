@@ -64,6 +64,20 @@ export default {
   storefront_cant_find_create_product: 'পাচ্ছেন না? নতুন পণ্য তৈরি করুন।',
   storefront_search_to_find_products: 'এই শপে পণ্য যোগ করতে ক্যাটালগ খুঁজুন।',
   storefront_no_products_found: 'আপনার অনুসন্ধানের সাথে কোনো পণ্য মিলছে না।',
+  storefront_no_listable_stock:
+    'পণ্যটি ক্যাটালগে আছে, কিন্তু এই শপের জন্য এখনো বরাদ্দকৃত স্টক নেই।',
+  storefront_listing_added: 'স্টোরফ্রন্টে পণ্য যোগ হয়েছে।',
+  storefront_listing_added_inactive:
+    'পণ্য নিষ্ক্রিয় অবস্থায় স্টোরফ্রন্টে যোগ হয়েছে। স্টক প্রস্তুত হলে চালু করুন।',
+  storefront_listing_add_failed: 'স্টোরফ্রন্টে পণ্য যোগ করা যায়নি।',
+  storefront_product_already_listed: 'এই পণ্য ইতিমধ্যে স্টোরফ্রন্টে আছে।',
+  storefront_product_created_no_stock:
+    'পণ্য ক্যাটালগে সংরক্ষিত হয়েছে। এই শপে স্টক বরাদ্দ হলে এখানে দেখা যাবে।',
+  storefront_pick_grade_title: 'গুদাম গ্রেড বেছে নিন',
+  storefront_pick_grade_hint: 'এই পণ্যের একাধিক গ্রেডে স্টক আছে। কোনটি তালিকাভুক্ত করবেন বেছে নিন।',
+  storefront_grade_standard: 'স্ট্যান্ডার্ড',
+  storefront_qty_available: '{qty} উপলব্ধ',
+  storefront_product_name_required: 'নাম আবশ্যক।',
   storefront_search_placeholder: 'পণ্য খুঁজুন…',
   storefront_no_products: 'আপনার অনুসন্ধানের সাথে কোনো পণ্য মিলছে না।',
   storefront_qty_auto: 'স্বয়ংক্রিয়',

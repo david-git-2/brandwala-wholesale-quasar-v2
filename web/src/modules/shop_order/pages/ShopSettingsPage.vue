@@ -223,7 +223,17 @@
           </q-tab-panel>
         </q-tab-panels>
 
-        <ShopStorefrontAddProductDrawer v-model="storefrontAddProductDrawerOpen" />
+        <ShopStorefrontAddProductDrawer
+          v-model="storefrontAddProductDrawerOpen"
+          :shop-id="shopId"
+          :tenant-id="tenantId"
+          :shop-type="shop?.shop_type"
+          :sell-currency-id="shop?.sell_currency_id ?? null"
+          :markup-percentage="shop?.markup_percentage ?? null"
+          :listed-grade-keys="storefrontListedGradeKeys"
+          :listed-product-ids="storefrontListedProductIds"
+          @saved="onStorefrontListingAdded"
+        />
         <ShopStorefrontCalculateSellPriceDrawer
           v-model="calculateSellPriceDrawerOpen"
           :shop-id="shopId"
@@ -390,6 +400,7 @@ const buildStorefrontListingUpsertPayload = (
   tenant_id: tenantId.value,
   shop_id: shopId.value,
   global_stock_id: item.global_stock_id ?? undefined,
+  product_id: item.global_stock_id == null ? item.product_id : undefined,
   sell_price_amount: Number(item.sell_price_amount ?? item.sell_price?.amount ?? 0),
   sell_price_currency_id: Number(
     item.sell_price_currency_id ?? item.sell_price?.currency_id ?? 0,
@@ -427,6 +438,22 @@ const copyProductWithGrade = (source: ShopStorefrontAdminListing, grade: ShopCat
 const openCalculateSellPriceDrawer = (item: ShopStorefrontAdminListing) => {
   calculateSellPriceListingId.value = item.listing_id;
   calculateSellPriceDrawerOpen.value = true;
+};
+
+const storefrontListedGradeKeys = computed(() =>
+  storefrontProducts.value.map(
+    (row) => `${row.product_id}:${row.stock_grade?.slug ?? 'standard'}`,
+  ),
+);
+
+const storefrontListedProductIds = computed(() =>
+  storefrontProducts.value.map((row) => row.product_id),
+);
+
+const onStorefrontListingAdded = () => {
+  void queryClient.invalidateQueries({
+    queryKey: ['shopOrder', 'storefrontAdminListings', { shopId: shopId.value }],
+  });
 };
 
 const onStorefrontPricingSaved = () => {
