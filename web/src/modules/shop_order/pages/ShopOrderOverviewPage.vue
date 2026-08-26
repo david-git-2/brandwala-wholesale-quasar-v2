@@ -102,6 +102,15 @@ const hubCards = computed<HubCard[]>(() => [
     icon: 'ph ph-truck',
     badgeClass: 'bg-orange-1 text-orange-9',
   },
+  {
+    key: 'dropship_management',
+    moduleKey: 'shop_order_mgmt',
+    path: 'dropship-management',
+    title: t('shop_admin.dropship_management'),
+    caption: t('shop_admin.dropship_management_caption'),
+    icon: 'ph ph-package',
+    badgeClass: 'bg-teal-1 text-teal-9',
+  },
 ]);
 
 const hasStoreHubAccess = () =>

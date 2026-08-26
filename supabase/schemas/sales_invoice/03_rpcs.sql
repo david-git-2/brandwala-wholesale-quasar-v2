@@ -1287,6 +1287,7 @@ CREATE OR REPLACE FUNCTION "public"."ensure_dropship_invoice_billed_entry"("p_in
     AS $$
 declare
   v_invoice public.global_invoices;
+  v_order_id bigint;
 begin
   select * into v_invoice
   from public.global_invoices
@@ -1296,11 +1297,20 @@ begin
     return;
   end if;
 
-  -- Only applies to posted dropship invoices with a valid billing profile and total > 0
+  select o.id into v_order_id
+  from public.shop_orders o
+  where o.global_invoice_id = p_invoice_id
+  order by o.id
+  limit 1;
+
   if v_invoice.invoice_type = 'dropship'::public.global_invoice_type
-     and v_invoice.invoice_status = 'issued'::public.global_invoice_status
+     and v_invoice.invoice_status in (
+       'issued'::public.global_invoice_status,
+       'posted'::public.global_invoice_status
+     )
      and v_invoice.billing_profile_id is not null
      and v_invoice.total_amount > 0
+     and v_order_id is not null
   then
     if not exists (
       select 1 from public.universal_wallet_ledger
@@ -1308,7 +1318,11 @@ begin
         and entity_type = 'customer'
         and entity_id = v_invoice.billing_profile_id
         and metadata->>'transaction_type' = 'invoice_billed'
-        and (metadata->>'invoice_id' = p_invoice_id::text or source_id = v_invoice.invoice_no)
+        and (
+          metadata->>'invoice_id' = p_invoice_id::text
+          or source_id = v_order_id::text
+          or source_id = v_invoice.invoice_no
+        )
     ) then
       perform public.record_ledger_transaction(
         p_tenant_id => v_invoice.tenant_id,
@@ -1317,13 +1331,14 @@ begin
         p_type => 'debit',
         p_amount => v_invoice.total_amount,
         p_source_type => 'shop_order',
-        p_source_id => v_invoice.invoice_no,
+        p_source_id => v_order_id::text,
         p_metadata => jsonb_build_object(
           'section', 'receivable',
           'transaction_type', 'invoice_billed',
           'label', 'Invoice Billed',
           'invoice_no', v_invoice.invoice_no,
-          'invoice_id', p_invoice_id
+          'invoice_id', p_invoice_id,
+          'order_id', v_order_id
         )
       );
     end if;

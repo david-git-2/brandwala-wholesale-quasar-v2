@@ -1,4 +1,4 @@
-import { computed, ref, type Ref } from 'vue';
+import { computed, onBeforeUnmount, ref, watch, type Ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import { supabase } from 'src/boot/supabase';
@@ -15,10 +15,6 @@ import type {
   DropshipInvoicePickupState,
 } from '../utils/dropshipInvoiceFulfillment';
 import { resolveDeliveryZone } from '../services/courierChargeEstimate';
-import {
-  computeDropshipProcessingFinance,
-  formatDropshipBdt,
-} from '../utils/dropshipProcessingFinance';
 import {
   showErrorNotification,
   showSuccessNotification,
@@ -37,6 +33,7 @@ export function useDropshipOrderProcessingDesk(options: {
   deliveredQuantitiesForm: Ref<DropshipInvoiceDeliveredQuantitiesState>;
   couriers: Ref<CourierServiceRow[]>;
   refetchOrderDetail: () => Promise<unknown>;
+  formReady?: Ref<boolean>;
 }) {
   const router = useRouter();
   const authStore = useAuthStore();
@@ -44,7 +41,10 @@ export function useDropshipOrderProcessingDesk(options: {
 
   const saving = ref(false);
   const advancingStatus = ref(false);
-  const confirmB2bInvoiceDialogOpen = ref(false);
+  const autoSaveState = ref<'idle' | 'pending' | 'saved' | 'error'>('idle');
+
+  let autoSaveTimer: ReturnType<typeof setTimeout> | undefined;
+  let lastPersistedSnapshot = '';
 
   const tenantId = computed(() => authStore.tenantId ?? 0);
 
@@ -64,14 +64,6 @@ export function useDropshipOrderProcessingDesk(options: {
       })),
   );
 
-  const finance = computed(() =>
-    computeDropshipProcessingFinance(
-      options.orderItems.value,
-      options.deliveredQuantitiesForm.value,
-      options.summaryForm.value,
-    ),
-  );
-
   const invalidateDetail = async () => {
     await queryClient.invalidateQueries({
       queryKey: shopOrderQueryKeys.dropshipDetailV2(tenantId.value, options.orderId.value),
@@ -79,20 +71,7 @@ export function useDropshipOrderProcessingDesk(options: {
     await options.refetchOrderDetail();
   };
 
-  const validateDesk = (): string | null => {
-    if (!options.pickupForm.sender_name.trim()) {
-      return 'Sender name is required before continuing.';
-    }
-    if (!options.pickupForm.pickup_phone.trim()) {
-      return 'Pickup phone is required before continuing.';
-    }
-    if (!options.pickupForm.pickup_address.trim()) {
-      return 'Pickup address is required before continuing.';
-    }
-    if (!options.courierForm.courier_service_id) {
-      return 'Select a courier service before continuing.';
-    }
-
+  const validateQuantities = (): string | null => {
     for (const item of options.orderItems.value) {
       const delivered = options.deliveredQuantitiesForm.value[item.id] ?? 0;
       if (delivered < 0 || delivered > item.quantity) {
@@ -103,17 +82,40 @@ export function useDropshipOrderProcessingDesk(options: {
     return null;
   };
 
-  const saveProcessingDesk = async (): Promise<boolean> => {
+  const serializeDeskForm = () =>
+    JSON.stringify({
+      summary: options.summaryForm.value,
+      pickup: { ...options.pickupForm },
+      courier: { ...options.courierForm },
+      deliveredQuantities: options.deliveredQuantitiesForm.value,
+    });
+
+  const syncPersistedSnapshot = () => {
+    lastPersistedSnapshot = serializeDeskForm();
+    autoSaveState.value = 'saved';
+  };
+
+  const persistProcessingDesk = async (opts?: {
+    silent?: boolean;
+    skipRefetch?: boolean;
+  }): Promise<boolean> => {
     const order = options.order.value;
     if (!order) return false;
 
-    const validationError = validateDesk();
-    if (validationError) {
-      showErrorNotification(validationError);
+    const quantityError = validateQuantities();
+    if (quantityError) {
+      if (!opts?.silent) showErrorNotification(quantityError);
       return false;
     }
 
+    const snapshot = serializeDeskForm();
+    if (snapshot === lastPersistedSnapshot) {
+      autoSaveState.value = 'saved';
+      return true;
+    }
+
     saving.value = true;
+    autoSaveState.value = 'pending';
     try {
       await shopOrderRepository.saveDropshipProcessingDesk({
         tenantId: tenantId.value,
@@ -126,10 +128,20 @@ export function useDropshipOrderProcessingDesk(options: {
         deliveryZone: resolveDeliveryZone(order.shipping_district ?? ''),
       });
 
-      showSuccessNotification('Processing desk saved');
-      await invalidateDetail();
+      lastPersistedSnapshot = snapshot;
+      autoSaveState.value = 'saved';
+
+      if (!opts?.silent) {
+        showSuccessNotification('Processing desk saved');
+      }
+
+      if (!opts?.skipRefetch) {
+        await invalidateDetail();
+      }
+
       return true;
     } catch (err) {
+      autoSaveState.value = 'error';
       showErrorNotification(parseSupabaseError(err, 'Failed to save processing desk'));
       return false;
     } finally {
@@ -137,7 +149,48 @@ export function useDropshipOrderProcessingDesk(options: {
     }
   };
 
-  const executeAdvanceToReadyForPickup = async () => {
+  const scheduleAutoSave = () => {
+    if (options.formReady && !options.formReady.value) return;
+
+    const snapshot = serializeDeskForm();
+    if (snapshot === lastPersistedSnapshot) return;
+
+    autoSaveState.value = 'pending';
+    if (autoSaveTimer) clearTimeout(autoSaveTimer);
+    autoSaveTimer = setTimeout(() => {
+      autoSaveTimer = undefined;
+      void persistProcessingDesk({ silent: true, skipRefetch: true });
+    }, 750);
+  };
+
+  watch(
+    () => [
+      options.summaryForm.value,
+      { ...options.pickupForm },
+      { ...options.courierForm },
+      options.deliveredQuantitiesForm.value,
+      options.formReady?.value ?? true,
+    ],
+    () => {
+      if (options.formReady && !options.formReady.value) return;
+      scheduleAutoSave();
+    },
+    { deep: true },
+  );
+
+  watch(
+    () => options.formReady?.value,
+    (ready) => {
+      if (ready) syncPersistedSnapshot();
+    },
+    { immediate: true },
+  );
+
+  onBeforeUnmount(() => {
+    if (autoSaveTimer) clearTimeout(autoSaveTimer);
+  });
+
+  const advanceToReadyForPickup = async () => {
     const order = options.order.value;
     if (!order) return;
 
@@ -152,7 +205,7 @@ export function useDropshipOrderProcessingDesk(options: {
         throw new Error((data as { error?: string }).error || 'Failed to update status');
       }
 
-      showSuccessNotification('Order is ready for pickup');
+      showSuccessNotification('Status updated to ready for pickup');
       await invalidateDetail();
       void router.push({
         name: DROPSHIP_ORDER_DETAIL_READY_FOR_PICKUP_ROUTE,
@@ -162,21 +215,7 @@ export function useDropshipOrderProcessingDesk(options: {
       showErrorNotification(parseSupabaseError(err, 'Failed to mark ready for pickup'));
     } finally {
       advancingStatus.value = false;
-      confirmB2bInvoiceDialogOpen.value = false;
     }
-  };
-
-  const onReadyForPickupClick = async () => {
-    const validationError = validateDesk();
-    if (validationError) {
-      showErrorNotification(validationError);
-      return;
-    }
-
-    const saved = await saveProcessingDesk();
-    if (!saved) return;
-
-    confirmB2bInvoiceDialogOpen.value = true;
   };
 
   const onMerchantSelect = (merchantId: string | null) => {
@@ -192,13 +231,9 @@ export function useDropshipOrderProcessingDesk(options: {
   return {
     saving,
     advancingStatus,
-    confirmB2bInvoiceDialogOpen,
+    autoSaveState,
     merchantOptions,
-    finance,
-    formatBdt: formatDropshipBdt,
-    saveProcessingDesk,
-    onReadyForPickupClick,
-    executeAdvanceToReadyForPickup,
+    advanceToReadyForPickup,
     onMerchantSelect,
   };
 }

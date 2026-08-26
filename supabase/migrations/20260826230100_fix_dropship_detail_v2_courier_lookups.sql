@@ -1,4 +1,4 @@
--- Dropship order detail v2: flat invoice-ready payload for paper UI
+-- Include platform-default courier_services (tenant_id is null) in v2 detail lookups
 create or replace function public.get_dropship_order_detail_v2(
   p_tenant_id bigint,
   p_order_id bigint
@@ -123,7 +123,7 @@ begin
   select coalesce(
     jsonb_agg(
       to_jsonb(cs.*)
-      order by cs.created_at, cs.id
+      order by cs.tenant_id nulls first, cs.created_at, cs.id
     ),
     '[]'::jsonb
   )
@@ -236,5 +236,4 @@ begin
 end;
 $$;
 
-revoke all on function public.get_dropship_order_detail_v2(bigint, bigint) from public;
-grant all on function public.get_dropship_order_detail_v2(bigint, bigint) to authenticated;
+grant execute on function public.get_dropship_order_detail_v2(bigint, bigint) to authenticated;

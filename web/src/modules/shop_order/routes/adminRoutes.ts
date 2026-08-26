@@ -271,6 +271,25 @@ const adminRoutes: RouteRecordRaw[] = [
     ],
   },
 
+  {
+    path: '/:tenantSlug?/app/shop/dropship-management',
+    component: () => import('layouts/AppLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'app-shop-dropship-management-page',
+        component: () => import('src/modules/shop_order/pages/DropshipManagementPage.vue'),
+        beforeEnter: guard('shop_order_mgmt'),
+      },
+      {
+        path: ':id',
+        name: 'app-shop-dropship-management-detail-page',
+        component: () => import('src/modules/shop_order/pages/DropshipManagementDetailPage.vue'),
+        beforeEnter: guard('shop_order_mgmt'),
+      },
+    ],
+  },
+
   // shop_fulfillment — retired from nav
   {
     path: '/:tenantSlug?/app/shop/fulfillment',

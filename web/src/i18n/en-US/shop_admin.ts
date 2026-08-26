@@ -604,6 +604,8 @@ export default {
   shop_hub_categories_caption: 'Group shops on the customer browse page.',
   shop_hub_groups_caption: 'Who can log in. You then attach a group to each shop.',
   shipping_hub_caption: 'Courier catalog and COD money-in for any shop order that needs delivery — retail or dropship.',
+  dropship_management: 'Dropship management',
+  dropship_management_caption: 'Dropship orders, merchants, couriers, and settlement tools.',
   shipping_couriers: 'Couriers',
   shipping_couriers_caption: 'Pathao, Steadfast, REDX — COD and return fee rules.',
   shipping_remittance: 'COD remittance',

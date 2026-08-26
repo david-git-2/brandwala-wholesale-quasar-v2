@@ -15,6 +15,7 @@ import type {
 import { createDeliveredQuantitiesFromItems } from '../utils/dropshipInvoiceFulfillment';
 import { DROPSHIP_ORDER_DETAIL_CUSTOMER_INVOICE_PREVIEW_ROUTE } from '../composables/dropshipOrderDetailRoutes';
 import { useDropshipOrderDetailV2Query } from '../composables/useDropshipOrderDetailV2Query';
+import { useDropshipCourierOptions } from '../composables/useDropshipCourierOptions';
 import { useDropshipOrderStatusRedirect } from '../composables/useDropshipOrderStatusRedirect';
 import { saveDropshipV2CustomerInvoiceSnapshot } from '../utils/dropshipV2CustomerInvoiceStorage';
 import { dropshipMerchantRepository } from '../repositories/dropshipMerchantRepository';
@@ -26,7 +27,6 @@ import {
   showSuccessNotification,
   parseSupabaseError,
 } from 'src/utils/appFeedback';
-import type { CourierServiceRow } from '../repositories/dropshipCourierRepository';
 
 const route = useRoute();
 const router = useRouter();
@@ -49,9 +49,12 @@ const merchantsQuery = useQuery({
   queryFn: () => dropshipMerchantRepository.listMerchants(),
 });
 
-const couriers = ref<CourierServiceRow[]>([]);
-
 const order = computed(() => orderDetailQuery.data.value?.order ?? null);
+
+const { couriers, courierOptions } = useDropshipCourierOptions({
+  tenantSlug,
+  orderTenantId: computed(() => order.value?.tenant_id),
+});
 
 const canMarkShipped = computed(
   () => orderDetailQuery.data.value?.permissions.can_mark_shipped ?? false,
@@ -86,7 +89,6 @@ watch(
     Object.assign(pickupForm, detail.fulfillment.pickup);
     Object.assign(courierForm, detail.fulfillment.courier);
     deliveredQuantitiesForm.value = createDeliveredQuantitiesFromItems(detail.items);
-    couriers.value = detail.lookups.courier_services;
   },
   { immediate: true },
 );
@@ -109,10 +111,6 @@ const merchantOptions = computed(() =>
       label: `${merchant.merchant_name}${merchant.store_name ? ` (${merchant.store_name})` : ''} — ${merchant.phone_primary}`,
       value: merchant.id,
     })),
-);
-
-const courierOptions = computed(() =>
-  couriers.value.map((courier) => ({ label: courier.name, value: courier.id })),
 );
 
 const selectedCourier = computed(() =>
@@ -186,6 +184,7 @@ const advanceToShipped = async () => {
     await queryClient.invalidateQueries({
       queryKey: shopOrderQueryKeys.dropshipDetailV2(authStore.tenantId ?? 0, orderId.value),
     });
+    await orderDetailQuery.refetch();
   } catch (err) {
     showErrorNotification(parseSupabaseError(err, 'Failed to update status'));
   } finally {

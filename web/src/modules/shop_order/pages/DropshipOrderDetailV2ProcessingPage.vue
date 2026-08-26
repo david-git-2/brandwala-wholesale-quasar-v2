@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, nextTick, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import DropshipOrderConfirmedInvoicePaper from '../components/DropshipOrderConfirmedInvoicePaper.vue';
-import DropshipOrderDialogs from '../components/DropshipOrderDialogs.vue';
-import type { CourierServiceRow } from '../repositories/dropshipCourierRepository';
+import { useDropshipOrderDetailV2Query } from '../composables/useDropshipOrderDetailV2Query';
+import { useDropshipCourierOptions } from '../composables/useDropshipCourierOptions';
+import { useDropshipOrderProcessingDesk } from '../composables/useDropshipOrderProcessingDesk';
+import { useDropshipOrderStatusRedirect } from '../composables/useDropshipOrderStatusRedirect';
 import {
   createEmptyDropshipInvoiceSummary,
   type DropshipInvoiceSummaryState,
@@ -13,9 +15,6 @@ import type {
   DropshipInvoiceDeliveredQuantitiesState,
   DropshipInvoicePickupState,
 } from '../utils/dropshipInvoiceFulfillment';
-import { useDropshipOrderDetailV2Query } from '../composables/useDropshipOrderDetailV2Query';
-import { useDropshipOrderProcessingDesk } from '../composables/useDropshipOrderProcessingDesk';
-import { useDropshipOrderStatusRedirect } from '../composables/useDropshipOrderStatusRedirect';
 
 const route = useRoute();
 
@@ -31,7 +30,11 @@ const orderItems = computed(() => orderDetailQuery.data.value?.items ?? []);
 
 const summaryForm = ref<DropshipInvoiceSummaryState>(createEmptyDropshipInvoiceSummary());
 const deliveredQuantitiesForm = ref<DropshipInvoiceDeliveredQuantitiesState>({});
-const couriers = ref<CourierServiceRow[]>([]);
+
+const { couriers, courierOptions } = useDropshipCourierOptions({
+  tenantSlug,
+  orderTenantId: computed(() => order.value?.tenant_id),
+});
 
 const pickupForm = reactive<DropshipInvoicePickupState>({
   merchant_id: null,
@@ -48,11 +51,17 @@ const courierForm = reactive<DropshipInvoiceCourierState>({
   cod_charge: 0,
 });
 
+const formReady = ref(false);
+
 watch(
   () => orderDetailQuery.data.value,
-  (detail) => {
-    if (!detail) return;
+  async (detail) => {
+    if (!detail) {
+      formReady.value = false;
+      return;
+    }
 
+    formReady.value = false;
     summaryForm.value = { ...detail.summary };
     Object.assign(pickupForm, detail.fulfillment.pickup);
     Object.assign(courierForm, detail.fulfillment.courier);
@@ -62,7 +71,8 @@ watch(
         item.confirmed_quantity != null ? item.confirmed_quantity : item.quantity,
       ]),
     );
-    couriers.value = detail.lookups.courier_services;
+    await nextTick();
+    formReady.value = true;
   },
   { immediate: true },
 );
@@ -80,19 +90,16 @@ const processingDesk = useDropshipOrderProcessingDesk({
   courierForm,
   deliveredQuantitiesForm,
   couriers,
+  formReady,
   refetchOrderDetail: () => orderDetailQuery.refetch(),
 });
 
 const {
   saving,
   advancingStatus,
-  confirmB2bInvoiceDialogOpen,
+  autoSaveState,
   merchantOptions,
-  finance,
-  formatBdt,
-  saveProcessingDesk,
-  onReadyForPickupClick,
-  executeAdvanceToReadyForPickup,
+  advanceToReadyForPickup,
   onMerchantSelect,
 } = processingDesk;
 
@@ -103,10 +110,6 @@ useDropshipOrderStatusRedirect({
   tenantSlug,
   enabled: computed(() => !isLoading.value && !!order.value),
 });
-
-const courierOptions = computed(() =>
-  couriers.value.map((courier) => ({ label: courier.name, value: courier.id })),
-);
 
 const selectedCourier = computed(() =>
   couriers.value.find((courier) => courier.id === courierForm.courier_service_id),
@@ -145,6 +148,13 @@ const canMarkReadyForPickup = computed(
   () => orderDetailQuery.data.value?.permissions.can_mark_ready_for_pickup ?? false,
 );
 
+const autoSaveLabel = computed(() => {
+  if (autoSaveState.value === 'pending' || saving.value) return 'Saving…';
+  if (autoSaveState.value === 'error') return 'Save failed';
+  if (autoSaveState.value === 'saved') return 'All changes saved';
+  return '';
+});
+
 const onCourierChange = () => {
   const courier = selectedCourier.value;
   if (!courier) return;
@@ -175,8 +185,16 @@ const onCourierChange = () => {
           <q-icon name="ph ph-package" color="orange-9" />
         </template>
         <span class="text-caption">
-          Processing desk — edit charges, pickup location, and courier before packing.
+          Processing desk — changes save automatically. Use Ready for pickup when the order is packed.
         </span>
+        <template v-if="autoSaveLabel" #action>
+          <span
+            class="text-caption text-weight-medium"
+            :class="autoSaveState === 'error' ? 'text-negative' : 'text-grey-7'"
+          >
+            {{ autoSaveLabel }}
+          </span>
+        </template>
       </q-banner>
 
       <section v-if="isLoading" class="dropship-order-detail-v2__loading">
@@ -190,18 +208,6 @@ const onCourierChange = () => {
       <template v-else-if="order">
         <div class="dropship-order-detail-v2__status-actions">
           <q-btn
-            outline
-            color="primary"
-            unelevated
-            no-caps
-            icon="ph ph-floppy-disk"
-            label="Save changes"
-            class="text-weight-bold"
-            style="border-radius: 8px; min-width: 180px"
-            :loading="saving"
-            @click="saveProcessingDesk()"
-          />
-          <q-btn
             v-if="canMarkReadyForPickup"
             color="primary"
             unelevated
@@ -210,8 +216,8 @@ const onCourierChange = () => {
             label="Ready for pickup"
             class="text-weight-bold"
             style="border-radius: 8px; min-width: 220px"
-            :loading="advancingStatus || saving"
-            @click="onReadyForPickupClick()"
+            :loading="advancingStatus"
+            @click="advanceToReadyForPickup()"
           />
         </div>
 
@@ -232,26 +238,6 @@ const onCourierChange = () => {
           :cod-rate-label="codRateLabel"
           @merchant-select="onMerchantSelect"
           @courier-change="onCourierChange"
-        />
-
-        <DropshipOrderDialogs
-          :order="order"
-          :dual-invoice-dialog-open="false"
-          :creating-invoice="false"
-          :confirm-b2b-invoice-dialog-open="confirmB2bInvoiceDialogOpen"
-          :confirm-delete-invoice-dialog-open="false"
-          :updating-status="advancingStatus"
-          :recipient-grand-total="finance.recipientGrandTotal"
-          :delivery-charge-val="finance.deliveryChargeVal"
-          :cod-charge-val="finance.codChargeVal"
-          :accounting-subtotal="finance.accountingSubtotal"
-          :print-charge-val="finance.printChargeVal"
-          :packing-charge-val="finance.packingChargeVal"
-          :estimated-profit="finance.estimatedProfit"
-          :cod-collect-amount="summaryForm.cod_collect_amount"
-          :format-bdt="formatBdt"
-          @update:confirm-b2b-invoice-dialog-open="(val) => (confirmB2bInvoiceDialogOpen = val)"
-          @execute-status-update="executeAdvanceToReadyForPickup()"
         />
       </template>
     </div>

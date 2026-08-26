@@ -592,6 +592,8 @@ export default {
   shop_hub_categories_caption: 'কাস্টমার ব্রাউজে শপগুলো গ্রুপ করুন।',
   shop_hub_groups_caption: 'কে লগইন করতে পারবে। তারপর প্রতি শপে গ্রুপ যোগ করুন।',
   shipping_hub_caption: 'যেকোনো ডেলিভারি অর্ডারের জন্য কুরিয়ার ক্যাটালগ এবং COD টাকা — খুচরা বা ড্রপশিপ।',
+  dropship_management: 'ড্রপশিপ ম্যানেজমেন্ট',
+  dropship_management_caption: 'ড্রপশিপ অর্ডার, মার্চেন্ট, কুরিয়ার এবং সেটলমেন্ট টুল।',
   shipping_couriers: 'কুরিয়ার',
   shipping_couriers_caption: 'Pathao, Steadfast, REDX — COD ও রিটার্ন ফি নিয়ম।',
   shipping_remittance: 'COD রেমিট্যান্স',
