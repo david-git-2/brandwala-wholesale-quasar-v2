@@ -14,10 +14,21 @@
       <q-list separator>
         <q-item v-for="item in orderItems" :key="item.id" class="q-py-md q-px-lg">
           <q-item-section avatar>
-            <q-avatar size="50px" rounded class="bg-grey-2">
-              <q-img v-if="item.image_url" :src="item.image_url" />
-              <q-icon v-else name="ph ph-image" size="24px" color="grey-4" />
-            </q-avatar>
+            <div class="customer-order-item__image shop-product-thumb bg-grey-2">
+              <q-img
+                v-if="item.image_url"
+                :src="item.image_url"
+                :alt="item.name"
+                fit="contain"
+                class="customer-order-item__image-img"
+              />
+              <q-icon
+                v-else
+                name="ph ph-image"
+                color="grey-4"
+                class="customer-order-item__image-fallback"
+              />
+            </div>
           </q-item-section>
 
           <q-item-section>
@@ -167,5 +178,27 @@ export default {
 
 .counter-input :deep(.q-field__control) {
   border-radius: 8px;
+}
+
+.customer-order-item__image {
+  width: 1in;
+  height: 1in;
+  min-width: 1in;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(34, 56, 101, 0.08);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.customer-order-item__image-img {
+  width: 100%;
+  height: 100%;
+}
+
+.customer-order-item__image-fallback {
+  font-size: 0.35in;
 }
 </style>

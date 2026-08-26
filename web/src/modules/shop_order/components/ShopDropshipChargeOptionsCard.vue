@@ -83,7 +83,7 @@
 </template>
 
 <script setup lang="ts">
-import { formatDropshipUiMoney } from '../mocks/dropshipCartUiMocks';
+import { formatCartMoney } from '../utils/cartPriceUtils';
 
 export interface DropshipChargePreview {
   deliveryCharge: number;
@@ -107,7 +107,7 @@ defineEmits<{
 }>();
 
 const formatMoney = (amount: number) =>
-  formatDropshipUiMoney(amount, props.currencySymbol ?? '৳');
+  formatCartMoney(amount, props.currencySymbol ?? '৳');
 </script>
 
 <style scoped>

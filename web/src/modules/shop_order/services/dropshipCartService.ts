@@ -2,6 +2,8 @@ import {
   dropshipCartRepository,
   type DropshipCartData,
   type DropshipReviewCartData,
+  type SubmitDropshipOrderPayload,
+  type SubmitDropshipOrderResult,
 } from '../repositories/dropshipCartRepository';
 import type { ShopServiceResult } from '../types';
 
@@ -33,7 +35,22 @@ const getDropshipReviewCart = async (
   }
 };
 
+const submitDropshipOrderFromCart = async (
+  payload: SubmitDropshipOrderPayload,
+): Promise<ShopServiceResult<SubmitDropshipOrderResult>> => {
+  try {
+    const data = await dropshipCartRepository.submitDropshipOrderFromCart(payload);
+    return { success: true, data };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to place dropship order.',
+    };
+  }
+};
+
 export const dropshipCartService = {
   getDropshipShopCart,
   getDropshipReviewCart,
+  submitDropshipOrderFromCart,
 };

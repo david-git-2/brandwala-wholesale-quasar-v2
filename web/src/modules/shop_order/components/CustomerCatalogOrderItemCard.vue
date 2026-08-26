@@ -7,11 +7,12 @@
   >
     <q-card-section class="q-pa-md item-card__section column q-gutter-y-md">
       <div class="row items-start q-gutter-x-md">
-        <div class="item-thumb col-auto">
+        <div class="item-thumb shop-product-thumb col-auto">
           <q-img
             v-if="item.image_url"
             :src="item.image_url"
-            fit="cover"
+            :alt="item.name"
+            fit="contain"
             class="item-thumb__img"
             spinner-color="primary"
           />
@@ -432,25 +433,26 @@ export default {
 }
 
 .item-thumb {
-  width: 80px;
-  min-width: 80px;
-  height: 80px;
-  border-radius: 10px;
+  width: 1in;
+  min-width: 1in;
+  height: 1in;
+  border-radius: 8px;
   overflow: hidden;
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(34, 56, 101, 0.08);
   background: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .item-thumb__img {
   width: 100%;
   height: 100%;
-  min-height: 80px;
 }
 
 .item-thumb__placeholder {
   width: 100%;
   height: 100%;
-  min-height: 80px;
 }
 
 .display-block {
@@ -561,25 +563,13 @@ export default {
     gap: 8px !important;
   }
 
-  .item-thumb {
-    width: 56px;
-    min-width: 56px;
-    height: 56px;
-    border-radius: 8px;
-  }
-
-  .item-thumb__img,
-  .item-thumb__placeholder {
-    min-height: 56px;
+  .price-cells-row {
+    flex-wrap: wrap;
   }
 
   .item-card__title {
     font-size: 0.95rem;
     line-height: 1.35;
-  }
-
-  .price-cells-row {
-    flex-wrap: wrap;
   }
 
   .price-cell {

@@ -14,6 +14,7 @@ import { sumCartSubtotal } from '../utils/cartPriceUtils';
 import {
   mergeDropshipCartFromCatalogResponse,
   mergeDropshipReviewFromCatalogResponse,
+  patchDropshipItemResellPrice,
 } from '../utils/dropshipCartCacheUtils';
 import type { DropshipCartData, DropshipReviewCartData } from '../repositories/dropshipCartRepository';
 import type { ShopType } from '../types';
@@ -264,8 +265,24 @@ export function useShopCartMutations() {
       }
       return { data: res.data, shopId: params.shopId };
     },
-    onSuccess: ({ data, shopId }) => {
-      syncCartCachesAfterMutation(shopId, data);
+    onSuccess: ({ data, shopId }, variables) => {
+      updateCartCache(shopId, data);
+      patchDropshipCartCache(shopId, data);
+      queryClient.setQueryData(
+        shopOrderQueryKeys.dropshipReviewCart(tenantId.value, shopId),
+        (old: DropshipReviewCartData | null | undefined) => {
+          if (!old) return old;
+          return patchDropshipItemResellPrice(old, variables.cartItemId, variables.price);
+        },
+      );
+      const dropshipData = queryClient.getQueryData<DropshipCartData | null>(
+        shopOrderQueryKeys.dropshipCart(tenantId.value, shopId),
+      );
+      if (dropshipData) {
+        updateDropshipActiveCartsCache(shopId, dropshipData);
+      } else {
+        updateActiveCartsCache(shopId, data);
+      }
     },
   });
 

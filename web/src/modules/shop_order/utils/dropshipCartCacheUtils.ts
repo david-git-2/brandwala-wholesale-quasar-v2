@@ -5,6 +5,7 @@ import type {
   DropshipReviewCartData,
 } from '../repositories/dropshipCartRepository';
 import type { ShopCatalogPrice } from '../types';
+import { cartPriceAmount } from './cartPriceUtils';
 import { resolveShopCartItemMoq } from './cartQuantityUtils';
 
 type RawCatalogCartItem = {
@@ -41,9 +42,28 @@ function mapRawItemToDropshipItem(
   raw: RawCatalogCartItem,
   previous?: DropshipCartItem,
 ): DropshipCartItem {
-  const sellAmount = Number(raw.unit_sell_price_amount ?? 0);
-  const resellAmount = Number(raw.customer_sell_price_amount ?? raw.unit_sell_price_amount ?? 0);
-  const minResellAmount = Number(raw.unit_minimum_sell_price_amount ?? 0);
+  const previousPurchaseAmount = previous
+    ? cartPriceAmount(previous.listing_sell_price) || cartPriceAmount(previous.purchase_price)
+    : 0;
+  const sellAmount =
+    raw.unit_sell_price_amount != null
+      ? Number(raw.unit_sell_price_amount)
+      : previousPurchaseAmount;
+
+  const previousResellAmount = previous ? cartPriceAmount(previous.resell_price) : 0;
+  const resellAmount =
+    raw.customer_sell_price_amount != null
+      ? Number(raw.customer_sell_price_amount)
+      : previousResellAmount > 0
+        ? previousResellAmount
+        : sellAmount;
+
+  const previousMinResellAmount = previous ? cartPriceAmount(previous.min_resell_price) : 0;
+  const minResellAmount =
+    raw.unit_minimum_sell_price_amount != null
+      ? Number(raw.unit_minimum_sell_price_amount)
+      : previousMinResellAmount;
+
   const quantity = Number(raw.quantity ?? 0);
   const moq = resolveShopCartItemMoq(raw, { dropship: true });
 
@@ -151,6 +171,35 @@ export function recomputeDropshipReviewSummary(
       can_continue: !hasFloorViolation,
     },
   };
+}
+
+export function patchDropshipItemResellPrice(
+  data: DropshipReviewCartData,
+  cartItemId: number,
+  price: number,
+): DropshipReviewCartData {
+  const items = data.items.map((item) => {
+    if (item.id !== cartItemId) return item;
+
+    const minAmount = cartPriceAmount(item.min_resell_price);
+    return {
+      ...item,
+      resell_price: {
+        ...item.resell_price,
+        amount: price,
+      },
+      line_totals: {
+        ...item.line_totals,
+        resell_subtotal: item.quantity * price,
+      },
+      is_resell_below_floor: minAmount > 0 && price < minAmount,
+    };
+  });
+
+  return recomputeDropshipReviewSummary({
+    ...data,
+    items,
+  });
 }
 
 export function mergeDropshipReviewFromCatalogResponse(

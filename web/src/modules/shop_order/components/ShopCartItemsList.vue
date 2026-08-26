@@ -14,7 +14,7 @@
         <!-- Product Image -->
         <q-item-section avatar class="item-img-section">
           <q-avatar size="64px" rounded class="bg-grey-2 border-all">
-            <q-img v-if="item.image_url" :src="item.image_url" />
+            <q-img v-if="item.image_url" :src="item.image_url" fit="contain" />
             <q-icon v-else name="ph ph-image" color="grey-4" size="32px" />
           </q-avatar>
         </q-item-section>

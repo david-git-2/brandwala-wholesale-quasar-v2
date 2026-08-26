@@ -3,7 +3,7 @@
     <q-card-section class="q-pa-sm q-pa-md-sm">
       <div class="row items-center no-wrap q-col-gutter-sm">
         <div class="col-auto">
-          <div class="dropship-cart-item__image bg-grey-2">
+          <div class="dropship-cart-item__image shop-product-thumb bg-grey-2">
             <q-img
               v-if="imageUrl"
               :src="imageUrl"

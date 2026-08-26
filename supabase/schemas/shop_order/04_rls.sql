@@ -219,6 +219,9 @@ GRANT ALL ON FUNCTION "public"."bulk_apply_shop_markup"("p_shop_id" bigint, "p_m
 GRANT ALL ON FUNCTION "public"."bulk_apply_shop_markup"("p_shop_id" bigint, "p_markup_amount" numeric, "p_markup_type" "text", "p_target_price" "text", "p_listing_ids" bigint[]) TO "authenticated";
 
 
+GRANT ALL ON FUNCTION "public"."can_act_on_parent_tenant_stock"("p_parent_tenant_id" bigint) TO "authenticated";
+
+
 GRANT ALL ON FUNCTION "public"."can_customer_access_shop"("p_shop_id" bigint) TO "authenticated";
 
 
@@ -301,6 +304,7 @@ GRANT ALL ON FUNCTION "public"."get_my_dropship_wallet_summary"() TO "authentica
 GRANT ALL ON FUNCTION "public"."get_or_create_shop_cart"("p_shop_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_dropship_shop_cart"("p_shop_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_dropship_review_cart"("p_shop_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."submit_dropship_order_from_cart"("p_shop_id" bigint, "p_recipient_name" "text", "p_recipient_phone" "text", "p_shipping_address" "text", "p_recipient_phone_secondary" "text", "p_shipping_district" "text", "p_shipping_thana" "text", "p_shipping_post_code" "text", "p_billing_profile_id" bigint, "p_is_prepaid" boolean, "p_delivery_instructions" "text", "p_cod_charge_amount" numeric, "p_delivery_charge_amount" numeric, "p_print_charge_amount" numeric, "p_packing_charge_amount" numeric, "p_discount_amount" numeric, "p_recipient_pays_delivery" boolean, "p_recipient_pays_cod" boolean) TO "authenticated";
 
 
 GRANT ALL ON FUNCTION "public"."get_shop_bootstrap_context"("p_email" "text", "p_tenant_id" bigint, "p_customer_group_member_id" bigint) TO "authenticated";

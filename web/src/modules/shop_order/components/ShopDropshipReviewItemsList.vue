@@ -23,7 +23,7 @@
       >
         <div class="col col-product">
           <div class="row items-start no-wrap q-col-gutter-sm">
-            <div class="dropship-review-row__image bg-grey-2">
+            <div class="dropship-review-row__image shop-product-thumb bg-grey-2">
               <q-img
                 v-if="item.imageUrl"
                 :src="item.imageUrl"
@@ -63,7 +63,8 @@
             input-class="text-weight-bold"
             :prefix="currencySymbol"
             :min="item.minResellPrice"
-            :disable="disableResell"
+            :disable="disableResell || item.isSaving"
+            :loading="item.isSaving"
             :error="item.resellPrice < item.minResellPrice"
             :error-message="
               item.resellPrice < item.minResellPrice
@@ -71,21 +72,11 @@
                 : undefined
             "
             @update:model-value="(val) => onResellInput(item.id, val)"
+            @blur="$emit('resell-price-blur', item.id)"
           />
           <div class="text-caption text-grey-6 q-mt-xs">
             {{ $t('shop.dropship_min_resell', { price: formatMoney(item.minResellPrice) }) }}
           </div>
-          <q-btn
-            v-if="item.showSaveResell"
-            color="primary"
-            size="xs"
-            unelevated
-            no-caps
-            class="pill-btn q-px-sm q-mt-xs"
-            :label="$t('shop.save_price')"
-            :loading="item.isSaving"
-            @click="$emit('save-resell-price', item.id)"
-          />
         </div>
 
         <div class="col-auto col-total text-right gt-sm">
@@ -132,7 +123,6 @@ export interface DropshipReviewListItem {
   purchasePrice: number;
   resellPrice: number;
   minResellPrice: number;
-  showSaveResell?: boolean;
   isSaving?: boolean;
 }
 
@@ -157,17 +147,14 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   (e: 'update:resellPrice', itemId: number, value: number): void;
-  (e: 'save-resell-price', itemId: number): void;
+  (e: 'resell-price-blur', itemId: number): void;
 }>();
 
 const formatMoney = (amount: number) =>
   formatCartMoney(amount, props.currencySymbol ?? '৳');
 
 const onResellInput = (itemId: number, val: string | number | null) => {
-  if (val === '' || val === null) {
-    emit('update:resellPrice', itemId, 0);
-    return;
-  }
+  if (val === '' || val === null) return;
   const numVal = Number(val);
   if (!Number.isNaN(numVal) && numVal >= 0) {
     emit('update:resellPrice', itemId, numVal);

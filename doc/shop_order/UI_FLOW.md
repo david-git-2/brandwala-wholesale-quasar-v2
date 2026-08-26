@@ -205,7 +205,9 @@ flowchart TD
 | :--- | :--- | :--- | :--- | :--- |
 | 1 Cart | `ShopDropshipCartPage` | `get_dropship_shop_cart` | `update_shop_cart_item_qty` | Proceed → review |
 | 2 Review | `ShopDropshipReviewPage` | `get_dropship_review_cart` | `update_shop_cart_item_price` | Continue → delivery |
-| 3 Delivery | `ShopDropshipDeliveryPage` | *(reuse review cart or delivery-specific load TBD)* | `submit_shop_order_from_cart` | Place order |
+| 3 Delivery | `ShopDropshipDeliveryPage` | `get_dropship_review_cart` | `submit_dropship_order_from_cart` | Place order |
+
+**Stock on place order:** sellable → **held** (not sold). Invoice at `ready_for_pickup`+ consumes held stock. Order delete releases held → sellable.
 
 Proceed/continue disabled when cart empty, unsaved edits, save in progress, or resell below floor.
 
@@ -274,6 +276,8 @@ Row click → `StaffOrderDetailPage` (B2B) or `DropshipOrderDetailPage` (dropshi
 | Click chip | Emits `update-status` → parent calls `advance_dropship_order_status` |
 
 Off-strip statuses (e.g. `submitted`, `cancelled`) show as a badge above the strip.
+
+**Stock:** place order holds stock (`sellable` → `held`). Invoice issue at `ready_for_pickup`+ sells from held. Deleting an un-invoiced order releases held back to sellable.
 
 ---
 

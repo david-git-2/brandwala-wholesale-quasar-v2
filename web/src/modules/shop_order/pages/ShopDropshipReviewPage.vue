@@ -60,7 +60,7 @@
             :disable-resell="isUpdatingPrice"
             :saving-item-id="savingItemId"
             @update:resell-price="updateResellPriceLocal"
-            @save-resell-price="saveResellPrice"
+            @resell-price-blur="saveResellPrice"
           />
         </div>
 
@@ -149,7 +149,6 @@ const uiItems = computed<DropshipReviewListItem[]>(() =>
       purchasePrice: getPurchaseUnitAmount(item),
       resellPrice,
       minResellPrice: getMinResellAmount(item),
-      showSaveResell: hasUnsavedResell(item.id, savedResell),
       isSaving: savingItemId.value === item.id && isUpdatingPrice.value,
     };
   }),
@@ -190,6 +189,11 @@ const updateResellPriceLocal = (itemId: number, value: number) => {
 };
 
 const saveResellPrice = async (itemId: number) => {
+  const item = items.value.find((row) => row.id === itemId);
+  if (!item) return;
+  const savedPrice = getResellUnitAmount(item);
+  if (!hasUnsavedResell(itemId, savedPrice)) return;
+
   const targetPrice = editedResellPrices.value[itemId];
   if (targetPrice === undefined || !shopId.value) return;
 

@@ -11,20 +11,23 @@
       <div class="row q-col-gutter-md">
         <div class="col-12 col-sm-6">
           <q-input
-            v-model="form.recipientName"
+            v-model="form.recipientPhone"
             outlined
             dense
-            :label="$t('shop.recipient_name') + ' *'"
+            hide-bottom-space
+            :label="$t('shop.recipient_phone') + ' *'"
+            hint="01XXXXXXXXX"
+            @blur="$emit('phone-blur')"
           />
         </div>
 
         <div class="col-12 col-sm-6">
           <q-input
-            v-model="form.recipientPhone"
+            v-model="form.recipientName"
             outlined
             dense
-            :label="$t('shop.recipient_phone') + ' *'"
-            hint="01XXXXXXXXX"
+            hide-bottom-space
+            :label="$t('shop.recipient_name') + ' *'"
           />
         </div>
 
@@ -33,35 +36,113 @@
             v-model="form.secondaryPhone"
             outlined
             dense
+            hide-bottom-space
             :label="$t('shop.dropship_secondary_phone')"
           />
         </div>
 
         <div class="col-12 col-sm-6">
-          <q-input
+          <q-select
             v-model="form.district"
             outlined
             dense
+            use-input
+            fill-input
+            hide-selected
+            input-debounce="0"
+            hide-bottom-space
             :label="$t('shop.dropship_district') + ' *'"
-          />
+            :options="districtOptions"
+            option-label="name"
+            option-value="name"
+            emit-value
+            map-options
+            @filter="(val, update) => $emit('filter-district', val, update)"
+            @update:model-value="(val) => $emit('district-change', val)"
+          >
+            <template #no-option>
+              <q-item>
+                <q-item-section class="text-grey">No matching district</q-item-section>
+              </q-item>
+            </template>
+            <template #option="scope">
+              <q-item v-bind="scope.itemProps">
+                <q-item-section>
+                  <q-item-label>{{ scope.opt.name }}</q-item-label>
+                  <q-item-label v-if="scope.opt.bnName" caption>{{ scope.opt.bnName }}</q-item-label>
+                </q-item-section>
+              </q-item>
+            </template>
+          </q-select>
         </div>
 
         <div class="col-12 col-sm-6">
-          <q-input
+          <q-select
             v-model="form.thana"
             outlined
             dense
+            use-input
+            fill-input
+            hide-selected
+            input-debounce="0"
+            hide-bottom-space
             :label="$t('shop.dropship_thana') + ' *'"
-          />
+            :options="thanaOptions"
+            option-label="name"
+            option-value="name"
+            emit-value
+            map-options
+            @filter="(val, update) => $emit('filter-thana', val, update)"
+            @update:model-value="(val) => $emit('thana-change', val)"
+          >
+            <template #no-option>
+              <q-item>
+                <q-item-section class="text-grey">No matching thana/upazila</q-item-section>
+              </q-item>
+            </template>
+            <template #option="scope">
+              <q-item v-bind="scope.itemProps">
+                <q-item-section>
+                  <q-item-label>{{ scope.opt.name }}</q-item-label>
+                  <q-item-label v-if="scope.opt.bnName" caption>{{ scope.opt.bnName }}</q-item-label>
+                </q-item-section>
+              </q-item>
+            </template>
+          </q-select>
         </div>
 
         <div class="col-12 col-sm-6">
-          <q-input
+          <q-select
             v-model="form.postCode"
             outlined
             dense
+            use-input
+            fill-input
+            hide-selected
+            input-debounce="0"
+            hide-bottom-space
             :label="$t('shop.dropship_post_code')"
-          />
+            :options="postcodeOptions"
+            option-label="displayLabel"
+            option-value="postCode"
+            emit-value
+            map-options
+            @filter="(val, update) => $emit('filter-postcode', val, update)"
+            @new-value="(val, done) => $emit('create-postcode', val, done)"
+          >
+            <template #no-option>
+              <q-item>
+                <q-item-section class="text-grey">Type custom post code or office</q-item-section>
+              </q-item>
+            </template>
+            <template #option="scope">
+              <q-item v-bind="scope.itemProps">
+                <q-item-section>
+                  <q-item-label>{{ scope.opt.postOffice }} - {{ scope.opt.postCode }}</q-item-label>
+                </q-item-section>
+              </q-item>
+            </template>
+          </q-select>
         </div>
 
         <div class="col-12">
@@ -70,6 +151,7 @@
             outlined
             dense
             type="textarea"
+            hide-bottom-space
             :label="$t('shop.shipping_address') + ' *'"
             rows="3"
           />
@@ -81,6 +163,7 @@
             outlined
             dense
             type="textarea"
+            hide-bottom-space
             :label="$t('shop.delivery_instructions')"
             rows="2"
           />
@@ -91,6 +174,8 @@
 </template>
 
 <script setup lang="ts">
+import type { BDLocationOption, BDPostcodeOption } from 'src/utils/bdAddressService';
+
 export interface DropshipCustomerForm {
   recipientName: string;
   recipientPhone: string;
@@ -104,6 +189,19 @@ export interface DropshipCustomerForm {
 
 defineProps<{
   form: DropshipCustomerForm;
+  districtOptions: BDLocationOption[];
+  thanaOptions: BDLocationOption[];
+  postcodeOptions: (BDPostcodeOption & { displayLabel: string })[];
+}>();
+
+defineEmits<{
+  (e: 'phone-blur'): void;
+  (e: 'filter-district', val: string, update: (fn: () => void) => void): void;
+  (e: 'filter-thana', val: string, update: (fn: () => void) => void): void;
+  (e: 'filter-postcode', val: string, update: (fn: () => void) => void): void;
+  (e: 'create-postcode', val: string, done: (item: unknown) => void): void;
+  (e: 'district-change', val: string): void;
+  (e: 'thana-change', val: string): void;
 }>();
 </script>
 

@@ -10614,6 +10614,10 @@ export type Database = {
         Args: { p_tenant_id: number }
         Returns: boolean
       }
+      can_act_on_parent_tenant_stock: {
+        Args: { p_parent_tenant_id: number }
+        Returns: boolean
+      }
       can_admin_manage_costing_file: {
         Args: { p_tenant_id: number }
         Returns: boolean
@@ -14641,6 +14645,29 @@ export type Database = {
         Returns: number
       }
       stock_grade_tag_id_for_slug: { Args: { p_slug: string }; Returns: number }
+      submit_dropship_order_from_cart: {
+        Args: {
+          p_billing_profile_id?: number
+          p_cod_charge_amount?: number
+          p_delivery_charge_amount?: number
+          p_delivery_instructions?: string
+          p_discount_amount?: number
+          p_is_prepaid?: boolean
+          p_packing_charge_amount?: number
+          p_print_charge_amount?: number
+          p_recipient_name: string
+          p_recipient_pays_cod?: boolean
+          p_recipient_pays_delivery?: boolean
+          p_recipient_phone: string
+          p_recipient_phone_secondary?: string
+          p_shipping_address: string
+          p_shipping_district?: string
+          p_shipping_post_code?: string
+          p_shipping_thana?: string
+          p_shop_id: number
+        }
+        Returns: Json
+      }
       submit_shop_order_from_cart:
         | {
             Args: {

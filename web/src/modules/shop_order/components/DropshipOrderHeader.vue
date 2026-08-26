@@ -21,31 +21,19 @@ const emit = defineEmits<{
 
 <template>
   <section class="row items-center justify-between q-col-gutter-md">
-    <div class="col-12 col-md">
-      <div class="row items-center q-gutter-x-sm">
-        <q-btn
-          flat
-          dense
-          icon="ph ph-arrow-left"
-          color="grey-7"
-          :to="{ name: 'app-shop-orders-page', query: { shopType: 'dropship' } }"
+    <div class="col">
+      <div class="row items-center q-gutter-x-sm wrap">
+        <h1 class="text-h6 text-weight-bold q-my-none">Process Order: {{ order?.order_no || 'ORD-DS' }}</h1>
+        <DropshipSettlementBadge
+          v-if="order && (order.global_invoice_id || ['delivered', 'completed', 'returned', 'payment_received'].includes(order.status))"
+          :status="order.payout_settlement_status ?? null"
         />
-        <div>
-          <div class="text-overline text-primary">{{ $t('navigation.orders') }}</div>
-          <div class="row items-center q-gutter-x-sm wrap">
-            <h1 class="text-h5 text-weight-bold q-my-none">Process Order: {{ order?.order_no || 'ORD-DS' }}</h1>
-            <DropshipSettlementBadge
-              v-if="order && (order.global_invoice_id || ['delivered', 'completed', 'returned', 'payment_received'].includes(order.status))"
-              :status="order.payout_settlement_status ?? null"
-            />
-          </div>
-          <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
-            Merchant: <strong class="text-grey-9">{{ order?.customer_group_name || '—' }}</strong>
-          </p>
-        </div>
       </div>
+      <p class="text-body2 text-grey-7 q-mt-xs q-mb-none">
+        Merchant: <strong class="text-grey-9">{{ order?.customer_group_name || '—' }}</strong>
+      </p>
     </div>
-    <div class="col-12 col-md-auto row q-gutter-sm items-center justify-start justify-md-end wrap">
+    <div class="col-auto row q-gutter-sm items-center wrap">
       <q-btn
         v-if="order?.status === 'delivered' && order?.collection_source !== 'billing_profile' && !order?.courier_remittance_ref"
         color="primary"

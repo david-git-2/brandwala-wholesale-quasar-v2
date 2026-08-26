@@ -215,7 +215,7 @@ flowchart LR
 | **`ShopCartPage`** | Load cart + permissions | `useShopCartQuery` → `RPC: get_or_create_shop_cart` | Key: `shopOrderQueryKeys.cart(tenantId, shopId)`; items use catalog-shaped prices; no separate permissions or `global_currencies` call |
 | **`ShopDropshipCartPage`** | Load dropship cart | `useDropshipShopCartQuery` → `RPC: get_dropship_shop_cart` | Key: `shopOrderQueryKeys.dropshipCart(tenantId, shopId)`; qty saves via `update_shop_cart_item_qty` (cache patch, no refetch) |
 | **`ShopDropshipReviewPage`** | Review pricing | `useDropshipReviewCartQuery` → `RPC: get_dropship_review_cart` | Key: `shopOrderQueryKeys.dropshipReviewCart(tenantId, shopId)`; resell saves via `update_shop_cart_item_price` (cache patch) |
-| **`ShopDropshipDeliveryPage`** | Delivery + place order | *(UI placeholder — `submit_shop_order_from_cart` pending)* | — |
+| **`ShopDropshipDeliveryPage`** | Place order | `submit_dropship_order_from_cart` via `useSubmitDropshipOrderMutation` | Invalidates dropship cart + active carts → `/shop/orders/:id` |
 | **`ShopOrdersPage`** | Order list | `useStaffOrdersQuery` → `RPC: list_shop_orders_for_staff` | Key: `staffOrders`; filters: shop (`p_shop_id`), status (`p_status`), type (client via `list_shops`) |
 | **`ShopOrdersPage`** | Shop filter options | `useShopListQuery` → `RPC: list_shops` | Loaded on mount for shop dropdown |
 | **`ShopSettingsPage`** (Storefront tab) | Listings grid | `RPC: list_shop_storefront_listings_for_admin` | Key: `shopOrderQueryKeys.storefrontAdminListings(shopId, search)` |
@@ -812,6 +812,55 @@ Same as `get_dropship_shop_cart` (active cart required, non-empty).
 `charge_estimates` derives delivery min/max from active `courier_services`; COD preview uses `cod_percent_min` on resell subtotal. `recipient_grand_total` = resell subtotal + delivery mid + COD preview.
 
 Price mutations patch `dropshipReviewCart` cache via `mergeDropshipReviewFromCatalogResponse` (recomputes `review_summary` client-side).
+
+---
+
+## 7f. RPC: `submit_dropship_order_from_cart`
+
+Dropship-only place order from the 3-step delivery page. Resolves the caller's **active** cart by `p_shop_id` (does not use `submit_shop_order_from_cart`).
+
+### Signature
+
+```sql
+submit_dropship_order_from_cart(
+  p_shop_id bigint,
+  p_recipient_name text,
+  p_recipient_phone text,
+  p_shipping_address text,
+  p_recipient_phone_secondary text default null,
+  p_shipping_district text default null,
+  p_shipping_thana text default null,
+  p_shipping_post_code text default null,
+  p_billing_profile_id bigint default null,
+  p_is_prepaid boolean default false,
+  p_delivery_instructions text default null,
+  p_cod_charge_amount numeric default 0,
+  p_delivery_charge_amount numeric default 0,
+  p_print_charge_amount numeric default 0,
+  p_packing_charge_amount numeric default 0,
+  p_discount_amount numeric default 0,
+  p_recipient_pays_delivery boolean default true,
+  p_recipient_pays_cod boolean default true
+) returns jsonb
+```
+
+### Behaviour
+
+- Validates dropship shop, customer access, non-empty cart, required recipient fields, resell floor.
+- Upserts recipient profile via `upsert_recipient_profile_and_address`.
+- Sets `deduct_delivery_from_margin = not p_recipient_pays_delivery`, `deduct_cod_from_margin = not p_recipient_pays_cod`.
+- Inserts `shop_orders` + `shop_order_items`, converts cart to `converted`.
+- Returns `{ order_id, order_no, status, cart_id, shop_id }`.
+
+### Stock lifecycle (hold → sell)
+
+| Stage | What happens |
+| :--- | :--- |
+| **Place order** (this RPC) | Per line: `create_and_post_stock_movement` **sellable → held** (`availability_transfer`, ref `shop_order`). Updates `shop_order_items.global_stock_id` to the held row. Reduces `display_quantity_override` on the listing; does **not** deduct `global_stock_allocations`. Deactivates listing when sellable ATP ≤ 0. |
+| **Invoice issued** (`ready_for_pickup`+ via `advance_dropship_order_status` → `post_sales_invoice`) | Consumes qty from **held** stock (adjustment deduct). |
+| **Order deleted** (before issued invoice) | Trigger `restock_dropship_order_on_delete`: **held → sellable** movement + restore `display_quantity_override`. |
+
+Cart reservations (`shop_stock_reservations`) are cleared on place order.
 
 ---
 

@@ -253,7 +253,7 @@
               <q-item v-for="item in items" :key="item.id" class="q-py-sm">
                 <q-item-section avatar>
                   <q-avatar size="36px" rounded class="bg-grey-2">
-                    <q-img v-if="item.image_url" :src="item.image_url" />
+                    <q-img v-if="item.image_url" :src="item.image_url" fit="contain" />
                     <q-icon v-else name="ph ph-image" size="18px" color="grey-4" />
                   </q-avatar>
                 </q-item-section>

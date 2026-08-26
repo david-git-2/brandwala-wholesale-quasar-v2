@@ -1596,7 +1596,16 @@ begin
 
     select * into v_stock from public.global_stocks where id = v_item.global_stock_id for update;
     if v_stock.id is not null then
-      -- Deduct from global_stocks
+      if v_invoice.invoice_type = 'dropship'::public.global_invoice_type
+         and v_stock.availability <> 'held'::public.stock_availability then
+        raise exception 'dropship invoice stock % must be held before issue', v_item.global_stock_id;
+      end if;
+
+      if v_stock.quantity < v_qty then
+        raise exception 'insufficient stock quantity on stock % (requested %, available %)',
+          v_item.global_stock_id, v_qty, v_stock.quantity;
+      end if;
+
       update public.global_stocks
       set quantity = quantity - v_qty
       where id = v_item.global_stock_id;
