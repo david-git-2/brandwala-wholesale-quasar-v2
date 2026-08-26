@@ -159,7 +159,10 @@ flowchart LR
 | Route | Main Page | Key Child Components |
 | :--- | :--- | :--- |
 | `/:tenantSlug?/app/dropship/orders` | [`DropshipOrdersPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/DropshipOrdersPage.vue) | Status filter tabs, courier quick-actions, [`ShopOrdersTable.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/components/ShopOrdersTable.vue) |
-| `/:tenantSlug?/app/dropship/orders/:id` | [`DropshipOrderDetailPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/DropshipOrderDetailPage.vue) | [`DropshipOrderStatusWorkflow.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/components/DropshipOrderStatusWorkflow.vue), [`DropshipRecipientFormCard.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/components/DropshipRecipientFormCard.vue), [`DropshipCourierCard.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/components/DropshipCourierCard.vue) |
+| `/:tenantSlug?/app/shop/dropship/:id` | [`DropshipOrderDetailV2Page.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/DropshipOrderDetailV2Page.vue) | Paper invoice (`DropshipOrderConfirmedInvoicePaper.vue`); confirmed → processing |
+| `/:tenantSlug?/app/shop/dropship/:id/processing` | [`DropshipOrderDetailV2ProcessingPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/DropshipOrderDetailV2ProcessingPage.vue) | Editable charges, delivered qty, pickup + courier |
+| `/:tenantSlug?/app/shop/dropship/:id/ready-for-pickup` | [`DropshipOrderDetailV2ReadyForPickupPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/DropshipOrderDetailV2ReadyForPickupPage.vue) | Readonly lock; mark shipped; print customer invoice |
+| `/:tenantSlug?/app/shop/dropship/:id/customer-invoice-preview` | [`DropshipOrderDetailV2CustomerInvoicePreviewPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/DropshipOrderDetailV2CustomerInvoicePreviewPage.vue) | External print tab (recipient-facing resell invoice) |
 | `/:tenantSlug?/app/dropship/finance` | [`DropshipFinanceHubPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/DropshipFinanceHubPage.vue) | `FinanceHubKpiStrip.vue`, `FinanceHubStepDelivered.vue`, `FinanceHubStepRemittance.vue`, `FinanceHubStepPayout.vue` |
 | `/:tenantSlug?/app/dropship/merchants` | [`DropshipMerchantsPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/DropshipMerchantsPage.vue) | Merchant readiness scores, billing profile link |
 | `/:tenantSlug?/app/dropship/couriers` | [`DropshipCouriersPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/DropshipCouriersPage.vue) | Courier API credentials & charge matrices |
@@ -261,8 +264,9 @@ See **§ RPC: `get_or_create_shop_cart`** below for the response contract.
 | Component | Action / Trigger | Hook / Endpoint | Caching Strategy |
 | :--- | :--- | :--- | :--- |
 | **`DropshipOrdersPage`** | Mount / Tab Change | `RPC: list_dropship_shop_orders_for_staff` | `staleTime: 30s` |
-| **`DropshipOrderDetailPage`** | Process Next Stage | `RPC: advance_dropship_order_status` | Invalidates order detail |
-| **`DropshipOrderDetailPage`** | Issue invoice | `RPC: create_dropship_invoice` | Invalidates invoice & order |
+| **`DropshipOrderDetailV2Page`** | Mount | `RPC: get_dropship_order_detail_v2` | Key: `shopOrderQueryKeys.dropshipDetailV2(tenantId, orderId)` |
+| **`DropshipOrderDetailV2Page`** | Start processing | `RPC: advance_dropship_order_status` | Invalidates `dropshipDetailV2` |
+| **`DropshipOrderDetailV2ReadyForPickupPage`** | Mark shipped | `RPC: advance_dropship_order_status` | Invalidates `dropshipDetailV2` |
 | **`FinanceHubStepRemittance`** | Log remittance | `RPC: record_dropship_courier_remittance` | Invalidates finance hub |
 | **`FinanceHubStepPayout`** | Disburse payout | `RPC: dispense_middleman_payout_from_tenant` | Invalidates wallet |
 | **`MerchantWalletPage`** | Summary / ledger | `get_my_dropship_wallet_summary`, `list_my_dropship_wallet_ledger` | `staleTime: 30s` |
@@ -1044,7 +1048,9 @@ list_shop_orders_for_staff(
 
 ## 10.1 RPC: `get_shop_order_for_staff`
 
-Staff order detail (`StaffOrderDetailPage`, `DropshipOrderDetailPage`, dropship invoice preview). One nested JSON payload replaces separate `shop_orders`, `shop_order_items`, and `global_currencies` reads.
+Staff B2B order detail (`StaffOrderDetailPage`, catalog negotiation). One nested JSON payload replaces separate `shop_orders`, `shop_order_items`, and `global_currencies` reads.
+
+Dropship paper invoice UI uses **`get_dropship_order_detail_v2`** (§10.2) instead — flat `order` + `items` with resell pricing.
 
 ### Signature
 
@@ -1133,6 +1139,93 @@ get_shop_order_for_staff(
 | Repository | `shopOrderRepository.getShopOrderById(tenantId, orderId)` |
 | Composable | `useShopOrderDetailQuery` |
 | UI | `StaffOrderDetailPage` — no `useThriftCurrenciesQuery`; symbols from `order.shop.sell_currency` / `buy_currency` via flat mapper |
+
+---
+
+## 10.2 RPC: `get_dropship_order_detail_v2`
+
+Dropship paper invoice UI (`DropshipOrderDetailV2Page`, processing, ready-for-pickup). Flat payload tuned for `DropshipOrderConfirmedInvoicePaper.vue` — includes **resell** (`customer_sell_price_amount`) on items, pre-built **summary**, **fulfillment**, active **courier_services**, and **permissions** for status buttons.
+
+### Signature
+
+```sql
+get_dropship_order_detail_v2(
+  p_tenant_id bigint,
+  p_order_id  bigint
+) returns jsonb
+```
+
+- **Security:** `SECURITY DEFINER`; requires `is_tenant_staff(p_tenant_id)`; order must be `shop_type_snapshot = dropship`
+- **Migration:** `supabase/migrations/20260826230000_get_dropship_order_detail_v2.sql`
+
+### Top-level keys
+
+| Key | Purpose |
+| :--- | :--- |
+| `order` | Flat `ShopOrder`-compatible header + recipient + charges |
+| `items` | Flat lines with cost / sell / **resell** amounts |
+| `summary` | `DropshipInvoiceSummaryState` (charge amounts + payer flags) |
+| `computed` | `items_resell_total`, `recipient_charge_total`, `recipient_grand_total`, `delivery_zone_label` |
+| `fulfillment` | `pickup` + `courier` form state from `shop_orders` |
+| `lookups` | `courier_services[]` (active for tenant) |
+| `permissions` | UI gates: start processing, mark ready, mark shipped, print invoice |
+
+### Example (abbreviated)
+
+```json
+{
+  "success": true,
+  "order": {
+    "id": 9001,
+    "order_no": "DS-2026-0842",
+    "status": "confirmed",
+    "shop_name": "Metro Dropship Shop",
+    "customer_group_name": "Rahim Electronics Resellers",
+    "recipient_name": "Fatima Rahman",
+    "shop_sell_currency_symbol": "৳",
+    "cod_collect_amount": 14280
+  },
+  "items": [
+    {
+      "id": 1,
+      "quantity": 2,
+      "unit_list_price_amount": 4200,
+      "unit_sell_price_amount": 4650,
+      "customer_sell_price_amount": 5200,
+      "sku": "SAM-BUDS-FE-GR"
+    }
+  ],
+  "summary": {
+    "delivery_charge_amount": 120,
+    "deduct_delivery_from_margin": false,
+    "cod_charge_amount": 25,
+    "deduct_cod_from_margin": true,
+    "discount_amount": 50,
+    "cod_collect_amount": 14280
+  },
+  "computed": {
+    "items_resell_total": 14200,
+    "recipient_grand_total": 14280
+  },
+  "permissions": {
+    "can_start_processing": true
+  }
+}
+```
+
+### Frontend wiring
+
+| Layer | Name |
+| :--- | :--- |
+| RPC | `get_dropship_order_detail_v2` |
+| Types | `DropshipOrderDetailV2Response` in `utils/dropshipOrderDetailV2Mapper.ts` |
+| Mapper | `mapDropshipOrderDetailV2Response()` |
+| Repository | `shopOrderRepository.getDropshipOrderDetailV2(tenantId, orderId)` |
+| Composable | `useDropshipOrderDetailV2Query` |
+| Query key | `shopOrderQueryKeys.dropshipDetailV2(tenantId, orderId)` |
+| UI | `DropshipOrderDetailV2Page` (confirmed), `…ProcessingPage`, `…ReadyForPickupPage` |
+
+**Note:** `shipping_post_code` is returned as `null` until persisted on `shop_orders` or recipient snapshot at place order.
 
 ---
 

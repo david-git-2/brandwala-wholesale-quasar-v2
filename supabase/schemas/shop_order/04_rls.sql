@@ -286,6 +286,8 @@ GRANT ALL ON FUNCTION "public"."get_customer_dashboard_summary"("p_tenant_id" bi
 
 REVOKE ALL ON FUNCTION "public"."get_shop_order_for_staff"("p_tenant_id" bigint, "p_order_id" bigint) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_shop_order_for_staff"("p_tenant_id" bigint, "p_order_id" bigint) TO "authenticated";
+REVOKE ALL ON FUNCTION "public"."get_dropship_order_detail_v2"("p_tenant_id" bigint, "p_order_id" bigint) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."get_dropship_order_detail_v2"("p_tenant_id" bigint, "p_order_id" bigint) TO "authenticated";
 
 
 GRANT ALL ON FUNCTION "public"."get_dropship_shop_readiness"("p_shop_id" bigint) TO "authenticated";

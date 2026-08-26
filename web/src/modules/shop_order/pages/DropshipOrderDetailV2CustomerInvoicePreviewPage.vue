@@ -90,7 +90,6 @@ import { useRoute, useRouter } from 'vue-router';
 import { supabase } from 'src/boot/supabase';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
-import { DROPSHIP_ORDER_DETAIL_V2_DUMMY } from '../fixtures/dropshipOrderDetailV2Dummy';
 import InvoicePrintSheet from 'src/modules/invoice_shared/components/InvoicePrintSheet.vue';
 import DropshipOrderRecipientInvoicePreviewSkeleton from '../components/DropshipOrderRecipientInvoicePreviewSkeleton.vue';
 import type { InvoicePrintModel } from 'src/modules/invoice_shared/types/invoicePrintModel';
@@ -98,13 +97,10 @@ import type { ShopOrder, ShopOrderItem } from '../types';
 import {
   buildSummaryChargeRows,
   computeRecipientGrandTotal,
-  createDropshipInvoiceSummaryFromOrder,
+  createEmptyDropshipInvoiceSummary,
   type DropshipInvoiceSummaryState,
 } from '../utils/dropshipInvoiceSummary';
-import {
-  createDeliveredQuantitiesFromItems,
-  type DropshipInvoiceDeliveredQuantitiesState,
-} from '../utils/dropshipInvoiceFulfillment';
+import type { DropshipInvoiceDeliveredQuantitiesState } from '../utils/dropshipInvoiceFulfillment';
 import { loadDropshipV2CustomerInvoiceSnapshot } from '../utils/dropshipV2CustomerInvoiceStorage';
 
 const route = useRoute();
@@ -113,12 +109,8 @@ const loading = ref(true);
 
 const order = ref<ShopOrder | null>(null);
 const items = ref<ShopOrderItem[]>([]);
-const summaryState = ref<DropshipInvoiceSummaryState>(
-  createDropshipInvoiceSummaryFromOrder(DROPSHIP_ORDER_DETAIL_V2_DUMMY.order),
-);
-const deliveredQuantities = ref<DropshipInvoiceDeliveredQuantitiesState>(
-  createDeliveredQuantitiesFromItems(DROPSHIP_ORDER_DETAIL_V2_DUMMY.items),
-);
+const summaryState = ref<DropshipInvoiceSummaryState>(createEmptyDropshipInvoiceSummary());
+const deliveredQuantities = ref<DropshipInvoiceDeliveredQuantitiesState>({});
 
 const brandName = ref('');
 const brandAddress = ref('');
@@ -127,11 +119,6 @@ const recipientPhone = ref('');
 const recipientAddress = ref('');
 const thankYouMessage = ref('Thank you for shopping with us!');
 const showItemImages = ref(true);
-
-const useDummyPreview = computed(() => {
-  const id = Number(route.params.id || 0);
-  return id === DROPSHIP_ORDER_DETAIL_V2_DUMMY.order.id;
-});
 
 const resolveDeliveredQuantity = (item: ShopOrderItem) => {
   const delivered = deliveredQuantities.value[item.id];
@@ -269,15 +256,17 @@ onMounted(async () => {
   const tenantId = useAuthStore().tenantId;
 
   try {
-    if (useDummyPreview.value) {
-      order.value = { ...DROPSHIP_ORDER_DETAIL_V2_DUMMY.order, status: 'ready_for_pickup' };
-      items.value = DROPSHIP_ORDER_DETAIL_V2_DUMMY.items;
-    } else if (id && tenantId) {
-      const orderRes = await shopOrderRepository.getShopOrderById(tenantId, id);
-      order.value = orderRes.order;
-      items.value = orderRes.items;
-      summaryState.value = createDropshipInvoiceSummaryFromOrder(orderRes.order);
-      deliveredQuantities.value = createDeliveredQuantitiesFromItems(orderRes.items);
+    if (id && tenantId) {
+      const detail = await shopOrderRepository.getDropshipOrderDetailV2(tenantId, id);
+      order.value = detail.order;
+      items.value = detail.items;
+      summaryState.value = { ...detail.summary };
+      deliveredQuantities.value = Object.fromEntries(
+        detail.items.map((item) => [
+          item.id,
+          item.confirmed_quantity != null ? item.confirmed_quantity : item.quantity,
+        ]),
+      );
     }
 
     const snapshot = loadDropshipV2CustomerInvoiceSnapshot(id);

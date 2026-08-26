@@ -254,7 +254,7 @@ Loads `list_shop_orders_for_staff` on mount (no `total_amount`, no `global_curre
 | Status | `q-select` → `p_status` on RPC | Server-side status filter |
 | Search | debounced input → `p_search` on RPC | Server-side text search |
 
-Row click → `StaffOrderDetailPage` (B2B) or `DropshipOrderDetailPage` (dropship URL under `/app/shop/dropship/:id`).
+Row click → `StaffOrderDetailPage` (B2B) or `DropshipOrderDetailV2Page` (dropship URL under `/app/shop/dropship/:id`).
 
 ---
 
@@ -342,9 +342,19 @@ Legacy courier-remittance URLs redirect to this hub with `step=courier_remittanc
 - **Entry points:** product card click, quick-view “View details”, direct URL, copy-link share
 
 ### 11.8 Dropship Order Detail (`/app/shop/dropship/:id`)
-- **Page:** `DropshipOrderDetailPage.vue`
-- **Cards:** `DropshipRecipientFormCard`, `DropshipCourierCard`, status workflow
-- **Actions:** Advance status, issue dual invoice, print packing slip / recipient invoice preview
+
+Paper invoice workflow (replaces classic card layout).
+
+| Route | Page | Status |
+| :--- | :--- | :--- |
+| `/:id` | `DropshipOrderDetailV2Page.vue` | Confirmed — read-only invoice; **Start processing** |
+| `/:id/processing` | `DropshipOrderDetailV2ProcessingPage.vue` | Editable charges, delivered qty, pickup + courier |
+| `/:id/ready-for-pickup` | `DropshipOrderDetailV2ReadyForPickupPage.vue` | Locked; **Mark as shipped**; **Print customer invoice** |
+| `/:id/customer-invoice-preview` | `DropshipOrderDetailV2CustomerInvoicePreviewPage.vue` | External print tab (recipient resell only) |
+
+- **Load RPC:** `get_dropship_order_detail_v2` via `useDropshipOrderDetailV2Query`
+- **Status RPC:** `advance_dropship_order_status`
+- **Component:** `DropshipOrderConfirmedInvoicePaper.vue`
 
 ---
 

@@ -42,6 +42,21 @@ export function createDropshipInvoiceSummaryFromOrder(
   };
 }
 
+export function createEmptyDropshipInvoiceSummary(): DropshipInvoiceSummaryState {
+  return createDropshipInvoiceSummaryFromOrder({
+    delivery_charge_amount: 0,
+    deduct_delivery_from_margin: false,
+    cod_charge_amount: 0,
+    deduct_cod_from_margin: false,
+    print_charge_amount: 0,
+    deduct_print_from_margin: false,
+    packing_charge_amount: 0,
+    deduct_packing_from_margin: false,
+    discount_amount: 0,
+    cod_collect_amount: 0,
+  });
+}
+
 export type ChargePayer = 'recipient' | 'merchant';
 
 export const chargePayer = (deductFromMargin: boolean | undefined): ChargePayer =>

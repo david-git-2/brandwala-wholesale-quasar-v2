@@ -11955,6 +11955,10 @@ export type Database = {
         Args: { p_tenant_id: number }
         Returns: Json
       }
+      get_dropship_order_detail_v2: {
+        Args: { p_order_id: number; p_tenant_id: number }
+        Returns: Json
+      }
       get_dropship_review_cart: { Args: { p_shop_id: number }; Returns: Json }
       get_dropship_shop_cart: { Args: { p_shop_id: number }; Returns: Json }
       get_dropship_shop_readiness: {

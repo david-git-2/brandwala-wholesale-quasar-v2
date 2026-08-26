@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useQuery, useQueryClient } from '@tanstack/vue-query';
+import { useQueryClient } from '@tanstack/vue-query';
 import { supabase } from 'src/boot/supabase';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { shopOrderRepository } from '../repositories/shopOrderRepository';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
-import { DROPSHIP_ORDER_DETAIL_V2_DUMMY } from '../fixtures/dropshipOrderDetailV2Dummy';
-import { DROPSHIP_ORDER_DETAIL_V2_PROCESSING_ROUTE } from '../composables/useDropshipOrderDetailUiToggle';
-import DropshipOrderDetailUiToggle from '../components/DropshipOrderDetailUiToggle.vue';
+import { DROPSHIP_ORDER_DETAIL_PROCESSING_ROUTE } from '../composables/dropshipOrderDetailRoutes';
+import { useDropshipOrderDetailV2Query } from '../composables/useDropshipOrderDetailV2Query';
+import { useDropshipOrderStatusRedirect } from '../composables/useDropshipOrderStatusRedirect';
 import DropshipOrderConfirmedInvoicePaper from '../components/DropshipOrderConfirmedInvoicePaper.vue';
 import {
   showErrorNotification,
@@ -20,38 +19,32 @@ const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const queryClient = useQueryClient();
-const useDummyData = ref(true);
 const advancingStatus = ref(false);
 
-const tenantId = computed(() => authStore.tenantId ?? 0);
 const tenantSlug = computed(() =>
   typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : null,
 );
 const orderId = computed(() => Number(route.params.id || 0));
 
-const orderDetailQuery = useQuery({
-  queryKey: computed(() => shopOrderQueryKeys.detail(tenantSlug.value, orderId.value)),
-  enabled: computed(() => !useDummyData.value && tenantId.value > 0 && orderId.value > 0),
-  staleTime: 15_000,
-  queryFn: async () => shopOrderRepository.getShopOrderById(tenantId.value, orderId.value),
-});
+const orderDetailQuery = useDropshipOrderDetailV2Query({ tenantSlug, orderId });
 
-const order = computed(() => {
-  if (useDummyData.value) {
-    return DROPSHIP_ORDER_DETAIL_V2_DUMMY.order;
-  }
-  return orderDetailQuery.data.value?.order ?? null;
-});
-const orderItems = computed(() =>
-  useDummyData.value ? DROPSHIP_ORDER_DETAIL_V2_DUMMY.items : orderDetailQuery.data.value?.items ?? [],
-);
+const order = computed(() => orderDetailQuery.data.value?.order ?? null);
+const orderItems = computed(() => orderDetailQuery.data.value?.items ?? []);
 const isConfirmed = computed(() => order.value?.status === 'confirmed');
-const isLoading = computed(() => !useDummyData.value && orderDetailQuery.isLoading.value);
-const loadError = computed(() => (!useDummyData.value ? orderDetailQuery.error.value : null));
+const isLoading = computed(() => orderDetailQuery.isLoading.value);
+const loadError = computed(() => orderDetailQuery.error.value);
+
+useDropshipOrderStatusRedirect({
+  expectedView: 'confirmed',
+  status: computed(() => order.value?.status ?? null),
+  orderId,
+  tenantSlug,
+  enabled: computed(() => !isLoading.value && !!order.value),
+});
 
 const goToProcessingPage = () => {
   void router.push({
-    name: DROPSHIP_ORDER_DETAIL_V2_PROCESSING_ROUTE,
+    name: DROPSHIP_ORDER_DETAIL_PROCESSING_ROUTE,
     params: {
       id: orderId.value,
       tenantSlug: route.params.tenantSlug,
@@ -64,12 +57,6 @@ const advanceToProcessing = async () => {
 
   advancingStatus.value = true;
   try {
-    if (useDummyData.value) {
-      showSuccessNotification('Preview: opening processing desk');
-      goToProcessingPage();
-      return;
-    }
-
     const { data, error } = await supabase.rpc('advance_dropship_order_status', {
       p_order_id: order.value.id,
       p_target_status: 'processing',
@@ -81,7 +68,7 @@ const advanceToProcessing = async () => {
 
     showSuccessNotification('Status updated to processing');
     await queryClient.invalidateQueries({
-      queryKey: shopOrderQueryKeys.detail(tenantSlug.value, orderId.value),
+      queryKey: shopOrderQueryKeys.dropshipDetailV2(authStore.tenantId ?? 0, orderId.value),
     });
     goToProcessingPage();
   } catch (err) {
@@ -95,44 +82,6 @@ const advanceToProcessing = async () => {
 <template>
   <q-page class="bw-page dropship-order-detail-v2">
     <div class="bw-page__stack">
-      <DropshipOrderDetailUiToggle />
-
-      <q-banner v-if="useDummyData" dense rounded class="bg-blue-1 text-blue-9 dropship-order-detail-v2__dummy-banner">
-        <template #avatar>
-          <q-icon name="ph ph-test-tube" color="blue-8" />
-        </template>
-        <span class="text-caption">Showing sample invoice data for UI preview.</span>
-        <template #action>
-          <q-toggle
-            v-model="useDummyData"
-            dense
-            color="primary"
-            label="Sample data"
-            left-label
-            class="text-caption text-weight-medium"
-          />
-        </template>
-      </q-banner>
-
-      <q-banner
-        v-else
-        dense
-        rounded
-        class="bg-grey-2 text-grey-8 dropship-order-detail-v2__dummy-banner"
-      >
-        <span class="text-caption">Live order data from API.</span>
-        <template #action>
-          <q-toggle
-            v-model="useDummyData"
-            dense
-            color="primary"
-            label="Sample data"
-            left-label
-            class="text-caption text-weight-medium"
-          />
-        </template>
-      </q-banner>
-
       <section v-if="isLoading" class="dropship-order-detail-v2__loading">
         <q-skeleton type="rect" height="520px" class="dropship-order-detail-v2__paper-skeleton" />
       </section>
@@ -187,10 +136,6 @@ const advanceToProcessing = async () => {
 <style scoped>
 .dropship-order-detail-v2 {
   background: #eef1f4;
-}
-
-.dropship-order-detail-v2__dummy-banner {
-  border: 1px solid rgba(59, 130, 246, 0.2);
 }
 
 .dropship-order-detail-v2__paper-skeleton {

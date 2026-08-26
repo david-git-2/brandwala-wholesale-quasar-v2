@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import DropshipOrderDetailUiToggle from '../components/DropshipOrderDetailUiToggle.vue';
+import { computed, reactive, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import DropshipOrderConfirmedInvoicePaper from '../components/DropshipOrderConfirmedInvoicePaper.vue';
-import { DROPSHIP_ORDER_DETAIL_V2_DUMMY } from '../fixtures/dropshipOrderDetailV2Dummy';
+import DropshipOrderDialogs from '../components/DropshipOrderDialogs.vue';
 import type { CourierServiceRow } from '../repositories/dropshipCourierRepository';
 import {
-  createDropshipInvoiceSummaryFromOrder,
+  createEmptyDropshipInvoiceSummary,
   type DropshipInvoiceSummaryState,
 } from '../utils/dropshipInvoiceSummary';
 import type {
@@ -14,66 +13,96 @@ import type {
   DropshipInvoiceDeliveredQuantitiesState,
   DropshipInvoicePickupState,
 } from '../utils/dropshipInvoiceFulfillment';
-import { createDeliveredQuantitiesFromItems } from '../utils/dropshipInvoiceFulfillment';
-import { DROPSHIP_ORDER_DETAIL_V2_READY_FOR_PICKUP_ROUTE } from '../composables/useDropshipOrderDetailUiToggle';
+import { useDropshipOrderDetailV2Query } from '../composables/useDropshipOrderDetailV2Query';
+import { useDropshipOrderProcessingDesk } from '../composables/useDropshipOrderProcessingDesk';
+import { useDropshipOrderStatusRedirect } from '../composables/useDropshipOrderStatusRedirect';
 
 const route = useRoute();
-const router = useRouter();
-const useDummyData = ref(true);
 
-const order = computed(() => {
-  if (!useDummyData.value) return null;
-  return {
-    ...DROPSHIP_ORDER_DETAIL_V2_DUMMY.order,
-    status: 'processing' as const,
-  };
-});
-
-const orderItems = computed(() =>
-  useDummyData.value ? DROPSHIP_ORDER_DETAIL_V2_DUMMY.items : [],
+const tenantSlug = computed(() =>
+  typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : null,
 );
+const orderId = computed(() => Number(route.params.id || 0));
 
-const summaryForm = ref<DropshipInvoiceSummaryState>(
-  createDropshipInvoiceSummaryFromOrder(DROPSHIP_ORDER_DETAIL_V2_DUMMY.order),
-);
+const orderDetailQuery = useDropshipOrderDetailV2Query({ tenantSlug, orderId });
 
-const deliveredQuantitiesForm = ref<DropshipInvoiceDeliveredQuantitiesState>(
-  createDeliveredQuantitiesFromItems(DROPSHIP_ORDER_DETAIL_V2_DUMMY.items),
-);
+const order = computed(() => orderDetailQuery.data.value?.order ?? null);
+const orderItems = computed(() => orderDetailQuery.data.value?.items ?? []);
 
-const couriers = ref<CourierServiceRow[]>(DROPSHIP_ORDER_DETAIL_V2_DUMMY.courierServices);
-const merchantOptions = DROPSHIP_ORDER_DETAIL_V2_DUMMY.merchantOptions;
+const summaryForm = ref<DropshipInvoiceSummaryState>(createEmptyDropshipInvoiceSummary());
+const deliveredQuantitiesForm = ref<DropshipInvoiceDeliveredQuantitiesState>({});
+const couriers = ref<CourierServiceRow[]>([]);
 
 const pickupForm = reactive<DropshipInvoicePickupState>({
-  merchant_id: DROPSHIP_ORDER_DETAIL_V2_DUMMY.pickup.merchant_id,
-  sender_name: DROPSHIP_ORDER_DETAIL_V2_DUMMY.pickup.sender_name,
-  pickup_phone: DROPSHIP_ORDER_DETAIL_V2_DUMMY.pickup.pickup_phone,
-  pickup_address: DROPSHIP_ORDER_DETAIL_V2_DUMMY.pickup.pickup_address,
+  merchant_id: null,
+  sender_name: '',
+  pickup_phone: '',
+  pickup_address: '',
 });
 
 const courierForm = reactive<DropshipInvoiceCourierState>({
-  courier_service_id: DROPSHIP_ORDER_DETAIL_V2_DUMMY.courierForm.courier_service_id,
-  courier_awb_number: DROPSHIP_ORDER_DETAIL_V2_DUMMY.courierForm.courier_awb_number,
-  tracking_url: DROPSHIP_ORDER_DETAIL_V2_DUMMY.courierForm.tracking_url,
-  allow_open_box: DROPSHIP_ORDER_DETAIL_V2_DUMMY.courierForm.allow_open_box,
-  cod_charge: DROPSHIP_ORDER_DETAIL_V2_DUMMY.courierForm.cod_charge,
+  courier_service_id: null,
+  courier_awb_number: '',
+  tracking_url: '',
+  allow_open_box: false,
+  cod_charge: 0,
 });
 
-const merchantPickupPresets: Record<
-  string,
-  Pick<DropshipInvoicePickupState, 'sender_name' | 'pickup_phone' | 'pickup_address'>
-> = {
-  'dummy-merchant-rahim': {
-    sender_name: 'Rahim Electronics Warehouse',
-    pickup_phone: '01987654321',
-    pickup_address: 'Shop 12, Multiplan Center, Elephant Road, Dhaka 1205',
+watch(
+  () => orderDetailQuery.data.value,
+  (detail) => {
+    if (!detail) return;
+
+    summaryForm.value = { ...detail.summary };
+    Object.assign(pickupForm, detail.fulfillment.pickup);
+    Object.assign(courierForm, detail.fulfillment.courier);
+    deliveredQuantitiesForm.value = Object.fromEntries(
+      detail.items.map((item) => [
+        item.id,
+        item.confirmed_quantity != null ? item.confirmed_quantity : item.quantity,
+      ]),
+    );
+    couriers.value = detail.lookups.courier_services;
   },
-  'dummy-merchant-metro': {
-    sender_name: 'Metro Gadget Hub',
-    pickup_phone: '01811223344',
-    pickup_address: 'Level 3, Bashundhara City, Panthapath, Dhaka 1205',
-  },
-};
+  { immediate: true },
+);
+
+const isLoading = computed(() => orderDetailQuery.isLoading.value);
+const loadError = computed(() => orderDetailQuery.error.value);
+
+const processingDesk = useDropshipOrderProcessingDesk({
+  tenantSlug,
+  orderId,
+  order,
+  orderItems,
+  summaryForm,
+  pickupForm,
+  courierForm,
+  deliveredQuantitiesForm,
+  couriers,
+  refetchOrderDetail: () => orderDetailQuery.refetch(),
+});
+
+const {
+  saving,
+  advancingStatus,
+  confirmB2bInvoiceDialogOpen,
+  merchantOptions,
+  finance,
+  formatBdt,
+  saveProcessingDesk,
+  onReadyForPickupClick,
+  executeAdvanceToReadyForPickup,
+  onMerchantSelect,
+} = processingDesk;
+
+useDropshipOrderStatusRedirect({
+  expectedView: 'processing',
+  status: computed(() => order.value?.status ?? null),
+  orderId,
+  tenantSlug,
+  enabled: computed(() => !isLoading.value && !!order.value),
+});
 
 const courierOptions = computed(() =>
   couriers.value.map((courier) => ({ label: courier.name, value: courier.id })),
@@ -83,8 +112,10 @@ const selectedCourier = computed(() =>
   couriers.value.find((courier) => courier.id === courierForm.courier_service_id),
 );
 
-const deliveryZoneLabel = computed(() =>
-  order.value?.shipping_district?.trim().toLowerCase() === 'dhaka' ? 'Inside Dhaka' : 'Outside Dhaka',
+const deliveryZoneLabel = computed(
+  () =>
+    orderDetailQuery.data.value?.computed.delivery_zone_label ??
+    (order.value?.shipping_district?.trim().toLowerCase() === 'dhaka' ? 'Inside Dhaka' : 'Outside Dhaka'),
 );
 
 const suggestedDeliveryFee = computed(() => {
@@ -110,14 +141,9 @@ const codRateLabel = computed(() => {
   return courier.cod_fee_mode.replace(/_/g, ' ');
 });
 
-const onMerchantSelect = (merchantId: string | null) => {
-  if (!merchantId) return;
-  const preset = merchantPickupPresets[merchantId];
-  if (!preset) return;
-  pickupForm.sender_name = preset.sender_name;
-  pickupForm.pickup_phone = preset.pickup_phone;
-  pickupForm.pickup_address = preset.pickup_address;
-};
+const canMarkReadyForPickup = computed(
+  () => orderDetailQuery.data.value?.permissions.can_mark_ready_for_pickup ?? false,
+);
 
 const onCourierChange = () => {
   const courier = selectedCourier.value;
@@ -139,86 +165,95 @@ const onCourierChange = () => {
     );
   }
 };
-
-const goToReadyForPickupPage = () => {
-  void router.push({
-    name: DROPSHIP_ORDER_DETAIL_V2_READY_FOR_PICKUP_ROUTE,
-    params: {
-      id: route.params.id,
-      tenantSlug: route.params.tenantSlug,
-    },
-  });
-};
 </script>
 
 <template>
   <q-page class="bw-page dropship-order-detail-v2">
     <div class="bw-page__stack">
-      <DropshipOrderDetailUiToggle />
-
-      <q-banner dense rounded class="bg-orange-1 text-orange-10 dropship-order-detail-v2__dummy-banner">
+      <q-banner dense rounded class="bg-orange-1 text-orange-10 dropship-order-detail-v2__info-banner">
         <template #avatar>
           <q-icon name="ph ph-package" color="orange-9" />
         </template>
         <span class="text-caption">
           Processing desk — edit charges, pickup location, and courier before packing.
         </span>
-        <template #action>
-          <q-toggle
-            v-model="useDummyData"
-            dense
-            color="primary"
-            label="Sample data"
-            left-label
-            class="text-caption text-weight-medium"
-          />
-        </template>
       </q-banner>
 
-      <div v-if="order" class="dropship-order-detail-v2__status-actions">
-        <q-btn
-          color="primary"
-          unelevated
-          no-caps
-          icon="ph ph-check-circle"
-          label="Ready for pickup"
-          class="text-weight-bold"
-          style="border-radius: 8px; min-width: 220px"
-          @click="goToReadyForPickupPage"
+      <section v-if="isLoading" class="dropship-order-detail-v2__loading">
+        <q-skeleton type="rect" height="520px" class="dropship-order-detail-v2__paper-skeleton" />
+      </section>
+
+      <section v-else-if="loadError" class="text-caption text-negative">
+        {{ loadError instanceof Error ? loadError.message : 'Failed to load order.' }}
+      </section>
+
+      <template v-else-if="order">
+        <div class="dropship-order-detail-v2__status-actions">
+          <q-btn
+            outline
+            color="primary"
+            unelevated
+            no-caps
+            icon="ph ph-floppy-disk"
+            label="Save changes"
+            class="text-weight-bold"
+            style="border-radius: 8px; min-width: 180px"
+            :loading="saving"
+            @click="saveProcessingDesk()"
+          />
+          <q-btn
+            v-if="canMarkReadyForPickup"
+            color="primary"
+            unelevated
+            no-caps
+            icon="ph ph-check-circle"
+            label="Ready for pickup"
+            class="text-weight-bold"
+            style="border-radius: 8px; min-width: 220px"
+            :loading="advancingStatus || saving"
+            @click="onReadyForPickupClick()"
+          />
+        </div>
+
+        <DropshipOrderConfirmedInvoicePaper
+          :order="order"
+          :order-items="orderItems"
+          editable-summary
+          show-delivered-quantities
+          show-fulfillment-blocks
+          v-model:summary="summaryForm"
+          v-model:pickup="pickupForm"
+          v-model:courier="courierForm"
+          v-model:delivered-quantities="deliveredQuantitiesForm"
+          :merchant-options="merchantOptions"
+          :courier-options="courierOptions"
+          :delivery-zone-label="deliveryZoneLabel"
+          :suggested-delivery-fee="suggestedDeliveryFee"
+          :cod-rate-label="codRateLabel"
+          @merchant-select="onMerchantSelect"
+          @courier-change="onCourierChange"
         />
-      </div>
 
-      <DropshipOrderConfirmedInvoicePaper
-        v-if="order"
-        :order="order"
-        :order-items="orderItems"
-        editable-summary
-        show-delivered-quantities
-        show-fulfillment-blocks
-        v-model:summary="summaryForm"
-        v-model:pickup="pickupForm"
-        v-model:courier="courierForm"
-        v-model:delivered-quantities="deliveredQuantitiesForm"
-        :merchant-options="merchantOptions"
-        :courier-options="courierOptions"
-        :delivery-zone-label="deliveryZoneLabel"
-        :suggested-delivery-fee="suggestedDeliveryFee"
-        :cod-rate-label="codRateLabel"
-        @merchant-select="onMerchantSelect"
-        @courier-change="onCourierChange"
-      />
-
-      <q-card v-else flat bordered class="form-card">
-        <q-card-section class="column items-center justify-center q-pa-xl text-center">
-          <q-icon name="ph ph-wrench" size="48px" color="grey-5" class="q-mb-md" />
-          <div class="text-subtitle1 text-weight-bold text-grey-8 q-mb-xs">
-            Processing view
-          </div>
-          <p class="text-body2 text-grey-6 q-mb-none" style="max-width: 420px">
-            Live order loading will go here.
-          </p>
-        </q-card-section>
-      </q-card>
+        <DropshipOrderDialogs
+          :order="order"
+          :dual-invoice-dialog-open="false"
+          :creating-invoice="false"
+          :confirm-b2b-invoice-dialog-open="confirmB2bInvoiceDialogOpen"
+          :confirm-delete-invoice-dialog-open="false"
+          :updating-status="advancingStatus"
+          :recipient-grand-total="finance.recipientGrandTotal"
+          :delivery-charge-val="finance.deliveryChargeVal"
+          :cod-charge-val="finance.codChargeVal"
+          :accounting-subtotal="finance.accountingSubtotal"
+          :print-charge-val="finance.printChargeVal"
+          :packing-charge-val="finance.packingChargeVal"
+          :estimated-profit="finance.estimatedProfit"
+          :cod-collect-amount="summaryForm.cod_collect_amount"
+          :format-bdt="formatBdt"
+          @update:confirm-b2b-invoice-dialog-open="(val) => (confirmB2bInvoiceDialogOpen = val)"
+          @execute-status-update="executeAdvanceToReadyForPickup()"
+        />
+      </template>
     </div>
   </q-page>
 </template>
@@ -228,8 +263,14 @@ const goToReadyForPickupPage = () => {
   background: #eef1f4;
 }
 
-.dropship-order-detail-v2__dummy-banner {
+.dropship-order-detail-v2__info-banner {
   border: 1px solid rgba(249, 115, 22, 0.25);
+}
+
+.dropship-order-detail-v2__paper-skeleton {
+  max-width: 920px;
+  margin: 0 auto;
+  border-radius: 2px;
 }
 
 .dropship-order-detail-v2__status-actions {
@@ -238,5 +279,7 @@ const goToReadyForPickupPage = () => {
   width: 100%;
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 </style>

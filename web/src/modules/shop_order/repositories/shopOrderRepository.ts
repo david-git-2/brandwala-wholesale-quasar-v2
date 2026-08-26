@@ -17,6 +17,7 @@ import {
   mapStaffShopOrderDetailToFlat,
   parseStaffShopOrderDetailResponse,
 } from '../utils/staffShopOrderDetailMapper';
+import { mapDropshipOrderDetailV2Response } from '../utils/dropshipOrderDetailV2Mapper';
 
 const listShops = async (
   tenantId: number,
@@ -425,6 +426,128 @@ const getShopOrderById = async (
   return mapStaffShopOrderDetailToFlat(parseStaffShopOrderDetailResponse(data));
 };
 
+const getDropshipOrderDetailV2 = async (tenantId: number, orderId: number) => {
+  const { data, error } = await supabase.rpc('get_dropship_order_detail_v2', {
+    p_tenant_id: tenantId,
+    p_order_id: orderId,
+  });
+  if (error) throw error;
+
+  return mapDropshipOrderDetailV2Response(data);
+};
+
+export type SaveDropshipProcessingDeskInput = {
+  tenantId: number;
+  orderId: number;
+  order: ShopOrder;
+  summary: {
+    delivery_charge_amount: number;
+    deduct_delivery_from_margin: boolean;
+    cod_charge_amount: number;
+    deduct_cod_from_margin: boolean;
+    print_charge_amount: number;
+    deduct_print_from_margin: boolean;
+    packing_charge_amount: number;
+    deduct_packing_from_margin: boolean;
+    discount_amount: number;
+    cod_collect_amount: number;
+  };
+  pickup: {
+    sender_name: string;
+    pickup_phone: string;
+    pickup_address: string;
+  };
+  courier: {
+    courier_service_id: string | null;
+    courier_awb_number: string;
+    tracking_url: string;
+    allow_open_box: boolean;
+  };
+  deliveredQuantities: Record<number, number>;
+  deliveryZone: 'inside_dhaka' | 'outside_dhaka';
+};
+
+const saveDropshipProcessingDesk = async (input: SaveDropshipProcessingDeskInput): Promise<void> => {
+  const {
+    tenantId,
+    orderId,
+    order,
+    summary,
+    pickup,
+    courier,
+    deliveredQuantities,
+    deliveryZone,
+  } = input;
+
+  const { error: chargesError } = await supabase.rpc('update_shop_order_charges_for_staff', {
+    p_tenant_id: tenantId,
+    p_order_id: orderId,
+    p_payload: {
+      delivery_charge_amount: summary.delivery_charge_amount,
+      deduct_delivery_from_margin: summary.deduct_delivery_from_margin,
+      cod_charge_amount: summary.cod_charge_amount,
+      deduct_cod_from_margin: summary.deduct_cod_from_margin,
+      print_charge_amount: summary.print_charge_amount,
+      deduct_print_from_margin: summary.deduct_print_from_margin,
+      packing_charge_amount: summary.packing_charge_amount,
+      deduct_packing_from_margin: summary.deduct_packing_from_margin,
+    },
+  });
+  if (chargesError) throw chargesError;
+
+  const { error: orderError } = await supabase
+    .from('shop_orders')
+    .update({
+      discount_amount: summary.discount_amount,
+      cod_collect_amount: summary.cod_collect_amount,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', orderId)
+    .eq('tenant_id', tenantId);
+  if (orderError) throw orderError;
+
+  const { error: consignmentError } = await supabase.rpc('update_dropship_consignment', {
+    p_order_id: orderId,
+    p_cod_collect_amount: summary.cod_collect_amount,
+    p_package_weight_band: order.package_weight_band ?? 'under_1kg',
+    p_delivery_zone: deliveryZone,
+    p_sender_name: pickup.sender_name,
+    p_pickup_phone: pickup.pickup_phone,
+    p_pickup_address: pickup.pickup_address,
+    p_allow_open_box: courier.allow_open_box,
+    p_courier_service_id: courier.courier_service_id,
+    p_courier_awb_number: courier.courier_awb_number,
+    p_tracking_url: courier.tracking_url,
+    p_courier_tracking_number: courier.courier_awb_number,
+    p_courier_cost_amount: summary.delivery_charge_amount,
+    p_delivery_charge_amount: summary.delivery_charge_amount,
+    p_cod_charge_amount: summary.cod_charge_amount,
+    p_courier_order_ref: order.order_no,
+    p_recipient_name: order.recipient_name,
+    p_recipient_phone: order.recipient_phone,
+    p_recipient_phone_secondary: order.recipient_phone_secondary,
+    p_shipping_address: order.shipping_address,
+    p_shipping_district: order.shipping_district,
+    p_shipping_thana: order.shipping_thana,
+  });
+  if (consignmentError) throw consignmentError;
+
+  const itemUpdates = Object.entries(deliveredQuantities).map(([itemId, quantity]) =>
+    supabase
+      .from('shop_order_items')
+      .update({
+        confirmed_quantity: quantity,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', Number(itemId))
+      .eq('order_id', orderId),
+  );
+
+  const itemResults = await Promise.all(itemUpdates);
+  const itemError = itemResults.find((result) => result.error)?.error;
+  if (itemError) throw itemError;
+};
+
 const getCustomerShopOrder = async (
   tenantId: number,
   orderId: number,
@@ -760,6 +883,8 @@ export const shopOrderRepository = {
   listShopOrdersForStaff,
   listDropshipShopOrdersForStaff,
   getShopOrderById,
+  getDropshipOrderDetailV2,
+  saveDropshipProcessingDesk,
   getCustomerShopOrder,
   placeShopOrderForProcurement,
   fulfillShopOrderToInvoice,
