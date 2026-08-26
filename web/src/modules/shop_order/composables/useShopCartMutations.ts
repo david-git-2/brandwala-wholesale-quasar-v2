@@ -11,6 +11,10 @@ import { handleApiFailure, showSuccessNotification } from 'src/utils/appFeedback
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { resolveShopCartItemMoq } from '../utils/cartQuantityUtils';
 import { sumCartSubtotal } from '../utils/cartPriceUtils';
+import {
+  mergeDropshipCartFromCatalogResponse,
+} from '../utils/dropshipCartCacheUtils';
+import type { DropshipCartData } from '../repositories/dropshipCartRepository';
 import type { ShopType } from '../types';
 
 export function useShopCartMutations() {
@@ -51,6 +55,35 @@ export function useShopCartMutations() {
         queryKey: shopOrderQueryKeys.cart(tenantId.value, shopId),
       });
     }
+  };
+
+  const patchDropshipCartCache = (shopId: number, data: any): DropshipCartData | null => {
+    let merged: DropshipCartData | null = null;
+    queryClient.setQueryData(
+      shopOrderQueryKeys.dropshipCart(tenantId.value, shopId),
+      (old: DropshipCartData | null | undefined) => {
+        merged = mergeDropshipCartFromCatalogResponse(old, data);
+        return merged ?? old ?? null;
+      },
+    );
+    return merged;
+  };
+
+  const updateDropshipActiveCartsCache = (shopId: number, dropshipData: DropshipCartData | null) => {
+    if (!dropshipData) return;
+
+    const itemCount = dropshipData.totals.item_count;
+    const cartTotal = dropshipData.totals.purchase_subtotal;
+
+    queryClient.setQueryData(
+      shopOrderQueryKeys.activeCarts(tenantId.value),
+      (old: ActiveCartItem[] | undefined) => {
+        if (!old) return old;
+        return old.map((c) =>
+          c.shop_id === shopId ? { ...c, item_count: itemCount, cart_total: cartTotal } : c,
+        );
+      },
+    );
   };
 
   const invalidateActiveCarts = () => {
@@ -130,6 +163,20 @@ export function useShopCartMutations() {
     );
   };
 
+  const syncCartCachesAfterMutation = (
+    shopId: number,
+    data: any,
+    shopMeta?: ActiveCartShopMeta,
+  ) => {
+    updateCartCache(shopId, data);
+    const dropshipData = patchDropshipCartCache(shopId, data);
+    if (dropshipData) {
+      updateDropshipActiveCartsCache(shopId, dropshipData);
+      return;
+    }
+    updateActiveCartsCache(shopId, data, shopMeta);
+  };
+
   const addItemMutation = useMutation({
     mutationFn: async (params: {
       shopId: number;
@@ -157,11 +204,7 @@ export function useShopCartMutations() {
       return { data: res.data, shopId: params.shopId, shopMeta: params.shopMeta };
     },
     onSuccess: ({ data, shopId, shopMeta }) => {
-      updateCartCache(shopId, data);
-      updateActiveCartsCache(shopId, data, shopMeta);
-      void queryClient.invalidateQueries({
-        queryKey: shopOrderQueryKeys.dropshipCart(tenantId.value, shopId),
-      });
+      syncCartCachesAfterMutation(shopId, data, shopMeta);
       showSuccessNotification('Item added to cart.');
     },
   });
@@ -176,11 +219,7 @@ export function useShopCartMutations() {
       return { data: res.data, shopId: params.shopId };
     },
     onSuccess: ({ data, shopId }) => {
-      updateCartCache(shopId, data);
-      updateActiveCartsCache(shopId, data);
-      void queryClient.invalidateQueries({
-        queryKey: shopOrderQueryKeys.dropshipCart(tenantId.value, shopId),
-      });
+      syncCartCachesAfterMutation(shopId, data);
     },
   });
 
@@ -194,11 +233,7 @@ export function useShopCartMutations() {
       return { data: res.data, shopId: params.shopId };
     },
     onSuccess: ({ data, shopId }) => {
-      updateCartCache(shopId, data);
-      updateActiveCartsCache(shopId, data);
-      void queryClient.invalidateQueries({
-        queryKey: shopOrderQueryKeys.dropshipCart(tenantId.value, shopId),
-      });
+      syncCartCachesAfterMutation(shopId, data);
       showSuccessNotification('Item removed from cart.');
     },
   });

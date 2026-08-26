@@ -57,6 +57,7 @@ export function useDropshipShopCartQuery(shopId: Ref<number | null>) {
     const firstItem = items.value[0];
     if (firstItem) {
       return (
+        cartPriceSymbol(firstItem.listing_sell_price) ||
         cartPriceSymbol(firstItem.purchase_price) ||
         cartPriceSymbol(firstItem.resell_price) ||
         '৳'
@@ -70,7 +71,7 @@ export function useDropshipShopCartQuery(shopId: Ref<number | null>) {
   const resellSubtotal = computed(() => totals.value?.resell_subtotal ?? 0);
 
   const getPurchaseUnitAmount = (item: (typeof items.value)[number]) =>
-    cartPriceAmount(item.purchase_price);
+    cartPriceAmount(item.listing_sell_price) || cartPriceAmount(item.purchase_price);
 
   const getLinePurchaseTotal = (item: (typeof items.value)[number]) =>
     Number(item.line_totals?.purchase_subtotal ?? getPurchaseUnitAmount(item) * item.quantity);

@@ -3834,10 +3834,10 @@ begin
           'minimum_quantity', ci.minimum_quantity,
           'minimum_order_quantity', p.minimum_order_quantity,
           'purchase_price', jsonb_build_object(
-            'amount', ci.unit_list_price_amount,
-            'currency_id', ci.unit_list_price_currency_id,
-            'code', buy_gc.code,
-            'symbol', buy_gc.symbol
+            'amount', ci.unit_sell_price_amount,
+            'currency_id', ci.unit_sell_price_currency_id,
+            'code', sell_gc.code,
+            'symbol', sell_gc.symbol
           ),
           'listing_sell_price', jsonb_build_object(
             'amount', ci.unit_sell_price_amount,
@@ -3858,7 +3858,7 @@ begin
             'symbol', min_gc.symbol
           ),
           'line_totals', jsonb_build_object(
-            'purchase_subtotal', ci.quantity * coalesce(ci.unit_list_price_amount, 0),
+            'purchase_subtotal', ci.quantity * coalesce(ci.unit_sell_price_amount, 0),
             'resell_subtotal', ci.quantity * coalesce(ci.customer_sell_price_amount, ci.unit_sell_price_amount, 0)
           ),
           'is_resell_below_floor', (
@@ -3872,20 +3872,19 @@ begin
       jsonb_build_object(
         'item_count', coalesce(sum(ci.quantity), 0),
         'line_count', count(ci.id),
-        'purchase_subtotal', coalesce(sum(ci.quantity * coalesce(ci.unit_list_price_amount, 0)), 0),
+        'purchase_subtotal', coalesce(sum(ci.quantity * coalesce(ci.unit_sell_price_amount, 0)), 0),
         'resell_subtotal', coalesce(sum(
           ci.quantity * coalesce(ci.customer_sell_price_amount, ci.unit_sell_price_amount, 0)
         ), 0),
         'estimated_profit', coalesce(sum(
           ci.quantity * (
             coalesce(ci.customer_sell_price_amount, ci.unit_sell_price_amount, 0)
-            - coalesce(ci.unit_list_price_amount, 0)
+            - coalesce(ci.unit_sell_price_amount, 0)
           )
         ), 0)
       ) as totals
     from public.shop_cart_items ci
     left join public.products p on p.id = ci.product_id
-    left join public.global_currencies buy_gc on buy_gc.id = ci.unit_list_price_currency_id
     left join public.global_currencies sell_gc on sell_gc.id = ci.unit_sell_price_currency_id
     left join public.global_currencies cust_gc on cust_gc.id = ci.customer_sell_price_currency_id
     left join public.global_currencies min_gc on min_gc.id = ci.unit_minimum_sell_price_currency_id

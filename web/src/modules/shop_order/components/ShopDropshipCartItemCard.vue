@@ -3,10 +3,21 @@
     <q-card-section class="q-pa-sm q-pa-md-sm">
       <div class="row items-center no-wrap q-col-gutter-sm">
         <div class="col-auto">
-          <q-avatar rounded class="dropship-cart-item__image bg-grey-2">
-            <q-img v-if="imageUrl" :src="imageUrl" :alt="name" />
-            <q-icon v-else name="ph ph-image" color="grey-4" class="dropship-cart-item__image-fallback" />
-          </q-avatar>
+          <div class="dropship-cart-item__image bg-grey-2">
+            <q-img
+              v-if="imageUrl"
+              :src="imageUrl"
+              :alt="name"
+              fit="contain"
+              class="dropship-cart-item__image-img"
+            />
+            <q-icon
+              v-else
+              name="ph ph-image"
+              color="grey-4"
+              class="dropship-cart-item__image-fallback"
+            />
+          </div>
         </div>
 
         <div class="col min-width-0">
@@ -14,29 +25,42 @@
             {{ name }}
           </div>
           <div class="row items-center justify-between q-mt-xs">
-            <div class="row items-center no-wrap quantity-controls">
-              <q-btn
-                flat
-                round
-                dense
-                size="xs"
-                icon="ph ph-minus"
-                color="grey-7"
-                :disable="disableQty || quantity <= minQty"
-                @click="$emit('update:quantity', adjustQty(-minQty))"
-              />
-              <div class="quantity-value text-weight-bold text-center text-grey-9">
-                {{ quantity }}
+            <div class="column q-gutter-y-xs">
+              <div class="row items-center no-wrap quantity-controls">
+                <q-btn
+                  flat
+                  round
+                  dense
+                  size="xs"
+                  icon="ph ph-minus"
+                  color="grey-7"
+                  :disable="disableQty || quantity <= minQty"
+                  @click="$emit('update:quantity', adjustQty(-minQty))"
+                />
+                <div class="quantity-value text-weight-bold text-center text-grey-9">
+                  {{ quantity }}
+                </div>
+                <q-btn
+                  flat
+                  round
+                  dense
+                  size="xs"
+                  icon="ph ph-plus"
+                  color="grey-7"
+                  :disable="disableQty"
+                  @click="$emit('update:quantity', adjustQty(minQty))"
+                />
               </div>
               <q-btn
-                flat
-                round
-                dense
+                v-if="showSaveQty"
+                color="primary"
                 size="xs"
-                icon="ph ph-plus"
-                color="grey-7"
-                :disable="disableQty"
-                @click="$emit('update:quantity', adjustQty(minQty))"
+                unelevated
+                no-caps
+                class="pill-btn q-px-sm self-start"
+                :label="$t('shop.save_qty')"
+                :loading="isSaving"
+                @click="$emit('save-quantity')"
               />
             </div>
             <div class="text-body2 text-weight-bold text-grey-9">
@@ -62,17 +86,22 @@ const props = withDefaults(
     currencySymbol?: string;
     minQty?: number;
     disableQty?: boolean;
+    showSaveQty?: boolean;
+    isSaving?: boolean;
   }>(),
   {
     imageUrl: null,
     currencySymbol: '৳',
     minQty: 1,
     disableQty: false,
+    showSaveQty: false,
+    isSaving: false,
   },
 );
 
 defineEmits<{
   (e: 'update:quantity', value: number): void;
+  (e: 'save-quantity'): void;
 }>();
 
 const lineTotal = computed(() => props.price * props.quantity);
@@ -91,7 +120,18 @@ const adjustQty = (delta: number) => adjustQtyByMoq(props.quantity, delta, props
   width: 1in;
   height: 1in;
   min-width: 1in;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid rgba(34, 56, 101, 0.08);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.dropship-cart-item__image-img {
+  width: 100%;
+  height: 100%;
 }
 
 .dropship-cart-item__image-fallback {

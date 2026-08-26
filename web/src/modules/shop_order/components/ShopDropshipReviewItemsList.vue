@@ -23,10 +23,16 @@
       >
         <div class="col col-product">
           <div class="row items-start no-wrap q-col-gutter-sm">
-            <q-avatar rounded class="dropship-review-row__image bg-grey-2">
-              <q-img v-if="item.imageUrl" :src="item.imageUrl" :alt="item.name" />
+            <div class="dropship-review-row__image bg-grey-2">
+              <q-img
+                v-if="item.imageUrl"
+                :src="item.imageUrl"
+                :alt="item.name"
+                fit="contain"
+                class="dropship-review-row__image-img"
+              />
               <q-icon v-else name="ph ph-image" color="grey-4" class="dropship-review-row__image-fallback" />
-            </q-avatar>
+            </div>
             <div class="col min-width-0">
               <div class="text-body2 text-weight-bold text-grey-9 dropship-review-row__name">
                 {{ item.name }}
@@ -187,7 +193,18 @@ const onResellInput = (itemId: number, val: string | number | null) => {
   width: 1in;
   height: 1in;
   min-width: 1in;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid rgba(34, 56, 101, 0.08);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.dropship-review-row__image-img {
+  width: 100%;
+  height: 100%;
 }
 
 .dropship-review-row__image-fallback {

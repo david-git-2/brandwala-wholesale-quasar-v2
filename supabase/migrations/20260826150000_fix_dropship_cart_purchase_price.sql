@@ -1,4 +1,4 @@
--- Dropship cart read RPC with explicit purchase / resell price contract.
+-- Fix dropship cart purchase_price: merchant cost is listing sell (unit_sell_price), not product list price.
 
 create or replace function public.get_dropship_shop_cart(p_shop_id bigint)
 returns jsonb
