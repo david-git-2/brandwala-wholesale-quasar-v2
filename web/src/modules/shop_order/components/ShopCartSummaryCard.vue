@@ -101,7 +101,7 @@
         </div>
       </template>
 
-      <span class="full-width gt-xs block">
+      <span class="full-width block">
         <q-btn
           color="primary"
           unelevated

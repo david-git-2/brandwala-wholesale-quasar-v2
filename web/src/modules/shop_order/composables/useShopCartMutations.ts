@@ -159,6 +159,9 @@ export function useShopCartMutations() {
     onSuccess: ({ data, shopId, shopMeta }) => {
       updateCartCache(shopId, data);
       updateActiveCartsCache(shopId, data, shopMeta);
+      void queryClient.invalidateQueries({
+        queryKey: shopOrderQueryKeys.dropshipCart(tenantId.value, shopId),
+      });
       showSuccessNotification('Item added to cart.');
     },
   });
@@ -175,6 +178,9 @@ export function useShopCartMutations() {
     onSuccess: ({ data, shopId }) => {
       updateCartCache(shopId, data);
       updateActiveCartsCache(shopId, data);
+      void queryClient.invalidateQueries({
+        queryKey: shopOrderQueryKeys.dropshipCart(tenantId.value, shopId),
+      });
     },
   });
 
@@ -190,6 +196,9 @@ export function useShopCartMutations() {
     onSuccess: ({ data, shopId }) => {
       updateCartCache(shopId, data);
       updateActiveCartsCache(shopId, data);
+      void queryClient.invalidateQueries({
+        queryKey: shopOrderQueryKeys.dropshipCart(tenantId.value, shopId),
+      });
       showSuccessNotification('Item removed from cart.');
     },
   });

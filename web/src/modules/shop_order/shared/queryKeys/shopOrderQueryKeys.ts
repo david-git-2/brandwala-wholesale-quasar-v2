@@ -12,6 +12,8 @@ export const shopOrderQueryKeys = {
   vendorsList: (tenantId: number) => ['vendor', 'list', { tenantId }] as const,
   activeCarts: (tenantId: number) => ['shopOrder', 'activeCarts', { tenantId }] as const,
   cart: (tenantId: number, shopId: number) => ['shopOrder', 'cart', { tenantId, shopId }] as const,
+  dropshipCart: (tenantId: number, shopId: number) =>
+    ['shopOrder', 'dropshipCart', { tenantId, shopId }] as const,
   storefrontCatalog: (
     tenantId: number,
     shopSlug: string,

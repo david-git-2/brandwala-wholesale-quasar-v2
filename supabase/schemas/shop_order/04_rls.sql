@@ -299,6 +299,7 @@ GRANT ALL ON FUNCTION "public"."get_my_dropship_wallet_summary"() TO "authentica
 
 
 GRANT ALL ON FUNCTION "public"."get_or_create_shop_cart"("p_shop_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_dropship_shop_cart"("p_shop_id" bigint) TO "authenticated";
 
 
 GRANT ALL ON FUNCTION "public"."get_shop_bootstrap_context"("p_email" "text", "p_tenant_id" bigint, "p_customer_group_member_id" bigint) TO "authenticated";

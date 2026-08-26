@@ -9,7 +9,6 @@
         :current-shop-cart-info="currentShopCartInfo"
         :selected-shop-id="selectedShopId"
         :format-active-cart-total="formatActiveCartTotal"
-        @go-back="goBack"
         @select-shop-cart="selectShopCart"
       />
 
@@ -129,38 +128,6 @@
         </div>
       </div>
     </div>
-
-    <q-page-sticky
-      v-if="items.length > 0 && !showCartPicker && !isCartsLoading && !isCartLoading"
-      position="bottom"
-      expand
-      class="lt-sm"
-    >
-      <div class="cart-mobile-cta row items-center no-wrap q-px-md q-py-sm">
-        <div v-if="canSeePrices" class="col">
-          <div class="text-caption text-grey-6">
-            {{ cart?.shop_type === 'dropship' ? $t('shop.recipient_pay_total') : $t('shop.estimated_total') }}
-          </div>
-          <div class="text-subtitle1 text-weight-bold text-primary">
-            {{ cart?.shop_type === 'dropship' ? formatAmount(recipientGrandTotal) : formatCartTotal() }}
-          </div>
-        </div>
-        <span>
-          <q-btn
-            color="primary"
-            unelevated
-            no-caps
-            :label="$t(checkoutLabelKey)"
-            :loading="isSaving || placingOrder"
-            :disable="checkoutDisabled"
-            @click="handleButtonClick"
-          />
-          <q-tooltip v-if="checkoutDisabled && checkoutDisabledReason">
-            {{ $t(checkoutDisabledReason) }}
-          </q-tooltip>
-        </span>
-      </div>
-    </q-page-sticky>
   </q-page>
 </template>
 
@@ -265,17 +232,6 @@ export default {
 <style scoped>
 .catalog-banner {
   background: var(--bw-theme-primary-soft);
-}
-
-.cart-mobile-cta {
-  background: var(--bw-theme-surface, #ffffff);
-  border-top: 1px solid var(--bw-theme-border, rgba(34, 56, 101, 0.08));
-}
-
-@media (max-width: 599px) {
-  .cart-content {
-    padding-bottom: 72px;
-  }
 }
 </style>
 

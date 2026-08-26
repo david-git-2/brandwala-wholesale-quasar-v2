@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/vue-query';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import type { ActiveCartItem, ShopCartItem } from '../repositories/shopCartRepository';
 import { useShopCartMutations } from './useShopCartMutations';
+import { useShopCartSelection } from './useShopCartSelection';
 import { useShopOrderStore } from '../stores/shopOrderStore';
 import { fetchCourierChargeEstimate } from '../services/courierChargeEstimate';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
@@ -18,13 +19,6 @@ import {
   resolveCartCurrencySymbol,
   formatCartPriceAmount,
 } from '../utils/cartPriceUtils';
-import {
-  getLastVisitedShopSlug,
-  resolveCartShopId,
-  shopCartPath,
-  shopCatalogEntryPath,
-  shopCatalogPath,
-} from '../utils/catalogShop';
 import { adjustQtyByMoq, resolveShopCartItemMoq } from '../utils/cartQuantityUtils';
 
 export function useShopCartPageLogic(
@@ -42,74 +36,21 @@ export function useShopCartPageLogic(
   const authStore = useAuthStore();
   const orderStore = useShopOrderStore();
 
-  const selectedShopId = ref<number | null>(null);
-
-  watch(
-    [() => route.query.shopId, activeCarts, isCartsLoading],
-    ([qShopId, carts, loading]) => {
-      const fromQuery = resolveCartShopId(authStore.tenantId, [], qShopId);
-      if (fromQuery) {
-        selectedShopId.value = fromQuery;
-        return;
-      }
-      if (loading) {
-        selectedShopId.value = null;
-        return;
-      }
-      const resolved = resolveCartShopId(authStore.tenantId, carts);
-      if (!resolved) {
-        selectedShopId.value = null;
-        return;
-      }
-      if (selectedShopId.value !== resolved) {
-        selectedShopId.value = resolved;
-        void router.replace(
-          shopCartPath(route.params.tenantSlug ? String(route.params.tenantSlug) : null, resolved),
-        );
-      }
-    },
-    { immediate: true },
-  );
-
-  const showCartPicker = computed(() => {
-    return (
-      !route.query.shopId &&
-      !selectedShopId.value &&
-      !isCartsLoading.value &&
-      activeCarts.value.length > 1
-    );
-  });
-
-  const currentShopCartInfo = computed(() => {
-    return activeCarts.value.find((c) => c.shop_id === selectedShopId.value) ?? null;
-  });
+  const {
+    selectedShopId,
+    showCartPicker,
+    currentShopCartInfo,
+    selectShopCart,
+    formatActiveCartTotal,
+    goBack,
+  } = useShopCartSelection(activeCarts, isCartsLoading);
 
   const tenantSlugParam = () =>
     route.params.tenantSlug ? String(route.params.tenantSlug) : null;
 
-  const selectShopCart = (sId: number) => {
-    selectedShopId.value = sId;
-    void router.replace(shopCartPath(tenantSlugParam(), sId));
-  };
-
   const currencySymbol = computed(() =>
     resolveCartCurrencySymbol(items.value, currentShopCartInfo.value),
   );
-
-  const formatActiveCartTotal = (activeCart: ActiveCartItem) => {
-    const currency = activeCart.currency_symbol || activeCart.currency_code || '';
-    return `${currency}${Number(activeCart.cart_total).toFixed(2)}`;
-  };
-
-  const goBack = () => {
-    const slug =
-      currentShopCartInfo.value?.shop_slug || getLastVisitedShopSlug(authStore.tenantId);
-    if (slug) {
-      void router.push(shopCatalogPath(tenantSlugParam(), slug));
-      return;
-    }
-    void router.push(shopCatalogEntryPath(tenantSlugParam()));
-  };
 
   const goToCheckout = () => {
     void router.push({

@@ -57,6 +57,36 @@ export function shopCartPath(
   };
 }
 
+export function shopDropshipReviewPath(
+  tenantSlug: string | null | undefined,
+  shopId?: number | null,
+) {
+  return {
+    path: `${shopScopeBase(tenantSlug)}/dropship/review`,
+    query: shopId ? { shopId: String(shopId) } : {},
+  };
+}
+
+export function shopDropshipDeliveryPath(
+  tenantSlug: string | null | undefined,
+  shopId?: number | null,
+) {
+  return {
+    path: `${shopScopeBase(tenantSlug)}/dropship/delivery`,
+    query: shopId ? { shopId: String(shopId) } : {},
+  };
+}
+
+export function shopDropshipCheckoutPath(
+  tenantSlug: string | null | undefined,
+  shopId?: number | null,
+) {
+  return {
+    path: `${shopScopeBase(tenantSlug)}/checkout`,
+    query: shopId ? { shopId: String(shopId) } : {},
+  };
+}
+
 function parseShopId(value: unknown): number | null {
   const raw = Array.isArray(value) ? value[0] : value;
   const n = Number(raw);
