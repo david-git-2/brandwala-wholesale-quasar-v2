@@ -13,8 +13,9 @@ import { resolveShopCartItemMoq } from '../utils/cartQuantityUtils';
 import { sumCartSubtotal } from '../utils/cartPriceUtils';
 import {
   mergeDropshipCartFromCatalogResponse,
+  mergeDropshipReviewFromCatalogResponse,
 } from '../utils/dropshipCartCacheUtils';
-import type { DropshipCartData } from '../repositories/dropshipCartRepository';
+import type { DropshipCartData, DropshipReviewCartData } from '../repositories/dropshipCartRepository';
 import type { ShopType } from '../types';
 
 export function useShopCartMutations() {
@@ -55,6 +56,21 @@ export function useShopCartMutations() {
         queryKey: shopOrderQueryKeys.cart(tenantId.value, shopId),
       });
     }
+  };
+
+  const patchDropshipReviewCartCache = (
+    shopId: number,
+    data: any,
+  ): DropshipReviewCartData | null => {
+    let merged: DropshipReviewCartData | null = null;
+    queryClient.setQueryData(
+      shopOrderQueryKeys.dropshipReviewCart(tenantId.value, shopId),
+      (old: DropshipReviewCartData | null | undefined) => {
+        merged = mergeDropshipReviewFromCatalogResponse(old, data);
+        return merged ?? old ?? null;
+      },
+    );
+    return merged;
   };
 
   const patchDropshipCartCache = (shopId: number, data: any): DropshipCartData | null => {
@@ -170,6 +186,7 @@ export function useShopCartMutations() {
   ) => {
     updateCartCache(shopId, data);
     const dropshipData = patchDropshipCartCache(shopId, data);
+    patchDropshipReviewCartCache(shopId, data);
     if (dropshipData) {
       updateDropshipActiveCartsCache(shopId, dropshipData);
       return;
@@ -248,8 +265,7 @@ export function useShopCartMutations() {
       return { data: res.data, shopId: params.shopId };
     },
     onSuccess: ({ data, shopId }) => {
-      updateCartCache(shopId, data);
-      updateActiveCartsCache(shopId, data);
+      syncCartCachesAfterMutation(shopId, data);
     },
   });
 

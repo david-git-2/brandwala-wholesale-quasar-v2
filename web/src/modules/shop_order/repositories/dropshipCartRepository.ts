@@ -69,6 +69,27 @@ export interface DropshipCartData {
   totals: DropshipCartTotals;
 }
 
+export interface DropshipChargeEstimates {
+  delivery_min: number;
+  delivery_max: number;
+  delivery_mid: number;
+  cod_percent_min: number;
+  cod_percent_max: number;
+  cod_charge_preview: number;
+}
+
+export interface DropshipReviewSummary {
+  total_units: number;
+  has_floor_violation: boolean;
+  recipient_grand_total: number;
+  can_continue: boolean;
+}
+
+export interface DropshipReviewCartData extends DropshipCartData {
+  charge_estimates: DropshipChargeEstimates;
+  review_summary: DropshipReviewSummary;
+}
+
 const getDropshipShopCart = async (shopId: number): Promise<DropshipCartData> => {
   const { data, error } = await supabase.rpc('get_dropship_shop_cart', {
     p_shop_id: shopId,
@@ -81,6 +102,19 @@ const getDropshipShopCart = async (shopId: number): Promise<DropshipCartData> =>
   return data as DropshipCartData;
 };
 
+const getDropshipReviewCart = async (shopId: number): Promise<DropshipReviewCartData> => {
+  const { data, error } = await supabase.rpc('get_dropship_review_cart', {
+    p_shop_id: shopId,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return data as DropshipReviewCartData;
+};
+
 export const dropshipCartRepository = {
   getDropshipShopCart,
+  getDropshipReviewCart,
 };

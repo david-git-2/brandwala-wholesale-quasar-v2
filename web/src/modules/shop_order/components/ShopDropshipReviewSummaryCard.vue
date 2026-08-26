@@ -24,18 +24,21 @@
         class="full-width q-mt-md"
         icon-right="ph ph-arrow-right"
         :label="$t('shop.dropship_continue_delivery')"
-        :disable="summary.hasFloorViolation"
+        :disable="summary.hasFloorViolation || disableContinue"
         @click="$emit('continue')"
       />
       <div v-if="summary.hasFloorViolation" class="text-caption text-negative text-center">
         {{ $t('shop.cart_price_below_floor') }}
+      </div>
+      <div v-else-if="disableContinue" class="text-caption text-grey-6 text-center">
+        {{ $t('shop.cart_save_edits_first') }}
       </div>
     </q-card-section>
   </q-card>
 </template>
 
 <script setup lang="ts">
-import { formatDropshipUiMoney } from '../mocks/dropshipCartUiMocks';
+import { formatCartMoney } from '../utils/cartPriceUtils';
 
 export interface DropshipReviewSummary {
   recipientGrandTotal: number;
@@ -43,17 +46,24 @@ export interface DropshipReviewSummary {
   hasFloorViolation: boolean;
 }
 
-const props = defineProps<{
-  summary: DropshipReviewSummary;
-  currencySymbol?: string;
-}>();
+const props = withDefaults(
+  defineProps<{
+    summary: DropshipReviewSummary;
+    currencySymbol?: string;
+    disableContinue?: boolean;
+  }>(),
+  {
+    currencySymbol: '৳',
+    disableContinue: false,
+  },
+);
 
 defineEmits<{
   (e: 'continue'): void;
 }>();
 
 const formatMoney = (amount: number) =>
-  formatDropshipUiMoney(amount, props.currencySymbol ?? '৳');
+  formatCartMoney(amount, props.currencySymbol ?? '৳');
 </script>
 
 <style scoped>

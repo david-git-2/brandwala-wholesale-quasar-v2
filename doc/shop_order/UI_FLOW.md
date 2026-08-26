@@ -172,10 +172,13 @@ flowchart TD
     D["Customer Dashboard<br/>/shop/dashboard"] --> B["Browse shop<br/>/shop/browse/:shopSlug"]
     B --> P["Product detail<br/>/shop/browse/:shopSlug/product/:productId"]
     P --> B
-    B --> C["Cart<br/>/shop/cart"]
-    C -->|"vendor_catalog / fixed_price"| O["Orders<br/>/shop/orders"]
-    C -->|dropship| K["Checkout<br/>/shop/checkout"]
-    K --> O
+    B --> C["Cart entry<br/>/shop/cart"]
+    C -->|"vendor_catalog / fixed_price"| CP["Cart<br/>ShopCartPage"]
+    C -->|dropship| DC["Dropship cart<br/>/shop/cart → ShopDropshipCartPage"]
+    DC --> DR["Review pricing<br/>/shop/dropship/review"]
+    DR --> DD["Delivery<br/>/shop/dropship/delivery"]
+    DD --> O["Orders<br/>/shop/orders"]
+    CP --> O
     O --> W["Merchant wallet<br/>/shop/orders/wallet"]
 ```
 
@@ -184,8 +187,11 @@ flowchart TD
 | **Catalog entry** | `shop_storefront` | Redirect hub before slug browse |
 | **Storefront** | `shop_storefront` | Permissions from `get_shop_permissions_for_customer`; unit + sell price groups (§5) |
 | **Product detail** | `shop_storefront` | `get_shop_catalog_product_for_customer`; same permission gates as catalog; shareable URL |
-| **Cart** | `shop_cart` | Per-shop cart via `get_or_create_shop_cart`; **`vendor_catalog`** and **`fixed_price`** submit from cart (Place Order) |
-| **Checkout** | `shop_cart` | **`dropship`** only — see §7 |
+| **Cart** | `shop_cart` | **`vendor_catalog`** / **`fixed_price`**: `get_or_create_shop_cart` on `ShopCartPage`; place order from cart |
+| **Dropship cart** | `shop_cart` | `get_dropship_shop_cart`; qty save via `update_shop_cart_item_qty` → Proceed to review |
+| **Dropship review** | `shop_cart` | `get_dropship_review_cart`; resell save via `update_shop_cart_item_price` → Continue to delivery |
+| **Dropship delivery** | `shop_cart` | Customer details + charge toggles → `submit_shop_order_from_cart` *(delivery page wiring pending)* |
+| **Legacy checkout** | `shop_cart` | `/shop/checkout` (`ShopCheckoutPage`) — superseded by 3-step dropship flow for new UI |
 | **Orders** | `shop_order_mgmt` | Customer order list + detail |
 | **Wallet** | `shop_order_mgmt` | Dropship merchant ledger |
 
@@ -193,7 +199,17 @@ flowchart TD
 
 ## 7. Checkout — Validation & Submit
 
-[`ShopCheckoutPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/ShopCheckoutPage.vue) — **dropship shops only**. `vendor_catalog` and `fixed_price` place orders from [`ShopCartPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/ShopCartPage.vue) with empty delivery fields (banner: no delivery form on cart).
+### Dropship 3-step flow (new)
+
+| Step | Page | Load RPC | Saves | Continue CTA |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 Cart | `ShopDropshipCartPage` | `get_dropship_shop_cart` | `update_shop_cart_item_qty` | Proceed → review |
+| 2 Review | `ShopDropshipReviewPage` | `get_dropship_review_cart` | `update_shop_cart_item_price` | Continue → delivery |
+| 3 Delivery | `ShopDropshipDeliveryPage` | *(reuse review cart or delivery-specific load TBD)* | `submit_shop_order_from_cart` | Place order |
+
+Proceed/continue disabled when cart empty, unsaved edits, save in progress, or resell below floor.
+
+[`ShopCheckoutPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/ShopCheckoutPage.vue) — legacy single-page dropship checkout (still routed at `/shop/checkout`).
 
 ### Cart — direct place order (`vendor_catalog`, `fixed_price`)
 
@@ -203,7 +219,7 @@ flowchart TD
 | :--- | :--- | :--- |
 | **`vendor_catalog`** | Place Order | `submit_shop_order_from_cart` → status `submitted` → `/shop/orders` |
 | **`fixed_price`** | Place Order | `submit_shop_order_from_cart` → status `draft` → `/shop/orders` |
-| **`dropship`** | Proceed to Checkout | Navigate to checkout (§7 below) |
+| **`dropship`** | Proceed to Review | Navigate to `/shop/dropship/review` (3-step flow §7) |
 
 Place order disabled when cart empty, unsaved qty/price edits, save in progress, or (dropship cart only) sell price below floor.
 

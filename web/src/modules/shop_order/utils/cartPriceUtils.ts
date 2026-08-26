@@ -9,6 +9,17 @@ export function cartPriceSymbol(price: ShopCatalogPrice | null | undefined): str
   return price?.symbol ?? price?.code ?? '৳';
 }
 
+export function formatCartMoney(amount: unknown, symbol = '৳'): string {
+  const n = Number(amount);
+  if (!Number.isFinite(n)) return '—';
+  const sym = symbol?.trim() || '৳';
+  const formatted = n.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return `${sym} ${formatted}`;
+}
+
 export function getCartItemSellAmount(
   item: ShopCartItem,
   editedSellPrice?: number,

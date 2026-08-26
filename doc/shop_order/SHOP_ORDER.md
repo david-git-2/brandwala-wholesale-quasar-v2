@@ -213,6 +213,9 @@ flowchart LR
 | **`StorefrontPage`** | Add to cart | `add_to_shop_cart` via `useShopCartMutations` | One RPC; patches `cart` + `activeCarts` TanStack cache (no `list_customer_active_carts` refetch) |
 | **`StorefrontProductDetailPage`** | Add to cart | `add_to_shop_cart` via `useShopCartMutations` | Same cache patch as storefront grid |
 | **`ShopCartPage`** | Load cart + permissions | `useShopCartQuery` → `RPC: get_or_create_shop_cart` | Key: `shopOrderQueryKeys.cart(tenantId, shopId)`; items use catalog-shaped prices; no separate permissions or `global_currencies` call |
+| **`ShopDropshipCartPage`** | Load dropship cart | `useDropshipShopCartQuery` → `RPC: get_dropship_shop_cart` | Key: `shopOrderQueryKeys.dropshipCart(tenantId, shopId)`; qty saves via `update_shop_cart_item_qty` (cache patch, no refetch) |
+| **`ShopDropshipReviewPage`** | Review pricing | `useDropshipReviewCartQuery` → `RPC: get_dropship_review_cart` | Key: `shopOrderQueryKeys.dropshipReviewCart(tenantId, shopId)`; resell saves via `update_shop_cart_item_price` (cache patch) |
+| **`ShopDropshipDeliveryPage`** | Delivery + place order | *(UI placeholder — `submit_shop_order_from_cart` pending)* | — |
 | **`ShopOrdersPage`** | Order list | `useStaffOrdersQuery` → `RPC: list_shop_orders_for_staff` | Key: `staffOrders`; filters: shop (`p_shop_id`), status (`p_status`), type (client via `list_shops`) |
 | **`ShopOrdersPage`** | Shop filter options | `useShopListQuery` → `RPC: list_shops` | Loaded on mount for shop dropdown |
 | **`ShopSettingsPage`** (Storefront tab) | Listings grid | `RPC: list_shop_storefront_listings_for_admin` | Key: `shopOrderQueryKeys.storefrontAdminListings(shopId, search)` |
@@ -275,6 +278,8 @@ See **§ RPC: `get_or_create_shop_cart`** below for the response contract.
 * `shopOrderQueryKeys.categories(tenantId)` → `['shopOrder', 'categories', { tenantId }]`
 * `shopOrderQueryKeys.customerShops(tenantId)` → `['shopOrder', 'customerShops', { tenantId }]`
 * `shopOrderQueryKeys.cart(tenantId, shopId)` → `['shopOrder', 'cart', { tenantId, shopId }]`
+* `shopOrderQueryKeys.dropshipCart(tenantId, shopId)` → `['shopOrder', 'dropshipCart', { tenantId, shopId }]`
+* `shopOrderQueryKeys.dropshipReviewCart(tenantId, shopId)` → `['shopOrder', 'dropshipReviewCart', { tenantId, shopId }]`
 * `shopOrderQueryKeys.activeCarts(tenantId)` → `['shopOrder', 'activeCarts', { tenantId }]` — loaded in `ShopLayout` / cart picker; **patched** on cart mutations (not refetched on add/qty/remove)
 * `shopOrderQueryKeys.storefrontAdminListings(shopId, search)` → admin storefront tab cache
 * `shopOrderQueryKeys.storefrontListingPriceCalc(shopId, listingId)` → calculate sell price drawer
@@ -730,6 +735,83 @@ No root `currency` — formatting uses the nested object on each line (same as c
 ```
 
 Charges (COD, delivery, print, packing, discount) remain on the `shop_carts` row in the DB; expose on `cart` when the checkout flow needs them.
+
+---
+
+## 7d. RPC: `get_dropship_shop_cart`
+
+Dropship-only cart load for step 1 of the 3-step checkout (`ShopDropshipCartPage`). Does **not** create an empty cart.
+
+### Signature
+
+```sql
+get_dropship_shop_cart(p_shop_id bigint) returns jsonb
+```
+
+### Access
+
+- Shop must be `dropship`, active, and accessible (`can_customer_access_shop`).
+- Loads the caller's **active** cart only; errors if missing or empty.
+
+### Item pricing
+
+| Field | Source |
+| :--- | :--- |
+| `purchase_price` / `listing_sell_price` | `unit_sell_price_*` (merchant cost) |
+| `resell_price` | `customer_sell_price_*` else `unit_sell_price_*` |
+| `min_resell_price` | `unit_minimum_sell_price_*` |
+| `line_totals` | qty × unit amounts |
+| `is_resell_below_floor` | resell &lt; min when min &gt; 0 |
+
+### Response shape
+
+Same top-level keys as `get_or_create_shop_cart` (`cart`, `permissions`, `items`, `totals`) but dropship item shape above. `cart` includes `shop_name`, `shop_slug`, nested `currency`, `charges`, and `margin_deductions`.
+
+`totals`: `item_count`, `line_count`, `purchase_subtotal`, `resell_subtotal`, `estimated_profit`.
+
+Qty mutations (`update_shop_cart_item_qty`) return the catalog cart shape; the UI patches `dropshipCart` cache locally via `mergeDropshipCartFromCatalogResponse`.
+
+---
+
+## 7e. RPC: `get_dropship_review_cart`
+
+Dropship-only review step (`ShopDropshipReviewPage`). Read-only load — resell edits use `update_shop_cart_item_price`.
+
+### Signature
+
+```sql
+get_dropship_review_cart(p_shop_id bigint) returns jsonb
+```
+
+### Access
+
+Same as `get_dropship_shop_cart` (active cart required, non-empty).
+
+### Extra fields
+
+```jsonc
+{
+  // ... same as get_dropship_shop_cart ...
+  "charge_estimates": {
+    "delivery_min": 60,
+    "delivery_max": 130,
+    "delivery_mid": 95,
+    "cod_percent_min": 1,
+    "cod_percent_max": 1,
+    "cod_charge_preview": 12.5
+  },
+  "review_summary": {
+    "total_units": 4,
+    "has_floor_violation": false,
+    "recipient_grand_total": 1207.5,
+    "can_continue": true
+  }
+}
+```
+
+`charge_estimates` derives delivery min/max from active `courier_services`; COD preview uses `cod_percent_min` on resell subtotal. `recipient_grand_total` = resell subtotal + delivery mid + COD preview.
+
+Price mutations patch `dropshipReviewCart` cache via `mergeDropshipReviewFromCatalogResponse` (recomputes `review_summary` client-side).
 
 ---
 

@@ -1,4 +1,9 @@
-import type { DropshipCartData, DropshipCartItem, DropshipCartTotals } from '../repositories/dropshipCartRepository';
+import type {
+  DropshipCartData,
+  DropshipCartItem,
+  DropshipCartTotals,
+  DropshipReviewCartData,
+} from '../repositories/dropshipCartRepository';
 import type { ShopCatalogPrice } from '../types';
 import { resolveShopCartItemMoq } from './cartQuantityUtils';
 
@@ -118,4 +123,47 @@ export function mergeDropshipCartFromCatalogResponse(
     items,
     totals: computeDropshipCartTotals(items),
   };
+}
+
+export function recomputeDropshipReviewSummary(
+  data: DropshipReviewCartData,
+): DropshipReviewCartData {
+  const totals = computeDropshipCartTotals(data.items);
+  const hasFloorViolation = data.items.some((item) => item.is_resell_below_floor);
+  const resellSubtotal = totals.resell_subtotal;
+  const deliveryMid = data.charge_estimates.delivery_mid;
+  const codCharge = Math.round(
+    (resellSubtotal * data.charge_estimates.cod_percent_min) / 100 * 100,
+  ) / 100;
+  const recipientGrandTotal = resellSubtotal + deliveryMid + codCharge;
+
+  return {
+    ...data,
+    totals,
+    charge_estimates: {
+      ...data.charge_estimates,
+      cod_charge_preview: codCharge,
+    },
+    review_summary: {
+      total_units: totals.item_count,
+      has_floor_violation: hasFloorViolation,
+      recipient_grand_total: recipientGrandTotal,
+      can_continue: !hasFloorViolation,
+    },
+  };
+}
+
+export function mergeDropshipReviewFromCatalogResponse(
+  previous: DropshipReviewCartData | null | undefined,
+  catalogResponse: { cart?: { updated_at?: string }; items?: RawCatalogCartItem[] } | null | undefined,
+): DropshipReviewCartData | null {
+  if (!previous || !catalogResponse?.items) return previous ?? null;
+
+  const mergedCart = mergeDropshipCartFromCatalogResponse(previous, catalogResponse);
+  if (!mergedCart) return previous;
+
+  return recomputeDropshipReviewSummary({
+    ...previous,
+    ...mergedCart,
+  });
 }

@@ -11951,6 +11951,7 @@ export type Database = {
         Args: { p_tenant_id: number }
         Returns: Json
       }
+      get_dropship_review_cart: { Args: { p_shop_id: number }; Returns: Json }
       get_dropship_shop_cart: { Args: { p_shop_id: number }; Returns: Json }
       get_dropship_shop_readiness: {
         Args: { p_shop_id: number }
