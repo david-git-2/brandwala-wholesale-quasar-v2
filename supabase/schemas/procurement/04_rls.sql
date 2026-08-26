@@ -219,6 +219,9 @@ CREATE POLICY "costing_file_items_update" ON "public"."costing_file_items" FOR U
 
 
 
+ALTER TABLE "public"."costing_file_viewers" ENABLE ROW LEVEL SECURITY;
+
+
 CREATE POLICY "costing_file_viewers_delete" ON "public"."costing_file_viewers" FOR DELETE TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."costing_files" "cf"
   WHERE (("cf"."id" = "costing_file_viewers"."costing_file_id") AND "public"."can_manage_costing_file_viewers"("cf"."tenant_id")))));

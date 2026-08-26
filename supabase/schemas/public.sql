@@ -19698,6 +19698,23 @@ CREATE POLICY "commerce_orders_select" ON "public"."commerce_orders" FOR SELECT 
 CREATE POLICY "commerce_orders_update" ON "public"."commerce_orders" FOR UPDATE TO "authenticated" USING (true);
 
 
+ALTER TABLE "public"."courier_services" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "courier_services_delete_policy" ON "public"."courier_services" FOR DELETE TO "authenticated" USING (("public"."is_superadmin"() OR ("public"."membership_has_module_action"("public"."current_tenant_id"(), 'shop_shipping'::"text", 'configure'::"text") AND (("tenant_id" IS NULL) OR ("tenant_id" = "public"."current_tenant_id"())))));
+
+
+CREATE POLICY "courier_services_insert_policy" ON "public"."courier_services" FOR INSERT TO "authenticated" WITH CHECK (("public"."is_superadmin"() OR ("public"."membership_has_module_action"("public"."current_tenant_id"(), 'shop_shipping'::"text", 'configure'::"text") AND (("tenant_id" IS NULL) OR ("tenant_id" = "public"."current_tenant_id"())))));
+
+
+CREATE POLICY "courier_services_select_policy" ON "public"."courier_services" FOR SELECT TO "authenticated" USING ((("tenant_id" IS NULL) OR "public"."is_superadmin"() OR (EXISTS ( SELECT 1
+   FROM "public"."memberships" "m"
+  WHERE (("m"."tenant_id" = "courier_services"."tenant_id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true))))));
+
+
+CREATE POLICY "courier_services_update_policy" ON "public"."courier_services" FOR UPDATE TO "authenticated" USING (("public"."is_superadmin"() OR ("public"."membership_has_module_action"("public"."current_tenant_id"(), 'shop_shipping'::"text", 'configure'::"text") AND (("tenant_id" IS NULL) OR ("tenant_id" = "public"."current_tenant_id"()))))) WITH CHECK (("public"."is_superadmin"() OR ("public"."membership_has_module_action"("public"."current_tenant_id"(), 'shop_shipping'::"text", 'configure'::"text") AND (("tenant_id" IS NULL) OR ("tenant_id" = "public"."current_tenant_id"())))));
+
+
 ALTER TABLE "public"."courier_remittance_batches" ENABLE ROW LEVEL SECURITY;
 
 
