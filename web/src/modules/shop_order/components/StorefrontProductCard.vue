@@ -29,7 +29,8 @@
       </div>
     </div>
 
-    <div class="product-body">
+    <div class="product-main">
+    <q-card-section class="product-body">
       <div class="product-meta text-caption text-uppercase tracking-wider">
         {{ item.product_brand || 'Generic' }}
       </div>
@@ -207,79 +208,71 @@
           </q-btn>
         </div>
       </div>
+    </q-card-section>
 
-      <div v-if="showActions" class="product-actions q-mt-auto q-pt-sm">
-        <div class="row items-center no-wrap justify-between q-gutter-x-xs">
-          <div
-            v-if="!inCart"
-            class="row items-center no-wrap quantity-controls col-auto"
-            style="
-              border: 1.5px solid var(--bw-theme-border, rgba(34, 56, 101, 0.15));
-              border-radius: 8px;
-              padding: 2px;
-              background: rgba(0, 0, 0, 0.02);
-            "
-          >
-            <q-btn
-              flat
-              round
-              dense
-              size="xs"
-              icon="ph ph-minus"
-              color="grey-8"
-              style="min-width: 28px; min-height: 28px"
-              @click="$emit('decrement', item)"
-            />
-            <div
-              class="text-weight-bold text-center text-grey-9"
-              style="width: 28px; font-size: 13px; user-select: none"
-            >
-              {{ selectedQty || minQty }}
-            </div>
-            <q-btn
-              flat
-              round
-              dense
-              size="xs"
-              icon="ph ph-plus"
-              color="grey-8"
-              style="min-width: 28px; min-height: 28px"
-              @click="$emit('increment', item)"
-            />
-          </div>
-          <div v-else class="col-auto"></div>
-
+    <q-card-actions v-if="shouldShowCartActions" class="product-actions q-pa-sm q-pt-none">
+      <div class="product-actions__inner row items-center no-wrap justify-between q-gutter-x-xs full-width">
+        <div
+          v-if="!inCart"
+          class="row items-center no-wrap quantity-controls col-auto"
+        >
           <q-btn
-            v-if="!inCart"
-            color="primary"
-            unelevated
-            no-caps
+            flat
+            round
             dense
-            icon="ph ph-shopping-cart"
-            :label="$q.screen.lt.sm ? undefined : $t('shop.add')"
-            class="add-cart-btn"
-            :loading="loading"
-            :disabled="
-              !permissions?.can_add_to_cart ||
-              (item.available_units !== null && item.available_units <= 0)
-            "
-            @click="$emit('add-to-cart', item)"
+            size="xs"
+            icon="ph ph-minus"
+            color="grey-8"
+            class="quantity-btn"
+            @click="$emit('decrement', item)"
           />
+          <div class="quantity-value text-weight-bold text-center text-grey-9">
+            {{ selectedQty || minQty }}
+          </div>
           <q-btn
-            v-else
-            color="negative"
-            unelevated
-            no-caps
+            flat
+            round
             dense
-            icon="ph ph-shopping-cart"
-            :label="$q.screen.lt.sm ? undefined : $t('shop.remove')"
-            class="add-cart-btn"
-            :loading="loading"
-            :disabled="!permissions?.can_add_to_cart"
-            @click="$emit('remove-from-cart', item)"
+            size="xs"
+            icon="ph ph-plus"
+            color="grey-8"
+            class="quantity-btn"
+            @click="$emit('increment', item)"
           />
         </div>
+        <div v-else class="col-auto"></div>
+
+        <q-btn
+          v-if="!inCart"
+          color="primary"
+          unelevated
+          no-caps
+          dense
+          icon="ph ph-shopping-cart"
+          :label="addCartLabel"
+          class="add-cart-btn"
+          :loading="loading"
+          :disabled="
+            !permissions?.can_add_to_cart ||
+            (item.available_units !== null && item.available_units <= 0)
+          "
+          @click="$emit('add-to-cart', item)"
+        />
+        <q-btn
+          v-else
+          color="negative"
+          unelevated
+          no-caps
+          dense
+          icon="ph ph-shopping-cart"
+          :label="removeCartLabel"
+          class="add-cart-btn"
+          :loading="loading"
+          :disabled="!permissions?.can_add_to_cart"
+          @click="$emit('remove-from-cart', item)"
+        />
       </div>
+    </q-card-actions>
     </div>
   </q-card>
 </template>
@@ -287,6 +280,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useQuasar } from 'quasar';
 import type { CustomerShopPermissions } from '../composables/useCustomerShopPermissionsQuery';
 import type {
   ShopCatalogItem,
@@ -317,6 +311,7 @@ const props = defineProps<{
 }>();
 
 const showActions = computed(() => props.showActions !== false);
+const shouldShowCartActions = showActions;
 const showUnitPrice = computed(() => props.showUnitPrice !== false);
 const showQuantityBreakdown = computed(() => props.showQuantityBreakdown === true);
 const showCalculateSellPrice = computed(() => props.showCalculateSellPrice === true);
@@ -347,6 +342,10 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const $q = useQuasar();
+
+const addCartLabel = computed(() => ($q.screen.lt.sm ? undefined : t('shop.add')));
+const removeCartLabel = computed(() => ($q.screen.lt.sm ? undefined : t('shop.remove')));
 
 const isListingActive = computed(
   () => props.item.listing_status !== 'inactive',
@@ -439,12 +438,12 @@ const resellMinimumText = computed(() => {
 .product-card {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: auto;
   border-radius: 16px;
   background: var(--bw-theme-surface, #ffffff);
   border-color: var(--bw-theme-border, rgba(34, 56, 101, 0.12));
   color: var(--bw-theme-ink, #1f2937);
-  overflow: hidden;
+  overflow: visible;
   transition:
     transform 0.25s ease,
     box-shadow 0.25s ease;
@@ -477,6 +476,8 @@ const resellMinimumText = computed(() => {
   align-items: center;
   justify-content: center;
   padding: 8px;
+  border-radius: 16px 16px 0 0;
+  overflow: hidden;
 }
 .product-overlay-chip {
   position: absolute;
@@ -506,12 +507,18 @@ const resellMinimumText = computed(() => {
   background: var(--bw-theme-surface, #ffffff);
   border-radius: 8px;
 }
+.product-main {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
 .product-body {
-  flex: 1;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   min-width: 0;
-  padding: 10px 12px 12px;
+  padding: 10px 12px 8px;
 }
 .product-meta {
   letter-spacing: 0.05em;
@@ -530,9 +537,31 @@ const resellMinimumText = computed(() => {
   color: var(--bw-theme-ink, #1f2937);
 }
 .product-actions {
-  margin-top: auto;
-  padding-top: 8px;
+  flex-shrink: 0;
+  display: flex !important;
+  width: 100%;
+  min-height: 44px;
+  opacity: 1 !important;
+  visibility: visible !important;
   border-top: 1px solid var(--bw-theme-border, rgba(34, 56, 101, 0.06));
+}
+.product-actions__inner {
+  width: 100%;
+}
+.quantity-controls {
+  border: 1.5px solid var(--bw-theme-border, rgba(34, 56, 101, 0.15));
+  border-radius: 8px;
+  padding: 2px;
+  background: rgba(0, 0, 0, 0.02);
+}
+.quantity-btn {
+  min-width: 28px;
+  min-height: 28px;
+}
+.quantity-value {
+  width: 28px;
+  font-size: 13px;
+  user-select: none;
 }
 .product-pricing {
   min-width: 0;
@@ -571,8 +600,12 @@ const resellMinimumText = computed(() => {
   .product-image-fallback {
     border-radius: 6px;
   }
+  .product-main {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
   .product-body {
-    padding: 10px 12px 10px 10px;
+    padding: 10px 12px 8px 10px;
   }
   .product-name {
     min-height: unset;
@@ -581,8 +614,9 @@ const resellMinimumText = computed(() => {
     font-size: 14px;
   }
   .product-actions {
+    flex-shrink: 0;
     border-top: none;
-    padding-top: 4px;
+    padding: 4px 12px 10px 10px;
   }
   .add-cart-btn {
     min-width: 36px;

@@ -58,6 +58,7 @@
               :item="item"
               :permissions="permissions"
               :shop-type="shopDetails?.shop_type"
+              :show-actions="true"
               :selected-qty="selectedQuantities[itemKey(item)]"
               :in-cart="isInCart(item)"
               :loading="isCartPendingForItem(item)"
@@ -187,11 +188,72 @@ const { brands: brandNames } = useShopBrandOptionsQuery(lookupParams);
 const { categories: categoryNames } = useShopCategoryOptionsQuery(lookupParams);
 
 const activeShopId = computed(() => shopDetails.value?.id ?? null);
+const { items: cartItems, permissions: cartPermissions } = useShopCartQuery(activeShopId);
 const { data: fetchedPermissions } = useCustomerShopPermissionsQuery(activeShopId);
 const permissions = computed<CustomerShopPermissions | null | undefined>(
-  () => catalogPermissions.value ?? fetchedPermissions.value,
+  () => catalogPermissions.value ?? cartPermissions.value ?? fetchedPermissions.value,
 );
-const { items: cartItems } = useShopCartQuery(activeShopId);
+
+const storefrontPermissionDebug = computed(() => {
+  const firstItem = catalogItems.value[0];
+  const merged = permissions.value;
+  return {
+    page: 'StorefrontPage',
+    route: route.fullPath,
+    userEmail: authStore.user?.email ?? null,
+    tenantId: sessionTenantId.value,
+    shopSlug: shopSlug.value,
+    shopId: activeShopId.value,
+    shopType: shopDetails.value?.shop_type ?? null,
+    permissions: {
+      merged,
+      fromBrowseCatalog: catalogPermissions.value ?? null,
+      fromCart: cartPermissions.value ?? null,
+      fromPermissionsRpc: fetchedPermissions.value ?? null,
+    },
+    catalog: {
+      itemCount: catalogItems.value.length,
+      firstProduct: firstItem
+        ? {
+            product_id: firstItem.product_id,
+            product_name: firstItem.product_name,
+            available_units: firstItem.available_units,
+            global_stock_id: firstItem.global_stock_id,
+          }
+        : null,
+    },
+    uiWouldShow: {
+      qtyText:
+        Boolean(merged?.can_view_quantity) &&
+        firstItem?.available_units !== null &&
+        firstItem?.available_units !== undefined,
+      cartControls: true,
+      addToCartEnabled:
+        Boolean(merged?.can_add_to_cart) &&
+        (firstItem?.available_units == null || firstItem.available_units > 0),
+    },
+    queryState: {
+      browseLoading: isLoading.value,
+      browseFetching: isFetching.value,
+      browseError: error.value?.message ?? null,
+    },
+  };
+});
+
+watch(
+  storefrontPermissionDebug,
+  (debug) => {
+    console.info(
+      '%c[StorefrontPage] Copy this JSON and paste it in chat:',
+      'font-weight: bold; color: #2563eb;',
+    );
+    console.log(JSON.stringify(debug, null, 2));
+    if (import.meta.env.DEV) {
+      (window as Window & { __storefrontPageDebug?: unknown }).__storefrontPageDebug = debug;
+    }
+  },
+  { immediate: true, deep: true },
+);
 const { addItemMutation, updateQtyMutation, removeItemMutation } = useShopCartMutations();
 
 const cartSaving = computed(
@@ -399,6 +461,7 @@ watch(shopDetails, (newDetails) => {
   .product-grid {
     display: grid !important;
     grid-template-columns: repeat(auto-fill, minmax(220px, 250px));
+    align-items: start;
     justify-content: center;
     gap: 16px;
     margin: 0 !important;

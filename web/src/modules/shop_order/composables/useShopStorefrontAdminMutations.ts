@@ -10,6 +10,7 @@ import type {
 } from '../types';
 import type { Product } from 'src/modules/products/types';
 import type { CandidateAllocation } from '../types/pricing';
+import { roundNearest5or0, roundUpToNearest50or100 } from '../utils/shopPricingRound';
 
 type StorefrontListingsCache = ShopStorefrontAdminListingsResult | undefined;
 
@@ -184,16 +185,6 @@ export function useSaveShopStorefrontListingPricingMutation() {
   });
 }
 
-const roundNearest5or0 = (val: number): number => {
-  if (!val || val <= 0) return 0;
-  return Math.round(val / 5) * 5;
-};
-
-const roundNearest50or100 = (val: number): number => {
-  if (!val || val <= 0) return 0;
-  return Math.round(val / 50) * 50;
-};
-
 export function useAddShopStorefrontListingMutation() {
   const queryClient = useQueryClient();
 
@@ -245,7 +236,7 @@ export function useAddShopStorefrontListingMutation() {
       const rawSell = unitCost > 0 ? unitCost * (1 + sellMarkupPct / 100) : 0;
       const calculatedSell = rawSell > 0 ? roundNearest5or0(rawSell) : 0;
       const rawFloor = unitCost > 0 ? unitCost * (1 + dropshipMarkupPct / 100) : 0;
-      const calculatedFloor = rawFloor > 0 ? roundNearest50or100(rawFloor) : null;
+      const calculatedFloor = rawFloor > 0 ? roundUpToNearest50or100(rawFloor) : null;
 
       const payload: UpsertListingPayload = {
         tenant_id: input.tenantId,

@@ -123,36 +123,101 @@
           </q-banner>
 
           <div class="column q-gutter-y-md">
-            <q-input
-              v-model.number="sellPrice"
-              type="number"
-              step="0.01"
-              outlined
-              dense
-              :label="$t('shop_admin.storefront_calc_sell_price')"
-            >
-              <template #prepend>
-                <q-icon name="ph ph-tag" />
-              </template>
-              <template v-if="suggestedSellPrice != null" #hint>
-                {{ $t('shop_admin.storefront_calc_suggested_sell_price') }}:
-                {{ formatMoney(suggestedSellPrice) }}
-              </template>
-            </q-input>
+            <div>
+              <div class="text-caption text-weight-medium text-grey-8 q-mb-xs">
+                {{ $t('shop_admin.storefront_calc_sell_price') }}
+              </div>
+              <div class="row q-col-gutter-sm">
+                <div class="col-7">
+                  <q-input
+                    :model-value="sellPrice"
+                    type="number"
+                    step="0.01"
+                    outlined
+                    dense
+                    :label="$t('shop_admin.sell_price_amount')"
+                    @update:model-value="updateSellPrice"
+                    @blur="roundSellPriceField"
+                  >
+                    <template #prepend>
+                      <q-icon name="ph ph-tag" />
+                    </template>
+                    <template v-if="suggestedSellPrice != null" #hint>
+                      {{ $t('shop_admin.storefront_calc_suggested_sell_price') }}:
+                      {{ formatMoney(suggestedSellPrice) }}
+                    </template>
+                  </q-input>
+                </div>
+                <div class="col-5">
+                  <q-input
+                    :model-value="sellMarkupPctOnCost"
+                    type="number"
+                    step="0.1"
+                    outlined
+                    dense
+                    suffix="%"
+                    :label="$t('shop_admin.storefront_calc_sell_markup_on_cost')"
+                    :disable="!hasUnitCost"
+                    :hint="!hasUnitCost ? $t('shop_admin.storefront_calc_markup_disabled_hint') : undefined"
+                    @update:model-value="updateSellMarkupPct"
+                  >
+                    <template #prepend>
+                      <q-icon name="ph ph-percent" />
+                    </template>
+                  </q-input>
+                </div>
+              </div>
+            </div>
 
-            <q-input
-              v-if="showMinResellPrice"
-              v-model.number="minResellPrice"
-              type="number"
-              step="0.01"
-              outlined
-              dense
-              :label="$t('shop_admin.col_min_sell_price')"
-            >
-              <template #prepend>
-                <q-icon name="ph ph-currency-circle-dollar" />
-              </template>
-            </q-input>
+            <div v-if="showMinResellPrice">
+              <div class="text-caption text-weight-medium text-grey-8 q-mb-xs">
+                {{ $t('shop_admin.col_min_sell_price') }}
+              </div>
+              <div class="row q-col-gutter-sm">
+                <div class="col-12 col-sm-5">
+                  <q-input
+                    :model-value="resellPrice"
+                    type="number"
+                    step="0.01"
+                    outlined
+                    dense
+                    :label="$t('shop_admin.min_dropship_price')"
+                    @update:model-value="updateResellPrice"
+                    @blur="roundResellPriceField"
+                  >
+                    <template #prepend>
+                      <q-icon name="ph ph-currency-circle-dollar" />
+                    </template>
+                  </q-input>
+                </div>
+                <div class="col-6 col-sm-3">
+                  <q-input
+                    :model-value="resellMarkupPctOnCost"
+                    type="number"
+                    step="0.1"
+                    outlined
+                    dense
+                    suffix="%"
+                    :label="$t('shop_admin.storefront_calc_resell_markup_on_cost')"
+                    :disable="!hasUnitCost"
+                    @update:model-value="updateResellMarkupPctOnCost"
+                  />
+                </div>
+                <div class="col-6 col-sm-4">
+                  <q-input
+                    :model-value="resellMarkupPctOnSell"
+                    type="number"
+                    step="0.1"
+                    outlined
+                    dense
+                    suffix="%"
+                    :label="$t('shop_admin.storefront_calc_resell_markup_on_sell')"
+                    :disable="!hasSellPrice"
+                    @update:model-value="updateResellMarkupPctOnSell"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </template>
       </div>
@@ -186,6 +251,8 @@ import { computed, ref, watch } from 'vue';
 import type { ShopType } from '../types';
 import { useShopStorefrontListingPriceCalcQuery } from '../composables/useShopStorefrontListingPriceCalcQuery';
 import { useSaveShopStorefrontListingPricingMutation } from '../composables/useShopStorefrontAdminMutations';
+import { useLinkedListingPriceFields } from '../composables/useLinkedListingPriceFields';
+import { roundUpToNearest50or100 } from '../utils/shopPricingRound';
 
 const props = defineProps<{
   modelValue: boolean;
@@ -200,8 +267,6 @@ const emit = defineEmits<{
   (event: 'saved'): void;
 }>();
 
-const sellPrice = ref<number | null>(null);
-const minResellPrice = ref<number | null>(null);
 const displayQuantity = ref<number | null>(null);
 
 const isOpen = computed({
@@ -228,6 +293,28 @@ const shipmentRows = computed(() => calcData.value?.shipment_costs ?? []);
 const totalQuantity = computed(() => calcData.value?.totals.total_quantity ?? 0);
 
 const weightedAvgCost = computed(() => calcData.value?.totals.weighted_avg_cost?.amount ?? 0);
+
+const {
+  sellPrice,
+  sellMarkupPctOnCost,
+  resellPrice,
+  resellMarkupPctOnCost,
+  resellMarkupPctOnSell,
+  initialize: initializePricingFields,
+  updateSellPrice,
+  updateSellMarkupPct,
+  updateResellPrice,
+  updateResellMarkupPctOnCost,
+  updateResellMarkupPctOnSell,
+  roundSellPriceField,
+  roundResellPriceField,
+} = useLinkedListingPriceFields(weightedAvgCost);
+
+const hasUnitCost = computed(() => weightedAvgCost.value > 0);
+const hasSellPrice = computed(() => {
+  const sell = Number(sellPrice.value);
+  return Number.isFinite(sell) && sell > 0;
+});
 
 const suggestedSellPrice = computed(
   () => calcData.value?.pricing.suggested_sell_price?.amount ?? null,
@@ -262,8 +349,10 @@ const formatMoney = (amount: number | null | undefined) => {
 const applyPricingForm = () => {
   if (!calcData.value) return;
   const pricing = calcData.value.pricing;
-  sellPrice.value = pricing.sell_price?.amount ?? suggestedSellPrice.value ?? null;
-  minResellPrice.value = pricing.resell_minimum_price?.amount ?? null;
+  initializePricingFields(
+    pricing.sell_price?.amount ?? suggestedSellPrice.value ?? null,
+    pricing.resell_minimum_price?.amount ?? null,
+  );
   displayQuantity.value =
     pricing.display_quantity_override ?? pricing.suggested_display_quantity ?? null;
 };
@@ -276,8 +365,7 @@ watch(calcData, (data) => {
 
 watch(isOpen, (open) => {
   if (!open) {
-    sellPrice.value = null;
-    minResellPrice.value = null;
+    initializePricingFields(null, null);
     displayQuantity.value = null;
   }
 });
@@ -286,13 +374,13 @@ const onSave = () => {
   if (!calcData.value || !props.shopId || !props.tenantId) return;
 
   const listing = calcData.value.listing;
-  const sellAmount = Number(sellPrice.value);
+  const sellAmount = roundUpToNearest50or100(Number(sellPrice.value));
   const sellCurrencyId = calcData.value.pricing.sell_price?.currency_id;
-  if (!Number.isFinite(sellAmount) || !sellCurrencyId) return;
+  if (!Number.isFinite(sellAmount) || sellAmount <= 0 || !sellCurrencyId) return;
 
   const minAmount =
-    minResellPrice.value !== null && minResellPrice.value !== undefined
-      ? Number(minResellPrice.value)
+    resellPrice.value !== null && resellPrice.value !== undefined
+      ? roundUpToNearest50or100(Number(resellPrice.value))
       : null;
   const minCurrencyId =
     minAmount !== null

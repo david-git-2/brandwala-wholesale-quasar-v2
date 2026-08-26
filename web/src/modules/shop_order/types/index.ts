@@ -83,6 +83,37 @@ export interface ShopStorefrontAdminListingsResult {
   };
 }
 
+/** Row from `list_allocated_stock_for_shop` RPC (shop Stock tab). */
+export interface ShopAllocatedStockRow {
+  global_stock_id: number;
+  shipment_item_id: number;
+  shipment_id: number;
+  shipment_name: string;
+  item_name: string;
+  product_id: number;
+  product_code: string | null;
+  barcode: string | null;
+  image_url: string | null;
+  product_brand: string | null;
+  product_category: string | null;
+  available_atp: number;
+  total_stock_qty: number;
+  unit_cost_amount: number;
+  stock_grade: ShopCatalogStockGrade | null;
+  is_listed_on_shop: boolean;
+  listing_id: number | null;
+}
+
+export interface ShopAllocatedStockResult {
+  data: ShopAllocatedStockRow[];
+  meta: {
+    total: number;
+    page: number;
+    page_size: number;
+    total_pages: number;
+  };
+}
+
 export interface ShopStorefrontShipmentCostRow {
   shipment_id: number;
   shipment_no: string;

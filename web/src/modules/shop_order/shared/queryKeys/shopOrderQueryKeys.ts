@@ -40,6 +40,8 @@ export const shopOrderQueryKeys = {
     ['shopOrder', 'storefrontListingPriceCalc', { shopId, listingId }] as const,
   storefrontCatalogSearch: (tenantId: number, search: string) =>
     ['shopOrder', 'storefrontCatalogSearch', { tenantId, search }] as const,
+  shopAllocatedStock: (shopId: number, search: string) =>
+    ['shopOrder', 'shopAllocatedStock', { shopId, search }] as const,
   pricingCandidates: (tenantId: number, shopId: number) =>
     ['shopOrder', 'pricingCandidates', { tenantId, shopId }] as const,
   currencies: () => ['shopOrder', 'currencies'] as const,

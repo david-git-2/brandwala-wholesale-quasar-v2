@@ -12550,6 +12550,15 @@ export type Database = {
         }
         Returns: Json
       }
+      list_allocated_stock_for_shop: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_shop_id: number
+        }
+        Returns: Json
+      }
       list_allocations_for_shop_pick:
         | { Args: { p_search?: string; p_shop_id: number }; Returns: Json }
         | {

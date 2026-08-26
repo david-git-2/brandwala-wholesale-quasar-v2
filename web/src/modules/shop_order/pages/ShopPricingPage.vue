@@ -558,6 +558,7 @@ import ShopPricingRuleCard from '../components/ShopPricingRuleCard.vue';
 import ShopPricingBulkActionBar from '../components/ShopPricingBulkActionBar.vue';
 import SmartImage from 'src/components/SmartImage.vue';
 import type { ShopProductListing, CandidateAllocation, UpsertListingPayload, Shop } from '../types';
+import { roundNearest5or0, roundUpToNearest50or100 } from '../utils/shopPricingRound';
 
 const props = withDefaults(defineProps<{ embedded?: boolean; shop?: Shop | null }>(), {
   embedded: false,
@@ -934,18 +935,6 @@ const loadShopDetails = async () => {
   }
 };
 
-// Rounding helper: Nearest 5 or 0 (e.g. 5, 10, 15, 20...)
-const roundNearest5or0 = (val: number): number => {
-  if (!val || val <= 0) return 0;
-  return Math.round(val / 5) * 5;
-};
-
-// Rounding helper: Nearest 50 or 100 (e.g. 50, 100, 150, 200...)
-const roundNearest50or100 = (val: number): number => {
-  if (!val || val <= 0) return 0;
-  return Math.round(val / 50) * 50;
-};
-
 const onAllocationPicked = (alloc: CandidateAllocation) => {
   selectedProductName.value = alloc.product_name;
   selectedProductDetails.value = `${alloc.product_brand ?? ''} | ${alloc.product_category ?? ''} | Allocated: ${alloc.allocated_quantity}`;
@@ -959,7 +948,7 @@ const onAllocationPicked = (alloc: CandidateAllocation) => {
   // Calculate default floor price from cost + dropship markup %, rounded to nearest 50 or 100
   const dropshipMarkupPct = Number(pricingRule.value?.dropship_markup_percentage ?? 0);
   const rawFloor = unitCost > 0 ? unitCost * (1 + dropshipMarkupPct / 100) : 0;
-  const calculatedFloor = rawFloor > 0 ? roundNearest50or100(rawFloor) : null;
+  const calculatedFloor = rawFloor > 0 ? roundUpToNearest50or100(rawFloor) : null;
 
   // Calculate default sell price from cost + sell price markup %, rounded to nearest 5 or 0
   const sellMarkupPct = Number(pricingRule.value?.markup_percentage ?? 0);
@@ -1073,7 +1062,7 @@ const onSavePricingRule = (payload: {
             }
             if (shopType.value === 'dropship' && dropshipMarkupPct >= 0) {
               const rawFloor = costValue * (1 + dropshipMarkupPct / 100);
-              newFloorPrice = roundNearest50or100(rawFloor);
+              newFloorPrice = roundUpToNearest50or100(rawFloor);
             }
           }
 

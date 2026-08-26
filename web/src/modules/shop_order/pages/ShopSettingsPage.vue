@@ -36,10 +36,10 @@
               :label="$t('shop_admin.shop_tab_storefront')"
             />
             <q-tab
-              v-if="showListingsTab"
-              name="listings"
-              icon="ph ph-tag"
-              :label="$t('shop_admin.shop_tab_listings')"
+              v-if="showStockTab"
+              name="stock"
+              icon="ph ph-warehouse"
+              :label="$t('shop_admin.shop_tab_stock')"
             />
           </q-tabs>
           <div class="col-auto row items-center q-gutter-sm no-wrap q-pl-sm">
@@ -218,8 +218,13 @@
             </div>
           </q-tab-panel>
 
-          <q-tab-panel v-if="showListingsTab" name="listings" class="q-pa-none q-pt-sm">
-            <ShopPricingPage v-if="activeTab === 'listings'" embedded :shop="shop" />
+          <q-tab-panel v-if="showStockTab" name="stock" class="q-pa-none q-pt-md">
+            <ShopWarehouseStockPage
+              v-if="activeTab === 'stock' && shop"
+              embedded
+              :shop="shop"
+              :tenant-id="tenantId"
+            />
           </q-tab-panel>
         </q-tab-panels>
 
@@ -283,11 +288,11 @@ import type {
 const ShopAccessMatrixPage = defineAsyncComponent(
   () => import('src/modules/shop_order/pages/ShopAccessMatrixPage.vue'),
 );
-const ShopPricingPage = defineAsyncComponent(
-  () => import('src/modules/shop_order/pages/ShopPricingPage.vue'),
+const ShopWarehouseStockPage = defineAsyncComponent(
+  () => import('src/modules/shop_order/pages/ShopWarehouseStockPage.vue'),
 );
 
-type ShopDetailTab = 'setup' | 'access' | 'storefront' | 'listings';
+type ShopDetailTab = 'setup' | 'access' | 'storefront' | 'stock';
 
 const route = useRoute();
 const router = useRouter();
@@ -524,21 +529,22 @@ const showAccessTab = computed(() => hasModuleAccess('shop_permissions'));
 const showStorefrontTab = computed(
   () => shop.value?.shop_type === 'fixed_price' || shop.value?.shop_type === 'dropship',
 );
-const showListingsTab = computed(
-  () => shop.value?.shop_type !== 'vendor_catalog' && hasModuleAccess('shop_pricing'),
+const showStockTab = computed(
+  () => shop.value?.shop_type === 'fixed_price' || shop.value?.shop_type === 'dropship',
 );
 
 const isValidTab = (tab: string): tab is ShopDetailTab => {
   if (tab === 'setup') return true;
   if (tab === 'access') return showAccessTab.value;
   if (tab === 'storefront') return showStorefrontTab.value;
-  if (tab === 'listings') return showListingsTab.value;
+  if (tab === 'stock') return showStockTab.value;
   return false;
 };
 
 const activeTab = computed({
   get(): ShopDetailTab {
-    const tab = typeof route.query.tab === 'string' ? route.query.tab : 'setup';
+    const raw = typeof route.query.tab === 'string' ? route.query.tab : 'setup';
+    const tab = raw === 'listings' ? 'stock' : raw;
     return isValidTab(tab) ? tab : 'setup';
   },
   set(tab: ShopDetailTab) {
@@ -548,6 +554,19 @@ const activeTab = computed({
     });
   },
 });
+
+watch(
+  () => route.query.tab,
+  (tab) => {
+    if (tab === 'listings') {
+      void router.replace({
+        params: route.params,
+        query: { ...route.query, tab: 'stock' },
+      });
+    }
+  },
+  { immediate: true },
+);
 
 const onSave = () => {
   const payload = formRef.value?.buildPayload();

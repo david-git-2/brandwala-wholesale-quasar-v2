@@ -329,6 +329,7 @@ GRANT ALL ON FUNCTION "public"."list_dropship_shop_orders_for_staff"("p_tenant_i
 
 
 GRANT ALL ON FUNCTION "public"."list_listable_stock_for_shop"("p_shop_id" bigint, "p_search" "text", "p_limit" integer, "p_offset" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."list_allocated_stock_for_shop"("p_shop_id" bigint, "p_search" "text", "p_limit" integer, "p_offset" integer) TO "authenticated";
 
 
 GRANT ALL ON FUNCTION "public"."list_my_dropship_wallet_ledger"("p_limit" integer, "p_offset" integer) TO "authenticated";

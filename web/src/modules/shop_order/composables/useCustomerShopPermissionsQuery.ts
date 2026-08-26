@@ -23,7 +23,7 @@ export function useCustomerShopPermissionsQuery(shopId: Ref<number | null>) {
       const id = shopId.value!;
       const { data, error } = await supabase.rpc('get_shop_permissions_for_customer', { p_shop_id: id });
       if (error) throw error;
-      return (data?.[0] ?? null) as CustomerShopPermissions | null;
+      return (Array.isArray(data) ? data[0] : data ?? null) as CustomerShopPermissions | null;
     },
     enabled: computed(() => !!shopId.value),
     staleTime: 2 * 60 * 1000,

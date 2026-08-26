@@ -219,6 +219,7 @@ flowchart LR
 | **`ShopSettingsPage`** (Storefront tab) | Toggle active / remove / copy grade | `upsert_shop_product_listing`, `delete_shop_product_listing` | Patches `storefrontAdminListings` cache; invalidates `pricingListings` |
 | **`ShopSettingsPage`** (Storefront tab) | Calculate sell price | `get_shop_storefront_listing_price_calculation` → save `upsert_shop_product_listing` | Key: `storefrontListingPriceCalc(shopId, listingId)` |
 | **`ShopSettingsPage`** (Storefront tab) | Add product drawer | Search: `list_products_paginated` → list: `list_listable_stock_for_shop` → `upsert_shop_product_listing`; create: `useCreateProductMutation` | Keys: `storefrontCatalogSearch`, `pricingCandidates` |
+| **`ShopSettingsPage`** (Stock tab) | Allocated warehouse stock | `list_allocated_stock_for_shop` | Key: `shopAllocatedStock(shopId, search)` |
 | **`ShopPricingPage`** | Listings | `RPC: list_shop_product_listings` | Per shop |
 | **`ShopPricingPage`** | Candidates | `RPC: list_listable_stock_for_shop` | Deferred until add-listing pick dialog opens |
 | **`ShopCartPage`** | Add / qty / remove | `add_to_shop_cart`, `update_shop_cart_item_qty`, `remove_shop_cart_item` | Patches `cart` + `activeCarts` cache from RPC response (`useShopCartMutations`) |
@@ -278,6 +279,7 @@ See **§ RPC: `get_or_create_shop_cart`** below for the response contract.
 * `shopOrderQueryKeys.storefrontAdminListings(shopId, search)` → admin storefront tab cache
 * `shopOrderQueryKeys.storefrontListingPriceCalc(shopId, listingId)` → calculate sell price drawer
 * `shopOrderQueryKeys.storefrontCatalogSearch(tenantId, search)` → add-product drawer catalog search
+* `shopOrderQueryKeys.shopAllocatedStock(shopId, search)` → shop Stock tab warehouse list
 * `shopOrderQueryKeys.storefrontCatalog(...)` → browse cache
 * `shopOrderQueryKeys.storefrontProduct(tenantId, shopSlug, productId)` → product detail cache
 * `shopOrderQueryKeys.storefrontProductRelated(tenantId, shopSlug, productId)` → related products strip
@@ -439,7 +441,33 @@ When **no allocated stock** exists for the product, the drawer creates a **produ
 
 ### Create new catalog product
 
-`useCreateProductMutation` → `productRepository.createProduct` (`inserted_by_tenant_id` sets `parent_tenant_id` via DB trigger). New products appear on the storefront only after stock is allocated to the child tenant.
+`useCreateProductMutation` → `productRepository.createProduct` (`inserted_by_tenant_id` sets `parent_tenant_id` via DB trigger). New products can be added to the storefront as inactive before stock is allocated.
+
+---
+
+## 7e. RPC: `list_allocated_stock_for_shop`
+
+Shop settings **Stock** tab (`ShopWarehouseStockPage`). Lists all received sellable `global_stocks` allocated to the shop’s child tenant (includes zero ATP and already-listed rows).
+
+### Signature
+
+```sql
+list_allocated_stock_for_shop(
+  p_shop_id bigint,
+  p_search  text    default null,
+  p_limit   integer default 200,
+  p_offset  integer default 0
+) returns jsonb  -- { data, meta }
+```
+
+### Frontend wiring
+
+| Layer | Name |
+| :--- | :--- |
+| Repository | `shopWarehouseRepository.listAllocatedStockForShop` |
+| Query | `useShopAllocatedStockQuery` |
+| Type | `ShopAllocatedStockRow` |
+| Query key | `shopOrderQueryKeys.shopAllocatedStock(shopId, search)` |
 
 ---
 

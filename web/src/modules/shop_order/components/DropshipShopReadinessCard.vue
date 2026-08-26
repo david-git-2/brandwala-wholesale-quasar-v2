@@ -138,7 +138,7 @@ const checkItems = computed<CheckItem[]>(() => {
       actionLabel: 'Manage Shop Pricing',
       routeName: 'app-shop-settings-page',
       routeParams: { tenantSlug: props.tenantSlug, shopId: String(props.shopId) },
-      routeQuery: { tab: 'listings' },
+      routeQuery: { tab: 'storefront' },
     },
     {
       id: 'active_courier',

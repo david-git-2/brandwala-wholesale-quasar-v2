@@ -31,7 +31,7 @@ flowchart TD
 | Hub | `/:tenantSlug/app/shop/shops` | `shop_config` | Navigate to Shops, Categories, or Customer Groups |
 | Categories | `/:tenantSlug/app/shop/categories` | `shop_category` | CRUD `shop_categories` |
 | Shops list | `/:tenantSlug/app/shop/shops/list` | `shop_config` | Search, filter, create shop |
-| Shop settings | `/:tenantSlug/app/shop/shops/:shopId/setup` | `shop_config` | Save setup, access, listings (tabbed) |
+| Shop settings | `/:tenantSlug/app/shop/shops/:shopId/setup` | `shop_config` | Save setup, access, storefront, stock (tabbed) |
 | Staff preview | `/:tenantSlug/app/shop/shops/:shopId/preview` | `shop_config` | Open storefront as staff |
 
 ---
@@ -45,7 +45,7 @@ flowchart TD
 | **Setup** | Always | **Save** (calls `ShopSettingsForm.buildPayload` → `upsert_shop`) | `ShopSettingsForm` + danger zone |
 | **Access** | `shop_permissions` grant | None (actions inside matrix) | `ShopAccessMatrixPage` (`embedded`) |
 | **Storefront** | shop type is `fixed_price` or `dropship` | **Add product** (drawer) | Customer-style product cards + admin actions |
-| **Listings** | `shop_pricing` grant **and** shop type ≠ `vendor_catalog` | None (actions inside pricing page) | `ShopPricingPage` (`embedded`) |
+| **Stock** | shop type is `fixed_price` or `dropship` | None | `ShopWarehouseStockPage` — allocated warehouse stock for child tenant |
 
 ### Storefront tab (`?tab=storefront`)
 
@@ -61,6 +61,19 @@ Data: `list_shop_storefront_listings_for_admin` → `ShopStorefrontAdminListing[
 | Add product | Search `list_products_paginated` → stock path: `list_listable_stock_for_shop` + `upsert` (`is_active=true`); no stock: `upsert` with `p_product_id` (`is_active=false`) |
 
 Uniqueness: one listing per `(shop_id, product_id, grade_slug)` enforced in UI when copying grades.
+
+### Stock tab (`?tab=stock`)
+
+Data: `list_allocated_stock_for_shop` → `ShopAllocatedStockRow[]` (all received sellable stock allocated to the shop’s child tenant).
+
+| Action | Behavior |
+| :--- | :--- |
+| Search | Server-side `p_search` on product, code, barcode, shipment, grade |
+| Shipment filter | Client-side filter on `shipment_id` |
+| Storefront status filter | All / listed / not listed (`is_listed_on_shop`) |
+| Add to storefront | `useAddShopStorefrontListingMutation` when ATP &gt; 0 and not yet listed |
+
+Legacy `?tab=listings` redirects to `?tab=stock`.
 
 ### Danger zone (Setup tab only)
 

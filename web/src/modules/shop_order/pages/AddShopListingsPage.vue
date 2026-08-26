@@ -352,7 +352,7 @@ const goBack = () => {
   void router.push({
     name: 'app-shop-settings-page',
     params: { tenantSlug: tenantSlug.value, shopId: shopId.value },
-    query: { tab: 'listings' },
+    query: { tab: 'stock' },
   });
 };
 </script>

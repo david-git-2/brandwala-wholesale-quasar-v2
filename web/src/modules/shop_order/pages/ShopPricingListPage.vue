@@ -167,7 +167,7 @@ const goToShopPricing = (shopId: number) => {
       tenantSlug: tenantSlug.value,
       shopId: String(shopId),
     },
-    query: { tab: 'listings' },
+    query: { tab: 'storefront' },
   });
 };
 
