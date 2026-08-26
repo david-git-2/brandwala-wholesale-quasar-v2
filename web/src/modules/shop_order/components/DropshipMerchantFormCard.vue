@@ -1,14 +1,20 @@
 <script setup lang="ts">
-const props = defineProps<{
-  form: {
-    sender_name: string;
-    pickup_phone: string;
-    pickup_address: string;
-  };
-  selectedMerchantId: string | null;
-  merchantOptions: { label: string; value: string }[];
-  blockCExpanded: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    form: {
+      sender_name: string;
+      pickup_phone: string;
+      pickup_address: string;
+    };
+    selectedMerchantId: string | null;
+    merchantOptions: { label: string; value: string }[];
+    blockCExpanded: boolean;
+    title?: string;
+  }>(),
+  {
+    title: 'Block C: Merchant Sender Pickup Info',
+  },
+);
 
 const emit = defineEmits<{
   (e: 'update:selectedMerchantId', val: string | null): void;
@@ -33,7 +39,7 @@ const updateField = (key: string, val: any) => {
         <div class="row items-center justify-between full-width">
           <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center">
             <q-icon name="ph ph-storefront" size="18px" class="q-mr-xs text-primary" />
-            Block C: Merchant Sender Pickup Info
+            {{ props.title }}
           </div>
           <div v-if="props.selectedMerchantId" class="text-caption text-grey-7 q-mr-sm">
             <q-chip dense color="blue-1" text-color="primary" size="sm">

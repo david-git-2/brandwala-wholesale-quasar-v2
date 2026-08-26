@@ -357,10 +357,43 @@ const adminRoutes: RouteRecordRaw[] = [
         }),
       },
       {
+        path: ':id/v2/ready-for-pickup',
+        name: 'app-shop-dropship-order-detail-v2-ready-for-pickup-page',
+        component: () =>
+          import('src/modules/shop_order/pages/DropshipOrderDetailV2ReadyForPickupPage.vue'),
+        beforeEnter: guard('shop_order_mgmt'),
+      },
+      {
+        path: ':id/v2/processing',
+        name: 'app-shop-dropship-order-detail-v2-processing-page',
+        component: () =>
+          import('src/modules/shop_order/pages/DropshipOrderDetailV2ProcessingPage.vue'),
+        beforeEnter: guard('shop_order_mgmt'),
+      },
+      {
+        path: ':id/v2',
+        name: 'app-shop-dropship-order-detail-v2-page',
+        component: () => import('src/modules/shop_order/pages/DropshipOrderDetailV2Page.vue'),
+        beforeEnter: guard('shop_order_mgmt'),
+      },
+      {
         path: ':id',
         name: 'app-shop-dropship-order-detail-page',
         component: () => import('src/modules/shop_order/pages/DropshipOrderDetailPage.vue'),
         beforeEnter: guard('shop_order_mgmt'),
+      },
+    ],
+  },
+  {
+    path: '/:tenantSlug?/app/shop/dropship/:id/v2/customer-invoice-preview',
+    component: () => import('layouts/ExternalLayout.vue'),
+    beforeEnter: guard('shop_order_mgmt'),
+    children: [
+      {
+        path: '',
+        name: 'app-shop-dropship-order-v2-customer-invoice-preview',
+        component: () =>
+          import('src/modules/shop_order/pages/DropshipOrderDetailV2CustomerInvoicePreviewPage.vue'),
       },
     ],
   },

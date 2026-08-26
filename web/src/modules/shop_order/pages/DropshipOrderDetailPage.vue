@@ -1,6 +1,8 @@
 <template>
   <q-page class="q-pa-md">
     <div class="q-gutter-y-md">
+      <DropshipOrderDetailUiToggle />
+
       <!-- Loading Skeleton -->
       <DropshipOrderDetailSkeleton v-if="loading" />
 
@@ -214,6 +216,7 @@ import type { ShopOrder, ShopOrderItem } from '../types';
 import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 
 import DropshipOrderDetailSkeleton from '../components/DropshipOrderDetailSkeleton.vue';
+import DropshipOrderDetailUiToggle from '../components/DropshipOrderDetailUiToggle.vue';
 import DropshipOrderHeader from '../components/DropshipOrderHeader.vue';
 import DropshipOrderStatusWorkflow from '../components/DropshipOrderStatusWorkflow.vue';
 import DropshipRecipientFormCard from '../components/DropshipRecipientFormCard.vue';

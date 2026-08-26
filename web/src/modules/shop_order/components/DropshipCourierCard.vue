@@ -1,21 +1,27 @@
 <script setup lang="ts">
 import type { CourierServiceRow } from '../repositories/dropshipCourierRepository';
 
-const props = defineProps<{
-  form: {
-    courier_service_id: string | null;
-    courier_awb_number: string;
-    tracking_url: string;
-    allow_open_box: boolean;
-    cod_charge: number;
-  };
-  courierOptions: { label: string; value: string }[];
-  selectedCourier: CourierServiceRow | undefined;
-  deliveryZoneLabel: string;
-  suggestedDeliveryFee: number;
-  codRateLabel: string;
-  formatBdt: (amount: number) => string;
-}>();
+const props = withDefaults(
+  defineProps<{
+    form: {
+      courier_service_id: string | null;
+      courier_awb_number: string;
+      tracking_url: string;
+      allow_open_box: boolean;
+      cod_charge: number;
+    };
+    courierOptions: { label: string; value: string }[];
+    selectedCourier: CourierServiceRow | undefined;
+    deliveryZoneLabel: string;
+    suggestedDeliveryFee: number;
+    codRateLabel: string;
+    formatBdt: (amount: number) => string;
+    title?: string;
+  }>(),
+  {
+    title: 'Block E: Courier & Tracking Assignment',
+  },
+);
 
 const emit = defineEmits<{
   (e: 'courier-change'): void;
@@ -32,7 +38,7 @@ const updateField = (key: string, val: any) => {
     <q-card-section class="border-bottom row items-center justify-between">
       <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center">
         <q-icon name="ph ph-truck" size="18px" class="q-mr-xs text-primary" />
-        Block E: Courier &amp; Tracking Assignment
+        {{ props.title }}
       </div>
     </q-card-section>
     <q-card-section>
