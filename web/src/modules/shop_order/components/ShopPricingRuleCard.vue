@@ -1,59 +1,62 @@
 <template>
-  <q-card flat bordered class="q-mb-md">
-    <q-card-section class="q-py-sm">
-      <div class="row items-center justify-end q-gutter-x-md">
-        <!-- Dropship Floor Markup Input -->
-          <q-input
-            v-model.number="dropshipMarkupPercentage"
-            type="number"
-            dense
-            outlined
-            style="width: 150px"
-            suffix="%"
-            label="Dropship Floor %"
-            hint="Floor markup on cost"
-            step="0.1"
-            min="0"
-          />
+  <q-card flat bordered>
+    <q-card-section class="q-px-sm q-py-xs">
+      <div class="row items-center justify-end q-gutter-x-sm no-wrap">
+        <q-input
+          v-model.number="dropshipMarkupPercentage"
+          type="number"
+          dense
+          outlined
+          hide-bottom-space
+          style="width: 132px"
+          suffix="%"
+          label="Dropship Floor %"
+          step="0.1"
+          min="0"
+        >
+          <q-tooltip>Floor markup on cost</q-tooltip>
+        </q-input>
 
-          <!-- Global Display Quantity Add Input -->
-          <q-input
-            v-model.number="globalQuantityAdd"
-            type="number"
-            dense
-            outlined
-            style="width: 150px"
-            label="Add Quantity"
-            placeholder="e.g. 100"
-            hint="Added to available stock"
-            step="1"
-          />
+        <q-input
+          v-model.number="globalQuantityAdd"
+          type="number"
+          dense
+          outlined
+          hide-bottom-space
+          style="width: 118px"
+          label="Add Quantity"
+          placeholder="e.g. 100"
+          step="1"
+        >
+          <q-tooltip>Added to available stock</q-tooltip>
+        </q-input>
 
-          <!-- Sell Price Markup Input -->
-          <q-input
-            v-model.number="markupPercentage"
-            type="number"
-            dense
-            outlined
-            style="width: 160px"
-            suffix="%"
-            label="Sell Price Markup %"
-            hint="Rounded to nearest 5/0"
-            step="0.1"
-            min="0"
-          />
+        <q-input
+          v-model.number="markupPercentage"
+          type="number"
+          dense
+          outlined
+          hide-bottom-space
+          style="width: 148px"
+          suffix="%"
+          label="Sell Price Markup %"
+          step="0.1"
+          min="0"
+        >
+          <q-tooltip>Rounded to nearest 5/0</q-tooltip>
+        </q-input>
 
-          <!-- Save Button -->
-          <q-btn
-            unelevated
-            color="primary"
-            dense
-            class="q-px-md"
-            icon="ph ph-floppy-disk"
-            :label="$t('shop_admin.save_rule')"
-            :loading="isSaving"
-            @click="onSaveRule"
-          />
+        <q-btn
+          unelevated
+          color="primary"
+          dense
+          no-caps
+          class="q-px-sm"
+          icon="ph ph-floppy-disk"
+          :label="$t('shop_admin.save_rule')"
+          :loading="isSaving"
+          @click="onSaveRule"
+        />
       </div>
     </q-card-section>
   </q-card>

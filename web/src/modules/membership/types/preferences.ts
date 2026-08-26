@@ -12,6 +12,7 @@ export interface MembershipPreferenceSchema {
     };
     shopOrder?: {
       staffCatalogVisibleColumns?: string[];
+      pricingListingsVisibleColumns?: string[];
     };
     appearance?: {
       darkMode?: boolean;
@@ -27,6 +28,7 @@ export const MEMBERSHIP_UI_PATHS = {
   thriftShipmentDetailsColumns: ['ui', 'thriftShipment', 'detailsVisibleColumns'],
   procurementShipmentDetailsColumns: ['ui', 'procurementShipment', 'detailsVisibleColumns'],
   shopOrderStaffCatalogVisibleColumns: ['ui', 'shopOrder', 'staffCatalogVisibleColumns'],
+  shopOrderPricingListingsColumns: ['ui', 'shopOrder', 'pricingListingsVisibleColumns'],
   uiAppearanceDarkMode: ['ui', 'appearance', 'darkMode'],
   uiAppearanceDensity: ['ui', 'appearance', 'density'],
   uiAppearanceNavPinned: ['ui', 'appearance', 'navPinned'],
@@ -40,4 +42,5 @@ export const LEGACY_MEMBERSHIP_PREFERENCE_KEYS: Record<string, MembershipUiPathK
   'ui.thriftShipment.detailsVisibleColumns': 'thriftShipmentDetailsColumns',
   'ui.procurementShipment.detailsVisibleColumns': 'procurementShipmentDetailsColumns',
   'ui.shopOrder.staffCatalogVisibleColumns': 'shopOrderStaffCatalogVisibleColumns',
+  'ui.shopOrder.pricingListingsVisibleColumns': 'shopOrderPricingListingsColumns',
 };

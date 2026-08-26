@@ -1,6 +1,6 @@
 <template>
   <component :is="embedded ? 'div' : 'q-page'" :class="embedded ? '' : 'bw-page'">
-    <section class="bw-page__stack">
+    <section :class="embedded ? 'q-gutter-y-sm' : 'bw-page__stack'">
       <!-- Header -->
       <section v-if="!embedded" class="row items-center justify-between q-col-gutter-md">
         <div class="col">
@@ -29,8 +29,8 @@
       </section>
 
       <!-- Toolbar / Search -->
-      <section class="row items-center justify-between q-col-gutter-md">
-        <div class="col-12 col-sm-5">
+      <section class="row items-center justify-between q-col-gutter-sm">
+        <div class="col-12 col-sm-4">
           <q-input
             v-model="search"
             clearable
@@ -43,8 +43,64 @@
             </template>
           </q-input>
         </div>
-        <div v-if="embedded" class="col-auto">
+        <div class="col-auto row items-center q-gutter-sm no-wrap">
           <q-btn
+            outline
+            color="primary"
+            no-caps
+            dense
+            icon="ph ph-columns"
+            :label="$t('product_based_costing.columns')"
+            style="border-radius: 8px"
+          >
+            <q-menu anchor="bottom end" self="top end">
+              <q-list style="min-width: 260px; max-height: 400px" class="q-pa-xs">
+                <q-item class="q-pb-none">
+                  <q-item-section>
+                    <div class="text-subtitle2 q-mb-xs">{{ $t('product_based_costing.show_columns') }}</div>
+                    <q-input
+                      v-model="columnSearchQuery"
+                      dense
+                      outlined
+                      :placeholder="$t('product_based_costing.search_columns')"
+                      clearable
+                    >
+                      <template #prepend>
+                        <q-icon name="ph ph-magnifying-glass" size="16px" />
+                      </template>
+                    </q-input>
+                  </q-item-section>
+                </q-item>
+                <q-item clickable class="q-py-xs">
+                  <q-item-section>
+                    <q-checkbox
+                      v-model="allSelectableColumnsSelected"
+                      :label="$t('product_based_costing.select_deselect_all')"
+                    />
+                  </q-item-section>
+                </q-item>
+                <q-separator class="q-my-xs" />
+                <q-item class="q-py-none">
+                  <q-item-section>
+                    <div
+                      v-if="!filteredColumnSelectorOptions.length"
+                      class="text-caption text-grey-6 q-pa-sm"
+                    >
+                      {{ $t('product_based_costing.no_matching_columns') }}
+                    </div>
+                    <q-option-group
+                      v-else
+                      v-model="visibleColumns"
+                      type="checkbox"
+                      :options="filteredColumnSelectorOptions"
+                    />
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </q-menu>
+          </q-btn>
+          <q-btn
+            v-if="embedded"
             color="primary"
             icon="ph ph-plus"
             :label="$t('shop_admin.add_product_listing')"
@@ -100,6 +156,7 @@
           row-key="id"
           :rows="filteredListings"
           :columns="columns"
+          :visible-columns="resolvedVisibleColumns"
           :pagination="{ rowsPerPage: 25 }"
           :dense="$q.screen.lt.md"
           class="shop-pricing-q-table"
@@ -141,8 +198,14 @@
           <template #body-cell-product_name="props">
             <q-td :props="props" class="col-name">
               <div class="name-cell-content">
-                <span class="name-cell-text text-weight-bold text-grey-9">{{ props.row.product_name }}</span>
-                <div v-if="props.row.product_brand || props.row.product_category || props.row.shipment_id" class="text-caption text-grey-6 q-mt-xs">
+                <span
+                  class="name-cell-text text-weight-bold text-primary cursor-pointer"
+                  @click="openEditListing(props.row)"
+                >{{ props.row.product_name }}</span>
+                <div
+                  v-if="props.row.product_brand || props.row.product_category || props.row.shipment_id"
+                  class="text-caption text-grey-6"
+                >
                   {{ [props.row.product_brand, props.row.product_category].filter(Boolean).join(' | ') }}
                   <q-chip
                     v-if="props.row.shipment_id"
@@ -202,29 +265,19 @@
 
           <!-- Sell Price -->
           <template #body-cell-sell_price="props">
-            <q-td :props="props" class="cursor-pointer editable-cell text-right">
-              <div class="text-weight-medium text-grey-9 row items-center justify-end no-wrap">
-                <span>{{ formatAmount(props.row.sell_price_amount) }}</span>
-                <q-icon name="ph ph-pencil-simple" size="14px" color="grey-6" class="q-ml-xs" />
-              </div>
-              <q-popup-edit
-                v-slot="scope"
-                :model-value="Number(props.row.sell_price_amount)"
-                buttons
-                label-set="Save"
-                label-cancel="Cancel"
-                @save="(val) => onInlineCellEdit(props.row, 'sell_price_amount', Number(val), true)"
-              >
-                <q-input
-                  v-model.number="scope.value"
-                  type="number"
-                  step="0.01"
-                  dense
-                  autofocus
-                  label="Sell Price Amount"
-                  @keyup.enter="scope.set"
-                />
-              </q-popup-edit>
+            <q-td :props="props" class="text-right editable-cell">
+              <q-input
+                v-model.number="props.row.sell_price_amount"
+                type="number"
+                dense
+                borderless
+                input-class="text-right bw-tabular"
+                class="cell-input"
+                step="0.01"
+                min="0"
+                @blur="onSellPriceBlur(props.row)"
+                @keyup.enter="blurInput"
+              />
             </q-td>
           </template>
 
@@ -244,43 +297,28 @@
 
           <!-- Dropship floor -->
           <template #body-cell-min_sell_price="props">
-            <q-td :props="props" :class="[shopType === 'dropship' ? 'cursor-pointer editable-cell' : '', 'text-right']">
-              <div v-if="shopType === 'dropship'" class="text-grey-8 row items-center justify-end no-wrap">
-                <span>{{
-                  formatMoney(
-                    props.row.minimum_sell_price_amount,
-                    props.row.minimum_sell_price_currency_id,
-                  )
-                }}</span>
-                <q-icon name="ph ph-pencil-simple" size="14px" color="grey-6" class="q-ml-xs" />
-              </div>
-              <div v-else class="text-grey-4">—</div>
-              <q-popup-edit
+            <q-td :props="props" class="text-right editable-cell">
+              <q-input
                 v-if="shopType === 'dropship'"
-                v-slot="scope"
-                :model-value="props.row.minimum_sell_price_amount !== null ? Number(props.row.minimum_sell_price_amount) : null"
-                buttons
-                label-set="Save"
-                label-cancel="Cancel"
-                @save="(val) => onInlineCellEdit(props.row, 'minimum_sell_price_amount', val !== null && val !== '' ? Number(val) : null, true)"
-              >
-                <q-input
-                  v-model.number="scope.value"
-                  type="number"
-                  step="0.01"
-                  dense
-                  autofocus
-                  clearable
-                  label="Minimum Sell Price (Floor)"
-                  @keyup.enter="scope.set"
-                />
-              </q-popup-edit>
+                v-model.number="props.row.minimum_sell_price_amount"
+                type="number"
+                dense
+                borderless
+                input-class="text-right bw-tabular"
+                class="cell-input"
+                step="0.01"
+                min="0"
+                clearable
+                @blur="onMinSellPriceBlur(props.row)"
+                @keyup.enter="blurInput"
+              />
+              <span v-else class="text-grey-4">—</span>
             </q-td>
           </template>
 
           <!-- Display Qty -->
           <template #body-cell-display_quantity="props">
-            <q-td :props="props" class="text-center cursor-pointer editable-cell">
+            <q-td :props="props" class="text-center editable-cell">
               <div class="row items-center justify-center no-wrap q-gutter-x-xs">
                 <q-btn
                   flat
@@ -295,40 +333,20 @@
                     {{ props.row.is_quantity_locked ? 'Quantity is Manually Locked (Protected from bulk updates)' : 'Quantity is Unlocked (Will update with bulk adjustments)' }}
                   </q-tooltip>
                 </q-btn>
-                <div
-                  v-if="props.row.display_quantity_override !== null"
-                  class="text-primary text-weight-bold row items-center justify-center no-wrap"
-                >
-                  <span>{{ props.row.display_quantity_override }}</span>
-                  <q-icon name="ph ph-pencil-simple" size="14px" color="primary" class="q-ml-xs" />
-                  <q-tooltip>{{
-                    $t('shop_admin.marketing_override', { qty: props.row.available_to_sell })
-                  }}</q-tooltip>
-                </div>
-                <div v-else class="text-grey-8 row items-center justify-center no-wrap">
-                  <span>{{ props.row.available_to_sell }}</span>
-                  <q-icon name="ph ph-pencil-simple" size="14px" color="grey-5" class="q-ml-xs" />
-                </div>
-              </div>
-              <q-popup-edit
-                v-slot="scope"
-                :model-value="props.row.display_quantity_override ?? props.row.available_to_sell"
-                buttons
-                label-set="Save"
-                label-cancel="Cancel"
-                @save="(val) => onInlineCellEdit(props.row, 'display_quantity_override', val !== null && val !== '' ? Number(val) : null, true)"
-              >
                 <q-input
-                  v-model.number="scope.value"
+                  :model-value="getDisplayQtyValue(props.row)"
                   type="number"
                   dense
-                  autofocus
-                  clearable
-                  label="Display Quantity Override"
-                  placeholder="Inherits actual available qty if empty"
-                  @keyup.enter="scope.set"
+                  borderless
+                  input-class="text-center bw-tabular"
+                  class="cell-input display-qty-input"
+                  min="0"
+                  step="1"
+                  @update:model-value="(val) => setDisplayQtyValue(props.row, val)"
+                  @blur="onDisplayQtyBlur(props.row)"
+                  @keyup.enter="blurInput"
                 />
-              </q-popup-edit>
+              </div>
             </q-td>
           </template>
 
@@ -374,22 +392,6 @@
                   }}
                 </q-tooltip>
               </q-toggle>
-            </q-td>
-          </template>
-
-          <!-- Actions -->
-          <template #body-cell-actions="props">
-            <q-td :props="props" class="text-right">
-              <q-btn
-                flat
-                round
-                dense
-                icon="ph ph-pencil-simple"
-                color="primary"
-                @click="openEditListing(props.row)"
-              >
-                <q-tooltip>{{ $t('shop_admin.edit_settings') }}</q-tooltip>
-              </q-btn>
             </q-td>
           </template>
         </q-table>
@@ -537,6 +539,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { supabase } from 'src/boot/supabase';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useMembershipColumnPreference } from 'src/modules/membership/composables/useMembershipColumnPreference';
 import {
   useShopPricingListingsQuery,
   useShopPricingCandidatesQuery,
@@ -600,6 +603,102 @@ const shopName = ref<string>('');
 const shopType = ref<string>('');
 const shopDefaultCurrencyId = ref<number | null>(null);
 const search = ref<string>('');
+const columnSearchQuery = ref('');
+
+type ShopPricingColumnName =
+  | 'select'
+  | 'product_image'
+  | 'product_name'
+  | 'code_barcode'
+  | 'sell_price'
+  | 'unit_cost'
+  | 'min_sell_price'
+  | 'display_quantity'
+  | 'actual_quantity'
+  | 'show_quantity'
+  | 'is_active';
+
+const ALL_COLUMN_NAMES: ShopPricingColumnName[] = [
+  'select',
+  'product_image',
+  'product_name',
+  'code_barcode',
+  'sell_price',
+  'unit_cost',
+  'min_sell_price',
+  'display_quantity',
+  'actual_quantity',
+  'show_quantity',
+  'is_active',
+];
+
+const ALWAYS_VISIBLE_COLUMNS: ShopPricingColumnName[] = ['select', 'product_image', 'product_name'];
+
+const DEFAULT_VISIBLE_COLUMNS: ShopPricingColumnName[] = [
+  'select',
+  'product_image',
+  'product_name',
+  'code_barcode',
+  'sell_price',
+  'unit_cost',
+  'min_sell_price',
+  'display_quantity',
+  'actual_quantity',
+  'show_quantity',
+  'is_active',
+];
+
+const { visibleColumns } = useMembershipColumnPreference<ShopPricingColumnName>({
+  preferencePath: 'shopOrderPricingListingsColumns',
+  allColumnNames: ALL_COLUMN_NAMES,
+  alwaysVisibleColumns: ALWAYS_VISIBLE_COLUMNS,
+  defaultVisibleColumns: DEFAULT_VISIBLE_COLUMNS,
+});
+
+const columnSelectorOptions = computed(() => {
+  const options = [
+    { label: 'Code / Barcode', value: 'code_barcode' as const },
+    { label: t('shop_admin.col_sell_price'), value: 'sell_price' as const },
+    { label: 'Calculated Cost', value: 'unit_cost' as const },
+    { label: t('shop_admin.dropship_floor'), value: 'min_sell_price' as const },
+    { label: t('shop_admin.col_display_qty'), value: 'display_quantity' as const },
+    { label: t('shop_admin.col_actual_qty'), value: 'actual_quantity' as const },
+    { label: t('shop_admin.qty_visibility'), value: 'show_quantity' as const },
+    { label: t('shop_admin.col_listing_active'), value: 'is_active' as const },
+  ];
+
+  if (shopType.value !== 'dropship') {
+    return options.filter((option) => option.value !== 'min_sell_price');
+  }
+  return options;
+});
+
+const filteredColumnSelectorOptions = computed(() => {
+  const query = columnSearchQuery.value.trim().toLowerCase();
+  if (!query) return columnSelectorOptions.value;
+  return columnSelectorOptions.value.filter((option) => option.label.toLowerCase().includes(query));
+});
+
+const allSelectableColumnsSelected = computed({
+  get: () => columnSelectorOptions.value.every((option) => visibleColumns.value.includes(option.value)),
+  set: (checked: boolean) => {
+    if (checked) {
+      const next = new Set<ShopPricingColumnName>([
+        ...visibleColumns.value,
+        ...columnSelectorOptions.value.map((option) => option.value),
+      ]);
+      ALWAYS_VISIBLE_COLUMNS.forEach((column) => next.add(column));
+      visibleColumns.value = ALL_COLUMN_NAMES.filter((column) => next.has(column));
+      return;
+    }
+    visibleColumns.value = [...ALWAYS_VISIBLE_COLUMNS];
+  },
+});
+
+const resolvedVisibleColumns = computed(() => {
+  if (shopType.value === 'dropship') return visibleColumns.value;
+  return visibleColumns.value.filter((column) => column !== 'min_sell_price');
+});
 
 // Form & Dialog controls
 const editDialogOpen = ref(false);
@@ -731,7 +830,6 @@ const columns = computed(() => [
     field: 'is_active',
     align: 'center' as const,
   },
-  { name: 'actions', label: '', field: 'id', align: 'right' as const },
 ]);
 
 const showQuantityOptions = computed(() => [
@@ -740,16 +838,60 @@ const showQuantityOptions = computed(() => [
   { label: t('shop_admin.force_hide'), value: false },
 ]);
 
-const formatAmount = (amount: number | null | undefined): string => {
-  if (amount === null || amount === undefined) return '—';
-  return Number(amount).toFixed(2);
-};
-
 const formatMoney = (amount: number | null, currencyId: number | null): string => {
   if (amount === null || currencyId === null) return '—';
   const curr = currencies.value.find((c) => c.id === currencyId);
   const code = curr ? curr.code : '';
   return `${Number(amount).toFixed(2)} ${code}`;
+};
+
+const blurInput = (event: KeyboardEvent) => {
+  (event.target as HTMLInputElement | null)?.blur();
+};
+
+const getDisplayQtyValue = (listing: ShopProductListing) =>
+  listing.display_quantity_override ?? listing.available_to_sell;
+
+const setDisplayQtyValue = (listing: ShopProductListing, value: string | number | null) => {
+  if (value === null || value === '') {
+    listing.display_quantity_override = null;
+    return;
+  }
+  listing.display_quantity_override = Number(value);
+};
+
+const onSellPriceBlur = (listing: ShopProductListing) => {
+  const amount = Number(listing.sell_price_amount);
+  onInlineCellEdit(listing, 'sell_price_amount', Number.isFinite(amount) ? amount : 0, true);
+};
+
+const onMinSellPriceBlur = (listing: ShopProductListing) => {
+  const raw = listing.minimum_sell_price_amount;
+  const amount =
+    raw === null || raw === undefined || raw === ('' as unknown as number) ? null : Number(raw);
+  onInlineCellEdit(
+    listing,
+    'minimum_sell_price_amount',
+    amount !== null && Number.isFinite(amount) ? amount : null,
+    true,
+  );
+};
+
+const onDisplayQtyBlur = (listing: ShopProductListing) => {
+  const actualQty = listing.available_to_sell;
+  const raw = listing.display_quantity_override;
+  const nextValue =
+    raw === null || raw === undefined
+      ? null
+      : Number(raw) === actualQty
+        ? null
+        : Number(raw);
+  onInlineCellEdit(
+    listing,
+    'display_quantity_override',
+    nextValue !== null && Number.isFinite(nextValue) ? nextValue : null,
+    true,
+  );
 };
 
 const filteredListings = computed(() => {
@@ -1265,26 +1407,37 @@ onMounted(() => {
 }
 
 .col-name {
-  min-width: 220px;
+  min-width: 200px;
+  width: 200px;
+  max-width: 200px;
+  vertical-align: top;
 }
 
 .name-cell-content {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
 }
 
 .name-cell-text {
-  font-size: 13px;
-  line-height: 1.3;
+  flex: 1;
+  min-width: 0;
+  white-space: normal;
   word-break: break-word;
+  line-height: 1.3;
 }
 
 .col-barcode {
   min-width: 160px;
+  vertical-align: top;
 }
 
 .barcode-lines {
   line-height: 1.4;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .font-mono {
@@ -1292,12 +1445,45 @@ onMounted(() => {
 }
 
 .editable-cell {
-  position: relative;
-  transition: background-color 0.2s ease;
+  cursor: text;
 }
 
-.editable-cell:hover {
-  background-color: rgba(25, 118, 210, 0.05) !important;
+.editable-cell :deep(.q-field__control) {
+  min-height: 28px;
+  height: 28px;
+  padding: 0 4px;
+}
+
+.editable-cell :deep(.q-field__native) {
+  padding: 0;
+}
+
+.cell-input :deep(.q-field__control) {
+  border: 1px solid transparent;
+  border-radius: 6px;
+  min-height: 28px;
+  height: 28px;
+}
+
+.cell-input.q-field--focused :deep(.q-field__control),
+.cell-input:focus-within :deep(.q-field__control) {
+  border-color: var(--q-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--q-primary) 28%, transparent);
+}
+
+.cell-input :deep(input[type='number']::-webkit-outer-spin-button),
+.cell-input :deep(input[type='number']::-webkit-inner-spin-button) {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.cell-input :deep(input[type='number']) {
+  -moz-appearance: textfield;
+}
+
+.display-qty-input {
+  width: 72px;
+  max-width: 72px;
 }
 </style>
 

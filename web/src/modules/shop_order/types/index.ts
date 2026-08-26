@@ -4,6 +4,14 @@
 
 export type ShopType = 'vendor_catalog' | 'fixed_price' | 'dropship';
 export type ShopOrderMode = 'procurement_intent' | 'checkout_fixed' | 'checkout_wholesale';
+export type ShopStorefrontListingStatus = 'active' | 'inactive';
+
+/** Stock grade tag snapshot for admin storefront preview. */
+export interface ShopCatalogStockGrade {
+  slug: string;
+  label: string;
+  color?: string | null;
+}
 
 /** Nested price object from browse/detail catalog RPCs. */
 export interface ShopCatalogPrice {
@@ -28,6 +36,16 @@ export interface ShopCatalogItem {
   sell_price: ShopCatalogPrice | null;
   resell_minimum_price: ShopCatalogPrice | null;
   available_units: number | null;
+  /** Real stock ATP (admin storefront preview). */
+  real_available_units?: number | null;
+  /** Listing display qty override; null falls back to real available. */
+  display_quantity_override?: number | null;
+  /** Admin storefront preview: average landed unit cost. */
+  avg_cost?: ShopCatalogPrice | null;
+  /** Admin storefront preview: listing on/off shop status. */
+  listing_status?: ShopStorefrontListingStatus | null;
+  /** Admin storefront preview: warehouse stock grade (e.g. box damage, open box). */
+  stock_grade?: ShopCatalogStockGrade | null;
   global_stock_allocation_id: number | null;
   global_stock_id: number | null;
   minimum_order_quantity: number | null;

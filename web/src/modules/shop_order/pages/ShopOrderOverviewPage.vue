@@ -76,10 +76,10 @@ const getTenantPrefix = () => {
 
 const hubCards = computed<HubCard[]>(() => [
   {
-    key: 'shops',
+    key: 'shop_config',
     moduleKey: 'shop_config',
     path: 'shops',
-    title: t('navigation.shops'),
+    title: t('navigation.shop_config'),
     caption: t('shop_admin.shop_setup_hub_caption'),
     icon: 'ph ph-storefront',
     badgeClass: 'bg-blue-1 text-blue-9',
@@ -113,7 +113,7 @@ const visibleCards = computed(() => {
   void authStore.tenantId;
 
   return hubCards.value.filter((card) => {
-    if (card.key === 'shops') {
+    if (card.key === 'shop_config') {
       return hasStoreHubAccess();
     }
     return getModuleAccess(card.moduleKey, 'view').allowed;
