@@ -75,6 +75,48 @@ Day-to-day schema/RPC work should hit **local Docker**, not the linked remote. P
 
 **Prerequisites:** Docker Desktop running; repo Supabase CLI (`pnpm install` at root); project already linkable (`pnpm run backend:login` + `pnpm run backend:link`).
 
+### Database commands (quick reference)
+
+Start local Supabase first (if not already running):
+
+```bash
+pnpm run backend:start
+```
+
+**Replay all migrations locally** — wipes local DB, applies every migration file, **no prod data**:
+
+```bash
+pnpm run backend:reset
+```
+
+Use this to verify migrations on a clean database. When green, regenerate types: `pnpm run backend:types:local`.
+
+**Apply only new/pending migrations** — keeps existing local data:
+
+```bash
+pnpm run backend:local
+```
+
+**Load production data into local** — dumps linked prod, resets local from migrations, then restores prod rows (public + auth). **Overwrites all local DB contents.** Storage file blobs are not copied.
+
+```bash
+pnpm run backend:pull-prod-data
+```
+
+Type `yes` when prompted, or skip the prompt:
+
+```bash
+pnpm run backend:pull-prod-data -- --force
+```
+
+Reuse a previous dump without hitting prod again:
+
+```bash
+pnpm run backend:pull-prod-data -- --reuse-dumps
+```
+
+Requires: linked project (`pnpm run backend:link`), `psql` on your PATH. Dumps are saved to gitignored `supabase/.dumps/`. After a pull, run `pnpm run env:local` and restart `pnpm run dev`.
+
 **One-time setup**
 
 1. Add Google OAuth to `web/.env.profile.prod` (same client as hosted Auth): `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` from Dashboard → Authentication → Providers → Google. (`backend:start` loads these from `web/.env.profile.prod` / legacy `web/.env.prod` / `web/.env` automatically.)
@@ -85,7 +127,7 @@ Day-to-day schema/RPC work should hit **local Docker**, not the linked remote. P
    - Local once: `pnpm run backend:env:print > web/.env.profile.local`, then add Cloudinary/CF vars from [`web/.env.local.example`](web/.env.local.example) or from `web/.env.profile.prod`.
    - Never use `web/.env.local` as a profile store — Vite auto-loads that name and it overrides `web/.env` (breaks `env:prod`).
 5. Switch anytime: `pnpm run env:local` or `pnpm run env:prod` (then restart `pnpm run dev`). Check with `pnpm run env:status`.
-6. Optional — clone prod **rows** into local (overwrites local DB; Storage blobs are not copied): `pnpm run backend:pull-prod-data` (type `yes`, or `pnpm run backend:pull-prod-data -- --force`). Dumps go to gitignored `supabase/.dumps/`. Requires `psql` on your PATH. After a data pull, the same Google accounts can sign in locally because `auth.users` / identities come from prod **and** local uses the same Google OAuth client.
+6. Optional — clone prod rows into local: see [Database commands (quick reference)](#database-commands-quick-reference) (`backend:pull-prod-data`). After a data pull, the same Google accounts can sign in locally because `auth.users` / identities come from prod **and** local uses the same Google OAuth client.
 
 **Daily local loop**
 
