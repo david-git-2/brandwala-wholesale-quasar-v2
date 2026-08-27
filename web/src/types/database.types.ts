@@ -1785,6 +1785,7 @@ export type Database = {
           remittance_at: string | null
           reseller_profit: number | null
           reseller_purchase_cost: number
+          reseller_unit_purchase_cost: number
           return_reason_note: string | null
           shop_order_id: number
           status: Database["public"]["Enums"]["dropship_settlement_status"]
@@ -1809,6 +1810,7 @@ export type Database = {
           remittance_at?: string | null
           reseller_profit?: number | null
           reseller_purchase_cost?: number
+          reseller_unit_purchase_cost?: number
           return_reason_note?: string | null
           shop_order_id: number
           status?: Database["public"]["Enums"]["dropship_settlement_status"]
@@ -1833,6 +1835,7 @@ export type Database = {
           remittance_at?: string | null
           reseller_profit?: number | null
           reseller_purchase_cost?: number
+          reseller_unit_purchase_cost?: number
           return_reason_note?: string | null
           shop_order_id?: number
           status?: Database["public"]["Enums"]["dropship_settlement_status"]
@@ -10305,12 +10308,20 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      apply_dropship_order_charge_lines: {
+        Args: { p_charge_lines: Json; p_order_id: number }
+        Returns: undefined
+      }
       apply_dropship_payout_settlement_fifo: {
         Args: {
           p_amount: number
           p_billing_profile_id: number
           p_tenant_id: number
         }
+        Returns: undefined
+      }
+      apply_dropship_reseller_unit_purchase: {
+        Args: { p_order_id: number; p_unit_sell_price_amount: number }
         Returns: undefined
       }
       apply_global_invoice_settlement_discount: {
@@ -10502,6 +10513,13 @@ export type Database = {
       }
       build_default_dropship_settlement_charge_lines: {
         Args: { p_order: Database["public"]["Tables"]["shop_orders"]["Row"] }
+        Returns: Json
+      }
+      build_dropship_management_charge_lines: {
+        Args: {
+          p_order: Database["public"]["Tables"]["shop_orders"]["Row"]
+          p_settlement_id?: number
+        }
         Returns: Json
       }
       bulk_add_global_shipment_items: {
@@ -10990,20 +11008,44 @@ export type Database = {
         }
         Returns: Json
       }
-      compute_dropship_settlement_totals: {
-        Args: {
-          p_charge_lines: Json
-          p_collected_cod: number
-          p_discount_company_pay: number
-          p_reseller_purchase_cost: number
-        }
+      compute_dropship_order_reseller_purchase: {
+        Args: { p_order_id: number }
         Returns: {
-          company_profit: number
-          merchant_paid_charges: number
-          reseller_profit: number
-          total_cost: number
+          order_item_quantity: number
+          reseller_purchase_cost: number
+          reseller_unit_purchase_cost: number
         }[]
       }
+      compute_dropship_settlement_totals:
+        | {
+            Args: {
+              p_charge_lines: Json
+              p_collected_cod: number
+              p_company_procurement_cost: number
+              p_discount_company_pay: number
+              p_reseller_purchase_cost: number
+            }
+            Returns: {
+              company_profit: number
+              merchant_paid_charges: number
+              reseller_profit: number
+              total_cost: number
+            }[]
+          }
+        | {
+            Args: {
+              p_charge_lines: Json
+              p_collected_cod: number
+              p_discount_company_pay: number
+              p_reseller_purchase_cost: number
+            }
+            Returns: {
+              company_profit: number
+              merchant_paid_charges: number
+              reseller_profit: number
+              total_cost: number
+            }[]
+          }
       compute_thrift_landed_unit_cost: {
         Args: { p_stock_id: number }
         Returns: number
@@ -14537,6 +14579,14 @@ export type Database = {
       }
       resolve_parent_tenant_id: {
         Args: { p_tenant_id: number }
+        Returns: number
+      }
+      resolve_shop_order_item_landed_cost: {
+        Args: {
+          p_cost_price_amount?: number
+          p_global_stock_id: number
+          p_unit_list_price_amount?: number
+        }
         Returns: number
       }
       resolve_tenant_for_entry: {

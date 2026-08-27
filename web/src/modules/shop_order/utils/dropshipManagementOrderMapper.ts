@@ -42,7 +42,9 @@ function mapChargeLines(raw: unknown): DropshipSettlementChargeLine[] {
 }
 
 function defaultChargeLine(type: DropshipSettlementChargeType): DropshipSettlementChargeLine {
-  return { charge_type: type, amount: 0, payer: type === 'return' ? 'company' : 'recipient' };
+  const defaultPayer: DropshipSettlementChargePayer =
+    type === 'return' ? 'company' : type === 'cod' ? 'merchant' : 'recipient';
+  return { charge_type: type, amount: 0, payer: defaultPayer };
 }
 
 export function getChargeLineAmount(
@@ -63,7 +65,21 @@ export function mapDropshipManagementOrderResponse(raw: unknown): DropshipManage
   const settlementRaw = (payload.settlement ?? {}) as Record<string, unknown>;
   const stepRaw = (payload.step_state ?? {}) as Record<string, unknown>;
 
-  const chargeLines = mapChargeLines(settlementRaw.charge_lines);
+  const chargeLinesRaw = mapChargeLines(settlementRaw.charge_lines);
+  const orderCodCharge = num(orderRaw.cod_charge_amount);
+  const orderDeductCod = orderRaw.deduct_cod_from_margin === true;
+  const codLine = getChargeLineAmount(chargeLinesRaw, 'cod');
+  const chargeLines =
+    codLine.amount === 0 && orderCodCharge > 0
+      ? [
+          ...chargeLinesRaw.filter((l) => l.charge_type !== 'cod'),
+          {
+            charge_type: 'cod' as const,
+            amount: orderCodCharge,
+            payer: (orderDeductCod ? 'merchant' : 'recipient') as DropshipSettlementChargePayer,
+          },
+        ]
+      : chargeLinesRaw;
 
   return {
     order: {
@@ -77,17 +93,23 @@ export function mapDropshipManagementOrderResponse(raw: unknown): DropshipManage
       courier_awb_number: (orderRaw.courier_awb_number as string | null) ?? null,
       created_at: str(orderRaw.created_at),
       payout_settlement_status: (orderRaw.payout_settlement_status as string | null) ?? null,
+      cod_charge_amount: num(orderRaw.cod_charge_amount),
+      deduct_cod_from_margin: orderRaw.deduct_cod_from_margin === true,
+      discount_amount: num(orderRaw.discount_amount),
     },
     computed: {
       items_resell_total: num(computedRaw.items_resell_total),
       recipient_grand_total: num(computedRaw.recipient_grand_total),
+      order_item_quantity: num(computedRaw.order_item_quantity),
     },
     settlement: {
       id: settlementRaw.id == null ? null : num(settlementRaw.id),
       status: str(settlementRaw.status, 'draft') as DropshipSettlementStatus,
       calculated_cod_amount: num(settlementRaw.calculated_cod_amount),
       collected_cod_amount: num(settlementRaw.collected_cod_amount),
+      reseller_unit_purchase_cost: num(settlementRaw.reseller_unit_purchase_cost),
       reseller_purchase_cost: num(settlementRaw.reseller_purchase_cost),
+      company_procurement_cost: num(settlementRaw.company_procurement_cost),
       discount_company_pay: num(settlementRaw.discount_company_pay),
       return_reason_note: str(settlementRaw.return_reason_note),
       charge_lines: chargeLines,
@@ -106,40 +128,33 @@ export function mapDropshipManagementOrderResponse(raw: unknown): DropshipManage
   };
 }
 
-export function buildSettlementDraftPayload(input: {
-  collected_cod_amount: number;
-  reseller_purchase_cost: number;
-  discount_company_pay: number;
-  return_reason_note: string;
-  delivery: { amount: number; payer: DropshipSettlementChargePayer };
-  print: { amount: number; payer: DropshipSettlementChargePayer };
-  packing: { amount: number; payer: DropshipSettlementChargePayer };
-  returnCost: { amount: number; payer: DropshipSettlementChargePayer };
-}): DropshipSettlementDraftPayload {
-  return {
-    collected_cod_amount: input.collected_cod_amount,
-    reseller_purchase_cost: input.reseller_purchase_cost,
-    discount_company_pay: input.discount_company_pay,
-    return_reason_note: input.return_reason_note,
-    charge_lines: [
-      { charge_type: 'delivery', amount: input.delivery.amount, payer: input.delivery.payer },
-      { charge_type: 'print', amount: input.print.amount, payer: input.print.payer },
-      { charge_type: 'packing', amount: input.packing.amount, payer: input.packing.payer },
-      { charge_type: 'return', amount: input.returnCost.amount, payer: input.returnCost.payer },
-    ],
-  };
-}
-
 export function settlementToFormState(settlement: DropshipManagementOrderView['settlement']) {
   const line = (type: DropshipSettlementChargeType) => getChargeLineAmount(settlement.charge_lines, type);
   return {
     totalCollectedCod: settlement.collected_cod_amount,
-    resellerPurchaseCost: settlement.reseller_purchase_cost,
     discountCompanyPay: settlement.discount_company_pay,
     returnReasonNote: settlement.return_reason_note,
     delivery: { amount: line('delivery').amount, payer: line('delivery').payer },
     print: { amount: line('print').amount, payer: line('print').payer },
     packing: { amount: line('packing').amount, payer: line('packing').payer },
     returnCost: { amount: line('return').amount, payer: line('return').payer },
+    codCharge: { amount: line('cod').amount, payer: line('cod').payer },
+  };
+}
+
+export type DropshipSettlementFormState = ReturnType<typeof settlementToFormState>;
+
+export function buildSettlementDraftPayload(input: DropshipSettlementFormState): DropshipSettlementDraftPayload {
+  return {
+    collected_cod_amount: num(input.totalCollectedCod),
+    discount_company_pay: num(input.discountCompanyPay),
+    return_reason_note: input.returnReasonNote,
+    charge_lines: [
+      { charge_type: 'delivery', amount: num(input.delivery.amount), payer: input.delivery.payer },
+      { charge_type: 'print', amount: num(input.print.amount), payer: input.print.payer },
+      { charge_type: 'packing', amount: num(input.packing.amount), payer: input.packing.payer },
+      { charge_type: 'return', amount: num(input.returnCost.amount), payer: input.returnCost.payer },
+      { charge_type: 'cod', amount: num(input.codCharge.amount), payer: input.codCharge.payer },
+    ],
   };
 }

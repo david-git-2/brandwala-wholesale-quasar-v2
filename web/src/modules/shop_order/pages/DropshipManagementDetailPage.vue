@@ -183,7 +183,8 @@ const isReadonly = computed(
 watch(orderData, (data) => {
   if (!data) return;
   remittanceForm.net_amount = data.settlement.collected_cod_amount;
-  remittanceForm.courier_charge = 0;
+  const codLine = data.settlement.charge_lines.find((l) => l.charge_type === 'cod');
+  remittanceForm.courier_charge = codLine?.amount ?? data.order.cod_charge_amount ?? 0;
 });
 
 function getPayload() {

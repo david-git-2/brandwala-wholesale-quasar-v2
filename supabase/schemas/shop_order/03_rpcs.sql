@@ -3103,6 +3103,31 @@ end;
 $$;
 ALTER FUNCTION "public"."get_shop_order_for_staff"("p_tenant_id" bigint, "p_order_id" bigint) OWNER TO "postgres";
 
+CREATE OR REPLACE FUNCTION "public"."resolve_shop_order_item_landed_cost"(
+  "p_global_stock_id" bigint,
+  "p_cost_price_amount" numeric DEFAULT NULL::numeric,
+  "p_unit_list_price_amount" numeric DEFAULT NULL::numeric
+) RETURNS numeric
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO 'public'
+    AS $$
+  select coalesce(
+    p_cost_price_amount,
+    (
+      select coalesce(
+        gsi.landed_cost_bdt,
+        public.calculate_landed_unit_cost(gs.shipment_item_id)
+      )
+      from public.global_stocks gs
+      join public.global_shipment_items gsi on gsi.id = gs.shipment_item_id
+      where gs.id = p_global_stock_id
+    ),
+    p_unit_list_price_amount,
+    0::numeric
+  );
+$$;
+ALTER FUNCTION "public"."resolve_shop_order_item_landed_cost"(bigint, numeric, numeric) OWNER TO "postgres";
+
 CREATE OR REPLACE FUNCTION "public"."get_dropship_order_detail_v2"("p_tenant_id" bigint, "p_order_id" bigint) RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -3112,6 +3137,7 @@ declare
   v_shop_name text;
   v_customer_group_name text;
   v_sell_symbol text;
+  v_buy_currency_id bigint;
   v_items jsonb;
   v_courier_services jsonb;
   v_items_resell_total numeric := 0;
@@ -3143,8 +3169,8 @@ begin
     raise exception 'not a dropship order';
   end if;
 
-  select s.name, gc.symbol
-  into v_shop_name, v_sell_symbol
+  select s.name, gc.symbol, s.buy_currency_id
+  into v_shop_name, v_sell_symbol, v_buy_currency_id
   from public.shops s
   left join public.global_currencies gc on gc.id = s.sell_currency_id
   where s.id = v_order.shop_id;
@@ -3165,8 +3191,10 @@ begin
         'name', soi.name,
         'image_url', soi.image_url,
         'quantity', soi.quantity,
-        'unit_list_price_amount', coalesce(soi.cost_price_amount, soi.unit_list_price_amount),
-        'unit_list_price_currency_id', coalesce(soi.cost_price_currency_id, soi.unit_list_price_currency_id),
+        'cost_price_amount', public.resolve_shop_order_item_landed_cost(soi.global_stock_id, soi.cost_price_amount, soi.unit_list_price_amount),
+        'cost_price_currency_id', coalesce(soi.cost_price_currency_id, v_buy_currency_id, soi.unit_list_price_currency_id),
+        'unit_list_price_amount', public.resolve_shop_order_item_landed_cost(soi.global_stock_id, soi.cost_price_amount, soi.unit_list_price_amount),
+        'unit_list_price_currency_id', coalesce(soi.cost_price_currency_id, v_buy_currency_id, soi.unit_list_price_currency_id),
         'unit_sell_price_amount', soi.unit_sell_price_amount,
         'unit_sell_price_currency_id', soi.unit_sell_price_currency_id,
         'unit_minimum_sell_price_amount', soi.unit_minimum_sell_price_amount,
@@ -4518,7 +4546,8 @@ begin
     unit_minimum_sell_price_amount, unit_minimum_sell_price_currency_id,
     customer_sell_price_amount, customer_sell_price_currency_id,
     customer_offer_amount, customer_offer_currency_id,
-    final_price_amount, final_price_currency_id
+    final_price_amount, final_price_currency_id,
+    cost_price_amount, cost_price_currency_id
   )
   select
     v_order_id, ci.product_id, ci.global_stock_id, ci.global_stock_allocation_id,
@@ -4535,7 +4564,9 @@ begin
     case
       when v_order_status = 'confirmed' then coalesce(ci.customer_sell_price_currency_id, ci.unit_sell_price_currency_id)
       else null
-    end
+    end,
+    public.resolve_shop_order_item_landed_cost(ci.global_stock_id, null, ci.unit_list_price_amount),
+    v_shop.buy_currency_id
   from public.shop_cart_items ci
   where ci.cart_id = v_cart.id;
 
@@ -7199,7 +7230,8 @@ begin
     unit_minimum_sell_price_amount, unit_minimum_sell_price_currency_id,
     customer_sell_price_amount, customer_sell_price_currency_id,
     customer_offer_amount, customer_offer_currency_id,
-    final_price_amount, final_price_currency_id
+    final_price_amount, final_price_currency_id,
+    cost_price_amount, cost_price_currency_id
   )
   select
     v_order_id, ci.product_id, ci.global_stock_id, ci.global_stock_allocation_id,
@@ -7217,7 +7249,9 @@ begin
     case
       when v_order_status = 'confirmed' then coalesce(ci.customer_sell_price_currency_id, ci.unit_sell_price_currency_id, ci.unit_list_price_currency_id)
       else null
-    end
+    end,
+    case when v_shop.shop_type = 'dropship' then public.resolve_shop_order_item_landed_cost(ci.global_stock_id, null, ci.unit_list_price_amount) else null end,
+    case when v_shop.shop_type = 'dropship' then v_shop.buy_currency_id else null end
   from public.shop_cart_items ci
   where ci.cart_id = p_cart_id;
 

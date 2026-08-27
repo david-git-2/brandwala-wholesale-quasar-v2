@@ -71,7 +71,7 @@ const formatMoney = (amount: number) =>
   })}`;
 
 const resolveItemPricing = (item: ShopOrderItem): ItemPricing => ({
-  cost: item.unit_list_price_amount ?? item.cost_price_amount ?? 0,
+  cost: item.cost_price_amount ?? item.unit_list_price_amount ?? 0,
   sell: item.unit_sell_price_amount ?? 0,
   resell: item.customer_sell_price_amount ?? item.final_price_amount ?? 0,
 });

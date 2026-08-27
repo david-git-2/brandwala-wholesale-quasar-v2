@@ -15,7 +15,9 @@ export interface DropshipManagementSettlementState {
   status: DropshipSettlementStatus;
   calculated_cod_amount: number;
   collected_cod_amount: number;
+  reseller_unit_purchase_cost: number;
   reseller_purchase_cost: number;
+  company_procurement_cost: number;
   discount_company_pay: number;
   return_reason_note: string;
   charge_lines: DropshipSettlementChargeLine[];
@@ -45,10 +47,14 @@ export interface DropshipManagementOrderView {
     courier_awb_number: string | null;
     created_at: string;
     payout_settlement_status: string | null;
+    cod_charge_amount: number;
+    deduct_cod_from_margin: boolean;
+    discount_amount: number;
   };
   computed: {
     items_resell_total: number;
     recipient_grand_total: number;
+    order_item_quantity: number;
   };
   settlement: DropshipManagementSettlementState;
   step_state: DropshipManagementStepState;
@@ -56,7 +62,6 @@ export interface DropshipManagementOrderView {
 
 export interface DropshipSettlementDraftPayload {
   collected_cod_amount: number;
-  reseller_purchase_cost: number;
   discount_company_pay: number;
   return_reason_note: string;
   charge_lines: DropshipSettlementChargeLine[];

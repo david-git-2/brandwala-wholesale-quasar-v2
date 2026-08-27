@@ -913,6 +913,7 @@ CREATE TABLE IF NOT EXISTS "public"."dropship_order_settlements" (
     "currency_id" bigint,
     "calculated_cod_amount" numeric(15,2) DEFAULT 0 NOT NULL,
     "collected_cod_amount" numeric(15,2) DEFAULT 0 NOT NULL,
+    "reseller_unit_purchase_cost" numeric(15,2) DEFAULT 0 NOT NULL,
     "reseller_purchase_cost" numeric(15,2) DEFAULT 0 NOT NULL,
     "discount_company_pay" numeric(15,2) DEFAULT 0 NOT NULL,
     "return_reason_note" "text",

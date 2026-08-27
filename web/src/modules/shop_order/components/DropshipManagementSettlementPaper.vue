@@ -4,6 +4,7 @@ import type { DropshipManagementOrderView } from '../types/dropshipManagementOrd
 import {
   buildSettlementDraftPayload,
   settlementToFormState,
+  type DropshipSettlementFormState,
 } from '../utils/dropshipManagementOrderMapper';
 
 const chargePayerOptions = [
@@ -17,7 +18,7 @@ const props = defineProps<{
   readonly?: boolean;
 }>();
 
-type SettlementFormState = ReturnType<typeof settlementToFormState>;
+type SettlementFormState = DropshipSettlementFormState;
 
 const form = reactive<SettlementFormState>({
   totalCollectedCod: 0,
@@ -25,10 +26,14 @@ const form = reactive<SettlementFormState>({
   print: { amount: 0, payer: 'merchant' },
   packing: { amount: 0, payer: 'merchant' },
   returnCost: { amount: 0, payer: 'company' },
+  codCharge: { amount: 0, payer: 'merchant' },
   returnReasonNote: '',
   discountCompanyPay: 0,
-  resellerPurchaseCost: 0,
 });
+
+const itemQuantity = computed(() => Math.max(0, props.data.computed.order_item_quantity));
+
+const resellerPurchaseCost = computed(() => props.data.settlement.reseller_purchase_cost);
 
 watch(
   () => props.data,
@@ -38,16 +43,22 @@ watch(
   { immediate: true, deep: true },
 );
 
-const chargeRows: Array<{
+const standardChargeRows: Array<{
   key: string;
   label: string;
-  field: 'delivery' | 'print' | 'packing' | 'returnCost';
+  field: 'codCharge' | 'delivery' | 'print' | 'packing';
 }> = [
+  { key: 'cod', label: 'Courier COD fee', field: 'codCharge' },
   { key: 'delivery', label: 'Delivery', field: 'delivery' },
   { key: 'print', label: 'Print', field: 'print' },
   { key: 'packing', label: 'Packing', field: 'packing' },
-  { key: 'return_cost', label: 'Return cost', field: 'returnCost' },
 ];
+
+const returnChargeRow = {
+  key: 'return_cost',
+  label: 'Return cost',
+  field: 'returnCost' as const,
+};
 
 const calculatedCod = computed(() => props.data.settlement.calculated_cod_amount);
 
@@ -66,11 +77,23 @@ const codVarianceLabel = computed(() => {
   return null;
 });
 
-const chargeLines = computed(() => [form.delivery, form.print, form.packing, form.returnCost]);
+const chargeLines = computed(() => [
+  form.codCharge,
+  form.delivery,
+  form.print,
+  form.packing,
+  form.returnCost,
+]);
 
-const totalCost = computed(() =>
-  form.resellerPurchaseCost + chargeLines.value.reduce((sum, line) => sum + Number(line.amount || 0), 0),
+const companyProcurementCost = computed(() => props.data.settlement.company_procurement_cost);
+
+const chargeTotal = computed(() =>
+  chargeLines.value.reduce((sum, line) => sum + Number(line.amount || 0), 0),
 );
+
+const totalCost = computed(() => companyProcurementCost.value + chargeTotal.value);
+
+const orderDiscountAmount = computed(() => props.data.order.discount_amount);
 
 const merchantPaidCharges = computed(() =>
   chargeLines.value
@@ -79,10 +102,19 @@ const merchantPaidCharges = computed(() =>
 );
 
 const resellerProfit = computed(
-  () => form.totalCollectedCod - form.resellerPurchaseCost - merchantPaidCharges.value,
+  () =>
+    recipientPay.value
+    - orderDiscountAmount.value
+    - resellerPurchaseCost.value
+    - merchantPaidCharges.value,
 );
 
-const companyProfit = computed(() => resellerProfit.value - form.discountCompanyPay);
+const companyProfit = computed(
+  () =>
+    resellerPurchaseCost.value
+    - companyProcurementCost.value
+    - form.discountCompanyPay,
+);
 
 const statusLabel = computed(
   () => props.data.order.status.charAt(0).toUpperCase() + props.data.order.status.slice(1),
@@ -98,6 +130,11 @@ function formatMoney(amount: number): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
+}
+
+function num(value: unknown): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function getDraftPayload() {
@@ -197,7 +234,7 @@ defineExpose({ getDraftPayload });
         </div>
 
         <div
-          v-for="chargeRow in chargeRows"
+          v-for="chargeRow in standardChargeRows"
           :key="chargeRow.key"
           class="dropship-invoice-paper__summary-row dropship-invoice-paper__summary-row--editable"
         >
@@ -230,21 +267,53 @@ defineExpose({ getDraftPayload });
           />
         </div>
 
-        <div class="dropship-invoice-paper__summary-row dropship-invoice-paper__summary-row--editable dropship-mgmt-settlement-paper__note-row">
-          <div class="dropship-invoice-paper__summary-label">
-            <span>Return reason note</span>
+        <div class="dropship-mgmt-settlement-paper__return-section">
+          <div class="dropship-invoice-paper__summary-row dropship-invoice-paper__summary-row--editable">
+            <div class="dropship-invoice-paper__summary-label">
+              <span>{{ returnChargeRow.label }}</span>
+              <q-btn-toggle
+                v-model="form[returnChargeRow.field].payer"
+                dense
+                no-caps
+                unelevated
+                toggle-color="primary"
+                color="grey-3"
+                text-color="grey-8"
+                class="dropship-invoice-paper__payer-toggle"
+                :disable="readonly"
+                :options="chargePayerOptions"
+              />
+            </div>
+            <q-input
+              v-model.number="form[returnChargeRow.field].amount"
+              type="number"
+              min="0"
+              step="0.01"
+              dense
+              outlined
+              hide-bottom-space
+              :disable="readonly"
+              class="dropship-invoice-paper__amount-input"
+              input-class="text-right"
+            />
           </div>
-          <q-input
-            v-model="form.returnReasonNote"
-            type="textarea"
-            autogrow
-            dense
-            outlined
-            hide-bottom-space
-            :disable="readonly"
-            placeholder="Why was return cost applied?"
-            class="dropship-invoice-paper__field-input dropship-mgmt-settlement-paper__note-input"
-          />
+
+          <div class="dropship-invoice-paper__summary-row dropship-invoice-paper__summary-row--editable dropship-mgmt-settlement-paper__note-row">
+            <div class="dropship-invoice-paper__summary-label">
+              <span>Return reason note</span>
+            </div>
+            <q-input
+              v-model="form.returnReasonNote"
+              type="textarea"
+              autogrow
+              dense
+              outlined
+              hide-bottom-space
+              :disable="readonly"
+              placeholder="Why was return cost applied?"
+              class="dropship-invoice-paper__field-input dropship-mgmt-settlement-paper__note-input"
+            />
+          </div>
         </div>
 
         <div class="dropship-invoice-paper__summary-row dropship-invoice-paper__summary-row--editable">
@@ -268,22 +337,22 @@ defineExpose({ getDraftPayload });
           />
         </div>
 
-        <div class="dropship-invoice-paper__summary-row dropship-invoice-paper__summary-row--editable">
+        <div class="dropship-invoice-paper__summary-row">
           <div class="dropship-invoice-paper__summary-label">
             <span>Reseller purchase cost</span>
+            <span class="dropship-invoice-paper__paid-by dropship-invoice-paper__paid-by--muted">
+              Calculated sell total{{ itemQuantity > 0 ? ` · ${itemQuantity} units` : '' }}
+            </span>
           </div>
-          <q-input
-            v-model.number="form.resellerPurchaseCost"
-            type="number"
-            min="0"
-            step="0.01"
-            dense
-            outlined
-            hide-bottom-space
-            :disable="readonly"
-            class="dropship-invoice-paper__amount-input"
-            input-class="text-right"
-          />
+          <span class="text-weight-medium">{{ formatMoney(resellerPurchaseCost) }}</span>
+        </div>
+
+        <div class="dropship-invoice-paper__summary-row">
+          <div class="dropship-invoice-paper__summary-label">
+            <span>Company procurement cost</span>
+            <span class="dropship-invoice-paper__paid-by dropship-invoice-paper__paid-by--muted">Auto</span>
+          </div>
+          <span class="text-weight-medium">{{ formatMoney(companyProcurementCost) }}</span>
         </div>
 
         <div class="dropship-invoice-paper__summary-row">
@@ -297,7 +366,9 @@ defineExpose({ getDraftPayload });
         <div class="dropship-invoice-paper__summary-row">
           <div class="dropship-invoice-paper__summary-label">
             <span>Total cost</span>
-            <span class="dropship-invoice-paper__paid-by dropship-invoice-paper__paid-by--muted">Auto</span>
+            <span class="dropship-invoice-paper__paid-by dropship-invoice-paper__paid-by--muted">
+              Procurement + charges
+            </span>
           </div>
           <span class="text-weight-bold">{{ formatMoney(totalCost) }}</span>
         </div>
@@ -439,6 +510,13 @@ defineExpose({ getDraftPayload });
   text-transform: none;
   font-weight: 500;
   font-size: 0.65rem;
+}
+
+.dropship-mgmt-settlement-paper__return-section {
+  margin: 0.35rem 0;
+  padding: 0.35rem 0;
+  border-top: 1px dotted #dc2626;
+  border-bottom: 1px dotted #dc2626;
 }
 
 .dropship-mgmt-settlement-paper__variance {
