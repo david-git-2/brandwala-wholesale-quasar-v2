@@ -45,6 +45,21 @@ export interface DropshipManagementStepState {
   can_transfer_to_reseller: boolean;
 }
 
+export interface DropshipManagementCourierInfo {
+  courier_name: string | null;
+  courier_service_id: string | null;
+  courier_awb_number: string | null;
+  courier_tracking_number: string | null;
+  courier_consignment_id: string | null;
+  courier_order_ref: string | null;
+  tracking_url: string | null;
+  allow_open_box: boolean;
+  delivery_zone_label: string | null;
+  cod_collect_amount: number;
+  courier_cod_booked_at: string | null;
+  remittance_at: string | null;
+}
+
 export interface DropshipManagementOrderView {
   order: {
     id: number;
@@ -67,6 +82,7 @@ export interface DropshipManagementOrderView {
     order_item_quantity: number;
   };
   settlement: DropshipManagementSettlementState;
+  courier: DropshipManagementCourierInfo;
   invoice: DropshipManagementInvoiceState | null;
   step_state: DropshipManagementStepState;
 }
@@ -78,18 +94,20 @@ export interface DropshipSettlementDraftPayload {
   charge_lines: DropshipSettlementChargeLine[];
 }
 
-export interface DropshipCourierBankTransferPayload extends DropshipSettlementDraftPayload {
+export interface DropshipCourierBankTransferPayload {
   net_amount: number;
-  courier_charge: number;
   remittance_ref: string;
   bank_trx_id?: string | null;
 }
 
 export interface DropshipManagementOrderResponse {
   success: boolean;
-  order: DropshipManagementOrderView['order'];
-  computed: DropshipManagementOrderView['computed'];
+  order: DropshipManagementOrderView['order'] & Record<string, unknown>;
+  computed: DropshipManagementOrderView['computed'] & Record<string, unknown>;
   settlement: DropshipManagementSettlementState;
   invoice: DropshipManagementInvoiceState | null;
   step_state: DropshipManagementStepState;
+  fulfillment?: {
+    courier?: Record<string, unknown>;
+  };
 }

@@ -77,7 +77,13 @@ import { showErrorNotification } from 'src/utils/appFeedback';
 import { shopOrderService } from '../services/shopOrderService';
 import type { ShopOrder, ShopOrderStatus } from '../types';
 
-const DROPSHIP_MANAGEMENT_STATUSES = ['shipped', 'delivered'] as const;
+const DROPSHIP_MANAGEMENT_STATUSES = [
+  'shipped',
+  'delivered',
+  'payment_received',
+  'reseller_paid',
+  'returned',
+] as const satisfies readonly ShopOrderStatus[];
 
 type DropshipManagementStatusFilter = 'all' | (typeof DROPSHIP_MANAGEMENT_STATUSES)[number];
 
@@ -93,9 +99,12 @@ const statusOptions = [
   { label: 'All statuses', value: 'all' },
   { label: 'Shipped', value: 'shipped' },
   { label: 'Delivered', value: 'delivered' },
+  { label: 'Payment received', value: 'payment_received' },
+  { label: 'Reseller paid', value: 'reseller_paid' },
+  { label: 'Returned', value: 'returned' },
 ] as const;
 
-function statusesForFilter(filter: DropshipManagementStatusFilter): string[] {
+function resolveStatusPayload(filter: DropshipManagementStatusFilter): ShopOrderStatus[] {
   if (filter === 'all') return [...DROPSHIP_MANAGEMENT_STATUSES];
   return [filter];
 }
@@ -106,7 +115,7 @@ const loadOrders = async () => {
   try {
     const res = await shopOrderService.fetchDropshipStaffOrders(authStore.tenantId, {
       limit: 200,
-      statuses: statusesForFilter(statusFilter.value),
+      statuses: resolveStatusPayload(statusFilter.value),
       search: searchQuery.value.trim() || null,
     });
     orders.value = res.success && res.data ? res.data : [];
@@ -141,6 +150,8 @@ const onStatusChange = () => {
 };
 
 function statusLabel(status: ShopOrderStatus): string {
+  if (status === 'payment_received') return 'Payment received';
+  if (status === 'reseller_paid') return 'Reseller paid';
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
@@ -148,6 +159,9 @@ function statusColor(status: ShopOrderStatus): string {
   const colors: Partial<Record<ShopOrderStatus, string>> = {
     shipped: 'amber-9',
     delivered: 'positive',
+    payment_received: 'info',
+    reseller_paid: 'primary',
+    returned: 'negative',
   };
   return colors[status] ?? 'grey-7';
 }

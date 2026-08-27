@@ -6,6 +6,27 @@ import type {
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
 import type { ShopOrder, ShopOrderItem, ShopServiceResult, ShopCatalogBrowseResult, ShopCatalogSearchResult, ShopCatalogProductDetailResult, ShopCatalogRelatedResult, CustomerOrderListItem } from '../types';
 
+type RpcResult = { success?: boolean; error?: string; message?: string };
+
+const getErrorMessage = (error: unknown, fallback: string): string => {
+  if (!error) return fallback;
+  if (typeof error === 'string') return error;
+  if (error instanceof Error && error.message.trim()) return error.message;
+  if (typeof error === 'object' && error !== null) {
+    const errObj = error as Record<string, unknown>;
+    if (typeof errObj.message === 'string' && errObj.message.trim()) return errObj.message;
+    if (typeof errObj.error === 'string' && errObj.error.trim()) return errObj.error;
+  }
+  return fallback;
+};
+
+const getRpcFailure = (data: unknown, fallback: string): string | null => {
+  if (!data || typeof data !== 'object') return null;
+  const row = data as RpcResult;
+  if (row.success !== false) return null;
+  return row.error ?? row.message ?? fallback;
+};
+
 const submitOrder = async (
   cartId: number,
   recipientName: string,
@@ -227,7 +248,7 @@ const saveDropshipSettlementDraft = async (
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to save settlement draft.',
+      error: getErrorMessage(error, 'Failed to save settlement draft.'),
     };
   }
 };
@@ -247,7 +268,7 @@ const markDropshipOrderDelivered = async (
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to mark order as delivered.',
+      error: getErrorMessage(error, 'Failed to mark order as delivered.'),
     };
   }
 };
@@ -266,7 +287,7 @@ const issueDropshipTenantB2bInvoice = async (
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to issue tenant invoice.',
+      error: getErrorMessage(error, 'Failed to issue tenant invoice.'),
     };
   }
 };
@@ -278,11 +299,15 @@ const recordDropshipCourierBankTransfer = async (
 ): Promise<ShopServiceResult<unknown>> => {
   try {
     const data = await shopOrderRepository.recordDropshipCourierBankTransfer(tenantId, orderId, payload);
+    const rpcError = getRpcFailure(data, 'Failed to record courier bank transfer.');
+    if (rpcError) {
+      return { success: false, error: rpcError };
+    }
     return { success: true, data };
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to record courier bank transfer.',
+      error: getErrorMessage(error, 'Failed to record courier bank transfer.'),
     };
   }
 };
@@ -294,11 +319,15 @@ const transferDropshipResellerProfit = async (
 ): Promise<ShopServiceResult<unknown>> => {
   try {
     const data = await shopOrderRepository.transferDropshipResellerProfit(tenantId, orderId, payload);
+    const rpcError = getRpcFailure(data, 'Failed to transfer reseller profit.');
+    if (rpcError) {
+      return { success: false, error: rpcError };
+    }
     return { success: true, data };
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to transfer reseller profit.',
+      error: getErrorMessage(error, 'Failed to transfer reseller profit.'),
     };
   }
 };

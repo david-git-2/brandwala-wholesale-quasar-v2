@@ -16493,6 +16493,7 @@ export type Database = {
         | "procuring"
         | "ordered"
         | "ready_for_shipment"
+        | "reseller_paid"
       shop_type_enum: "vendor_catalog" | "fixed_price" | "dropship"
       stock_availability: "sellable" | "held" | "unsellable"
       stock_location_kind: "shelf" | "slot" | "box" | "returns"
@@ -16783,6 +16784,7 @@ export const Constants = {
         "procuring",
         "ordered",
         "ready_for_shipment",
+        "reseller_paid",
       ],
       shop_type_enum: ["vendor_catalog", "fixed_price", "dropship"],
       stock_availability: ["sellable", "held", "unsellable"],

@@ -17,12 +17,12 @@
         <DropshipManagementSettlementPaper
           ref="paperRef"
           :data="orderData"
-          :readonly="isReadonly"
+          :readonly="isSettlementReadonly"
         />
 
         <div class="dropship-order-detail-v2__toolbar">
           <q-btn
-            v-if="!isReadonly"
+            v-if="!isSettlementReadonly"
             outline
             color="primary"
             no-caps
@@ -42,7 +42,7 @@
               icon="ph ph-package"
               label="Mark as delivered"
               class="text-weight-bold dropship-order-detail-v2__action-btn"
-              :disable="(!orderData.step_state.can_mark_delivered && !orderData.step_state.can_issue_invoice) || isReadonly"
+              :disable="!orderData.step_state.can_mark_delivered && !orderData.step_state.can_issue_invoice"
               :loading="actionKind === 'delivered'"
               @click="onMarkDelivered"
             />
@@ -53,7 +53,7 @@
               icon="ph ph-arrow-u-up-left"
               label="Mark as returned"
               class="text-weight-bold dropship-order-detail-v2__action-btn"
-              :disable="!orderData.step_state.can_mark_delivered || isReadonly"
+              :disable="!orderData.step_state.can_mark_delivered"
               @click="onMarkReturned"
             />
           </div>
@@ -64,7 +64,7 @@
             icon="ph ph-bank"
             label="Bank transfer from courier"
             class="text-weight-bold dropship-order-detail-v2__action-btn"
-            :disable="!orderData.step_state.can_record_bank_transfer || isReadonly"
+            :disable="!orderData.step_state.can_record_bank_transfer"
             :loading="actionKind === 'remittance'"
             @click="showRemittanceDialog = true"
           />
@@ -75,7 +75,7 @@
             icon="ph ph-wallet"
             label="Transfer to reseller"
             class="text-weight-bold dropship-order-detail-v2__action-btn"
-            :disable="!orderData.step_state.can_transfer_to_reseller || isReadonly"
+            :disable="!orderData.step_state.can_transfer_to_reseller"
             :loading="actionKind === 'payout'"
             @click="onTransferReseller"
           />
@@ -109,15 +109,6 @@
             min="0"
             step="0.01"
             label="Net amount received *"
-          />
-          <q-input
-            v-model.number="remittanceForm.courier_charge"
-            dense
-            outlined
-            type="number"
-            min="0"
-            step="0.01"
-            label="Courier charge"
           />
         </q-card-section>
         <q-card-actions align="right">
@@ -160,8 +151,16 @@ const remittanceForm = reactive({
   remittance_ref: '',
   bank_trx_id: '',
   net_amount: 0,
-  courier_charge: 0,
 });
+
+function resolveDefaultNetRemittance(data: DropshipManagementOrderView): number {
+  const collected = data.settlement.collected_cod_amount;
+  const deliveryLine = data.settlement.charge_lines.find((l) => l.charge_type === 'delivery');
+  const codLine = data.settlement.charge_lines.find((l) => l.charge_type === 'cod');
+  const deliveryFee = deliveryLine?.amount ?? 0;
+  const codFee = codLine?.amount ?? data.order.cod_charge_amount ?? 0;
+  return Math.max(collected - deliveryFee - codFee, 0);
+}
 
 const orderId = computed(() => Number(route.params.id));
 
@@ -188,15 +187,19 @@ const {
 
 const loadError = computed(() => (queryError.value instanceof Error ? queryError.value.message : null));
 
-const isReadonly = computed(
-  () => orderData.value?.settlement.status === 'confirmed' || !!orderData.value?.settlement.merchant_payout_at,
-);
+const isSettlementReadonly = computed(() => {
+  const data = orderData.value;
+  if (!data) return false;
+  if (data.settlement.status === 'confirmed' || data.settlement.merchant_payout_at) {
+    return true;
+  }
+  // Settlement form is editable only before delivery is confirmed.
+  return data.order.status !== 'shipped';
+});
 
 watch(orderData, (data) => {
   if (!data) return;
-  remittanceForm.net_amount = data.settlement.collected_cod_amount;
-  const codLine = data.settlement.charge_lines.find((l) => l.charge_type === 'cod');
-  remittanceForm.courier_charge = codLine?.amount ?? data.order.cod_charge_amount ?? 0;
+  remittanceForm.net_amount = resolveDefaultNetRemittance(data);
 });
 
 function getPayload() {
@@ -329,8 +332,6 @@ async function onMarkReturned() {
 
 async function onRecordBankTransfer() {
   if (!authStore.tenantId) return;
-  const payload = getPayload();
-  if (!payload) return;
 
   if (!remittanceForm.remittance_ref.trim()) {
     showErrorNotification('Remittance reference is required.');
@@ -344,11 +345,9 @@ async function onRecordBankTransfer() {
   actionKind.value = 'remittance';
   try {
     const res = await shopOrderService.recordDropshipCourierBankTransfer(authStore.tenantId, orderId.value, {
-      ...payload,
       remittance_ref: remittanceForm.remittance_ref.trim(),
       bank_trx_id: remittanceForm.bank_trx_id.trim() || null,
       net_amount: remittanceForm.net_amount,
-      courier_charge: remittanceForm.courier_charge ?? 0,
     });
     if (!res.success) {
       showErrorNotification(res.error ?? 'Failed to record bank transfer.');

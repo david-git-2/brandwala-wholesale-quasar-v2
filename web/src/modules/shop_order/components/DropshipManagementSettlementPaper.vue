@@ -120,6 +120,11 @@ const statusLabel = computed(
   () => props.data.order.status.charAt(0).toUpperCase() + props.data.order.status.slice(1),
 );
 
+const courierRows = computed(() => [
+  { label: 'Delivery zone', value: props.data.courier.delivery_zone_label || '—' },
+  { label: 'AWB / consignment', value: props.data.courier.courier_awb_number || '—' },
+]);
+
 const orderDateLabel = computed(() => {
   const d = new Date(props.data.order.created_at);
   return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -161,25 +166,16 @@ defineExpose({ getDraftPayload });
           <span class="dropship-invoice-paper__meta-label">Status</span>
           <span class="text-capitalize">{{ statusLabel }}</span>
         </div>
-        <div class="dropship-invoice-paper__meta-row">
-          <span class="dropship-invoice-paper__meta-label">AWB</span>
-          <span>{{ data.order.courier_awb_number || '—' }}</span>
-        </div>
       </div>
     </header>
 
     <div class="dropship-invoice-paper__divider" />
 
-    <section class="dropship-invoice-paper__addresses dropship-invoice-paper__addresses--two-col">
+    <section class="dropship-invoice-paper__addresses">
       <div class="dropship-invoice-paper__address-block">
         <div class="dropship-invoice-paper__section-label">Deliver to</div>
         <div class="dropship-invoice-paper__recipient-name">{{ data.order.recipient_name || '—' }}</div>
         <div class="dropship-invoice-paper__line">{{ data.order.recipient_phone || '—' }}</div>
-      </div>
-      <div class="dropship-invoice-paper__address-block">
-        <div class="dropship-invoice-paper__section-label">Courier</div>
-        <div class="dropship-invoice-paper__recipient-name">{{ data.order.courier_name || '—' }}</div>
-        <div class="dropship-invoice-paper__line">Tracking: {{ data.order.courier_awb_number || '—' }}</div>
       </div>
     </section>
 
@@ -380,6 +376,43 @@ defineExpose({ getDraftPayload });
               class="dropship-invoice-paper__field-input dropship-mgmt-settlement-paper__note-input"
             />
           </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="dropship-invoice-paper__divider" />
+
+    <section class="dropship-mgmt-settlement-paper__courier-section">
+      <div class="dropship-mgmt-settlement-paper__courier-header">
+        <div class="dropship-invoice-paper__section-label">Courier</div>
+        <q-btn
+          v-if="data.courier.tracking_url"
+          flat
+          dense
+          no-caps
+          color="primary"
+          icon="ph ph-arrow-square-out"
+          label="Track parcel"
+          type="a"
+          :href="data.courier.tracking_url"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="dropship-mgmt-settlement-paper__track-btn"
+        />
+      </div>
+
+      <div class="dropship-invoice-paper__recipient-name q-mt-sm">
+        {{ data.courier.courier_name || 'Not assigned' }}
+      </div>
+
+      <div class="dropship-mgmt-settlement-paper__courier-grid q-mt-sm">
+        <div
+          v-for="row in courierRows"
+          :key="row.label"
+          class="dropship-mgmt-settlement-paper__courier-row"
+        >
+          <div class="dropship-invoice-paper__meta-label">{{ row.label }}</div>
+          <div class="dropship-invoice-paper__line">{{ row.value }}</div>
         </div>
       </div>
     </section>
@@ -602,6 +635,33 @@ defineExpose({ getDraftPayload });
   width: min(100%, 24rem);
 }
 
+.dropship-mgmt-settlement-paper__courier-section {
+  width: 100%;
+}
+
+.dropship-mgmt-settlement-paper__courier-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.dropship-mgmt-settlement-paper__track-btn {
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--q-primary) 10%, white);
+}
+
+.dropship-mgmt-settlement-paper__courier-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem 1.5rem;
+}
+
+.dropship-mgmt-settlement-paper__courier-row {
+  min-width: 0;
+}
+
 .dropship-invoice-paper__payer-toggle {
   margin-top: 0.15rem;
   font-size: 0.58rem;
@@ -626,6 +686,10 @@ defineExpose({ getDraftPayload });
 
   .dropship-invoice-paper__summary-grid {
     width: 100%;
+  }
+
+  .dropship-mgmt-settlement-paper__courier-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

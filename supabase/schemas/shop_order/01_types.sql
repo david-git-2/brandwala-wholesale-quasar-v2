@@ -33,6 +33,7 @@ CREATE TYPE "public"."shop_order_status" AS ENUM (
     'shipped',
     'delivered',
     'payment_received',
+    'reseller_paid',
     'ready_for_pickup',
     'returned',
     'costing_pending',

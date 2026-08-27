@@ -375,7 +375,8 @@ export type ShopOrderStatus =
   | 'shipped'
   | 'delivered'
   | 'returned'
-  | 'payment_received';
+  | 'payment_received'
+  | 'reseller_paid';
 
 export interface CustomerOrderListItem {
   id: number;

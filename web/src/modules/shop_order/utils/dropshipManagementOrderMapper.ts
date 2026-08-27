@@ -1,4 +1,5 @@
 import type {
+  DropshipManagementCourierInfo,
   DropshipManagementInvoiceState,
   DropshipManagementOrderResponse,
   DropshipManagementOrderView,
@@ -70,6 +71,44 @@ function mapInvoice(raw: unknown): DropshipManagementInvoiceState | null {
   };
 }
 
+function deliveryZoneLabel(zone: unknown): string | null {
+  const value = str(zone);
+  if (value === 'inside_dhaka') return 'Inside Dhaka';
+  if (value === 'outside_dhaka') return 'Outside Dhaka';
+  return null;
+}
+
+function mapCourier(
+  orderRaw: Record<string, unknown>,
+  computedRaw: Record<string, unknown>,
+  settlementRaw: Record<string, unknown>,
+  fulfillmentRaw: Record<string, unknown>,
+): DropshipManagementCourierInfo {
+  const courierRaw = (fulfillmentRaw.courier ?? {}) as Record<string, unknown>;
+  return {
+    courier_name: (orderRaw.courier_name as string | null) ?? null,
+    courier_service_id: (courierRaw.courier_service_id as string | null) ?? null,
+    courier_awb_number:
+      (orderRaw.courier_awb_number as string | null)
+      ?? (courierRaw.courier_awb_number as string | null)
+      ?? null,
+    courier_tracking_number: (orderRaw.courier_tracking_number as string | null) ?? null,
+    courier_consignment_id: (orderRaw.courier_consignment_id as string | null) ?? null,
+    courier_order_ref: (orderRaw.courier_order_ref as string | null) ?? null,
+    tracking_url:
+      (orderRaw.tracking_url as string | null)
+      ?? (courierRaw.tracking_url as string | null)
+      ?? null,
+    allow_open_box: courierRaw.allow_open_box === true,
+    delivery_zone_label:
+      (computedRaw.delivery_zone_label as string | null)
+      ?? deliveryZoneLabel(orderRaw.delivery_zone),
+    cod_collect_amount: num(orderRaw.cod_collect_amount, num(computedRaw.recipient_grand_total)),
+    courier_cod_booked_at: (settlementRaw.courier_cod_booked_at as string | null) ?? null,
+    remittance_at: (settlementRaw.remittance_at as string | null) ?? null,
+  };
+}
+
 export function mapDropshipManagementOrderResponse(raw: unknown): DropshipManagementOrderView {
   const payload = (raw ?? {}) as DropshipManagementOrderResponse & Record<string, unknown>;
   if (payload.success === false) {
@@ -80,6 +119,7 @@ export function mapDropshipManagementOrderResponse(raw: unknown): DropshipManage
   const computedRaw = (payload.computed ?? {}) as Record<string, unknown>;
   const settlementRaw = (payload.settlement ?? {}) as Record<string, unknown>;
   const stepRaw = (payload.step_state ?? {}) as Record<string, unknown>;
+  const fulfillmentRaw = (payload.fulfillment ?? {}) as Record<string, unknown>;
 
   const chargeLinesRaw = mapChargeLines(settlementRaw.charge_lines);
   const orderCodCharge = num(orderRaw.cod_charge_amount);
@@ -136,6 +176,7 @@ export function mapDropshipManagementOrderResponse(raw: unknown): DropshipManage
       remittance_at: (settlementRaw.remittance_at as string | null) ?? null,
       merchant_payout_at: (settlementRaw.merchant_payout_at as string | null) ?? null,
     },
+    courier: mapCourier(orderRaw, computedRaw, settlementRaw, fulfillmentRaw),
     invoice: mapInvoice(payload.invoice),
     step_state: {
       can_mark_delivered: stepRaw.can_mark_delivered === true,
