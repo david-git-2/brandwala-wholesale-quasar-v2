@@ -70,71 +70,56 @@
               <div><strong>Name:</strong> {{ tenant.name }}</div>
               <div><strong>Slug:</strong> {{ tenant.slug }}</div>
 
-              <q-card flat class="q-pa-sm inner-card">
-                <div class="text-caption text-grey-7 q-mb-xs">Admin Login</div>
-                <div class="row items-center justify-between q-gutter-sm">
-                  <a
-                    :href="adminLoginUrl"
-                    class="text-primary ellipsis col"
-                    target="_blank"
-                    rel="noopener noreferrer"
+              <div class="text-overline text-grey-7 text-weight-bold q-mb-sm">Access Portals</div>
+              <div class="row q-col-gutter-sm">
+                <div class="col-12 col-md-4">
+                  <button
+                    type="button"
+                    class="portal-card portal-card--clickable q-pa-md full-width"
+                    aria-label="Copy admin portal login URL"
+                    @click="copyLoginUrl(adminLoginUrl)"
                   >
-                    {{ adminLoginUrl }}
-                  </a>
-                  <q-btn
-                    flat
-                    round
-                    dense
-                    icon="ph ph-copy"
-                    aria-label="Copy admin login URL"
-                    @click="copyLoginUrl(adminLoginUrl, 'Admin login URL copied.')"
-                  />
+                    <div class="row items-center q-gutter-sm no-wrap">
+                      <q-icon name="ph ph-shield-check" size="20px" color="primary" />
+                      <span class="text-caption text-weight-medium text-grey-9">Admin Portal</span>
+                      <q-space />
+                      <q-icon name="ph ph-copy" size="14px" color="grey-6" />
+                    </div>
+                  </button>
                 </div>
-              </q-card>
 
-              <q-card flat class="q-pa-sm inner-card">
-                <div class="text-caption text-grey-7 q-mb-xs">Customer Login</div>
-                <div class="row items-center justify-between q-gutter-sm">
-                  <a
-                    :href="customerLoginUrl"
-                    class="text-primary ellipsis col"
-                    target="_blank"
-                    rel="noopener noreferrer"
+                <div class="col-12 col-md-4">
+                  <button
+                    type="button"
+                    class="portal-card portal-card--clickable q-pa-md full-width"
+                    aria-label="Copy customer storefront login URL"
+                    @click="copyLoginUrl(customerLoginUrl)"
                   >
-                    {{ customerLoginUrl }}
-                  </a>
-                  <q-btn
-                    flat
-                    round
-                    dense
-                    icon="ph ph-copy"
-                    aria-label="Copy customer login URL"
-                    @click="copyLoginUrl(customerLoginUrl, 'Customer login URL copied.')"
-                  />
+                    <div class="row items-center q-gutter-sm no-wrap">
+                      <q-icon name="ph ph-storefront" size="20px" color="secondary" />
+                      <span class="text-caption text-weight-medium text-grey-9">Customer Storefront</span>
+                      <q-space />
+                      <q-icon name="ph ph-copy" size="14px" color="grey-6" />
+                    </div>
+                  </button>
                 </div>
-              </q-card>
 
-              <q-card v-if="isCapitalHostTenant" flat class="q-pa-sm inner-card">
-                <div class="text-caption text-grey-7 q-mb-xs">Investor Login</div>
-                <div class="row items-center justify-between q-gutter-sm">
-                  <a
-                    :href="investorLoginUrl"
-                    class="text-primary ellipsis col"
-                    target="_blank"
-                    rel="noopener noreferrer"
+                <div v-if="isCapitalHostTenant" class="col-12 col-md-4">
+                  <button
+                    type="button"
+                    class="portal-card portal-card--clickable q-pa-md full-width"
+                    aria-label="Copy investor portal login URL"
+                    @click="copyLoginUrl(investorLoginUrl)"
                   >
-                    {{ investorLoginUrl }}
-                  </a>
-                  <q-btn
-                    flat
-                    round
-                    dense
-                    icon="ph ph-copy"
-                    aria-label="Copy investor login URL"
-                    @click="copyLoginUrl(investorLoginUrl, 'Investor login URL copied.')"
-                  />
+                    <div class="row items-center q-gutter-sm no-wrap">
+                      <q-icon name="ph ph-piggy-bank" size="20px" color="amber-9" />
+                      <span class="text-caption text-weight-medium text-grey-9">Investor Portal</span>
+                      <q-space />
+                      <q-icon name="ph ph-copy" size="14px" color="grey-6" />
+                    </div>
+                  </button>
                 </div>
-              </q-card>
+              </div>
             </q-card-section>
           </q-card>
         </div>
@@ -202,18 +187,18 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
-import { copyToClipboard, useQuasar } from 'quasar';
+import { copyToClipboard } from 'quasar';
 import { useRoute, useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
 
 import PageInitialLoader from 'src/components/PageInitialLoader.vue';
+import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 import { useTenantStore } from '../stores/tenantStore';
 import type { Tenant } from '../types';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 
 const route = useRoute();
 const router = useRouter();
-const $q = useQuasar();
 const authStore = useAuthStore();
 
 const tenantStore = useTenantStore();
@@ -292,23 +277,13 @@ const loadPageData = async () => {
   }
 };
 
-const copyLoginUrl = async (value: string, successMessage: string) => {
+const copyLoginUrl = async (value: string) => {
   try {
     await copyToClipboard(value);
-    $q.notify({
-      color: 'positive',
-      message: successMessage,
-      icon: 'ph ph-check',
-      position: 'top',
-    });
+    showSuccessNotification('Copied to clipboard');
   } catch (error) {
     console.error(error);
-    $q.notify({
-      color: 'negative',
-      message: 'Failed to copy URL.',
-      icon: 'ph ph-warning-circle',
-      position: 'top',
-    });
+    showErrorNotification('Failed to copy URL.');
   }
 };
 
@@ -365,10 +340,30 @@ onMounted(() => {
   border-radius: 14px;
 }
 
-.inner-card {
-  border-radius: 12px;
-  border: 1px solid rgba(34, 56, 101, 0.06);
-  background: rgba(255, 255, 255, 0.5);
+.portal-card {
+  border-radius: 8px;
+  border: 1px solid rgba(34, 56, 101, 0.08);
+  background: rgba(255, 255, 255, 0.6);
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.portal-card--clickable {
+  cursor: pointer;
+  appearance: none;
+  font: inherit;
+  color: inherit;
+}
+
+.portal-card--clickable:hover,
+.portal-card--clickable:focus-visible {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(34, 56, 101, 0.16);
+  outline: none;
+}
+
+.portal-card--clickable:focus-visible {
+  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.25);
 }
 
 .pill-btn {

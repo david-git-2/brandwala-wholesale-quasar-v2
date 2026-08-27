@@ -40,6 +40,7 @@ All domain specifications, page matrices, and engine algorithms are maintained a
 
 ### Core Governance & Infrastructure
 * [`doc/tenant_auth/TENANT_AUTH.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/tenant_auth/TENANT_AUTH.md): Multi-tenancy, 4 application scopes (`app`, `shop`, `investor`, `superadmin`), OAuth lifecycle, and RBAC action permissions.
+* [`doc/tenant_auth/TENANT_OPERATIONAL_DATA_RESET.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/tenant_auth/TENANT_OPERATIONAL_DATA_RESET.md): Clean slate engine, transactional data wipe (stocks, orders, shipments, invoices, ledgers), safety guardrails, and audit logging.
 * [`doc/global_reference/GLOBAL_REFERENCE.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/global_reference/GLOBAL_REFERENCE.md): Platform currencies, markets, payment methods, units of measure, and country registries.
 * [`doc/tag/TAG.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/tag/TAG.md): Universal taxonomy dictionary, stock grading presets, color swatches, and classification rules.
 * [`doc/trash/TRASH.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/trash/TRASH.md): Tenant-scoped soft-deletion, `trash_entries` directory index, 30-day retention policies.

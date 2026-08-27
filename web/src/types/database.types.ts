@@ -167,63 +167,6 @@ export type Database = {
           },
         ]
       }
-      business_parties: {
-        Row: {
-          address: string | null
-          created_at: string
-          email: string | null
-          id: number
-          is_active: boolean
-          name: string
-          parent_tenant_id: number
-          party_type: string
-          phone: string | null
-          tenant_id: number
-          updated_at: string
-        }
-        Insert: {
-          address?: string | null
-          created_at?: string
-          email?: string | null
-          id?: number
-          is_active?: boolean
-          name: string
-          parent_tenant_id: number
-          party_type?: string
-          phone?: string | null
-          tenant_id: number
-          updated_at?: string
-        }
-        Update: {
-          address?: string | null
-          created_at?: string
-          email?: string | null
-          id?: number
-          is_active?: boolean
-          name?: string
-          parent_tenant_id?: number
-          party_type?: string
-          phone?: string | null
-          tenant_id?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "business_parties_parent_tenant_id_fkey"
-            columns: ["parent_tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "business_parties_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       cargo_companies: {
         Row: {
           address: string | null
@@ -283,111 +226,6 @@ export type Database = {
           },
           {
             foreignKeyName: "cargo_companies_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      cart_items: {
-        Row: {
-          cart_id: number
-          created_at: string
-          id: number
-          image_url: string | null
-          minimum_quantity: number
-          minimum_sell_price_bdt: number | null
-          name: string
-          price_bdt: number | null
-          price_gbp: number | null
-          product_id: number | null
-          quantity: number
-          updated_at: string
-        }
-        Insert: {
-          cart_id: number
-          created_at?: string
-          id?: number
-          image_url?: string | null
-          minimum_quantity?: number
-          minimum_sell_price_bdt?: number | null
-          name: string
-          price_bdt?: number | null
-          price_gbp?: number | null
-          product_id?: number | null
-          quantity?: number
-          updated_at?: string
-        }
-        Update: {
-          cart_id?: number
-          created_at?: string
-          id?: number
-          image_url?: string | null
-          minimum_quantity?: number
-          minimum_sell_price_bdt?: number | null
-          name?: string
-          price_bdt?: number | null
-          price_gbp?: number | null
-          product_id?: number | null
-          quantity?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "cart_items_cart_id_fkey"
-            columns: ["cart_id"]
-            isOneToOne: false
-            referencedRelation: "carts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "cart_items_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      carts: {
-        Row: {
-          can_see_price: boolean
-          created_at: string
-          customer_group_id: number | null
-          id: number
-          store_id: number | null
-          tenant_id: number
-          updated_at: string
-        }
-        Insert: {
-          can_see_price?: boolean
-          created_at?: string
-          customer_group_id?: number | null
-          id?: number
-          store_id?: number | null
-          tenant_id: number
-          updated_at?: string
-        }
-        Update: {
-          can_see_price?: boolean
-          created_at?: string
-          customer_group_id?: number | null
-          id?: number
-          store_id?: number | null
-          tenant_id?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "carts_customer_group_id_fkey"
-            columns: ["customer_group_id"]
-            isOneToOne: false
-            referencedRelation: "customer_groups"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "carts_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -1476,122 +1314,6 @@ export type Database = {
           },
         ]
       }
-      gift_rule_items: {
-        Row: {
-          created_at: string
-          id: number
-          product_id: number
-          quantity: number
-          rule_id: number
-        }
-        Insert: {
-          created_at?: string
-          id?: never
-          product_id: number
-          quantity?: number
-          rule_id: number
-        }
-        Update: {
-          created_at?: string
-          id?: never
-          product_id?: number
-          quantity?: number
-          rule_id?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "gift_rule_items_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "gift_rule_items_rule_id_fkey"
-            columns: ["rule_id"]
-            isOneToOne: false
-            referencedRelation: "gift_rules"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      gift_rule_redemptions: {
-        Row: {
-          id: number
-          order_id: number
-          redeemed_at: string
-          rule_id: number
-        }
-        Insert: {
-          id?: never
-          order_id: number
-          redeemed_at?: string
-          rule_id: number
-        }
-        Update: {
-          id?: never
-          order_id?: number
-          redeemed_at?: string
-          rule_id?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "gift_rule_redemptions_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "shop_orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "gift_rule_redemptions_rule_id_fkey"
-            columns: ["rule_id"]
-            isOneToOne: false
-            referencedRelation: "gift_rules"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      gift_rules: {
-        Row: {
-          cost_ownership: string
-          created_at: string
-          customer_group_id: number | null
-          id: number
-          is_active: boolean
-          name: string
-          priority: number
-          updated_at: string
-        }
-        Insert: {
-          cost_ownership?: string
-          created_at?: string
-          customer_group_id?: number | null
-          id?: never
-          is_active?: boolean
-          name: string
-          priority?: number
-          updated_at?: string
-        }
-        Update: {
-          cost_ownership?: string
-          created_at?: string
-          customer_group_id?: number | null
-          id?: never
-          is_active?: boolean
-          name?: string
-          priority?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "gift_rules_customer_group_id_fkey"
-            columns: ["customer_group_id"]
-            isOneToOne: false
-            referencedRelation: "customer_groups"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       global_currencies: {
         Row: {
           code: string
@@ -2239,60 +1961,6 @@ export type Database = {
           },
         ]
       }
-      investor_balances: {
-        Row: {
-          available_balance: number
-          created_at: string
-          id: number
-          investor_id: number
-          tenant_id: number
-          total_deposit: number
-          total_invested_active: number
-          total_profit_payout: number
-          total_withdrawal: number
-          updated_at: string
-        }
-        Insert: {
-          available_balance?: number
-          created_at?: string
-          id?: number
-          investor_id: number
-          tenant_id: number
-          total_deposit?: number
-          total_invested_active?: number
-          total_profit_payout?: number
-          total_withdrawal?: number
-          updated_at?: string
-        }
-        Update: {
-          available_balance?: number
-          created_at?: string
-          id?: number
-          investor_id?: number
-          tenant_id?: number
-          total_deposit?: number
-          total_invested_active?: number
-          total_profit_payout?: number
-          total_withdrawal?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "investor_balances_investor_id_fkey"
-            columns: ["investor_id"]
-            isOneToOne: false
-            referencedRelation: "investors"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "investor_balances_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       investor_transactions: {
         Row: {
           amount: number
@@ -2390,44 +2058,6 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "investors_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      invoice_boxes: {
-        Row: {
-          box_number: string
-          created_at: string
-          id: number
-          invoice_id: number
-          tenant_id: number
-          updated_at: string
-          weight: number
-        }
-        Insert: {
-          box_number: string
-          created_at?: string
-          id?: number
-          invoice_id: number
-          tenant_id: number
-          updated_at?: string
-          weight: number
-        }
-        Update: {
-          box_number?: string
-          created_at?: string
-          id?: number
-          invoice_id?: number
-          tenant_id?: number
-          updated_at?: string
-          weight?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "invoice_boxes_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -6435,163 +6065,6 @@ export type Database = {
           },
         ]
       }
-      store_access: {
-        Row: {
-          created_at: string
-          customer_group_id: number
-          id: number
-          see_price: boolean
-          status: boolean
-          store_id: number
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          customer_group_id: number
-          id?: number
-          see_price?: boolean
-          status?: boolean
-          store_id: number
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          customer_group_id?: number
-          id?: number
-          see_price?: boolean
-          status?: boolean
-          store_id?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "store_access_customer_group_id_fkey"
-            columns: ["customer_group_id"]
-            isOneToOne: false
-            referencedRelation: "customer_groups"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "store_access_store_id_fkey"
-            columns: ["store_id"]
-            isOneToOne: false
-            referencedRelation: "stores"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      store_product_prices: {
-        Row: {
-          created_at: string
-          global_stock_id: number | null
-          id: number
-          inventory_item_id: number | null
-          is_active: boolean
-          minimum_sell_price_bdt: number
-          price_bdt: number
-          product_id: number | null
-          stock_override: number | null
-          store_id: number
-          tenant_id: number
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          global_stock_id?: number | null
-          id?: number
-          inventory_item_id?: number | null
-          is_active?: boolean
-          minimum_sell_price_bdt: number
-          price_bdt: number
-          product_id?: number | null
-          stock_override?: number | null
-          store_id: number
-          tenant_id: number
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          global_stock_id?: number | null
-          id?: number
-          inventory_item_id?: number | null
-          is_active?: boolean
-          minimum_sell_price_bdt?: number
-          price_bdt?: number
-          product_id?: number | null
-          stock_override?: number | null
-          store_id?: number
-          tenant_id?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "store_product_prices_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "store_product_prices_store_id_fkey"
-            columns: ["store_id"]
-            isOneToOne: false
-            referencedRelation: "stores"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "store_product_prices_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      stores: {
-        Row: {
-          created_at: string
-          id: number
-          name: string
-          tenant_id: number
-          updated_at: string
-          vendor_code: string | null
-          vendor_id: number | null
-        }
-        Insert: {
-          created_at?: string
-          id?: number
-          name: string
-          tenant_id: number
-          updated_at?: string
-          vendor_code?: string | null
-          vendor_id?: number | null
-        }
-        Update: {
-          created_at?: string
-          id?: number
-          name?: string
-          tenant_id?: number
-          updated_at?: string
-          vendor_code?: string | null
-          vendor_id?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "stores_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "stores_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "vendors"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       system_role_templates: {
         Row: {
           action: string
@@ -6740,6 +6213,57 @@ export type Database = {
           {
             foreignKeyName: "tags_tenant_id_fkey"
             columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_data_purge_logs: {
+        Row: {
+          confirmation_phrase: string
+          created_at: string
+          deleted_counts: Json
+          executed_by: string | null
+          executor_email: string
+          id: string
+          parent_tenant_id: number
+          scope: string
+          target_tenant_id: number
+        }
+        Insert: {
+          confirmation_phrase: string
+          created_at?: string
+          deleted_counts?: Json
+          executed_by?: string | null
+          executor_email: string
+          id?: string
+          parent_tenant_id: number
+          scope: string
+          target_tenant_id: number
+        }
+        Update: {
+          confirmation_phrase?: string
+          created_at?: string
+          deleted_counts?: Json
+          executed_by?: string | null
+          executor_email?: string
+          id?: string
+          parent_tenant_id?: number
+          scope?: string
+          target_tenant_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_data_purge_logs_parent_tenant_id_fkey"
+            columns: ["parent_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_data_purge_logs_target_tenant_id_fkey"
+            columns: ["target_tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
@@ -9424,46 +8948,6 @@ export type Database = {
               isSetofReturn: false
             }
           }
-      add_item_to_cart: {
-        Args: {
-          p_can_see_price?: boolean
-          p_customer_group_id?: number
-          p_image_url?: string
-          p_minimum_quantity?: number
-          p_minimum_sell_price_bdt?: number
-          p_name?: string
-          p_price_bdt?: number
-          p_product_id?: number
-          p_quantity?: number
-          p_store_id?: number
-          p_tenant_id: number
-        }
-        Returns: Json
-      }
-      add_payment_allocation: {
-        Args: {
-          p_amount: number
-          p_invoice_id: number
-          p_payment_id: number
-          p_tenant_id: number
-        }
-        Returns: {
-          amount: number
-          commerce_invoice_id: number | null
-          created_at: string
-          global_invoice_id: number | null
-          id: number
-          invoice_id: number | null
-          payment_id: number
-          tenant_id: number
-        }
-        SetofOptions: {
-          from: "*"
-          to: "invoice_payments"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
       add_pbc_backlog_to_costing_file: {
         Args: { p_backlog_ids: number[]; p_file_id: number }
         Returns: number[]
@@ -10067,11 +9551,6 @@ export type Database = {
         Args: { p_shipment_item_id: number }
         Returns: number
       }
-      can_access_cart: { Args: { p_cart_id: number }; Returns: boolean }
-      can_access_cart_item: {
-        Args: { p_cart_item_id: number }
-        Returns: boolean
-      }
       can_access_demand_bucket_profile: {
         Args: {
           p_billing_profile_id: number
@@ -10123,20 +9602,6 @@ export type Database = {
         Args: { p_store_id: number }
         Returns: boolean
       }
-      can_insert_cart:
-        | {
-            Args: { p_customer_group_id: number; p_tenant_id: number }
-            Returns: boolean
-          }
-        | {
-            Args: {
-              p_customer_group_id: number
-              p_store_id?: number
-              p_tenant_id: number
-            }
-            Returns: boolean
-          }
-      can_insert_cart_item: { Args: { p_cart_id: number }; Returns: boolean }
       can_manage_costing: { Args: { p_tenant_id: number }; Returns: boolean }
       can_manage_costing_file_viewers: {
         Args: { p_tenant_id: number }
@@ -10168,7 +9633,6 @@ export type Database = {
         Args: { p_shipment_id: number }
         Returns: boolean
       }
-      can_manage_store: { Args: { p_tenant_id: number }; Returns: boolean }
       can_staff_access_costing_file: {
         Args: { p_tenant_id: number }
         Returns: boolean
@@ -10271,7 +9735,6 @@ export type Database = {
         Args: { p_order_id: number }
         Returns: undefined
       }
-      cart_exists: { Args: { p_cart_id: number }; Returns: boolean }
       ceil_thrift_retail_price: { Args: { p_price: number }; Returns: number }
       check_login_membership: {
         Args: { p_email: string; p_scope: string }
@@ -10304,10 +9767,6 @@ export type Database = {
         }[]
       }
       check_store_access: { Args: { p_store_id: number }; Returns: boolean }
-      check_store_price_access: {
-        Args: { p_store_id: number }
-        Returns: boolean
-      }
       collect_wholesale_invoice_payment: {
         Args: {
           p_cash_amount?: number
@@ -10957,70 +10416,6 @@ export type Database = {
         }
         Returns: Json
       }
-      create_store: {
-        Args: { p_name: string; p_tenant_id: number; p_vendor_code: string }
-        Returns: {
-          created_at: string
-          id: number
-          name: string
-          tenant_id: number
-          updated_at: string
-          vendor_code: string | null
-          vendor_id: number | null
-        }
-        SetofOptions: {
-          from: "*"
-          to: "stores"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
-      create_store_access:
-        | {
-            Args: {
-              p_customer_group_id: number
-              p_status?: boolean
-              p_store_id: number
-            }
-            Returns: {
-              created_at: string
-              customer_group_id: number
-              id: number
-              see_price: boolean
-              status: boolean
-              store_id: number
-              updated_at: string
-            }
-            SetofOptions: {
-              from: "*"
-              to: "store_access"
-              isOneToOne: true
-              isSetofReturn: false
-            }
-          }
-        | {
-            Args: {
-              p_customer_group_id: number
-              p_see_price?: boolean
-              p_status?: boolean
-              p_store_id: number
-            }
-            Returns: {
-              created_at: string
-              customer_group_id: number
-              id: number
-              see_price: boolean
-              status: boolean
-              store_id: number
-              updated_at: string
-            }
-            SetofOptions: {
-              from: "*"
-              to: "store_access"
-              isOneToOne: true
-              isSetofReturn: false
-            }
-          }
       create_tenant_for_superadmin: {
         Args: {
           p_is_active?: boolean
@@ -11213,7 +10608,6 @@ export type Database = {
       }
       delete_stock_location: { Args: { p_id: number }; Returns: undefined }
       delete_store: { Args: { p_id: number }; Returns: undefined }
-      delete_store_access: { Args: { p_id: number }; Returns: undefined }
       delete_tenant_for_superadmin: {
         Args: { p_tenant_id: number }
         Returns: {
@@ -11358,10 +10752,6 @@ export type Database = {
         }
         Returns: string
       }
-      fn_recalculate_normal_invoice_totals: {
-        Args: { p_invoice_id: number }
-        Returns: undefined
-      }
       fulfill_shop_order_to_invoice: {
         Args: { p_order_id: number }
         Returns: undefined
@@ -11436,8 +10826,6 @@ export type Database = {
         Args: { p_stock_id: number; p_tenant_id: number }
         Returns: number
       }
-      get_cart: { Args: { p_cart_id: number }; Returns: Json }
-      get_cart_details: { Args: { p_cart_id: number }; Returns: Json }
       get_costing_file_by_id: {
         Args: { p_id: number }
         Returns: {
@@ -11724,96 +11112,6 @@ export type Database = {
       get_shop_storefront_listing_price_calculation: {
         Args: { p_listing_id: number; p_shop_id: number }
         Returns: Json
-      }
-      get_store_access_admin: {
-        Args: { p_store_id?: number; p_tenant_id?: number }
-        Returns: {
-          created_at: string
-          customer_group_id: number
-          id: number
-          see_price: boolean
-          status: boolean
-          store_id: number
-          updated_at: string
-        }[]
-        SetofOptions: {
-          from: "*"
-          to: "store_access"
-          isOneToOne: false
-          isSetofReturn: true
-        }
-      }
-      get_store_access_admin_v2: {
-        Args: { p_store_id?: number; p_tenant_id?: number }
-        Returns: {
-          created_at: string
-          customer_group_id: number
-          id: number
-          see_price: boolean
-          status: boolean
-          store_id: number
-          updated_at: string
-        }[]
-        SetofOptions: {
-          from: "*"
-          to: "store_access"
-          isOneToOne: false
-          isSetofReturn: true
-        }
-      }
-      get_store_product_brands: {
-        Args: { p_store_id: number }
-        Returns: {
-          brand: string
-        }[]
-      }
-      get_store_product_categories: {
-        Args: { p_store_id: number }
-        Returns: {
-          category: string
-        }[]
-      }
-      get_stores_admin: {
-        Args: { p_tenant_id: number }
-        Returns: {
-          created_at: string
-          id: number
-          name: string
-          tenant_id: number
-          updated_at: string
-          vendor_code: string | null
-          vendor_id: number | null
-        }[]
-        SetofOptions: {
-          from: "*"
-          to: "stores"
-          isOneToOne: false
-          isSetofReturn: true
-        }
-      }
-      get_stores_for_customer: {
-        Args: never
-        Returns: {
-          created_at: string
-          id: number
-          name: string
-          see_price: boolean
-          tenant_id: number
-          updated_at: string
-          vendor_code: string
-        }[]
-      }
-      get_stores_for_customer_v2: {
-        Args: { p_tenant_id?: number }
-        Returns: {
-          created_at: string
-          id: number
-          name: string
-          see_price: boolean
-          tenant_id: number
-          updated_at: string
-          vendor_code: string
-        }[]
       }
       get_tag_by_slug: {
         Args: {
@@ -12645,16 +11943,6 @@ export type Database = {
           type: Database["public"]["Enums"]["investor_transaction_type"]
         }[]
       }
-      list_invoices_paginated: {
-        Args: {
-          p_page?: number
-          p_page_size?: number
-          p_search?: string
-          p_status?: string
-          p_tenant_id: number
-        }
-        Returns: Json
-      }
       list_items_paginated: {
         Args: {
           p_assignee?: string
@@ -13126,36 +12414,6 @@ export type Database = {
         }
         Returns: Json
       }
-      list_store_products: {
-        Args: {
-          p_brand?: string
-          p_category?: string
-          p_fields?: string[]
-          p_is_available?: boolean
-          p_limit?: number
-          p_offset?: number
-          p_search?: string
-          p_sort_by?: string
-          p_sort_dir?: string
-          p_store_id: number
-        }
-        Returns: Json
-      }
-      list_store_products_inventory_aggregated: {
-        Args: {
-          p_brand?: string
-          p_category?: string
-          p_fields?: string[]
-          p_is_available?: boolean
-          p_limit?: number
-          p_offset?: number
-          p_search?: string
-          p_sort_by?: string
-          p_sort_dir?: string
-          p_store_id: number
-        }
-        Returns: Json
-      }
       list_tag_categories: { Args: { p_module_key?: string }; Returns: Json }
       list_tags_for_category: {
         Args: { p_category_id?: number; p_code?: string; p_module_key?: string }
@@ -13529,6 +12787,14 @@ export type Database = {
       }
       post_sales_invoice: { Args: { p_invoice_id: number }; Returns: undefined }
       post_stock_movement: { Args: { p_movement_id: number }; Returns: Json }
+      preview_tenant_data_purge: {
+        Args: {
+          p_parent_tenant_id: number
+          p_scope?: string
+          p_target_child_id?: number
+        }
+        Returns: Json
+      }
       process_courier_bulk_remittance_batch: {
         Args: { p_batch_id: number }
         Returns: Json
@@ -13578,6 +12844,15 @@ export type Database = {
           p_tenant_id: number
         }
         Returns: undefined
+      }
+      purge_tenant_operational_data: {
+        Args: {
+          p_confirmation_slug?: string
+          p_parent_tenant_id: number
+          p_scope?: string
+          p_target_child_id?: number
+        }
+        Returns: Json
       }
       recalculate_product_based_costing_file_offer_prices: {
         Args: { p_file_id: number }
@@ -13867,10 +13142,6 @@ export type Database = {
           p_tenant_id: number
         }
         Returns: Json
-      }
-      refresh_investor_balance: {
-        Args: { p_investor_id: number; p_tenant_id: number }
-        Returns: undefined
       }
       refresh_shipment_inventory_accounting: {
         Args: { p_shipment_id?: number; p_tenant_id: number }
@@ -14653,25 +13924,6 @@ export type Database = {
           updated_at: string
         }[]
       }
-      update_payment_allocation_amount: {
-        Args: { p_allocation_id: number; p_amount: number; p_tenant_id: number }
-        Returns: {
-          amount: number
-          commerce_invoice_id: number | null
-          created_at: string
-          global_invoice_id: number | null
-          id: number
-          invoice_id: number | null
-          payment_id: number
-          tenant_id: number
-        }
-        SetofOptions: {
-          from: "*"
-          to: "invoice_payments"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
       update_sales_invoice_from_payload: {
         Args: { p_invoice_id: number; p_payload: Json; p_tenant_id: number }
         Returns: Json
@@ -14803,60 +14055,6 @@ export type Database = {
       update_shop_order_status_for_staff: {
         Args: { p_order_id: number; p_status: string; p_tenant_id: number }
         Returns: Json
-      }
-      update_store: {
-        Args: { p_id: number; p_name: string; p_vendor_code: string }
-        Returns: {
-          created_at: string
-          id: number
-          name: string
-          tenant_id: number
-          updated_at: string
-          vendor_code: string | null
-          vendor_id: number | null
-        }
-        SetofOptions: {
-          from: "*"
-          to: "stores"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
-      update_store_access: {
-        Args: { p_id: number; p_status: boolean }
-        Returns: {
-          created_at: string
-          customer_group_id: number
-          id: number
-          see_price: boolean
-          status: boolean
-          store_id: number
-          updated_at: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "store_access"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
-      update_store_access_fields: {
-        Args: { p_id: number; p_see_price?: boolean; p_status?: boolean }
-        Returns: {
-          created_at: string
-          customer_group_id: number
-          id: number
-          see_price: boolean
-          status: boolean
-          store_id: number
-          updated_at: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "store_access"
-          isOneToOne: true
-          isSetofReturn: false
-        }
       }
       update_tenant_for_superadmin: {
         Args: {

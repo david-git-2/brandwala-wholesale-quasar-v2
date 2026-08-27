@@ -98,7 +98,7 @@ const listChildTenantRefs = async (parentTenantIds: number[]): Promise<TenantHie
     throw error;
   }
 
-  return (data ?? []).map((row) => ({
+  return ((data as Array<{ id: number; parent_id: number }> | null) ?? []).map((row) => ({
     id: Number(row.id),
     parent_id: Number(row.parent_id),
   }));
@@ -374,6 +374,68 @@ const deleteTenantModuleWithSubmodules = async (
   }
 };
 
+export type TenantPurgePreviewCounts = {
+  shipments: number;
+  stocks: number;
+  invoices: number;
+  orders: number;
+  carts: number;
+  ledgers: number;
+  wallets_to_reset: number;
+};
+
+export type TenantPurgeResult = {
+  success: boolean;
+  purged_counts: TenantPurgePreviewCounts;
+  purged_at: string;
+};
+
+const previewPurgeData = async (payload: {
+  parentTenantId: number;
+  scope: 'all_hierarchy' | 'child_only';
+  targetChildId?: number | null;
+}): Promise<TenantPurgePreviewCounts> => {
+  const { data, error } = await (supabase.rpc as any)('preview_tenant_data_purge', {
+    p_parent_tenant_id: payload.parentTenantId,
+    p_scope: payload.scope,
+    p_target_child_id: payload.targetChildId ?? null,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data as TenantPurgePreviewCounts) ?? {
+    shipments: 0,
+    stocks: 0,
+    invoices: 0,
+    orders: 0,
+    carts: 0,
+    ledgers: 0,
+    wallets_to_reset: 0,
+  };
+};
+
+const purgeOperationalData = async (payload: {
+  parentTenantId: number;
+  scope: 'all_hierarchy' | 'child_only';
+  confirmationSlug: string;
+  targetChildId?: number | null;
+}): Promise<TenantPurgeResult> => {
+  const { data, error } = await (supabase.rpc as any)('purge_tenant_operational_data', {
+    p_parent_tenant_id: payload.parentTenantId,
+    p_scope: payload.scope,
+    p_confirmation_slug: payload.confirmationSlug,
+    p_target_child_id: payload.targetChildId ?? null,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return data as TenantPurgeResult;
+};
+
 export const tenantRepository = {
   deleteTenant,
   listTenants,
@@ -394,5 +456,9 @@ export const tenantRepository = {
   listChildTenantRefs,
   listTenantsByMembership,
   getTenantDetailsByMembership,
+
+  previewPurgeData,
+  purgeOperationalData,
 };
+
 
