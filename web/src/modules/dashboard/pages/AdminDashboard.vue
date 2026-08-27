@@ -1,7 +1,10 @@
 <template>
   <q-page class="dashboard-page theme-app q-pa-md">
-    <!-- Procurement Card Section -->
-    <ProcurementStockCard />
+    <!-- Parent Workspace: Supply Chain, Procurement & Physical Stock -->
+    <ProcurementStockCard v-if="isParentTenant" />
+
+    <!-- Child Workspace / Sister Concern: Storefront Shop, Orders & Dropship Hub -->
+    <ShopOrderCard v-else-if="isChildTenant" />
 
     <section v-if="primaries.length" class="dashboard-block">
       <p class="dashboard-block__label">Primary actions</p>
@@ -28,12 +31,19 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
+import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import ProcurementStockCard from 'src/modules/procurement_stock/dashboard/ProcurementStockCard.vue';
+import ShopOrderCard from 'src/modules/shop_order/dashboard/ShopOrderCard.vue';
 import DashboardGroup from '../components/DashboardGroup.vue';
 import DashboardSlotHost from '../components/DashboardSlotHost.vue';
 import { useDashboardSlots } from '../composables/useDashboardSlots';
 
+const tenantStore = useTenantStore();
 const { primaries, groups, tenantSlug } = useDashboardSlots();
+
+const isChildTenant = computed(() => Boolean(tenantStore.selectedTenant?.parent_id));
+const isParentTenant = computed(() => !isChildTenant.value);
 </script>
 
 <style scoped>
@@ -58,28 +68,16 @@ const { primaries, groups, tenantSlug } = useDashboardSlots();
 .dashboard-block__label {
   margin: 0;
   font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-weight: 700;
   text-transform: uppercase;
+  letter-spacing: 0.04em;
   color: var(--dashboard-muted);
-}
-
-.dashboard-block h2 {
-  margin: 0.4rem 0 0;
-  font-size: 1.15rem;
-  color: var(--dashboard-ink);
-}
-
-.dashboard-block p {
-  margin: 0.45rem 0 0;
-  color: var(--dashboard-muted);
-  line-height: 1.55;
 }
 
 .dashboard-primary-grid {
   display: grid;
-  gap: 0.65rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
   margin-top: 0.85rem;
-  grid-template-columns: 1fr;
 }
 </style>
