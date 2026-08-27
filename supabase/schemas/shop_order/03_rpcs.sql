@@ -5538,13 +5538,15 @@ $$;
 ALTER FUNCTION "public"."get_customer_dashboard_summary"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_dropship_shop_orders_for_staff"("p_tenant_id" bigint, "p_limit" integer DEFAULT 20, "p_offset" integer DEFAULT 0, "p_status" "text" DEFAULT NULL::"text", "p_search" "text" DEFAULT NULL::"text") RETURNS TABLE("id" bigint, "order_no" "text", "status" "public"."shop_order_status", "created_at" timestamp with time zone, "customer_group_name" "text", "created_by_email" "text", "recipient_name" "text", "recipient_phone" "text", "courier_name" "text", "courier_awb_number" "text", "cod_collect_amount" numeric, "total_amount" numeric, "global_invoice_id" bigint, "courier_remittance_ref" "text", "collection_source" "public"."collection_source_type", "payout_settlement_status" "text")
+CREATE OR REPLACE FUNCTION "public"."list_dropship_shop_orders_for_staff"("p_tenant_id" bigint, "p_limit" integer DEFAULT 20, "p_offset" integer DEFAULT 0, "p_status" "text" DEFAULT NULL::"text", "p_search" "text" DEFAULT NULL::"text", "p_statuses" "text"[] DEFAULT NULL::"text"[]) RETURNS TABLE("id" bigint, "order_no" "text", "status" "public"."shop_order_status", "created_at" timestamp with time zone, "customer_group_name" "text", "created_by_email" "text", "recipient_name" "text", "recipient_phone" "text", "courier_name" "text", "courier_awb_number" "text", "cod_collect_amount" numeric, "total_amount" numeric, "global_invoice_id" bigint, "courier_remittance_ref" "text", "collection_source" "public"."collection_source_type", "payout_settlement_status" "text")
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
 begin
   if not public.is_tenant_staff(p_tenant_id) then
     raise exception 'access denied';
+  end if;
+
   return query
   select
     o.id,
@@ -5585,18 +5587,22 @@ begin
     and o.shop_type_snapshot = 'dropship'
     and (
       case
-        when p_status is null then o.status::text in (
-          'submitted',
-          'confirmed',
-          'placed',
-          'processing',
-          'ready_for_pickup',
-          'shipped',
-          'delivered',
-          'returned',
-          'payment_received'
-        )
-        else o.status::text = p_status
+        when p_statuses is not null and cardinality(p_statuses) > 0 then
+          o.status::text = any(p_statuses)
+        when p_status is not null then
+          o.status::text = p_status
+        else
+          o.status::text in (
+            'submitted',
+            'confirmed',
+            'placed',
+            'processing',
+            'ready_for_pickup',
+            'shipped',
+            'delivered',
+            'returned',
+            'payment_received'
+          )
       end
     )
     and (
@@ -5613,7 +5619,9 @@ begin
   order by o.created_at desc
   limit p_limit
   offset p_offset;
-ALTER FUNCTION "public"."list_dropship_shop_orders_for_staff"("p_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_status" "text", "p_search" "text") OWNER TO "postgres";
+end;
+$$;
+ALTER FUNCTION "public"."list_dropship_shop_orders_for_staff"("p_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_status" "text", "p_search" "text", "p_statuses" "text"[]) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."list_listable_stock_for_shop"("p_shop_id" bigint, "p_search" "text" DEFAULT NULL::"text", "p_limit" integer DEFAULT 50, "p_offset" integer DEFAULT 0) RETURNS "jsonb"

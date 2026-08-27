@@ -36,3 +36,5 @@ When talking to the user, explain like a teammate who is smart but not living in
 ```
 
 This rule is for **user-facing** text. Code, SQL, and patches stay precise.
+
+Ask mode always uses this voice. Agent wrap-up is `Done` only unless 1–2 important sentences are needed (`mode-responses.mdc`). Plan phase text uses this voice.

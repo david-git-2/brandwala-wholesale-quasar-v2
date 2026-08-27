@@ -397,7 +397,13 @@ const listShopOrdersForStaff = async (
 
 const listDropshipShopOrdersForStaff = async (
   tenantId: number,
-  opts: { limit?: number; offset?: number; search?: string | null; status?: string | null } = {},
+  opts: {
+    limit?: number;
+    offset?: number;
+    search?: string | null;
+    status?: string | null;
+    statuses?: string[] | null;
+  } = {},
 ): Promise<ShopOrder[]> => {
   const { data, error } = await supabase.rpc('list_dropship_shop_orders_for_staff', {
     p_tenant_id: tenantId,
@@ -405,6 +411,7 @@ const listDropshipShopOrdersForStaff = async (
     p_offset: opts.offset ?? 0,
     p_status: opts.status ?? null,
     p_search: opts.search ?? null,
+    p_statuses: opts.statuses ?? null,
   });
   if (error) throw error;
   return (data as ShopOrder[] | null) ?? [];

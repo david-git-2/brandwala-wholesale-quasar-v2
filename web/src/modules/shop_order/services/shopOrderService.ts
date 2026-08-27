@@ -177,7 +177,13 @@ const fetchStaffOrders = async (
 
 const fetchDropshipStaffOrders = async (
   tenantId: number,
-  opts?: { limit?: number; offset?: number; search?: string | null; status?: string | null },
+  opts?: {
+    limit?: number;
+    offset?: number;
+    search?: string | null;
+    status?: string | null;
+    statuses?: string[] | null;
+  },
 ): Promise<ShopServiceResult<ShopOrder[]>> => {
   try {
     const data = await shopOrderRepository.listDropshipShopOrdersForStaff(tenantId, opts);

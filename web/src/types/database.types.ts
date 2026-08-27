@@ -12883,6 +12883,7 @@ export type Database = {
           p_offset?: number
           p_search?: string
           p_status?: string
+          p_statuses?: string[]
           p_tenant_id: number
         }
         Returns: {

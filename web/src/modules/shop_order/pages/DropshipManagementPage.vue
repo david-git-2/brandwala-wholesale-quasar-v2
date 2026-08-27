@@ -11,6 +11,7 @@
               clearable
               debounce="300"
               placeholder="Search order no, merchant, recipient..."
+              @update:model-value="onSearchChange"
             >
               <template #prepend>
                 <q-icon name="ph ph-magnifying-glass" />
@@ -27,30 +28,35 @@
               map-options
               :options="statusOptions"
               label="Status"
+              @update:model-value="onStatusChange"
             />
           </div>
         </div>
       </q-card>
 
       <q-card flat bordered class="form-card">
-        <q-list separator>
-          <q-item v-if="filteredOrders.length === 0" class="justify-center">
+        <div v-if="loading" class="row justify-center q-py-xl">
+          <q-spinner color="primary" size="3em" />
+        </div>
+        <q-list v-else separator>
+          <q-item v-if="orders.length === 0" class="justify-center">
             <q-item-section class="text-center text-grey-6">
               No orders match your search or filter.
             </q-item-section>
           </q-item>
 
           <q-item
-            v-for="order in filteredOrders"
+            v-for="order in orders"
             :key="order.id"
             v-ripple
             clickable
             @click="goToDetail(order.id)"
           >
             <q-item-section>
-              <q-item-label class="text-weight-medium">{{ order.name }}</q-item-label>
+              <q-item-label class="text-weight-medium">{{ order.order_no }}</q-item-label>
               <q-item-label caption>
-                {{ order.merchant }} · {{ order.recipient }} · {{ order.courierName }}
+                {{ order.customer_group_name || '—' }} · {{ order.recipient_name || '—' }} ·
+                {{ order.courier_name || '—' }}
               </q-item-label>
             </q-item-section>
             <q-item-section side>
@@ -64,58 +70,89 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import {
-  dropshipManagementDummyOrders,
-  type DropshipManagementOrderStatus,
-} from '../data/dropshipManagementDummyOrders';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { showErrorNotification } from 'src/utils/appFeedback';
+import { shopOrderService } from '../services/shopOrderService';
+import type { ShopOrder, ShopOrderStatus } from '../types';
+
+const DROPSHIP_MANAGEMENT_STATUSES = ['shipped', 'delivered'] as const;
+
+type DropshipManagementStatusFilter = 'all' | (typeof DROPSHIP_MANAGEMENT_STATUSES)[number];
 
 const router = useRouter();
+const authStore = useAuthStore();
 
+const loading = ref(false);
+const orders = ref<ShopOrder[]>([]);
 const searchQuery = ref('');
-const statusFilter = ref<DropshipManagementOrderStatus | 'all'>('all');
+const statusFilter = ref<DropshipManagementStatusFilter>('all');
 
 const statusOptions = [
   { label: 'All statuses', value: 'all' },
-  { label: 'Pending', value: 'pending' },
-  { label: 'Processing', value: 'processing' },
   { label: 'Shipped', value: 'shipped' },
   { label: 'Delivered', value: 'delivered' },
 ] as const;
 
-const dummyOrders = dropshipManagementDummyOrders;
+function statusesForFilter(filter: DropshipManagementStatusFilter): string[] {
+  if (filter === 'all') return [...DROPSHIP_MANAGEMENT_STATUSES];
+  return [filter];
+}
 
-const filteredOrders = computed(() => {
-  const query = searchQuery.value.trim().toLowerCase();
+const loadOrders = async () => {
+  if (!authStore.tenantId) return;
+  loading.value = true;
+  try {
+    const res = await shopOrderService.fetchDropshipStaffOrders(authStore.tenantId, {
+      limit: 200,
+      statuses: statusesForFilter(statusFilter.value),
+      search: searchQuery.value.trim() || null,
+    });
+    orders.value = res.success && res.data ? res.data : [];
+    if (!res.success && res.error) {
+      showErrorNotification(res.error);
+    }
+  } catch (err) {
+    console.error('Failed to load dropship management orders:', err);
+    showErrorNotification('Failed to load dropship management orders.');
+  } finally {
+    loading.value = false;
+  }
+};
 
-  return dummyOrders.filter((order) => {
-    const matchesStatus = statusFilter.value === 'all' || order.status === statusFilter.value;
-    const matchesSearch =
-      !query ||
-      order.name.toLowerCase().includes(query) ||
-      order.merchant.toLowerCase().includes(query) ||
-      order.recipient.toLowerCase().includes(query);
-
-    return matchesStatus && matchesSearch;
-  });
+onMounted(() => {
+  void loadOrders();
 });
 
-function statusLabel(status: DropshipManagementOrderStatus): string {
+watch(
+  () => authStore.tenantId,
+  (tenantId) => {
+    if (tenantId) void loadOrders();
+  },
+);
+
+const onSearchChange = () => {
+  void loadOrders();
+};
+
+const onStatusChange = () => {
+  void loadOrders();
+};
+
+function statusLabel(status: ShopOrderStatus): string {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
-function statusColor(status: DropshipManagementOrderStatus): string {
-  const colors: Record<DropshipManagementOrderStatus, string> = {
-    pending: 'grey-7',
-    processing: 'primary',
+function statusColor(status: ShopOrderStatus): string {
+  const colors: Partial<Record<ShopOrderStatus, string>> = {
     shipped: 'amber-9',
     delivered: 'positive',
   };
-  return colors[status];
+  return colors[status] ?? 'grey-7';
 }
 
-function goToDetail(id: string) {
+function goToDetail(id: number) {
   router.push({ name: 'app-shop-dropship-management-detail-page', params: { id } });
 }
 </script>

@@ -1,6 +1,6 @@
 # Dropship Management Desk (v1 UI shell)
 
-Staff-facing settlement desk for dropship orders **in transit or delivered** — i.e. after the order has left the warehouse (`shipped`) or reached the recipient (`delivered`). **Current state: dummy UI only** — list/detail are not wired to live RPCs; wallet writes and settlement save are not wired.
+Staff-facing settlement desk for dropship orders **in transit or delivered** — i.e. after the order has left the warehouse (`shipped`) or reached the recipient (`delivered`). **List page is wired to live RPC**; detail settlement form and wallet writes are not wired yet.
 
 Related: [`SHOP_ORDER.md`](./SHOP_ORDER.md) (dropship desk inventory), [`WALLET.md`](../wallet/WALLET.md) (ledger rules), existing [`DropshipFinanceHubPage`](../../web/src/modules/shop_order/pages/DropshipFinanceHubPage.vue) (3-step courier remittance flow).
 
@@ -19,13 +19,11 @@ The list page shows **only** dropship orders where `shop_orders.status` is:
 
 The status dropdown on the list is a **subset filter** within that set:
 
-| UI option | Server filter |
+| UI option | Server filter (`p_statuses`) |
 | :--- | :--- |
-| All statuses | `status IN ('shipped', 'delivered')` |
-| Shipped | `status = 'shipped'` |
-| Delivered | `status = 'delivered'` |
-
-Dummy data still includes `pending` / `processing` for layout only — remove when wiring live data.
+| All statuses | `['shipped', 'delivered']` |
+| Shipped | `['shipped']` |
+| Delivered | `['delivered']` |
 
 ---
 
@@ -33,32 +31,34 @@ Dummy data still includes `pending` / `processing` for layout only — remove wh
 
 | Route | Page | Status |
 | :--- | :--- | :--- |
-| `/:tenantSlug?/app/shop/dropship-management` | [`DropshipManagementPage.vue`](../../web/src/modules/shop_order/pages/DropshipManagementPage.vue) | Dummy list + search/filter |
+| `/:tenantSlug?/app/shop/dropship-management` | [`DropshipManagementPage.vue`](../../web/src/modules/shop_order/pages/DropshipManagementPage.vue) | Live list + search/filter |
 | `/:tenantSlug?/app/shop/dropship-management/:id` | [`DropshipManagementDetailPage.vue`](../../web/src/modules/shop_order/pages/DropshipManagementDetailPage.vue) | Dummy settlement form |
 
-Dummy seed data: [`dropshipManagementDummyOrders.ts`](../../web/src/modules/shop_order/data/dropshipManagementDummyOrders.ts).
+Dummy seed data (detail only): [`dropshipManagementDummyOrders.ts`](../../web/src/modules/shop_order/data/dropshipManagementDummyOrders.ts).
 
 ---
 
 ## 3. API — list page
 
-### Existing RPC: `list_dropship_shop_orders_for_staff`
+### RPC: `list_dropship_shop_orders_for_staff`
 
-**Status: exists and wired in repository/service** — same RPC used by [`DropshipOrdersPage`](../../web/src/modules/shop_order/pages/DropshipOrdersPage.vue).
+**Status: exists and wired** — same RPC used by [`DropshipOrdersPage`](../../web/src/modules/shop_order/pages/DropshipOrdersPage.vue) and [`DropshipManagementPage`](../../web/src/modules/shop_order/pages/DropshipManagementPage.vue).
 
 ```sql
 list_dropship_shop_orders_for_staff(
   p_tenant_id bigint,
   p_limit         integer default 20,
   p_offset        integer default 0,
-  p_status        text    default null,   -- single status equality
-  p_search        text    default null
+  p_status        text    default null,   -- single status equality (legacy / ops desk tabs)
+  p_search        text    default null,
+  p_statuses      text[]  default null    -- multi-status filter (management desk)
 ) returns table (...)
 ```
 
 - **Security:** `SECURITY DEFINER`; requires `is_tenant_staff(p_tenant_id)`
 - **Scope:** `shop_orders` where `shop_type_snapshot = 'dropship'`
-- **Migrations:** `20261115000000_list_dropship_shop_orders_for_staff.sql`, `20270129000009_dropship_ux_order_settlement_fields.sql`
+- **Status filter priority:** when `p_statuses` is non-empty, `status = any(p_statuses)`; else when `p_status` is set, single equality; else default ops-desk status set
+- **Migrations:** `20261115000000_list_dropship_shop_orders_for_staff.sql`, `20270129000009_dropship_ux_order_settlement_fields.sql`, `20270831190000_list_dropship_shop_orders_p_statuses.sql`
 
 #### Response columns (list)
 
@@ -75,26 +75,14 @@ list_dropship_shop_orders_for_staff(
 | `total_amount` | Line-sum fallback total |
 | `payout_settlement_status` | Future: hide settled rows |
 
-#### Gap: multi-status default filter
-
-When `p_status` is `null`, the RPC returns **all** operational dropship statuses (confirmed through payment_received). This desk needs **`shipped` + `delivered` only**.
-
-| Approach | Notes |
-| :--- | :--- |
-| **A. Two calls (v1 wire)** | Parallel `p_status = 'shipped'` and `p_status = 'delivered'`; merge + sort client-side. Works today; pagination is approximate. |
-| **B. Extend RPC (preferred)** | Add `p_statuses text[] default null`. When set, `status = any(p_statuses)`. Desk passes `array['shipped','delivered']` on load. |
-| **C. Dedicated RPC** | `list_dropship_management_orders_for_staff` with fixed `shipped`/`delivered` filter + settlement flags. Clearer ownership; more surface area. |
-
-**Recommendation:** **B** — extend `list_dropship_shop_orders_for_staff` with optional `p_statuses`; keep `p_status` for single-tab use on `DropshipOrdersPage`.
-
-#### Frontend wiring (today)
+#### Frontend wiring
 
 | Layer | Name |
 | :--- | :--- |
 | RPC | `list_dropship_shop_orders_for_staff` |
-| Repository | `shopOrderRepository.listDropshipShopOrdersForStaff(tenantId, { status, search, limit, offset })` |
+| Repository | `shopOrderRepository.listDropshipShopOrdersForStaff(tenantId, { statuses, search, limit, offset })` |
 | Service | `shopOrderService.fetchDropshipStaffOrders(...)` |
-| Query key (proposed) | `shopOrderQueryKeys.dropshipManagementList(tenantId, { status, search })` |
+| Page | `DropshipManagementPage.vue` — passes `statuses: ['shipped','delivered']` (or single status from dropdown) |
 
 Search (`p_search`) matches: `order_no`, `recipient_name`, `recipient_phone`, `courier_awb_number`, `courier_name`, courier service name, `customer_group_name`, `created_by_email`.
 
@@ -416,12 +404,10 @@ Retire Finance Hub for dropship **only after** all three desk buttons call the o
 2. Migration: `dropship_order_settlements` + `dropship_settlement_charge_lines` + RLS + payer enum; add `courier_cod_booked_at`, `remittance_at`, `merchant_payout_at` timestamps.
 3. RPCs: `get_dropship_management_order`, `save_dropship_settlement_draft`, `mark_dropship_order_delivered`, `record_dropship_courier_bank_transfer`, `transfer_dropship_reseller_profit`.
 4. Product: move B2B invoice trigger `ready_for_pickup` → `delivered` (inside step ①) if shipment-based accounting approved.
-5. Extend `list_dropship_shop_orders_for_staff` with `p_statuses` **or** v1 two-call merge (§3).
-6. Wire list page; wire detail form load from `get_dropship_order_detail_v2` + settlement draft.
-7. Wire three footer buttons to orchestration RPCs (§7); store ledger refs on settlement row.
-8. Optional: split courier remittance into two courier ledger lines (net transfer + fee).
-9. Add TanStack query keys; remove dummy data file when live.
-10. Retire Finance Hub dropship tabs after desk parity verified.
+5. Wire detail form load from `get_dropship_order_detail_v2` + settlement draft.
+6. Wire three footer buttons to orchestration RPCs (§7); store ledger refs on settlement row.
+7. Optional: split courier remittance into two courier ledger lines (net transfer + fee).
+8. Retire Finance Hub dropship tabs after desk parity verified.
 
 ---
 

@@ -16,7 +16,7 @@ redundant exploration, and ping-pong clarification.
 - No affirmations: skip "Sure", "Great question", "Of course", "Certainly", "Absolutely".
 - No sign-off: skip "Hope that helps", "Let me know if…", "Happy coding".
 - Do not restate the user's question.
-- Do not summarize what you just did after doing it.
+- Do not summarize what you just did after doing it. Agent wrap-up is `Done` only (see `mode-responses.mdc`).
 - Do not add disclaimers unless they affect correctness.
 - Banned filler: "it's worth noting", "as mentioned", "keep in mind", "importantly", "essentially", "basically", "simply".
 

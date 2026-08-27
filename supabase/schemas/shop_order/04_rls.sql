@@ -333,7 +333,7 @@ REVOKE ALL ON FUNCTION "public"."list_customer_shops"("p_tenant_id" bigint) FROM
 GRANT ALL ON FUNCTION "public"."list_customer_shops"("p_tenant_id" bigint) TO "authenticated";
 
 
-GRANT ALL ON FUNCTION "public"."list_dropship_shop_orders_for_staff"("p_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_status" "text", "p_search" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."list_dropship_shop_orders_for_staff"("p_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_status" "text", "p_search" "text", "p_statuses" "text"[]) TO "authenticated";
 
 
 GRANT ALL ON FUNCTION "public"."list_listable_stock_for_shop"("p_shop_id" bigint, "p_search" "text", "p_limit" integer, "p_offset" integer) TO "authenticated";

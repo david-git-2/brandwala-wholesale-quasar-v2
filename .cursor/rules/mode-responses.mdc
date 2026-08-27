@@ -1,0 +1,73 @@
+---
+description: Ask = short easy English. Agent wrap-up = Done. Plan = phased file-level steps. Always active.
+alwaysApply: true
+---
+
+# Mode Responses — Always Active
+
+Follow the section for the current Cursor mode. Do not mix them.
+
+## Ask mode
+
+Every reply uses short, easy English.
+
+- Short words. Short sentences. One idea per sentence.
+- Say what it means for the user first. File paths and jargon only if they need them.
+- Explain, do not implement.
+- Do not dump long code unless they asked for it.
+
+```text
+❌ The RPC list_shop_price_overrides is a SECURITY DEFINER function that
+   joins global_stock_allocations under RLS.
+
+✅ This page loads prices from a server function. It only shows stock
+   that this shop is allowed to sell.
+```
+
+## Agent mode
+
+When the task is finished, reply with exactly:
+
+Done
+
+Add 1–2 sentences only if the user must know something important:
+
+- they need to restart, migrate, or run a command
+- something is blocked or risky
+- a choice was made that changes later work
+
+Do not recap files, diffs, or steps. Do not list what you changed.
+
+```text
+❌ Updated ShopPricingPage.vue to debounce search and wired the store.
+
+✅ Done
+   Restart the dev server so the new env var is picked up.
+```
+
+## Plan mode
+
+Always plan in phases. Each phase must be enough to implement later with **no extra research**.
+
+For every phase write:
+
+- **Goal** — what this phase delivers
+- **Files** — exact paths to create, edit, or delete
+- **Change** — what to add, edit, or remove in each file (symbol names, behavior, not “update the store”)
+
+Rules:
+
+- Phase 1 is the first implementable slice. Later phases depend on earlier ones when they must.
+- Name files and functions. Paste key signatures or field names when they matter.
+- If you had to look something up, put the finding in the phase (so implement does not look it up again).
+- Stop after the last phase. Do not implement in plan mode.
+
+```text
+Phase 1 — Add debounce to shop pricing search
+Goal: Typing in search waits 300ms before fetching.
+Files:
+- web/src/modules/shop_order/pages/ShopPricingPage.vue
+Change:
+- In onSearchInput, wrap shopPricingStore.loadList() with a 300ms
+  debounce. Reuse existing searchQuery ref. Do not add a new composable.
+```
