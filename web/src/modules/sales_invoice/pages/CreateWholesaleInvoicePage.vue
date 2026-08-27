@@ -1,53 +1,10 @@
 <template>
-  <q-page class="create-wholesale-invoice-page q-pa-md">
-    <div class="column no-wrap full-width" style="max-width: 1500px; margin: 0 auto">
-      <!-- 1. Top Header Toolbar -->
-      <div class="row items-center justify-between q-mb-sm">
-        <div class="text-h6 text-weight-bold text-grey-9 row items-center q-gutter-xs">
-          <span>{{ isExistingInvoice ? `Wholesale Invoice #${loadedInvoiceNo || existingInvoiceId}` : 'Create Wholesale Invoice' }}</span>
-          <q-badge color="purple-1" text-color="purple-9" label="Wholesale B2B" class="text-weight-bold q-ml-sm" />
-        </div>
-
-        <div class="row items-center q-gutter-sm">
-          <!-- Preview Proforma Button: Only shown when status is proforma_generated -->
-          <q-btn
-            v-if="existingInvoiceId && loadedInvoiceStatus === 'proforma_generated'"
-            outline
-            color="primary"
-            icon="ph ph-printer"
-            label="Preview Proforma"
-            no-caps
-            class="action-btn text-weight-bold"
-            @click="openPreview"
-          >
-            <q-tooltip>Preview and print proforma invoice</q-tooltip>
-          </q-btn>
-
-          <!-- 1. Initial State: Save as Draft Button -->
-          <q-btn
-            v-if="!existingInvoiceId"
-            unelevated
-            color="primary"
-            icon="ph ph-floppy-disk"
-            label="Save as Draft"
-            no-caps
-            class="action-btn text-weight-bold"
-            :disable="!canSaveDraft || isSaving"
-            :loading="isSaving"
-            @click="handleSaveInvoice('draft')"
-          >
-            <q-tooltip v-if="!canSaveDraft" anchor="bottom middle" self="top middle" class="bg-grey-9 text-caption shadow-4">
-              <div class="text-weight-bold q-mb-xs text-amber-3">Complete required fields to save:</div>
-              <div v-for="(reason, rIdx) in validationReasons" :key="rIdx" class="q-py-xxs text-white">
-                • {{ reason }}
-              </div>
-            </q-tooltip>
-          </q-btn>
-        </div>
-      </div>
-
-      <!-- 2. Dedicated Status Workflow Row (Draft -> PF -> Issued) -->
-      <div v-if="existingInvoiceId" class="row items-center justify-between bg-white q-pa-xs q-px-sm rounded-borders-8 border-light q-mb-sm shadow-1">
+  <q-page class="create-wholesale-invoice-page bw-page-fill q-py-md">
+    <div class="column no-wrap create-wholesale-invoice-page__stack">
+      <div
+        v-if="existingInvoiceId"
+        class="row items-center justify-between bg-white q-pa-xs q-px-sm rounded-borders-8 border-light shadow-1 create-wholesale-invoice-page__workflow"
+      >
         <div class="row items-center q-gutter-xs">
           <!-- Draft Status -->
           <q-btn
@@ -185,433 +142,74 @@
         </div>
       </div>
 
-      <!-- Dense Selectors Row: Brand & Billing Profile -->
-      <div class="row q-col-gutter-sm items-center q-mb-sm">
-        <!-- Selector 1: Invoice Brand -->
-        <div class="col-12 col-sm-6">
-          <q-select
-            v-model="selectedBrandId"
-            :options="brandOptions"
-            option-value="id"
-            option-label="name"
-            emit-value
-            map-options
-            outlined
-            dense
-            label="Invoice Brand *"
-            class="brand-select bg-white"
-            :loading="brandsQuery.isLoading.value"
-            :disable="brandsQuery.isLoading.value"
-          >
-            <template #prepend>
-              <q-icon name="ph ph-paint-brush" size="16px" class="text-grey-6" />
-            </template>
+      <WholesaleInvoicePaper
+        v-model:selected-brand-id="selectedBrandId"
+        v-model:selected-billing-profile-id="selectedBillingProfileId"
+        v-model:overall-discount-input="overallDiscountInput"
+        v-model:stock-search-text="stockSearchText"
+        v-model:stock-menu-open="stockMenuOpen"
+        :is-existing-invoice="isExistingInvoice"
+        :loaded-invoice-no="loadedInvoiceNo"
+        :loaded-invoice-status="loadedInvoiceStatus"
+        :effective-payment-status="effectivePaymentStatus"
+        :brand-options="brandOptions"
+        :brands-loading="brandsLoading"
+        :billing-profile-options="billingProfileOptions"
+        :billing-profiles-loading="billingProfilesLoading"
+        :invoice-items="invoiceItems"
+        :has-returned-items="hasReturnedItems"
+        :is-searching-stock="isSearchingStock"
+        :stock-search-results="stockSearchResults"
+        :total-quantity="totalQuantity"
+        :total-return-quantity="totalReturnQuantity"
+        :total-return-credit="totalReturnCredit"
+        :subtotal-amount="subtotalAmount"
+        :total-discount-amount="totalDiscountAmount"
+        :grand-total-amount="grandTotalAmount"
+        :overall-discount-locked="loadedInvoiceStatus === 'issued'"
+        @filter-billing-profiles="filterBillingProfiles"
+        @stock-search-input="onStockSearchInput"
+        @search-focus="onSearchFocus"
+        @clear-stock-search="clearStockSearch"
+        @add-stock="addStockToInvoice"
+        @remove-item="removeInvoiceItem"
+        @apply-overall-discount="applyOverallDiscountEqually"
+      />
 
-            <template #option="scope">
-              <q-item v-bind="scope.itemProps" class="q-py-xs">
-                <q-item-section avatar min-width="28px">
-                  <q-avatar size="24px" color="grey-3" text-color="grey-9" class="text-caption text-weight-bold">
-                    {{ scope.opt.name?.slice(0, 2).toUpperCase() }}
-                  </q-avatar>
-                </q-item-section>
-                <q-item-section>
-                  <q-item-label class="text-weight-medium">{{ scope.opt.name }}</q-item-label>
-                  <q-item-label caption class="text-grey-6 ellipsis" v-if="scope.opt.address">
-                    {{ scope.opt.address }}
-                  </q-item-label>
-                </q-item-section>
-              </q-item>
-            </template>
-          </q-select>
-        </div>
+      <div class="row items-center justify-end q-gutter-sm create-wholesale-invoice-page__footer">
+        <q-btn
+          v-if="existingInvoiceId && loadedInvoiceStatus === 'proforma_generated'"
+          outline
+          color="primary"
+          icon="ph ph-printer"
+          label="Preview Proforma"
+          no-caps
+          class="action-btn text-weight-bold"
+          @click="openPreview"
+        >
+          <q-tooltip>Preview and print proforma invoice</q-tooltip>
+        </q-btn>
 
-        <!-- Selector 2: Billing Profile (Customer) -->
-        <div class="col-12 col-sm-6">
-          <q-select
-            v-model="selectedBillingProfileId"
-            :options="billingProfileOptions"
-            option-value="id"
-            option-label="name"
-            emit-value
-            map-options
-            outlined
-            dense
-            clearable
-            use-input
-            input-debounce="150"
-            label="Billing Profile (Customer) *"
-            class="billing-profile-select bg-white"
-            :loading="billingProfilesQuery.isLoading.value"
-            :disable="billingProfilesQuery.isLoading.value"
-            @filter="filterBillingProfiles"
-          >
-            <template #prepend>
-              <q-icon name="ph ph-user" size="16px" class="text-grey-6" />
-            </template>
-
-            <template #no-option>
-              <q-item>
-                <q-item-section class="text-grey-6 text-caption text-center q-py-sm">
-                  No billing profiles found
-                </q-item-section>
-              </q-item>
-            </template>
-
-            <template #option="scope">
-              <q-item v-bind="scope.itemProps" class="q-py-xs">
-                <q-item-section avatar min-width="28px">
-                  <q-avatar size="24px" color="purple-1" text-color="purple-9" class="text-caption text-weight-bold">
-                    {{ scope.opt.name?.slice(0, 2).toUpperCase() }}
-                  </q-avatar>
-                </q-item-section>
-                <q-item-section>
-                  <div class="row items-center justify-between no-wrap">
-                    <q-item-label class="text-weight-medium">{{ scope.opt.name }}</q-item-label>
-                    <q-badge
-                      v-if="scope.opt.tenant?.name"
-                      color="grey-2"
-                      text-color="grey-8"
-                      class="text-caption text-weight-medium q-ml-xs"
-                    >
-                      {{ scope.opt.tenant.name }}
-                    </q-badge>
-                  </div>
-                  <q-item-label caption class="text-grey-6 ellipsis">
-                    {{ scope.opt.phone || scope.opt.email || scope.opt.address || 'No details' }}
-                  </q-item-label>
-                </q-item-section>
-              </q-item>
-            </template>
-          </q-select>
-        </div>
+        <q-btn
+          v-if="!existingInvoiceId"
+          unelevated
+          color="primary"
+          icon="ph ph-floppy-disk"
+          label="Save as Draft"
+          no-caps
+          class="action-btn text-weight-bold"
+          :disable="!canSaveDraft || isSaving"
+          :loading="isSaving"
+          @click="handleSaveInvoice('draft')"
+        >
+          <q-tooltip v-if="!canSaveDraft" anchor="top middle" self="bottom middle" class="bg-grey-9 text-caption shadow-4">
+            <div class="text-weight-bold q-mb-xs text-amber-3">Complete required fields to save:</div>
+            <div v-for="(reason, rIdx) in validationReasons" :key="rIdx" class="q-py-xxs text-white">
+              • {{ reason }}
+            </div>
+          </q-tooltip>
+        </q-btn>
       </div>
-
-      <!-- Main Area: Invoice Items & Live Stock Search Menu -->
-      <q-card flat bordered class="section-card rounded-borders-12 full-width column">
-        <div class="q-pa-xs">
-          <!-- Direct Stock Search Bar with Popup Menu Results -->
-          <q-input
-            ref="stockSearchInputRef"
-            v-model="stockSearchText"
-            outlined
-            rounded
-            dense
-            placeholder="Search stock by name, barcode, product code to add items..."
-            class="stock-search-input full-width"
-            @update:model-value="onStockSearchInput"
-            @focus="onSearchFocus"
-          >
-                <template #prepend>
-                  <q-icon name="ph ph-magnifying-glass" size="18px" class="text-grey-6" />
-                </template>
-                <template #append v-if="stockSearchText">
-                  <q-icon
-                    name="ph ph-x-circle"
-                    size="16px"
-                    class="cursor-pointer text-grey-5"
-                    @click="clearStockSearch"
-                  />
-                </template>
-
-                <!-- Search Results Popup Menu -->
-                <q-menu
-                  v-model="stockMenuOpen"
-                  no-focus
-                  fit
-                  anchor="bottom left"
-                  self="top left"
-                  class="stock-results-menu shadow-3 rounded-borders-8"
-                  style="min-width: 580px; max-height: 420px"
-                >
-                  <q-list dense class="q-py-xs">
-                    <!-- Loading State -->
-                    <q-item v-if="isSearchingStock" class="q-py-md text-center">
-                      <q-item-section>
-                        <div class="row items-center justify-center q-gutter-sm text-grey-6 text-caption">
-                          <q-spinner color="teal-7" size="20px" />
-                          <span>Searching stock inventory...</span>
-                        </div>
-                      </q-item-section>
-                    </q-item>
-
-                    <!-- Empty Results State -->
-                    <q-item v-else-if="!stockSearchResults.length" class="q-py-md text-center">
-                      <q-item-section>
-                        <div class="text-caption text-grey-6">
-                          No available stock found for <strong>"{{ stockSearchText }}"</strong>
-                        </div>
-                      </q-item-section>
-                    </q-item>
-
-                    <!-- Stock Items Results List -->
-                    <q-item
-                      v-for="stock in stockSearchResults"
-                      :key="stock.global_stock_id"
-                      clickable
-                      class="stock-menu-item q-py-sm"
-                      :class="{ 'allocated-menu-row': stock.is_allocated_to_tenant }"
-                      @click="addStockToInvoice(stock)"
-                    >
-                      <!-- Thumbnail / Icon -->
-                      <q-item-section avatar min-width="40px">
-                        <q-avatar size="36px" rounded color="grey-2" class="overflow-hidden">
-                          <img v-if="stock.image_url" :src="stock.image_url" alt="" />
-                          <q-icon v-else name="ph ph-package" color="grey-6" size="20px" />
-                        </q-avatar>
-                      </q-item-section>
-
-                      <!-- Item Info -->
-                      <q-item-section>
-                        <div class="row items-center justify-between no-wrap">
-                          <q-item-label class="text-weight-bold text-body2 text-grey-9 ellipsis">
-                            {{ stock.name }}
-                          </q-item-label>
-                          <q-badge
-                            :color="stock.is_allocated_to_tenant ? 'positive' : 'grey-3'"
-                            :text-color="stock.is_allocated_to_tenant ? 'white' : 'grey-9'"
-                            class="text-weight-bold text-caption q-ml-xs"
-                          >
-                            {{ stock.is_allocated_to_tenant ? 'Your Allocation' : (stock.holding_tenant_name || 'Parent Pool') }}
-                          </q-badge>
-                        </div>
-
-                        <q-item-label caption class="text-grey-6 row items-center q-gutter-xs q-mt-xs">
-                          <span v-if="stock.barcode">Barcode: {{ stock.barcode }}</span>
-                          <span v-if="stock.barcode && stock.shipment_name">•</span>
-                          <span v-if="stock.shipment_name">Shipment: {{ stock.shipment_name }}</span>
-                          <span>•</span>
-                          <span>Received: {{ formatDate(stock.stock_created_at) }}</span>
-                        </q-item-label>
-                      </q-item-section>
-
-                      <!-- ATP & Price Details & Add Button -->
-                      <q-item-section side class="items-end">
-                        <div class="row items-center q-gutter-sm">
-                          <div class="text-right">
-                            <div class="text-caption text-weight-bold text-teal-9">
-                              {{ stock.available_atp }} in stock
-                            </div>
-                            <div class="text-caption text-grey-6">
-                              ৳{{ (stock.suggested_sell_price || stock.unit_cost_price)?.toFixed(2) }}
-                            </div>
-                          </div>
-
-                          <q-btn
-                            dense
-                            unelevated
-                            size="sm"
-                            :color="isItemAlreadyAdded(stock.global_stock_id) ? 'grey-3' : 'teal-7'"
-                            :text-color="isItemAlreadyAdded(stock.global_stock_id) ? 'grey-7' : 'white'"
-                            :icon="isItemAlreadyAdded(stock.global_stock_id) ? 'ph ph-check' : 'ph ph-plus'"
-                            :label="isItemAlreadyAdded(stock.global_stock_id) ? 'Added' : 'Add'"
-                            no-caps
-                            class="text-weight-bold q-px-sm"
-                            :disable="isItemAlreadyAdded(stock.global_stock_id)"
-                            @click.stop="addStockToInvoice(stock)"
-                          />
-                        </div>
-                      </q-item-section>
-                    </q-item>
-                  </q-list>
-                </q-menu>
-              </q-input>
-        </div>
-
-        <q-separator />
-
-        <!-- Empty Items State -->
-        <q-card-section v-if="!invoiceItems.length" class="col column justify-center items-center q-py-xl">
-          <div class="placeholder-box text-center q-pa-xl rounded-borders-8 full-width" style="max-width: 550px">
-            <q-icon name="ph ph-shopping-cart" size="44px" class="text-grey-4 q-mb-sm" />
-            <div class="text-subtitle1 text-weight-bold text-grey-7">No items added to invoice yet</div>
-            <div class="text-caption text-grey-5 q-mt-xs">
-              Use the search bar above to search stock and add items to this invoice
-            </div>
-          </div>
-        </q-card-section>
-
-        <!-- Items Table View -->
-        <div v-else class="col column justify-between">
-          <q-markup-table flat wrap-cells dense class="invoice-items-table full-width">
-            <thead>
-              <tr>
-                <th class="text-left" style="min-width: 280px">Item Details</th>
-                <th class="text-center" style="width: 120px">Available (ATP)</th>
-                <th class="text-right" style="width: 120px">Unit Cost</th>
-                <th class="text-right" style="width: 140px">Sell Price (BDT) *</th>
-                <th class="text-center" style="width: 120px">Qty *</th>
-                <th v-if="hasReturnedItems" class="text-center" style="width: 110px">Returned</th>
-                <th class="text-right" style="width: 130px">Discount (BDT)</th>
-                <th class="text-right" style="width: 140px">Line Total (BDT)</th>
-                <th class="text-center" style="width: 50px"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(item, index) in invoiceItems" :key="item.global_stock_id" class="item-row">
-                <!-- Item Details -->
-                <td>
-                  <div class="row items-center no-wrap q-gutter-sm">
-                    <q-avatar size="40px" rounded color="grey-2" class="overflow-hidden">
-                      <img v-if="item.image_url" :src="item.image_url" alt="" />
-                      <q-icon v-else name="ph ph-image" color="grey-5" size="22px" />
-                    </q-avatar>
-                    <div>
-                      <div class="text-body2 text-weight-bold text-grey-9">{{ item.name }}</div>
-                      <div class="text-caption text-grey-6 row items-center q-gutter-xs">
-                        <span v-if="item.barcode">Barcode: {{ item.barcode }}</span>
-                        <span v-if="item.barcode && item.product_code">•</span>
-                        <span v-if="item.product_code">Code: {{ item.product_code }}</span>
-                      </div>
-                    </div>
-                  </div>
-                </td>
-
-                <!-- Available ATP -->
-                <td class="text-center">
-                  <q-chip dense square color="blue-1" text-color="blue-9" class="text-weight-bold text-caption">
-                    {{ item.available_atp }} units
-                  </q-chip>
-                </td>
-
-                <!-- Unit Cost -->
-                <td class="text-right text-caption text-grey-7">
-                  ৳{{ item.unit_cost_price?.toFixed(2) }}
-                </td>
-
-                <!-- Sell Price Input -->
-                <td class="text-right">
-                  <q-input
-                    v-model.number="item.sell_price_amount"
-                    type="number"
-                    outlined
-                    dense
-                    min="0"
-                    step="0.01"
-                    class="table-input"
-                  />
-                </td>
-
-                <!-- Quantity Input -->
-                <td class="text-center">
-                  <q-input
-                    v-model.number="item.quantity"
-                    type="number"
-                    outlined
-                    dense
-                    min="1"
-                    :max="item.available_atp"
-                    class="table-input"
-                  />
-                </td>
-
-                <td v-if="hasReturnedItems" class="text-center">
-                  <template v-if="(item.return_quantity || 0) > 0">
-                    <q-chip dense square color="purple-1" text-color="purple-9" class="text-weight-bold text-caption">
-                      {{ item.return_quantity }}
-                    </q-chip>
-                    <div class="text-caption text-grey-6 q-mt-xs">Kept {{ item.quantity - item.return_quantity }}</div>
-                  </template>
-                  <span v-else class="text-caption text-grey-5">—</span>
-                </td>
-
-                <!-- Line Discount Input -->
-                <td class="text-right">
-                  <q-input
-                    v-model.number="item.line_discount_amount"
-                    type="number"
-                    outlined
-                    dense
-                    min="0"
-                    step="0.01"
-                    class="table-input"
-                  />
-                </td>
-
-                <!-- Line Total Amount -->
-                <td class="text-right text-weight-bold text-grey-9 text-body2">
-                  <template v-if="(item.return_quantity || 0) > 0">
-                    <div class="text-caption text-grey-6 text-strike">৳{{ calculateLineGross(item).toFixed(2) }}</div>
-                    <div class="text-purple-9">৳{{ calculateLineTotal(item).toFixed(2) }}</div>
-                  </template>
-                  <template v-else>
-                    ৳{{ calculateLineTotal(item).toFixed(2) }}
-                  </template>
-                </td>
-
-                <!-- Remove Action -->
-                <td class="text-center">
-                  <q-btn
-                    flat
-                    round
-                    dense
-                    color="negative"
-                    icon="ph ph-trash"
-                    size="sm"
-                    @click="removeInvoiceItem(index)"
-                  >
-                    <q-tooltip>Remove Item</q-tooltip>
-                  </q-btn>
-                </td>
-              </tr>
-            </tbody>
-          </q-markup-table>
-
-          <!-- Totals Summary Bar -->
-          <div class="totals-summary-bar q-pa-md bg-grey-1 row items-center justify-between">
-            <div class="row items-center q-gutter-md">
-              <div class="text-caption text-grey-7">
-                Total Items: <strong class="text-grey-9">{{ invoiceItems.length }}</strong>
-              </div>
-              <div class="text-caption text-grey-7">
-                Total Units: <strong class="text-grey-9">{{ totalQuantity }}</strong>
-              </div>
-              <div v-if="hasReturnedItems" class="text-caption text-purple-9">
-                Returned: <strong>{{ totalReturnQuantity }}</strong>
-              </div>
-            </div>
-
-            <div class="row items-center q-gutter-md">
-              <div class="text-caption text-grey-7">
-                Subtotal: <strong class="text-grey-9">৳{{ subtotalAmount.toFixed(2) }}</strong>
-              </div>
-
-              <!-- Overall Discount Input -->
-              <div class="row items-center q-gutter-xs">
-                <span class="text-caption text-grey-7">Overall Discount:</span>
-                <q-input
-                  v-model.number="overallDiscountInput"
-                  type="number"
-                  outlined
-                  dense
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                  style="width: 120px"
-                  class="bg-white"
-                  :disable="loadedInvoiceStatus === 'issued'"
-                  @update:model-value="applyOverallDiscountEqually"
-                >
-                  <template #prepend>
-                    <span class="text-caption text-grey-6">৳</span>
-                  </template>
-                </q-input>
-              </div>
-
-              <div class="text-caption text-negative" v-if="totalReturnCredit > 0">
-                Return credit: <strong>−৳{{ totalReturnCredit.toFixed(2) }}</strong>
-              </div>
-
-              <div class="text-caption text-negative" v-if="totalDiscountAmount > 0">
-                Total Discount: <strong>-৳{{ totalDiscountAmount.toFixed(2) }}</strong>
-              </div>
-
-              <div class="text-subtitle1 text-weight-bold text-primary">
-                Invoice Total: ৳{{ grandTotalAmount.toFixed(2) }}
-              </div>
-            </div>
-          </div>
-        </div>
-      </q-card>
     </div>
 
     <WholesaleCollectPaymentDialog
@@ -642,6 +240,8 @@ import {
 import type { BillingProfile } from '../repositories/billingProfileRepository';
 import { salesInvoiceQueryKeys } from '../services/salesInvoiceQueryKeys';
 import WholesaleCollectPaymentDialog from '../components/WholesaleCollectPaymentDialog.vue';
+import WholesaleInvoicePaper from '../components/WholesaleInvoicePaper.vue';
+import type { InvoiceLineDraftItem } from '../types/wholesaleInvoiceDraft';
 import { walletRepository } from 'src/modules/wallet/repositories/walletRepository';
 import WholesaleIssueConfirmDialog, {
   type WholesaleIssueDialogItem,
@@ -652,28 +252,6 @@ type BillingProfileWithTenant = BillingProfile & {
   tenant?: { id: number; name: string; slug: string } | null;
   parent_tenant?: { id: number; name: string; slug: string } | null;
 };
-
-export interface InvoiceLineDraftItem {
-  id?: number;
-  global_stock_id: number;
-  shipment_item_id: number;
-  product_id: number | null;
-  name: string;
-  barcode: string | null;
-  product_code: string | null;
-  image_url: string | null;
-  quantity: number;
-  available_atp: number;
-  unit_cost_price: number;
-  sell_price_amount: number;
-  return_quantity: number;
-  line_discount_amount: number;
-  shipment_id: number;
-  shipment_name: string;
-  holding_tenant_id: number;
-  holding_tenant_name: string;
-  is_allocated_to_tenant: boolean;
-}
 
 const $q = useQuasar();
 const route = useRoute();
@@ -695,9 +273,6 @@ usePageBreadcrumbs(() => {
     {
       label: 'Invoices',
       to: `${basePrefix}/list`,
-    },
-    {
-      label: 'Invoice Details',
     },
   ];
 });
@@ -811,26 +386,40 @@ const effectiveParentTenantId = computed(() => {
 
 // 1. Query Invoice Brands
 const brandsQuery = useQuery({
-  queryKey: computed(() => salesInvoiceQueryKeys.brands(effectiveTenantId.value)),
+  queryKey: computed(() =>
+    salesInvoiceQueryKeys.brands(effectiveTenantId.value, {
+      parentTenantId: effectiveParentTenantId.value,
+    }),
+  ),
   queryFn: async () => {
-    let query = supabase.from('invoice_brands').select('*');
-    if (effectiveTenantId.value && effectiveParentTenantId.value && effectiveTenantId.value !== effectiveParentTenantId.value) {
-      query = query.or(`tenant_id.eq.${effectiveTenantId.value},tenant_id.eq.${effectiveParentTenantId.value}`);
-    } else if (effectiveTenantId.value) {
-      query = query.eq('tenant_id', effectiveTenantId.value);
+    const tenantId = effectiveTenantId.value;
+    if (!tenantId) return [];
+
+    const tenantIds = new Set<number>([tenantId]);
+    if (effectiveParentTenantId.value) {
+      tenantIds.add(effectiveParentTenantId.value);
     }
-    const { data, error } = await query.order('name', { ascending: true });
-    if (error) {
-      console.error('Error fetching invoice brands:', error);
-      return [];
+
+    const lists = await Promise.all(
+      [...tenantIds].map((id) => invoiceRepository.listInvoiceBrands({ tenant_id: id })),
+    );
+
+    const merged = new Map<number, InvoiceBrand>();
+    for (const list of lists) {
+      for (const brand of list) {
+        merged.set(brand.id, brand);
+      }
     }
-    return (data || []) as InvoiceBrand[];
+
+    return [...merged.values()].sort((a, b) => a.name.localeCompare(b.name));
   },
+  enabled: computed(() => !!effectiveTenantId.value),
   placeholderData: (prev) => prev,
 });
 
 const brands = computed(() => brandsQuery.data.value ?? []);
 const brandOptions = computed(() => brands.value);
+const brandsLoading = computed(() => brandsQuery.isFetching.value);
 const selectedBrandId = ref<number | null>(null);
 
 // Auto-select if only 1 brand exists
@@ -874,6 +463,7 @@ const billingProfilesQuery = useQuery({
 
 const billingProfiles = computed(() => billingProfilesQuery.data.value ?? []);
 const billingProfileFilterText = ref('');
+const billingProfilesLoading = computed(() => billingProfilesQuery.isFetching.value);
 const selectedBillingProfileId = ref<number | null>(null);
 
 const billingProfileOptions = computed(() => {
@@ -946,12 +536,8 @@ const clearStockSearch = () => {
   void performStockSearch();
 };
 
-const isItemAlreadyAdded = (stockId: number) => {
-  return invoiceItems.value.some((item) => item.global_stock_id === stockId);
-};
-
 const addStockToInvoice = (stock: SalesInvoiceStockItem) => {
-  if (isItemAlreadyAdded(stock.global_stock_id)) return;
+  if (invoiceItems.value.some((item) => item.global_stock_id === stock.global_stock_id)) return;
 
   const cost = Number(stock.unit_cost_price) || 0;
   // Default prefill is 20% markup over unit cost price (user can edit freely)
@@ -981,18 +567,6 @@ const addStockToInvoice = (stock: SalesInvoiceStockItem) => {
 
 const removeInvoiceItem = (index: number) => {
   invoiceItems.value.splice(index, 1);
-};
-
-const calculateLineGross = (item: InvoiceLineDraftItem): number => {
-  const sub = (item.quantity || 0) * (item.sell_price_amount || 0);
-  return Math.max(0, sub - (item.line_discount_amount || 0));
-};
-
-const calculateLineTotal = (item: InvoiceLineDraftItem): number => {
-  const kept = Math.max((item.quantity || 0) - (item.return_quantity || 0), 0);
-  const sub = kept * (item.sell_price_amount || 0);
-  const total = sub - (item.line_discount_amount || 0);
-  return Math.max(0, total);
 };
 
 const overallDiscountInput = ref<number | null>(null);
@@ -1287,56 +861,40 @@ const validationReasons = computed(() => {
 });
 
 const canSaveDraft = computed(() => validationReasons.value.length === 0);
-
-const formatDate = (dateStr: string) => {
-  if (!dateStr) return '';
-  return dateStr.slice(0, 10);
-};
 </script>
 
 <style scoped>
 .create-wholesale-invoice-page {
-  background-color: var(--q-page-bg, #f8fafc);
+  max-width: none;
+  margin: 0;
+  background-color: #e8ecf1;
   min-height: calc(100vh - 55px);
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  padding-inline: clamp(0.75rem, 2vw, 1.25rem);
 }
 
-.rounded-borders-12 {
-  border-radius: 12px;
+.create-wholesale-invoice-page__stack {
+  width: min(100%, 1200px);
+  max-width: 1200px;
+  margin-inline: auto;
+  gap: 0.75rem;
+}
+
+.create-wholesale-invoice-page__workflow,
+.create-wholesale-invoice-page__footer {
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .rounded-borders-8 {
   border-radius: 8px;
 }
 
-.section-card {
-  background-color: #ffffff;
-  border-color: #e2e8f0;
-}
-
-.placeholder-box {
-  background-color: #f8fafc;
-  border: 2px dashed #cbd5e1;
-}
-
-.totals-summary-bar {
-  border-top: 1px solid #e2e8f0;
-}
-
-.table-input {
-  max-width: 110px;
-}
-
-.stock-menu-item {
-  transition: background-color 0.15s ease;
-  border-bottom: 1px solid #f1f5f9;
-}
-
-.stock-menu-item:hover {
-  background-color: #f8fafc;
-}
-
-.allocated-menu-row {
-  background-color: #f0fdf4;
+.border-light {
+  border: 1px solid #e2e8f0;
 }
 
 .action-btn {

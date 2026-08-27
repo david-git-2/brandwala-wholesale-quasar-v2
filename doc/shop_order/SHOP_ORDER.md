@@ -125,7 +125,7 @@ Dropship Order Lifecycle:
 
 ## 3. Dropship Finance Hub Engine
 
-Settlement is orchestrated via the **Finance Hub** (`DropshipFinanceHubPage.vue`) across 3 sequential settlement steps:
+Settlement is orchestrated via the **Finance Hub** (`DropshipFinanceHubPage.vue`) across 3 sequential settlement steps. This remains the **live** money path until the [Dropship Management desk](./DROPSHIP_MANAGEMENT.md) (§5) is wired with `dropship_order_settlements` and replaces it end-to-end.
 
 ```mermaid
 flowchart LR
@@ -166,7 +166,7 @@ flowchart LR
 | `/:tenantSlug?/app/dropship/finance` | [`DropshipFinanceHubPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/DropshipFinanceHubPage.vue) | `FinanceHubKpiStrip.vue`, `FinanceHubStepDelivered.vue`, `FinanceHubStepRemittance.vue`, `FinanceHubStepPayout.vue` |
 | `/:tenantSlug?/app/dropship/merchants` | [`DropshipMerchantsPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/DropshipMerchantsPage.vue) | Merchant readiness scores, billing profile link |
 | `/:tenantSlug?/app/dropship/couriers` | [`DropshipCouriersPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/DropshipCouriersPage.vue) | Courier API credentials & charge matrices |
-| `/:tenantSlug?/app/shop/dropship-management` | [`DropshipManagementPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/DropshipManagementPage.vue) | **UI shell** — delivered-order settlement list (dummy data). See [`DROPSHIP_MANAGEMENT.md`](./DROPSHIP_MANAGEMENT.md) |
+| `/:tenantSlug?/app/shop/dropship-management` | [`DropshipManagementPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/DropshipManagementPage.vue) | **UI shell** — settlement list for **`shipped` + `delivered`** orders only (dummy data). See [`DROPSHIP_MANAGEMENT.md`](./DROPSHIP_MANAGEMENT.md) |
 | `/:tenantSlug?/app/shop/dropship-management/:id` | [`DropshipManagementDetailPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/DropshipManagementDetailPage.vue) | **UI shell** — COD + cost breakdown + settlement button (not wired) |
 
 ### Storefront Customer Surfaces (`/shop/*`)
@@ -266,6 +266,8 @@ See **§ RPC: `get_or_create_shop_cart`** below for the response contract.
 | Component | Action / Trigger | Hook / Endpoint | Caching Strategy |
 | :--- | :--- | :--- | :--- |
 | **`DropshipOrdersPage`** | Mount / Tab Change | `RPC: list_dropship_shop_orders_for_staff` | `staleTime: 30s` |
+| **`DropshipManagementPage`** | Mount / search / status filter | `RPC: list_dropship_shop_orders_for_staff` (desk: `shipped` + `delivered` only — see [`DROPSHIP_MANAGEMENT.md` §3](./DROPSHIP_MANAGEMENT.md#3-api--list-page)) | Not wired (dummy data) |
+| **`DropshipManagementDetailPage`** | Mount / 3-step actions | `get_dropship_order_detail_v2` + settlement RPCs — **Mark delivered** · **Bank from courier** · **Transfer to reseller** (see [`DROPSHIP_MANAGEMENT.md` §7–9](./DROPSHIP_MANAGEMENT.md)) | Not wired (dummy UI buttons) |
 | **`DropshipOrderDetailV2Page`** | Mount | `RPC: get_dropship_order_detail_v2` | Key: `shopOrderQueryKeys.dropshipDetailV2(tenantId, orderId)` |
 | **`DropshipOrderDetailV2Page`** | Start processing | `RPC: advance_dropship_order_status` | Invalidates `dropshipDetailV2` |
 | **`DropshipOrderDetailV2ReadyForPickupPage`** | Mark shipped | `RPC: advance_dropship_order_status` | Invalidates `dropshipDetailV2` |
@@ -1228,6 +1230,61 @@ get_dropship_order_detail_v2(
 | UI | `DropshipOrderDetailV2Page` (confirmed), `…ProcessingPage`, `…ReadyForPickupPage` |
 
 **Note:** `shipping_post_code` is returned as `null` until persisted on `shop_orders` or recipient snapshot at place order.
+
+---
+
+## 10.3 RPC: `list_dropship_shop_orders_for_staff`
+
+Dropship desk order list (`DropshipOrdersPage`, planned [`DropshipManagementPage`](./DROPSHIP_MANAGEMENT.md)). One row per dropship order for tenant staff.
+
+### Signature
+
+```sql
+list_dropship_shop_orders_for_staff(
+  p_tenant_id bigint,
+  p_limit         integer default 20,
+  p_offset        integer default 0,
+  p_status        text    default null,
+  p_search        text    default null
+) returns table (...)
+```
+
+- **Security:** `SECURITY DEFINER`; requires `is_tenant_staff(p_tenant_id)`
+- **Scope:** `shop_orders` where `shop_type_snapshot = 'dropship'`
+- **`p_status`:** when set, exact match on `shop_orders.status`; when `null`, returns all operational statuses (confirmed → payment_received)
+- **Desk subset:** [`DropshipManagementPage`](./DROPSHIP_MANAGEMENT.md) needs **`shipped` + `delivered` only** — not covered by a single `p_status` value today; see [DROPSHIP_MANAGEMENT.md §3](./DROPSHIP_MANAGEMENT.md#gap-multi-status-default-filter)
+
+### Response columns
+
+| Column | Type | Notes |
+| :--- | :--- | :--- |
+| `id` | bigint | Order id |
+| `order_no` | text | Display reference |
+| `status` | `shop_order_status` | Workflow status |
+| `created_at` | timestamptz | Order created |
+| `customer_group_name` | text | Merchant / reseller group |
+| `created_by_email` | text | Placed-by email |
+| `recipient_name` | text | Delivery contact |
+| `recipient_phone` | text | Delivery phone |
+| `courier_name` | text | Assigned courier |
+| `courier_awb_number` | text | AWB / tracking |
+| `cod_collect_amount` | numeric | Expected COD |
+| `total_amount` | numeric | Sum of line prices |
+| `global_invoice_id` | bigint | Linked invoice |
+| `courier_remittance_ref` | text | Finance hub remittance ref |
+| `collection_source` | `collection_source_type` | COD collection source |
+| `payout_settlement_status` | text | Merchant payout state |
+
+### Frontend wiring
+
+| Layer | Name |
+| :--- | :--- |
+| Repository | `shopOrderRepository.listDropshipShopOrdersForStaff(tenantId, opts)` |
+| Service | `shopOrderService.fetchDropshipStaffOrders(tenantId, opts)` |
+| UI (live) | `DropshipOrdersPage` |
+| UI (planned) | `DropshipManagementPage` — filter `shipped` + `delivered` |
+
+**Accounting tables (planned):** [`dropship_order_settlements`](./DROPSHIP_MANAGEMENT.md#proposed-tables-not-migrated-yet) + `dropship_settlement_charge_lines` — see [`DROPSHIP_MANAGEMENT.md` §5](./DROPSHIP_MANAGEMENT.md#5-data-model--three-layers-no-legacy-settlement-table). No legacy settlement table exists to retire.
 
 ---
 

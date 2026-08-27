@@ -13,10 +13,28 @@
             color="primary"
             unelevated
             no-caps
+            icon="ph ph-package"
+            label="Mark as delivered"
+            class="text-weight-bold dropship-order-detail-v2__action-btn"
+            :disable="order.status !== 'shipped'"
+          />
+          <q-btn
+            color="primary"
+            unelevated
+            no-caps
+            icon="ph ph-bank"
+            label="Bank transfer from courier"
+            class="text-weight-bold dropship-order-detail-v2__action-btn"
+            :disable="order.status !== 'delivered'"
+          />
+          <q-btn
+            color="primary"
+            unelevated
+            no-caps
             icon="ph ph-wallet"
-            label="Payment received & wallet updated"
-            class="text-weight-bold"
-            style="border-radius: 8px; min-width: 280px"
+            label="Transfer to reseller"
+            class="text-weight-bold dropship-order-detail-v2__action-btn"
+            :disable="order.status !== 'delivered'"
           />
         </div>
       </template>
@@ -46,8 +64,15 @@ const order = computed(() => findDropshipManagementDummyOrder(orderId.value));
   max-width: 800px;
   margin: 0 auto;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
   padding-top: 0.25rem;
+}
+
+.dropship-order-detail-v2__action-btn {
+  border-radius: 8px;
+  min-height: 44px;
 }
 </style>
 
