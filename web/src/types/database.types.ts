@@ -5083,6 +5083,7 @@ export type Database = {
       sales_invoices: {
         Row: {
           billing_profile_id: number | null
+          cod_charge_amount: number
           collection_source: Database["public"]["Enums"]["collection_source_type"]
           created_at: string
           created_by: string | null
@@ -5117,6 +5118,7 @@ export type Database = {
         }
         Insert: {
           billing_profile_id?: number | null
+          cod_charge_amount?: number
           collection_source: Database["public"]["Enums"]["collection_source_type"]
           created_at?: string
           created_by?: string | null
@@ -5151,6 +5153,7 @@ export type Database = {
         }
         Update: {
           billing_profile_id?: number | null
+          cod_charge_amount?: number
           collection_source?: Database["public"]["Enums"]["collection_source_type"]
           created_at?: string
           created_by?: string | null
@@ -9568,6 +9571,7 @@ export type Database = {
       global_invoices: {
         Row: {
           billing_profile_id: number | null
+          cod_charge_amount: number | null
           collection_source:
             | Database["public"]["Enums"]["collection_source_type"]
             | null
@@ -9611,6 +9615,7 @@ export type Database = {
         }
         Insert: {
           billing_profile_id?: number | null
+          cod_charge_amount?: number | null
           collection_source?:
             | Database["public"]["Enums"]["collection_source_type"]
             | null
@@ -9654,6 +9659,7 @@ export type Database = {
         }
         Update: {
           billing_profile_id?: number | null
+          cod_charge_amount?: number | null
           collection_source?:
             | Database["public"]["Enums"]["collection_source_type"]
             | null
@@ -10328,6 +10334,7 @@ export type Database = {
         Args: { p_amount: number; p_invoice_id: number; p_note?: string }
         Returns: {
           billing_profile_id: number | null
+          cod_charge_amount: number
           collection_source: Database["public"]["Enums"]["collection_source_type"]
           created_at: string
           created_by: string | null
@@ -10519,6 +10526,16 @@ export type Database = {
         Args: {
           p_order: Database["public"]["Tables"]["shop_orders"]["Row"]
           p_settlement_id?: number
+        }
+        Returns: Json
+      }
+      build_dropship_tenant_b2b_invoice_payload: {
+        Args: {
+          p_billing_profile_id?: number
+          p_invoice_id?: number
+          p_invoice_no?: string
+          p_note?: string
+          p_order_id: number
         }
         Returns: Json
       }
@@ -10961,6 +10978,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      canonicalize_dropship_order_wallet_source_ids: {
+        Args: { p_order_id: number }
+        Returns: undefined
+      }
       cart_exists: { Args: { p_cart_id: number }; Returns: boolean }
       ceil_thrift_retail_price: { Args: { p_price: number }; Returns: number }
       check_login_membership: {
@@ -11274,6 +11295,7 @@ export type Database = {
             }
             Returns: {
               billing_profile_id: number | null
+              cod_charge_amount: number
               collection_source: Database["public"]["Enums"]["collection_source_type"]
               created_at: string
               created_by: string | null
@@ -11330,6 +11352,7 @@ export type Database = {
             }
             Returns: {
               billing_profile_id: number | null
+              cod_charge_amount: number
               collection_source: Database["public"]["Enums"]["collection_source_type"]
               created_at: string
               created_by: string | null
@@ -11403,6 +11426,7 @@ export type Database = {
             }
             Returns: {
               billing_profile_id: number | null
+              cod_charge_amount: number
               collection_source: Database["public"]["Enums"]["collection_source_type"]
               created_at: string
               created_by: string | null
@@ -11458,6 +11482,7 @@ export type Database = {
             }
             Returns: {
               billing_profile_id: number | null
+              cod_charge_amount: number
               collection_source: Database["public"]["Enums"]["collection_source_type"]
               created_at: string
               created_by: string | null
@@ -11497,6 +11522,10 @@ export type Database = {
               isSetofReturn: false
             }
           }
+      create_sales_invoice_from_payload: {
+        Args: { p_payload: Json; p_tenant_id: number }
+        Returns: Json
+      }
       create_shipment: {
         Args: { p_name: string; p_shipment_type?: string; p_tenant_id: number }
         Returns: {
@@ -11957,6 +11986,10 @@ export type Database = {
       ensure_dropship_invoice_billed_entry: {
         Args: { p_invoice_id: number }
         Returns: undefined
+      }
+      ensure_dropship_tenant_b2b_invoice_at_delivered: {
+        Args: { p_order_id: number }
+        Returns: Json
       }
       ensure_global_shipment_cost_entries_from_header: {
         Args: { p_shipment_id: number }
@@ -12707,10 +12740,15 @@ export type Database = {
         Args: { p_code: string; p_exclude_id?: number }
         Returns: boolean
       }
+      issue_dropship_tenant_b2b_invoice: {
+        Args: { p_order_id: number; p_tenant_id: number }
+        Returns: Json
+      }
       issue_wholesale_invoice: {
         Args: { p_invoice_id: number; p_items?: Json }
         Returns: {
           billing_profile_id: number | null
+          cod_charge_amount: number
           collection_source: Database["public"]["Enums"]["collection_source_type"]
           created_at: string
           created_by: string | null
@@ -14393,6 +14431,7 @@ export type Database = {
         }
         Returns: {
           billing_profile_id: number | null
+          cod_charge_amount: number
           collection_source: Database["public"]["Enums"]["collection_source_type"]
           created_at: string
           created_by: string | null
@@ -14938,6 +14977,10 @@ export type Database = {
             }
             Returns: Json
           }
+      sync_dropship_tenant_b2b_invoice_from_order: {
+        Args: { p_order_id: number }
+        Returns: Json
+      }
       thrift_barcode_sequence_sort_key: {
         Args: { p_barcode_id: string }
         Returns: {
@@ -15264,6 +15307,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      update_sales_invoice_from_payload: {
+        Args: { p_invoice_id: number; p_payload: Json; p_tenant_id: number }
+        Returns: Json
       }
       update_shipment: {
         Args: { p_field: string; p_id: number; p_value: string }

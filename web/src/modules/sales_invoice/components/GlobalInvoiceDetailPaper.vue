@@ -8,7 +8,7 @@ import type { GlobalInvoiceDetail, GlobalInvoiceItemRow } from '../types';
 export interface InvoiceDetailFormState {
   discount_amount: number;
   shipping_charge: number;
-  cod_charge: number;
+  cod_charge_amount: number;
   wrapping_charge: number;
   print_charge: number;
   recipient_name: string;
@@ -554,7 +554,7 @@ onMounted(() => {
             <span>COD charge</span>
             <q-input
               v-if="canEditDraft"
-              v-model.number="form.cod_charge"
+              v-model.number="form.cod_charge_amount"
               type="number"
               dense
               outlined
@@ -564,7 +564,7 @@ onMounted(() => {
               input-class="text-right"
               @blur="emit('header-blur')"
             />
-            <span v-else>{{ formatAmount(invoice.cod_charge ?? 0) }}</span>
+            <span v-else>{{ formatAmount(invoice.cod_charge_amount ?? 0) }}</span>
           </div>
           <div class="invoice-paper__summary-row invoice-paper__summary-row--editable">
             <span>Wrapping</span>

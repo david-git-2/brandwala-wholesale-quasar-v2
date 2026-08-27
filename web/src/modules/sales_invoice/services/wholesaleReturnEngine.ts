@@ -68,11 +68,12 @@ export function computeWholesaleReturnPreview(
   const netReturnCredit = Math.max(totalReturnValue - charge, 0);
 
   const shippingCharge = Number(invoice.shipping_charge ?? 0);
+  const codCharge = Number(invoice.cod_charge_amount ?? 0);
   const wrappingCharge = Number(invoice.wrapping_charge ?? 0);
   const printCharge = Number(invoice.print_charge ?? 0);
   const invoiceDiscount = Number(invoice.discount_amount ?? 0);
 
-  const totalAncillaryCharges = shippingCharge + wrappingCharge + printCharge + charge;
+  const totalAncillaryCharges = shippingCharge + codCharge + wrappingCharge + printCharge + charge;
   const newTotal = Math.max(newSubtotal + totalAncillaryCharges - invoiceDiscount, 0);
 
   const newDue = Math.max(newTotal - originalPaid, 0);

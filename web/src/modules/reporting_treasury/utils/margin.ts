@@ -16,6 +16,7 @@ export interface LineInput {
 export interface InvoiceInput {
   invoice_type: 'wholesale' | 'retail' | 'dropship';
   shipping_charge?: number | null | undefined;
+  cod_charge_amount?: number | null | undefined;
   cod_charge?: number | null | undefined;
   print_charge?: number | null | undefined;
   wrapping_charge?: number | null | undefined;
@@ -80,7 +81,7 @@ export const lineMargin = (line: LineInput): number => {
 export const chargeEffect = (invoice: InvoiceInput): number => {
   const type = invoice.invoice_type;
   const shipping = invoice.shipping_charge ?? 0;
-  const cod = invoice.cod_charge ?? 0;
+  const cod = invoice.cod_charge_amount ?? invoice.cod_charge ?? 0;
   const print = invoice.print_charge ?? 0;
   const wrapping = invoice.wrapping_charge ?? 0;
 

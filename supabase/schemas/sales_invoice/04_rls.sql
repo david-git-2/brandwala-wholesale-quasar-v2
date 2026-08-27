@@ -181,6 +181,14 @@ GRANT ALL ON FUNCTION "public"."dispense_middleman_payout_from_tenant"("p_tenant
 GRANT ALL ON FUNCTION "public"."ensure_dropship_invoice_billed_entry"("p_invoice_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."ensure_dropship_invoice_billed_entry"("p_invoice_id" bigint) TO "service_role";
 
+GRANT ALL ON FUNCTION "public"."canonicalize_dropship_order_wallet_source_ids"("p_order_id" bigint) TO "authenticated";
+
+GRANT ALL ON FUNCTION "public"."issue_dropship_tenant_b2b_invoice"("p_tenant_id" bigint, "p_order_id" bigint) TO "authenticated";
+
+GRANT ALL ON FUNCTION "public"."ensure_dropship_tenant_b2b_invoice_at_delivered"("p_order_id" bigint) TO "authenticated";
+
+GRANT ALL ON FUNCTION "public"."sync_dropship_tenant_b2b_invoice_from_order"("p_order_id" bigint) TO "authenticated";
+
 GRANT ALL ON FUNCTION "public"."get_recipient_profile_by_phone"("p_tenant_id" bigint, "p_phone" "text") TO "authenticated";
 
 GRANT ALL ON FUNCTION "public"."list_global_invoice_items"("p_invoice_id" bigint) TO "authenticated";
@@ -222,5 +230,9 @@ GRANT ALL ON FUNCTION "public"."process_wholesale_invoice_return"("p_invoice_id"
 
 GRANT ALL ON FUNCTION "public"."collect_wholesale_invoice_payment"("p_invoice_id" bigint, "p_cash_amount" numeric, "p_cash_method" "text", "p_wallet_amount" numeric, "p_settlement_amount" numeric) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."collect_wholesale_invoice_payment"("p_invoice_id" bigint, "p_cash_amount" numeric, "p_cash_method" "text", "p_wallet_amount" numeric, "p_settlement_amount" numeric) TO "service_role";
+
+GRANT EXECUTE ON FUNCTION "public"."create_sales_invoice_from_payload"(bigint, jsonb) TO "authenticated";
+
+GRANT EXECUTE ON FUNCTION "public"."update_sales_invoice_from_payload"(bigint, bigint, jsonb) TO "authenticated";
 
 

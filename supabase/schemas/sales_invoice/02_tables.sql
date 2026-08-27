@@ -103,6 +103,7 @@ CREATE TABLE IF NOT EXISTS "public"."sales_invoices" (
     "subtotal_amount" numeric(12,2) DEFAULT 0 NOT NULL,
     "discount_amount" numeric(12,2) DEFAULT 0 NOT NULL,
     "shipping_charge" numeric(12,2) DEFAULT 0 NOT NULL,
+    "cod_charge_amount" numeric(12,2) DEFAULT 0 NOT NULL,
     "wrapping_charge" numeric(12,2) DEFAULT 0 NOT NULL,
     "print_charge" numeric(12,2) DEFAULT 0 NOT NULL,
     "note" "text",
@@ -117,6 +118,7 @@ CREATE TABLE IF NOT EXISTS "public"."sales_invoices" (
     CONSTRAINT "global_invoices_payment_status_check" CHECK (("payment_status" = ANY (ARRAY['due'::"text", 'partially_paid'::"text", 'paid'::"text"]))),
     CONSTRAINT "global_invoices_print_charge_check" CHECK (("print_charge" >= (0)::numeric)),
     CONSTRAINT "global_invoices_settlement_discount_amount_check" CHECK (("settlement_discount_amount" >= (0)::numeric)),
+    CONSTRAINT "global_invoices_cod_charge_amount_check" CHECK (("cod_charge_amount" >= (0)::numeric)),
     CONSTRAINT "global_invoices_shipping_charge_check" CHECK (("shipping_charge" >= (0)::numeric)),
     CONSTRAINT "global_invoices_subtotal_amount_check" CHECK (("subtotal_amount" >= (0)::numeric)),
     CONSTRAINT "global_invoices_total_amount_check" CHECK (("total_amount" >= (0)::numeric)),
@@ -213,8 +215,9 @@ ALTER SEQUENCE "public"."global_return_items_id_seq" OWNED BY "public"."sales_re
 
 CREATE OR REPLACE VIEW "public"."global_invoices" WITH ("security_invoker"='false') AS
  SELECT "id",
-    "parent_tenant_id" AS "tenant_id",
     "parent_tenant_id",
+    "parent_tenant_id" AS "tenant_id",
+    "issued_by_tenant_id",
     "invoice_no",
     "invoice_type",
     "invoice_date",
@@ -242,7 +245,7 @@ CREATE OR REPLACE VIEW "public"."global_invoices" WITH ("security_invoker"='fals
     "created_at",
     "updated_at",
     "settlement_discount_amount",
-    "issued_by_tenant_id"
+    "cod_charge_amount"
    FROM "public"."sales_invoices";
 
 ALTER VIEW "public"."global_invoices" OWNER TO "postgres";

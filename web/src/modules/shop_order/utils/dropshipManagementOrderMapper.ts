@@ -1,4 +1,5 @@
 import type {
+  DropshipManagementInvoiceState,
   DropshipManagementOrderResponse,
   DropshipManagementOrderView,
   DropshipSettlementChargeLine,
@@ -52,6 +53,21 @@ export function getChargeLineAmount(
   type: DropshipSettlementChargeType,
 ): DropshipSettlementChargeLine {
   return lines.find((l) => l.charge_type === type) ?? defaultChargeLine(type);
+}
+
+function mapInvoice(raw: unknown): DropshipManagementInvoiceState | null {
+  if (raw == null || typeof raw !== 'object') return null;
+  const row = raw as Record<string, unknown>;
+  const id = num(row.id);
+  if (!id) return null;
+  return {
+    id,
+    invoice_no: str(row.invoice_no),
+    invoice_status: str(row.invoice_status),
+    payment_status: str(row.payment_status),
+    total_amount: num(row.total_amount),
+    due_amount: num(row.due_amount),
+  };
 }
 
 export function mapDropshipManagementOrderResponse(raw: unknown): DropshipManagementOrderView {
@@ -120,8 +136,10 @@ export function mapDropshipManagementOrderResponse(raw: unknown): DropshipManage
       remittance_at: (settlementRaw.remittance_at as string | null) ?? null,
       merchant_payout_at: (settlementRaw.merchant_payout_at as string | null) ?? null,
     },
+    invoice: mapInvoice(payload.invoice),
     step_state: {
       can_mark_delivered: stepRaw.can_mark_delivered === true,
+      can_issue_invoice: stepRaw.can_issue_invoice === true,
       can_record_bank_transfer: stepRaw.can_record_bank_transfer === true,
       can_transfer_to_reseller: stepRaw.can_transfer_to_reseller === true,
     },

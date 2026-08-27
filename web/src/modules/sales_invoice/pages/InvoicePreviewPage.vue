@@ -186,6 +186,7 @@ const printModel = computed<InvoicePrintModel>(() => {
   // Construct charges array from inline header columns
   const inlineCharges = [
     { type: 'delivery', label: 'Delivery', amount: Number(inv?.shipping_charge ?? 0) },
+    { type: 'cod', label: 'COD', amount: Number(inv?.cod_charge_amount ?? 0) },
     { type: 'print', label: 'Print', amount: Number(inv?.print_charge ?? 0) },
     { type: 'packing', label: 'Wrapping', amount: Number(inv?.wrapping_charge ?? 0) },
   ].filter((c) => c.amount > 0);

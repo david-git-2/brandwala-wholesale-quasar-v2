@@ -39,6 +39,16 @@ stateDiagram-v2
 | **Retail (Direct)** | Inline Snapshot | One-time direct walk-in customer (no billing profile required). |
 | **Dropship** | Middle-Man Profile | Dual invoice: customer packing slip @ processing + B2B accounting invoice @ ready-for-pickup. |
 
+### Proposed unified create RPC (design only)
+
+See [`CREATE_INVOICE_FROM_PAYLOAD_RPC.md`](./CREATE_INVOICE_FROM_PAYLOAD_RPC.md) for the `create_invoice_from_payload` spec: one payload with header + items for wholesale, retail, and dropship.
+
+Implemented as `create_sales_invoice_from_payload` — see migration `20270831410000_create_sales_invoice_from_payload.sql`.
+
+### Unified update RPC (patch by payload)
+
+See [`UPDATE_INVOICE_FROM_PAYLOAD_RPC.md`](./UPDATE_INVOICE_FROM_PAYLOAD_RPC.md) for `update_sales_invoice_from_payload`: send only the fields to change on draft/proforma invoices.
+
 ---
 
 ## 2. Core Domain Engines & Business Algorithms

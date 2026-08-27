@@ -239,11 +239,34 @@ const markDropshipOrderDelivered = async (
 ): Promise<ShopServiceResult<unknown>> => {
   try {
     const data = await shopOrderRepository.markDropshipOrderDelivered(tenantId, orderId, payload);
+    const row = (data ?? {}) as { success?: boolean; error?: string };
+    if (row.success === false) {
+      return { success: false, error: row.error ?? 'Failed to mark order as delivered.' };
+    }
     return { success: true, data };
   } catch (error) {
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to mark order as delivered.',
+    };
+  }
+};
+
+const issueDropshipTenantB2bInvoice = async (
+  tenantId: number,
+  orderId: number,
+): Promise<ShopServiceResult<unknown>> => {
+  try {
+    const data = await shopOrderRepository.issueDropshipTenantB2bInvoice(tenantId, orderId);
+    const row = (data ?? {}) as { success?: boolean; error?: string };
+    if (row.success === false) {
+      return { success: false, error: row.error ?? 'Failed to issue tenant invoice.' };
+    }
+    return { success: true, data };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to issue tenant invoice.',
     };
   }
 };
@@ -518,6 +541,7 @@ export const shopOrderService = {
   fetchDropshipManagementOrder,
   saveDropshipSettlementDraft,
   markDropshipOrderDelivered,
+  issueDropshipTenantB2bInvoice,
   recordDropshipCourierBankTransfer,
   transferDropshipResellerProfit,
   placeOrderForProcurement,

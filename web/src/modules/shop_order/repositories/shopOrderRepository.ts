@@ -489,6 +489,15 @@ const markDropshipOrderDelivered = async (
   return data;
 };
 
+const issueDropshipTenantB2bInvoice = async (tenantId: number, orderId: number) => {
+  const { data, error } = await supabase.rpc('issue_dropship_tenant_b2b_invoice', {
+    p_tenant_id: tenantId,
+    p_order_id: orderId,
+  });
+  if (error) throw error;
+  return data;
+};
+
 const recordDropshipCourierBankTransfer = async (
   tenantId: number,
   orderId: number,
@@ -968,6 +977,7 @@ export const shopOrderRepository = {
   getDropshipManagementOrder,
   saveDropshipSettlementDraft,
   markDropshipOrderDelivered,
+  issueDropshipTenantB2bInvoice,
   recordDropshipCourierBankTransfer,
   transferDropshipResellerProfit,
   saveDropshipProcessingDesk,

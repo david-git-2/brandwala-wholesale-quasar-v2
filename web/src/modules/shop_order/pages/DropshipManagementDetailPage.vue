@@ -42,7 +42,7 @@
               icon="ph ph-package"
               label="Mark as delivered"
               class="text-weight-bold dropship-order-detail-v2__action-btn"
-              :disable="!orderData.step_state.can_mark_delivered || isReadonly"
+              :disable="(!orderData.step_state.can_mark_delivered && !orderData.step_state.can_issue_invoice) || isReadonly"
               :loading="actionKind === 'delivered'"
               @click="onMarkDelivered"
             />
@@ -53,7 +53,7 @@
               icon="ph ph-arrow-u-up-left"
               label="Mark as returned"
               class="text-weight-bold dropship-order-detail-v2__action-btn"
-              :disable="!canMarkReturned || isReadonly"
+              :disable="!orderData.step_state.can_mark_delivered || isReadonly"
               @click="onMarkReturned"
             />
           </div>
@@ -192,10 +192,6 @@ const isReadonly = computed(
   () => orderData.value?.settlement.status === 'confirmed' || !!orderData.value?.settlement.merchant_payout_at,
 );
 
-const canMarkReturned = computed(
-  () => orderData.value?.order.status === 'shipped' && !isReadonly.value,
-);
-
 watch(orderData, (data) => {
   if (!data) return;
   remittanceForm.net_amount = data.settlement.collected_cod_amount;
@@ -239,25 +235,81 @@ async function onMarkDelivered() {
   const payload = getPayload();
   if (!payload) return;
 
+  const canDeliver = orderData.value?.step_state.can_mark_delivered === true;
+  const canIssueInvoice = orderData.value?.step_state.can_issue_invoice === true;
+
   const confirmed = await requestConfirmation(
-    'Mark this parcel as delivered? This saves the settlement, books courier COD, and posts invoice and wallet entries.',
-    'Mark as delivered',
-    'Mark delivered',
+    canDeliver
+      ? 'Mark this parcel as delivered? This saves the settlement, books courier COD, then issues the tenant invoice.'
+      : 'Issue the tenant B2B invoice for this delivered order?',
+    canDeliver ? 'Mark as delivered' : 'Issue invoice',
+    canDeliver ? 'Mark delivered' : 'Issue invoice',
   );
   if (!confirmed) return;
 
   actionKind.value = 'delivered';
   try {
-    const res = await shopOrderService.markDropshipOrderDelivered(
-      authStore.tenantId,
-      orderId.value,
-      payload,
-    );
-    if (!res.success) {
-      showErrorNotification(res.error ?? 'Failed to mark as delivered.');
+    if (canDeliver) {
+      const res = await shopOrderService.markDropshipOrderDelivered(
+        authStore.tenantId,
+        orderId.value,
+        payload,
+      );
+      if (!res.success) {
+        showErrorNotification(res.error ?? 'Failed to mark as delivered.');
+        return;
+      }
+    } else if (!canIssueInvoice) {
       return;
     }
-    showSuccessNotification('Order marked as delivered.');
+
+    const invoiceRes = await shopOrderService.issueDropshipTenantB2bInvoice(
+      authStore.tenantId,
+      orderId.value,
+    );
+    if (!invoiceRes.success) {
+      showErrorNotification(invoiceRes.error ?? 'Order is delivered, but the tenant invoice failed. Try the button again.');
+      queryClient.setQueryData<DropshipManagementOrderView | null>(detailQueryKey.value, (prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          order: { ...prev.order, status: 'delivered' },
+          settlement: {
+            ...prev.settlement,
+            courier_cod_booked_at: prev.settlement.courier_cod_booked_at ?? new Date().toISOString(),
+          },
+          step_state: {
+            can_mark_delivered: false,
+            can_issue_invoice: true,
+            can_record_bank_transfer: true,
+            can_transfer_to_reseller: true,
+          },
+        };
+      });
+      await invalidateDetail();
+      return;
+    }
+
+    showSuccessNotification(canDeliver ? 'Order marked as delivered.' : 'Tenant invoice issued.');
+    queryClient.setQueryData<DropshipManagementOrderView | null>(detailQueryKey.value, (prev) => {
+      if (!prev) return prev;
+      const invoicePayload = (invoiceRes.data ?? {}) as { invoice?: DropshipManagementOrderView['invoice'] };
+      return {
+        ...prev,
+        order: { ...prev.order, status: 'delivered' },
+        invoice: invoicePayload.invoice ?? prev.invoice,
+        settlement: {
+          ...prev.settlement,
+          courier_cod_booked_at: prev.settlement.courier_cod_booked_at ?? new Date().toISOString(),
+        },
+        step_state: {
+          can_mark_delivered: false,
+          can_issue_invoice: false,
+          can_record_bank_transfer: true,
+          can_transfer_to_reseller: true,
+        },
+      };
+    });
     await invalidateDetail();
   } finally {
     actionKind.value = null;

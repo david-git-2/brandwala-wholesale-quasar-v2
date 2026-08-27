@@ -501,7 +501,7 @@ const updateGlobalInvoiceHeader = async (payload: {
   id: number;
   discount_amount?: number | null;
   shipping_charge?: number | null;
-  cod_charge?: number | null;
+  cod_charge_amount?: number | null;
   wrapping_charge?: number | null;
   print_charge?: number | null;
   recipient_name?: string | null;
@@ -515,7 +515,7 @@ const updateGlobalInvoiceHeader = async (payload: {
     p_invoice_id: payload.id,
     p_discount_amount: payload.discount_amount,
     p_shipping_charge: payload.shipping_charge,
-    p_cod_charge: payload.cod_charge,
+    p_cod_charge: payload.cod_charge_amount,
     p_wrapping_charge: payload.wrapping_charge,
     p_print_charge: payload.print_charge,
     p_recipient_name: payload.recipient_name,

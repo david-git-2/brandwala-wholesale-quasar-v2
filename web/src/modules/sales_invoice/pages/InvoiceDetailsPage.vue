@@ -857,7 +857,7 @@ const editingRecipient = ref(false);
 const form = reactive({
   discount_amount: 0,
   shipping_charge: 0,
-  cod_charge: 0,
+  cod_charge_amount: 0,
   wrapping_charge: 0,
   print_charge: 0,
   recipient_name: '',
@@ -980,7 +980,7 @@ const estimatedProfit = computed(() => {
     {
       invoice_type: invoice.value.invoice_type as 'wholesale' | 'retail' | 'dropship',
       shipping_charge: invoice.value.shipping_charge,
-      cod_charge: invoice.value.cod_charge,
+      cod_charge_amount: invoice.value.cod_charge_amount,
       print_charge: invoice.value.print_charge,
       wrapping_charge: invoice.value.wrapping_charge,
       discount_amount: invoice.value.discount_amount,
@@ -1024,7 +1024,7 @@ const loadInvoice = async () => {
     // Sync form values
     form.discount_amount = inv.discount_amount;
     form.shipping_charge = inv.shipping_charge;
-    form.cod_charge = inv.cod_charge ?? 0;
+    form.cod_charge_amount = inv.cod_charge_amount ?? 0;
     form.wrapping_charge = inv.wrapping_charge;
     form.print_charge = inv.print_charge;
     form.recipient_name = inv.recipient_name || '';
@@ -1049,7 +1049,7 @@ const refreshInvoiceHeader = async () => {
     // Sync form values
     form.discount_amount = inv.discount_amount;
     form.shipping_charge = inv.shipping_charge;
-    form.cod_charge = inv.cod_charge ?? 0;
+    form.cod_charge_amount = inv.cod_charge_amount ?? 0;
     form.wrapping_charge = inv.wrapping_charge;
     form.print_charge = inv.print_charge;
     form.recipient_name = inv.recipient_name || '';
@@ -1283,7 +1283,7 @@ const onHeaderUpdate = async () => {
       id: invoice.value.id,
       discount_amount: form.discount_amount,
       shipping_charge: form.shipping_charge,
-      cod_charge: form.cod_charge,
+      cod_charge_amount: form.cod_charge_amount,
       wrapping_charge: form.wrapping_charge,
       print_charge: form.print_charge,
       recipient_name: form.recipient_name.trim() || null,
@@ -1312,7 +1312,7 @@ const saveNote = async () => {
       id: invoice.value.id,
       discount_amount: form.discount_amount,
       shipping_charge: form.shipping_charge,
-      cod_charge: form.cod_charge,
+      cod_charge_amount: form.cod_charge_amount,
       wrapping_charge: form.wrapping_charge,
       print_charge: form.print_charge,
       recipient_name: form.recipient_name.trim() || null,

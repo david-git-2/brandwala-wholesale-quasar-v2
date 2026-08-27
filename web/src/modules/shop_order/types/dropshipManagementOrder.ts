@@ -29,8 +29,18 @@ export interface DropshipManagementSettlementState {
   merchant_payout_at: string | null;
 }
 
+export interface DropshipManagementInvoiceState {
+  id: number;
+  invoice_no: string;
+  invoice_status: string;
+  payment_status: string;
+  total_amount: number;
+  due_amount: number;
+}
+
 export interface DropshipManagementStepState {
   can_mark_delivered: boolean;
+  can_issue_invoice: boolean;
   can_record_bank_transfer: boolean;
   can_transfer_to_reseller: boolean;
 }
@@ -57,6 +67,7 @@ export interface DropshipManagementOrderView {
     order_item_quantity: number;
   };
   settlement: DropshipManagementSettlementState;
+  invoice: DropshipManagementInvoiceState | null;
   step_state: DropshipManagementStepState;
 }
 
@@ -79,5 +90,6 @@ export interface DropshipManagementOrderResponse {
   order: DropshipManagementOrderView['order'];
   computed: DropshipManagementOrderView['computed'];
   settlement: DropshipManagementSettlementState;
+  invoice: DropshipManagementInvoiceState | null;
   step_state: DropshipManagementStepState;
 }

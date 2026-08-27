@@ -63,7 +63,7 @@ export type GlobalInvoiceDetail = GlobalInvoiceCreated & {
   ordered_by_party_id: number | null;
   collection_source?: InvoiceCollectionSource | null;
   shipping_charge: number;
-  cod_charge?: number;
+  cod_charge_amount?: number;
   wrapping_charge: number;
   print_charge: number;
   recipient_phone: string | null;

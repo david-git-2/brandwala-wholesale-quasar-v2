@@ -309,6 +309,8 @@ GRANT ALL ON FUNCTION "public"."get_dropship_order_detail_v2"("p_tenant_id" bigi
 GRANT ALL ON FUNCTION "public"."get_dropship_management_order"("p_tenant_id" bigint, "p_order_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."save_dropship_settlement_draft"("p_tenant_id" bigint, "p_order_id" bigint, "p_payload" "jsonb") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."mark_dropship_order_delivered"("p_tenant_id" bigint, "p_order_id" bigint, "p_payload" "jsonb") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."issue_dropship_tenant_b2b_invoice"("p_tenant_id" bigint, "p_order_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."ensure_dropship_tenant_b2b_invoice_at_delivered"("p_order_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."record_dropship_courier_bank_transfer"("p_tenant_id" bigint, "p_order_id" bigint, "p_payload" "jsonb") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."transfer_dropship_reseller_profit"("p_tenant_id" bigint, "p_order_id" bigint, "p_payload" "jsonb") TO "authenticated";
 

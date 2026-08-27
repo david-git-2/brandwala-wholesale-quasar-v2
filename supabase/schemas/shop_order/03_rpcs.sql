@@ -158,6 +158,7 @@ CREATE OR REPLACE FUNCTION "public"."advance_dropship_order_status"("p_order_id"
     AS $$
 declare
   v_order public.shop_orders;
+  v_invoice public.global_invoices;
   v_current_status public.shop_order_status;
   v_is_valid boolean := false;
 begin
@@ -206,6 +207,32 @@ begin
     courier_bank_trx_id = coalesce(p_bank_trx_id, courier_bank_trx_id),
     updated_at = now()
   where id = p_order_id;
+
+  select * into v_order from public.shop_orders where id = p_order_id;
+
+  if p_target_status = 'processing' and v_order.global_invoice_id is not null then
+    select * into v_invoice from public.global_invoices where id = v_order.global_invoice_id;
+    if v_invoice.invoice_status = 'issued'::public.global_invoice_status then
+      perform public.unpost_global_invoice(v_order.global_invoice_id);
+    end if;
+
+    delete from public.universal_wallet_ledger
+    where source_type = 'shop_order'
+      and (
+        source_id = p_order_id::text
+        or source_id = v_order.order_no
+        or source_id = v_invoice.invoice_no
+      )
+      and tenant_id = v_order.tenant_id;
+
+    update public.shop_orders
+    set global_invoice_id = null, updated_at = now()
+    where id = p_order_id;
+
+    delete from public.global_return_items where invoice_id = v_order.global_invoice_id;
+    delete from public.global_invoice_items where invoice_id = v_order.global_invoice_id;
+    delete from public.global_invoices where id = v_order.global_invoice_id;
+  end if;
 
   return jsonb_build_object('success', true, 'new_status', p_target_status);
 end;
