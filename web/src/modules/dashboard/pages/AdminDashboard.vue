@@ -1,55 +1,39 @@
 <template>
   <q-page class="dashboard-page theme-app q-pa-md">
-    <header class="dashboard-hero">
-      <div class="text-overline text-primary">Workspace</div>
-      <h1>{{ selectedTenantName || 'Dashboard' }}</h1>
-      <p>What do you want to do?</p>
-    </header>
+    <!-- Procurement Card Section -->
+    <ProcurementStockCard />
 
-    <template v-if="!isEmpty">
-      <section v-if="primaries.length" class="dashboard-block">
-        <p class="dashboard-block__label">Primary actions</p>
-        <div class="dashboard-primary-grid">
-          <DashboardSlotHost
-            v-for="slot in primaries"
-            :key="slot.id"
-            :item="slot"
-            v-bind="tenantSlug ? { tenantSlug } : {}"
-            emphasis="primary"
-          />
-        </div>
-      </section>
-
-      <DashboardGroup
-        v-for="group in groups"
-        :key="group.parentGroupKey"
-        :title="group.title"
-        :icon="group.icon"
-        :slots="group.slots"
-        v-bind="tenantSlug ? { tenantSlug } : {}"
-      />
-    </template>
-
-    <section v-else class="dashboard-block">
-      <p class="dashboard-block__label">Dashboard</p>
-      <h2>No widgets for your access</h2>
-      <p>Open the sidebar or ask an admin to enable modules and permissions for this tenant.</p>
+    <section v-if="primaries.length" class="dashboard-block">
+      <p class="dashboard-block__label">Primary actions</p>
+      <div class="dashboard-primary-grid">
+        <DashboardSlotHost
+          v-for="slot in primaries"
+          :key="slot.id"
+          :item="slot"
+          v-bind="tenantSlug ? { tenantSlug } : {}"
+          emphasis="primary"
+        />
+      </div>
     </section>
+
+    <DashboardGroup
+      v-for="group in groups"
+      :key="group.parentGroupKey"
+      :title="group.title"
+      :icon="group.icon"
+      :slots="group.slots"
+      v-bind="tenantSlug ? { tenantSlug } : {}"
+    />
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-
-import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
+import ProcurementStockCard from 'src/modules/procurement_stock/dashboard/ProcurementStockCard.vue';
 import DashboardGroup from '../components/DashboardGroup.vue';
 import DashboardSlotHost from '../components/DashboardSlotHost.vue';
 import { useDashboardSlots } from '../composables/useDashboardSlots';
 
-const tenantStore = useTenantStore();
-const selectedTenantName = computed(() => tenantStore.selectedTenant?.name ?? '');
-
-const { primaries, groups, isEmpty, tenantSlug } = useDashboardSlots();
+const { primaries, groups, tenantSlug } = useDashboardSlots();
 </script>
 
 <style scoped>
@@ -60,23 +44,8 @@ const { primaries, groups, isEmpty, tenantSlug } = useDashboardSlots();
   --dashboard-muted: var(--bw-theme-muted);
   display: grid;
   gap: 1.5rem;
-  max-width: 52rem;
-}
-
-.dashboard-hero h1 {
-  margin: 0.15rem 0 0;
-  font-size: clamp(1.75rem, 3vw, 2.15rem);
-  font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
-  color: var(--dashboard-ink);
-}
-
-.dashboard-hero p {
-  margin: 0.4rem 0 0;
-  color: var(--dashboard-muted);
-  font-size: 0.95rem;
-  line-height: 1.5;
+  max-width: 68rem;
+  margin: 0 auto;
 }
 
 .dashboard-block {
