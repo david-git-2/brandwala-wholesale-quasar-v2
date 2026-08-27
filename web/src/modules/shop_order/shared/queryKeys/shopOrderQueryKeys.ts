@@ -70,6 +70,8 @@ export const shopOrderQueryKeys = {
     [...shopOrderQueryKeys.root, 'detail', tenantSlug ?? 'no-tenant', orderId] as const,
   dropshipDetailV2: (tenantId: number, orderId: number) =>
     [...shopOrderQueryKeys.root, 'dropshipDetailV2', { tenantId, orderId }] as const,
+  dropshipManagementDetail: (tenantId: number, orderId: number) =>
+    [...shopOrderQueryKeys.root, 'dropshipManagementDetail', { tenantId, orderId }] as const,
   couriers: (tenantSlug: string | null) =>
     [...shopOrderQueryKeys.root, 'couriers', tenantSlug ?? 'no-tenant'] as const,
   merchants: (tenantSlug: string | null) =>

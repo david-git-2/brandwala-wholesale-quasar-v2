@@ -1,3 +1,8 @@
+import type {
+  DropshipCourierBankTransferPayload,
+  DropshipManagementOrderView,
+  DropshipSettlementDraftPayload,
+} from '../types/dropshipManagementOrder';
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
 import type { ShopOrder, ShopOrderItem, ShopServiceResult, ShopCatalogBrowseResult, ShopCatalogSearchResult, ShopCatalogProductDetailResult, ShopCatalogRelatedResult, CustomerOrderListItem } from '../types';
 
@@ -192,6 +197,85 @@ const fetchDropshipStaffOrders = async (
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to list dropship desk orders.',
+    };
+  }
+};
+
+const fetchDropshipManagementOrder = async (
+  tenantId: number,
+  orderId: number,
+): Promise<ShopServiceResult<DropshipManagementOrderView>> => {
+  try {
+    const data = await shopOrderRepository.getDropshipManagementOrder(tenantId, orderId);
+    return { success: true, data };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to load dropship management order.',
+    };
+  }
+};
+
+const saveDropshipSettlementDraft = async (
+  tenantId: number,
+  orderId: number,
+  payload: DropshipSettlementDraftPayload,
+): Promise<ShopServiceResult<unknown>> => {
+  try {
+    const data = await shopOrderRepository.saveDropshipSettlementDraft(tenantId, orderId, payload);
+    return { success: true, data };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to save settlement draft.',
+    };
+  }
+};
+
+const markDropshipOrderDelivered = async (
+  tenantId: number,
+  orderId: number,
+  payload: DropshipSettlementDraftPayload,
+): Promise<ShopServiceResult<unknown>> => {
+  try {
+    const data = await shopOrderRepository.markDropshipOrderDelivered(tenantId, orderId, payload);
+    return { success: true, data };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to mark order as delivered.',
+    };
+  }
+};
+
+const recordDropshipCourierBankTransfer = async (
+  tenantId: number,
+  orderId: number,
+  payload: DropshipCourierBankTransferPayload,
+): Promise<ShopServiceResult<unknown>> => {
+  try {
+    const data = await shopOrderRepository.recordDropshipCourierBankTransfer(tenantId, orderId, payload);
+    return { success: true, data };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to record courier bank transfer.',
+    };
+  }
+};
+
+const transferDropshipResellerProfit = async (
+  tenantId: number,
+  orderId: number,
+  payload?: DropshipSettlementDraftPayload,
+): Promise<ShopServiceResult<unknown>> => {
+  try {
+    const data = await shopOrderRepository.transferDropshipResellerProfit(tenantId, orderId, payload);
+    return { success: true, data };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to transfer reseller profit.',
     };
   }
 };
@@ -431,6 +515,11 @@ export const shopOrderService = {
   fetchCustomerOrders,
   fetchStaffOrders,
   fetchDropshipStaffOrders,
+  fetchDropshipManagementOrder,
+  saveDropshipSettlementDraft,
+  markDropshipOrderDelivered,
+  recordDropshipCourierBankTransfer,
+  transferDropshipResellerProfit,
   placeOrderForProcurement,
   fulfillOrderToInvoice,
   deleteOrder,

@@ -1768,6 +1768,148 @@ export type Database = {
           },
         ]
       }
+      dropship_order_settlements: {
+        Row: {
+          billing_profile_id: number | null
+          calculated_cod_amount: number
+          collected_cod_amount: number
+          company_profit: number | null
+          confirmed_at: string | null
+          confirmed_by: string | null
+          courier_cod_booked_at: string | null
+          created_at: string
+          currency_id: number | null
+          discount_company_pay: number
+          id: number
+          merchant_payout_at: string | null
+          remittance_at: string | null
+          reseller_profit: number | null
+          reseller_purchase_cost: number
+          return_reason_note: string | null
+          shop_order_id: number
+          status: Database["public"]["Enums"]["dropship_settlement_status"]
+          tenant_id: number
+          total_cost: number | null
+          updated_at: string
+          wallet_ledger_batch_id: string | null
+        }
+        Insert: {
+          billing_profile_id?: number | null
+          calculated_cod_amount?: number
+          collected_cod_amount?: number
+          company_profit?: number | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          courier_cod_booked_at?: string | null
+          created_at?: string
+          currency_id?: number | null
+          discount_company_pay?: number
+          id?: never
+          merchant_payout_at?: string | null
+          remittance_at?: string | null
+          reseller_profit?: number | null
+          reseller_purchase_cost?: number
+          return_reason_note?: string | null
+          shop_order_id: number
+          status?: Database["public"]["Enums"]["dropship_settlement_status"]
+          tenant_id: number
+          total_cost?: number | null
+          updated_at?: string
+          wallet_ledger_batch_id?: string | null
+        }
+        Update: {
+          billing_profile_id?: number | null
+          calculated_cod_amount?: number
+          collected_cod_amount?: number
+          company_profit?: number | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          courier_cod_booked_at?: string | null
+          created_at?: string
+          currency_id?: number | null
+          discount_company_pay?: number
+          id?: never
+          merchant_payout_at?: string | null
+          remittance_at?: string | null
+          reseller_profit?: number | null
+          reseller_purchase_cost?: number
+          return_reason_note?: string | null
+          shop_order_id?: number
+          status?: Database["public"]["Enums"]["dropship_settlement_status"]
+          tenant_id?: number
+          total_cost?: number | null
+          updated_at?: string
+          wallet_ledger_batch_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dropship_order_settlements_billing_profile_id_fkey"
+            columns: ["billing_profile_id"]
+            isOneToOne: false
+            referencedRelation: "billing_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dropship_order_settlements_currency_id_fkey"
+            columns: ["currency_id"]
+            isOneToOne: false
+            referencedRelation: "global_currencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dropship_order_settlements_shop_order_id_fkey"
+            columns: ["shop_order_id"]
+            isOneToOne: true
+            referencedRelation: "shop_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dropship_order_settlements_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dropship_settlement_charge_lines: {
+        Row: {
+          amount: number
+          charge_type: Database["public"]["Enums"]["dropship_settlement_charge_type"]
+          created_at: string
+          id: number
+          payer: Database["public"]["Enums"]["dropship_settlement_charge_payer"]
+          settlement_id: number
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          charge_type: Database["public"]["Enums"]["dropship_settlement_charge_type"]
+          created_at?: string
+          id?: never
+          payer: Database["public"]["Enums"]["dropship_settlement_charge_payer"]
+          settlement_id: number
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          charge_type?: Database["public"]["Enums"]["dropship_settlement_charge_type"]
+          created_at?: string
+          id?: never
+          payer?: Database["public"]["Enums"]["dropship_settlement_charge_payer"]
+          settlement_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dropship_settlement_charge_lines_settlement_id_fkey"
+            columns: ["settlement_id"]
+            isOneToOne: false
+            referencedRelation: "dropship_order_settlements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       entity_tags: {
         Row: {
           created_at: string
@@ -10358,6 +10500,10 @@ export type Database = {
         }
         Returns: Json
       }
+      build_default_dropship_settlement_charge_lines: {
+        Args: { p_order: Database["public"]["Tables"]["shop_orders"]["Row"] }
+        Returns: Json
+      }
       bulk_add_global_shipment_items: {
         Args: { p_items: Json; p_shipment_id: number }
         Returns: {
@@ -10843,6 +10989,20 @@ export type Database = {
           p_wallet_amount?: number
         }
         Returns: Json
+      }
+      compute_dropship_settlement_totals: {
+        Args: {
+          p_charge_lines: Json
+          p_collected_cod: number
+          p_discount_company_pay: number
+          p_reseller_purchase_cost: number
+        }
+        Returns: {
+          company_profit: number
+          merchant_paid_charges: number
+          reseller_profit: number
+          total_cost: number
+        }[]
       }
       compute_thrift_landed_unit_cost: {
         Args: { p_stock_id: number }
@@ -11953,6 +12113,10 @@ export type Database = {
       }
       get_dropship_finance_hub_data: {
         Args: { p_tenant_id: number }
+        Returns: Json
+      }
+      get_dropship_management_order: {
+        Args: { p_order_id: number; p_tenant_id: number }
         Returns: Json
       }
       get_dropship_order_detail_v2: {
@@ -13815,6 +13979,10 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      mark_dropship_order_delivered: {
+        Args: { p_order_id: number; p_payload: Json; p_tenant_id: number }
+        Returns: Json
+      }
       mark_dropship_order_returned: {
         Args: {
           p_actual_return_charge: number
@@ -14005,6 +14173,10 @@ export type Database = {
       }
       reconcile_single_order_remittance: {
         Args: { p_courier_charge?: number; p_order_id: number }
+        Returns: Json
+      }
+      record_dropship_courier_bank_transfer: {
+        Args: { p_order_id: number; p_payload: Json; p_tenant_id: number }
         Returns: Json
       }
       record_dropship_courier_remittance:
@@ -14425,6 +14597,10 @@ export type Database = {
         Args: { p_value: number }
         Returns: number
       }
+      save_dropship_settlement_draft: {
+        Args: { p_order_id: number; p_payload: Json; p_tenant_id: number }
+        Returns: Json
+      }
       search_sales_invoice_stock: {
         Args: {
           p_limit?: number
@@ -14718,6 +14894,10 @@ export type Database = {
           sort_seq: number
           sort_year: string
         }[]
+      }
+      transfer_dropship_reseller_profit: {
+        Args: { p_order_id: number; p_payload?: Json; p_tenant_id: number }
+        Returns: Json
       }
       transfer_wallet_balance: {
         Args: {
@@ -16131,6 +16311,14 @@ export type Database = {
         | "pbc_costing_item"
         | "manual"
       demand_bucket_status: "open" | "popped" | "cancelled"
+      dropship_settlement_charge_payer: "recipient" | "merchant" | "company"
+      dropship_settlement_charge_type:
+        | "delivery"
+        | "print"
+        | "packing"
+        | "return"
+        | "cod"
+      dropship_settlement_status: "draft" | "confirmed"
       global_fulfillment_status: "pending" | "packed" | "shipped" | "delivered"
       global_invoice_status:
         | "draft"
@@ -16403,6 +16591,15 @@ export const Constants = {
         "manual",
       ],
       demand_bucket_status: ["open", "popped", "cancelled"],
+      dropship_settlement_charge_payer: ["recipient", "merchant", "company"],
+      dropship_settlement_charge_type: [
+        "delivery",
+        "print",
+        "packing",
+        "return",
+        "cod",
+      ],
+      dropship_settlement_status: ["draft", "confirmed"],
       global_fulfillment_status: ["pending", "packed", "shipped", "delivered"],
       global_invoice_status: [
         "draft",

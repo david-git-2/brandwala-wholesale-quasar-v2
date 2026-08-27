@@ -18,6 +18,12 @@ import {
   parseStaffShopOrderDetailResponse,
 } from '../utils/staffShopOrderDetailMapper';
 import { mapDropshipOrderDetailV2Response } from '../utils/dropshipOrderDetailV2Mapper';
+import { mapDropshipManagementOrderResponse } from '../utils/dropshipManagementOrderMapper';
+import type {
+  DropshipCourierBankTransferPayload,
+  DropshipManagementOrderView,
+  DropshipSettlementDraftPayload,
+} from '../types/dropshipManagementOrder';
 
 const listShops = async (
   tenantId: number,
@@ -441,6 +447,74 @@ const getDropshipOrderDetailV2 = async (tenantId: number, orderId: number) => {
   if (error) throw error;
 
   return mapDropshipOrderDetailV2Response(data);
+};
+
+const getDropshipManagementOrder = async (
+  tenantId: number,
+  orderId: number,
+): Promise<DropshipManagementOrderView> => {
+  const { data, error } = await supabase.rpc('get_dropship_management_order', {
+    p_tenant_id: tenantId,
+    p_order_id: orderId,
+  });
+  if (error) throw error;
+  return mapDropshipManagementOrderResponse(data);
+};
+
+const saveDropshipSettlementDraft = async (
+  tenantId: number,
+  orderId: number,
+  payload: DropshipSettlementDraftPayload,
+) => {
+  const { data, error } = await supabase.rpc('save_dropship_settlement_draft', {
+    p_tenant_id: tenantId,
+    p_order_id: orderId,
+    p_payload: payload,
+  });
+  if (error) throw error;
+  return data;
+};
+
+const markDropshipOrderDelivered = async (
+  tenantId: number,
+  orderId: number,
+  payload: DropshipSettlementDraftPayload,
+) => {
+  const { data, error } = await supabase.rpc('mark_dropship_order_delivered', {
+    p_tenant_id: tenantId,
+    p_order_id: orderId,
+    p_payload: payload,
+  });
+  if (error) throw error;
+  return data;
+};
+
+const recordDropshipCourierBankTransfer = async (
+  tenantId: number,
+  orderId: number,
+  payload: DropshipCourierBankTransferPayload,
+) => {
+  const { data, error } = await supabase.rpc('record_dropship_courier_bank_transfer', {
+    p_tenant_id: tenantId,
+    p_order_id: orderId,
+    p_payload: payload,
+  });
+  if (error) throw error;
+  return data;
+};
+
+const transferDropshipResellerProfit = async (
+  tenantId: number,
+  orderId: number,
+  payload?: DropshipSettlementDraftPayload,
+) => {
+  const { data, error } = await supabase.rpc('transfer_dropship_reseller_profit', {
+    p_tenant_id: tenantId,
+    p_order_id: orderId,
+    p_payload: payload ?? {},
+  });
+  if (error) throw error;
+  return data;
 };
 
 export type SaveDropshipProcessingDeskInput = {
@@ -891,6 +965,11 @@ export const shopOrderRepository = {
   listDropshipShopOrdersForStaff,
   getShopOrderById,
   getDropshipOrderDetailV2,
+  getDropshipManagementOrder,
+  saveDropshipSettlementDraft,
+  markDropshipOrderDelivered,
+  recordDropshipCourierBankTransfer,
+  transferDropshipResellerProfit,
   saveDropshipProcessingDesk,
   getCustomerShopOrder,
   placeShopOrderForProcurement,

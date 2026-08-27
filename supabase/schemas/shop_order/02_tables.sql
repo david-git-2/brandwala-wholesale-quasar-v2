@@ -904,3 +904,114 @@ ALTER TABLE ONLY "public"."customer_demand_bucket_items"
 
 CREATE OR REPLACE TRIGGER "trg_customer_demand_bucket_items_set_updated_at" BEFORE UPDATE ON "public"."customer_demand_bucket_items" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
+
+CREATE TABLE IF NOT EXISTS "public"."dropship_order_settlements" (
+    "id" bigint NOT NULL,
+    "tenant_id" bigint NOT NULL,
+    "shop_order_id" bigint NOT NULL,
+    "billing_profile_id" bigint,
+    "currency_id" bigint,
+    "calculated_cod_amount" numeric(15,2) DEFAULT 0 NOT NULL,
+    "collected_cod_amount" numeric(15,2) DEFAULT 0 NOT NULL,
+    "reseller_purchase_cost" numeric(15,2) DEFAULT 0 NOT NULL,
+    "discount_company_pay" numeric(15,2) DEFAULT 0 NOT NULL,
+    "return_reason_note" "text",
+    "total_cost" numeric(15,2),
+    "reseller_profit" numeric(15,2),
+    "company_profit" numeric(15,2),
+    "status" "public"."dropship_settlement_status" DEFAULT 'draft'::"public"."dropship_settlement_status" NOT NULL,
+    "confirmed_at" timestamp with time zone,
+    "confirmed_by" "uuid",
+    "courier_cod_booked_at" timestamp with time zone,
+    "remittance_at" timestamp with time zone,
+    "merchant_payout_at" timestamp with time zone,
+    "wallet_ledger_batch_id" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."dropship_order_settlements" OWNER TO "postgres";
+
+
+ALTER TABLE "public"."dropship_order_settlements" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME "public"."dropship_order_settlements_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+CREATE TABLE IF NOT EXISTS "public"."dropship_settlement_charge_lines" (
+    "id" bigint NOT NULL,
+    "settlement_id" bigint NOT NULL,
+    "charge_type" "public"."dropship_settlement_charge_type" NOT NULL,
+    "amount" numeric(15,2) DEFAULT 0 NOT NULL,
+    "payer" "public"."dropship_settlement_charge_payer" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."dropship_settlement_charge_lines" OWNER TO "postgres";
+
+
+ALTER TABLE "public"."dropship_settlement_charge_lines" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME "public"."dropship_settlement_charge_lines_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+ALTER TABLE ONLY "public"."dropship_order_settlements"
+    ADD CONSTRAINT "dropship_order_settlements_pkey" PRIMARY KEY ("id");
+
+
+ALTER TABLE ONLY "public"."dropship_order_settlements"
+    ADD CONSTRAINT "dropship_order_settlements_shop_order_id_key" UNIQUE ("shop_order_id");
+
+
+CREATE INDEX "idx_dropship_order_settlements_tenant" ON "public"."dropship_order_settlements" USING "btree" ("tenant_id");
+
+
+ALTER TABLE ONLY "public"."dropship_settlement_charge_lines"
+    ADD CONSTRAINT "dropship_settlement_charge_lines_pkey" PRIMARY KEY ("id");
+
+
+ALTER TABLE ONLY "public"."dropship_settlement_charge_lines"
+    ADD CONSTRAINT "dropship_settlement_charge_lines_settlement_charge_type_key" UNIQUE ("settlement_id", "charge_type");
+
+
+CREATE INDEX "idx_dropship_settlement_charge_lines_settlement" ON "public"."dropship_settlement_charge_lines" USING "btree" ("settlement_id");
+
+
+ALTER TABLE ONLY "public"."dropship_order_settlements"
+    ADD CONSTRAINT "dropship_order_settlements_billing_profile_id_fkey" FOREIGN KEY ("billing_profile_id") REFERENCES "public"."billing_profiles"("id") ON DELETE SET NULL;
+
+
+ALTER TABLE ONLY "public"."dropship_order_settlements"
+    ADD CONSTRAINT "dropship_order_settlements_currency_id_fkey" FOREIGN KEY ("currency_id") REFERENCES "public"."global_currencies"("id") ON DELETE SET NULL;
+
+
+ALTER TABLE ONLY "public"."dropship_order_settlements"
+    ADD CONSTRAINT "dropship_order_settlements_shop_order_id_fkey" FOREIGN KEY ("shop_order_id") REFERENCES "public"."shop_orders"("id") ON DELETE CASCADE;
+
+
+ALTER TABLE ONLY "public"."dropship_order_settlements"
+    ADD CONSTRAINT "dropship_order_settlements_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
+
+
+ALTER TABLE ONLY "public"."dropship_settlement_charge_lines"
+    ADD CONSTRAINT "dropship_settlement_charge_lines_settlement_id_fkey" FOREIGN KEY ("settlement_id") REFERENCES "public"."dropship_order_settlements"("id") ON DELETE CASCADE;
+
+
+CREATE OR REPLACE TRIGGER "trg_dropship_order_settlements_set_updated_at" BEFORE UPDATE ON "public"."dropship_order_settlements" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
+
+
+CREATE OR REPLACE TRIGGER "trg_dropship_settlement_charge_lines_set_updated_at" BEFORE UPDATE ON "public"."dropship_settlement_charge_lines" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
+

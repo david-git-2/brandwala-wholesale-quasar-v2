@@ -1,6 +1,6 @@
 # Dropship Management Desk (v1 UI shell)
 
-Staff-facing settlement desk for dropship orders **in transit or delivered** — i.e. after the order has left the warehouse (`shipped`) or reached the recipient (`delivered`). **List page is wired to live RPC**; detail settlement form and wallet writes are not wired yet.
+Staff-facing settlement desk for dropship orders **in transit or delivered** — i.e. after the order has left the warehouse (`shipped`) or reached the recipient (`delivered`). **List and detail pages are wired to live RPCs**; Finance Hub remains live until desk parity is verified in production.
 
 Related: [`SHOP_ORDER.md`](./SHOP_ORDER.md) (dropship desk inventory), [`WALLET.md`](../wallet/WALLET.md) (ledger rules), existing [`DropshipFinanceHubPage`](../../web/src/modules/shop_order/pages/DropshipFinanceHubPage.vue) (3-step courier remittance flow).
 
@@ -32,9 +32,9 @@ The status dropdown on the list is a **subset filter** within that set:
 | Route | Page | Status |
 | :--- | :--- | :--- |
 | `/:tenantSlug?/app/shop/dropship-management` | [`DropshipManagementPage.vue`](../../web/src/modules/shop_order/pages/DropshipManagementPage.vue) | Live list + search/filter |
-| `/:tenantSlug?/app/shop/dropship-management/:id` | [`DropshipManagementDetailPage.vue`](../../web/src/modules/shop_order/pages/DropshipManagementDetailPage.vue) | Dummy settlement form |
+| `/:tenantSlug?/app/shop/dropship-management/:id` | [`DropshipManagementDetailPage.vue`](../../web/src/modules/shop_order/pages/DropshipManagementDetailPage.vue) | Live settlement form + 3-step actions |
 
-Dummy seed data (detail only): [`dropshipManagementDummyOrders.ts`](../../web/src/modules/shop_order/data/dropshipManagementDummyOrders.ts).
+Dummy seed data (unused by detail page): [`dropshipManagementDummyOrders.ts`](../../web/src/modules/shop_order/data/dropshipManagementDummyOrders.ts).
 
 ---
 
@@ -75,7 +75,7 @@ list_dropship_shop_orders_for_staff(
 | `total_amount` | Line-sum fallback total |
 | `payout_settlement_status` | Future: hide settled rows |
 
-#### Frontend wiring
+#### Frontend wiring (list)
 
 | Layer | Name |
 | :--- | :--- |
@@ -90,45 +90,63 @@ Search (`p_search`) matches: `order_no`, `recipient_name`, `recipient_phone`, `c
 
 ## 4. API — detail page
 
-### Existing RPC: `get_dropship_order_detail_v2`
+### RPC: `get_dropship_management_order`
 
-**Status: exists** — use for header, recipient, courier, AWB, COD summary, charge breakdown, and line items. See [`SHOP_ORDER.md` §10.2](./SHOP_ORDER.md#102-rpc-get_dropship_order_detail_v2).
+**Status: implemented** — composes `get_dropship_order_detail_v2` + settlement draft from `dropship_order_settlements` / `dropship_settlement_charge_lines`.
 
-| Desk field | Source key |
-| :--- | :--- |
-| Order name | `order.order_no` |
-| Merchant | `order.customer_group_name` |
-| Recipient / phone | `order.recipient_name`, `order.recipient_phone` |
-| Courier / AWB | `fulfillment.courier`, `order.courier_awb_number` |
-| Total calculated COD | `summary.cod_collect_amount` or `computed.recipient_grand_total` |
-| Charge rows | `summary` + `computed` |
+```sql
+get_dropship_management_order(p_tenant_id bigint, p_order_id bigint) returns jsonb
+```
 
-### Missing RPCs (settlement)
+Returns: `order`, `fulfillment`, `computed`, `settlement`, `step_state`.
+
+Auto-fill on first load per §118–131 (no draft row yet).
+
+### RPC: `save_dropship_settlement_draft`
+
+**Status: implemented** — upserts settlement header + charge lines with `status = draft`.
+
+```sql
+save_dropship_settlement_draft(p_tenant_id bigint, p_order_id bigint, p_payload jsonb) returns jsonb
+```
+
+`p_payload.charge_lines[]`: `{ charge_type, amount, payer }` for `delivery|print|packing|return`.
+
+### Orchestration RPCs (3 footer buttons)
 
 | RPC | Purpose | Status |
 | :--- | :--- | :--- |
-| `get_dropship_management_order` | Detail + draft settlement from `dropship_order_settlements` | **Not implemented** |
-| `save_dropship_settlement_draft` | Upsert settlement header + charge lines (`draft`) | **Not implemented** |
-| `mark_dropship_order_delivered` | Step ① — status + courier COD credit + invoice | **Not implemented** |
-| `record_dropship_courier_bank_transfer` | Step ② — remittance + invoice paid + tenant credit | **Not implemented** |
-| `transfer_dropship_reseller_profit` | Step ③ — tenant debit + merchant credit | **Not implemented** |
+| `mark_dropship_order_delivered` | Step ① — save draft + `advance_dropship_order_status` + `confirm_dropship_delivered_costing` | **Implemented** |
+| `record_dropship_courier_bank_transfer` | Step ② — save draft + `record_dropship_courier_remittance` | **Implemented** |
+| `transfer_dropship_reseller_profit` | Step ③ — save draft + `dispense_middleman_payout_from_tenant` | **Implemented** |
 
-Until settlement RPCs exist, detail can load `get_dropship_order_detail_v2` and keep settlement edits client-only (as dummy UI does today).
+### Existing RPC: `get_dropship_order_detail_v2`
+
+**Status: exists** — used internally by `get_dropship_management_order` (not called directly from detail page).
 
 ### Field mapping — load (v1 auto-fill)
 
-| Form field | Source today | Gap |
+| Form field | Source on first load | Stored on save |
 | :--- | :--- | :--- |
-| Header / courier / AWB | `get_dropship_order_detail_v2` | None |
-| Calculated COD | `computed.recipient_grand_total` or `summary.cod_collect_amount` | None |
-| Collected COD | `shop_orders.cod_collect_amount` (temporary) | Needs `collected_cod_amount` on settlement table |
-| Delivery / print / packing amount | `shop_orders.*_charge_amount` | None for amounts |
-| Charge payer (recipient / merchant) | `deduct_*_from_margin` booleans | 2-way only; **company** payer missing |
-| Charge payer = company | — | Needs `dropship_settlement_charge_lines.payer` |
-| Return cost | `shop_orders.return_charge_amount` | None for amount |
-| Return reason | `return_override_reason` (partial) | Settlement-specific note on settlement table |
-| Discount (company pay) | `shop_orders.discount_amount` (checkout) | Do not reuse — needs `discount_company_pay` on settlement |
-| Reseller purchase cost | Sum `shop_order_items.cost_price_amount × qty` | Editable override → `reseller_purchase_cost` on settlement |
+| Header / courier / AWB | `get_dropship_order_detail_v2` via `get_dropship_management_order` | — |
+| Calculated COD | `computed.recipient_grand_total` | `calculated_cod_amount` (server) |
+| Collected COD | `shop_orders.cod_collect_amount` or calculated COD | `collected_cod_amount` |
+| Delivery / print / packing amount | `shop_orders.*_charge_amount` | `dropship_settlement_charge_lines.amount` |
+| Charge payer | `deduct_*_from_margin` → recipient/merchant; return → company default | `dropship_settlement_charge_lines.payer` |
+| Return cost | `shop_orders.return_charge_amount` | charge line `return` |
+| Return reason | empty | `return_reason_note` |
+| Discount (company pay) | `0` (not checkout discount) | `discount_company_pay` |
+| Reseller purchase cost | Sum item cost × qty | `reseller_purchase_cost` |
+
+#### Frontend wiring (detail)
+
+| Layer | Name |
+| :--- | :--- |
+| Load RPC | `get_dropship_management_order` |
+| Save RPC | `save_dropship_settlement_draft` |
+| Actions | `mark_dropship_order_delivered`, `record_dropship_courier_bank_transfer`, `transfer_dropship_reseller_profit` |
+| Query key | `shopOrderQueryKeys.dropshipManagementDetail(tenantId, orderId)` |
+| Page | `DropshipManagementDetailPage.vue` + `DropshipManagementSettlementPaper.vue` |
 
 ---
 
@@ -164,7 +182,9 @@ flowchart LR
 
 **Do not** add 15 accounting columns to `shop_orders`. Keep operational fields there; settlement facts live in the new tables.
 
-### Proposed tables (not migrated yet)
+### Proposed tables (migrated)
+
+**Migration:** `20270831200000_dropship_order_settlements.sql`
 
 #### `dropship_order_settlements` (1 row per order)
 
@@ -267,9 +287,9 @@ Two columns per row — **label** on the left, **value or input** on the right. 
 | Total cost | Amount (auto) | Purchase + all charge lines |
 | Company profit | Amount (auto) | After discount |
 
-### Settlement actions (3-step wallet flow — dummy UI)
+### Settlement actions (3-step wallet flow)
 
-Replace the single “payment received” button with **three gated actions**. Each step maps to wallet ledger movements ([`WALLET.md`](../wallet/WALLET.md) §2.2). Buttons are **not wired** in v1 shell.
+Replace the single “payment received” button with **three gated actions**. Each step maps to wallet ledger movements ([`WALLET.md`](../wallet/WALLET.md) §2.2). Buttons wired via orchestration RPCs; enabled from server `step_state`.
 
 ```mermaid
 flowchart TD
@@ -400,14 +420,12 @@ Retire Finance Hub for dropship **only after** all three desk buttons call the o
 
 ## 11. Next implementation steps
 
-1. Agree formulas (§8).
-2. Migration: `dropship_order_settlements` + `dropship_settlement_charge_lines` + RLS + payer enum; add `courier_cod_booked_at`, `remittance_at`, `merchant_payout_at` timestamps.
-3. RPCs: `get_dropship_management_order`, `save_dropship_settlement_draft`, `mark_dropship_order_delivered`, `record_dropship_courier_bank_transfer`, `transfer_dropship_reseller_profit`.
-4. Product: move B2B invoice trigger `ready_for_pickup` → `delivered` (inside step ①) if shipment-based accounting approved.
-5. Wire detail form load from `get_dropship_order_detail_v2` + settlement draft.
-6. Wire three footer buttons to orchestration RPCs (§7); store ledger refs on settlement row.
-7. Optional: split courier remittance into two courier ledger lines (net transfer + fee).
-8. Retire Finance Hub dropship tabs after desk parity verified.
+1. Agree formulas (§8) — using proposed §8 math in RPC + UI until locked.
+2. ~~Migration: settlement tables~~ — done (`20270831200000`).
+3. ~~RPCs: get/save + 3 orchestration~~ — done (`20270831210000`, `20270831220000`).
+4. Product: move B2B invoice trigger `ready_for_pickup` → `delivered` (inside step ①) if shipment-based accounting approved — **not done**.
+5. ~~Wire detail form load/save + footer buttons~~ — done.
+6. Verify desk parity vs Finance Hub; then retire Finance Hub dropship tabs.
 
 ---
 

@@ -1,17 +1,25 @@
 <script setup lang="ts">
 import { computed, reactive, watch } from 'vue';
+import type { DropshipManagementOrderView } from '../types/dropshipManagementOrder';
 import {
-  dropshipManagementChargePayerOptions as chargePayerOptions,
-  type DropshipManagementChargeLine,
-  type DropshipManagementDummyOrder,
-  type DropshipManagementSettlementForm,
-} from '../data/dropshipManagementDummyOrders';
+  buildSettlementDraftPayload,
+  settlementToFormState,
+} from '../utils/dropshipManagementOrderMapper';
+
+const chargePayerOptions = [
+  { label: 'Recipient pays', value: 'recipient' as const },
+  { label: 'Merchant pays', value: 'merchant' as const },
+  { label: 'Company pays', value: 'company' as const },
+];
 
 const props = defineProps<{
-  order: DropshipManagementDummyOrder;
+  data: DropshipManagementOrderView;
+  readonly?: boolean;
 }>();
 
-const form = reactive<DropshipManagementSettlementForm>({
+type SettlementFormState = ReturnType<typeof settlementToFormState>;
+
+const form = reactive<SettlementFormState>({
   totalCollectedCod: 0,
   delivery: { amount: 0, payer: 'recipient' },
   print: { amount: 0, payer: 'merchant' },
@@ -23,11 +31,11 @@ const form = reactive<DropshipManagementSettlementForm>({
 });
 
 watch(
-  () => props.order,
-  (nextOrder) => {
-    Object.assign(form, structuredClone(nextOrder.settlement));
+  () => props.data,
+  (nextData) => {
+    Object.assign(form, structuredClone(settlementToFormState(nextData.settlement)));
   },
-  { immediate: true },
+  { immediate: true, deep: true },
 );
 
 const chargeRows: Array<{
@@ -41,9 +49,11 @@ const chargeRows: Array<{
   { key: 'return_cost', label: 'Return cost', field: 'returnCost' },
 ];
 
-const recipientPay = computed(() => props.order.calculatedCod);
+const calculatedCod = computed(() => props.data.settlement.calculated_cod_amount);
 
-const codVariance = computed(() => form.totalCollectedCod - recipientPay.value);
+const recipientPay = computed(() => props.data.computed.items_resell_total);
+
+const codVariance = computed(() => form.totalCollectedCod - calculatedCod.value);
 
 const codVarianceLabel = computed(() => {
   const diff = Math.abs(codVariance.value);
@@ -56,12 +66,7 @@ const codVarianceLabel = computed(() => {
   return null;
 });
 
-const chargeLines = computed((): DropshipManagementChargeLine[] => [
-  form.delivery,
-  form.print,
-  form.packing,
-  form.returnCost,
-]);
+const chargeLines = computed(() => [form.delivery, form.print, form.packing, form.returnCost]);
 
 const totalCost = computed(() =>
   form.resellerPurchaseCost + chargeLines.value.reduce((sum, line) => sum + Number(line.amount || 0), 0),
@@ -80,8 +85,13 @@ const resellerProfit = computed(
 const companyProfit = computed(() => resellerProfit.value - form.discountCompanyPay);
 
 const statusLabel = computed(
-  () => props.order.status.charAt(0).toUpperCase() + props.order.status.slice(1),
+  () => props.data.order.status.charAt(0).toUpperCase() + props.data.order.status.slice(1),
 );
+
+const orderDateLabel = computed(() => {
+  const d = new Date(props.data.order.created_at);
+  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+});
 
 function formatMoney(amount: number): string {
   return `৳${Number(amount || 0).toLocaleString(undefined, {
@@ -89,6 +99,12 @@ function formatMoney(amount: number): string {
     maximumFractionDigits: 2,
   })}`;
 }
+
+function getDraftPayload() {
+  return buildSettlementDraftPayload(form);
+}
+
+defineExpose({ getDraftPayload });
 </script>
 
 <template>
@@ -96,13 +112,13 @@ function formatMoney(amount: number): string {
     <header class="dropship-invoice-paper__header">
       <div class="dropship-invoice-paper__brand">
         <div class="dropship-invoice-paper__doc-type">Dropship settlement</div>
-        <div class="dropship-invoice-paper__order-no">{{ order.name }}</div>
-        <div class="dropship-invoice-paper__merchant">{{ order.merchant }}</div>
+        <div class="dropship-invoice-paper__order-no">{{ data.order.order_no }}</div>
+        <div class="dropship-invoice-paper__merchant">{{ data.order.customer_group_name || '—' }}</div>
       </div>
       <div class="dropship-invoice-paper__meta">
         <div class="dropship-invoice-paper__meta-row">
           <span class="dropship-invoice-paper__meta-label">Date</span>
-          <span>{{ order.orderDate }}</span>
+          <span>{{ orderDateLabel }}</span>
         </div>
         <div class="dropship-invoice-paper__meta-row">
           <span class="dropship-invoice-paper__meta-label">Status</span>
@@ -110,7 +126,7 @@ function formatMoney(amount: number): string {
         </div>
         <div class="dropship-invoice-paper__meta-row">
           <span class="dropship-invoice-paper__meta-label">AWB</span>
-          <span>{{ order.awb }}</span>
+          <span>{{ data.order.courier_awb_number || '—' }}</span>
         </div>
       </div>
     </header>
@@ -120,13 +136,13 @@ function formatMoney(amount: number): string {
     <section class="dropship-invoice-paper__addresses dropship-invoice-paper__addresses--two-col">
       <div class="dropship-invoice-paper__address-block">
         <div class="dropship-invoice-paper__section-label">Deliver to</div>
-        <div class="dropship-invoice-paper__recipient-name">{{ order.recipient }}</div>
-        <div class="dropship-invoice-paper__line">{{ order.recipientPhone }}</div>
+        <div class="dropship-invoice-paper__recipient-name">{{ data.order.recipient_name || '—' }}</div>
+        <div class="dropship-invoice-paper__line">{{ data.order.recipient_phone || '—' }}</div>
       </div>
       <div class="dropship-invoice-paper__address-block">
         <div class="dropship-invoice-paper__section-label">Courier</div>
-        <div class="dropship-invoice-paper__recipient-name">{{ order.courierName }}</div>
-        <div class="dropship-invoice-paper__line">Tracking: {{ order.awb }}</div>
+        <div class="dropship-invoice-paper__recipient-name">{{ data.order.courier_name || '—' }}</div>
+        <div class="dropship-invoice-paper__line">Tracking: {{ data.order.courier_awb_number || '—' }}</div>
       </div>
     </section>
 
@@ -142,7 +158,7 @@ function formatMoney(amount: number): string {
             <span>Total calculated COD</span>
             <span class="dropship-invoice-paper__paid-by dropship-invoice-paper__paid-by--muted">Auto</span>
           </div>
-          <span class="text-weight-medium">{{ formatMoney(order.calculatedCod) }}</span>
+          <span class="text-weight-medium">{{ formatMoney(calculatedCod) }}</span>
         </div>
 
         <div class="dropship-invoice-paper__summary-row dropship-invoice-paper__summary-row--editable">
@@ -164,6 +180,7 @@ function formatMoney(amount: number): string {
             dense
             outlined
             hide-bottom-space
+            :disable="readonly"
             class="dropship-invoice-paper__amount-input"
             input-class="text-right"
           />
@@ -195,6 +212,7 @@ function formatMoney(amount: number): string {
               color="grey-3"
               text-color="grey-8"
               class="dropship-invoice-paper__payer-toggle"
+              :disable="readonly"
               :options="chargePayerOptions"
             />
           </div>
@@ -206,6 +224,7 @@ function formatMoney(amount: number): string {
             dense
             outlined
             hide-bottom-space
+            :disable="readonly"
             class="dropship-invoice-paper__amount-input"
             input-class="text-right"
           />
@@ -222,6 +241,7 @@ function formatMoney(amount: number): string {
             dense
             outlined
             hide-bottom-space
+            :disable="readonly"
             placeholder="Why was return cost applied?"
             class="dropship-invoice-paper__field-input dropship-mgmt-settlement-paper__note-input"
           />
@@ -242,6 +262,7 @@ function formatMoney(amount: number): string {
             dense
             outlined
             hide-bottom-space
+            :disable="readonly"
             class="dropship-invoice-paper__amount-input"
             input-class="text-right"
           />
@@ -259,6 +280,7 @@ function formatMoney(amount: number): string {
             dense
             outlined
             hide-bottom-space
+            :disable="readonly"
             class="dropship-invoice-paper__amount-input"
             input-class="text-right"
           />

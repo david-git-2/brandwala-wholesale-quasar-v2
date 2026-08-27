@@ -76,3 +76,34 @@ CREATE TYPE "public"."demand_bucket_source_type" AS ENUM (
 
 ALTER TYPE "public"."demand_bucket_source_type" OWNER TO "postgres";
 
+
+CREATE TYPE "public"."dropship_settlement_status" AS ENUM (
+    'draft',
+    'confirmed'
+);
+
+
+ALTER TYPE "public"."dropship_settlement_status" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."dropship_settlement_charge_type" AS ENUM (
+    'delivery',
+    'print',
+    'packing',
+    'return',
+    'cod'
+);
+
+
+ALTER TYPE "public"."dropship_settlement_charge_type" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."dropship_settlement_charge_payer" AS ENUM (
+    'recipient',
+    'merchant',
+    'company'
+);
+
+
+ALTER TYPE "public"."dropship_settlement_charge_payer" OWNER TO "postgres";
+

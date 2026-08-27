@@ -128,6 +128,22 @@ CREATE POLICY "shop_orders_customer_owner" ON "public"."shop_orders" USING ("pub
 CREATE POLICY "shop_orders_staff_all" ON "public"."shop_orders" USING ("public"."is_tenant_staff"("tenant_id")) WITH CHECK ("public"."is_tenant_staff"("tenant_id"));
 
 
+ALTER TABLE "public"."dropship_order_settlements" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "dropship_order_settlements_staff_all" ON "public"."dropship_order_settlements" USING ("public"."is_tenant_staff"("tenant_id")) WITH CHECK ("public"."is_tenant_staff"("tenant_id"));
+
+
+ALTER TABLE "public"."dropship_settlement_charge_lines" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "dropship_settlement_charge_lines_staff_all" ON "public"."dropship_settlement_charge_lines" USING ((EXISTS ( SELECT 1
+   FROM "public"."dropship_order_settlements" "s"
+  WHERE (("s"."id" = "dropship_settlement_charge_lines"."settlement_id") AND "public"."is_tenant_staff"("s"."tenant_id"))))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."dropship_order_settlements" "s"
+  WHERE (("s"."id" = "dropship_settlement_charge_lines"."settlement_id") AND "public"."is_tenant_staff"("s"."tenant_id")))));
+
+
 ALTER TABLE "public"."shop_pricing_rules" ENABLE ROW LEVEL SECURITY;
 
 
@@ -288,6 +304,13 @@ REVOKE ALL ON FUNCTION "public"."get_shop_order_for_staff"("p_tenant_id" bigint,
 GRANT ALL ON FUNCTION "public"."get_shop_order_for_staff"("p_tenant_id" bigint, "p_order_id" bigint) TO "authenticated";
 REVOKE ALL ON FUNCTION "public"."get_dropship_order_detail_v2"("p_tenant_id" bigint, "p_order_id" bigint) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_dropship_order_detail_v2"("p_tenant_id" bigint, "p_order_id" bigint) TO "authenticated";
+
+
+GRANT ALL ON FUNCTION "public"."get_dropship_management_order"("p_tenant_id" bigint, "p_order_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."save_dropship_settlement_draft"("p_tenant_id" bigint, "p_order_id" bigint, "p_payload" "jsonb") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."mark_dropship_order_delivered"("p_tenant_id" bigint, "p_order_id" bigint, "p_payload" "jsonb") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."record_dropship_courier_bank_transfer"("p_tenant_id" bigint, "p_order_id" bigint, "p_payload" "jsonb") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."transfer_dropship_reseller_profit"("p_tenant_id" bigint, "p_order_id" bigint, "p_payload" "jsonb") TO "authenticated";
 
 
 GRANT ALL ON FUNCTION "public"."get_dropship_shop_readiness"("p_shop_id" bigint) TO "authenticated";
