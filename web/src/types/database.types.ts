@@ -9876,6 +9876,12 @@ export type Database = {
         Returns: boolean
       }
       _stock_location_is_leaf: { Args: { p_id: number }; Returns: boolean }
+      _undo_wallet_ledger_row_before_delete: {
+        Args: {
+          p_row: Database["public"]["Tables"]["universal_wallet_ledger"]["Row"]
+        }
+        Returns: undefined
+      }
       _validate_stock_location_nesting: {
         Args: {
           p_kind: Database["public"]["Enums"]["stock_location_kind"]
@@ -14328,6 +14334,24 @@ export type Database = {
       purge_popped_demand_bucket_items: {
         Args: { p_retention_days?: number; p_tenant_id: number }
         Returns: Json
+      }
+      purge_shop_order_financial_artifacts: {
+        Args: { p_order_id: number }
+        Returns: undefined
+      }
+      purge_shop_order_invoice: {
+        Args: { p_invoice_id: number }
+        Returns: undefined
+      }
+      purge_shop_order_wallet_ledger: {
+        Args: {
+          p_invoice_id?: number
+          p_invoice_no?: string
+          p_order_id: number
+          p_order_no: string
+          p_tenant_id: number
+        }
+        Returns: undefined
       }
       recalculate_product_based_costing_file_offer_prices: {
         Args: { p_file_id: number }
