@@ -443,485 +443,6 @@ export type Database = {
           },
         ]
       }
-      commerce_cart: {
-        Row: {
-          created_at: string
-          customer_group_id: number
-          global_stock_id: number | null
-          id: number
-          inventory_item_id: number | null
-          product_id: number | null
-          quantity: number
-          tenant_id: number
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          customer_group_id: number
-          global_stock_id?: number | null
-          id?: number
-          inventory_item_id?: number | null
-          product_id?: number | null
-          quantity?: number
-          tenant_id: number
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          customer_group_id?: number
-          global_stock_id?: number | null
-          id?: number
-          inventory_item_id?: number | null
-          product_id?: number | null
-          quantity?: number
-          tenant_id?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "commerce_cart_customer_group_id_fkey"
-            columns: ["customer_group_id"]
-            isOneToOne: false
-            referencedRelation: "customer_groups"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "commerce_cart_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "commerce_cart_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      commerce_inventory_product_summaries: {
-        Row: {
-          available_quantity: number
-          damaged_quantity: number
-          expired_quantity: number
-          id: number
-          open_box_quantity: number
-          product_id: number
-          reserved_quantity: number
-          stolen_quantity: number
-          tenant_id: number
-          updated_at: string
-          usable_quantity: number
-        }
-        Insert: {
-          available_quantity?: number
-          damaged_quantity?: number
-          expired_quantity?: number
-          id?: number
-          open_box_quantity?: number
-          product_id: number
-          reserved_quantity?: number
-          stolen_quantity?: number
-          tenant_id: number
-          updated_at?: string
-          usable_quantity?: number
-        }
-        Update: {
-          available_quantity?: number
-          damaged_quantity?: number
-          expired_quantity?: number
-          id?: number
-          open_box_quantity?: number
-          product_id?: number
-          reserved_quantity?: number
-          stolen_quantity?: number
-          tenant_id?: number
-          updated_at?: string
-          usable_quantity?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "commerce_inventory_product_summaries_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "commerce_inventory_product_summaries_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      commerce_invoice_boxes: {
-        Row: {
-          box_number: string
-          created_at: string
-          id: number
-          invoice_id: number
-          tenant_id: number
-          updated_at: string
-          weight: number
-        }
-        Insert: {
-          box_number: string
-          created_at?: string
-          id?: number
-          invoice_id: number
-          tenant_id: number
-          updated_at?: string
-          weight: number
-        }
-        Update: {
-          box_number?: string
-          created_at?: string
-          id?: number
-          invoice_id?: number
-          tenant_id?: number
-          updated_at?: string
-          weight?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "commerce_invoice_boxes_invoice_id_fkey"
-            columns: ["invoice_id"]
-            isOneToOne: false
-            referencedRelation: "commerce_invoices"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "commerce_invoice_boxes_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      commerce_invoices: {
-        Row: {
-          advance_amount: number
-          amount_due: number
-          amount_paid: number
-          billing_profile_id: number | null
-          brand_address: string | null
-          brand_name: string | null
-          client_name: string | null
-          client_tr: string | null
-          cod: number
-          created_at: string
-          delivered_by: string | null
-          delivery_charge: number
-          discount_amount: number
-          id: number
-          invoice_date: string
-          invoice_type: string
-          is_customer_group_paid: boolean
-          note: string | null
-          order_id: number | null
-          previous_due: number
-          print_charge: number
-          recipient_name: string | null
-          recipient_phone: string | null
-          shipping_address: string | null
-          status: string
-          tenant_id: number
-          thank_you_message: string | null
-          total_amount: number
-          total_boxes: number | null
-          updated_at: string
-          wrapping_charge: number
-        }
-        Insert: {
-          advance_amount?: number
-          amount_due?: number
-          amount_paid?: number
-          billing_profile_id?: number | null
-          brand_address?: string | null
-          brand_name?: string | null
-          client_name?: string | null
-          client_tr?: string | null
-          cod?: number
-          created_at?: string
-          delivered_by?: string | null
-          delivery_charge?: number
-          discount_amount?: number
-          id?: number
-          invoice_date?: string
-          invoice_type?: string
-          is_customer_group_paid?: boolean
-          note?: string | null
-          order_id?: number | null
-          previous_due?: number
-          print_charge?: number
-          recipient_name?: string | null
-          recipient_phone?: string | null
-          shipping_address?: string | null
-          status?: string
-          tenant_id: number
-          thank_you_message?: string | null
-          total_amount?: number
-          total_boxes?: number | null
-          updated_at?: string
-          wrapping_charge?: number
-        }
-        Update: {
-          advance_amount?: number
-          amount_due?: number
-          amount_paid?: number
-          billing_profile_id?: number | null
-          brand_address?: string | null
-          brand_name?: string | null
-          client_name?: string | null
-          client_tr?: string | null
-          cod?: number
-          created_at?: string
-          delivered_by?: string | null
-          delivery_charge?: number
-          discount_amount?: number
-          id?: number
-          invoice_date?: string
-          invoice_type?: string
-          is_customer_group_paid?: boolean
-          note?: string | null
-          order_id?: number | null
-          previous_due?: number
-          print_charge?: number
-          recipient_name?: string | null
-          recipient_phone?: string | null
-          shipping_address?: string | null
-          status?: string
-          tenant_id?: number
-          thank_you_message?: string | null
-          total_amount?: number
-          total_boxes?: number | null
-          updated_at?: string
-          wrapping_charge?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "commerce_invoices_billing_profile_id_fkey"
-            columns: ["billing_profile_id"]
-            isOneToOne: false
-            referencedRelation: "billing_profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "commerce_invoices_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "commerce_orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "commerce_invoices_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      commerce_order_items: {
-        Row: {
-          cost_bdt: number
-          created_at: string
-          global_stock_id: number | null
-          id: number
-          image_url: string | null
-          inventory_item_id: number | null
-          invoice_id: number | null
-          order_id: number | null
-          phone_invite_id: string | null
-          product_id: number
-          quantity: number
-          recipient_price_bdt: number
-          sell_price_bdt: number
-          shipment_item_id: number | null
-          unit: string
-          updated_at: string
-        }
-        Insert: {
-          cost_bdt?: number
-          created_at?: string
-          global_stock_id?: number | null
-          id?: number
-          image_url?: string | null
-          inventory_item_id?: number | null
-          invoice_id?: number | null
-          order_id?: number | null
-          phone_invite_id?: string | null
-          product_id: number
-          quantity?: number
-          recipient_price_bdt?: number
-          sell_price_bdt?: number
-          shipment_item_id?: number | null
-          unit?: string
-          updated_at?: string
-        }
-        Update: {
-          cost_bdt?: number
-          created_at?: string
-          global_stock_id?: number | null
-          id?: number
-          image_url?: string | null
-          inventory_item_id?: number | null
-          invoice_id?: number | null
-          order_id?: number | null
-          phone_invite_id?: string | null
-          product_id?: number
-          quantity?: number
-          recipient_price_bdt?: number
-          sell_price_bdt?: number
-          shipment_item_id?: number | null
-          unit?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "commerce_order_items_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "commerce_orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "commerce_order_items_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "commerce_order_items_shipment_item_id_fkey"
-            columns: ["shipment_item_id"]
-            isOneToOne: false
-            referencedRelation: "shipment_items"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      commerce_order_settings: {
-        Row: {
-          created_at: string
-          default_cod_percent: number
-          default_delivery_charge: number
-          default_invoice_print_charge: number
-          default_wrapping_charge: number
-          tenant_id: number
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          default_cod_percent?: number
-          default_delivery_charge?: number
-          default_invoice_print_charge?: number
-          default_wrapping_charge?: number
-          tenant_id: number
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          default_cod_percent?: number
-          default_delivery_charge?: number
-          default_invoice_print_charge?: number
-          default_wrapping_charge?: number
-          tenant_id?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "commerce_order_settings_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: true
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      commerce_orders: {
-        Row: {
-          cod: number
-          created_at: string
-          customer_group_id: number | null
-          delivery_charge: number
-          id: number
-          invoice_ids: number[]
-          invoice_print_charge: number
-          is_delivery_charge_inclusive: boolean
-          order_placement_date: string
-          recipient_name: string
-          recipient_phone: string | null
-          shipment_date: string | null
-          shipment_payment: number
-          shipping_address: string | null
-          status: Database["public"]["Enums"]["commerce_order_status"]
-          tenant_id: number
-          updated_at: string
-          wrapping_charge: number
-        }
-        Insert: {
-          cod?: number
-          created_at?: string
-          customer_group_id?: number | null
-          delivery_charge?: number
-          id?: number
-          invoice_ids?: number[]
-          invoice_print_charge?: number
-          is_delivery_charge_inclusive?: boolean
-          order_placement_date?: string
-          recipient_name: string
-          recipient_phone?: string | null
-          shipment_date?: string | null
-          shipment_payment?: number
-          shipping_address?: string | null
-          status?: Database["public"]["Enums"]["commerce_order_status"]
-          tenant_id: number
-          updated_at?: string
-          wrapping_charge?: number
-        }
-        Update: {
-          cod?: number
-          created_at?: string
-          customer_group_id?: number | null
-          delivery_charge?: number
-          id?: number
-          invoice_ids?: number[]
-          invoice_print_charge?: number
-          is_delivery_charge_inclusive?: boolean
-          order_placement_date?: string
-          recipient_name?: string
-          recipient_phone?: string | null
-          shipment_date?: string | null
-          shipment_payment?: number
-          shipping_address?: string | null
-          status?: Database["public"]["Enums"]["commerce_order_status"]
-          tenant_id?: number
-          updated_at?: string
-          wrapping_charge?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "commerce_orders_customer_group_id_fkey"
-            columns: ["customer_group_id"]
-            isOneToOne: false
-            referencedRelation: "customer_groups"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "commerce_orders_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       costing_file_items: {
         Row: {
           assigned_shipment_id: number | null
@@ -2982,13 +2503,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "payment_allocations_commerce_invoice_id_fkey"
-            columns: ["commerce_invoice_id"]
-            isOneToOne: false
-            referencedRelation: "commerce_invoices"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "payment_allocations_global_invoice_id_fkey"
             columns: ["global_invoice_id"]
             isOneToOne: false
@@ -3968,185 +3482,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "modules"
             referencedColumns: ["key"]
-          },
-        ]
-      }
-      order_items: {
-        Row: {
-          barcode: string | null
-          cost_bdt: number | null
-          cost_gbp: number | null
-          created_at: string
-          customer_offer_bdt: number | null
-          delivered_quantity: number
-          final_offer_bdt: number | null
-          first_offer_bdt: number | null
-          id: number
-          image_url: string | null
-          minimum_quantity: number
-          name: string
-          order_id: number
-          ordered_quantity: number
-          package_weight: number | null
-          price_gbp: number | null
-          product_code: string | null
-          product_id: number | null
-          product_weight: number | null
-          returned_quantity: number
-          shipment_id: number | null
-          updated_at: string
-        }
-        Insert: {
-          barcode?: string | null
-          cost_bdt?: number | null
-          cost_gbp?: number | null
-          created_at?: string
-          customer_offer_bdt?: number | null
-          delivered_quantity?: number
-          final_offer_bdt?: number | null
-          first_offer_bdt?: number | null
-          id?: number
-          image_url?: string | null
-          minimum_quantity?: number
-          name: string
-          order_id: number
-          ordered_quantity?: number
-          package_weight?: number | null
-          price_gbp?: number | null
-          product_code?: string | null
-          product_id?: number | null
-          product_weight?: number | null
-          returned_quantity?: number
-          shipment_id?: number | null
-          updated_at?: string
-        }
-        Update: {
-          barcode?: string | null
-          cost_bdt?: number | null
-          cost_gbp?: number | null
-          created_at?: string
-          customer_offer_bdt?: number | null
-          delivered_quantity?: number
-          final_offer_bdt?: number | null
-          first_offer_bdt?: number | null
-          id?: number
-          image_url?: string | null
-          minimum_quantity?: number
-          name?: string
-          order_id?: number
-          ordered_quantity?: number
-          package_weight?: number | null
-          price_gbp?: number | null
-          product_code?: string | null
-          product_id?: number | null
-          product_weight?: number | null
-          returned_quantity?: number
-          shipment_id?: number | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "order_items_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "order_items_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "order_items_shipment_id_fkey"
-            columns: ["shipment_id"]
-            isOneToOne: false
-            referencedRelation: "shipments"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      orders: {
-        Row: {
-          accent_color: string | null
-          can_see_price: boolean
-          cargo_rate: number | null
-          conversion_rate: number | null
-          created_at: string
-          customer_group_id: number
-          id: number
-          invoice_id: number | null
-          name: string
-          negotiate: boolean
-          parent_tenant_id: number | null
-          profit_rate: number | null
-          status: Database["public"]["Enums"]["order_status"]
-          store_id: number | null
-          tenant_id: number
-          tenant_order_id: number
-          updated_at: string
-        }
-        Insert: {
-          accent_color?: string | null
-          can_see_price?: boolean
-          cargo_rate?: number | null
-          conversion_rate?: number | null
-          created_at?: string
-          customer_group_id: number
-          id?: number
-          invoice_id?: number | null
-          name: string
-          negotiate?: boolean
-          parent_tenant_id?: number | null
-          profit_rate?: number | null
-          status?: Database["public"]["Enums"]["order_status"]
-          store_id?: number | null
-          tenant_id: number
-          tenant_order_id: number
-          updated_at?: string
-        }
-        Update: {
-          accent_color?: string | null
-          can_see_price?: boolean
-          cargo_rate?: number | null
-          conversion_rate?: number | null
-          created_at?: string
-          customer_group_id?: number
-          id?: number
-          invoice_id?: number | null
-          name?: string
-          negotiate?: boolean
-          parent_tenant_id?: number | null
-          profit_rate?: number | null
-          status?: Database["public"]["Enums"]["order_status"]
-          store_id?: number | null
-          tenant_id?: number
-          tenant_order_id?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "orders_customer_group_id_fkey"
-            columns: ["customer_group_id"]
-            isOneToOne: false
-            referencedRelation: "customer_groups"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "orders_parent_tenant_id_fkey"
-            columns: ["parent_tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "orders_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
           },
         ]
       }
@@ -5456,13 +4791,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "shipment_items_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "shipment_items_product_id_fkey"
             columns: ["product_id"]
@@ -10112,15 +9440,6 @@ export type Database = {
         }
         Returns: Json
       }
-      add_item_to_commerce_cart: {
-        Args: {
-          p_customer_group_id: number
-          p_global_stock_id: number
-          p_quantity?: number
-          p_tenant_id: number
-        }
-        Returns: Json
-      }
       add_payment_allocation: {
         Args: {
           p_amount: number
@@ -10715,72 +10034,6 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "global_shipment_items"
-          isOneToOne: false
-          isSetofReturn: true
-        }
-      }
-      bulk_update_order_item_offers: {
-        Args: { p_items: Json }
-        Returns: {
-          barcode: string | null
-          cost_bdt: number | null
-          cost_gbp: number | null
-          created_at: string
-          customer_offer_bdt: number | null
-          delivered_quantity: number
-          final_offer_bdt: number | null
-          first_offer_bdt: number | null
-          id: number
-          image_url: string | null
-          minimum_quantity: number
-          name: string
-          order_id: number
-          ordered_quantity: number
-          package_weight: number | null
-          price_gbp: number | null
-          product_code: string | null
-          product_id: number | null
-          product_weight: number | null
-          returned_quantity: number
-          shipment_id: number | null
-          updated_at: string
-        }[]
-        SetofOptions: {
-          from: "*"
-          to: "order_items"
-          isOneToOne: false
-          isSetofReturn: true
-        }
-      }
-      bulk_update_order_items: {
-        Args: { p_items: Json }
-        Returns: {
-          barcode: string | null
-          cost_bdt: number | null
-          cost_gbp: number | null
-          created_at: string
-          customer_offer_bdt: number | null
-          delivered_quantity: number
-          final_offer_bdt: number | null
-          first_offer_bdt: number | null
-          id: number
-          image_url: string | null
-          minimum_quantity: number
-          name: string
-          order_id: number
-          ordered_quantity: number
-          package_weight: number | null
-          price_gbp: number | null
-          product_code: string | null
-          product_id: number | null
-          product_weight: number | null
-          returned_quantity: number
-          shipment_id: number | null
-          updated_at: string
-        }[]
-        SetofOptions: {
-          from: "*"
-          to: "order_items"
           isOneToOne: false
           isSetofReturn: true
         }
@@ -12940,16 +12193,6 @@ export type Database = {
           parent_id: number
         }[]
       }
-      list_commerce_global_stock_for_store: {
-        Args: {
-          p_limit?: number
-          p_offset?: number
-          p_search?: string
-          p_store_id: number
-          p_tenant_id: number
-        }
-        Returns: Json
-      }
       list_configurable_module_actions: {
         Args: { p_scope: string; p_tenant_id: number }
         Returns: {
@@ -14215,23 +13458,6 @@ export type Database = {
         Args: { p_cost_entry_ids?: number[]; p_shipment_id: number }
         Returns: Json
       }
-      place_commerce_order: {
-        Args: {
-          p_cod: number
-          p_customer_group_id: number
-          p_delivery_charge: number
-          p_invoice_print_charge: number
-          p_is_delivery_charge_inclusive: boolean
-          p_items: Json
-          p_recipient_name: string
-          p_recipient_phone: string
-          p_shipment_payment: number
-          p_shipping_address: string
-          p_tenant_id: number
-          p_wrapping_charge: number
-        }
-        Returns: number
-      }
       place_koba_order: {
         Args: {
           p_cod_charge?: number
@@ -14641,14 +13867,6 @@ export type Database = {
           p_tenant_id: number
         }
         Returns: Json
-      }
-      refresh_commerce_inventory_product_summaries: {
-        Args: { p_tenant_id?: number }
-        Returns: undefined
-      }
-      refresh_commerce_inventory_product_summary_single: {
-        Args: { p_product_id: number; p_tenant_id: number }
-        Returns: undefined
       }
       refresh_investor_balance: {
         Args: { p_investor_id: number; p_tenant_id: number }
@@ -16535,12 +15753,6 @@ export type Database = {
         | "manager"
         | "cashier"
       collection_source_type: "billing_profile" | "recipient"
-      commerce_order_status:
-        | "placed"
-        | "reviewing"
-        | "shipping"
-        | "delivered"
-        | "cancelled"
       costing_file_item_status: "pending" | "accepted" | "rejected"
       costing_file_status:
         | "draft"
@@ -16603,16 +15815,6 @@ export type Database = {
         | "shipped"
         | "delivered"
         | "cancelled"
-      order_status:
-        | "customer_submit"
-        | "direct_priced"
-        | "priced"
-        | "negotiate"
-        | "final_offered"
-        | "ordered"
-        | "processing"
-        | "invoicing"
-        | "invoiced"
       procurement_placement_source_type: "shop_order_item" | "pbc_costing_item"
       retail_billing_mode: "account" | "direct"
       shipment_investment_status: "active" | "closed" | "cancelled"
@@ -16813,13 +16015,6 @@ export const Constants = {
         "cashier",
       ],
       collection_source_type: ["billing_profile", "recipient"],
-      commerce_order_status: [
-        "placed",
-        "reviewing",
-        "shipping",
-        "delivered",
-        "cancelled",
-      ],
       costing_file_item_status: ["pending", "accepted", "rejected"],
       costing_file_status: [
         "draft",
@@ -16888,17 +16083,6 @@ export const Constants = {
         "shipped",
         "delivered",
         "cancelled",
-      ],
-      order_status: [
-        "customer_submit",
-        "direct_priced",
-        "priced",
-        "negotiate",
-        "final_offered",
-        "ordered",
-        "processing",
-        "invoicing",
-        "invoiced",
       ],
       procurement_placement_source_type: [
         "shop_order_item",

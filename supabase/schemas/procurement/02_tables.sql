@@ -1404,8 +1404,6 @@ ALTER TABLE ONLY "public"."batch_code_pc"
 
 
 
-ALTER TABLE ONLY "public"."commerce_order_items"
-    ADD CONSTRAINT "commerce_order_items_shipment_item_id_fkey" FOREIGN KEY ("shipment_item_id") REFERENCES "public"."shipment_items"("id") ON DELETE SET NULL;
 
 
 
@@ -1604,8 +1602,6 @@ ALTER TABLE ONLY "public"."global_stocks"
 
 
 
-ALTER TABLE ONLY "public"."order_items"
-    ADD CONSTRAINT "order_items_shipment_id_fkey" FOREIGN KEY ("shipment_id") REFERENCES "public"."shipments"("id") ON DELETE SET NULL;
 
 
 
@@ -1714,8 +1710,6 @@ ALTER TABLE ONLY "public"."shipment_investments"
 
 
 
-ALTER TABLE ONLY "public"."shipment_items"
-    ADD CONSTRAINT "shipment_items_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE SET NULL;
 
 
 
@@ -1824,8 +1818,6 @@ ALTER TABLE ONLY "public"."stock_movements"
 
 
 
-ALTER TABLE ONLY "public"."stores"
-    ADD CONSTRAINT "stores_vendor_id_fkey" FOREIGN KEY ("vendor_id") REFERENCES "public"."vendors"("id") ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 

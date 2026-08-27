@@ -496,18 +496,6 @@ ALTER TABLE "public"."shops" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDENTITY 
 );
 
 
-CREATE SEQUENCE IF NOT EXISTS "public"."store_access_id_seq"
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE "public"."store_access_id_seq" OWNER TO "postgres";
-
-
-ALTER SEQUENCE "public"."store_access_id_seq" OWNED BY "public"."store_access"."id";
 
 
 ALTER TABLE ONLY "public"."customer_group_shop_profiles"

@@ -473,8 +473,6 @@ declare
   v_payment public.global_payments;
   v_alloc jsonb;
   v_global_invoice_id bigint;
-  v_commerce_invoice_id bigint;
-  v_legacy_invoice_id bigint;
   v_alloc_amount numeric(12,2);
   v_total_alloc numeric(12,2) := 0;
   v_invoice record;
@@ -515,8 +513,6 @@ begin
   for v_alloc in select * from jsonb_array_elements(coalesce(p_allocations, '[]'::jsonb))
   loop
     v_global_invoice_id := nullif(v_alloc->>'global_invoice_id', '')::bigint;
-    v_commerce_invoice_id := nullif(v_alloc->>'commerce_invoice_id', '')::bigint;
-    v_legacy_invoice_id := nullif(v_alloc->>'invoice_id', '')::bigint;
     v_alloc_amount := coalesce((v_alloc->>'amount')::numeric, 0.00);
 
     if v_alloc_amount <= 0.00 then continue; end if;
@@ -540,44 +536,6 @@ begin
       where id = v_global_invoice_id;
 
       perform public.recompute_global_invoice_payment_status(v_global_invoice_id);
-
-    elsif v_commerce_invoice_id is not null then
-      select id, tenant_id, billing_profile_id, total_amount, amount_paid as paid_amount
-      into v_invoice
-      from public.commerce_invoices where id = v_commerce_invoice_id for update;
-
-      if not found then raise exception 'Commerce invoice % not found.', v_commerce_invoice_id; end if;
-      if v_invoice.tenant_id <> p_tenant_id then raise exception 'Invoice tenant mismatch.'; end if;
-      if coalesce(v_invoice.billing_profile_id, 0) <> p_billing_profile_id then
-        raise exception 'Invoice does not belong to billing profile.';
-      end if;
-
-      insert into public.invoice_payments (tenant_id, payment_id, commerce_invoice_id, amount)
-      values (p_tenant_id, v_payment.id, v_commerce_invoice_id, v_alloc_amount);
-
-      update public.commerce_invoices
-      set amount_paid = coalesce(amount_paid, 0.00) + v_alloc_amount, updated_at = now()
-      where id = v_commerce_invoice_id;
-
-    elsif v_legacy_invoice_id is not null then
-      select id, tenant_id, billing_profile_id, total_amount, paid_amount
-      into v_invoice
-      from public.invoices where id = v_legacy_invoice_id for update;
-
-      if not found then raise exception 'Legacy invoice % not found.', v_legacy_invoice_id; end if;
-      if v_invoice.tenant_id <> p_tenant_id then raise exception 'Invoice tenant mismatch.'; end if;
-      if coalesce(v_invoice.billing_profile_id, 0) <> p_billing_profile_id then
-        raise exception 'Invoice does not belong to billing profile.';
-      end if;
-
-      insert into public.invoice_payments (tenant_id, payment_id, invoice_id, amount)
-      values (p_tenant_id, v_payment.id, v_legacy_invoice_id, v_alloc_amount);
-
-      update public.invoices
-      set paid_amount = coalesce(paid_amount, 0.00) + v_alloc_amount, updated_at = now()
-      where id = v_legacy_invoice_id;
-
-      perform public.recompute_invoice_payment_status(v_legacy_invoice_id);
     end if;
 
     v_total_alloc := v_total_alloc + v_alloc_amount;

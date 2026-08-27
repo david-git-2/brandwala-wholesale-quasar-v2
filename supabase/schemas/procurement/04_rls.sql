@@ -152,15 +152,7 @@ CREATE OR REPLACE TRIGGER "trg_stock_locations_updated_at" BEFORE UPDATE ON "pub
 
 
 
-CREATE OR REPLACE TRIGGER "trg_stores_sync_vendor_reference_fields" BEFORE INSERT OR UPDATE ON "public"."stores" FOR EACH ROW EXECUTE FUNCTION "public"."sync_vendor_reference_fields"();
-
-
-
 CREATE OR REPLACE TRIGGER "trg_sync_global_shipment_header_aliases" BEFORE INSERT OR UPDATE ON "public"."global_shipments" FOR EACH ROW EXECUTE FUNCTION "public"."sync_global_shipment_header_aliases"();
-
-
-
-CREATE OR REPLACE TRIGGER "trg_sync_investor_balance_shipments" AFTER INSERT OR DELETE OR UPDATE ON "public"."shipment_investments" FOR EACH ROW EXECUTE FUNCTION "public"."sync_investor_balance_from_shipment_investments"();
 
 
 

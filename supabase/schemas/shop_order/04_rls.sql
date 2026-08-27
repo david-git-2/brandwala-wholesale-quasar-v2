@@ -210,7 +210,6 @@ CREATE POLICY "shops_superadmin_all" ON "public"."shops" USING ((EXISTS ( SELECT
 CREATE POLICY "shops_update_tenant_admin_staff" ON "public"."shops" FOR UPDATE USING ("public"."membership_has_module_action"("tenant_id", 'shop_config'::"text", 'edit'::"text"));
 
 
-ALTER TABLE "public"."store_access" ENABLE ROW LEVEL SECURITY;
 
 
 GRANT ALL ON FUNCTION "public"."add_to_shop_cart"("p_shop_id" bigint, "p_product_id" bigint, "p_global_stock_allocation_id" bigint, "p_quantity" integer, "p_customer_sell_price_amount" numeric, "p_customer_sell_price_currency_id" bigint, "p_global_stock_id" bigint) TO "authenticated";

@@ -8059,26 +8059,6 @@ $$;
 ALTER FUNCTION "public"."sync_global_shipment_header_aliases"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."sync_investor_balance_from_shipment_investments"() RETURNS "trigger"
-    LANGUAGE "plpgsql"
-    AS $$
-begin
-  if tg_op = 'DELETE' then
-    perform public.refresh_investor_balance(old.tenant_id, old.investor_id);
-    return old;
-  end if;
-
-  if tg_op = 'UPDATE' and (old.tenant_id <> new.tenant_id or old.investor_id <> new.investor_id) then
-    perform public.refresh_investor_balance(old.tenant_id, old.investor_id);
-  end if;
-
-  perform public.refresh_investor_balance(new.tenant_id, new.investor_id);
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."sync_investor_balance_from_shipment_investments"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."sync_product_tenant_from_vendor"() RETURNS "trigger"
@@ -9671,36 +9651,6 @@ BEGIN
   END IF;
 
   RETURN QUERY
-  (
-    SELECT
-      'order_item'::text AS source_type,
-      oi.id AS source_id,
-      o.tenant_id AS child_tenant_id,
-      t.name AS child_tenant_name,
-      oi.name,
-      oi.product_id,
-      greatest(coalesce(oi.confirmed_quantity, oi.quantity, 0), 0)::integer AS quantity,
-      oi.cost_bdt,
-      oi.price_gbp,
-      oi.image_url,
-      NULL::text AS barcode,
-      NULL::text AS product_code,
-      ('Order #' || o.id::text || ' — ' || o.name) AS reference_label
-    FROM public.order_items oi
-    INNER JOIN public.orders o ON o.id = oi.order_id
-    INNER JOIN public.tenants t ON t.id = o.tenant_id
-    WHERE o.parent_tenant_id = p_parent_tenant_id
-      AND t.parent_id = p_parent_tenant_id
-      AND (p_child_tenant_id IS NULL OR o.tenant_id = p_child_tenant_id)
-      AND oi.shipment_id IS NULL
-      AND coalesce(oi.confirmed_quantity, oi.quantity, 0) > 0
-      AND (
-        p_search IS NULL OR trim(p_search) = ''
-        OR oi.name ILIKE '%' || trim(p_search) || '%'
-        OR o.name ILIKE '%' || trim(p_search) || '%'
-      )
-  )
-  UNION ALL
   (
     SELECT
       'costing_item'::text AS source_type,

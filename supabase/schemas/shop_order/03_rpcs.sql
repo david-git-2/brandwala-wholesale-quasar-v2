@@ -3972,14 +3972,8 @@ begin
     having count(*) > 1
   ) t;
 
-  -- 7. Duplicate gift redemptions for same (order, rule)
-  select count(*) into v_missing_or_duplicate_gifts
-  from (
-    select order_id, rule_id
-    from public.gift_rule_redemptions
-    group by order_id, rule_id
-    having count(*) > 1
-  ) t;
+  -- 7. Legacy gift rules removed - drift is 0
+  v_missing_or_duplicate_gifts := 0;
 
   return jsonb_build_object(
     'reconciliation_time', now(),
