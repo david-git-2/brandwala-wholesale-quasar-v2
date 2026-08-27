@@ -279,15 +279,51 @@ Two columns per row — **label** on the left, **value or input** on the right. 
 | Delivery | Amount input + payer toggle | Payer: recipient / merchant / company |
 | Print | Amount input + payer toggle | Same pattern |
 | Packing | Amount input + payer toggle | Same pattern |
-| Return cost | Amount input + payer toggle | Same pattern |
-| Return reason note | Textarea | Free text when return cost &gt; 0 |
 | Discount (company pay) | Amount input | **Deduct from company profit** |
-| Reseller purchase cost | Amount input | Wholesale / floor purchase total |
+| Reseller purchase cost | Amount (auto) | Sum of order line sell prices |
+| Company procurement cost | Amount (auto) | Landed cost total |
 | Reseller profit | Amount (auto) | See §8 |
-| Total cost | Amount (auto) | Purchase + all charge lines |
-| Company profit | Amount (auto) | After discount |
+| Total cost | Amount (auto) | Procurement + all charge lines |
+| Company profit | Amount (auto) | See §8 |
 
-### Settlement actions (3-step wallet flow)
+**Return block (bottom of form)** — red dotted border; used only when staff choose **Mark as returned** (§7.1). Not part of the successful-delivery profit rows above.
+
+| Row | Right side | Notes |
+| :--- | :--- | :--- |
+| Return cost | Amount input + payer toggle | Courier return fee; payer rules TBD (§7.1) |
+| Return reason note | Textarea | Required context when return cost &gt; 0 |
+
+### Settlement actions — two outcomes from `shipped`
+
+From **`shipped`**, staff pick **one** outcome. Successful delivery runs the 3-step wallet flow (§7.2). Return runs a separate path (§7.1).
+
+```mermaid
+flowchart TD
+    S["shipped"] --> D["Mark as delivered"]
+    S --> R["Mark as returned"]
+    D --> C["delivered"]
+    C --> B["② Bank transfer from courier"]
+    B --> E["payment_received"]
+    E --> F["③ Transfer to reseller"]
+    R --> X["returned"]
+```
+
+#### §7.1 Return path (recipient refused parcel)
+
+| What | Detail |
+| :--- | :--- |
+| UI | **Mark as returned** button (outline, below **Mark as delivered**); return block at **bottom** of settlement form |
+| Enabled when | `status = shipped` (same gate as mark delivered today) |
+| Staff fills | Return cost, payer toggle, return reason note (grade per line **before restock** — UI TBD on this desk) |
+| Target backend | Wrap `save_dropship_settlement_draft` + `finalize_dropship_return` (today: processing desk + `mark_dropship_order_returned`) |
+| Order | `shipped` → **`returned`** (`return_sub_state = return_finalized`) |
+| Stock | Restock via `return_inbound` movement; condition / grade captured per line |
+| Wallet | Reverse deliver/remittance legs when present; return fee debit when merchant pays (**company payer — TBD**) |
+| Settlement desk after return | Order leaves list (§1); no steps ② / ③ |
+
+**Status:** UI button + return block layout **done**; orchestration RPC **not wired** on this page yet.
+
+#### §7.2 Successful delivery — 3-step wallet flow
 
 Replace the single “payment received” button with **three gated actions**. Each step maps to wallet ledger movements ([`WALLET.md`](../wallet/WALLET.md) §2.2). Buttons wired via orchestration RPCs; enabled from server `step_state`.
 
@@ -312,6 +348,7 @@ flowchart TD
 
 | Step | Orchestration RPC (new) | Composes |
 | :--- | :--- | :--- |
+| Return | `mark_dropship_order_returned_from_settlement` (**planned**) | `save_dropship_settlement_draft` + `finalize_dropship_return` |
 | ① | `mark_dropship_order_delivered` | `save_dropship_settlement_draft` + `advance_dropship_order_status` + `confirm_dropship_delivered_costing` + invoice create/post |
 | ② | `record_dropship_courier_bank_transfer` | `record_dropship_courier_remittance` (`process_dropship_courier_remittance_uwl`) |
 | ③ | `transfer_dropship_reseller_profit` | `dispense_middleman_payout_from_tenant` (order-scoped amount from settlement) |
@@ -320,26 +357,25 @@ Finance Hub remains the **live** path until this desk wires all three steps (§1
 
 ---
 
-## 8. Proposed calculated formulas (discussion — not locked)
-
-Dummy UI uses placeholder math so the page feels alive. **Replace before wiring backend.**
+## 8. Calculated formulas (locked on desk)
 
 ```
-total_cost = reseller_purchase_cost
-           + delivery + print + packing + return_cost
+total_cost = company_procurement_cost + sum(all charge lines)
 
-reseller_profit = total_collected_cod
+reseller_profit = items_resell_total
+                - order_discount_amount
                 - reseller_purchase_cost
                 - sum(charges where payer = merchant)
 
-company_profit = reseller_profit - discount_company_pay
+company_profit = reseller_purchase_cost
+               - company_procurement_cost
+               - discount_company_pay
 ```
 
 **Open questions**
 
-1. Should **company-paid** charges reduce `company_profit` directly (in addition to discount)?
-2. Should **recipient-paid** charges affect `recipient_pays` vs `total_collected_cod` reconciliation?
-3. How do **partial delivery / partial return** qty changes flow from processing desk into this page?
+1. Return fee when **company** pays — wallet debit path (§7.1).
+2. Should **partial delivery / partial return** qty + grade flow from processing desk into this page?
 
 ---
 
@@ -420,12 +456,13 @@ Retire Finance Hub for dropship **only after** all three desk buttons call the o
 
 ## 11. Next implementation steps
 
-1. Agree formulas (§8) — using proposed §8 math in RPC + UI until locked.
+1. ~~Agree formulas (§8)~~ — locked in RPC + UI (`20270831320000`).
 2. ~~Migration: settlement tables~~ — done (`20270831200000`).
 3. ~~RPCs: get/save + 3 orchestration~~ — done (`20270831210000`, `20270831220000`).
 4. Product: move B2B invoice trigger `ready_for_pickup` → `delivered` (inside step ①) if shipment-based accounting approved — **not done**.
 5. ~~Wire detail form load/save + footer buttons~~ — done.
-6. Verify desk parity vs Finance Hub; then retire Finance Hub dropship tabs.
+6. **Return path:** UI button + bottom return block — done; wire `mark_dropship_order_returned_from_settlement` — **pending**.
+7. Verify desk parity vs Finance Hub; then retire Finance Hub dropship tabs.
 
 ---
 

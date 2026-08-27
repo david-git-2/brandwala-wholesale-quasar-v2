@@ -1530,16 +1530,19 @@ begin
   set
     cod_collect_amount = v_cod,
     delivery_charge_amount = v_delivery_charge,
-    courier_notes = coalesce(p_courier_notes, courier_notes),
+    driver_notes = coalesce(nullif(trim(p_courier_notes), ''), driver_notes),
     updated_at = now()
   where id = p_order_id;
 
-  -- Get numeric courier_id (fallback to 0 if unassigned)
-  -- If courier_service_id exists, try to get entity id or use 0
-  v_courier_id := coalesce(
-    (select coalesce(c.id, 0) from public.courier_services cs left join public.couriers c on c.code = cs.code or c.name = cs.name limit 1),
-    0
-  );
+  -- Resolve courier wallet entity from courier_services (no public.couriers table)
+  v_courier_id := 0;
+  if v_order.courier_service_id is not null then
+    select coalesce(cs.wallet_entity_id, 0)
+    into v_courier_id
+    from public.courier_services cs
+    where cs.id = v_order.courier_service_id;
+  end if;
+  v_courier_id := coalesce(v_courier_id, 0);
 
   -- Idempotency check on universal_wallet_ledger
   select * into v_existing_ledger
@@ -1558,14 +1561,15 @@ begin
       p_entity_id => v_courier_id,
       p_type => 'credit',
       p_amount => v_cod,
-      p_currency_code => coalesce(v_order.currency_code, 'BDT'),
+      p_currency_code => 'BDT',
       p_exchange_rate => 1.000000,
       p_source_type => 'shop_order',
       p_source_id => p_order_id::text,
       p_metadata => jsonb_build_object(
         'purpose', 'delivered_costing',
         'order_no', v_order.order_no,
-        'delivery_charge', v_delivery_charge
+        'delivery_charge', v_delivery_charge,
+        'courier_service_id', v_order.courier_service_id
       )
     );
   return jsonb_build_object(

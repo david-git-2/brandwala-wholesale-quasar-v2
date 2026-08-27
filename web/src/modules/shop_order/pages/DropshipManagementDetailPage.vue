@@ -34,17 +34,29 @@
         </div>
 
         <div class="dropship-order-detail-v2__footer-actions">
-          <q-btn
-            color="primary"
-            unelevated
-            no-caps
-            icon="ph ph-package"
-            label="Mark as delivered"
-            class="text-weight-bold dropship-order-detail-v2__action-btn"
-            :disable="!orderData.step_state.can_mark_delivered || isReadonly"
-            :loading="actionKind === 'delivered'"
-            @click="onMarkDelivered"
-          />
+          <div class="dropship-order-detail-v2__outcome-actions">
+            <q-btn
+              color="primary"
+              unelevated
+              no-caps
+              icon="ph ph-package"
+              label="Mark as delivered"
+              class="text-weight-bold dropship-order-detail-v2__action-btn"
+              :disable="!orderData.step_state.can_mark_delivered || isReadonly"
+              :loading="actionKind === 'delivered'"
+              @click="onMarkDelivered"
+            />
+            <q-btn
+              outline
+              color="negative"
+              no-caps
+              icon="ph ph-arrow-u-up-left"
+              label="Mark as returned"
+              class="text-weight-bold dropship-order-detail-v2__action-btn"
+              :disable="!canMarkReturned || isReadonly"
+              @click="onMarkReturned"
+            />
+          </div>
           <q-btn
             color="primary"
             unelevated
@@ -129,7 +141,7 @@ import { computed, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
+import { requestConfirmation, showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 import DropshipManagementSettlementPaper from '../components/DropshipManagementSettlementPaper.vue';
 import { shopOrderService } from '../services/shopOrderService';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
@@ -180,6 +192,10 @@ const isReadonly = computed(
   () => orderData.value?.settlement.status === 'confirmed' || !!orderData.value?.settlement.merchant_payout_at,
 );
 
+const canMarkReturned = computed(
+  () => orderData.value?.order.status === 'shipped' && !isReadonly.value,
+);
+
 watch(orderData, (data) => {
   if (!data) return;
   remittanceForm.net_amount = data.settlement.collected_cod_amount;
@@ -223,6 +239,13 @@ async function onMarkDelivered() {
   const payload = getPayload();
   if (!payload) return;
 
+  const confirmed = await requestConfirmation(
+    'Mark this parcel as delivered? This saves the settlement, books courier COD, and posts invoice and wallet entries.',
+    'Mark as delivered',
+    'Mark delivered',
+  );
+  if (!confirmed) return;
+
   actionKind.value = 'delivered';
   try {
     const res = await shopOrderService.markDropshipOrderDelivered(
@@ -239,6 +262,17 @@ async function onMarkDelivered() {
   } finally {
     actionKind.value = null;
   }
+}
+
+async function onMarkReturned() {
+  if (!authStore.tenantId) return;
+
+  const confirmed = await requestConfirmation(
+    'Mark this parcel as returned? Complete the return section first. This will restock stock and adjust wallets when the return action is wired.',
+    'Mark as returned',
+    'Mark returned',
+  );
+  if (!confirmed) return;
 }
 
 async function onRecordBankTransfer() {
@@ -322,6 +356,18 @@ async function onTransferReseller() {
   align-items: stretch;
   gap: 0.5rem;
   padding-top: 0.25rem;
+}
+
+.dropship-order-detail-v2__outcome-actions {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+.dropship-order-detail-v2__outcome-actions .dropship-order-detail-v2__action-btn {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .dropship-order-detail-v2__action-btn {

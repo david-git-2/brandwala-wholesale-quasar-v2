@@ -267,55 +267,6 @@ defineExpose({ getDraftPayload });
           />
         </div>
 
-        <div class="dropship-mgmt-settlement-paper__return-section">
-          <div class="dropship-invoice-paper__summary-row dropship-invoice-paper__summary-row--editable">
-            <div class="dropship-invoice-paper__summary-label">
-              <span>{{ returnChargeRow.label }}</span>
-              <q-btn-toggle
-                v-model="form[returnChargeRow.field].payer"
-                dense
-                no-caps
-                unelevated
-                toggle-color="primary"
-                color="grey-3"
-                text-color="grey-8"
-                class="dropship-invoice-paper__payer-toggle"
-                :disable="readonly"
-                :options="chargePayerOptions"
-              />
-            </div>
-            <q-input
-              v-model.number="form[returnChargeRow.field].amount"
-              type="number"
-              min="0"
-              step="0.01"
-              dense
-              outlined
-              hide-bottom-space
-              :disable="readonly"
-              class="dropship-invoice-paper__amount-input"
-              input-class="text-right"
-            />
-          </div>
-
-          <div class="dropship-invoice-paper__summary-row dropship-invoice-paper__summary-row--editable dropship-mgmt-settlement-paper__note-row">
-            <div class="dropship-invoice-paper__summary-label">
-              <span>Return reason note</span>
-            </div>
-            <q-input
-              v-model="form.returnReasonNote"
-              type="textarea"
-              autogrow
-              dense
-              outlined
-              hide-bottom-space
-              :disable="readonly"
-              placeholder="Why was return cost applied?"
-              class="dropship-invoice-paper__field-input dropship-mgmt-settlement-paper__note-input"
-            />
-          </div>
-        </div>
-
         <div class="dropship-invoice-paper__summary-row dropship-invoice-paper__summary-row--editable">
           <div class="dropship-invoice-paper__summary-label">
             <span>Discount (company pay)</span>
@@ -379,6 +330,56 @@ defineExpose({ getDraftPayload });
             <span class="dropship-invoice-paper__paid-by dropship-invoice-paper__paid-by--muted">Auto</span>
           </div>
           <span class="text-weight-bold text-positive">{{ formatMoney(companyProfit) }}</span>
+        </div>
+
+        <div class="dropship-mgmt-settlement-paper__return-section">
+          <div class="dropship-invoice-paper__section-label q-mb-xs">Return (recipient refused parcel)</div>
+          <div class="dropship-invoice-paper__summary-row dropship-invoice-paper__summary-row--editable">
+            <div class="dropship-invoice-paper__summary-label">
+              <span>{{ returnChargeRow.label }}</span>
+              <q-btn-toggle
+                v-model="form[returnChargeRow.field].payer"
+                dense
+                no-caps
+                unelevated
+                toggle-color="primary"
+                color="grey-3"
+                text-color="grey-8"
+                class="dropship-invoice-paper__payer-toggle"
+                :disable="readonly"
+                :options="chargePayerOptions"
+              />
+            </div>
+            <q-input
+              v-model.number="form[returnChargeRow.field].amount"
+              type="number"
+              min="0"
+              step="0.01"
+              dense
+              outlined
+              hide-bottom-space
+              :disable="readonly"
+              class="dropship-invoice-paper__amount-input"
+              input-class="text-right"
+            />
+          </div>
+
+          <div class="dropship-invoice-paper__summary-row dropship-invoice-paper__summary-row--editable dropship-mgmt-settlement-paper__note-row">
+            <div class="dropship-invoice-paper__summary-label">
+              <span>Return reason note</span>
+            </div>
+            <q-input
+              v-model="form.returnReasonNote"
+              type="textarea"
+              autogrow
+              dense
+              outlined
+              hide-bottom-space
+              :disable="readonly"
+              placeholder="Why was return cost applied?"
+              class="dropship-invoice-paper__field-input dropship-mgmt-settlement-paper__note-input"
+            />
+          </div>
         </div>
       </div>
     </section>
@@ -513,7 +514,7 @@ defineExpose({ getDraftPayload });
 }
 
 .dropship-mgmt-settlement-paper__return-section {
-  margin: 0.35rem 0;
+  margin-top: 0.75rem;
   padding: 0.35rem 0;
   border-top: 1px dotted #dc2626;
   border-bottom: 1px dotted #dc2626;

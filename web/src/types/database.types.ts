@@ -11021,7 +11021,6 @@ export type Database = {
             Args: {
               p_charge_lines: Json
               p_collected_cod: number
-              p_company_procurement_cost: number
               p_discount_company_pay: number
               p_reseller_purchase_cost: number
             }
@@ -11035,8 +11034,10 @@ export type Database = {
         | {
             Args: {
               p_charge_lines: Json
-              p_collected_cod: number
+              p_company_procurement_cost: number
               p_discount_company_pay: number
+              p_items_resell_total: number
+              p_order_discount_amount: number
               p_reseller_purchase_cost: number
             }
             Returns: {
