@@ -188,14 +188,13 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useQuasar } from 'quasar';
-import { supabase } from 'src/boot/supabase';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import type { UniversalWalletEntityType, UniversalWalletLedgerEntry } from '../types';
+import type { UniversalWalletEntityType, UniversalWalletLedgerEntry, WalletAccount } from '../types';
 import { getEntityTypeFromSlug, getSlugFromEntityType } from '../utils/walletSlugMap';
+import { walletBooksTenantId } from '../utils/walletBooksTenantId';
 import UniversalWalletPageSkeleton from '../components/UniversalWalletPageSkeleton.vue';
 import UniversalWalletLedgerTable from '../components/UniversalWalletLedgerTable.vue';
 import WalletActionModal, { type WalletModalActionType, type WalletActionPayload } from '../components/WalletActionModal.vue';
-import { useWalletAccounts } from '../composables/useWalletAccounts';
 import { useWalletQuery } from '../composables/useWalletQuery';
 import { walletRepository } from '../repositories/walletRepository';
 
@@ -221,8 +220,7 @@ const effectiveEntityType = computed<UniversalWalletEntityType>(() => {
 
 const effectiveEntityId = computed<number>(() => {
   if (effectiveEntityType.value === 'tenant') {
-    if (route.params.tenantId) return Number(route.params.tenantId);
-    return authStore.selectedTenant?.id || 1;
+    return walletBooksTenantId(authStore.selectedTenant);
   }
   return Number(route.params.entityId) || 1;
 });
@@ -255,29 +253,44 @@ const entityIcon = computed<string>(() => {
   }
 });
 
-// Balance query
-const { account, isAccountLoading, refetchAccount } = useWalletAccounts(
-  () => effectiveEntityType.value,
-  () => effectiveEntityId.value,
-);
+const account = ref<WalletAccount | null>(null);
+const isAccountLoading = ref(false);
 
-// Ledger entries query
+async function refetchAccount() {
+  isAccountLoading.value = true;
+  try {
+    const tenantId = authStore.selectedTenant?.id || 1;
+    const detail = await walletRepository.getDetailForStaff(
+      tenantId,
+      effectiveEntityType.value,
+      effectiveEntityId.value,
+    );
+    if (!detail.success) {
+      throw new Error(detail.error || 'Failed to load wallet detail');
+    }
+    loadedEntityName.value = detail.entity?.name || 'Wallet';
+    account.value = {
+      tenant_id: detail.books_tenant_id || walletBooksTenantId(authStore.selectedTenant),
+      entity_type: effectiveEntityType.value,
+      entity_id: effectiveEntityId.value,
+      currency_code: detail.account?.currency_code || 'BDT',
+      available_balance: Number(detail.account?.available_balance || 0),
+      pending_balance: Number(detail.account?.pending_balance || 0),
+      locked_balance: Number(detail.account?.locked_balance || 0),
+      total_balance: Number(detail.account?.total_balance || 0),
+    };
+  } finally {
+    isAccountLoading.value = false;
+  }
+}
+
 const { ledgerEntries, isFetching: isLedgerFetching, refetch: refetchLedger } = useWalletQuery(
   () => effectiveEntityType.value,
   () => effectiveEntityId.value,
+  () => searchQuery.value,
 );
 
-const filteredEntries = computed(() => {
-  if (!searchQuery.value.trim()) return ledgerEntries.value;
-  const q = searchQuery.value.toLowerCase().trim();
-  return ledgerEntries.value.filter((entry) => {
-    const note = entry.metadata?.note?.toLowerCase() || '';
-    const srcId = String(entry.source_id || '').toLowerCase();
-    const srcType = entry.source_type?.toLowerCase() || '';
-    const section = entry.metadata?.section?.toLowerCase() || '';
-    return note.includes(q) || srcId.includes(q) || srcType.includes(q) || section.includes(q);
-  });
-});
+const filteredEntries = computed(() => ledgerEntries.value);
 
 const availableBalanceClass = computed(() => {
   const bal = account.value?.available_balance ?? 0;
@@ -322,43 +335,25 @@ function onActionClick(action: WalletModalActionType) {
 async function handleActionSubmit(payload: WalletActionPayload) {
   isSubmittingAction.value = true;
   try {
-    // Movement type:
-    // 'pay' -> 'debit' (Cash Out)
-    // 'withdraw' -> 'debit' (Cash Out to Bank)
-    // 'deposit' -> 'credit' (Cash In)
-    // 'credit' -> 'credit' (Store Credit In)
-    const movementType = payload.actionType === 'pay' || payload.actionType === 'withdraw'
-      ? 'debit'
-      : 'credit';
-
-    const sourceType = payload.actionType === 'pay'
-      ? 'vendor_purchase'
-      : payload.actionType === 'withdraw'
-        ? 'payout'
-        : 'adjustment';
-
-    await walletRepository.recordTransaction({
-      entity_type: payload.entityType,
-      entity_id: payload.entityId,
-      type: movementType,
+    const result = await walletRepository.recordManualTransaction({
+      action_type: payload.actionType,
+      primary_entity_type: payload.entityType,
+      primary_entity_id: payload.entityId,
       amount: payload.amount,
       currency_code: payload.currency,
       exchange_rate: payload.exchangeRate,
-      source_type: sourceType,
-      source_id: payload.referenceId || null,
+      category: payload.category,
+      payment_method: payload.paymentMethod,
+      reference_id: payload.referenceId || null,
+      note: payload.note || null,
+      counterparty_entity_type: payload.targetEntityType || null,
+      counterparty_entity_id: payload.targetEntityId || null,
       target_bucket: 'available',
-      metadata: {
-        section: payload.category,
-        method: payload.paymentMethod,
-        trx_id: payload.referenceId || undefined,
-        note: payload.note || undefined,
-        action_type: payload.actionType,
-        base_amount: payload.baseAmount,
-        payee_type: payload.targetEntityType || undefined,
-        payee_id: payload.targetEntityId || undefined,
-        recorded_by: authStore.user?.email || 'admin',
-      },
     });
+
+    if (result.success === false) {
+      throw new Error(String(result.error || 'Transaction failed'));
+    }
 
     $q.notify({
       type: 'positive',
@@ -369,8 +364,8 @@ async function handleActionSubmit(payload: WalletActionPayload) {
     });
 
     isActionModalOpen.value = false;
-    void refetchAccount();
-    void refetchLedger();
+    await refetchAccount();
+    await refetchLedger();
   } catch (err: any) {
     console.error('[UniversalWalletPage] Action failed:', err);
     $q.notify({
@@ -386,70 +381,49 @@ async function handleActionSubmit(payload: WalletActionPayload) {
 }
 
 function onRevertClick(entry: UniversalWalletLedgerEntry) {
-  $q.notify({
-    type: 'warning',
-    message: `Revert requested for transaction #${entry.id.slice(0, 8)}. Cause & revert workflow will be configured next.`,
-    icon: 'ph ph-arrow-counter-clockwise',
-    position: 'top',
-    timeout: 2500,
+  $q.dialog({
+    title: 'Reverse transaction',
+    message: 'Enter a reason for this reversal.',
+    prompt: {
+      model: '',
+      type: 'text',
+      isValid: (val: string) => Boolean(val && val.trim().length > 0),
+    },
+    cancel: true,
+    persistent: true,
+  }).onOk((reason: string) => {
+    void (async () => {
+      try {
+        const result = await walletRepository.reverseLedgerEntry({
+          ledger_entry_id: entry.id,
+          reason: reason.trim(),
+        });
+        if (result.success === false) {
+          throw new Error(String(result.error || 'Reversal failed'));
+        }
+        $q.notify({
+          type: 'positive',
+          message: 'Transaction reversed.',
+          icon: 'ph ph-check-circle',
+          position: 'top',
+        });
+        await refetchAccount();
+        await refetchLedger();
+      } catch (err: any) {
+        $q.notify({
+          type: 'negative',
+          message: err.message || 'Failed to reverse transaction.',
+          icon: 'ph ph-warning',
+          position: 'top',
+        });
+      }
+    })();
   });
-}
-
-async function fetchEntityName() {
-  const type = effectiveEntityType.value;
-  const id = effectiveEntityId.value;
-
-  if (type === 'tenant') {
-    loadedEntityName.value = authStore.selectedTenant?.name || 'Our Company';
-    return;
-  }
-
-  try {
-    if (type === 'customer') {
-      const { data } = await supabase
-        .from('billing_profiles')
-        .select('name')
-        .eq('id', id)
-        .maybeSingle();
-      loadedEntityName.value = data?.name || `Customer #${id}`;
-    } else if (type === 'vendor') {
-      const { data } = await supabase
-        .from('vendors')
-        .select('name')
-        .eq('id', id)
-        .maybeSingle();
-      loadedEntityName.value = data?.name || `Vendor #${id}`;
-    } else if (type === 'cargo_company') {
-      const { data } = await supabase
-        .from('cargo_companies')
-        .select('name')
-        .eq('id', id)
-        .maybeSingle();
-      loadedEntityName.value = data?.name || `Cargo #${id}`;
-    } else if (type === 'courier') {
-      const { data } = await supabase
-        .from('courier_services')
-        .select('name')
-        .or(`wallet_entity_id.eq.${id},id.eq.${id}`)
-        .maybeSingle();
-      loadedEntityName.value = data?.name || `Courier #${id}`;
-    } else if (type === 'investor') {
-      const { data } = await supabase
-        .from('investors')
-        .select('name')
-        .eq('id', id)
-        .maybeSingle();
-      loadedEntityName.value = data?.name || `Investor #${id}`;
-    }
-  } catch (err) {
-    console.error('[UniversalWalletPage] Failed to fetch entity name:', err);
-    loadedEntityName.value = `Entity #${id}`;
-  }
 }
 
 async function initializePage() {
   isInitialLoading.value = true;
-  await fetchEntityName();
+  await refetchAccount();
   isInitialLoading.value = false;
 }
 

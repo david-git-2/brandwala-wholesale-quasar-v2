@@ -6111,7 +6111,7 @@ begin
 
     if v_entry.payment_source in ('cash', 'wallet') then
       v_ledger := public.record_ledger_transaction(
-        p_tenant_id => v_ship.parent_tenant_id,
+        p_parent_tenant_id => v_ship.parent_tenant_id, p_operating_tenant_id => coalesce(v_ship.assigned_child_tenant_id, v_ship.parent_tenant_id),
         p_entity_type => v_wallet_entity_type,
         p_entity_id => v_entry.entity_id,
         p_type => 'debit',
@@ -6129,7 +6129,7 @@ begin
       );
 
       v_ledger := public.record_ledger_transaction(
-        p_tenant_id => v_ship.parent_tenant_id,
+        p_parent_tenant_id => v_ship.parent_tenant_id, p_operating_tenant_id => coalesce(v_ship.assigned_child_tenant_id, v_ship.parent_tenant_id),
         p_entity_type => 'tenant',
         p_entity_id => v_ship.parent_tenant_id,
         p_type => 'debit',
@@ -6149,7 +6149,7 @@ begin
 
     elsif v_entry.payment_source = 'credit' then
       v_ledger := public.record_ledger_transaction(
-        p_tenant_id => v_ship.parent_tenant_id,
+        p_parent_tenant_id => v_ship.parent_tenant_id, p_operating_tenant_id => coalesce(v_ship.assigned_child_tenant_id, v_ship.parent_tenant_id),
         p_entity_type => v_wallet_entity_type,
         p_entity_id => v_entry.entity_id,
         p_type => 'credit',
@@ -6561,7 +6561,8 @@ begin
   end if;
 
   v_res := public.record_ledger_transaction(
-    p_tenant_id => p_tenant_id,
+    p_parent_tenant_id => public.resolve_parent_tenant_id(p_tenant_id),
+    p_operating_tenant_id => p_tenant_id,
     p_entity_type => 'vendor',
     p_entity_id => p_vendor_id,
     p_type => 'credit',
@@ -6606,7 +6607,8 @@ begin
 
   -- Leg 1: Debit Vendor AP (reduces vendor payable balance)
   v_vendor_res := public.record_ledger_transaction(
-    p_tenant_id => p_tenant_id,
+    p_parent_tenant_id => public.resolve_parent_tenant_id(p_tenant_id),
+    p_operating_tenant_id => p_tenant_id,
     p_entity_type => 'vendor',
     p_entity_id => p_vendor_id,
     p_type => 'debit',
@@ -6628,9 +6630,10 @@ begin
 
   -- Leg 2: Debit Tenant Cash (cash outflow from bank/cash account)
   v_tenant_res := public.record_ledger_transaction(
-    p_tenant_id => p_tenant_id,
+    p_parent_tenant_id => public.resolve_parent_tenant_id(p_tenant_id),
+    p_operating_tenant_id => p_tenant_id,
     p_entity_type => 'tenant',
-    p_entity_id => p_tenant_id,
+    p_entity_id => public.resolve_parent_tenant_id(p_tenant_id),
     p_type => 'debit',
     p_amount => p_amount,
     p_currency_code => 'BDT',
@@ -6876,7 +6879,7 @@ begin
           and metadata->>'purpose' = 'shipment_investor_profit'
       ) then
         perform public.record_ledger_transaction(
-          p_tenant_id => v_shipment.parent_tenant_id,
+          p_parent_tenant_id => v_shipment.parent_tenant_id, p_operating_tenant_id => coalesce(v_shipment.assigned_child_tenant_id, v_shipment.parent_tenant_id),
           p_entity_type => 'investor',
           p_entity_id => v_inv.investor_id,
           p_type => 'credit',
@@ -7135,7 +7138,7 @@ begin
 
   if p_outcome = 'cash_refund' then
     v_ledger := public.record_ledger_transaction(
-      p_tenant_id => v_ship.parent_tenant_id,
+      p_parent_tenant_id => v_ship.parent_tenant_id, p_operating_tenant_id => coalesce(v_ship.assigned_child_tenant_id, v_ship.parent_tenant_id),
       p_entity_type => 'tenant',
       p_entity_id => v_ship.parent_tenant_id,
       p_type => 'credit',
@@ -7147,7 +7150,7 @@ begin
     );
     if v_vendor_id is not null then
       perform public.record_ledger_transaction(
-        p_tenant_id => v_ship.parent_tenant_id,
+        p_parent_tenant_id => v_ship.parent_tenant_id, p_operating_tenant_id => coalesce(v_ship.assigned_child_tenant_id, v_ship.parent_tenant_id),
         p_entity_type => 'vendor',
         p_entity_id => v_vendor_id,
         p_type => 'debit',
@@ -7160,7 +7163,7 @@ begin
     end if;
   else
     v_ledger := public.record_ledger_transaction(
-      p_tenant_id => v_ship.parent_tenant_id,
+      p_parent_tenant_id => v_ship.parent_tenant_id, p_operating_tenant_id => coalesce(v_ship.assigned_child_tenant_id, v_ship.parent_tenant_id),
       p_entity_type => 'vendor',
       p_entity_id => v_vendor_id,
       p_type => 'credit',
@@ -7808,7 +7811,7 @@ BEGIN
   IF p_action = 'pay' THEN
     -- Action: pay — debit tenant available (overdraft allowed). Payee available untouched.
     v_ledger := public.record_ledger_transaction(
-      p_tenant_id => v_ship.parent_tenant_id,
+      p_parent_tenant_id => v_ship.parent_tenant_id, p_operating_tenant_id => coalesce(v_ship.assigned_child_tenant_id, v_ship.parent_tenant_id),
       p_entity_type => 'tenant',
       p_entity_id => v_ship.parent_tenant_id,
       p_type => 'debit',
@@ -7830,7 +7833,7 @@ BEGIN
   ELSIF p_action = 'record_credit' THEN
     -- Action: record_credit — credit payee available. Tenant unchanged.
     v_ledger := public.record_ledger_transaction(
-      p_tenant_id => v_ship.parent_tenant_id,
+      p_parent_tenant_id => v_ship.parent_tenant_id, p_operating_tenant_id => coalesce(v_ship.assigned_child_tenant_id, v_ship.parent_tenant_id),
       p_entity_type => p_entity_type,
       p_entity_id => p_entity_id,
       p_type => 'credit',
@@ -7852,7 +7855,7 @@ BEGIN
   ELSIF p_action = 'use_credit' THEN
     -- Action: use_credit — debit payee available (strict check). Tenant unchanged.
     v_ledger := public.record_ledger_transaction(
-      p_tenant_id => v_ship.parent_tenant_id,
+      p_parent_tenant_id => v_ship.parent_tenant_id, p_operating_tenant_id => coalesce(v_ship.assigned_child_tenant_id, v_ship.parent_tenant_id),
       p_entity_type => p_entity_type,
       p_entity_id => p_entity_id,
       p_type => 'debit',

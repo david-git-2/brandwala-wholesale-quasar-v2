@@ -9279,6 +9279,8 @@ export type Database = {
           exchange_rate: number
           id: string
           metadata: Json
+          operating_tenant_id: number
+          parent_tenant_id: number
           source_id: string | null
           source_type: string
           tenant_id: number
@@ -9295,6 +9297,8 @@ export type Database = {
           exchange_rate?: number
           id?: string
           metadata?: Json
+          operating_tenant_id: number
+          parent_tenant_id: number
           source_id?: string | null
           source_type: string
           tenant_id: number
@@ -9311,12 +9315,28 @@ export type Database = {
           exchange_rate?: number
           id?: string
           metadata?: Json
+          operating_tenant_id?: number
+          parent_tenant_id?: number
           source_id?: string | null
           source_type?: string
           tenant_id?: number
           type?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "universal_wallet_ledger_operating_tenant_id_fkey"
+            columns: ["operating_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "universal_wallet_ledger_parent_tenant_id_fkey"
+            columns: ["parent_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "universal_wallet_ledger_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -9405,6 +9425,7 @@ export type Database = {
           entity_type: string
           id: number
           locked_balance: number
+          parent_tenant_id: number
           pending_balance: number
           tenant_id: number
           updated_at: string
@@ -9417,6 +9438,7 @@ export type Database = {
           entity_type: string
           id?: never
           locked_balance?: number
+          parent_tenant_id: number
           pending_balance?: number
           tenant_id: number
           updated_at?: string
@@ -9429,11 +9451,19 @@ export type Database = {
           entity_type?: string
           id?: never
           locked_balance?: number
+          parent_tenant_id?: number
           pending_balance?: number
           tenant_id?: number
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "wallet_accounts_parent_tenant_id_fkey"
+            columns: ["parent_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "wallet_accounts_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -12636,6 +12666,15 @@ export type Database = {
         Args: { p_tenant_id: number }
         Returns: Json
       }
+      get_wallet_detail_for_staff: {
+        Args: {
+          p_currency_code?: string
+          p_entity_id: number
+          p_entity_type: string
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
       get_wallet_entity_statement: {
         Args: {
           p_end_date?: string
@@ -14060,6 +14099,60 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      list_wallet_entities_for_staff: {
+        Args: {
+          p_currency_code?: string
+          p_entity_type: string
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_tenant_id: number
+        }
+        Returns: {
+          available_balance: number
+          caption: string
+          code: string
+          entity_id: number
+          entity_type: string
+          has_wallet_activity: boolean
+          locked_balance: number
+          name: string
+          operating_tenant_id: number
+          pending_balance: number
+          source_uuid: string
+          total_balance: number
+        }[]
+      }
+      list_wallet_ledger_for_staff: {
+        Args: {
+          p_entity_id: number
+          p_entity_type: string
+          p_limit?: number
+          p_offset?: number
+          p_operating_tenant_id?: number
+          p_search?: string
+          p_tenant_id: number
+        }
+        Returns: {
+          amount: number
+          balance_after: number
+          base_amount: number
+          created_at: string
+          currency_code: string
+          entity_id: number
+          entity_type: string
+          exchange_rate: number
+          id: string
+          is_reversal: boolean
+          metadata: Json
+          operating_tenant_id: number
+          parent_tenant_id: number
+          reversed_entry_id: string
+          source_id: string
+          source_type: string
+          type: string
+        }[]
+      }
       mark_dropship_order_delivered: {
         Args: { p_order_id: number; p_payload: Json; p_tenant_id: number }
         Returns: Json
@@ -14379,10 +14472,11 @@ export type Database = {
           p_entity_type: string
           p_exchange_rate?: number
           p_metadata?: Json
+          p_operating_tenant_id: number
+          p_parent_tenant_id: number
           p_source_id?: string
           p_source_type?: string
           p_target_bucket?: string
-          p_tenant_id: number
           p_type: string
         }
         Returns: Json
@@ -14502,6 +14596,25 @@ export type Database = {
           p_reference?: string
           p_tenant_id: number
           p_vendor_id: number
+        }
+        Returns: Json
+      }
+      record_wallet_manual_transaction_for_staff: {
+        Args: {
+          p_action_type: string
+          p_amount: number
+          p_category?: string
+          p_counterparty_entity_id?: number
+          p_counterparty_entity_type?: string
+          p_currency_code?: string
+          p_exchange_rate?: number
+          p_note?: string
+          p_payment_method?: string
+          p_primary_entity_id: number
+          p_primary_entity_type: string
+          p_reference_id?: string
+          p_target_bucket?: string
+          p_tenant_id: number
         }
         Returns: Json
       }
@@ -14651,6 +14764,15 @@ export type Database = {
       }
       return_shipment_to_vendor: {
         Args: { p_items_qty: Json; p_outcome: string; p_shipment_id: number }
+        Returns: Json
+      }
+      reverse_wallet_ledger_entry_for_staff: {
+        Args: {
+          p_ledger_entry_id: string
+          p_reason: string
+          p_reference_id?: string
+          p_tenant_id: number
+        }
         Returns: Json
       }
       revert_thrift_sales_invoice: {
@@ -16375,6 +16497,9 @@ export type Database = {
         Returns: undefined
       }
       void_sales_invoice: { Args: { p_invoice_id: number }; Returns: undefined }
+      wallet_books_tenant_id: { Args: { p_tenant_id: number }; Returns: number }
+      wallet_staff_can_edit: { Args: { p_tenant_id: number }; Returns: boolean }
+      wallet_staff_can_view: { Args: { p_tenant_id: number }; Returns: boolean }
     }
     Enums: {
       app_role:

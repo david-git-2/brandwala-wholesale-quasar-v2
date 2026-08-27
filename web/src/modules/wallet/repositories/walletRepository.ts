@@ -2,97 +2,136 @@ import { supabase } from 'src/boot/supabase';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import type {
   UniversalWalletLedgerEntry,
-  RecordLedgerTransactionPayload,
+  UniversalWalletEntityType,
   WalletLedgerQueryParams,
+  WalletDetailResponse,
+  RecordManualTransactionPayload,
+  ReverseLedgerPayload,
+  WalletEntityListRow,
 } from '../types';
 
 export const walletRepository = {
-  /**
-   * Fetch ledger entries for a specific entity wallet ordered by creation date descending.
-   */
-  async fetchLedgerEntries(
-    params: WalletLedgerQueryParams,
-  ): Promise<UniversalWalletLedgerEntry[]> {
-    let query = supabase
-      .from('universal_wallet_ledger')
-      .select('*')
-      .eq('tenant_id', params.tenantId)
-      .eq('entity_type', params.entityType)
-      .eq('entity_id', params.entityId)
-      .order('created_at', { ascending: false })
-      .order('id', { ascending: false });
-
-    if (params.limit && params.limit > 0) {
-      const offset = params.offset || 0;
-      query = query.range(offset, offset + params.limit - 1);
-    }
-
-    const { data, error } = await query;
-    if (error) {
-      console.error('[walletRepository.fetchLedgerEntries error]:', error);
-      throw error;
-    }
-
-    return (data as UniversalWalletLedgerEntry[]) || [];
-  },
-
-  /**
-   * Fetch latest balance_after for a specific entity wallet.
-   */
-  async fetchLatestBalance(
-    params: Omit<WalletLedgerQueryParams, 'limit' | 'offset'>,
-  ): Promise<number> {
-    const { data, error } = await supabase
-      .from('universal_wallet_ledger')
-      .select('balance_after')
-      .eq('tenant_id', params.tenantId)
-      .eq('entity_type', params.entityType)
-      .eq('entity_id', params.entityId)
-      .order('created_at', { ascending: false })
-      .order('id', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (error) {
-      console.error('[walletRepository.fetchLatestBalance error]:', error);
-      throw error;
-    }
-
-    return data?.balance_after ? Number(data.balance_after) : 0.0000;
-  },
-
-  /**
-   * Record a new ledger transaction via atomic PostgreSQL RPC.
-   */
-  async recordTransaction(
-    payload: RecordLedgerTransactionPayload,
-  ): Promise<UniversalWalletLedgerEntry> {
-    const authStore = useAuthStore();
-    const tenantId = payload.tenant_id ?? authStore.selectedTenant?.parent_id ?? authStore.selectedTenant?.id;
-
-    if (!tenantId) {
-      throw new Error('Tenant ID is required to record a wallet transaction.');
-    }
-
-    const { data, error } = await supabase.rpc('record_ledger_transaction', {
+  async listEntitiesForStaff(
+    tenantId: number,
+    entityType: UniversalWalletEntityType,
+    search?: string | null,
+    limit = 100,
+    offset = 0,
+    currencyCode = 'BDT',
+  ): Promise<WalletEntityListRow[]> {
+    const { data, error } = await supabase.rpc('list_wallet_entities_for_staff', {
       p_tenant_id: tenantId,
-      p_entity_type: payload.entity_type,
-      p_entity_id: payload.entity_id,
-      p_type: payload.type,
+      p_entity_type: entityType,
+      p_search: search ?? null,
+      p_limit: limit,
+      p_offset: offset,
+      p_currency_code: currencyCode,
+    });
+
+    if (error) {
+      console.error('[walletRepository.listEntitiesForStaff error]:', error);
+      throw error;
+    }
+
+    return (data as WalletEntityListRow[]) || [];
+  },
+
+  async getDetailForStaff(
+    tenantId: number,
+    entityType: UniversalWalletEntityType,
+    entityId: number,
+    currencyCode = 'BDT',
+  ): Promise<WalletDetailResponse> {
+    const { data, error } = await supabase.rpc('get_wallet_detail_for_staff', {
+      p_tenant_id: tenantId,
+      p_entity_type: entityType,
+      p_entity_id: entityId,
+      p_currency_code: currencyCode,
+    });
+
+    if (error) {
+      console.error('[walletRepository.getDetailForStaff error]:', error);
+      throw error;
+    }
+
+    return data as unknown as WalletDetailResponse;
+  },
+
+  async listLedgerForStaff(
+    params: WalletLedgerQueryParams & { search?: string | null; operatingTenantId?: number | null },
+  ): Promise<UniversalWalletLedgerEntry[]> {
+    const authStore = useAuthStore();
+    const tenantId = params.tenantId || authStore.selectedTenant?.id;
+    if (!tenantId) return [];
+
+    const { data, error } = await supabase.rpc('list_wallet_ledger_for_staff', {
+      p_tenant_id: tenantId,
+      p_entity_type: params.entityType,
+      p_entity_id: params.entityId,
+      p_search: params.search ?? null,
+      p_operating_tenant_id: params.operatingTenantId ?? null,
+      p_limit: params.limit ?? 50,
+      p_offset: params.offset ?? 0,
+    });
+
+    if (error) {
+      console.error('[walletRepository.listLedgerForStaff error]:', error);
+      throw error;
+    }
+
+    return ((data as UniversalWalletLedgerEntry[]) || []).map((row) => ({
+      ...row,
+      tenant_id: row.parent_tenant_id ?? row.tenant_id,
+    }));
+  },
+
+  async recordManualTransaction(payload: RecordManualTransactionPayload): Promise<Record<string, unknown>> {
+    const authStore = useAuthStore();
+    const tenantId = payload.tenant_id ?? authStore.selectedTenant?.id;
+    if (!tenantId) throw new Error('Tenant ID is required.');
+
+    const { data, error } = await supabase.rpc('record_wallet_manual_transaction_for_staff', {
+      p_tenant_id: tenantId,
+      p_action_type: payload.action_type,
+      p_primary_entity_type: payload.primary_entity_type,
+      p_primary_entity_id: payload.primary_entity_id,
       p_amount: payload.amount,
       p_currency_code: payload.currency_code ?? 'BDT',
-      p_exchange_rate: payload.exchange_rate ?? 1.000000,
-      p_source_type: payload.source_type ?? 'adjustment',
-      p_source_id: payload.source_id ?? null,
-      p_metadata: payload.metadata ?? {},
+      p_exchange_rate: payload.exchange_rate ?? 1,
+      p_category: payload.category ?? null,
+      p_payment_method: payload.payment_method ?? null,
+      p_reference_id: payload.reference_id ?? null,
+      p_note: payload.note ?? null,
+      p_counterparty_entity_type: payload.counterparty_entity_type ?? null,
+      p_counterparty_entity_id: payload.counterparty_entity_id ?? null,
       p_target_bucket: payload.target_bucket ?? 'available',
     });
 
     if (error) {
-      console.error('[walletRepository.recordTransaction error]:', error);
+      console.error('[walletRepository.recordManualTransaction error]:', error);
       throw error;
     }
 
-    return data as UniversalWalletLedgerEntry;
+    return data as Record<string, unknown>;
+  },
+
+  async reverseLedgerEntry(payload: ReverseLedgerPayload): Promise<Record<string, unknown>> {
+    const authStore = useAuthStore();
+    const tenantId = payload.tenant_id ?? authStore.selectedTenant?.id;
+    if (!tenantId) throw new Error('Tenant ID is required.');
+
+    const { data, error } = await supabase.rpc('reverse_wallet_ledger_entry_for_staff', {
+      p_tenant_id: tenantId,
+      p_ledger_entry_id: payload.ledger_entry_id,
+      p_reason: payload.reason,
+      p_reference_id: payload.reference_id ?? null,
+    });
+
+    if (error) {
+      console.error('[walletRepository.reverseLedgerEntry error]:', error);
+      throw error;
+    }
+
+    return data as Record<string, unknown>;
   },
 };

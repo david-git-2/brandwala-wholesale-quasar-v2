@@ -130,11 +130,8 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { supabase } from 'src/boot/supabase';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { vendorService } from 'src/modules/vendor/services/vendorService';
-import { cargoCompanyRepository } from 'src/modules/procurement_stock/repositories/cargoCompanyRepository';
-import { walletAccountRepository } from '../repositories/walletAccountRepository';
+import { walletRepository } from '../repositories/walletRepository';
 import { getEntityTypeFromSlug } from '../utils/walletSlugMap';
 
 interface WalletEntityRow {
@@ -238,91 +235,23 @@ async function loadEntitiesAndBalances() {
   }
 
   const tenantId = authStore.selectedTenant?.id || 1;
-  const parentTenantId = authStore.selectedTenant?.parent_id ?? tenantId;
-
   loading.value = true;
 
   try {
-    let rawEntities: Array<{
-      id: number;
-      name: string;
-      code?: string | undefined;
-      caption?: string | undefined;
-    }> = [];
+    const rows = await walletRepository.listEntitiesForStaff(
+      tenantId,
+      entityType,
+      searchText.value || null,
+      100,
+      0,
+    );
 
-    if (currentSlug === 'customers') {
-      const { data } = await supabase
-        .from('billing_profiles')
-        .select('id, name, email, phone, customer_groups(name)')
-        .eq('tenant_id', parentTenantId)
-        .order('name', { ascending: true });
-
-      rawEntities = (data || []).map((bp) => {
-        const groupName = (bp as { customer_groups?: { name?: string } | null }).customer_groups?.name;
-        const baseName = String(bp.name || `Profile #${bp.id}`);
-        return {
-          id: Number(bp.id),
-          name: groupName ? `${groupName} · ${baseName}` : baseName,
-          caption: [bp.phone, bp.email].filter(Boolean).join(' • ') || undefined,
-        };
-      });
-    } else if (currentSlug === 'suppliers') {
-      const res = await vendorService.listVendors(parentTenantId);
-      if (res.success && res.data) {
-        rawEntities = res.data.map((v) => ({
-          id: Number(v.id),
-          name: String(v.name),
-          code: v.code ? String(v.code) : undefined,
-          caption: [v.phone, v.email].filter(Boolean).join(' • ') || undefined,
-        }));
-      }
-    } else if (currentSlug === 'cargo') {
-      const companies = await cargoCompanyRepository.listCargoCompanies(parentTenantId);
-      rawEntities = companies.map((c) => ({
-        id: Number(c.id),
-        name: String(c.name),
-        code: c.code ? String(c.code) : undefined,
-        caption: [c.phone, c.email].filter(Boolean).join(' • ') || undefined,
-      }));
-    } else if (currentSlug === 'couriers') {
-      const { data: services } = await supabase
-        .from('courier_services')
-        .select('id, name, code, wallet_entity_id, notes, is_active')
-        .eq('is_active', true)
-        .order('name', { ascending: true });
-
-      rawEntities = (services || [])
-        .filter((c) => c.wallet_entity_id != null)
-        .map((c) => ({
-          id: Number(c.wallet_entity_id),
-          name: String(c.name),
-          code: c.code ? String(c.code).toUpperCase() : undefined,
-          caption: c.notes ? String(c.notes) : `Courier #${c.id}`,
-        }));
-    } else if (currentSlug === 'investors') {
-      const { data } = await supabase
-        .from('investors')
-        .select('id, name, phone, email')
-        .eq('tenant_id', parentTenantId)
-        .order('name', { ascending: true });
-
-      rawEntities = (data || []).map((inv) => ({
-        id: Number(inv.id),
-        name: String(inv.name),
-        caption: [inv.phone, inv.email].filter(Boolean).join(' • ') || undefined,
-      }));
-    }
-
-    // Join balances from WU2 listAccountsByType scoped to parent tenant
-    const accounts = await walletAccountRepository.listAccountsByType(parentTenantId, entityType);
-    const balanceMap = new Map<number, number>();
-    for (const acc of accounts) {
-      balanceMap.set(Number(acc.entity_id), Number(acc.total_balance || 0));
-    }
-
-    rowsWithBalances.value = rawEntities.map((ent) => ({
-      ...ent,
-      totalBalance: balanceMap.get(ent.id) ?? 0,
+    rowsWithBalances.value = rows.map((row) => ({
+      id: Number(row.entity_id),
+      name: String(row.name),
+      code: row.code ? String(row.code) : undefined,
+      caption: row.caption ? String(row.caption) : undefined,
+      totalBalance: Number(row.total_balance || 0),
     }));
   } catch (err) {
     console.error('[WalletEntityListPage] Error loading list data:', err);

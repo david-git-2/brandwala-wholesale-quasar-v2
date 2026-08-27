@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { walletAccountRepository } from '../repositories/walletAccountRepository';
 import { walletQueryKeys } from '../shared/queryKeys/walletQueryKeys';
+import { walletBooksTenantId } from '../utils/walletBooksTenantId';
 import type {
   UniversalWalletEntityType,
   WalletAccount,
@@ -17,7 +18,7 @@ export function useWalletAccounts(
   const authStore = useAuthStore();
   const queryClient = useQueryClient();
 
-  const tenantId = computed(() => authStore.selectedTenant?.parent_id ?? authStore.selectedTenant?.id ?? null);
+  const tenantId = computed(() => walletBooksTenantId(authStore.selectedTenant));
   const entityType = computed(() => (entityTypeInput ? toValue(entityTypeInput) : undefined));
   const entityId = computed(() => (entityIdInput ? toValue(entityIdInput) : undefined));
 

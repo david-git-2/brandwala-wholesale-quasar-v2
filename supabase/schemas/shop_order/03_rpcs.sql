@@ -1574,7 +1574,7 @@ begin
   -- Idempotency check on universal_wallet_ledger
   select * into v_existing_ledger
   from public.universal_wallet_ledger
-  where tenant_id = v_order.tenant_id
+  where parent_tenant_id = public.resolve_parent_tenant_id(v_order.tenant_id)
     and entity_type = 'courier'
     and source_type = 'shop_order'
     and source_id = p_order_id::text
@@ -1583,7 +1583,8 @@ begin
 
   if v_existing_ledger.id is null and v_cod > 0 then
     perform public.record_ledger_transaction(
-      p_tenant_id => v_order.tenant_id,
+      p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
+      p_operating_tenant_id => v_order.tenant_id,
       p_entity_type => 'courier',
       p_entity_id => v_courier_id,
       p_type => 'credit',
@@ -2075,7 +2076,7 @@ begin
     perform public.recompute_global_invoice_totals(v_invoice.id);
   select exists (
     select 1 from public.universal_wallet_ledger
-    where tenant_id = v_order.tenant_id
+    where parent_tenant_id = public.resolve_parent_tenant_id(v_order.tenant_id)
       and source_type = 'shop_order'
       and source_id = p_order_id::text
       and metadata->>'purpose' = 'tenant_remittance_received'
@@ -2085,7 +2086,7 @@ begin
   select coalesce(sum(case when type = 'credit' then base_amount else -base_amount end), 0)
   into v_billed
   from public.universal_wallet_ledger
-  where tenant_id = v_order.tenant_id
+  where parent_tenant_id = public.resolve_parent_tenant_id(v_order.tenant_id)
     and source_type = 'shop_order'
     and source_id = p_order_id::text
     and entity_type = 'customer'
@@ -2096,7 +2097,7 @@ begin
   v_billed := greatest(-v_billed, 0);
   v_has_billed := v_billed > 0 or exists (
     select 1 from public.universal_wallet_ledger
-    where tenant_id = v_order.tenant_id
+    where parent_tenant_id = public.resolve_parent_tenant_id(v_order.tenant_id)
       and source_type = 'shop_order'
       and source_id = p_order_id::text
       and metadata->>'transaction_type' = 'invoice_billed'
@@ -2105,7 +2106,7 @@ begin
   select coalesce(sum(case when type = 'credit' then base_amount else -base_amount end), 0)
   into v_profit
   from public.universal_wallet_ledger
-  where tenant_id = v_order.tenant_id
+  where parent_tenant_id = public.resolve_parent_tenant_id(v_order.tenant_id)
     and source_type = 'shop_order'
     and source_id = p_order_id::text
     and entity_type in ('customer', 'middleman')
@@ -2118,7 +2119,7 @@ begin
   select coalesce(sum(case when type = 'credit' then base_amount else -base_amount end), 0)
   into v_revenue
   from public.universal_wallet_ledger
-  where tenant_id = v_order.tenant_id
+  where parent_tenant_id = public.resolve_parent_tenant_id(v_order.tenant_id)
     and source_type = 'shop_order'
     and source_id = p_order_id::text
     and entity_type = 'tenant'
@@ -2129,7 +2130,7 @@ begin
   select coalesce((metadata->>'net_remitted')::numeric, amount, 0)
   into v_remit_net
   from public.universal_wallet_ledger
-  where tenant_id = v_order.tenant_id
+  where parent_tenant_id = public.resolve_parent_tenant_id(v_order.tenant_id)
     and source_type = 'shop_order'
     and source_id = p_order_id::text
     and metadata->>'purpose' = 'tenant_remittance_received'
@@ -2138,7 +2139,7 @@ begin
   select coalesce((metadata->>'courier_charge')::numeric, amount, 0)
   into v_courier_charge
   from public.universal_wallet_ledger
-  where tenant_id = v_order.tenant_id
+  where parent_tenant_id = public.resolve_parent_tenant_id(v_order.tenant_id)
     and source_type = 'shop_order'
     and source_id = p_order_id::text
     and metadata->>'purpose' = 'tenant_courier_charge'
@@ -2153,7 +2154,8 @@ begin
      )
   then
     perform public.record_ledger_transaction(
-      p_tenant_id => v_order.tenant_id,
+      p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
+      p_operating_tenant_id => v_order.tenant_id,
       p_entity_type => 'customer',
       p_entity_id => v_billing_profile_id,
       p_type => 'credit',
@@ -2191,7 +2193,8 @@ begin
 
     if v_billed > 0 then
       perform public.record_ledger_transaction(
-        p_tenant_id => v_order.tenant_id,
+        p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
+      p_operating_tenant_id => v_order.tenant_id,
         p_entity_type => 'customer',
         p_entity_id => v_billing_profile_id,
         p_type => 'credit',
@@ -2215,7 +2218,8 @@ begin
           and metadata->>'transaction_type' = 'invoice_collection'
       ) then
         perform public.record_ledger_transaction(
-          p_tenant_id => v_order.tenant_id,
+          p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
+      p_operating_tenant_id => v_order.tenant_id,
           p_entity_type => 'customer',
           p_entity_id => v_billing_profile_id,
           p_type => 'debit',
@@ -2253,7 +2257,7 @@ begin
   then
     select coalesce(sum(base_amount), 0) into v_billed
     from public.universal_wallet_ledger
-    where tenant_id = v_order.tenant_id
+    where parent_tenant_id = public.resolve_parent_tenant_id(v_order.tenant_id)
       and source_type = 'shop_order'
       and source_id = p_order_id::text
       and entity_type = 'customer'
@@ -2263,7 +2267,8 @@ begin
 
     if v_billed > 0 then
       perform public.record_ledger_transaction(
-        p_tenant_id => v_order.tenant_id,
+        p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
+      p_operating_tenant_id => v_order.tenant_id,
         p_entity_type => 'customer',
         p_entity_id => v_billing_profile_id,
         p_type => 'debit',
@@ -2289,7 +2294,8 @@ begin
      )
   then
     perform public.record_ledger_transaction(
-      p_tenant_id => v_order.tenant_id,
+      p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
+      p_operating_tenant_id => v_order.tenant_id,
       p_entity_type => 'customer',
       p_entity_id => v_billing_profile_id,
       p_type => 'debit',
@@ -2315,9 +2321,10 @@ begin
      )
   then
     perform public.record_ledger_transaction(
-      p_tenant_id => v_order.tenant_id,
+      p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
+      p_operating_tenant_id => v_order.tenant_id,
       p_entity_type => 'tenant',
-      p_entity_id => v_order.tenant_id,
+      p_entity_id => public.resolve_parent_tenant_id(v_order.tenant_id),
       p_type => 'debit',
       p_amount => v_revenue,
       p_currency_code => v_currency,
@@ -2342,9 +2349,10 @@ begin
        )
     then
       perform public.record_ledger_transaction(
-        p_tenant_id => v_order.tenant_id,
+        p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
+      p_operating_tenant_id => v_order.tenant_id,
         p_entity_type => 'tenant',
-        p_entity_id => v_order.tenant_id,
+        p_entity_id => public.resolve_parent_tenant_id(v_order.tenant_id),
         p_type => 'debit',
         p_amount => v_remit_net,
         p_currency_code => v_currency,
@@ -2368,9 +2376,10 @@ begin
        )
     then
       perform public.record_ledger_transaction(
-        p_tenant_id => v_order.tenant_id,
+        p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
+      p_operating_tenant_id => v_order.tenant_id,
         p_entity_type => 'tenant',
-        p_entity_id => v_order.tenant_id,
+        p_entity_id => public.resolve_parent_tenant_id(v_order.tenant_id),
         p_type => 'credit',
         p_amount => v_courier_charge,
         p_currency_code => v_currency,
@@ -2398,7 +2407,8 @@ begin
      )
   then
     perform public.record_ledger_transaction(
-      p_tenant_id => v_order.tenant_id,
+      p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
+      p_operating_tenant_id => v_order.tenant_id,
       p_entity_type => 'customer',
       p_entity_id => v_billing_profile_id,
       p_type => 'debit',
@@ -2469,7 +2479,8 @@ declare
       v_invoice_no := 'INV-SO-' || v_order.order_no;
 
   select * into v_invoice from public.create_global_invoice(
-    p_tenant_id => v_order.tenant_id,
+    p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
+      p_operating_tenant_id => v_order.tenant_id,
     p_invoice_no => v_invoice_no,
     p_invoice_type => v_invoice_type,
     p_billing_profile_id => v_order.billing_profile_id,
@@ -6134,14 +6145,15 @@ begin
   -- Leg 1: Courier Debit (reduces courier liability)
   if not exists (
     select 1 from public.universal_wallet_ledger
-    where tenant_id = v_order.tenant_id
+    where parent_tenant_id = public.resolve_parent_tenant_id(v_order.tenant_id)
       and entity_type = 'courier'
       and source_type = 'shop_order'
       and source_id = p_order_id::text
       and metadata->>'purpose' = 'courier_remittance'
   ) then
     perform public.record_ledger_transaction(
-      p_tenant_id => v_order.tenant_id,
+      p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
+      p_operating_tenant_id => v_order.tenant_id,
       p_entity_type => 'courier',
       p_entity_id => v_courier_id,
       p_type => 'debit',
@@ -6162,16 +6174,17 @@ begin
   -- Leg 2: Tenant Credit (tenant received net remitted cash)
   if not exists (
     select 1 from public.universal_wallet_ledger
-    where tenant_id = v_order.tenant_id
+    where parent_tenant_id = public.resolve_parent_tenant_id(v_order.tenant_id)
       and entity_type = 'tenant'
       and source_type = 'shop_order'
       and source_id = p_order_id::text
       and metadata->>'purpose' = 'tenant_remittance_received'
   ) then
     perform public.record_ledger_transaction(
-      p_tenant_id => v_order.tenant_id,
+      p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
+      p_operating_tenant_id => v_order.tenant_id,
       p_entity_type => 'tenant',
-      p_entity_id => v_order.tenant_id,
+      p_entity_id => public.resolve_parent_tenant_id(v_order.tenant_id),
       p_type => 'credit',
       p_amount => p_net_amount,
       p_currency_code => v_currency,
@@ -6403,7 +6416,7 @@ begin
     -- Clear customer AR for the invoice portion (idempotent)
     if v_invoice.billing_profile_id is not null and not exists (
       select 1 from public.universal_wallet_ledger
-      where tenant_id = v_order.tenant_id
+      where parent_tenant_id = public.resolve_parent_tenant_id(v_order.tenant_id)
         and entity_type = 'customer'
         and entity_id = v_invoice.billing_profile_id
         and source_type = 'shop_order'
@@ -6411,7 +6424,8 @@ begin
         and metadata->>'transaction_type' = 'invoice_collection'
     ) then
       perform public.record_ledger_transaction(
-        p_tenant_id => v_order.tenant_id,
+        p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
+      p_operating_tenant_id => v_order.tenant_id,
         p_entity_type => 'customer',
         p_entity_id => v_invoice.billing_profile_id,
         p_type => 'credit',
@@ -7039,7 +7053,8 @@ begin
         where p.id = v_item_row.product_id;
 
         perform public.add_demand_bucket_item_internal(
-          p_tenant_id => v_order.tenant_id,
+          p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
+      p_operating_tenant_id => v_order.tenant_id,
           p_billing_profile_id => v_order.billing_profile_id,
           p_product_id => v_item_row.product_id,
           p_source_type => 'shop_order_item',

@@ -22,6 +22,8 @@ export type UniversalWalletSection =
 export interface UniversalWalletLedgerEntry {
   id: string;
   tenant_id: number;
+  parent_tenant_id?: number;
+  operating_tenant_id?: number;
   entity_type: UniversalWalletEntityType;
   entity_id: number;
   type: UniversalWalletTransactionType;
@@ -34,6 +36,8 @@ export interface UniversalWalletLedgerEntry {
   source_id: string | null;
   metadata: Record<string, any>;
   created_at: string;
+  is_reversal?: boolean;
+  reversed_entry_id?: string | null;
 }
 
 export interface RecordLedgerTransactionPayload {
@@ -111,4 +115,69 @@ export interface WalletEntityStatement {
   total_debits: number;
   closing_balance: number;
   entries: UniversalWalletLedgerEntry[];
+}
+
+export interface WalletEntityListRow {
+  entity_id: number;
+  entity_type: string;
+  name: string;
+  code: string | null;
+  caption: string | null;
+  available_balance: number;
+  pending_balance: number;
+  locked_balance: number;
+  total_balance: number;
+  source_uuid: string | null;
+  operating_tenant_id: number | null;
+  has_wallet_activity: boolean;
+}
+
+export interface WalletDetailResponse {
+  success: boolean;
+  error?: string;
+  books_tenant_id?: number;
+  operating_tenant_id?: number;
+  entity?: {
+    entity_type: UniversalWalletEntityType;
+    entity_id: number;
+    name: string;
+    code?: string | null;
+    caption?: string | null;
+    source_uuid?: string | null;
+  };
+  account?: {
+    currency_code: string;
+    available_balance: number;
+    pending_balance: number;
+    locked_balance: number;
+    total_balance: number;
+  };
+  permissions?: {
+    can_record_manual: boolean;
+    can_reverse: boolean;
+  };
+}
+
+export interface RecordManualTransactionPayload {
+  tenant_id?: number;
+  action_type: 'pay' | 'deposit' | 'credit' | 'withdraw';
+  primary_entity_type: UniversalWalletEntityType;
+  primary_entity_id: number;
+  amount: number;
+  currency_code?: string;
+  exchange_rate?: number;
+  category?: string | null;
+  payment_method?: string | null;
+  reference_id?: string | null;
+  note?: string | null;
+  counterparty_entity_type?: UniversalWalletEntityType | null;
+  counterparty_entity_id?: number | null;
+  target_bucket?: WalletBucket;
+}
+
+export interface ReverseLedgerPayload {
+  tenant_id?: number;
+  ledger_entry_id: string;
+  reason: string;
+  reference_id?: string | null;
 }

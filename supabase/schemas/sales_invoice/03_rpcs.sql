@@ -290,9 +290,10 @@ begin
   -- Record Tenant Revenue Write-Off for settlement discount
   if p_amount > 0 then
     perform public.record_ledger_transaction(
-      p_tenant_id => v_invoice.tenant_id,
+      p_parent_tenant_id => coalesce(v_invoice.parent_tenant_id, v_invoice.tenant_id),
+      p_operating_tenant_id => coalesce(v_invoice.issued_by_tenant_id, v_invoice.parent_tenant_id, v_invoice.tenant_id),
       p_entity_type => 'tenant',
-      p_entity_id => v_invoice.tenant_id,
+      p_entity_id => coalesce(v_invoice.parent_tenant_id, v_invoice.tenant_id),
       p_type => 'debit',
       p_amount => p_amount,
       p_currency_code => 'BDT',
@@ -593,9 +594,10 @@ begin
 
   -- Universal Wallet 1: Credit Tenant Cash Available (money received)
   perform public.record_ledger_transaction(
-    p_tenant_id => p_tenant_id,
+    p_parent_tenant_id => public.resolve_parent_tenant_id(p_tenant_id),
+    p_operating_tenant_id => p_tenant_id,
     p_entity_type => 'tenant',
-    p_entity_id => p_tenant_id,
+    p_entity_id => public.resolve_parent_tenant_id(p_tenant_id),
     p_type => 'credit',
     p_amount => p_amount,
     p_currency_code => 'BDT',
@@ -615,7 +617,8 @@ begin
 
   -- Universal Wallet 2: Credit Customer Available (reduces Accounts Receivable)
   perform public.record_ledger_transaction(
-    p_tenant_id => p_tenant_id,
+    p_parent_tenant_id => public.resolve_parent_tenant_id(p_tenant_id),
+    p_operating_tenant_id => p_tenant_id,
     p_entity_type => 'customer',
     p_entity_id => p_billing_profile_id,
     p_type => 'credit',
@@ -1256,9 +1259,10 @@ begin
   v_payout_id := 'PO-' || gen_random_uuid()::text;
 
   perform public.record_ledger_transaction(
-    p_tenant_id => p_tenant_id,
+    p_parent_tenant_id => public.resolve_parent_tenant_id(p_tenant_id),
+    p_operating_tenant_id => p_tenant_id,
     p_entity_type => 'tenant',
-    p_entity_id => p_tenant_id,
+    p_entity_id => public.resolve_parent_tenant_id(p_tenant_id),
     p_type => 'debit',
     p_amount => p_amount,
     p_currency_code => 'BDT',
@@ -1278,7 +1282,8 @@ begin
   );
 
   perform public.record_ledger_transaction(
-    p_tenant_id => p_tenant_id,
+    p_parent_tenant_id => public.resolve_parent_tenant_id(p_tenant_id),
+    p_operating_tenant_id => p_tenant_id,
     p_entity_type => 'customer',
     p_entity_id => p_billing_profile_id,
     p_type => 'debit',
@@ -1995,7 +2000,8 @@ begin
         and metadata->>'transaction_type' = 'invoice_billed'
     ) then
       perform public.record_ledger_transaction(
-        p_tenant_id => v_eff_tenant_id,
+        p_parent_tenant_id => coalesce(v_invoice.parent_tenant_id, public.resolve_parent_tenant_id(v_eff_tenant_id)),
+        p_operating_tenant_id => v_eff_tenant_id,
         p_entity_type => 'customer',
         p_entity_id => v_invoice.billing_profile_id,
         p_type => 'debit',
@@ -2150,9 +2156,10 @@ begin
 
   -- Record Tenant Cash Credit for direct cash collection
   perform public.record_ledger_transaction(
-    p_tenant_id => v_invoice.tenant_id,
+    p_parent_tenant_id => coalesce(v_invoice.parent_tenant_id, v_invoice.tenant_id),
+      p_operating_tenant_id => coalesce(v_invoice.issued_by_tenant_id, v_invoice.parent_tenant_id, v_invoice.tenant_id),
     p_entity_type => 'tenant',
-    p_entity_id => v_invoice.tenant_id,
+    p_entity_id => coalesce(v_invoice.parent_tenant_id, v_invoice.tenant_id),
     p_type => 'credit',
     p_amount => p_amount,
     p_currency_code => 'BDT',
@@ -3170,7 +3177,8 @@ begin
 
       -- Credit Customer Wallet via universal ledger
       perform public.record_ledger_transaction(
-        p_tenant_id => v_eff_tenant_id,
+        p_parent_tenant_id => coalesce(v_invoice.parent_tenant_id, public.resolve_parent_tenant_id(v_eff_tenant_id)),
+        p_operating_tenant_id => v_eff_tenant_id,
         p_entity_type => 'customer',
         p_entity_id => v_invoice.billing_profile_id,
         p_type => 'credit',
@@ -3197,9 +3205,10 @@ begin
 
       -- Payout: Debit Tenant Cash (cash outflow from business to customer)
       perform public.record_ledger_transaction(
-        p_tenant_id => v_eff_tenant_id,
+        p_parent_tenant_id => coalesce(v_invoice.parent_tenant_id, public.resolve_parent_tenant_id(v_eff_tenant_id)),
+        p_operating_tenant_id => v_eff_tenant_id,
         p_entity_type => 'tenant',
-        p_entity_id => v_eff_tenant_id,
+        p_entity_id => coalesce(v_invoice.parent_tenant_id, public.resolve_parent_tenant_id(v_eff_tenant_id)),
         p_type => 'debit',
         p_amount => v_excess_paid,
         p_currency_code => 'BDT',
@@ -3332,7 +3341,8 @@ begin
     perform public.recompute_global_invoice_payment_status(p_invoice_id);
 
     perform public.record_ledger_transaction(
-      p_tenant_id => v_tenant_id,
+      p_parent_tenant_id => v_tenant_id,
+      p_operating_tenant_id => coalesce(v_invoice.issued_by_tenant_id, v_tenant_id),
       p_entity_type => 'tenant',
       p_entity_id => v_tenant_id,
       p_type => 'credit',
@@ -3381,7 +3391,8 @@ begin
     perform public.recompute_global_invoice_payment_status(p_invoice_id);
 
     perform public.record_ledger_transaction(
-      p_tenant_id => v_tenant_id,
+      p_parent_tenant_id => v_tenant_id,
+      p_operating_tenant_id => coalesce(v_invoice.issued_by_tenant_id, v_tenant_id),
       p_entity_type => 'customer',
       p_entity_id => v_invoice.billing_profile_id,
       p_type => 'debit',
