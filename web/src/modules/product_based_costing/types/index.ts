@@ -66,6 +66,7 @@ export interface ProductBasedCostingItem {
   status: string | null;
   input_type?: 'manual' | 'product_list' | null;
   assigned_shipment_id?: number | null;
+  sort_order?: number;
   created_at: string;
   updated_at: string;
 }

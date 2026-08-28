@@ -3441,6 +3441,7 @@ export type Database = {
           product_id: number | null
           product_weight: number | null
           quantity: number | null
+          sort_order: number
           updated_at: string
           vendor_code: string | null
           vendor_id: number | null
@@ -3467,6 +3468,7 @@ export type Database = {
           product_id?: number | null
           product_weight?: number | null
           quantity?: number | null
+          sort_order?: number
           updated_at?: string
           vendor_code?: string | null
           vendor_id?: number | null
@@ -3493,6 +3495,7 @@ export type Database = {
           product_id?: number | null
           product_weight?: number | null
           quantity?: number | null
+          sort_order?: number
           updated_at?: string
           vendor_code?: string | null
           vendor_id?: number | null
@@ -13923,6 +13926,10 @@ export type Database = {
           tenant_id: number
           updated_at: string
         }[]
+      }
+      update_product_based_costing_items_order: {
+        Args: { p_items: Json }
+        Returns: undefined
       }
       update_sales_invoice_from_payload: {
         Args: { p_invoice_id: number; p_payload: Json; p_tenant_id: number }

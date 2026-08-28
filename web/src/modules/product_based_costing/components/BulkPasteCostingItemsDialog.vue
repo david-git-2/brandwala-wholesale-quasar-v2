@@ -159,18 +159,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, toRef } from 'vue';
 import { useDialogPluginComponent, useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
-import { useProductBasedCostingStore } from '../stores/productBasedCostingStore';
-import type { ProductBasedCostingItemUpdateInput } from '../types';
+import { useQueryClient } from '@tanstack/vue-query';
+import { useProductBasedCostingItemsQuery } from '../composables/useProductBasedCostingItemsQuery';
+import { productBasedCostingService } from '../services/productBasedCostingService';
+import { productBasedCostingQueryKeys } from '../shared/queryKeys/productBasedCostingQueryKeys';
+import { showSuccessNotification } from 'src/utils/appFeedback';
+import type { ProductBasedCostingItem, ProductBasedCostingItemUpdateInput } from '../types';
+
+const props = defineProps<{
+  fileId: number;
+}>();
 
 defineEmits([...useDialogPluginComponent.emits]);
 
 const { dialogRef, onDialogHide, onDialogOK } = useDialogPluginComponent();
-const costingStore = useProductBasedCostingStore();
 const $q = useQuasar();
 const { t } = useI18n();
+const queryClient = useQueryClient();
+
+const { data: itemsData } = useProductBasedCostingItemsQuery(toRef(props, 'fileId'));
 
 const submitting = ref(false);
 const rawPasteText = ref('');
@@ -178,7 +188,7 @@ const parsedRows = ref<Array<string[]>>([]);
 const maxColumns = ref(0);
 const colMappings = ref<string[]>([]);
 
-const currentItems = computed(() => costingStore.costingItems);
+const currentItems = computed(() => itemsData.value ?? []);
 
 const previewRows = computed(() => {
   const len = Math.max(parsedRows.value.length, currentItems.value.length);
@@ -293,13 +303,27 @@ const onApply = async () => {
 
   try {
     if (updates.length > 0) {
-      const result = await costingStore.updateProductBasedCostingItemsBulk(updates);
+      const result = await productBasedCostingService.updateProductBasedCostingItemsBulk(updates);
       if (!result.success) {
         $q.notify({
           type: 'negative',
-        message: result.error ?? t('product_based_costing.bulk_update_failed'),
+          message: result.error ?? t('product_based_costing.bulk_update_failed'),
         });
         return;
+      }
+
+      if (result.data?.length) {
+        const byId = new Map(result.data.map((item) => [item.id, item]));
+        queryClient.setQueryData<ProductBasedCostingItem[]>(
+          productBasedCostingQueryKeys.itemsList(props.fileId),
+          (oldItems) => {
+            if (!oldItems) return result.data ?? [];
+            return oldItems.map((item) => byId.get(item.id) ?? item);
+          },
+        );
+        showSuccessNotification(
+          t('product_based_costing.bulk_updated_count', { count: result.data.length }),
+        );
       }
     }
     onDialogOK();

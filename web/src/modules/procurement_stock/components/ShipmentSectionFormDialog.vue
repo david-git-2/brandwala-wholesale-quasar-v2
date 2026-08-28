@@ -16,38 +16,13 @@
             {{ error }}
           </q-banner>
 
-          <!-- Vendor Picker -->
-          <q-select
-            v-model="form.vendor_id"
-            :options="vendorOptions"
-            label="Vendor *"
-            outlined
-            dense
-            emit-value
-            map-options
-            use-input
-            input-debounce="0"
-            :loading="loadingVendors"
-            :rules="[(val) => val != null || 'Vendor is required']"
-            @filter="filterVendors"
-          >
-            <template #prepend>
-              <q-icon name="ph ph-buildings" size="18px" color="grey-6" />
-            </template>
-            <template #no-option>
-              <q-item dense>
-                <q-item-section class="text-grey-6">No matching vendors</q-item-section>
-              </q-item>
-            </template>
-          </q-select>
-
           <!-- Section Title -->
           <q-input
             v-model="form.title"
             label="Section Title / Identifier *"
             outlined
             dense
-            placeholder="e.g. Zara Primary Order / Box Set A"
+            placeholder="e.g. Primary Order / Box Set A"
             :rules="[
               (val) => !!val || 'Title is required',
               (val) => val.trim().length > 0 || 'Title cannot be blank',
@@ -134,7 +109,6 @@
 import { ref, onMounted, computed } from 'vue';
 import { useDialogPluginComponent } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import type { ShipmentSection } from '../types/shipmentSection';
 
@@ -148,66 +122,20 @@ defineEmits([...useDialogPluginComponent.emits]);
 const { dialogRef, onDialogHide, onDialogOK } = useDialogPluginComponent();
 
 const authStore = useAuthStore();
-const vendorStore = useVendorStore();
 const shipmentStore = useGlobalShipmentStore();
 
 const isEdit = computed(() => !!props.section);
 const submitting = ref(false);
 const error = ref<string | null>(null);
-const loadingVendors = ref(false);
 
 const form = ref({
-  vendor_id: props.section?.vendor_id ?? (null as number | null),
   title: props.section?.title ?? '',
   invoice_number: props.section?.metadata?.invoice_number ?? '',
   invoice_date: props.section?.metadata?.invoice_date ?? '',
   notes: props.section?.metadata?.notes ?? '',
 });
 
-const vendorFilterText = ref('');
-
-const allVendorOptions = computed(() =>
-  vendorStore.items.map((v) => ({
-    label: v.is_default ? `${v.name} (default)` : v.name,
-    value: v.id,
-  })),
-);
-
-const vendorOptions = computed(() => {
-  if (!vendorFilterText.value) return allVendorOptions.value;
-  const needle = vendorFilterText.value.toLowerCase();
-  return allVendorOptions.value.filter((v) => v.label.toLowerCase().includes(needle));
-});
-
-const filterVendors = (val: string, update: (fn: () => void) => void) => {
-  update(() => {
-    vendorFilterText.value = val;
-  });
-};
-
-onMounted(async () => {
-  if (authStore.tenantId && vendorStore.items.length === 0) {
-    loadingVendors.value = true;
-    try {
-      await vendorStore.fetchVendors(authStore.tenantId);
-    } catch (err) {
-      console.error('Failed to load vendors', err);
-    } finally {
-      loadingVendors.value = false;
-    }
-  }
-
-  if (!isEdit.value && form.value.vendor_id == null) {
-    const fallbackVendorId =
-      shipmentStore.currentShipment?.vendor_id ??
-      vendorStore.items.find((v) => v.is_default)?.id ??
-      vendorStore.items[0]?.id ??
-      null;
-    if (fallbackVendorId) {
-      form.value.vendor_id = fallbackVendorId;
-    }
-  }
-
+onMounted(() => {
   if (!isEdit.value && !form.value.title) {
     const nextIndex = (shipmentStore.currentShipmentSections?.length ?? 0) + 1;
     form.value.title = `Section ${nextIndex}`;
@@ -216,14 +144,15 @@ onMounted(async () => {
 
 const onSubmit = async () => {
   if (!authStore.tenantId) return;
-  if (form.value.vendor_id == null) {
-    error.value = 'Vendor is required.';
-    return;
-  }
   if (!form.value.title.trim()) {
     error.value = 'Title is required.';
     return;
   }
+
+  const effectiveVendorId =
+    props.section?.vendor_id ??
+    shipmentStore.currentShipment?.vendor_id ??
+    null;
 
   submitting.value = true;
   error.value = null;
@@ -238,7 +167,7 @@ const onSubmit = async () => {
   try {
     if (isEdit.value && props.section) {
       const updated = await shipmentStore.updateSection(props.section.id, {
-        vendor_id: form.value.vendor_id,
+        vendor_id: effectiveVendorId,
         title: form.value.title.trim(),
         metadata,
       });
@@ -247,7 +176,7 @@ const onSubmit = async () => {
       const created = await shipmentStore.createSection({
         parent_tenant_id: authStore.tenantId,
         shipment_id: props.shipmentId,
-        vendor_id: form.value.vendor_id,
+        vendor_id: effectiveVendorId,
         title: form.value.title.trim(),
         sort_order: (shipmentStore.currentShipmentSections?.length ?? 0) + 1,
         metadata,

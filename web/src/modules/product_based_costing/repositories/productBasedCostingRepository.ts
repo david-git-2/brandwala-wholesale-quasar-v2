@@ -335,6 +335,7 @@ const listProductBasedCostingItems = async (
     .from('product_based_costing_items')
     .select('*')
     .eq('product_based_costing_file_id', productBasedCostingFileId)
+    .order('sort_order', { ascending: true })
     .order('id', { ascending: true });
 
   if (error) {
@@ -423,19 +424,21 @@ const updateProductBasedCostingItemsByFileId = async (
   return (data || []) as ProductBasedCostingItem[];
 };
 
-const getProductBasedCostingItemById = async (id: number): Promise<ProductBasedCostingItem> => {
+const getProductBasedCostingItemById = async (
+  id: number,
+): Promise<ProductBasedCostingItem | null> => {
   const { data, error } = await supabase
     .from('product_based_costing_items')
     .select('*')
     .eq('id', id)
-    .single();
+    .maybeSingle();
 
   if (error) {
     throw error;
   }
 
   if (!data) {
-    throw new Error('Product based costing item not found.');
+    return null;
   }
 
   return data as ProductBasedCostingItem;
@@ -471,6 +474,18 @@ const deleteProductBasedCostingItemsBulk = async (
   return (data || []) as ProductBasedCostingItem[];
 };
 
+const updateProductBasedCostingItemsOrder = async (
+  items: { id: number; sort_order: number }[],
+): Promise<void> => {
+  const { error } = await supabase.rpc('update_product_based_costing_items_order', {
+    p_items: items,
+  });
+
+  if (error) {
+    throw error;
+  }
+};
+
 const addCostingItemToShipment = async (
   shipmentId: number,
   costingItemId: number,
@@ -501,6 +516,7 @@ export const productBasedCostingRepository = {
   updateProductBasedCostingItemsByFileId,
   deleteProductBasedCostingItem,
   deleteProductBasedCostingItemsBulk,
+  updateProductBasedCostingItemsOrder,
   getProductBasedCostingItemById,
   recalculateProductBasedCostingFileOfferPrices,
   addCostingItemToShipment,

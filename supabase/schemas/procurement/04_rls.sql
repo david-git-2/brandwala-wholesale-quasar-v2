@@ -1133,6 +1133,10 @@ GRANT ALL ON FUNCTION "public"."update_global_shipment_items_order"("p_items" "j
 
 
 
+GRANT ALL ON FUNCTION "public"."update_product_based_costing_items_order"("p_items" "jsonb") TO "authenticated";
+
+
+
 GRANT ALL ON FUNCTION "public"."reorder_shipment_sections"("p_shipment_id" bigint, "p_section_ids" bigint[]) TO "authenticated";
 
 

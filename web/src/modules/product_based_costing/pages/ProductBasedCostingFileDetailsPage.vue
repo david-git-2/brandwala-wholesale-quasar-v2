@@ -91,6 +91,7 @@
             @product-weight-change="onProductWeightChange"
             @package-weight-change="onPackageWeightChange"
             @bulk-delete="onBulkDelete"
+            @reorder="onReorder"
             @update:visible-columns="onVisibleColumnsUpdate"
           />
         </q-card>
@@ -185,6 +186,7 @@ import {
   useDeleteProductBasedCostingItemsBulkMutation,
   useUpdateProductBasedCostingItemMutation,
   useRecalculateOfferPricesMutation,
+  useReorderProductBasedCostingItemsMutation,
 } from '../composables/useProductBasedCostingItemMutations';
 import { productBasedCostingRepository } from '../repositories/productBasedCostingRepository';
 import type { ProductBasedCostingItem } from '../types';
@@ -238,14 +240,23 @@ const isLoading = computed(() => isLoadingFile.value || isLoadingItems.value);
 const costingItems = computed(() => costingItemsData.value ?? []);
 
 function isBacklogItemOnCurrentFile(item: BacklogItem) {
-  if (item.product_id && costingItems.value.some((row) => row.product_id === item.product_id)) {
-    return true;
-  }
-  const barcode = item.barcode?.trim();
-  if (barcode && costingItems.value.some((row) => row.barcode?.trim() === barcode)) {
-    return true;
-  }
-  return false;
+  return costingItems.value.some((row) => {
+    if (item.product_id && row.product_id === item.product_id) return true;
+
+    const itemCode = item.product_code?.trim();
+    const rowCode = row.product_code?.trim();
+    if (itemCode && rowCode) {
+      return itemCode === rowCode;
+    }
+
+    const barcode = item.barcode?.trim();
+    const rowBarcode = row.barcode?.trim();
+    if (barcode && rowBarcode && barcode === rowBarcode) {
+      return !itemCode && !rowCode;
+    }
+
+    return false;
+  });
 }
 
 const availableBacklogItems = computed(() =>
@@ -313,6 +324,7 @@ const updateItemMutation = useUpdateProductBasedCostingItemMutation();
 const deleteItemMutation = useDeleteProductBasedCostingItemMutation();
 const deleteItemsBulkMutation = useDeleteProductBasedCostingItemsBulkMutation();
 const recalculateOfferPricesMutation = useRecalculateOfferPricesMutation();
+const reorderItemsMutation = useReorderProductBasedCostingItemsMutation();
 
 // Billing Profiles
 const tenantIdRef = computed(() => tenantStore.selectedTenant?.id);
@@ -626,6 +638,14 @@ async function onBulkDelete(ids: number[]) {
   refreshBacklog();
 }
 
+async function onReorder(itemsOrder: { id: number; sort_order: number }[]) {
+  if (!itemsOrder.length || !fileId.value) return;
+  await reorderItemsMutation.mutateAsync({
+    fileId: fileId.value,
+    itemsOrder,
+  });
+}
+
 const itemsTableRef = ref<InstanceType<typeof ProductBasedCostingItemsTable> | null>(null);
 
 type RowChangePayload = {
@@ -687,7 +707,10 @@ function openBulkPaste() {
     $q.notify({ type: 'warning', message: t('product_based_costing.no_items_to_update') });
     return;
   }
-  $q.dialog({ component: BulkPasteCostingItemsDialog });
+  $q.dialog({
+    component: BulkPasteCostingItemsDialog,
+    componentProps: { fileId: fileId.value },
+  });
 }
 
 function openPreviewDialog() {

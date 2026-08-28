@@ -141,9 +141,21 @@ const procurementStockRoutes: RouteRecordRaw[] = [
         beforeEnter: guard('global_shipment'),
       },
       {
+        path: ':id/v2',
+        name: 'app-procurement-shipment-details-v2',
+        component: () => import('../pages/ShipmentOverviewV2Page.vue'),
+        beforeEnter: guard('global_shipment'),
+      },
+      {
         path: ':id/items',
         name: 'app-procurement-shipment-items',
         component: () => import('../pages/ShipmentLineItemsPage.vue'),
+        beforeEnter: guard('global_shipment'),
+      },
+      {
+        path: ':id/items/v2',
+        name: 'app-procurement-shipment-items-v2',
+        component: () => import('../pages/ShipmentLineItemsV2Page.vue'),
         beforeEnter: guard('global_shipment'),
       },
       {

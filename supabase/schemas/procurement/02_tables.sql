@@ -667,6 +667,7 @@ CREATE TABLE IF NOT EXISTS "public"."product_based_costing_items" (
     "vendor_id" bigint,
     "is_offer_price_manual" boolean DEFAULT false NOT NULL,
     "confirmed_quantity" integer,
+    "sort_order" integer DEFAULT 0 NOT NULL,
     CONSTRAINT "product_based_costing_items_input_type_check" CHECK ((("input_type" = ANY (ARRAY['manual'::"text", 'product_list'::"text"])) OR ("input_type" IS NULL)))
 );
 

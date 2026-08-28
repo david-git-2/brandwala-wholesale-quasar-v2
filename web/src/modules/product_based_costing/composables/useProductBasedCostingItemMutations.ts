@@ -177,3 +177,26 @@ export function useRecalculateOfferPricesMutation() {
     },
   });
 }
+
+export function useReorderProductBasedCostingItemsMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      itemsOrder,
+    }: {
+      fileId: number;
+      itemsOrder: { id: number; sort_order: number }[];
+    }) => productBasedCostingRepository.updateProductBasedCostingItemsOrder(itemsOrder),
+    onSuccess: (_, variables) => {
+      showSuccessNotification('Items reordered successfully.');
+      void queryClient.invalidateQueries({
+        queryKey: productBasedCostingQueryKeys.itemsList(variables.fileId),
+      });
+    },
+    onError: (error) => {
+      showMutationWarning(error, 'Failed to reorder items.');
+    },
+  });
+}
+

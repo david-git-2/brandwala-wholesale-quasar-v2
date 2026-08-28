@@ -1,5 +1,10 @@
 <template>
-  <q-page class="q-pa-md shipment-overview-page">
+  <ShipmentOverviewV2Page
+    v-if="overviewVersion === 'v2'"
+    :overview-version="overviewVersion"
+    @update:overview-version="onVersionChange"
+  />
+  <q-page v-else class="q-pa-md shipment-overview-page">
     <div class="q-gutter-y-md">
       <!-- Header Section: Title, Action, & Metadata Chips -->
       <div>
@@ -33,6 +38,31 @@
           </template>
 
           <q-space />
+
+          <!-- Legacy / New (v2) Switcher Toggle -->
+          <q-btn-toggle
+            :model-value="overviewVersion"
+            flat
+            dense
+            no-caps
+            size="sm"
+            toggle-color="primary"
+            color="grey-2"
+            text-color="grey-8"
+            :options="[
+              { label: 'Legacy', value: 'legacy', icon: 'ph ph-clock-counter-clockwise' },
+              { label: 'New (v2)', value: 'v2', icon: 'ph ph-sparkle' },
+            ]"
+            class="border-grey version-toggle q-mr-xs"
+            @update:model-value="onVersionChange"
+          >
+            <template #legacy>
+              <q-tooltip>Active: Legacy Overview</q-tooltip>
+            </template>
+            <template #v2>
+              <q-tooltip>Switch to New V2 Overview</q-tooltip>
+            </template>
+          </q-btn-toggle>
 
           <q-btn
             flat
@@ -785,6 +815,7 @@ import {
   useShipmentProgressFlowsQuery,
   useShipmentProgressFlowStagesQuery,
 } from '../composables/useProcurementStockQuery';
+import ShipmentOverviewV2Page from './ShipmentOverviewV2Page.vue';
 
 const $q = useQuasar();
 const route = useRoute();
@@ -793,6 +824,23 @@ const authStore = useAuthStore();
 const vendorStore = useVendorStore();
 const shipmentStore = useGlobalShipmentStore();
 const shipmentId = Number(route.params.id);
+
+const OVERVIEW_VERSION_STORAGE_KEY = 'shipment_overview_version';
+
+const getInitialVersion = (): 'legacy' | 'v2' => {
+  if (route.query.version === 'v2' || route.query.v === 'v2') return 'v2';
+  if (route.query.version === 'legacy' || route.query.v === 'legacy') return 'legacy';
+  const saved = localStorage.getItem(OVERVIEW_VERSION_STORAGE_KEY);
+  if (saved === 'v2' || saved === 'legacy') return saved;
+  return 'legacy';
+};
+
+const overviewVersion = ref<'legacy' | 'v2'>(getInitialVersion());
+
+const onVersionChange = (newVal: 'legacy' | 'v2') => {
+  overviewVersion.value = newVal;
+  localStorage.setItem(OVERVIEW_VERSION_STORAGE_KEY, newVal);
+};
 
 const dummyStatus = ref<'draft' | 'ordered' | 'shipped' | 'customs' | 'received' | 'cancelled'>('shipped');
 const updatingStatus = ref(false);
@@ -1604,5 +1652,14 @@ const goToFlowSettings = () => {
 
 .rounded-btn {
   border-radius: 8px;
+}
+
+.border-grey {
+  border: 1px solid #e2e8f0;
+}
+
+.version-toggle {
+  border-radius: 8px;
+  overflow: hidden;
 }
 </style>

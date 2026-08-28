@@ -1,5 +1,10 @@
 <template>
-  <q-page class="shipment-items-page bg-grey-1 column no-wrap" style="height: calc(100vh - 55px); overflow: hidden">
+  <ShipmentLineItemsV2Page
+    v-if="itemsVersion === 'v2'"
+    :items-version="itemsVersion"
+    @update:items-version="onVersionChange"
+  />
+  <q-page v-else class="shipment-items-page bg-grey-1 column no-wrap" style="height: calc(100vh - 55px); overflow: hidden">
     <!-- Header Bar -->
     <div class="bg-white border-bottom q-px-md q-py-sm shadow-1">
       <div class="row items-center justify-between no-wrap">
@@ -78,8 +83,32 @@
           </div>
         </div>
 
-        <!-- Right: Actions (View mode, Columns, Bulk paste, Add, Refresh) -->
+        <!-- Right: Actions (View mode, Version Switcher, Columns, Bulk paste, Add, Refresh) -->
         <div class="row items-center q-gutter-xs justify-end">
+          <q-btn-toggle
+            :model-value="itemsVersion"
+            flat
+            dense
+            no-caps
+            size="sm"
+            toggle-color="primary"
+            color="grey-2"
+            text-color="grey-8"
+            :options="[
+              { label: 'Legacy', value: 'legacy', icon: 'ph ph-clock-counter-clockwise' },
+              { label: 'New (v2)', value: 'v2', icon: 'ph ph-sparkle' },
+            ]"
+            class="border-grey version-toggle q-mr-xs"
+            @update:model-value="onVersionChange"
+          >
+            <template #legacy>
+              <q-tooltip>Active: Legacy Items View</q-tooltip>
+            </template>
+            <template #v2>
+              <q-tooltip>Switch to New (v2) Items View</q-tooltip>
+            </template>
+          </q-btn-toggle>
+
           <q-btn-toggle
             v-model="lineItemsViewMode"
             flat
@@ -341,6 +370,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 
 // Components
+import ShipmentLineItemsV2Page from './ShipmentLineItemsV2Page.vue';
 import ShipmentLineItemsTable from '../components/ShipmentLineItemsTable.vue';
 import ShipmentItemCardGrid from '../components/ShipmentItemCardGrid.vue';
 
@@ -352,6 +382,23 @@ const route = useRoute();
 const router = useRouter();
 const shipmentStore = useGlobalShipmentStore();
 const shipmentId = Number(route.params.id);
+
+const ITEMS_VERSION_STORAGE_KEY = 'shipment_items_version';
+
+const getInitialVersion = (): 'legacy' | 'v2' => {
+  if (route.query.version === 'v2' || route.query.v === 'v2') return 'v2';
+  if (route.query.version === 'legacy' || route.query.v === 'legacy') return 'legacy';
+  const saved = localStorage.getItem(ITEMS_VERSION_STORAGE_KEY);
+  if (saved === 'v2' || saved === 'legacy') return saved;
+  return 'legacy';
+};
+
+const itemsVersion = ref<'legacy' | 'v2'>(getInitialVersion());
+
+const onVersionChange = (newVal: 'legacy' | 'v2') => {
+  itemsVersion.value = newVal;
+  localStorage.setItem(ITEMS_VERSION_STORAGE_KEY, newVal);
+};
 
 const VIEW_MODE_STORAGE_KEY = 'inbound_shipment_line_items_view_mode';
 const lineItemsViewMode = ref<'table' | 'cards'>('table');

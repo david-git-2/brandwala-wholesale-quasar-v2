@@ -45,6 +45,33 @@
           v-if="showBulkCodes"
           class="column q-gutter-y-sm bulk-codes-box q-pa-sm rounded-borders"
         >
+          <div class="row items-center justify-between q-px-xs">
+            <span class="text-caption text-weight-medium text-grey-8">
+              {{ $t('product_based_costing.bulk_paste_mode') }}:
+            </span>
+            <q-btn-dropdown
+              flat
+              dense
+              no-caps
+              :label="bulkSearchFieldLabel"
+              class="text-caption text-weight-medium text-grey-8 search-field-dropdown"
+            >
+              <q-list dense>
+                <q-item clickable v-close-popup @click="bulkSearchField = 'auto'">
+                  <q-item-section>{{ $t('product_based_costing.bulk_paste_mode_auto') }}</q-item-section>
+                </q-item>
+                <q-item clickable v-close-popup @click="bulkSearchField = 'product_code'">
+                  <q-item-section>{{ $t('product_based_costing.bulk_paste_mode_product_code') }}</q-item-section>
+                </q-item>
+                <q-item clickable v-close-popup @click="bulkSearchField = 'barcode'">
+                  <q-item-section>{{ $t('product_based_costing.bulk_paste_mode_barcode') }}</q-item-section>
+                </q-item>
+                <q-item clickable v-close-popup @click="bulkSearchField = 'id'">
+                  <q-item-section>{{ $t('product_based_costing.bulk_paste_mode_id') }}</q-item-section>
+                </q-item>
+              </q-list>
+            </q-btn-dropdown>
+          </div>
           <q-input
             v-model="bulkCodesText"
             type="textarea"
@@ -57,7 +84,7 @@
               overflowY: 'auto',
               resize: 'none',
             }"
-            :placeholder="$t('product_based_costing.paste_codes_placeholder')"
+            :placeholder="bulkPlaceholder"
           />
           <div class="row items-center q-col-gutter-sm">
             <div class="col-auto">
@@ -287,6 +314,9 @@ import { productRepository } from 'src/modules/products/repositories/productRepo
 import { productService } from 'src/modules/products/services/productService';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import SmartImage from 'src/components/SmartImage.vue';
+import BulkCodesAddReportDialog, {
+  type BulkCodesAddReport,
+} from './BulkCodesAddReportDialog.vue';
 import type { ProductBasedCostingItem } from '../types';
 
 interface ProductItem {
@@ -338,8 +368,35 @@ const browsePage = ref(1);
 const browseTotal = ref(0);
 const showBulkCodes = ref(false);
 const bulkCodesText = ref('');
+const bulkSearchField = ref<'auto' | 'product_code' | 'barcode' | 'id'>('auto');
 const bulkDefaultQty = ref(1);
 const bulkLoading = ref(false);
+
+const bulkSearchFieldLabel = computed(() => {
+  if (bulkSearchField.value === 'product_code') {
+    return t('product_based_costing.bulk_paste_mode_product_code');
+  }
+  if (bulkSearchField.value === 'barcode') {
+    return t('product_based_costing.bulk_paste_mode_barcode');
+  }
+  if (bulkSearchField.value === 'id') {
+    return t('product_based_costing.bulk_paste_mode_id');
+  }
+  return t('product_based_costing.bulk_paste_mode_auto');
+});
+
+const bulkPlaceholder = computed(() => {
+  if (bulkSearchField.value === 'product_code') {
+    return 'PRD-001\nPRD-002';
+  }
+  if (bulkSearchField.value === 'barcode') {
+    return '8711000279502\n8711000279380';
+  }
+  if (bulkSearchField.value === 'id') {
+    return '101\n102\n#103';
+  }
+  return t('product_based_costing.paste_codes_placeholder');
+});
 
 const filterDrawerOpen = ref(false);
 const filterVendorId = ref<number | null>(null);
@@ -372,10 +429,31 @@ const getVendorCode = (vendorId: number | null): string | null => {
   return vendorStore.items.find((v) => v.id === vendorId)?.code ?? null;
 };
 
+const getFileItems = (): ProductBasedCostingItem[] => {
+  return (
+    queryClient.getQueryData<ProductBasedCostingItem[]>(
+      productBasedCostingQueryKeys.itemsList(props.fileId),
+    ) ?? costingStore.costingItems
+  );
+};
+
 const isAlreadyOnFile = (product: ProductItem) => {
-  return costingStore.costingItems.some((item) => {
+  return getFileItems().some((item) => {
     if (item.product_id != null && item.product_id === product.id) return true;
-    return item.barcode === product.barcode && item.product_code === product.product_code;
+
+    const itemCode = item.product_code?.trim();
+    const productCode = product.product_code?.trim();
+    if (itemCode && productCode) {
+      return itemCode === productCode;
+    }
+
+    const itemBarcode = item.barcode?.trim();
+    const productBarcode = product.barcode?.trim();
+    if (itemBarcode && productBarcode && itemBarcode === productBarcode) {
+      return !itemCode && !productCode;
+    }
+
+    return false;
   });
 };
 
@@ -491,6 +569,24 @@ const parseBulkCodes = (raw: string): string[] => {
   return tokens;
 };
 
+const buildDuplicateCodeEntries = (codes: string[]) => {
+  const counts = new Map<string, number>();
+  for (const code of codes) {
+    counts.set(code, (counts.get(code) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .filter(([, count]) => count > 1)
+    .map(([code, count]) => ({ code, count }))
+    .sort((a, b) => a.code.localeCompare(b.code));
+};
+
+const showBulkCodesReport = (report: BulkCodesAddReport) => {
+  $q.dialog({
+    component: BulkCodesAddReportDialog,
+    componentProps: { report },
+  });
+};
+
 const onBulkAddCodes = async () => {
   const codes = parseBulkCodes(bulkCodesText.value);
   if (codes.length === 0) {
@@ -514,68 +610,84 @@ const onBulkAddCodes = async () => {
     const products = await productRepository.lookupProductsByCodes({
       codes,
       tenantId: authStore.tenantId,
+      searchField: bulkSearchField.value,
     });
 
     const byBarcode = new Map<string, ProductItem>();
     const byProductCode = new Map<string, ProductItem>();
+    const byId = new Map<string, ProductItem>();
     for (const p of products) {
       const item = toProductItem(p);
       if (p.barcode?.trim()) byBarcode.set(p.barcode.trim(), item);
       if (p.product_code?.trim()) byProductCode.set(p.product_code.trim(), item);
+      byId.set(String(p.id), item);
     }
 
     const missing: string[] = [];
+    const alreadyOnFile: string[] = [];
+    const duplicateCodes = buildDuplicateCodeEntries(codes);
+    const seenProductIds = new Set<number>();
     let added = 0;
-    let skipped = 0;
+
     submitting.value = true;
-    for (const code of codes) {
-      const product = byBarcode.get(code) ?? byProductCode.get(code);
+    for (const rawCode of codes) {
+      const code = rawCode.trim();
+      const cleanId = code.replace(/^#/, '');
+      let product: ProductItem | undefined;
+
+      if (bulkSearchField.value === 'product_code') {
+        product = byProductCode.get(code) ?? byProductCode.get(cleanId);
+      } else if (bulkSearchField.value === 'barcode') {
+        product = byBarcode.get(code) ?? byBarcode.get(cleanId);
+      } else if (bulkSearchField.value === 'id') {
+        product = byId.get(cleanId);
+      } else {
+        product =
+          byBarcode.get(code) ??
+          byProductCode.get(code) ??
+          byBarcode.get(cleanId) ??
+          byProductCode.get(cleanId) ??
+          byId.get(cleanId);
+      }
+
       if (!product) {
         missing.push(code);
         continue;
       }
+
+      if (seenProductIds.has(product.id)) {
+        continue;
+      }
+
+      if (isAlreadyOnFile(product)) {
+        if (!alreadyOnFile.includes(code)) {
+          alreadyOnFile.push(code);
+        }
+        seenProductIds.add(product.id);
+        continue;
+      }
+
       const result = await persistProductToFile(product, qty);
-      if (result.ok) added += 1;
-      else if (result.skipped) skipped += 1;
+      if (result.ok) {
+        added += 1;
+        seenProductIds.add(product.id);
+      } else if (result.skipped) {
+        if (!alreadyOnFile.includes(code)) {
+          alreadyOnFile.push(code);
+        }
+        seenProductIds.add(product.id);
+      }
     }
 
-    if (missing.length > 0) {
-      bulkCodesText.value = missing.join('\n');
-    } else if (added > 0) {
-      bulkCodesText.value = '';
-    }
+    bulkCodesText.value = missing.length > 0 ? missing.join('\n') : added > 0 ? '' : bulkCodesText.value;
 
-    const skipNote = skipped > 0 ? ` ${skipped} already on file.` : '';
-    if (missing.length === 0 && added > 0) {
-      $q.notify({
-        type: 'positive',
-        message: t('product_based_costing.added_items_to_file', { count: added, skipNote }),
-      });
-    } else if (missing.length === 0 && skipped > 0) {
-      $q.notify({
-        type: 'warning',
-        message: t('product_based_costing.skipped_already_on_file', { count: skipped }),
-      });
-    } else if (missing.length > 0 && added > 0) {
-      $q.notify({
-        type: 'warning',
-        message: t('product_based_costing.added_with_missing', {
-          added,
-          skipNote,
-          missing: missing.join(', '),
-        }),
-        timeout: 6000,
-      });
-    } else if (missing.length > 0) {
-      $q.notify({
-        type: 'negative',
-        message: t('product_based_costing.missing_codes', {
-          missing: missing.join(', '),
-          skipNote,
-        }),
-        timeout: 6000,
-      });
-    }
+    showBulkCodesReport({
+      totalParsed: codes.length,
+      added,
+      duplicateCodes,
+      alreadyOnFile,
+      missing,
+    });
   } catch (err) {
     $q.notify({
       type: 'negative',

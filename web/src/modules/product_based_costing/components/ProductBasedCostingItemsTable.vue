@@ -106,9 +106,59 @@
                   @update:model-value="(checked) => onToggleRowSelection(slotProps.row.id, checked)"
                   dense
                 />
-                <q-badge color="grey-3" text-color="grey-9" class="text-weight-bold">
+                <q-badge color="grey-3" text-color="grey-9" class="text-weight-bold cursor-pointer text-underline-dashed">
                   #{{ slotProps.row.sl }}
+                  <q-popup-edit
+                    :model-value="slotProps.row.sl"
+                    buttons
+                    persistent
+                    :label-set="$t('product_based_costing.move') || 'Move'"
+                    :label-cancel="$t('product_based_costing.cancel') || 'Cancel'"
+                    v-slot="scope"
+                    @save="(val) => moveItemToPosition(slotProps.rowIndex, val)"
+                  >
+                    <q-input
+                      :model-value="scope.value ?? ''"
+                      type="number"
+                      dense
+                      outlined
+                      autofocus
+                      min="1"
+                      :max="displayRows.length"
+                      label="New SL Position"
+                      @update:model-value="(v) => (scope.value = v === '' ? null : Number(v))"
+                      @keyup.enter="scope.set"
+                    />
+                  </q-popup-edit>
                 </q-badge>
+                <div class="row items-center q-gutter-none">
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    size="xs"
+                    icon="ph ph-caret-up"
+                    :disable="slotProps.rowIndex === 0"
+                    class="q-my-none"
+                    style="height: 18px; min-height: 18px; width: 18px"
+                    @click.stop="moveItem(slotProps.rowIndex, 'up')"
+                  >
+                    <q-tooltip>Move Up</q-tooltip>
+                  </q-btn>
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    size="xs"
+                    icon="ph ph-caret-down"
+                    :disable="slotProps.rowIndex === displayRows.length - 1"
+                    class="q-my-none"
+                    style="height: 18px; min-height: 18px; width: 18px"
+                    @click.stop="moveItem(slotProps.rowIndex, 'down')"
+                  >
+                    <q-tooltip>Move Down</q-tooltip>
+                  </q-btn>
+                </div>
               </div>
 
               <div class="row items-center q-gutter-xs">
@@ -527,8 +577,62 @@
               dense
             />
           </q-td>
-          <q-td key="sl" :props="slotProps" class="col-sl text-center">
-            {{ slotProps.row.sl }}
+          <q-td key="sl" :props="slotProps" class="col-sl text-right">
+            <div class="row items-center justify-end no-wrap">
+              <span class="cursor-pointer text-underline-dashed text-weight-medium">
+                {{ slotProps.row.sl }}
+              </span>
+              <q-popup-edit
+                :model-value="slotProps.row.sl"
+                buttons
+                persistent
+                :label-set="$t('product_based_costing.move') || 'Move'"
+                :label-cancel="$t('product_based_costing.cancel') || 'Cancel'"
+                v-slot="scope"
+                @save="(val) => moveItemToPosition(slotProps.rowIndex, val)"
+              >
+                <q-input
+                  :model-value="scope.value ?? ''"
+                  type="number"
+                  dense
+                  outlined
+                  autofocus
+                  min="1"
+                  :max="displayRows.length"
+                  label="New SL Position"
+                  @update:model-value="(v) => (scope.value = v === '' ? null : Number(v))"
+                  @keyup.enter="scope.set"
+                />
+              </q-popup-edit>
+              <div class="column items-center justify-center q-ml-xs">
+                <q-btn
+                  flat
+                  round
+                  dense
+                  size="xs"
+                  icon="ph ph-caret-up"
+                  :disable="slotProps.rowIndex === 0"
+                  class="q-my-none"
+                  style="height: 14px; min-height: 14px"
+                  @click.stop="moveItem(slotProps.rowIndex, 'up')"
+                >
+                  <q-tooltip>Move Up</q-tooltip>
+                </q-btn>
+                <q-btn
+                  flat
+                  round
+                  dense
+                  size="xs"
+                  icon="ph ph-caret-down"
+                  :disable="slotProps.rowIndex === displayRows.length - 1"
+                  class="q-my-none"
+                  style="height: 14px; min-height: 14px"
+                  @click.stop="moveItem(slotProps.rowIndex, 'down')"
+                >
+                  <q-tooltip>Move Down</q-tooltip>
+                </q-btn>
+              </div>
+            </div>
           </q-td>
 
           <q-td key="image" :props="slotProps" class="col-image text-center">
@@ -1099,6 +1203,7 @@ const emit = defineEmits<{
     },
   ): void;
   (e: 'bulk-delete', ids: number[]): void;
+  (e: 'reorder', itemsOrder: { id: number; sort_order: number }[]): void;
   (e: 'update:visible-columns', columns: string[]): void;
 }>();
 
@@ -1330,8 +1435,8 @@ const columns = computed<QTableColumn[]>(() => [
     name: 'sl',
     label: 'SL',
     field: 'sl',
-    align: 'center',
-    style: 'width: 42px; min-width: 42px; max-width: 42px; text-align: center;',
+    align: 'right',
+    style: 'width: 58px; min-width: 58px; max-width: 58px; text-align: right;',
   },
   {
     name: 'image',
@@ -1891,6 +1996,54 @@ const onConfirmBulkDelete = () => {
   emit('bulk-delete', [...selectedRowIds.value]);
   selectedRowIds.value = [];
   showBulkDeleteConfirm.value = false;
+};
+
+const moveItem = (index: number, direction: 'up' | 'down') => {
+  const targetIndex = direction === 'up' ? index - 1 : index + 1;
+  if (targetIndex < 0 || targetIndex >= displayRows.value.length) return;
+
+  const currentItem = displayRows.value[index];
+  const targetItem = displayRows.value[targetIndex];
+  if (!currentItem || !targetItem) return;
+
+  // Build new items list from current displayRows
+  const updatedRows = [...displayRows.value];
+  updatedRows[index] = targetItem;
+  updatedRows[targetIndex] = currentItem;
+
+  const itemsOrder = updatedRows.map((row, idx) => ({
+    id: row.id,
+    sort_order: idx * 10,
+  }));
+
+  emit('reorder', itemsOrder);
+};
+
+const moveItemToPosition = (currentIndex: number, newPosition: string | number | null) => {
+  const parsed = Number(newPosition);
+  if (!Number.isFinite(parsed) || parsed < 1 || parsed > displayRows.value.length) {
+    $q.notify({
+      type: 'warning',
+      message: `Position must be between 1 and ${displayRows.value.length}.`,
+    });
+    return;
+  }
+
+  const targetIndex = parsed - 1;
+  if (currentIndex === targetIndex) return;
+
+  const updatedRows = [...displayRows.value];
+  const [removedRow] = updatedRows.splice(currentIndex, 1);
+  if (!removedRow) return;
+
+  updatedRows.splice(targetIndex, 0, removedRow);
+
+  const itemsOrder = updatedRows.map((row, idx) => ({
+    id: row.id,
+    sort_order: idx * 10,
+  }));
+
+  emit('reorder', itemsOrder);
 };
 
 const getStatusColor = (status: string | null) => {
