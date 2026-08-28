@@ -9883,7 +9883,7 @@ begin
     )
     into v_flow_stages
     from public.shipment_progress_flow_stages st
-    join public.shipment_progress_tags t on t.id = st.tag_id
+    join public.tags t on t.id = st.tag_id
     where st.flow_id = v_progress_flow_id and st.is_active = true;
   else
     v_flow_stages := '[]'::jsonb;

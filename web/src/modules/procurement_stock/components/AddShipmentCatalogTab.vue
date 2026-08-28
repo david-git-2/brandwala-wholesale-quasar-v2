@@ -1,185 +1,215 @@
 <template>
   <div class="panel-body col column no-wrap">
-    <div class="q-pa-md toolbar-section column q-gutter-y-sm">
-      <!-- Target Vendor Section Selector -->
-      <div class="row items-center q-col-gutter-sm">
-        <div class="col-12">
-          <q-select
-            v-model="selectedSectionId"
-            :options="sectionOptions"
-            label="Target Vendor Section *"
-            outlined
-            dense
-            bg-color="white"
-            emit-value
-            map-options
-            :error="!selectedSectionId && sectionOptions.length > 0"
-            error-message="A vendor section is required to add items"
-            hide-bottom-space
-          >
-            <template #prepend>
-              <q-icon name="ph ph-folder" size="18px" color="primary" />
-            </template>
-          </q-select>
-        </div>
+    <!-- Top Bar: Left Title | Center Mode Buttons (Search, Bulk) | Right Filter & Close -->
+    <div class="top-nav-bar row items-center justify-between q-px-md q-py-sm bg-white border-bottom">
+      <div class="text-subtitle1 text-weight-bold text-grey-9">
+        Add Item
       </div>
 
+      <!-- Center Segmented Switch: Search | Bulk -->
+      <div class="row items-center bg-grey-2 q-pa-xs rounded-borders mode-switcher">
+        <q-btn
+          unelevated
+          dense
+          no-caps
+          :color="!showBulkCodes ? 'white' : 'transparent'"
+          :text-color="!showBulkCodes ? 'grey-10' : 'grey-7'"
+          :class="{ 'shadow-1 text-weight-bold': !showBulkCodes, 'text-weight-medium': showBulkCodes }"
+          label="Search"
+          icon="ph ph-magnifying-glass"
+          class="q-px-md mode-btn"
+          @click="showBulkCodes = false"
+        />
+        <q-btn
+          unelevated
+          dense
+          no-caps
+          :color="showBulkCodes ? 'white' : 'transparent'"
+          :text-color="showBulkCodes ? 'grey-10' : 'grey-7'"
+          :class="{ 'shadow-1 text-weight-bold': showBulkCodes, 'text-weight-medium': !showBulkCodes }"
+          label="Bulk"
+          icon="ph ph-list-plus"
+          class="q-px-md mode-btn"
+          @click="showBulkCodes = true"
+        />
+      </div>
+
+      <!-- Right Action Icons: Filter & Close -->
+      <div class="row items-center q-gutter-x-xs">
+        <q-btn
+          flat
+          round
+          dense
+          icon="ph ph-funnel"
+          color="grey-8"
+          @click="openFilterSidebar"
+        >
+          <q-badge v-if="activeFilterCount > 0" color="dark" rounded floating>
+            {{ activeFilterCount }}
+          </q-badge>
+          <q-tooltip>Filter catalog</q-tooltip>
+        </q-btn>
+        <q-btn
+          flat
+          round
+          dense
+          icon="ph ph-x"
+          color="grey-8"
+          @click="$emit('done')"
+        >
+          <q-tooltip>Close</q-tooltip>
+        </q-btn>
+      </div>
+    </div>
+
+    <!-- Search Mode View -->
+    <div v-if="!showBulkCodes" class="q-pa-md search-header-bar column q-gutter-y-sm">
       <div class="row items-center q-col-gutter-sm">
-        <div class="col-auto">
-          <q-btn-dropdown
-            flat
-            dense
-            :label="searchFieldLabel"
-            class="text-caption text-weight-medium text-grey-8 search-field-dropdown"
-            no-caps
-          >
-            <q-list dense>
-              <q-item clickable v-close-popup @click="browseSearchField = 'name'">
-                <q-item-section>Name</q-item-section>
-              </q-item>
-              <q-item clickable v-close-popup @click="browseSearchField = 'barcode'">
-                <q-item-section>Barcode</q-item-section>
-              </q-item>
-              <q-item clickable v-close-popup @click="browseSearchField = 'product_code'">
-                <q-item-section>Product Code</q-item-section>
-              </q-item>
-              <q-item clickable v-close-popup @click="browseSearchField = 'id'">
-                <q-item-section>Product ID</q-item-section>
-              </q-item>
-            </q-list>
-          </q-btn-dropdown>
-        </div>
         <div class="col">
           <q-input
             v-model="browseSearch"
-            :placeholder="`Search catalog by ${searchFieldLabel.toLowerCase()}...`"
+            :placeholder="`Search catalog by ${searchFieldLabel.toLowerCase()} (e.g. name, SKU, barcode)...`"
             outlined
             dense
-            clearable
             autofocus
-            class="full-width"
+            bg-color="white"
+            class="catalog-search-input"
           >
             <template #prepend>
-              <q-icon name="ph ph-magnifying-glass" />
+              <q-icon name="ph ph-magnifying-glass" color="grey-6" />
+              <q-btn-dropdown
+                flat
+                dense
+                :label="searchFieldLabel"
+                class="text-caption text-weight-medium text-grey-8 search-scope-pill q-mr-xs"
+                no-caps
+              >
+                <q-list dense>
+                  <q-item clickable v-close-popup @click="browseSearchField = 'name'">
+                    <q-item-section>Search by Name</q-item-section>
+                  </q-item>
+                  <q-item clickable v-close-popup @click="browseSearchField = 'barcode'">
+                    <q-item-section>Search by Barcode</q-item-section>
+                  </q-item>
+                  <q-item clickable v-close-popup @click="browseSearchField = 'product_code'">
+                    <q-item-section>Search by Product Code / SKU</q-item-section>
+                  </q-item>
+                  <q-item clickable v-close-popup @click="browseSearchField = 'id'">
+                    <q-item-section>Search by Product ID</q-item-section>
+                  </q-item>
+                </q-list>
+              </q-btn-dropdown>
+            </template>
+            <template v-if="browseSearch" #append>
+              <q-btn
+                flat
+                round
+                dense
+                size="sm"
+                icon="ph ph-x"
+                color="grey-6"
+                @click="onClearSearch"
+              />
             </template>
           </q-input>
         </div>
-        <div class="col-auto">
-          <q-btn
-            flat
-            dense
-            no-caps
-            color="grey-8"
-            icon="ph ph-list-plus"
-            label="Bulk codes"
-            @click="showBulkCodes = !showBulkCodes"
-          />
-          <q-btn flat round dense icon="ph ph-funnel" color="grey-8" @click="openFilterSidebar">
-            <q-badge v-if="activeFilterCount > 0" color="primary" rounded floating>
-              {{ activeFilterCount }}
-            </q-badge>
-          </q-btn>
-        </div>
+      </div>
+    </div>
+
+    <!-- Bulk Mode View -->
+    <div v-else class="q-pa-md bulk-header-bar column q-gutter-y-sm bg-white border-bottom">
+      <div class="row items-center justify-between q-px-xs">
+        <span class="text-subtitle2 text-weight-bold text-grey-9">Paste SKUs / Barcodes</span>
+        <q-btn-dropdown
+          flat
+          dense
+          no-caps
+          :label="bulkSearchFieldLabel"
+          class="text-caption text-weight-medium text-grey-8 search-field-dropdown"
+        >
+          <q-list dense>
+            <q-item clickable v-close-popup @click="bulkSearchField = 'auto'">
+              <q-item-section>Auto (All Fields)</q-item-section>
+            </q-item>
+            <q-item clickable v-close-popup @click="bulkSearchField = 'product_code'">
+              <q-item-section>Product Code</q-item-section>
+            </q-item>
+            <q-item clickable v-close-popup @click="bulkSearchField = 'barcode'">
+              <q-item-section>Barcode</q-item-section>
+            </q-item>
+            <q-item clickable v-close-popup @click="bulkSearchField = 'id'">
+              <q-item-section>Product ID</q-item-section>
+            </q-item>
+          </q-list>
+        </q-btn-dropdown>
       </div>
 
-      <q-btn
-        unelevated
-        no-caps
-        color="primary"
-        icon="ph ph-plus"
-        label="New Product"
-        class="new-product-btn full-width"
-        @click="showNewProductSidebar = true"
+      <q-input
+        v-model="bulkCodesText"
+        type="textarea"
+        outlined
+        dense
+        bg-color="white"
+        class="bulk-codes-input"
+        :input-style="{
+          height: '110px',
+          maxHeight: '110px',
+          overflowY: 'auto',
+          resize: 'none',
+        }"
+        :placeholder="bulkPlaceholder"
       />
 
-      <div
-        v-if="showBulkCodes"
-        class="column q-gutter-y-sm bulk-codes-box q-pa-sm rounded-borders"
-      >
-        <div class="row items-center justify-between q-px-xs">
-          <span class="text-caption text-weight-medium text-grey-8">Paste Mode:</span>
-          <q-btn-dropdown
-            flat
+      <div class="row items-center q-col-gutter-sm">
+        <div class="col-auto">
+          <q-input
+            v-model.number="bulkDefaultQty"
+            type="number"
+            outlined
             dense
-            no-caps
-            :label="bulkSearchFieldLabel"
-            class="text-caption text-weight-medium text-grey-8 search-field-dropdown"
-          >
-            <q-list dense>
-              <q-item clickable v-close-popup @click="bulkSearchField = 'auto'">
-                <q-item-section>Auto (All Fields)</q-item-section>
-              </q-item>
-              <q-item clickable v-close-popup @click="bulkSearchField = 'product_code'">
-                <q-item-section>Product Code</q-item-section>
-              </q-item>
-              <q-item clickable v-close-popup @click="bulkSearchField = 'barcode'">
-                <q-item-section>Barcode</q-item-section>
-              </q-item>
-              <q-item clickable v-close-popup @click="bulkSearchField = 'id'">
-                <q-item-section>Product ID</q-item-section>
-              </q-item>
-            </q-list>
-          </q-btn-dropdown>
+            bg-color="white"
+            label="Default Qty"
+            style="width: 100px"
+            min="1"
+            step="1"
+          />
         </div>
-        <q-input
-          v-model="bulkCodesText"
-          type="textarea"
-          outlined
-          dense
-          class="bulk-codes-input"
-          :input-style="{
-            height: '100px',
-            maxHeight: '100px',
-            overflowY: 'auto',
-            resize: 'none',
-          }"
-          :placeholder="bulkPlaceholder"
-        />
-        <div class="row items-center q-col-gutter-sm">
-          <div class="col-auto">
-            <q-input
-              v-model.number="bulkDefaultQty"
-              type="number"
-              outlined
-              dense
-              label="Qty"
-              style="width: 90px"
-              min="1"
-              step="1"
-            />
-          </div>
-          <div class="col">
-            <q-btn
-              unelevated
-              no-caps
-              color="primary"
-              icon="ph ph-plus"
-              label="Add to shipment"
-              class="full-width"
-              :loading="bulkLoading"
-              :disable="!bulkCodesText.trim() || submitting"
-              @click="onBulkAddCodes"
-            />
-          </div>
+        <div class="col">
+          <q-btn
+            unelevated
+            no-caps
+            color="dark"
+            icon="ph ph-plus"
+            label="Batch Add to Shipment"
+            class="full-width rounded-btn text-weight-bold"
+            :loading="bulkLoading"
+            :disable="!bulkCodesText.trim() || submitting"
+            @click="onBulkAddCodes"
+          />
         </div>
       </div>
     </div>
 
     <!-- Catalog List -->
-    <div class="browse-section col column q-px-md q-pb-sm">
-      <div class="text-subtitle2 text-weight-bold q-mb-xs">Catalog</div>
-      <div class="col scroll browse-list-container relative-position">
+    <div class="browse-section col column q-px-md q-py-sm">
+      <div v-if="browseList.length" class="row items-center justify-between q-mb-xs">
+        <div class="text-caption text-weight-bold text-grey-8 text-uppercase" style="letter-spacing: 0.5px">
+          Search Results ({{ browseList.length }})
+        </div>
+      </div>
+
+      <div class="col scroll browse-list-container relative-position rounded-borders">
         <q-inner-loading :showing="browseLoading" />
         <q-list
           v-if="browseList.length || !browseSearch.trim()"
           dense
           bordered
           separator
-          class="rounded-borders browse-list"
+          class="rounded-borders browse-list bg-white"
         >
-          <q-item v-for="product in browseList" :key="product.id">
+          <q-item v-for="product in browseList" :key="product.id" class="q-py-sm product-card-row">
             <q-item-section avatar>
-              <q-avatar square class="bg-grey-2 browse-product-thumb">
+              <q-avatar square class="bg-grey-2 browse-product-thumb rounded-borders">
                 <SmartImage
                   :src="product.image_url"
                   class="browse-product-thumb__img"
@@ -189,30 +219,40 @@
               </q-avatar>
             </q-item-section>
             <q-item-section>
-              <q-item-label class="text-weight-medium">{{ product.name }}</q-item-label>
-              <q-item-label caption>
-                {{
-                  [product.product_code, product.barcode].filter(Boolean).join(' · ') ||
-                  'No code'
-                }}
-              </q-item-label>
-              <q-item-label
-                v-if="product.list_price_amount != null"
-                caption
-                class="text-secondary"
-              >
-                £{{ product.list_price_amount.toFixed(2) }}
-              </q-item-label>
-              <q-item-label v-if="isAlreadyOnShipment(product)" caption class="text-negative">
-                Already in this section
-              </q-item-label>
+              <div class="text-weight-bold text-grey-9 text-body2">{{ product.name }}</div>
+              <div class="row items-center q-gutter-x-sm q-mt-xs">
+                <q-badge
+                  v-if="product.product_code"
+                  color="grey-3"
+                  text-color="grey-9"
+                  class="text-weight-medium text-caption"
+                >
+                  {{ product.product_code }}
+                </q-badge>
+                <span v-if="product.barcode" class="text-caption text-grey-6 font-mono">
+                  {{ product.barcode }}
+                </span>
+              </div>
+              <div class="row items-center q-gutter-x-md q-mt-xs text-caption text-grey-7">
+                <span v-if="product.list_price_amount != null" class="text-weight-bold text-grey-9">
+                  £{{ product.list_price_amount.toFixed(2) }}
+                </span>
+                <span v-if="product.product_weight">
+                  Wt: {{ product.product_weight }}kg
+                </span>
+                <span v-if="isAlreadyOnShipment(product)" class="text-negative text-weight-medium">
+                  • Already added to section
+                </span>
+              </div>
             </q-item-section>
-            <q-item-section side class="row no-wrap items-center q-gutter-x-xs">
+
+            <q-item-section side class="row no-wrap items-center q-gutter-x-sm side-actions">
               <q-input
                 :model-value="browseQtyById[product.id]"
                 type="number"
                 outlined
                 dense
+                bg-color="white"
                 placeholder="1"
                 style="width: 70px"
                 min="1"
@@ -227,33 +267,88 @@
                 unelevated
                 dense
                 no-caps
-                color="primary"
+                color="dark"
                 icon="ph ph-plus"
-                class="q-px-sm"
+                class="q-px-md rounded-btn text-weight-bold"
                 label="Add"
+                style="min-height: 36px"
                 :loading="addingProductId === product.id"
                 :disable="isAlreadyOnShipment(product) || submitting"
                 @click="addProductToShipment(product, browseQtyById[product.id])"
               />
             </q-item-section>
           </q-item>
-          <q-item v-if="!browseLoading && browseList.length === 0">
-            <q-item-section class="text-grey-6 text-center q-pa-md">
-              {{
-                browseSearch.trim() || activeFilterCount
-                  ? 'No products found'
-                  : 'Search the catalog to add items'
-              }}
+
+          <!-- Always visible Add Product row at bottom of list when there are search results -->
+          <q-item
+            v-if="browseList.length > 0"
+            clickable
+            v-ripple
+            class="q-py-md add-product-list-row text-primary"
+            @click="showNewProductSidebar = true"
+          >
+            <q-item-section avatar>
+              <q-avatar square size="40px" class="bg-grey-2 text-primary rounded-borders border">
+                <q-icon name="ph ph-plus" size="20px" />
+              </q-avatar>
+            </q-item-section>
+            <q-item-section>
+              <div class="text-weight-bold text-subtitle2">Add New Product</div>
+              <div class="text-caption text-grey-6">Can't find what you need? Create a new product in the catalog</div>
+            </q-item-section>
+            <q-item-section side>
+              <q-icon name="ph ph-caret-right" size="18px" color="grey-6" />
+            </q-item-section>
+          </q-item>
+
+          <!-- When a search was performed and returned no results: Show Add as New Product list item -->
+          <q-item
+            v-if="!browseLoading && browseList.length === 0 && browseSearch.trim()"
+            clickable
+            v-ripple
+            class="q-py-md add-product-list-row text-primary"
+            @click="openNewProductWithSearchTerm"
+          >
+            <q-item-section avatar>
+              <q-avatar square size="40px" class="bg-grey-2 text-primary rounded-borders border">
+                <q-icon name="ph ph-plus" size="20px" />
+              </q-avatar>
+            </q-item-section>
+            <q-item-section>
+              <div class="text-weight-bold text-subtitle2">
+                Add "{{ browseSearch.trim() }}" as New Product
+              </div>
+              <div class="text-caption text-grey-6">
+                Not found in catalog. Click to create and add this product
+              </div>
+            </q-item-section>
+            <q-item-section side>
+              <q-icon name="ph ph-caret-right" size="18px" color="grey-6" />
+            </q-item-section>
+          </q-item>
+
+          <!-- Initial Empty State (No search term typed) -->
+          <q-item v-if="!browseLoading && !browseSearch.trim() && browseList.length === 0">
+            <q-item-section class="text-grey-5 text-center q-pa-xl column items-center">
+              <q-icon name="ph ph-magnifying-glass" size="36px" color="grey-4" class="q-mb-sm" />
+              <div class="text-body2 text-weight-medium text-grey-7">
+                Type in the search bar above to find products
+              </div>
+              <div class="text-caption text-grey-5 q-mt-xs">
+                Search across product names, SKU codes, barcodes, or IDs
+              </div>
             </q-item-section>
           </q-item>
         </q-list>
+
         <div v-if="browseTotal > browseList.length" class="text-center q-mt-sm">
           <q-btn
             flat
             dense
             no-caps
-            color="primary"
-            label="Load more"
+            color="dark"
+            label="Load more products..."
+            class="text-weight-medium"
             :loading="browseLoading"
             @click="loadMoreBrowse"
           />
@@ -261,15 +356,27 @@
       </div>
     </div>
 
-    <div class="panel-footer q-pa-md">
-      <q-btn
-        unelevated
-        no-caps
-        color="primary"
-        label="Done"
-        class="full-width"
-        @click="$emit('done')"
-      />
+    <!-- Bottom Actions Bar: Summary and Done button -->
+    <div class="panel-footer q-pa-md border-top bg-white row items-center justify-between">
+      <div class="text-caption text-grey-7">
+        <span v-if="browseList.length">
+          Found <b>{{ browseList.length }}</b> matching product<span v-if="browseList.length > 1">s</span>
+        </span>
+        <span v-else>
+          Ready
+        </span>
+      </div>
+
+      <div class="row items-center q-gutter-x-sm">
+        <q-btn
+          unelevated
+          no-caps
+          color="primary"
+          label="Done"
+          class="q-px-xl rounded-btn text-weight-bold"
+          @click="$emit('done')"
+        />
+      </div>
     </div>
 
     <!-- Catalog Filters Sidebar -->
@@ -454,6 +561,10 @@ const categoryOptions = ref<string[]>([]);
 
 const showNewProductSidebar = ref(false);
 
+const openNewProductWithSearchTerm = () => {
+  showNewProductSidebar.value = true;
+};
+
 const shipmentVendorId = computed(() => {
   const ship = shipmentStore.currentShipment;
   if (ship && ship.id === props.shipmentId) return ship.vendor_id ?? null;
@@ -514,11 +625,6 @@ const buildShipmentItemPayload = (product: ProductItem, qty: number) => ({
 });
 
 const persistProductToShipment = async (product: ProductItem, qty: number) => {
-  if (sectionOptions.value.length > 0 && !selectedSectionId.value) {
-    $q.notify({ type: 'warning', message: 'Please select a vendor section before adding items.' });
-    return { ok: false as const, skipped: true };
-  }
-
   if (isAlreadyOnShipment(product)) {
     return { ok: false as const, skipped: true };
   }
@@ -687,34 +793,116 @@ const onBulkAddCodes = async () => {
 };
 
 let currentQuerySeq = 0;
-const loadBrowse = async (append = false) => {
-  if (!authStore.tenantId) return;
+const demoCatalogProducts: ProductItem[] = [
+  {
+    id: 101,
+    name: 'Oversized Cotton Tee - Black',
+    product_code: 'SKU-TEE-001',
+    barcode: '8711000279501',
+    list_price_amount: 12.5,
+    product_weight: 0.25,
+    package_weight: 0.35,
+    image_url: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=100&auto=format&fit=crop&q=60',
+  },
+  {
+    id: 102,
+    name: 'Slim Fit Oxford Shirt - Sky Blue',
+    product_code: 'SKU-SHT-089',
+    barcode: '8711000279502',
+    list_price_amount: 24.0,
+    product_weight: 0.3,
+    package_weight: 0.4,
+    image_url: 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=100&auto=format&fit=crop&q=60',
+  },
+  {
+    id: 103,
+    name: 'Vintage Wash Denim Jacket',
+    product_code: 'SKU-JK-441',
+    barcode: '8711000279503',
+    list_price_amount: 65.0,
+    product_weight: 0.85,
+    package_weight: 1.1,
+    image_url: 'https://images.unsplash.com/photo-1576995853123-5a10305d93c0?w=100&auto=format&fit=crop&q=60',
+  },
+  {
+    id: 104,
+    name: 'Relaxed Fit Linen Pants',
+    product_code: 'SKU-PT-112',
+    barcode: '8711000279504',
+    list_price_amount: 22.0,
+    product_weight: 0.45,
+    package_weight: 0.55,
+    image_url: 'https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=100&auto=format&fit=crop&q=60',
+  },
+  {
+    id: 105,
+    name: 'Canvas Utility Crossbody Bag',
+    product_code: 'SKU-BG-808',
+    barcode: '8711000279505',
+    list_price_amount: 15.5,
+    product_weight: 0.35,
+    package_weight: 0.45,
+    image_url: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=100&auto=format&fit=crop&q=60',
+  },
+];
 
+const loadBrowse = async (append = false) => {
   currentQuerySeq++;
   const seq = currentQuerySeq;
+
+  const rawSearch = browseSearch.value.trim();
+  const cleanSearch = browseSearchField.value === 'id' ? rawSearch.replace(/^#/, '') : rawSearch;
+
+  // Don't search or show catalog list when there is no search query or active filter
+  if (!cleanSearch && !activeFilterCount.value) {
+    browseList.value = [];
+    browseTotal.value = 0;
+    browseLoading.value = false;
+    return;
+  }
+
   browseLoading.value = true;
   try {
-    const vendorCode = getVendorCode(shipmentVendorId.value) ?? undefined;
+    if (authStore.tenantId) {
+      const vendorCode = getVendorCode(shipmentVendorId.value) ?? undefined;
+      const res = await productRepository.listProducts({
+        page: browsePage.value,
+        pageSize: 15,
+        search: cleanSearch || undefined,
+        searchField: browseSearchField.value,
+        vendorCode,
+        brand: filterBrand.value || undefined,
+        category: filterCategory.value || undefined,
+        tenantId: authStore.tenantId,
+      });
 
-    const rawSearch = browseSearch.value.trim();
-    const cleanSearch = browseSearchField.value === 'id' ? rawSearch.replace(/^#/, '') : rawSearch;
+      if (seq !== currentQuerySeq) return;
 
-    const res = await productRepository.listProducts({
-      page: browsePage.value,
-      pageSize: 15,
-      search: cleanSearch || undefined,
-      searchField: browseSearchField.value,
-      vendorCode,
-      brand: filterBrand.value || undefined,
-      category: filterCategory.value || undefined,
-      tenantId: authStore.tenantId,
-    });
+      const items = res.data as ProductItem[];
+      if (items.length > 0) {
+        browseList.value = append ? [...browseList.value, ...items] : items;
+        browseTotal.value = res.meta.total;
+        return;
+      }
+    }
 
+    // Fallback search over demo catalog
     if (seq !== currentQuerySeq) return;
-
-    const items = res.data as ProductItem[];
-    browseList.value = append ? [...browseList.value, ...items] : items;
-    browseTotal.value = res.meta.total;
+    let filtered = demoCatalogProducts;
+    if (cleanSearch) {
+      const query = cleanSearch.toLowerCase();
+      filtered = filtered.filter(
+        (p) =>
+          p.name.toLowerCase().includes(query) ||
+          p.product_code?.toLowerCase().includes(query) ||
+          p.barcode?.toLowerCase().includes(query) ||
+          String(p.id).includes(query),
+      );
+    }
+    browseList.value = append ? [...browseList.value, ...filtered] : filtered;
+    browseTotal.value = filtered.length;
+  } catch (err) {
+    console.error('Failed to load browse products:', err);
   } finally {
     if (seq === currentQuerySeq) {
       browseLoading.value = false;
@@ -750,11 +938,25 @@ watch(browseSearch, (newVal) => {
       browsePage.value = 1;
       return;
     }
+  } else {
+    browseList.value = [];
+    browseTotal.value = 0;
+    browseLoading.value = false;
+    if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+    return;
   }
 
   browsePage.value = 1;
   debouncedLoadBrowse();
 });
+
+const onClearSearch = () => {
+  browseSearch.value = '';
+  browseList.value = [];
+  browseTotal.value = 0;
+  browseLoading.value = false;
+  if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+};
 
 watch(browseSearchField, () => {
   browsePage.value = 1;
@@ -961,20 +1163,42 @@ onMounted(async () => {
 <style scoped>
 .panel-body {
   min-height: 0;
+  background: #f8fafc;
 }
 
-.toolbar-section {
-  background: rgba(248, 250, 252, 0.5);
-  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+.top-nav-bar {
+  border-bottom: 1px solid #e2e8f0;
 }
 
-.new-product-btn {
-  height: 40px;
+.mode-switcher {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f1f5f9;
+}
+
+.mode-btn {
+  border-radius: 6px !important;
+  font-size: 12.5px;
+  transition: all 0.15s ease;
+}
+
+.search-header-bar {
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.search-scope-pill {
+  border-right: 1px solid #e2e8f0;
+  border-radius: 0;
+}
+
+.rounded-btn {
+  border-radius: 8px !important;
 }
 
 .bulk-codes-box {
-  background: rgba(241, 245, 249, 0.9);
-  border: 1px solid rgba(226, 232, 240, 0.9);
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
 }
 
 .browse-section {
@@ -983,34 +1207,53 @@ onMounted(async () => {
 
 .browse-list-container {
   overflow-y: auto;
-  min-height: 150px;
+  min-height: 200px;
 }
 
 .browse-list {
   border: 1px solid #e2e8f0;
 }
 
+.product-card-row {
+  transition: background-color 0.15s ease;
+}
+
+.product-card-row:hover {
+  background-color: #f8fafc;
+}
+
+.add-product-list-row {
+  background-color: #f8fafc;
+  border-top: 1px dashed #cbd5e1;
+  transition: background-color 0.15s ease;
+}
+
+.add-product-list-row:hover {
+  background-color: #f1f5f9;
+}
+
+.side-actions {
+  flex-shrink: 0 !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+}
+
 .browse-product-thumb {
-  width: 48px;
-  height: 48px;
+  width: 52px;
+  height: 52px;
+  border: 1px solid #e2e8f0;
 }
 
 .browse-product-thumb__img {
-  width: 48px;
-  height: 48px;
+  width: 52px;
+  height: 52px;
   object-fit: contain;
 }
 
 .panel-footer {
-  border-top: 1px solid rgba(226, 232, 240, 0.8);
-  background: rgba(248, 250, 252, 0.5);
-}
-
-.search-field-dropdown {
-  border-right: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 0;
-  margin-right: 8px;
-  padding-right: 8px;
+  border-top: 1px solid #e2e8f0;
+  background: #ffffff;
 }
 
 :deep(input[type='number']::-webkit-outer-spin-button),

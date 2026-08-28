@@ -1,16 +1,6 @@
 <template>
   <q-dialog ref="dialogRef" @hide="onDialogHide" position="right" full-height persistent>
     <q-card class="drawer-card column no-wrap">
-      <q-card-section class="row items-center q-py-sm q-px-md drawer-header text-white">
-        <div class="col">
-          <div class="text-subtitle1 text-weight-bold">Add Items</div>
-          <div class="text-caption" style="opacity: 0.85">
-            {{ shipmentName }}
-          </div>
-        </div>
-        <q-btn icon="ph ph-x" flat round dense color="white" v-close-popup />
-      </q-card-section>
-
       <AddShipmentItemsPanel
         class="col"
         :shipment-id="shipmentId"
@@ -54,18 +44,19 @@ const onCancel = () => {
 
 <style scoped>
 .drawer-card {
-  width: 800px;
+  width: 820px;
   max-width: 95vw;
   height: calc(100vh - 24px) !important;
   margin: 12px;
   border-radius: 16px !important;
-  background: rgba(255, 255, 255, 0.98) !important;
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.15) !important;
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.2) !important;
   overflow: hidden;
 }
 
 .drawer-header {
-  background: var(--q-primary) !important;
+  background: #0f172a !important; /* Premium dark navy slate */
+  border-bottom: 1px solid #334155;
 }
 </style>

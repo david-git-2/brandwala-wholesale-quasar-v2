@@ -135,7 +135,15 @@
       <!-- Action Buttons -->
       <div class="row justify-end q-gutter-x-sm q-pt-md border-top">
         <q-btn flat no-caps label="Cancel" color="grey-7" @click="onClose" />
-        <q-btn unelevated no-caps label="Add to Cart" color="primary" type="submit" />
+        <q-btn
+          unelevated
+          no-caps
+          label="Create & Add Product"
+          color="dark"
+          type="submit"
+          class="text-weight-bold q-px-md"
+          style="border-radius: 8px"
+        />
       </div>
     </q-form>
   </FilterSidebar>

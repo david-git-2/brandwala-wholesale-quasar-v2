@@ -22874,8 +22874,8 @@ BEGIN
         SELECT count(*) INTO v_shipment_count FROM public.global_shipments WHERE parent_tenant_id = p_parent_tenant_id;
         SELECT count(*) INTO v_stock_count FROM public.global_stocks WHERE parent_tenant_id = p_parent_tenant_id;
         SELECT count(*) INTO v_invoice_count FROM public.global_invoices WHERE parent_tenant_id = p_parent_tenant_id;
-        SELECT count(*) INTO v_ledger_count FROM public.universal_ledger_transactions WHERE parent_tenant_id = p_parent_tenant_id;
-        SELECT count(*) INTO v_wallets_count FROM public.universal_wallets WHERE parent_tenant_id = p_parent_tenant_id;
+        SELECT count(*) INTO v_ledger_count FROM public.universal_wallet_ledger WHERE parent_tenant_id = p_parent_tenant_id;
+        SELECT count(*) INTO v_wallets_count FROM public.wallet_accounts WHERE parent_tenant_id = p_parent_tenant_id;
     ELSE
         IF p_target_child_id IS NULL THEN
             RAISE EXCEPTION 'Target child tenant ID is required for child_only scope.';
@@ -22888,7 +22888,8 @@ BEGIN
         v_target_tenant_ids := ARRAY[p_target_child_id];
 
         SELECT count(*) INTO v_invoice_count FROM public.global_invoices WHERE issued_by_tenant_id = p_target_child_id;
-        SELECT count(*) INTO v_wallets_count FROM public.wallets WHERE tenant_id = p_target_child_id;
+        SELECT count(*) INTO v_ledger_count FROM public.universal_wallet_ledger WHERE operating_tenant_id = p_target_child_id;
+        SELECT count(*) INTO v_wallets_count FROM public.wallet_accounts WHERE tenant_id = p_target_child_id;
     END IF;
 
     SELECT count(*) INTO v_order_count FROM public.shop_orders WHERE tenant_id = ANY(v_target_tenant_ids);
@@ -22994,14 +22995,22 @@ BEGIN
     DELETE FROM public.customer_demand_bucket_items WHERE tenant_id = ANY(v_target_tenant_ids);
 
     IF p_scope = 'all_hierarchy' THEN
-        DELETE FROM public.universal_ledger_transactions WHERE parent_tenant_id = p_parent_tenant_id;
-        DELETE FROM public.universal_wallet_transactions WHERE parent_tenant_id = p_parent_tenant_id;
-        UPDATE public.universal_wallets SET balance = 0.00, updated_at = now() WHERE parent_tenant_id = p_parent_tenant_id;
+        DELETE FROM public.universal_wallet_ledger WHERE parent_tenant_id = p_parent_tenant_id;
+        UPDATE public.wallet_accounts
+        SET available_balance = 0.0000,
+            pending_balance = 0.0000,
+            locked_balance = 0.0000,
+            updated_at = now()
+        WHERE parent_tenant_id = p_parent_tenant_id;
+    ELSE
+        DELETE FROM public.universal_wallet_ledger WHERE operating_tenant_id = p_target_child_id;
+        UPDATE public.wallet_accounts
+        SET available_balance = 0.0000,
+            pending_balance = 0.0000,
+            locked_balance = 0.0000,
+            updated_at = now()
+        WHERE tenant_id = p_target_child_id;
     END IF;
-
-    DELETE FROM public.ledger_transactions WHERE tenant_id = ANY(v_target_tenant_ids);
-    DELETE FROM public.wallet_transactions WHERE tenant_id = ANY(v_target_tenant_ids);
-    UPDATE public.wallets SET balance = 0.00, updated_at = now() WHERE tenant_id = ANY(v_target_tenant_ids);
 
     IF p_scope = 'all_hierarchy' THEN
         DELETE FROM public.stock_movements WHERE tenant_id = ANY(v_target_tenant_ids);

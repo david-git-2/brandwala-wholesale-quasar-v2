@@ -137,50 +137,42 @@ const procurementStockRoutes: RouteRecordRaw[] = [
       {
         path: ':id',
         name: 'app-procurement-shipment-details',
-        component: () => import('../pages/ShipmentOverviewPage.vue'),
-        beforeEnter: guard('global_shipment'),
-      },
-      {
-        path: ':id/v2',
-        name: 'app-procurement-shipment-details-v2',
-        component: () => import('../pages/ShipmentOverviewV2Page.vue'),
-        beforeEnter: guard('global_shipment'),
-      },
-      {
-        path: ':id/items',
-        name: 'app-procurement-shipment-items',
-        component: () => import('../pages/ShipmentLineItemsPage.vue'),
-        beforeEnter: guard('global_shipment'),
-      },
-      {
-        path: ':id/items/v2',
-        name: 'app-procurement-shipment-items-v2',
         component: () => import('../pages/ShipmentLineItemsV2Page.vue'),
         beforeEnter: guard('global_shipment'),
       },
       {
+        path: ':id/v2',
+        redirect: (to) => withTenantSlug(to, `/app/procurement/shipment/${to.params.id}`),
+      },
+      {
+        path: ':id/items',
+        name: 'app-procurement-shipment-items',
+        redirect: (to) => withTenantSlug(to, `/app/procurement/shipment/${to.params.id}`),
+      },
+      {
+        path: ':id/items/v2',
+        name: 'app-procurement-shipment-items-v2',
+        redirect: (to) => withTenantSlug(to, `/app/procurement/shipment/${to.params.id}`),
+      },
+      {
         path: ':id/lines',
         name: 'app-procurement-shipment-lines',
-        component: () => import('../pages/ShipmentLineItemsPage.vue'),
-        beforeEnter: guard('global_shipment'),
+        redirect: (to) => withTenantSlug(to, `/app/procurement/shipment/${to.params.id}`),
       },
       {
         path: ':id/add-catalog',
         name: 'app-procurement-shipment-add-catalog',
-        component: () => import('../pages/ShipmentAddCatalogPage.vue'),
-        beforeEnter: guard('global_shipment'),
+        redirect: (to) => withTenantSlug(to, `/app/procurement/shipment/${to.params.id}`),
       },
       {
         path: ':id/rates',
         name: 'app-procurement-shipment-rates',
-        component: () => import('../pages/ShipmentRatesPage.vue'),
-        beforeEnter: guard('global_shipment'),
+        redirect: (to) => withTenantSlug(to, `/app/procurement/shipment/${to.params.id}`),
       },
       {
         path: ':id/rates-invoices',
         name: 'app-procurement-shipment-rates-invoices',
-        component: () => import('../pages/ShipmentRatesInvoicesPage.vue'),
-        beforeEnter: guard('global_shipment'),
+        redirect: (to) => withTenantSlug(to, `/app/procurement/shipment/${to.params.id}`),
       },
       {
         path: ':id/receive',

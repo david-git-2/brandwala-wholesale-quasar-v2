@@ -1,4 +1,4 @@
--- Create RPC get_shipment_overview_details to consolidate shipment data fetches
+-- Fix get_shipment_overview_details RPC to join tags instead of non-existent shipment_progress_tags
 CREATE OR REPLACE FUNCTION "public"."get_shipment_overview_details"("p_shipment_id" bigint) RETURNS jsonb
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO 'public'
