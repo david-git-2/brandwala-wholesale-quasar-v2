@@ -170,21 +170,81 @@
             <th v-if="visibleColumnMap.name" class="text-left" style="min-width: 120px; width: 120px; max-width: 120px; white-space: normal">Name</th>
             <th v-if="visibleColumnMap.product_codes" class="text-left" style="min-width: 105px; width: 115px">Codes</th>
             <th v-if="visibleColumnMap.purchase_price" class="text-center bw-ops-col-tint--price" style="min-width: 56px; width: 56px">
-              Price {{ currentPurchaseCurrencySymbol }}
+              <div class="row items-center justify-center no-wrap q-gutter-x-2xs">
+                <span>Price {{ currentPurchaseCurrencySymbol }}</span>
+                <q-btn
+                  flat
+                  round
+                  dense
+                  size="xs"
+                  icon="ph ph-clipboard-text"
+                  color="grey-7"
+                  class="bulk-paste-header-btn"
+                  @click.stop="openBulkPasteDialog('purchase_price')"
+                >
+                  <q-tooltip>Bulk Paste Price</q-tooltip>
+                </q-btn>
+              </div>
             </th>
             <th v-if="visibleColumnMap.cost_bdt" class="text-center bw-ops-col-tint--cost" style="min-width: 56px; width: 56px">
               Cost
             </th>
             <th v-if="visibleColumnMap.ordered_quantity" class="text-center bw-ops-col-tint--qty" style="min-width: 56px; width: 56px">
-              Qty
+              <div class="row items-center justify-center no-wrap q-gutter-x-2xs">
+                <span>Qty</span>
+                <q-btn
+                  flat
+                  round
+                  dense
+                  size="xs"
+                  icon="ph ph-clipboard-text"
+                  color="grey-7"
+                  class="bulk-paste-header-btn"
+                  @click.stop="openBulkPasteDialog('ordered_quantity')"
+                >
+                  <q-tooltip>Bulk Paste Quantity</q-tooltip>
+                </q-btn>
+              </div>
             </th>
             <th v-if="visibleColumnMap.product_weight" class="text-center" style="min-width: 56px; width: 56px; line-height: 1.2; padding-top: 4px; padding-bottom: 4px">
-              <div>Product</div>
-              <div>Weight</div>
+              <div class="row items-center justify-center no-wrap q-gutter-x-2xs">
+                <div>
+                  <div>Product</div>
+                  <div>Weight</div>
+                </div>
+                <q-btn
+                  flat
+                  round
+                  dense
+                  size="xs"
+                  icon="ph ph-clipboard-text"
+                  color="grey-7"
+                  class="bulk-paste-header-btn"
+                  @click.stop="openBulkPasteDialog('product_weight')"
+                >
+                  <q-tooltip>Bulk Paste Product Weight</q-tooltip>
+                </q-btn>
+              </div>
             </th>
             <th v-if="visibleColumnMap.package_weight" class="text-center bw-ops-col-tint--weight" style="min-width: 56px; width: 56px; line-height: 1.2; padding-top: 4px; padding-bottom: 4px">
-              <div>Package</div>
-              <div>Weight</div>
+              <div class="row items-center justify-center no-wrap q-gutter-x-2xs">
+                <div>
+                  <div>Package</div>
+                  <div>Weight</div>
+                </div>
+                <q-btn
+                  flat
+                  round
+                  dense
+                  size="xs"
+                  icon="ph ph-clipboard-text"
+                  color="grey-7"
+                  class="bulk-paste-header-btn"
+                  @click.stop="openBulkPasteDialog('package_weight')"
+                >
+                  <q-tooltip>Bulk Paste Package Weight</q-tooltip>
+                </q-btn>
+              </div>
             </th>
             <!-- Dynamically added custom columns -->
             <template v-for="col in customColumns" :key="col.name">
@@ -497,6 +557,52 @@
       v-model="showAddColumnDialog"
       @add-column="onAddCustomColumn"
     />
+
+    <!-- Bulk Paste Dialog (UI-only for pasting column values) -->
+    <q-dialog v-model="showBulkPasteDialog" persistent>
+      <q-card style="width: 520px; max-width: 95vw; border-radius: 12px">
+        <q-card-section class="row items-center justify-between q-pb-none">
+          <div class="row items-center q-gutter-x-sm">
+            <q-avatar color="primary" text-color="white" icon="ph ph-clipboard-text" size="32px" />
+            <div>
+              <div class="text-subtitle1 text-weight-bold text-grey-9">Bulk Paste {{ bulkPasteFieldLabel }}</div>
+              <div class="text-caption text-grey-6">Paste tab-separated or newline-separated values from Excel/Sheets</div>
+            </div>
+          </div>
+          <q-btn v-close-popup icon="ph ph-x" flat round dense color="grey-6" />
+        </q-card-section>
+
+        <q-card-section class="q-py-md">
+          <div class="text-caption text-weight-medium text-grey-7 q-mb-xs">Paste Area</div>
+          <q-input
+            v-model="bulkPasteText"
+            type="textarea"
+            outlined
+            dense
+            rows="8"
+            placeholder="Paste your copied column values here (e.g. from Excel)..."
+            class="bg-white font-mono"
+            style="font-size: 13px"
+            autofocus
+          />
+        </q-card-section>
+
+        <q-separator />
+
+        <q-card-actions align="right" class="q-pa-md bg-grey-1">
+          <q-btn v-close-popup flat label="Cancel" color="grey-7" no-caps />
+          <q-btn
+            unelevated
+            color="primary"
+            icon="ph ph-check"
+            label="Apply Paste"
+            no-caps
+            class="rounded-borders q-px-md text-weight-bold"
+            @click="applyBulkPaste"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -554,6 +660,130 @@ const isEditingSection = ref(false);
 const editingSectionData = ref<SectionFormData | null>(null);
 const viewingSectionData = ref<SectionViewData | null>(null);
 const excelBottomBarRef = ref<InstanceType<typeof ShipmentExcelBottomBar> | null>(null);
+
+// Bulk Paste Dialog State
+const showBulkPasteDialog = ref(false);
+const bulkPasteField = ref<'purchase_price' | 'ordered_quantity' | 'product_weight' | 'package_weight'>('purchase_price');
+const bulkPasteStartItem = ref<any>(null);
+const bulkPasteText = ref('');
+
+const bulkPasteFieldLabel = computed(() => {
+  switch (bulkPasteField.value) {
+    case 'purchase_price':
+      return 'Price';
+    case 'ordered_quantity':
+      return 'Quantity';
+    case 'product_weight':
+      return 'Product Weight';
+    case 'package_weight':
+      return 'Package Weight';
+    default:
+      return 'Values';
+  }
+});
+
+const openBulkPasteDialog = (
+  field: 'purchase_price' | 'ordered_quantity' | 'product_weight' | 'package_weight',
+  startItem?: any,
+) => {
+  bulkPasteField.value = field;
+  bulkPasteStartItem.value = startItem || null;
+  bulkPasteText.value = '';
+  showBulkPasteDialog.value = true;
+};
+
+const applyBulkPaste = async () => {
+  const text = bulkPasteText.value.trim();
+  if (!text) {
+    showBulkPasteDialog.value = false;
+    return;
+  }
+
+  // Parse lines or tab-separated entries
+  const tokens = text
+    .split(/[\r\n\t]+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length > 0);
+
+  if (tokens.length === 0) {
+    showBulkPasteDialog.value = false;
+    return;
+  }
+
+  const items = displayedItems.value;
+  let startIndex = 0;
+  if (bulkPasteStartItem.value) {
+    const foundIdx = items.findIndex((it) => it.id === bulkPasteStartItem.value.id);
+    if (foundIdx !== -1) {
+      startIndex = foundIdx;
+    }
+  }
+
+  let count = 0;
+  const field = bulkPasteField.value;
+  const updates: Array<{ id: number; payload: Record<string, any> }> = [];
+
+  for (let i = 0; i < tokens.length; i++) {
+    const targetItem = items[startIndex + i];
+    if (!targetItem) break;
+
+    const val = Number(tokens[i]);
+    if (!isNaN(val)) {
+      let normalized = val;
+      if (field === 'purchase_price') {
+        normalized = Number(val.toFixed(2));
+        targetItem.price = normalized;
+      } else if (field === 'ordered_quantity') {
+        normalized = Math.max(1, Math.round(val));
+        targetItem.quantity = normalized;
+      } else if (field === 'product_weight' || field === 'package_weight') {
+        normalized = Number(val.toFixed(3));
+      }
+
+      setDraftValue(targetItem, field, normalized);
+      if (targetItem.rawItem) {
+        targetItem.rawItem[field] = normalized;
+      }
+
+      const itemId = targetItem.rawItem?.id || targetItem.id;
+      if (itemId) {
+        updates.push({
+          id: itemId,
+          payload: { [field]: normalized },
+        });
+      }
+      count++;
+    }
+  }
+
+  if (updates.length > 0 && shipmentId && !isNaN(shipmentId)) {
+    try {
+      await shipmentStore.updateShipmentItemsBulk(shipmentId, updates);
+      $q.notify({
+        message: `Successfully pasted and saved ${count} ${bulkPasteFieldLabel.value} value(s)`,
+        color: 'positive',
+        icon: 'ph ph-check-circle',
+        timeout: 1500,
+      });
+    } catch (err) {
+      $q.notify({
+        message: `Pasted ${count} value(s) locally. Failed to save to server.`,
+        color: 'warning',
+        icon: 'ph ph-warning-circle',
+        timeout: 2000,
+      });
+    }
+  } else {
+    $q.notify({
+      message: `Pasted ${count} value(s) into ${bulkPasteFieldLabel.value}`,
+      color: 'positive',
+      icon: 'ph ph-clipboard-text',
+      timeout: 1500,
+    });
+  }
+
+  showBulkPasteDialog.value = false;
+};
 
 const triggerAddItems = () => {
   const activeSection = sheets.value.find((s) => s.id === activeSheetId.value);
@@ -1371,5 +1601,19 @@ const getStatusColor = (status: string) => {
 .hover-bright:hover {
   filter: brightness(0.92);
   transform: translateY(-1px);
+}
+
+.bulk-paste-header-btn {
+  opacity: 0.6;
+  transition: opacity 0.15s ease-in-out, transform 0.15s ease-in-out;
+  padding: 0 !important;
+  min-height: 18px !important;
+  min-width: 18px !important;
+}
+
+.bulk-paste-header-btn:hover {
+  opacity: 1 !important;
+  color: var(--q-primary) !important;
+  transform: scale(1.1);
 }
 </style>

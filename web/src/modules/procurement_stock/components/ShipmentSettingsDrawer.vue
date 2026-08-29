@@ -279,8 +279,13 @@
             </div>
             <!-- Total Weight -->
             <div>
-              <div class="text-caption text-weight-bold text-grey-7 text-uppercase q-mb-xs" style="letter-spacing: 0.5px">
-                Total Weight
+              <div class="row items-center justify-between q-mb-xs">
+                <div class="text-caption text-weight-bold text-grey-7 text-uppercase" style="letter-spacing: 0.5px">
+                  Total Weight
+                </div>
+                <div v-if="productTotalWeightKg > 0" class="text-caption text-grey-7 font-mono" style="font-size: 11px">
+                  Lines Total: <span class="text-weight-bold text-grey-9">{{ productTotalWeightKg.toFixed(2) }} kg</span>
+                </div>
               </div>
               <q-input
                 v-model.number="totalWeightInput"
@@ -299,6 +304,44 @@
                   <q-icon name="ph ph-scales" size="18px" color="grey-6" />
                 </template>
               </q-input>
+
+              <!-- Weight Difference Banner / Warning Message with Adjust Button -->
+              <div v-if="hasWeightDifference" class="q-mt-xs">
+                <div
+                  class="row items-center justify-between q-pa-xs q-px-sm rounded-borders text-caption"
+                  :class="weightDifferenceKg > 0 ? 'bg-orange-1 text-orange-9 border-orange' : 'bg-blue-1 text-blue-9 border-blue'"
+                  style="font-size: 11px; border: 1px solid currentColor"
+                >
+                  <div class="row items-center q-gutter-x-xs ellipsis col">
+                    <q-icon :name="weightDifferenceKg > 0 ? 'ph ph-warning' : 'ph ph-info'" size="14px" />
+                    <span class="ellipsis">
+                      Difference: <b>{{ weightDifferenceKg > 0 ? `+${weightDifferenceKg.toFixed(2)}` : weightDifferenceKg.toFixed(2) }} kg</b>
+                      ({{ (totalWeightInput || 0).toFixed(2) }} vs {{ productTotalWeightKg.toFixed(2) }} kg)
+                    </span>
+                  </div>
+
+                  <q-btn
+                    unelevated
+                    dense
+                    no-caps
+                    size="xs"
+                    color="primary"
+                    icon="ph ph-scales"
+                    label="Adjust"
+                    class="q-px-xs rounded-borders text-weight-bold shrink-0 q-ml-xs"
+                    :loading="adjustingWeight"
+                    @click="adjustWeightDifference"
+                  >
+                    <q-tooltip>Balance packaging weights across line items to match {{ totalWeightInput }} kg</q-tooltip>
+                  </q-btn>
+                </div>
+              </div>
+              <div v-else-if="totalWeightInput != null && totalWeightInput > 0 && productTotalWeightKg > 0" class="q-mt-xs">
+                <div class="row items-center q-gutter-x-xs text-caption text-positive q-px-xs" style="font-size: 11px">
+                  <q-icon name="ph ph-check-circle" size="14px" />
+                  <span>Total weight matches sum of product packaging weights.</span>
+                </div>
+              </div>
             </div>
 
             <q-separator />
@@ -712,6 +755,80 @@ const cargoNoteInput = ref('');
 const productRatesList = ref<Array<{ id: string; dbId: number | null; amount: number | null; rate: number | null; note: string }>>([]);
 const savingRates = ref(false);
 
+const productTotalWeightKg = computed(() => {
+  const calcTotals = props.calculations?.totals?.value ?? props.calculations?.totals;
+  if (calcTotals?.packagingWeightKg != null && calcTotals.packagingWeightKg > 0) {
+    return calcTotals.packagingWeightKg;
+  }
+  const items = shipmentStore.currentShipmentItems || [];
+  let totalGm = 0;
+  for (const item of items) {
+    const qty = item.ordered_quantity || 0;
+    const pkg = Number(item.package_weight) || 0.35;
+    const prod = Number(item.product_weight) || 0;
+    totalGm += (prod + pkg) * qty;
+  }
+  return Math.round((totalGm / 1000) * 100) / 100;
+});
+
+const weightDifferenceKg = computed(() => {
+  if (totalWeightInput.value == null) return 0;
+  return Math.round((Number(totalWeightInput.value) - productTotalWeightKg.value) * 100) / 100;
+});
+
+const hasWeightDifference = computed(() => {
+  return (
+    totalWeightInput.value != null &&
+    totalWeightInput.value > 0 &&
+    productTotalWeightKg.value > 0 &&
+    Math.abs(weightDifferenceKg.value) >= 0.01
+  );
+});
+
+const adjustingWeight = ref(false);
+
+const adjustWeightDifference = async () => {
+  if (!props.shipmentId || totalWeightInput.value == null || totalWeightInput.value <= 0) return;
+  const items = shipmentStore.currentShipmentItems || [];
+  if (items.length === 0) {
+    $q.notify({
+      type: 'warning',
+      message: 'No line items available to distribute weight across.',
+    });
+    return;
+  }
+
+  adjustingWeight.value = true;
+  try {
+    const targetWeight = Number(totalWeightInput.value);
+    // 1. Update shipment received_weight and total_weight_kg
+    await shipmentStore.updateShipment(props.shipmentId, {
+      total_weight_kg: targetWeight,
+      received_weight: targetWeight,
+    });
+
+    // 2. Apply weight balance RPC across all items
+    await shipmentStore.applyWeightBalance(props.shipmentId);
+
+    // 3. Refresh details
+    await shipmentStore.fetchShipmentDetails(props.shipmentId);
+
+    $q.notify({
+      type: 'positive',
+      icon: 'ph ph-check-circle',
+      message: `Packaging weights adjusted across ${items.length} line items to match ${targetWeight} kg.`,
+    });
+  } catch (err: unknown) {
+    console.error('Failed to balance weight:', err);
+    $q.notify({
+      type: 'negative',
+      message: (err as Error).message || 'Failed to adjust packaging weights.',
+    });
+  } finally {
+    adjustingWeight.value = false;
+  }
+};
+
 // Sync from store
 watch(
   () => shipmentStore.currentShipment,
@@ -732,7 +849,9 @@ watch(
 
 const syncRatesFromStore = () => {
   const entries = shipmentStore.currentCostEntries || [];
-  const cargoEntry = entries.find((e: any) => e.cost_type === 'cargo_cost' || e.cost_type === 'freight');
+  const cargoEntry = entries.find(
+    (e: any) => e.cost_type === 'cargo' || e.cost_type === 'cargo_cost' || e.cost_type === 'freight',
+  );
   if (cargoEntry) {
     cargoAmountInput.value = cargoEntry.amount != null ? Number(cargoEntry.amount) : null;
     cargoRateInput.value = cargoEntry.exchange_rate != null ? Number(cargoEntry.exchange_rate) : null;
@@ -744,7 +863,9 @@ const syncRatesFromStore = () => {
     cargoNoteInput.value = '';
   }
 
-  const prodEntries = entries.filter((e: any) => e.cost_type === 'purchase_order' || e.cost_type === 'product_purchase');
+  const prodEntries = entries.filter(
+    (e: any) => e.cost_type === 'product' || e.cost_type === 'purchase_order' || e.cost_type === 'product_purchase',
+  );
   if (prodEntries.length > 0) {
     productRatesList.value = prodEntries.map((pe: any) => {
       const meta = (pe.metadata as Record<string, unknown> | null) ?? {};
@@ -834,7 +955,14 @@ const addProductRateRow = () => {
 
 const removeProductRateRow = async (index: number) => {
   if (productRatesList.value.length > 1) {
-    productRatesList.value.splice(index, 1);
+    const removed = productRatesList.value.splice(index, 1)[0];
+    if (removed && removed.dbId) {
+      try {
+        await shipmentStore.deleteShipmentCostEntry(removed.dbId);
+      } catch (err) {
+        console.error('Failed to delete cost entry:', err);
+      }
+    }
     await saveRates();
   }
 };
@@ -867,14 +995,18 @@ const saveRates = async () => {
       });
     }
 
+    const purchaseCurrencyId = shipmentStore.currentShipment?.shipment_purchase_currency_id ?? null;
+
     // Upsert cargo cost entry
     const entries = shipmentStore.currentCostEntries || [];
-    const cargoEntry = entries.find((e: any) => e.cost_type === 'cargo_cost' || e.cost_type === 'freight' || e.cost_type === 'cargo');
+    const cargoEntry = entries.find(
+      (e: any) => e.cost_type === 'cargo' || e.cost_type === 'cargo_cost' || e.cost_type === 'freight',
+    );
 
     if (cargoAmountInput.value != null || cargoRateInput.value != null || cargoNoteInput.value) {
       const payload: any = {
         cost_type: 'cargo',
-        currency: 'GBP',
+        currency_id: purchaseCurrencyId,
         amount: cargoAmountInput.value != null ? Number(cargoAmountInput.value) : 0,
         exchange_rate: cargoRateInput.value != null ? Number(cargoRateInput.value) : 1,
         metadata: { note: cargoNoteInput.value },
@@ -892,7 +1024,7 @@ const saveRates = async () => {
       if (pr.amount != null || pr.rate != null || pr.note) {
         const payload: any = {
           cost_type: 'product',
-          currency: 'GBP',
+          currency_id: purchaseCurrencyId,
           amount: pr.amount != null ? Number(pr.amount) : 0,
           exchange_rate: pr.rate != null ? Number(pr.rate) : 1,
           metadata: { note: pr.note },
