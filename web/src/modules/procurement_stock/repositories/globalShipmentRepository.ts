@@ -51,6 +51,8 @@ export interface GlobalShipment {
   id: number;
   parent_tenant_id: number;
   vendor_id: number;
+  vendor_name?: string | null;
+  vendor_code?: string | null;
   cargo_company_id: number | null;
   name: string;
   type: 'international' | 'local' | 'transfer';
@@ -73,6 +75,8 @@ export interface GlobalShipment {
   progress_flow?: ShipmentProgressFlow | null;
   progress_tag_id?: number | null;
   progress_tag?: ShipmentProgressTag | null;
+  is_archived?: boolean;
+  archived_at?: string | null;
   public_tracking_token?: string | null;
   created_at: string;
   updated_at: string;
@@ -109,6 +113,7 @@ export interface PaginationMeta {
   page: number;
   pageSize: number;
   totalPages: number;
+  archivedTotal?: number;
 }
 
 export interface PaginatedResult<T> {
@@ -221,6 +226,7 @@ const listPaginated = async (
   pageSize: number = 20,
   search?: string,
   status?: string,
+  isArchived: boolean = false,
 ): Promise<PaginatedResult<GlobalShipment>> => {
   const { data, error } = await db.rpc('list_global_shipments_paginated', {
     p_tenant_id: tenantId,
@@ -228,6 +234,7 @@ const listPaginated = async (
     p_page_size: pageSize,
     p_search: search || null,
     p_status: status || null,
+    p_is_archived: isArchived,
   });
 
   if (error) {
@@ -241,6 +248,7 @@ const listPaginated = async (
       page: number;
       page_size: number;
       total_pages: number;
+      archived_total?: number;
     };
   };
 
@@ -253,8 +261,31 @@ const listPaginated = async (
       page: result.meta?.page || page,
       pageSize: result.meta?.page_size || pageSize,
       totalPages: result.meta?.total_pages || 1,
+      archivedTotal: result.meta?.archived_total ?? 0,
     },
   };
+};
+
+const archiveShipment = async (id: number): Promise<GlobalShipment> => {
+  const { data, error } = await db.rpc('archive_shipment', { p_id: id });
+  if (error) throw error;
+  return normalizeShipment(data as GlobalShipment & Record<string, unknown>);
+};
+
+const unarchiveShipment = async (id: number): Promise<GlobalShipment> => {
+  const { data, error } = await db.rpc('unarchive_shipment', { p_id: id });
+  if (error) throw error;
+  return normalizeShipment(data as GlobalShipment & Record<string, unknown>);
+};
+
+const purgeArchivedShipment = async (id: number): Promise<void> => {
+  const { error } = await db.rpc('purge_archived_shipment', { p_id: id });
+  if (error) throw error;
+};
+
+const deleteShipment = async (id: number): Promise<void> => {
+  const { error } = await db.from('global_shipments').delete().eq('id', id);
+  if (error) throw error;
 };
 
 const createShipment = async (
@@ -335,11 +366,6 @@ const updateShipment = async (
 
   if (error) throw error;
   return normalizeShipment(data as GlobalShipment & Record<string, unknown>);
-};
-
-const deleteShipment = async (id: number): Promise<void> => {
-  const { error } = await db.from('global_shipments').delete().eq('id', id);
-  if (error) throw error;
 };
 
 const listShipmentItems = async (shipmentId: number): Promise<GlobalShipmentItem[]> => {
@@ -480,13 +506,27 @@ export interface ShipmentSummaryKPIs {
   is_cost_finalized: boolean;
 }
 
-const getShipmentSummary = async (shipmentId: number): Promise<ShipmentSummaryKPIs> => {
-  const [shipment, items, costEntries, boxes] = await Promise.all([
-    getById(shipmentId),
-    listShipmentItems(shipmentId),
-    globalShipmentCostEntryRepository.listByShipmentId(shipmentId),
-    globalShipmentBoxRepository.listByShipmentId(shipmentId),
-  ]);
+const getShipmentSummary = async (
+  shipmentId: number,
+  preload?: {
+    shipment?: GlobalShipment;
+    items?: GlobalShipmentItem[];
+    cost_entries?: GlobalShipmentCostEntry[];
+    boxes?: GlobalShipmentBox[];
+  },
+): Promise<ShipmentSummaryKPIs> => {
+  let shipment = preload?.shipment;
+  let items = preload?.items;
+  let costEntries = preload?.cost_entries;
+  let boxes = preload?.boxes;
+
+  if (!shipment || !items || !costEntries || !boxes) {
+    const overview = await getShipmentOverviewDetails(shipmentId);
+    shipment = shipment ?? overview.shipment;
+    items = items ?? overview.items;
+    costEntries = costEntries ?? overview.cost_entries;
+    boxes = boxes ?? overview.boxes;
+  }
 
   const totalLines = items.length;
   const totalOrderedQty = items.reduce((sum, it) => sum + (Number(it.ordered_quantity) || 0), 0);
@@ -1148,6 +1188,9 @@ export const globalShipmentRepository = {
   createShipmentDraft,
   listCargoCompaniesForTenant,
   updateShipment,
+  archiveShipment,
+  unarchiveShipment,
+  purgeArchivedShipment,
   deleteShipment,
   listShipmentItems,
   listShipmentItemsBatch,

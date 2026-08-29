@@ -99,8 +99,9 @@ export const columnSelectorOptions = [
   { label: 'Status', value: 'status' },
 ];
 
-export function formatMoney(val: number): string {
-  return val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+export function formatMoney(val: number | null | undefined): string {
+  const num = typeof val === 'number' && !isNaN(val) ? val : 0;
+  return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 export function formatStatusLabel(value: string): string {

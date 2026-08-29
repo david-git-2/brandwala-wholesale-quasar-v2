@@ -43,10 +43,74 @@ export function useUpdateShipmentMutation(shipmentId: number) {
           if (!old) return old;
           return {
             ...old,
-            shipment: { ...old.shipment, ...updated },
+            shipment: {
+              ...old.shipment,
+              ...updated,
+            },
           };
         },
       );
+      queryClient.invalidateQueries({ queryKey: ['procurementStock', 'shipments'] });
+    },
+  });
+}
+
+/**
+ * TanStack Mutation for Archiving a Shipment
+ */
+export function useArchiveShipmentMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (shipmentId: number) => globalShipmentRepository.archiveShipment(shipmentId),
+    onSuccess: (archived) => {
+      queryClient.invalidateQueries({ queryKey: ['procurementStock', 'shipments'] });
+      queryClient.invalidateQueries({ queryKey: ['procurementStock', 'archivedShipments'] });
+      queryClient.setQueryData(
+        procurementStockQueryKeys.shipmentOverview(archived.id),
+        (old: ShipmentOverviewDetailsPayload | undefined) => {
+          if (!old) return old;
+          return { ...old, shipment: { ...old.shipment, ...archived } };
+        },
+      );
+    },
+  });
+}
+
+/**
+ * TanStack Mutation for Unarchiving a Shipment
+ */
+export function useUnarchiveShipmentMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (shipmentId: number) => globalShipmentRepository.unarchiveShipment(shipmentId),
+    onSuccess: (restored) => {
+      queryClient.invalidateQueries({ queryKey: ['procurementStock', 'shipments'] });
+      queryClient.invalidateQueries({ queryKey: ['procurementStock', 'archivedShipments'] });
+      queryClient.setQueryData(
+        procurementStockQueryKeys.shipmentOverview(restored.id),
+        (old: ShipmentOverviewDetailsPayload | undefined) => {
+          if (!old) return old;
+          return { ...old, shipment: { ...old.shipment, ...restored } };
+        },
+      );
+    },
+  });
+}
+
+/**
+ * TanStack Mutation for Permanently Purging an Archived Shipment (Draft/Cancelled only)
+ */
+export function usePurgeArchivedShipmentMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (shipmentId: number) => globalShipmentRepository.purgeArchivedShipment(shipmentId),
+    onSuccess: (_data, shipmentId) => {
+      queryClient.invalidateQueries({ queryKey: ['procurementStock', 'shipments'] });
+      queryClient.invalidateQueries({ queryKey: ['procurementStock', 'archivedShipments'] });
+      queryClient.removeQueries({ queryKey: procurementStockQueryKeys.shipmentOverview(shipmentId) });
     },
   });
 }

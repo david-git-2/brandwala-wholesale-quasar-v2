@@ -31,7 +31,7 @@ flowchart TD
 
 | Entity | Table | Responsibility |
 | :--- | :--- | :--- |
-| **Global Shipment** | `global_shipments` | Inbound customs batch, vendor/cargo link, FX rates, status lifecycle. |
+| **Global Shipment** | `global_shipments` | Inbound customs batch, vendor/cargo link, FX rates, status lifecycle, archiving flag (`is_archived`, `archived_at`). |
 | **Shipment Item** | `global_shipment_items` | Catalog/manual products in batch with stamped `landed_cost_bdt`. |
 | **Cost Entries** | `global_shipment_cost_entries` | Itemized charges (goods cost, freight, customs, local delivery). |
 | **Global Stock** | `global_stocks` | Physical inventory row (`quantity`, `available_atp`, `availability`, `location_id`). |
@@ -69,14 +69,62 @@ Stock rows transition across 3 availability states:
 * `held`: Temporarily reserved for inspection, returns, or pending batches.
 * `unsellable`: Quarantined, damaged, or lost inventory.
 
+### 2.4 Shipment Archiving & Deletion Governance Lifecycle
+
+To preserve financial audit trails, stock lineage, and avoid accidental data loss, shipments adhere to a strict **Archive-First** governance policy with direct table actions:
+
+```mermaid
+flowchart TD
+    subgraph ActiveTable ["1. Active Shipment Table (InboundShipmentListPage)"]
+        Row["Shipment Row (No 3-dots menu)"]
+        Row -->|Click Row| Nav["Navigate to Shipment Overview"]
+        Row -->|Direct Archive Btn| ConfArch["Confirmation Dialog: 'Archive this shipment?'"]
+        ConfArch -->|Confirm| RPC_Arch["RPC: archive_shipment"]
+    end
+
+    subgraph ArchivedHub ["2. Archived Shipments Hub (ArchivedShipmentsDialog)"]
+        TopBtn["Toolbar 'Archived' Button"] --> OpenDialog["Open Archived Shipments Dialog"]
+        RPC_Arch --> OpenDialog
+
+        OpenDialog --> AD["Archived Draft"]
+        OpenDialog --> ACN["Archived Cancelled"]
+        OpenDialog --> AIT["Archived In-Transit"]
+        OpenDialog --> ARC["Archived Received"]
+    end
+
+    subgraph ArchivedActions ["3. Actions in Archived Dialog"]
+        AD -->|Unarchive Icon| Unarch["RPC: unarchive_shipment (Returns to Active Table)"]
+        ACN -->|Unarchive Icon| Unarch
+        AIT -->|Unarchive Icon| Unarch
+        ARC -->|Unarchive Icon| Unarch
+
+        AD -->|Delete Icon (ph-trash)| PurgeConf["Destructive Confirm Dialog"]
+        ACN -->|Delete Icon (ph-trash)| PurgeConf
+        PurgeConf -->|Confirm| RPC_Purge["RPC: purge_archived_shipment (Hard Delete)"]
+
+        AIT -.->|Delete Icon REMOVED| AuditLock["Locked: Transit Audit Required"]
+        ARC -.->|Delete Icon REMOVED| AuditLock2["Locked: Stock & Wallet Ledger Invariant"]
+    end
+```
+
+#### Key UI & Interaction Rules:
+1. **No Three-Dots Menu (`...`)**: The actions column in the active shipment table does **not** use a three-dots dropdown menu. 
+2. **Direct Row Archive Button**: Each active shipment row provides an inline **Archive** button (`q-btn icon="ph-archive"` / `"ph-archive-box"`). Clicking it triggers an explicit confirmation dialog before invoking `archive_shipment`.
+3. **Archived Hub Trigger**: The table toolbar contains a dedicated **"Archived"** button (`q-btn icon="ph-archive-box"`) displaying the count of archived shipments. Clicking it opens [`ArchivedShipmentsModal.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/ArchivedShipmentsModal.vue).
+4. **Archived Dialog Action Matrix**:
+   * **Unarchive / Restore**: Rendered for **all** archived records, returning them to the active table.
+   * **Delete Icon (Permanent Purge)**: Rendered **only** for shipments with **`draft`** or **`cancelled`** status. Triggers a permanent hard-delete dialog via `purge_archived_shipment`.
+   * **Delete Icon Removed**: For shipments in **`in_transit`** or **`received`** status, the delete icon is **completely removed** (protected by financial and inventory audit locks).
+5. **Consolidated Single RPC Execution**: The shipment list page loads entirely through a single execution of `list_global_shipments_paginated`. It embeds `vendor_name`, `vendor_code`, and `progress_tag` in every row, and includes `archived_total` inside `meta`, eliminating separate secondary API calls for vendors, child refs, or background count fetching.
+
 ---
 
 ## 3. Page & Component Inventory
 
 | Route | Main Page | Key Child Components & Dialogs |
 | :--- | :--- | :--- |
-| `/:tenantSlug?/app/procurement/shipment` | [`InboundShipmentListPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/pages/InboundShipmentListPage.vue) | Compact table toolbar, filter chips, shipment status pills, [`ShipmentFormDialog.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/ShipmentFormDialog.vue) |
-| `/:tenantSlug?/app/procurement/shipment/:id` | [`ShipmentOverviewPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/pages/ShipmentOverviewPage.vue) | [`ShipmentStatusWorkflowBar.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/ShipmentStatusWorkflowBar.vue), [`ShipmentLandedCostSummaryCard.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/ShipmentLandedCostSummaryCard.vue), [`ShipmentCostEntriesPanel.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/ShipmentCostEntriesPanel.vue) |
+| `/:tenantSlug?/app/procurement/shipment` | [`InboundShipmentListPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/pages/InboundShipmentListPage.vue) | Compact table toolbar, "Archived" hub trigger button, filter chips, shipment status pills, direct row Archive button with confirmation dialog (no 3-dots menu), [`ArchivedShipmentsModal.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/ArchivedShipmentsModal.vue), [`ShipmentFormDialog.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/ShipmentFormDialog.vue) |
+| `/:tenantSlug?/app/procurement/shipment/:id` | [`ShipmentOverviewPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/pages/ShipmentOverviewPage.vue) | [`ShipmentStatusWorkflowBar.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/ShipmentStatusWorkflowBar.vue), Archive toggle button, [`ShipmentLandedCostSummaryCard.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/ShipmentLandedCostSummaryCard.vue), [`ShipmentCostEntriesPanel.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/ShipmentCostEntriesPanel.vue) |
 | `/:tenantSlug?/app/procurement/shipment/:id/items` | [`ShipmentLineItemsPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/pages/ShipmentLineItemsPage.vue) | [`ShipmentLineItemsTable.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/ShipmentLineItemsTable.vue), [`AddShipmentItemsDrawer.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/AddShipmentItemsDrawer.vue), [`BulkPasteDialog.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/BulkPasteDialog.vue) |
 | `/:tenantSlug?/app/procurement/shipment/:id/receive` | [`ReceiveShipmentPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/pages/ReceiveShipmentPage.vue) | [`ShipmentReceiveTabPanel.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/ShipmentReceiveTabPanel.vue), physical variance checklist |
 | `/:tenantSlug?/app/procurement/stock` | [`WarehouseStockListPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/pages/WarehouseStockListPage.vue) | Stock location badge, availability chips, [`StockMoveLocationDialog.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/StockMoveLocationDialog.vue), [`StockMoveGradeDialog.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/StockMoveGradeDialog.vue) |
@@ -91,7 +139,11 @@ Stock rows transition across 3 availability states:
 
 | Component | Action / Trigger | Hook / Endpoint | Caching Strategy |
 | :--- | :--- | :--- | :--- |
-| **`InboundShipmentListPage`** | Mount / Filter Change | `useQuery` $\rightarrow$ `Table: global_shipments` | `staleTime: 30s`, Key: `['procurementStock', 'shipments', tenantId]` |
+| **`InboundShipmentListPage`** | Mount / Filter Change | `useQuery` $\rightarrow$ `RPC: list_global_shipments_paginated` (Returns rows + vendor info + `archived_total`) | `staleTime: 30s`, Key: `['procurementStock', 'shipments', tenantId, { is_archived: false }]` |
+| **`InboundShipmentListPage`** | Direct Row Archive Click | `useMutation` $\rightarrow$ `RPC: archive_shipment` | Invalidates `['procurementStock', 'shipments']` & `['procurementStock', 'archivedShipments']` |
+| **`ArchivedShipmentsModal`** | Mount / Refresh | `useQuery` $\rightarrow$ `RPC: list_global_shipments_paginated` (where `is_archived = true`) | `staleTime: 30s`, Key: `['procurementStock', 'archivedShipments', tenantId]` |
+| **`ArchivedShipmentsModal`** | Unarchive Action | `useMutation` $\rightarrow$ `RPC: unarchive_shipment` | Invalidates active and archived shipment lists |
+| **`ArchivedShipmentsModal`** | Permanent Delete (Draft & Cancelled Only) | `useMutation` $\rightarrow$ `RPC: purge_archived_shipment` | Optimistic removal / Invalidates `['procurementStock', 'archivedShipments']` |
 | **`ShipmentFormDialog`** | Create Shipment Draft | `useMutation` $\rightarrow$ `RPC: create_shipment_draft` | Invalidates `['procurementStock', 'shipments']` |
 | **`ShipmentLineItemsPage`** | Add Catalog Product Line | `useMutation` $\rightarrow$ `RPC: add_shipment_item_from_product` | Invalidates `['procurementStock', 'shipmentOverview', id]` |
 | **`ShipmentLineItemsPage`** | Add Child Line Item | `useMutation` $\rightarrow$ `RPC: add_child_line_to_parent_shipment` | Invalidates `['procurementStock', 'shipmentOverview', id]` |
@@ -110,7 +162,8 @@ Stock rows transition across 3 availability states:
 
 Server state keys are centralized in [`procurementStockQueryKeys.ts`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/shared/queryKeys/procurementStockQueryKeys.ts):
 
-* `procurementStockQueryKeys.shipments(tenantId)` $\rightarrow$ `['procurementStock', 'shipments', { tenantId }]`
+* `procurementStockQueryKeys.shipments(tenantId, params)` $\rightarrow$ `['procurementStock', 'shipments', { tenantId, ...params }]`
+* `procurementStockQueryKeys.archivedShipments(tenantId)` $\rightarrow$ `['procurementStock', 'archivedShipments', { tenantId }]`
 * `procurementStockQueryKeys.shipmentOverview(shipmentId)` $\rightarrow$ `['procurementStock', 'shipmentOverview', { shipmentId }]`
 * `procurementStockQueryKeys.allocatableStockList(params)` $\rightarrow$ `['procurementStock', 'allocatableStockList', params]`
 * `procurementStockQueryKeys.stockLocations(tenantId)` $\rightarrow$ `['procurementStock', 'stockLocations', { tenantId }]`

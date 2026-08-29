@@ -1,9 +1,46 @@
 <template>
   <div class="panel-body col column no-wrap">
-    <!-- Top Bar: Left Title | Center Mode Buttons (Search, Bulk) | Right Filter & Close -->
+    <!-- Top Bar: Left Title & Section | Center Mode Buttons (Search, Bulk) | Right Filter & Close -->
     <div class="top-nav-bar row items-center justify-between q-px-md q-py-sm bg-white border-bottom">
-      <div class="text-subtitle1 text-weight-bold text-grey-9">
-        Add Item
+      <div class="row items-center q-gutter-x-sm no-wrap ellipsis">
+        <div class="text-subtitle1 text-weight-bold text-grey-9">
+          Add Item
+        </div>
+        <!-- Target Section Pill / Selector -->
+        <q-btn-dropdown
+          v-if="selectedSectionName || sectionOptions.length > 0"
+          unelevated
+          dense
+          no-caps
+          color="primary"
+          class="q-px-sm q-py-2xs text-weight-bold"
+          style="border-radius: 12px; font-size: 12px"
+          :dropdown-icon="sectionOptions.length > 1 ? 'ph ph-caret-down' : 'none'"
+          :disable="sectionOptions.length <= 1"
+        >
+          <template #label>
+            <div class="row items-center no-wrap">
+              <q-icon name="ph ph-folder-open" size="14px" class="q-mr-2xs" />
+              <span class="ellipsis" style="max-width: 170px">{{ selectedSectionName || 'Select Section' }}</span>
+            </div>
+          </template>
+          <q-list dense style="min-width: 180px">
+            <q-item
+              v-for="sec in sectionOptions"
+              :key="sec.value"
+              clickable
+              v-close-popup
+              :active="selectedSectionId === sec.value"
+              active-class="text-primary text-weight-bold bg-primary-subtle"
+              @click="selectedSectionId = sec.value"
+            >
+              <q-item-section avatar style="min-width: 24px">
+                <q-icon name="ph ph-folder" size="14px" />
+              </q-item-section>
+              <q-item-section class="text-caption">{{ sec.label }}</q-item-section>
+            </q-item>
+          </q-list>
+        </q-btn-dropdown>
       </div>
 
       <!-- Center Segmented Switch: Search | Bulk -->
@@ -420,6 +457,7 @@
     <!-- New Product Sidebar -->
     <NewShipmentProductSidebar
       v-model="showNewProductSidebar"
+      :target-section-name="selectedSectionName"
       :z-index="7100"
       @add="onNewProductAdd"
     />
@@ -492,6 +530,14 @@ watch(
   },
   { immediate: true },
 );
+
+const selectedSectionName = computed(() => {
+  if (selectedSectionId.value) {
+    const sec = shipmentStore.currentShipmentSections.find((s) => s.id === selectedSectionId.value);
+    if (sec) return sec.title || `Section #${sec.id}`;
+  }
+  return null;
+});
 
 const sectionOptions = computed(() => {
   const sections = shipmentStore.currentShipmentSections ?? [];
@@ -923,22 +969,7 @@ const debouncedLoadBrowse = () => {
 
 watch(browseSearch, (newVal) => {
   const query = (newVal || '').trim();
-  if (query) {
-    let detectedField: 'name' | 'barcode' | 'product_code' | 'id' | null = null;
-    if (/^#\d+$/.test(query)) {
-      detectedField = 'id';
-    } else if (/^\d{6,}$/.test(query)) {
-      detectedField = 'barcode';
-    } else if (/^[A-Za-z0-9\-_]{3,}$/.test(query) && /\d/.test(query) && /[A-Za-z]/.test(query)) {
-      detectedField = 'product_code';
-    }
-
-    if (detectedField && browseSearchField.value !== detectedField) {
-      browseSearchField.value = detectedField;
-      browsePage.value = 1;
-      return;
-    }
-  } else {
+  if (!query) {
     browseList.value = [];
     browseTotal.value = 0;
     browseLoading.value = false;

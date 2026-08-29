@@ -539,8 +539,22 @@
         </div>
       </template>
 
+      <!-- Custom Header Cell Slot with multi-line wrapping -->
+      <template #header-cell="slotProps">
+        <q-th
+          :props="slotProps"
+          :class="[
+            slotProps.col.headerClasses,
+            `col-${slotProps.col.name.replace(/([A-Z])/g, '-$1').toLowerCase()}`,
+            'costing-table-header'
+          ]"
+        >
+          <span class="header-label-wrap">{{ formatTableHeaderLabel(slotProps.col.name, slotProps.col.label) }}</span>
+        </q-th>
+      </template>
+
       <template #header-cell-select="slotProps">
-        <q-th :props="slotProps">
+        <q-th :props="slotProps" class="col-select text-center">
           <q-checkbox v-model="isAllSelected" dense />
         </q-th>
       </template>
@@ -548,18 +562,18 @@
       <template #header-cell-confirmedQty="slotProps">
         <q-th
           :props="slotProps"
-          class="col-confirmed-qty text-center"
+          class="col-confirmed-qty text-center costing-table-header"
           :class="{ 'qty-col--focus': focusConfirmedQty }"
         >
           <div class="confirmed-qty-header">
-            <span>
+            <span class="header-label-wrap">
               <q-icon
                 v-if="focusConfirmedQty"
                 name="ph ph-pencil-simple"
                 size="14px"
                 class="q-mr-xs"
               />
-              {{ $t('product_based_costing.table_col_confirmedQty') }}
+              {{ formatTableHeaderLabel('confirmedQty', $t('product_based_costing.table_col_confirmedQty')) }}
             </span>
             <span v-if="focusConfirmedQty" class="text-caption text-grey-7">
               {{ $t('product_based_costing.edit_if_took_less') }}
@@ -817,14 +831,14 @@
             v-if="isColumnVisible('priceGbp')"
             key="priceGbp"
             :props="slotProps"
-            class="col-price-gbp text-right editable-cell"
+            class="col-price-gbp text-center editable-cell"
           >
             <q-input
               v-model.number="slotProps.row.priceGbp"
               type="number"
               dense
               borderless
-              input-class="text-right bw-tabular"
+              input-class="text-center bw-tabular"
               class="cell-input"
               min="0"
               step="0.01"
@@ -837,7 +851,7 @@
             v-if="isColumnVisible('totalPurchasePriceGbp')"
             key="totalPurchasePriceGbp"
             :props="slotProps"
-            class="col-total-purchase-price-gbp text-right"
+            class="col-total-purchase-price-gbp text-center"
           >
             {{ formatNumber(getTotalPurchasePriceGbp(slotProps.row)) }}
           </q-td>
@@ -846,14 +860,14 @@
             v-if="isColumnVisible('productWeight')"
             key="productWeight"
             :props="slotProps"
-            class="col-product-weight text-right editable-cell"
+            class="col-product-weight text-center editable-cell"
           >
             <q-input
               v-model.number="slotProps.row.productWeight"
               type="number"
               dense
               borderless
-              input-class="text-right bw-tabular"
+              input-class="text-center bw-tabular"
               class="cell-input"
               min="0"
               step="1"
@@ -867,14 +881,14 @@
             v-if="isColumnVisible('packageWeight')"
             key="packageWeight"
             :props="slotProps"
-            class="col-package-weight text-right editable-cell"
+            class="col-package-weight text-center editable-cell"
           >
             <q-input
               v-model.number="slotProps.row.packageWeight"
               type="number"
               dense
               borderless
-              input-class="text-right bw-tabular"
+              input-class="text-center bw-tabular"
               class="cell-input"
               min="0"
               step="1"
@@ -888,7 +902,7 @@
             v-if="isColumnVisible('totalWeight')"
             key="totalWeight"
             :props="slotProps"
-            class="col-total-weight text-right"
+            class="col-total-weight text-center"
           >
             {{ formatNumber(getTotalWeight(slotProps.row)) }}
           </q-td>
@@ -897,7 +911,7 @@
             v-if="isColumnVisible('cargoRate')"
             key="cargoRate"
             :props="slotProps"
-            class="col-cargo-rate text-right"
+            class="col-cargo-rate text-center"
           >
             {{ formatNumber(slotProps.row.cargoRate) }}
           </q-td>
@@ -906,7 +920,7 @@
             v-if="isColumnVisible('cargoCostGbp')"
             key="cargoCostGbp"
             :props="slotProps"
-            class="col-cargo-cost-gbp text-right"
+            class="col-cargo-cost-gbp text-center"
           >
             {{ formatNumber(getCargoCostGbp(slotProps.row)) }}
           </q-td>
@@ -915,7 +929,7 @@
             v-if="isColumnVisible('totalCostGbp')"
             key="totalCostGbp"
             :props="slotProps"
-            class="col-total-cost-gbp text-right"
+            class="col-total-cost-gbp text-center"
           >
             {{ formatNumber(getTotalCostGbp(slotProps.row)) }}
           </q-td>
@@ -924,7 +938,7 @@
             v-if="isColumnVisible('rowTotalCostGbp')"
             key="rowTotalCostGbp"
             :props="slotProps"
-            class="col-row-total-cost-gbp text-right"
+            class="col-row-total-cost-gbp text-center"
           >
             {{ formatNumber(getRowTotalCostGbp(slotProps.row)) }}
           </q-td>
@@ -933,7 +947,7 @@
             v-if="isColumnVisible('costBdt')"
             key="costBdt"
             :props="slotProps"
-            class="col-cost-bdt text-right"
+            class="col-cost-bdt text-center"
           >
             {{ formatNumber(getCostBdt(slotProps.row)) }}
           </q-td>
@@ -942,7 +956,7 @@
             v-if="isColumnVisible('totalCostBdt')"
             key="totalCostBdt"
             :props="slotProps"
-            class="col-total-cost-bdt text-right"
+            class="col-total-cost-bdt text-center"
           >
             {{ formatNumber(getTotalCostBdt(slotProps.row)) }}
           </q-td>
@@ -951,9 +965,9 @@
             v-if="isColumnVisible('offerPriceBdt')"
             key="offerPriceBdt"
             :props="slotProps"
-            class="col-offer-price-bdt text-right editable-cell"
+            class="col-offer-price-bdt text-center editable-cell"
           >
-            <div class="row items-center justify-end no-wrap q-gutter-x-xs">
+            <div class="row items-center justify-center no-wrap q-gutter-x-xs">
               <q-icon
                 v-if="slotProps.row.isOfferPriceManual"
                 name="ph ph-lock-key"
@@ -967,7 +981,7 @@
                 type="number"
                 dense
                 borderless
-                input-class="text-right bw-tabular"
+                input-class="text-center bw-tabular"
                 class="cell-input col"
                 min="0"
                 step="1"
@@ -994,7 +1008,7 @@
             v-if="isColumnVisible('totalBdt')"
             key="totalBdt"
             :props="slotProps"
-            class="col-total-bdt text-right"
+            class="col-total-bdt text-center"
           >
             {{ formatNumber(getTotalBdt(slotProps.row)) }}
           </q-td>
@@ -1003,7 +1017,7 @@
             v-if="isColumnVisible('profitPerUnitBdt')"
             key="profitPerUnitBdt"
             :props="slotProps"
-            class="col-profit-per-unit-bdt text-right"
+            class="col-profit-per-unit-bdt text-center"
           >
             {{ formatNumber(getProfitPerUnit(slotProps.row)) }}
           </q-td>
@@ -1012,7 +1026,7 @@
             v-if="isColumnVisible('profitBdt')"
             key="profitBdt"
             :props="slotProps"
-            class="col-profit-bdt text-right"
+            class="col-profit-bdt text-center"
           >
             {{ formatNumber(getProfitBdt(slotProps.row)) }}
           </q-td>
@@ -1021,7 +1035,7 @@
             v-if="isColumnVisible('profitRate')"
             key="profitRate"
             :props="slotProps"
-            class="col-profit-rate text-right"
+            class="col-profit-rate text-center"
           >
             {{ formatNumber(getProfitRate(slotProps.row)) }}%
           </q-td>
@@ -2065,6 +2079,30 @@ const getStatusColor = (status: string | null) => {
   }
 };
 
+function formatTableHeaderLabel(colName: string, fallback: string): string {
+  const labels: Record<string, string> = {
+    qty: 'Qty',
+    confirmedQty: 'Confirmed\nQty',
+    priceGbp: 'Price\n(GBP)\n/Unit',
+    totalPurchasePriceGbp: 'Total\nPurchase\n(GBP)',
+    productWeight: 'Product\nWt (g)\n/Unit',
+    packageWeight: 'Package\nWt (g)\n/Unit',
+    totalWeight: 'Total\nWt (g)\n/Unit',
+    cargoRate: 'Cargo\nRate',
+    cargoCostGbp: 'Cargo Cost\n(GBP)\n/Unit',
+    totalCostGbp: 'Total Cost\n(GBP)\n/Unit',
+    rowTotalCostGbp: 'Row Total\nCost\n(GBP)',
+    costBdt: 'Cost\n(BDT)\n/Unit',
+    totalCostBdt: 'Row Total\nCost\n(BDT)',
+    offerPriceBdt: 'Offer\nPrice\n(BDT)/Unit',
+    totalBdt: 'Row Offer\nTotal\n(BDT)',
+    profitPerUnitBdt: 'Profit\n(BDT)\n/Unit',
+    profitBdt: 'Row Total\nProfit\n(BDT)',
+    profitRate: 'Profit\nRate\n(%)',
+    barcodeText: 'Barcode /\nCode /\nProduct ID',
+  };
+  return labels[colName] ?? fallback;
+}
 </script>
 
 <style scoped>
@@ -2101,20 +2139,32 @@ const getStatusColor = (status: string | null) => {
   width: max-content;
 }
 
+.product-based-costing-table :deep(.costing-q-table thead tr) {
+  height: auto;
+}
+
 .product-based-costing-table :deep(.costing-q-table thead tr th) {
   position: sticky;
-  z-index: 2;
-  background: var(--bw-theme-surface, #fff);
-}
-
-.product-based-costing-table :deep(.costing-q-table thead tr:first-child th) {
   top: 0;
-  z-index: 1;
+  z-index: 10;
+  background: var(--bw-theme-surface, #fff);
+  white-space: normal !important;
+  vertical-align: middle;
+  padding: 6px 4px;
 }
 
-.product-based-costing-table :deep(.costing-q-table thead tr + tr th) {
-  top: 48px;
-  z-index: 3;
+.costing-table-header {
+  line-height: 1.2;
+}
+
+.header-label-wrap {
+  display: inline-block;
+  white-space: pre-line;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  line-height: 1.15;
+  font-size: 11px;
+  max-width: 100%;
 }
 
 .product-based-costing-table :deep(.costing-q-table td:first-child),
@@ -2150,18 +2200,18 @@ const getStatusColor = (status: string | null) => {
   background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
 }
 
-.product-based-costing-table :deep(.costing-q-table tr:first-child th:first-child) {
-  z-index: 4;
+.product-based-costing-table :deep(.costing-q-table thead tr th:first-child) {
+  z-index: 20;
   background: color-mix(in srgb, var(--bw-theme-surface, #fff) 94%, #f8f9fa 6%);
 }
 
-.product-based-costing-table :deep(.costing-q-table tr:first-child th:nth-child(2)) {
-  z-index: 4;
+.product-based-costing-table :deep(.costing-q-table thead tr th:nth-child(2)) {
+  z-index: 20;
   background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
 }
 
-.product-based-costing-table :deep(.costing-q-table tr:first-child th:nth-child(3)) {
-  z-index: 4;
+.product-based-costing-table :deep(.costing-q-table thead tr th:nth-child(3)) {
+  z-index: 20;
   background: color-mix(in srgb, var(--bw-theme-surface, #fff) 96%, #fcfcfc 4%);
 }
 
@@ -2341,17 +2391,21 @@ const getStatusColor = (status: string | null) => {
 }
 
 .col-qty {
-  min-width: 100px;
-  width: 100px;
-  max-width: 100px;
+  min-width: 72px;
+  width: 72px;
+  max-width: 72px;
   background: #f8f9fa;
+  padding-left: 2px;
+  padding-right: 2px;
 }
 
 .col-confirmed-qty,
 .col-ordered-qty {
-  min-width: 128px;
-  width: 128px;
-  max-width: 128px;
+  min-width: 72px;
+  width: 72px;
+  max-width: 72px;
+  padding-left: 2px;
+  padding-right: 2px;
 }
 
 .qty-col--focus {
@@ -2367,10 +2421,12 @@ const getStatusColor = (status: string | null) => {
 }
 
 .col-delivered-qty {
-  min-width: 120px;
-  width: 120px;
-  max-width: 120px;
+  min-width: 72px;
+  width: 72px;
+  max-width: 72px;
   background: #f8f9fa;
+  padding-left: 2px;
+  padding-right: 2px;
 }
 
 .col-barcode {
@@ -2388,115 +2444,147 @@ const getStatusColor = (status: string | null) => {
 }
 
 .col-price-gbp {
-  min-width: 110px;
-  width: 110px;
-  max-width: 110px;
+  min-width: 72px;
+  width: 72px;
+  max-width: 72px;
   background: #ffffff;
+  padding-left: 2px;
+  padding-right: 2px;
 }
 
 .col-total-purchase-price-gbp {
-  min-width: 150px;
-  width: 150px;
-  max-width: 150px;
+  min-width: 72px;
+  width: 72px;
+  max-width: 72px;
   background: #ffffff;
+  padding-left: 2px;
+  padding-right: 2px;
 }
 
 .col-product-weight {
-  min-width: 120px;
-  width: 120px;
-  max-width: 120px;
+  min-width: 72px;
+  width: 72px;
+  max-width: 72px;
   background: #f8f9fa;
+  padding-left: 2px;
+  padding-right: 2px;
 }
 
 .col-package-weight {
-  min-width: 130px;
-  width: 130px;
-  max-width: 130px;
+  min-width: 72px;
+  width: 72px;
+  max-width: 72px;
   background: #ffffff;
+  padding-left: 2px;
+  padding-right: 2px;
 }
 
 .col-total-weight {
-  min-width: 120px;
-  width: 120px;
-  max-width: 120px;
+  min-width: 72px;
+  width: 72px;
+  max-width: 72px;
   background: #f8f9fa;
+  padding-left: 2px;
+  padding-right: 2px;
 }
 
 .col-cargo-rate {
-  min-width: 100px;
-  width: 100px;
-  max-width: 100px;
+  min-width: 72px;
+  width: 72px;
+  max-width: 72px;
   background: #ffffff;
+  padding-left: 2px;
+  padding-right: 2px;
 }
 
 .col-cargo-cost-gbp {
-  min-width: 130px;
-  width: 130px;
-  max-width: 130px;
+  min-width: 72px;
+  width: 72px;
+  max-width: 72px;
   background: #f8f9fa;
+  padding-left: 2px;
+  padding-right: 2px;
 }
 
 .col-total-cost-gbp {
-  min-width: 130px;
-  width: 130px;
-  max-width: 130px;
+  min-width: 72px;
+  width: 72px;
+  max-width: 72px;
   background: #ffffff;
+  padding-left: 2px;
+  padding-right: 2px;
 }
 
 .col-row-total-cost-gbp {
-  min-width: 150px;
-  width: 150px;
-  max-width: 150px;
+  min-width: 72px;
+  width: 72px;
+  max-width: 72px;
   background: #f8f9fa;
+  padding-left: 2px;
+  padding-right: 2px;
 }
 
 .col-cost-bdt {
-  min-width: 110px;
-  width: 110px;
-  max-width: 110px;
+  min-width: 72px;
+  width: 72px;
+  max-width: 72px;
   background: #f8f9fa;
+  padding-left: 2px;
+  padding-right: 2px;
 }
 
 .col-total-cost-bdt {
-  min-width: 130px;
-  width: 130px;
-  max-width: 130px;
+  min-width: 72px;
+  width: 72px;
+  max-width: 72px;
   background: #ffffff;
+  padding-left: 2px;
+  padding-right: 2px;
 }
 
 .col-offer-price-bdt {
-  min-width: 150px;
-  width: 150px;
-  max-width: 150px;
+  min-width: 72px;
+  width: 72px;
+  max-width: 72px;
   background: #f8f9fa;
+  padding-left: 2px;
+  padding-right: 2px;
 }
 
 .col-total-bdt {
-  min-width: 110px;
-  width: 110px;
-  max-width: 110px;
+  min-width: 72px;
+  width: 72px;
+  max-width: 72px;
   background: #ffffff;
+  padding-left: 2px;
+  padding-right: 2px;
 }
 
 .col-profit-per-unit-bdt {
-  min-width: 130px;
-  width: 130px;
-  max-width: 130px;
+  min-width: 72px;
+  width: 72px;
+  max-width: 72px;
   background: #f8f9fa;
+  padding-left: 2px;
+  padding-right: 2px;
 }
 
 .col-profit-bdt {
-  min-width: 110px;
-  width: 110px;
-  max-width: 110px;
+  min-width: 72px;
+  width: 72px;
+  max-width: 72px;
   background: #f8f9fa;
+  padding-left: 2px;
+  padding-right: 2px;
 }
 
 .col-profit-rate {
-  min-width: 110px;
-  width: 110px;
-  max-width: 110px;
+  min-width: 72px;
+  width: 72px;
+  max-width: 72px;
   background: #ffffff;
+  padding-left: 2px;
+  padding-right: 2px;
 }
 
 .col-status {

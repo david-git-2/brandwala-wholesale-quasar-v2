@@ -46,6 +46,12 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
     totalPages: 0,
     search: '',
     statusFilter: null as string | null,
+    isArchivedFilter: false,
+
+    // Archived shipment list cache
+    archivedRows: [] as GlobalShipment[],
+    archivedLoading: false,
+    archivedTotal: 0,
 
     // Single shipment states
     currentShipment: null as GlobalShipment | null,
@@ -72,6 +78,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         pageSize?: number;
         search?: string | null;
         status?: string | null;
+        isArchived?: boolean;
       },
     ) {
       this.loading = true;
@@ -81,6 +88,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         const pageSize = options?.pageSize ?? this.pageSize;
         const search = options?.search !== undefined ? options.search : this.search;
         const status = options?.status !== undefined ? options.status : this.statusFilter;
+        const isArchived = options?.isArchived !== undefined ? options.isArchived : this.isArchivedFilter;
 
         const result = await globalShipmentRepository.listPaginated(
           tenantId,
@@ -88,6 +96,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
           pageSize,
           search || undefined,
           status || undefined,
+          isArchived,
         );
 
         this.rows = result.data;
@@ -95,12 +104,38 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         this.pageSize = result.meta.pageSize;
         this.total = result.meta.total;
         this.totalPages = result.meta.totalPages;
+        if (result.meta.archivedTotal !== undefined) {
+          this.archivedTotal = result.meta.archivedTotal;
+        }
         this.search = search || '';
         this.statusFilter = status;
+        this.isArchivedFilter = isArchived;
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to load shipments';
       } finally {
         this.loading = false;
+      }
+    },
+
+    async fetchArchivedShipments(tenantId: number, search?: string) {
+      this.archivedLoading = true;
+      try {
+        const result = await globalShipmentRepository.listPaginated(
+          tenantId,
+          1,
+          100,
+          search || undefined,
+          undefined,
+          true,
+        );
+        this.archivedRows = result.data;
+        this.archivedTotal = result.meta.total;
+        return result.data;
+      } catch (err: unknown) {
+        console.error('Failed to load archived shipments', err);
+        return [];
+      } finally {
+        this.archivedLoading = false;
       }
     },
 
@@ -151,7 +186,16 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
 
     async fetchShipmentSummary(shipmentId: number) {
       try {
-        this.currentShipmentSummary = await globalShipmentRepository.getShipmentSummary(shipmentId);
+        const preload =
+          this.currentShipment && this.currentShipment.id === shipmentId
+            ? {
+                shipment: this.currentShipment,
+                items: this.currentShipmentItems,
+                cost_entries: this.currentCostEntries,
+                boxes: this.currentShipmentBoxes,
+              }
+            : undefined;
+        this.currentShipmentSummary = await globalShipmentRepository.getShipmentSummary(shipmentId, preload);
         return this.currentShipmentSummary;
       } catch (err: unknown) {
         console.error('Failed to fetch shipment summary', err);
@@ -424,6 +468,80 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         throw err;
       } finally {
         this.loading = false;
+      }
+    },
+
+    async archiveShipment(id: number) {
+      this.saving = true;
+      this.error = null;
+      try {
+        const archived = await globalShipmentRepository.archiveShipment(id);
+        // Remove from active list
+        this.rows = this.rows.filter((r) => r.id !== id);
+        this.total = Math.max(0, this.total - 1);
+        // Add to archived list if loaded
+        if (!this.archivedRows.some((r) => r.id === id)) {
+          this.archivedRows.unshift(archived);
+          this.archivedTotal++;
+        }
+        if (this.currentShipment?.id === id) {
+          this.currentShipment = archived;
+        }
+        return archived;
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to archive shipment';
+        throw err;
+      } finally {
+        this.saving = false;
+      }
+    },
+
+    async unarchiveShipment(id: number) {
+      this.saving = true;
+      this.error = null;
+      try {
+        const restored = await globalShipmentRepository.unarchiveShipment(id);
+        // Remove from archived list
+        this.archivedRows = this.archivedRows.filter((r) => r.id !== id);
+        this.archivedTotal = Math.max(0, this.archivedTotal - 1);
+        // Add to active list if matching filter
+        if (!this.rows.some((r) => r.id === id) && !this.isArchivedFilter) {
+          this.rows.unshift(restored);
+          this.total++;
+        }
+        if (this.currentShipment?.id === id) {
+          this.currentShipment = restored;
+        }
+        return restored;
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to unarchive shipment';
+        throw err;
+      } finally {
+        this.saving = false;
+      }
+    },
+
+    async purgeArchivedShipment(id: number) {
+      this.saving = true;
+      this.error = null;
+      try {
+        await globalShipmentRepository.purgeArchivedShipment(id);
+        this.archivedRows = this.archivedRows.filter((r) => r.id !== id);
+        this.archivedTotal = Math.max(0, this.archivedTotal - 1);
+        this.rows = this.rows.filter((r) => r.id !== id);
+        if (this.currentShipment?.id === id) {
+          this.currentShipment = null;
+          this.currentShipmentSections = [];
+          this.currentShipmentItems = [];
+          this.currentShipmentBoxes = [];
+          this.currentShipmentStocks = [];
+          this.currentCostEntries = [];
+        }
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to permanently delete archived shipment';
+        throw err;
+      } finally {
+        this.saving = false;
       }
     },
 
@@ -1190,7 +1308,37 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       this.saving = true;
       this.error = null;
       try {
-        const newSection = await shipmentSectionRepository.create(payload);
+        const shipment = this.currentShipment?.id === payload.shipment_id ? this.currentShipment : null;
+        const parentTenantId =
+          payload.parent_tenant_id ??
+          shipment?.parent_tenant_id ??
+          (this.currentShipmentSections[0]?.parent_tenant_id as number | undefined);
+
+        if (!parentTenantId) {
+          throw new Error('Tenant ID is required to create a section');
+        }
+
+        const vendorId =
+          payload.vendor_id ??
+          shipment?.vendor_id ??
+          (this.currentShipmentSections[0]?.vendor_id as number | undefined);
+
+        if (!vendorId) {
+          throw new Error('Vendor is required on shipment or section to create a section');
+        }
+
+        const maxSortOrder =
+          this.currentShipmentSections.length > 0
+            ? Math.max(...this.currentShipmentSections.map((s) => s.sort_order ?? 0))
+            : 0;
+
+        const newSection = await shipmentSectionRepository.create({
+          ...payload,
+          parent_tenant_id: parentTenantId,
+          vendor_id: vendorId,
+          sort_order: payload.sort_order ?? maxSortOrder + 1,
+        });
+
         if (this.currentShipment?.id === payload.shipment_id) {
           this.currentShipmentSections.push(newSection);
           this.currentShipmentSections.sort((a, b) => a.sort_order - b.sort_order);
@@ -1265,6 +1413,83 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
 
     async moveItemToSection(itemId: number, sectionId: number | null) {
       return this.updateShipmentItem(itemId, { section_id: sectionId });
+    },
+
+    async createShipmentCostEntry(shipmentId: number, payload: Partial<CostEntryDraft> & { cost_type: 'product' | 'cargo' | 'other' }) {
+      this.saving = true;
+      this.error = null;
+      try {
+        const created = await globalShipmentCostEntryRepository.upsert({
+          shipment_id: shipmentId,
+          cost_type: payload.cost_type,
+          amount: payload.amount ?? 0,
+          exchange_rate: payload.exchange_rate ?? 1,
+          currency_id: payload.currency_id ?? this.currentShipment?.shipment_purchase_currency_id ?? null,
+          payment_source: payload.payment_source ?? null,
+          entity_type: payload.entity_type ?? null,
+          entity_id: payload.entity_id ?? null,
+          allocation: payload.allocation ?? null,
+          metadata: payload.metadata ?? {},
+        });
+        const existingIdx = this.currentCostEntries.findIndex((e: any) => e.id === created.id);
+        if (existingIdx >= 0) {
+          this.currentCostEntries[existingIdx] = created as any;
+        } else {
+          this.currentCostEntries.push(created as any);
+        }
+        return created;
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to create cost entry';
+        throw err;
+      } finally {
+        this.saving = false;
+      }
+    },
+
+    async updateShipmentCostEntry(id: number, payload: Partial<CostEntryDraft> & { cost_type: 'product' | 'cargo' | 'other' }) {
+      this.saving = true;
+      this.error = null;
+      try {
+        const shipmentId = this.currentShipment?.id;
+        if (!shipmentId) throw new Error('Shipment ID missing');
+        const updated = await globalShipmentCostEntryRepository.upsert({
+          id,
+          shipment_id: shipmentId,
+          cost_type: payload.cost_type,
+          amount: payload.amount ?? 0,
+          exchange_rate: payload.exchange_rate ?? 1,
+          currency_id: payload.currency_id ?? this.currentShipment?.shipment_purchase_currency_id ?? null,
+          payment_source: payload.payment_source ?? null,
+          entity_type: payload.entity_type ?? null,
+          entity_id: payload.entity_id ?? null,
+          allocation: payload.allocation ?? null,
+          metadata: payload.metadata ?? {},
+        });
+        const existingIdx = this.currentCostEntries.findIndex((e: any) => e.id === id);
+        if (existingIdx >= 0) {
+          this.currentCostEntries[existingIdx] = updated as any;
+        }
+        return updated;
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to update cost entry';
+        throw err;
+      } finally {
+        this.saving = false;
+      }
+    },
+
+    async deleteShipmentCostEntry(id: number) {
+      this.saving = true;
+      this.error = null;
+      try {
+        await globalShipmentCostEntryRepository.remove(id);
+        this.currentCostEntries = this.currentCostEntries.filter((e: any) => e.id !== id);
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to delete cost entry';
+        throw err;
+      } finally {
+        this.saving = false;
+      }
     },
   },
 });

@@ -1681,6 +1681,7 @@ begin
 
   insert into public.wallet_accounts (
     tenant_id,
+    parent_tenant_id,
     entity_type,
     entity_id,
     currency_code,
@@ -1689,6 +1690,7 @@ begin
     locked_balance
   )
   values (
+    p_tenant_id,
     p_tenant_id,
     'cargo_company',
     v_row.id,
@@ -3689,6 +3691,7 @@ begin
 
   insert into public.wallet_accounts (
     tenant_id,
+    parent_tenant_id,
     entity_type,
     entity_id,
     currency_code,
@@ -3697,6 +3700,7 @@ begin
     locked_balance
   )
   values (
+    p_tenant_id,
     p_tenant_id,
     'cargo_company',
     v_id,

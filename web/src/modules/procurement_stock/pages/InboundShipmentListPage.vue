@@ -63,6 +63,28 @@
             </q-btn>
 
             <q-btn
+              flat
+              dense
+              no-caps
+              color="grey-8"
+              class="rounded-sq-btn text-weight-bold q-px-sm"
+              style="border-radius: 8px; border: 1px solid rgba(0, 0, 0, 0.12)"
+              label="Archived"
+              icon="ph ph-archive-box"
+              @click="openArchivedShipmentsModal"
+            >
+              <q-badge
+                v-if="shipmentStore.archivedTotal > 0"
+                color="grey-3"
+                text-color="grey-9"
+                rounded
+                class="q-ml-xs text-weight-bold"
+              >
+                {{ shipmentStore.archivedTotal }}
+              </q-badge>
+            </q-btn>
+
+            <q-btn
               color="primary"
               unelevated
               no-caps
@@ -216,21 +238,8 @@
 
                 <!-- Vendor Slot -->
                 <q-td key="vendor" :props="props">
-                  <div class="row items-center no-wrap">
-                    <q-avatar
-                      square
-                      size="26px"
-                      :color="$q.dark.isActive ? 'grey-9' : 'grey-3'"
-                      :text-color="$q.dark.isActive ? 'grey-3' : 'grey-9'"
-                      class="q-mr-xs text-weight-bold text-xxs avatar-soft-sq"
-                    >
-                      {{ getInitials(getVendorName(props.row.vendor_id)) }}
-                    </q-avatar>
-                    <div>
-                      <div class="text-weight-bold text-xs line-clamp-1">
-                        {{ getVendorName(props.row.vendor_id) }}
-                      </div>
-                    </div>
+                  <div class="text-weight-bold text-xs line-clamp-1">
+                    {{ props.row.vendor_name || getVendorName(props.row.vendor_id) }}
                   </div>
                 </q-td>
 
@@ -251,25 +260,21 @@
                   </div>
                 </q-td>
 
-                <!-- Actions Slot -->
+                <!-- Actions Slot: Direct Archive Button (3-dots removed per spec) -->
                 <q-td key="actions" :props="props" class="text-right" @click.stop>
-                  <q-btn flat round dense icon="ph ph-dots-three-vertical" size="sm" color="grey-7">
-                    <q-menu anchor="bottom end" self="top end">
-                      <q-list dense style="min-width: 130px">
-                        <q-item clickable v-close-popup @click="viewDetails(props.row.id)">
-                          <q-item-section avatar min-width="20px">
-                            <q-icon name="ph ph-eye" size="14px" color="primary" />
-                          </q-item-section>
-                          <q-item-section class="text-weight-medium text-xs">View Details</q-item-section>
-                        </q-item>
-                        <q-item clickable v-close-popup @click="openEditShipment(props.row)">
-                          <q-item-section avatar min-width="20px">
-                            <q-icon name="ph ph-pencil-simple" size="14px" color="grey-8" />
-                          </q-item-section>
-                          <q-item-section class="text-weight-medium text-xs">Edit Details</q-item-section>
-                        </q-item>
-                      </q-list>
-                    </q-menu>
+                  <q-btn
+                    flat
+                    dense
+                    no-caps
+                    size="sm"
+                    color="grey-7"
+                    icon="ph ph-archive-box"
+                    label="Archive"
+                    class="rounded-sq-btn text-weight-medium q-px-xs"
+                    style="border-radius: 6px"
+                    @click.stop="confirmArchiveShipment(props.row)"
+                  >
+                    <q-tooltip>Archive this shipment</q-tooltip>
                   </q-btn>
                 </q-td>
               </q-tr>
@@ -291,6 +296,7 @@ import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import type { GlobalShipment } from '../repositories/globalShipmentRepository';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import ShipmentFormDialog from '../components/ShipmentFormDialog.vue';
+import ArchivedShipmentsModal from '../components/ArchivedShipmentsModal.vue';
 
 const authStore = useAuthStore();
 const shipmentStore = useGlobalShipmentStore();
@@ -357,18 +363,6 @@ const loadVendorData = async () => {
   }
 };
 
-// Avatar & styling helpers
-const getInitials = (name: string | null | undefined): string => {
-  if (!name || name === '—') return 'VS';
-  const parts = name.trim().split(/\s+/);
-  const p0 = parts[0];
-  const p1 = parts[1];
-  if (p0 && p1 && p0[0] && p1[0]) {
-    return (p0[0] + p1[0]).toUpperCase();
-  }
-  return name.slice(0, 2).toUpperCase();
-};
-
 const getTypeChipStyle = (type: string | null | undefined) => {
   if ($q.dark.isActive) {
     switch (type) {
@@ -406,7 +400,7 @@ const columns: QTableColumn[] = [
   {
     name: 'vendor',
     label: 'Vendor',
-    field: (row: GlobalShipment) => getVendorName(row.vendor_id),
+    field: (row: GlobalShipment) => row.vendor_name || getVendorName(row.vendor_id),
     align: 'left',
     sortable: false,
   },
@@ -498,6 +492,44 @@ const openEditShipment = (shipment: GlobalShipment) => {
     },
   }).onOk(() => {
     void loadShipments();
+  });
+};
+
+const openArchivedShipmentsModal = () => {
+  $q.dialog({
+    component: ArchivedShipmentsModal,
+  });
+};
+
+const confirmArchiveShipment = (shipment: GlobalShipment) => {
+  $q.dialog({
+    title: 'Archive Shipment',
+    message: `Are you sure you want to archive "${shipment.name}" (#${(shipment as any).tenant_shipment_id || shipment.id})? It will be moved out of the active shipments list.`,
+    cancel: {
+      flat: true,
+      label: 'Cancel',
+      noCaps: true,
+    },
+    ok: {
+      unelevated: true,
+      color: 'primary',
+      label: 'Archive',
+      noCaps: true,
+    },
+  }).onOk(async () => {
+    try {
+      await shipmentStore.archiveShipment(shipment.id);
+      $q.notify({
+        type: 'positive',
+        message: `Shipment "${shipment.name}" archived successfully.`,
+        timeout: 2000,
+      });
+    } catch (err: unknown) {
+      $q.notify({
+        type: 'negative',
+        message: (err as Error).message || 'Failed to archive shipment',
+      });
+    }
   });
 };
 
@@ -657,7 +689,6 @@ const getStatusIcon = (status: string | null | undefined): string => {
 
 onMounted(() => {
   void loadShipments();
-  void loadVendorData();
 });
 
 watch(

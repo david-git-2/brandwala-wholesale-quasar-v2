@@ -579,6 +579,18 @@ GRANT ALL ON FUNCTION "public"."archive_shipment_progress_flow"("p_flow_id" bigi
 
 
 
+GRANT ALL ON FUNCTION "public"."archive_shipment"("p_id" bigint) TO "authenticated";
+
+
+
+GRANT ALL ON FUNCTION "public"."unarchive_shipment"("p_id" bigint) TO "authenticated";
+
+
+
+GRANT ALL ON FUNCTION "public"."purge_archived_shipment"("p_id" bigint) TO "authenticated";
+
+
+
 GRANT ALL ON FUNCTION "public"."archive_shipment_progress_flow_stage"("p_flow_stage_id" bigint, "p_archive" boolean) TO "authenticated";
 
 
@@ -911,7 +923,7 @@ GRANT ALL ON FUNCTION "public"."list_global_shipment_cost_entries"("p_shipment_i
 
 
 
-GRANT ALL ON FUNCTION "public"."list_global_shipments_paginated"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_status" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."list_global_shipments_paginated"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_status" "text", "p_is_archived" boolean) TO "authenticated";
 
 
 

@@ -153,7 +153,7 @@ const canCreate = computed(() => hasModuleAccess('cargo_company', 'create'));
 const canEdit = computed(() => hasModuleAccess('cargo_company', 'edit'));
 const canDelete = computed(() => hasModuleAccess('cargo_company', 'delete'));
 
-const tenantId = computed(() => authStore.tenantId);
+const tenantId = computed(() => authStore.selectedTenant?.parent_id ?? authStore.tenantId);
 const searchText = ref('');
 const showInactive = ref(true);
 const dialogOpen = ref(false);

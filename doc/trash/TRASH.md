@@ -50,17 +50,20 @@ flowchart LR
     E["Entity Type"] --> M["Master Catalogs / Costing / Drafts"]
     E --> F["Financial Ledger / Posted Invoices"]
     E --> G["Global Shared Catalogs"]
+    E --> P["Global Inbound Shipments"]
 
     M -->|Soft Delete| S1["Set deleted_at + trash_entries Index"]
     F -->|Void / Reversal| S2["Immutable: NEVER Trash. Use Void or Credit Entries"]
     G -->|Deactivate| S3["Set is_active = false"]
+    P -->|Archive-First Lifecycle| S4["Archiveable (All States). Permanent Purge ONLY for Archived Draft & Cancelled"]
 ```
 
-| Domain / Table | Deletion Mechanism | Trash Policy |
+| Domain / Table | Deletion Mechanism | Trash / Archive Policy |
 | :--- | :--- | :--- |
 | **Masters (Vendors, Products, Brands, Categories, Shops)** | `deleted_at` + `deleted_by` | **YES** $\rightarrow$ Appears in central Trash UI |
 | **Costing Files & Items** | `deleted_at` (Parent covers items) | **YES** $\rightarrow$ One parent trash entry |
 | **Draft Shop Orders** | `deleted_at` | **YES** $\rightarrow$ Allowed prior to fulfillment |
+| **Global Shipments (`global_shipments`)** | **Archive-First Lifecycle** (`is_archived`, `archived_at`) | **ARCHIVEABLE FOR ALL STATES**. Archived drafts and cancelled shipments can be permanently deleted; in-transit and received shipments are permanently non-deletable. |
 | **Fulfilled / Shipped Orders** | Order Cancellation | **NO** $\rightarrow$ Use order cancel flow |
 | **Issued Sales Invoices** | Voiding (`void_global_invoice`) | **NO** $\rightarrow$ Immutable audit trail; void only |
 | **Universal Wallet Ledger** | Reversal Transaction | **NO** $\rightarrow$ Append-only immutable ledger |

@@ -2616,6 +2616,7 @@ begin
   -- 3. Create or fetch wallet_accounts anchor for vendor (Default BDT)
   insert into public.wallet_accounts (
     tenant_id,
+    parent_tenant_id,
     entity_type,
     entity_id,
     currency_code,
@@ -2625,6 +2626,7 @@ begin
   )
   values (
     p_tenant_id,
+    coalesce(v_vendor.parent_tenant_id, p_tenant_id),
     'vendor',
     v_vendor.id,
     v_currency_code,
@@ -2831,6 +2833,127 @@ $$;
 
 
 ALTER FUNCTION "public"."delete_global_stock_allocation"("p_allocation_id" bigint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."archive_shipment"("p_id" bigint) RETURNS "public"."global_shipments"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_ship public.global_shipments%rowtype;
+begin
+  select * into v_ship
+  from public.global_shipments
+  where id = p_id
+  for update;
+
+  if not found then
+    raise exception 'shipment not found';
+  end if;
+
+  if not public.user_can_manage_parent_tenant(v_ship.parent_tenant_id) then
+    raise exception 'not allowed';
+  end if;
+
+  update public.global_shipments
+  set is_archived = true,
+      archived_at = now(),
+      updated_at = now()
+  where id = p_id
+  returning * into v_ship;
+
+  return v_ship;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."archive_shipment"("p_id" bigint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."unarchive_shipment"("p_id" bigint) RETURNS "public"."global_shipments"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_ship public.global_shipments%rowtype;
+begin
+  select * into v_ship
+  from public.global_shipments
+  where id = p_id
+  for update;
+
+  if not found then
+    raise exception 'shipment not found';
+  end if;
+
+  if not public.user_can_manage_parent_tenant(v_ship.parent_tenant_id) then
+    raise exception 'not allowed';
+  end if;
+
+  update public.global_shipments
+  set is_archived = false,
+      archived_at = null,
+      updated_at = now()
+  where id = p_id
+  returning * into v_ship;
+
+  return v_ship;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."unarchive_shipment"("p_id" bigint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."purge_archived_shipment"("p_id" bigint) RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_ship public.global_shipments%rowtype;
+begin
+  select * into v_ship
+  from public.global_shipments
+  where id = p_id
+  for update;
+
+  if not found then
+    raise exception 'shipment not found';
+  end if;
+
+  if not public.user_can_manage_parent_tenant(v_ship.parent_tenant_id) then
+    raise exception 'not allowed';
+  end if;
+
+  if v_ship.is_archived is not true then
+    raise exception 'shipment must be archived before it can be permanently deleted';
+  end if;
+
+  -- Only draft and cancelled shipments can be permanently deleted
+  if v_ship.status not in ('draft', 'cancelled') then
+    raise exception 'shipment in status % cannot be deleted; only archived draft or cancelled shipments may be purged', v_ship.status;
+  end if;
+
+  -- Verify no physical stock was ever created for this shipment
+  if exists (
+    select 1
+    from public.global_stocks gs
+    where gs.shipment_item_id in (
+      select id from public.global_shipment_items where shipment_id = p_id
+    )
+  ) or v_ship.stock_ready = true then
+    raise exception 'cannot delete shipment: physical inventory records exist for this shipment';
+  end if;
+
+  -- Delete the global shipment record.
+  -- Child records (items, sections, boxes, cost entries, investments) will be deleted
+  -- automatically via ON DELETE CASCADE constraints on their foreign keys.
+  delete from public.global_shipments where id = p_id;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."purge_archived_shipment"("p_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."delete_shipment"("p_id" bigint) RETURNS "void"
@@ -3278,6 +3401,7 @@ begin
   -- Mirror create_vendor_with_wallet: zero BDT wallet anchor
   insert into public.wallet_accounts (
     tenant_id,
+    parent_tenant_id,
     entity_type,
     entity_id,
     currency_code,
@@ -3286,6 +3410,7 @@ begin
     locked_balance
   )
   values (
+    p_tenant_id,
     p_tenant_id,
     'vendor',
     v_vendor_id,
@@ -4836,19 +4961,22 @@ $$;
 ALTER FUNCTION "public"."list_global_shipment_cost_entries"("p_shipment_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_global_shipments_paginated"("p_tenant_id" bigint, "p_page" integer DEFAULT 1, "p_page_size" integer DEFAULT 20, "p_search" "text" DEFAULT NULL::"text", "p_status" "text" DEFAULT NULL::"text") RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."list_global_shipments_paginated"("p_tenant_id" bigint, "p_page" integer DEFAULT 1, "p_page_size" integer DEFAULT 20, "p_search" "text" DEFAULT NULL::"text", "p_status" "text" DEFAULT NULL::"text", "p_is_archived" boolean DEFAULT false) RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $_$
 declare
   v_total_count bigint;
+  v_archived_count bigint;
   v_data jsonb;
   v_total_pages integer;
 begin
+  -- Total count matching query filters
   select count(*)
   into v_total_count
   from public.global_shipments s
   where s.parent_tenant_id = p_tenant_id
+    and (p_is_archived is null or s.is_archived = p_is_archived)
     and (p_status is null or p_status = '' or p_status = '__all__' or s.status = p_status)
     and (
       p_search is null or p_search = '' or (
@@ -4856,6 +4984,13 @@ begin
         or (p_search ~ '^[0-9]+$' and s.tenant_shipment_id = p_search::integer)
       )
     );
+
+  -- Count of all archived shipments for tenant (for toolbar badge)
+  select count(*)
+  into v_archived_count
+  from public.global_shipments s
+  where s.parent_tenant_id = p_tenant_id
+    and s.is_archived = true;
 
   select coalesce(jsonb_agg(row_json order by sort_id desc), '[]'::jsonb)
   into v_data
@@ -4865,6 +5000,8 @@ begin
       (
         to_jsonb(s)
         || jsonb_build_object(
+          'vendor_name', v.name,
+          'vendor_code', v.code,
           'progress_tag',
           case
             when t.id is null then null
@@ -4880,10 +5017,13 @@ begin
         )
       ) as row_json
     from public.global_shipments s
+    left join public.vendors v
+      on v.id = s.vendor_id
     left join public.tags t
       on t.id = s.progress_tag_id
      and t.group_name = 'shipment_progress'
     where s.parent_tenant_id = p_tenant_id
+      and (p_is_archived is null or s.is_archived = p_is_archived)
       and (p_status is null or p_status = '' or p_status = '__all__' or s.status = p_status)
       and (
         p_search is null or p_search = '' or (
@@ -4908,14 +5048,15 @@ begin
       'total', v_total_count,
       'page', greatest(coalesce(p_page, 1), 1),
       'page_size', p_page_size,
-      'total_pages', v_total_pages
+      'total_pages', v_total_pages,
+      'archived_total', v_archived_count
     )
   );
 end;
 $_$;
 
 
-ALTER FUNCTION "public"."list_global_shipments_paginated"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_status" "text") OWNER TO "postgres";
+ALTER FUNCTION "public"."list_global_shipments_paginated"("p_tenant_id" bigint, "p_page" integer, "p_page_size" integer, "p_search" "text", "p_status" "text", "p_is_archived" boolean) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."list_global_stock_allocations_paginated"("p_tenant_id" bigint, "p_page" integer DEFAULT 1, "p_page_size" integer DEFAULT 20, "p_search" "text" DEFAULT NULL::"text", "p_child_tenant_id" bigint DEFAULT NULL::bigint, "p_stock_type_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
@@ -9875,7 +10016,7 @@ begin
           'name', coalesce(t.name, ''),
           'slug', coalesce(t.slug, ''),
           'color', t.color,
-          'is_active', coalesce(st.is_active, true)
+          'is_active', coalesce(t.is_active, true)
         )
         order by st.sort_order asc
       ),
@@ -9884,7 +10025,7 @@ begin
     into v_flow_stages
     from public.shipment_progress_flow_stages st
     join public.tags t on t.id = st.tag_id
-    where st.flow_id = v_progress_flow_id and st.is_active = true;
+    where st.flow_id = v_progress_flow_id and t.is_active = true;
   else
     v_flow_stages := '[]'::jsonb;
   end if;

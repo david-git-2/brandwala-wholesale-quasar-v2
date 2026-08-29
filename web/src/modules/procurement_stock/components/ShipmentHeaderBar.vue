@@ -222,15 +222,14 @@
         @click="$emit('download-excel')"
       />
       <q-btn
-        v-if="isEditable"
         flat
         dense
         no-caps
         size="sm"
-        color="negative"
-        icon="ph ph-trash"
-        label="Delete"
-        @click="$emit('delete-shipment')"
+        color="grey-7"
+        icon="ph ph-archive-box"
+        label="Archive"
+        @click="$emit('archive-shipment')"
       />
     </div>
 
@@ -329,7 +328,7 @@ const emit = defineEmits<{
   'ensure-vendors': [];
   'ensure-cargo': [];
   'download-excel': [];
-  'delete-shipment': [];
+  'archive-shipment': [];
   'organize-stock': [];
   'open-rates-invoices': [];
   'generate-tracking-token': [];

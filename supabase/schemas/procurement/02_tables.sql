@@ -147,10 +147,11 @@ CREATE TABLE IF NOT EXISTS "public"."global_shipments" (
     "vendor_id" bigint,
     "cargo_company_id" bigint,
     "total_weight_kg" numeric,
-    "inventory_added" boolean DEFAULT false NOT NULL,
     "progress_tag_id" bigint,
     "public_tracking_token" "text",
     "progress_flow_id" bigint,
+    "is_archived" boolean DEFAULT false NOT NULL,
+    "archived_at" timestamp with time zone,
     CONSTRAINT "global_shipments_name_not_blank" CHECK (("length"(TRIM(BOTH FROM "name")) > 0)),
     CONSTRAINT "global_shipments_status_check" CHECK (("status" = ANY (ARRAY['draft'::"text", 'in_transit'::"text", 'received'::"text", 'cancelled'::"text"])))
 );
@@ -160,6 +161,14 @@ ALTER TABLE "public"."global_shipments" OWNER TO "postgres";
 
 
 COMMENT ON COLUMN "public"."global_shipments"."total_weight_kg" IS 'Cargo invoice weight (kg). Plan name for live received_weight — dual-written.';
+
+
+
+COMMENT ON COLUMN "public"."global_shipments"."is_archived" IS 'Archival flag to move shipment out of active operational table view.';
+
+
+
+COMMENT ON COLUMN "public"."global_shipments"."archived_at" IS 'Timestamp when the shipment was archived.';
 
 
 
@@ -1152,6 +1161,10 @@ CREATE INDEX "global_shipments_cargo_company_idx" ON "public"."global_shipments"
 
 
 CREATE INDEX "global_shipments_parent_tenant_idx" ON "public"."global_shipments" USING "btree" ("parent_tenant_id");
+
+
+
+CREATE INDEX "global_shipments_parent_tenant_is_archived_idx" ON "public"."global_shipments" USING "btree" ("parent_tenant_id", "is_archived");
 
 
 

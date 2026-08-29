@@ -1,0 +1,973 @@
+<template>
+  <q-dialog
+    :model-value="modelValue"
+    position="right"
+    transition-show="jump-left"
+    transition-hide="jump-right"
+    @update:model-value="(val) => emit('update:modelValue', val)"
+  >
+    <q-card
+      class="column no-wrap bg-white q-ma-md rounded-borders-lg overflow-hidden shadow-10"
+      style="width: 520px; max-width: 95vw; height: calc(100vh - 32px); border-radius: 16px"
+    >
+      <!-- Top Tabs Bar -->
+      <div class="bg-grey-1 border-bottom q-px-sm">
+        <q-tabs
+          v-model="activeTab"
+          dense
+          no-caps
+          active-color="primary"
+          indicator-color="primary"
+          align="justify"
+          class="text-grey-7 text-weight-medium"
+        >
+          <q-tab name="details" label="Details" />
+          <q-tab name="summary" label="Summary" />
+          <q-tab name="rates" label="Rates" />
+          <q-tab name="status" label="Status" />
+        </q-tabs>
+      </div>
+
+      <!-- Tab Panels -->
+      <q-tab-panels v-model="activeTab" animated class="col bg-white">
+        <!-- 1. Details Tab Panel -->
+        <q-tab-panel name="details" class="q-pa-md bg-white">
+          <div class="column q-gutter-y-md">
+            <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center q-gutter-x-xs">
+              <q-icon name="ph ph-identification-badge" size="18px" color="primary" />
+              <span>General Information</span>
+            </div>
+
+            <!-- Shipment Name -->
+            <div>
+              <div class="text-caption text-weight-medium text-grey-7 q-mb-xs">Shipment Name</div>
+              <q-input
+                v-model="drawerShipmentName"
+                outlined
+                dense
+                placeholder="e.g. Inbound Shipment #89 - Summer Collection"
+                class="bg-white"
+                :loading="updatingName"
+                @blur="saveShipmentName"
+                @keyup.enter="saveShipmentName"
+              >
+                <template #prepend>
+                  <q-icon name="ph ph-tag" size="18px" color="grey-6" />
+                </template>
+              </q-input>
+            </div>
+
+            <!-- Shipment Type -->
+            <div>
+              <div class="text-caption text-weight-medium text-grey-7 q-mb-xs">Shipment Type</div>
+              <q-select
+                v-model="drawerShipmentType"
+                :options="drawerTypeOptions"
+                emit-value
+                map-options
+                outlined
+                dense
+                class="bg-white"
+                @update:model-value="saveShipmentType"
+              >
+                <template #prepend>
+                  <q-icon name="ph ph-globe" size="18px" color="grey-6" />
+                </template>
+              </q-select>
+            </div>
+
+            <!-- Cargo Company -->
+            <div>
+              <div class="text-caption text-weight-medium text-grey-7 q-mb-xs">Cargo Company</div>
+              <q-select
+                v-model="drawerCargoId"
+                :options="cargoOptions"
+                emit-value
+                map-options
+                outlined
+                dense
+                clearable
+                placeholder="Select Cargo Company"
+                class="bg-white"
+                @update:model-value="saveShipmentCargo"
+              >
+                <template #prepend>
+                  <q-icon name="ph ph-airplane-tilt" size="18px" color="grey-6" />
+                </template>
+              </q-select>
+            </div>
+
+            <!-- Primary Vendor -->
+            <div>
+              <div class="text-caption text-weight-medium text-grey-7 q-mb-xs">Primary Vendor</div>
+              <q-select
+                v-model="drawerVendorId"
+                :options="vendorOptions"
+                emit-value
+                map-options
+                outlined
+                dense
+                clearable
+                placeholder="Select Primary Vendor"
+                class="bg-white"
+                @update:model-value="saveShipmentVendor"
+              >
+                <template #prepend>
+                  <q-icon name="ph ph-storefront" size="18px" color="grey-6" />
+                </template>
+              </q-select>
+            </div>
+
+            <!-- Customer Status Mode -->
+            <div>
+              <div class="text-caption text-weight-medium text-grey-7 q-mb-xs">Customer Status Mode</div>
+              <q-select
+                v-model="drawerCustomerStatusMode"
+                :options="customerStatusModeOptions"
+                emit-value
+                map-options
+                outlined
+                dense
+                class="bg-white"
+                @update:model-value="saveShipmentCustomerStatusMode"
+              >
+                <template #prepend>
+                  <q-icon name="ph ph-user-circle" size="18px" color="grey-6" />
+                </template>
+              </q-select>
+              <div class="text-caption text-grey-6 text-xxs q-mt-xs">
+                Controls how shipment journey updates are displayed to customers.
+              </div>
+            </div>
+          </div>
+        </q-tab-panel>
+
+        <!-- 2. Summary Tab Panel -->
+        <q-tab-panel name="summary" class="q-pa-md bg-white">
+          <div class="column q-gutter-y-md">
+            <div class="row items-center justify-between">
+              <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center q-gutter-x-xs">
+                <q-icon name="ph ph-receipt" size="18px" color="primary" />
+                <span>Landed Cost Summary</span>
+              </div>
+              <q-chip dense square color="blue-1" text-color="primary" class="text-weight-bold text-xxs q-ma-none">
+                Live Calculations
+              </q-chip>
+            </div>
+
+            <!-- Physical Totals -->
+            <div class="bg-grey-1 q-pa-sm rounded-borders border-grey">
+              <div class="text-xxs text-weight-bold text-grey-6 uppercase q-mb-xs" style="letter-spacing: 0.5px">
+                Physical Quantities & Weight
+              </div>
+              <div class="row justify-between q-py-xs text-caption">
+                <span class="text-grey-7">Total Units:</span>
+                <span class="text-weight-bold font-mono text-grey-9">
+                  {{ totals.quantity.toLocaleString() }} pcs
+                </span>
+              </div>
+              <div class="row justify-between q-py-xs text-caption">
+                <span class="text-grey-7">Packaging Weight:</span>
+                <span class="text-weight-bold font-mono text-grey-9">
+                  {{ totals.packagingWeightKg.toFixed(2) }} kg
+                </span>
+              </div>
+              <div class="row justify-between q-py-xs text-caption">
+                <span class="text-grey-7">Invoice Cargo Weight:</span>
+                <span class="text-weight-bold font-mono text-primary">
+                  {{ (totals.cargoWeightKg || 0).toFixed(2) }} kg
+                </span>
+              </div>
+              <div class="row justify-between q-py-xs text-caption">
+                <span class="text-grey-7">Box Weight Sum:</span>
+                <span class="text-weight-bold font-mono text-grey-9">
+                  {{ currentShipmentBoxesTotal.toFixed(2) }} kg
+                </span>
+              </div>
+            </div>
+
+            <!-- Purchase Currency Breakdown -->
+            <div class="q-gutter-y-xs">
+              <div class="text-xxs text-weight-bold text-grey-6 uppercase" style="letter-spacing: 0.5px">
+                Purchase Currency ({{ currentPurchaseCurrencySymbol }} {{ currentPurchaseCurrency?.code || 'GBP' }})
+              </div>
+              <div class="row justify-between q-py-xs text-caption">
+                <span class="text-grey-7">Product Purchase Cost:</span>
+                <span class="text-weight-bold font-mono text-grey-9">
+                  {{ currentPurchaseCurrencySymbol }}{{ totals.goodsPurchase.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+                </span>
+              </div>
+              <div class="row justify-between q-py-xs text-caption">
+                <span class="text-grey-7">Cargo Freight Cost:</span>
+                <span class="text-weight-bold font-mono text-grey-9">
+                  {{ currentPurchaseCurrencySymbol }}{{ totals.cargoPurchase.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+                </span>
+              </div>
+              <div class="row justify-between q-py-xs bg-grey-1 q-px-sm rounded-borders text-caption">
+                <span class="text-weight-bold text-grey-8">Total Purchase Cost:</span>
+                <span class="text-weight-bold font-mono text-primary">
+                  {{ currentPurchaseCurrencySymbol }}{{ totals.totalPurchase.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+                </span>
+              </div>
+            </div>
+
+            <q-separator />
+
+            <!-- Landed Cost Breakdown -->
+            <div class="q-gutter-y-xs">
+              <div class="text-xxs text-weight-bold text-grey-6 uppercase" style="letter-spacing: 0.5px">
+                Cost Currency ({{ currentCostCurrencySymbol }} {{ currentCostCurrency?.code || 'BDT' }})
+              </div>
+              <div class="row justify-between q-py-xs text-caption">
+                <span class="text-grey-7">Product Landed Cost:</span>
+                <span class="text-weight-bold font-mono text-grey-9">
+                  {{ currentCostCurrencySymbol }}{{ totals.goodsCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+                </span>
+              </div>
+              <div class="row justify-between q-py-xs text-caption">
+                <span class="text-grey-7">Cargo Landed Cost:</span>
+                <span class="text-weight-bold font-mono text-grey-9">
+                  {{ currentCostCurrencySymbol }}{{ totals.cargoCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+                </span>
+              </div>
+              <div class="row justify-between items-center q-pa-sm bg-primary text-white rounded-borders">
+                <span class="text-subtitle2 text-weight-bold">Total Landed Cost:</span>
+                <span class="text-subtitle1 text-weight-bolder font-mono">
+                  {{ currentCostCurrencySymbol }}{{ totals.totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Live Blended Rate -->
+            <div class="bg-blue-1 text-blue-10 q-pa-sm rounded-borders text-center border-grey">
+              <div class="text-xxs text-weight-bold uppercase" style="letter-spacing: 0.5px">
+                Live Blended Transaction Rate
+              </div>
+              <div class="text-h6 text-weight-bolder font-mono q-my-xs text-primary">
+                <template v-if="totals.transactionRate != null">
+                  {{ currentCostCurrencySymbol }}{{ totals.transactionRate.toFixed(4) }} / {{ currentPurchaseCurrencySymbol }}
+                </template>
+                <template v-else>
+                  —
+                </template>
+              </div>
+              <div class="text-caption text-blue-9 text-xxs">
+                Weighted by product exchange & cargo conversion
+              </div>
+            </div>
+          </div>
+        </q-tab-panel>
+
+        <!-- 3. Rates Tab Panel -->
+        <q-tab-panel name="rates" class="q-pa-md bg-white">
+          <div class="column q-gutter-y-lg">
+            <div class="row items-center justify-between">
+              <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center q-gutter-x-xs">
+                <q-icon name="ph ph-currency-circle-dollar" size="18px" color="primary" />
+                <span>Conversion & Freight Rates</span>
+              </div>
+              <q-chip
+                dense
+                square
+                :color="savingRates ? 'orange-1' : 'green-1'"
+                :text-color="savingRates ? 'orange-9' : 'green-9'"
+                class="text-weight-bold text-xxs q-ma-none"
+              >
+                <q-icon :name="savingRates ? 'ph ph-arrows-clockwise' : 'ph ph-cloud-check'" size="12px" class="q-mr-2xs" />
+                {{ savingRates ? 'Saving...' : 'Auto-saved' }}
+              </q-chip>
+            </div>
+            <!-- Total Weight -->
+            <div>
+              <div class="text-caption text-weight-bold text-grey-7 text-uppercase q-mb-xs" style="letter-spacing: 0.5px">
+                Total Weight
+              </div>
+              <q-input
+                v-model.number="totalWeightInput"
+                label="Total Weight"
+                type="number"
+                outlined
+                dense
+                placeholder="0.00"
+                suffix="kg"
+                class="bg-white font-mono"
+                :loading="savingRates"
+                @blur="onRatesBlur"
+                @keyup.enter="(e: any) => (e.target as HTMLElement)?.blur()"
+              >
+                <template #prepend>
+                  <q-icon name="ph ph-scales" size="18px" color="grey-6" />
+                </template>
+              </q-input>
+            </div>
+
+            <q-separator />
+
+            <!-- Cargo Rates -->
+            <div class="column q-gutter-y-sm">
+              <div class="text-caption text-weight-bold text-grey-7 text-uppercase" style="letter-spacing: 0.5px">
+                Cargo
+              </div>
+
+              <div class="q-pa-sm bg-grey-1 rounded-borders border-grey column q-gutter-y-sm">
+                <div class="row q-col-gutter-sm">
+                  <div class="col-6">
+                    <q-input
+                      v-model.number="cargoAmountInput"
+                      label="Amount"
+                      type="number"
+                      dense
+                      outlined
+                      placeholder="0.00"
+                      :prefix="currentPurchaseCurrencySymbol"
+                      class="bg-white font-mono"
+                      :loading="savingRates"
+                      @blur="onRatesBlur"
+                      @keyup.enter="(e: any) => (e.target as HTMLElement)?.blur()"
+                    />
+                  </div>
+                  <div class="col-6">
+                    <q-input
+                      v-model.number="cargoRateInput"
+                      label="Rate"
+                      type="number"
+                      dense
+                      outlined
+                      placeholder="0.00"
+                      :prefix="currentCostCurrencySymbol"
+                      class="bg-white font-mono"
+                      :loading="savingRates"
+                      @blur="onRatesBlur"
+                      @keyup.enter="(e: any) => (e.target as HTMLElement)?.blur()"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <q-input
+                    v-model="cargoNoteInput"
+                    label="Note"
+                    dense
+                    outlined
+                    placeholder="e.g. Air freight per kg rate & handling charges"
+                    class="bg-white"
+                    @blur="onRatesBlur"
+                    @keyup.enter="(e: any) => (e.target as HTMLElement)?.blur()"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <q-separator />
+
+            <!-- Product Rates -->
+            <div class="column q-gutter-y-sm">
+              <div class="row items-center justify-between">
+                <div class="text-caption text-weight-bold text-grey-7 text-uppercase" style="letter-spacing: 0.5px">
+                  Product
+                </div>
+                <q-btn
+                  outline
+                  dense
+                  no-caps
+                  size="xs"
+                  color="primary"
+                  icon="ph ph-plus"
+                  label="Add Rate"
+                  class="q-px-sm rounded-btn text-weight-bold"
+                  @click="addProductRateRow"
+                />
+              </div>
+
+              <div class="column q-gutter-y-sm">
+                <div
+                  v-for="(prodRate, idx) in productRatesList"
+                  :key="prodRate.id"
+                  class="q-pa-sm bg-grey-1 rounded-borders border-grey column q-gutter-y-sm"
+                >
+                  <div class="row items-center justify-between">
+                    <span class="text-caption text-weight-bold text-grey-8">Rate #{{ idx + 1 }}</span>
+                    <q-btn
+                      v-if="productRatesList.length > 1"
+                      flat
+                      round
+                      dense
+                      size="xs"
+                      icon="ph ph-trash"
+                      color="negative"
+                      @click="removeProductRateRow(idx)"
+                    >
+                      <q-tooltip>Remove Rate</q-tooltip>
+                    </q-btn>
+                  </div>
+
+                  <div class="row q-col-gutter-sm">
+                    <div class="col-6">
+                      <q-input
+                        v-model.number="prodRate.amount"
+                        label="Amount"
+                        type="number"
+                        dense
+                        outlined
+                        placeholder="0.00"
+                        :prefix="currentPurchaseCurrencySymbol"
+                        class="bg-white font-mono"
+                        :loading="savingRates"
+                        @blur="onRatesBlur"
+                        @keyup.enter="(e: any) => (e.target as HTMLElement)?.blur()"
+                      />
+                    </div>
+                    <div class="col-6">
+                      <q-input
+                        v-model.number="prodRate.rate"
+                        label="Rate"
+                        type="number"
+                        dense
+                        outlined
+                        placeholder="0.00"
+                        :prefix="currentCostCurrencySymbol"
+                        class="bg-white font-mono"
+                        :loading="savingRates"
+                        @blur="onRatesBlur"
+                        @keyup.enter="(e: any) => (e.target as HTMLElement)?.blur()"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <q-input
+                      v-model="prodRate.note"
+                      label="Note"
+                      dense
+                      outlined
+                      placeholder="e.g. Bank TT, cash conversion, vendor balance"
+                      class="bg-white"
+                      @blur="onRatesBlur"
+                      @keyup.enter="(e: any) => (e.target as HTMLElement)?.blur()"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </q-tab-panel>
+
+        <!-- 4. Status Tab Panel -->
+        <q-tab-panel name="status" class="q-pa-md bg-white">
+          <div class="column q-gutter-y-lg">
+            <!-- Internal Shipment Status -->
+            <div class="column q-gutter-y-sm">
+              <div class="row items-center justify-between">
+                <div class="text-caption text-weight-bold text-grey-7 text-uppercase" style="letter-spacing: 0.5px">
+                  Shipment Status (Internal)
+                </div>
+                <q-chip
+                  dense
+                  square
+                  :color="getStatusColor(drawerShipmentStatus).color"
+                  :text-color="getStatusColor(drawerShipmentStatus).textColor"
+                  class="text-weight-bold text-capitalize text-xxs q-ma-none soft-chip"
+                >
+                  {{ drawerShipmentStatus }}
+                </q-chip>
+              </div>
+
+              <div class="q-pa-sm bg-grey-1 rounded-borders border-grey">
+                <div class="text-caption text-weight-medium text-grey-7 q-mb-xs">Update Operational Status</div>
+                <q-select
+                  v-model="drawerShipmentStatus"
+                  :options="internalShipmentStatusOptions"
+                  emit-value
+                  map-options
+                  outlined
+                  dense
+                  class="bg-white"
+                  @update:model-value="saveShipmentStatus"
+                >
+                  <template #prepend>
+                    <q-icon name="ph ph-truck" size="18px" color="grey-6" />
+                  </template>
+                </q-select>
+                <div class="text-caption text-grey-6 text-xxs q-mt-xs">
+                  Current internal operational and warehouse processing status.
+                </div>
+              </div>
+            </div>
+
+            <q-separator />
+
+            <!-- Customer Tracking Status -->
+            <div class="column q-gutter-y-sm">
+              <div class="row items-center justify-between">
+                <div class="text-caption text-weight-bold text-grey-7 text-uppercase" style="letter-spacing: 0.5px">
+                  Customer Tracking Status
+                </div>
+                <q-chip
+                  dense
+                  square
+                  color="cyan-1"
+                  text-color="cyan-9"
+                  class="text-weight-bold text-xxs q-ma-none soft-chip"
+                >
+                  Mode: {{ drawerCustomerStatusMode === 'auto' ? 'Auto-synced' : 'Custom Manual' }}
+                </q-chip>
+              </div>
+
+              <div class="q-pa-sm bg-grey-1 rounded-borders border-grey">
+                <q-select
+                  v-model="drawerCustomerStatus"
+                  label="Customer Facing Stage"
+                  :options="customerStatusOptions"
+                  emit-value
+                  map-options
+                  outlined
+                  dense
+                  class="bg-white"
+                  :disable="drawerCustomerStatusMode === 'auto'"
+                  @update:model-value="saveCustomerStatus"
+                >
+                  <template #prepend>
+                    <q-icon name="ph ph-users" size="18px" color="grey-6" />
+                  </template>
+                </q-select>
+                <div v-if="drawerCustomerStatusMode === 'auto'" class="text-caption text-grey-6 text-xxs q-mt-xs">
+                  In auto mode, customer tracking automatically mirrors internal stages.
+                </div>
+              </div>
+            </div>
+
+            <q-separator />
+
+            <!-- Danger Zone / Shipment Archival -->
+            <div class="column q-gutter-y-sm">
+              <div class="text-caption text-weight-bold text-grey-7 text-uppercase" style="letter-spacing: 0.5px">
+                Shipment Lifecycle
+              </div>
+
+              <div class="q-pa-sm bg-grey-1 rounded-borders border-grey row items-center justify-between">
+                <div>
+                  <div class="text-weight-bold text-xs text-grey-9">Archive Shipment</div>
+                  <div class="text-caption text-grey-6 text-xxs">
+                    Remove this shipment from the active list. Can be restored anytime.
+                  </div>
+                </div>
+
+                <q-btn
+                  unelevated
+                  dense
+                  no-caps
+                  size="sm"
+                  color="grey-8"
+                  icon="ph ph-archive-box"
+                  label="Archive"
+                  class="q-px-sm rounded-sq-btn text-weight-bold"
+                  style="border-radius: 6px"
+                  :loading="archivingLoading"
+                  @click="confirmArchiveFromDrawer"
+                />
+              </div>
+            </div>
+          </div>
+        </q-tab-panel>
+      </q-tab-panels>
+    </q-card>
+  </q-dialog>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, watch } from 'vue';
+import { useQuasar } from 'quasar';
+import { useRouter } from 'vue-router';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
+
+const props = withDefaults(
+  defineProps<{
+    modelValue: boolean;
+    shipmentId: number;
+    calculations: any;
+    cargoOptions: Array<{ label: string; value: number }>;
+    vendorOptions: Array<{ label: string; value: number }>;
+    initialTab?: string;
+  }>(),
+  {
+    initialTab: 'details',
+  },
+);
+
+const emit = defineEmits<{
+  (e: 'update:modelValue', val: boolean): void;
+}>();
+
+const authStore = useAuthStore();
+const router = useRouter();
+const $q = useQuasar();
+const shipmentStore = useGlobalShipmentStore();
+const activeTab = ref(props.initialTab || 'details');
+const archivingLoading = ref(false);
+
+watch(
+  () => [props.modelValue, props.initialTab],
+  ([isOpen, tab]) => {
+    if (isOpen && tab) {
+      activeTab.value = tab as string;
+    }
+  },
+);
+
+const confirmArchiveFromDrawer = () => {
+  const shipment = shipmentStore.currentShipment;
+  if (!shipment) return;
+  $q.dialog({
+    title: 'Archive Shipment',
+    message: `Are you sure you want to archive "${shipment.name}" (#${(shipment as any).tenant_shipment_id || shipment.id})? It will be moved out of the active shipments list.`,
+    cancel: {
+      flat: true,
+      label: 'Cancel',
+      noCaps: true,
+    },
+    ok: {
+      unelevated: true,
+      color: 'primary',
+      label: 'Archive',
+      noCaps: true,
+    },
+  }).onOk(async () => {
+    archivingLoading.value = true;
+    try {
+      await shipmentStore.archiveShipment(shipment.id);
+      $q.notify({
+        type: 'positive',
+        message: `Shipment "${shipment.name}" archived successfully.`,
+        timeout: 2000,
+      });
+      emit('update:modelValue', false);
+      const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : '';
+      void router.push(`${tenantPrefix}/app/procurement/shipments`);
+    } catch (err: unknown) {
+      $q.notify({
+        type: 'negative',
+        message: (err as Error).message || 'Failed to archive shipment',
+      });
+    } finally {
+      archivingLoading.value = false;
+    }
+  });
+};
+
+const {
+  totals,
+  currentShipmentBoxesTotal,
+  currentPurchaseCurrency,
+  currentPurchaseCurrencySymbol,
+  currentCostCurrency,
+  currentCostCurrencySymbol,
+} = props.calculations;
+
+const drawerTypeOptions = [
+  { label: 'International Inbound', value: 'international' },
+  { label: 'Local Procurement', value: 'local' },
+  { label: 'Warehouse Transfer', value: 'transfer' },
+];
+
+const customerStatusModeOptions = [
+  { label: 'Automatic (Mirrors Internal)', value: 'auto' },
+  { label: 'Custom Tracking Stage', value: 'custom' },
+];
+
+const internalShipmentStatusOptions = [
+  { label: 'Draft / Planning', value: 'draft' },
+  { label: 'Ordered / In Purchasing', value: 'ordered' },
+  { label: 'In Transit / Shipped', value: 'in_transit' },
+  { label: 'In Customs Clearance', value: 'customs' },
+  { label: 'Received in Warehouse', value: 'received' },
+  { label: 'Stock Allocated / Finished', value: 'allocated' },
+  { label: 'Completed & Closed', value: 'completed' },
+  { label: 'Cancelled', value: 'cancelled' },
+];
+
+const customerStatusOptions = [
+  { label: 'Order Placed & Confirmed', value: 'ordered' },
+  { label: 'Shipped & In Transit', value: 'in_transit' },
+  { label: 'Arrived at International Hub', value: 'hub_arrived' },
+  { label: 'Under Customs Clearance', value: 'customs' },
+  { label: 'Received in Bangladesh Warehouse', value: 'warehouse_received' },
+  { label: 'Ready for Dispatch / Pickup', value: 'ready_dispatch' },
+  { label: 'Out for Local Delivery', value: 'out_for_delivery' },
+  { label: 'Delivered to Customer', value: 'delivered' },
+];
+
+// Form state
+const drawerShipmentName = ref('');
+const drawerShipmentType = ref<'international' | 'local' | 'transfer'>('international');
+const drawerCargoId = ref<number | null>(null);
+const drawerVendorId = ref<number | null>(null);
+const drawerCustomerStatusMode = ref<'auto' | 'custom'>('auto');
+const drawerShipmentStatus = ref('draft');
+const drawerCustomerStatus = ref('ordered');
+const updatingName = ref(false);
+
+const totalWeightInput = ref<number | null>(null);
+const cargoAmountInput = ref<number | null>(null);
+const cargoRateInput = ref<number | null>(null);
+const cargoNoteInput = ref('');
+const productRatesList = ref<Array<{ id: string; dbId: number | null; amount: number | null; rate: number | null; note: string }>>([]);
+const savingRates = ref(false);
+
+// Sync from store
+watch(
+  () => shipmentStore.currentShipment,
+  (shipment) => {
+    if (shipment) {
+      if (shipment.name) drawerShipmentName.value = shipment.name;
+      if (shipment.type) drawerShipmentType.value = shipment.type;
+      if (shipment.status) drawerShipmentStatus.value = shipment.status;
+      if (shipment.cargo_company_id) drawerCargoId.value = shipment.cargo_company_id;
+      if (shipment.vendor_id) drawerVendorId.value = shipment.vendor_id;
+      if (shipment.customer_tracking_status) drawerCustomerStatus.value = shipment.customer_tracking_status;
+      if (shipment.customer_status_mode) drawerCustomerStatusMode.value = shipment.customer_status_mode as 'auto' | 'custom';
+      totalWeightInput.value = shipment.total_weight_kg ?? shipment.received_weight ?? null;
+    }
+  },
+  { immediate: true },
+);
+
+const syncRatesFromStore = () => {
+  const entries = shipmentStore.currentCostEntries || [];
+  const cargoEntry = entries.find((e: any) => e.cost_type === 'cargo_cost' || e.cost_type === 'freight');
+  if (cargoEntry) {
+    cargoAmountInput.value = cargoEntry.amount != null ? Number(cargoEntry.amount) : null;
+    cargoRateInput.value = cargoEntry.exchange_rate != null ? Number(cargoEntry.exchange_rate) : null;
+    const meta = (cargoEntry.metadata as Record<string, unknown> | null) ?? {};
+    cargoNoteInput.value = typeof meta.note === 'string' ? meta.note : '';
+  } else {
+    cargoAmountInput.value = null;
+    cargoRateInput.value = null;
+    cargoNoteInput.value = '';
+  }
+
+  const prodEntries = entries.filter((e: any) => e.cost_type === 'purchase_order' || e.cost_type === 'product_purchase');
+  if (prodEntries.length > 0) {
+    productRatesList.value = prodEntries.map((pe: any) => {
+      const meta = (pe.metadata as Record<string, unknown> | null) ?? {};
+      return {
+        id: `db_${pe.id}`,
+        dbId: pe.id,
+        amount: pe.amount != null ? Number(pe.amount) : null,
+        rate: pe.exchange_rate != null ? Number(pe.exchange_rate) : null,
+        note: typeof meta.note === 'string' ? meta.note : '',
+      };
+    });
+  } else {
+    productRatesList.value = [
+      {
+        id: 'rate_default',
+        dbId: null,
+        amount: null,
+        rate: null,
+        note: '',
+      },
+    ];
+  }
+};
+
+watch(
+  () => [shipmentStore.currentShipment, shipmentStore.currentCostEntries],
+  () => {
+    if (!savingRates.value) {
+      syncRatesFromStore();
+    }
+  },
+  { immediate: true, deep: true },
+);
+
+const saveShipmentName = async () => {
+  if (!props.shipmentId || isNaN(props.shipmentId)) return;
+  const trimmed = drawerShipmentName.value.trim();
+  if (!trimmed || trimmed === shipmentStore.currentShipment?.name) return;
+
+  updatingName.value = true;
+  try {
+    await shipmentStore.updateShipment(props.shipmentId, { name: trimmed });
+  } finally {
+    updatingName.value = false;
+  }
+};
+
+const saveShipmentType = async (val: any) => {
+  if (!props.shipmentId || isNaN(props.shipmentId)) return;
+  await shipmentStore.updateShipment(props.shipmentId, { type: val });
+};
+
+const saveShipmentCargo = async (val: any) => {
+  if (!props.shipmentId || isNaN(props.shipmentId)) return;
+  await shipmentStore.updateShipment(props.shipmentId, { cargo_company_id: val });
+};
+
+const saveShipmentVendor = async (val: any) => {
+  if (!props.shipmentId || isNaN(props.shipmentId)) return;
+  await shipmentStore.updateShipment(props.shipmentId, { vendor_id: val });
+};
+
+const saveShipmentCustomerStatusMode = async (val: any) => {
+  if (!props.shipmentId || isNaN(props.shipmentId)) return;
+  await shipmentStore.updateShipment(props.shipmentId, { customer_status_mode: val });
+};
+
+const saveShipmentStatus = async (val: any) => {
+  if (!props.shipmentId || isNaN(props.shipmentId)) return;
+  await shipmentStore.updateShipment(props.shipmentId, { status: val });
+};
+
+const saveCustomerStatus = async (val: any) => {
+  if (!props.shipmentId || isNaN(props.shipmentId)) return;
+  await shipmentStore.updateShipment(props.shipmentId, { customer_tracking_status: val });
+};
+
+const addProductRateRow = () => {
+  productRatesList.value.push({
+    id: `rate_${Date.now()}`,
+    dbId: null,
+    amount: null,
+    rate: null,
+    note: '',
+  });
+};
+
+const removeProductRateRow = async (index: number) => {
+  if (productRatesList.value.length > 1) {
+    productRatesList.value.splice(index, 1);
+    await saveRates();
+  }
+};
+
+let ratesDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+const debouncedSaveRates = () => {
+  if (ratesDebounceTimer) clearTimeout(ratesDebounceTimer);
+  ratesDebounceTimer = setTimeout(() => {
+    void saveRates();
+  }, 600);
+};
+
+const onRatesBlur = () => {
+  if (ratesDebounceTimer) {
+    clearTimeout(ratesDebounceTimer);
+    ratesDebounceTimer = null;
+  }
+  void saveRates();
+};
+
+const saveRates = async () => {
+  if (!props.shipmentId || isNaN(props.shipmentId) || savingRates.value) return;
+
+  savingRates.value = true;
+  try {
+    const currentWeight = shipmentStore.currentShipment?.total_weight_kg ?? shipmentStore.currentShipment?.received_weight;
+    if (totalWeightInput.value !== currentWeight) {
+      await shipmentStore.updateShipment(props.shipmentId, {
+        total_weight_kg: totalWeightInput.value != null ? Number(totalWeightInput.value) : null,
+      });
+    }
+
+    // Upsert cargo cost entry
+    const entries = shipmentStore.currentCostEntries || [];
+    const cargoEntry = entries.find((e: any) => e.cost_type === 'cargo_cost' || e.cost_type === 'freight' || e.cost_type === 'cargo');
+
+    if (cargoAmountInput.value != null || cargoRateInput.value != null || cargoNoteInput.value) {
+      const payload: any = {
+        cost_type: 'cargo',
+        currency: 'GBP',
+        amount: cargoAmountInput.value != null ? Number(cargoAmountInput.value) : 0,
+        exchange_rate: cargoRateInput.value != null ? Number(cargoRateInput.value) : 1,
+        metadata: { note: cargoNoteInput.value },
+      };
+
+      if (cargoEntry) {
+        await shipmentStore.updateShipmentCostEntry(cargoEntry.id, payload);
+      } else {
+        await shipmentStore.createShipmentCostEntry(props.shipmentId, payload);
+      }
+    }
+
+    // Upsert product rate cost entries
+    for (const pr of productRatesList.value) {
+      if (pr.amount != null || pr.rate != null || pr.note) {
+        const payload: any = {
+          cost_type: 'product',
+          currency: 'GBP',
+          amount: pr.amount != null ? Number(pr.amount) : 0,
+          exchange_rate: pr.rate != null ? Number(pr.rate) : 1,
+          metadata: { note: pr.note },
+        };
+
+        if (pr.dbId) {
+          await shipmentStore.updateShipmentCostEntry(pr.dbId, payload);
+        } else {
+          const created = await shipmentStore.createShipmentCostEntry(props.shipmentId, payload);
+          if (created?.id) {
+            pr.dbId = created.id;
+          }
+        }
+      }
+    }
+
+    await shipmentStore.fetchShipmentDetails(props.shipmentId);
+    $q.notify({
+      message: 'Rates and weight saved',
+      color: 'positive',
+      icon: 'ph ph-check-circle',
+      timeout: 1000,
+    });
+  } catch (err: unknown) {
+    console.error('Failed to save rates and weights:', err);
+    $q.notify({
+      message: 'Failed to save rates',
+      color: 'negative',
+      icon: 'ph ph-warning-circle',
+      timeout: 1500,
+    });
+  } finally {
+    savingRates.value = false;
+  }
+};
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'received':
+    case 'completed':
+      return { color: 'positive', textColor: 'white' };
+    case 'in_transit':
+      return { color: 'warning', textColor: 'dark' };
+    case 'customs':
+      return { color: 'purple-6', textColor: 'white' };
+    case 'allocated':
+      return { color: 'indigo-6', textColor: 'white' };
+    case 'ordered':
+      return { color: 'blue-6', textColor: 'white' };
+    case 'cancelled':
+      return { color: 'negative', textColor: 'white' };
+    case 'draft':
+    case 'pending':
+    default:
+      return { color: 'grey-4', textColor: 'grey-9' };
+  }
+};
+</script>
+
+<style scoped>
+.border-bottom {
+  border-bottom: 1px solid #e2e8f0;
+}
+.border-grey {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+.text-xxs {
+  font-size: 11px;
+}
+.soft-chip {
+  border-radius: 6px;
+  font-size: 11px;
+}
+.font-mono {
+  font-family: monospace;
+}
+</style>

@@ -179,6 +179,18 @@
               }}</q-tooltip>
             </span>
             <q-btn
+              outline
+              color="primary"
+              no-caps
+              size="sm"
+              icon="ph ph-sparkle"
+              label="V2 View"
+              class="square-btn slim-btn"
+              @click="goToV2"
+            >
+              <q-tooltip>Open experimental V2 details view</q-tooltip>
+            </q-btn>
+            <q-btn
               flat
               dense
               icon="ph ph-dots-three-vertical"
@@ -188,6 +200,13 @@
               <q-tooltip>{{ $t('product_based_costing.more_file_actions') }}</q-tooltip>
               <q-menu style="min-width: 200px">
                 <q-list dense>
+                  <q-item clickable v-close-popup @click="goToV2">
+                    <q-item-section avatar>
+                      <q-icon name="ph ph-sparkle" color="primary" />
+                    </q-item-section>
+                    <q-item-section>Switch to V2 View</q-item-section>
+                  </q-item>
+                  <q-separator />
                   <q-item clickable v-close-popup @click="$emit('open-edit-file')">
                     <q-item-section avatar>
                       <q-icon name="ph ph-pencil-simple" />
@@ -219,6 +238,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
 import type { ProductBasedCostingFile } from '../types';
@@ -417,6 +437,24 @@ function saveInlineName() {
 
 function onBillingProfileChange(val: BillingProfile | null) {
   emit('update-billing-profile', val);
+}
+
+const router = useRouter();
+
+function goToV2() {
+  if (!props.file?.id) return;
+  const tenantSlug = tenantStore.selectedTenant?.slug;
+  if (tenantSlug) {
+    void router.push({
+      name: 'product-based-costing-file-details-v2-page',
+      params: { tenantSlug, id: props.file.id },
+    });
+  } else {
+    void router.push({
+      name: 'product-based-costing-file-details-v2-page',
+      params: { id: props.file.id },
+    });
+  }
 }
 </script>
 

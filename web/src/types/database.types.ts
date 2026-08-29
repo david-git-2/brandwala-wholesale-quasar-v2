@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.17"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -1712,12 +1712,14 @@ export type Database = {
       }
       global_shipments: {
         Row: {
+          archived_at: string | null
           assigned_child_tenant_id: number | null
           cargo_company_id: number | null
           cargo_invoice_total: number | null
           created_at: string
           id: number
           inventory_added: boolean
+          is_archived: boolean
           name: string
           parent_tenant_id: number
           progress_flow_id: number | null
@@ -1737,12 +1739,14 @@ export type Database = {
           vendor_id: number | null
         }
         Insert: {
+          archived_at?: string | null
           assigned_child_tenant_id?: number | null
           cargo_company_id?: number | null
           cargo_invoice_total?: number | null
           created_at?: string
           id?: number
           inventory_added?: boolean
+          is_archived?: boolean
           name: string
           parent_tenant_id: number
           progress_flow_id?: number | null
@@ -1762,12 +1766,14 @@ export type Database = {
           vendor_id?: number | null
         }
         Update: {
+          archived_at?: string | null
           assigned_child_tenant_id?: number | null
           cargo_company_id?: number | null
           cargo_invoice_total?: number | null
           created_at?: string
           id?: number
           inventory_added?: boolean
+          is_archived?: boolean
           name?: string
           parent_tenant_id?: number
           progress_flow_id?: number | null
@@ -9240,6 +9246,42 @@ export type Database = {
         }
         Returns: Json
       }
+      archive_shipment: {
+        Args: { p_id: number }
+        Returns: {
+          archived_at: string | null
+          assigned_child_tenant_id: number | null
+          cargo_company_id: number | null
+          cargo_invoice_total: number | null
+          created_at: string
+          id: number
+          inventory_added: boolean
+          is_archived: boolean
+          name: string
+          parent_tenant_id: number
+          progress_flow_id: number | null
+          progress_tag_id: number | null
+          public_tracking_token: string | null
+          purchase_invoice_total: number | null
+          received_date: string | null
+          received_weight: number | null
+          shipment_cost_currency_id: number | null
+          shipment_purchase_currency_id: number | null
+          status: string
+          stock_ready: boolean
+          tenant_shipment_id: number | null
+          total_weight_kg: number | null
+          type: Database["public"]["Enums"]["global_shipment_type"]
+          updated_at: string
+          vendor_id: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "global_shipments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       archive_shipment_progress_flow: {
         Args: { p_archive?: boolean; p_flow_id: number }
         Returns: {
@@ -10312,12 +10354,14 @@ export type Database = {
           p_vendor_id?: number
         }
         Returns: {
+          archived_at: string | null
           assigned_child_tenant_id: number | null
           cargo_company_id: number | null
           cargo_invoice_total: number | null
           created_at: string
           id: number
           inventory_added: boolean
+          is_archived: boolean
           name: string
           parent_tenant_id: number
           progress_flow_id: number | null
@@ -10525,19 +10569,34 @@ export type Database = {
         }
         Returns: Json
       }
-      create_vendor_with_wallet: {
-        Args: {
-          p_address?: string
-          p_code: string
-          p_email?: string
-          p_market_code: string
-          p_name: string
-          p_phone?: string
-          p_tenant_id: number
-          p_website?: string
-        }
-        Returns: Json
-      }
+      create_vendor_with_wallet:
+        | {
+            Args: {
+              p_address?: string
+              p_code: string
+              p_email?: string
+              p_market_code: string
+              p_name: string
+              p_phone?: string
+              p_tenant_id: number
+              p_website?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_address?: string
+              p_code: string
+              p_currency_code?: string
+              p_email?: string
+              p_market_code: string
+              p_name: string
+              p_phone?: string
+              p_tenant_id: number
+              p_website?: string
+            }
+            Returns: Json
+          }
       current_authenticated_email: { Args: never; Returns: string }
       current_costing_item_actor_role: {
         Args: { p_costing_file_id: number }
@@ -11818,16 +11877,28 @@ export type Database = {
           isSetofReturn: true
         }
       }
-      list_global_shipments_paginated: {
-        Args: {
-          p_page?: number
-          p_page_size?: number
-          p_search?: string
-          p_status?: string
-          p_tenant_id: number
-        }
-        Returns: Json
-      }
+      list_global_shipments_paginated:
+        | {
+            Args: {
+              p_page?: number
+              p_page_size?: number
+              p_search?: string
+              p_status?: string
+              p_tenant_id: number
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_is_archived?: boolean
+              p_page?: number
+              p_page_size?: number
+              p_search?: string
+              p_status?: string
+              p_tenant_id: number
+            }
+            Returns: Json
+          }
       list_global_stock_allocations_paginated: {
         Args: {
           p_child_tenant_id?: number
@@ -12826,6 +12897,7 @@ export type Database = {
         }
         Returns: Json
       }
+      purge_archived_shipment: { Args: { p_id: number }; Returns: undefined }
       purge_popped_demand_bucket_items: {
         Args: { p_retention_days?: number; p_tenant_id: number }
         Returns: Json
@@ -13644,6 +13716,42 @@ export type Database = {
           p_to_bucket: string
         }
         Returns: Json
+      }
+      unarchive_shipment: {
+        Args: { p_id: number }
+        Returns: {
+          archived_at: string | null
+          assigned_child_tenant_id: number | null
+          cargo_company_id: number | null
+          cargo_invoice_total: number | null
+          created_at: string
+          id: number
+          inventory_added: boolean
+          is_archived: boolean
+          name: string
+          parent_tenant_id: number
+          progress_flow_id: number | null
+          progress_tag_id: number | null
+          public_tracking_token: string | null
+          purchase_invoice_total: number | null
+          received_date: string | null
+          received_weight: number | null
+          shipment_cost_currency_id: number | null
+          shipment_purchase_currency_id: number | null
+          status: string
+          stock_ready: boolean
+          tenant_shipment_id: number | null
+          total_weight_kg: number | null
+          type: Database["public"]["Enums"]["global_shipment_type"]
+          updated_at: string
+          vendor_id: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "global_shipments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       unpost_global_invoice: {
         Args: { p_invoice_id: number }

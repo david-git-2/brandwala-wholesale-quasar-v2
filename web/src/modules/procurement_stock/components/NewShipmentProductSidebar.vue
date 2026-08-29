@@ -8,6 +8,12 @@
   >
     <q-form ref="formRef" @submit="onAdd" class="column col no-wrap" style="min-height: 0">
       <div class="col scroll q-gutter-y-md q-pb-md">
+        <!-- Target Section Indicator -->
+        <div v-if="targetSectionName" class="bg-primary-5 q-px-sm q-py-xs rounded-borders row items-center no-wrap text-caption text-primary text-weight-bold" style="background: rgba(5, 150, 105, 0.08); border: 1px solid rgba(5, 150, 105, 0.2)">
+          <q-icon name="ph ph-folder-open" size="16px" class="q-mr-xs text-primary" />
+          <span>Adding to Section: <b>{{ targetSectionName }}</b></span>
+        </div>
+
         <!-- Image URL & Preview -->
         <div>
           <q-input v-model="form.image_url" label="Image URL" filled dense clearable />
@@ -163,6 +169,7 @@ import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 
 const props = defineProps<{
   modelValue: boolean;
+  targetSectionName?: string | null;
   zIndex?: number;
 }>();
 

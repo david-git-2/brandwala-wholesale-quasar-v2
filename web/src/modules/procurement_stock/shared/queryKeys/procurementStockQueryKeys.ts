@@ -15,8 +15,11 @@ export const procurementStockQueryKeys = {
   childTenants: (parentTenantId: number) =>
     ['procurementStock', 'childTenants', { parentTenantId }] as const,
 
-  shipments: (tenantId: number) =>
-    ['procurementStock', 'shipments', { tenantId }] as const,
+  shipments: (tenantId: number, params?: { isArchived?: boolean; search?: string | null; status?: string | null }) =>
+    ['procurementStock', 'shipments', { tenantId, ...params }] as const,
+
+  archivedShipments: (tenantId: number) =>
+    ['procurementStock', 'archivedShipments', { tenantId }] as const,
 
   stockTypes: (tenantId: number) =>
     ['procurementStock', 'stockTypes', { tenantId }] as const,
