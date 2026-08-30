@@ -1,7 +1,6 @@
 import { computed } from 'vue';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import type { GlobalShipment } from '../repositories/globalShipmentRepository';
-import { STOCK_AVAILABILITY_OPTIONS } from '../constants/stockAvailability';
 import { calculateShipmentCostSummary, costingShipmentFromEntries } from 'src/shared/shipment-engine';
 import {
   isShipmentCostFinalized,
@@ -9,36 +8,6 @@ import {
 } from '../utils/costEntriesCosting';
 import { useGlobalCurrenciesQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
 import type { GlobalCurrency } from 'src/modules/global_reference/types';
-import type { ColumnKey } from '../components/ShipmentLineItemsTable.vue';
-import { useMembershipColumnPreference } from 'src/modules/membership/composables/useMembershipColumnPreference';
-
-const baseColumnOptions = [
-  { label: 'Name', value: 'name' as ColumnKey },
-  { label: 'Product Identifiers', value: 'product_codes' as ColumnKey },
-  { label: 'Section / Vendor', value: 'section' as ColumnKey },
-  { label: 'Price GBP', value: 'purchase_price' as ColumnKey },
-  { label: 'Cost BDT', value: 'cost_bdt' as ColumnKey },
-  { label: 'Quantity', value: 'ordered_quantity' as ColumnKey },
-  { label: 'Product Wt', value: 'product_weight' as ColumnKey },
-  { label: 'Package Wt', value: 'package_weight' as ColumnKey },
-  { label: 'Actions', value: 'actions' as ColumnKey },
-];
-
-const defaultColumns: ColumnKey[] = [
-  'name',
-  'product_codes',
-  'section',
-  'purchase_price',
-  'cost_bdt',
-  'ordered_quantity',
-  'product_weight',
-  'package_weight',
-  'actions',
-];
-
-const allColumnNames = baseColumnOptions.map((col) => col.value);
-const alwaysVisibleColumns: ColumnKey[] = ['name', 'product_codes', 'actions'];
-
 export function useInboundShipmentCalculations() {
   const shipmentStore = useGlobalShipmentStore();
   const { data: currenciesData, isLoading: loadingCurrencies } = useGlobalCurrenciesQuery();
@@ -63,42 +32,6 @@ export function useInboundShipmentCalculations() {
 
   const currentCostCurrencySymbol = computed(() => {
     return currentCostCurrency.value?.symbol || '৳';
-  });
-
-  const availableColumnOptions = computed(() => {
-    const isIntl = shipmentStore.currentShipment?.type === 'international';
-    return baseColumnOptions
-      .filter((col) => {
-        if (!isIntl) {
-          return !['purchase_price', 'product_weight', 'package_weight'].includes(col.value);
-        }
-        return true;
-      })
-      .map((col) => {
-        if (col.value === 'purchase_price') {
-          return { ...col, label: `Price ${currentPurchaseCurrencySymbol.value}` };
-        }
-        if (col.value === 'cost_bdt') {
-          return { ...col, label: `Cost ${currentCostCurrencySymbol.value}` };
-        }
-        return col;
-      });
-  });
-
-  const { visibleColumns } = useMembershipColumnPreference<ColumnKey>({
-    preferenceKey: 'ui.procurementShipment.detailsVisibleColumns',
-    allColumnNames,
-    alwaysVisibleColumns,
-    defaultVisibleColumns: defaultColumns,
-  });
-
-  const allColumnsSelected = computed({
-    get: () => availableColumnOptions.value.every((col) => visibleColumns.value.includes(col.value)),
-    set: (val) => {
-      visibleColumns.value = val
-        ? availableColumnOptions.value.map((col) => col.value)
-        : ['name', 'actions'];
-    },
   });
 
   const currentShipmentBoxesTotal = computed(() => {
@@ -214,57 +147,6 @@ export function useInboundShipmentCalculations() {
     () => weightNeedsAttention.value || purchaseNeedsAttention.value,
   );
 
-  const showReceiveTab = computed(() => {
-    const status = shipmentStore.currentShipment?.status;
-    return status === 'received';
-  });
-
-  const isSplitsComplete = computed(() => {
-    const items = shipmentStore.currentShipmentItems;
-    const stocks = shipmentStore.currentShipmentStocks || [];
-    if (!items.length) return false;
-    return items.every((item) => {
-      const itemStocks = stocks.filter((s) => s.shipment_item_id === item.id);
-      const sum = itemStocks.reduce((acc, s) => acc + (s.quantity || 0), 0);
-      return sum === item.ordered_quantity;
-    });
-  });
-
-  const receiveNeedsAttention = computed(() => {
-    return (
-      shipmentStore.currentShipment?.status === 'in_transit' && !isSplitsComplete.value
-    );
-  });
-
-  const splitsSummary = computed(() => {
-    const stocks = shipmentStore.currentShipmentStocks || [];
-
-    const breakdown = STOCK_AVAILABILITY_OPTIONS.map((opt) => {
-      const totalQty = stocks
-        .filter((s) => (s.availability || 'sellable') === opt.value)
-        .reduce((sum, s) => sum + (s.quantity || 0), 0);
-      return {
-        id: opt.value,
-        description: opt.label,
-        is_sellable: opt.value === 'sellable',
-        quantity: totalQty,
-      };
-    });
-
-    const totalAllocated = breakdown.reduce((sum, item) => sum + item.quantity, 0);
-    const totalOrdered = shipmentStore.currentShipmentItems.reduce(
-      (sum, item) => sum + (item.ordered_quantity || 0),
-      0,
-    );
-
-    return {
-      breakdown: breakdown.filter((item) => item.quantity > 0),
-      totalAllocated,
-      totalOrdered,
-      isComplete: totalAllocated === totalOrdered && totalOrdered > 0,
-    };
-  });
-
   return {
     totals,
     cargoCostWeightLabel,
@@ -280,13 +162,6 @@ export function useInboundShipmentCalculations() {
     purchaseNeedsAttention,
     hasProductInvoiceTotal,
     balanceNeedsAttention,
-    showReceiveTab,
-    receiveNeedsAttention,
-    isSplitsComplete,
-    splitsSummary,
-    availableColumnOptions,
-    visibleColumns,
-    allColumnsSelected,
     currentPurchaseCurrencySymbol,
     currentCostCurrencySymbol,
     loadingCurrencies,

@@ -22,6 +22,10 @@ import {
   requestConfirmation,
 } from 'src/utils/appFeedback';
 import { buildShipmentExcelWorkbook } from '../utils/buildShipmentExcelWorkbook';
+import {
+  formatGlobalShipmentStatus,
+  isGlobalShipmentStatus,
+} from '../constants/shipmentStatus';
 
 const safeNamePart = (value: string) =>
   value.replace(/[^a-z0-9-_]+/gi, '_').replace(/^_+|_+$/g, '');
@@ -107,7 +111,14 @@ export function useInboundShipmentActions(options: {
 
   onMounted(() => {
     void ensureVendorsLoaded();
+    if (authStore.tenantId) {
+      void shipmentStore.ensureProgressTags(authStore.tenantId);
+    }
   });
+
+  const progressFlowOptions = computed(() => shipmentStore.progressFlows);
+  const progressTagOptions = computed(() => shipmentStore.progressTags);
+  const progressUpdating = computed(() => shipmentStore.progressUpdating);
 
 
   const typeOptions = [
@@ -330,9 +341,24 @@ export function useInboundShipmentActions(options: {
     }
   };
 
+  const changeProgressFlow = async (flowId: number) => {
+    if (!shipmentStore.currentShipment || !flowId) return;
+    if (shipmentStore.currentShipment.progress_flow_id === flowId) return;
+    try {
+      await shipmentStore.setShipmentFlow(shipmentStore.currentShipment.id, flowId);
+    } catch (err) {
+      showErrorNotification(err instanceof Error ? err.message : 'Failed to update progress flow');
+    }
+  };
+
   const changeStatus = (newStatus: string) => {
     if (!shipmentStore.currentShipment) return;
     if (shipmentStore.currentShipment.status === newStatus) return;
+
+    if (!isGlobalShipmentStatus(newStatus)) {
+      showWarningNotification(`Invalid shipment status: ${newStatus}`);
+      return;
+    }
 
     if (shipmentStore.currentShipment.status === 'cancelled') {
       showWarningNotification('Cancelled shipments cannot change status.');
@@ -383,7 +409,7 @@ export function useInboundShipmentActions(options: {
 
     $q.dialog({
       title: 'Confirm Status Change',
-      message: `Are you sure you want to change the status of this shipment to "${newStatus}"?`,
+      message: `Are you sure you want to change the status of this shipment to "${formatGlobalShipmentStatus(newStatus)}"?`,
       cancel: true,
       persistent: true,
     }).onOk(() => {
@@ -586,7 +612,6 @@ export function useInboundShipmentActions(options: {
         items: shipmentStore.currentShipmentItems ?? [],
         totals: calculations.totals.value,
         boxWeightSum: calculations.currentShipmentBoxesTotal.value,
-        splitsSummary: calculations.splitsSummary.value,
         purchaseCurrencySymbol: calculations.currentPurchaseCurrencySymbol.value,
         costCurrencySymbol: calculations.currentCostCurrencySymbol.value,
       });
@@ -632,35 +657,15 @@ export function useInboundShipmentActions(options: {
     });
   };
 
-  const autoAcceptSplits = () => {
-    $q.dialog({
-      title: 'Auto Accept Quantity Splits',
-      message:
-        'This will automatically allocate 100% of the ordered quantity to "Standard Sellable" for all pending line items that do not have complete splits configured. Already completed splits will not be overwritten. Continue?',
-      cancel: true,
-      persistent: true,
-    }).onOk(() => {
-      void (async () => {
-        try {
-          await shipmentStore.autoAcceptAllSplits(shipmentId);
-          showSuccessNotification('All pending splits auto-accepted successfully.');
-        } catch (err: any) {
-          showErrorNotification(err.message || 'Failed to auto-accept splits.');
-        }
-      })();
-    });
-  };
-
   const openEditItem = (item: GlobalShipmentItem) => {
+    const shipment = shipmentStore.currentShipment;
     $q.dialog({
       component: ShipmentItemFormDialog,
       componentProps: {
         shipmentId,
         item,
         isReceived:
-          shipmentStore.currentShipment?.status === 'in_transit' ||
-          shipmentStore.currentShipment?.status === 'received' ||
-          shipmentStore.currentShipment?.stock_ready === true,
+          shipment?.stock_ready === true || shipment?.status === 'received',
       },
     });
   };
@@ -720,6 +725,9 @@ export function useInboundShipmentActions(options: {
     updatingStatus,
     targetUpdatingStatus,
     progressTargetId,
+    progressFlowOptions,
+    progressTagOptions,
+    progressUpdating,
     typeOptions,
     vendorOptions,
     currentVendorLabel,
@@ -751,6 +759,7 @@ export function useInboundShipmentActions(options: {
     loadShipmentDetails,
     goBack,
     changeProgress,
+    changeProgressFlow,
     changeStatus,
     rollbackShipmentToDraft,
     confirmDeleteShipment,
@@ -759,7 +768,6 @@ export function useInboundShipmentActions(options: {
     downloadExcel,
     openAddItems,
     openBulkPaste,
-    autoAcceptSplits,
     openEditItem,
     confirmDeleteItem,
     onSaveCostEntries,

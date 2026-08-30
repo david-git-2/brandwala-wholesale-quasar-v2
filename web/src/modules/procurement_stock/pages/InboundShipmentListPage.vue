@@ -297,6 +297,7 @@ import type { GlobalShipment } from '../repositories/globalShipmentRepository';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import ShipmentFormDialog from '../components/ShipmentFormDialog.vue';
 import ArchivedShipmentsModal from '../components/ArchivedShipmentsModal.vue';
+import { formatGlobalShipmentStatus } from '../constants/shipmentStatus';
 
 const authStore = useAuthStore();
 const shipmentStore = useGlobalShipmentStore();
@@ -642,20 +643,7 @@ const darkStatusVisualMap: Record<string, ShipmentStatusVisual> = {
   },
 };
 
-const formatShipmentStatusLabel = (status: string | null | undefined): string => {
-  switch ((status ?? '').trim().toLowerCase()) {
-    case 'draft':
-      return 'Draft';
-    case 'in_transit':
-      return 'In Transit';
-    case 'received':
-      return 'Received';
-    case 'cancelled':
-      return 'Cancelled';
-    default:
-      return status || '—';
-  }
-};
+const formatShipmentStatusLabel = formatGlobalShipmentStatus;
 
 const getStatusVisual = (status: string | null | undefined): ShipmentStatusVisual => {
   const key = (status ?? '').trim().toLowerCase();

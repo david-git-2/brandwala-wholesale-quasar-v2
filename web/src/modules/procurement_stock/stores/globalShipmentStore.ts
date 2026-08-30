@@ -31,7 +31,6 @@ import { applyShipmentPurchaseBalance } from '../utils/applyShipmentPurchaseBala
 import { syncShipmentWeightToProduct } from '../utils/syncShipmentWeightToProduct';
 import { supabase } from 'src/boot/supabase';
 import { useStockLocationStore } from './stockLocationStore';
-import { getDefaultPutawayLocationId } from '../utils/stockLocationOptions';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 
 export const useGlobalShipmentStore = defineStore('global_shipment', {
@@ -916,67 +915,6 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         throw err;
       } finally {
         this.progressUpdating = false;
-      }
-    },
-
-    async autoAcceptAllSplits(shipmentId: number) {
-      this.loading = true;
-      this.error = null;
-      try {
-        const authStore = useAuthStore();
-        const locationStore = useStockLocationStore();
-
-        if (!authStore.tenantId) {
-          throw new Error('Tenant ID is missing');
-        }
-
-        if (locationStore.items.length === 0) {
-          await locationStore.fetchLocations(authStore.tenantId, false);
-        }
-
-        const locationId = getDefaultPutawayLocationId(locationStore.items);
-        if (!locationId) {
-          throw new Error('No default put-away location configured');
-        }
-
-        const items = this.currentShipmentItems;
-        const stocks = this.currentShipmentStocks || [];
-
-        const pendingItems = items.filter((item) => {
-          const itemStocks = stocks.filter((s) => s.shipment_item_id === item.id);
-          const sum = itemStocks.reduce((acc, s) => acc + (s.quantity || 0), 0);
-          return sum !== item.ordered_quantity;
-        });
-
-        if (pendingItems.length === 0) {
-          return;
-        }
-
-        const pendingItemIds = pendingItems.map((item) => item.id);
-        const { error: deleteError } = await supabase
-          .from('global_stocks')
-          .delete()
-          .in('shipment_item_id', pendingItemIds);
-        if (deleteError) throw deleteError;
-
-        const stockRows = pendingItems.map((item) => ({
-          parent_tenant_id: authStore.tenantId!,
-          shipment_item_id: item.id,
-          availability: 'sellable' as const,
-          location_id: locationId,
-          quantity: item.ordered_quantity,
-          is_usable: true,
-        }));
-
-        const { error: insertError } = await supabase.from('global_stocks').insert(stockRows);
-        if (insertError) throw insertError;
-
-        await this.fetchShipmentDetails(shipmentId);
-      } catch (err: unknown) {
-        this.error = (err as Error).message || 'Failed to auto-accept splits';
-        throw err;
-      } finally {
-        this.loading = false;
       }
     },
 

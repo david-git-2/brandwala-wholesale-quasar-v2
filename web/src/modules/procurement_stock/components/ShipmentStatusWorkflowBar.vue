@@ -111,9 +111,13 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { ShipmentProgressFlow, ShipmentProgressTag } from '../repositories/globalShipmentRepository';
+import {
+  GLOBAL_SHIPMENT_WORKFLOW_STATUSES,
+  formatGlobalShipmentStatus,
+  globalShipmentStatusWorkflowColor,
+} from '../constants/shipmentStatus';
 
-/** Solid lifecycle — doc/procurement_stock/shipment/schema.md */
-const workflowStatuses = ['draft', 'in_transit', 'received'] as const;
+const workflowStatuses = GLOBAL_SHIPMENT_WORKFLOW_STATUSES;
 
 const props = withDefaults(
   defineProps<{
@@ -171,18 +175,7 @@ function onFlowSelect(value: number | null | undefined) {
 }
 
 function formatStatusLabel(value: string): string {
-  switch (value) {
-    case 'draft':
-      return 'Draft';
-    case 'in_transit':
-      return 'In transit';
-    case 'received':
-      return 'Received';
-    case 'cancelled':
-      return 'Cancelled';
-    default:
-      return value;
-  }
+  return formatGlobalShipmentStatus(value);
 }
 
 function isPassedStatus(currentStatus: string, st: string): boolean {
@@ -195,18 +188,7 @@ function isPassedStatus(currentStatus: string, st: string): boolean {
 }
 
 function statusColor(st: string): string {
-  switch (st) {
-    case 'draft':
-      return 'grey-7';
-    case 'in_transit':
-      return 'orange-8';
-    case 'received':
-      return 'green-7';
-    case 'cancelled':
-      return 'negative';
-    default:
-      return 'primary';
-  }
+  return globalShipmentStatusWorkflowColor(st);
 }
 
 function isStatusDisabled(st: string): boolean {

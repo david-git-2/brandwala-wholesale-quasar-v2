@@ -11,17 +11,6 @@ export interface BuildShipmentExcelInput {
   items: GlobalShipmentItem[];
   totals: ShipmentCostSummary;
   boxWeightSum: number;
-  splitsSummary: {
-    breakdown: Array<{
-      id: number | string;
-      description: string;
-      is_sellable: boolean;
-      quantity: number;
-    }>;
-    totalAllocated: number;
-    totalOrdered: number;
-    isComplete: boolean;
-  };
   purchaseCurrencySymbol: string;
   costCurrencySymbol: string;
 }

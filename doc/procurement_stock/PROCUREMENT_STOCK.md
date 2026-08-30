@@ -77,7 +77,7 @@ To preserve financial audit trails, stock lineage, and avoid accidental data los
 flowchart TD
     subgraph ActiveTable ["1. Active Shipment Table (InboundShipmentListPage)"]
         Row["Shipment Row (No 3-dots menu)"]
-        Row -->|Click Row| Nav["Navigate to Shipment Overview"]
+        Row -->|Click Row| Nav["Navigate to Shipment Detail (V2)"]
         Row -->|Direct Archive Btn| ConfArch["Confirmation Dialog: 'Archive this shipment?'"]
         ConfArch -->|Confirm| RPC_Arch["RPC: archive_shipment"]
     end
@@ -119,14 +119,38 @@ flowchart TD
 
 ---
 
+## 2.5 Shipment Status Lifecycle
+
+Shipments use exactly **four** lifecycle statuses enforced by `global_shipments_status_check`:
+
+| Status | Meaning | User action |
+| :--- | :--- | :--- |
+| `draft` | Shipment created; line items and costs editable | Dispatch → **In transit** via workflow bar |
+| `in_transit` | Goods en route; line edits still allowed until receive | **Received** opens receive page (never a dropdown flip) |
+| `received` | Finalized; stock posted to warehouse | **Organize Stock** → `WarehouseStockListPage?shipment_id=` |
+| `cancelled` | Abandoned; no stock post | Archive when done |
+
+**Progress tags are not status.** Mid-journey detail (`progress_tag_id`, progress flow) lives on the tag module and is edited via [`ShipmentStatusWorkflowBar.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/ShipmentStatusWorkflowBar.vue) on the detail page and optionally duplicated on the Settings drawer **Progress** tab. Lifecycle status changes stay on the main-page workflow bar only.
+
+**Receive is mandatory:** Setting `received` always routes to [`ReceiveShipmentPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/pages/ReceiveShipmentPage.vue), which calls `RPC: finalize_global_shipment` to stamp landed costs and create `global_stocks` rows.
+
+```mermaid
+flowchart LR
+  draft --> in_transit --> received
+  draft --> cancelled
+  in_transit --> cancelled
+  received --> organizeStock["Organize Stock on Warehouse page"]
+```
+
+---
+
 ## 3. Page & Component Inventory
 
 | Route | Main Page | Key Child Components & Dialogs |
 | :--- | :--- | :--- |
 | `/:tenantSlug?/app/procurement/shipment` | [`InboundShipmentListPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/pages/InboundShipmentListPage.vue) | Compact table toolbar, "Archived" hub trigger button, filter chips, shipment status pills, direct row Archive button with confirmation dialog (no 3-dots menu), [`ArchivedShipmentsModal.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/ArchivedShipmentsModal.vue), [`ShipmentFormDialog.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/ShipmentFormDialog.vue) |
-| `/:tenantSlug?/app/procurement/shipment/:id` | [`ShipmentOverviewPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/pages/ShipmentOverviewPage.vue) | [`ShipmentStatusWorkflowBar.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/ShipmentStatusWorkflowBar.vue), Archive toggle button, [`ShipmentLandedCostSummaryCard.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/ShipmentLandedCostSummaryCard.vue), [`ShipmentCostEntriesPanel.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/ShipmentCostEntriesPanel.vue) |
-| `/:tenantSlug?/app/procurement/shipment/:id/items` | [`ShipmentLineItemsPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/pages/ShipmentLineItemsPage.vue) | [`ShipmentLineItemsTable.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/ShipmentLineItemsTable.vue), [`AddShipmentItemsDrawer.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/AddShipmentItemsDrawer.vue), [`BulkPasteDialog.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/BulkPasteDialog.vue) |
-| `/:tenantSlug?/app/procurement/shipment/:id/receive` | [`ReceiveShipmentPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/pages/ReceiveShipmentPage.vue) | [`ShipmentReceiveTabPanel.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/ShipmentReceiveTabPanel.vue), physical variance checklist |
+| `/:tenantSlug?/app/procurement/shipment/:id` | [`ShipmentLineItemsV2Page.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/pages/ShipmentLineItemsV2Page.vue) | Canonical shipment detail: [`ShipmentStatusWorkflowBar.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/ShipmentStatusWorkflowBar.vue), next-step CTA, [`ShipmentSettingsDrawer.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/ShipmentSettingsDrawer.vue) (Progress tab), [`AddShipmentItemsDrawer.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/AddShipmentItemsDrawer.vue), [`BulkPasteDialog.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/BulkPasteDialog.vue), [`ShipmentCostEntriesPanel.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/ShipmentCostEntriesPanel.vue) |
+| `/:tenantSlug?/app/procurement/shipment/:id/receive` | [`ReceiveShipmentPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/pages/ReceiveShipmentPage.vue) | Physical variance checklist; calls `finalize_global_shipment` |
 | `/:tenantSlug?/app/procurement/stock` | [`WarehouseStockListPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/pages/WarehouseStockListPage.vue) | Stock location badge, availability chips, [`StockMoveLocationDialog.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/StockMoveLocationDialog.vue), [`StockMoveGradeDialog.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/StockMoveGradeDialog.vue) |
 | `/:tenantSlug?/app/procurement/locations` | [`StockLocationsPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/pages/StockLocationsPage.vue) | Tree hierarchy viewer, [`StockLocationFormDialog.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/StockLocationFormDialog.vue) |
 | `/:tenantSlug?/app/procurement/movements` | [`StockMovementsPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/pages/StockMovementsPage.vue) | Audit history log, [`StockMovementDetailDialog.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/StockMovementDetailDialog.vue) |
@@ -145,10 +169,11 @@ flowchart TD
 | **`ArchivedShipmentsModal`** | Unarchive Action | `useMutation` $\rightarrow$ `RPC: unarchive_shipment` | Invalidates active and archived shipment lists |
 | **`ArchivedShipmentsModal`** | Permanent Delete (Draft & Cancelled Only) | `useMutation` $\rightarrow$ `RPC: purge_archived_shipment` | Optimistic removal / Invalidates `['procurementStock', 'archivedShipments']` |
 | **`ShipmentFormDialog`** | Create Shipment Draft | `useMutation` $\rightarrow$ `RPC: create_shipment_draft` | Invalidates `['procurementStock', 'shipments']` |
-| **`ShipmentLineItemsPage`** | Add Catalog Product Line | `useMutation` $\rightarrow$ `RPC: add_shipment_item_from_product` | Invalidates `['procurementStock', 'shipmentOverview', id]` |
-| **`ShipmentLineItemsPage`** | Add Child Line Item | `useMutation` $\rightarrow$ `RPC: add_child_line_to_parent_shipment` | Invalidates `['procurementStock', 'shipmentOverview', id]` |
-| **`ShipmentOverviewPage`** | Settle Vendor / Cargo Payee | `useMutation` $\rightarrow$ `RPC: settle_shipment_payee` | Invalidates shipment & wallet ledger caches |
-| **`ReceiveShipmentPage`** | Finalize Inbound Batch | `useMutation` $\rightarrow$ `RPC: finalize_and_revise` | Stamps `landed_cost_bdt`, populates `global_stocks` |
+| **`ShipmentLineItemsV2Page`** | Add Catalog Product Line | `useMutation` $\rightarrow$ `RPC: add_shipment_item_from_product` | Invalidates `['procurementStock', 'shipmentOverview', id]` |
+| **`ShipmentLineItemsV2Page`** | Add Child Line Item | `useMutation` $\rightarrow$ `RPC: add_child_line_to_parent_shipment` | Invalidates `['procurementStock', 'shipmentOverview', id]` |
+| **`ShipmentLineItemsV2Page`** | Change lifecycle status | `useInboundShipmentActions` $\rightarrow$ `updateShipment` or route to receive page | Client validates 4-status model before write |
+| **`ShipmentLineItemsV2Page`** | Settle Vendor / Cargo Payee | `useMutation` $\rightarrow$ `RPC: settle_shipment_payee` | Invalidates shipment & wallet ledger caches |
+| **`ReceiveShipmentPage`** | Finalize Inbound Batch | `useMutation` $\rightarrow$ `RPC: finalize_global_shipment` | Stamps `landed_cost_bdt`, populates `global_stocks` |
 | **`WarehouseStockListPage`** | Mount / Filter Change | `useQuery` $\rightarrow$ `Table: global_stocks` | `staleTime: 30s`, Key: `['procurementStock', 'allocatableStockList', params]` |
 | **`StockMoveLocationDialog`** | Transfer Bin Location | `useMutation` $\rightarrow$ `RPC: create_and_post_stock_movement` | Invalidates stock list & movements |
 | **`StockMoveGradeDialog`** | Change Condition Grade | `useMutation` $\rightarrow$ `RPC: create_and_post_stock_movement` | Invalidates stock list & movements |

@@ -13,7 +13,6 @@ export {
 /** Domain flag — not part of pure cost math. */
 export function isShipmentCostFinalized(shipment: {
   stock_ready?: boolean | null;
-  status?: string | null;
 }): boolean {
-  return shipment.stock_ready === true || shipment.status === 'Ready Stock';
+  return shipment.stock_ready === true;
 }

@@ -24,7 +24,7 @@
           <q-tab name="details" label="Details" />
           <q-tab name="summary" label="Summary" />
           <q-tab name="rates" label="Rates" />
-          <q-tab name="status" label="Status" />
+          <q-tab name="progress" label="Progress" />
         </q-tabs>
       </div>
 
@@ -118,25 +118,55 @@
               </q-select>
             </div>
 
-            <!-- Customer Status Mode -->
-            <div>
-              <div class="text-caption text-weight-medium text-grey-7 q-mb-xs">Customer Status Mode</div>
+            <q-separator />
+
+            <!-- Tenant Allocation -->
+            <div class="column q-gutter-y-sm">
+              <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center q-gutter-x-xs">
+                <q-icon name="ph ph-buildings" size="18px" color="primary" />
+                <span>Tenant Allocation</span>
+              </div>
+              <div class="text-caption text-grey-6 text-xxs">
+                Which company can list and sell stock from this shipment. Leave empty for the parent warehouse pool.
+              </div>
               <q-select
-                v-model="drawerCustomerStatusMode"
-                :options="customerStatusModeOptions"
+                :model-value="selectedChildTenantId"
+                :options="childTenantOptions"
                 emit-value
                 map-options
                 outlined
                 dense
+                clearable
+                placeholder="All companies (parent pool)"
                 class="bg-white"
-                @update:model-value="saveShipmentCustomerStatusMode"
+                :loading="childTenantsLoading"
+                @update:model-value="(val) => emit('update:selectedChildTenantId', val ?? null)"
               >
                 <template #prepend>
-                  <q-icon name="ph ph-user-circle" size="18px" color="grey-6" />
+                  <q-icon name="ph ph-storefront" size="18px" color="grey-6" />
                 </template>
               </q-select>
-              <div class="text-caption text-grey-6 text-xxs q-mt-xs">
-                Controls how shipment journey updates are displayed to customers.
+              <div class="row q-gutter-sm">
+                <q-btn
+                  color="primary"
+                  unelevated
+                  no-caps
+                  dense
+                  label="Save allocation"
+                  class="col"
+                  :loading="assigningChild"
+                  @click="emit('save-assign-child')"
+                />
+                <q-btn
+                  flat
+                  no-caps
+                  dense
+                  label="Clear"
+                  class="col"
+                  :disable="!assignedChildTenantId || assigningChild"
+                  :loading="assigningChild"
+                  @click="emit('clear-assign-child')"
+                />
               </div>
             </div>
           </div>
@@ -493,93 +523,71 @@
           </div>
         </q-tab-panel>
 
-        <!-- 4. Status Tab Panel -->
-        <q-tab-panel name="status" class="q-pa-md bg-white">
+        <!-- 4. Progress Tab Panel -->
+        <q-tab-panel name="progress" class="q-pa-md bg-white">
           <div class="column q-gutter-y-lg">
-            <!-- Internal Shipment Status -->
             <div class="column q-gutter-y-sm">
               <div class="row items-center justify-between">
                 <div class="text-caption text-weight-bold text-grey-7 text-uppercase" style="letter-spacing: 0.5px">
-                  Shipment Status (Internal)
+                  Lifecycle Status
                 </div>
                 <q-chip
                   dense
                   square
-                  :color="getStatusColor(drawerShipmentStatus).color"
-                  :text-color="getStatusColor(drawerShipmentStatus).textColor"
-                  class="text-weight-bold text-capitalize text-xxs q-ma-none soft-chip"
-                >
-                  {{ drawerShipmentStatus }}
-                </q-chip>
-              </div>
-
-              <div class="q-pa-sm bg-grey-1 rounded-borders border-grey">
-                <div class="text-caption text-weight-medium text-grey-7 q-mb-xs">Update Operational Status</div>
-                <q-select
-                  v-model="drawerShipmentStatus"
-                  :options="internalShipmentStatusOptions"
-                  emit-value
-                  map-options
-                  outlined
-                  dense
-                  class="bg-white"
-                  @update:model-value="saveShipmentStatus"
-                >
-                  <template #prepend>
-                    <q-icon name="ph ph-truck" size="18px" color="grey-6" />
-                  </template>
-                </q-select>
-                <div class="text-caption text-grey-6 text-xxs q-mt-xs">
-                  Current internal operational and warehouse processing status.
-                </div>
-              </div>
-            </div>
-
-            <q-separator />
-
-            <!-- Customer Tracking Status -->
-            <div class="column q-gutter-y-sm">
-              <div class="row items-center justify-between">
-                <div class="text-caption text-weight-bold text-grey-7 text-uppercase" style="letter-spacing: 0.5px">
-                  Customer Tracking Status
-                </div>
-                <q-chip
-                  dense
-                  square
-                  color="cyan-1"
-                  text-color="cyan-9"
+                  :color="lifecycleChipStyle.color"
+                  :text-color="lifecycleChipStyle.textColor"
                   class="text-weight-bold text-xxs q-ma-none soft-chip"
                 >
-                  Mode: {{ drawerCustomerStatusMode === 'auto' ? 'Auto-synced' : 'Custom Manual' }}
+                  {{ formatGlobalShipmentStatus(drawerShipmentStatus) }}
                 </q-chip>
               </div>
+              <div class="text-caption text-grey-6 text-xxs">
+                Change Draft → In transit → Received using the workflow bar on the main page.
+              </div>
+            </div>
 
-              <div class="q-pa-sm bg-grey-1 rounded-borders border-grey">
+            <q-separator />
+
+            <div class="column q-gutter-y-sm">
+              <div class="text-caption text-weight-bold text-grey-7 text-uppercase" style="letter-spacing: 0.5px">
+                Progress Tracking
+              </div>
+              <div class="q-pa-sm bg-grey-1 rounded-borders border-grey column q-gutter-y-sm">
                 <q-select
-                  v-model="drawerCustomerStatus"
-                  label="Customer Facing Stage"
-                  :options="customerStatusOptions"
+                  :model-value="progressFlowId"
+                  :options="flowSelectOptions"
+                  label="Progress flow"
                   emit-value
                   map-options
                   outlined
                   dense
                   class="bg-white"
-                  :disable="drawerCustomerStatusMode === 'auto'"
-                  @update:model-value="saveCustomerStatus"
-                >
-                  <template #prepend>
-                    <q-icon name="ph ph-users" size="18px" color="grey-6" />
-                  </template>
-                </q-select>
-                <div v-if="drawerCustomerStatusMode === 'auto'" class="text-caption text-grey-6 text-xxs q-mt-xs">
-                  In auto mode, customer tracking automatically mirrors internal stages.
+                  :disable="!!progressUpdating"
+                  @update:model-value="onFlowSelect"
+                />
+                <q-select
+                  :model-value="progressTagId"
+                  :options="progressSelectOptions"
+                  label="Current progress stage"
+                  emit-value
+                  map-options
+                  clearable
+                  outlined
+                  dense
+                  class="bg-white"
+                  :loading="!!progressUpdating"
+                  :disable="!!progressUpdating || progressSelectOptions.length === 0"
+                  @update:model-value="onProgressSelect"
+                />
+                <div class="text-caption text-grey-6 text-xxs">
+                  Mid-journey milestones (customs, airport, hub) are progress tags — not lifecycle status.
                 </div>
               </div>
             </div>
 
             <q-separator />
 
-            <!-- Danger Zone / Shipment Archival -->
+            <!-- Archive -->
             <div class="column q-gutter-y-sm">
               <div class="text-caption text-weight-bold text-grey-7 text-uppercase" style="letter-spacing: 0.5px">
                 Shipment Lifecycle
@@ -621,6 +629,14 @@ import { useQuasar } from 'quasar';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
+import type {
+  ShipmentProgressFlow,
+  ShipmentProgressTag,
+} from '../repositories/globalShipmentRepository';
+import {
+  formatGlobalShipmentStatus,
+  globalShipmentStatusChipStyle,
+} from '../constants/shipmentStatus';
 
 const props = withDefaults(
   defineProps<{
@@ -630,14 +646,41 @@ const props = withDefaults(
     cargoOptions: Array<{ label: string; value: number }>;
     vendorOptions: Array<{ label: string; value: number }>;
     initialTab?: string;
+    progressFlowOptions?: ShipmentProgressFlow[];
+    progressTagOptions?: ShipmentProgressTag[];
+    progressFlowId?: number | null;
+    progressTagId?: number | null;
+    progressUpdating?: boolean;
+    progressTargetId?: number | null;
+    childTenantOptions?: Array<{ label: string; value: number }>;
+    childTenantsLoading?: boolean;
+    selectedChildTenantId?: number | null;
+    assigningChild?: boolean;
+    assignedChildTenantId?: number | null;
   }>(),
   {
     initialTab: 'details',
+    progressFlowOptions: () => [],
+    progressTagOptions: () => [],
+    progressFlowId: null,
+    progressTagId: null,
+    progressUpdating: false,
+    progressTargetId: null,
+    childTenantOptions: () => [],
+    childTenantsLoading: false,
+    selectedChildTenantId: null,
+    assigningChild: false,
+    assignedChildTenantId: null,
   },
 );
 
 const emit = defineEmits<{
   (e: 'update:modelValue', val: boolean): void;
+  (e: 'update-flow', flowId: number): void;
+  (e: 'update-progress', tagId: number | null): void;
+  (e: 'update:selectedChildTenantId', val: number | null): void;
+  (e: 'save-assign-child'): void;
+  (e: 'clear-assign-child'): void;
 }>();
 
 const authStore = useAuthStore();
@@ -711,41 +754,11 @@ const drawerTypeOptions = [
   { label: 'Warehouse Transfer', value: 'transfer' },
 ];
 
-const customerStatusModeOptions = [
-  { label: 'Automatic (Mirrors Internal)', value: 'auto' },
-  { label: 'Custom Tracking Stage', value: 'custom' },
-];
-
-const internalShipmentStatusOptions = [
-  { label: 'Draft / Planning', value: 'draft' },
-  { label: 'Ordered / In Purchasing', value: 'ordered' },
-  { label: 'In Transit / Shipped', value: 'in_transit' },
-  { label: 'In Customs Clearance', value: 'customs' },
-  { label: 'Received in Warehouse', value: 'received' },
-  { label: 'Stock Allocated / Finished', value: 'allocated' },
-  { label: 'Completed & Closed', value: 'completed' },
-  { label: 'Cancelled', value: 'cancelled' },
-];
-
-const customerStatusOptions = [
-  { label: 'Order Placed & Confirmed', value: 'ordered' },
-  { label: 'Shipped & In Transit', value: 'in_transit' },
-  { label: 'Arrived at International Hub', value: 'hub_arrived' },
-  { label: 'Under Customs Clearance', value: 'customs' },
-  { label: 'Received in Bangladesh Warehouse', value: 'warehouse_received' },
-  { label: 'Ready for Dispatch / Pickup', value: 'ready_dispatch' },
-  { label: 'Out for Local Delivery', value: 'out_for_delivery' },
-  { label: 'Delivered to Customer', value: 'delivered' },
-];
-
-// Form state
 const drawerShipmentName = ref('');
 const drawerShipmentType = ref<'international' | 'local' | 'transfer'>('international');
 const drawerCargoId = ref<number | null>(null);
 const drawerVendorId = ref<number | null>(null);
-const drawerCustomerStatusMode = ref<'auto' | 'custom'>('auto');
 const drawerShipmentStatus = ref('draft');
-const drawerCustomerStatus = ref('ordered');
 const updatingName = ref(false);
 
 const totalWeightInput = ref<number | null>(null);
@@ -839,8 +852,6 @@ watch(
       if (shipment.status) drawerShipmentStatus.value = shipment.status;
       if (shipment.cargo_company_id) drawerCargoId.value = shipment.cargo_company_id;
       if (shipment.vendor_id) drawerVendorId.value = shipment.vendor_id;
-      if (shipment.customer_tracking_status) drawerCustomerStatus.value = shipment.customer_tracking_status;
-      if (shipment.customer_status_mode) drawerCustomerStatusMode.value = shipment.customer_status_mode as 'auto' | 'custom';
       totalWeightInput.value = shipment.total_weight_kg ?? shipment.received_weight ?? null;
     }
   },
@@ -928,19 +939,24 @@ const saveShipmentVendor = async (val: any) => {
   await shipmentStore.updateShipment(props.shipmentId, { vendor_id: val });
 };
 
-const saveShipmentCustomerStatusMode = async (val: any) => {
-  if (!props.shipmentId || isNaN(props.shipmentId)) return;
-  await shipmentStore.updateShipment(props.shipmentId, { customer_status_mode: val });
+const lifecycleChipStyle = computed(() => globalShipmentStatusChipStyle(drawerShipmentStatus.value));
+
+const flowSelectOptions = computed(() =>
+  props.progressFlowOptions
+    .filter((flow) => flow.is_active !== false)
+    .map((flow) => ({ label: flow.name, value: flow.id })),
+);
+
+const progressSelectOptions = computed(() =>
+  props.progressTagOptions.map((tag) => ({ label: tag.name, value: tag.id })),
+);
+
+const onFlowSelect = (value: number | null | undefined) => {
+  if (value != null) emit('update-flow', value);
 };
 
-const saveShipmentStatus = async (val: any) => {
-  if (!props.shipmentId || isNaN(props.shipmentId)) return;
-  await shipmentStore.updateShipment(props.shipmentId, { status: val });
-};
-
-const saveCustomerStatus = async (val: any) => {
-  if (!props.shipmentId || isNaN(props.shipmentId)) return;
-  await shipmentStore.updateShipment(props.shipmentId, { customer_tracking_status: val });
+const onProgressSelect = (value: number | null | undefined) => {
+  emit('update-progress', value ?? null);
 };
 
 const addProductRateRow = () => {
@@ -1058,28 +1074,6 @@ const saveRates = async () => {
     });
   } finally {
     savingRates.value = false;
-  }
-};
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'received':
-    case 'completed':
-      return { color: 'positive', textColor: 'white' };
-    case 'in_transit':
-      return { color: 'warning', textColor: 'dark' };
-    case 'customs':
-      return { color: 'purple-6', textColor: 'white' };
-    case 'allocated':
-      return { color: 'indigo-6', textColor: 'white' };
-    case 'ordered':
-      return { color: 'blue-6', textColor: 'white' };
-    case 'cancelled':
-      return { color: 'negative', textColor: 'white' };
-    case 'draft':
-    case 'pending':
-    default:
-      return { color: 'grey-4', textColor: 'grey-9' };
   }
 };
 </script>

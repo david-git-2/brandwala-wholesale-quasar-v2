@@ -1,27 +1,20 @@
 <template>
   <q-page class="shipment-items-v2-page bg-grey-1 column no-wrap" style="height: calc(100vh - 55px); overflow: hidden">
-    <!-- Top Sticky Section: Shipment Name & Column Buttons -->
-    <div class="shipment-items-top-section bg-white border-bottom q-px-lg q-py-md shrink-0 shadow-xs" style="min-height: 52px">
-      <div class="row items-center justify-between no-wrap">
-        <!-- Left: Reactive Shipment Info -->
-        <div class="row items-center q-gutter-x-sm no-wrap ellipsis">
-          <span class="text-subtitle2 text-weight-bolder text-grey-8 font-mono bg-grey-2 q-px-xs rounded-borders" style="font-size: 13px">
-            {{ displayShipmentCode }}
-          </span>
-          <span class="text-grey-4">·</span>
+    <!-- Top Sticky Section: Shipment Name, Status Workflow & Actions -->
+    <div class="shipment-items-top-section bg-white border-bottom q-px-lg q-py-md shrink-0 shadow-xs">
+      <div class="row items-center justify-between q-gutter-y-sm wrap">
+        <!-- Left: Name + Status Workflow -->
+        <div class="col-grow row items-center q-gutter-md wrap" style="min-width: 0">
           <div class="text-subtitle1 text-weight-bolder text-grey-9 ellipsis" style="font-size: 15px">
             {{ shipmentStore.currentShipment?.name || 'Untitled Shipment' }}
           </div>
-          <q-badge
-            rounded
-            class="text-weight-bold text-capitalize q-ml-xs text-caption q-px-sm q-py-2xs cursor-pointer hover-bright"
-            :color="getStatusColor(shipmentStore.currentShipment?.status || 'draft').color"
-            :text-color="getStatusColor(shipmentStore.currentShipment?.status || 'draft').textColor"
-            @click="openSettingsDrawer('status')"
-          >
-            {{ formatStatusLabel(shipmentStore.currentShipment?.status || 'draft') }}
-            <q-tooltip>Click to change status</q-tooltip>
-          </q-badge>
+          <ShipmentStatusWorkflowBar
+            class="shipment-header-workflow"
+            :status="shipmentStore.currentShipment?.status ?? 'draft'"
+            :updating="updatingStatus"
+            :target-status="targetUpdatingStatus"
+            @update-status="changeStatus"
+          />
         </div>
 
         <!-- Right: Header Buttons & Settings -->
@@ -535,6 +528,22 @@
       :cargo-options="cargoOptions"
       :vendor-options="vendorOptions"
       :initial-tab="settingsDrawerTab"
+      :progress-flow-options="progressFlowOptions"
+      :progress-tag-options="progressTagOptions"
+      :progress-flow-id="shipmentStore.currentShipment?.progress_flow_id ?? null"
+      :progress-tag-id="shipmentStore.currentShipment?.progress_tag_id ?? null"
+      :progress-updating="progressUpdating"
+      :progress-target-id="progressTargetId"
+      :child-tenant-options="childTenantOptions"
+      :child-tenants-loading="childTenantsLoading"
+      :selected-child-tenant-id="selectedChildTenantId"
+      :assigning-child="assigningChild"
+      :assigned-child-tenant-id="shipmentStore.currentShipment?.assigned_child_tenant_id ?? null"
+      @update-flow="changeProgressFlow"
+      @update-progress="changeProgress"
+      @update:selected-child-tenant-id="onSelectedChildTenantIdUpdate"
+      @save-assign-child="saveAssignChild"
+      @clear-assign-child="clearAssignChild"
     />
 
     <!-- Add / Edit Section Sheet Dialog -->
@@ -620,6 +629,7 @@ import ShipmentSettingsDrawer from '../components/ShipmentSettingsDrawer.vue';
 import ShipmentSectionSheetDialog, { type SectionFormData } from '../components/ShipmentSectionSheetDialog.vue';
 import ShipmentSectionViewDialog, { type SectionViewData } from '../components/ShipmentSectionViewDialog.vue';
 import AddCustomColumnDialog from '../components/AddCustomColumnDialog.vue';
+import ShipmentStatusWorkflowBar from '../components/ShipmentStatusWorkflowBar.vue';
 import { useInboundShipmentCalculations } from '../composables/useInboundShipmentCalculations';
 import { useInboundShipmentActions } from '../composables/useInboundShipmentActions';
 
@@ -644,6 +654,22 @@ const {
 const {
   openEditItem,
   confirmDeleteItem,
+  changeStatus,
+  changeProgress,
+  changeProgressFlow,
+  updatingStatus,
+  targetUpdatingStatus,
+  progressTargetId,
+  progressFlowOptions,
+  progressTagOptions,
+  progressUpdating,
+  childTenantOptions,
+  childTenantsLoading,
+  selectedChildTenantId,
+  assigningChild,
+  saveAssignChild,
+  clearAssignChild,
+  openAddItems,
 } = actions;
 
 const settingsDrawerOpen = ref(false);
@@ -653,6 +679,11 @@ const openSettingsDrawer = (tab = 'details') => {
   settingsDrawerTab.value = tab;
   settingsDrawerOpen.value = true;
 };
+
+const onSelectedChildTenantIdUpdate = (val: number | null) => {
+  selectedChildTenantId.value = val;
+};
+
 const showAddColumnDialog = ref(false);
 const showAddSectionDialog = ref(false);
 const showViewSectionDialog = ref(false);
@@ -978,7 +1009,6 @@ const displayedItems = computed(() => {
         quantity: oQty,
         price: pPrice,
         cost: totalCost,
-        status: item.is_received ? 'received' : shipmentStore.currentShipment?.status || 'in_transit',
         image: item.image_url || 'https://images.unsplash.com/photo-1601924994987-69e26d50dc26?w=100&auto=format&fit=crop&q=60',
         rawItem: item,
       };
@@ -1422,61 +1452,15 @@ const removeSheet = async (id: string) => {
   }
 };
 
-const displayShipmentCode = computed(() => {
-  const codeNum = shipmentStore.currentShipment?.tenant_shipment_id ?? shipmentId;
-  if (codeNum && !isNaN(codeNum)) {
-    return `#SHP-${String(codeNum).padStart(4, '0')}`;
-  }
-  return 'Shipment';
-});
-
-const formatStatusLabel = (status: string) => {
-  switch (status) {
-    case 'in_transit':
-      return 'In Transit';
-    case 'customs':
-      return 'Customs';
-    case 'received':
-      return 'Received';
-    case 'allocated':
-      return 'Allocated';
-    case 'completed':
-      return 'Completed';
-    case 'ordered':
-      return 'Ordered';
-    case 'draft':
-      return 'Draft';
-    case 'cancelled':
-      return 'Cancelled';
-    default:
-      return status ? status.replace(/_/g, ' ') : 'Draft';
-  }
-};
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'received':
-    case 'completed':
-      return { color: 'positive', textColor: 'white' };
-    case 'in_transit':
-      return { color: 'warning', textColor: 'dark' };
-    case 'customs':
-      return { color: 'purple-6', textColor: 'white' };
-    case 'allocated':
-      return { color: 'indigo-6', textColor: 'white' };
-    case 'ordered':
-      return { color: 'blue-6', textColor: 'white' };
-    case 'cancelled':
-      return { color: 'negative', textColor: 'white' };
-    case 'draft':
-    case 'pending':
-    default:
-      return { color: 'grey-4', textColor: 'grey-9' };
-  }
-};
 </script>
 
 <style scoped>
+.shipment-header-workflow :deep(.shipment-status-toolbar) {
+  border: none;
+  padding-left: 0;
+  padding-right: 0;
+}
+
 .section-break-row {
   background: #f1f5f9 !important;
   border-top: 2px solid #cbd5e1 !important;
