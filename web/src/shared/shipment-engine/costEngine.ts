@@ -38,8 +38,12 @@ export const getCargoWeightKg = (
   shipment: CostingShipmentInput,
   items: CostingLineItemInput[],
 ): number => {
-  if (shipment.received_weight != null && shipment.received_weight > 0) {
-    return Math.round(shipment.received_weight * 100) / 100;
+  const headerKg =
+    shipment.total_weight_kg ??
+    shipment.received_weight ??
+    null;
+  if (headerKg != null && headerKg > 0) {
+    return Math.round(headerKg * 100) / 100;
   }
   return calculatePackagingWeightKg(items);
 };

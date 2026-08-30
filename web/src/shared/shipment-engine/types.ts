@@ -13,6 +13,7 @@ export interface CostingShipmentInput {
   cargo_conversion_rate?: number;
   cargo_rate?: number;
   received_weight: number | null;
+  total_weight_kg?: number | null;
   transaction_rate?: number | null;
 }
 

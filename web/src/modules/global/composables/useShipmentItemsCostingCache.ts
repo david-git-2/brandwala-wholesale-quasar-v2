@@ -110,12 +110,19 @@ export function createShipmentItemsCostingCache() {
     inflight.delete(shipmentId);
   };
 
+  const seedShipmentItems = (shipmentId: number, items: ShipmentCostingCacheItem[]) => {
+    if (!shipmentId) return;
+    cache.set(shipmentId, items);
+    inflight.delete(shipmentId);
+  };
+
   return {
     ensureShipmentItems,
     getSync,
     getStampSync,
     prefetchShipmentItems,
     invalidateShipment,
+    seedShipmentItems,
     clear,
   };
 }
@@ -131,6 +138,33 @@ export function getSharedShipmentItemsCostingCache() {
 
 export function invalidateSharedShipmentItemsCostingCache(shipmentId: number) {
   getSharedShipmentItemsCostingCache().invalidateShipment(shipmentId);
+}
+
+export function seedSharedShipmentItemsCostingCache(
+  shipmentId: number,
+  items: Array<{
+    id: number;
+    purchase_price: number;
+    product_weight: number;
+    package_weight: number;
+    ordered_quantity: number;
+    landed_cost_bdt?: number | null;
+  }>,
+) {
+  getSharedShipmentItemsCostingCache().seedShipmentItems(
+    shipmentId,
+    items.map((item) => ({
+      id: item.id,
+      purchase_price: item.purchase_price,
+      product_weight: item.product_weight,
+      package_weight: item.package_weight,
+      ordered_quantity: item.ordered_quantity,
+      landed_cost_bdt:
+        item.landed_cost_bdt == null || !Number.isFinite(Number(item.landed_cost_bdt))
+          ? null
+          : Number(item.landed_cost_bdt),
+    })),
+  );
 }
 
 export type ShipmentItemsCostingCache = ReturnType<typeof createShipmentItemsCostingCache>;

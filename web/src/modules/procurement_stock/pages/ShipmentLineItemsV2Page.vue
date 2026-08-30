@@ -666,6 +666,7 @@ import {
   costingShipmentFromEntries,
 } from 'src/shared/shipment-engine';
 import type { GlobalShipmentItem } from '../repositories/globalShipmentRepository';
+import { isShipmentCostsLocked } from '../utils/costEntriesCosting';
 
 const $q = useQuasar();
 const route = useRoute();
@@ -1019,14 +1020,23 @@ const resolveLineUnitCostBdt = (
   item: GlobalShipmentItem,
   allItems: GlobalShipmentItem[],
 ): number => {
-  const stamped = item.landed_cost_bdt;
-  if (stamped != null && Number.isFinite(Number(stamped))) {
-    return Number(stamped);
-  }
-
   const shipment = shipmentStore.currentShipment;
   if (!shipment) {
     return Number(item.purchase_price) || 0;
+  }
+
+  if (!isShipmentCostsLocked(shipment)) {
+    const forCosting = costingShipmentFromEntries(
+      shipment,
+      shipmentStore.currentCostEntries,
+      allItems,
+    );
+    return calculateLineLandedCostBdt(item, forCosting, allItems);
+  }
+
+  const stamped = item.landed_cost_bdt;
+  if (stamped != null && Number.isFinite(Number(stamped))) {
+    return Number(stamped);
   }
 
   const forCosting = costingShipmentFromEntries(
@@ -1041,6 +1051,11 @@ const resolveLineUnitCostBdt = (
 const displayedItems = computed(() => {
   const storeItems = shipmentStore.currentShipmentItems;
   const costEntries = shipmentStore.currentCostEntries;
+  const shipment = shipmentStore.currentShipment;
+  const cargoWeightKg =
+    shipment?.total_weight_kg ?? shipment?.received_weight ?? null;
+  void costEntries;
+  void cargoWeightKg;
   if (storeItems && storeItems.length > 0) {
     const activeSection = sheets.value.find((s) => s.id === activeSheetId.value);
     const activeSectionDbId = activeSection?.dbId;
@@ -1102,6 +1117,24 @@ const allSelected = computed({
 // Inline Draft Edit Handlers
 const draftValues = reactive<Record<string, any>>({});
 const activeSaves = new Set<string>();
+
+watch(
+  () => shipmentStore.costEntriesSaving,
+  (saving, wasSaving) => {
+    if (wasSaving && !saving) {
+      for (const key of Object.keys(draftValues)) {
+        if (
+          key.endsWith('_product_weight') ||
+          key.endsWith('_package_weight') ||
+          key.endsWith('_purchase_price') ||
+          key.endsWith('_ordered_quantity')
+        ) {
+          delete draftValues[key];
+        }
+      }
+    }
+  },
+);
 
 const getDraftValue = (item: any, field: string) => {
   const key = `${item.id}_${field}`;

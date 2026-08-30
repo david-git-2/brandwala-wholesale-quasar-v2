@@ -27,7 +27,7 @@ import type {
   UpdateShipmentSectionPayload,
 } from '../types/shipmentSection';
 import { isShipmentCostsLocked } from '../utils/costEntriesCosting';
-import { invalidateSharedShipmentItemsCostingCache } from 'src/modules/global/composables/useShipmentItemsCostingCache';
+import { invalidateSharedShipmentItemsCostingCache, seedSharedShipmentItemsCostingCache } from 'src/modules/global/composables/useShipmentItemsCostingCache';
 import { applyShipmentWeightBalance } from '../utils/applyShipmentWeightBalance';
 import { applyShipmentPurchaseBalance } from '../utils/applyShipmentPurchaseBalance';
 import { syncShipmentWeightToProduct } from '../utils/syncShipmentWeightToProduct';
@@ -325,9 +325,20 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         );
         this.currentCostEntries = result.cost_entries as any;
         this.currentShipmentItems = result.items;
-        invalidateSharedShipmentItemsCostingCache(shipmentId);
+        seedSharedShipmentItemsCostingCache(shipmentId, result.items);
         if (result.shipment && this.currentShipment?.id === shipmentId) {
-          this.currentShipment = { ...this.currentShipment, ...result.shipment };
+          const total =
+            result.shipment.total_weight_kg ??
+            result.shipment.received_weight ??
+            this.currentShipment.total_weight_kg ??
+            this.currentShipment.received_weight ??
+            null;
+          this.currentShipment = {
+            ...this.currentShipment,
+            ...result.shipment,
+            total_weight_kg: total,
+            received_weight: result.shipment.received_weight ?? total,
+          };
         }
         return result;
       } catch (err: unknown) {
