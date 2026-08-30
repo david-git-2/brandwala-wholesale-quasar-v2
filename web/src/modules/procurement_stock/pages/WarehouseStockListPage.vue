@@ -132,15 +132,15 @@
       </div>
 
       <template v-else>
-        <q-markup-table flat class="shipment-items-markup-table bg-white" style="min-width: 1080px; width: 100%">
+        <q-markup-table flat class="shipment-items-markup-table bg-white" style="min-width: 980px; width: 100%">
           <thead>
             <tr>
               <th class="text-center q-pa-none" style="width: 36px; min-width: 36px">SL</th>
               <th class="text-left" style="width: 82px; min-width: 82px">Image</th>
               <th class="text-left" style="min-width: 120px; width: 120px; white-space: normal">Name</th>
               <th class="text-left" style="min-width: 105px; width: 115px">Codes</th>
-              <th class="text-left" style="min-width: 120px">Shipment</th>
-              <th class="text-left" style="min-width: 140px">Grade & Location</th>
+              <th class="text-left warehouse-col-shipment">Shipment</th>
+              <th class="text-left warehouse-col-grade">Grade & Location</th>
               <th class="text-center bw-ops-col-tint--cost" style="min-width: 72px; width: 72px">Cost</th>
               <th class="text-center bw-ops-col-tint--qty" style="min-width: 56px; width: 56px">Qty</th>
               <th v-if="!isWarehouseReadOnly" class="text-center" style="min-width: 88px; width: 88px">Actions</th>
@@ -214,23 +214,23 @@
                 </div>
               </td>
 
-              <td>
-                <div class="text-weight-medium text-grey-9 ellipsis" style="font-size: 12px">
+              <td class="warehouse-col-shipment">
+                <div class="text-weight-medium text-grey-9 ellipsis" style="font-size: 11px; max-width: 88px">
                   {{ row.shipment_name || '—' }}
                 </div>
-                <div v-if="row.shipment_status" class="text-caption text-grey-6 text-xxs">
+                <div v-if="row.shipment_status" class="text-caption text-grey-6 text-xxs ellipsis" style="max-width: 88px">
                   {{ formatGlobalShipmentStatus(row.shipment_status) }}
                 </div>
               </td>
 
-              <td>
-                <div class="column q-gutter-y-2xs">
-                  <q-chip dense square color="grey-2" text-color="grey-9" class="text-weight-medium text-xxs q-ma-none">
+              <td class="warehouse-col-grade">
+                <div class="column q-gutter-y-2xs" style="max-width: 100px">
+                  <q-chip dense square color="grey-2" text-color="grey-9" class="text-weight-medium text-xxs q-ma-none ellipsis" style="max-width: 100px">
                     {{ gradeLabel(row) }}
                   </q-chip>
                   <div class="text-caption text-grey-7 row items-center q-gutter-x-xs no-wrap text-xxs">
-                    <q-icon name="ph ph-map-pin" size="12px" color="grey-6" />
-                    <span class="ellipsis">
+                    <q-icon name="ph ph-map-pin" size="12px" color="grey-6" class="shrink-0" />
+                    <span class="ellipsis" style="max-width: 84px">
                       {{ formatStockAvailability(row.availability) }}
                       ·
                       {{ row.location_name || (row.location_id ? `#${row.location_id}` : '—') }}
@@ -775,5 +775,17 @@ onMounted(async () => {
   background-color: #f8fafc !important;
   border-top: 1px solid #e2e8f0;
   font-weight: 600;
+}
+
+.warehouse-col-shipment {
+  width: 88px;
+  min-width: 88px;
+  max-width: 88px;
+}
+
+.warehouse-col-grade {
+  width: 100px;
+  min-width: 100px;
+  max-width: 100px;
 }
 </style>

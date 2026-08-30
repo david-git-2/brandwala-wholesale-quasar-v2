@@ -22972,29 +22972,33 @@ BEGIN
 
     v_counts := public.preview_tenant_data_purge(p_parent_tenant_id, p_scope, p_target_child_id);
 
+    -- PBC master data must never be purged:
+    -- product_based_costing_files, product_based_costing_items, product_based_costing_backlog_items
+
     IF p_scope = 'all_hierarchy' THEN
-        DELETE FROM public.global_return_items WHERE parent_tenant_id = p_parent_tenant_id;
-        DELETE FROM public.global_returns WHERE parent_tenant_id = p_parent_tenant_id;
-        DELETE FROM public.global_invoice_items WHERE parent_tenant_id = p_parent_tenant_id;
-        DELETE FROM public.global_invoices WHERE parent_tenant_id = p_parent_tenant_id;
+        DELETE FROM public.sales_return_items WHERE parent_tenant_id = p_parent_tenant_id;
+        DELETE FROM public.sales_invoice_items WHERE parent_tenant_id = p_parent_tenant_id;
+        DELETE FROM public.sales_invoices WHERE parent_tenant_id = p_parent_tenant_id;
     ELSE
-        DELETE FROM public.global_return_items WHERE return_id IN (
-            SELECT id FROM public.global_returns WHERE parent_tenant_id = p_parent_tenant_id
+        DELETE FROM public.sales_return_items
+        WHERE invoice_id IN (
+            SELECT id FROM public.sales_invoices
+            WHERE parent_tenant_id = p_parent_tenant_id
+              AND issued_by_tenant_id = p_target_child_id
         );
-        DELETE FROM public.global_invoice_items WHERE invoice_id IN (
-            SELECT id FROM public.global_invoices WHERE issued_by_tenant_id = p_target_child_id
+        DELETE FROM public.sales_invoice_items
+        WHERE invoice_id IN (
+            SELECT id FROM public.sales_invoices
+            WHERE parent_tenant_id = p_parent_tenant_id
+              AND issued_by_tenant_id = p_target_child_id
         );
-        DELETE FROM public.global_invoices WHERE issued_by_tenant_id = p_target_child_id;
+        DELETE FROM public.sales_invoices
+        WHERE parent_tenant_id = p_parent_tenant_id
+          AND issued_by_tenant_id = p_target_child_id;
     END IF;
 
-    DELETE FROM public.sales_invoice_items WHERE tenant_id = ANY(v_target_tenant_ids);
-    DELETE FROM public.sales_invoices WHERE tenant_id = ANY(v_target_tenant_ids);
-
     DELETE FROM public.dropship_order_settlements WHERE tenant_id = ANY(v_target_tenant_ids);
-    DELETE FROM public.shop_order_items WHERE tenant_id = ANY(v_target_tenant_ids);
-    DELETE FROM public.shop_order_status_history WHERE tenant_id = ANY(v_target_tenant_ids);
     DELETE FROM public.shop_orders WHERE tenant_id = ANY(v_target_tenant_ids);
-    DELETE FROM public.shop_cart_items WHERE tenant_id = ANY(v_target_tenant_ids);
     DELETE FROM public.shop_carts WHERE tenant_id = ANY(v_target_tenant_ids);
     DELETE FROM public.customer_demand_bucket_items WHERE tenant_id = ANY(v_target_tenant_ids);
 
@@ -23018,27 +23022,13 @@ BEGIN
 
     IF p_scope = 'all_hierarchy' THEN
         DELETE FROM public.stock_movements WHERE tenant_id = ANY(v_target_tenant_ids);
-        DELETE FROM public.global_stock_items WHERE parent_tenant_id = p_parent_tenant_id;
-        DELETE FROM public.global_stock_boxes WHERE parent_tenant_id = p_parent_tenant_id;
         DELETE FROM public.global_stocks WHERE parent_tenant_id = p_parent_tenant_id;
-
-        DELETE FROM public.global_shipment_cost_entries WHERE parent_tenant_id = p_parent_tenant_id;
-        DELETE FROM public.global_shipment_items WHERE parent_tenant_id = p_parent_tenant_id;
-        DELETE FROM public.global_shipment_boxes WHERE parent_tenant_id = p_parent_tenant_id;
-        DELETE FROM public.global_shipment_sections WHERE parent_tenant_id = p_parent_tenant_id;
         DELETE FROM public.global_shipments WHERE parent_tenant_id = p_parent_tenant_id;
-
-        DELETE FROM public.costing_files WHERE tenant_id = ANY(v_target_tenant_ids);
-        DELETE FROM public.product_based_costing_backlog_items WHERE tenant_id = ANY(v_target_tenant_ids);
-        DELETE FROM public.product_based_costing_items WHERE product_based_costing_file_id IN (
-            SELECT id FROM public.product_based_costing_files WHERE tenant_id = ANY(v_target_tenant_ids)
-        );
-        DELETE FROM public.product_based_costing_files WHERE tenant_id = ANY(v_target_tenant_ids);
-        DELETE FROM public.shipment_investments WHERE tenant_id = p_parent_tenant_id;
     END IF;
 
-    DELETE FROM public.trash_entries WHERE tenant_id = ANY(v_target_tenant_ids);
-    UPDATE public.sales_invoice_counters SET current_number = 0 WHERE tenant_id = ANY(v_target_tenant_ids);
+    UPDATE public.sales_invoice_counters
+    SET last_value = 0
+    WHERE tenant_id = ANY(v_target_tenant_ids);
 
     INSERT INTO public.tenant_data_purge_logs (
         parent_tenant_id,

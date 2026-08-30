@@ -91,15 +91,6 @@ const hubCards = computed<HubCard[]>(() => [
     icon: 'ph ph-users-three',
     badgeClass: 'bg-green-1 text-positive',
   },
-  {
-    key: 'pricing',
-    moduleKey: 'shop_pricing',
-    routeName: 'app-shop-pricing-list-page',
-    title: t('navigation.shop_pricing'),
-    caption: t('navigation.shop_pricing_caption'),
-    icon: 'ph ph-tag',
-    badgeClass: 'bg-purple-1 text-purple-9',
-  },
 ]);
 
 const visibleCards = computed(() => {

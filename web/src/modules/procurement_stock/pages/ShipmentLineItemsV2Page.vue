@@ -599,7 +599,7 @@
         <q-separator />
 
         <q-card-actions align="right" class="q-pa-md bg-grey-1">
-          <q-btn v-close-popup flat label="Cancel" color="grey-7" no-caps />
+          <q-btn v-close-popup flat label="Cancel" color="grey-7" no-caps :disable="bulkPasteSaving" />
           <q-btn
             unelevated
             color="primary"
@@ -607,6 +607,8 @@
             label="Apply Paste"
             no-caps
             class="rounded-borders q-px-md text-weight-bold"
+            :loading="bulkPasteSaving"
+            :disable="bulkPasteSaving"
             @click="applyBulkPaste"
           />
         </q-card-actions>
@@ -697,6 +699,7 @@ const showBulkPasteDialog = ref(false);
 const bulkPasteField = ref<'purchase_price' | 'ordered_quantity' | 'product_weight' | 'package_weight'>('purchase_price');
 const bulkPasteStartItem = ref<any>(null);
 const bulkPasteText = ref('');
+const bulkPasteSaving = ref(false);
 
 const bulkPasteFieldLabel = computed(() => {
   switch (bulkPasteField.value) {
@@ -720,6 +723,7 @@ const openBulkPasteDialog = (
   bulkPasteField.value = field;
   bulkPasteStartItem.value = startItem || null;
   bulkPasteText.value = '';
+  bulkPasteSaving.value = false;
   showBulkPasteDialog.value = true;
 };
 
@@ -788,6 +792,7 @@ const applyBulkPaste = async () => {
   }
 
   if (updates.length > 0 && shipmentId && !isNaN(shipmentId)) {
+    bulkPasteSaving.value = true;
     try {
       await shipmentStore.updateShipmentItemsBulk(shipmentId, updates);
       $q.notify({
@@ -803,6 +808,8 @@ const applyBulkPaste = async () => {
         icon: 'ph ph-warning-circle',
         timeout: 2000,
       });
+    } finally {
+      bulkPasteSaving.value = false;
     }
   } else {
     $q.notify({
@@ -1203,12 +1210,17 @@ const bulkDeleteSelectedItems = () => {
 
 // Excel Sheets Management
 const tableScrollContainerRef = ref<HTMLElement | null>(null);
+const hasUserSelectedSheet = ref(false);
 const activeSheetId = ref('sheet_all');
 const sheets = ref<SheetTabItem[]>([
   { id: 'sheet_all', name: 'All Items' },
 ]);
 
+const firstSectionSheetId = (sections: typeof shipmentStore.currentShipmentSections) =>
+  sections?.length ? `section_${sections[0].id}` : null;
+
 const onSheetTabChange = async (id: string) => {
+  hasUserSelectedSheet.value = true;
   activeSheetId.value = id;
   selectedItemIds.value = [];
   if (shipmentId && !isNaN(shipmentId)) {
@@ -1236,8 +1248,13 @@ watch(
         })),
       ];
       sheets.value = generated;
-      if (!generated.some((s) => s.id === activeSheetId.value)) {
-        activeSheetId.value = 'sheet_all';
+      const defaultSectionId = firstSectionSheetId(sections);
+      const activeStillValid = generated.some((s) => s.id === activeSheetId.value);
+
+      if (!activeStillValid) {
+        activeSheetId.value = defaultSectionId ?? 'sheet_all';
+      } else if (!hasUserSelectedSheet.value && activeSheetId.value === 'sheet_all' && defaultSectionId) {
+        activeSheetId.value = defaultSectionId;
       }
     }
   },
@@ -1421,6 +1438,7 @@ const onSaveSectionSheet = async (data: SectionFormData) => {
     }
 
     if (createdDbId) {
+      hasUserSelectedSheet.value = true;
       activeSheetId.value = `section_${createdDbId}`;
     }
     setTimeout(() => excelBottomBarRef.value?.scrollToTab('end'), 50);
@@ -1439,9 +1457,6 @@ const removeSheet = async (id: string) => {
         type: 'positive',
         message: 'Section deleted successfully',
       });
-      if (activeSheetId.value === id) {
-        activeSheetId.value = 'sheet_all';
-      }
     } catch (err: unknown) {
       console.error('Failed to delete section in DB', err);
       $q.notify({
