@@ -407,7 +407,7 @@ import type { Tag } from 'src/modules/tag/types';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import StockMoveGradeDialog from '../components/StockMoveGradeDialog.vue';
 import StockMoveLocationDialog from '../components/StockMoveLocationDialog.vue';
-import { createShipmentItemsCostingCache } from 'src/modules/global/composables/useShipmentItemsCostingCache';
+import { getSharedShipmentItemsCostingCache } from 'src/modules/global/composables/useShipmentItemsCostingCache';
 import {
   isGlobalStockCostingInput,
   resolveGlobalStockUnitCostSync,
@@ -420,7 +420,7 @@ const router = useRouter();
 const $q = useQuasar();
 const stockStore = useGlobalStockStore();
 const stockLocationStore = useStockLocationStore();
-const costingCache = createShipmentItemsCostingCache();
+const costingCache = getSharedShipmentItemsCostingCache();
 
 const isWarehouseReadOnly = computed(() => authStore.selectedTenant?.parent_id != null);
 const warehouseTenantId = computed(

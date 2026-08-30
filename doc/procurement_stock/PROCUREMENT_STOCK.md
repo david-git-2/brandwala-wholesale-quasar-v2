@@ -31,7 +31,7 @@ flowchart TD
 
 | Entity | Table | Responsibility |
 | :--- | :--- | :--- |
-| **Global Shipment** | `global_shipments` | Inbound customs batch, vendor/cargo link, FX rates, status lifecycle, archiving flag (`is_archived`, `archived_at`). |
+| **Global Shipment** | `global_shipments` | Inbound customs batch, vendor/cargo link, FX rates, status lifecycle, books lock (`costs_locked`, `costs_locked_at`, `costs_locked_by`), archiving flag (`is_archived`, `archived_at`). |
 | **Shipment Item** | `global_shipment_items` | Catalog/manual products in batch with stamped `landed_cost_bdt`. |
 | **Cost Entries** | `global_shipment_cost_entries` | Itemized charges (goods cost, freight, customs, local delivery). |
 | **Global Stock** | `global_stocks` | Physical inventory row (`quantity`, `available_atp`, `availability`, `location_id`). |
@@ -51,12 +51,15 @@ flowchart LR
     A["Cost Entries (Goods, Freight, Customs)"] --> B["Compute Effective FX & Weight Surcharges"]
     B --> C["Apportion Freight by Product/Package Weight"]
     C --> D["Calculate Landed Unit Cost (BDT)"]
-    D --> E["Stamp landed_cost_bdt on Shipment Items @ Finalize"]
+    D --> E["Stamp landed_cost_bdt on Shipment Items"]
 ```
 
 * **Formula**:
   $$\text{Landed Cost (BDT)} = (\text{Purchase Price} \times \text{FX Rate}) + \text{Apportioned Cargo Charge} + \text{Customs Surcharge}$$
-* **Dual-Phase Design**: Pure in-memory calculation for live preview in UI; authoritative stamp written to `global_shipment_items.landed_cost_bdt` upon shipment finalization.
+* **Three-Phase Design**:
+  1. **Preview** (`draft` / `in_transit`): Pure in-memory calculation for live UI preview; `landed_cost_bdt` may be null.
+  2. **Posted stock, open books** (`received`, `stock_ready`, `costs_locked = false`): Authoritative stamp on `global_shipment_items.landed_cost_bdt`; re-stamped on every cost-entry, cargo-weight, or line weight/price save via `stamp_global_shipment_landed_costs`.
+  3. **Locked books** (`costs_locked = true`): Stamp frozen; all cost/weight/rate edits rejected.
 
 ### 2.2 Warehouse Location Hierarchy & Leaf Validation
 Locations follow a strict 4-tier nesting structure: `warehouse` $\rightarrow$ `room` $\rightarrow$ `shelf` $\rightarrow$ `bin`.
@@ -127,12 +130,27 @@ Shipments use exactly **four** lifecycle statuses enforced by `global_shipments_
 | :--- | :--- | :--- |
 | `draft` | Shipment created; line items and costs editable | Dispatch → **In transit** via workflow bar |
 | `in_transit` | Goods en route; line edits still allowed until receive | **Received** opens receive page (never a dropdown flip) |
-| `received` | Finalized; stock posted to warehouse | **Organize Stock** → `WarehouseStockListPage?shipment_id=` |
+| `received` | Stock posted to warehouse; costs still editable until lock | **Organize Stock** → `WarehouseStockListPage?shipment_id=`; optional **Lock shipment costs** |
 | `cancelled` | Abandoned; no stock post | Archive when done |
 
 **Progress tags are not status.** Mid-journey detail (`progress_tag_id`, progress flow) lives on the tag module and is edited via [`ShipmentStatusWorkflowBar.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/components/ShipmentStatusWorkflowBar.vue) on the detail page and optionally duplicated on the Settings drawer **Progress** tab. Lifecycle status changes stay on the main-page workflow bar only.
 
 **Receive is mandatory:** Setting `received` always routes to [`ReceiveShipmentPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/procurement_stock/pages/ReceiveShipmentPage.vue), which calls `RPC: finalize_global_shipment` to stamp landed costs and create `global_stocks` rows.
+
+### Logistics vs costs lock
+
+Logistics status and books lock are **independent axes** (like `is_archived`):
+
+| Signal | Meaning |
+| :--- | :--- |
+| `status = received` + `stock_ready` | Stock is in the warehouse pool |
+| `costs_locked = true` | Books frozen; no further cost/weight/rate edits |
+
+`received` does **not** lock costs. The user explicitly locks books via `RPC: lock_global_shipment_costs` when freight invoices, vendor settlements, and landed costs are final.
+
+After receive (until lock), edits to cost entries, cargo weight, and line weights/prices re-stamp `landed_cost_bdt`. Sales invoices already issued keep their `unit_cost_price` snapshot; shipment P&L uses live landed cost.
+
+**Out of scope v1:** unlock costs, qty changes after receive (needs stock adjustment RPC), reversing wallet settlements, add/delete line items after stock post.
 
 ```mermaid
 flowchart LR
@@ -140,6 +158,7 @@ flowchart LR
   draft --> cancelled
   in_transit --> cancelled
   received --> organizeStock["Organize Stock on Warehouse page"]
+  received -->|"Lock shipment costs"| costsLocked["costs_locked true"]
 ```
 
 ---
@@ -174,6 +193,7 @@ flowchart LR
 | **`ShipmentLineItemsV2Page`** | Change lifecycle status | `useInboundShipmentActions` $\rightarrow$ `updateShipment` or route to receive page | Client validates 4-status model before write |
 | **`ShipmentLineItemsV2Page`** | Settle Vendor / Cargo Payee | `useMutation` $\rightarrow$ `RPC: settle_shipment_payee` | Invalidates shipment & wallet ledger caches |
 | **`ReceiveShipmentPage`** | Finalize Inbound Batch | `useMutation` $\rightarrow$ `RPC: finalize_global_shipment` | Stamps `landed_cost_bdt`, populates `global_stocks` |
+| **`ShipmentLineItemsV2Page`** | Lock shipment costs | `useMutation` $\rightarrow$ `RPC: lock_global_shipment_costs` | Sets `costs_locked`; invalidates shipment overview |
 | **`WarehouseStockListPage`** | Mount / Filter Change | `useQuery` $\rightarrow$ `Table: global_stocks` | `staleTime: 30s`, Key: `['procurementStock', 'allocatableStockList', params]` |
 | **`StockMoveLocationDialog`** | Transfer Bin Location | `useMutation` $\rightarrow$ `RPC: create_and_post_stock_movement` | Invalidates stock list & movements |
 | **`StockMoveGradeDialog`** | Change Condition Grade | `useMutation` $\rightarrow$ `RPC: create_and_post_stock_movement` | Invalidates stock list & movements |

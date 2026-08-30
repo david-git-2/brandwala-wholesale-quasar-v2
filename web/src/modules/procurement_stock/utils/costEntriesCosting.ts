@@ -1,6 +1,6 @@
 /**
  * @deprecated Prefer `src/shared/shipment-engine` for pure cost compute.
- * Thin adapter: re-exports entry helpers + shipment finalize domain flag.
+ * Thin adapter: re-exports entry helpers + shipment domain flags.
  */
 export {
   effectiveRateForType,
@@ -10,9 +10,23 @@ export {
   productCostEntries,
 } from 'src/shared/shipment-engine';
 
-/** Domain flag — not part of pure cost math. */
-export function isShipmentCostFinalized(shipment: {
+type ShipmentCostFlags = {
   stock_ready?: boolean | null;
-}): boolean {
-  return shipment.stock_ready === true;
+  status?: string | null;
+  costs_locked?: boolean | null;
+};
+
+/** Stock posted to warehouse (receive complete). */
+export function isShipmentStockPosted(shipment: ShipmentCostFlags): boolean {
+  return shipment.stock_ready === true || shipment.status === 'received';
+}
+
+/** Books frozen — no further cost/weight/rate edits. */
+export function isShipmentCostsLocked(shipment: ShipmentCostFlags): boolean {
+  return shipment.costs_locked === true;
+}
+
+/** @deprecated Use isShipmentStockPosted */
+export function isShipmentCostFinalized(shipment: ShipmentCostFlags): boolean {
+  return isShipmentStockPosted(shipment);
 }

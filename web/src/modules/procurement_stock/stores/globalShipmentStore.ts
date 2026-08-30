@@ -18,20 +18,69 @@ import { shipmentSectionRepository } from '../repositories/shipmentSectionReposi
 import type {
   CostEntryDraft,
   GlobalShipmentCostEntry,
-  ReviseShipmentCostEntryInput,
+  UpsertShipmentCostEntryPayload,
 } from '../types/shipmentCostEntry';
+import type { SaveShipmentCostEntriesOptions } from '../repositories/globalShipmentCostEntryRepository';
 import type {
   CreateShipmentSectionPayload,
   ShipmentSection,
   UpdateShipmentSectionPayload,
 } from '../types/shipmentSection';
-import { isShipmentCostFinalized } from '../utils/costEntriesCosting';
+import { isShipmentCostsLocked } from '../utils/costEntriesCosting';
+import { invalidateSharedShipmentItemsCostingCache } from 'src/modules/global/composables/useShipmentItemsCostingCache';
 import { applyShipmentWeightBalance } from '../utils/applyShipmentWeightBalance';
 import { applyShipmentPurchaseBalance } from '../utils/applyShipmentPurchaseBalance';
 import { syncShipmentWeightToProduct } from '../utils/syncShipmentWeightToProduct';
 import { supabase } from 'src/boot/supabase';
 import { useStockLocationStore } from './stockLocationStore';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+
+const COST_AFFECTING_ITEM_FIELDS = new Set([
+  'product_weight',
+  'package_weight',
+  'purchase_price',
+  'ordered_quantity',
+]);
+
+const COST_AFFECTING_SHIPMENT_FIELDS = new Set(['received_weight', 'total_weight_kg']);
+
+const reloadShipmentLineCosts = async (shipmentId: number): Promise<GlobalShipmentItem[]> => {
+  invalidateSharedShipmentItemsCostingCache(shipmentId);
+  return globalShipmentRepository.listShipmentItems(shipmentId);
+};
+
+const draftToUpsertPayload = (
+  shipmentId: number,
+  d: CostEntryDraft,
+  defaultCurrencyId: number | null | undefined,
+): UpsertShipmentCostEntryPayload => {
+  const meta: Record<string, unknown> = {};
+  if (d.cost_type === 'cargo' && d.per_kg_rate != null) {
+    meta.per_kg_rate = d.per_kg_rate;
+  }
+  if (d.note != null && d.note.trim() !== '') {
+    meta.note = d.note.trim();
+  }
+
+  return {
+    shipment_id: shipmentId,
+    id: d.id,
+    cost_type: d.cost_type,
+    amount: Number(d.amount) || 0,
+    exchange_rate: Number(d.exchange_rate) || 1,
+    currency_id: defaultCurrencyId ?? null,
+    payment_source: d.payment_source,
+    entity_type: d.entity_type,
+    entity_id: d.entity_type ? d.entity_id : null,
+    section_id: d.section_id ?? null,
+    metadata: meta as UpsertShipmentCostEntryPayload['metadata'],
+  };
+};
+
+const payloadTouchesCostFields = (
+  payload: Record<string, unknown>,
+  fields: Set<string>,
+): boolean => Object.keys(payload).some((key) => fields.has(key));
 
 export const useGlobalShipmentStore = defineStore('global_shipment', {
   state: () => ({
@@ -218,89 +267,91 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
     },
 
     /**
-     * Pre-finalize: upsert/delete via cost-entry RPCs.
-     * Post-finalize (stock_ready / Ready Stock): revise_global_shipment_costs only.
+     * Upsert/delete cost entries in one RPC. Server re-stamps landed_cost_bdt once.
      */
-    async saveCostEntries(shipmentId: number, drafts: CostEntryDraft[]) {
+    async saveCostEntries(
+      shipmentId: number,
+      drafts: CostEntryDraft[],
+      options?: Pick<SaveShipmentCostEntriesOptions, 'receivedWeight' | 'totalWeightKg'>,
+    ) {
       const shipment = this.currentShipment;
       if (!shipment || shipment.id !== shipmentId) {
         throw new Error('Shipment not loaded');
       }
 
+      if (isShipmentCostsLocked(shipment)) {
+        throw new Error('Shipment costs are locked');
+      }
+
+      const existingIds = new Set(this.currentCostEntries.map((e: any) => e.id));
+      const keptIds = new Set(
+        drafts.map((d) => d.id).filter((id): id is number => typeof id === 'number'),
+      );
+      const deleteIds = [...existingIds].filter(
+        (id): id is number => typeof id === 'number' && !keptIds.has(id),
+      );
+      const entries = drafts.map((d) =>
+        draftToUpsertPayload(shipmentId, d, shipment.shipment_purchase_currency_id),
+      );
+
+      return this.saveCostEntriesBatch(shipmentId, entries, {
+        deleteIds,
+        receivedWeight: options?.receivedWeight,
+        totalWeightKg: options?.totalWeightKg,
+      });
+    },
+
+    async saveCostEntriesBatch(
+      shipmentId: number,
+      entries: UpsertShipmentCostEntryPayload[],
+      options: SaveShipmentCostEntriesOptions = {},
+    ) {
+      const shipment = this.currentShipment;
+      if (!shipment || shipment.id !== shipmentId) {
+        throw new Error('Shipment not loaded');
+      }
+
+      if (isShipmentCostsLocked(shipment)) {
+        throw new Error('Shipment costs are locked');
+      }
+
       this.costEntriesSaving = true;
       this.error = null;
       try {
-        const finalized = isShipmentCostFinalized(shipment);
-
-        if (finalized) {
-          const payload: ReviseShipmentCostEntryInput[] = drafts.map((d) => {
-            const meta: Record<string, unknown> = {};
-            if (d.cost_type === 'cargo' && d.per_kg_rate != null) {
-              meta.per_kg_rate = d.per_kg_rate;
-            }
-            if (d.note != null && d.note.trim() !== '') {
-              meta.note = d.note.trim();
-            }
-            return {
-              cost_type: d.cost_type,
-              amount: Number(d.amount) || 0,
-              exchange_rate: Number(d.exchange_rate) || 1,
-              payment_source: d.payment_source,
-              entity_type: d.entity_type,
-              entity_id: d.entity_type ? d.entity_id : null,
-              section_id: d.section_id ?? null,
-              metadata: meta as any,
-            };
-          });
-          await globalShipmentCostEntryRepository.revise(shipmentId, payload);
-        } else {
-          const existingIds = new Set(this.currentCostEntries.map((e: any) => e.id));
-          const keptIds = new Set(
-            drafts.map((d) => d.id).filter((id): id is number => typeof id === 'number'),
-          );
-
-          for (const id of existingIds) {
-            if (typeof id === 'number' && !keptIds.has(id)) {
-              await globalShipmentCostEntryRepository.remove(id);
-            }
-          }
-
-          for (const d of drafts) {
-            const meta: Record<string, unknown> = {};
-            if (d.cost_type === 'cargo' && d.per_kg_rate != null) {
-              meta.per_kg_rate = d.per_kg_rate;
-            }
-            if (d.note != null && d.note.trim() !== '') {
-              meta.note = d.note.trim();
-            }
-
-            await globalShipmentCostEntryRepository.upsert({
-              shipment_id: shipmentId,
-              id: d.id,
-              cost_type: d.cost_type,
-              amount: Number(d.amount) || 0,
-              exchange_rate: Number(d.exchange_rate) || 1,
-              payment_source: d.payment_source,
-              entity_type: d.entity_type,
-              entity_id: d.entity_type ? d.entity_id : null,
-              section_id: d.section_id ?? null,
-              metadata: meta as any,
-            });
-          }
+        const result = await globalShipmentCostEntryRepository.saveBatch(
+          shipmentId,
+          entries,
+          options,
+        );
+        this.currentCostEntries = result.cost_entries as any;
+        this.currentShipmentItems = result.items;
+        invalidateSharedShipmentItemsCostingCache(shipmentId);
+        if (result.shipment && this.currentShipment?.id === shipmentId) {
+          this.currentShipment = { ...this.currentShipment, ...result.shipment };
         }
-
-        this.currentCostEntries =
-          (await globalShipmentCostEntryRepository.listByShipmentId(shipmentId)) as any;
-
-        if (finalized) {
-          this.currentShipmentItems =
-            await globalShipmentRepository.listShipmentItems(shipmentId);
-        }
+        return result;
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to save cost entries';
         throw err;
       } finally {
         this.costEntriesSaving = false;
+      }
+    },
+
+    async lockShipmentCosts(shipmentId: number) {
+      this.saving = true;
+      this.error = null;
+      try {
+        const updated = await globalShipmentRepository.lockShipmentCosts(shipmentId);
+        if (this.currentShipment?.id === shipmentId) {
+          this.currentShipment = { ...this.currentShipment, ...updated };
+        }
+        return updated;
+      } catch (err: unknown) {
+        this.error = (err as Error).message || 'Failed to lock shipment costs';
+        throw err;
+      } finally {
+        this.saving = false;
       }
     },
 
@@ -456,6 +507,9 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         const updated = await globalShipmentRepository.updateShipment(id, payload);
         if (this.currentShipment?.id === id) {
           this.currentShipment = updated;
+          if (payloadTouchesCostFields(payload as Record<string, unknown>, COST_AFFECTING_SHIPMENT_FIELDS)) {
+            this.currentShipmentItems = await reloadShipmentLineCosts(id);
+          }
         }
         const index = this.rows.findIndex((r) => r.id === id);
         if (index !== -1) {
@@ -669,11 +723,18 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
 
       try {
         const updated = await globalShipmentRepository.updateShipmentItem(id, payload);
-        const syncItems = [...this.currentShipmentItems];
-        const syncIndex = syncItems.findIndex((item) => item.id === id);
-        if (syncIndex !== -1) {
-          syncItems[syncIndex] = { ...syncItems[syncIndex], ...updated };
-          this.currentShipmentItems = syncItems;
+        if (
+          this.currentShipment?.id === updated.shipment_id &&
+          payloadTouchesCostFields(payload as Record<string, unknown>, COST_AFFECTING_ITEM_FIELDS)
+        ) {
+          this.currentShipmentItems = await reloadShipmentLineCosts(updated.shipment_id);
+        } else {
+          const syncItems = [...this.currentShipmentItems];
+          const syncIndex = syncItems.findIndex((item) => item.id === id);
+          if (syncIndex !== -1) {
+            syncItems[syncIndex] = { ...syncItems[syncIndex], ...updated };
+            this.currentShipmentItems = syncItems;
+          }
         }
         return updated;
       } catch (err: unknown) {
@@ -714,9 +775,9 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
           for (const updated of updatedItems) {
             itemMap.set(updated.id, updated);
           }
-          this.currentShipmentItems = Array.from(itemMap.values()).sort(
-            (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
-          );
+          this.currentShipmentItems = await reloadShipmentLineCosts(shipmentId);
+        } else {
+          invalidateSharedShipmentItemsCostingCache(shipmentId);
         }
 
         // Sync modified weight fields to the products catalog in background
@@ -1375,6 +1436,9 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         } else {
           this.currentCostEntries.push(created as any);
         }
+        if (this.currentShipment?.id === shipmentId) {
+          this.currentShipmentItems = await reloadShipmentLineCosts(shipmentId);
+        }
         return created;
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to create cost entry';
@@ -1407,6 +1471,9 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         if (existingIdx >= 0) {
           this.currentCostEntries[existingIdx] = updated as any;
         }
+        if (this.currentShipment?.id === shipmentId) {
+          this.currentShipmentItems = await reloadShipmentLineCosts(shipmentId);
+        }
         return updated;
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to update cost entry';
@@ -1422,6 +1489,10 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
       try {
         await globalShipmentCostEntryRepository.remove(id);
         this.currentCostEntries = this.currentCostEntries.filter((e: any) => e.id !== id);
+        const shipmentId = this.currentShipment?.id;
+        if (shipmentId) {
+          this.currentShipmentItems = await reloadShipmentLineCosts(shipmentId);
+        }
       } catch (err: unknown) {
         this.error = (err as Error).message || 'Failed to delete cost entry';
         throw err;

@@ -7,11 +7,12 @@
           Enter product and cargo rates. Cargo weight is set on Match invoices.
         </div>
       </div>
-      <q-badge v-if="isFinalized" color="orange" outline label="Revision mode" />
+      <q-badge v-if="isCostsLocked" color="grey-4" outline label="Costs locked" />
+      <q-badge v-else-if="isStockPosted" color="orange" outline label="Open books" />
     </div>
 
-    <q-banner v-if="isFinalized && canEdit" dense rounded class="bg-orange-1 text-orange-10 q-mb-md">
-      Stock is already in. Saving updates item costs only — it does not pay anyone.
+    <q-banner v-if="isStockPosted && canEdit && !isCostsLocked" dense rounded class="bg-orange-1 text-orange-10 q-mb-md">
+      Stock is in. Saving updates landed costs. Invoices already issued keep their cost snapshot.
     </q-banner>
 
     <div v-if="loading" class="q-pa-md flex flex-center">
@@ -609,6 +610,8 @@ const props = defineProps<{
   saving?: boolean;
   canEdit: boolean;
   isFinalized: boolean;
+  isStockPosted?: boolean;
+  isCostsLocked?: boolean;
   isLocalShipment: boolean;
   /** Initial cargo invoice weight from shipment header */
   cargoKg: number;
@@ -624,6 +627,9 @@ const emit = defineEmits<{
 }>();
 
 const shipmentStore = useGlobalShipmentStore();
+
+const isStockPosted = computed(() => props.isStockPosted ?? props.isFinalized);
+const isCostsLocked = computed(() => props.isCostsLocked ?? false);
 
 const drafts = ref<CostEntryDraft[]>([]);
 const localWeightKg = ref<number>(

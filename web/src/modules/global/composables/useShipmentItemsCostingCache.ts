@@ -104,13 +104,33 @@ export function createShipmentItemsCostingCache() {
     inflight.clear();
   };
 
+  const invalidateShipment = (shipmentId: number) => {
+    if (!shipmentId) return;
+    cache.delete(shipmentId);
+    inflight.delete(shipmentId);
+  };
+
   return {
     ensureShipmentItems,
     getSync,
     getStampSync,
     prefetchShipmentItems,
+    invalidateShipment,
     clear,
   };
+}
+
+let sharedShipmentItemsCostingCache: ReturnType<typeof createShipmentItemsCostingCache> | null = null;
+
+export function getSharedShipmentItemsCostingCache() {
+  if (!sharedShipmentItemsCostingCache) {
+    sharedShipmentItemsCostingCache = createShipmentItemsCostingCache();
+  }
+  return sharedShipmentItemsCostingCache;
+}
+
+export function invalidateSharedShipmentItemsCostingCache(shipmentId: number) {
+  getSharedShipmentItemsCostingCache().invalidateShipment(shipmentId);
 }
 
 export type ShipmentItemsCostingCache = ReturnType<typeof createShipmentItemsCostingCache>;

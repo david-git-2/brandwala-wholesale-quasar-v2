@@ -11,7 +11,12 @@ The **Reports & Treasury** domain provides parent-level financial visibility, tr
 ## 1. Domain Architecture & Financial Model
 
 ### Read-Side Margin Derivation (No Shadow Ledger)
-Profit and margins are derived dynamically from live operational tables without maintaining a separate duplicate accounting ledger:
+Profit and margins are derived dynamically from live operational tables without maintaining a separate duplicate accounting ledger.
+
+| Report | Cost source | Notes |
+| :--- | :--- | :--- |
+| Invoice margin (`list_invoice_margin_report`) | `sales_invoice_items.unit_cost_price` | Snapshot at invoice issue; unchanged by later shipment cost revisions |
+| Shipment batch P&L (`get_shipment_pnl`) | Live `landed_cost_bdt` / `calculate_landed_unit_cost` | Reflects current stamped cost until `costs_locked` |
 
 ```mermaid
 flowchart TD

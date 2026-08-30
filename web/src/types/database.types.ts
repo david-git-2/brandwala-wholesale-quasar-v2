@@ -1716,6 +1716,9 @@ export type Database = {
           assigned_child_tenant_id: number | null
           cargo_company_id: number | null
           cargo_invoice_total: number | null
+          costs_locked: boolean
+          costs_locked_at: string | null
+          costs_locked_by: string | null
           created_at: string
           id: number
           inventory_added: boolean
@@ -1743,6 +1746,9 @@ export type Database = {
           assigned_child_tenant_id?: number | null
           cargo_company_id?: number | null
           cargo_invoice_total?: number | null
+          costs_locked?: boolean
+          costs_locked_at?: string | null
+          costs_locked_by?: string | null
           created_at?: string
           id?: number
           inventory_added?: boolean
@@ -1770,6 +1776,9 @@ export type Database = {
           assigned_child_tenant_id?: number | null
           cargo_company_id?: number | null
           cargo_invoice_total?: number | null
+          costs_locked?: boolean
+          costs_locked_at?: string | null
+          costs_locked_by?: string | null
           created_at?: string
           id?: number
           inventory_added?: boolean
@@ -9253,6 +9262,9 @@ export type Database = {
           assigned_child_tenant_id: number | null
           cargo_company_id: number | null
           cargo_invoice_total: number | null
+          costs_locked: boolean
+          costs_locked_at: string | null
+          costs_locked_by: string | null
           created_at: string
           id: number
           inventory_added: boolean
@@ -10358,6 +10370,9 @@ export type Database = {
           assigned_child_tenant_id: number | null
           cargo_company_id: number | null
           cargo_invoice_total: number | null
+          costs_locked: boolean
+          costs_locked_at: string | null
+          costs_locked_by: string | null
           created_at: string
           id: number
           inventory_added: boolean
@@ -11322,6 +11337,18 @@ export type Database = {
           type: string
           updated_at: string
         }[]
+      }
+      global_shipment_costs_are_locked: {
+        Args: {
+          p_ship: Database["public"]["Tables"]["global_shipments"]["Row"]
+        }
+        Returns: boolean
+      }
+      global_shipment_stock_is_posted: {
+        Args: {
+          p_ship: Database["public"]["Tables"]["global_shipments"]["Row"]
+        }
+        Returns: boolean
       }
       global_stock_atp_qty: {
         Args: { p_global_stock_id: number }
@@ -12734,6 +12761,45 @@ export type Database = {
           type: string
         }[]
       }
+      lock_global_shipment_costs: {
+        Args: { p_shipment_id: number }
+        Returns: {
+          archived_at: string | null
+          assigned_child_tenant_id: number | null
+          cargo_company_id: number | null
+          cargo_invoice_total: number | null
+          costs_locked: boolean
+          costs_locked_at: string | null
+          costs_locked_by: string | null
+          created_at: string
+          id: number
+          inventory_added: boolean
+          is_archived: boolean
+          name: string
+          parent_tenant_id: number
+          progress_flow_id: number | null
+          progress_tag_id: number | null
+          public_tracking_token: string | null
+          purchase_invoice_total: number | null
+          received_date: string | null
+          received_weight: number | null
+          shipment_cost_currency_id: number | null
+          shipment_purchase_currency_id: number | null
+          status: string
+          stock_ready: boolean
+          tenant_shipment_id: number | null
+          total_weight_kg: number | null
+          type: Database["public"]["Enums"]["global_shipment_type"]
+          updated_at: string
+          vendor_id: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "global_shipments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       mark_dropship_order_delivered: {
         Args: { p_order_id: number; p_payload: Json; p_tenant_id: number }
         Returns: Json
@@ -13401,6 +13467,16 @@ export type Database = {
         Args: { p_order_id: number; p_payload: Json; p_tenant_id: number }
         Returns: Json
       }
+      save_global_shipment_cost_entries: {
+        Args: {
+          p_delete_ids?: number[]
+          p_entries: Json
+          p_received_weight?: number
+          p_shipment_id: number
+          p_total_weight_kg?: number
+        }
+        Returns: Json
+      }
       search_sales_invoice_stock: {
         Args: {
           p_limit?: number
@@ -13724,6 +13800,9 @@ export type Database = {
           assigned_child_tenant_id: number | null
           cargo_company_id: number | null
           cargo_invoice_total: number | null
+          costs_locked: boolean
+          costs_locked_at: string | null
+          costs_locked_by: string | null
           created_at: string
           id: number
           inventory_added: boolean

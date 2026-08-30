@@ -8,7 +8,8 @@ import {
   costingShipmentFromEntries,
 } from 'src/shared/shipment-engine';
 import {
-  isShipmentCostFinalized,
+  isShipmentStockPosted,
+  isShipmentCostsLocked,
   sumProductEntryAmount,
 } from '../utils/costEntriesCosting';
 
@@ -77,6 +78,9 @@ export interface GlobalShipment {
   progress_tag?: ShipmentProgressTag | null;
   is_archived?: boolean;
   archived_at?: string | null;
+  costs_locked?: boolean;
+  costs_locked_at?: string | null;
+  costs_locked_by?: string | null;
   public_tracking_token?: string | null;
   created_at: string;
   updated_at: string;
@@ -368,6 +372,15 @@ const updateShipment = async (
   return normalizeShipment(data as GlobalShipment & Record<string, unknown>);
 };
 
+const lockShipmentCosts = async (shipmentId: number): Promise<GlobalShipment> => {
+  const { data, error } = await db.rpc('lock_global_shipment_costs', {
+    p_shipment_id: shipmentId,
+  });
+
+  if (error) throw error;
+  return normalizeShipment(data as GlobalShipment & Record<string, unknown>);
+};
+
 const listShipmentItems = async (shipmentId: number): Promise<GlobalShipmentItem[]> => {
   const { data, error } = await db
     .from('global_shipment_items')
@@ -504,6 +517,8 @@ export interface ShipmentSummaryKPIs {
   purchase_delta_amount: number;
   matched_invoices_ratio: string;
   is_cost_finalized: boolean;
+  is_stock_posted: boolean;
+  is_costs_locked: boolean;
 }
 
 const getShipmentSummary = async (
@@ -583,7 +598,9 @@ const getShipmentSummary = async (
     weight_delta_kg: weightDeltaKg,
     purchase_delta_amount: purchaseDeltaAmount,
     matched_invoices_ratio: `${matchCount}/2`,
-    is_cost_finalized: isShipmentCostFinalized(shipment),
+    is_cost_finalized: isShipmentStockPosted(shipment),
+    is_stock_posted: isShipmentStockPosted(shipment),
+    is_costs_locked: isShipmentCostsLocked(shipment),
   };
 };
 
@@ -1188,6 +1205,7 @@ export const globalShipmentRepository = {
   createShipmentDraft,
   listCargoCompaniesForTenant,
   updateShipment,
+  lockShipmentCosts,
   archiveShipment,
   unarchiveShipment,
   purgeArchivedShipment,

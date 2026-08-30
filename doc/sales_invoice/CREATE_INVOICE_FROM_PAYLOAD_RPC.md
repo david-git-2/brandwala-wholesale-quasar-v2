@@ -112,7 +112,7 @@ Each element maps to one `sales_invoice_items` row.
 | `product_code_snapshot` | `text` | No | Default from stock snapshot. |
 | `product_id` | `bigint` | No | Default from stock. |
 | `shipment_item_id` | `bigint` | No | Default from `global_stocks.shipment_item_id`. |
-| `unit_cost_price` | `numeric(12,2)` | No | Default `calculate_landed_unit_cost(shipment_item_id)`. |
+| `unit_cost_price` | `numeric(12,2)` | No | Default `calculate_landed_unit_cost(shipment_item_id)` at issue time. **Snapshot only** — not updated when shipment costs are revised or re-stamped after receive. |
 | `assigned_child_tenant_id` | `bigint` | No | Default from shipment assignment. |
 | `line_total_amount` | `numeric(12,2)` | No | Default `quantity * sell_price_amount - line_discount_amount`. |
 

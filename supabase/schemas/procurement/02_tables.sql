@@ -152,6 +152,9 @@ CREATE TABLE IF NOT EXISTS "public"."global_shipments" (
     "progress_flow_id" bigint,
     "is_archived" boolean DEFAULT false NOT NULL,
     "archived_at" timestamp with time zone,
+    "costs_locked" boolean DEFAULT false NOT NULL,
+    "costs_locked_at" timestamp with time zone,
+    "costs_locked_by" uuid,
     CONSTRAINT "global_shipments_name_not_blank" CHECK (("length"(TRIM(BOTH FROM "name")) > 0)),
     CONSTRAINT "global_shipments_status_check" CHECK (("status" = ANY (ARRAY['draft'::"text", 'in_transit'::"text", 'received'::"text", 'cancelled'::"text"])))
 );
@@ -169,6 +172,18 @@ COMMENT ON COLUMN "public"."global_shipments"."is_archived" IS 'Archival flag to
 
 
 COMMENT ON COLUMN "public"."global_shipments"."archived_at" IS 'Timestamp when the shipment was archived.';
+
+
+
+COMMENT ON COLUMN "public"."global_shipments"."costs_locked" IS 'When true, cost entries and cost-affecting line edits are frozen.';
+
+
+
+COMMENT ON COLUMN "public"."global_shipments"."costs_locked_at" IS 'Timestamp when shipment costs were locked for books.';
+
+
+
+COMMENT ON COLUMN "public"."global_shipments"."costs_locked_by" IS 'User who locked shipment costs.';
 
 
 
@@ -1583,6 +1598,11 @@ ALTER TABLE ONLY "public"."global_shipments"
 
 ALTER TABLE ONLY "public"."global_shipments"
     ADD CONSTRAINT "global_shipments_vendor_id_fkey" FOREIGN KEY ("vendor_id") REFERENCES "public"."vendors"("id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."global_shipments"
+    ADD CONSTRAINT "global_shipments_costs_locked_by_fkey" FOREIGN KEY ("costs_locked_by") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
 
 
 

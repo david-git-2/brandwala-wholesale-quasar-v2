@@ -665,7 +665,8 @@ export function useInboundShipmentActions(options: {
         shipmentId,
         item,
         isReceived:
-          shipment?.stock_ready === true || shipment?.status === 'received',
+          shipment?.status === 'received' || shipment?.stock_ready === true,
+        costsLocked: shipment?.costs_locked === true,
       },
     });
   };
@@ -689,6 +690,26 @@ export function useInboundShipmentActions(options: {
     });
   };
 
+  const confirmLockShipmentCosts = async () => {
+    const shipment = shipmentStore.currentShipment;
+    if (!shipment) return;
+
+    const confirmed = await requestConfirmation(
+      'After locking, cost entries, weights, and purchase prices cannot be changed. Invoices already issued keep their cost snapshot.',
+      'Lock shipment costs?',
+      'Lock costs',
+    );
+    if (!confirmed) return;
+
+    try {
+      await shipmentStore.lockShipmentCosts(shipmentId);
+      showSuccessNotification('Shipment costs locked.');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      showErrorNotification(msg || 'Failed to lock shipment costs.');
+    }
+  };
+
   const onSaveCostEntries = async (payload: CostEntriesSavePayload) => {
     try {
       const shipment = shipmentStore.currentShipment;
@@ -703,16 +724,12 @@ export function useInboundShipmentActions(options: {
           nextWeight != null &&
           Math.abs(prevWeight - nextWeight) > 0.0001);
 
-      if (weightChanged) {
-        await shipmentStore.updateShipment(shipmentId, {
-          received_weight: nextWeight,
-        });
-      }
-
-      await shipmentStore.saveCostEntries(shipmentId, payload.drafts);
+      await shipmentStore.saveCostEntries(shipmentId, payload.drafts, {
+        receivedWeight: weightChanged ? nextWeight : undefined,
+      });
       showSuccessNotification(
-        calculations.isCostFinalized.value
-          ? 'Costs revised and landed costs re-stamped.'
+        calculations.isStockPosted.value
+          ? 'Costs saved and landed costs re-stamped.'
           : 'Cost entries saved.',
       );
     } catch (err) {
@@ -770,6 +787,7 @@ export function useInboundShipmentActions(options: {
     openBulkPaste,
     openEditItem,
     confirmDeleteItem,
+    confirmLockShipmentCosts,
     onSaveCostEntries,
   };
 }

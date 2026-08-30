@@ -4,8 +4,27 @@ import type {
   ReviseShipmentCostEntryInput,
   UpsertShipmentCostEntryPayload,
 } from '../types/shipmentCostEntry';
+import type { GlobalShipmentItem } from '../repositories/globalShipmentRepository';
 
 const db = supabase as any;
+
+export interface SaveShipmentCostEntriesOptions {
+  deleteIds?: number[];
+  receivedWeight?: number | null;
+  totalWeightKg?: number | null;
+}
+
+export interface SaveShipmentCostEntriesResult {
+  cost_entries: GlobalShipmentCostEntry[];
+  items: GlobalShipmentItem[];
+  items_stamped: number;
+  shipment: {
+    id: number;
+    received_weight: number | null;
+    total_weight_kg: number | null;
+    updated_at: string;
+  } | null;
+}
 
 /** Shipment is source_* only — never a wallet payee. */
 const assertPayeeAllowed = (entityType: string | null | undefined) => {
@@ -28,6 +47,52 @@ const ensureFromHeader = async (shipmentId: number): Promise<void> => {
     p_shipment_id: shipmentId,
   });
   if (error) throw error;
+};
+
+const saveBatch = async (
+  shipmentId: number,
+  entries: UpsertShipmentCostEntryPayload[],
+  options: SaveShipmentCostEntriesOptions = {},
+): Promise<SaveShipmentCostEntriesResult> => {
+  for (const e of entries) {
+    assertPayeeAllowed(e.entity_type);
+  }
+
+  const rpcEntries = entries.map((e) => ({
+    id: e.id ?? null,
+    cost_type: e.cost_type,
+    amount: e.amount,
+    exchange_rate: e.exchange_rate ?? 1,
+    currency_id: e.currency_id ?? null,
+    payment_source: e.payment_source ?? null,
+    entity_type: e.entity_type ?? null,
+    entity_id: e.entity_id ?? null,
+    allocation: e.allocation ?? null,
+    metadata: e.metadata ?? {},
+  }));
+
+  const { data, error } = await db.rpc('save_global_shipment_cost_entries', {
+    p_shipment_id: shipmentId,
+    p_entries: rpcEntries,
+    p_delete_ids: options.deleteIds ?? [],
+    p_received_weight: options.receivedWeight ?? null,
+    p_total_weight_kg: options.totalWeightKg ?? null,
+  });
+  if (error) throw error;
+
+  const result = data as {
+    cost_entries: GlobalShipmentCostEntry[];
+    items: GlobalShipmentItem[];
+    items_stamped: number;
+    shipment: SaveShipmentCostEntriesResult['shipment'];
+  };
+
+  return {
+    cost_entries: result.cost_entries ?? [],
+    items: result.items ?? [],
+    items_stamped: result.items_stamped ?? 0,
+    shipment: result.shipment ?? null,
+  };
 };
 
 const upsert = async (payload: UpsertShipmentCostEntryPayload): Promise<GlobalShipmentCostEntry> => {
@@ -73,6 +138,7 @@ const revise = async (
 export const globalShipmentCostEntryRepository = {
   listByShipmentId,
   ensureFromHeader,
+  saveBatch,
   upsert,
   remove,
   revise,

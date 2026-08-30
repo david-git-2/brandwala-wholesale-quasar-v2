@@ -3,7 +3,8 @@ import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import type { GlobalShipment } from '../repositories/globalShipmentRepository';
 import { calculateShipmentCostSummary, costingShipmentFromEntries } from 'src/shared/shipment-engine';
 import {
-  isShipmentCostFinalized,
+  isShipmentStockPosted,
+  isShipmentCostsLocked,
   sumProductEntryAmount,
 } from '../utils/costEntriesCosting';
 import { useGlobalCurrenciesQuery } from 'src/modules/global_reference/composables/useGlobalReferenceQuery';
@@ -107,24 +108,38 @@ export function useInboundShipmentCalculations() {
     } as unknown as GlobalShipment;
   });
 
-  const isEditable = computed(() => {
+  const isStockPosted = computed(() => {
     const shipment = shipmentStore.currentShipment;
     if (!shipment) return false;
-    return shipment.status !== 'received' && shipment.status !== 'cancelled';
+    return isShipmentStockPosted(shipment);
   });
 
-  const isCostFinalized = computed(() => {
+  const isCostsLocked = computed(() => {
     const shipment = shipmentStore.currentShipment;
     if (!shipment) return false;
-    return isShipmentCostFinalized(shipment);
+    return isShipmentCostsLocked(shipment);
   });
+
+  /** @deprecated Use isStockPosted */
+  const isCostFinalized = computed(() => isStockPosted.value);
+
+  const canEditLineStructure = computed(() => {
+    const shipment = shipmentStore.currentShipment;
+    if (!shipment) return false;
+    if (shipment.status === 'cancelled' || isCostsLocked.value) return false;
+    return shipment.status !== 'received';
+  });
+
+  const isEditable = computed(() => canEditLineStructure.value);
 
   const canEditCosts = computed(() => {
     const shipment = shipmentStore.currentShipment;
     if (!shipment) return false;
-    if (shipment.status === 'cancelled') return false;
-    return isEditable.value || isCostFinalized.value;
+    if (shipment.status === 'cancelled' || isCostsLocked.value) return false;
+    return true;
   });
+
+  const canEditLineCostFields = computed(() => canEditCosts.value);
 
   const hasLineItems = computed(() => (shipmentStore.currentShipmentItems?.length ?? 0) > 0);
 
@@ -154,9 +169,13 @@ export function useInboundShipmentCalculations() {
     shipmentForLiveCosting,
     currentShipmentBoxesTotal,
     hasCargoInvoiceWeight,
+    isStockPosted,
+    isCostsLocked,
     isEditable,
     isCostFinalized,
     canEditCosts,
+    canEditLineStructure,
+    canEditLineCostFields,
     hasLineItems,
     weightNeedsAttention,
     purchaseNeedsAttention,

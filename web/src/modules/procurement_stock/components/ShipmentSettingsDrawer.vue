@@ -291,6 +291,12 @@
         <!-- 3. Rates Tab Panel -->
         <q-tab-panel name="rates" class="q-pa-md bg-white">
           <div class="column q-gutter-y-lg">
+            <q-banner v-if="isStockPosted && canEditCosts" dense rounded class="bg-orange-1 text-orange-10">
+              Stock is in. Saving updates landed costs. Invoices already issued keep their cost snapshot.
+            </q-banner>
+            <q-banner v-if="isCostsLocked" dense rounded class="bg-grey-2 text-grey-9">
+              Shipment costs are locked. Rates and weights cannot be changed.
+            </q-banner>
             <div class="row items-center justify-between">
               <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center q-gutter-x-xs">
                 <q-icon name="ph ph-currency-circle-dollar" size="18px" color="primary" />
@@ -327,6 +333,7 @@
                 suffix="kg"
                 class="bg-white font-mono"
                 :loading="savingRates"
+                :disable="!canEditCosts"
                 @blur="onRatesBlur"
                 @keyup.enter="(e: any) => (e.target as HTMLElement)?.blur()"
               >
@@ -395,6 +402,7 @@
                       :prefix="currentPurchaseCurrencySymbol"
                       class="bg-white font-mono"
                       :loading="savingRates"
+                      :disable="!canEditCosts"
                       @blur="onRatesBlur"
                       @keyup.enter="(e: any) => (e.target as HTMLElement)?.blur()"
                     />
@@ -410,6 +418,7 @@
                       :prefix="currentCostCurrencySymbol"
                       class="bg-white font-mono"
                       :loading="savingRates"
+                      :disable="!canEditCosts"
                       @blur="onRatesBlur"
                       @keyup.enter="(e: any) => (e.target as HTMLElement)?.blur()"
                     />
@@ -485,6 +494,7 @@
                         :prefix="currentPurchaseCurrencySymbol"
                         class="bg-white font-mono"
                         :loading="savingRates"
+                        :disable="!canEditCosts"
                         @blur="onRatesBlur"
                         @keyup.enter="(e: any) => (e.target as HTMLElement)?.blur()"
                       />
@@ -500,6 +510,7 @@
                         :prefix="currentCostCurrencySymbol"
                         class="bg-white font-mono"
                         :loading="savingRates"
+                        :disable="!canEditCosts"
                         @blur="onRatesBlur"
                         @keyup.enter="(e: any) => (e.target as HTMLElement)?.blur()"
                       />
@@ -633,6 +644,7 @@ import type {
   ShipmentProgressFlow,
   ShipmentProgressTag,
 } from '../repositories/globalShipmentRepository';
+import type { UpsertShipmentCostEntryPayload } from '../types/shipmentCostEntry';
 import {
   formatGlobalShipmentStatus,
   globalShipmentStatusChipStyle,
@@ -746,6 +758,9 @@ const {
   currentPurchaseCurrencySymbol,
   currentCostCurrency,
   currentCostCurrencySymbol,
+  isStockPosted,
+  isCostsLocked,
+  canEditCosts,
 } = props.calculations;
 
 const drawerTypeOptions = [
@@ -1001,63 +1016,56 @@ const onRatesBlur = () => {
 
 const saveRates = async () => {
   if (!props.shipmentId || isNaN(props.shipmentId) || savingRates.value) return;
+  if (!canEditCosts?.value) return;
 
   savingRates.value = true;
   try {
-    const currentWeight = shipmentStore.currentShipment?.total_weight_kg ?? shipmentStore.currentShipment?.received_weight;
-    if (totalWeightInput.value !== currentWeight) {
-      await shipmentStore.updateShipment(props.shipmentId, {
-        total_weight_kg: totalWeightInput.value != null ? Number(totalWeightInput.value) : null,
-      });
-    }
+    const shipment = shipmentStore.currentShipment;
+    const purchaseCurrencyId = shipment?.shipment_purchase_currency_id ?? null;
+    const currentWeight = shipment?.total_weight_kg ?? shipment?.received_weight;
+    const nextWeight =
+      totalWeightInput.value != null ? Number(totalWeightInput.value) : null;
+    const weightChanged = totalWeightInput.value !== currentWeight;
 
-    const purchaseCurrencyId = shipmentStore.currentShipment?.shipment_purchase_currency_id ?? null;
-
-    // Upsert cargo cost entry
     const entries = shipmentStore.currentCostEntries || [];
     const cargoEntry = entries.find(
       (e: any) => e.cost_type === 'cargo' || e.cost_type === 'cargo_cost' || e.cost_type === 'freight',
     );
 
+    const batchEntries: UpsertShipmentCostEntryPayload[] = [];
+
     if (cargoAmountInput.value != null || cargoRateInput.value != null || cargoNoteInput.value) {
-      const payload: any = {
+      batchEntries.push({
+        shipment_id: props.shipmentId,
+        id: cargoEntry?.id ?? null,
         cost_type: 'cargo',
         currency_id: purchaseCurrencyId,
         amount: cargoAmountInput.value != null ? Number(cargoAmountInput.value) : 0,
         exchange_rate: cargoRateInput.value != null ? Number(cargoRateInput.value) : 1,
         metadata: { note: cargoNoteInput.value },
-      };
-
-      if (cargoEntry) {
-        await shipmentStore.updateShipmentCostEntry(cargoEntry.id, payload);
-      } else {
-        await shipmentStore.createShipmentCostEntry(props.shipmentId, payload);
-      }
+      });
     }
 
-    // Upsert product rate cost entries
     for (const pr of productRatesList.value) {
       if (pr.amount != null || pr.rate != null || pr.note) {
-        const payload: any = {
+        batchEntries.push({
+          shipment_id: props.shipmentId,
+          id: pr.dbId ?? null,
           cost_type: 'product',
           currency_id: purchaseCurrencyId,
           amount: pr.amount != null ? Number(pr.amount) : 0,
           exchange_rate: pr.rate != null ? Number(pr.rate) : 1,
           metadata: { note: pr.note },
-        };
-
-        if (pr.dbId) {
-          await shipmentStore.updateShipmentCostEntry(pr.dbId, payload);
-        } else {
-          const created = await shipmentStore.createShipmentCostEntry(props.shipmentId, payload);
-          if (created?.id) {
-            pr.dbId = created.id;
-          }
-        }
+        });
       }
     }
 
-    await shipmentStore.fetchShipmentDetails(props.shipmentId);
+    await shipmentStore.saveCostEntriesBatch(props.shipmentId, batchEntries, {
+      receivedWeight: weightChanged ? nextWeight : undefined,
+      totalWeightKg: weightChanged ? nextWeight : undefined,
+    });
+
+    syncRatesFromStore();
     $q.notify({
       message: 'Rates and weight saved',
       color: 'positive',

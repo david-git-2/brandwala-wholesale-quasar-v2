@@ -15,12 +15,19 @@
             :target-status="targetUpdatingStatus"
             @update-status="changeStatus"
           />
+          <q-badge
+            v-if="isCostsLocked"
+            color="grey-3"
+            text-color="grey-9"
+            outline
+            label="Costs locked"
+          />
         </div>
 
         <!-- Right: Header Buttons & Settings -->
         <div class="row items-center q-gutter-x-sm no-wrap">
           <!-- Selection Actions: Exactly 1 Item Selected -> Edit & Delete -->
-          <template v-if="selectedItemIds.length === 1">
+          <template v-if="selectedItemIds.length === 1 && canEditLineStructure">
             <q-btn
               color="primary"
               icon="ph ph-pencil-simple"
@@ -52,7 +59,7 @@
           </template>
 
           <!-- Selection Actions: Multiple Items Selected -> Bulk Delete -->
-          <template v-else-if="selectedItemIds.length > 1">
+          <template v-else-if="selectedItemIds.length > 1 && canEditLineStructure">
             <q-btn
               color="negative"
               icon="ph ph-trash"
@@ -79,7 +86,7 @@
             icon="ph ph-plus"
             label="Add Items"
             size="sm"
-            :disable="activeSheetId === 'sheet_all'"
+            :disable="activeSheetId === 'sheet_all' || !canEditLineStructure"
             @click="triggerAddItems"
           >
             <q-tooltip>
@@ -127,6 +134,22 @@
                 </template>
               </q-list>
             </q-menu>
+          </q-btn>
+
+          <!-- Lock costs (after receive, before books freeze) -->
+          <q-btn
+            v-if="isStockPosted && !isCostsLocked"
+            outline
+            dense
+            no-caps
+            color="primary"
+            class="rounded-sq-btn text-weight-bold q-px-sm"
+            icon="ph ph-lock-key"
+            label="Lock costs"
+            size="sm"
+            @click="confirmLockShipmentCosts"
+          >
+            <q-tooltip>Freeze cost entries and landed costs for books</q-tooltip>
           </q-btn>
 
           <!-- Settings Gear Button (Opens Side Popup) -->
@@ -377,6 +400,7 @@
                   class="inline-edit-input excel-cell-input"
                   style="max-width: 50px"
                   input-class="text-center text-weight-bold"
+                  :disable="!canEditLineCostFields"
                   @update:model-value="(val) => setDraftValue(item, 'purchase_price', val)"
                   @blur="saveDraftValue(item, 'purchase_price', { decimals: 2 })"
                   @keyup.enter="(e: any) => (e.target as HTMLElement)?.blur()"
@@ -411,6 +435,7 @@
                   class="inline-edit-input excel-cell-input"
                   style="max-width: 50px"
                   input-class="text-center text-weight-bold"
+                  :disable="!canEditLineStructure"
                   @update:model-value="(val) => setDraftValue(item, 'ordered_quantity', val)"
                   @blur="saveDraftValue(item, 'ordered_quantity')"
                   @keyup.enter="(e: any) => (e.target as HTMLElement)?.blur()"
@@ -431,6 +456,7 @@
                   class="inline-edit-input excel-cell-input"
                   style="max-width: 50px"
                   input-class="text-center text-weight-bold"
+                  :disable="!canEditLineCostFields"
                   @update:model-value="(val) => setDraftValue(item, 'product_weight', val)"
                   @blur="saveDraftValue(item, 'product_weight', { decimals: 3 })"
                   @keyup.enter="(e: any) => (e.target as HTMLElement)?.blur()"
@@ -454,6 +480,7 @@
                   class="inline-edit-input excel-cell-input"
                   style="max-width: 50px"
                   input-class="text-center text-weight-bold"
+                  :disable="!canEditLineCostFields"
                   @update:model-value="(val) => setDraftValue(item, 'package_weight', val)"
                   @blur="saveDraftValue(item, 'package_weight', { decimals: 3 })"
                   @keyup.enter="(e: any) => (e.target as HTMLElement)?.blur()"
@@ -489,7 +516,7 @@
                   unelevated
                   no-caps
                   class="rounded-borders"
-                  :disable="activeSheetId === 'sheet_all'"
+                  :disable="activeSheetId === 'sheet_all' || !canEditLineStructure"
                   @click="triggerAddItems"
                 >
                   <q-tooltip v-if="activeSheetId === 'sheet_all'">
@@ -634,6 +661,11 @@ import AddCustomColumnDialog from '../components/AddCustomColumnDialog.vue';
 import ShipmentStatusWorkflowBar from '../components/ShipmentStatusWorkflowBar.vue';
 import { useInboundShipmentCalculations } from '../composables/useInboundShipmentCalculations';
 import { useInboundShipmentActions } from '../composables/useInboundShipmentActions';
+import {
+  calculateLineLandedCostBdt,
+  costingShipmentFromEntries,
+} from 'src/shared/shipment-engine';
+import type { GlobalShipmentItem } from '../repositories/globalShipmentRepository';
 
 const $q = useQuasar();
 const route = useRoute();
@@ -651,6 +683,11 @@ const actions = useInboundShipmentActions({
 const {
   currentPurchaseCurrencySymbol,
   currentCostCurrencySymbol,
+  isStockPosted,
+  isCostsLocked,
+  canEditCosts,
+  canEditLineStructure,
+  canEditLineCostFields,
 } = calculations;
 
 const {
@@ -672,6 +709,7 @@ const {
   saveAssignChild,
   clearAssignChild,
   openAddItems,
+  confirmLockShipmentCosts,
 } = actions;
 
 const settingsDrawerOpen = ref(false);
@@ -720,6 +758,8 @@ const openBulkPasteDialog = (
   field: 'purchase_price' | 'ordered_quantity' | 'product_weight' | 'package_weight',
   startItem?: any,
 ) => {
+  if (field === 'ordered_quantity' && !canEditLineStructure.value) return;
+  if (field !== 'ordered_quantity' && !canEditLineCostFields.value) return;
   bulkPasteField.value = field;
   bulkPasteStartItem.value = startItem || null;
   bulkPasteText.value = '';
@@ -975,9 +1015,32 @@ const getSectionTotalPurchase = (sectionId?: number | null) => {
     .reduce((sum, it) => sum + (Number(it.purchase_price) || 0) * (Number(it.ordered_quantity) || 0), 0);
 };
 
+const resolveLineUnitCostBdt = (
+  item: GlobalShipmentItem,
+  allItems: GlobalShipmentItem[],
+): number => {
+  const stamped = item.landed_cost_bdt;
+  if (stamped != null && Number.isFinite(Number(stamped))) {
+    return Number(stamped);
+  }
+
+  const shipment = shipmentStore.currentShipment;
+  if (!shipment) {
+    return Number(item.purchase_price) || 0;
+  }
+
+  const forCosting = costingShipmentFromEntries(
+    shipment,
+    shipmentStore.currentCostEntries,
+    allItems,
+  );
+  return calculateLineLandedCostBdt(item, forCosting, allItems);
+};
+
 // Dynamic table rows
 const displayedItems = computed(() => {
   const storeItems = shipmentStore.currentShipmentItems;
+  const costEntries = shipmentStore.currentCostEntries;
   if (storeItems && storeItems.length > 0) {
     const activeSection = sheets.value.find((s) => s.id === activeSheetId.value);
     const activeSectionDbId = activeSection?.dbId;
@@ -994,8 +1057,8 @@ const displayedItems = computed(() => {
     return filtered.map((item, idx) => {
       const pPrice = Number(item.purchase_price) || 0;
       const oQty = Number(item.ordered_quantity) || 0;
-      const unitCost = Number(item.unit_cost_bdt) || Number(item.unit_landed_cost) || pPrice * 15;
-      const totalCost = Number(item.cost_bdt) || unitCost * oQty;
+      const unitCost = resolveLineUnitCostBdt(item, storeItems);
+      const totalCost = unitCost * oQty;
       const vendorName = getSectionVendor(item.section_id);
       const vendorInitials = vendorName
         .split(' ')

@@ -64,11 +64,23 @@ CREATE OR REPLACE TRIGGER "trg_global_shipment_items_reactive_cost" AFTER UPDATE
 
 
 
+CREATE OR REPLACE TRIGGER "trg_global_shipment_items_restamp_landed_cost" AFTER UPDATE OF "product_weight", "package_weight", "purchase_price", "ordered_quantity" ON "public"."global_shipment_items" FOR EACH ROW EXECUTE FUNCTION "public"."trg_global_shipment_items_restamp_landed_cost"();
+
+
+
 CREATE OR REPLACE TRIGGER "trg_global_shipment_items_updated_at" BEFORE UPDATE ON "public"."global_shipment_items" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
 
 CREATE OR REPLACE TRIGGER "trg_global_shipments_updated_at" BEFORE UPDATE ON "public"."global_shipments" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_global_shipments_guard_costs_locked" BEFORE UPDATE ON "public"."global_shipments" FOR EACH ROW EXECUTE FUNCTION "public"."_guard_global_shipment_costs_locked"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_global_shipments_restamp_weight" AFTER UPDATE ON "public"."global_shipments" FOR EACH ROW EXECUTE FUNCTION "public"."_restamp_global_shipment_on_weight_change"();
 
 
 
@@ -827,6 +839,10 @@ GRANT ALL ON FUNCTION "public"."finalize_global_shipment"("p_shipment_id" bigint
 
 
 
+GRANT ALL ON FUNCTION "public"."lock_global_shipment_costs"("p_shipment_id" bigint) TO "authenticated";
+
+
+
 GRANT ALL ON FUNCTION "public"."generate_shipment_tracking_token"("p_shipment_id" bigint) TO "authenticated";
 
 
@@ -1176,6 +1192,11 @@ GRANT ALL ON FUNCTION "public"."update_shipment_progress_flow_stage"("p_flow_sta
 
 
 GRANT ALL ON FUNCTION "public"."update_shipment_progress_tag"("p_tag_id" bigint, "p_name" "text", "p_color" "text", "p_sort_order" integer) TO "authenticated";
+
+
+
+REVOKE ALL ON FUNCTION "public"."save_global_shipment_cost_entries"("p_shipment_id" bigint, "p_entries" "jsonb", "p_delete_ids" bigint[], "p_received_weight" numeric, "p_total_weight_kg" numeric) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."save_global_shipment_cost_entries"("p_shipment_id" bigint, "p_entries" "jsonb", "p_delete_ids" bigint[], "p_received_weight" numeric, "p_total_weight_kg" numeric) TO "authenticated";
 
 
 

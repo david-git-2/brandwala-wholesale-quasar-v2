@@ -919,6 +919,12 @@ begin
     raise exception 'One or more adjustment rows do not belong to this shipment.';
   end if;
 
+  if public.global_shipment_costs_are_locked(v_shipment) then
+    raise exception 'shipment costs are locked';
+  end if;
+
+  perform set_config('app.skip_item_landed_restamp', '1', true);
+
   update public.global_shipment_items gsi
   set
     package_weight = adj.package_weight,
@@ -937,6 +943,10 @@ begin
    and gsi.shipment_id = p_shipment_id
   where p.id = gsi.product_id
     and gsi.product_id is not null;
+
+  perform set_config('app.skip_item_landed_restamp', '0', true);
+
+  perform public.stamp_global_shipment_landed_costs(p_shipment_id);
 
   -- Touch shipment updated_at only — do not write transaction_rate (p_transaction_rate ignored)
   update public.global_shipments
@@ -1439,10 +1449,30 @@ CREATE OR REPLACE FUNCTION "public"."bulk_update_global_shipment_items"("p_shipm
 declare
   v_update jsonb;
   v_id bigint;
+  v_ship public.global_shipments%rowtype;
 begin
   if p_shipment_id is null then
     raise exception 'shipment_id is required';
   end if;
+
+  select * into v_ship
+  from public.global_shipments
+  where id = p_shipment_id
+  for update;
+
+  if not found then
+    raise exception 'shipment not found';
+  end if;
+
+  if not public.user_can_manage_parent_tenant(v_ship.parent_tenant_id) then
+    raise exception 'not allowed';
+  end if;
+
+  if public.global_shipment_costs_are_locked(v_ship) then
+    raise exception 'shipment costs are locked';
+  end if;
+
+  perform set_config('app.skip_item_landed_restamp', '1', true);
 
   for v_update in select * from jsonb_array_elements(p_updates)
   loop
@@ -1490,6 +1520,12 @@ begin
       where id = v_id and shipment_id = p_shipment_id;
     end if;
   end loop;
+
+  perform set_config('app.skip_item_landed_restamp', '0', true);
+
+  if exists (select 1 from public.global_shipment_items where shipment_id = p_shipment_id) then
+    perform public.stamp_global_shipment_landed_costs(p_shipment_id);
+  end if;
 
   return query
   select *
@@ -2810,11 +2846,15 @@ begin
     raise exception 'not allowed';
   end if;
 
-  if v_ship.stock_ready = true or v_ship.status = 'received' then
-    raise exception 'shipment finalized; use revise_global_shipment_costs';
+  if public.global_shipment_costs_are_locked(v_ship) then
+    raise exception 'shipment costs are locked';
   end if;
 
   delete from public.global_shipment_cost_entries where id = p_id;
+
+  if exists (select 1 from public.global_shipment_items where shipment_id = v_entry.shipment_id) then
+    perform public.stamp_global_shipment_landed_costs(v_entry.shipment_id);
+  end if;
 end;
 $$;
 
@@ -2868,6 +2908,72 @@ $$;
 
 
 ALTER FUNCTION "public"."archive_shipment"("p_id" bigint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."global_shipment_stock_is_posted"("p_ship" "public"."global_shipments") RETURNS boolean
+    LANGUAGE "sql" IMMUTABLE
+    AS $$
+  select coalesce(p_ship.stock_ready, false) or p_ship.status = 'received';
+$$;
+
+
+ALTER FUNCTION "public"."global_shipment_stock_is_posted"("p_ship" "public"."global_shipments") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."global_shipment_costs_are_locked"("p_ship" "public"."global_shipments") RETURNS boolean
+    LANGUAGE "sql" IMMUTABLE
+    AS $$
+  select coalesce(p_ship.costs_locked, false);
+$$;
+
+
+ALTER FUNCTION "public"."global_shipment_costs_are_locked"("p_ship" "public"."global_shipments") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."lock_global_shipment_costs"("p_shipment_id" bigint) RETURNS "public"."global_shipments"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_ship public.global_shipments%rowtype;
+begin
+  select * into v_ship
+  from public.global_shipments
+  where id = p_shipment_id
+  for update;
+
+  if not found then
+    raise exception 'shipment not found';
+  end if;
+
+  if not public.user_can_manage_parent_tenant(v_ship.parent_tenant_id) then
+    raise exception 'not allowed';
+  end if;
+
+  if not public.global_shipment_stock_is_posted(v_ship) then
+    raise exception 'shipment stock is not posted; receive before locking costs';
+  end if;
+
+  if public.global_shipment_costs_are_locked(v_ship) then
+    raise exception 'shipment costs are already locked';
+  end if;
+
+  perform set_config('app.allow_costs_lock', '1', true);
+
+  update public.global_shipments
+  set costs_locked = true,
+      costs_locked_at = now(),
+      costs_locked_by = auth.uid(),
+      updated_at = now()
+  where id = p_shipment_id
+  returning * into v_ship;
+
+  return v_ship;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."lock_global_shipment_costs"("p_shipment_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."unarchive_shipment"("p_id" bigint) RETURNS "public"."global_shipments"
@@ -7350,8 +7456,12 @@ begin
     raise exception 'not allowed';
   end if;
 
-  if not (v_ship.stock_ready = true or v_ship.status = 'received') then
+  if not public.global_shipment_stock_is_posted(v_ship) then
     raise exception 'shipment not finalized; use upsert_global_shipment_cost_entry';
+  end if;
+
+  if public.global_shipment_costs_are_locked(v_ship) then
+    raise exception 'shipment costs are locked';
   end if;
 
   if p_entries is null or jsonb_typeof(p_entries) <> 'array' or jsonb_array_length(p_entries) = 0 then
@@ -8126,6 +8236,58 @@ $$;
 ALTER FUNCTION "public"."stamp_global_shipment_landed_costs"("p_shipment_id" bigint) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."_guard_global_shipment_costs_locked"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+begin
+  if tg_op = 'UPDATE' then
+    if new.costs_locked is distinct from old.costs_locked
+       and current_setting('app.allow_costs_lock', true) is distinct from '1' then
+      raise exception 'use lock_global_shipment_costs to lock shipment costs';
+    end if;
+
+    if old.costs_locked then
+      if new.received_weight is distinct from old.received_weight
+         or new.total_weight_kg is distinct from old.total_weight_kg then
+        raise exception 'shipment costs are locked';
+      end if;
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."_guard_global_shipment_costs_locked"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."_restamp_global_shipment_on_weight_change"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+begin
+  if coalesce(current_setting('app.skip_shipment_landed_restamp', true), '') = '1' then
+    return new;
+  end if;
+
+  if tg_op = 'UPDATE'
+     and not public.global_shipment_costs_are_locked(new)
+     and (
+       new.received_weight is distinct from old.received_weight
+       or new.total_weight_kg is distinct from old.total_weight_kg
+     )
+     and exists (select 1 from public.global_shipment_items where shipment_id = new.id) then
+    perform public.stamp_global_shipment_landed_costs(new.id);
+  end if;
+
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."_restamp_global_shipment_on_weight_change"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."stock_grade_tag_id_for_slug"("p_slug" "text") RETURNS bigint
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -8435,6 +8597,44 @@ $$;
 
 
 ALTER FUNCTION "public"."trg_fn_pbc_files_auto_tenant_id"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."trg_global_shipment_items_restamp_landed_cost"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_ship public.global_shipments%rowtype;
+begin
+  if tg_op <> 'UPDATE' then
+    return new;
+  end if;
+
+  if coalesce(current_setting('app.skip_item_landed_restamp', true), '') = '1' then
+    return new;
+  end if;
+
+  if not (
+    new.product_weight is distinct from old.product_weight
+    or new.package_weight is distinct from old.package_weight
+    or new.purchase_price is distinct from old.purchase_price
+    or new.ordered_quantity is distinct from old.ordered_quantity
+  ) then
+    return new;
+  end if;
+
+  select * into v_ship from public.global_shipments where id = new.shipment_id;
+  if not found or public.global_shipment_costs_are_locked(v_ship) then
+    return new;
+  end if;
+
+  perform public.stamp_global_shipment_landed_costs(new.shipment_id);
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."trg_global_shipment_items_restamp_landed_cost"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."trg_global_shipment_items_guard_landed_cost"() RETURNS "trigger"
@@ -9148,6 +9348,152 @@ $$;
 ALTER FUNCTION "public"."update_shipment_progress_tag"("p_tag_id" bigint, "p_name" "text", "p_color" "text", "p_sort_order" integer) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."save_global_shipment_cost_entries"("p_shipment_id" bigint, "p_entries" "jsonb", "p_delete_ids" bigint[] DEFAULT '{}'::bigint[], "p_received_weight" numeric DEFAULT NULL::numeric, "p_total_weight_kg" numeric DEFAULT NULL::numeric) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_ship public.global_shipments%rowtype;
+  v_entry jsonb;
+  v_row public.global_shipment_cost_entries%rowtype;
+  v_id bigint;
+  v_amount numeric;
+  v_rate numeric;
+  v_stamped integer := 0;
+  v_cost_entries jsonb;
+  v_items jsonb;
+begin
+  select * into v_ship from public.global_shipments where id = p_shipment_id for update;
+  if not found then
+    raise exception 'shipment not found';
+  end if;
+
+  if not public.user_can_manage_parent_tenant(v_ship.parent_tenant_id) then
+    raise exception 'not allowed';
+  end if;
+
+  if public.global_shipment_costs_are_locked(v_ship) then
+    raise exception 'shipment costs are locked';
+  end if;
+
+  perform set_config('app.skip_shipment_landed_restamp', '1', true);
+
+  if p_received_weight is not null or p_total_weight_kg is not null then
+    update public.global_shipments
+    set
+      received_weight = coalesce(p_received_weight, received_weight),
+      total_weight_kg = coalesce(p_total_weight_kg, total_weight_kg),
+      updated_at = now()
+    where id = p_shipment_id
+    returning * into v_ship;
+  end if;
+
+  if p_delete_ids is not null and cardinality(p_delete_ids) > 0 then
+    delete from public.global_shipment_cost_entries e
+    where e.shipment_id = p_shipment_id
+      and e.id = any(p_delete_ids);
+  end if;
+
+  if p_entries is not null and jsonb_typeof(p_entries) = 'array' then
+    for v_entry in select value from jsonb_array_elements(p_entries)
+    loop
+      v_amount := nullif(v_entry->>'amount', '')::numeric;
+      v_rate := coalesce(nullif(v_entry->>'exchange_rate', '')::numeric, 1.0);
+      v_id := nullif(v_entry->>'id', '')::bigint;
+
+      if v_amount is null or v_amount < 0 then
+        raise exception 'amount must be >= 0';
+      end if;
+
+      if v_rate is null or v_rate <= 0 then
+        raise exception 'exchange_rate must be > 0';
+      end if;
+
+      if v_id is not null then
+        update public.global_shipment_cost_entries e
+        set
+          cost_type = (v_entry->>'cost_type')::public.global_shipment_cost_type,
+          amount = v_amount,
+          exchange_rate = v_rate,
+          currency_id = nullif(v_entry->>'currency_id', '')::bigint,
+          payment_source = nullif(v_entry->>'payment_source', ''),
+          entity_type = nullif(v_entry->>'entity_type', ''),
+          entity_id = nullif(v_entry->>'entity_id', '')::bigint,
+          allocation = nullif(v_entry->>'allocation', ''),
+          metadata = coalesce(v_entry->'metadata', '{}'::jsonb),
+          updated_at = now()
+        where e.id = v_id
+          and e.shipment_id = p_shipment_id
+        returning * into v_row;
+
+        if not found then
+          raise exception 'cost entry % not found on shipment %', v_id, p_shipment_id;
+        end if;
+      else
+        insert into public.global_shipment_cost_entries (
+          parent_tenant_id,
+          shipment_id,
+          cost_type,
+          amount,
+          currency_id,
+          exchange_rate,
+          payment_source,
+          entity_type,
+          entity_id,
+          allocation,
+          metadata
+        ) values (
+          v_ship.parent_tenant_id,
+          p_shipment_id,
+          (v_entry->>'cost_type')::public.global_shipment_cost_type,
+          v_amount,
+          nullif(v_entry->>'currency_id', '')::bigint,
+          v_rate,
+          nullif(v_entry->>'payment_source', ''),
+          nullif(v_entry->>'entity_type', ''),
+          nullif(v_entry->>'entity_id', '')::bigint,
+          nullif(v_entry->>'allocation', ''),
+          coalesce(v_entry->'metadata', '{}'::jsonb)
+        )
+        returning * into v_row;
+      end if;
+    end loop;
+  end if;
+
+  perform set_config('app.skip_shipment_landed_restamp', '0', true);
+
+  if exists (select 1 from public.global_shipment_items where shipment_id = p_shipment_id) then
+    v_stamped := public.stamp_global_shipment_landed_costs(p_shipment_id);
+  end if;
+
+  select coalesce(jsonb_agg(to_jsonb(e) order by e.id), '[]'::jsonb)
+  into v_cost_entries
+  from public.global_shipment_cost_entries e
+  where e.shipment_id = p_shipment_id;
+
+  select coalesce(jsonb_agg(to_jsonb(i) order by i.sort_order, i.id), '[]'::jsonb)
+  into v_items
+  from public.global_shipment_items i
+  where i.shipment_id = p_shipment_id;
+
+  return jsonb_build_object(
+    'cost_entries', v_cost_entries,
+    'items', v_items,
+    'items_stamped', v_stamped,
+    'shipment', jsonb_build_object(
+      'id', v_ship.id,
+      'received_weight', v_ship.received_weight,
+      'total_weight_kg', v_ship.total_weight_kg,
+      'updated_at', v_ship.updated_at
+    )
+  );
+end;
+$$;
+
+
+ALTER FUNCTION "public"."save_global_shipment_cost_entries"("p_shipment_id" bigint, "p_entries" "jsonb", "p_delete_ids" bigint[], "p_received_weight" numeric, "p_total_weight_kg" numeric) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."upsert_global_shipment_cost_entry"("p_shipment_id" bigint, "p_cost_type" "public"."global_shipment_cost_type", "p_amount" numeric, "p_exchange_rate" numeric DEFAULT 1.0, "p_currency_id" bigint DEFAULT NULL::bigint, "p_payment_source" "text" DEFAULT NULL::"text", "p_entity_type" "text" DEFAULT NULL::"text", "p_entity_id" bigint DEFAULT NULL::bigint, "p_allocation" "text" DEFAULT NULL::"text", "p_metadata" "jsonb" DEFAULT '{}'::"jsonb", "p_id" bigint DEFAULT NULL::bigint) RETURNS "public"."global_shipment_cost_entries"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -9165,8 +9511,8 @@ begin
     raise exception 'not allowed';
   end if;
 
-  if v_ship.stock_ready = true or v_ship.status = 'received' then
-    raise exception 'shipment finalized; use revise_global_shipment_costs';
+  if public.global_shipment_costs_are_locked(v_ship) then
+    raise exception 'shipment costs are locked';
   end if;
 
   if p_amount is null or p_amount < 0 then
@@ -9224,6 +9570,10 @@ begin
       coalesce(p_metadata, '{}'::jsonb)
     )
     returning * into v_row;
+  end if;
+
+  if exists (select 1 from public.global_shipment_items where shipment_id = p_shipment_id) then
+    perform public.stamp_global_shipment_landed_costs(p_shipment_id);
   end if;
 
   return v_row;
