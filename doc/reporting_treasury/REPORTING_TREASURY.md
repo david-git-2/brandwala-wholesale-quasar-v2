@@ -6,6 +6,8 @@ The **Reports & Treasury** domain provides parent-level financial visibility, tr
 
 **Customer dues (report 2):** who owes now, aging, credit limit. Spec [`CUSTOMER_DUES.md`](CUSTOMER_DUES.md). RPC `get_customer_dues_report`. Route `/app/finance/reports/customer-dues`. Customer wallet is not the bill.
 
+**Shipment cost & profit (report 5):** batch landed cost vs. sold revenue vs. realized GP vs. unsold stock valuation. Spec [`SHIPMENT_PROFIT.md`](SHIPMENT_PROFIT.md). RPC `get_tenant_shipment_profit_report`. Route `/app/finance/reports/shipment-profit`.
+
 ---
 
 ## 1. Domain Architecture & Financial Model

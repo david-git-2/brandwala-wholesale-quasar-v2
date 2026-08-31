@@ -1,3 +1,4 @@
+
 import type { UniversalWalletEntityType } from '../../types';
 
 export const walletQueryKeys = {

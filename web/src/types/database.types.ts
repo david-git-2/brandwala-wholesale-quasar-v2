@@ -11241,6 +11241,18 @@ export type Database = {
         Returns: number
       }
       get_tenant_role_detail: { Args: { p_role_id: number }; Returns: Json }
+      get_tenant_shipment_profit_report: {
+        Args: {
+          p_end_date?: string
+          p_page?: number
+          p_page_size?: number
+          p_search?: string
+          p_shipment_id?: number
+          p_start_date?: string
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
       get_thrift_customer_sales_risk: {
         Args: { p_phone: string; p_tenant_id: number }
         Returns: Json
