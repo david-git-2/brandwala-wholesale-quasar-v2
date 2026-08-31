@@ -31,4 +31,7 @@ export const walletQueryKeys = {
     ['wallet', 'dashboardSummary', tenantId] as const,
   statement: (params: { tenantId: number; entityType: UniversalWalletEntityType; entityId: number; startDate?: string | null; endDate?: string | null }) =>
     ['wallet', 'statement', params] as const,
+  cashIn: (params: { tenantId: number; startDate?: string | null; endDate?: string | null }) =>
+    ['wallet', 'cashIn', params] as const,
 };
+

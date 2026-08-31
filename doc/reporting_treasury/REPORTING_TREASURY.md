@@ -59,6 +59,7 @@ flowchart TD
 | `/:tenantSlug?/app/finance/balances` | [`BillingBalancesPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/reporting_treasury/pages/BillingBalancesPage.vue) | Customer AR due balances, credit limits, payment allocation modal |
 | `/:tenantSlug?/app/finance/payments` | [`PaymentsListPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/reporting_treasury/pages/PaymentsListPage.vue) | Received payment logs, bank references, allocation status |
 | `/:tenantSlug?/app/finance/payments/:id` | [`PaymentDetailPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/reporting_treasury/pages/PaymentDetailPage.vue) | Payment allocation breakdown across invoices |
+| `/:tenantSlug?/app/finance/reports/cash-in` | [`CashInReportPage.vue`](file:///Users/david/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/reporting_treasury/pages/CashInReportPage.vue) | Till view of tenant wallet incoming credits, method breakdown, CSV export |
 | `/:tenantSlug?/app/finance/investors` | [`InvestorReportsPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/reporting_treasury/pages/InvestorReportsPage.vue) | Investor capital performance & profit share summaries |
 
 ---
@@ -67,6 +68,7 @@ flowchart TD
 
 | Component | Action / Trigger | Hook / Endpoint | Caching Strategy |
 | :--- | :--- | :--- | :--- |
+| **`CashInReportPage`** | Mount / Filter Change | `walletReportsRepository.fetchCashInReport` $\rightarrow$ `RPC: get_tenant_cash_in_report` | `staleTime: 30s`, Key: `walletQueryKeys.cashIn` |
 | **`InvoiceMarginReportPage`** | Mount / Filter Change | `treasuryRepository.listInvoiceMarginReport` $\rightarrow$ `RPC: list_invoice_margin_report` | `staleTime: 30s`, Key: `['finance', 'invoices', query]` |
 | **`InvoiceMarginDetailPage`** | Mount / Refresh | `treasuryRepository.getInvoiceMarginDetail` $\rightarrow$ `RPC: get_invoice_margin_detail` | `staleTime: 30s`, Key: `['finance', 'invoice_margin', id]` |
 | **`ShipmentPnLDetailsPage`** | Mount / Refresh | `treasuryRepository.getShipmentPnL` $\rightarrow$ `Table/RPC: shipment_pnl` | `staleTime: 30s`, Key: `['finance', 'shipment_pnl', id]` |
@@ -74,3 +76,4 @@ flowchart TD
 | **`BillingBalancesPage`** | Settle Customer Dues | `treasuryRepository.createPaymentWithAllocations` $\rightarrow$ `RPC: create_billing_profile_payment_with_allocations` | Invalidates balances & invoice caches |
 | **`PaymentsListPage`** | Mount / Refresh | `treasuryRepository.listPayments` $\rightarrow$ `Table: global_payments` | `staleTime: 30s`, Key: `['finance', 'payments', filters]` |
 | **Dropship Remittance** | Record COD Remittance | `treasuryRepository.recordRecipientInvoiceCollection` $\rightarrow$ `RPC: record_recipient_invoice_collection` | Invalidates invoice dues & ledger |
+

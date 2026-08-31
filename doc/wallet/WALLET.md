@@ -131,7 +131,8 @@ Wholesale invoices **do not** bill the customer wallet on issue. Due is invoice 
 
 See [`doc/sales_invoice/SALES_INVOICE.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/sales_invoice/SALES_INVOICE.md) §2.4.
 
-See [`doc/reporting_treasury/CASH_IN.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/reporting_treasury/CASH_IN.md). RPC `get_tenant_cash_in_report` is live. **UI later.**
+See [`doc/reporting_treasury/CASH_IN.md`](file:///Users/david/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/reporting_treasury/CASH_IN.md). RPC `get_tenant_cash_in_report` and UI at `/:tenantSlug?/app/finance/reports/cash-in` are **Live**.
+
 
 ---
 
