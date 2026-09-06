@@ -277,6 +277,11 @@ returns boolean language sql security definer set search_path = public stable as
   );
 $$;
 
+-- Only on fresh reset (function absent). Prod already has buy/sell split OUT columns from 20270831000290+.
+do $do$
+begin
+  if to_regprocedure('public.get_shop_permissions_for_customer(bigint)') is null then
+    execute $fn$
 create or replace function public.get_shop_permissions_for_customer(p_shop_id bigint)
 returns table (
   can_browse boolean,
@@ -291,7 +296,7 @@ language plpgsql
 security definer
 set search_path = public
 stable
-as $$
+as $body$
 declare
   v_shop_active boolean;
   v_tenant_id bigint;
@@ -355,8 +360,12 @@ begin
     and cgm.is_active = true
     and lower(trim(cgm.email)) = public.current_user_email();
 end;
-$$;
-
-grant execute on function public.get_shop_permissions_for_customer(bigint) to authenticated;
+$body$;
+    $fn$;
+    grant execute on function public.get_shop_permissions_for_customer(bigint) to authenticated;
+  else
+    raise notice 'skipped get_shop_permissions_for_customer (already exists; prod uses split price columns)';
+  end if;
+end $do$;
 
 commit;

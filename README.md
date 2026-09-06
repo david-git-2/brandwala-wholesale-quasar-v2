@@ -133,9 +133,9 @@ Requires: linked project (`pnpm run backend:link`), `psql` on your PATH. Dumps a
 
 1. `pnpm run backend:start` (if stopped)
 2. `pnpm run env:local` and restart `pnpm run dev`
-3. **Test migrations only (fast):** `pnpm run backend:reset` — replays all migrations, no prod dump. Fix until green.
-4. **Then** load prod rows once: `pnpm run backend:pull-prod-data`
-5. Schema/RPC change: edit `supabase/schemas/` → `pnpm run backend:schema:diff` → `pnpm exec supabase db diff -f <name>` → review the new migration → `pnpm run backend:reset` → when ready `pnpm run deploy:backend`. See [doc/SUPABASE_SCHEMA.md](doc/SUPABASE_SCHEMA.md).
+3. **Prove migrations on empty DB (ordering fixes):** `pnpm run backend:reset` — no prod data. Fix until green.
+4. **Load prod rows once:** `pnpm run backend:pull-prod-data`
+5. **Schema/RPC change (after prod data loaded):** edit `supabase/schemas/` → `pnpm run backend:schema:diff` → `pnpm exec supabase db diff -f <name>` → review → `pnpm run backend:local` → `pnpm run backend:types:local` → when ready `pnpm run deploy:backend`. Do **not** run reset/restore-dumps for every migration. See [doc/SUPABASE_SCHEMA.md](doc/SUPABASE_SCHEMA.md).
 
 **Useful scripts**
 
@@ -146,7 +146,8 @@ Requires: linked project (`pnpm run backend:link`), `psql` on your PATH. Dumps a
 | `backend:env:print` | Local URL + anon/service keys (seed `web/.env.profile.local`) |
 | `backend:reset` | Rebuild local DB from migrations only (empty business data) |
 | `backend:local` | Apply pending migrations to local (`migration up --include-all`) |
-| `backend:pull-prod-data` | Opt-in dump linked prod → restore data into local |
+| `backend:pull-prod-data` | Dump linked prod → reset local → restore prod rows |
+| `backend:restore-dumps` | Reapply cached prod dump — **wipes local DB** (same as pull-prod-data with `--reuse-dumps`) |
 | `backend:types:local` | Generate types from local DB |
 | `backend:schema:dump` | Dump local public schema → `supabase/schemas/public.sql` |
 | `backend:schema:diff` | Preview schemas vs migrations (does not write a file) |

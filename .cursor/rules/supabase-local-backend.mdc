@@ -1,0 +1,62 @@
+---
+description: Which local Supabase command to run — default backend:local; never auto-reset prod data.
+globs:
+alwaysApply: true
+---
+
+# Local Supabase commands (agents)
+
+Most day-to-day work uses a **local DB that already has prod rows** loaded once. Do not wipe it unless the user asks.
+
+## Default — apply new migrations (keeps data)
+
+After adding or editing a migration file, or when the user says "update local", "apply migration", or "backend:local":
+
+```bash
+pnpm run backend:local
+pnpm run backend:types:local
+```
+
+`backend:local` runs `migration up --include-all` on the **existing** DB. Prod snapshot rows stay.
+
+## Destructive — only when explicitly requested
+
+| Command | What it does | Run only when… |
+|---------|----------------|----------------|
+| `backend:reset` | Wipes local DB, replays all migrations, **no prod data** | User asks for reset / empty DB / verify clean replay; or you are **fixing migration ordering** and must prove empty-DB replay |
+| `backend:pull-prod-data` | Dumps linked prod → **full db reset** → restores rows | User asks to pull prod / first-time data load after a green reset |
+| `backend:restore-dumps` | Same as pull-prod-data with `--reuse-dumps --force` (no remote dump) | User explicitly asks to **reapply dump** / reload prod snapshot from `supabase/.dumps/` |
+
+**Never auto-run** `backend:reset`, `backend:restore-dumps`, or `backend:pull-prod-data` after implementing a feature or when the user said "don't reset".
+
+`backend:restore-dumps` **always** calls `db reset` internally — it is not a gentle reload. It destroys local test rows and reverts to the dump snapshot.
+
+## Typical workflows
+
+**Feature work (prod data already loaded once):**
+1. Edit `supabase/schemas/` → generate migration
+2. `pnpm run backend:local` → `pnpm run backend:types:local`
+3. Do **not** run reset or restore-dumps
+
+**First-time local setup or migration-order fix:**
+1. `pnpm run backend:reset` — prove migrations replay on empty DB
+2. Once green: `pnpm run backend:pull-prod-data` — load prod rows **once**
+3. Further schema changes: `backend:local` only
+
+**User says "reapply dump and update":**
+- If they want prod snapshot **and** new migrations: `backend:restore-dumps` then `backend:types:local` (restore already replays all migrations; `backend:local` is usually redundant)
+- If they only want new migrations on current data: `backend:local` only — **not** restore-dumps
+
+## Types
+
+| Situation | Command |
+|-----------|---------|
+| Local DB changed | `pnpm run backend:types:local` |
+| After `deploy:backend` / remote push | `pnpm run backend:types` (linked project) |
+
+## Anti-patterns (caused real data loss)
+
+- Running `backend:reset` after the user loaded prod data and only asked to apply a migration
+- Running `backend:restore-dumps` when `backend:local` was enough
+- Chaining `backend:restore-dumps && backend:local` after every migration (restore already resets + replays all migrations)
+- Suggesting `backend:reset` as the default "verify" step when local already has prod data

@@ -6,7 +6,9 @@ alwaysApply: false
 
 # Supabase Migration Safety (Fresh Reset)
 
-Local `pnpm run backend:reset` / `pull-prod-data` replays **all** migrations from empty. Prod often never does. Every new migration must succeed on a clean DB.
+**Apply locally (default):** `pnpm run backend:local` — keeps prod snapshot data. See `.cursor/rules/supabase-local-backend.mdc`.
+
+Local `pnpm run backend:reset` / `pull-prod-data` replays **all** migrations from empty. Prod often never does. Every new migration must succeed on a clean DB — prove that with `backend:reset` when fixing ordering, not on every feature.
 
 **Full workflow:** `.agents/skills/supabase-migration-order/SKILL.md`
 
@@ -48,13 +50,22 @@ History already wrong: **stub** the early file (`raise notice` no-op) + **later*
 
 Example in repo: `20260825143000_*` stub → `20270814000046_deferred_*`.
 
-## Verify (mandatory for migration work)
+## Verify
+
+**Day-to-day (local has prod data):**
+
+```bash
+pnpm run backend:local
+pnpm run backend:types:local
+```
+
+**Empty-DB replay (ordering fix, or before first prod pull):**
 
 ```bash
 pnpm run backend:reset
 ```
 
-No `ERROR:` lines. Then optional `pnpm run backend:pull-prod-data` or intentional `pnpm run deploy:backend`.
+No `ERROR:` lines. Load prod rows once with `backend:pull-prod-data` if needed. Do **not** run reset/restore after every migration when data is already loaded.
 
 ## New features (DDL)
 

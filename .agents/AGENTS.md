@@ -6,13 +6,14 @@
 - **Do NOT Scan Migrations**: Do NOT read through all files in `supabase/migrations/*.sql` to determine active database state.
 - **New Migrations Only**: Only inspect or edit `supabase/migrations/*.sql` when writing/reviewing a generated or DML migration.
 - **Migration Source of Truth**: When creating new RPC migrations, **ALWAYS** copy the function body from the active declarative schema in `supabase/schemas/<domain>/03_rpcs.sql`, NEVER from historical migration files in `supabase/migrations/` (to prevent resurrecting deprecated enum values like `'posted'`).
-- **Migration order / fresh reset**: Before adding or fixing `supabase/migrations/*.sql`, follow `.agents/skills/supabase-migration-order/SKILL.md` and run `pnpm run backend:reset`. Prod state does not prove ordering is correct.
+- **Local backend commands**: Follow `.cursor/rules/supabase-local-backend.mdc`. Default after a migration: `pnpm run backend:local` + `backend:types:local`. Do **not** auto-run `backend:reset` or `backend:restore-dumps` when local already has prod data.
+- **Migration order / fresh reset**: Before adding or fixing `supabase/migrations/*.sql`, follow `.agents/skills/supabase-migration-order/SKILL.md`. Run `backend:reset` only to prove empty-DB replay (ordering fixes) or when the user asks — not after every feature.
 
 ## Procurement module — `doc/procurement_stock/IMPLEMENTATION_ORDER.md`
 Shipment track (7A–14B) and warehouse W1–W9 are complete.
 When a phase adds SQL migrations:
 - **Read** the migration files you add or replace.
-- **Run** `pnpm run backend:reset` and `pnpm run backend:types` before marking done.
+- **Run** `pnpm run backend:local` and `pnpm run backend:types:local` before marking done (or `backend:reset` only when proving empty-DB replay / user requested reset).
 - Treat **`database.types.ts` as generated output**, not proof migrations are reset-safe.
 - **Never** ship stub RPCs (count-only loops, fake `wallet_posted: true` without `record_ledger_transaction`).
 

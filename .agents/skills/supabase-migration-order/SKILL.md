@@ -83,16 +83,27 @@ end $$;
 
 ## Mandatory verify
 
+**Default (local already has prod data):**
+
+```bash
+pnpm run backend:local
+pnpm run backend:types:local
+```
+
+**Empty-DB replay** — only when fixing migration ordering, before first prod pull, or user asks for reset:
+
 ```bash
 pnpm run backend:reset
 ```
 
-Must end with `Finished supabase db reset` and **no** `ERROR:` lines. Only then:
+Must end with `Finished supabase db reset` and **no** `ERROR:` lines. Then optionally:
 
 ```bash
-pnpm run backend:pull-prod-data   # optional data
+pnpm run backend:pull-prod-data   # once — loads prod rows; do not repeat after every migration
 pnpm run deploy:backend           # prod push — only when intentional
 ```
+
+See `.cursor/rules/supabase-local-backend.mdc` — never auto-run `backend:reset` or `backend:restore-dumps` when applying a new migration on an existing local DB.
 
 ## Quick grep checks (new migration file)
 
@@ -123,6 +134,6 @@ If your file’s timestamp sorts **before** the create-type / create-table file,
 1. Edit `supabase/schemas/` (not hand-written DDL migrations for features).
 2. `pnpm run backend:schema:diff` → `supabase db diff -f short_name`.
 3. Review generated migration timestamp is **after** dependencies.
-4. `pnpm run backend:reset` → `pnpm run backend:types:local`.
+4. `pnpm run backend:local` → `pnpm run backend:types:local` (or `backend:reset` only when proving empty-DB replay).
 
 Hand-write migrations only for **DML** (seeds, backfills). Copy RPC bodies from **`supabase/schemas/`**, never from old migration files (see `AGENTS.md`).

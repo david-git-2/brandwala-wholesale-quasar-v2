@@ -17,7 +17,7 @@ alwaysApply: false
 
 ## Migrations
 - **Supabase DDL:** edit `supabase/schemas/` then diff — `.cursor/rules/supabase-declarative-schema.mdc`.
-- **Supabase (`supabase/migrations/`):** follow `.cursor/rules/supabase-migrations.mdc` (fresh-reset safety, ordering, `IF EXISTS`, verify with `pnpm run backend:reset`).
+- **Supabase (`supabase/migrations/`):** follow `.cursor/rules/supabase-migrations.mdc` and `.cursor/rules/supabase-local-backend.mdc` (default `backend:local`; reset only when user asks or fixing ordering).
 - Prefer a **new** migration for features. Edit an already-applied file only to fix local fresh-reset breakage (never for normal schema work).
 - Match existing migration idioms in this repo (raw SQL, `security definer` RPC patterns, snake_case).
 - Don't drop columns/tables in the same migration that adds replacements — split into two.
