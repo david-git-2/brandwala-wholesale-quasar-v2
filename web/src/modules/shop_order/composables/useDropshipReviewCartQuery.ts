@@ -28,7 +28,7 @@ export function useDropshipReviewCartQuery(shopId: Ref<number | null>) {
       }
 
       const enrichedItems = (res.data?.items ?? []).map((item) => {
-        const moq = resolveShopCartItemMoq(item, { dropship: true });
+        const moq = resolveShopCartItemMoq(item, 'dropship');
         return {
           ...item,
           minimum_quantity: moq,

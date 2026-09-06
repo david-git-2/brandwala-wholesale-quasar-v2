@@ -31,90 +31,101 @@
 
     <div class="product-main">
     <q-card-section class="product-body">
-      <div class="product-header">
-        <div class="product-meta text-caption text-uppercase tracking-wider">
-          {{ item.product_brand || 'Generic' }}
+      <div class="product-meta text-caption text-uppercase tracking-wider">
+        {{ item.product_brand || 'Generic' }}
+      </div>
+      <div
+        class="product-name text-subtitle2 text-weight-bold cursor-pointer"
+        @click="$emit('open-detail', item)"
+      >
+        {{ item.product_name }}
+      </div>
+
+      <div
+        v-if="
+          showQuantityBreakdown &&
+          permissions?.can_view_quantity
+        "
+        class="storefront-qty-breakdown q-mt-xs column q-gutter-y-xs"
+      >
+        <div class="text-caption row items-center no-wrap q-gutter-x-xs">
+          <span class="text-grey-7">{{ $t('shop_admin.col_actual_qty') }}:</span>
+          <span class="text-weight-medium" :class="actualQtyClass">{{ actualAvailableQty }}</span>
         </div>
-        <div
-          class="product-name text-subtitle2 text-weight-bold cursor-pointer"
-          @click="$emit('open-detail', item)"
-        >
-          {{ item.product_name }}
+        <div class="text-caption row items-center no-wrap q-gutter-x-xs">
+          <span class="text-grey-7">{{ $t('shop_admin.col_display_qty') }}:</span>
+          <span class="text-weight-medium" :class="displayQtyClass">{{ displayQtyValue }}</span>
+          <span v-if="!hasDisplayOverride" class="text-grey-6">({{ $t('shop_admin.storefront_qty_auto') }})</span>
         </div>
       </div>
 
-      <div class="product-details-grid">
+      <div
+        v-else-if="
+          permissions?.can_view_quantity &&
+          item.available_units !== null &&
+          item.available_units !== undefined
+        "
+        class="text-caption q-mt-xs"
+        :class="
+          item.available_units > 0
+            ? 'text-positive'
+            : item.available_units === 0
+              ? 'text-negative'
+              : 'text-grey-6'
+        "
+      >
+        {{ item.available_units }} {{ $t('shop.avail') }}
+      </div>
+
+      <div class="product-pricing q-mt-sm">
         <div
-          v-if="showQuantityBreakdown && permissions?.can_view_quantity"
-          class="detail-field"
+          v-if="avgCostText"
+          class="text-body2 text-grey-9 text-weight-medium"
         >
-          <span class="detail-label">{{ $t('shop_admin.col_actual_qty') }}</span>
-          <span class="detail-value text-weight-medium" :class="actualQtyClass">
-            {{ actualAvailableQty }}
+          <span class="text-caption text-grey-6 block text-weight-medium">
+            {{ $t('shop_admin.storefront_avg_cost') }}
           </span>
+          {{ avgCostText }}
         </div>
 
         <div
-          v-if="showQuantityBreakdown && permissions?.can_view_quantity"
-          class="detail-field"
+          v-if="unitPriceText"
+          class="text-subtitle1 text-weight-bold text-primary"
+          :class="{ 'q-mt-xs': avgCostText }"
         >
-          <span class="detail-label">{{ $t('shop_admin.col_display_qty') }}</span>
-          <span class="detail-value text-weight-medium" :class="displayQtyClass">
-            {{ displayQtyValue }}
-            <span v-if="!hasDisplayOverride" class="text-grey-6 text-caption">
-              ({{ $t('shop_admin.storefront_qty_auto') }})
-            </span>
-          </span>
-        </div>
-
-        <div
-          v-if="
-            !showQuantityBreakdown &&
-            permissions?.can_view_quantity &&
-            item.available_units !== null &&
-            item.available_units !== undefined
-          "
-          class="detail-field"
-        >
-          <span class="detail-label">{{ $t('shop.avail') }}</span>
           <span
-            class="detail-value text-weight-medium"
-            :class="
-              item.available_units > 0
-                ? 'text-positive'
-                : item.available_units === 0
-                  ? 'text-negative'
-                  : 'text-grey-6'
-            "
+            v-if="unitPriceLabel"
+            class="text-caption text-grey-6 block text-weight-medium"
           >
-            {{ item.available_units }}
+            {{ unitPriceLabel }}
           </span>
+          {{ unitPriceText }}
         </div>
 
-        <div v-if="avgCostText" class="detail-field">
-          <span class="detail-label">{{ $t('shop_admin.storefront_avg_cost') }}</span>
-          <span class="detail-value text-weight-medium">{{ avgCostText }}</span>
+        <div
+          v-if="sellPriceText"
+          class="text-subtitle1 text-weight-bold text-primary"
+          :class="{ 'q-mt-xs': unitPriceText }"
+        >
+          <span
+            v-if="sellPriceLabel"
+            class="text-caption text-grey-6 block text-weight-medium"
+          >
+            {{ sellPriceLabel }}
+          </span>
+          {{ sellPriceText }}
         </div>
 
-        <div v-if="unitPriceText" class="detail-field">
-          <span v-if="unitPriceLabel" class="detail-label">{{ unitPriceLabel }}</span>
-          <span v-else class="detail-label">{{ $t('shop.unit_price') }}</span>
-          <span class="detail-value text-weight-bold text-primary">{{ unitPriceText }}</span>
-        </div>
-
-        <div v-if="sellPriceText" class="detail-field">
-          <span v-if="sellPriceLabel" class="detail-label">{{ sellPriceLabel }}</span>
-          <span v-else class="detail-label">{{ $t('shop.sell_price') }}</span>
-          <span class="detail-value text-weight-bold text-primary">{{ sellPriceText }}</span>
-        </div>
-
-        <div v-if="resellMinimumText" class="detail-field">
-          <span class="detail-label">{{ $t('shop.min_sell_price') }}</span>
-          <span class="detail-value text-weight-bold text-secondary">{{ resellMinimumText }}</span>
+        <div
+          v-if="resellMinimumText"
+          class="text-body2 text-grey-9 text-weight-medium q-mt-xs"
+        >
+          {{ $t('shop.min_sell_price') }}
+          <span class="text-secondary text-weight-bold">{{ resellMinimumText }}</span>
         </div>
       </div>
 
-      <div v-if="showCalculateSellPrice" class="product-full-width-action q-mt-sm">
+      <div v-if="showCalculateSellPrice" class="q-mt-sm">
         <q-btn
           outline
           dense
@@ -130,7 +141,7 @@
 
       <div
         v-if="showAdminCardActions"
-        class="product-full-width-action q-mt-sm row items-center no-wrap admin-card-actions"
+        class="q-mt-sm row items-center no-wrap admin-card-actions"
         :class="showListingStatusToggle ? 'justify-between' : 'justify-end'"
       >
         <div v-if="showListingStatusToggle" class="row items-center no-wrap q-gutter-x-sm col min-width-0">
@@ -277,6 +288,7 @@ import type {
   ShopType,
 } from '../types';
 import { formatCatalogPrice, hasCatalogPrice } from '../utils/catalogPriceUtils';
+import { resolveShopCartItemMoq } from '../utils/cartQuantityUtils';
 
 const props = defineProps<{
   item: ShopCatalogItem;
@@ -348,10 +360,7 @@ const onListingActiveChange = (value: boolean) => {
   emit('toggle-listing-status', props.item, value);
 };
 
-const minQty = computed(() => {
-  if (props.shopType === 'dropship') return 1;
-  return props.item.minimum_order_quantity || 1;
-});
+const minQty = computed(() => resolveShopCartItemMoq(props.item, props.shopType));
 
 const actualAvailableQty = computed(() => {
   const raw = props.item.real_available_units ?? props.item.available_units;
@@ -426,8 +435,7 @@ const resellMinimumText = computed(() => {
 <style scoped>
 .product-card {
   display: flex;
-  flex-direction: row;
-  align-items: stretch;
+  flex-direction: column;
   height: auto;
   border-radius: 16px;
   background: var(--bw-theme-surface, #ffffff);
@@ -458,17 +466,15 @@ const resellMinimumText = computed(() => {
 }
 .product-image-wrapper {
   position: relative;
-  width: 112px;
-  flex: 0 0 112px;
-  min-height: 112px;
-  align-self: stretch;
+  height: 160px;
+  flex: 0 0 160px;
   background: var(--bw-theme-surface, #ffffff);
-  border-right: 1px solid var(--bw-theme-border, rgba(34, 56, 101, 0.05));
+  border-bottom: 1px solid var(--bw-theme-border, rgba(34, 56, 101, 0.05));
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 8px;
-  border-radius: 16px 0 0 16px;
+  border-radius: 16px 16px 0 0;
   overflow: hidden;
 }
 .product-overlay-chip {
@@ -486,7 +492,6 @@ const resellMinimumText = computed(() => {
 .product-image {
   width: 100%;
   height: 100%;
-  max-height: 120px;
   object-fit: contain;
   display: block;
   border-radius: 8px;
@@ -494,7 +499,6 @@ const resellMinimumText = computed(() => {
 .product-image-fallback {
   width: 100%;
   height: 100%;
-  min-height: 96px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -514,9 +518,6 @@ const resellMinimumText = computed(() => {
   min-width: 0;
   padding: 10px 12px 8px;
 }
-.product-header {
-  margin-bottom: 8px;
-}
 .product-meta {
   letter-spacing: 0.05em;
   margin-bottom: 2px;
@@ -524,40 +525,14 @@ const resellMinimumText = computed(() => {
 }
 .product-name {
   display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
   line-height: 1.35;
+  min-height: 4.05em;
+  margin-bottom: 4px;
   color: var(--bw-theme-ink, #1f2937);
-}
-.product-details-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 12px;
-  min-width: 0;
-}
-.detail-field {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-.detail-label {
-  font-size: 11px;
-  line-height: 1.2;
-  color: var(--bw-theme-muted, #6b7280);
-  font-weight: 500;
-}
-.detail-value {
-  font-size: 13px;
-  line-height: 1.3;
-  color: var(--bw-theme-ink, #1f2937);
-  word-break: break-word;
-}
-.product-full-width-action {
-  grid-column: 1 / -1;
-  width: 100%;
 }
 .product-actions {
   flex-shrink: 0;
@@ -586,6 +561,9 @@ const resellMinimumText = computed(() => {
   font-size: 13px;
   user-select: none;
 }
+.product-pricing {
+  min-width: 0;
+}
 .add-cart-btn {
   flex: 1 1 auto;
   border-radius: 8px;
@@ -593,6 +571,9 @@ const resellMinimumText = computed(() => {
 
 @media (max-width: 599px) {
   .product-card {
+    flex-direction: row;
+    align-items: stretch;
+    height: auto;
     border-radius: 0;
     border: none !important;
     border-bottom: 1px solid var(--bw-theme-border, rgba(34, 56, 101, 0.08)) !important;
@@ -604,34 +585,41 @@ const resellMinimumText = computed(() => {
   }
   .product-image-wrapper {
     width: 96px;
+    height: 96px;
     flex: 0 0 96px;
-    min-height: 96px;
-    border-radius: 0;
+    align-self: center;
+    margin: 10px 0 10px 10px;
+    padding: 4px;
+    border-bottom: none;
+    border-radius: 8px;
+    overflow: hidden;
   }
   .product-image,
   .product-image-fallback {
     border-radius: 6px;
   }
+  .product-main {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .product-body {
+    padding: 10px 12px 8px 10px;
+  }
   .product-name {
+    min-height: unset;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
     font-size: 14px;
   }
-  .product-details-grid {
-    gap: 6px 10px;
-  }
   .product-actions {
+    flex-shrink: 0;
     border-top: none;
-    padding: 4px 12px 10px 0;
+    padding: 4px 12px 10px 10px;
   }
   .add-cart-btn {
     min-width: 36px;
     padding-left: 4px;
     padding-right: 4px;
-  }
-}
-
-@media (max-width: 359px) {
-  .product-details-grid {
-    grid-template-columns: 1fr;
   }
 }
 </style>

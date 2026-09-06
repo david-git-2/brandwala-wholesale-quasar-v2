@@ -16,55 +16,68 @@
 
       <q-separator />
 
-      <q-card-section v-if="listingId" class="col scroll q-pa-md relative-position calc-price-body">
-        <q-inner-loading :showing="isLoading" color="primary" />
+      <q-card-section
+        v-if="productGroup || listingId"
+        class="col scroll q-pa-md relative-position calc-price-body"
+      >
+        <q-inner-loading :showing="isLoading && hasListedGrade" color="primary" />
 
         <div
-          v-if="isError"
+          v-if="isError && hasListedGrade"
           class="column items-center justify-center q-pa-lg text-center text-grey-7"
         >
           {{ error?.message || $t('shop_admin.storefront_calc_load_failed') }}
         </div>
 
-        <div v-else-if="calcData" class="calc-drawer-stack">
+        <div v-else class="calc-drawer-stack">
           <div class="row items-start q-col-gutter-md product-hero">
             <div class="col-auto">
               <q-avatar square size="72px" class="bg-grey-2 rounded-borders">
                 <img
-                  v-if="calcData.listing.product_image_url"
-                  :src="calcData.listing.product_image_url"
-                  :alt="calcData.listing.product_name"
+                  v-if="productHeroImage"
+                  :src="productHeroImage"
+                  :alt="productHeroName"
                 />
                 <q-icon v-else name="ph ph-package" color="grey-6" size="28px" />
               </q-avatar>
             </div>
             <div class="col min-width-0">
-              <div class="row items-start no-wrap q-gutter-x-sm">
-                <div class="col min-width-0">
-                  <div class="text-subtitle2 text-weight-bold">{{ calcData.listing.product_name }}</div>
-                  <div v-if="calcData.listing.product_code" class="text-caption text-grey-7 q-mt-xs">
-                    {{ $t('shop_admin.storefront_product_code') }}: {{ calcData.listing.product_code }}
-                  </div>
-                </div>
-                <q-chip
-                  v-if="gradeChipLabel"
-                  dense
-                  size="sm"
-                  class="grade-chip text-weight-bold"
-                  text-color="white"
-                  :style="gradeChipStyle"
-                >
-                  {{ gradeChipLabel }}
-                </q-chip>
+              <div class="text-subtitle2 text-weight-bold">{{ productHeroName }}</div>
+              <div v-if="productHeroCode" class="text-caption text-grey-7 q-mt-xs">
+                {{ $t('shop_admin.storefront_product_code') }}: {{ productHeroCode }}
               </div>
+              <StorefrontGradeToggleRow
+                v-if="productGroup"
+                v-model="selectedGradeSlug"
+                class="q-mt-sm"
+                :listings-by-grade="productGroup.listingsByGrade"
+              />
             </div>
           </div>
 
-          <section class="calc-section">
-            <div class="text-subtitle2 text-weight-bold q-mb-sm">
-              {{ $t('shop_admin.storefront_calc_shipment_costs') }}
+          <div v-if="!hasListedGrade" class="grade-empty">
+            <div class="text-caption text-grey-7">
+              {{ $t('shop_admin.storefront_grade_not_listed') }}
             </div>
-            <div class="shipment-table-wrap">
+            <q-btn
+              outline
+              dense
+              no-caps
+              color="primary"
+              class="q-mt-sm full-width"
+              style="border-radius: 8px"
+              :loading="isEnsuringGrade"
+              :label="$t('shop_admin.storefront_setup_grade')"
+              @click="setupSelectedGrade"
+            />
+          </div>
+
+          <template v-else-if="calcData">
+            <section class="calc-section">
+              <div class="text-subtitle2 text-weight-bold q-mb-sm">
+                {{ $t('shop_admin.storefront_calc_shipment_costs') }}
+              </div>
+              <div class="shipment-table-wrap">
               <q-markup-table flat bordered dense class="rounded-borders shipment-cost-table">
                 <thead>
                   <tr>
@@ -219,6 +232,7 @@
               />
             </div>
           </section>
+          </template>
         </div>
       </q-card-section>
 
@@ -238,7 +252,7 @@
           no-caps
           :label="$t('shop_admin.save')"
           :loading="isSaving"
-          :disable="!calcData || isLoading"
+          :disable="!calcData || isLoading || !hasListedGrade"
           @click="onSave"
         />
       </q-card-actions>
@@ -249,25 +263,41 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import type { ShopType } from '../types';
+import StorefrontGradeToggleRow from './StorefrontGradeToggleRow.vue';
+import { normalizeStorefrontGradeSlug } from '../constants/storefrontWarehouseGrades';
 import { useShopStorefrontListingPriceCalcQuery } from '../composables/useShopStorefrontListingPriceCalcQuery';
-import { useSaveShopStorefrontListingPricingMutation } from '../composables/useShopStorefrontAdminMutations';
+import {
+  useEnsureShopStorefrontGradeListingMutation,
+  useSaveShopStorefrontListingPricingMutation,
+} from '../composables/useShopStorefrontAdminMutations';
 import { useLinkedListingPriceFields } from '../composables/useLinkedListingPriceFields';
 import { roundUpToNearest50or100 } from '../utils/shopPricingRound';
+import {
+  findSiblingListingForPricing,
+  pickDefaultGradeSlug,
+  type StorefrontProductGroup,
+} from '../utils/storefrontProductGroups';
 
 const props = defineProps<{
   modelValue: boolean;
   shopId: number | null;
   tenantId: number | null;
   listingId: number | null;
+  productGroup: StorefrontProductGroup | null;
+  sellCurrencyId: number | null;
   shopType?: ShopType | null;
 }>();
 
 const emit = defineEmits<{
   (event: 'update:modelValue', value: boolean): void;
   (event: 'saved'): void;
+  (event: 'grade-setup'): void;
 }>();
 
 const displayQuantity = ref<number | null>(null);
+const selectedGradeSlug = ref('standard');
+const activeListingId = ref<number | null>(null);
+const isEnsuringGrade = ref(false);
 
 const isOpen = computed({
   get: () => props.modelValue,
@@ -275,8 +305,18 @@ const isOpen = computed({
 });
 
 const shopIdRef = computed(() => props.shopId);
-const listingIdRef = computed(() => props.listingId);
-const queryEnabled = computed(() => isOpen.value && !!props.listingId);
+const listingIdRef = computed(() => activeListingId.value);
+const queryEnabled = computed(() => isOpen.value && !!activeListingId.value);
+
+const selectedListing = computed(() => {
+  if (!props.productGroup) return null;
+  return (
+    props.productGroup.listingsByGrade[normalizeStorefrontGradeSlug(selectedGradeSlug.value)] ??
+    null
+  );
+});
+
+const hasListedGrade = computed(() => selectedListing.value != null);
 
 const { data: calcData, isLoading, isError, error } = useShopStorefrontListingPriceCalcQuery(
   shopIdRef,
@@ -285,6 +325,89 @@ const { data: calcData, isLoading, isError, error } = useShopStorefrontListingPr
 );
 
 const { mutate: savePricing, isPending: isSaving } = useSaveShopStorefrontListingPricingMutation();
+const { mutate: ensureGradeMutation } = useEnsureShopStorefrontGradeListingMutation();
+
+const syncDrawerStateFromProps = () => {
+  activeListingId.value = props.listingId;
+  if (!props.productGroup) {
+    selectedGradeSlug.value = 'standard';
+    return;
+  }
+
+  let matchedSlug = pickDefaultGradeSlug(props.productGroup);
+  for (const [slug, listing] of Object.entries(props.productGroup.listingsByGrade)) {
+    if (listing?.listing_id === props.listingId) {
+      matchedSlug = slug;
+      break;
+    }
+  }
+  selectedGradeSlug.value = matchedSlug;
+};
+
+watch(
+  () => [isOpen.value, props.listingId, props.productGroup?.product_id] as const,
+  ([open]) => {
+    if (open) {
+      syncDrawerStateFromProps();
+    }
+  },
+);
+
+watch(selectedGradeSlug, (slug) => {
+  if (!props.productGroup) return;
+  const listing =
+    props.productGroup.listingsByGrade[normalizeStorefrontGradeSlug(slug)] ?? null;
+  activeListingId.value = listing?.listing_id ?? null;
+});
+
+watch(
+  () => props.productGroup?.listingsByGrade,
+  (byGrade) => {
+    if (!byGrade || !isOpen.value) return;
+    const listing = byGrade[normalizeStorefrontGradeSlug(selectedGradeSlug.value)];
+    if (listing?.listing_id) {
+      activeListingId.value = listing.listing_id;
+    }
+  },
+  { deep: true },
+);
+
+const productHeroName = computed(
+  () => calcData.value?.listing.product_name ?? props.productGroup?.product_name ?? '—',
+);
+
+const productHeroImage = computed(
+  () => calcData.value?.listing.product_image_url ?? props.productGroup?.product_image_url ?? null,
+);
+
+const productHeroCode = computed(() => calcData.value?.listing.product_code ?? null);
+
+const setupSelectedGrade = () => {
+  if (!props.productGroup || !props.shopId || !props.tenantId || !props.sellCurrencyId) return;
+
+  isEnsuringGrade.value = true;
+  ensureGradeMutation(
+    {
+      shopId: props.shopId,
+      tenantId: props.tenantId,
+      productId: props.productGroup.product_id,
+      gradeSlug: selectedGradeSlug.value,
+      sourceListing: findSiblingListingForPricing(props.productGroup),
+      sellCurrencyId: props.sellCurrencyId,
+    },
+    {
+      onSettled: () => {
+        isEnsuringGrade.value = false;
+      },
+      onSuccess: (listing) => {
+        emit('grade-setup');
+        if (listing?.id) {
+          activeListingId.value = listing.id;
+        }
+      },
+    },
+  );
+};
 
 const showMinResellPrice = computed(() => props.shopType === 'dropship');
 
@@ -327,14 +450,6 @@ const currencySymbol = computed(
     '৳',
 );
 
-const gradeChipLabel = computed(() => calcData.value?.listing.stock_grade?.label ?? null);
-
-const gradeChipStyle = computed(() => {
-  const color = calcData.value?.listing.stock_grade?.color?.trim();
-  if (!color) return undefined;
-  return { backgroundColor: color };
-});
-
 const formatMoney = (amount: number | null | undefined) => {
   const n = Number(amount);
   if (!Number.isFinite(n)) return '—';
@@ -356,6 +471,11 @@ const applyPricingForm = () => {
   displayQuantity.value =
     pricing.display_quantity_override ?? pricing.suggested_display_quantity ?? null;
 };
+
+watch(activeListingId, () => {
+  initializePricingFields(null, null);
+  displayQuantity.value = null;
+});
 
 watch(calcData, (data) => {
   if (data) {
@@ -456,11 +576,11 @@ const onSave = () => {
   background: rgba(248, 250, 252, 0.8);
 }
 
-.grade-chip {
-  flex-shrink: 0;
-  font-size: 11px;
-  min-height: 22px;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.18);
+.grade-empty {
+  padding: 16px;
+  border: 1px dashed rgba(0, 0, 0, 0.12);
+  border-radius: 12px;
+  text-align: center;
 }
 
 .min-width-0 {

@@ -290,6 +290,8 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { useQuasar } from 'quasar';
+import { resolveShopCartItemMoq } from '../utils/cartQuantityUtils';
+import type { ShopType } from '../types';
 
 const props = defineProps<{
   modelValue: boolean;
@@ -328,10 +330,9 @@ const images = computed(() => {
   return list;
 });
 
-const minQty = computed(() => {
-  if (props.shopDetails?.shop_type === 'dropship') return 1;
-  return props.product?.minimum_order_quantity || props.product?.moq || 1;
-});
+const minQty = computed(() =>
+  resolveShopCartItemMoq(props.product ?? {}, props.shopDetails?.shop_type as ShopType | undefined),
+);
 
 watch(
   () => props.product,

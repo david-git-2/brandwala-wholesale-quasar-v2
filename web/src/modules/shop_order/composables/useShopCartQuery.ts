@@ -26,8 +26,9 @@ export function useShopCartQuery(shopId: Ref<number | null>) {
         seedCustomerShopPermissions(queryClient, shopId.value, res.data.permissions);
       }
 
+      const shopType = res.data?.cart?.shop_type ?? null;
       const enrichedItems = (res.data?.items ?? []).map((i) => {
-        const moq = resolveShopCartItemMoq(i);
+        const moq = resolveShopCartItemMoq(i, shopType);
         return {
           ...i,
           minimum_quantity: moq,

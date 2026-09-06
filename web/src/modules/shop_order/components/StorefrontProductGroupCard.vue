@@ -29,35 +29,11 @@
           </div>
         </div>
 
-        <q-btn-toggle
+        <StorefrontGradeToggleRow
           v-model="selectedGradeSlug"
-          spread
-          no-caps
-          dense
-          unelevated
-          toggle-color="primary"
-          color="grey-2"
-          text-color="grey-8"
-          class="grade-toggle q-mt-xs"
-        >
-          <q-btn
-            v-for="grade in warehouseGrades"
-            :key="grade.slug"
-            :value="grade.slug"
-            class="grade-toggle-btn"
-          >
-            <div class="column items-center no-wrap">
-              <span class="grade-toggle-label">{{ gradeShortLabel(grade) }}</span>
-              <q-badge
-                v-if="gradeState(grade.slug) !== 'unlisted'"
-                :color="gradeState(grade.slug) === 'active' ? 'positive' : 'grey-6'"
-                rounded
-                class="grade-state-dot"
-              />
-            </div>
-            <q-tooltip>{{ grade.label }}</q-tooltip>
-          </q-btn>
-        </q-btn-toggle>
+          class="q-mt-xs"
+          :listings-by-grade="group.listingsByGrade"
+        />
 
         <div v-if="!selectedListing" class="grade-empty q-mt-md">
           <div class="text-caption text-grey-7">
@@ -176,17 +152,14 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import StorefrontGradeToggleRow from './StorefrontGradeToggleRow.vue';
 import type { CustomerShopPermissions } from '../composables/useCustomerShopPermissionsQuery';
+import type { ShopStorefrontAdminListing, ShopType } from '../types';
 import {
-  STOREFRONT_WAREHOUSE_GRADES,
-  normalizeStorefrontGradeSlug,
-} from '../constants/storefrontWarehouseGrades';
-import type { ShopCatalogStockGrade, ShopStorefrontAdminListing, ShopType } from '../types';
-import {
-  gradeListingState,
   pickDefaultGradeSlug,
   type StorefrontProductGroup,
 } from '../utils/storefrontProductGroups';
+import { normalizeStorefrontGradeSlug } from '../constants/storefrontWarehouseGrades';
 import { formatCatalogPrice, hasCatalogPrice } from '../utils/catalogPriceUtils';
 
 const props = defineProps<{
@@ -211,19 +184,22 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const warehouseGrades = STOREFRONT_WAREHOUSE_GRADES;
 const selectedGradeSlug = ref(pickDefaultGradeSlug(props.group));
 
 watch(
-  () => props.group.product_id,
-  () => {
-    selectedGradeSlug.value = pickDefaultGradeSlug(props.group);
+  () => props.group,
+  (group) => {
+    if (!group?.listingsByGrade) return;
+    selectedGradeSlug.value = pickDefaultGradeSlug(group);
   },
+  { deep: true },
 );
 
-const selectedListing = computed(
-  () => props.group.listingsByGrade[normalizeStorefrontGradeSlug(selectedGradeSlug.value)] ?? null,
-);
+const selectedListing = computed(() => {
+  const byGrade = props.group?.listingsByGrade;
+  if (!byGrade) return null;
+  return byGrade[normalizeStorefrontGradeSlug(selectedGradeSlug.value)] ?? null;
+});
 
 const showQuantityBreakdown = computed(() => props.showQuantityBreakdown === true);
 const showCalculateSellPrice = computed(() => props.showCalculateSellPrice === true);
@@ -233,19 +209,6 @@ const showRemoveProduct = computed(() => props.showRemoveProduct === true);
 const showAdminCardActions = computed(
   () => showListingStatusToggle.value || showRemoveProduct.value,
 );
-
-const gradeState = (slug: string) =>
-  gradeListingState(props.group.listingsByGrade[normalizeStorefrontGradeSlug(slug)]);
-
-const gradeShortLabel = (grade: ShopCatalogStockGrade) => {
-  const map: Record<string, string> = {
-    standard: 'Std',
-    open_box: 'Open',
-    box_damage: 'Damage',
-    box_less: 'No box',
-  };
-  return map[grade.slug] ?? grade.label;
-};
 
 const isListingActive = computed(() => selectedListing.value?.listing_status !== 'inactive');
 
@@ -366,24 +329,6 @@ const resellMinimumText = computed(() => {
 .product-name {
   line-height: 1.35;
 }
-.grade-toggle {
-  border-radius: 8px;
-  border: 1px solid var(--bw-theme-border, rgba(34, 56, 101, 0.12));
-}
-.grade-toggle-btn {
-  min-height: 36px;
-  padding: 2px 4px;
-}
-.grade-toggle-label {
-  font-size: 10px;
-  line-height: 1.1;
-  font-weight: 600;
-}
-.grade-state-dot {
-  min-height: 6px;
-  padding: 0 4px;
-  margin-top: 2px;
-}
 .grade-empty {
   padding: 8px;
   border-radius: 8px;
@@ -423,9 +368,6 @@ const resellMinimumText = computed(() => {
     width: 88px;
     flex: 0 0 88px;
     border-radius: 0;
-  }
-  .grade-toggle-label {
-    font-size: 9px;
   }
 }
 

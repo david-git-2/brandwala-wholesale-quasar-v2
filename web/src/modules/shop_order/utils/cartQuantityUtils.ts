@@ -1,15 +1,17 @@
+import type { ShopType } from '../types';
+
 type MoqSource = {
   minimum_order_quantity?: number | null;
   minimum_quantity?: number | null;
   moq?: number | null;
 };
 
-/** Product MOQ wins over cart-item minimum_quantity (often 1 in DB). Dropship always steps by 1. */
+/** vendor_catalog uses product MOQ; fixed_price and dropship always step by 1. */
 export function resolveShopCartItemMoq(
   item: MoqSource,
-  options?: { dropship?: boolean },
+  shopType?: ShopType | null,
 ): number {
-  if (options?.dropship) return 1;
+  if (shopType !== 'vendor_catalog') return 1;
 
   const productMoq = Number(item.minimum_order_quantity ?? item.moq ?? 0);
   if (productMoq > 1) return productMoq;

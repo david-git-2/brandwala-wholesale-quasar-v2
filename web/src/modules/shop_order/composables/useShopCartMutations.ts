@@ -34,10 +34,7 @@ export function useShopCartMutations() {
           const shopType = data.cart?.shop_type ?? oldData.cart?.shop_type;
           const enrichedItems = (data.items ?? []).map((i: any) => {
             const oldItem = oldItemsMap.get(i.id) as Record<string, any> | undefined;
-            const moq = resolveShopCartItemMoq(
-              { ...oldItem, ...i },
-              { dropship: shopType === 'dropship' },
-            );
+            const moq = resolveShopCartItemMoq({ ...oldItem, ...i }, shopType);
             return {
               ...i,
               minimum_quantity: moq,

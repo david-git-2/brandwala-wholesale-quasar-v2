@@ -135,6 +135,7 @@ import StorefrontSkeletonGrid from '../components/StorefrontSkeletonGrid.vue';
 import type { ShopCatalogItem } from '../types';
 import type { QInfiniteScroll } from 'quasar';
 import { activeCartShopMetaFromShop } from '../utils/activeCartCacheUtils';
+import { resolveShopCartItemMoq } from '../utils/cartQuantityUtils';
 
 const route = useRoute();
 const router = useRouter();
@@ -353,10 +354,8 @@ const onResetFilters = () => {
   resetInfiniteScroll();
 };
 
-const getMinQty = (item: ShopCatalogItem) => {
-  if (shopDetails.value?.shop_type === 'dropship') return 1;
-  return item.minimum_order_quantity || 1;
-};
+const getMinQty = (item: ShopCatalogItem) =>
+  resolveShopCartItemMoq(item, shopDetails.value?.shop_type);
 
 const decrementQty = (item: ShopCatalogItem) => {
   const key = itemKey(item);

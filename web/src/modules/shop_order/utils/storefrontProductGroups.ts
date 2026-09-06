@@ -12,8 +12,11 @@ export interface StorefrontProductGroup {
 const gradeSlugs = () => STOREFRONT_WAREHOUSE_GRADES.map((g) => g.slug);
 
 export function groupStorefrontListingsByProduct(
-  listings: ShopStorefrontAdminListing[],
+  listings: ShopStorefrontAdminListing[] | null | undefined,
 ): StorefrontProductGroup[] {
+  if (!Array.isArray(listings) || listings.length === 0) {
+    return [];
+  }
   const byProduct = new Map<number, StorefrontProductGroup>();
 
   for (const listing of listings) {
@@ -39,8 +42,13 @@ export function groupStorefrontListingsByProduct(
 }
 
 export function pickDefaultGradeSlug(group: StorefrontProductGroup): string {
-  const listed = gradeSlugs().find((slug) => group.listingsByGrade[slug] != null);
-  return listed ?? 'standard';
+  const byGrade = group?.listingsByGrade;
+  if (!byGrade) return 'standard';
+  for (const slug of gradeSlugs()) {
+    if (byGrade[slug] != null) return slug;
+  }
+  const extra = Object.entries(byGrade).find(([, listing]) => listing != null);
+  return extra?.[0] ?? 'standard';
 }
 
 export function gradeListingState(

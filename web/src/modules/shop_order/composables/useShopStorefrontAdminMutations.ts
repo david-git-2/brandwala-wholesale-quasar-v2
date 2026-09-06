@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/vue-query';
+import { useMutation, useQueryClient, type InfiniteData } from '@tanstack/vue-query';
 import { showErrorNotification, showSuccessNotification, showWarningDialog } from 'src/utils/appFeedback';
 import { shopPricingRepository } from '../repositories/shopPricingRepository';
 import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
@@ -11,19 +11,56 @@ import type {
 import type { Product } from 'src/modules/products/types';
 import type { CandidateAllocation } from '../types/pricing';
 import { roundNearest5or0, roundUpToNearest50or100 } from '../utils/shopPricingRound';
+import type { ShopStorefrontAdminListingsPage } from './useShopStorefrontAdminQuery';
 
-type StorefrontListingsCache = ShopStorefrontAdminListingsResult | undefined;
+type StorefrontListingsCache =
+  | ShopStorefrontAdminListingsResult
+  | InfiniteData<ShopStorefrontAdminListingsPage>
+  | undefined;
+
+const isInfiniteAdminListings = (
+  value: StorefrontListingsCache,
+): value is InfiniteData<ShopStorefrontAdminListingsPage> =>
+  typeof value === 'object' &&
+  value !== null &&
+  'pages' in value &&
+  Array.isArray(value.pages);
 
 const patchStorefrontListingsCache = (
   queryClient: ReturnType<typeof useQueryClient>,
   shopId: number,
   search: string | null,
-  updater: (current: ShopStorefrontAdminListingsResult) => ShopStorefrontAdminListingsResult,
+  patchRows: (rows: ShopStorefrontAdminListing[]) => ShopStorefrontAdminListing[],
+  patchMeta?: (
+    meta: ShopStorefrontAdminListingsResult['meta'],
+  ) => ShopStorefrontAdminListingsResult['meta'],
 ) => {
   const key = shopOrderQueryKeys.storefrontAdminListings(shopId, search);
   queryClient.setQueryData<StorefrontListingsCache>(key, (current) => {
     if (!current) return current;
-    return updater(current);
+
+    if (isInfiniteAdminListings(current)) {
+      return {
+        ...current,
+        pages: current.pages.map((page) => {
+          const meta = patchMeta ? patchMeta(page.meta) : page.meta;
+          return {
+            ...page,
+            listings: patchRows(page.listings),
+            meta,
+            total: meta.total ?? page.total,
+          };
+        }),
+      };
+    }
+
+    const flat = current as ShopStorefrontAdminListingsResult;
+    const meta = patchMeta ? patchMeta(flat.meta) : flat.meta;
+    return {
+      ...flat,
+      data: patchRows(flat.data),
+      meta,
+    };
   });
 };
 
@@ -61,13 +98,10 @@ export function useDeleteShopStorefrontListingMutation() {
         queryClient,
         variables.shopId,
         variables.search,
-        (current) => ({
-          ...current,
-          data: current.data.filter((row) => row.listing_id !== variables.listingId),
-          meta: {
-            ...current.meta,
-            total: Math.max(0, current.meta.total - 1),
-          },
+        (rows) => rows.filter((row) => row.listing_id !== variables.listingId),
+        (meta) => ({
+          ...meta,
+          total: Math.max(0, (meta.total ?? 0) - 1),
         }),
       );
       void queryClient.invalidateQueries({
@@ -238,14 +272,13 @@ export function patchStorefrontListingActive(
   listingId: number,
   isActive: boolean,
 ) {
-  patchStorefrontListingsCache(queryClient, shopId, search, (current) => ({
-    ...current,
-    data: current.data.map((row) =>
+  patchStorefrontListingsCache(queryClient, shopId, search, (rows) =>
+    rows.map((row) =>
       row.listing_id === listingId
         ? { ...row, listing_status: isActive ? 'active' : 'inactive' }
         : row,
     ),
-  }));
+  );
 }
 
 export function useSaveShopStorefrontListingPricingMutation() {

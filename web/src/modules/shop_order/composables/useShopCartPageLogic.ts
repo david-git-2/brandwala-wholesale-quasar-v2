@@ -92,7 +92,7 @@ export function useShopCartPageLogic(
   };
 
   const adjustItemQtyLocal = (item: any, delta: number) => {
-    const moq = resolveShopCartItemMoq(item, { dropship: cart.value?.shop_type === 'dropship' });
+    const moq = resolveShopCartItemMoq(item, cart.value?.shop_type);
     const newVal = adjustQtyByMoq(getItemQty(item), delta, moq);
 
     if (newVal === item.quantity) {

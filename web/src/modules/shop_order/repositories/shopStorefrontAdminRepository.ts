@@ -12,7 +12,7 @@ const listStorefrontAdminListings = async (
   const { data, error } = await supabase.rpc('list_shop_storefront_listings_for_admin', {
     p_shop_id: shopId,
     p_search: opts.search?.trim() || null,
-    p_limit: opts.limit ?? 200,
+    p_limit: opts.limit ?? 20,
     p_offset: opts.offset ?? 0,
   });
 
@@ -21,8 +21,9 @@ const listStorefrontAdminListings = async (
   }
 
   const payload = (data ?? {}) as ShopStorefrontAdminListingsResult;
+  const rows = payload.data;
   return {
-    data: payload.data ?? [],
+    data: Array.isArray(rows) ? rows : [],
     meta: payload.meta ?? {
       total: 0,
       page: 1,

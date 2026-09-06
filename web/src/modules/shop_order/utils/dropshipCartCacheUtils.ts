@@ -65,7 +65,7 @@ function mapRawItemToDropshipItem(
       : previousMinResellAmount;
 
   const quantity = Number(raw.quantity ?? 0);
-  const moq = resolveShopCartItemMoq(raw, { dropship: true });
+  const moq = resolveShopCartItemMoq(raw, 'dropship');
 
   const listingSellPrice = priceFromRaw(
     sellAmount,

@@ -222,7 +222,7 @@ const formatMinSellPrice = (item: ShopCartItem) =>
   formatCartPriceAmount(getCartItemMinSellAmount(item), item.resell_minimum_price);
 
 const getItemMinQty = (item: any) =>
-  resolveShopCartItemMoq(item, { dropship: props.cart?.shop_type === 'dropship' });
+  resolveShopCartItemMoq(item, props.cart?.shop_type);
 </script>
 
 <style scoped>

@@ -162,56 +162,74 @@
               </div>
             </section>
 
-            <div class="theme-shop storefront-preview q-mt-md relative-position">
-              <q-inner-loading :showing="storefrontLoading" color="primary" />
-              <div
-                v-if="storefrontProductGroups.length > 0"
-                class="row q-col-gutter-md storefront-product-grid"
-              >
+            <q-infinite-scroll
+              class="storefront-infinite-scroll"
+              :offset="250"
+              @load="onStorefrontLoadMore"
+            >
+              <div class="theme-shop storefront-preview relative-position">
+                <q-inner-loading
+                  :showing="storefrontLoading && storefrontProducts.length === 0"
+                  color="primary"
+                />
                 <div
-                  v-for="group in storefrontProductGroups"
-                  :key="group.product_id"
-                  class="col-12 col-md-6 storefront-product-grid-item"
+                  v-if="storefrontProductGroups.length > 0"
+                  class="row q-col-gutter-md storefront-product-grid"
                 >
-                  <StorefrontProductGroupCard
-                    :group="group"
-                    :permissions="storefrontPreviewPermissions"
-                    :shop-type="shop.shop_type"
-                    :format-money="formatStorefrontMoney"
-                    :show-quantity-breakdown="true"
-                    :show-calculate-sell-price="true"
-                    :show-avg-cost="true"
-                    :show-listing-status-toggle="true"
-                    :show-remove-product="true"
-                    :is-setting-up-grade="isEnsuringGradeForProductId === group.product_id"
-                    @setup-grade="setupStorefrontGrade"
-                    @calculate-sell-price="openCalculateSellPriceDrawer"
-                    @toggle-listing-status="toggleStorefrontListingStatus"
-                    @remove-grade="removeStorefrontGrade"
-                  />
+                  <div
+                    v-for="group in storefrontProductGroups"
+                    :key="group.product_id"
+                    class="col-12 col-md-6 storefront-product-grid-item"
+                  >
+                    <StorefrontProductGroupCard
+                      :group="group"
+                      :permissions="storefrontPreviewPermissions"
+                      :shop-type="shop.shop_type"
+                      :format-money="formatStorefrontMoney"
+                      :show-quantity-breakdown="true"
+                      :show-calculate-sell-price="true"
+                      :show-avg-cost="true"
+                      :show-listing-status-toggle="true"
+                      :show-remove-product="true"
+                      :is-setting-up-grade="isEnsuringGradeForProductId === group.product_id"
+                      @setup-grade="setupStorefrontGrade"
+                      @calculate-sell-price="openCalculateSellPriceDrawer"
+                      @toggle-listing-status="toggleStorefrontListingStatus"
+                      @remove-grade="removeStorefrontGrade"
+                    />
+                  </div>
+                </div>
+
+                <div
+                  v-else-if="storefrontIsError"
+                  class="column items-center justify-center storefront-preview-empty q-pa-xl text-center"
+                >
+                  <q-icon name="ph ph-warning-circle" size="64px" color="negative" class="q-mb-md" />
+                  <div class="text-body1 text-grey-8">
+                    {{ storefrontError?.message || $t('shop_admin.storefront_load_failed') }}
+                  </div>
+                </div>
+
+                <div
+                  v-else-if="!storefrontLoading"
+                  class="column items-center justify-center storefront-preview-empty q-pa-xl text-center"
+                >
+                  <q-icon name="ph ph-tote" size="64px" color="grey-5" class="q-mb-md" />
+                  <div class="text-h6 text-weight-bold text-grey-8">
+                    {{ $t('shop_admin.storefront_no_products') }}
+                  </div>
                 </div>
               </div>
 
-              <div
-                v-else-if="storefrontIsError"
-                class="column items-center justify-center storefront-preview-empty q-pa-xl text-center"
-              >
-                <q-icon name="ph ph-warning-circle" size="64px" color="negative" class="q-mb-md" />
-                <div class="text-body1 text-grey-8">
-                  {{ storefrontError?.message || $t('shop_admin.storefront_load_failed') }}
+              <template #loading>
+                <div
+                  v-if="isFetchingNextStorefrontPage"
+                  class="row justify-center q-py-md"
+                >
+                  <q-spinner color="primary" size="28px" />
                 </div>
-              </div>
-
-              <div
-                v-else-if="!storefrontLoading"
-                class="column items-center justify-center storefront-preview-empty q-pa-xl text-center"
-              >
-                <q-icon name="ph ph-tote" size="64px" color="grey-5" class="q-mb-md" />
-                <div class="text-h6 text-weight-bold text-grey-8">
-                  {{ $t('shop_admin.storefront_no_products') }}
-                </div>
-              </div>
-            </div>
+              </template>
+            </q-infinite-scroll>
           </q-tab-panel>
 
           <q-tab-panel v-if="showStockTab" name="stock" class="q-pa-none q-pt-md">
@@ -240,8 +258,11 @@
           :shop-id="shopId"
           :tenant-id="tenantId"
           :listing-id="calculateSellPriceListingId"
+          :product-group="calculateSellPriceProductGroup"
+          :sell-currency-id="shop?.sell_currency_id ?? null"
           :shop-type="shop.shop_type"
           @saved="onStorefrontPricingSaved"
+          @grade-setup="onStorefrontListingAdded"
         />
       </template>
     </section>
@@ -264,7 +285,7 @@ import ShopStorefrontAddProductDrawer from 'src/modules/shop_order/components/Sh
 import ShopStorefrontCalculateSellPriceDrawer from 'src/modules/shop_order/components/ShopStorefrontCalculateSellPriceDrawer.vue';
 import { useShopDetailQuery } from '../composables/useShopQuery';
 import { useSaveShopMutation, useDeleteShopMutation } from '../composables/useShopMutations';
-import { useShopStorefrontAdminListingsQuery } from '../composables/useShopStorefrontAdminQuery';
+import { useShopStorefrontAdminListingsInfiniteQuery } from '../composables/useShopStorefrontAdminQuery';
 import {
   patchStorefrontListingActive,
   useEnsureShopStorefrontGradeListingMutation,
@@ -316,6 +337,7 @@ const storefrontSearch = ref('');
 const storefrontAddProductDrawerOpen = ref(false);
 const calculateSellPriceDrawerOpen = ref(false);
 const calculateSellPriceListingId = ref<number | null>(null);
+const calculateSellPriceProductId = ref<number | null>(null);
 const isEnsuringGradeForProductId = ref<number | null>(null);
 
 const isStorefrontTabActive = computed(() => {
@@ -323,24 +345,46 @@ const isStorefrontTabActive = computed(() => {
   return tab === 'storefront';
 });
 const {
-  data: storefrontListingsResult,
+  data: storefrontListingsData,
   isLoading: storefrontLoading,
   isError: storefrontIsError,
   error: storefrontError,
-} = useShopStorefrontAdminListingsQuery(shopId, storefrontSearch, isStorefrontTabActive);
+  isFetchingNextPage: isFetchingNextStorefrontPage,
+  hasNextPage: hasNextStorefrontPage,
+  fetchNextPage: fetchNextStorefrontPage,
+} = useShopStorefrontAdminListingsInfiniteQuery(shopId, storefrontSearch, isStorefrontTabActive);
 
 const { mutate: toggleStorefrontListingMutation } = useToggleShopStorefrontListingMutation();
 const { mutate: deleteStorefrontListingMutation, isPending: isDeletingStorefrontListing } =
   useDeleteShopStorefrontListingMutation();
 const { mutate: ensureStorefrontGradeMutation } = useEnsureShopStorefrontGradeListingMutation();
 
-const storefrontProducts = computed(
-  () => storefrontListingsResult.value?.data ?? [],
-);
+const storefrontProducts = computed(() => {
+  const pages = storefrontListingsData.value?.pages ?? [];
+  return pages.flatMap((page) => page.listings);
+});
+
+const onStorefrontLoadMore = async (_index: number, done: (stop?: boolean) => void) => {
+  if (!hasNextStorefrontPage.value || isFetchingNextStorefrontPage.value) {
+    done(!hasNextStorefrontPage.value);
+    return;
+  }
+  await fetchNextStorefrontPage();
+  done(!hasNextStorefrontPage.value);
+};
 
 const storefrontProductGroups = computed(() =>
   groupStorefrontListingsByProduct(storefrontProducts.value),
 );
+
+const calculateSellPriceProductGroup = computed(() => {
+  if (!calculateSellPriceProductId.value) return null;
+  return (
+    storefrontProductGroups.value.find(
+      (group) => group.product_id === calculateSellPriceProductId.value,
+    ) ?? null
+  );
+});
 
 const storefrontPreviewPermissions: CustomerShopPermissions = {
   can_browse: true,
@@ -407,6 +451,7 @@ const setupStorefrontGrade = (group: StorefrontProductGroup, gradeSlug: string) 
           queryKey: shopOrderQueryKeys.storefrontAdminListings(shopId.value, storefrontSearchParam.value),
         });
         if (listing?.id) {
+          calculateSellPriceProductId.value = group.product_id;
           calculateSellPriceListingId.value = listing.id;
           calculateSellPriceDrawerOpen.value = true;
         }
@@ -416,6 +461,7 @@ const setupStorefrontGrade = (group: StorefrontProductGroup, gradeSlug: string) 
 };
 
 const openCalculateSellPriceDrawer = (item: ShopStorefrontAdminListing) => {
+  calculateSellPriceProductId.value = item.product_id;
   calculateSellPriceListingId.value = item.listing_id;
   calculateSellPriceDrawerOpen.value = true;
 };
@@ -479,6 +525,7 @@ const removeStorefrontGrade = async (item: ShopStorefrontAdminListing) => {
         if (calculateSellPriceListingId.value === item.listing_id) {
           calculateSellPriceDrawerOpen.value = false;
           calculateSellPriceListingId.value = null;
+          calculateSellPriceProductId.value = null;
         }
         showSuccessNotification(t('shop_admin.storefront_remove_product_success'));
       },
@@ -493,6 +540,7 @@ watch(shopId, () => {
   storefrontAddProductDrawerOpen.value = false;
   calculateSellPriceDrawerOpen.value = false;
   calculateSellPriceListingId.value = null;
+  calculateSellPriceProductId.value = null;
 });
 
 const canDeleteShop = computed(() => {
@@ -613,6 +661,10 @@ body.body--dark .shop-settings-header {
 body.body--dark .shop-danger-zone {
   background: rgba(127, 29, 29, 0.12);
   border-color: rgba(248, 113, 113, 0.28);
+}
+
+.storefront-infinite-scroll {
+  margin-top: 16px;
 }
 
 @media (min-width: 600px) {

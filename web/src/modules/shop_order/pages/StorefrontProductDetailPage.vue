@@ -77,7 +77,7 @@
                 </div>
                 <div class="product-detail__spec-row">
                   <dt>{{ $t('shop.product_detail_moq') }}</dt>
-                  <dd>{{ product.minimum_order_quantity || 1 }}</dd>
+                  <dd>{{ moq }}</dd>
                 </div>
                 <div class="product-detail__cart-actions">
                   <div class="row items-center q-col-gutter-sm no-wrap">
@@ -265,6 +265,7 @@ import { useShopCartQuery } from '../composables/useShopCartQuery';
 import { useShopCartMutations } from '../composables/useShopCartMutations';
 import { shopCatalogPath, shopCatalogProductPath } from '../utils/catalogShop';
 import { activeCartShopMetaFromShop } from '../utils/activeCartCacheUtils';
+import { resolveShopCartItemMoq } from '../utils/cartQuantityUtils';
 
 const route = useRoute();
 const router = useRouter();
@@ -319,7 +320,7 @@ const showRelatedSection = computed(
     shopType.value === 'vendor_catalog' &&
     (isRelatedLoading.value || relatedProducts.value.length > 0),
 );
-const moq = computed(() => product.value?.minimum_order_quantity || 1);
+const moq = computed(() => resolveShopCartItemMoq(product.value ?? {}, shopType.value));
 
 const productCategoryLabel = computed(() => {
   const raw = product.value?.product_category?.trim();
@@ -362,7 +363,7 @@ watch(
   [product, cartItem],
   ([p, cart]) => {
     if (!p) return;
-    quantity.value = cart?.quantity ?? (p.minimum_order_quantity || 1);
+    quantity.value = cart?.quantity ?? resolveShopCartItemMoq(p, shopType.value);
   },
   { immediate: true },
 );
