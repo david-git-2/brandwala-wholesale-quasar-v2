@@ -83,6 +83,94 @@ export function useDeleteShopStorefrontListingMutation() {
   });
 }
 
+export function useEnsureShopStorefrontGradeListingMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      shopId,
+      tenantId,
+      productId,
+      gradeSlug,
+      sourceListing,
+      sellCurrencyId,
+    }: {
+      shopId: number;
+      tenantId: number;
+      productId: number;
+      gradeSlug: string;
+      sourceListing?: ShopStorefrontAdminListing | null;
+      sellCurrencyId: number;
+    }) => {
+      const normalizedSlug = gradeSlug?.trim() || 'standard';
+      const candidates = await shopPricingRepository.listCandidateAllocations(tenantId, shopId);
+      const match = candidates.find(
+        (row) =>
+          row.product_id === productId &&
+          (row.stock_grade?.slug ?? 'standard') === normalizedSlug,
+      );
+
+      const sellAmount = Number(
+        sourceListing?.sell_price?.amount ?? sourceListing?.sell_price_amount ?? 0,
+      );
+      const sellCurrency =
+        sourceListing?.sell_price?.currency_id ??
+        sourceListing?.sell_price_currency_id ??
+        sellCurrencyId;
+
+      if (match?.global_stock_id) {
+        const payload: UpsertListingPayload = {
+          tenant_id: tenantId,
+          shop_id: shopId,
+          global_stock_id: match.global_stock_id,
+          sell_price_amount: Number.isFinite(sellAmount) && sellAmount > 0 ? sellAmount : 0,
+          sell_price_currency_id: sellCurrency,
+          minimum_sell_price_amount: sourceListing?.minimum_sell_price_amount ?? null,
+          minimum_sell_price_currency_id: sourceListing?.minimum_sell_price_currency_id ?? null,
+          show_quantity: sourceListing?.show_quantity ?? true,
+          display_quantity_override: sourceListing?.display_quantity_override ?? null,
+          is_active: false,
+        };
+        return shopPricingRepository.upsertListing(payload);
+      }
+
+      if (normalizedSlug !== 'standard') {
+        throw new Error('No listable stock found for this product and grade.');
+      }
+
+      const payload: UpsertListingPayload = {
+        tenant_id: tenantId,
+        shop_id: shopId,
+        product_id: productId,
+        global_stock_id: null,
+        sell_price_amount: Number.isFinite(sellAmount) && sellAmount > 0 ? sellAmount : 0,
+        sell_price_currency_id: sellCurrency,
+        minimum_sell_price_amount: null,
+        minimum_sell_price_currency_id: null,
+        show_quantity: true,
+        display_quantity_override: null,
+        is_active: false,
+      };
+      return shopPricingRepository.upsertListing(payload);
+    },
+    onSuccess: (_, variables) => {
+      void queryClient.invalidateQueries({
+        queryKey: ['shopOrder', 'storefrontAdminListings', { shopId: variables.shopId }],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: shopOrderQueryKeys.pricingListings(variables.shopId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: shopOrderQueryKeys.pricingCandidates(variables.tenantId, variables.shopId),
+      });
+    },
+    onError: (error: Error) => {
+      showErrorNotification(error.message || 'Failed to set up grade listing.');
+    },
+  });
+}
+
+/** @deprecated Use useEnsureShopStorefrontGradeListingMutation via grade switcher instead. */
 export function useCopyShopStorefrontGradeMutation() {
   const queryClient = useQueryClient();
 

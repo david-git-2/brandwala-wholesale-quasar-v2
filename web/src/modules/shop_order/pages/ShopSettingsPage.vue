@@ -165,33 +165,29 @@
             <div class="theme-shop storefront-preview q-mt-md relative-position">
               <q-inner-loading :showing="storefrontLoading" color="primary" />
               <div
-                v-if="storefrontProducts.length > 0"
+                v-if="storefrontProductGroups.length > 0"
                 class="row q-col-gutter-md storefront-product-grid"
               >
                 <div
-                  v-for="item in storefrontProducts"
-                  :key="`${item.product_id}-${item.stock_grade?.slug ?? 'none'}-${item.listing_id}`"
-                  class="col-xs-12 col-sm-6 col-md-4 col-lg-3 storefront-product-grid-item"
+                  v-for="group in storefrontProductGroups"
+                  :key="group.product_id"
+                  class="col-12 col-md-6 storefront-product-grid-item"
                 >
-                  <StorefrontProductCard
-                    :item="item"
+                  <StorefrontProductGroupCard
+                    :group="group"
                     :permissions="storefrontPreviewPermissions"
                     :shop-type="shop.shop_type"
                     :format-money="formatStorefrontMoney"
-                    :show-actions="false"
-                    :show-unit-price="false"
                     :show-quantity-breakdown="true"
                     :show-calculate-sell-price="true"
                     :show-avg-cost="true"
-                    :show-grade-chip="true"
-                    :show-copy-grade-variant="true"
                     :show-listing-status-toggle="true"
                     :show-remove-product="true"
-                    :available-grade-variants="availableGradesForProduct(item)"
+                    :is-setting-up-grade="isEnsuringGradeForProductId === group.product_id"
+                    @setup-grade="setupStorefrontGrade"
                     @calculate-sell-price="openCalculateSellPriceDrawer"
-                    @copy-grade-variant="copyProductWithGrade"
                     @toggle-listing-status="toggleStorefrontListingStatus"
-                    @remove-product="removeStorefrontProduct"
+                    @remove-grade="removeStorefrontGrade"
                   />
                 </div>
               </div>
@@ -263,7 +259,7 @@ import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
 import ShopSettingsForm from 'src/modules/shop_order/components/ShopSettingsForm.vue';
 import ShopSettingsSkeleton from 'src/modules/shop_order/components/ShopSettingsSkeleton.vue';
 import DropshipShopReadinessCard from 'src/modules/shop_order/components/DropshipShopReadinessCard.vue';
-import StorefrontProductCard from 'src/modules/shop_order/components/StorefrontProductCard.vue';
+import StorefrontProductGroupCard from 'src/modules/shop_order/components/StorefrontProductGroupCard.vue';
 import ShopStorefrontAddProductDrawer from 'src/modules/shop_order/components/ShopStorefrontAddProductDrawer.vue';
 import ShopStorefrontCalculateSellPriceDrawer from 'src/modules/shop_order/components/ShopStorefrontCalculateSellPriceDrawer.vue';
 import { useShopDetailQuery } from '../composables/useShopQuery';
@@ -271,7 +267,7 @@ import { useSaveShopMutation, useDeleteShopMutation } from '../composables/useSh
 import { useShopStorefrontAdminListingsQuery } from '../composables/useShopStorefrontAdminQuery';
 import {
   patchStorefrontListingActive,
-  useCopyShopStorefrontGradeMutation,
+  useEnsureShopStorefrontGradeListingMutation,
   useDeleteShopStorefrontListingMutation,
   useToggleShopStorefrontListingMutation,
 } from '../composables/useShopStorefrontAdminMutations';
@@ -280,10 +276,14 @@ import { shopCatalogPath } from '../utils/catalogShop';
 import { showSuccessNotification, showErrorNotification, requestConfirmation } from 'src/utils/appFeedback';
 import type { CustomerShopPermissions } from '../composables/useCustomerShopPermissionsQuery';
 import type {
-  ShopCatalogStockGrade,
   ShopStorefrontAdminListing,
   UpdateShopPayload,
 } from 'src/modules/shop_order/types';
+import {
+  findSiblingListingForPricing,
+  groupStorefrontListingsByProduct,
+  type StorefrontProductGroup,
+} from '../utils/storefrontProductGroups';
 
 const ShopAccessMatrixPage = defineAsyncComponent(
   () => import('src/modules/shop_order/pages/ShopAccessMatrixPage.vue'),
@@ -316,6 +316,7 @@ const storefrontSearch = ref('');
 const storefrontAddProductDrawerOpen = ref(false);
 const calculateSellPriceDrawerOpen = ref(false);
 const calculateSellPriceListingId = ref<number | null>(null);
+const isEnsuringGradeForProductId = ref<number | null>(null);
 
 const isStorefrontTabActive = computed(() => {
   const tab = typeof route.query.tab === 'string' ? route.query.tab : 'setup';
@@ -331,10 +332,14 @@ const {
 const { mutate: toggleStorefrontListingMutation } = useToggleShopStorefrontListingMutation();
 const { mutate: deleteStorefrontListingMutation, isPending: isDeletingStorefrontListing } =
   useDeleteShopStorefrontListingMutation();
-const { mutate: copyStorefrontGradeMutation } = useCopyShopStorefrontGradeMutation();
+const { mutate: ensureStorefrontGradeMutation } = useEnsureShopStorefrontGradeListingMutation();
 
 const storefrontProducts = computed(
   () => storefrontListingsResult.value?.data ?? [],
+);
+
+const storefrontProductGroups = computed(() =>
+  groupStorefrontListingsByProduct(storefrontProducts.value),
 );
 
 const storefrontPreviewPermissions: CustomerShopPermissions = {
@@ -346,13 +351,6 @@ const storefrontPreviewPermissions: CustomerShopPermissions = {
   can_place_order: true,
   can_view_quantity: true,
 };
-
-const STOREFRONT_WAREHOUSE_GRADES: ShopCatalogStockGrade[] = [
-  { slug: 'standard', label: 'Standard', color: '#22c55e' },
-  { slug: 'open_box', label: 'Open box', color: '#3b82f6' },
-  { slug: 'box_damage', label: 'Box damage', color: '#f59e0b' },
-  { slug: 'box_less', label: 'Box less', color: '#8b5cf6' },
-];
 
 const formatStorefrontMoney = (amount: unknown, symbol?: string | null) => {
   const n = Number(amount);
@@ -366,36 +364,6 @@ const formatStorefrontMoney = (amount: unknown, symbol?: string | null) => {
 };
 
 const storefrontSearchParam = computed(() => storefrontSearch.value.trim() || null);
-
-const catalogGradeOptions = computed(() => {
-  const bySlug = new Map<string, ShopCatalogStockGrade>();
-  STOREFRONT_WAREHOUSE_GRADES.forEach((grade) => bySlug.set(grade.slug, grade));
-  storefrontProducts.value.forEach((item) => {
-    if (item.stock_grade?.slug) {
-      bySlug.set(item.stock_grade.slug, item.stock_grade);
-    }
-  });
-  return [...bySlug.values()];
-});
-
-const storefrontProductGradeKey = (productId: number, gradeSlug: string | null | undefined) =>
-  `${productId}:${gradeSlug ?? ''}`;
-
-const isStorefrontProductGradeTaken = (
-  productId: number,
-  gradeSlug: string | null | undefined,
-): boolean => {
-  if (!gradeSlug) return false;
-  const key = storefrontProductGradeKey(productId, gradeSlug);
-  return storefrontProducts.value.some(
-    (row) => storefrontProductGradeKey(row.product_id, row.stock_grade?.slug) === key,
-  );
-};
-
-const availableGradesForProduct = (item: ShopStorefrontAdminListing): ShopCatalogStockGrade[] =>
-  catalogGradeOptions.value.filter(
-    (grade) => !isStorefrontProductGradeTaken(item.product_id, grade.slug),
-  );
 
 const buildStorefrontListingUpsertPayload = (
   item: ShopStorefrontAdminListing,
@@ -417,24 +385,31 @@ const buildStorefrontListingUpsertPayload = (
   is_active: isActive,
 });
 
-const copyProductWithGrade = (source: ShopStorefrontAdminListing, grade: ShopCatalogStockGrade) => {
-  if (!grade.slug || isStorefrontProductGradeTaken(source.product_id, grade.slug)) {
-    showErrorNotification(t('shop_admin.storefront_grade_variant_duplicate'));
-    return;
-  }
-
-  copyStorefrontGradeMutation(
+const setupStorefrontGrade = (group: StorefrontProductGroup, gradeSlug: string) => {
+  if (!shop.value?.sell_currency_id) return;
+  isEnsuringGradeForProductId.value = group.product_id;
+  ensureStorefrontGradeMutation(
     {
       shopId: shopId.value,
       tenantId: tenantId.value,
-      source,
-      grade,
+      productId: group.product_id,
+      gradeSlug,
+      sourceListing: findSiblingListingForPricing(group),
+      sellCurrencyId: shop.value.sell_currency_id,
     },
     {
-      onSuccess: () => {
-        showSuccessNotification(
-          t('shop_admin.storefront_grade_variant_added', { grade: grade.label }),
-        );
+      onSettled: () => {
+        isEnsuringGradeForProductId.value = null;
+      },
+      onSuccess: (listing) => {
+        showSuccessNotification(t('shop_admin.storefront_grade_setup_success'));
+        void queryClient.invalidateQueries({
+          queryKey: shopOrderQueryKeys.storefrontAdminListings(shopId.value, storefrontSearchParam.value),
+        });
+        if (listing?.id) {
+          calculateSellPriceListingId.value = listing.id;
+          calculateSellPriceDrawerOpen.value = true;
+        }
       },
     },
   );
@@ -482,13 +457,13 @@ const toggleStorefrontListingStatus = (item: ShopStorefrontAdminListing, isActiv
 const storefrontProductLabel = (item: ShopStorefrontAdminListing) =>
   [item.product_name, item.stock_grade?.label].filter(Boolean).join(' · ');
 
-const removeStorefrontProduct = async (item: ShopStorefrontAdminListing) => {
+const removeStorefrontGrade = async (item: ShopStorefrontAdminListing) => {
   const confirmed = await requestConfirmation(
-    t('shop_admin.storefront_remove_product_confirm', {
+    t('shop_admin.storefront_remove_grade_confirm', {
       name: storefrontProductLabel(item),
     }),
     t('shop_admin.storefront_remove_product_title'),
-    t('shop_admin.storefront_remove_product'),
+    t('shop_admin.storefront_remove_grade'),
   );
   if (!confirmed || isDeletingStorefrontListing.value) return;
 
@@ -643,8 +618,7 @@ body.body--dark .shop-danger-zone {
 @media (min-width: 600px) {
   .storefront-product-grid {
     display: grid !important;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 250px));
-    justify-content: center;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
     gap: 16px;
     margin: 0 !important;
   }

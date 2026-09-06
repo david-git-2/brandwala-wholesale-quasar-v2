@@ -234,6 +234,12 @@ GRANT ALL ON FUNCTION "public"."bulk_apply_shop_markup"("p_shop_id" bigint, "p_m
 GRANT ALL ON FUNCTION "public"."bulk_apply_shop_markup"("p_shop_id" bigint, "p_markup_amount" numeric, "p_markup_type" "text", "p_target_price" "text", "p_listing_ids" bigint[]) TO "authenticated";
 
 
+GRANT ALL ON FUNCTION "public"."shop_product_grade_available_units"("p_shop_tenant_id" bigint, "p_product_id" bigint, "p_grade_tag_id" bigint) TO "authenticated";
+
+
+GRANT ALL ON FUNCTION "public"."shop_shipment_alloc_visible_to_tenant"("p_assigned_child_tenant_id" bigint, "p_shop_tenant_id" bigint) TO "authenticated";
+
+
 GRANT ALL ON FUNCTION "public"."can_act_on_parent_tenant_stock"("p_parent_tenant_id" bigint) TO "authenticated";
 
 

@@ -131,7 +131,7 @@ export interface ShopStorefrontListingPriceCalculation {
     product_name: string;
     product_code: string | null;
     product_image_url: string | null;
-    global_stock_id: number;
+    global_stock_id: number | null;
     grade_tag_id: number | null;
     stock_grade: ShopCatalogStockGrade | null;
     is_active: boolean;

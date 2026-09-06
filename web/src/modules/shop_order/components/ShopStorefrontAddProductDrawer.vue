@@ -50,6 +50,7 @@
             autofocus
             class="full-width"
             :placeholder="$t('shop_admin.storefront_add_product_search_placeholder')"
+            @clear="onSearchClear"
           >
             <template #prepend>
               <q-icon name="ph ph-magnifying-glass" />
@@ -58,29 +59,50 @@
         </div>
 
         <div class="col scroll q-px-md q-pb-md relative-position min-width-0">
-          <q-inner-loading :showing="isSearching" color="primary" />
-
           <div
-            v-if="search.trim().length === 0"
+            v-if="searchTrimmed.length === 0"
             class="text-center text-grey-6 q-pa-lg"
           >
             {{ $t('shop_admin.storefront_search_to_find_products') }}
           </div>
 
+          <div v-else-if="isSearching" class="column q-gutter-y-sm full-width">
+            <q-card
+              v-for="n in 4"
+              :key="n"
+              flat
+              bordered
+              class="add-product-result-card"
+            >
+              <q-card-section class="row items-center no-wrap q-col-gutter-sm">
+                <div class="col-auto">
+                  <q-skeleton type="rect" width="48px" height="48px" class="rounded-borders" />
+                </div>
+                <div class="col min-width-0">
+                  <q-skeleton type="text" width="75%" height="18px" class="q-mb-xs" />
+                  <q-skeleton type="text" width="45%" height="14px" />
+                </div>
+                <div class="col-auto">
+                  <q-skeleton type="QBtn" size="32px" />
+                </div>
+              </q-card-section>
+            </q-card>
+          </div>
+
           <div
-            v-else-if="!isSearching && searchResults.length === 0"
+            v-else-if="searchResults.length === 0"
             class="column q-gutter-y-md"
           >
             <div class="text-center text-grey-6 q-pa-lg">
               {{ $t('shop_admin.storefront_no_products_found') }}
             </div>
             <q-card flat bordered class="add-product-create-card" clickable @click="openCreateForm()">
-              <q-card-section class="row items-center no-wrap q-col-gutter-sm">
+              <q-card-section class="row items-start q-col-gutter-sm">
                 <div class="col-auto">
                   <q-avatar square color="primary" text-color="white" icon="ph ph-plus" size="48px" />
                 </div>
                 <div class="col min-width-0">
-                  <div class="text-weight-medium ellipsis">{{ createNewProductLabel }}</div>
+                  <div class="text-weight-medium add-product-label">{{ createNewProductLabel }}</div>
                   <div class="text-caption text-grey-7">
                     {{ $t('shop_admin.storefront_cant_find_create_product') }}
                   </div>
@@ -96,8 +118,9 @@
               flat
               bordered
               class="add-product-result-card"
+              :class="{ 'add-product-result-card--listed': getProductListingStatus(product.id) === 'listed' }"
             >
-              <q-card-section class="row items-center no-wrap q-col-gutter-sm">
+              <q-card-section class="row items-start q-col-gutter-sm">
                 <div class="col-auto">
                   <q-avatar square size="48px" class="bg-grey-2 rounded-borders">
                     <img
@@ -109,34 +132,48 @@
                   </q-avatar>
                 </div>
                 <div class="col min-width-0">
-                  <div class="text-weight-medium ellipsis-2-lines">{{ product.name }}</div>
-                  <div class="text-caption text-grey-7 ellipsis">
+                  <div class="text-weight-medium add-product-label">{{ product.name }}</div>
+                  <div class="text-caption text-grey-7 add-product-meta">
                     {{ [product.product_code, product.barcode].filter(Boolean).join(' · ') }}
                   </div>
+                  <q-badge
+                    v-if="getProductListingStatus(product.id) !== 'available'"
+                    :color="getProductListingStatus(product.id) === 'listed' ? 'grey-7' : 'warning'"
+                    text-color="white"
+                    class="q-mt-xs"
+                    :label="getProductListingBadgeLabel(product.id)"
+                  />
                 </div>
-                <div class="col-auto">
+                <div class="col-auto self-start">
                   <q-btn
                     unelevated
                     dense
                     round
-                    color="primary"
-                    icon="ph ph-plus"
+                    :color="getProductListingStatus(product.id) === 'listed' ? 'grey-6' : 'primary'"
+                    :icon="getProductListingStatus(product.id) === 'listed' ? 'ph ph-check' : 'ph ph-plus'"
+                    :disable="getProductListingStatus(product.id) === 'listed'"
                     :loading="addingProductId === product.id"
                     @click="onAddProduct(product)"
                   >
-                    <q-tooltip>{{ $t('shop_admin.storefront_add_product') }}</q-tooltip>
+                    <q-tooltip>
+                      {{
+                        getProductListingStatus(product.id) === 'listed'
+                          ? $t('shop_admin.storefront_search_already_in_storefront')
+                          : $t('shop_admin.storefront_add_product')
+                      }}
+                    </q-tooltip>
                   </q-btn>
                 </div>
               </q-card-section>
             </q-card>
 
             <q-card flat bordered class="add-product-create-card" clickable @click="openCreateForm()">
-              <q-card-section class="row items-center no-wrap q-col-gutter-sm">
+              <q-card-section class="row items-start q-col-gutter-sm">
                 <div class="col-auto">
                   <q-avatar square color="primary" text-color="white" icon="ph ph-plus" size="48px" />
                 </div>
                 <div class="col min-width-0">
-                  <div class="text-weight-medium ellipsis">{{ createNewProductLabel }}</div>
+                  <div class="text-weight-medium add-product-label">{{ createNewProductLabel }}</div>
                   <div class="text-caption text-grey-7">
                     {{ $t('shop_admin.storefront_cant_find_create_product') }}
                   </div>
@@ -235,7 +272,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const search = ref('');
+const search = ref<string | null>('');
 const showCreateForm = ref(false);
 const createFormInitialName = ref('');
 const addingProductId = ref<number | null>(null);
@@ -269,17 +306,23 @@ const isOpen = computed({
 
 const drawerWidth = computed(() => (showCreateForm.value ? 720 : 520));
 
+const searchTrimmed = computed(() => (search.value ?? '').trim());
+
 const searchResults = computed(() => catalogResult.value?.data ?? []);
 
 const listedGradeKeySet = computed(() => new Set(props.listedGradeKeys ?? []));
 const listedProductIdSet = computed(() => new Set(props.listedProductIds ?? []));
 
 const createNewProductLabel = computed(() => {
-  const query = search.value.trim();
+  const query = searchTrimmed.value;
   return query
     ? t('shop_admin.storefront_create_named_product', { name: query })
     : t('shop_admin.storefront_add_new_product');
 });
+
+const onSearchClear = () => {
+  search.value = '';
+};
 
 const gradeKey = (productId: number, gradeSlug: string | null | undefined) =>
   `${productId}:${gradeSlug ?? 'standard'}`;
@@ -287,6 +330,29 @@ const gradeKey = (productId: number, gradeSlug: string | null | undefined) =>
 const availableStockForProduct = (productId: number): CandidateAllocation[] => {
   const rows = (candidates.value ?? []).filter((row) => row.product_id === productId);
   return rows.filter((row) => !listedGradeKeySet.value.has(gradeKey(productId, row.stock_grade?.slug)));
+};
+
+type ProductListingStatus = 'available' | 'partial' | 'listed';
+
+const getProductListingStatus = (productId: number): ProductListingStatus => {
+  if (!listedProductIdSet.value.has(productId)) {
+    return 'available';
+  }
+  if (availableStockForProduct(productId).length > 0) {
+    return 'partial';
+  }
+  return 'listed';
+};
+
+const getProductListingBadgeLabel = (productId: number) => {
+  const status = getProductListingStatus(productId);
+  if (status === 'listed') {
+    return t('shop_admin.storefront_search_in_storefront');
+  }
+  if (status === 'partial') {
+    return t('shop_admin.storefront_search_partially_listed');
+  }
+  return '';
 };
 
 const submitStockListing = (stock: CandidateAllocation) => {
@@ -308,7 +374,6 @@ const submitStockListing = (stock: CandidateAllocation) => {
         addingProductId.value = null;
         showSuccessNotification(t('shop_admin.storefront_listing_added'));
         emit('saved');
-        isOpen.value = false;
       },
       onError: (error: Error) => {
         addingProductId.value = null;
@@ -334,7 +399,6 @@ const submitProductListing = (product: Product) => {
         addingProductId.value = null;
         showSuccessNotification(t('shop_admin.storefront_listing_added_inactive'));
         emit('saved');
-        isOpen.value = false;
       },
       onError: (error: Error) => {
         addingProductId.value = null;
@@ -367,6 +431,11 @@ const onAddProduct = (product: Product) => {
     return;
   }
 
+  if (getProductListingStatus(product.id) === 'listed') {
+    addingProductId.value = null;
+    return;
+  }
+
   if (listedProductIdSet.value.has(product.id)) {
     addingProductId.value = null;
     showErrorNotification(t('shop_admin.storefront_product_already_listed'));
@@ -377,7 +446,7 @@ const onAddProduct = (product: Product) => {
 };
 
 const openCreateForm = () => {
-  createFormInitialName.value = search.value.trim();
+  createFormInitialName.value = searchTrimmed.value;
   showCreateForm.value = true;
 };
 
@@ -419,11 +488,21 @@ watch(isOpen, (open) => {
   width: 100%;
 }
 
-.ellipsis-2-lines {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
+.add-product-result-card--listed {
+  background: #f5f5f5;
+  opacity: 0.92;
+}
+
+.add-product-label {
+  word-break: break-word;
+  white-space: normal;
+  line-height: 1.4;
+}
+
+.add-product-meta {
+  word-break: break-all;
+  white-space: normal;
+  line-height: 1.35;
 }
 </style>
 

@@ -5,7 +5,7 @@ import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 
 export function useShopStorefrontCatalogSearchQuery(
   tenantId: Ref<number | null | undefined>,
-  search: Ref<string>,
+  search: Ref<string | null>,
   enabled: Ref<boolean>,
 ) {
   const debouncedSearch = ref('');
@@ -18,7 +18,7 @@ export function useShopStorefrontCatalogSearchQuery(
       if (debounceTimer) {
         clearTimeout(debounceTimer);
       }
-      const trimmed = value.trim();
+      const trimmed = (value ?? '').trim();
       if (!trimmed) {
         debouncedSearch.value = '';
         return;

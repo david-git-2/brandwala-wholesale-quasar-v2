@@ -1,24 +1,22 @@
 <template>
-  <q-drawer
+  <q-dialog
     v-model="isOpen"
-    side="right"
-    overlay
-    elevated
-    :width="520"
-    class="shop-storefront-calc-price-drawer bg-white"
+    position="right"
+    maximized-on-small-screen
+    class="shop-storefront-calc-price-dialog"
   >
-    <div class="column full-height">
-      <div class="row items-center justify-between q-pa-md bg-grey-1 border-bottom">
+    <q-card class="calc-price-panel column no-wrap bg-white">
+      <q-card-section class="row items-center justify-between q-py-md bg-grey-1 border-bottom">
         <div class="text-subtitle1 text-weight-bold row items-center min-width-0">
           <q-icon name="ph ph-calculator" class="q-mr-xs text-primary" size="20px" />
           <span class="ellipsis">{{ $t('shop_admin.storefront_calculate_sell_price') }}</span>
         </div>
         <q-btn icon="ph ph-x" flat round dense @click="isOpen = false" />
-      </div>
+      </q-card-section>
 
       <q-separator />
 
-      <div v-if="listingId" class="col scroll q-pa-md column q-gutter-y-md relative-position">
+      <q-card-section v-if="listingId" class="col scroll q-pa-md relative-position calc-price-body">
         <q-inner-loading :showing="isLoading" color="primary" />
 
         <div
@@ -28,7 +26,7 @@
           {{ error?.message || $t('shop_admin.storefront_calc_load_failed') }}
         </div>
 
-        <template v-else-if="calcData">
+        <div v-else-if="calcData" class="calc-drawer-stack">
           <div class="row items-start q-col-gutter-md product-hero">
             <div class="col-auto">
               <q-avatar square size="72px" class="bg-grey-2 rounded-borders">
@@ -62,169 +60,171 @@
             </div>
           </div>
 
-          <div>
+          <section class="calc-section">
             <div class="text-subtitle2 text-weight-bold q-mb-sm">
               {{ $t('shop_admin.storefront_calc_shipment_costs') }}
             </div>
-            <q-markup-table flat bordered dense class="rounded-borders">
-              <thead>
-                <tr>
-                  <th class="text-left">{{ $t('shop_admin.storefront_calc_shipment_no') }}</th>
-                  <th class="text-left">{{ $t('shop_admin.storefront_calc_shipment_name') }}</th>
-                  <th class="text-right">{{ $t('shop_admin.storefront_calc_quantity') }}</th>
-                  <th class="text-right">{{ $t('shop_admin.storefront_calc_unit_cost') }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-if="shipmentRows.length === 0">
-                  <td colspan="4" class="text-center text-grey-6 q-pa-md">
-                    {{ $t('shop_admin.storefront_calc_no_shipments') }}
-                  </td>
-                </tr>
-                <tr v-for="row in shipmentRows" :key="row.shipment_id">
-                  <td class="text-weight-medium">{{ row.shipment_no }}</td>
-                  <td>{{ row.shipment_name }}</td>
-                  <td class="text-right">{{ row.quantity }}</td>
-                  <td class="text-right text-weight-medium">{{ formatMoney(row.unit_cost_amount) }}</td>
-                </tr>
-              </tbody>
-              <tfoot>
-                <tr class="bg-grey-2">
-                  <td colspan="2" class="text-weight-bold">
-                    {{ $t('shop_admin.storefront_calc_total_quantity') }}
-                  </td>
-                  <td class="text-right text-weight-bold">{{ totalQuantity }}</td>
-                  <td />
-                </tr>
-              </tfoot>
-            </q-markup-table>
-          </div>
-
-          <q-input
-            v-model.number="displayQuantity"
-            type="number"
-            min="0"
-            step="1"
-            outlined
-            dense
-            :label="$t('shop_admin.col_display_qty')"
-            :hint="$t('shop_admin.storefront_calc_display_qty_hint')"
-          >
-            <template #prepend>
-              <q-icon name="ph ph-stack" />
-            </template>
-          </q-input>
-
-          <q-banner dense rounded class="bg-blue-1 text-blue-10">
-            <div class="row items-center justify-between">
-              <span class="text-weight-medium">{{ $t('shop_admin.storefront_avg_cost') }}</span>
-              <span class="text-subtitle2 text-weight-bold">{{ formatMoney(weightedAvgCost) }}</span>
+            <div class="shipment-table-wrap">
+              <q-markup-table flat bordered dense class="rounded-borders shipment-cost-table">
+                <thead>
+                  <tr>
+                    <th class="text-left">{{ $t('shop_admin.storefront_calc_shipment_no') }}</th>
+                    <th class="text-left">{{ $t('shop_admin.storefront_calc_shipment_name') }}</th>
+                    <th class="text-right">{{ $t('shop_admin.storefront_calc_quantity') }}</th>
+                    <th class="text-right">{{ $t('shop_admin.storefront_calc_unit_cost') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-if="shipmentRows.length === 0">
+                    <td colspan="4" class="text-center text-grey-6 q-pa-md">
+                      {{ $t('shop_admin.storefront_calc_no_shipments') }}
+                    </td>
+                  </tr>
+                  <tr v-for="row in shipmentRows" :key="row.shipment_id">
+                    <td class="text-weight-medium cell-ellipsis">{{ row.shipment_no }}</td>
+                    <td class="cell-ellipsis" :title="row.shipment_name">{{ row.shipment_name }}</td>
+                    <td class="text-right">{{ row.quantity }}</td>
+                    <td class="text-right text-weight-medium cell-nowrap">
+                      {{ formatMoney(row.unit_cost_amount) }}
+                    </td>
+                  </tr>
+                </tbody>
+                <tfoot>
+                  <tr class="bg-grey-2">
+                    <td colspan="2" class="text-weight-bold">
+                      {{ $t('shop_admin.storefront_calc_total_quantity') }}
+                    </td>
+                    <td class="text-right text-weight-bold">{{ totalQuantity }}</td>
+                    <td />
+                  </tr>
+                </tfoot>
+              </q-markup-table>
             </div>
-          </q-banner>
+          </section>
 
-          <div class="column q-gutter-y-md">
-            <div>
-              <div class="text-caption text-weight-medium text-grey-8 q-mb-xs">
-                {{ $t('shop_admin.storefront_calc_sell_price') }}
-              </div>
-              <div class="row q-col-gutter-sm">
-                <div class="col-7">
-                  <q-input
-                    :model-value="sellPrice"
-                    type="number"
-                    step="0.01"
-                    outlined
-                    dense
-                    :label="$t('shop_admin.sell_price_amount')"
-                    @update:model-value="updateSellPrice"
-                    @blur="roundSellPriceField"
-                  >
-                    <template #prepend>
-                      <q-icon name="ph ph-tag" />
-                    </template>
-                    <template v-if="suggestedSellPrice != null" #hint>
-                      {{ $t('shop_admin.storefront_calc_suggested_sell_price') }}:
-                      {{ formatMoney(suggestedSellPrice) }}
-                    </template>
-                  </q-input>
-                </div>
-                <div class="col-5">
-                  <q-input
-                    :model-value="sellMarkupPctOnCost"
-                    type="number"
-                    step="0.1"
-                    outlined
-                    dense
-                    suffix="%"
-                    :label="$t('shop_admin.storefront_calc_sell_markup_on_cost')"
-                    :disable="!hasUnitCost"
-                    :hint="!hasUnitCost ? $t('shop_admin.storefront_calc_markup_disabled_hint') : undefined"
-                    @update:model-value="updateSellMarkupPct"
-                  >
-                    <template #prepend>
-                      <q-icon name="ph ph-percent" />
-                    </template>
-                  </q-input>
-                </div>
-              </div>
-            </div>
+          <section class="calc-section">
+            <q-input
+              v-model.number="displayQuantity"
+              type="number"
+              min="0"
+              step="1"
+              outlined
+              dense
+              class="full-width-field"
+              :label="$t('shop_admin.col_display_qty')"
+              :hint="$t('shop_admin.storefront_calc_display_qty_hint')"
+            >
+              <template #prepend>
+                <q-icon name="ph ph-stack" />
+              </template>
+            </q-input>
+          </section>
 
-            <div v-if="showMinResellPrice">
-              <div class="text-caption text-weight-medium text-grey-8 q-mb-xs">
-                {{ $t('shop_admin.col_min_sell_price') }}
+          <section class="calc-section">
+            <q-banner dense rounded class="bg-blue-1 text-blue-10">
+              <div class="row items-center justify-between no-wrap">
+                <span class="text-weight-medium">{{ $t('shop_admin.storefront_avg_cost') }}</span>
+                <span class="text-subtitle2 text-weight-bold">{{ formatMoney(weightedAvgCost) }}</span>
               </div>
-              <div class="row q-col-gutter-sm">
-                <div class="col-12 col-sm-5">
-                  <q-input
-                    :model-value="resellPrice"
-                    type="number"
-                    step="0.01"
-                    outlined
-                    dense
-                    :label="$t('shop_admin.min_dropship_price')"
-                    @update:model-value="updateResellPrice"
-                    @blur="roundResellPriceField"
-                  >
-                    <template #prepend>
-                      <q-icon name="ph ph-currency-circle-dollar" />
-                    </template>
-                  </q-input>
-                </div>
-                <div class="col-6 col-sm-3">
-                  <q-input
-                    :model-value="resellMarkupPctOnCost"
-                    type="number"
-                    step="0.1"
-                    outlined
-                    dense
-                    suffix="%"
-                    :label="$t('shop_admin.storefront_calc_resell_markup_on_cost')"
-                    :disable="!hasUnitCost"
-                    @update:model-value="updateResellMarkupPctOnCost"
-                  />
-                </div>
-                <div class="col-6 col-sm-4">
-                  <q-input
-                    :model-value="resellMarkupPctOnSell"
-                    type="number"
-                    step="0.1"
-                    outlined
-                    dense
-                    suffix="%"
-                    :label="$t('shop_admin.storefront_calc_resell_markup_on_sell')"
-                    :disable="!hasSellPrice"
-                    @update:model-value="updateResellMarkupPctOnSell"
-                  />
-                </div>
-              </div>
+            </q-banner>
+          </section>
+
+          <section class="calc-section">
+            <div class="text-caption text-weight-medium text-grey-8 q-mb-sm">
+              {{ $t('shop_admin.storefront_calc_sell_price') }}
             </div>
-          </div>
-        </template>
-      </div>
+            <div class="column q-gutter-y-sm">
+              <q-input
+                :model-value="sellPrice"
+                type="number"
+                step="0.01"
+                outlined
+                dense
+                class="full-width-field"
+                :label="$t('shop_admin.sell_price_amount')"
+                @update:model-value="updateSellPrice"
+                @blur="roundSellPriceField"
+              >
+                <template #prepend>
+                  <q-icon name="ph ph-tag" />
+                </template>
+                <template v-if="suggestedSellPrice != null" #hint>
+                  {{ $t('shop_admin.storefront_calc_suggested_sell_price') }}:
+                  {{ formatMoney(suggestedSellPrice) }}
+                </template>
+              </q-input>
+              <q-input
+                :model-value="sellMarkupPctOnCost"
+                type="number"
+                step="0.1"
+                outlined
+                dense
+                suffix="%"
+                class="full-width-field"
+                :label="$t('shop_admin.storefront_calc_sell_markup_on_cost')"
+                :disable="!hasUnitCost"
+                :hint="!hasUnitCost ? $t('shop_admin.storefront_calc_markup_disabled_hint') : undefined"
+                @update:model-value="updateSellMarkupPct"
+              >
+                <template #prepend>
+                  <q-icon name="ph ph-percent" />
+                </template>
+              </q-input>
+            </div>
+          </section>
+
+          <section v-if="showMinResellPrice" class="calc-section">
+            <div class="text-caption text-weight-medium text-grey-8 q-mb-sm">
+              {{ $t('shop_admin.col_min_sell_price') }}
+            </div>
+            <div class="column q-gutter-y-sm">
+              <q-input
+                :model-value="resellPrice"
+                type="number"
+                step="0.01"
+                outlined
+                dense
+                class="full-width-field"
+                :label="$t('shop_admin.min_dropship_price')"
+                @update:model-value="updateResellPrice"
+                @blur="roundResellPriceField"
+              >
+                <template #prepend>
+                  <q-icon name="ph ph-currency-circle-dollar" />
+                </template>
+              </q-input>
+              <q-input
+                :model-value="resellMarkupPctOnCost"
+                type="number"
+                step="0.1"
+                outlined
+                dense
+                suffix="%"
+                class="full-width-field"
+                :label="$t('shop_admin.storefront_calc_resell_markup_on_cost')"
+                :disable="!hasUnitCost"
+                @update:model-value="updateResellMarkupPctOnCost"
+              />
+              <q-input
+                :model-value="resellMarkupPctOnSell"
+                type="number"
+                step="0.1"
+                outlined
+                dense
+                suffix="%"
+                class="full-width-field"
+                :label="$t('shop_admin.storefront_calc_resell_markup_on_sell')"
+                :disable="!hasSellPrice"
+                @update:model-value="updateResellMarkupPctOnSell"
+              />
+            </div>
+          </section>
+        </div>
+      </q-card-section>
 
       <q-separator />
 
-      <div class="q-pa-md bg-grey-1 row items-center justify-end q-gutter-sm">
+      <q-card-actions align="right" class="q-pa-md bg-grey-1 q-gutter-sm">
         <q-btn
           flat
           no-caps
@@ -241,9 +241,9 @@
           :disable="!calcData || isLoading"
           @click="onSave"
         />
-      </div>
-    </div>
-  </q-drawer>
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
 </template>
 
 <script setup lang="ts">
@@ -392,7 +392,8 @@ const onSave = () => {
       id: listing.listing_id,
       tenant_id: props.tenantId,
       shop_id: props.shopId,
-      global_stock_id: listing.global_stock_id,
+      global_stock_id: listing.global_stock_id ?? null,
+      product_id: listing.global_stock_id == null ? listing.product_id : undefined,
       sell_price_amount: sellAmount,
       sell_price_currency_id: sellCurrencyId,
       minimum_sell_price_amount: minAmount,
@@ -413,6 +414,37 @@ const onSave = () => {
 </script>
 
 <style scoped>
+.calc-price-panel {
+  width: min(640px, 100vw);
+  max-width: 100vw;
+  height: 100vh;
+  border-radius: 0;
+}
+
+.calc-price-body {
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.calc-drawer-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+  width: 100%;
+  max-width: 100%;
+}
+
+.calc-section {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.full-width-field {
+  width: 100%;
+}
+
 .border-bottom {
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
@@ -429,5 +461,51 @@ const onSave = () => {
   font-size: 11px;
   min-height: 22px;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.18);
+}
+
+.min-width-0 {
+  min-width: 0;
+}
+
+.shipment-table-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.shipment-cost-table {
+  table-layout: fixed;
+  width: 100%;
+  min-width: 0;
+}
+
+.shipment-cost-table th,
+.shipment-cost-table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.shipment-cost-table th:nth-child(1),
+.shipment-cost-table td:nth-child(1) {
+  width: 22%;
+}
+
+.shipment-cost-table th:nth-child(2),
+.shipment-cost-table td:nth-child(2) {
+  width: 38%;
+}
+
+.shipment-cost-table th:nth-child(3),
+.shipment-cost-table td:nth-child(3) {
+  width: 14%;
+}
+
+.shipment-cost-table th:nth-child(4),
+.shipment-cost-table td:nth-child(4) {
+  width: 26%;
+}
+
+.cell-nowrap {
+  white-space: nowrap;
 }
 </style>
