@@ -1,3 +1,4 @@
+import type { StockAvailability } from 'src/modules/procurement_stock/constants/stockAvailability';
 import type { ShopOrderStatus } from './index';
 
 export type DropshipSettlementChargeType = 'delivery' | 'print' | 'packing' | 'return' | 'cod';
@@ -39,10 +40,36 @@ export interface DropshipManagementInvoiceState {
 }
 
 export interface DropshipManagementStepState {
+  can_mark_returned: boolean;
   can_mark_delivered: boolean;
   can_issue_invoice: boolean;
   can_record_bank_transfer: boolean;
   can_transfer_to_reseller: boolean;
+}
+
+export interface DropshipManagementReturnLine {
+  id: number;
+  name: string;
+  quantity: number;
+  confirmed_quantity: number | null;
+  returned_quantity: number;
+  grade_tag_id: number | null;
+  product_code?: string | null;
+  image_url?: string | null;
+  stock_picks?: Array<{ id: number; shipment_name?: string | null; quantity: number }>;
+}
+
+export interface DropshipReturnItemPayload {
+  order_item_id: number;
+  returned_qty: number;
+  grade_tag_id: number;
+  to_availability: StockAvailability;
+}
+
+export interface DropshipReturnFinalizePayload extends DropshipSettlementDraftPayload {
+  return_items: DropshipReturnItemPayload[];
+  deduct_from_middle_man: boolean;
+  return_ref?: string;
 }
 
 export interface DropshipManagementCourierInfo {
@@ -75,7 +102,12 @@ export interface DropshipManagementOrderView {
     cod_charge_amount: number;
     deduct_cod_from_margin: boolean;
     discount_amount: number;
+    returned_at: string | null;
+    return_charge_amount: number;
+    deduct_return_charge_from_middle_man: boolean;
+    return_override_reason: string | null;
   };
+  items: DropshipManagementReturnLine[];
   computed: {
     items_resell_total: number;
     recipient_grand_total: number;
@@ -107,6 +139,7 @@ export interface DropshipManagementOrderResponse {
   settlement: DropshipManagementSettlementState;
   invoice: DropshipManagementInvoiceState | null;
   step_state: DropshipManagementStepState;
+  items?: DropshipManagementReturnLine[];
   fulfillment?: {
     courier?: Record<string, unknown>;
   };

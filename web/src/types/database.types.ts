@@ -13017,6 +13017,10 @@ export type Database = {
         }
         Returns: Json
       }
+      mark_dropship_order_returned_from_settlement: {
+        Args: { p_order_id: number; p_payload: Json; p_tenant_id: number }
+        Returns: Json
+      }
       mark_shop_order_item_shortfall: {
         Args: {
           p_add_to_demand_bucket?: boolean

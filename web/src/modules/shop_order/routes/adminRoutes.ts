@@ -282,6 +282,12 @@ const adminRoutes: RouteRecordRaw[] = [
         beforeEnter: guard('shop_order_mgmt'),
       },
       {
+        path: ':id/return',
+        name: 'app-shop-dropship-return-page',
+        component: () => import('src/modules/shop_order/pages/DropshipReturnFinalizePage.vue'),
+        beforeEnter: guard('shop_order_mgmt'),
+      },
+      {
         path: ':id',
         name: 'app-shop-dropship-management-detail-page',
         component: () => import('src/modules/shop_order/pages/DropshipManagementDetailPage.vue'),

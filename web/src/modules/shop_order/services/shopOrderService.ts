@@ -1,6 +1,7 @@
 import type {
   DropshipCourierBankTransferPayload,
   DropshipManagementOrderView,
+  DropshipReturnFinalizePayload,
   DropshipSettlementDraftPayload,
 } from '../types/dropshipManagementOrder';
 import { shopOrderRepository } from '../repositories/shopOrderRepository';
@@ -269,6 +270,30 @@ const markDropshipOrderDelivered = async (
     return {
       success: false,
       error: getErrorMessage(error, 'Failed to mark order as delivered.'),
+    };
+  }
+};
+
+const markDropshipOrderReturnedFromSettlement = async (
+  tenantId: number,
+  orderId: number,
+  payload: DropshipReturnFinalizePayload,
+): Promise<ShopServiceResult<unknown>> => {
+  try {
+    const data = await shopOrderRepository.markDropshipOrderReturnedFromSettlement(
+      tenantId,
+      orderId,
+      payload,
+    );
+    const row = (data ?? {}) as { success?: boolean; error?: string };
+    if (row.success === false) {
+      return { success: false, error: row.error ?? 'Failed to finalize return.' };
+    }
+    return { success: true, data };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, 'Failed to finalize return.'),
     };
   }
 };
@@ -576,6 +601,7 @@ export const shopOrderService = {
   fetchDropshipManagementOrder,
   saveDropshipSettlementDraft,
   markDropshipOrderDelivered,
+  markDropshipOrderReturnedFromSettlement,
   issueDropshipTenantB2bInvoice,
   recordDropshipCourierBankTransfer,
   transferDropshipResellerProfit,

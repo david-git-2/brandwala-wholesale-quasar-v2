@@ -399,12 +399,14 @@ Review against a typical OMS/WMS. Items below were missing from v1; **priority**
 
 ### 12.6 Returns per pick row (Phase 5 — medium)
 
-**Gap:** `mark_dropship_order_returned` matches one `global_stock_id` per line; multi-pick lines need return qty per pick/shipment.
+**Gap:** `mark_dropship_order_returned` / `finalize_dropship_return` match one `global_stock_id` per line; multi-pick lines need return qty per pick/shipment.
 
 **Target:**
 
 - Return payload references `shop_order_item_stock_picks.id` + qty.
 - Restock to correct shipment batch / grade.
+
+**UI:** Management desk return dialog (§7.1 in [`DROPSHIP_MANAGEMENT.md`](./DROPSHIP_MANAGEMENT.md)) uses line-level condition split until this phase ships; wire per-pick return in step **6d** there.
 
 ---
 

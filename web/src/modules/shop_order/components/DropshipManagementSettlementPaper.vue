@@ -3,9 +3,11 @@ import { computed, reactive, watch } from 'vue';
 import type { DropshipManagementOrderView } from '../types/dropshipManagementOrder';
 import {
   buildSettlementDraftPayload,
+  getChargeLineAmount,
   settlementToFormState,
   type DropshipSettlementFormState,
 } from '../utils/dropshipManagementOrderMapper';
+import type { DropshipSettlementChargePayer } from '../types/dropshipManagementOrder';
 
 const chargePayerOptions = [
   { label: 'Recipient pays', value: 'recipient' as const },
@@ -13,10 +15,17 @@ const chargePayerOptions = [
   { label: 'Company pays', value: 'company' as const },
 ];
 
-const props = defineProps<{
-  data: DropshipManagementOrderView;
-  readonly?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    data: DropshipManagementOrderView;
+    readonly?: boolean;
+    returnSectionMode?: 'hidden' | 'readonly';
+  }>(),
+  {
+    readonly: false,
+    returnSectionMode: 'hidden',
+  },
+);
 
 type SettlementFormState = DropshipSettlementFormState;
 
@@ -77,13 +86,28 @@ const codVarianceLabel = computed(() => {
   return null;
 });
 
-const chargeLines = computed(() => [
-  form.codCharge,
-  form.delivery,
-  form.print,
-  form.packing,
-  form.returnCost,
-]);
+const chargeLines = computed(() => {
+  const lines = [form.codCharge, form.delivery, form.print, form.packing];
+  if (props.returnSectionMode !== 'hidden') {
+    lines.push(form.returnCost);
+  }
+  return lines;
+});
+
+const readonlyReturnChargeAmount = computed(() =>
+  props.data.order.return_charge_amount
+  || getChargeLineAmount(props.data.settlement.charge_lines, 'return').amount,
+);
+
+const readonlyReturnPayer = computed((): DropshipSettlementChargePayer => {
+  const line = getChargeLineAmount(props.data.settlement.charge_lines, 'return');
+  if (line.amount > 0) return line.payer;
+  if (props.data.order.deduct_return_charge_from_middle_man) return 'merchant';
+  return 'company';
+});
+
+const formatPayerLabel = (payer: DropshipSettlementChargePayer) =>
+  chargePayerOptions.find((o) => o.value === payer)?.label ?? payer;
 
 const companyProcurementCost = computed(() => props.data.settlement.company_procurement_cost);
 
@@ -135,6 +159,12 @@ function formatMoney(amount: number): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
+}
+
+function formatDate(value: string | null): string {
+  if (!value) return '—';
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function num(value: unknown): number {
@@ -328,54 +358,90 @@ defineExpose({ getDraftPayload });
           <span class="text-weight-bold text-positive">{{ formatMoney(companyProfit) }}</span>
         </div>
 
-        <div class="dropship-mgmt-settlement-paper__return-section">
+        <div v-if="returnSectionMode !== 'hidden'" class="dropship-mgmt-settlement-paper__return-section">
           <div class="dropship-invoice-paper__section-label q-mb-xs">Return (recipient refused parcel)</div>
-          <div class="dropship-invoice-paper__summary-row dropship-invoice-paper__summary-row--editable">
-            <div class="dropship-invoice-paper__summary-label">
-              <span>{{ returnChargeRow.label }}</span>
-              <q-btn-toggle
-                v-model="form[returnChargeRow.field].payer"
+
+          <template v-if="returnSectionMode === 'readonly'">
+            <div v-if="data.order.returned_at" class="dropship-invoice-paper__summary-row">
+              <div class="dropship-invoice-paper__summary-label">
+                <span>Returned at</span>
+              </div>
+              <span class="text-weight-medium">{{ formatDate(data.order.returned_at) }}</span>
+            </div>
+            <div class="dropship-invoice-paper__summary-row">
+              <div class="dropship-invoice-paper__summary-label">
+                <span>{{ returnChargeRow.label }}</span>
+              </div>
+              <span class="text-weight-medium">
+                {{ formatMoney(readonlyReturnChargeAmount) }}
+                <span class="text-caption text-grey-7 q-ml-xs">({{ formatPayerLabel(readonlyReturnPayer) }})</span>
+              </span>
+            </div>
+            <div
+              v-if="data.order.deduct_return_charge_from_middle_man"
+              class="dropship-invoice-paper__summary-row"
+            >
+              <div class="dropship-invoice-paper__summary-label">
+                <span>Merchant wallet debit</span>
+              </div>
+              <span class="text-weight-medium text-negative">Yes</span>
+            </div>
+            <div class="dropship-invoice-paper__summary-row">
+              <div class="dropship-invoice-paper__summary-label">
+                <span>Return reason note</span>
+              </div>
+              <span class="text-weight-medium">{{ data.settlement.return_reason_note || '—' }}</span>
+            </div>
+          </template>
+
+          <template v-else>
+            <div class="dropship-invoice-paper__summary-row dropship-invoice-paper__summary-row--editable">
+              <div class="dropship-invoice-paper__summary-label">
+                <span>{{ returnChargeRow.label }}</span>
+                <q-btn-toggle
+                  v-model="form[returnChargeRow.field].payer"
+                  dense
+                  no-caps
+                  unelevated
+                  toggle-color="primary"
+                  color="grey-3"
+                  text-color="grey-8"
+                  class="dropship-invoice-paper__payer-toggle"
+                  :disable="readonly"
+                  :options="chargePayerOptions"
+                />
+              </div>
+              <q-input
+                v-model.number="form[returnChargeRow.field].amount"
+                type="number"
+                min="0"
+                step="0.01"
                 dense
-                no-caps
-                unelevated
-                toggle-color="primary"
-                color="grey-3"
-                text-color="grey-8"
-                class="dropship-invoice-paper__payer-toggle"
+                outlined
+                hide-bottom-space
                 :disable="readonly"
-                :options="chargePayerOptions"
+                class="dropship-invoice-paper__amount-input"
+                input-class="text-right"
               />
             </div>
-            <q-input
-              v-model.number="form[returnChargeRow.field].amount"
-              type="number"
-              min="0"
-              step="0.01"
-              dense
-              outlined
-              hide-bottom-space
-              :disable="readonly"
-              class="dropship-invoice-paper__amount-input"
-              input-class="text-right"
-            />
-          </div>
 
-          <div class="dropship-invoice-paper__summary-row dropship-invoice-paper__summary-row--editable dropship-mgmt-settlement-paper__note-row">
-            <div class="dropship-invoice-paper__summary-label">
-              <span>Return reason note</span>
+            <div class="dropship-invoice-paper__summary-row dropship-invoice-paper__summary-row--editable dropship-mgmt-settlement-paper__note-row">
+              <div class="dropship-invoice-paper__summary-label">
+                <span>Return reason note</span>
+              </div>
+              <q-input
+                v-model="form.returnReasonNote"
+                type="textarea"
+                autogrow
+                dense
+                outlined
+                hide-bottom-space
+                :disable="readonly"
+                placeholder="Why was return cost applied?"
+                class="dropship-invoice-paper__field-input dropship-mgmt-settlement-paper__note-input"
+              />
             </div>
-            <q-input
-              v-model="form.returnReasonNote"
-              type="textarea"
-              autogrow
-              dense
-              outlined
-              hide-bottom-space
-              :disable="readonly"
-              placeholder="Why was return cost applied?"
-              class="dropship-invoice-paper__field-input dropship-mgmt-settlement-paper__note-input"
-            />
-          </div>
+          </template>
         </div>
       </div>
     </section>

@@ -3,6 +3,7 @@ import type {
   DropshipManagementInvoiceState,
   DropshipManagementOrderResponse,
   DropshipManagementOrderView,
+  DropshipManagementReturnLine,
   DropshipSettlementChargeLine,
   DropshipSettlementChargePayer,
   DropshipSettlementChargeType,
@@ -109,6 +110,35 @@ function mapCourier(
   };
 }
 
+function mapReturnLines(raw: unknown): DropshipManagementReturnLine[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((item) => {
+    const row = (item ?? {}) as Record<string, unknown>;
+    const picksRaw = row.stock_picks;
+    const stock_picks = Array.isArray(picksRaw)
+      ? picksRaw.map((pick) => {
+          const p = (pick ?? {}) as Record<string, unknown>;
+          return {
+            id: num(p.id),
+            shipment_name: (p.shipment_name as string | null) ?? null,
+            quantity: num(p.quantity),
+          };
+        })
+      : undefined;
+    return {
+      id: num(row.id),
+      name: str(row.name),
+      quantity: num(row.quantity),
+      confirmed_quantity: row.confirmed_quantity == null ? null : num(row.confirmed_quantity),
+      returned_quantity: num(row.returned_quantity),
+      grade_tag_id: row.grade_tag_id == null ? null : num(row.grade_tag_id),
+      product_code: (row.product_code as string | null) ?? null,
+      image_url: (row.image_url as string | null) ?? null,
+      stock_picks,
+    };
+  });
+}
+
 export function mapDropshipManagementOrderResponse(raw: unknown): DropshipManagementOrderView {
   const payload = (raw ?? {}) as DropshipManagementOrderResponse & Record<string, unknown>;
   if (payload.success === false) {
@@ -152,7 +182,12 @@ export function mapDropshipManagementOrderResponse(raw: unknown): DropshipManage
       cod_charge_amount: num(orderRaw.cod_charge_amount),
       deduct_cod_from_margin: orderRaw.deduct_cod_from_margin === true,
       discount_amount: num(orderRaw.discount_amount),
+      returned_at: (orderRaw.returned_at as string | null) ?? null,
+      return_charge_amount: num(orderRaw.return_charge_amount),
+      deduct_return_charge_from_middle_man: orderRaw.deduct_return_charge_from_middle_man === true,
+      return_override_reason: (orderRaw.return_override_reason as string | null) ?? null,
     },
+    items: mapReturnLines(payload.items),
     computed: {
       items_resell_total: num(computedRaw.items_resell_total),
       recipient_grand_total: num(computedRaw.recipient_grand_total),
@@ -179,6 +214,7 @@ export function mapDropshipManagementOrderResponse(raw: unknown): DropshipManage
     courier: mapCourier(orderRaw, computedRaw, settlementRaw, fulfillmentRaw),
     invoice: mapInvoice(payload.invoice),
     step_state: {
+      can_mark_returned: stepRaw.can_mark_returned === true,
       can_mark_delivered: stepRaw.can_mark_delivered === true,
       can_issue_invoice: stepRaw.can_issue_invoice === true,
       can_record_bank_transfer: stepRaw.can_record_bank_transfer === true,

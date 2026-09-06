@@ -18,9 +18,10 @@
           ref="paperRef"
           :data="orderData"
           :readonly="isSettlementReadonly"
+          :return-section-mode="returnSectionMode"
         />
 
-        <div class="dropship-order-detail-v2__toolbar">
+        <div v-if="orderData.order.status !== 'returned'" class="dropship-order-detail-v2__toolbar">
           <q-btn
             v-if="!isSettlementReadonly"
             outline
@@ -33,7 +34,7 @@
           />
         </div>
 
-        <div class="dropship-order-detail-v2__footer-actions">
+        <div v-if="orderData.order.status !== 'returned'" class="dropship-order-detail-v2__footer-actions">
           <div class="dropship-order-detail-v2__outcome-actions">
             <q-btn
               color="primary"
@@ -53,7 +54,7 @@
               icon="ph ph-arrow-u-up-left"
               label="Mark as returned"
               class="text-weight-bold dropship-order-detail-v2__action-btn"
-              :disable="!orderData.step_state.can_mark_delivered"
+              :disable="!orderData.step_state.can_mark_returned"
               @click="onMarkReturned"
             />
           </div>
@@ -129,7 +130,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { requestConfirmation, showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
@@ -139,6 +140,7 @@ import { shopOrderQueryKeys } from '../shared/queryKeys/shopOrderQueryKeys';
 import type { DropshipManagementOrderView } from '../types/dropshipManagementOrder';
 
 const route = useRoute();
+const router = useRouter();
 const authStore = useAuthStore();
 const queryClient = useQueryClient();
 
@@ -190,12 +192,16 @@ const loadError = computed(() => (queryError.value instanceof Error ? queryError
 const isSettlementReadonly = computed(() => {
   const data = orderData.value;
   if (!data) return false;
+  if (data.order.status === 'returned') return true;
   if (data.settlement.status === 'confirmed' || data.settlement.merchant_payout_at) {
     return true;
   }
-  // Settlement form is editable only before delivery is confirmed.
   return data.order.status !== 'shipped';
 });
+
+const returnSectionMode = computed(() =>
+  orderData.value?.order.status === 'returned' ? 'readonly' : 'hidden',
+);
 
 watch(orderData, (data) => {
   if (!data) return;
@@ -282,6 +288,7 @@ async function onMarkDelivered() {
             courier_cod_booked_at: prev.settlement.courier_cod_booked_at ?? new Date().toISOString(),
           },
           step_state: {
+            can_mark_returned: false,
             can_mark_delivered: false,
             can_issue_invoice: true,
             can_record_bank_transfer: true,
@@ -306,6 +313,7 @@ async function onMarkDelivered() {
           courier_cod_booked_at: prev.settlement.courier_cod_booked_at ?? new Date().toISOString(),
         },
         step_state: {
+          can_mark_returned: false,
           can_mark_delivered: false,
           can_issue_invoice: false,
           can_record_bank_transfer: true,
@@ -320,14 +328,11 @@ async function onMarkDelivered() {
 }
 
 async function onMarkReturned() {
-  if (!authStore.tenantId) return;
-
-  const confirmed = await requestConfirmation(
-    'Mark this parcel as returned? Complete the return section first. This will restock stock and adjust wallets when the return action is wired.',
-    'Mark as returned',
-    'Mark returned',
-  );
-  if (!confirmed) return;
+  if (!orderData.value?.step_state.can_mark_returned) return;
+  router.push({
+    name: 'app-shop-dropship-return-page',
+    params: { tenantSlug: route.params.tenantSlug, id: orderId.value },
+  });
 }
 
 async function onRecordBankTransfer() {

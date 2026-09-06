@@ -286,12 +286,22 @@ Two columns per row — **label** on the left, **value or input** on the right. 
 | Total cost | Amount (auto) | Procurement + all charge lines |
 | Company profit | Amount (auto) | See §8 |
 
-**Return block (bottom of form)** — red dotted border; used only when staff choose **Mark as returned** (§7.1). Not part of the successful-delivery profit rows above.
+**Return block** — red dotted border; **not** part of the successful-delivery profit rows above. Visibility (§7.1):
 
-| Row | Right side | Notes |
+| Page state | Return block on main form |
+| :--- | :--- |
+| `shipped` (active desk) | **Hidden** — return is handled on [`DropshipReturnFinalizePage.vue`](../../web/src/modules/shop_order/pages/DropshipReturnFinalizePage.vue) |
+| `returned` (read-only view) | **Visible** — cost, payer, reason note, returned-at summary |
+| `delivered` / `payment_received` | Hidden unless staff use return from ops desk (not v1 management path) |
+
+Dialog + read-only summary fields:
+
+| Row | Return finalize page (editable) | Main page after `returned` |
 | :--- | :--- | :--- |
-| Return cost | Amount input + payer toggle | Courier return fee; payer rules TBD (§7.1) |
-| Return reason note | Textarea | Required context when return cost &gt; 0 |
+| Return cost | Amount input + payer toggle | Read-only amount + payer |
+| Return reason note | Textarea | Read-only text |
+| Per-line grade + availability | Qty stepper, grade select, availability (`held` / `sellable` / `unsellable`) | — (stored on stock movements) |
+| Deduct return fee from merchant wallet | Toggle (when payer = merchant) | Read-only flag |
 
 ### Settlement actions — two outcomes from `shipped`
 
@@ -310,18 +320,37 @@ flowchart TD
 
 #### §7.1 Return path (recipient refused parcel)
 
+Primary case: parcel still with courier, customer refused — order is **`shipped`**, staff never ran step ① **Mark as delivered**.
+
 | What | Detail |
 | :--- | :--- |
-| UI | **Mark as returned** button (outline, below **Mark as delivered**); return block at **bottom** of settlement form |
-| Enabled when | `status = shipped` (same gate as mark delivered today) |
-| Staff fills | Return cost, payer toggle, return reason note (grade per line **before restock** — UI TBD on this desk) |
-| Target backend | Wrap `save_dropship_settlement_draft` + `finalize_dropship_return` (today: processing desk + `mark_dropship_order_returned`) |
+| UI trigger | **Mark as returned** button (outline, below **Mark as delivered**) on [`DropshipManagementDetailPage.vue`](../../web/src/modules/shop_order/pages/DropshipManagementDetailPage.vue) → navigates to `/:id/return` |
+| Enabled when | `step_state.can_mark_returned` (`shipped`, no courier COD booked) |
+| Return finalize page | [`DropshipReturnFinalizePage.vue`](../../web/src/modules/shop_order/pages/DropshipReturnFinalizePage.vue) — per-line return qty, warehouse grade, availability; return cost + payer; merchant wallet deduct toggle |
+| Page fields | Return cost + payer; return reason note (required when cost &gt; 0); per-line return qty with grade and availability; **Deduct return fee from merchant wallet** when payer = merchant |
+| Page summary | Short plain-text preview: stock restock, wallet unwind if any delivery steps ran, status → `returned`, steps ② / ③ disabled |
+| Main page after return | Settlement form **read-only**; return block **visible** with saved cost, payer, note, condition breakdown, `returned_at`. Footer outcome buttons hidden. |
+| List after return | Order leaves active desk filter (§1). **Returned** list filter reopens detail read-only. |
+| Target backend | `mark_dropship_order_returned_from_settlement` → `save_dropship_settlement_draft` + `finalize_dropship_return` (per-line `grade_tag_id` + `to_availability`). Processing desk still calls `finalize_dropship_return` directly via legacy `condition` payload in [`useDropshipReturnMutations.ts`](../../web/src/modules/shop_order/composables/useDropshipReturnMutations.ts). |
 | Order | `shipped` → **`returned`** (`return_sub_state = return_finalized`) |
-| Stock | Restock via `return_inbound` movement; condition / grade captured per line |
-| Wallet | Reverse deliver/remittance legs when present; return fee debit when merchant pays (**company payer — TBD**) |
-| Settlement desk after return | Order leaves list (§1); no steps ② / ③ |
+| Stock | `finalize_dropship_return` posts `return_inbound` per line at chosen grade + availability. Updates `returned_quantity` and invoice return lines when B2B invoice exists. **Gap:** multi-pick lines — see [`DROPSHIP_PROCESSING_STOCK_PICK.md`](./DROPSHIP_PROCESSING_STOCK_PICK.md) §12.6. |
+| Wallet | `finalize_dropship_return` unwinds only legs that already exist on `universal_wallet_ledger` for this order (idempotent). See §7.1.1. Return fee: debit merchant billing-profile wallet when `p_deduct_from_middle_man` and cost &gt; 0. **Open:** company payer debit path. |
+| Settlement desk after return | No steps ② / ③; do not use **Mark as delivered** for refused parcels |
 
-**Status:** UI button + return block layout **done**; orchestration RPC **not wired** on this page yet.
+**Status:** Implemented — return finalize page, `returnSectionMode` on settlement paper, `mark_dropship_order_returned_from_settlement` migration (`20270906220000`). Processing desk dialog unchanged (legacy `condition` payload).
+
+##### §7.1.1 Wallet + stock by scenario (simple)
+
+| Scenario | Stock | Wallet |
+| :--- | :--- | :--- |
+| **A — Refused while `shipped`** (usual) | Full line qty restocked per condition split | Usually **no** courier COD / remittance / payout to reverse. Return fee debits merchant wallet when merchant pays. |
+| **B — Return after mistaken `delivered`** | Same restock | Reverses step ① courier COD credit if posted. |
+| **C — Return after step ② (bank transfer)** | Same restock | Also reverses tenant remittance credit and courier-fee lines from remittance. |
+| **D — Return after step ③ (reseller paid)** | Same restock | Also claws back reseller profit and reverses tenant revenue legs. |
+
+All scenarios: customer invoice / billing-profile receivable unwound when `invoice_billed` or `invoice_collection` exists (`return_reversal`, `return_collection_reversal`, etc. in `finalize_dropship_return`).
+
+**Staff must not:** mark delivered on a refused parcel; cancel after ship (use return); expect bank transfer or reseller payout after `returned`.
 
 #### §7.2 Successful delivery — 3-step wallet flow
 
@@ -348,7 +377,7 @@ flowchart TD
 
 | Step | Orchestration RPC (new) | Composes |
 | :--- | :--- | :--- |
-| Return | `mark_dropship_order_returned_from_settlement` (**planned**) | `save_dropship_settlement_draft` + `finalize_dropship_return` |
+| Return | `mark_dropship_order_returned_from_settlement` | `save_dropship_settlement_draft` + `finalize_dropship_return` |
 | ① | `mark_dropship_order_delivered` | `save_dropship_settlement_draft` + `advance_dropship_order_status` + `confirm_dropship_delivered_costing` + invoice create/post |
 | ② | `record_dropship_courier_bank_transfer` | `record_dropship_courier_remittance` (`process_dropship_courier_remittance_uwl`) |
 | ③ | `transfer_dropship_reseller_profit` | `dispense_middleman_payout_from_tenant` (order-scoped amount from settlement) |
@@ -461,7 +490,11 @@ Retire Finance Hub for dropship **only after** all three desk buttons call the o
 3. ~~RPCs: get/save + 3 orchestration~~ — done (`20270831210000`, `20270831220000`).
 4. Product: move B2B invoice trigger `ready_for_pickup` → `delivered` (inside step ①) if shipment-based accounting approved — **not done**.
 5. ~~Wire detail form load/save + footer buttons~~ — done.
-6. **Return path:** UI button + bottom return block — done; wire `mark_dropship_order_returned_from_settlement` — **pending**.
+6. **Return path (§7.1)** — **done** (except multi-pick):
+   - **6a — Return finalize page:** [`DropshipReturnFinalizePage.vue`](../../web/src/modules/shop_order/pages/DropshipReturnFinalizePage.vue); return block hidden on main form when `shipped`; navigate from **Mark as returned**.
+   - **6b — Read-only returned view:** return block `readonly` when `status = returned`; footer outcome buttons hidden; **Returned** list filter.
+   - **6c — Backend:** `mark_dropship_order_returned_from_settlement` (`20270906220000`); extended `finalize_dropship_return` per-line grade + availability.
+   - **6d — Multi-pick returns:** per-pick return payload — **pending** ([`DROPSHIP_PROCESSING_STOCK_PICK.md`](./DROPSHIP_PROCESSING_STOCK_PICK.md) §12.6).
 7. Verify desk parity vs Finance Hub; then retire Finance Hub dropship tabs.
 
 ---

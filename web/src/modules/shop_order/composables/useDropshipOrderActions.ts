@@ -8,62 +8,11 @@ import type { CourierServiceRow } from '../repositories/dropshipCourierRepositor
 import { showSuccessNotification, showErrorNotification, parseSupabaseError } from 'src/utils/appFeedback';
 import {
   useDropshipReturnMutations,
-  type ReturnCondition,
 } from './useDropshipReturnMutations';
-
-function returnableQty(item: ShopOrderItem): number {
-  const delivered = Number(item.confirmed_quantity ?? item.quantity ?? 0);
-  const returned = Number(item.returned_quantity ?? 0);
-  return Math.max(0, delivered - returned);
-}
-
-function mapConditionQtysToItems(
-  items: ShopOrderItem[],
-  qtyNormal: number,
-  qtyOpenBox: number,
-  qtyDamaged: number,
-): Array<{ order_item_id: number; returned_qty: number; condition: ReturnCondition }> {
-  const totalReturnable = items.reduce((sum, item) => sum + returnableQty(item), 0);
-  const requested = qtyNormal + qtyOpenBox + qtyDamaged;
-  if (requested <= 0) {
-    throw new Error('Return quantity must be greater than zero');
-  }
-  if (requested !== totalReturnable) {
-    throw new Error(
-      `Return quantities (${requested}) must equal returnable total (${totalReturnable})`,
-    );
-  }
-
-  const remaining: Record<ReturnCondition, number> = {
-    perfect: qtyNormal,
-    open_box: qtyOpenBox,
-    damaged: qtyDamaged,
-  };
-  const result: Array<{
-    order_item_id: number;
-    returned_qty: number;
-    condition: ReturnCondition;
-  }> = [];
-
-  for (const item of items) {
-    let need = returnableQty(item);
-    for (const condition of ['perfect', 'open_box', 'damaged'] as const) {
-      if (need <= 0) break;
-      const take = Math.min(need, remaining[condition]);
-      if (take > 0) {
-        result.push({
-          order_item_id: item.id,
-          returned_qty: take,
-          condition,
-        });
-        remaining[condition] -= take;
-        need -= take;
-      }
-    }
-  }
-
-  return result;
-}
+import {
+  mapConditionQtysToItems,
+  totalReturnableQty as sumReturnableQty,
+} from '../utils/dropshipReturnUtils';
 
 export function useDropshipOrderActions(
   tenantSlug: Ref<string | null>,
@@ -102,7 +51,7 @@ export function useDropshipOrderActions(
   );
 
   const totalReturnableQty = computed(() =>
-    orderItems.value.reduce((sum, item) => sum + returnableQty(item), 0),
+    sumReturnableQty(orderItems.value),
   );
 
   const effectiveCollectionSource = computed(
