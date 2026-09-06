@@ -7774,13 +7774,17 @@ $$;
 ALTER FUNCTION "public"."list_child_tenant_ids"("p_parent_tenant_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_child_tenant_refs"("p_parent_tenant_ids" bigint[]) RETURNS TABLE("id" bigint, "parent_id" bigint)
+CREATE OR REPLACE FUNCTION "public"."list_child_tenant_refs"("p_parent_tenant_ids" bigint[]) RETURNS TABLE("id" bigint, "parent_id" bigint, "name" "text")
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
-  select t.id, t.parent_id
+  select t.id, t.parent_id, t.name
   from public.tenants t
   where t.parent_id = any (coalesce(p_parent_tenant_ids, array[]::bigint[]))
+    and (
+      public.is_superadmin()
+      or public.user_can_manage_parent_tenant(t.parent_id)
+    )
   order by t.parent_id, t.id;
 $$;
 ALTER FUNCTION "public"."list_child_tenant_refs"(bigint[]) OWNER TO "postgres";
@@ -20760,7 +20764,7 @@ ALTER TABLE "public"."markets" ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "members_can_view_tenants" ON "public"."tenants" FOR SELECT TO "authenticated" USING (("public"."is_superadmin"() OR (EXISTS ( SELECT 1
    FROM "public"."memberships" "m"
-  WHERE (("m"."tenant_id" = "tenants"."id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true))))));
+  WHERE (("m"."tenant_id" = "tenants"."id") AND ("lower"(TRIM(BOTH FROM "m"."email")) = "public"."current_user_email"()) AND ("m"."is_active" = true)))) OR (("tenants"."parent_id" IS NOT NULL) AND "public"."user_can_manage_parent_tenant"("tenants"."parent_id"))));
 
 
 ALTER TABLE "public"."membership_grants" ENABLE ROW LEVEL SECURITY;
@@ -22565,7 +22569,7 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."tenant_scoped_coun
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."tenants" TO "anon";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."tenants" TO "authenticated";
+GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."tenants" TO "authenticated";
 GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."tenants" TO "service_role";
 
 

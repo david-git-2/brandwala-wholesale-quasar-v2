@@ -405,12 +405,16 @@ CREATE OR REPLACE FUNCTION "public"."apply_dropship_payout_settlement_fifo"("p_t
     AS $$
 declare
   v_remaining numeric := greatest(coalesce(p_amount, 0), 0);
+  v_parent_tenant_id bigint;
   r record;
   v_profit numeric;
 begin
   if v_remaining <= 0 then
     return;
-  -- Only fully unpaid orders (partial stays until a later settled_amount column exists)
+  end if;
+
+  v_parent_tenant_id := public.resolve_parent_tenant_id(p_tenant_id);
+
   for r in
     select o.id
     from public.shop_orders o
@@ -425,7 +429,7 @@ begin
 
     select coalesce(sum(u.amount), 0) into v_profit
     from public.universal_wallet_ledger u
-    where u.tenant_id = p_tenant_id
+    where u.parent_tenant_id = v_parent_tenant_id
       and u.source_type = 'shop_order'
       and u.source_id = r.id::text
       and u.entity_type in ('middleman', 'customer')
@@ -438,6 +442,8 @@ begin
           updated_at = now()
       where id = r.id;
       continue;
+    end if;
+
     if v_remaining >= v_profit then
       update public.shop_orders
       set payout_settlement_status = 'paid',
@@ -450,7 +456,12 @@ begin
           updated_at = now()
       where id = r.id;
       v_remaining := 0;
-    ALTER FUNCTION "public"."apply_dropship_payout_settlement_fifo"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_amount" numeric) OWNER TO "postgres";
+    end if;
+  end loop;
+end;
+$$;
+
+ALTER FUNCTION "public"."apply_dropship_payout_settlement_fifo"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_amount" numeric) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."browse_shop_catalog_for_customer"("p_tenant_id" bigint, "p_shop_slug" "text", "p_search" "text" DEFAULT NULL::"text", "p_category" "text" DEFAULT NULL::"text", "p_brand" "text" DEFAULT NULL::"text", "p_limit" integer DEFAULT 20, "p_offset" integer DEFAULT 0) RETURNS "jsonb"
@@ -3963,7 +3974,7 @@ begin
       max(case when coalesce(l.metadata->>'purpose', '') = 'delivered_costing' then 1 else 0 end) as has_delivered_costing,
       max(case when coalesce(l.metadata->>'purpose', '') = 'courier_remittance' then 1 else 0 end) as has_remittance
     from public.universal_wallet_ledger l
-    where l.tenant_id = p_tenant_id
+    where l.parent_tenant_id = public.resolve_parent_tenant_id(p_tenant_id)
       and l.source_type = 'shop_order'
       and l.source_id in (select fo.id::text from finance_orders fo)
     group by l.source_id
@@ -7606,6 +7617,9 @@ CREATE OR REPLACE FUNCTION "public"."record_dropship_courier_remittance"("p_orde
     AS $$
 declare
   v_order record;
+  v_invoice public.global_invoices;
+  v_parent_tenant_id bigint;
+  v_payment_id bigint;
   v_ref text;
   v_cod numeric(12,2);
   v_charge numeric(12,2);
@@ -7614,34 +7628,100 @@ declare
   v_invoice_pay numeric(12,2);
   v_profit_hold numeric(12,2);
   v_currency text := 'BDT';
+  v_already_remitted boolean := false;
 begin
   select * into v_order from public.shop_orders where id = p_order_id for update;
-  if v_order.status <> 'delivered' then
-    raise exception 'Courier remittance requires order status delivered (current: %)', v_order.status;
+  if v_order.id is null then
+    raise exception 'Order not found';
+  end if;
+
+  if v_order.shop_type_snapshot <> 'dropship' then
+    raise exception 'Order is not a dropship order';
+  end if;
+
+  if v_order.status not in ('delivered', 'payment_received') then
+    raise exception 'Courier remittance requires order status delivered or payment_received (current: %)', v_order.status;
+  end if;
+
   if v_order.global_invoice_id is null then
     raise exception 'Accounting invoice is required before recording courier remittance';
+  end if;
+
+  v_parent_tenant_id := public.resolve_parent_tenant_id(v_order.tenant_id);
+
+  select exists (
+    select 1 from public.universal_wallet_ledger
+    where parent_tenant_id = v_parent_tenant_id
+      and entity_type = 'tenant'
+      and source_type = 'shop_order'
+      and source_id = p_order_id::text
+      and metadata->>'purpose' = 'tenant_remittance_received'
+  ) into v_already_remitted;
+
+  if v_already_remitted then
+    return jsonb_build_object(
+      'success', true,
+      'already_recorded', true,
+      'invoice_id', v_order.global_invoice_id,
+      'order_id', p_order_id,
+      'status', v_order.status
+    );
+  end if;
+
   v_ref := nullif(trim(coalesce(p_remittance_ref, '')), '');
   if v_ref is null then
     raise exception 'Remittance reference is required';
+  end if;
+
   v_net := coalesce(p_net_amount, 0.00);
   v_charge := coalesce(p_courier_charge, 0.00);
-  v_cod := coalesce(v_order.cod_collect_amount, 0.00);
+
+  select coalesce(s.collected_cod_amount, v_order.cod_collect_amount, 0.00)
+  into v_cod
+  from public.dropship_order_settlements s
+  where s.shop_order_id = p_order_id;
+
+  if not found then
+    v_cod := coalesce(v_order.cod_collect_amount, 0.00);
+  end if;
 
   if v_net <= 0.00 then
     raise exception 'Net remittance amount must be positive';
+  end if;
+
   if v_charge < 0.00 then
     raise exception 'Courier charge cannot be negative';
-  -- Cap: net + charge must not exceed COD collect (full economic remittance)
+  end if;
+
   if v_cod > 0 and (v_net + v_charge) > (v_cod + 0.01) then
     raise exception 'Remittance net (%) + charge (%) exceeds COD collect (%)', v_net, v_charge, v_cod;
+  end if;
+
+  if not (
+    public.user_can_manage_parent_tenant(v_parent_tenant_id)
+    or exists (
+      select 1 from public.memberships m
+      where m.tenant_id = v_order.tenant_id
+        and lower(trim(m.email)) = public.current_user_email()
+        and m.is_active = true
+        and m.role in ('admin', 'staff')
+    )
+  ) then
+    raise exception 'Permission denied: Staff or Admin role required';
+  end if;
+
   select * into v_invoice from public.global_invoices where id = v_order.global_invoice_id for update;
+  if v_invoice.id is null then
+    raise exception 'Invoice not found';
+  end if;
+  if v_invoice.collection_source <> 'recipient'::public.collection_source_type then
+    raise exception 'This invoice does not collect from recipient.';
+  end if;
+
   v_invoice_due := greatest(coalesce(v_invoice.total_amount, 0.00) - coalesce(v_invoice.paid_amount, 0.00), 0.00);
   v_invoice_pay := least(v_net, v_invoice_due);
   v_profit_hold := greatest(v_net - v_invoice_pay, 0.00);
 
-  -- 1. UWL courier + tenant remittance + courier fee
-  -- Allocation is returned to caller; held remainder stays as cash float until profit payout
-  -- (dropship_profit already accrued on billing profile at accounting invoice).
   perform public.process_dropship_courier_remittance_uwl(
     p_order_id => p_order_id,
     p_net_amount => v_net,
@@ -7649,19 +7729,17 @@ begin
     p_remittance_ref => v_ref
   );
 
-  -- Annotate remittance credit with allocation breakdown
   update public.universal_wallet_ledger
   set metadata = metadata || jsonb_build_object(
     'invoice_allocated', v_invoice_pay,
     'merchant_funds_held', v_profit_hold
   )
-  where tenant_id = v_order.tenant_id
+  where parent_tenant_id = v_parent_tenant_id
     and entity_type = 'tenant'
     and source_type = 'shop_order'
     and source_id = p_order_id::text
     and metadata->>'purpose' = 'tenant_remittance_received';
 
-  -- 2. Clear B2B invoice up to due (do not over-pay invoice)
   if v_invoice_pay > 0 then
     insert into public.global_payments (
       tenant_id,
@@ -7704,10 +7782,9 @@ begin
 
     perform public.recompute_global_invoice_payment_status(v_order.global_invoice_id);
 
-    -- Clear customer AR for the invoice portion (idempotent)
     if v_invoice.billing_profile_id is not null and not exists (
       select 1 from public.universal_wallet_ledger
-      where parent_tenant_id = public.resolve_parent_tenant_id(v_order.tenant_id)
+      where parent_tenant_id = v_parent_tenant_id
         and entity_type = 'customer'
         and entity_id = v_invoice.billing_profile_id
         and source_type = 'shop_order'
@@ -7715,8 +7792,8 @@ begin
         and metadata->>'transaction_type' = 'invoice_collection'
     ) then
       perform public.record_ledger_transaction(
-        p_parent_tenant_id => public.resolve_parent_tenant_id(v_order.tenant_id),
-      p_operating_tenant_id => v_order.tenant_id,
+        p_parent_tenant_id => v_parent_tenant_id,
+        p_operating_tenant_id => v_order.tenant_id,
         p_entity_type => 'customer',
         p_entity_id => v_invoice.billing_profile_id,
         p_type => 'credit',
@@ -7735,7 +7812,10 @@ begin
           'remittance_ref', v_ref
         )
       );
-    update public.shop_orders
+    end if;
+  end if;
+
+  update public.shop_orders
   set
     status = 'payment_received'::public.shop_order_status,
     courier_remittance_ref = v_ref,
@@ -7754,6 +7834,9 @@ begin
     'invoice_allocated', v_invoice_pay,
     'merchant_funds_held', v_profit_hold
   );
+end;
+$$;
+
 ALTER FUNCTION "public"."record_dropship_courier_remittance"("p_order_id" bigint, "p_net_amount" numeric, "p_remittance_ref" "text", "p_bank_trx_id" "text", "p_payment_date" "date", "p_method" "text", "p_note" "text", "p_courier_charge" numeric) OWNER TO "postgres";
 
 

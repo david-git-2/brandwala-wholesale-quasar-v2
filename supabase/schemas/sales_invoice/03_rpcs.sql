@@ -1285,12 +1285,14 @@ CREATE OR REPLACE FUNCTION "public"."canonicalize_dropship_order_wallet_source_i
 declare
   v_order public.shop_orders;
   v_invoice_no text;
+  v_parent_tenant_id bigint;
 begin
   select * into v_order from public.shop_orders where id = p_order_id;
   if v_order.id is null or v_order.shop_type_snapshot <> 'dropship' then
     return;
   end if;
 
+  v_parent_tenant_id := public.resolve_parent_tenant_id(v_order.tenant_id);
   v_invoice_no := 'INV-DS-' || v_order.order_no;
 
   update public.universal_wallet_ledger u
@@ -1299,7 +1301,7 @@ begin
     metadata = coalesce(u.metadata, '{}'::jsonb)
       || jsonb_build_object('order_id', p_order_id, 'invoice_no', v_invoice_no)
   where u.source_type = 'shop_order'
-    and u.tenant_id = v_order.tenant_id
+    and u.parent_tenant_id = v_parent_tenant_id
     and u.source_id in (v_invoice_no, v_order.order_no);
 
   if v_order.global_invoice_id is not null then
@@ -1314,7 +1316,7 @@ begin
     from public.global_invoices i
     where i.id = v_order.global_invoice_id
       and u.source_type = 'shop_order'
-      and u.tenant_id = v_order.tenant_id
+      and u.parent_tenant_id = v_parent_tenant_id
       and u.source_id = i.invoice_no;
   end if;
 end;
@@ -1347,6 +1349,7 @@ declare
   v_item record;
   v_item_sell_price numeric(12,2);
   v_item_line_total numeric(12,2);
+  v_charges record;
 begin
   select * into v_order from public.shop_orders where id = p_order_id;
   if v_order.id is null then
@@ -1378,6 +1381,15 @@ begin
     return jsonb_build_object('success', false, 'error', 'Cannot sync a voided invoice');
   end if;
 
+  if v_invoice.payment_status in ('paid', 'partially_paid') then
+    raise exception
+      'Cannot sync dropship B2B invoice after payment (invoice %). Use scripts/sql/backfill_dropship_invoice_charge_payer_mismatch.sql',
+      v_invoice.id;
+  end if;
+
+  select * into v_charges
+  from public.get_dropship_merchant_billable_charges(p_order_id);
+
   for v_item in (
     select
       soi.*,
@@ -1405,9 +1417,10 @@ begin
 
   update public.global_invoices
   set
-    shipping_charge = 0,
-    print_charge = coalesce(v_order.print_charge_amount, 0),
-    wrapping_charge = coalesce(v_order.packing_charge_amount, 0),
+    shipping_charge = coalesce(v_charges.delivery, 0),
+    print_charge = coalesce(v_charges.print, 0),
+    wrapping_charge = coalesce(v_charges.packing, 0),
+    cod_charge_amount = coalesce(v_charges.cod, 0),
     discount_amount = coalesce(v_order.discount_amount, 0),
     collection_source = case
       when coalesce(v_order.is_prepaid_snapshot, false) then 'billing_profile'::public.collection_source_type

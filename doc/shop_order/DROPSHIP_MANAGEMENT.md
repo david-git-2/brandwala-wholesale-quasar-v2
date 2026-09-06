@@ -475,6 +475,7 @@ Retire Finance Hub for dropship **only after** all three desk buttons call the o
 - Step ② marks the existing **tenant B2B `global_invoices`** row paid when courier bank transfer is recorded.
 - Accounting audit lives in **`dropship_order_settlements`** + charge lines (§5), not mutable `shop_orders` charge columns.
 - Recipient-facing invoice stays unchanged.
+- **Tenant B2B invoice header charges** (`shipping_charge`, `print_charge`, `wrapping_charge`, `cod_charge_amount`) include **only** settlement charge lines where `payer = merchant`. Recipient-paid delivery, COD, print, and packing stay in collected COD and courier remittance only — they must not appear on the merchant B2B invoice (`get_dropship_merchant_billable_charges`).
 
 **Open (minor):**
 

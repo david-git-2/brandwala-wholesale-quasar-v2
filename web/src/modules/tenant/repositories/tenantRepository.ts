@@ -83,6 +83,7 @@ const listAdminTenantsByEmail = async (): Promise<Tenant[]> => {
 export type TenantHierarchyChildRef = {
   id: number;
   parent_id: number;
+  name?: string;
 };
 
 const listChildTenantRefs = async (parentTenantIds: number[]): Promise<TenantHierarchyChildRef[]> => {
@@ -98,9 +99,10 @@ const listChildTenantRefs = async (parentTenantIds: number[]): Promise<TenantHie
     throw error;
   }
 
-  return ((data as Array<{ id: number; parent_id: number }> | null) ?? []).map((row) => ({
+  return ((data as Array<{ id: number; parent_id: number; name?: string }> | null) ?? []).map((row) => ({
     id: Number(row.id),
     parent_id: Number(row.parent_id),
+    name: row.name ?? undefined,
   }));
 };
 

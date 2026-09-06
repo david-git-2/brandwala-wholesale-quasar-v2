@@ -1,4 +1,5 @@
 import { supabase } from 'src/boot/supabase';
+import { tenantRepository } from 'src/modules/tenant/repositories/tenantRepository';
 import type { GlobalStockCostingInput } from 'src/modules/global/types';
 import type {
   CreateGlobalInvoiceInput,
@@ -154,6 +155,21 @@ const listGlobalInvoices = async (
       issued_by_tenant_name: issuedBy?.name ?? null,
     };
   });
+
+  if (parentTenantId && rows.some((row) => !row.issued_by_tenant_name && row.issued_by_tenant_id)) {
+    const childRefs = await tenantRepository.listChildTenantRefs([parentTenantId]);
+    const tenantNameById = new Map(
+      childRefs
+        .filter((ref) => ref.name)
+        .map((ref) => [ref.id, ref.name as string]),
+    );
+
+    for (const row of rows) {
+      if (!row.issued_by_tenant_name && row.issued_by_tenant_id) {
+        row.issued_by_tenant_name = tenantNameById.get(row.issued_by_tenant_id) ?? null;
+      }
+    }
+  }
 
   return {
     data: rows,

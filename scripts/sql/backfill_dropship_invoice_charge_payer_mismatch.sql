@@ -1,0 +1,73 @@
+-- Manual backfill for dropship B2B invoice charge payer mismatches.
+-- DO NOT run blindly. Review detect_dropship_invoice_charge_payer_mismatch.sql first.
+--
+-- Example affected order: ORD-20260906-65694 (order_id 38, invoice_id 64)
+-- Symptom: recipient-paid COD on invoice inflated total; payout exceeded merchant_funds_held by 10 BDT.
+
+-- =============================================================================
+-- STEP 0 — Inspect (read-only)
+-- =============================================================================
+-- \i scripts/sql/detect_dropship_invoice_charge_payer_mismatch.sql
+
+-- =============================================================================
+-- STEP 1 — Before courier remittance (status delivered, no remittance UWL row)
+-- =============================================================================
+-- begin;
+-- select public.sync_dropship_tenant_b2b_invoice_from_order(<order_id>);
+-- -- Or re-issue via issue_dropship_tenant_b2b_invoice if invoice not yet paid.
+-- commit;
+
+-- =============================================================================
+-- STEP 2 — payment_received, payout not yet done
+-- =============================================================================
+-- begin;
+-- update public.sales_invoices
+-- set
+--   cod_charge_amount = 0,  -- when cod line payer = recipient
+--   -- print_charge = 0,    -- when print payer = recipient
+--   -- wrapping_charge = 0, -- when packing payer = recipient
+--   -- shipping_charge = 0, -- when delivery payer = recipient
+--   updated_at = now()
+-- where id = <invoice_id>;
+-- select public.recompute_global_invoice_totals(<invoice_id>);
+-- select public.recompute_global_invoice_payment_status(<invoice_id>);
+-- -- If paid_amount > new total_amount, adjust allocation notes manually; do NOT re-run remittance.
+-- commit;
+
+-- =============================================================================
+-- STEP 3 — reseller_paid with payout > merchant_funds_held (ORD-20260906-65694)
+-- =============================================================================
+-- Invoice audit fix (does not move wallet cash by itself):
+--
+-- begin;
+-- update public.sales_invoices
+-- set cod_charge_amount = 0, updated_at = now()
+-- where id = 64;
+-- select public.recompute_global_invoice_totals(64);
+--
+-- Wallet correction for 10 BDT overpayment (company recovers from tenant books):
+-- Use record_ledger_transaction or a paired adjustment documented in finance.
+-- Order 38 reference values:
+--   reseller_profit paid: 949
+--   merchant_funds_held: 939
+--   correction amount: 10
+--
+-- Example pattern (adjust parent_tenant_id / entity ids for your tenant):
+-- perform public.record_ledger_transaction(
+--   p_parent_tenant_id => 15,
+--   p_operating_tenant_id => 11,
+--   p_entity_type => 'tenant',
+--   p_entity_id => 15,
+--   p_type => 'debit',
+--   p_amount => 10.00,
+--   p_currency_code => 'BDT',
+--   p_exchange_rate => 1.000000,
+--   p_source_type => 'adjustment',
+--   p_source_id => 'ADJ-ORD-20260906-65694-overpay',
+--   p_metadata => jsonb_build_object(
+--     'label', 'Dropship payout overpayment correction',
+--     'order_no', 'ORD-20260906-65694',
+--     'purpose', 'dropship_payout_alignment_correction'
+--   )
+-- );
+-- commit;
