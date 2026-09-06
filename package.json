@@ -41,6 +41,7 @@
     "backend:local": "bash scripts/supabase-local.sh migrate",
     "backend:env:print": "bash scripts/supabase-local.sh env:print",
     "backend:pull-prod-data": "bash scripts/supabase-local.sh pull-prod-data",
+    "backend:restore-dumps": "bash scripts/supabase-local.sh pull-prod-data --reuse-dumps --force",
     "backend:types": "sh -c 'mkdir -p web/src/types && pnpm exec supabase gen types typescript --project-id pqlmomdpuiajhfwwfoqw --schema public > web/src/types/database.types.ts'",
     "backend:types:local": "bash scripts/supabase-local.sh types:local",
     "backend:schema:dump": "bash scripts/supabase-local.sh schema:dump",

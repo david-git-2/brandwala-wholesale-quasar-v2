@@ -49,38 +49,33 @@
         </q-card-section>
       </q-card>
 
-      <div v-else class="row q-col-gutter-lg">
-        <div class="col-xs-12 col-lg-8 column q-gutter-y-md">
-          <ShopDropshipCustomerDetailsForm
-            :form="customerForm"
-            :district-options="districtOptions"
-            :thana-options="thanaOptions"
-            :postcode-options="postcodeOptions"
-            @phone-blur="onRecipientPhoneBlur"
-            @filter-district="filterDistrict"
-            @filter-thana="filterThana"
-            @filter-postcode="filterPostcode"
-            @create-postcode="createPostcode"
-            @district-change="onDistrictChange"
-            @thana-change="onThanaChange"
-          />
-          <ShopDropshipChargeOptionsCard
-            v-model:recipient-pays-delivery="recipientPaysDelivery"
-            v-model:recipient-pays-cod="recipientPaysCod"
-            :charges="chargePreview"
-            :currency-symbol="currencySymbol"
-          />
-        </div>
-
-        <div class="col-xs-12 col-lg-4">
-          <ShopDropshipDeliverySummaryCard
-            :summary="summary"
-            :can-submit="canSubmit"
-            :is-submitting="isSubmitting"
-            :currency-symbol="currencySymbol"
-            @place-order="onPlaceOrder"
-          />
-        </div>
+      <div v-else class="column q-gutter-y-md dropship-delivery-layout">
+        <ShopDropshipCustomerDetailsForm
+          :form="customerForm"
+          :district-options="districtOptions"
+          :thana-options="thanaOptions"
+          :postcode-options="postcodeOptions"
+          @phone-blur="onRecipientPhoneBlur"
+          @filter-district="filterDistrict"
+          @filter-thana="filterThana"
+          @filter-postcode="filterPostcode"
+          @create-postcode="createPostcode"
+          @district-change="onDistrictChange"
+          @thana-change="onThanaChange"
+        />
+        <ShopDropshipChargeOptionsCard
+          v-model:recipient-pays-delivery="recipientPaysDelivery"
+          v-model:recipient-pays-cod="recipientPaysCod"
+          :charges="chargePreview"
+          :currency-symbol="currencySymbol"
+        />
+        <ShopDropshipDeliverySummaryCard
+          :summary="summary"
+          :can-submit="canSubmit"
+          :is-submitting="isSubmitting"
+          :currency-symbol="currencySymbol"
+          @place-order="onPlaceOrder"
+        />
       </div>
     </div>
   </q-page>

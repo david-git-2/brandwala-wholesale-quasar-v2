@@ -50,28 +50,24 @@
         </q-card-section>
       </q-card>
 
-      <div v-else class="row q-col-gutter-lg">
-        <div class="col-xs-12 col-lg-8">
-          <ShopDropshipReviewItemsList
-            :items="uiItems"
-            :item-count="totalUnits"
-            :totals="columnTotals"
-            :currency-symbol="currencySymbol"
-            :disable-resell="isUpdatingPrice"
-            :saving-item-id="savingItemId"
-            @update:resell-price="updateResellPriceLocal"
-            @resell-price-blur="saveResellPrice"
-          />
-        </div>
+      <div v-else class="column q-gutter-y-md dropship-review-layout">
+        <ShopDropshipReviewItemsList
+          :items="uiItems"
+          :item-count="totalUnits"
+          :totals="columnTotals"
+          :currency-symbol="currencySymbol"
+          :disable-resell="isUpdatingPrice"
+          :saving-item-id="savingItemId"
+          @update:resell-price="updateResellPriceLocal"
+          @resell-price-blur="saveResellPrice"
+        />
 
-        <div class="col-xs-12 col-lg-4">
-          <ShopDropshipReviewSummaryCard
-            :summary="summary"
-            :currency-symbol="currencySymbol"
-            :disable-continue="isUpdatingPrice || hasUnsavedEdits"
-            @continue="goToDelivery"
-          />
-        </div>
+        <ShopDropshipReviewSummaryCard
+          :summary="summary"
+          :currency-symbol="currencySymbol"
+          :disable-continue="isUpdatingPrice || hasUnsavedEdits"
+          @continue="goToDelivery"
+        />
       </div>
     </div>
   </q-page>
@@ -108,7 +104,6 @@ const {
   totalUnits,
   resellSubtotal,
   hasFloorViolation,
-  recipientGrandTotal,
   getPurchaseUnitAmount,
   getResellUnitAmount,
   getMinResellAmount,
@@ -167,10 +162,9 @@ const columnTotals = computed(() => {
 });
 
 const summary = computed(() => ({
-  recipientGrandTotal: hasUnsavedEdits.value
-    ? columnTotals.value.resellTotal +
-      (recipientGrandTotal.value - resellSubtotal.value)
-    : recipientGrandTotal.value,
+  itemsTotal: hasUnsavedEdits.value
+    ? columnTotals.value.resellTotal
+    : resellSubtotal.value,
   totalUnits: totalUnits.value,
   hasFloorViolation: hasUnsavedEdits.value
     ? uiItems.value.some((item) => item.resellPrice < item.minResellPrice)

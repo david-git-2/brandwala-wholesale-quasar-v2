@@ -90,8 +90,12 @@ export const getShopLoginRouteLocation = (
   };
 };
 
-export const getShopDashboardRouteLocation = (route: RouteLike): RouteLocationRaw => {
-  const tenantSlug = getTenantSlugFromRoute(route) ?? undefined;
+export const getShopDashboardRouteLocation = (
+  route: RouteLike,
+  tenantSlugOverride?: string | null,
+): RouteLocationRaw => {
+  const tenantSlug =
+    normalizeRouteToken(tenantSlugOverride) ?? getTenantSlugFromRoute(route) ?? undefined;
 
   return {
     name: 'customer-dashboard',

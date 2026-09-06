@@ -51,13 +51,14 @@
         <div v-if="catalogItems.length > 0" class="row q-col-gutter-md product-grid">
           <div
             v-for="item in catalogItems"
-            :key="item.product_id + '-' + (item.global_stock_id || '')"
+            :key="itemKey(item)"
             class="col-xs-12 col-sm-6 col-md-4 col-lg-3 product-grid-item"
           >
             <StorefrontProductCard
               :item="item"
               :permissions="permissions"
               :shop-type="shopDetails?.shop_type"
+              :show-grade-chip="!!item.stock_grade?.label"
               :show-actions="true"
               :selected-qty="selectedQuantities[itemKey(item)]"
               :in-cart="isInCart(item)"
@@ -376,15 +377,21 @@ const incrementQty = (item: ShopCatalogItem) => {
 };
 
 const goToProductDetail = (item: ShopCatalogItem) => {
-  void router.push(shopCatalogProductPath(authStore.tenantSlug, shopSlug.value, item.product_id));
+  void router.push(
+    shopCatalogProductPath(authStore.tenantSlug, shopSlug.value, item.product_id, item.listing_id),
+  );
 };
 
 const cartItemFor = (catalogItem: ShopCatalogItem) => {
-  return cartItems.value.find(
-    (cartItem) =>
+  return cartItems.value.find((cartItem) => {
+    if (catalogItem.listing_id != null) {
+      return cartItem.listing_id === catalogItem.listing_id;
+    }
+    return (
       cartItem.product_id === catalogItem.product_id &&
-      cartItem.global_stock_id === catalogItem.global_stock_id,
-  );
+      cartItem.global_stock_id === catalogItem.global_stock_id
+    );
+  });
 };
 
 const isInCart = (catalogItem: ShopCatalogItem) => {
@@ -408,6 +415,8 @@ const onAddToCart = async (item: ShopCatalogItem) => {
       productId: item.product_id,
       globalStockAllocationId: item.global_stock_id ?? null,
       globalStockId: item.global_stock_id ?? null,
+      listingId: item.listing_id ?? null,
+      gradeSlug: item.stock_grade?.slug ?? null,
       quantity: qty,
       shopMeta: activeCartShopMetaFromShop(shopDetails.value, item.sell_price ?? item.unit_price),
     });

@@ -27,8 +27,8 @@ export const shopOrderQueryKeys = {
       offset?: number;
     },
   ) => ['shopOrder', 'storefrontCatalog', { tenantId, shopSlug, ...filters }] as const,
-  storefrontProduct: (tenantId: number, shopSlug: string, productId: number) =>
-    ['shopOrder', 'storefrontProduct', { tenantId, shopSlug, productId }] as const,
+  storefrontProduct: (tenantId: number, shopSlug: string, productId: number, listingId?: number | null) =>
+    ['shopOrder', 'storefrontProduct', { tenantId, shopSlug, productId, listingId: listingId ?? null }] as const,
   storefrontProductRelated: (tenantId: number, shopSlug: string, productId: number) =>
     ['shopOrder', 'storefrontProductRelated', { tenantId, shopSlug, productId }] as const,
   catalogSearch: (tenantId: number, search: string, limit?: number) =>

@@ -89,7 +89,8 @@ export default {
     dropship_margin_percent: 'Estimated margin',
     dropship_continue_delivery: 'Continue to delivery',
     dropship_delivery_title: 'Customer & delivery',
-    dropship_delivery_subtitle: 'Add recipient details and choose who pays courier charges',
+    dropship_delivery_subtitle:
+      'Add recipient details and choose who pays delivery and COD (confirmed by staff later)',
     dropship_customer_details: 'Customer details',
     dropship_secondary_phone: 'Secondary phone (optional)',
     dropship_district: 'District',
@@ -98,10 +99,18 @@ export default {
     dropship_charge_options: 'Courier charges',
     dropship_recipient_pays_delivery: 'Recipient pays delivery charge',
     dropship_recipient_pays_cod: 'Recipient pays COD fee',
-    dropship_delivery_recipient_hint: 'Delivery is added to what the customer pays on delivery.',
-    dropship_delivery_merchant_hint: 'Delivery is deducted from your profit.',
-    dropship_cod_recipient_hint: 'COD fee is added to what the customer pays on delivery.',
-    dropship_cod_merchant_hint: 'COD fee is deducted from your profit.',
+    dropship_delivery_recipient_hint:
+      'Delivery will be added to what the customer pays. Amount confirmed when shipped.',
+    dropship_delivery_merchant_hint:
+      'Delivery will be deducted from your profit. Amount confirmed when shipped.',
+    dropship_cod_recipient_hint:
+      'COD fee will be added to what the customer pays. Amount confirmed at delivery.',
+    dropship_cod_merchant_hint:
+      'COD fee will be deducted from your profit. Amount confirmed at delivery.',
+    dropship_charge_confirmed_later: 'Will be confirmed and added later',
+    dropship_courier_added_later: 'Delivery and COD will be confirmed and added later.',
+    dropship_courier_estimates_note:
+      'Choose who pays delivery and COD. Staff confirm actual amounts when processing the order.',
     dropship_paid_by_recipient: 'recipient pays',
     dropship_deducted_from_profit: 'deducted from profit',
     dropship_merchant_deductions: 'Deducted from your profit',

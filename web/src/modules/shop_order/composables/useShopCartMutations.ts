@@ -24,6 +24,28 @@ export function useShopCartMutations() {
   const authStore = useAuthStore();
   const tenantId = computed(() => authStore.tenantId ?? 0);
 
+  const resolveShopMetaForCache = (
+    shopId: number,
+    shopMeta?: ActiveCartShopMeta,
+  ): ActiveCartShopMeta | undefined => {
+    if (shopMeta) return shopMeta;
+
+    const active = queryClient.getQueryData<ActiveCartItem[]>(
+      shopOrderQueryKeys.activeCarts(tenantId.value),
+    );
+    const match = active?.find((cart) => cart.shop_id === shopId);
+    if (!match) return undefined;
+
+    return {
+      shop_name: match.shop_name,
+      shop_slug: match.shop_slug,
+      shop_logo_url: match.shop_logo_url,
+      currency_id: match.currency_id,
+      currency_code: match.currency_code,
+      currency_symbol: match.currency_symbol,
+    };
+  };
+
   const updateCartCache = (shopId: number, data: any) => {
     if (data) {
       queryClient.setQueryData(
@@ -45,6 +67,7 @@ export function useShopCartMutations() {
             ...oldData,
             ...data,
             permissions: data.permissions ?? oldData.permissions,
+            currency: data.currency ?? oldData.currency,
             items: enrichedItems,
           };
         },
@@ -59,42 +82,103 @@ export function useShopCartMutations() {
   const patchDropshipReviewCartCache = (
     shopId: number,
     data: any,
+    shopMeta?: ActiveCartShopMeta,
   ): DropshipReviewCartData | null => {
     let merged: DropshipReviewCartData | null = null;
     queryClient.setQueryData(
       shopOrderQueryKeys.dropshipReviewCart(tenantId.value, shopId),
       (old: DropshipReviewCartData | null | undefined) => {
-        merged = mergeDropshipReviewFromCatalogResponse(old, data);
+        merged = mergeDropshipReviewFromCatalogResponse(
+          old,
+          data,
+          resolveShopMetaForCache(shopId, shopMeta),
+        );
         return merged ?? old ?? null;
       },
     );
     return merged;
   };
 
-  const patchDropshipCartCache = (shopId: number, data: any): DropshipCartData | null => {
+  const patchDropshipCartCache = (
+    shopId: number,
+    data: any,
+    shopMeta?: ActiveCartShopMeta,
+  ): DropshipCartData | null => {
+    const resolvedMeta = resolveShopMetaForCache(shopId, shopMeta);
     let merged: DropshipCartData | null = null;
     queryClient.setQueryData(
       shopOrderQueryKeys.dropshipCart(tenantId.value, shopId),
       (old: DropshipCartData | null | undefined) => {
-        merged = mergeDropshipCartFromCatalogResponse(old, data);
+        merged = mergeDropshipCartFromCatalogResponse(old, data, resolvedMeta);
         return merged ?? old ?? null;
       },
     );
     return merged;
   };
 
-  const updateDropshipActiveCartsCache = (shopId: number, dropshipData: DropshipCartData | null) => {
+  const updateDropshipActiveCartsCache = (
+    shopId: number,
+    dropshipData: DropshipCartData | null,
+    shopMeta?: ActiveCartShopMeta,
+  ) => {
     if (!dropshipData) return;
 
     const itemCount = dropshipData.totals.item_count;
     const cartTotal = dropshipData.totals.purchase_subtotal;
+    const resolvedMeta = resolveShopMetaForCache(shopId, shopMeta);
 
     queryClient.setQueryData(
       shopOrderQueryKeys.activeCarts(tenantId.value),
       (old: ActiveCartItem[] | undefined) => {
-        if (!old) return old;
-        return old.map((c) =>
-          c.shop_id === shopId ? { ...c, item_count: itemCount, cart_total: cartTotal } : c,
+        if (!old) {
+          if (!resolvedMeta) return old;
+          return [
+            {
+              cart_id: dropshipData.cart.id,
+              shop_id: shopId,
+              shop_name: resolvedMeta.shop_name,
+              shop_slug: resolvedMeta.shop_slug,
+              shop_logo_url: resolvedMeta.shop_logo_url,
+              shop_type: 'dropship',
+              can_see_buy_price: Boolean(dropshipData.permissions?.can_see_buy_price),
+              can_see_sell_price: Boolean(dropshipData.permissions?.can_see_sell_price),
+              currency_id: resolvedMeta.currency_id,
+              currency_code: resolvedMeta.currency_code,
+              currency_symbol: resolvedMeta.currency_symbol,
+              item_count: itemCount,
+              cart_total: cartTotal,
+              updated_at: dropshipData.cart.updated_at,
+            },
+          ];
+        }
+
+        const hasShop = old.some((cart) => cart.shop_id === shopId);
+        if (!hasShop && resolvedMeta) {
+          return [
+            {
+              cart_id: dropshipData.cart.id,
+              shop_id: shopId,
+              shop_name: resolvedMeta.shop_name,
+              shop_slug: resolvedMeta.shop_slug,
+              shop_logo_url: resolvedMeta.shop_logo_url,
+              shop_type: 'dropship',
+              can_see_buy_price: Boolean(dropshipData.permissions?.can_see_buy_price),
+              can_see_sell_price: Boolean(dropshipData.permissions?.can_see_sell_price),
+              currency_id: resolvedMeta.currency_id,
+              currency_code: resolvedMeta.currency_code,
+              currency_symbol: resolvedMeta.currency_symbol,
+              item_count: itemCount,
+              cart_total: cartTotal,
+              updated_at: dropshipData.cart.updated_at,
+            },
+            ...old,
+          ];
+        }
+
+        return old.map((cart) =>
+          cart.shop_id === shopId
+            ? { ...cart, item_count: itemCount, cart_total: cartTotal }
+            : cart,
         );
       },
     );
@@ -138,6 +222,8 @@ export function useShopCartMutations() {
   };
 
   const updateActiveCartsCache = (shopId: number, data: any, shopMeta?: ActiveCartShopMeta) => {
+    const resolvedMeta = resolveShopMetaForCache(shopId, shopMeta);
+
     if (data?.items?.length > 0) {
       const itemCount = data.items.reduce((sum: number, i: any) => sum + i.quantity, 0);
       const shopType = data.cart?.shop_type as ShopType | undefined;
@@ -147,18 +233,20 @@ export function useShopCartMutations() {
         shopOrderQueryKeys.activeCarts(tenantId.value),
         (old: ActiveCartItem[] | undefined) => {
           if (!old) {
-            return shopMeta ? [buildActiveCartEntry(shopId, data, shopMeta)] : old;
+            return resolvedMeta ? [buildActiveCartEntry(shopId, data, resolvedMeta)] : [];
           }
 
-          const hasShop = old.some((c) => c.shop_id === shopId);
+          const hasShop = old.some((cart) => cart.shop_id === shopId);
           if (hasShop) {
-            return old.map((c) =>
-              c.shop_id === shopId ? { ...c, item_count: itemCount, cart_total: cartTotal } : c,
+            return old.map((cart) =>
+              cart.shop_id === shopId
+                ? { ...cart, item_count: itemCount, cart_total: cartTotal }
+                : cart,
             );
           }
 
-          if (shopMeta) {
-            return [buildActiveCartEntry(shopId, data, shopMeta), ...old];
+          if (resolvedMeta) {
+            return [buildActiveCartEntry(shopId, data, resolvedMeta), ...old];
           }
 
           invalidateActiveCarts();
@@ -172,7 +260,7 @@ export function useShopCartMutations() {
       shopOrderQueryKeys.activeCarts(tenantId.value),
       (old: ActiveCartItem[] | undefined) => {
         if (!old) return old;
-        return old.filter((c) => c.shop_id !== shopId);
+        return old.filter((cart) => cart.shop_id !== shopId);
       },
     );
   };
@@ -183,12 +271,18 @@ export function useShopCartMutations() {
     shopMeta?: ActiveCartShopMeta,
   ) => {
     updateCartCache(shopId, data);
-    const dropshipData = patchDropshipCartCache(shopId, data);
-    patchDropshipReviewCartCache(shopId, data);
-    if (dropshipData) {
-      updateDropshipActiveCartsCache(shopId, dropshipData);
-      return;
+    const dropshipData = patchDropshipCartCache(shopId, data, shopMeta);
+    patchDropshipReviewCartCache(shopId, data, shopMeta);
+
+    if (data?.cart?.shop_type === 'dropship') {
+      void queryClient.invalidateQueries({
+        queryKey: shopOrderQueryKeys.dropshipReviewCart(tenantId.value, shopId),
+      });
+      if (dropshipData) {
+        updateDropshipActiveCartsCache(shopId, dropshipData, shopMeta);
+      }
     }
+
     updateActiveCartsCache(shopId, data, shopMeta);
   };
 
@@ -198,6 +292,8 @@ export function useShopCartMutations() {
       productId: number;
       globalStockAllocationId: number | null;
       globalStockId?: number | null;
+      listingId?: number | null;
+      gradeSlug?: string | null;
       quantity: number;
       customerSellPriceAmount?: number | null;
       customerSellPriceCurrencyId?: number | null;
@@ -211,6 +307,8 @@ export function useShopCartMutations() {
         params.customerSellPriceAmount,
         params.customerSellPriceCurrencyId,
         params.globalStockId,
+        params.listingId,
+        params.gradeSlug,
       );
       if (!res.success) {
         handleApiFailure(res, res.error);
@@ -263,8 +361,9 @@ export function useShopCartMutations() {
       return { data: res.data, shopId: params.shopId };
     },
     onSuccess: ({ data, shopId }, variables) => {
+      const resolvedMeta = resolveShopMetaForCache(shopId);
       updateCartCache(shopId, data);
-      patchDropshipCartCache(shopId, data);
+      const dropshipData = patchDropshipCartCache(shopId, data, resolvedMeta);
       queryClient.setQueryData(
         shopOrderQueryKeys.dropshipReviewCart(tenantId.value, shopId),
         (old: DropshipReviewCartData | null | undefined) => {
@@ -272,13 +371,10 @@ export function useShopCartMutations() {
           return patchDropshipItemResellPrice(old, variables.cartItemId, variables.price);
         },
       );
-      const dropshipData = queryClient.getQueryData<DropshipCartData | null>(
-        shopOrderQueryKeys.dropshipCart(tenantId.value, shopId),
-      );
       if (dropshipData) {
-        updateDropshipActiveCartsCache(shopId, dropshipData);
+        updateDropshipActiveCartsCache(shopId, dropshipData, resolvedMeta);
       } else {
-        updateActiveCartsCache(shopId, data);
+        updateActiveCartsCache(shopId, data, resolvedMeta);
       }
     },
   });
@@ -301,8 +397,7 @@ export function useShopCartMutations() {
       return { data: res.data, shopId: params.shopId };
     },
     onSuccess: ({ data, shopId }) => {
-      updateCartCache(shopId, data);
-      updateActiveCartsCache(shopId, data);
+      syncCartCachesAfterMutation(shopId, data);
     },
   });
 

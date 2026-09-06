@@ -4,6 +4,7 @@ import type {
   DropshipCartTotals,
   DropshipReviewCartData,
 } from '../repositories/dropshipCartRepository';
+import type { ActiveCartShopMeta } from '../repositories/shopCartRepository';
 import type { ShopCatalogPrice } from '../types';
 import { cartPriceAmount } from './cartPriceUtils';
 import { resolveShopCartItemMoq } from './cartQuantityUtils';
@@ -23,7 +24,71 @@ type RawCatalogCartItem = {
   customer_sell_price_currency_id?: number | null;
   name: string;
   image_url?: string | null;
+  sell_price?: ShopCatalogPrice | null;
+  unit_price?: ShopCatalogPrice | null;
+  resell_minimum_price?: ShopCatalogPrice | null;
 };
+
+export type CatalogCartMutationResponse = {
+  cart?: {
+    id: number;
+    tenant_id: number;
+    shop_id: number;
+    customer_group_id: number;
+    status: 'active' | 'converted' | 'abandoned';
+    shop_type?: string;
+    allow_delivery?: boolean;
+    created_at?: string;
+    updated_at?: string;
+    cod_charge_amount?: number;
+    delivery_charge_amount?: number;
+    print_charge_amount?: number;
+    packing_charge_amount?: number;
+    default_print_charge_amount?: number;
+    default_packing_charge_amount?: number;
+    discount_amount?: number;
+    is_prepaid?: boolean;
+    delivery_instructions?: string | null;
+    deduct_charges_from_margin?: boolean;
+    deduct_print_from_margin?: boolean;
+    deduct_packing_from_margin?: boolean;
+  };
+  items?: Array<RawCatalogCartItem | Record<string, unknown>>;
+  permissions?: DropshipCartData['permissions'];
+  currency?: {
+    id: number | null;
+    code: string | null;
+    symbol: string | null;
+  } | null;
+};
+
+function normalizeRawCatalogCartItem(raw: RawCatalogCartItem | Record<string, unknown>): RawCatalogCartItem {
+  const item = raw as RawCatalogCartItem;
+  if (item.unit_sell_price_amount != null || item.unit_sell_price_currency_id != null) {
+    return item;
+  }
+
+  const sellPrice = item.sell_price;
+  const unitPrice = item.unit_price;
+  const minResell = item.resell_minimum_price;
+
+  return {
+    ...item,
+    unit_sell_price_amount:
+      sellPrice?.amount != null ? Number(sellPrice.amount) : item.unit_sell_price_amount,
+    unit_sell_price_currency_id:
+      sellPrice?.currency_id ?? item.unit_sell_price_currency_id,
+    unit_minimum_sell_price_amount:
+      minResell?.amount != null ? Number(minResell.amount) : item.unit_minimum_sell_price_amount,
+    unit_minimum_sell_price_currency_id:
+      minResell?.currency_id ?? item.unit_minimum_sell_price_currency_id,
+    customer_sell_price_amount:
+      item.customer_sell_price_amount ??
+      (sellPrice?.amount != null ? Number(sellPrice.amount) : null),
+    customer_sell_price_currency_id:
+      item.customer_sell_price_currency_id ?? sellPrice?.currency_id ?? unitPrice?.currency_id,
+  };
+}
 
 function priceFromRaw(
   amount: number | null | undefined,
@@ -123,19 +188,94 @@ export function computeDropshipCartTotals(items: DropshipCartItem[]): DropshipCa
   );
 }
 
+export function buildDropshipCartFromCatalogResponse(
+  catalogResponse: CatalogCartMutationResponse | null | undefined,
+  shopMeta?: ActiveCartShopMeta | null,
+): DropshipCartData | null {
+  const cart = catalogResponse?.cart;
+  if (!cart || cart.shop_type !== 'dropship' || !catalogResponse?.items) {
+    return null;
+  }
+
+  const currency =
+    catalogResponse.currency ??
+    (shopMeta
+      ? {
+          id: shopMeta.currency_id,
+          code: shopMeta.currency_code,
+          symbol: shopMeta.currency_symbol,
+        }
+      : { id: null, code: null, symbol: null });
+
+  const items = catalogResponse.items.map((raw) =>
+    mapRawItemToDropshipItem(normalizeRawCatalogCartItem(raw)),
+  );
+
+  const printCharge =
+    Number(cart.print_charge_amount ?? 0) > 0
+      ? Number(cart.print_charge_amount)
+      : Number(cart.default_print_charge_amount ?? 0);
+  const packingCharge =
+    Number(cart.packing_charge_amount ?? 0) > 0
+      ? Number(cart.packing_charge_amount)
+      : Number(cart.default_packing_charge_amount ?? 0);
+
+  return {
+    cart: {
+      id: cart.id,
+      tenant_id: cart.tenant_id,
+      shop_id: cart.shop_id,
+      shop_name: shopMeta?.shop_name ?? '',
+      shop_slug: shopMeta?.shop_slug ?? '',
+      customer_group_id: cart.customer_group_id,
+      status: cart.status,
+      allow_delivery: Boolean(cart.allow_delivery),
+      currency,
+      charges: {
+        cod_charge_amount: Number(cart.cod_charge_amount ?? 0),
+        delivery_charge_amount: Number(cart.delivery_charge_amount ?? 0),
+        print_charge_amount: printCharge,
+        packing_charge_amount: packingCharge,
+        discount_amount: Number(cart.discount_amount ?? 0),
+        is_prepaid: Boolean(cart.is_prepaid),
+        delivery_instructions: cart.delivery_instructions ?? null,
+      },
+      margin_deductions: {
+        deduct_charges_from_margin: Boolean(cart.deduct_charges_from_margin),
+        deduct_print_from_margin: Boolean(cart.deduct_print_from_margin),
+        deduct_packing_from_margin: Boolean(cart.deduct_packing_from_margin),
+      },
+      created_at: cart.created_at ?? new Date().toISOString(),
+      updated_at: cart.updated_at ?? new Date().toISOString(),
+    },
+    permissions: catalogResponse.permissions ?? null,
+    items,
+    totals: computeDropshipCartTotals(items),
+  };
+}
+
 export function mergeDropshipCartFromCatalogResponse(
   previous: DropshipCartData | null | undefined,
-  catalogResponse: { cart?: { updated_at?: string }; items?: RawCatalogCartItem[] } | null | undefined,
+  catalogResponse: CatalogCartMutationResponse | null | undefined,
+  shopMeta?: ActiveCartShopMeta | null,
 ): DropshipCartData | null {
-  if (!previous || !catalogResponse?.items) return previous ?? null;
+  if (!catalogResponse?.items) return previous ?? null;
+
+  if (!previous) {
+    return buildDropshipCartFromCatalogResponse(catalogResponse, shopMeta);
+  }
 
   const previousItemsById = new Map(previous.items.map((item) => [item.id, item]));
   const items = catalogResponse.items.map((raw) =>
-    mapRawItemToDropshipItem(raw, previousItemsById.get(raw.id)),
+    mapRawItemToDropshipItem(
+      normalizeRawCatalogCartItem(raw),
+      previousItemsById.get(Number((raw as RawCatalogCartItem).id)),
+    ),
   );
 
   return {
     ...previous,
+    permissions: catalogResponse.permissions ?? previous.permissions,
     cart: {
       ...previous.cart,
       updated_at: catalogResponse.cart?.updated_at ?? previous.cart.updated_at,
@@ -204,12 +344,17 @@ export function patchDropshipItemResellPrice(
 
 export function mergeDropshipReviewFromCatalogResponse(
   previous: DropshipReviewCartData | null | undefined,
-  catalogResponse: { cart?: { updated_at?: string }; items?: RawCatalogCartItem[] } | null | undefined,
+  catalogResponse: CatalogCartMutationResponse | null | undefined,
+  shopMeta?: ActiveCartShopMeta | null,
 ): DropshipReviewCartData | null {
-  if (!previous || !catalogResponse?.items) return previous ?? null;
+  if (!catalogResponse?.items) return previous ?? null;
 
-  const mergedCart = mergeDropshipCartFromCatalogResponse(previous, catalogResponse);
-  if (!mergedCart) return previous;
+  const mergedCart = mergeDropshipCartFromCatalogResponse(previous, catalogResponse, shopMeta);
+  if (!mergedCart) return previous ?? null;
+
+  if (!previous) {
+    return null;
+  }
 
   return recomputeDropshipReviewSummary({
     ...previous,

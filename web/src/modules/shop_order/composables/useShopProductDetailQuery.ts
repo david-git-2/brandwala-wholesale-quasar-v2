@@ -9,6 +9,7 @@ import { seedCustomerShopPermissions } from './useCustomerShopPermissionsQuery';
 export function useShopProductDetailQuery(
   shopSlug: Ref<string>,
   productId: Ref<number | null>,
+  listingId?: Ref<number | null>,
 ) {
   const authStore = useAuthStore();
   const queryClient = useQueryClient();
@@ -20,6 +21,7 @@ export function useShopProductDetailQuery(
         tenantId.value,
         shopSlug.value,
         productId.value ?? 0,
+        listingId?.value ?? null,
       ),
     ),
     queryFn: async () => {
@@ -30,6 +32,7 @@ export function useShopProductDetailQuery(
         tenantId.value,
         shopSlug.value,
         id,
+        listingId?.value ?? null,
       );
 
       if (!result.success || !result.data) {

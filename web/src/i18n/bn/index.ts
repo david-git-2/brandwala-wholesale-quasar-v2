@@ -90,7 +90,8 @@ export default {
     dropship_margin_percent: 'আনুমানিক মার্জিন',
     dropship_continue_delivery: 'ডেলিভারিতে এগিয়ে যান',
     dropship_delivery_title: 'গ্রাহক ও ডেলিভারি',
-    dropship_delivery_subtitle: 'প্রাপকের তথ্য দিন এবং কুরিয়ার চার্জ কে দেবে তা বেছে নিন',
+    dropship_delivery_subtitle:
+      'প্রাপকের তথ্য দিন এবং ডেলিভারি ও COD কে দেবে তা বেছে নিন (পরে স্টাফ নিশ্চিত করবে)',
     dropship_customer_details: 'গ্রাহকের তথ্য',
     dropship_secondary_phone: 'বিকল্প ফোন (ঐচ্ছিক)',
     dropship_district: 'জেলা',
@@ -99,10 +100,18 @@ export default {
     dropship_charge_options: 'কুরিয়ার চার্জ',
     dropship_recipient_pays_delivery: 'প্রাপক ডেলিভারি চার্জ দেবে',
     dropship_recipient_pays_cod: 'প্রাপক COD ফি দেবে',
-    dropship_delivery_recipient_hint: 'ডেলিভারি চার্জ প্রাপকের মোট বিলে যোগ হবে।',
-    dropship_delivery_merchant_hint: 'ডেলিভারি চার্জ আপনার লাভ থেকে কাটা হবে।',
-    dropship_cod_recipient_hint: 'COD ফি প্রাপকের মোট বিলে যোগ হবে।',
-    dropship_cod_merchant_hint: 'COD ফি আপনার লাভ থেকে কাটা হবে।',
+    dropship_delivery_recipient_hint:
+      'ডেলিভারি চার্জ প্রাপকের মোট বিলে যোগ হবে। পরিমাণ শিপ করার সময় নিশ্চিত হবে।',
+    dropship_delivery_merchant_hint:
+      'ডেলিভারি চার্জ আপনার লাভ থেকে কাটা হবে। পরিমাণ শিপ করার সময় নিশ্চিত হবে।',
+    dropship_cod_recipient_hint:
+      'COD ফি প্রাপকের মোট বিলে যোগ হবে। পরিমাণ ডেলিভারিতে নিশ্চিত হবে।',
+    dropship_cod_merchant_hint:
+      'COD ফি আপনার লাভ থেকে কাটা হবে। পরিমাণ ডেলিভারিতে নিশ্চিত হবে।',
+    dropship_charge_confirmed_later: 'পরে নিশ্চিত করে যোগ হবে',
+    dropship_courier_added_later: 'ডেলিভারি ও COD পরে নিশ্চিত করে যোগ হবে।',
+    dropship_courier_estimates_note:
+      'ডেলিভারি ও COD কে দেবে তা বেছে নিন। অর্ডার প্রসেস করার সময় স্টাফ প্রকৃত পরিমাণ নিশ্চিত করবে।',
     dropship_paid_by_recipient: 'প্রাপক দেবে',
     dropship_deducted_from_profit: 'লাভ থেকে কাটা',
     dropship_merchant_deductions: 'আপনার লাভ থেকে কাটা',

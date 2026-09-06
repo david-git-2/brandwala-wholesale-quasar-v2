@@ -60,7 +60,11 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useActiveShopCartsQuery } from 'src/modules/shop_order/composables/useActiveShopCartsQuery';
 import { useShopWorkspaceLinks } from 'src/modules/navigation/useWorkspaceNavigation';
 import { useKobaCartStore } from 'src/modules/koba/retail/stores/kobaCartStore';
-import { resolveCartShopId, shopCartPath } from 'src/modules/shop_order/utils/catalogShop';
+import {
+  getLastVisitedShopId,
+  resolveCartShopId,
+  shopCartPath,
+} from 'src/modules/shop_order/utils/catalogShop';
 
 const authStore = useAuthStore();
 const kobaCartStore = useKobaCartStore();
@@ -122,7 +126,10 @@ const goToCart = async () => {
     }
     return;
   }
-  const shopId = resolveCartShopId(authStore.tenantId, activeCarts.value ?? []);
+  const parsedLastId = parseInt(getLastVisitedShopId(authStore.tenantId) ?? '', 10);
+  const shopId =
+    resolveCartShopId(authStore.tenantId, activeCarts.value ?? []) ??
+    (Number.isNaN(parsedLastId) ? null : parsedLastId);
   await router.push(shopCartPath(authStore.tenantSlug, shopId));
 };
 

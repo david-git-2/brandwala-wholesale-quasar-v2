@@ -22,18 +22,6 @@
         :normalized-status="normalizedStatus"
       />
 
-      <div v-if="showMerchantWallet" class="row justify-end">
-        <q-btn
-          outline
-          no-caps
-          color="primary"
-          icon="ph ph-wallet"
-          :label="$t('shop_admin.merchant_wallet')"
-          :to="{ name: 'shop-merchant-wallet-page' }"
-          data-test="dropship-merchant-wallet"
-        />
-      </div>
-
       <!-- Catalog Shop Order View -->
       <template v-if="isVendorCatalog">
         <div class="row justify-center">
@@ -156,7 +144,6 @@ import { useUpdateCatalogOrderItemMutation } from '../composables/useCatalogOrde
 import type { ShopOrderItem } from '../types';
 import { calculateItemFirstOfferPrice } from '../utils/catalogPricingUtils';
 import { requestConfirmation } from 'src/utils/appFeedback';
-import { useMerchantWalletQuery } from '../composables/useMerchantWalletQuery';
 import {
   getCustomerCatalogStatusSequence,
   getCustomerCatalogItemDisplayQuantity,
@@ -192,13 +179,6 @@ const currentOrder = computed(() => orderDetailsData.value?.order || null);
 const orderItems = ref<ShopOrderItem[]>([]);
 
 const isVendorCatalog = computed(() => currentOrder.value?.shop_type_snapshot === 'vendor_catalog');
-const walletEnabled = computed(
-  () =>
-    currentOrder.value?.shop_type_snapshot === 'dropship' &&
-    Boolean(currentOrder.value?.billing_profile_id),
-);
-const { summary: walletSummary } = useMerchantWalletQuery(walletEnabled);
-const showMerchantWallet = computed(() => Boolean(walletSummary.value?.billing_profile_id));
 
 watch(
   () => orderDetailsData.value,

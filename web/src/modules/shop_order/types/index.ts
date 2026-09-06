@@ -44,8 +44,10 @@ export interface ShopCatalogItem {
   avg_cost?: ShopCatalogPrice | null;
   /** Admin storefront preview: listing on/off shop status. */
   listing_status?: ShopStorefrontListingStatus | null;
-  /** Admin storefront preview: warehouse stock grade (e.g. box damage, open box). */
+  /** Warehouse stock grade (fixed_price / dropship customer catalog). */
   stock_grade?: ShopCatalogStockGrade | null;
+  /** shop_product_listings.id — preferred add-to-cart key for stock-backed shops. */
+  listing_id?: number | null;
   global_stock_allocation_id: number | null;
   global_stock_id: number | null;
   minimum_order_quantity: number | null;

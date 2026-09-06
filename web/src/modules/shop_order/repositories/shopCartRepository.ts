@@ -18,6 +18,8 @@ export interface ShopCartItem {
   product_id: number;
   global_stock_id: number | null;
   global_stock_allocation_id: number | null;
+  listing_id?: number | null;
+  grade_tag_id?: number | null;
   quantity: number;
   minimum_quantity: number;
   minimum_order_quantity?: number | null;
@@ -76,6 +78,8 @@ const addToCart = async (
   customerSellPriceAmount?: number | null,
   customerSellPriceCurrencyId?: number | null,
   globalStockId?: number | null,
+  listingId?: number | null,
+  gradeSlug?: string | null,
 ): Promise<CartData> => {
   const { data, error } = await supabase.rpc('add_to_shop_cart', {
     p_shop_id: shopId,
@@ -85,6 +89,8 @@ const addToCart = async (
     p_customer_sell_price_amount: customerSellPriceAmount ?? null,
     p_customer_sell_price_currency_id: customerSellPriceCurrencyId ?? null,
     p_global_stock_id: globalStockId ?? globalStockAllocationId ?? null,
+    p_listing_id: listingId ?? null,
+    p_grade_slug: gradeSlug ?? null,
   });
 
   if (error) {

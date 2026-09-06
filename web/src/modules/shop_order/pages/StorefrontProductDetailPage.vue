@@ -279,6 +279,10 @@ const productId = computed(() => {
   const raw = Number(route.params.productId);
   return Number.isFinite(raw) && raw > 0 ? raw : null;
 });
+const listingId = computed(() => {
+  const raw = Number(route.query.listingId);
+  return Number.isFinite(raw) && raw > 0 ? raw : null;
+});
 const tenantSlug = computed(() =>
   typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : authStore.tenantSlug,
 );
@@ -289,7 +293,7 @@ const {
   permissions,
   isLoading,
   isError,
-} = useShopProductDetailQuery(shopSlug, productId);
+} = useShopProductDetailQuery(shopSlug, productId, listingId);
 
 const {
   relatedProducts,
@@ -335,12 +339,17 @@ const cartSaving = computed(
 
 const cartItem = computed(() => {
   if (!product.value) return null;
+  const listingKey = product.value.listing_id ?? listingId.value ?? null;
   return (
-    cartItems.value.find(
-      (item) =>
+    cartItems.value.find((item) => {
+      if (listingKey != null) {
+        return item.listing_id === listingKey;
+      }
+      return (
         item.product_id === product.value?.product_id &&
-        item.global_stock_id === product.value?.global_stock_id,
-    ) ?? null
+        item.global_stock_id === product.value?.global_stock_id
+      );
+    }) ?? null
   );
 });
 
@@ -432,6 +441,8 @@ async function onAddToCart() {
     productId: product.value.product_id,
     globalStockAllocationId: product.value.global_stock_id ?? null,
     globalStockId: product.value.global_stock_id ?? null,
+    listingId: product.value.listing_id ?? listingId.value,
+    gradeSlug: product.value.stock_grade?.slug ?? null,
     quantity: quantity.value,
     shopMeta: activeCartShopMetaFromShop(
       shopDetails.value,

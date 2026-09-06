@@ -36,6 +36,7 @@ export function shopCatalogProductPath(
   tenantSlug: string | null | undefined,
   shopSlug: string,
   productId: number | string,
+  listingId?: number | null,
 ) {
   return {
     name: 'shop-storefront-product-detail-page' as const,
@@ -44,6 +45,7 @@ export function shopCatalogProductPath(
       shopSlug,
       productId: String(productId),
     },
+    query: listingId ? { listingId: String(listingId) } : {},
   };
 }
 

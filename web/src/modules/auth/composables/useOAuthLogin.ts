@@ -234,7 +234,7 @@ export function useOAuthLogin(
     }
 
     if (resolvedScope === 'shop') {
-      await router.replace(getShopDashboardRouteLocation(route));
+      await router.replace(getShopDashboardRouteLocation(route, payload.tenant?.slug));
       return;
     }
 

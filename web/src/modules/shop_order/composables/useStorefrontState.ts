@@ -44,8 +44,11 @@ export function useStorefrontState() {
     return Boolean(search.value || brand.value || category.value);
   });
 
-  const itemKey = (item: { product_id: number; global_stock_id?: number | null }) =>
-    `${item.product_id}-${item.global_stock_id || ''}`;
+  const itemKey = (item: {
+    product_id: number;
+    listing_id?: number | null;
+    global_stock_id?: number | null;
+  }) => `${item.product_id}-${item.listing_id ?? item.global_stock_id ?? ''}`;
 
   const formatMoney = (amount: unknown, symbol?: string | null) => {
     const n = Number(amount);

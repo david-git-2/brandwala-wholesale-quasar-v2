@@ -11,7 +11,9 @@
         @select-shop-cart="selectShopCart"
       />
 
-      <ShopCartSkeleton v-if="isCartsLoading || isCartLoading" />
+      <ShopCartSkeleton
+        v-if="isCartsLoading || isCartLoading || (!selectedShopId && !showCartPicker)"
+      />
 
       <q-card v-else-if="isCartError" flat bordered class="q-pa-xl text-center">
         <q-card-section>
@@ -40,7 +42,12 @@
         @select-shop-cart="selectShopCart"
       />
 
-      <q-card v-else-if="items.length === 0" flat bordered class="q-pa-xl text-center">
+      <q-card
+        v-else-if="selectedShopId && items.length === 0"
+        flat
+        bordered
+        class="q-pa-xl text-center"
+      >
         <q-card-section>
           <q-icon name="ph ph-shopping-cart" size="64px" color="grey-4" class="q-mb-md" />
           <div class="text-h6 text-grey-7 text-weight-bold">{{ $t('shop.cart_empty') }}</div>
@@ -68,11 +75,14 @@
             :price="getPurchaseUnitAmount(item)"
             :currency-symbol="currencySymbol"
             :min-qty="item.minimum_quantity"
-            :disable-qty="isUpdatingQty"
+            :disable-qty="isCartBusy"
             :show-save-qty="hasUnsavedQty(item)"
             :is-saving="isUpdatingQty"
+            :disable-remove="isCartBusy"
+            :is-removing="removingItemId === item.id"
             @update:quantity="(qty) => adjustItemQtyLocal(item.id, qty, item.quantity)"
             @save-quantity="() => saveItemQty(item.id)"
+            @remove="() => removeItem(item)"
           />
         </div>
 
@@ -83,7 +93,7 @@
           class="full-width pill-btn q-py-sm"
           icon-right="ph ph-arrow-right"
           :label="$t('shop.dropship_cart_proceed')"
-          :disable="isUpdatingQty || hasUnsavedEdits"
+          :disable="isCartBusy || hasUnsavedEdits"
           @click="goToReview"
         >
           <q-tooltip v-if="hasUnsavedEdits">
@@ -138,8 +148,12 @@ const {
   refetch: refetchCart,
 } = useDropshipShopCartQuery(selectedShopId);
 
-const { updateQtyMutation } = useShopCartMutations();
+const { updateQtyMutation, removeItemMutation } = useShopCartMutations();
+const removingItemId = ref<number | null>(null);
 const isUpdatingQty = computed(() => updateQtyMutation.isPending.value);
+const isCartBusy = computed(
+  () => updateQtyMutation.isPending.value || removeItemMutation.isPending.value,
+);
 const editedQuantities = ref<Record<number, number>>({});
 
 const getItemQty = (item: DropshipCartItem) =>
@@ -206,6 +220,21 @@ const saveItemQty = async (itemId: number) => {
     shopId: selectedShopId.value,
   });
   delete editedQuantities.value[itemId];
+};
+
+const removeItem = async (item: DropshipCartItem) => {
+  if (!selectedShopId.value || isCartBusy.value) return;
+
+  delete editedQuantities.value[item.id];
+  removingItemId.value = item.id;
+  try {
+    await removeItemMutation.mutateAsync({
+      cartItemId: item.id,
+      shopId: selectedShopId.value,
+    });
+  } finally {
+    removingItemId.value = null;
+  }
 };
 
 const goToReview = () => {

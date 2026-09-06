@@ -4,6 +4,7 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import type { ActiveCartItem } from '../repositories/shopCartRepository';
 import {
   getLastVisitedShopSlug,
+  getLastVisitedShopId,
   resolveCartShopId,
   shopCartPath,
   shopCatalogEntryPath,
@@ -29,7 +30,15 @@ export function useShopCartSelection(
         return;
       }
       if (loading) {
-        selectedShopId.value = null;
+        if (!selectedShopId.value) {
+          const lastId = getLastVisitedShopId(authStore.tenantId);
+          if (lastId) {
+            const parsed = parseInt(lastId, 10);
+            if (!Number.isNaN(parsed)) {
+              selectedShopId.value = parsed;
+            }
+          }
+        }
         return;
       }
       const resolved = resolveCartShopId(authStore.tenantId, carts);

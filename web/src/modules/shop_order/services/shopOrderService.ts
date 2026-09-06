@@ -410,9 +410,15 @@ const getShopCatalogProduct = async (
   tenantId: number,
   shopSlug: string,
   productId: number,
+  listingId?: number | null,
 ): Promise<ShopServiceResult<ShopCatalogProductDetailResult>> => {
   try {
-    const data = await shopOrderRepository.getShopCatalogProduct(tenantId, shopSlug, productId);
+    const data = await shopOrderRepository.getShopCatalogProduct(
+      tenantId,
+      shopSlug,
+      productId,
+      listingId,
+    );
     return { success: true, data };
   } catch (error) {
     return {

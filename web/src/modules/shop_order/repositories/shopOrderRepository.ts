@@ -174,11 +174,13 @@ const getShopCatalogProduct = async (
   tenantId: number,
   shopSlug: string,
   productId: number,
+  listingId?: number | null,
 ): Promise<ShopCatalogProductDetailResult> => {
   const { data, error } = await supabase.rpc('get_shop_catalog_product_for_customer', {
     p_tenant_id: tenantId,
     p_shop_slug: shopSlug,
     p_product_id: productId,
+    p_listing_id: listingId ?? null,
   });
 
   if (error) {

@@ -44,21 +44,30 @@
 
       <q-separator />
 
+      <q-banner dense rounded class="courier-estimates-banner">
+        <template #avatar>
+          <q-icon name="ph ph-info" size="18px" color="primary" />
+        </template>
+        <div class="text-caption text-grey-8">
+          {{ $t('shop.dropship_courier_estimates_note') }}
+        </div>
+      </q-banner>
+
       <div class="column q-gutter-y-xs">
-        <div class="row justify-between text-body2 text-grey-7">
+        <div class="row justify-between items-start text-body2 text-grey-7">
           <span>{{ $t('shop.delivery_charge') }}</span>
-          <span class="text-weight-medium">
-            {{ formatMoney(charges.deliveryCharge) }}
-            <span class="text-caption text-grey-6">
+          <span class="text-caption text-grey-6 text-right charge-pending-note">
+            {{ $t('shop.dropship_charge_confirmed_later') }}
+            <span class="block q-mt-xs">
               ({{ charges.recipientPaysDelivery ? $t('shop.dropship_paid_by_recipient') : $t('shop.dropship_deducted_from_profit') }})
             </span>
           </span>
         </div>
-        <div class="row justify-between text-body2 text-grey-7">
+        <div class="row justify-between items-start text-body2 text-grey-7">
           <span>{{ $t('shop.cod_fee') }}</span>
-          <span class="text-weight-medium">
-            {{ formatMoney(charges.codCharge) }}
-            <span class="text-caption text-grey-6">
+          <span class="text-caption text-grey-6 text-right charge-pending-note">
+            {{ $t('shop.dropship_charge_confirmed_later') }}
+            <span class="block q-mt-xs">
               ({{ charges.recipientPaysCod ? $t('shop.dropship_paid_by_recipient') : $t('shop.dropship_deducted_from_profit') }})
             </span>
           </span>
@@ -125,5 +134,14 @@ const formatMoney = (amount: number) =>
   padding: 8px 10px;
   border-radius: 10px;
   background: rgba(34, 56, 101, 0.03);
+}
+
+.courier-estimates-banner {
+  background: rgba(25, 118, 210, 0.06);
+  border: 1px solid rgba(25, 118, 210, 0.12);
+}
+
+.charge-pending-note {
+  max-width: 220px;
 }
 </style>

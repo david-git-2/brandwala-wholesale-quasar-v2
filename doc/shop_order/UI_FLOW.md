@@ -332,11 +332,15 @@ Legacy courier-remittance URLs redirect to this hub with `step=courier_remittanc
 ### 11.6 Storefront (`/shop/browse/:shopSlug`)
 - **Page:** `StorefrontPage.vue`
 - **Components:** `StorefrontHeader`, `StorefrontProductCard`, `StorefrontFilterDrawer`
-- **Product card click / quick view** → product detail route (see §12)
+- **Catalog rows:** one card per **listing** (`product` + `stock_grade`); same product with two grades → two cards
+- **Grade chip:** `StorefrontProductCard` shows `stock_grade.label` when present (`showGradeChip`)
+- **Add to cart:** `add_to_shop_cart` with `p_listing_id` (preferred) from the row; legacy `global_stock_id` still accepted
+- **Product card click / quick view** → product detail with `?listingId=` when the row has `listing_id` (see §12)
 - **Cart FAB / header link** → `/shop/cart`
 
 ### 11.7 Product detail (`/shop/browse/:shopSlug/product/:productId`)
-- **Page:** `StorefrontProductDetailPage.vue` (planned)
+- **Page:** `StorefrontProductDetailPage.vue`
+- **Query:** optional `listingId` — passed to `get_shop_catalog_product_for_customer` and add-to-cart
 - **Components:** `ProductDetailGallery`, `ProductDetailSummary`, `ProductDetailSpecs`, `ProductDetailPricing`, `ProductDetailActionBar`, `ProductDetailRelated`
 - **RPCs:** `get_shop_catalog_product_for_customer` (§8), `list_related_shop_catalog_products_for_customer` (§9) — see [`SHOP_ORDER.md`](./SHOP_ORDER.md)
 - **Entry points:** product card click, quick-view “View details”, direct URL, copy-link share
@@ -361,6 +365,7 @@ Paper invoice workflow (replaces classic card layout).
 ## 12. Product Detail Page (`shop` scope)
 
 **Route:** `/:tenantSlug?/shop/browse/:shopSlug/product/:productId`  
+**Query (stock-backed shops):** `listingId` — selects which grade listing to show when the product has multiple active listings  
 **Layout:** `ShopLayout` (header search, cart, profile)
 
 ### Page structure
@@ -395,6 +400,7 @@ StorefrontProductDetailPage
 | Product code | `product_code` | When non-null |
 | Barcode | `product_barcode` | When non-null |
 | Stock | `available_units` | `can_view_quantity` and value not null |
+| Grade | `stock_grade.label` | When `stock_grade` returned (fixed_price / dropship) |
 | Qty stepper + cart CTA | — | `can_add_to_cart`; disabled when `available_units = 0` |
 | Copy link | current URL | Always |
 | Related products | `list_related_shop_catalog_products_for_customer` | `vendor_catalog` + non-empty category + RPC returns rows |
@@ -417,10 +423,10 @@ StorefrontProductDetailPage
 
 | Action | Trigger | Result |
 | :--- | :--- | :--- |
-| **Open detail** | Product card click or quick-view link | Navigate to `/shop/browse/:shopSlug/product/:productId` |
+| **Open detail** | Product card click or quick-view link | Navigate to `/shop/browse/:shopSlug/product/:productId` with `?listingId=` when set |
 | **Copy link** | Link icon in summary | Copy `window.location.href` → toast “Link copied” |
 | **Back to catalog** | Breadcrumb or browser back | Return to `StorefrontPage` (preserve `?search=` / filter query when possible) |
-| **Add to cart** | Sticky action bar | `add_to_shop_cart` with selected qty; toast; header badge via TanStack `activeCarts` cache patch (no extra list RPC) |
+| **Add to cart** | Sticky action bar | `add_to_shop_cart` with `p_listing_id` + qty; toast; header badge via TanStack `activeCarts` cache patch |
 | **Update cart** | When line already in cart | `update_shop_cart_item_qty` |
 | **Related card click** | Related product card | Navigate to `/shop/browse/:shopSlug/product/:productId` |
 | **View all in category** | Link in related header | `StorefrontPage` with `?category={product_category}` |
@@ -430,8 +436,8 @@ StorefrontProductDetailPage
 | Shop type | Unit price group | Sell price group | Stock |
 | :--- | :--- | :--- | :--- |
 | `vendor_catalog` | List / purchase price (`can_see_buy_price`) | None on browse; totals in cart/checkout if `can_see_sell_price` | Usually hidden (`available_units` null) |
-| `fixed_price` | Listing price via **sell** permission (`can_see_sell_price`) | No resell minimum on browse | ATP when listing + permissions allow |
-| `dropship` | Landed cost + buy currency (`can_see_buy_price`) | `sell_price_*` + `resell_minimum_price_*` on browse/detail | Same as `fixed_price` |
+| `fixed_price` | Listing price via **sell** permission (`can_see_sell_price`) | No resell minimum on browse | Grade-pooled ATP per listing; grade chip on card |
+| `dropship` | Landed cost + buy currency (`can_see_buy_price`) | `sell_price_*` + `resell_minimum_price_*` on browse/detail | Same as `fixed_price`; one card per grade listing |
 
 ### Error states
 

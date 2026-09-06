@@ -21,7 +21,9 @@
       </q-banner>
 
       <!-- Loading Skeleton State -->
-      <ShopCartSkeleton v-if="isCartsLoading || isCartLoading" />
+      <ShopCartSkeleton
+        v-if="isCartsLoading || isCartLoading || (!selectedShopId && !showCartPicker)"
+      />
 
       <!-- Cart List Error State -->
       <q-card v-else-if="isCartsError" flat bordered class="q-pa-xl text-center">

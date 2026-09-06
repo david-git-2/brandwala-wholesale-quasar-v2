@@ -39,7 +39,9 @@ import { useOAuthLogin, type AuthScope } from '../composables/useOAuthLogin';
 
 const route = useRoute();
 const scope = (route.query.scope as AuthScope | undefined) ?? 'app';
-const { processLoginResult } = useOAuthLogin(scope);
+const tenantSlug =
+  typeof route.query.tenant_slug === 'string' ? route.query.tenant_slug.trim() : null;
+const { processLoginResult } = useOAuthLogin(scope, { tenantSlug });
 
 const isRedirectingToApp = ref(false);
 const appRedirectUrl = ref('');

@@ -215,7 +215,7 @@ flowchart LR
 | **`StorefrontProductDetailPage`** | Mount | `getShopCatalogProduct` → `RPC: get_shop_catalog_product_for_customer` | Key: `shopOrderQueryKeys.storefrontProduct(tenantId, shopSlug, productId)` |
 | **`StorefrontProductDetailPage`** | Related strip (`vendor_catalog`) | `listRelatedShopCatalogProducts` → `RPC: list_related_shop_catalog_products_for_customer` | Key: `shopOrderQueryKeys.storefrontProductRelated(tenantId, shopSlug, productId)` |
 | **`StorefrontPage`** | Permissions | `useCustomerShopPermissionsQuery` (seeded from browse `meta.permissions`) | Key: `customerShopPermissions(shopId)` |
-| **`StorefrontPage`** | Add to cart | `add_to_shop_cart` via `useShopCartMutations` | One RPC; patches `cart` + `activeCarts` TanStack cache (no `list_customer_active_carts` refetch) |
+| **`StorefrontPage`** | Add to cart | `add_to_shop_cart` with `p_listing_id` (preferred) via `useShopCartMutations` | One RPC; patches `cart` + `activeCarts` TanStack cache (no `list_customer_active_carts` refetch) |
 | **`StorefrontProductDetailPage`** | Add to cart | `add_to_shop_cart` via `useShopCartMutations` | Same cache patch as storefront grid |
 | **`ShopCartPage`** | Load cart + permissions | `useShopCartQuery` → `RPC: get_or_create_shop_cart` | Key: `shopOrderQueryKeys.cart(tenantId, shopId)`; items use catalog-shaped prices; no separate permissions or `global_currencies` call |
 | **`ShopDropshipCartPage`** | Load dropship cart | `useDropshipShopCartQuery` → `RPC: get_dropship_shop_cart` | Key: `shopOrderQueryKeys.dropshipCart(tenantId, shopId)`; qty saves via `update_shop_cart_item_qty` (cache patch, no refetch) |
@@ -304,6 +304,42 @@ See **§ RPC: `get_or_create_shop_cart`** below for the response contract.
 * `dropshipFinanceQueryKeys.queue(step, tenantId)` → `['dropshipFinance', 'queue', { step, tenantId }]`
 
 ---
+
+## 6.5 Grade-based listings (`fixed_price` / `dropship`)
+
+For stock-backed shops, the **customer sell unit** is **product + warehouse grade** (Standard, Open box, Box damage, …), not a specific shipment stock row.
+
+| Layer | Rule |
+| :--- | :--- |
+| **Staff storefront** | One active listing per `(shop_id, product_id, grade_slug)`; grade switcher on admin cards |
+| **Customer catalog** | One browse/detail row per **listing** → same product with two grades = **two cards** |
+| **Availability** | Pooled by grade via `shop_product_grade_available_units` (sum ATP across all sellable stock for that product + grade) |
+| **Cart / order line** | `listing_id` + `grade_tag_id`; `global_stock_id` filled at **place order** (hold from grade pool) |
+| **Invoice** | `global_invoice_items.global_stock_id` copied from the held order line |
+
+### Customer catalog fields (stock-backed shops)
+
+| Field | Meaning |
+| :--- | :--- |
+| `listing_id` | `shop_product_listings.id` — **preferred** key for add-to-cart |
+| `stock_grade` | `{ slug, label, color }` warehouse condition shown on the card |
+| `global_stock_id` | Optional legacy field on browse; **not** required for add-to-cart |
+
+### Add-to-cart resolver (`fixed_price` / `dropship`)
+
+`add_to_shop_cart` accepts **one** of:
+
+1. `p_listing_id` — preferred (from browse/detail row)
+2. `p_grade_slug` — resolve active listing for `(shop, product, grade)`
+3. `p_global_stock_id` / `p_global_stock_allocation_id` — legacy; must match the listing anchor
+
+Stock check uses **grade-pooled** ATP (same rules as `available_units` on browse), not single-row ATP.
+
+Draft listings (`grade_tag_id` null) cannot be added to cart. Sellable listings are **product + grade**, not tied to a stock row.
+
+### Order → invoice
+
+On place order, each line holds stock **sellable → held** for the anchor row’s grade. Invoice creation copies lines with `global_stock_id`; returns/restock flows may set `to_grade_tag_id` explicitly.
 
 ---
 
@@ -540,7 +576,18 @@ See §1 for the permission × shop-type matrix. On browse:
 
 ### Response shape
 
-Non-price fields are unchanged: `product_id`, `product_name`, `product_image_url`, `product_barcode`, `product_code`, `product_brand`, `product_category`, `vendor_code`, `is_available`, `available_units`, `global_stock_allocation_id`, `global_stock_id`, `minimum_order_quantity`.
+`vendor_catalog` rows omit listing/stock fields. **`fixed_price` / `dropship`** rows include:
+
+| Field | Notes |
+| :--- | :--- |
+| `listing_id` | Listing primary key — pass to `add_to_shop_cart` |
+| `stock_grade` | `{ slug, label, color }` or `null` when anchor stock has no grade tag |
+| `global_stock_id` | Listing anchor stock (legacy); same value as `global_stock_allocation_id` |
+| `product_id`, `product_name`, … | Unchanged |
+| `available_units` | Grade-pooled ATP (with listing display override when configured) |
+| `minimum_order_quantity` | From `products` |
+
+Non-price fields for all types: `product_id`, `product_name`, `product_image_url`, `product_barcode`, `product_code`, `product_brand`, `product_category`, `vendor_code`, `is_available`, `available_units`, `minimum_order_quantity`.
 
 ```jsonc
 {
@@ -574,6 +621,8 @@ Non-price fields are unchanged: `product_id`, `product_name`, `product_image_url
         "symbol": "৳"
       },
       "available_units": 42,
+      "listing_id": 1201,
+      "stock_grade": { "slug": "standard", "label": "Standard", "color": "#22c55e" },
       "global_stock_allocation_id": 789,
       "global_stock_id": 789,
       "minimum_order_quantity": 1
@@ -746,6 +795,48 @@ Charges (COD, delivery, print, packing, discount) remain on the `shop_carts` row
 
 ---
 
+## 7c-add. RPC: `add_to_shop_cart`
+
+Adds or increments a cart line. Returns the `get_or_create_shop_cart` shape.
+
+### Signature
+
+```sql
+add_to_shop_cart(
+  p_shop_id                        bigint,
+  p_product_id                     bigint,
+  p_global_stock_allocation_id     bigint  default null,  -- legacy alias for anchor stock
+  p_quantity                       integer default 1,
+  p_customer_sell_price_amount       numeric default null,
+  p_customer_sell_price_currency_id bigint default null,
+  p_global_stock_id                bigint  default null,  -- legacy anchor stock
+  p_listing_id                     bigint  default null,  -- preferred for stock-backed shops
+  p_grade_slug                     text    default null   -- alternative: product + grade
+) returns jsonb
+```
+
+### Resolver (`fixed_price` / `dropship`)
+
+| Input | Behaviour |
+| :--- | :--- |
+| `p_listing_id` | Active listing on this shop for `p_product_id` |
+| `p_grade_slug` | Active listing matching product + grade slug (`standard` when omitted on stock) |
+| `p_global_stock_id` | Active listing whose anchor `global_stock_id` matches |
+| *(none)* | Error: `listing, grade, or global stock required for this shop type` |
+
+Listing must have a linked anchor stock (`global_stock_id` not null). Quantity check uses **grade-pooled** ATP (`shop_product_grade_available_units`) and listing `display_quantity_override` (same as browse `available_units`).
+
+`vendor_catalog` ignores listing/stock args; merges on `product_id` only.
+
+### Frontend wiring
+
+| Layer | Pass |
+| :--- | :--- |
+| `StorefrontPage` / `StorefrontProductDetailPage` | `p_listing_id` from catalog row; `showGradeChip` on cards when `stock_grade` present |
+| `shopCartRepository.addToCart` | `p_listing_id`, optional `p_grade_slug` fallback |
+
+---
+
 ## 7d. RPC: `get_dropship_shop_cart`
 
 Dropship-only cart load for step 1 of the 3-step checkout (`ShopDropshipCartPage`). Does **not** create an empty cart.
@@ -884,7 +975,8 @@ Single-product fetch for the customer product detail page. Mirrors pricing, stoc
 get_shop_catalog_product_for_customer(
   p_tenant_id   bigint,
   p_shop_slug   text,
-  p_product_id  bigint
+  p_product_id  bigint,
+  p_listing_id  bigint default null  -- disambiguate when product has multiple grade listings
 ) returns jsonb
 ```
 
@@ -918,6 +1010,8 @@ get_shop_catalog_product_for_customer(
     "minimum_sell_price_currency_code": null,
     "minimum_sell_price_currency_symbol": null,
     "available_units": 240,           // null when can_view_quantity false or catalog shop
+    "listing_id": 1201,
+    "stock_grade": { "slug": "open_box", "label": "Open box", "color": "#f59e0b" },
     "global_stock_allocation_id": 456,
     "global_stock_id": 456,
     "minimum_order_quantity": 12

@@ -21,8 +21,24 @@
         </div>
 
         <div class="col min-width-0">
-          <div class="text-body2 text-weight-bold text-grey-9 dropship-cart-item__name">
-            {{ name }}
+          <div class="row items-start justify-between no-wrap q-col-gutter-xs">
+            <div class="text-body2 text-weight-bold text-grey-9 dropship-cart-item__name col min-width-0">
+              {{ name }}
+            </div>
+            <q-btn
+              flat
+              round
+              dense
+              size="sm"
+              icon="ph ph-trash"
+              color="negative"
+              class="col-auto"
+              :disable="disableRemove"
+              :loading="isRemoving"
+              @click="$emit('remove')"
+            >
+              <q-tooltip>{{ $t('shop.remove_item') }}</q-tooltip>
+            </q-btn>
           </div>
           <div class="row items-center justify-between q-mt-xs">
             <div class="column q-gutter-y-xs">
@@ -88,6 +104,8 @@ const props = withDefaults(
     disableQty?: boolean;
     showSaveQty?: boolean;
     isSaving?: boolean;
+    disableRemove?: boolean;
+    isRemoving?: boolean;
   }>(),
   {
     imageUrl: null,
@@ -96,12 +114,15 @@ const props = withDefaults(
     disableQty: false,
     showSaveQty: false,
     isSaving: false,
+    disableRemove: false,
+    isRemoving: false,
   },
 );
 
 defineEmits<{
   (e: 'update:quantity', value: number): void;
   (e: 'save-quantity'): void;
+  (e: 'remove'): void;
 }>();
 
 const lineTotal = computed(() => props.price * props.quantity);
