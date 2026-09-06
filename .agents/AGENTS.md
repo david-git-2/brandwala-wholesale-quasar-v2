@@ -6,6 +6,7 @@
 - **Do NOT Scan Migrations**: Do NOT read through all files in `supabase/migrations/*.sql` to determine active database state.
 - **New Migrations Only**: Only inspect or edit `supabase/migrations/*.sql` when writing/reviewing a generated or DML migration.
 - **Migration Source of Truth**: When creating new RPC migrations, **ALWAYS** copy the function body from the active declarative schema in `supabase/schemas/<domain>/03_rpcs.sql`, NEVER from historical migration files in `supabase/migrations/` (to prevent resurrecting deprecated enum values like `'posted'`).
+- **Migration order / fresh reset**: Before adding or fixing `supabase/migrations/*.sql`, follow `.agents/skills/supabase-migration-order/SKILL.md` and run `pnpm run backend:reset`. Prod state does not prove ordering is correct.
 
 ## Procurement module — `doc/procurement_stock/IMPLEMENTATION_ORDER.md`
 Shipment track (7A–14B) and warehouse W1–W9 are complete.

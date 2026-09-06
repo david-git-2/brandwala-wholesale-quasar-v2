@@ -127,6 +127,8 @@ This repo uses **Option A (declarative schemas)**. `supabase/schemas/` exists an
 
 Edit the desired schema state in `supabase/schemas/`, then generate and review the migration. Do not start by hand-writing a DDL migration. DML (seeds, backfills) stays hand-written. See the [Declarative database schemas guide](https://supabase.com/docs/guides/local-development/declarative-database-schemas).
 
+**Migration timestamp order:** After generating or hand-editing any file in `supabase/migrations/`, read `.agents/skills/supabase-migration-order/SKILL.md` and run `pnpm run backend:reset` before merge.
+
 ### Option B: Imperative migrations
 
 Use this when the project does not use declarative schemas.

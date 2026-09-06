@@ -49,6 +49,13 @@ begin
     join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public' and p.proname = 'post_global_invoice'
   ) then
+    if exists (
+      select 1 from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public' and p.proname = 'post_sales_invoice'
+    ) then
+      execute 'drop function public.post_sales_invoice(bigint)';
+    end if;
     execute 'alter function public.post_global_invoice(bigint) rename to post_sales_invoice';
   end if;
 

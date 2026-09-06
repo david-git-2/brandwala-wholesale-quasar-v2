@@ -1,6 +1,10 @@
 -- Migration: Phase P4 — Catalog Procurement, Ordering, Delivery & Backlog RPCs
 -- Scope: vendor_catalog only. Guard against non-catalog/dropship execution.
 
+drop function if exists public.staff_start_catalog_procurement(bigint);
+drop function if exists public.staff_set_catalog_ordered_qty(bigint, jsonb);
+drop function if exists public.staff_set_catalog_delivered_qty(bigint, jsonb);
+
 -- 1. Start procurement for catalog order (confirmed -> procuring)
 CREATE OR REPLACE FUNCTION public.staff_start_catalog_procurement(
   p_order_id bigint

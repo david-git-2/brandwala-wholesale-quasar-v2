@@ -1,6 +1,9 @@
 -- Phase 1: Catalog Shop Negotiation RPCs
 -- Scope: vendor_catalog only. Guard against non-catalog/dropship execution.
 
+drop function if exists public.staff_price_shop_order(bigint, jsonb, text, numeric, numeric, numeric);
+drop function if exists public.staff_finalize_catalog_prices(bigint, jsonb);
+
 -- 1. Ensure submit_shop_order_from_cart initializes catalog orders with status = 'submitted'
 CREATE OR REPLACE FUNCTION public.submit_shop_order_from_cart(
   p_cart_id bigint,

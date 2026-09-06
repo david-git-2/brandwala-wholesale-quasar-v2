@@ -6,6 +6,8 @@ begin;
 -- 1. Rewrite RPCs before dropping columns
 -- ---------------------------------------------------------------------------
 
+drop function if exists public.staff_set_catalog_delivered_qty(bigint, jsonb);
+
 create or replace function public.staff_set_catalog_ordered_qty(
   p_order_id bigint,
   p_items jsonb

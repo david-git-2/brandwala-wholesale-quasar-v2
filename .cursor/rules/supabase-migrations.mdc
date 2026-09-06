@@ -8,32 +8,45 @@ alwaysApply: false
 
 Local `pnpm run backend:reset` / `pull-prod-data` replays **all** migrations from empty. Prod often never does. Every new migration must succeed on a clean DB.
 
+**Full workflow:** `.agents/skills/supabase-migration-order/SKILL.md`
+
+## The trap
+
+Prod applies migrations once on top of existing objects. **`backend:reset` does not.** Filename timestamp = apply order. If migration `20260822_*` uses a type created in `20260902_*`, prod may work and local reset fails.
+
 ## Before writing SQL
 
-1. Confirm every table/type/enum/function you reference already exists in an **earlier** `YYYYMMDDHHMMSS_*.sql` file (timestamp order = apply order).
-2. Never assume “it exists on prod already” — prod state ≠ empty local.
+1. Every table / type / enum / column / function you reference must exist in an **earlier** `YYYYMMDDHHMMSS_*.sql` file.
+2. Enum labels used in function bodies (`'procuring'::shop_order_status`) need the label in an **earlier** migration than the function.
+3. Never assume “it exists on prod already”.
 
 ## Required patterns
 
 | Change | Do this |
 |--------|---------|
+| New module types + tables before first RPC | `*_enums.sql` then `*_core_tables.sql` **before** first consumer timestamp |
+| Prerequisites vs scaffold | Prerequisites: types + tables + helpers only. **No RLS policies** — scaffold pass creates policies |
 | `CREATE TABLE` / index / type | `IF NOT EXISTS` when re-runnable |
 | `DROP` table/column/policy/function | `IF EXISTS` |
-| Change function **return type** / OUT params | `DROP FUNCTION IF EXISTS ...(...);` then `CREATE` — never bare `CREATE OR REPLACE` |
-| `ALTER TABLE` / FK on maybe-missing relation | Guard with `to_regclass('public.foo')` (or skip via `IF EXISTS` where valid) |
-| Enum labels in function bodies | Enum value must be added in an **earlier** migration than the function |
-| Rename (`payments` → `global_payments`) | Mid-history migrations must use the name that exists **at their timestamp** |
+| Change function **return type** / OUT params | `DROP FUNCTION IF EXISTS …(...);` then `CREATE` — never bare `CREATE OR REPLACE` |
+| `ALTER TABLE` / FK on maybe-missing relation | Guard with `to_regclass('public.foo')` |
+| Rename function to a name that may exist | `DROP FUNCTION IF EXISTS` target first, then `ALTER … RENAME` |
+| Mid-history renames (`global_*` → `sales_*`) | Use name that exists **at that migration’s timestamp** |
 
 ## Forbidden (caused real reset failures here)
 
-- Referencing `shop_orders` / `shop_order_status` / `universal_wallet_ledger` before their create migration timestamp
-- `ALTER … DROP COLUMN col` when `col` was never added in prior migrations
-- `CREATE INDEX …(user_email)` after an earlier migration dropped that column
+- RPC migrations **timestamped before** the migration that creates their types/tables/columns
+- Referencing `shop_orders` / `shop_order_status` before shop_order scaffold (or prerequisites)
+- `CREATE OR REPLACE` when changing `RETURNS void` ↔ `RETURNS jsonb` on the same signature
+- Duplicating RLS policies in an early prerequisites file and again in scaffold
 - Backfills (`INSERT INTO new_table`) timestamped **before** `new_table` is created
+- Copying RPC bodies from old `supabase/migrations/` instead of `supabase/schemas/`
 
 ## Out-of-order fix (exceptional)
 
-If history is already wrong: stub the early file (`raise notice` no-op) and add a **later** `*_deferred_*.sql` after dependencies exist. Do not only patch prod mentally.
+History already wrong: **stub** the early file (`raise notice` no-op) + **later** `*_deferred_*.sql` after **all** dependencies (types, columns, enum values, helpers). Defer only what the stub skipped — not functions superseded by later migrations.
+
+Example in repo: `20260825143000_*` stub → `20270814000046_deferred_*`.
 
 ## Verify (mandatory for migration work)
 
@@ -41,10 +54,10 @@ If history is already wrong: stub the early file (`raise notice` no-op) and add 
 pnpm run backend:reset
 ```
 
-Must finish with no SQLSTATE errors. Only then run `pnpm run backend:pull-prod-data` (optional data) or `pnpm run deploy:backend`.
+No `ERROR:` lines. Then optional `pnpm run backend:pull-prod-data` or intentional `pnpm run deploy:backend`.
 
 ## New features (DDL)
 
-Edit `supabase/schemas/` then generate a migration (`pnpm run backend:schema:diff`, then `supabase db diff -f <name>`). See `.cursor/rules/supabase-declarative-schema.mdc` and [doc/SUPABASE_SCHEMA.md](../../doc/SUPABASE_SCHEMA.md).
+Edit `supabase/schemas/` → `backend:schema:diff` → `supabase db diff -f <name>`. See `.cursor/rules/supabase-declarative-schema.mdc`.
 
-Hand-write a migration only for DML (seeds, backfills). Prefer a **new** forward file over editing old applied files. Edit applied files only to fix fresh-reset breakage (ordering / IF EXISTS), not for normal features.
+Hand-write migrations for **DML only**. Prefer new forward files. Edit applied files **only** for fresh-reset ordering fixes, not for normal features.
