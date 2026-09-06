@@ -237,10 +237,22 @@ GRANT ALL ON FUNCTION "public"."bulk_apply_shop_markup"("p_shop_id" bigint, "p_m
 GRANT ALL ON FUNCTION "public"."shop_product_grade_available_units"("p_shop_tenant_id" bigint, "p_product_id" bigint, "p_grade_tag_id" bigint) TO "authenticated";
 
 
+GRANT ALL ON FUNCTION "public"."shop_product_grade_avg_landed_cost"("p_shop_tenant_id" bigint, "p_product_id" bigint, "p_grade_tag_id" bigint) TO "authenticated";
+
+
+GRANT ALL ON FUNCTION "public"."hold_shop_grade_stock_for_order"("p_parent_tenant_id" bigint, "p_shop_tenant_id" bigint, "p_product_id" bigint, "p_grade_tag_id" bigint, "p_quantity" integer, "p_order_id" bigint, "p_notes" "text") TO "authenticated";
+
+
+GRANT ALL ON FUNCTION "public"."release_dropship_order_stock"("p_order_id" bigint, "p_restore_display" boolean) TO "authenticated";
+
+
 GRANT ALL ON FUNCTION "public"."shop_shipment_alloc_visible_to_tenant"("p_assigned_child_tenant_id" bigint, "p_shop_tenant_id" bigint) TO "authenticated";
 
 
 GRANT ALL ON FUNCTION "public"."can_act_on_parent_tenant_stock"("p_parent_tenant_id" bigint) TO "authenticated";
+
+
+GRANT ALL ON FUNCTION "public"."can_act_on_stock_movement_context"("p_parent_tenant_id" bigint, "p_reference_type" "text", "p_reference_id" "text") TO "authenticated";
 
 
 GRANT ALL ON FUNCTION "public"."can_customer_access_shop"("p_shop_id" bigint) TO "authenticated";

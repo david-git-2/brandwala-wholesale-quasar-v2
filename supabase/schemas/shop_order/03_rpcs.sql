@@ -40,6 +40,120 @@ $$;
 ALTER FUNCTION "public"."shop_product_grade_available_units"("p_shop_tenant_id" bigint, "p_product_id" bigint, "p_grade_tag_id" bigint) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."hold_shop_grade_stock_for_order"("p_parent_tenant_id" bigint, "p_shop_tenant_id" bigint, "p_product_id" bigint, "p_grade_tag_id" bigint, "p_quantity" integer, "p_order_id" bigint, "p_notes" "text" DEFAULT NULL::"text") RETURNS bigint
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_grade_tag_id bigint;
+  v_remaining integer;
+  v_stock record;
+  v_take integer;
+  v_primary_held bigint := null;
+  v_held_stock_id bigint;
+begin
+  if p_quantity is null or p_quantity <= 0 then
+    raise exception 'quantity must be positive';
+  end if;
+
+  v_grade_tag_id := coalesce(p_grade_tag_id, public.default_stock_grade_tag_id());
+  v_remaining := p_quantity;
+
+  for v_stock in
+    select
+      gs.id,
+      gs.location_id,
+      gs.grade_tag_id,
+      gs.shipment_item_id,
+      greatest(0, floor(public.global_stock_atp_qty(gs.id)))::integer as atp
+    from public.global_stocks gs
+    join public.global_shipment_items gsi on gsi.id = gs.shipment_item_id
+    join public.global_shipments gship on gship.id = gsi.shipment_id
+    left join public.stock_locations sl on sl.id = gs.location_id
+    where gsi.product_id = p_product_id
+      and coalesce(gs.grade_tag_id, public.default_stock_grade_tag_id()) = v_grade_tag_id
+      and gs.parent_tenant_id = p_parent_tenant_id
+      and public.shop_shipment_alloc_visible_to_tenant(gship.assigned_child_tenant_id, p_shop_tenant_id)
+      and gship.status = 'received'
+      and gs.availability = 'sellable'::public.stock_availability
+      and (gs.location_id is null or sl.is_pickable = true)
+    order by gs.id
+    for update of gs
+  loop
+    if v_remaining <= 0 then
+      exit;
+    end if;
+
+    v_take := least(v_remaining, v_stock.atp);
+    if v_take <= 0 then
+      continue;
+    end if;
+
+    perform public.create_and_post_stock_movement(
+      p_parent_tenant_id,
+      v_stock.id,
+      v_take,
+      v_stock.location_id,
+      'held'::public.stock_availability,
+      v_stock.grade_tag_id,
+      'availability_transfer'::public.stock_movement_type,
+      coalesce(p_notes, 'Shop order hold'),
+      'shop_order',
+      p_order_id::text
+    );
+
+    select gs.id into v_held_stock_id
+    from public.global_stocks gs
+    where gs.shipment_item_id = v_stock.shipment_item_id
+      and gs.parent_tenant_id = p_parent_tenant_id
+      and gs.availability = 'held'::public.stock_availability
+      and gs.location_id is not distinct from v_stock.location_id
+      and coalesce(gs.grade_tag_id, public.default_stock_grade_tag_id())
+        = coalesce(v_stock.grade_tag_id, public.default_stock_grade_tag_id())
+    order by gs.id desc
+    limit 1;
+
+    v_primary_held := coalesce(v_primary_held, v_held_stock_id);
+    v_remaining := v_remaining - v_take;
+  end loop;
+
+  if v_remaining > 0 then
+    raise exception 'insufficient sellable stock for product % (grade %): short by %',
+      p_product_id, v_grade_tag_id, v_remaining;
+  end if;
+
+  return v_primary_held;
+end;
+$$;
+
+ALTER FUNCTION "public"."hold_shop_grade_stock_for_order"("p_parent_tenant_id" bigint, "p_shop_tenant_id" bigint, "p_product_id" bigint, "p_grade_tag_id" bigint, "p_quantity" integer, "p_order_id" bigint, "p_notes" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."shop_product_grade_avg_landed_cost"("p_shop_tenant_id" bigint, "p_product_id" bigint, "p_grade_tag_id" bigint) RETURNS numeric
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  select coalesce(
+    avg(coalesce(gsi.landed_cost_bdt, public.calculate_landed_unit_cost(gsi.id))),
+    0
+  )::numeric
+  from public.global_stocks gs
+  join public.global_shipment_items gsi on gsi.id = gs.shipment_item_id
+  join public.global_shipments gship on gship.id = gsi.shipment_id
+  left join public.stock_locations sl on sl.id = gs.location_id
+  where gsi.product_id = p_product_id
+    and coalesce(gs.grade_tag_id, public.default_stock_grade_tag_id())
+      = coalesce(p_grade_tag_id, public.default_stock_grade_tag_id())
+    and gs.parent_tenant_id = public.resolve_parent_tenant_id(p_shop_tenant_id)
+    and public.shop_shipment_alloc_visible_to_tenant(gship.assigned_child_tenant_id, p_shop_tenant_id)
+    and gship.status = 'received'
+    and gs.availability = 'sellable'::public.stock_availability
+    and (gs.location_id is null or sl.is_pickable = true);
+$$;
+
+ALTER FUNCTION "public"."shop_product_grade_avg_landed_cost"("p_shop_tenant_id" bigint, "p_product_id" bigint, "p_grade_tag_id" bigint) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."add_to_shop_cart"("p_shop_id" bigint, "p_product_id" bigint, "p_global_stock_allocation_id" bigint DEFAULT NULL::bigint, "p_quantity" integer DEFAULT 1, "p_customer_sell_price_amount" numeric DEFAULT NULL::numeric, "p_customer_sell_price_currency_id" bigint DEFAULT NULL::bigint, "p_global_stock_id" bigint DEFAULT NULL::bigint) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -249,6 +363,10 @@ begin
   where id = p_order_id;
 
   select * into v_order from public.shop_orders where id = p_order_id;
+
+  if p_target_status = 'cancelled' then
+    perform public.release_dropship_order_stock(p_order_id, true);
+  end if;
 
   if p_target_status = 'processing' and v_order.global_invoice_id is not null then
     select * into v_invoice from public.global_invoices where id = v_order.global_invoice_id;
@@ -1447,16 +1565,55 @@ CREATE OR REPLACE FUNCTION "public"."can_act_on_parent_tenant_stock"("p_parent_t
       inner join public.shop_customer_group_access scga on scga.customer_group_id = cg.id
       inner join public.shops s on s.id = scga.shop_id
       where public.resolve_parent_tenant_id(s.tenant_id) = p_parent_tenant_id
+        and cg.tenant_id = s.tenant_id
         and lower(trim(cgm.email)) = public.current_user_email()
         and cgm.is_active = true
         and cg.is_active = true
         and scga.status = true
         and s.is_active = true
+        and s.deleted_at is null
+    )
+    or exists (
+      select 1
+      from public.shops s
+      join lateral public.get_shop_permissions_for_customer(s.id) perms on true
+      where public.resolve_parent_tenant_id(s.tenant_id) = p_parent_tenant_id
+        and s.is_active = true
+        and s.deleted_at is null
+        and coalesce(perms.can_place_order, false)
     );
 $$;
 
 
 ALTER FUNCTION "public"."can_act_on_parent_tenant_stock"("p_parent_tenant_id" bigint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."can_act_on_stock_movement_context"("p_parent_tenant_id" bigint, "p_reference_type" "text" DEFAULT NULL::"text", "p_reference_id" "text" DEFAULT NULL::"text") RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  select
+    public.can_act_on_parent_tenant_stock(p_parent_tenant_id)
+    or (
+      coalesce(p_reference_type, '') = 'shop_order'
+      and p_reference_id ~ '^[0-9]+$'
+      and exists (
+        select 1
+        from public.shop_orders o
+        join public.shops s on s.id = o.shop_id
+        where o.id = p_reference_id::bigint
+          and public.resolve_parent_tenant_id(coalesce(s.tenant_id, o.tenant_id)) = p_parent_tenant_id
+          and (
+            public.is_cart_owner(o.customer_group_id, o.tenant_id)
+            or public.has_active_tenant_membership(o.tenant_id)
+            or public.has_active_tenant_membership(public.resolve_parent_tenant_id(o.tenant_id))
+            or public.is_superadmin()
+          )
+      )
+    );
+$$;
+
+ALTER FUNCTION "public"."can_act_on_stock_movement_context"("p_parent_tenant_id" bigint, "p_reference_type" "text", "p_reference_id" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."can_customer_access_shop"("p_shop_id" bigint) RETURNS boolean
@@ -4667,13 +4824,15 @@ declare
   v_recipient_profile_id bigint;
   v_phone text;
   v_ci record;
-  v_rem_override_qty integer;
-  v_rem_sellable_qty integer;
   v_deduct_delivery_from_margin boolean;
   v_deduct_cod_from_margin boolean;
   v_parent_tenant_id bigint;
   v_stock public.global_stocks%rowtype;
   v_held_stock_id bigint;
+  v_order_item_id bigint;
+  v_available_after integer;
+  v_grade_tag_id bigint;
+  v_listing_id bigint;
 begin
   select * into v_shop
   from public.shops
@@ -4832,7 +4991,8 @@ begin
   returning id into v_order_id;
 
   insert into public.shop_order_items (
-    order_id, product_id, global_stock_id, global_stock_allocation_id,
+    order_id, product_id, listing_id, grade_tag_id,
+    global_stock_id, global_stock_allocation_id,
     name, image_url, quantity,
     unit_list_price_amount, unit_list_price_currency_id,
     unit_sell_price_amount, unit_sell_price_currency_id,
@@ -4843,7 +5003,12 @@ begin
     cost_price_amount, cost_price_currency_id
   )
   select
-    v_order_id, ci.product_id, ci.global_stock_id, ci.global_stock_allocation_id,
+    v_order_id,
+    ci.product_id,
+    ci.listing_id,
+    coalesce(ci.grade_tag_id, l.grade_tag_id, gs.grade_tag_id, public.default_stock_grade_tag_id()),
+    null,
+    null,
     ci.name, ci.image_url, ci.quantity,
     ci.unit_list_price_amount, ci.unit_list_price_currency_id,
     ci.unit_sell_price_amount, ci.unit_sell_price_currency_id,
@@ -4858,22 +5023,74 @@ begin
       when v_order_status = 'confirmed' then coalesce(ci.customer_sell_price_currency_id, ci.unit_sell_price_currency_id)
       else null
     end,
-    public.resolve_shop_order_item_landed_cost(ci.global_stock_id, null, ci.unit_list_price_amount),
+    coalesce(
+      ci.unit_list_price_amount,
+      public.shop_product_grade_avg_landed_cost(
+        v_cart.tenant_id,
+        ci.product_id,
+        coalesce(ci.grade_tag_id, l.grade_tag_id, gs.grade_tag_id, public.default_stock_grade_tag_id())
+      )
+    ),
     v_shop.buy_currency_id
   from public.shop_cart_items ci
+  left join public.shop_product_listings l on l.id = ci.listing_id
+  left join public.global_stocks gs on gs.id = ci.global_stock_id
   where ci.cart_id = v_cart.id;
 
   for v_ci in select * from public.shop_cart_items where cart_id = v_cart.id loop
-    if v_ci.product_id is not null and v_ci.global_stock_allocation_id is not null then
+    v_grade_tag_id := coalesce(
+      v_ci.grade_tag_id,
+      (select l.grade_tag_id from public.shop_product_listings l where l.id = v_ci.listing_id),
+      (select gs.grade_tag_id from public.global_stocks gs where gs.id = v_ci.global_stock_id),
+      public.default_stock_grade_tag_id()
+    );
+
+    v_listing_id := coalesce(
+      v_ci.listing_id,
+      (
+        select l.id
+        from public.shop_product_listings l
+        where l.shop_id = v_shop.id
+          and l.product_id = v_ci.product_id
+          and coalesce(l.grade_tag_id, public.default_stock_grade_tag_id()) = v_grade_tag_id
+        order by l.id asc
+        limit 1
+      ),
+      (
+        select l.id
+        from public.shop_product_listings l
+        where l.shop_id = v_shop.id
+          and l.product_id = v_ci.product_id
+          and l.global_stock_id = v_ci.global_stock_id
+        limit 1
+      )
+    );
+
+    if v_listing_id is not null then
+      update public.shop_product_listings
+      set display_quantity_override = greatest(0, display_quantity_override - v_ci.quantity)
+      where id = v_listing_id
+        and display_quantity_override is not null;
+    elsif v_ci.global_stock_id is not null then
       update public.shop_product_listings
       set display_quantity_override = greatest(0, display_quantity_override - v_ci.quantity)
       where shop_id = v_shop.id
         and product_id = v_ci.product_id
-        and global_stock_allocation_id = v_ci.global_stock_allocation_id
+        and global_stock_id = v_ci.global_stock_id
         and display_quantity_override is not null;
     end if;
 
-    if v_ci.global_stock_id is not null then
+    if v_grade_tag_id is not null then
+      v_held_stock_id := public.hold_shop_grade_stock_for_order(
+        v_parent_tenant_id,
+        v_cart.tenant_id,
+        v_ci.product_id,
+        v_grade_tag_id,
+        v_ci.quantity,
+        v_order_id,
+        'Dropship order hold'
+      );
+    elsif v_ci.global_stock_id is not null then
       select * into v_stock
       from public.global_stocks
       where id = v_ci.global_stock_id
@@ -4910,44 +5127,78 @@ begin
       where gs.shipment_item_id = v_stock.shipment_item_id
         and gs.parent_tenant_id = v_parent_tenant_id
         and gs.availability = 'held'::public.stock_availability
-        and gs.location_id = v_stock.location_id
+        and gs.location_id is not distinct from v_stock.location_id
         and coalesce(gs.grade_tag_id, public.default_stock_grade_tag_id())
           = coalesce(v_stock.grade_tag_id, public.default_stock_grade_tag_id())
       order by gs.id desc
       limit 1;
-
-      if v_held_stock_id is not null then
-        update public.shop_order_items
-        set global_stock_id = v_held_stock_id
-        where order_id = v_order_id
-          and product_id is not distinct from v_ci.product_id
-          and global_stock_id = v_ci.global_stock_id;
-      end if;
+    else
+      raise exception 'cart line missing grade for %', v_ci.name;
     end if;
 
-    if v_ci.product_id is not null and v_ci.global_stock_allocation_id is not null then
-      v_rem_sellable_qty := 0;
-      if v_ci.global_stock_id is not null then
-        select coalesce(sum(gs.quantity), 0) into v_rem_sellable_qty
-        from public.global_stocks gs
-        where gs.shipment_item_id = (
-          select shipment_item_id from public.global_stocks where id = v_ci.global_stock_id
+    select soi.id into v_order_item_id
+    from public.shop_order_items soi
+    where soi.order_id = v_order_id
+      and soi.product_id = v_ci.product_id
+      and soi.listing_id is not distinct from v_ci.listing_id
+    order by soi.id asc
+    limit 1;
+
+    if v_order_item_id is null then
+      select soi.id into v_order_item_id
+      from public.shop_order_items soi
+      where soi.order_id = v_order_id
+        and soi.product_id = v_ci.product_id
+      order by soi.id asc
+      limit 1;
+    end if;
+
+    if v_order_item_id is not null then
+      update public.shop_order_items
+      set
+        listing_id = coalesce(listing_id, v_listing_id),
+        grade_tag_id = coalesce(grade_tag_id, v_grade_tag_id),
+        global_stock_id = v_held_stock_id,
+        cost_price_amount = coalesce(
+          cost_price_amount,
+          public.resolve_shop_order_item_landed_cost(v_held_stock_id, null, unit_list_price_amount)
         )
-          and gs.availability = 'sellable'::public.stock_availability;
+      where id = v_order_item_id;
+    end if;
+
+    if v_listing_id is not null then
+      v_available_after := public.shop_product_grade_available_units(
+        v_cart.tenant_id, v_ci.product_id, v_grade_tag_id
+      );
+      if coalesce((
+        select display_quantity_override
+        from public.shop_product_listings
+        where id = v_listing_id
+      ), v_available_after, 0) <= 0 then
+        update public.shop_product_listings
+        set is_active = false
+        where id = v_listing_id;
       end if;
+    elsif v_ci.global_stock_id is not null then
+      select coalesce(sum(gs.quantity), 0) into v_available_after
+      from public.global_stocks gs
+      where gs.shipment_item_id = (
+        select shipment_item_id from public.global_stocks where id = v_ci.global_stock_id
+      )
+        and gs.availability = 'sellable'::public.stock_availability;
 
-      select display_quantity_override into v_rem_override_qty
-      from public.shop_product_listings
-      where shop_id = v_shop.id
-        and product_id = v_ci.product_id
-        and global_stock_allocation_id = v_ci.global_stock_allocation_id;
-
-      if coalesce(v_rem_override_qty, v_rem_sellable_qty, 0) <= 0 then
+      if coalesce((
+        select display_quantity_override
+        from public.shop_product_listings
+        where shop_id = v_shop.id
+          and product_id = v_ci.product_id
+          and global_stock_id = v_ci.global_stock_id
+      ), v_available_after, 0) <= 0 then
         update public.shop_product_listings
         set is_active = false
         where shop_id = v_shop.id
           and product_id = v_ci.product_id
-          and global_stock_allocation_id = v_ci.global_stock_allocation_id;
+          and global_stock_id = v_ci.global_stock_id;
       end if;
     end if;
   end loop;
@@ -9330,52 +9581,77 @@ CREATE OR REPLACE FUNCTION "public"."user_can_manage_shop_tenant"("p_tenant_id" 
 ALTER FUNCTION "public"."user_can_manage_shop_tenant"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."restock_dropship_order_on_delete"() RETURNS "trigger"
+CREATE OR REPLACE FUNCTION "public"."release_dropship_order_stock"("p_order_id" bigint, "p_restore_display" boolean DEFAULT true) RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
 declare
+  v_order public.shop_orders%rowtype;
   v_item record;
-  v_is_dropship boolean := false;
-  v_new_override_qty integer;
-  v_new_sellable_qty integer;
   v_skip_stock_release boolean := false;
   v_invoice_status public.global_invoice_status;
   v_parent_tenant_id bigint;
   v_stock public.global_stocks%rowtype;
+  v_new_override_qty integer;
+  v_new_sellable_qty integer;
+  v_grade_tag_id bigint;
 begin
-  if OLD.shop_type_snapshot = 'dropship' then
-    v_is_dropship := true;
-  else
-    select (shop_type = 'dropship') into v_is_dropship
-    from public.shops
-    where id = OLD.shop_id;
+  select * into v_order
+  from public.shop_orders
+  where id = p_order_id;
+
+  if v_order.id is null then
+    return;
   end if;
 
-  if not coalesce(v_is_dropship, false) then
-    return OLD;
+  if coalesce(v_order.shop_type_snapshot, (
+    select shop_type from public.shops where id = v_order.shop_id
+  )) <> 'dropship' then
+    return;
   end if;
 
-  if OLD.global_invoice_id is not null then
+  if v_order.global_invoice_id is not null then
     select invoice_status into v_invoice_status
     from public.global_invoices
-    where id = OLD.global_invoice_id;
+    where id = v_order.global_invoice_id;
 
     if v_invoice_status = 'issued'::public.global_invoice_status then
       v_skip_stock_release := true;
     end if;
   end if;
 
-  v_parent_tenant_id := public.resolve_parent_tenant_id(OLD.tenant_id);
+  v_parent_tenant_id := public.resolve_parent_tenant_id(v_order.tenant_id);
 
-  for v_item in select * from public.shop_order_items where order_id = OLD.id loop
-    if v_item.product_id is not null and v_item.global_stock_allocation_id is not null then
-      update public.shop_product_listings
-      set display_quantity_override = display_quantity_override + v_item.quantity
-      where shop_id = OLD.shop_id
-        and product_id = v_item.product_id
-        and global_stock_allocation_id = v_item.global_stock_allocation_id
-        and display_quantity_override is not null;
+  for v_item in
+    select * from public.shop_order_items where order_id = p_order_id
+  loop
+    v_grade_tag_id := coalesce(
+      v_item.grade_tag_id,
+      (select gs.grade_tag_id from public.global_stocks gs where gs.id = v_item.global_stock_id),
+      public.default_stock_grade_tag_id()
+    );
+
+    if p_restore_display then
+      if v_item.listing_id is not null then
+        update public.shop_product_listings
+        set display_quantity_override = display_quantity_override + v_item.quantity
+        where id = v_item.listing_id
+          and display_quantity_override is not null;
+      elsif v_item.product_id is not null and v_item.global_stock_id is not null then
+        update public.shop_product_listings
+        set display_quantity_override = display_quantity_override + v_item.quantity
+        where shop_id = v_order.shop_id
+          and product_id = v_item.product_id
+          and global_stock_id = v_item.global_stock_id
+          and display_quantity_override is not null;
+      elsif v_item.product_id is not null and v_item.global_stock_allocation_id is not null then
+        update public.shop_product_listings
+        set display_quantity_override = display_quantity_override + v_item.quantity
+        where shop_id = v_order.shop_id
+          and product_id = v_item.product_id
+          and global_stock_allocation_id = v_item.global_stock_allocation_id
+          and display_quantity_override is not null;
+      end if;
     end if;
 
     if not v_skip_stock_release and v_item.global_stock_id is not null then
@@ -9395,39 +9671,98 @@ begin
           p_to_availability => 'sellable'::public.stock_availability,
           p_to_grade_tag_id => v_stock.grade_tag_id,
           p_movement_type => 'availability_transfer'::public.stock_movement_type,
-          p_notes => 'Dropship order delete release',
+          p_notes => 'Dropship order release',
           p_reference_type => 'shop_order',
-          p_reference_id => OLD.id::text
+          p_reference_id => p_order_id::text
         );
       end if;
     end if;
 
-    if v_item.product_id is not null and v_item.global_stock_allocation_id is not null then
-      v_new_sellable_qty := 0;
-      if v_item.global_stock_id is not null then
-        select coalesce(sum(gs.quantity), 0) into v_new_sellable_qty
-        from public.global_stocks gs
-        where gs.shipment_item_id = (
-          select shipment_item_id from public.global_stocks where id = v_item.global_stock_id
-        )
-          and gs.availability = 'sellable'::public.stock_availability;
-      end if;
+    if v_item.listing_id is not null then
+      v_new_sellable_qty := public.shop_product_grade_available_units(
+        v_order.tenant_id, v_item.product_id, v_grade_tag_id
+      );
 
       select display_quantity_override into v_new_override_qty
       from public.shop_product_listings
-      where shop_id = OLD.shop_id
+      where id = v_item.listing_id;
+
+      if coalesce(v_new_override_qty, v_new_sellable_qty, 0) > 0 then
+        update public.shop_product_listings
+        set is_active = true
+        where id = v_item.listing_id;
+      end if;
+    elsif v_item.product_id is not null and v_item.global_stock_id is not null then
+      v_new_sellable_qty := 0;
+      select coalesce(sum(gs.quantity), 0) into v_new_sellable_qty
+      from public.global_stocks gs
+      where gs.shipment_item_id = (
+        select shipment_item_id from public.global_stocks where id = v_item.global_stock_id
+      )
+        and gs.availability = 'sellable'::public.stock_availability;
+
+      select display_quantity_override into v_new_override_qty
+      from public.shop_product_listings
+      where shop_id = v_order.shop_id
+        and product_id = v_item.product_id
+        and global_stock_id = v_item.global_stock_id;
+
+      if coalesce(v_new_override_qty, v_new_sellable_qty, 0) > 0 then
+        update public.shop_product_listings
+        set is_active = true
+        where shop_id = v_order.shop_id
+          and product_id = v_item.product_id
+          and global_stock_id = v_item.global_stock_id;
+      end if;
+    elsif v_item.product_id is not null and v_item.global_stock_allocation_id is not null then
+      select gsa.quantity into v_new_sellable_qty
+      from public.global_stock_allocations gsa
+      where gsa.id = v_item.global_stock_allocation_id;
+
+      select display_quantity_override into v_new_override_qty
+      from public.shop_product_listings
+      where shop_id = v_order.shop_id
         and product_id = v_item.product_id
         and global_stock_allocation_id = v_item.global_stock_allocation_id;
 
       if coalesce(v_new_override_qty, v_new_sellable_qty, 0) > 0 then
         update public.shop_product_listings
         set is_active = true
-        where shop_id = OLD.shop_id
+        where shop_id = v_order.shop_id
           and product_id = v_item.product_id
           and global_stock_allocation_id = v_item.global_stock_allocation_id;
       end if;
     end if;
   end loop;
+end;
+$$;
+
+ALTER FUNCTION "public"."release_dropship_order_stock"("p_order_id" bigint, "p_restore_display" boolean) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."restock_dropship_order_on_delete"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_is_dropship boolean := false;
+begin
+  if OLD.shop_type_snapshot = 'dropship' then
+    v_is_dropship := true;
+  else
+    select (shop_type = 'dropship') into v_is_dropship
+    from public.shops
+    where id = OLD.shop_id;
+  end if;
+
+  if not coalesce(v_is_dropship, false) then
+    return OLD;
+  end if;
+
+  perform public.release_dropship_order_stock(
+    OLD.id,
+    OLD.status is distinct from 'cancelled'
+  );
 
   return OLD;
 end;

@@ -1877,7 +1877,7 @@ declare
   v_mov_no text;
   v_is_customer_return boolean;
 begin
-  if not public.can_act_on_parent_tenant_stock(p_tenant_id) then
+  if not public.can_act_on_stock_movement_context(p_tenant_id, p_reference_type, p_reference_id) then
     raise exception 'not authorized';
   end if;
 
@@ -6467,7 +6467,11 @@ begin
     raise exception 'stock movement already posted';
   end if;
 
-  if not public.can_act_on_parent_tenant_stock(v_mov.tenant_id) then
+  if not public.can_act_on_stock_movement_context(
+    v_mov.tenant_id,
+    v_mov.reference_type,
+    v_mov.reference_id
+  ) then
     raise exception 'not authorized';
   end if;
 

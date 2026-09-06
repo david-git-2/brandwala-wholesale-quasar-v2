@@ -13408,6 +13408,10 @@ export type Database = {
             }
             Returns: number
           }
+      release_dropship_order_stock: {
+        Args: { p_order_id: number; p_restore_display?: boolean }
+        Returns: undefined
+      }
       release_thrift_stock_hold: {
         Args: { p_stock_id: number; p_tenant_id: number }
         Returns: Json
