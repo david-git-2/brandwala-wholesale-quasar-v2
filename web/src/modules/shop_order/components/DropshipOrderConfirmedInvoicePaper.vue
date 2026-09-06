@@ -23,6 +23,7 @@ const props = withDefaults(
     editableSummary?: boolean;
     readonly?: boolean;
     showDeliveredQuantities?: boolean;
+    showStockPickActions?: boolean;
     showFulfillmentBlocks?: boolean;
     merchantOptions?: { label: string; value: string }[];
     courierOptions?: { label: string; value: string }[];
@@ -34,6 +35,7 @@ const props = withDefaults(
     editableSummary: false,
     readonly: false,
     showDeliveredQuantities: false,
+    showStockPickActions: false,
     showFulfillmentBlocks: false,
     merchantOptions: () => [],
     courierOptions: () => [],
@@ -54,6 +56,10 @@ const deliveredQuantities = defineModel<DropshipInvoiceDeliveredQuantitiesState>
 const emit = defineEmits<{
   (e: 'merchant-select', merchantId: string | null): void;
   (e: 'courier-change'): void;
+  (e: 'pick-stock', itemId: number): void;
+  (e: 'mark-unavailable', itemId: number): void;
+  (e: 'clear-unavailable', itemId: number): void;
+  (e: 'remove-pick', pickId: number): void;
 }>();
 
 type ItemPricing = {
@@ -80,7 +86,11 @@ const itemRows = computed(() =>
   props.orderItems.map((item) => {
     const pricing = resolveItemPricing(item);
     const orderedQuantity = item.quantity;
-    const deliveredQuantity = deliveredQuantities.value?.[item.id] ?? 0;
+    const deliveredQuantity = props.showStockPickActions
+      ? item.is_fulfillment_unavailable
+        ? 0
+        : (item.confirmed_quantity ?? 0)
+      : (deliveredQuantities.value?.[item.id] ?? item.confirmed_quantity ?? 0);
     return {
       id: item.id,
       productId: item.product_id,
@@ -91,6 +101,10 @@ const itemRows = computed(() =>
       stockId: item.global_stock_id,
       orderedQuantity,
       deliveredQuantity,
+      isUnavailable: item.is_fulfillment_unavailable === true,
+      unavailableReason: item.unavailable_reason,
+      fulfillmentResolved: item.fulfillment_resolved === true,
+      stockPicks: item.stock_picks ?? [],
       cost: pricing.cost,
       sell: pricing.sell,
       resell: pricing.resell,
@@ -124,7 +138,11 @@ const customerRecipientTotal = computed(() =>
 );
 
 const editableDeliveredQuantities = computed(
-  () => props.showFulfillmentBlocks && !!deliveredQuantities.value && !props.readonly,
+  () =>
+    props.showFulfillmentBlocks &&
+    !!deliveredQuantities.value &&
+    !props.readonly &&
+    !props.showStockPickActions,
 );
 
 const merchantProfileLabel = computed(() => {
@@ -429,11 +447,74 @@ const copyDetail = (text: string | null | undefined, label: string) => {
                 </div>
               </td>
               <td class="col-item">
-                <div class="dropship-invoice-paper__item-name">{{ row.name }}</div>
+                <div class="dropship-invoice-paper__item-name row items-center q-gutter-x-xs">
+                  <span>{{ row.name }}</span>
+                  <q-badge v-if="row.isUnavailable" color="negative" label="Unavailable" />
+                  <q-badge
+                    v-else-if="props.showStockPickActions && row.fulfillmentResolved && row.deliveredQuantity === row.orderedQuantity"
+                    color="positive"
+                    label="Picked"
+                  />
+                  <q-badge
+                    v-else-if="props.showStockPickActions && row.fulfillmentResolved"
+                    color="orange-8"
+                    label="Resolved"
+                  />
+                </div>
                 <div v-if="row.code || row.barcode || row.stockId" class="dropship-invoice-paper__item-meta dropship-invoice-paper__internal-col">
                   <span v-if="row.code">Code {{ row.code }}</span>
                   <span v-if="row.barcode"> · Barcode {{ row.barcode }}</span>
                   <span v-if="row.stockId != null"> · Stock {{ row.stockId }}</span>
+                </div>
+                <div v-if="row.isUnavailable && row.unavailableReason" class="text-caption text-grey-7 q-mt-xs">
+                  {{ row.unavailableReason }}
+                </div>
+                <ul v-if="row.stockPicks.length" class="dropship-invoice-paper__pick-list q-mt-xs q-pl-md">
+                  <li v-for="pick in row.stockPicks" :key="pick.id" class="text-caption text-grey-8 row items-center q-gutter-x-sm">
+                    <span>{{ pick.shipment_name || 'Shipment' }} · stock {{ pick.global_stock_id }} · qty {{ pick.quantity }}</span>
+                    <q-btn
+                      v-if="showStockPickActions && !readonly"
+                      flat
+                      dense
+                      round
+                      size="xs"
+                      icon="ph ph-x"
+                      color="grey-7"
+                      aria-label="Remove pick"
+                      @click="emit('remove-pick', pick.id)"
+                    />
+                  </li>
+                </ul>
+                <div v-if="showStockPickActions && !readonly && !row.isUnavailable" class="row q-gutter-sm q-mt-sm">
+                  <q-btn
+                    outline
+                    dense
+                    no-caps
+                    color="primary"
+                    icon="ph ph-package"
+                    label="Pick stock"
+                    @click="emit('pick-stock', row.id)"
+                  />
+                  <q-btn
+                    v-if="row.stockPicks.length === 0"
+                    outline
+                    dense
+                    no-caps
+                    color="negative"
+                    icon="ph ph-prohibit"
+                    label="Mark unavailable"
+                    @click="emit('mark-unavailable', row.id)"
+                  />
+                </div>
+                <div v-if="showStockPickActions && !readonly && row.isUnavailable" class="q-mt-sm">
+                  <q-btn
+                    flat
+                    dense
+                    no-caps
+                    color="primary"
+                    label="Undo unavailable"
+                    @click="emit('clear-unavailable', row.id)"
+                  />
                 </div>
               </td>
               <td class="col-qty dropship-invoice-paper__internal-col">{{ row.orderedQuantity }}</td>

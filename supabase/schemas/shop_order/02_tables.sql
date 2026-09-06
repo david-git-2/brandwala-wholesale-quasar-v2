@@ -297,6 +297,13 @@ CREATE TABLE IF NOT EXISTS "public"."shop_order_items" (
     "staff_offer_at" timestamp with time zone,
     "customer_counter_at" timestamp with time zone,
     "final_offer_at" timestamp with time zone,
+    "listing_id" bigint,
+    "grade_tag_id" bigint,
+    "is_fulfillment_unavailable" boolean DEFAULT false NOT NULL,
+    "unavailable_reason" "text",
+    "unavailable_at" timestamp with time zone,
+    "unavailable_by_email" "text",
+    "shortfall_quantity" integer DEFAULT 0 NOT NULL,
     CONSTRAINT "shop_order_items_qty_non_negative" CHECK (("quantity" >= 0))
 );
 
@@ -306,6 +313,36 @@ ALTER TABLE "public"."shop_order_items" OWNER TO "postgres";
 
 ALTER TABLE "public"."shop_order_items" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDENTITY (
     SEQUENCE NAME "public"."shop_order_items_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+CREATE TABLE IF NOT EXISTS "public"."shop_order_item_stock_picks" (
+    "id" bigint NOT NULL,
+    "tenant_id" bigint NOT NULL,
+    "order_id" bigint NOT NULL,
+    "order_item_id" bigint NOT NULL,
+    "global_stock_id" bigint NOT NULL,
+    "shipment_item_id" bigint NOT NULL,
+    "shipment_id" bigint NOT NULL,
+    "quantity" integer NOT NULL,
+    "held_stock_id" bigint,
+    "created_by_email" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "shop_order_item_stock_picks_quantity_positive" CHECK (("quantity" > 0))
+);
+
+
+ALTER TABLE "public"."shop_order_item_stock_picks" OWNER TO "postgres";
+
+
+ALTER TABLE "public"."shop_order_item_stock_picks" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME "public"."shop_order_item_stock_picks_id_seq"
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -530,6 +567,14 @@ ALTER TABLE ONLY "public"."shop_order_items"
     ADD CONSTRAINT "shop_order_items_pkey" PRIMARY KEY ("id");
 
 
+ALTER TABLE ONLY "public"."shop_order_item_stock_picks"
+    ADD CONSTRAINT "shop_order_item_stock_picks_pkey" PRIMARY KEY ("id");
+
+
+ALTER TABLE ONLY "public"."shop_order_item_stock_picks"
+    ADD CONSTRAINT "shop_order_item_stock_picks_order_item_id_global_stock_id_key" UNIQUE ("order_item_id", "global_stock_id");
+
+
 ALTER TABLE ONLY "public"."shop_orders"
     ADD CONSTRAINT "shop_orders_pkey" PRIMARY KEY ("id");
 
@@ -720,6 +765,46 @@ ALTER TABLE ONLY "public"."shop_order_items"
 
 ALTER TABLE ONLY "public"."shop_order_items"
     ADD CONSTRAINT "shop_order_items_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE CASCADE;
+
+
+ALTER TABLE ONLY "public"."shop_order_item_stock_picks"
+    ADD CONSTRAINT "shop_order_item_stock_picks_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
+
+
+ALTER TABLE ONLY "public"."shop_order_item_stock_picks"
+    ADD CONSTRAINT "shop_order_item_stock_picks_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "public"."shop_orders"("id") ON DELETE CASCADE;
+
+
+ALTER TABLE ONLY "public"."shop_order_item_stock_picks"
+    ADD CONSTRAINT "shop_order_item_stock_picks_order_item_id_fkey" FOREIGN KEY ("order_item_id") REFERENCES "public"."shop_order_items"("id") ON DELETE CASCADE;
+
+
+ALTER TABLE ONLY "public"."shop_order_item_stock_picks"
+    ADD CONSTRAINT "shop_order_item_stock_picks_global_stock_id_fkey" FOREIGN KEY ("global_stock_id") REFERENCES "public"."global_stocks"("id");
+
+
+ALTER TABLE ONLY "public"."shop_order_item_stock_picks"
+    ADD CONSTRAINT "shop_order_item_stock_picks_shipment_item_id_fkey" FOREIGN KEY ("shipment_item_id") REFERENCES "public"."global_shipment_items"("id");
+
+
+ALTER TABLE ONLY "public"."shop_order_item_stock_picks"
+    ADD CONSTRAINT "shop_order_item_stock_picks_shipment_id_fkey" FOREIGN KEY ("shipment_id") REFERENCES "public"."global_shipments"("id");
+
+
+ALTER TABLE ONLY "public"."shop_order_item_stock_picks"
+    ADD CONSTRAINT "shop_order_item_stock_picks_held_stock_id_fkey" FOREIGN KEY ("held_stock_id") REFERENCES "public"."global_stocks"("id");
+
+
+CREATE INDEX "idx_shop_order_item_stock_picks_order_id" ON "public"."shop_order_item_stock_picks" USING "btree" ("order_id");
+
+
+CREATE INDEX "idx_shop_order_item_stock_picks_order_item_id" ON "public"."shop_order_item_stock_picks" USING "btree" ("order_item_id");
+
+
+CREATE INDEX "idx_shop_order_item_stock_picks_tenant_id" ON "public"."shop_order_item_stock_picks" USING "btree" ("tenant_id");
+
+
+CREATE INDEX "idx_shop_order_item_stock_picks_global_stock_id" ON "public"."shop_order_item_stock_picks" USING "btree" ("global_stock_id");
 
 
 ALTER TABLE ONLY "public"."shop_order_items"

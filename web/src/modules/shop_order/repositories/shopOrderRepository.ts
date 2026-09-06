@@ -567,7 +567,7 @@ const saveDropshipProcessingDesk = async (input: SaveDropshipProcessingDeskInput
     summary,
     pickup,
     courier,
-    deliveredQuantities,
+    deliveredQuantities: _deliveredQuantities,
     deliveryZone,
   } = input;
 
@@ -623,21 +623,96 @@ const saveDropshipProcessingDesk = async (input: SaveDropshipProcessingDeskInput
     p_shipping_thana: order.shipping_thana,
   });
   if (consignmentError) throw consignmentError;
+};
 
-  const itemUpdates = Object.entries(deliveredQuantities).map(([itemId, quantity]) =>
-    supabase
-      .from('shop_order_items')
-      .update({
-        confirmed_quantity: quantity,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', Number(itemId))
-      .eq('order_id', orderId),
-  );
+export type OrderItemPickStockRow = {
+  global_stock_id: number;
+  shipment_item_id: number;
+  shipment_id: number;
+  shipment_name: string;
+  item_name: string;
+  product_id: number;
+  product_code: string | null;
+  barcode: string | null;
+  available_atp: number;
+  unit_cost_amount: number;
+  already_picked: number;
+};
 
-  const itemResults = await Promise.all(itemUpdates);
-  const itemError = itemResults.find((result) => result.error)?.error;
-  if (itemError) throw itemError;
+const listStockForOrderItemPick = async (
+  orderItemId: number,
+  opts: { search?: string | null; limit?: number; offset?: number } = {},
+): Promise<{ data: OrderItemPickStockRow[]; meta: Record<string, unknown> }> => {
+  const { data, error } = await supabase.rpc('list_stock_for_order_item_pick', {
+    p_order_item_id: orderItemId,
+    p_search: opts.search?.trim() || null,
+    p_limit: opts.limit ?? 50,
+    p_offset: opts.offset ?? 0,
+  });
+  if (error) throw error;
+  const payload = (data ?? {}) as { data?: OrderItemPickStockRow[]; meta?: Record<string, unknown> };
+  return { data: payload.data ?? [], meta: payload.meta ?? {} };
+};
+
+const addShopOrderItemStockPick = async (
+  orderItemId: number,
+  globalStockId: number,
+  quantity: number,
+) => {
+  const { data, error } = await supabase.rpc('add_shop_order_item_stock_pick', {
+    p_order_item_id: orderItemId,
+    p_global_stock_id: globalStockId,
+    p_quantity: quantity,
+  });
+  if (error) throw error;
+  return data as { success?: boolean; confirmed_quantity?: number; cod_collect_amount?: number };
+};
+
+const removeShopOrderItemStockPick = async (pickId: number) => {
+  const { data, error } = await supabase.rpc('remove_shop_order_item_stock_pick', {
+    p_pick_id: pickId,
+  });
+  if (error) throw error;
+  return data as { success?: boolean };
+};
+
+const markShopOrderItemUnavailable = async (
+  orderItemId: number,
+  reason: string | null,
+  addToDemandBucket = true,
+) => {
+  const { data, error } = await supabase.rpc('mark_shop_order_item_unavailable', {
+    p_order_item_id: orderItemId,
+    p_reason: reason,
+    p_add_to_demand_bucket: addToDemandBucket,
+  });
+  if (error) throw error;
+  return data as { success?: boolean };
+};
+
+const clearShopOrderItemUnavailable = async (orderItemId: number) => {
+  const { data, error } = await supabase.rpc('clear_shop_order_item_unavailable', {
+    p_order_item_id: orderItemId,
+  });
+  if (error) throw error;
+  return data as { success?: boolean };
+};
+
+const cancelShopOrderDropship = async (orderId: number, reason: string | null) => {
+  const { data, error } = await supabase.rpc('cancel_shop_order_dropship', {
+    p_order_id: orderId,
+    p_reason: reason,
+  });
+  if (error) throw error;
+  const payload = data as {
+    success?: boolean;
+    error?: string;
+    restock_summary?: { pick_rows_released?: number; reason?: string | null };
+  };
+  if (payload.success === false) {
+    throw new Error(payload.error || 'Failed to cancel order');
+  }
+  return payload;
 };
 
 const getCustomerShopOrder = async (
@@ -983,6 +1058,12 @@ export const shopOrderRepository = {
   recordDropshipCourierBankTransfer,
   transferDropshipResellerProfit,
   saveDropshipProcessingDesk,
+  listStockForOrderItemPick,
+  addShopOrderItemStockPick,
+  removeShopOrderItemStockPick,
+  markShopOrderItemUnavailable,
+  clearShopOrderItemUnavailable,
+  cancelShopOrderDropship,
   getCustomerShopOrder,
   placeShopOrderForProcurement,
   fulfillShopOrderToInvoice,

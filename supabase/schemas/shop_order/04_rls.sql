@@ -105,6 +105,12 @@ ALTER TABLE "public"."shop_customer_group_access" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."shop_order_items" ENABLE ROW LEVEL SECURITY;
 
 
+ALTER TABLE "public"."shop_order_item_stock_picks" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "shop_order_item_stock_picks_staff_all" ON "public"."shop_order_item_stock_picks" USING ("public"."is_tenant_staff"("tenant_id")) WITH CHECK ("public"."is_tenant_staff"("tenant_id"));
+
+
 CREATE POLICY "shop_order_items_customer_owner" ON "public"."shop_order_items" USING ((EXISTS ( SELECT 1
    FROM "public"."shop_orders" "o"
   WHERE (("o"."id" = "shop_order_items"."order_id") AND "public"."is_cart_owner"("o"."customer_group_id", "o"."tenant_id"))))) WITH CHECK ((EXISTS ( SELECT 1
@@ -380,6 +386,17 @@ GRANT ALL ON FUNCTION "public"."list_dropship_shop_orders_for_staff"("p_tenant_i
 
 GRANT ALL ON FUNCTION "public"."list_listable_stock_for_shop"("p_shop_id" bigint, "p_search" "text", "p_limit" integer, "p_offset" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."list_allocated_stock_for_shop"("p_shop_id" bigint, "p_search" "text", "p_limit" integer, "p_offset" integer) TO "authenticated";
+
+
+GRANT ALL ON FUNCTION "public"."list_stock_for_order_item_pick"("p_order_item_id" bigint, "p_search" "text", "p_limit" integer, "p_offset" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."add_shop_order_item_stock_pick"("p_order_item_id" bigint, "p_global_stock_id" bigint, "p_quantity" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."remove_shop_order_item_stock_pick"("p_pick_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."mark_shop_order_item_unavailable"("p_order_item_id" bigint, "p_reason" "text", "p_add_to_demand_bucket" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."clear_shop_order_item_unavailable"("p_order_item_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."cancel_shop_order_dropship"("p_order_id" bigint, "p_reason" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."recompute_dropship_cod_collect_amount"("p_order_id" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."mark_shop_order_item_shortfall"("p_order_item_id" bigint, "p_shortfall_qty" integer, "p_reason" "text", "p_add_to_demand_bucket" boolean) TO "authenticated";
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."shop_order_item_stock_picks" TO "authenticated";
 
 
 GRANT ALL ON FUNCTION "public"."list_my_dropship_wallet_ledger"("p_limit" integer, "p_offset" integer) TO "authenticated";

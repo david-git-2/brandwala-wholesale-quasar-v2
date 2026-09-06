@@ -14,6 +14,7 @@ import type {
 } from '../utils/dropshipInvoiceFulfillment';
 import { createDeliveredQuantitiesFromItems } from '../utils/dropshipInvoiceFulfillment';
 import { DROPSHIP_ORDER_DETAIL_CUSTOMER_INVOICE_PREVIEW_ROUTE } from '../composables/dropshipOrderDetailRoutes';
+import DropshipOrderCancelDialog from '../components/DropshipOrderCancelDialog.vue';
 import { useDropshipOrderDetailV2Query } from '../composables/useDropshipOrderDetailV2Query';
 import { useDropshipCourierOptions } from '../composables/useDropshipCourierOptions';
 import { useDropshipOrderStatusRedirect } from '../composables/useDropshipOrderStatusRedirect';
@@ -33,6 +34,7 @@ const router = useRouter();
 const authStore = useAuthStore();
 const queryClient = useQueryClient();
 const advancingStatus = ref(false);
+const cancelDialogOpen = ref(false);
 
 const tenantSlug = computed(() =>
   typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : null,
@@ -58,6 +60,9 @@ const { couriers, courierOptions } = useDropshipCourierOptions({
 
 const canMarkShipped = computed(
   () => orderDetailQuery.data.value?.permissions.can_mark_shipped ?? false,
+);
+const canCancelOrder = computed(
+  () => orderDetailQuery.data.value?.permissions.can_cancel_order ?? false,
 );
 
 const orderItems = computed(() => orderDetailQuery.data.value?.items ?? []);
@@ -191,6 +196,10 @@ const advanceToShipped = async () => {
     advancingStatus.value = false;
   }
 };
+
+const onOrderCancelled = () => {
+  void router.push({ name: 'app-shop-dropship-orders-page' });
+};
 </script>
 
 <template>
@@ -219,6 +228,15 @@ const advanceToShipped = async () => {
 
       <template v-else-if="order">
         <div class="dropship-order-detail-v2__ready-actions no-print">
+          <q-btn
+            v-if="canCancelOrder"
+            outline
+            color="negative"
+            no-caps
+            icon="ph ph-x-circle"
+            label="Cancel order"
+            @click="cancelDialogOpen = true"
+          />
           <q-btn
             v-if="canMarkShipped"
             color="primary"
@@ -262,6 +280,15 @@ const advanceToShipped = async () => {
         />
       </template>
     </div>
+
+    <DropshipOrderCancelDialog
+      v-if="order"
+      v-model="cancelDialogOpen"
+      :order-id="order.id"
+      :order-no="order.order_no"
+      :has-invoice="!!order.global_invoice_id"
+      @cancelled="onOrderCancelled"
+    />
   </q-page>
 </template>
 

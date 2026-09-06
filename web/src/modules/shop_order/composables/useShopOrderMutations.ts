@@ -184,3 +184,27 @@ export function useDeleteShopOrderMutation() {
   });
 }
 
+export function useCancelDropshipOrderMutation() {
+  const queryClient = useQueryClient();
+  const authStore = useAuthStore();
+
+  return useMutation({
+    mutationFn: ({ orderId, reason }: { orderId: number; reason?: string | null }) =>
+      shopOrderRepository.cancelShopOrderDropship(orderId, reason ?? null),
+    onSuccess: (_, variables) => {
+      showSuccessNotification('Order cancelled.');
+      void queryClient.invalidateQueries({ queryKey: shopOrderQueryKeys.orderDetailRoot() });
+      void queryClient.invalidateQueries({
+        queryKey: shopOrderQueryKeys.dropshipDetailV2(authStore.tenantId ?? 0, variables.orderId),
+      });
+      void queryClient.invalidateQueries({ queryKey: ['shopOrder', 'staffOrders'] });
+    },
+    onError: (err: unknown) => {
+      handleApiFailure(
+        { success: false },
+        err instanceof Error ? err.message : 'Failed to cancel order',
+      );
+    },
+  });
+}
+

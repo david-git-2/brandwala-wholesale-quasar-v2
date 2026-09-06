@@ -16,10 +16,17 @@ export type DropshipInvoiceCourierState = {
 export type DropshipInvoiceDeliveredQuantitiesState = Record<number, number>;
 
 export function createDeliveredQuantitiesFromItems(
-  items: Array<{ id: number; quantity: number }>,
-  defaultToOrdered = true,
+  items: Array<{
+    id: number;
+    quantity: number;
+    confirmed_quantity?: number | null;
+    is_fulfillment_unavailable?: boolean;
+  }>,
 ): DropshipInvoiceDeliveredQuantitiesState {
   return Object.fromEntries(
-    items.map((item) => [item.id, defaultToOrdered ? item.quantity : 0]),
+    items.map((item) => [
+      item.id,
+      item.is_fulfillment_unavailable ? 0 : (item.confirmed_quantity ?? 0),
+    ]),
   );
 }

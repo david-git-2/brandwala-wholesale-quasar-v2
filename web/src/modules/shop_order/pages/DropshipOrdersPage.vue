@@ -146,7 +146,21 @@
                   <q-btn flat round dense icon="ph ph-dots-three-vertical" color="grey-7">
                     <q-menu auto-close anchor="bottom right" self="top right">
                       <q-list style="min-width: 140px">
-                        <q-item clickable @click="deleteOrderFromList(c)">
+                        <q-item
+                          v-if="canCancelOrderFromList(c.status)"
+                          clickable
+                          @click="cancelOrderFromList(c)"
+                        >
+                          <q-item-section avatar min-width="24px">
+                            <q-icon name="ph ph-x-circle" color="negative" size="18px" />
+                          </q-item-section>
+                          <q-item-section class="text-negative">Cancel</q-item-section>
+                        </q-item>
+                        <q-item
+                          v-if="canHardDeleteFromList(c.status)"
+                          clickable
+                          @click="deleteOrderFromList(c)"
+                        >
                           <q-item-section avatar min-width="24px">
                             <q-icon name="ph ph-trash" color="negative" size="18px" />
                           </q-item-section>
@@ -176,6 +190,7 @@ import {
   requestConfirmation,
 } from 'src/utils/appFeedback';
 import { shopOrderService } from '../services/shopOrderService';
+import { shopOrderRepository } from '../repositories/shopOrderRepository';
 import type { ShopOrder } from '../types';
 import DropshipSettlementBadge from '../components/DropshipSettlementBadge.vue';
 
@@ -187,7 +202,13 @@ const searchQuery = ref('');
 const selectedStatus = ref<string>('all');
 
 const actionOrderId = ref<number | null>(null);
-const actionKind = ref<'delete' | null>(null);
+const actionKind = ref<'delete' | 'cancel' | null>(null);
+
+const PRE_DELETE_STATUSES = new Set(['submitted', 'draft', 'placed']);
+const CANCEL_STATUSES = new Set(['submitted', 'draft', 'placed', 'confirmed', 'processing', 'ready_for_pickup']);
+
+const canHardDeleteFromList = (status: string) => PRE_DELETE_STATUSES.has(status);
+const canCancelOrderFromList = (status: string) => CANCEL_STATUSES.has(status);
 
 const statusOptions = [
   { label: 'All Orders', val: 'all' },
@@ -246,6 +267,28 @@ const getCountForStatus = (val: string) => {
 
 const goToOrderDetail = (id: number) => {
   void router.push({ name: 'app-shop-dropship-order-detail-page', params: { id } });
+};
+
+const cancelOrderFromList = async (c: ShopOrder) => {
+  const confirmed = await requestConfirmation(
+    `Cancel order #${c.order_no}? Stock holds will be released where applicable.`,
+    'Cancel order',
+    'Cancel order',
+  );
+  if (!confirmed) return;
+
+  actionOrderId.value = c.id;
+  actionKind.value = 'cancel';
+  try {
+    await shopOrderRepository.cancelShopOrderDropship(c.id, null);
+    showSuccessNotification(`Order #${c.order_no} cancelled.`);
+    await loadOrders();
+  } catch (err: unknown) {
+    showErrorNotification(err instanceof Error ? err.message : 'Failed to cancel order.');
+  } finally {
+    actionOrderId.value = null;
+    actionKind.value = null;
+  }
 };
 
 const deleteOrderFromList = async (c: ShopOrder) => {

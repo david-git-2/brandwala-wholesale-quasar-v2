@@ -1,5 +1,5 @@
 import type { CourierServiceRow } from '../repositories/dropshipCourierRepository';
-import type { ShopOrder, ShopOrderItem } from '../types';
+import type { ShopOrder, ShopOrderItem, ShopOrderItemStockPick } from '../types';
 import type { DropshipInvoiceSummaryState } from './dropshipInvoiceSummary';
 import type {
   DropshipInvoiceCourierState,
@@ -12,6 +12,8 @@ export type DropshipOrderDetailV2Permissions = {
   can_mark_ready_for_pickup: boolean;
   can_mark_shipped: boolean;
   can_print_customer_invoice: boolean;
+  can_cancel_order: boolean;
+  cancel_blocked_reason: string | null;
 };
 
 export type DropshipOrderDetailV2Response = {
@@ -21,6 +23,9 @@ export type DropshipOrderDetailV2Response = {
   summary: DropshipInvoiceSummaryState;
   computed: {
     items_resell_total: number;
+    items_resell_delivered_total?: number;
+    total_delivered_qty?: number;
+    all_lines_resolved?: boolean;
     recipient_charge_total: number;
     recipient_grand_total: number;
     delivery_zone_label: string | null;
@@ -41,6 +46,23 @@ const num = (value: unknown, fallback = 0): number => {
 };
 
 const bool = (value: unknown): boolean => value === true;
+
+const mapStockPicks = (raw: unknown): ShopOrderItemStockPick[] => {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((pick) => {
+    const row = (pick ?? {}) as Record<string, unknown>;
+    return {
+      id: num(row.id),
+      global_stock_id: num(row.global_stock_id),
+      held_stock_id: (row.held_stock_id as number | null) ?? null,
+      shipment_id: num(row.shipment_id),
+      shipment_name: (row.shipment_name as string | null) ?? null,
+      shipment_item_id: num(row.shipment_item_id),
+      quantity: num(row.quantity),
+      unit_cost_amount: row.unit_cost_amount != null ? num(row.unit_cost_amount) : null,
+    };
+  });
+};
 
 export function mapDropshipOrderDetailV2Response(raw: unknown): DropshipOrderDetailV2Response {
   const payload = (raw ?? {}) as Record<string, unknown>;
@@ -109,16 +131,24 @@ export function mapDropshipOrderDetailV2Response(raw: unknown): DropshipOrderDet
     tracking_url: (orderRaw.tracking_url as string | null) ?? null,
   };
 
-  const items: ShopOrderItem[] = ((payload.items as ShopOrderItem[] | null) ?? []).map((item) => ({
-    ...item,
-    procurement_pulled: item.procurement_pulled ?? false,
-    returned_quantity: item.returned_quantity ?? 0,
-    confirmed_quantity: item.confirmed_quantity ?? null,
-    customer_offer_amount: item.customer_offer_amount ?? null,
-    customer_offer_currency_id: item.customer_offer_currency_id ?? null,
-    staff_offer_amount: item.staff_offer_amount ?? null,
-    staff_offer_currency_id: item.staff_offer_currency_id ?? null,
-  }));
+  const items: ShopOrderItem[] = ((payload.items as ShopOrderItem[] | null) ?? []).map((item) => {
+    const row = item as ShopOrderItem & Record<string, unknown>;
+    return {
+      ...item,
+      procurement_pulled: item.procurement_pulled ?? false,
+      returned_quantity: item.returned_quantity ?? 0,
+      confirmed_quantity: item.confirmed_quantity ?? null,
+      shortfall_quantity: row.shortfall_quantity != null ? num(row.shortfall_quantity) : null,
+      is_fulfillment_unavailable: bool(row.is_fulfillment_unavailable),
+      unavailable_reason: (row.unavailable_reason as string | null) ?? null,
+      fulfillment_resolved: bool(row.fulfillment_resolved),
+      stock_picks: mapStockPicks(row.stock_picks),
+      customer_offer_amount: item.customer_offer_amount ?? null,
+      customer_offer_currency_id: item.customer_offer_currency_id ?? null,
+      staff_offer_amount: item.staff_offer_amount ?? null,
+      staff_offer_currency_id: item.staff_offer_currency_id ?? null,
+    };
+  });
 
   const summary: DropshipInvoiceSummaryState = {
     delivery_charge_amount: num(summaryRaw.delivery_charge_amount),
@@ -140,6 +170,9 @@ export function mapDropshipOrderDetailV2Response(raw: unknown): DropshipOrderDet
     summary,
     computed: {
       items_resell_total: num(computedRaw.items_resell_total),
+      items_resell_delivered_total: num(computedRaw.items_resell_delivered_total),
+      total_delivered_qty: num(computedRaw.total_delivered_qty),
+      all_lines_resolved: bool(computedRaw.all_lines_resolved),
       recipient_charge_total: num(computedRaw.recipient_charge_total),
       recipient_grand_total: num(computedRaw.recipient_grand_total),
       delivery_zone_label: (computedRaw.delivery_zone_label as string | null) ?? null,
@@ -168,6 +201,8 @@ export function mapDropshipOrderDetailV2Response(raw: unknown): DropshipOrderDet
       can_mark_ready_for_pickup: bool(permissionsRaw.can_mark_ready_for_pickup),
       can_mark_shipped: bool(permissionsRaw.can_mark_shipped),
       can_print_customer_invoice: bool(permissionsRaw.can_print_customer_invoice),
+      can_cancel_order: bool(permissionsRaw.can_cancel_order),
+      cancel_blocked_reason: (permissionsRaw.cancel_blocked_reason as string | null) ?? null,
     },
   };
 }

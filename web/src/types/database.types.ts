@@ -4952,6 +4952,101 @@ export type Database = {
           },
         ]
       }
+      shop_order_item_stock_picks: {
+        Row: {
+          created_at: string
+          created_by_email: string | null
+          global_stock_id: number
+          held_stock_id: number | null
+          id: number
+          order_id: number
+          order_item_id: number
+          quantity: number
+          shipment_id: number
+          shipment_item_id: number
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by_email?: string | null
+          global_stock_id: number
+          held_stock_id?: number | null
+          id?: never
+          order_id: number
+          order_item_id: number
+          quantity: number
+          shipment_id: number
+          shipment_item_id: number
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by_email?: string | null
+          global_stock_id?: number
+          held_stock_id?: number | null
+          id?: never
+          order_id?: number
+          order_item_id?: number
+          quantity?: number
+          shipment_id?: number
+          shipment_item_id?: number
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_order_item_stock_picks_global_stock_id_fkey"
+            columns: ["global_stock_id"]
+            isOneToOne: false
+            referencedRelation: "global_stocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_order_item_stock_picks_held_stock_id_fkey"
+            columns: ["held_stock_id"]
+            isOneToOne: false
+            referencedRelation: "global_stocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_order_item_stock_picks_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "shop_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_order_item_stock_picks_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: false
+            referencedRelation: "shop_order_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_order_item_stock_picks_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "global_shipments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_order_item_stock_picks_shipment_item_id_fkey"
+            columns: ["shipment_item_id"]
+            isOneToOne: false
+            referencedRelation: "global_shipment_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_order_item_stock_picks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shop_order_items: {
         Row: {
           confirmed_quantity: number | null
@@ -4975,6 +5070,7 @@ export type Database = {
           image_url: string | null
           is_final_offer_manual: boolean
           is_first_offer_manual: boolean
+          is_fulfillment_unavailable: boolean
           listing_id: number | null
           name: string
           negotiation_status: string | null
@@ -4983,9 +5079,13 @@ export type Database = {
           product_id: number
           quantity: number
           returned_quantity: number
+          shortfall_quantity: number
           staff_offer_amount: number | null
           staff_offer_at: string | null
           staff_offer_currency_id: number | null
+          unavailable_at: string | null
+          unavailable_by_email: string | null
+          unavailable_reason: string | null
           unit_list_price_amount: number | null
           unit_list_price_currency_id: number | null
           unit_minimum_sell_price_amount: number | null
@@ -5017,6 +5117,7 @@ export type Database = {
           image_url?: string | null
           is_final_offer_manual?: boolean
           is_first_offer_manual?: boolean
+          is_fulfillment_unavailable?: boolean
           listing_id?: number | null
           name: string
           negotiation_status?: string | null
@@ -5025,9 +5126,13 @@ export type Database = {
           product_id: number
           quantity: number
           returned_quantity?: number
+          shortfall_quantity?: number
           staff_offer_amount?: number | null
           staff_offer_at?: string | null
           staff_offer_currency_id?: number | null
+          unavailable_at?: string | null
+          unavailable_by_email?: string | null
+          unavailable_reason?: string | null
           unit_list_price_amount?: number | null
           unit_list_price_currency_id?: number | null
           unit_minimum_sell_price_amount?: number | null
@@ -5059,6 +5164,7 @@ export type Database = {
           image_url?: string | null
           is_final_offer_manual?: boolean
           is_first_offer_manual?: boolean
+          is_fulfillment_unavailable?: boolean
           listing_id?: number | null
           name?: string
           negotiation_status?: string | null
@@ -5067,9 +5173,13 @@ export type Database = {
           product_id?: number
           quantity?: number
           returned_quantity?: number
+          shortfall_quantity?: number
           staff_offer_amount?: number | null
           staff_offer_at?: string | null
           staff_offer_currency_id?: number | null
+          unavailable_at?: string | null
+          unavailable_by_email?: string | null
+          unavailable_reason?: string | null
           unit_list_price_amount?: number | null
           unit_list_price_currency_id?: number | null
           unit_minimum_sell_price_amount?: number | null
@@ -8763,6 +8873,10 @@ export type Database = {
         Args: { p_parent_tenant_id: number }
         Returns: boolean
       }
+      _recompute_shop_order_item_fulfillment: {
+        Args: { p_order_item_id: number }
+        Returns: undefined
+      }
       _stock_location_is_leaf: { Args: { p_id: number }; Returns: boolean }
       _undo_wallet_ledger_row_before_delete: {
         Args: {
@@ -9126,6 +9240,14 @@ export type Database = {
               isSetofReturn: false
             }
           }
+      add_shop_order_item_stock_pick: {
+        Args: {
+          p_global_stock_id: number
+          p_order_item_id: number
+          p_quantity: number
+        }
+        Returns: Json
+      }
       add_stock_movement_line: {
         Args: {
           p_from_availability?: Database["public"]["Enums"]["stock_availability"]
@@ -9657,6 +9779,14 @@ export type Database = {
         Args: { p_parent_tenant_id: number }
         Returns: boolean
       }
+      can_act_on_stock_movement_context: {
+        Args: {
+          p_parent_tenant_id: number
+          p_reference_id?: string
+          p_reference_type?: string
+        }
+        Returns: boolean
+      }
       can_admin_manage_costing_file: {
         Args: { p_tenant_id: number }
         Returns: boolean
@@ -9817,6 +9947,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      cancel_shop_order_dropship: {
+        Args: { p_order_id: number; p_reason?: string }
+        Returns: Json
+      }
       canonicalize_dropship_order_wallet_source_ids: {
         Args: { p_order_id: number }
         Returns: undefined
@@ -9853,6 +9987,10 @@ export type Database = {
         }[]
       }
       check_store_access: { Args: { p_store_id: number }; Returns: boolean }
+      clear_shop_order_item_unavailable: {
+        Args: { p_order_item_id: number }
+        Returns: Json
+      }
       collect_wholesale_invoice_payment: {
         Args: {
           p_cash_amount?: number
@@ -12534,6 +12672,15 @@ export type Database = {
           vendor_filters: Json
         }[]
       }
+      list_stock_for_order_item_pick: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_order_item_id: number
+          p_search?: string
+        }
+        Returns: Json
+      }
       list_stock_locations: {
         Args: { p_include_inactive?: boolean; p_parent_tenant_id: number }
         Returns: {
@@ -12870,6 +13017,23 @@ export type Database = {
         }
         Returns: Json
       }
+      mark_shop_order_item_shortfall: {
+        Args: {
+          p_add_to_demand_bucket?: boolean
+          p_order_item_id: number
+          p_reason?: string
+          p_shortfall_qty: number
+        }
+        Returns: Json
+      }
+      mark_shop_order_item_unavailable: {
+        Args: {
+          p_add_to_demand_bucket?: boolean
+          p_order_item_id: number
+          p_reason?: string
+        }
+        Returns: Json
+      }
       mark_thrift_items_as_sold: {
         Args: {
           p_address: string
@@ -13058,6 +13222,10 @@ export type Database = {
       }
       recalculate_shipment_transaction_rate: {
         Args: { p_shipment_id: number }
+        Returns: number
+      }
+      recompute_dropship_cod_collect_amount: {
+        Args: { p_order_id: number }
         Returns: number
       }
       recompute_global_invoice_payment_status: {
@@ -13421,6 +13589,10 @@ export type Database = {
         Returns: undefined
       }
       remove_shop_cart_item: { Args: { p_cart_item_id: number }; Returns: Json }
+      remove_shop_order_item_stock_pick: {
+        Args: { p_pick_id: number }
+        Returns: Json
+      }
       reorder_shipment_progress_flow_stages: {
         Args: { p_flow_id: number; p_flow_stage_ids: number[] }
         Returns: undefined

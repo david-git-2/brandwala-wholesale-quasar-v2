@@ -11,7 +11,6 @@ import type { CourierServiceRow } from '../repositories/dropshipCourierRepositor
 import type { DropshipInvoiceSummaryState } from '../utils/dropshipInvoiceSummary';
 import type {
   DropshipInvoiceCourierState,
-  DropshipInvoiceDeliveredQuantitiesState,
   DropshipInvoicePickupState,
 } from '../utils/dropshipInvoiceFulfillment';
 import { resolveDeliveryZone } from '../services/courierChargeEstimate';
@@ -30,8 +29,10 @@ export function useDropshipOrderProcessingDesk(options: {
   summaryForm: Ref<DropshipInvoiceSummaryState>;
   pickupForm: DropshipInvoicePickupState;
   courierForm: DropshipInvoiceCourierState;
-  deliveredQuantitiesForm: Ref<DropshipInvoiceDeliveredQuantitiesState>;
   couriers: Ref<CourierServiceRow[]>;
+  canMarkReadyForPickup: Ref<boolean>;
+  allLinesResolved: Ref<boolean>;
+  totalDeliveredQty: Ref<number>;
   refetchOrderDetail: () => Promise<unknown>;
   formReady?: Ref<boolean>;
 }) {
@@ -64,6 +65,21 @@ export function useDropshipOrderProcessingDesk(options: {
       })),
   );
 
+  const pendingLineNames = computed(() =>
+    options.orderItems.value
+      .filter(
+        (item) =>
+          item.quantity > 0 &&
+          !item.is_fulfillment_unavailable &&
+          item.fulfillment_resolved !== true,
+      )
+      .map((item) => item.name),
+  );
+
+  const showNothingToShipBanner = computed(
+    () => options.allLinesResolved.value && options.totalDeliveredQty.value <= 0,
+  );
+
   const invalidateDetail = async () => {
     await queryClient.invalidateQueries({
       queryKey: shopOrderQueryKeys.dropshipDetailV2(tenantId.value, options.orderId.value),
@@ -71,23 +87,11 @@ export function useDropshipOrderProcessingDesk(options: {
     await options.refetchOrderDetail();
   };
 
-  const validateQuantities = (): string | null => {
-    for (const item of options.orderItems.value) {
-      const delivered = options.deliveredQuantitiesForm.value[item.id] ?? 0;
-      if (delivered < 0 || delivered > item.quantity) {
-        return `Delivered quantity for "${item.name}" must be between 0 and ${item.quantity}.`;
-      }
-    }
-
-    return null;
-  };
-
   const serializeDeskForm = () =>
     JSON.stringify({
       summary: options.summaryForm.value,
       pickup: { ...options.pickupForm },
       courier: { ...options.courierForm },
-      deliveredQuantities: options.deliveredQuantitiesForm.value,
     });
 
   const syncPersistedSnapshot = () => {
@@ -101,12 +105,6 @@ export function useDropshipOrderProcessingDesk(options: {
   }): Promise<boolean> => {
     const order = options.order.value;
     if (!order) return false;
-
-    const quantityError = validateQuantities();
-    if (quantityError) {
-      if (!opts?.silent) showErrorNotification(quantityError);
-      return false;
-    }
 
     const snapshot = serializeDeskForm();
     if (snapshot === lastPersistedSnapshot) {
@@ -124,7 +122,7 @@ export function useDropshipOrderProcessingDesk(options: {
         summary: options.summaryForm.value,
         pickup: { ...options.pickupForm },
         courier: { ...options.courierForm },
-        deliveredQuantities: options.deliveredQuantitiesForm.value,
+        deliveredQuantities: {},
         deliveryZone: resolveDeliveryZone(order.shipping_district ?? ''),
       });
 
@@ -168,7 +166,6 @@ export function useDropshipOrderProcessingDesk(options: {
       options.summaryForm.value,
       { ...options.pickupForm },
       { ...options.courierForm },
-      options.deliveredQuantitiesForm.value,
       options.formReady?.value ?? true,
     ],
     () => {
@@ -193,6 +190,17 @@ export function useDropshipOrderProcessingDesk(options: {
   const advanceToReadyForPickup = async () => {
     const order = options.order.value;
     if (!order) return;
+
+    if (!options.canMarkReadyForPickup.value) {
+      if (showNothingToShipBanner.value) {
+        showErrorNotification('Nothing to ship — cancel the order or pick stock on at least one line.');
+      } else if (pendingLineNames.value.length) {
+        showErrorNotification(`Finish picking or mark unavailable: ${pendingLineNames.value.join(', ')}`);
+      } else {
+        showErrorNotification('Ready for pickup is not available yet.');
+      }
+      return;
+    }
 
     advancingStatus.value = true;
     try {
@@ -233,7 +241,10 @@ export function useDropshipOrderProcessingDesk(options: {
     advancingStatus,
     autoSaveState,
     merchantOptions,
+    pendingLineNames,
+    showNothingToShipBanner,
     advanceToReadyForPickup,
     onMerchantSelect,
+    invalidateDetail,
   };
 }

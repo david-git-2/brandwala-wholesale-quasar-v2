@@ -1,22 +1,32 @@
 <script setup lang="ts">
 import { computed, nextTick, reactive, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import DropshipOrderConfirmedInvoicePaper from '../components/DropshipOrderConfirmedInvoicePaper.vue';
+import DropshipOrderItemStockPickDialog from '../components/DropshipOrderItemStockPickDialog.vue';
+import DropshipOrderCancelDialog from '../components/DropshipOrderCancelDialog.vue';
 import { useDropshipOrderDetailV2Query } from '../composables/useDropshipOrderDetailV2Query';
 import { useDropshipCourierOptions } from '../composables/useDropshipCourierOptions';
 import { useDropshipOrderProcessingDesk } from '../composables/useDropshipOrderProcessingDesk';
 import { useDropshipOrderStatusRedirect } from '../composables/useDropshipOrderStatusRedirect';
+import { shopOrderRepository } from '../repositories/shopOrderRepository';
 import {
   createEmptyDropshipInvoiceSummary,
   type DropshipInvoiceSummaryState,
 } from '../utils/dropshipInvoiceSummary';
 import type {
   DropshipInvoiceCourierState,
-  DropshipInvoiceDeliveredQuantitiesState,
   DropshipInvoicePickupState,
 } from '../utils/dropshipInvoiceFulfillment';
+import type { ShopOrderItem } from '../types';
+import {
+  requestConfirmation,
+  showErrorNotification,
+  showSuccessNotification,
+  parseSupabaseError,
+} from 'src/utils/appFeedback';
 
 const route = useRoute();
+const router = useRouter();
 
 const tenantSlug = computed(() =>
   typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : null,
@@ -29,7 +39,6 @@ const order = computed(() => orderDetailQuery.data.value?.order ?? null);
 const orderItems = computed(() => orderDetailQuery.data.value?.items ?? []);
 
 const summaryForm = ref<DropshipInvoiceSummaryState>(createEmptyDropshipInvoiceSummary());
-const deliveredQuantitiesForm = ref<DropshipInvoiceDeliveredQuantitiesState>({});
 
 const { couriers, courierOptions } = useDropshipCourierOptions({
   tenantSlug,
@@ -52,6 +61,23 @@ const courierForm = reactive<DropshipInvoiceCourierState>({
 });
 
 const formReady = ref(false);
+const pickDialogOpen = ref(false);
+const cancelDialogOpen = ref(false);
+const pickTargetItem = ref<ShopOrderItem | null>(null);
+const actionLoading = ref(false);
+
+const canMarkReadyForPickup = computed(
+  () => orderDetailQuery.data.value?.permissions.can_mark_ready_for_pickup ?? false,
+);
+const canCancelOrder = computed(
+  () => orderDetailQuery.data.value?.permissions.can_cancel_order ?? false,
+);
+const allLinesResolved = computed(
+  () => orderDetailQuery.data.value?.computed.all_lines_resolved ?? false,
+);
+const totalDeliveredQty = computed(
+  () => orderDetailQuery.data.value?.computed.total_delivered_qty ?? 0,
+);
 
 watch(
   () => orderDetailQuery.data.value,
@@ -65,12 +91,6 @@ watch(
     summaryForm.value = { ...detail.summary };
     Object.assign(pickupForm, detail.fulfillment.pickup);
     Object.assign(courierForm, detail.fulfillment.courier);
-    deliveredQuantitiesForm.value = Object.fromEntries(
-      detail.items.map((item) => [
-        item.id,
-        item.confirmed_quantity != null ? item.confirmed_quantity : item.quantity,
-      ]),
-    );
     await nextTick();
     formReady.value = true;
   },
@@ -88,8 +108,10 @@ const processingDesk = useDropshipOrderProcessingDesk({
   summaryForm,
   pickupForm,
   courierForm,
-  deliveredQuantitiesForm,
   couriers,
+  canMarkReadyForPickup,
+  allLinesResolved,
+  totalDeliveredQty,
   formReady,
   refetchOrderDetail: () => orderDetailQuery.refetch(),
 });
@@ -99,8 +121,11 @@ const {
   advancingStatus,
   autoSaveState,
   merchantOptions,
+  pendingLineNames,
+  showNothingToShipBanner,
   advanceToReadyForPickup,
   onMerchantSelect,
+  invalidateDetail,
 } = processingDesk;
 
 useDropshipOrderStatusRedirect({
@@ -144,10 +169,6 @@ const codRateLabel = computed(() => {
   return courier.cod_fee_mode.replace(/_/g, ' ');
 });
 
-const canMarkReadyForPickup = computed(
-  () => orderDetailQuery.data.value?.permissions.can_mark_ready_for_pickup ?? false,
-);
-
 const autoSaveLabel = computed(() => {
   if (autoSaveState.value === 'pending' || saving.value) return 'Saving…';
   if (autoSaveState.value === 'error') return 'Save failed';
@@ -175,6 +196,61 @@ const onCourierChange = () => {
     );
   }
 };
+
+const openPickDialog = (itemId: number) => {
+  pickTargetItem.value = orderItems.value.find((item) => item.id === itemId) ?? null;
+  pickDialogOpen.value = true;
+};
+
+const markUnavailable = async (itemId: number) => {
+  const confirmed = await requestConfirmation(
+    'Mark this line unavailable? Delivered qty will be 0. A demand bucket entry will be created by default.',
+    'Mark unavailable',
+    'Mark unavailable',
+  );
+  if (!confirmed) return;
+
+  actionLoading.value = true;
+  try {
+    await shopOrderRepository.markShopOrderItemUnavailable(itemId, null, true);
+    showSuccessNotification('Line marked unavailable.');
+    await invalidateDetail();
+  } catch (err) {
+    showErrorNotification(parseSupabaseError(err, 'Failed to mark unavailable'));
+  } finally {
+    actionLoading.value = false;
+  }
+};
+
+const clearUnavailable = async (itemId: number) => {
+  actionLoading.value = true;
+  try {
+    await shopOrderRepository.clearShopOrderItemUnavailable(itemId);
+    showSuccessNotification('Line is pending again — you can pick stock.');
+    await invalidateDetail();
+  } catch (err) {
+    showErrorNotification(parseSupabaseError(err, 'Failed to clear unavailable'));
+  } finally {
+    actionLoading.value = false;
+  }
+};
+
+const removePick = async (pickId: number) => {
+  actionLoading.value = true;
+  try {
+    await shopOrderRepository.removeShopOrderItemStockPick(pickId);
+    showSuccessNotification('Pick removed and hold released.');
+    await invalidateDetail();
+  } catch (err) {
+    showErrorNotification(parseSupabaseError(err, 'Failed to remove pick'));
+  } finally {
+    actionLoading.value = false;
+  }
+};
+
+const onOrderCancelled = () => {
+  void router.push({ name: 'app-shop-dropship-orders-page' });
+};
 </script>
 
 <template>
@@ -185,7 +261,7 @@ const onCourierChange = () => {
           <q-icon name="ph ph-package" color="orange-9" />
         </template>
         <span class="text-caption">
-          Processing desk — changes save automatically. Use Ready for pickup when the order is packed.
+          Processing desk — pick stock per line or mark unavailable. Delivered qty is computed from picks.
         </span>
         <template v-if="autoSaveLabel" #action>
           <span
@@ -195,6 +271,34 @@ const onCourierChange = () => {
             {{ autoSaveLabel }}
           </span>
         </template>
+      </q-banner>
+
+      <q-banner
+        v-if="showNothingToShipBanner"
+        dense
+        rounded
+        class="bg-red-1 text-red-10"
+      >
+        Nothing to ship on this order. Cancel the order or go back and pick stock on at least one line.
+        <template #action>
+          <q-btn
+            v-if="canCancelOrder"
+            flat
+            no-caps
+            color="negative"
+            label="Cancel order"
+            @click="cancelDialogOpen = true"
+          />
+        </template>
+      </q-banner>
+
+      <q-banner
+        v-else-if="pendingLineNames.length"
+        dense
+        rounded
+        class="bg-blue-1 text-blue-10"
+      >
+        Still pending: {{ pendingLineNames.join(', ') }}
       </q-banner>
 
       <section v-if="isLoading" class="dropship-order-detail-v2__loading">
@@ -207,6 +311,15 @@ const onCourierChange = () => {
 
       <template v-else-if="order">
         <div class="dropship-order-detail-v2__status-actions">
+          <q-btn
+            v-if="canCancelOrder"
+            outline
+            color="negative"
+            no-caps
+            icon="ph ph-x-circle"
+            label="Cancel order"
+            @click="cancelDialogOpen = true"
+          />
           <q-btn
             v-if="canMarkReadyForPickup"
             color="primary"
@@ -226,11 +339,11 @@ const onCourierChange = () => {
           :order-items="orderItems"
           editable-summary
           show-delivered-quantities
+          show-stock-pick-actions
           show-fulfillment-blocks
           v-model:summary="summaryForm"
           v-model:pickup="pickupForm"
           v-model:courier="courierForm"
-          v-model:delivered-quantities="deliveredQuantitiesForm"
           :merchant-options="merchantOptions"
           :courier-options="courierOptions"
           :delivery-zone-label="deliveryZoneLabel"
@@ -238,9 +351,28 @@ const onCourierChange = () => {
           :cod-rate-label="codRateLabel"
           @merchant-select="onMerchantSelect"
           @courier-change="onCourierChange"
+          @pick-stock="openPickDialog"
+          @mark-unavailable="markUnavailable"
+          @clear-unavailable="clearUnavailable"
+          @remove-pick="removePick"
         />
       </template>
     </div>
+
+    <DropshipOrderItemStockPickDialog
+      v-model="pickDialogOpen"
+      :order-item="pickTargetItem"
+      @picked="invalidateDetail"
+    />
+
+    <DropshipOrderCancelDialog
+      v-if="order"
+      v-model="cancelDialogOpen"
+      :order-id="order.id"
+      :order-no="order.order_no"
+      :has-invoice="!!order.global_invoice_id"
+      @cancelled="onOrderCancelled"
+    />
   </q-page>
 </template>
 

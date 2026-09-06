@@ -525,6 +525,17 @@ export interface ShopOrder {
   payout_settlement_status?: string | null;
 }
 
+export interface ShopOrderItemStockPick {
+  id: number;
+  global_stock_id: number;
+  held_stock_id?: number | null;
+  shipment_id: number;
+  shipment_name?: string | null;
+  shipment_item_id: number;
+  quantity: number;
+  unit_cost_amount?: number | null;
+}
+
 export interface ShopOrderItem {
   id: number;
   order_id: number;
@@ -553,6 +564,11 @@ export interface ShopOrderItem {
   final_offer_currency_id?: number | null;
   is_final_offer_manual?: boolean | null;
   confirmed_quantity?: number | null;
+  shortfall_quantity?: number | null;
+  is_fulfillment_unavailable?: boolean;
+  unavailable_reason?: string | null;
+  fulfillment_resolved?: boolean;
+  stock_picks?: ShopOrderItemStockPick[];
   weight_kg?: number | null;
   cost_price_amount?: number | null;
   cost_price_currency_id?: number | null;
