@@ -115,7 +115,7 @@ flowchart TD
 ```text
 Dropship Order Lifecycle:
 1. placed            -> Initial merchant order created
-2. processing        -> Packed; customer-facing delivery label printed
+2. processing        -> Staff pick stock per line (or mark unavailable); no stock linked until this stage — see [`DROPSHIP_PROCESSING_STOCK_PICK.md`](./DROPSHIP_PROCESSING_STOCK_PICK.md)
 3. ready_for_pickup  -> Courier assigned; B2B accounting invoice issued
 4. in_transit        -> Courier delivery tracking
 5. delivered         -> COD collected -> Courier remittance -> Middleman wallet payout
@@ -159,9 +159,9 @@ flowchart LR
 | Route | Main Page | Key Child Components |
 | :--- | :--- | :--- |
 | `/:tenantSlug?/app/dropship/orders` | [`DropshipOrdersPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/DropshipOrdersPage.vue) | Status filter tabs, courier quick-actions, [`ShopOrdersTable.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/components/ShopOrdersTable.vue) |
-| `/:tenantSlug?/app/shop/dropship/:id` | [`DropshipOrderDetailV2Page.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/DropshipOrderDetailV2Page.vue) | Paper invoice (`DropshipOrderConfirmedInvoicePaper.vue`); confirmed → processing |
-| `/:tenantSlug?/app/shop/dropship/:id/processing` | [`DropshipOrderDetailV2ProcessingPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/DropshipOrderDetailV2ProcessingPage.vue) | Editable charges, delivered qty, pickup + courier |
-| `/:tenantSlug?/app/shop/dropship/:id/ready-for-pickup` | [`DropshipOrderDetailV2ReadyForPickupPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/DropshipOrderDetailV2ReadyForPickupPage.vue) | Readonly lock; mark shipped; print customer invoice |
+| `/:tenantSlug?/app/shop/dropship/:id` | [`DropshipOrderDetailV2Page.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/DropshipOrderDetailV2Page.vue) | Paper invoice; **Start processing**; **Cancel order** (planned §13) |
+| `/:tenantSlug?/app/shop/dropship/:id/processing` | [`DropshipOrderDetailV2ProcessingPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/DropshipOrderDetailV2ProcessingPage.vue) | Pick stock / mark unavailable; charges, pickup + courier; **Cancel order** — [`DROPSHIP_PROCESSING_STOCK_PICK.md`](./DROPSHIP_PROCESSING_STOCK_PICK.md) |
+| `/:tenantSlug?/app/shop/dropship/:id/ready-for-pickup` | [`DropshipOrderDetailV2ReadyForPickupPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/DropshipOrderDetailV2ReadyForPickupPage.vue) | Locked; mark shipped; print invoice; **Cancel order** with invoice warning (planned §13) |
 | `/:tenantSlug?/app/shop/dropship/:id/customer-invoice-preview` | [`DropshipOrderDetailV2CustomerInvoicePreviewPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/DropshipOrderDetailV2CustomerInvoicePreviewPage.vue) | External print tab (recipient-facing resell invoice) |
 | `/:tenantSlug?/app/dropship/finance` | [`DropshipFinanceHubPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/DropshipFinanceHubPage.vue) | `FinanceHubKpiStrip.vue`, `FinanceHubStepDelivered.vue`, `FinanceHubStepRemittance.vue`, `FinanceHubStepPayout.vue` |
 | `/:tenantSlug?/app/dropship/merchants` | [`DropshipMerchantsPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/DropshipMerchantsPage.vue) | Merchant readiness scores, billing profile link |
@@ -1243,6 +1243,8 @@ get_shop_order_for_staff(
 ## 10.2 RPC: `get_dropship_order_detail_v2`
 
 Dropship paper invoice UI (`DropshipOrderDetailV2Page`, processing, ready-for-pickup). Flat payload tuned for `DropshipOrderConfirmedInvoicePaper.vue` — includes **resell** (`customer_sell_price_amount`) on items, pre-built **summary**, **fulfillment**, active **courier_services**, and **permissions** for status buttons.
+
+**Planned processing extensions** (stock pick, unavailable lines, computed delivered qty, **cancel order UI**): [`DROPSHIP_PROCESSING_STOCK_PICK.md`](./DROPSHIP_PROCESSING_STOCK_PICK.md) — detail RPC will add `stock_picks[]`, `is_fulfillment_unavailable`, `fulfillment_resolved`, `can_cancel_order` per item/order.
 
 ### Signature
 

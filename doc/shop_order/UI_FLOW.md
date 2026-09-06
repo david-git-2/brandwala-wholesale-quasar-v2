@@ -277,7 +277,7 @@ Row click → `StaffOrderDetailPage` (B2B) or `DropshipOrderDetailV2Page` (drops
 
 Off-strip statuses (e.g. `submitted`, `cancelled`) show as a badge above the strip.
 
-**Stock:** place order holds stock (`sellable` → `held`). Invoice issue at `ready_for_pickup`+ sells from held. Deleting an un-invoiced order releases held back to sellable.
+**Stock:** place order may hold stock at checkout (legacy); target is hold at processing pick only. Cancel (`cancel_shop_order_dropship`) releases holds per stage — see [`DROPSHIP_PROCESSING_STOCK_PICK.md`](./DROPSHIP_PROCESSING_STOCK_PICK.md) §13. Invoice issue at `ready_for_pickup`+ sells from held. Hard **delete** on list is not the primary cancel path for in-flight dropship orders.
 
 ---
 
@@ -352,13 +352,29 @@ Paper invoice workflow (replaces classic card layout).
 | Route | Page | Status |
 | :--- | :--- | :--- |
 | `/:id` | `DropshipOrderDetailV2Page.vue` | Confirmed — read-only invoice; **Start processing** |
-| `/:id/processing` | `DropshipOrderDetailV2ProcessingPage.vue` | Editable charges, delivered qty, pickup + courier |
+| `/:id/processing` | `DropshipOrderDetailV2ProcessingPage.vue` | Editable charges, pickup + courier; **Pick stock** per line (see [`DROPSHIP_PROCESSING_STOCK_PICK.md`](./DROPSHIP_PROCESSING_STOCK_PICK.md)) |
 | `/:id/ready-for-pickup` | `DropshipOrderDetailV2ReadyForPickupPage.vue` | Locked; **Mark as shipped**; **Print customer invoice** |
 | `/:id/customer-invoice-preview` | `DropshipOrderDetailV2CustomerInvoicePreviewPage.vue` | External print tab (recipient resell only) |
 
 - **Load RPC:** `get_dropship_order_detail_v2` via `useDropshipOrderDetailV2Query`
 - **Status RPC:** `advance_dropship_order_status`
 - **Component:** `DropshipOrderConfirmedInvoicePaper.vue`
+
+#### Processing desk — stock pick & unavailable (planned)
+
+Full spec: [`DROPSHIP_PROCESSING_STOCK_PICK.md`](./DROPSHIP_PROCESSING_STOCK_PICK.md).
+
+| Element | Behavior |
+| :--- | :--- |
+| **Before processing** | No stock linked on order lines (target; checkout auto-hold removed in phase 4). |
+| **Pick stock** (per line) | Opens dialog; lists sellable stock for line product (+ grade) via `list_stock_for_order_item_pick`. Hidden when line marked unavailable. |
+| Dialog row | Shipment name, available ATP, qty input, **Add**. |
+| **Add** | RPC `add_shop_order_item_stock_pick` — links pick, hold sellable → held. Same line can have multiple picks (different shipments). |
+| **Mark unavailable** | RPC `mark_shop_order_item_unavailable` — no picks; delivered qty **0**; use when stock is gone. Optional demand-bucket shortfall. |
+| **Delivered qty** | Read-only = sum of picks, or **0** if unavailable. **No manual input.** |
+| **Ready for pickup** | Enabled when **every** line is resolved: fully picked (`delivered = ordered`) **or** marked unavailable (`delivered = 0`). **Blocked** if nothing to ship (all lines unavailable). Banner lists pending lines. |
+| **Undo** | Remove pick / clear unavailable (Phase 2) — see [`DROPSHIP_PROCESSING_STOCK_PICK.md`](./DROPSHIP_PROCESSING_STOCK_PICK.md) §12 |
+| **Cancel order** | Danger-zone button when `permissions.can_cancel_order` — `confirmed` through `ready_for_pickup` only; restock holds + invoice cleanup (§13). Promoted when nothing to ship. Hidden after `shipped`. |
 
 ---
 
