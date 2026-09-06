@@ -505,6 +505,17 @@ export default {
   total_amount_label: 'মোট পরিমাণ',
   shipping_details: 'শিপিং বিবরণ',
   delivery_instructions_notes: 'ডেলিভারি নির্দেশনা / নোট:',
+  recipient_pays: 'প্রাপক পরিশোধ করবে',
+  fees_and_profit: 'ফি ও আপনার লাভ',
+  your_cost: 'আপনার খরচ',
+  your_profit: 'আপনার লাভ',
+  line_total: 'লাইন মোট',
+  track_parcel: 'পার্সেল ট্র্যাক করুন',
+  ship_to: '{name} কে পাঠানো',
+  counter_offer_required: 'কাউন্টার অফার প্রয়োজন',
+  counter_offer_hint: 'প্রতিটি আইটেমে কাউন্টার মূল্য দিন, তারপর জমা দিন।',
+  charges_update_before_pickup:
+    'Ready for Pickup পর্যন্ত ডেলিভারি ও COD চার্জ পরিবর্তন হতে পারে।',
 
   browse_shops: 'শপ ব্রাউজ করুন',
   browse_shops_subtitle: 'আপনার গ্রুপ যে শপে প্রবেশ করতে পারে তা খুলুন।',

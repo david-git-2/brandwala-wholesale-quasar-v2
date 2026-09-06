@@ -76,8 +76,16 @@
       </div>
     </template>
 
-    <!-- Dropship / other: header + 8/4 columns -->
+    <!-- Dropship / other: paper or legacy columns -->
     <template v-else>
+      <q-skeleton
+        v-if="variant === 'dropship'"
+        type="rect"
+        height="520px"
+        class="customer-dropship-paper-skeleton"
+      />
+
+      <template v-else>
       <q-skeleton type="text" width="280px" height="14px" class="q-mb-sm" />
 
       <q-card flat bordered class="q-pa-sm bg-grey-1">
@@ -104,17 +112,9 @@
                   <q-skeleton type="text" width="60%" height="20px" />
                   <q-skeleton type="text" width="40%" height="16px" class="q-mt-xs" />
                 </q-item-section>
-                <q-item-section side class="column items-end justify-center q-gutter-y-sm">
-                  <div class="column items-end">
-                    <q-skeleton type="text" width="72px" height="12px" />
-                    <q-skeleton type="text" width="88px" height="18px" class="q-mt-xs" />
-                    <q-skeleton type="text" width="96px" height="14px" class="q-mt-xs" />
-                  </div>
-                  <div class="column items-end">
-                    <q-skeleton type="text" width="80px" height="12px" />
-                    <q-skeleton type="text" width="92px" height="18px" class="q-mt-xs" />
-                    <q-skeleton type="text" width="104px" height="14px" class="q-mt-xs" />
-                  </div>
+                <q-item-section side class="column items-end justify-center">
+                  <q-skeleton type="text" width="56px" height="12px" />
+                  <q-skeleton type="text" width="72px" height="22px" class="q-mt-xs" />
                 </q-item-section>
               </q-item>
             </q-list>
@@ -153,6 +153,7 @@
           </div>
         </div>
       </div>
+      </template>
     </template>
   </div>
 </template>
@@ -200,5 +201,11 @@ withDefaults(
 
 .border-top {
   border-top: 1px solid rgba(34, 56, 101, 0.08);
+}
+
+.customer-dropship-paper-skeleton {
+  max-width: 920px;
+  margin: 0 auto;
+  border-radius: 2px;
 }
 </style>

@@ -1,5 +1,8 @@
 <template>
-  <q-page class="q-pa-md page-container customer-order-detail-page">
+  <q-page
+    class="q-pa-md page-container customer-order-detail-page"
+    :class="{ 'customer-order-detail-page--dropship': isDropshipOrder || skeletonVariant === 'dropship' }"
+  >
     <!-- Loading Skeleton State -->
     <CustomerOrderDetailSkeleton v-if="isLoading" :variant="skeletonVariant" />
 
@@ -15,7 +18,7 @@
     <!-- Loaded Content State -->
     <div class="q-gutter-y-md" v-else-if="currentOrder">
       <CustomerOrderHeader
-        v-if="!isVendorCatalog"
+        v-if="!isVendorCatalog && !isDropshipOrder"
         :order="currentOrder"
         :status-sequence="statusSequence"
         :terminal-statuses="terminalStatuses"
@@ -84,22 +87,50 @@
         </div>
       </template>
 
-      <!-- Dropship / Other Order View (Original layout) -->
+      <!-- Dropship Order View (invoice paper) -->
+      <template v-else-if="isDropshipOrder">
+        <div
+          class="customer-dropship-detail"
+          :class="{ 'customer-dropship-detail--negotiating': isDropshipNegotiationOpen }"
+        >
+          <CustomerDropshipOrderPaper
+            :order="currentOrder"
+            :order-items="orderItems"
+            :is-negotiation-open="isNegotiationOpen"
+            :normalized-status="normalizedStatus"
+            :status-sequence="statusSequence"
+          />
+
+          <div
+            v-if="isDropshipNegotiationOpen"
+            class="customer-dropship-detail__actions"
+          >
+            <CustomerOrderDropshipActionBar
+              class="gt-sm"
+              :is-sending-counter="isSendingCounter"
+              @submit-counter-offer="submitCounterOffer"
+            />
+            <CustomerOrderDropshipActionBar
+              class="lt-md"
+              :is-sending-counter="isSendingCounter"
+              @submit-counter-offer="submitCounterOffer"
+            />
+          </div>
+        </div>
+      </template>
+
+      <!-- Other shop types -->
       <template v-else>
         <div class="row q-col-gutter-lg">
-          <!-- Main details & Negotiation panel (8 cols) -->
           <div class="col-xs-12 col-md-8">
             <CustomerOrderItemsList
               :order-items="orderItems"
               :order="currentOrder"
               :is-negotiation-open="isNegotiationOpen"
-              :is-sending-counter="isSendingCounter"
               :currency-symbol="currencySymbol"
-              @submit-counter-offer="submitCounterOffer"
             />
           </div>
 
-          <!-- Sidebar (4 cols) -->
           <div class="col-xs-12 col-md-4">
             <div class="column q-gutter-md">
               <CustomerOrderSummaryCard
@@ -159,6 +190,8 @@ import CustomerOrderSummaryCard from '../components/CustomerOrderSummaryCard.vue
 import CustomerOrderShippingCard from '../components/CustomerOrderShippingCard.vue';
 import CustomerCatalogOrderItemCard from '../components/CustomerCatalogOrderItemCard.vue';
 import CustomerOrderStickyActions from '../components/CustomerOrderStickyActions.vue';
+import CustomerOrderDropshipActionBar from '../components/CustomerOrderDropshipActionBar.vue';
+import CustomerDropshipOrderPaper from '../components/CustomerDropshipOrderPaper.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -179,6 +212,8 @@ const currentOrder = computed(() => orderDetailsData.value?.order || null);
 const orderItems = ref<ShopOrderItem[]>([]);
 
 const isVendorCatalog = computed(() => currentOrder.value?.shop_type_snapshot === 'vendor_catalog');
+
+const isDropshipOrder = computed(() => currentOrder.value?.shop_type_snapshot === 'dropship');
 
 watch(
   () => orderDetailsData.value,
@@ -211,6 +246,10 @@ const isNegotiationOpen = computed(() => {
   const o = currentOrder.value;
   return !!(o && o.is_negotiable_snapshot && normalizeCatalogOrderStatus(o.status) === 'priced');
 });
+
+const isDropshipNegotiationOpen = computed(
+  () => isDropshipOrder.value && isNegotiationOpen.value,
+);
 
 const getDisplayUnitPrice = (item: any) => {
   if (normalizedStatus.value === 'final_offered' || ['confirmed', 'procuring', 'ready_for_shipment', 'delivered'].includes(normalizedStatus.value)) {
@@ -466,12 +505,74 @@ export default {
 <style scoped>
 .customer-order-detail-page {
   padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.customer-dropship-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 920px;
+  margin: 0 auto;
+  background: #eef1f4;
+  border-radius: 4px;
+}
+
+.customer-dropship-detail--negotiating {
+  padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+}
+
+.customer-dropship-detail__actions {
+  max-width: 920px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .catalog-order-shell {
   width: 100%;
   max-width: 640px;
   margin: 0 auto;
+}
+
+.dropship-order-layout--negotiating {
+  padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+}
+
+@media (max-width: 767px) {
+  .customer-order-detail-page {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+
+  .customer-order-detail-page--dropship {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .customer-dropship-detail {
+    border-radius: 0;
+    gap: 8px;
+  }
+
+  .customer-dropship-detail__actions {
+    padding: 0 10px;
+  }
+
+  .catalog-order-shell {
+    padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (min-width: 600px) {
+  .customer-dropship-detail--negotiating {
+    padding-bottom: 0;
+  }
+
+  .catalog-order-shell {
+    padding-bottom: 0;
+  }
 }
 
 @media (min-width: 600px) {

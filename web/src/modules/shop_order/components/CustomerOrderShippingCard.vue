@@ -1,37 +1,58 @@
 <template>
   <q-card flat bordered class="details-card">
-    <q-card-section class="q-px-lg q-py-md border-bottom">
-      <div class="text-subtitle1 text-weight-bold text-grey-9">{{ $t('shop_admin.shipping_details') }}</div>
-    </q-card-section>
+    <q-expansion-item
+      v-if="collapsible"
+      v-model="expanded"
+      dense
+      expand-separator
+      class="shipping-expansion"
+      :label="shipToLabel"
+      header-class="text-body2 text-weight-medium text-grey-9"
+    >
+      <q-card-section class="q-px-md q-pb-md text-body2 text-grey-8">
+        <ShippingDetailsBody :order="order" />
+      </q-card-section>
+    </q-expansion-item>
 
-    <q-card-section class="q-px-lg q-py-md text-body2 text-grey-8">
-      <div class="text-weight-bold text-grey-9">
-        {{ order.recipient_name }}
-      </div>
-      <div class="q-mt-xs">{{ order.recipient_phone }}</div>
-      <div
-        class="q-mt-sm text-grey-6 bg-grey-1 q-pa-sm rounded-borders"
-        style="white-space: pre-wrap"
-      >
-        {{ order.shipping_address }}
-      </div>
-      
-      <div
-        v-if="order.delivery_instructions"
-        class="q-mt-sm q-pa-sm bg-blue-50 text-blue-9 text-caption rounded-borders"
-        style="border: 1px solid #90caf9;"
-      >
-        <div class="text-weight-bold">{{ $t('shop_admin.delivery_instructions_notes') }}</div>
-        <div style="white-space: pre-wrap">{{ order.delivery_instructions }}</div>
-      </div>
-    </q-card-section>
+    <template v-else>
+      <q-card-section class="q-px-md q-py-sm border-bottom">
+        <div class="text-subtitle1 text-weight-bold text-grey-9">{{ $t('shop_admin.shipping_details') }}</div>
+      </q-card-section>
+
+      <q-card-section class="q-px-md q-py-md text-body2 text-grey-8">
+        <ShippingDetailsBody :order="order" />
+      </q-card-section>
+    </template>
   </q-card>
 </template>
 
 <script setup lang="ts">
-defineProps<{
-  order: any;
-}>();
+import { computed, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+import ShippingDetailsBody from './CustomerOrderShippingDetailsBody.vue';
+
+const props = withDefaults(
+  defineProps<{
+    order: any;
+    collapsible?: boolean;
+    defaultExpanded?: boolean;
+  }>(),
+  {
+    collapsible: false,
+    defaultExpanded: false,
+  },
+);
+
+const { t } = useI18n();
+const expanded = ref(props.defaultExpanded);
+
+const shipToLabel = computed(() => {
+  const name = props.order?.recipient_name;
+  if (!name) {
+    return t('shop_admin.shipping_details');
+  }
+  return t('shop_admin.ship_to', { name });
+});
 </script>
 
 <script lang="ts">
@@ -49,5 +70,11 @@ export default {
 
 .border-bottom {
   border-bottom: 1px solid rgba(34, 56, 101, 0.08);
+}
+
+.shipping-expansion :deep(.q-item) {
+  min-height: 48px;
+  padding-left: 16px;
+  padding-right: 12px;
 }
 </style>

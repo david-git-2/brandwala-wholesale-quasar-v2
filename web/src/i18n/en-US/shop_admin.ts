@@ -516,6 +516,17 @@ export default {
   total_amount_label: 'Total Amount',
   shipping_details: 'Shipping Details',
   delivery_instructions_notes: 'Delivery Instructions / Notes:',
+  recipient_pays: 'Recipient pays',
+  fees_and_profit: 'Fees & your profit',
+  your_cost: 'Your cost',
+  your_profit: 'Your profit',
+  line_total: 'Line total',
+  track_parcel: 'Track parcel',
+  ship_to: 'Ship to {name}',
+  counter_offer_required: 'Counter offer required',
+  counter_offer_hint: 'Set your counter price on each item, then submit.',
+  charges_update_before_pickup:
+    'Delivery and COD charges may change until the order reaches Ready for Pickup.',
 
   // Shop picker
   browse_shops: 'Browse shops',

@@ -1,123 +1,85 @@
 <template>
-  <div>
-    <q-card flat bordered class="details-card">
-      <q-card-section class="q-px-lg q-py-md border-bottom row items-center justify-between">
-        <div class="text-subtitle1 text-weight-bold text-grey-9">{{ $t('shop_admin.items_in_order') }}</div>
-        <div
-          class="text-caption text-grey-6"
-          v-if="order.is_negotiable_snapshot"
-        >
-          {{ $t('shop_admin.negotiation_round') }} {{ order.negotiate_round }}
-        </div>
-      </q-card-section>
+  <q-card flat bordered class="details-card">
+    <q-card-section class="q-px-md q-py-sm border-bottom row items-center justify-between">
+      <div class="text-subtitle1 text-weight-bold text-grey-9">
+        {{ $t('shop_admin.items_in_order') }}
+        <span class="text-grey-6 text-body2 text-weight-medium">({{ orderItems.length }})</span>
+      </div>
+      <div
+        v-if="order.is_negotiable_snapshot"
+        class="text-caption text-grey-6"
+      >
+        {{ $t('shop_admin.negotiation_round') }} {{ order.negotiate_round }}
+      </div>
+    </q-card-section>
 
-      <q-list separator>
-        <q-item v-for="item in orderItems" :key="item.id" class="q-py-md q-px-lg">
-          <q-item-section avatar>
-            <div class="customer-order-item__image shop-product-thumb bg-grey-2">
-              <q-img
-                v-if="item.image_url"
-                :src="item.image_url"
-                :alt="item.name"
-                fit="contain"
-                class="customer-order-item__image-img"
-              />
-              <q-icon
-                v-else
-                name="ph ph-image"
-                color="grey-4"
-                class="customer-order-item__image-fallback"
-              />
-            </div>
-          </q-item-section>
-
-          <q-item-section>
-            <div class="text-body1 text-weight-bold text-grey-9">{{ item.name }}</div>
-            <div class="text-caption text-grey-6">{{ $t('shop_admin.quantity') }}: {{ item.quantity }}</div>
-          </q-item-section>
-
-          <q-item-section side class="column items-end justify-center">
-            <!-- Pricing display -->
-            <template v-if="order.shop_type_snapshot === 'dropship'">
-              <div class="column text-right q-mb-xs">
-                <span class="text-caption text-grey-6" style="font-size: 10px;">{{ $t('shop_admin.accounting_cost') }}</span>
-                <span class="text-body2 text-weight-medium text-grey-8">
-                  {{ currencySymbol }}{{ (item.unit_sell_price_amount ?? item.unit_list_price_amount ?? 0).toFixed(2) }} {{ $t('shop.each') }}
-                </span>
-                <span class="text-caption text-grey-6" style="font-size: 10px;">
-                  Total Cost: {{ currencySymbol }}{{ ((item.unit_sell_price_amount ?? item.unit_list_price_amount ?? 0) * item.quantity).toFixed(2) }}
-                </span>
-              </div>
-              <div class="column text-right">
-                <span class="text-caption text-grey-6" style="font-size: 10px;">{{ $t('shop_admin.recipient_price') }}</span>
-                <span class="text-body2 text-weight-bold text-primary">
-                  {{ currencySymbol }}{{ (item.customer_sell_price_amount ?? 0).toFixed(2) }} {{ $t('shop.each') }}
-                </span>
-                <span class="text-caption text-weight-bold text-primary" style="font-size: 11px;">
-                  Total Recipient: {{ currencySymbol }}{{ ((item.customer_sell_price_amount ?? 0) * item.quantity).toFixed(2) }}
-                </span>
-              </div>
-            </template>
-            <template v-else>
-              <div class="column text-right">
-                <span class="text-caption text-grey-6">{{ $t('shop_admin.unit_price') }}</span>
-                <span class="text-body2 text-weight-bold text-grey-8">
-                  {{ currencySymbol }}{{ getDisplayUnitPrice(item).toFixed(2) }}
-                </span>
-                <span class="text-caption text-grey-6">
-                  Total: {{ currencySymbol }}{{ (getDisplayUnitPrice(item) * item.quantity).toFixed(2) }}
-                </span>
-              </div>
-            </template>
-
-            <!-- Offer editing if in negotiation status -->
-            <div v-if="isNegotiationOpen" class="q-mt-sm row items-center q-gutter-x-sm">
-              <span class="text-caption text-grey-7">{{ $t('shop_admin.your_counter') }}</span>
-              <q-input
-                v-model.number="item.customer_offer_amount"
-                type="number"
-                outlined
-                dense
-                class="counter-input"
-                :prefix="currencySymbol"
-                style="width: 100px"
-              />
-            </div>
-          </q-item-section>
-        </q-item>
-      </q-list>
-    </q-card>
-
-    <!-- Negotiation submit banner -->
-    <q-card
-      v-if="isNegotiationOpen"
-      flat
-      bordered
-      class="negotiate-action-card q-mt-md bg-amber-1 border-amber"
-    >
-      <q-card-section class="row items-center justify-between q-col-gutter-md">
-        <div class="col">
-          <div class="text-subtitle2 text-weight-bold text-amber-9">
-            Counter Offer Action Required
+    <q-list separator>
+      <q-item
+        v-for="item in orderItems"
+        :key="item.id"
+        class="dropship-item q-py-sm q-px-md"
+      >
+        <q-item-section avatar class="dropship-item__avatar">
+          <div class="dropship-item__image shop-product-thumb bg-grey-2">
+            <q-img
+              v-if="item.image_url"
+              :src="item.image_url"
+              :alt="item.name"
+              fit="contain"
+              class="dropship-item__image-img"
+            />
+            <q-icon
+              v-else
+              name="ph ph-image"
+              color="grey-4"
+              size="24px"
+            />
           </div>
-          <div class="text-body2 text-amber-8">
-            Propose counter unit prices for the items above and submit them to staff.
+        </q-item-section>
+
+        <q-item-section>
+          <div class="text-body2 text-weight-bold text-grey-9 leading-snug">{{ item.name }}</div>
+          <div class="text-caption text-grey-6 q-mt-xs">
+            {{ $t('shop_admin.quantity') }} {{ item.quantity }}
           </div>
-        </div>
-        <div class="col-auto">
-          <q-btn
-            color="amber-9"
-            unelevated
-            no-caps
-            :label="$t('shop_admin.submit_counter_offer')"
-            class="pill-btn text-weight-bold"
-            :loading="isSendingCounter"
-            @click="emit('submit-counter-offer')"
-          />
-        </div>
-      </q-card-section>
-    </q-card>
-  </div>
+
+          <div
+            v-if="isNegotiationOpen"
+            class="row items-center q-gutter-x-sm q-mt-sm"
+          >
+            <span class="text-caption text-grey-7">{{ $t('shop_admin.your_counter') }}</span>
+            <q-input
+              v-model.number="item.customer_offer_amount"
+              type="number"
+              outlined
+              dense
+              class="counter-input"
+              :prefix="currencySymbol"
+              style="max-width: 120px"
+            />
+          </div>
+        </q-item-section>
+
+        <q-item-section side class="text-right">
+          <template v-if="order.shop_type_snapshot === 'dropship'">
+            <span class="text-caption text-grey-6">{{ $t('shop_admin.line_total') }}</span>
+            <div class="text-body1 text-weight-bold text-primary">
+              {{ currencySymbol }}{{ getRecipientLineTotal(item).toFixed(2) }}
+            </div>
+          </template>
+          <template v-else>
+            <span class="text-caption text-grey-6">{{ $t('shop_admin.unit_price') }}</span>
+            <div class="text-body2 text-weight-bold text-grey-8">
+              {{ currencySymbol }}{{ getDisplayUnitPrice(item).toFixed(2) }}
+            </div>
+            <div class="text-caption text-grey-6 q-mt-xs">
+              {{ currencySymbol }}{{ (getDisplayUnitPrice(item) * item.quantity).toFixed(2) }}
+            </div>
+          </template>
+        </q-item-section>
+      </q-item>
+    </q-list>
+  </q-card>
 </template>
 
 <script setup lang="ts">
@@ -127,15 +89,14 @@ defineProps<{
   orderItems: ShopOrderItem[];
   order: any;
   isNegotiationOpen: boolean;
-  isSendingCounter: boolean;
   currencySymbol: string;
 }>();
 
-const emit = defineEmits<{
-  (e: 'submit-counter-offer'): void;
-}>();
+const getRecipientLineTotal = (item: ShopOrderItem) => {
+  return Number(item.customer_sell_price_amount ?? 0) * item.quantity;
+};
 
-const getDisplayUnitPrice = (item: any) => {
+const getDisplayUnitPrice = (item: ShopOrderItem) => {
   return (
     item.final_price_amount ??
     item.staff_offer_amount ??
@@ -164,27 +125,19 @@ export default {
   border-bottom: 1px solid rgba(34, 56, 101, 0.08);
 }
 
-.pill-btn {
-  border-radius: 8px;
-}
-
-.negotiate-action-card {
-  border-radius: 12px;
-}
-
-.border-amber {
-  border-color: #ffb300 !important;
-}
-
 .counter-input :deep(.q-field__control) {
   border-radius: 8px;
 }
 
-.customer-order-item__image {
-  width: 1in;
-  height: 1in;
-  min-width: 1in;
-  flex-shrink: 0;
+.dropship-item__avatar {
+  min-width: 56px;
+  padding-right: 8px;
+}
+
+.dropship-item__image {
+  width: 56px;
+  height: 56px;
+  min-width: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -193,12 +146,25 @@ export default {
   overflow: hidden;
 }
 
-.customer-order-item__image-img {
+.dropship-item__image-img {
   width: 100%;
   height: 100%;
 }
 
-.customer-order-item__image-fallback {
-  font-size: 0.35in;
+@media (max-width: 599px) {
+  .dropship-item {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .dropship-item :deep(.q-item__section--side) {
+    width: 100%;
+    padding-left: 0;
+    margin-top: 8px;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    text-align: left;
+  }
 }
 </style>
