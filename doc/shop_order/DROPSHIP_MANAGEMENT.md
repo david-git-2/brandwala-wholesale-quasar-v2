@@ -318,6 +318,19 @@ flowchart TD
     R --> X["returned"]
 ```
 
+#### §7.0 Before return finalize — external complaint intake (planned)
+
+Recipients report problems **outside the app** (phone, WhatsApp, in person) to the **company** or the **merchant** (reseller). Staff log that report in the **Returns Hub** before running return finalize.
+
+| Item | Detail |
+| :--- | :--- |
+| **Primary UI** | [`doc/after_sales/RETURNS_HUB.md`](../after_sales/RETURNS_HUB.md) → **Log dropship complaint** (`/app/after-sales/dropship/intake`) |
+| **Shortcut** | Management detail → **Log complaint** (prefill `orderId`) |
+| **Case fields** | `reported_to` (company \| merchant), `intake_source`, recipient snapshot — see [`DROPSHIP_AFTER_SALES.md`](../after_sales/DROPSHIP_AFTER_SALES.md) |
+| **Execution** | Case approved → §7.1 return finalize (unchanged RPCs) |
+
+§7.1 below remains the **execution** path (stock + wallet). Intake is audit and policy only until case linking ships (implementation track D1–D3 in [`IMPLEMENTATION_ORDER.md`](../after_sales/IMPLEMENTATION_ORDER.md)).
+
 #### §7.1 Return path (recipient refused parcel)
 
 Primary case: parcel still with courier, customer refused — order is **`shipped`**, staff never ran step ① **Mark as delivered**.

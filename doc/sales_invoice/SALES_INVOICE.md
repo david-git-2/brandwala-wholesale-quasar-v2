@@ -130,6 +130,23 @@ flowchart LR
   - If paid exceeds the new invoice total, leftover is **customer store credit** (`refund_method = wallet_credit`) or cash payout. That is the only return path that writes the customer wallet.
 * **RPC contract (`process_wholesale_invoice_return`)**: Must not rewrite sold `quantity`. Must add `return_quantity`, persist net `line_total_amount`, recompute header total/due, and post customer-wallet credit **only** when `excess_paid > 0` and method is `wallet_credit`. `issue_wholesale_invoice` must **not** post `invoice_billed` to the customer wallet (wholesale is AR, not wallet billing).
 
+### 2.3.1 After-Sales policy & cases (planned layer)
+
+The wholesale return RPC above is the **execution engine** for the **credit** outcome only. A separate **After-Sales** module (design only today) adds:
+
+1. **Returns Hub** — primary UI at `/app/after-sales` (parent and child desks).
+2. **Policy** — parent tenant configures return windows, restock fees, and allowed outcomes.
+3. **Case (RMA)** — wholesale: B2B customer files in-app; request → approve → execute.
+4. **Outcome routing** — credit calls `process_wholesale_invoice_return`; replacement/repair via orchestration RPCs.
+
+**Live today:** [`WholesaleInvoiceReturnPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/sales_invoice/pages/WholesaleInvoiceReturnPage.vue) exists but is only reachable from a case (planned). **Remove** the standalone **Process return** toolbar button from invoice details — all wholesale returns start in the Returns Hub or **Open return case** on the invoice.
+
+**Blueprint:** [`doc/after_sales/RETURNS_HUB.md`](../after_sales/RETURNS_HUB.md) · [`WHOLESALE_AFTER_SALES.md`](../after_sales/WHOLESALE_AFTER_SALES.md) · [`AFTER_SALES.md`](../after_sales/AFTER_SALES.md) · [`IMPLEMENTATION_ORDER.md`](../after_sales/IMPLEMENTATION_ORDER.md).
+
+**Dropship** after-sales (off-system recipient reports) is a separate channel in the same module — [`DROPSHIP_AFTER_SALES.md`](../after_sales/DROPSHIP_AFTER_SALES.md); execution remains [`DROPSHIP_MANAGEMENT.md`](../shop_order/DROPSHIP_MANAGEMENT.md) §7.1.
+
+**Out of scope:** Thrift returns, Koba orders.
+
 ---
 
 ### 2.4 Wholesale Collection, Store Credit & Settlement
@@ -188,7 +205,7 @@ The Sales Invoices module uses a single unified navigation entry (`/app/sales/in
 | :--- | :--- | :--- |
 | `/:tenantSlug?/app/sales/invoices` | [`InvoiceOverviewPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/sales_invoice/pages/InvoiceOverviewPage.vue) | High-level metrics, hub cards (Wholesale, Retail, Dropship, Invoices List), quick actions |
 | `/:tenantSlug?/app/sales/invoices/list` | [`InvoicesListPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/sales_invoice/pages/InvoicesListPage.vue) | Compact table toolbar, filter chips, invoice status badges |
-| `/:tenantSlug?/app/sales/invoices/create-wholesale` | [`CreateWholesaleInvoicePage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/sales_invoice/pages/CreateWholesaleInvoicePage.vue) | Stock search, bulk paste, **Process Return**, **Record Payment** (issued + due/partial), collect dialog |
+| `/:tenantSlug?/app/sales/invoices/create-wholesale` | [`CreateWholesaleInvoicePage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/sales_invoice/pages/CreateWholesaleInvoicePage.vue) | Stock search, bulk paste, **Open return case** (planned; remove **Process Return**), **Record Payment** (issued + due/partial), collect dialog |
 | `/:tenantSlug?/app/sales/invoices/:id` | [`InvoiceDetailsPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/sales_invoice/pages/InvoiceDetailsPage.vue) | Issue confirm, collect dialog, **payment / settlement history** below the invoice, return activity |
 | `/:tenantSlug?/app/sales/invoices/:id/return` | [`WholesaleInvoiceReturnPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/sales_invoice/pages/WholesaleInvoiceReturnPage.vue) | Return line item table, restocking fee calculation, restock destination selector |
 | `/:tenantSlug?/app/sales/invoices/:id/preview` | [`InvoicePreviewPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/sales_invoice/pages/InvoicePreviewPage.vue) | Print-ready invoice voucher with brand logo & barcode |

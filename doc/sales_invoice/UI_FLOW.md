@@ -32,12 +32,12 @@ flowchart TD
     
     subgraph Step4 ["4. Post-Issuance: Collect & Returns"]
         M --> N["Invoice Details or Wholesale issued toolbar"]
-        N -->|issued and due or partial| O["Record Payment beside Process Return"]
+        N -->|issued and due or partial| O["Record Payment"]
         O --> O1["Collect dialog: due, paid, customer store credit"]
         O1 --> O2["Cash + method and/or apply wallet credit and/or settlement"]
         O2 --> O3["Allocate payment; tenant cash only for real money"]
-        N -->|Click 'Process Return'| P["Wholesale Return Page"]
-        P -->|Submit| Q["Return credit minus restock fee; due first; wallet only if overpaid"]
+        N -->|Open return case or Returns Hub| P["After-sales case → Execute credit"]
+        P -->|Submit on /return?case_id=| Q["Return credit minus restock fee; due first; wallet only if overpaid"]
         N --> H["Payment & settlement history below invoice"]
     end
 ```
@@ -48,9 +48,9 @@ flowchart TD
 
 | Invoice Status | Primary Actions Enabled | Inputs Editable | Action Buttons Visible | Hidden / Disabled Controls |
 | :--- | :--- | :--- | :--- | :--- |
-| **`draft`** | Add/Remove items, edit Qty/Price, apply discount, change Brand/Customer | All line quantities, sell prices, discounts, header notes, brand, customer | `Save as Draft`, `Save as PF`, `Save as ISSUED` | `Preview Proforma` (hidden until PF), `Record Payment`, `Process Return` |
-| **`proforma_generated`** | Print/Send quote, transition to Issued or revert to Draft | Quantities, prices, and header info remain editable before final issue | `Preview Proforma`, `Saved as PF`, `Save as ISSUED`, `Save as Draft` | `Record Payment`, `Process Return` |
-| **`issued`** | Record collections, process returns, view print voucher | Lines locked. Overall discount locked. | `Preview / Print`, **`Record Payment`** (only if payment status is `due` or `partial` / `partially_paid`), `Process Return`, `Void Invoice` (if uncollected and no returns) | `Record Payment` hidden when fully paid. `Add Stock`, `Bulk Paste`, `Save as Draft` |
+| **`draft`** | Add/Remove items, edit Qty/Price, apply discount, change Brand/Customer | All line quantities, sell prices, discounts, header notes, brand, customer | `Save as Draft`, `Save as PF`, `Save as ISSUED` | `Preview Proforma` (hidden until PF), `Record Payment`, `Open return case` |
+| **`proforma_generated`** | Print/Send quote, transition to Issued or revert to Draft | Quantities, prices, and header info remain editable before final issue | `Preview Proforma`, `Saved as PF`, `Save as ISSUED`, `Save as Draft` | `Record Payment`, `Open return case` |
+| **`issued`** | Record collections, open return case (hub), view print voucher | Lines locked. Overall discount locked. | `Preview / Print`, **`Record Payment`** (only if payment status is `due` or `partial` / `partially_paid`), **`Open return case`** (links to Returns Hub flow — no standalone Process Return), `Void Invoice` (if uncollected and no returns) | `Record Payment` hidden when fully paid. `Add Stock`, `Bulk Paste`, `Save as Draft`. **Remove** legacy `Process Return` button. |
 | **`voided`** | View history | Read-only | `Delete Voided Invoice` | All operational buttons disabled |
 
 ---
@@ -64,11 +64,12 @@ flowchart TD
   - Displays live warehouse **Available (ATP)** and **Unit Cost** per line.
   - Automatically calculates line subtotal, overall discount, and grand total.
   - **Returns**: Sold qty is not rewritten. If any line has `return_quantity > 0`, a non-editable **Returned** column appears. Footer shows **Return credit** and net invoice total.
-  - **Issued + due/partial**: **Record Payment** sits beside **Process Return**. Opens the collect dialog (3.4). Overall discount is not editable.
+  - **Issued + due/partial**: **Record Payment** only (no Process Return on this page). Returns via **Open return case** or Returns Hub.
 
 ### 3.2 Invoice Details View (`/sales/invoices/:id`)
 - **Components**: [`InvoiceDetailsPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/sales_invoice/pages/InvoiceDetailsPage.vue)
 - **Rules**:
+  - **Issued:** **`Open return case`** (or link to existing case) — **not** a standalone **Process Return** button. Remove legacy Process Return from toolbar when after-sales ships.
   - **Returned Items**: Sold qty unchanged. Purple `Returned: X` plus kept qty; original line amount struck through; net after credit.
   - **Financial Breakdown**: Gross subtotal, return credit, restock fee, commercial discount, **settlement** (separate), paid, balance due.
   - **Payment history** (below the invoice): date, type (`cash` / `wallet_credit` / `settlement`), method, amount, reference.
@@ -76,13 +77,16 @@ flowchart TD
 
 ### 3.3 Wholesale Return Engine (`/sales/invoices/:id/return`)
 - **Components**: [`WholesaleInvoiceReturnPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/sales_invoice/pages/WholesaleInvoiceReturnPage.vue)
+- **Entry:** Case detail **Execute credit** only — URL must include `?case_id=`. No direct navigation from invoice toolbar.
 - **Rules**:
   - Return qty bounded by remaining returnable. Restock fee reduces return credit on the invoice.
   - Sold qty unchanged. Due reduced first. Customer wallet credit only when paid exceeds the new total (store credit), or cash payout if chosen.
   - Restock into `held`.
 
+> **Planned:** Primary return entry is the **Returns Hub** ([`doc/after_sales/RETURNS_HUB.md`](../after_sales/RETURNS_HUB.md)). Remove the standalone **Process return** button from invoice create/details toolbars. Staff use **Open return case** (invoice) or the hub; execution runs on `/return?case_id=` only from an approved case. See [`WHOLESALE_AFTER_SALES.md`](../after_sales/WHOLESALE_AFTER_SALES.md).
+
 ### 3.4 Collect Dialog (issued, due or partial)
-- **Shown from**: Wholesale issued toolbar and invoice details, beside Process Return.
+- **Shown from**: Wholesale issued toolbar and invoice details (not paired with Process Return).
 - **Shows**: Invoice due, already paid, **customer store credit** (not tenant cash).
 - **Fields**:
   1. **Cash / bank** — amount + method. Credits **tenant** wallet. Allocates to this invoice.

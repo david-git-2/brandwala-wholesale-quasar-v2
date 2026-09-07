@@ -12,6 +12,8 @@ Customer group provisioning lives in [`CUSTOMER.md`](../customer/CUSTOMER.md). S
 
 **Procurement demand list (aggregated shop order + PBC lines):** [`PROCUREMENT_DEMAND_LIST.md`](./PROCUREMENT_DEMAND_LIST.md)
 
+**After-sales (returns hub, off-system recipient complaints, parent policy):** [`../after_sales/AFTER_SALES.md`](../after_sales/AFTER_SALES.md) · [`RETURNS_HUB.md`](../after_sales/RETURNS_HUB.md) · dropship intake [`DROPSHIP_AFTER_SALES.md`](../after_sales/DROPSHIP_AFTER_SALES.md)
+
 ---
 
 ## 1. Shop Setup Operator Journey (`shop_config`)

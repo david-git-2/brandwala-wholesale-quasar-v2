@@ -75,6 +75,14 @@ Out of the 26 codebase modules, only **6 core operational domains** qualify for 
 
 ---
 
+### 3b. `after_sales` (Planned — Returns Hub)
+
+* **Why:** Open RMA cases, pending approvals, and dropship off-system complaints need a home beside invoice shortcuts.
+* **Spec:** [`doc/after_sales/RETURNS_HUB.md`](../after_sales/RETURNS_HUB.md)
+* **Planned widgets:** `after_sales.open_cases` KPI, link to `/app/after-sales` (register in `afterSalesDashboardSlots.ts` when module ships — phase H1).
+
+---
+
 ### 4. `wallet` & `reporting_treasury` (Universal)
 * **Why it needs dashboard space:** Operating liquidity, merchant payouts, and courier COD cash reconciliations directly impact daily solvency.
 * **Component Location:** [`web/src/modules/wallet/dashboard/`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/wallet/dashboard)

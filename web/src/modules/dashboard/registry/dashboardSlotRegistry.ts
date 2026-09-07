@@ -1,4 +1,8 @@
 import { THRIFT_DASHBOARD_SLOTS } from 'src/modules/thrift/dashboard/thriftDashboardSlots';
+import { SALES_INVOICE_DASHBOARD_SLOTS } from 'src/modules/sales_invoice/dashboard/salesInvoiceDashboardSlots';
+import { WALLET_DASHBOARD_SLOTS } from 'src/modules/wallet/dashboard/walletDashboardSlots';
+import { INVESTOR_CAPITAL_DASHBOARD_SLOTS } from 'src/modules/investor_capital/dashboard/investorCapitalDashboardSlots';
+import { TASKS_DASHBOARD_SLOTS } from 'src/modules/tasks/dashboard/tasksDashboardSlots';
 import {
   getModuleDefinition,
   type ModuleAction,
@@ -14,10 +18,20 @@ import type {
 
 /** Fixed group order weights. Lower first. Unknown parents sort after. */
 const GROUP_WEIGHT: Partial<Record<ModuleKey, number>> = {
-  thrift: 10,
+  sales_invoice: 10,
+  universal_wallet: 20,
+  investor_capital: 30,
+  tasks: 40,
+  thrift: 50,
 };
 
-export const DASHBOARD_SLOT_REGISTRY: readonly DashboardSlot[] = [...THRIFT_DASHBOARD_SLOTS];
+export const DASHBOARD_SLOT_REGISTRY: readonly DashboardSlot[] = [
+  ...SALES_INVOICE_DASHBOARD_SLOTS,
+  ...WALLET_DASHBOARD_SLOTS,
+  ...INVESTOR_CAPITAL_DASHBOARD_SLOTS,
+  ...TASKS_DASHBOARD_SLOTS,
+  ...THRIFT_DASHBOARD_SLOTS,
+];
 
 export const resolveDashboardSlots = ({
   scope,
