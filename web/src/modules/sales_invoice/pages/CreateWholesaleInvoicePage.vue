@@ -126,19 +126,6 @@
             class="q-px-sm text-caption text-weight-bold"
             @click="openCollectDialog"
           />
-          <q-btn
-            v-if="loadedInvoiceStatus === 'issued'"
-            flat
-            dense
-            no-caps
-            color="purple"
-            icon="ph ph-arrow-u-down-left"
-            label="Process Return"
-            class="q-px-sm text-caption text-weight-bold"
-            @click="goToProcessReturn"
-          >
-            <q-tooltip>Record wholesale item returns & issue credit note</q-tooltip>
-          </q-btn>
         </div>
       </div>
 
@@ -674,18 +661,6 @@ const onCollectPayment = async (payload: {
   } finally {
     collectSaving.value = false;
   }
-};
-
-const goToProcessReturn = () => {
-  const invId = existingInvoiceId.value;
-  if (!invId) return;
-  void router.push({
-    name: 'app-global-invoice-return-page',
-    params: {
-      tenantSlug: authStore.tenantSlug || '',
-      id: String(invId),
-    },
-  });
 };
 
 const openPreview = () => {

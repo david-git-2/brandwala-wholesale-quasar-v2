@@ -116,6 +116,7 @@ const salesInvoiceRoutes: RouteRecordRaw[] = [
         name: 'app-global-invoice-return-page',
         component: () => import('../pages/WholesaleInvoiceReturnPage.vue'),
         beforeEnter: guard('global_invoice'),
+        meta: { requiresCaseId: true },
       },
       {
         path: ':id',

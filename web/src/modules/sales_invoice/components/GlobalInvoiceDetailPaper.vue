@@ -84,7 +84,6 @@ const emit = defineEmits<{
   (e: 'toggle-edit-recipient'): void;
   (e: 'open-edit-note'): void;
   (e: 'view-note'): void;
-  (e: 'process-return'): void;
   (e: 'update:target-total', value: number | null): void;
   (e: 'target-total-input'): void;
   (e: 'apply-target-total'): void;
@@ -735,22 +734,6 @@ onMounted(() => {
       </div>
     </section>
 
-    <section
-      v-if="showReturns && invoice.invoice_status === 'issued' && canMutateInvoice"
-      class="invoice-paper__foot-section"
-    >
-      <q-btn
-        color="purple"
-        outline
-        no-caps
-        dense
-        class="full-width"
-        icon="ph ph-arrow-u-down-left"
-        label="Process return"
-        data-test="add-return-btn"
-        @click="emit('process-return')"
-      />
-    </section>
   </article>
 </template>
 

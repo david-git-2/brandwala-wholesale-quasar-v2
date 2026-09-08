@@ -62,7 +62,8 @@ export type ModuleKey =
   | 'billing_profile'
   | 'billing_profile_wallet'
   | 'recipient_profile'
-  | 'universal_wallet';
+  | 'universal_wallet'
+  | 'after_sales';
 
 export type ModuleAction =
   | 'view'
@@ -630,6 +631,22 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
         caption: 'Sales & invoice operations hub',
         icon: 'ph ph-receipt',
         routeSegment: 'sales/invoices',
+        requiredAction: 'view',
+      },
+    ],
+  },
+  {
+    key: 'after_sales',
+    name: 'Returns',
+    description: 'Returns hub for wholesale credit returns and dropship complaints.',
+    navIcon: 'ph ph-arrow-u-up-left',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Returns',
+        caption: 'Return, replacement, and warranty cases',
+        icon: 'ph ph-arrow-u-up-left',
+        routeSegment: 'after-sales',
         requiredAction: 'view',
       },
     ],

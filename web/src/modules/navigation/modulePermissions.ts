@@ -91,10 +91,17 @@ const resolveTenantForModuleAccess = (
   );
 };
 
+const isAfterSalesDevModule = (moduleKey: ModuleKey): boolean =>
+  import.meta.env.DEV && moduleKey === 'after_sales';
+
 const isTenantModuleActive = (
   moduleKey: ModuleKey,
   activeModuleKeys: readonly string[],
 ): boolean => {
+  if (isAfterSalesDevModule(moduleKey)) {
+    return true;
+  }
+
   if (activeModuleKeys.includes(moduleKey)) {
     return true;
   }
@@ -128,6 +135,10 @@ const hasModuleRoleGrant = ({
   isAdmin?: boolean | null | undefined;
 }): boolean => {
   if (role === 'superadmin' || isAdmin === true) {
+    return true;
+  }
+
+  if (isAfterSalesDevModule(moduleKey)) {
     return true;
   }
 

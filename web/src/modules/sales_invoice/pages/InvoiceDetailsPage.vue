@@ -146,7 +146,6 @@
             @toggle-edit-recipient="onToggleEditRecipient"
             @open-edit-note="openEditNoteDialog"
             @view-note="viewNoteDialog = true"
-            @process-return="onProcessReturnFromPaper"
             @update:target-total="onTargetTotalModelUpdate"
             @target-total-input="onTargetTotalInput"
             @apply-target-total="onApplyTargetTotal"
@@ -169,6 +168,26 @@
           </template>
 
           <template v-else-if="invoice.invoice_status === 'issued'">
+            <q-btn
+              v-if="isWholesale"
+              color="purple"
+              outline
+              no-caps
+              class="full-width global-invoice-details-page__action-btn q-mt-sm"
+              icon="ph ph-arrow-u-up-left"
+              label="Open return case"
+              @click="openReturnCaseDialog = true"
+            />
+            <q-btn
+              v-if="linkedAfterSalesCase"
+              flat
+              color="primary"
+              no-caps
+              class="full-width global-invoice-details-page__action-btn q-mt-xs"
+              icon="ph ph-tray"
+              label="View case"
+              @click="goToLinkedCase"
+            />
             <template v-if="invoice.due_amount > 0">
               <q-btn
                 color="primary"
@@ -522,94 +541,6 @@
       </q-card>
     </q-dialog>
 
-    <!-- Add Return Dialog -->
-    <q-dialog v-model="returnDialog" persistent>
-      <q-card class="q-pa-md" style="min-width: 400px; border-radius: 16px">
-        <q-card-section class="text-h6 text-weight-bold">Add Return</q-card-section>
-        <q-card-section class="q-gutter-y-sm">
-          <q-select
-            v-model="returnItemId"
-            :options="returnItemOptions"
-            label="Invoice item"
-            outlined
-            dense
-            emit-value
-            map-options
-            class="soft-input"
-          />
-          <q-input
-            v-model.number="returnQty"
-            type="number"
-            label="Quantity"
-            outlined
-            dense
-            min="0"
-            class="soft-input"
-          />
-          <q-select
-            v-model="returnGradeTagId"
-            :options="returnGradeOptions"
-            label="Condition grade"
-            outlined
-            dense
-            emit-value
-            map-options
-            option-label="name"
-            option-value="id"
-            class="soft-input"
-          />
-          <q-select
-            v-model="returnAvailability"
-            :options="returnAvailabilityOptions"
-            label="Availability"
-            outlined
-            dense
-            emit-value
-            map-options
-            class="soft-input"
-          />
-          <q-input
-            v-model.number="returnFaceAmount"
-            type="number"
-            label="Customer Refund Amount (Face)"
-            outlined
-            dense
-            min="0"
-            class="soft-input"
-          />
-          <q-input
-            v-model.number="returnAccountingAmount"
-            type="number"
-            label="Seller Deduction Amount (Accounting)"
-            outlined
-            dense
-            min="0"
-            class="soft-input"
-          />
-          <q-input
-            v-model.number="returnCharge"
-            type="number"
-            label="Return charge (optional)"
-            outlined
-            dense
-            min="0"
-            class="soft-input"
-          />
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="Cancel" v-close-popup class="pill-btn" />
-          <q-btn
-            color="primary"
-            label="Save"
-            :loading="returnSaving"
-            :disable="!returnItemId || !returnGradeTagId || returnQty <= 0"
-            @click="onAddReturn"
-            class="pill-btn"
-          />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
     <!-- View Note Dialog -->
     <q-dialog v-model="viewNoteDialog">
       <q-card
@@ -648,6 +579,11 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <OpenWholesaleReturnCaseDialog
+      v-model="openReturnCaseDialog"
+      :invoice-context="wholesaleCaseDialogContext"
+    />
   </q-page>
 </template>
 
@@ -684,10 +620,10 @@ import type { StockNetworkRow } from 'src/modules/global/types';
 import { stockNetworkAvailableQty } from 'src/modules/global/utils/mapStockNetworkRow';
 import { useInvoiceItemUnitCosts } from '../composables/useInvoiceItemUnitCosts';
 import type { GlobalInvoiceDetail, GlobalInvoiceItemRow } from '../types';
-import { tagRepository } from 'src/modules/tag/repositories/tagRepository';
-import type { Tag } from 'src/modules/tag/types';
-import { STOCK_AVAILABILITY_OPTIONS } from 'src/modules/procurement_stock/constants/stockAvailability';
-import type { StockAvailability } from 'src/modules/procurement_stock/constants/stockAvailability';
+import OpenWholesaleReturnCaseDialog, {
+  type WholesaleCaseDialogContext,
+} from 'src/modules/after_sales/components/OpenWholesaleReturnCaseDialog.vue';
+import { useAfterSalesCaseByInvoiceQuery } from 'src/modules/after_sales/composables/useAfterSalesCaseMutations';
 
 const route = useRoute();
 const router = useRouter();
@@ -755,6 +691,38 @@ const settleAmount = ref(0);
 const payoutAmount = ref(0);
 const paymentSaving = ref(false);
 
+const openReturnCaseDialog = ref(false);
+const invoiceIdForCase = computed(() => invoice.value?.id ?? null);
+const linkedCaseQuery = useAfterSalesCaseByInvoiceQuery(invoiceIdForCase);
+const linkedAfterSalesCase = computed(() => linkedCaseQuery.data.value ?? null);
+
+const wholesaleCaseDialogContext = computed((): WholesaleCaseDialogContext | null => {
+  if (!invoice.value || !isWholesale.value) return null;
+  return {
+    salesInvoiceId: invoice.value.id,
+    invoiceNo: invoice.value.invoice_no,
+    customerName: invoice.value.billing_profiles?.name || invoice.value.recipient_name || 'Customer',
+    billingProfileId: invoice.value.billing_profile_id,
+    lines: items.value.map((item) => ({
+      invoice_item_id: item.id,
+      product_name: item.name_snapshot || `Item #${item.id}`,
+      max_qty: Math.max(Number(item.quantity ?? 0) - Number(item.return_quantity ?? 0), 0),
+    })),
+  };
+});
+
+const goToLinkedCase = () => {
+  const linked = linkedAfterSalesCase.value;
+  if (!linked) return;
+  void router.push({
+    name: 'app-after-sales-case-detail',
+    params: {
+      tenantSlug: route.params.tenantSlug,
+      id: linked.id,
+    },
+  });
+};
+
 const localToday = (): string => {
   const d = new Date();
   const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -790,44 +758,12 @@ const openCodDialog = () => {
   codDialog.value = true;
 };
 
-const goToProcessReturn = () => {
-  if (!invoice.value?.id) return;
-  void router.push({
-    name: 'app-global-invoice-return-page',
-    params: {
-      tenantSlug: authStore.tenantSlug || '',
-      id: String(invoice.value.id),
-    },
-  });
-};
-
-
-const returnDialog = ref(false);
-const returnItemId = ref<number | null>(null);
-const returnQty = ref(1);
-const returnFaceAmount = ref(0);
-const returnAccountingAmount = ref(0);
-const returnCharge = ref(0);
-const returnSaving = ref(false);
-const returnGradeTagId = ref<number | null>(null);
-const returnAvailability = ref<StockAvailability>('held');
-const returnGradeOptions = ref<Tag[]>([]);
-const returnAvailabilityOptions = STOCK_AVAILABILITY_OPTIONS;
-
 const onToggleEditRecipient = () => {
   if (editingRecipient.value) {
     void onHeaderUpdate();
     editingRecipient.value = false;
   } else {
     editingRecipient.value = true;
-  }
-};
-
-const onProcessReturnFromPaper = () => {
-  if (invoice.value?.invoice_type === 'wholesale') {
-    goToProcessReturn();
-  } else {
-    returnDialog.value = true;
   }
 };
 
@@ -891,9 +827,6 @@ const loadLinkedOrderRemittance = async (inv: GlobalInvoiceDetail | null) => {
 const isWholesale = computed(() => invoice.value?.invoice_type === 'wholesale');
 const showCharges = computed(() => !isWholesale.value);
 
-const returnItemOptions = computed(() =>
-  items.value.map((row) => ({ label: row.name_snapshot, value: row.id })),
-);
 
 const formatAmount = (value: number) => formatAmountBdt(value);
 
@@ -1579,70 +1512,10 @@ const onRecordPayout = async () => {
   }
 };
 
-const onAddReturn = async () => {
-  if (!invoice.value || !returnItemId.value) return;
-  returnSaving.value = true;
-  try {
-    await invoiceRepository.addGlobalReturnItem({
-      invoice_id: invoice.value.id,
-      invoice_item_id: returnItemId.value,
-      quantity: returnQty.value,
-      return_face_amount: returnFaceAmount.value,
-      return_accounting_amount: returnAccountingAmount.value,
-      return_charge_amount: returnCharge.value || 0,
-      to_grade_tag_id: returnGradeTagId.value,
-      to_availability: returnAvailability.value,
-    });
-    returnDialog.value = false;
-    await loadInvoice();
-    showSuccessNotification('Return recorded.');
-  } catch (e) {
-    showWarningDialog(e instanceof Error ? e.message : 'Return failed.');
-  } finally {
-    returnSaving.value = false;
-  }
-};
 
 watch(stockDialog, (open) => {
   if (!open) {
     stockCart.value = [];
-  }
-});
-
-watch(returnDialog, async (open) => {
-  if (!open) return;
-  returnAvailability.value = 'held';
-  try {
-    returnGradeOptions.value = await tagRepository.listTagsForCategory({
-      moduleKey: 'stock_grade',
-      code: 'warehouse',
-    });
-    const standard = returnGradeOptions.value.find((g) => g.slug === 'standard');
-    returnGradeTagId.value = standard?.id ?? returnGradeOptions.value[0]?.id ?? null;
-  } catch {
-    returnGradeOptions.value = [];
-    returnGradeTagId.value = null;
-  }
-});
-
-watch(returnGradeTagId, (gradeId) => {
-  const g = returnGradeOptions.value.find((opt) => opt.id === gradeId);
-  if (g?.metadata?.maps_to_availability === 'unsellable') {
-    returnAvailability.value = 'unsellable';
-  } else if (returnAvailability.value === 'unsellable') {
-    returnAvailability.value = 'held';
-  }
-});
-
-watch([returnItemId, returnQty], () => {
-  if (!returnItemId.value) return;
-  const item = items.value.find((i) => i.id === returnItemId.value);
-  if (item) {
-    const qty = Number(returnQty.value || 0);
-    const sellPrice = Number(item.sell_price_amount || 0);
-
-    returnAccountingAmount.value = sellPrice * qty;
-    returnFaceAmount.value = sellPrice * qty;
   }
 });
 

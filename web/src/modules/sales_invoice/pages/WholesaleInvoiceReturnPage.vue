@@ -15,7 +15,7 @@
         </q-btn>
         <div>
           <div class="text-subtitle1 text-weight-bold text-grey-9 row items-center q-gutter-xs">
-            <span>Process Return: {{ invoice?.invoice_no || `Invoice #${invoiceId}` }}</span>
+            <span>Execute return credit: {{ invoice?.invoice_no || `Invoice #${invoiceId}` }}</span>
             <q-badge color="purple-1" text-color="purple-9" label="Wholesale Return" class="text-weight-bold q-ml-xs" />
           </div>
           <div class="text-caption text-grey-6">
@@ -42,7 +42,7 @@
           no-caps
           color="primary"
           icon="ph ph-arrow-u-down-left"
-          label="Submit Return"
+          label="Submit return (mock)"
           class="q-px-md text-weight-bold submit-return-btn"
           :loading="isSubmitting"
           :disable="!hasEligibleReturnItems || isSubmitting"
@@ -254,6 +254,19 @@
             <q-badge color="blue-1" text-color="blue-9" label="Live In-Memory" class="text-weight-bold" />
           </div>
 
+          <q-banner
+            v-if="linkedCase && !linkedCase.policy_snapshot.within_window"
+            dense
+            rounded
+            class="bg-warning text-dark q-mb-sm"
+          >
+            Outside policy window — manager override would be required in live flow.
+          </q-banner>
+
+          <q-banner v-if="linkedCase" dense rounded class="bg-purple-1 text-purple-9 q-mb-sm">
+            Case {{ linkedCase.case_no }} · {{ linkedCase.program.replace(/_/g, ' ') }}
+          </q-banner>
+
           <!-- Summary Rows -->
           <div class="column q-gutter-y-xs text-caption border-bottom q-pb-sm q-mb-sm">
             <div class="row justify-between text-grey-7">
@@ -388,6 +401,8 @@ import type {
 } from '../types';
 import { formatAmountBdt } from 'src/utils/currency';
 import { showSuccessNotification, showWarningDialog } from 'src/utils/appFeedback';
+import { afterSalesRepositoryStub } from 'src/modules/after_sales/repositories/afterSalesRepository.stub';
+import type { AfterSalesCase } from 'src/modules/after_sales/types/afterSales.types';
 
 const route = useRoute();
 const router = useRouter();
@@ -398,6 +413,13 @@ const invoiceId = computed(() => {
   return param ? Number(param) : 0;
 });
 
+const caseId = computed(() => {
+  const raw = route.query.case_id;
+  if (typeof raw === 'string' && raw.trim()) return raw.trim();
+  if (Array.isArray(raw) && typeof raw[0] === 'string' && raw[0].trim()) return raw[0].trim();
+  return null;
+});
+
 const isLoading = ref(true);
 const isSubmitting = ref(false);
 const errorMessage = ref<string | null>(null);
@@ -405,6 +427,8 @@ const errorMessage = ref<string | null>(null);
 const invoice = ref<GlobalInvoiceDetail | null>(null);
 const invoiceItems = ref<GlobalInvoiceItemRow[]>([]);
 const gradeTags = ref<Tag[]>([]);
+
+const linkedCase = ref<AfterSalesCase | null>(null);
 
 const selectAll = ref(false);
 const returnChargeAmount = ref<number>(0);
@@ -587,6 +611,12 @@ const onGradeTagChange = (itemId: number, gradeId: number | null) => {
 };
 
 const loadData = async () => {
+  if (!caseId.value) {
+    isLoading.value = false;
+    errorMessage.value = 'Open a return case first from the Returns Hub.';
+    return;
+  }
+
   if (!invoiceId.value) {
     errorMessage.value = 'Invalid Invoice ID';
     isLoading.value = false;
@@ -595,8 +625,21 @@ const loadData = async () => {
 
   isLoading.value = true;
   errorMessage.value = null;
+  linkedCase.value = null;
 
   try {
+    const mockCase = await afterSalesRepositoryStub.getCase(caseId.value);
+    if (!mockCase) {
+      errorMessage.value = 'Return case not found.';
+      return;
+    }
+    if (mockCase.sales_invoice_id !== invoiceId.value) {
+      errorMessage.value = 'This return case does not belong to this invoice.';
+      return;
+    }
+    linkedCase.value = mockCase;
+    returnChargeAmount.value = mockCase.policy_snapshot.suggested_restock_fee ?? 0;
+
     const [invData, itemsData, tagsData] = await Promise.all([
       invoiceRepository.getGlobalInvoiceById(invoiceId.value),
       invoiceRepository.listGlobalInvoiceItems(invoiceId.value),
@@ -644,36 +687,21 @@ const loadData = async () => {
 };
 
 const onSubmitReturn = async () => {
-  if (!invoice.value || !hasEligibleReturnItems.value || isSubmitting.value) return;
-
-  const returnPayloadItems: WholesaleReturnItemInput[] = [];
-  for (const item of invoiceItems.value) {
-    const s = returnInputs.value[item.id];
-    if (s && s.selected && s.quantity > 0) {
-      returnPayloadItems.push({
-        invoice_item_id: item.id,
-        quantity: s.quantity,
-        to_availability: s.to_availability,
-        to_grade_tag_id: s.to_grade_tag_id,
-        note: s.note || null,
-      });
-    }
-  }
+  if (!invoice.value || !hasEligibleReturnItems.value || isSubmitting.value || !caseId.value) return;
 
   isSubmitting.value = true;
   try {
-    await invoiceRepository.processWholesaleInvoiceReturn({
-      invoice_id: invoice.value.id,
-      items: returnPayloadItems,
-      return_charge_amount: returnChargeAmount.value,
-      refund_method: previewSummary.value.excessPaidRefund > 0 ? refundMethod.value : null,
-      note: overallReturnNote.value || null,
+    await afterSalesRepositoryStub.closeCase(caseId.value);
+    showSuccessNotification('Return credit recorded (mock). Case closed.');
+    void router.push({
+      name: 'app-after-sales-case-detail',
+      params: {
+        tenantSlug: authStore.tenantSlug || undefined,
+        id: caseId.value,
+      },
     });
-
-    showSuccessNotification('Wholesale return recorded and stock received back into quarantine.');
-    goBack();
   } catch (err) {
-    console.error('Error processing return:', err);
+    console.error('Error processing mock return:', err);
     showWarningDialog(err instanceof Error ? err.message : 'Return failed');
   } finally {
     isSubmitting.value = false;
@@ -681,24 +709,21 @@ const onSubmitReturn = async () => {
 };
 
 const goBack = () => {
-  if (invoice.value?.id) {
+  if (caseId.value) {
     void router.push({
-      name: 'app-global-invoices-create-wholesale',
+      name: 'app-after-sales-case-detail',
       params: {
-        tenantSlug: authStore.tenantSlug || '',
-      },
-      query: {
-        id: String(invoice.value.id),
+        tenantSlug: authStore.tenantSlug || undefined,
+        id: caseId.value,
       },
     });
-  } else {
-    void router.push({
-      name: 'app-global-invoices-page',
-      params: {
-        tenantSlug: authStore.tenantSlug || '',
-      },
-    });
+    return;
   }
+
+  void router.push({
+    name: 'app-after-sales-overview',
+    params: { tenantSlug: authStore.tenantSlug || undefined },
+  });
 };
 
 onMounted(() => {

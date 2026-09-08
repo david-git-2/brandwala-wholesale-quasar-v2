@@ -1,5 +1,7 @@
 # After-Sales — Implementation Order
 
+> **Step-by-step execution (UI cleanup → mock UI → backend → wiring):** use [`TASK.md`](./TASK.md).
+
 Phased delivery: **Returns Hub**, parent policy, wholesale cases, dropship off-system intake, replacement, warranty. Each phase shippable independently.
 
 **Prerequisites:** `process_wholesale_invoice_return` live; `finalize_dropship_return` live. Parent-books wallet migration in progress or done — [`WALLET_PARENT_BOOKS_IMPLEMENTATION.md`](../wallet/WALLET_PARENT_BOOKS_IMPLEMENTATION.md).
@@ -16,6 +18,7 @@ Phased delivery: **Returns Hub**, parent policy, wholesale cases, dropship off-s
 | `doc/after_sales/DROPSHIP_AFTER_SALES.md` | Done |
 | `doc/after_sales/UI_FLOW.md` | Done |
 | `doc/after_sales/IMPLEMENTATION_ORDER.md` | Done |
+| `doc/after_sales/TASK.md` | Done |
 | Cross-links (MASTER_PLAN, sales_invoice, shop_order) | Done |
 
 ---

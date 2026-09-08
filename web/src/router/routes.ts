@@ -22,6 +22,7 @@ import shopOrderRoutes from 'src/modules/shop_order/routes';
 import accessControlRoutes from 'src/modules/access_control/routes';
 import walletRoutes from 'src/modules/wallet/routes';
 import customerRoutes from 'src/modules/customer/routes';
+import afterSalesRoutes from 'src/modules/after_sales/routes';
 
 const routes: RouteRecordRaw[] = [
   {
@@ -97,6 +98,7 @@ const routes: RouteRecordRaw[] = [
   ...accessControlRoutes,
   ...walletRoutes,
   ...customerRoutes,
+  ...afterSalesRoutes,
 
   // Always leave this as last one
   {
