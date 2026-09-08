@@ -437,11 +437,7 @@ begin
       and u.source_id = r.id::text
       and u.entity_type in ('middleman', 'customer')
       and u.type = 'credit'
-      and coalesce(u.metadata->>'transaction_type', '') in (
-        'merchant_funds_held',
-        'invoice_collection',
-        'dropship_profit'
-      );
+      and coalesce(u.metadata->>'transaction_type', '') = 'dropship_profit'
 
     select coalesce(sum(u.amount), 0)
     into v_paid
@@ -477,6 +473,154 @@ end;
 $$;
 
 ALTER FUNCTION "public"."apply_dropship_payout_settlement_fifo"("p_tenant_id" bigint, "p_billing_profile_id" bigint, "p_amount" numeric) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."transfer_dropship_reseller_profit"("p_tenant_id" bigint, "p_order_id" bigint, "p_payload" "jsonb" DEFAULT '{}'::"jsonb") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_order public.shop_orders;
+  v_settlement public.dropship_order_settlements;
+  v_save jsonb;
+  v_billing_profile_id bigint;
+  v_amount numeric(15,2);
+  v_parent_tenant_id bigint;
+begin
+  if not public.is_tenant_staff(p_tenant_id) then
+    raise exception 'access denied';
+  end if;
+
+  select * into v_order from public.shop_orders
+  where id = p_order_id and tenant_id = p_tenant_id for update;
+
+  if not found then
+    raise exception 'order not found';
+  end if;
+
+  select * into v_settlement
+  from public.dropship_order_settlements
+  where shop_order_id = p_order_id;
+
+  if not found then
+    raise exception 'settlement draft is required before crediting reseller profit';
+  end if;
+
+  if v_order.status = 'reseller_paid'::public.shop_order_status
+     or v_settlement.merchant_payout_at is not null
+     or v_settlement.status = 'confirmed' then
+    return jsonb_build_object(
+      'success', true,
+      'already_recorded', true,
+      'message', 'Reseller profit already credited to merchant wallet',
+      'order_id', p_order_id,
+      'status', coalesce(v_order.status::text, 'reseller_paid')
+    );
+  end if;
+
+  if v_order.courier_remittance_ref is null
+     and v_settlement.remittance_at is null
+     and v_order.status <> 'payment_received'::public.shop_order_status then
+    raise exception 'Courier remittance must be recorded before crediting reseller profit (current: %)', v_order.status;
+  end if;
+
+  if p_payload is not null and p_payload <> '{}'::jsonb then
+    v_save := public.save_dropship_settlement_draft(p_tenant_id, p_order_id, p_payload);
+    if coalesce(v_save->>'success', 'false') <> 'true' then
+      return v_save;
+    end if;
+
+    select * into v_settlement
+    from public.dropship_order_settlements
+    where shop_order_id = p_order_id;
+  end if;
+
+  v_billing_profile_id := coalesce(v_order.billing_profile_id, v_settlement.billing_profile_id);
+  if v_billing_profile_id is null then
+    raise exception 'billing profile is required for reseller profit credit';
+  end if;
+
+  v_amount := coalesce(v_settlement.reseller_profit, 0);
+  if v_amount <= 0 then
+    raise exception 'reseller profit must be positive';
+  end if;
+
+  v_parent_tenant_id := public.resolve_parent_tenant_id(p_tenant_id);
+
+  if exists (
+    select 1
+    from public.universal_wallet_ledger u
+    where u.parent_tenant_id = v_parent_tenant_id
+      and u.source_type = 'shop_order'
+      and u.source_id = p_order_id::text
+      and u.entity_type in ('middleman', 'customer')
+      and u.entity_id = v_billing_profile_id
+      and u.type = 'credit'
+      and coalesce(u.metadata->>'transaction_type', '') = 'dropship_profit'
+  ) then
+    return jsonb_build_object(
+      'success', true,
+      'already_recorded', true,
+      'message', 'Reseller profit already credited to merchant wallet',
+      'order_id', p_order_id,
+      'amount', v_amount
+    );
+  end if;
+
+  perform public.record_ledger_transaction(
+    p_parent_tenant_id => v_parent_tenant_id,
+    p_operating_tenant_id => p_tenant_id,
+    p_entity_type => 'customer',
+    p_entity_id => v_billing_profile_id,
+    p_type => 'credit',
+    p_amount => v_amount,
+    p_currency_code => 'BDT',
+    p_exchange_rate => 1.000000,
+    p_source_type => 'shop_order',
+    p_source_id => p_order_id::text,
+    p_metadata => jsonb_build_object(
+      'section', 'payout_earned',
+      'transaction_type', 'dropship_profit',
+      'label', 'Dropship profit earned',
+      'order_no', v_order.order_no,
+      'order_id', p_order_id,
+      'shop_order_id', p_order_id::text,
+      'invoice_id', v_order.global_invoice_id,
+      'notes', coalesce(
+        nullif(trim(p_payload->>'reference_notes'), ''),
+        'Dropship reseller profit for order #' || v_order.order_no
+      )
+    )
+  );
+
+  update public.dropship_order_settlements
+  set
+    status = 'confirmed',
+    confirmed_at = now(),
+    confirmed_by = auth.uid(),
+    merchant_payout_at = now(),
+    updated_at = now()
+  where id = v_settlement.id;
+
+  update public.shop_orders
+  set
+    status = 'reseller_paid'::public.shop_order_status,
+    payout_settlement_status = 'paid',
+    updated_at = now()
+  where id = p_order_id;
+
+  return jsonb_build_object(
+    'success', true,
+    'message', 'Reseller profit credited to merchant wallet',
+    'order_id', p_order_id,
+    'amount', v_amount,
+    'status', 'reseller_paid',
+    'billing_profile_id', v_billing_profile_id
+  );
+end;
+$$;
+
+ALTER FUNCTION "public"."transfer_dropship_reseller_profit"("p_tenant_id" bigint, "p_order_id" bigint, "p_payload" "jsonb") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."browse_shop_catalog_for_customer"("p_tenant_id" bigint, "p_shop_slug" "text", "p_search" "text" DEFAULT NULL::"text", "p_category" "text" DEFAULT NULL::"text", "p_brand" "text" DEFAULT NULL::"text", "p_limit" integer DEFAULT 20, "p_offset" integer DEFAULT 0) RETURNS "jsonb"
@@ -4217,6 +4361,7 @@ CREATE OR REPLACE FUNCTION "public"."get_my_dropship_wallet_summary"() RETURNS T
     AS $$
 declare
   v_email text := public.current_user_email();
+  v_tenant_id bigint;
   v_group_id bigint;
   v_bp_id bigint;
   v_available numeric := 0;
@@ -4225,6 +4370,8 @@ declare
 begin
   if v_email is null or length(trim(v_email)) = 0 then
     raise exception 'Not authenticated';
+  end if;
+
   select cg.tenant_id, cgm.customer_group_id
   into v_tenant_id, v_group_id
   from public.customer_group_members cgm
@@ -4237,34 +4384,34 @@ begin
 
   if v_tenant_id is null or v_group_id is null then
     raise exception 'No active customer group membership';
+  end if;
+
   v_bp_id := public.resolve_billing_profile_for_customer_group(v_tenant_id, v_group_id);
   if v_bp_id is null then
     raise exception 'No billing profile linked for your customer group';
-  select coalesce(sum(
-    case when u.type = 'credit' then u.amount else -u.amount end
-  ), 0)
+  end if;
+
+  select coalesce(w.available_balance, 0)
   into v_available
-  from public.universal_wallet_ledger u
-  where u.tenant_id = v_tenant_id
-    and u.entity_id = v_bp_id
-    and u.entity_type in ('middleman', 'customer');
+  from public.wallet_accounts w
+  where w.parent_tenant_id = public.resolve_parent_tenant_id(v_tenant_id)
+    and w.entity_type = 'customer'
+    and w.entity_id = v_bp_id
+    and w.currency_code = 'BDT';
 
-  -- Pending: profit credits on delivered orders not yet remitted / unsettled (best-effort)
-  select coalesce(sum(u.amount), 0)
+  -- Pending: remitted orders with profit not yet credited to wallet
+  select coalesce(sum(s.reseller_profit), 0)
   into v_pending
-  from public.universal_wallet_ledger u
-  join public.shop_orders o
-    on o.id::text = u.source_id
-   and o.tenant_id = u.tenant_id
-  where u.tenant_id = v_tenant_id
-    and u.entity_id = v_bp_id
-    and u.entity_type in ('middleman', 'customer')
-    and u.type = 'credit'
-    and coalesce(u.metadata->>'transaction_type', '') = 'dropship_profit'
-    and coalesce(o.payout_settlement_status, 'unpaid') in ('unpaid', 'partial')
-    and o.status::text in ('delivered', 'payment_received', 'shipped', 'ready_for_pickup');
+  from public.shop_orders o
+  join public.dropship_order_settlements s on s.shop_order_id = o.id
+  where o.tenant_id = v_tenant_id
+    and o.billing_profile_id = v_bp_id
+    and o.shop_type_snapshot = 'dropship'
+    and o.status = 'payment_received'::public.shop_order_status
+    and coalesce(s.reseller_profit, 0) > 0
+    and s.merchant_payout_at is null;
 
-  -- Locked: remittance escrow style — delivered but courier not remitted
+  -- Locked: delivered COD not yet remitted by courier
   select coalesce(sum(greatest(coalesce(o.cod_collect_amount, 0), 0)), 0)
   into v_locked
   from public.shop_orders o
@@ -4281,6 +4428,8 @@ begin
     v_pending,
     v_locked,
     'BDT'::text;
+end;
+$$;
 ALTER FUNCTION "public"."get_my_dropship_wallet_summary"() OWNER TO "postgres";
 
 
@@ -7796,41 +7945,6 @@ begin
     where id = v_order.global_invoice_id;
 
     perform public.recompute_global_invoice_payment_status(v_order.global_invoice_id);
-  end if;
-
-  if v_profit_hold > 0
-     and v_invoice.billing_profile_id is not null
-     and not exists (
-       select 1 from public.universal_wallet_ledger
-       where parent_tenant_id = v_parent_tenant_id
-         and entity_type = 'customer'
-         and entity_id = v_invoice.billing_profile_id
-         and source_type = 'shop_order'
-         and source_id = p_order_id::text
-         and coalesce(metadata->>'transaction_type', '') in ('merchant_funds_held', 'invoice_collection')
-     ) then
-    perform public.record_ledger_transaction(
-      p_parent_tenant_id => v_parent_tenant_id,
-      p_operating_tenant_id => v_order.tenant_id,
-      p_entity_type => 'customer',
-      p_entity_id => v_invoice.billing_profile_id,
-      p_type => 'credit',
-      p_amount => v_profit_hold,
-      p_currency_code => v_currency,
-      p_exchange_rate => 1.000000,
-      p_source_type => 'shop_order',
-      p_source_id => p_order_id::text,
-      p_metadata => jsonb_build_object(
-        'section', 'receivable',
-        'transaction_type', 'merchant_funds_held',
-        'label', 'Merchant profit held from COD remittance',
-        'order_no', v_order.order_no,
-        'invoice_id', v_order.global_invoice_id,
-        'invoice_no', v_invoice.invoice_no,
-        'remittance_ref', v_ref,
-        'merchant_funds_held', v_profit_hold
-      )
-    );
   end if;
 
   update public.shop_orders

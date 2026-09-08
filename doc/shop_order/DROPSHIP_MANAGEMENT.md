@@ -118,7 +118,7 @@ save_dropship_settlement_draft(p_tenant_id bigint, p_order_id bigint, p_payload 
 | :--- | :--- | :--- |
 | `mark_dropship_order_delivered` | Step ① — save draft + `advance_dropship_order_status` + `confirm_dropship_delivered_costing` | **Implemented** |
 | `record_dropship_courier_bank_transfer` | Step ② — save draft + `record_dropship_courier_remittance` | **Implemented** |
-| `transfer_dropship_reseller_profit` | Step ③ — save draft + `dispense_middleman_payout_from_tenant` | **Implemented** |
+| `transfer_dropship_reseller_profit` | Step ③ — save draft + credit `dropship_profit` to merchant wallet | **Implemented** |
 
 ### Existing RPC: `get_dropship_order_detail_v2`
 
@@ -314,7 +314,7 @@ flowchart TD
     D --> C["delivered"]
     C --> B["② Bank transfer from courier"]
     B --> E["payment_received"]
-    E --> F["③ Transfer to reseller"]
+    E --> F["③ Credit reseller profit"]
     R --> X["returned"]
 ```
 
@@ -375,14 +375,14 @@ flowchart TD
     B --> C["delivered"]
     C --> D["② Bank transfer from courier"]
     D --> E["payment_received"]
-    E --> F["③ Transfer to reseller"]
+    E --> F["③ Credit reseller profit"]
 ```
 
 | Step | Button label | Enabled when (dummy) | Wallet effect (target) | Order / invoice |
 | :--- | :--- | :--- | :--- | :--- |
 | **①** | **Mark as delivered** | `status = shipped` | Courier wallet **credit** = collected COD | `delivered`; post tenant B2B shipment invoice |
 | **②** | **Bank transfer from courier** | `status = delivered` | Courier **debit** gross COD; tenant **credit** net; courier fee as separate line | `payment_received`; tenant invoice **paid** |
-| **③** | **Transfer to reseller** | `status = delivered` or `payment_received` (dummy) | Tenant **debit**; reseller wallet **credit** = `reseller_profit` | `payout_settlement_status` → paid |
+| **③** | **Credit reseller profit** | `status = payment_received` (after remittance) | Merchant wallet **credit** = `reseller_profit` (`dropship_profit`) | `reseller_paid`; `payout_settlement_status` → paid |
 
 **Form fields** (COD, charges, payers, purchase cost) feed steps ① and ②. Step ③ uses computed `reseller_profit`.
 
@@ -393,7 +393,7 @@ flowchart TD
 | Return | `mark_dropship_order_returned_from_settlement` | `save_dropship_settlement_draft` + `finalize_dropship_return` |
 | ① | `mark_dropship_order_delivered` | `save_dropship_settlement_draft` + `advance_dropship_order_status` + `confirm_dropship_delivered_costing` + invoice create/post |
 | ② | `record_dropship_courier_bank_transfer` | `record_dropship_courier_remittance` (`process_dropship_courier_remittance_uwl`) |
-| ③ | `transfer_dropship_reseller_profit` | `dispense_middleman_payout_from_tenant` (order-scoped amount from settlement) |
+| ③ | `transfer_dropship_reseller_profit` | Credit `dropship_profit` to merchant wallet (order-scoped amount from settlement) |
 
 Finance Hub remains the **live** path until this desk wires all three steps (§11).
 
@@ -452,15 +452,16 @@ flowchart LR
 | Invoice | `global_invoices` linked to order marked **paid** (up to amount received) |
 | Settlement table | Set `remittance_at`, store bank ref |
 
-### Step ③ — Transfer to reseller
+### Step ③ — Credit reseller profit
 
 | What | Detail |
 | :--- | :--- |
 | Trigger | Staff confirms `reseller_profit` from settlement form |
-| Tenant wallet | **Debit** payout amount |
-| Merchant / reseller wallet | **Credit** `reseller_profit` |
-| Order | `payout_settlement_status` → `paid` |
+| Merchant / reseller wallet | **Credit** `dropship_profit` = `reseller_profit` |
+| Order | `reseller_paid`; `payout_settlement_status` → `paid` |
 | Settlement table | `status = confirmed`, `merchant_payout_at` |
+
+Cash withdrawal to bank / bKash is **separate** — `dispense_middleman_payout_from_tenant` or merchant wallet page.
 
 ### What stays on Finance Hub until desk is wired
 
@@ -468,7 +469,8 @@ flowchart LR
 | :--- | :--- |
 | Delivered costing | ① Mark as delivered |
 | Courier remittance | ② Bank transfer from courier |
-| Merchant payout | ③ Transfer to reseller |
+| Credit reseller profit | ③ Credit profit to wallet (`transfer_dropship_reseller_profit`) |
+| Cash withdrawal | Merchant wallet / Finance Hub step 3 (`dispense_middleman_payout_from_tenant`) |
 
 Retire Finance Hub for dropship **only after** all three desk buttons call the orchestration RPCs above.
 

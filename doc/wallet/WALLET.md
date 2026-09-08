@@ -109,13 +109,16 @@ flowchart TD
 * **Corrections via Reversals**: Mistakes are corrected by inserting opposite reversing transactions with reference metadata.
 * **Authoritative Balance**: The `balance_after` column is calculated deterministically inside the database transaction lock during `record_ledger_transaction`.
 
-### 2.2 Dropship 3-Step Wallet Flow
+### 2.2 Dropship wallet flow
 
 ```mermaid
 flowchart LR
-    A["1. Order Delivered<br/>+ COD to Courier Wallet"] --> B["2. Bank Remittance<br/>- Courier Wallet<br/>+ Tenant Cash"]
-    B --> C["3. Merchant Payout<br/>- Tenant Cash<br/>+ Merchant Wallet"]
+    A["1. Order delivered<br/>COD → courier wallet"] --> B["2. Bank remittance<br/>courier debit → tenant credit"]
+    B --> C["3. Credit reseller profit<br/>dropship_profit → merchant wallet"]
+    C --> D["4. Cash withdrawal<br/>tenant + merchant debit<br/>(dispense_middleman_payout_from_tenant)"]
 ```
+
+Per-order profit credit: `transfer_dropship_reseller_profit` (management desk step ③). Cash payout is separate — merchant withdraws from wallet when ready.
 
 ### 2.4 Wholesale invoice vs customer store credit
 

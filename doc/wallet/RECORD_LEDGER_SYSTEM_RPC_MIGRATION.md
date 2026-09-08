@@ -142,7 +142,8 @@ Any `insert into wallet_accounts ... on conflict (tenant_id, ...)` → conflict 
 | :--- | :--- | :--- | :--- |
 | `apply_global_invoice_settlement_discount` | Tenant debit (write-off) | `v_invoice.tenant_id` | Books + operating from invoice; tenant `entity_id = v_books_id` |
 | `create_billing_profile_payment_with_allocations` | Tenant credit + customer credit | `p_tenant_id` | Books = resolve(`p_tenant_id`); operating = `p_tenant_id` |
-| `dispense_middleman_payout_from_tenant` | Tenant debit + customer debit | `p_tenant_id` | Same; FIFO helper reads UWL with `parent_tenant_id` |
+| `transfer_dropship_reseller_profit` | Customer credit (`dropship_profit`) | Per-order profit credit after remittance |
+| `dispense_middleman_payout_from_tenant` | Tenant debit + customer debit | Cash withdrawal from merchant wallet |
 | `post_sales_invoice` | Retail account: customer debit `invoice_billed` | `v_eff_tenant_id` | Books = `coalesce(parent, resolve(tenant))`; operating = `issued_by ?? tenant` |
 | `record_recipient_invoice_collection` | Tenant credit (cash in) | `v_invoice.tenant_id` | Invoice books + operating |
 | `process_wholesale_invoice_return` | Customer credit (`wallet_credit`); tenant debit (`payout`) | `v_eff_tenant_id` / `v_parent_id` | Align tenant leg `entity_id` to `v_books_id`; customer leg unchanged |

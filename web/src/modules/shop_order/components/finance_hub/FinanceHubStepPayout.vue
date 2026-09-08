@@ -2,7 +2,7 @@
   <q-card flat bordered class="q-pa-md">
     <div class="text-subtitle1 text-weight-bold text-primary q-mb-md row items-center gap-xs">
       <q-icon name="ph ph-hand-coins" size="20px" />
-      <span>Step 3: Dispense Middleman Payout</span>
+      <span>Step 3: Merchant cash withdrawal</span>
     </div>
 
     <q-form @submit.prevent="handleConfirm" class="q-gutter-y-sm">
@@ -67,7 +67,7 @@
           unelevated
           no-caps
           :loading="loading"
-          label="Dispense Payout & Debit Tenant & Middleman"
+          label="Withdraw cash from merchant wallet"
         />
       </div>
     </q-form>

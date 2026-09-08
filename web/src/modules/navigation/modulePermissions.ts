@@ -298,7 +298,8 @@ export const canAccessModule = ({
       moduleKey === 'investor_profiles' ||
       moduleKey === 'investor_capital_ledger' ||
       moduleKey === 'investor_shipment_share' ||
-      moduleKey === 'investor_portal';
+      moduleKey === 'investor_portal' ||
+      moduleKey === 'universal_wallet';
     if (blockedOnChild) {
       return false;
     }
@@ -397,7 +398,8 @@ export const resolveModuleAccess = ({
       moduleKey === 'investor_profiles' ||
       moduleKey === 'investor_capital_ledger' ||
       moduleKey === 'investor_shipment_share' ||
-      moduleKey === 'investor_portal';
+      moduleKey === 'investor_portal' ||
+      moduleKey === 'universal_wallet';
   }
 
   if (isChildTenant && moduleKey === 'global_stock') {

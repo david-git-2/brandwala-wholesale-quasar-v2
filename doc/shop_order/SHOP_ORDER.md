@@ -120,24 +120,28 @@ Dropship Order Lifecycle:
 2. processing        -> Staff pick stock per line (or mark unavailable); no stock linked until this stage — see [`DROPSHIP_PROCESSING_STOCK_PICK.md`](./DROPSHIP_PROCESSING_STOCK_PICK.md)
 3. ready_for_pickup  -> Courier assigned; B2B accounting invoice issued
 4. in_transit        -> Courier delivery tracking
-5. delivered         -> COD collected -> Courier remittance -> Middleman wallet payout
+5. delivered         -> COD collected -> Courier remittance -> Credit reseller profit to merchant wallet
 ```
 
 ---
 
 ## 3. Dropship Finance Hub Engine
 
-Settlement is orchestrated via the **Finance Hub** (`DropshipFinanceHubPage.vue`) across 3 sequential settlement steps. This remains the **live** money path until the [Dropship Management desk](./DROPSHIP_MANAGEMENT.md) (§5) is wired with `dropship_order_settlements` and replaces it end-to-end.
+Settlement is orchestrated via the **Finance Hub** (`DropshipFinanceHubPage.vue`) and the [Dropship Management desk](./DROPSHIP_MANAGEMENT.md). Money moves in two phases:
+
+1. **Credit profit** — per order after courier remittance (`transfer_dropship_reseller_profit` credits `dropship_profit` to the merchant billing-profile wallet).
+2. **Cash withdrawal** — when the merchant wants cash (`dispense_middleman_payout_from_tenant` debits tenant + merchant wallet; also available from Finance Hub step 3 or shop wallet).
 
 ```mermaid
 flowchart LR
     A["Step 1: Delivered Queue<br/>(Awaiting Courier Statement)"] --> B["Step 2: Courier Remittance<br/>(Reconcile Bank Deposit & COD)"]
-    B --> C["Step 3: Merchant Payout<br/>(Credit Margin to Merchant Wallet)"]
+    B --> C["Step 3: Credit Reseller Profit<br/>(dropship_profit → merchant wallet)"]
+    C --> D["Merchant wallet<br/>(withdraw cash when ready)"]
 ```
 
 * **Middleman Margin Formula**:
   $$\text{Merchant Payout Spread} = \text{End-Customer Sell Price} - \text{Wholesale Base Price} - \text{Courier Charge}$$
-* **Wallet Linkage**: Payout is disbursed via `dispense_middleman_payout_from_tenant` directly to the merchant's Universal Wallet account.
+* **Wallet linkage**: `transfer_dropship_reseller_profit` **credits** the merchant wallet. `dispense_middleman_payout_from_tenant` **debits** it when cash is paid out (bank / bKash).
 
 ---
 
@@ -269,12 +273,12 @@ See **§ RPC: `get_or_create_shop_cart`** below for the response contract.
 | :--- | :--- | :--- | :--- |
 | **`DropshipOrdersPage`** | Mount / Tab Change | `RPC: list_dropship_shop_orders_for_staff` | `staleTime: 30s` |
 | **`DropshipManagementPage`** | Mount / search / status filter | `RPC: list_dropship_shop_orders_for_staff` (desk: `shipped` + `delivered` only — see [`DROPSHIP_MANAGEMENT.md` §3](./DROPSHIP_MANAGEMENT.md#3-api--list-page)) | Not wired (dummy data) |
-| **`DropshipManagementDetailPage`** | Mount / 3-step actions | `get_dropship_order_detail_v2` + settlement RPCs — **Mark delivered** · **Bank from courier** · **Transfer to reseller** (see [`DROPSHIP_MANAGEMENT.md` §7–9](./DROPSHIP_MANAGEMENT.md)) | Not wired (dummy UI buttons) |
+| **`DropshipManagementDetailPage`** | Mount / 3-step actions | `get_dropship_management_order` — **Mark delivered** · **Bank from courier** · **Credit reseller profit** | Wired |
 | **`DropshipOrderDetailV2Page`** | Mount | `RPC: get_dropship_order_detail_v2` | Key: `shopOrderQueryKeys.dropshipDetailV2(tenantId, orderId)` |
 | **`DropshipOrderDetailV2Page`** | Start processing | `RPC: advance_dropship_order_status` | Invalidates `dropshipDetailV2` |
 | **`DropshipOrderDetailV2ReadyForPickupPage`** | Mark shipped | `RPC: advance_dropship_order_status` | Invalidates `dropshipDetailV2` |
 | **`FinanceHubStepRemittance`** | Log remittance | `RPC: record_dropship_courier_remittance` | Invalidates finance hub |
-| **`FinanceHubStepPayout`** | Disburse payout | `RPC: dispense_middleman_payout_from_tenant` | Invalidates wallet |
+| **`FinanceHubStepPayout`** | Cash withdrawal | `RPC: dispense_middleman_payout_from_tenant` | Invalidates wallet |
 | **`MerchantWalletPage`** | Summary / ledger | `get_my_dropship_wallet_summary`, `list_my_dropship_wallet_ledger` | `staleTime: 30s` |
 
 ---

@@ -74,7 +74,7 @@
             unelevated
             no-caps
             icon="ph ph-wallet"
-            label="Transfer to reseller"
+            label="Credit reseller profit"
             class="text-weight-bold dropship-order-detail-v2__action-btn"
             :disable="!orderData.step_state.can_transfer_to_reseller"
             :loading="actionKind === 'payout'"
@@ -382,10 +382,10 @@ async function onTransferReseller() {
   const profit = orderData.value?.settlement.reseller_profit;
   const confirmed = await requestConfirmation(
     profit != null && profit > 0
-      ? `Transfer ${profit.toLocaleString()} BDT reseller profit to the merchant wallet? This withdraws held profit from the customer wallet.`
-      : 'Transfer reseller profit to the merchant? This withdraws held profit from the customer wallet.',
-    'Transfer to reseller',
-    'Transfer profit',
+      ? `Credit ${profit.toLocaleString()} BDT reseller profit to the merchant wallet? Cash withdrawal is done separately from the wallet page.`
+      : 'Credit reseller profit to the merchant wallet? Cash withdrawal is done separately from the wallet page.',
+    'Credit reseller profit',
+    'Credit profit',
   );
   if (!confirmed) return;
 
@@ -397,10 +397,10 @@ async function onTransferReseller() {
       payload,
     );
     if (!res.success) {
-      showErrorNotification(res.error ?? 'Failed to transfer reseller profit.');
+      showErrorNotification(res.error ?? 'Failed to credit reseller profit.');
       return;
     }
-    showSuccessNotification('Reseller profit transferred.');
+    showSuccessNotification('Reseller profit credited to merchant wallet.');
     await invalidateDetail();
   } finally {
     actionKind.value = null;

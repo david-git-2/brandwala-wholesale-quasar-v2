@@ -4,7 +4,7 @@
       <!-- Header -->
       <app-page-header
         title="Courier remittance &amp; payouts"
-        subtitle="Manage courier remittances, tenant cash, and merchant profit payouts"
+        subtitle="Manage courier remittances, credit merchant profit, and process cash withdrawals"
         eyebrow="SHIPPING"
       />
 
@@ -36,7 +36,7 @@
             >
               <q-tab name="delivered_costing" label="1. Delivered Costing" />
               <q-tab name="courier_remittance" label="2. Courier Remittance" />
-              <q-tab name="middleman_payout" label="3. Merchant Payout" />
+              <q-tab name="middleman_payout" label="3. Cash withdrawal" />
             </q-tabs>
           </div>
 

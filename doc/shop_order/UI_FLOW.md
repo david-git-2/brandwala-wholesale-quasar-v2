@@ -288,14 +288,16 @@ Off-strip statuses (e.g. `submitted`, `cancelled`) show as a badge above the str
 ```mermaid
 flowchart LR
     S1["1. Delivered Costing"] --> S2["2. Courier Remittance"]
-    S2 --> S3["3. Merchant Payout"]
+    S2 --> S3["3. Cash withdrawal"]
 ```
 
 | Step | Component | RPC |
 | :--- | :--- | :--- |
 | 1. Delivered costing | `FinanceHubStepDelivered` | Review delivered orders awaiting costing |
 | 2. Courier remittance | `FinanceHubStepRemittance` | `record_dropship_courier_remittance` |
-| 3. Merchant payout | `FinanceHubStepPayout` | `dispense_middleman_payout_from_tenant` |
+| 3. Cash withdrawal | `FinanceHubStepPayout` | `dispense_middleman_payout_from_tenant` (debits merchant wallet when paying cash) |
+
+Per-order profit credit lives on the **Dropship Management** desk: `transfer_dropship_reseller_profit` (step ③ — credits `dropship_profit` after courier remittance).
 
 **Deep links:** `?step=courier_remittance|middleman_payout|delivered_costing`, `?orderId=`, `?merchantId=` (opens payout step with merchant preselected).
 
