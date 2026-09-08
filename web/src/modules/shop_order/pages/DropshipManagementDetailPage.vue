@@ -329,6 +329,14 @@ async function onMarkDelivered() {
 
 async function onMarkReturned() {
   if (!orderData.value?.step_state.can_mark_returned) return;
+
+  const confirmed = await requestConfirmation(
+    'Mark this order as returned? You will choose return lines and restock details on the next screen.',
+    'Mark as returned',
+    'Mark as returned',
+  );
+  if (!confirmed) return;
+
   router.push({
     name: 'app-shop-dropship-return-page',
     params: { tenantSlug: route.params.tenantSlug, id: orderId.value },
@@ -370,6 +378,16 @@ async function onTransferReseller() {
   if (!authStore.tenantId) return;
   const payload = getPayload();
   if (!payload) return;
+
+  const profit = orderData.value?.settlement.reseller_profit;
+  const confirmed = await requestConfirmation(
+    profit != null && profit > 0
+      ? `Transfer ${profit.toLocaleString()} BDT reseller profit to the merchant wallet? This withdraws held profit from the customer wallet.`
+      : 'Transfer reseller profit to the merchant? This withdraws held profit from the customer wallet.',
+    'Transfer to reseller',
+    'Transfer profit',
+  );
+  if (!confirmed) return;
 
   actionKind.value = 'payout';
   try {

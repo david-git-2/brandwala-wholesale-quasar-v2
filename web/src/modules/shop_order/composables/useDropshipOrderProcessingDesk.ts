@@ -18,6 +18,7 @@ import {
   showErrorNotification,
   showSuccessNotification,
   parseSupabaseError,
+  requestConfirmation,
 } from 'src/utils/appFeedback';
 import { DROPSHIP_ORDER_DETAIL_READY_FOR_PICKUP_ROUTE } from './dropshipOrderDetailRoutes';
 
@@ -201,6 +202,13 @@ export function useDropshipOrderProcessingDesk(options: {
       }
       return;
     }
+
+    const confirmed = await requestConfirmation(
+      'Mark this order as ready for pickup? Picking and summary edits will be locked after this step.',
+      'Ready for pickup',
+      'Mark ready for pickup',
+    );
+    if (!confirmed) return;
 
     advancingStatus.value = true;
     try {

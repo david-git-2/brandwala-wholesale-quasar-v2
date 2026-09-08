@@ -407,7 +407,9 @@ declare
   v_remaining numeric := greatest(coalesce(p_amount, 0), 0);
   v_parent_tenant_id bigint;
   r record;
-  v_profit numeric;
+  v_hold numeric;
+  v_paid numeric;
+  v_outstanding numeric;
 begin
   if v_remaining <= 0 then
     return;
@@ -422,34 +424,47 @@ begin
       and o.billing_profile_id = p_billing_profile_id
       and o.shop_type_snapshot = 'dropship'
       and o.global_invoice_id is not null
-      and coalesce(o.payout_settlement_status, 'unpaid') = 'unpaid'
+      and coalesce(o.payout_settlement_status, 'unpaid') in ('unpaid', 'partial')
     order by o.created_at asc, o.id asc
   loop
     exit when v_remaining <= 0;
 
-    select coalesce(sum(u.amount), 0) into v_profit
+    select coalesce(sum(u.amount), 0)
+    into v_hold
     from public.universal_wallet_ledger u
     where u.parent_tenant_id = v_parent_tenant_id
       and u.source_type = 'shop_order'
       and u.source_id = r.id::text
       and u.entity_type in ('middleman', 'customer')
       and u.type = 'credit'
-      and coalesce(u.metadata->>'transaction_type', '') = 'dropship_profit';
+      and coalesce(u.metadata->>'transaction_type', '') in (
+        'merchant_funds_held',
+        'invoice_collection',
+        'dropship_profit'
+      );
 
-    if v_profit <= 0 then
-      update public.shop_orders
-      set payout_settlement_status = 'paid',
-          updated_at = now()
-      where id = r.id;
+    select coalesce(sum(u.amount), 0)
+    into v_paid
+    from public.universal_wallet_ledger u
+    where u.parent_tenant_id = v_parent_tenant_id
+      and u.entity_type in ('middleman', 'customer')
+      and u.entity_id = p_billing_profile_id
+      and u.type = 'debit'
+      and coalesce(u.metadata->>'transaction_type', '') = 'profit_paid_out'
+      and coalesce(u.metadata->>'shop_order_id', u.metadata->>'order_id', '') = r.id::text;
+
+    v_outstanding := greatest(v_hold - v_paid, 0);
+
+    if v_outstanding <= 0 then
       continue;
     end if;
 
-    if v_remaining >= v_profit then
+    if v_remaining >= v_outstanding then
       update public.shop_orders
       set payout_settlement_status = 'paid',
           updated_at = now()
       where id = r.id;
-      v_remaining := v_remaining - v_profit;
+      v_remaining := v_remaining - v_outstanding;
     else
       update public.shop_orders
       set payout_settlement_status = 'partial',
@@ -7781,38 +7796,41 @@ begin
     where id = v_order.global_invoice_id;
 
     perform public.recompute_global_invoice_payment_status(v_order.global_invoice_id);
+  end if;
 
-    if v_invoice.billing_profile_id is not null and not exists (
-      select 1 from public.universal_wallet_ledger
-      where parent_tenant_id = v_parent_tenant_id
-        and entity_type = 'customer'
-        and entity_id = v_invoice.billing_profile_id
-        and source_type = 'shop_order'
-        and source_id = p_order_id::text
-        and metadata->>'transaction_type' = 'invoice_collection'
-    ) then
-      perform public.record_ledger_transaction(
-        p_parent_tenant_id => v_parent_tenant_id,
-        p_operating_tenant_id => v_order.tenant_id,
-        p_entity_type => 'customer',
-        p_entity_id => v_invoice.billing_profile_id,
-        p_type => 'credit',
-        p_amount => v_invoice_pay,
-        p_currency_code => v_currency,
-        p_exchange_rate => 1.000000,
-        p_source_type => 'shop_order',
-        p_source_id => p_order_id::text,
-        p_metadata => jsonb_build_object(
-          'section', 'receivable',
-          'transaction_type', 'invoice_collection',
-          'label', 'Invoice Cleared via COD Remittance',
-          'order_no', v_order.order_no,
-          'invoice_id', v_order.global_invoice_id,
-          'invoice_no', v_invoice.invoice_no,
-          'remittance_ref', v_ref
-        )
-      );
-    end if;
+  if v_profit_hold > 0
+     and v_invoice.billing_profile_id is not null
+     and not exists (
+       select 1 from public.universal_wallet_ledger
+       where parent_tenant_id = v_parent_tenant_id
+         and entity_type = 'customer'
+         and entity_id = v_invoice.billing_profile_id
+         and source_type = 'shop_order'
+         and source_id = p_order_id::text
+         and coalesce(metadata->>'transaction_type', '') in ('merchant_funds_held', 'invoice_collection')
+     ) then
+    perform public.record_ledger_transaction(
+      p_parent_tenant_id => v_parent_tenant_id,
+      p_operating_tenant_id => v_order.tenant_id,
+      p_entity_type => 'customer',
+      p_entity_id => v_invoice.billing_profile_id,
+      p_type => 'credit',
+      p_amount => v_profit_hold,
+      p_currency_code => v_currency,
+      p_exchange_rate => 1.000000,
+      p_source_type => 'shop_order',
+      p_source_id => p_order_id::text,
+      p_metadata => jsonb_build_object(
+        'section', 'receivable',
+        'transaction_type', 'merchant_funds_held',
+        'label', 'Merchant profit held from COD remittance',
+        'order_no', v_order.order_no,
+        'invoice_id', v_order.global_invoice_id,
+        'invoice_no', v_invoice.invoice_no,
+        'remittance_ref', v_ref,
+        'merchant_funds_held', v_profit_hold
+      )
+    );
   end if;
 
   update public.shop_orders

@@ -1180,6 +1180,8 @@ CREATE OR REPLACE FUNCTION "public"."dispense_middleman_payout_from_tenant"("p_t
 declare
   v_profile public.billing_profiles;
   v_payout_id text;
+  v_parent_tenant_id bigint;
+  v_customer_avail numeric(18,4) := 0;
 begin
   if p_tenant_id is null then
     return jsonb_build_object('success', false, 'error', 'Tenant ID is required');
@@ -1206,6 +1208,8 @@ begin
     return jsonb_build_object('success', false, 'error', format('Permission denied for tenant %s', p_tenant_id));
   end if;
 
+  v_parent_tenant_id := public.resolve_parent_tenant_id(p_tenant_id);
+
   select * into v_profile
   from public.billing_profiles
   where id = p_billing_profile_id and tenant_id = p_tenant_id;
@@ -1214,13 +1218,32 @@ begin
     return jsonb_build_object('success', false, 'error', format('Billing profile #%s not found for tenant %s', p_billing_profile_id, p_tenant_id));
   end if;
 
+  select coalesce(w.available_balance, 0)
+  into v_customer_avail
+  from public.wallet_accounts w
+  where w.parent_tenant_id = v_parent_tenant_id
+    and w.entity_type = 'customer'
+    and w.entity_id = p_billing_profile_id
+    and w.currency_code = 'BDT';
+
+  if v_customer_avail + 0.0001 < p_amount then
+    return jsonb_build_object(
+      'success', false,
+      'error', format(
+        'Insufficient merchant wallet balance. Available: %s, payout: %s',
+        v_customer_avail,
+        p_amount
+      )
+    );
+  end if;
+
   v_payout_id := 'PO-' || gen_random_uuid()::text;
 
   perform public.record_ledger_transaction(
-    p_parent_tenant_id => public.resolve_parent_tenant_id(p_tenant_id),
+    p_parent_tenant_id => v_parent_tenant_id,
     p_operating_tenant_id => p_tenant_id,
     p_entity_type => 'tenant',
-    p_entity_id => public.resolve_parent_tenant_id(p_tenant_id),
+    p_entity_id => v_parent_tenant_id,
     p_type => 'debit',
     p_amount => p_amount,
     p_currency_code => 'BDT',
@@ -1240,7 +1263,7 @@ begin
   );
 
   perform public.record_ledger_transaction(
-    p_parent_tenant_id => public.resolve_parent_tenant_id(p_tenant_id),
+    p_parent_tenant_id => v_parent_tenant_id,
     p_operating_tenant_id => p_tenant_id,
     p_entity_type => 'customer',
     p_entity_id => p_billing_profile_id,

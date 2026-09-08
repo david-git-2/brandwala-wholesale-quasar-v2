@@ -261,16 +261,70 @@
               <q-card flat bordered class="bg-primary text-white q-pa-md rounded-borders">
                 <div class="text-caption text-uppercase opacity-80">Available Net Balance</div>
                 <div class="text-h4 text-weight-bolder q-my-xs">
-                  {{ formatBdt(customer.wallet_available_balance) }}
+                  {{ formatBdt(walletBalance) }}
                 </div>
-                <div class="text-caption opacity-90">
-                  Universal double-entry ledger account linked to Billing Profile #{{ customer.billing_profile_id || customer.customer_group_id }}
+                <div v-if="customer.billing_profile_id" class="text-caption opacity-90">
+                  Billing profile #{{ customer.billing_profile_id }}
+                </div>
+                <div v-else class="text-caption opacity-90">
+                  No billing profile linked — wallet activity will not post until one exists.
                 </div>
               </q-card>
 
-              <div class="text-caption text-grey-7 text-center q-pa-md">
-                Ledger transactions post automatically on Wholesale &amp; Retail invoice issue/collections.
+              <div v-if="!customer.billing_profile_id" class="text-caption text-grey-7 text-center q-pa-md">
+                Create or link a billing profile for this customer group to enable wallet ledger.
               </div>
+
+              <template v-else>
+                <div class="row items-center justify-between">
+                  <div class="text-subtitle2 text-weight-bold text-grey-9">Wallet transactions</div>
+                  <q-btn
+                    flat
+                    dense
+                    no-caps
+                    icon="ph ph-arrows-clockwise"
+                    label="Refresh"
+                    class="text-caption"
+                    @click="onRefreshWallet"
+                  />
+                </div>
+
+                <div v-if="walletLoading" class="row justify-center q-py-md">
+                  <q-spinner color="primary" size="2em" />
+                </div>
+
+                <div
+                  v-else-if="!ledgerEntries.length"
+                  class="text-center text-grey-7 q-pa-lg border-all-1 rounded-borders"
+                >
+                  No wallet transactions recorded yet.
+                </div>
+
+                <q-list v-else separator bordered class="rounded-borders">
+                  <q-item v-for="entry in ledgerEntries" :key="entry.id" class="q-py-sm">
+                    <q-item-section>
+                      <q-item-label class="text-weight-bold text-caption text-grey-9">
+                        {{ walletTxLabel(entry) }}
+                      </q-item-label>
+                      <q-item-label caption class="text-grey-7">
+                        {{ formatWalletDate(entry.created_at) }}
+                        <span v-if="entry.source_id"> · {{ entry.source_id }}</span>
+                      </q-item-label>
+                    </q-item-section>
+                    <q-item-section side class="text-right">
+                      <q-item-label
+                        class="text-weight-bold text-caption"
+                        :class="entry.type === 'credit' ? 'text-positive' : 'text-negative'"
+                      >
+                        {{ entry.type === 'credit' ? '+' : '-' }}{{ formatBdt(Number(entry.amount)) }}
+                      </q-item-label>
+                      <q-item-label caption class="text-grey-6">
+                        Bal: {{ formatBdt(Number(entry.balance_after)) }}
+                      </q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+              </template>
             </div>
           </q-tab-panel>
         </q-tab-panels>
@@ -339,6 +393,7 @@
 import { computed, reactive, ref, watch } from 'vue';
 import type { CustomerAccount, CustomerGroupMember } from '../types/customer';
 import { useCustomerMembersQuery, useCustomerMutations } from '../composables/useCustomerQuery';
+import { useWalletQuery } from 'src/modules/wallet/composables/useWalletQuery';
 import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';
 
 const props = defineProps<{
@@ -356,8 +411,48 @@ const { updateCustomerMutation, createMemberMutation, updateMemberMutation, dele
   useCustomerMutations();
 
 const customerGroupId = computed(() => props.customer?.customer_group_id ?? null);
+const billingProfileId = computed(() => props.customer?.billing_profile_id ?? 0);
 const membersQuery = useCustomerMembersQuery(customerGroupId);
 const members = computed(() => membersQuery.data.value ?? []);
+
+const { ledgerEntries, isLoading: walletLoading, refetch: refetchWallet } = useWalletQuery(
+  'customer',
+  billingProfileId,
+);
+
+const walletBalance = computed(() => {
+  if (ledgerEntries.value.length > 0) {
+    return Number(ledgerEntries.value[0]?.balance_after ?? 0);
+  }
+  return Number(props.customer?.wallet_available_balance ?? 0);
+});
+
+const onRefreshWallet = () => {
+  void refetchWallet();
+};
+
+const formatWalletDate = (iso: string) =>
+  new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+const walletTxLabel = (entry: { type: string; metadata: Record<string, unknown> }) => {
+  const txType = entry.metadata?.['transaction_type'] as string | undefined;
+  switch (txType) {
+    case 'dropship_profit':
+      return 'Dropship profit';
+    case 'invoice_collection':
+      return 'Invoice collection';
+    case 'merchant_funds_held':
+      return 'Merchant profit held';
+    case 'profit_paid_out':
+      return 'Profit paid out';
+    case 'payment_received':
+      return 'Payment received';
+    case 'invoice_billed':
+      return 'Invoice billed';
+    default:
+      return (entry.metadata?.['label'] as string | undefined) || 'Adjustment';
+  }
+};
 
 const isSavingGeneral = ref(false);
 const memberDialogOpen = ref(false);
@@ -517,6 +612,10 @@ const deleteMember = async (member: CustomerGroupMember) => {
 
 .border-bottom {
   border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+.border-all-1 {
+  border: 1px solid rgba(226, 232, 240, 0.9);
 }
 
 .action-btn {

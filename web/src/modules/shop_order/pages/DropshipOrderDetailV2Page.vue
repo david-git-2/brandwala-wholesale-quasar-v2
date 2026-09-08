@@ -13,6 +13,7 @@ import {
   showErrorNotification,
   showSuccessNotification,
   parseSupabaseError,
+  requestConfirmation,
 } from 'src/utils/appFeedback';
 
 const route = useRoute();
@@ -54,6 +55,13 @@ const goToProcessingPage = () => {
 
 const advanceToProcessing = async () => {
   if (!order.value || order.value.status !== 'confirmed') return;
+
+  const confirmed = await requestConfirmation(
+    'Start processing this order? You will pick stock and mark lines unavailable on the next screen.',
+    'Start processing',
+    'Start processing',
+  );
+  if (!confirmed) return;
 
   advancingStatus.value = true;
   try {

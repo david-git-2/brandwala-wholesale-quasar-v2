@@ -27,6 +27,7 @@ import {
   showErrorNotification,
   showSuccessNotification,
   parseSupabaseError,
+  requestConfirmation,
 } from 'src/utils/appFeedback';
 
 const route = useRoute();
@@ -173,6 +174,13 @@ const openCustomerInvoicePreview = () => {
 
 const advanceToShipped = async () => {
   if (!order.value || !canMarkShipped.value) return;
+
+  const confirmed = await requestConfirmation(
+    'Mark this order as shipped? The order stays locked after this step.',
+    'Mark as shipped',
+    'Mark as shipped',
+  );
+  if (!confirmed) return;
 
   advancingStatus.value = true;
   try {
