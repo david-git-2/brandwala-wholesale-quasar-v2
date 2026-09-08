@@ -68,3 +68,69 @@ export interface UpdateCustomerInput {
   accent_color?: string | null;
   is_active?: boolean;
 }
+
+export interface CustomerAccountOpenInvoice {
+  id: number;
+  invoice_no: string;
+  invoice_type: string;
+  due_amount: number;
+  paid_amount: number;
+  total_amount: number;
+  payment_status: string;
+  invoice_date: string;
+  due_date: string | null;
+  issued_by_tenant_id: number;
+  issued_by_tenant_name: string | null;
+}
+
+export interface CustomerAccountRecentPayment {
+  payment_id: number;
+  payment_date: string;
+  method: string;
+  amount: number;
+  unallocated_amount: number;
+  note: string | null;
+  invoice_id: number | null;
+  allocated_amount: number | null;
+}
+
+export interface CustomerAccountLedgerRow {
+  id: string;
+  type: string;
+  amount: number;
+  balance_after: number;
+  operating_tenant_id: number | null;
+  source_type: string;
+  source_id: string | null;
+  created_at: string;
+  transaction_type: string | null;
+  label: string;
+}
+
+export interface CustomerAccountShopAccess {
+  shop_id: number;
+  shop_name: string;
+  shop_type: string;
+  shop_tenant_id: number;
+  shop_tenant_name: string;
+  status: boolean;
+  credit_limit_amount: number | null;
+}
+
+export interface CustomerAccountSummary {
+  success: boolean;
+  error?: string;
+  books_tenant_id?: number;
+  billing_profile_id: number | null;
+  still_due: number;
+  total_billed: number;
+  collected_cash: number;
+  wallet_applied: number;
+  settlement: number;
+  store_credit_balance: number;
+  unallocated_payments: number;
+  open_invoices: CustomerAccountOpenInvoice[];
+  recent_payments: CustomerAccountRecentPayment[];
+  recent_ledger: CustomerAccountLedgerRow[];
+  shop_access: CustomerAccountShopAccess[];
+}

@@ -36,6 +36,28 @@ export function useCustomerMembersQuery(customerGroupId: Ref<number | null | und
   });
 }
 
+export function useCustomerAccountQuery(
+  tenantId: Ref<number | null | undefined>,
+  customerGroupId: Ref<number | null | undefined>,
+  enabled?: Ref<boolean>,
+) {
+  return useQuery({
+    queryKey: computed(() =>
+      customerQueryKeys.account(tenantId.value ?? null, customerGroupId.value ?? null),
+    ),
+    queryFn: () => {
+      if (!tenantId.value || !customerGroupId.value) {
+        throw new Error('Tenant and customer group are required.');
+      }
+      return customerRepository.getCustomerAccountSummary(tenantId.value, customerGroupId.value);
+    },
+    enabled: computed(
+      () => !!tenantId.value && !!customerGroupId.value && (enabled?.value ?? true),
+    ),
+    staleTime: 30 * 1000,
+  });
+}
+
 export function useCustomerMutations() {
   const queryClient = useQueryClient();
 

@@ -78,7 +78,8 @@ Click a hub row → [`CustomerDetailDrawer.vue`](file:///Users/daviditc/Document
 
 - **General** — edit group name, admin name, email, phone, address, accent color, active.
 - **Members** — list; add/edit name, email, role (`admin` / `manager` / `staff`), active.
-- **Wallet** — shows `wallet_available_balance` from the hub list RPC (not a live ledger query).
+- **Account** — invoice dues vs wallet balance (two pots); open invoices; collect / deposit / credit / withdraw. See [`CUSTOMER_ACCOUNT_SUMMARY_RPC.md`](./CUSTOMER_ACCOUNT_SUMMARY_RPC.md).
+- **Wallet Ledger** — full immutable ledger history (`useWalletQuery`).
 
 ---
 
@@ -91,7 +92,10 @@ Click a hub row → [`CustomerDetailDrawer.vue`](file:///Users/daviditc/Document
 | **`CustomerDetailDrawer`** | Save general | `updateCustomerMutation` → `customer_groups`, `billing_profiles` | Invalidates `['customers']` |
 | **`CustomerDetailDrawer`** | Members tab | `useCustomerMembersQuery()` → `customer_group_members` | `staleTime: 30s`, `['customers', 'members', groupId]` |
 | **`CustomerDetailDrawer`** | Add / update / delete member | mutations on `customer_group_members` | Invalidates members + `['customers']` |
-| **`CustomerDetailDrawer`** | Wallet tab | Balance from selected list row (`wallet_available_balance`) | No extra query |
+| **`CustomerDetailDrawer`** | Account tab | `useCustomerAccountQuery()` → `RPC: get_customer_account_summary_for_staff` | `staleTime: 30s`, `['customer', 'account', tenantId, groupId]` |
+| **`CustomerDetailDrawer`** | Account collect | `invoiceRepository.collectWholesaleInvoicePayment` | Invalidates account + wallet + customer list |
+| **`CustomerDetailDrawer`** | Account wallet actions | `walletRepository.recordManualTransaction` | Invalidates account + wallet + customer list |
+| **`CustomerDetailDrawer`** | Wallet Ledger tab | `useWalletQuery('customer', billingProfileId)` | `staleTime: 30s` |
 
 ---
 
@@ -103,3 +107,4 @@ Click a hub row → [`CustomerDetailDrawer.vue`](file:///Users/daviditc/Document
 * `customerKeys.lists()` → `['customers', 'list']`
 * `customerKeys.list(tenantId, search)` → `['customers', 'list', tenantId, search]`
 * `customerKeys.members(groupId)` → `['customers', 'members', groupId]`
+* `customerKeys.account(tenantId, groupId)` → `['customer', 'account', tenantId, groupId]`

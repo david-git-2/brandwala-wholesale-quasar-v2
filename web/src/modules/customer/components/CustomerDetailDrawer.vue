@@ -46,6 +46,7 @@
               {{ members.length }}
             </q-badge>
           </q-tab>
+          <q-tab name="account" label="Account" icon="ph ph-scale" no-caps />
           <q-tab name="wallet" label="Wallet Ledger" icon="ph ph-wallet" no-caps />
         </q-tabs>
       </div>
@@ -255,7 +256,23 @@
             </div>
           </q-tab-panel>
 
-          <!-- TAB 3: Universal Wallet Summary -->
+          <!-- TAB 3: Account (dues + wallet position) -->
+          <q-tab-panel name="account" class="q-pa-none">
+            <CustomerAccountTab
+              :tenant-id="tenantId"
+              :customer-group-id="customer?.customer_group_id ?? 0"
+              :group-name="form.group_name"
+              :billing-profile-id="billingProfileId || null"
+              :summary="accountSummary"
+              :is-loading="accountQuery.isLoading.value"
+              :is-error="accountQuery.isError.value"
+              :error="accountQuery.error.value"
+              @refresh="onRefreshAccount"
+              @action-complete="onAccountActionComplete"
+            />
+          </q-tab-panel>
+
+          <!-- TAB 4: Universal Wallet Summary -->
           <q-tab-panel name="wallet" class="q-pa-none">
             <div class="column q-gutter-y-md">
               <q-card flat bordered class="bg-primary text-white q-pa-md rounded-borders">
@@ -391,9 +408,17 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
+import { useQueryClient } from '@tanstack/vue-query';
 import type { CustomerAccount, CustomerGroupMember } from '../types/customer';
-import { useCustomerMembersQuery, useCustomerMutations } from '../composables/useCustomerQuery';
+import {
+  useCustomerMembersQuery,
+  useCustomerMutations,
+  useCustomerAccountQuery,
+} from '../composables/useCustomerQuery';
+import { customerQueryKeys } from '../services/customerQueryKeys';
 import { useWalletQuery } from 'src/modules/wallet/composables/useWalletQuery';
+import { walletQueryKeys } from 'src/modules/wallet/shared/queryKeys/walletQueryKeys';
+import CustomerAccountTab from './CustomerAccountTab.vue';
 import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';
 
 const props = defineProps<{
@@ -406,12 +431,20 @@ defineEmits<{
   (e: 'update:modelValue', val: boolean): void;
 }>();
 
-const activeTab = ref<'general' | 'members' | 'wallet'>('general');
+const activeTab = ref<'general' | 'members' | 'account' | 'wallet'>('general');
+const queryClient = useQueryClient();
 const { updateCustomerMutation, createMemberMutation, updateMemberMutation, deleteMemberMutation } =
   useCustomerMutations();
 
 const customerGroupId = computed(() => props.customer?.customer_group_id ?? null);
 const billingProfileId = computed(() => props.customer?.billing_profile_id ?? 0);
+const accountTabActive = computed(() => activeTab.value === 'account' && props.modelValue);
+const accountQuery = useCustomerAccountQuery(
+  computed(() => props.tenantId),
+  customerGroupId,
+  accountTabActive,
+);
+const accountSummary = computed(() => accountQuery.data.value);
 const membersQuery = useCustomerMembersQuery(customerGroupId);
 const members = computed(() => membersQuery.data.value ?? []);
 
@@ -429,6 +462,19 @@ const walletBalance = computed(() => {
 
 const onRefreshWallet = () => {
   void refetchWallet();
+};
+
+const onRefreshAccount = () => {
+  void accountQuery.refetch();
+};
+
+const onAccountActionComplete = async () => {
+  await Promise.all([
+    accountQuery.refetch(),
+    refetchWallet(),
+    queryClient.invalidateQueries({ queryKey: customerQueryKeys.root }),
+    queryClient.invalidateQueries({ queryKey: walletQueryKeys.all }),
+  ]);
 };
 
 const formatWalletDate = (iso: string) =>

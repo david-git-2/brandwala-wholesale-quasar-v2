@@ -11099,6 +11099,10 @@ export type Database = {
           order_count: number
         }[]
       }
+      get_customer_account_summary_for_staff: {
+        Args: { p_customer_group_id: number; p_tenant_id: number }
+        Returns: Json
+      }
       get_customer_dashboard_summary: {
         Args: { p_tenant_id: number }
         Returns: Json

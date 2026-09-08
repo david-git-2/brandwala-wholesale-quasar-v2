@@ -6,6 +6,7 @@ import type {
   CustomerGroupMember,
   CustomerGroupMemberCreateInput,
   CustomerGroupMemberUpdateInput,
+  CustomerAccountSummary,
 } from '../types/customer';
 
 const listCustomers = async (tenantId: number, search?: string): Promise<CustomerAccount[]> => {
@@ -134,6 +135,31 @@ const deleteCustomerMember = async (id: number): Promise<void> => {
   if (error) throw error;
 };
 
+const getCustomerAccountSummary = async (
+  tenantId: number,
+  customerGroupId: number,
+): Promise<CustomerAccountSummary> => {
+  const { data, error } = await supabase.rpc('get_customer_account_summary_for_staff', {
+    p_tenant_id: tenantId,
+    p_customer_group_id: customerGroupId,
+  });
+
+  if (error) throw error;
+
+  const result = data as CustomerAccountSummary;
+  if (!result?.success) {
+    throw new Error(result?.error || 'Failed to load customer account summary.');
+  }
+
+  return {
+    ...result,
+    open_invoices: result.open_invoices ?? [],
+    recent_payments: result.recent_payments ?? [],
+    recent_ledger: result.recent_ledger ?? [],
+    shop_access: result.shop_access ?? [],
+  };
+};
+
 export const customerRepository = {
   listCustomers,
   createCustomer,
@@ -142,4 +168,5 @@ export const customerRepository = {
   createCustomerMember,
   updateCustomerMember,
   deleteCustomerMember,
+  getCustomerAccountSummary,
 };

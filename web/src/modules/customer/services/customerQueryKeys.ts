@@ -6,4 +6,6 @@ export const customerQueryKeys = {
     [...customerQueryKeys.root, 'detail', tenantId ?? 0, customerId] as const,
   members: (customerGroupId: number | null) =>
     [...customerQueryKeys.root, 'members', customerGroupId ?? 0] as const,
+  account: (tenantId: number | null, customerGroupId: number | null) =>
+    [...customerQueryKeys.root, 'account', tenantId ?? 0, customerGroupId ?? 0] as const,
 };
