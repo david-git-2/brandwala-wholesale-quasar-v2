@@ -43,6 +43,21 @@ export type ProductBasedCostingFileListPage = {
   };
 };
 
+export type ProductBasedCostingItemListInput = {
+  page?: number;
+  page_size?: number;
+};
+
+export type ProductBasedCostingItemListPage = {
+  data: ProductBasedCostingItem[];
+  meta: {
+    total: number;
+    page: number;
+    page_size: number;
+    total_pages: number;
+  };
+};
+
 export interface ProductBasedCostingItem {
   id: number;
   product_based_costing_file_id: number | null;

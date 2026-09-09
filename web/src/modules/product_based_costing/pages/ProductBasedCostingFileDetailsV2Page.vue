@@ -12,9 +12,9 @@
             icon="ph ph-arrow-left"
             color="grey-8"
             size="sm"
-            @click="goToV1"
+            @click="goBackToList"
           >
-            <q-tooltip>Back to standard view (V1)</q-tooltip>
+            <q-tooltip>{{ $t('product_based_costing.go_back') }}</q-tooltip>
           </q-btn>
 
           <span class="text-subtitle2 text-weight-bolder text-grey-8 font-mono bg-grey-2 q-px-xs rounded-borders" style="font-size: 12px">
@@ -66,9 +66,6 @@
             {{ formatStatusLabel(file?.status || 'pending') }}
           </q-badge>
 
-          <q-badge color="purple-1" text-color="purple-9" class="text-weight-bold q-ml-2xs" rounded>
-            V2
-          </q-badge>
         </div>
 
         <!-- Center / Rates Bar Quick Summary -->
@@ -179,21 +176,6 @@
             </q-menu>
           </q-btn>
 
-          <!-- PDF / Offer Preview Button -->
-          <q-btn
-            outline
-            color="primary"
-            dense
-            no-caps
-            size="sm"
-            icon="ph ph-file-pdf"
-            :label="$t('product_based_costing.offer_pdf_screenshot')"
-            class="q-px-sm rounded-sq-btn"
-            style="border-radius: 8px"
-            :disable="costingItems.length === 0"
-            @click="openPreviewAndPrint"
-          />
-
           <!-- Settings Gear Button (Opens Side Drawer) -->
           <q-btn
             flat
@@ -202,51 +184,11 @@
             color="grey-8"
             icon="ph ph-gear"
             size="sm"
-            @click="showSettingsDrawer = true"
+            @click="openSettingsDrawer()"
           >
             <q-tooltip>File Settings & Summary</q-tooltip>
           </q-btn>
 
-          <!-- More Actions Dropdown -->
-          <q-btn
-            flat
-            dense
-            icon="ph ph-dots-three-vertical"
-            class="rounded-sq-btn"
-            style="border-radius: 8px"
-            size="sm"
-          >
-            <q-menu style="min-width: 200px">
-              <q-list dense>
-                <q-item clickable v-close-popup @click="goToV1">
-                  <q-item-section avatar>
-                    <q-icon name="ph ph-arrow-counter-clockwise" color="grey-8" />
-                  </q-item-section>
-                  <q-item-section>Switch to V1 Standard View</q-item-section>
-                </q-item>
-                <q-separator />
-                <q-item clickable v-close-popup @click="showFileDialog = true">
-                  <q-item-section avatar>
-                    <q-icon name="ph ph-pencil-simple" />
-                  </q-item-section>
-                  <q-item-section>{{ $t('product_based_costing.edit_file_details') }}</q-item-section>
-                </q-item>
-                <q-item clickable v-close-popup @click="openBulkPaste">
-                  <q-item-section avatar>
-                    <q-icon name="ph ph-clipboard" />
-                  </q-item-section>
-                  <q-item-section>{{ $t('product_based_costing.bulk_paste') }}</q-item-section>
-                </q-item>
-                <q-separator />
-                <q-item clickable v-close-popup @click="handleDownloadExcel">
-                  <q-item-section avatar>
-                    <q-icon name="ph ph-table" />
-                  </q-item-section>
-                  <q-item-section>{{ $t('product_based_costing.download_excel') }}</q-item-section>
-                </q-item>
-              </q-list>
-            </q-menu>
-          </q-btn>
         </div>
       </div>
 
@@ -409,7 +351,7 @@
             </th>
 
             <!-- Image -->
-            <th v-if="visibleColumnMap.image" class="text-center" style="width: 1in; min-width: 1in">
+            <th v-if="visibleColumnMap.image" class="text-center pbc-image-col" style="width: 0.85in; min-width: 0.85in">
               Image
             </th>
 
@@ -430,7 +372,21 @@
 
             <!-- Qty -->
             <th v-if="visibleColumnMap.qty" class="text-center bw-ops-col-tint--qty" style="width: 56px; min-width: 56px">
-              Qty
+              <div class="row items-center justify-center no-wrap q-gutter-x-2xs">
+                <span>Qty</span>
+                <q-btn
+                  flat
+                  round
+                  dense
+                  size="xs"
+                  icon="ph ph-clipboard-text"
+                  color="grey-7"
+                  class="bulk-paste-header-btn"
+                  @click.stop="openBulkPasteDialog('quantity')"
+                >
+                  <q-tooltip>Bulk Paste Quantity</q-tooltip>
+                </q-btn>
+              </div>
             </th>
 
             <!-- Confirmed Qty -->
@@ -450,7 +406,21 @@
 
             <!-- Purchase Price GBP -->
             <th v-if="visibleColumnMap.priceGbp" class="text-center bw-ops-col-tint--price" style="width: 56px; min-width: 56px">
-              Price (£)
+              <div class="row items-center justify-center no-wrap q-gutter-x-2xs">
+                <span>Price (£)</span>
+                <q-btn
+                  flat
+                  round
+                  dense
+                  size="xs"
+                  icon="ph ph-clipboard-text"
+                  color="grey-7"
+                  class="bulk-paste-header-btn"
+                  @click.stop="openBulkPasteDialog('price_gbp')"
+                >
+                  <q-tooltip>Bulk Paste Price</q-tooltip>
+                </q-btn>
+              </div>
             </th>
 
             <!-- Total Purchase GBP -->
@@ -460,14 +430,46 @@
 
             <!-- Product Wt (g) -->
             <th v-if="visibleColumnMap.productWeight" class="text-center" style="width: 56px; min-width: 56px; line-height: 1.2; padding-top: 4px; padding-bottom: 4px">
-              <div>Product</div>
-              <div>Weight</div>
+              <div class="row items-center justify-center no-wrap q-gutter-x-2xs">
+                <div>
+                  <div>Product</div>
+                  <div>Weight</div>
+                </div>
+                <q-btn
+                  flat
+                  round
+                  dense
+                  size="xs"
+                  icon="ph ph-clipboard-text"
+                  color="grey-7"
+                  class="bulk-paste-header-btn"
+                  @click.stop="openBulkPasteDialog('product_weight')"
+                >
+                  <q-tooltip>Bulk Paste Product Weight</q-tooltip>
+                </q-btn>
+              </div>
             </th>
 
             <!-- Package Wt (g) -->
             <th v-if="visibleColumnMap.packageWeight" class="text-center bw-ops-col-tint--weight" style="width: 56px; min-width: 56px; line-height: 1.2; padding-top: 4px; padding-bottom: 4px">
-              <div>Package</div>
-              <div>Weight</div>
+              <div class="row items-center justify-center no-wrap q-gutter-x-2xs">
+                <div>
+                  <div>Package</div>
+                  <div>Weight</div>
+                </div>
+                <q-btn
+                  flat
+                  round
+                  dense
+                  size="xs"
+                  icon="ph ph-clipboard-text"
+                  color="grey-7"
+                  class="bulk-paste-header-btn"
+                  @click.stop="openBulkPasteDialog('package_weight')"
+                >
+                  <q-tooltip>Bulk Paste Package Weight</q-tooltip>
+                </q-btn>
+              </div>
             </th>
 
             <!-- Total Wt (g) -->
@@ -571,12 +573,32 @@
               </td>
 
               <!-- Serial / Reorder -->
-              <td v-if="visibleColumnMap.sl" class="text-center sticky-col-2 q-pa-none" style="width: 36px; min-width: 36px; max-width: 36px">
-                <span class="font-mono text-weight-bold text-grey-8 text-caption">{{ idx + 1 }}</span>
+              <td
+                v-if="visibleColumnMap.sl"
+                class="text-center sticky-col-2 q-pa-none sl-reorder-cell"
+                style="width: 36px; min-width: 36px; max-width: 36px"
+                @click.stop
+              >
+                <div class="row items-center justify-center no-wrap">
+                  <q-input
+                    :model-value="idx + 1"
+                    type="number"
+                    min="1"
+                    :max="totalItemsCount || tableRows.length"
+                    dense
+                    outlined
+                    hide-bottom-space
+                    class="inline-edit-input excel-cell-input"
+                    style="max-width: 32px"
+                    input-class="text-center text-weight-bold font-mono"
+                    @change="(val: string | number | null) => onSlPositionChange(idx, val)"
+                    @keyup.enter="(e: Event) => (e.target as HTMLElement)?.blur()"
+                  />
+                </div>
               </td>
 
               <!-- Product Image -->
-              <td v-if="visibleColumnMap.image" class="text-center q-pa-xs" style="width: 1in; min-width: 1in">
+              <td v-if="visibleColumnMap.image" class="text-center pbc-image-cell" style="width: 0.85in; min-width: 0.85in">
                 <SmartImage
                   :src="row.imageUrl"
                   :alt="row.name || 'Product Image'"
@@ -843,10 +865,17 @@
                 </q-badge>
               </td>
             </tr>
+
+            <tr v-if="isFetchingMoreItems">
+              <td colspan="20" class="text-center q-py-sm">
+                <q-spinner-dots color="primary" size="28px" />
+                <div class="text-caption text-grey-6 q-mt-xs">Loading more items...</div>
+              </td>
+            </tr>
           </template>
 
           <!-- Empty State -->
-          <tr v-else>
+          <tr v-else-if="!isLoading">
             <td colspan="20" class="text-center q-py-xl text-grey-6">
               <div class="column items-center justify-center q-py-lg">
                 <q-icon name="ph ph-calculator" size="48px" class="text-grey-4 q-mb-sm" />
@@ -929,9 +958,28 @@
         :file="file"
         :summary="summaryMetrics"
         :billing-profiles="allBillingProfiles"
+        :status="status"
+        :show-cancel="status !== 'delivered' && status !== 'cancelled'"
+        :is-primary-loading="updatingStatus"
+        :is-cancelling="updatingStatus && targetUpdatingStatus === 'cancelled'"
+        :primary-disabled="pbcPrimaryDisabled"
+        :primary-disabled-reason="pbcPrimaryDisabledReason"
+        :initial-tab="settingsDrawerInitialTab"
+        :can-open-offer-pdf="costingItems.length > 0"
         @update-file="handleUpdateFileDirect"
         @update-rates="handleUpdateRatesDirect"
-        @update-status="handleUpdateStatusDirect"
+        @primary-action="handlePbcPrimaryAction"
+        @cancel-file="onCancelFile"
+        @override-status="showStatusOverrideDialog = true"
+        @drawer-action="onSettingsDrawerAction"
+      />
+
+      <ProductBasedCostingStatusOverrideDialog
+        v-if="file"
+        v-model="showStatusOverrideDialog"
+        :file="file"
+        :loading="updatingStatus"
+        @apply="onStatusOverride"
       />
 
       <ProductBasedCostingItemAddDialog
@@ -943,6 +991,53 @@
         @created="handleCreated"
         @updated="handleUpdated"
       />
+
+      <q-dialog v-model="showBulkPasteDialog" persistent>
+        <q-card style="width: 520px; max-width: 95vw; border-radius: 12px">
+          <q-card-section class="row items-center justify-between q-pb-none">
+            <div class="row items-center q-gutter-x-sm">
+              <q-avatar color="primary" text-color="white" icon="ph ph-clipboard-text" size="32px" />
+              <div>
+                <div class="text-subtitle1 text-weight-bold text-grey-9">Bulk Paste {{ bulkPasteFieldLabel }}</div>
+                <div class="text-caption text-grey-6">Paste tab-separated or newline-separated values from Excel/Sheets</div>
+              </div>
+            </div>
+            <q-btn v-close-popup icon="ph ph-x" flat round dense color="grey-6" />
+          </q-card-section>
+
+          <q-card-section class="q-py-md">
+            <div class="text-caption text-weight-medium text-grey-7 q-mb-xs">Paste Area</div>
+            <q-input
+              v-model="bulkPasteText"
+              type="textarea"
+              outlined
+              dense
+              rows="8"
+              placeholder="Paste your copied column values here (e.g. from Excel)..."
+              class="bg-white font-mono"
+              style="font-size: 13px"
+              autofocus
+            />
+          </q-card-section>
+
+          <q-separator />
+
+          <q-card-actions align="right" class="q-pa-md bg-grey-1">
+            <q-btn v-close-popup flat label="Cancel" color="grey-7" no-caps :disable="bulkPasteSaving" />
+            <q-btn
+              unelevated
+              color="primary"
+              icon="ph ph-check"
+              label="Apply Paste"
+              no-caps
+              class="rounded-borders q-px-md text-weight-bold"
+              :loading="bulkPasteSaving"
+              :disable="bulkPasteSaving"
+              @click="applyBulkPaste"
+            />
+          </q-card-actions>
+        </q-card>
+      </q-dialog>
     </template>
   </q-page>
 </template>
@@ -955,16 +1050,21 @@ import { useI18n } from 'vue-i18n';
 import { useQueryClient } from '@tanstack/vue-query';
 import SmartImage from 'src/components/SmartImage.vue';
 import AddCostingItemsDrawer from '../components/AddCostingItemsDrawer.vue';
-import BulkPasteCostingItemsDialog from '../components/BulkPasteCostingItemsDialog.vue';
+import { productBasedCostingService } from '../services/productBasedCostingService';
+import type { ProductBasedCostingItemUpdateInput } from '../types';
 import PbcBacklogSuggestDrawer from '../components/PbcBacklogSuggestDrawer.vue';
 import ProductBasedCostingFileDialog from '../components/ProductBasedCostingFileDialog.vue';
 import ProductBasedCostingItemAddDialog from '../components/ProductBasedCostingItemAddDialog.vue';
-import ProductBasedCostingSettingsDrawer from '../components/ProductBasedCostingSettingsDrawer.vue';
+import ProductBasedCostingSettingsDrawer, {
+  type PbcSettingsDrawerAction,
+} from '../components/ProductBasedCostingSettingsDrawer.vue';
+import ProductBasedCostingStatusOverrideDialog from '../components/ProductBasedCostingStatusOverrideDialog.vue';
+import { productBasedCostingRepository } from '../repositories/productBasedCostingRepository';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { useBillingProfilesQuery } from 'src/modules/sales_invoice/composables/useBillingProfileQuery';
 import { productBasedCostingQueryKeys } from '../shared/queryKeys/productBasedCostingQueryKeys';
 import { useProductBasedCostingFileDetailQuery } from '../composables/useProductBasedCostingFileDetailQuery';
-import { useProductBasedCostingItemsQuery } from '../composables/useProductBasedCostingItemsQuery';
+import { useProductBasedCostingItemsInfiniteQuery } from '../composables/useProductBasedCostingItemsInfiniteQuery';
 import { useUpdateProductBasedCostingFileMutation } from '../composables/useProductBasedCostingFileMutations';
 import {
   useDeleteProductBasedCostingItemMutation,
@@ -980,10 +1080,16 @@ import {
   columnSelectorOptions,
   formatMoney,
   formatStatusLabel,
+  getDefaultVisibleColumnsForStatus,
   normalizePbcFileStatus,
   quoteVisibleColumns,
   useProductBasedCostingFileDetailsState,
 } from '../composables/useProductBasedCostingFileDetailsState';
+import {
+  getStaffPbcPrimaryAction,
+  getStaffPbcPrimaryActionTargetStatus,
+  type StaffPbcPrimaryAction,
+} from '../utils/pbcFileStatus';
 
 const props = defineProps<{
   id?: string | number;
@@ -1005,18 +1111,50 @@ const fileId = computed(() => {
 
 // Queries
 const { data: file, isLoading: isLoadingFile } = useProductBasedCostingFileDetailQuery(fileId);
-const { data: costingItemsData, isLoading: isLoadingItems } = useProductBasedCostingItemsQuery(fileId);
+const {
+  costingItems,
+  totalItemsCount,
+  hasMoreItems,
+  isLoading: isLoadingItems,
+  isFetchingNextPage: isFetchingMoreItems,
+  fetchNextPage,
+} = useProductBasedCostingItemsInfiniteQuery(fileId);
 
 const isLoading = computed(() => isLoadingFile.value || isLoadingItems.value);
-const costingItems = computed(() => costingItemsData.value ?? []);
 
 // State
 const selectedRowIds = ref<number[]>([]);
 const showBacklogDrawer = ref(false);
 const showFileDialog = ref(false);
 const showSettingsDrawer = ref(false);
+const settingsDrawerInitialTab = ref<string | undefined>(undefined);
+const showStatusOverrideDialog = ref(false);
 const showItemDialog = ref(false);
 const selectedItem = ref<ProductBasedCostingItem | null>(null);
+const updatingStatus = ref(false);
+const targetUpdatingStatus = ref<string | null>(null);
+
+type PbcBulkPasteField = 'quantity' | 'price_gbp' | 'product_weight' | 'package_weight';
+
+const showBulkPasteDialog = ref(false);
+const bulkPasteField = ref<PbcBulkPasteField>('quantity');
+const bulkPasteText = ref('');
+const bulkPasteSaving = ref(false);
+
+const bulkPasteFieldLabel = computed(() => {
+  switch (bulkPasteField.value) {
+    case 'quantity':
+      return 'Quantity';
+    case 'price_gbp':
+      return 'Price';
+    case 'product_weight':
+      return 'Product Weight';
+    case 'package_weight':
+      return 'Package Weight';
+    default:
+      return 'Values';
+  }
+});
 
 const tenantIdRef = computed(() => tenantStore.selectedTenant?.id);
 const { data: billingProfilesResult } = useBillingProfilesQuery(tenantIdRef);
@@ -1257,6 +1395,50 @@ function toggleRowSelection(id: number, checked: boolean) {
   }
 }
 
+function onSlPositionChange(currentIndex: number, newPosition: string | number | null) {
+  moveItemToPosition(currentIndex, newPosition);
+}
+
+async function moveItemToPosition(currentIndex: number, newPosition: string | number | null) {
+  if (!fileId.value) return;
+
+  const parsed = Number(newPosition);
+  const total = totalItemsCount.value || tableRows.value.length;
+  if (!Number.isFinite(parsed) || parsed < 1 || parsed > total) {
+    $q.notify({
+      type: 'warning',
+      message: `Position must be between 1 and ${total}.`,
+    });
+    return;
+  }
+
+  const currentItem = costingItems.value[currentIndex];
+  if (!currentItem) return;
+
+  if (parsed - 1 === currentIndex) return;
+
+  try {
+    await productBasedCostingRepository.reorderProductBasedCostingItemToPosition(
+      fileId.value,
+      currentItem.id,
+      parsed,
+    );
+    await queryClient.invalidateQueries({
+      queryKey: productBasedCostingQueryKeys.itemsRoot(fileId.value),
+    });
+    $q.notify({
+      type: 'positive',
+      message: 'Items reordered successfully.',
+      icon: 'ph ph-check-circle',
+    });
+  } catch (err) {
+    $q.notify({
+      type: 'negative',
+      message: err instanceof Error ? err.message : 'Failed to reorder items.',
+    });
+  }
+}
+
 function editSingleSelectedItem() {
   const id = selectedRowIds.value[0];
   const item = costingItems.value.find((i) => i.id === id);
@@ -1328,7 +1510,7 @@ async function handleConsumeBacklog(backlogIds: number[]) {
   const addedIds = await backlog.consumeBacklogItems(fileId.value, backlogIds);
   if (addedIds.length > 0) {
     void queryClient.invalidateQueries({
-      queryKey: productBasedCostingQueryKeys.itemsList(fileId.value),
+      queryKey: productBasedCostingQueryKeys.itemsRoot(fileId.value),
     });
     refreshBacklog();
     showBacklogDrawer.value = false;
@@ -1342,7 +1524,7 @@ function openCatalogDialog() {
     componentProps: { fileId: fileId.value },
   }).onOk((result?: { createProductName?: string }) => {
     void queryClient.invalidateQueries({
-      queryKey: productBasedCostingQueryKeys.itemsList(fileId.value),
+      queryKey: productBasedCostingQueryKeys.itemsRoot(fileId.value),
     });
     refreshBacklog();
     if (result?.createProductName != null) {
@@ -1352,15 +1534,104 @@ function openCatalogDialog() {
   });
 }
 
-function openBulkPaste() {
+function openBulkPasteDialog(field: PbcBulkPasteField) {
   if (!costingItems.value.length) {
     $q.notify({ type: 'warning', message: t('product_based_costing.no_items_to_update') });
     return;
   }
-  $q.dialog({
-    component: BulkPasteCostingItemsDialog,
-    componentProps: { fileId: fileId.value },
-  });
+  bulkPasteField.value = field;
+  bulkPasteText.value = '';
+  bulkPasteSaving.value = false;
+  showBulkPasteDialog.value = true;
+}
+
+async function applyBulkPaste() {
+  const text = bulkPasteText.value.trim();
+  if (!text) {
+    showBulkPasteDialog.value = false;
+    return;
+  }
+
+  const tokens = text
+    .split(/[\r\n\t]+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length > 0);
+
+  if (tokens.length === 0) {
+    showBulkPasteDialog.value = false;
+    return;
+  }
+
+  const items = costingItems.value;
+  const field = bulkPasteField.value;
+  const updates: ProductBasedCostingItemUpdateInput[] = [];
+  let count = 0;
+
+  for (let i = 0; i < tokens.length; i++) {
+    const targetItem = items[i];
+    if (!targetItem) break;
+
+    const cleaned = tokens[i].replace(/[^0-9.-]/g, '');
+    if (cleaned === '') continue;
+
+    const val = Number(cleaned);
+    if (isNaN(val)) continue;
+
+    let normalized: number;
+    if (field === 'price_gbp') {
+      normalized = Number(val.toFixed(2));
+    } else if (field === 'quantity') {
+      normalized = Math.max(1, Math.round(val));
+    } else {
+      normalized = Number(val.toFixed(3));
+    }
+
+    updates.push({
+      id: targetItem.id,
+      [field]: normalized,
+    });
+    count++;
+  }
+
+  if (updates.length === 0) {
+    $q.notify({
+      type: 'warning',
+      message: 'No valid numeric values found in pasted text.',
+    });
+    return;
+  }
+
+  bulkPasteSaving.value = true;
+  try {
+    const result = await productBasedCostingService.updateProductBasedCostingItemsBulk(updates);
+    if (!result.success) {
+      $q.notify({
+        type: 'negative',
+        message: result.error ?? t('product_based_costing.bulk_update_failed'),
+      });
+      return;
+    }
+
+    if (result.data?.length && fileId.value) {
+      await queryClient.invalidateQueries({
+        queryKey: productBasedCostingQueryKeys.itemsRoot(fileId.value),
+      });
+    }
+
+    $q.notify({
+      type: 'positive',
+      message: `Successfully pasted and saved ${count} ${bulkPasteFieldLabel.value} value(s)`,
+      icon: 'ph ph-check-circle',
+    });
+    showBulkPasteDialog.value = false;
+  } catch {
+    $q.notify({
+      type: 'negative',
+      message: t('product_based_costing.bulk_update_failed'),
+    });
+  } finally {
+    bulkPasteSaving.value = false;
+  }
 }
 
 function handleDownloadExcel() {
@@ -1378,6 +1649,65 @@ function openPreviewAndPrint() {
 
 // Status & Workflow Actions
 const status = computed(() => normalizePbcFileStatus(file.value?.status || 'pending'));
+
+const incompleteOfferItemCount = computed(
+  () =>
+    costingItems.value.filter((item) => {
+      const price = Number(item.price_gbp ?? 0);
+      const weight = Number(item.product_weight ?? 0);
+      return !(price > 0) || !(weight > 0);
+    }).length,
+);
+
+const pbcPrimaryDisabled = computed(() => {
+  const action = getStaffPbcPrimaryAction(status.value);
+  if (!action) return true;
+  if (!costingItems.value.length) return true;
+  if (action === 'send_offer') {
+    return incompleteOfferItemCount.value > 0 || cargoRateValue.value <= 0;
+  }
+  return false;
+});
+
+const pbcPrimaryDisabledReason = computed(() => {
+  const action = getStaffPbcPrimaryAction(status.value);
+  if (!costingItems.value.length) {
+    return t('product_based_costing.primary_disabled_no_items');
+  }
+  if (action === 'send_offer' && pbcPrimaryDisabled.value) {
+    if (cargoRateValue.value <= 0) return t('product_based_costing.cargo_rate_zero');
+    return t('product_based_costing.primary_disabled_incomplete');
+  }
+  return '';
+});
+
+watch(
+  file,
+  (newFile) => {
+    if (!newFile) return;
+    const fileStatus = normalizePbcFileStatus(newFile.status || 'pending');
+    const saved = visibleColumns.value;
+    const isLegacyAll =
+      saved.length === allColumnNames.length &&
+      allColumnNames.every((col) => saved.includes(col));
+    if (isLegacyAll) {
+      visibleColumns.value = getDefaultVisibleColumnsForStatus(fileStatus);
+    } else if (fileStatus === 'confirmed') {
+      const mustHave = ['confirmedQty', 'offerPriceBdt', 'priceGbp', 'profitRate', 'costBdt', 'status'];
+      const missing = mustHave.filter((col) => !saved.includes(col));
+      if (missing.length) {
+        visibleColumns.value = [...saved, ...missing];
+      }
+    } else if (fileStatus === 'procuring') {
+      const mustHave = ['confirmedQty', 'status'];
+      const missing = mustHave.filter((col) => !saved.includes(col));
+      if (missing.length) {
+        visibleColumns.value = [...saved, ...missing];
+      }
+    }
+  },
+  { immediate: true },
+);
 
 const statusBadgeColor = computed(() => {
   const st = status.value;
@@ -1546,13 +1876,130 @@ async function handleUpdateRatesDirect(payload: { conversion_rate: number; cargo
   $q.notify({ type: 'positive', message: 'Rates updated and prices recalculated' });
 }
 
-async function handleUpdateStatusDirect(targetStatus: string) {
+async function onStatusChange(nextStatus: string) {
   if (!fileId.value) return;
+
   await updateFileMutation.mutateAsync({
     id: fileId.value,
-    status: targetStatus,
+    status: nextStatus,
   });
-  $q.notify({ type: 'positive', message: `Status updated to ${targetStatus}` });
+
+  visibleColumns.value = getDefaultVisibleColumnsForStatus(nextStatus);
+
+  if (nextStatus === 'confirmed') {
+    const allItems = await productBasedCostingRepository.listProductBasedCostingItems(fileId.value);
+    if (allItems.length > 0) {
+      await Promise.all(
+        allItems.map((item) =>
+          productBasedCostingRepository.updateProductBasedCostingItem({
+            id: item.id,
+            confirmed_quantity: item.quantity ?? 0,
+          }),
+        ),
+      );
+    }
+    await queryClient.invalidateQueries({
+      queryKey: productBasedCostingQueryKeys.itemsRoot(fileId.value),
+    });
+  }
+
+  if (nextStatus === 'offered') {
+    await recalculateOfferPricesMutation.mutateAsync(fileId.value);
+  }
+}
+
+async function applyStatus(nextStatus: string) {
+  if (status.value === nextStatus || updatingStatus.value) return;
+  updatingStatus.value = true;
+  targetUpdatingStatus.value = nextStatus;
+  try {
+    await onStatusChange(nextStatus);
+    if (nextStatus === 'offered' && costingItems.value.length > 0) {
+      $q.dialog({
+        title: t('product_based_costing.status_offered'),
+        message: t('product_based_costing.offered_dialog_message'),
+        cancel: { label: t('product_based_costing.not_now'), flat: true },
+        ok: { label: t('product_based_costing.open_offer'), unelevated: true, color: 'primary' },
+      }).onOk(() => {
+        openPreviewAndPrint();
+      });
+    }
+  } finally {
+    updatingStatus.value = false;
+    targetUpdatingStatus.value = null;
+  }
+}
+
+function handlePbcPrimaryAction(action: StaffPbcPrimaryAction) {
+  const nextStatus = getStaffPbcPrimaryActionTargetStatus(action);
+  if (action === 'confirm_order') {
+    if (status.value === nextStatus || updatingStatus.value) return;
+    $q.dialog({
+      title: t('product_based_costing.confirm_order_title'),
+      message: t('product_based_costing.confirm_order_message'),
+      cancel: { label: t('product_based_costing.cancel'), flat: true },
+      ok: { label: t('product_based_costing.confirm_order'), unelevated: true, color: 'primary' },
+    }).onOk(() => {
+      void applyStatus(nextStatus);
+    });
+    return;
+  }
+  void applyStatus(nextStatus);
+}
+
+function onCancelFile() {
+  if (updatingStatus.value) return;
+  $q.dialog({
+    title: t('product_based_costing.cancel_file_title'),
+    message: t('product_based_costing.cancel_file_message'),
+    cancel: { label: t('product_based_costing.not_now'), flat: true },
+    ok: {
+      label: t('product_based_costing.cancel_file'),
+      color: 'negative',
+      unelevated: true,
+    },
+  }).onOk(() => {
+    void applyStatus('cancelled');
+  });
+}
+
+async function onStatusOverride(payload: { status: string; reason: string }) {
+  if (updatingStatus.value || status.value === payload.status) return;
+  updatingStatus.value = true;
+  targetUpdatingStatus.value = payload.status;
+  try {
+    await onStatusChange(payload.status);
+    showStatusOverrideDialog.value = false;
+    $q.notify({
+      type: 'info',
+      message: t('product_based_costing.override_applied', {
+        status: t(`product_based_costing.status_${normalizePbcFileStatus(payload.status)}`),
+        reason: payload.reason,
+      }),
+    });
+  } finally {
+    updatingStatus.value = false;
+    targetUpdatingStatus.value = null;
+  }
+}
+
+function onSettingsDrawerAction(action: PbcSettingsDrawerAction) {
+  switch (action) {
+    case 'edit-file':
+      showFileDialog.value = true;
+      break;
+    case 'download-excel':
+      handleDownloadExcel();
+      break;
+    case 'offer-pdf':
+      openPreviewAndPrint();
+      break;
+  }
+}
+
+function openSettingsDrawer(tab?: string) {
+  settingsDrawerInitialTab.value = tab;
+  showSettingsDrawer.value = true;
 }
 
 function onEdit(item: ProductBasedCostingItem) {
@@ -1568,7 +2015,7 @@ async function onDelete(item: ProductBasedCostingItem) {
 function handleCreated() {
   if (!fileId.value) return;
   void queryClient.invalidateQueries({
-    queryKey: productBasedCostingQueryKeys.itemsList(fileId.value),
+    queryKey: productBasedCostingQueryKeys.itemsRoot(fileId.value),
   });
   refreshBacklog();
 }
@@ -1576,7 +2023,7 @@ function handleCreated() {
 function handleUpdated() {
   if (!fileId.value) return;
   void queryClient.invalidateQueries({
-    queryKey: productBasedCostingQueryKeys.itemsList(fileId.value),
+    queryKey: productBasedCostingQueryKeys.itemsRoot(fileId.value),
   });
   refreshBacklog();
 }
@@ -1605,6 +2052,17 @@ const updateScrollbarFromTable = () => {
 
 const onTableScroll = () => {
   updateScrollbarFromTable();
+  maybeLoadMoreItems();
+};
+
+const maybeLoadMoreItems = () => {
+  const el = tableScrollContainerRef.value;
+  if (!el || isFetchingMoreItems.value || !hasMoreItems.value) return;
+
+  const threshold = 120;
+  if (el.scrollTop + el.clientHeight >= el.scrollHeight - threshold) {
+    void fetchNextPage();
+  }
 };
 
 const scrollTableByStep = (delta: number) => {
@@ -1664,19 +2122,12 @@ onUnmounted(() => {
   window.removeEventListener('resize', updateScrollbarFromTable);
 });
 
-function goToV1() {
-  const tenantSlug = tenantStore.selectedTenant?.slug;
-  if (tenantSlug) {
-    void router.push({
-      name: 'product-based-costing-file-details-page',
-      params: { tenantSlug, id: fileId.value },
-    });
-  } else {
-    void router.push({
-      name: 'product-based-costing-file-details-page',
-      params: { id: fileId.value },
-    });
-  }
+function goBackToList() {
+  const tenantSlug = tenantStore.selectedTenant?.slug ?? route.params.tenantSlug;
+  void router.push({
+    name: 'product-based-costing-page',
+    params: tenantSlug ? { tenantSlug } : {},
+  });
 }
 </script>
 
@@ -1720,7 +2171,14 @@ function goToV1() {
 .pbc-v2-markup-table tbody tr td {
   padding: 3px 4px !important;
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-  height: 44px;
+  min-height: 44px;
+  height: auto;
+  vertical-align: middle;
+}
+
+.pbc-image-cell {
+  padding: 2px !important;
+  vertical-align: middle;
 }
 
 /* Soft Column Tints (Color Code Standard from OPS_SPREADSHEET_TABLE_PATTERN.md) */
@@ -1765,18 +2223,38 @@ function goToV1() {
 }
 
 .pbc-row-img {
-  width: 1in;
-  height: 1in;
-  object-fit: cover;
+  width: 0.85in;
+  height: 0.85in;
+  display: block;
+  margin: 0 auto;
   border-radius: 6px;
   border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #fff;
+  overflow: hidden;
+}
+
+.pbc-row-img :deep(.smart-image__img) {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
 }
 
 .pbc-row-img-placeholder {
-  width: 1in;
-  height: 1in;
+  width: 0.85in;
+  height: 0.85in;
+  display: block;
+  margin: 0 auto;
   border-radius: 6px;
+  border: 1px dashed rgba(0, 0, 0, 0.12);
   background-color: #f1f5f9;
+  overflow: hidden;
+}
+
+.pbc-row-img-placeholder :deep(.smart-image__fallback) {
+  font-size: 10px;
+  text-align: center;
+  padding: 4px;
 }
 
 /* Compact 28px cell height */
@@ -1796,6 +2274,24 @@ function goToV1() {
 :deep(.inline-edit-input input[type='number']::-webkit-inner-spin-button) {
   -webkit-appearance: none;
   margin: 0;
+}
+
+.sl-reorder-cell {
+  background-color: #f8f9fa;
+}
+
+.bulk-paste-header-btn {
+  opacity: 0.6;
+  transition: opacity 0.15s ease-in-out, transform 0.15s ease-in-out;
+  padding: 0 !important;
+  min-height: 18px !important;
+  min-width: 18px !important;
+}
+
+.bulk-paste-header-btn:hover {
+  opacity: 1 !important;
+  color: var(--q-primary) !important;
+  transform: scale(1.1);
 }
 
 :deep(.inline-edit-input input[type='number']) {

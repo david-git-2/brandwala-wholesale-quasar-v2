@@ -12,13 +12,14 @@ import streamlit as st
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT_DIR / "python"))
-from pc_excel_spec import REQUIRED_PC_COLUMNS
+from wts_excel_spec import REQUIRED_WTS_COLUMNS
 
-PC_XLSX = ROOT_DIR / "python" / "data" / "uk" / "pc_data.xlsx"
-PC_JSON = ROOT_DIR / "web" / "public" / "uk" / "pc_data.json"
+WTS_XLSX = ROOT_DIR / "python" / "data" / "uk" / "wts_data.xlsx"
+WTS_JSON = ROOT_DIR / "web" / "public" / "uk" / "wts_data.json"
 
-DEFAULT_HEADER_ROW = 4
+DEFAULT_HEADER_ROW = 1
 DEFAULT_PARENT_TENANT_ID = 15
+DEFAULT_INSERTED_BY_TENANT_ID = 10
 
 
 def env_positive_int(name: str) -> int:
@@ -72,7 +73,7 @@ def match_required_headers(preview: list[tuple[str, str]]) -> dict[str, str]:
             continue
         by_norm.setdefault(normalize_header(name), letter)
     found: dict[str, str] = {}
-    for col in REQUIRED_PC_COLUMNS:
+    for col in REQUIRED_WTS_COLUMNS:
         for alias in col["aliases"]:
             letter = by_norm.get(normalize_header(alias))
             if letter:
@@ -82,23 +83,23 @@ def match_required_headers(preview: list[tuple[str, str]]) -> dict[str, str]:
 
 
 def backup_existing_xlsx() -> Path | None:
-    if not PC_XLSX.exists():
+    if not WTS_XLSX.exists():
         return None
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    dest = PC_XLSX.with_name(f"pc_data.{stamp}.xlsx")
+    dest = WTS_XLSX.with_name(f"wts_data.{stamp}.xlsx")
     suffix = 2
     while dest.exists():
-        dest = PC_XLSX.with_name(f"pc_data.{stamp}-{suffix}.xlsx")
+        dest = WTS_XLSX.with_name(f"wts_data.{stamp}-{suffix}.xlsx")
         suffix += 1
-    PC_XLSX.rename(dest)
+    WTS_XLSX.rename(dest)
     return dest
 
 
 def read_product_count() -> int | None:
-    if not PC_JSON.exists():
+    if not WTS_JSON.exists():
         return None
     try:
-        payload = json.loads(PC_JSON.read_text(encoding="utf-8"))
+        payload = json.loads(WTS_JSON.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return None
     meta = payload.get("meta") if isinstance(payload, dict) else None
@@ -118,23 +119,23 @@ def markdown_table(headers: list[str], rows: list[list[str]]) -> str:
     return "\n".join([head, sep, *body])
 
 
-st.set_page_config(page_title="PC Excel uploader", layout="centered")
-st.title("PC Excel uploader")
+st.set_page_config(page_title="WTS Excel uploader", layout="centered")
+st.title("WTS Excel uploader")
 st.write(
-    "Drop the spreadsheet, then enter the **header row** (the row with column names). "
-    "Every listed header must exist. Each row needs **DESCRIPTION** and **PRODUCT CODE**. "
-    "HAZARDOUS = yes marks the product hazardous on sync. Pictures come from **IMAGE**. MOQ is always **6**. "
-    "INNER CASE is still stored as case size. "
+    "Drop the WTS spreadsheet, then enter the **header row** (the row with column names). "
+    "Every listed header must exist. Each row needs **ProdCode**, **Barcode**, and **Product Description**. "
+    "**Each** is the unit price. **Pack** is MOQ. **Available** is stock. "
+    "Products in the file are marked available on sync; scoped WTS products not in the file are marked unavailable. "
     "Warehouse parent tenant defaults to **15**."
 )
 
-uploaded = st.file_uploader("Drop a PC spreadsheet", type=["xlsx"])
+uploaded = st.file_uploader("Drop a WTS spreadsheet", type=["xlsx"])
 header_row = st.number_input(
     "Header row (row with column names)",
     min_value=1,
     step=1,
     value=DEFAULT_HEADER_ROW,
-    help="Excel row number that contains PRODUCT CODE, BARCODE, DESCRIPTION, and the other required headers.",
+    help="Excel row number that contains ProdCode, Barcode, Product Description, and the other required headers.",
 )
 
 st.subheader("Required headers")
@@ -147,7 +148,7 @@ st.markdown(
                 col["db"].replace("products.", ""),
                 col.get("note") or "Required",
             ]
-            for col in REQUIRED_PC_COLUMNS
+            for col in REQUIRED_WTS_COLUMNS
         ],
     )
 )
@@ -172,11 +173,11 @@ if uploaded is not None:
                         found_headers.get(col["key"]) or "—",
                         "Found" if col["key"] in found_headers else "Missing",
                     ]
-                    for col in REQUIRED_PC_COLUMNS
+                    for col in REQUIRED_WTS_COLUMNS
                 ],
             )
         )
-        missing = [col["excel"] for col in REQUIRED_PC_COLUMNS if col["key"] not in found_headers]
+        missing = [col["excel"] for col in REQUIRED_WTS_COLUMNS if col["key"] not in found_headers]
         if missing:
             st.error("Missing required header(s): " + ", ".join(missing))
 
@@ -188,6 +189,14 @@ parent_tenant_id = st.number_input(
     help="Warehouse HQ tenant. Default 15.",
 )
 
+inserted_by_tenant_id = st.number_input(
+    "Inserted by tenant id",
+    min_value=1,
+    step=1,
+    value=env_positive_int("PY_PRODUCTS_TENANT_ID") or DEFAULT_INSERTED_BY_TENANT_ID,
+    help="Who ran the sync. Default 10.",
+)
+
 run = st.button(
     "Save and run",
     type="primary",
@@ -196,29 +205,35 @@ run = st.button(
 log_box = st.empty()
 
 if run and uploaded is not None:
-    missing = [col["excel"] for col in REQUIRED_PC_COLUMNS if col["key"] not in found_headers]
+    missing = [col["excel"] for col in REQUIRED_WTS_COLUMNS if col["key"] not in found_headers]
     if int(parent_tenant_id) < 1:
         st.error("Parent tenant id is required.")
+    elif int(inserted_by_tenant_id) < 1:
+        st.error("Inserted by tenant id is required.")
     elif missing:
         st.error("Missing required header(s): " + ", ".join(missing))
     else:
         st.session_state["running"] = True
-        PC_XLSX.parent.mkdir(parents=True, exist_ok=True)
+        WTS_XLSX.parent.mkdir(parents=True, exist_ok=True)
         backup_path = backup_existing_xlsx()
-        PC_XLSX.write_bytes(uploaded.getvalue())
+        WTS_XLSX.write_bytes(uploaded.getvalue())
 
-        flags = f"--header-row {int(header_row)}"
-        sync_flags = f"--parent-tenant-id {int(parent_tenant_id)}"
+        export_flags = f"--header-row {int(header_row)}"
+        sync_flags = (
+            f"--parent-tenant-id {int(parent_tenant_id)} "
+            f"--tenant-id {int(inserted_by_tenant_id)}"
+        )
         env = os.environ.copy()
         env["PYTHONUNBUFFERED"] = "1"
         env["PY_PRODUCTS_PARENT_TENANT_ID"] = str(int(parent_tenant_id))
+        env["PY_PRODUCTS_TENANT_ID"] = str(int(inserted_by_tenant_id))
         lines: list[str] = []
         if backup_path:
             lines.append(f"Backed up previous sheet to {backup_path.name}\n")
-        lines.append(f"Saved {PC_XLSX.name}\n")
+        lines.append(f"Saved {WTS_XLSX.name}\n")
         lines.append(
-            f"Running: make -C python pc PC_EXPORT_FLAGS=\"{flags}\" "
-            f"PC_SYNC_FLAGS=\"{sync_flags}\"\n\n"
+            f"Running: make -C python wts-excel WTS_EXPORT_FLAGS=\"{export_flags}\" "
+            f"WTS_SYNC_FLAGS=\"{sync_flags} --vendor-id 4 --images-dir images/uk/wts_images --skip-image-upload\"\n\n"
         )
         log_box.code("".join(lines))
 
@@ -227,9 +242,12 @@ if run and uploaded is not None:
                 "make",
                 "-C",
                 str(ROOT_DIR / "python"),
-                "pc",
-                f"PC_EXPORT_FLAGS={flags}",
-                f"PC_SYNC_FLAGS={sync_flags}",
+                "wts-excel",
+                f"WTS_EXPORT_FLAGS={export_flags}",
+                (
+                    "WTS_SYNC_FLAGS="
+                    f"{sync_flags} --vendor-id 4 --images-dir images/uk/wts_images --skip-image-upload"
+                ),
             ],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,

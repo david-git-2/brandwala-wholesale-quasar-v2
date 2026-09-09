@@ -83,6 +83,9 @@ export function useUpdateProductBasedCostingItemMutation() {
             return oldItems.map((item) => (item.id === data.id ? data : item));
           },
         );
+        void queryClient.invalidateQueries({
+          queryKey: productBasedCostingQueryKeys.itemsRoot(data.product_based_costing_file_id),
+        });
       }
     },
     onError: (error) => {
@@ -169,7 +172,7 @@ export function useRecalculateOfferPricesMutation() {
       productBasedCostingRepository.recalculateProductBasedCostingFileOfferPrices(fileId),
     onSuccess: (_, fileId) => {
       void queryClient.invalidateQueries({
-        queryKey: productBasedCostingQueryKeys.itemsList(fileId),
+        queryKey: productBasedCostingQueryKeys.itemsRoot(fileId),
       });
     },
     onError: (error) => {
@@ -191,7 +194,7 @@ export function useReorderProductBasedCostingItemsMutation() {
     onSuccess: (_, variables) => {
       showSuccessNotification('Items reordered successfully.');
       void queryClient.invalidateQueries({
-        queryKey: productBasedCostingQueryKeys.itemsList(variables.fileId),
+        queryKey: productBasedCostingQueryKeys.itemsRoot(variables.fileId),
       });
     },
     onError: (error) => {

@@ -7,6 +7,8 @@ PC_SYNC_FLAGS ?= --parent-tenant-id 15
 WTS_JSON ?= ../web/public/uk/wts_data.json
 WTS_VENDOR ?= WTS
 WTS_MARKET ?= GB
+WTS_EXPORT_FLAGS ?=
+WTS_SYNC_FLAGS ?= --vendor-id 4 --parent-tenant-id 15 --tenant-id 10 --images-dir images/uk/wts_images --skip-image-upload
 
 pc:
 	python scripts/uk/export_pc_data.py $(PC_EXPORT_FLAGS)
@@ -33,13 +35,20 @@ wts:
 	python scripts/uk/normalize_pc_data.py --input "$(WTS_JSON)" --no-backup
 	python scripts/uk/remove_vat_from_names.py --input "$(WTS_JSON)" --fields name --no-backup
 	python scripts/uk/move_ml_to_end.py --input "$(WTS_JSON)" --fields name --no-backup
-	python scripts/uk/sync_pc_products_to_supabase.py --input "$(WTS_JSON)" --vendor "$(WTS_VENDOR)" --market "$(WTS_MARKET)" --vendor-id 4 --parent-tenant-id 10 --images-dir images/uk/wts_images --skip-image-upload
+	python scripts/uk/sync_pc_products_to_supabase.py --input "$(WTS_JSON)" --vendor "$(WTS_VENDOR)" --market "$(WTS_MARKET)" $(WTS_SYNC_FLAGS)
 
 wts-scrape:
 	python scripts/uk/export_wts_data.py --skip-images
 
 wts-sync:
-	python scripts/uk/sync_pc_products_to_supabase.py --input "$(WTS_JSON)" --vendor "$(WTS_VENDOR)" --market "$(WTS_MARKET)" --vendor-id 4 --parent-tenant-id 10 --images-dir images/uk/wts_images --skip-image-upload
+	python scripts/uk/sync_pc_products_to_supabase.py --input "$(WTS_JSON)" --vendor "$(WTS_VENDOR)" --market "$(WTS_MARKET)" $(WTS_SYNC_FLAGS)
+
+wts-excel:
+	python scripts/uk/export_wts_excel.py $(WTS_EXPORT_FLAGS)
+	python scripts/uk/normalize_wts_data.py --input "$(WTS_JSON)" --no-backup
+	python scripts/uk/remove_vat_from_names.py --input "$(WTS_JSON)" --fields name --no-backup
+	python scripts/uk/move_ml_to_end.py --input "$(WTS_JSON)" --fields name --no-backup
+	python scripts/uk/sync_pc_products_to_supabase.py --input "$(WTS_JSON)" --vendor "$(WTS_VENDOR)" --market "$(WTS_MARKET)" $(WTS_SYNC_FLAGS)
 
 KOBA_RETAIL_JSON ?= ../web/public/uk/koba_retail_data.json
 KOBA_RETAIL_VENDOR ?= KOBA_RETAIL
@@ -72,10 +81,10 @@ ELF_VENDOR ?= ELF
 ELF_MARKET ?= GB
 
 # Full pipeline: scrape → remap existing keys → sync (update/insert)
-# Locked scope: vendor_id=5, tenant_id=10, parent_tenant_id=15
+# Locked scope: vendor_id=5, inserted_by_tenant_id=10, parent_tenant_id=15
 elf:
 	python scripts/uk/export_elf_data.py
-	python scripts/uk/remap_elf_product_keys.py --tenant-id 10 --apply
+	python scripts/uk/remap_elf_product_keys.py --parent-tenant-id 15 --apply
 	python scripts/uk/sync_pc_products_to_supabase.py \
 		--input "$(ELF_JSON)" \
 		--vendor "$(ELF_VENDOR)" \
@@ -89,10 +98,10 @@ elf-scrape:
 	python scripts/uk/export_elf_data.py
 
 elf-remap-keys:
-	python scripts/uk/remap_elf_product_keys.py --tenant-id 10
+	python scripts/uk/remap_elf_product_keys.py --parent-tenant-id 15
 
 elf-remap-keys-apply:
-	python scripts/uk/remap_elf_product_keys.py --tenant-id 10 --apply
+	python scripts/uk/remap_elf_product_keys.py --parent-tenant-id 15 --apply
 
 elf-sync:
 	python scripts/uk/sync_pc_products_to_supabase.py \

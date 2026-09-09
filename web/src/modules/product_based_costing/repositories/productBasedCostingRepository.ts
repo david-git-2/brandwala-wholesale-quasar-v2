@@ -8,6 +8,7 @@ import type {
   ProductBasedCostingFileUpdateInput,
   ProductBasedCostingItem,
   ProductBasedCostingItemCreateInput,
+  ProductBasedCostingItemListPage,
   ProductBasedCostingItemUpdateInput,
 } from '../types';
 
@@ -345,6 +346,86 @@ const listProductBasedCostingItems = async (
   return (data as ProductBasedCostingItem[] | null) ?? [];
 };
 
+const listProductBasedCostingItemsPaginated = async (
+  productBasedCostingFileId: number,
+  payload: { page?: number; page_size?: number } = {},
+): Promise<ProductBasedCostingItemListPage> => {
+  const page = Math.max(1, Number(payload.page ?? 1) || 1);
+  const pageSize = Math.max(1, Number(payload.page_size ?? 25) || 25);
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  const { data, error, count } = await supabase
+    .from('product_based_costing_items')
+    .select('*', { count: 'exact' })
+    .eq('product_based_costing_file_id', productBasedCostingFileId)
+    .order('sort_order', { ascending: true })
+    .order('id', { ascending: true })
+    .range(from, to);
+
+  if (error) {
+    throw error;
+  }
+
+  const rows = (data as ProductBasedCostingItem[] | null) ?? [];
+  const total = Number(count ?? rows.length ?? 0);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  return {
+    data: rows,
+    meta: {
+      total,
+      page,
+      page_size: pageSize,
+      total_pages: totalPages,
+    },
+  };
+};
+
+const reorderProductBasedCostingItemToPosition = async (
+  productBasedCostingFileId: number,
+  itemId: number,
+  targetPosition: number,
+): Promise<void> => {
+  const { data, error } = await supabase
+    .from('product_based_costing_items')
+    .select('id')
+    .eq('product_based_costing_file_id', productBasedCostingFileId)
+    .order('sort_order', { ascending: true })
+    .order('id', { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  const items = data ?? [];
+  const total = items.length;
+  if (targetPosition < 1 || targetPosition > total) {
+    throw new Error(`Position must be between 1 and ${total}.`);
+  }
+
+  const currentIndex = items.findIndex((row) => row.id === itemId);
+  if (currentIndex === -1) {
+    throw new Error('Product based costing item not found.');
+  }
+
+  const targetIndex = targetPosition - 1;
+  if (currentIndex === targetIndex) {
+    return;
+  }
+
+  const ordered = [...items];
+  const [removed] = ordered.splice(currentIndex, 1);
+  ordered.splice(targetIndex, 0, removed);
+
+  await updateProductBasedCostingItemsOrder(
+    ordered.map((row, idx) => ({
+      id: row.id,
+      sort_order: idx * 10,
+    })),
+  );
+};
+
 const createProductBasedCostingItem = async (
   payload: ProductBasedCostingItemCreateInput,
 ): Promise<ProductBasedCostingItem> => {
@@ -511,6 +592,8 @@ export const productBasedCostingRepository = {
   getProductBasedCostingFileById,
 
   listProductBasedCostingItems,
+  listProductBasedCostingItemsPaginated,
+  reorderProductBasedCostingItemToPosition,
   createProductBasedCostingItem,
   updateProductBasedCostingItem,
   updateProductBasedCostingItemsByFileId,

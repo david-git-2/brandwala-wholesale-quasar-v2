@@ -16,17 +16,4 @@ export const TASKS_DASHBOARD_SLOTS: readonly DashboardSlot[] = [
     order: 10,
     component: TasksInsights,
   },
-  {
-    id: 'tasks.shortcuts.list',
-    scopes: ['app'],
-    moduleKey: 'tasks',
-    action: 'view',
-    parentGroupKey: 'tasks',
-    kind: 'shortcut',
-    title: 'Tasks & Projects',
-    caption: 'Assignments & checklist items',
-    icon: 'ph ph-clipboard-text',
-    order: 20,
-    routeName: 'tasks-page',
-  },
 ];

@@ -1,10 +1,5 @@
 <template>
-  <DashboardBlankSection
-    title="Treasury & Universal Wallets"
-    description="Consolidated operating liquidity, courier COD remittance, and merchant balances."
-    icon="ph ph-wallet"
-    placeholderText="Treasury distribution, entity wallets, and COD reconciliation gauges will be designed here."
-  />
+  <DashboardBlankSection />
 </template>
 
 <script setup lang="ts">

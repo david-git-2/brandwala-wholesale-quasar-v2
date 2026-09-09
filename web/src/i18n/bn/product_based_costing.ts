@@ -28,6 +28,8 @@ export default {
   col_status: 'স্ট্যাটাস',
   col_actions: 'অ্যাকশন',
   filter_all: 'সব',
+  no_matches: 'আপনার ফিল্টারের সাথে কোনো কস্টিং ফাইল মেলেনি।',
+  open_file: 'ফাইল খুলুন',
   confirm_delete_title: 'মুছে ফেলার নিশ্চিতকরণ',
   confirm_delete_message: 'আপনি কি কস্টিং ফাইল #{id} ({name}) মুছে ফেলতে চান?',
   status_pending: 'ড্রাফট',

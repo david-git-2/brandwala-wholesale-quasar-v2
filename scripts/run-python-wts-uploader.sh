@@ -1,16 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Runs the full UK WTS product pipeline with an auto-managed root venv.
-# `pnpm run python:wts` should be the only command needed:
-# 1) Create/repair .venv if missing or broken (moved project, stale python)
-# 2) Install/update python requirements
-# 3) make wts: scrape → normalize → VAT/ml name clean → sync to Supabase
+# Local WTS Excel uploader (Streamlit). Same venv as `pnpm run python:wts`.
+# `pnpm run wts:uploader` should be the only command needed.
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VENV_DIR="${ROOT_DIR}/.venv"
 VENV_PYTHON="${VENV_DIR}/bin/python"
 REQ_FILE="${ROOT_DIR}/python/requirements.txt"
+APP_FILE="${ROOT_DIR}/python/wts_uploader/app.py"
 
 if ! command -v python3 >/dev/null 2>&1; then
   echo "python3 is required but was not found on PATH" >&2
@@ -28,4 +26,4 @@ fi
 
 export PATH="${VENV_DIR}/bin:${PATH}"
 "${VENV_PYTHON}" -m pip install -r "${REQ_FILE}"
-make -C "${ROOT_DIR}/python" wts
+exec "${VENV_PYTHON}" -m streamlit run "${APP_FILE}"

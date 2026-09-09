@@ -42,16 +42,19 @@ const productBasedCostingRoutes: RouteRecordRaw[] = [
       {
         path: ':id',
         name: 'product-based-costing-file-details-page',
-        component: () => import('../pages/ProductBasedCostingFileDetailsPage.vue'),
+        component: () => import('../pages/ProductBasedCostingFileDetailsV2Page.vue'),
         props: true,
         meta: { hasPageToolbar: true },
       },
       {
         path: ':id/v2',
-        name: 'product-based-costing-file-details-v2-page',
-        component: () => import('../pages/ProductBasedCostingFileDetailsV2Page.vue'),
-        props: true,
-        meta: { hasPageToolbar: true },
+        redirect: (to) => ({
+          name: 'product-based-costing-file-details-page',
+          params: {
+            tenantSlug: to.params.tenantSlug,
+            id: to.params.id,
+          },
+        }),
       },
     ],
   },

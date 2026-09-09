@@ -315,7 +315,8 @@ def parse_product_html(html_content: str, url: str) -> dict | None:
         "imageKey": image_key,
         "imageUrl": None,
         "imageUploaded": False,
-        "expire_date": ""
+        "expire_date": "",
+        "source": "website",
     })
 
     # Clean HTML entities from parsed text fields

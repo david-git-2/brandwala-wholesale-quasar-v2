@@ -18,17 +18,4 @@ export const WALLET_DASHBOARD_SLOTS: readonly DashboardSlot[] = [
     order: 10,
     component: WalletTreasuryInsights,
   },
-  {
-    id: 'wallet.shortcuts.home',
-    scopes: ['app'],
-    moduleKey: 'universal_wallet',
-    action: 'view',
-    parentGroupKey: 'universal_wallet',
-    kind: 'shortcut',
-    title: 'Wallet Hub',
-    caption: 'Balances across entities',
-    icon: 'ph ph-wallet',
-    order: 20,
-    routeName: 'app-wallet-home-page',
-  },
 ];

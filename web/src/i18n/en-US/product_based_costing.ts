@@ -28,6 +28,8 @@ export default {
   col_status: 'Status',
   col_actions: 'Actions',
   filter_all: 'All',
+  no_matches: 'No costing files match your filters.',
+  open_file: 'Open file',
   confirm_delete_title: 'Confirm Deletion',
   confirm_delete_message: 'Are you sure you want to delete costing file #{id} ({name})?',
   status_pending: 'Draft',

@@ -25,6 +25,7 @@
           <q-tab name="summary" label="Summary" icon="ph ph-chart-pie-slice" />
           <q-tab name="rates" label="Rates" icon="ph ph-percent" />
           <q-tab name="status" label="Status" icon="ph ph-traffic-signal" />
+          <q-tab name="actions" label="Actions" icon="ph ph-dots-three-outline" />
         </q-tabs>
       </div>
 
@@ -245,14 +246,16 @@
           <div class="column q-gutter-y-md">
             <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center q-gutter-x-xs">
               <q-icon name="ph ph-traffic-signal" size="18px" color="primary" />
-              <span>Lifecycle Workflow Status</span>
+              <span>{{ $t('product_based_costing.status') }}</span>
             </div>
+
+            <ProductBasedCostingProgressBar :status="normalizedStatus" />
 
             <div class="q-pa-sm bg-grey-1 rounded-borders border-grey row items-center justify-between">
               <div>
-                <div class="text-caption text-grey-6">Current Status</div>
-                <div class="text-weight-bold text-capitalize text-subtitle2">
-                  {{ file?.status || 'pending' }}
+                <div class="text-caption text-grey-6">{{ $t('product_based_costing.status') }}</div>
+                <div class="text-weight-bold text-subtitle2">
+                  {{ currentStatusLabel }}
                 </div>
               </div>
               <q-badge
@@ -262,58 +265,71 @@
                 :color="statusColor.color"
                 :text-color="statusColor.textColor"
               >
-                {{ file?.status || 'pending' }}
+                {{ currentStatusLabel }}
               </q-badge>
             </div>
 
-            <!-- Quick Status Transitions -->
-            <div class="column q-gutter-y-xs q-mt-sm">
-              <div class="text-caption text-weight-medium text-grey-7">Change File Status:</div>
-              <q-btn
-                v-if="file?.status === 'pending'"
-                unelevated
-                color="primary"
-                icon="ph ph-paper-plane-tilt"
-                label="Mark as Offered"
-                class="rounded-sq-btn text-weight-bold"
-                style="border-radius: 8px"
-                :loading="updatingStatus"
-                @click="changeStatus('offered')"
-              />
-              <q-btn
-                v-if="file?.status === 'offered'"
-                unelevated
-                color="positive"
-                icon="ph ph-check-circle"
-                label="Confirm Quote / Order"
-                class="rounded-sq-btn text-weight-bold"
-                style="border-radius: 8px"
-                :loading="updatingStatus"
-                @click="changeStatus('confirmed')"
-              />
-              <q-btn
-                v-if="file?.status === 'confirmed'"
-                unelevated
-                color="indigo"
-                icon="ph ph-shopping-bag"
-                label="Set to Procuring"
-                class="rounded-sq-btn text-weight-bold"
-                style="border-radius: 8px"
-                :loading="updatingStatus"
-                @click="changeStatus('procuring')"
-              />
-              <q-btn
-                v-if="file?.status !== 'delivered' && file?.status !== 'cancelled'"
-                outline
-                color="negative"
-                icon="ph ph-x-circle"
-                label="Cancel File"
-                class="rounded-sq-btn text-weight-bold q-mt-md"
-                style="border-radius: 8px"
-                :loading="updatingStatus"
-                @click="changeStatus('cancelled')"
-              />
+            <ProductBasedCostingStaffActions
+              :status="normalizedStatus"
+              :show-cancel="showCancel"
+              :is-primary-loading="isPrimaryLoading"
+              :is-cancelling="isCancelling"
+              :primary-disabled="primaryDisabled"
+              :primary-disabled-reason="primaryDisabledReason"
+              class="settings-staff-actions"
+              @primary-action="emit('primary-action', $event)"
+              @cancel-file="emit('cancel-file')"
+            />
+
+            <q-btn
+              flat
+              no-caps
+              color="grey-8"
+              icon="ph ph-arrows-clockwise"
+              :label="$t('product_based_costing.override_status')"
+              class="rounded-sq-btn text-weight-medium"
+              style="border-radius: 8px"
+              @click="emit('override-status')"
+            />
+          </div>
+        </q-tab-panel>
+
+        <!-- 5. Actions Tab Panel -->
+        <q-tab-panel name="actions" class="q-pa-md bg-white">
+          <div class="column q-gutter-y-sm">
+            <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center q-gutter-x-xs q-mb-sm">
+              <q-icon name="ph ph-dots-three-outline" size="18px" color="primary" />
+              <span>File Actions</span>
             </div>
+
+            <q-btn
+              flat
+              no-caps
+              align="left"
+              icon="ph ph-pencil-simple"
+              :label="$t('product_based_costing.edit_file_details')"
+              class="rounded-sq-btn action-list-btn"
+              @click="emitDrawerAction('edit-file')"
+            />
+            <q-btn
+              flat
+              no-caps
+              align="left"
+              icon="ph ph-file-pdf"
+              :label="$t('product_based_costing.offer_pdf_screenshot')"
+              class="rounded-sq-btn action-list-btn"
+              :disable="!canOpenOfferPdf"
+              @click="emitDrawerAction('offer-pdf')"
+            />
+            <q-btn
+              flat
+              no-caps
+              align="left"
+              icon="ph ph-table"
+              :label="$t('product_based_costing.download_excel')"
+              class="rounded-sq-btn action-list-btn"
+              @click="emitDrawerAction('download-excel')"
+            />
           </div>
         </q-tab-panel>
       </q-tab-panels>
@@ -323,8 +339,19 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { useQuasar } from 'quasar';
-import { formatMoney } from '../composables/useProductBasedCostingFileDetailsState';
+import { useI18n } from 'vue-i18n';
+import {
+  formatMoney,
+  normalizePbcFileStatus,
+} from '../composables/useProductBasedCostingFileDetailsState';
+import type { StaffPbcPrimaryAction } from '../utils/pbcFileStatus';
+import ProductBasedCostingProgressBar from './ProductBasedCostingProgressBar.vue';
+import ProductBasedCostingStaffActions from './ProductBasedCostingStaffActions.vue';
+
+export type PbcSettingsDrawerAction =
+  | 'edit-file'
+  | 'offer-pdf'
+  | 'download-excel';
 
 const props = defineProps<{
   modelValue: boolean;
@@ -338,16 +365,27 @@ const props = defineProps<{
     totalProfitBdt: number;
   };
   billingProfiles?: any[];
+  status?: string;
+  showCancel?: boolean;
+  isPrimaryLoading?: boolean;
+  isCancelling?: boolean;
+  primaryDisabled?: boolean;
+  primaryDisabledReason?: string;
+  initialTab?: string;
+  canOpenOfferPdf?: boolean;
 }>();
 
 const emit = defineEmits<{
   (e: 'update:modelValue', val: boolean): void;
   (e: 'update-file', payload: Record<string, any>): void;
   (e: 'update-rates', payload: { conversion_rate: number; cargo_rate_kg_gbp: number; profit_rate: number }): void;
-  (e: 'update-status', status: string): void;
+  (e: 'primary-action', action: StaffPbcPrimaryAction): void;
+  (e: 'cancel-file'): void;
+  (e: 'override-status'): void;
+  (e: 'drawer-action', action: PbcSettingsDrawerAction): void;
 }>();
 
-const $q = useQuasar();
+const { t } = useI18n();
 const activeTab = ref('details');
 
 const drawerFileName = ref('');
@@ -361,7 +399,23 @@ const drawerProfitRate = ref(25);
 
 const updatingFile = ref(false);
 const updatingRates = ref(false);
-const updatingStatus = ref(false);
+
+const normalizedStatus = computed(() =>
+  normalizePbcFileStatus(props.status ?? props.file?.status ?? 'pending'),
+);
+
+const currentStatusLabel = computed(() =>
+  t(`product_based_costing.status_${normalizedStatus.value}`),
+);
+
+watch(
+  () => props.modelValue,
+  (open) => {
+    if (open && props.initialTab) {
+      activeTab.value = props.initialTab;
+    }
+  },
+);
 
 watch(
   () => props.file,
@@ -388,7 +442,7 @@ const billingProfileOptions = computed(() => {
 });
 
 const statusColor = computed(() => {
-  const st = props.file?.status;
+  const st = normalizedStatus.value;
   if (st === 'confirmed' || st === 'ready_for_shipment' || st === 'delivered') {
     return { color: 'green-1', textColor: 'green-9' };
   }
@@ -431,19 +485,9 @@ function saveRates() {
   });
 }
 
-function changeStatus(target: string) {
-  if (target === 'cancelled') {
-    $q.dialog({
-      title: 'Cancel Costing File',
-      message: 'Are you sure you want to cancel this file quote?',
-      cancel: true,
-      ok: { color: 'negative', label: 'Cancel File' },
-    }).onOk(() => {
-      emit('update-status', target);
-    });
-    return;
-  }
-  emit('update-status', target);
+function emitDrawerAction(action: PbcSettingsDrawerAction) {
+  emit('drawer-action', action);
+  emit('update:modelValue', false);
 }
 </script>
 
@@ -456,5 +500,20 @@ function changeStatus(target: string) {
 }
 .border-grey {
   border: 1px solid rgba(0, 0, 0, 0.1);
+}
+.settings-staff-actions :deep(.pbc-staff-actions) {
+  position: static;
+  margin: 0;
+  border-radius: 8px;
+  box-shadow: none;
+}
+.settings-staff-actions :deep(.pbc-staff-actions__inner) {
+  padding: 8px 0;
+  flex-wrap: wrap;
+}
+.action-list-btn {
+  justify-content: flex-start;
+  width: 100%;
+  border-radius: 8px !important;
 }
 </style>

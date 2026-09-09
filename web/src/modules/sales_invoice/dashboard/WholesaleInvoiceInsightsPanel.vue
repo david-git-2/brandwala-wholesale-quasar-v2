@@ -1,10 +1,5 @@
 <template>
-  <DashboardBlankSection
-    title="Wholesale Invoices & Receivables"
-    description="Live invoice lifecycle, payment status ratio, and overdue recovery triage."
-    icon="ph ph-receipt"
-    placeholderText="Wholesale invoice metrics, overdue queues, and daily collections will be designed here."
-  />
+  <DashboardBlankSection />
 </template>
 
 <script setup lang="ts">
