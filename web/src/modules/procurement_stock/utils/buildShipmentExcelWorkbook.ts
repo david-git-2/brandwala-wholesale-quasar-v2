@@ -13,7 +13,11 @@ export interface BuildShipmentExcelInput {
   boxWeightSum: number;
   purchaseCurrencySymbol: string;
   costCurrencySymbol: string;
+  worksheetName?: string;
 }
+
+const safeWorksheetName = (name: string) =>
+  name.replace(/[\\/*?:\[\]]/g, '_').trim().slice(0, 31) || 'Shipment costing';
 
 const FILL_WHITE = 'FFFFFFFF';
 const FILL_PURPLE = 'FFE5DFEC';
@@ -268,7 +272,7 @@ const toWeight = (value: number | null | undefined) => Math.round(toNum(value));
 export async function buildShipmentExcelWorkbook(input: BuildShipmentExcelInput) {
   const ExcelJS = await import('exceljs');
   const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet('Shipment costing');
+  const worksheet = workbook.addWorksheet(safeWorksheetName(input.worksheetName ?? 'Shipment costing'));
 
   const conversionRate =
     input.shipment.type === 'international' && input.totals.goodsPurchase > 0

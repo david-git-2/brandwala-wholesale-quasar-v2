@@ -22,6 +22,8 @@ import {
   requestConfirmation,
 } from 'src/utils/appFeedback';
 import { buildShipmentExcelWorkbook } from '../utils/buildShipmentExcelWorkbook';
+import { filterShipmentItemsBySheet } from '../utils/filterShipmentItemsBySheet';
+import { calculateShipmentCostSummary, costingShipmentFromEntries } from 'src/shared/shipment-engine';
 import {
   formatGlobalShipmentStatus,
   isGlobalShipmentStatus,
@@ -598,22 +600,47 @@ export function useInboundShipmentActions(options: {
   const safeNamePart = (value: string) =>
     value.replace(/[^a-z0-9-_]+/gi, '_').replace(/^_+|_+$/g, '');
 
-  const downloadExcel = async () => {
-    if (!shipmentStore.currentShipment) {
+  const downloadExcel = async (options?: { sheetId?: string; sheetName?: string }) => {
+    const shipment = shipmentStore.currentShipment;
+    if (!shipment) {
       showWarningNotification('No shipment loaded.');
+      return;
+    }
+
+    const allItems = shipmentStore.currentShipmentItems ?? [];
+    const sections = shipmentStore.currentShipmentSections ?? [];
+    const sheetId = options?.sheetId ?? 'sheet_all';
+    const sheetName =
+      options?.sheetName ??
+      (sheetId === 'sheet_all' ? 'All Items' : sections.find((section) => `section_${section.id}` === sheetId)?.title ?? 'Section');
+    const items = filterShipmentItemsBySheet(allItems, sheetId, sections);
+
+    if (items.length === 0) {
+      showWarningNotification('No items to export for this tab.');
       return;
     }
 
     const loading = $q.loading.show({ message: 'Generating Excel...' });
 
     try {
+      const forCosting = costingShipmentFromEntries(
+        shipment,
+        shipmentStore.currentCostEntries,
+        allItems,
+      );
+      const totals =
+        sheetId === 'sheet_all'
+          ? calculations.totals.value
+          : calculateShipmentCostSummary(forCosting, items);
+
       const workbook = await buildShipmentExcelWorkbook({
-        shipment: shipmentStore.currentShipment,
-        items: shipmentStore.currentShipmentItems ?? [],
-        totals: calculations.totals.value,
+        shipment,
+        items,
+        totals,
         boxWeightSum: calculations.currentShipmentBoxesTotal.value,
         purchaseCurrencySymbol: calculations.currentPurchaseCurrencySymbol.value,
         costCurrencySymbol: calculations.currentCostCurrencySymbol.value,
+        worksheetName: sheetName,
       });
 
       const buffer = await workbook.xlsx.writeBuffer();
@@ -622,11 +649,10 @@ export function useInboundShipmentActions(options: {
       });
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
-      const fileTitle = safeNamePart(
-        shipmentStore.currentShipment.name ?? `shipment_${shipmentStore.currentShipment.id}`,
-      );
+      const fileTitle = safeNamePart(shipment.name ?? `shipment_${shipment.id}`);
+      const sheetSuffix = sheetId === 'sheet_all' ? '' : `_${safeNamePart(sheetName)}`;
       anchor.href = url;
-      anchor.download = `${fileTitle || `shipment_${shipmentStore.currentShipment.id}`}.xlsx`;
+      anchor.download = `${fileTitle || `shipment_${shipment.id}`}${sheetSuffix}.xlsx`;
       anchor.click();
       URL.revokeObjectURL(url);
     } catch (error) {

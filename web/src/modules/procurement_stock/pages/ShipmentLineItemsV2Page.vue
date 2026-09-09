@@ -136,6 +136,19 @@
             </q-menu>
           </q-btn>
 
+          <q-btn
+            v-if="activeSheetId !== 'sheet_all'"
+            flat
+            round
+            dense
+            color="grey-8"
+            icon="ph ph-file-xls"
+            size="sm"
+            @click="downloadActiveSheetExcel"
+          >
+            <q-tooltip>Download Excel for the current tab</q-tooltip>
+          </q-btn>
+
           <!-- Lock costs (after receive, before books freeze) -->
           <q-btn
             v-if="isStockPosted && !isCostsLocked"
@@ -542,6 +555,7 @@
       @view-section="openViewSectionDialog"
       @edit-section="openEditSectionDialog"
       @remove-sheet="removeSheet"
+      @download-sheet="downloadSheetExcel"
       @scroll-step="scrollTableByStep"
       @track-click="onTrackClick"
       @thumb-drag-start="startThumbDrag"
@@ -711,6 +725,7 @@ const {
   clearAssignChild,
   openAddItems,
   confirmLockShipmentCosts,
+  downloadExcel,
 } = actions;
 
 const settingsDrawerOpen = ref(false);
@@ -1314,6 +1329,21 @@ const sheets = ref<SheetTabItem[]>([
 
 const firstSectionSheetId = (sections: typeof shipmentStore.currentShipmentSections) =>
   sections?.length ? `section_${sections[0].id}` : null;
+
+const downloadActiveSheetExcel = () => {
+  const activeSheet = sheets.value.find((sheet) => sheet.id === activeSheetId.value);
+  void downloadExcel({
+    sheetId: activeSheetId.value,
+    sheetName: activeSheet?.name,
+  });
+};
+
+const downloadSheetExcel = (sheet: SheetTabItem) => {
+  void downloadExcel({
+    sheetId: sheet.id,
+    sheetName: sheet.name,
+  });
+};
 
 const onSheetTabChange = async (id: string) => {
   hasUserSelectedSheet.value = true;

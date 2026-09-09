@@ -44,6 +44,13 @@
               <q-item-section class="text-caption text-weight-medium">Edit Details</q-item-section>
             </q-item>
 
+            <q-item clickable v-ripple @click="emit('download-sheet', sheet)">
+              <q-item-section avatar style="min-width: 28px">
+                <q-icon name="ph ph-file-xls" size="16px" color="positive" />
+              </q-item-section>
+              <q-item-section class="text-caption text-weight-medium">Download Excel</q-item-section>
+            </q-item>
+
             <q-separator class="q-my-xs" />
 
             <q-item
@@ -126,6 +133,7 @@ const emit = defineEmits<{
   (e: 'view-section', sheet: SheetTabItem): void;
   (e: 'edit-section', sheet: SheetTabItem): void;
   (e: 'remove-sheet', id: string): void;
+  (e: 'download-sheet', sheet: SheetTabItem): void;
   (e: 'scroll-step', delta: number): void;
   (e: 'track-click', fraction: number): void;
   (e: 'thumb-drag-start', event: MouseEvent): void;
