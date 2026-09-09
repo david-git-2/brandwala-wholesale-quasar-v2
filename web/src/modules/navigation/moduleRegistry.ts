@@ -615,8 +615,8 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'sales_invoice',
     name: 'Sales & Invoice',
-    description:
-      'Feature-catalog parent for invoice submodules. No sidebar link — use global_invoice.',
+    description: 'Sales invoicing and after-sales service for wholesale and dropship.',
+    navIcon: 'ph ph-receipt',
     routes: [],
   },
   {
@@ -637,15 +637,15 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   },
   {
     key: 'after_sales',
-    name: 'Returns',
-    description: 'Returns hub for wholesale credit returns and dropship complaints.',
-    navIcon: 'ph ph-arrow-u-up-left',
+    name: 'After Sales Service',
+    description: 'Returns, replacement, warranty, and dropship complaint cases.',
+    navIcon: 'ph ph-headset',
     routes: [
       {
         scope: 'app',
-        title: 'Returns',
-        caption: 'Return, replacement, and warranty cases',
-        icon: 'ph ph-arrow-u-up-left',
+        title: 'After Sales Service',
+        caption: 'Returns, replacement, and warranty cases',
+        icon: 'ph ph-headset',
         routeSegment: 'after-sales',
         requiredAction: 'view',
       },

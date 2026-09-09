@@ -20,7 +20,7 @@ const afterSalesRoutes: RouteRecordRaw[] = [
         path: '',
         name: 'app-after-sales-overview',
         component: () => import('../pages/AfterSalesOverviewPage.vue'),
-        meta: { title: 'Returns Hub', headerTitle: 'Returns Hub' },
+        meta: { title: 'After Sales Service', headerTitle: 'After Sales Service' },
       },
       {
         path: 'cases',

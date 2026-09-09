@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, watch } from 'vue';
+import SmartImage from 'src/components/SmartImage.vue';
 import type { DropshipManagementOrderView } from '../types/dropshipManagementOrder';
 import {
   buildSettlementDraftPayload,
@@ -41,6 +42,22 @@ const form = reactive<SettlementFormState>({
 });
 
 const itemQuantity = computed(() => Math.max(0, props.data.computed.order_item_quantity));
+
+const orderItemRows = computed(() =>
+  props.data.items.map((item) => {
+    const resell = item.customer_sell_price_amount ?? 0;
+    const qty = Math.max(item.quantity, 0);
+    return {
+      id: item.id,
+      name: item.name,
+      quantity: qty,
+      resell,
+      lineResell: resell * qty,
+      imageUrl: item.image_url,
+      productCode: item.product_code,
+    };
+  }),
+);
 
 const resellerPurchaseCost = computed(() => props.data.settlement.reseller_purchase_cost);
 
@@ -210,6 +227,38 @@ defineExpose({ getDraftPayload });
     </section>
 
     <div class="dropship-invoice-paper__divider" />
+
+    <section v-if="orderItemRows.length > 0" class="dropship-mgmt-settlement-paper__items">
+      <div class="dropship-invoice-paper__section-label q-mb-sm">Ordered items</div>
+      <div class="dropship-mgmt-settlement-paper__items-list">
+        <div
+          v-for="item in orderItemRows"
+          :key="item.id"
+          class="dropship-mgmt-settlement-paper__item-row"
+        >
+          <div class="dropship-mgmt-settlement-paper__item-thumb">
+            <SmartImage
+              :src="item.imageUrl"
+              :alt="item.name"
+              img-class="dropship-mgmt-settlement-paper__item-thumb-img"
+              fallback-class="dropship-mgmt-settlement-paper__item-thumb-fallback"
+            />
+          </div>
+          <div class="dropship-mgmt-settlement-paper__item-body">
+            <div class="dropship-invoice-paper__recipient-name">{{ item.name }}</div>
+            <div v-if="item.productCode" class="dropship-invoice-paper__line text-grey-7">
+              Code {{ item.productCode }}
+            </div>
+            <div class="dropship-invoice-paper__line text-grey-7">
+              Qty {{ item.quantity }} · Resell {{ formatMoney(item.resell) }} · Line
+              {{ formatMoney(item.lineResell) }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div v-if="orderItemRows.length > 0" class="dropship-invoice-paper__divider" />
 
     <section
       class="dropship-invoice-paper__summary dropship-invoice-paper__summary--editable dropship-mgmt-settlement-paper__summary"
@@ -726,6 +775,39 @@ defineExpose({ getDraftPayload });
 
 .dropship-mgmt-settlement-paper__courier-row {
   min-width: 0;
+}
+
+.dropship-mgmt-settlement-paper__items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.dropship-mgmt-settlement-paper__item-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.dropship-mgmt-settlement-paper__item-thumb {
+  width: 3rem;
+  height: 3rem;
+  flex: 0 0 auto;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #f3f4f6;
+}
+
+.dropship-mgmt-settlement-paper__item-thumb-img,
+.dropship-mgmt-settlement-paper__item-thumb-fallback {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.dropship-mgmt-settlement-paper__item-body {
+  min-width: 0;
+  flex: 1;
 }
 
 .dropship-invoice-paper__payer-toggle {

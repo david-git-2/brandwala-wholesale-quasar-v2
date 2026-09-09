@@ -8,6 +8,9 @@ The declarative database schema is located in `supabase/schemas/`:
 * Split domain modules:
   * `procurement/`: `01_types.sql`, `02_tables.sql`, `03_rpcs.sql`, `04_rls.sql`
   * `shop_order/`: `01_types.sql`, `02_tables.sql`, `03_rpcs.sql`, `04_rls.sql`
+  * `notifications/`: `01_types.sql`, `02_tables.sql`, `03_rls.sql`, `04_rpcs.sql` — in-app inbox (`notifications`, `notification_recipients`), `enqueue_notification` plugin RPC
+  * **Notifications RPCs**: `list_my_notifications_paginated`, `get_my_notification_unread_count`, `mark_notification_read`, `mark_all_my_notifications_read` (client); `enqueue_notification` (internal plugin)
+  * **Migration**: `supabase/migrations/20270910120000_notifications_core.sql`
 
 ## Reports & Treasury Schema References
 

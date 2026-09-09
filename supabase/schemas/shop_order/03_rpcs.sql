@@ -542,7 +542,13 @@ begin
 
   v_amount := coalesce(v_settlement.reseller_profit, 0);
   if v_amount <= 0 then
-    raise exception 'reseller profit must be positive';
+    return jsonb_build_object(
+      'success', true,
+      'skipped', true,
+      'message', 'No reseller profit to credit',
+      'order_id', p_order_id,
+      'amount', 0
+    );
   end if;
 
   v_parent_tenant_id := public.resolve_parent_tenant_id(p_tenant_id);
@@ -7790,8 +7796,6 @@ declare
   v_net numeric(12,2);
   v_invoice_due numeric(12,2);
   v_invoice_pay numeric(12,2);
-  v_profit_hold numeric(12,2);
-  v_currency text := 'BDT';
   v_already_remitted boolean := false;
 begin
   select * into v_order from public.shop_orders where id = p_order_id for update;
@@ -7884,7 +7888,6 @@ begin
 
   v_invoice_due := greatest(coalesce(v_invoice.total_amount, 0.00) - coalesce(v_invoice.paid_amount, 0.00), 0.00);
   v_invoice_pay := least(v_net, v_invoice_due);
-  v_profit_hold := greatest(v_net - v_invoice_pay, 0.00);
 
   perform public.process_dropship_courier_remittance_uwl(
     p_order_id => p_order_id,
@@ -7894,10 +7897,7 @@ begin
   );
 
   update public.universal_wallet_ledger
-  set metadata = metadata || jsonb_build_object(
-    'invoice_allocated', v_invoice_pay,
-    'merchant_funds_held', v_profit_hold
-  )
+  set metadata = metadata || jsonb_build_object('invoice_allocated', v_invoice_pay)
   where parent_tenant_id = v_parent_tenant_id
     and entity_type = 'tenant'
     and source_type = 'shop_order'
@@ -7929,7 +7929,7 @@ begin
         nullif(trim(p_note), ''),
         'Courier remittance order #' || v_order.order_no
           || coalesce(' bank:' || nullif(trim(p_bank_trx_id), ''), '')
-          || ' (invoice ' || v_invoice_pay::text || ' / held ' || v_profit_hold::text || ')'
+          || ' (invoice payment ' || v_invoice_pay::text || ')'
       )
     )
     returning id into v_payment_id;
@@ -7963,8 +7963,7 @@ begin
     'status', 'payment_received',
     'net_amount', v_net,
     'courier_charge', v_charge,
-    'invoice_allocated', v_invoice_pay,
-    'merchant_funds_held', v_profit_hold
+    'invoice_allocated', v_invoice_pay
   );
 end;
 $$;

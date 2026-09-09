@@ -120,6 +120,17 @@ const getSubmoduleSectionAndWeight = (
     }
   }
 
+  if (parentKey === 'sales_invoice') {
+    switch (moduleKey) {
+      case 'global_invoice':
+        return { section: '', weight: 10 };
+      case 'after_sales':
+        return { section: '', weight: 20 };
+      default:
+        return { section: '', weight: 99 };
+    }
+  }
+
   if (parentKey === 'procurement_stock') {
     switch (moduleKey) {
       case 'procurement_stock':

@@ -2,7 +2,7 @@
   <q-card flat bordered class="hub-summary-chart q-pa-md">
     <div class="hub-summary-chart__header">
       <div>
-        <h2 class="hub-summary-chart__title">Returns summary</h2>
+        <h2 class="hub-summary-chart__title">After-sales summary</h2>
         <p class="hub-summary-chart__subtitle">Click a bar to open that queue.</p>
       </div>
       <div class="hub-summary-chart__total">

@@ -134,6 +134,10 @@ function mapReturnLines(raw: unknown): DropshipManagementReturnLine[] {
       grade_tag_id: row.grade_tag_id == null ? null : num(row.grade_tag_id),
       product_code: (row.product_code as string | null) ?? null,
       image_url: (row.image_url as string | null) ?? null,
+      customer_sell_price_amount:
+        row.customer_sell_price_amount == null ? null : num(row.customer_sell_price_amount),
+      unit_sell_price_amount:
+        row.unit_sell_price_amount == null ? null : num(row.unit_sell_price_amount),
       stock_picks,
     };
   });

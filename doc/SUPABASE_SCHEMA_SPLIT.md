@@ -6,6 +6,7 @@ Live SQL lives in `supabase/schemas/`. Move one domain per PR; delete moved obje
 | :--- | :--- | :--- | :--- |
 | procurement | `procurement/` | **Split** | types, tables, rpcs, rls |
 | shop_order | `shop_order/` | **Split** | types, tables, rpcs, rls — wired in `config.toml` |
+| notifications | `notifications/` | **Split** | types, tables, rls, rpcs — wired in `config.toml` |
 | sales_invoice | `sales_invoice/` | Partial | files exist; not yet wired in `config.toml` |
 | shop | `shop/` | Stub | Use `shop_order/` (same module) |
 | tenants | `tenants/` | Stub | |

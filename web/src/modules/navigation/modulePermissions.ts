@@ -12,6 +12,7 @@ import {
   buildModuleRoutePath,
   getModuleDefinition,
   getModuleRoutesForScope,
+  MODULE_REGISTRY,
   type InteractiveScope,
   type ModuleAction,
   type ModuleKey,
@@ -535,7 +536,16 @@ export const getAccessibleModuleRoutes = ({
     });
   }
 
-  return routes.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }));
+  const moduleOrder = new Map(MODULE_REGISTRY.map((definition, index) => [definition.key, index]));
+
+  return routes.sort((a, b) => {
+    const orderA = moduleOrder.get(a.moduleKey) ?? Number.MAX_SAFE_INTEGER;
+    const orderB = moduleOrder.get(b.moduleKey) ?? Number.MAX_SAFE_INTEGER;
+    if (orderA !== orderB) {
+      return orderA - orderB;
+    }
+    return a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
+  });
 };
 
 export const useModulePermissions = () => {

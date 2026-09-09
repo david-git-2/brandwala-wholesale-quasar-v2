@@ -69,17 +69,6 @@
             :loading="actionKind === 'remittance'"
             @click="showRemittanceDialog = true"
           />
-          <q-btn
-            color="primary"
-            unelevated
-            no-caps
-            icon="ph ph-wallet"
-            label="Credit reseller profit"
-            class="text-weight-bold dropship-order-detail-v2__action-btn"
-            :disable="!orderData.step_state.can_transfer_to_reseller"
-            :loading="actionKind === 'payout'"
-            @click="onTransferReseller"
-          />
         </div>
       </template>
     </div>
@@ -146,7 +135,7 @@ const queryClient = useQueryClient();
 
 const paperRef = ref<InstanceType<typeof DropshipManagementSettlementPaper> | null>(null);
 const savingDraft = ref(false);
-const actionKind = ref<'delivered' | 'remittance' | 'payout' | null>(null);
+const actionKind = ref<'delivered' | 'remittance' | null>(null);
 const showRemittanceDialog = ref(false);
 
 const remittanceForm = reactive({
@@ -292,7 +281,7 @@ async function onMarkDelivered() {
             can_mark_delivered: false,
             can_issue_invoice: true,
             can_record_bank_transfer: true,
-            can_transfer_to_reseller: true,
+            can_transfer_to_reseller: false,
           },
         };
       });
@@ -317,7 +306,7 @@ async function onMarkDelivered() {
           can_mark_delivered: false,
           can_issue_invoice: false,
           can_record_bank_transfer: true,
-          can_transfer_to_reseller: true,
+          can_transfer_to_reseller: false,
         },
       };
     });
@@ -366,41 +355,8 @@ async function onRecordBankTransfer() {
       showErrorNotification(res.error ?? 'Failed to record bank transfer.');
       return;
     }
-    showSuccessNotification('Courier bank transfer recorded.');
+    showSuccessNotification('Courier bank transfer recorded. Invoice paid and merchant profit credited.');
     showRemittanceDialog.value = false;
-    await invalidateDetail();
-  } finally {
-    actionKind.value = null;
-  }
-}
-
-async function onTransferReseller() {
-  if (!authStore.tenantId) return;
-  const payload = getPayload();
-  if (!payload) return;
-
-  const profit = orderData.value?.settlement.reseller_profit;
-  const confirmed = await requestConfirmation(
-    profit != null && profit > 0
-      ? `Credit ${profit.toLocaleString()} BDT reseller profit to the merchant wallet? Cash withdrawal is done separately from the wallet page.`
-      : 'Credit reseller profit to the merchant wallet? Cash withdrawal is done separately from the wallet page.',
-    'Credit reseller profit',
-    'Credit profit',
-  );
-  if (!confirmed) return;
-
-  actionKind.value = 'payout';
-  try {
-    const res = await shopOrderService.transferDropshipResellerProfit(
-      authStore.tenantId,
-      orderId.value,
-      payload,
-    );
-    if (!res.success) {
-      showErrorNotification(res.error ?? 'Failed to credit reseller profit.');
-      return;
-    }
-    showSuccessNotification('Reseller profit credited to merchant wallet.');
     await invalidateDetail();
   } finally {
     actionKind.value = null;

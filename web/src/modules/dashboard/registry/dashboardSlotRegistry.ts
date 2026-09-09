@@ -3,6 +3,7 @@ import { SALES_INVOICE_DASHBOARD_SLOTS } from 'src/modules/sales_invoice/dashboa
 import { WALLET_DASHBOARD_SLOTS } from 'src/modules/wallet/dashboard/walletDashboardSlots';
 import { INVESTOR_CAPITAL_DASHBOARD_SLOTS } from 'src/modules/investor_capital/dashboard/investorCapitalDashboardSlots';
 import { TASKS_DASHBOARD_SLOTS } from 'src/modules/tasks/dashboard/tasksDashboardSlots';
+import { AFTER_SALES_DASHBOARD_SLOTS } from 'src/modules/after_sales/dashboard/afterSalesDashboardSlots';
 import {
   getModuleDefinition,
   type ModuleAction,
@@ -13,12 +14,14 @@ import type {
   DashboardSlot,
   DashboardSlotGroup,
   DashboardSlotScope,
+  DashboardWorkspaceKind,
   ResolvedDashboardSlots,
 } from '../types/dashboardSlot';
 
 /** Fixed group order weights. Lower first. Unknown parents sort after. */
 const GROUP_WEIGHT: Partial<Record<ModuleKey, number>> = {
   sales_invoice: 10,
+  after_sales: 15,
   universal_wallet: 20,
   investor_capital: 30,
   tasks: 40,
@@ -27,17 +30,33 @@ const GROUP_WEIGHT: Partial<Record<ModuleKey, number>> = {
 
 export const DASHBOARD_SLOT_REGISTRY: readonly DashboardSlot[] = [
   ...SALES_INVOICE_DASHBOARD_SLOTS,
+  ...AFTER_SALES_DASHBOARD_SLOTS,
   ...WALLET_DASHBOARD_SLOTS,
   ...INVESTOR_CAPITAL_DASHBOARD_SLOTS,
   ...TASKS_DASHBOARD_SLOTS,
   ...THRIFT_DASHBOARD_SLOTS,
 ];
 
+const matchesWorkspaceKind = (
+  slot: DashboardSlot,
+  workspaceKind: DashboardWorkspaceKind | null,
+): boolean => {
+  if (!slot.workspaceKinds?.length) {
+    return true;
+  }
+  if (!workspaceKind) {
+    return false;
+  }
+  return slot.workspaceKinds.includes(workspaceKind);
+};
+
 export const resolveDashboardSlots = ({
   scope,
+  workspaceKind,
   hasAccess,
 }: {
   scope: AuthScope | null;
+  workspaceKind?: DashboardWorkspaceKind | null;
   hasAccess: (moduleKey: ModuleKey, action: ModuleAction) => boolean;
 }): ResolvedDashboardSlots => {
   if (scope !== 'app') {
@@ -47,7 +66,9 @@ export const resolveDashboardSlots = ({
   const appScope: DashboardSlotScope = 'app';
   const visible = DASHBOARD_SLOT_REGISTRY.filter(
     (slot) =>
-      slot.scopes.includes(appScope) && hasAccess(slot.moduleKey, slot.action ?? 'view'),
+      slot.scopes.includes(appScope) &&
+      matchesWorkspaceKind(slot, workspaceKind ?? null) &&
+      hasAccess(slot.moduleKey, slot.action ?? 'view'),
   );
 
   const primaries = visible

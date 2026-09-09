@@ -139,7 +139,7 @@ usePageBreadcrumbs(() => {
       label: tenantStore.selectedTenant?.name || authStore.selectedTenant?.name || 'Workspace',
       icon: 'ph ph-buildings',
     },
-    { label: 'Returns', to: hubPath },
+    { label: 'After Sales Service', to: hubPath },
     { label: 'Return policies', to: listPath },
     { label: isCreateMode.value ? 'Create policy' : pageTitle.value },
   ];

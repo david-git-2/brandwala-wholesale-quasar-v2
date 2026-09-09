@@ -3495,7 +3495,7 @@ begin
 ALTER FUNCTION "public"."dispense_middleman_payout"("p_billing_profile_id" bigint, "p_amount" numeric, "p_method" "text", "p_trx_id" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."find_customer_admin_email_conflict"("p_tenant_id" bigint, "p_email" "text", "p_exclude_billing_profile_id" bigint DEFAULT NULL::bigint, "p_exclude_member_id" bigint DEFAULT NULL::bigint) RETURNS "text"
+CREATE OR REPLACE FUNCTION "public"."find_customer_admin_email_conflict"("p_tenant_id" bigint, "p_email" "text", "p_exclude_billing_profile_id" bigint DEFAULT NULL::bigint, "p_exclude_member_id" bigint DEFAULT NULL::bigint, "p_exclude_customer_group_id" bigint DEFAULT NULL::bigint) RETURNS "text"
     LANGUAGE "plpgsql" STABLE
     SET "search_path" TO 'public'
     AS $$
@@ -3515,6 +3515,7 @@ begin
   where bp.tenant_id = p_tenant_id
     and lower(trim(bp.email)) = v_normalized_email
     and bp.id <> coalesce(p_exclude_billing_profile_id, -1)
+    and cg.id <> coalesce(p_exclude_customer_group_id, -1)
   order by cg.id asc
   limit 1;
 
@@ -3530,6 +3531,7 @@ begin
     and cgm.role = 'admin'::public.customer_group_role
     and lower(trim(cgm.email)) = v_normalized_email
     and cgm.id <> coalesce(p_exclude_member_id, -1)
+    and cg.id <> coalesce(p_exclude_customer_group_id, -1)
   order by cg.id asc
   limit 1;
 
@@ -3538,7 +3540,7 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."find_customer_admin_email_conflict"("p_tenant_id" bigint, "p_email" "text", "p_exclude_billing_profile_id" bigint, "p_exclude_member_id" bigint) OWNER TO "postgres";
+ALTER FUNCTION "public"."find_customer_admin_email_conflict"("p_tenant_id" bigint, "p_email" "text", "p_exclude_billing_profile_id" bigint, "p_exclude_member_id" bigint, "p_exclude_customer_group_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."enforce_customer_group_member_email_rules"() RETURNS "trigger"
@@ -3576,7 +3578,8 @@ begin
       v_tenant_id,
       v_normalized_email,
       null,
-      new.id
+      new.id,
+      new.customer_group_id
     );
 
     if v_conflict_group_name is not null then

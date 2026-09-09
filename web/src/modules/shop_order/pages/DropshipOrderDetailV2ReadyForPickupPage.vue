@@ -219,9 +219,13 @@ const onOrderCancelled = () => {
         </template>
         <span class="text-caption">
           {{
-            displayStatus === 'shipped'
-              ? 'Shipped — order is locked. Print the customer resell invoice for the recipient.'
-              : 'Ready for pickup — order is locked. Print the customer resell invoice for the recipient.'
+            displayStatus === 'reseller_paid' || displayStatus === 'payment_received'
+              ? 'Settlement complete — invoice paid and merchant profit credited from courier remittance.'
+              : displayStatus === 'delivered'
+                  ? 'Delivered — reconcile settlement on the dropship management desk.'
+                  : displayStatus === 'shipped'
+                    ? 'Shipped — order is locked. Print the customer resell invoice for the recipient.'
+                    : 'Ready for pickup — order is locked. Print the customer resell invoice for the recipient.'
           }}
         </span>
       </q-banner>

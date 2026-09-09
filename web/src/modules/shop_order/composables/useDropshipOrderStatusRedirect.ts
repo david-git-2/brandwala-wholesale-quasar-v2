@@ -14,6 +14,7 @@ const READY_STATUSES = new Set<ShopOrderStatus>([
   'shipped',
   'delivered',
   'payment_received',
+  'reseller_paid',
 ]);
 
 export function resolveDropshipOrderDetailRouteName(

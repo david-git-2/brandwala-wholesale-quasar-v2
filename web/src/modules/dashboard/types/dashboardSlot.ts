@@ -8,6 +8,9 @@ export type DashboardSlotKind = 'shortcut' | 'action' | 'stat' | 'attention' | '
 
 export type DashboardSlotScope = Extract<AuthScope, 'app'>;
 
+/** Parent owns books/policy; child is the operating shop desk. */
+export type DashboardWorkspaceKind = 'parent' | 'child';
+
 export type DashboardSlot = {
   id: string;
   scopes: readonly DashboardSlotScope[];
@@ -30,6 +33,8 @@ export type DashboardSlot = {
   /** Promote into the top workspace primary-actions strip. */
   primary?: boolean;
   primaryOrder?: number;
+  /** When set, slot only renders for these workspace kinds. Omit = both. */
+  workspaceKinds?: readonly DashboardWorkspaceKind[];
 };
 
 export const isDashboardTileKind = (kind: DashboardSlotKind) =>

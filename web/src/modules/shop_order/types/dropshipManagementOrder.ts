@@ -56,6 +56,8 @@ export interface DropshipManagementReturnLine {
   grade_tag_id: number | null;
   product_code?: string | null;
   image_url?: string | null;
+  customer_sell_price_amount?: number | null;
+  unit_sell_price_amount?: number | null;
   stock_picks?: Array<{ id: number; shipment_name?: string | null; quantity: number }>;
 }
 

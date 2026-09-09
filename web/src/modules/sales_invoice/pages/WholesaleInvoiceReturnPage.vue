@@ -613,7 +613,7 @@ const onGradeTagChange = (itemId: number, gradeId: number | null) => {
 const loadData = async () => {
   if (!caseId.value) {
     isLoading.value = false;
-    errorMessage.value = 'Open a return case first from the Returns Hub.';
+    errorMessage.value = 'Open a case first from After Sales Service.';
     return;
   }
 

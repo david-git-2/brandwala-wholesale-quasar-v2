@@ -2309,7 +2309,8 @@ begin
     new.tenant_id,
     v_normalized_email,
     new.id,
-    null
+    null,
+    new.customer_group_id
   );
 
   if v_conflict_group_name is not null then

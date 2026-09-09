@@ -45,6 +45,7 @@ All domain specifications, page matrices, and engine algorithms are maintained a
 * [`doc/tag/TAG.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/tag/TAG.md): Universal taxonomy dictionary, stock grading presets, color swatches, and classification rules.
 * [`doc/trash/TRASH.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/trash/TRASH.md): Tenant-scoped soft-deletion, `trash_entries` directory index, 30-day retention policies.
 * [`doc/dashboard/DASHBOARD.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/dashboard/DASHBOARD.md): Decentralized widget slot registry, permission-gated home surfaces, and shop glance KPI panels.
+* [`doc/notifications/NOTIFICATIONS.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/notifications/NOTIFICATIONS.md): Staff notification plan — in-app inbox, Telegram, Firebase FCM, phased rollout.
 
 ### Procurement & Warehouse Operations
 * [`doc/procurement_stock/PROCUREMENT_STOCK.md`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/doc/procurement_stock/PROCUREMENT_STOCK.md): International shipment intake, 4-tier bin location hierarchy, stock movements, and Landed Cost Engine (`shipment_engine`).
