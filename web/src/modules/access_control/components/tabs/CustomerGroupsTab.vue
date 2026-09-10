@@ -94,6 +94,7 @@
             </div>
             <div class="row items-center q-gutter-sm">
               <q-btn
+                v-if="canAdministerCustomerGroup"
                 color="primary"
                 unelevated
                 class="pill-btn"
@@ -114,6 +115,7 @@
                 Linked Billing Profiles
               </div>
               <q-btn
+                v-if="canAdministerCustomerGroup"
                 flat
                 dense
                 no-caps
@@ -131,7 +133,7 @@
               <q-chip
                 v-for="prof in linkedBillingProfiles"
                 :key="prof.id"
-                removable
+                :removable="canAdministerCustomerGroup"
                 dense
                 color="blue-1"
                 text-color="blue-9"
@@ -168,6 +170,7 @@
                     map-options
                     style="min-width: 140px"
                     class="soft-input"
+                    :disable="!canAdministerCustomerGroup"
                     :options="
                       shopRoles.length > 0
                         ? shopRoles.map((r: any) => ({ label: r.name, value: r.id }))
@@ -189,6 +192,7 @@
                     flat
                     no-caps
                     size="sm"
+                    :disable="!canAdministerCustomerGroup"
                     :color="hasCgmOverridesMap[props.row.id] ? 'warning' : 'primary'"
                     :icon="hasCgmOverridesMap[props.row.id] ? 'ph ph-sliders' : 'ph ph-sliders-horizontal'"
                     :label="hasCgmOverridesMap[props.row.id] ? 'Has Overrides' : 'Configure'"
@@ -203,6 +207,7 @@
                     :model-value="props.row.is_active"
                     color="positive"
                     dense
+                    :disable="!canAdministerCustomerGroup"
                     @update:model-value="(val) => emit('toggle-member-active', props.row, val)"
                   />
                 </q-td>
@@ -210,7 +215,7 @@
 
               <template #body-cell-edit="props">
                 <q-td :props="props" align="center">
-                  <div class="row items-center justify-center q-gutter-xs">
+                  <div v-if="canAdministerCustomerGroup" class="row items-center justify-center q-gutter-xs">
                     <q-btn
                       flat
                       dense

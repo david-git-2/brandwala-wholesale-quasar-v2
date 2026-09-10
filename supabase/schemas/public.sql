@@ -637,22 +637,37 @@ declare
   v_member public.customer_group_members;
   v_group public.customer_groups;
   v_role public.tenant_roles;
+  v_books_id bigint;
 begin
   select * into v_member from public.customer_group_members where id = p_cgm_id;
   if v_member.id is null then
     raise exception 'Customer group member not found';
+  end if;
+
   select * into v_group from public.customer_groups where id = v_member.customer_group_id;
   if v_group.id is null then
     raise exception 'Customer group not found';
-  if not public.user_is_tenant_admin(v_group.tenant_id) then
+  end if;
+
+  v_books_id := coalesce(v_group.parent_tenant_id, public.resolve_parent_tenant_id(v_group.tenant_id));
+
+  if not public.user_is_tenant_admin(v_books_id) then
     raise exception 'Unauthorized';
+  end if;
+
   select * into v_role from public.tenant_roles where id = p_tenant_role_id;
   if v_role.id is null then
     raise exception 'Role not found';
-  if v_role.tenant_id <> v_group.tenant_id then
+  end if;
+
+  if public.resolve_parent_tenant_id(v_role.tenant_id) is distinct from v_books_id then
     raise exception 'Role and Customer group member must belong to the same tenant';
+  end if;
+
   if v_role.scope <> 'shop' then
     raise exception 'Role scope must be shop for customer group members';
+  end if;
+
   update public.customer_group_members
   set
     tenant_role_id = p_tenant_role_id,
@@ -661,6 +676,10 @@ begin
   returning * into v_member;
 
   return v_member;
+end;
+$$;
+
+
 ALTER FUNCTION "public"."assign_customer_group_member_role"("p_cgm_id" bigint, "p_tenant_role_id" bigint) OWNER TO "postgres";
 
 
@@ -3566,51 +3585,11 @@ ALTER FUNCTION "public"."dispense_middleman_payout"("p_billing_profile_id" bigin
 
 
 CREATE OR REPLACE FUNCTION "public"."find_customer_admin_email_conflict"("p_tenant_id" bigint, "p_email" "text", "p_exclude_billing_profile_id" bigint DEFAULT NULL::bigint, "p_exclude_member_id" bigint DEFAULT NULL::bigint, "p_exclude_customer_group_id" bigint DEFAULT NULL::bigint) RETURNS "text"
-    LANGUAGE "plpgsql" STABLE
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
-declare
-  v_books_id bigint;
-  v_normalized_email text;
-  v_group_name text;
 begin
-  v_books_id := public.resolve_parent_tenant_id(p_tenant_id);
-
-  v_normalized_email := nullif(lower(trim(coalesce(p_email, ''))), '');
-  if v_normalized_email is null then
-    return null;
-  end if;
-
-  select cg.name
-  into v_group_name
-  from public.billing_profiles bp
-  join public.customer_groups cg on cg.id = bp.customer_group_id
-  where bp.parent_tenant_id = v_books_id
-    and cg.deleted_at is null
-    and lower(trim(bp.email)) = v_normalized_email
-    and bp.id <> coalesce(p_exclude_billing_profile_id, -1)
-    and cg.id <> coalesce(p_exclude_customer_group_id, -1)
-  order by cg.id asc
-  limit 1;
-
-  if v_group_name is not null then
-    return v_group_name;
-  end if;
-
-  select cg.name
-  into v_group_name
-  from public.customer_group_members cgm
-  join public.customer_groups cg on cg.id = cgm.customer_group_id
-  where cg.parent_tenant_id = v_books_id
-    and cg.deleted_at is null
-    and cgm.role = 'admin'::public.customer_group_role
-    and lower(trim(cgm.email)) = v_normalized_email
-    and cgm.id <> coalesce(p_exclude_member_id, -1)
-    and cg.id <> coalesce(p_exclude_customer_group_id, -1)
-  order by cg.id asc
-  limit 1;
-
-  return v_group_name;
+  return null;
 end;
 $$;
 
@@ -3620,21 +3599,11 @@ ALTER FUNCTION "public"."find_customer_admin_email_conflict"("p_tenant_id" bigin
 
 CREATE OR REPLACE FUNCTION "public"."enforce_customer_group_member_email_rules"() RETURNS "trigger"
     LANGUAGE "plpgsql"
+    SET "search_path" TO 'public'
     AS $$
 declare
-  v_tenant_id bigint;
   v_normalized_email text;
-  v_conflict_group_name text;
 begin
-  select cg.tenant_id
-  into v_tenant_id
-  from public.customer_groups cg
-  where cg.id = new.customer_group_id;
-
-  if v_tenant_id is null then
-    raise exception 'customer group tenant could not be resolved';
-  end if;
-
   v_normalized_email := lower(trim(new.email));
   new.email := v_normalized_email;
 
@@ -3646,20 +3615,6 @@ begin
       and cgm.id <> coalesce(new.id, -1)
   ) then
     raise exception 'This email is already used in this group';
-  end if;
-
-  if new.role = 'admin'::public.customer_group_role then
-    v_conflict_group_name := public.find_customer_admin_email_conflict(
-      v_tenant_id,
-      v_normalized_email,
-      null,
-      new.id,
-      new.customer_group_id
-    );
-
-    if v_conflict_group_name is not null then
-      raise exception 'This email is already admin of group "%".', v_conflict_group_name;
-    end if;
   end if;
 
   return new;
@@ -13684,26 +13639,39 @@ begin
 
 CREATE OR REPLACE FUNCTION "public"."trg_fn_cgm_permission_guardrails"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 declare
   v_role_scope text;
-  v_role_tenant bigint;
-  v_cg_tenant bigint;
+  v_role_books bigint;
+  v_cg_books bigint;
 begin
   if new.tenant_role_id is not null then
-    select scope, tenant_id into v_role_scope, v_role_tenant
-    from public.tenant_roles
-    where id = new.tenant_role_id;
+    select tr.scope, public.resolve_parent_tenant_id(tr.tenant_id)
+    into v_role_scope, v_role_books
+    from public.tenant_roles tr
+    where tr.id = new.tenant_role_id;
 
-    select tenant_id into v_cg_tenant
-    from public.customer_groups
-    where id = new.customer_group_id;
+    select coalesce(cg.parent_tenant_id, public.resolve_parent_tenant_id(cg.tenant_id))
+    into v_cg_books
+    from public.customer_groups cg
+    where cg.id = new.customer_group_id;
 
-    if v_role_tenant <> v_cg_tenant then
+    if v_role_books is distinct from v_cg_books then
       raise exception 'Cross-tenant role assignment is not allowed';
-    if v_role_scope <> 'shop' then
+    end if;
+
+    if v_role_scope is distinct from 'shop' then
       raise exception 'Scope mismatch: customer group member cannot be assigned a % scoped role', v_role_scope;
-    ALTER FUNCTION "public"."trg_fn_cgm_permission_guardrails"() OWNER TO "postgres";
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."trg_fn_cgm_permission_guardrails"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."trg_fn_memberships_permission_guardrails"() RETURNS "trigger"
@@ -13767,16 +13735,36 @@ declare
   v_tenant_id bigint;
   v_target_slug text;
   v_role_id bigint;
+  v_role_books bigint;
+  v_cg_books bigint;
 begin
-  if new.tenant_role_id is null or (tg_op = 'UPDATE' and old.role <> new.role) then
-    select cg.tenant_id into v_tenant_id
+  if new.tenant_role_id is not null then
+    select public.resolve_parent_tenant_id(tr.tenant_id)
+    into v_role_books
+    from public.tenant_roles tr
+    where tr.id = new.tenant_role_id;
+
+    select coalesce(cg.parent_tenant_id, public.resolve_parent_tenant_id(cg.tenant_id))
+    into v_cg_books
+    from public.customer_groups cg
+    where cg.id = new.customer_group_id;
+
+    if v_role_books is not distinct from v_cg_books
+       and not (tg_op = 'UPDATE' and old.role is distinct from new.role) then
+      return new;
+    end if;
+  end if;
+
+  if new.tenant_role_id is null or (tg_op = 'UPDATE' and old.role is distinct from new.role) then
+    select coalesce(cg.parent_tenant_id, cg.tenant_id)
+    into v_tenant_id
     from public.customer_groups cg
     where cg.id = new.customer_group_id;
 
     if v_tenant_id is not null then
       v_target_slug := case new.role
         when 'admin' then 'customer-admin'
-        when 'negotiator' then 'negotiator'
+        when 'manager' then 'manager'
         when 'staff' then 'customer-staff'
         else 'customer-staff'
       end;
@@ -13791,7 +13779,16 @@ begin
 
       if v_role_id is not null then
         new.tenant_role_id := v_role_id;
-      ALTER FUNCTION "public"."trg_fn_sync_cgm_tenant_role"() OWNER TO "postgres";
+      end if;
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."trg_fn_sync_cgm_tenant_role"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."trg_fn_tenant_modules_disable_guardrails"() RETURNS "trigger"
@@ -20556,7 +20553,9 @@ CREATE POLICY "customer_group_members_update" ON "public"."customer_group_member
 CREATE POLICY "customer_groups_insert" ON "public"."customer_groups" FOR INSERT TO "authenticated" WITH CHECK ("public"."can_administer_customer_group"("tenant_id"));
 
 
-CREATE POLICY "customer_groups_select" ON "public"."customer_groups" FOR SELECT TO "authenticated" USING (("public"."can_manage_customer_group"("tenant_id") OR "public"."is_tenant_staff"("tenant_id")));
+CREATE POLICY "customer_groups_select" ON "public"."customer_groups" FOR SELECT TO "authenticated" USING (("public"."can_manage_customer_group"(COALESCE("parent_tenant_id", "tenant_id")) OR "public"."is_tenant_staff"(COALESCE("parent_tenant_id", "tenant_id")) OR (EXISTS ( SELECT 1
+   FROM "public"."tenants" "child"
+  WHERE (("child"."parent_id" = COALESCE("customer_groups"."parent_tenant_id", "customer_groups"."tenant_id")) AND "public"."is_tenant_staff"("child"."id"))))));
 
 
 CREATE POLICY "customer_groups_update" ON "public"."customer_groups" FOR UPDATE TO "authenticated" USING ("public"."can_manage_customer_group"("tenant_id")) WITH CHECK ("public"."can_manage_customer_group"("tenant_id"));

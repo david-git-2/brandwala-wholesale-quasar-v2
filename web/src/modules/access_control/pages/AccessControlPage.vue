@@ -181,6 +181,7 @@
         v-model="openCustomerGroupDialog"
         :initial-form="customerGroupForm"
         :can-toggle-active="canAdministerCustomerGroup"
+        :readonly="!canAdministerCustomerGroup"
         @save="handleSaveCustomerGroup"
       />
 
@@ -764,6 +765,7 @@ const openDeleteGroupDialog = (group: CustomerGroup) => {
 };
 
 const handleSaveCustomerGroup = async (form: CustomerGroupFormData) => {
+  if (!canAdministerCustomerGroup.value) return;
   if (!tenantId.value || !form.name.trim()) return;
   try {
     if (form.id) {

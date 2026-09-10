@@ -8,41 +8,26 @@
       <ShopSettingsSkeleton v-if="isLoading" is-loading />
 
       <template v-else-if="shop">
-        <div class="shop-settings-header row items-center no-wrap">
-          <q-tabs
-            v-model="activeTab"
-            inline-label
-            dense
-            no-caps
-            align="left"
-            active-color="primary"
-            indicator-color="primary"
-            class="shop-settings-tabs col min-width-0 text-grey-8"
-            narrow-indicator
-            outside-arrows
-            mobile-arrows
-          >
-            <q-tab name="setup" icon="ph ph-gear" :label="$t('shop_admin.shop_tab_setup')" />
-            <q-tab
-              v-if="showAccessTab"
-              name="access"
-              icon="ph ph-shield"
-              :label="$t('shop_admin.shop_tab_access')"
-            />
-            <q-tab
-              v-if="showStorefrontTab"
-              name="storefront"
-              icon="ph ph-storefront"
-              :label="$t('shop_admin.shop_tab_storefront')"
-            />
-            <q-tab
-              v-if="showStockTab"
-              name="stock"
-              icon="ph ph-warehouse"
-              :label="$t('shop_admin.shop_tab_stock')"
-            />
-          </q-tabs>
-          <div class="col-auto row items-center q-gutter-sm no-wrap q-pl-sm">
+        <div class="shop-settings-header row items-center no-wrap q-col-gutter-md">
+          <div class="col min-width-0">
+            <div class="shop-settings-tabs">
+              <div class="shop-settings-tabs__track">
+                <button
+                  v-for="tab in shopTabs"
+                  :key="tab.name"
+                  type="button"
+                  class="shop-settings-tabs__item"
+                  :class="{ 'shop-settings-tabs__item--active': activeTab === tab.name }"
+                  :data-test="`shop-tab-${tab.name}`"
+                  @click="activeTab = tab.name"
+                >
+                  <q-icon :name="tab.icon" size="14px" />
+                  <span>{{ tab.label }}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="col-auto row items-center q-gutter-sm no-wrap">
             <q-btn
               v-if="shop.slug"
               flat
@@ -131,7 +116,7 @@
             </q-card>
           </q-tab-panel>
 
-          <q-tab-panel v-if="showAccessTab" name="access" class="q-pa-none q-pt-md">
+          <q-tab-panel v-if="showAccessTab" name="access" class="q-pa-none q-pt-md shop-access-panel">
             <ShopAccessMatrixPage v-if="activeTab === 'access'" embedded :shop="shop" />
           </q-tab-panel>
 
@@ -556,6 +541,26 @@ const showStockTab = computed(
   () => shop.value?.shop_type === 'fixed_price' || shop.value?.shop_type === 'dropship',
 );
 
+const shopTabs = computed(() => {
+  const tabs: Array<{ name: ShopDetailTab; label: string; icon: string }> = [
+    { name: 'setup', label: t('shop_admin.shop_tab_setup'), icon: 'ph ph-gear' },
+  ];
+  if (showAccessTab.value) {
+    tabs.push({ name: 'access', label: t('shop_admin.shop_tab_access'), icon: 'ph ph-shield' });
+  }
+  if (showStorefrontTab.value) {
+    tabs.push({
+      name: 'storefront',
+      label: t('shop_admin.shop_tab_storefront'),
+      icon: 'ph ph-storefront',
+    });
+  }
+  if (showStockTab.value) {
+    tabs.push({ name: 'stock', label: t('shop_admin.shop_tab_stock'), icon: 'ph ph-warehouse' });
+  }
+  return tabs;
+});
+
 const isValidTab = (tab: string): tab is ShopDetailTab => {
   if (tab === 'setup') return true;
   if (tab === 'access') return showAccessTab.value;
@@ -638,13 +643,49 @@ const deleteShop = () => {
 </script>
 
 <style scoped>
-.shop-settings-header {
-  min-height: 38px;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+.shop-access-panel {
+  height: calc(100vh - 220px);
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
 }
 
-.shop-settings-tabs :deep(.q-tab__icon) {
-  font-size: 18px;
+.shop-settings-header {
+  min-height: 38px;
+}
+
+.shop-settings-tabs__track {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 8px;
+  background: #f1f5f9;
+}
+
+.shop-settings-tabs__item {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  white-space: nowrap;
+}
+
+.shop-settings-tabs__item--active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 .shop-danger-zone {
@@ -654,8 +695,17 @@ const deleteShop = () => {
   box-shadow: none;
 }
 
-body.body--dark .shop-settings-header {
-  border-bottom-color: #2e2e2e;
+body.body--dark .shop-settings-tabs__track {
+  background: #262626;
+}
+
+body.body--dark .shop-settings-tabs__item {
+  color: #94a3b8;
+}
+
+body.body--dark .shop-settings-tabs__item--active {
+  background: #1c1c1c;
+  color: #f8fafc;
 }
 
 body.body--dark .shop-danger-zone {

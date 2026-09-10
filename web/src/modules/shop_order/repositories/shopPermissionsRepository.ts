@@ -20,10 +20,18 @@ interface Currency {
 }
 
 const listCustomerGroups = async (tenantId: number): Promise<CustomerGroup[]> => {
+  const { data: booksId, error: booksError } = await supabase.rpc('resolve_parent_tenant_id', {
+    p_tenant_id: tenantId,
+  });
+  if (booksError) {
+    throw booksError;
+  }
+
   const { data, error } = await supabase
     .from('customer_groups')
     .select('id, name, is_active, accent_color')
-    .eq('tenant_id', tenantId)
+    .eq('parent_tenant_id', booksId ?? tenantId)
+    .is('deleted_at', null)
     .order('name', { ascending: true });
 
   if (error) {

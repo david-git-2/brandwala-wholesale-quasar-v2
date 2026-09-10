@@ -1,8 +1,8 @@
 <template>
-  <component :is="embedded ? 'div' : 'q-page'" :class="embedded ? '' : 'bw-page'">
-    <section :class="embedded ? 'q-gutter-y-md' : 'bw-page__stack'">
-      <section v-if="!embedded" class="row items-center justify-between q-col-gutter-md">
-        <div class="col-12 col-md row items-center no-wrap">
+  <component :is="embedded ? 'div' : 'q-page'" :class="embedded ? 'access-embedded' : 'bw-page'">
+    <section :class="embedded ? 'access-section column no-wrap full-height' : 'bw-page__stack'">
+      <section v-if="!embedded" class="row items-center q-col-gutter-md q-mb-md">
+        <div class="col-12 row items-center no-wrap">
           <q-btn
             flat
             round
@@ -22,7 +22,50 @@
             </p>
           </div>
         </div>
-        <div v-if="hasAnyGranted" class="col-12 col-md-auto row items-center q-gutter-sm">
+      </section>
+
+      <q-banner v-if="store.error" class="text-white bg-negative q-mb-md" rounded>
+        {{ store.error }}
+        <template #action>
+          <q-btn flat color="white" :label="$t('shop_admin.dismiss')" @click="store.clearError()" />
+        </template>
+      </q-banner>
+
+      <div :class="embedded ? 'access-container column no-wrap col' : 'column no-wrap'">
+        <div class="access-toolbar row items-center no-wrap q-gutter-sm q-mb-md">
+          <q-input
+            v-model="searchInput"
+            outlined
+            dense
+            :placeholder="$t('shop_admin.access_search_placeholder')"
+            class="search-box col"
+            data-test="access-search"
+            @keyup.enter.prevent="applySearch"
+          >
+            <template #prepend>
+              <q-icon name="ph ph-magnifying-glass" size="18px" class="text-grey-5" />
+            </template>
+            <template v-if="searchInput || appliedSearch" #append>
+              <q-icon
+                name="ph ph-x"
+                size="16px"
+                class="cursor-pointer text-grey-5"
+                @click="clearSearch"
+              />
+            </template>
+          </q-input>
+          <q-btn
+            flat
+            round
+            dense
+            icon="ph ph-arrow-clockwise"
+            color="grey-7"
+            class="col-auto"
+            :loading="isLoading"
+            @click="reload"
+          >
+            <q-tooltip>Refresh</q-tooltip>
+          </q-btn>
           <q-btn
             v-if="canAdministerCustomerGroup"
             flat
@@ -31,16 +74,18 @@
             icon="ph ph-plus"
             color="grey-8"
             :label="$t('shop_admin.access_create_group')"
+            class="col-auto"
             data-test="access-create-group-btn"
             @click="openCreateDialog"
           />
           <q-btn
-            color="primary"
             unelevated
+            color="primary"
             no-caps
             icon="ph ph-user-plus"
             :label="$t('shop_admin.access_add_group')"
             :disable="availableGroups.length === 0"
+            class="action-btn text-weight-medium col-auto"
             data-test="access-add-btn"
             @click="openAddDialog"
           >
@@ -49,96 +94,44 @@
             </q-tooltip>
           </q-btn>
         </div>
-      </section>
 
-      <q-banner v-if="store.error" class="text-white bg-negative" rounded>
-        {{ store.error }}
-        <template #action>
-          <q-btn flat color="white" :label="$t('shop_admin.dismiss')" @click="store.clearError()" />
-        </template>
-      </q-banner>
-
-      <q-card v-if="isLoading" flat bordered>
-        <q-card-section class="text-center q-pa-xl text-grey-7">
-          <q-spinner size="36px" color="primary" class="q-mr-sm" />
-          <div>{{ $t('shop_admin.loading_access') }}</div>
-        </q-card-section>
-      </q-card>
-
-      <q-card v-else flat bordered class="overflow-hidden">
-        <q-card-section
-          v-if="hasAnyGranted || searchQuery"
-          class="row items-center justify-between q-col-gutter-md border-bottom"
+        <div
+          v-if="grantedGroups.length === 0 && !isLoading"
+          class="column items-center justify-center q-pa-xl text-center col"
         >
-          <div class="col-12 col-sm-auto">
-            <q-input
-              v-model="searchQuery"
-              outlined
-              dense
-              debounce="300"
-              :placeholder="$t('shop_admin.access_search_placeholder')"
-              clearable
-              data-test="access-search"
-            >
-              <template #prepend>
-                <q-icon name="ph ph-magnifying-glass" size="18px" />
-              </template>
-            </q-input>
-          </div>
-          <div v-if="embedded" class="col-12 col-sm-auto row items-center q-gutter-sm">
-            <q-btn
-              v-if="canAdministerCustomerGroup"
-              flat
-              no-caps
-              dense
-              icon="ph ph-plus"
-              color="grey-8"
-              :label="$t('shop_admin.access_create_group')"
-              data-test="access-create-group-btn"
-              @click="openCreateDialog"
-            />
-            <q-btn
-              color="primary"
-              unelevated
-              no-caps
-              icon="ph ph-user-plus"
-              :label="$t('shop_admin.access_add_group')"
-              :disable="availableGroups.length === 0"
-              data-test="access-add-btn"
-              @click="openAddDialog"
-            >
-              <q-tooltip v-if="availableGroups.length === 0">
-                {{ $t('shop_admin.access_no_groups_to_add') }}
-              </q-tooltip>
-            </q-btn>
-          </div>
-        </q-card-section>
-
-        <q-card-section
-          v-if="grantedGroups.length === 0"
-          class="column items-center justify-center q-pa-xl text-center"
-        >
-          <q-avatar size="64px" color="primary-soft" class="q-mb-md">
-            <q-icon name="ph ph-users-three" size="32px" color="primary" />
+          <q-avatar size="56px" color="grey-3" text-color="grey-9" class="q-mb-md">
+            <q-icon name="ph ph-users-three" size="28px" />
           </q-avatar>
-          <div class="text-h6 text-weight-bold text-grey-9 q-mb-xs">
+          <div class="text-subtitle1 text-weight-bold text-grey-9 q-mb-xs">
             {{
-              searchQuery
+              appliedSearch
                 ? $t('shop_admin.access_no_search_results')
                 : $t('shop_admin.access_no_granted')
             }}
           </div>
-          <p v-if="!searchQuery" class="text-body2 text-grey-6 q-mb-md" style="max-width: 420px">
+          <p
+            v-if="!appliedSearch && canAdministerCustomerGroup"
+            class="text-caption text-grey-6 q-mb-md"
+            style="max-width: 380px"
+          >
             {{ $t('shop_admin.access_no_granted_hint') }}
           </p>
-          <div v-if="!searchQuery" class="row items-center justify-center q-gutter-sm">
+          <p
+            v-else-if="!appliedSearch"
+            class="text-caption text-grey-6 q-mb-md"
+            style="max-width: 380px"
+          >
+            Customer groups are created on the parent tenant. Once they exist, add them to this shop here.
+          </p>
+          <div v-if="!appliedSearch" class="row items-center justify-center q-gutter-sm">
             <q-btn
               v-if="availableGroups.length > 0"
-              color="primary"
               unelevated
+              color="primary"
               no-caps
               icon="ph ph-user-plus"
               :label="$t('shop_admin.access_add_group')"
+              class="action-btn text-weight-bold"
               data-test="access-add-btn"
               @click="openAddDialog"
             />
@@ -154,13 +147,14 @@
                   ? $t('shop_admin.access_create_group_first')
                   : $t('shop_admin.access_create_group')
               "
+              class="action-btn text-weight-bold"
               data-test="access-create-group-btn"
               @click="openCreateDialog"
             />
           </div>
-        </q-card-section>
+        </div>
 
-        <div v-else class="treasury-table-wrap">
+        <div v-else class="treasury-table-wrap col">
           <q-table
             flat
             :bordered="false"
@@ -171,17 +165,41 @@
             row-key="id"
             :pagination="{ rowsPerPage: 0 }"
             hide-pagination
-            class="matrix-table"
+            :loading="isLoading"
+            class="access-table col"
           >
             <template #body-cell-group="props">
               <q-td :props="props">
-                <div class="row items-center no-wrap q-gutter-x-sm">
-                  <div
-                    class="accent-swatch"
-                    :style="{ backgroundColor: props.row.accent_color || 'var(--bw-theme-primary)' }"
-                  />
-                  <div class="text-weight-bold text-body2 text-grey-9">{{ props.row.name }}</div>
+                <div class="row items-center no-wrap">
+                  <q-avatar
+                    size="32px"
+                    class="q-mr-sm group-avatar flex-shrink-0"
+                    :style="{
+                      backgroundColor: props.row.accent_color || '#e2e8f0',
+                      color: props.row.accent_color ? '#fff' : '#475569',
+                    }"
+                  >
+                    {{ getInitials(props.row.name) }}
+                  </q-avatar>
+                  <div class="two-line ellipsis">
+                    <div class="text-weight-medium text-grey-9 ellipsis">{{ props.row.name }}</div>
+                  </div>
                 </div>
+              </q-td>
+            </template>
+
+            <template #body-cell-status="props">
+              <q-td :props="props">
+                <span
+                  class="status-chip"
+                  :class="props.row.is_active !== false ? 'status-chip--active' : 'status-chip--inactive'"
+                >
+                  {{
+                    props.row.is_active !== false
+                      ? $t('shop_admin.active')
+                      : $t('shop_admin.inactive')
+                  }}
+                </span>
               </q-td>
             </template>
 
@@ -217,6 +235,7 @@
                     size="sm"
                     color="negative"
                     icon="ph ph-trash"
+                    :loading="deletingGroupId === props.row.id"
                     :aria-label="$t('shop_admin.access_delete_group')"
                     data-test="access-delete-group-btn"
                     @click="deleteGroup(props.row)"
@@ -226,7 +245,7 @@
             </template>
           </q-table>
         </div>
-      </q-card>
+      </div>
 
       <q-dialog v-model="addDialogOpen" persistent>
         <q-card style="min-width: 360px; max-width: 480px">
@@ -514,7 +533,6 @@
       <CustomerGroupDetailsDrawer
         v-model="groupDetailsOpen"
         :group="selectedDetailsGroup"
-        :billing-profile="selectedDetailsProfile"
       />
     </section>
   </component>
@@ -535,7 +553,6 @@ import {
   showErrorNotification,
   showSuccessNotification,
 } from 'src/utils/appFeedback';
-import { useBillingProfilesQuery } from 'src/modules/sales_invoice/composables/useBillingProfileQuery';
 import CustomerGroupDetailsDrawer from '../components/CustomerGroupDetailsDrawer.vue';
 import { useCanAdministerCustomerGroup } from 'src/modules/customer/composables/useCanAdministerCustomerGroup';
 
@@ -558,7 +575,9 @@ const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '');
 
 const shopName = ref('');
 const shopType = ref<Shop['shop_type'] | ''>('');
-const searchQuery = ref('');
+const searchInput = ref('');
+const appliedSearch = ref('');
+const deletingGroupId = ref<number | null>(null);
 
 const showPurchasePriceToggle = computed(
   () => shopType.value === 'vendor_catalog' || shopType.value === 'dropship',
@@ -579,19 +598,6 @@ const selectedDetailsGroup = ref<{
   name: string;
   accent_color: string | null;
 } | null>(null);
-
-const { data: billingProfilesData } = useBillingProfilesQuery(tenantId);
-const billingProfiles = computed(() => billingProfilesData.value?.data ?? []);
-
-const getBillingProfileForGroup = (groupId: number) =>
-  billingProfiles.value.find((p) => p.customer_group_id === groupId) ?? null;
-
-const selectedDetailsProfile = computed(() => {
-  if (!selectedDetailsGroup.value) return null;
-  const profile = getBillingProfileForGroup(selectedDetailsGroup.value.id);
-  if (!profile) return null;
-  return { name: profile.name, email: profile.email, phone: profile.phone };
-});
 
 const createForm = reactive({
   name: '',
@@ -648,14 +654,10 @@ const isCreateFormValid = computed(
 const getAccessRow = (groupId: number): ShopCustomerGroupAccess | undefined =>
   store.accessOverrides.find((o) => o.customer_group_id === groupId);
 
-const hasAnyGranted = computed(() =>
-  store.customerGroups.some((g) => !!getAccessRow(g.id)?.status),
-);
-
 const grantedGroups = computed(() =>
   store.customerGroups.filter((g) => {
     if (!getAccessRow(g.id)?.status) return false;
-    if (searchQuery.value && !g.name.toLowerCase().includes(searchQuery.value.toLowerCase())) {
+    if (appliedSearch.value && !g.name.toLowerCase().includes(appliedSearch.value.toLowerCase())) {
       return false;
     }
     return true;
@@ -677,8 +679,31 @@ const activeGroupName = computed(() => {
 
 const matrixColumns = computed(() => [
   { name: 'group', label: t('shop_admin.access_col_group'), align: 'left' as const, field: 'name' },
+  { name: 'status', label: t('shop_admin.status'), align: 'left' as const, field: 'is_active' },
   { name: 'actions', label: t('shop_admin.actions'), align: 'right' as const, field: 'id' },
 ]);
+
+const applySearch = () => {
+  appliedSearch.value = searchInput.value.trim();
+};
+
+const clearSearch = () => {
+  searchInput.value = '';
+  appliedSearch.value = '';
+};
+
+const reload = () => {
+  void load();
+};
+
+const getInitials = (name?: string | null) => {
+  if (!name) return 'G';
+  const parts = name.trim().split(/\s+/);
+  const first = parts[0] || '';
+  const last = parts[parts.length - 1] || '';
+  if (parts.length === 1) return first.charAt(0).toUpperCase() || 'G';
+  return ((first.charAt(0) || '') + (last.charAt(0) || '')).toUpperCase() || 'G';
+};
 
 const coerceBool = (value: boolean | null | undefined, fallback = false) =>
   value === true ? true : value === false ? false : fallback;
@@ -779,6 +804,7 @@ const deleteGroup = async (group: { id: number; name: string }) => {
   );
   if (!confirmed || !tenantId.value) return;
 
+  deletingGroupId.value = group.id;
   try {
     await deleteGroupMutation.mutateAsync({ id: group.id, tenant_id: tenantId.value });
     if (selectedDetailsGroup.value?.id === group.id) {
@@ -790,6 +816,8 @@ const deleteGroup = async (group: { id: number; name: string }) => {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : t('shop_admin.access_delete_group_failed');
     showErrorNotification(message);
+  } finally {
+    deletingGroupId.value = null;
   }
 };
 
@@ -882,24 +910,151 @@ onMounted(load);
 </script>
 
 <style scoped lang="scss">
-.matrix-table {
-  :deep(.q-table th) {
-    font-weight: 700;
-    text-transform: uppercase;
-    font-size: 11px;
-    letter-spacing: 0.5px;
-    color: var(--bw-theme-muted, #666);
-    background-color: var(--bw-theme-surface);
-    padding: 12px 16px;
-  }
-
-  :deep(.q-table td) {
-    padding: 12px 16px;
-  }
+.access-embedded {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
-.border-bottom {
-  border-bottom: 1px solid var(--bw-theme-border);
+.access-section,
+.access-container {
+  height: 100%;
+  min-height: 0;
+}
+
+.access-toolbar {
+  background: transparent;
+  flex-shrink: 0;
+}
+
+.action-btn {
+  border-radius: 8px !important;
+}
+
+.search-box {
+  min-width: 0;
+}
+
+.search-box :deep(.q-field__control) {
+  border-radius: 8px;
+}
+
+.search-box :deep(.q-field--outlined .q-field__control:before) {
+  border: 1px solid #e2e8f0;
+}
+
+.search-box :deep(.q-field--outlined .q-field__control:hover:before) {
+  border-color: #cbd5e1;
+}
+
+.treasury-table-wrap {
+  flex: 1 1 0%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.access-table {
+  flex: 1 1 0%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+}
+
+.access-table :deep(.q-table__container) {
+  flex: 1 1 0%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  box-shadow: none;
+  background: transparent;
+}
+
+.access-table :deep(.q-table__middle) {
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.access-table :deep(thead tr th) {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #f8fafc;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: #64748b;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.access-table :deep(tbody tr td) {
+  padding: 12px 16px;
+  vertical-align: middle;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.access-table :deep(tbody tr) {
+  transition: background-color 0.15s ease-in-out;
+}
+
+.access-table :deep(tbody tr:hover) {
+  background-color: rgba(241, 245, 249, 0.6);
+}
+
+.two-line {
+  min-height: 36px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.group-avatar {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.status-chip--active {
+  background: #e6f4ea;
+  color: #137333;
+}
+
+.status-chip--inactive {
+  background: #f1f3f4;
+  color: #5f6368;
+}
+
+body.body--dark .search-box :deep(.q-field--outlined .q-field__control:before) {
+  border-color: #334155;
+}
+
+body.body--dark .status-chip--inactive {
+  background: #2a2a2a;
+  color: #94a3b8;
+}
+
+body.body--dark .access-table :deep(thead tr th) {
+  background: #242424;
+  color: #94a3b8;
+  border-color: #2e2e2e;
+}
+
+body.body--dark .access-table :deep(tbody tr:hover) {
+  background-color: rgba(255, 255, 255, 0.04);
 }
 
 .border-top {
@@ -908,13 +1063,6 @@ onMounted(load);
 
 .opacity-80 {
   opacity: 0.8;
-}
-
-.accent-swatch {
-  width: 14px;
-  height: 14px;
-  border-radius: 4px;
-  flex-shrink: 0;
 }
 
 .preset-swatch {

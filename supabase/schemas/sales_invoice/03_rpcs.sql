@@ -2295,34 +2295,8 @@ CREATE OR REPLACE FUNCTION "public"."enforce_billing_profile_admin_email_unique_
     LANGUAGE "plpgsql"
     SET "search_path" TO 'public'
     AS $$
-declare
-  v_normalized_email text;
-  v_conflict_group_name text;
 begin
-  if tg_op = 'UPDATE'
-     and lower(trim(coalesce(old.email, ''))) = lower(trim(coalesce(new.email, ''))) then
-    return new;
-  end if;
-
-  v_normalized_email := nullif(lower(trim(coalesce(new.email, ''))), '');
-  new.email := v_normalized_email;
-
-  if v_normalized_email is null then
-    return new;
-  end if;
-
-  v_conflict_group_name := public.find_customer_admin_email_conflict(
-    coalesce(new.parent_tenant_id, new.tenant_id),
-    v_normalized_email,
-    new.id,
-    null,
-    new.customer_group_id
-  );
-
-  if v_conflict_group_name is not null then
-    raise exception 'This email is already admin of group "%".', v_conflict_group_name;
-  end if;
-
+  new.email := nullif(lower(trim(coalesce(new.email, ''))), '');
   return new;
 end;
 $$;

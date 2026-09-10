@@ -53,11 +53,14 @@
       <!-- 3. Tab Panels Content -->
       <div class="col scroll q-pa-md">
         <q-tab-panels v-model="activeTab" animated class="bg-transparent">
-          <!-- TAB 1: General Info (Editable) -->
+          <!-- TAB 1: General Info -->
           <q-tab-panel name="general" class="q-pa-none">
             <q-form ref="generalFormRef" class="column q-gutter-y-md" @submit.prevent="saveGeneralInfo">
               <div class="form-section column q-gutter-y-md">
                 <div class="section-heading">Customer group</div>
+                <div v-if="!canAdministerCustomerGroup" class="text-caption text-grey-7">
+                  View only. Edit this customer on the parent tenant.
+                </div>
 
                 <div>
                   <label class="field-label">Group name *</label>
@@ -66,6 +69,7 @@
                     outlined
                     dense
                     class="soft-input"
+                    :readonly="!canAdministerCustomerGroup"
                     :loading="isCheckingName"
                     :rules="[(val) => !!val?.trim() || 'Group name is required']"
                     @keyup.enter.prevent="checkGroupName"
@@ -88,9 +92,10 @@
                       type="button"
                       class="color-swatch"
                       :style="{ backgroundColor: form.accent_color || '#B45F34' }"
+                      :disabled="!canAdministerCustomerGroup"
                       aria-label="Pick accent color"
                     >
-                      <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                      <q-popup-proxy v-if="canAdministerCustomerGroup" cover transition-show="scale" transition-hide="scale">
                         <q-color v-model="form.accent_color" no-header-tabs />
                       </q-popup-proxy>
                     </button>
@@ -99,6 +104,7 @@
                       outlined
                       dense
                       class="col soft-input"
+                      :readonly="!canAdministerCustomerGroup"
                     />
                   </div>
                 </div>
@@ -126,6 +132,7 @@
                     outlined
                     dense
                     class="soft-input"
+                    :readonly="!canAdministerCustomerGroup"
                     :rules="[(val) => !!val?.trim() || 'Contact name is required']"
                   />
                 </div>
@@ -145,6 +152,7 @@
                       :options="filteredCountries"
                       class="phone-fuse__country"
                       dropdown-icon="ph ph-caret-down"
+                      :disable="!canAdministerCustomerGroup"
                       @filter="filterCountries"
                       @update:model-value="onDrawerCountryChanged"
                     >
@@ -166,6 +174,7 @@
                       class="phone-fuse__number col"
                       inputmode="tel"
                       placeholder="National number — press Enter"
+                      :readonly="!canAdministerCustomerGroup"
                       :loading="isCheckingPhone"
                       :rules="[(val) => !!nationalPhoneDigits(String(val ?? '')) || 'Phone is required']"
                       @update:model-value="onDrawerPhoneInput"
@@ -193,11 +202,12 @@
                     type="textarea"
                     rows="2"
                     class="soft-input soft-input--textarea"
+                    :readonly="!canAdministerCustomerGroup"
                   />
                 </div>
               </div>
 
-              <div class="row justify-end">
+              <div v-if="canAdministerCustomerGroup" class="row justify-end">
                 <q-btn
                   unelevated
                   color="primary"
@@ -222,6 +232,7 @@
                   Storefront &amp; Access Members
                 </div>
                 <q-btn
+                  v-if="canAdministerCustomerGroup"
                   unelevated
                   color="primary"
                   icon="ph ph-user-plus"
@@ -241,12 +252,12 @@
                       <th class="text-left">Name / Email</th>
                       <th class="text-center">Role</th>
                       <th class="text-center">Active</th>
-                      <th class="text-right">Actions</th>
+                      <th v-if="canAdministerCustomerGroup" class="text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr v-if="!members.length && !membersQuery.isLoading.value">
-                      <td colspan="4" class="text-center q-pa-lg text-caption text-grey-6">
+                      <td :colspan="canAdministerCustomerGroup ? 4 : 3" class="text-center q-pa-lg text-caption text-grey-6">
                         No members added to this customer group yet.
                       </td>
                     </tr>
@@ -267,7 +278,7 @@
                           size="18px"
                         />
                       </td>
-                      <td class="text-right">
+                      <td v-if="canAdministerCustomerGroup" class="text-right">
                         <q-btn
                           flat
                           round
@@ -727,6 +738,7 @@ const checkGroupName = async () => {
 };
 
 const saveGeneralInfo = async () => {
+  if (!canAdministerCustomerGroup.value) return;
   if (!props.customer) return;
   const phone = nationalPhoneDigits(form.phone);
   if (!form.group_name.trim() || !form.admin_name.trim() || !phone) {
@@ -782,6 +794,7 @@ const openEditMemberDialog = (member: CustomerGroupMember) => {
 };
 
 const saveMember = async () => {
+  if (!canAdministerCustomerGroup.value) return;
   if (!props.customer) return;
   isSavingMember.value = true;
   try {

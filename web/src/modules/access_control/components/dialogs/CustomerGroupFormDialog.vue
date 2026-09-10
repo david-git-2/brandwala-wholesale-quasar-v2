@@ -3,7 +3,7 @@
     <q-card style="min-width: 400px; border-radius: 12px">
       <q-card-section class="row items-center q-pb-none">
         <div class="text-h6 text-weight-bold">
-          {{ initialForm?.id ? 'Edit Customer Group' : 'Create Customer Group' }}
+          {{ readonly ? 'Customer Group' : initialForm?.id ? 'Edit Customer Group' : 'Create Customer Group' }}
         </div>
         <q-space />
         <q-btn icon="ph ph-x" flat round dense v-close-popup />
@@ -16,6 +16,7 @@
           outlined
           dense
           class="soft-input"
+          :readonly="readonly"
         />
         <q-input
           v-model="form.accentColor"
@@ -23,6 +24,7 @@
           outlined
           dense
           class="soft-input"
+          :readonly="readonly"
         />
         <div class="row items-center justify-between">
           <div class="text-subtitle2 text-grey-8">Status</div>
@@ -31,14 +33,15 @@
             :label="form.isActive ? 'Active' : 'Inactive'"
             color="positive"
             keep-color
-            :disable="Boolean(props.initialForm?.id) && !props.canToggleActive"
+            :disable="readonly || (Boolean(props.initialForm?.id) && !props.canToggleActive)"
           />
         </div>
       </q-card-section>
 
       <q-card-actions align="right" class="q-pa-md">
-        <q-btn flat no-caps label="Cancel" v-close-popup />
+        <q-btn flat no-caps :label="readonly ? 'Close' : 'Cancel'" v-close-popup />
         <q-btn
+          v-if="!readonly"
           color="primary"
           unelevated
           class="pill-btn"
@@ -65,6 +68,7 @@ const props = defineProps<{
   modelValue: boolean;
   initialForm?: CustomerGroupFormData | null;
   canToggleActive?: boolean;
+  readonly?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -96,6 +100,7 @@ watch(
 );
 
 const handleSave = () => {
+  if (props.readonly) return;
   emit('save', form.value);
 };
 </script>
