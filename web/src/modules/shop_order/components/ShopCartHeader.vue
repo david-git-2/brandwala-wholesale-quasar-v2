@@ -26,7 +26,10 @@
       </div>
     </div>
 
-    <div v-if="!showCartPicker && activeCarts.length > 1" class="col-auto">
+    <div
+      v-if="!showCartPicker && !showShopTabs && activeCarts.length > 1"
+      class="col-auto"
+    >
       <q-btn-dropdown
         dense
         flat
@@ -73,6 +76,7 @@ import type { ActiveCartItem } from '../repositories/shopCartRepository';
 
 defineProps<{
   showCartPicker: boolean;
+  showShopTabs?: boolean;
   itemCount: number;
   activeCarts: ActiveCartItem[];
   currentShopCartInfo: ActiveCartItem | null;

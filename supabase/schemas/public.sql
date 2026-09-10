@@ -1172,16 +1172,7 @@ CREATE OR REPLACE FUNCTION "public"."can_insert_cart"("p_tenant_id" bigint, "p_c
     )
     or (
       p_customer_group_id is not null
-      and exists (
-        select 1
-        from public.customer_groups cg
-        join public.customer_group_members cgm
-          on cgm.customer_group_id = cg.id
-        where cg.id = p_customer_group_id
-          and cg.tenant_id = p_tenant_id
-          and lower(trim(cgm.email)) = public.current_user_email()
-          and cgm.is_active = true
-      )
+      and public.current_customer_group_id(p_tenant_id) = p_customer_group_id
     );
 ALTER FUNCTION "public"."can_insert_cart"("p_tenant_id" bigint, "p_customer_group_id" bigint, "p_store_id" bigint) OWNER TO "postgres";
 
@@ -1289,16 +1280,7 @@ CREATE OR REPLACE FUNCTION "public"."can_view_products_customer"("p_tenant_id" b
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
-  select exists (
-    select 1
-    from public.customer_group_members cgm
-    join public.customer_groups cg
-      on cg.id = cgm.customer_group_id
-    where cg.tenant_id = p_tenant_id
-      and lower(trim(cgm.email)) = public.current_user_email()
-      and cgm.is_active = true
-      and cg.is_active = true
-  )
+  select public.current_customer_group_id(p_tenant_id) is not null
 $$;
 
 
@@ -1328,16 +1310,7 @@ CREATE OR REPLACE FUNCTION "public"."can_view_tenant_modules"("p_tenant_id" bigi
         and lower(trim(m.email)) = public.current_user_email()
         and m.is_active = true
     )
-    or exists (
-      select 1
-      from public.customer_group_members cgm
-      inner join public.customer_groups cg
-        on cg.id = cgm.customer_group_id
-      where cg.tenant_id = p_tenant_id
-        and lower(trim(cgm.email)) = public.current_user_email()
-        and cg.is_active = true
-        and cgm.is_active = true
-    )
+    or public.current_customer_group_id(p_tenant_id) is not null
 $$;
 
 
@@ -3233,12 +3206,36 @@ CREATE OR REPLACE FUNCTION "public"."current_customer_group_id"("p_tenant_id" bi
   from public.customer_groups cg
   join public.customer_group_members cgm on cgm.customer_group_id = cg.id
   where p_tenant_id is not null
-    and cg.tenant_id = p_tenant_id
     and cg.is_active = true
+    and cg.deleted_at is null
     and cgm.is_active = true
     and lower(trim(cgm.email)) = public.current_user_email()
-  order by cg.id
+    and coalesce(cg.parent_tenant_id, cg.tenant_id) = public.resolve_parent_tenant_id(p_tenant_id)
+    and (
+      p_tenant_id = coalesce(cg.parent_tenant_id, cg.tenant_id)
+      or exists (
+        select 1
+        from public.shop_customer_group_access scga
+        inner join public.shops s on s.id = scga.shop_id
+        where scga.customer_group_id = cg.id
+          and scga.status = true
+          and s.tenant_id = p_tenant_id
+          and s.is_active = true
+          and s.deleted_at is null
+      )
+    )
+  order by
+    case cgm.role
+      when 'admin' then 1
+      when 'manager' then 2
+      when 'staff' then 3
+      else 99
+    end,
+    cg.id
   limit 1;
+$$;
+
+
 ALTER FUNCTION "public"."current_customer_group_id"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -7490,22 +7487,14 @@ begin
     return coalesce(v_role_allowed, false);
 
   -- 5. Check Shop Scope permissions
-  elsif v_has_shop_action and exists (
-    select 1
-    from public.customer_group_members cgm
-    join public.customer_groups cg on cg.id = cgm.customer_group_id
-    where cg.tenant_id = p_tenant_id
-      and lower(trim(cgm.email)) = public.current_user_email()
-      and cgm.is_active = true
-      and cg.is_active = true
-  ) then
+  elsif v_has_shop_action and public.current_customer_group_id(p_tenant_id) is not null then
     -- Administrator shortcut check
     if exists (
       select 1
       from public.customer_group_members cgm
       join public.customer_groups cg on cg.id = cgm.customer_group_id
       join public.tenant_roles tr on tr.id = cgm.tenant_role_id
-      where cg.tenant_id = p_tenant_id
+      where cg.id = public.current_customer_group_id(p_tenant_id)
         and cg.is_active = true
         and cgm.is_active = true
         and lower(trim(cgm.email)) = public.current_user_email()
@@ -7529,7 +7518,7 @@ begin
       on rg.tenant_role_id = cgm.tenant_role_id
       and rg.module_key = p_module_key
       and rg.action = p_action
-    where cg.tenant_id = p_tenant_id
+    where cg.id = public.current_customer_group_id(p_tenant_id)
       and cg.is_active = true
       and cgm.is_active = true
       and lower(trim(cgm.email)) = public.current_user_email();
@@ -14819,15 +14808,7 @@ CREATE OR REPLACE FUNCTION "public"."user_can_access_tenant_fetch"("p_tenant_id"
         and lower(trim(m.email)) = public.current_user_email()
         and m.is_active = true
     )
-    or exists (
-      select 1
-      from public.customer_group_members cgm
-      join public.customer_groups cg on cg.id = cgm.customer_group_id
-      where cg.tenant_id = p_tenant_id
-        and lower(trim(cgm.email)) = public.current_user_email()
-        and cgm.is_active = true
-        and cg.is_active = true
-    );
+    or public.current_customer_group_id(p_tenant_id) is not null;
 ALTER FUNCTION "public"."user_can_access_tenant_fetch"("p_tenant_id" bigint) OWNER TO "postgres";
 
 

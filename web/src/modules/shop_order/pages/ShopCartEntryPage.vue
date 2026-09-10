@@ -17,7 +17,7 @@ const {
 } = useActiveShopCartsQuery();
 const activeCarts = computed(() => activeCartsData.value ?? []);
 
-const { selectedShopId, showCartPicker, currentShopCartInfo } = useShopCartSelection(
+const { selectedShopId, currentShopCartInfo } = useShopCartSelection(
   activeCarts,
   isCartsLoading,
 );
@@ -35,17 +35,19 @@ watch(
 const { cart } = useShopCartQuery(selectedShopIdRef);
 
 const resolvedCartKind = computed<'dropship' | 'catalog'>(() => {
+  const selectedCart =
+    activeCarts.value.find((cartItem) => cartItem.shop_id === selectedShopId.value) ?? null;
   const shopType =
     cart.value?.shop_type ??
+    selectedCart?.shop_type ??
     currentShopCartInfo.value?.shop_type ??
     (activeCarts.value.length === 1 ? activeCarts.value[0]?.shop_type : null);
 
   if (shopType === 'dropship') return 'dropship';
 
   if (
-    showCartPicker.value &&
     activeCarts.value.length > 0 &&
-    activeCarts.value.every((c) => c.shop_type === 'dropship')
+    activeCarts.value.every((cartItem) => cartItem.shop_type === 'dropship')
   ) {
     return 'dropship';
   }

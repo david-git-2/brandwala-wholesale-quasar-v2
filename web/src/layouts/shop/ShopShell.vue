@@ -20,8 +20,8 @@
 
         <div v-if="showCatalogShopHeader" class="shop-shell__catalog-shop">
           <CatalogShopHeaderSwitcher
-            :shop-name="catalogShopName"
-            :current-slug="catalogShopSlug"
+            :shop-name="headerShopName"
+            :current-slug="headerShopSlug"
             :shops="customerShops"
             @switch-shop="onSwitchCatalogShop"
           />
@@ -60,7 +60,7 @@
           />
 
           <q-btn
-            v-if="showOrdersCatalogButton"
+            v-if="showOrdersCatalogButton || showCartCatalogButton"
             flat
             no-caps
             dense
@@ -191,6 +191,8 @@ const CATALOG_ROUTE_NAMES = new Set([
 
 const ORDER_ROUTE_NAMES = new Set(['shop-orders-page', 'shop-order-detail-page']);
 
+const CART_ROUTE_NAMES = new Set(['shop-cart-page', 'shop-checkout-page']);
+
 const showHeaderSearch = computed(() => route.name === 'customer-dashboard');
 
 const showCatalogOrdersButton = computed(() =>
@@ -201,34 +203,84 @@ const showOrdersCatalogButton = computed(() =>
   ORDER_ROUTE_NAMES.has(String(route.name ?? '')),
 );
 
+const isCartRoute = computed(() => CART_ROUTE_NAMES.has(String(route.name ?? '')));
+
+const activeCartShopId = computed(() =>
+  resolveCartShopId(authStore.tenantId, activeCarts.value ?? [], route.query.shopId),
+);
+
+const activeCartInfo = computed(() => {
+  const shopId = activeCartShopId.value;
+  if (!shopId) return null;
+  return (activeCarts.value ?? []).find((cart) => cart.shop_id === shopId) ?? null;
+});
+
+const isCatalogCartContext = computed(() => {
+  if (!isCartRoute.value) return false;
+  if (activeCartInfo.value?.shop_type === 'dropship') return false;
+  if (activeCartInfo.value) return true;
+  return (activeCarts.value ?? []).some((cart) => cart.shop_type !== 'dropship');
+});
+
+const showCartCatalogButton = computed(() => isCatalogCartContext.value);
+
 const showOrdersHeaderTitle = computed(() => showOrdersCatalogButton.value);
 
 const showHeaderTenantLink = computed(
   () =>
     CATALOG_ROUTE_NAMES.has(String(route.name ?? '')) ||
-    ORDER_ROUTE_NAMES.has(String(route.name ?? '')),
+    ORDER_ROUTE_NAMES.has(String(route.name ?? '')) ||
+    isCatalogCartContext.value,
 );
 
 const tenantName = computed(
   () => authStore.tenant?.name || authStore.selectedTenant?.name || 'Shop',
 );
 
+const shopsQuery = useCustomerShopsQuery(computed(() => authStore.tenantId ?? null));
+const customerShops = computed(() => shopsQuery.data.value ?? []);
+
 const catalogShopSlug = computed(() => {
   const slug = route.params.shopSlug;
   return typeof slug === 'string' && slug.length > 0 ? slug : '';
 });
 
-const showCatalogShopHeader = computed(() => {
-  const routeName = String(route.name ?? '');
-  return routeName === 'shop-storefront-browse-page' && catalogShopSlug.value.length > 0;
+const cartShopSlug = computed(() => {
+  if (activeCartInfo.value?.shop_slug) {
+    return activeCartInfo.value.shop_slug;
+  }
+  const shopId = activeCartShopId.value;
+  if (!shopId) return '';
+  return customerShops.value.find((shop) => shop.id === shopId)?.slug ?? '';
 });
 
-const shopsQuery = useCustomerShopsQuery(computed(() => authStore.tenantId ?? null));
-const customerShops = computed(() => shopsQuery.data.value ?? []);
+const cartShopName = computed(() => {
+  if (activeCartInfo.value?.shop_name) {
+    return activeCartInfo.value.shop_name;
+  }
+  const shopId = activeCartShopId.value;
+  if (!shopId) return cartShopSlug.value;
+  return customerShops.value.find((shop) => shop.id === shopId)?.name ?? cartShopSlug.value;
+});
 
-const catalogShopName = computed(() => {
+const headerShopSlug = computed(() =>
+  isCatalogCartContext.value ? cartShopSlug.value : catalogShopSlug.value,
+);
+
+const headerShopName = computed(() => {
+  if (isCatalogCartContext.value) {
+    return cartShopName.value;
+  }
   const match = customerShops.value.find((shop) => shop.slug === catalogShopSlug.value);
   return match?.name || catalogShopSlug.value;
+});
+
+const showCatalogShopHeader = computed(() => {
+  const routeName = String(route.name ?? '');
+  if (isCatalogCartContext.value && headerShopSlug.value.length > 0) {
+    return true;
+  }
+  return routeName === 'shop-storefront-browse-page' && catalogShopSlug.value.length > 0;
 });
 
 watch(showHeaderSearch, (visible) => {
@@ -300,6 +352,16 @@ const goHome = () => {
 
 const goToCatalog = () => {
   const tenantId = authStore.tenantId;
+  const cartSlug = activeCartInfo.value?.shop_slug;
+  const cartShopId = activeCartInfo.value?.shop_id;
+  if (cartSlug && cartShopId) {
+    if (tenantId) {
+      rememberCatalogShop(tenantId, { id: cartShopId, slug: cartSlug });
+    }
+    void router.push(shopCatalogPath(authStore.tenantSlug, cartSlug));
+    return;
+  }
+
   const shop = resolveCatalogShop(tenantId, customerShops.value);
   if (shop?.slug) {
     if (tenantId) {
@@ -312,7 +374,7 @@ const goToCatalog = () => {
 };
 
 const onSwitchCatalogShop = (shop: { id: number; slug: string; name: string }) => {
-  if (!shop.slug || shop.slug === catalogShopSlug.value) return;
+  if (!shop.slug || shop.slug === headerShopSlug.value) return;
   if (authStore.tenantId) {
     rememberCatalogShop(authStore.tenantId, shop);
   }

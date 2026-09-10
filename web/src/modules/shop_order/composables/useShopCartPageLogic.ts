@@ -38,12 +38,14 @@ export function useShopCartPageLogic(
 
   const {
     selectedShopId,
+    scopedActiveCarts,
+    showShopCartTabs,
     showCartPicker,
     currentShopCartInfo,
     selectShopCart,
     formatActiveCartTotal,
     goBack,
-  } = useShopCartSelection(activeCarts, isCartsLoading);
+  } = useShopCartSelection(activeCarts, isCartsLoading, { cartKind: 'catalog' });
 
   const tenantSlugParam = () =>
     route.params.tenantSlug ? String(route.params.tenantSlug) : null;
@@ -319,6 +321,8 @@ export function useShopCartPageLogic(
 
   return {
     selectedShopId,
+    scopedActiveCarts,
+    showShopCartTabs,
     showCartPicker,
     currentShopCartInfo,
     selectShopCart,

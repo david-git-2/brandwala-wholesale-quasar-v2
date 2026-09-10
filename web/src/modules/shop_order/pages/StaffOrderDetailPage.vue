@@ -1,114 +1,138 @@
 <template>
-  <q-page class="q-pa-md staff-order-detail-page">
-    <div class="q-gutter-y-md">
-      <!-- Loading Skeleton -->
-      <StaffOrderDetailSkeleton v-if="isLoading" :variant="skeletonVariant" />
+  <q-page
+    :class="isCatalogShop && currentOrder
+      ? 'staff-order-detail-page staff-order-detail-page--catalog column no-wrap bg-grey-1'
+      : 'q-pa-md staff-order-detail-page'"
+    :style="isCatalogShop && currentOrder ? 'height: calc(100vh - 55px); overflow: hidden' : undefined"
+  >
+    <!-- Loading Skeleton -->
+    <StaffOrderDetailSkeleton v-if="isLoading" :variant="skeletonVariant" />
 
-      <!-- Error State -->
-      <div v-else-if="isError" class="column items-center justify-center q-pa-xl text-center">
-        <q-icon name="ph ph-warning-circle" size="48px" color="negative" class="q-mb-sm" />
-        <div class="text-h6 text-grey-8">{{ error?.message || 'Failed to load order details.' }}</div>
-        <q-btn flat color="primary" label="Go Back to Orders" class="q-mt-md" @click="goBack" />
-      </div>
+    <!-- Error State -->
+    <div v-else-if="isError" class="column items-center justify-center q-pa-xl text-center">
+      <q-icon name="ph ph-warning-circle" size="48px" color="negative" class="q-mb-sm" />
+      <div class="text-h6 text-grey-8">{{ error?.message || 'Failed to load order details.' }}</div>
+      <q-btn flat color="primary" label="Go Back to Orders" class="q-mt-md" @click="goBack" />
+    </div>
 
-      <template v-else-if="currentOrder">
-        <!-- Dropship banner (non-catalog shops) -->
+    <template v-else-if="currentOrder">
+      <!-- VENDOR CATALOG S1 — PBC V2 layout -->
+      <template v-if="isCatalogShop">
+        <div class="staff-order-catalog-top shrink-0 bg-white border-bottom shadow-xs q-px-md q-py-xs">
+          <CatalogOrderWorkflowBar
+            :order="currentOrder"
+            :is-loading="isLoading"
+            :visible-columns="catalogVisibleColumns"
+            @update:visible-columns="onCatalogVisibleColumnsUpdate"
+            @open-settings="showCatalogSettingsDialog = true"
+          />
+          <CatalogOrderRatesBar
+            variant="compact"
+            :order="currentOrder"
+            :saving="isSavingRates"
+            @save-rates="handleSaveRates"
+            @change-rates="handleChangeRates"
+          />
+        </div>
+
+        <CatalogOrderItemsTable
+          ref="catalogItemsTableRef"
+          class="col overflow-hidden"
+          :order="currentOrder"
+          :items="orderItems"
+          :currency-symbol="currencySymbol"
+          :buy-currency-symbol="buyCurrencySymbol"
+          :visible-columns="catalogVisibleColumns"
+          @update:visible-columns="onCatalogVisibleColumnsUpdate"
+          @update-item="handleUpdateCatalogOrderItem"
+          @table-scroll="updateCatalogScrollbar"
+        />
+
+        <div class="staff-order-catalog-footer shrink-0 bg-white border-top shadow-xs">
+          <CatalogOrderStaffActions
+            variant="footer"
+            :status="currentOrder.status"
+            :is-primary-loading="isCatalogPrimaryLoading"
+            :primary-disabled="catalogPrimaryDisabled"
+            :primary-disabled-reason="catalogPrimaryDisabledReason"
+            @primary-action="handleCatalogPrimaryAction"
+          >
+            <div class="excel-scrollbar-wrapper row items-center no-wrap">
+              <button type="button" class="excel-scroll-arrow-btn" @click="scrollCatalogTableByStep(-150)">
+                <q-icon name="ph ph-caret-left" size="13px" />
+              </button>
+              <div
+                ref="catalogScrollTrackRef"
+                class="excel-scroll-track cursor-pointer"
+                @click="onCatalogScrollTrackClick"
+              >
+                <div
+                  class="excel-scroll-thumb"
+                  :style="{ width: catalogScrollThumbWidth + '%', left: catalogScrollThumbLeft + '%' }"
+                  @mousedown="startCatalogScrollThumbDrag"
+                />
+              </div>
+              <button type="button" class="excel-scroll-arrow-btn" @click="scrollCatalogTableByStep(150)">
+                <q-icon name="ph ph-caret-right" size="13px" />
+              </button>
+            </div>
+          </CatalogOrderStaffActions>
+        </div>
+      </template>
+
+      <!-- OTHER SHOP TYPES (Dropship/Fixed) -->
+      <div v-else class="q-gutter-y-md">
         <StaffOrderHeader
-          v-if="!isCatalogShop"
           :order="currentOrder"
           :can-fulfill="canFulfill"
           :is-processing-dropship="isProcessingDropship"
           @add-to-dropship="addToDropshipDesk"
         />
 
-        <!-- VENDOR CATALOG S1 SPECIFIC LAYOUT -->
-        <template v-if="isCatalogShop">
-          <!-- Catalog Workflow Statuses Strip -->
-          <CatalogOrderWorkflowBar
-            :order="currentOrder"
-            :is-loading="isLoading"
-            :visible-columns="catalogVisibleColumns"
-            @update:visible-columns="onCatalogVisibleColumnsUpdate"
-            @override-status="showStatusOverrideDialog = true"
-          />
+        <StaffOrderStatusWorkflow
+          :order="currentOrder"
+          :workflow-statuses="workflowStatuses"
+          :changing-status="isUpdatingStatus"
+          :target-updating-status="targetUpdatingStatus"
+          @change-status="changeOrderStatus"
+        />
 
-          <CatalogOrderRatesBar
-            :order="currentOrder"
-            :saving="isSavingRates"
-            @save-rates="handleSaveRates"
-            @change-rates="handleChangeRates"
-          />
+        <div class="row q-col-gutter-lg">
+          <div class="col-xs-12 col-md-8" style="min-width: 0">
+            <StaffOrderItemsList
+              :order="currentOrder"
+              :order-items="orderItems"
+              :currency-symbol="currencySymbol"
+              :can-action="canAction"
+              :can-fulfill="canFulfill"
+              :is-deleting-order="isDeletingOrder"
+              :is-submitting-pricing="isSubmittingPricing"
+              :is-confirming-order="isConfirmingOrder"
+              :is-placing-procurement="isPlacingProcurement"
+              :is-fulfilling-to-invoice="isFulfillingToInvoice"
+              @delete-order="confirmDeleteOrder"
+              @submit-pricing="handleSubmitStaffPricing"
+              @confirm-order="handleConfirmOrder"
+              @place-procurement="handlePlaceForProcurement"
+              @fulfill-invoice="handleFulfillToInvoice"
+            />
+          </div>
 
-          <!-- Main Catalog Content -->
-          <CatalogOrderItemsTable
-            :order="currentOrder"
-            :items="orderItems"
-            :currency-symbol="currencySymbol"
-            :buy-currency-symbol="buyCurrencySymbol"
-            :visible-columns="catalogVisibleColumns"
-            @update:visible-columns="onCatalogVisibleColumnsUpdate"
-            @update-item="handleUpdateCatalogOrderItem"
-          />
-
-          <CatalogOrderStaffActions
-            :status="currentOrder.status"
-            :show-cancel="currentOrder.status !== 'delivered' && currentOrder.status !== 'cancelled'"
-            :is-deleting="isDeletingOrder"
-            :is-primary-loading="isCatalogPrimaryLoading"
-            :primary-disabled="catalogPrimaryDisabled"
-            :primary-disabled-reason="catalogPrimaryDisabledReason"
-            @primary-action="handleCatalogPrimaryAction"
-            @cancel-order="confirmDeleteOrder"
-          />
-        </template>
-
-        <!-- OTHER SHOP TYPES (Dropship/Fixed) -->
-        <template v-else>
-          <StaffOrderStatusWorkflow
-            :order="currentOrder"
-            :workflow-statuses="workflowStatuses"
-            :changing-status="isUpdatingStatus"
-            :target-updating-status="targetUpdatingStatus"
-            @change-status="changeOrderStatus"
-          />
-
-          <div class="row q-col-gutter-lg">
-            <div class="col-xs-12 col-md-8" style="min-width: 0">
-              <StaffOrderItemsList
+          <div class="col-xs-12 col-md-4">
+            <div class="column q-gutter-md">
+              <StaffOrderSummaryCard
                 :order="currentOrder"
                 :order-items="orderItems"
                 :currency-symbol="currencySymbol"
-                :can-action="canAction"
-                :can-fulfill="canFulfill"
-                :is-deleting-order="isDeletingOrder"
-                :is-submitting-pricing="isSubmittingPricing"
-                :is-confirming-order="isConfirmingOrder"
-                :is-placing-procurement="isPlacingProcurement"
-                :is-fulfilling-to-invoice="isFulfillingToInvoice"
-                @delete-order="confirmDeleteOrder"
-                @submit-pricing="handleSubmitStaffPricing"
-                @confirm-order="handleConfirmOrder"
-                @place-procurement="handlePlaceForProcurement"
-                @fulfill-invoice="handleFulfillToInvoice"
+                :is-updating-charges="isUpdatingCharges"
+                @update-charges="handleUpdateCharges"
               />
-            </div>
-
-            <div class="col-xs-12 col-md-4">
-              <div class="column q-gutter-md">
-                <StaffOrderSummaryCard
-                  :order="currentOrder"
-                  :order-items="orderItems"
-                  :currency-symbol="currencySymbol"
-                  :is-updating-charges="isUpdatingCharges"
-                  @update-charges="handleUpdateCharges"
-                />
-                <StaffOrderShippingCard :order="currentOrder" />
-              </div>
+              <StaffOrderShippingCard :order="currentOrder" />
             </div>
           </div>
-        </template>
-      </template>
-    </div>
+        </div>
+      </div>
+    </template>
 
     <!-- Catalog Customer Backlog Drawer -->
     <CatalogBacklogDrawer
@@ -116,6 +140,21 @@
       v-model="showBacklogDrawer"
       :tenant-id="currentOrder.tenant_id"
       :billing-profile-id="currentOrder.billing_profile_id"
+    />
+
+    <CatalogOrderSettingsDialog
+      v-if="currentOrder"
+      v-model="showCatalogSettingsDialog"
+      :item-count="catalogSummarySnapshot.itemCount"
+      :buy-currency-symbol="catalogSummarySnapshot.buyCurrencySymbol"
+      :sell-currency-symbol="catalogSummarySnapshot.sellCurrencySymbol"
+      :conversion-rate="catalogSummarySnapshot.conversionRate"
+      :cargo-rate="catalogSummarySnapshot.cargoRate"
+      :totals="catalogSummarySnapshot.totals"
+      :show-cancel="currentOrder.status !== 'delivered' && currentOrder.status !== 'cancelled'"
+      :is-deleting="isDeletingOrder"
+      @override-status="onCatalogSettingsOverrideStatus"
+      @cancel-order="onCatalogSettingsCancelOrder"
     />
 
     <CatalogOrderStatusOverrideDialog
@@ -129,7 +168,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted, unref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useQuasar } from 'quasar';
@@ -180,6 +219,7 @@ import CatalogOrderRatesBar from '../components/CatalogOrderRatesBar.vue';
 import CatalogOrderItemsTable from '../components/CatalogOrderItemsTable.vue';
 import CatalogOrderStaffActions from '../components/CatalogOrderStaffActions.vue';
 import CatalogOrderStatusOverrideDialog from '../components/CatalogOrderStatusOverrideDialog.vue';
+import CatalogOrderSettingsDialog from '../components/CatalogOrderSettingsDialog.vue';
 import CatalogBacklogDrawer from '../components/CatalogBacklogDrawer.vue';
 import { useMembershipColumnPreference } from 'src/modules/membership/composables/useMembershipColumnPreference';
 
@@ -262,6 +302,7 @@ const handleUpdateCatalogOrderItem = ({
 
 const showBacklogDrawer = ref(false);
 const showStatusOverrideDialog = ref(false);
+const showCatalogSettingsDialog = ref(false);
 
 const targetUpdatingStatus = ref<string | null>(null);
 const orderItems = ref<any[]>([]);
@@ -852,6 +893,133 @@ const goBack = () => {
   const tenantSlug = typeof slug === 'string' && slug ? `/${slug}` : '';
   void router.push(`${tenantSlug}/app/shop/orders`);
 };
+
+const catalogItemsTableRef = ref<InstanceType<typeof CatalogOrderItemsTable> | null>(null);
+
+const EMPTY_CATALOG_TOTALS = {
+  totalQuantity: 0,
+  totalWeightGm: 0,
+  grandTotalPurchasePrice: 0,
+  grandTotalLandedPurchase: 0,
+  grandTotalLandedSell: 0,
+  grandTotalFirstOffer: 0,
+  overallFirstOfferMargin: 0,
+  grandTotalCounterOffer: 0,
+  overallCounterOfferMargin: 0,
+  grandTotalFinalOffer: 0,
+  overallFinalOfferMargin: 0,
+};
+
+const catalogSummarySnapshot = computed(() => {
+  const table = catalogItemsTableRef.value as {
+    itemCount?: number | { value: number };
+    buyCurrency?: string | { value: string };
+    sellCurrency?: string | { value: string };
+    FX?: number | { value: number };
+    cargoRate?: number | { value: number };
+    summaryTotals?: typeof EMPTY_CATALOG_TOTALS | { value: typeof EMPTY_CATALOG_TOTALS };
+  } | null;
+
+  return {
+    itemCount: Number(unref(table?.itemCount) ?? 0),
+    buyCurrencySymbol: String(unref(table?.buyCurrency) ?? buyCurrencySymbol.value),
+    sellCurrencySymbol: String(unref(table?.sellCurrency) ?? currencySymbol.value),
+    conversionRate: Number(unref(table?.FX) ?? 0),
+    cargoRate: Number(unref(table?.cargoRate) ?? 0),
+    totals: unref(table?.summaryTotals) ?? EMPTY_CATALOG_TOTALS,
+  };
+});
+
+function onCatalogSettingsOverrideStatus() {
+  showCatalogSettingsDialog.value = false;
+  showStatusOverrideDialog.value = true;
+}
+
+function onCatalogSettingsCancelOrder() {
+  showCatalogSettingsDialog.value = false;
+  confirmDeleteOrder();
+}
+const catalogScrollTrackRef = ref<HTMLElement | null>(null);
+const catalogScrollThumbWidth = ref(30);
+const catalogScrollThumbLeft = ref(0);
+
+const getCatalogTableScrollEl = (): HTMLElement | null =>
+  catalogItemsTableRef.value?.tableScrollContainerRef ?? null;
+
+const updateCatalogScrollbar = () => {
+  const el = getCatalogTableScrollEl();
+  if (!el) return;
+  const maxScrollLeft = el.scrollWidth - el.clientWidth;
+  if (maxScrollLeft <= 0) {
+    catalogScrollThumbWidth.value = 100;
+    catalogScrollThumbLeft.value = 0;
+    return;
+  }
+  const ratio = el.clientWidth / el.scrollWidth;
+  const thumbWidthPct = Math.max(15, Math.min(80, ratio * 100));
+  catalogScrollThumbWidth.value = thumbWidthPct;
+  const scrollFraction = el.scrollLeft / maxScrollLeft;
+  catalogScrollThumbLeft.value = scrollFraction * (100 - thumbWidthPct);
+};
+
+const scrollCatalogTableByStep = (delta: number) => {
+  getCatalogTableScrollEl()?.scrollBy({ left: delta, behavior: 'smooth' });
+};
+
+const onCatalogScrollTrackClick = (e: MouseEvent) => {
+  const table = getCatalogTableScrollEl();
+  const track = catalogScrollTrackRef.value;
+  if (!table || !track) return;
+  const rect = track.getBoundingClientRect();
+  const fraction = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  const maxScrollLeft = table.scrollWidth - table.clientWidth;
+  table.scrollTo({ left: fraction * maxScrollLeft, behavior: 'smooth' });
+};
+
+const startCatalogScrollThumbDrag = (e: MouseEvent) => {
+  e.preventDefault();
+  e.stopPropagation();
+  const table = getCatalogTableScrollEl();
+  const track = catalogScrollTrackRef.value;
+  if (!table || !track) return;
+
+  const startX = e.clientX;
+  const startScrollLeft = table.scrollLeft;
+  const trackRect = track.getBoundingClientRect();
+  const availableTrackWidth = trackRect.width * (1 - catalogScrollThumbWidth.value / 100);
+  const maxScrollLeft = table.scrollWidth - table.clientWidth;
+
+  const onMouseMove = (moveEvent: MouseEvent) => {
+    if (availableTrackWidth <= 0) return;
+    const deltaScroll = ((moveEvent.clientX - startX) / availableTrackWidth) * maxScrollLeft;
+    table.scrollLeft = Math.max(0, Math.min(maxScrollLeft, startScrollLeft + deltaScroll));
+    updateCatalogScrollbar();
+  };
+
+  const onMouseUp = () => {
+    window.removeEventListener('mousemove', onMouseMove);
+    window.removeEventListener('mouseup', onMouseUp);
+  };
+
+  window.addEventListener('mousemove', onMouseMove);
+  window.addEventListener('mouseup', onMouseUp);
+};
+
+watch(
+  () => [orderItems.value.length, catalogVisibleColumns.value],
+  () => {
+    requestAnimationFrame(updateCatalogScrollbar);
+  },
+);
+
+onMounted(() => {
+  window.addEventListener('resize', updateCatalogScrollbar);
+  requestAnimationFrame(updateCatalogScrollbar);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('resize', updateCatalogScrollbar);
+});
 </script>
 
 <script lang="ts">
@@ -863,5 +1031,54 @@ export default {
 <style scoped>
 .staff-order-detail-page {
   padding-bottom: 88px;
+}
+
+.staff-order-detail-page--catalog {
+  padding-bottom: 0;
+}
+
+.border-bottom {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.border-top {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.excel-scrollbar-wrapper {
+  width: min(420px, 100%);
+  gap: 4px;
+}
+
+.excel-scroll-track {
+  position: relative;
+  flex: 1;
+  height: 10px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.excel-scroll-thumb {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: #64748b;
+  border-radius: 999px;
+  cursor: grab;
+}
+
+.excel-scroll-arrow-btn {
+  border: none;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.excel-scroll-arrow-btn:hover {
+  background: #f1f5f9;
+  color: #334155;
 }
 </style>

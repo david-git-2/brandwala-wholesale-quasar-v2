@@ -1804,7 +1804,7 @@ CREATE OR REPLACE FUNCTION "public"."can_act_on_parent_tenant_stock"("p_parent_t
       inner join public.shop_customer_group_access scga on scga.customer_group_id = cg.id
       inner join public.shops s on s.id = scga.shop_id
       where public.resolve_parent_tenant_id(s.tenant_id) = p_parent_tenant_id
-        and cg.tenant_id = s.tenant_id
+        and coalesce(cg.parent_tenant_id, cg.tenant_id) = p_parent_tenant_id
         and lower(trim(cgm.email)) = public.current_user_email()
         and cgm.is_active = true
         and cg.is_active = true
@@ -1921,13 +1921,28 @@ begin
   where lower(trim(cgm.email)) = v_email
     and cgm.is_active = true
     and cg.is_active = true
-    and (p_tenant_id is null or cg.tenant_id = p_tenant_id)
+    and cg.deleted_at is null
+    and (
+      p_tenant_id is null
+      or exists (
+        select 1
+        from public.shop_customer_group_access scga
+        inner join public.shops s on s.id = scga.shop_id
+        where scga.customer_group_id = cg.id
+          and scga.status = true
+          and s.tenant_id = p_tenant_id
+          and s.is_active = true
+          and s.deleted_at is null
+          and coalesce(cg.parent_tenant_id, cg.tenant_id)
+            = public.resolve_parent_tenant_id(p_tenant_id)
+      )
+    )
   order by
     cg.tenant_id asc,
     cg.id asc,
     case cgm.role
       when 'admin' then 1
-      when 'negotiator' then 2
+      when 'manager' then 2
       when 'staff' then 3
       else 99
     end asc,
@@ -1936,6 +1951,10 @@ begin
 
   has_match := member_id is not null;
   return next;
+end;
+$$;
+
+
 ALTER FUNCTION "public"."check_shop_login_access"("p_email" "text", "p_tenant_id" bigint) OWNER TO "postgres";
 
 
@@ -5522,19 +5541,30 @@ begin
   into v_member
   from public.customer_group_members cgm
   inner join public.customer_groups cg on cg.id = cgm.customer_group_id
-  inner join public.tenants t on t.id = cg.tenant_id
+  inner join public.tenants t on t.id = p_tenant_id
   left join public.tenant_roles tr on tr.id = cgm.tenant_role_id
   where p_tenant_id is not null
     and lower(trim(cgm.email)) = v_email
     and cgm.is_active = true
     and cg.is_active = true
+    and cg.deleted_at is null
     and t.is_active = true
-    and cg.tenant_id = p_tenant_id
     and (p_customer_group_member_id is null or cgm.id = p_customer_group_member_id)
+    and coalesce(cg.parent_tenant_id, cg.tenant_id) = public.resolve_parent_tenant_id(p_tenant_id)
+    and exists (
+      select 1
+      from public.shop_customer_group_access scga
+      inner join public.shops s on s.id = scga.shop_id
+      where scga.customer_group_id = cg.id
+        and scga.status = true
+        and s.tenant_id = p_tenant_id
+        and s.is_active = true
+        and s.deleted_at is null
+    )
   order by
     case cgm.role
       when 'admin' then 1
-      when 'negotiator' then 2
+      when 'manager' then 2
       when 'staff' then 3
       else 99
     end,
@@ -5543,6 +5573,8 @@ begin
 
   if v_member.id is null then
     return;
+  end if;
+
   select coalesce(
     jsonb_agg(jsonb_build_object('module_key', module_key, 'action', action)),
     '[]'::jsonb
@@ -5557,6 +5589,8 @@ begin
   if v_perm_version is null then
     perform public.bump_tenant_permission_version(v_member.tenant_id);
     v_perm_version := 1;
+  end if;
+
   return query
   select
     v_member.id as member_id,
@@ -5577,6 +5611,10 @@ begin
     v_member.is_admin,
     v_grants as effective_grants,
     v_perm_version as permission_version;
+end;
+$$;
+
+
 ALTER FUNCTION "public"."get_shop_bootstrap_context"("p_email" "text", "p_tenant_id" bigint, "p_customer_group_member_id" bigint) OWNER TO "postgres";
 
 
@@ -5755,10 +5793,11 @@ begin
   left join public.customer_group_shop_profiles profile
     on profile.customer_group_id = cg.id and profile.tenant_id = v_tenant_id
   where access.shop_id = p_shop_id
-    and cg.tenant_id = v_tenant_id
     and cg.is_active = true
+    and cg.deleted_at is null
     and cgm.is_active = true
-    and lower(trim(cgm.email)) = public.current_user_email();
+    and lower(trim(cgm.email)) = public.current_user_email()
+    and coalesce(cg.parent_tenant_id, cg.tenant_id) = public.resolve_parent_tenant_id(v_tenant_id);
 end;
 $$;
 
@@ -10223,8 +10262,22 @@ begin
       select 1
       from public.customer_groups cg
       where cg.id = v_profile.customer_group_id
-        and cg.tenant_id = p_tenant_id
         and cg.is_active = true
+        and cg.deleted_at is null
+        and coalesce(cg.parent_tenant_id, cg.tenant_id) = public.resolve_parent_tenant_id(p_tenant_id)
+        and (
+          p_tenant_id = coalesce(cg.parent_tenant_id, cg.tenant_id)
+          or exists (
+            select 1
+            from public.shop_customer_group_access scga
+            inner join public.shops s on s.id = scga.shop_id
+            where scga.customer_group_id = cg.id
+              and scga.status = true
+              and s.tenant_id = p_tenant_id
+              and s.is_active = true
+              and s.deleted_at is null
+          )
+        )
     );
   end if;
 

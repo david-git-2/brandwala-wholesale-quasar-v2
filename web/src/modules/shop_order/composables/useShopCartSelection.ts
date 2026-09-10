@@ -10,23 +10,33 @@ import {
   shopCatalogEntryPath,
   shopCatalogPath,
 } from '../utils/catalogShop';
+import { filterActiveCartsByKind, type ShopCartKindFilter } from '../utils/shopCartScope';
 
 export function useShopCartSelection(
   activeCarts: Ref<ActiveCartItem[]>,
   isCartsLoading: Ref<boolean>,
+  options?: { cartKind?: ShopCartKindFilter },
 ) {
   const route = useRoute();
   const router = useRouter();
   const authStore = useAuthStore();
+  const cartKind = options?.cartKind ?? 'all';
 
   const selectedShopId = ref<number | null>(null);
 
+  const scopedActiveCarts = computed(() =>
+    filterActiveCartsByKind(activeCarts.value, cartKind),
+  );
+
   watch(
-    [() => route.query.shopId, activeCarts, isCartsLoading],
+    [() => route.query.shopId, scopedActiveCarts, isCartsLoading],
     ([qShopId, carts, loading]) => {
+      const scopedCarts = carts as ActiveCartItem[];
       const fromQuery = resolveCartShopId(authStore.tenantId, [], qShopId);
-      if (fromQuery) {
-        selectedShopId.value = fromQuery;
+      if (fromQuery && scopedCarts.some((cart) => cart.shop_id === fromQuery)) {
+        if (selectedShopId.value !== fromQuery) {
+          selectedShopId.value = fromQuery;
+        }
         return;
       }
       if (loading) {
@@ -34,14 +44,15 @@ export function useShopCartSelection(
           const lastId = getLastVisitedShopId(authStore.tenantId);
           if (lastId) {
             const parsed = parseInt(lastId, 10);
-            if (!Number.isNaN(parsed)) {
+            const matchesScoped = scopedCarts.some((cart) => cart.shop_id === parsed);
+            if (!Number.isNaN(parsed) && matchesScoped) {
               selectedShopId.value = parsed;
             }
           }
         }
         return;
       }
-      const resolved = resolveCartShopId(authStore.tenantId, carts);
+      const resolved = resolveCartShopId(authStore.tenantId, scopedCarts);
       if (!resolved) {
         selectedShopId.value = null;
         return;
@@ -56,17 +67,14 @@ export function useShopCartSelection(
     { immediate: true },
   );
 
-  const showCartPicker = computed(() => {
-    return (
-      !route.query.shopId &&
-      !selectedShopId.value &&
-      !isCartsLoading.value &&
-      activeCarts.value.length > 1
-    );
-  });
+  const showShopCartTabs = computed(
+    () => !isCartsLoading.value && scopedActiveCarts.value.length > 1,
+  );
+
+  const showCartPicker = computed(() => false);
 
   const currentShopCartInfo = computed(() => {
-    return activeCarts.value.find((c) => c.shop_id === selectedShopId.value) ?? null;
+    return scopedActiveCarts.value.find((c) => c.shop_id === selectedShopId.value) ?? null;
   });
 
   const tenantSlugParam = () =>
@@ -94,6 +102,8 @@ export function useShopCartSelection(
 
   return {
     selectedShopId,
+    scopedActiveCarts,
+    showShopCartTabs,
     showCartPicker,
     currentShopCartInfo,
     selectShopCart,

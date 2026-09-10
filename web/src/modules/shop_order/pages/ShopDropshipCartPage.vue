@@ -3,16 +3,24 @@
     <div class="q-gutter-y-md">
       <ShopCartHeader
         :show-cart-picker="showCartPicker"
+        :show-shop-tabs="showShopCartTabs"
         :item-count="displayItemCount"
-        :active-carts="activeCarts"
+        :active-carts="scopedActiveCarts"
         :current-shop-cart-info="headerCartInfo"
         :selected-shop-id="selectedShopId"
         :format-active-cart-total="formatActiveCartTotal"
         @select-shop-cart="selectShopCart"
       />
 
+      <ShopCartShopTabs
+        v-if="showShopCartTabs"
+        :carts="scopedActiveCarts"
+        :selected-shop-id="selectedShopId"
+        @select-shop-cart="selectShopCart"
+      />
+
       <ShopCartSkeleton
-        v-if="isCartsLoading || isCartLoading || (!selectedShopId && !showCartPicker)"
+        v-if="isCartsLoading || isCartLoading || (!selectedShopId && scopedActiveCarts.length > 0)"
       />
 
       <q-card v-else-if="isCartError" flat bordered class="q-pa-xl text-center">
@@ -35,12 +43,27 @@
         </q-card-section>
       </q-card>
 
-      <ShopCartPickerView
-        v-else-if="showCartPicker"
-        :active-carts="activeCarts"
-        :format-active-cart-total="formatActiveCartTotal"
-        @select-shop-cart="selectShopCart"
-      />
+      <q-card
+        v-else-if="!selectedShopId && scopedActiveCarts.length === 0"
+        flat
+        bordered
+        class="q-pa-xl text-center"
+      >
+        <q-card-section>
+          <q-icon name="ph ph-shopping-cart" size="64px" color="grey-4" class="q-mb-md" />
+          <div class="text-h6 text-grey-7 text-weight-bold">{{ $t('shop.cart_empty') }}</div>
+          <p class="text-body2 text-grey-6 q-mt-sm q-mb-md">
+            {{ $t('shop.cart_empty_desc') }}
+          </p>
+          <q-btn
+            color="primary"
+            no-caps
+            unelevated
+            :label="$t('shop.continue_shopping')"
+            @click="goBack"
+          />
+        </q-card-section>
+      </q-card>
 
       <q-card
         v-else-if="selectedShopId && items.length === 0"
@@ -116,7 +139,7 @@ import { useDropshipShopCartQuery } from '../composables/useDropshipShopCartQuer
 import { useShopCartMutations } from '../composables/useShopCartMutations';
 import { shopDropshipReviewPath } from '../utils/catalogShop';
 import ShopCartHeader from '../components/ShopCartHeader.vue';
-import ShopCartPickerView from '../components/ShopCartPickerView.vue';
+import ShopCartShopTabs from '../components/ShopCartShopTabs.vue';
 import ShopCartSkeleton from '../components/ShopCartSkeleton.vue';
 import ShopDropshipCartItemCard from '../components/ShopDropshipCartItemCard.vue';
 
@@ -131,12 +154,14 @@ const activeCarts = computed(() => activeCartsData.value ?? []);
 
 const {
   selectedShopId,
+  scopedActiveCarts,
+  showShopCartTabs,
   showCartPicker,
   currentShopCartInfo,
   selectShopCart,
   formatActiveCartTotal,
   goBack,
-} = useShopCartSelection(activeCarts, isCartsLoading);
+} = useShopCartSelection(activeCarts, isCartsLoading, { cartKind: 'dropship' });
 
 const {
   cart,

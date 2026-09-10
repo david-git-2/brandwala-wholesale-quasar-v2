@@ -1,29 +1,19 @@
 <template>
-  <q-card flat bordered class="catalog-staff-actions q-pa-md">
-    <div class="row items-center justify-between q-col-gutter-sm">
-      <div class="col-auto">
-        <q-btn
-          v-if="showCancel"
-          outline
-          color="negative"
-          no-caps
-          icon="ph ph-trash"
-          label="Cancel order"
-          class="text-weight-bold action-btn"
-          :loading="isDeleting"
-          @click="emit('cancel-order')"
-        />
-      </div>
-
-      <div class="col row items-center justify-end q-gutter-sm">
-        <span v-if="waitMessage" class="text-caption text-grey-7 text-right wait-copy">{{ waitMessage }}</span>
+  <q-card
+    flat
+    :bordered="variant !== 'footer'"
+    :class="variant === 'footer' ? 'catalog-staff-actions catalog-staff-actions--footer q-px-md q-py-xs' : 'catalog-staff-actions q-pa-md'"
+  >
+    <div class="row items-center justify-between no-wrap q-gutter-x-sm">
+      <div class="col-auto row items-center q-gutter-sm no-wrap">
         <q-btn
           v-if="primaryAction"
           unelevated
+          dense
           color="primary"
           no-caps
           icon-right="ph ph-arrow-right"
-          class="text-weight-bold q-px-lg action-btn"
+          class="text-weight-bold q-px-md action-btn"
           :label="primaryActionLabel"
           :loading="isPrimaryLoading"
           :disable="primaryDisabled"
@@ -31,6 +21,10 @@
         >
           <q-tooltip v-if="primaryDisabledReason">{{ primaryDisabledReason }}</q-tooltip>
         </q-btn>
+      </div>
+
+      <div class="col row items-center justify-end min-width-0">
+        <slot />
       </div>
     </div>
   </q-card>
@@ -41,19 +35,21 @@ import { computed } from 'vue';
 import {
   getStaffCatalogPrimaryAction,
   getStaffCatalogPrimaryActionLabel,
-  getStaffCatalogStatusLabel,
-  normalizeCatalogOrderStatus,
   type StaffCatalogPrimaryAction,
 } from '../utils/catalogOrderStatus';
 
-const props = defineProps<{
-  status: string;
-  isDeleting?: boolean;
-  isPrimaryLoading?: boolean;
-  primaryDisabled?: boolean;
-  primaryDisabledReason?: string;
-  showCancel?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    status: string;
+    isDeleting?: boolean;
+    isPrimaryLoading?: boolean;
+    primaryDisabled?: boolean;
+    primaryDisabledReason?: string;
+    showCancel?: boolean;
+    variant?: 'card' | 'footer';
+  }>(),
+  { variant: 'card' },
+);
 
 const emit = defineEmits<{
   (e: 'primary-action', action: StaffCatalogPrimaryAction): void;
@@ -65,17 +61,6 @@ const primaryAction = computed(() => getStaffCatalogPrimaryAction(props.status))
 const primaryActionLabel = computed(() =>
   primaryAction.value ? getStaffCatalogPrimaryActionLabel(primaryAction.value) : '',
 );
-
-const waitMessage = computed(() => {
-  const st = normalizeCatalogOrderStatus(props.status);
-  if (st === 'priced' || st === 'final_offered') {
-    return getStaffCatalogStatusLabel(st);
-  }
-  if (st === 'delivered' || st === 'cancelled') {
-    return getStaffCatalogStatusLabel(st);
-  }
-  return '';
-});
 </script>
 
 <style scoped>
@@ -88,11 +73,17 @@ const waitMessage = computed(() => {
   border-radius: 10px 10px 0 0;
 }
 
-.action-btn {
-  border-radius: 8px;
+.catalog-staff-actions--footer {
+  position: static;
+  box-shadow: none;
+  border-radius: 0;
 }
 
-.wait-copy {
-  max-width: 260px;
+.min-width-0 {
+  min-width: 0;
+}
+
+.action-btn {
+  border-radius: 8px;
 }
 </style>

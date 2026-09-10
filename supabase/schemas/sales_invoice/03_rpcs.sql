@@ -1693,15 +1693,7 @@ begin
   end if;
 
   v_can_access := public.is_tenant_staff(p_tenant_id)
-    or exists (
-      select 1
-      from public.customer_group_members cgm
-      join public.customer_groups cg on cg.id = cgm.customer_group_id
-      where cg.tenant_id = p_tenant_id
-        and lower(trim(cgm.email)) = public.current_user_email()
-        and cgm.is_active = true
-        and cg.is_active = true
-    );
+    or public.current_customer_group_id(p_tenant_id) is not null;
 
   if not v_can_access then
     raise exception 'access denied';
@@ -1715,7 +1707,8 @@ begin
 
   select * into v_row
   from public.recipient_profiles
-  where tenant_id = p_tenant_id and phone = v_phone;
+  where coalesce(parent_tenant_id, tenant_id) = public.resolve_parent_tenant_id(p_tenant_id)
+    and phone = v_phone;
 
   if v_row.id is null then
     return null;

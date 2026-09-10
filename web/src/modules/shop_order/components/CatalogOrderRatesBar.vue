@@ -1,5 +1,5 @@
 <template>
-  <q-card flat bordered class="q-pa-md bg-grey-1">
+  <q-card v-if="variant === 'card'" flat bordered class="q-pa-md bg-grey-1">
     <div class="row items-center justify-between q-mb-sm">
       <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center gap-2">
         <q-icon name="ph ph-sliders-horizontal" size="18px" color="primary" />
@@ -40,7 +40,6 @@
           @update:model-value="onRateChange"
         />
       </div>
-
 
       <div class="col-12 col-sm-6 col-md-2">
         <q-input
@@ -105,6 +104,124 @@
       </div>
     </div>
   </q-card>
+
+  <div v-else class="catalog-rates-compact q-pt-xs">
+    <div class="row items-center justify-center">
+      <div class="rates-pill row items-center q-gutter-x-xs q-px-sm q-py-2xs bg-grey-2 rounded-borders text-caption text-grey-8 font-mono">
+        <span><strong>FX:</strong> {{ conversion_rate ?? '—' }}</span>
+        <span class="text-grey-4">|</span>
+        <span><strong>Cargo:</strong> {{ buyCurrency }}{{ cargo_rate ?? '—' }}/kg</span>
+        <span class="text-grey-4">|</span>
+        <span><strong>1st Offer:</strong> {{ first_offer_rate ?? profit_rate ?? '—' }}%</span>
+        <span class="text-grey-4">|</span>
+        <span><strong>Basis:</strong> {{ profitBasisLabel }}</span>
+        <q-btn
+          flat
+          round
+          dense
+          size="xs"
+          icon="ph ph-sliders-horizontal"
+          color="primary"
+          class="q-ml-2xs"
+          @click="ratesExpanded = !ratesExpanded"
+        >
+          <q-tooltip>Edit rates (FX, Cargo, Profit)</q-tooltip>
+        </q-btn>
+      </div>
+    </div>
+
+    <div v-if="ratesExpanded" class="q-pt-sm q-pb-xs border-top q-mt-xs">
+      <div class="row items-center justify-between q-col-gutter-sm">
+        <div class="col-12 col-md-2">
+          <q-input
+            v-model.number="conversion_rate"
+            dense
+            outlined
+            type="number"
+            step="0.01"
+            prefix="৳"
+            label="FX Rate"
+            hide-bottom-space
+            :readonly="isFirstOfferLocked"
+            @update:model-value="onRateChange"
+          />
+        </div>
+        <div class="col-12 col-md-2">
+          <q-input
+            v-model.number="cargo_rate"
+            dense
+            outlined
+            type="number"
+            step="0.01"
+            :prefix="buyCurrency"
+            suffix="/kg"
+            label="Cargo Rate"
+            hide-bottom-space
+            :readonly="isFirstOfferLocked"
+            @update:model-value="onRateChange"
+          />
+        </div>
+        <div class="col-12 col-md-2">
+          <q-input
+            v-model.number="first_offer_rate"
+            dense
+            outlined
+            type="number"
+            step="0.01"
+            suffix="%"
+            label="1st Offer Profit %"
+            hide-bottom-space
+            :readonly="isFirstOfferLocked"
+            @update:model-value="onRateChange"
+          />
+        </div>
+        <div v-if="showFinalOfferRate" class="col-12 col-md-2">
+          <q-input
+            v-model.number="final_offer_rate"
+            dense
+            outlined
+            type="number"
+            step="0.01"
+            suffix="%"
+            label="Final Offer Profit %"
+            hide-bottom-space
+            :readonly="isStaffReadOnly"
+            @update:model-value="onRateChange"
+          />
+        </div>
+        <div class="col-12 col-md-2">
+          <q-select
+            v-model="profit_basis"
+            dense
+            outlined
+            emit-value
+            map-options
+            :options="basisOptions"
+            label="Profit Basis"
+            hide-bottom-space
+            :readonly="isFirstOfferLocked"
+            :disable="isFirstOfferLocked"
+            @update:model-value="onRateChange"
+          />
+        </div>
+        <div class="col-12 col-md-2 row justify-end q-gutter-xs">
+          <q-btn flat dense no-caps label="Cancel" class="rounded-sq-btn" @click="cancelCompactEdit" />
+          <q-btn
+            unelevated
+            dense
+            no-caps
+            color="primary"
+            label="Save Rates"
+            class="rounded-sq-btn q-px-sm"
+            :loading="saving"
+            :disable="isStaffReadOnly"
+            @click="onSave"
+          />
+        </div>
+      </div>
+      <div class="text-caption text-grey-6 q-mt-xs">Formula: {{ formulaExplanation }}</div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -116,10 +233,14 @@ import {
   isCatalogStaffReadOnly,
 } from '../utils/catalogOrderStatus';
 
-const props = defineProps<{
-  order: ShopOrder | null;
-  saving?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    order: ShopOrder | null;
+    saving?: boolean;
+    variant?: 'card' | 'compact';
+  }>(),
+  { variant: 'card' },
+);
 
 const emit = defineEmits<{
   (
@@ -152,6 +273,9 @@ const profit_rate = ref<number | null>(null);
 const first_offer_rate = ref<number | null>(null);
 const final_offer_rate = ref<number | null>(null);
 const profit_basis = ref<'purchase' | 'total_cost'>('total_cost');
+const ratesExpanded = ref(false);
+
+const buyCurrency = computed(() => props.order?.shop_buy_currency_symbol || '£');
 
 const showFinalOfferRate = computed(
   () => normalizeCatalogOrderStatus(props.order?.status) !== 'submitted',
@@ -164,6 +288,10 @@ const basisOptions = [
   { label: 'Total Cost', value: 'total_cost' },
   { label: 'Purchase Only', value: 'purchase' },
 ];
+
+const profitBasisLabel = computed(() =>
+  profit_basis.value === 'purchase' ? 'Purchase' : 'Total Cost',
+);
 
 watch(
   () => props.order,
@@ -228,22 +356,43 @@ function onSave() {
       final_offer_rate: final_offer_rate.value,
       profit_basis: (props.order?.profit_basis as 'purchase' | 'total_cost') || profit_basis.value,
     });
-    return;
+  } else {
+    emit('save-rates', {
+      conversion_rate: conversion_rate.value,
+      cargo_rate: cargo_rate.value,
+      profit_rate: profit_rate.value,
+      first_offer_rate: first_offer_rate.value,
+      final_offer_rate: final_offer_rate.value,
+      profit_basis: profit_basis.value,
+    });
   }
 
-  emit('save-rates', {
-    conversion_rate: conversion_rate.value,
-    cargo_rate: cargo_rate.value,
-    profit_rate: profit_rate.value,
-    first_offer_rate: first_offer_rate.value,
-    final_offer_rate: final_offer_rate.value,
-    profit_basis: profit_basis.value,
-  });
+  ratesExpanded.value = false;
+}
+
+function cancelCompactEdit() {
+  if (props.order) {
+    conversion_rate.value = props.order.conversion_rate ?? 140;
+    cargo_rate.value = props.order.cargo_rate ?? 0;
+    profit_rate.value = props.order.profit_rate ?? 25;
+    first_offer_rate.value = props.order.first_offer_rate ?? null;
+    final_offer_rate.value = props.order.final_offer_rate ?? null;
+    profit_basis.value = (props.order.profit_basis as 'purchase' | 'total_cost') || 'total_cost';
+  }
+  ratesExpanded.value = false;
 }
 </script>
 
 <style scoped lang="scss">
 .soft-input :deep(.q-field__control) {
   border-radius: 8px;
+}
+
+.border-top {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.rounded-sq-btn {
+  border-radius: 8px !important;
 }
 </style>

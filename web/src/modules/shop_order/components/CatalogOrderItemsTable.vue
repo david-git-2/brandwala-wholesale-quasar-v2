@@ -1,7 +1,6 @@
 <template>
-  <q-card flat bordered class="catalog-items-card q-pa-none costing-items-surface shadow-1">
-    <!-- Quantity filter -->
-    <div class="row items-center justify-between q-px-md q-py-sm bg-grey-2 border-bottom">
+  <div class="catalog-items-table column no-wrap col">
+    <div class="row items-center justify-between q-px-md q-py-sm bg-grey-1 border-bottom shrink-0">
       <div class="row items-center q-gutter-x-sm">
         <span class="text-caption text-weight-bold text-grey-8">Quantity:</span>
         <q-btn-toggle
@@ -24,56 +23,108 @@
       </div>
     </div>
 
-    <!-- Table matching ProductBasedCostingItemsTable style -->
-    <q-table
-      flat
-      bordered
-      :rows="filteredRows"
-        :columns="tableColumns"
-        :visible-columns="resolvedVisibleColumns"
-        row-key="id"
-        hide-pagination
-        :pagination="{ rowsPerPage: 0 }"
-        :style="{ height: 'clamp(360px, calc(100vh - 300px), 78vh)' }"
-        :table-style="{ maxHeight: '100%' }"
-        class="costing-q-table"
-      >
-        <!-- Custom Header Cell Slot with Product Based Costing Header Styling -->
-        <template #header-cell="props">
-          <q-th
-            :props="props"
-            :class="[getHeaderSectionClass(props.col.name), getHeaderAlignClass(props.col)]"
-            class="text-weight-bold font-mono text-caption catalog-table-header"
-          >
-            <span class="header-label-wrap">{{ formatTableHeaderLabel(props.col.name, props.col.label) }}</span>
-          </q-th>
-        </template>
-
-        <!-- Desktop Body Row Slot -->
-        <template #body="slotProps">
-          <q-tr :props="slotProps" class="catalog-row-hover">
+    <div
+      ref="tableScrollContainerRef"
+      class="col overflow-auto hide-native-scrollbar catalog-table-scroll"
+      @scroll="onTableScroll"
+    >
+      <table class="pbc-v2-markup-table bg-white" style="min-width: 1400px; width: 100%">
+        <thead>
+          <tr class="bg-grey-2 text-grey-9 text-weight-bold catalog-table-header">
+            <th v-if="isColVisible('sl')" class="text-center sticky-col-2 q-pa-none" style="width: 40px; min-width: 40px">SL</th>
+            <th v-if="isColVisible('image')" class="text-center pbc-image-col" style="width: 0.85in; min-width: 0.85in">Image</th>
+            <th v-if="isColVisible('name')" class="text-left" style="min-width: 180px; width: 180px">Name</th>
+            <th v-if="isColVisible('brand')" class="text-center" style="width: 90px; min-width: 90px">Brand</th>
+            <th v-if="isColVisible('note')" class="text-center" style="width: 110px; min-width: 110px">Note</th>
+            <th v-if="isColVisible('code_barcode_id')" class="text-left" style="width: 130px; min-width: 130px">Codes</th>
+            <th v-if="isColVisible('qty_customer')" class="text-center bw-ops-col-tint--qty" style="width: 72px; min-width: 72px">
+              <span class="header-label-wrap">{{ formatTableHeaderLabel('qty_customer', 'Qty') }}</span>
+            </th>
+            <th v-if="isColVisible('purchase_price_unit')" class="text-center bw-ops-col-tint--price" style="width: 88px; min-width: 88px">
+              <span class="header-label-wrap">{{ formatTableHeaderLabel('purchase_price_unit', 'Price') }}</span>
+            </th>
+            <th v-if="isColVisible('purchase_price_total')" class="text-center bw-ops-col-tint--price" style="width: 88px; min-width: 88px">
+              <span class="header-label-wrap">{{ formatTableHeaderLabel('purchase_price_total', 'Total') }}</span>
+            </th>
+            <th v-if="isColVisible('product_weight_gm')" class="text-center bw-ops-col-tint--weight" style="width: 88px; min-width: 88px">
+              <span class="header-label-wrap">{{ formatTableHeaderLabel('product_weight_gm', 'Product Wt') }}</span>
+            </th>
+            <th v-if="isColVisible('package_weight_gm')" class="text-center bw-ops-col-tint--weight" style="width: 88px; min-width: 88px">
+              <span class="header-label-wrap">{{ formatTableHeaderLabel('package_weight_gm', 'Pkg Wt') }}</span>
+            </th>
+            <th v-if="isColVisible('total_weight_gm')" class="text-center bw-ops-col-tint--weight" style="width: 88px; min-width: 88px">
+              <span class="header-label-wrap">{{ formatTableHeaderLabel('total_weight_gm', 'Total Wt') }}</span>
+            </th>
+            <th v-if="isColVisible('cargo_rate')" class="text-center" style="width: 88px; min-width: 88px">
+              <span class="header-label-wrap">{{ formatTableHeaderLabel('cargo_rate', 'Cargo') }}</span>
+            </th>
+            <th v-if="isColVisible('cargo_cost_unit_purchase')" class="text-center" style="width: 88px; min-width: 88px">
+              <span class="header-label-wrap">{{ formatTableHeaderLabel('cargo_cost_unit_purchase', 'Cargo Cost') }}</span>
+            </th>
+            <th v-if="isColVisible('landed_cost_unit_purchase')" class="text-center bw-ops-col-tint--cost" style="width: 88px; min-width: 88px">
+              <span class="header-label-wrap">{{ formatTableHeaderLabel('landed_cost_unit_purchase', 'Cost') }}</span>
+            </th>
+            <th v-if="isColVisible('landed_cost_row_purchase')" class="text-center bw-ops-col-tint--cost" style="width: 88px; min-width: 88px">
+              <span class="header-label-wrap">{{ formatTableHeaderLabel('landed_cost_row_purchase', 'Row') }}</span>
+            </th>
+            <th v-if="isColVisible('landed_cost_unit_sell')" class="text-center bw-ops-col-tint--cost" style="width: 88px; min-width: 88px">
+              <span class="header-label-wrap">{{ formatTableHeaderLabel('landed_cost_unit_sell', 'Cost') }}</span>
+            </th>
+            <th v-if="isColVisible('landed_cost_row_sell')" class="text-center bw-ops-col-tint--cost" style="width: 88px; min-width: 88px">
+              <span class="header-label-wrap">{{ formatTableHeaderLabel('landed_cost_row_sell', 'Row') }}</span>
+            </th>
+            <th v-if="isColVisible('first_offer_unit')" class="text-center bw-ops-col-tint--price" style="width: 110px; min-width: 110px">
+              <span class="header-label-wrap">{{ formatTableHeaderLabel('first_offer_unit', '1st Offer') }}</span>
+            </th>
+            <th v-if="isColVisible('first_offer_row')" class="text-center bw-ops-col-tint--price" style="width: 88px; min-width: 88px">
+              <span class="header-label-wrap">{{ formatTableHeaderLabel('first_offer_row', 'Row') }}</span>
+            </th>
+            <th v-if="isColVisible('first_offer_margin')" class="text-center" style="width: 88px; min-width: 88px">
+              <span class="header-label-wrap">{{ formatTableHeaderLabel('first_offer_margin', 'Margin') }}</span>
+            </th>
+            <th v-if="isColVisible('counter_offer_unit')" class="text-center bw-ops-col-tint--price" style="width: 110px; min-width: 110px">
+              <span class="header-label-wrap">{{ formatTableHeaderLabel('counter_offer_unit', 'Counter') }}</span>
+            </th>
+            <th v-if="isColVisible('counter_offer_row')" class="text-center bw-ops-col-tint--price" style="width: 88px; min-width: 88px">
+              <span class="header-label-wrap">{{ formatTableHeaderLabel('counter_offer_row', 'Row') }}</span>
+            </th>
+            <th v-if="isColVisible('counter_offer_margin')" class="text-center" style="width: 88px; min-width: 88px">
+              <span class="header-label-wrap">{{ formatTableHeaderLabel('counter_offer_margin', 'Margin') }}</span>
+            </th>
+            <th v-if="isColVisible('final_offer_unit')" class="text-center bw-ops-col-tint--price" style="width: 110px; min-width: 110px">
+              <span class="header-label-wrap">{{ formatTableHeaderLabel('final_offer_unit', 'Final') }}</span>
+            </th>
+            <th v-if="isColVisible('final_offer_row')" class="text-center bw-ops-col-tint--price" style="width: 88px; min-width: 88px">
+              <span class="header-label-wrap">{{ formatTableHeaderLabel('final_offer_row', 'Row') }}</span>
+            </th>
+            <th v-if="isColVisible('final_offer_margin')" class="text-center" style="width: 88px; min-width: 88px">
+              <span class="header-label-wrap">{{ formatTableHeaderLabel('final_offer_margin', 'Margin') }}</span>
+            </th>
+            <th v-if="isColVisible('status')" class="text-center" style="width: 100px; min-width: 100px">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(row, rowIndex) in filteredRows" :key="row.id" class="pbc-row">
             <!-- 1. SL -->
-            <q-td v-if="isColVisible('sl')" key="sl" :props="slotProps" class="sec-info text-center text-weight-bold">
-              {{ slotProps.rowIndex + 1 }}
-            </q-td>
+            <td v-if="isColVisible('sl')" class="text-center text-weight-bold sticky-col-2 font-mono" style="width: 40px; min-width: 40px">
+              {{ rowIndex + 1 }}
+            </td>
 
             <!-- 2. Image (1 Inch = 96px x 96px) -->
-            <q-td v-if="isColVisible('image')" key="image" :props="slotProps" class="sec-info text-center">
-              <div class="inch-image-wrapper">
-                <SmartImage
-                  :src="slotProps.row.image_url"
-                  :alt="slotProps.row.name || 'Product image'"
-                  img-class="inch-image"
-                  fallback-class="inch-image-placeholder"
-                />
-              </div>
-            </q-td>
+            <td v-if="isColVisible('image')" class="text-center pbc-image-cell" style="width: 0.85in; min-width: 0.85in">
+              <SmartImage
+                :src="row.image_url"
+                :alt="row.name || 'Product image'"
+                img-class="pbc-row-img"
+                fallback-class="pbc-row-img-placeholder"
+              />
+            </td>
 
             <!-- 3. Name (Wrapped) -->
-            <q-td v-if="isColVisible('name')" key="name" :props="slotProps" class="sec-info col-name-wrap text-left">
+            <td v-if="isColVisible('name')" class="col-name-wrap text-left" style="min-width: 180px; width: 180px">
               <div class="name-cell-wrap row items-start no-wrap q-gutter-x-xs">
                 <div class="col name-cell-text text-weight-bold text-grey-9 text-body2">
-                  {{ slotProps.row.name }}
+                  {{ row.name }}
                 </div>
                 <q-btn
                   flat
@@ -83,36 +134,36 @@
                   size="xs"
                   color="grey-7"
                   class="col-auto name-copy-btn"
-                  @click.stop="handleCopy(slotProps.row.name, 'Name')"
+                  @click.stop="handleCopy(row.name, 'Name')"
                 >
                   <q-tooltip>Copy Item Name</q-tooltip>
                 </q-btn>
               </div>
-            </q-td>
+            </td>
 
             <!-- 4. Brand -->
-            <q-td v-if="isColVisible('brand')" key="brand" :props="slotProps" class="sec-info text-center col-brand">
+            <td v-if="isColVisible('brand')" class="text-center col-brand">
               <div class="brand-cell">
                 <q-badge outline color="blue-grey-8" class="text-caption font-mono">
-                  {{ slotProps.row.brand || '—' }}
+                  {{ row.brand || '—' }}
                 </q-badge>
               </div>
-            </q-td>
+            </td>
 
             <!-- 5. Note -->
-            <q-td v-if="isColVisible('note')" key="note" :props="slotProps" class="sec-info text-caption text-grey-7 text-center col-info-meta">
-              {{ slotProps.row.note || '—' }}
-            </q-td>
+            <td v-if="isColVisible('note')" class="text-caption text-grey-7 text-center col-info-meta">
+              {{ row.note || '—' }}
+            </td>
 
             <!-- 6. Code / Barcode / Product ID -->
-            <q-td v-if="isColVisible('code_barcode_id')" key="code_barcode_id" :props="slotProps" class="sec-info text-center col-code-barcode">
+            <td v-if="isColVisible('code_barcode_id')" class="col-code-barcode">
               <div class="column q-gutter-y-2xs font-mono text-caption items-center">
                 <div
-                  v-if="slotProps.row.barcode"
+                  v-if="row.barcode"
                   class="row items-center justify-center no-wrap q-gutter-x-xs"
                 >
                   <span class="text-weight-medium text-grey-9">
-                    <q-icon name="ph ph-barcode" size="14px" /> {{ slotProps.row.barcode }}
+                    <q-icon name="ph ph-barcode" size="14px" /> {{ row.barcode }}
                   </span>
                   <q-btn
                     flat
@@ -122,16 +173,16 @@
                     size="xs"
                     color="grey-7"
                     class="name-copy-btn"
-                    @click.stop="handleCopy(slotProps.row.barcode, 'Barcode')"
+                    @click.stop="handleCopy(row.barcode, 'Barcode')"
                   >
                     <q-tooltip>Copy Barcode</q-tooltip>
                   </q-btn>
                 </div>
                 <div
-                  v-if="slotProps.row.sku"
+                  v-if="row.sku"
                   class="row items-center justify-center no-wrap q-gutter-x-xs"
                 >
-                  <span class="text-grey-7">SKU: {{ slotProps.row.sku }}</span>
+                  <span class="text-grey-7">SKU: {{ row.sku }}</span>
                   <q-btn
                     flat
                     round
@@ -140,16 +191,16 @@
                     size="xs"
                     color="grey-7"
                     class="name-copy-btn"
-                    @click.stop="handleCopy(slotProps.row.sku, 'SKU')"
+                    @click.stop="handleCopy(row.sku, 'SKU')"
                   >
                     <q-tooltip>Copy SKU</q-tooltip>
                   </q-btn>
                 </div>
                 <div
-                  v-if="slotProps.row.product_id"
+                  v-if="row.product_id"
                   class="row items-center justify-center no-wrap q-gutter-x-xs"
                 >
-                  <span class="text-grey-6 text-2xs">ID: #{{ slotProps.row.product_id }}</span>
+                  <span class="text-grey-6 text-2xs">ID: #{{ row.product_id }}</span>
                   <q-btn
                     flat
                     round
@@ -158,137 +209,143 @@
                     size="xs"
                     color="grey-7"
                     class="name-copy-btn"
-                    @click.stop="handleCopy(String(slotProps.row.product_id), 'Product ID')"
+                    @click.stop="handleCopy(String(row.product_id), 'Product ID')"
                   >
                     <q-tooltip>Copy Product ID</q-tooltip>
                   </q-btn>
                 </div>
               </div>
-            </q-td>
+            </td>
 
             <!-- 7. Qty (Customer) -->
-            <q-td v-if="isColVisible('qty_customer')" key="qty_customer" :props="slotProps" class="sec-qty text-center text-weight-bold text-amber-10 font-mono">
-              {{ slotProps.row.quantity }}
-            </q-td>
+            <td v-if="isColVisible('qty_customer')" class="text-center text-weight-bold font-mono bw-ops-col-tint--qty" style="width: 72px; min-width: 72px">
+              {{ row.quantity }}
+            </td>
 
             <!-- 8. Purchase Price Unit -->
-            <q-td v-if="isColVisible('purchase_price_unit')" key="purchase_price_unit" :props="slotProps" class="sec-purchase text-center bg-purchase-accent" :class="{ 'editable-cell col-editable-money': !isFirstOfferLocked }">
+            <td v-if="isColVisible('purchase_price_unit')" class="text-center bw-ops-col-tint--price" style="width: 88px; min-width: 88px">
               <span
                 v-if="isFirstOfferLocked"
                 class="font-mono text-weight-bold text-green-10"
               >
-                {{ formatAmount(slotProps.row.cost_price_amount || 0) }}
+                {{ formatAmount(row.cost_price_amount || 0) }}
               </span>
               <q-input
                 v-else
-                v-model.number="slotProps.row.cost_price_amount"
+                v-model.number="row.cost_price_amount"
                 type="number"
                 dense
-                borderless
+                outlined
+                hide-bottom-space
                 input-class="text-center font-mono text-weight-bold text-green-10"
-                class="cell-input"
+                class="inline-edit-input excel-cell-input"
+                style="max-width: 80px"
                 min="0"
                 step="0.01"
-                @blur="onItemCostBlur(slotProps.row)"
+                @blur="onItemCostBlur(row)"
                 @keyup.enter="blurInput"
               />
-            </q-td>
+            </td>
 
             <!-- 11. Total Purchase Price -->
-            <q-td v-if="isColVisible('purchase_price_total')" key="purchase_price_total" :props="slotProps" class="sec-purchase text-center font-mono text-weight-bold text-green-9 bg-purchase-accent">
-              {{ formatAmount((slotProps.row.cost_price_amount || 0) * slotProps.row.quantity) }}
-            </q-td>
+            <td v-if="isColVisible('purchase_price_total')" class="text-center font-mono text-weight-bold text-grey-9 bw-ops-col-tint--price" style="width: 88px; min-width: 88px">
+              {{ formatAmount((row.cost_price_amount || 0) * row.quantity) }}
+            </td>
 
             <!-- 12. Product Weight (gm) -->
-            <q-td v-if="isColVisible('product_weight_gm')" key="product_weight_gm" :props="slotProps" class="sec-weight text-center font-mono" :class="{ 'editable-cell col-editable-weight': !isStaffReadOnly }">
+            <td v-if="isColVisible('product_weight_gm')" class="text-center font-mono bw-ops-col-tint--weight" style="width: 88px; min-width: 88px">
               <span v-if="isStaffReadOnly" class="font-mono">
-                {{ Math.round(slotProps.row.product_weight_gm ?? getProductWeightGm(slotProps.row)) }}
+                {{ Math.round(row.product_weight_gm ?? getProductWeightGm(row)) }}
               </span>
               <q-input
                 v-else
-                :model-value="slotProps.row.product_weight_gm ?? getProductWeightGm(slotProps.row)"
+                :model-value="row.product_weight_gm ?? getProductWeightGm(row)"
                 type="number"
                 dense
-                borderless
+                outlined
+                hide-bottom-space
                 input-class="text-center font-mono"
-                class="cell-input"
+                class="inline-edit-input excel-cell-input"
+                style="max-width: 80px"
                 min="0"
                 step="1"
-                @update:model-value="(val) => { slotProps.row.product_weight_gm = Number(val) || 0; }"
-                @focus="clearZeroOnFocus(slotProps.row, 'product_weight_gm')"
-                @blur="onItemProductWeightBlur(slotProps.row)"
+                @update:model-value="(val) => { row.product_weight_gm = Number(val) || 0; }"
+                @focus="clearZeroOnFocus(row, 'product_weight_gm')"
+                @blur="onItemProductWeightBlur(row)"
                 @keyup.enter="blurInput"
               />
-            </q-td>
+            </td>
 
             <!-- 13. Package Weight (gm) -->
-            <q-td v-if="isColVisible('package_weight_gm')" key="package_weight_gm" :props="slotProps" class="sec-weight text-center font-mono" :class="{ 'editable-cell col-editable-weight': !isStaffReadOnly }">
+            <td v-if="isColVisible('package_weight_gm')" class="text-center font-mono bw-ops-col-tint--weight" style="width: 88px; min-width: 88px">
               <span v-if="isStaffReadOnly" class="font-mono">
-                {{ Math.round(slotProps.row.package_weight_gm ?? getPackageWeightGm(slotProps.row)) }}
+                {{ Math.round(row.package_weight_gm ?? getPackageWeightGm(row)) }}
               </span>
               <q-input
                 v-else
-                :model-value="slotProps.row.package_weight_gm ?? getPackageWeightGm(slotProps.row)"
+                :model-value="row.package_weight_gm ?? getPackageWeightGm(row)"
                 type="number"
                 dense
-                borderless
+                outlined
+                hide-bottom-space
                 input-class="text-center font-mono"
-                class="cell-input"
+                class="inline-edit-input excel-cell-input"
+                style="max-width: 80px"
                 min="0"
                 step="1"
-                @update:model-value="(val) => { slotProps.row.package_weight_gm = Number(val) || 0; }"
-                @focus="clearZeroOnFocus(slotProps.row, 'package_weight_gm')"
-                @blur="onItemPackageWeightBlur(slotProps.row)"
+                @update:model-value="(val) => { row.package_weight_gm = Number(val) || 0; }"
+                @focus="clearZeroOnFocus(row, 'package_weight_gm')"
+                @blur="onItemPackageWeightBlur(row)"
                 @keyup.enter="blurInput"
               />
-            </q-td>
+            </td>
 
             <!-- 14. Total Weight (gm) -->
-            <q-td v-if="isColVisible('total_weight_gm')" key="total_weight_gm" :props="slotProps" class="sec-weight text-center font-mono">
-              {{ Math.round(getTotalWeightGm(slotProps.row)) }} g
-            </q-td>
+            <td v-if="isColVisible('total_weight_gm')" class="text-center font-mono text-caption text-grey-9 bw-ops-col-tint--weight" style="width: 88px; min-width: 88px">
+              {{ Math.round(getTotalWeightGm(row)) }} g
+            </td>
 
             <!-- 15. Cargo Rate -->
-            <q-td v-if="isColVisible('cargo_rate')" key="cargo_rate" :props="slotProps" class="sec-purchase text-center font-mono text-grey-8">
+            <td v-if="isColVisible('cargo_rate')" class="text-center font-mono text-grey-8 text-caption" style="width: 88px; min-width: 88px">
               {{ cargoRate.toFixed(2) }} /kg
-            </q-td>
+            </td>
 
             <!-- 16. Cargo Cost (Purchase Currency) / Unit -->
-            <q-td v-if="isColVisible('cargo_cost_unit_purchase')" key="cargo_cost_unit_purchase" :props="slotProps" class="sec-purchase text-center font-mono text-weight-medium">
-              {{ formatAmount(getCargoCostUnitPurchase(slotProps.row)) }}
-            </q-td>
+            <td v-if="isColVisible('cargo_cost_unit_purchase')" class="text-center font-mono text-weight-medium text-caption" style="width: 88px; min-width: 88px">
+              {{ formatAmount(getCargoCostUnitPurchase(row)) }}
+            </td>
 
             <!-- 17. Total Cost (Purchase Cost) / Unit -->
-            <q-td v-if="isColVisible('landed_cost_unit_purchase')" key="landed_cost_unit_purchase" :props="slotProps" class="sec-landed text-center font-mono text-weight-bold text-teal-10">
-              {{ formatAmount(getLandedCostUnitPurchase(slotProps.row)) }}
-            </q-td>
+            <td v-if="isColVisible('landed_cost_unit_purchase')" class="text-center font-mono text-weight-bold text-grey-9 bw-ops-col-tint--cost" style="width: 88px; min-width: 88px">
+              {{ formatAmount(getLandedCostUnitPurchase(row)) }}
+            </td>
 
             <!-- 18. Row Total Cost (Purchase) -->
-            <q-td v-if="isColVisible('landed_cost_row_purchase')" key="landed_cost_row_purchase" :props="slotProps" class="sec-landed text-center font-mono text-weight-bold text-teal-9">
-              {{ formatAmount(getLandedCostRowPurchase(slotProps.row)) }}
-            </q-td>
+            <td v-if="isColVisible('landed_cost_row_purchase')" class="text-center font-mono text-weight-bold text-grey-9 bw-ops-col-tint--cost" style="width: 88px; min-width: 88px">
+              {{ formatAmount(getLandedCostRowPurchase(row)) }}
+            </td>
 
             <!-- 19. Cost (Selling Currency) / Unit -->
-            <q-td v-if="isColVisible('landed_cost_unit_sell')" key="landed_cost_unit_sell" :props="slotProps" class="sec-landed text-center font-mono text-weight-bold text-teal-10">
-              {{ formatAmount(getLandedCostUnitSell(slotProps.row)) }}
-            </q-td>
+            <td v-if="isColVisible('landed_cost_unit_sell')" class="text-center font-mono text-weight-bold text-grey-9 bw-ops-col-tint--cost" style="width: 88px; min-width: 88px">
+              {{ formatAmount(getLandedCostUnitSell(row)) }}
+            </td>
 
             <!-- 20. Row Total Cost (Selling Currency) -->
-            <q-td v-if="isColVisible('landed_cost_row_sell')" key="landed_cost_row_sell" :props="slotProps" class="sec-landed text-center font-mono text-weight-bold text-teal-9">
-              {{ formatAmount(getLandedCostRowSell(slotProps.row)) }}
-            </q-td>
+            <td v-if="isColVisible('landed_cost_row_sell')" class="text-center font-mono text-weight-bold text-grey-9 bw-ops-col-tint--cost" style="width: 88px; min-width: 88px">
+              {{ formatAmount(getLandedCostRowSell(row)) }}
+            </td>
 
             <!-- 21. First Offer Unit (Selling Currency) -->
-            <q-td v-if="isColVisible('first_offer_unit')" key="first_offer_unit" :props="slotProps" class="sec-first-offer text-center bg-offer" :class="{ 'editable-cell col-editable-offer': !isFirstOfferLocked }">
+            <td v-if="isColVisible('first_offer_unit')" class="text-center bw-ops-col-tint--price" style="width: 110px; min-width: 110px">
               <span
                 v-if="isFirstOfferLocked"
                 class="text-deep-purple-9 text-weight-bold font-mono"
               >
-                {{ formatAmount(getFirstOfferUnitAmount(slotProps.row)) }}
+                {{ formatAmount(getFirstOfferUnitAmount(row)) }}
               </span>
               <div v-else class="row items-center justify-center no-wrap q-gutter-x-xs">
                 <q-icon
-                  v-if="slotProps.row.is_first_offer_manual"
+                  v-if="row.is_first_offer_manual"
                   name="ph ph-lock-key"
                   color="amber-8"
                   size="16px"
@@ -298,21 +355,23 @@
                 </q-icon>
 
                 <q-input
-                  :model-value="getFirstOfferUnitAmount(slotProps.row)"
+                  :model-value="getFirstOfferUnitAmount(row)"
                   type="number"
                   dense
-                  borderless
+                  outlined
+                hide-bottom-space
                   input-class="text-center text-deep-purple-9 text-weight-bold font-mono"
-                  class="cell-input"
+                  class="inline-edit-input excel-cell-input"
+                  style="max-width: 96px"
                   min="0"
                   step="1"
-                  @update:model-value="(val) => onFirstOfferManualUpdate(slotProps.row, val)"
-                  @blur="onFirstOfferBlur(slotProps.row)"
+                  @update:model-value="(val) => onFirstOfferManualUpdate(row, val)"
+                  @blur="onFirstOfferBlur(row)"
                   @keyup.enter="blurInput"
                 />
 
                 <q-btn
-                  v-if="slotProps.row.is_first_offer_manual"
+                  v-if="row.is_first_offer_manual"
                   flat
                   round
                   dense
@@ -320,49 +379,49 @@
                   icon="ph ph-arrows-clockwise"
                   color="grey-7"
                   class="q-ml-xs"
-                  @click.stop="onUnlockFirstOffer(slotProps.row)"
+                  @click.stop="onUnlockFirstOffer(row)"
                 >
                   <q-tooltip>Unlock & reset to auto price</q-tooltip>
                 </q-btn>
               </div>
-            </q-td>
+            </td>
 
             <!-- 22. First Offer Row Total -->
-            <q-td v-if="isColVisible('first_offer_row')" key="first_offer_row" :props="slotProps" class="sec-first-offer text-center font-mono text-weight-bold text-deep-purple-8 bg-offer">
-              {{ formatAmount(getFirstOfferUnitAmount(slotProps.row) * slotProps.row.quantity) }}
-            </q-td>
+            <td v-if="isColVisible('first_offer_row')" class="text-center font-mono text-weight-bold text-grey-9 bw-ops-col-tint--price" style="width: 88px; min-width: 88px">
+              {{ formatAmount(getFirstOfferUnitAmount(row) * row.quantity) }}
+            </td>
 
             <!-- 23. First Offer Margin % -->
-            <q-td v-if="isColVisible('first_offer_margin')" key="first_offer_margin" :props="slotProps" class="sec-first-offer text-center font-mono text-weight-bold bg-offer" :class="getMarginColorClass(getFirstOfferMargin(slotProps.row))">
-              {{ getFirstOfferMargin(slotProps.row).toFixed(1) }}%
-            </q-td>
+            <td v-if="isColVisible('first_offer_margin')" class="text-center font-mono text-weight-bold" style="width: 88px; min-width: 88px" :class="getMarginColorClass(getFirstOfferMargin(row))">
+              {{ getFirstOfferMargin(row).toFixed(1) }}%
+            </td>
 
             <!-- 24. Counter Offer Unit -->
-            <q-td v-if="isColVisible('counter_offer_unit')" key="counter_offer_unit" :props="slotProps" class="sec-counter-offer text-center font-mono text-weight-bold text-orange-9">
-              {{ slotProps.row.customer_offer_amount != null ? formatAmount(slotProps.row.customer_offer_amount) : '—' }}
-            </q-td>
+            <td v-if="isColVisible('counter_offer_unit')" class="text-center font-mono text-weight-bold text-orange-9 bw-ops-col-tint--price" style="width: 110px; min-width: 110px">
+              {{ row.customer_offer_amount != null ? formatAmount(row.customer_offer_amount) : '—' }}
+            </td>
 
             <!-- 25. Counter Offer Row Total -->
-            <q-td v-if="isColVisible('counter_offer_row')" key="counter_offer_row" :props="slotProps" class="sec-counter-offer text-center font-mono text-weight-bold text-orange-8">
-              {{ slotProps.row.customer_offer_amount != null ? formatAmount(slotProps.row.customer_offer_amount * slotProps.row.quantity) : '—' }}
-            </q-td>
+            <td v-if="isColVisible('counter_offer_row')" class="text-center font-mono text-weight-bold text-orange-8 bw-ops-col-tint--price" style="width: 88px; min-width: 88px">
+              {{ row.customer_offer_amount != null ? formatAmount(row.customer_offer_amount * row.quantity) : '—' }}
+            </td>
 
             <!-- 26. Counter Offer Margin % -->
-            <q-td v-if="isColVisible('counter_offer_margin')" key="counter_offer_margin" :props="slotProps" class="sec-counter-offer text-center font-mono text-weight-bold" :class="getMarginColorClass(getCounterOfferMargin(slotProps.row))">
-              {{ slotProps.row.customer_offer_amount != null ? `${getCounterOfferMargin(slotProps.row).toFixed(1)}%` : '—' }}
-            </q-td>
+            <td v-if="isColVisible('counter_offer_margin')" class="text-center font-mono text-weight-bold" style="width: 88px; min-width: 88px" :class="getMarginColorClass(getCounterOfferMargin(row))">
+              {{ row.customer_offer_amount != null ? `${getCounterOfferMargin(row).toFixed(1)}%` : '—' }}
+            </td>
 
             <!-- 27. Final Offer Unit -->
-            <q-td v-if="isColVisible('final_offer_unit')" key="final_offer_unit" :props="slotProps" class="sec-final-offer text-center bg-final-offer" :class="{ 'editable-cell col-editable-offer': isFinalOfferEditable }">
+            <td v-if="isColVisible('final_offer_unit')" class="text-center bw-ops-col-tint--price" style="width: 110px; min-width: 110px">
               <span
                 v-if="!isFinalOfferEditable"
                 class="text-green-10 text-weight-bold font-mono"
               >
-                {{ formatAmount(getFinalOfferUnitAmount(slotProps.row)) }}
+                {{ formatAmount(getFinalOfferUnitAmount(row)) }}
               </span>
               <div v-else class="row items-center justify-center no-wrap q-gutter-x-xs">
                 <q-icon
-                  v-if="slotProps.row.is_final_offer_manual"
+                  v-if="row.is_final_offer_manual"
                   name="ph ph-lock-key"
                   color="amber-8"
                   size="16px"
@@ -372,21 +431,23 @@
                 </q-icon>
 
                 <q-input
-                  :model-value="getFinalOfferUnitAmount(slotProps.row)"
+                  :model-value="getFinalOfferUnitAmount(row)"
                   type="number"
                   dense
-                  borderless
+                  outlined
+                hide-bottom-space
                   input-class="text-center text-green-10 text-weight-bold font-mono"
-                  class="cell-input"
+                  class="inline-edit-input excel-cell-input"
+                  style="max-width: 96px"
                   min="0"
                   step="1"
-                  @update:model-value="(val) => { slotProps.row.final_price_amount = Number(val) || 0; }"
-                  @blur="onFinalOfferBlur(slotProps.row)"
+                  @update:model-value="(val) => { row.final_price_amount = Number(val) || 0; }"
+                  @blur="onFinalOfferBlur(row)"
                   @keyup.enter="blurInput"
                 />
 
                 <q-btn
-                  v-if="slotProps.row.is_final_offer_manual"
+                  v-if="row.is_final_offer_manual"
                   flat
                   round
                   dense
@@ -394,54 +455,43 @@
                   icon="ph ph-arrows-clockwise"
                   color="grey-7"
                   class="q-ml-xs"
-                  @click.stop="onUnlockFinalOffer(slotProps.row)"
+                  @click.stop="onUnlockFinalOffer(row)"
                 >
                   <q-tooltip>Unlock & reset to auto price</q-tooltip>
                 </q-btn>
               </div>
-            </q-td>
+            </td>
 
             <!-- 28. Final Offer Row Total -->
-            <q-td v-if="isColVisible('final_offer_row')" key="final_offer_row" :props="slotProps" class="sec-final-offer text-center font-mono text-weight-bold text-green-9 bg-final-offer">
-              {{ formatAmount(getFinalOfferUnitAmount(slotProps.row) * slotProps.row.quantity) }}
-            </q-td>
+            <td v-if="isColVisible('final_offer_row')" class="text-center font-mono text-weight-bold text-positive bw-ops-col-tint--price" style="width: 88px; min-width: 88px">
+              {{ formatAmount(getFinalOfferUnitAmount(row) * row.quantity) }}
+            </td>
 
             <!-- 29. Final Offer Margin % -->
-            <q-td v-if="isColVisible('final_offer_margin')" key="final_offer_margin" :props="slotProps" class="sec-final-offer text-center font-mono text-weight-bold bg-final-offer" :class="getMarginColorClass(getFinalOfferMargin(slotProps.row))">
-              {{ `${getFinalOfferMargin(slotProps.row).toFixed(1)}%` }}
-            </q-td>
+            <td v-if="isColVisible('final_offer_margin')" class="text-center font-mono text-weight-bold" style="width: 88px; min-width: 88px" :class="getMarginColorClass(getFinalOfferMargin(row))">
+              {{ `${getFinalOfferMargin(row).toFixed(1)}%` }}
+            </td>
 
             <!-- 30. Status -->
-            <q-td v-if="isColVisible('status')" key="status" :props="slotProps" class="sec-action text-center">
-              <q-chip dense outline :color="getItemStatusColor(slotProps.row)" class="text-caption text-weight-bold status-chip">
-                {{ getItemStatusLabel(slotProps.row) }}
+            <td v-if="isColVisible('status')" class="text-center" style="width: 100px; min-width: 100px">
+              <q-chip dense outline :color="getItemStatusColor(row)" class="text-caption text-weight-bold status-chip">
+                {{ getItemStatusLabel(row) }}
               </q-chip>
-            </q-td>
+            </td>
 
-          </q-tr>
-        </template>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
-      </q-table>
-
-    <CatalogOrderItemsSummaryCards
-      v-if="items.length"
-      :item-count="items.length"
-      :buy-currency-symbol="buyCurrency"
-      :sell-currency-symbol="sellCurrency"
-      :conversion-rate="FX"
-      :cargo-rate="cargoRate"
-      :totals="summaryTotals"
-    />
-
-  </q-card>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { useQuasar, copyToClipboard, type QTableColumn } from 'quasar';
+import { useQuasar, copyToClipboard } from 'quasar';
 import SmartImage from 'src/components/SmartImage.vue';
 import type { ShopOrder, ShopOrderItem } from '../types';
-import CatalogOrderItemsSummaryCards from './CatalogOrderItemsSummaryCards.vue';
 import {
   getProductWeightGm as catalogGetProductWeightGm,
   getPackageWeightGm as catalogGetPackageWeightGm,
@@ -470,6 +520,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'open-column-selector'): void;
   (e: 'update:visible-columns', columns: string[]): void;
+  (e: 'table-scroll'): void;
   (
     e: 'update-item',
     payload: {
@@ -502,89 +553,42 @@ function emitItemUpdate(item: ShopOrderItem, payload: Record<string, any>) {
 const buyCurrency = computed(() => props.buyCurrencySymbol || '£');
 const sellCurrency = computed(() => props.currencySymbol || '৳');
 
-// Define table columns matching ProductBasedCostingItemsTable metrics
-// Tight widths for inline editable cells
-const COL_WIDTH = {
-  sl: 44,
-  image: 96,
-  name: 230,
-  nameMax: 260,
-  infoMeta: 150,
-  codeBarcode: 190,
-  qty: 101,
-  money: 113,
-  weight: 109,
-  offer: 133,
-  numeric: 118,
-  status: 120,
-  offerInput: 97,
-} as const;
+const ALL_COLUMN_NAMES = [
+  'sl',
+  'image',
+  'name',
+  'brand',
+  'note',
+  'code_barcode_id',
+  'qty_customer',
+  'purchase_price_unit',
+  'purchase_price_total',
+  'product_weight_gm',
+  'package_weight_gm',
+  'total_weight_gm',
+  'cargo_rate',
+  'cargo_cost_unit_purchase',
+  'landed_cost_unit_purchase',
+  'landed_cost_row_purchase',
+  'landed_cost_unit_sell',
+  'landed_cost_row_sell',
+  'first_offer_unit',
+  'first_offer_row',
+  'first_offer_margin',
+  'counter_offer_unit',
+  'counter_offer_row',
+  'counter_offer_margin',
+  'final_offer_unit',
+  'final_offer_row',
+  'final_offer_margin',
+  'status',
+] as const;
 
-const colWidthStyle = (px: number) => `width: ${px}px; min-width: ${px}px; max-width: ${px}px;`;
+const tableScrollContainerRef = ref<HTMLElement | null>(null);
 
-const editableColWidths = {
-  qty: colWidthStyle(COL_WIDTH.qty),
-  money: colWidthStyle(COL_WIDTH.money),
-  weight: colWidthStyle(COL_WIDTH.weight),
-  offer: colWidthStyle(COL_WIDTH.offer),
-} as const;
-
-const infoColWidths = colWidthStyle(COL_WIDTH.infoMeta);
-const codeBarcodeColWidths = colWidthStyle(COL_WIDTH.codeBarcode);
-const numericColWidths = colWidthStyle(COL_WIDTH.numeric);
-
-const tableColumns = computed<QTableColumn[]>(() => [
-  // 1. Basic Info Section (sec-info)
-  { name: 'sl', label: 'SL', field: 'id', align: 'center', style: colWidthStyle(COL_WIDTH.sl), headerStyle: colWidthStyle(COL_WIDTH.sl) },
-  { name: 'image', label: 'Image', field: 'image_url', align: 'center', style: colWidthStyle(COL_WIDTH.image), headerStyle: colWidthStyle(COL_WIDTH.image) },
-  {
-    name: 'name',
-    label: 'Name',
-    field: 'name',
-    align: 'left',
-    style: `width: ${COL_WIDTH.name}px; min-width: ${COL_WIDTH.name}px; max-width: ${COL_WIDTH.nameMax}px;`,
-    headerStyle: `width: ${COL_WIDTH.name}px; min-width: ${COL_WIDTH.name}px; max-width: ${COL_WIDTH.nameMax}px;`,
-  },
-  { name: 'brand', label: 'Brand', field: 'brand', align: 'center', style: infoColWidths, headerStyle: infoColWidths },
-  { name: 'note', label: 'Note', field: 'note', align: 'center', style: infoColWidths, headerStyle: infoColWidths },
-  { name: 'code_barcode_id', label: 'Barcode / Code / ID', field: 'barcode', align: 'center', style: codeBarcodeColWidths, headerStyle: codeBarcodeColWidths },
-
-  // 2. Quantities Section (sec-qty)
-  { name: 'qty_customer', label: 'Qty (Customer)', field: 'quantity', align: 'center', style: editableColWidths.qty, headerStyle: editableColWidths.qty },
-
-  // 3. Purchase & Freight Section (sec-purchase)
-  { name: 'purchase_price_unit', label: `Price (${buyCurrency.value}) / Unit`, field: 'cost_price_amount', align: 'center', style: editableColWidths.money, headerStyle: editableColWidths.money },
-  { name: 'purchase_price_total', label: `Total Purchase (${buyCurrency.value})`, field: (row) => (row.cost_price_amount || 0) * row.quantity, align: 'center', style: colWidthStyle(COL_WIDTH.money + 12), headerStyle: colWidthStyle(COL_WIDTH.money + 12) },
-  { name: 'product_weight_gm', label: 'Product Weight (gm)', field: (row) => getProductWeightGm(row), align: 'center', style: editableColWidths.weight, headerStyle: editableColWidths.weight },
-  { name: 'package_weight_gm', label: 'Package Weight (gm)', field: (row) => getPackageWeightGm(row), align: 'center', style: editableColWidths.weight, headerStyle: editableColWidths.weight },
-  { name: 'total_weight_gm', label: 'Total Weight (gm)', field: (row) => getTotalWeightGm(row), align: 'center', style: colWidthStyle(COL_WIDTH.weight), headerStyle: colWidthStyle(COL_WIDTH.weight) },
-  { name: 'cargo_rate', label: `Cargo Rate (${buyCurrency.value}/kg)`, field: () => cargoRate.value, align: 'center', style: numericColWidths, headerStyle: numericColWidths },
-  { name: 'cargo_cost_unit_purchase', label: `Cargo Cost (${buyCurrency.value}) / Unit`, field: (row) => getCargoCostUnitPurchase(row), align: 'center', style: numericColWidths, headerStyle: numericColWidths },
-
-  // 4. Landed Cost Section (sec-landed)
-  { name: 'landed_cost_unit_purchase', label: `Total Cost (${buyCurrency.value})`, field: (row) => getLandedCostUnitPurchase(row), align: 'center', style: numericColWidths, headerStyle: numericColWidths },
-  { name: 'landed_cost_row_purchase', label: `Row Total Cost (${buyCurrency.value})`, field: (row) => getLandedCostRowPurchase(row), align: 'center', style: numericColWidths, headerStyle: numericColWidths },
-  { name: 'landed_cost_unit_sell', label: `Cost (${sellCurrency.value})`, field: (row) => getLandedCostUnitSell(row), align: 'center', style: numericColWidths, headerStyle: numericColWidths },
-  { name: 'landed_cost_row_sell', label: `Row Total Cost (${sellCurrency.value})`, field: (row) => getLandedCostRowSell(row), align: 'center', style: numericColWidths, headerStyle: numericColWidths },
-
-  // 5. First Offer Section (sec-first-offer)
-  { name: 'first_offer_unit', label: `1st Offer Unit (${sellCurrency.value})`, field: (row) => getFirstOfferUnitAmount(row), align: 'center', style: editableColWidths.offer, headerStyle: editableColWidths.offer },
-  { name: 'first_offer_row', label: `Row Total 1st Offer (${sellCurrency.value})`, field: (row) => getFirstOfferUnitAmount(row) * row.quantity, align: 'center', style: numericColWidths, headerStyle: numericColWidths },
-  { name: 'first_offer_margin', label: 'Profit Margin %', field: (row) => getFirstOfferMargin(row), align: 'center', style: colWidthStyle(COL_WIDTH.qty), headerStyle: colWidthStyle(COL_WIDTH.qty) },
-
-  // 6. Counter Offer Section (sec-counter-offer)
-  { name: 'counter_offer_unit', label: `Counter Offer (${sellCurrency.value}) / Unit`, field: 'customer_offer_amount', align: 'center', style: numericColWidths, headerStyle: numericColWidths },
-  { name: 'counter_offer_row', label: `Row Total Counter (${sellCurrency.value})`, field: (row) => (row.customer_offer_amount || 0) * row.quantity, align: 'center', style: numericColWidths, headerStyle: numericColWidths },
-  { name: 'counter_offer_margin', label: 'Profit Margin %', field: (row) => getCounterOfferMargin(row), align: 'center', style: colWidthStyle(COL_WIDTH.qty), headerStyle: colWidthStyle(COL_WIDTH.qty) },
-
-  // 7. Final Offer Section (sec-final-offer)
-  { name: 'final_offer_unit', label: `Final Offer (${sellCurrency.value})`, field: 'final_price_amount', align: 'center', style: editableColWidths.offer, headerStyle: editableColWidths.offer },
-  { name: 'final_offer_row', label: `Row Total Final (${sellCurrency.value})`, field: (row) => (row.final_price_amount || 0) * row.quantity, align: 'center', style: numericColWidths, headerStyle: numericColWidths },
-  { name: 'final_offer_margin', label: 'Profit Margin %', field: (row) => getFinalOfferMargin(row), align: 'center', style: colWidthStyle(COL_WIDTH.qty), headerStyle: colWidthStyle(COL_WIDTH.qty) },
-
-  // 8. Status Section (sec-action)
-  { name: 'status', label: 'Status', field: 'negotiation_status', align: 'center', style: colWidthStyle(COL_WIDTH.status), headerStyle: colWidthStyle(COL_WIDTH.status) },
-]);
+function onTableScroll() {
+  emit('table-scroll');
+}
 
 const defaultVisibleColumns = [
   'sl',
@@ -625,7 +629,7 @@ const LEGACY_COLUMN_MAPPING: Record<string, string[]> = {
   quantity: ['qty_customer'],
 };
 
-const validColumnNames = computed(() => tableColumns.value.map((c) => c.name));
+const validColumnNames = computed(() => [...ALL_COLUMN_NAMES]);
 
 const resolvedVisibleColumns = computed<string[]>(() => {
   if (!props.visibleColumns || !props.visibleColumns.length) {
@@ -652,23 +656,6 @@ const resolvedVisibleColumns = computed<string[]>(() => {
 
 function isColVisible(colKey: string): boolean {
   return resolvedVisibleColumns.value.includes(colKey);
-}
-
-function getHeaderSectionClass(colName: string): string {
-  if (['sl', 'image', 'name', 'brand', 'note', 'code_barcode_id'].includes(colName)) return 'sec-info-hdr';
-  if (colName === 'qty_customer') return 'sec-qty-hdr';
-  if (['purchase_price_unit', 'purchase_price_total', 'cargo_rate', 'cargo_cost_unit_purchase'].includes(colName)) return 'sec-purchase-hdr';
-  if (['product_weight_gm', 'package_weight_gm', 'total_weight_gm'].includes(colName)) return 'sec-weight-hdr';
-  if (['landed_cost_unit_purchase', 'landed_cost_row_purchase', 'landed_cost_unit_sell', 'landed_cost_row_sell'].includes(colName)) return 'sec-landed-hdr';
-  if (['first_offer_unit', 'first_offer_row', 'first_offer_margin'].includes(colName)) return 'sec-first-offer-hdr';
-  if (['counter_offer_unit', 'counter_offer_row', 'counter_offer_margin'].includes(colName)) return 'sec-counter-offer-hdr';
-  if (['final_offer_unit', 'final_offer_row', 'final_offer_margin'].includes(colName)) return 'sec-final-offer-hdr';
-  return 'sec-action-hdr';
-}
-
-function getHeaderAlignClass(col: QTableColumn): string {
-  if (col.name === 'name') return 'text-left';
-  return 'text-center';
 }
 
 function formatTableHeaderLabel(colName: string, fallback: string): string {
@@ -1072,75 +1059,135 @@ function handleCopy(text: string, label: string) {
   void copyToClipboard(text);
   $q.notify({ type: 'positive', message: `Copied ${label}`, timeout: 1200 });
 }
+
+const itemCount = computed(() => props.items.length);
+
+defineExpose({
+  tableScrollContainerRef,
+  summaryTotals,
+  itemCount,
+  buyCurrency,
+  sellCurrency,
+  FX,
+  cargoRate,
+});
 </script>
 
 <style scoped>
-.catalog-items-card {
-  border-radius: 12px;
-  overflow: hidden;
+.border-bottom {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
 
-/* Product Based Costing Colors */
-:deep(.bg-purchase-accent) {
-  background-color: #e6f4ea !important;
+.border-top {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
 }
 
-:deep(.bg-offer) {
-  background-color: #f3e5f5 !important;
+.catalog-table-scroll {
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+  flex: 1 1 0%;
+  min-height: 0;
 }
 
-:deep(.bg-final-offer) {
-  background-color: #e8f5e9 !important;
+.pbc-v2-markup-table {
+  border-collapse: collapse;
 }
 
-/* 1 Inch Image Wrapper (1 inch = 96px) */
-.inch-image-wrapper {
-  width: 96px;
-  height: 96px;
-  min-width: 96px;
-  min-height: 96px;
-  margin: 0 auto;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  background: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.pbc-v2-markup-table thead tr th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  padding: 4px 6px !important;
+  font-size: 11px;
 }
 
-.inch-image {
-  width: 96px;
-  height: 96px;
-  object-fit: contain;
-}
-
-.inch-image-placeholder {
-  width: 96px;
-  height: 96px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #f1f5f9;
-  color: #94a3b8;
-}
-
-/* Table header — multi-line labels */
-:deep(.costing-q-table thead th),
-:deep(.costing-q-table tbody td) {
-  padding-left: 10px;
-  padding-right: 10px;
-}
-
-:deep(.costing-q-table thead tr) {
+.pbc-v2-markup-table tbody tr td {
+  padding: 3px 4px !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  min-height: 44px;
   height: auto;
+  vertical-align: middle;
 }
 
-:deep(.costing-q-table thead th) {
-  white-space: normal !important;
-  vertical-align: bottom;
-  padding-top: 8px;
-  padding-bottom: 8px;
+.pbc-v2-markup-table th.bw-ops-col-tint--price,
+.pbc-v2-markup-table td.bw-ops-col-tint--price {
+  background-color: #daf3e4 !important;
+  box-shadow: inset 2px 0 0 #059669;
+}
+
+.pbc-v2-markup-table th.bw-ops-col-tint--cost,
+.pbc-v2-markup-table td.bw-ops-col-tint--cost {
+  background-color: #ffe8d1 !important;
+  box-shadow: inset 2px 0 0 #ea580c;
+}
+
+.pbc-v2-markup-table th.bw-ops-col-tint--qty,
+.pbc-v2-markup-table td.bw-ops-col-tint--qty {
+  background-color: #d0e6ff !important;
+  box-shadow: inset 2px 0 0 #2563eb;
+}
+
+.pbc-v2-markup-table th.bw-ops-col-tint--weight,
+.pbc-v2-markup-table td.bw-ops-col-tint--weight {
+  background-color: #e8d7f7 !important;
+  box-shadow: inset 2px 0 0 #9333ea;
+}
+
+.pbc-row:hover {
+  background-color: #f8fafc !important;
+}
+
+.pbc-row:hover td {
+  filter: brightness(0.98);
+}
+
+.sticky-col-2 {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  background-color: #fff !important;
+}
+
+.pbc-v2-markup-table thead tr th.sticky-col-2 {
+  z-index: 6;
+  background-color: #f1f5f9 !important;
+}
+
+.pbc-image-cell {
+  padding: 2px !important;
+  vertical-align: middle;
+}
+
+.pbc-row-img {
+  width: 0.85in;
+  height: 0.85in;
+  display: block;
+  margin: 0 auto;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #fff;
+  overflow: hidden;
+}
+
+.pbc-row-img :deep(.smart-image__img) {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+}
+
+.pbc-row-img-placeholder {
+  width: 0.85in;
+  height: 0.85in;
+  display: block;
+  margin: 0 auto;
+  border-radius: 6px;
+  border: 1px dashed rgba(0, 0, 0, 0.12);
+  background-color: #f1f5f9;
+  overflow: hidden;
 }
 
 .catalog-table-header {
@@ -1155,189 +1202,48 @@ function handleCopy(text: string, label: string) {
   word-break: break-word;
   overflow-wrap: anywhere;
   line-height: 1.2;
-  text-transform: uppercase;
   max-width: 100%;
 }
 
-/* Section Header Theme Colors matching Product Based Costing Details */
-.sec-info-hdr {
-  background-color: #f8fafc !important;
-  color: #334155 !important;
-  border-bottom: 2px solid #cbd5e1 !important;
+:deep(.inline-edit-input .q-field__control) {
+  height: 28px !important;
+  min-height: 28px !important;
+  padding: 0 4px !important;
 }
 
-.sec-qty-hdr {
-  background-color: #fff8e1 !important;
-  color: #b45309 !important;
-  border-bottom: 2px solid #fde68a !important;
-}
-
-.sec-purchase-hdr {
-  background-color: #e6f4ea !important;
-  color: #137333 !important;
-  border-bottom: 2px solid #a8dab5 !important;
-}
-
-.sec-weight-hdr {
-  background-color: #ffffff !important;
-  color: #334155 !important;
-  border-bottom: 2px solid #e2e8f0 !important;
-}
-
-.sec-landed-hdr {
-  background-color: #e0f2fe !important;
-  color: #0369a1 !important;
-  border-bottom: 2px solid #7dd3fc !important;
-}
-
-.sec-first-offer-hdr {
-  background-color: #f3e5f5 !important;
-  color: #7b1fa2 !important;
-  border-bottom: 2px solid #ce93d8 !important;
-}
-
-.sec-counter-offer-hdr {
-  background-color: #ffe0b2 !important;
-  color: #e65100 !important;
-  border-bottom: 2px solid #ffcc80 !important;
-}
-
-.sec-final-offer-hdr {
-  background-color: #e8f5e9 !important;
-  color: #2e7d32 !important;
-  border-bottom: 2px solid #a5d6a7 !important;
-}
-
-.sec-action-hdr {
-  background-color: #f5f5f5 !important;
-  color: #424242 !important;
-  border-bottom: 2px solid #e0e0e0 !important;
-}
-
-/* Table Body Cell Background Accents */
-.sec-info {
-  background-color: #ffffff;
-}
-
-.sec-qty {
-  background-color: #fffdf5;
-}
-
-.sec-purchase {
-  background-color: #f4fbf7;
-}
-
-.sec-weight {
-  background-color: #ffffff;
-}
-
-.sec-landed {
-  background-color: #f0f9ff;
-}
-
-.sec-first-offer {
-  background-color: #faf5fc;
-}
-
-.sec-counter-offer {
-  background-color: #fff8f0;
-}
-
-.sec-final-offer {
-  background-color: #f1f8f3;
-}
-
-.sec-action {
-  background-color: #ffffff;
-}
-
-.catalog-row-hover:hover td {
-  filter: brightness(0.97);
-}
-
-/* Dense Input Styling */
-.col-editable-qty {
-  width: 101px;
-  min-width: 101px;
-  max-width: 101px;
-  padding: 4px 6px !important;
-}
-
-.col-editable-money {
-  width: 113px;
-  min-width: 113px;
-  max-width: 113px;
-  padding: 4px 6px !important;
-}
-
-.col-editable-weight {
-  width: 109px;
-  min-width: 109px;
-  max-width: 109px;
-  padding: 4px 6px !important;
-  background-color: #ffffff !important;
-}
-
-.col-editable-offer {
-  width: 133px;
-  min-width: 133px;
-  max-width: 133px;
-  padding: 4px 6px !important;
-}
-
-.editable-cell {
-  cursor: text;
-}
-
-.editable-cell .cell-input {
-  width: 100%;
-  max-width: 100%;
+:deep(.inline-edit-input .q-field__native) {
+  padding: 0;
   font-size: 12px;
 }
 
-.col-editable-offer .cell-input {
-  flex: 1 1 auto;
-  min-width: 0;
-  max-width: 97px;
+:deep(.excel-cell-input .q-field__control) {
+  border-radius: 0 !important;
+  border: none !important;
+  background-color: transparent !important;
+  transition: all 0.1s ease-in-out;
 }
 
-.editable-cell :deep(.q-field__control) {
-  min-height: 26px;
-  height: 26px;
-  padding: 0 2px;
+:deep(.excel-cell-input .q-field__control:before),
+:deep(.excel-cell-input .q-field__control:after) {
+  border: none !important;
 }
 
-.editable-cell :deep(.q-field__native) {
-  padding: 0;
-  text-align: center;
+:deep(.excel-cell-input:hover .q-field__control),
+:deep(.excel-cell-input.q-field--focused .q-field__control) {
+  border: 1px solid #94a3b8 !important;
+  background-color: #fff !important;
+  border-radius: 4px !important;
 }
 
-.cell-input :deep(.q-field__control) {
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  min-height: 26px;
-  height: 26px;
-  background: #ffffff;
-}
-
-.cell-input:hover :deep(.q-field__control) {
-  border-color: #94a3b8;
-}
-
-.cell-input.q-field--focused :deep(.q-field__control),
-.cell-input:focus-within :deep(.q-field__control) {
-  border-color: var(--q-primary);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--q-primary) 28%, transparent);
-}
-
-.cell-input :deep(input[type='number']::-webkit-outer-spin-button),
-.cell-input :deep(input[type='number']::-webkit-inner-spin-button) {
+:deep(.inline-edit-input input[type='number']::-webkit-outer-spin-button),
+:deep(.inline-edit-input input[type='number']::-webkit-inner-spin-button) {
   -webkit-appearance: none;
   margin: 0;
 }
 
-.cell-input :deep(input[type='number']) {
+:deep(.inline-edit-input input[type='number']) {
   -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 .text-2xs {
@@ -1346,9 +1252,9 @@ function handleCopy(text: string, label: string) {
 
 .col-name-wrap,
 .name-cell-wrap {
-  width: 230px !important;
-  min-width: 230px !important;
-  max-width: 260px !important;
+  width: 180px !important;
+  min-width: 180px !important;
+  max-width: 180px !important;
   text-align: left !important;
 }
 
@@ -1357,7 +1263,7 @@ function handleCopy(text: string, label: string) {
   word-break: break-word !important;
   overflow-wrap: anywhere !important;
   line-height: 1.3;
-  font-size: 13px;
+  font-size: 12px;
   min-width: 0;
 }
 
@@ -1367,9 +1273,9 @@ function handleCopy(text: string, label: string) {
 }
 
 .col-brand {
-  width: 150px;
-  min-width: 150px;
-  max-width: 150px;
+  width: 90px;
+  min-width: 90px;
+  max-width: 90px;
   text-align: center !important;
   vertical-align: middle;
 }
@@ -1382,10 +1288,10 @@ function handleCopy(text: string, label: string) {
 }
 
 .col-code-barcode {
-  width: 190px;
-  min-width: 190px;
-  max-width: 190px;
-  text-align: center !important;
+  width: 130px;
+  min-width: 130px;
+  max-width: 130px;
+  text-align: left !important;
   white-space: normal !important;
   word-break: break-word !important;
   overflow-wrap: anywhere !important;
@@ -1394,9 +1300,9 @@ function handleCopy(text: string, label: string) {
 }
 
 .col-info-meta {
-  width: 150px;
-  min-width: 150px;
-  max-width: 150px;
+  width: 110px;
+  min-width: 110px;
+  max-width: 110px;
   text-align: center !important;
   white-space: normal !important;
   word-break: break-word !important;

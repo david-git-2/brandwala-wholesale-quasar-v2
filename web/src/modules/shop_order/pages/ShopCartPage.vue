@@ -4,11 +4,19 @@
       <!-- Standard Page Header -->
       <ShopCartHeader
         :show-cart-picker="showCartPicker"
+        :show-shop-tabs="showShopCartTabs"
         :item-count="itemCount"
-        :active-carts="activeCarts"
+        :active-carts="scopedActiveCarts"
         :current-shop-cart-info="currentShopCartInfo"
         :selected-shop-id="selectedShopId"
         :format-active-cart-total="formatActiveCartTotal"
+        @select-shop-cart="selectShopCart"
+      />
+
+      <ShopCartShopTabs
+        v-if="showShopCartTabs"
+        :carts="scopedActiveCarts"
+        :selected-shop-id="selectedShopId"
         @select-shop-cart="selectShopCart"
       />
 
@@ -22,7 +30,7 @@
 
       <!-- Loading Skeleton State -->
       <ShopCartSkeleton
-        v-if="isCartsLoading || isCartLoading || (!selectedShopId && !showCartPicker)"
+        v-if="isCartsLoading || isCartLoading || (!selectedShopId && scopedActiveCarts.length > 0)"
       />
 
       <!-- Cart List Error State -->
@@ -46,15 +54,29 @@
         </q-card-section>
       </q-card>
 
-      <!-- Multiple Carts Picker View -->
-      <ShopCartPickerView
-        v-else-if="showCartPicker"
-        :active-carts="activeCarts"
-        :format-active-cart-total="formatActiveCartTotal"
-        @select-shop-cart="selectShopCart"
-      />
-
       <!-- Empty State -->
+      <q-card
+        v-else-if="!selectedShopId && scopedActiveCarts.length === 0"
+        flat
+        bordered
+        class="q-pa-xl text-center"
+      >
+        <q-card-section>
+          <q-icon name="ph ph-shopping-cart" size="64px" color="grey-4" class="q-mb-md" />
+          <div class="text-h6 text-grey-7 text-weight-bold">{{ $t('shop.cart_empty') }}</div>
+          <p class="text-body2 text-grey-6 q-mt-sm q-mb-md">
+            {{ $t('shop.cart_empty_desc') }}
+          </p>
+          <q-btn
+            color="primary"
+            no-caps
+            unelevated
+            :label="$t('shop.continue_shopping')"
+            @click="goBack"
+          />
+        </q-card-section>
+      </q-card>
+
       <q-card v-else-if="items.length === 0" flat bordered class="q-pa-xl text-center">
         <q-card-section>
           <q-icon name="ph ph-shopping-cart" size="64px" color="grey-4" class="q-mb-md" />
@@ -139,7 +161,7 @@ import { useActiveShopCartsQuery } from '../composables/useActiveShopCartsQuery'
 import { useShopCartQuery } from '../composables/useShopCartQuery';
 import { useShopCartPageLogic } from '../composables/useShopCartPageLogic';
 import ShopCartHeader from '../components/ShopCartHeader.vue';
-import ShopCartPickerView from '../components/ShopCartPickerView.vue';
+import ShopCartShopTabs from '../components/ShopCartShopTabs.vue';
 import ShopCartItemsList from '../components/ShopCartItemsList.vue';
 import ShopCartSummaryCard from '../components/ShopCartSummaryCard.vue';
 import ShopCartSkeleton from '../components/ShopCartSkeleton.vue';
@@ -187,6 +209,8 @@ watch(logic.selectedShopId, (val) => {
 
 const {
   selectedShopId,
+  scopedActiveCarts,
+  showShopCartTabs,
   showCartPicker,
   currentShopCartInfo,
   selectShopCart,
