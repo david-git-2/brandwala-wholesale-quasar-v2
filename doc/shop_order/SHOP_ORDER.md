@@ -57,17 +57,19 @@ Per shop, staff grant **customer groups** on the **Access** tab ([`ShopAccessMat
 
 - **Add group** — pick existing group → `upsert_shop_customer_group_access`
 - **Create group** — inline form → `create_customer_account` (see `CUSTOMER.md`) then grant access
-- Capabilities: browse, **can see purchase price** (`unit_price`), **can see sell price** (`sell_price`), **can see resell minimum price** (`resell_minimum_price`), cart, place order, negotiate, view qty, dropship price tier, credit limit
+- Capabilities: browse, **can see catalog / purchase price** (`unit_price`), **can see sell price** (`sell_price`), **can see resell minimum price** (`resell_minimum_price`), cart, place order, negotiate, view qty, dropship price tier, credit limit
 
 Group-wide defaults: `customer_group_shop_profiles` via `upsert_customer_group_shop_profile`.
 
 **Price permissions** (per group × shop):
 
-| Toggle | RPC flag | Gates object |
+| Toggle (Access tab) | RPC flag | Gates object |
 | :--- | :--- | :--- |
-| **Can see purchase price** | `can_see_buy_price` | `unit_price` |
+| **Can see catalog price** (`vendor_catalog`) / **Can see purchase price** (other types) | `can_see_buy_price` | `unit_price` |
 | **Can see sell price** | `can_see_sell_price` | `sell_price` |
 | **Can see resell minimum price** | `can_see_resell_minimum_price` | `resell_minimum_price` |
+
+On **`vendor_catalog`**, `get_shop_permissions_for_customer` treats **either** `can_see_buy_price` **or** `can_see_sell_price` as catalog-price access (`resolve_shop_can_see_buy_price`). Sell-only grants still return `products.list_price_amount` as `unit_price`.
 
 Cart/checkout sell totals still use `can_see_sell_price`.
 
@@ -79,15 +81,15 @@ Each price is a nested object: `{ amount, currency_id, code, symbol }`. When per
 
 | Permission | Object | `vendor_catalog` | `fixed_price` | `dropship` |
 | :--- | :--- | :--- | :--- | :--- |
-| `can_see_buy_price` | `unit_price` | List price | `null` | Landed cost + buy currency |
+| `can_see_buy_price` (catalog: buy **or** sell) | `unit_price` | `products.list_price_amount` | `null` | Landed cost + buy currency (`amount` 0 is a placeholder — hide in UI) |
 | `can_see_sell_price` | `sell_price` | `null` | Computed listing price | Listing `sell_price_amount` |
 | `can_see_resell_minimum_price` | `resell_minimum_price` | `null` | `null` | Listing `minimum_sell_price_amount` |
 
 **Summary by shop type on browse:**
 
-- **`vendor_catalog`:** `unit_price` only
+- **`vendor_catalog`:** `unit_price` only (plus flat `unit_price_amount` / `unit_price_currency_*`). Storefront cards read **`unit_price`**, not `sell_price`.
 - **`fixed_price`:** `sell_price` only
-- **`dropship`:** `unit_price` + `sell_price` + `resell_minimum_price` (each gated by its own permission)
+- **`dropship`:** `sell_price` + `resell_minimum_price` (and optional wholesale `unit_price` when amount &gt; 0). Storefront cards read **`sell_price` / `resell_minimum_price`**.
 
 Grant key: `shop_permissions` (tab) / `shop_config` (shop CRUD).
 
@@ -221,7 +223,7 @@ flowchart LR
 | **`StorefrontProductDetailPage`** | Mount | `getShopCatalogProduct` → `RPC: get_shop_catalog_product_for_customer` | Key: `shopOrderQueryKeys.storefrontProduct(tenantId, shopSlug, productId)` |
 | **`StorefrontProductDetailPage`** | Related strip (`vendor_catalog`) | `listRelatedShopCatalogProducts` → `RPC: list_related_shop_catalog_products_for_customer` | Key: `shopOrderQueryKeys.storefrontProductRelated(tenantId, shopSlug, productId)` |
 | **`StorefrontPage`** | Permissions | `useCustomerShopPermissionsQuery` (seeded from browse `meta.permissions`) | Key: `customerShopPermissions(shopId)` |
-| **`StorefrontPage`** | Add to cart | `add_to_shop_cart` with `p_listing_id` (preferred) via `useShopCartMutations` | One RPC; patches `cart` + `activeCarts` TanStack cache (no `list_customer_active_carts` refetch) |
+| **`StorefrontPage`** | Add to cart | `add_to_shop_cart` with `p_listing_id` from browse (required on dropship/fixed_price) via `useShopCartMutations` | One RPC; patches `cart` + `activeCarts` TanStack cache (no `list_customer_active_carts` refetch) |
 | **`StorefrontProductDetailPage`** | Add to cart | `add_to_shop_cart` via `useShopCartMutations` | Same cache patch as storefront grid |
 | **`ShopCartPage`** | Load cart + permissions | `useShopCartQuery` → `RPC: get_or_create_shop_cart` | Key: `shopOrderQueryKeys.cart(tenantId, shopId)`; items use catalog-shaped prices; no separate permissions or `global_currencies` call |
 | **`ShopDropshipCartPage`** | Load dropship cart | `useDropshipShopCartQuery` → `RPC: get_dropship_shop_cart` | Key: `shopOrderQueryKeys.dropshipCart(tenantId, shopId)`; qty saves via `update_shop_cart_item_qty` (cache patch, no refetch) |
@@ -323,21 +325,25 @@ For stock-backed shops, the **customer sell unit** is **product + warehouse grad
 | **Cart / order line** | `listing_id` + `grade_tag_id`; `global_stock_id` filled at **place order** (hold from grade pool) |
 | **Invoice** | `global_invoice_items.global_stock_id` copied from the held order line |
 
+Listings are **product + grade**. `shop_product_listings.global_stock_id` is often **null** (no shipment-row anchor). Do not require it for browse or add-to-cart.
+
 ### Customer catalog fields (stock-backed shops)
 
 | Field | Meaning |
 | :--- | :--- |
-| `listing_id` | `shop_product_listings.id` — **preferred** key for add-to-cart |
-| `stock_grade` | `{ slug, label, color }` warehouse condition shown on the card |
-| `global_stock_id` | Optional legacy field on browse; **not** required for add-to-cart |
+| `listing_id` | `shop_product_listings.id` — **required** key for add-to-cart |
+| `stock_grade` | `{ slug, label, color }` from listing `grade_tag_id` (fallback: stock grade tag) |
+| `global_stock_id` | Optional; **null** on grade-only listings. **Not** required for add-to-cart |
+
+If browse/detail omit `listing_id`, the shop-scope card sends nulls and `add_to_shop_cart` raises `listing, grade, or global stock required for this shop type`.
 
 ### Add-to-cart resolver (`fixed_price` / `dropship`)
 
 `add_to_shop_cart` accepts **one** of:
 
-1. `p_listing_id` — preferred (from browse/detail row)
+1. `p_listing_id` — required path from browse/detail (`listing_id` on the row)
 2. `p_grade_slug` — resolve active listing for `(shop, product, grade)`
-3. `p_global_stock_id` / `p_global_stock_allocation_id` — legacy; must match the listing anchor
+3. `p_global_stock_id` / `p_global_stock_allocation_id` — legacy; only works when the listing has an anchor stock row
 
 Stock check uses **grade-pooled** ATP (same rules as `available_units` on browse), not single-row ATP.
 
@@ -558,7 +564,7 @@ Every row in `data` must satisfy:
 Additional scope (not request filters):
 
 - **`vendor_catalog`:** parent tenant + shop vendor / `vendor_filters`
-- **`fixed_price` / `dropship`:** active listing, received stock, shop listing rules
+- **`fixed_price` / `dropship`:** active listing (`shop_product_listings.is_active`); stock row optional
 
 ### Request filters (optional args)
 
@@ -576,19 +582,21 @@ See §1 for the permission × shop-type matrix. On browse:
 
 | Object | Permission |
 | :--- | :--- |
-| `unit_price` | `can_see_buy_price` |
+| `unit_price` | `can_see_buy_price` (`vendor_catalog`: buy **or** sell — see §1) |
 | `sell_price` | `can_see_sell_price` |
 | `resell_minimum_price` | `can_see_resell_minimum_price` |
 
+`vendor_catalog` also returns flat `unit_price_amount` / `unit_price_currency_id` / `unit_price_currency_code` / `unit_price_currency_symbol` (same list-price values). Storefront cards use nested `unit_price` first, then the flat fields.
+
 ### Response shape
 
-`vendor_catalog` rows omit listing/stock fields. **`fixed_price` / `dropship`** rows include:
+`vendor_catalog` rows omit listing/stock fields (`listing_id` / `stock_grade` / `global_stock_id` are null). **`fixed_price` / `dropship`** rows **must** include:
 
 | Field | Notes |
 | :--- | :--- |
-| `listing_id` | Listing primary key — pass to `add_to_shop_cart` |
-| `stock_grade` | `{ slug, label, color }` or `null` when anchor stock has no grade tag |
-| `global_stock_id` | Listing anchor stock (legacy); same value as `global_stock_allocation_id` |
+| `listing_id` | Listing primary key — pass to `add_to_shop_cart`. Required when `global_stock_id` is null |
+| `stock_grade` | `{ slug, label, color }` from listing/stock grade tag, or `null` |
+| `global_stock_id` | Optional listing anchor; often **null** on grade-based listings |
 | `product_id`, `product_name`, … | Unchanged |
 | `available_units` | Grade-pooled ATP (with listing display override when configured) |
 | `minimum_order_quantity` | From `products` |
@@ -630,7 +638,7 @@ Non-price fields for all types: `product_id`, `product_name`, `product_image_url
       "listing_id": 1201,
       "stock_grade": { "slug": "standard", "label": "Standard", "color": "#22c55e" },
       "global_stock_allocation_id": 789,
-      "global_stock_id": 789,
+      "global_stock_id": 789,           // often null on grade-based listings — not required for add-to-cart
       "minimum_order_quantity": 1
     }
   ],
@@ -697,7 +705,7 @@ search_shop_catalog_for_customer(
 - `products.is_available = true`
 - `coalesce(products.hazardous, false) = false`
 - `vendor_catalog`: parent-tenant vendor scope + `vendor_filters`
-- `fixed_price` / `dropship`: active listing + received stock
+- `fixed_price` / `dropship`: active listing (`shop_product_listings.is_active`); stock row optional
 
 ### Search
 
@@ -709,7 +717,7 @@ One row per `product_id`. If the same product appears in multiple shops, keep th
 
 ### Response `data[]` fields
 
-Each hit includes `shop_id`, `shop_slug`, `shop_name`, product fields, and `unit_price_*` (`null` when `can_see_buy_price` is false for that shop). No `minimum_sell_price_*` on search hits.
+Each hit includes `shop_id`, `shop_slug`, `shop_name`, product fields, and `unit_price_*` (`null` when catalog/buy price is hidden — same `resolve_shop_can_see_buy_price` rule as browse). No `minimum_sell_price_*` on search hits.
 
 ---
 
@@ -734,7 +742,7 @@ Prices are snapshotted on `shop_cart_items` at add-to-cart time; the RPC gates *
 
 | `shop_type` | `unit_price` | `sell_price` | `resell_minimum_price` |
 | :--- | :--- | :--- | :--- |
-| `vendor_catalog` | `can_see_buy_price` → snap `unit_list_price_*` | `null` | `null` |
+| `vendor_catalog` | `resolve_shop_can_see_buy_price` (buy **or** sell) → snap `unit_list_price_*` | `null` | `null` |
 | `fixed_price` | `null` | `can_see_sell_price` → snap `unit_sell_price_*` | `null` |
 | `dropship` | `can_see_buy_price` → snap `unit_list_price_*` | `can_see_sell_price` → snap `customer_sell_price_*` else `unit_sell_price_*` | `can_see_resell_minimum_price` → snap `unit_minimum_sell_price_*` |
 
@@ -816,7 +824,7 @@ add_to_shop_cart(
   p_customer_sell_price_amount       numeric default null,
   p_customer_sell_price_currency_id bigint default null,
   p_global_stock_id                bigint  default null,  -- legacy anchor stock
-  p_listing_id                     bigint  default null,  -- preferred for stock-backed shops
+  p_listing_id                     bigint  default null,  -- from browse `listing_id`; required when stock id is null
   p_grade_slug                     text    default null   -- alternative: product + grade
 ) returns jsonb
 ```
@@ -830,7 +838,7 @@ add_to_shop_cart(
 | `p_global_stock_id` | Active listing whose anchor `global_stock_id` matches |
 | *(none)* | Error: `listing, grade, or global stock required for this shop type` |
 
-Listing must have a linked anchor stock (`global_stock_id` not null). Quantity check uses **grade-pooled** ATP (`shop_product_grade_available_units`) and listing `display_quantity_override` (same as browse `available_units`).
+Grade-based listings do **not** need `global_stock_id`. Quantity check uses **grade-pooled** ATP (`shop_product_grade_available_units`) and listing `display_quantity_override` (same as browse `available_units`).
 
 `vendor_catalog` ignores listing/stock args; merges on `product_id` only.
 
@@ -1007,19 +1015,18 @@ get_shop_catalog_product_for_customer(
     "is_available": true,
     "country_of_origin": "UK",        // NEW — from products.country_of_origin
     "expire_date": "2027-01-31",      // NEW — from products.expire_date (text)
-    "unit_price_amount": 125.00,      // null when can_see_buy_price = false
+    "unit_price": { "amount": 125.00, "currency_id": 1, "code": "BDT", "symbol": "৳" },
+    "unit_price_amount": 125.00,      // catalog: same as products.list_price_amount; null when catalog price hidden
     "unit_price_currency_id": 1,
     "unit_price_currency_code": "BDT",
     "unit_price_currency_symbol": "৳",
-    "minimum_sell_price_amount": null, // dropship only; null when can_see_sell_price = false; always null for vendor_catalog
-    "minimum_sell_price_currency_id": null,
-    "minimum_sell_price_currency_code": null,
-    "minimum_sell_price_currency_symbol": null,
+    "sell_price": null,               // dropship/fixed_price nested object when can_see_sell_price
+    "resell_minimum_price": null,     // dropship nested object when can_see_resell_minimum_price
     "available_units": 240,           // null when can_view_quantity false or catalog shop
-    "listing_id": 1201,
+    "listing_id": 1201,               // dropship/fixed_price: required for add-to-cart
     "stock_grade": { "slug": "open_box", "label": "Open box", "color": "#f59e0b" },
-    "global_stock_allocation_id": 456,
-    "global_stock_id": 456,
+    "global_stock_allocation_id": null,
+    "global_stock_id": null,          // often null on grade-based listings
     "minimum_order_quantity": 12
   },
   "meta": {
@@ -1034,9 +1041,10 @@ get_shop_catalog_product_for_customer(
 | Field | Rule |
 | :--- | :--- |
 | Product visibility | Same as browse: `is_available = true` and `coalesce(hazardous, false) = false` |
-| `unit_price_amount`, `unit_price_currency_*` | `vendor_catalog` / `dropship`: `null` when `can_see_buy_price = false`. `fixed_price`: `null` when `can_see_sell_price = false` |
-| `minimum_sell_price_*` | Only when `shop_type = dropship` and `can_see_sell_price = true`; **never** returned for `vendor_catalog` |
+| `unit_price` / `unit_price_amount` | `vendor_catalog`: `products.list_price_amount` when `resolve_shop_can_see_buy_price`. `dropship`: wholesale cost when `can_see_buy_price`. `fixed_price`: `null` |
+| `sell_price` / `resell_minimum_price` | Nested objects (same as browse). Dropship resell min uses `can_see_resell_minimum_price`. Never on `vendor_catalog` |
 | `available_units` | `null` when `can_view_quantity = false` or shop hides qty; catalog shops return `null` |
+| `listing_id` / `stock_grade` | **`fixed_price` / `dropship` only.** Same as browse — required for add-to-cart when stock id is null |
 | `country_of_origin`, `expire_date` | From `products`; return `null` when empty |
 | Cost / landed cost / `reference_cost_*` | **Never exposed** |
 | `tariff_code` | **Dropped** — do not return |

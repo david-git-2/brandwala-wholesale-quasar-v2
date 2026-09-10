@@ -846,11 +846,19 @@ begin
             p.vendor_code as product_vendor_code,
             p.is_available as product_is_available,
             p.minimum_order_quantity as product_moq,
-            public.shop_product_grade_available_units($14, p.id, gs.grade_tag_id) as available_qty
+            public.shop_product_grade_available_units(
+              $14,
+              p.id,
+              coalesce(l.grade_tag_id, gs.grade_tag_id)
+            ) as available_qty,
+            tg.slug as grade_slug,
+            tg.name as grade_label,
+            tg.color as grade_color
           from public.shop_product_listings l
           join public.products p on p.id = l.product_id
           left join public.global_stocks gs on gs.id = l.global_stock_id
           left join public.global_shipment_items gsi on gsi.id = gs.shipment_item_id
+          left join public.tags tg on tg.id = coalesce(l.grade_tag_id, gs.grade_tag_id)
           where l.shop_id = $1
             and l.is_active = true
             and p.is_available = true
@@ -919,6 +927,15 @@ begin
                     when $13 = 'original' then greatest(0, p.available_qty)
                     when p.display_quantity_override is not null then p.display_quantity_override
                     else greatest(0, p.available_qty)
+                  end,
+                  'listing_id', p.listing_id,
+                  'stock_grade', case
+                    when p.grade_slug is not null then jsonb_build_object(
+                      'slug', p.grade_slug,
+                      'label', p.grade_label,
+                      'color', p.grade_color
+                    )
+                    else null
                   end,
                   'global_stock_allocation_id', p.global_stock_id,
                   'global_stock_id', p.global_stock_id,
@@ -1412,6 +1429,15 @@ begin
         when row.display_quantity_override is not null then row.display_quantity_override
         else greatest(0, row.available_qty)
       end,
+      'listing_id', row.listing_id,
+      'stock_grade', case
+        when row.grade_slug is not null then jsonb_build_object(
+          'slug', row.grade_slug,
+          'label', row.grade_label,
+          'color', row.grade_color
+        )
+        else null
+      end,
       'global_stock_allocation_id', row.global_stock_id,
       'global_stock_id', row.global_stock_id,
       'minimum_order_quantity', row.product_moq
@@ -1446,11 +1472,19 @@ begin
         p.country_of_origin,
         p.expire_date,
         p.minimum_order_quantity as product_moq,
-        public.shop_product_grade_available_units(v_shop_tenant_id, p.id, gs.grade_tag_id) as available_qty
+        public.shop_product_grade_available_units(
+          v_shop_tenant_id,
+          p.id,
+          coalesce(l.grade_tag_id, gs.grade_tag_id)
+        ) as available_qty,
+        tg.slug as grade_slug,
+        tg.name as grade_label,
+        tg.color as grade_color
       from public.shop_product_listings l
       join public.products p on p.id = l.product_id
       left join public.global_stocks gs on gs.id = l.global_stock_id
       left join public.global_shipment_items gsi on gsi.id = gs.shipment_item_id
+      left join public.tags tg on tg.id = coalesce(l.grade_tag_id, gs.grade_tag_id)
       where l.shop_id = v_shop_id
         and l.product_id = p_product_id
         and l.is_active = true

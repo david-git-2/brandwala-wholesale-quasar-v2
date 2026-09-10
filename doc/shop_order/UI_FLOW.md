@@ -148,9 +148,10 @@ Price visibility uses two **field groups** (see [`SHOP_ORDER.md`](./SHOP_ORDER.m
 
 | Toggle | Default | Field group | Effect on storefront |
 | :--- | :--- | :--- | :--- |
-| Can see purchase price | `true` | **Unit** | `unit_price_*` on browse/detail/search (`vendor_catalog`, `dropship`) |
-| Can see sell price | `true` | **Sell** | Line sell amounts + cart/checkout/order totals; `unit_price_*` on `fixed_price` browse |
-| Can see resell minimum price | `true` | **Sell** (resell minimum) | `minimum_sell_price_*` on browse/detail, `unit_minimum_sell_price_*` in cart (`dropship`). *(Planned `can_see_resell_minimum_price`; today still tied to sell price in code.)* |
+| Can see catalog price | `true` | **Unit** | `vendor_catalog` only (Access label). Same flag as buy price; sell-only grant also shows `products.list_price_amount` |
+| Can see purchase price | `true` | **Unit** | `unit_price` on browse/detail (`dropship` wholesale cost). Catalog shops use the row above |
+| Can see sell price | `true` | **Sell** | `sell_price` on dropship/fixed browse; cart/checkout/order totals |
+| Can see resell minimum price | `true` | **Sell** (resell minimum) | `resell_minimum_price` on dropship browse/detail/cart |
 
 | Toggle | Default | Effect on storefront |
 | :--- | :--- | :--- |
@@ -334,9 +335,10 @@ Legacy courier-remittance URLs redirect to this hub with `step=courier_remittanc
 ### 11.6 Storefront (`/shop/browse/:shopSlug`)
 - **Page:** `StorefrontPage.vue`
 - **Components:** `StorefrontHeader`, `StorefrontProductCard`, `StorefrontFilterDrawer`
-- **Catalog rows:** one card per **listing** (`product` + `stock_grade`); same product with two grades → two cards
+- **Catalog rows:** `vendor_catalog` one card per product; `fixed_price` / `dropship` one card per **listing** (`product` + `stock_grade`)
+- **Card prices:** catalog reads nested `unit_price` (then flat `unit_price_amount`). Dropship reads `sell_price` + `resell_minimum_price`. Hide wholesale `unit_price` when amount is 0.
 - **Grade chip:** `StorefrontProductCard` shows `stock_grade.label` when present (`showGradeChip`)
-- **Add to cart:** `add_to_shop_cart` with `p_listing_id` (preferred) from the row; legacy `global_stock_id` still accepted
+- **Add to cart:** `add_to_shop_cart` with **`p_listing_id` from the browse row** (`listing_id`). Grade-based dropship listings often have `global_stock_id: null` — do not rely on stock id. Missing `listing_id` → `listing, grade, or global stock required for this shop type`.
 - **Product card click / quick view** → product detail with `?listingId=` when the row has `listing_id` (see §12)
 - **Cart FAB / header link** → `/shop/cart`
 
@@ -427,15 +429,15 @@ StorefrontProductDetailPage
 
 | Field | Show when |
 | :--- | :--- |
-| `unit_price_amount` | `can_see_buy_price` (`vendor_catalog`, `dropship`); `can_see_sell_price` (`fixed_price`) |
-| `unit_price_currency_symbol` | With unit price (same permission) |
+| Nested `unit_price` (then flat `unit_price_amount`) | `vendor_catalog`: catalog-price access (buy **or** sell). `dropship`: `can_see_buy_price` and amount &gt; 0. `fixed_price`: hide |
+| Currency symbol | With unit price (same permission) |
 
 #### Sell price group
 
 | Field | Show when |
 | :--- | :--- |
-| `sell_price_amount` (+ currency fields) | `can_see_sell_price` **and** `shop.shop_type = dropship` |
-| `resell_minimum_price_amount` (+ currency fields) | `can_see_resell_minimum_price` *(planned)* **and** `shop.shop_type = dropship` |
+| Nested `sell_price` | `can_see_sell_price` **and** `shop.shop_type` is `dropship` or `fixed_price` |
+| Nested `resell_minimum_price` | `can_see_resell_minimum_price` **and** `shop.shop_type = dropship` |
 
 ### Interactions
 
@@ -444,7 +446,7 @@ StorefrontProductDetailPage
 | **Open detail** | Product card click or quick-view link | Navigate to `/shop/browse/:shopSlug/product/:productId` with `?listingId=` when set |
 | **Copy link** | Link icon in summary | Copy `window.location.href` → toast “Link copied” |
 | **Back to catalog** | Breadcrumb or browser back | Return to `StorefrontPage` (preserve `?search=` / filter query when possible) |
-| **Add to cart** | Sticky action bar | `add_to_shop_cart` with `p_listing_id` + qty; toast; header badge via TanStack `activeCarts` cache patch |
+| **Add to cart** | Sticky action bar | `add_to_shop_cart` with `p_listing_id` from the product row + qty (dropship/fixed: required; do not send only `global_stock_id`). Toast; header badge via TanStack `activeCarts` cache patch |
 | **Update cart** | When line already in cart | `update_shop_cart_item_qty` |
 | **Related card click** | Related product card | Navigate to `/shop/browse/:shopSlug/product/:productId` |
 | **View all in category** | Link in related header | `StorefrontPage` with `?category={product_category}` |
@@ -453,9 +455,9 @@ StorefrontProductDetailPage
 
 | Shop type | Unit price group | Sell price group | Stock |
 | :--- | :--- | :--- | :--- |
-| `vendor_catalog` | List / purchase price (`can_see_buy_price`) | None on browse; totals in cart/checkout if `can_see_sell_price` | Usually hidden (`available_units` null) |
-| `fixed_price` | Listing price via **sell** permission (`can_see_sell_price`) | No resell minimum on browse | Grade-pooled ATP per listing; grade chip on card |
-| `dropship` | Landed cost + buy currency (`can_see_buy_price`) | `sell_price_*` + `resell_minimum_price_*` on browse/detail | Same as `fixed_price`; one card per grade listing |
+| `vendor_catalog` | List price (`unit_price` / `unit_price_amount` from `products.list_price_amount`) | None on browse | Usually hidden (`available_units` null) |
+| `fixed_price` | — | Listing `sell_price` (`can_see_sell_price`) | Grade-pooled ATP per listing; grade chip on card |
+| `dropship` | Optional wholesale `unit_price` when amount &gt; 0 | `sell_price` + `resell_minimum_price` | Same as `fixed_price`; **`listing_id` required** for add-to-cart |
 
 ### Error states
 
