@@ -1,5 +1,5 @@
 <template>
-  <q-page class="q-pa-md bw-page theme-shop storefront-page">
+  <q-page class="storefront-page theme-shop">
     <!-- ACCESS DENIED STATE -->
     <div
       v-if="accessDenied"
@@ -32,9 +32,6 @@
     <!-- STOREFRONT MAIN CONTENT -->
     <div v-else class="bw-page__stack">
       <StorefrontSearchToolbar
-        :shop-name="shopName"
-        :current-slug="shopSlug"
-        :shops="shops"
         v-model:search="search"
         v-model:brand="brand"
         v-model:category="category"
@@ -43,7 +40,6 @@
         @search="onSearchClick"
         @open-filter="filterDrawerOpen = true"
         @reset-filters="onResetFilters"
-        @switch-shop="onSwitchShop"
       />
 
       <!-- PRODUCT GRID WITH INFINITE SCROLL -->
@@ -129,8 +125,7 @@ import { useShopCartMutations } from '../composables/useShopCartMutations';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useCustomerShopsQuery } from '../composables/useShopQuery';
 import { useStorefrontState } from '../composables/useStorefrontState';
-import type { CustomerAccessibleShop } from '../repositories/shopOrderRepository';
-import { rememberCatalogShop, shopCatalogPath, shopCatalogProductPath } from '../utils/catalogShop';
+import { rememberCatalogShop, shopCatalogProductPath } from '../utils/catalogShop';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import StorefrontSearchToolbar from '../components/StorefrontSearchToolbar.vue';
 import StorefrontFilterDrawer from '../components/StorefrontFilterDrawer.vue';
@@ -221,7 +216,6 @@ const activeShopType = computed(
     shops.value.find((shop) => shop.slug === shopSlug.value)?.shop_type ??
     null,
 );
-const shopName = computed(() => shopDetails.value?.name || t('navigation.catalog'));
 const initialLoading = computed(() => isLoading.value && catalogItems.value.length === 0);
 const accessDenied = computed(() => isError.value && error.value?.message?.includes('access denied'));
 const notFound = computed(() => isError.value && !accessDenied.value);
@@ -256,16 +250,6 @@ const filteredCategoryOptions = computed(() => [
   allCategoryOption.value,
   ...filteredCategoryNames.value.map((item) => ({ label: item, value: item })),
 ]);
-
-const onSwitchShop = (shop: { id: number; slug: string; name: string } | CustomerAccessibleShop) => {
-  if (!shop.slug || shop.slug === shopSlug.value) return;
-  if (sessionTenantId.value) {
-    rememberCatalogShop(sessionTenantId.value, shop);
-  }
-  const tenantSlug =
-    typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : authStore.tenantSlug;
-  void router.push(shopCatalogPath(tenantSlug, shop.slug));
-};
 
 const goBack = () => {
   router.back();

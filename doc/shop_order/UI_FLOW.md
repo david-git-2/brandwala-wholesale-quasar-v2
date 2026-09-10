@@ -2,7 +2,7 @@
 
 This document defines user interaction flows, route navigation, button visibility rules, and validation matrices for the **Shop Order** module.
 
-For RPC/API contracts and query keys, see [`SHOP_ORDER.md`](./SHOP_ORDER.md). Customer group creation is in [`CUSTOMER.md`](../customer/CUSTOMER.md).
+For RPC/API contracts and query keys, see [`SHOP_ORDER.md`](./SHOP_ORDER.md). Customer group creation is in [`CUSTOMER.md`](../customer/CUSTOMER.md). Shop scope look (tokens, cards; no new layout): [`../fix/SHOP_SCOPE_VISUAL_REDESIGN.md`](../fix/SHOP_SCOPE_VISUAL_REDESIGN.md).
 
 **Catalog negotiation status model and user-facing labels:** [`CATALOG_NEGOTIATION.md`](./CATALOG_NEGOTIATION.md)
 

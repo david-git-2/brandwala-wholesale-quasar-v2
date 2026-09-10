@@ -1,12 +1,6 @@
 <template>
-  <q-page class="q-pa-md theme-shop">
+  <q-page class="theme-shop">
     <div class="q-gutter-y-md">
-      <section class="row items-center justify-between q-col-gutter-md">
-        <div class="col">
-          <h1 class="text-h5 text-weight-bold q-my-none">{{ $t('shop_admin.my_orders') }}</h1>
-        </div>
-      </section>
-
       <q-card flat bordered class="q-pa-sm">
         <div class="row items-center q-col-gutter-sm">
           <div class="col-xs-12 col-sm-6 col-md-4">

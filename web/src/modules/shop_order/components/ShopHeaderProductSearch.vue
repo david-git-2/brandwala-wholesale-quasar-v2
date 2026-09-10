@@ -7,7 +7,7 @@
       rounded
       clearable
       class="shop-header-search"
-      :placeholder="$t('customer_dashboard.search_placeholder')"
+      :placeholder="searchPlaceholder"
       data-test="shop-header-search"
       aria-label="Search products"
       @focus="menuOpen = true"
@@ -83,8 +83,10 @@
           <q-item-section>
             <q-item-label class="text-weight-medium">{{ item.product_name }}</q-item-label>
             <q-item-label caption lines="1">
-              {{ item.shop_name }}
-              <span v-if="item.product_code"> · {{ item.product_code }}</span>
+              <template v-if="!shopSlug">{{ item.shop_name }}</template>
+              <span v-if="item.product_code">
+                <template v-if="!shopSlug"> · </template>{{ item.product_code }}
+              </span>
             </q-item-label>
           </q-item-section>
           <q-item-section v-if="item.unit_price_amount != null" side>
@@ -101,19 +103,37 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useShopCatalogSearchQuery } from '../composables/useShopCatalogSearchQuery';
 import { shopCatalogProductPath } from '../utils/catalogShop';
 import type { ShopCatalogSearchItem } from '../types';
 
+const props = defineProps<{
+  /** When set, header search is limited to this shop (catalog page). */
+  shopSlug?: string | null;
+}>();
+
 const router = useRouter();
 const authStore = useAuthStore();
+const { t } = useI18n();
 const anchorRef = ref<HTMLElement | null>(null);
 const query = ref('');
 const submittedSearch = ref('');
 const menuOpen = ref(false);
 
-const { results, isLoading, isError, minSearchLength } = useShopCatalogSearchQuery(submittedSearch);
+const { results: catalogResults, isLoading, isError, minSearchLength } =
+  useShopCatalogSearchQuery(submittedSearch);
+
+const results = computed(() => {
+  const slug = props.shopSlug?.trim();
+  if (!slug) return catalogResults.value;
+  return catalogResults.value.filter((item) => item.shop_slug === slug);
+});
+
+const searchPlaceholder = computed(() =>
+  props.shopSlug ? t('shop.search_this_shop') : t('shop.search_all_shops'),
+);
 
 const hasSubmittedSearch = computed(() => submittedSearch.value.trim().length >= minSearchLength);
 
@@ -144,7 +164,8 @@ const onSelect = (item: ShopCatalogSearchItem) => {
   menuOpen.value = false;
   query.value = '';
   submittedSearch.value = '';
-  void router.push(shopCatalogProductPath(authStore.tenantSlug, item.shop_slug, item.product_id));
+  const shopSlug = props.shopSlug?.trim() || item.shop_slug;
+  void router.push(shopCatalogProductPath(authStore.tenantSlug, shopSlug, item.product_id));
 };
 </script>
 

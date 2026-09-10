@@ -8,8 +8,7 @@
       <div v-for="category in categories" :key="category.id" class="col-6 col-sm-4 col-md-3">
         <q-card
           flat
-          bordered
-          class="category-card q-pa-md cursor-pointer card-hover"
+          class="category-card q-pa-md cursor-pointer"
           role="button"
           tabindex="0"
           data-test="category-card"
@@ -38,7 +37,8 @@ defineProps<{
 
 <style scoped>
 .category-card {
-  border-radius: 14px;
+  border-radius: var(--bw-shop-radius-card, 20px);
   background: var(--bw-theme-surface);
+  box-shadow: var(--bw-theme-shadow);
 }
 </style>

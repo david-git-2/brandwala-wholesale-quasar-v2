@@ -1,32 +1,27 @@
 <template>
-  <q-card flat bordered class="glance-card q-pa-md">
-    <div class="text-caption text-grey-6 text-weight-bold text-uppercase q-mb-md">
-      {{ $t('customer_dashboard.glance_title') }}
-    </div>
-
-    <div v-if="!segments" class="glance-layout">
-      <div class="column q-gutter-sm">
-        <q-skeleton v-for="n in 5" :key="n" type="rect" height="36px" class="rounded-borders" />
-      </div>
-      <div class="row flex-center">
-        <q-skeleton type="QAvatar" size="148px" />
-      </div>
-    </div>
-
-    <div v-else-if="total === 0" class="text-body2 text-grey-6">
+  <q-card flat class="glance-card q-pa-md">
+    <div v-if="total === 0" class="text-body2 text-grey-6 text-center">
       {{ $t('customer_dashboard.no_recent_orders') }}
     </div>
 
     <div v-else class="glance-layout">
-      <div class="column q-gutter-xs">
-        <button
+      <div class="glance-chart-wrap">
+        <div class="glance-chart" role="img" :aria-label="$t('customer_dashboard.glance_title')">
+          <Doughnut :data="donutData" :options="donutOptions" />
+          <div class="glance-chart__center">
+            <span class="glance-chart__total">{{ total }}</span>
+            <span class="glance-chart__caption">{{ $t('customer_dashboard.glance_total') }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="glance-legend-grid">
+        <div
           v-for="seg in segmentRows"
           :key="seg.id"
-          type="button"
           class="glance-legend"
           :class="{ 'glance-legend--hot': seg.hot && seg.count > 0 }"
           :data-test="`glance-${seg.id}`"
-          @click="onSelect(seg.id)"
         >
           <span class="glance-legend__dot" :style="{ background: seg.color }" />
           <span class="glance-legend__meta">
@@ -39,16 +34,6 @@
             </span>
           </span>
           <span class="glance-legend__count">{{ seg.count }}</span>
-        </button>
-      </div>
-
-      <div class="glance-chart-wrap">
-        <div class="glance-chart" role="img" :aria-label="$t('customer_dashboard.glance_title')">
-          <Doughnut :data="donutData" :options="donutOptions" />
-          <div class="glance-chart__center">
-            <span class="glance-chart__total">{{ total }}</span>
-            <span class="glance-chart__caption">{{ $t('customer_dashboard.glance_total') }}</span>
-          </div>
         </div>
       </div>
     </div>
@@ -75,19 +60,15 @@ const SEGMENT_META: ReadonlyArray<{
   labelKey: string;
   hot?: boolean;
 }> = [
-  { id: 'needs_you', color: '#d97706', labelKey: 'customer_dashboard.glance_needs_you', hot: true },
-  { id: 'in_progress', color: '#1e3a8a', labelKey: 'customer_dashboard.glance_in_progress' },
-  { id: 'delivered', color: '#0284c7', labelKey: 'customer_dashboard.glance_delivered' },
-  { id: 'paid', color: '#059669', labelKey: 'customer_dashboard.glance_paid' },
-  { id: 'payment_needed', color: '#dc2626', labelKey: 'customer_dashboard.glance_payment_needed', hot: true },
+  { id: 'needs_you', color: '#b48b7d', labelKey: 'customer_dashboard.glance_needs_you', hot: true },
+  { id: 'in_progress', color: '#996888', labelKey: 'customer_dashboard.glance_in_progress' },
+  { id: 'delivered', color: '#5e4955', labelKey: 'customer_dashboard.glance_delivered' },
+  { id: 'paid', color: '#2a2b2a', labelKey: 'customer_dashboard.glance_paid' },
+  { id: 'payment_needed', color: '#996888', labelKey: 'customer_dashboard.glance_payment_needed', hot: true },
 ];
 
 const props = defineProps<{
   segments: OrderGlanceSegments | null;
-}>();
-
-const emit = defineEmits<{
-  (e: 'select-bucket', bucket?: OrderGlanceBucket): void;
 }>();
 
 const { t } = useI18n();
@@ -106,14 +87,6 @@ const share = (count: number) => {
   return `${Math.max(8, Math.round((count / total.value) * 100))}%`;
 };
 
-const onSelect = (id: ChartBucket) => {
-  if (id === 'needs_you' || id === 'in_progress') {
-    emit('select-bucket', id);
-    return;
-  }
-  emit('select-bucket');
-};
-
 const donutData = computed<ChartData<'doughnut'>>(() => ({
   labels: segmentRows.value.map((seg) => t(seg.labelKey)),
   datasets: [
@@ -123,7 +96,7 @@ const donutData = computed<ChartData<'doughnut'>>(() => ({
       borderWidth: 0,
       spacing: 3,
       borderRadius: 5,
-      hoverOffset: 6,
+      hoverOffset: 4,
     },
   ],
 }));
@@ -131,17 +104,7 @@ const donutData = computed<ChartData<'doughnut'>>(() => ({
 const donutOptions = computed<ChartOptions<'doughnut'>>(() => ({
   responsive: true,
   maintainAspectRatio: false,
-  cutout: '74%',
-  onClick: (_event, elements) => {
-    const index = elements[0]?.index;
-    if (index == null) return;
-    const seg = segmentRows.value[index];
-    if (seg) onSelect(seg.id);
-  },
-  onHover: (event, elements) => {
-    const target = event.native?.target as HTMLElement | undefined;
-    if (target) target.style.cursor = elements.length ? 'pointer' : 'default';
-  },
+  cutout: '72%',
   plugins: {
     legend: { display: false },
     tooltip: {
@@ -155,15 +118,56 @@ const donutOptions = computed<ChartOptions<'doughnut'>>(() => ({
 
 <style scoped>
 .glance-card {
-  border-radius: 14px;
+  border-radius: var(--bw-shop-radius-card, 20px);
   background: var(--bw-theme-surface);
+  box-shadow: var(--bw-theme-shadow);
 }
 
 .glance-layout {
   display: grid;
-  gap: 1.25rem;
-  grid-template-columns: minmax(0, 1.2fr) minmax(9.5rem, 0.8fr);
-  align-items: center;
+  gap: 1.5rem;
+}
+
+.glance-chart-wrap {
+  display: grid;
+  justify-items: center;
+}
+
+.glance-chart {
+  position: relative;
+  width: min(100%, 11.5rem);
+  height: 11.5rem;
+}
+
+.glance-chart__center {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  pointer-events: none;
+}
+
+.glance-chart__total {
+  font-size: 1.85rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: var(--bw-theme-ink);
+}
+
+.glance-chart__caption {
+  margin-top: 0.2rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bw-theme-muted);
+}
+
+.glance-legend-grid {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
 }
 
 .glance-legend {
@@ -171,21 +175,9 @@ const donutOptions = computed<ChartOptions<'doughnut'>>(() => ({
   grid-template-columns: 10px minmax(0, 1fr) auto;
   align-items: center;
   gap: 0.65rem;
-  width: 100%;
-  margin: 0;
-  padding: 0.45rem 0.5rem;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.glance-legend:hover,
-.glance-legend:focus-visible {
-  background: var(--bw-theme-primary-soft);
-  outline: none;
+  padding: 0.5rem 0.6rem;
+  border-radius: 10px;
+  background: var(--bw-theme-primary-soft, rgb(0 0 0 / 0.03));
 }
 
 .glance-legend--hot .glance-legend__count {
@@ -205,7 +197,7 @@ const donutOptions = computed<ChartOptions<'doughnut'>>(() => ({
 }
 
 .glance-legend__label {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   color: var(--bw-theme-muted);
   line-height: 1.2;
 }
@@ -225,56 +217,10 @@ const donutOptions = computed<ChartOptions<'doughnut'>>(() => ({
 }
 
 .glance-legend__count {
-  font-size: 1.05rem;
+  font-size: 1rem;
   font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1;
   color: var(--bw-theme-ink);
-}
-
-.glance-chart-wrap {
-  display: grid;
-  justify-items: center;
-}
-
-.glance-chart {
-  position: relative;
-  width: 9.75rem;
-  height: 9.75rem;
-}
-
-.glance-chart__center {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-content: center;
-  text-align: center;
-  pointer-events: none;
-}
-
-.glance-chart__total {
-  font-size: 1.55rem;
-  font-weight: 700;
-  letter-spacing: -0.04em;
-  line-height: 1;
-  color: var(--bw-theme-ink);
-}
-
-.glance-chart__caption {
-  margin-top: 0.2rem;
-  font-size: 0.68rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--bw-theme-muted);
-}
-
-@media (max-width: 720px) {
-  .glance-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .glance-chart-wrap {
-    order: -1;
-  }
 }
 </style>

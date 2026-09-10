@@ -172,6 +172,7 @@ export default {
     price_below_min:
       '{name} এর মূল্য ন্যূনতম বিক্রয়মূল্য {amount} এর নিচে হতে পারে না',
     in_stock: 'স্টকে আছে',
+    low_stock: 'স্টক কম',
     out_of_stock: 'স্টকে নেই',
     apply: 'প্রয়োগ করুন',
     save_qty: 'সংরক্ষণ',
@@ -188,6 +189,8 @@ export default {
     cart_load_error_desc: 'শপ কার্ট লোড করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।',
     cart_retry: 'আবার চেষ্টা',
     switch_shop: 'শপ বদলান',
+    search_all_shops: 'সব শপে খুঁজুন…',
+    search_this_shop: 'এই শপে খুঁজুন…',
     product_detail_origin: 'উৎপত্তির দেশ',
     product_detail_expires: 'মেয়াদ শেষ',
     product_detail_moq: 'ন্যূনতম অর্ডার',
@@ -233,6 +236,9 @@ export default {
     view_all_orders: 'সব অর্ডার দেখুন',
     action_confirm_price: 'দাম নিশ্চিত করুন',
     action_reply: 'উত্তর দিন',
+    total_products: 'মোট পণ্য',
+    total_brands: 'মোট ব্র্যান্ড',
+    browse_catalog: 'ক্যাটালগ ব্রাউজ করুন',
   },
   help: {
     title: 'হেল্প সেন্টার',

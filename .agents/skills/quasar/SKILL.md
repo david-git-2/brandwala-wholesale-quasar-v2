@@ -21,7 +21,7 @@ Guide for designing, building, styling, and optimizing Vue 3 components using th
 ### Theme Scopes
 - `.theme-platform` (Teracotta/Amethyst - Platform level)
 - `.theme-app` (Emerald - Merchant app/desk)
-- `.theme-shop` (Sapphire - Customer shop)
+- `.theme-shop` (Mint / charcoal / mauve - Customer shop)
 - `.theme-investor` (Teal - Finance desk)
 
 ### Key CSS Theme Variables

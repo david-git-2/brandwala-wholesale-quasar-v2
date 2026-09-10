@@ -1,32 +1,16 @@
 <template>
   <div>
-    <div class="row items-center justify-between q-mb-sm">
-      <span class="text-subtitle1 text-weight-bold">{{ $t('customer_dashboard.recent_orders_title') }}</span>
-      <q-btn
-        v-if="recentOrders.length > 0"
-        flat
-        no-caps
-        dense
-        color="primary"
-        :label="$t('customer_dashboard.view_all_orders')"
-        icon-right="chevron_right"
-        @click="$emit('go-orders')"
-      />
-    </div>
+    <h3 class="shop-home-section__subtitle q-my-none q-mb-sm">
+      {{ $t('customer_dashboard.recent_orders_title') }}
+    </h3>
 
-    <q-card v-if="recentOrders.length === 0" flat bordered class="recent-orders-card q-pa-lg text-center">
-      <div class="text-body2 text-grey-6">{{ $t('customer_dashboard.no_recent_orders') }}</div>
-    </q-card>
-
-    <q-card v-else flat bordered class="recent-orders-card">
+    <q-card flat class="recent-orders-card">
       <q-list separator>
         <q-item
-          v-for="order in recentOrders"
+          v-for="order in displayOrders"
           :key="order.id"
-          clickable
-          class="q-py-md card-hover"
+          class="q-py-md recent-order-row"
           :class="{ 'order-waiting': isWaiting(order.status) }"
-          @click="$emit('view-order-detail', order.id)"
         >
           <q-item-section>
             <div class="row items-center justify-between no-wrap q-col-gutter-sm">
@@ -49,25 +33,33 @@
         </q-item>
       </q-list>
     </q-card>
+
+    <div class="row justify-center q-mt-sm">
+      <q-btn
+        unelevated
+        no-caps
+        dense
+        class="shop-ds-cta"
+        :label="$t('customer_dashboard.view_all_orders')"
+      />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { date } from 'quasar';
 import { useI18n } from 'vue-i18n';
 import type { CustomerDashboardRecentOrder } from '../types/customerDashboard';
 import { isWaitingStatus, waitingActionI18nKey } from '../utils/customerDashboardStatus';
 
-defineProps<{
+const props = defineProps<{
   recentOrders: CustomerDashboardRecentOrder[];
 }>();
 
-defineEmits<{
-  (e: 'go-orders'): void;
-  (e: 'view-order-detail', orderId: number): void;
-}>();
-
 const { t, te } = useI18n();
+
+const displayOrders = computed(() => props.recentOrders.slice(0, 5));
 
 const isWaiting = isWaitingStatus;
 
@@ -94,10 +86,22 @@ const statusColor = (status: string) => {
 </script>
 
 <style scoped>
+.shop-home-section__subtitle {
+  text-align: center;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--bw-shop-plum);
+}
+
 .recent-orders-card {
-  border-radius: 12px;
+  border-radius: var(--bw-shop-radius-card, 20px);
   background: var(--bw-theme-surface);
   overflow: hidden;
+  box-shadow: var(--bw-theme-shadow);
+}
+
+.recent-order-row {
+  cursor: default;
 }
 
 .order-waiting {

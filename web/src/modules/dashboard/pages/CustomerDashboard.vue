@@ -1,5 +1,5 @@
 <template>
-  <q-page class="q-pa-md bw-page theme-shop">
+  <q-page class="bw-page theme-shop">
     <div class="q-gutter-y-md">
       <CustomerDashboardSkeleton v-if="dashboardQuery.isLoading.value" />
 
@@ -8,12 +8,10 @@
       </q-banner>
 
       <template v-else>
-        <CustomerDashboardHero :customer-name="customerName" />
-
-        <CustomerDashboardStatusStrip
-          v-if="shops.length > 0"
-          :segments="orderGlanceSegments"
-          @select-bucket="goOrders"
+        <CustomerDashboardHero
+          :tenant-name="tenantName"
+          :total-products="totalProducts"
+          :total-brands="totalBrands"
         />
 
         <div
@@ -31,16 +29,19 @@
           @open-shop="openShop"
         />
 
+        <section v-if="shops.length > 0" class="shop-home-section q-gutter-y-md">
+          <h2 class="shop-home-section__title q-my-none">
+            {{ $t('customer_dashboard.glance_title') }}
+          </h2>
+
+          <CustomerDashboardStatusStrip :segments="mockOrderSegments" />
+
+          <CustomerDashboardRecentOrders :recent-orders="mockRecentOrders" />
+        </section>
+
         <CustomerDashboardCategories
           v-if="shops.length > 0 && categories.length > 0"
           :categories="categories"
-        />
-
-        <CustomerDashboardRecentOrders
-          v-if="shops.length > 0"
-          :recent-orders="recentOrders"
-          @go-orders="goOrders"
-          @view-order-detail="viewOrderDetail"
         />
       </template>
     </div>
@@ -58,8 +59,11 @@ import {
   rememberCatalogShop,
   shopCatalogPath,
 } from 'src/modules/shop_order/utils/catalogShop';
-import { type OrderGlanceBucket } from '../utils/customerDashboardStatus';
 import { useCustomerDashboardQuery } from '../composables/useCustomerDashboardQuery';
+import {
+  MOCK_ORDER_GLANCE_SEGMENTS,
+  MOCK_RECENT_ORDERS,
+} from '../mocks/customerDashboardOrdersMock';
 
 import CustomerDashboardHero from '../components/CustomerDashboardHero.vue';
 import CustomerDashboardShopsGrid from '../components/CustomerDashboardShopsGrid.vue';
@@ -71,8 +75,8 @@ import CustomerDashboardStatusStrip from '../components/CustomerDashboardStatusS
 const authStore = useAuthStore();
 const router = useRouter();
 
-const customerName = computed(
-  () => authStore.member?.name || authStore.user?.fullName || 'Valued Customer',
+const tenantName = computed(
+  () => authStore.tenant?.name || authStore.selectedTenant?.name || 'Shop',
 );
 const tenantBase = computed(() => (authStore.tenantSlug ? `/${authStore.tenantSlug}/shop` : '/shop'));
 const tenantId = computed(() => authStore.tenantId ?? null);
@@ -93,8 +97,10 @@ const dashboardError = computed(() => (dashboardQuery.error.value as Error | nul
 
 const shops = computed(() => dashboard.value?.shops ?? []);
 const categories = computed(() => dashboard.value?.categories ?? []);
-const recentOrders = computed(() => dashboard.value?.recent_orders ?? []);
-const orderGlanceSegments = computed(() => dashboard.value?.order_glance.segments ?? null);
+const mockOrderSegments = MOCK_ORDER_GLANCE_SEGMENTS;
+const mockRecentOrders = MOCK_RECENT_ORDERS;
+const totalProducts = computed(() => 0);
+const totalBrands = computed(() => 0);
 
 const rememberShop = (shop: CustomerAccessibleShop) => {
   if (tenantId.value) {
@@ -116,14 +122,4 @@ const openShop = (shop: CustomerAccessibleShop) => {
   void router.push(browsePath(shop));
 };
 
-const goOrders = (bucket?: OrderGlanceBucket) => {
-  void router.push({
-    path: `${tenantBase.value}/orders`,
-    query: bucket ? { bucket } : {},
-  });
-};
-
-const viewOrderDetail = (orderId: number) => {
-  void router.push(`${tenantBase.value}/orders/${orderId}`);
-};
 </script>

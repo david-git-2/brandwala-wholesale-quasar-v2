@@ -3,7 +3,10 @@
     flat
     bordered
     class="product-card"
-    :class="{ 'product-card--listing-inactive': showListingStatusToggle && !isListingActive }"
+    :class="{
+      'product-card--listing-inactive': showListingStatusToggle && !isListingActive,
+      'product-card--dropship': shopType === 'dropship',
+    }"
   >
     <div class="product-image-wrapper cursor-pointer" @click="$emit('open-detail', item)">
       <q-chip
@@ -31,11 +34,11 @@
 
     <div class="product-main">
     <q-card-section class="product-body">
-      <div class="product-meta text-caption text-uppercase tracking-wider">
+      <div class="product-meta">
         {{ item.product_brand || 'Generic' }}
       </div>
       <div
-        class="storefront-product-card__name text-weight-bold cursor-pointer"
+        class="storefront-product-card__name cursor-pointer"
         :title="item.product_name || undefined"
         @click="$emit('open-detail', item)"
       >
@@ -43,52 +46,16 @@
       </div>
 
       <div
-        v-if="
-          showQuantityBreakdown &&
-          permissions?.can_view_quantity
-        "
-        class="storefront-qty-breakdown q-mt-xs column q-gutter-y-xs"
-      >
-        <div class="text-caption row items-center no-wrap q-gutter-x-xs">
-          <span class="text-grey-7">{{ $t('shop_admin.col_actual_qty') }}:</span>
-          <span class="text-weight-medium" :class="actualQtyClass">{{ actualAvailableQty }}</span>
-        </div>
-        <div class="text-caption row items-center no-wrap q-gutter-x-xs">
-          <span class="text-grey-7">{{ $t('shop_admin.col_display_qty') }}:</span>
-          <span class="text-weight-medium" :class="displayQtyClass">{{ displayQtyValue }}</span>
-          <span v-if="!hasDisplayOverride" class="text-grey-6">({{ $t('shop_admin.storefront_qty_auto') }})</span>
-        </div>
-      </div>
-
-      <div
-        v-else-if="
-          permissions?.can_view_quantity &&
-          item.available_units !== null &&
-          item.available_units !== undefined
-        "
-        class="text-caption q-mt-xs"
-        :class="
-          item.available_units > 0
-            ? 'text-positive'
-            : item.available_units === 0
-              ? 'text-negative'
-              : 'text-grey-6'
-        "
-      >
-        {{ item.available_units }} {{ $t('shop.avail') }}
-      </div>
-
-      <div
         v-if="resolvedPriceText || resolvedMinPriceText"
-        class="product-pricing q-mt-sm"
+        class="product-pricing"
       >
         <div
           v-if="resolvedPriceText"
-          class="storefront-product-card__price text-weight-bold"
+          class="storefront-product-card__price bw-tabular"
         >
           <span
-            v-if="resolvedPriceLabel"
-            class="text-caption text-grey-6 block text-weight-medium"
+            v-if="showPriceLabel && resolvedPriceLabel"
+            class="storefront-product-card__price-label"
           >
             {{ resolvedPriceLabel }}
           </span>
@@ -97,11 +64,53 @@
 
         <div
           v-if="resolvedMinPriceText"
-          class="text-body2 text-grey-9 text-weight-medium q-mt-xs"
+          class="storefront-product-card__min-price"
         >
           {{ $t('shop.min_sell_price') }}
-          <span class="text-secondary text-weight-bold">{{ resolvedMinPriceText }}</span>
+          <span>{{ resolvedMinPriceText }}</span>
         </div>
+      </div>
+
+      <div
+        v-if="
+          showQuantityBreakdown &&
+          permissions?.can_view_quantity
+        "
+        class="storefront-qty-breakdown column q-gutter-y-xs"
+      >
+        <div class="product-stock row items-center no-wrap q-gutter-x-xs">
+          <span>{{ $t('shop_admin.col_actual_qty') }}:</span>
+          <span class="text-weight-medium" :class="actualQtyClass">{{ actualAvailableQty }}</span>
+        </div>
+        <div class="product-stock row items-center no-wrap q-gutter-x-xs">
+          <span>{{ $t('shop_admin.col_display_qty') }}:</span>
+          <span class="text-weight-medium" :class="displayQtyClass">{{ displayQtyValue }}</span>
+          <span v-if="!hasDisplayOverride">({{ $t('shop_admin.storefront_qty_auto') }})</span>
+        </div>
+      </div>
+
+      <div
+        v-else-if="
+          shopType === 'dropship' &&
+          item.available_units !== null &&
+          item.available_units !== undefined
+        "
+        class="product-stock"
+        :class="stockToneClass"
+      >
+        {{ item.available_units }} {{ $t('shop.avail') }}
+      </div>
+
+      <div
+        v-else-if="
+          permissions?.can_view_quantity &&
+          item.available_units !== null &&
+          item.available_units !== undefined
+        "
+        class="product-stock"
+        :class="stockToneClass"
+      >
+        {{ customerStockLabel }}
       </div>
 
       <div v-if="showCalculateSellPrice" class="q-mt-sm">
@@ -124,7 +133,7 @@
         :class="showListingStatusToggle ? 'justify-between' : 'justify-end'"
       >
         <div v-if="showListingStatusToggle" class="row items-center no-wrap q-gutter-x-sm col min-width-0">
-          <span class="text-caption text-grey-7">{{ listingStatusLabel }}</span>
+          <span class="product-stock">{{ listingStatusLabel }}</span>
           <q-toggle
             :model-value="isListingActive"
             color="positive"
@@ -201,11 +210,10 @@
             dense
             size="xs"
             icon="ph ph-minus"
-            color="grey-8"
             class="quantity-btn"
             @click="$emit('decrement', item)"
           />
-          <div class="quantity-value text-weight-bold text-center text-grey-9">
+          <div class="quantity-value text-weight-bold text-center">
             {{ selectedQty || minQty }}
           </div>
           <q-btn
@@ -214,7 +222,6 @@
             dense
             size="xs"
             icon="ph ph-plus"
-            color="grey-8"
             class="quantity-btn"
             @click="$emit('increment', item)"
           />
@@ -223,13 +230,12 @@
 
         <q-btn
           v-if="!inCart"
-          color="primary"
           unelevated
           no-caps
           dense
           icon="ph ph-shopping-cart"
           :label="addCartLabel"
-          class="add-cart-btn"
+          class="add-cart-btn add-cart-btn--solid"
           :loading="loading"
           :disabled="
             !permissions?.can_add_to_cart ||
@@ -259,7 +265,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useQuasar } from 'quasar';
 import type { CustomerShopPermissions } from '../composables/useCustomerShopPermissionsQuery';
 import type {
   ShopCatalogItem,
@@ -315,6 +320,13 @@ const showAdminCardActions = computed(
     (showCopyGradeVariant.value && availableGradeVariants.value.length > 0),
 );
 
+const showPriceLabel = computed(
+  () =>
+    showQuantityBreakdown.value ||
+    showCalculateSellPrice.value ||
+    showAdminCardActions.value,
+);
+
 const emit = defineEmits<{
   (e: 'open-detail', item: ShopCatalogItem): void;
   (e: 'image-error'): void;
@@ -329,10 +341,9 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const $q = useQuasar();
 
-const addCartLabel = computed(() => ($q.screen.lt.sm ? undefined : t('shop.add')));
-const removeCartLabel = computed(() => ($q.screen.lt.sm ? undefined : t('shop.remove')));
+const addCartLabel = computed(() => t('shop.add'));
+const removeCartLabel = computed(() => t('shop.remove'));
 
 const isListingActive = computed(
   () => props.item.listing_status !== 'inactive',
@@ -365,12 +376,28 @@ const displayQtyValue = computed(() => {
 });
 
 const actualQtyClass = computed(() =>
-  actualAvailableQty.value > 0 ? 'text-positive' : 'text-negative',
+  actualAvailableQty.value > 0 ? 'product-stock--ok' : 'product-stock--out',
 );
 
 const displayQtyClass = computed(() => {
-  if (!hasDisplayOverride.value) return 'text-grey-8';
-  return displayQtyValue.value > 0 ? 'text-primary' : 'text-negative';
+  if (!hasDisplayOverride.value) return '';
+  return displayQtyValue.value > 0 ? 'product-stock--ok' : 'product-stock--out';
+});
+
+const stockToneClass = computed(() => {
+  const units = props.item.available_units;
+  if (units == null) return '';
+  if (units <= 0) return 'product-stock--out';
+  if (units <= 5) return 'product-stock--low';
+  return 'product-stock--ok';
+});
+
+const customerStockLabel = computed(() => {
+  const units = props.item.available_units;
+  if (units == null) return '';
+  if (units <= 0) return t('shop.out_of_stock');
+  if (units <= 5) return t('shop.low_stock');
+  return t('shop.in_stock');
 });
 
 const resolvedPriceText = computed(
@@ -402,18 +429,18 @@ const gradeChipStyle = computed(() => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  border-radius: 16px;
-  background: var(--bw-theme-surface, #ffffff);
-  border-color: var(--bw-theme-border, rgba(34, 56, 101, 0.12));
-  color: var(--bw-theme-ink, #1f2937);
-  overflow: visible;
+  border-radius: 20px;
+  background: color-mix(in srgb, #ffffff 90%, var(--bw-shop-mauve, #996888) 10%);
+  border-color: var(--bw-theme-border, rgb(42 43 42 / 0.1));
+  color: var(--bw-theme-ink, #2a2b2a);
+  overflow: hidden;
   transition:
     transform 0.25s ease,
     box-shadow 0.25s ease;
 }
 .product-card:hover {
   transform: translateY(-4px);
-  box-shadow: var(--bw-theme-shadow, 0 10px 20px rgba(34, 56, 101, 0.06));
+  box-shadow: var(--bw-theme-shadow, 0 10px 24px rgb(42 43 42 / 0.08));
 }
 .product-card--listing-inactive {
   opacity: 0.72;
@@ -422,44 +449,43 @@ const gradeChipStyle = computed(() => {
   content: '';
   position: absolute;
   inset: 0;
-  background: rgba(255, 255, 255, 0.35);
+  background: rgb(255 255 255 / 0.35);
   pointer-events: none;
 }
 .admin-card-actions {
-  padding-top: 4px;
-  border-top: 1px solid var(--bw-theme-border, rgba(34, 56, 101, 0.08));
+  padding-top: 6px;
+  margin-top: 8px;
+  border-top: 1px solid var(--bw-theme-border, rgb(42 43 42 / 0.08));
 }
 .product-image-wrapper {
   position: relative;
-  height: 160px;
-  flex: 0 0 160px;
-  background: var(--bw-theme-surface, #ffffff);
-  border-bottom: 1px solid var(--bw-theme-border, rgba(34, 56, 101, 0.05));
+  height: 200px;
+  flex: 0 0 200px;
+  background: #ffffff;
+  border-bottom: 1px solid var(--bw-theme-border, rgb(42 43 42 / 0.06));
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 8px;
-  border-radius: 16px 16px 0 0;
+  padding: 0;
   overflow: hidden;
 }
 .product-overlay-chip {
   position: absolute;
-  top: 8px;
+  top: 10px;
   z-index: 1;
   font-size: 11px;
   min-height: 22px;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.18);
+  box-shadow: 0 2px 8px rgb(42 43 42 / 0.16);
 }
 .product-grade-chip {
-  left: 8px;
-  max-width: calc(100% - 16px);
+  left: 10px;
+  max-width: calc(100% - 20px);
 }
 .product-image {
   width: 100%;
   height: 100%;
   object-fit: contain;
   display: block;
-  border-radius: 8px;
 }
 .product-image-fallback {
   width: 100%;
@@ -467,8 +493,7 @@ const gradeChipStyle = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bw-theme-surface, #ffffff);
-  border-radius: 8px;
+  background: transparent;
 }
 .product-main {
   display: flex;
@@ -482,32 +507,70 @@ const gradeChipStyle = computed(() => {
   flex-direction: column;
   min-width: 0;
   overflow: visible;
-  padding: 10px 12px 8px;
+  padding: 12px 12px 8px;
+  gap: 0.25rem;
 }
 .product-meta {
-  letter-spacing: 0.05em;
-  margin-bottom: 2px;
-  color: var(--bw-theme-muted, #6b7280);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bw-theme-muted, #5e4955);
 }
 .storefront-product-card__name {
-  font-size: 12px;
+  font-size: 0.875rem;
+  font-weight: 600;
   line-height: 1.35;
-  min-height: calc(1.35em * 3);
-  max-height: calc(1.35em * 3);
-  margin-bottom: 4px;
-  color: var(--bw-theme-ink, #1f2937);
+  min-height: calc(1.35em * 2);
+  max-height: calc(1.35em * 2);
+  color: var(--bw-theme-ink, #2a2b2a);
   word-break: break-word;
   overflow-wrap: anywhere;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 .storefront-product-card__price {
-  font-size: 13px;
-  line-height: 1.3;
-  color: var(--bw-theme-ink, #1f2937);
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  color: var(--bw-theme-ink, #2a2b2a);
+}
+.storefront-product-card__price-label {
+  display: block;
+  margin-bottom: 0.1rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--bw-theme-muted, #5e4955);
+}
+.storefront-product-card__min-price {
+  margin-top: 0.15rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--bw-theme-muted, #5e4955);
+}
+.storefront-product-card__min-price span {
+  font-weight: 700;
+  color: var(--bw-shop-plum, #5e4955);
+}
+.product-stock {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--bw-theme-muted, #5e4955);
+}
+.product-stock--ok {
+  color: var(--bw-success, #1a7f4b);
+}
+.product-stock--low {
+  color: var(--q-warning, #f2c037);
+}
+.product-stock--out {
+  color: var(--bw-error, #b42318);
 }
 .product-actions {
   flex-shrink: 0;
@@ -517,87 +580,135 @@ const gradeChipStyle = computed(() => {
   min-height: 44px;
   opacity: 1 !important;
   visibility: visible !important;
-  border-top: 1px solid var(--bw-theme-border, rgba(34, 56, 101, 0.06));
+  padding: 0 12px 12px;
 }
 .product-actions__inner {
   width: 100%;
 }
 .quantity-controls {
-  border: 1.5px solid var(--bw-theme-border, rgba(34, 56, 101, 0.15));
-  border-radius: 8px;
+  border: 1px solid var(--bw-theme-border, rgb(42 43 42 / 0.14));
+  border-radius: 12px;
   padding: 2px;
-  background: rgba(0, 0, 0, 0.02);
+  background: #ffffff;
 }
 .quantity-btn {
   min-width: 28px;
   min-height: 28px;
+  color: var(--bw-theme-ink, #2a2b2a);
 }
 .quantity-value {
   width: 28px;
   font-size: 13px;
   user-select: none;
+  color: var(--bw-theme-ink, #2a2b2a);
 }
 .product-pricing {
   flex-shrink: 0;
   min-width: 0;
-  color: var(--bw-theme-ink, #1f2937);
+  margin-top: 0.15rem;
 }
 .add-cart-btn {
   flex: 1 1 auto;
-  border-radius: 8px;
+  border-radius: 12px !important;
+}
+
+.add-cart-btn--solid {
+  background: #2a2b2a !important;
+  color: #f9fffb !important;
+  font-weight: 600;
+}
+
+.add-cart-btn :deep(.q-btn__wrapper),
+.add-cart-btn :deep(.q-btn__content) {
+  border-radius: 12px;
+}
+
+.product-card--dropship .storefront-product-card__price-label {
+  color: var(--bw-shop-mauve, #996888);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .product-card,
+  .product-card:hover {
+    transition: none;
+    transform: none;
+  }
 }
 
 @media (max-width: 599px) {
   .product-card {
-    flex-direction: row;
-    align-items: stretch;
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr);
+    grid-template-areas:
+      'image body'
+      'actions actions';
+    column-gap: 10px;
+    row-gap: 8px;
+    align-items: start;
     height: auto;
-    border-radius: 0;
+    margin: 0 0 10px;
+    padding: 10px;
+    border-radius: 16px;
     border: none !important;
-    border-bottom: 1px solid var(--bw-theme-border, rgba(34, 56, 101, 0.08)) !important;
-    box-shadow: none;
+    overflow: hidden;
   }
   .product-card:hover {
     transform: none;
     box-shadow: none;
   }
   .product-image-wrapper {
+    grid-area: image;
     width: 96px;
     height: 96px;
-    flex: 0 0 96px;
-    align-self: center;
-    margin: 10px 0 10px 10px;
-    padding: 4px;
+    flex: none;
+    align-self: start;
+    margin: 0;
+    padding: 0;
     border-bottom: none;
-    border-radius: 8px;
+    border-radius: 12px;
     overflow: hidden;
   }
-  .product-image,
-  .product-image-fallback {
-    border-radius: 6px;
-  }
   .product-main {
-    flex: 1 1 auto;
-    min-width: 0;
+    display: contents;
   }
   .product-body {
-    padding: 10px 12px 8px 10px;
+    grid-area: body;
+    padding: 0;
+    gap: 0.15rem;
   }
   .storefront-product-card__name {
-    font-size: 12px;
-    line-height: 1.35;
-    min-height: calc(1.35em * 3);
-    max-height: calc(1.35em * 3);
+    font-size: 0.8125rem;
+    min-height: 0;
+    max-height: calc(1.35em * 2);
+  }
+  .storefront-product-card__price {
+    font-size: 1.125rem;
   }
   .product-actions {
-    flex-shrink: 0;
-    border-top: none;
-    padding: 4px 12px 10px 10px;
+    grid-area: actions;
+    min-height: 0;
+    padding: 0;
+    width: 100%;
+  }
+  .product-actions__inner {
+    gap: 8px;
+  }
+  .quantity-controls {
+    flex: 0 0 auto;
+  }
+  .quantity-btn {
+    min-width: 26px;
+    min-height: 26px;
   }
   .add-cart-btn {
-    min-width: 36px;
-    padding-left: 4px;
-    padding-right: 4px;
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0.28rem 0.45rem !important;
+  }
+  .add-cart-btn :deep(.q-btn__content) {
+    flex-wrap: nowrap;
+    white-space: nowrap;
+    gap: 0.2rem;
   }
 }
 </style>

@@ -49,8 +49,10 @@ Quasar `$positive` / `$negative` / `$warning` / `$info` in `quasar.variables.scs
 |-------|---------------|--------------|
 | Platform | `#6b2d3c` oxide burgundy | `#e8a0a8` |
 | App | `#0d6b5c` trade teal | `#4db8a4` |
-| Shop | `#3d52b0` commerce indigo | `#7ba3f0` |
+| Shop | `#2a2b2a` charcoal CTA | `#b48b7d` clay |
 | Investor | `#0f5c5a` capital teal | `#5ecfc4` |
+
+Shop design system (light): canvas `#ffffff`, cards white + `20px` radius, ink/CTA `#2a2b2a`, muted `#5e4955`, data hues mauve `#996888` / clay `#b48b7d` / plum `#5e4955`. Pills `999px`. Classes: `.shop-ds-title`, `.shop-ds-cta`, `.shop-ds-tile--charcoal|plum|mauve|clay`. See [`doc/fix/SHOP_SCOPE_VISUAL_REDESIGN.md`](../doc/fix/SHOP_SCOPE_VISUAL_REDESIGN.md).
 
 ### Semantic theme (use these in components)
 - `--bw-theme-base`, `--bw-theme-surface`, `--bw-theme-border`, `--bw-theme-ink`, `--bw-theme-muted`
@@ -137,7 +139,9 @@ Compact density: `body.body--compact` / `body.bw-density-compact` → 13px body,
 
 - Catalog, product detail, cart/checkout (`.shop-commerce-page`): extra page padding via `clamp(1.25rem, 3vw, 2.5rem)`
 - Product titles (`.product-name`, `.product-detail__title`): `1.125rem / 600`
-- Mobile bottom nav active item: soft filled pill on `--bw-theme-primary-soft`
+- Mobile bottom nav active item: soft filled pill on `--bw-theme-primary-soft` (16% indigo tint)
+- Shop shell: top nav + charcoal search/cart pills; tokens in `.theme-shop` (`web/src/css/app.scss`)
+- Shop cards `20px` radius, CTAs charcoal pills, shop tiles cycle charcoal / plum / mauve / clay
 
 ## Brand assets & splash
 

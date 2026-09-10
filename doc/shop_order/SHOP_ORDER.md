@@ -6,6 +6,8 @@ Customer group provisioning lives in [`CUSTOMER.md`](../customer/CUSTOMER.md). S
 
 **UI flows, button rules, and validation matrices:** [`UI_FLOW.md`](./UI_FLOW.md)
 
+**Shop scope visual redesign (tokens + catalog hierarchy, layout locked):** [`../fix/SHOP_SCOPE_VISUAL_REDESIGN.md`](../fix/SHOP_SCOPE_VISUAL_REDESIGN.md)
+
 **Catalog negotiation (status model, labels, transitions):** [`CATALOG_NEGOTIATION.md`](./CATALOG_NEGOTIATION.md)
 
 **Customer demand bucket (shared waiting list, add / soft pop / purge):** [`DEMAND_BUCKET.md`](./DEMAND_BUCKET.md)

@@ -38,6 +38,7 @@
   --bw-font-ui: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --bw-font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
   --bw-font-bn: 'Noto Sans Bengali', var(--bw-font-ui);
+  --bw-font-shop-banner: 'Caprasimo', var(--bw-font-ui);
 }
 
 body.body--dark {
@@ -88,10 +89,19 @@ body.body--dark {
   }
 
   .theme-shop {
-    --bw-theme-primary: #7ba3f0;
-    --bw-theme-primary-rgb: 123 163 240;
-    --bw-theme-primary-soft: rgb(123 163 240 / 0.15);
-    --bw-theme-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    --bw-shop-charcoal: #2a2b2a;
+    --bw-shop-plum: #5e4955;
+    --bw-shop-mauve: #996888;
+    --bw-shop-clay: #b48b7d;
+    --bw-theme-base: #2a2b2a;
+    --bw-theme-surface: #353635;
+    --bw-theme-border: #5e4955;
+    --bw-theme-ink: #f9fffb;
+    --bw-theme-muted: #b48b7d;
+    --bw-theme-primary: #b48b7d;
+    --bw-theme-primary-rgb: 180 139 125;
+    --bw-theme-primary-soft: rgb(153 104 136 / 0.22);
+    --bw-theme-shadow: 0 10px 30px -4px rgb(0 0 0 / 0.45), 0 4px 12px -2px rgb(0 0 0 / 0.35);
   }
 
   .theme-investor {
@@ -153,15 +163,24 @@ body.body--dark {
   --bw-theme-muted: var(--bw-neutral-muted);
 }
 
-/* 3. Shop Theme — commerce indigo */
+/* 3. Shop Theme — mint canvas, charcoal actions, mauve/clay data hues */
 .theme-shop {
-  --bw-theme-primary: #3d52b0;
-  --bw-theme-primary-rgb: 61 82 176;
-  --bw-theme-primary-soft: rgb(61 82 176 / 0.08);
-  --bw-theme-border: var(--bw-neutral-border);
-  --bw-theme-shadow: 0 10px 30px -4px rgba(61 82 176 / 0.12), 0 4px 12px -2px rgba(23 20 18 / 0.04);
-  --bw-theme-ink: var(--bw-neutral-ink);
-  --bw-theme-muted: var(--bw-neutral-muted);
+  --bw-shop-charcoal: #2a2b2a;
+  --bw-shop-plum: #5e4955;
+  --bw-shop-mauve: #996888;
+  --bw-shop-clay: #b48b7d;
+  --bw-shop-radius-card: 20px;
+  --bw-shop-radius-pill: 999px;
+  --bw-theme-base: #ffffff;
+  --bw-theme-surface: #ffffff;
+  --bw-theme-border: #ebe7e2;
+  --bw-theme-ink: #2a2b2a;
+  --bw-theme-muted: #5e4955;
+  --bw-theme-primary: #2a2b2a;
+  --bw-theme-primary-rgb: 42 43 42;
+  --bw-theme-primary-soft: rgb(153 104 136 / 0.16);
+  --bw-theme-shadow: 0 12px 32px -16px rgb(42 43 42 / 0.18);
+  --q-primary: var(--bw-theme-primary);
 }
 
 body {
@@ -544,8 +563,104 @@ body.body--dark {
 
 /* Shop rhythm — catalog & cart feel more open than app ops desk */
 body.theme-shop {
-  .workspace-shell__page-container {
-    padding: 10px 16px;
+  --bw-shop-charcoal: #2a2b2a;
+  --bw-shop-plum: #5e4955;
+  --bw-shop-mauve: #996888;
+  --bw-shop-clay: #b48b7d;
+  --bw-shop-radius-card: 20px;
+  --bw-shop-radius-pill: 999px;
+
+  .workspace-shell__page-container,
+  .shop-shell__page-container {
+    padding: 12px 20px;
+  }
+
+  .q-page {
+    background: var(--bw-theme-base);
+  }
+
+  .q-card {
+    border-radius: var(--bw-shop-radius-card);
+    border-color: transparent;
+    box-shadow: var(--bw-theme-shadow);
+  }
+
+  .q-btn[color='primary'].unelevated {
+    border-radius: var(--bw-shop-radius-pill);
+  }
+
+  .shop-ds-title {
+    font-size: clamp(1.5rem, 2.4vw, 2rem);
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    color: var(--bw-shop-charcoal);
+  }
+
+  .shop-home-section__title {
+    text-align: center;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--bw-shop-charcoal);
+  }
+
+  .shop-banner-font {
+    font-family: var(--bw-font-shop-banner);
+    font-weight: 400;
+    letter-spacing: 0;
+    color: var(--bw-shop-charcoal);
+  }
+
+  .shop-home-banner {
+    padding: 0.5rem 0 1rem;
+    text-align: center;
+  }
+
+  .shop-home-banner__tenant {
+    font-family: var(--bw-font-shop-banner);
+    font-size: clamp(2.75rem, 8vw, 4.5rem);
+    font-weight: 400;
+    letter-spacing: 0;
+    line-height: 1;
+    color: var(--bw-shop-charcoal);
+    text-align: center;
+  }
+
+  .shop-ds-cta {
+    border-radius: var(--bw-shop-radius-pill) !important;
+    background: var(--bw-shop-charcoal) !important;
+    color: #f9fffb !important;
+    font-weight: 600;
+    padding: 0.45rem 1rem;
+  }
+
+  .shop-ds-cta--outline {
+    background: transparent !important;
+    color: var(--bw-shop-charcoal) !important;
+    border: 1.5px solid var(--bw-shop-charcoal) !important;
+  }
+
+  .shop-ds-tile {
+    border: 0;
+    border-radius: var(--bw-shop-radius-card);
+    color: #f9fffb;
+    min-height: 108px;
+    box-shadow: none;
+  }
+
+  .shop-ds-tile--charcoal {
+    background: var(--bw-shop-charcoal);
+  }
+
+  .shop-ds-tile--plum {
+    background: var(--bw-shop-plum);
+  }
+
+  .shop-ds-tile--mauve {
+    background: var(--bw-shop-mauve);
+  }
+
+  .shop-ds-tile--clay {
+    background: var(--bw-shop-clay);
   }
 
   .storefront-page,
