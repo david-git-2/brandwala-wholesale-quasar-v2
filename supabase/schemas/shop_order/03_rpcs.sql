@@ -5880,6 +5880,66 @@ CREATE OR REPLACE FUNCTION "public"."list_customer_active_carts"("p_tenant_id" b
 ALTER FUNCTION "public"."list_customer_active_carts"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."customer_shop_order_glance_bucket"("p_status" "public"."shop_order_status") RETURNS "text"
+    LANGUAGE "sql" IMMUTABLE
+    AS $$
+  select case
+    when p_status = 'draft'::public.shop_order_status then null
+    when p_status in (
+      'priced'::public.shop_order_status,
+      'negotiating'::public.shop_order_status,
+      'countered'::public.shop_order_status,
+      'final_offered'::public.shop_order_status
+    ) then 'needs_you'
+    when p_status in (
+      'fulfilled'::public.shop_order_status,
+      'delivered'::public.shop_order_status,
+      'payment_received'::public.shop_order_status,
+      'reseller_paid'::public.shop_order_status,
+      'cancelled'::public.shop_order_status,
+      'returned'::public.shop_order_status
+    ) then 'done'
+    else 'in_progress'
+  end;
+$$;
+ALTER FUNCTION "public"."customer_shop_order_glance_bucket"("p_status" "public"."shop_order_status") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."customer_shop_order_glance_segment"("p_status" "public"."shop_order_status") RETURNS "text"
+    LANGUAGE "sql" IMMUTABLE
+    AS $$
+  select case
+    when p_status in (
+      'priced'::public.shop_order_status,
+      'negotiating'::public.shop_order_status,
+      'countered'::public.shop_order_status,
+      'final_offered'::public.shop_order_status
+    ) then 'needs_you'
+    when p_status in (
+      'confirmed'::public.shop_order_status,
+      'placed'::public.shop_order_status
+    ) then 'payment_needed'
+    when p_status in (
+      'submitted'::public.shop_order_status,
+      'costing_pending'::public.shop_order_status,
+      'procuring'::public.shop_order_status,
+      'ordered'::public.shop_order_status,
+      'processing'::public.shop_order_status,
+      'shipped'::public.shop_order_status,
+      'ready_for_shipment'::public.shop_order_status,
+      'ready_for_pickup'::public.shop_order_status
+    ) then 'in_progress'
+    when p_status = 'delivered'::public.shop_order_status then 'delivered'
+    when p_status in (
+      'payment_received'::public.shop_order_status,
+      'reseller_paid'::public.shop_order_status
+    ) then 'paid'
+    else null
+  end;
+$$;
+ALTER FUNCTION "public"."customer_shop_order_glance_segment"("p_status" "public"."shop_order_status") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."list_customer_shop_orders"("p_tenant_id" bigint, "p_limit" integer DEFAULT 20, "p_offset" integer DEFAULT 0, "p_status_bucket" "text" DEFAULT NULL::"text") RETURNS TABLE("id" bigint, "shop_id" bigint, "shop_name" "text", "shop_slug" "text", "shop_type_snapshot" "public"."shop_type_enum", "order_no" "text", "status" "public"."shop_order_status", "item_count" bigint, "can_see_buy_price" boolean, "can_see_sell_price" boolean, "sell_currency_id" bigint, "currency_symbol" "text", "total_amount" numeric, "created_at" timestamp with time zone)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -5972,29 +6032,7 @@ begin
     and o.status is distinct from 'draft'
     and (
       p_status_bucket is null
-      or (
-        p_status_bucket = 'needs_you'
-        and o.status in ('priced', 'countered', 'final_offered')
-      )
-      or (
-        p_status_bucket = 'done'
-        and o.status in ('fulfilled', 'delivered', 'payment_received', 'cancelled', 'returned')
-      )
-      or (
-        p_status_bucket = 'in_progress'
-        and o.status not in (
-          'draft',
-          'priced',
-          'negotiating',
-          'countered',
-          'final_offered',
-          'fulfilled',
-          'delivered',
-          'payment_received',
-          'cancelled',
-          'returned'
-        )
-      )
+      or public.customer_shop_order_glance_bucket(o.status) = p_status_bucket
     )
   order by o.created_at desc
   limit v_limit
@@ -6088,6 +6126,88 @@ CREATE OR REPLACE FUNCTION "public"."list_customer_shops"("p_tenant_id" bigint) 
 ALTER FUNCTION "public"."list_customer_shops"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."customer_accessible_catalog_glance"("p_tenant_id" bigint, "p_customer_group_id" bigint) RETURNS "jsonb"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  with accessible_shops as (
+    select
+      s.id,
+      s.shop_type,
+      s.vendor_code,
+      s.vendor_filters
+    from public.shops s
+    join public.shop_customer_group_access access on access.shop_id = s.id
+    join public.customer_groups cg on cg.id = access.customer_group_id
+    left join public.customer_group_shop_profiles profile
+      on profile.customer_group_id = cg.id and profile.tenant_id = s.tenant_id
+    where s.is_active = true
+      and s.deleted_at is null
+      and s.tenant_id = p_tenant_id
+      and cg.id = p_customer_group_id
+      and cg.is_active = true
+      and access.status = true
+      and coalesce(profile.is_active, true) = true
+      and coalesce(access.can_browse, profile.default_can_browse, false) = true
+  ),
+  parent_tenant as (
+    select public.resolve_parent_tenant_id(p_tenant_id) as parent_tenant_id
+  ),
+  vendor_catalog_products as (
+    select distinct
+      p.id as product_id,
+      p.brand as product_brand
+    from accessible_shops s
+    cross join parent_tenant pt
+    join public.products p on p.parent_tenant_id = pt.parent_tenant_id
+    where s.shop_type = 'vendor_catalog'::public.shop_type_enum
+      and p.is_available = true
+      and coalesce(p.hazardous, false) = false
+      and (
+        ((s.vendor_filters is null or jsonb_array_length(s.vendor_filters) = 0) and p.vendor_code = s.vendor_code)
+        or (
+          s.vendor_filters is not null and jsonb_array_length(s.vendor_filters) > 0 and exists (
+            select 1
+            from jsonb_to_recordset(s.vendor_filters) as vf(vendor_code text, brands text[])
+            where vf.vendor_code = p.vendor_code
+              and (vf.brands is null or array_length(vf.brands, 1) is null or p.brand = any(vf.brands))
+          )
+        )
+      )
+  ),
+  listing_products as (
+    select distinct
+      p.id as product_id,
+      p.brand as product_brand
+    from accessible_shops s
+    join public.shop_product_listings l on l.shop_id = s.id
+    join public.products p on p.id = l.product_id
+    where s.shop_type <> 'vendor_catalog'::public.shop_type_enum
+      and l.is_active = true
+      and p.is_available = true
+      and coalesce(p.hazardous, false) = false
+  ),
+  combined as (
+    select product_id, product_brand from vendor_catalog_products
+    union
+    select product_id, product_brand from listing_products
+  )
+  select jsonb_build_object(
+    'total_products', coalesce((select count(*)::bigint from combined), 0),
+    'total_brands', coalesce((
+      select count(*)::bigint
+      from (
+        select distinct lower(trim(product_brand)) as brand_key
+        from combined
+        where product_brand is not null
+          and trim(product_brand) <> ''
+      ) brands
+    ), 0)
+  );
+$$;
+ALTER FUNCTION "public"."customer_accessible_catalog_glance"("p_tenant_id" bigint, "p_customer_group_id" bigint) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."get_customer_dashboard_summary"("p_tenant_id" bigint) RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -6099,6 +6219,7 @@ declare
   v_recent_orders jsonb := '[]'::jsonb;
   v_active_carts jsonb := '[]'::jsonb;
   v_buckets jsonb;
+  v_catalog_glance jsonb := jsonb_build_object('total_products', 0, 'total_brands', 0);
 begin
   if p_tenant_id is null then
     return jsonb_build_object(
@@ -6106,6 +6227,7 @@ begin
       'customer_group_id', null,
       'shops', '[]'::jsonb,
       'categories', '[]'::jsonb,
+      'catalog_glance', v_catalog_glance,
       'order_glance', jsonb_build_object(
         'buckets', jsonb_build_object('needs_you', 0, 'in_progress', 0, 'done', 0, 'total', 0),
         'segments', jsonb_build_object(
@@ -6129,6 +6251,7 @@ begin
       'customer_group_id', null,
       'shops', '[]'::jsonb,
       'categories', '[]'::jsonb,
+      'catalog_glance', v_catalog_glance,
       'order_glance', jsonb_build_object(
         'buckets', jsonb_build_object('needs_you', 0, 'in_progress', 0, 'done', 0, 'total', 0),
         'segments', jsonb_build_object(
@@ -6144,6 +6267,8 @@ begin
       'active_carts', '[]'::jsonb
     );
   end if;
+
+  v_catalog_glance := public.customer_accessible_catalog_glance(p_tenant_id, v_group_id);
 
   select coalesce(jsonb_agg(row_to_json(shop_row) order by shop_row.name), '[]'::jsonb)
   into v_shops
@@ -6240,70 +6365,34 @@ begin
   select jsonb_build_object(
     'buckets', jsonb_build_object(
       'needs_you', coalesce(count(*) filter (
-        where o.status in ('priced', 'negotiating', 'countered', 'final_offered')
+        where public.customer_shop_order_glance_bucket(o.status) = 'needs_you'
       ), 0),
       'in_progress', coalesce(count(*) filter (
-        where o.status not in (
-          'draft',
-          'priced',
-          'negotiating',
-          'countered',
-          'final_offered',
-          'fulfilled',
-          'delivered',
-          'payment_received',
-          'cancelled',
-          'returned'
-        )
+        where public.customer_shop_order_glance_bucket(o.status) = 'in_progress'
       ), 0),
       'done', coalesce(count(*) filter (
-        where o.status in ('fulfilled', 'delivered', 'payment_received', 'cancelled', 'returned')
+        where public.customer_shop_order_glance_bucket(o.status) = 'done'
       ), 0),
       'total', coalesce(count(*) filter (where o.status is distinct from 'draft'), 0)
     ),
     'segments', jsonb_build_object(
       'needs_you', coalesce(count(*) filter (
-        where o.status in ('priced', 'negotiating', 'countered', 'final_offered')
+        where public.customer_shop_order_glance_segment(o.status) = 'needs_you'
       ), 0),
       'in_progress', coalesce(count(*) filter (
-        where o.status in (
-          'submitted',
-          'costing_pending',
-          'procuring',
-          'ordered',
-          'processing',
-          'shipped',
-          'ready_for_shipment',
-          'ready_for_pickup',
-          'fulfilled'
-        )
+        where public.customer_shop_order_glance_segment(o.status) = 'in_progress'
       ), 0),
-      'delivered', coalesce(count(*) filter (where o.status = 'delivered'), 0),
-      'paid', coalesce(count(*) filter (where o.status = 'payment_received'), 0),
+      'delivered', coalesce(count(*) filter (
+        where public.customer_shop_order_glance_segment(o.status) = 'delivered'
+      ), 0),
+      'paid', coalesce(count(*) filter (
+        where public.customer_shop_order_glance_segment(o.status) = 'paid'
+      ), 0),
       'payment_needed', coalesce(count(*) filter (
-        where o.status in ('confirmed', 'placed')
+        where public.customer_shop_order_glance_segment(o.status) = 'payment_needed'
       ), 0),
       'total', coalesce(count(*) filter (
-        where o.status not in ('draft', 'cancelled', 'returned')
-          and o.status in (
-            'priced',
-            'negotiating',
-            'countered',
-            'final_offered',
-            'submitted',
-            'costing_pending',
-            'procuring',
-            'ordered',
-            'processing',
-            'shipped',
-            'ready_for_shipment',
-            'ready_for_pickup',
-            'fulfilled',
-            'delivered',
-            'payment_received',
-            'confirmed',
-            'placed'
-          )
+        where public.customer_shop_order_glance_segment(o.status) is not null
       ), 0)
     )
   )
@@ -6379,6 +6468,7 @@ begin
     'customer_group_id', v_group_id,
     'shops', v_shops,
     'categories', v_categories,
+    'catalog_glance', v_catalog_glance,
     'order_glance', v_buckets,
     'recent_orders', v_recent_orders,
     'active_carts', v_active_carts

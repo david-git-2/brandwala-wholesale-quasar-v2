@@ -319,6 +319,15 @@ REVOKE ALL ON FUNCTION "public"."get_customer_shop_order"("p_tenant_id" bigint, 
 GRANT ALL ON FUNCTION "public"."get_customer_shop_order"("p_tenant_id" bigint, "p_order_id" bigint) TO "authenticated";
 
 
+REVOKE ALL ON FUNCTION "public"."customer_shop_order_glance_bucket"("p_status" "public"."shop_order_status") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."customer_shop_order_glance_bucket"("p_status" "public"."shop_order_status") TO "authenticated";
+
+REVOKE ALL ON FUNCTION "public"."customer_shop_order_glance_segment"("p_status" "public"."shop_order_status") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."customer_shop_order_glance_segment"("p_status" "public"."shop_order_status") TO "authenticated";
+
+REVOKE ALL ON FUNCTION "public"."customer_accessible_catalog_glance"("p_tenant_id" bigint, "p_customer_group_id" bigint) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."customer_accessible_catalog_glance"("p_tenant_id" bigint, "p_customer_group_id" bigint) TO "authenticated";
+
 REVOKE ALL ON FUNCTION "public"."get_customer_dashboard_summary"("p_tenant_id" bigint) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_customer_dashboard_summary"("p_tenant_id" bigint) TO "authenticated";
 

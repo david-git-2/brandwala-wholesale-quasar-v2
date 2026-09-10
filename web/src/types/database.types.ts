@@ -10875,6 +10875,10 @@ export type Database = {
       }
       current_tenant_id: { Args: never; Returns: number }
       current_user_email: { Args: never; Returns: string }
+      customer_accessible_catalog_glance: {
+        Args: { p_customer_group_id: number; p_tenant_id: number }
+        Returns: Json
+      }
       customer_can_select_shop: {
         Args: { p_shop_id: number; p_tenant_id: number }
         Returns: boolean
@@ -10886,6 +10890,14 @@ export type Database = {
       customer_counter_offer: {
         Args: { p_items: Json; p_order_id: number }
         Returns: undefined
+      }
+      customer_shop_order_glance_bucket: {
+        Args: { p_status: Database["public"]["Enums"]["shop_order_status"] }
+        Returns: string
+      }
+      customer_shop_order_glance_segment: {
+        Args: { p_status: Database["public"]["Enums"]["shop_order_status"] }
+        Returns: string
       }
       default_pickable_stock_location_id: {
         Args: { p_tenant_id: number }
@@ -11444,15 +11456,24 @@ export type Database = {
           tenant_slug: string
         }[]
       }
-      get_shop_catalog_product_for_customer: {
-        Args: {
-          p_listing_id?: number
-          p_product_id: number
-          p_shop_slug: string
-          p_tenant_id: number
-        }
-        Returns: Json
-      }
+      get_shop_catalog_product_for_customer:
+        | {
+            Args: {
+              p_product_id: number
+              p_shop_slug: string
+              p_tenant_id: number
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_listing_id?: number
+              p_product_id: number
+              p_shop_slug: string
+              p_tenant_id: number
+            }
+            Returns: Json
+          }
       get_shop_effective_grants: {
         Args: { p_customer_group_member_id: number; p_tenant_id: number }
         Returns: {
@@ -13783,6 +13804,16 @@ export type Database = {
       resolve_parent_tenant_id: {
         Args: { p_tenant_id: number }
         Returns: number
+      }
+      resolve_shop_can_see_buy_price: {
+        Args: {
+          p_access_can_see_buy_price: boolean
+          p_access_can_see_sell_price: boolean
+          p_profile_default_can_see_buy_price: boolean
+          p_profile_default_can_see_sell_price: boolean
+          p_shop_type: Database["public"]["Enums"]["shop_type_enum"]
+        }
+        Returns: boolean
       }
       resolve_shop_order_item_landed_cost: {
         Args: {

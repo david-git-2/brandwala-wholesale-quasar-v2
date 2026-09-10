@@ -29,20 +29,20 @@
           @open-shop="openShop"
         />
 
+        <CustomerDashboardCategories
+          v-if="shops.length > 0 && categories.length > 0"
+          :categories="categories"
+        />
+
         <section v-if="shops.length > 0" class="shop-home-section q-gutter-y-md">
           <h2 class="shop-home-section__title q-my-none">
             {{ $t('customer_dashboard.glance_title') }}
           </h2>
 
-          <CustomerDashboardStatusStrip :segments="mockOrderSegments" />
+          <CustomerDashboardStatusStrip :segments="orderSegments" />
 
-          <CustomerDashboardRecentOrders :recent-orders="mockRecentOrders" />
+          <CustomerDashboardRecentOrders :recent-orders="recentOrders" />
         </section>
-
-        <CustomerDashboardCategories
-          v-if="shops.length > 0 && categories.length > 0"
-          :categories="categories"
-        />
       </template>
     </div>
   </q-page>
@@ -60,10 +60,6 @@ import {
   shopCatalogPath,
 } from 'src/modules/shop_order/utils/catalogShop';
 import { useCustomerDashboardQuery } from '../composables/useCustomerDashboardQuery';
-import {
-  MOCK_ORDER_GLANCE_SEGMENTS,
-  MOCK_RECENT_ORDERS,
-} from '../mocks/customerDashboardOrdersMock';
 
 import CustomerDashboardHero from '../components/CustomerDashboardHero.vue';
 import CustomerDashboardShopsGrid from '../components/CustomerDashboardShopsGrid.vue';
@@ -97,10 +93,10 @@ const dashboardError = computed(() => (dashboardQuery.error.value as Error | nul
 
 const shops = computed(() => dashboard.value?.shops ?? []);
 const categories = computed(() => dashboard.value?.categories ?? []);
-const mockOrderSegments = MOCK_ORDER_GLANCE_SEGMENTS;
-const mockRecentOrders = MOCK_RECENT_ORDERS;
-const totalProducts = computed(() => 0);
-const totalBrands = computed(() => 0);
+const orderSegments = computed(() => dashboard.value?.order_glance.segments ?? null);
+const recentOrders = computed(() => dashboard.value?.recent_orders ?? []);
+const totalProducts = computed(() => dashboard.value?.catalog_glance.total_products ?? 0);
+const totalBrands = computed(() => dashboard.value?.catalog_glance.total_brands ?? 0);
 
 const rememberShop = (shop: CustomerAccessibleShop) => {
   if (tenantId.value) {

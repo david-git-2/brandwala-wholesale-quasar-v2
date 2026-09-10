@@ -9,6 +9,7 @@ export const DONE_STATUSES = new Set([
   'fulfilled',
   'delivered',
   'payment_received',
+  'reseller_paid',
   'cancelled',
   'returned',
 ]);

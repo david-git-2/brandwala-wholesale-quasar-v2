@@ -4,12 +4,12 @@
 
     <div class="shop-home-banner__stats row justify-center q-col-gutter-lg q-mt-md">
       <div class="col-auto text-center">
-        <div class="shop-home-banner__stat-value">{{ formatCount(totalProducts) }}</div>
-        <div class="shop-home-banner__stat-label">{{ $t('customer_dashboard.total_products') }}+</div>
+        <div class="shop-home-banner__stat-value">{{ formatCountWithPlus(totalProducts) }}</div>
+        <div class="shop-home-banner__stat-label">{{ $t('customer_dashboard.total_products') }}</div>
       </div>
       <div class="col-auto text-center">
-        <div class="shop-home-banner__stat-value">{{ formatCount(totalBrands) }}</div>
-        <div class="shop-home-banner__stat-label">{{ $t('customer_dashboard.total_brands') }}+</div>
+        <div class="shop-home-banner__stat-value">{{ formatCountWithPlus(totalBrands) }}</div>
+        <div class="shop-home-banner__stat-label">{{ $t('customer_dashboard.total_brands') }}</div>
       </div>
     </div>
   </section>
@@ -25,6 +25,11 @@ defineProps<{
 const formatCount = (value?: number | null) => {
   if (value == null) return '—';
   return value.toLocaleString();
+};
+
+const formatCountWithPlus = (value?: number | null) => {
+  const formatted = formatCount(value);
+  return formatted === '—' ? formatted : `${formatted}+`;
 };
 </script>
 

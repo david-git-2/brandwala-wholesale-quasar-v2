@@ -124,13 +124,13 @@ const tagline = computed(() => {
 }
 
 .auth-scope--shop {
-  --auth-bg: #030814;
-  --auth-mid: #09184a;
-  --auth-accent: #3b82f6;
-  --auth-accent-rgb: 59 130 246;
-  --auth-glow: rgb(59 130 246 / 0.38);
-  --auth-ghost: rgb(59 130 246 / 0.04);
-  --auth-card-bar: #2563eb;
+  --auth-bg: #1a1819;
+  --auth-mid: #3d2f38;
+  --auth-accent: #996888;
+  --auth-accent-rgb: 153 104 136;
+  --auth-glow: rgb(153 104 136 / 0.38);
+  --auth-ghost: rgb(153 104 136 / 0.05);
+  --auth-card-bar: #b48b7d;
 }
 
 /* ── Root layout ─────────────────────────────────────── */

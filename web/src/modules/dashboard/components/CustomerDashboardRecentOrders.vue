@@ -41,6 +41,7 @@
         dense
         class="shop-ds-cta"
         :label="$t('customer_dashboard.view_all_orders')"
+        :to="{ name: 'shop-orders-page' }"
       />
     </div>
   </div>

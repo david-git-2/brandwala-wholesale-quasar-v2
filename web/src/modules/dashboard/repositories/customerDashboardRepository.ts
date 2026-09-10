@@ -2,6 +2,7 @@ import { supabase } from 'src/boot/supabase';
 import type { ActiveCartItem } from 'src/modules/shop_order/repositories/shopCartRepository';
 import type { CustomerAccessibleShop } from 'src/modules/shop_order/repositories/shopOrderRepository';
 import type {
+  CatalogGlance,
   CustomerDashboardCategory,
   CustomerDashboardRecentOrder,
   CustomerDashboardSummary,
@@ -25,15 +26,26 @@ const emptySegments = (): OrderGlanceSegments => ({
   total: 0,
 });
 
+const emptyCatalogGlance = (): CatalogGlance => ({
+  total_products: 0,
+  total_brands: 0,
+});
+
 const parseSummary = (raw: unknown, tenantId: number): CustomerDashboardSummary => {
   const data = (raw ?? {}) as Record<string, unknown>;
   const orderGlance = (data.order_glance ?? {}) as Record<string, unknown>;
+  const catalogGlance = (data.catalog_glance ?? {}) as Partial<CatalogGlance>;
 
   return {
     tenant_id: (data.tenant_id as number | null) ?? tenantId,
     customer_group_id: (data.customer_group_id as number | null) ?? null,
     shops: (data.shops as CustomerAccessibleShop[] | null) ?? [],
     categories: (data.categories as CustomerDashboardCategory[] | null) ?? [],
+    catalog_glance: {
+      ...emptyCatalogGlance(),
+      total_products: Number(catalogGlance.total_products ?? 0),
+      total_brands: Number(catalogGlance.total_brands ?? 0),
+    },
     order_glance: {
       buckets: { ...emptyBuckets(), ...((orderGlance.buckets as OrderGlanceBuckets | null) ?? {}) },
       segments: { ...emptySegments(), ...((orderGlance.segments as OrderGlanceSegments | null) ?? {}) },

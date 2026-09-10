@@ -36,11 +36,17 @@ export type OrderGlanceSegments = {
   total: number;
 };
 
+export type CatalogGlance = {
+  total_products: number;
+  total_brands: number;
+};
+
 export type CustomerDashboardSummary = {
   tenant_id: number | null;
   customer_group_id: number | null;
   shops: CustomerAccessibleShop[];
   categories: CustomerDashboardCategory[];
+  catalog_glance: CatalogGlance;
   order_glance: {
     buckets: OrderGlanceBuckets;
     segments: OrderGlanceSegments;
