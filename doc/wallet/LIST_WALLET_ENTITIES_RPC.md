@@ -80,14 +80,14 @@ All `wallet_accounts` joins use **`parent_tenant_id = v_books_id`** after parent
 
 | Field | Source |
 | :--- | :--- |
-| Directory | `billing_profiles` |
-| Scope | Profiles where `billing_profiles.tenant_id` is in the **books network**: `v_books_id` plus any `tenants.id` where `parent_id = v_books_id`. |
+| Directory | `billing_profiles` left join `customer_groups` on `customer_group_id` |
+| Scope | `billing_profiles.parent_tenant_id = v_books_id`. Include one-off profiles (`customer_group_id` null). Skip groups with `deleted_at` set. |
 | `entity_id` | `billing_profiles.id` (wallet key) |
-| `name` | `customer_groups.name || ' · ' || billing_profiles.name` when group exists; else profile name |
+| `name` | Group name + profile name when grouped; else profile name |
 | `code` | NULL |
 | `caption` | `phone • email` |
 | `source_uuid` | NULL |
-| `operating_tenant_id` | `billing_profiles.tenant_id` |
+| `operating_tenant_id` | `billing_profiles.parent_tenant_id` (books) |
 
 Join balances: `wallet_accounts` ON `parent_tenant_id = v_books_id AND entity_type = 'customer' AND entity_id = billing_profiles.id`.
 

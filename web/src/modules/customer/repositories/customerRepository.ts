@@ -1,6 +1,7 @@
 import { supabase } from 'src/boot/supabase';
 import type {
   CustomerAccount,
+  CustomerListPageResult,
   CreateCustomerInput,
   UpdateCustomerInput,
   CustomerGroupMember,
@@ -8,6 +9,21 @@ import type {
   CustomerGroupMemberUpdateInput,
   CustomerAccountSummary,
 } from '../types/customer';
+
+const isGroupNameTaken = async (
+  tenantId: number,
+  groupName: string,
+  excludeCustomerGroupId?: number,
+): Promise<boolean> => {
+  const needle = groupName.trim().toLowerCase();
+  if (!needle) return false;
+  const rows = await listCustomers(tenantId);
+  return rows.some(
+    (row) =>
+      row.group_name.trim().toLowerCase() === needle &&
+      row.customer_group_id !== excludeCustomerGroupId,
+  );
+};
 
 const listCustomers = async (tenantId: number, search?: string): Promise<CustomerAccount[]> => {
   const { data, error } = await supabase.rpc('list_customer_accounts', {
@@ -22,15 +38,55 @@ const listCustomers = async (tenantId: number, search?: string): Promise<Custome
   return (data as CustomerAccount[] | null) ?? [];
 };
 
+const listCustomersPaginated = async (
+  tenantId: number,
+  options: { page?: number; pageSize?: number; search?: string } = {},
+): Promise<CustomerListPageResult> => {
+  const { data, error } = await supabase.rpc('list_customer_accounts_paginated', {
+    p_tenant_id: tenantId,
+    p_page: options.page ?? 1,
+    p_page_size: options.pageSize ?? 20,
+    p_search: options.search?.trim() || null,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  const result = (data ?? {}) as {
+    data?: CustomerAccount[] | null;
+    meta?: {
+      total?: number;
+      page?: number;
+      page_size?: number;
+      total_pages?: number;
+    };
+  };
+
+  return {
+    data: (result.data as CustomerAccount[] | null) ?? [],
+    meta: {
+      total: result.meta?.total ?? 0,
+      page: result.meta?.page ?? options.page ?? 1,
+      pageSize: result.meta?.page_size ?? options.pageSize ?? 20,
+      totalPages: result.meta?.total_pages ?? 0,
+    },
+  };
+};
+
+const deleteCustomerGroup = async (customerGroupId: number): Promise<void> => {
+  const { error } = await supabase.rpc('delete_customer_group', { p_id: customerGroupId });
+  if (error) {
+    throw error;
+  }
+};
+
 const createCustomer = async (input: CreateCustomerInput): Promise<CustomerAccount> => {
   const { data, error } = await supabase.rpc('create_customer_account', {
     p_tenant_id: input.tenant_id,
     p_group_name: input.group_name.trim(),
-    p_admin_name: input.admin_name.trim(),
-    p_admin_email: input.admin_email?.trim() || null,
-    p_phone: input.phone?.trim() || null,
-    p_address: input.address?.trim() || null,
-    p_accent_color: input.accent_color?.trim() || '#B45F34',
+    p_phone: input.phone.trim(),
+    p_phone_country_code: input.phone_country_code.trim(),
   });
 
   if (error) {
@@ -53,8 +109,7 @@ const updateCustomer = async (input: UpdateCustomerInput): Promise<void> => {
       accent_color: input.accent_color?.trim() || null,
       is_active: input.is_active ?? true,
     })
-    .eq('id', input.customer_group_id)
-    .eq('tenant_id', input.tenant_id);
+    .eq('id', input.customer_group_id);
 
   if (groupError) throw groupError;
 
@@ -65,11 +120,10 @@ const updateCustomer = async (input: UpdateCustomerInput): Promise<void> => {
       name: input.admin_name.trim(),
       email: input.email?.trim() || null,
       phone: input.phone?.trim() || null,
+      phone_country_code: input.phone_country_code?.trim() || '+880',
       address: input.address?.trim() || null,
-      color: input.accent_color?.trim() || null,
     })
-    .eq('customer_group_id', input.customer_group_id)
-    .eq('tenant_id', input.tenant_id);
+    .eq('customer_group_id', input.customer_group_id);
 
   if (bpError) throw bpError;
 };
@@ -151,6 +205,32 @@ const findAdminEmailConflict = async (tenantId: number, email: string): Promise<
   return data || null;
 };
 
+const findCreateConflict = async (
+  tenantId: number,
+  input: { phone?: string; phone_country_code?: string; group_name?: string },
+): Promise<{ phone_group_name: string | null; name_group_name: string | null }> => {
+  const { data, error } = await supabase.rpc('find_customer_create_conflict', {
+    p_tenant_id: tenantId,
+    p_phone: input.phone?.trim() || null,
+    p_phone_country_code: input.phone_country_code?.trim() || null,
+    p_group_name: input.group_name?.trim() || null,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  const row = (data ?? {}) as {
+    phone_group_name?: string | null;
+    name_group_name?: string | null;
+  };
+
+  return {
+    phone_group_name: row.phone_group_name ?? null,
+    name_group_name: row.name_group_name ?? null,
+  };
+};
+
 const searchCustomersByAdminEmail = async (
   tenantId: number,
   emailQuery: string,
@@ -191,13 +271,17 @@ const getCustomerAccountSummary = async (
 
 export const customerRepository = {
   listCustomers,
+  listCustomersPaginated,
+  isGroupNameTaken,
   createCustomer,
   updateCustomer,
   findAdminEmailConflict,
+  findCreateConflict,
   searchCustomersByAdminEmail,
   listCustomerMembers,
   createCustomerMember,
   updateCustomerMember,
   deleteCustomerMember,
   getCustomerAccountSummary,
+  deleteCustomerGroup,
 };

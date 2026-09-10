@@ -32,8 +32,8 @@ flowchart TD
 
 | Tenant Type | `parent_id` | Primary Responsibilities | Data Ownership |
 | :--- | :--- | :--- | :--- |
-| **Parent Company** | `NULL` | International procurement, warehouse physical stock, cargo clearance, investor capital management. | Owns `global_stocks`, `global_shipments`, `cargo_companies`, `investors`. |
-| **Child Tenant (Sister Concern)** | `= parent.id` | Wholesale sales desk, dropship reseller network, B2B storefront commerce. | Owns `global_invoices`, `shop_orders`, `billing_profiles`, `customer_groups`. Reads allocated parent stock. |
+| **Parent Company** | `NULL` | International procurement, warehouse physical stock, cargo clearance, investor capital management. | Owns `global_stocks`, `global_shipments`, `cargo_companies`, `investors`, `customer_groups` (`parent_tenant_id`), `billing_profiles` (`parent_tenant_id`; group optional). |
+| **Child Tenant (Sister Concern)** | `= parent.id` | Wholesale sales desk, dropship reseller network, B2B storefront commerce. | Owns `global_invoices`, `shop_orders`. Grants shops to parent-owned groups. Reads allocated parent stock. |
 | **Standalone Tenant** | `NULL` (no children) | Single-business operations combining procurement and sales. | Owns physical stock with `parent_tenant_id = tenant_id`. |
 
 * **Single-Tier Hierarchy Lock**: Hierarchy is strictly 1-level deep. A child tenant cannot have child tenants, and a parent with children cannot be assigned a parent.

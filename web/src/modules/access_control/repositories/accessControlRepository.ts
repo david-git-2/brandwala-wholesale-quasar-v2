@@ -46,7 +46,8 @@ export const accessControlRepository = {
     const { data, error } = await supabase
       .from('customer_groups')
       .select('*')
-      .eq('tenant_id', tenantId);
+      .eq('tenant_id', tenantId)
+      .is('deleted_at', null);
     if (error) throw error;
     return data || [];
   },

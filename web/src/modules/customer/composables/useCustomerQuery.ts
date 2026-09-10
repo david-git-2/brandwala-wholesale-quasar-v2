@@ -11,16 +11,35 @@ import type {
 
 export function useCustomerListQuery(
   tenantId: Ref<number | null | undefined>,
-  search?: Ref<string | undefined>
+  search?: Ref<string | undefined>,
+  page?: Ref<number>,
+  pageSize?: Ref<number>,
 ) {
   return useQuery({
-    queryKey: computed(() => customerQueryKeys.list(tenantId.value ?? null, search?.value)),
+    queryKey: computed(() =>
+      customerQueryKeys.list(
+        tenantId.value ?? null,
+        search?.value,
+        page?.value,
+        pageSize?.value,
+      ),
+    ),
     queryFn: () => {
-      if (!tenantId.value) return [];
-      return customerRepository.listCustomers(tenantId.value, search?.value);
+      if (!tenantId.value) {
+        return {
+          data: [],
+          meta: { total: 0, page: 1, pageSize: pageSize?.value ?? 20, totalPages: 0 },
+        };
+      }
+      return customerRepository.listCustomersPaginated(tenantId.value, {
+        search: search?.value,
+        page: page?.value ?? 1,
+        pageSize: pageSize?.value ?? 20,
+      });
     },
     enabled: computed(() => !!tenantId.value),
     staleTime: 60 * 1000,
+    placeholderData: (prev) => prev,
   });
 }
 
@@ -63,11 +82,7 @@ export function useCustomerMutations() {
 
   const createCustomerMutation = useMutation({
     mutationFn: (input: CreateCustomerInput) => customerRepository.createCustomer(input),
-    onSuccess: (newCustomer, variables) => {
-      queryClient.setQueryData(
-        customerQueryKeys.list(variables.tenant_id),
-        (old: any[] = []) => [newCustomer, ...old]
-      );
+    onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: customerQueryKeys.root,
       });
@@ -125,9 +140,20 @@ export function useCustomerMutations() {
     },
   });
 
+  const deleteCustomerGroupMutation = useMutation({
+    mutationFn: (input: { id: number; tenant_id: number }) =>
+      customerRepository.deleteCustomerGroup(input.id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: customerQueryKeys.root,
+      });
+    },
+  });
+
   return {
     createCustomerMutation,
     updateCustomerMutation,
+    deleteCustomerGroupMutation,
     createMemberMutation,
     updateMemberMutation,
     deleteMemberMutation,

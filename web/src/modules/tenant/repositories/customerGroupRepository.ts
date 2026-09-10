@@ -16,6 +16,7 @@ const listCustomerGroupsByTenant = async (tenantId: number): Promise<CustomerGro
     .from('customer_groups')
     .select('*')
     .eq('tenant_id', tenantId)
+    .is('deleted_at', null)
     .order('id', { ascending: true });
 
   if (error) {

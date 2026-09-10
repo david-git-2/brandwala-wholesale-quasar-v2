@@ -34,7 +34,7 @@ stateDiagram-v2
 
 | Invoice Type | Buyer Counterparty | Financial & Delivery Model |
 | :--- | :--- | :--- |
-| **Wholesale** | `billing_profiles` | B2B credit sale; buyer is recipient; payment recorded against buyer AR account ledger. |
+| **Wholesale** | `billing_profiles` | B2B credit sale. Profile may be linked to a customer group, or one-off (no group) for a single invoice. |
 | **Retail (Account)** | `billing_profiles` | End customer recipient with delivery charges billed to a regular reseller account. |
 | **Retail (Direct)** | Inline Snapshot | One-time direct walk-in customer (no billing profile required). |
 | **Dropship** | Middle-Man Profile | Dual invoice: customer packing slip @ processing + B2B accounting invoice @ ready-for-pickup. |

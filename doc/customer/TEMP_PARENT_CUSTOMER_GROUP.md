@@ -7,7 +7,7 @@
 **Locked 2026-09-10**
 
 1. The **customer group** (B2B company) lives on the **parent / books tenant**, not on each child.
-2. Keep **group ≠ billing profile**. Lock **one profile per group**.
+2. Keep **group ≠ billing profile**. At most **one profile per group**. The group is optional: a one-off invoice can use a profile with no company.
 3. Children **grant shops and sell**. They do not clone the company.
 
 [`TENANT_AUTH.md`](../tenant_auth/TENANT_AUTH.md) still says children own `customer_groups` — this file is the target until those docs are merged.
@@ -20,7 +20,7 @@ When implemented: merge into `CUSTOMER.md` + `TENANT_AUTH.md`, then delete this 
 
 | Fact | Target |
 | :--- | :--- |
-| Who owns the customer group | **Parent** (`customer_groups.tenant_id` = books tenant). Standalone = itself. |
+| Who owns the customer group | **Parent** (`customer_groups.parent_tenant_id` = books tenant). Standalone = itself. |
 | Who owns shops, carts, shop orders | **Child** (operating desk). |
 | Who owns AR / wallet books | **Parent** (already true for invoices + wallet `parent_tenant_id`). |
 | Child’s job | **Grant shop access** and sell. Not a second group. |
@@ -51,27 +51,66 @@ Do **not** merge group and profile. Shop access, carts, members are group-shaped
 
 ```text
 Parent books
-  customer_groups                 ← hub “Customer”
-    └── billing_profiles (1:1)    ← Account: invoices, wallet, dues, demand, after-sales merchant
+  customer_groups                 ← hub “Customer” (B2B company)
+    └── billing_profiles (0..1)   ← Account when this is a repeat company
     └── members                   ← shop logins
-    └── gift / costing (optional) ← commercial extras on the company
+    └── gift / costing (optional)
+
+  billing_profiles                ← also standalone: one-off invoice / walk-in AR
+                                    customer_group_id null, parent_tenant_id = books
 
 Child desk / shop
   shops
-    └── shop_customer_group_access  ← may this group use this shop? flags, tier, shop credit
-  shop_carts / shop_orders          ← operating tenant = child
-                                      stamp group id + profile id at checkout
+    └── shop_customer_group_access  ← company only; no shop login without a group
+  shop_carts / shop_orders          ← stamp group id when present + profile id
 
-recipient_profiles                  ← delivery (optional group link later)
+recipient_profiles                  ← delivery
 ```
 
 Staff create a **Customer** from parent or child desk; the row is saved on **parent**. Children only grant shops.
 
+### Target tables
+
+**`customer_groups`** (company). No `tenant_id`. Books scope is `parent_tenant_id`. Soft delete via `deleted_at`.
+
+```text
+id                 bigint PK
+name               text NOT NULL
+parent_tenant_id   bigint NOT NULL   -- books tenant; standalone = itself
+is_active          boolean NOT NULL DEFAULT true
+deleted_at         timestamptz       -- null = live
+accent_color       text
+created_at         timestamptz NOT NULL
+updated_at         timestamptz NOT NULL
+```
+
+**`billing_profiles`** (account / money). Books scope is **`parent_tenant_id`** (always). Drop operating `tenant_id` and `color`. `customer_group_id` is optional.
+
+```text
+id                 bigint PK
+parent_tenant_id   bigint NOT NULL         -- books tenant
+customer_group_id  bigint                  -- FK customer_groups; null = one-off
+name               text NOT NULL           -- payer name; on create = group name
+email              text
+phone              text NOT NULL           -- unique per parent_tenant_id
+address            text
+created_at         timestamptz NOT NULL
+updated_at         timestamptz NOT NULL
+```
+
+Unique: one profile per group — `UNIQUE (customer_group_id) WHERE customer_group_id IS NOT NULL`.
+
+Unique phone: `UNIQUE (parent_tenant_id, phone)` (normalize before write).
+
+When `customer_group_id` is set, `parent_tenant_id` must match `customer_groups.parent_tenant_id`.
+
+Wallet stays: `wallet_accounts.parent_tenant_id` = books, `entity_type = customer`, `entity_id` = profile id. One-off profiles can still have a wallet.
+
 ### Locked rules
 
-1. One billing profile per group on the books tenant. Unique `(tenant_id, customer_group_id)` where group is set.
-2. `create_customer_account` always inserts group + profile + wallet. `tenant_id` on group and profile = `resolve_parent_tenant_id(p_tenant_id)`.
-3. No second profile on sister children. Wallet on parent books; child is `operating_tenant_id` only.
+1. At most one billing profile per group. Many profiles may have `customer_group_id` null (one-off invoices).
+2. Hub **Create Customer** asks only **group name + phone**. RPC inserts group + profile + wallet. Profile name = group name; profile phone = that phone. No member on create. Invoice create may insert a profile with no group (name + phone).
+3. No second profile on sister children for the same company. Wallet on parent books.
 4. Stamp `billing_profile_id` on the shop order at checkout. Do not re-resolve later.
 5. Shop session = this email + **this shop’s granted group**. No silent `limit 1`. Permissions do not `bool_or` across two groups.
 6. Access row required to enter a shop. Credit limit + price tier stay on `shop_customer_group_access` (per shop). Group-wide AR limit (if added) lives on the **profile**.
@@ -83,15 +122,15 @@ Staff create a **Customer** from parent or child desk; the row is saved on **par
 
 | On the group | On the billing profile |
 | :--- | :--- |
-| Company name, accent color, active | Contact name, admin email, phone, address |
+| Company name, accent color, active | Contact name, email, **phone** (unique per books), address |
 
-One General-tab write updates both.
+Hub General-tab write updates both when the profile has a group. One-off profiles are edited from the invoice / billing picker, not the Customer hub.
 
 ---
 
 ## 4. What relates (and how)
 
-**Rule:** company + shop rights hang on the **group**. Money hangs on the **profile** (1:1 with the group). Delivery hangs on **recipients**.
+**Rule:** company + shop rights hang on the **group** (when there is a company). Money hangs on the **profile**. Delivery hangs on **recipients**. A one-off invoice uses a profile with no group.
 
 ### Keep on the group
 
@@ -146,14 +185,14 @@ Stock, shipments, vendors, invoice brand, courier/cargo, staff memberships, end-
 
 | Step | Id |
 | :--- | :--- |
-| Staff create / hub list | Group id; `group.tenant_id` = parent |
+| Staff create / hub list | Group id; `group.parent_tenant_id` = parent. Hide `deleted_at` set. One-off profiles are not hub customers. |
 | Grant shop | Group id on access row; `shop.tenant_id` = child |
 | Shop login | Member email → granted group for that shop |
 | Cart | Group id; `cart.tenant_id` = child |
 | Checkout | Resolve the **one** profile → store group id + profile id |
 | Invoice / collect / wallet / demand / after-sales merchant | Profile id only |
 
-If a page needs the other id, follow the 1:1 link. No second picker.
+If a page needs the other id, follow the group link when it exists. One-off profiles have no group.
 
 ---
 
@@ -161,12 +200,16 @@ If a page needs the other id, follow the 1:1 link. No second picker.
 
 | Topic | As-built now | Target |
 | :--- | :--- | :--- |
-| `customer_groups.tenant_id` | Operating / child | Books / parent |
+| Group tenant column | `customer_groups.tenant_id` (operating / child) | `customer_groups.parent_tenant_id` (books). Drop `tenant_id`. |
+| Soft delete | None (hard delete / `is_active`) | `deleted_at` on group; list RPCs skip deleted |
+| Profile books column | `tenant_id` + `parent_tenant_id` | Keep **`parent_tenant_id`**. Drop operating `tenant_id` and `color`. |
+| Group on profile | Optional; many profiles per group | Optional. Unique when set. Null = one-off invoice AR. |
 | `TENANT_AUTH.md` ownership | Child owns groups + profiles | Parent owns group + profile; child owns shops + orders |
-| Many profiles per group | Allowed; resolver `limit 1` | Forbidden |
+| Many profiles per group | Allowed; resolver `limit 1` | Forbidden. One-off profiles have no group. |
 | Access Control “link billing profile” | Exists | Remove; create always links |
-| Access matrix group list | `customer_groups.tenant_id = shop tenant` | Groups on **books** tenant of that shop |
-| Account summary | All family profiles; “primary” guess | One profile id; dues + wallet same row |
+| Access matrix group list | `customer_groups.tenant_id = shop tenant` | Groups where `parent_tenant_id` = books of that shop |
+| Create customer | Name, admin, email, color, phone optional | **Name + phone only.** Profile + wallet auto. Members later. |
+| Company key | Tenant-wide admin email | Unique **phone** on books (`parent_tenant_id` + phone) |
 
 ---
 
@@ -178,11 +221,12 @@ Ship **1 then 2**. That is the redesign. 3 and 4 are cleanup.
 
 **Goal:** New customers live on parent. One profile. Create / list / account use that.
 
-- `create_customer_account`: group + profile `tenant_id` = `resolve_parent_tenant_id(p_tenant_id)`. Wallet already parent books.
-- Unique: one `billing_profiles` row per `(tenant_id, customer_group_id)` where group is set.
-- Backfill: move or merge child-owned groups/profiles (keep the row with invoices/wallet).
-- `resolve_billing_profile_for_customer_group`: lookup that one row. Drop family-wide hunt after backfill.
-- `get_customer_account_summary_for_staff` / `list_customer_accounts`: books tenant; one profile.
+- `create_customer_account(p_tenant_id, p_group_name, p_phone)`: group + profile + wallet. Both `parent_tenant_id` = books. Profile `name` = group name. Profile `phone` required, unique on `(parent_tenant_id, phone)`. No admin member. Accent default.
+- Unique: one profile per `customer_group_id` where the group is set. Unique `(parent_tenant_id, phone)`. Null group allowed.
+- Invoice / billing UI may create a profile with `customer_group_id` null (one-off AR: name + phone). No members, no shop grant.
+- Backfill: set group `parent_tenant_id`; drop group `tenant_id`. Profile: keep `parent_tenant_id`, drop `tenant_id` and `color`. Merge extra profiles that share a group. Add group `deleted_at`.
+- `resolve_billing_profile_for_customer_group`: that one row by `customer_group_id`. Drop family-wide hunt after backfill.
+- `get_customer_account_summary_for_staff` / `list_customer_accounts`: `cg.parent_tenant_id = books`; `deleted_at is null`; one profile.
 - Stop Access Control **Link billing profile**.
 
 Until this is green, do not change shop login.
@@ -191,7 +235,7 @@ Until this is green, do not change shop login.
 
 **Goal:** Child shops grant parent groups. Login cannot pick the wrong company.
 
-- Access matrix lists groups where `customer_groups.tenant_id` = books of this shop’s tenant.
+- Access matrix lists groups where `customer_groups.parent_tenant_id` = books of this shop’s tenant and `deleted_at is null`.
 - `get_shop_permissions_for_customer` / `current_customer_group_id` / `check_shop_login_access`: join **this shop’s** access row. Two groups for one email → that shop’s grant, or fail. Never OR flags.
 - Checkout keeps stamping profile via Phase 1 resolver.
 - Delete group: still block on shop orders + invoices; also wallet balance / open carts.

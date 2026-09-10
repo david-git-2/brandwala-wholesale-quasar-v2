@@ -12,44 +12,52 @@ Save on **Create Customer** calls RPC `create_customer_account` in one transacti
 
 ```mermaid
 flowchart TD
-    A["Create Customer Form"] -->|RPC: create_customer_account| B["1. customer_groups"]
-    B --> C["2. customer_group_members<br/>admin row only if email is set"]
-    B --> D["3. billing_profiles"]
-    D --> E["4. wallet_accounts<br/>entity_type customer"]
+    A["Create Customer<br/>name + phone"] -->|RPC: create_customer_account| B["1. customer_groups"]
+    B --> D["2. billing_profiles<br/>name = group name, phone copied"]
+    D --> E["3. wallet_accounts<br/>entity_type customer"]
 ```
+
+No member row on create. Add admins later on the Members tab.
 
 ### Create form fields
 
 | Field | Required | Notes |
 | :--- | :--- | :--- |
-| Group / company name | Yes | Stored on `customer_groups.name`. |
-| Primary contact / admin name | Yes | Stored as billing profile name; used as the first member name when email is set. |
-| Brand accent color | Yes | Default `#B45F34`. Shown on the hub list. |
-| Admin email | No | If set, inserts first `customer_group_members` row with role `admin`. If empty, **no member row** is created. |
-| Phone | No | Copied to the billing profile. |
-| Address | No | Copied to the billing profile. |
+| Group / company name | Yes | `customer_groups.name`. Also copied to `billing_profiles.name`. |
+| Phone | Yes | National number on `billing_profiles.phone`. Country calling code on `billing_profiles.phone_country_code` (e.g. `+880`). Unique per books tenant + country code + number. |
+
+Create is a dialog on the hub list, not a separate page. Press Enter on phone or name to check duplicates.
+
+Nothing else on this form. Accent color defaults. Email, address, and members are later edits.
+
+If that phone already exists on a profile under the same books tenant, create fails (or reuse — do not insert a second profile).
+
+### Target table columns (books-owned)
+
+See [`TEMP_PARENT_CUSTOMER_GROUP.md`](./TEMP_PARENT_CUSTOMER_GROUP.md) until this is merged as as-built.
+
+**`customer_groups`:** `id`, `name`, `parent_tenant_id` (books tenant; no `tenant_id`), `is_active`, `deleted_at`, `accent_color`, `created_at`, `updated_at`.
+
+**`billing_profiles`:** `id`, `parent_tenant_id` (books, required), `customer_group_id` (optional; unique when set), `name`, `email`, `phone`, `address`, `created_at`, `updated_at`. No operating `tenant_id`, no `color`. Null group = one-off invoice account (no members, no shop).
+
+Hub list / account RPCs use `customer_groups.parent_tenant_id` = books and skip `deleted_at`. One-off profiles (no group) are not hub customers; they show on invoice / wallet lists.
 
 ### Entity responsibilities
 
 | Entity | Table | Responsibility |
 | :--- | :--- | :--- |
-| **Customer group** | `customer_groups` | Organization profile, active flag, brand accent color. |
-| **Billing profile** | `billing_profiles` | Financial identity for wholesale/retail invoices. |
+| **Customer group** | `customer_groups` | Company on the books parent. Active flag, soft delete, brand accent color. |
+| **Billing profile** | `billing_profiles` | Money account. Linked to a group when this is a company; null group for a one-off invoice. |
 | **Customer member** | `customer_group_members` | Storefront login users. Roles: `admin`, `manager`, `staff` (`customer_group_role`). |
 | **Wallet account** | `wallet_accounts` | Ledger account (`entity_type = 'customer'`, `entity_id = billing_profile_id`). |
 | **Recipient profile** | `recipient_profiles` | Delivery endpoints. Grant key: `recipient_profile`. |
 
-### Member email uniqueness
+### Identity: unique phone (company / money)
 
-- **Per group (all roles):** unique index `customer_group_members_group_email_unique` on `(customer_group_id, lower(trim(email)))`. Trigger `trg_customer_group_members_email_rules` also raises `This email is already used in this group` before the index fires.
-- **Per tenant (admin email only):** one email cannot be the primary admin contact on more than one customer group in the same tenant. Enforced on:
-  - `billing_profiles.email` (hub “admin email”, General tab) — trigger `trg_billing_profiles_admin_email_unique_per_tenant`
-  - `customer_group_members` where `role = 'admin'` — same trigger function family via `enforce_customer_group_member_email_rules`
-  - Shared resolver: `find_customer_admin_email_conflict(tenant_id, email, …)` returns the conflicting group name.
-- **Across groups (staff / manager):** the same email may appear on members in different groups within one tenant. Only blocked inside a single group.
-- **Conflict message:** `This email is already admin of group "Acme Wholesale".` — surfaced in the UI via `error.message` on create customer, General tab save, and Members tab save.
-- `create_customer_account` inserts the first admin member only when email is present. It does **not** use `ON CONFLICT` on members.
-- Shop login (`check_shop_login_access`) still returns one match when the same email is staff in multiple groups (`limit 1` by `customer_group_id`).
+- **Books unique:** one `billing_profiles.phone` per `parent_tenant_id` (normalized). This is the company key for grouped and one-off profiles.
+- **Do not** put phone on `customer_groups`. Create copies name + phone onto the linked profile.
+- **Members:** unique email **inside one group** only (`customer_group_members_group_email_unique`). Many admins per group. No tenant-wide “one admin email.”
+- Drop target: `find_customer_admin_email_conflict` / tenant-wide admin-email trigger. Shop login is email + that shop’s grant.
 
 ### Shop member roles
 
@@ -67,8 +75,8 @@ Access Control still assigns shop grants per group. Per-shop catalog rights stay
 
 | Route | Main page | Notes |
 | :--- | :--- | :--- |
-| `/:tenantSlug?/app/customers` | [`CustomerHubPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/customer/pages/CustomerHubPage.vue) | Search, list, click row to open drawer. |
-| `/:tenantSlug?/app/customers/create` | [`CreateCustomerPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/customer/pages/CreateCustomerPage.vue) | Create form. Needs `customer` + `create`. |
+| `/:tenantSlug?/app/customers` | [`CustomerHubPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/customer/pages/CustomerHubPage.vue) | Search, list, create dialog (name + phone). Click row to open drawer. |
+| `/:tenantSlug?/app/customers/create` | Redirect | Sends staff to the customer list. |
 | `/:tenantSlug?/app/customers/recipient-profiles` | [`RecipientProfilesPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/sales_invoice/pages/RecipientProfilesPage.vue) | Delivery address book. |
 | `/:tenantSlug?/app/shop/customer-groups` | Redirect | Sends staff to `app-customers`. |
 
@@ -76,7 +84,7 @@ Shop hub (`/:tenantSlug?/app/shop/shops`) **Customer Groups** card → `app-cust
 
 Click a hub row → [`CustomerDetailDrawer.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/customer/components/CustomerDetailDrawer.vue):
 
-- **General** — edit group name, admin name, email, phone, address, accent color, active.
+- **General** — customer group (name, accent, active) and billing profile (contact name, required phone with country code, email, address).
 - **Members** — list; add/edit name, email, role (`admin` / `manager` / `staff`), active.
 - **Account** — invoice dues vs wallet balance (two pots); open invoices; collect / deposit / credit / withdraw. See [`CUSTOMER_ACCOUNT_SUMMARY_RPC.md`](./CUSTOMER_ACCOUNT_SUMMARY_RPC.md).
 - **Wallet Ledger** — full immutable ledger history (`useWalletQuery`).
@@ -87,8 +95,8 @@ Click a hub row → [`CustomerDetailDrawer.vue`](file:///Users/daviditc/Document
 
 | Component | Action / Trigger | Hook / Endpoint | Caching |
 | :--- | :--- | :--- | :--- |
-| **`CustomerHubPage`** | Mount / search | `useCustomerListQuery()` → `RPC: list_customer_accounts` | `staleTime: 60s`, `['customers', 'list', tenantId, search]` |
-| **`CreateCustomerPage`** | Save Customer | `createCustomerMutation` → `RPC: create_customer_account` | Optimistic prepend, invalidates `['customers']` |
+| **`CustomerHubPage`** | Mount / search / page | `useCustomerListQuery()` → `RPC: list_customer_accounts_paginated` | `staleTime: 60s`, `['customer', 'list', tenantId, search, page, pageSize]` |
+| **`CustomerHubPage`** | Delete | Confirm → `deleteCustomerGroupMutation` → `RPC: delete_customer_group` (sets `deleted_at`) | Invalidates `['customers']` |
 | **`CustomerDetailDrawer`** | Save general | `updateCustomerMutation` → `customer_groups`, `billing_profiles` | Invalidates `['customers']` |
 | **`CustomerDetailDrawer`** | Members tab | `useCustomerMembersQuery()` → `customer_group_members` | `staleTime: 30s`, `['customers', 'members', groupId]` |
 | **`CustomerDetailDrawer`** | Add / update / delete member | mutations on `customer_group_members` | Invalidates members + `['customers']` |

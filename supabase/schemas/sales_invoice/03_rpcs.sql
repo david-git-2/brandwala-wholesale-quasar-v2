@@ -2293,11 +2293,17 @@ ALTER FUNCTION "public"."sync_shop_order_collection_source_from_invoice"() OWNER
 
 CREATE OR REPLACE FUNCTION "public"."enforce_billing_profile_admin_email_unique_per_tenant"() RETURNS "trigger"
     LANGUAGE "plpgsql"
+    SET "search_path" TO 'public'
     AS $$
 declare
   v_normalized_email text;
   v_conflict_group_name text;
 begin
+  if tg_op = 'UPDATE'
+     and lower(trim(coalesce(old.email, ''))) = lower(trim(coalesce(new.email, ''))) then
+    return new;
+  end if;
+
   v_normalized_email := nullif(lower(trim(coalesce(new.email, ''))), '');
   new.email := v_normalized_email;
 
@@ -2306,7 +2312,7 @@ begin
   end if;
 
   v_conflict_group_name := public.find_customer_admin_email_conflict(
-    new.tenant_id,
+    coalesce(new.parent_tenant_id, new.tenant_id),
     v_normalized_email,
     new.id,
     null,
@@ -2329,31 +2335,34 @@ CREATE OR REPLACE FUNCTION "public"."trg_auto_create_billing_profile_for_custome
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
+declare
+  v_books_id bigint;
 begin
+  v_books_id := coalesce(new.parent_tenant_id, public.resolve_parent_tenant_id(new.tenant_id));
+
   if not exists (
     select 1 from public.billing_profiles
-    where tenant_id = new.tenant_id
-      and customer_group_id = new.id
+    where customer_group_id = new.id
   ) then
     insert into public.billing_profiles (
       tenant_id,
+      parent_tenant_id,
       customer_group_id,
       name,
       email,
       phone,
       address,
-      color,
       created_at,
       updated_at
     )
     values (
-      new.tenant_id,
+      v_books_id,
+      v_books_id,
       new.id,
       new.name,
       null,
       null,
       null,
-      new.accent_color,
       now(),
       now()
     );

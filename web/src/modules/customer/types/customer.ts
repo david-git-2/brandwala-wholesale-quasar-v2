@@ -1,3 +1,15 @@
+export interface CustomerListMeta {
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface CustomerListPageResult {
+  data: CustomerAccount[];
+  meta: CustomerListMeta;
+}
+
 export interface CustomerAccount {
   id: number;
   customer_group_id: number;
@@ -17,11 +29,8 @@ export interface CustomerAccount {
 export interface CreateCustomerInput {
   tenant_id: number;
   group_name: string;
-  admin_name: string;
-  admin_email?: string | null;
-  phone?: string | null;
-  address?: string | null;
-  accent_color?: string | null;
+  phone: string;
+  phone_country_code: string;
 }
 
 export interface CustomerGroupMember {
@@ -64,6 +73,7 @@ export interface UpdateCustomerInput {
   admin_name: string;
   email?: string | null;
   phone?: string | null;
+  phone_country_code?: string | null;
   address?: string | null;
   accent_color?: string | null;
   is_active?: boolean;

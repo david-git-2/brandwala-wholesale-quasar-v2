@@ -31,24 +31,23 @@
       </div>
 
       <!-- 2. Tabs Navigation -->
-      <div class="border-bottom bg-white">
-        <q-tabs
-          v-model="activeTab"
-          dense
-          align="left"
-          active-color="primary"
-          indicator-color="primary"
-          class="text-grey-7"
-        >
-          <q-tab name="general" label="General Info" icon="ph ph-user-circle" no-caps />
-          <q-tab name="members" label="Members" icon="ph ph-users-three" no-caps>
-            <q-badge v-if="members.length" color="primary" rounded floating>
+      <div class="drawer-tabs q-px-md q-pt-sm q-pb-md border-bottom">
+        <div class="drawer-tabs__track">
+          <button
+            v-for="tab in drawerTabs"
+            :key="tab.name"
+            type="button"
+            class="drawer-tabs__item"
+            :class="{ 'drawer-tabs__item--active': activeTab === tab.name }"
+            @click="activeTab = tab.name"
+          >
+            <q-icon :name="tab.icon" size="14px" />
+            <span>{{ tab.label }}</span>
+            <span v-if="tab.name === 'members' && members.length" class="drawer-tabs__badge">
               {{ members.length }}
-            </q-badge>
-          </q-tab>
-          <q-tab name="account" label="Account" icon="ph ph-scale" no-caps />
-          <q-tab name="wallet" label="Wallet Ledger" icon="ph ph-wallet" no-caps />
-        </q-tabs>
+            </span>
+          </button>
+        </div>
       </div>
 
       <!-- 3. Tab Panels Content -->
@@ -57,113 +56,148 @@
           <!-- TAB 1: General Info (Editable) -->
           <q-tab-panel name="general" class="q-pa-none">
             <q-form ref="generalFormRef" class="column q-gutter-y-md" @submit.prevent="saveGeneralInfo">
-              <!-- Group Name -->
-              <div>
-                <label class="text-caption text-weight-medium text-grey-8 q-mb-xs block">
-                  Company / Group Name *
-                </label>
-                <q-input
-                  v-model="form.group_name"
-                  outlined
-                  dense
-                  class="rounded-field"
-                  :rules="[(val) => !!val?.trim() || 'Company name is required']"
-                />
-              </div>
+              <div class="form-section column q-gutter-y-md">
+                <div class="section-heading">Customer group</div>
 
-              <!-- Admin Contact Name -->
-              <div>
-                <label class="text-caption text-weight-medium text-grey-8 q-mb-xs block">
-                  Primary Contact / Admin Name *
-                </label>
-                <q-input
-                  v-model="form.admin_name"
-                  outlined
-                  dense
-                  class="rounded-field"
-                  :rules="[(val) => !!val?.trim() || 'Admin contact name is required']"
-                />
-              </div>
-
-              <!-- Email & Phone -->
-              <div class="row q-col-gutter-sm">
-                <div class="col-6">
-                  <label class="text-caption text-weight-medium text-grey-8 q-mb-xs block">Email</label>
+                <div>
+                  <label class="field-label">Group name *</label>
                   <q-input
-                    v-model="form.email"
+                    v-model="form.group_name"
                     outlined
                     dense
-                    type="email"
-                    class="rounded-field"
+                    class="soft-input"
+                    :loading="isCheckingName"
+                    :rules="[(val) => !!val?.trim() || 'Group name is required']"
+                    @keyup.enter.prevent="checkGroupName"
+                    @blur="checkGroupName"
                   />
-                </div>
-                <div class="col-6">
-                  <label class="text-caption text-weight-medium text-grey-8 q-mb-xs block">Phone</label>
-                  <q-input
-                    v-model="form.phone"
-                    outlined
+                  <q-banner
+                    v-if="nameConflict"
                     dense
-                    class="rounded-field"
-                  />
+                    rounded
+                    class="bg-orange-1 text-grey-9 q-mt-sm"
+                  >
+                    A customer group already uses this name.
+                  </q-banner>
                 </div>
-              </div>
 
-              <!-- Address -->
-              <div>
-                <label class="text-caption text-weight-medium text-grey-8 q-mb-xs block">
-                  Address
-                </label>
-                <q-input
-                  v-model="form.address"
-                  outlined
-                  dense
-                  type="textarea"
-                  rows="2"
-                  class="rounded-field"
-                />
-              </div>
-
-              <!-- Accent Color -->
-              <div>
-                <label class="text-caption text-weight-medium text-grey-8 q-mb-xs block">
-                  Accent Color
-                </label>
-                <q-input v-model="form.accent_color" outlined dense class="rounded-field">
-                  <template #prepend>
-                    <div
-                      class="color-preview-badge shadow-1"
+                <div>
+                  <label class="field-label">Accent color</label>
+                  <div class="color-field row no-wrap items-center q-gutter-sm">
+                    <button
+                      type="button"
+                      class="color-swatch"
                       :style="{ backgroundColor: form.accent_color || '#B45F34' }"
+                      aria-label="Pick accent color"
                     >
                       <q-popup-proxy cover transition-show="scale" transition-hide="scale">
                         <q-color v-model="form.accent_color" no-header-tabs />
                       </q-popup-proxy>
-                    </div>
-                  </template>
-                  <template #append>
-                    <q-icon name="ph ph-palette" class="cursor-pointer text-grey-6">
-                      <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                        <q-color v-model="form.accent_color" no-header-tabs />
-                      </q-popup-proxy>
-                    </q-icon>
-                  </template>
-                </q-input>
-              </div>
-
-              <!-- Status Toggle -->
-              <div class="row items-center justify-between q-pa-sm rounded-borders bg-grey-1">
-                <div>
-                  <div class="text-caption text-weight-bold text-grey-9">Active Status</div>
-                  <div class="text-caption text-grey-6">Enable or disable access for this customer account</div>
+                    </button>
+                    <q-input
+                      v-model="form.accent_color"
+                      outlined
+                      dense
+                      class="col soft-input"
+                    />
+                  </div>
                 </div>
-                <q-toggle
-                  v-model="form.is_active"
-                  color="positive"
-                  :disable="!canAdministerCustomerGroup"
-                />
+
+                <div class="settings-row row items-center justify-between">
+                  <div>
+                    <div class="settings-row__label">Active</div>
+                    <div class="settings-row__hint">Turn this group on or off</div>
+                  </div>
+                  <q-toggle
+                    v-model="form.is_active"
+                    color="positive"
+                    :disable="!canAdministerCustomerGroup"
+                  />
+                </div>
               </div>
 
-              <!-- Save Button -->
-              <div class="row justify-end q-mt-md">
+              <div class="form-section form-section--divider column q-gutter-y-md">
+                <div class="section-heading">Billing profile</div>
+
+                <div>
+                  <label class="field-label">Contact name *</label>
+                  <q-input
+                    v-model="form.admin_name"
+                    outlined
+                    dense
+                    class="soft-input"
+                    :rules="[(val) => !!val?.trim() || 'Contact name is required']"
+                  />
+                </div>
+
+                <div>
+                  <label class="field-label">Phone *</label>
+                  <div class="phone-fuse">
+                    <q-select
+                      v-model="form.phone_country_code"
+                      borderless
+                      dense
+                      emit-value
+                      map-options
+                      use-input
+                      hide-bottom-space
+                      input-debounce="0"
+                      :options="filteredCountries"
+                      class="phone-fuse__country"
+                      dropdown-icon="ph ph-caret-down"
+                      @filter="filterCountries"
+                      @update:model-value="onDrawerCountryChanged"
+                    >
+                      <template #option="scope">
+                        <q-item v-bind="scope.itemProps">
+                          <q-item-section>
+                            <q-item-label class="text-weight-medium">{{ scope.opt.dial }}</q-item-label>
+                            <q-item-label caption>{{ scope.opt.name }}</q-item-label>
+                          </q-item-section>
+                        </q-item>
+                      </template>
+                    </q-select>
+                    <div class="phone-fuse__sep" />
+                    <q-input
+                      :model-value="form.phone"
+                      borderless
+                      dense
+                      hide-bottom-space
+                      class="phone-fuse__number col"
+                      inputmode="tel"
+                      placeholder="National number — press Enter"
+                      :loading="isCheckingPhone"
+                      :rules="[(val) => !!nationalPhoneDigits(String(val ?? '')) || 'Phone is required']"
+                      @update:model-value="onDrawerPhoneInput"
+                      @keyup.enter.prevent="checkPhone"
+                      @blur="checkPhone"
+                    />
+                  </div>
+                  <q-banner
+                    v-if="phoneConflictName"
+                    dense
+                    rounded
+                    class="bg-orange-1 text-grey-9 q-mt-sm"
+                  >
+                    A customer already uses this phone:
+                    <strong>{{ phoneConflictName }}</strong>
+                  </q-banner>
+                </div>
+
+                <div>
+                  <label class="field-label">Address</label>
+                  <q-input
+                    v-model="form.address"
+                    outlined
+                    dense
+                    type="textarea"
+                    rows="2"
+                    class="soft-input soft-input--textarea"
+                  />
+                </div>
+              </div>
+
+              <div class="row justify-end">
                 <q-btn
                   unelevated
                   color="primary"
@@ -172,6 +206,7 @@
                   no-caps
                   class="action-btn text-weight-bold"
                   :loading="isSavingGeneral"
+                  :disable="!canSaveGeneral"
                   type="submit"
                 />
               </div>
@@ -364,7 +399,7 @@
             outlined
             dense
             label="Member Name *"
-            class="rounded-field"
+            class="soft-input"
             :rules="[(val) => !!val?.trim() || 'Name is required']"
           />
           <q-input
@@ -373,7 +408,7 @@
             dense
             type="email"
             label="Email Address *"
-            class="rounded-field"
+            class="soft-input"
             :rules="[
               (val) => !!val?.trim() || 'Email is required',
               (val) => /.+@.+\..+/.test(val) || 'Enter valid email'
@@ -385,7 +420,7 @@
             dense
             label="Role *"
             :options="['admin', 'manager', 'staff']"
-            class="rounded-field"
+            class="soft-input"
           />
           <div class="row items-center justify-between q-pt-xs">
             <span class="text-caption text-grey-8">Active Member</span>
@@ -412,6 +447,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
+import type { QSelectProps } from 'quasar';
 import { useQueryClient } from '@tanstack/vue-query';
 import type { CustomerAccount, CustomerGroupMember } from '../types/customer';
 import {
@@ -425,6 +461,12 @@ import { walletQueryKeys } from 'src/modules/wallet/shared/queryKeys/walletQuery
 import CustomerAccountTab from './CustomerAccountTab.vue';
 import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';
 import { useCanAdministerCustomerGroup } from '../composables/useCanAdministerCustomerGroup';
+import { customerRepository } from '../repositories/customerRepository';
+import {
+  DEFAULT_PHONE_COUNTRY_DIAL,
+  nationalPhoneDigits,
+  phoneCountrySelectOptions,
+} from 'src/utils/phoneCountryCodes';
 
 const props = defineProps<{
   modelValue: boolean;
@@ -438,6 +480,13 @@ defineEmits<{
 
 const canAdministerCustomerGroup = useCanAdministerCustomerGroup();
 const activeTab = ref<'general' | 'members' | 'account' | 'wallet'>('general');
+
+const drawerTabs = [
+  { name: 'general' as const, label: 'General', icon: 'ph ph-user-circle' },
+  { name: 'members' as const, label: 'Members', icon: 'ph ph-users-three' },
+  { name: 'account' as const, label: 'Account', icon: 'ph ph-scale' },
+  { name: 'wallet' as const, label: 'Wallet', icon: 'ph ph-wallet' },
+];
 const queryClient = useQueryClient();
 const { updateCustomerMutation, createMemberMutation, updateMemberMutation, deleteMemberMutation } =
   useCustomerMutations();
@@ -507,6 +556,11 @@ const walletTxLabel = (entry: { type: string; metadata: Record<string, unknown> 
 };
 
 const isSavingGeneral = ref(false);
+const isCheckingName = ref(false);
+const isCheckingPhone = ref(false);
+const nameConflict = ref(false);
+const phoneConflictName = ref<string | null>(null);
+const phoneVerified = ref(true);
 const memberDialogOpen = ref(false);
 const isEditingMember = ref(false);
 const isSavingMember = ref(false);
@@ -516,12 +570,58 @@ const selectedMemberId = ref<number | null>(null);
 const form = reactive({
   group_name: '',
   admin_name: '',
-  email: '',
   phone: '',
+  phone_country_code: DEFAULT_PHONE_COUNTRY_DIAL,
   address: '',
   accent_color: '#B45F34',
   is_active: true,
 });
+
+const filteredCountries = ref(phoneCountrySelectOptions);
+
+const parseListedPhone = (raw?: string | null) => {
+  const value = (raw || '').trim();
+  const match = value.match(/^(\+\d+)\s+(.*)$/);
+  if (match?.[1] && match[2] !== undefined) {
+    return {
+      phone_country_code: match[1],
+      phone: nationalPhoneDigits(match[2]),
+    };
+  }
+  return {
+    phone_country_code: DEFAULT_PHONE_COUNTRY_DIAL,
+    phone: nationalPhoneDigits(value),
+  };
+};
+
+const invalidatePhoneCheck = () => {
+  phoneVerified.value = false;
+  phoneConflictName.value = null;
+};
+
+const onDrawerPhoneInput = (val: string | number | null) => {
+  form.phone = nationalPhoneDigits(String(val ?? ''));
+  invalidatePhoneCheck();
+};
+
+const onDrawerCountryChanged = () => {
+  invalidatePhoneCheck();
+};
+
+const filterCountries: QSelectProps['onFilter'] = (val, update) => {
+  update(() => {
+    const needle = val.trim().toLowerCase();
+    if (!needle) {
+      filteredCountries.value = phoneCountrySelectOptions;
+      return;
+    }
+    filteredCountries.value = phoneCountrySelectOptions.filter(
+      (row) =>
+        row.dial.toLowerCase().includes(needle) ||
+        row.name.toLowerCase().includes(needle),
+    );
+  });
+};
 
 const memberForm = reactive({
   name: '',
@@ -536,14 +636,25 @@ watch(
     if (newCust) {
       form.group_name = newCust.group_name;
       form.admin_name = newCust.admin_name;
-      form.email = newCust.email || '';
-      form.phone = newCust.phone || '';
+      const parsedPhone = parseListedPhone(newCust.phone);
+      form.phone = parsedPhone.phone;
+      form.phone_country_code = parsedPhone.phone_country_code;
       form.address = newCust.address || '';
       form.accent_color = newCust.accent_color || '#B45F34';
       form.is_active = newCust.is_active ?? true;
+      nameConflict.value = false;
+      phoneConflictName.value = null;
+      phoneVerified.value = true;
     }
   },
   { immediate: true }
+);
+
+watch(
+  () => form.group_name,
+  () => {
+    nameConflict.value = false;
+  },
 );
 
 const getInitials = (name?: string | null) => {
@@ -560,18 +671,82 @@ const formatBdt = (val?: number | null) => {
   return `${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} BDT`;
 };
 
+const canSaveGeneral = computed(() => {
+  return (
+    !!form.group_name.trim() &&
+    !!form.admin_name.trim() &&
+    !!nationalPhoneDigits(form.phone) &&
+    phoneVerified.value &&
+    !nameConflict.value &&
+    !phoneConflictName.value &&
+    !isCheckingName.value &&
+    !isCheckingPhone.value
+  );
+});
+
+const checkPhone = async () => {
+  const phone = nationalPhoneDigits(form.phone);
+  if (!phone || !props.tenantId || !props.customer) {
+    phoneConflictName.value = null;
+    phoneVerified.value = false;
+    return;
+  }
+  isCheckingPhone.value = true;
+  try {
+    const result = await customerRepository.findCreateConflict(props.tenantId, {
+      phone,
+      phone_country_code: form.phone_country_code,
+    });
+    const conflict = result.phone_group_name;
+    const isOwnNumber =
+      !!conflict &&
+      conflict.trim().toLowerCase() === props.customer.group_name.trim().toLowerCase();
+    phoneConflictName.value = conflict && !isOwnNumber ? conflict : null;
+    phoneVerified.value = !phoneConflictName.value;
+  } finally {
+    isCheckingPhone.value = false;
+  }
+};
+
+const checkGroupName = async () => {
+  const name = form.group_name.trim();
+  if (!name || !props.tenantId || !props.customer) {
+    nameConflict.value = false;
+    return;
+  }
+  isCheckingName.value = true;
+  try {
+    nameConflict.value = await customerRepository.isGroupNameTaken(
+      props.tenantId,
+      name,
+      props.customer.customer_group_id,
+    );
+  } finally {
+    isCheckingName.value = false;
+  }
+};
+
 const saveGeneralInfo = async () => {
   if (!props.customer) return;
+  const phone = nationalPhoneDigits(form.phone);
+  if (!form.group_name.trim() || !form.admin_name.trim() || !phone) {
+    return;
+  }
+  await checkGroupName();
+  await checkPhone();
+  if (nameConflict.value || !phoneVerified.value || phoneConflictName.value) return;
   isSavingGeneral.value = true;
   try {
     await updateCustomerMutation.mutateAsync({
       id: props.customer.id,
       tenant_id: props.tenantId,
       customer_group_id: props.customer.customer_group_id,
+      billing_profile_id: props.customer.billing_profile_id,
       group_name: form.group_name.trim(),
       admin_name: form.admin_name.trim(),
-      email: form.email.trim() || null,
-      phone: form.phone.trim() || null,
+      email: props.customer.email?.trim() || null,
+      phone,
+      phone_country_code: form.phone_country_code,
       address: form.address.trim() || null,
       accent_color: form.accent_color.trim() || '#B45F34',
       is_active: canAdministerCustomerGroup.value
@@ -676,16 +851,189 @@ const deleteMember = async (member: CustomerGroupMember) => {
   border-radius: 8px !important;
 }
 
-.rounded-field :deep(.q-field__control) {
+.drawer-tabs__track {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
   border-radius: 8px;
+  background: #f1f5f9;
 }
 
-.color-preview-badge {
-  width: 22px;
-  height: 22px;
+.drawer-tabs__item {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+  padding: 8px 10px;
   border-radius: 6px;
   cursor: pointer;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.drawer-tabs__item--active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.drawer-tabs__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.section-heading {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.form-section--divider {
+  border-top: 1px solid #f1f5f9;
+  padding-top: 16px;
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #334155;
+}
+
+.soft-input :deep(.q-field__control) {
+  min-height: 40px;
+  border-radius: 8px;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.soft-input :deep(.q-field--outlined .q-field__control:before) {
+  border: 1px solid #e2e8f0;
+}
+
+.soft-input :deep(.q-field--outlined:hover .q-field__control:before) {
+  border-color: #cbd5e1;
+}
+
+.soft-input :deep(.q-field__native),
+.soft-input :deep(.q-field__input) {
+  font-weight: 500;
+}
+
+.soft-input--textarea :deep(.q-field__control) {
+  min-height: 72px;
+  height: auto;
+}
+
+.phone-fuse {
+  display: flex;
+  align-items: stretch;
+  min-height: 40px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.phone-fuse :deep(.q-field) {
+  margin-bottom: 0;
+}
+
+.phone-fuse :deep(.q-field__control) {
+  min-height: 40px;
+  height: 40px;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.phone-fuse :deep(.q-field__control:before),
+.phone-fuse :deep(.q-field__control:after) {
+  border: none !important;
+}
+
+.phone-fuse__country {
+  width: 88px;
+  flex: 0 0 88px;
+}
+
+.phone-fuse__country :deep(.q-field__control) {
+  padding-left: 12px;
+  padding-right: 0;
+}
+
+.phone-fuse__country :deep(.q-field__native) {
+  font-weight: 500;
+  min-width: 0;
+}
+
+.phone-fuse__country :deep(.q-field__append) {
+  padding-left: 0;
+}
+
+.phone-fuse__number :deep(.q-field__control) {
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.phone-fuse__number :deep(.q-field__native) {
+  font-weight: 500;
+}
+
+.phone-fuse__sep {
+  width: 1px;
+  flex-shrink: 0;
+  align-self: stretch;
+  background: #e2e8f0;
+}
+
+.color-field {
+  width: 100%;
+}
+
+.color-swatch {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 0;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.settings-row {
+  padding: 4px 0;
+}
+
+.settings-row__label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #0f172a;
+}
+
+.settings-row__hint {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #64748b;
 }
 
 /* Dark mode */
@@ -693,5 +1041,39 @@ body.body--dark .customer-drawer,
 body.body--dark .header-surface {
   background: #1c1c1c;
   border-color: #2e2e2e;
+}
+
+body.body--dark .drawer-tabs__track {
+  background: #262626;
+}
+
+body.body--dark .drawer-tabs__item {
+  color: #94a3b8;
+}
+
+body.body--dark .drawer-tabs__item--active {
+  background: #1c1c1c;
+  color: #f8fafc;
+}
+
+body.body--dark .form-section--divider {
+  border-top-color: #2e2e2e;
+}
+
+body.body--dark .phone-fuse {
+  background: #1c1c1c;
+  border-color: #334155;
+}
+
+body.body--dark .phone-fuse__sep {
+  background: #334155;
+}
+
+body.body--dark .soft-input :deep(.q-field--outlined .q-field__control:before) {
+  border-color: #334155;
+}
+
+body.body--dark .color-swatch {
+  border-color: #334155;
 }
 </style>

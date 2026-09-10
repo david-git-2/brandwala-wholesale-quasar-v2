@@ -1209,7 +1209,7 @@ CREATE OR REPLACE FUNCTION "public"."can_manage_customer_group_member"("p_custom
     select 1
     from public.customer_groups cg
     where cg.id = p_customer_group_id
-      and public.can_manage_customer_group(cg.tenant_id)
+      and public.can_manage_customer_group(coalesce(cg.parent_tenant_id, cg.tenant_id))
   )
 $$;
 
@@ -3306,8 +3306,10 @@ CREATE OR REPLACE FUNCTION "public"."delete_customer_group"("p_id" bigint) RETUR
     AS $$
 declare
   v_tenant_id bigint;
+  v_deleted_at timestamp with time zone;
 begin
-  select cg.tenant_id into v_tenant_id
+  select coalesce(cg.parent_tenant_id, cg.tenant_id), cg.deleted_at
+  into v_tenant_id, v_deleted_at
   from public.customer_groups cg
   where cg.id = p_id;
 
@@ -3319,13 +3321,17 @@ begin
     raise exception 'Only parent tenant admins can delete customer groups';
   end if;
 
-  delete from public.wallet_accounts wa
-  using public.billing_profiles bp
-  where bp.customer_group_id = p_id
-    and wa.entity_type = 'customer'
-    and wa.entity_id = bp.id;
+  if v_deleted_at is not null then
+    return;
+  end if;
 
-  delete from public.customer_groups where id = p_id;
+  update public.customer_groups
+  set
+    deleted_at = now(),
+    is_active = false,
+    updated_at = now()
+  where id = p_id
+    and deleted_at is null;
 end;
 $$;
 
@@ -3564,9 +3570,12 @@ CREATE OR REPLACE FUNCTION "public"."find_customer_admin_email_conflict"("p_tena
     SET "search_path" TO 'public'
     AS $$
 declare
+  v_books_id bigint;
   v_normalized_email text;
   v_group_name text;
 begin
+  v_books_id := public.resolve_parent_tenant_id(p_tenant_id);
+
   v_normalized_email := nullif(lower(trim(coalesce(p_email, ''))), '');
   if v_normalized_email is null then
     return null;
@@ -3576,7 +3585,8 @@ begin
   into v_group_name
   from public.billing_profiles bp
   join public.customer_groups cg on cg.id = bp.customer_group_id
-  where bp.tenant_id = p_tenant_id
+  where bp.parent_tenant_id = v_books_id
+    and cg.deleted_at is null
     and lower(trim(bp.email)) = v_normalized_email
     and bp.id <> coalesce(p_exclude_billing_profile_id, -1)
     and cg.id <> coalesce(p_exclude_customer_group_id, -1)
@@ -3591,7 +3601,8 @@ begin
   into v_group_name
   from public.customer_group_members cgm
   join public.customer_groups cg on cg.id = cgm.customer_group_id
-  where cg.tenant_id = p_tenant_id
+  where cg.parent_tenant_id = v_books_id
+    and cg.deleted_at is null
     and cgm.role = 'admin'::public.customer_group_role
     and lower(trim(cgm.email)) = v_normalized_email
     and cgm.id <> coalesce(p_exclude_member_id, -1)
@@ -15480,7 +15491,9 @@ ALTER SEQUENCE "public"."customer_group_members_id_seq" OWNED BY "public"."custo
     "id" bigint NOT NULL,
     "name" "text" NOT NULL,
     "tenant_id" bigint NOT NULL,
+    "parent_tenant_id" bigint NOT NULL,
     "is_active" boolean DEFAULT true NOT NULL,
+    "deleted_at" timestamp with time zone,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "accent_color" "text"
@@ -18688,6 +18701,7 @@ CREATE INDEX "customer_group_members_tenant_role_id_idx" ON "public"."customer_g
 
 
 CREATE INDEX "customer_groups_tenant_id_idx" ON "public"."customer_groups" USING "btree" ("tenant_id");
+CREATE INDEX "customer_groups_parent_tenant_id_idx" ON "public"."customer_groups" USING "btree" ("parent_tenant_id");
 
 
 CREATE INDEX "entity_tags_entity_idx" ON "public"."entity_tags" USING "btree" ("entity_type", "entity_id");
@@ -19692,6 +19706,9 @@ ALTER TABLE ONLY "public"."customer_group_members"
 
 
     ADD CONSTRAINT "customer_groups_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
+
+ALTER TABLE ONLY "public"."customer_groups"
+    ADD CONSTRAINT "customer_groups_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 
 ALTER TABLE ONLY "public"."customer_order_backlog_items"

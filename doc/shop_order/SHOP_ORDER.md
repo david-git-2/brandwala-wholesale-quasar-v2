@@ -58,7 +58,7 @@ Tenant-wide labels (name, slug, icon, active). Staff manage on **Categories** pa
 Per shop, staff grant **customer groups** on the **Access** tab ([`ShopAccessMatrixPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/shop_order/pages/ShopAccessMatrixPage.vue)):
 
 - **Add group** — pick existing group → `upsert_shop_customer_group_access`
-- **Create group** — inline form → `create_customer_account` (see `CUSTOMER.md`) then grant access
+- **Create group** — inline form (name + phone) → `create_customer_account` then grant access
 - Capabilities: browse, **can see catalog / purchase price** (`unit_price`), **can see sell price** (`sell_price`), **can see resell minimum price** (`resell_minimum_price`), cart, place order, negotiate, view qty, dropship price tier, credit limit
 
 Group-wide defaults: `customer_group_shop_profiles` via `upsert_customer_group_shop_profile`.

@@ -3,12 +3,14 @@
 CREATE TABLE IF NOT EXISTS "public"."billing_profiles" (
     "id" bigint NOT NULL,
     "tenant_id" bigint NOT NULL,
-    "parent_tenant_id" bigint,
+    "parent_tenant_id" bigint NOT NULL,
     "name" "text" NOT NULL,
     "email" "text",
     "customer_group_id" bigint,
     "phone" "text",
+    "phone_country_code" "text" DEFAULT '+880'::"text" NOT NULL,
     "address" "text",
+    "is_phone_unique" boolean DEFAULT true NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "color" "text"
@@ -339,7 +341,8 @@ CREATE INDEX "billing_profiles_customer_group_id_idx" ON "public"."billing_profi
 CREATE INDEX "billing_profiles_name_idx" ON "public"."billing_profiles" USING "btree" ("name");
 CREATE INDEX "billing_profiles_parent_tenant_id_idx" ON "public"."billing_profiles" USING "btree" ("parent_tenant_id");
 CREATE INDEX "billing_profiles_tenant_id_idx" ON "public"."billing_profiles" USING "btree" ("tenant_id");
-CREATE UNIQUE INDEX "billing_profiles_tenant_phone_uidx" ON "public"."billing_profiles" USING "btree" ("tenant_id", "phone") WHERE (("phone" IS NOT NULL) AND ("phone" <> ''::"text"));
+CREATE UNIQUE INDEX "billing_profiles_customer_group_id_uidx" ON "public"."billing_profiles" USING "btree" ("customer_group_id") WHERE ("customer_group_id" IS NOT NULL);
+CREATE UNIQUE INDEX "billing_profiles_parent_phone_uidx" ON "public"."billing_profiles" USING "btree" ("parent_tenant_id", "phone_country_code", "phone") WHERE (("phone" IS NOT NULL) AND ("btrim"("phone") <> ''::"text") AND "is_phone_unique");
 
 CREATE INDEX "global_invoice_items_global_stock_id_idx" ON "public"."sales_invoice_items" USING "btree" ("global_stock_id");
 CREATE INDEX "global_invoice_items_invoice_id_idx" ON "public"."sales_invoice_items" USING "btree" ("invoice_id");

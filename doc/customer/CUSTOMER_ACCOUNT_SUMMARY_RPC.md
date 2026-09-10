@@ -30,7 +30,9 @@ get_customer_account_summary_for_staff(
 
 **Books tenant:** `resolve_parent_tenant_id(p_tenant_id)`.
 
-**Billing profiles:** all `billing_profiles` for `p_customer_group_id` where `tenant_id` is books or a child under books. Primary profile = row on `customer_groups.tenant_id` first, else lowest `id`.
+**Customer group:** `customer_groups.id = p_customer_group_id` and `parent_tenant_id = books` and `deleted_at is null`.
+
+**Billing profile:** the one row with `billing_profiles.customer_group_id = p_customer_group_id`. Profile `parent_tenant_id` = books. Hub account tab is for grouped customers only.
 
 ### Success JSON
 
@@ -87,6 +89,6 @@ When no billing profile: `success: true`, `billing_profile_id: null`, zeros and 
 
 ---
 
-## Billing profile resolution fix
+## Billing profile resolution
 
-`resolve_billing_profile_for_customer_group` falls back to any `billing_profiles` row for the group under the books network (parent tenant + child sister concerns) when no profile exists on the operating child tenant.
+`resolve_billing_profile_for_customer_group` loads the single `billing_profiles` row for that `customer_group_id`. Books scope is `customer_groups.parent_tenant_id`. No family-wide hunt.

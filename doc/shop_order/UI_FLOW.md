@@ -138,7 +138,7 @@ flowchart LR
 | Action | Trigger | Result |
 | :--- | :--- | :--- |
 | **Add group** | Pick existing group from tenant | Opens edit drawer → `upsert_shop_customer_group_access` |
-| **Create group** | Inline dialog | `create_customer_account` → auto-grant on this shop |
+| **Create group** | Inline dialog (name + phone) | `create_customer_account` → auto-grant on this shop |
 | **Edit row** | Click granted group | Toggle capabilities + credit limit |
 | **Copy login URL** | Top-right button | Copies `/:tenantSlug/shop` login link |
 
