@@ -10912,6 +10912,7 @@ export type Database = {
         Returns: number
       }
       default_stock_grade_tag_id: { Args: never; Returns: number }
+      delete_customer_group: { Args: { p_id: number }; Returns: undefined }
       delete_customer_group_member_grant: {
         Args: { p_action: string; p_cgm_id: number; p_module_key: string }
         Returns: undefined

@@ -3287,6 +3287,50 @@ begin
 ALTER FUNCTION "public"."delete_store"("p_id" bigint) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."delete_customer_group"("p_id" bigint) RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_tenant_id bigint;
+begin
+  select cg.tenant_id into v_tenant_id
+  from public.customer_groups cg
+  where cg.id = p_id;
+
+  if v_tenant_id is null then
+    raise exception 'Customer group not found';
+  end if;
+
+  if not public.can_manage_customer_group(v_tenant_id) then
+    raise exception 'Unauthorized';
+  end if;
+
+  if exists (
+    select 1
+    from public.shop_orders so
+    where so.customer_group_id = p_id
+  ) then
+    raise exception 'Cannot delete customer group: shop orders exist';
+  end if;
+
+  if exists (
+    select 1
+    from public.billing_profiles bp
+    join public.global_invoices gi on gi.billing_profile_id = bp.id
+    where bp.customer_group_id = p_id
+  ) then
+    raise exception 'Cannot delete customer group: invoices exist for its billing profile';
+  end if;
+
+  delete from public.customer_groups where id = p_id;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."delete_customer_group"("p_id" bigint) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."delete_store_access"("p_id" bigint) RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -20481,6 +20525,9 @@ CREATE POLICY "customer_groups_select" ON "public"."customer_groups" FOR SELECT 
 CREATE POLICY "customer_groups_update" ON "public"."customer_groups" FOR UPDATE TO "authenticated" USING ("public"."can_manage_customer_group"("tenant_id")) WITH CHECK ("public"."can_manage_customer_group"("tenant_id"));
 
 
+CREATE POLICY "customer_groups_delete" ON "public"."customer_groups" FOR DELETE TO "authenticated" USING ("public"."can_manage_customer_group"("tenant_id"));
+
+
 ALTER TABLE "public"."customer_order_backlog_items" ENABLE ROW LEVEL SECURITY;
 
 
@@ -21469,6 +21516,10 @@ GRANT ALL ON FUNCTION "public"."current_tenant_id"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."delete_membership_grant"("p_membership_id" bigint, "p_module_key" "text", "p_action" "text") TO "authenticated";
 
 
+
+
+REVOKE ALL ON FUNCTION "public"."delete_customer_group"("p_id" bigint) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."delete_customer_group"("p_id" bigint) TO "authenticated";
 
 
 GRANT ALL ON FUNCTION "public"."delete_store_access"("p_id" bigint) TO "authenticated";

@@ -354,6 +354,11 @@ export default {
   access_admin_email_required: 'Admin email is required',
   access_admin_email_invalid: 'Enter a valid email address',
   access_create_failed: 'Could not create the customer group.',
+  access_delete_group: 'Delete group',
+  access_delete_group_confirm:
+    'Delete {name}? Members will lose access. Groups with orders or invoices cannot be deleted.',
+  access_delete_group_success: 'Customer group deleted.',
+  access_delete_group_failed: 'Could not delete the customer group.',
   access_wallet: 'Wallet',
   access_wallet_title: '{name} wallet',
   access_wallet_subtitle: 'Available, pending, and locked balances.',

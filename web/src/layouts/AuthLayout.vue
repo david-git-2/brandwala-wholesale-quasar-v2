@@ -2,7 +2,6 @@
   <q-layout view="hHh lpR fFf" class="auth-layout" :class="[scopeClass, themeClass]">
     <q-page-container>
       <q-page class="auth-page">
-        <!-- Animated background blobs (left canvas only) -->
         <div class="auth-bg" aria-hidden="true">
           <div class="auth-bg__blob auth-bg__blob--1" />
           <div class="auth-bg__blob auth-bg__blob--2" />
@@ -10,19 +9,13 @@
         </div>
 
         <div class="auth-layout__inner">
-          <!-- ── Left: full-bleed dark canvas ───────────────── -->
           <div class="auth-canvas">
-            <!-- Brand lockup — compact mark + wordmark (fits dark editorial canvas) -->
             <div
               class="auth-canvas__brand"
               aria-label="TradeFlow BD — B2B commerce platform"
             >
               <div class="auth-canvas__brand-mark-wrap" aria-hidden="true">
-                <AppLogoMark
-                  on-dark
-                  :scope="authScope"
-                  class="auth-canvas__brand-mark"
-                />
+                <AppLogoMark :scope="authScope" class="auth-canvas__brand-mark" />
               </div>
               <div class="auth-canvas__brand-text">
                 <p class="auth-canvas__brand-name">
@@ -32,19 +25,16 @@
               </div>
             </div>
 
-            <!-- Giant ghost word — centred vertically -->
             <div class="auth-canvas__ghost-wrap" aria-hidden="true">
               <span class="auth-canvas__ghost-word">{{ ghostWord }}</span>
             </div>
 
-            <!-- Bottom tagline -->
             <div class="auth-canvas__footer">
               <p class="auth-canvas__tagline">{{ tagline }}</p>
               <p class="auth-canvas__credit">Powered by TradeFlow BD</p>
             </div>
           </div>
 
-          <!-- ── Right: login card panel ─────────────────────── -->
           <div class="auth-panel">
             <router-view />
           </div>
@@ -59,42 +49,43 @@ import { computed, provide, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import AppLogoMark from 'src/components/brand/AppLogoMark.vue';
 
+type AuthLayoutScope = 'platform' | 'app' | 'shop' | 'investor';
+
 const route = useRoute();
 
-// Injected by AuthLoginPanel so the headline can use the real store name
 const panelTitle = ref('');
 provide('authPanelTitle', panelTitle);
 
 const authScope = computed(() => {
-  const metaScope = (route.meta as { authScope?: 'platform' | 'app' | 'shop' }).authScope;
-  // The /auth/callback route carries ?scope=shop|app|platform in the URL;
-  // fall back to it when meta doesn't define an authScope.
-  const queryScope = route.query.scope as 'platform' | 'app' | 'shop' | undefined;
+  const metaScope = (route.meta as { authScope?: AuthLayoutScope }).authScope;
+  const queryScope = route.query.scope as AuthLayoutScope | undefined;
   return metaScope ?? queryScope ?? 'app';
 });
 
 const scopeClass = computed(() => `auth-scope--${authScope.value}`);
 const themeClass = computed(() => `theme-${authScope.value}`);
 
-// The giant ghost word stamped across the left canvas
 const ghostWord = computed(() => {
   switch (authScope.value) {
     case 'platform':
       return 'Platform';
     case 'shop':
       return 'Store';
+    case 'investor':
+      return 'Investor';
     default:
       return 'Operations';
   }
 });
 
-// Short, confident tagline below the ghost word
 const tagline = computed(() => {
   switch (authScope.value) {
     case 'platform':
       return 'Govern the platform.';
     case 'shop':
       return panelTitle.value ? panelTitle.value : 'Your wholesale store.';
+    case 'investor':
+      return 'See your portfolio.';
     default:
       return 'Run your business.';
   }
@@ -102,62 +93,54 @@ const tagline = computed(() => {
 </script>
 
 <style scoped>
-/* ── Per-scope colour palette ────────────────────────── */
 .auth-scope--platform {
-  --auth-bg: #100707;
-  --auth-mid: #2d0a0a;
-  --auth-accent: #ef4444;
-  --auth-accent-rgb: 239 68 68;
-  --auth-glow: rgb(239 68 68 / 0.4);
-  --auth-ghost: rgb(239 68 68 / 0.04);
-  --auth-card-bar: #dc2626;
+  --auth-bg: #f6f1f2;
+  --auth-mid: #6b2d3c;
+  --auth-accent: #6b2d3c;
+  --auth-accent-rgb: 107 45 60;
+  --auth-ink: #1c1416;
+  --auth-ink-rgb: 28 20 22;
+  --auth-muted: #6b5a5e;
+  --auth-glow: rgb(107 45 60 / 0.28);
+  --auth-ghost: rgb(28 20 22 / 0.1);
 }
 
 .auth-scope--app {
-  --auth-bg: #18252a;
+  --auth-bg: #f3f4f5;
   --auth-mid: #334e58;
   --auth-accent: #03b5aa;
   --auth-accent-rgb: 3 181 170;
-  --auth-glow: rgb(3 181 170 / 0.55);
-  --auth-ghost: rgb(3 181 170 / 0.16);
-  --auth-card-bar: #03b5aa;
+  --auth-ink: #33261d;
+  --auth-ink-rgb: 51 38 29;
+  --auth-muted: #6b6d76;
+  --auth-glow: rgb(3 181 170 / 0.28);
+  --auth-ghost: rgb(51 38 29 / 0.1);
 }
 
 .auth-scope--shop {
-  --auth-bg: #1a1819;
-  --auth-mid: #3d2f38;
+  --auth-bg: #faf8f6;
+  --auth-mid: #5e4955;
   --auth-accent: #996888;
   --auth-accent-rgb: 153 104 136;
-  --auth-glow: rgb(153 104 136 / 0.38);
-  --auth-ghost: rgb(153 104 136 / 0.05);
-  --auth-card-bar: #b48b7d;
+  --auth-ink: #2a2b2a;
+  --auth-ink-rgb: 42 43 42;
+  --auth-muted: #5e4955;
+  --auth-glow: rgb(153 104 136 / 0.28);
+  --auth-ghost: rgb(42 43 42 / 0.1);
 }
 
-.auth-scope--app .auth-bg__blob--1 {
-  opacity: 0.4;
+.auth-scope--investor {
+  --auth-bg: #f2f6f6;
+  --auth-mid: #0f5c5a;
+  --auth-accent: #0f5c5a;
+  --auth-accent-rgb: 15 92 90;
+  --auth-ink: #1a2222;
+  --auth-ink-rgb: 26 34 34;
+  --auth-muted: #5a6b6b;
+  --auth-glow: rgb(15 92 90 / 0.28);
+  --auth-ghost: rgb(26 34 34 / 0.1);
 }
 
-.auth-scope--app .auth-bg__blob--2 {
-  opacity: 0.75;
-}
-
-.auth-scope--app .auth-bg__blob--3 {
-  opacity: 0.28;
-}
-
-.auth-scope--app .auth-canvas__ghost-word {
-  -webkit-text-stroke: 1px rgb(3 181 170 / 0.28);
-}
-
-.auth-scope--app .auth-canvas__tagline {
-  color: #ffffff;
-}
-
-.auth-scope--app .auth-canvas__brand-sub {
-  color: rgb(255 255 255 / 0.55);
-}
-
-/* ── Root layout ─────────────────────────────────────── */
 .auth-layout {
   min-height: 100vh;
   background: var(--auth-bg);
@@ -172,7 +155,6 @@ const tagline = computed(() => {
   max-width: none !important;
 }
 
-/* ── Background blobs ────────────────────────────────── */
 .auth-bg {
   position: fixed;
   inset: 0;
@@ -192,7 +174,7 @@ const tagline = computed(() => {
   top: -200px;
   left: -100px;
   background: radial-gradient(circle, var(--auth-accent) 0%, transparent 68%);
-  opacity: 0.18;
+  opacity: 0.14;
 }
 
 .auth-bg__blob--2 {
@@ -201,7 +183,7 @@ const tagline = computed(() => {
   bottom: -100px;
   left: 20%;
   background: radial-gradient(circle, var(--auth-mid) 0%, transparent 70%);
-  opacity: 0.55;
+  opacity: 0.2;
 }
 
 .auth-bg__blob--3 {
@@ -213,35 +195,27 @@ const tagline = computed(() => {
   opacity: 0.1;
 }
 
-/* ── Two-column inner ────────────────────────────────── */
 .auth-layout__inner {
   position: relative;
   z-index: 1;
   min-height: 100vh;
   display: grid;
-  /* left canvas takes most space; card pinned to right */
   grid-template-columns: 1fr 420px;
 }
 
-/* ── Left canvas ─────────────────────────────────────── */
 .auth-canvas {
   position: relative;
   display: flex;
   flex-direction: column;
   padding: clamp(1.75rem, 3.5vw, 2.75rem);
   overflow: hidden;
-
-  /* subtle grid texture */
   background-image:
-    linear-gradient(rgb(255 255 255 / 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(255 255 255 / 0.025) 1px, transparent 1px);
+    linear-gradient(rgb(var(--auth-ink-rgb, 28 20 22) / 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(var(--auth-ink-rgb, 28 20 22) / 0.05) 1px, transparent 1px);
   background-size: 48px 48px;
-
-  /* vertical accent glow line on the right edge */
-  border-right: 1px solid rgb(255 255 255 / 0.05);
+  border-right: 1px solid rgb(var(--auth-accent-rgb) / 0.12);
 }
 
-/* right-edge glow line */
 .auth-canvas::after {
   content: '';
   position: absolute;
@@ -258,7 +232,6 @@ const tagline = computed(() => {
   );
 }
 
-/* ── Brand lockup ────────────────────────────────────── */
 .auth-canvas__brand {
   display: flex;
   align-items: center;
@@ -292,7 +265,7 @@ const tagline = computed(() => {
   font-weight: 800;
   letter-spacing: -0.045em;
   line-height: 1.05;
-  color: rgb(255 255 255 / 0.94);
+  color: var(--auth-ink);
 }
 
 .auth-canvas__brand-name-accent {
@@ -305,16 +278,14 @@ const tagline = computed(() => {
   font-weight: 500;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgb(255 255 255 / 0.34);
+  color: var(--auth-muted);
   line-height: 1.2;
 }
 
-/* ── Giant ghost word ────────────────────────────────── */
 .auth-canvas__ghost-wrap {
   flex: 1;
   display: flex;
   align-items: center;
-  /* nudge slightly left so it bleeds off-canvas beautifully */
   margin-left: -0.05em;
   pointer-events: none;
   user-select: none;
@@ -326,14 +297,12 @@ const tagline = computed(() => {
   line-height: 0.85;
   letter-spacing: -0.06em;
   color: transparent;
-  /* two-layer approach: outline stroke + faint fill */
-  -webkit-text-stroke: 1px rgb(255 255 255 / 0.07);
-  background: linear-gradient(160deg, rgb(255 255 255 / 0.06) 0%, var(--auth-ghost) 100%);
+  -webkit-text-stroke: 1px rgb(var(--auth-accent-rgb) / 0.18);
+  background: linear-gradient(160deg, var(--auth-ghost) 0%, rgb(var(--auth-ink-rgb) / 0.08) 100%);
   -webkit-background-clip: text;
   background-clip: text;
 }
 
-/* ── Footer tagline ──────────────────────────────────── */
 .auth-canvas__footer {
   flex-shrink: 0;
   display: flex;
@@ -346,27 +315,24 @@ const tagline = computed(() => {
   font-size: clamp(0.95rem, 1.6vw, 1.15rem);
   font-weight: 600;
   letter-spacing: -0.02em;
-  color: rgb(255 255 255 / 0.7);
+  color: var(--auth-ink);
 }
 
 .auth-canvas__credit {
   margin: 0;
   font-size: 0.68rem;
-  color: rgb(255 255 255 / 0.2);
+  color: var(--auth-muted);
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
-/* ── Right panel (login card) ────────────────────────── */
 .auth-panel {
   display: grid;
   align-content: center;
-  background: #ffffff;
+  background: var(--auth-bg);
   padding: clamp(1.75rem, 4vw, 3rem) clamp(1.5rem, 3.5vw, 2.5rem);
-  box-shadow: -24px 0 80px rgb(0 0 0 / 0.45);
 }
 
-/* ── Responsive: collapse to single column ───────────── */
 @media (max-width: 860px) {
   .auth-layout__inner {
     grid-template-columns: 1fr;
@@ -376,7 +342,7 @@ const tagline = computed(() => {
   .auth-canvas {
     min-height: unset;
     border-right: none;
-    border-bottom: 1px solid rgb(255 255 255 / 0.05);
+    border-bottom: 1px solid rgb(var(--auth-accent-rgb) / 0.12);
     padding: clamp(1.25rem, 3vw, 1.75rem);
   }
 
@@ -385,7 +351,6 @@ const tagline = computed(() => {
   }
 
   .auth-canvas__ghost-wrap {
-    /* On tablet the ghost is decorative padding only */
     min-height: 6rem;
     flex: unset;
   }
@@ -396,7 +361,6 @@ const tagline = computed(() => {
 
   .auth-panel {
     padding: clamp(1.5rem, 5vw, 2.25rem);
-    box-shadow: none;
   }
 }
 

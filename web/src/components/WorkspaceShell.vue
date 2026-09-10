@@ -160,6 +160,7 @@
             class="workspace-shell__app-mark workspace-shell__app-mark--mini"
           />
           <q-btn
+            v-show="!isMini"
             flat
             round
             dense

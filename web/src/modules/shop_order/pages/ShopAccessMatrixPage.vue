@@ -207,6 +207,17 @@
                     data-test="access-configure-btn"
                     @click="openEditDrawer(props.row.id)"
                   />
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    size="sm"
+                    color="negative"
+                    icon="ph ph-trash"
+                    :aria-label="$t('shop_admin.access_delete_group')"
+                    data-test="access-delete-group-btn"
+                    @click="deleteGroup(props.row)"
+                  />
                 </div>
               </q-td>
             </template>
@@ -515,7 +526,11 @@ import { useCustomerGroupMutations } from 'src/modules/tenant/composables/useCus
 import type { CustomerGroupCreateInput } from 'src/modules/tenant/types';
 import { useShopPermissionsStore } from '../stores/shopPermissionsStore';
 import type { UpsertAccessPayload, ShopCustomerGroupAccess, Shop } from '../types';
-import { showErrorNotification } from 'src/utils/appFeedback';
+import {
+  requestConfirmation,
+  showErrorNotification,
+  showSuccessNotification,
+} from 'src/utils/appFeedback';
 import { useBillingProfilesQuery } from 'src/modules/sales_invoice/composables/useBillingProfileQuery';
 import CustomerGroupDetailsDrawer from '../components/CustomerGroupDetailsDrawer.vue';
 
@@ -529,7 +544,7 @@ const router = useRouter();
 const { t } = useI18n();
 const authStore = useAuthStore();
 const store = useShopPermissionsStore();
-const { createGroupMutation } = useCustomerGroupMutations();
+const { createGroupMutation, deleteGroupMutation } = useCustomerGroupMutations();
 
 const tenantId = computed(() => authStore.tenantId as number);
 const shopId = computed(() => Number(route.params.shopId));
@@ -746,6 +761,28 @@ const createThenGrant = async () => {
     }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : t('shop_admin.access_create_failed');
+    showErrorNotification(message);
+  }
+};
+
+const deleteGroup = async (group: { id: number; name: string }) => {
+  const confirmed = await requestConfirmation(
+    t('shop_admin.access_delete_group_confirm', { name: group.name }),
+    t('shop_admin.access_delete_group'),
+    t('shop_admin.delete'),
+  );
+  if (!confirmed || !tenantId.value) return;
+
+  try {
+    await deleteGroupMutation.mutateAsync({ id: group.id, tenant_id: tenantId.value });
+    if (selectedDetailsGroup.value?.id === group.id) {
+      groupDetailsOpen.value = false;
+      selectedDetailsGroup.value = null;
+    }
+    await store.fetchCustomerGroups(tenantId.value);
+    showSuccessNotification(t('shop_admin.access_delete_group_success'));
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : t('shop_admin.access_delete_group_failed');
     showErrorNotification(message);
   }
 };

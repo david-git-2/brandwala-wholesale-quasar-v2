@@ -350,6 +350,11 @@ export default {
   access_admin_email_required: 'অ্যাডমিন ইমেইল লাগবে',
   access_admin_email_invalid: 'সঠিক ইমেইল দিন',
   access_create_failed: 'কাস্টমার গ্রুপ তৈরি হয়নি।',
+  access_delete_group: 'গ্রুপ মুছুন',
+  access_delete_group_confirm:
+    '{name} মুছতে চান? সদস্যদের অ্যাক্সেস থাকবে না। অর্ডার বা ইনভয়েস আছে এমন গ্রুপ মুছা যাবে না।',
+  access_delete_group_success: 'কাস্টমার গ্রুপ মুছে ফেলা হয়েছে।',
+  access_delete_group_failed: 'কাস্টমার গ্রুপ মুছা যায়নি।',
   access_wallet: 'ওয়ালেট',
   access_wallet_title: '{name} ওয়ালেট',
   access_wallet_subtitle: 'উপলব্ধ, অপেক্ষমাণ এবং লক ব্যালেন্স।',

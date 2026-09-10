@@ -158,9 +158,7 @@ const updateCustomerGroup = async (payload: CustomerGroupUpdateInput & {
 };
 
 const deleteCustomerGroup = async (payload: CustomerGroupDeleteInput): Promise<void> => {
-  // Also explicitly cleanup associated billing profile in case cascade is not yet triggered on legacy records
-  await supabase.from('billing_profiles').delete().eq('customer_group_id', payload.id);
-  const { error } = await supabase.from('customer_groups').delete().eq('id', payload.id);
+  const { error } = await supabase.rpc('delete_customer_group', { p_id: payload.id });
 
   if (error) {
     throw error;
