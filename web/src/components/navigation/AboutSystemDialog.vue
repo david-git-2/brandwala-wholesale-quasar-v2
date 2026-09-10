@@ -2,15 +2,13 @@
   <q-dialog :model-value="modelValue" @update:model-value="emit('update:modelValue', $event)">
     <q-card class="about-system-dialog" style="width: 620px; max-width: 95vw; border-radius: 14px">
       <!-- Header banner -->
-      <div class="about-header q-pa-lg text-white">
+      <div class="about-header q-pa-lg text-white" :class="{ 'about-header--app': isAppTheme }">
         <div class="row items-center justify-between no-wrap">
           <div class="about-header__logo-wrap">
-            <img
-              :src="brandLogoSrc"
-              alt="TradeFlow BD — Enterprise resource planning, B2B commerce"
-              class="about-header__logo-full"
-              decoding="async"
-            />
+            <div class="about-header__app-lockup row items-center no-wrap">
+              <AppLogoMark on-dark class="about-header__app-mark" />
+              <span class="about-header__app-name">TradeFlow BD</span>
+            </div>
             <q-badge color="primary" text-color="white" class="about-header__version text-weight-bold text-caption"
               >v2.0</q-badge>
           </div>
@@ -72,9 +70,7 @@
 </template>
 
 <script setup lang="ts">
-import { useBrandAssets } from 'src/composables/useBrandAssets';
-
-const { brandLogoSrc } = useBrandAssets();
+import AppLogoMark from 'src/components/brand/AppLogoMark.vue';
 
 defineProps<{
   modelValue: boolean;
@@ -135,10 +131,29 @@ const modules = [
   background: linear-gradient(135deg, #0d6b5c 0%, #0f5c5a 100%);
 }
 
+.about-header--app {
+  background: linear-gradient(135deg, #33261d 0%, #334e58 100%);
+}
+
 .about-header__logo-wrap {
   position: relative;
   flex: 1;
   min-width: 0;
+}
+
+.about-header__app-lockup {
+  gap: 0.7rem;
+}
+
+.about-header__app-mark {
+  width: 36px;
+  height: 36px;
+}
+
+.about-header__app-name {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
 }
 
 .about-header__logo-full {

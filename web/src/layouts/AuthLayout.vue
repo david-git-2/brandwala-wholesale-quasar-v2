@@ -1,5 +1,5 @@
 <template>
-  <q-layout view="hHh lpR fFf" class="auth-layout" :class="scopeClass">
+  <q-layout view="hHh lpR fFf" class="auth-layout" :class="[scopeClass, themeClass]">
     <q-page-container>
       <q-page class="auth-page">
         <!-- Animated background blobs (left canvas only) -->
@@ -18,11 +18,10 @@
               aria-label="TradeFlow BD — B2B commerce platform"
             >
               <div class="auth-canvas__brand-mark-wrap" aria-hidden="true">
-                <img
-                  :src="BRAND_LOGO_MARK_DARK_SRC"
+                <AppLogoMark
+                  on-dark
+                  :scope="authScope"
                   class="auth-canvas__brand-mark"
-                  alt=""
-                  decoding="async"
                 />
               </div>
               <div class="auth-canvas__brand-text">
@@ -58,7 +57,7 @@
 <script setup lang="ts">
 import { computed, provide, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import { BRAND_LOGO_MARK_DARK_SRC } from 'src/constants/brandAssets';
+import AppLogoMark from 'src/components/brand/AppLogoMark.vue';
 
 const route = useRoute();
 
@@ -75,6 +74,7 @@ const authScope = computed(() => {
 });
 
 const scopeClass = computed(() => `auth-scope--${authScope.value}`);
+const themeClass = computed(() => `theme-${authScope.value}`);
 
 // The giant ghost word stamped across the left canvas
 const ghostWord = computed(() => {
@@ -114,13 +114,13 @@ const tagline = computed(() => {
 }
 
 .auth-scope--app {
-  --auth-bg: #030f08;
-  --auth-mid: #052e1a;
-  --auth-accent: #10b981;
-  --auth-accent-rgb: 16 185 129;
-  --auth-glow: rgb(16 185 129 / 0.38);
-  --auth-ghost: rgb(16 185 129 / 0.04);
-  --auth-card-bar: #059669;
+  --auth-bg: #18252a;
+  --auth-mid: #334e58;
+  --auth-accent: #03b5aa;
+  --auth-accent-rgb: 3 181 170;
+  --auth-glow: rgb(3 181 170 / 0.55);
+  --auth-ghost: rgb(3 181 170 / 0.16);
+  --auth-card-bar: #03b5aa;
 }
 
 .auth-scope--shop {
@@ -131,6 +131,30 @@ const tagline = computed(() => {
   --auth-glow: rgb(153 104 136 / 0.38);
   --auth-ghost: rgb(153 104 136 / 0.05);
   --auth-card-bar: #b48b7d;
+}
+
+.auth-scope--app .auth-bg__blob--1 {
+  opacity: 0.4;
+}
+
+.auth-scope--app .auth-bg__blob--2 {
+  opacity: 0.75;
+}
+
+.auth-scope--app .auth-bg__blob--3 {
+  opacity: 0.28;
+}
+
+.auth-scope--app .auth-canvas__ghost-word {
+  -webkit-text-stroke: 1px rgb(3 181 170 / 0.28);
+}
+
+.auth-scope--app .auth-canvas__tagline {
+  color: #ffffff;
+}
+
+.auth-scope--app .auth-canvas__brand-sub {
+  color: rgb(255 255 255 / 0.55);
 }
 
 /* ── Root layout ─────────────────────────────────────── */
@@ -246,24 +270,13 @@ const tagline = computed(() => {
   width: 52px;
   height: 52px;
   flex-shrink: 0;
-  border-radius: 50%;
-  padding: 2px;
-  background: linear-gradient(
-    145deg,
-    var(--auth-accent) 0%,
-    rgb(255 255 255 / 0.08) 55%,
-    transparent 100%
-  );
-  box-shadow: 0 0 28px var(--auth-glow);
 }
 
 .auth-canvas__brand-mark {
   display: block;
   width: 100%;
   height: 100%;
-  border-radius: 50%;
-  object-fit: cover;
-  background: var(--auth-bg);
+  object-fit: contain;
 }
 
 .auth-canvas__brand-text {

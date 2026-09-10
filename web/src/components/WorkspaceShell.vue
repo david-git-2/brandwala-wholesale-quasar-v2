@@ -144,11 +144,21 @@
         <div class="workspace-shell__drawer-top row items-center justify-between q-px-sm q-py-xs">
           <div
             v-show="!isMini"
-            class="text-caption text-weight-bold text-grey-7 text-uppercase"
-            style="font-size: 10px; letter-spacing: 0.05em"
+            class="workspace-shell__drawer-brand row items-center no-wrap"
           >
-            Navigation
+            <AppLogoMark :scope="theme" class="workspace-shell__app-mark" />
+            <div
+              class="text-caption text-weight-bold text-grey-7 text-uppercase"
+              style="font-size: 10px; letter-spacing: 0.05em"
+            >
+              {{ theme === 'app' ? 'Desk' : 'Navigation' }}
+            </div>
           </div>
+          <AppLogoMark
+            v-show="isMini"
+            :scope="theme"
+            class="workspace-shell__app-mark workspace-shell__app-mark--mini"
+          />
           <q-btn
             flat
             round
@@ -479,6 +489,7 @@ import { supabase } from 'src/boot/supabase';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useAppearance } from 'src/composables/useAppearance';
 import AboutSystemDialog from 'src/components/navigation/AboutSystemDialog.vue';
+import AppLogoMark from 'src/components/brand/AppLogoMark.vue';
 
 const showAboutDialog = ref(false);
 
@@ -992,6 +1003,23 @@ const confirmLogout = async () => {
 .workspace-shell__drawer-top,
 .workspace-shell__drawer-bottom {
   padding: 0.75rem;
+}
+
+.workspace-shell__drawer-brand {
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.workspace-shell__app-mark {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.workspace-shell__app-mark--mini {
+  width: 24px;
+  height: 24px;
+  margin-bottom: 0.15rem;
 }
 
 .profile-card {

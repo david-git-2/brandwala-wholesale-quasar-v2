@@ -82,9 +82,17 @@ body.body--dark {
   }
 
   .theme-app {
-    --bw-theme-primary: #4db8a4;
-    --bw-theme-primary-rgb: 77 184 164;
-    --bw-theme-primary-soft: rgb(77 184 164 / 0.15);
+    --bw-app-brown: #33261d;
+    --bw-app-slate: #334e58;
+    --bw-app-gray: #6b6d76;
+    --bw-app-teal: #03b5aa;
+    --bw-theme-base: #33261d;
+    --bw-theme-surface: #3d3228;
+    --bw-theme-ink: #f9fffb;
+    --bw-theme-muted: #6b6d76;
+    --bw-theme-primary: #03b5aa;
+    --bw-theme-primary-rgb: 3 181 170;
+    --bw-theme-primary-soft: rgb(3 181 170 / 0.15);
     --bw-theme-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
   }
 
@@ -152,15 +160,22 @@ body.body--dark {
   --bw-theme-muted: var(--bw-neutral-muted);
 }
 
-/* 2. App Theme — trade teal */
+/* 2. App Theme — gray canvas, white cards, brown chrome, teal accent */
 .theme-app {
-  --bw-theme-primary: #0d6b5c;
-  --bw-theme-primary-rgb: 13 107 92;
-  --bw-theme-primary-soft: rgb(13 107 92 / 0.08);
+  --bw-app-brown: #33261d;
+  --bw-app-slate: #334e58;
+  --bw-app-gray: #6b6d76;
+  --bw-app-teal: #03b5aa;
+  --bw-theme-base: #f3f4f5;
+  --bw-theme-surface: #ffffff;
   --bw-theme-border: var(--bw-neutral-border);
-  --bw-theme-shadow: 0 10px 30px -4px rgba(13 107 92 / 0.12), 0 4px 12px -2px rgba(23 20 18 / 0.04);
-  --bw-theme-ink: var(--bw-neutral-ink);
-  --bw-theme-muted: var(--bw-neutral-muted);
+  --bw-theme-ink: #33261d;
+  --bw-theme-muted: #6b6d76;
+  --bw-theme-primary: #33261d;
+  --bw-theme-primary-rgb: 51 38 29;
+  --bw-theme-primary-soft: rgb(3 181 170 / 0.16);
+  --bw-theme-shadow: 0 12px 32px -16px rgb(51 38 29 / 0.18);
+  --q-primary: var(--bw-theme-primary);
 }
 
 /* 3. Shop Theme — mint canvas, charcoal actions, mauve/clay data hues */

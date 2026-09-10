@@ -147,9 +147,10 @@ const loginErrorMessage = computed(() => {
   --card-soft: rgb(220 38 38 / 0.08);
 }
 .auth-card--app {
-  --card-accent: #059669;
-  --card-accent-rgb: 5 150 105;
-  --card-soft: rgb(5 150 105 / 0.08);
+  --card-accent: #03b5aa;
+  --card-accent-rgb: 3 181 170;
+  --card-soft: rgb(3 181 170 / 0.12);
+  border-color: rgb(107 109 118 / 0.22);
 }
 .auth-card--shop {
   --card-accent: #996888;
@@ -211,6 +212,18 @@ const loginErrorMessage = computed(() => {
   letter-spacing: -0.035em;
   line-height: 1.05;
   color: #0e0d0c;
+}
+
+.auth-card--app .auth-card__title {
+  color: #33261d;
+}
+
+.auth-card--app .auth-card__subtitle {
+  color: #6b6d76;
+}
+
+.auth-card--app .auth-card__cta-label {
+  color: #33261d;
 }
 
 .auth-card--shop .auth-card__title {
