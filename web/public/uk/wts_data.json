@@ -1,13 +1,13 @@
 {
   "meta": {
-    "generatedAt": "2026-09-09T13:12:59.246883Z",
+    "generatedAt": "2026-09-10T06:34:01.136514Z",
     "sourceFile": "wts_data.xlsx",
     "sheet": "Sheet1",
     "count": 1017,
     "headerRow": 1,
     "productIdRule": "product_id = barcode + '_' + product_code",
     "minimumQuantityRule": "minimum_quantity = Pack (case_size)",
-    "normalizedAt": "2026-09-09T13:12:59.349271Z",
+    "normalizedAt": "2026-09-10T06:34:01.271507Z",
     "normalizedStage": "wts_minimum_quantity"
   },
   "products": [

@@ -233,7 +233,7 @@ if run and uploaded is not None:
         lines.append(f"Saved {WTS_XLSX.name}\n")
         lines.append(
             f"Running: make -C python wts-excel WTS_EXPORT_FLAGS=\"{export_flags}\" "
-            f"WTS_SYNC_FLAGS=\"{sync_flags} --vendor-id 4 --images-dir images/uk/wts_images --skip-image-upload\"\n\n"
+            f"WTS_SYNC_FLAGS=\"{sync_flags} --vendor-id 4\"\n\n"
         )
         log_box.code("".join(lines))
 
@@ -246,7 +246,7 @@ if run and uploaded is not None:
                 f"WTS_EXPORT_FLAGS={export_flags}",
                 (
                     "WTS_SYNC_FLAGS="
-                    f"{sync_flags} --vendor-id 4 --images-dir images/uk/wts_images --skip-image-upload"
+                    f"{sync_flags} --vendor-id 4"
                 ),
             ],
             stdout=subprocess.PIPE,
