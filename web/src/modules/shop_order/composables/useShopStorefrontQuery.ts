@@ -8,6 +8,7 @@ import {
   seedCustomerShopPermissions,
   type CustomerShopPermissions,
 } from './useCustomerShopPermissionsQuery';
+import { normalizeShopCatalogItem } from '../utils/catalogPriceUtils';
 
 export interface StorefrontQueryParams {
   shopSlug: string;
@@ -54,7 +55,7 @@ export function useShopStorefrontInfiniteQuery(params: Ref<StorefrontQueryParams
       }
 
       return {
-        items: data as ShopCatalogItem[],
+        items: (data as ShopCatalogItem[]).map((item) => normalizeShopCatalogItem(item)),
         shopDetails,
         permissions: (meta.permissions ?? null) as CustomerShopPermissions | null,
         total: meta.total ?? 0,
@@ -69,7 +70,8 @@ export function useShopStorefrontInfiniteQuery(params: Ref<StorefrontQueryParams
       return undefined;
     },
     initialPageParam: 0,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 30 * 1000,
+    refetchOnMount: 'always',
     placeholderData: keepPreviousData,
     enabled: computed(() => tenantId.value > 0 && Boolean(params.value.shopSlug)),
   });

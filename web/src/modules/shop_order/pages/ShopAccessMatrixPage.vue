@@ -379,7 +379,11 @@
                 <q-toggle
                   v-if="showPurchasePriceToggle"
                   v-model="editForm.can_see_buy_price"
-                  :label="$t('shop_admin.can_see_buy_price')"
+                  :label="
+                    shopType === 'vendor_catalog'
+                      ? $t('shop_admin.can_see_catalog_price')
+                      : $t('shop_admin.can_see_buy_price')
+                  "
                   color="primary"
                 />
                 <q-toggle
@@ -669,7 +673,7 @@ const standardGrantPayload = (groupId: number): UpsertAccessPayload => {
     status: true,
     can_browse: true,
     can_see_buy_price: isCatalog || isDropship,
-    can_see_sell_price: isFixed || isDropship,
+    can_see_sell_price: isCatalog || isFixed || isDropship,
     can_see_resell_minimum_price: isDropship,
     can_view_quantity: true,
     can_add_to_cart: true,
@@ -684,7 +688,6 @@ const standardGrantPayload = (groupId: number): UpsertAccessPayload => {
 
 const normalizePricePermissionsForShopType = (form: UpsertAccessPayload) => {
   if (shopType.value === 'vendor_catalog') {
-    form.can_see_sell_price = false;
     form.can_see_resell_minimum_price = false;
   }
   if (shopType.value === 'fixed_price') {

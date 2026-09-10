@@ -57,7 +57,7 @@
             <StorefrontProductCard
               :item="item"
               :permissions="permissions"
-              :shop-type="shopDetails?.shop_type"
+              :shop-type="activeShopType"
               :show-grade-chip="!!item.stock_grade?.label"
               :show-actions="true"
               :selected-qty="selectedQuantities[itemKey(item)]"
@@ -65,6 +65,9 @@
               :loading="isCartPendingForItem(item)"
               :is-image-broken="brokenImages[itemKey(item)]"
               :format-money="formatMoney"
+              :price-text="storefrontItemPriceText(item)"
+              :price-label="storefrontItemPriceLabel(item)"
+              :min-price-text="storefrontItemMinPriceText(item)"
               @open-detail="goToProductDetail"
               @image-error="brokenImages[itemKey(item)] = true"
               @increment="incrementQty"
@@ -137,6 +140,11 @@ import type { ShopCatalogItem } from '../types';
 import type { QInfiniteScroll } from 'quasar';
 import { activeCartShopMetaFromShop } from '../utils/activeCartCacheUtils';
 import { resolveShopCartItemMoq } from '../utils/cartQuantityUtils';
+import {
+  formatStorefrontCardMinPrice,
+  formatStorefrontCardPrice,
+  storefrontCardPriceLabelKey,
+} from '../utils/catalogPriceUtils';
 
 const route = useRoute();
 const router = useRouter();
@@ -196,66 +204,6 @@ const permissions = computed<CustomerShopPermissions | null | undefined>(
   () => catalogPermissions.value ?? cartPermissions.value ?? fetchedPermissions.value,
 );
 
-const storefrontPermissionDebug = computed(() => {
-  const firstItem = catalogItems.value[0];
-  const merged = permissions.value;
-  return {
-    page: 'StorefrontPage',
-    route: route.fullPath,
-    userEmail: authStore.user?.email ?? null,
-    tenantId: sessionTenantId.value,
-    shopSlug: shopSlug.value,
-    shopId: activeShopId.value,
-    shopType: shopDetails.value?.shop_type ?? null,
-    permissions: {
-      merged,
-      fromBrowseCatalog: catalogPermissions.value ?? null,
-      fromCart: cartPermissions.value ?? null,
-      fromPermissionsRpc: fetchedPermissions.value ?? null,
-    },
-    catalog: {
-      itemCount: catalogItems.value.length,
-      firstProduct: firstItem
-        ? {
-            product_id: firstItem.product_id,
-            product_name: firstItem.product_name,
-            available_units: firstItem.available_units,
-            global_stock_id: firstItem.global_stock_id,
-          }
-        : null,
-    },
-    uiWouldShow: {
-      qtyText:
-        Boolean(merged?.can_view_quantity) &&
-        firstItem?.available_units !== null &&
-        firstItem?.available_units !== undefined,
-      cartControls: true,
-      addToCartEnabled:
-        Boolean(merged?.can_add_to_cart) &&
-        (firstItem?.available_units == null || firstItem.available_units > 0),
-    },
-    queryState: {
-      browseLoading: isLoading.value,
-      browseFetching: isFetching.value,
-      browseError: error.value?.message ?? null,
-    },
-  };
-});
-
-watch(
-  storefrontPermissionDebug,
-  (debug) => {
-    console.info(
-      '%c[StorefrontPage] Copy this JSON and paste it in chat:',
-      'font-weight: bold; color: #2563eb;',
-    );
-    console.log(JSON.stringify(debug, null, 2));
-    if (import.meta.env.DEV) {
-      (window as Window & { __storefrontPageDebug?: unknown }).__storefrontPageDebug = debug;
-    }
-  },
-  { immediate: true, deep: true },
-);
 const { addItemMutation, updateQtyMutation, removeItemMutation } = useShopCartMutations();
 
 const cartSaving = computed(
@@ -267,6 +215,12 @@ const cartSaving = computed(
 
 const shopsQuery = useCustomerShopsQuery(computed(() => authStore.tenantId ?? null));
 const shops = computed(() => shopsQuery.data.value ?? []);
+const activeShopType = computed(
+  () =>
+    shopDetails.value?.shop_type ??
+    shops.value.find((shop) => shop.slug === shopSlug.value)?.shop_type ??
+    null,
+);
 const shopName = computed(() => shopDetails.value?.name || t('navigation.catalog'));
 const initialLoading = computed(() => isLoading.value && catalogItems.value.length === 0);
 const accessDenied = computed(() => isError.value && error.value?.message?.includes('access denied'));
@@ -357,6 +311,17 @@ const onResetFilters = () => {
 
 const getMinQty = (item: ShopCatalogItem) =>
   resolveShopCartItemMoq(item, shopDetails.value?.shop_type);
+
+const storefrontItemPriceText = (item: ShopCatalogItem) =>
+  formatStorefrontCardPrice(item, formatMoney);
+
+const storefrontItemPriceLabel = (item: ShopCatalogItem) => {
+  const key = storefrontCardPriceLabelKey(item);
+  return key ? t(key) : null;
+};
+
+const storefrontItemMinPriceText = (item: ShopCatalogItem) =>
+  formatStorefrontCardMinPrice(item, formatMoney);
 
 const decrementQty = (item: ShopCatalogItem) => {
   const key = itemKey(item);
@@ -469,15 +434,20 @@ watch(shopDetails, (newDetails) => {
   .product-grid {
     display: grid !important;
     grid-template-columns: repeat(auto-fill, minmax(220px, 250px));
-    align-items: start;
+    align-items: stretch;
     justify-content: center;
     gap: 16px;
     margin: 0 !important;
   }
   .product-grid-item {
+    display: flex;
     width: 100% !important;
     max-width: none !important;
     padding: 0 !important;
+  }
+  .product-grid-item > * {
+    flex: 1 1 auto;
+    width: 100%;
   }
 }
 

@@ -377,6 +377,7 @@ export default {
   capabilities: 'Capabilities',
   browse_catalog: 'Browse Catalog',
   can_see_buy_price: 'Can see purchase price',
+  can_see_catalog_price: 'Can see catalog price',
   can_see_sell_price: 'Can see sell price',
   can_see_resell_minimum_price: 'Can see resell minimum price',
   view_stock_qty: 'View Stock Qty',

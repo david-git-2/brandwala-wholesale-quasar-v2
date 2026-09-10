@@ -373,6 +373,7 @@ export default {
   capabilities: 'সুবিধাসমূহ',
   browse_catalog: 'ক্যাটালগ দেখা',
   can_see_buy_price: 'ক্রয় মূল্য দেখতে পারবে',
+  can_see_catalog_price: 'ক্যাটালগ মূল্য দেখতে পারবে',
   can_see_sell_price: 'বিক্রয় মূল্য দেখতে পারবে',
   can_see_resell_minimum_price: 'রিসেল ন্যূনতম মূল্য দেখতে পারবে',
   view_stock_qty: 'স্টক পরিমাণ দেখা',

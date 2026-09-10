@@ -153,6 +153,7 @@ export default {
     wholesale_price: 'পাইকারি মূল্য:',
     sell_price: 'বিক্রয় মূল্য:',
     min_sell_price: 'ন্যূনতম রিসেল মূল্য:',
+    price_not_available: 'মূল্য উপলব্ধ নয়',
     no_products_found: 'কোনো পণ্য পাওয়া যায়নি',
     no_products_desc: 'বর্তমান মানদণ্ডের সাথে মিলে এমন কোনো পণ্য নেই।',
     search_type_more: 'কমপক্ষে {count} অক্ষর লিখুন',

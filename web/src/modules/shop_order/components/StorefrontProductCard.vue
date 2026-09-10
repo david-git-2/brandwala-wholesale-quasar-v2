@@ -35,7 +35,8 @@
         {{ item.product_brand || 'Generic' }}
       </div>
       <div
-        class="product-name text-subtitle2 text-weight-bold cursor-pointer"
+        class="storefront-product-card__name text-weight-bold cursor-pointer"
+        :title="item.product_name || undefined"
         @click="$emit('open-detail', item)"
       >
         {{ item.product_name }}
@@ -77,51 +78,29 @@
         {{ item.available_units }} {{ $t('shop.avail') }}
       </div>
 
-      <div class="product-pricing q-mt-sm">
+      <div
+        v-if="resolvedPriceText || resolvedMinPriceText"
+        class="product-pricing q-mt-sm"
+      >
         <div
-          v-if="avgCostText"
-          class="text-body2 text-grey-9 text-weight-medium"
-        >
-          <span class="text-caption text-grey-6 block text-weight-medium">
-            {{ $t('shop_admin.storefront_avg_cost') }}
-          </span>
-          {{ avgCostText }}
-        </div>
-
-        <div
-          v-if="unitPriceText"
-          class="text-subtitle1 text-weight-bold text-primary"
-          :class="{ 'q-mt-xs': avgCostText }"
+          v-if="resolvedPriceText"
+          class="storefront-product-card__price text-weight-bold"
         >
           <span
-            v-if="unitPriceLabel"
+            v-if="resolvedPriceLabel"
             class="text-caption text-grey-6 block text-weight-medium"
           >
-            {{ unitPriceLabel }}
+            {{ resolvedPriceLabel }}
           </span>
-          {{ unitPriceText }}
+          {{ resolvedPriceText }}
         </div>
 
         <div
-          v-if="sellPriceText"
-          class="text-subtitle1 text-weight-bold text-primary"
-          :class="{ 'q-mt-xs': unitPriceText }"
-        >
-          <span
-            v-if="sellPriceLabel"
-            class="text-caption text-grey-6 block text-weight-medium"
-          >
-            {{ sellPriceLabel }}
-          </span>
-          {{ sellPriceText }}
-        </div>
-
-        <div
-          v-if="resellMinimumText"
+          v-if="resolvedMinPriceText"
           class="text-body2 text-grey-9 text-weight-medium q-mt-xs"
         >
           {{ $t('shop.min_sell_price') }}
-          <span class="text-secondary text-weight-bold">{{ resellMinimumText }}</span>
+          <span class="text-secondary text-weight-bold">{{ resolvedMinPriceText }}</span>
         </div>
       </div>
 
@@ -287,7 +266,11 @@ import type {
   ShopCatalogStockGrade,
   ShopType,
 } from '../types';
-import { formatCatalogPrice, hasCatalogPrice } from '../utils/catalogPriceUtils';
+import {
+  formatStorefrontCardMinPrice,
+  formatStorefrontCardPrice,
+  storefrontCardPriceLabelKey,
+} from '../utils/catalogPriceUtils';
 import { resolveShopCartItemMoq } from '../utils/cartQuantityUtils';
 
 const props = defineProps<{
@@ -309,6 +292,9 @@ const props = defineProps<{
   showRemoveProduct?: boolean | undefined;
   availableGradeVariants?: ShopCatalogStockGrade[] | undefined;
   formatMoney: (amount: unknown, symbol?: string | null) => string;
+  priceText?: string | null;
+  priceLabel?: string | null;
+  minPriceText?: string | null;
 }>();
 
 const showActions = computed(() => props.showActions !== false);
@@ -387,13 +373,17 @@ const displayQtyClass = computed(() => {
   return displayQtyValue.value > 0 ? 'text-primary' : 'text-negative';
 });
 
-const formatItemPrice = (price: ShopCatalogItem['unit_price']) =>
-  formatCatalogPrice(price, props.formatMoney);
-
-const avgCostText = computed(() => {
-  if (!showAvgCost.value) return null;
-  return formatItemPrice(props.item.avg_cost ?? null);
+const resolvedPriceText = computed(
+  () => props.priceText || formatStorefrontCardPrice(props.item, props.formatMoney),
+);
+const resolvedPriceLabel = computed(() => {
+  if (props.priceLabel) return props.priceLabel;
+  const key = storefrontCardPriceLabelKey(props.item);
+  return key ? t(key) : null;
 });
+const resolvedMinPriceText = computed(
+  () => props.minPriceText || formatStorefrontCardMinPrice(props.item, props.formatMoney),
+);
 
 const gradeChipLabel = computed(() => {
   if (!showGradeChip.value || !props.item.stock_grade?.label) return null;
@@ -405,38 +395,13 @@ const gradeChipStyle = computed(() => {
   if (!color) return undefined;
   return { backgroundColor: color };
 });
-
-const unitPriceLabel = computed(() => {
-  if (!hasCatalogPrice(props.item.unit_price)) return null;
-  if (props.shopType === 'dropship') return t('shop.wholesale_price');
-  if (props.shopType === 'vendor_catalog') return t('shop.unit_price');
-  return null;
-});
-
-const unitPriceText = computed(() => {
-  if (!showUnitPrice.value || props.shopType === 'fixed_price') return null;
-  return formatItemPrice(props.item.unit_price);
-});
-
-const sellPriceLabel = computed(() => {
-  if (!hasCatalogPrice(props.item.sell_price)) return null;
-  if (props.shopType === 'dropship') return t('shop.sell_price');
-  return null;
-});
-
-const sellPriceText = computed(() => formatItemPrice(props.item.sell_price));
-
-const resellMinimumText = computed(() => {
-  if (props.shopType !== 'dropship') return null;
-  return formatItemPrice(props.item.resell_minimum_price);
-});
 </script>
 
 <style scoped>
 .product-card {
   display: flex;
   flex-direction: column;
-  height: auto;
+  height: 100%;
   border-radius: 16px;
   background: var(--bw-theme-surface, #ffffff);
   border-color: var(--bw-theme-border, rgba(34, 56, 101, 0.12));
@@ -516,6 +481,7 @@ const resellMinimumText = computed(() => {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  overflow: visible;
   padding: 10px 12px 8px;
 }
 .product-meta {
@@ -523,19 +489,29 @@ const resellMinimumText = computed(() => {
   margin-bottom: 2px;
   color: var(--bw-theme-muted, #6b7280);
 }
-.product-name {
+.storefront-product-card__name {
+  font-size: 12px;
+  line-height: 1.35;
+  min-height: calc(1.35em * 3);
+  max-height: calc(1.35em * 3);
+  margin-bottom: 4px;
+  color: var(--bw-theme-ink, #1f2937);
+  word-break: break-word;
+  overflow-wrap: anywhere;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  line-height: 1.35;
-  min-height: 4.05em;
-  margin-bottom: 4px;
+}
+.storefront-product-card__price {
+  font-size: 13px;
+  line-height: 1.3;
   color: var(--bw-theme-ink, #1f2937);
 }
 .product-actions {
   flex-shrink: 0;
+  margin-top: auto;
   display: flex !important;
   width: 100%;
   min-height: 44px;
@@ -562,7 +538,9 @@ const resellMinimumText = computed(() => {
   user-select: none;
 }
 .product-pricing {
+  flex-shrink: 0;
   min-width: 0;
+  color: var(--bw-theme-ink, #1f2937);
 }
 .add-cart-btn {
   flex: 1 1 auto;
@@ -605,11 +583,11 @@ const resellMinimumText = computed(() => {
   .product-body {
     padding: 10px 12px 8px 10px;
   }
-  .product-name {
-    min-height: unset;
-    -webkit-line-clamp: 3;
-    line-clamp: 3;
-    font-size: 14px;
+  .storefront-product-card__name {
+    font-size: 12px;
+    line-height: 1.35;
+    min-height: calc(1.35em * 3);
+    max-height: calc(1.35em * 3);
   }
   .product-actions {
     flex-shrink: 0;

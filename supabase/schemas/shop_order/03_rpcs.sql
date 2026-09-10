@@ -659,6 +659,7 @@ declare
   v_can_negotiate boolean;
   v_can_view_quantity boolean;
   v_can_set_dropship_price boolean;
+  v_can_see_catalog_price boolean;
   v_limit integer;
   v_offset integer;
   v_result jsonb;
@@ -708,6 +709,12 @@ begin
   v_parent_tenant_id := public.resolve_parent_tenant_id(v_tenant_id);
   v_limit := greatest(1, least(coalesce(p_limit, 20), 200));
   v_offset := greatest(0, coalesce(p_offset, 0));
+  v_can_see_catalog_price := case
+    when v_shop_type = 'vendor_catalog' then
+      coalesce(v_can_see_buy_price, false) or coalesce(v_can_see_sell_price, false)
+    else
+      coalesce(v_can_see_buy_price, false)
+  end;
 
   if v_shop_type = 'vendor_catalog' then
     execute format(
@@ -763,6 +770,16 @@ begin
                     )
                     else null
                   end,
+                  'unit_price_amount', case when $8 then p.list_price_amount else null end,
+                  'unit_price_currency_id', case when $8 then p.list_price_currency_id else null end,
+                  'unit_price_currency_code', case
+                    when $8 then (select code from public.global_currencies where id = p.list_price_currency_id)
+                    else null
+                  end,
+                  'unit_price_currency_symbol', case
+                    when $8 then (select symbol from public.global_currencies where id = p.list_price_currency_id)
+                    else null
+                  end,
                   'sell_price', null,
                   'resell_minimum_price', null,
                   'available_units', null,
@@ -794,7 +811,7 @@ begin
       p_brand,
       v_limit,
       v_offset,
-      v_can_see_buy_price,
+      v_can_see_catalog_price,
       v_vendor_filters;
   else
     execute format(
@@ -1032,8 +1049,13 @@ begin
       bool_or(
         case
           when access.status = false or coalesce(profile.is_active, true) = false then false
-          when s.shop_type = 'dropship' then true
-          else coalesce(access.can_see_buy_price, profile.default_can_see_buy_price, false)
+          else public.resolve_shop_can_see_buy_price(
+            s.shop_type,
+            access.can_see_buy_price,
+            access.can_see_sell_price,
+            profile.default_can_see_buy_price,
+            profile.default_can_see_sell_price
+          )
         end
       ) as can_see_buy_price,
       bool_or(
@@ -1250,6 +1272,7 @@ declare
   v_can_negotiate boolean;
   v_can_view_quantity boolean;
   v_can_set_dropship_price boolean;
+  v_can_see_catalog_price boolean;
   v_product jsonb;
 begin
   if p_tenant_id is null then
@@ -1296,6 +1319,12 @@ begin
   end if;
 
   v_parent_tenant_id := public.resolve_parent_tenant_id(v_shop_tenant_id);
+  v_can_see_catalog_price := case
+    when v_shop_type = 'vendor_catalog' then
+      coalesce(v_can_see_buy_price, false) or coalesce(v_can_see_sell_price, false)
+    else
+      coalesce(v_can_see_buy_price, false)
+  end;
 
   if v_shop_type = 'vendor_catalog' then
     select jsonb_build_object(
@@ -1310,10 +1339,10 @@ begin
       'is_available', p.is_available,
       'country_of_origin', p.country_of_origin,
       'expire_date', p.expire_date,
-      'unit_price_amount', case when v_can_see_buy_price then p.list_price_amount else null end,
-      'unit_price_currency_id', case when v_can_see_buy_price then p.list_price_currency_id else null end,
-      'unit_price_currency_code', case when v_can_see_buy_price then (select code from public.global_currencies where id = p.list_price_currency_id) else null end,
-      'unit_price_currency_symbol', case when v_can_see_buy_price then (select symbol from public.global_currencies where id = p.list_price_currency_id) else null end,
+      'unit_price_amount', case when v_can_see_catalog_price then p.list_price_amount else null end,
+      'unit_price_currency_id', case when v_can_see_catalog_price then p.list_price_currency_id else null end,
+      'unit_price_currency_code', case when v_can_see_catalog_price then (select code from public.global_currencies where id = p.list_price_currency_id) else null end,
+      'unit_price_currency_symbol', case when v_can_see_catalog_price then (select symbol from public.global_currencies where id = p.list_price_currency_id) else null end,
       'minimum_sell_price_amount', null,
       'minimum_sell_price_currency_id', null,
       'minimum_sell_price_currency_code', null,
@@ -5581,12 +5610,30 @@ begin
 ALTER FUNCTION "public"."get_shop_effective_grants"("p_tenant_id" bigint, "p_customer_group_member_id" bigint) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."resolve_shop_can_see_buy_price"("p_shop_type" "public"."shop_type_enum", "p_access_can_see_buy_price" boolean, "p_access_can_see_sell_price" boolean, "p_profile_default_can_see_buy_price" boolean, "p_profile_default_can_see_sell_price" boolean) RETURNS boolean
+    LANGUAGE "sql" IMMUTABLE
+    AS $$
+  select case
+    when p_shop_type = 'dropship'::public.shop_type_enum then true
+    when p_shop_type = 'vendor_catalog'::public.shop_type_enum then
+      coalesce(p_access_can_see_buy_price, p_profile_default_can_see_buy_price, false)
+      or coalesce(p_access_can_see_sell_price, p_profile_default_can_see_sell_price, false)
+    else
+      coalesce(p_access_can_see_buy_price, p_profile_default_can_see_buy_price, false)
+  end;
+$$;
+
+
+ALTER FUNCTION "public"."resolve_shop_can_see_buy_price"("p_shop_type" "public"."shop_type_enum", "p_access_can_see_buy_price" boolean, "p_access_can_see_sell_price" boolean, "p_profile_default_can_see_buy_price" boolean, "p_profile_default_can_see_sell_price" boolean) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."get_shop_permissions_for_customer"("p_shop_id" bigint) RETURNS TABLE("can_browse" boolean, "can_see_buy_price" boolean, "can_see_sell_price" boolean, "can_see_resell_minimum_price" boolean, "can_add_to_cart" boolean, "can_place_order" boolean, "can_negotiate" boolean, "can_view_quantity" boolean, "can_set_dropship_price" boolean)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
 declare
   v_shop_active boolean;
+  v_tenant_id bigint;
   v_shop_type public.shop_type_enum;
   v_shop_allows_negotiate boolean;
 begin
@@ -5604,22 +5651,25 @@ begin
   return query
   select
     coalesce(bool_or(
-      case when access.status = false or profile.is_active = false then false
+      case when access.status = false or coalesce(profile.is_active, true) = false then false
       else coalesce(access.can_browse, profile.default_can_browse, false)
       end
     ), false) as can_browse,
 
     coalesce(bool_or(
-      case when access.status = false or profile.is_active = false then false
-      else
-        case when v_shop_type = 'dropship' then true
-        else coalesce(access.can_see_buy_price, profile.default_can_see_buy_price, false)
-        end
+      case when access.status = false or coalesce(profile.is_active, true) = false then false
+      else public.resolve_shop_can_see_buy_price(
+        v_shop_type,
+        access.can_see_buy_price,
+        access.can_see_sell_price,
+        profile.default_can_see_buy_price,
+        profile.default_can_see_sell_price
+      )
       end
     ), false) as can_see_buy_price,
 
     coalesce(bool_or(
-      case when access.status = false or profile.is_active = false then false
+      case when access.status = false or coalesce(profile.is_active, true) = false then false
       else
         case when v_shop_type = 'dropship' then true
         else coalesce(access.can_see_sell_price, profile.default_can_see_sell_price, false)
@@ -5628,37 +5678,37 @@ begin
     ), false) as can_see_sell_price,
 
     coalesce(bool_or(
-      case when access.status = false or profile.is_active = false then false
+      case when access.status = false or coalesce(profile.is_active, true) = false then false
       else coalesce(access.can_see_resell_minimum_price, profile.default_can_see_resell_minimum_price, false)
       end
     ), false) as can_see_resell_minimum_price,
 
     coalesce(bool_or(
-      case when access.status = false or profile.is_active = false then false
+      case when access.status = false or coalesce(profile.is_active, true) = false then false
       else coalesce(access.can_add_to_cart, profile.default_can_add_to_cart, false)
       end
     ), false) as can_add_to_cart,
 
     coalesce(bool_or(
-      case when access.status = false or profile.is_active = false then false
+      case when access.status = false or coalesce(profile.is_active, true) = false then false
       else coalesce(access.can_place_order, profile.default_can_place_order, false)
       end
     ), false) as can_place_order,
 
     coalesce(bool_or(
-      case when access.status = false or profile.is_active = false then false
+      case when access.status = false or coalesce(profile.is_active, true) = false then false
       else coalesce(access.can_negotiate, profile.default_can_negotiate, false)
       end
     ) and v_shop_allows_negotiate, false) as can_negotiate,
 
     coalesce(bool_or(
-      case when access.status = false or profile.is_active = false then false
+      case when access.status = false or coalesce(profile.is_active, true) = false then false
       else coalesce(access.can_view_quantity, profile.default_can_view_quantity, false)
       end
     ), false) as can_view_quantity,
 
     coalesce(bool_or(
-      case when access.status = false or profile.is_active = false then false
+      case when access.status = false or coalesce(profile.is_active, true) = false then false
       else
         case when v_shop_type = 'dropship' then true
         else coalesce(access.can_set_dropship_price, profile.default_can_set_dropship_price, false)
@@ -5935,8 +5985,13 @@ CREATE OR REPLACE FUNCTION "public"."list_customer_shops"("p_tenant_id" bigint) 
     bool_or(
       case
         when access.status = false or coalesce(profile.is_active, true) = false then false
-        when s.shop_type = 'dropship' then true
-        else coalesce(access.can_see_buy_price, profile.default_can_see_buy_price, false)
+        else public.resolve_shop_can_see_buy_price(
+          s.shop_type,
+          access.can_see_buy_price,
+          access.can_see_sell_price,
+          profile.default_can_see_buy_price,
+          profile.default_can_see_sell_price
+        )
       end
     ) as can_see_buy_price,
     bool_or(
@@ -6070,8 +6125,13 @@ begin
       bool_or(
         case
           when access.status = false or coalesce(profile.is_active, true) = false then false
-          when s.shop_type = 'dropship' then true
-          else coalesce(access.can_see_buy_price, profile.default_can_see_buy_price, false)
+          else public.resolve_shop_can_see_buy_price(
+            s.shop_type,
+            access.can_see_buy_price,
+            access.can_see_sell_price,
+            profile.default_can_see_buy_price,
+            profile.default_can_see_sell_price
+          )
         end
       ) as can_see_buy_price,
       bool_or(

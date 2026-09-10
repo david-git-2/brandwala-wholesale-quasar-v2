@@ -33,6 +33,11 @@ export interface ShopCatalogItem {
   vendor_code: string | null;
   is_available: boolean;
   unit_price: ShopCatalogPrice | null;
+  /** Flat list price from products table (vendor_catalog browse/detail). */
+  unit_price_amount?: number | string | null;
+  unit_price_currency_id?: number | null;
+  unit_price_currency_code?: string | null;
+  unit_price_currency_symbol?: string | null;
   sell_price: ShopCatalogPrice | null;
   resell_minimum_price: ShopCatalogPrice | null;
   available_units: number | null;

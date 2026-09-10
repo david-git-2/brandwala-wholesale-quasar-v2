@@ -26,7 +26,8 @@ export function useCustomerShopPermissionsQuery(shopId: Ref<number | null>) {
       return (Array.isArray(data) ? data[0] : data ?? null) as CustomerShopPermissions | null;
     },
     enabled: computed(() => !!shopId.value),
-    staleTime: 2 * 60 * 1000,
+    staleTime: 30 * 1000,
+    refetchOnMount: 'always',
     initialData: () => {
       const id = shopId.value;
       if (!id) return undefined;

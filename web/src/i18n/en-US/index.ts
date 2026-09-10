@@ -152,6 +152,7 @@ export default {
     wholesale_price: 'Wholesale Price:',
     sell_price: 'Sell Price:',
     min_sell_price: 'Min Resell Price:',
+    price_not_available: 'Price not available',
     no_products_found: 'No Products Found',
     no_products_desc: 'There are no products matching the current criteria.',
     search_type_more: 'Type at least {count} characters',
