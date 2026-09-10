@@ -1,68 +1,129 @@
 <template>
-  <q-page class="create-customer-page page-fixed-layout q-pa-md">
+  <q-page class="create-customer-page page-fixed-layout q-pa-md" data-test="create-customer-page">
     <div class="column no-wrap full-height">
-      <!-- 1. Top Action Toolbar: Back Link / Breadcrumb Action & Header Details -->
       <div class="create-toolbar floating-surface shadow-1 q-pa-sm q-mb-md">
-        <div class="row items-center justify-between no-wrap">
-          <div class="row items-center q-gutter-sm">
-            <q-btn
-              flat
-              round
-              dense
-              icon="ph ph-arrow-left"
-              color="grey-8"
-              @click="goBack"
-            >
-              <q-tooltip>Back to Customers</q-tooltip>
-            </q-btn>
-            <div class="text-subtitle1 text-weight-bold text-grey-9">
-              Create New Customer
-            </div>
-          </div>
-
-          <div class="row items-center q-gutter-sm">
-            <q-btn
-              flat
-              no-caps
-              label="Cancel"
-              color="grey-7"
-              class="action-btn text-weight-medium"
-              @click="goBack"
-            />
-            <q-btn
-              unelevated
-              color="primary"
-              icon="ph ph-check"
-              label="Save Customer"
-              no-caps
-              class="action-btn text-weight-bold"
-              :loading="isSaving"
-              @click="submitForm"
-            />
+        <div class="row items-center q-gutter-sm">
+          <q-btn
+            flat
+            round
+            dense
+            icon="ph ph-arrow-left"
+            color="grey-8"
+            aria-label="Back to customers"
+            @click="goBack"
+          >
+            <q-tooltip>Back to Customers</q-tooltip>
+          </q-btn>
+          <div class="text-subtitle1 text-weight-bold text-grey-9">
+            Create Customer Group
           </div>
         </div>
       </div>
 
-      <!-- 2. Main Form Container (Centered Scrollable Form Card) -->
       <div class="col scroll-container flex flex-center">
-        <q-form ref="formRef" class="customer-form-card floating-surface shadow-1 q-pa-lg full-width" @submit.prevent="submitForm">
-          <div class="row q-col-gutter-lg">
-            <!-- Left Column: Business & Contact Info -->
-            <div class="col-12 col-md-7 column q-gutter-y-md">
-              <div class="section-title text-caption text-uppercase text-weight-bold text-primary">
-                Customer &amp; Account Identity
-              </div>
+        <q-form
+          ref="formRef"
+          class="customer-form-card floating-surface shadow-1 q-pa-lg full-width"
+          @submit.prevent="submitForm"
+        >
+          <div class="section-title text-caption text-uppercase text-weight-bold text-primary q-mb-md">
+            Admin email lookup
+          </div>
 
-              <!-- Group Name -->
+          <div class="email-lookup-wrap q-mb-lg">
+            <label class="field-label text-weight-medium text-grey-8 q-mb-xs block">Admin email *</label>
+            <q-input
+              v-model="form.admin_email"
+              outlined
+              dense
+              type="email"
+              placeholder="admin@company.com — press Enter to search"
+              class="rounded-field"
+              :loading="isSearchingEmail"
+              data-test="create-customer-admin-email"
+              :rules="emailRules"
+              @update:model-value="onAdminEmailInput"
+              @keyup.enter="onAdminEmailSearch"
+              @blur="hideSuggestions"
+              @focus="showSuggestions = emailSuggestions.length > 0"
+            >
+              <template #prepend>
+                <q-icon name="ph ph-envelope" size="18px" class="text-grey-6" />
+              </template>
+              <template #append>
+                <q-btn
+                  flat
+                  dense
+                  round
+                  icon="ph ph-magnifying-glass"
+                  color="grey-7"
+                  aria-label="Search admin email"
+                  :loading="isSearchingEmail"
+                  @click="onAdminEmailSearch"
+                />
+              </template>
+            </q-input>
+
+            <q-card
+              v-if="showSuggestions && emailSuggestions.length"
+              flat
+              bordered
+              class="email-suggestions floating-surface q-mt-xs"
+            >
+              <q-list dense separator>
+                <q-item
+                  v-for="suggestion in emailSuggestions"
+                  :key="`${suggestion.customer_group_id}-${suggestion.email}`"
+                  v-close-popup
+                  clickable
+                  @click="selectEmailSuggestion(suggestion)"
+                >
+                  <q-item-section>
+                    <q-item-label>{{ suggestion.email }}</q-item-label>
+                    <q-item-label caption>
+                      Admin of {{ suggestion.group_name }} · {{ suggestion.admin_name }}
+                    </q-item-label>
+                  </q-item-section>
+                  <q-item-section side>
+                    <span
+                      class="customer-group-chip"
+                      :style="{ backgroundColor: suggestion.accent_color || '#B45F34' }"
+                    />
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </q-card>
+          </div>
+
+          <q-banner
+            v-if="existingAdminGroup"
+            rounded
+            class="bg-orange-1 text-grey-9 q-mb-lg"
+            data-test="create-customer-existing-admin-banner"
+          >
+            <template #avatar>
+              <q-icon name="ph ph-warning" color="orange-9" />
+            </template>
+            This email is already admin of
+            <strong>{{ existingAdminGroup }}</strong>.
+            Use a different admin email to create a new customer group.
+          </q-banner>
+
+          <template v-if="isFormEnabled">
+            <div class="section-title text-caption text-uppercase text-weight-bold text-primary q-mb-md">
+              New customer group
+            </div>
+
+            <div class="column q-gutter-y-md">
               <div>
-                <label class="field-label text-weight-medium text-grey-8 q-mb-xs block">Group / Company Name *</label>
+                <label class="field-label text-weight-medium text-grey-8 q-mb-xs block">Group / company name *</label>
                 <q-input
                   v-model="form.group_name"
                   outlined
                   dense
-                  placeholder="e.g. Acme Retailers / Dhaka Wholesale House"
+                  placeholder="e.g. Acme Retailers"
                   class="rounded-field"
-                  :rules="[(val) => !!val?.trim() || 'Group / Company name is required']"
+                  :rules="[(val) => !!val?.trim() || 'Group name is required']"
                 >
                   <template #prepend>
                     <q-icon name="ph ph-buildings" size="18px" class="text-grey-6" />
@@ -70,16 +131,15 @@
                 </q-input>
               </div>
 
-              <!-- Admin Name -->
               <div>
-                <label class="field-label text-weight-medium text-grey-8 q-mb-xs block">Primary Contact / Admin Name *</label>
+                <label class="field-label text-weight-medium text-grey-8 q-mb-xs block">Admin name *</label>
                 <q-input
                   v-model="form.admin_name"
                   outlined
                   dense
                   placeholder="e.g. Rahim Chowdhury"
                   class="rounded-field"
-                  :rules="[(val) => !!val?.trim() || 'Admin contact name is required']"
+                  :rules="[(val) => !!val?.trim() || 'Admin name is required']"
                 >
                   <template #prepend>
                     <q-icon name="ph ph-user" size="18px" class="text-grey-6" />
@@ -87,71 +147,8 @@
                 </q-input>
               </div>
 
-              <!-- Email & Phone in 2-cols (Optional) -->
-              <div class="row q-col-gutter-md">
-                <div class="col-12 col-sm-6">
-                  <label class="field-label text-weight-medium text-grey-8 q-mb-xs block">Admin Email</label>
-                  <q-input
-                    v-model="form.admin_email"
-                    outlined
-                    dense
-                    type="email"
-                    placeholder="admin@customer.com (optional)"
-                    class="rounded-field"
-                    :rules="[
-                      (val) => !val || /.+@.+\..+/.test(val) || 'Enter a valid email address'
-                    ]"
-                  >
-                    <template #prepend>
-                      <q-icon name="ph ph-envelope" size="18px" class="text-grey-6" />
-                    </template>
-                  </q-input>
-                </div>
-
-                <div class="col-12 col-sm-6">
-                  <label class="field-label text-weight-medium text-grey-8 q-mb-xs block">Phone Number</label>
-                  <q-input
-                    v-model="form.phone"
-                    outlined
-                    dense
-                    placeholder="e.g. +8801712345678 (optional)"
-                    class="rounded-field"
-                  >
-                    <template #prepend>
-                      <q-icon name="ph ph-phone" size="18px" class="text-grey-6" />
-                    </template>
-                  </q-input>
-                </div>
-              </div>
-
-              <!-- Address -->
               <div>
-                <label class="field-label text-weight-medium text-grey-8 q-mb-xs block">Billing &amp; Delivery Address</label>
-                <q-input
-                  v-model="form.address"
-                  outlined
-                  dense
-                  type="textarea"
-                  rows="3"
-                  placeholder="Office / shop address (optional)"
-                  class="rounded-field"
-                >
-                  <template #prepend>
-                    <q-icon name="ph ph-map-pin" size="18px" class="text-grey-6" />
-                  </template>
-                </q-input>
-              </div>
-            </div>
-
-            <!-- Right Column: Accent Color & Automated Provisioning Summary -->
-            <div class="col-12 col-md-5 column q-gutter-y-md">
-              <div class="section-title text-caption text-uppercase text-weight-bold text-primary">
-                Brand &amp; System Configuration
-              </div>
-
-              <!-- Accent Color Picker -->
-              <div>
-                <label class="field-label text-weight-medium text-grey-8 q-mb-xs block">Brand Accent Color *</label>
+                <label class="field-label text-weight-medium text-grey-8 q-mb-xs block">Brand accent color *</label>
                 <q-input
                   v-model="form.accent_color"
                   outlined
@@ -178,9 +175,8 @@
                   </template>
                 </q-input>
 
-                <!-- Preset Swatches -->
                 <div class="row items-center q-gutter-xs q-mt-xs">
-                  <span class="text-caption text-grey-6 q-mr-xs">Quick Set:</span>
+                  <span class="text-caption text-grey-6 q-mr-xs">Quick set:</span>
                   <div
                     v-for="color in presetColors"
                     :key="color"
@@ -193,24 +189,36 @@
                   </div>
                 </div>
               </div>
-
-              <!-- Automated Provisioning Info Card -->
-              <div class="provisioning-card q-pa-md rounded-borders">
-                <div class="row items-center q-gutter-xs q-mb-xs text-weight-bold text-grey-9">
-                  <q-icon name="ph ph-sparkle" color="primary" size="18px" />
-                  <span>Automated Setup</span>
-                </div>
-                <div class="text-caption text-grey-7 q-mb-sm">
-                  Upon saving, the system will automatically:
-                </div>
-                <ul class="q-pl-md q-my-none text-caption text-grey-8 q-gutter-y-xs">
-                  <li>Provision <strong>Customer Group</strong> access tier</li>
-                  <li>Link <strong>Admin Member</strong> for storefront auth</li>
-                  <li>Create <strong>Billing Profile</strong> for wholesale &amp; retail invoicing</li>
-                  <li>Anchor a zero-balance <strong>Universal Wallet Ledger</strong></li>
-                </ul>
-              </div>
             </div>
+
+            <div class="form-actions row items-center justify-end q-gutter-sm q-mt-lg q-pt-md">
+              <q-btn
+                flat
+                no-caps
+                label="Cancel"
+                color="grey-7"
+                class="action-btn text-weight-medium"
+                @click="goBack"
+              />
+              <q-btn
+                unelevated
+                color="primary"
+                icon="ph ph-check"
+                label="Create Group"
+                no-caps
+                type="submit"
+                class="action-btn text-weight-bold"
+                :loading="isSaving"
+                :disable="!canCreate"
+              />
+            </div>
+          </template>
+
+          <div
+            v-else-if="!existingAdminGroup && form.admin_email.trim()"
+            class="text-caption text-grey-7 q-mt-md"
+          >
+            Enter a valid admin email that is not already used as a group admin.
           </div>
         </q-form>
       </div>
@@ -219,19 +227,25 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
+import { computed, reactive, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useCustomerMutations } from '../composables/useCustomerQuery';
-import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';
+import { customerRepository } from '../repositories/customerRepository';
+import type { CustomerAccount } from '../types/customer';
+import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
 const { createCustomerMutation } = useCustomerMutations();
 
-const formRef = ref<any>(null);
+const formRef = ref<{ validate: () => Promise<boolean> } | null>(null);
 const isSaving = ref(false);
+const isSearchingEmail = ref(false);
+const showSuggestions = ref(false);
+const emailSuggestions = ref<CustomerAccount[]>([]);
+const existingAdminGroup = ref<string | null>(null);
 
 const presetColors = [
   '#B45F34',
@@ -245,13 +259,31 @@ const presetColors = [
 ];
 
 const form = reactive({
+  admin_email: '',
   group_name: '',
   admin_name: '',
-  admin_email: '',
-  phone: '',
-  address: '',
   accent_color: '#B45F34',
 });
+
+const emailRules = [
+  (val: string) => !!val?.trim() || 'Admin email is required',
+  (val: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val?.trim() || '') || 'Enter a valid email',
+];
+
+const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+
+const isFormEnabled = computed(
+  () => isValidEmail(form.admin_email) && !existingAdminGroup.value && !isSearchingEmail.value,
+);
+
+const canCreate = computed(
+  () =>
+    isFormEnabled.value &&
+    !!form.group_name.trim() &&
+    !!form.admin_name.trim() &&
+    !!form.accent_color.trim() &&
+    !isSaving.value,
+);
 
 const getTenantPrefix = () => {
   const slug = route.params.tenantSlug;
@@ -262,8 +294,68 @@ const goBack = () => {
   void router.push(`${getTenantPrefix()}/app/customers/list`);
 };
 
+const resetLookupState = () => {
+  existingAdminGroup.value = null;
+  emailSuggestions.value = [];
+  showSuggestions.value = false;
+};
+
+const lookupAdminEmail = async (email: string) => {
+  const tenantId = authStore.tenantId;
+  if (!tenantId || !isValidEmail(email)) {
+    resetLookupState();
+    return;
+  }
+
+  isSearchingEmail.value = true;
+  try {
+    const [conflictGroup, suggestions] = await Promise.all([
+      customerRepository.findAdminEmailConflict(tenantId, email),
+      customerRepository.searchCustomersByAdminEmail(tenantId, email),
+    ]);
+
+    existingAdminGroup.value = conflictGroup;
+    emailSuggestions.value = suggestions;
+    showSuggestions.value = suggestions.length > 0 && !conflictGroup;
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Failed to search admin email.';
+    showErrorNotification(message);
+    resetLookupState();
+  } finally {
+    isSearchingEmail.value = false;
+  }
+};
+
+const onAdminEmailInput = (value: string | number | null) => {
+  const email = String(value ?? '');
+  if (!email.trim()) {
+    resetLookupState();
+    return;
+  }
+
+  existingAdminGroup.value = null;
+  emailSuggestions.value = [];
+  showSuggestions.value = false;
+};
+
+const onAdminEmailSearch = () => {
+  void lookupAdminEmail(form.admin_email);
+};
+
+const selectEmailSuggestion = (suggestion: CustomerAccount) => {
+  form.admin_email = suggestion.email || '';
+  existingAdminGroup.value = suggestion.group_name;
+  emailSuggestions.value = [];
+  showSuggestions.value = false;
+};
+
+const hideSuggestions = () => {
+  showSuggestions.value = false;
+};
+
 const submitForm = async () => {
-  if (!formRef.value) return;
+  if (!formRef.value || !canCreate.value) return;
+
   const valid = await formRef.value.validate();
   if (!valid) return;
 
@@ -279,16 +371,15 @@ const submitForm = async () => {
       tenant_id: tenantId,
       group_name: form.group_name.trim(),
       admin_name: form.admin_name.trim(),
-      admin_email: form.admin_email.trim() || null,
-      phone: form.phone.trim() || null,
-      address: form.address.trim() || null,
+      admin_email: form.admin_email.trim(),
       accent_color: form.accent_color.trim() || '#B45F34',
     });
 
-    showSuccessNotification('Customer account, billing profile & wallet created successfully.');
+    showSuccessNotification('Customer group, billing profile, and wallet created.');
     goBack();
-  } catch (err: any) {
-    showErrorNotification(err?.message || 'Failed to create customer account.');
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Failed to create customer group.';
+    showErrorNotification(message);
   } finally {
     isSaving.value = false;
   }
@@ -319,7 +410,7 @@ const submitForm = async () => {
 }
 
 .customer-form-card {
-  max-width: 900px;
+  max-width: 640px;
   border-radius: 8px;
   background: #ffffff;
   border: 1px solid rgba(226, 232, 240, 0.8);
@@ -330,6 +421,19 @@ const submitForm = async () => {
   border-radius: 8px;
   border: 1px solid rgba(226, 232, 240, 0.8);
   box-shadow: 0 4px 12px -2px rgba(51, 65, 85, 0.05);
+}
+
+.email-lookup-wrap {
+  position: relative;
+}
+
+.email-suggestions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  max-height: 240px;
+  overflow-y: auto;
 }
 
 .rounded-field :deep(.q-field__control) {
@@ -360,12 +464,21 @@ const submitForm = async () => {
   outline-offset: 2px;
 }
 
-.provisioning-card {
-  background: #f8fafc;
-  border: 1px dashed rgba(203, 213, 225, 0.9);
+.customer-group-chip {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
 }
 
-/* Dark mode */
+.form-actions {
+  border-top: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+body.body--dark .form-actions {
+  border-top-color: #2e2e2e;
+}
+
 body.body--dark .create-customer-page {
   background: #171717;
 }
@@ -375,10 +488,5 @@ body.body--dark .create-toolbar,
 body.body--dark .customer-form-card {
   background: #1c1c1c;
   border-color: #2e2e2e;
-}
-
-body.body--dark .provisioning-card {
-  background: #232323;
-  border-color: #383838;
 }
 </style>

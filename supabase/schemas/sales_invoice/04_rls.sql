@@ -19,6 +19,9 @@ CREATE OR REPLACE TRIGGER "trg_global_return_items_set_updated_at" BEFORE UPDATE
 
 CREATE OR REPLACE TRIGGER "trg_customer_groups_auto_billing_profile" AFTER INSERT ON "public"."customer_groups" FOR EACH ROW EXECUTE FUNCTION "public"."trg_auto_create_billing_profile_for_customer_group"();
 
+
+CREATE OR REPLACE TRIGGER "trg_customer_groups_guard_administer_active" BEFORE UPDATE ON "public"."customer_groups" FOR EACH ROW EXECUTE FUNCTION "public"."trg_customer_groups_guard_administer_active"();
+
 CREATE OR REPLACE TRIGGER "trg_shop_orders_sync_collection_source" BEFORE INSERT OR UPDATE OF "global_invoice_id" ON "public"."shop_orders" FOR EACH ROW EXECUTE FUNCTION "public"."sync_shop_order_collection_source_from_invoice"();
 
 

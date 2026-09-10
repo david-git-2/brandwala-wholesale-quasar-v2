@@ -24,6 +24,7 @@
         </div>
         <div v-if="hasAnyGranted" class="col-12 col-md-auto row items-center q-gutter-sm">
           <q-btn
+            v-if="canAdministerCustomerGroup"
             flat
             no-caps
             dense
@@ -86,6 +87,7 @@
           </div>
           <div v-if="embedded" class="col-12 col-sm-auto row items-center q-gutter-sm">
             <q-btn
+              v-if="canAdministerCustomerGroup"
               flat
               no-caps
               dense
@@ -141,6 +143,7 @@
               @click="openAddDialog"
             />
             <q-btn
+              v-if="canAdministerCustomerGroup"
               :flat="availableGroups.length > 0"
               :unelevated="availableGroups.length === 0"
               :color="availableGroups.length === 0 ? 'primary' : 'grey-8'"
@@ -251,6 +254,7 @@
           </q-card-section>
           <q-card-actions align="right" class="q-pa-md">
             <q-btn
+              v-if="canAdministerCustomerGroup"
               flat
               no-caps
               :label="$t('shop_admin.access_create_group_first')"
@@ -533,6 +537,7 @@ import {
 } from 'src/utils/appFeedback';
 import { useBillingProfilesQuery } from 'src/modules/sales_invoice/composables/useBillingProfileQuery';
 import CustomerGroupDetailsDrawer from '../components/CustomerGroupDetailsDrawer.vue';
+import { useCanAdministerCustomerGroup } from 'src/modules/customer/composables/useCanAdministerCustomerGroup';
 
 const props = withDefaults(defineProps<{ embedded?: boolean; shop?: Shop | null }>(), {
   embedded: false,
@@ -543,6 +548,7 @@ const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
 const authStore = useAuthStore();
+const canAdministerCustomerGroup = useCanAdministerCustomerGroup();
 const store = useShopPermissionsStore();
 const { createGroupMutation, deleteGroupMutation } = useCustomerGroupMutations();
 

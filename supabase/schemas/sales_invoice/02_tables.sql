@@ -383,7 +383,7 @@ ALTER TABLE ONLY "public"."sales_invoice_items"
     ADD CONSTRAINT "global_invoice_items_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE SET NULL;
 
 ALTER TABLE ONLY "public"."sales_invoices"
-    ADD CONSTRAINT "global_invoices_billing_profile_id_fkey" FOREIGN KEY ("billing_profile_id") REFERENCES "public"."billing_profiles"("id") ON DELETE RESTRICT;
+    ADD CONSTRAINT "global_invoices_billing_profile_id_fkey" FOREIGN KEY ("billing_profile_id") REFERENCES "public"."billing_profiles"("id") ON DELETE SET NULL;
 
 ALTER TABLE ONLY "public"."sales_invoices"
     ADD CONSTRAINT "global_invoices_issued_by_tenant_id_fkey" FOREIGN KEY ("issued_by_tenant_id") REFERENCES "public"."tenants"("id");

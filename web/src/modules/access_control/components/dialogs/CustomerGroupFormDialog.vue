@@ -31,6 +31,7 @@
             :label="form.isActive ? 'Active' : 'Inactive'"
             color="positive"
             keep-color
+            :disable="Boolean(props.initialForm?.id) && !props.canToggleActive"
           />
         </div>
       </q-card-section>
@@ -63,6 +64,7 @@ export interface CustomerGroupFormData {
 const props = defineProps<{
   modelValue: boolean;
   initialForm?: CustomerGroupFormData | null;
+  canToggleActive?: boolean;
 }>();
 
 const emit = defineEmits<{

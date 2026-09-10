@@ -116,6 +116,7 @@
                   :linked-billing-profiles="linkedBillingProfiles"
                   :shop-roles="shopRoles"
                   :has-cgm-overrides-map="hasCgmOverridesMap"
+                  :can-administer-customer-group="canAdministerCustomerGroup"
                   @create-group="openCreateGroupDialog"
                   @edit-group="openEditGroupDialog"
                   @delete-group="openDeleteGroupDialog"
@@ -179,6 +180,7 @@
       <CustomerGroupFormDialog
         v-model="openCustomerGroupDialog"
         :initial-form="customerGroupForm"
+        :can-toggle-active="canAdministerCustomerGroup"
         @save="handleSaveCustomerGroup"
       />
 
@@ -268,6 +270,7 @@ import CustomerGroupMemberFormDialog, {
 } from '../components/dialogs/CustomerGroupMemberFormDialog.vue';
 import DeleteCustomerGroupMemberDialog from '../components/dialogs/DeleteCustomerGroupMemberDialog.vue';
 import LinkBillingProfileDialog from '../components/dialogs/LinkBillingProfileDialog.vue';
+import { useCanAdministerCustomerGroup } from 'src/modules/customer/composables/useCanAdministerCustomerGroup';
 
 // Styling helpers
 const activeStatusStyle = {
@@ -296,6 +299,7 @@ const membershipStore = useMembershipStore();
 const customerGroupStore = useCustomerGroupStore();
 const billingProfileStore = useBillingProfileStore();
 
+const canAdministerCustomerGroup = useCanAdministerCustomerGroup();
 const tenantId = computed(() => authStore.tenantId);
 const tenant = computed<Tenant | null>(
   () => tenantStore.items.find((t) => t.id === tenantId.value) || null,
@@ -734,6 +738,7 @@ const unlinkProfile = async (profile: any) => {
 };
 
 const openCreateGroupDialog = () => {
+  if (!canAdministerCustomerGroup.value) return;
   customerGroupForm.value = {
     id: null,
     name: '',
@@ -762,14 +767,19 @@ const handleSaveCustomerGroup = async (form: CustomerGroupFormData) => {
   if (!tenantId.value || !form.name.trim()) return;
   try {
     if (form.id) {
+      const existingGroup = sortedCustomerGroups.value.find((group) => group.id === form.id);
       await customerGroupStore.updateCustomerGroup({
         id: form.id,
         tenant_id: tenantId.value,
         name: form.name,
         accent_color: form.accentColor,
-        is_active: form.isActive,
+        is_active: canAdministerCustomerGroup.value
+          ? form.isActive
+          : (existingGroup?.is_active ?? form.isActive),
       });
       showSuccessNotification('Customer group updated.');
+    } else if (!canAdministerCustomerGroup.value) {
+      return;
     } else {
       await customerGroupStore.createCustomerGroup({
         tenant_id: tenantId.value,

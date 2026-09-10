@@ -1188,6 +1188,19 @@ $$;
 ALTER FUNCTION "public"."can_manage_customer_group"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."can_administer_customer_group"("p_tenant_id" bigint) RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  select
+    public.is_superadmin()
+    or public.is_tenant_admin(public.resolve_parent_tenant_id(p_tenant_id))
+$$;
+
+
+ALTER FUNCTION "public"."can_administer_customer_group"("p_tenant_id" bigint) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."can_manage_customer_group_member"("p_customer_group_id" bigint) RETURNS boolean
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -3302,26 +3315,15 @@ begin
     raise exception 'Customer group not found';
   end if;
 
-  if not public.can_manage_customer_group(v_tenant_id) then
-    raise exception 'Unauthorized';
+  if not public.can_administer_customer_group(v_tenant_id) then
+    raise exception 'Only parent tenant admins can delete customer groups';
   end if;
 
-  if exists (
-    select 1
-    from public.shop_orders so
-    where so.customer_group_id = p_id
-  ) then
-    raise exception 'Cannot delete customer group: shop orders exist';
-  end if;
-
-  if exists (
-    select 1
-    from public.billing_profiles bp
-    join public.global_invoices gi on gi.billing_profile_id = bp.id
-    where bp.customer_group_id = p_id
-  ) then
-    raise exception 'Cannot delete customer group: invoices exist for its billing profile';
-  end if;
+  delete from public.wallet_accounts wa
+  using public.billing_profiles bp
+  where bp.customer_group_id = p_id
+    and wa.entity_type = 'customer'
+    and wa.entity_id = bp.id;
 
   delete from public.customer_groups where id = p_id;
 end;
@@ -3329,6 +3331,24 @@ $$;
 
 
 ALTER FUNCTION "public"."delete_customer_group"("p_id" bigint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."trg_customer_groups_guard_administer_active"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+begin
+  if old.is_active is distinct from new.is_active then
+    if not public.can_administer_customer_group(old.tenant_id) then
+      raise exception 'Only parent tenant admins can activate or deactivate customer groups';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."trg_customer_groups_guard_administer_active"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."delete_store_access"("p_id" bigint) RETURNS "void"
@@ -19886,7 +19906,7 @@ ALTER TABLE ONLY "public"."invoice_payments"
 
 
 ALTER TABLE ONLY "public"."global_payments"
-    ADD CONSTRAINT "payments_billing_profile_id_fkey" FOREIGN KEY ("billing_profile_id") REFERENCES "public"."billing_profiles"("id") ON DELETE CASCADE;
+    ADD CONSTRAINT "payments_billing_profile_id_fkey" FOREIGN KEY ("billing_profile_id") REFERENCES "public"."billing_profiles"("id") ON DELETE SET NULL;
 
 
 ALTER TABLE ONLY "public"."global_payments"
@@ -20516,7 +20536,7 @@ CREATE POLICY "customer_group_members_update" ON "public"."customer_group_member
 
 
 
-CREATE POLICY "customer_groups_insert" ON "public"."customer_groups" FOR INSERT TO "authenticated" WITH CHECK ("public"."can_manage_customer_group"("tenant_id"));
+CREATE POLICY "customer_groups_insert" ON "public"."customer_groups" FOR INSERT TO "authenticated" WITH CHECK ("public"."can_administer_customer_group"("tenant_id"));
 
 
 CREATE POLICY "customer_groups_select" ON "public"."customer_groups" FOR SELECT TO "authenticated" USING (("public"."can_manage_customer_group"("tenant_id") OR "public"."is_tenant_staff"("tenant_id")));
@@ -20525,7 +20545,7 @@ CREATE POLICY "customer_groups_select" ON "public"."customer_groups" FOR SELECT 
 CREATE POLICY "customer_groups_update" ON "public"."customer_groups" FOR UPDATE TO "authenticated" USING ("public"."can_manage_customer_group"("tenant_id")) WITH CHECK ("public"."can_manage_customer_group"("tenant_id"));
 
 
-CREATE POLICY "customer_groups_delete" ON "public"."customer_groups" FOR DELETE TO "authenticated" USING ("public"."can_manage_customer_group"("tenant_id"));
+CREATE POLICY "customer_groups_delete" ON "public"."customer_groups" FOR DELETE TO "authenticated" USING ("public"."can_administer_customer_group"("tenant_id"));
 
 
 ALTER TABLE "public"."customer_order_backlog_items" ENABLE ROW LEVEL SECURITY;
@@ -21408,6 +21428,9 @@ GRANT ALL ON FUNCTION "public"."can_insert_cart"("p_tenant_id" bigint, "p_custom
 
 
 GRANT ALL ON FUNCTION "public"."can_manage_customer_group"("p_tenant_id" bigint) TO "authenticated";
+
+
+GRANT ALL ON FUNCTION "public"."can_administer_customer_group"("p_tenant_id" bigint) TO "authenticated";
 
 
 GRANT ALL ON FUNCTION "public"."can_manage_customer_group_member"("p_customer_group_id" bigint) TO "authenticated";

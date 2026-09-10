@@ -6,6 +6,7 @@
         <q-card-section class="row items-center justify-between">
           <div class="text-subtitle1 text-weight-bold text-grey-9">Customer Groups</div>
           <q-btn
+            v-if="canAdministerCustomerGroup"
             color="primary"
             dense
             flat
@@ -52,6 +53,7 @@
                     @click.stop="emit('edit-group', group)"
                   />
                   <q-btn
+                    v-if="canAdministerCustomerGroup"
                     flat
                     dense
                     round
@@ -253,6 +255,7 @@ interface Props {
   linkedBillingProfiles: any[];
   shopRoles: Array<{ id: number; name: string }>;
   hasCgmOverridesMap: Record<number, boolean>;
+  canAdministerCustomerGroup: boolean;
 }
 
 defineProps<Props>();

@@ -5392,7 +5392,7 @@ export type Database = {
           courier_tracking_number: string | null
           created_at: string
           created_by_email: string
-          customer_group_id: number
+          customer_group_id: number | null
           deduct_charges_from_margin: boolean
           deduct_cod_from_margin: boolean
           deduct_delivery_from_margin: boolean
@@ -5480,7 +5480,7 @@ export type Database = {
           courier_tracking_number?: string | null
           created_at?: string
           created_by_email: string
-          customer_group_id: number
+          customer_group_id?: number | null
           deduct_charges_from_margin?: boolean
           deduct_cod_from_margin?: boolean
           deduct_delivery_from_margin?: boolean
@@ -5568,7 +5568,7 @@ export type Database = {
           courier_tracking_number?: string | null
           created_at?: string
           created_by_email?: string
-          customer_group_id?: number
+          customer_group_id?: number | null
           deduct_charges_from_margin?: boolean
           deduct_cod_from_margin?: boolean
           deduct_delivery_from_margin?: boolean
@@ -9874,6 +9874,10 @@ export type Database = {
         Returns: boolean
       }
       can_admin_manage_costing_file: {
+        Args: { p_tenant_id: number }
+        Returns: boolean
+      }
+      can_administer_customer_group: {
         Args: { p_tenant_id: number }
         Returns: boolean
       }

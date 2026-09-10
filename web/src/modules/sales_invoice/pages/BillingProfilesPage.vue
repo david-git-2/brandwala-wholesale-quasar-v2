@@ -51,6 +51,7 @@
           <!-- Right: Create Customer Action Button -->
           <div class="col-auto row items-center q-gutter-sm">
             <q-btn
+              v-if="canAdministerCustomerGroup"
               unelevated
               color="primary"
               icon="ph ph-plus"
@@ -227,6 +228,7 @@ import { useBillingProfilesQuery } from '../composables/useBillingProfileQuery';
 import { useBillingProfileMutations } from '../composables/useBillingProfileMutations';
 import { useCustomerGroupsQuery } from 'src/modules/tenant/composables/useCustomerGroupQuery';
 import { useCustomerGroupMutations } from 'src/modules/tenant/composables/useCustomerGroupMutations';
+import { useCanAdministerCustomerGroup } from 'src/modules/customer/composables/useCanAdministerCustomerGroup';
 import type {
   BillingProfile,
 } from '../repositories/billingProfileRepository';
@@ -242,6 +244,7 @@ defineProps<{
 }>();
 
 const authStore = useAuthStore();
+const canAdministerCustomerGroup = useCanAdministerCustomerGroup();
 const route = useRoute();
 const router = useRouter();
 

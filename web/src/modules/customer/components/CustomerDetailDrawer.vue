@@ -155,7 +155,11 @@
                   <div class="text-caption text-weight-bold text-grey-9">Active Status</div>
                   <div class="text-caption text-grey-6">Enable or disable access for this customer account</div>
                 </div>
-                <q-toggle v-model="form.is_active" color="positive" />
+                <q-toggle
+                  v-model="form.is_active"
+                  color="positive"
+                  :disable="!canAdministerCustomerGroup"
+                />
               </div>
 
               <!-- Save Button -->
@@ -420,6 +424,7 @@ import { useWalletQuery } from 'src/modules/wallet/composables/useWalletQuery';
 import { walletQueryKeys } from 'src/modules/wallet/shared/queryKeys/walletQueryKeys';
 import CustomerAccountTab from './CustomerAccountTab.vue';
 import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';
+import { useCanAdministerCustomerGroup } from '../composables/useCanAdministerCustomerGroup';
 
 const props = defineProps<{
   modelValue: boolean;
@@ -431,6 +436,7 @@ defineEmits<{
   (e: 'update:modelValue', val: boolean): void;
 }>();
 
+const canAdministerCustomerGroup = useCanAdministerCustomerGroup();
 const activeTab = ref<'general' | 'members' | 'account' | 'wallet'>('general');
 const queryClient = useQueryClient();
 const { updateCustomerMutation, createMemberMutation, updateMemberMutation, deleteMemberMutation } =
@@ -568,7 +574,9 @@ const saveGeneralInfo = async () => {
       phone: form.phone.trim() || null,
       address: form.address.trim() || null,
       accent_color: form.accent_color.trim() || '#B45F34',
-      is_active: form.is_active,
+      is_active: canAdministerCustomerGroup.value
+        ? form.is_active
+        : (props.customer.is_active ?? true),
     });
     showSuccessNotification('Customer details updated successfully.');
   } catch (err: any) {

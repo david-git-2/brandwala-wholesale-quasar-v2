@@ -355,7 +355,7 @@ CREATE TABLE IF NOT EXISTS "public"."shop_orders" (
     "id" bigint NOT NULL,
     "tenant_id" bigint NOT NULL,
     "shop_id" bigint NOT NULL,
-    "customer_group_id" bigint NOT NULL,
+    "customer_group_id" bigint,
     "cart_id" bigint,
     "order_no" "text" NOT NULL,
     "name" "text" NOT NULL,
@@ -832,7 +832,7 @@ ALTER TABLE ONLY "public"."shop_orders"
 
 
 ALTER TABLE ONLY "public"."shop_orders"
-    ADD CONSTRAINT "shop_orders_customer_group_id_fkey" FOREIGN KEY ("customer_group_id") REFERENCES "public"."customer_groups"("id") ON DELETE CASCADE;
+    ADD CONSTRAINT "shop_orders_customer_group_id_fkey" FOREIGN KEY ("customer_group_id") REFERENCES "public"."customer_groups"("id") ON DELETE SET NULL;
 
 
 ALTER TABLE ONLY "public"."shop_orders"

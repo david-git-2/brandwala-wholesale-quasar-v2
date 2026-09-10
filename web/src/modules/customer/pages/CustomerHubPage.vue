@@ -47,6 +47,7 @@
             </q-btn>
 
             <q-btn
+              v-if="canAdministerCustomerGroup"
               unelevated
               color="primary"
               icon="ph ph-plus"
@@ -87,6 +88,7 @@
                     Create customer accounts to manage wholesale buyers, credit ledgers, and storefront access.
                   </p>
                   <q-btn
+                    v-if="canAdministerCustomerGroup"
                     unelevated
                     color="primary"
                     icon="ph ph-plus"
@@ -203,10 +205,12 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useCustomerListQuery } from '../composables/useCustomerQuery';
 import type { CustomerAccount } from '../types/customer';
 import CustomerDetailDrawer from '../components/CustomerDetailDrawer.vue';
+import { useCanAdministerCustomerGroup } from '../composables/useCanAdministerCustomerGroup';
 
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
+const canAdministerCustomerGroup = useCanAdministerCustomerGroup();
 
 const searchQuery = ref('');
 const tenantId = computed(() => authStore.tenantId as number);

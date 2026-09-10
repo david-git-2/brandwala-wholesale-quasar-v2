@@ -135,6 +135,35 @@ const deleteCustomerMember = async (id: number): Promise<void> => {
   if (error) throw error;
 };
 
+const findAdminEmailConflict = async (tenantId: number, email: string): Promise<string | null> => {
+  const trimmed = email.trim();
+  if (!trimmed) return null;
+
+  const { data, error } = await supabase.rpc('find_customer_admin_email_conflict', {
+    p_tenant_id: tenantId,
+    p_email: trimmed,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return data || null;
+};
+
+const searchCustomersByAdminEmail = async (
+  tenantId: number,
+  emailQuery: string,
+): Promise<CustomerAccount[]> => {
+  const trimmed = emailQuery.trim();
+  if (!trimmed) return [];
+
+  const rows = await listCustomers(tenantId, trimmed);
+  const needle = trimmed.toLowerCase();
+
+  return rows.filter((row) => row.email?.toLowerCase().includes(needle));
+};
+
 const getCustomerAccountSummary = async (
   tenantId: number,
   customerGroupId: number,
@@ -164,6 +193,8 @@ export const customerRepository = {
   listCustomers,
   createCustomer,
   updateCustomer,
+  findAdminEmailConflict,
+  searchCustomersByAdminEmail,
   listCustomerMembers,
   createCustomerMember,
   updateCustomerMember,

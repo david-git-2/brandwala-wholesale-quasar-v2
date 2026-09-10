@@ -1,6 +1,7 @@
 import type { NavigationGuard, RouteRecordRaw } from 'vue-router';
 import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { canAccessModule } from 'src/modules/navigation/modulePermissions';
 import type { ModuleKey } from 'src/modules/navigation/moduleRegistry';
 
@@ -31,6 +32,39 @@ const customerOverviewGuard: NavigationGuard = (to, from, next) => {
     requiredModule: 'customer',
     loginRoute: (to) => ({ name: 'login', query: { redirect: to.fullPath } }),
   })(to, from, next);
+};
+
+const parentCustomerGroupAdminGuard: NavigationGuard = (to, from, next) => {
+  const authStore = useAuthStore();
+  const tenantStore = useTenantStore();
+
+  if (authStore.matchedRole === 'superadmin' && authStore.scope === 'platform') {
+    next();
+    return;
+  }
+
+  if (!authStore.isAdmin) {
+    next({
+      name: 'app-customers-list',
+      params: { tenantSlug: to.params.tenantSlug },
+    });
+    return;
+  }
+
+  const tenant =
+    tenantStore.selectedTenant ??
+    tenantStore.items.find((item) => item.id === authStore.tenantId) ??
+    null;
+
+  if (!tenant || tenant.parent_id != null) {
+    next({
+      name: 'app-customers-list',
+      params: { tenantSlug: to.params.tenantSlug },
+    });
+    return;
+  }
+
+  next();
 };
 
 const customerRoutes: RouteRecordRaw[] = [
@@ -65,12 +99,22 @@ const customerRoutes: RouteRecordRaw[] = [
         path: 'create',
         name: 'app-customers-create',
         component: () => import('../pages/CreateCustomerPage.vue'),
-        beforeEnter: createAccessGuard({
-          requiredScope: 'app',
-          requiredModule: 'customer',
-          requiredModuleAction: 'create',
-          loginRoute: (to) => ({ name: 'login', query: { redirect: to.fullPath } }),
-        }),
+        beforeEnter: [
+          createAccessGuard({
+            requiredScope: 'app',
+            requiredModule: 'customer',
+            requiredModuleAction: 'create',
+            loginRoute: (to) => ({ name: 'login', query: { redirect: to.fullPath } }),
+          }),
+          parentCustomerGroupAdminGuard,
+        ],
+      },
+      {
+        path: 'create/v2',
+        redirect: (to) => {
+          const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : '';
+          return tenantSlug ? `/${tenantSlug}/app/customers/create` : '/app/customers/create';
+        },
       },
       {
         path: 'recipient-profiles',
