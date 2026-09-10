@@ -73,6 +73,9 @@ export default {
     recipient_pay_total: 'প্রাপকের মোট পরিশোধ',
     prices_hidden: 'মূল্য গোপন করা হয়েছে',
     place_order: 'অর্ডার করুন',
+    place_order_confirm_title: 'অর্ডার পাঠাবেন?',
+    place_order_confirm_message:
+      'আপনার অর্ডার পর্যালোচনার জন্য দোকানে পাঠানো হবে। এগিয়ে যাওয়ার আগে পরিমাণ ও মূল্য যাচাই করুন।',
     proceed_to_checkout: 'চেকআউটে যান',
     dropship_continue_pricing_address: 'মূল্য ও ডেলিভারি পর্যালোচনা',
     dropship_cart_proceed: 'এগিয়ে যান',

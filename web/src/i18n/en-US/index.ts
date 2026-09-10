@@ -72,6 +72,9 @@ export default {
     recipient_pay_total: 'Recipient Pay Total',
     prices_hidden: 'Prices Hidden',
     place_order: 'Place Order',
+    place_order_confirm_title: 'Place order?',
+    place_order_confirm_message:
+      'Your order will be sent to the shop for review. Check quantities and prices before continuing.',
     proceed_to_checkout: 'Proceed to Checkout',
     dropship_continue_pricing_address: 'Review price & delivery',
     dropship_cart_proceed: 'Proceed',

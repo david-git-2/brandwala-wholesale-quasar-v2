@@ -157,11 +157,11 @@
         </div>
       </div>
 
-      <!-- Quantity Stepper for status == 'final_offered' -->
-      <div v-if="status === 'final_offered'" class="qty-stepper-box q-pa-sm bg-green-1 rounded-borders border-green item-card__full-width">
+      <!-- Quantity stepper: final_offered (negotiable) or priced (non-negotiable confirm) -->
+      <div v-if="showQuantityStepper" class="qty-stepper-box q-pa-sm bg-green-1 rounded-borders border-green item-card__full-width">
         <div class="row items-center justify-between q-col-gutter-xs">
           <div class="column col-xs-12 col-sm-auto q-mb-xs q-mb-sm-none">
-            <span class="text-caption text-weight-bold text-green-9">Update Final Quantity:</span>
+            <span class="text-caption text-weight-bold text-green-9">{{ quantityStepperLabel }}:</span>
             <span class="text-caption text-grey-7" style="font-size: 11px;">
               Step size: {{ minQtyStep }}
             </span>
@@ -313,8 +313,23 @@ const staffOfferAmount = computed(() => {
 
 const isEditingCounter = ref<boolean>(false);
 
+const normalizedStatus = computed(() => normalizeCatalogOrderStatus(props.status));
+
 const needsDecision = computed(
-  () => props.status === 'priced' && props.isNegotiable,
+  () => normalizedStatus.value === 'priced' && props.isNegotiable,
+);
+
+/** Non-negotiable orders confirm from priced; negotiable orders adjust qty at final_offered. */
+const showQuantityStepper = computed(
+  () =>
+    normalizedStatus.value === 'final_offered'
+    || (normalizedStatus.value === 'priced' && !props.isNegotiable),
+);
+
+const quantityStepperLabel = computed(() =>
+  normalizedStatus.value === 'priced' && !props.isNegotiable
+    ? 'Confirm quantity'
+    : 'Update final quantity',
 );
 
 const hasCustomerCounter = computed(() => {
@@ -383,7 +398,9 @@ const minQtyStep = computed(() => {
 });
 
 const calculatedLineTotal = computed(() => {
-  const qty = props.status === 'final_offered' || isConfirmedOrBeyond.value ? quantity.value : props.item.quantity;
+  const qty = showQuantityStepper.value || isConfirmedOrBeyond.value
+    ? quantity.value
+    : props.item.quantity;
   return effectiveUnitPrice.value * qty;
 });
 

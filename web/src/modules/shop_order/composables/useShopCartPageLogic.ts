@@ -1,5 +1,7 @@
 import { computed, ref, watch, type Ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
+import { requestConfirmation } from 'src/utils/appFeedback';
 import { useQueryClient } from '@tanstack/vue-query';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import type { ActiveCartItem, ShopCartItem } from '../repositories/shopCartRepository';
@@ -32,6 +34,7 @@ export function useShopCartPageLogic(
 ) {
   const route = useRoute();
   const router = useRouter();
+  const { t } = useI18n();
   const queryClient = useQueryClient();
   const authStore = useAuthStore();
   const orderStore = useShopOrderStore();
@@ -186,6 +189,13 @@ export function useShopCartPageLogic(
   const handleButtonClick = async () => {
     if (checkoutDisabled.value) return;
     if (placesOrderFromCart.value) {
+      const confirmed = await requestConfirmation(
+        t('shop.place_order_confirm_message'),
+        t('shop.place_order_confirm_title'),
+        t('shop.place_order'),
+      );
+      if (!confirmed) return;
+
       placingOrder.value = true;
       try {
         const res = await orderStore.submitOrder(

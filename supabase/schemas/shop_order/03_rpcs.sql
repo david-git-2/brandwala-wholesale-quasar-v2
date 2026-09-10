@@ -8984,7 +8984,8 @@ begin
   values (
     v_cart.tenant_id, v_cart.shop_id, v_cart.customer_group_id, v_cart.id,
     v_order_no, 'Order for ' || coalesce(nullif(trim(coalesce(p_recipient_name, '')), ''), 'customer'),
-    v_shop.shop_type, v_shop.order_mode, v_shop.is_negotiable,
+    v_shop.shop_type, v_shop.order_mode,
+    coalesce(v_shop.is_negotiable, false) and coalesce(v_can_negotiate, false),
     v_order_status, case when v_order_status = 'negotiating' then 1 else 0 end,
     nullif(trim(coalesce(p_recipient_name, '')), ''), v_phone, nullif(trim(coalesce(p_recipient_phone_secondary, '')), ''),
     nullif(trim(coalesce(p_shipping_address, '')), ''), nullif(trim(coalesce(p_shipping_district, '')), ''), nullif(trim(coalesce(p_shipping_thana, '')), ''),

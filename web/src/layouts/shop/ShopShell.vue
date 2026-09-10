@@ -2,36 +2,47 @@
   <q-layout view="hHh lpR fFf" class="shop-shell theme-shop">
     <q-header class="shop-shell__header" reveal>
       <q-toolbar class="shop-shell__toolbar">
-        <button
-          v-if="showHeaderTenantLink"
-          type="button"
-          class="shop-shell__tenant-link"
-          data-test="shop-header-tenant-link"
-          @click="goHome"
-        >
-          <q-icon
-            class="shop-shell__tenant-home"
-            name="ph ph-house"
-            size="20px"
-            :aria-label="$t('navigation.home')"
-          />
-          <span class="shop-shell__tenant-text shop-banner-font">{{ tenantName }}</span>
-        </button>
-
-        <div v-if="showCatalogShopHeader" class="shop-shell__catalog-shop">
-          <CatalogShopHeaderSwitcher
-            :shop-name="headerShopName"
-            :current-slug="headerShopSlug"
-            :shops="customerShops"
-            @switch-shop="onSwitchCatalogShop"
-          />
+        <div class="shop-shell__left">
+          <button
+            type="button"
+            class="shop-shell__tenant-link"
+            data-test="shop-header-tenant-link"
+            @click="goHome"
+          >
+            <q-icon
+              class="shop-shell__tenant-home"
+              name="ph ph-house"
+              size="20px"
+              :aria-label="$t('navigation.home')"
+            />
+            <span class="shop-shell__tenant-text shop-banner-font">{{ tenantName }}</span>
+          </button>
         </div>
 
-        <div v-else-if="showOrdersHeaderTitle" class="shop-shell__catalog-shop">
-          <h1 class="shop-shell__header-title shop-banner-font q-my-none ellipsis">
-            {{ $t('customer_dashboard.glance_title') }}
-          </h1>
-        </div>
+        <nav class="shop-shell__nav" aria-label="Shop">
+          <q-btn
+            flat
+            no-caps
+            dense
+            class="shop-shell__labeled-btn"
+            :class="{ 'shop-shell__labeled-btn--active': isCatalogNavActive }"
+            icon="ph ph-storefront"
+            :label="$t('navigation.catalog')"
+            data-test="shop-header-catalog-btn"
+            @click="goToCatalog"
+          />
+          <q-btn
+            flat
+            no-caps
+            dense
+            class="shop-shell__labeled-btn"
+            :class="{ 'shop-shell__labeled-btn--active': isOrdersNavActive }"
+            icon="ph ph-clipboard-text"
+            :label="$t('navigation.orders')"
+            data-test="shop-header-orders-btn"
+            @click="goToOrders"
+          />
+        </nav>
 
         <div class="shop-shell__actions">
           <q-btn
@@ -47,29 +58,14 @@
             <q-icon name="ph ph-magnifying-glass" size="20px" />
           </q-btn>
 
-          <q-btn
-            v-if="showCatalogOrdersButton"
-            flat
-            no-caps
-            dense
-            class="shop-shell__labeled-btn"
-            icon="ph ph-clipboard-text"
-            :label="$t('navigation.orders')"
-            data-test="shop-header-orders-btn"
-            @click="goToOrders"
-          />
-
-          <q-btn
-            v-if="showOrdersCatalogButton || showCartCatalogButton"
-            flat
-            no-caps
-            dense
-            class="shop-shell__labeled-btn"
-            icon="ph ph-storefront"
-            :label="$t('navigation.catalog')"
-            data-test="shop-header-catalog-btn"
-            @click="goToCatalog"
-          />
+          <div v-if="showCatalogShopHeader" class="shop-shell__shop-switch">
+            <CatalogShopHeaderSwitcher
+              :shop-name="headerShopName"
+              :current-slug="headerShopSlug"
+              :shops="customerShops"
+              @switch-shop="onSwitchHeaderShop"
+            />
+          </div>
 
           <q-btn
             v-if="canShowCartIcon"
@@ -195,15 +191,13 @@ const CART_ROUTE_NAMES = new Set(['shop-cart-page', 'shop-checkout-page']);
 
 const showHeaderSearch = computed(() => route.name === 'customer-dashboard');
 
-const showCatalogOrdersButton = computed(() =>
-  CATALOG_ROUTE_NAMES.has(String(route.name ?? '')),
-);
+const routeName = computed(() => String(route.name ?? ''));
 
-const showOrdersCatalogButton = computed(() =>
-  ORDER_ROUTE_NAMES.has(String(route.name ?? '')),
-);
+const isCatalogNavActive = computed(() => CATALOG_ROUTE_NAMES.has(routeName.value));
 
-const isCartRoute = computed(() => CART_ROUTE_NAMES.has(String(route.name ?? '')));
+const isOrdersNavActive = computed(() => ORDER_ROUTE_NAMES.has(routeName.value));
+
+const isCartRoute = computed(() => CART_ROUTE_NAMES.has(routeName.value));
 
 const activeCartShopId = computed(() =>
   resolveCartShopId(authStore.tenantId, activeCarts.value ?? [], route.query.shopId),
@@ -214,24 +208,6 @@ const activeCartInfo = computed(() => {
   if (!shopId) return null;
   return (activeCarts.value ?? []).find((cart) => cart.shop_id === shopId) ?? null;
 });
-
-const isCatalogCartContext = computed(() => {
-  if (!isCartRoute.value) return false;
-  if (activeCartInfo.value?.shop_type === 'dropship') return false;
-  if (activeCartInfo.value) return true;
-  return (activeCarts.value ?? []).some((cart) => cart.shop_type !== 'dropship');
-});
-
-const showCartCatalogButton = computed(() => isCatalogCartContext.value);
-
-const showOrdersHeaderTitle = computed(() => showOrdersCatalogButton.value);
-
-const showHeaderTenantLink = computed(
-  () =>
-    CATALOG_ROUTE_NAMES.has(String(route.name ?? '')) ||
-    ORDER_ROUTE_NAMES.has(String(route.name ?? '')) ||
-    isCatalogCartContext.value,
-);
 
 const tenantName = computed(
   () => authStore.tenant?.name || authStore.selectedTenant?.name || 'Shop',
@@ -263,24 +239,31 @@ const cartShopName = computed(() => {
   return customerShops.value.find((shop) => shop.id === shopId)?.name ?? cartShopSlug.value;
 });
 
-const headerShopSlug = computed(() =>
-  isCatalogCartContext.value ? cartShopSlug.value : catalogShopSlug.value,
+const rememberedShop = computed(() =>
+  resolveCatalogShop(authStore.tenantId, customerShops.value),
 );
 
+const headerShopSlug = computed(() => {
+  if (isCartRoute.value && cartShopSlug.value) {
+    return cartShopSlug.value;
+  }
+  if (catalogShopSlug.value) {
+    return catalogShopSlug.value;
+  }
+  return rememberedShop.value?.slug ?? '';
+});
+
 const headerShopName = computed(() => {
-  if (isCatalogCartContext.value) {
+  if (isCartRoute.value && cartShopName.value) {
     return cartShopName.value;
   }
-  const match = customerShops.value.find((shop) => shop.slug === catalogShopSlug.value);
-  return match?.name || catalogShopSlug.value;
+  const match = customerShops.value.find((shop) => shop.slug === headerShopSlug.value);
+  return match?.name || headerShopSlug.value;
 });
 
 const showCatalogShopHeader = computed(() => {
-  const routeName = String(route.name ?? '');
-  if (isCatalogCartContext.value && headerShopSlug.value.length > 0) {
-    return true;
-  }
-  return routeName === 'shop-storefront-browse-page' && catalogShopSlug.value.length > 0;
+  if (showHeaderSearch.value) return false;
+  return headerShopSlug.value.length > 0;
 });
 
 watch(showHeaderSearch, (visible) => {
@@ -373,11 +356,18 @@ const goToCatalog = () => {
   void router.push(shopCatalogEntryPath(authStore.tenantSlug));
 };
 
-const onSwitchCatalogShop = (shop: { id: number; slug: string; name: string }) => {
-  if (!shop.slug || shop.slug === headerShopSlug.value) return;
+const onSwitchHeaderShop = (shop: { id: number; slug: string; name: string }) => {
+  if (!shop.slug) return;
   if (authStore.tenantId) {
     rememberCatalogShop(authStore.tenantId, shop);
   }
+  if (isCartRoute.value) {
+    if (shop.id === activeCartShopId.value) return;
+    void router.push(shopCartPath(authStore.tenantSlug, shop.id));
+    return;
+  }
+  if (isOrdersNavActive.value) return;
+  if (shop.slug === headerShopSlug.value) return;
   void router.push(shopCatalogPath(authStore.tenantSlug, shop.slug));
 };
 
@@ -465,11 +455,24 @@ defineExpose({
 }
 
 .shop-shell__toolbar {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 0.4rem;
   padding: 0.45rem 0.75rem;
   min-height: 52px;
+}
+
+.shop-shell__left {
+  justify-self: start;
+  min-width: 0;
+}
+
+.shop-shell__nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
 }
 
 .shop-shell__tenant-link {
@@ -510,32 +513,27 @@ defineExpose({
   outline: none;
 }
 
-.shop-shell__catalog-shop {
-  position: static;
-  z-index: 1;
-  flex: 1 1 auto;
-  width: auto;
-  min-width: 0;
-  pointer-events: none;
-}
-
-.shop-shell__catalog-shop > * {
-  pointer-events: auto;
-}
-
-.shop-shell__header-title {
-  font-size: clamp(1rem, 3.5vw, 1.45rem);
-  line-height: 1.1;
-  text-align: center;
-  width: 100%;
-}
-
 .shop-shell__actions {
   display: flex;
   align-items: center;
+  justify-self: end;
+  justify-content: flex-end;
   gap: 0.15rem;
-  flex: 0 0 auto;
-  margin-left: auto;
+  min-width: 0;
+}
+
+.shop-shell__shop-switch {
+  min-width: 0;
+  max-width: 11rem;
+}
+
+.shop-shell__shop-switch :deep(.catalog-header-shop) {
+  justify-content: flex-end;
+}
+
+.shop-shell__shop-switch :deep(.catalog-header-shop__static),
+.shop-shell__shop-switch :deep(.catalog-header-shop__trigger) {
+  font-size: 0.9rem;
 }
 
 .shop-shell__icon-btn {
@@ -565,6 +563,10 @@ defineExpose({
 
 .shop-shell__labeled-btn :deep(.q-btn__content) {
   gap: 0.3rem;
+}
+
+.shop-shell__labeled-btn--active {
+  background: var(--shop-shell-accent-soft);
 }
 
 @media (max-width: 1023px) {

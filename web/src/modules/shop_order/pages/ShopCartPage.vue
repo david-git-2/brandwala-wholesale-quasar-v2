@@ -4,20 +4,7 @@
       <!-- Standard Page Header -->
       <ShopCartHeader
         :show-cart-picker="showCartPicker"
-        :show-shop-tabs="showShopCartTabs"
         :item-count="itemCount"
-        :active-carts="scopedActiveCarts"
-        :current-shop-cart-info="currentShopCartInfo"
-        :selected-shop-id="selectedShopId"
-        :format-active-cart-total="formatActiveCartTotal"
-        @select-shop-cart="selectShopCart"
-      />
-
-      <ShopCartShopTabs
-        v-if="showShopCartTabs"
-        :carts="scopedActiveCarts"
-        :selected-shop-id="selectedShopId"
-        @select-shop-cart="selectShopCart"
       />
 
       <q-banner
@@ -161,7 +148,6 @@ import { useActiveShopCartsQuery } from '../composables/useActiveShopCartsQuery'
 import { useShopCartQuery } from '../composables/useShopCartQuery';
 import { useShopCartPageLogic } from '../composables/useShopCartPageLogic';
 import ShopCartHeader from '../components/ShopCartHeader.vue';
-import ShopCartShopTabs from '../components/ShopCartShopTabs.vue';
 import ShopCartItemsList from '../components/ShopCartItemsList.vue';
 import ShopCartSummaryCard from '../components/ShopCartSummaryCard.vue';
 import ShopCartSkeleton from '../components/ShopCartSkeleton.vue';
@@ -210,12 +196,9 @@ watch(logic.selectedShopId, (val) => {
 const {
   selectedShopId,
   scopedActiveCarts,
-  showShopCartTabs,
   showCartPicker,
   currentShopCartInfo,
-  selectShopCart,
   currencySymbol,
-  formatActiveCartTotal,
   goBack,
   isSaving,
   placingOrder,

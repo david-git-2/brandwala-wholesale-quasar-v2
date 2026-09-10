@@ -3,20 +3,7 @@
     <div class="q-gutter-y-md">
       <ShopCartHeader
         :show-cart-picker="showCartPicker"
-        :show-shop-tabs="showShopCartTabs"
         :item-count="displayItemCount"
-        :active-carts="scopedActiveCarts"
-        :current-shop-cart-info="headerCartInfo"
-        :selected-shop-id="selectedShopId"
-        :format-active-cart-total="formatActiveCartTotal"
-        @select-shop-cart="selectShopCart"
-      />
-
-      <ShopCartShopTabs
-        v-if="showShopCartTabs"
-        :carts="scopedActiveCarts"
-        :selected-shop-id="selectedShopId"
-        @select-shop-cart="selectShopCart"
       />
 
       <ShopCartSkeleton
@@ -131,7 +118,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import type { ActiveCartItem } from '../repositories/shopCartRepository';
 import type { DropshipCartItem } from '../repositories/dropshipCartRepository';
 import { useActiveShopCartsQuery } from '../composables/useActiveShopCartsQuery';
 import { useShopCartSelection } from '../composables/useShopCartSelection';
@@ -139,7 +125,6 @@ import { useDropshipShopCartQuery } from '../composables/useDropshipShopCartQuer
 import { useShopCartMutations } from '../composables/useShopCartMutations';
 import { shopDropshipReviewPath } from '../utils/catalogShop';
 import ShopCartHeader from '../components/ShopCartHeader.vue';
-import ShopCartShopTabs from '../components/ShopCartShopTabs.vue';
 import ShopCartSkeleton from '../components/ShopCartSkeleton.vue';
 import ShopDropshipCartItemCard from '../components/ShopDropshipCartItemCard.vue';
 
@@ -155,16 +140,11 @@ const activeCarts = computed(() => activeCartsData.value ?? []);
 const {
   selectedShopId,
   scopedActiveCarts,
-  showShopCartTabs,
   showCartPicker,
-  currentShopCartInfo,
-  selectShopCart,
-  formatActiveCartTotal,
   goBack,
 } = useShopCartSelection(activeCarts, isCartsLoading, { cartKind: 'dropship' });
 
 const {
-  cart,
   items,
   currencySymbol,
   getPurchaseUnitAmount,
@@ -197,35 +177,6 @@ const hasUnsavedEdits = computed(() =>
 const displayItemCount = computed(() =>
   items.value.reduce((sum, item) => sum + getItemQty(item), 0),
 );
-
-const displayPurchaseSubtotal = computed(() =>
-  items.value.reduce(
-    (sum, item) => sum + getPurchaseUnitAmount(item) * getItemQty(item),
-    0,
-  ),
-);
-
-const headerCartInfo = computed<ActiveCartItem | null>(() => {
-  if (!selectedShopId.value) return currentShopCartInfo.value;
-
-  const base = currentShopCartInfo.value;
-  return {
-    cart_id: cart.value?.id ?? base?.cart_id ?? 0,
-    shop_id: selectedShopId.value,
-    shop_name: cart.value?.shop_name ?? base?.shop_name ?? '',
-    shop_slug: cart.value?.shop_slug ?? base?.shop_slug ?? '',
-    shop_logo_url: base?.shop_logo_url ?? null,
-    shop_type: 'dropship',
-    can_see_buy_price: true,
-    can_see_sell_price: true,
-    currency_id: cart.value?.currency?.id ?? base?.currency_id ?? null,
-    currency_code: cart.value?.currency?.code ?? base?.currency_code ?? null,
-    currency_symbol: currencySymbol.value || base?.currency_symbol || null,
-    item_count: displayItemCount.value,
-    cart_total: displayPurchaseSubtotal.value,
-    updated_at: cart.value?.updated_at ?? base?.updated_at ?? new Date().toISOString(),
-  };
-});
 
 const adjustItemQtyLocal = (itemId: number, quantity: number, savedQuantity: number) => {
   if (quantity === savedQuantity) {
