@@ -18,6 +18,10 @@
         >
           {{ statusLabel }}
         </q-badge>
+        <OrderPricingModeBadge
+          :is-negotiable="!!order.is_negotiable_snapshot"
+          :shop-type="order.shop_type_snapshot"
+        />
       </div>
 
       <div class="row items-center justify-end q-gutter-x-xs no-wrap workflow-trailing">
@@ -45,6 +49,7 @@
 import { computed } from 'vue';
 import type { ShopOrder } from '../types';
 import CatalogOrderColumnSelectorButton from './CatalogOrderColumnSelectorButton.vue';
+import OrderPricingModeBadge from './OrderPricingModeBadge.vue';
 import { getStaffCatalogStatusLabel, normalizeCatalogOrderStatus } from '../utils/catalogOrderStatus';
 
 const props = defineProps<{

@@ -99,6 +99,10 @@
                   <div class="column overflow-hidden">
                     <div class="row items-center no-wrap q-gutter-x-xs">
                       <span class="text-weight-bold ellipsis">{{ order.order_no }}</span>
+                      <OrderPricingModeBadge
+                        :is-negotiable="!!order.is_negotiable_snapshot"
+                        :shop-type="order.shop_type_snapshot"
+                      />
                       <q-btn
                         flat
                         dense
@@ -141,6 +145,7 @@ import { showSuccessNotification } from 'src/utils/appFeedback';
 import { useCustomerOrdersQuery } from '../composables/useCustomerOrdersQuery';
 import { shopCatalogEntryPath } from '../utils/catalogShop';
 import type { CustomerOrderListItem } from '../types';
+import OrderPricingModeBadge from '../components/OrderPricingModeBadge.vue';
 import {
   isWaitingStatus,
   parseOrderGlanceBucket,

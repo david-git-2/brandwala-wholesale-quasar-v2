@@ -32,6 +32,15 @@
           </q-td>
         </template>
 
+        <template #body-cell-pricing_mode="props">
+          <q-td :props="props">
+            <OrderPricingModeBadge
+              :is-negotiable="!!props.row.is_negotiable_snapshot"
+              :shop-type="props.row.shop_type_snapshot"
+            />
+          </q-td>
+        </template>
+
         <template #body-cell-status="props">
           <q-td :props="props">
             <q-badge
@@ -70,6 +79,7 @@ import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { date } from 'quasar';
 import type { ShopOrder } from '../types';
+import OrderPricingModeBadge from './OrderPricingModeBadge.vue';
 
 const { isDropshipShop, isLoadingOrders, isProcessingDropship } = defineProps<{
   orders: ShopOrder[];
@@ -91,6 +101,7 @@ const columns = computed(() => [
   { name: 'shop', label: t('shop_admin.shop_label'), field: 'shop_name', align: 'left', sortable: true },
   { name: 'group', label: t('shop_admin.group_label'), field: 'customer_group_name', align: 'left', sortable: true },
   { name: 'items', label: t('shop_admin.items_label'), field: 'item_count', align: 'right', sortable: true },
+  { name: 'pricing_mode', label: t('shop_admin.col_pricing_mode'), field: 'is_negotiable_snapshot', align: 'center', sortable: true },
   { name: 'status', label: t('shop_admin.status', 'Status'), field: 'status', align: 'center', sortable: true },
   { name: 'actions', label: '', field: 'actions', align: 'right' },
 ] as any[]);

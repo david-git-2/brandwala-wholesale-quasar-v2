@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import OrderPricingModeBadge from './OrderPricingModeBadge.vue';
+
 const props = defineProps<{
   order: any;
   workflowStatuses: string[];
@@ -60,6 +62,12 @@ const isPassedStatus = (st: string) => {
 
 <template>
   <q-card flat bordered class="q-pa-sm">
+    <div class="row items-center justify-end q-mb-xs">
+      <OrderPricingModeBadge
+        :is-negotiable="!!order.is_negotiable_snapshot"
+        :shop-type="order.shop_type_snapshot"
+      />
+    </div>
     <div class="row items-center justify-between q-col-gutter-sm">
       <div class="col-grow row items-center q-gutter-xs status-workflow-row">
         <template v-for="(st, idx) in workflowStatuses" :key="st">

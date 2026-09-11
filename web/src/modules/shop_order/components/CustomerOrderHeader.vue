@@ -4,10 +4,23 @@
       v-if="isVendorCatalog"
       variant="customer"
       :order="order"
-    />
+    >
+      <template #trailing>
+        <OrderPricingModeBadge
+          :is-negotiable="!!order.is_negotiable_snapshot"
+          :shop-type="order.shop_type_snapshot"
+        />
+      </template>
+    </CatalogOrderProgressBar>
 
     <template v-else>
-      <p v-if="metaLine" class="text-caption text-grey-7 q-mb-sm">{{ metaLine }}</p>
+      <div class="row items-center justify-between q-mb-sm no-wrap q-gutter-x-sm">
+        <p v-if="metaLine" class="text-caption text-grey-7 q-mb-none col">{{ metaLine }}</p>
+        <OrderPricingModeBadge
+          :is-negotiable="!!order.is_negotiable_snapshot"
+          :shop-type="order.shop_type_snapshot"
+        />
+      </div>
       <q-card flat bordered class="q-pa-sm bg-grey-1">
         <div class="row items-center justify-between no-wrap q-gutter-x-xs">
           <div class="col text-center">
@@ -44,6 +57,7 @@ import {
   normalizeCatalogOrderStatus,
 } from '../utils/catalogOrderStatus';
 import CatalogOrderProgressBar from './CatalogOrderProgressBar.vue';
+import OrderPricingModeBadge from './OrderPricingModeBadge.vue';
 
 const props = defineProps<{
   order: any;

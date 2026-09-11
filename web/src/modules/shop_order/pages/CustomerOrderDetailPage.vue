@@ -131,6 +131,7 @@
               :order="currentOrder"
               :is-negotiation-open="isNegotiationOpen"
               :currency-symbol="currencySymbol"
+              :can-see-line-prices="canShowOrderTotal"
             />
           </div>
 

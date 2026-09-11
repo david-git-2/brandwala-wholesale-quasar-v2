@@ -391,6 +391,7 @@ export interface CustomerOrderListItem {
   shop_name: string;
   shop_slug: string;
   shop_type_snapshot: ShopType;
+  is_negotiable_snapshot: boolean;
   order_no: string;
   status: ShopOrderStatus;
   item_count: number;

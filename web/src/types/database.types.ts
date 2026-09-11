@@ -12119,6 +12119,7 @@ export type Database = {
           created_at: string
           currency_symbol: string
           id: number
+          is_negotiable_snapshot: boolean
           item_count: number
           order_no: string
           sell_currency_id: number
@@ -12779,11 +12780,13 @@ export type Database = {
           customer_group_id: number
           customer_group_name: string
           id: number
+          is_negotiable_snapshot: boolean
           item_count: number
           name: string
           order_no: string
           shop_id: number
           shop_name: string
+          shop_type_snapshot: Database["public"]["Enums"]["shop_type_enum"]
           status: Database["public"]["Enums"]["shop_order_status"]
           tenant_id: number
           updated_at: string

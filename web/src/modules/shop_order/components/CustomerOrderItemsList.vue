@@ -60,7 +60,7 @@
           </div>
         </q-item-section>
 
-        <q-item-section side class="text-right">
+        <q-item-section v-if="canSeeLinePrices" side class="text-right">
           <template v-if="order.shop_type_snapshot === 'dropship'">
             <span class="text-caption text-grey-6">{{ $t('shop_admin.line_total') }}</span>
             <div class="text-body1 text-weight-bold text-primary">
@@ -85,12 +85,16 @@
 <script setup lang="ts">
 import type { ShopOrderItem } from '../types';
 
-defineProps<{
-  orderItems: ShopOrderItem[];
-  order: any;
-  isNegotiationOpen: boolean;
-  currencySymbol: string;
-}>();
+withDefaults(
+  defineProps<{
+    orderItems: ShopOrderItem[];
+    order: any;
+    isNegotiationOpen: boolean;
+    currencySymbol: string;
+    canSeeLinePrices?: boolean;
+  }>(),
+  { canSeeLinePrices: true },
+);
 
 const getRecipientLineTotal = (item: ShopOrderItem) => {
   return Number(item.customer_sell_price_amount ?? 0) * item.quantity;

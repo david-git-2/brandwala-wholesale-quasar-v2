@@ -218,7 +218,10 @@
       </div>
 
       <!-- Line Total Summary -->
-      <div class="line-total-row row items-center justify-between q-pt-sm border-top item-card__full-width">
+      <div
+        v-if="canSeeLineTotal"
+        class="line-total-row row items-center justify-between q-pt-sm border-top item-card__full-width"
+      >
         <span class="text-caption text-weight-medium text-grey-7">Line Total</span>
         <span class="text-subtitle1 text-weight-bolder text-grey-9">
           {{ currencySymbol }}{{ calculatedLineTotal.toFixed(2) }}
@@ -243,6 +246,7 @@ import { ref, computed, watch } from 'vue';
 import type { ShopOrderItem, ShopOrder, CustomerOrderDetailOrder } from '../types';
 import { getFirstOfferUnitAmount } from '../utils/catalogPricingUtils';
 import { normalizeCatalogOrderStatus } from '../utils/catalogOrderStatus';
+import { customerCanSeeOrderLineTotal } from '../utils/catalogPriceUtils';
 
 const props = defineProps<{
   item: ShopOrderItem;
@@ -257,6 +261,13 @@ const props = defineProps<{
 
 const canSeeCatalogPrice = computed(() => props.canSeeCatalogPrice === true);
 const canSeeOfferPrices = computed(() => props.canSeeOfferPrices === true);
+
+const canSeeLineTotal = computed(() =>
+  customerCanSeeOrderLineTotal(props.order?.shop_type_snapshot, props.status, {
+    can_see_buy_price: props.order?.can_see_buy_price,
+    can_see_sell_price: props.order?.can_see_sell_price,
+  }),
+);
 
 const emit = defineEmits<{
   (e: 'update:quantity', payload: { itemId: number; quantity: number }): void;

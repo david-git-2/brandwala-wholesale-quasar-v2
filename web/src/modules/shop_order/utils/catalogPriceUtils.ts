@@ -1,4 +1,5 @@
 import type { ShopCatalogItem, ShopCatalogPrice, ShopType } from '../types';
+import { normalizeCatalogOrderStatus } from './catalogOrderStatus';
 
 export function coerceCatalogPrice(value: unknown): ShopCatalogPrice | null {
   if (value == null || value === '') return null;
@@ -267,4 +268,29 @@ export function customerCanSeeCartLinePrices(
     return !!(permissions?.can_see_buy_price || permissions?.can_see_sell_price);
   }
   return customerCanSeeCatalogPrice(shopType, permissions);
+}
+
+/** Order detail line totals follow the same visibility as the unit prices shown for that phase. */
+export function customerCanSeeOrderLineTotal(
+  shopType: ShopType | string | null | undefined,
+  status: string,
+  permissions?: {
+    can_see_buy_price?: boolean;
+    can_see_sell_price?: boolean;
+  } | null,
+): boolean {
+  const normalized = normalizeCatalogOrderStatus(status);
+  const offerPhase = [
+    'priced',
+    'countered',
+    'final_offered',
+    'confirmed',
+    'procuring',
+    'ready_for_shipment',
+    'delivered',
+  ].includes(normalized);
+  if (offerPhase) {
+    return !!permissions?.can_see_sell_price;
+  }
+  return customerCanSeeCatalogPrice(shopType as ShopType | null | undefined, permissions);
 }
