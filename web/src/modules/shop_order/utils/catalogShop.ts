@@ -21,6 +21,15 @@ export function customerShopTypeI18nKey(shopType: string) {
   return 'shop_admin.shop_type_customer_shop';
 }
 
+export function isFixedPriceCatalog(
+  shopType: string | null | undefined,
+  canNegotiate?: boolean | null,
+): boolean {
+  if (shopType === 'dropship') return false;
+  if (shopType === 'vendor_catalog') return canNegotiate === false;
+  return shopType === 'fixed_price';
+}
+
 export function shopCatalogPath(
   tenantSlug: string | null | undefined,
   shopSlug: string,

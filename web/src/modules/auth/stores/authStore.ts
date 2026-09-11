@@ -231,6 +231,9 @@ export const useAuthStore = defineStore('auth', () => {
         writeFreshnessTimestamp(Date.now());
         return true;
       } else if (scopeVal === 'shop') {
+        if (!snapshot.value.customerGroup?.id) {
+          return false;
+        }
         const tenantIdVal = snapshot.value.tenant?.id ?? null;
         const memberIdVal = snapshot.value.member?.id ?? null;
         const { data, error } = await supabase.rpc('get_shop_bootstrap_context', {
@@ -332,6 +335,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const checkFreshness = async () => {
     if (!tenantId.value) return;
+    if (scope.value === 'shop' && !customerGroupId.value) return;
     const lastCheck = readFreshnessTimestamp();
     if (lastCheck !== null && Date.now() - lastCheck < FRESHNESS_TTL_MS) {
       return;

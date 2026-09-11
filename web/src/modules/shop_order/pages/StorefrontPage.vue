@@ -37,6 +37,7 @@
         v-model:category="category"
         :active-filter-count="activeFilterCount"
         :has-active-filters="hasActiveFilters"
+        :show-fixed-price-chip="showFixedPriceChip"
         @search="onSearchClick"
         @open-filter="filterDrawerOpen = true"
         @reset-filters="onResetFilters"
@@ -125,7 +126,7 @@ import { useShopCartMutations } from '../composables/useShopCartMutations';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useCustomerShopsQuery } from '../composables/useShopQuery';
 import { useStorefrontState } from '../composables/useStorefrontState';
-import { rememberCatalogShop, shopCatalogProductPath } from '../utils/catalogShop';
+import { rememberCatalogShop, shopCatalogProductPath, isFixedPriceCatalog } from '../utils/catalogShop';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import StorefrontSearchToolbar from '../components/StorefrontSearchToolbar.vue';
 import StorefrontFilterDrawer from '../components/StorefrontFilterDrawer.vue';
@@ -215,6 +216,9 @@ const activeShopType = computed(
     shopDetails.value?.shop_type ??
     shops.value.find((shop) => shop.slug === shopSlug.value)?.shop_type ??
     null,
+);
+const showFixedPriceChip = computed(() =>
+  isFixedPriceCatalog(activeShopType.value, permissions.value?.can_negotiate),
 );
 const initialLoading = computed(() => isLoading.value && catalogItems.value.length === 0);
 const accessDenied = computed(() => isError.value && error.value?.message?.includes('access denied'));

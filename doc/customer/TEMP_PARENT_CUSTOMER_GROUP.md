@@ -112,7 +112,7 @@ Wallet stays: `wallet_accounts.parent_tenant_id` = books, `entity_type = custome
 2. Hub **Create Customer** asks only **group name + phone**. RPC inserts group + profile + wallet. Profile name = group name; profile phone = that phone. No member on create. Invoice create may insert a profile with no group (name + phone).
 3. No second profile on sister children for the same company. Wallet on parent books.
 4. Stamp `billing_profile_id` on the shop order at checkout. Do not re-resolve later.
-5. Shop session = this email + **this shop’s granted group**. No silent `limit 1`. Permissions do not `bool_or` across two groups.
+5. Shop session = this email + **this shop’s granted group**. No silent `limit 1`. Permissions do not `bool_or` across two groups. If two groups are granted on this desk, the buyer picks one (`x-selected-customer-group-id`).
 6. Access row required to enter a shop. Credit limit + price tier stay on `shop_customer_group_access` (per shop). Group-wide AR limit (if added) lives on the **profile**.
 7. Recipients stay separate. Do not hang wallet or AR on recipient id.
 8. UI words: **Customer** (group), **Account** (billing profile). No new “middleman.” Table names can stay.
@@ -177,7 +177,7 @@ Stock, shipments, vendors, invoice brand, courier/cargo, staff memberships, end-
 
 - Two shop-flag tables: `shop_customer_group_access` vs `customer_group_shop_profiles`. Access matrix is source of truth.
 - Three member-right layers: `customer_group_role`, `tenant_role_id`, `customer_group_member_grants`. Hub Members = name/email/role/active. Access Control = extra grants.
-- `current_customer_group_id` lowest-id pick; `get_shop_permissions_for_customer` ORs across groups.
+- `current_customer_group_id` header or single-candidate pick; `get_shop_permissions_for_customer` must not OR across groups.
 
 ---
 
@@ -187,7 +187,7 @@ Stock, shipments, vendors, invoice brand, courier/cargo, staff memberships, end-
 | :--- | :--- |
 | Staff create / hub list | Group id; `group.parent_tenant_id` = parent. Hide `deleted_at` set. One-off profiles are not hub customers. |
 | Grant shop | Group id on access row; `shop.tenant_id` = child |
-| Shop login | Member email → granted group for that shop |
+| Shop login | Member email → granted group(s) for that shop tenant; picker if more than one |
 | Cart | Group id; `cart.tenant_id` = child |
 | Checkout | Resolve the **one** profile → store group id + profile id |
 | Invoice / collect / wallet / demand / after-sales merchant | Profile id only |
@@ -236,7 +236,7 @@ Until this is green, do not change shop login.
 **Goal:** Child shops grant parent groups. Login cannot pick the wrong company.
 
 - Access matrix lists groups where `customer_groups.parent_tenant_id` = books of this shop’s tenant and `deleted_at is null`.
-- `get_shop_permissions_for_customer` / `current_customer_group_id` / `check_shop_login_access`: join **this shop’s** access row. Two groups for one email → that shop’s grant, or fail. Never OR flags.
+- `get_shop_permissions_for_customer` / `current_customer_group_id` / `check_shop_login_access`: join **this shop’s** access row. Two groups for one email on this desk → company picker. Never OR flags. Never silent first-row pick.
 - Checkout keeps stamping profile via Phase 1 resolver.
 - Delete group: still block on shop orders + invoices; also wallet balance / open carts.
 

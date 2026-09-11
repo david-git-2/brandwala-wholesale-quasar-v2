@@ -90,6 +90,21 @@ export const getShopLoginRouteLocation = (
   };
 };
 
+export const getShopSelectCompanyRouteLocation = (
+  route: RouteLike,
+  extraQuery?: Record<string, string>,
+): RouteLocationRaw => {
+  const tenantSlug = getTenantSlugFromRoute(route) ?? undefined;
+
+  return {
+    name: 'shop-select-company-page',
+    params: tenantSlug ? { tenantSlug } : {},
+    query: {
+      ...extraQuery,
+    },
+  };
+};
+
 export const getShopDashboardRouteLocation = (
   route: RouteLike,
   tenantSlugOverride?: string | null,

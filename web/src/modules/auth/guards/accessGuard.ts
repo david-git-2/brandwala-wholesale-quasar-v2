@@ -87,6 +87,8 @@ export const createAccessGuard = ({
   loginRoute,
   requiredScope,
   requireTenantContext,
+  requireCustomerGroup,
+  missingCustomerGroupRoute,
   requiredModule,
   requiredModuleAction,
   validateAccess,
@@ -95,6 +97,8 @@ export const createAccessGuard = ({
   loginRoute: string | ((to: GuardRoute) => RouteLocationRaw);
   requiredScope?: AuthScope;
   requireTenantContext?: boolean;
+  requireCustomerGroup?: boolean;
+  missingCustomerGroupRoute?: (to: GuardRoute) => RouteLocationRaw;
   requiredModule?: ModuleKey;
   requiredModuleAction?: ModuleAction;
   validateAccess?: (context: {
@@ -138,6 +142,21 @@ export const createAccessGuard = ({
         return loginRoute(to);
       }
 
+      return {
+        name: loginRoute,
+        query: {
+          redirect: to.fullPath,
+        },
+      };
+    }
+
+    if (requireCustomerGroup === true && authStore.customerGroupId === null) {
+      if (missingCustomerGroupRoute) {
+        return missingCustomerGroupRoute(to);
+      }
+      if (typeof loginRoute === 'function') {
+        return loginRoute(to);
+      }
       return {
         name: loginRoute,
         query: {

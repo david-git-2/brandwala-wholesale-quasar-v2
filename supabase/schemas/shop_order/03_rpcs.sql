@@ -1888,7 +1888,9 @@ declare
 begin
   v_email := lower(trim(coalesce(p_email, public.current_user_email(), '')));
 
+  return query
   select
+    true,
     cgm.role,
     cgm.id,
     coalesce(
@@ -1903,18 +1905,6 @@ begin
     cg.is_active,
     cgm.created_at,
     cgm.updated_at
-  into
-    matched_role,
-    member_id,
-    member_name,
-    member_email,
-    member_tenant_id,
-    customer_group_id,
-    customer_group_name,
-    member_is_active,
-    customer_group_is_active,
-    member_created_at,
-    member_updated_at
   from public.customer_group_members cgm
   inner join public.customer_groups cg
     on cg.id = cgm.customer_group_id
@@ -1938,7 +1928,7 @@ begin
       )
     )
   order by
-    cg.tenant_id asc,
+    cg.name asc,
     cg.id asc,
     case cgm.role
       when 'admin' then 1
@@ -1946,11 +1936,7 @@ begin
       when 'staff' then 3
       else 99
     end asc,
-    cgm.id asc
-  limit 1;
-
-  has_match := member_id is not null;
-  return next;
+    cgm.id asc;
 end;
 $$;
 
@@ -5519,6 +5505,10 @@ declare
 begin
   v_email := lower(trim(coalesce(p_email, public.current_user_email())));
 
+  if p_tenant_id is null or p_customer_group_member_id is null then
+    return;
+  end if;
+
   select
     cgm.id,
     coalesce(
@@ -5549,7 +5539,7 @@ begin
     and cg.is_active = true
     and cg.deleted_at is null
     and t.is_active = true
-    and (p_customer_group_member_id is null or cgm.id = p_customer_group_member_id)
+    and cgm.id = p_customer_group_member_id
     and coalesce(cg.parent_tenant_id, cg.tenant_id) = public.resolve_parent_tenant_id(p_tenant_id)
     and exists (
       select 1
@@ -5793,6 +5783,7 @@ begin
   left join public.customer_group_shop_profiles profile
     on profile.customer_group_id = cg.id and profile.tenant_id = v_tenant_id
   where access.shop_id = p_shop_id
+    and cg.id = public.current_customer_group_id(v_tenant_id)
     and cg.is_active = true
     and cg.deleted_at is null
     and cgm.is_active = true

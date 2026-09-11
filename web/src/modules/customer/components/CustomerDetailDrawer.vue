@@ -55,7 +55,7 @@
         <q-tab-panels v-model="activeTab" animated class="bg-transparent">
           <!-- TAB 1: General Info -->
           <q-tab-panel name="general" class="q-pa-none">
-            <q-form ref="generalFormRef" class="column q-gutter-y-md" @submit.prevent="saveGeneralInfo">
+            <q-form class="column q-gutter-y-md">
               <div class="form-section column q-gutter-y-md">
                 <div class="section-heading">Customer group</div>
                 <div v-if="!canAdministerCustomerGroup" class="text-caption text-grey-7">
@@ -70,10 +70,10 @@
                     dense
                     class="soft-input"
                     :readonly="!canAdministerCustomerGroup"
-                    :loading="isCheckingName"
+                    :loading="isCheckingName || isSavingGeneral"
                     :rules="[(val) => !!val?.trim() || 'Group name is required']"
-                    @keyup.enter.prevent="checkGroupName"
-                    @blur="checkGroupName"
+                    @keyup.enter.prevent="onGroupNameBlur"
+                    @blur="onGroupNameBlur"
                   />
                   <q-banner
                     v-if="nameConflict"
@@ -95,7 +95,13 @@
                       :disabled="!canAdministerCustomerGroup"
                       aria-label="Pick accent color"
                     >
-                      <q-popup-proxy v-if="canAdministerCustomerGroup" cover transition-show="scale" transition-hide="scale">
+                      <q-popup-proxy
+                        v-if="canAdministerCustomerGroup"
+                        cover
+                        transition-show="scale"
+                        transition-hide="scale"
+                        @hide="autoSaveGeneral"
+                      >
                         <q-color v-model="form.accent_color" no-header-tabs />
                       </q-popup-proxy>
                     </button>
@@ -105,6 +111,9 @@
                       dense
                       class="col soft-input"
                       :readonly="!canAdministerCustomerGroup"
+                      :loading="isSavingGeneral"
+                      @blur="autoSaveGeneral"
+                      @keyup.enter.prevent="autoSaveGeneral"
                     />
                   </div>
                 </div>
@@ -118,6 +127,7 @@
                     v-model="form.is_active"
                     color="positive"
                     :disable="!canAdministerCustomerGroup"
+                    @update:model-value="autoSaveGeneral"
                   />
                 </div>
               </div>
@@ -133,7 +143,10 @@
                     dense
                     class="soft-input"
                     :readonly="!canAdministerCustomerGroup"
+                    :loading="isSavingGeneral"
                     :rules="[(val) => !!val?.trim() || 'Contact name is required']"
+                    @blur="autoSaveGeneral"
+                    @keyup.enter.prevent="autoSaveGeneral"
                   />
                 </div>
 
@@ -154,7 +167,7 @@
                       dropdown-icon="ph ph-caret-down"
                       :disable="!canAdministerCustomerGroup"
                       @filter="filterCountries"
-                      @update:model-value="onDrawerCountryChanged"
+                      @update:model-value="onDrawerCountryChangedAndSave"
                     >
                       <template #option="scope">
                         <q-item v-bind="scope.itemProps">
@@ -175,11 +188,11 @@
                       inputmode="tel"
                       placeholder="National number — press Enter"
                       :readonly="!canAdministerCustomerGroup"
-                      :loading="isCheckingPhone"
+                      :loading="isCheckingPhone || isSavingGeneral"
                       :rules="[(val) => !!nationalPhoneDigits(String(val ?? '')) || 'Phone is required']"
                       @update:model-value="onDrawerPhoneInput"
-                      @keyup.enter.prevent="checkPhone"
-                      @blur="checkPhone"
+                      @keyup.enter.prevent="onPhoneBlur"
+                      @blur="onPhoneBlur"
                     />
                   </div>
                   <q-banner
@@ -203,22 +216,10 @@
                     rows="2"
                     class="soft-input soft-input--textarea"
                     :readonly="!canAdministerCustomerGroup"
+                    :loading="isSavingGeneral"
+                    @blur="autoSaveGeneral"
                   />
                 </div>
-              </div>
-
-              <div v-if="canAdministerCustomerGroup" class="row justify-end">
-                <q-btn
-                  unelevated
-                  color="primary"
-                  icon="ph ph-check"
-                  label="Save Changes"
-                  no-caps
-                  class="action-btn text-weight-bold"
-                  :loading="isSavingGeneral"
-                  :disable="!canSaveGeneral"
-                  type="submit"
-                />
               </div>
             </q-form>
           </q-tab-panel>
@@ -619,6 +620,11 @@ const onDrawerCountryChanged = () => {
   invalidatePhoneCheck();
 };
 
+const onDrawerCountryChangedAndSave = async () => {
+  onDrawerCountryChanged();
+  await autoSaveGeneral();
+};
+
 const filterCountries: QSelectProps['onFilter'] = (val, update) => {
   update(() => {
     const needle = val.trim().toLowerCase();
@@ -682,16 +688,17 @@ const formatBdt = (val?: number | null) => {
   return `${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} BDT`;
 };
 
-const canSaveGeneral = computed(() => {
+const isGeneralDirty = computed(() => {
+  if (!props.customer) return false;
+  const parsedPhone = parseListedPhone(props.customer.phone);
   return (
-    !!form.group_name.trim() &&
-    !!form.admin_name.trim() &&
-    !!nationalPhoneDigits(form.phone) &&
-    phoneVerified.value &&
-    !nameConflict.value &&
-    !phoneConflictName.value &&
-    !isCheckingName.value &&
-    !isCheckingPhone.value
+    form.group_name !== props.customer.group_name ||
+    form.admin_name !== props.customer.admin_name ||
+    form.phone !== parsedPhone.phone ||
+    form.phone_country_code !== parsedPhone.phone_country_code ||
+    (form.address || '') !== (props.customer.address || '') ||
+    form.accent_color !== (props.customer.accent_color || '#B45F34') ||
+    form.is_active !== (props.customer.is_active ?? true)
   );
 });
 
@@ -737,13 +744,15 @@ const checkGroupName = async () => {
   }
 };
 
-const saveGeneralInfo = async () => {
+const saveGeneralInfo = async (options?: { silent?: boolean }) => {
   if (!canAdministerCustomerGroup.value) return;
   if (!props.customer) return;
+  if (!isGeneralDirty.value) return;
   const phone = nationalPhoneDigits(form.phone);
   if (!form.group_name.trim() || !form.admin_name.trim() || !phone) {
     return;
   }
+  if (isSavingGeneral.value || isCheckingName.value || isCheckingPhone.value) return;
   await checkGroupName();
   await checkPhone();
   if (nameConflict.value || !phoneVerified.value || phoneConflictName.value) return;
@@ -765,12 +774,28 @@ const saveGeneralInfo = async () => {
         ? form.is_active
         : (props.customer.is_active ?? true),
     });
-    showSuccessNotification('Customer details updated successfully.');
+    if (!options?.silent) {
+      showSuccessNotification('Customer details updated successfully.');
+    }
   } catch (err: any) {
     showErrorNotification(err?.message || 'Failed to update customer details.');
   } finally {
     isSavingGeneral.value = false;
   }
+};
+
+const autoSaveGeneral = async () => {
+  await saveGeneralInfo({ silent: true });
+};
+
+const onGroupNameBlur = async () => {
+  await checkGroupName();
+  await autoSaveGeneral();
+};
+
+const onPhoneBlur = async () => {
+  await checkPhone();
+  await autoSaveGeneral();
 };
 
 const openAddMemberDialog = () => {

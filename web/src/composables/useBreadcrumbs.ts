@@ -38,7 +38,7 @@ const DOMAIN_GROUPS: Record<string, string> = {
   membership: 'Memberships',
 };
 
-const ENTITY_MAP: Record<string, { label: string; singular: string; defaultSubPath?: string | undefined }> = {
+const ENTITY_MAP: Record<string, { label: string; singular: string; defaultSubPath?: string | undefined; skipIdCrumb?: boolean }> = {
   shipment: { label: 'Shipments', singular: 'Shipment' },
   'inbound-shipments': { label: 'Inbound Shipments', singular: 'Shipment' },
   inbound: { label: 'Inbound Shipments', singular: 'Shipment' },
@@ -47,7 +47,7 @@ const ENTITY_MAP: Record<string, { label: string; singular: string; defaultSubPa
   'stock-locations': { label: 'Stock Locations', singular: 'Stock Location' },
   'cargo-companies': { label: 'Cargo Companies', singular: 'Cargo Company' },
   'shipment-progress': { label: 'Shipment Progress', singular: 'Shipment Progress' },
-  shops: { label: 'Shops', singular: 'Shop' },
+  shops: { label: 'Shops', singular: 'Shop', skipIdCrumb: true },
   shipping: { label: 'Shipping', singular: 'Shipping' },
   orders: { label: 'Orders', singular: 'Order' },
   'dropship-orders': { label: 'Dropship Orders', singular: 'Dropship Order' },
@@ -72,6 +72,8 @@ const ACTION_MAP: Record<string, string> = {
   adjust: 'Cost Adjustments',
   settle: 'Payee Settlement',
   'add-catalog': 'Add Catalog',
+  setup: 'Config',
+  access: 'Access',
   settings: 'Settings',
   edit: 'Edit Details',
   create: 'Create New',
@@ -162,6 +164,7 @@ export function useBreadcrumbs() {
     const remainingSegments = isDomainGroup ? segments.slice(1) : segments;
     let accumulatedPath = isDomainGroup ? `${prefix}/${firstSeg}` : prefix;
     let lastEntitySingular = 'Item';
+    let skipIdCrumb = false;
 
     for (let i = 0; i < remainingSegments.length; i++) {
       const seg = remainingSegments[i] || '';
@@ -172,7 +175,10 @@ export function useBreadcrumbs() {
       const isIdParam = isNumericOrId(seg);
 
       if (isIdParam) {
-        // ID parameter segment: Transform raw ID into descriptive title
+        if (skipIdCrumb) {
+          continue;
+        }
+
         const metaHeaderTitle =
           typeof route.meta?.headerTitle === 'string' ? route.meta.headerTitle.trim() : '';
         const metaTitle = typeof route.meta?.title === 'string' ? route.meta.title.trim() : '';
@@ -184,9 +190,9 @@ export function useBreadcrumbs() {
           to: isLeaf ? undefined : accumulatedPath,
         });
       } else if (ENTITY_MAP[seg]) {
-        // Known Entity segment (e.g. 'shipment', 'shops', 'orders')
         const entity = ENTITY_MAP[seg]!;
         lastEntitySingular = entity.singular;
+        skipIdCrumb = Boolean(entity.skipIdCrumb);
 
         items.push({
           label: entity.label,

@@ -7,10 +7,14 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 const defaultFetch: typeof fetch = globalThis.fetch.bind(globalThis);
 const AUTH_RETRY_HEADER = 'x-brandwala-auth-retry';
 
-const readAuthAccessTenantId = (): { scope: string | null; tenantId: string | null } => {
+const readAuthAccessTenantId = (): {
+  scope: string | null;
+  tenantId: string | null;
+  customerGroupId: string | null;
+} => {
   const authRaw = window.localStorage.getItem('brandwala.auth.access.v4');
   if (!authRaw) {
-    return { scope: null, tenantId: null };
+    return { scope: null, tenantId: null, customerGroupId: null };
   }
 
   try {
@@ -18,14 +22,17 @@ const readAuthAccessTenantId = (): { scope: string | null; tenantId: string | nu
       scope?: string | null;
       tenant?: { id?: number | null } | null;
       member?: { tenantId?: number | null } | null;
+      customerGroup?: { id?: number | null } | null;
     };
     const tenantId = parsed?.tenant?.id ?? parsed?.member?.tenantId ?? null;
+    const customerGroupId = parsed?.customerGroup?.id ?? null;
     return {
       scope: parsed?.scope ?? null,
       tenantId: tenantId != null ? String(tenantId) : null,
+      customerGroupId: customerGroupId != null ? String(customerGroupId) : null,
     };
   } catch {
-    return { scope: null, tenantId: null };
+    return { scope: null, tenantId: null, customerGroupId: null };
   }
 };
 
@@ -66,14 +73,22 @@ const readSelectedTenantIdFromStorage = (): string | null => {
 
 const withSelectedTenantHeader = (init?: RequestInit): RequestInit | undefined => {
   const selectedTenantId = readSelectedTenantIdFromStorage();
+  const authAccess = typeof window === 'undefined' ? null : readAuthAccessTenantId();
+  const customerGroupId =
+    authAccess?.scope === 'shop' ? authAccess.customerGroupId : null;
 
-  if (!selectedTenantId) {
+  if (!selectedTenantId && !customerGroupId) {
     return init;
   }
 
   const nextInit = { ...init };
   const headers = new Headers(nextInit.headers);
-  headers.set('x-selected-tenant-id', selectedTenantId);
+  if (selectedTenantId) {
+    headers.set('x-selected-tenant-id', selectedTenantId);
+  }
+  if (customerGroupId) {
+    headers.set('x-selected-customer-group-id', customerGroupId);
+  }
   nextInit.headers = headers;
   return nextInit;
 };

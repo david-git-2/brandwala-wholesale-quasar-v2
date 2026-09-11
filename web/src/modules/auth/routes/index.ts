@@ -1,4 +1,5 @@
 import type { RouteRecordRaw } from 'vue-router';
+import { createShopSelectCompanyGuard } from '../guards/createShopAccessGuard';
 
 const authRoutes: RouteRecordRaw[] = [
   {
@@ -29,6 +30,16 @@ const authRoutes: RouteRecordRaw[] = [
         alias: '/shop/login',
         name: 'customer-login-page',
         component: () => import('../pages/CustomerLogin.vue'),
+        meta: {
+          authScope: 'shop',
+          requiredScope: 'shop',
+        },
+      },
+      {
+        path: '/:tenantSlug?/shop/select-company',
+        name: 'shop-select-company-page',
+        component: () => import('../pages/ShopCustomerGroupSelectPage.vue'),
+        beforeEnter: createShopSelectCompanyGuard(),
         meta: {
           authScope: 'shop',
           requiredScope: 'shop',

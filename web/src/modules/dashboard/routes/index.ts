@@ -6,6 +6,7 @@ import {
   getAppRouteLocation,
   getShopDashboardRouteLocation,
   getShopLoginRouteLocation,
+  getShopSelectCompanyRouteLocation,
   getTenantSlugFromRoute,
 } from 'src/modules/tenant/utils/tenantRouteContext';
 
@@ -81,12 +82,14 @@ const dashboardRoutes: RouteRecordRaw[] = [
             }),
           requiredScope: 'shop',
           requireTenantContext: true,
+          requireCustomerGroup: true,
+          missingCustomerGroupRoute: (to) =>
+            getShopSelectCompanyRouteLocation(to, {
+              redirect: to.fullPath,
+            }),
           allowedRoles: ['customer_admin', 'customer_manager', 'customer_staff'],
           validateAccess: ({ authStore, to }) => {
-            if (
-              authStore.actorType !== 'customer_group_member' ||
-              authStore.customerGroupId === null
-            ) {
+            if (authStore.actorType !== 'customer_group_member') {
               return getShopLoginRouteLocation(to, {
                 login_error: 'no_membership',
               });

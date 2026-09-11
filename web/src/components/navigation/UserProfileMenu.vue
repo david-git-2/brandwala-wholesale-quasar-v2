@@ -56,6 +56,18 @@
                 <q-item-label class="text-caption text-weight-medium">{{ contextValue }}</q-item-label>
               </q-item-section>
             </q-item>
+            <q-item
+              v-if="isShopScope && canSwitchCompany"
+              clickable
+              v-close-popup
+              data-test="shop-profile-switch-company"
+              @click="goSwitchCompany"
+            >
+              <q-item-section avatar class="q-pr-none" style="min-width: 28px">
+                <q-icon name="ph ph-arrows-left-right" size="xs" color="grey-6" />
+              </q-item-section>
+              <q-item-section>{{ $t('shop.switch_company') }}</q-item-section>
+            </q-item>
             <q-separator class="q-my-xs" />
           </template>
 
@@ -139,23 +151,29 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useAppearance } from 'src/composables/useAppearance';
 import AboutSystemDialog from 'src/components/navigation/AboutSystemDialog.vue';
+import { listShopLoginGroups } from 'src/modules/auth/utils/shopCustomerGroupSession';
+import { getShopSelectCompanyRouteLocation } from 'src/modules/tenant/utils/tenantRouteContext';
 
 const showAboutDialog = ref(false);
+const companyCount = ref(0);
 
 const emit = defineEmits<{
   (e: 'sign-out'): void;
 }>();
 
 const authStore = useAuthStore();
+const router = useRouter();
 const { locale } = useI18n();
 const { darkMode, setDarkMode, density, setDensity } = useAppearance();
 
 const isShopScope = computed(() => authStore.scope === 'shop');
+const canSwitchCompany = computed(() => isShopScope.value && companyCount.value > 1);
 
 const userName = computed(() => {
   return authStore.user?.fullName || authStore.user?.email?.split('@')[0] || 'User';
@@ -208,6 +226,22 @@ const setLocale = (newLocale: string) => {
 const onSignOut = () => {
   emit('sign-out');
 };
+
+const goSwitchCompany = () => {
+  void router.push(getShopSelectCompanyRouteLocation(router.currentRoute.value));
+};
+
+onMounted(async () => {
+  if (!isShopScope.value || !authStore.user?.email || authStore.tenantId == null) {
+    return;
+  }
+  try {
+    const groups = await listShopLoginGroups(authStore.user.email, authStore.tenantId);
+    companyCount.value = groups.length;
+  } catch {
+    companyCount.value = 0;
+  }
+});
 </script>
 
 <style scoped>

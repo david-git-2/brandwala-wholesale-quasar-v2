@@ -17,6 +17,12 @@
             />
             <span class="shop-shell__tenant-text shop-banner-font">{{ tenantName }}</span>
           </button>
+          <ShopCustomerGroupHeaderSwitcher
+            :current-name="companyName"
+            :current-id="authStore.customerGroupId"
+            :groups="loginGroups"
+            @switch-company="onSwitchCompany"
+          />
         </div>
 
         <nav class="shop-shell__nav" aria-label="Shop">
@@ -141,17 +147,26 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import UserProfileMenu from 'src/components/navigation/UserProfileMenu.vue';
 import ShopHeaderProductSearch from 'src/modules/shop_order/components/ShopHeaderProductSearch.vue';
 import CatalogShopHeaderSwitcher from 'src/modules/shop_order/components/CatalogShopHeaderSwitcher.vue';
+import ShopCustomerGroupHeaderSwitcher from 'src/modules/shop_order/components/ShopCustomerGroupHeaderSwitcher.vue';
 import { supabase } from 'src/boot/supabase';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { useActiveShopCartsQuery } from 'src/modules/shop_order/composables/useActiveShopCartsQuery';
 import { useCustomerShopsQuery } from 'src/modules/shop_order/composables/useShopQuery';
 import { useKobaCartStore } from 'src/modules/koba/retail/stores/kobaCartStore';
+import { clearShopOrderQueryCache } from 'src/query/queryClient';
+import { getShopDashboardRouteLocation } from 'src/modules/tenant/utils/tenantRouteContext';
+import {
+  bootstrapShopCustomerGroup,
+  listShopLoginGroups,
+  type ShopLoginGroupRow,
+} from 'src/modules/auth/utils/shopCustomerGroupSession';
 import {
   getLastVisitedShopId,
   rememberCatalogShop,
@@ -173,8 +188,12 @@ const $q = useQuasar();
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
+const tenantStore = useTenantStore();
 const kobaCartStore = useKobaCartStore();
 const { data: activeCarts } = useActiveShopCartsQuery();
+
+const loginGroups = ref<ShopLoginGroupRow[]>([]);
+const companyName = computed(() => authStore.customerGroup?.name ?? '');
 
 const showLogoutDialog = ref(false);
 const searchOpen = ref(false);
@@ -333,6 +352,65 @@ const goHome = () => {
   void router.push(shopHomePath(authStore.tenantSlug));
 };
 
+const loadLoginGroups = async () => {
+  const email = authStore.user?.email;
+  const tenantId = authStore.tenantId;
+  if (!email || tenantId == null) {
+    loginGroups.value = [];
+    return;
+  }
+  try {
+    loginGroups.value = await listShopLoginGroups(email, tenantId);
+  } catch (error) {
+    console.error('[shop] Failed to list companies for header', error);
+    loginGroups.value = [];
+  }
+};
+
+const onSwitchCompany = async (group: ShopLoginGroupRow) => {
+  const user = authStore.user;
+  const email = user?.email;
+  const tenantId = authStore.tenantId;
+  if (!user || !email || tenantId == null || group.customer_group_id === authStore.customerGroupId) {
+    return;
+  }
+
+  try {
+    const snapshot = await bootstrapShopCustomerGroup({
+      user,
+      email,
+      tenantId,
+      memberId: group.member_id,
+      createdAt: group.member_created_at,
+      updatedAt: group.member_updated_at,
+    });
+    if (!snapshot) {
+      return;
+    }
+    authStore.saveAccess({
+      ...snapshot,
+      savedAt: new Date().toISOString(),
+    });
+    tenantStore.hydrateSelectedTenantFromAuth(snapshot.tenant);
+    clearShopOrderQueryCache();
+    await router.replace(getShopDashboardRouteLocation(route, snapshot.tenant?.slug));
+    await loadLoginGroups();
+  } catch (error) {
+    console.error('[shop] Failed to switch company', error);
+  }
+};
+
+onMounted(() => {
+  void loadLoginGroups();
+});
+
+watch(
+  () => [authStore.user?.email, authStore.tenantId, authStore.customerGroupId] as const,
+  () => {
+    void loadLoginGroups();
+  },
+);
+
 const goToCatalog = () => {
   const tenantId = authStore.tenantId;
   const cartSlug = activeCartInfo.value?.shop_slug;
@@ -466,6 +544,10 @@ defineExpose({
 .shop-shell__left {
   justify-self: start;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.05rem;
 }
 
 .shop-shell__nav {

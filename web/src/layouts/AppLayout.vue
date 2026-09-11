@@ -4,21 +4,6 @@
       <AppBreadcrumbs />
     </template>
 
-    <template #header-center>
-      <!-- Quick Navigation Omnibar Trigger (Cmd + K) -->
-      <button
-        type="button"
-        class="header-search-trigger row items-center justify-between no-wrap q-px-sm"
-        @click="workspaceShellRef?.openCommandPalette()"
-      >
-        <div class="row items-center no-wrap text-grey-7">
-          <q-icon name="ph ph-magnifying-glass" size="13px" class="q-mr-xs text-grey-6" />
-          <span class="header-search-trigger__text">Search pages...</span>
-        </div>
-        <kbd class="header-search-trigger__kbd">⌘K</kbd>
-      </button>
-    </template>
-
     <template #header-extra>
       <div class="row items-center q-gutter-x-sm no-wrap">
         <!-- Modernized Workspace / Tenant Switcher Badge -->
@@ -212,44 +197,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.header-search-trigger {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  max-width: 200px;
-  height: 28px;
-  padding: 0 8px;
-  background: color-mix(in srgb, var(--bw-theme-surface, white) 70%, #f1f5f9 30%);
-  border: 1px solid color-mix(in srgb, var(--bw-theme-border, #e2e8f0) 85%, transparent);
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.15s ease-in-out;
-}
-
-.header-search-trigger:hover {
-  background: var(--bw-theme-surface, white);
-  border-color: var(--q-primary, #2563eb);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-.header-search-trigger__text {
-  font-size: 0.75rem;
-  color: #64748b;
-  letter-spacing: -0.01em;
-}
-
-.header-search-trigger__kbd {
-  font-size: 0.625rem;
-  font-family: inherit;
-  font-weight: 600;
-  color: #94a3b8;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 4px;
-  padding: 0px 4px;
-  line-height: 1.1;
-}
-
 .tenant-switcher-pill {
   font-weight: 600;
   font-size: 0.8125rem;
@@ -291,31 +238,6 @@ body.body--dark .tenant-switcher-pill__label {
 
 body.body--dark .tenant-switcher-pill :deep(.q-btn-dropdown__arrow) {
   color: #94a3b8;
-}
-
-body.body--dark .header-search-trigger {
-  background: #1e293b;
-  border-color: #334155;
-}
-
-body.body--dark .header-search-trigger:hover {
-  background: #0f172a;
-  border-color: #60a5fa;
-}
-
-body.body--dark .header-search-trigger__text {
-  color: #94a3b8;
-}
-
-body.body--dark .header-search-trigger__kbd {
-  background: #0f172a;
-  border-color: #334155;
-  color: #64748b;
-}
-
-body.body--dark .tenant-switcher-pill {
-  background: #1e293b;
-  border-color: #334155;
 }
 
 body.body--dark .bg-blue-1 {

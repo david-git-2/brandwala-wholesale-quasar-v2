@@ -21,22 +21,36 @@
           </q-btn>
         </div>
 
-        <q-input
-          v-model="searchModel"
-          filled
-          dense
-          type="text"
-          class="soft-input col"
-          :placeholder="$t('shop.search_this_shop')"
-          clearable
-          data-test="catalog-shop-search"
-          @keydown.enter="$emit('search')"
-          @clear="$emit('search')"
-        >
-          <template #prepend>
-            <q-icon name="ph ph-magnifying-glass" />
-          </template>
-        </q-input>
+        <div class="col">
+          <q-input
+            v-model="searchModel"
+            filled
+            dense
+            type="text"
+            class="soft-input"
+            :placeholder="$t('shop.search_this_shop')"
+            clearable
+            data-test="catalog-shop-search"
+            @keydown.enter="$emit('search')"
+            @clear="$emit('search')"
+          >
+            <template #prepend>
+              <q-icon name="ph ph-magnifying-glass" />
+            </template>
+          </q-input>
+        </div>
+
+        <div v-if="showFixedPriceChip" class="col-auto">
+          <q-chip
+            dense
+            square
+            size="sm"
+            class="fixed-price-chip text-weight-medium"
+            data-test="catalog-fixed-price-chip"
+          >
+            {{ $t('shop.fixed_price_catalog') }}
+          </q-chip>
+        </div>
       </div>
     </q-card>
 
@@ -103,6 +117,7 @@ const props = defineProps<{
   category: string | null;
   activeFilterCount: number;
   hasActiveFilters: boolean;
+  showFixedPriceChip?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -134,5 +149,11 @@ const searchModel = computed({
 .soft-input :deep(.q-field__control) {
   border-radius: 12px;
   background: color-mix(in srgb, var(--bw-theme-surface, #fff) 82%, transparent);
+}
+
+.fixed-price-chip {
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bw-theme-primary, #2a2b2a) 12%, #fff);
+  color: var(--bw-theme-ink, #2a2b2a);
 }
 </style>

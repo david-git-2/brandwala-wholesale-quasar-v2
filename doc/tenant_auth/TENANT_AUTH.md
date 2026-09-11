@@ -96,6 +96,7 @@ Action Grant Hierarchy:
   1. Route slug parameter (`getTenantSlugFromRoute`).
   2. Public domain hostname matching (`public_domain` for custom storefront domains).
   3. Last active selected tenant persisted in Pinia `useAuthStore`.
+  Shop login does **not** pick a tenant. Tenant stays on the URL / hostname. If the buyer belongs to more than one customer group on that tenant, they pick the company; the client sends `x-selected-customer-group-id`.
 * **Dynamic Navigation Filtration**: Navigation menu items and dashboard slots are filtered dynamically via `useModulePermissions().hasModuleAccess(moduleKey, action)`.
 
 ---

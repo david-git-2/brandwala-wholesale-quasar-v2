@@ -8,6 +8,7 @@ import {
   getShopDashboardRouteLocation,
   getTenantHostnameForEntry,
   getShopLoginRouteLocation,
+  getShopSelectCompanyRouteLocation,
   getTenantSlugFromRoute,
 } from 'src/modules/tenant/utils/tenantRouteContext';
 import { tenantService } from 'src/modules/tenant/services/tenantService';
@@ -18,10 +19,14 @@ import { clearShopOrderQueryCache } from 'src/query/queryClient';
 import {
   useAuthStore,
   type AuthAccessSnapshot,
-  type AuthCustomerGroupSnapshot,
   type AuthTenantSnapshot,
   type AuthUserSnapshot,
 } from '../stores/authStore';
+import { readLastShopCustomerGroupId } from '../utils/shopSelectedGroupStorage';
+import {
+  bootstrapShopCustomerGroup,
+  listShopLoginGroups,
+} from '../utils/shopCustomerGroupSession';
 
 export type AuthScope = 'platform' | 'app' | 'shop' | 'investor';
 
@@ -477,32 +482,19 @@ export function useOAuthLogin(
       return false;
     }
 
-    const { data, error } = await supabase.rpc('check_shop_login_access', {
-      p_email: userEmail,
-      p_tenant_id: entryTenant.id,
-    });
-
-    if (error) {
+    let matches;
+    try {
+      matches = await listShopLoginGroups(userEmail, entryTenant.id);
+    } catch (error) {
       console.error('[auth:shop] Login access check failed', error);
       await sendBackToLogin('Shop login access check failed', error);
       return false;
     }
 
-    const result = Array.isArray(data) ? data[0] : data;
-    const matchedRole = mapShopRoleToAccessRole(result?.matched_role ?? '');
-
-    if (
-      !result?.has_match ||
-      result.member_id === null ||
-      result.member_tenant_id === null ||
-      result.customer_group_id === null ||
-      !result.member_email ||
-      !matchedRole
-    ) {
+    if (matches.length === 0) {
       await sendBackToLogin(
         'No matching customer access found for this tenant route',
         {
-          result,
           tenantId: entryTenant.id,
           tenantSlug: entryTenant.slug,
         },
@@ -511,95 +503,101 @@ export function useOAuthLogin(
       return false;
     }
 
-    const { data: bootstrapData, error: bootstrapError } = await supabase.rpc(
-      'get_shop_bootstrap_context',
-      {
-        p_email: userEmail,
-        p_tenant_id: entryTenant.id,
-        p_customer_group_member_id: result.member_id,
-      },
-    );
+    const lastGroupId = readLastShopCustomerGroupId(userEmail, entryTenant.id);
+    const remembered =
+      lastGroupId != null
+        ? (matches.find((row) => row.customer_group_id === lastGroupId) ?? null)
+        : null;
+    const chosen = matches.length === 1 ? matches[0] : remembered;
 
-    if (bootstrapError) {
-      console.error('[auth:shop] Bootstrap fetch failed', bootstrapError);
-      await sendBackToLogin('Shop bootstrap fetch failed', bootstrapError);
-      return false;
-    }
-
-    const bootstrap = Array.isArray(bootstrapData) ? bootstrapData[0] : bootstrapData;
-    const bootstrapRole = mapShopRoleToAccessRole(bootstrap?.member_role ?? '');
-
-    if (
-      !bootstrap ||
-      bootstrap.member_id === null ||
-      bootstrap.customer_group_id === null ||
-      bootstrap.tenant_id === null ||
-      !bootstrap.customer_group_name ||
-      !bootstrap.tenant_name ||
-      !bootstrap.tenant_slug ||
-      !bootstrapRole
-    ) {
-      await sendBackToLogin('Shop bootstrap returned no usable context', bootstrap);
-      return false;
-    }
-
-    if (bootstrap.tenant_id !== entryTenant.id) {
-      await sendBackToLogin(
-        'Shop bootstrap tenant did not match the entry tenant',
-        {
-          bootstrap,
-          entryTenant,
+    if (!chosen) {
+      const first = matches[0];
+      const pendingRole = mapShopRoleToAccessRole(first?.matched_role ?? '') ?? 'customer_staff';
+      authStore.saveAccess({
+        scope: 'shop',
+        matchedRole: pendingRole,
+        user,
+        member: {
+          id: first?.member_id ?? 0,
+          email: userEmail,
+          role: pendingRole,
+          actorType: 'customer_group_member',
+          name: first?.member_name ?? null,
+          tenantId: entryTenant.id,
+          customerGroupId: null,
+          isActive: true,
+          createdAt: first?.member_created_at ?? null,
+          updatedAt: first?.member_updated_at ?? null,
         },
-        'wrong_tenant',
+        tenant: {
+          id: entryTenant.id,
+          name: entryTenant.name,
+          slug: entryTenant.slug,
+          isActive: true,
+        },
+        customerGroup: null,
+        activeModuleKeys: [],
+        effectiveGrants: [],
+        tenantRoleId: null,
+        isAdmin: false,
+        permissionVersion: null,
+        savedAt: new Date().toISOString(),
+      });
+      tenantStore.hydrateSelectedTenantFromAuth({
+        id: entryTenant.id,
+        slug: entryTenant.slug,
+      });
+
+      const redirectPath =
+        typeof route.query.redirect === 'string' ? route.query.redirect.trim() : '';
+      await router.replace(
+        getShopSelectCompanyRouteLocation(
+          route,
+          redirectPath ? { redirect: redirectPath } : undefined,
+        ),
       );
-      return false;
+      return true;
     }
 
-    logAuthContext('Shop customer access and bootstrap resolved', {
-      login: result,
-      bootstrap,
-    });
+    try {
+      const snapshot = await bootstrapShopCustomerGroup({
+        user,
+        email: userEmail,
+        tenantId: entryTenant.id,
+        memberId: chosen.member_id,
+        createdAt: chosen.member_created_at,
+        updatedAt: chosen.member_updated_at,
+      });
 
-    const tenant: AuthTenantSnapshot = {
-      id: bootstrap.tenant_id,
-      name: bootstrap.tenant_name,
-      slug: bootstrap.tenant_slug,
-      isActive: Boolean(bootstrap.tenant_is_active),
-    };
+      if (!snapshot) {
+        await sendBackToLogin('Shop bootstrap returned no usable context', chosen);
+        return false;
+      }
 
-    const customerGroup: AuthCustomerGroupSnapshot = {
-      id: bootstrap.customer_group_id,
-      name: bootstrap.customer_group_name,
-      isActive: Boolean(bootstrap.customer_group_is_active),
-      accentColor: bootstrap.customer_group_accent_color?.trim() || null,
-    };
+      if (snapshot.tenant?.id !== entryTenant.id) {
+        await sendBackToLogin(
+          'Shop bootstrap tenant did not match the entry tenant',
+          {
+            snapshot,
+            entryTenant,
+          },
+          'wrong_tenant',
+        );
+        return false;
+      }
 
-    await saveAndRedirect({
-      scope: 'shop',
-      matchedRole: bootstrapRole,
-      user,
-      member: {
-        id: bootstrap.member_id,
-        email: bootstrap.member_email?.trim().toLowerCase() ?? userEmail,
-        role: bootstrapRole,
-        actorType: 'customer_group_member',
-        name: bootstrap.member_name ?? null,
-        tenantId: bootstrap.tenant_id,
-        customerGroupId: bootstrap.customer_group_id,
-        isActive: Boolean(bootstrap.member_is_active),
-        createdAt: result.member_created_at ?? null,
-        updatedAt: result.member_updated_at ?? null,
-      },
-      tenant,
-      customerGroup,
-      activeModuleKeys: normalizeModuleKeys(bootstrap.active_module_keys),
-      effectiveGrants: bootstrap.effective_grants || [],
-      tenantRoleId: bootstrap.tenant_role_id ?? null,
-      isAdmin: Boolean(bootstrap.is_admin),
-      permissionVersion: bootstrap.permission_version ?? null,
-    });
+      logAuthContext('Shop customer access and bootstrap resolved', {
+        login: chosen,
+        snapshot,
+      });
 
-    return true;
+      await saveAndRedirect(snapshot);
+      return true;
+    } catch (error) {
+      console.error('[auth:shop] Bootstrap fetch failed', error);
+      await sendBackToLogin('Shop bootstrap fetch failed', error);
+      return false;
+    }
   };
 
   const processInvestorLogin = async (userEmail: string, user: AuthUserSnapshot) => {

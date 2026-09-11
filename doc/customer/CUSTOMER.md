@@ -56,8 +56,8 @@ Hub list / account RPCs use `customer_groups.parent_tenant_id` = books and skip 
 
 - **Books unique:** one `billing_profiles.phone` per `parent_tenant_id` (normalized). This is the company key for grouped and one-off profiles.
 - **Do not** put phone on `customer_groups`. Create copies name + phone onto the linked profile.
-- **Members:** unique email **inside one group** only (`customer_group_members_group_email_unique`). Many admins per group. No tenant-wide “one admin email.”
-- Drop target: `find_customer_admin_email_conflict` / tenant-wide admin-email trigger. Shop login is email + that shop’s grant.
+- **Members:** unique email **inside one group** only (`customer_group_members_group_email_unique`). Many admins per group. One email may sit in many groups of the same books tenant. Shop login is that email + this shop URL’s tenant; if more than one group is granted on that desk, the buyer picks the company.
+- Drop target: `find_customer_admin_email_conflict` / tenant-wide admin-email trigger. Shop login is email + that shop’s grant, or a company picker when several grants exist.
 
 ### Shop member roles
 

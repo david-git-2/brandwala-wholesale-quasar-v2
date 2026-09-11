@@ -57,6 +57,16 @@
               <h1 class="product-detail__title text-h5 text-weight-bold q-my-none">
                 {{ product.product_name }}
               </h1>
+              <q-chip
+                v-if="showFixedPriceChip"
+                dense
+                square
+                size="sm"
+                class="q-mt-sm text-weight-medium"
+                data-test="catalog-fixed-price-chip"
+              >
+                {{ $t('shop.fixed_price_catalog') }}
+              </q-chip>
 
               <dl class="product-detail__specs q-mt-md q-mb-md">
                 <div v-if="product.product_brand" class="product-detail__spec-row">
@@ -263,7 +273,7 @@ import { useShopProductDetailQuery } from '../composables/useShopProductDetailQu
 import { useShopProductRelatedQuery } from '../composables/useShopProductRelatedQuery';
 import { useShopCartQuery } from '../composables/useShopCartQuery';
 import { useShopCartMutations } from '../composables/useShopCartMutations';
-import { shopCatalogPath, shopCatalogProductPath } from '../utils/catalogShop';
+import { shopCatalogPath, shopCatalogProductPath, isFixedPriceCatalog } from '../utils/catalogShop';
 import { activeCartShopMetaFromShop } from '../utils/activeCartCacheUtils';
 import { resolveShopCartItemMoq } from '../utils/cartQuantityUtils';
 
@@ -307,6 +317,9 @@ const { addItemMutation, updateQtyMutation } = useShopCartMutations();
 
 const shopName = computed(() => shopDetails.value?.name || shopSlug.value);
 const shopType = computed(() => shopDetails.value?.shop_type ?? null);
+const showFixedPriceChip = computed(() =>
+  isFixedPriceCatalog(shopType.value, permissions.value?.can_negotiate),
+);
 
 const showProductUnitPrice = computed(() => {
   if (product.value?.unit_price_amount == null) return false;
