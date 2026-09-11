@@ -3265,72 +3265,59 @@ export type Database = {
         }
         Relationships: []
       }
-      procurement_placements: {
+      preorder_demand: {
         Row: {
           created_at: string
-          global_shipment_item_id: number | null
+          delivered_quantity: number
           id: number
           notes: string | null
-          placed_at: string
-          placed_by_user_id: string | null
-          quantity: number
+          placed_quantity: number
           source_id: number
-          source_type: Database["public"]["Enums"]["procurement_placement_source_type"]
-          status: string
+          source_type: Database["public"]["Enums"]["preorder_demand_source_type"]
+          stock_picks: Json
           tenant_id: number
           updated_at: string
-          vendor_code: string | null
+          updated_by_user_id: string | null
           vendor_id: number | null
         }
         Insert: {
           created_at?: string
-          global_shipment_item_id?: number | null
+          delivered_quantity?: number
           id?: never
           notes?: string | null
-          placed_at?: string
-          placed_by_user_id?: string | null
-          quantity: number
+          placed_quantity?: number
           source_id: number
-          source_type: Database["public"]["Enums"]["procurement_placement_source_type"]
-          status?: string
+          source_type: Database["public"]["Enums"]["preorder_demand_source_type"]
+          stock_picks?: Json
           tenant_id: number
           updated_at?: string
-          vendor_code?: string | null
+          updated_by_user_id?: string | null
           vendor_id?: number | null
         }
         Update: {
           created_at?: string
-          global_shipment_item_id?: number | null
+          delivered_quantity?: number
           id?: never
           notes?: string | null
-          placed_at?: string
-          placed_by_user_id?: string | null
-          quantity?: number
+          placed_quantity?: number
           source_id?: number
-          source_type?: Database["public"]["Enums"]["procurement_placement_source_type"]
-          status?: string
+          source_type?: Database["public"]["Enums"]["preorder_demand_source_type"]
+          stock_picks?: Json
           tenant_id?: number
           updated_at?: string
-          vendor_code?: string | null
+          updated_by_user_id?: string | null
           vendor_id?: number | null
         }
         Relationships: [
           {
-            foreignKeyName: "procurement_placements_global_shipment_item_id_fkey"
-            columns: ["global_shipment_item_id"]
-            isOneToOne: false
-            referencedRelation: "global_shipment_items"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "procurement_placements_tenant_id_fkey"
+            foreignKeyName: "preorder_demand_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "procurement_placements_vendor_id_fkey"
+            foreignKeyName: "preorder_demand_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendors"
@@ -9876,7 +9863,7 @@ export type Database = {
         }
         Returns: boolean
       }
-      can_access_procurement_placement_tenant: {
+      can_access_preorder_demand_tenant: {
         Args: { p_tenant_id: number }
         Returns: boolean
       }
@@ -10027,31 +10014,6 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "customer_demand_bucket_items"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
-      cancel_procurement_placement: {
-        Args: { p_placement_id: number; p_tenant_id: number }
-        Returns: {
-          created_at: string
-          global_shipment_item_id: number | null
-          id: number
-          notes: string | null
-          placed_at: string
-          placed_by_user_id: string | null
-          quantity: number
-          source_id: number
-          source_type: Database["public"]["Enums"]["procurement_placement_source_type"]
-          status: string
-          tenant_id: number
-          updated_at: string
-          vendor_code: string | null
-          vendor_id: number | null
-        }
-        SetofOptions: {
-          from: "*"
-          to: "procurement_placements"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -11403,7 +11365,7 @@ export type Database = {
       get_procurement_demand_open_qty: {
         Args: {
           p_source_id: number
-          p_source_type: Database["public"]["Enums"]["procurement_placement_source_type"]
+          p_source_type: Database["public"]["Enums"]["preorder_demand_source_type"]
         }
         Returns: {
           document_status: string
@@ -13604,39 +13566,6 @@ export type Database = {
         }
         Returns: Json
       }
-      record_procurement_placement: {
-        Args: {
-          p_notes?: string
-          p_quantity: number
-          p_source_id: number
-          p_source_type: Database["public"]["Enums"]["procurement_placement_source_type"]
-          p_tenant_id: number
-          p_vendor_code?: string
-          p_vendor_id?: number
-        }
-        Returns: {
-          created_at: string
-          global_shipment_item_id: number | null
-          id: number
-          notes: string | null
-          placed_at: string
-          placed_by_user_id: string | null
-          quantity: number
-          source_id: number
-          source_type: Database["public"]["Enums"]["procurement_placement_source_type"]
-          status: string
-          tenant_id: number
-          updated_at: string
-          vendor_code: string | null
-          vendor_id: number | null
-        }
-        SetofOptions: {
-          from: "*"
-          to: "procurement_placements"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
       record_recipient_invoice_collection: {
         Args: {
           p_amount: number
@@ -14250,6 +14179,10 @@ export type Database = {
           p_shipping_thana?: string
         }
         Returns: Json
+      }
+      sum_preorder_stock_picks: {
+        Args: { p_stock_picks: Json }
+        Returns: number
       }
       sync_dropship_tenant_b2b_invoice_from_order: {
         Args: { p_order_id: number }
@@ -15014,6 +14947,37 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      upsert_preorder_demand: {
+        Args: {
+          p_notes?: string
+          p_placed_quantity?: number
+          p_source_id: number
+          p_source_type: Database["public"]["Enums"]["preorder_demand_source_type"]
+          p_stock_picks?: Json
+          p_tenant_id: number
+          p_vendor_id?: number
+        }
+        Returns: {
+          created_at: string
+          delivered_quantity: number
+          id: number
+          notes: string | null
+          placed_quantity: number
+          source_id: number
+          source_type: Database["public"]["Enums"]["preorder_demand_source_type"]
+          stock_picks: Json
+          tenant_id: number
+          updated_at: string
+          updated_by_user_id: string | null
+          vendor_id: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "preorder_demand"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       upsert_recipient_profile_and_address: {
         Args: {
           p_address?: string
@@ -15542,6 +15506,10 @@ export type Database = {
         Returns: boolean
       }
       user_is_tenant_admin: { Args: { p_tenant_id: number }; Returns: boolean }
+      validate_preorder_stock_picks: {
+        Args: { p_stock_picks: Json }
+        Returns: boolean
+      }
       void_global_invoice: {
         Args: { p_invoice_id: number }
         Returns: undefined
@@ -15628,7 +15596,7 @@ export type Database = {
         | "parent_only"
         | "child_and_parent"
         | "assignee_only"
-      procurement_placement_source_type: "shop_order_item" | "pbc_costing_item"
+      preorder_demand_source_type: "shop_order_item" | "pbc_costing_item"
       retail_billing_mode: "account" | "direct"
       shipment_investment_status: "active" | "closed" | "cancelled"
       shop_cart_status: "active" | "converted" | "abandoned"
@@ -15904,10 +15872,7 @@ export const Constants = {
         "child_and_parent",
         "assignee_only",
       ],
-      procurement_placement_source_type: [
-        "shop_order_item",
-        "pbc_costing_item",
-      ],
+      preorder_demand_source_type: ["shop_order_item", "pbc_costing_item"],
       retail_billing_mode: ["account", "direct"],
       shipment_investment_status: ["active", "closed", "cancelled"],
       shop_cart_status: ["active", "converted", "abandoned"],

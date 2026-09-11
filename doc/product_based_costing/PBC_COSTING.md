@@ -1,31 +1,34 @@
 # Product-Based Costing (PBC) & Demand Backlog Module
 
-The **Product-Based Costing (PBC)** domain manages B2B pre-order costing files, dynamic item pricing formulas, customer demand backlog tracking, and downstream demand handoff to parent procurement shipments.
+The **Product-Based Costing (PBC)** domain manages B2B pre-order costing files, dynamic item pricing formulas, customer demand backlog tracking, and downstream sourcing via the same Demand desk as catalog shop orders.
 
 ---
 
-## 1. Domain Architecture & The Demand-to-Shipment Flow
+## 1. Domain Architecture & After-confirm flow
 
-Costing files allow sister concerns (child tenants) to assemble custom product quotes for buyers, negotiate quantities, and transfer confirmed demand directly into parent inbound shipments:
+Costing files let sister concerns assemble quotes and lock demand. After `confirmed`, PBC uses the **same three statuses** as catalog orders ([`CATALOG_NEGOTIATION.md`](../shop_order/CATALOG_NEGOTIATION.md) §2.1). Vendor proforma / vendor invoice / inbound cargo live on the **Shipment** module — they do **not** move the file status.
 
 ```mermaid
 flowchart TD
-    subgraph ChildPBC ["1. Child Costing & Negotiation (PBC)"]
-        CF["Costing File (product_based_costing_files)"] --> ITEMS["Costing Line Items (product_based_costing_items)"]
-        ITEMS --> QUOTE["Customer Quote & Acceptance"]
+    subgraph ChildPBC ["1. Quote"]
+        CF["Costing File"] --> ITEMS["Line items"]
+        ITEMS --> QUOTE["Customer accepts → confirmed"]
     end
 
-    subgraph BacklogEngine ["2. Demand Backlog Engine"]
-        QUOTE -->|confirmed_qty - ordered_qty| BL["Open Backlog (customer_demand_bucket_items — see DEMAND_BUCKET.md)"]
-        BL -->|Auto-Suggest Drawer| CF
+    subgraph Demand ["2. Demand desk — same as catalog"]
+        QUOTE --> PR["status: procuring<br/>placements: vendor + ordered qty"]
+        PR --> SHIP["Inbound shipment from vendor proforma<br/>status stays procuring"]
+        SHIP --> RFS["status: ready_for_shipment<br/>fulfill from warehouse stock + customer invoice"]
+        RFS --> DEL["status: delivered"]
     end
 
-    subgraph ParentHandoff ["3. Parent Inbound Shipment Handoff"]
-        QUOTE -->|File reaches procuring then ready_for_shipment| READY["Ready for Shipment Queue"]
-        READY -->|add_child_line_to_parent_shipment| SHIP["Parent Inbound Shipment (global_shipment_items)"]
-        SHIP --> STAMP["Child Item marked on_shipment + assigned_shipment_id"]
+    subgraph BacklogEngine ["3. Waiting list (shortfall only)"]
+        DEL -->|ordered − delivered| BL["Open bucket — DEMAND_BUCKET.md"]
+        BL -->|Pop into next file| CF
     end
 ```
+
+Treat Demand + Shipment as the tracker. `add_child_line_to_parent_shipment` is an **optional** inbound helper, not the customer-file status machine.
 
 ---
 
@@ -38,19 +41,20 @@ $$\text{Item Unit Cost GBP} = \text{Web Base Price} + \text{Delivery Surcharge} 
 
 $$\text{Quoted Unit Price BDT} = (\text{Item Unit Cost GBP} \times \text{FX Transaction Rate}) \times (1 + \text{Customer Group Markup Rate})$$
 
-### 2.2 Demand Backlog Engine
-Unfulfilled customer demand automatically forms a reusable demand backlog attached to the customer's `billing_profile_id`. **Target shared model:** [`doc/shop_order/DEMAND_BUCKET.md`](../shop_order/DEMAND_BUCKET.md) (`customer_demand_bucket_items`). Until migration, PBC uses `product_based_costing_backlog_items`.
+### 2.2 Customer group backlog bucket
 
-Legacy PBC-only rules (to be unified):
+Products the customer ordered but could not receive are stored in **`customer_group_backlog_bucket_items`** ([`DEMAND_BUCKET.md`](../shop_order/DEMAND_BUCKET.md)), keyed by **`customer_group_id`** + **`product_id`**. Retired: `product_based_costing_backlog_items`, `customer_order_backlog_items`, interim `customer_demand_bucket_items`.
 
-| Line Outcome | Item Status | Backlog Action | Eligible for Parent Shipment |
+| Line Outcome | Item Status | Bucket action (`source_type = pbc_costing_item`) | Eligible for parent shipment |
 | :--- | :--- | :--- | :---: |
-| **Fully Fulfilled** | `accepted` (`ordered_qty = confirmed_qty`) | Clear backlog record | **YES** (`ordered_qty`) |
-| **Partially Fulfilled** | `partial` (`0 < ordered_qty < confirmed_qty`)| Upsert backlog (`confirmed_qty - ordered_qty`) | **YES** (`ordered_qty`) |
-| **Out of Stock / Unavailable** | `unavailable` (`ordered_qty = 0`) | Upsert backlog (`confirmed_qty`) | **NO** |
+| **Fully Fulfilled** | `accepted` (`ordered_qty = confirmed_qty`) | No bucket row | **YES** (`ordered_qty`) |
+| **Partially Fulfilled** | `partial` (`0 < ordered_qty < confirmed_qty`) | `add_customer_group_backlog_bucket_item` (`confirmed_qty − ordered_qty`) | **YES** (`ordered_qty`) |
+| **Out of Stock / Unavailable** | `unavailable` (`ordered_qty = 0`) | `add_customer_group_backlog_bucket_item` (`confirmed_qty`) | **NO** |
 | **Customer Rejected** | `rejected` | None | **NO** |
 
-* **One-Click Add**: The auto-suggest drawer ([`PbcBacklogSuggestDrawer.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/product_based_costing/components/PbcBacklogSuggestDrawer.vue)) enables ops staff to pull open backlog into new costing batches with zero retyping.
+Bucket insert on document **`delivered`** is the source of truth ([`DEMAND_BUCKET.md`](../shop_order/DEMAND_BUCKET.md)). The “parent shipment” column is leftover line-level eligibility — inbound cargo is recorded on the Shipment module **during `procuring`**, not by waiting for `ready_for_shipment`.
+
+* **One-Click Add**: [`PbcBacklogSuggestDrawer.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/product_based_costing/components/PbcBacklogSuggestDrawer.vue) lists **`list_customer_group_backlog_bucket_items`** for the file’s `customer_group_id` and **pops** selected rows into the costing file.
 
 ### 2.3 Costing file status model (`product_based_costing_files.status`)
 
@@ -68,9 +72,9 @@ Quote and negotiation phases are **unchanged**. Procurement phases are **aligned
 
 | Status | Who acts | Meaning |
 | :--- | :--- | :--- |
-| `procuring` | Staff | Buying from vendor / placing order with supplier |
-| `ready_for_shipment` | Staff | Procurement complete; lines eligible for parent inbound shipment pull |
-| `delivered` | Staff | Goods received / file closed from customer view |
+| `procuring` | Staff | Buying from vendor. Demand desk Procuring tab — vendor + ordered qty. **Stay here** through PO, vendor proforma, vendor invoice, and inbound cargo ([`CATALOG_NEGOTIATION.md`](../shop_order/CATALOG_NEGOTIATION.md) stay-procuring table). |
+| `ready_for_shipment` | Staff | Buying done. Demand desk Ready tab: delivered qty from stock + **customer** invoice ([`PROCUREMENT_DEMAND_LIST.md`](../shop_order/PROCUREMENT_DEMAND_LIST.md) §2.5). |
+| `delivered` | Staff | File closed from customer view. Shortfall → waiting list. |
 | `cancelled` | Either | Voided at any step |
 
 ```text
@@ -96,9 +100,23 @@ flowchart LR
 | `invoicing` | Remove from file workflow — billing via `global_invoices` (see [`SALES_INVOICE.md`](../sales_invoice/SALES_INVOICE.md)) |
 | `ordered` | Do not use on PBC files (catalog legacy only) |
 
-**Parent shipment pull** still requires `ready_for_shipment` (`add_child_line_to_parent_shipment`).
+**Inbound shipment** is created on the Shipment module **while the file is `procuring`** (from the vendor proforma). Vendor PO qty is logged on [`preorder_demand`](../shop_order/PROCUREMENT_DEMAND_LIST.md) (`placed_quantity`). `add_child_line_to_parent_shipment` is leftover tooling — do not wait for `ready_for_shipment` just to record a proforma.
 
-**Aggregated procurement desk:** [`PROCUREMENT_DEMAND_LIST.md`](../shop_order/PROCUREMENT_DEMAND_LIST.md) — RPC `list_procurement_demand_groups`.
+**Aggregated Demand desk:** [`PROCUREMENT_DEMAND_LIST.md`](../shop_order/PROCUREMENT_DEMAND_LIST.md) — one `preorder_demand` row per line: vendor + `placed_quantity` (Procuring), `stock_picks` + `delivered_quantity` + invoice (Ready).
+
+#### Customer-facing copy (same as catalog)
+
+PBC has no shop order-tracking page. If the customer asks, use the catalog sentences. Do not show DB enum names or vendor paperwork.
+
+| DB status | What to tell the customer |
+| :--- | :--- |
+| `pending` | Draft — not sent yet |
+| `offered` | Please review the quote |
+| `confirmed` | Quote accepted — we will source it |
+| `procuring` | **We're sourcing your items** (covers PO, proforma, vendor invoice, cargo) |
+| `ready_for_shipment` | **On the way** |
+| `delivered` | **Delivered** |
+| `cancelled` | **Cancelled** |
 
 ---
 
@@ -118,8 +136,8 @@ flowchart LR
 | :--- | :--- | :--- | :--- |
 | **`ProductBasedCostingPage`** | Mount / Filter Change | `useProductBasedCostingFilesQuery()` $\rightarrow$ `Table: product_based_costing_files` | `staleTime: 30s`, Key: `['productBasedCosting', 'files', params]` |
 | **`ProductBasedCostingFileDialog`**| Create New Costing Batch| `useProductBasedCostingFileMutations()` $\rightarrow$ `RPC: create_costing_file` | Invalidates `['productBasedCosting', 'files']` |
-| **`PbcBacklogSuggestDrawer`** | Mount / Profile Select | `usePbcBacklog()` $\rightarrow$ `Table: product_based_costing_backlog_items` | `staleTime: 15s`, Key: `['productBasedCosting', 'backlog', billingProfileId]` |
-| **`PbcBacklogSuggestDrawer`** | Pull Backlog into File | `useProductBasedCostingItemMutations()` $\rightarrow$ `RPC: add_pbc_backlog_to_file` | Invalidates backlog & costing items |
+| **`PbcBacklogSuggestDrawer`** | Mount / group select | `list_customer_group_backlog_bucket_items` | Key: `['customerGroupBacklogBucket', customerGroupId]` |
+| **`PbcBacklogSuggestDrawer`** | Pull waiting list into file | `pop_customer_group_backlog_bucket_item(s)` + add costing lines | Invalidates backlog bucket & costing items |
 | **Parent Shipment UI** | Pull PBC Lines to Cargo | `useProcurementStockMutations` $\rightarrow$ `RPC: add_child_line_to_parent_shipment` | Links `assigned_shipment_id` & marks `on_shipment` |
 
 ---
@@ -131,4 +149,4 @@ Server state keys are centralized in [`productBasedCostingQueryKeys.ts`](file://
 * `productBasedCostingQueryKeys.files(params)` $\rightarrow$ `['productBasedCosting', 'files', params]`
 * `productBasedCostingQueryKeys.fileDetails(id)` $\rightarrow$ `['productBasedCosting', 'fileDetails', id]`
 * `productBasedCostingQueryKeys.fileItems(fileId)` $\rightarrow$ `['productBasedCosting', 'fileItems', fileId]`
-* `productBasedCostingQueryKeys.backlog(profileId)` $\rightarrow$ `['productBasedCosting', 'backlog', profileId]`
+* Customer group backlog bucket (PBC drawer): `['customerGroupBacklogBucket', customerGroupId]` — see [`DEMAND_BUCKET.md`](../shop_order/DEMAND_BUCKET.md)

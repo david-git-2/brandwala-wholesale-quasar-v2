@@ -1,8 +1,13 @@
 # Procurement Demand List — Aggregated Items Desk
 
-Staff-facing **aggregated procurement list**: line items from **catalog shop orders** and/or **PBC costing files** in the same procurement phase, grouped by source document for buying and shipment planning.
+Staff-facing **two-phase demand desk** for **catalog shop orders** and/or **PBC costing files**, grouped by source document:
 
-**Related:** [`CATALOG_NEGOTIATION.md`](./CATALOG_NEGOTIATION.md) (order statuses) · [`PBC_COSTING.md`](../product_based_costing/PBC_COSTING.md) (file statuses) · [`DEMAND_BUCKET.md`](./DEMAND_BUCKET.md) (customer waiting list) · [`PROCUREMENT_STOCK.md`](../procurement_stock/PROCUREMENT_STOCK.md) (inbound shipments)
+1. **Procuring** — log **vendor + place order qty** on `preorder_demand.placed_quantity`.
+2. **Ready for shipment** — pick **stock** into `preorder_demand.stock_picks`, set **delivered qty**, create **invoice lines**.
+
+One aggregated queue instead of opening each order or costing file separately.
+
+**Related:** [`CATALOG_NEGOTIATION.md`](./CATALOG_NEGOTIATION.md) (order statuses) · [`PBC_COSTING.md`](../product_based_costing/PBC_COSTING.md) (file statuses) · [`DEMAND_BUCKET.md`](./DEMAND_BUCKET.md) (customer waiting list) · [`PROCUREMENT_STOCK.md`](../procurement_stock/PROCUREMENT_STOCK.md) (inbound shipments) · [`CREATE_INVOICE_FROM_PAYLOAD_RPC.md`](../sales_invoice/CREATE_INVOICE_FROM_PAYLOAD_RPC.md) (invoice create)
 
 ---
 
@@ -10,11 +15,17 @@ Staff-facing **aggregated procurement list**: line items from **catalog shop ord
 
 | Problem | This desk |
 | :--- | :--- |
-| Staff must open each shop order and each costing file separately | One screen of **all lines** to source now |
+| Staff must open each shop order and each costing file separately | One screen unions **both sources** by procurement status |
+| No shared log of vendor PO qty | **Procuring tab:** vendor + **place order qty** → `preorder_demand` |
+| No single place to fulfill from stock + invoice | **Ready tab:** stock picks + **delivered qty** on same `preorder_demand` row + invoice |
+| Hard to see what was ordered vs what left the warehouse | Per line: `placed_quantity` vs `delivered_quantity` on `preorder_demand` |
 | Parent tenant manages multiple child concerns | Optional filter by child `tenant_id` |
-| Tenant uses only shop orders, only PBC, or both | RPC includes **only sources that exist** for that tenant |
 
-This is **not** the customer demand bucket (shortfalls from past orders). It is **active demand** on documents already in procurement.
+**Tab 1 — `procuring`:** lines appear after the document enters procurement. Staff record what they bought from suppliers.
+
+**Tab 2 — `ready_for_shipment`:** lines appear after staff mark the document ready (buying done, stock available). Staff pick warehouse stock, enter **delivered quantity**, and **create or extend a sales invoice** for that order / costing file customer. Each save links stock → invoice line → source line.
+
+This is **not** the customer demand bucket (shortfalls from past orders).
 
 ---
 
@@ -22,59 +33,65 @@ This is **not** the customer demand bucket (shortfalls from past orders). It is 
 
 ```mermaid
 flowchart TD
-  subgraph Sources ["Demand sources (per tenant)"]
-    SO["Catalog shop orders<br/>status: procuring / ready_for_shipment"]
-    PBC["PBC costing files<br/>status: procuring / ready_for_shipment"]
+  subgraph Tab1 ["Tab: Procuring"]
+    SO1["Documents status: procuring"]
+    PP["preorder_demand<br/>vendor + placed_quantity"]
+    ACT1["Staff: vendor + qty → save"]
   end
 
-  subgraph Placements ["Vendor order log (new)"]
-    PP["procurement_placements<br/>vendor + qty + notes per demand line"]
+  subgraph Advance ["Document advance"]
+    RFS["status → ready_for_shipment"]
   end
 
-  subgraph RPC ["list_procurement_demand_groups (extended)"]
-    UNION["Union open demand lines<br/>filter by p_procurement_status"]
-    JOIN["LEFT JOIN active placements<br/>per source_type + source_id"]
-    GROUP["Group by document_id<br/>shop_order | pbc_costing_file"]
+  subgraph Tab2 ["Tab: Ready for shipment"]
+    SO2["Documents status: ready_for_shipment"]
+    PF["preorder_demand<br/>stock_picks + delivered_quantity + invoice"]
+    INV["sales_invoices / sales_invoice_items"]
+    ACT2["Staff: pick stock + delivered qty<br/>→ invoice line + fulfillment row"]
   end
 
-  subgraph Write ["record_procurement_placement"]
-    SAVE["Staff logs vendor PO<br/>no shipment required"]
+  subgraph RPC ["list_procurement_demand_groups"]
+    LIST["Filter by p_procurement_status<br/>procuring | ready_for_shipment"]
   end
 
-  subgraph Later ["When proforma arrives (later phase)"]
-    SHIP["global_shipment_items + sections"]
-  end
-
-  subgraph UI ["Procurement Demand Desk (app)"]
-    LIST["Grouped table / cards<br/>need · placed · remaining"]
-    ACT["Record placement · advance status"]
-  end
-
-  SO --> UNION
-  PBC --> UNION
-  PP --> JOIN
-  UNION --> JOIN
-  JOIN --> GROUP
-  GROUP --> LIST
-  LIST --> ACT
-  ACT --> SAVE
-  SAVE --> PP
-  PP -.->|optional link| SHIP
+  SO1 --> LIST
+  SO2 --> LIST
+  LIST --> ACT1
+  LIST --> ACT2
+  ACT1 --> PP
+  PP --> RFS
+  RFS --> SO2
+  ACT2 --> PF
+  ACT2 --> INV
+  PF --> INV
 ```
 
-**Placement vs shipment:** staff record **what they ordered from the vendor** in `procurement_placements`. Inbound **shipments** are built later from the proforma — one PO may split across shipments, or one shipment may mix many POs. Do **not** create a shipment when staff only places a vendor order.
+**One row per demand line:** `preorder_demand` holds vendor PO qty (`placed_quantity`) and customer delivery (`delivered_quantity` + `stock_picks`) on the same source line (`source_type` + `source_id`). Inbound **parent shipments** (`global_shipment_items`) remain on the Shipment module when a vendor proforma exists.
 
-### 2.1 Shared procurement statuses (filter)
+Four records, one customer paper:
 
-Only documents in these statuses appear (aligned across catalog orders and PBC — see negotiation / PBC docs):
+| Record | Table / module | Role |
+| :--- | :--- | :--- |
+| Customer document | `shop_orders` / `product_based_costing_files` | Status: `procuring` → `ready_for_shipment` → `delivered` |
+| Vendor PO + delivery log | `preorder_demand` | Demand desk (both tabs) |
+| Vendor cargo | Shipment module | Proforma, vendor invoice, receive, warehouse stock |
+| Customer invoice | `sales_invoices` / `sales_invoice_items` | Created from Ready tab |
 
-| `p_procurement_status` | Meaning |
-| :--- | :--- |
-| `procuring` | Buying / placing order with supplier |
-| `ready_for_shipment` | Ready for parent inbound shipment handoff |
-| `delivered` | Optional history tab — closed lines |
+Catalog and PBC share this path after `confirmed`. In-stock (`fixed_price`) shops do **not**.
+
+**Do not** change document status when the vendor sends a proforma or final invoice — see [`CATALOG_NEGOTIATION.md`](./CATALOG_NEGOTIATION.md) stay-procuring table. Customer copy: `procuring` → **We're sourcing your items**; `ready_for_shipment` → **On the way**.
+
+### 2.1 Document status → Demand tab
+
+| `p_procurement_status` | Demand tab | Staff action |
+| :--- | :--- | :--- |
+| `procuring` | **Procuring** | Vendor + **place order qty** → `upsert_preorder_demand` (`placed_quantity`) |
+| `ready_for_shipment` | **Ready for shipment** | Stock picks + **delivered qty** → `upsert_preorder_demand` + invoice |
+| `delivered` | *(not on Demand desk)* | Closed — view on order / costing file detail |
 
 Pre-procurement (`submitted`, `priced`, `confirmed` on orders; `pending`, `offered` on PBC) **excludes** lines from this list.
+
+**RPC:** `list_procurement_demand_groups` is called with `p_procurement_status` matching the active tab (`procuring` or `ready_for_shipment`).
 
 **Legacy alias mapping (transition):** RPCs normalize document status before filtering so old rows still appear until backfilled:
 
@@ -107,99 +124,143 @@ A line is returned when:
 
 Exact open-qty rules follow implementation migration (`confirmed_quantity` on shop order lines; PBC excludes lines with `assigned_shipment_id` set).
 
-### 2.4 Procurement placements (vendor order log)
+### 2.4 Procurement placements (vendor + ordered qty)
 
-Staff need to record **where** and **how much** they ordered from a supplier **before** a proforma or inbound shipment exists.
+On the Demand desk, staff **select vendor and ordered quantity** for each line and save. This is the vendor order log **before** a proforma or inbound shipment exists.
+
+| UI field | Stored as |
+| :--- | :--- |
+| Vendor (dropdown) | `vendor_id` on `preorder_demand` |
+| Place order qty | `placed_quantity` on `preorder_demand` |
+| Note (optional) | `notes` |
 
 | Store here | Do **not** store here |
 | :--- | :--- |
-| Vendor PO qty, vendor code/id, notes, who/when | `meta` on `shop_order_items` / `product_based_costing_items` |
+| Vendor, ordered qty, notes, who/when | `meta` on `shop_order_items` / `product_based_costing_items` |
 | One row per placement (split vendors OK) | Draft `global_shipment_items` at order time |
 
-**Demand** (need) stays on shop order / PBC lines. **Placed** qty is the sum of active `procurement_placements` rows for that line. **Remaining** = need − placed (floor at 0).
+**Need** comes from the shop order / PBC line (`need_quantity`). **Placed** is the sum of active placement rows. **Remaining** = need − placed (floor at 0). Staff repeat vendor + qty until remaining is 0 or they advance the document to **`ready_for_shipment`**.
+
+### 2.5 Ready for shipment — delivered qty, stock, and invoice
+
+When the document is **`ready_for_shipment`**, the Ready tab shows the same grouped lines. Staff fulfill from **warehouse stock** and bill the customer in one flow.
+
+| UI field | Stored as |
+| :--- | :--- |
+| Stock rows (multi-pick) | `stock_picks` jsonb on `preorder_demand` |
+| Delivered qty | `delivered_quantity` (= sum of `stock_picks[].quantity`) |
+| Invoice | `sales_invoices` / `sales_invoice_items` (separate RPC on create) |
+
+| Compare | Source |
+| :--- | :--- |
+| **Ordered** (reference) | `preorder_demand.placed_quantity` (capped by `need_quantity`) |
+| **Delivered** | `preorder_demand.delivered_quantity` |
+| **Remaining to deliver** | `greatest(placed_quantity − delivered_quantity, 0)` |
+
+**Invoice rules (target):**
+
+- One invoice per document group is typical — create draft via `create_sales_invoice_from_payload` on first fulfillment, then add lines on later fulfillments for the same `document_type` + `document_id`.
+- `billing_profile_id` comes from the shop order or PBC costing file.
+- Each fulfillment RPC adds one `sales_invoice_items` row (stock-backed: `global_stock_id`, qty, sell price from order line / costing line) and deducts stock ATP atomically with the fulfillment row.
+- `links.shop_order_id` or `links.pbc_costing_file_id` on the invoice payload ties treasury back to the source document.
+
+**Do not** store delivered qty on `shop_order_items` / `product_based_costing_items` as source of truth — same pattern as placements (separate table, linked by `source_type` + `source_id`).
+
+**Bucket (shortfall):** when the document moves to **`delivered`**, **`sync_customer_group_backlog_from_delivered_document`** compares `placed_quantity` vs `delivered_quantity` per line; any gap is inserted into **`customer_group_backlog_bucket_items`**. See [`DEMAND_BUCKET.md`](./DEMAND_BUCKET.md) §2.
 
 ---
 
-## 3. Schema: `procurement_placements`
+## 3. Schema: `preorder_demand`
 
-**Domain:** `procurement_stock` (same module as shipments). **Location:** `supabase/schemas/procurement/`.
+**Domain:** `procurement_stock`. **Location:** `supabase/schemas/procurement/`.
+
+Replaces **`procurement_placements`** and the planned **`procurement_fulfillments`** table. **One row per demand line** (`source_type` + `source_id` unique).
 
 ### 3.1 Enum
 
 ```sql
-CREATE TYPE public.procurement_placement_source_type AS ENUM (
+CREATE TYPE public.preorder_demand_source_type AS ENUM (
   'shop_order_item',
   'pbc_costing_item'
 );
 ```
 
-Reuse the same two source keys as the demand list RPC (`source_type` + `source_id`).
-
 ### 3.2 Table
 
 ```sql
-CREATE TABLE public.procurement_placements (
-  id                          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  tenant_id                   bigint NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
-  source_type                 public.procurement_placement_source_type NOT NULL,
-  source_id                   bigint NOT NULL,
-  vendor_id                   bigint REFERENCES public.vendors(id) ON DELETE SET NULL,
-  vendor_code                 text,                    -- snapshot / free-text when vendor not linked
-  quantity                    integer NOT NULL,
-  notes                       text,
-  placed_by_user_id           uuid REFERENCES auth.users(id) ON DELETE SET NULL,
-  placed_at                   timestamptz NOT NULL DEFAULT now(),
-  status                      text NOT NULL DEFAULT 'active'
-    CHECK (status IN ('active', 'cancelled')),
-  global_shipment_item_id     bigint REFERENCES public.global_shipment_items(id) ON DELETE SET NULL,
-  created_at                  timestamptz NOT NULL DEFAULT now(),
-  updated_at                  timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT procurement_placements_quantity_check CHECK (quantity > 0)
+CREATE TABLE public.preorder_demand (
+  id                   bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  tenant_id            bigint NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
+  source_type          public.preorder_demand_source_type NOT NULL,
+  source_id            bigint NOT NULL,
+  vendor_id            bigint REFERENCES public.vendors(id) ON DELETE SET NULL,
+  placed_quantity      integer NOT NULL DEFAULT 0,
+  delivered_quantity   integer NOT NULL DEFAULT 0,
+  stock_picks          jsonb NOT NULL DEFAULT '[]'::jsonb,
+  notes                text,
+  updated_by_user_id   uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at           timestamptz NOT NULL DEFAULT now(),
+  updated_at           timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT preorder_demand_source_unique UNIQUE (source_type, source_id),
+  CONSTRAINT preorder_demand_placed_quantity_check CHECK (placed_quantity >= 0),
+  CONSTRAINT preorder_demand_delivered_quantity_check CHECK (delivered_quantity >= 0),
+  CONSTRAINT preorder_demand_delivered_lte_placed_check CHECK (delivered_quantity <= placed_quantity),
+  CONSTRAINT preorder_demand_stock_picks_is_array CHECK (jsonb_typeof(stock_picks) = 'array')
 );
 ```
 
-| Column | Notes |
-| :--- | :--- |
-| `tenant_id` | Child tenant that owns the demand line (resolved from source row on insert) |
-| `vendor_id` / `vendor_code` | Optional; either or both may be null |
-| `quantity` | Units ordered in **this** placement (multiple rows per line allowed) |
-| `notes` | Staff note (PO ref, urgency, substitute, etc.) |
-| `status` | `active` counts toward `placed_quantity`; `cancelled` is audit-only |
-| `global_shipment_item_id` | **Optional**, set later when proforma line is created on inbound shipment |
+| Column | UI mapping | Notes |
+| :--- | :--- | :--- |
+| `source_type` / `source_id` | Line key | `shop_order_item.id` or `pbc_costing_item.id` |
+| `vendor_id` | Vendor column | Set on Procuring tab |
+| `placed_quantity` | Place order qty | Vendor PO qty; `<= need_quantity` |
+| `delivered_quantity` | Delivered qty | Sum of stock picks; `<= placed_quantity` |
+| `stock_picks` | Stock pick dialog | JSON array — see §3.3 |
 
-### 3.3 Indexes
+### 3.3 `stock_picks` JSON shape
 
-```sql
-CREATE INDEX procurement_placements_source_active_idx
-  ON public.procurement_placements (source_type, source_id)
-  WHERE status = 'active';
-
-CREATE INDEX procurement_placements_tenant_placed_at_idx
-  ON public.procurement_placements (tenant_id, placed_at DESC);
-
-CREATE INDEX procurement_placements_vendor_idx
-  ON public.procurement_placements (vendor_id)
-  WHERE vendor_id IS NOT NULL;
+```json
+[
+  { "global_stock_id": 88001, "quantity": 25, "shipment_name": "UK-2024-014", "location_name": "Main warehouse" },
+  { "global_stock_id": 88002, "quantity": 10 }
+]
 ```
 
-### 3.4 RLS
+| Field | Required | Notes |
+| :--- | :---: | :--- |
+| `global_stock_id` | ✓ | `global_stocks.id` |
+| `quantity` | ✓ | Units from this stock row (`> 0`) |
+| `shipment_name` / `location_name` | | Display-only snapshot for desk UI |
 
-- Enable RLS; policy: `tenant_id` matches `app.current_tenant_id` **or** parent operator via `user_can_manage_parent_tenant` on parent of `tenant_id`.
-- All writes via `SECURITY DEFINER` RPCs (no direct client insert).
+`delivered_quantity` is set to `sum(stock_picks[].quantity)` when `stock_picks` is saved via RPC.
 
-### 3.5 Write rules (enforced in RPC)
+### 3.4 Indexes & RLS
 
-1. Source line must exist and belong to `tenant_id`.
-2. Parent document must be in `procuring` or `ready_for_shipment` (not `delivered`).
-3. `sum(active.quantity) + new.quantity <= open_demand_qty` for that source line (same open-qty formula as list RPC).
-4. Cancel only when `global_shipment_item_id IS NULL` (not yet on a shipment).
-5. Link to `global_shipment_item_id` is a **later** RPC when building shipment from proforma — out of scope for v1 desk.
+- `preorder_demand_source_idx` on `(source_type, source_id)`
+- `preorder_demand_tenant_updated_idx` on `(tenant_id, updated_at DESC)`
+- RLS: staff on `tenant_id` or parent operator; writes via `upsert_preorder_demand` only.
+
+### 3.5 Write rules (`upsert_preorder_demand`)
+
+1. Source line must exist; document status `procuring` or `ready_for_shipment`.
+2. **`placed_quantity`** + **`vendor_id`** only when document is **`procuring`**; `placed_quantity <= need_quantity`.
+3. **`stock_picks`** only when document is **`ready_for_shipment`**; `delivered_quantity = sum(picks)` and `<= placed_quantity`.
+4. Upsert on `(source_type, source_id)` — partial updates (only passed fields change).
+
+### 3.6 Retired tables
+
+| Dropped | Replaced by |
+| :--- | :--- |
+| `procurement_placements` | `preorder_demand.placed_quantity` + `vendor_id` |
+| `procurement_fulfillments` (never shipped) | `preorder_demand.delivered_quantity` + `stock_picks` |
+
+Migration: `20270912100000_preorder_demand.sql` migrates active placement sums into `placed_quantity` before drop.
 
 ---
 
 ## 4. RPC: `list_procurement_demand_groups` (extended)
 
-### 4.1 Signature
+### 5.1 Signature
 
 Unchanged. Extend the **existing** function body — do **not** wrap it in a new RPC.
 
@@ -217,62 +278,47 @@ list_procurement_demand_groups(
 | Param | Required | Notes |
 | :--- | :---: | :--- |
 | `p_tenant_id` | ✓ | Child tenant **or** parent context per access rule below |
-| `p_procurement_status` | | `procuring` \| `ready_for_shipment` \| `delivered` |
+| `p_procurement_status` | | `procuring` (Procuring tab) or `ready_for_shipment` (Ready tab) |
 | `p_search` | | Matches product name, barcode, product_code, document label |
 | `p_child_tenant_id` | | Parent-only: restrict to one sister concern |
 | `p_limit` / `p_offset` | | Pagination on **groups** (documents), not flat lines |
 
-### 4.2 Security
+### 5.2 Security
 
 - **Child tenant staff:** `is_tenant_staff(p_tenant_id)` — `p_tenant_id` = child.
 - **Parent operator:** `user_can_manage_parent_tenant(p_tenant_id)` — union children where `tenants.parent_id = p_tenant_id`; `p_child_tenant_id` optional narrow.
 
 `SECURITY DEFINER`, `search_path = public`, `STABLE`.
 
-### 4.3 SQL change (inside same function)
+### 5.3 SQL change (inside same function)
 
-After `all_lines`, add a CTE that aggregates **active** placements per source line:
+After `all_lines`, join `preorder_demand` per source line:
 
 ```sql
-placement_totals as (
+preorder_lines as (
   select
-    pp.source_type::text as source_type,
-    pp.source_id,
-    coalesce(sum(pp.quantity), 0)::integer as placed_quantity,
-    coalesce(
-      jsonb_agg(
-        jsonb_build_object(
-          'id', pp.id,
-          'vendor_id', pp.vendor_id,
-          'vendor_code', nullif(trim(pp.vendor_code), ''),
-          'vendor_name', v.name,
-          'quantity', pp.quantity,
-          'notes', pp.notes,
-          'placed_at', pp.placed_at,
-          'placed_by_user_id', pp.placed_by_user_id,
-          'global_shipment_item_id', pp.global_shipment_item_id
-        )
-        order by pp.placed_at, pp.id
-      ) filter (where pp.id is not null),
-      '[]'::jsonb
-    ) as placements
-  from public.procurement_placements pp
-  left join public.vendors v on v.id = pp.vendor_id
-  where pp.status = 'active'
-  group by pp.source_type, pp.source_id
+    pd.id as preorder_demand_id,
+    pd.source_type::text as source_type,
+    pd.source_id,
+    pd.vendor_id,
+    pd.placed_quantity,
+    pd.delivered_quantity,
+    coalesce(pd.stock_picks, '[]'::jsonb) as stock_picks
+  from public.preorder_demand pd
+  inner join tenant_scope ts on ts.tenant_id = pd.tenant_id
 )
 ```
 
-When building each item in `grouped`, join `placement_totals` on `source_type` + `source_id` and emit:
+When building each item in `grouped`, left-join `preorder_lines` on `source_type` + `source_id` and emit:
 
-- `need_quantity` — open demand (today’s `quantity` field; keep `quantity` as alias for backward compat **or** rename in a coordinated web types bump)
-- `placed_quantity` — from `placement_totals`, default `0`
+- `preorder_demand_id`, `vendor_id`
+- `placed_quantity`, `delivered_quantity`, `stock_picks`
 - `remaining_quantity` — `greatest(need_quantity - placed_quantity, 0)`
-- `placements` — array from `placement_totals`
+- `remaining_to_deliver` — `greatest(placed_quantity - delivered_quantity, 0)`
 
-**List visibility:** return a line when `need_quantity > 0` **or** `placed_quantity > 0` (so partially placed lines stay visible until fully covered).
+**List visibility:** return a line when `need_quantity > 0` **or** `placed_quantity > 0` **or** `delivered_quantity > 0`.
 
-### 4.4 Response (example)
+### 5.4 Response (example)
 
 Grouped by source document. Document-level `vendor` is unchanged (PBC file default vendor). **Placement** vendors are per row in `placements[]`.
 
@@ -391,7 +437,7 @@ Grouped by source document. Document-level `vendor` is unchanged (PBC file defau
 }
 ```
 
-### 4.5 Field reference
+### 5.5 Field reference
 
 #### `meta`
 
@@ -428,25 +474,24 @@ Grouped by source document. Document-level `vendor` is unchanged (PBC file defau
 | `product_code` | string \| null | |
 | `quantity` | number | **Alias of `need_quantity`** (kept for backward compat) |
 | `need_quantity` | number | Open demand qty on the source line |
-| `placed_quantity` | number | Sum of active `procurement_placements.quantity` |
+| `preorder_demand_id` | number \| null | `preorder_demand.id` when row exists |
+| `vendor_id` | number \| null | From `preorder_demand` |
+| `placed_quantity` | number | `preorder_demand.placed_quantity` (default `0`) |
+| `delivered_quantity` | number | `preorder_demand.delivered_quantity` (default `0`) |
 | `remaining_quantity` | number | `greatest(need_quantity - placed_quantity, 0)` |
-| `placements` | array | Active placement rows (see below) |
+| `remaining_to_deliver` | number | `greatest(placed_quantity - delivered_quantity, 0)` |
+| `stock_picks` | array | `[{ global_stock_id, quantity, … }]` from `preorder_demand` |
 
-#### `groups[].items[].placements[]`
+#### `groups[].items[].stock_picks[]`
 
 | Field | Type | Description |
 | :--- | :--- | :--- |
-| `id` | number | `procurement_placements.id` |
-| `vendor_id` | number \| null | `vendors.id` when linked |
-| `vendor_code` | string \| null | Code snapshot |
-| `vendor_name` | string \| null | From `vendors.name` when `vendor_id` set |
-| `quantity` | number | Units in this placement |
-| `notes` | string \| null | Staff note |
-| `placed_at` | string (ISO) | When recorded |
-| `placed_by_user_id` | string (uuid) \| null | Staff user |
-| `global_shipment_item_id` | number \| null | Set when linked to inbound shipment (later) |
+| `global_stock_id` | number | `global_stocks.id` |
+| `quantity` | number | Units from this stock row |
+| `shipment_name` | string \| null | Optional display snapshot |
+| `location_name` | string \| null | Optional display snapshot |
 
-### 4.6 Quantity semantics
+### 5.6 Quantity semantics
 
 | Source | `need_quantity` = |
 | :--- | :--- |
@@ -455,84 +500,39 @@ Grouped by source document. Document-level `vendor` is unchanged (PBC file defau
 
 | Derived | Formula |
 | :--- | :--- |
-| `placed_quantity` | `sum(procurement_placements.quantity)` where `status = 'active'` |
+| `placed_quantity` | `preorder_demand.placed_quantity` |
 | `remaining_quantity` | `greatest(need_quantity - placed_quantity, 0)` |
-
-Lines omitted when `need_quantity <= 0` **and** `placed_quantity <= 0`.
+| `delivered_quantity` | `preorder_demand.delivered_quantity` (= sum of `stock_picks[].quantity`) |
+| `remaining_to_deliver` | `greatest(placed_quantity - delivered_quantity, 0)` |
 
 ---
 
-## 5. RPC: `record_procurement_placement` (new write)
-
-### 5.1 Signature
+## 5. RPC: `upsert_preorder_demand`
 
 ```sql
-record_procurement_placement(
-  p_tenant_id    bigint,
-  p_source_type  public.procurement_placement_source_type,
-  p_source_id    bigint,
-  p_vendor_id    bigint  default null,
-  p_vendor_code  text    default null,
-  p_quantity     integer,
-  p_notes        text    default null
-) returns public.procurement_placements
+upsert_preorder_demand(
+  p_tenant_id        bigint,
+  p_source_type      public.preorder_demand_source_type,
+  p_source_id        bigint,
+  p_vendor_id        bigint  default null,
+  p_placed_quantity  integer default null,
+  p_stock_picks      jsonb   default null,
+  p_notes            text    default null
+) returns public.preorder_demand
 ```
 
-| Param | Required | Notes |
-| :--- | :---: | :--- |
-| `p_tenant_id` | ✓ | Child tenant (or parent context — resolve source line tenant) |
-| `p_source_type` | ✓ | `shop_order_item` \| `pbc_costing_item` |
-| `p_source_id` | ✓ | Line id |
-| `p_vendor_id` | | Optional |
-| `p_vendor_code` | | Optional |
-| `p_quantity` | ✓ | Must be &gt; 0 |
-| `p_notes` | | Optional |
+| Param | When | Notes |
+| :--- | :--- | :--- |
+| `p_vendor_id` / `p_placed_quantity` | Procuring tab | Document must be `procuring` |
+| `p_stock_picks` | Ready tab | Document must be `ready_for_shipment`; sets `delivered_quantity` from pick sum |
 
-`SECURITY DEFINER`, `search_path = public`. Sets `placed_by_user_id = auth.uid()`, `placed_at = now()`.
-
-### 5.2 Response
-
-Returns the inserted row (Postgres composite / JSON via wrapper). Web repository maps to:
-
-```json
-{
-  "id": 9004,
-  "tenant_id": 12,
-  "source_type": "shop_order_item",
-  "source_id": 102,
-  "vendor_id": 7,
-  "vendor_code": "UK-VENDOR-A",
-  "quantity": 50,
-  "notes": "WhatsApp order confirmed",
-  "placed_by_user_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-  "placed_at": "2026-08-25T10:30:00+00:00",
-  "status": "active",
-  "global_shipment_item_id": null,
-  "created_at": "2026-08-25T10:30:00+00:00",
-  "updated_at": "2026-08-25T10:30:00+00:00"
-}
-```
-
-After success, invalidate `['procurementDemand', 'groups', …]` on the client.
+`SECURITY DEFINER`. Upserts on `(source_type, source_id)`. Partial update — only non-null params change.
 
 ---
 
-## 6. RPC: `cancel_procurement_placement` (new write)
+## 6. UI & navigation (target)
 
-```sql
-cancel_procurement_placement(
-  p_tenant_id     bigint,
-  p_placement_id  bigint
-) returns public.procurement_placements
-```
-
-Sets `status = 'cancelled'`, `updated_at = now()`. Fails if `global_shipment_item_id IS NOT NULL`. Same access rules as list RPC.
-
----
-
-## 7. UI & navigation (target)
-
-### 7.1 Module placement
+### 10.1 Module placement
 
 | Item | Value |
 | :--- | :--- |
@@ -543,7 +543,7 @@ Sets `status = 'cancelled'`, `updated_at = now()`. Fails if `global_shipment_ite
 
 Do **not** add nav under `shop_order` or `product_based_costing` — this page unions both sources.
 
-### 7.2 Sidebar
+### 10.2 Sidebar
 
 | Item | Value |
 | :--- | :--- |
@@ -553,42 +553,53 @@ Do **not** add nav under `shop_order` or `product_based_costing` — this page u
 | **Icon** | `ph ph-list-checks` |
 | **Sort order** | **Above** Shipment (`procurement/shipment`) in the Procurement & Stock group |
 
-### 7.3 Page behavior
+### 10.3 Page behavior
+
+Two tabs on one route — status drives which RPC filter and which row actions are shown.
 
 | Surface | Route | Behavior |
 | :--- | :--- | :--- |
-| **Procurement Demand Desk** | `/:tenantSlug/app/procurement/demand` | Tabs: Procuring · Ready for shipment · Delivered |
-| Filter bar | | Search, child tenant (parent), source type chips |
-| Group header | | Document type + id, vendor badge, link to order / costing file detail |
-| Line rows | | Product thumb, name, code, **need / placed / remaining** |
-| Placements | | Expand row → list `placements[]`; add via dialog → `record_procurement_placement` |
-| Actions (later) | | Advance document status; link placements → shipment when proforma exists |
+| **Procurement Demand Desk** | `/:tenantSlug/app/procurement/demand` | Tabs: **Procuring** · **Ready for shipment** |
+| **Procuring tab** | | `p_procurement_status = procuring` |
+| Filter bar | | Search; child tenant (parent operator) |
+| Group header | | Document type + id, link to order / costing file detail |
+| Procuring rows | | **need / placed / remaining**; vendor + place order qty → `upsert_preorder_demand` |
+| **Ready for shipment tab** | | `p_procurement_status = ready_for_shipment` |
+| Ready rows | | Stock pick dialog → `stock_picks` + `delivered_quantity` via `upsert_preorder_demand`; bucket sync when document → `delivered` |
+| Invoice | | **Create invoice** per document group (separate RPC); stock picks feed invoice lines |
+| Group action | | Link to open invoice for document when at least one fulfillment exists |
 
-Query key: `['procurementDemand', 'groups', { tenantId, status, search, offset }]`
+Query keys:
+
+- `['procurementDemand', 'groups', { tenantId, procurementStatus: 'procuring', … }]`
+- `['procurementDemand', 'groups', { tenantId, procurementStatus: 'ready_for_shipment', … }]`
 
 ---
 
-## 8. Relation to other concepts
+## 11. Relation to other concepts
 
 | Concept | Relationship |
 | :--- | :--- |
-| **Demand bucket** | Customer shortfalls — separate from vendor PO log |
-| **`procurement_placements`** | Vendor order log between demand list and inbound shipment |
-| **`global_shipment_items`** | Built from proforma; optional `global_shipment_item_id` back-link on placement |
+| **`customer_group_backlog_bucket_items`** | Filled on **`delivered`** status (ordered − delivered per line); popped on next order. See [`DEMAND_BUCKET.md`](./DEMAND_BUCKET.md) |
+| **`preorder_demand`** | One row per line — vendor + placed qty + stock picks + delivered qty |
+| **`create_sales_invoice_from_payload`** | Creates or extends customer invoice during fulfillment |
+| **`global_shipment_items`** | Parent inbound shipment (vendor proforma / cargo) — optional back-link from placement; separate from customer fulfillment. Created while document is still `procuring`. |
+| **Vendor invoice vs customer invoice** | Vendor paper stays on the shipment. Customer sales invoice is created on the Ready tab only. |
 | **`list_procurement_shop_order_lines`** | Legacy shop-order-only list; replace with this RPC |
-| **Parent shipment pull** | Later: pull from placements or `ready_for_shipment` lines into shipment sections |
-| **Invoice / payment** | Out of scope — handled by `global_invoices` after delivery |
+| **Ordered vs delivered** | `placed_quantity` vs `delivered_quantity` on `preorder_demand` |
 
 ---
 
-## 9. Implementation checklist
+## 12. Implementation checklist
 
 - [x] Migration: `list_procurement_demand_groups` RPC (v1 — demand only)
 - [x] Web: `ProcurementDemandPage.vue` (read-only list)
-- [x] Migration: `procurement_placement_source_type` enum + `procurement_placements` table + indexes + RLS
-- [x] Migration: extend `list_procurement_demand_groups` with placement join (§4.3)
-- [x] Migration: `record_procurement_placement` + `cancel_procurement_placement`
+- [x] Migration: `preorder_demand` table + migrate from `procurement_placements` + drop legacy tables (`20270912100000_preorder_demand.sql`)
+- [x] Migration: `upsert_preorder_demand` + extend `list_procurement_demand_groups` with `preorder_demand` join
 - [x] Migration: alias normalization + status backfill (`20270911180000_align_demand_status_aliases.sql`)
-- [x] Web: placement dialog + repository methods + types on demand page
+- [x] Web: dummy demand desk UI (`ProcurementDemandPage.vue`) — vendor, place order, stock pick, delivered qty, create invoice
+- [ ] Web: wire `list_procurement_demand_groups` + `upsert_preorder_demand` on demand page
+- [ ] Web: invoice create RPC integration on Ready tab
+- [ ] Migration: `customer_group_backlog_bucket_items` + sync on `delivered` + pop DELETE ([`DEMAND_BUCKET.md`](./DEMAND_BUCKET.md) §10)
 - [ ] Later: RPC to attach placement(s) to `global_shipment_items` when proforma is entered
-- [ ] Doc: add route to [`UI_FLOW.md`](./UI_FLOW.md) when placement UI ships
+- [ ] Doc: add route to [`UI_FLOW.md`](./UI_FLOW.md)

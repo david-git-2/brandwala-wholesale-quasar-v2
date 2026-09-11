@@ -10,9 +10,9 @@ Customer group provisioning lives in [`CUSTOMER.md`](../customer/CUSTOMER.md). S
 
 **Catalog negotiation (status model, labels, transitions):** [`CATALOG_NEGOTIATION.md`](./CATALOG_NEGOTIATION.md)
 
-**Customer demand bucket (shared waiting list, add / soft pop / purge):** [`DEMAND_BUCKET.md`](./DEMAND_BUCKET.md)
+**Customer group backlog bucket (products ordered but not delivered):** [`DEMAND_BUCKET.md`](./DEMAND_BUCKET.md)
 
-**Procurement demand list (aggregated shop order + PBC lines):** [`PROCUREMENT_DEMAND_LIST.md`](./PROCUREMENT_DEMAND_LIST.md)
+**Procurement Demand desk** (Procuring: vendor + ordered qty · Ready: delivered qty + invoice): [`PROCUREMENT_DEMAND_LIST.md`](./PROCUREMENT_DEMAND_LIST.md)
 
 **After-sales (returns hub, off-system recipient complaints, parent policy):** [`../after_sales/AFTER_SALES.md`](../after_sales/AFTER_SALES.md) · [`RETURNS_HUB.md`](../after_sales/RETURNS_HUB.md) · dropship intake [`DROPSHIP_AFTER_SALES.md`](../after_sales/DROPSHIP_AFTER_SALES.md)
 

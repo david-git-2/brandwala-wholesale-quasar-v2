@@ -1457,3 +1457,26 @@ CREATE POLICY "batch_code_pc_update" ON "public"."batch_code_pc" FOR UPDATE TO "
 
 
 
+ALTER TABLE "public"."preorder_demand" ENABLE ROW LEVEL SECURITY;
+
+
+
+CREATE POLICY "preorder_demand_select" ON "public"."preorder_demand" FOR SELECT TO "authenticated" USING (("public"."is_tenant_staff"("tenant_id") OR (EXISTS ( SELECT 1
+   FROM "public"."tenants" "t"
+  WHERE (("t"."id" = "preorder_demand"."tenant_id") AND ("t"."parent_id" IS NOT NULL) AND "public"."user_can_manage_parent_tenant"("t"."parent_id"))))));
+
+
+
+GRANT SELECT ON TABLE "public"."preorder_demand" TO "authenticated";
+GRANT ALL ON TABLE "public"."preorder_demand" TO "service_role";
+GRANT USAGE,SELECT ON SEQUENCE "public"."preorder_demand_id_seq" TO "authenticated";
+GRANT ALL ON SEQUENCE "public"."preorder_demand_id_seq" TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."can_access_preorder_demand_tenant"(bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_procurement_demand_open_qty"("public"."preorder_demand_source_type", bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."upsert_preorder_demand"(bigint, "public"."preorder_demand_source_type", bigint, bigint, integer, jsonb, text) TO "authenticated";
+
+
+

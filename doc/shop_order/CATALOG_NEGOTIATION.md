@@ -2,7 +2,7 @@
 
 Negotiation applies to **`vendor_catalog`** shops where `shops.is_negotiable = true` and the customer group has **`can_negotiate`** on that shop. The snapshot `shop_orders.is_negotiable_snapshot` freezes this at placement.
 
-**Related docs:** [`SHOP_ORDER.md`](./SHOP_ORDER.md) (RPCs, types) · [`UI_FLOW.md`](./UI_FLOW.md) (routes, components)
+**Related docs:** [`SHOP_ORDER.md`](./SHOP_ORDER.md) (RPCs, types) · [`UI_FLOW.md`](./UI_FLOW.md) (routes, components) · [`PROCUREMENT_DEMAND_LIST.md`](./PROCUREMENT_DEMAND_LIST.md) (Demand desk) · [`PBC_COSTING.md`](../product_based_costing/PBC_COSTING.md) (same procurement statuses)
 
 ---
 
@@ -35,8 +35,8 @@ Use these enum values for **`vendor_catalog`** negotiation. They are **system id
 | `countered` | 3 | Staff | Customer submitted at least one counter. Staff prepares final offer. |
 | `final_offered` | 4 | Customer | Final offer published. Customer confirms price + final quantity. |
 | `confirmed` | 5 (start) | Staff | Deal locked (`confirmed_quantity` set). Procurement may start. |
-| `procuring` | 5 | Staff | Buying from vendor / placing order with supplier. |
-| `ready_for_shipment` | 5 | Staff | Procurement complete; lines eligible for inbound shipment handoff. |
+| `procuring` | 5 | Staff | Buying from vendor. Lines appear on the **Demand** desk (`/:tenantSlug/app/procurement/demand`) — staff log **vendor + ordered qty** per line. See [`PROCUREMENT_DEMAND_LIST.md`](./PROCUREMENT_DEMAND_LIST.md). |
+| `ready_for_shipment` | 5 | Staff | Buying done. Lines appear on Demand desk **Ready for shipment** tab — staff log **delivered qty from stock**, create **invoice** lines, and keep **ordered vs delivered** record. See [`PROCUREMENT_DEMAND_LIST.md`](./PROCUREMENT_DEMAND_LIST.md) §2.5. |
 | `delivered` | 5 | Staff | Goods received / order closed from customer view. |
 | `cancelled` | — | Either | Rejected or voided at any step (negotiation or procurement). |
 
@@ -47,6 +47,20 @@ procuring → ready_for_shipment → delivered
 ```
 
 (`cancelled` can occur from any status above.)
+
+**Stay on `procuring` through vendor paperwork.** The order status is the customer promise, not the vendor PO. Do **not** advance when a proforma or vendor invoice arrives.
+
+| Staff event | Order status | Where it is recorded |
+| :--- | :--- | :--- |
+| Start buying | `procuring` | Demand desk — Procuring tab (`preorder_demand`) |
+| Place vendor PO | stay `procuring` | Placement row (vendor + qty) |
+| Vendor **proforma** | stay `procuring` | Inbound **Shipment** module (not a new order status) |
+| Vendor **final invoice** | stay `procuring` | Shipment cost books |
+| Cargo in transit / goods land | stay `procuring` until buying for this order is done | Shipment receive → warehouse stock |
+| Buying done; can pick stock for this customer | `ready_for_shipment` | Demand desk — Ready tab |
+| Customer goods closed | `delivered` | Shortfall → waiting list ([`DEMAND_BUCKET.md`](./DEMAND_BUCKET.md)) |
+
+Two invoices: **vendor** (shipment) vs **customer** (Ready-tab sales invoice). Partial vendor POs are normal — stay `procuring` until staff mark buying finished.
 
 ### 2.2 Status flow
 
@@ -91,7 +105,7 @@ flowchart TD
 | `final_offered` | Customer **reject** | `cancelled` | |
 | `confirmed` | Staff **Start procurement** | `procuring` | RPC: `staff_start_catalog_procurement` |
 | `procuring` | Staff marks **ready for shipment** | `ready_for_shipment` | Target RPC TBD (replaces legacy `staff_set_catalog_ordered_qty` → `ordered`) |
-| `ready_for_shipment` | Staff marks delivered | `delivered` | Target RPC TBD (replaces legacy `staff_set_catalog_delivered_qty`) |
+| `ready_for_shipment` | All lines fulfilled + invoiced on Demand desk (or staff marks delivered) | `delivered` | Target: auto-advance when `remaining_to_deliver = 0` per document; legacy `staff_set_catalog_delivered_qty` retired |
 
 ### 2.4 Statuses to stop using in catalog flow
 
@@ -131,6 +145,10 @@ Preparing quote → Review offer → Confirm order → Confirmed → On the way 
 ```
 
 Map multiple DB statuses onto one progress step where helpful (e.g. `submitted` + `countered` → “Waiting on us”).
+
+Customers get **five ideas**: quote → confirm → sourcing → on the way → delivered. Do **not** show `procuring`, vendor PO, proforma, vendor invoice, or inbound cargo as customer statuses. If they ask “did you get the proforma?”, answer in chat; the badge stays **We're sourcing your items** until staff set `ready_for_shipment`.
+
+`confirmed` and `procuring` are both “we are working on it.” Only `ready_for_shipment` maps to **On the way**.
 
 ### 3.2 Staff labels
 

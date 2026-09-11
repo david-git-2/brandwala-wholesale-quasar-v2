@@ -108,3 +108,12 @@ CREATE TYPE "public"."stock_movement_type" AS ENUM (
 ALTER TYPE "public"."stock_movement_type" OWNER TO "postgres";
 
 
+CREATE TYPE "public"."preorder_demand_source_type" AS ENUM (
+    'shop_order_item',
+    'pbc_costing_item'
+);
+
+
+ALTER TYPE "public"."preorder_demand_source_type" OWNER TO "postgres";
+
+

@@ -1870,3 +1870,52 @@ ALTER TABLE ONLY "public"."vendors"
 
 
 
+CREATE TABLE IF NOT EXISTS "public"."preorder_demand" (
+    "id" bigint NOT NULL,
+    "tenant_id" bigint NOT NULL,
+    "source_type" "public"."preorder_demand_source_type" NOT NULL,
+    "source_id" bigint NOT NULL,
+    "vendor_id" bigint,
+    "placed_quantity" integer DEFAULT 0 NOT NULL,
+    "delivered_quantity" integer DEFAULT 0 NOT NULL,
+    "stock_picks" "jsonb" DEFAULT '[]'::"jsonb" NOT NULL,
+    "notes" "text",
+    "updated_by_user_id" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "preorder_demand_delivered_lte_placed_check" CHECK (("delivered_quantity" <= "placed_quantity")),
+    CONSTRAINT "preorder_demand_delivered_quantity_check" CHECK (("delivered_quantity" >= 0)),
+    CONSTRAINT "preorder_demand_placed_quantity_check" CHECK (("placed_quantity" >= 0)),
+    CONSTRAINT "preorder_demand_stock_picks_is_array" CHECK (("jsonb_typeof"("stock_picks") = 'array'::"text")),
+    CONSTRAINT "preorder_demand_source_unique" UNIQUE ("source_type", "source_id")
+);
+
+
+ALTER TABLE "public"."preorder_demand" OWNER TO "postgres";
+
+
+ALTER TABLE ONLY "public"."preorder_demand"
+    ADD CONSTRAINT "preorder_demand_pkey" PRIMARY KEY ("id");
+
+
+ALTER TABLE ONLY "public"."preorder_demand"
+    ADD CONSTRAINT "preorder_demand_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
+
+
+ALTER TABLE ONLY "public"."preorder_demand"
+    ADD CONSTRAINT "preorder_demand_vendor_id_fkey" FOREIGN KEY ("vendor_id") REFERENCES "public"."vendors"("id") ON DELETE SET NULL;
+
+
+ALTER TABLE ONLY "public"."preorder_demand"
+    ADD CONSTRAINT "preorder_demand_updated_by_user_id_fkey" FOREIGN KEY ("updated_by_user_id") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
+
+
+CREATE INDEX "preorder_demand_source_idx" ON "public"."preorder_demand" USING "btree" ("source_type", "source_id");
+
+
+CREATE INDEX "preorder_demand_tenant_updated_idx" ON "public"."preorder_demand" USING "btree" ("tenant_id", "updated_at" DESC);
+
+
+CREATE OR REPLACE TRIGGER "trg_preorder_demand_set_updated_at" BEFORE UPDATE ON "public"."preorder_demand" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
+
+

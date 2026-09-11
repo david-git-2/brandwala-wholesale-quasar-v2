@@ -42,8 +42,8 @@ To ensure zero collateral damage to business configurations, the purge boundary 
 
 | Domain | ❌ Operational / Transactional Data (PURGED) | 🔒 Master & Configuration Data (STRICTLY PRESERVED) |
 | :--- | :--- | :--- |
-| **Procurement & Warehouse Stock** | • `global_shipment_items`<br>• `global_shipment_boxes`<br>• `global_shipment_sections`<br>• `global_shipment_cost_entries`<br>• `global_shipments`<br>• `global_stock_items`<br>• `global_stock_boxes`<br>• `global_stocks`<br>• `stock_movements`, `global_stock_movements`<br>• `costing_files`, `product_based_costing_files`<br>• `product_based_costing_backlog_items`<br>• `shipment_investments` | • `stock_locations` (warehouses, bays, shelves, bins)<br>• `global_stock_types` (Grading presets, A/B/C conditions)<br>• `vendors` / Suppliers & cargo carriers<br>• `products`, `product_variants`, `product_categories`, `product_tags`, `product_attributes`<br>• `thrift_items` master catalog entries |
-| **Orders, POS & B2B Commerce** | • `shop_order_items`<br>• `shop_order_status_history`<br>• `shop_orders`<br>• `shop_cart_items`<br>• `shop_carts`<br>• `customer_demand_bucket_items`<br>• `dropship_order_settlements` | • `shops` (child tenant store configurations)<br>• `shop_categories`, `shop_pricing_rules`<br>• `shop_product_listings` (quantities reset to 0)<br>• Customer accounts & store memberships |
+| **Procurement & Warehouse Stock** | • `global_shipment_items`<br>• `global_shipment_boxes`<br>• `global_shipment_sections`<br>• `global_shipment_cost_entries`<br>• `global_shipments`<br>• `global_stock_items`<br>• `global_stock_boxes`<br>• `global_stocks`<br>• `stock_movements`, `global_stock_movements`<br>• `costing_files`, `product_based_costing_files`, `product_based_costing_items`<br>• `shipment_investments` | • `stock_locations` (warehouses, bays, shelves, bins)<br>• `global_stock_types` (Grading presets, A/B/C conditions)<br>• `vendors` / Suppliers & cargo carriers<br>• `products`, `product_variants`, `product_categories`, `product_tags`, `product_attributes`<br>• `thrift_items` master catalog entries |
+| **Orders, POS & B2B Commerce** | • `shop_order_items`<br>• `shop_order_status_history`<br>• `shop_orders`<br>• `shop_cart_items`<br>• `shop_carts`<br>• `customer_group_backlog_bucket_items`<br>• `customer_demand_bucket_items` (interim — drop after migration)<br>• `dropship_order_settlements` | • `shops` (child tenant store configurations)<br>• `shop_categories`, `shop_pricing_rules`<br>• `shop_product_listings` (quantities reset to 0)<br>• Customer accounts & store memberships |
 | **Sales Invoices & Billing** | • `global_invoice_items`<br>• `global_invoices`<br>• `global_return_items`<br>• `global_returns`<br>• `sales_invoices`, `sales_invoice_items`<br>• **Reset `sales_invoice_counters` to 0** | • `billing_profiles`<br>• `recipient_profiles`<br>• `customers` / Customer groups<br>• `invoice_brands` |
 | **Financial Ledger & Wallets** | • `universal_ledger_transactions`<br>• `universal_wallet_transactions`<br>• `ledger_transactions`<br>• `wallet_transactions`<br>• `payouts`, `deposits`, `expenses`<br>• **Reset `universal_wallets.balance = 0.00`**<br>• **Reset `wallets.balance = 0.00`** | • `universal_wallets` rows (records preserved for FK stability)<br>• `wallets` rows<br>• `investors` profiles & capital entity configs |
 | **Trash & Activity Logs** | • `trash_entries` (operational entity references)<br>• `activity_logs` (transaction-related actions) | • Audit trail for master data<br>• `tenant_data_purge_logs` (permanent wipe audit record) |
@@ -94,8 +94,9 @@ To execute the purge cleanly without foreign key constraint violations or cascad
    ├── shop_orders
    ├── shop_cart_items
    ├── shop_carts
+   ├── customer_group_backlog_bucket_items
    ├── customer_demand_bucket_items
-   └── costing_file_items / product_based_costing_backlog_items
+   └── product_based_costing_items (costing file lines)
 
 2. Financial Ledger & Transactions:
    ├── universal_ledger_transactions
@@ -286,6 +287,7 @@ BEGIN
     DELETE FROM public.shop_orders WHERE tenant_id = ANY(v_target_tenant_ids);
     DELETE FROM public.shop_cart_items WHERE tenant_id = ANY(v_target_tenant_ids);
     DELETE FROM public.shop_carts WHERE tenant_id = ANY(v_target_tenant_ids);
+    DELETE FROM public.customer_group_backlog_bucket_items WHERE tenant_id = ANY(v_target_tenant_ids);
     DELETE FROM public.customer_demand_bucket_items WHERE tenant_id = ANY(v_target_tenant_ids);
 
     -- 6. Delete ledger transactions & reset wallets
@@ -310,7 +312,7 @@ BEGIN
         DELETE FROM public.global_shipments WHERE parent_tenant_id = p_tenant_id;
 
         DELETE FROM public.costing_files WHERE tenant_id = ANY(v_target_tenant_ids);
-        DELETE FROM public.product_based_costing_backlog_items WHERE tenant_id = ANY(v_target_tenant_ids);
+        DELETE FROM public.product_based_costing_items WHERE tenant_id = ANY(v_target_tenant_ids);
         DELETE FROM public.product_based_costing_files WHERE tenant_id = ANY(v_target_tenant_ids);
     END IF;
 

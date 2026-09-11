@@ -12,16 +12,11 @@ export interface ProcurementDemandVendor {
   name: string | null;
 }
 
-export interface ProcurementPlacement {
-  id: number;
-  vendor_id: number | null;
-  vendor_code: string | null;
-  vendor_name: string | null;
+export interface PreorderDemandStockPick {
+  global_stock_id: number;
   quantity: number;
-  notes: string | null;
-  placed_at: string;
-  placed_by_user_id: string | null;
-  global_shipment_item_id: number | null;
+  shipment_name?: string | null;
+  location_name?: string | null;
 }
 
 export interface ProcurementDemandItem {
@@ -34,15 +29,21 @@ export interface ProcurementDemandItem {
   product_code: string | null;
   quantity: number;
   need_quantity?: number;
+  preorder_demand_id?: number | null;
+  vendor_id?: number | null;
   placed_quantity?: number;
+  delivered_quantity?: number;
   remaining_quantity?: number;
-  placements?: ProcurementPlacement[];
+  remaining_to_deliver?: number;
+  stock_picks?: PreorderDemandStockPick[];
 }
 
 export interface ProcurementDemandGroup {
   document_type: ProcurementDemandDocumentType;
   document_id: number;
   document_status: string;
+  customer_group_id?: number | null;
+  customer_group_name?: string | null;
   vendor: ProcurementDemandVendor | null;
   items: ProcurementDemandItem[];
 }
@@ -73,29 +74,27 @@ export interface ListProcurementDemandGroupsParams {
   offset?: number;
 }
 
-export interface RecordProcurementPlacementParams {
+export interface UpsertPreorderDemandParams {
   tenantId: number;
   sourceType: ProcurementDemandSourceType;
   sourceId: number;
-  quantity: number;
   vendorId?: number | null;
-  vendorCode?: string | null;
+  placedQuantity?: number | null;
+  stockPicks?: PreorderDemandStockPick[] | null;
   notes?: string | null;
 }
 
-export interface ProcurementPlacementRow {
+export interface PreorderDemandRow {
   id: number;
   tenant_id: number;
   source_type: ProcurementDemandSourceType;
   source_id: number;
   vendor_id: number | null;
-  vendor_code: string | null;
-  quantity: number;
+  placed_quantity: number;
+  delivered_quantity: number;
+  stock_picks: PreorderDemandStockPick[];
   notes: string | null;
-  placed_by_user_id: string | null;
-  placed_at: string;
-  status: string;
-  global_shipment_item_id: number | null;
+  updated_by_user_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -117,42 +116,27 @@ const listProcurementDemandGroups = async (
   return (data ?? { meta: {}, groups: [] }) as ProcurementDemandGroupsResponse;
 };
 
-const recordProcurementPlacement = async (
-  params: RecordProcurementPlacementParams,
-): Promise<ProcurementPlacementRow> => {
-  const { data, error } = await supabase.rpc('record_procurement_placement', {
+const upsertPreorderDemand = async (
+  params: UpsertPreorderDemandParams,
+): Promise<PreorderDemandRow> => {
+  const { data, error } = await supabase.rpc('upsert_preorder_demand', {
     p_tenant_id: params.tenantId,
     p_source_type: params.sourceType,
     p_source_id: params.sourceId,
-    p_quantity: params.quantity,
     p_vendor_id: params.vendorId ?? null,
-    p_vendor_code: params.vendorCode ?? null,
+    p_placed_quantity: params.placedQuantity ?? null,
+    p_stock_picks: params.stockPicks ?? null,
     p_notes: params.notes ?? null,
   });
 
   if (error) throw error;
 
-  return data as ProcurementPlacementRow;
-};
-
-const cancelProcurementPlacement = async (
-  tenantId: number,
-  placementId: number,
-): Promise<ProcurementPlacementRow> => {
-  const { data, error } = await supabase.rpc('cancel_procurement_placement', {
-    p_tenant_id: tenantId,
-    p_placement_id: placementId,
-  });
-
-  if (error) throw error;
-
-  return data as ProcurementPlacementRow;
+  return data as PreorderDemandRow;
 };
 
 export const procurementDemandRepository = {
   listProcurementDemandGroups,
-  recordProcurementPlacement,
-  cancelProcurementPlacement,
+  upsertPreorderDemand,
 };
 
 export const getItemNeedQuantity = (item: ProcurementDemandItem): number =>
@@ -161,5 +145,12 @@ export const getItemNeedQuantity = (item: ProcurementDemandItem): number =>
 export const getItemPlacedQuantity = (item: ProcurementDemandItem): number =>
   item.placed_quantity ?? 0;
 
+export const getItemDeliveredQuantity = (item: ProcurementDemandItem): number =>
+  item.delivered_quantity ?? 0;
+
 export const getItemRemainingQuantity = (item: ProcurementDemandItem): number =>
   item.remaining_quantity ?? Math.max(getItemNeedQuantity(item) - getItemPlacedQuantity(item), 0);
+
+export const getItemRemainingToDeliver = (item: ProcurementDemandItem): number =>
+  item.remaining_to_deliver ??
+  Math.max(getItemPlacedQuantity(item) - getItemDeliveredQuantity(item), 0);

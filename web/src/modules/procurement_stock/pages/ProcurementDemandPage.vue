@@ -12,9 +12,7 @@
               clearable
               style="min-width: 220px"
               class="col-grow col-sm-auto dense-search-input"
-              placeholder="Search product or document..."
-              @keyup.enter="applySearch"
-              @clear="applySearch"
+              placeholder="Search product or customer..."
             >
               <template #prepend>
                 <q-icon name="ph ph-magnifying-glass" size="16px" />
@@ -28,33 +26,17 @@
       </q-card>
 
       <q-card flat bordered class="col column no-wrap overflow-hidden floating-surface shadow-1">
-        <q-card-section v-if="meta?.sources_included?.length" class="q-py-xs q-px-sm flex-shrink-0">
-          <div class="text-caption text-grey-7">
-            Sources:
-            <q-chip
-              v-for="source in meta.sources_included"
-              :key="source"
-              dense
-              square
-              size="sm"
-              class="q-ml-xs"
-            >
-              {{ sourceLabel(source) }}
-            </q-chip>
-          </div>
-        </q-card-section>
+        <q-inner-loading :showing="isLoading">
+          <q-spinner-dots size="40px" color="primary" />
+        </q-inner-loading>
 
         <div class="col treasury-table-wrap q-px-sm q-pb-sm">
-          <div v-if="isLoading" class="row justify-center q-pa-xl">
-            <q-spinner color="primary" size="32px" />
-          </div>
-
-          <div v-else-if="isError" class="text-negative q-pa-md">
-            {{ errorMessage }}
-          </div>
-
-          <div v-else-if="!groups.length" class="text-grey-7 q-pa-lg text-center">
-            No items to procure.
+          <div
+            v-if="!isLoading && groups.length === 0"
+            class="column items-center justify-center full-height text-grey-7 q-pa-lg"
+          >
+            <q-icon name="ph ph-clipboard-text" size="40px" class="q-mb-sm" />
+            <div class="text-body2">No demand lines.</div>
           </div>
 
           <q-markup-table
@@ -66,23 +48,16 @@
               <tr>
                 <th class="text-center demand-image-col">Image</th>
                 <th class="text-left demand-product-col">Product</th>
-                <th class="text-center demand-qty-col">Need</th>
-                <th class="text-center demand-qty-col">Placed</th>
-                <th class="text-center demand-qty-col">Left</th>
+                <th class="text-center demand-qty-col">Quantity</th>
+                <th class="text-center demand-place-col">Place order</th>
                 <th class="text-left demand-vendor-col">Vendor</th>
-                <th class="text-center demand-input-col">Qty</th>
-                <th class="text-left demand-note-col">Note</th>
-                <th class="text-center demand-status-col">Status</th>
-                <th class="text-center demand-action-col" />
+                <th class="text-center demand-delivered-col">Delivered qty</th>
               </tr>
             </thead>
             <tbody>
               <template v-for="group in groups" :key="groupKey(group)">
-                <tr
-                  class="demand-group-row cursor-pointer"
-                  @click="toggleGroup(groupKey(group))"
-                >
-                  <td colspan="10">
+                <tr class="demand-group-row cursor-pointer" @click="toggleGroup(groupKey(group))">
+                  <td colspan="6">
                     <div class="row items-center q-gutter-x-xs no-wrap">
                       <q-icon
                         :name="isGroupExpanded(groupKey(group)) ? 'ph ph-caret-down' : 'ph ph-caret-right'"
@@ -91,19 +66,25 @@
                       />
                       <q-icon :name="groupIcon(group.document_type)" size="16px" color="primary" />
                       <span class="text-weight-bold text-grey-9">{{ groupTitle(group) }}</span>
-                      <span class="text-caption text-grey-7">· {{ group.document_status }}</span>
-                      <span v-if="group.vendor?.name || group.vendor?.code" class="text-caption text-grey-7">
-                        · {{ group.vendor?.name || group.vendor?.code }}
+                      <span class="text-caption text-grey-7">
+                        · {{ group.customer_group_name || '—' }}
                       </span>
                       <q-space />
+                      <q-badge
+                        :color="groupStatusColor(group.document_status)"
+                        text-color="white"
+                        class="text-weight-medium"
+                        :label="groupStatusLabel(group)"
+                      />
                       <q-badge color="grey-3" text-color="grey-9" :label="`${group.items.length} items`" />
                     </div>
                   </td>
                 </tr>
 
                 <template v-if="isGroupExpanded(groupKey(group))">
-                <template v-for="item in group.items" :key="`${item.source_type}-${item.source_id}`">
                   <tr
+                    v-for="item in group.items"
+                    :key="itemRowKey(group, item)"
                     class="demand-item-row"
                     :style="lineStatusStyle(item)"
                   >
@@ -123,23 +104,25 @@
                       <div class="text-caption text-grey-7">
                         {{ item.product_code || item.barcode || '—' }}
                       </div>
-                      <div
-                        v-if="(item.placements?.length ?? 0) > 1"
-                        class="text-caption text-grey-6 q-mt-xs placement-summary"
-                      >
-                        {{ placementsSummary(item) }}
-                      </div>
-                    </td>
-                    <td class="text-center demand-qty-col text-weight-medium">{{ needQty(item) }}</td>
-                    <td class="text-center demand-qty-col text-primary text-weight-medium">
-                      {{ placedQty(item) }}
                     </td>
                     <td class="text-center demand-qty-col text-weight-medium">
-                      {{ remainingQty(item) }}
+                      {{ item.quantity }}
+                    </td>
+                    <td class="text-center demand-place-col">
+                      <q-input
+                        :model-value="getDraft(group, item).quantity"
+                        type="number"
+                        min="0"
+                        dense
+                        outlined
+                        hide-bottom-space
+                        :disable="isRowSaving(group, item)"
+                        class="demand-field demand-field--qty"
+                        @update:model-value="(v) => onPlacedQuantityInput(group, item, v)"
+                      />
                     </td>
                     <td class="demand-vendor-col">
                       <q-select
-                        v-if="showRowInputs(item)"
                         :model-value="getDraft(group, item).vendorId"
                         :options="vendorOptions"
                         option-value="id"
@@ -152,100 +135,53 @@
                         clearable
                         use-input
                         input-debounce="200"
-                        placeholder="Vendor (optional)"
+                        placeholder="Vendor"
+                        :disable="isRowSaving(group, item)"
+                        :loading="vendorsLoading"
                         class="demand-field"
-                        data-test="placement-vendor-select"
                         @filter="filterVendors"
-                        @update:model-value="(v) => setDraftVendor(group, item, v)"
+                        @update:model-value="(v) => onVendorChange(group, item, v)"
                       />
-                      <div v-else-if="latestPlacement(item)" class="demand-readonly-cell">
-                        {{ placementVendorLabel(latestPlacement(item)!) }}
-                      </div>
-                      <span v-else class="text-grey-6">—</span>
                     </td>
-                    <td class="text-center demand-input-col">
-                      <q-input
-                        v-if="showRowInputs(item)"
-                        :model-value="getDraft(group, item).quantity"
-                        type="number"
-                        min="1"
-                        dense
-                        outlined
-                        hide-bottom-space
-                        class="demand-field demand-field--qty"
-                        data-test="placement-quantity"
-                        @update:model-value="(v) => setDraftQuantity(group, item, v)"
-                      />
-                      <div v-else-if="latestPlacement(item)" class="demand-readonly-cell text-center">
-                        {{ latestPlacement(item)!.quantity }}
+                    <td class="text-center demand-delivered-col">
+                      <div class="row items-center justify-center no-wrap demand-delivered-cell">
+                        <q-input
+                          :model-value="getDraft(group, item).deliveredQuantity"
+                          type="number"
+                          dense
+                          outlined
+                          readonly
+                          hide-bottom-space
+                          class="demand-field demand-field--qty"
+                        />
+                        <q-btn
+                          flat
+                          round
+                          dense
+                          color="primary"
+                          icon="ph ph-package"
+                          class="demand-pick-stock-btn"
+                          :disable="!item.product_id || isRowSaving(group, item)"
+                          :loading="isRowSaving(group, item)"
+                          @click="openStockPickDialog(group, item)"
+                        >
+                          <q-tooltip>Pick stock</q-tooltip>
+                        </q-btn>
                       </div>
-                      <span v-else class="text-grey-6">—</span>
-                    </td>
-                    <td class="demand-note-col">
-                      <q-input
-                        v-if="showRowInputs(item)"
-                        :model-value="getDraft(group, item).notes"
-                        dense
-                        outlined
-                        hide-bottom-space
-                        placeholder="Notes (optional)"
-                        class="demand-field"
-                        data-test="placement-notes"
-                        @update:model-value="(v) => setDraftNotes(group, item, v)"
-                      />
-                      <div v-else-if="latestPlacement(item)" class="demand-readonly-cell">
-                        {{ latestPlacement(item)!.notes || '—' }}
-                      </div>
-                      <span v-else class="text-grey-6">—</span>
-                    </td>
-                    <td class="text-center demand-status-col">
-                      <q-select
-                        v-if="canManagePlacements && latestPlacement(item) && !latestPlacement(item)!.global_shipment_item_id"
-                        :model-value="'active'"
-                        :options="placementStatusOptions"
-                        dense
-                        outlined
-                        hide-bottom-space
-                        emit-value
-                        map-options
-                        class="demand-field demand-field--status"
-                        :loading="cancellingPlacementId === latestPlacement(item)!.id"
-                        @update:model-value="(v) => onPlacementStatusChange(latestPlacement(item)!.id, v)"
-                      />
-                      <q-chip
-                        v-else
-                        dense
-                        square
-                        size="sm"
-                        :color="lineStatusChip(item).color"
-                        :text-color="lineStatusChip(item).textColor"
-                        class="text-weight-bold"
+                      <ul
+                        v-if="getDraft(group, item).stockPicks.length"
+                        class="demand-pick-list q-mt-xs q-pl-md q-ma-none"
                       >
-                        {{
-                          latestPlacement(item)?.global_shipment_item_id
-                            ? 'On shipment'
-                            : lineStatusChip(item).label
-                        }}
-                      </q-chip>
-                    </td>
-                    <td class="text-center demand-action-col">
-                      <q-btn
-                        v-if="showRowInputs(item)"
-                        flat
-                        round
-                        dense
-                        icon="ph ph-floppy-disk"
-                        color="primary"
-                        :loading="savingItemKey === itemRowKey(item)"
-                        :disable="!canSaveDraft(group, item)"
-                        data-test="record-placement-btn"
-                        @click="saveDraft(group, item)"
-                      >
-                        <q-tooltip>Save placement</q-tooltip>
-                      </q-btn>
+                        <li
+                          v-for="pick in getDraft(group, item).stockPicks"
+                          :key="pick.globalStockId"
+                          class="text-caption text-grey-7"
+                        >
+                          {{ pick.shipmentName || pick.globalStockId }} · {{ pick.quantity }}
+                        </li>
+                      </ul>
                     </td>
                   </tr>
-                </template>
                 </template>
               </template>
             </tbody>
@@ -253,110 +189,180 @@
         </div>
       </q-card>
     </div>
+
+    <ProcurementDemandStockPickDialog
+      v-model="stockPickDialogOpen"
+      :tenant-id="tenantId"
+      :product-id="stockPickTarget?.productId ?? null"
+      :product-name="stockPickTarget?.productName ?? ''"
+      :need-quantity="stockPickTarget?.needQuantity ?? 0"
+      :initial-picks="stockPickTarget?.initialPicks"
+      @apply="onStockPickApply"
+    />
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
 import { useQuery } from '@tanstack/vue-query';
+import { computed, reactive, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import SmartImage from 'src/components/SmartImage.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { vendorRepository } from 'src/modules/vendor/repositories/vendorRepository';
 import type { Vendor } from 'src/modules/vendor/types';
+import { getStaffCatalogStatusLabel } from 'src/modules/shop_order/utils/catalogOrderStatus';
+import { getCustomerOrderStatusColor } from 'src/modules/shop_order/utils/customerOrderStatusUi';
+import {
+  parseSupabaseError,
+  showErrorNotification,
+  showSuccessNotification,
+} from 'src/utils/appFeedback';
+import ProcurementDemandStockPickDialog, {
+  type DemandStockPickSelection,
+} from '../components/ProcurementDemandStockPickDialog.vue';
 import { useProcurementDemandGroupsQuery } from '../composables/useProcurementDemandGroupsQuery';
+import { useUpsertPreorderDemandMutation } from '../composables/useProcurementPlacementMutations';
 import {
-  useCancelProcurementPlacementMutation,
-  useRecordProcurementPlacementMutation,
-} from '../composables/useProcurementPlacementMutations';
-import {
-  getItemNeedQuantity,
   getItemPlacedQuantity,
   getItemRemainingQuantity,
+  type PreorderDemandStockPick,
   type ProcurementDemandDocumentType,
   type ProcurementDemandGroup,
   type ProcurementDemandItem,
   type ProcurementDemandStatus,
-  type ProcurementPlacement,
 } from '../repositories/procurementDemandRepository';
-import { showErrorNotification, showSuccessNotification } from 'src/utils/appFeedback';
 
 type ItemDraft = {
   vendorId: number | null;
   quantity: number;
-  notes: string;
+  deliveredQuantity: number;
+  stockPicks: DemandStockPickSelection[];
+};
+
+type StockPickTarget = {
+  group: ProcurementDemandGroup;
+  item: ProcurementDemandItem;
+  productId: number | null;
+  productName: string;
+  needQuantity: number;
+  initialPicks: DemandStockPickSelection[];
 };
 
 const authStore = useAuthStore();
+const { t, te } = useI18n();
 
-const procurementStatus = computed(() => 'procuring' as ProcurementDemandStatus);
 const searchText = ref('');
-const appliedSearch = ref<string | null>(null);
-const pageSize = 50;
-const vendorFilter = ref('');
-const savingItemKey = ref<string | null>(null);
-const cancellingPlacementId = ref<number | null>(null);
+const debouncedSearch = ref('');
 const collapsedGroupKeys = ref<Set<string>>(new Set());
 const drafts = reactive<Record<string, ItemDraft>>({});
+const stockPickDialogOpen = ref(false);
+const stockPickTarget = ref<StockPickTarget | null>(null);
+const savingRowKeys = ref<Set<string>>(new Set());
+const vendorFilter = ref('');
 
-const placementStatusOptions = [
-  { label: 'Active', value: 'active' },
-  { label: 'Cancelled', value: 'cancelled' },
-];
+const tenantId = computed(
+  () => authStore.selectedTenant?.parent_id ?? authStore.tenantId ?? null,
+);
 
-const tenantId = computed(() => authStore.tenantId ?? null);
-const canManagePlacements = true;
-
-const { data, isLoading, isFetching, isError, error, refetch } = useProcurementDemandGroupsQuery({
-  tenantId,
-  procurementStatus,
-  search: appliedSearch,
-  limit: pageSize,
+let searchTimer: ReturnType<typeof setTimeout> | undefined;
+watch(searchText, (value) => {
+  if (searchTimer) clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    debouncedSearch.value = value;
+  }, 300);
 });
 
-const { data: vendors = [] } = useQuery({
-  queryKey: computed(() => ['vendors', 'procurementDemand', tenantId.value]),
+const procurementStatus = ref<ProcurementDemandStatus>('procuring');
+
+const {
+  data: demandData,
+  isLoading,
+  isFetching,
+  refetch,
+} = useProcurementDemandGroupsQuery({
+  tenantId,
+  procurementStatus,
+  search: debouncedSearch,
+});
+
+const groups = computed(() => demandData.value?.groups ?? []);
+
+const upsertMutation = useUpsertPreorderDemandMutation({
+  tenantId,
+  procurementStatus,
+  search: debouncedSearch,
+});
+
+const { data: vendors = [], isLoading: vendorsLoading } = useQuery({
+  queryKey: computed(() => ['vendors', 'forDemand', tenantId.value]),
   queryFn: () => vendorRepository.listVendors(tenantId.value),
   enabled: computed(() => tenantId.value !== null),
   staleTime: 60_000,
 });
 
-const recordPlacementMutation = useRecordProcurementPlacementMutation({
-  tenantId,
-  procurementStatus,
-  search: appliedSearch,
-  limit: pageSize,
-});
-
-const cancelPlacementMutation = useCancelProcurementPlacementMutation({
-  tenantId,
-  procurementStatus,
-  search: appliedSearch,
-  limit: pageSize,
-});
-
-const meta = computed(() => data.value?.meta ?? null);
-const groups = computed(() => data.value?.groups ?? []);
-
 const vendorOptions = computed(() => {
   const needle = vendorFilter.value.trim().toLowerCase();
   return (vendors.value as Vendor[])
-    .filter((v) => {
+    .filter((vendor) => {
       if (!needle) return true;
-      return v.name.toLowerCase().includes(needle) || v.code.toLowerCase().includes(needle);
+      return (
+        vendor.name.toLowerCase().includes(needle) ||
+        vendor.code.toLowerCase().includes(needle)
+      );
     })
-    .map((v) => ({ id: v.id, label: `${v.name} (${v.code})`, code: v.code }));
+    .map((vendor) => ({
+      id: vendor.id,
+      label: `${vendor.name} (${vendor.code})`,
+    }));
 });
 
-const errorMessage = computed(() => {
-  if (!isError.value) return '';
-  const err = error.value;
-  return err instanceof Error ? err.message : 'Failed to load procurement demand';
-});
+const filterVendors = (val: string, update: (fn: () => void) => void) => {
+  update(() => {
+    vendorFilter.value = val;
+  });
+};
 
-const itemRowKey = (item: ProcurementDemandItem) => `${item.source_type}-${item.source_id}`;
+const mapStockPicksFromApi = (picks?: PreorderDemandStockPick[]): DemandStockPickSelection[] =>
+  (picks ?? []).map((pick) => ({
+    globalStockId: pick.global_stock_id,
+    shipmentName: pick.shipment_name ?? '',
+    locationName: pick.location_name ?? '',
+    quantity: pick.quantity,
+  }));
+
+const mapStockPicksToApi = (picks: DemandStockPickSelection[]): PreorderDemandStockPick[] =>
+  picks.map((pick) => ({
+    global_stock_id: pick.globalStockId,
+    quantity: pick.quantity,
+    shipment_name: pick.shipmentName || null,
+    location_name: pick.locationName || null,
+  }));
+
+const syncDraftsFromGroups = (nextGroups: ProcurementDemandGroup[]) => {
+  for (const group of nextGroups) {
+    for (const item of group.items) {
+      const key = itemRowKey(group, item);
+      if (savingRowKeys.value.has(key)) continue;
+      drafts[key] = {
+        vendorId: item.vendor_id ?? null,
+        quantity: item.placed_quantity ?? 0,
+        deliveredQuantity: item.delivered_quantity ?? 0,
+        stockPicks: mapStockPicksFromApi(item.stock_picks),
+      };
+    }
+  }
+};
+
+watch(groups, (nextGroups) => syncDraftsFromGroups(nextGroups), { immediate: true });
 
 const groupKey = (group: ProcurementDemandGroup) =>
   `${group.document_type}-${group.document_id}`;
+
+const itemRowKey = (group: ProcurementDemandGroup, item: ProcurementDemandItem) =>
+  `${groupKey(group)}-${item.source_type}-${item.source_id}`;
+
+const isRowSaving = (group: ProcurementDemandGroup, item: ProcurementDemandItem) =>
+  savingRowKeys.value.has(itemRowKey(group, item));
 
 const isGroupExpanded = (key: string) => !collapsedGroupKeys.value.has(key);
 
@@ -370,146 +376,140 @@ const toggleGroup = (key: string) => {
   collapsedGroupKeys.value = next;
 };
 
-const needQty = (item: ProcurementDemandItem) => getItemNeedQuantity(item);
-const placedQty = (item: ProcurementDemandItem) => getItemPlacedQuantity(item);
-const remainingQty = (item: ProcurementDemandItem) => getItemRemainingQuantity(item);
-
-const placementVendorLabel = (placement: ProcurementPlacement) =>
-  placement.vendor_name || placement.vendor_code || '—';
-
-const latestPlacement = (item: ProcurementDemandItem): ProcurementPlacement | null => {
-  const list = item.placements ?? [];
-  return list.length ? list[list.length - 1]! : null;
-};
-
-const showRowInputs = (item: ProcurementDemandItem) =>
-  canManagePlacements && remainingQty(item) > 0;
-
-const placementsSummary = (item: ProcurementDemandItem) =>
-  (item.placements ?? [])
-    .map((p) => `${placementVendorLabel(p)} ×${p.quantity}`)
-    .join(' · ');
-
-const getDraft = (group: ProcurementDemandGroup, item: ProcurementDemandItem): ItemDraft => {
-  const key = itemRowKey(item);
-  if (!drafts[key]) {
-    const latest = latestPlacement(item);
-    drafts[key] = {
-      vendorId: latest?.vendor_id ?? group.vendor?.id ?? null,
-      quantity: remainingQty(item) > 0 ? remainingQty(item) : (latest?.quantity ?? 1),
-      notes: latest?.notes ?? '',
-    };
-  }
-  return drafts[key];
-};
-
-const setDraftVendor = (group: ProcurementDemandGroup, item: ProcurementDemandItem, value: number | null) => {
-  getDraft(group, item).vendorId = value;
-};
-
-const setDraftQuantity = (group: ProcurementDemandGroup, item: ProcurementDemandItem, value: string | number | null) => {
-  const parsed = Number(value);
-  getDraft(group, item).quantity = Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
-};
-
-const setDraftNotes = (group: ProcurementDemandGroup, item: ProcurementDemandItem, value: string | number | null) => {
-  getDraft(group, item).notes = String(value ?? '');
-};
-
-const canSaveDraft = (group: ProcurementDemandGroup, item: ProcurementDemandItem) => {
-  const draft = getDraft(group, item);
-  const qty = Number(draft.quantity);
-  return Number.isFinite(qty) && qty > 0 && qty <= remainingQty(item);
-};
-
-const filterVendors = (val: string, update: (fn: () => void) => void) => {
-  update(() => {
-    vendorFilter.value = val;
-  });
-};
-
-const lineStatusChip = (item: ProcurementDemandItem) => {
-  const left = remainingQty(item);
-  const placed = placedQty(item);
-  if (left <= 0 && placed > 0) {
-    return { label: 'Complete', color: 'green-1', textColor: 'positive' };
-  }
-  if (placed > 0) {
-    return { label: 'Partial', color: 'orange-1', textColor: 'orange-9' };
-  }
-  return { label: 'Open', color: 'grey-2', textColor: 'grey-9' };
-};
-
-const lineStatusStyle = (item: ProcurementDemandItem) => {
-  const chip = lineStatusChip(item);
-  if (chip.label === 'Complete') {
-    return { boxShadow: 'inset 3px 0 0 #22c55e' };
-  }
-  if (chip.label === 'Partial') {
-    return { boxShadow: 'inset 3px 0 0 #f59e0b' };
-  }
-  return { boxShadow: 'inset 3px 0 0 #94a3b8' };
-};
-
-const applySearch = () => {
-  const trimmed = searchText.value.trim();
-  appliedSearch.value = trimmed.length ? trimmed : null;
-};
-
-const sourceLabel = (source: string) => {
-  if (source === 'shop_order') return 'Shop orders';
-  if (source === 'pbc_costing') return 'Costing files';
-  return source;
-};
-
 const groupIcon = (documentType: ProcurementDemandDocumentType) =>
   documentType === 'shop_order' ? 'ph ph-receipt' : 'ph ph-file-text';
 
 const groupTitle = (group: ProcurementDemandGroup) => {
   if (group.document_type === 'shop_order') {
-    return `Shop order #${group.document_id}`;
+    return `Order #${group.document_id}`;
   }
   return `Costing file #${group.document_id}`;
 };
 
-const saveDraft = async (group: ProcurementDemandGroup, item: ProcurementDemandItem) => {
-  if (!tenantId.value || !canSaveDraft(group, item)) return;
+const getDraft = (group: ProcurementDemandGroup, item: ProcurementDemandItem): ItemDraft => {
+  const key = itemRowKey(group, item);
+  if (!drafts[key]) {
+    drafts[key] = {
+      vendorId: item.vendor_id ?? null,
+      quantity: item.placed_quantity ?? 0,
+      deliveredQuantity: item.delivered_quantity ?? 0,
+      stockPicks: mapStockPicksFromApi(item.stock_picks),
+    };
+  }
+  return drafts[key];
+};
 
+const saveTimers: Record<string, ReturnType<typeof setTimeout>> = {};
+
+const scheduleProcuringSave = (group: ProcurementDemandGroup, item: ProcurementDemandItem) => {
+  const key = itemRowKey(group, item);
+  if (saveTimers[key]) clearTimeout(saveTimers[key]);
+  saveTimers[key] = setTimeout(() => {
+    void saveProcuringLine(group, item);
+  }, 450);
+};
+
+const saveProcuringLine = async (group: ProcurementDemandGroup, item: ProcurementDemandItem) => {
+  const key = itemRowKey(group, item);
   const draft = getDraft(group, item);
-  const key = itemRowKey(item);
-  savingItemKey.value = key;
-
+  savingRowKeys.value = new Set(savingRowKeys.value).add(key);
   try {
-    const vendor = (vendors.value as Vendor[]).find((v) => v.id === draft.vendorId);
-    await recordPlacementMutation.mutateAsync({
+    await upsertMutation.mutateAsync({
       sourceType: item.source_type,
       sourceId: item.source_id,
-      quantity: Number(draft.quantity),
       vendorId: draft.vendorId,
-      vendorCode: vendor?.code ?? null,
-      notes: draft.notes.trim() || null,
+      placedQuantity: draft.quantity,
     });
-    showSuccessNotification('Vendor order recorded');
-    delete drafts[key];
-    await refetch();
   } catch (err) {
-    showErrorNotification(err instanceof Error ? err.message : 'Failed to record placement');
+    showErrorNotification(parseSupabaseError(err, 'Failed to save demand line'));
   } finally {
-    savingItemKey.value = null;
+    const next = new Set(savingRowKeys.value);
+    next.delete(key);
+    savingRowKeys.value = next;
   }
 };
 
-const onPlacementStatusChange = async (placementId: number, status: string) => {
-  if (status !== 'cancelled' || !tenantId.value) return;
-  cancellingPlacementId.value = placementId;
+const onVendorChange = (
+  group: ProcurementDemandGroup,
+  item: ProcurementDemandItem,
+  value: number | null,
+) => {
+  getDraft(group, item).vendorId = value;
+  scheduleProcuringSave(group, item);
+};
+
+const onPlacedQuantityInput = (
+  group: ProcurementDemandGroup,
+  item: ProcurementDemandItem,
+  value: string | number | null,
+) => {
+  const parsed = Number(value);
+  getDraft(group, item).quantity = Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+  scheduleProcuringSave(group, item);
+};
+
+const openStockPickDialog = (group: ProcurementDemandGroup, item: ProcurementDemandItem) => {
+  const draft = getDraft(group, item);
+  stockPickTarget.value = {
+    group,
+    item,
+    productId: item.product_id,
+    productName: item.name,
+    needQuantity: getItemPlacedQuantity(item) || getItemRemainingQuantity(item) || item.quantity,
+    initialPicks: [...draft.stockPicks],
+  };
+  stockPickDialogOpen.value = true;
+};
+
+const onStockPickApply = async (payload: {
+  picks: DemandStockPickSelection[];
+  totalQuantity: number;
+}) => {
+  const target = stockPickTarget.value;
+  if (!target) return;
+
+  const key = itemRowKey(target.group, target.item);
+  const draft = getDraft(target.group, target.item);
+  draft.stockPicks = payload.picks;
+  draft.deliveredQuantity = payload.totalQuantity;
+
+  savingRowKeys.value = new Set(savingRowKeys.value).add(key);
   try {
-    await cancelPlacementMutation.mutateAsync(placementId);
-    showSuccessNotification('Placement cancelled');
+    await upsertMutation.mutateAsync({
+      sourceType: target.item.source_type,
+      sourceId: target.item.source_id,
+      stockPicks: mapStockPicksToApi(payload.picks),
+    });
+    showSuccessNotification('Stock picks saved.');
   } catch (err) {
-    showErrorNotification(err instanceof Error ? err.message : 'Failed to cancel placement');
+    showErrorNotification(parseSupabaseError(err, 'Failed to save stock picks'));
   } finally {
-    cancellingPlacementId.value = null;
+    const next = new Set(savingRowKeys.value);
+    next.delete(key);
+    savingRowKeys.value = next;
   }
+};
+
+const groupStatusLabel = (group: ProcurementDemandGroup) => {
+  if (group.document_type === 'shop_order') {
+    return getStaffCatalogStatusLabel(group.document_status);
+  }
+  const key = `product_based_costing.status_${group.document_status}`;
+  return te(key) ? t(key) : group.document_status.replaceAll('_', ' ');
+};
+
+const groupStatusColor = (status: string) => getCustomerOrderStatusColor(status);
+
+const lineStatusStyle = (item: ProcurementDemandItem) => {
+  const left = getItemRemainingQuantity(item);
+  const placed = getItemPlacedQuantity(item);
+  if (left <= 0 && placed > 0) {
+    return { boxShadow: 'inset 3px 0 0 #22c55e' };
+  }
+  if (placed > 0) {
+    return { boxShadow: 'inset 3px 0 0 #f59e0b' };
+  }
+  return { boxShadow: 'inset 3px 0 0 #94a3b8' };
 };
 </script>
 
@@ -521,7 +521,7 @@ const onPlacementStatusChange = async (placementId: number, status: string) => {
 }
 
 .demand-table {
-  min-width: 980px;
+  min-width: 820px;
 }
 
 .demand-table :deep(thead tr th) {
@@ -570,24 +570,6 @@ body.body--dark .demand-group-row td {
   border-bottom-color: #2e2e2e;
 }
 
-.demand-readonly-cell {
-  min-height: 30px;
-  padding: 4px 8px;
-  font-size: 12px;
-  line-height: 1.35;
-  color: #334155;
-  word-break: break-word;
-}
-
-body.body--dark .demand-readonly-cell {
-  color: #ededed;
-}
-
-.placement-summary {
-  line-height: 1.3;
-  word-break: break-word;
-}
-
 .demand-image-col {
   width: 1.2in;
   min-width: 1.2in;
@@ -595,7 +577,7 @@ body.body--dark .demand-readonly-cell {
 }
 
 .demand-product-col {
-  min-width: 160px;
+  min-width: 140px;
   max-width: 220px;
 }
 
@@ -639,32 +621,38 @@ body.body--dark .demand-readonly-cell {
 }
 
 .demand-qty-col {
-  width: 52px;
-  min-width: 52px;
+  width: 64px;
+  min-width: 64px;
+}
+
+.demand-place-col {
+  width: 100px;
+  min-width: 100px;
+}
+
+.demand-delivered-col {
+  width: 130px;
+  min-width: 130px;
+}
+
+.demand-delivered-cell {
+  gap: 2px;
+}
+
+.demand-pick-stock-btn {
+  flex-shrink: 0;
+}
+
+.demand-pick-list {
+  line-height: 1.25;
+  max-width: 150px;
+  margin-inline: auto;
+  text-align: left;
 }
 
 .demand-vendor-col {
-  min-width: 140px;
-  max-width: 180px;
-}
-
-.demand-input-col {
-  width: 100px;
-  min-width: 100px;
-}
-
-.demand-note-col {
-  min-width: 120px;
-}
-
-.demand-status-col {
-  width: 100px;
-  min-width: 100px;
-}
-
-.demand-action-col {
-  width: 40px;
-  min-width: 40px;
+  min-width: 150px;
+  max-width: 220px;
 }
 
 .demand-field :deep(.q-field__control) {
@@ -677,8 +665,8 @@ body.body--dark .demand-readonly-cell {
 }
 
 .demand-field--qty {
-  min-width: 92px;
-  max-width: 100px;
+  min-width: 88px;
+  max-width: 96px;
 }
 
 .demand-field--qty :deep(input[type='number']::-webkit-outer-spin-button),
@@ -692,7 +680,10 @@ body.body--dark .demand-readonly-cell {
   text-align: center;
 }
 
-.demand-field--status {
-  max-width: 100px;
+.demand-group-invoice-btn {
+  border-radius: 6px;
+  font-size: 11px;
+  min-height: 28px;
+  padding: 0 10px;
 }
 </style>
