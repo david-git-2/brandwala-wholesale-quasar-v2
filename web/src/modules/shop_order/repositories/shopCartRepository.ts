@@ -1,6 +1,7 @@
 import { supabase } from 'src/boot/supabase';
 import type { CustomerShopPermissions } from '../composables/useCustomerShopPermissionsQuery';
 import type { ShopCatalogPrice } from '../types';
+import { normalizeCartResponse } from '../utils/normalizeCartResponse';
 
 export interface CartChargesPayload {
   cod_charge_amount?: number;
@@ -58,6 +59,42 @@ export interface CartData {
   permissions?: CustomerShopPermissions | null;
 }
 
+const fetchCustomerShopPermissions = async (
+  shopId: number,
+): Promise<CustomerShopPermissions | null> => {
+  const { data, error } = await supabase.rpc('get_shop_permissions_for_customer', {
+    p_shop_id: shopId,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return (Array.isArray(data) ? data[0] : data ?? null) as CustomerShopPermissions | null;
+};
+
+const normalizeCartRpcResult = async (
+  data: unknown,
+  options?: { fetchPermissions?: boolean },
+): Promise<CartData> => {
+  const raw = data as CartData;
+  const fetchPermissions = options?.fetchPermissions ?? false;
+  const permissions =
+    fetchPermissions && raw.cart?.shop_id
+      ? await fetchCustomerShopPermissions(raw.cart.shop_id)
+      : null;
+  const normalized = normalizeCartResponse(raw, permissions);
+
+  if (!fetchPermissions) {
+    return {
+      ...normalized,
+      permissions: raw.permissions ?? undefined,
+    };
+  }
+
+  return normalized;
+};
+
 const getOrCreateCart = async (shopId: number): Promise<CartData> => {
   const { data, error } = await supabase.rpc('get_or_create_shop_cart', {
     p_shop_id: shopId,
@@ -67,7 +104,7 @@ const getOrCreateCart = async (shopId: number): Promise<CartData> => {
     throw error;
   }
 
-  return data as CartData;
+  return normalizeCartRpcResult(data, { fetchPermissions: true });
 };
 
 const addToCart = async (
@@ -97,7 +134,7 @@ const addToCart = async (
     throw error;
   }
 
-  return data as CartData;
+  return normalizeCartRpcResult(data);
 };
 
 const updateCartItemQty = async (cartItemId: number, quantity: number): Promise<CartData> => {
@@ -110,7 +147,7 @@ const updateCartItemQty = async (cartItemId: number, quantity: number): Promise<
     throw error;
   }
 
-  return data as CartData;
+  return normalizeCartRpcResult(data);
 };
 
 const removeCartItem = async (cartItemId: number): Promise<CartData> => {
@@ -122,7 +159,7 @@ const removeCartItem = async (cartItemId: number): Promise<CartData> => {
     throw error;
   }
 
-  return data as CartData;
+  return normalizeCartRpcResult(data);
 };
 
 const updateCartItemPrice = async (cartItemId: number, price: number): Promise<CartData> => {
@@ -135,7 +172,7 @@ const updateCartItemPrice = async (cartItemId: number, price: number): Promise<C
     throw error;
   }
 
-  return data as CartData;
+  return normalizeCartRpcResult(data);
 };
 
 const updateShopCartCharges = async (

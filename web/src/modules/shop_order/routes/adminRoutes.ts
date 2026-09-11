@@ -15,13 +15,7 @@ const SHOP_OVERVIEW_MODULE_KEYS = [
   'shop_pricing',
   'shop_order_mgmt',
   'shop_shipping',
-] as const satisfies readonly ModuleKey[];
-
-const SHOP_STORE_OVERVIEW_MODULE_KEYS = [
-  'shop_config',
-  'shop_category',
   'customer',
-  'shop_pricing',
 ] as const satisfies readonly ModuleKey[];
 
 const guard = (requiredModule: ModuleKey) =>
@@ -67,28 +61,6 @@ const shopOverviewGuard: NavigationGuard = async (to, from) => {
   }
 
   return guard('shop_order_mgmt')(to);
-};
-
-const shopStoreOverviewGuard: NavigationGuard = async (to, from) => {
-  const authStore = useAuthStore();
-  const hasAnyStoreAccess = SHOP_STORE_OVERVIEW_MODULE_KEYS.some((moduleKey) =>
-    canAccessModule({
-      scope: authStore.scope,
-      tenantId: authStore.tenantId,
-      customerGroupId: authStore.customerGroupId,
-      role: authStore.matchedRole,
-      moduleKey,
-      activeModuleKeys: authStore.activeModuleKeys,
-      effectiveGrants: authStore.access?.effectiveGrants,
-      isAdmin: authStore.access?.isAdmin,
-    }),
-  );
-
-  if (hasAnyStoreAccess) {
-    return true;
-  }
-
-  return guard('shop_config')(to);
 };
 
 const adminRoutes: RouteRecordRaw[] = [
@@ -142,8 +114,10 @@ const adminRoutes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'app-shop-shops-page',
-        component: () => import('src/modules/shop_order/pages/ShopStoreOverviewPage.vue'),
-        beforeEnter: shopStoreOverviewGuard,
+        redirect: (to) => ({
+          name: 'app-shop-overview-page',
+          params: { tenantSlug: to.params.tenantSlug },
+        }),
       },
       {
         path: 'list',
@@ -265,8 +239,10 @@ const adminRoutes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'app-shop-shipping-hub-page',
-        component: () => import('src/modules/shop_order/pages/ShopShippingHubPage.vue'),
-        beforeEnter: guard('shop_shipping'),
+        redirect: (to) => ({
+          name: 'app-shop-overview-page',
+          params: { tenantSlug: to.params.tenantSlug },
+        }),
       },
     ],
   },

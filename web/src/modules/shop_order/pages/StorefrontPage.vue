@@ -137,6 +137,7 @@ import type { QInfiniteScroll } from 'quasar';
 import { activeCartShopMetaFromShop } from '../utils/activeCartCacheUtils';
 import { resolveShopCartItemMoq } from '../utils/cartQuantityUtils';
 import {
+  customerCanSeeCatalogPrice,
   formatStorefrontCardMinPrice,
   formatStorefrontCardPrice,
   storefrontCardPriceLabelKey,
@@ -300,16 +301,21 @@ const onResetFilters = () => {
 const getMinQty = (item: ShopCatalogItem) =>
   resolveShopCartItemMoq(item, shopDetails.value?.shop_type);
 
+const canSeeCatalogPrice = computed(() =>
+  customerCanSeeCatalogPrice(activeShopType.value, permissions.value),
+);
+
 const storefrontItemPriceText = (item: ShopCatalogItem) =>
-  formatStorefrontCardPrice(item, formatMoney);
+  canSeeCatalogPrice.value ? formatStorefrontCardPrice(item, formatMoney) : null;
 
 const storefrontItemPriceLabel = (item: ShopCatalogItem) => {
+  if (!canSeeCatalogPrice.value) return null;
   const key = storefrontCardPriceLabelKey(item);
   return key ? t(key) : null;
 };
 
 const storefrontItemMinPriceText = (item: ShopCatalogItem) =>
-  formatStorefrontCardMinPrice(item, formatMoney);
+  canSeeCatalogPrice.value ? formatStorefrontCardMinPrice(item, formatMoney) : null;
 
 const decrementQty = (item: ShopCatalogItem) => {
   const key = itemKey(item);

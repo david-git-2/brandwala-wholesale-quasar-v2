@@ -265,7 +265,10 @@
                     {{ $t('shop.qty') }}: {{ item.quantity }}
                   </div>
                 </q-item-section>
-                <q-item-section side v-if="canSeeBuyPrice || canSeeSellPrice">
+                <q-item-section
+                  side
+                  v-if="cart?.shop_type === 'dropship' ? (canSeeBuyPrice || canSeeSellPrice) : canSeeLinePrices"
+                >
                   <template v-if="cart?.shop_type === 'dropship'">
                     <div v-if="canSeeBuyPrice" class="text-caption text-grey-6 text-right" style="font-size: 10px;">
                       {{ $t('shop.cost_label') }} {{ formatBuyerItemTotal(item) }}
@@ -274,7 +277,7 @@
                       {{ $t('shop.pay_label') }} {{ formatItemTotal(item) }}
                     </div>
                   </template>
-                  <template v-else-if="canSeeSellPrice || canSeeBuyPrice">
+                  <template v-else-if="canSeeLinePrices">
                     <div class="text-caption text-weight-bold text-grey-9">
                       {{ formatItemTotal(item) }}
                     </div>
@@ -367,7 +370,7 @@
                   cart?.shop_type === 'dropship' ? $t('shop.recipient_pay_total') : $t('shop.estimated_total')
                 }}</span>
                 <span
-                  v-if="canSeePrices"
+                  v-if="cart?.shop_type === 'dropship' ? (canSeeBuyPrice || canSeeSellPrice) : canSeeLinePrices"
                   class="text-h6 text-weight-bold text-primary"
                 >
                   {{ cart?.shop_type === 'dropship' ? formatAmount(calculatedRecipientGrandTotal) : formatCartTotal() }}
@@ -422,6 +425,7 @@ import { fetchCourierChargeEstimate } from '../services/courierChargeEstimate';
 import { useRecipientProfileStore } from 'src/modules/sales_invoice/stores/recipientProfileStore';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { getLastVisitedShopSlug } from '../utils/catalogShop';
+import { customerCanSeeCartLinePrices } from '../utils/catalogPriceUtils';
 import {
   getBDDistricts,
   getBDUpazilas,
@@ -480,7 +484,9 @@ const allowDelivery = computed(() => cart.value?.allow_delivery);
 
 const canSeeBuyPrice = computed(() => !!permissions.value?.can_see_buy_price);
 const canSeeSellPrice = computed(() => !!permissions.value?.can_see_sell_price);
-const canSeePrices = computed(() => canSeeBuyPrice.value || canSeeSellPrice.value);
+const canSeeLinePrices = computed(() =>
+  customerCanSeeCartLinePrices(cart.value?.shop_type, permissions.value),
+);
 
 // Load BD Districts and Upazilas
 const loadLocationData = async () => {

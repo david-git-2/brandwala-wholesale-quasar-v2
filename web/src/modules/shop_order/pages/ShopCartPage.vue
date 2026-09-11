@@ -92,6 +92,7 @@
             :cart="cart"
             :can-see-buy-price="canSeeBuyPrice"
             :can-see-sell-price="canSeeSellPrice"
+            :can-see-line-prices="canSeeLinePrices"
             :currency-symbol="currencySymbol"
             :permissions="permissions"
             :edited-quantities="editedQuantities"
@@ -118,6 +119,7 @@
             :cart="cart"
             :can-see-buy-price="canSeeBuyPrice"
             :can-see-sell-price="canSeeSellPrice"
+            :can-see-line-prices="canSeeLinePrices"
             :item-count="itemCount"
             :format-cart-total="formatCartTotal"
             :format-amount="formatAmount"
@@ -151,6 +153,7 @@ import ShopCartHeader from '../components/ShopCartHeader.vue';
 import ShopCartItemsList from '../components/ShopCartItemsList.vue';
 import ShopCartSummaryCard from '../components/ShopCartSummaryCard.vue';
 import ShopCartSkeleton from '../components/ShopCartSkeleton.vue';
+import { customerCanSeeCartLinePrices } from '../utils/catalogPriceUtils';
 
 const {
   data: activeCartsData,
@@ -176,7 +179,9 @@ const {
 
 const canSeeBuyPrice = computed(() => !!permissions.value?.can_see_buy_price);
 const canSeeSellPrice = computed(() => !!permissions.value?.can_see_sell_price);
-const canSeePrices = computed(() => canSeeBuyPrice.value || canSeeSellPrice.value);
+const canSeeLinePrices = computed(() =>
+  customerCanSeeCartLinePrices(cart.value?.shop_type, permissions.value),
+);
 
 const logic = useShopCartPageLogic(
   activeCarts,

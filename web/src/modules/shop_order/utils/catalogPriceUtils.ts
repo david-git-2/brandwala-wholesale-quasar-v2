@@ -250,7 +250,21 @@ export function customerCanSeeCatalogPrice(
 ): boolean {
   if (shopType === 'fixed_price') return !!permissions?.can_see_sell_price;
   if (shopType === 'vendor_catalog') {
-    return !!(permissions?.can_see_buy_price || permissions?.can_see_sell_price);
+    return !!permissions?.can_see_buy_price;
   }
   return !!permissions?.can_see_buy_price;
+}
+
+/** Customer-facing cart/checkout line prices (catalog list vs shelf sell vs dropship). */
+export function customerCanSeeCartLinePrices(
+  shopType: ShopType | null | undefined,
+  permissions?: {
+    can_see_buy_price?: boolean;
+    can_see_sell_price?: boolean;
+  } | null,
+): boolean {
+  if (shopType === 'dropship') {
+    return !!(permissions?.can_see_buy_price || permissions?.can_see_sell_price);
+  }
+  return customerCanSeeCatalogPrice(shopType, permissions);
 }

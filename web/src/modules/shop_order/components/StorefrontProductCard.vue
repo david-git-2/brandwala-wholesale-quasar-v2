@@ -272,6 +272,7 @@ import type {
   ShopType,
 } from '../types';
 import {
+  customerCanSeeCatalogPrice,
   formatStorefrontCardMinPrice,
   formatStorefrontCardPrice,
   storefrontCardPriceLabelKey,
@@ -400,17 +401,23 @@ const customerStockLabel = computed(() => {
   return t('shop.in_stock');
 });
 
-const resolvedPriceText = computed(
-  () => props.priceText || formatStorefrontCardPrice(props.item, props.formatMoney),
+const canSeeCatalogPrice = computed(() =>
+  customerCanSeeCatalogPrice(props.shopType, props.permissions),
 );
+
+const resolvedPriceText = computed(() => {
+  if (!canSeeCatalogPrice.value) return null;
+  return props.priceText || formatStorefrontCardPrice(props.item, props.formatMoney);
+});
 const resolvedPriceLabel = computed(() => {
   if (props.priceLabel) return props.priceLabel;
   const key = storefrontCardPriceLabelKey(props.item);
   return key ? t(key) : null;
 });
-const resolvedMinPriceText = computed(
-  () => props.minPriceText || formatStorefrontCardMinPrice(props.item, props.formatMoney),
-);
+const resolvedMinPriceText = computed(() => {
+  if (!canSeeCatalogPrice.value) return null;
+  return props.minPriceText || formatStorefrontCardMinPrice(props.item, props.formatMoney);
+});
 
 const gradeChipLabel = computed(() => {
   if (!showGradeChip.value || !props.item.stock_grade?.label) return null;

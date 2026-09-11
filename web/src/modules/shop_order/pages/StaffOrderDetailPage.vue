@@ -1,7 +1,7 @@
 <template>
   <q-page
     :class="isCatalogShop && currentOrder
-      ? 'staff-order-detail-page staff-order-detail-page--catalog column no-wrap bg-grey-1'
+      ? 'staff-order-detail-page staff-order-detail-page--catalog column no-wrap'
       : 'q-pa-md staff-order-detail-page'"
     :style="isCatalogShop && currentOrder ? 'height: calc(100vh - 55px); overflow: hidden' : undefined"
   >

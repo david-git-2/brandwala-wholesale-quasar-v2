@@ -618,6 +618,8 @@ export default {
   resellers: 'Resellers',
   prices: 'Prices',
   who_can_access: 'Who can access',
+  shop_hub_group_store_setup: 'Store setup',
+  shop_hub_group_shipping: 'Shipping',
   shop_setup_hub_caption: 'Shared setup for every shop. Open a shop on the list for prices or access.',
   shop_order_overview_empty_title: 'No shop modules available here',
   shop_order_overview_empty_caption:

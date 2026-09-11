@@ -7,7 +7,9 @@
     </q-card-section>
 
     <q-card-section class="q-py-md">
-      <template v-if="canSeeBuyPrice || canSeeSellPrice">
+      <template
+        v-if="cart?.shop_type === 'dropship' ? (canSeeBuyPrice || canSeeSellPrice) : canSeeLinePrices"
+      >
         <template v-if="cart?.shop_type === 'dropship'">
           <div v-if="canSeeSellPrice" class="row justify-between q-mb-sm text-body2 text-grey-7">
             <span>{{ $t('shop.items_subtotal') }}</span>
@@ -72,15 +74,7 @@
             </div>
           </q-expansion-item>
         </template>
-        <template v-else-if="canSeeSellPrice">
-          <div class="row justify-between q-mb-sm text-body2 text-grey-7">
-            <span>{{ $t('shop.subtotal') }} ({{ itemCount }} {{ $t('shop.items').toLowerCase() }})</span>
-            <span class="text-weight-medium">
-              {{ formatCartTotal() }}
-            </span>
-          </div>
-        </template>
-        <template v-else-if="canSeeBuyPrice">
+        <template v-else-if="canSeeLinePrices">
           <div class="row justify-between q-mb-sm text-body2 text-grey-7">
             <span>{{ $t('shop.subtotal') }} ({{ itemCount }} {{ $t('shop.items').toLowerCase() }})</span>
             <span class="text-weight-medium">
@@ -91,7 +85,7 @@
 
         <q-separator class="q-my-md" />
 
-        <div v-if="canSeeSellPrice || canSeeBuyPrice" class="row justify-between items-baseline q-mb-lg">
+        <div v-if="canSeeLinePrices" class="row justify-between items-baseline q-mb-lg">
           <span class="text-subtitle1 text-weight-bold text-grey-9">{{
             cart?.shop_type === 'dropship' ? $t('shop.recipient_pay_total') : $t('shop.estimated_total')
           }}</span>
@@ -125,6 +119,7 @@ defineProps<{
   cart: any;
   canSeeBuyPrice: boolean;
   canSeeSellPrice: boolean;
+  canSeeLinePrices: boolean;
   itemCount: number;
   formatCartTotal: () => string;
   formatAmount: (val: any) => string;

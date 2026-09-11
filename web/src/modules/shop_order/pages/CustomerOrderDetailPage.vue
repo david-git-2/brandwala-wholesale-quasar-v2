@@ -58,6 +58,8 @@
               :is-negotiable="!!currentOrder.is_negotiable_snapshot"
               :currency-symbol="currencySymbol"
               :buy-currency-symbol="buyCurrencySymbol"
+              :can-see-catalog-price="canSeeCatalogPrices"
+              :can-see-offer-prices="canSeeOfferPrices"
               @update:quantity="handleQuantityUpdate"
               @save-quantity="handleSaveQuantity"
               @update:customer-offer="handleCustomerOfferUpdate"
@@ -73,6 +75,7 @@
               :status="normalizedStatus"
               :is-negotiable="!!currentOrder.is_negotiable_snapshot"
               :total-amount="orderTotal"
+              :can-show-total="canShowOrderTotal"
               :currency-symbol="currencySymbol"
               :decided-count="itemsDecidedCount"
               :total-items="displayOrderItems.length"
@@ -192,6 +195,7 @@ import CustomerCatalogOrderItemCard from '../components/CustomerCatalogOrderItem
 import CustomerOrderStickyActions from '../components/CustomerOrderStickyActions.vue';
 import CustomerOrderDropshipActionBar from '../components/CustomerOrderDropshipActionBar.vue';
 import CustomerDropshipOrderPaper from '../components/CustomerDropshipOrderPaper.vue';
+import { customerCanSeeCatalogPrice, customerCanSeeCartLinePrices } from '../utils/catalogPriceUtils';
 
 const route = useRoute();
 const router = useRouter();
@@ -212,6 +216,21 @@ const currentOrder = computed(() => orderDetailsData.value?.order || null);
 const orderItems = ref<ShopOrderItem[]>([]);
 
 const isVendorCatalog = computed(() => currentOrder.value?.shop_type_snapshot === 'vendor_catalog');
+
+const orderPricePermissions = computed(() => ({
+  can_see_buy_price: currentOrder.value?.can_see_buy_price,
+  can_see_sell_price: currentOrder.value?.can_see_sell_price,
+}));
+
+const canSeeCatalogPrices = computed(() =>
+  customerCanSeeCatalogPrice(currentOrder.value?.shop_type_snapshot, orderPricePermissions.value),
+);
+
+const canSeeOfferPrices = computed(() => !!orderPricePermissions.value.can_see_sell_price);
+
+const canShowOrderTotal = computed(() =>
+  customerCanSeeCartLinePrices(currentOrder.value?.shop_type_snapshot, orderPricePermissions.value),
+);
 
 const isDropshipOrder = computed(() => currentOrder.value?.shop_type_snapshot === 'dropship');
 
@@ -278,12 +297,8 @@ const getDisplayUnitPrice = (item: any) => {
       if (computedOffer > 0) return computedOffer;
     }
   }
-  return (
-    item.customer_offer_amount ??
-    item.unit_sell_price_amount ??
-    item.unit_list_price_amount ??
-    0
-  );
+  const listPrice = canSeeCatalogPrices.value ? item.unit_list_price_amount : null;
+  return item.customer_offer_amount ?? item.unit_sell_price_amount ?? listPrice ?? 0;
 };
 
 const isAllItemsDecided = computed(() => {

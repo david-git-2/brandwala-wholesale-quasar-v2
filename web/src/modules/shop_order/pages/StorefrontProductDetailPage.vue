@@ -324,17 +324,13 @@ const showFixedPriceChip = computed(() =>
 const showProductUnitPrice = computed(() => {
   if (product.value?.unit_price_amount == null) return false;
   if (shopType.value === 'fixed_price') return !!permissions.value?.can_see_sell_price;
-  if (shopType.value === 'vendor_catalog') {
-    return !!(permissions.value?.can_see_buy_price || permissions.value?.can_see_sell_price);
-  }
+  if (shopType.value === 'vendor_catalog') return !!permissions.value?.can_see_buy_price;
   return !!permissions.value?.can_see_buy_price;
 });
 
 const showRelatedUnitPrice = (item: { unit_price_amount?: number | null }) => {
   if (item.unit_price_amount == null) return false;
-  if (shopType.value === 'vendor_catalog') {
-    return !!(permissions.value?.can_see_buy_price || permissions.value?.can_see_sell_price);
-  }
+  if (shopType.value === 'vendor_catalog') return !!permissions.value?.can_see_buy_price;
   return !!permissions.value?.can_see_buy_price;
 };
 

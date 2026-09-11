@@ -115,7 +115,7 @@
 
         <!-- Price and Subtotal -->
         <q-item-section
-          v-if="canSeeBuyPrice || canSeeSellPrice"
+          v-if="cart?.shop_type === 'dropship' ? (canSeeBuyPrice || canSeeSellPrice) : canSeeLinePrices"
           side
           class="text-right subtotal-section item-price-section"
         >
@@ -145,7 +145,7 @@
               </div>
             </div>
           </template>
-          <template v-else-if="canSeeSellPrice || canSeeBuyPrice">
+          <template v-else-if="canSeeLinePrices">
             <div class="text-subtitle2 text-weight-bold text-grey-9">
               {{ formatItemTotal(item) }}
             </div>
@@ -191,6 +191,7 @@ const props = defineProps<{
   cart: any;
   canSeeBuyPrice: boolean;
   canSeeSellPrice: boolean;
+  canSeeLinePrices: boolean;
   currencySymbol: string;
   permissions: any;
   editedQuantities: Record<number, number>;

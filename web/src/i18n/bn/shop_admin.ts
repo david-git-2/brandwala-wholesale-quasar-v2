@@ -606,6 +606,8 @@ export default {
   resellers: 'রিসেলার',
   prices: 'দাম',
   who_can_access: 'কে দেখতে পাবে',
+  shop_hub_group_store_setup: 'স্টোর সেটআপ',
+  shop_hub_group_shipping: 'শিপিং',
   shop_setup_hub_caption: 'সব শপের জন্য সাধারণ সেটআপ। দাম বা অ্যাক্সেস প্রতি শপের তালিকায়।',
   shop_order_overview_empty_title: 'এখানে কোনো শপ মডিউল নেই',
   shop_order_overview_empty_caption:

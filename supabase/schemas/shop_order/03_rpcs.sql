@@ -709,12 +709,7 @@ begin
   v_parent_tenant_id := public.resolve_parent_tenant_id(v_tenant_id);
   v_limit := greatest(1, least(coalesce(p_limit, 20), 200));
   v_offset := greatest(0, coalesce(p_offset, 0));
-  v_can_see_catalog_price := case
-    when v_shop_type = 'vendor_catalog' then
-      coalesce(v_can_see_buy_price, false) or coalesce(v_can_see_sell_price, false)
-    else
-      coalesce(v_can_see_buy_price, false)
-  end;
+  v_can_see_catalog_price := coalesce(v_can_see_buy_price, false);
 
   if v_shop_type = 'vendor_catalog' then
     execute format(
@@ -1336,12 +1331,7 @@ begin
   end if;
 
   v_parent_tenant_id := public.resolve_parent_tenant_id(v_shop_tenant_id);
-  v_can_see_catalog_price := case
-    when v_shop_type = 'vendor_catalog' then
-      coalesce(v_can_see_buy_price, false) or coalesce(v_can_see_sell_price, false)
-    else
-      coalesce(v_can_see_buy_price, false)
-  end;
+  v_can_see_catalog_price := coalesce(v_can_see_buy_price, false);
 
   if v_shop_type = 'vendor_catalog' then
     select jsonb_build_object(
@@ -5679,7 +5669,6 @@ CREATE OR REPLACE FUNCTION "public"."resolve_shop_can_see_buy_price"("p_shop_typ
     when p_shop_type = 'dropship'::public.shop_type_enum then true
     when p_shop_type = 'vendor_catalog'::public.shop_type_enum then
       coalesce(p_access_can_see_buy_price, p_profile_default_can_see_buy_price, false)
-      or coalesce(p_access_can_see_sell_price, p_profile_default_can_see_sell_price, false)
     else
       coalesce(p_access_can_see_buy_price, p_profile_default_can_see_buy_price, false)
   end;

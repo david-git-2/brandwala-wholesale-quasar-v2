@@ -453,7 +453,9 @@ export interface CustomerOrderDetailOrder {
   deduct_print_from_margin: boolean;
   deduct_packing_from_margin: boolean;
   item_count: number;
-  total_amount: number;
+  total_amount: number | null;
+  can_see_buy_price?: boolean;
+  can_see_sell_price?: boolean;
   cod_collect_amount: number | null;
   courier_name: string | null;
   courier_awb_number: string | null;

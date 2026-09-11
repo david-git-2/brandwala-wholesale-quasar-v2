@@ -122,11 +122,13 @@ const props = withDefaults(
     canSubmitCounter?: boolean;
     isSubmittingCounter?: boolean;
     isConfirming?: boolean;
+    canShowTotal?: boolean;
   }>(),
   {
     decidedCount: 0,
     totalItems: 0,
     negotiateRound: null,
+    canShowTotal: true,
   },
 );
 
@@ -150,6 +152,7 @@ const decidedRatio = computed(() =>
 );
 
 const showTotal = computed(() => {
+  if (!props.canShowTotal) return false;
   if (props.status === 'priced' && props.isNegotiable) return false;
   if (isWaitingOnStaff.value) return false;
   if (isConfirmedOrBeyond.value) return false;

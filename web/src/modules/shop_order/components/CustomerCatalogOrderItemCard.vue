@@ -32,7 +32,7 @@
             </q-chip>
 
             <q-chip
-              v-if="item.unit_list_price_amount"
+              v-if="canSeeCatalogPrice && item.unit_list_price_amount"
               dense
               outline
               color="grey-6"
@@ -45,7 +45,10 @@
       </div>
 
       <!-- Pricing Summary (table-style colored cells) -->
-      <div v-if="status === 'priced' || status === 'countered' || status === 'final_offered' || isConfirmedOrBeyond" class="price-cells-row row no-wrap q-col-gutter-xs item-card__full-width">
+      <div
+        v-if="canSeeOfferPrices && (status === 'priced' || status === 'countered' || status === 'final_offered' || isConfirmedOrBeyond)"
+        class="price-cells-row row no-wrap q-col-gutter-xs item-card__full-width"
+      >
         <div class="col price-cell price-cell--first-offer">
           <span class="price-cell__label">1st Offer / Unit</span>
           <span class="price-cell__value">{{ currencySymbol }}{{ staffOfferAmount.toFixed(2) }}</span>
@@ -248,7 +251,12 @@ const props = defineProps<{
   isNegotiable: boolean;
   currencySymbol: string;
   buyCurrencySymbol?: string;
+  canSeeCatalogPrice?: boolean;
+  canSeeOfferPrices?: boolean;
 }>();
+
+const canSeeCatalogPrice = computed(() => props.canSeeCatalogPrice === true);
+const canSeeOfferPrices = computed(() => props.canSeeOfferPrices === true);
 
 const emit = defineEmits<{
   (e: 'update:quantity', payload: { itemId: number; quantity: number }): void;
