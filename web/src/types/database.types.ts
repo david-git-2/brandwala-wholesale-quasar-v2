@@ -13280,6 +13280,14 @@ export type Database = {
         Args: { p_phone: string }
         Returns: string
       }
+      normalize_pbc_procurement_status: {
+        Args: { p_status: string }
+        Returns: string
+      }
+      normalize_shop_order_procurement_status: {
+        Args: { p_status: Database["public"]["Enums"]["shop_order_status"] }
+        Returns: string
+      }
       normalize_thrift_phone: { Args: { p_phone: string }; Returns: string }
       notification_inbox_scope_matches: {
         Args: {

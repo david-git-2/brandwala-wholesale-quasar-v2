@@ -5726,6 +5726,8 @@ CREATE OR REPLACE FUNCTION "public"."list_product_based_costing_files"("p_page" 
       and (
         coalesce(trim(p_status), '') = ''
         or f.status = trim(p_status)
+        or (trim(p_status) = 'procuring' and f.status = 'placing_order')
+        or (trim(p_status) = 'delivered' and f.status = 'invoicing')
       )
   ),
   paged as (
@@ -10468,5 +10470,304 @@ $$;
 ALTER FUNCTION "public"."bulk_delete_global_shipment_items"("p_shipment_id" bigint, "p_item_ids" bigint[]) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."normalize_shop_order_procurement_status"("p_status" "public"."shop_order_status") RETURNS "text"
+    LANGUAGE "sql" IMMUTABLE
+    AS $$
+  select case
+    when p_status = 'ordered'::public.shop_order_status then 'ready_for_shipment'
+    else p_status::text
+  end;
+$$;
+
+
+ALTER FUNCTION "public"."normalize_shop_order_procurement_status"("p_status" "public"."shop_order_status") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."normalize_pbc_procurement_status"("p_status" "text") RETURNS "text"
+    LANGUAGE "sql" IMMUTABLE
+    AS $$
+  select case lower(trim(coalesce(p_status, '')))
+    when 'placing_order' then 'procuring'
+    when 'invoicing' then 'delivered'
+    else lower(trim(coalesce(p_status, '')))
+  end;
+$$;
+
+
+ALTER FUNCTION "public"."normalize_pbc_procurement_status"("p_status" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_procurement_demand_open_qty"("p_source_type" "public"."procurement_placement_source_type", "p_source_id" bigint) RETURNS TABLE("tenant_id" bigint, "open_qty" integer, "document_status" "text")
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+begin
+  if p_source_type = 'shop_order_item' then
+    return query
+    select
+      o.tenant_id,
+      greatest(coalesce(oi.confirmed_quantity, oi.quantity, 0), 0)::integer,
+      public.normalize_shop_order_procurement_status(o.status)
+    from public.shop_order_items oi
+    inner join public.shop_orders o on o.id = oi.order_id
+    where oi.id = p_source_id
+      and o.shop_type_snapshot = 'vendor_catalog';
+  elsif p_source_type = 'pbc_costing_item' then
+    return query
+    select
+      f.tenant_id,
+      greatest(
+        case when pci.assigned_shipment_id is not null then 0
+          else coalesce(pci.confirmed_quantity, pci.quantity::integer, 0)
+        end,
+        0
+      )::integer,
+      public.normalize_pbc_procurement_status(f.status)
+    from public.product_based_costing_items pci
+    inner join public.product_based_costing_files f on f.id = pci.product_based_costing_file_id
+    where pci.id = p_source_id
+      and f.billing_profile_id is not null;
+  end if;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."get_procurement_demand_open_qty"("p_source_type" "public"."procurement_placement_source_type", "p_source_id" bigint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."list_procurement_demand_groups"("p_tenant_id" bigint, "p_procurement_status" "text" DEFAULT 'procuring'::"text", "p_search" "text" DEFAULT NULL::"text", "p_child_tenant_id" bigint DEFAULT NULL::bigint, "p_limit" integer DEFAULT 50, "p_offset" integer DEFAULT 0) RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_is_parent boolean;
+  v_allowed boolean := false;
+  v_status text := lower(trim(coalesce(p_procurement_status, 'procuring')));
+  v_search text := nullif(trim(coalesce(p_search, '')), '');
+  v_limit integer := greatest(coalesce(p_limit, 50), 1);
+  v_offset integer := greatest(coalesce(p_offset, 0), 0);
+  v_groups jsonb := '[]'::jsonb;
+  v_group_count integer := 0;
+  v_item_count integer := 0;
+  v_has_shop boolean := false;
+  v_has_pbc boolean := false;
+  v_sources text[] := '{}'::text[];
+begin
+  if p_tenant_id is null then
+    raise exception 'tenant_id is required';
+  end if;
+
+  select (t.parent_id is null) into v_is_parent from public.tenants t where t.id = p_tenant_id;
+  if not found then raise exception 'tenant not found: %', p_tenant_id; end if;
+
+  if v_is_parent then
+    v_allowed := public.user_can_manage_parent_tenant(p_tenant_id);
+  else
+    v_allowed := public.is_tenant_staff(p_tenant_id);
+  end if;
+  if not coalesce(v_allowed, false) then raise exception 'access denied'; end if;
+  if v_status not in ('procuring', 'ready_for_shipment', 'delivered') then
+    raise exception 'invalid procurement status: %', v_status;
+  end if;
+
+  with tenant_scope as (
+    select t.id as tenant_id from public.tenants t
+    where ((v_is_parent and t.parent_id = p_tenant_id) or (not v_is_parent and t.id = p_tenant_id))
+      and (p_child_tenant_id is null or t.id = p_child_tenant_id)
+  ),
+  shop_lines as (
+    select
+      'shop_order'::text as document_type,
+      o.id as document_id,
+      public.normalize_shop_order_procurement_status(o.status) as document_status,
+      null::jsonb as vendor,
+      oi.id as source_id,
+      oi.product_id,
+      oi.name,
+      oi.image_url,
+      coalesce(p.barcode, '') as barcode,
+      coalesce(p.product_code, '') as product_code,
+      greatest(coalesce(oi.confirmed_quantity, oi.quantity, 0), 0)::integer as quantity
+    from public.shop_order_items oi
+    inner join public.shop_orders o on o.id = oi.order_id
+    inner join tenant_scope ts on ts.tenant_id = o.tenant_id
+    left join public.products p on p.id = oi.product_id
+    where o.shop_type_snapshot = 'vendor_catalog'
+      and public.normalize_shop_order_procurement_status(o.status) = v_status
+      and (
+        v_search is null
+        or oi.name ilike '%' || v_search || '%'
+        or o.name ilike '%' || v_search || '%'
+        or o.order_no ilike '%' || v_search || '%'
+        or coalesce(p.barcode, '') ilike '%' || v_search || '%'
+        or coalesce(p.product_code, '') ilike '%' || v_search || '%'
+      )
+  ),
+  pbc_lines as (
+    select
+      'pbc_costing_file'::text as document_type,
+      f.id as document_id,
+      public.normalize_pbc_procurement_status(f.status) as document_status,
+      case
+        when v.id is not null then jsonb_build_object(
+          'id', v.id,
+          'code', coalesce(nullif(trim(f.vendor_code), ''), v.code),
+          'name', v.name
+        )
+        when nullif(trim(f.vendor_code), '') is not null then jsonb_build_object(
+          'id', f.vendor_id,
+          'code', trim(f.vendor_code),
+          'name', null
+        )
+        else null::jsonb
+      end as vendor,
+      pci.id as source_id,
+      pci.product_id,
+      coalesce(pci.name, p.name, 'Item') as name,
+      coalesce(pci.image_url, p.image_url) as image_url,
+      coalesce(pci.barcode, p.barcode, '') as barcode,
+      coalesce(pci.product_code, p.product_code, '') as product_code,
+      greatest(
+        case when pci.assigned_shipment_id is not null then 0
+          else coalesce(pci.confirmed_quantity, pci.quantity::integer, 0)
+        end,
+        0
+      )::integer as quantity
+    from public.product_based_costing_items pci
+    inner join public.product_based_costing_files f on f.id = pci.product_based_costing_file_id
+    inner join tenant_scope ts on ts.tenant_id = f.tenant_id
+    left join public.products p on p.id = pci.product_id
+    left join public.vendors v on v.id = f.vendor_id
+    where f.billing_profile_id is not null
+      and public.normalize_pbc_procurement_status(f.status) = v_status
+      and (
+        v_search is null
+        or coalesce(pci.name, p.name, '') ilike '%' || v_search || '%'
+        or coalesce(f.name, '') ilike '%' || v_search || '%'
+        or coalesce(pci.barcode, p.barcode, '') ilike '%' || v_search || '%'
+        or coalesce(pci.product_code, p.product_code, '') ilike '%' || v_search || '%'
+      )
+  ),
+  all_lines as (
+    select * from shop_lines
+    union all
+    select * from pbc_lines
+  ),
+  placement_totals as (
+    select
+      pp.source_type::text as source_type,
+      pp.source_id,
+      coalesce(sum(pp.quantity), 0)::integer as placed_quantity,
+      coalesce(
+        jsonb_agg(
+          jsonb_build_object(
+            'id', pp.id,
+            'vendor_id', pp.vendor_id,
+            'vendor_code', nullif(trim(pp.vendor_code), ''),
+            'vendor_name', vn.name,
+            'quantity', pp.quantity,
+            'notes', pp.notes,
+            'placed_at', pp.placed_at,
+            'placed_by_user_id', pp.placed_by_user_id,
+            'global_shipment_item_id', pp.global_shipment_item_id
+          )
+          order by pp.placed_at, pp.id
+        ) filter (where pp.id is not null),
+        '[]'::jsonb
+      ) as placements
+    from public.procurement_placements pp
+    inner join tenant_scope ts on ts.tenant_id = pp.tenant_id
+    left join public.vendors vn on vn.id = pp.vendor_id
+    where pp.status = 'active'
+    group by pp.source_type, pp.source_id
+  ),
+  enriched_lines as (
+    select
+      al.*,
+      case when al.document_type = 'shop_order' then 'shop_order_item' else 'pbc_costing_item' end as source_type,
+      coalesce(pt.placed_quantity, 0) as placed_quantity,
+      coalesce(pt.placements, '[]'::jsonb) as placements
+    from all_lines al
+    left join placement_totals pt
+      on pt.source_id = al.source_id
+      and pt.source_type = case when al.document_type = 'shop_order' then 'shop_order_item' else 'pbc_costing_item' end
+    where al.quantity > 0 or coalesce(pt.placed_quantity, 0) > 0
+  ),
+  grouped as (
+    select
+      el.document_type,
+      el.document_id,
+      max(el.document_status) as document_status,
+      (array_agg(el.vendor) filter (where el.vendor is not null))[1] as vendor,
+      jsonb_agg(
+        jsonb_build_object(
+          'source_type', el.source_type,
+          'source_id', el.source_id,
+          'product_id', el.product_id,
+          'name', el.name,
+          'image_url', el.image_url,
+          'barcode', nullif(el.barcode, ''),
+          'product_code', nullif(el.product_code, ''),
+          'quantity', el.quantity,
+          'need_quantity', el.quantity,
+          'placed_quantity', el.placed_quantity,
+          'remaining_quantity', greatest(el.quantity - el.placed_quantity, 0),
+          'placements', el.placements
+        )
+        order by el.source_id
+      ) as items,
+      count(*)::integer as item_count
+    from enriched_lines el
+    group by el.document_type, el.document_id
+  ),
+  paged as (
+    select g.*, count(*) over ()::integer as total_groups
+    from grouped g
+    order by g.document_type, g.document_id
+    limit v_limit offset v_offset
+  )
+  select
+    coalesce(
+      jsonb_agg(
+        jsonb_build_object(
+          'document_type', p.document_type,
+          'document_id', p.document_id,
+          'document_status', p.document_status,
+          'vendor', p.vendor,
+          'items', p.items
+        )
+        order by p.document_type, p.document_id
+      ),
+      '[]'::jsonb
+    ),
+    coalesce(max(p.total_groups), 0),
+    coalesce(sum(p.item_count), 0),
+    coalesce(bool_or(p.document_type = 'shop_order'), false),
+    coalesce(bool_or(p.document_type = 'pbc_costing_file'), false)
+  into v_groups, v_group_count, v_item_count, v_has_shop, v_has_pbc
+  from paged p;
+
+  if v_has_shop then v_sources := array_append(v_sources, 'shop_order'); end if;
+  if v_has_pbc then v_sources := array_append(v_sources, 'pbc_costing'); end if;
+
+  return jsonb_build_object(
+    'meta', jsonb_build_object(
+      'tenant_id', p_tenant_id,
+      'procurement_status', v_status,
+      'sources_included', to_jsonb(v_sources),
+      'group_count', coalesce(jsonb_array_length(v_groups), 0),
+      'item_count', v_item_count,
+      'total_group_count', v_group_count,
+      'limit', v_limit,
+      'offset', v_offset,
+      'has_more', v_group_count > (v_offset + v_limit)
+    ),
+    'groups', v_groups
+  );
+end;
+$$;
+
+
+ALTER FUNCTION "public"."list_procurement_demand_groups"("p_tenant_id" bigint, "p_procurement_status" "text", "p_search" "text", "p_child_tenant_id" bigint, "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
 
 

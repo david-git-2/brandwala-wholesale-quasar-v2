@@ -76,6 +76,16 @@ Only documents in these statuses appear (aligned across catalog orders and PBC �
 
 Pre-procurement (`submitted`, `priced`, `confirmed` on orders; `pending`, `offered` on PBC) **excludes** lines from this list.
 
+**Legacy alias mapping (transition):** RPCs normalize document status before filtering so old rows still appear until backfilled:
+
+| Legacy value | Normalized procurement status |
+| :--- | :--- |
+| Catalog `ordered` | `ready_for_shipment` |
+| PBC `placing_order` | `procuring` |
+| PBC `invoicing` | `delivered` |
+
+Migration `20270911180000_align_demand_status_aliases.sql` backfills rows; helpers `normalize_shop_order_procurement_status` / `normalize_pbc_procurement_status` keep reads safe if any alias remains.
+
 ### 2.2 Which sources are included
 
 | Tenant has | `meta.sources_included` |
@@ -90,7 +100,7 @@ Empty union → `groups: []`, `item_count: 0`.
 
 A line is returned when:
 
-- Parent document `status` = `p_procurement_status`
+- Parent document status (after alias normalization) = `p_procurement_status`
 - Line has **open quantity** &gt; 0 for procurement (not fully on shipment / not fully delivered)
 - Shop order: `shop_type_snapshot = vendor_catalog`
 - PBC: `billing_profile_id` is set (customer-scoped file)
@@ -575,10 +585,10 @@ Query key: `['procurementDemand', 'groups', { tenantId, status, search, offset }
 
 - [x] Migration: `list_procurement_demand_groups` RPC (v1 — demand only)
 - [x] Web: `ProcurementDemandPage.vue` (read-only list)
-- [ ] Migration: `procurement_placement_source_type` enum + `procurement_placements` table + indexes + RLS
-- [ ] Migration: extend `list_procurement_demand_groups` with placement join (§4.3)
-- [ ] Migration: `record_procurement_placement` + `cancel_procurement_placement`
-- [ ] `pnpm run backend:types` after schema migration
+- [x] Migration: `procurement_placement_source_type` enum + `procurement_placements` table + indexes + RLS
+- [x] Migration: extend `list_procurement_demand_groups` with placement join (§4.3)
+- [x] Migration: `record_procurement_placement` + `cancel_procurement_placement`
+- [x] Migration: alias normalization + status backfill (`20270911180000_align_demand_status_aliases.sql`)
 - [x] Web: placement dialog + repository methods + types on demand page
 - [ ] Later: RPC to attach placement(s) to `global_shipment_items` when proforma is entered
 - [ ] Doc: add route to [`UI_FLOW.md`](./UI_FLOW.md) when placement UI ships

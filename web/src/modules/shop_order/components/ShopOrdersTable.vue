@@ -80,6 +80,7 @@ import { useI18n } from 'vue-i18n';
 import { date } from 'quasar';
 import type { ShopOrder } from '../types';
 import OrderPricingModeBadge from './OrderPricingModeBadge.vue';
+import { normalizeCatalogOrderStatus } from '../utils/catalogOrderStatus';
 
 const { isDropshipShop, isLoadingOrders, isProcessingDropship } = defineProps<{
   orders: ShopOrder[];
@@ -111,7 +112,7 @@ const formatDate = (dateStr: string) => {
 };
 
 const getStatusColor = (status: string) => {
-  switch (status) {
+  switch (normalizeCatalogOrderStatus(status)) {
     case 'draft':
       return 'grey-7';
     case 'submitted':
@@ -130,7 +131,6 @@ const getStatusColor = (status: string) => {
     case 'procuring':
       return 'blue-9';
     case 'ready_for_shipment':
-    case 'ordered':
       return 'indigo-7';
     case 'placed':
       return 'indigo-7';

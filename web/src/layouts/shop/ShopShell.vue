@@ -282,6 +282,7 @@ const headerShopName = computed(() => {
 
 const showCatalogShopHeader = computed(() => {
   if (showHeaderSearch.value) return false;
+  if (routeName.value === 'shop-order-detail-page') return false;
   return headerShopSlug.value.length > 0;
 });
 

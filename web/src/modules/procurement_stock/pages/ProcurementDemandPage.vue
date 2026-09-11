@@ -2,25 +2,7 @@
   <q-page class="q-pa-sm page-fixed-layout column no-wrap overflow-hidden">
     <div class="column no-wrap full-height q-gutter-y-xs overflow-hidden">
       <q-card flat class="floating-surface shadow-1 q-pa-xs flex-shrink-0">
-        <div class="row items-center justify-between q-col-gutter-xs">
-          <div class="col-12 col-md-auto">
-            <div class="row items-center q-gutter-x-xs quick-filter-toggle">
-              <q-btn
-                v-for="tab in statusTabs"
-                :key="tab.value"
-                dense
-                unelevated
-                no-caps
-                :color="procurementStatus === tab.value ? 'primary' : 'transparent'"
-                :text-color="procurementStatus === tab.value ? 'white' : 'grey-8'"
-                class="quick-filter-btn text-xs"
-                @click="setProcurementStatus(tab.value)"
-              >
-                {{ tab.label }}
-              </q-btn>
-            </div>
-          </div>
-
+        <div class="row items-center justify-end q-col-gutter-xs">
           <div class="col-12 col-md-grow row items-center justify-end q-gutter-x-xs">
             <q-input
               v-model="searchText"
@@ -72,7 +54,7 @@
           </div>
 
           <div v-else-if="!groups.length" class="text-grey-7 q-pa-lg text-center">
-            No procurement demand for this status.
+            No items to procure.
           </div>
 
           <q-markup-table
@@ -306,7 +288,7 @@ type ItemDraft = {
 
 const authStore = useAuthStore();
 
-const procurementStatus = ref<ProcurementDemandStatus>('procuring');
+const procurementStatus = computed(() => 'procuring' as ProcurementDemandStatus);
 const searchText = ref('');
 const appliedSearch = ref<string | null>(null);
 const pageSize = 50;
@@ -322,15 +304,7 @@ const placementStatusOptions = [
 ];
 
 const tenantId = computed(() => authStore.tenantId ?? null);
-const canManagePlacements = computed(
-  () => procurementStatus.value === 'procuring' || procurementStatus.value === 'ready_for_shipment',
-);
-
-const statusTabs: Array<{ value: ProcurementDemandStatus; label: string }> = [
-  { value: 'procuring', label: 'Procuring' },
-  { value: 'ready_for_shipment', label: 'Ready for shipment' },
-  { value: 'delivered', label: 'Delivered' },
-];
+const canManagePlacements = true;
 
 const { data, isLoading, isFetching, isError, error, refetch } = useProcurementDemandGroupsQuery({
   tenantId,
@@ -409,7 +383,7 @@ const latestPlacement = (item: ProcurementDemandItem): ProcurementPlacement | nu
 };
 
 const showRowInputs = (item: ProcurementDemandItem) =>
-  canManagePlacements.value && remainingQty(item) > 0;
+  canManagePlacements && remainingQty(item) > 0;
 
 const placementsSummary = (item: ProcurementDemandItem) =>
   (item.placements ?? [])
@@ -475,10 +449,6 @@ const lineStatusStyle = (item: ProcurementDemandItem) => {
     return { boxShadow: 'inset 3px 0 0 #f59e0b' };
   }
   return { boxShadow: 'inset 3px 0 0 #94a3b8' };
-};
-
-const setProcurementStatus = (status: ProcurementDemandStatus) => {
-  procurementStatus.value = status;
 };
 
 const applySearch = () => {

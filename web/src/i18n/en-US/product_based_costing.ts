@@ -36,7 +36,6 @@ export default {
   status_offered: 'Offered',
   status_confirmed: 'Confirmed',
   status_procuring: 'Procuring',
-  status_placing_order: 'Procuring',
   status_ready_for_shipment: 'Ready for Shipment',
   status_delivered: 'Delivered',
   status_cancelled: 'Cancelled',
@@ -56,8 +55,6 @@ export default {
   next_confirmed:
     'Quote accepted. Confirmed qty starts from the offer — edit if they took less. Buy & ship next.',
   next_procuring:
-    'Type how many you got in Ordered Qty. Confirmed Qty stays editable if they want a different amount.',
-  next_placing_order:
     'Type how many you got in Ordered Qty. Confirmed Qty stays editable if they want a different amount.',
   offered_dialog_message:
     'This stamps the file as Offered. It does not send anything. Open screenshot / PDF to send?',
@@ -146,12 +143,8 @@ export default {
   status_hint_confirmed_does: 'Saves how many they want. Change the number if they want less.',
   status_hint_procuring_when: 'You are buying the goods',
   status_hint_procuring_does: 'Type how many you got for each item.',
-  status_hint_placing_order_when: 'You are buying the goods',
-  status_hint_placing_order_does: 'Type how many you got for each item.',
   status_hint_ready_for_shipment_when: 'You know how many you got',
   status_hint_ready_for_shipment_does: 'Put those items on a shipment.',
-  status_hint_invoicing_when: 'The goods have arrived',
-  status_hint_invoicing_does: 'Make the bill in sales. Not here.',
   status_hint_delivered_when: 'All goods have arrived',
   status_hint_delivered_does: 'This job is finished.',
   status_hint_cancelled_when: 'This job is stopped',

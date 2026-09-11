@@ -126,7 +126,6 @@ const statusOptions = computed(() => [
   { label: t('shop_admin.status_confirmed'), value: 'confirmed' },
   { label: t('shop_admin.status_procuring'), value: 'procuring' },
   { label: t('shop_admin.status_ready_for_shipment'), value: 'ready_for_shipment' },
-  { label: t('shop_admin.status_ordered'), value: 'ordered' },
   { label: t('shop_admin.status_delivered'), value: 'delivered' },
   { label: t('shop_admin.status_processing'), value: 'processing' },
   { label: t('shop_admin.status_shipped'), value: 'shipped' },

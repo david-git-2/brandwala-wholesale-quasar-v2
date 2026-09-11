@@ -36,7 +36,6 @@ export default {
   status_offered: 'অফার করা হয়েছে',
   status_confirmed: 'নিশ্চিত',
   status_procuring: 'সংগ্রহ প্রক্রিয়াধীন',
-  status_placing_order: 'সংগ্রহ প্রক্রিয়াধীন',
   status_ready_for_shipment: 'শিপমেন্টের জন্য প্রস্তুত',
   status_delivered: 'ডেলিভার হয়েছে',
   status_cancelled: 'বাতিল',
@@ -54,7 +53,7 @@ export default {
   next_offered: 'কোট Offered হিসেবে স্ট্যাম্প হয়েছে। তারা রাজি হলে অর্ডার নিশ্চিত করুন।',
   next_confirmed:
     'কোট গৃহীত। কনফার্মড পরিমাণ অফার থেকে শুরু — কম নিলে এডিট করুন। পরবর্তী: কিনুন ও শিপ করুন।',
-  next_placing_order:
+  next_procuring:
     'Ordered Qty-তে কত পেয়েছেন লিখুন। আলাদা পরিমাণ চাইলে Confirmed Qty এডিটযোগ্য থাকবে।',
   offered_dialog_message:
     'এতে ফাইল Offered হিসেবে স্ট্যাম্প হয়। কিছু পাঠানো হয় না। স্ক্রিনশট / PDF খুলবেন?',
@@ -141,12 +140,10 @@ export default {
   status_hint_offered_does: 'পাঠানো হয়েছে হিসেবে সংরক্ষণ করে। কোনো বার্তা পাঠায় না।',
   status_hint_confirmed_when: 'তারা রাজি হয়েছে',
   status_hint_confirmed_does: 'তারা কত চায় তা সংরক্ষণ করে। কম চাইলে সংখ্যা বদলান।',
-  status_hint_placing_order_when: 'আপনি পণ্য কিনছেন',
-  status_hint_placing_order_does: 'প্রতি আইটেমে কত পেয়েছেন লিখুন।',
+  status_hint_procuring_when: 'আপনি পণ্য কিনছেন',
+  status_hint_procuring_does: 'প্রতি আইটেমে কত পেয়েছেন লিখুন।',
   status_hint_ready_for_shipment_when: 'আপনি জানেন কত পেয়েছেন',
   status_hint_ready_for_shipment_does: 'সেই আইটেমগুলো শিপমেন্টে দিন।',
-  status_hint_invoicing_when: 'পণ্য এসেছে',
-  status_hint_invoicing_does: 'সেলসে বিল তৈরি করুন। এখানে নয়।',
   status_hint_delivered_when: 'সব পণ্য এসেছে',
   status_hint_delivered_does: 'এই কাজ শেষ।',
   status_hint_cancelled_when: 'এই কাজ বন্ধ',
