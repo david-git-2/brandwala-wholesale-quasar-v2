@@ -1,5 +1,116 @@
 -- Notifications domain — RPCs, helpers, and first plugin trigger
 
+CREATE OR REPLACE FUNCTION public.has_shop_notification_access(p_tenant_id bigint)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.customer_group_members cgm
+    JOIN public.customer_groups cg ON cg.id = cgm.customer_group_id
+    WHERE cgm.is_active = true
+      AND lower(trim(cgm.email)) = public.current_user_email()
+      AND public.resolve_parent_tenant_id(cg.tenant_id) = public.resolve_parent_tenant_id(p_tenant_id)
+  );
+$$;
+
+ALTER FUNCTION public.has_shop_notification_access(bigint) OWNER TO postgres;
+
+REVOKE ALL ON FUNCTION public.has_shop_notification_access(bigint) FROM PUBLIC;
+
+
+CREATE OR REPLACE FUNCTION public.resolve_customer_group_notification_user_ids(p_customer_group_id bigint)
+RETURNS uuid[]
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT coalesce(array_agg(DISTINCT u.id), ARRAY[]::uuid[])
+  FROM public.customer_group_members cgm
+  JOIN auth.users u ON lower(trim(u.email)) = lower(trim(cgm.email))
+  WHERE cgm.customer_group_id = p_customer_group_id
+    AND cgm.is_active = true;
+$$;
+
+ALTER FUNCTION public.resolve_customer_group_notification_user_ids(bigint) OWNER TO postgres;
+
+REVOKE ALL ON FUNCTION public.resolve_customer_group_notification_user_ids(bigint) FROM PUBLIC;
+
+
+CREATE OR REPLACE FUNCTION public.notify_catalog_shop_order(
+  p_order_id bigint,
+  p_notify_staff boolean,
+  p_notify_customer boolean,
+  p_event_type text,
+  p_title text,
+  p_body text DEFAULT NULL
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_order record;
+  v_customer_user_ids uuid[];
+BEGIN
+  SELECT * INTO v_order FROM public.shop_orders WHERE id = p_order_id;
+  IF NOT FOUND THEN
+    RETURN;
+  END IF;
+
+  IF v_order.shop_type_snapshot <> 'vendor_catalog'::public.shop_type_enum THEN
+    RETURN;
+  END IF;
+
+  IF p_notify_staff THEN
+    PERFORM public.enqueue_notification(
+      p_tenant_id := v_order.tenant_id,
+      p_operating_tenant_id := v_order.tenant_id,
+      p_audience := 'child_only',
+      p_event_type := p_event_type,
+      p_title := p_title,
+      p_body := p_body,
+      p_link_path := format('/app/shop/orders/%s', v_order.id),
+      p_entity_type := 'shop_order',
+      p_entity_id := v_order.id::text,
+      p_module_key := 'shop_order',
+      p_action := 'view'
+    );
+  END IF;
+
+  IF p_notify_customer AND v_order.customer_group_id IS NOT NULL THEN
+    v_customer_user_ids := public.resolve_customer_group_notification_user_ids(v_order.customer_group_id);
+
+    IF v_customer_user_ids IS NOT NULL AND cardinality(v_customer_user_ids) > 0 THEN
+      PERFORM public.enqueue_notification(
+        p_tenant_id := v_order.tenant_id,
+        p_operating_tenant_id := v_order.tenant_id,
+        p_audience := 'assignee_only',
+        p_event_type := p_event_type,
+        p_title := p_title,
+        p_body := p_body,
+        p_link_path := format('/shop/orders/%s', v_order.id),
+        p_entity_type := 'shop_order',
+        p_entity_id := v_order.id::text,
+        p_recipient_user_ids := v_customer_user_ids,
+        p_module_key := NULL,
+        p_action := 'view'
+      );
+    END IF;
+  END IF;
+END;
+$$;
+
+ALTER FUNCTION public.notify_catalog_shop_order(bigint, boolean, boolean, text, text, text) OWNER TO postgres;
+
+REVOKE ALL ON FUNCTION public.notify_catalog_shop_order(bigint, boolean, boolean, text, text, text) FROM PUBLIC;
+
+
 CREATE OR REPLACE FUNCTION public.resolve_notification_recipient_user_ids(
   p_parent_tenant_id bigint,
   p_operating_tenant_id bigint,
@@ -285,6 +396,7 @@ BEGIN
     public.is_superadmin()
     OR public.has_active_tenant_membership(p_tenant_id)
     OR public.user_can_manage_parent_tenant(public.resolve_parent_tenant_id(p_tenant_id))
+    OR public.has_shop_notification_access(p_tenant_id)
   ) THEN
     RAISE EXCEPTION 'Permission denied for tenant %', p_tenant_id;
   END IF;
@@ -385,6 +497,7 @@ BEGIN
     public.is_superadmin()
     OR public.has_active_tenant_membership(p_tenant_id)
     OR public.user_can_manage_parent_tenant(public.resolve_parent_tenant_id(p_tenant_id))
+    OR public.has_shop_notification_access(p_tenant_id)
   ) THEN
     RAISE EXCEPTION 'Permission denied for tenant %', p_tenant_id;
   END IF;
@@ -486,6 +599,7 @@ BEGIN
     public.is_superadmin()
     OR public.has_active_tenant_membership(p_tenant_id)
     OR public.user_can_manage_parent_tenant(public.resolve_parent_tenant_id(p_tenant_id))
+    OR public.has_shop_notification_access(p_tenant_id)
   ) THEN
     RAISE EXCEPTION 'Permission denied for tenant %', p_tenant_id;
   END IF;

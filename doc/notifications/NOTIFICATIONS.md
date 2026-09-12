@@ -40,7 +40,7 @@ flowchart TD
 | Audience | Scope | In-app | Telegram / FCM |
 | :--- | :--- | :--- | :--- |
 | Parent + child tenant admin / staff | `app` | Always (if eligible) | Configurable per user |
-| Shop storefront members | `shop` | Later | Later |
+| Shop storefront members (`customer_group_members`) | `shop` | Always (bell in shop shell) | Configurable per user (same prefs RPCs) |
 | Investors | `investor` | No | No |
 | End customers (dropship recipients) | — | Out of scope v1 | Out of scope v1 |
 
@@ -99,6 +99,12 @@ Notify **both** parent and child when needed — but **not every event goes to e
 | `after_sales.case.created` | `child_and_parent` |
 | `after_sales.case.status_changed` | `child_and_parent` + assignee when set |
 | `procurement.shipment.received` | `parent_only` |
+| `catalog.order.created` | `child_only` (staff app; network owner included) |
+| `catalog.offer.sent` / `catalog.offer.final` | `assignee_only` (all active customer-group members) |
+| `catalog.offer.countered` / `catalog.order.confirmed` | `child_only` |
+| `catalog.order.ready_for_shipment` / `catalog.order.delivered` / `catalog.order.cancelled` | `assignee_only` (shop group) |
+
+**Catalog shop (`vendor_catalog`)** — ping the side that must act. Staff link `/app/shop/orders/:id`; shop link `/shop/orders/:id`. Hooked from catalog order RPCs via `notify_catalog_shop_order`. Shop inbox uses `has_shop_notification_access` on list/unread RPCs.
 
 **Anti-patterns**
 
@@ -545,6 +551,14 @@ Defer until personal inbox (phase 1) is stable.
 | `after_sales.case.created` | New case | `child_and_parent` | Child desk + parent returns watchers |
 | `after_sales.case.status_changed` | Case status update | `child_and_parent` | Assignee / creator + parent returns watchers |
 | `procurement.shipment.received` | Shipment received at parent | `parent_only` | Parent warehouse staff |
+| `catalog.order.created` | Catalog order placed | `child_only` | Desk staff + network owner |
+| `catalog.offer.sent` | Staff sends first offer | `assignee_only` | All active customer-group members |
+| `catalog.offer.countered` | Customer counters | `child_only` | Desk staff + network owner |
+| `catalog.offer.final` | Staff sends final offer | `assignee_only` | Customer group |
+| `catalog.order.confirmed` | Customer confirms | `child_only` | Desk staff |
+| `catalog.order.ready_for_shipment` | Buying done | `assignee_only` | Customer group |
+| `catalog.order.delivered` | Order closed | `assignee_only` | Customer group |
+| `catalog.order.cancelled` | Staff cancels | `assignee_only` | Customer group |
 
 Add events incrementally. Each domain owns the trigger; shared `enqueue_notification(parent_tenant_id, operating_tenant_id, audience, event_type, title, body, link_path, entity_type, entity_id)` RPC:
 1. Inserts one `notifications` row (message once).
@@ -569,8 +583,10 @@ In-app does not depend on Edge Functions. Do not block the business RPC on Teleg
 
 | Surface | Component | Scope |
 | :--- | :--- | :--- |
-| App shell header | `NotificationBell.vue` | My unread count |
+| App shell header | `NotificationBell.vue` | My unread count (`app` scope) |
+| Shop shell header | `NotificationBell.vue` (`scope="shop"`) | Customer-group inbox |
 | Bell dropdown / route | `NotificationList.vue` + `NotificationListItem.vue` | My inbox only |
+| Shop inbox route | `/:tenantSlug/shop/notifications` | Same list component as app |
 | User settings | `NotificationPreferencesPage.vue` | Telegram + FCM toggles (in-app not listed) |
 | Ops / settings (phase 5) | `TenantNotificationLogPage.vue` | Parent admin — all tenant events |
 | Toast | `appFeedback.ts` | Immediate action feedback — separate from inbox |

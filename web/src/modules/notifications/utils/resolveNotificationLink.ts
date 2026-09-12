@@ -6,7 +6,7 @@ export const resolveNotificationLink = (
     return null;
   }
 
-  if (linkPath.startsWith('/app/') && tenantSlug) {
+  if (tenantSlug && (linkPath.startsWith('/app/') || linkPath.startsWith('/shop/'))) {
     return `/${tenantSlug}${linkPath}`;
   }
 

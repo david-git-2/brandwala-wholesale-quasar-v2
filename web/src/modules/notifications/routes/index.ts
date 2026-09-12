@@ -1,6 +1,7 @@
 import type { RouteRecordRaw } from 'vue-router';
 
 import { createAccessGuard } from 'src/modules/auth/guards/accessGuard';
+import { createShopAccessGuard } from 'src/modules/auth/guards/createShopAccessGuard';
 
 const notificationRoutes: RouteRecordRaw[] = [
   {
@@ -16,6 +17,22 @@ const notificationRoutes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'notifications-inbox',
+        component: () => import('../pages/NotificationInboxPage.vue'),
+        meta: {
+          title: 'Notifications',
+          headerTitle: 'Notifications',
+        },
+      },
+    ],
+  },
+  {
+    path: '/:tenantSlug?/shop/notifications',
+    component: () => import('layouts/ShopLayout.vue'),
+    beforeEnter: createShopAccessGuard({ requiredModule: 'shop_order_mgmt' }),
+    children: [
+      {
+        path: '',
+        name: 'shop-notifications-inbox',
         component: () => import('../pages/NotificationInboxPage.vue'),
         meta: {
           title: 'Notifications',

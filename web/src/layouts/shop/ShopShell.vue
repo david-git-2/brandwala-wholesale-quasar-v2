@@ -73,6 +73,8 @@
             />
           </div>
 
+          <NotificationBell scope="shop" />
+
           <q-btn
             v-if="canShowCartIcon"
             flat
@@ -151,6 +153,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import UserProfileMenu from 'src/components/navigation/UserProfileMenu.vue';
+import NotificationBell from 'src/modules/notifications/components/NotificationBell.vue';
 import ShopHeaderProductSearch from 'src/modules/shop_order/components/ShopHeaderProductSearch.vue';
 import CatalogShopHeaderSwitcher from 'src/modules/shop_order/components/CatalogShopHeaderSwitcher.vue';
 import ShopCustomerGroupHeaderSwitcher from 'src/modules/shop_order/components/ShopCustomerGroupHeaderSwitcher.vue';

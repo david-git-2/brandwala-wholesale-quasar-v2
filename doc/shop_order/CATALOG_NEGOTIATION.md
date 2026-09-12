@@ -174,6 +174,10 @@ Customers get **five ideas**: quote → confirm → sourcing → on the way → 
 
 Drop `negotiating` from bucket logic for catalog once legacy rows are cleared.
 
+### 3.4 In-app notifications (catalog orders)
+
+Staff and shop customers get bell notifications on status changes. See [`doc/notifications/NOTIFICATIONS.md`](../notifications/NOTIFICATIONS.md) §2 / §7 (`catalog.*` events). Staff: new order, counter, confirmed. Shop group (all active members): offer ready, final offer, on the way, delivered, cancel. No ping for `procuring` (internal sourcing).
+
 ---
 
 ## 4. Line-item negotiation

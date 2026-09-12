@@ -59,6 +59,15 @@ import { useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { getAppRouteLocation } from 'src/modules/tenant/utils/tenantRouteContext';
 
+const props = withDefaults(
+  defineProps<{
+    scope?: 'app' | 'shop';
+  }>(),
+  {
+    scope: 'app',
+  },
+);
+
 import NotificationList from './NotificationList.vue';
 import { useNotificationStore } from '../stores/notificationStore';
 import { resolveNotificationLink } from '../utils/resolveNotificationLink';
@@ -121,9 +130,10 @@ const onSelect = async (item: NotificationItem) => {
 };
 
 const onSeeAll = () => {
+  const routeName = props.scope === 'shop' ? 'shop-notifications-inbox' : 'notifications-inbox';
   router.push(
     getAppRouteLocation(
-      { name: 'notifications-inbox', params: {}, query: {} },
+      { name: routeName, params: {}, query: {} },
       authStore.tenantSlug,
     ),
   );
