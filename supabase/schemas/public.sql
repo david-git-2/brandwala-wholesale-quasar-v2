@@ -25,6 +25,7 @@ COMMENT ON SCHEMA "public" IS 'standard public schema';
 CREATE TYPE "public"."app_role" AS ENUM (
     'superadmin',
     'admin',
+    'owner',
     'staff',
     'viewer',
     'investor',
@@ -12805,7 +12806,8 @@ begin
   -- App default roles
   insert into public.tenant_roles (tenant_id, scope, name, slug, is_system, is_admin, source_app_role)
   values
-    (p_tenant_id, 'app', 'Administrator', 'administrator', true, true, 'admin'::public.app_role),
+    (p_tenant_id, 'app', 'Owner', 'owner', true, true, 'owner'::public.app_role),
+    (p_tenant_id, 'app', 'Manager', 'manager', true, false, 'manager'::public.app_role),
     (p_tenant_id, 'app', 'Staff', 'staff', true, false, 'staff'::public.app_role),
     (p_tenant_id, 'app', 'Viewer', 'viewer', true, false, 'viewer'::public.app_role)
   on conflict (tenant_id, scope, slug) do nothing;
@@ -13501,7 +13503,8 @@ declare
 begin
   if new.tenant_role_id is null and new.tenant_id is not null and new.role is not null then
     v_role_slug := case new.role
-      when 'admin' then 'administrator'
+      when 'owner' then 'owner'
+      when 'manager' then 'manager'
       when 'staff' then 'staff'
       when 'viewer' then 'viewer'
       else 'viewer'

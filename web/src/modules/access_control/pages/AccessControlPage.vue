@@ -604,14 +604,14 @@ const onToggleMemberActive = async (member: Membership, isActive: boolean) => {
 };
 
 const onClickDeleteMember = (member: Membership) => {
-  if (member.role === 'admin') return;
+  if (member.role === 'owner') return;
   memberToDelete.value = member;
   openDeleteMemberDialog.value = true;
 };
 
 const confirmDeleteMember = async () => {
   if (!memberToDelete.value) return;
-  if (memberToDelete.value.role === 'admin') return;
+  if (memberToDelete.value.role === 'owner') return;
   try {
     const result = await membershipStore.deleteMembership({ id: memberToDelete.value.id });
     if (result.success) {
@@ -985,7 +985,7 @@ const openOverridesDialog = async (member: any, scope: 'app' | 'shop') => {
     });
     overridesActions.value = actionsData || [];
 
-    if (role?.is_admin || member?.role === 'admin') {
+    if (role?.is_admin || member?.role === 'owner' || member?.role === 'manager') {
       const inhMap: Record<string, boolean> = {};
       (actionsData || []).forEach((act: any) => {
         inhMap[`${act.module_key}:${act.action}`] = true;

@@ -18,12 +18,35 @@ type GuardRoute = {
 export type AccessRole =
   | 'superadmin'
   | 'admin'
+  | 'owner'
+  | 'manager'
   | 'staff'
   | 'viewer'
   | 'customer_admin'
   | 'customer_manager'
   | 'customer_staff'
   | 'investor_portal';
+
+const APP_DESK_ROLES: AccessRole[] = ['admin', 'owner', 'manager', 'staff', 'viewer'];
+
+const roleMatchesAllowed = (
+  memberRole: AccessRole,
+  allowedRoles: readonly AccessRole[],
+): boolean => {
+  if (allowedRoles.includes(memberRole)) {
+    return true;
+  }
+  if (!APP_DESK_ROLES.includes(memberRole)) {
+    return false;
+  }
+  if (allowedRoles.includes('admin') && (memberRole === 'owner' || memberRole === 'manager')) {
+    return true;
+  }
+  if (allowedRoles.includes('staff') && memberRole === 'manager') {
+    return true;
+  }
+  return false;
+};
 
 export const mapShopRoleToAccessRole = (role: string): AccessRole | null => {
   switch (role) {
@@ -165,7 +188,10 @@ export const createAccessGuard = ({
       };
     }
 
-    if (allowedRoles !== undefined && !allowedRoles.includes(memberRole)) {
+    if (
+      allowedRoles !== undefined &&
+      !roleMatchesAllowed(memberRole as AccessRole, allowedRoles)
+    ) {
       notifyAccessDenied();
       return resolveAuthenticatedDenyTarget({ authStore, requiredModule });
     }

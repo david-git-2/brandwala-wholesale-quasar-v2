@@ -185,7 +185,13 @@ onMounted(() => {
       await tenantPreferenceStore.ensureLoaded(
         authStore.tenantId,
         authStore.user?.email ?? null,
-        role === 'admin' || role === 'staff' || role === 'viewer' ? role : null,
+        role === 'owner' ||
+          role === 'manager' ||
+          role === 'admin' ||
+          role === 'staff' ||
+          role === 'viewer'
+          ? role
+          : null,
       );
     }
 

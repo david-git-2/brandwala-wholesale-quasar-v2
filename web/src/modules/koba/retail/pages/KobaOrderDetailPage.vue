@@ -697,7 +697,7 @@ const items = computed(() => orderStore.orderDetail?.items || []);
 
 // ─── Role / permission ──────────────────────────────────────────────────────
 
-const ADMIN_ROLES: string[] = ['superadmin', 'admin', 'staff'];
+const ADMIN_ROLES: string[] = ['superadmin', 'owner', 'manager', 'admin', 'staff'];
 const isAdmin = computed(() => ADMIN_ROLES.includes(authStore.matchedRole ?? ''));
 
 const ordersRouteName = computed(() => {

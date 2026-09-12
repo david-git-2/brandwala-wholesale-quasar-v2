@@ -52,6 +52,10 @@ BEGIN
           p_audience IN ('parent_only', 'child_and_parent')
           AND m.tenant_id = p_parent_tenant_id
         )
+        OR (
+          m.tenant_id = p_parent_tenant_id
+          AND m.role = 'owner'::public.app_role
+        )
       )
   )
   SELECT coalesce(array_agg(DISTINCT p.user_id), ARRAY[]::uuid[])

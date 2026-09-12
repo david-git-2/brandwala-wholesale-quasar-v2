@@ -365,7 +365,9 @@ const settingsRouteName = computed(() => {
 });
 
 const isAdminOrSuper = computed(() => {
-  return ['admin', 'staff', 'super_admin'].includes(authStore.matchedRole || '');
+  return ['owner', 'manager', 'admin', 'staff', 'super_admin'].includes(
+    authStore.matchedRole || '',
+  );
 });
 
 // District list matching TradeFlow BD retail

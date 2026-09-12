@@ -228,7 +228,7 @@ const settingsStore = useKobaSettingsStore();
 
 const isAdminOrSuper = computed(() => {
   const role = authStore.matchedRole;
-  return role === 'admin' || role === 'superadmin';
+  return role === 'owner' || role === 'manager' || role === 'admin' || role === 'superadmin';
 });
 
 interface KobaProduct {

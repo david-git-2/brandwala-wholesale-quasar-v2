@@ -1,4 +1,4 @@
-export type TenantMembershipRole = 'admin' | 'staff' | 'viewer' | 'investor';
+export type TenantMembershipRole = 'owner' | 'manager' | 'staff' | 'viewer' | 'investor';
 
 export type Membership = {
   id: number;

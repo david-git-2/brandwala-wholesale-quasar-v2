@@ -260,7 +260,8 @@ export const useWorkspaceLinks = (scope: WorkspaceScope) => {
       .filter((routeDefinition) => routeDefinition.moduleKey === 'koba_retail')
       .filter((routeDefinition) => {
         const role = authStore.matchedRole;
-        const isAdminOrSuper = role === 'admin' || role === 'superadmin';
+        const isAdminOrSuper =
+          role === 'owner' || role === 'manager' || role === 'admin' || role === 'superadmin';
         if (isAdminOrSuper && routeDefinition.title === 'Cart') {
           return false;
         }

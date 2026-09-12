@@ -99,7 +99,7 @@
               round
               icon="ph ph-trash"
               color="negative"
-              :disable="props.row.role === 'admin'"
+              :disable="props.row.role === 'owner'"
               @click="emit('delete-member', props.row)"
             />
           </q-td>
@@ -131,7 +131,7 @@ const emit = defineEmits<{
 }>();
 
 const memberRoleOptions = [
-  { label: 'Admin', value: 'admin' },
+  { label: 'Manager', value: 'manager' },
   { label: 'Staff', value: 'staff' },
   { label: 'Viewer', value: 'viewer' },
   { label: 'Investor', value: 'investor' },
