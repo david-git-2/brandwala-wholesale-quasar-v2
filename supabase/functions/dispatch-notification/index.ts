@@ -28,11 +28,15 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
 function parseServiceAccount(raw: string | undefined): ServiceAccount | null {
   if (!raw) return null
   try {
-    const parsed = JSON.parse(raw) as ServiceAccount
-    if (!parsed.project_id || !parsed.client_email || !parsed.private_key) {
+    let parsed: unknown = JSON.parse(raw.trim())
+    if (typeof parsed === 'string') {
+      parsed = JSON.parse(parsed)
+    }
+    const serviceAccount = parsed as ServiceAccount
+    if (!serviceAccount.project_id || !serviceAccount.client_email || !serviceAccount.private_key) {
       return null
     }
-    return parsed
+    return serviceAccount
   } catch {
     return null
   }

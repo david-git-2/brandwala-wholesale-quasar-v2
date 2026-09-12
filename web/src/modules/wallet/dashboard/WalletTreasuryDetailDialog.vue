@@ -3,7 +3,7 @@
     <section class="paper-section">
       <div class="paper-section__head">
         <span class="paper-section__title">Who holds the money</span>
-        <span class="paper-section__meta">Stub balances</span>
+        <span class="paper-section__meta">Live balances</span>
       </div>
       <div class="availability-row">
         <div class="donut-wrap">
@@ -11,7 +11,7 @@
             <Doughnut v-if="isReady" :data="holderChartData" :options="donutOptions" />
           </transition>
           <div class="donut-center">
-            <span class="donut-center__val">72%</span>
+            <span class="donut-center__val">{{ companyPct }}%</span>
             <span class="donut-center__sub">Company</span>
           </div>
         </div>
@@ -22,8 +22,8 @@
               <span class="legend-row__label">Company</span>
             </div>
             <div class="legend-row__right">
-              <span class="legend-row__val">৳2.10M</span>
-              <span class="legend-row__pct">72%</span>
+                  <span class="legend-row__val">{{ formatDashboardMoney(summary?.tenant_cash_total ?? 0) }}</span>
+                  <span class="legend-row__pct">{{ companyPct }}%</span>
             </div>
           </div>
           <div class="legend-row">
@@ -32,8 +32,8 @@
               <span class="legend-row__label">Customer</span>
             </div>
             <div class="legend-row__right">
-              <span class="legend-row__val">৳640K</span>
-              <span class="legend-row__pct">22%</span>
+                  <span class="legend-row__val">{{ formatDashboardMoney(summary?.customer_deposits_total ?? 0) }}</span>
+                  <span class="legend-row__pct">{{ customerPct }}%</span>
             </div>
           </div>
           <div class="legend-row">
@@ -42,8 +42,8 @@
               <span class="legend-row__label">Courier</span>
             </div>
             <div class="legend-row__right">
-              <span class="legend-row__val">৳185K</span>
-              <span class="legend-row__pct">6%</span>
+                  <span class="legend-row__val">{{ formatDashboardMoney(summary?.courier_cod_holding_total ?? 0) }}</span>
+                  <span class="legend-row__pct">{{ courierPct }}%</span>
             </div>
           </div>
         </div>
@@ -54,27 +54,27 @@
 
     <section class="paper-section">
       <div class="paper-section__head">
-        <span class="paper-section__title">COD to collect</span>
-        <span class="paper-section__meta">৳185K</span>
+        <span class="paper-section__title">Pending vs ready</span>
+        <span class="paper-section__meta">{{ formatDashboardMoney(summary?.merchant_pending_total ?? 0) }}</span>
       </div>
       <div class="grade-list">
         <div class="grade-row">
           <div class="grade-row__left">
-            <span class="grade-row__desc">Steadfast · 18 parcels</span>
+            <span class="grade-row__desc">Merchant pending payouts</span>
           </div>
-          <span class="grade-row__val">৳92,400</span>
+          <span class="grade-row__val">{{ formatDashboardMoneyFull(summary?.merchant_pending_total ?? 0) }}</span>
         </div>
         <div class="grade-row">
           <div class="grade-row__left">
-            <span class="grade-row__desc">Pathao · 10 parcels</span>
+            <span class="grade-row__desc">Merchant available</span>
           </div>
-          <span class="grade-row__val">৳61,200</span>
+          <span class="grade-row__val">{{ formatDashboardMoneyFull(summary?.merchant_available_total ?? 0) }}</span>
         </div>
         <div class="grade-row">
           <div class="grade-row__left">
-            <span class="grade-row__desc">In-house courier</span>
+            <span class="grade-row__desc">Courier COD holding</span>
           </div>
-          <span class="grade-row__val">৳31,400</span>
+          <span class="grade-row__val">{{ formatDashboardMoneyFull(summary?.courier_cod_holding_total ?? 0) }}</span>
         </div>
       </div>
     </section>
@@ -87,11 +87,18 @@ import { Doughnut } from 'vue-chartjs';
 import type { ChartData, ChartOptions } from 'chart.js';
 import DashboardPaperDrawer from 'src/modules/dashboard/components/DashboardPaperDrawer.vue';
 import { ensureDashboardChartsRegistered } from 'src/modules/dashboard/utils/dashboardChartSetup';
+import {
+  dashboardSharePct,
+  formatDashboardMoney,
+  formatDashboardMoneyFull,
+} from 'src/modules/dashboard/utils/formatDashboardMetric';
+import type { WalletDashboardSummary } from '../types';
 
 ensureDashboardChartsRegistered();
 
 const props = defineProps<{
   modelValue: boolean;
+  summary?: WalletDashboardSummary | null;
 }>();
 
 const emit = defineEmits<{
@@ -105,12 +112,31 @@ const isOpen = computed({
 
 const isReady = ref(false);
 
-// stub until live RPC
+const mixTotal = computed(
+  () =>
+    (props.summary?.tenant_cash_total ?? 0) +
+    (props.summary?.customer_deposits_total ?? 0) +
+    (props.summary?.courier_cod_holding_total ?? 0),
+);
+const companyPct = computed(() =>
+  dashboardSharePct(props.summary?.tenant_cash_total ?? 0, mixTotal.value),
+);
+const customerPct = computed(() =>
+  dashboardSharePct(props.summary?.customer_deposits_total ?? 0, mixTotal.value),
+);
+const courierPct = computed(() =>
+  dashboardSharePct(props.summary?.courier_cod_holding_total ?? 0, mixTotal.value),
+);
+
 const holderChartData = computed<ChartData<'doughnut'>>(() => ({
   labels: ['Company', 'Customer', 'Courier'],
   datasets: [
     {
-      data: [2100, 640, 185],
+      data: [
+        props.summary?.tenant_cash_total ?? 0,
+        props.summary?.customer_deposits_total ?? 0,
+        props.summary?.courier_cod_holding_total ?? 0,
+      ],
       backgroundColor: ['#059669', '#0284c7', '#d97706'],
       borderWidth: 0,
       hoverOffset: 3,

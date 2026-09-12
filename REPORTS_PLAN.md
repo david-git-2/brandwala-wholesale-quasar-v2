@@ -6,7 +6,7 @@ Product list for **parent-level finance reporting** (wholesale, wallet, procurem
 
 **Global rule:** every money report shows **billed**, **returned**, **collected cash**, **wallet applied**, and **still due** as separate numbers. Do not mix them.
 
-**Status (2026-08):** routes and hub tiles exist under `/app/finance/reports/*`. Report pages are stubs. Only `get_tenant_cash_in_report` RPC exists today. Investor profit report lives in the investor portal (out of scope here).
+**Status (2026-09):** routes, hub tiles, RPCs, and UI live under `/app/finance/reports/*`. Cash in and shipment profit were first; customer dues, invoice book, invoice profit, wallet, courier COD, and month snapshot follow the same compact report layout.
 
 ---
 
@@ -27,6 +27,12 @@ Product list for **parent-level finance reporting** (wholesale, wallet, procurem
 
 - Report 1: [`doc/reporting_treasury/CASH_IN.md`](doc/reporting_treasury/CASH_IN.md)
 - Report 2: [`doc/reporting_treasury/CUSTOMER_DUES.md`](doc/reporting_treasury/CUSTOMER_DUES.md)
+- Report 3: [`doc/reporting_treasury/INVOICE_BOOK.md`](doc/reporting_treasury/INVOICE_BOOK.md)
+- Report 4: [`doc/reporting_treasury/INVOICE_PROFIT.md`](doc/reporting_treasury/INVOICE_PROFIT.md)
+- Report 5: [`doc/reporting_treasury/SHIPMENT_PROFIT.md`](doc/reporting_treasury/SHIPMENT_PROFIT.md)
+- Report 6: [`doc/reporting_treasury/WALLET_REPORT.md`](doc/reporting_treasury/WALLET_REPORT.md)
+- Report 7: [`doc/reporting_treasury/COURIER_COD.md`](doc/reporting_treasury/COURIER_COD.md)
+- Report 8: [`doc/reporting_treasury/MONTH_SNAPSHOT.md`](doc/reporting_treasury/MONTH_SNAPSHOT.md)
 
 ---
 

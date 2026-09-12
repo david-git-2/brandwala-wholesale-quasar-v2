@@ -19,7 +19,7 @@
             <span class="stat-item__label">Today's Sales</span>
           </div>
           <div class="stat-item__value-row">
-            <span class="stat-item__number">৳384.5K</span>
+            <span class="stat-item__number">{{ salesLabel }}</span>
             <span class="stat-item__badge">Storefront</span>
           </div>
         </div>
@@ -32,7 +32,7 @@
             <span class="stat-item__label">Fulfilled Orders</span>
           </div>
           <div class="stat-item__value-row">
-            <span class="stat-item__number">86</span>
+            <span class="stat-item__number">{{ invoiceCountLabel }}</span>
             <span class="stat-item__unit">Invoices</span>
           </div>
         </div>
@@ -56,7 +56,7 @@
           </div>
           <div class="pill-stat__meta">
             <span class="pill-stat__label">Out for Delivery</span>
-            <span class="pill-stat__value">32 Parcels</span>
+            <span class="pill-stat__value">{{ shippedLabel }}</span>
           </div>
         </div>
 
@@ -66,7 +66,7 @@
           </div>
           <div class="pill-stat__meta">
             <span class="pill-stat__label">Ready for Pickup</span>
-            <span class="pill-stat__value">14 Orders</span>
+            <span class="pill-stat__value">{{ pickupLabel }}</span>
           </div>
         </div>
 
@@ -75,19 +75,38 @@
     </div>
 
     <!-- On-Paper Ledger Slide Drawer -->
-    <ShopOrderDetailDialog v-model="showOrderDetail" />
+    <ShopOrderDetailDialog v-model="showOrderDetail" :metrics="metrics" />
   </section>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useRoute, useRouter } from 'vue-router';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import {
+  formatDashboardCount,
+  formatDashboardMoney,
+} from 'src/modules/dashboard/utils/formatDashboardMetric';
+import { useShopOrderDashboardQuery } from '../composables/useShopOrderDashboardQuery';
 import ShopOrderDetailDialog from './ShopOrderDetailDialog.vue';
 
 const router = useRouter();
 const route = useRoute();
+const authStore = useAuthStore();
+const { tenantId } = storeToRefs(authStore);
 
 const showOrderDetail = ref(false);
+const { data: metrics } = useShopOrderDashboardQuery(tenantId);
+
+const salesLabel = computed(() => formatDashboardMoney(metrics.value?.todaySalesAmount ?? 0));
+const invoiceCountLabel = computed(() => formatDashboardCount(metrics.value?.todayInvoiceCount ?? 0));
+const shippedLabel = computed(
+  () => `${formatDashboardCount(metrics.value?.shippedCount ?? 0)} Parcels`,
+);
+const pickupLabel = computed(
+  () => `${formatDashboardCount(metrics.value?.readyForPickupCount ?? 0)} Orders`,
+);
 
 const tenantSlug = computed(() => (route.params.tenantSlug as string) || '');
 

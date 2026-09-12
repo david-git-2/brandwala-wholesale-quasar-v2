@@ -18,8 +18,8 @@
             <span class="receipt-header__date">TODAY · LIVE ORDERS</span>
           </div>
           <div class="receipt-header__total">
-            <span class="receipt-header__amount">৳384,500</span>
-            <span class="receipt-header__count">86 INVOICES</span>
+            <span class="receipt-header__amount">{{ salesFullLabel }}</span>
+            <span class="receipt-header__count">{{ invoiceCountLabel }} INVOICES</span>
           </div>
         </div>
 
@@ -27,7 +27,7 @@
         <section class="receipt-section">
           <div class="section-heading">
             <span class="section-heading__title">Hourly Sales Flow</span>
-            <span class="section-heading__badge">Peak: 2:00 PM - 5:00 PM</span>
+            <span class="section-heading__badge">{{ peakLabel }}</span>
           </div>
 
           <div class="line-chart-wrap">
@@ -44,75 +44,33 @@
         <section class="receipt-section">
           <div class="section-heading">
             <span class="section-heading__title">Courier Dispatch Fleet</span>
-            <span class="section-heading__badge">32 Parcels Out</span>
+            <span class="section-heading__badge">{{ shippedOutLabel }}</span>
           </div>
 
           <div class="courier-grid">
-            <div class="courier-item">
+            <div v-for="(courier, index) in (metrics?.couriers ?? [])" :key="courier.name" class="courier-item">
               <div class="courier-item__top">
-                <div class="courier-item__badge courier-item__badge--steadfast">Steadfast</div>
-                <span class="courier-item__count">18 Parcels</span>
+                <div
+                  class="courier-item__badge"
+                  :class="courierBadgeClass(courier.name, index)"
+                >
+                  {{ courier.name }}
+                </div>
+                <span class="courier-item__count">{{ formatDashboardCount(courier.count) }} Parcels</span>
               </div>
               <div class="courier-bar">
-                <div class="courier-bar__fill courier-bar__fill--steadfast" style="width: 75%" />
+                <div
+                  class="courier-bar__fill"
+                  :class="courierFillClass(courier.name, index)"
+                  :style="{ width: courierWidth(courier.count) }"
+                />
               </div>
-              <span class="courier-item__meta">14 Dispatched · 4 In Delivery</span>
+              <span class="courier-item__meta">
+                {{ formatDashboardCount(courier.shippedCount) }} Shipped ·
+                {{ formatDashboardCount(courier.readyCount) }} Pickup
+              </span>
             </div>
-
-            <div class="courier-item">
-              <div class="courier-item__top">
-                <div class="courier-item__badge courier-item__badge--pathao">Pathao</div>
-                <span class="courier-item__count">10 Parcels</span>
-              </div>
-              <div class="courier-bar">
-                <div class="courier-bar__fill courier-bar__fill--pathao" style="width: 60%" />
-              </div>
-              <span class="courier-item__meta">6 On Road · 4 Assigned</span>
-            </div>
-
-            <div class="courier-item">
-              <div class="courier-item__top">
-                <div class="courier-item__badge courier-item__badge--pickup">Store Pickup</div>
-                <span class="courier-item__count">14 Orders</span>
-              </div>
-              <div class="courier-bar">
-                <div class="courier-bar__fill courier-bar__fill--pickup" style="width: 85%" />
-              </div>
-              <span class="courier-item__meta">12 Ready · 2 Packing</span>
-            </div>
-          </div>
-        </section>
-
-        <!-- Perforated Receipt Tear Line -->
-        <div class="perforated-line" />
-
-        <!-- 4. Visual 3: Payment Settlement & Settlement Ratio -->
-        <section class="receipt-section">
-          <div class="section-heading">
-            <span class="section-heading__title">Payment Settlement</span>
-            <span class="section-heading__badge">৳384.5K Total</span>
-          </div>
-
-          <!-- Multi-segment Progress Bar -->
-          <div class="settlement-meter">
-            <div class="settlement-meter__bar settlement-meter__bar--cod" style="width: 58%" title="Courier COD" />
-            <div class="settlement-meter__bar settlement-meter__bar--digital" style="width: 28%" title="Bank / MFS" />
-            <div class="settlement-meter__bar settlement-meter__bar--cash" style="width: 14%" title="POS Cash" />
-          </div>
-
-          <div class="settlement-breakdown">
-            <div class="settlement-row">
-              <span class="tag-pill tag-pill--cod">Courier COD</span>
-              <span class="settlement-row__val">৳223,000 (58%)</span>
-            </div>
-            <div class="settlement-row">
-              <span class="tag-pill tag-pill--digital">Online / bKash</span>
-              <span class="settlement-row__val">৳107,600 (28%)</span>
-            </div>
-            <div class="settlement-row">
-              <span class="tag-pill tag-pill--cash">POS Cash Counter</span>
-              <span class="settlement-row__val">৳53,900 (14%)</span>
-            </div>
+            <p v-if="!(metrics?.couriers?.length)" class="courier-item__meta">No parcels in queue</p>
           </div>
         </section>
       </div>
@@ -125,12 +83,18 @@ import { computed, ref } from 'vue';
 import { Line } from 'vue-chartjs';
 import type { ChartData, ChartOptions } from 'chart.js';
 
+import {
+  formatDashboardCount,
+  formatDashboardMoneyFull,
+} from 'src/modules/dashboard/utils/formatDashboardMetric';
+import type { ShopOrderDashboardMetrics } from '../repositories/shopOrderDashboardRepository';
 import { ensureShopOrderChartsRegistered } from './shopOrderChartSetup';
 
 ensureShopOrderChartsRegistered();
 
 const props = defineProps<{
   modelValue: boolean;
+  metrics?: ShopOrderDashboardMetrics | null;
 }>();
 
 const emit = defineEmits<{
@@ -144,13 +108,51 @@ const isOpen = computed({
 
 const isReady = ref(false);
 
-/* --- HOURLY SALES AREA/LINE CHART --- */
+const salesFullLabel = computed(() => formatDashboardMoneyFull(props.metrics?.todaySalesAmount ?? 0));
+const invoiceCountLabel = computed(() =>
+  formatDashboardCount(props.metrics?.todayInvoiceCount ?? 0),
+);
+const shippedOutLabel = computed(
+  () => `${formatDashboardCount(props.metrics?.shippedCount ?? 0)} Parcels Out`,
+);
+const peakLabel = computed(() => {
+  const hours = props.metrics?.hourly ?? [];
+  if (!hours.length) {
+    return 'No sales yet';
+  }
+  const peak = hours.reduce((best, hour) => (hour.amount > best.amount ? hour : best), hours[0]);
+  return `Peak: ${peak.label}`;
+});
+
+const maxCourierCount = computed(() =>
+  Math.max(1, ...(props.metrics?.couriers ?? []).map((courier) => courier.count)),
+);
+const courierWidth = (count: number) => `${Math.round((count / maxCourierCount.value) * 100)}%`;
+const courierBadgeClass = (name: string, index: number) => {
+  const key = name.toLowerCase();
+  if (key.includes('steadfast')) return 'courier-item__badge--steadfast';
+  if (key.includes('pathao')) return 'courier-item__badge--pathao';
+  if (key.includes('pickup')) return 'courier-item__badge--pickup';
+  return ['courier-item__badge--steadfast', 'courier-item__badge--pathao', 'courier-item__badge--pickup'][
+    index % 3
+  ];
+};
+const courierFillClass = (name: string, index: number) => {
+  const key = name.toLowerCase();
+  if (key.includes('steadfast')) return 'courier-bar__fill--steadfast';
+  if (key.includes('pathao')) return 'courier-bar__fill--pathao';
+  if (key.includes('pickup')) return 'courier-bar__fill--pickup';
+  return ['courier-bar__fill--steadfast', 'courier-bar__fill--pathao', 'courier-bar__fill--pickup'][
+    index % 3
+  ];
+};
+
 const hourlySalesData = computed<ChartData<'line'>>(() => ({
-  labels: ['9 AM', '11 AM', '1 PM', '3 PM', '5 PM', '7 PM', '9 PM'],
+  labels: (props.metrics?.hourly ?? []).map((hour) => hour.label),
   datasets: [
     {
       label: 'Sales (৳ BDT)',
-      data: [28000, 64000, 112000, 96000, 52000, 24000, 8500],
+      data: (props.metrics?.hourly ?? []).map((hour) => hour.amount),
       borderColor: '#0284c7',
       backgroundColor: 'rgba(2, 132, 199, 0.12)',
       borderWidth: 2.5,

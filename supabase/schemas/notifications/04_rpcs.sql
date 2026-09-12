@@ -78,7 +78,7 @@ BEGIN
       p_link_path := format('/app/shop/orders/%s', v_order.id),
       p_entity_type := 'shop_order',
       p_entity_id := v_order.id::text,
-      p_module_key := 'shop_order',
+      p_module_key := 'shop_order_mgmt',
       p_action := 'view'
     );
   END IF;
@@ -111,6 +111,110 @@ ALTER FUNCTION public.notify_catalog_shop_order(bigint, boolean, boolean, text, 
 REVOKE ALL ON FUNCTION public.notify_catalog_shop_order(bigint, boolean, boolean, text, text, text) FROM PUBLIC;
 
 
+CREATE OR REPLACE FUNCTION public.is_network_owner_for_email(
+  p_email text,
+  p_tenant_id bigint
+)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.memberships m
+    WHERE m.tenant_id = public.resolve_parent_tenant_id(p_tenant_id)
+      AND lower(trim(m.email)) = lower(trim(coalesce(p_email, '')))
+      AND m.role = 'owner'::public.app_role
+      AND m.is_active = true
+  );
+$$;
+
+ALTER FUNCTION public.is_network_owner_for_email(text, bigint) OWNER TO postgres;
+
+REVOKE ALL ON FUNCTION public.is_network_owner_for_email(text, bigint) FROM PUBLIC;
+
+
+CREATE OR REPLACE FUNCTION public.membership_has_module_action_for_email(
+  p_email text,
+  p_tenant_id bigint,
+  p_module_key text,
+  p_action text
+)
+RETURNS boolean
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_email text := lower(trim(coalesce(p_email, '')));
+  v_member_id bigint;
+  v_tenant_role_id bigint;
+  v_role_is_admin boolean;
+  v_member_role public.app_role;
+  v_override_effect text;
+  v_role_allowed boolean;
+BEGIN
+  IF v_email = '' OR p_tenant_id IS NULL OR p_module_key IS NULL THEN
+    RETURN false;
+  END IF;
+
+  IF public.is_network_owner_for_email(p_email, p_tenant_id) THEN
+    RETURN true;
+  END IF;
+
+  IF NOT (p_module_key = ANY(public.get_active_module_keys_for_tenant(p_tenant_id))) THEN
+    RETURN false;
+  END IF;
+
+  SELECT m.id, m.tenant_role_id, tr.is_admin, m.role
+  INTO v_member_id, v_tenant_role_id, v_role_is_admin, v_member_role
+  FROM public.memberships m
+  LEFT JOIN public.tenant_roles tr ON tr.id = m.tenant_role_id
+  WHERE m.tenant_id = p_tenant_id
+    AND lower(trim(m.email)) = v_email
+    AND m.is_active = true;
+
+  IF v_member_id IS NULL THEN
+    RETURN false;
+  END IF;
+
+  IF v_member_role IN ('owner'::public.app_role, 'manager'::public.app_role)
+     OR coalesce(v_role_is_admin, false) = true THEN
+    RETURN true;
+  END IF;
+
+  SELECT effect
+  INTO v_override_effect
+  FROM public.membership_grants
+  WHERE membership_id = v_member_id
+    AND module_key = p_module_key
+    AND action = p_action;
+
+  IF v_override_effect = 'deny' THEN
+    RETURN false;
+  ELSIF v_override_effect = 'allow' THEN
+    RETURN true;
+  END IF;
+
+  SELECT allowed
+  INTO v_role_allowed
+  FROM public.tenant_role_grants
+  WHERE tenant_role_id = v_tenant_role_id
+    AND module_key = p_module_key
+    AND action = p_action;
+
+  RETURN coalesce(v_role_allowed, false);
+END;
+$$;
+
+ALTER FUNCTION public.membership_has_module_action_for_email(text, bigint, text, text) OWNER TO postgres;
+
+REVOKE ALL ON FUNCTION public.membership_has_module_action_for_email(text, bigint, text, text) FROM PUBLIC;
+
+
 CREATE OR REPLACE FUNCTION public.resolve_notification_recipient_user_ids(
   p_parent_tenant_id bigint,
   p_operating_tenant_id bigint,
@@ -133,7 +237,7 @@ BEGIN
       RETURN ARRAY[]::uuid[];
     END IF;
 
-    SELECT coalesce(array_agg(DISTINCT u.user_id), ARRAY[]::uuid[])
+    SELECT coalesce(array_agg(DISTINCT u.id), ARRAY[]::uuid[])
     INTO v_user_ids
     FROM unnest(p_recipient_user_ids) AS input(user_id)
     JOIN auth.users u ON u.id = input.user_id
@@ -149,7 +253,8 @@ BEGIN
   WITH pools AS (
     SELECT DISTINCT
       u.id AS user_id,
-      m.tenant_id AS membership_tenant_id
+      m.tenant_id AS membership_tenant_id,
+      m.email AS membership_email
     FROM public.memberships m
     JOIN auth.users u ON lower(trim(u.email)) = lower(trim(m.email))
     WHERE m.is_active = true
@@ -173,7 +278,12 @@ BEGIN
   INTO v_user_ids
   FROM pools p
   WHERE p_module_key IS NULL
-     OR public.membership_has_module_action(p.membership_tenant_id, p_module_key, p_action);
+     OR public.membership_has_module_action_for_email(
+          p.membership_email,
+          p.membership_tenant_id,
+          p_module_key,
+          p_action
+        );
 
   RETURN coalesce(v_user_ids, ARRAY[]::uuid[]);
 END;
@@ -434,9 +544,11 @@ BEGIN
       n.entity_id,
       n.parent_tenant_id,
       n.operating_tenant_id,
+      t.name AS operating_tenant_name,
       n.created_at
     FROM public.notification_recipients r
     JOIN public.notifications n ON n.id = r.notification_id
+    LEFT JOIN public.tenants t ON t.id = n.operating_tenant_id
     WHERE r.user_id = v_user_id
       AND public.notification_inbox_scope_matches(p_tenant_id, n.parent_tenant_id, n.operating_tenant_id)
       AND (NOT p_unread_only OR r.read_at IS NULL)

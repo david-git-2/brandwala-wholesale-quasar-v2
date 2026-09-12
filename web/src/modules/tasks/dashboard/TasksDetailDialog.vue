@@ -3,7 +3,7 @@
     <section class="paper-section">
       <div class="paper-section__head">
         <span class="paper-section__title">My board</span>
-        <span class="paper-section__meta">14 assigned · stub</span>
+        <span class="paper-section__meta">{{ assignedMeta }}</span>
       </div>
       <div class="availability-row">
         <div class="donut-wrap">
@@ -11,7 +11,7 @@
             <Doughnut v-if="isReady" :data="statusChartData" :options="donutOptions" />
           </transition>
           <div class="donut-center">
-            <span class="donut-center__val">14</span>
+            <span class="donut-center__val">{{ assignedLabel }}</span>
             <span class="donut-center__sub">Mine</span>
           </div>
         </div>
@@ -22,8 +22,8 @@
               <span class="legend-row__label">Open</span>
             </div>
             <div class="legend-row__right">
-              <span class="legend-row__val">5</span>
-              <span class="legend-row__pct">36%</span>
+                  <span class="legend-row__val">{{ formatDashboardCount(metrics?.myTodo ?? 0) }}</span>
+                  <span class="legend-row__pct">{{ todoPct }}%</span>
             </div>
           </div>
           <div class="legend-row">
@@ -32,8 +32,8 @@
               <span class="legend-row__label">Doing</span>
             </div>
             <div class="legend-row__right">
-              <span class="legend-row__val">4</span>
-              <span class="legend-row__pct">29%</span>
+                  <span class="legend-row__val">{{ formatDashboardCount(metrics?.myDoing ?? 0) }}</span>
+                  <span class="legend-row__pct">{{ doingPct }}%</span>
             </div>
           </div>
           <div class="legend-row">
@@ -42,8 +42,8 @@
               <span class="legend-row__label">Stuck</span>
             </div>
             <div class="legend-row__right">
-              <span class="legend-row__val">2</span>
-              <span class="legend-row__pct">14%</span>
+                  <span class="legend-row__val">{{ formatDashboardCount(metrics?.myStuck ?? 0) }}</span>
+                  <span class="legend-row__pct">{{ stuckPct }}%</span>
             </div>
           </div>
           <div class="legend-row">
@@ -52,8 +52,8 @@
               <span class="legend-row__label">Done</span>
             </div>
             <div class="legend-row__right">
-              <span class="legend-row__val">3</span>
-              <span class="legend-row__pct">21%</span>
+                  <span class="legend-row__val">{{ formatDashboardCount(metrics?.myDone ?? 0) }}</span>
+                  <span class="legend-row__pct">{{ donePct }}%</span>
             </div>
           </div>
         </div>
@@ -68,11 +68,17 @@ import { Doughnut } from 'vue-chartjs';
 import type { ChartData, ChartOptions } from 'chart.js';
 import DashboardPaperDrawer from 'src/modules/dashboard/components/DashboardPaperDrawer.vue';
 import { ensureDashboardChartsRegistered } from 'src/modules/dashboard/utils/dashboardChartSetup';
+import {
+  dashboardSharePct,
+  formatDashboardCount,
+} from 'src/modules/dashboard/utils/formatDashboardMetric';
+import type { TasksDashboardMetrics } from '../repositories/tasksDashboardRepository';
 
 ensureDashboardChartsRegistered();
 
 const props = defineProps<{
   modelValue: boolean;
+  metrics?: TasksDashboardMetrics | null;
 }>();
 
 const emit = defineEmits<{
@@ -86,12 +92,30 @@ const isOpen = computed({
 
 const isReady = ref(false);
 
-// stub until live RPC
+const myTotal = computed(
+  () =>
+    (props.metrics?.myTodo ?? 0) +
+    (props.metrics?.myDoing ?? 0) +
+    (props.metrics?.myStuck ?? 0) +
+    (props.metrics?.myDone ?? 0),
+);
+const assignedLabel = computed(() => formatDashboardCount(props.metrics?.assignedToMe ?? 0));
+const assignedMeta = computed(() => `${assignedLabel.value} assigned`);
+const todoPct = computed(() => dashboardSharePct(props.metrics?.myTodo ?? 0, myTotal.value));
+const doingPct = computed(() => dashboardSharePct(props.metrics?.myDoing ?? 0, myTotal.value));
+const stuckPct = computed(() => dashboardSharePct(props.metrics?.myStuck ?? 0, myTotal.value));
+const donePct = computed(() => dashboardSharePct(props.metrics?.myDone ?? 0, myTotal.value));
+
 const statusChartData = computed<ChartData<'doughnut'>>(() => ({
   labels: ['Open', 'Doing', 'Stuck', 'Done'],
   datasets: [
     {
-      data: [5, 4, 2, 3],
+      data: [
+        props.metrics?.myTodo ?? 0,
+        props.metrics?.myDoing ?? 0,
+        props.metrics?.myStuck ?? 0,
+        props.metrics?.myDone ?? 0,
+      ],
       backgroundColor: ['#0284c7', '#d97706', '#dc2626', '#059669'],
       borderWidth: 0,
       hoverOffset: 3,

@@ -17,8 +17,8 @@
             <span class="stat-item__label">Active pool</span>
           </div>
           <div class="stat-item__value-row">
-            <span class="stat-item__number">৳12.4M</span>
-            <span class="stat-item__badge">Stub</span>
+            <span class="stat-item__number">{{ poolLabel }}</span>
+            <span class="stat-item__badge">Live</span>
           </div>
         </div>
         <div class="glass-divider" />
@@ -28,7 +28,7 @@
             <span class="stat-item__label">Deployed this month</span>
           </div>
           <div class="stat-item__value-row">
-            <span class="stat-item__number">৳1.8M</span>
+            <span class="stat-item__number">{{ deployedMonthLabel }}</span>
           </div>
         </div>
         <i class="ph ph-chart-donut glass-panel__action-icon" />
@@ -49,7 +49,7 @@
           </div>
           <div class="pill-stat__meta">
             <span class="pill-stat__label">Due to investors</span>
-            <span class="pill-stat__value">৳420K</span>
+            <span class="pill-stat__value">{{ dueLabel }}</span>
           </div>
         </div>
         <div
@@ -64,7 +64,7 @@
           </div>
           <div class="pill-stat__meta">
             <span class="pill-stat__label">Open containers</span>
-            <span class="pill-stat__value">3 Batches</span>
+            <span class="pill-stat__value">{{ containersLabel }}</span>
           </div>
         </div>
         <i class="ph ph-arrow-up-right glass-panel__action-icon" />
@@ -72,19 +72,38 @@
     </template>
   </DashboardHeroScene>
 
-  <InvestorCapitalDetailDialog v-model="showDetail" />
+  <InvestorCapitalDetailDialog v-model="showDetail" :metrics="metrics" />
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useRoute, useRouter } from 'vue-router';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import DashboardHeroScene from 'src/modules/dashboard/components/DashboardHeroScene.vue';
+import {
+  formatDashboardCount,
+  formatDashboardMoney,
+} from 'src/modules/dashboard/utils/formatDashboardMetric';
 import heroImage from 'src/assets/investor-capital-dashboard-bg.jpg';
+import { useInvestorCapitalDashboardQuery } from '../composables/useInvestorCapitalDashboardQuery';
 import InvestorCapitalDetailDialog from './InvestorCapitalDetailDialog.vue';
 
 const router = useRouter();
 const route = useRoute();
+const authStore = useAuthStore();
+const { tenantId } = storeToRefs(authStore);
 const showDetail = ref(false);
+const { data: metrics } = useInvestorCapitalDashboardQuery(tenantId);
+
+const poolLabel = computed(() => formatDashboardMoney(metrics.value?.activePoolAmount ?? 0));
+const deployedMonthLabel = computed(() =>
+  formatDashboardMoney(metrics.value?.deployedThisMonth ?? 0),
+);
+const dueLabel = computed(() => formatDashboardMoney(metrics.value?.dueToInvestors ?? 0));
+const containersLabel = computed(
+  () => `${formatDashboardCount(metrics.value?.openContainerCount ?? 0)} Batches`,
+);
 
 const tenantSlug = computed(() => (route.params.tenantSlug as string) || '');
 

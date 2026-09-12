@@ -18,8 +18,8 @@
             <span class="stat-item__label">Assigned to me</span>
           </div>
           <div class="stat-item__value-row">
-            <span class="stat-item__number">14</span>
-            <span class="stat-item__badge">Stub</span>
+            <span class="stat-item__number">{{ assignedLabel }}</span>
+            <span class="stat-item__badge">Mine</span>
           </div>
         </div>
         <div class="glass-divider" />
@@ -29,7 +29,7 @@
             <span class="stat-item__label">Overdue</span>
           </div>
           <div class="stat-item__value-row">
-            <span class="stat-item__number">3</span>
+            <span class="stat-item__number">{{ overdueLabel }}</span>
             <span class="stat-item__unit">Tasks</span>
           </div>
         </div>
@@ -51,7 +51,7 @@
           </div>
           <div class="pill-stat__meta">
             <span class="pill-stat__label">Due today</span>
-            <span class="pill-stat__value">6 Tasks</span>
+            <span class="pill-stat__value">{{ dueTodayLabel }}</span>
           </div>
         </div>
         <div class="pill-stat pill-stat--info">
@@ -60,7 +60,7 @@
           </div>
           <div class="pill-stat__meta">
             <span class="pill-stat__label">Unassigned</span>
-            <span class="pill-stat__value">4 Tasks</span>
+            <span class="pill-stat__value">{{ unassignedLabel }}</span>
           </div>
         </div>
         <i class="ph ph-arrow-up-right glass-panel__action-icon" />
@@ -68,19 +68,35 @@
     </template>
   </DashboardHeroScene>
 
-  <TasksDetailDialog v-model="showDetail" />
+  <TasksDetailDialog v-model="showDetail" :metrics="metrics" />
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useRoute, useRouter } from 'vue-router';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import DashboardHeroScene from 'src/modules/dashboard/components/DashboardHeroScene.vue';
+import { formatDashboardCount } from 'src/modules/dashboard/utils/formatDashboardMetric';
 import heroImage from 'src/assets/tasks-dashboard-bg.jpg';
+import { useTasksDashboardQuery } from '../composables/useTasksDashboardQuery';
 import TasksDetailDialog from './TasksDetailDialog.vue';
 
 const router = useRouter();
 const route = useRoute();
+const authStore = useAuthStore();
+const { tenantId } = storeToRefs(authStore);
 const showDetail = ref(false);
+const { data: metrics } = useTasksDashboardQuery(tenantId);
+
+const assignedLabel = computed(() => formatDashboardCount(metrics.value?.assignedToMe ?? 0));
+const overdueLabel = computed(() => formatDashboardCount(metrics.value?.overdueCount ?? 0));
+const dueTodayLabel = computed(
+  () => `${formatDashboardCount(metrics.value?.dueTodayCount ?? 0)} Tasks`,
+);
+const unassignedLabel = computed(
+  () => `${formatDashboardCount(metrics.value?.unassignedCount ?? 0)} Tasks`,
+);
 
 const tenantSlug = computed(() => (route.params.tenantSlug as string) || '');
 

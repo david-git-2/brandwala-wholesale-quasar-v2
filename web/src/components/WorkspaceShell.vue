@@ -577,23 +577,53 @@ const shouldShowSectionHeader = (link: WorkspaceLink, child: WorkspaceLink, idx:
   return link.children[idx - 1]?.section !== child.section;
 };
 
-const expandedGroups = ref<Record<string, boolean>>({});
+const NAV_EXPANDED_GROUPS_KEY = `bw-nav-expanded-groups:${props.theme}`;
 
+const readPersistedExpandedGroups = (): Record<string, boolean> => {
+  if (typeof sessionStorage === 'undefined') return {};
+  try {
+    const raw = sessionStorage.getItem(NAV_EXPANDED_GROUPS_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    return parsed as Record<string, boolean>;
+  } catch {
+    return {};
+  }
+};
+
+const expandedGroups = ref<Record<string, boolean>>(readPersistedExpandedGroups());
+
+watch(
+  expandedGroups,
+  (value) => {
+    if (typeof sessionStorage === 'undefined') return;
+    try {
+      sessionStorage.setItem(NAV_EXPANDED_GROUPS_KEY, JSON.stringify(value));
+    } catch {
+      // ignore quota / private mode
+    }
+  },
+  { deep: true },
+);
+
+/** Open the group that owns the current page. Never force-close other groups. */
 const autoExpandActiveGroup = () => {
   for (const link of props.links) {
-    if (link.children?.length) {
-      const hasActiveChild = link.children.some((child) => isLinkActive(child.to));
-      expandedGroups.value[link.title] = hasActiveChild;
+    if (!link.children?.length) continue;
+    const hasActiveChild = link.children.some((child) => isLinkActive(child.to));
+    if (hasActiveChild) {
+      expandedGroups.value[link.title] = true;
     }
   }
 };
 
 watch(
-  () => route.path,
+  () => [route.path, props.links] as const,
   () => {
     autoExpandActiveGroup();
   },
-  { immediate: true }
+  { immediate: true, deep: true },
 );
 
 const togglePin = () => {

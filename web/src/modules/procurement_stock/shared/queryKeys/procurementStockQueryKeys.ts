@@ -57,4 +57,6 @@ export const procurementStockQueryKeys = {
     limit?: number;
     offset?: number;
   }) => ['procurementStock', 'demandGroups', params] as const,
+
+  dashboard: (tenantId: number) => ['procurementStock', 'dashboard', tenantId] as const,
 };

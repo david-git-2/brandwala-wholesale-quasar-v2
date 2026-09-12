@@ -32,6 +32,7 @@ export type ListGlobalInvoicesParams = {
   fromDate?: string | null;
   toDate?: string | null;
   quickFilter?: 'all' | 'paid' | 'unpaid';
+  billingProfileId?: number | null;
 };
 
 export type PaginatedGlobalInvoices = {
@@ -56,6 +57,7 @@ const listGlobalInvoices = async (
     fromDate,
     toDate,
     quickFilter,
+    billingProfileId,
   } = params;
 
   const offset = (page - 1) * pageSize;
@@ -87,6 +89,10 @@ const listGlobalInvoices = async (
   }
   if (invoiceType) {
     query = query.eq('invoice_type', invoiceType);
+  }
+
+  if (billingProfileId) {
+    query = query.eq('billing_profile_id', billingProfileId);
   }
 
   if (quickFilter === 'paid') {

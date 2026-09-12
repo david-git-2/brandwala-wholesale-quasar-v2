@@ -239,32 +239,47 @@ cmd_configure_notification_dispatch() {
   fi
 
   local env_file="${ROOT_DIR}/supabase/.env"
-  SA_PATH="$sa_path" ENV_FILE="$env_file" python3 <<'PY'
+  local functions_env_file="${ROOT_DIR}/supabase/functions/.env"
+  SA_PATH="$sa_path" ENV_FILE="$env_file" FUNCTIONS_ENV_FILE="$functions_env_file" python3 <<'PY'
 import json
 import os
 import re
 from pathlib import Path
 
 sa_path = Path(os.environ["SA_PATH"])
-env_file = Path(os.environ["ENV_FILE"])
-line = "FIREBASE_SERVICE_ACCOUNT=" + json.dumps(json.loads(sa_path.read_text()))
-content = env_file.read_text() if env_file.exists() else ""
+# Dotenv-safe: wrap minified JSON as a JSON string so spaces in the value do not break parsing.
+sa_json = json.dumps(json.loads(sa_path.read_text()), separators=(",", ":"))
+line = "FIREBASE_SERVICE_ACCOUNT=" + json.dumps(sa_json)
 
-if re.search(r"^FIREBASE_SERVICE_ACCOUNT=", content, re.M):
-    content = re.sub(r"^FIREBASE_SERVICE_ACCOUNT=.*$", line, content, flags=re.M)
-else:
-    if content and not content.endswith("\n"):
-        content += "\n"
-    content += line + "\n"
+def upsert_env_key(env_file: Path) -> None:
+    content = env_file.read_text() if env_file.exists() else ""
+    kept: list[str] = []
+    lines = content.splitlines()
+    index = 0
+    while index < len(lines):
+        current = lines[index]
+        if current.startswith("FIREBASE_SERVICE_ACCOUNT="):
+            index += 1
+            while index < len(lines) and not re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", lines[index]):
+                index += 1
+            continue
+        kept.append(current)
+        index += 1
+    if kept and kept[-1] != "":
+        kept.append("")
+    kept.append(line)
+    env_file.parent.mkdir(parents=True, exist_ok=True)
+    env_file.write_text("\n".join(kept) + "\n")
 
-env_file.write_text(content)
+for target in (Path(os.environ["ENV_FILE"]), Path(os.environ["FUNCTIONS_ENV_FILE"])):
+    upsert_env_key(target)
 PY
 
-  echo "Wrote FIREBASE_SERVICE_ACCOUNT to supabase/.env"
+  echo "Wrote FIREBASE_SERVICE_ACCOUNT to supabase/.env and supabase/functions/.env"
   if supabase_cli secrets set --env-file "$env_file" >/dev/null 2>&1; then
-    echo "Synced Edge Function secrets via supabase secrets set."
+    echo "Synced Edge Function secrets to linked remote project (if linked)."
   fi
-  echo "Restart local Supabase if Edge Functions were already running: pnpm run backend:stop && pnpm run backend:start"
+  echo "Restart local Supabase so Edge Functions reload secrets: pnpm run backend:stop && pnpm run backend:start"
 }
 
 cmd_env_print() {

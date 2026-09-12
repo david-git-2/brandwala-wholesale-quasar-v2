@@ -2,7 +2,7 @@ import { computed } from 'vue';
 
 import type { WorkspaceLink } from 'src/components/WorkspaceShell.vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
-import type { AccessRole } from 'src/modules/auth/guards/accessGuard';
+import { roleMatchesAllowed, type AccessRole } from 'src/modules/auth/guards/accessGuard';
 import type { AuthScope } from 'src/modules/auth/composables/useOAuthLogin';
 import { hasTenantContextForScope, useModulePermissions } from './modulePermissions';
 import { MODULE_REGISTRY } from './moduleRegistry';
@@ -136,7 +136,7 @@ const getBaseWorkspaceLinks = ({
       return false;
     }
 
-    if (definition.allowedRoles && (!role || !definition.allowedRoles.includes(role))) {
+    if (definition.allowedRoles && (!role || !roleMatchesAllowed(role, definition.allowedRoles))) {
       return false;
     }
 

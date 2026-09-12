@@ -11,6 +11,7 @@ export type NotificationItem = {
   entity_id: string | null;
   parent_tenant_id: number;
   operating_tenant_id: number | null;
+  operating_tenant_name: string | null;
   created_at: string;
 };
 

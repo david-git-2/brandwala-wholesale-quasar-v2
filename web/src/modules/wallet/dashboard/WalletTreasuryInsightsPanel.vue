@@ -17,18 +17,18 @@
             <span class="stat-item__label">Company cash</span>
           </div>
           <div class="stat-item__value-row">
-            <span class="stat-item__number">৳2.10M</span>
-            <span class="stat-item__badge">Stub</span>
+            <span class="stat-item__number">{{ cashLabel }}</span>
+            <span class="stat-item__badge">Live</span>
           </div>
         </div>
         <div class="glass-divider" />
         <div class="stat-item">
           <div class="stat-item__header">
             <span class="pulse-dot pulse-dot--primary" />
-            <span class="stat-item__label">Customer credit owed</span>
+            <span class="stat-item__label">Customer prepayments</span>
           </div>
           <div class="stat-item__value-row">
-            <span class="stat-item__number">৳640K</span>
+            <span class="stat-item__number">{{ depositsLabel }}</span>
           </div>
         </div>
         <i class="ph ph-chart-donut glass-panel__action-icon" />
@@ -49,7 +49,7 @@
           </div>
           <div class="pill-stat__meta">
             <span class="pill-stat__label">COD to collect</span>
-            <span class="pill-stat__value">৳185K</span>
+            <span class="pill-stat__value">{{ codLabel }}</span>
           </div>
         </div>
         <div class="pill-stat pill-stat--info">
@@ -58,7 +58,7 @@
           </div>
           <div class="pill-stat__meta">
             <span class="pill-stat__label">Pending payouts</span>
-            <span class="pill-stat__value">4 Batches</span>
+            <span class="pill-stat__value">{{ payoutLabel }}</span>
           </div>
         </div>
         <i class="ph ph-arrow-up-right glass-panel__action-icon" />
@@ -66,19 +66,33 @@
     </template>
   </DashboardHeroScene>
 
-  <WalletTreasuryDetailDialog v-model="showDetail" />
+  <WalletTreasuryDetailDialog v-model="showDetail" :summary="dashboardSummary" />
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import DashboardHeroScene from 'src/modules/dashboard/components/DashboardHeroScene.vue';
+import { formatDashboardMoney } from 'src/modules/dashboard/utils/formatDashboardMetric';
 import heroImage from 'src/assets/wallet-dashboard-bg.jpg';
+import { useWalletAccounts } from '../composables/useWalletAccounts';
 import WalletTreasuryDetailDialog from './WalletTreasuryDetailDialog.vue';
 
 const router = useRouter();
 const route = useRoute();
 const showDetail = ref(false);
+const { dashboardSummary } = useWalletAccounts();
+
+const cashLabel = computed(() => formatDashboardMoney(dashboardSummary.value?.tenant_cash_total ?? 0));
+const depositsLabel = computed(() =>
+  formatDashboardMoney(dashboardSummary.value?.customer_deposits_total ?? 0),
+);
+const codLabel = computed(() =>
+  formatDashboardMoney(dashboardSummary.value?.courier_cod_holding_total ?? 0),
+);
+const payoutLabel = computed(() =>
+  formatDashboardMoney(dashboardSummary.value?.merchant_pending_total ?? 0),
+);
 
 const tenantSlug = computed(() => (route.params.tenantSlug as string) || '');
 

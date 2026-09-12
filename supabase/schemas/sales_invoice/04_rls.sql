@@ -238,4 +238,7 @@ GRANT EXECUTE ON FUNCTION "public"."create_sales_invoice_from_payload"(bigint, j
 
 GRANT EXECUTE ON FUNCTION "public"."update_sales_invoice_from_payload"(bigint, bigint, jsonb) TO "authenticated";
 
+REVOKE ALL ON FUNCTION public.get_sales_invoice_dashboard_metrics(bigint) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_sales_invoice_dashboard_metrics(bigint) TO authenticated;
+
 

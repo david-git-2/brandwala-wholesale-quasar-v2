@@ -26,6 +26,11 @@ The declarative database schema is located in `supabase/schemas/`:
   * **TypeScript types**: `web/src/types/database.types.ts`
   * **Documentation**: [`doc/reporting_treasury/SHIPMENT_PROFIT.md`](./reporting_treasury/SHIPMENT_PROFIT.md)
 
+* **Finance report RPCs (2–4, 6–8)**: `get_customer_dues_report`, `get_tenant_invoice_book_report`, `get_tenant_invoice_profit_report`, `get_tenant_wallet_liability_report`, `get_tenant_courier_cod_report`, `get_tenant_month_snapshot_report`
+  * **Source**: `supabase/schemas/public.sql`
+  * **Migration**: `supabase/migrations/20270913000000_finance_reports_rpcs.sql`
+  * **Documentation**: [`REPORTS_PLAN.md`](../REPORTS_PLAN.md), [`doc/reporting_treasury/REPORTING_TREASURY.md`](./reporting_treasury/REPORTING_TREASURY.md)
+
 ## Useful Commands
 
 * **Deploy changes**: `pnpm run deploy:backend` (pushes migrations and updates TypeScript types).

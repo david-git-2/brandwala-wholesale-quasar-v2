@@ -1,5 +1,6 @@
 export const shopOrderQueryKeys = {
   categories: (tenantId: number) => ['shopOrder', 'categories', { tenantId }] as const,
+  dashboard: (tenantId: number) => ['shopOrder', 'dashboard', tenantId] as const,
   staffOrders: (params: { tenantId: number; search?: string | null; status?: string | null; shopId?: number | null }) =>
     ['shopOrder', 'staffOrders', params] as const,
   shopsList: (params: { tenantId: number; search?: string | null; active?: boolean | null }) =>

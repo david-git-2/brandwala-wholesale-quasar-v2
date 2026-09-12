@@ -5,8 +5,15 @@ importScripts('https://www.gstatic.com/firebasejs/11.6.0/firebase-messaging-comp
 
 let messagingInitialized = false;
 
-const initFirebaseMessaging = (config) => {
+const notifyReady = (source) => {
+  if (source && typeof source.postMessage === 'function') {
+    source.postMessage({ type: 'FIREBASE_READY' });
+  }
+};
+
+const initFirebaseMessaging = (config, source) => {
   if (messagingInitialized || !config) {
+    notifyReady(source);
     return;
   }
 
@@ -26,11 +33,12 @@ const initFirebaseMessaging = (config) => {
   });
 
   messagingInitialized = true;
+  notifyReady(source);
 };
 
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'INIT_FIREBASE') {
-    initFirebaseMessaging(event.data.config);
+    initFirebaseMessaging(event.data.config, event.source);
   }
 });
 

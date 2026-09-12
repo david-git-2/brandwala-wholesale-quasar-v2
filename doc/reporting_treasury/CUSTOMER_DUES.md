@@ -50,9 +50,9 @@ Cash & dues home. Wallet liability stays on report 6.
 
 ---
 
-## Page (planned — stub only)
+## Page (live)
 
-Layout: treasury shell (header + cards + filter + table). Empty `CustomerDuesReportPage.vue` today.
+Layout: compact finance report frame (toolbar + KPI strip + table). Implemented in `CustomerDuesReportPage.vue`.
 
 1. **Filter** — Search name, child seller, aging bucket, min due, over credit limit.
 2. **Cards** — Totals: billed, returned, cash, wallet applied, settlement, still due, customer count.

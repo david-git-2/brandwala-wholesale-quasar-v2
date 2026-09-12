@@ -331,6 +331,9 @@ GRANT ALL ON FUNCTION "public"."customer_accessible_catalog_glance"("p_tenant_id
 REVOKE ALL ON FUNCTION "public"."get_customer_dashboard_summary"("p_tenant_id" bigint) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_customer_dashboard_summary"("p_tenant_id" bigint) TO "authenticated";
 
+REVOKE ALL ON FUNCTION public.get_shop_order_dashboard_metrics(bigint) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_shop_order_dashboard_metrics(bigint) TO authenticated;
+
 
 REVOKE ALL ON FUNCTION "public"."get_shop_order_for_staff"("p_tenant_id" bigint, "p_order_id" bigint) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_shop_order_for_staff"("p_tenant_id" bigint, "p_order_id" bigint) TO "authenticated";

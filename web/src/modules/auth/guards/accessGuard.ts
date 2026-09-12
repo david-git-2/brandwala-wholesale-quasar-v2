@@ -29,7 +29,7 @@ export type AccessRole =
 
 const APP_DESK_ROLES: AccessRole[] = ['admin', 'owner', 'manager', 'staff', 'viewer'];
 
-const roleMatchesAllowed = (
+export const roleMatchesAllowed = (
   memberRole: AccessRole,
   allowedRoles: readonly AccessRole[],
 ): boolean => {

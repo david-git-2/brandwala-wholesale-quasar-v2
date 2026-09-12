@@ -6,7 +6,17 @@ The **Reports & Treasury** domain provides parent-level financial visibility, tr
 
 **Customer dues (report 2):** who owes now, aging, credit limit. Spec [`CUSTOMER_DUES.md`](CUSTOMER_DUES.md). RPC `get_customer_dues_report`. Route `/app/finance/reports/customer-dues`. Customer wallet is not the bill.
 
+**Invoice book (report 3):** issued sales ledger. Spec [`INVOICE_BOOK.md`](INVOICE_BOOK.md). RPC `get_tenant_invoice_book_report`. Route `/app/finance/reports/invoice-book`.
+
+**Invoice / product profit (report 4):** sell vs cost after returns. Spec [`INVOICE_PROFIT.md`](INVOICE_PROFIT.md). RPC `get_tenant_invoice_profit_report`. Route `/app/finance/reports/invoice-profit`.
+
 **Shipment cost & profit (report 5):** batch landed cost vs. sold revenue vs. realized GP vs. unsold stock valuation. Spec [`SHIPMENT_PROFIT.md`](SHIPMENT_PROFIT.md). RPC `get_tenant_shipment_profit_report`. Route `/app/finance/reports/shipment-profit`.
+
+**Wallet liability (report 6):** store credit issued, applied, outstanding. Spec [`WALLET_REPORT.md`](WALLET_REPORT.md). RPC `get_tenant_wallet_liability_report`. Route `/app/finance/reports/wallet`.
+
+**Courier COD (report 7):** delivered COD vs remittance. Spec [`COURIER_COD.md`](COURIER_COD.md). RPC `get_tenant_courier_cod_report`. Route `/app/finance/reports/courier-cod`.
+
+**Month snapshot (report 8):** owner KPI one-pager. Spec [`MONTH_SNAPSHOT.md`](MONTH_SNAPSHOT.md). RPC `get_tenant_month_snapshot_report`. Route `/app/finance/reports/month-snapshot`.
 
 ---
 

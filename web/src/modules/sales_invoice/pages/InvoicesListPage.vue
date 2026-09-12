@@ -407,9 +407,25 @@ const effectiveTenantId = computed(() => {
 });
 
 const initialSearch = typeof route.query.search === 'string' ? route.query.search : '';
+const initialBillingProfileId =
+  typeof route.query.billing_profile_id === 'string' && route.query.billing_profile_id
+    ? Number(route.query.billing_profile_id)
+    : null;
+const initialQuickFilter =
+  route.query.quick_filter === 'unpaid' || route.query.quick_filter === 'paid'
+    ? (route.query.quick_filter as 'unpaid' | 'paid')
+    : null;
 const searchText = ref(initialSearch);
-const statusFilter = ref<string | null>(null);
-const invoiceStatusFilter = ref<string | null>(null);
+const statusFilter = ref<string | null>(
+  typeof route.query.payment_status === 'string' ? route.query.payment_status : null,
+);
+const invoiceStatusFilter = ref<string | null>(
+  typeof route.query.invoice_status === 'string' ? route.query.invoice_status : null,
+);
+const billingProfileFilter = ref<number | null>(
+  initialBillingProfileId && Number.isFinite(initialBillingProfileId) ? initialBillingProfileId : null,
+);
+const quickFilter = ref<'all' | 'paid' | 'unpaid'>(initialQuickFilter ?? 'all');
 
 watch(
   () => route.query.search,
@@ -499,6 +515,8 @@ const invoicesQuery = useQuery({
       search: searchText.value,
       paymentStatus: statusFilter.value,
       invoiceStatus: invoiceStatusFilter.value,
+      billingProfileId: billingProfileFilter.value,
+      quickFilter: quickFilter.value,
     })
   ),
   enabled: computed(() => !!effectiveTenantId.value),
@@ -514,6 +532,8 @@ const invoicesQuery = useQuery({
       search: searchText.value,
       paymentStatus: statusFilter.value,
       invoiceStatus: invoiceStatusFilter.value,
+      billingProfileId: billingProfileFilter.value,
+      quickFilter: quickFilter.value,
     });
   },
   placeholderData: (prev) => prev,
@@ -547,7 +567,7 @@ const onTableRequest = (props: any) => {
 };
 
 // Reset page to 1 when filters change
-watch([searchText, statusFilter, invoiceStatusFilter], () => {
+watch([searchText, statusFilter, invoiceStatusFilter, billingProfileFilter, quickFilter], () => {
   pagination.value.page = 1;
 });
 

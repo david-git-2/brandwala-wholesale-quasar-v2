@@ -11,6 +11,14 @@
       <q-item-label class="notification-list-item__title text-weight-medium">
         {{ item.title }}
       </q-item-label>
+      <q-item-label
+        v-if="showTenantName"
+        caption
+        lines="1"
+        class="notification-list-item__tenant"
+      >
+        {{ item.operating_tenant_name }}
+      </q-item-label>
       <q-item-label v-if="item.body" caption lines="1" class="notification-list-item__body">
         {{ item.body }}
       </q-item-label>
@@ -23,6 +31,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useRoute } from 'vue-router';
 
 import { formatRelativeTime } from '../utils/formatRelativeTime';
 import type { NotificationItem } from '../types';
@@ -35,6 +44,11 @@ const emit = defineEmits<{
   select: [item: NotificationItem];
 }>();
 
+const route = useRoute();
+const showTenantName = computed(
+  () =>
+    route.path.includes('/app/') && Boolean(props.item.operating_tenant_name?.trim()),
+);
 const relativeTime = computed(() => formatRelativeTime(props.item.created_at));
 </script>
 
@@ -53,6 +67,7 @@ const relativeTime = computed(() => formatRelativeTime(props.item.created_at));
   color: var(--bw-theme-ink, #0f172a);
 }
 
+.notification-list-item__tenant,
 .notification-list-item__body,
 .notification-list-item__time {
   color: var(--bw-theme-muted, #64748b);

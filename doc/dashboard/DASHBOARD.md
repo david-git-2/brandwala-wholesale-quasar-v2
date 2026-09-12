@@ -78,6 +78,12 @@ The **Thrift** vertical is the reference implementation of the dashboard registr
 | Component | Action / Trigger | Hook / Endpoint | Caching Strategy |
 | :--- | :--- | :--- | :--- |
 | **`AdminDashboard`** | Mount / Tenant Switch | `useDashboardSlots()` | Client-side computed from permissions & registry |
+| **`ProcurementStockCard`** | Mount (parent + `global_stock` view) | `useProcurementDashboardQuery` → `RPC: get_procurement_dashboard_metrics` | `staleTime: 30s`, Key: `['procurementStock', 'dashboard', tenantId]` |
+| **`ShopOrderCard`** | Mount (child + `shop_order` view) | `useShopOrderDashboardQuery` → `RPC: get_shop_order_dashboard_metrics` | `staleTime: 30s`, Key: `['shopOrder', 'dashboard', tenantId]` |
+| **`WholesaleInvoiceInsightsPanel`** | Mount | `useSalesInvoiceDashboardQuery` → `RPC: get_sales_invoice_dashboard_metrics` | `staleTime: 30s`, Key: `['sales_invoice', 'dashboard', tenantId]` |
+| **`WalletTreasuryInsightsPanel`** | Mount | `useWalletAccounts` → `RPC: get_wallet_dashboard_summary` | `staleTime: 2m`, Key: `['wallet', 'dashboardSummary', tenantId]` |
+| **`TasksInsightsPanel`** | Mount | `useTasksDashboardQuery` → `RPC: get_tasks_dashboard_metrics` | `staleTime: 30s`, Key: `['tasks', 'dashboard', tenantId]` |
+| **`InvestorCapitalInsightsPanel`** | Mount | `useInvestorCapitalDashboardQuery` → `RPC: get_staff_investor_capital_metrics` | `staleTime: 60s`, Key: `['investorCapital', 'dashboard', tenantId]` |
 | **`ThriftInsightsPanel`** | Mount / Period Poll | `useThriftDashboardMetricsQuery()` $\rightarrow$ `RPC: get_thrift_dashboard_metrics` | `staleTime: 30s`, Key: `['thrift', 'dashboard_metrics', tenantId]` |
 | **`CustomerDashboard`** | Mount / Profile Load | `useCustomerDashboardQuery` → `RPC: get_customer_dashboard_summary` | `staleTime: 60s`, Key: `['customer', 'dashboard', { tenantId }]` |
 

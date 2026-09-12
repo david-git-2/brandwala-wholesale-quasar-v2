@@ -1,10 +1,10 @@
 <template>
   <q-page class="dashboard-page theme-app q-pa-md">
     <!-- Parent Workspace: Supply Chain, Procurement & Physical Stock -->
-    <ProcurementStockCard v-if="isParentTenant" />
+    <ProcurementStockCard v-if="showProcurementHero" />
 
     <!-- Child Workspace / Sister Concern: Storefront Shop, Orders & Dropship Hub -->
-    <ShopOrderCard v-else-if="isChildTenant" />
+    <ShopOrderCard v-else-if="showShopOrderHero" />
 
     <section v-if="primaries.length" class="dashboard-block">
       <p class="dashboard-block__label">Primary actions</p>
@@ -33,6 +33,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
+import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
 import ProcurementStockCard from 'src/modules/procurement_stock/dashboard/ProcurementStockCard.vue';
 import ShopOrderCard from 'src/modules/shop_order/dashboard/ShopOrderCard.vue';
 import DashboardGroup from '../components/DashboardGroup.vue';
@@ -40,10 +41,17 @@ import DashboardSlotHost from '../components/DashboardSlotHost.vue';
 import { useDashboardSlots } from '../composables/useDashboardSlots';
 
 const tenantStore = useTenantStore();
+const { hasModuleAccess } = useModulePermissions();
 const { primaries, groups, tenantSlug } = useDashboardSlots();
 
 const isChildTenant = computed(() => Boolean(tenantStore.selectedTenant?.parent_id));
 const isParentTenant = computed(() => !isChildTenant.value);
+const showProcurementHero = computed(
+  () => isParentTenant.value && hasModuleAccess('global_stock', 'view'),
+);
+const showShopOrderHero = computed(
+  () => isChildTenant.value && hasModuleAccess('shop_order', 'view'),
+);
 </script>
 
 <style scoped>

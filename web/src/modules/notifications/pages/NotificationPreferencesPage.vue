@@ -5,7 +5,7 @@
         <q-card-section>
           <div class="text-subtitle1 text-weight-bold q-mb-xs">Browser notifications</div>
           <div class="text-caption text-grey-7 q-mb-md">
-            Get alerts on desktop Chrome and Android when the app tab is closed. In-app notifications stay on either way.
+            Get alerts on desktop Chrome when the app tab is closed. Brave and other browsers may block Google push. In-app notifications stay on either way.
           </div>
 
           <q-banner v-if="!firebaseConfigured" dense rounded class="bg-warning text-dark q-mb-md">
@@ -71,7 +71,7 @@ const onTogglePush = async (enabled: boolean) => {
   saving.value = true;
   try {
     if (enabled) {
-      const { token, permission } = await requestWebPushToken();
+      const { token, permission, error } = await requestWebPushToken();
       permissionDenied.value = permission === 'denied';
 
       if (!token) {
@@ -79,7 +79,7 @@ const onTogglePush = async (enabled: boolean) => {
         if (permission === 'denied') {
           showErrorNotification('Allow notifications in your browser settings to enable push alerts.');
         } else {
-          showErrorNotification('Could not register browser notifications.');
+          showErrorNotification(error || 'Could not register browser notifications.');
         }
         return;
       }

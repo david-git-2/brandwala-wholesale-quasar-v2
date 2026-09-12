@@ -11348,6 +11348,20 @@ export type Database = {
         Args: { p_tenant_id: number }
         Returns: Json
       }
+      get_customer_dues_report: {
+        Args: {
+          p_aging_bucket?: string
+          p_issued_by_tenant_id?: number
+          p_min_due?: number
+          p_over_limit_only?: boolean
+          p_page?: number
+          p_page_size?: number
+          p_search?: string
+          p_skip_count?: boolean
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
       get_customer_shop_order: {
         Args: { p_order_id: number; p_tenant_id: number }
         Returns: Json
@@ -11491,6 +11505,10 @@ export type Database = {
         Args: { p_allocation_id: number }
         Returns: number
       }
+      get_procurement_dashboard_metrics: {
+        Args: { p_tenant_id: number }
+        Returns: Json
+      }
       get_procurement_demand_open_qty: {
         Args: {
           p_source_id: number
@@ -11544,6 +11562,10 @@ export type Database = {
       }
       get_recipient_profile_by_phone: {
         Args: { p_phone: string; p_tenant_id: number }
+        Returns: Json
+      }
+      get_sales_invoice_dashboard_metrics: {
+        Args: { p_tenant_id: number }
         Returns: Json
       }
       get_shipment_overview_details: {
@@ -11607,6 +11629,10 @@ export type Database = {
           module_key: string
         }[]
       }
+      get_shop_order_dashboard_metrics: {
+        Args: { p_tenant_id: number }
+        Returns: Json
+      }
       get_shop_order_for_staff: {
         Args: { p_order_id: number; p_tenant_id: number }
         Returns: Json
@@ -11629,6 +11655,10 @@ export type Database = {
         Args: { p_listing_id: number; p_shop_id: number }
         Returns: Json
       }
+      get_staff_investor_capital_metrics: {
+        Args: { p_tenant_id: number }
+        Returns: Json
+      }
       get_tag_by_slug: {
         Args: {
           p_category_id?: number
@@ -11638,9 +11668,25 @@ export type Database = {
         }
         Returns: Json
       }
+      get_tasks_dashboard_metrics: {
+        Args: { p_tenant_id: number }
+        Returns: Json
+      }
       get_tenant_cash_in_report: {
         Args: {
           p_end_date?: string
+          p_start_date?: string
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
+      get_tenant_courier_cod_report: {
+        Args: {
+          p_courier_service_id?: string
+          p_end_date?: string
+          p_page?: number
+          p_page_size?: number
+          p_skip_count?: boolean
           p_start_date?: string
           p_tenant_id: number
         }
@@ -11664,6 +11710,35 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_tenant_invoice_book_report: {
+        Args: {
+          p_end_date?: string
+          p_invoice_type?: string
+          p_issued_by_tenant_id?: number
+          p_page?: number
+          p_page_size?: number
+          p_payment_status?: string
+          p_search?: string
+          p_skip_count?: boolean
+          p_start_date?: string
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
+      get_tenant_invoice_profit_report: {
+        Args: {
+          p_end_date?: string
+          p_invoice_id?: number
+          p_issued_by_tenant_id?: number
+          p_page?: number
+          p_page_size?: number
+          p_search?: string
+          p_skip_count?: boolean
+          p_start_date?: string
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
       get_tenant_module_by_id: {
         Args: { p_id: number }
         Returns: {
@@ -11674,6 +11749,10 @@ export type Database = {
           tenant_id: number
           updated_at: string
         }[]
+      }
+      get_tenant_month_snapshot_report: {
+        Args: { p_month: string; p_tenant_id: number }
+        Returns: Json
       }
       get_tenant_permission_version: {
         Args: { p_tenant_id: number }
@@ -11687,6 +11766,18 @@ export type Database = {
           p_page_size?: number
           p_search?: string
           p_shipment_id?: number
+          p_start_date?: string
+          p_tenant_id: number
+        }
+        Returns: Json
+      }
+      get_tenant_wallet_liability_report: {
+        Args: {
+          p_end_date?: string
+          p_page?: number
+          p_page_size?: number
+          p_search?: string
+          p_skip_count?: boolean
           p_start_date?: string
           p_tenant_id: number
         }
@@ -11885,6 +11976,10 @@ export type Database = {
         Returns: boolean
       }
       is_network_owner: { Args: { p_tenant_id: number }; Returns: boolean }
+      is_network_owner_for_email: {
+        Args: { p_email: string; p_tenant_id: number }
+        Returns: boolean
+      }
       is_parent_company: { Args: { p_tenant_id: number }; Returns: boolean }
       is_superadmin: { Args: never; Returns: boolean }
       is_tenant_admin: { Args: { p_tenant_id: number }; Returns: boolean }
@@ -13362,6 +13457,15 @@ export type Database = {
       }
       membership_has_module_action: {
         Args: { p_action: string; p_module_key: string; p_tenant_id: number }
+        Returns: boolean
+      }
+      membership_has_module_action_for_email: {
+        Args: {
+          p_action: string
+          p_email: string
+          p_module_key: string
+          p_tenant_id: number
+        }
         Returns: boolean
       }
       migrate_legacy_inventory_to_global_stock: {

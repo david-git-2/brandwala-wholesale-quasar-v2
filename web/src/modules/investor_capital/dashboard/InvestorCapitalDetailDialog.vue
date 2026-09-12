@@ -3,7 +3,7 @@
     <section class="paper-section">
       <div class="paper-section__head">
         <span class="paper-section__title">Capital movement</span>
-        <span class="paper-section__meta">Stub</span>
+        <span class="paper-section__meta">Live</span>
       </div>
       <div class="bar-chart-wrap">
         <transition name="chart-fade">
@@ -17,7 +17,7 @@
             <span class="legend-row__label">Pool</span>
           </div>
           <div class="legend-row__right">
-            <span class="legend-row__val">৳12.4M</span>
+            <span class="legend-row__val">{{ formatDashboardMoney(metrics?.activePoolAmount ?? 0) }}</span>
           </div>
         </div>
         <div class="legend-row">
@@ -26,7 +26,7 @@
             <span class="legend-row__label">Deployed</span>
           </div>
           <div class="legend-row__right">
-            <span class="legend-row__val">৳1.8M</span>
+            <span class="legend-row__val">{{ formatDashboardMoney(metrics?.deployedAmount ?? 0) }}</span>
           </div>
         </div>
         <div class="legend-row">
@@ -35,7 +35,7 @@
             <span class="legend-row__label">Returned</span>
           </div>
           <div class="legend-row__right">
-            <span class="legend-row__val">৳640K</span>
+            <span class="legend-row__val">{{ formatDashboardMoney(metrics?.returnedAmount ?? 0) }}</span>
           </div>
         </div>
       </div>
@@ -46,27 +46,16 @@
     <section class="paper-section">
       <div class="paper-section__head">
         <span class="paper-section__title">Open containers</span>
-        <span class="paper-section__meta">3 batches</span>
+        <span class="paper-section__meta">{{ containerMeta }}</span>
       </div>
       <div class="grade-list">
-        <div class="grade-row">
+        <div v-for="row in (metrics?.openContainers ?? [])" :key="row.name" class="grade-row">
           <div class="grade-row__left">
-            <span class="grade-row__desc">CNT-204 · China fabric</span>
+            <span class="grade-row__desc">{{ row.name }}</span>
           </div>
-          <span class="grade-row__val">৳720K</span>
+          <span class="grade-row__val">{{ formatDashboardMoney(row.allocatedCost) }}</span>
         </div>
-        <div class="grade-row">
-          <div class="grade-row__left">
-            <span class="grade-row__desc">CNT-211 · Electronics</span>
-          </div>
-          <span class="grade-row__val">৳640K</span>
-        </div>
-        <div class="grade-row">
-          <div class="grade-row__left">
-            <span class="grade-row__desc">CNT-218 · Home goods</span>
-          </div>
-          <span class="grade-row__val">৳440K</span>
-        </div>
+        <p v-if="!(metrics?.openContainers?.length)" class="grade-row__desc">No open containers</p>
       </div>
     </section>
   </DashboardPaperDrawer>
@@ -78,11 +67,17 @@ import { Bar } from 'vue-chartjs';
 import type { ChartData, ChartOptions } from 'chart.js';
 import DashboardPaperDrawer from 'src/modules/dashboard/components/DashboardPaperDrawer.vue';
 import { ensureDashboardChartsRegistered } from 'src/modules/dashboard/utils/dashboardChartSetup';
+import {
+  formatDashboardCount,
+  formatDashboardMoney,
+} from 'src/modules/dashboard/utils/formatDashboardMetric';
+import type { InvestorCapitalDashboardMetrics } from '../repositories/investorCapitalDashboardRepository';
 
 ensureDashboardChartsRegistered();
 
 const props = defineProps<{
   modelValue: boolean;
+  metrics?: InvestorCapitalDashboardMetrics | null;
 }>();
 
 const emit = defineEmits<{
@@ -96,13 +91,20 @@ const isOpen = computed({
 
 const isReady = ref(false);
 
-// stub until live RPC
+const containerMeta = computed(
+  () => `${formatDashboardCount(props.metrics?.openContainerCount ?? 0)} batches`,
+);
+
 const poolChartData = computed<ChartData<'bar'>>(() => ({
   labels: ['Pool', 'Deployed', 'Returned'],
   datasets: [
     {
-      label: 'BDT (K)',
-      data: [12400, 1800, 640],
+      label: 'BDT',
+      data: [
+        props.metrics?.activePoolAmount ?? 0,
+        props.metrics?.deployedAmount ?? 0,
+        props.metrics?.returnedAmount ?? 0,
+      ],
       backgroundColor: ['#0284c7', '#d97706', '#059669'],
       borderRadius: 4,
       borderSkipped: false,

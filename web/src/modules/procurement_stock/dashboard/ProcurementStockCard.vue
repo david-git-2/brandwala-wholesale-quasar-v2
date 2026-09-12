@@ -19,7 +19,7 @@
             <span class="stat-item__label">Sellable Stock</span>
           </div>
           <div class="stat-item__value-row">
-            <span class="stat-item__number">14,280</span>
+            <span class="stat-item__number">{{ sellableLabel }}</span>
             <span class="stat-item__unit">Pcs</span>
           </div>
         </div>
@@ -32,7 +32,7 @@
             <span class="stat-item__label">Stock Valuation</span>
           </div>
           <div class="stat-item__value-row">
-            <span class="stat-item__number">৳8.45M</span>
+            <span class="stat-item__number">{{ valuationLabel }}</span>
             <span class="stat-item__badge">Landed BDT</span>
           </div>
         </div>
@@ -56,7 +56,7 @@
           </div>
           <div class="pill-stat__meta">
             <span class="pill-stat__label">In Transit</span>
-            <span class="pill-stat__value">4 Batches</span>
+            <span class="pill-stat__value">{{ inTransitLabel }}</span>
           </div>
         </div>
 
@@ -66,7 +66,7 @@
           </div>
           <div class="pill-stat__meta">
             <span class="pill-stat__label">Under Processing</span>
-            <span class="pill-stat__value">3 Batches</span>
+            <span class="pill-stat__value">{{ draftLabel }}</span>
           </div>
         </div>
 
@@ -75,19 +75,38 @@
     </div>
 
     <!-- On-Paper Ledger Slide Drawer -->
-    <ProcurementStockDetailDialog v-model="showStockDetail" />
+    <ProcurementStockDetailDialog v-model="showStockDetail" :metrics="metrics" />
   </section>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useRoute, useRouter } from 'vue-router';
+import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import {
+  formatDashboardCount,
+  formatDashboardMoney,
+} from 'src/modules/dashboard/utils/formatDashboardMetric';
+import { useProcurementDashboardQuery } from '../composables/useProcurementDashboardQuery';
 import ProcurementStockDetailDialog from './ProcurementStockDetailDialog.vue';
 
 const router = useRouter();
 const route = useRoute();
+const authStore = useAuthStore();
+const { tenantId } = storeToRefs(authStore);
 
 const showStockDetail = ref(false);
+const { data: metrics } = useProcurementDashboardQuery(tenantId);
+
+const sellableLabel = computed(() => formatDashboardCount(metrics.value?.sellableQty ?? 0));
+const valuationLabel = computed(() => formatDashboardMoney(metrics.value?.sellableValueBdt ?? 0));
+const inTransitLabel = computed(
+  () => `${formatDashboardCount(metrics.value?.inTransitCount ?? 0)} Batches`,
+);
+const draftLabel = computed(
+  () => `${formatDashboardCount(metrics.value?.draftCount ?? 0)} Batches`,
+);
 
 const tenantSlug = computed(() => (route.params.tenantSlug as string) || '');
 

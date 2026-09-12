@@ -2,7 +2,7 @@
 
 Staff and admin alerts for the `app` scope (tenant operators). Covers in-app inbox, Telegram, and Firebase web push. Email is optional later.
 
-**Current state:** In-app inbox UI is live. Firebase push infra is shipped (preferences, token storage, `dispatch-notification` Edge Function, settings page at `/app/settings/notifications`). Telegram is not built yet. Push only works after you add Firebase keys to `web/.env` and `FIREBASE_SERVICE_ACCOUNT` to Supabase Edge Function secrets, plus dispatch DB settings (see Phase 2 setup below).
+**Current state:** In-app inbox is live (bell, unread, catalog order hooks). Firebase **web** push is restored for Chrome: opt-in on settings, `trg_notification_recipients_dispatch` calls `dispatch-notification`, service account via `FIREBASE_SERVICE_ACCOUNT_PATH` + `backend:configure-dispatch`. **Brave is not supported** (blocks Google push). Capacitor Android app is future work. Telegram is not built yet.
 
 ---
 
@@ -466,7 +466,9 @@ Trigger `trg_item_assignees_notify_assigned` on `item_assignees` AFTER INSERT â†
 
 ### Phase 2 â€” Firebase web push (FCM)
 
-**Goal:** Optional browser push on Android and desktop. User enables in settings. Telegram comes next.
+**Status:** Web/Chrome path shipped. Test on Chrome (`localhost:9000` or production). Brave unreliable. Native Android (Capacitor) deferred.
+
+**Goal:** Optional browser push on desktop Chrome. User enables in settings. Telegram comes next.
 
 | Layer | Work |
 | :--- | :--- |
@@ -478,11 +480,11 @@ Trigger `trg_item_assignees_notify_assigned` on `item_assignees` AFTER INSERT â†
 
 **Done when**
 
-- [ ] Android Chrome + desktop receive push when tab closed (after opt-in)
-- [ ] User can disable push in settings
+- [x] Desktop Chrome receives push when tab closed (after opt-in)
+- [x] User can disable push in settings
 - [ ] Dispatch does not duplicate if both Telegram and push are on (same event, both channels â€” acceptable; user chose both)
 
-**Note:** iOS Safari only works when site is added to Home Screen (iOS 16.4+). Telegram (Phase 3) remains the reliable iPhone channel.
+**Note:** iOS Safari only works when site is added to Home Screen (iOS 16.4+). Brave blocks Google push â€” use Chrome. Telegram (Phase 3) remains the reliable iPhone channel. Capacitor Android is a separate track.
 
 **Setup (required before push works):**
 

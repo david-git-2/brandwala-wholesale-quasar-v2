@@ -3,7 +3,7 @@
     <section class="paper-section">
       <div class="paper-section__head">
         <span class="paper-section__title">Invoice mix</span>
-        <span class="paper-section__meta">Today · stub</span>
+        <span class="paper-section__meta">Open invoices</span>
       </div>
       <div class="availability-row">
         <div class="donut-wrap">
@@ -11,7 +11,7 @@
             <Doughnut v-if="isReady" :data="mixChartData" :options="donutOptions" />
           </transition>
           <div class="donut-center">
-            <span class="donut-center__val">58%</span>
+            <span class="donut-center__val">{{ paidPct }}%</span>
             <span class="donut-center__sub">Paid</span>
           </div>
         </div>
@@ -22,8 +22,8 @@
               <span class="legend-row__label">Paid</span>
             </div>
             <div class="legend-row__right">
-              <span class="legend-row__val">৳740K</span>
-              <span class="legend-row__pct">58%</span>
+                  <span class="legend-row__val">{{ formatDashboardMoney(metrics?.paidAmount ?? 0) }}</span>
+                  <span class="legend-row__pct">{{ paidPct }}%</span>
             </div>
           </div>
           <div class="legend-row">
@@ -32,8 +32,8 @@
               <span class="legend-row__label">Due</span>
             </div>
             <div class="legend-row__right">
-              <span class="legend-row__val">৳390K</span>
-              <span class="legend-row__pct">30%</span>
+                  <span class="legend-row__val">{{ formatDashboardMoney(metrics?.dueAmount ?? 0) }}</span>
+                  <span class="legend-row__pct">{{ duePct }}%</span>
             </div>
           </div>
           <div class="legend-row">
@@ -42,8 +42,8 @@
               <span class="legend-row__label">Overdue</span>
             </div>
             <div class="legend-row__right">
-              <span class="legend-row__val">৳150K</span>
-              <span class="legend-row__pct">12%</span>
+                  <span class="legend-row__val">{{ formatDashboardMoney(metrics?.overdueAmount ?? 0) }}</span>
+                  <span class="legend-row__pct">{{ overduePct }}%</span>
             </div>
           </div>
         </div>
@@ -55,27 +55,16 @@
     <section class="paper-section">
       <div class="paper-section__head">
         <span class="paper-section__title">Overdue customers</span>
-        <span class="paper-section__meta">11 invoices</span>
+        <span class="paper-section__meta">{{ overdueCountLabel }}</span>
       </div>
       <div class="grade-list">
-        <div class="grade-row">
+        <div v-for="row in (metrics?.overdueCustomers ?? [])" :key="row.name" class="grade-row">
           <div class="grade-row__left">
-            <span class="grade-row__desc">Riverside Traders</span>
+            <span class="grade-row__desc">{{ row.name }}</span>
           </div>
-          <span class="grade-row__val">৳48,200</span>
+          <span class="grade-row__val">{{ formatDashboardMoneyFull(row.dueAmount) }}</span>
         </div>
-        <div class="grade-row">
-          <div class="grade-row__left">
-            <span class="grade-row__desc">North Gate Wholesale</span>
-          </div>
-          <span class="grade-row__val">৳36,750</span>
-        </div>
-        <div class="grade-row">
-          <div class="grade-row__left">
-            <span class="grade-row__desc">Lakeview Mart</span>
-          </div>
-          <span class="grade-row__val">৳21,400</span>
-        </div>
+        <p v-if="!(metrics?.overdueCustomers?.length)" class="grade-row__desc">No overdue customers</p>
       </div>
     </section>
   </DashboardPaperDrawer>
@@ -87,11 +76,19 @@ import { Doughnut } from 'vue-chartjs';
 import type { ChartData, ChartOptions } from 'chart.js';
 import DashboardPaperDrawer from 'src/modules/dashboard/components/DashboardPaperDrawer.vue';
 import { ensureDashboardChartsRegistered } from 'src/modules/dashboard/utils/dashboardChartSetup';
+import {
+  dashboardSharePct,
+  formatDashboardCount,
+  formatDashboardMoney,
+  formatDashboardMoneyFull,
+} from 'src/modules/dashboard/utils/formatDashboardMetric';
+import type { SalesInvoiceDashboardMetrics } from '../repositories/salesInvoiceDashboardRepository';
 
 ensureDashboardChartsRegistered();
 
 const props = defineProps<{
   modelValue: boolean;
+  metrics?: SalesInvoiceDashboardMetrics | null;
 }>();
 
 const emit = defineEmits<{
@@ -105,12 +102,30 @@ const isOpen = computed({
 
 const isReady = ref(false);
 
-// stub until live RPC
+const mixTotal = computed(
+  () =>
+    (props.metrics?.paidAmount ?? 0) +
+    (props.metrics?.dueAmount ?? 0) +
+    (props.metrics?.overdueAmount ?? 0),
+);
+const paidPct = computed(() => dashboardSharePct(props.metrics?.paidAmount ?? 0, mixTotal.value));
+const duePct = computed(() => dashboardSharePct(props.metrics?.dueAmount ?? 0, mixTotal.value));
+const overduePct = computed(() =>
+  dashboardSharePct(props.metrics?.overdueAmount ?? 0, mixTotal.value),
+);
+const overdueCountLabel = computed(
+  () => `${formatDashboardCount(props.metrics?.overdueCount ?? 0)} invoices`,
+);
+
 const mixChartData = computed<ChartData<'doughnut'>>(() => ({
   labels: ['Paid', 'Due', 'Overdue'],
   datasets: [
     {
-      data: [740, 390, 150],
+      data: [
+        props.metrics?.paidAmount ?? 0,
+        props.metrics?.dueAmount ?? 0,
+        props.metrics?.overdueAmount ?? 0,
+      ],
       backgroundColor: ['#059669', '#d97706', '#dc2626'],
       borderWidth: 0,
       hoverOffset: 3,

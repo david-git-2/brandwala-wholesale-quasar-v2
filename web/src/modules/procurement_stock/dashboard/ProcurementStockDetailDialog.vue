@@ -16,7 +16,7 @@
         <section class="paper-section">
           <div class="paper-section__head">
             <span class="paper-section__title">Availability Condition</span>
-            <span class="paper-section__meta">16,550 Pcs</span>
+            <span class="paper-section__meta">{{ formatDashboardCount(totalQty) }} Pcs</span>
           </div>
 
           <!-- Side-by-Side Donut & Written Ledger Rows -->
@@ -26,7 +26,7 @@
                 <Doughnut v-if="isReady" :data="availabilityChartData" :options="chartOptions" />
               </transition>
               <div class="donut-center">
-                <span class="donut-center__val">86.3%</span>
+                <span class="donut-center__val">{{ sellablePctLabel }}</span>
                 <span class="donut-center__sub">Sellable</span>
               </div>
             </div>
@@ -39,8 +39,8 @@
                   <span class="legend-row__label">Sellable Stock</span>
                 </div>
                 <div class="legend-row__right">
-                  <span class="legend-row__val">14,280</span>
-                  <span class="legend-row__pct">86%</span>
+                  <span class="legend-row__val">{{ formatDashboardCount(metrics?.sellableQty ?? 0) }}</span>
+                  <span class="legend-row__pct">{{ sharePct(metrics?.sellableQty ?? 0) }}%</span>
                 </div>
               </div>
 
@@ -50,8 +50,8 @@
                   <span class="legend-row__label">Held / Reserved</span>
                 </div>
                 <div class="legend-row__right">
-                  <span class="legend-row__val">1,650</span>
-                  <span class="legend-row__pct">10%</span>
+                  <span class="legend-row__val">{{ formatDashboardCount(metrics?.heldQty ?? 0) }}</span>
+                  <span class="legend-row__pct">{{ sharePct(metrics?.heldQty ?? 0) }}%</span>
                 </div>
               </div>
 
@@ -61,8 +61,8 @@
                   <span class="legend-row__label">Damaged</span>
                 </div>
                 <div class="legend-row__right">
-                  <span class="legend-row__val">620</span>
-                  <span class="legend-row__pct">4%</span>
+                  <span class="legend-row__val">{{ formatDashboardCount(metrics?.unsellableQty ?? 0) }}</span>
+                  <span class="legend-row__pct">{{ sharePct(metrics?.unsellableQty ?? 0) }}%</span>
                 </div>
               </div>
             </div>
@@ -88,29 +88,13 @@
 
           <!-- Drafted Grade Notes with Deep Ink Tags -->
           <div class="grade-list">
-            <div class="grade-row">
+            <div v-for="grade in (metrics?.grades ?? [])" :key="grade.name" class="grade-row">
               <div class="grade-row__left">
-                <span class="grade-ink grade-ink--a">Grade A</span>
-                <span class="grade-row__desc">Brand New · Mint Condition</span>
+                <span class="grade-ink grade-ink--a">{{ grade.name }}</span>
               </div>
-              <span class="grade-row__val">10,400 Pcs</span>
+              <span class="grade-row__val">{{ formatDashboardCount(grade.qty) }} Pcs</span>
             </div>
-
-            <div class="grade-row">
-              <div class="grade-row__left">
-                <span class="grade-ink grade-ink--b">Grade B</span>
-                <span class="grade-row__desc">Minor Box Blemish</span>
-              </div>
-              <span class="grade-row__val">4,200 Pcs</span>
-            </div>
-
-            <div class="grade-row">
-              <div class="grade-row__left">
-                <span class="grade-ink grade-ink--c">Grade C</span>
-                <span class="grade-row__desc">Open Box / Clearance</span>
-              </div>
-              <span class="grade-row__val">1,950 Pcs</span>
-            </div>
+            <p v-if="!(metrics?.grades?.length)" class="grade-row__desc">No graded stock yet</p>
           </div>
         </section>
       </div>
@@ -123,12 +107,18 @@ import { computed, ref } from 'vue';
 import { Doughnut, Bar } from 'vue-chartjs';
 import type { ChartData, ChartOptions } from 'chart.js';
 
+import {
+  dashboardSharePct,
+  formatDashboardCount,
+} from 'src/modules/dashboard/utils/formatDashboardMetric';
+import type { ProcurementDashboardMetrics } from '../repositories/procurementDashboardRepository';
 import { ensureProcurementChartsRegistered } from './procurementChartSetup';
 
 ensureProcurementChartsRegistered();
 
 const props = defineProps<{
   modelValue: boolean;
+  metrics?: ProcurementDashboardMetrics | null;
 }>();
 
 const emit = defineEmits<{
@@ -142,12 +132,19 @@ const isOpen = computed({
 
 const isReady = ref(false);
 
-/* --- CHART 1: AVAILABILITY (Doughnut - Deep Pigment Ink) --- */
+const totalQty = computed(() => props.metrics?.totalQty ?? 0);
+const sellablePctLabel = computed(() => `${props.metrics?.sellablePct ?? 0}%`);
+const sharePct = (qty: number) => dashboardSharePct(qty, totalQty.value);
+
 const availabilityChartData = computed<ChartData<'doughnut'>>(() => ({
   labels: ['Sellable', 'Held / Reserved', 'Damaged / Unsellable'],
   datasets: [
     {
-      data: [14280, 1650, 620],
+      data: [
+        props.metrics?.sellableQty ?? 0,
+        props.metrics?.heldQty ?? 0,
+        props.metrics?.unsellableQty ?? 0,
+      ],
       backgroundColor: ['#059669', '#d97706', '#dc2626'],
       borderWidth: 0,
       hoverOffset: 3,
@@ -170,18 +167,21 @@ const chartOptions: ChartOptions<'doughnut'> = {
 };
 
 /* --- CHART 2: GRADE (Bar - Deep Pigment Ink) --- */
-const gradeChartData = computed<ChartData<'bar'>>(() => ({
-  labels: ['Grade A', 'Grade B', 'Grade C'],
-  datasets: [
-    {
-      label: 'Quantity (Pcs)',
-      data: [10400, 4200, 1950],
-      backgroundColor: ['#1d4ed8', '#0284c7', '#475569'],
-      borderRadius: 4,
-      borderSkipped: false,
-    },
-  ],
-}));
+const gradeChartData = computed<ChartData<'bar'>>(() => {
+  const grades = props.metrics?.grades ?? [];
+  return {
+    labels: grades.map((grade) => grade.name),
+    datasets: [
+      {
+        label: 'Quantity (Pcs)',
+        data: grades.map((grade) => grade.qty),
+        backgroundColor: ['#1d4ed8', '#0284c7', '#475569', '#0f766e', '#7c3aed'],
+        borderRadius: 4,
+        borderSkipped: false,
+      },
+    ],
+  };
+});
 
 const barChartOptions: ChartOptions<'bar'> = {
   responsive: true,

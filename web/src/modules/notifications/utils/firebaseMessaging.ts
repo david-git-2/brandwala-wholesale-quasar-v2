@@ -2,6 +2,7 @@ import { getApps, initializeApp, type FirebaseApp } from 'firebase/app';
 import { deleteToken, getMessaging, getToken, isSupported, type Messaging } from 'firebase/messaging';
 
 const PUSH_TOKEN_STORAGE_KEY = 'bw.fcm_token.v1';
+const SW_READY_TIMEOUT_MS = 10_000;
 
 export type FirebasePublicConfig = {
   apiKey: string;
@@ -9,6 +10,12 @@ export type FirebasePublicConfig = {
   projectId: string;
   messagingSenderId: string;
   appId: string;
+};
+
+export type WebPushTokenResult = {
+  token: string | null;
+  permission: NotificationPermission;
+  error?: string;
 };
 
 export const getFirebasePublicConfig = (): FirebasePublicConfig | null => {
@@ -41,12 +48,42 @@ const getFirebaseApp = (config: FirebasePublicConfig): FirebaseApp => {
   return initializeApp(config);
 };
 
+const waitForServiceWorkerReady = (
+  worker: ServiceWorker,
+  config: FirebasePublicConfig,
+): Promise<void> =>
+  new Promise((resolve, reject) => {
+    const timeoutId = window.setTimeout(() => {
+      cleanup();
+      reject(new Error('Firebase service worker did not respond in time. Try Chrome instead of Brave.'));
+    }, SW_READY_TIMEOUT_MS);
+
+    const onMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'FIREBASE_READY') {
+        cleanup();
+        resolve();
+      }
+    };
+
+    const cleanup = () => {
+      window.clearTimeout(timeoutId);
+      navigator.serviceWorker.removeEventListener('message', onMessage);
+    };
+
+    navigator.serviceWorker.addEventListener('message', onMessage);
+    worker.postMessage({ type: 'INIT_FIREBASE', config });
+  });
+
 const initServiceWorker = async (config: FirebasePublicConfig): Promise<ServiceWorkerRegistration> => {
   const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
   await navigator.serviceWorker.ready;
 
   const worker = registration.active ?? registration.waiting ?? registration.installing;
-  worker?.postMessage({ type: 'INIT_FIREBASE', config });
+  if (!worker) {
+    throw new Error('Firebase service worker is not active yet.');
+  }
+
+  await waitForServiceWorkerReady(worker, config);
 
   return registration;
 };
@@ -85,22 +122,39 @@ const storePushToken = (token: string | null) => {
   }
 };
 
-export async function requestWebPushToken(): Promise<{ token: string | null; permission: NotificationPermission }> {
+export async function requestWebPushToken(): Promise<WebPushTokenResult> {
   const permission = await Notification.requestPermission();
   if (permission !== 'granted') {
     return { token: null, permission };
   }
 
-  const messaging = await getMessagingInstance();
   const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
-
-  if (!messaging || !vapidKey) {
-    return { token: null, permission };
+  if (!vapidKey) {
+    return {
+      token: null,
+      permission,
+      error: 'VITE_FIREBASE_VAPID_KEY is missing from your env file.',
+    };
   }
 
-  const token = await getToken(messaging, { vapidKey });
-  storePushToken(token);
-  return { token, permission };
+  try {
+    const messaging = await getMessagingInstance();
+    if (!messaging) {
+      return {
+        token: null,
+        permission,
+        error: 'Push is not supported in this browser. Use Chrome on desktop or Android.',
+      };
+    }
+
+    const token = await getToken(messaging, { vapidKey });
+    storePushToken(token);
+    return { token, permission };
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : 'Could not register browser notifications.';
+    return { token: null, permission, error: message };
+  }
 }
 
 export async function revokeWebPushToken(): Promise<void> {

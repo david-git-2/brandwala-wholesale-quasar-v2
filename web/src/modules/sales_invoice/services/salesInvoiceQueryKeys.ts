@@ -12,6 +12,7 @@ export const salesInvoiceQueryKeys = {
     [...salesInvoiceQueryKeys.root, 'brands', tenantId ?? 0, params ?? {}] as const,
   stockSearch: (tenantId: number | null, search?: string) =>
     [...salesInvoiceQueryKeys.root, 'stock_search', tenantId ?? 0, search ?? ''] as const,
+  dashboard: (tenantId: number) => [...salesInvoiceQueryKeys.root, 'dashboard', tenantId] as const,
 };
 
 
