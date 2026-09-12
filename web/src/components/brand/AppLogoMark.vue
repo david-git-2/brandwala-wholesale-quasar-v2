@@ -1,5 +1,5 @@
 <template>
-  <span class="app-logo-mark" aria-hidden="true" />
+  <span class="app-logo-mark" :class="scope ? `theme-${scope}` : undefined" aria-hidden="true" />
 </template>
 
 <script setup lang="ts">

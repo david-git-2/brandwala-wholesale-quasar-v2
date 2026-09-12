@@ -1,5 +1,5 @@
 <template>
-  <section class="auth-card" :class="`auth-card--${tone}`">
+  <section class="auth-card">
     <div class="auth-card__accent-bar" aria-hidden="true" />
 
     <div class="auth-card__header">
@@ -101,7 +101,6 @@ const props = defineProps<{
   ctaLabel: string;
   disabled?: boolean;
   tenantSlug?: string | null;
-  tone: 'platform' | 'app' | 'shop' | 'investor';
 }>();
 
 const route = useRoute();
@@ -133,11 +132,14 @@ const loginErrorMessage = computed(() => {
 
 <style scoped>
 .auth-card {
-  --card-ink: var(--auth-ink, #1c1416);
-  --card-muted: var(--auth-muted, #6b6560);
-  background: #ffffff;
+  --card-accent: var(--bw-theme-primary);
+  --card-accent-rgb: var(--bw-theme-primary-rgb);
+  --card-soft: var(--bw-theme-primary-soft);
+  --card-ink: var(--bw-theme-ink);
+  --card-muted: var(--bw-theme-muted);
+  background: var(--bw-theme-surface);
   border-radius: 8px;
-  border: 1px solid color-mix(in srgb, var(--card-muted) 22%, #ffffff);
+  border: 1px solid var(--bw-theme-border);
   box-shadow:
     0 2px 4px rgb(0 0 0 / 0.04),
     0 8px 24px rgb(0 0 0 / 0.06);
@@ -146,38 +148,6 @@ const loginErrorMessage = computed(() => {
   flex-direction: column;
   gap: 1.1rem;
   padding: 0 0 1.75rem;
-}
-
-.auth-card--platform {
-  --card-accent: #6b2d3c;
-  --card-accent-rgb: 107 45 60;
-  --card-soft: rgb(107 45 60 / 0.12);
-  --card-ink: #1c1416;
-  --card-muted: #6b5a5e;
-}
-
-.auth-card--app {
-  --card-accent: #03b5aa;
-  --card-accent-rgb: 3 181 170;
-  --card-soft: rgb(3 181 170 / 0.14);
-  --card-ink: #33261d;
-  --card-muted: #6b6d76;
-}
-
-.auth-card--shop {
-  --card-accent: #996888;
-  --card-accent-rgb: 153 104 136;
-  --card-soft: rgb(153 104 136 / 0.14);
-  --card-ink: #2a2b2a;
-  --card-muted: #5e4955;
-}
-
-.auth-card--investor {
-  --card-accent: #0f5c5a;
-  --card-accent-rgb: 15 92 90;
-  --card-soft: rgb(15 92 90 / 0.12);
-  --card-ink: #1a2222;
-  --card-muted: #5a6b6b;
 }
 
 .auth-card__accent-bar {

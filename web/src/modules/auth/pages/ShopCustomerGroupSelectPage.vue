@@ -1,5 +1,5 @@
 <template>
-  <section class="auth-card auth-card--shop">
+  <section class="auth-card">
     <div class="auth-card__accent-bar" aria-hidden="true" />
 
     <div class="auth-card__header">

@@ -5,7 +5,6 @@
     cta-label="Sign in to shop"
     :disabled="isLoginDisabled"
     :tenant-slug="resolvedTenantSlug"
-    tone="shop"
   />
 </template>
 

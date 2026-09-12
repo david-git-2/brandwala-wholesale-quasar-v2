@@ -3,7 +3,6 @@
     scope="platform"
     title="Platform Login"
     cta-label="Sign in as superadmin"
-    tone="platform"
   />
 </template>
 

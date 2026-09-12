@@ -4,7 +4,6 @@
     title="App Login"
     cta-label="Continue with Google"
     :tenant-slug="tenantSlug"
-    tone="app"
   />
 </template>
 

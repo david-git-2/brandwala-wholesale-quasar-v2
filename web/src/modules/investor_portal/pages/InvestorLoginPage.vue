@@ -5,7 +5,6 @@
     cta-label="Sign in to investor portal"
     :disabled="isLoginDisabled"
     :tenant-slug="resolvedTenantSlug"
-    tone="investor"
   />
 </template>
 

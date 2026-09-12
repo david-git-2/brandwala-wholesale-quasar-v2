@@ -1,5 +1,5 @@
 <template>
-  <q-layout view="hHh lpR fFf" class="auth-layout" :class="[scopeClass, themeClass]">
+  <q-layout view="hHh lpR fFf" class="auth-layout" :class="themeClass">
     <q-page-container>
       <q-page class="auth-page">
         <div class="auth-bg" aria-hidden="true">
@@ -62,7 +62,6 @@ const authScope = computed(() => {
   return metaScope ?? queryScope ?? 'app';
 });
 
-const scopeClass = computed(() => `auth-scope--${authScope.value}`);
 const themeClass = computed(() => `theme-${authScope.value}`);
 
 const ghostWord = computed(() => {
@@ -93,55 +92,15 @@ const tagline = computed(() => {
 </script>
 
 <style scoped>
-.auth-scope--platform {
-  --auth-bg: #f6f1f2;
-  --auth-mid: #6b2d3c;
-  --auth-accent: #6b2d3c;
-  --auth-accent-rgb: 107 45 60;
-  --auth-ink: #1c1416;
-  --auth-ink-rgb: 28 20 22;
-  --auth-muted: #6b5a5e;
-  --auth-glow: rgb(107 45 60 / 0.28);
-  --auth-ghost: rgb(28 20 22 / 0.1);
-}
-
-.auth-scope--app {
-  --auth-bg: #f3f4f5;
-  --auth-mid: #334e58;
-  --auth-accent: #03b5aa;
-  --auth-accent-rgb: 3 181 170;
-  --auth-ink: #33261d;
-  --auth-ink-rgb: 51 38 29;
-  --auth-muted: #6b6d76;
-  --auth-glow: rgb(3 181 170 / 0.28);
-  --auth-ghost: rgb(51 38 29 / 0.1);
-}
-
-.auth-scope--shop {
-  --auth-bg: #faf8f6;
-  --auth-mid: #5e4955;
-  --auth-accent: #996888;
-  --auth-accent-rgb: 153 104 136;
-  --auth-ink: #2a2b2a;
-  --auth-ink-rgb: 42 43 42;
-  --auth-muted: #5e4955;
-  --auth-glow: rgb(153 104 136 / 0.28);
-  --auth-ghost: rgb(42 43 42 / 0.1);
-}
-
-.auth-scope--investor {
-  --auth-bg: #f2f6f6;
-  --auth-mid: #0f5c5a;
-  --auth-accent: #0f5c5a;
-  --auth-accent-rgb: 15 92 90;
-  --auth-ink: #1a2222;
-  --auth-ink-rgb: 26 34 34;
-  --auth-muted: #5a6b6b;
-  --auth-glow: rgb(15 92 90 / 0.28);
-  --auth-ghost: rgb(26 34 34 / 0.1);
-}
-
 .auth-layout {
+  --auth-bg: var(--bw-theme-base);
+  --auth-accent: var(--bw-theme-primary);
+  --auth-accent-rgb: var(--bw-theme-primary-rgb);
+  --auth-ink: var(--bw-theme-ink);
+  --auth-muted: var(--bw-theme-muted);
+  --auth-mid: color-mix(in srgb, var(--bw-theme-primary) 72%, var(--bw-theme-ink));
+  --auth-glow: rgb(var(--bw-theme-primary-rgb) / 0.28);
+  --auth-ghost: color-mix(in srgb, var(--bw-theme-ink) 10%, transparent);
   min-height: 100vh;
   background: var(--auth-bg);
   position: relative;
@@ -210,8 +169,12 @@ const tagline = computed(() => {
   padding: clamp(1.75rem, 3.5vw, 2.75rem);
   overflow: hidden;
   background-image:
-    linear-gradient(rgb(var(--auth-ink-rgb, 28 20 22) / 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(var(--auth-ink-rgb, 28 20 22) / 0.05) 1px, transparent 1px);
+    linear-gradient(color-mix(in srgb, var(--bw-theme-ink) 5%, transparent) 1px, transparent 1px),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--bw-theme-ink) 5%, transparent) 1px,
+      transparent 1px
+    );
   background-size: 48px 48px;
   border-right: 1px solid rgb(var(--auth-accent-rgb) / 0.12);
 }
@@ -298,7 +261,11 @@ const tagline = computed(() => {
   letter-spacing: -0.06em;
   color: transparent;
   -webkit-text-stroke: 1px rgb(var(--auth-accent-rgb) / 0.18);
-  background: linear-gradient(160deg, var(--auth-ghost) 0%, rgb(var(--auth-ink-rgb) / 0.08) 100%);
+  background: linear-gradient(
+    160deg,
+    var(--auth-ghost) 0%,
+    color-mix(in srgb, var(--bw-theme-ink) 8%, transparent) 100%
+  );
   -webkit-background-clip: text;
   background-clip: text;
 }

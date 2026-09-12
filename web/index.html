@@ -22,8 +22,8 @@
       #app-splash {
         --splash-bg: #fbfaf7;
         --splash-surface: #ffffff;
-        --splash-accent: #0d6b5c;
-        --splash-accent-rgb: 13 107 92;
+        --splash-accent: #488b8f;
+        --splash-accent-rgb: 72 139 143;
         --splash-ink: #171412;
         --splash-muted: #736a61;
         --splash-glow: rgb(var(--splash-accent-rgb) / 0.14);
@@ -212,62 +212,62 @@
 
         var SCOPE_THEMES = {
           platform: {
-            accent: '#6b2d3c',
-            accentRgb: '107 45 60',
-            mid: '#f3e8ea',
-            blob1: '#d4a0ab',
-            blob3: '#e8c4cb',
-            gradientEnd: '#faf6f7',
-            accentDark: '#4a1f2a',
-            iconTint: '#fffafa',
+            accent: '#464b71',
+            accentRgb: '70 75 113',
+            mid: '#e8ebf0',
+            blob1: '#7cd5c7',
+            blob3: '#b8c4d8',
+            gradientEnd: '#f2f2ed',
+            accentDark: '#118ab2',
+            iconTint: '#f8f9fc',
             ghost: 'Platform',
             tagline: 'Govern the platform',
           },
           app: {
-            accent: '#0d6b5c',
-            accentRgb: '13 107 92',
-            mid: '#d4ede8',
-            blob1: '#6bb8a8',
-            blob3: '#a8d9cf',
-            gradientEnd: '#f0f9f7',
-            accentDark: '#0a5248',
-            iconTint: '#f8fffc',
+            accent: '#488b8f',
+            accentRgb: '72 139 143',
+            mid: '#d9ebe7',
+            blob1: '#5ea3a3',
+            blob3: '#add2c9',
+            gradientEnd: '#faf9f9',
+            accentDark: '#488b8f',
+            iconTint: '#f8fcfb',
             ghost: 'Operations',
             tagline: 'Run your business',
           },
           shop: {
-            accent: '#2a2b2a',
-            accentRgb: '42 43 42',
-            mid: '#f3e8ee',
-            blob1: '#b48b7d',
-            blob3: '#996888',
-            gradientEnd: '#f9fffb',
-            accentDark: '#5e4955',
-            iconTint: '#f9fffb',
+            accent: '#3368a0',
+            accentRgb: '51 104 160',
+            mid: '#dce8ef',
+            blob1: '#66a3bf',
+            blob3: '#c8dfdb',
+            gradientEnd: '#f2efe7',
+            accentDark: '#3368a0',
+            iconTint: '#f8fbff',
             ghost: 'Store',
             tagline: 'Your wholesale store',
           },
           investor: {
-            accent: '#0f5c5a',
-            accentRgb: '15 92 90',
-            mid: '#d4ebe9',
-            blob1: '#6bb5b0',
-            blob3: '#a8d5d1',
-            gradientEnd: '#f0f8f7',
-            accentDark: '#0a4543',
-            iconTint: '#f7fffe',
+            accent: '#413333',
+            accentRgb: '65 51 51',
+            mid: '#efe6dc',
+            blob1: '#f2765e',
+            blob3: '#f5ebdd',
+            gradientEnd: '#f5ebdd',
+            accentDark: '#413333',
+            iconTint: '#fffaf8',
             ghost: 'Investor',
             tagline: 'Your portfolio',
           },
           default: {
-            accent: '#0d6b5c',
-            accentRgb: '13 107 92',
-            mid: '#d4ede8',
-            blob1: '#6bb8a8',
-            blob3: '#a8d9cf',
-            gradientEnd: '#f0f9f7',
-            accentDark: '#0a5248',
-            iconTint: '#f8fffc',
+            accent: '#488b8f',
+            accentRgb: '72 139 143',
+            mid: '#d9ebe7',
+            blob1: '#5ea3a3',
+            blob3: '#add2c9',
+            gradientEnd: '#faf9f9',
+            accentDark: '#488b8f',
+            iconTint: '#f8fcfb',
             ghost: 'Operations',
             tagline: 'Run your business',
           },
@@ -374,11 +374,11 @@
         var tenantName = resolveTenantName(scope, auth, workspace, path);
 
         var DARK_LOADER_ACCENTS = {
-          platform: '#d4a0ab',
-          app: '#6bb8a8',
+          platform: '#118ab2',
+          app: '#5ea3a3',
           shop: '#66a3bf',
-          investor: '#6bb5b0',
-          default: '#6bb8a8',
+          investor: '#f2765e',
+          default: '#5ea3a3',
         };
 
         splash.dataset.scope = scope;
@@ -417,11 +417,37 @@
         var logo = document.getElementById('app-splash-logo');
         if (logo) logo.src = BRAND_LOGO_SRC;
 
-        var favicon = document.getElementById('dynamic-favicon');
-        if (favicon) {
+        function applyScopedFavicon(accent) {
+          var favicon = document.getElementById('dynamic-favicon');
+          if (!favicon) return;
+
           favicon.type = 'image/png';
-          favicon.href = BRAND_FAVICON_SRC;
+          var mark = new Image();
+          mark.onload = function () {
+            var canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 64;
+            var ctx = canvas.getContext('2d');
+            if (!ctx) {
+              favicon.href = BRAND_FAVICON_SRC;
+              return;
+            }
+            ctx.drawImage(mark, 0, 0, 64, 64);
+            ctx.globalCompositeOperation = 'source-in';
+            ctx.fillStyle = accent;
+            ctx.fillRect(0, 0, 64, 64);
+            favicon.href = canvas.toDataURL('image/png');
+          };
+          mark.onerror = function () {
+            favicon.href = BRAND_FAVICON_SRC;
+          };
+          mark.src = '/brand/logo-mark-light.png';
         }
+
+        var splashAccent = splashDark
+          ? DARK_LOADER_ACCENTS[scope] || DARK_LOADER_ACCENTS.default
+          : theme.accent;
+        applyScopedFavicon(splashAccent);
 
         if (splashDark) {
           var themeColor = document.querySelector('meta[name="theme-color"]');
