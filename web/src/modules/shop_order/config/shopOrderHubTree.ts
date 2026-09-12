@@ -138,6 +138,7 @@ export type ShopHubCardLinkDef = {
   routeName: string;
   routeQuery?: Record<string, string>;
   moduleKey: ModuleKey;
+  weight?: number;
 };
 
 export type ShopHubCardDef = {
@@ -147,6 +148,48 @@ export type ShopHubCardDef = {
   icon: string;
   links: ShopHubCardLinkDef[];
 };
+
+export const SHOP_ORDER_PRIMARY_KEYS = ['orders', 'dropship_management', 'shops'] as const;
+
+export const SHOP_ORDER_MORE_LINKS: ShopHubCardLinkDef[] = [
+  {
+    key: 'categories',
+    labelKey: 'navigation.categories',
+    captionKey: 'shop_admin.shop_hub_categories_caption',
+    icon: 'ph ph-squares-four',
+    routeName: 'app-shop-categories-page',
+    moduleKey: 'shop_category',
+    weight: 10,
+  },
+  {
+    key: 'pricing',
+    labelKey: 'shop_admin.access_domain_pricing',
+    captionKey: 'shop_admin.shop_pricing_subtitle',
+    icon: 'ph ph-tag',
+    routeName: 'app-shop-pricing-list-page',
+    moduleKey: 'shop_pricing',
+    weight: 20,
+  },
+  {
+    key: 'couriers',
+    labelKey: 'shop_admin.shipping_couriers',
+    captionKey: 'shop_admin.shipping_couriers_caption',
+    icon: 'ph ph-truck',
+    routeName: 'app-shop-dropship-couriers-page',
+    moduleKey: 'shop_shipping',
+    weight: 30,
+  },
+  {
+    key: 'remittance',
+    labelKey: 'shop_admin.shipping_remittance',
+    captionKey: 'shop_admin.shipping_remittance_caption',
+    icon: 'ph ph-bank',
+    routeName: 'app-shop-dropship-finance-hub-page',
+    routeQuery: { step: 'courier_remittance' },
+    moduleKey: 'shop_shipping',
+    weight: 40,
+  },
+];
 
 export const SHOP_ORDER_HUB_CARDS: ShopHubCardDef[] = [
   {
@@ -234,4 +277,13 @@ export function filterHubCards(
       links: card.links.filter((link) => canView(link.moduleKey)),
     }))
     .filter((card) => card.links.length > 0);
+}
+
+export function filterMoreHubLinks(
+  links: ShopHubCardLinkDef[],
+  canView: (moduleKey: ModuleKey) => boolean,
+): ShopHubCardLinkDef[] {
+  return links
+    .filter((link) => canView(link.moduleKey))
+    .sort((a, b) => (a.weight ?? 99) - (b.weight ?? 99));
 }

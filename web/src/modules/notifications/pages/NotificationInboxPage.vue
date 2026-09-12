@@ -7,7 +7,7 @@
             <q-toggle
               v-model="unreadOnly"
               dense
-              label="Unread only"
+              :label="unreadFilterLabel"
               data-test="notification-unread-filter"
               @update:model-value="onUnreadFilterChange"
             />
@@ -30,10 +30,11 @@
         <q-separator />
 
         <NotificationList
-          :items="notificationStore.items"
-          :loading="notificationStore.loading"
+          :items="notificationStore.inboxItems"
+          :loading="notificationStore.inboxLoading"
           :skeleton-count="6"
           :constrained="false"
+          :unread-only="unreadOnly"
           @select="onSelect"
         />
 
@@ -60,7 +61,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
@@ -76,6 +77,11 @@ const router = useRouter();
 
 const unreadOnly = ref(notificationStore.unreadOnly);
 const currentPage = ref(notificationStore.page);
+
+const unreadFilterLabel = computed(() => {
+  const count = notificationStore.unreadCount;
+  return count > 0 ? `Unread only (${count})` : 'Unread only';
+});
 
 const loadInbox = async (page = currentPage.value) => {
   const tenantId = authStore.tenantId;

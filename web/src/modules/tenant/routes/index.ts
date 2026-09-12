@@ -192,6 +192,18 @@ const tenantRoutes: RouteRecordRaw[] = [
     name: 'admin-settings',
     children: [
       {
+        path: '',
+        name: 'app-settings-overview',
+        component: () => import('src/modules/settings/pages/AppSettingsOverviewPage.vue'),
+        beforeEnter: createAccessGuard({
+          loginRoute: 'admin-login-page',
+          requiredScope: 'app',
+          allowedRoles: ['admin', 'staff'],
+          requireTenantContext: true,
+        }),
+        meta: { title: 'Settings', headerTitle: 'Settings' },
+      },
+      {
         path: 'roles',
         name: 'admin-settings-roles',
         redirect: (to) => {

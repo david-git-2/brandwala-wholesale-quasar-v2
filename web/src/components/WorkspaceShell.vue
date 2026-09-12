@@ -182,9 +182,52 @@
           <div class="workspace-shell__nav q-py-xs">
             <q-list class="workspace-shell__nav-list">
               <template v-for="link in links" :key="link.to || link.title">
+                <!-- Labeled nav group (flat children, not collapsible) -->
+                <template v-if="link.navGroup && link.children?.length">
+                  <div
+                    v-if="!isMini"
+                    class="workspace-shell__nav-sub-header workspace-shell__nav-group-label"
+                  >
+                    {{ translateTitle(link.title) }}
+                  </div>
+
+                  <q-item
+                    v-for="child in link.children"
+                    :key="child.to ?? child.title"
+                    clickable
+                    :to="child.target ? undefined : child.to"
+                    :href="child.target ? child.to : undefined"
+                    :target="child.target"
+                    class="workspace-shell__nav-item workspace-shell__nav-group-child"
+                    :class="{
+                      'workspace-shell__nav-item--active': isNavGroupChildActive(
+                        child.to,
+                        link.children,
+                      ),
+                    }"
+                  >
+                    <q-item-section avatar style="min-width: 36px">
+                      <q-icon :name="child.icon" size="20px" />
+                    </q-item-section>
+
+                    <q-item-section>
+                      <q-item-label class="text-weight-medium">{{ translateTitle(child.title) }}</q-item-label>
+                    </q-item-section>
+
+                    <q-tooltip
+                      v-if="isMini"
+                      anchor="center right"
+                      self="center left"
+                      :offset="[10, 10]"
+                    >
+                      {{ translateTitle(child.title) }}
+                    </q-tooltip>
+                  </q-item>
+                </template>
+
                 <!-- Group with children (expansion item) -->
                 <q-expansion-item
-                  v-if="link.children?.length"
+                  v-else-if="link.children?.length"
                   :model-value="expandedGroups[link.title] ?? false"
                   @update:model-value="(val) => (expandedGroups[link.title] = !!val)"
                   :icon="link.icon"
@@ -501,6 +544,8 @@ export interface WorkspaceLink {
   to?: string;
   target?: string;
   section?: string | undefined;
+  /** Flat labeled section in the sidebar (label + always-visible children). */
+  navGroup?: boolean;
   children?: WorkspaceLink[];
 }
 
@@ -545,17 +590,43 @@ const isMini = computed(
   () => !useMobileBottomNav.value && !navPinned.value && miniState.value && !$q.screen.lt.md,
 );
 
-const isLinkActive = (to?: string): boolean => {
-  if (!to) return false;
-  const currentPath = route.path;
-  if (currentPath === to) return true;
+const isPathMatch = (currentPath: string, to: string): boolean => {
+  if (currentPath === to) {
+    return true;
+  }
   // Match nested subroutes (e.g. /bw/app/procurement/shipment matches /bw/app/procurement/shipment/14)
-  if (to !== '/app' && to !== '/app/' && to !== '/shop' && to !== '/shop/') {
-    if (currentPath.startsWith(`${to}/`)) {
-      return true;
+  if (to === '/app' || to === '/app/' || to === '/shop' || to === '/shop/') {
+    return false;
+  }
+  return currentPath.startsWith(`${to}/`);
+};
+
+/** Among sibling nav links, only the longest matching path is active (avoids /shop matching /shop/orders). */
+const resolveActiveNavTo = (links: WorkspaceLink[], currentPath: string): string | null => {
+  let bestMatch: string | null = null;
+
+  for (const link of links) {
+    if (!link.to || !isPathMatch(currentPath, link.to)) {
+      continue;
+    }
+    if (!bestMatch || link.to.length > bestMatch.length) {
+      bestMatch = link.to;
     }
   }
-  return false;
+
+  return bestMatch;
+};
+
+const isLinkActive = (to?: string): boolean => {
+  if (!to) return false;
+  return isPathMatch(route.path, to);
+};
+
+const isNavGroupChildActive = (to?: string, siblings?: WorkspaceLink[]): boolean => {
+  if (!to || !siblings?.length) {
+    return false;
+  }
+  return resolveActiveNavTo(siblings, route.path) === to;
 };
 
 const isGroupActive = (link: WorkspaceLink): boolean => {
@@ -1233,6 +1304,18 @@ body.body--dark .workspace-shell__page-container {
   padding: 0.75rem 0.5rem 0.25rem 0.55rem;
   display: flex;
   align-items: center;
+}
+
+.workspace-shell__nav-group-label {
+  padding-top: 1rem;
+}
+
+.workspace-shell__nav-group-label:first-child {
+  padding-top: 0.5rem;
+}
+
+.workspace-shell__nav-group-child {
+  margin-bottom: 0.1rem;
 }
 
 .workspace-shell__drawer-search {

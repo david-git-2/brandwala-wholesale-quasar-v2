@@ -189,7 +189,8 @@ export const DASHBOARD_SLOT_REGISTRY: readonly DashboardSlot[] = [
 
 ## 🎨 6. UI & Design System Rules for Dashboard Widgets
 
-1. **Card Radius & Elevation:** Use `border-radius: 12px` (or `16px`), `1px solid var(--bw-theme-border)`, and zero heavy box-shadows.
-2. **Action Buttons:** Use rounded-square buttons (`border-radius: 8px` / `10px`, `unelevated`, `no-caps`). Never use pill buttons on ops dashboards.
-3. **Status Indicators:** Use soft background badges with 6px circular indicator dots (`urgent` red, `warn` amber, `info` blue, `success` green).
-4. **Charts & Graphics:** Use Chart.js with Chart.js registration from [`dashboardChartSetup.ts`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/dashboard/utils/dashboardChartSetup.ts). Always use theme color variables (`--bw-theme-primary-rgb`) for dark/light mode harmony.
+1. **Magazine pulse cards:** Build on `DashboardPulseCard` — `q-card flat bordered`, 14px radius, metrics + required `chart` slot. No full-bleed photos, no `backdrop-filter`, no click-to-reveal-first-chart drawers.
+2. **On-card charts:** Every live widget shows Chart.js (or `DashboardShareBars`) in view. Reuse `DashboardDonut` / `DashboardLineChart` / `DashboardBarChart`. Empty mix → muted well (`No mix yet`).
+3. **Stubs:** `stub` prop + `DashboardStubBadge` (`Sample`). Em-dash metrics; sample chart for layout only. Do not feed stubs into `useDashboardAttention`.
+4. **Action Buttons:** Rounded-square (`8px`), `unelevated` / `flat` / `outline`, `no-caps`. Thrift `New sale` is the only primary CTA on dashboard.
+5. **Charts & Graphics:** Register via [`dashboardChartSetup.ts`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/dashboard/utils/dashboardChartSetup.ts). Colors: `readThemeRgb`, `--bw-success`, `--bw-warning`, `--bw-error`.

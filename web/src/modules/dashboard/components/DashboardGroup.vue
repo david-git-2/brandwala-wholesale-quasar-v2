@@ -12,15 +12,6 @@
         v-bind="tenantSlug ? { tenantSlug } : {}"
       />
     </div>
-
-    <div v-if="tileSlots.length" class="dashboard-group__stack">
-      <DashboardSlotHost
-        v-for="slot in tileSlots"
-        :key="slot.id"
-        :item="slot"
-        v-bind="tenantSlug ? { tenantSlug } : {}"
-      />
-    </div>
   </section>
 </template>
 
@@ -28,7 +19,7 @@
 import { computed } from 'vue';
 
 import type { DashboardSlot } from '../types/dashboardSlot';
-import { isDashboardBlockKind, isDashboardTileKind } from '../types/dashboardSlot';
+import { isDashboardBlockKind } from '../types/dashboardSlot';
 import DashboardSlotHost from './DashboardSlotHost.vue';
 
 const props = defineProps<{
@@ -39,7 +30,6 @@ const props = defineProps<{
 }>();
 
 const blockSlots = computed(() => props.slots.filter((s) => isDashboardBlockKind(s.kind)));
-const tileSlots = computed(() => props.slots.filter((s) => isDashboardTileKind(s.kind)));
 </script>
 
 <style scoped>
@@ -54,11 +44,7 @@ const tileSlots = computed(() => props.slots.filter((s) => isDashboardTileKind(s
 
 .dashboard-group__blocks {
   display: grid;
-  gap: 0.85rem;
-}
-
-.dashboard-group__stack {
-  display: grid;
-  gap: 0.65rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: 1rem;
 }
 </style>

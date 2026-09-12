@@ -129,7 +129,7 @@
               <q-item-section avatar class="q-pr-none" style="min-width: 28px">
                 <q-icon name="ph ph-bell" size="xs" color="grey-6" />
               </q-item-section>
-              <q-item-section>Notifications</q-item-section>
+              <q-item-section>Browser alerts</q-item-section>
             </q-item>
           </template>
 

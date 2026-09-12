@@ -511,16 +511,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     name: 'Reference',
     description: 'Global currency catalog for shipments, pricing, and money display.',
     navIcon: 'ph ph-books',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Reference',
-        caption: 'Currencies, markets, payment methods, and units',
-        icon: 'ph ph-books',
-        routeSegment: 'reference',
-        requiredAction: 'view',
-      },
-    ],
+    routes: [],
   },
   {
     key: 'global_reference_market',
@@ -749,16 +740,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     description:
       'Demand desk, inbound shipments, warehouse stock, movements, and procurement operations.',
     navIcon: 'ph ph-truck',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Procurement & Stock',
-        caption: 'Demand, shipments, warehouse, and stock operations hub',
-        icon: 'ph ph-truck',
-        routeSegment: 'procurement',
-        requiredAction: 'view',
-      },
-    ],
+    routes: [],
   },
   {
     key: 'global_stock_type',
@@ -832,16 +814,7 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     description:
       'Parent module. Staff nav is Shops, Orders, and Shipping. Dropship is a shop type; courier is shared delivery.',
     navIcon: 'ph ph-storefront',
-    routes: [
-      {
-        scope: 'app',
-        title: 'Shop & Order',
-        caption: 'Shops, orders, pricing, and shipping hub',
-        icon: 'ph ph-storefront',
-        routeSegment: 'shop',
-        requiredAction: 'view',
-      },
-    ],
+    routes: [],
   },
   {
     key: 'shop_config',

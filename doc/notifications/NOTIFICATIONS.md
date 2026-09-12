@@ -587,11 +587,22 @@ In-app does not depend on Edge Functions. Do not block the business RPC on Teleg
 | :--- | :--- | :--- |
 | App shell header | `NotificationBell.vue` | My unread count (`app` scope) |
 | Shop shell header | `NotificationBell.vue` (`scope="shop"`) | Customer-group inbox |
-| Bell dropdown / route | `NotificationList.vue` + `NotificationListItem.vue` | My inbox only |
-| Shop inbox route | `/:tenantSlug/shop/notifications` | Same list component as app |
-| User settings | `NotificationPreferencesPage.vue` | Telegram + FCM toggles (in-app not listed) |
+| Bell dropdown | `NotificationList.vue` + `NotificationListItem.vue` | Preview: last 8 rows (`previewItems`) |
+| App inbox route | `/:tenantSlug/app/notifications` | Full feed (`inboxItems`), unread filter |
+| Shop inbox route | `/:tenantSlug/shop/notifications` | Same list components as app |
+| Browser alerts settings | `NotificationPreferencesPage.vue` | Optional Chrome push (profile menu + bell footer) |
 | Ops / settings (phase 5) | `TenantNotificationLogPage.vue` | Parent admin — all tenant events |
 | Toast | `appFeedback.ts` | Immediate action feedback — separate from inbox |
+
+### Row comprehension rules
+
+Each row must answer in one glance: **what happened**, **which record**, **what to do next**.
+
+1. **Presentation map** — `web/src/modules/notifications/utils/notificationPresentation.ts` maps `event_type` → icon, kind label, fallback action (for old rows without good `body` text).
+2. **Layout** — icon avatar, unread dot, bold title when unread, kind caption, action line (`body` or fallback), optional `From {desk}` on app scope, time on the right.
+3. **Copy on enqueue** — title = fact + record id; body = next step. See [`doc/fix/NOTIFICATION_UI_COMPREHENSION.md`](../fix/NOTIFICATION_UI_COMPREHENSION.md) for locked catalog/task strings.
+4. **Bell vs inbox** — `notificationStore.previewItems` (bell) and `inboxItems` (page) are separate; realtime does not flash the dropdown with skeletons when data already loaded.
+5. **Naming** — **Notifications** = in-app bell/inbox. **Browser alerts** = optional desktop push settings (not the inbox).
 
 ---
 

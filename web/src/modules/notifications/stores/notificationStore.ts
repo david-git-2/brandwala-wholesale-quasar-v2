@@ -11,11 +11,30 @@ const PREVIEW_PAGE_SIZE = 8;
 
 type VisibilityHandler = () => void;
 
+const mapReadState = (items: NotificationItem[], notificationId: string, now: string) =>
+  items.map((item) =>
+    item.notification_id === notificationId
+      ? { ...item, read_at: now, is_unread: false }
+      : item,
+  );
+
+const mapAllReadState = (items: NotificationItem[], now: string) =>
+  items.map((item) => ({
+    ...item,
+    read_at: item.read_at ?? now,
+    is_unread: false,
+  }));
+
 export const useNotificationStore = defineStore('notifications', {
   state: () => ({
-    items: [] as NotificationItem[],
+    previewItems: [] as NotificationItem[],
+    inboxItems: [] as NotificationItem[],
     unreadCount: 0,
-    loading: false,
+    previewLoading: false,
+    inboxLoading: false,
+    previewLoaded: false,
+    inboxLoaded: false,
+    previewMenuOpen: false,
     page: 1,
     pageSize: 20,
     totalPages: 0,
@@ -33,9 +52,14 @@ export const useNotificationStore = defineStore('notifications', {
       this.unreadCount = await notificationRepository.getMyUnreadCount(tenantId);
     },
 
-    async loadPreview(tenantId: number) {
-      this.loading = true;
+    async loadPreview(tenantId: number, options?: { silent?: boolean }) {
+      const silent = options?.silent === true;
+      if (!silent || !this.previewLoaded) {
+        this.previewLoading = true;
+      }
+
       this.viewMode = 'preview';
+
       try {
         const result = await notificationRepository.listMyNotificationsPaginated({
           tenantId,
@@ -43,18 +67,24 @@ export const useNotificationStore = defineStore('notifications', {
           pageSize: PREVIEW_PAGE_SIZE,
           unreadOnly: false,
         });
-        this.items = result.data;
+        this.previewItems = result.data;
         this.unreadCount = result.meta.unread_count;
+        this.previewLoaded = true;
       } catch (error: unknown) {
         showErrorNotification((error as Error).message || 'Failed to load notifications');
       } finally {
-        this.loading = false;
+        this.previewLoading = false;
       }
     },
 
-    async loadPage(tenantId: number, page = 1) {
-      this.loading = true;
+    async loadPage(tenantId: number, page = 1, options?: { silent?: boolean }) {
+      const silent = options?.silent === true;
+      if (!silent || !this.inboxLoaded) {
+        this.inboxLoading = true;
+      }
+
       this.viewMode = 'page';
+
       try {
         const result = await notificationRepository.listMyNotificationsPaginated({
           tenantId,
@@ -62,38 +92,58 @@ export const useNotificationStore = defineStore('notifications', {
           pageSize: this.pageSize,
           unreadOnly: this.unreadOnly,
         });
-        this.items = result.data;
+        this.inboxItems = result.data;
         this.page = result.meta.page;
         this.totalPages = result.meta.total_pages;
         this.totalCount = result.meta.total_count;
         this.unreadCount = result.meta.unread_count;
+        this.inboxLoaded = true;
       } catch (error: unknown) {
         showErrorNotification((error as Error).message || 'Failed to load notifications');
       } finally {
-        this.loading = false;
+        this.inboxLoading = false;
       }
+    },
+
+    setPreviewMenuOpen(open: boolean) {
+      this.previewMenuOpen = open;
     },
 
     async refreshActive(tenantId: number) {
       await this.loadUnreadCount(tenantId);
+
       if (this.viewMode === 'page') {
-        await this.loadPage(tenantId, this.page);
-      } else {
-        await this.loadPreview(tenantId);
+        await this.loadPage(tenantId, this.page, {
+          silent: this.inboxLoaded && this.inboxItems.length > 0,
+        });
+        return;
+      }
+
+      if (this.previewMenuOpen || this.previewLoaded) {
+        await this.loadPreview(tenantId, {
+          silent: this.previewLoaded && this.previewItems.length > 0,
+        });
       }
     },
 
     async markRead(notificationId: string) {
-      const previousItems = this.items.map((item) => ({ ...item }));
+      const previousPreviewItems = this.previewItems.map((item) => ({ ...item }));
+      const previousInboxItems = this.inboxItems.map((item) => ({ ...item }));
       const previousUnreadCount = this.unreadCount;
       const now = new Date().toISOString();
 
-      this.items = this.items.map((item) =>
-        item.notification_id === notificationId
-          ? { ...item, read_at: now, is_unread: false }
-          : item,
-      );
-      if (previousItems.some((item) => item.notification_id === notificationId && item.is_unread)) {
+      const wasUnread =
+        previousPreviewItems.some(
+          (item) => item.notification_id === notificationId && item.is_unread,
+        ) ||
+        previousInboxItems.some(
+          (item) => item.notification_id === notificationId && item.is_unread,
+        );
+
+      this.previewItems = mapReadState(this.previewItems, notificationId, now);
+      this.inboxItems = mapReadState(this.inboxItems, notificationId, now);
+
+      if (wasUnread) {
         this.unreadCount = Math.max(0, this.unreadCount - 1);
       }
 
@@ -103,22 +153,21 @@ export const useNotificationStore = defineStore('notifications', {
           throw new Error(result.error || 'Failed to mark notification as read');
         }
       } catch (error: unknown) {
-        this.items = previousItems;
+        this.previewItems = previousPreviewItems;
+        this.inboxItems = previousInboxItems;
         this.unreadCount = previousUnreadCount;
         showErrorNotification((error as Error).message || 'Failed to mark notification as read');
       }
     },
 
     async markAllRead(tenantId: number) {
-      const previousItems = this.items.map((item) => ({ ...item }));
+      const previousPreviewItems = this.previewItems.map((item) => ({ ...item }));
+      const previousInboxItems = this.inboxItems.map((item) => ({ ...item }));
       const previousUnreadCount = this.unreadCount;
       const now = new Date().toISOString();
 
-      this.items = this.items.map((item) => ({
-        ...item,
-        read_at: item.read_at ?? now,
-        is_unread: false,
-      }));
+      this.previewItems = mapAllReadState(this.previewItems, now);
+      this.inboxItems = mapAllReadState(this.inboxItems, now);
       this.unreadCount = 0;
 
       try {
@@ -127,7 +176,8 @@ export const useNotificationStore = defineStore('notifications', {
           throw new Error(result.error || 'Failed to mark all notifications as read');
         }
       } catch (error: unknown) {
-        this.items = previousItems;
+        this.previewItems = previousPreviewItems;
+        this.inboxItems = previousInboxItems;
         this.unreadCount = previousUnreadCount;
         showErrorNotification((error as Error).message || 'Failed to mark all notifications as read');
       }
@@ -193,9 +243,14 @@ export const useNotificationStore = defineStore('notifications', {
 
     reset() {
       this.unsubscribe();
-      this.items = [];
+      this.previewItems = [];
+      this.inboxItems = [];
       this.unreadCount = 0;
-      this.loading = false;
+      this.previewLoading = false;
+      this.inboxLoading = false;
+      this.previewLoaded = false;
+      this.inboxLoaded = false;
+      this.previewMenuOpen = false;
       this.page = 1;
       this.totalPages = 0;
       this.totalCount = 0;

@@ -9,6 +9,10 @@ import {
 import type { AccessRole } from 'src/modules/auth/guards/accessGuard';
 import type { AuthScope } from 'src/modules/auth/composables/useOAuthLogin';
 import {
+  PROCUREMENT_HUB_MODULE_KEYS,
+  SHOP_ORDER_HUB_MODULE_KEYS,
+} from './hubNavConfig';
+import {
   buildModuleRoutePath,
   getModuleDefinition,
   getModuleRoutesForScope,
@@ -18,51 +22,14 @@ import {
   type ModuleKey,
 } from './moduleRegistry';
 
-const PROCUREMENT_HUB_MODULE_KEYS: readonly ModuleKey[] = [
-  'procurement_demand',
-  'global_shipment',
-  'global_stock',
-  'global_stock_movement',
-  'global_stock_location',
-  'cargo_company',
-  'shipment_progress_settings',
-  'inventory',
-];
-
-const REFERENCE_HUB_MODULE_KEYS: readonly ModuleKey[] = [
-  'global_reference_currency',
-  'global_reference_market',
-  'global_reference_payment_method',
-  'global_reference_unit_of_measure',
-];
-
-const SHOP_ORDER_HUB_MODULE_KEYS: readonly ModuleKey[] = [
-  'shop_config',
-  'shop_category',
-  'shop_permissions',
-  'shop_pricing',
-  'shop_order_mgmt',
-  'shop_shipping',
-];
-
 type ModuleHubConfig = {
   routeSegment: string;
   anchorModuleKey: ModuleKey;
   hubModuleKeys: readonly ModuleKey[];
 };
 
-const MODULE_HUB_CONFIGS: readonly ModuleHubConfig[] = [
-  {
-    routeSegment: 'procurement',
-    anchorModuleKey: 'procurement_stock',
-    hubModuleKeys: PROCUREMENT_HUB_MODULE_KEYS,
-  },
-  {
-    routeSegment: 'reference',
-    anchorModuleKey: 'global_reference_currency',
-    hubModuleKeys: REFERENCE_HUB_MODULE_KEYS,
-  },
-];
+/** Legacy hub injection — shop/procurement/reference sidebars are driven by hubNavConfig. */
+const MODULE_HUB_CONFIGS: readonly ModuleHubConfig[] = [];
 
 const isProcurementHubModuleKey = (moduleKey: ModuleKey): boolean =>
   (PROCUREMENT_HUB_MODULE_KEYS as readonly ModuleKey[]).includes(moduleKey);

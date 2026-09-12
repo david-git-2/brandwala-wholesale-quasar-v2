@@ -56,8 +56,8 @@ const notificationRoutes: RouteRecordRaw[] = [
         name: 'notifications-preferences',
         component: () => import('../pages/NotificationPreferencesPage.vue'),
         meta: {
-          title: 'Notification settings',
-          headerTitle: 'Notification settings',
+          title: 'Browser alerts',
+          headerTitle: 'Browser alerts',
         },
       },
     ],

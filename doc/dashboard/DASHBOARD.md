@@ -2,6 +2,18 @@
 
 The **Dashboard** module provides a dynamic, registry-composed home surface for tenant administrators and storefront customers. Instead of monolithic dashboards, features register modular widget slots that are filtered automatically based on tenant module enablement and user role permissions.
 
+## App dashboard magazine layout (staff `/app/dashboard`)
+
+Staff home is a **magazine pulse board**, not photo heroes:
+
+- **Attention strip** (`DashboardAttentionList` + `useDashboardAttention`) — up to 5 warn-only rows (overdue invoices, COD, in-transit batches, etc.) linking to filtered lists.
+- **Pulse cards** (`DashboardPulseCard`) — metrics left, Chart.js graph right; optional second visual row (share bars / grade bars). Every live card shows its chart on the page.
+- **Shared chart primitives** — `DashboardDonut`, `DashboardLineChart`, `DashboardBarChart`, `DashboardShareBars`, `DashboardChartLegend`; colors from `dashboardChartSetup.ts` / theme tokens.
+- **Stubs** — unfinished modules (e.g. after-sales) use `DashboardStubBadge` + sample chart; never fake live counts in the attention strip.
+- **No shortcut tiles** on app dashboard — sidebar handles navigation.
+
+Parent workspace: stock, invoices, wallet, investor, tasks (+ thrift if enabled). Child workspace: shop orders, invoices, wallet, tasks (+ thrift).
+
 ---
 
 ## 1. Dashboard Architecture & Dynamic Slot Registry

@@ -12,7 +12,13 @@
       {{ badgeLabel }}
     </q-badge>
 
-    <q-menu anchor="bottom end" self="top end" class="notification-bell__menu">
+    <q-menu
+      anchor="bottom end"
+      self="top end"
+      class="notification-bell__menu"
+      @show="onMenuShow"
+      @hide="onMenuHide"
+    >
       <div class="notification-bell__header row items-center justify-between q-px-md q-pt-sm q-pb-xs">
         <div class="text-subtitle2 text-weight-bold">Notifications</div>
         <q-btn
@@ -29,16 +35,18 @@
       </div>
 
       <NotificationList
-        :items="notificationStore.items"
-        :loading="notificationStore.loading"
+        :items="notificationStore.previewItems"
+        :loading="notificationStore.previewLoading"
         :skeleton-count="4"
+        close-popup-on-select
         @select="onSelect"
       />
 
       <q-separator />
 
-      <div class="notification-bell__footer q-pa-sm">
+      <div class="notification-bell__footer q-pa-sm column q-gutter-y-xs">
         <q-btn
+          v-close-popup
           flat
           dense
           no-caps
@@ -46,6 +54,17 @@
           label="See all"
           data-test="notification-see-all"
           @click="onSeeAll"
+        />
+        <q-btn
+          v-if="scope === 'app'"
+          v-close-popup
+          flat
+          dense
+          no-caps
+          class="full-width text-grey-7"
+          label="Browser alerts"
+          data-test="notification-browser-alerts"
+          @click="onBrowserAlerts"
         />
       </div>
     </q-menu>
@@ -59,6 +78,11 @@ import { useRouter } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { getAppRouteLocation } from 'src/modules/tenant/utils/tenantRouteContext';
 
+import NotificationList from './NotificationList.vue';
+import { useNotificationStore } from '../stores/notificationStore';
+import { resolveNotificationLink } from '../utils/resolveNotificationLink';
+import type { NotificationItem } from '../types';
+
 const props = withDefaults(
   defineProps<{
     scope?: 'app' | 'shop';
@@ -67,11 +91,6 @@ const props = withDefaults(
     scope: 'app',
   },
 );
-
-import NotificationList from './NotificationList.vue';
-import { useNotificationStore } from '../stores/notificationStore';
-import { resolveNotificationLink } from '../utils/resolveNotificationLink';
-import type { NotificationItem } from '../types';
 
 const authStore = useAuthStore();
 const notificationStore = useNotificationStore();
@@ -95,7 +114,7 @@ const syncNotifications = async () => {
   }
 
   notificationStore.subscribe(userId, tenantId);
-  await notificationStore.loadPreview(tenantId);
+  await notificationStore.loadUnreadCount(tenantId);
 };
 
 watch(
@@ -109,6 +128,18 @@ watch(
 onBeforeUnmount(() => {
   notificationStore.unsubscribe();
 });
+
+const onMenuShow = () => {
+  notificationStore.setPreviewMenuOpen(true);
+  const tenantId = authStore.tenantId;
+  if (tenantId) {
+    void notificationStore.loadPreview(tenantId);
+  }
+};
+
+const onMenuHide = () => {
+  notificationStore.setPreviewMenuOpen(false);
+};
 
 const onMarkAllRead = async () => {
   const tenantId = authStore.tenantId;
@@ -134,6 +165,15 @@ const onSeeAll = () => {
   router.push(
     getAppRouteLocation(
       { name: routeName, params: {}, query: {} },
+      authStore.tenantSlug,
+    ),
+  );
+};
+
+const onBrowserAlerts = () => {
+  router.push(
+    getAppRouteLocation(
+      { name: 'notifications-preferences', params: {}, query: {} },
       authStore.tenantSlug,
     ),
   );

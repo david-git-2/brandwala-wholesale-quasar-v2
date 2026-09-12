@@ -2120,9 +2120,10 @@ BEGIN
     p_notify_customer := false,
     p_event_type := 'catalog.order.confirmed',
     p_title := format('Order %s confirmed', v_order.order_no),
-    p_body := 'Customer confirmed the order. Start procurement when ready.'
+    p_body := 'Start buying when ready.'
   );
 END;
+$$;
 ALTER FUNCTION "public"."customer_confirm_shop_order"("p_order_id" bigint) OWNER TO "postgres";
 
 
@@ -2189,8 +2190,8 @@ BEGIN
         p_notify_staff := true,
         p_notify_customer := false,
         p_event_type := 'catalog.offer.countered',
-        p_title := format('Customer countered %s', v_order.order_no),
-        p_body := 'Set the final offer when ready.'
+        p_title := format('%s needs a final price', v_order.order_no),
+        p_body := 'Open the order and send the last offer.'
       );
     ELSE
       UPDATE public.shop_order_items
@@ -2211,7 +2212,7 @@ BEGIN
         p_notify_customer := false,
         p_event_type := 'catalog.order.confirmed',
         p_title := format('Order %s confirmed', v_order.order_no),
-        p_body := 'Customer accepted all first-offer prices.'
+        p_body := 'Start buying when ready.'
       );
     END IF;
   ELSE
@@ -8420,8 +8421,8 @@ begin
     p_notify_staff := false,
     p_notify_customer := true,
     p_event_type := 'catalog.offer.sent',
-    p_title := 'Review your offer',
-    p_body := format('Order %s is ready for your review.', v_order.order_no)
+    p_title := format('Offer ready for %s', v_order.order_no),
+    p_body := 'Open the order to review prices.'
   );
 
   return public.get_shop_order_for_staff(v_order.tenant_id, p_order_id);
@@ -8713,8 +8714,8 @@ begin
     p_notify_staff := false,
     p_notify_customer := true,
     p_event_type := 'catalog.offer.final',
-    p_title := 'Confirm price and quantity',
-    p_body := format('Order %s — confirm your final quantities.', v_order.order_no)
+    p_title := format('Confirm %s', v_order.order_no),
+    p_body := 'Check price and quantity, then confirm.'
   );
 
   return public.get_shop_order_for_staff(v_order.tenant_id, p_order_id);
@@ -8875,8 +8876,8 @@ begin
     p_notify_staff := false,
     p_notify_customer := true,
     p_event_type := 'catalog.order.ready_for_shipment',
-    p_title := 'On the way',
-    p_body := format('Order %s is ready for shipment.', v_order.order_no)
+    p_title := format('%s is packing', v_order.order_no),
+    p_body := 'We will mark it on the way when it ships.'
   );
 
   return public.get_shop_order_for_staff(v_order.tenant_id, p_order_id);
@@ -8920,8 +8921,8 @@ begin
     p_notify_staff := false,
     p_notify_customer := true,
     p_event_type := 'catalog.order.delivered',
-    p_title := 'Delivered',
-    p_body := format('Order %s has been delivered.', v_order.order_no)
+    p_title := format('Order %s delivered', v_order.order_no),
+    p_body := 'Open the order for details.'
   );
 
   return public.get_shop_order_for_staff(v_order.tenant_id, p_order_id);
@@ -9144,8 +9145,8 @@ begin
       p_notify_staff := true,
       p_notify_customer := false,
       p_event_type := 'catalog.order.created',
-      p_title := format('New catalog order %s', v_order_no),
-      p_body := format('%s line(s) placed', v_item_count)
+      p_title := format('New order %s', v_order_no),
+      p_body := format('%s items to price', v_item_count)
     );
   end if;
 
