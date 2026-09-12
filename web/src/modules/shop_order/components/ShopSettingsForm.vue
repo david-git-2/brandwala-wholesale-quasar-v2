@@ -1,5 +1,12 @@
 <template>
-  <div>
+  <div ref="formRootRef" @focusout="onFormFocusOut">
+    <div
+      v-if="saveStatus"
+      class="text-caption text-grey-7 q-mb-sm text-right"
+      data-test="shop-setup-save-status"
+    >
+      {{ saveStatus }}
+    </div>
     <q-card flat bordered class="q-mb-md">
       <q-card-section>
         <div class="text-subtitle2 text-weight-medium">{{ $t('shop_admin.shop_details_section') }}</div>
@@ -144,6 +151,21 @@
             @focus="loadBrandsForVendor(vf.vendor_code)"
           />
         </div>
+
+        <q-input
+          v-model.number="form.min_available_units"
+          type="number"
+          min="0"
+          step="1"
+          outlined
+          dense
+          class="q-mt-md"
+          :label="$t('shop_admin.min_available_units')"
+          :hint="$t('shop_admin.min_available_units_hint')"
+          :error="!!errors.min_available_units"
+          :error-message="errors.min_available_units"
+          data-test="shop-min-available-units"
+        />
       </q-card-section>
     </q-card>
 
@@ -369,9 +391,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, onUnmounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { showErrorNotification } from 'src/utils/appFeedback';
+import { useSaveShopMutation } from '../composables/useShopMutations';
 import type { Shop, ShopOrderMode, ShopType, UpdateShopPayload } from 'src/modules/shop_order/types';
 import {
   derivedShopIsNegotiable,
@@ -407,6 +431,7 @@ type ShopForm = {
   deduct_print_from_margin: boolean;
   deduct_packing_from_margin: boolean;
   vendor_filters?: Array<{ vendor_code: string; brands: string[] }> | null;
+  min_available_units: number;
 };
 
 const props = defineProps<{
@@ -429,6 +454,7 @@ const errors = reactive<{
   buy_currency_id?: string;
   sell_currency_id?: string;
   markup_percentage?: string;
+  min_available_units?: string;
 }>({});
 
 function shopToForm(shop: Shop): ShopForm {
@@ -457,20 +483,107 @@ function shopToForm(shop: Shop): ShopForm {
     deduct_print_from_margin: shop.deduct_print_from_margin || false,
     deduct_packing_from_margin: shop.deduct_packing_from_margin || false,
     vendor_filters: cloneVendorFilters(shop),
+    min_available_units: shop.min_available_units ?? 0,
   };
 }
 
 const form = reactive<ShopForm>(shopToForm(props.shop));
+const formRootRef = ref<HTMLElement | null>(null);
+const { mutate: saveShopMutation, isPending: isSaving } = useSaveShopMutation();
+const saveStatus = ref('');
+const lastSavedPayloadKey = ref('');
+let skipAutoSave = true;
+let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+let savedStatusTimer: ReturnType<typeof setTimeout> | undefined;
+
+function payloadKey(payload: UpdateShopPayload): string {
+  return JSON.stringify(payload);
+}
+
+function syncSavedSnapshot(): void {
+  const payload = buildPayload();
+  if (payload) {
+    lastSavedPayloadKey.value = payloadKey(payload);
+  }
+}
+
+function setSaveStatus(message: string): void {
+  saveStatus.value = message;
+  if (savedStatusTimer) clearTimeout(savedStatusTimer);
+  if (message) {
+    savedStatusTimer = setTimeout(() => {
+      saveStatus.value = '';
+    }, 2000);
+  }
+}
+
+function saveIfChanged(): void {
+  if (skipAutoSave || isSaving.value) return;
+
+  const payload = buildPayload();
+  if (!payload) return;
+
+  const key = payloadKey(payload);
+  if (key === lastSavedPayloadKey.value) return;
+
+  saveStatus.value = t('shop_admin.shop_setup_saving');
+  saveShopMutation(payload, {
+    onSuccess: () => {
+      lastSavedPayloadKey.value = key;
+      setSaveStatus(t('shop_admin.shop_setup_autosaved'));
+    },
+    onError: (err: Error) => {
+      saveStatus.value = '';
+      showErrorNotification(err.message || t('shop_admin.shop_setup_save_failed'));
+    },
+  });
+}
+
+function scheduleAutoSave(): void {
+  if (skipAutoSave) return;
+  if (debounceTimer) clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => saveIfChanged(), 600);
+}
+
+function onFormFocusOut(event: FocusEvent): void {
+  const root = formRootRef.value;
+  const next = event.relatedTarget as Node | null;
+  if (root && next && root.contains(next)) return;
+  saveIfChanged();
+}
 
 watch(
   () => props.shop,
   (shop) => {
+    skipAutoSave = true;
     Object.assign(form, shopToForm(shop));
     form.vendor_filters?.forEach((vf) => {
       void loadBrandsForVendor(vf.vendor_code);
     });
+    syncSavedSnapshot();
+    queueMicrotask(() => {
+      skipAutoSave = false;
+    });
   },
 );
+
+watch(
+  form,
+  () => {
+    scheduleAutoSave();
+  },
+  { deep: true },
+);
+
+onUnmounted(() => {
+  if (debounceTimer) clearTimeout(debounceTimer);
+  if (savedStatusTimer) clearTimeout(savedStatusTimer);
+});
+
+queueMicrotask(() => {
+  syncSavedSnapshot();
+  skipAutoSave = false;
+});
 
 function cloneVendorFilters(shop: Shop): Array<{ vendor_code: string; brands: string[] }> {
   if (shop.vendor_filters && shop.vendor_filters.length > 0) {
@@ -705,6 +818,16 @@ function validate(): boolean {
     errors.markup_percentage = t('shop_admin.markup_non_negative');
     ok = false;
   }
+  if (
+    form.shop_type === 'vendor_catalog' &&
+    (form.min_available_units === null ||
+      form.min_available_units === undefined ||
+      form.min_available_units < 0 ||
+      !Number.isInteger(form.min_available_units))
+  ) {
+    errors.min_available_units = t('shop_admin.min_available_units_non_negative');
+    ok = false;
+  }
   return ok;
 }
 
@@ -740,6 +863,8 @@ function buildPayload(): UpdateShopPayload | null {
     vendor_code:
       form.shop_type === 'vendor_catalog' ? form.vendor_code.trim() || null : null,
     vendor_filters: form.shop_type === 'vendor_catalog' ? (form.vendor_filters ?? null) : null,
+    min_available_units:
+      form.shop_type === 'vendor_catalog' ? Number(form.min_available_units ?? 0) : 0,
   };
 }
 

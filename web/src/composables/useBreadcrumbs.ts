@@ -47,7 +47,7 @@ const ENTITY_MAP: Record<string, { label: string; singular: string; defaultSubPa
   'stock-locations': { label: 'Stock Locations', singular: 'Stock Location' },
   'cargo-companies': { label: 'Cargo Companies', singular: 'Cargo Company' },
   'shipment-progress': { label: 'Shipment Progress', singular: 'Shipment Progress' },
-  shops: { label: 'Shops', singular: 'Shop', skipIdCrumb: true },
+  shops: { label: 'Shops', singular: 'Shop', skipIdCrumb: true, defaultSubPath: 'list' },
   shipping: { label: 'Shipping', singular: 'Shipping' },
   orders: { label: 'Orders', singular: 'Order' },
   'dropship-orders': { label: 'Dropship Orders', singular: 'Dropship Order' },
@@ -82,6 +82,7 @@ const ACTION_MAP: Record<string, string> = {
   preview: 'Preview',
   details: 'Details',
   reports: 'Reports',
+  list: 'List',
 };
 
 export function useBreadcrumbs() {
@@ -165,6 +166,8 @@ export function useBreadcrumbs() {
     let accumulatedPath = isDomainGroup ? `${prefix}/${firstSeg}` : prefix;
     let lastEntitySingular = 'Item';
     let skipIdCrumb = false;
+    let shopsListPath: string | null = null;
+    let pendingListCrumb = false;
 
     for (let i = 0; i < remainingSegments.length; i++) {
       const seg = remainingSegments[i] || '';
@@ -176,6 +179,7 @@ export function useBreadcrumbs() {
 
       if (isIdParam) {
         if (skipIdCrumb) {
+          pendingListCrumb = shopsListPath !== null;
           continue;
         }
 
@@ -193,13 +197,30 @@ export function useBreadcrumbs() {
         const entity = ENTITY_MAP[seg]!;
         lastEntitySingular = entity.singular;
         skipIdCrumb = Boolean(entity.skipIdCrumb);
+        shopsListPath = seg === 'shops' ? `${accumulatedPath}/list` : null;
+
+        let entityTo: string | undefined;
+        if (isLeaf) {
+          entityTo = undefined;
+        } else if (entity.defaultSubPath) {
+          entityTo = `${accumulatedPath}/${entity.defaultSubPath}`;
+        } else {
+          entityTo = accumulatedPath;
+        }
 
         items.push({
           label: entity.label,
-          to: isLeaf ? undefined : accumulatedPath,
+          to: entityTo,
         });
       } else if (ACTION_MAP[seg]) {
-        // Action / Subpage segment (e.g. 'rates-invoices', 'items', 'settings')
+        if (pendingListCrumb && shopsListPath) {
+          items.push({
+            label: ACTION_MAP.list!,
+            to: shopsListPath,
+          });
+          pendingListCrumb = false;
+        }
+
         items.push({
           label: ACTION_MAP[seg]!,
           to: isLeaf ? undefined : accumulatedPath,

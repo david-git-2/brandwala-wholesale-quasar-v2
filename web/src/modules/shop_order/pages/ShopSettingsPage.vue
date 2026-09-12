@@ -40,21 +40,15 @@
               data-test="shop-catalog-url-copy"
               @click="copyShopUrl"
             />
-            <q-btn
-              v-if="activeTab === 'setup'"
-              color="primary"
-              unelevated
-              dense
-              no-caps
-              style="border-radius: 8px"
-              :label="$t('shop_admin.save')"
-              :loading="isSaving"
-              @click="onSave"
-            />
           </div>
         </div>
 
-        <q-tab-panels v-model="activeTab" animated class="bg-transparent">
+        <q-tab-panels
+          v-model="activeTab"
+          animated
+          class="bg-transparent shop-settings-panels"
+          :class="{ 'shop-settings-panels--fit-content': activeTab === 'storefront' }"
+        >
           <q-tab-panel name="setup" class="q-pa-none q-pt-md">
             <DropshipShopReadinessCard
               v-if="shop.shop_type === 'dropship'"
@@ -62,7 +56,7 @@
               :shop-id="shop.id"
               :tenant-slug="tenantSlug"
             />
-            <ShopSettingsForm ref="formRef" :shop="shop" />
+            <ShopSettingsForm :shop="shop" />
 
             <q-card flat class="shop-danger-zone q-mt-md">
               <q-card-section>
@@ -120,7 +114,20 @@
             <ShopAccessMatrixPage v-if="activeTab === 'access'" embedded :shop="shop" />
           </q-tab-panel>
 
-          <q-tab-panel v-if="showStorefrontTab" name="storefront" class="q-pa-none q-pt-md">
+          <q-tab-panel
+            v-if="showStorefrontTab"
+            name="storefront"
+            class="q-pa-none q-pt-md shop-storefront-panel"
+          >
+            <ShopCatalogStorefrontPage
+              v-if="shop.shop_type === 'vendor_catalog'"
+              embedded
+              :shop="shop"
+              :tenant-id="tenantId"
+              :active="activeTab === 'storefront'"
+            />
+
+            <template v-else>
             <section class="row items-center q-col-gutter-sm no-wrap">
               <div class="col min-width-0">
                 <q-input
@@ -215,6 +222,7 @@
                 </div>
               </template>
             </q-infinite-scroll>
+            </template>
           </q-tab-panel>
 
           <q-tab-panel v-if="showStockTab" name="stock" class="q-pa-none q-pt-md">
@@ -227,28 +235,30 @@
           </q-tab-panel>
         </q-tab-panels>
 
-        <ShopStorefrontAddProductDrawer
-          v-model="storefrontAddProductDrawerOpen"
-          :shop-id="shopId"
-          :tenant-id="tenantId"
-          :shop-type="shop?.shop_type"
-          :sell-currency-id="shop?.sell_currency_id ?? null"
-          :markup-percentage="shop?.markup_percentage ?? null"
-          :listed-grade-keys="storefrontListedGradeKeys"
-          :listed-product-ids="storefrontListedProductIds"
-          @saved="onStorefrontListingAdded"
-        />
-        <ShopStorefrontCalculateSellPriceDrawer
-          v-model="calculateSellPriceDrawerOpen"
-          :shop-id="shopId"
-          :tenant-id="tenantId"
-          :listing-id="calculateSellPriceListingId"
-          :product-group="calculateSellPriceProductGroup"
-          :sell-currency-id="shop?.sell_currency_id ?? null"
-          :shop-type="shop.shop_type"
-          @saved="onStorefrontPricingSaved"
-          @grade-setup="onStorefrontListingAdded"
-        />
+        <template v-if="shop.shop_type !== 'vendor_catalog'">
+          <ShopStorefrontAddProductDrawer
+            v-model="storefrontAddProductDrawerOpen"
+            :shop-id="shopId"
+            :tenant-id="tenantId"
+            :shop-type="shop?.shop_type"
+            :sell-currency-id="shop?.sell_currency_id ?? null"
+            :markup-percentage="shop?.markup_percentage ?? null"
+            :listed-grade-keys="storefrontListedGradeKeys"
+            :listed-product-ids="storefrontListedProductIds"
+            @saved="onStorefrontListingAdded"
+          />
+          <ShopStorefrontCalculateSellPriceDrawer
+            v-model="calculateSellPriceDrawerOpen"
+            :shop-id="shopId"
+            :tenant-id="tenantId"
+            :listing-id="calculateSellPriceListingId"
+            :product-group="calculateSellPriceProductGroup"
+            :sell-currency-id="shop?.sell_currency_id ?? null"
+            :shop-type="shop.shop_type"
+            @saved="onStorefrontPricingSaved"
+            @grade-setup="onStorefrontListingAdded"
+          />
+        </template>
       </template>
     </section>
   </q-page>
@@ -269,7 +279,7 @@ import StorefrontProductGroupCard from 'src/modules/shop_order/components/Storef
 import ShopStorefrontAddProductDrawer from 'src/modules/shop_order/components/ShopStorefrontAddProductDrawer.vue';
 import ShopStorefrontCalculateSellPriceDrawer from 'src/modules/shop_order/components/ShopStorefrontCalculateSellPriceDrawer.vue';
 import { useShopDetailQuery } from '../composables/useShopQuery';
-import { useSaveShopMutation, useDeleteShopMutation } from '../composables/useShopMutations';
+import { useDeleteShopMutation } from '../composables/useShopMutations';
 import { useShopStorefrontAdminListingsInfiniteQuery } from '../composables/useShopStorefrontAdminQuery';
 import {
   patchStorefrontListingActive,
@@ -283,7 +293,6 @@ import { showSuccessNotification, showErrorNotification, requestConfirmation } f
 import type { CustomerShopPermissions } from '../composables/useCustomerShopPermissionsQuery';
 import type {
   ShopStorefrontAdminListing,
-  UpdateShopPayload,
 } from 'src/modules/shop_order/types';
 import {
   findSiblingListingForPricing,
@@ -296,6 +305,9 @@ const ShopAccessMatrixPage = defineAsyncComponent(
 );
 const ShopWarehouseStockPage = defineAsyncComponent(
   () => import('src/modules/shop_order/pages/ShopWarehouseStockPage.vue'),
+);
+const ShopCatalogStorefrontPage = defineAsyncComponent(
+  () => import('src/modules/shop_order/pages/ShopCatalogStorefrontPage.vue'),
 );
 
 type ShopDetailTab = 'setup' | 'access' | 'storefront' | 'stock';
@@ -312,10 +324,7 @@ const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '');
 const shopId = computed(() => Number(route.params.shopId));
 
 const { data: shop, isLoading, isError, error } = useShopDetailQuery(tenantId, shopId);
-const { mutate: saveShopMutation, isPending: isSaving } = useSaveShopMutation();
 const { mutate: deleteShopMutation, isPending: isDeleting } = useDeleteShopMutation();
-
-const formRef = ref<{ buildPayload: () => UpdateShopPayload | null } | null>(null);
 const deleteKeyword = ref('');
 const deleteShopName = ref('');
 const storefrontSearch = ref('');
@@ -327,7 +336,11 @@ const isEnsuringGradeForProductId = ref<number | null>(null);
 
 const isStorefrontTabActive = computed(() => {
   const tab = typeof route.query.tab === 'string' ? route.query.tab : 'setup';
-  return tab === 'storefront';
+  const shopType = shop.value?.shop_type;
+  return (
+    tab === 'storefront' &&
+    (shopType === 'fixed_price' || shopType === 'dropship')
+  );
 });
 const {
   data: storefrontListingsData,
@@ -535,7 +548,10 @@ const canDeleteShop = computed(() => {
 
 const showAccessTab = computed(() => hasModuleAccess('shop_permissions'));
 const showStorefrontTab = computed(
-  () => shop.value?.shop_type === 'fixed_price' || shop.value?.shop_type === 'dropship',
+  () =>
+    shop.value?.shop_type === 'fixed_price' ||
+    shop.value?.shop_type === 'dropship' ||
+    shop.value?.shop_type === 'vendor_catalog',
 );
 const showStockTab = computed(
   () => shop.value?.shop_type === 'fixed_price' || shop.value?.shop_type === 'dropship',
@@ -596,19 +612,6 @@ watch(
   { immediate: true },
 );
 
-const onSave = () => {
-  const payload = formRef.value?.buildPayload();
-  if (!payload) return;
-  saveShopMutation(payload, {
-    onSuccess: () => {
-      showSuccessNotification(t('shop_admin.shop_setup_saved'));
-    },
-    onError: (err: Error) => {
-      showErrorNotification(err.message || t('shop_admin.shop_setup_save_failed'));
-    },
-  });
-};
-
 const copyShopUrl = async () => {
   if (!shop.value?.slug) return;
   const origin = typeof window === 'undefined' ? '' : window.location.origin;
@@ -643,6 +646,16 @@ const deleteShop = () => {
 </script>
 
 <style scoped>
+.shop-settings-panels--fit-content :deep(.q-panel-parent) {
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+.shop-storefront-panel {
+  height: auto !important;
+  min-height: 0 !important;
+}
+
 .shop-access-panel {
   height: calc(100vh - 220px);
   min-height: 400px;

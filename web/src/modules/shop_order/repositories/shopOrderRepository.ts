@@ -46,7 +46,7 @@ const listShops = async (
 };
 
 const SHOP_DETAIL_SELECT =
-  'id, tenant_id, name, slug, shop_type, vendor_code, order_mode, is_negotiable, show_stock_quantity, default_currency_id, global_stock_type_id, is_active, allow_delivery, buy_currency_id, sell_currency_id, pricing_method, markup_percentage, quantity_display_mode, default_print_charge_amount, default_packing_charge_amount, deduct_charges_from_margin, vendor_filters, deduct_print_from_margin, deduct_packing_from_margin, description, category_ids, created_at, updated_at';
+  'id, tenant_id, name, slug, shop_type, vendor_code, order_mode, is_negotiable, show_stock_quantity, default_currency_id, global_stock_type_id, is_active, allow_delivery, buy_currency_id, sell_currency_id, pricing_method, markup_percentage, quantity_display_mode, default_print_charge_amount, default_packing_charge_amount, deduct_charges_from_margin, vendor_filters, deduct_print_from_margin, deduct_packing_from_margin, description, category_ids, min_available_units, created_at, updated_at';
 
 const getShop = async (shopId: number, tenantId: number): Promise<Shop> => {
   const { data, error } = await supabase
@@ -93,6 +93,7 @@ const upsertShop = async (payload: CreateShopPayload | UpdateShopPayload): Promi
     p_deduct_packing_from_margin: (payload as any).deduct_packing_from_margin ?? false,
     p_description: payload.description?.trim() || null,
     p_category_ids: payload.category_ids ?? [],
+    p_min_available_units: payload.min_available_units ?? 0,
   });
 
   if (error) {
@@ -104,6 +105,41 @@ const upsertShop = async (payload: CreateShopPayload | UpdateShopPayload): Promi
   }
 
   return (Array.isArray(data) ? data[0] : data) as Shop;
+};
+
+const browseShopCatalogForAdmin = async (
+  tenantId: number,
+  shopId: number,
+  opts: {
+    search?: string | null;
+    limit?: number;
+    offset?: number;
+    includeBelowMinUnits?: boolean;
+  } = {},
+): Promise<ShopCatalogBrowseResult> => {
+  const { data, error } = await supabase.rpc('browse_shop_catalog_for_admin', {
+    p_tenant_id: tenantId,
+    p_shop_id: shopId,
+    p_search: opts.search ?? null,
+    p_limit: opts.limit ?? 24,
+    p_offset: opts.offset ?? 0,
+    p_include_below_min_units: opts.includeBelowMinUnits ?? false,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  const payload = (data ?? {}) as ShopCatalogBrowseResult;
+  return {
+    data: payload.data ?? [],
+    meta: payload.meta ?? {
+      total: 0,
+      page: 1,
+      page_size: opts.limit ?? 24,
+      total_pages: 1,
+    },
+  };
 };
 
 const browseShopCatalog = async (
@@ -1045,6 +1081,7 @@ export const shopOrderRepository = {
   deleteShop,
   updateShopExtraAttributes,
   browseShopCatalog,
+  browseShopCatalogForAdmin,
   searchShopCatalog,
   getShopCatalogProduct,
   listRelatedShopCatalogProducts,

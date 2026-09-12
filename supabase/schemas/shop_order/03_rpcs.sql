@@ -9383,7 +9383,7 @@ begin
 ALTER FUNCTION "public"."upsert_customer_group_shop_profile"("p_tenant_id" bigint, "p_customer_group_id" bigint, "p_is_active" boolean, "p_default_can_browse" boolean, "p_default_can_see_buy_price" boolean, "p_default_can_see_sell_price" boolean, "p_default_can_add_to_cart" boolean, "p_default_can_place_order" boolean, "p_default_can_negotiate" boolean, "p_default_can_view_quantity" boolean, "p_default_can_set_dropship_price" boolean) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."upsert_shop"("p_tenant_id" bigint, "p_name" "text", "p_slug" "text", "p_order_mode" "public"."shop_order_mode_enum", "p_is_negotiable" boolean, "p_show_stock_quantity" boolean, "p_is_active" boolean, "p_shop_type" "public"."shop_type_enum" DEFAULT NULL::"public"."shop_type_enum", "p_vendor_code" "text" DEFAULT NULL::"text", "p_id" bigint DEFAULT NULL::bigint, "p_default_currency_id" bigint DEFAULT NULL::bigint, "p_global_stock_type_id" bigint DEFAULT NULL::bigint, "p_allow_delivery" boolean DEFAULT false, "p_buy_currency_id" bigint DEFAULT NULL::bigint, "p_sell_currency_id" bigint DEFAULT NULL::bigint, "p_pricing_method" "text" DEFAULT NULL::"text", "p_markup_percentage" numeric DEFAULT 0, "p_quantity_display_mode" "text" DEFAULT NULL::"text", "p_default_print_charge_amount" numeric DEFAULT 0, "p_default_packing_charge_amount" numeric DEFAULT 0, "p_deduct_charges_from_margin" boolean DEFAULT false, "p_vendor_filters" "jsonb" DEFAULT NULL::"jsonb", "p_deduct_print_from_margin" boolean DEFAULT false, "p_deduct_packing_from_margin" boolean DEFAULT false, "p_description" "text" DEFAULT NULL::"text", "p_category_ids" bigint[] DEFAULT '{}'::bigint[]) RETURNS SETOF "public"."shops"
+CREATE OR REPLACE FUNCTION "public"."upsert_shop"("p_tenant_id" bigint, "p_name" "text", "p_slug" "text", "p_order_mode" "public"."shop_order_mode_enum", "p_is_negotiable" boolean, "p_show_stock_quantity" boolean, "p_is_active" boolean, "p_shop_type" "public"."shop_type_enum" DEFAULT NULL::"public"."shop_type_enum", "p_vendor_code" "text" DEFAULT NULL::"text", "p_id" bigint DEFAULT NULL::bigint, "p_default_currency_id" bigint DEFAULT NULL::bigint, "p_global_stock_type_id" bigint DEFAULT NULL::bigint, "p_allow_delivery" boolean DEFAULT false, "p_buy_currency_id" bigint DEFAULT NULL::bigint, "p_sell_currency_id" bigint DEFAULT NULL::bigint, "p_pricing_method" "text" DEFAULT NULL::"text", "p_markup_percentage" numeric DEFAULT 0, "p_quantity_display_mode" "text" DEFAULT NULL::"text", "p_default_print_charge_amount" numeric DEFAULT 0, "p_default_packing_charge_amount" numeric DEFAULT 0, "p_deduct_charges_from_margin" boolean DEFAULT false, "p_vendor_filters" "jsonb" DEFAULT NULL::"jsonb", "p_deduct_print_from_margin" boolean DEFAULT false, "p_deduct_packing_from_margin" boolean DEFAULT false, "p_description" "text" DEFAULT NULL::"text", "p_category_ids" bigint[] DEFAULT '{}'::bigint[], "p_min_available_units" integer DEFAULT 0) RETURNS SETOF "public"."shops"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -9400,6 +9400,8 @@ begin
     raise exception 'invalid quantity display mode';
   if p_markup_percentage < 0 then
     raise exception 'markup percentage must be non-negative';
+  if coalesce(p_min_available_units, 0) < 0 then
+    raise exception 'min_available_units must be non-negative';
   v_vendor_code := nullif(trim(coalesce(p_vendor_code, '')), '');
   if v_vendor_code is null
      and p_vendor_filters is not null
@@ -9436,7 +9438,8 @@ begin
       deduct_print_from_margin,
       deduct_packing_from_margin,
       description,
-      category_ids
+      category_ids,
+      min_available_units
     )
     values (
       p_tenant_id,
@@ -9463,7 +9466,8 @@ begin
       coalesce(p_deduct_print_from_margin, false),
       coalesce(p_deduct_packing_from_margin, false),
       trim(p_description),
-      coalesce(p_category_ids, '{}')
+      coalesce(p_category_ids, '{}'),
+      coalesce(p_min_available_units, 0)
     )
     returning * into v_result;
 
@@ -9506,6 +9510,7 @@ begin
       deduct_packing_from_margin      = coalesce(p_deduct_packing_from_margin, deduct_packing_from_margin),
       description                     = trim(p_description),
       category_ids                    = coalesce(p_category_ids, '{}'),
+      min_available_units             = coalesce(p_min_available_units, min_available_units),
       updated_at                      = now()
     where id = p_id
       and tenant_id = p_tenant_id
@@ -9515,7 +9520,7 @@ begin
     if v_result is null then
       raise exception 'shop not found or update failed';
     return next v_result;
-ALTER FUNCTION "public"."upsert_shop"("p_tenant_id" bigint, "p_name" "text", "p_slug" "text", "p_order_mode" "public"."shop_order_mode_enum", "p_is_negotiable" boolean, "p_show_stock_quantity" boolean, "p_is_active" boolean, "p_shop_type" "public"."shop_type_enum", "p_vendor_code" "text", "p_id" bigint, "p_default_currency_id" bigint, "p_global_stock_type_id" bigint, "p_allow_delivery" boolean, "p_buy_currency_id" bigint, "p_sell_currency_id" bigint, "p_pricing_method" "text", "p_markup_percentage" numeric, "p_quantity_display_mode" "text", "p_default_print_charge_amount" numeric, "p_default_packing_charge_amount" numeric, "p_deduct_charges_from_margin" boolean, "p_vendor_filters" "jsonb", "p_deduct_print_from_margin" boolean, "p_deduct_packing_from_margin" boolean, "p_description" "text", "p_category_ids" bigint[]) OWNER TO "postgres";
+ALTER FUNCTION "public"."upsert_shop"("p_tenant_id" bigint, "p_name" "text", "p_slug" "text", "p_order_mode" "public"."shop_order_mode_enum", "p_is_negotiable" boolean, "p_show_stock_quantity" boolean, "p_is_active" boolean, "p_shop_type" "public"."shop_type_enum", "p_vendor_code" "text", "p_id" bigint, "p_default_currency_id" bigint, "p_global_stock_type_id" bigint, "p_allow_delivery" boolean, "p_buy_currency_id" bigint, "p_sell_currency_id" bigint, "p_pricing_method" "text", "p_markup_percentage" numeric, "p_quantity_display_mode" "text", "p_default_print_charge_amount" numeric, "p_default_packing_charge_amount" numeric, "p_deduct_charges_from_margin" boolean, "p_vendor_filters" "jsonb", "p_deduct_print_from_margin" boolean, "p_deduct_packing_from_margin" boolean, "p_description" "text", "p_category_ids" bigint[], "p_min_available_units" integer) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."upsert_shop_customer_group_access"("p_shop_id" bigint, "p_customer_group_id" bigint, "p_status" boolean, "p_can_browse" boolean DEFAULT NULL::boolean, "p_can_see_buy_price" boolean DEFAULT NULL::boolean, "p_can_see_sell_price" boolean DEFAULT NULL::boolean, "p_can_add_to_cart" boolean DEFAULT NULL::boolean, "p_can_place_order" boolean DEFAULT NULL::boolean, "p_can_negotiate" boolean DEFAULT NULL::boolean, "p_can_view_quantity" boolean DEFAULT NULL::boolean, "p_can_set_dropship_price" boolean DEFAULT NULL::boolean, "p_price_tier_code" "text" DEFAULT NULL::"text", "p_credit_limit_amount" numeric DEFAULT NULL::numeric, "p_credit_limit_currency_id" bigint DEFAULT NULL::bigint) RETURNS SETOF "public"."shop_customer_group_access"

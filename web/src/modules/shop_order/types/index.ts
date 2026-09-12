@@ -58,6 +58,25 @@ export interface ShopCatalogItem {
   minimum_order_quantity: number | null;
 }
 
+/** Admin catalog storefront preview card (vendor_catalog shop settings tab). */
+export interface ShopCatalogStorefrontProduct {
+  product_id: number;
+  product_name: string;
+  product_image_url: string | null;
+  product_brand: string | null;
+  product_barcode: string | null;
+  vendor_code: string | null;
+  country_of_origin: string | null;
+  batch_code_manufacture_date: string | null;
+  expire_date: string | null;
+  available_units: number | null;
+  languages: string | null;
+  unit_price_amount: number | string | null;
+  unit_price_currency_id: number | null;
+  unit_price_currency_code?: string | null;
+  unit_price_currency_symbol?: string | null;
+}
+
 /** Row from `list_shop_storefront_listings_for_admin` RPC (admin Storefront tab). */
 export interface ShopStorefrontAdminListing extends ShopCatalogItem {
   listing_id: number;
@@ -253,6 +272,7 @@ export interface Shop {
   vendor_filters?: Array<{ vendor_code: string; brands: string[] }> | null;
   description?: string | null;
   category_ids?: number[];
+  min_available_units?: number;
   created_at: string;
   updated_at: string;
 }
@@ -316,6 +336,7 @@ export interface CreateShopPayload {
   vendor_filters?: Array<{ vendor_code: string; brands: string[] }> | null;
   description?: string | null;
   category_ids?: number[];
+  min_available_units?: number;
 }
 
 export interface UpdateShopPayload {
@@ -344,6 +365,7 @@ export interface UpdateShopPayload {
   vendor_filters?: Array<{ vendor_code: string; brands: string[] }> | null;
   description?: string | null;
   category_ids?: number[];
+  min_available_units?: number;
 }
 
 // ---- Service result wrapper -----------------------------------------
