@@ -122,6 +122,17 @@
             </q-item-section>
           </q-item>
 
+          <!-- Notifications (app scope) -->
+          <template v-if="authStore.scope === 'app'">
+            <q-separator class="q-my-xs" />
+            <q-item clickable v-close-popup data-test="profile-notifications-settings" @click="goNotificationPreferences">
+              <q-item-section avatar class="q-pr-none" style="min-width: 28px">
+                <q-icon name="ph ph-bell" size="xs" color="grey-6" />
+              </q-item-section>
+              <q-item-section>Notifications</q-item-section>
+            </q-item>
+          </template>
+
           <!-- About System -->
           <template v-if="!isShopScope">
             <q-separator class="q-my-xs" />
@@ -158,7 +169,7 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useAppearance } from 'src/composables/useAppearance';
 import AboutSystemDialog from 'src/components/navigation/AboutSystemDialog.vue';
 import { listShopLoginGroups } from 'src/modules/auth/utils/shopCustomerGroupSession';
-import { getShopSelectCompanyRouteLocation } from 'src/modules/tenant/utils/tenantRouteContext';
+import { getShopSelectCompanyRouteLocation, getAppRouteLocation } from 'src/modules/tenant/utils/tenantRouteContext';
 
 const showAboutDialog = ref(false);
 const companyCount = ref(0);
@@ -229,6 +240,15 @@ const onSignOut = () => {
 
 const goSwitchCompany = () => {
   void router.push(getShopSelectCompanyRouteLocation(router.currentRoute.value));
+};
+
+const goNotificationPreferences = () => {
+  void router.push(
+    getAppRouteLocation(
+      { name: 'notifications-preferences', params: {}, query: {} },
+      authStore.tenantSlug,
+    ),
+  );
 };
 
 onMounted(async () => {

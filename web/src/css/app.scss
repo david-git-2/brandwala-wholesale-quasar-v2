@@ -503,6 +503,10 @@ body {
   font-weight: 600;
 }
 
+.q-btn.shop-ds-cta {
+  border-radius: var(--bw-radius-pill) !important;
+}
+
 /* 6. Chips & Badges */
 .q-chip,
 .soft-chip,
@@ -682,7 +686,7 @@ body.theme-shop {
   }
 
   .q-btn[color='primary'].unelevated {
-    border-radius: var(--bw-shop-radius-pill);
+    border-radius: var(--bw-shop-radius-pill) !important;
   }
 
   .shop-ds-title {
@@ -721,8 +725,7 @@ body.theme-shop {
     text-align: center;
   }
 
-  .shop-ds-cta {
-    border-radius: var(--bw-shop-radius-pill) !important;
+  .q-btn.shop-ds-cta {
     background: var(--bw-shop-blue) !important;
     color: var(--bw-shop-paper) !important;
     font-weight: 600;

@@ -188,6 +188,83 @@ cmd_migrate() {
   require_local_running
   echo "Applying pending migrations to local DB (include-all for out-of-order files)…"
   supabase_cli migration up --local --include-all
+  cmd_configure_notification_dispatch
+}
+
+cmd_configure_notification_dispatch() {
+  require_local_running
+  load_root_env
+
+  # shellcheck disable=SC1090
+  eval "$(supabase_cli status -o env)"
+  local db_url="${DB_URL:-}"
+  if [[ -z "$db_url" ]]; then
+    echo "Warning: could not read DB_URL — skip notification dispatch configure." >&2
+    return 0
+  fi
+
+  local service_key=""
+  service_key="$(dotenv_get "${ROOT_DIR}/web/.env" SUPABASE_SECRET_KEY 2>/dev/null || true)"
+  if [[ -z "$service_key" ]]; then
+    service_key="${SERVICE_ROLE_KEY:-${SUPABASE_SERVICE_ROLE_KEY:-${SECRET_KEY:-}}}"
+  fi
+
+  if [[ -z "$service_key" ]]; then
+    echo "Warning: SUPABASE_SECRET_KEY not found — cannot configure notification dispatch." >&2
+    return 0
+  fi
+
+  local functions_url="${NOTIFICATION_DISPATCH_FUNCTIONS_URL:-http://kong:8000}"
+
+  run_local_psql "$db_url" --command "SELECT public.set_notification_dispatch_settings('${functions_url}', '${service_key}');"
+
+  echo "Configured Postgres notification dispatch (functions_url=${functions_url})."
+  local sa_path=""
+  local file
+  for file in "${ROOT_DIR}/web/.env" "${ROOT_DIR}/.env"; do
+    if sa_path="$(dotenv_get "$file" FIREBASE_SERVICE_ACCOUNT_PATH 2>/dev/null)"; then
+      break
+    fi
+  done
+
+  if [[ -n "$sa_path" && "$sa_path" != /* ]]; then
+    sa_path="${ROOT_DIR}/${sa_path}"
+  fi
+
+  if [[ -z "$sa_path" || ! -f "$sa_path" ]]; then
+    echo "Warning: FIREBASE_SERVICE_ACCOUNT_PATH not set or file missing."
+    echo "         Push dispatch returns 503 until Firebase service account JSON is configured."
+    echo "         Add to web/.env: FIREBASE_SERVICE_ACCOUNT_PATH=credentials/your-firebase-adminsdk.json"
+    return 0
+  fi
+
+  local env_file="${ROOT_DIR}/supabase/.env"
+  SA_PATH="$sa_path" ENV_FILE="$env_file" python3 <<'PY'
+import json
+import os
+import re
+from pathlib import Path
+
+sa_path = Path(os.environ["SA_PATH"])
+env_file = Path(os.environ["ENV_FILE"])
+line = "FIREBASE_SERVICE_ACCOUNT=" + json.dumps(json.loads(sa_path.read_text()))
+content = env_file.read_text() if env_file.exists() else ""
+
+if re.search(r"^FIREBASE_SERVICE_ACCOUNT=", content, re.M):
+    content = re.sub(r"^FIREBASE_SERVICE_ACCOUNT=.*$", line, content, flags=re.M)
+else:
+    if content and not content.endswith("\n"):
+        content += "\n"
+    content += line + "\n"
+
+env_file.write_text(content)
+PY
+
+  echo "Wrote FIREBASE_SERVICE_ACCOUNT to supabase/.env"
+  if supabase_cli secrets set --env-file "$env_file" >/dev/null 2>&1; then
+    echo "Synced Edge Function secrets via supabase secrets set."
+  fi
+  echo "Restart local Supabase if Edge Functions were already running: pnpm run backend:stop && pnpm run backend:start"
 }
 
 cmd_env_print() {
@@ -556,6 +633,8 @@ Commands:
   status           Show local status / URLs / keys
   reset            db reset — migrations only, empty business data
   migrate          Apply pending migrations to local (migration up --include-all)
+  configure-dispatch
+                   Set Postgres dispatch GUCs + sync FIREBASE_SERVICE_ACCOUNT from web/.env
   env:print        Print VITE_* / service key snippet for web/.env
   pull-prod-data [--force] [--reuse-dumps]
                    Dump linked prod → restore public+auth data into local.
@@ -576,6 +655,7 @@ main() {
     status) cmd_status "$@" ;;
     reset) cmd_reset "$@" ;;
     migrate|up) cmd_migrate "$@" ;;
+    configure-dispatch) cmd_configure_notification_dispatch "$@" ;;
     env:print) cmd_env_print "$@" ;;
     pull-prod-data) cmd_pull_prod_data "$@" ;;
     types:local) cmd_types_local "$@" ;;

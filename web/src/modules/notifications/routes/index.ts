@@ -24,6 +24,27 @@ const notificationRoutes: RouteRecordRaw[] = [
       },
     ],
   },
+  {
+    path: '/:tenantSlug?/app/settings/notifications',
+    component: () => import('layouts/AppLayout.vue'),
+    beforeEnter: createAccessGuard({
+      loginRoute: 'admin-login-page',
+      requiredScope: 'app',
+      allowedRoles: ['admin', 'staff', 'viewer'],
+      requireTenantContext: true,
+    }),
+    children: [
+      {
+        path: '',
+        name: 'notifications-preferences',
+        component: () => import('../pages/NotificationPreferencesPage.vue'),
+        meta: {
+          title: 'Notification settings',
+          headerTitle: 'Notification settings',
+        },
+      },
+    ],
+  },
 ];
 
 export default notificationRoutes;

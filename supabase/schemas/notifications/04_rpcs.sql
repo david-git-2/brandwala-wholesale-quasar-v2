@@ -574,3 +574,309 @@ CREATE TRIGGER trg_item_assignees_notify_assigned
   AFTER INSERT ON public.item_assignees
   FOR EACH ROW
   EXECUTE FUNCTION public.trg_item_assignees_notify_assigned();
+
+
+CREATE OR REPLACE FUNCTION public.get_my_notification_preferences()
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_user_id uuid := auth.uid();
+  v_row public.user_notification_preferences;
+BEGIN
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Authentication required';
+  END IF;
+
+  SELECT p.*
+  INTO v_row
+  FROM public.user_notification_preferences p
+  WHERE p.user_id = v_user_id;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object(
+      'user_id', v_user_id,
+      'channel_telegram', false,
+      'channel_push', false,
+      'channel_email', false,
+      'event_preferences', '{}'::jsonb,
+      'updated_at', NULL
+    );
+  END IF;
+
+  RETURN jsonb_build_object(
+    'user_id', v_row.user_id,
+    'channel_telegram', v_row.channel_telegram,
+    'channel_push', v_row.channel_push,
+    'channel_email', v_row.channel_email,
+    'event_preferences', v_row.event_preferences,
+    'updated_at', v_row.updated_at
+  );
+END;
+$$;
+
+ALTER FUNCTION public.get_my_notification_preferences() OWNER TO postgres;
+
+REVOKE ALL ON FUNCTION public.get_my_notification_preferences() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_my_notification_preferences() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_my_notification_preferences() TO service_role;
+
+
+CREATE OR REPLACE FUNCTION public.upsert_my_notification_preferences(
+  p_channel_push boolean
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_user_id uuid := auth.uid();
+  v_row public.user_notification_preferences;
+BEGIN
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Authentication required';
+  END IF;
+
+  INSERT INTO public.user_notification_preferences AS p (
+    user_id,
+    channel_push,
+    updated_at
+  )
+  VALUES (
+    v_user_id,
+    coalesce(p_channel_push, false),
+    now()
+  )
+  ON CONFLICT (user_id) DO UPDATE
+  SET
+    channel_push = EXCLUDED.channel_push,
+    updated_at = now()
+  RETURNING p.* INTO v_row;
+
+  RETURN jsonb_build_object(
+    'success', true,
+    'channel_push', v_row.channel_push,
+    'updated_at', v_row.updated_at
+  );
+END;
+$$;
+
+ALTER FUNCTION public.upsert_my_notification_preferences(boolean) OWNER TO postgres;
+
+REVOKE ALL ON FUNCTION public.upsert_my_notification_preferences(boolean) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.upsert_my_notification_preferences(boolean) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.upsert_my_notification_preferences(boolean) TO service_role;
+
+
+CREATE OR REPLACE FUNCTION public.save_my_push_subscription(
+  p_fcm_token text,
+  p_platform text DEFAULT 'web'
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_user_id uuid := auth.uid();
+  v_token text := nullif(trim(coalesce(p_fcm_token, '')), '');
+  v_platform text := coalesce(nullif(trim(coalesce(p_platform, '')), ''), 'web');
+  v_subscription_id uuid;
+BEGIN
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Authentication required';
+  END IF;
+
+  IF v_token IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'error', 'p_fcm_token is required');
+  END IF;
+
+  IF v_platform NOT IN ('web', 'android') THEN
+    RETURN jsonb_build_object('success', false, 'error', 'invalid platform');
+  END IF;
+
+  INSERT INTO public.user_push_subscriptions AS s (
+    user_id,
+    fcm_token,
+    platform,
+    last_used_at
+  )
+  VALUES (
+    v_user_id,
+    v_token,
+    v_platform,
+    now()
+  )
+  ON CONFLICT (user_id, fcm_token) DO UPDATE
+  SET
+    platform = EXCLUDED.platform,
+    last_used_at = now()
+  RETURNING s.id INTO v_subscription_id;
+
+  INSERT INTO public.user_notification_preferences AS p (
+    user_id,
+    channel_push,
+    updated_at
+  )
+  VALUES (
+    v_user_id,
+    true,
+    now()
+  )
+  ON CONFLICT (user_id) DO UPDATE
+  SET
+    channel_push = true,
+    updated_at = now();
+
+  RETURN jsonb_build_object(
+    'success', true,
+    'subscription_id', v_subscription_id,
+    'channel_push', true
+  );
+END;
+$$;
+
+ALTER FUNCTION public.save_my_push_subscription(text, text) OWNER TO postgres;
+
+REVOKE ALL ON FUNCTION public.save_my_push_subscription(text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.save_my_push_subscription(text, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.save_my_push_subscription(text, text) TO service_role;
+
+
+CREATE OR REPLACE FUNCTION public.delete_my_push_subscription(
+  p_fcm_token text
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_user_id uuid := auth.uid();
+  v_token text := nullif(trim(coalesce(p_fcm_token, '')), '');
+  v_remaining bigint;
+BEGIN
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Authentication required';
+  END IF;
+
+  IF v_token IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'error', 'p_fcm_token is required');
+  END IF;
+
+  DELETE FROM public.user_push_subscriptions s
+  WHERE s.user_id = v_user_id
+    AND s.fcm_token = v_token;
+
+  SELECT count(*)
+  INTO v_remaining
+  FROM public.user_push_subscriptions s
+  WHERE s.user_id = v_user_id;
+
+  IF v_remaining = 0 THEN
+    UPDATE public.user_notification_preferences p
+    SET channel_push = false, updated_at = now()
+    WHERE p.user_id = v_user_id;
+  END IF;
+
+  RETURN jsonb_build_object(
+    'success', true,
+    'remaining_subscriptions', coalesce(v_remaining, 0),
+    'channel_push', v_remaining > 0
+  );
+END;
+$$;
+
+ALTER FUNCTION public.delete_my_push_subscription(text) OWNER TO postgres;
+
+REVOKE ALL ON FUNCTION public.delete_my_push_subscription(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.delete_my_push_subscription(text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.delete_my_push_subscription(text) TO service_role;
+
+
+CREATE OR REPLACE FUNCTION public.set_notification_dispatch_settings(
+  p_functions_url text,
+  p_service_role_key text
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  INSERT INTO public.notification_dispatch_settings (id, functions_url, service_role_key)
+  VALUES (
+    1,
+    coalesce(nullif(trim(p_functions_url), ''), 'http://kong:8000'),
+    nullif(trim(p_service_role_key), '')
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    functions_url = EXCLUDED.functions_url,
+    service_role_key = EXCLUDED.service_role_key;
+END;
+$$;
+
+ALTER FUNCTION public.set_notification_dispatch_settings(text, text) OWNER TO postgres;
+
+REVOKE ALL ON FUNCTION public.set_notification_dispatch_settings(text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.set_notification_dispatch_settings(text, text) TO postgres;
+
+
+CREATE OR REPLACE FUNCTION public.trg_notification_recipients_dispatch()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, net
+AS $$
+DECLARE
+  v_functions_url text;
+  v_service_role_key text;
+  v_url text;
+BEGIN
+  SELECT s.functions_url, s.service_role_key
+  INTO v_functions_url, v_service_role_key
+  FROM public.notification_dispatch_settings s
+  WHERE s.id = 1;
+
+  v_functions_url := coalesce(nullif(trim(v_functions_url), ''), 'http://kong:8000');
+  v_service_role_key := nullif(trim(v_service_role_key), '');
+
+  IF v_service_role_key IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  v_url := rtrim(v_functions_url, '/') || '/functions/v1/dispatch-notification';
+
+  BEGIN
+    PERFORM net.http_post(
+      url := v_url,
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json',
+        'Authorization', 'Bearer ' || v_service_role_key
+      ),
+      body := jsonb_build_object(
+        'notification_id', NEW.notification_id,
+        'user_id', NEW.user_id
+      )
+    );
+  EXCEPTION
+    WHEN OTHERS THEN
+      RAISE LOG 'dispatch-notification enqueue failed: %', SQLERRM;
+  END;
+
+  RETURN NEW;
+END;
+$$;
+
+ALTER FUNCTION public.trg_notification_recipients_dispatch() OWNER TO postgres;
+
+DROP TRIGGER IF EXISTS trg_notification_recipients_dispatch ON public.notification_recipients;
+
+CREATE TRIGGER trg_notification_recipients_dispatch
+  AFTER INSERT ON public.notification_recipients
+  FOR EACH ROW
+  EXECUTE FUNCTION public.trg_notification_recipients_dispatch();

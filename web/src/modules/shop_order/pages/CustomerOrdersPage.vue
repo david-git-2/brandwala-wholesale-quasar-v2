@@ -32,23 +32,7 @@
         </div>
       </q-card>
 
-      <div v-if="isLoading">
-        <q-card flat bordered class="order-table-card">
-          <q-list separator>
-            <q-item v-for="n in 5" :key="n" class="q-py-md">
-              <q-item-section>
-                <div class="row items-center justify-between no-wrap q-col-gutter-sm">
-                  <div class="column">
-                    <q-skeleton type="text" width="110px" height="18px" class="q-mb-xs" />
-                    <q-skeleton type="text" width="80px" height="14px" />
-                  </div>
-                  <q-skeleton type="QBadge" width="90px" height="22px" />
-                </div>
-              </q-item-section>
-            </q-item>
-          </q-list>
-        </q-card>
-      </div>
+      <CustomerOrdersList v-if="isLoading" :orders="[]" loading />
 
       <div
         v-else-if="isError"
@@ -82,56 +66,11 @@
         />
       </div>
 
-      <div v-else class="column q-gutter-md">
-        <q-card flat bordered class="order-table-card">
-          <q-list separator>
-            <q-item
-              v-for="order in filteredOrders"
-              :key="order.id"
-              clickable
-              v-ripple
-              class="q-py-md order-item"
-              :class="{ 'order-waiting': isWaitingStatus(order.status) }"
-              @click="goToOrderDetails(order)"
-            >
-              <q-item-section>
-                <div class="row items-center justify-between no-wrap q-col-gutter-sm">
-                  <div class="column overflow-hidden">
-                    <div class="row items-center no-wrap q-gutter-x-xs">
-                      <span class="text-weight-bold ellipsis">{{ order.order_no }}</span>
-                      <OrderPricingModeBadge
-                        :is-negotiable="!!order.is_negotiable_snapshot"
-                        :shop-type="order.shop_type_snapshot"
-                      />
-                      <q-btn
-                        flat
-                        dense
-                        round
-                        size="sm"
-                        icon="ph ph-copy"
-                        color="grey-6"
-                        :aria-label="$t('shop_admin.copy_order_no')"
-                        @click.stop="copyOrderNo(order.order_no)"
-                      />
-                    </div>
-                    <span class="text-caption text-grey-6 ellipsis">{{ order.shop_name }}</span>
-                  </div>
-                  <div class="column text-right">
-                    <span class="text-caption text-grey-6">{{ formatDate(order.created_at) }}</span>
-                  </div>
-                  <q-badge
-                    :color="getStatusColor(order.status)"
-                    :outline="!isWaitingStatus(order.status)"
-                    class="status-badge text-weight-medium q-py-xs q-px-sm"
-                  >
-                    {{ statusLabel(order.status) }}
-                  </q-badge>
-                </div>
-              </q-item-section>
-            </q-item>
-          </q-list>
-        </q-card>
-      </div>
+      <CustomerOrdersList
+        v-else
+        :orders="filteredOrders"
+        @select="goToOrderDetails"
+      />
     </div>
   </q-page>
 </template>
@@ -140,22 +79,18 @@
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
-import { copyToClipboard, date } from 'quasar';
-import { showSuccessNotification } from 'src/utils/appFeedback';
 import { useCustomerOrdersQuery } from '../composables/useCustomerOrdersQuery';
 import { shopCatalogEntryPath } from '../utils/catalogShop';
 import type { CustomerOrderListItem } from '../types';
-import OrderPricingModeBadge from '../components/OrderPricingModeBadge.vue';
+import CustomerOrdersList from '../components/CustomerOrdersList.vue';
 import {
-  isWaitingStatus,
   parseOrderGlanceBucket,
-  waitingActionI18nKey,
   type OrderGlanceBucket,
 } from 'src/modules/dashboard/utils/customerDashboardStatus';
 
 const route = useRoute();
 const router = useRouter();
-const { t, te } = useI18n();
+const { t } = useI18n();
 
 const statusBucket = computed(() => parseOrderGlanceBucket(route.query.bucket));
 const { data: rawOrders, isLoading, isError, error } = useCustomerOrdersQuery(statusBucket);
@@ -206,29 +141,6 @@ const goToOrderDetails = (order: CustomerOrderListItem) => {
   });
 };
 
-const formatDate = (dateStr: string) => date.formatDate(dateStr, 'D MMM YYYY');
-
-const copyOrderNo = (orderNo: string) => {
-  void copyToClipboard(orderNo).then(() => {
-    showSuccessNotification(t('shop_admin.order_no_copied'));
-  });
-};
-
-const statusLabel = (status: string) => {
-  const actionKey = waitingActionI18nKey(status);
-  if (actionKey) return t(actionKey);
-  const key = `shop_admin.status_${status}`;
-  return te(key) ? t(key) : status.replaceAll('_', ' ');
-};
-
-const getStatusColor = (status: string) => {
-  if (isWaitingStatus(status)) return 'amber-9';
-  if (status === 'cancelled' || status === 'returned') return 'negative';
-  if (status === 'confirmed' || status === 'delivered' || status === 'payment_received') {
-    return 'positive';
-  }
-  return 'primary';
-};
 </script>
 
 <script lang="ts">
@@ -238,30 +150,6 @@ export default {
 </script>
 
 <style scoped>
-.order-table-card {
-  border-radius: 12px;
-  background: var(--bw-theme-surface);
-  box-shadow: var(--bw-theme-shadow, 0 2px 8px rgba(0, 0, 0, 0.04));
-}
-
-.order-item {
-  transition: background-color 0.15s ease;
-}
-
-.order-item:hover {
-  background-color: var(--bw-theme-primary-soft);
-}
-
-.order-waiting {
-  box-shadow: inset 3px 0 0 var(--q-warning, #f2c037);
-}
-
-.status-badge {
-  border-radius: 6px;
-  letter-spacing: 0.3px;
-  font-size: 11px;
-}
-
 .empty-state {
   min-height: 400px;
 }

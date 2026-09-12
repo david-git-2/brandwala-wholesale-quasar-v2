@@ -2,12 +2,16 @@ packages:
   - 'web'
 
 onlyBuiltDependencies:
+  - '@firebase/util'
   - '@parcel/watcher'
   - esbuild
+  - protobufjs
 
 allowBuilds:
+  '@firebase/util': true
   '@parcel/watcher': true
   esbuild: true
+  protobufjs: true
   sharp: true
   vue-demi: true
   workerd: true

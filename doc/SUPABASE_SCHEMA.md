@@ -9,8 +9,8 @@ The declarative database schema is located in `supabase/schemas/`:
   * `procurement/`: `01_types.sql`, `02_tables.sql`, `03_rpcs.sql`, `04_rls.sql`
   * `shop_order/`: `01_types.sql`, `02_tables.sql`, `03_rpcs.sql`, `04_rls.sql`
   * `notifications/`: `01_types.sql`, `02_tables.sql`, `03_rls.sql`, `04_rpcs.sql` — in-app inbox (`notifications`, `notification_recipients`), `enqueue_notification` plugin RPC
-  * **Notifications RPCs**: `list_my_notifications_paginated`, `get_my_notification_unread_count`, `mark_notification_read`, `mark_all_my_notifications_read` (client); `enqueue_notification` (internal plugin)
-  * **Migration**: `supabase/migrations/20270910120000_notifications_core.sql`
+  * **Notifications RPCs**: `list_my_notifications_paginated`, `get_my_notification_unread_count`, `mark_notification_read`, `mark_all_my_notifications_read`, `get_my_notification_preferences`, `upsert_my_notification_preferences`, `save_my_push_subscription`, `delete_my_push_subscription` (client); `enqueue_notification` (internal plugin)
+  * **Migrations**: `20270910120000_notifications_core.sql`, `20270912180000_notifications_realtime_recipients.sql`, `20270912190000_notifications_firebase_push.sql`
 
 ## Reports & Treasury Schema References
 

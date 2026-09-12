@@ -3140,6 +3140,44 @@ export type Database = {
           },
         ]
       }
+      notification_delivery_log: {
+        Row: {
+          channel: string
+          created_at: string
+          error_message: string | null
+          id: string
+          notification_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          notification_id: string
+          status: string
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          notification_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_delivery_log_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_recipients: {
         Row: {
           created_at: string
@@ -8439,6 +8477,60 @@ export type Database = {
           },
         ]
       }
+      user_notification_preferences: {
+        Row: {
+          channel_email: boolean
+          channel_push: boolean
+          channel_telegram: boolean
+          event_preferences: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          channel_email?: boolean
+          channel_push?: boolean
+          channel_telegram?: boolean
+          event_preferences?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          channel_email?: boolean
+          channel_push?: boolean
+          channel_telegram?: boolean
+          event_preferences?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_push_subscriptions: {
+        Row: {
+          created_at: string
+          fcm_token: string
+          id: string
+          last_used_at: string | null
+          platform: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          fcm_token: string
+          id?: string
+          last_used_at?: string | null
+          platform?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          fcm_token?: string
+          id?: string
+          last_used_at?: string | null
+          platform?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       vendors: {
         Row: {
           address: string | null
@@ -10934,6 +11026,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      delete_my_push_subscription: {
+        Args: { p_fcm_token: string }
+        Returns: Json
+      }
       delete_shipment: { Args: { p_id: number }; Returns: undefined }
       delete_shipment_item_quantity: {
         Args: { p_id: number; p_quantity: number }
@@ -11354,6 +11450,7 @@ export type Database = {
           pending_balance: number
         }[]
       }
+      get_my_notification_preferences: { Args: never; Returns: Json }
       get_my_notification_unread_count: {
         Args: { p_tenant_id: number }
         Returns: Json
@@ -13906,6 +14003,10 @@ export type Database = {
         }
         Returns: Json
       }
+      save_my_push_subscription: {
+        Args: { p_fcm_token: string; p_platform?: string }
+        Returns: Json
+      }
       search_sales_invoice_stock: {
         Args: {
           p_limit?: number
@@ -14939,6 +15040,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      upsert_my_notification_preferences: {
+        Args: { p_channel_push: boolean }
+        Returns: Json
       }
       upsert_pbc_backlog_from_item: {
         Args: { p_costing_item_id: number }

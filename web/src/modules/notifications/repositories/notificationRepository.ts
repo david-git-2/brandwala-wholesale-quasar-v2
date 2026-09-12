@@ -4,7 +4,10 @@ import type {
   MarkAllNotificationsReadResult,
   MarkNotificationReadResult,
   NotificationListResult,
+  NotificationPreferenceMutationResult,
+  NotificationPreferences,
   NotificationUnreadCountResult,
+  PushSubscriptionMutationResult,
 } from '../types';
 
 const parseJsonResult = <T>(value: unknown): T => value as T;
@@ -67,5 +70,52 @@ export const notificationRepository = {
     }
 
     return parseJsonResult<MarkAllNotificationsReadResult>(data);
+  },
+
+  async getMyNotificationPreferences(): Promise<NotificationPreferences> {
+    const { data, error } = await supabase.rpc('get_my_notification_preferences');
+
+    if (error) {
+      throw error;
+    }
+
+    return parseJsonResult<NotificationPreferences>(data);
+  },
+
+  async upsertMyNotificationPreferences(channelPush: boolean): Promise<NotificationPreferenceMutationResult> {
+    const { data, error } = await supabase.rpc('upsert_my_notification_preferences', {
+      p_channel_push: channelPush,
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    return parseJsonResult<NotificationPreferenceMutationResult>(data);
+  },
+
+  async saveMyPushSubscription(fcmToken: string, platform = 'web'): Promise<PushSubscriptionMutationResult> {
+    const { data, error } = await supabase.rpc('save_my_push_subscription', {
+      p_fcm_token: fcmToken,
+      p_platform: platform,
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    return parseJsonResult<PushSubscriptionMutationResult>(data);
+  },
+
+  async deleteMyPushSubscription(fcmToken: string): Promise<PushSubscriptionMutationResult> {
+    const { data, error } = await supabase.rpc('delete_my_push_subscription', {
+      p_fcm_token: fcmToken,
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    return parseJsonResult<PushSubscriptionMutationResult>(data);
   },
 };

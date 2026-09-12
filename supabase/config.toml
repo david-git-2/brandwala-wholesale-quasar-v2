@@ -55,3 +55,12 @@ redirect_uri = "http://127.0.0.1:54321/auth/v1/callback"
 
 [functions.image-proxy]
 verify_jwt = false
+
+[functions.dispatch-notification]
+verify_jwt = false
+
+[edge_runtime]
+enabled = true
+policy = "oneshot"
+inspector_port = 8083
+deno_version = 2

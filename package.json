@@ -40,6 +40,7 @@
     "backend:status": "bash scripts/supabase-local.sh status",
     "backend:reset": "bash scripts/supabase-local.sh reset",
     "backend:local": "bash scripts/supabase-local.sh migrate",
+    "backend:configure-dispatch": "bash scripts/supabase-local.sh configure-dispatch",
     "backend:env:print": "bash scripts/supabase-local.sh env:print",
     "backend:pull-prod-data": "bash scripts/supabase-local.sh pull-prod-data",
     "backend:restore-dumps": "bash scripts/supabase-local.sh pull-prod-data --reuse-dumps --force",

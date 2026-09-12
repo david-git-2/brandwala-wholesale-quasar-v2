@@ -43,3 +43,27 @@ export type MarkAllNotificationsReadResult = {
 export type NotificationUnreadCountResult = {
   unread_count: number;
 };
+
+export type NotificationPreferences = {
+  user_id: string;
+  channel_telegram: boolean;
+  channel_push: boolean;
+  channel_email: boolean;
+  event_preferences: Record<string, unknown>;
+  updated_at: string | null;
+};
+
+export type NotificationPreferenceMutationResult = {
+  success: boolean;
+  channel_push?: boolean;
+  updated_at?: string;
+  error?: string;
+};
+
+export type PushSubscriptionMutationResult = {
+  success: boolean;
+  subscription_id?: string;
+  channel_push?: boolean;
+  remaining_subscriptions?: number;
+  error?: string;
+};

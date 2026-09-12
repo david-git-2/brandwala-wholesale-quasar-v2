@@ -2,7 +2,7 @@
 
 Staff and admin alerts for the `app` scope (tenant operators). Covers in-app inbox, Telegram, and Firebase web push. Email is optional later.
 
-**Current state:** In-app inbox UI is live (`NotificationBell`, dropdown preview, `/app/notifications` page, Realtime on `notification_recipients`). Telegram and Firebase are not built yet. Domain docs still defer SMS/email until outbound channels exist (e.g. dropship shortfall, after-sales merchant notify).
+**Current state:** In-app inbox UI is live. Firebase push infra is shipped (preferences, token storage, `dispatch-notification` Edge Function, settings page at `/app/settings/notifications`). Telegram is not built yet. Push only works after you add Firebase keys to `web/.env` and `FIREBASE_SERVICE_ACCOUNT` to Supabase Edge Function secrets, plus dispatch DB settings (see Phase 2 setup below).
 
 ---
 
@@ -458,35 +458,16 @@ Trigger `trg_item_assignees_notify_assigned` on `item_assignees` AFTER INSERT �
 
 ---
 
-### Phase 2 — Telegram
+### Phase 2 — Firebase web push (FCM)
 
-**Goal:** Optional phone alerts. Staff opt in via settings and link a bot. Free, reliable on iPhone and Android.
-
-| Layer | Work |
-| :--- | :--- |
-| External | Telegram bot (BotFather), bot token in Supabase secrets |
-| DB | `user_telegram_links`, `user_notification_preferences` |
-| Edge Function | `telegram-webhook` — handle `/start <link_token>`; `dispatch-notification` — send via Telegram Bot API |
-| Frontend | Settings page: “Connect Telegram” → deep link `t.me/<bot>?start=<one_time_token>` |
-
-**Done when**
-
-- [ ] User links Telegram from profile/settings
-- [ ] New notification triggers Telegram per recipient when channel enabled
-- [ ] Message includes title + link back to app
-
----
-
-### Phase 3 — Firebase web push (FCM)
-
-**Goal:** Optional browser push on Android and desktop. User enables in settings; complements Telegram.
+**Goal:** Optional browser push on Android and desktop. User enables in settings. Telegram comes next.
 
 | Layer | Work |
 | :--- | :--- |
 | External | Firebase project (Spark / free), FCM web config, VAPID key |
-| Quasar | Enable PWA (`quasar.config.ts`); service worker + `firebase-messaging` |
-| DB | `user_push_subscriptions` |
-| Edge Function | `dispatch-notification` extended — FCM HTTP v1 with service account |
+| App | Root service worker `public/firebase-messaging-sw.js` + `firebase` SDK (no full Quasar offline PWA) |
+| DB | `user_notification_preferences`, `user_push_subscriptions`, `notification_delivery_log` |
+| Edge Function | `dispatch-notification` — FCM HTTP v1 with service account |
 | Frontend | “Enable browser notifications” in settings; save token on grant |
 
 **Done when**
@@ -495,7 +476,35 @@ Trigger `trg_item_assignees_notify_assigned` on `item_assignees` AFTER INSERT �
 - [ ] User can disable push in settings
 - [ ] Dispatch does not duplicate if both Telegram and push are on (same event, both channels — acceptable; user chose both)
 
-**Note:** iOS Safari only works when site is added to Home Screen (iOS 16.4+). Telegram remains the reliable iPhone channel.
+**Note:** iOS Safari only works when site is added to Home Screen (iOS 16.4+). Telegram (Phase 3) remains the reliable iPhone channel.
+
+**Setup (required before push works):**
+
+1. Create Firebase project → Web app → Cloud Messaging → copy public config + VAPID key into `web/.env` (`VITE_FIREBASE_*`).
+2. Add Edge Function secret `FIREBASE_SERVICE_ACCOUNT` (service account JSON with Firebase Messaging scope).
+3. Configure Postgres dispatch settings so `trg_notification_recipients_dispatch` can call the Edge Function:
+   - **Local:** `pnpm run backend:configure-dispatch` (reads `SUPABASE_SECRET_KEY` from `web/.env`; optional `FIREBASE_SERVICE_ACCOUNT_PATH` for Edge Function secret)
+   - **Hosted:** run in SQL editor — `select public.set_notification_dispatch_settings('https://<project-ref>.supabase.co', '<service-role-key>');`
+   - Local default functions URL is `http://kong:8000` (inside Docker); override with env `NOTIFICATION_DISPATCH_FUNCTIONS_URL` if needed
+
+---
+
+### Phase 3 — Telegram
+
+**Goal:** Optional phone alerts. Staff opt in via settings and link a bot. Free, reliable on iPhone and Android.
+
+| Layer | Work |
+| :--- | :--- |
+| External | Telegram bot (BotFather), bot token in Supabase secrets |
+| DB | `user_telegram_links` (prefs table already exists from Phase 2) |
+| Edge Function | `telegram-webhook` — handle `/start <link_token>`; extend `dispatch-notification` — Telegram Bot API |
+| Frontend | Settings page: “Connect Telegram” → deep link `t.me/<bot>?start=<one_time_token>` |
+
+**Done when**
+
+- [ ] User links Telegram from profile/settings
+- [ ] New notification triggers Telegram per recipient when channel enabled
+- [ ] Message includes title + link back to app
 
 ---
 
@@ -509,7 +518,7 @@ Trigger `trg_item_assignees_notify_assigned` on `item_assignees` AFTER INSERT �
 | Edge Function | `dispatch-notification` — email branch |
 | Frontend | Toggle in notification preferences |
 
-Defer until phases 1–3 are stable.
+Defer until phases 1–2 are stable.
 
 ---
 
