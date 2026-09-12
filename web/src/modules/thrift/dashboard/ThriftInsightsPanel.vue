@@ -3,8 +3,16 @@
   <q-banner v-else-if="isError" class="bw-status-banner bg-negative text-white" rounded dense>
     Could not load thrift snapshot.
   </q-banner>
-  <DashboardPulseCard v-else title="Shop glance">
-    <DashboardMetric label="Available" :value="availableLabel" tone="ok" />
+  <DashboardPulseCard
+    v-else
+    title="Shop glance"
+    figure-label="Stock mix"
+    accent="var(--bw-success)"
+    :has-chart="hasStockMix"
+  >
+    <template #featured>
+      <DashboardMetric label="Available" :value="availableLabel" tone="ok" featured />
+    </template>
     <DashboardMetric label="Sold" :value="soldLabel" />
     <DashboardMetric
       label="COD waiting"
@@ -19,13 +27,10 @@
       :to="salesTo"
     />
 
-    <template #chart>
+    <template v-if="hasStockMix" #chart>
       <DashboardDonut
         :data="donutData"
         :center-value="`${availablePct}%`"
-        center-caption="In stock"
-        :empty="!hasStockMix"
-        empty-label="No stock yet"
       />
     </template>
   </DashboardPulseCard>
@@ -33,10 +38,10 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { RouteLocationRaw } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import type { ChartData } from 'chart.js';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAppDashboardRoutes } from 'src/modules/dashboard/composables/useAppDashboardRoutes';
 import DashboardPulseCard from 'src/modules/dashboard/components/DashboardPulseCard.vue';
 import DashboardPulseSkeleton from 'src/modules/dashboard/components/DashboardPulseSkeleton.vue';
 import DashboardMetric from 'src/modules/dashboard/components/DashboardMetric.vue';
@@ -88,11 +93,8 @@ const donutData = computed<ChartData<'doughnut'>>(() => ({
   ],
 }));
 
-const withSlug = (name: string): RouteLocationRaw => ({
-  name,
-  params: props.tenantSlug ? { tenantSlug: props.tenantSlug } : {},
-});
+const routes = useAppDashboardRoutes(props.tenantSlug);
 
-const codTo = computed(() => withSlug('thrift-cod-report'));
-const salesTo = computed(() => withSlug('thrift-sales-page'));
+const codTo = computed(() => routes.thriftCodReport());
+const salesTo = computed(() => routes.thriftSales());
 </script>

@@ -10,7 +10,12 @@
 <script setup lang="ts">
 import { Line } from 'vue-chartjs';
 import type { ChartData, ChartOptions } from 'chart.js';
-import { ensureDashboardChartsRegistered, readThemeRgb, rgba } from '../utils/dashboardChartSetup';
+import {
+  dashboardTooltip,
+  ensureDashboardChartsRegistered,
+  readThemeRgb,
+  rgba,
+} from '../utils/dashboardChartSetup';
 
 ensureDashboardChartsRegistered();
 
@@ -33,29 +38,22 @@ const options: ChartOptions<'line'> = {
   plugins: {
     legend: { display: false },
     tooltip: {
+      ...dashboardTooltip(),
       callbacks: {
-        label: (item) => ` ৳${Number(item.raw).toLocaleString()}`,
+        label: (item) => `৳${Number(item.raw).toLocaleString()}`,
       },
     },
   },
   scales: {
-    x: {
-      grid: { display: false },
-      ticks: { color: 'var(--bw-theme-muted)', font: { size: 10, weight: 600 } },
-      border: { display: false },
-    },
-    y: {
-      grid: { color: rgba(primaryRgb, 0.08) },
-      ticks: {
-        color: 'var(--bw-theme-muted)',
-        font: { size: 10 },
-        callback: (val) => {
-          const n = Number(val);
-          if (n >= 1000) return `৳${Math.round(n / 1000)}k`;
-          return `৳${n}`;
-        },
-      },
-      border: { display: false },
+    x: { display: false },
+    y: { display: false },
+  },
+  elements: {
+    point: { radius: 0, hoverRadius: 0 },
+    line: {
+      borderWidth: 2,
+      borderColor: rgba(primaryRgb, 1),
+      backgroundColor: rgba(primaryRgb, 0.16),
     },
   },
 };
@@ -64,21 +62,25 @@ const options: ChartOptions<'line'> = {
 <style scoped>
 .dashboard-line-chart {
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .dashboard-line-chart__canvas {
-  height: 8rem;
+  position: relative;
+  height: 7.5rem;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .dashboard-line-chart__empty {
-  height: 8rem;
+  height: 7.5rem;
   display: grid;
   place-items: center;
   text-align: center;
-  font-size: 0.875rem;
+  font-size: 13px;
   color: var(--bw-theme-muted);
-  border: 1px dashed var(--bw-theme-border);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--bw-theme-border) 25%, transparent);
 }
 </style>

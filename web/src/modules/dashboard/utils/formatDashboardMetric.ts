@@ -28,6 +28,14 @@ export function formatDashboardMoneyFull(value: unknown): string {
   return `৳${Math.round(asDashboardNumber(value)).toLocaleString()}`;
 }
 
+/** True when a formatted metric display string represents zero (0, ৳0, 0 batches, etc.). */
+export function isDashboardMetricZero(value: string): boolean {
+  const digits = value.replace(/[^\d.]/g, '');
+  if (!digits) return false;
+  const n = Number(digits);
+  return Number.isFinite(n) && n === 0;
+}
+
 export function dashboardSharePct(part: number, total: number): number {
   if (total <= 0) {
     return 0;

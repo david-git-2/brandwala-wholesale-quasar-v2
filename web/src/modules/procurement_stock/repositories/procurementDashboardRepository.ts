@@ -6,6 +6,16 @@ export type ProcurementDashboardGrade = {
   qty: number;
 };
 
+export type ProcurementDashboardPipelineRow = {
+  status: string;
+  count: number;
+};
+
+export type ProcurementDashboardLocationRow = {
+  name: string;
+  qty: number;
+};
+
 export type ProcurementDashboardMetrics = {
   tenantId: number;
   sellableQty: number;
@@ -16,7 +26,10 @@ export type ProcurementDashboardMetrics = {
   sellableValueBdt: number;
   inTransitCount: number;
   draftCount: number;
+  receivedCount: number;
   grades: ProcurementDashboardGrade[];
+  pipeline: ProcurementDashboardPipelineRow[];
+  locations: ProcurementDashboardLocationRow[];
 };
 
 const empty = (tenantId: number): ProcurementDashboardMetrics => ({
@@ -29,7 +42,10 @@ const empty = (tenantId: number): ProcurementDashboardMetrics => ({
   sellableValueBdt: 0,
   inTransitCount: 0,
   draftCount: 0,
+  receivedCount: 0,
   grades: [],
+  pipeline: [],
+  locations: [],
 });
 
 export const procurementDashboardRepository = {
@@ -43,6 +59,8 @@ export const procurementDashboardRepository = {
 
     const raw = (data ?? {}) as Record<string, unknown>;
     const gradesRaw = Array.isArray(raw.grades) ? raw.grades : [];
+    const pipelineRaw = Array.isArray(raw.pipeline) ? raw.pipeline : [];
+    const locationsRaw = Array.isArray(raw.locations) ? raw.locations : [];
 
     return {
       tenantId: asDashboardNumber(raw.tenant_id) || tenantId,
@@ -54,10 +72,25 @@ export const procurementDashboardRepository = {
       sellableValueBdt: asDashboardNumber(raw.sellable_value_bdt),
       inTransitCount: asDashboardNumber(raw.in_transit_count),
       draftCount: asDashboardNumber(raw.draft_count),
+      receivedCount: asDashboardNumber(raw.received_count),
       grades: gradesRaw.map((row) => {
         const item = row as Record<string, unknown>;
         return {
           name: typeof item.name === 'string' ? item.name : 'Ungraded',
+          qty: asDashboardNumber(item.qty),
+        };
+      }),
+      pipeline: pipelineRaw.map((row) => {
+        const item = row as Record<string, unknown>;
+        return {
+          status: typeof item.status === 'string' ? item.status : 'unknown',
+          count: asDashboardNumber(item.count),
+        };
+      }),
+      locations: locationsRaw.map((row) => {
+        const item = row as Record<string, unknown>;
+        return {
+          name: typeof item.name === 'string' ? item.name : 'Unlocated',
           qty: asDashboardNumber(item.qty),
         };
       }),

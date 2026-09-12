@@ -7,8 +7,8 @@ This document outlines the **architecture, module eligibility criteria, and impl
 ## 🎯 1. Core Philosophy: The "Operational Cockpit"
 
 A dashboard is only valuable if it answers two immediate questions for staff on login:
-1. **"What needs my immediate attention?"** *(Pending customs clearance, orders awaiting approval, overdue receivables, unreconciled COD).*
-2. **"What is the live operational pulse today?"** *(Inbound freight in transit, warehouse capacity, daily sales volume, operating liquidity).*
+1. **"What needs my immediate attention?"** *(Overdue receivables, COD, vendor payables, batches in transit, dropship queue, overdue tasks).*
+2. **"What is the live operational pulse today?"** *(Shipment pipeline draft/in transit/received, stock by location, fulfillment queue, operating liquidity).*
 
 > [!IMPORTANT]
 > **Anti-Pattern (Vanity Boards):** Avoid cluttering the dashboard with static links or master data configurations (e.g. tag lists, currency tables, role management). The sidebar already handles full system navigation. The dashboard is strictly for **live metrics, pipeline stages, and triage queues**.
@@ -24,8 +24,8 @@ The dashboard adapts its components based on the workspace hierarchy:
 │                    PARENT COMPANY (parent_id = NULL)        │
 │                    "Supply Chain, Logistics & Treasury"     │
 ├─────────────────────────────────────────────────────────────┤
-│  • Inbound International Shipments (Sea/Air) & Customs Port │
-│  • Warehouse Physical Stock Inventory & Bins                │
+│  • Inbound Shipments (draft / in transit / received)         │
+│  • Warehouse Stock by Location                              │
 │  • Investor Capital Pools & Container ROI                   │
 │  • Consolidated Company Liquidity & Sister Concern Velocity │
 └──────────────────────────────┬──────────────────────────────┘
@@ -189,8 +189,9 @@ export const DASHBOARD_SLOT_REGISTRY: readonly DashboardSlot[] = [
 
 ## 🎨 6. UI & Design System Rules for Dashboard Widgets
 
-1. **Magazine pulse cards:** Build on `DashboardPulseCard` — `q-card flat bordered`, 14px radius, metrics + required `chart` slot. No full-bleed photos, no `backdrop-filter`, no click-to-reveal-first-chart drawers.
-2. **On-card charts:** Every live widget shows Chart.js (or `DashboardShareBars`) in view. Reuse `DashboardDonut` / `DashboardLineChart` / `DashboardBarChart`. Empty mix → muted well (`No mix yet`).
-3. **Stubs:** `stub` prop + `DashboardStubBadge` (`Sample`). Em-dash metrics; sample chart for layout only. Do not feed stubs into `useDashboardAttention`.
-4. **Action Buttons:** Rounded-square (`8px`), `unelevated` / `flat` / `outline`, `no-caps`. Thrift `New sale` is the only primary CTA on dashboard.
-5. **Charts & Graphics:** Register via [`dashboardChartSetup.ts`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/dashboard/utils/dashboardChartSetup.ts). Colors: `readThemeRgb`, `--bw-success`, `--bw-warning`, `--bw-error`.
+1. **Work desk stories:** Build on `DashboardPulseCard` — open `<section>`, no cards or borders. Featured metric + quiet figures; `hasChart=false` when there is no mix.
+2. **Charts only with signal:** Show Chart.js / `DashboardShareBars` only when data exists. No empty donut column, no dashed wells, no `No mix yet` chrome.
+3. **Stubs:** `stub` prop + `DashboardStubBadge` (`Sample`). Em-dash metrics only; no sample charts. Do not feed stubs into `useDashboardAttention`.
+4. **Featured = work first:** Invoice overdue/unpaid before today billed; wallet COD before company cash; shop pickup before today sales.
+5. **Action Buttons:** Rounded-square (`8px`), `unelevated` / `flat` / `outline`, `no-caps`. Thrift `New sale` is the only primary CTA on dashboard.
+6. **Charts & Graphics:** Register via [`dashboardChartSetup.ts`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/dashboard/utils/dashboardChartSetup.ts). Colors: `readThemeRgb`, `--bw-success`, `--bw-warning`, `--bw-error`.

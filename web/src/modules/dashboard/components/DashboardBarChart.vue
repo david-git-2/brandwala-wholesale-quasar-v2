@@ -11,7 +11,7 @@
 import { computed } from 'vue';
 import { Bar } from 'vue-chartjs';
 import type { ChartData, ChartOptions } from 'chart.js';
-import { ensureDashboardChartsRegistered, readThemeRgb, rgba } from '../utils/dashboardChartSetup';
+import { dashboardTooltip, ensureDashboardChartsRegistered } from '../utils/dashboardChartSetup';
 
 ensureDashboardChartsRegistered();
 
@@ -28,29 +28,37 @@ const props = withDefaults(
   },
 );
 
-const primaryRgb = readThemeRgb();
-
 const chartOptions = computed<ChartOptions<'bar'>>(() => ({
   indexAxis: props.indexAxis,
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
     legend: { display: false },
-    tooltip: {
-      callbacks: {
-        label: (item) => ` ${Number(item.raw).toLocaleString()}`,
-      },
+    tooltip: dashboardTooltip(),
+  },
+  datasets: {
+    bar: {
+      maxBarThickness: 12,
+      borderRadius: 4,
     },
   },
   scales: {
     x: {
-      grid: { display: props.indexAxis === 'y' },
-      ticks: { color: 'var(--bw-theme-muted)', font: { size: 10, weight: 600 } },
+      display: props.indexAxis === 'x',
+      grid: { display: false },
+      ticks: {
+        color: 'var(--bw-theme-muted)',
+        font: { size: 11, weight: 500 },
+      },
       border: { display: false },
     },
     y: {
-      grid: { color: rgba(primaryRgb, 0.08) },
-      ticks: { color: 'var(--bw-theme-muted)', font: { size: 10, weight: 600 } },
+      display: props.indexAxis === 'y',
+      grid: { display: false },
+      ticks: {
+        color: 'var(--bw-theme-muted)',
+        font: { size: 11, weight: 500 },
+      },
       border: { display: false },
     },
   },
@@ -60,21 +68,25 @@ const chartOptions = computed<ChartOptions<'bar'>>(() => ({
 <style scoped>
 .dashboard-bar-chart {
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .dashboard-bar-chart__canvas {
-  height: 8rem;
+  position: relative;
+  height: 7.5rem;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .dashboard-bar-chart__empty {
-  height: 8rem;
+  height: 7.5rem;
   display: grid;
   place-items: center;
   text-align: center;
-  font-size: 0.875rem;
+  font-size: 13px;
   color: var(--bw-theme-muted);
-  border: 1px dashed var(--bw-theme-border);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--bw-theme-border) 25%, transparent);
 }
 </style>

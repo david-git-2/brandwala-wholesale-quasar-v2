@@ -13,6 +13,7 @@ import {
   PointElement,
   Tooltip,
 } from 'chart.js';
+import type { TooltipOptions } from 'chart.js';
 
 let registered = false;
 
@@ -43,3 +44,12 @@ export const readThemeRgb = (fallback = '2 132 199', root?: Element | null) => {
 };
 
 export const rgba = (rgb: string, alpha: number) => `rgb(${rgb} / ${alpha})`;
+
+export const dashboardTooltip = (): Partial<TooltipOptions> => ({
+  backgroundColor: 'var(--bw-theme-ink)',
+  titleFont: { size: 0 },
+  bodyFont: { size: 12, family: 'var(--bw-font-ui)' },
+  padding: 8,
+  cornerRadius: 6,
+  displayColors: false,
+});

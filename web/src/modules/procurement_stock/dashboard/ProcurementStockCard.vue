@@ -3,13 +3,22 @@
   <q-banner v-else-if="isError" class="bw-status-banner bg-negative text-white" rounded dense>
     Could not load stock pulse.
   </q-banner>
-  <DashboardPulseCard v-else title="Stock & procurement">
-    <DashboardMetric
-      label="Sellable stock"
-      :value="sellableLabel"
-      unit="Pcs"
-      :to="stockListTo"
-    />
+  <DashboardPulseCard
+    v-else
+    title="Stock & procurement"
+    figure-label="Stock & inbound"
+    accent="var(--bw-success)"
+    :has-chart="hasFigure"
+  >
+    <template #featured>
+      <DashboardMetric
+        label="Sellable stock"
+        :value="sellableLabel"
+        unit="Pcs"
+        :to="stockListTo"
+        featured
+      />
+    </template>
     <DashboardMetric label="Stock valuation" :value="valuationLabel" unit="Landed BDT" />
     <DashboardMetric
       label="In transit"
@@ -17,27 +26,32 @@
       :to="shipmentListTo"
       tone="warn"
     />
-    <DashboardMetric label="Under processing" :value="draftLabel" :to="shipmentListTo" />
+    <DashboardMetric
+      label="Under processing"
+      :value="draftLabel"
+      :to="shipmentListTo"
+      tone="warn"
+    />
+    <DashboardMetric
+      label="Received"
+      :value="receivedLabel"
+      :to="shipmentListTo"
+    />
 
-    <template #chart>
+    <template v-if="hasFigure" #chart>
       <div class="procurement-stock-card__chart-col">
         <DashboardDonut
+          v-if="hasAvailabilityMix"
           :data="availabilityChartData"
           :center-value="sellablePctLabel"
-          center-caption="Sellable"
-          :empty="!hasAvailabilityMix"
         />
-        <DashboardChartLegend :rows="availabilityLegend" />
+        <DashboardChartLegend v-if="hasAvailabilityMix" :rows="availabilityLegend" />
+        <DashboardShareBars v-if="pipelineRows.length" :rows="pipelineRows" />
       </div>
     </template>
 
-    <template #visuals>
-      <DashboardBarChart
-        :data="gradeChartData"
-        index-axis="y"
-        :empty="!(metrics?.grades?.length)"
-        empty-label="No graded stock yet"
-      />
+    <template v-if="showLocationBars" #visuals>
+      <DashboardShareBars :rows="locationRows" />
     </template>
   </DashboardPulseCard>
 </template>
@@ -45,14 +59,15 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useRoute } from 'vue-router';
 import type { ChartData } from 'chart.js';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAppDashboardRoutes } from 'src/modules/dashboard/composables/useAppDashboardRoutes';
 import DashboardPulseCard from 'src/modules/dashboard/components/DashboardPulseCard.vue';
 import DashboardPulseSkeleton from 'src/modules/dashboard/components/DashboardPulseSkeleton.vue';
 import DashboardMetric from 'src/modules/dashboard/components/DashboardMetric.vue';
 import DashboardDonut from 'src/modules/dashboard/components/DashboardDonut.vue';
-import DashboardBarChart from 'src/modules/dashboard/components/DashboardBarChart.vue';
+import DashboardShareBars from 'src/modules/dashboard/components/DashboardShareBars.vue';
+import type { DashboardShareBarRow } from 'src/modules/dashboard/components/DashboardShareBars.vue';
 import DashboardChartLegend from 'src/modules/dashboard/components/DashboardChartLegend.vue';
 import type { DashboardChartLegendRow } from 'src/modules/dashboard/components/DashboardChartLegend.vue';
 import {
@@ -60,26 +75,23 @@ import {
   formatDashboardCount,
   formatDashboardMoney,
 } from 'src/modules/dashboard/utils/formatDashboardMetric';
-import { dashboardChartColors, dashboardChartPalette } from 'src/modules/dashboard/utils/dashboardChartColors';
+import { dashboardChartColors } from 'src/modules/dashboard/utils/dashboardChartColors';
 import { useProcurementDashboardQuery } from '../composables/useProcurementDashboardQuery';
 
-const route = useRoute();
+const PIPELINE_LABELS: Record<string, string> = {
+  draft: 'Under processing',
+  in_transit: 'In transit',
+  received: 'Received',
+};
+
 const authStore = useAuthStore();
 const { tenantId } = storeToRefs(authStore);
+const routes = useAppDashboardRoutes();
 
 const { data: metrics, isLoading, isError } = useProcurementDashboardQuery(tenantId);
 
-const tenantSlug = computed(() => (route.params.tenantSlug as string) || '');
-
-const stockListTo = computed(() => ({
-  name: 'app-procurement-stock-list',
-  params: tenantSlug.value ? { tenantSlug: tenantSlug.value } : {},
-}));
-
-const shipmentListTo = computed(() => ({
-  name: 'app-procurement-shipment-list',
-  params: tenantSlug.value ? { tenantSlug: tenantSlug.value } : {},
-}));
+const stockListTo = computed(() => routes.procurementStockList());
+const shipmentListTo = computed(() => routes.procurementShipmentList());
 
 const sellableLabel = computed(() => formatDashboardCount(metrics.value?.sellableQty ?? 0));
 const valuationLabel = computed(() => formatDashboardMoney(metrics.value?.sellableValueBdt ?? 0));
@@ -89,13 +101,15 @@ const inTransitLabel = computed(
 const draftLabel = computed(
   () => `${formatDashboardCount(metrics.value?.draftCount ?? 0)} batches`,
 );
+const receivedLabel = computed(
+  () => `${formatDashboardCount(metrics.value?.receivedCount ?? 0)} batches`,
+);
 const sellablePctLabel = computed(() => `${metrics.value?.sellablePct ?? 0}%`);
 
 const totalQty = computed(() => metrics.value?.totalQty ?? 0);
 const hasAvailabilityMix = computed(() => totalQty.value > 0);
 
 const colors = computed(() => dashboardChartColors());
-const palette = computed(() => dashboardChartPalette());
 
 const availabilityChartData = computed<ChartData<'doughnut'>>(() => ({
   labels: ['Sellable', 'Held / Reserved', 'Damaged'],
@@ -134,21 +148,33 @@ const availabilityLegend = computed<DashboardChartLegendRow[]>(() => [
   },
 ]);
 
-const gradeChartData = computed<ChartData<'bar'>>(() => {
-  const grades = metrics.value?.grades ?? [];
-  return {
-    labels: grades.map((grade) => grade.name),
-    datasets: [
-      {
-        label: 'Quantity',
-        data: grades.map((grade) => grade.qty),
-        backgroundColor: palette.value,
-        borderRadius: 4,
-        borderSkipped: false,
-      },
-    ],
-  };
+const pipelineRows = computed<DashboardShareBarRow[]>(() => {
+  const rows = (metrics.value?.pipeline ?? []).filter((row) => row.count > 0);
+  const max = Math.max(1, ...rows.map((r) => r.count));
+  return rows.map((row, index) => ({
+    label: PIPELINE_LABELS[row.status] ?? row.status,
+    value: row.count,
+    max,
+    displayValue: `${formatDashboardCount(row.count)} batches`,
+    tone: index === 0 ? 'primary' : row.status === 'in_transit' ? 'warn' : 'success',
+  }));
 });
+
+const hasFigure = computed(() => hasAvailabilityMix.value || pipelineRows.value.length > 0);
+
+const locationRows = computed<DashboardShareBarRow[]>(() => {
+  const locations = metrics.value?.locations ?? [];
+  const max = Math.max(1, ...locations.map((l) => l.qty));
+  return locations.map((row, index) => ({
+    label: row.name,
+    value: row.qty,
+    max,
+    displayValue: `${formatDashboardCount(row.qty)} pcs`,
+    tone: index === 0 ? 'primary' : 'success',
+  }));
+});
+
+const showLocationBars = computed(() => (metrics.value?.locations?.length ?? 0) >= 2);
 </script>
 
 <style scoped>

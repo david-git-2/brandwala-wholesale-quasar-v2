@@ -10977,7 +10977,10 @@ DECLARE
   v_value numeric := 0;
   v_in_transit bigint := 0;
   v_draft bigint := 0;
+  v_received bigint := 0;
   v_grades jsonb := '[]'::jsonb;
+  v_pipeline jsonb := '[]'::jsonb;
+  v_locations jsonb := '[]'::jsonb;
 BEGIN
   IF NOT public.membership_has_module_action(p_tenant_id, 'global_stock', 'view') THEN
     RAISE EXCEPTION 'not allowed';
@@ -11002,8 +11005,9 @@ BEGIN
 
   SELECT
     coalesce(count(*) FILTER (WHERE s.status = 'in_transit'), 0),
-    coalesce(count(*) FILTER (WHERE s.status = 'draft'), 0)
-  INTO v_in_transit, v_draft
+    coalesce(count(*) FILTER (WHERE s.status = 'draft'), 0),
+    coalesce(count(*) FILTER (WHERE s.status = 'received'), 0)
+  INTO v_in_transit, v_draft, v_received
   FROM public.global_shipments s
   WHERE s.parent_tenant_id = v_books_id
     AND s.is_archived = false;
@@ -11019,6 +11023,38 @@ BEGIN
     GROUP BY coalesce(t.name, 'Ungraded')
   ) g;
 
+  SELECT coalesce(jsonb_agg(row_to_json(p) ORDER BY p.sort_key), '[]'::jsonb)
+  INTO v_pipeline
+  FROM (
+    SELECT
+      s.status,
+      count(*)::bigint AS count,
+      CASE s.status
+        WHEN 'draft' THEN 1
+        WHEN 'in_transit' THEN 2
+        WHEN 'received' THEN 3
+        ELSE 4
+      END AS sort_key
+    FROM public.global_shipments s
+    WHERE s.parent_tenant_id = v_books_id
+      AND s.is_archived = false
+      AND s.status <> 'cancelled'
+    GROUP BY s.status
+  ) p;
+
+  SELECT coalesce(jsonb_agg(row_to_json(l) ORDER BY l.qty DESC), '[]'::jsonb)
+  INTO v_locations
+  FROM (
+    SELECT
+      coalesce(sl.name, 'Unlocated') AS name,
+      sum(gs.quantity)::bigint AS qty
+    FROM public.global_stocks gs
+    LEFT JOIN public.stock_locations sl ON sl.id = gs.location_id
+    WHERE gs.parent_tenant_id = v_books_id
+      AND gs.quantity > 0
+    GROUP BY coalesce(sl.name, 'Unlocated')
+  ) l;
+
   RETURN jsonb_build_object(
     'tenant_id', v_books_id,
     'sellable_qty', v_sellable,
@@ -11029,7 +11065,10 @@ BEGIN
     'sellable_value_bdt', round(v_value, 2),
     'in_transit_count', v_in_transit,
     'draft_count', v_draft,
-    'grades', v_grades
+    'received_count', v_received,
+    'grades', v_grades,
+    'pipeline', v_pipeline,
+    'locations', v_locations
   );
 END;
 $$;

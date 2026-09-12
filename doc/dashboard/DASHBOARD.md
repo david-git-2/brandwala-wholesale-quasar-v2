@@ -2,17 +2,17 @@
 
 The **Dashboard** module provides a dynamic, registry-composed home surface for tenant administrators and storefront customers. Instead of monolithic dashboards, features register modular widget slots that are filtered automatically based on tenant module enablement and user role permissions.
 
-## App dashboard magazine layout (staff `/app/dashboard`)
+## App dashboard work desk (staff `/app/dashboard`)
 
-Staff home is a **magazine pulse board**, not photo heroes:
+Staff home is an **operational work desk**, not photo heroes:
 
-- **Attention strip** (`DashboardAttentionList` + `useDashboardAttention`) — up to 5 warn-only rows (overdue invoices, COD, in-transit batches, etc.) linking to filtered lists.
-- **Pulse cards** (`DashboardPulseCard`) — metrics left, Chart.js graph right; optional second visual row (share bars / grade bars). Every live card shows its chart on the page.
-- **Shared chart primitives** — `DashboardDonut`, `DashboardLineChart`, `DashboardBarChart`, `DashboardShareBars`, `DashboardChartLegend`; colors from `dashboardChartSetup.ts` / theme tokens.
-- **Stubs** — unfinished modules (e.g. after-sales) use `DashboardStubBadge` + sample chart; never fake live counts in the attention strip.
+- **Work queue** (`DashboardAttentionList` + `useDashboardAttention`) — always visible: `Needs work` with linked phrases, or `Nothing waiting`. Up to 8 items (overdue invoices, COD, vendor payables, in-transit batches, draft shipments, dropship queue, tasks, investor due).
+- **Pulse stories** (`DashboardPulseCard`) — featured metric + quiet figures; chart column only when there is real mix data (`hasChart`). No empty donut holes or dashed wells.
+- **Shared chart primitives** — `DashboardDonut`, `DashboardBarChart`, `DashboardShareBars`, `DashboardChartLegend`; colors from `dashboardChartSetup.ts` / theme tokens.
+- **Stubs** — unfinished modules (e.g. after-sales) use `DashboardStubBadge` + em-dash metrics only; no sample charts; never fake live counts in the attention strip.
 - **No shortcut tiles** on app dashboard — sidebar handles navigation.
 
-Parent workspace: stock, invoices, wallet, investor, tasks (+ thrift if enabled). Child workspace: shop orders, invoices, wallet, tasks (+ thrift).
+Parent workspace: stock + shipment pipeline (draft / in transit / received), invoices, wallet, investor, tasks (+ thrift if enabled). Child workspace: shop fulfillment + dropship queue, invoices, wallet, tasks (+ thrift).
 
 ---
 

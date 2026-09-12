@@ -3,8 +3,11 @@ import { computed } from 'vue';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useModulePermissions } from 'src/modules/navigation/modulePermissions';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
-import type { DashboardWorkspaceKind } from '../types/dashboardSlot';
+import type { DashboardSlot, DashboardWorkspaceKind } from '../types/dashboardSlot';
+import { isDashboardBlockKind } from '../types/dashboardSlot';
 import { resolveDashboardSlots } from '../registry/dashboardSlotRegistry';
+
+const isActionBarSlot = (slot: DashboardSlot) => slot.id.endsWith('.actions');
 
 export const useDashboardSlots = () => {
   const authStore = useAuthStore();
@@ -35,9 +38,26 @@ export const useDashboardSlots = () => {
 
   const tenantSlug = computed(() => authStore.tenantSlug ?? undefined);
 
+  const actionSlots = computed(() =>
+    groups.value
+      .flatMap((group) => group.slots)
+      .filter((slot) => isDashboardBlockKind(slot.kind) && isActionBarSlot(slot))
+      .sort((a, b) => a.order - b.order),
+  );
+
+  const stories = computed(() =>
+    groups.value
+      .flatMap((group) => group.slots.map((slot) => ({ slot, weight: group.weight })))
+      .filter(({ slot }) => isDashboardBlockKind(slot.kind) && !isActionBarSlot(slot))
+      .sort((a, b) => a.weight - b.weight || a.slot.order - b.slot.order)
+      .map(({ slot }) => slot),
+  );
+
   return {
     primaries,
     groups,
+    actionSlots,
+    stories,
     isEmpty,
     tenantSlug,
   };

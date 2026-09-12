@@ -13,14 +13,25 @@ export type ShopOrderDashboardCourier = {
   readyCount: number;
 };
 
+export type ShopOrderDashboardPipelineRow = {
+  status: string;
+  count: number;
+};
+
 export type ShopOrderDashboardMetrics = {
   tenantId: number;
   todaySalesAmount: number;
   todayInvoiceCount: number;
   shippedCount: number;
   readyForPickupCount: number;
+  needsQuoteCount: number;
+  processingCount: number;
+  dropshipSubmitted: number;
+  dropshipProcessing: number;
+  dropshipReady: number;
   hourly: ShopOrderDashboardHour[];
   couriers: ShopOrderDashboardCourier[];
+  pipeline: ShopOrderDashboardPipelineRow[];
 };
 
 export const shopOrderDashboardRepository = {
@@ -35,6 +46,7 @@ export const shopOrderDashboardRepository = {
     const raw = (data ?? {}) as Record<string, unknown>;
     const hourlyRaw = Array.isArray(raw.hourly) ? raw.hourly : [];
     const couriersRaw = Array.isArray(raw.couriers) ? raw.couriers : [];
+    const pipelineRaw = Array.isArray(raw.pipeline) ? raw.pipeline : [];
 
     return {
       tenantId: asDashboardNumber(raw.tenant_id) || tenantId,
@@ -42,6 +54,11 @@ export const shopOrderDashboardRepository = {
       todayInvoiceCount: asDashboardNumber(raw.today_invoice_count),
       shippedCount: asDashboardNumber(raw.shipped_count),
       readyForPickupCount: asDashboardNumber(raw.ready_for_pickup_count),
+      needsQuoteCount: asDashboardNumber(raw.needs_quote_count),
+      processingCount: asDashboardNumber(raw.processing_count),
+      dropshipSubmitted: asDashboardNumber(raw.dropship_submitted),
+      dropshipProcessing: asDashboardNumber(raw.dropship_processing),
+      dropshipReady: asDashboardNumber(raw.dropship_ready),
       hourly: hourlyRaw.map((row) => {
         const item = row as Record<string, unknown>;
         return {
@@ -56,6 +73,13 @@ export const shopOrderDashboardRepository = {
           count: asDashboardNumber(item.count),
           shippedCount: asDashboardNumber(item.shipped_count),
           readyCount: asDashboardNumber(item.ready_count),
+        };
+      }),
+      pipeline: pipelineRaw.map((row) => {
+        const item = row as Record<string, unknown>;
+        return {
+          status: typeof item.status === 'string' ? item.status : 'unknown',
+          count: asDashboardNumber(item.count),
         };
       }),
     };

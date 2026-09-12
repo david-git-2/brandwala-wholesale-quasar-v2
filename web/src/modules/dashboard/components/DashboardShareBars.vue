@@ -3,6 +3,7 @@
     <li v-for="row in rows" :key="row.label" class="dashboard-share-bars__row">
       <div class="dashboard-share-bars__head">
         <span class="dashboard-share-bars__label">{{ row.label }}</span>
+        <span class="dashboard-share-bars__sep" aria-hidden="true">·</span>
         <span class="dashboard-share-bars__value bw-tabular">{{ row.displayValue ?? row.value }}</span>
       </div>
       <div class="dashboard-share-bars__track">
@@ -49,41 +50,41 @@ const barWidth = (row: DashboardShareBarRow) => {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.55rem;
+  gap: 0.65rem;
 }
 
 .dashboard-share-bars__row {
   display: grid;
-  gap: 0.25rem;
+  gap: 0.3rem;
 }
 
 .dashboard-share-bars__head {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .dashboard-share-bars__label {
-  font-size: 0.78rem;
   color: var(--bw-theme-muted);
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+}
+
+.dashboard-share-bars__sep {
+  color: var(--bw-theme-muted);
 }
 
 .dashboard-share-bars__value {
-  font-size: 0.78rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--bw-theme-ink);
-  flex-shrink: 0;
 }
 
 .dashboard-share-bars__track {
-  height: 6px;
+  height: 8px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--bw-theme-border) 60%, transparent);
+  background: var(--bw-theme-border);
   overflow: hidden;
 }
 
@@ -94,21 +95,19 @@ const barWidth = (row: DashboardShareBarRow) => {
 }
 
 .dashboard-share-bars__fill--primary {
-  background: var(--bw-theme-primary);
+  background: color-mix(in srgb, var(--bw-theme-primary) 70%, transparent);
 }
 
 .dashboard-share-bars__fill--warn {
-  background: var(--bw-warning);
+  background: color-mix(in srgb, var(--bw-warning) 70%, transparent);
 }
 
 .dashboard-share-bars__fill--success {
-  background: var(--bw-success);
+  background: color-mix(in srgb, var(--bw-success) 70%, transparent);
 }
 
 .dashboard-share-bars__empty {
-  font-size: 0.8rem;
+  font-size: 12px;
   color: var(--bw-theme-muted);
-  text-align: center;
-  padding: 0.5rem 0;
 }
 </style>

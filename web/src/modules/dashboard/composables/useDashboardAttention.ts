@@ -1,6 +1,5 @@
 import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useRoute } from 'vue-router';
 import type { RouteLocationRaw } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
@@ -15,6 +14,7 @@ import {
   formatDashboardCount,
   formatDashboardMoney,
 } from '../utils/formatDashboardMetric';
+import { useAppDashboardRoutes } from './useAppDashboardRoutes';
 
 export type DashboardAttentionItem = {
   id: string;
@@ -24,17 +24,15 @@ export type DashboardAttentionItem = {
   tone: 'warn';
 };
 
-const MAX_ITEMS = 5;
+const MAX_ITEMS = 8;
 
 export const useDashboardAttention = () => {
-  const route = useRoute();
   const authStore = useAuthStore();
   const tenantStore = useTenantStore();
   const { hasModuleAccess } = useModulePermissions();
   const { tenantId } = storeToRefs(authStore);
+  const routes = useAppDashboardRoutes();
 
-  const tenantSlug = computed(() => (route.params.tenantSlug as string) || '');
-  const withSlug = () => (tenantSlug.value ? { tenantSlug: tenantSlug.value } : {});
   const isParent = computed(() => !tenantStore.selectedTenant?.parent_id);
 
   const canStock = computed(() => isParent.value && hasModuleAccess('global_stock', 'view'));
@@ -61,11 +59,7 @@ export const useDashboardAttention = () => {
           id: 'overdue-invoices',
           label: `${formatDashboardCount(overdue)} overdue invoices`,
           value: formatDashboardCount(overdue),
-          to: {
-            name: 'app-global-invoices-page',
-            params: withSlug(),
-            query: { payment_status: 'overdue' },
-          },
+          to: routes.globalInvoices({ payment_status: 'overdue' }),
           tone: 'warn',
         });
       }
@@ -78,7 +72,18 @@ export const useDashboardAttention = () => {
           id: 'ready-pickup',
           label: `${formatDashboardCount(pickup)} orders ready for pickup`,
           value: formatDashboardCount(pickup),
-          to: { name: 'shop-orders-page', params: withSlug() },
+          to: routes.shopOrders(),
+          tone: 'warn',
+        });
+      }
+
+      const dropshipSubmitted = shopOrderQuery.data.value?.dropshipSubmitted ?? 0;
+      if (dropshipSubmitted > 0) {
+        rows.push({
+          id: 'dropship-submitted',
+          label: `${formatDashboardCount(dropshipSubmitted)} dropship orders submitted`,
+          value: formatDashboardCount(dropshipSubmitted),
+          to: routes.shopOrdersDropship(),
           tone: 'warn',
         });
       }
@@ -91,7 +96,18 @@ export const useDashboardAttention = () => {
           id: 'cod-collect',
           label: `${formatDashboardMoney(cod)} COD to collect`,
           value: formatDashboardMoney(cod),
-          to: { name: 'app-wallet-home-page', params: withSlug() },
+          to: routes.walletHome(),
+          tone: 'warn',
+        });
+      }
+
+      const payables = dashboardSummary.value?.vendor_payables_total ?? 0;
+      if (payables > 0) {
+        rows.push({
+          id: 'vendor-payables',
+          label: `${formatDashboardMoney(payables)} vendor payables`,
+          value: formatDashboardMoney(payables),
+          to: routes.walletHome(),
           tone: 'warn',
         });
       }
@@ -104,7 +120,18 @@ export const useDashboardAttention = () => {
           id: 'in-transit',
           label: `${formatDashboardCount(inTransit)} batches in transit`,
           value: formatDashboardCount(inTransit),
-          to: { name: 'app-procurement-shipment-list', params: withSlug() },
+          to: routes.procurementShipmentList(),
+          tone: 'warn',
+        });
+      }
+
+      const draft = procurementQuery.data.value?.draftCount ?? 0;
+      if (draft > 0) {
+        rows.push({
+          id: 'draft-shipments',
+          label: `${formatDashboardCount(draft)} batches under processing`,
+          value: formatDashboardCount(draft),
+          to: routes.procurementShipmentList(),
           tone: 'warn',
         });
       }
@@ -117,7 +144,7 @@ export const useDashboardAttention = () => {
           id: 'overdue-tasks',
           label: `${formatDashboardCount(overdue)} overdue tasks`,
           value: formatDashboardCount(overdue),
-          to: { name: 'tasks-page', params: withSlug() },
+          to: routes.tasks(),
           tone: 'warn',
         });
       }
@@ -130,7 +157,7 @@ export const useDashboardAttention = () => {
           id: 'due-investors',
           label: `${formatDashboardMoney(due)} due to investors`,
           value: formatDashboardMoney(due),
-          to: { name: 'app-capital-ledger-page', params: withSlug() },
+          to: routes.capitalLedger(),
           tone: 'warn',
         });
       }

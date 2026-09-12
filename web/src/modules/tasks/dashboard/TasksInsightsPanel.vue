@@ -3,13 +3,22 @@
   <q-banner v-else-if="isError" class="bw-status-banner bg-negative text-white" rounded dense>
     Could not load tasks pulse.
   </q-banner>
-  <DashboardPulseCard v-else title="Operational taskboard">
-    <DashboardMetric
-      label="Assigned to me"
-      :value="assignedLabel"
-      unit="Mine"
-      :to="tasksTo"
-    />
+  <DashboardPulseCard
+    v-else
+    title="Operational taskboard"
+    figure-label="My board"
+    accent="var(--bw-theme-primary)"
+    :has-chart="hasBoardMix"
+  >
+    <template #featured>
+      <DashboardMetric
+        label="Assigned to me"
+        :value="assignedLabel"
+        unit="Mine"
+        :to="tasksTo"
+        featured
+      />
+    </template>
     <DashboardMetric
       label="Overdue"
       :value="overdueLabel"
@@ -29,13 +38,11 @@
       :to="tasksTo"
     />
 
-    <template #chart>
+    <template v-if="hasBoardMix" #chart>
       <div class="tasks-pulse__chart-col">
         <DashboardDonut
           :data="statusChartData"
-          :center-value="assignedLabel"
-          center-caption="Mine"
-          :empty="!hasBoardMix"
+          :center-value="`${donePct}%`"
         />
         <DashboardChartLegend :rows="boardLegend" />
       </div>
@@ -46,9 +53,9 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useRoute } from 'vue-router';
 import type { ChartData } from 'chart.js';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAppDashboardRoutes } from 'src/modules/dashboard/composables/useAppDashboardRoutes';
 import DashboardPulseCard from 'src/modules/dashboard/components/DashboardPulseCard.vue';
 import DashboardPulseSkeleton from 'src/modules/dashboard/components/DashboardPulseSkeleton.vue';
 import DashboardMetric from 'src/modules/dashboard/components/DashboardMetric.vue';
@@ -62,16 +69,12 @@ import {
 import { dashboardChartColors } from 'src/modules/dashboard/utils/dashboardChartColors';
 import { useTasksDashboardQuery } from '../composables/useTasksDashboardQuery';
 
-const route = useRoute();
 const authStore = useAuthStore();
 const { tenantId } = storeToRefs(authStore);
+const routes = useAppDashboardRoutes();
 const { data: metrics, isLoading, isError } = useTasksDashboardQuery(tenantId);
 
-const tenantSlug = computed(() => (route.params.tenantSlug as string) || '');
-const tasksTo = computed(() => ({
-  name: 'tasks-page',
-  params: tenantSlug.value ? { tenantSlug: tenantSlug.value } : {},
-}));
+const tasksTo = computed(() => routes.tasks());
 
 const assignedLabel = computed(() => formatDashboardCount(metrics.value?.assignedToMe ?? 0));
 const overdueLabel = computed(() => formatDashboardCount(metrics.value?.overdueCount ?? 0));
@@ -90,6 +93,7 @@ const boardTotal = computed(
     (metrics.value?.myDone ?? 0),
 );
 const hasBoardMix = computed(() => boardTotal.value > 0);
+const donePct = computed(() => dashboardSharePct(metrics.value?.myDone ?? 0, boardTotal.value));
 
 const colors = computed(() => dashboardChartColors());
 

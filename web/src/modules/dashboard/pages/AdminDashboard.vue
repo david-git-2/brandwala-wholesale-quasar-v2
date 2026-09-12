@@ -3,7 +3,7 @@
     <div class="bw-page__stack">
       <AppPageHeader title="Home" subtitle="What needs work today" />
 
-      <DashboardAttentionList v-if="attentionItems.length" :items="attentionItems" />
+      <DashboardAttentionList :items="attentionItems" />
 
       <div
         v-if="isEmpty"
@@ -16,15 +16,25 @@
         </p>
       </div>
 
-      <DashboardGroup
-        v-for="group in groups"
-        v-else
-        :key="group.parentGroupKey"
-        :title="group.title"
-        :icon="group.icon"
-        :slots="group.slots"
-        v-bind="tenantSlug ? { tenantSlug } : {}"
-      />
+      <template v-else>
+        <div v-if="actionSlots.length" class="dashboard-actions">
+          <DashboardSlotHost
+            v-for="slot in actionSlots"
+            :key="slot.id"
+            :item="slot"
+            v-bind="tenantSlug ? { tenantSlug } : {}"
+          />
+        </div>
+
+        <div class="dashboard-board">
+          <DashboardSlotHost
+            v-for="slot in stories"
+            :key="slot.id"
+            :item="slot"
+            v-bind="tenantSlug ? { tenantSlug } : {}"
+          />
+        </div>
+      </template>
     </div>
   </q-page>
 </template>
@@ -32,10 +42,22 @@
 <script setup lang="ts">
 import AppPageHeader from 'src/components/ui/AppPageHeader.vue';
 import DashboardAttentionList from '../components/DashboardAttentionList.vue';
-import DashboardGroup from '../components/DashboardGroup.vue';
+import DashboardSlotHost from '../components/DashboardSlotHost.vue';
 import { useDashboardAttention } from '../composables/useDashboardAttention';
 import { useDashboardSlots } from '../composables/useDashboardSlots';
 
-const { groups, isEmpty, tenantSlug } = useDashboardSlots();
+const { actionSlots, stories, isEmpty, tenantSlug } = useDashboardSlots();
 const { items: attentionItems } = useDashboardAttention();
 </script>
+
+<style scoped>
+.dashboard-actions {
+  width: 100%;
+}
+
+.dashboard-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 28rem), 1fr));
+  gap: 2.5rem 3rem;
+}
+</style>

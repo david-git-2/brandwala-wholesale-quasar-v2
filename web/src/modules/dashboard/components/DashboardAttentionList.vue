@@ -1,22 +1,11 @@
 <template>
-  <q-card flat bordered class="dashboard-attention">
-    <q-card-section class="dashboard-attention__head">
-      <span class="dashboard-attention__title">Needs attention</span>
-    </q-card-section>
-    <q-list dense separator class="dashboard-attention__list">
-      <router-link
-        v-for="item in items"
-        :key="item.id"
-        class="dashboard-attention__row"
-        :to="item.to"
-      >
-        <q-icon name="ph ph-warning-circle" class="dashboard-attention__icon" />
-        <span class="dashboard-attention__label">{{ item.label }}</span>
-        <span class="dashboard-attention__value bw-tabular">{{ item.value }}</span>
-        <q-icon name="ph ph-caret-right" class="dashboard-attention__chevron" />
-      </router-link>
-    </q-list>
-  </q-card>
+  <p class="dashboard-attention">
+    <span class="dashboard-attention__prefix">{{ items.length ? 'Needs work' : 'Nothing waiting' }}</span>
+    <template v-for="(item, index) in items" :key="item.id">
+      <span v-if="index > 0" class="dashboard-attention__sep" aria-hidden="true">·</span>
+      <router-link class="dashboard-attention__link" :to="item.to">{{ item.label }}</router-link>
+    </template>
+  </p>
 </template>
 
 <script setup lang="ts">
@@ -29,63 +18,28 @@ defineProps<{
 
 <style scoped>
 .dashboard-attention {
-  border-radius: 14px;
-}
-
-.dashboard-attention__head {
-  padding-bottom: 0.35rem;
-}
-
-.dashboard-attention__title {
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
   color: var(--bw-theme-muted);
 }
 
-.dashboard-attention__list {
-  padding: 0;
+.dashboard-attention__prefix {
+  margin-right: 0.35rem;
 }
 
-.dashboard-attention__row {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  padding: 0.65rem 1rem;
-  color: inherit;
+.dashboard-attention__sep {
+  margin: 0 0.35rem;
+}
+
+.dashboard-attention__link {
+  color: var(--bw-warning);
+  font-weight: 500;
   text-decoration: none;
-  transition: background-color 0.15s ease;
 }
 
-.dashboard-attention__row:hover {
-  background: var(--bw-theme-primary-soft, color-mix(in srgb, var(--bw-theme-primary) 12%, transparent));
-}
-
-.dashboard-attention__icon {
-  color: var(--bw-warning);
-  font-size: 1.1rem;
-  flex-shrink: 0;
-}
-
-.dashboard-attention__label {
-  flex: 1 1 auto;
-  min-width: 0;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--bw-theme-ink);
-}
-
-.dashboard-attention__value {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--bw-warning);
-  flex-shrink: 0;
-}
-
-.dashboard-attention__chevron {
-  color: var(--bw-theme-muted);
-  font-size: 1rem;
-  flex-shrink: 0;
+.dashboard-attention__link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 </style>

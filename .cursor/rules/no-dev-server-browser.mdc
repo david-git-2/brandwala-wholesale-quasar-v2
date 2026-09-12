@@ -1,0 +1,21 @@
+---
+description: Do not start dev servers or open the IDE browser for verification
+alwaysApply: true
+---
+
+# No Dev Server or IDE Browser
+
+Do not start local dev servers or open the IDE browser unless the user explicitly asks.
+
+## Do not
+
+- Run `npm run dev`, `pnpm dev`, `quasar dev`, or similar to "verify" UI changes
+- Start background dev servers "for browser verification"
+- Use the IDE browser MCP (`browser_navigate`, `browser_snapshot`, `browser_tabs`, etc.) to preview the app
+- Open `http://localhost:*` in the IDE browser after making changes
+
+## Do instead
+
+- Rely on typecheck, lint, or tests when the user asked for verification
+- Tell the user to open the app in their own browser if visual confirmation is needed
+- Only start a server or use the IDE browser when the user clearly requests it (e.g. "start dev server", "open in browser", "check the dashboard in browser")

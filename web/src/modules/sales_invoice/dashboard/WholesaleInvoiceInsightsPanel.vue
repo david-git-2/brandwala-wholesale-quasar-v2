@@ -3,8 +3,23 @@
   <q-banner v-else-if="isError" class="bw-status-banner bg-negative text-white" rounded dense>
     Could not load invoice pulse.
   </q-banner>
-  <DashboardPulseCard v-else title="Invoice pulse">
-    <DashboardMetric label="Today billed" :value="billedLabel" unit="Today" tone="ok" />
+  <DashboardPulseCard
+    v-else
+    title="Invoice pulse"
+    figure-label="Receivables mix"
+    accent="var(--bw-warning)"
+    :has-chart="hasFigure"
+  >
+    <template #featured>
+      <DashboardMetric
+        :label="featuredMetric.label"
+        :value="featuredMetric.value"
+        :unit="featuredMetric.unit"
+        :to="featuredMetric.to"
+        :tone="featuredMetric.tone"
+        featured
+      />
+    </template>
     <DashboardMetric
       label="Unpaid invoices"
       :value="unpaidLabel"
@@ -19,20 +34,16 @@
     />
     <DashboardMetric label="Drafts" :value="draftLabel" :to="invoiceListTo" />
 
-    <template #chart>
+    <template v-if="hasFigure" #chart>
       <div class="invoice-pulse__chart-col">
         <DashboardDonut
+          v-if="hasMix"
           :data="mixChartData"
           :center-value="`${paidPct}%`"
-          center-caption="Paid"
-          :empty="!hasMix"
         />
-        <DashboardChartLegend :rows="mixLegend" />
+        <DashboardChartLegend v-if="hasMix" :rows="mixLegend" />
+        <DashboardShareBars v-if="overdueRows.length" :rows="overdueRows" />
       </div>
-    </template>
-
-    <template #visuals>
-      <DashboardShareBars :rows="overdueRows" empty-label="No overdue customers" />
     </template>
 
     <template v-if="(metrics?.overdueCustomers?.length ?? 0) > 3" #footer>
@@ -53,9 +64,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useRoute } from 'vue-router';
 import type { ChartData } from 'chart.js';
+import type { RouteLocationRaw } from 'vue-router';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
+import { useAppDashboardRoutes } from 'src/modules/dashboard/composables/useAppDashboardRoutes';
 import DashboardPulseCard from 'src/modules/dashboard/components/DashboardPulseCard.vue';
 import DashboardPulseSkeleton from 'src/modules/dashboard/components/DashboardPulseSkeleton.vue';
 import DashboardMetric from 'src/modules/dashboard/components/DashboardMetric.vue';
@@ -74,26 +86,15 @@ import { dashboardChartColors } from 'src/modules/dashboard/utils/dashboardChart
 import { useSalesInvoiceDashboardQuery } from '../composables/useSalesInvoiceDashboardQuery';
 import WholesaleInvoiceDetailDialog from './WholesaleInvoiceDetailDialog.vue';
 
-const route = useRoute();
 const authStore = useAuthStore();
 const { tenantId } = storeToRefs(authStore);
+const routes = useAppDashboardRoutes();
 const showDetail = ref(false);
 const { data: metrics, isLoading, isError } = useSalesInvoiceDashboardQuery(tenantId);
 
-const tenantSlug = computed(() => (route.params.tenantSlug as string) || '');
-const withSlug = () => (tenantSlug.value ? { tenantSlug: tenantSlug.value } : {});
-
-const invoiceListTo = computed(() => ({ name: 'app-global-invoices-page', params: withSlug() }));
-const unpaidTo = computed(() => ({
-  name: 'app-global-invoices-page',
-  params: withSlug(),
-  query: { quick_filter: 'unpaid' },
-}));
-const overdueTo = computed(() => ({
-  name: 'app-global-invoices-page',
-  params: withSlug(),
-  query: { payment_status: 'overdue' },
-}));
+const invoiceListTo = computed(() => routes.globalInvoices());
+const unpaidTo = computed(() => routes.globalInvoices({ quick_filter: 'unpaid' }));
+const overdueTo = computed(() => routes.globalInvoices({ payment_status: 'overdue' }));
 
 const billedLabel = computed(() => formatDashboardMoney(metrics.value?.todayBilledAmount ?? 0));
 const unpaidLabel = computed(() => formatDashboardCount(metrics.value?.unpaidCount ?? 0));
@@ -103,6 +104,41 @@ const overdueCountLabel = computed(
 const draftLabel = computed(
   () => `${formatDashboardCount(metrics.value?.draftCount ?? 0)} invoices`,
 );
+
+type FeaturedMetric = {
+  label: string;
+  value: string;
+  unit?: string;
+  to?: RouteLocationRaw;
+  tone: 'ink' | 'ok' | 'warn' | 'muted';
+};
+
+const featuredMetric = computed<FeaturedMetric>(() => {
+  if ((metrics.value?.overdueCount ?? 0) > 0) {
+    return {
+      label: 'Overdue invoices',
+      value: overdueCountLabel.value,
+      unit: 'Open',
+      to: overdueTo.value,
+      tone: 'warn',
+    };
+  }
+  if ((metrics.value?.unpaidCount ?? 0) > 0) {
+    return {
+      label: 'Unpaid invoices',
+      value: unpaidLabel.value,
+      unit: 'Open',
+      to: unpaidTo.value,
+      tone: 'warn',
+    };
+  }
+  return {
+    label: 'Today billed',
+    value: billedLabel.value,
+    unit: 'Today',
+    tone: 'ok',
+  };
+});
 
 const mixTotal = computed(
   () =>
@@ -163,6 +199,8 @@ const overdueRows = computed<DashboardShareBarRow[]>(() => {
     tone: 'warn',
   }));
 });
+
+const hasFigure = computed(() => hasMix.value || overdueRows.value.length > 0);
 </script>
 
 <style scoped>

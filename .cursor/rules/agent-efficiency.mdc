@@ -74,7 +74,7 @@ The "let me look around the repo first" instinct burns tokens fast.
 
 - Set generous timeouts and move on.
 - Never poll a backgrounded process repeatedly "just to check".
-- For dev servers/watchers: launch and walk away.
+- Do not start dev servers or open the IDE browser unless the user asks (see `no-dev-server-browser.mdc`).
 
 ## 9. Stop When Done
 
