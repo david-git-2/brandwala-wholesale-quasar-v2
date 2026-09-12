@@ -1,6 +1,6 @@
 # Universal Multi-Currency Wallet & Ledger Module
 
-The **Universal Wallet** domain is BrandWala's centralized, immutable financial ledger. It tracks money, receivables, payables, advances, and payouts across all entity types (Tenants, Vendors, Couriers, Merchants, Customers, Cargo Companies, Investors) without fragmented accounting tables.
+The **Universal Wallet** domain is TradeFlow BD's centralized, immutable financial ledger. It tracks money, receivables, payables, advances, and payouts across all entity types (Tenants, Vendors, Couriers, Merchants, Customers, Cargo Companies, Investors) without fragmented accounting tables.
 
 **Implementation plan (parent books migration):** [`WALLET_PARENT_BOOKS_IMPLEMENTATION.md`](./WALLET_PARENT_BOOKS_IMPLEMENTATION.md)  
 **RPC specs:** [`LIST_WALLET_ENTITIES_RPC.md`](./LIST_WALLET_ENTITIES_RPC.md) (directory list), [`UNIVERSAL_WALLET_DETAIL_RPC.md`](./UNIVERSAL_WALLET_DETAIL_RPC.md) (detail + manual tx), [`RECORD_LEDGER_SYSTEM_RPC_MIGRATION.md`](./RECORD_LEDGER_SYSTEM_RPC_MIGRATION.md) (upgrade existing invoice / order / procurement writers), [`WALLET_LEGACY_RETIREMENT.md`](./WALLET_LEGACY_RETIREMENT.md) (drop zombie RPCs + dead UI)

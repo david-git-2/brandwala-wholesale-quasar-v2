@@ -7,7 +7,7 @@ The **Sales & Invoice** domain manages desk sales, multi-channel invoice issuanc
 ## 1. Domain Architecture & Multi-Tenant Model
 
 ### Parent-Child Ownership Principle
-In BrandWala / TradeFlow BD, inventory and accounting books are owned at the **Parent** tenant level, while sister concerns (child tenants) perform selling and desk operations:
+In TradeFlow BD, inventory and accounting books are owned at the **Parent** tenant level, while sister concerns (child tenants) perform selling and desk operations:
 
 ```text
 One Sale = One Row in `sales_invoices`

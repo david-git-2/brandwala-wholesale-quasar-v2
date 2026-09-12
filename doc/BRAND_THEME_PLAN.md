@@ -1,6 +1,6 @@
 # Brand Visual Identity — Implementation Plan
 
-Plan to unify **theme**, **color**, **font**, **splash screen**, and **brand logo** for BrandWala / TradeFlow BD.
+Plan to unify **theme**, **color**, **font**, **splash screen**, and **brand logo** for TradeFlow BD.
 
 **Status:** **Complete** — P0–P5 shipped (color, fonts, logo, splash, theme polish, doc sync).
 

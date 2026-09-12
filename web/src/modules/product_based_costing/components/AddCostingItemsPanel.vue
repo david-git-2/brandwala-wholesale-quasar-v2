@@ -28,12 +28,20 @@
               flat
               dense
               no-caps
-              color="grey-8"
               icon="ph ph-list-plus"
+              class="bw-text-muted"
               :label="$t('product_based_costing.bulk_codes')"
               @click="showBulkCodes = !showBulkCodes"
             />
-            <q-btn flat round dense icon="ph ph-funnel" color="grey-8" @click="openFilterSidebar">
+            <q-btn
+              flat
+              round
+              dense
+              icon="ph ph-funnel"
+              class="bw-text-muted"
+              aria-label="Filters"
+              @click="openFilterSidebar"
+            >
               <q-badge v-if="activeFilterCount > 0" color="primary" rounded floating>
                 {{ activeFilterCount }}
               </q-badge>
@@ -46,7 +54,7 @@
           class="column q-gutter-y-sm bulk-codes-box q-pa-sm rounded-borders"
         >
           <div class="row items-center justify-between q-px-xs">
-            <span class="text-caption text-weight-medium text-grey-8">
+            <span class="text-caption text-weight-medium bw-text-muted">
               {{ $t('product_based_costing.bulk_paste_mode') }}:
             </span>
             <q-btn-dropdown
@@ -54,7 +62,7 @@
               dense
               no-caps
               :label="bulkSearchFieldLabel"
-              class="text-caption text-weight-medium text-grey-8 search-field-dropdown"
+              class="text-caption text-weight-medium bw-text-muted search-field-dropdown"
             >
               <q-list dense>
                 <q-item clickable v-close-popup @click="bulkSearchField = 'auto'">
@@ -129,7 +137,7 @@
           >
             <q-item v-for="product in browseList" :key="product.id">
               <q-item-section avatar>
-                <q-avatar square class="bg-grey-2 browse-product-thumb">
+                <q-avatar square class="browse-product-thumb">
                   <SmartImage
                     :src="product.image_url"
                     class="browse-product-thumb__img"
@@ -910,13 +918,13 @@ onMounted(async () => {
 }
 
 .toolbar-section {
-  background: rgba(248, 250, 252, 0.5);
-  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+  background: color-mix(in srgb, var(--bw-theme-surface) 88%, var(--bw-theme-base) 12%);
+  border-bottom: 1px solid var(--bw-theme-border);
 }
 
 .bulk-codes-box {
-  background: rgba(241, 245, 249, 0.9);
-  border: 1px solid rgba(226, 232, 240, 0.9);
+  background: color-mix(in srgb, var(--bw-theme-surface) 82%, var(--bw-theme-base) 18%);
+  border: 1px solid var(--bw-theme-border);
 }
 
 .browse-section {
@@ -929,12 +937,14 @@ onMounted(async () => {
 }
 
 .browse-list {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--bw-theme-border);
 }
 
 .browse-product-thumb {
   width: 0.8in;
   height: 0.8in;
+  background: var(--bw-theme-base);
+  color: var(--bw-theme-muted);
 }
 
 :deep(.browse-product-thumb__img) {
@@ -948,8 +958,8 @@ onMounted(async () => {
 }
 
 .panel-footer {
-  border-top: 1px solid rgba(226, 232, 240, 0.8);
-  background: rgba(248, 250, 252, 0.5);
+  border-top: 1px solid var(--bw-theme-border);
+  background: color-mix(in srgb, var(--bw-theme-surface) 88%, var(--bw-theme-base) 12%);
 }
 
 :deep(input[type='number']::-webkit-outer-spin-button),

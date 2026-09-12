@@ -1,6 +1,6 @@
-# BrandWala / TradeFlow BD — Master Architectural Plan
+# TradeFlow BD — Master Architectural Plan
 
-BrandWala is an enterprise multi-tenant ERP and commerce platform designed for parent companies and sister concerns operating wholesale distribution, warehouse fulfillment, dropship networks, and specialized retail verticals.
+TradeFlow BD is an enterprise multi-tenant ERP and commerce platform designed for parent companies and sister concerns operating wholesale distribution, warehouse fulfillment, dropship networks, and specialized retail verticals.
 
 ---
 

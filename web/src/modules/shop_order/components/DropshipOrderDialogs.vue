@@ -93,7 +93,7 @@ const emit = defineEmits<{
             </div>
             <div class="col-12">
               <q-card flat bordered class="q-pa-sm bg-blue-1 border-blue">
-                <div class="text-caption text-blue-9">B2B Invoice Entry (Brandwala Revenue)</div>
+                <div class="text-caption text-blue-9">B2B Invoice Entry (TradeFlow BD Revenue)</div>
                 <div class="text-weight-bold text-h6 text-blue-9">
                   {{ props.formatBdt(props.accountingSubtotal + props.printChargeVal + props.packingChargeVal) }}
                 </div>

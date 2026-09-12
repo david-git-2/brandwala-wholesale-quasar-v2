@@ -30,6 +30,7 @@ export default {
   col_slug: 'Slug',
   col_type: 'Type',
   col_vendor: 'Vendor',
+  col_created: 'Created',
   col_order_mode: 'Order mode',
   col_negotiable: 'Negotiable',
   manage_pricing: 'Manage Product Listings & Pricing',
@@ -394,6 +395,7 @@ export default {
   access_domain_ordering: 'Ordering',
   configure: 'Configure',
   collapse: 'Collapse',
+  expand: 'Expand',
   grant_catalog_access: 'Grant Catalog Access',
   grant_catalog_caption: 'Master switch for this shop + group.',
   capabilities: 'Capabilities',
@@ -635,6 +637,15 @@ export default {
   resellers: 'Resellers',
   prices: 'Prices',
   who_can_access: 'Who can access',
+  shop_hub_card_store_setup_title: 'Store Setup',
+  shop_hub_card_store_setup_description:
+    'Manage your storefronts, catalog, and collections.',
+  shop_hub_card_orders_title: 'Orders & Fulfillment',
+  shop_hub_card_orders_description:
+    'Review shop orders and run dropship fulfillment workflows.',
+  shop_hub_card_shipping_title: 'Shipping & Logistics',
+  shop_hub_card_shipping_description:
+    'Configure couriers and record COD remittance after delivery.',
   shop_hub_group_store_setup: 'Store setup',
   shop_hub_group_shipping: 'Shipping',
   shop_setup_hub_caption: 'Shared setup for every shop. Open a shop on the list for prices or access.',

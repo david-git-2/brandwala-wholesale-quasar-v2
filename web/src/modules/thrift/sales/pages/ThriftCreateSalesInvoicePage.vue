@@ -2147,7 +2147,7 @@ async function onSaveInvoice() {
       $q.notify({ type: 'negative', message: 'Tenant context is missing.' });
       return;
     }
-    const userEmail = authStore.user?.email || 'cashier@brandwala.com';
+    const userEmail = authStore.user?.email || 'cashier@tradeflowbd.com';
 
     const itemsPayload = selectedItems.value.map((line) => {
       const qty = clampQty(line.quantity, line.availableQuantity);

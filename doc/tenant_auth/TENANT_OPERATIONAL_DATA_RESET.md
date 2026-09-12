@@ -53,7 +53,7 @@ To ensure zero collateral damage to business configurations, the purge boundary 
 
 ## 3. Multi-Tenant Scope & Hierarchy Handling
 
-Brandwala uses a strict single-tier hierarchy where a Parent Company (`parent_id = NULL`) owns the physical warehouse pool and cargo shipments, while Child Sister Concerns (`parent_id = parent.id`) operate sales desks and storefront commerce.
+TradeFlow BD uses a strict single-tier hierarchy where a Parent Company (`parent_id = NULL`) owns the physical warehouse pool and cargo shipments, while Child Sister Concerns (`parent_id = parent.id`) operate sales desks and storefront commerce.
 
 ```mermaid
 flowchart LR

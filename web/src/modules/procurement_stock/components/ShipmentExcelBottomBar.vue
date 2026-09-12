@@ -180,11 +180,11 @@ defineExpose({
 .excel-bottom-bar {
   height: 34px;
   min-height: 34px;
-  background-color: #f1f5f9;
-  color: #334155;
-  border-top: 2px solid #cbd5e1;
+  background-color: color-mix(in srgb, var(--bw-theme-surface) 88%, var(--bw-theme-base) 12%);
+  color: var(--bw-theme-ink);
+  border-top: 2px solid var(--bw-theme-border);
   user-select: none;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--bw-font-ui);
   font-size: 12px;
 }
 
@@ -195,7 +195,7 @@ defineExpose({
 .excel-icon-btn {
   background: transparent;
   border: none;
-  color: #475569;
+  color: var(--bw-theme-muted);
   width: 24px;
   height: 24px;
   display: flex;
@@ -208,8 +208,8 @@ defineExpose({
 }
 
 .excel-icon-btn:hover {
-  background-color: #e2e8f0;
-  color: #0f172a;
+  background-color: var(--bw-theme-primary-soft);
+  color: var(--bw-theme-ink);
 }
 
 .excel-tabs-scroll-container {
@@ -225,65 +225,65 @@ defineExpose({
 .excel-tab-item {
   height: 30px;
   padding: 0 14px;
-  color: #475569;
-  background: #e2e8f0;
+  color: var(--bw-theme-muted);
+  background: color-mix(in srgb, var(--bw-theme-surface) 80%, var(--bw-theme-base) 20%);
   margin-right: 2px;
   border-radius: 4px 4px 0 0;
-  border-top: 1px solid #cbd5e1;
-  border-left: 1px solid #cbd5e1;
-  border-right: 1px solid #cbd5e1;
+  border-top: 1px solid var(--bw-theme-border);
+  border-left: 1px solid var(--bw-theme-border);
+  border-right: 1px solid var(--bw-theme-border);
   font-weight: 600;
   font-size: 12px;
   transition: all 0.15s ease;
 }
 
 .excel-tab-item:hover {
-  background-color: #ffffff;
-  color: #0f172a;
+  background-color: var(--bw-theme-surface);
+  color: var(--bw-theme-ink);
 }
 
 .excel-tab-item--active {
-  background-color: #ffffff !important;
-  color: #059669 !important;
+  background-color: var(--bw-theme-surface) !important;
+  color: var(--bw-theme-primary) !important;
   font-weight: 700;
-  border-top: 2.5px solid #059669;
-  box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.06);
+  border-top: 2.5px solid var(--bw-theme-primary);
+  box-shadow: 0 -2px 4px var(--bw-theme-shadow);
 }
 
 .excel-plus-btn {
-  color: #059669;
+  color: var(--bw-theme-primary);
   font-weight: bold;
 }
 
 .excel-plus-btn:hover {
-  background-color: #d1fae5;
-  color: #047857;
+  background-color: var(--bw-theme-primary-soft);
+  color: var(--bw-theme-primary);
 }
 
 .excel-splitter-bar {
   width: 3px;
   height: 18px;
-  background-color: #94a3b8;
+  background-color: var(--bw-theme-border);
   margin: 0 8px;
   border-radius: 2px;
 }
 
 .excel-scrollbar-wrapper {
-  background-color: #e2e8f0;
+  background-color: color-mix(in srgb, var(--bw-theme-surface) 80%, var(--bw-theme-base) 20%);
   height: 20px;
   width: 220px;
   max-width: 260px;
   margin-left: auto;
   margin-right: 10px;
   border-radius: 4px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--bw-theme-border);
   padding: 0 2px;
 }
 
 .excel-scroll-arrow-btn {
   background: transparent;
   border: none;
-  color: #475569;
+  color: var(--bw-theme-muted);
   width: 16px;
   height: 16px;
   display: flex;
@@ -294,13 +294,13 @@ defineExpose({
 }
 
 .excel-scroll-arrow-btn:hover {
-  background-color: #cbd5e1;
-  color: #0f172a;
+  background-color: var(--bw-theme-border);
+  color: var(--bw-theme-ink);
 }
 
 .excel-scroll-track {
   height: 12px;
-  background-color: #cbd5e1;
+  background-color: var(--bw-theme-border);
   border-radius: 3px;
   position: relative;
   margin: 0 4px;
@@ -308,7 +308,7 @@ defineExpose({
 
 .excel-scroll-thumb {
   height: 12px;
-  background-color: #64748b;
+  background-color: var(--bw-theme-muted);
   border-radius: 3px;
   position: absolute;
   top: 0;
@@ -318,7 +318,7 @@ defineExpose({
 
 .excel-scroll-thumb:hover,
 .excel-scroll-thumb:active {
-  background-color: #334155;
+  background-color: var(--bw-theme-ink);
 }
 
 .excel-end-cap {

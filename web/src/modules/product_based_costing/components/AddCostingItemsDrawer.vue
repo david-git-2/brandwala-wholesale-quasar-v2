@@ -57,9 +57,10 @@ const onCreateNewProduct = (name: string) => {
   height: calc(100vh - 24px) !important;
   margin: 12px;
   border-radius: 16px !important;
-  background: rgba(255, 255, 255, 0.98) !important;
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.15) !important;
+  background: var(--bw-theme-surface) !important;
+  color: var(--bw-theme-ink);
+  border: 1px solid var(--bw-theme-border);
+  box-shadow: var(--bw-theme-shadow) !important;
   overflow: hidden;
 }
 

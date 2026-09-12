@@ -1,6 +1,6 @@
 # Dashboard Module Integration & Implementation Blueprint
 
-This document outlines the **architecture, module eligibility criteria, and implementation standards** for integrating domain modules into the Brandwala Workspace Dashboard (`/:tenantSlug?/app/dashboard`).
+This document outlines the **architecture, module eligibility criteria, and implementation standards** for integrating domain modules into the TradeFlow BD Workspace Dashboard (`/:tenantSlug?/app/dashboard`).
 
 ---
 

@@ -38,6 +38,6 @@ After analyzing the feature, you must generate a comprehensive blueprint.
 
 ## Integration with Other Skills
 - **`supabase` / `supabase-postgres-best-practices` Skills**: Apply best practices for database schema, RLS, and query optimization.
-- **`quasar` Skill**: Ensure frontend UX aligns with Quasar Vue 3 best practices, responsive design, and Brandwala's theme.
+- **`quasar` Skill**: Ensure frontend UX aligns with Quasar Vue 3 best practices, responsive design, and TradeFlow BD's theme.
 
 Always maintain a professional, visionary, yet highly pragmatic tone.

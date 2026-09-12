@@ -1,11 +1,11 @@
 ---
 name: quasar
-description: Guide for creating premium, high-performance, responsive, accessible, and theme-consistent Quasar (Vue 3) interfaces for Brandwala.
+description: Guide for creating premium, high-performance, responsive, accessible, and theme-consistent Quasar (Vue 3) interfaces for TradeFlow BD.
 ---
 
 # Quasar Framework UI & Performance Best Practices
 
-Guide for designing, building, styling, and optimizing Vue 3 components using the Quasar Framework in Brandwala.
+Guide for designing, building, styling, and optimizing Vue 3 components using the Quasar Framework in TradeFlow BD.
 
 ## Core Principles
 
@@ -28,12 +28,9 @@ Guide for designing, building, styling, and optimizing Vue 3 components using th
 `--bw-theme-base`, `--bw-theme-surface`, `--bw-theme-border`, `--bw-theme-ink`, `--bw-theme-muted`, `--bw-theme-primary`, `--bw-theme-primary-soft`, `--bw-theme-shadow`.
 
 ### Radius Rules
-- **Buttons (`q-btn`):** `8px`
-- **Inputs & Rich Editors (`.soft-input`):** `8px`–`10px`
-- **Metrics / Stat Cards (`.stat-card`):** `10px`
-- **Floating Surfaces & Empty States:** `14px`
-- **Heros & Banners:** `16px`
-- **Pills / Status Badges:** `999px`
+- **sm (`8px`):** buttons, chips, inputs, avatars, tables (`--bw-radius-sm`)
+- **md (`12px`):** cards, dialogs, drawers, empty states (`--bw-radius-md`)
+- **pill (`999px`):** shop CTAs only (`--bw-radius-pill`)
 
 ---
 

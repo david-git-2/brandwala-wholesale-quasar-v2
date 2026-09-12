@@ -47,12 +47,12 @@ Quasar `$positive` / `$negative` / `$warning` / `$info` in `quasar.variables.scs
 
 | Scope | Light primary | Dark primary |
 |-------|---------------|--------------|
-| Platform | `#6b2d3c` oxide burgundy | `#e8a0a8` |
-| App | `#0d6b5c` trade teal | `#4db8a4` |
-| Shop | `#2a2b2a` charcoal CTA | `#b48b7d` clay |
-| Investor | `#0f5c5a` capital teal | `#5ecfc4` |
+| Platform | `#464b71` indigo CTA | `#118ab2` blue |
+| App | `#488b8f` lagoon CTA | `#5ea3a3` tide |
+| Shop | `#3368a0` blue CTA | `#66a3bf` sky |
+| Investor | `#413333` umber CTA | `#f2765e` coral |
 
-Shop design system (light): canvas `#ffffff`, cards white + `20px` radius, ink/CTA `#2a2b2a`, muted `#5e4955`, data hues mauve `#996888` / clay `#b48b7d` / plum `#5e4955`. Pills `999px`. Classes: `.shop-ds-title`, `.shop-ds-cta`, `.shop-ds-tile--charcoal|plum|mauve|clay`. See [`doc/fix/SHOP_SCOPE_VISUAL_REDESIGN.md`](../doc/fix/SHOP_SCOPE_VISUAL_REDESIGN.md).
+Shop design system (light): shared canvas `#fbfaf7`, cards white + `20px` radius, CTA `#3368a0`, wash `#c8dfdb`, sky `#66a3bf`. Pills `999px`. Classes: `.shop-ds-title`, `.shop-ds-cta`, `.shop-ds-tile--charcoal|plum|mauve|clay` (aliases for blue / sky / mint / paper). See [`doc/fix/SHOP_SCOPE_VISUAL_REDESIGN.md`](../doc/fix/SHOP_SCOPE_VISUAL_REDESIGN.md).
 
 ### Semantic theme (use these in components)
 - `--bw-theme-base`, `--bw-theme-surface`, `--bw-theme-border`, `--bw-theme-ink`, `--bw-theme-muted`
@@ -77,28 +77,34 @@ Source: `web/src/css/app.scss`, `web/src/components/WorkspaceShell.vue`
 | Role | Family | Weights | Use |
 |------|--------|---------|-----|
 | UI | Plus Jakarta Sans | 400, 500, 600, 700 | All interface text |
-| Data / money | IBM Plex Mono | 400, 500, 600 | Currency, qty, cost, barcodes (`.bw-tabular`) |
-| Bengali | Noto Sans Bengali | 400, 600 | `html[lang="bn"]`, `.locale-bn` |
+| Data / money | IBM Plex Mono | 400, 500, 600 | Currency, qty, cost, barcodes (`.bw-tabular`, `.bw-type-kpi`) |
+| Bengali | Noto Sans Bengali | 400, 600 | `html[lang="bn"]`, `.locale-bn` (400), `.locale-bn-label` (600) |
 
 CSS variables: `--bw-font-ui`, `--bw-font-mono`, `--bw-font-bn` in `web/src/css/app.scss`.
 
-Legacy alias: `.font-mono` maps to `.bw-tabular` (prefer `.bw-tabular` in new code).
+Legacy alias: `.font-mono` maps to `.bw-tabular` (prefer `.bw-tabular` in new code). Caprasimo is removed; shop name uses Jakarta 700.
 
 Google Fonts loaded in `web/index.html`; Roboto Quasar extra removed.
 
-### Type scale
+### Type scale (locked)
 
-| Tier | Size | Weight | Use |
-|------|------|--------|-----|
-| Display | `1.25–1.35rem` | 700 | Page title, hero KPI, `.stat-value` |
-| Body | `0.875rem` (14px) | 400–500 | Tables, forms |
-| Meta | `0.6875rem` (11px) | 600 + tracking | Overlines, column headers, `.stat-label` |
+| Token | Size | Weight | Class | Use |
+|-------|------|--------|-------|-----|
+| Meta | 11px | 600 | `.bw-type-meta` | Table headers, overlines, `.stat-label` |
+| Body | 14px | 400–500 | `.bw-type-body` | Tables, forms, lists |
+| Title | 22px | 700 | `.bw-type-title` | Page title in chrome / `AppPageHeader` |
+| KPI | 22px | 600 | `.bw-type-kpi` | Money KPI — Plex Mono |
 
-- Mobile base: `html { font-size: 14px }` below 600px
-- Page title (`AppPageHeader`): `1.35rem` / weight 700
-- Eyebrow: `0.75rem`, uppercase, `--bw-theme-muted`
-- Stat labels: `.stat-label` meta tier | Stat values: `.stat-value` mono + tabular
-- Table density: `0.875rem` body in global `q-table`; compact ops tables may use `11–13px`
+Shop extras only:
+
+| Token | Size | Weight | Class | Use |
+|-------|------|--------|-------|-----|
+| Product | 18px | 600 | `.bw-type-product` | Product name |
+| Shop name | 28–32px | 700 | `.bw-type-shop-name` | Store name on home |
+
+Do not use Quasar `text-h4` / `text-h5` / `text-h6` for app chrome. Money always `.bw-tabular`.
+
+- Eyebrow: meta tier, uppercase, `--bw-theme-muted`
 - Muted text utility: `.bw-text-muted` → `--bw-theme-muted`
 
 ## Spacing
@@ -112,15 +118,15 @@ Google Fonts loaded in `web/index.html`; Roboto Quasar extra removed.
 
 ## Border radius & shadows
 
-| Element | Radius |
-|---------|--------|
-| `q-btn` | `8px` |
-| `q-editor`, `.soft-input` | `8–10px` |
-| `.stat-card` | `10px` |
-| `.floating-surface`, `.empty-state-block` | `14px` |
-| `.hero-surface` | `16px` |
-| `.pill-btn` | `999px` |
-| `.square-chip` | `4px` |
+Locked tokens in `app.scss`: `--bw-radius-sm` `8px`, `--bw-radius-md` `12px`, `--bw-radius-pill` `999px`.
+
+| Token | Size | Use |
+|-------|------|-----|
+| `sm` | `8px` | Buttons, chips, inputs, avatars, tables |
+| `md` | `12px` | Cards, dialogs, drawers, empty states, shop cards |
+| `pill` | `999px` | Shop CTAs only — not ops buttons |
+
+Do not add 4 / 6 / 10 / 14 / 16 / 20. Shop CTAs use `--bw-shop-radius-pill`.
 
 Shadow: `--bw-theme-shadow` (scope-specific; light: soft stone tint, dark: deeper black)
 
@@ -138,10 +144,10 @@ Compact density: `body.body--compact` / `body.bw-density-compact` → 13px body,
 ### Shop rhythm (`body.theme-shop`)
 
 - Catalog, product detail, cart/checkout (`.shop-commerce-page`): extra page padding via `clamp(1.25rem, 3vw, 2.5rem)`
-- Product titles (`.product-name`, `.product-detail__title`): `1.125rem / 600`
-- Mobile bottom nav active item: soft filled pill on `--bw-theme-primary-soft` (16% indigo tint)
-- Shop shell: top nav + charcoal search/cart pills; tokens in `.theme-shop` (`web/src/css/app.scss`)
-- Shop cards `20px` radius, CTAs charcoal pills, shop tiles cycle charcoal / plum / mauve / clay
+- Product titles (`.product-name`, `.product-detail__title`): 18px / 600 (`.bw-type-product`)
+- Mobile bottom nav active item: soft filled pill on `--bw-theme-primary-soft` (mint wash)
+- Shop shell: top nav + blue search/cart pills; tokens in `.theme-shop` (`web/src/css/app.scss`)
+- Shop cards `12px` radius, CTAs blue pills, shop tiles cycle blue / sky / mint / paper
 
 ## Brand assets & splash
 

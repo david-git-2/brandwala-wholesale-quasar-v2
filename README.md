@@ -1,6 +1,6 @@
-# BrandWala Wholesale Quasar
+# TradeFlow BD
 
-BrandWala Wholesale Quasar is a Quasar-based business platform for managing wholesale and commerce operations in one place.
+TradeFlow BD is a Quasar-based business platform for managing wholesale and commerce operations in one place.
 
 ## What this project offers
 

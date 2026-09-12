@@ -1,6 +1,6 @@
 # Standard Ops Spreadsheet & Table View Pattern
 
-This document serves as the canonical reference specification and template blueprint for creating dense, high-performance, Excel-like table views with sticky headers, custom bottom tabs/scrollbars, and inline click-to-edit fields across Brandwala.
+This document serves as the canonical reference specification and template blueprint for creating dense, high-performance, Excel-like table views with sticky headers, custom bottom tabs/scrollbars, and inline click-to-edit fields across TradeFlow BD.
 
 ---
 

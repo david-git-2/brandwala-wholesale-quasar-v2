@@ -67,7 +67,7 @@ If a component currently hardcodes `text-grey-6` for muted copy, switch to `--bw
 
 **A. Shop token set** — `.theme-shop` / `body.theme-shop` in `web/src/css/app.scss`
 
-Give shop its **own canvas and surface**, not only primary. Keep Brandwala family (ink, muted, 8px buttons).
+Give shop its **own canvas and surface**, not only primary. Keep TradeFlow BD family (ink, muted, 8px buttons).
 
 | Token | Current | Target (light) | Job |
 | :--- | :--- | :--- | :--- |

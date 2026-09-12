@@ -475,7 +475,7 @@ export function useThriftStockForms(
         productWeight,
         extraWeight: 0,
         note: '',
-        userEmail: authStore.user?.email || 'admin@brandwala.com',
+        userEmail: authStore.user?.email || 'admin@tradeflowbd.com',
         pricing: {
           listed_unit_price: 0,
           is_listed_price_manual: false,
@@ -630,7 +630,7 @@ export function useThriftStockForms(
           productWeight: form.value.product_weight || undefined,
           extraWeight: form.value.extra_weight || undefined,
           note: form.value.note || '',
-          userEmail: authStore.user?.email || 'admin@brandwala.com',
+          userEmail: authStore.user?.email || 'admin@tradeflowbd.com',
           pricing: finalPricing,
           imageUrl: undefined,
           shelfId: form.value.shelf_id,

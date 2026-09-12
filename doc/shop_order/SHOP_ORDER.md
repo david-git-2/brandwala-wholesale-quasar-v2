@@ -388,7 +388,7 @@ Active tenant membership on the shop tenant (or parent), or superadmin. Returns 
       "product_image_url": null,
       "product_barcode": "8901234567890",
       "product_code": "TSH-NVY-001",
-      "product_brand": "BrandWala",
+      "product_brand": "TradeFlow BD",
       "product_category": "Apparel",
       "vendor_code": "BW",
       "is_available": true,

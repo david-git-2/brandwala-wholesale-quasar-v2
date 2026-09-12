@@ -1,6 +1,6 @@
 # Universal Tagging System Module
 
-The **Universal Tagging System** provides a centralized, platform-wide taxonomy and vocabulary dictionary for categorizing entities across all BrandWala modules without duplicating tag tables.
+The **Universal Tagging System** provides a centralized, platform-wide taxonomy and vocabulary dictionary for categorizing entities across all TradeFlow BD modules without duplicating tag tables.
 
 ---
 

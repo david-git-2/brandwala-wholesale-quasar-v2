@@ -13,7 +13,7 @@
         <!-- Address Bar -->
         <div class="address-bar col flex items-center justify-center text-caption text-grey-6 bg-grey-2 rounded q-mx-md q-py-xs">
           <q-icon name="ph ph-lock-key" size="12px" class="q-mr-xs text-success" />
-          <span>https://brandwala.com/shop/{{ shopName.toLowerCase().replace(/\s+/g, '-') || 'preview' }}</span>
+          <span>https://tradeflowbd.com/shop/{{ shopName.toLowerCase().replace(/\s+/g, '-') || 'preview' }}</span>
         </div>
       </div>
 

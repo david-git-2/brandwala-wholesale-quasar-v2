@@ -7,7 +7,7 @@ The **Products** domain manages the master catalog of merchandise, vendor SKUs, 
 ## 1. Domain Architecture & Multi-Tenant Model
 
 ### Catalog Scoping & Hierarchy
-In BrandWala / TradeFlow BD, products are owned at the **Parent** warehouse tenant level, while child sister concerns read catalog items for order placement and desk sales:
+In TradeFlow BD, products are owned at the **Parent** warehouse tenant level, while child sister concerns read catalog items for order placement and desk sales:
 
 ```text
 Product Catalog Hierarchy:

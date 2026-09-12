@@ -1,6 +1,6 @@
 # Multi-Tenancy, Authentication & Permission Governance
 
-The **Tenant & Auth** foundation establishes BrandWala's multi-tenant organizational structure, URL routing scopes, OAuth authentication lifecycle, and granular Role-Based Access Control (RBAC).
+The **Tenant & Auth** foundation establishes TradeFlow BD's multi-tenant organizational structure, URL routing scopes, OAuth authentication lifecycle, and granular Role-Based Access Control (RBAC).
 
 ---
 

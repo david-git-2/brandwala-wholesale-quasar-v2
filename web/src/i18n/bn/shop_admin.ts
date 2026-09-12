@@ -30,6 +30,7 @@ export default {
   col_slug: 'স্লাগ',
   col_type: 'ধরন',
   col_vendor: 'ভেন্ডর',
+  col_created: 'তৈরি',
   col_order_mode: 'অর্ডার মোড',
   col_negotiable: 'দরকষাকষি',
   manage_pricing: 'পণ্য লিস্টিং ও মূল্য পরিচালনা',
@@ -390,6 +391,7 @@ export default {
   access_domain_ordering: 'অর্ডার',
   configure: 'কনফিগার',
   collapse: 'বন্ধ',
+  expand: 'খুলুন',
   grant_catalog_access: 'ক্যাটালগ অ্যাক্সেস দিন',
   grant_catalog_caption: 'এই শপ ও গ্রুপের মূল সুইচ।',
   capabilities: 'সুবিধাসমূহ',
@@ -623,6 +625,15 @@ export default {
   resellers: 'রিসেলার',
   prices: 'দাম',
   who_can_access: 'কে দেখতে পাবে',
+  shop_hub_card_store_setup_title: 'স্টোর সেটআপ',
+  shop_hub_card_store_setup_description:
+    'স্টোরফ্রন্ট, ক্যাটালগ এবং কালেকশন পরিচালনা করুন।',
+  shop_hub_card_orders_title: 'অর্ডার ও ফুলফিলমেন্ট',
+  shop_hub_card_orders_description:
+    'শপ অর্ডার পর্যালোচনা করুন এবং ড্রপশিপ ফুলফিলমেন্ট চালান।',
+  shop_hub_card_shipping_title: 'শিপিং ও লজিস্টিক্স',
+  shop_hub_card_shipping_description:
+    'কুরিয়ার সেট করুন এবং ডেলিভারির পর COD রেমিট্যান্স রেকর্ড করুন।',
   shop_hub_group_store_setup: 'স্টোর সেটআপ',
   shop_hub_group_shipping: 'শিপিং',
   shop_setup_hub_caption: 'সব শপের জন্য সাধারণ সেটআপ। দাম বা অ্যাক্সেস প্রতি শপের তালিকায়।',

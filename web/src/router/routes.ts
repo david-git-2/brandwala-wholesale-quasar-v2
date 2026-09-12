@@ -100,6 +100,21 @@ const routes: RouteRecordRaw[] = [
   ...customerRoutes,
   ...afterSalesRoutes,
 
+  {
+    path: '/dev/designsystem',
+    component: () => import('layouts/ExternalLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'dev-design-system',
+        component: () => import('pages/DesignSystemPage.vue'),
+        meta: {
+          title: 'Design System',
+        },
+      },
+    ],
+  },
+
   // Always leave this as last one
   {
     path: '/:catchAll(.*)*',

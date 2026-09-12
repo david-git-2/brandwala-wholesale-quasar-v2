@@ -1,6 +1,6 @@
 # Page Layout, Header & Skeleton Loaders Spec (Quasar Vue 3) — LOCKED
 
-Quick-reference blueprint for implementing standard page structures, header controls, status workflows, and matching skeleton loaders (`q-skeleton`) across Quasar pages and components in the Brandwala codebase.
+Quick-reference blueprint for implementing standard page structures, header controls, status workflows, and matching skeleton loaders (`q-skeleton`) across Quasar pages and components in the TradeFlow BD codebase.
 
 **List golden reference (do not drift):** `web/src/modules/product_based_costing/pages/ProductBasedCostingPage.vue`  
 **Detail golden reference (do not drift):** `web/src/modules/product_based_costing/pages/ProductBasedCostingFileDetailsPage.vue`  

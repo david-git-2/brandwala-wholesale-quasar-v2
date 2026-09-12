@@ -32,17 +32,19 @@ defineProps<{
 
 .app-page-header__eyebrow {
   margin: 0 0 0.25rem;
-  font-size: 0.75rem;
+  font-size: var(--bw-text-meta);
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--bw-theme-muted, #736a61);
 }
 
 .app-page-header__title {
   margin: 0;
-  font-size: clamp(1.25rem, 2vw, 1.6rem);
+  font-size: var(--bw-text-title);
   font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
   color: var(--bw-theme-ink, #171412);
 }
 

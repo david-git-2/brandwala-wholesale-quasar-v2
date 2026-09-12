@@ -4,7 +4,7 @@ globs:
 alwaysApply: true
 ---
 
-# Development Flow — BrandWala / TradeFlow BD
+# Development Flow — TradeFlow BD
 
 ## Stack
 - Frontend: Quasar 2 SPA (Vue 3 + TypeScript) in `web/`

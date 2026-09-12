@@ -1,11 +1,11 @@
 <template>
-  <q-page class="shipment-items-v2-page bg-grey-1 column no-wrap" style="height: calc(100vh - 55px); overflow: hidden">
+  <q-page class="shipment-items-v2-page column no-wrap" style="height: calc(100vh - 55px); overflow: hidden">
     <!-- Top Sticky Section: Shipment Name, Status Workflow & Actions -->
-    <div class="shipment-items-top-section bg-white border-bottom q-px-lg q-py-md shrink-0 shadow-xs">
+    <div class="shipment-items-top-section border-bottom q-px-lg q-py-md shrink-0 shadow-xs">
       <div class="row items-center justify-between q-gutter-y-sm wrap">
         <!-- Left: Name + Status Workflow -->
         <div class="col-grow row items-center q-gutter-md wrap" style="min-width: 0">
-          <div class="text-subtitle1 text-weight-bolder text-grey-9 ellipsis" style="font-size: 15px">
+          <div class="text-subtitle1 text-weight-bolder ellipsis" style="font-size: 15px">
             {{ shipmentStore.currentShipment?.name || 'Untitled Shipment' }}
           </div>
           <ShipmentStatusWorkflowBar
@@ -184,11 +184,11 @@
     <!-- Middle Scrollable Section: Clean Full-width V2 Table with Internal Horizontal Scroll -->
     <div
       ref="tableScrollContainerRef"
-      class="shipment-items-middle-section col overflow-auto q-pa-none bg-white hide-native-scrollbar"
+      class="shipment-items-middle-section col overflow-auto q-pa-none hide-native-scrollbar"
       style="overflow-x: auto; overflow-y: auto"
       @scroll="onTableScroll"
     >
-      <q-markup-table flat class="shipment-items-markup-table bg-white" style="min-width: 1080px; width: 100%">
+      <q-markup-table flat class="shipment-items-markup-table" style="min-width: 1080px; width: 100%">
         <thead>
           <tr>
             <th class="text-center q-pa-none" style="width: 18px; min-width: 18px">
@@ -289,9 +289,9 @@
             <!-- Section Header Break Row in All Items View -->
             <tr
               v-if="isFirstItemOfSection(item, index)"
-              class="section-break-row bg-grey-2"
+              class="section-break-row"
             >
-              <td :colspan="totalVisibleColumnsCount" class="q-py-xs q-px-md text-weight-bold text-grey-9">
+              <td :colspan="totalVisibleColumnsCount" class="q-py-xs q-px-md text-weight-bold">
                 <div class="row items-center justify-between">
                   <div class="row items-center q-gutter-x-sm">
                     <q-icon name="ph ph-folder-open" size="16px" color="primary" />
@@ -353,7 +353,7 @@
 
             <!-- Name (Multiline Wrapped) -->
             <td v-if="visibleColumnMap.name" style="width: 120px; min-width: 120px; max-width: 120px; white-space: normal !important; word-break: break-word" @click="openEditItem(item.rawItem || item)">
-              <div class="text-weight-bold text-grey-9 hover-underline" style="font-size: 13px; line-height: 1.35; word-break: break-word; white-space: normal">
+              <div class="text-weight-bold hover-underline" style="font-size: 13px; line-height: 1.35; word-break: break-word; white-space: normal">
                 {{ item.name }}
               </div>
             </td>
@@ -364,7 +364,7 @@
                 <div v-if="item.code" class="row items-center justify-between no-wrap">
                   <div class="ellipsis">
                     <span class="text-grey-6 text-uppercase" style="font-size: 8px">C: </span>
-                    <b class="text-dark" style="font-size: 10px">{{ item.code }}</b>
+                    <b style="font-size: 10px">{{ item.code }}</b>
                   </div>
                   <q-btn
                     flat
@@ -382,7 +382,7 @@
                 <div v-if="item.rawItem?.barcode" class="row items-center justify-between no-wrap">
                   <div class="ellipsis">
                     <span class="text-grey-6 text-uppercase" style="font-size: 8px">B: </span>
-                    <span class="text-grey-9" style="font-size: 10px">{{ item.rawItem.barcode }}</span>
+                    <span style="font-size: 10px">{{ item.rawItem.barcode }}</span>
                   </div>
                   <q-btn
                     flat
@@ -1596,6 +1596,18 @@ const removeSheet = async (id: string) => {
 </script>
 
 <style scoped>
+.shipment-items-v2-page {
+  background: var(--bw-theme-base);
+  color: var(--bw-theme-ink);
+}
+
+.shipment-items-top-section,
+.shipment-items-middle-section,
+.shipment-items-markup-table {
+  background: var(--bw-theme-surface);
+  color: var(--bw-theme-ink);
+}
+
 .shipment-header-workflow :deep(.shipment-status-toolbar) {
   border: none;
   padding-left: 0;
@@ -1603,23 +1615,24 @@ const removeSheet = async (id: string) => {
 }
 
 .section-break-row {
-  background: #f1f5f9 !important;
-  border-top: 2px solid #cbd5e1 !important;
-  border-bottom: 1px solid #cbd5e1 !important;
+  background: color-mix(in srgb, var(--bw-theme-surface) 88%, var(--bw-theme-base) 12%) !important;
+  border-top: 2px solid var(--bw-theme-border) !important;
+  border-bottom: 1px solid var(--bw-theme-border) !important;
   user-select: none;
 }
 .section-break-row td {
-  background: #f1f5f9 !important;
+  background: color-mix(in srgb, var(--bw-theme-surface) 88%, var(--bw-theme-base) 12%) !important;
   height: 38px !important;
+  color: var(--bw-theme-ink);
 }
 .border-bottom {
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--bw-theme-border);
 }
 .border-top {
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--bw-theme-border);
 }
 .border-grey {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--bw-theme-border);
   border-radius: 8px;
 }
 .shrink-0 {
@@ -1646,34 +1659,26 @@ const removeSheet = async (id: string) => {
 .shipment-items-markup-table td {
   padding: 4px 4px !important;
   height: 48px;
+  color: var(--bw-theme-ink);
 }
 
-.shipment-items-markup-table th.bw-ops-col-tint--price,
-.shipment-items-markup-table td.bw-ops-col-tint--price {
-  background-color: #daf3e4 !important;
-  box-shadow: inset 2px 0 0 #059669;
+.shipment-items-markup-table tbody td:not([class*='bw-ops-col-tint']) {
+  background-color: var(--bw-theme-surface) !important;
 }
 
-.shipment-items-markup-table th.bw-ops-col-tint--cost,
-.shipment-items-markup-table td.bw-ops-col-tint--cost {
-  background-color: #ffe8d1 !important;
-  box-shadow: inset 2px 0 0 #ea580c;
+.shipment-items-markup-table thead th:not([class*='bw-ops-col-tint']) {
+  background: color-mix(in srgb, var(--bw-theme-surface) 92%, var(--bw-theme-base) 8%) !important;
+  color: var(--bw-theme-muted) !important;
+  border-bottom: 1px solid var(--bw-theme-border);
 }
 
-.shipment-items-markup-table th.bw-ops-col-tint--qty,
-.shipment-items-markup-table td.bw-ops-col-tint--qty {
-  background-color: #d0e6ff !important;
-  box-shadow: inset 2px 0 0 #2563eb;
+.shipment-items-markup-table thead th[class*='bw-ops-col-tint'] {
+  color: var(--bw-theme-muted) !important;
+  border-bottom: 1px solid var(--bw-theme-border);
 }
 
-.shipment-items-markup-table th.bw-ops-col-tint--weight,
-.shipment-items-markup-table td.bw-ops-col-tint--weight {
-  background-color: #e8d7f7 !important;
-  box-shadow: inset 2px 0 0 #9333ea;
-}
-
-.shipment-items-markup-table tr.row-selected td {
-  background-color: #e0f2fe !important;
+.shipment-items-markup-table tr.row-selected td:not([class*='bw-ops-col-tint']) {
+  background-color: color-mix(in srgb, var(--bw-theme-surface) 82%, var(--bw-theme-primary) 18%) !important;
 }
 
 .shipment-items-markup-table tr:hover td {
@@ -1711,13 +1716,13 @@ const removeSheet = async (id: string) => {
 }
 
 :deep(.excel-cell-input:hover .q-field__control) {
-  background-color: rgba(255, 255, 255, 0.4) !important;
+  background-color: color-mix(in srgb, var(--bw-theme-ink) 6%, transparent) !important;
 }
 
 :deep(.excel-cell-input.q-field--focused .q-field__control) {
-  background-color: #ffffff !important;
-  border: 1.5px solid #059669 !important;
-  box-shadow: 0 0 0 1px #059669 !important;
+  background-color: var(--bw-theme-surface) !important;
+  border: 1.5px solid var(--bw-theme-primary) !important;
+  box-shadow: 0 0 0 1px var(--bw-theme-primary) !important;
 }
 
 .hover-bright {

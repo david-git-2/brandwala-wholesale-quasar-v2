@@ -368,7 +368,7 @@ const isAdminOrSuper = computed(() => {
   return ['admin', 'staff', 'super_admin'].includes(authStore.matchedRole || '');
 });
 
-// District list matching brandwala retail
+// District list matching TradeFlow BD retail
 const DISTRICT_OPTIONS = [
   'Bagerhat',
   'Bandarban',
