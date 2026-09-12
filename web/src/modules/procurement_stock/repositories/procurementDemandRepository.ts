@@ -149,7 +149,7 @@ export const getItemDeliveredQuantity = (item: ProcurementDemandItem): number =>
   item.delivered_quantity ?? 0;
 
 export const getItemRemainingQuantity = (item: ProcurementDemandItem): number =>
-  item.remaining_quantity ?? Math.max(getItemNeedQuantity(item) - getItemPlacedQuantity(item), 0);
+  item.remaining_quantity ?? getItemNeedQuantity(item) - getItemPlacedQuantity(item);
 
 export const getItemRemainingToDeliver = (item: ProcurementDemandItem): number =>
   item.remaining_to_deliver ??

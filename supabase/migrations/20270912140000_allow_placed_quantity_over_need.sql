@@ -1,223 +1,6 @@
--- Replace procurement_placements (+ planned procurement_fulfillments) with preorder_demand
+-- Place order qty is independent of line need qty (may be over or under).
+
 begin;
-
-create type public.preorder_demand_source_type as enum (
-  'shop_order_item',
-  'pbc_costing_item'
-);
-
-create table public.preorder_demand (
-  id bigint generated always as identity primary key,
-  tenant_id bigint not null references public.tenants(id) on delete cascade,
-  source_type public.preorder_demand_source_type not null,
-  source_id bigint not null,
-  vendor_id bigint references public.vendors(id) on delete set null,
-  placed_quantity integer not null default 0,
-  delivered_quantity integer not null default 0,
-  stock_picks jsonb not null default '[]'::jsonb,
-  notes text,
-  updated_by_user_id uuid references auth.users(id) on delete set null,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  constraint preorder_demand_source_unique unique (source_type, source_id),
-  constraint preorder_demand_placed_quantity_check check (placed_quantity >= 0),
-  constraint preorder_demand_delivered_quantity_check check (delivered_quantity >= 0),
-  constraint preorder_demand_delivered_lte_placed_check check (delivered_quantity <= placed_quantity),
-  constraint preorder_demand_stock_picks_is_array check (jsonb_typeof(stock_picks) = 'array')
-);
-
-create index preorder_demand_tenant_updated_idx
-  on public.preorder_demand (tenant_id, updated_at desc);
-
-create index preorder_demand_source_idx
-  on public.preorder_demand (source_type, source_id);
-
-create trigger trg_preorder_demand_set_updated_at
-  before update on public.preorder_demand
-  for each row execute function public.set_updated_at();
-
-alter table public.preorder_demand enable row level security;
-
-create policy preorder_demand_select on public.preorder_demand
-  for select to authenticated
-  using (
-    public.is_tenant_staff(tenant_id)
-    or exists (
-      select 1 from public.tenants t
-      where t.id = preorder_demand.tenant_id
-        and t.parent_id is not null
-        and public.user_can_manage_parent_tenant(t.parent_id)
-    )
-  );
-
-grant select on table public.preorder_demand to authenticated;
-grant all on table public.preorder_demand to service_role;
-grant usage, select on sequence public.preorder_demand_id_seq to authenticated;
-grant all on sequence public.preorder_demand_id_seq to service_role;
-
--- Migrate active placement rows (one row per demand line)
-insert into public.preorder_demand (
-  tenant_id,
-  source_type,
-  source_id,
-  vendor_id,
-  placed_quantity,
-  delivered_quantity,
-  stock_picks,
-  notes,
-  updated_by_user_id,
-  created_at,
-  updated_at
-)
-select
-  agg.tenant_id,
-  agg.source_type::text::public.preorder_demand_source_type,
-  agg.source_id,
-  agg.vendor_id,
-  agg.placed_quantity,
-  0,
-  '[]'::jsonb,
-  agg.notes,
-  agg.updated_by_user_id,
-  agg.created_at,
-  agg.updated_at
-from (
-  select
-    pp.tenant_id,
-    pp.source_type,
-    pp.source_id,
-    (
-      array_agg(pp.vendor_id order by pp.placed_at desc nulls last, pp.id desc)
-      filter (where pp.vendor_id is not null)
-    )[1] as vendor_id,
-    coalesce(sum(pp.quantity), 0)::integer as placed_quantity,
-    (
-      array_agg(nullif(trim(pp.notes), '') order by pp.placed_at desc nulls last, pp.id desc)
-      filter (where nullif(trim(pp.notes), '') is not null)
-    )[1] as notes,
-    (
-      array_agg(pp.placed_by_user_id order by pp.placed_at desc nulls last, pp.id desc)
-      filter (where pp.placed_by_user_id is not null)
-    )[1] as updated_by_user_id,
-    min(pp.created_at) as created_at,
-    max(pp.updated_at) as updated_at
-  from public.procurement_placements pp
-  where pp.status = 'active'
-  group by pp.tenant_id, pp.source_type, pp.source_id
-) agg
-on conflict (source_type, source_id) do nothing;
-
--- ---------------------------------------------------------------------------
--- Helpers
--- ---------------------------------------------------------------------------
-
-create or replace function public.can_access_preorder_demand_tenant(p_tenant_id bigint)
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select coalesce(
-    public.is_tenant_staff(p_tenant_id)
-    or exists (
-      select 1 from public.tenants t
-      where t.id = p_tenant_id
-        and t.parent_id is not null
-        and public.user_can_manage_parent_tenant(t.parent_id)
-    ),
-    false
-  );
-$$;
-
-create or replace function public.sum_preorder_stock_picks(p_stock_picks jsonb)
-returns integer
-language sql
-immutable
-as $$
-  select coalesce(
-    sum(greatest(coalesce((elem->>'quantity')::integer, 0), 0)),
-    0
-  )::integer
-  from jsonb_array_elements(coalesce(p_stock_picks, '[]'::jsonb)) elem
-  where nullif(elem->>'global_stock_id', '') is not null;
-$$;
-
-create or replace function public.validate_preorder_stock_picks(p_stock_picks jsonb)
-returns boolean
-language plpgsql
-immutable
-as $$
-declare
-  v_elem jsonb;
-  v_stock_id bigint;
-  v_qty integer;
-begin
-  if p_stock_picks is null then
-    return true;
-  end if;
-  if jsonb_typeof(p_stock_picks) <> 'array' then
-    return false;
-  end if;
-
-  for v_elem in select value from jsonb_array_elements(p_stock_picks)
-  loop
-    v_stock_id := nullif(v_elem->>'global_stock_id', '')::bigint;
-    v_qty := coalesce((v_elem->>'quantity')::integer, 0);
-    if v_stock_id is null or v_qty <= 0 then
-      return false;
-    end if;
-  end loop;
-
-  return true;
-end;
-$$;
-
-drop function if exists public.get_procurement_demand_open_qty(public.procurement_placement_source_type, bigint);
-
-create or replace function public.get_procurement_demand_open_qty(
-  p_source_type public.preorder_demand_source_type,
-  p_source_id bigint
-)
-returns table (
-  tenant_id bigint,
-  open_qty integer,
-  document_status text
-)
-language plpgsql
-stable
-security definer
-set search_path = public
-as $$
-begin
-  if p_source_type = 'shop_order_item' then
-    return query
-    select
-      o.tenant_id,
-      greatest(coalesce(oi.confirmed_quantity, oi.quantity, 0), 0)::integer,
-      public.normalize_shop_order_procurement_status(o.status)
-    from public.shop_order_items oi
-    inner join public.shop_orders o on o.id = oi.order_id
-    where oi.id = p_source_id
-      and o.shop_type_snapshot = 'vendor_catalog';
-  elsif p_source_type = 'pbc_costing_item' then
-    return query
-    select
-      f.tenant_id,
-      greatest(
-        case when pci.assigned_shipment_id is not null then 0
-          else coalesce(pci.confirmed_quantity, pci.quantity::integer, 0)
-        end,
-        0
-      )::integer,
-      public.normalize_pbc_procurement_status(f.status)
-    from public.product_based_costing_items pci
-    inner join public.product_based_costing_files f on f.id = pci.product_based_costing_file_id
-    where pci.id = p_source_id
-      and f.billing_profile_id is not null;
-  end if;
-end;
-$$;
 
 create or replace function public.upsert_preorder_demand(
   p_tenant_id bigint,
@@ -236,7 +19,6 @@ as $$
 declare
   v_row public.preorder_demand;
   v_line_tenant_id bigint;
-  v_open_qty integer;
   v_doc_status text;
   v_delivered integer;
   v_placed integer;
@@ -248,8 +30,8 @@ begin
     raise exception 'source_id is required';
   end if;
 
-  select g.tenant_id, g.open_qty, g.document_status
-  into v_line_tenant_id, v_open_qty, v_doc_status
+  select g.tenant_id, g.document_status
+  into v_line_tenant_id, v_doc_status
   from public.get_procurement_demand_open_qty(p_source_type, p_source_id) g;
 
   if v_line_tenant_id is null then
@@ -347,23 +129,7 @@ begin
 end;
 $$;
 
--- Drop legacy placement RPCs and table
-drop function if exists public.record_procurement_placement(
-  bigint, public.procurement_placement_source_type, bigint, integer, bigint, text, text
-);
-drop function if exists public.cancel_procurement_placement(bigint, bigint);
-drop function if exists public.can_access_procurement_placement_tenant(bigint);
-
-drop table if exists public.procurement_placements;
-drop type if exists public.procurement_placement_source_type;
-
-grant execute on function public.can_access_preorder_demand_tenant(bigint) to authenticated;
-grant execute on function public.get_procurement_demand_open_qty(public.preorder_demand_source_type, bigint) to authenticated;
-grant execute on function public.upsert_preorder_demand(
-  bigint, public.preorder_demand_source_type, bigint, bigint, integer, jsonb, text
-) to authenticated;
-
--- list_procurement_demand_groups: join preorder_demand instead of procurement_placements
+-- Refresh list RPC remaining_quantity (signed delta vs need).
 create or replace function public.list_procurement_demand_groups(
   p_tenant_id bigint,
   p_procurement_status text default 'procuring',
@@ -422,18 +188,28 @@ begin
       o.customer_group_id,
       cg.name as customer_group_name,
       null::jsonb as vendor,
+      'shop_order_item'::text as source_type,
       oi.id as source_id,
       oi.product_id,
       oi.name,
       oi.image_url,
       coalesce(p.barcode, '') as barcode,
       coalesce(p.product_code, '') as product_code,
-      greatest(coalesce(oi.confirmed_quantity, oi.quantity, 0), 0)::integer as quantity
+      greatest(coalesce(oi.confirmed_quantity, oi.quantity, 0), 0)::integer as quantity,
+      pd.id as preorder_demand_id,
+      pd.vendor_id,
+      coalesce(pd.placed_quantity, 0) as placed_quantity,
+      coalesce(pd.delivered_quantity, 0) as delivered_quantity,
+      coalesce(pd.stock_picks, '[]'::jsonb) as stock_picks
     from public.shop_order_items oi
     inner join public.shop_orders o on o.id = oi.order_id
     inner join tenant_scope ts on ts.tenant_id = o.tenant_id
     left join public.customer_groups cg on cg.id = o.customer_group_id
     left join public.products p on p.id = oi.product_id
+    left join public.preorder_demand pd
+      on pd.source_type = 'shop_order_item'
+      and pd.source_id = oi.id
+      and pd.tenant_id = o.tenant_id
     where o.shop_type_snapshot = 'vendor_catalog'
       and public.normalize_shop_order_procurement_status(o.status) = v_status
       and (
@@ -465,6 +241,7 @@ begin
         )
         else null::jsonb
       end as vendor,
+      'pbc_costing_item'::text as source_type,
       pci.id as source_id,
       pci.product_id,
       coalesce(pci.name, p.name, 'Item') as name,
@@ -476,7 +253,12 @@ begin
           else coalesce(pci.confirmed_quantity, pci.quantity::integer, 0)
         end,
         0
-      )::integer as quantity
+      )::integer as quantity,
+      pd.id as preorder_demand_id,
+      pd.vendor_id,
+      coalesce(pd.placed_quantity, 0) as placed_quantity,
+      coalesce(pd.delivered_quantity, 0) as delivered_quantity,
+      coalesce(pd.stock_picks, '[]'::jsonb) as stock_picks
     from public.product_based_costing_items pci
     inner join public.product_based_costing_files f on f.id = pci.product_based_costing_file_id
     inner join tenant_scope ts on ts.tenant_id = f.tenant_id
@@ -484,6 +266,10 @@ begin
     left join public.customer_groups cg on cg.id = bp.customer_group_id
     left join public.products p on p.id = pci.product_id
     left join public.vendors v on v.id = f.vendor_id
+    left join public.preorder_demand pd
+      on pd.source_type = 'pbc_costing_item'
+      and pd.source_id = pci.id
+      and pd.tenant_id = f.tenant_id
     where f.billing_profile_id is not null
       and public.normalize_pbc_procurement_status(f.status) = v_status
       and (
@@ -494,39 +280,17 @@ begin
         or coalesce(pci.product_code, p.product_code, '') ilike '%' || v_search || '%'
       )
   ),
-  all_lines as (
+  demand_lines as (
     select * from shop_lines
     union all
     select * from pbc_lines
   ),
-  preorder_lines as (
-    select
-      pd.id as preorder_demand_id,
-      pd.source_type::text as source_type,
-      pd.source_id,
-      pd.vendor_id,
-      pd.placed_quantity,
-      pd.delivered_quantity,
-      coalesce(pd.stock_picks, '[]'::jsonb) as stock_picks
-    from public.preorder_demand pd
-    inner join tenant_scope ts on ts.tenant_id = pd.tenant_id
-  ),
-  enriched_lines as (
-    select
-      al.*,
-      case when al.document_type = 'shop_order' then 'shop_order_item' else 'pbc_costing_item' end as source_type,
-      pl.preorder_demand_id,
-      pl.vendor_id,
-      coalesce(pl.placed_quantity, 0) as placed_quantity,
-      coalesce(pl.delivered_quantity, 0) as delivered_quantity,
-      coalesce(pl.stock_picks, '[]'::jsonb) as stock_picks
-    from all_lines al
-    left join preorder_lines pl
-      on pl.source_id = al.source_id
-      and pl.source_type = case when al.document_type = 'shop_order' then 'shop_order_item' else 'pbc_costing_item' end
-    where al.quantity > 0
-      or coalesce(pl.placed_quantity, 0) > 0
-      or coalesce(pl.delivered_quantity, 0) > 0
+  eligible_lines as (
+    select dl.*
+    from demand_lines dl
+    where dl.quantity > 0
+      or dl.placed_quantity > 0
+      or dl.delivered_quantity > 0
   ),
   grouped as (
     select
@@ -551,14 +315,14 @@ begin
           'vendor_id', el.vendor_id,
           'placed_quantity', el.placed_quantity,
           'delivered_quantity', el.delivered_quantity,
-          'remaining_quantity', greatest(el.quantity - el.placed_quantity, 0),
+          'remaining_quantity', el.quantity - el.placed_quantity,
           'remaining_to_deliver', greatest(el.placed_quantity - el.delivered_quantity, 0),
           'stock_picks', el.stock_picks
         )
         order by el.source_id
       ) as items,
       count(*)::integer as item_count
-    from enriched_lines el
+    from eligible_lines el
     group by el.document_type, el.document_id
   ),
   paged as (

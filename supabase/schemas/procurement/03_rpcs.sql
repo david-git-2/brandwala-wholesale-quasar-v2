@@ -10609,7 +10609,6 @@ CREATE OR REPLACE FUNCTION "public"."upsert_preorder_demand"("p_tenant_id" bigin
 declare
   v_row public.preorder_demand;
   v_line_tenant_id bigint;
-  v_open_qty integer;
   v_doc_status text;
   v_delivered integer;
   v_placed integer;
@@ -10621,8 +10620,8 @@ begin
     raise exception 'source_id is required';
   end if;
 
-  select g.tenant_id, g.open_qty, g.document_status
-  into v_line_tenant_id, v_open_qty, v_doc_status
+  select g.tenant_id, g.document_status
+  into v_line_tenant_id, v_doc_status
   from public.get_procurement_demand_open_qty(p_source_type, p_source_id) g;
 
   if v_line_tenant_id is null then
@@ -10659,10 +10658,6 @@ begin
 
   if p_placed_quantity is not null and coalesce(p_placed_quantity, 0) < 0 then
     raise exception 'placed_quantity cannot be negative';
-  end if;
-
-  if p_placed_quantity is not null and coalesce(p_placed_quantity, 0) > v_open_qty then
-    raise exception 'placed_quantity exceeds need (open %, requested %)', v_open_qty, p_placed_quantity;
   end if;
 
   if p_stock_picks is not null and not public.validate_preorder_stock_picks(p_stock_picks) then
@@ -10903,7 +10898,7 @@ begin
           'vendor_id', el.vendor_id,
           'placed_quantity', el.placed_quantity,
           'delivered_quantity', el.delivered_quantity,
-          'remaining_quantity', greatest(el.quantity - el.placed_quantity, 0),
+          'remaining_quantity', el.quantity - el.placed_quantity,
           'remaining_to_deliver', greatest(el.placed_quantity - el.delivered_quantity, 0),
           'stock_picks', el.stock_picks
         )

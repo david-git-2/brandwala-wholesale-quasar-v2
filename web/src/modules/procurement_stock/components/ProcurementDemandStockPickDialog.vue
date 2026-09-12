@@ -36,7 +36,7 @@ const emit = defineEmits<{
 
 const search = ref('');
 const loading = ref(false);
-const qtyByStockId = ref<Record<number, number>>({});
+const qtyByStockId = ref<Record<number, number | null>>({});
 const committedPicks = ref<DemandStockPickSelection[]>([]);
 const addingStockId = ref<number | null>(null);
 const stockRows = ref<DemandStockPickRow[]>([]);
@@ -110,11 +110,10 @@ const committedQty = (stockId: number) =>
   committedPicks.value.find((pick) => pick.globalStockId === stockId)?.quantity ?? 0;
 
 const resetQtyDefaults = () => {
-  const nextQty: Record<number, number> = {};
+  const nextQty: Record<number, number | null> = {};
   for (const row of stockRows.value) {
     const added = committedQty(row.global_stock_id);
-    nextQty[row.global_stock_id] =
-      added > 0 ? added : Math.min(Math.max(remainingToPick.value, 1), row.available_atp);
+    nextQty[row.global_stock_id] = added > 0 ? added : null;
   }
   qtyByStockId.value = nextQty;
 };
@@ -139,9 +138,13 @@ watch(search, () => debouncedLoad());
 const close = () => emit('update:modelValue', false);
 
 const setQty = (stockId: number, value: string | number | null, maxAtp: number) => {
+  if (value === '' || value === null) {
+    qtyByStockId.value[stockId] = null;
+    return;
+  }
   const parsed = Math.trunc(Number(value));
-  if (!Number.isFinite(parsed) || parsed < 0) {
-    qtyByStockId.value[stockId] = 0;
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    qtyByStockId.value[stockId] = null;
     return;
   }
   qtyByStockId.value[stockId] = Math.min(parsed, maxAtp);
@@ -267,7 +270,7 @@ const apply = () => {
           <template #body-cell-qty="cell">
             <q-td :props="cell">
               <q-input
-                :model-value="qtyByStockId[cell.row.global_stock_id] ?? 0"
+                :model-value="qtyByStockId[cell.row.global_stock_id] ?? null"
                 type="number"
                 min="0"
                 :max="cell.row.available_atp"

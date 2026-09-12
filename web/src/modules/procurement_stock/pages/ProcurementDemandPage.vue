@@ -119,6 +119,7 @@
                         :disable="isRowSaving(group, item)"
                         class="demand-field demand-field--qty"
                         @update:model-value="(v) => onPlacedQuantityInput(group, item, v)"
+                        @blur="() => flushProcuringSave(group, item)"
                       />
                     </td>
                     <td class="demand-vendor-col">
@@ -141,6 +142,7 @@
                         class="demand-field"
                         @filter="filterVendors"
                         @update:model-value="(v) => onVendorChange(group, item, v)"
+                        @blur="() => flushProcuringSave(group, item)"
                       />
                     </td>
                     <td class="text-center demand-delivered-col">
@@ -234,9 +236,23 @@ import {
 
 type ItemDraft = {
   vendorId: number | null;
-  quantity: number;
-  deliveredQuantity: number;
+  quantity: number | null;
+  deliveredQuantity: number | null;
   stockPicks: DemandStockPickSelection[];
+};
+
+const normalizeDraftQuantity = (value?: number | null): number | null => {
+  if (value == null || value <= 0) return null;
+  return value;
+};
+
+const resolvePlacedQuantityForSave = (
+  draft: ItemDraft,
+  item: ProcurementDemandItem,
+): number | null => {
+  if (draft.quantity !== null) return draft.quantity;
+  if ((item.placed_quantity ?? 0) > 0) return 0;
+  return null;
 };
 
 type StockPickTarget = {
@@ -345,8 +361,8 @@ const syncDraftsFromGroups = (nextGroups: ProcurementDemandGroup[]) => {
       if (savingRowKeys.value.has(key)) continue;
       drafts[key] = {
         vendorId: item.vendor_id ?? null,
-        quantity: item.placed_quantity ?? 0,
-        deliveredQuantity: item.delivered_quantity ?? 0,
+        quantity: normalizeDraftQuantity(item.placed_quantity),
+        deliveredQuantity: normalizeDraftQuantity(item.delivered_quantity),
         stockPicks: mapStockPicksFromApi(item.stock_picks),
       };
     }
@@ -391,22 +407,28 @@ const getDraft = (group: ProcurementDemandGroup, item: ProcurementDemandItem): I
   if (!drafts[key]) {
     drafts[key] = {
       vendorId: item.vendor_id ?? null,
-      quantity: item.placed_quantity ?? 0,
-      deliveredQuantity: item.delivered_quantity ?? 0,
+      quantity: normalizeDraftQuantity(item.placed_quantity),
+      deliveredQuantity: normalizeDraftQuantity(item.delivered_quantity),
       stockPicks: mapStockPicksFromApi(item.stock_picks),
     };
   }
   return drafts[key];
 };
 
-const saveTimers: Record<string, ReturnType<typeof setTimeout>> = {};
+const isProcuringDraftDirty = (
+  group: ProcurementDemandGroup,
+  item: ProcurementDemandItem,
+) => {
+  const draft = getDraft(group, item);
+  return (
+    draft.vendorId !== (item.vendor_id ?? null) ||
+    draft.quantity !== normalizeDraftQuantity(item.placed_quantity)
+  );
+};
 
-const scheduleProcuringSave = (group: ProcurementDemandGroup, item: ProcurementDemandItem) => {
-  const key = itemRowKey(group, item);
-  if (saveTimers[key]) clearTimeout(saveTimers[key]);
-  saveTimers[key] = setTimeout(() => {
-    void saveProcuringLine(group, item);
-  }, 450);
+const flushProcuringSave = (group: ProcurementDemandGroup, item: ProcurementDemandItem) => {
+  if (!isProcuringDraftDirty(group, item)) return;
+  void saveProcuringLine(group, item);
 };
 
 const saveProcuringLine = async (group: ProcurementDemandGroup, item: ProcurementDemandItem) => {
@@ -418,7 +440,7 @@ const saveProcuringLine = async (group: ProcurementDemandGroup, item: Procuremen
       sourceType: item.source_type,
       sourceId: item.source_id,
       vendorId: draft.vendorId,
-      placedQuantity: draft.quantity,
+      placedQuantity: resolvePlacedQuantityForSave(draft, item),
     });
   } catch (err) {
     showErrorNotification(parseSupabaseError(err, 'Failed to save demand line'));
@@ -435,7 +457,6 @@ const onVendorChange = (
   value: number | null,
 ) => {
   getDraft(group, item).vendorId = value;
-  scheduleProcuringSave(group, item);
 };
 
 const onPlacedQuantityInput = (
@@ -443,9 +464,13 @@ const onPlacedQuantityInput = (
   item: ProcurementDemandItem,
   value: string | number | null,
 ) => {
+  if (value === '' || value === null) {
+    getDraft(group, item).quantity = null;
+    return;
+  }
   const parsed = Number(value);
-  getDraft(group, item).quantity = Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
-  scheduleProcuringSave(group, item);
+  getDraft(group, item).quantity =
+    Number.isFinite(parsed) && parsed > 0 ? Math.trunc(parsed) : null;
 };
 
 const openStockPickDialog = (group: ProcurementDemandGroup, item: ProcurementDemandItem) => {
@@ -471,7 +496,7 @@ const onStockPickApply = async (payload: {
   const key = itemRowKey(target.group, target.item);
   const draft = getDraft(target.group, target.item);
   draft.stockPicks = payload.picks;
-  draft.deliveredQuantity = payload.totalQuantity;
+  draft.deliveredQuantity = normalizeDraftQuantity(payload.totalQuantity);
 
   savingRowKeys.value = new Set(savingRowKeys.value).add(key);
   try {
