@@ -121,8 +121,7 @@
           color="primary"
           icon="ph ph-calculator"
           :label="$t('shop_admin.storefront_calculate_sell_price')"
-          class="full-width"
-          style="border-radius: 8px"
+          class="full-width square-btn"
           @click="$emit('calculate-sell-price', item)"
         />
       </div>
@@ -210,7 +209,6 @@
             dense
             size="xs"
             icon="ph ph-minus"
-            class="quantity-btn"
             @click="$emit('decrement', item)"
           />
           <div class="quantity-value text-weight-bold text-center">
@@ -222,7 +220,6 @@
             dense
             size="xs"
             icon="ph ph-plus"
-            class="quantity-btn"
             @click="$emit('increment', item)"
           />
         </div>
@@ -230,12 +227,13 @@
 
         <q-btn
           v-if="!inCart"
+          color="primary"
           unelevated
           no-caps
           dense
           icon="ph ph-shopping-cart"
           :label="addCartLabel"
-          class="add-cart-btn add-cart-btn--solid"
+          class="col square-btn"
           :loading="loading"
           :disabled="
             !permissions?.can_add_to_cart ||
@@ -251,7 +249,7 @@
           dense
           icon="ph ph-shopping-cart"
           :label="removeCartLabel"
-          class="add-cart-btn"
+          class="col square-btn"
           :loading="loading"
           :disabled="!permissions?.can_add_to_cart"
           @click="$emit('remove-from-cart', item)"
@@ -436,10 +434,10 @@ const gradeChipStyle = computed(() => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  border-radius: 20px;
-  background: color-mix(in srgb, #ffffff 90%, var(--bw-shop-mauve, #996888) 10%);
-  border-color: var(--bw-theme-border, rgb(42 43 42 / 0.1));
-  color: var(--bw-theme-ink, #2a2b2a);
+  border-radius: var(--bw-radius-md);
+  background: color-mix(in srgb, var(--bw-theme-surface) 90%, var(--bw-shop-mauve, #996888) 10%);
+  border-color: var(--bw-theme-border);
+  color: var(--bw-theme-ink);
   overflow: hidden;
   transition:
     transform 0.25s ease,
@@ -525,7 +523,7 @@ const gradeChipStyle = computed(() => {
   color: var(--bw-theme-muted, #5e4955);
 }
 .storefront-product-card__name {
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
   font-weight: 600;
   line-height: 1.35;
   min-height: calc(1.35em * 2);
@@ -540,7 +538,7 @@ const gradeChipStyle = computed(() => {
   overflow: hidden;
 }
 .storefront-product-card__price {
-  font-size: 1.35rem;
+  font-size: 1.5rem;
   font-weight: 700;
   line-height: 1.15;
   letter-spacing: -0.03em;
@@ -593,15 +591,10 @@ const gradeChipStyle = computed(() => {
   width: 100%;
 }
 .quantity-controls {
-  border: 1px solid var(--bw-theme-border, rgb(42 43 42 / 0.14));
-  border-radius: 12px;
+  border: 1px solid var(--bw-theme-border);
+  border-radius: var(--bw-radius-sm);
   padding: 2px;
-  background: #ffffff;
-}
-.quantity-btn {
-  min-width: 28px;
-  min-height: 28px;
-  color: var(--bw-theme-ink, #2a2b2a);
+  background: var(--bw-theme-surface);
 }
 .quantity-value {
   width: 28px;
@@ -613,21 +606,6 @@ const gradeChipStyle = computed(() => {
   flex-shrink: 0;
   min-width: 0;
   margin-top: 0.15rem;
-}
-.add-cart-btn {
-  flex: 1 1 auto;
-  border-radius: 12px !important;
-}
-
-.add-cart-btn--solid {
-  background: #2a2b2a !important;
-  color: #f9fffb !important;
-  font-weight: 600;
-}
-
-.add-cart-btn :deep(.q-btn__wrapper),
-.add-cart-btn :deep(.q-btn__content) {
-  border-radius: 12px;
 }
 
 .product-card--dropship .storefront-product-card__price-label {
@@ -655,7 +633,7 @@ const gradeChipStyle = computed(() => {
     height: auto;
     margin: 0 0 10px;
     padding: 10px;
-    border-radius: 16px;
+    border-radius: var(--bw-radius-md);
     border: none !important;
     overflow: hidden;
   }
@@ -672,7 +650,7 @@ const gradeChipStyle = computed(() => {
     margin: 0;
     padding: 0;
     border-bottom: none;
-    border-radius: 12px;
+    border-radius: var(--bw-radius-md);
     overflow: hidden;
   }
   .product-main {
@@ -689,7 +667,7 @@ const gradeChipStyle = computed(() => {
     max-height: calc(1.35em * 2);
   }
   .storefront-product-card__price {
-    font-size: 1.125rem;
+    font-size: 1.3125rem;
   }
   .product-actions {
     grid-area: actions;
@@ -702,20 +680,6 @@ const gradeChipStyle = computed(() => {
   }
   .quantity-controls {
     flex: 0 0 auto;
-  }
-  .quantity-btn {
-    min-width: 26px;
-    min-height: 26px;
-  }
-  .add-cart-btn {
-    flex: 1 1 0;
-    min-width: 0;
-    padding: 0.28rem 0.45rem !important;
-  }
-  .add-cart-btn :deep(.q-btn__content) {
-    flex-wrap: nowrap;
-    white-space: nowrap;
-    gap: 0.2rem;
   }
 }
 </style>

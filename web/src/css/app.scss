@@ -363,6 +363,10 @@ html[lang='bn'] body {
   color: var(--bw-theme-muted);
 }
 
+.bg-theme-primary-soft {
+  background: var(--bw-theme-primary-soft) !important;
+}
+
 /* ── Global Quasar Component Modernization ── */
 
 body {
@@ -685,7 +689,7 @@ body.theme-shop {
     box-shadow: var(--bw-theme-shadow);
   }
 
-  .q-btn[color='primary'].unelevated {
+  .q-btn[color='primary'].unelevated:not(.square-btn) {
     border-radius: var(--bw-shop-radius-pill) !important;
   }
 

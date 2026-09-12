@@ -5,29 +5,28 @@
         <div class="col-auto">
           <q-btn
             flat
-            :round="$q.screen.xs"
             dense
             no-caps
             color="primary"
             icon="ph ph-funnel-simple"
-            :label="$q.screen.xs ? undefined : $t('shop.filters')"
+            :label="$t('shop.filters')"
             data-test="catalog-filter-btn"
             @click="$emit('open-filter')"
           >
             <q-badge v-if="activeFilterCount > 0" color="primary" floating rounded>
               {{ activeFilterCount }}
             </q-badge>
-            <q-tooltip v-if="$q.screen.xs">{{ $t('shop.filters') }}</q-tooltip>
           </q-btn>
         </div>
 
         <div class="col">
           <q-input
             v-model="searchModel"
-            filled
+            outlined
+            rounded
             dense
+            debounce="300"
             type="text"
-            class="soft-input"
             :placeholder="$t('shop.search_this_shop')"
             clearable
             data-test="catalog-shop-search"
@@ -55,7 +54,7 @@
     </q-card>
 
     <div v-if="hasActiveFilters" class="row items-center q-gutter-xs active-filters-section">
-      <span class="text-caption text-weight-medium text-grey-7 q-mr-xs">
+      <span class="bw-type-meta bw-text-muted q-mr-xs">
         {{ $t('shop.active_filters') }}
       </span>
       <q-chip
@@ -66,7 +65,7 @@
         text-color="primary"
         size="sm"
         class="q-ma-xs"
-        @remove="searchModel = ''"
+        @remove="onClearSearchChip"
       >
         Search: "{{ searchModel }}"
       </q-chip>
@@ -102,6 +101,7 @@
         :label="$t('shop.clear_all')"
         size="sm"
         class="q-px-sm q-ml-xs text-weight-bold"
+        data-test="catalog-clear-filters"
         @click="$emit('reset-filters')"
       />
     </div>
@@ -133,11 +133,16 @@ const searchModel = computed({
   get: () => props.search,
   set: (val: string) => emit('update:search', val || ''),
 });
+
+const onClearSearchChip = () => {
+  searchModel.value = '';
+  emit('search');
+};
 </script>
 
 <style scoped>
 .storefront-toolbar {
-  border-radius: 12px;
+  border-radius: var(--bw-radius-md);
 }
 
 @media (max-width: 599px) {
@@ -146,14 +151,9 @@ const searchModel = computed({
   }
 }
 
-.soft-input :deep(.q-field__control) {
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 82%, transparent);
-}
-
 .fixed-price-chip {
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--bw-theme-primary, #2a2b2a) 12%, #fff);
-  color: var(--bw-theme-ink, #2a2b2a);
+  border-radius: var(--bw-radius-sm);
+  background: color-mix(in srgb, var(--bw-theme-primary) 12%, var(--bw-theme-surface));
+  color: var(--bw-theme-ink);
 }
 </style>

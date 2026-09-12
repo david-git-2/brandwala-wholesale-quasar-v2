@@ -1,57 +1,70 @@
 <template>
-  <q-page class="storefront-page theme-shop">
-    <!-- ACCESS DENIED STATE -->
-    <div
-      v-if="accessDenied"
-      class="column items-center justify-center error-container text-center q-pa-xl"
-    >
-      <q-icon name="ph ph-shield-warning" size="80px" color="negative" class="q-mb-md" />
-      <div class="text-h5 text-weight-bold text-grey-9">{{ $t('shop.access_denied') }}</div>
-      <p class="text-body1 text-grey-6 q-mt-sm q-mb-lg" style="max-width: 400px">
-        {{ $t('shop.access_denied_desc') }}
-      </p>
-      <q-btn color="primary" no-caps :label="$t('shop.go_back')" class="pill-btn" @click="goBack" />
-    </div>
+  <q-page class="bw-page theme-shop" data-test="storefront-page">
+    <div class="bw-page__stack">
+      <template v-if="accessDenied">
+        <q-banner
+          class="bw-status-banner bg-negative text-white"
+          rounded
+          data-test="storefront-access-denied"
+        >
+          <div class="text-subtitle1 text-weight-bold">{{ $t('shop.access_denied') }}</div>
+          <div class="q-mt-xs">{{ $t('shop.access_denied_desc') }}</div>
+        </q-banner>
+        <div class="row justify-center">
+          <q-btn
+            color="primary"
+            unelevated
+            no-caps
+            :label="$t('shop.go_back')"
+            class="pill-btn"
+            data-test="storefront-go-back"
+            @click="goBack"
+          />
+        </div>
+      </template>
 
-    <!-- NOT FOUND STATE -->
-    <div
-      v-else-if="notFound"
-      class="column items-center justify-center error-container text-center q-pa-xl"
-    >
-      <q-icon name="ph ph-magnifying-glass-minus" size="80px" color="warning" class="q-mb-md" />
-      <div class="text-h5 text-weight-bold text-grey-9">{{ $t('shop.shop_not_found') }}</div>
-      <p class="text-body1 text-grey-6 q-mt-sm q-mb-lg" style="max-width: 400px">
-        {{ $t('shop.shop_not_found_desc') }}
-      </p>
-      <q-btn color="primary" no-caps :label="$t('shop.go_back')" class="pill-btn" @click="goBack" />
-    </div>
+      <template v-else-if="notFound">
+        <q-banner
+          class="bw-status-banner bg-warning text-white"
+          rounded
+          data-test="storefront-not-found"
+        >
+          <div class="text-subtitle1 text-weight-bold">{{ $t('shop.shop_not_found') }}</div>
+          <div class="q-mt-xs">{{ $t('shop.shop_not_found_desc') }}</div>
+        </q-banner>
+        <div class="row justify-center">
+          <q-btn
+            color="primary"
+            unelevated
+            no-caps
+            :label="$t('shop.go_back')"
+            class="pill-btn"
+            data-test="storefront-go-back"
+            @click="goBack"
+          />
+        </div>
+      </template>
 
-    <!-- INITIAL LOADING SKELETON -->
-    <StorefrontSkeletonGrid v-else-if="initialLoading" initial />
+      <StorefrontSkeletonGrid v-else-if="initialLoading" initial />
 
-    <!-- STOREFRONT MAIN CONTENT -->
-    <div v-else class="bw-page__stack">
-      <StorefrontSearchToolbar
-        v-model:search="search"
-        v-model:brand="brand"
-        v-model:category="category"
-        :active-filter-count="activeFilterCount"
-        :has-active-filters="hasActiveFilters"
-        :show-fixed-price-chip="showFixedPriceChip"
-        @search="onSearchClick"
-        @open-filter="filterDrawerOpen = true"
-        @reset-filters="onResetFilters"
-      />
+      <template v-else>
+        <StorefrontSearchToolbar
+          v-model:search="search"
+          v-model:brand="brand"
+          v-model:category="category"
+          :active-filter-count="activeFilterCount"
+          :has-active-filters="hasActiveFilters"
+          :show-fixed-price-chip="showFixedPriceChip"
+          @search="onSearchClick"
+          @open-filter="filterDrawerOpen = true"
+          @reset-filters="onResetFilters"
+        />
 
-      <!-- PRODUCT GRID WITH INFINITE SCROLL -->
-      <q-infinite-scroll ref="infiniteScrollRef" :offset="250" @load="onLoadMore">
-        <div v-if="catalogItems.length > 0" class="row q-col-gutter-md product-grid">
-          <div
-            v-for="item in catalogItems"
-            :key="itemKey(item)"
-            class="col-xs-12 col-sm-6 col-md-4 col-lg-3 product-grid-item"
-          >
+        <q-infinite-scroll ref="infiniteScrollRef" :offset="250" @load="onLoadMore">
+          <div v-if="catalogItems.length > 0" class="bw-entity-grid">
             <StorefrontProductCard
+              v-for="item in catalogItems"
+              :key="itemKey(item)"
               :item="item"
               :permissions="permissions"
               :shop-type="activeShopType"
@@ -73,28 +86,38 @@
               @remove-from-cart="onRemoveFromCart"
             />
           </div>
-        </div>
 
-        <div
-          v-else-if="!isLoading && !isFetching"
-          class="column items-center justify-center empty-state q-pa-xl text-center"
-        >
-          <q-icon name="ph ph-tote" size="64px" color="grey-5" class="q-mb-md" />
-          <div class="text-h6 text-weight-bold text-grey-8">{{ $t('shop.no_products_found') }}</div>
-          <p class="text-body2 text-grey-6 q-mt-sm">
-            {{ $t('shop.no_products_desc') }}
-          </p>
-        </div>
+          <div
+            v-else-if="!isLoading && !isFetching"
+            class="column items-center justify-center q-pa-xl text-center empty-state-block floating-surface"
+            data-test="storefront-empty"
+          >
+            <q-icon name="ph ph-tote" size="64px" class="q-mb-md bw-text-muted" />
+            <div class="text-subtitle1 text-weight-bold">{{ $t('shop.no_products_found') }}</div>
+            <p class="bw-type-body bw-text-muted q-mt-sm q-mb-none">
+              {{ $t('shop.no_products_desc') }}
+            </p>
+            <q-btn
+              v-if="hasActiveFilters"
+              color="primary"
+              unelevated
+              no-caps
+              class="pill-btn q-mt-md"
+              :label="$t('shop.clear_all')"
+              data-test="storefront-clear-filters"
+              @click="onResetFilters"
+            />
+          </div>
 
-        <template #loading>
-          <StorefrontSkeletonGrid
-            v-if="isFetchingNextPage || (isLoading && catalogItems.length > 0)"
-          />
-        </template>
-      </q-infinite-scroll>
+          <template #loading>
+            <StorefrontSkeletonGrid
+              v-if="isFetchingNextPage || (isLoading && catalogItems.length > 0)"
+            />
+          </template>
+        </q-infinite-scroll>
+      </template>
     </div>
 
-    <!-- FILTER SIDEBAR DRAWERS -->
     <FilterSidebar v-model="filterDrawerOpen" :title="$t('shop.filters')">
       <StorefrontFilterDrawer
         v-model:brand="brand"
@@ -202,13 +225,6 @@ const permissions = computed<CustomerShopPermissions | null | undefined>(
 );
 
 const { addItemMutation, updateQtyMutation, removeItemMutation } = useShopCartMutations();
-
-const cartSaving = computed(
-  () =>
-    addItemMutation.isPending.value ||
-    updateQtyMutation.isPending.value ||
-    removeItemMutation.isPending.value,
-);
 
 const shopsQuery = useCustomerShopsQuery(computed(() => authStore.tenantId ?? null));
 const shops = computed(() => shopsQuery.data.value ?? []);
@@ -406,7 +422,7 @@ const onSearchClick = () => {
   resetInfiniteScroll();
 };
 
-watch([category, brand], () => {
+watch([search, category, brand], () => {
   syncUrlQuery();
   resetInfiniteScroll();
 });
@@ -418,58 +434,3 @@ watch(shopDetails, (newDetails) => {
   }
 });
 </script>
-
-<style scoped>
-.storefront-page {
-  background: transparent;
-}
-
-@media (min-width: 600px) {
-  .product-grid {
-    display: grid !important;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 250px));
-    align-items: stretch;
-    justify-content: center;
-    gap: 16px;
-    margin: 0 !important;
-  }
-  .product-grid-item {
-    display: flex;
-    width: 100% !important;
-    max-width: none !important;
-    padding: 0 !important;
-  }
-  .product-grid-item > * {
-    flex: 1 1 auto;
-    width: 100%;
-  }
-}
-
-.empty-state {
-  min-height: 320px;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 60%, transparent);
-  border-radius: 16px;
-  border: 1px dashed var(--bw-theme-border, rgba(34, 56, 101, 0.12));
-  color: var(--bw-theme-ink, #1f2937);
-}
-
-.error-container {
-  min-height: 450px;
-  background: color-mix(in srgb, var(--bw-theme-surface, #fff) 80%, transparent);
-  border-radius: 20px;
-  border: 1px solid var(--bw-theme-border, rgba(34, 56, 101, 0.08));
-  box-shadow: var(--bw-theme-shadow, 0 8px 30px rgba(0, 0, 0, 0.02));
-  color: var(--bw-theme-ink, #1f2937);
-}
-
-@media (max-width: 599px) {
-  .product-grid {
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-    row-gap: 0 !important;
-  }
-  .product-grid-item {
-    padding: 0 !important;
-  }
-}
-</style>

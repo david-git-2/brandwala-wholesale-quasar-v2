@@ -1,31 +1,31 @@
 <template>
-  <q-card flat bordered class="items-card">
-    <q-card-section class="q-px-md q-py-sm border-bottom row items-center justify-between">
-      <div class="text-subtitle2 text-weight-bold text-grey-9">
+  <q-card flat bordered class="floating-surface">
+    <q-card-section class="q-px-md q-py-sm row items-center justify-between">
+      <div class="text-subtitle2 text-weight-bold">
         {{ $t('shop.items') }} ({{ itemCount }})
       </div>
-      <div v-if="currentShopCartInfo" class="text-caption text-grey-6">
-        Store: <span class="text-weight-bold text-primary">{{ currentShopCartInfo.shop_name }}</span>
+      <div v-if="currentShopCartInfo" class="bw-type-meta bw-text-muted">
+        Store:
+        <span class="text-weight-bold text-primary">{{ currentShopCartInfo.shop_name }}</span>
       </div>
     </q-card-section>
 
+    <q-separator />
+
     <q-list separator>
       <q-item v-for="item in items" :key="item.id" class="q-py-md items-row">
-        <!-- Product Image -->
         <q-item-section avatar class="item-img-section">
-          <q-avatar size="64px" rounded class="bg-grey-2 border-all">
+          <q-avatar size="64px" rounded color="grey-3" text-color="grey-9" class="shop-product-thumb">
             <q-img v-if="item.image_url" :src="item.image_url" fit="contain" />
-            <q-icon v-else name="ph ph-image" color="grey-4" size="32px" />
+            <q-icon v-else name="ph ph-image" class="bw-text-muted" size="32px" />
           </q-avatar>
         </q-item-section>
 
-        <!-- Product Details -->
         <q-item-section class="item-details-section">
-          <div class="text-subtitle2 text-weight-bold text-grey-9 item-name">
+          <div class="text-subtitle2 text-weight-bold item-name">
             {{ item.name }}
           </div>
-          <!-- Dropship Selling Price Input -->
-          <div v-if="cart?.shop_type === 'dropship'" class="q-mt-sm" style="max-width: 210px">
+          <div v-if="cart?.shop_type === 'dropship'" class="q-mt-sm cart-price-input">
             <div class="column q-gutter-y-xs">
               <q-input
                 :model-value="getItemPrice(item)"
@@ -40,14 +40,14 @@
               />
               <div
                 v-if="item.resell_minimum_price?.amount != null"
-                class="text-caption row items-center q-gutter-x-xs"
-                :class="isItemPriceBelowFloor(item) ? 'text-negative' : 'text-grey-7'"
-                style="font-size: 11px"
+                class="bw-type-meta row items-center q-gutter-x-xs"
+                :class="isItemPriceBelowFloor(item) ? 'text-negative' : 'bw-text-muted'"
               >
                 <q-icon
                   :name="isItemPriceBelowFloor(item) ? 'ph ph-warning' : 'ph ph-info'"
                   size="14px"
-                  :color="isItemPriceBelowFloor(item) ? 'negative' : 'grey-6'"
+                  :color="isItemPriceBelowFloor(item) ? 'negative' : undefined"
+                  :class="isItemPriceBelowFloor(item) ? undefined : 'bw-text-muted'"
                 />
                 <span>{{ $t('customer_dashboard.min_sell', { price: formatMinSellPrice(item) }) }}</span>
               </div>
@@ -57,7 +57,7 @@
                 size="xs"
                 unelevated
                 no-caps
-                class="pill-btn q-px-sm self-start q-mt-xs"
+                class="square-btn q-px-sm self-start q-mt-xs"
                 :label="$t('shop.save_price')"
                 :loading="isSaving"
                 :disable="isItemPriceBelowFloor(item)"
@@ -71,7 +71,6 @@
           </div>
         </q-item-section>
 
-        <!-- Quantity Adjuster -->
         <q-item-section class="col-auto item-qty-section">
           <div class="column items-center q-gutter-y-xs">
             <div class="row items-center no-wrap quantity-controls">
@@ -81,11 +80,10 @@
                 dense
                 size="sm"
                 icon="ph ph-minus"
-                color="grey-7"
                 :disabled="isSaving || getItemQty(item) <= getItemMinQty(item)"
                 @click="$emit('adjust-qty-local', item, -getItemMinQty(item))"
               />
-              <div class="quantity-value text-weight-bold text-center text-grey-8">
+              <div class="quantity-value text-weight-bold text-center bw-tabular">
                 {{ getItemQty(item) }}
               </div>
               <q-btn
@@ -94,7 +92,6 @@
                 dense
                 size="sm"
                 icon="ph ph-plus"
-                color="grey-7"
                 :disabled="isSaving"
                 @click="$emit('adjust-qty-local', item, getItemMinQty(item))"
               />
@@ -105,7 +102,7 @@
               size="xs"
               unelevated
               no-caps
-              class="pill-btn q-px-sm"
+              class="square-btn q-px-sm"
               :label="$t('shop.save_qty')"
               :loading="isSaving"
               @click="$emit('save-item-qty', item)"
@@ -113,7 +110,6 @@
           </div>
         </q-item-section>
 
-        <!-- Price and Subtotal -->
         <q-item-section
           v-if="cart?.shop_type === 'dropship' ? (canSeeBuyPrice || canSeeSellPrice) : canSeeLinePrices"
           side
@@ -121,41 +117,40 @@
         >
           <template v-if="cart?.shop_type === 'dropship'">
             <div v-if="canSeeBuyPrice" class="q-mb-xs">
-              <span class="text-caption text-grey-6 block" style="font-size: 10px; margin-bottom: 2px;">{{ $t('shop.your_cost') }}</span>
-              <div class="text-subtitle2 text-weight-bold text-grey-9" style="line-height: 1.2">
+              <span class="bw-type-meta bw-text-muted block q-mb-xs">{{ $t('shop.your_cost') }}</span>
+              <div class="text-subtitle2 text-weight-bold bw-tabular">
                 {{ formatBuyerItemTotal(item) }}
               </div>
-              <div class="text-caption text-grey-6" style="font-size: 10px; line-height: 1">
+              <div class="bw-type-meta bw-text-muted">
                 {{ formatBuyerUnitPrice(item) }} {{ $t('shop.each') }}
               </div>
             </div>
             <div v-if="canSeeSellPrice && item.resell_minimum_price?.amount != null" class="q-mb-xs">
-              <span class="text-caption text-grey-6 block" style="font-size: 10px; margin-bottom: 2px;">Min Sell Price</span>
-              <div class="text-caption text-weight-medium text-grey-8" style="line-height: 1.2">
+              <span class="bw-type-meta bw-text-muted block q-mb-xs">Min Sell Price</span>
+              <div class="bw-type-meta text-weight-medium">
                 {{ formatMinSellPrice(item) }} {{ $t('shop.each') }}
               </div>
             </div>
             <div v-if="canSeeSellPrice" class="q-mt-xs">
-              <span class="text-caption text-grey-6 block" style="font-size: 10px; margin-bottom: 2px;">{{ $t('shop.recipient_pay') }}</span>
-              <div class="text-subtitle2 text-weight-bold text-primary" style="line-height: 1.2">
+              <span class="bw-type-meta bw-text-muted block q-mb-xs">{{ $t('shop.recipient_pay') }}</span>
+              <div class="text-subtitle2 text-weight-bold text-primary bw-tabular">
                 {{ formatItemTotal(item) }}
               </div>
-              <div class="text-caption text-grey-6" style="font-size: 10px; line-height: 1">
+              <div class="bw-type-meta bw-text-muted">
                 {{ formatUnitPrice(item) }} {{ $t('shop.each') }}
               </div>
             </div>
           </template>
           <template v-else-if="canSeeLinePrices">
-            <div class="text-subtitle2 text-weight-bold text-grey-9">
+            <div class="text-subtitle2 text-weight-bold bw-tabular">
               {{ formatItemTotal(item) }}
             </div>
-            <div class="text-caption text-grey-6">
+            <div class="bw-type-meta bw-text-muted">
               {{ formatUnitPrice(item) }} {{ $t('shop.each') }}
             </div>
           </template>
         </q-item-section>
 
-        <!-- Delete Action -->
         <q-item-section side class="item-delete-section">
           <q-btn
             flat
@@ -227,18 +222,8 @@ const getItemMinQty = (item: any) =>
 </script>
 
 <style scoped>
-.items-card {
-  border-radius: 14px;
-  background: #ffffff;
-  box-shadow: 0 4px 12px rgba(34, 56, 101, 0.02);
-}
-
-.border-bottom {
-  border-bottom: 1px solid rgba(34, 56, 101, 0.08);
-}
-
-.border-all {
-  border: 1px solid rgba(34, 56, 101, 0.08);
+.cart-price-input {
+  max-width: 210px;
 }
 
 .items-row {
@@ -246,21 +231,23 @@ const getItemMinQty = (item: any) =>
 }
 
 .items-row:hover {
-  background-color: #fafbfd;
+  background: color-mix(in srgb, var(--bw-theme-surface) 92%, var(--bw-theme-primary-soft) 8%);
 }
 
 .item-name {
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   line-height: 1.4;
 }
 
 .quantity-controls {
-  background: rgba(34, 56, 101, 0.03);
-  border-radius: 20px;
+  border: 1px solid var(--bw-theme-border);
+  border-radius: var(--bw-radius-sm);
   padding: 2px 6px;
+  background: var(--bw-theme-surface);
 }
 
 .quantity-value {
@@ -273,10 +260,6 @@ const getItemMinQty = (item: any) =>
 }
 
 @media (max-width: 599px) {
-  .items-card {
-    border-radius: 8px;
-  }
-
   .items-row {
     display: grid !important;
     grid-template-columns: 64px 1fr;

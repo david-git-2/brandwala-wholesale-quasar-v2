@@ -1,7 +1,6 @@
 <template>
-  <q-page class="q-pa-md shop-commerce-page">
-    <div class="q-gutter-y-md">
-      <!-- Standard Page Header -->
+  <q-page class="bw-page theme-shop" data-test="shop-cart-page">
+    <div class="bw-page__stack">
       <ShopCartHeader
         :show-cart-picker="showCartPicker"
         :item-count="itemCount"
@@ -9,81 +8,59 @@
 
       <q-banner
         v-if="placesOrderFromCart && items.length > 0 && !isCartsLoading && !isCartLoading"
-        class="catalog-banner text-primary rounded-borders"
         dense
+        rounded
+        class="bg-theme-primary-soft text-primary"
+        data-test="shop-cart-place-order-banner"
       >
         {{ $t('shop.cart_place_order_banner') }}
       </q-banner>
 
-      <!-- Loading Skeleton State -->
       <ShopCartSkeleton
         v-if="isCartsLoading || isCartLoading || (!selectedShopId && scopedActiveCarts.length > 0)"
       />
 
-      <!-- Cart List Error State -->
-      <q-card v-else-if="isCartsError" flat bordered class="q-pa-xl text-center">
-        <q-card-section>
-          <q-icon name="ph ph-warning-circle" size="64px" color="negative" class="q-mb-md" />
-          <div class="text-h6 text-grey-8 text-weight-bold q-mb-xs">
-            {{ $t('shop.cart_load_error') }}
-          </div>
-          <div class="text-grey-6 q-mb-md">
-            {{ $t('shop.cart_load_error_desc') }}
-          </div>
+      <template v-else-if="isCartsError">
+        <q-banner class="bw-status-banner bg-negative text-white" rounded data-test="shop-cart-error">
+          <div class="text-subtitle1 text-weight-bold">{{ $t('shop.cart_load_error') }}</div>
+          <div class="q-mt-xs">{{ $t('shop.cart_load_error_desc') }}</div>
+        </q-banner>
+        <div class="row justify-center">
           <q-btn
             color="primary"
             no-caps
             unelevated
             icon="ph ph-arrow-clockwise"
             :label="$t('shop.cart_retry')"
+            class="square-btn"
+            data-test="shop-cart-retry"
             @click="() => refetchActiveCarts()"
           />
-        </q-card-section>
-      </q-card>
+        </div>
+      </template>
 
-      <!-- Empty State -->
-      <q-card
-        v-else-if="!selectedShopId && scopedActiveCarts.length === 0"
-        flat
-        bordered
-        class="q-pa-xl text-center"
+      <div
+        v-else-if="(!selectedShopId && scopedActiveCarts.length === 0) || items.length === 0"
+        class="column items-center justify-center q-pa-xl text-center empty-state-block floating-surface"
+        data-test="shop-cart-empty"
       >
-        <q-card-section>
-          <q-icon name="ph ph-shopping-cart" size="64px" color="grey-4" class="q-mb-md" />
-          <div class="text-h6 text-grey-7 text-weight-bold">{{ $t('shop.cart_empty') }}</div>
-          <p class="text-body2 text-grey-6 q-mt-sm q-mb-md">
-            {{ $t('shop.cart_empty_desc') }}
-          </p>
-          <q-btn
-            color="primary"
-            no-caps
-            unelevated
-            :label="$t('shop.continue_shopping')"
-            @click="goBack"
-          />
-        </q-card-section>
-      </q-card>
+        <q-icon name="ph ph-shopping-cart" size="64px" class="q-mb-md bw-text-muted" />
+        <div class="text-subtitle1 text-weight-bold">{{ $t('shop.cart_empty') }}</div>
+        <p class="bw-type-body bw-text-muted q-mt-sm q-mb-md">
+          {{ $t('shop.cart_empty_desc') }}
+        </p>
+        <q-btn
+          color="primary"
+          no-caps
+          unelevated
+          :label="$t('shop.continue_shopping')"
+          class="square-btn"
+          data-test="shop-cart-continue-shopping"
+          @click="goBack"
+        />
+      </div>
 
-      <q-card v-else-if="items.length === 0" flat bordered class="q-pa-xl text-center">
-        <q-card-section>
-          <q-icon name="ph ph-shopping-cart" size="64px" color="grey-4" class="q-mb-md" />
-          <div class="text-h6 text-grey-7 text-weight-bold">{{ $t('shop.cart_empty') }}</div>
-          <p class="text-body2 text-grey-6 q-mt-sm q-mb-md">
-            {{ $t('shop.cart_empty_desc') }}
-          </p>
-          <q-btn
-            color="primary"
-            no-caps
-            unelevated
-            :label="$t('shop.continue_shopping')"
-            @click="goBack"
-          />
-        </q-card-section>
-      </q-card>
-
-      <!-- Cart Content Grid -->
-      <div v-else class="row q-col-gutter-lg cart-content">
-        <!-- Cart Items List (8 cols on desktop) -->
+      <div v-else class="row q-col-gutter-lg">
         <div class="col-xs-12 col-md-8">
           <ShopCartItemsList
             :items="items"
@@ -113,7 +90,6 @@
           />
         </div>
 
-        <!-- Checkout Summary (4 cols on desktop) -->
         <div class="col-xs-12 col-md-4">
           <ShopCartSummaryCard
             :cart="cart"
@@ -193,7 +169,6 @@ const logic = useShopCartPageLogic(
   buyerCartTotal,
 );
 
-// Sync selectedShopIdRef with logic.selectedShopId
 watch(logic.selectedShopId, (val) => {
   selectedShopIdRef.value = val;
 }, { immediate: true });
@@ -242,10 +217,3 @@ export default {
   name: 'ShopCartPage',
 };
 </script>
-
-<style scoped>
-.catalog-banner {
-  background: var(--bw-theme-primary-soft);
-}
-</style>
-
