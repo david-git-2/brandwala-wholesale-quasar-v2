@@ -41,3 +41,7 @@ CREATE INDEX IF NOT EXISTS notification_recipients_user_read_created_idx
 
 CREATE INDEX IF NOT EXISTS notification_recipients_notification_id_idx
   ON public.notification_recipients (notification_id);
+
+ALTER TABLE public.notification_recipients REPLICA IDENTITY FULL;
+
+ALTER PUBLICATION supabase_realtime ADD TABLE public.notification_recipients;

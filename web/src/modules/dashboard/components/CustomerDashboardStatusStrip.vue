@@ -46,6 +46,7 @@ import { ArcElement, Chart as ChartJS, DoughnutController, Tooltip } from 'chart
 import { Doughnut } from 'vue-chartjs';
 import type { ChartData, ChartOptions } from 'chart.js';
 import { useI18n } from 'vue-i18n';
+import { useQuasar } from 'quasar';
 
 import type { OrderGlanceSegments } from '../types/customerDashboard';
 import type { OrderGlanceBucket } from '../utils/customerDashboardStatus';
@@ -56,29 +57,38 @@ type ChartBucket = OrderGlanceBucket | 'delivered' | 'paid' | 'payment_needed';
 
 const SEGMENT_META: ReadonlyArray<{
   id: ChartBucket;
-  color: string;
+  token: string;
+  fallback: string;
   labelKey: string;
   hot?: boolean;
 }> = [
-  { id: 'needs_you', color: '#b48b7d', labelKey: 'customer_dashboard.glance_needs_you', hot: true },
-  { id: 'in_progress', color: '#996888', labelKey: 'customer_dashboard.glance_in_progress' },
-  { id: 'delivered', color: '#5e4955', labelKey: 'customer_dashboard.glance_delivered' },
-  { id: 'paid', color: '#2a2b2a', labelKey: 'customer_dashboard.glance_paid' },
-  { id: 'payment_needed', color: '#996888', labelKey: 'customer_dashboard.glance_payment_needed', hot: true },
+  { id: 'needs_you', token: '--bw-warning', fallback: '#b45309', labelKey: 'customer_dashboard.glance_needs_you', hot: true },
+  { id: 'in_progress', token: '--bw-theme-primary', fallback: '#3368a0', labelKey: 'customer_dashboard.glance_in_progress' },
+  { id: 'delivered', token: '--bw-shop-sky', fallback: '#66a3bf', labelKey: 'customer_dashboard.glance_delivered' },
+  { id: 'paid', token: '--bw-success', fallback: '#1a7f4b', labelKey: 'customer_dashboard.glance_paid' },
+  { id: 'payment_needed', token: '--bw-error', fallback: '#b83a3a', labelKey: 'customer_dashboard.glance_payment_needed', hot: true },
 ];
+
+function themeColor(token: string, fallback: string) {
+  if (typeof document === 'undefined') return fallback;
+  return getComputedStyle(document.body).getPropertyValue(token).trim() || fallback;
+}
 
 const props = defineProps<{
   segments: OrderGlanceSegments | null;
 }>();
 
 const { t } = useI18n();
+const $q = useQuasar();
 
-const segmentRows = computed(() =>
-  SEGMENT_META.map((meta) => ({
+const segmentRows = computed(() => {
+  void $q.dark.isActive;
+  return SEGMENT_META.map((meta) => ({
     ...meta,
+    color: themeColor(meta.token, meta.fallback),
     count: props.segments?.[meta.id] ?? 0,
-  })),
-);
+  }));
+});
 
 const total = computed(() => props.segments?.total ?? 0);
 

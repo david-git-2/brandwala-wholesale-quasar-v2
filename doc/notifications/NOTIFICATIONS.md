@@ -2,7 +2,7 @@
 
 Staff and admin alerts for the `app` scope (tenant operators). Covers in-app inbox, Telegram, and Firebase web push. Email is optional later.
 
-**Current state:** Only Quasar toasts via `web/src/utils/appFeedback.ts`. No persistent inbox, no outbound push. Domain docs defer SMS/email until this infra exists (e.g. dropship shortfall, after-sales merchant notify).
+**Current state:** In-app inbox UI is live (`NotificationBell`, dropdown preview, `/app/notifications` page, Realtime on `notification_recipients`). Telegram and Firebase are not built yet. Domain docs still defer SMS/email until outbound channels exist (e.g. dropship shortfall, after-sales merchant notify).
 
 ---
 
@@ -452,9 +452,9 @@ Trigger `trg_item_assignees_notify_assigned` on `item_assignees` AFTER INSERT â†
 
 **Done when**
 
-- [ ] Bell shows unread count for logged-in `app` user
-- [ ] Click opens list; click row navigates to `link_path` and marks read
-- [ ] At least one real event writes 1 notification + recipient row(s) (e.g. task assigned)
+- [x] Bell shows unread count for logged-in `app` user
+- [x] Click opens list; click row navigates to `link_path` and marks read
+- [x] At least one real event writes 1 notification + recipient row(s) (e.g. task assigned)
 
 ---
 

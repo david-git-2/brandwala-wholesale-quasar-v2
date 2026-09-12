@@ -35,11 +35,10 @@ export const ensureDashboardChartsRegistered = () => {
   registered = true;
 };
 
-export const readThemeRgb = (fallback = '2 132 199') => {
+export const readThemeRgb = (fallback = '2 132 199', root?: Element | null) => {
   if (typeof document === 'undefined') return fallback;
-  const value = getComputedStyle(document.documentElement)
-    .getPropertyValue('--bw-theme-primary-rgb')
-    .trim();
+  const el = root ?? document.body;
+  const value = getComputedStyle(el).getPropertyValue('--bw-theme-primary-rgb').trim();
   return value || fallback;
 };
 

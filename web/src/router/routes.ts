@@ -11,6 +11,7 @@ import productRoutes from 'src/modules/products/routes';
 import vendorRoutes from 'src/modules/vendor/routes';
 import kobaRoutes from 'src/modules/koba/routes';
 import tasksRoutes from 'src/modules/tasks/routes';
+import notificationRoutes from 'src/modules/notifications/routes';
 import thriftRoutes from 'src/modules/thrift/routes';
 import investorPortalRoutes from 'src/modules/investor_portal/routes';
 import globalRoutes from 'src/modules/global/routes';
@@ -87,6 +88,7 @@ const routes: RouteRecordRaw[] = [
   ...membershipRoutes,
   ...kobaRoutes,
   ...tasksRoutes,
+  ...notificationRoutes,
   ...thriftRoutes,
   ...investorPortalRoutes,
   ...procurementStockRoutes,

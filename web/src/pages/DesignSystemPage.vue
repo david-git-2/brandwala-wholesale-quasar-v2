@@ -635,6 +635,101 @@
       </section>
 
       <section class="ds-section">
+        <h2 class="ds-section__title">Row list</h2>
+        <p class="ds-note">
+          Browse pages that are not ops spreadsheets use stacked rows, not
+          <code>q-table</code>. One card per record. Avatar, two-line identity, status pill,
+          tabular money, overflow. Radius 12px. Hover lifts. Selected uses primary-soft.
+        </p>
+        <div class="ds-entity-list">
+          <div class="ds-entity-list__toolbar">
+            <q-input
+              v-model="listSearch"
+              outlined
+              dense
+              placeholder="Search customers"
+              class="ds-hub-search col"
+              debounce="300"
+              data-test="entity-list-search"
+            >
+              <template #prepend>
+                <q-icon name="ph ph-magnifying-glass" size="18px" class="bw-text-muted" />
+              </template>
+            </q-input>
+            <q-btn
+              unelevated
+              color="primary"
+              icon="ph ph-plus"
+              label="Create"
+              no-caps
+              class="ds-hub-action text-weight-medium col-auto"
+              data-test="entity-list-create"
+            />
+          </div>
+          <ul class="ds-entity-list__stack" role="list">
+            <li v-for="row in listRows" :key="row.id">
+              <div
+                class="ds-entity-row"
+                :class="{ 'ds-entity-row--active': listSelectedId === row.id }"
+                role="button"
+                tabindex="0"
+                :data-test="`entity-row-${row.id}`"
+                @click="listSelectedId = row.id"
+                @keydown.enter="listSelectedId = row.id"
+              >
+                <span class="ds-entity-row__avatar" aria-hidden="true">{{ initials(row.group_name) }}</span>
+                <span class="ds-entity-row__body">
+                  <span class="ds-entity-row__name">{{ row.group_name }}</span>
+                  <span class="ds-entity-row__meta">
+                    {{
+                      [row.admin_name, row.address, `${row.member_count} members`]
+                        .filter(Boolean)
+                        .join(' · ')
+                    }}
+                  </span>
+                </span>
+                <span class="ds-entity-row__side">
+                  <span
+                    class="ds-entity-row__money bw-tabular"
+                    :class="{ 'ds-entity-row__money--neg': row.wallet < 0 }"
+                  >
+                    {{ formatBdt(row.wallet) }}
+                  </span>
+                  <span
+                    class="ds-hub-status"
+                    :class="row.active ? 'ds-hub-status--active' : 'ds-hub-status--inactive'"
+                  >
+                    {{ row.active ? 'Active' : 'Inactive' }}
+                  </span>
+                </span>
+                <q-btn
+                  flat
+                  round
+                  dense
+                  icon="ph ph-dots-three"
+                  class="bw-text-muted"
+                  aria-label="Row actions"
+                  data-test="entity-row-actions"
+                  @click.stop
+                >
+                  <q-menu anchor="bottom right" self="top right">
+                    <q-list dense style="min-width: 148px">
+                      <q-item v-close-popup clickable>
+                        <q-item-section>View</q-item-section>
+                      </q-item>
+                      <q-item v-close-popup clickable class="text-negative">
+                        <q-item-section>Delete</q-item-section>
+                      </q-item>
+                    </q-list>
+                  </q-menu>
+                </q-btn>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="ds-section">
         <h2 class="ds-section__title">Charts</h2>
         <p class="ds-note">
           Chart.js via <code>vue-chartjs</code>. Register with
@@ -705,11 +800,11 @@
             </div>
           </q-card>
 
-          <q-card flat bordered class="ds-chart-card">
+          <q-card flat bordered class="ds-chart-card theme-shop">
             <div class="ds-chart-card__head">
               <div>
                 <div class="ds-chart-card__title">Area line</div>
-                <div class="ds-chart-card__sub">Hourly flow. Tension 0.4, filled.</div>
+                <div class="ds-chart-card__sub">Hourly flow. Tension 0.4, filled. Shop primary.</div>
               </div>
             </div>
             <div class="ds-chart-card__canvas">
@@ -718,7 +813,7 @@
           </q-card>
         </div>
 
-        <q-card flat bordered class="ds-chart-card q-mt-md">
+        <q-card flat bordered class="ds-chart-card q-mt-md theme-shop">
           <div class="ds-chart-card__head">
             <div>
               <div class="ds-chart-card__title">Stacked meter</div>
@@ -726,14 +821,14 @@
             </div>
           </div>
           <div class="ds-meter">
-            <div class="ds-meter__seg" style="width: 58%; background: #2563eb" title="COD" />
-            <div class="ds-meter__seg" style="width: 28%; background: #1a7f4b" title="Digital" />
-            <div class="ds-meter__seg" style="width: 14%; background: #b45309" title="Cash" />
+            <div class="ds-meter__seg" style="width: 58%; background: var(--bw-theme-primary)" title="COD" />
+            <div class="ds-meter__seg" style="width: 28%; background: var(--bw-success)" title="Digital" />
+            <div class="ds-meter__seg" style="width: 14%; background: var(--bw-warning)" title="Cash" />
           </div>
           <div class="ds-meter-legend">
-            <span><i style="background: #2563eb" /> COD 58%</span>
-            <span><i style="background: #1a7f4b" /> Digital 28%</span>
-            <span><i style="background: #b45309" /> Cash 14%</span>
+            <span><i class="ds-meter-legend__swatch ds-meter-legend__swatch--shop" /> COD 58%</span>
+            <span><i class="ds-meter-legend__swatch ds-meter-legend__swatch--success" /> Digital 28%</span>
+            <span><i class="ds-meter-legend__swatch ds-meter-legend__swatch--warning" /> Cash 14%</span>
           </div>
         </q-card>
       </section>
@@ -1158,6 +1253,8 @@ const statusOptions = [
 ];
 
 const hubSearch = ref('');
+const listSearch = ref('');
+const listSelectedId = ref(1);
 const filterPanelOpen = ref(false);
 const extendedDialogOpen = ref(false);
 const addProductsOpen = ref(false);
@@ -1333,6 +1430,17 @@ function formatBdt(val: number) {
   return `${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} BDT`;
 }
 
+const listRows = computed(() => {
+  const q = listSearch.value.trim().toLowerCase();
+  if (!q) return hubRows;
+  return hubRows.filter((row) =>
+    [row.group_name, row.admin_name, row.email, row.phone, row.address]
+      .join(' ')
+      .toLowerCase()
+      .includes(q),
+  );
+});
+
 const opsSheetId = ref('all');
 const opsSheets = [
   { id: 'all', name: 'All Items' },
@@ -1418,7 +1526,16 @@ function toggleOpsColumns() {
 
 const chartPrimaryRgb = computed(() => {
   void mode.value;
-  return readThemeRgb('72 139 143');
+  const root =
+    typeof document === 'undefined' ? null : document.querySelector('.ds-kit.theme-app');
+  return readThemeRgb('72 139 143', root);
+});
+
+const shopChartRgb = computed(() => {
+  void mode.value;
+  const root =
+    typeof document === 'undefined' ? null : document.querySelector('.theme-shop');
+  return readThemeRgb('51 104 160', root);
 });
 
 const donutPrimary = computed(() => rgba(chartPrimaryRgb.value, 0.9));
@@ -1520,12 +1637,12 @@ const lineChartData = computed<ChartData<'line'>>(() => ({
   datasets: [
     {
       data: [28000, 64000, 112000, 96000, 52000, 24000, 8500],
-      borderColor: rgba(chartPrimaryRgb.value, 1),
-      backgroundColor: rgba(chartPrimaryRgb.value, 0.12),
+      borderColor: rgba(shopChartRgb.value, 1),
+      backgroundColor: rgba(shopChartRgb.value, 0.12),
       borderWidth: 2.5,
       tension: 0.4,
       fill: true,
-      pointBackgroundColor: rgba(chartPrimaryRgb.value, 1),
+      pointBackgroundColor: rgba(shopChartRgb.value, 1),
       pointBorderColor: '#ffffff',
       pointBorderWidth: 2,
       pointRadius: 4,
@@ -2097,6 +2214,132 @@ watch(mode, (val) => {
   color: var(--bw-theme-muted);
 }
 
+.ds-entity-list {
+  padding: 12px;
+  border: 1px solid var(--bw-theme-border);
+  border-radius: 12px;
+  background: var(--bw-theme-surface);
+}
+
+.ds-entity-list__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 12px;
+}
+
+.ds-entity-list__stack {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ds-entity-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--bw-theme-border);
+  border-radius: 12px;
+  background: var(--bw-theme-surface);
+  color: var(--bw-theme-ink);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.2s ease,
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.ds-entity-row:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--bw-theme-shadow);
+  border-color: color-mix(in srgb, var(--bw-theme-primary) 28%, var(--bw-theme-border));
+}
+
+.ds-entity-row:focus-visible {
+  outline: 2px solid var(--bw-theme-primary);
+  outline-offset: 2px;
+}
+
+.ds-entity-row--active {
+  background: var(--bw-theme-primary-soft);
+  border-color: color-mix(in srgb, var(--bw-theme-primary) 38%, var(--bw-theme-border));
+}
+
+.ds-entity-row__avatar {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: var(--bw-theme-primary-soft);
+  color: var(--bw-theme-primary);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ds-entity-row__body {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ds-entity-row__name {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ds-entity-row__meta {
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--bw-theme-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ds-entity-row__side {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.ds-entity-row__money {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--bw-theme-ink);
+}
+
+.ds-entity-row__money--neg {
+  color: var(--bw-error);
+}
+
+@media (max-width: 640px) {
+  .ds-entity-row {
+    flex-wrap: wrap;
+  }
+
+  .ds-entity-row__side {
+    margin-left: 52px;
+    align-items: flex-start;
+  }
+}
+
 .ds-chart-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -2257,6 +2500,18 @@ watch(mode, (val) => {
   height: 8px;
   border-radius: 999px;
   display: inline-block;
+}
+
+.ds-meter-legend__swatch--shop {
+  background: var(--bw-theme-primary);
+}
+
+.ds-meter-legend__swatch--success {
+  background: var(--bw-success);
+}
+
+.ds-meter-legend__swatch--warning {
+  background: var(--bw-warning);
 }
 
 .ds-dialog-card {

@@ -6,6 +6,10 @@
 
     <template #header-extra>
       <div class="row items-center q-gutter-x-sm no-wrap">
+        <NotificationBell />
+
+        <q-separator vertical inset class="q-mx-xs text-grey-4 gt-xs" />
+
         <!-- Modernized Workspace / Tenant Switcher Badge -->
         <q-btn-dropdown
           v-if="tenantOptions.length"
@@ -86,6 +90,7 @@ import { useTenantPreferenceStore } from 'src/modules/tenant/stores/tenantPrefer
 import { useAppearance } from 'src/composables/useAppearance';
 import TaskSearchDialog from 'src/modules/tasks/components/TaskSearchDialog.vue';
 import GlobalStockSearchDialog from 'src/modules/global/components/GlobalStockSearchDialog.vue';
+import NotificationBell from 'src/modules/notifications/components/NotificationBell.vue';
 import type { Tenant } from 'src/modules/tenant/types';
 
 const authStore = useAuthStore();
