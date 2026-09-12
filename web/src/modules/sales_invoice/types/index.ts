@@ -20,6 +20,7 @@ export type GlobalInvoiceRow = {
   billing_profile_email?: string | null;
   billing_profile_color?: string | null;
   billing_profile_customer_group_id?: number | null;
+  retail_billing_mode?: 'account' | 'direct' | null;
   recipient_name?: string | null;
   created_by?: string | null;
   created_at?: string;

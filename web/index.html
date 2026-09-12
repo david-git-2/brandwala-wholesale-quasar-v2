@@ -373,19 +373,32 @@
         var theme = SCOPE_THEMES[scope] || SCOPE_THEMES.default;
         var tenantName = resolveTenantName(scope, auth, workspace, path);
 
+        var DARK_LOADER_ACCENTS = {
+          platform: '#d4a0ab',
+          app: '#6bb8a8',
+          shop: '#66a3bf',
+          investor: '#6bb5b0',
+          default: '#6bb8a8',
+        };
+
         splash.dataset.scope = scope;
         if (splashDark) {
           splash.style.setProperty('--splash-bg', '#141210');
           splash.style.setProperty('--splash-surface', '#1c1917');
+          splash.style.setProperty('--splash-gradient-end', '#0f0e0c');
           splash.style.setProperty('--splash-ink', '#f5f5f4');
           splash.style.setProperty('--splash-muted', '#a8a29e');
           splash.style.setProperty('--splash-glow', 'rgb(' + theme.accentRgb + ' / 0.1)');
+          splash.style.setProperty(
+            '--splash-accent',
+            DARK_LOADER_ACCENTS[scope] || DARK_LOADER_ACCENTS.default,
+          );
         } else {
           splash.style.setProperty('--splash-glow', 'rgb(' + theme.accentRgb + ' / 0.14)');
+          splash.style.setProperty('--splash-gradient-end', theme.gradientEnd);
+          splash.style.setProperty('--splash-accent', theme.accent);
         }
-        splash.style.setProperty('--splash-accent', theme.accent);
         splash.style.setProperty('--splash-accent-rgb', theme.accentRgb);
-        splash.style.setProperty('--splash-gradient-end', theme.gradientEnd);
 
         var tagline = document.getElementById('app-splash-tagline');
         if (tagline) tagline.textContent = theme.tagline;

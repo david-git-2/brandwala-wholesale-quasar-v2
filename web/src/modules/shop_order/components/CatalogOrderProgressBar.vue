@@ -121,7 +121,7 @@ const currentStepLabel = computed(() =>
 );
 
 const cardClass = computed(() =>
-  props.variant === 'customer' ? 'catalog-progress-bar--customer bg-grey-1' : '',
+  props.variant === 'customer' ? 'catalog-progress-bar--customer' : '',
 );
 
 function progressStepLabel(stepKey: CatalogProgressKey): string {
@@ -147,6 +147,13 @@ function progressStepClass(stepKey: CatalogProgressKey): string {
 <style scoped lang="scss">
 .catalog-progress-bar {
   border-radius: 10px;
+  background: var(--bw-theme-surface, #fff);
+  border-color: var(--bw-theme-border, rgba(0, 0, 0, 0.12));
+  color: var(--bw-theme-ink);
+}
+
+.catalog-progress-bar--customer {
+  background: var(--bw-theme-surface, #fafafa);
 }
 
 .progress-row {
@@ -197,5 +204,29 @@ function progressStepClass(stepKey: CatalogProgressKey): string {
   .progress-chevron {
     display: none;
   }
+}
+
+body.body--dark .catalog-progress-bar :deep(.text-grey-9) {
+  color: var(--bw-theme-ink) !important;
+}
+
+body.body--dark .catalog-progress-bar :deep(.text-grey-6) {
+  color: var(--bw-theme-muted) !important;
+}
+
+body.body--dark .progress-step {
+  background: var(--bw-theme-base);
+  color: var(--bw-theme-muted);
+  border-color: var(--bw-theme-border);
+}
+
+body.body--dark .progress-step--done {
+  background: color-mix(in srgb, var(--bw-theme-surface) 80%, var(--bw-theme-ink) 20%);
+  color: var(--bw-theme-ink);
+}
+
+body.body--dark .progress-step--upcoming {
+  background: var(--bw-theme-base);
+  color: var(--bw-theme-muted);
 }
 </style>

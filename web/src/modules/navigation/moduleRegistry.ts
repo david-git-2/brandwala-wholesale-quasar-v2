@@ -622,13 +622,13 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
   {
     key: 'global_invoice',
     name: 'Sales Invoices',
-    description: 'Desk invoices: wholesale, retail, and dropship.',
+    description: 'Desk invoices: wholesale, retail, and walk-in.',
     navIcon: 'ph ph-receipt',
     routes: [
       {
         scope: 'app',
         title: 'Invoices',
-        caption: 'Sales & invoice operations hub',
+        caption: 'All sales invoices',
         icon: 'ph ph-receipt',
         routeSegment: 'sales/invoices',
         requiredAction: 'view',

@@ -37,7 +37,7 @@
             />
 
             <div class="row items-center justify-between q-col-gutter-sm">
-              <div class="text-subtitle1 text-weight-bold text-grey-9">
+              <div class="text-subtitle1 text-weight-bold catalog-order-section-title">
                 Items in Order ({{ displayOrderItems.length }})
               </div>
               <div
@@ -550,6 +550,10 @@ export default {
   width: 100%;
   max-width: 640px;
   margin: 0 auto;
+}
+
+.catalog-order-section-title {
+  color: var(--bw-theme-ink);
 }
 
 .dropship-order-layout--negotiating {

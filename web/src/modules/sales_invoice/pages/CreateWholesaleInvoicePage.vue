@@ -246,24 +246,6 @@ const router = useRouter();
 const authStore = useAuthStore();
 const tenantStore = useTenantStore();
 
-usePageBreadcrumbs(() => {
-  const tenantSlug = authStore.selectedTenant?.slug || (route.params.tenantSlug as string);
-  const basePrefix = tenantSlug ? `/${tenantSlug}/app/sales/invoices` : '/app/sales/invoices';
-  return [
-    {
-      label: authStore.selectedTenant?.name || 'Workspace',
-      icon: 'ph ph-buildings',
-    },
-    {
-      label: 'Sales',
-    },
-    {
-      label: 'Invoices',
-      to: `${basePrefix}/list`,
-    },
-  ];
-});
-
 const existingInvoiceId = computed(() => {
   const qId = route.query.id;
   if (typeof qId === 'string' && qId) return Number(qId);
@@ -274,6 +256,30 @@ const existingInvoiceId = computed(() => {
 
 const isExistingInvoice = computed(() => Boolean(existingInvoiceId.value));
 const loadedInvoiceNo = ref('');
+
+usePageBreadcrumbs(() => {
+  const tenantSlug =
+    (typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : '') ||
+    authStore.selectedTenant?.slug ||
+    '';
+  return [
+    {
+      label: authStore.selectedTenant?.name || tenantStore.selectedTenant?.name || 'Workspace',
+      icon: 'ph ph-buildings',
+    },
+    {
+      label: 'Invoices',
+      to: { name: 'app-global-invoices-page', params: tenantSlug ? { tenantSlug } : {} },
+    },
+    {
+      label: loadedInvoiceNo.value
+        ? `#${loadedInvoiceNo.value}`
+        : isExistingInvoice.value
+          ? 'Wholesale invoice'
+          : 'New wholesale',
+    },
+  ];
+});
 const loadedInvoiceStatus = ref('');
 const loadedPaymentStatus = ref('due');
 const loadedDueAmount = ref(0);

@@ -29,6 +29,7 @@ export type ListGlobalInvoicesParams = {
   paymentStatus?: string | null;
   invoiceStatus?: string | null;
   invoiceType?: string | null;
+  retailBillingMode?: 'account' | 'direct' | null;
   fromDate?: string | null;
   toDate?: string | null;
   quickFilter?: 'all' | 'paid' | 'unpaid';
@@ -54,6 +55,7 @@ const listGlobalInvoices = async (
     paymentStatus,
     invoiceStatus,
     invoiceType,
+    retailBillingMode,
     fromDate,
     toDate,
     quickFilter,
@@ -65,7 +67,7 @@ const listGlobalInvoices = async (
   let query = supabase
     .from('sales_invoices')
     .select(
-      'id, parent_tenant_id, issued_by_tenant_id, invoice_no, invoice_type, invoice_status, payment_status, invoice_date, due_date, total_amount, due_amount, paid_amount, billing_profile_id, recipient_name, created_by, created_at, billing_profiles(name, email, color, customer_group_id), issued_by:tenants!global_invoices_issued_by_tenant_id_fkey(name)',
+      'id, parent_tenant_id, issued_by_tenant_id, invoice_no, invoice_type, invoice_status, payment_status, invoice_date, due_date, total_amount, due_amount, paid_amount, billing_profile_id, retail_billing_mode, recipient_name, created_by, created_at, billing_profiles(name, email, color, customer_group_id), issued_by:tenants!global_invoices_issued_by_tenant_id_fkey(name)',
       { count: 'exact' },
     );
 
@@ -87,7 +89,13 @@ const listGlobalInvoices = async (
   if (invoiceStatus) {
     query = query.eq('invoice_status', invoiceStatus);
   }
-  if (invoiceType) {
+  if (retailBillingMode === 'direct') {
+    query = query.eq('invoice_type', 'retail').eq('retail_billing_mode', 'direct');
+  } else if (retailBillingMode === 'account') {
+    query = query
+      .eq('invoice_type', 'retail')
+      .or('retail_billing_mode.eq.account,retail_billing_mode.is.null');
+  } else if (invoiceType) {
     query = query.eq('invoice_type', invoiceType);
   }
 

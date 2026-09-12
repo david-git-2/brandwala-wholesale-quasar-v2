@@ -624,6 +624,7 @@ import OpenWholesaleReturnCaseDialog, {
   type WholesaleCaseDialogContext,
 } from 'src/modules/after_sales/components/OpenWholesaleReturnCaseDialog.vue';
 import { useAfterSalesCaseByInvoiceQuery } from 'src/modules/after_sales/composables/useAfterSalesCaseMutations';
+import { usePageBreadcrumbs } from 'src/composables/useBreadcrumbs';
 
 const route = useRoute();
 const router = useRouter();
@@ -646,6 +647,26 @@ const goBack = () => {
 const loading = ref(true);
 const error = ref<string | null>(null);
 const invoice = ref<GlobalInvoiceDetail | null>(null);
+
+usePageBreadcrumbs(() => {
+  const tenantSlug =
+    (typeof route.params.tenantSlug === 'string' ? route.params.tenantSlug : '') ||
+    authStore.tenantSlug ||
+    '';
+  return [
+    {
+      label: authStore.selectedTenant?.name || 'Workspace',
+      icon: 'ph ph-buildings',
+    },
+    {
+      label: 'Invoices',
+      to: { name: 'app-global-invoices-page', params: tenantSlug ? { tenantSlug } : {} },
+    },
+    {
+      label: invoice.value?.invoice_no ? `#${invoice.value.invoice_no}` : 'Invoice details',
+    },
+  ];
+});
 const items = ref<GlobalInvoiceItemRow[]>([]);
 interface LinkedOrderRemittanceInfo {
   id: number;

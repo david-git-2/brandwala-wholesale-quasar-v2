@@ -460,7 +460,8 @@ export default {
 <style scoped>
 .item-card {
   border-radius: 12px;
-  background: #ffffff;
+  background: var(--bw-theme-surface, #fff);
+  border-color: var(--bw-theme-border, rgba(0, 0, 0, 0.12));
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   width: 100%;
   max-width: 640px;
@@ -722,6 +723,91 @@ export default {
 
 .item-card--countered {
   border-left: 3px solid #ff8f00;
+}
+
+body.body--dark .item-card {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+body.body--dark .item-card :deep(.text-grey-9) {
+  color: var(--bw-theme-ink) !important;
+}
+
+body.body--dark .item-card :deep(.text-grey-8),
+body.body--dark .item-card :deep(.text-grey-7),
+body.body--dark .item-card :deep(.text-grey-6) {
+  color: var(--bw-theme-muted) !important;
+}
+
+body.body--dark .item-thumb {
+  border-color: var(--bw-theme-border);
+  background: var(--bw-theme-base);
+}
+
+body.body--dark .price-cells-row {
+  border-color: var(--bw-theme-border);
+}
+
+body.body--dark .price-cell--first-offer {
+  background-color: rgb(123 31 162 / 0.22);
+}
+
+body.body--dark .price-cell--first-offer .price-cell__label {
+  color: #ce93d8;
+}
+
+body.body--dark .price-cell--first-offer .price-cell__value {
+  color: #e1bee7;
+}
+
+body.body--dark .price-cell--counter {
+  background-color: rgb(230 81 0 / 0.2);
+}
+
+body.body--dark .price-cell--counter .price-cell__label {
+  color: #ffb74d;
+}
+
+body.body--dark .price-cell--counter .price-cell__value {
+  color: #ffcc80;
+}
+
+body.body--dark .price-cell--final {
+  background-color: rgb(46 125 50 / 0.22);
+}
+
+body.body--dark .price-cell--final .price-cell__label {
+  color: #81c784;
+}
+
+body.body--dark .price-cell--final .price-cell__value {
+  color: #a5d6a7;
+}
+
+body.body--dark .bg-blue-1-soft {
+  background: rgb(33 150 243 / 0.12);
+}
+
+body.body--dark .counter-input-container {
+  background: var(--bw-theme-base) !important;
+  border-color: rgb(255 193 7 / 0.35) !important;
+}
+
+body.body--dark .border-grey {
+  border-color: var(--bw-theme-border);
+}
+
+body.body--dark .border-top {
+  border-top-color: var(--bw-theme-border);
+}
+
+body.body--dark .progress-section {
+  background: var(--bw-theme-base) !important;
+  color: var(--bw-theme-muted) !important;
+}
+
+body.body--dark .decision-box {
+  border-top-color: var(--bw-theme-border);
 }
 </style>
 

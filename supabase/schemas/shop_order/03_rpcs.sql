@@ -5962,12 +5962,10 @@ CREATE OR REPLACE FUNCTION "public"."customer_shop_order_glance_segment"("p_stat
       'final_offered'::public.shop_order_status
     ) then 'needs_you'
     when p_status in (
-      'confirmed'::public.shop_order_status,
-      'placed'::public.shop_order_status
-    ) then 'payment_needed'
-    when p_status in (
       'submitted'::public.shop_order_status,
       'costing_pending'::public.shop_order_status,
+      'confirmed'::public.shop_order_status,
+      'placed'::public.shop_order_status,
       'procuring'::public.shop_order_status,
       'ordered'::public.shop_order_status,
       'processing'::public.shop_order_status,

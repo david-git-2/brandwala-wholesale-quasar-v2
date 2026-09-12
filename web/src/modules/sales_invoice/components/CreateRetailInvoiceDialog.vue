@@ -5,9 +5,9 @@
     @update:model-value="emit('update:modelValue', $event)"
   >
     <q-card style="min-width: 440px; max-width: 95vw" class="floating-surface shadow-2 q-pa-sm">
-      <q-card-section class="text-h6 text-weight-bold text-black"
-        >Create Retail Invoice</q-card-section
-      >
+      <q-card-section class="text-h6 text-weight-bold text-black">
+        {{ initialMode === 'direct' ? 'Create Walk-in Invoice' : 'Create Retail Invoice' }}
+      </q-card-section>
 
       <q-card-section>
         <q-form class="q-gutter-y-md" @submit.prevent="onSubmit">
@@ -22,25 +22,6 @@
             map-options
             class="soft-input"
             @update:model-value="onIssuingTenantChange"
-          />
-
-          <!-- Retail Billing Mode Selector -->
-          <div class="text-caption text-grey-8 q-mb-xs">Billing Mode:</div>
-          <q-btn-toggle
-            v-model="form.retail_billing_mode"
-            spread
-            no-caps
-            rounded
-            unelevated
-            toggle-color="primary"
-            color="grey-2"
-            text-color="primary"
-            :options="[
-              { label: 'Retail Account', value: 'account' },
-              { label: 'Retail Direct', value: 'direct' },
-            ]"
-            class="soft-toggle q-mb-xs"
-            @update:model-value="onRetailModeChange"
           />
 
           <q-select
@@ -334,13 +315,6 @@ const onIssuingTenantChange = async (tenantId: number | null) => {
   form.recipient_profile_id = null;
   await Promise.all([loadBillingProfiles(tenantId), loadRecipientProfiles(tenantId)]);
 };
-
-const onRetailModeChange = (mode: 'account' | 'direct') => {
-  if (mode === 'direct') {
-    form.billing_profile_id = null;
-  }
-};
-
 
 const onRecipientProfileChange = (profileId: number | null) => {
   if (!profileId) return;

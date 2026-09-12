@@ -54,12 +54,6 @@ const salesInvoiceRoutes: RouteRecordRaw[] = [
     children: [
       {
         path: '',
-        name: 'app-global-invoices-overview',
-        component: () => import('../pages/InvoiceOverviewPage.vue'),
-        beforeEnter: guard('global_invoice'),
-      },
-      {
-        path: 'list',
         name: 'app-global-invoices-page',
         component: () => import('../pages/InvoicesListPage.vue'),
         meta: {
@@ -68,10 +62,24 @@ const salesInvoiceRoutes: RouteRecordRaw[] = [
         beforeEnter: guard('global_invoice'),
       },
       {
-        path: 'overview',
+        path: 'list',
         redirect: (to) => {
           const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : '';
-          return tenantSlug ? `/${tenantSlug}/app/sales/invoices` : '/app/sales/invoices';
+          return {
+            path: tenantSlug ? `/${tenantSlug}/app/sales/invoices` : '/app/sales/invoices',
+            query: to.query,
+          };
+        },
+      },
+      {
+        path: 'overview',
+        name: 'app-global-invoices-overview',
+        redirect: (to) => {
+          const tenantSlug = typeof to.params.tenantSlug === 'string' ? to.params.tenantSlug : '';
+          return {
+            path: tenantSlug ? `/${tenantSlug}/app/sales/invoices` : '/app/sales/invoices',
+            query: to.query,
+          };
         },
       },
       {

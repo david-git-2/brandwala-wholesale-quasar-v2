@@ -1,26 +1,40 @@
 <template>
   <q-page class="q-pa-sm page-fixed-layout column no-wrap overflow-hidden" :data-test="isParentTenant ? 'invoices-parent-list' : 'invoices-child-list'">
-    <!-- Error banner -->
     <q-banner v-if="invoicesQuery.error.value" class="bw-status-banner bg-negative text-white q-mb-xs flex-shrink-0" dense rounded>
       {{ invoicesQuery.error.value }}
     </q-banner>
 
-    <!-- Toolbar: Status & Payment Status Filters, Search, Actions -->
-    <q-card flat class="floating-surface shadow-1 q-pa-xs flex-shrink-0 q-mb-xs">
+    <q-card flat bordered class="q-pa-xs flex-shrink-0 q-mb-xs">
       <div class="row items-center justify-between q-col-gutter-xs">
-        <!-- Two Filters: Status and Payment Status -->
         <div class="col-12 col-md-auto row items-center q-gutter-x-xs">
+          <div class="row items-center q-gutter-x-xs quick-filter-toggle">
+            <q-btn
+              v-for="tab in channelTabs"
+              :key="tab.value"
+              dense
+              unelevated
+              no-caps
+              :color="channelFilter === tab.value ? 'primary' : 'transparent'"
+              :text-color="channelFilter === tab.value ? 'white' : 'grey-8'"
+              class="quick-filter-btn text-xs"
+              :data-test="`invoice-channel-${tab.value}`"
+              @click="channelFilter = tab.value"
+            >
+              {{ tab.label }}
+            </q-btn>
+          </div>
+
           <q-select
             v-model="invoiceStatusFilter"
             :options="invoiceStatusOptions"
             outlined
-            rounded
             dense
             emit-value
             map-options
             options-dense
-            style="min-width: 145px"
+            style="min-width: 132px"
             class="dense-filter-select"
+            data-test="invoice-status-filter"
           >
             <template #prepend>
               <q-icon name="ph ph-flag" size="14px" />
@@ -31,13 +45,13 @@
             v-model="statusFilter"
             :options="paymentStatusOptions"
             outlined
-            rounded
             dense
             emit-value
             map-options
             options-dense
-            style="min-width: 165px"
+            style="min-width: 150px"
             class="dense-filter-select"
+            data-test="invoice-payment-filter"
           >
             <template #prepend>
               <q-icon name="ph ph-credit-card" size="14px" />
@@ -45,18 +59,17 @@
           </q-select>
         </div>
 
-        <!-- Search & Action Buttons -->
         <div class="col-12 col-md-grow row items-center justify-end q-gutter-x-xs">
           <q-input
             v-model="searchText"
             outlined
-            rounded
             dense
+            debounce="300"
             clearable
             style="min-width: 220px"
             class="col-grow col-sm-auto dense-search-input"
-            placeholder="Search by ID, Customer..."
-            @clear="onSearch"
+            placeholder="Search by ID, customer..."
+            data-test="invoice-search"
           >
             <template #prepend>
               <q-icon name="ph ph-magnifying-glass" size="16px" />
@@ -64,7 +77,6 @@
           </q-input>
 
           <q-btn-dropdown
-            v-if="!isParentTenant"
             color="primary"
             unelevated
             no-caps
@@ -74,25 +86,35 @@
             icon="ph ph-plus"
             data-test="create-invoice-btn"
           >
-            <q-list dense style="min-width: 180px">
-              <q-item clickable v-close-popup @click="goToCreateWholesale">
+            <q-list dense style="min-width: 220px">
+              <q-item clickable v-close-popup data-test="create-wholesale-invoice" @click="goToCreateWholesale">
                 <q-item-section avatar>
                   <q-icon name="ph ph-briefcase" color="purple" size="20px" />
                 </q-item-section>
-                <q-item-section>Wholesale Invoice</q-item-section>
+                <q-item-section>
+                  <q-item-label>Wholesale</q-item-label>
+                  <q-item-label caption>B2B credit sale</q-item-label>
+                </q-item-section>
               </q-item>
 
-              <q-item clickable v-close-popup @click="createRetailDialog = true">
+              <q-item clickable v-close-popup data-test="create-retail-invoice" @click="openCreateRetail('account')">
                 <q-item-section avatar>
                   <q-icon name="ph ph-tote" color="blue" size="20px" />
                 </q-item-section>
-                <q-item-section>Retail Invoice</q-item-section>
-              </q-item>
-              <q-item clickable v-close-popup @click="createDropshipDialog = true">
-                <q-item-section avatar>
-                  <q-icon name="ph ph-truck" color="orange" size="20px" />
+                <q-item-section>
+                  <q-item-label>Retail</q-item-label>
+                  <q-item-label caption>Linked customer profile</q-item-label>
                 </q-item-section>
-                <q-item-section>Dropship Invoice</q-item-section>
+              </q-item>
+
+              <q-item clickable v-close-popup data-test="create-walkin-invoice" @click="openCreateRetail('direct')">
+                <q-item-section avatar>
+                  <q-icon name="ph ph-lightning" color="positive" size="20px" />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label>Walk-in Direct</q-item-label>
+                  <q-item-label caption>Counter sale, no profile</q-item-label>
+                </q-item-section>
               </q-item>
             </q-list>
           </q-btn-dropdown>
@@ -100,14 +122,13 @@
       </div>
     </q-card>
 
-    <!-- Loading Skeleton Table -->
     <div v-if="invoicesQuery.isLoading.value && !invoicesList.length" class="treasury-table-wrap col">
       <q-markup-table flat bordered class="invoice-table full-height">
         <thead>
           <tr>
             <th><q-skeleton type="text" width="80px" /></th>
+            <th><q-skeleton type="text" width="70px" /></th>
             <th><q-skeleton type="text" width="120px" /></th>
-            <th><q-skeleton type="text" width="80px" /></th>
             <th><q-skeleton type="text" width="80px" /></th>
             <th class="text-right"><q-skeleton type="text" width="90px" class="q-ml-auto" /></th>
             <th><q-skeleton type="text" width="80px" /></th>
@@ -117,9 +138,9 @@
         <tbody>
           <tr v-for="n in 8" :key="n">
             <td>
-              <q-skeleton type="text" width="90px" height="16px" class="q-mb-xs" />
-              <q-skeleton type="QBadge" width="55px" height="16px" />
+              <q-skeleton type="text" width="90px" height="16px" />
             </td>
+            <td><q-skeleton type="QBadge" width="70px" height="18px" /></td>
             <td>
               <div class="row items-center no-wrap">
                 <q-skeleton type="QAvatar" size="28px" class="q-mr-sm" />
@@ -130,242 +151,193 @@
               </div>
             </td>
             <td><q-skeleton type="text" width="75px" height="14px" /></td>
-            <td><q-skeleton type="text" width="75px" height="14px" /></td>
             <td class="text-right">
               <q-skeleton type="text" width="70px" height="14px" class="q-ml-auto q-mb-xs" />
               <q-skeleton type="text" width="50px" height="10px" class="q-ml-auto" />
             </td>
-            <td>
-              <q-skeleton type="QBadge" width="70px" height="20px" class="q-mb-xs" />
-              <q-skeleton type="text" width="40px" height="10px" />
-            </td>
+            <td><q-skeleton type="QBadge" width="70px" height="20px" /></td>
             <td class="text-right">
-              <div class="row justify-end q-gutter-x-xs">
-                <q-skeleton type="QBtn" size="sm" width="24px" height="24px" />
-              </div>
+              <q-skeleton type="QBtn" size="sm" width="24px" height="24px" />
             </td>
           </tr>
         </tbody>
       </q-markup-table>
     </div>
 
-    <!-- Empty State: No data created yet -->
     <div
       v-else-if="!invoicesList.length && !hasActiveFilters"
-      class="column items-center justify-center text-center text-grey-6 q-pa-xl floating-surface shadow-1 rounded-borders col"
+      class="column items-center justify-center text-center text-grey-6 q-pa-xl col"
     >
       <q-icon name="ph ph-file-text" size="48px" class="q-mb-sm text-grey-4" />
-      <div class="text-subtitle1 text-weight-medium">No Sales Invoices Found</div>
-      <div class="text-caption text-grey-5">
-        Invoices will appear here once created for this tenant.
+      <div class="text-subtitle1 text-weight-medium">No invoices yet</div>
+      <div class="text-caption text-grey-5 q-mb-sm">
+        Create a wholesale, retail, or walk-in invoice to get started.
       </div>
     </div>
 
-    <!-- Empty State: No search/filter match -->
     <div
       v-else-if="!invoicesList.length"
-      class="column items-center justify-center text-center text-grey-7 q-py-lg floating-surface shadow-1 rounded-borders col"
+      class="column items-center justify-center text-center text-grey-7 q-py-lg col"
     >
       <q-icon name="ph ph-funnel" size="36px" class="q-mb-xs text-grey-4" />
       <div class="text-subtitle2 text-weight-medium">No invoices match current filters</div>
-      <div class="text-caption text-grey-6 q-mt-xs">Try clearing search or filters to view all invoices.</div>
+      <div class="text-caption text-grey-6 q-mt-xs">Clear search or filters to view all invoices.</div>
       <q-btn flat dense no-caps color="primary" label="Reset filters" class="q-mt-sm" @click="onResetFilters" />
     </div>
 
-    <!-- Main Table View -->
     <div v-else class="treasury-table-wrap col">
-      <q-card flat class="floating-surface shadow-1 q-pa-none full-height column no-wrap">
-        <q-table
-          :rows="filteredInvoices"
-          :columns="columns"
-          row-key="id"
-          flat
-          class="invoice-table col"
-          :table-row-class="invoiceRowClass"
-          v-model:pagination="tablePagination"
-          :loading="invoicesQuery.isFetching.value"
-          :rows-per-page-options="[10, 20, 50]"
-          @request="onTableRequest"
-          @row-click="(evt, row) => goToDetails(row)"
-        >
-          <!-- Invoice ID Slot -->
-          <template #body-cell-invoice_no="props">
-            <q-td :props="props">
-              <span class="text-weight-bold text-primary cursor-pointer hover-underline">
-                #{{ props.row.invoice_no || props.row.id }}
-              </span>
-              <div class="row q-gutter-x-xs q-mt-xs">
-                <q-chip
-                  square
-                  dense
-                  :color="
-                    props.row.invoice_type === 'wholesale'
-                      ? 'purple-1'
-                      : props.row.invoice_type === 'dropship'
-                        ? 'orange-1'
-                        : 'blue-1'
-                  "
-                  :text-color="
-                    props.row.invoice_type === 'wholesale'
-                      ? 'purple-9'
-                      : props.row.invoice_type === 'dropship'
-                        ? 'orange-9'
-                        : 'blue-9'
-                  "
-                  class="text-weight-bold text-capitalize q-ma-none text-xxs soft-chip"
-                >
-                  {{ props.row.invoice_type || 'retail' }}
-                </q-chip>
-              </div>
-            </q-td>
-          </template>
+      <q-table
+        :rows="filteredInvoices"
+        :columns="columns"
+        row-key="id"
+        flat
+        bordered
+        class="invoice-table col"
+        :table-row-class="invoiceRowClass"
+        v-model:pagination="tablePagination"
+        :loading="invoicesQuery.isFetching.value"
+        :rows-per-page-options="[10, 20, 50]"
+        @request="onTableRequest"
+        @row-click="(_evt, row) => goToDetails(row)"
+      >
+        <template #body-cell-invoice_no="props">
+          <q-td :props="props">
+            <span class="text-weight-bold text-primary cursor-pointer hover-underline">
+              #{{ props.row.invoice_no || props.row.id }}
+            </span>
+          </q-td>
+        </template>
 
-          <!-- Customer Info Slot -->
-          <template #body-cell-customer="props">
-            <q-td :props="props">
-              <div class="row items-center no-wrap">
-                <q-avatar
-                  square
-                  size="28px"
-                  :color="$q.dark.isActive ? 'grey-9' : 'grey-3'"
-                  :text-color="$q.dark.isActive ? 'grey-3' : 'grey-9'"
-                  class="q-mr-sm text-weight-bold text-xxs avatar-soft-sq"
-                >
-                  {{ getInitials(props.row.billing_profile_name || props.row.recipient_name) }}
-                </q-avatar>
-                <div class="min-width-0">
-                  <div class="text-weight-bold text-grey-9 text-xs line-clamp-1">
-                    {{ props.row.billing_profile_name || props.row.recipient_name || 'No Customer' }}
-                  </div>
-                  <div class="text-caption text-grey-6 text-xxs line-clamp-1">
-                    {{ props.row.billing_profile_email || '—' }}
-                  </div>
-                </div>
-              </div>
-            </q-td>
-          </template>
+        <template #body-cell-type="props">
+          <q-td :props="props">
+            <q-chip
+              square
+              dense
+              :color="invoiceChannelTone(props.row).color"
+              :text-color="invoiceChannelTone(props.row).textColor"
+              class="text-weight-bold q-ma-none text-xxs soft-chip"
+            >
+              {{ invoiceChannelLabel(props.row) }}
+            </q-chip>
+          </q-td>
+        </template>
 
-          <!-- Sold by (parent books) -->
-          <template v-if="isParentTenant" #body-cell-sold_by="props">
-            <q-td :props="props">
-              <span class="text-caption text-weight-medium">{{ props.row.issued_by_tenant_name || '—' }}</span>
-            </q-td>
-          </template>
-
-          <!-- Create Date -->
-          <template #body-cell-invoice_date="props">
-            <q-td :props="props" class="text-weight-medium text-grey-8 text-xs">
-              {{ props.row.invoice_date || '—' }}
-            </q-td>
-          </template>
-
-          <!-- Due Date -->
-          <template #body-cell-due_date="props">
-            <q-td :props="props" class="text-weight-medium text-grey-8 text-xs">
-              {{ props.row.due_date || '—' }}
-            </q-td>
-          </template>
-
-          <!-- Grand Total & Due Amount -->
-          <template #body-cell-amount="props">
-            <q-td :props="props" class="text-right">
-              <div class="text-weight-bold text-grey-9 text-xs">
-                {{ formatAmount(props.row.total_amount) }}
-              </div>
-              <div
-                v-if="props.row.due_amount > 0"
-                class="text-caption text-negative text-weight-bold text-xxs"
+        <template #body-cell-customer="props">
+          <q-td :props="props">
+            <div class="row items-center no-wrap">
+              <q-avatar
+                square
+                size="28px"
+                :color="$q.dark.isActive ? 'grey-9' : 'grey-3'"
+                :text-color="$q.dark.isActive ? 'grey-3' : 'grey-9'"
+                class="q-mr-sm text-weight-bold text-xxs avatar-soft-sq"
               >
-                Due: {{ formatAmount(props.row.due_amount) }}
-              </div>
-              <div v-else class="text-caption text-positive text-weight-bold text-xxs">
-                Fully Paid
-              </div>
-            </q-td>
-          </template>
-
-          <!-- Status Slot -->
-          <template #body-cell-status="props">
-            <q-td :props="props">
-              <div class="column items-start q-gutter-y-xs">
-                <!-- Payment Status Badge -->
-                <div
-                  class="status-badge row inline items-center no-wrap"
-                  :style="paymentStatusBadgeStyle(props.row.payment_status)"
-                >
-                  <q-icon
-                    :name="getPaymentStatusIcon(props.row.payment_status)"
-                    size="12px"
-                    class="q-mr-xs"
-                  />
-                  <span class="text-weight-bolder text-uppercase text-xxs" style="letter-spacing: 0.04em">
-                    {{ formatStatusLabel(props.row.payment_status) }}
-                  </span>
+                {{ getInitials(props.row.billing_profile_name || props.row.recipient_name) }}
+              </q-avatar>
+              <div class="min-width-0">
+                <div class="text-weight-bold text-grey-9 text-xs line-clamp-1">
+                  {{ props.row.billing_profile_name || props.row.recipient_name || 'No Customer' }}
                 </div>
-                <!-- Invoice Status Pill -->
-                <div class="row items-center q-gutter-x-xs">
-                  <q-chip
-                    square
-                    dense
-                    :color="props.row.invoice_status === 'issued' ? 'green-1' : props.row.invoice_status === 'voided' ? 'red-1' : 'amber-1'"
-                    :text-color="props.row.invoice_status === 'issued' ? 'green-9' : props.row.invoice_status === 'voided' ? 'red-9' : 'amber-9'"
-                    class="text-weight-bold text-uppercase text-xxs q-ma-none soft-chip"
-                  >
-                    {{ props.row.invoice_status || 'draft' }}
-                  </q-chip>
+                <div class="text-caption text-grey-6 text-xxs line-clamp-1">
+                  {{ props.row.billing_profile_email || '—' }}
                 </div>
               </div>
-            </q-td>
-          </template>
+            </div>
+          </q-td>
+        </template>
 
-          <!-- Actions Slot -->
-          <template #body-cell-actions="props">
-            <q-td :props="props" class="text-right" @click.stop>
-              <div class="row justify-end items-center q-gutter-xs">
-                <q-btn
-                  flat
-                  round
-                  dense
-                  color="grey-7"
-                  icon="ph ph-eye"
-                  size="sm"
-                  @click="goToDetails(props.row)"
-                >
-                  <q-tooltip>View Invoice</q-tooltip>
-                </q-btn>
-                <q-btn flat round dense color="grey-7" icon="ph ph-dots-three-vertical" size="sm">
-                  <q-menu auto-close>
-                    <q-list dense style="min-width: 130px">
-                      <q-item clickable @click="goToDetails(props.row)">
-                        <q-item-section avatar style="min-width: 24px">
-                          <q-icon name="ph ph-eye" size="16px" />
-                        </q-item-section>
-                        <q-item-section>View Details</q-item-section>
-                      </q-item>
-                    </q-list>
-                  </q-menu>
-                </q-btn>
+        <template v-if="isParentTenant" #body-cell-sold_by="props">
+          <q-td :props="props">
+            <span class="text-caption text-weight-medium">{{ props.row.issued_by_tenant_name || '—' }}</span>
+          </q-td>
+        </template>
+
+        <template #body-cell-invoice_date="props">
+          <q-td :props="props" class="text-weight-medium text-grey-8 text-xs">
+            {{ props.row.invoice_date || '—' }}
+            <div v-if="props.row.due_date" class="text-caption text-grey-6 text-xxs">
+              Due {{ props.row.due_date }}
+            </div>
+          </q-td>
+        </template>
+
+        <template #body-cell-amount="props">
+          <q-td :props="props" class="text-right">
+            <div class="text-weight-bold text-grey-9 text-xs">
+              {{ formatAmount(props.row.total_amount) }}
+            </div>
+            <div
+              v-if="props.row.due_amount > 0"
+              class="text-caption text-negative text-weight-bold text-xxs"
+            >
+              Due: {{ formatAmount(props.row.due_amount) }}
+            </div>
+            <div v-else class="text-caption text-positive text-weight-bold text-xxs">
+              Fully Paid
+            </div>
+          </q-td>
+        </template>
+
+        <template #body-cell-status="props">
+          <q-td :props="props">
+            <div class="column items-start q-gutter-y-xs">
+              <q-chip
+                square
+                dense
+                :color="props.row.invoice_status === 'issued' ? 'green-1' : props.row.invoice_status === 'voided' ? 'red-1' : 'amber-1'"
+                :text-color="props.row.invoice_status === 'issued' ? 'green-9' : props.row.invoice_status === 'voided' ? 'red-9' : 'amber-9'"
+                class="text-weight-bold text-uppercase text-xxs q-ma-none soft-chip"
+              >
+                {{ props.row.invoice_status || 'draft' }}
+              </q-chip>
+              <div
+                class="status-badge row inline items-center no-wrap"
+                :style="paymentStatusBadgeStyle(props.row.payment_status)"
+              >
+                <q-icon
+                  :name="getPaymentStatusIcon(props.row.payment_status)"
+                  size="12px"
+                  class="q-mr-xs"
+                />
+                <span class="text-weight-bolder text-uppercase text-xxs" style="letter-spacing: 0.04em">
+                  {{ formatStatusLabel(props.row.payment_status) }}
+                </span>
               </div>
-            </q-td>
-          </template>
-        </q-table>
-      </q-card>
+            </div>
+          </q-td>
+        </template>
+
+        <template #body-cell-actions="props">
+          <q-td :props="props" class="text-right" @click.stop>
+            <q-btn
+              flat
+              dense
+              color="grey-7"
+              icon="ph ph-dots-three-vertical"
+              size="sm"
+              aria-label="Invoice actions"
+            >
+              <q-menu auto-close>
+                <q-list dense style="min-width: 130px">
+                  <q-item clickable @click="goToDetails(props.row)">
+                    <q-item-section avatar style="min-width: 24px">
+                      <q-icon name="ph ph-eye" size="16px" />
+                    </q-item-section>
+                    <q-item-section>View Details</q-item-section>
+                  </q-item>
+                </q-list>
+              </q-menu>
+              <q-tooltip>Actions</q-tooltip>
+            </q-btn>
+          </q-td>
+        </template>
+      </q-table>
     </div>
 
-    <!-- Dialogs -->
-    <CreateGlobalInvoiceDialog
-      v-model="createWholesaleDialog"
-      :parent-tenant-id="effectiveTenantId"
-      @created="onInvoiceCreated"
-    />
     <CreateRetailInvoiceDialog
       v-model="createRetailDialog"
       :parent-tenant-id="effectiveTenantId"
-      @created="onInvoiceCreated"
-    />
-    <CreateDropshipInvoiceDialog
-      v-model="createDropshipDialog"
-      :parent-tenant-id="effectiveTenantId"
+      :initial-mode="retailInitialMode"
       @created="onInvoiceCreated"
     />
   </q-page>
@@ -381,13 +353,13 @@ import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
 import { formatAmountBdt } from 'src/utils/currency';
 
-import CreateGlobalInvoiceDialog from '../components/CreateGlobalInvoiceDialog.vue';
 import CreateRetailInvoiceDialog from '../components/CreateRetailInvoiceDialog.vue';
-import CreateDropshipInvoiceDialog from '../components/CreateDropshipInvoiceDialog.vue';
 import { invoiceRepository } from '../repositories/invoiceRepository';
 import { salesInvoiceQueryKeys } from '../services/salesInvoiceQueryKeys';
 import type { GlobalInvoiceCreated, GlobalInvoiceRow } from '../types';
 import { useInvoiceWorkspace } from '../composables/useInvoiceWorkspace';
+
+type InvoiceChannel = 'all' | 'wholesale' | 'retail' | 'walkin' | 'dropship';
 
 const $q = useQuasar();
 const authStore = useAuthStore();
@@ -405,6 +377,12 @@ const effectiveTenantId = computed(() => {
   if (!current) return authStore.tenantId;
   return current.id;
 });
+
+const parseChannel = (raw: unknown): InvoiceChannel => {
+  if (raw === 'wholesale' || raw === 'retail' || raw === 'dropship' || raw === 'walkin') return raw;
+  if (raw === 'direct') return 'walkin';
+  return 'all';
+};
 
 const initialSearch = typeof route.query.search === 'string' ? route.query.search : '';
 const initialBillingProfileId =
@@ -426,6 +404,7 @@ const billingProfileFilter = ref<number | null>(
   initialBillingProfileId && Number.isFinite(initialBillingProfileId) ? initialBillingProfileId : null,
 );
 const quickFilter = ref<'all' | 'paid' | 'unpaid'>(initialQuickFilter ?? 'all');
+const channelFilter = ref<InvoiceChannel>(parseChannel(route.query.type));
 
 watch(
   () => route.query.search,
@@ -438,6 +417,13 @@ watch(
   },
 );
 
+watch(
+  () => route.query.type,
+  (type) => {
+    channelFilter.value = parseChannel(type);
+  },
+);
+
 const pagination = ref({
   page: 1,
   rowsPerPage: 10,
@@ -445,9 +431,10 @@ const pagination = ref({
   descending: true,
 });
 
-const createWholesaleDialog = ref(false);
-const createRetailDialog = ref(route.query.create === 'retail');
-const createDropshipDialog = ref(route.query.create === 'dropship');
+const createRetailDialog = ref(route.query.create === 'retail' || route.query.create === 'walkin' || route.query.create === 'direct');
+const retailInitialMode = ref<'account' | 'direct'>(
+  route.query.create === 'walkin' || route.query.create === 'direct' ? 'direct' : 'account',
+);
 
 const goToCreateWholesale = () => {
   void router.push({
@@ -458,14 +445,27 @@ const goToCreateWholesale = () => {
   });
 };
 
+const openCreateRetail = (mode: 'account' | 'direct') => {
+  retailInitialMode.value = mode;
+  createRetailDialog.value = true;
+};
+
 watch(
   () => route.query.create,
   (val) => {
     if (val === 'wholesale') goToCreateWholesale();
-    if (val === 'retail') createRetailDialog.value = true;
-    if (val === 'dropship') createDropshipDialog.value = true;
+    if (val === 'retail') openCreateRetail('account');
+    if (val === 'walkin' || val === 'direct') openCreateRetail('direct');
   },
 );
+
+const channelTabs: { label: string; value: InvoiceChannel }[] = [
+  { label: 'All', value: 'all' },
+  { label: 'Wholesale', value: 'wholesale' },
+  { label: 'Retail', value: 'retail' },
+  { label: 'Walk-in', value: 'walkin' },
+  { label: 'Dropship', value: 'dropship' },
+];
 
 const invoiceStatusOptions = [
   { label: 'All Statuses', value: null },
@@ -475,30 +475,57 @@ const invoiceStatusOptions = [
 ];
 
 const paymentStatusOptions = [
-  { label: 'All Payment Status', value: null },
+  { label: 'All Payments', value: null },
   { label: 'Paid', value: 'paid' },
   { label: 'Due', value: 'due' },
   { label: 'Partial', value: 'partial' },
   { label: 'Draft', value: 'draft' },
 ];
 
+const listInvoiceType = computed(() => {
+  if (channelFilter.value === 'wholesale' || channelFilter.value === 'dropship') {
+    return channelFilter.value;
+  }
+  return null;
+});
+
+const listRetailBillingMode = computed(() => {
+  if (channelFilter.value === 'walkin') return 'direct' as const;
+  if (channelFilter.value === 'retail') return 'account' as const;
+  return null;
+});
+
 const columns = computed(() => {
   const cols: { name: string; label: string; align: 'left' | 'right' | 'center'; sortable?: boolean; field: string }[] = [
-    { name: 'invoice_no', label: 'Invoice ID', align: 'left', sortable: true, field: 'invoice_no' },
+    { name: 'invoice_no', label: 'Invoice', align: 'left', sortable: true, field: 'invoice_no' },
+    { name: 'type', label: 'Type', align: 'left', field: 'invoice_type' },
     { name: 'customer', label: 'Customer', align: 'left', sortable: true, field: 'billing_profile_name' },
   ];
   if (isParentTenant.value) {
     cols.push({ name: 'sold_by', label: 'Sold by', align: 'left', field: 'issued_by_tenant_name' });
   }
   cols.push(
-    { name: 'invoice_date', label: 'Create Date', align: 'left', sortable: true, field: 'invoice_date' },
-    { name: 'due_date', label: 'Due Date', align: 'left', sortable: true, field: 'due_date' },
-    { name: 'amount', label: 'Total Amount', align: 'right', sortable: true, field: 'total_amount' },
+    { name: 'invoice_date', label: 'Date', align: 'left', sortable: true, field: 'invoice_date' },
+    { name: 'amount', label: 'Total', align: 'right', sortable: true, field: 'total_amount' },
     { name: 'status', label: 'Status', align: 'left', sortable: true, field: 'payment_status' },
     { name: 'actions', label: '', align: 'right', field: 'id' },
   );
   return cols;
 });
+
+const invoiceChannelLabel = (row: GlobalInvoiceRow) => {
+  if (row.invoice_type === 'wholesale') return 'Wholesale';
+  if (row.invoice_type === 'dropship') return 'Dropship';
+  if (row.retail_billing_mode === 'direct') return 'Walk-in';
+  return 'Retail';
+};
+
+const invoiceChannelTone = (row: GlobalInvoiceRow) => {
+  if (row.invoice_type === 'wholesale') return { color: 'purple-1', textColor: 'purple-9' };
+  if (row.invoice_type === 'dropship') return { color: 'orange-1', textColor: 'orange-9' };
+  if (row.retail_billing_mode === 'direct') return { color: 'green-1', textColor: 'positive' };
+  return { color: 'blue-1', textColor: 'blue-9' };
+};
 
 const invoiceRowClass = (row: GlobalInvoiceRow) => {
   if (row.invoice_status === 'draft') return 'invoice-row--draft';
@@ -515,6 +542,8 @@ const invoicesQuery = useQuery({
       search: searchText.value,
       paymentStatus: statusFilter.value,
       invoiceStatus: invoiceStatusFilter.value,
+      invoiceType: listInvoiceType.value,
+      retailBillingMode: listRetailBillingMode.value,
       billingProfileId: billingProfileFilter.value,
       quickFilter: quickFilter.value,
     })
@@ -532,6 +561,8 @@ const invoicesQuery = useQuery({
       search: searchText.value,
       paymentStatus: statusFilter.value,
       invoiceStatus: invoiceStatusFilter.value,
+      invoiceType: listInvoiceType.value,
+      retailBillingMode: listRetailBillingMode.value,
       billingProfileId: billingProfileFilter.value,
       quickFilter: quickFilter.value,
     });
@@ -543,7 +574,12 @@ const invoicesList = computed(() => invoicesQuery.data.value?.data ?? []);
 const filteredInvoices = computed(() => invoicesList.value);
 
 const hasActiveFilters = computed(() => {
-  return Boolean(statusFilter.value || invoiceStatusFilter.value || searchText.value);
+  return Boolean(
+    statusFilter.value ||
+      invoiceStatusFilter.value ||
+      searchText.value ||
+      channelFilter.value !== 'all',
+  );
 });
 
 const tablePagination = computed({
@@ -562,20 +598,18 @@ const tablePagination = computed({
   },
 });
 
-const onTableRequest = (props: any) => {
+const onTableRequest = (props: { pagination: typeof tablePagination.value }) => {
   tablePagination.value = props.pagination;
 };
 
-// Reset page to 1 when filters change
-watch([searchText, statusFilter, invoiceStatusFilter, billingProfileFilter, quickFilter], () => {
+watch([searchText, statusFilter, invoiceStatusFilter, billingProfileFilter, quickFilter, channelFilter], () => {
   pagination.value.page = 1;
 });
 
 const formatAmount = (value: number) => formatAmountBdt(value);
 
 const formatStatusLabel = (status?: string | null) => {
-  const value = (status || 'draft').replace(/_/g, ' ');
-  return value;
+  return (status || 'draft').replace(/_/g, ' ');
 };
 
 const getPaymentStatusIcon = (status?: string | null) => {
@@ -613,7 +647,7 @@ const paymentStatusBadgeStyle = (status?: string | null) => {
   return {
     backgroundColor: isDark ? 'rgba(245, 158, 11, 0.15)' : '#fff3e0',
     color: isDark ? '#fbbf24' : '#ef6c00',
-    border: `1px solid ${isDark ? 'rgba(245, 158, 11, 0.3)' : '#ffe0b2'}`,
+    border: `1px solid ${isDark ? 'rgba(245, 158, 11, 0.15)' : '#ffe0b2'}`,
   };
 };
 
@@ -653,11 +687,10 @@ const onInvoiceCreated = (invoice: GlobalInvoiceCreated) => {
   goToDetails(invoice);
 };
 
-const onSearch = () => {};
-
 const onResetFilters = () => {
   statusFilter.value = null;
   invoiceStatusFilter.value = null;
+  channelFilter.value = 'all';
   searchText.value = '';
 };
 </script>
@@ -684,7 +717,6 @@ const onResetFilters = () => {
   flex-direction: column;
   height: 100%;
   box-shadow: none;
-  background: transparent;
 }
 
 .treasury-table-wrap :deep(.q-table__middle) {
@@ -693,15 +725,16 @@ const onResetFilters = () => {
   overflow-y: auto;
 }
 
-.floating-surface {
-  background: #ffffff;
+.quick-filter-toggle {
+  background: color-mix(in srgb, var(--bw-theme-ink) 4%, transparent);
   border-radius: 8px;
-  border: 1px solid rgba(226, 232, 240, 0.6);
+  padding: 2px;
 }
 
-body.body--dark .floating-surface {
-  background: #1c1c1c;
-  border-color: #2e2e2e;
+.quick-filter-toggle :deep(.q-btn) {
+  border-radius: 6px;
+  font-weight: 600;
+  padding: 2px 10px;
 }
 
 .dense-filter-select :deep(.q-field__control) {
@@ -725,7 +758,7 @@ body.body--dark .floating-surface {
 .dense-search-input :deep(.q-field__control) {
   height: 34px;
   min-height: 34px;
-  border-radius: 999px;
+  border-radius: 8px;
   padding: 0 12px;
 }
 
@@ -752,19 +785,13 @@ body.body--dark .floating-surface {
   top: 0;
   z-index: 2;
   font-weight: 700;
-  color: #0f172a;
-  background: #f8fafc;
+  color: var(--bw-neutral-chrome, #64748b);
+  background: color-mix(in srgb, var(--bw-theme-surface) 88%, var(--bw-theme-base) 12%);
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.03em;
   padding: 8px 12px;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-body.body--dark .invoice-table :deep(thead tr th) {
-  background: #1c1c1c;
-  color: #a1a1aa;
-  border-bottom: 1px solid #2e2e2e;
+  border-bottom: 1px solid var(--bw-theme-border);
 }
 
 .invoice-table :deep(tbody tr.invoice-row--draft td) {
@@ -802,22 +829,13 @@ body.body--dark .invoice-table :deep(tbody tr.invoice-row--voided td) {
 }
 
 .invoice-table :deep(tbody tr:hover) {
-  background-color: #f1f5f9 !important;
-}
-
-body.body--dark .invoice-table :deep(tbody tr:hover) {
-  background-color: #242424 !important;
+  background-color: color-mix(in srgb, var(--bw-theme-ink) 4%, var(--bw-theme-surface)) !important;
 }
 
 .invoice-table :deep(tbody td) {
   padding: 6px 12px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--bw-theme-border);
   font-size: 12.5px;
-}
-
-body.body--dark .invoice-table :deep(tbody td) {
-  border-bottom: 1px solid #262626;
-  color: #ededed;
 }
 
 .hover-underline:hover {
@@ -830,11 +848,6 @@ body.body--dark .invoice-table :deep(tbody td) {
   display: inline-flex;
   align-items: center;
   font-weight: 700;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.status-badge:hover {
-  transform: translateY(-1px);
 }
 
 .soft-chip {

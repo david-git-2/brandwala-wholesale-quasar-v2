@@ -77,13 +77,18 @@ const ACTION_MAP: Record<string, string> = {
   settings: 'Settings',
   edit: 'Edit Details',
   create: 'Create New',
+  'create-wholesale': 'New wholesale',
   new: 'Create New',
   overview: 'Overview',
   preview: 'Preview',
   details: 'Details',
   reports: 'Reports',
   list: 'List',
+  return: 'Return credit',
 };
+
+/** URL folders that are not pages — do not render them as crumbs. */
+const PATH_PREFIX_SEGMENTS = new Set(['sales']);
 
 export function useBreadcrumbs() {
   const route = useRoute();
@@ -140,7 +145,19 @@ export function useBreadcrumbs() {
       return items;
     }
 
-    const prefix = tenantSlug ? `/${tenantSlug}${scopePrefix.slice(0, -1)}` : scopePrefix.slice(0, -1);
+    const skippedPrefixes: string[] = [];
+    while (segments[0] && PATH_PREFIX_SEGMENTS.has(segments[0])) {
+      skippedPrefixes.push(segments.shift() as string);
+    }
+
+    if (segments.length === 0) {
+      items.push({ label: 'Dashboard' });
+      return items;
+    }
+
+    const prefix =
+      (tenantSlug ? `/${tenantSlug}${scopePrefix.slice(0, -1)}` : scopePrefix.slice(0, -1)) +
+      (skippedPrefixes.length ? `/${skippedPrefixes.join('/')}` : '');
 
     const firstSeg = segments[0] || '';
     const isDomainGroup = Boolean(firstSeg && DOMAIN_GROUPS[firstSeg]);

@@ -532,8 +532,8 @@ defineExpose({
 }
 
 .shop-shell__header {
-  background: #ffffff;
-  border-bottom: none;
+  background: color-mix(in srgb, var(--shop-shell-surface) 90%, var(--color-mix-tint, white) 10%);
+  border-bottom: 1px solid var(--shop-shell-border);
 }
 
 .shop-shell__toolbar {

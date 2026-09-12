@@ -187,6 +187,13 @@ export default {
 .order-action-bar__card {
   border-radius: 12px;
   background: var(--bw-theme-surface, #fff);
+  border-color: var(--bw-theme-border, rgba(0, 0, 0, 0.12));
+}
+
+body.body--dark .order-action-bar__card :deep(.text-grey-9),
+body.body--dark .order-action-bar__card :deep(.text-grey-7),
+body.body--dark .order-action-bar__card :deep(.text-grey-6) {
+  color: var(--bw-theme-muted) !important;
 }
 
 .order-action-bar__inner {
