@@ -92,6 +92,10 @@ CREATE OR REPLACE TRIGGER "trg_global_stocks_updated_at" BEFORE UPDATE ON "publi
 
 
 
+CREATE OR REPLACE TRIGGER "trg_pbc_files_0_stamp_billing_profile" BEFORE INSERT OR UPDATE OF "customer_group_id" ON "public"."product_based_costing_files" FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_pbc_files_stamp_billing_profile"();
+
+
+
 CREATE OR REPLACE TRIGGER "trg_pbc_files_auto_tenant_id" BEFORE INSERT OR UPDATE OF "billing_profile_id" ON "public"."product_based_costing_files" FOR EACH ROW EXECUTE FUNCTION "public"."trg_fn_pbc_files_auto_tenant_id"();
 
 
@@ -1033,6 +1037,11 @@ GRANT ALL ON FUNCTION "public"."post_stock_movement"("p_movement_id" bigint) TO 
 
 GRANT ALL ON FUNCTION "public"."recalculate_product_based_costing_file_offer_prices"("p_file_id" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."recalculate_product_based_costing_file_offer_prices"("p_file_id" bigint) TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_product_based_costing_file_summary"("p_file_id" bigint, "p_conversion_rate" numeric, "p_cargo_rate_kg_gbp" numeric, "p_profit_rate" numeric) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_product_based_costing_file_summary"("p_file_id" bigint, "p_conversion_rate" numeric, "p_cargo_rate_kg_gbp" numeric, "p_profit_rate" numeric) TO "service_role";
 
 
 

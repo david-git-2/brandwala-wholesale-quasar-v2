@@ -189,6 +189,21 @@
           <!-- Settings Gear Button (Opens Side Drawer) -->
           <q-btn
             flat
+            dense
+            no-caps
+            color="grey-8"
+            icon="ph ph-chart-pie-slice"
+            :label="$t('product_based_costing.summary_title')"
+            size="sm"
+            class="rounded-sq-btn q-px-sm border-grey"
+            style="border-radius: 8px"
+            @click="summaryExpanded = !summaryExpanded"
+          >
+            <q-tooltip>{{ $t('product_based_costing.summary_toggle') }}</q-tooltip>
+          </q-btn>
+
+          <q-btn
+            flat
             round
             dense
             color="grey-8"
@@ -196,7 +211,7 @@
             size="sm"
             @click="openSettingsDrawer()"
           >
-            <q-tooltip>File Settings & Summary</q-tooltip>
+            <q-tooltip>File Settings</q-tooltip>
           </q-btn>
 
         </div>
@@ -263,6 +278,23 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- Expandable full costing summary -->
+    <div
+      v-if="summaryExpanded && !isLoading"
+      class="pbc-v2-summary-section bg-white border-bottom shrink-0 q-px-md q-py-sm"
+      style="max-height: 42vh; overflow-y: auto"
+    >
+      <q-inner-loading :showing="isLoadingSummary" />
+      <ProductBasedCostingFileSummaryPanel
+        :summary-metrics="summaryMetrics"
+        :conversion-rate="conversionRateValue"
+        :cargo-rate="cargoRateValue"
+        :profit-rate="profitRateValue"
+        :file-meta="summaryFileMeta"
+        show-file-meta
+      />
     </div>
 
     <!-- Active Selection Action Banner Row -->
@@ -976,8 +1008,12 @@
       <ProductBasedCostingSettingsDrawer
         v-model="showSettingsDrawer"
         :file="file"
-        :summary="summaryMetrics"
-        :billing-profiles="allBillingProfiles"
+        :summary-metrics="summaryMetrics"
+        :conversion-rate="conversionRateValue"
+        :cargo-rate="cargoRateValue"
+        :profit-rate="profitRateValue"
+        :summary-file-meta="summaryFileMeta"
+        :customers="customerAccounts"
         :status="status"
         :show-cancel="status !== 'delivered' && status !== 'cancelled'"
         :is-primary-loading="updatingStatus"
@@ -1067,7 +1103,7 @@ import { computed, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
-import { useQueryClient } from '@tanstack/vue-query';
+import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import SmartImage from 'src/components/SmartImage.vue';
 import AddCostingItemsDrawer from '../components/AddCostingItemsDrawer.vue';
 import { productBasedCostingService } from '../services/productBasedCostingService';
@@ -1078,10 +1114,12 @@ import ProductBasedCostingItemAddDialog from '../components/ProductBasedCostingI
 import ProductBasedCostingSettingsDrawer, {
   type PbcSettingsDrawerAction,
 } from '../components/ProductBasedCostingSettingsDrawer.vue';
+import ProductBasedCostingFileSummaryPanel from '../components/ProductBasedCostingFileSummaryPanel.vue';
+import { usePbcFileSummaryQuery } from '../composables/usePbcFileSummaryQuery';
 import ProductBasedCostingStatusOverrideDialog from '../components/ProductBasedCostingStatusOverrideDialog.vue';
 import { productBasedCostingRepository } from '../repositories/productBasedCostingRepository';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
-import { useBillingProfilesQuery } from 'src/modules/sales_invoice/composables/useBillingProfileQuery';
+import { customerRepository } from 'src/modules/customer/repositories/customerRepository';
 import { productBasedCostingQueryKeys } from '../shared/queryKeys/productBasedCostingQueryKeys';
 import { useProductBasedCostingFileDetailQuery } from '../composables/useProductBasedCostingFileDetailQuery';
 import { useProductBasedCostingItemsInfiniteQuery } from '../composables/useProductBasedCostingItemsInfiniteQuery';
@@ -1178,10 +1216,19 @@ const bulkPasteFieldLabel = computed(() => {
 });
 
 const tenantIdRef = computed(() => tenantStore.selectedTenant?.id);
-const { data: billingProfilesResult } = useBillingProfilesQuery(tenantIdRef);
-const allBillingProfiles = computed(() => billingProfilesResult.value?.data ?? []);
+const { data: customerAccountsResult } = useQuery({
+  queryKey: computed(() => ['pbc', 'customerAccounts', tenantIdRef.value]),
+  queryFn: () => {
+    if (!tenantIdRef.value) return [];
+    return customerRepository.listCustomers(tenantIdRef.value);
+  },
+  enabled: computed(() => !!tenantIdRef.value),
+  staleTime: 60 * 1000,
+});
+const customerAccounts = computed(() => customerAccountsResult.value ?? []);
 
 const ratesExpanded = ref(false);
+const summaryExpanded = ref(false);
 const savingRates = ref(false);
 const localRates = reactive({
   conversion_rate: 140,
@@ -1218,6 +1265,28 @@ watch(
   },
   { immediate: true },
 );
+
+const summaryRates = computed(() => ({
+  cargoRate: cargoRateValue.value || 0,
+  conversionRate: conversionRateValue.value || 140,
+  profitRate: profitRateValue.value || 0,
+}));
+
+const { summaryMetrics, isLoading: isLoadingSummary } = usePbcFileSummaryQuery(fileId, summaryRates);
+
+const summaryFileMeta = computed(() => {
+  const customer = customerAccounts.value.find(
+    (row) => row.customer_group_id === file.value?.customer_group_id,
+  );
+  return {
+    name: file.value?.name ?? null,
+    orderFor: file.value?.order_for ?? null,
+    customerLabel: customer?.group_name ?? null,
+    status: file.value?.status ?? null,
+    vendorCode: file.value?.vendor_code ?? null,
+    marketCode: file.value?.market_code ?? null,
+  };
+});
 
 // Composable State & Logic Helpers
 const { downloadExcel } = useProductBasedCostingFileDetailsState({
@@ -1814,7 +1883,7 @@ const editFormData = computed(() => {
     id: file.value.id,
     name: file.value.name ?? '',
     order_for: file.value.order_for ?? '',
-    billing_profile_id: file.value.billing_profile_id ?? null,
+    customer_group_id: file.value.customer_group_id ?? null,
     note: file.value.note ?? '',
     vendor_code: file.value.vendor_code ?? null,
     market_code: file.value.market_code ?? null,
@@ -1825,7 +1894,7 @@ async function handleUpdateFileDialog(payload: {
   id: number | null;
   name: string;
   order_for: string;
-  billing_profile_id: number | null;
+  customer_group_id: number | null;
   note: string;
   vendor_code: string | null;
   market_code: string | null;
@@ -1835,7 +1904,7 @@ async function handleUpdateFileDialog(payload: {
     id: payload.id,
     name: payload.name,
     order_for: payload.order_for,
-    billing_profile_id: payload.billing_profile_id,
+    customer_group_id: payload.customer_group_id,
     note: payload.note,
     vendor_code: payload.vendor_code,
     market_code: payload.market_code,
@@ -1843,43 +1912,6 @@ async function handleUpdateFileDialog(payload: {
   showFileDialog.value = false;
   refreshBacklog();
 }
-
-const summaryMetrics = computed(() => {
-  let totalQuantity = 0;
-  let goodsCostGbp = 0;
-  let cargoWeightKg = 0;
-  let totalCostBdt = 0;
-  let totalOfferPriceBdt = 0;
-  let totalProfitBdt = 0;
-
-  for (const item of costingItems.value) {
-    const qty = Number(item.quantity) || 0;
-    const priceGbp = Number(item.price_gbp) || 0;
-    const offerPrice = Number(item.offer_price) || 0;
-    const pkgWt = Number(item.package_weight) || 0;
-
-    totalQuantity += qty;
-    goodsCostGbp += priceGbp * qty;
-    cargoWeightKg += (pkgWt * qty) / 1000;
-
-    const rowCostGbp = priceGbp * qty + ((cargoRateValue.value * pkgWt * qty) / 1000);
-    const rowCostBdt = rowCostGbp * conversionRateValue.value;
-    const rowOfferBdt = offerPrice * qty;
-
-    totalCostBdt += rowCostBdt;
-    totalOfferPriceBdt += rowOfferBdt;
-    totalProfitBdt += (rowOfferBdt - rowCostBdt);
-  }
-
-  return {
-    totalQuantity,
-    goodsCostGbp,
-    cargoWeightKg,
-    totalCostBdt,
-    totalOfferPriceBdt,
-    totalProfitBdt,
-  };
-});
 
 async function handleUpdateFileDirect(payload: Record<string, any>) {
   if (!fileId.value) return;

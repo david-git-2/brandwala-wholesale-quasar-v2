@@ -28,7 +28,7 @@ const buildProductBasedCostingFileCreatePayload = (
   tenant_id: payload.tenant_id ?? null,
   name: normalizeText(payload.name),
   order_for: normalizeText(payload.order_for),
-  billing_profile_id: payload.billing_profile_id ?? null,
+  customer_group_id: payload.customer_group_id ?? null,
   note: normalizeText(payload.note),
   vendor_code: normalizeText(payload.vendor_code),
   market_code: normalizeText(payload.market_code),
@@ -56,8 +56,8 @@ const buildProductBasedCostingFileUpdatePayload = (
     updatePayload.order_for = normalizeText(payload.order_for);
   }
 
-  if (payload.billing_profile_id !== undefined) {
-    updatePayload.billing_profile_id = payload.billing_profile_id;
+  if (payload.customer_group_id !== undefined) {
+    updatePayload.customer_group_id = payload.customer_group_id;
   }
 
   if (payload.note !== undefined) {
@@ -329,6 +329,28 @@ const getProductBasedCostingFileById = async (id: number): Promise<ProductBasedC
   return data as ProductBasedCostingFile;
 };
 
+const getProductBasedCostingFileSummary = async (
+  fileId: number,
+  rates: {
+    conversion_rate?: number | null;
+    cargo_rate_kg_gbp?: number | null;
+    profit_rate?: number | null;
+  } = {},
+) => {
+  const { data, error } = await supabase.rpc('get_product_based_costing_file_summary', {
+    p_file_id: fileId,
+    p_conversion_rate: rates.conversion_rate ?? null,
+    p_cargo_rate_kg_gbp: rates.cargo_rate_kg_gbp ?? null,
+    p_profit_rate: rates.profit_rate ?? null,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? null) as Record<string, unknown> | null;
+};
+
 const listProductBasedCostingItems = async (
   productBasedCostingFileId: number,
 ): Promise<ProductBasedCostingItem[]> => {
@@ -590,6 +612,7 @@ export const productBasedCostingRepository = {
   updateProductBasedCostingFile,
   deleteProductBasedCostingFile,
   getProductBasedCostingFileById,
+  getProductBasedCostingFileSummary,
 
   listProductBasedCostingItems,
   listProductBasedCostingItemsPaginated,

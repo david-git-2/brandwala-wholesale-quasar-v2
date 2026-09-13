@@ -644,7 +644,8 @@ CREATE TABLE IF NOT EXISTS "public"."product_based_costing_files" (
     "market_code" "text",
     "default_shipment_id" bigint,
     "vendor_id" bigint,
-    "billing_profile_id" bigint
+    "billing_profile_id" bigint,
+    "customer_group_id" bigint
 );
 
 
@@ -1231,6 +1232,10 @@ CREATE INDEX "product_based_costing_files_billing_profile_id_idx" ON "public"."p
 
 
 
+CREATE INDEX "product_based_costing_files_customer_group_id_idx" ON "public"."product_based_costing_files" USING "btree" ("customer_group_id");
+
+
+
 CREATE INDEX "product_based_costing_files_default_shipment_id_idx" ON "public"."product_based_costing_files" USING "btree" ("default_shipment_id");
 
 
@@ -1666,6 +1671,11 @@ ALTER TABLE ONLY "public"."product_based_costing_backlog_items"
 
 ALTER TABLE ONLY "public"."product_based_costing_files"
     ADD CONSTRAINT "product_based_costing_files_billing_profile_id_fkey" FOREIGN KEY ("billing_profile_id") REFERENCES "public"."billing_profiles"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."product_based_costing_files"
+    ADD CONSTRAINT "product_based_costing_files_customer_group_id_fkey" FOREIGN KEY ("customer_group_id") REFERENCES "public"."customer_groups"("id") ON DELETE SET NULL;
 
 
 

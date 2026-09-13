@@ -77,23 +77,25 @@
               </q-input>
             </div>
 
-            <!-- Billing Profile -->
+            <!-- Customer -->
             <div>
-              <div class="text-caption text-weight-medium text-grey-7 q-mb-xs">Billing Profile</div>
+              <div class="text-caption text-weight-medium text-grey-7 q-mb-xs">
+                {{ $t('product_based_costing.customer') }}
+              </div>
               <q-select
-                v-model="drawerBillingProfileId"
-                :options="billingProfileOptions"
+                v-model="drawerCustomerGroupId"
+                :options="customerGroupOptions"
                 emit-value
                 map-options
                 outlined
                 dense
                 clearable
-                placeholder="Select Billing Profile"
+                :placeholder="$t('product_based_costing.customer')"
                 class="bg-white"
-                @update:model-value="saveBillingProfile"
+                @update:model-value="saveCustomerGroup"
               >
                 <template #prepend>
-                  <q-icon name="ph ph-receipt" size="18px" color="grey-6" />
+                  <q-icon name="ph ph-users-three" size="18px" color="grey-6" />
                 </template>
               </q-select>
             </div>
@@ -116,65 +118,15 @@
         </q-tab-panel>
 
         <!-- 2. Summary Tab Panel -->
-        <q-tab-panel name="summary" class="q-pa-md bg-white">
-          <div class="column q-gutter-y-md">
-            <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center q-gutter-x-xs">
-              <q-icon name="ph ph-chart-pie-slice" size="18px" color="primary" />
-              <span>Financial & Weight Summary</span>
-            </div>
-
-            <!-- Metrics Cards Grid -->
-            <div class="row q-col-gutter-sm">
-              <div class="col-6">
-                <div class="q-pa-sm bg-grey-1 rounded-borders border-grey">
-                  <div class="text-caption text-grey-6">Total Items / Qty</div>
-                  <div class="text-h6 text-weight-bolder text-grey-9 font-mono">
-                    {{ summary.totalQuantity }} pcs
-                  </div>
-                </div>
-              </div>
-              <div class="col-6">
-                <div class="col q-pa-sm bg-amber-1 rounded-borders border-grey">
-                  <div class="text-caption text-amber-10">Goods Cost (GBP)</div>
-                  <div class="text-h6 text-weight-bolder text-amber-10 font-mono">
-                    £{{ formatMoney(summary.goodsCostGbp) }}
-                  </div>
-                </div>
-              </div>
-              <div class="col-6">
-                <div class="q-pa-sm bg-purple-1 rounded-borders border-grey">
-                  <div class="text-caption text-purple-10">Total Cargo Weight</div>
-                  <div class="text-h6 text-weight-bolder text-purple-10 font-mono">
-                    {{ summary.cargoWeightKg.toFixed(2) }} kg
-                  </div>
-                </div>
-              </div>
-              <div class="col-6">
-                <div class="q-pa-sm bg-indigo-1 rounded-borders border-grey">
-                  <div class="text-caption text-indigo-10">Total Landed Cost</div>
-                  <div class="text-h6 text-weight-bolder text-indigo-10 font-mono">
-                    ৳{{ formatMoney(summary.totalCostBdt) }}
-                  </div>
-                </div>
-              </div>
-              <div class="col-6">
-                <div class="q-pa-sm bg-green-1 rounded-borders border-grey">
-                  <div class="text-caption text-green-10">Total Offer Amount</div>
-                  <div class="text-h6 text-weight-bolder text-positive font-mono">
-                    ৳{{ formatMoney(summary.totalOfferPriceBdt) }}
-                  </div>
-                </div>
-              </div>
-              <div class="col-6">
-                <div class="q-pa-sm bg-teal-1 rounded-borders border-grey">
-                  <div class="text-caption text-teal-10">Projected Profit</div>
-                  <div class="text-h6 text-weight-bolder text-teal-9 font-mono">
-                    ৳{{ formatMoney(summary.totalProfitBdt) }}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+        <q-tab-panel name="summary" class="q-pa-sm bg-white">
+          <ProductBasedCostingFileSummaryPanel
+            :summary-metrics="summaryMetrics"
+            :conversion-rate="conversionRate"
+            :cargo-rate="cargoRate"
+            :profit-rate="profitRate"
+            :file-meta="summaryFileMeta"
+            show-file-meta
+          />
         </q-tab-panel>
 
         <!-- 3. Rates Tab Panel -->
@@ -340,10 +292,11 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import {
-  formatMoney,
-  normalizePbcFileStatus,
-} from '../composables/useProductBasedCostingFileDetailsState';
+import { normalizePbcFileStatus } from '../composables/useProductBasedCostingFileDetailsState';
+import type { PbcFileSummaryMetrics } from '../composables/usePbcFileSummaryMetrics';
+import ProductBasedCostingFileSummaryPanel, {
+  type PbcSummaryFileMeta,
+} from './ProductBasedCostingFileSummaryPanel.vue';
 import type { StaffPbcPrimaryAction } from '../utils/pbcFileStatus';
 import ProductBasedCostingProgressBar from './ProductBasedCostingProgressBar.vue';
 import ProductBasedCostingStaffActions from './ProductBasedCostingStaffActions.vue';
@@ -356,15 +309,12 @@ export type PbcSettingsDrawerAction =
 const props = defineProps<{
   modelValue: boolean;
   file: any;
-  summary: {
-    totalQuantity: number;
-    goodsCostGbp: number;
-    cargoWeightKg: number;
-    totalCostBdt: number;
-    totalOfferPriceBdt: number;
-    totalProfitBdt: number;
-  };
-  billingProfiles?: any[];
+  summaryMetrics: PbcFileSummaryMetrics;
+  conversionRate: number;
+  cargoRate: number;
+  profitRate: number;
+  summaryFileMeta?: PbcSummaryFileMeta | null;
+  customers?: Array<{ customer_group_id: number; group_name: string }>;
   status?: string;
   showCancel?: boolean;
   isPrimaryLoading?: boolean;
@@ -390,7 +340,7 @@ const activeTab = ref('details');
 
 const drawerFileName = ref('');
 const drawerOrderFor = ref('');
-const drawerBillingProfileId = ref<number | null>(null);
+const drawerCustomerGroupId = ref<number | null>(null);
 const drawerNote = ref('');
 
 const drawerConversionRate = ref(140);
@@ -423,7 +373,7 @@ watch(
     if (newFile) {
       drawerFileName.value = newFile.name ?? '';
       drawerOrderFor.value = newFile.order_for ?? '';
-      drawerBillingProfileId.value = newFile.billing_profile_id ?? null;
+      drawerCustomerGroupId.value = newFile.customer_group_id ?? null;
       drawerNote.value = newFile.note ?? '';
 
       drawerConversionRate.value = newFile.conversion_rate ?? 140;
@@ -434,10 +384,10 @@ watch(
   { immediate: true },
 );
 
-const billingProfileOptions = computed(() => {
-  return (props.billingProfiles ?? []).map((bp) => ({
-    label: bp.name || `Profile #${bp.id}`,
-    value: bp.id,
+const customerGroupOptions = computed(() => {
+  return (props.customers ?? []).map((row) => ({
+    label: row.group_name || `Group #${row.customer_group_id}`,
+    value: row.customer_group_id,
   }));
 });
 
@@ -467,8 +417,8 @@ function saveOrderFor() {
   }
 }
 
-function saveBillingProfile(val: number | null) {
-  emit('update-file', { billing_profile_id: val });
+function saveCustomerGroup(val: number | null) {
+  emit('update-file', { customer_group_id: val });
 }
 
 function saveNote() {

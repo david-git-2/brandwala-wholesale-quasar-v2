@@ -41,9 +41,22 @@ $$\text{Item Unit Cost GBP} = \text{Web Base Price} + \text{Delivery Surcharge} 
 
 $$\text{Quoted Unit Price BDT} = (\text{Item Unit Cost GBP} \times \text{FX Transaction Rate}) \times (1 + \text{Customer Group Markup Rate})$$
 
-### 2.2 Customer group backlog bucket
+### 2.2 Costing file customer identity
 
-Products the customer ordered but could not receive are stored in **`customer_group_backlog_bucket_items`** ([`DEMAND_BUCKET.md`](../shop_order/DEMAND_BUCKET.md)), keyed by **`customer_group_id`** + **`product_id`**. Retired: `product_based_costing_backlog_items`, `customer_order_backlog_items`, interim `customer_demand_bucket_items`.
+Staff pick a **customer group** in the UI (`ProductBasedCostingFileDialog`, settings drawer). The row stores both:
+
+| Column | Role |
+| :--- | :--- |
+| `customer_group_id` | Who the quote is for (same identity as shop carts / orders) |
+| `billing_profile_id` | Stamped by DB trigger from the group's linked profile — used for invoices, wallet, and PBC backlog |
+
+One-off billing profiles (no group) are not valid PBC customers.
+
+### 2.3 PBC backlog (current) vs customer-group bucket (planned)
+
+**Shipped today:** shortfall waiting list uses **`product_based_costing_backlog_items`**, keyed by **`billing_profile_id`** + `product_id`. [`PbcBacklogSuggestDrawer.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/product_based_costing/components/PbcBacklogSuggestDrawer.vue) calls `list_pbc_backlog_items` with the file's stamped `billing_profile_id`.
+
+**Planned:** migrate to **`customer_group_backlog_bucket_items`** ([`DEMAND_BUCKET.md`](../shop_order/DEMAND_BUCKET.md)), keyed by **`customer_group_id`** + `product_id`. Retired: `customer_order_backlog_items`, interim `customer_demand_bucket_items`.
 
 | Line Outcome | Item Status | Bucket action (`source_type = pbc_costing_item`) | Eligible for parent shipment |
 | :--- | :--- | :--- | :---: |
@@ -54,9 +67,9 @@ Products the customer ordered but could not receive are stored in **`customer_gr
 
 Bucket insert on document **`delivered`** is the source of truth ([`DEMAND_BUCKET.md`](../shop_order/DEMAND_BUCKET.md)). The “parent shipment” column is leftover line-level eligibility — inbound cargo is recorded on the Shipment module **during `procuring`**, not by waiting for `ready_for_shipment`.
 
-* **One-Click Add**: [`PbcBacklogSuggestDrawer.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/product_based_costing/components/PbcBacklogSuggestDrawer.vue) lists **`list_customer_group_backlog_bucket_items`** for the file’s `customer_group_id` and **pops** selected rows into the costing file.
+* **One-Click Add (today):** backlog drawer lists `list_pbc_backlog_items` for the file's `billing_profile_id` and consumes rows into the costing file.
 
-### 2.3 Costing file status model (`product_based_costing_files.status`)
+### 2.4 Costing file status model (`product_based_costing_files.status`)
 
 Quote and negotiation phases are **unchanged**. Procurement phases are **aligned with catalog shop orders** ([`CATALOG_NEGOTIATION.md`](../shop_order/CATALOG_NEGOTIATION.md) §2.1).
 
@@ -124,7 +137,7 @@ PBC has no shop order-tracking page. If the customer asks, use the catalog sente
 
 | Route | Main Page | Key Child Components & Dialogs |
 | :--- | :--- | :--- |
-| `/:tenantSlug?/app/product-based-costing` | [`ProductBasedCostingPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/product_based_costing/pages/ProductBasedCostingPage.vue) | Status filter tabs, customer profile selector, [`ProductBasedCostingFileDialog.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/product_based_costing/components/ProductBasedCostingFileDialog.vue) |
+| `/:tenantSlug?/app/product-based-costing` | [`ProductBasedCostingPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/product_based_costing/pages/ProductBasedCostingPage.vue) | Status filter tabs, customer group selector, [`ProductBasedCostingFileDialog.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/product_based_costing/components/ProductBasedCostingFileDialog.vue) |
 | `/:tenantSlug?/app/product-based-costing/:id` | [`ProductBasedCostingFileDetailsPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/product_based_costing/pages/ProductBasedCostingFileDetailsPage.vue) | [`ProductBasedCostingItemsTable.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/product_based_costing/components/ProductBasedCostingItemsTable.vue), [`PbcBacklogSuggestDrawer.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/product_based_costing/components/PbcBacklogSuggestDrawer.vue), [`AddCostingItemsDrawer.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/product_based_costing/components/AddCostingItemsDrawer.vue), [`ProductBasedCostingFileWorkflowBar.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/product_based_costing/components/ProductBasedCostingFileWorkflowBar.vue) |
 | `/:tenantSlug?/app/product-based-costing/:id/preview` | [`ProductBasedCostingSharedPreviewPage.vue`](file:///Users/daviditc/Documents/personal_projects/brandwala-wholesale-quasar-v2/web/src/modules/product_based_costing/pages/ProductBasedCostingSharedPreviewPage.vue) | Customer-facing exportable quote sheet (PDF / Excel download) |
 
@@ -136,8 +149,8 @@ PBC has no shop order-tracking page. If the customer asks, use the catalog sente
 | :--- | :--- | :--- | :--- |
 | **`ProductBasedCostingPage`** | Mount / Filter Change | `useProductBasedCostingFilesQuery()` $\rightarrow$ `Table: product_based_costing_files` | `staleTime: 30s`, Key: `['productBasedCosting', 'files', params]` |
 | **`ProductBasedCostingFileDialog`**| Create New Costing Batch| `useProductBasedCostingFileMutations()` $\rightarrow$ `RPC: create_costing_file` | Invalidates `['productBasedCosting', 'files']` |
-| **`PbcBacklogSuggestDrawer`** | Mount / group select | `list_customer_group_backlog_bucket_items` | Key: `['customerGroupBacklogBucket', customerGroupId]` |
-| **`PbcBacklogSuggestDrawer`** | Pull waiting list into file | `pop_customer_group_backlog_bucket_item(s)` + add costing lines | Invalidates backlog bucket & costing items |
+| **`PbcBacklogSuggestDrawer`** | Mount | `list_pbc_backlog_items` (file `billing_profile_id`) | Key: backlog by profile |
+| **`PbcBacklogSuggestDrawer`** | Pull waiting list into file | `add_pbc_backlog_to_file` | Invalidates backlog & costing items |
 | **Parent Shipment UI** | Pull PBC Lines to Cargo | `useProcurementStockMutations` $\rightarrow$ `RPC: add_child_line_to_parent_shipment` | Links `assigned_shipment_id` & marks `on_shipment` |
 
 ---
@@ -149,4 +162,4 @@ Server state keys are centralized in [`productBasedCostingQueryKeys.ts`](file://
 * `productBasedCostingQueryKeys.files(params)` $\rightarrow$ `['productBasedCosting', 'files', params]`
 * `productBasedCostingQueryKeys.fileDetails(id)` $\rightarrow$ `['productBasedCosting', 'fileDetails', id]`
 * `productBasedCostingQueryKeys.fileItems(fileId)` $\rightarrow$ `['productBasedCosting', 'fileItems', fileId]`
-* Customer group backlog bucket (PBC drawer): `['customerGroupBacklogBucket', customerGroupId]` — see [`DEMAND_BUCKET.md`](../shop_order/DEMAND_BUCKET.md)
+* PBC backlog drawer: uses file `billing_profile_id` until [`DEMAND_BUCKET.md`](../shop_order/DEMAND_BUCKET.md) migration lands

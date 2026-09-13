@@ -43,6 +43,12 @@ function isInfiniteItemsData(value: unknown): value is InfiniteItemsData {
   );
 }
 
+function invalidatePbcFileSummary(queryClient: QueryClient, fileId: number) {
+  void queryClient.invalidateQueries({
+    queryKey: productBasedCostingQueryKeys.fileSummaryRoot(fileId),
+  });
+}
+
 function removePbcItemFromCache(queryClient: QueryClient, fileId: number, itemId: number) {
   queryClient.setQueryData<ProductBasedCostingItem[]>(
     productBasedCostingQueryKeys.itemsList(fileId),
@@ -187,6 +193,7 @@ export function useCreateProductBasedCostingItemMutation() {
       showSuccessNotification('Product based costing item created successfully.');
       if (data?.product_based_costing_file_id) {
         addPbcItemToCache(queryClient, data.product_based_costing_file_id, data);
+        invalidatePbcFileSummary(queryClient, data.product_based_costing_file_id);
       }
     },
     onError: (error) => {
@@ -214,6 +221,7 @@ export function useUpdateProductBasedCostingItemMutation() {
         void queryClient.invalidateQueries({
           queryKey: productBasedCostingQueryKeys.itemsRoot(data.product_based_costing_file_id),
         });
+        invalidatePbcFileSummary(queryClient, data.product_based_costing_file_id);
       }
     },
     onError: (error) => {
@@ -243,6 +251,7 @@ export function useDeleteProductBasedCostingItemMutation() {
       }
 
       removePbcItemFromCache(queryClient, fileId, data.id);
+      invalidatePbcFileSummary(queryClient, fileId);
     },
     onError: (error) => {
       showMutationWarning(error, 'Failed to delete costing item.', 'remove');
@@ -263,6 +272,7 @@ export function useDeleteProductBasedCostingItemsBulkMutation() {
       for (const id of variables.ids) {
         removePbcItemFromCache(queryClient, variables.fileId, id);
       }
+      invalidatePbcFileSummary(queryClient, variables.fileId);
     },
     onError: (error) => {
       showMutationWarning(error, 'Failed to delete costing items.', 'remove');
@@ -291,6 +301,7 @@ export function useUpdateProductBasedCostingItemsByFileIdMutation() {
           queryKey: productBasedCostingQueryKeys.itemsList(variables.fileId),
         });
       }
+      invalidatePbcFileSummary(queryClient, variables.fileId);
     },
     onError: (error) => {
       showMutationWarning(error, 'Failed to update costing items.');
@@ -308,6 +319,7 @@ export function useRecalculateOfferPricesMutation() {
       void queryClient.invalidateQueries({
         queryKey: productBasedCostingQueryKeys.itemsRoot(fileId),
       });
+      invalidatePbcFileSummary(queryClient, fileId);
     },
     onError: (error) => {
       showMutationWarning(error, 'Failed to recalculate offer prices.');

@@ -27,24 +27,26 @@
           />
 
           <q-select
-            v-model="selectedProfile"
-            :options="profileOptions"
-            option-label="name"
-            option-value="id"
-            :label="$t('product_based_costing.billing_profile_customer')"
+            v-model="selectedCustomer"
+            :options="customerOptions"
+            option-label="group_name"
+            :label="$t('product_based_costing.customer')"
             outlined
             dense
             clearable
             use-input
             input-debounce="300"
-            :loading="loadingProfiles"
-            @filter="filterProfiles"
-            @update:model-value="onProfileChange"
+            :loading="loadingCustomers"
+            :rules="[
+              (val) => !!val || $t('product_based_costing.customer_required'),
+            ]"
+            @filter="filterCustomers"
+            @update:model-value="onCustomerChange"
           >
             <template #no-option>
               <q-item dense class="column items-center q-py-md q-gutter-y-xs">
                 <div class="text-caption text-grey-7">
-                  {{ $t('product_based_costing.no_billing_profiles') }}
+                  {{ $t('product_based_costing.no_customers') }}
                 </div>
                 <q-btn
                   color="primary"
@@ -53,9 +55,9 @@
                   no-caps
                   size="sm"
                   icon="ph ph-plus"
-                  :label="$t('product_based_costing.create_billing_profile')"
+                  :label="$t('product_based_costing.create_customer')"
                   class="q-px-sm q-mt-xs"
-                  @click="openCreateBillingProfileDialog"
+                  @click="showCreateCustomerDialog = true"
                 />
               </q-item>
             </template>
@@ -96,26 +98,32 @@
         />
       </q-card-actions>
     </q-card>
+
+    <CreateCustomerDialog
+      v-if="tenantId"
+      v-model="showCreateCustomerDialog"
+      :tenant-id="tenantId"
+      :saving="createCustomerMutation.isPending.value"
+      @create="handleCreateCustomer"
+    />
   </q-dialog>
 </template>
 
 <script setup lang="ts">
 import { computed, reactive, watch, ref } from 'vue';
-import { useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
-import {
-  type BillingProfile,
-} from 'src/modules/sales_invoice/repositories/billingProfileRepository';
-import { useBillingProfilesQuery } from 'src/modules/sales_invoice/composables/useBillingProfileQuery';
-import { useBillingProfileMutations } from 'src/modules/sales_invoice/composables/useBillingProfileMutations';
 import { useTenantStore } from 'src/modules/tenant/stores/tenantStore';
+import { customerRepository } from 'src/modules/customer/repositories/customerRepository';
+import { useCustomerMutations } from 'src/modules/customer/composables/useCustomerQuery';
+import CreateCustomerDialog from 'src/modules/customer/components/CreateCustomerDialog.vue';
+import type { CustomerAccount } from 'src/modules/customer/types/customer';
 import { showSuccessNotification, showErrorNotification } from 'src/utils/appFeedback';
 
 interface CostingFileForm {
   id: number | null;
   name: string;
   order_for: string;
-  billing_profile_id: number | null;
+  customer_group_id: number | null;
   note: string;
   vendor_code: string | null;
   market_code: string | null;
@@ -135,7 +143,6 @@ type FormRef = {
   validate: () => boolean | Promise<boolean>;
 };
 
-const $q = useQuasar();
 const { t } = useI18n();
 const formRef = ref<FormRef | null>(null);
 
@@ -143,15 +150,18 @@ const emptyForm = (): CostingFileForm => ({
   id: null,
   name: '',
   order_for: '',
-  billing_profile_id: null,
+  customer_group_id: null,
   note: '',
   vendor_code: null,
   market_code: null,
 });
 
 const form = reactive(emptyForm());
-const selectedProfile = ref<BillingProfile | null>(null);
-const profileSearchText = ref('');
+const selectedCustomer = ref<CustomerAccount | null>(null);
+const customerOptions = ref<CustomerAccount[]>([]);
+const allCustomers = ref<CustomerAccount[]>([]);
+const loadingCustomers = ref(false);
+const showCreateCustomerDialog = ref(false);
 
 const isEditMode = computed(() => !!props.data?.id);
 
@@ -161,91 +171,97 @@ const localOpen = computed({
 });
 
 const tenantStore = useTenantStore();
-const tenantIdRef = computed(() => tenantStore.selectedTenant?.id);
-const { data: billingProfilesResult, isLoading: loadingProfiles } = useBillingProfilesQuery(tenantIdRef);
-const { createBillingProfileMutation } = useBillingProfileMutations();
+const tenantId = computed(() => tenantStore.selectedTenant?.id ?? null);
+const { createCustomerMutation } = useCustomerMutations();
 
-const allProfiles = computed(() => billingProfilesResult.value?.data ?? []);
-const profileOptions = ref<BillingProfile[]>([]);
+async function loadCustomers(search?: string) {
+  const id = tenantId.value;
+  if (!id) {
+    allCustomers.value = [];
+    customerOptions.value = [];
+    return;
+  }
 
-watch(
-  allProfiles,
-  (profiles) => {
-    profileOptions.value = profiles;
-    syncSelectedProfile();
-  },
-  { immediate: true },
-);
+  loadingCustomers.value = true;
+  try {
+    allCustomers.value = await customerRepository.listCustomers(id, search);
+    customerOptions.value = allCustomers.value;
+    syncSelectedCustomer();
+  } catch (err: unknown) {
+    showErrorNotification(
+      err instanceof Error ? err.message : t('product_based_costing.create_customer_failed'),
+    );
+  } finally {
+    loadingCustomers.value = false;
+  }
+}
 
-function syncSelectedProfile() {
-  if (form.billing_profile_id) {
-    const found = allProfiles.value.find((p) => p.id === form.billing_profile_id);
+function syncSelectedCustomer() {
+  if (form.customer_group_id) {
+    const found = allCustomers.value.find(
+      (row) => row.customer_group_id === form.customer_group_id,
+    );
     if (found) {
-      selectedProfile.value = found;
+      selectedCustomer.value = found;
       return;
     }
   }
-  selectedProfile.value = null;
+  selectedCustomer.value = null;
 }
 
-function filterProfiles(val: string, update: (fn: () => void) => void) {
-  profileSearchText.value = val;
+function filterCustomers(val: string, update: (fn: () => void) => void) {
   update(() => {
     if (!val.trim()) {
-      profileOptions.value = allProfiles.value;
+      customerOptions.value = allCustomers.value;
     } else {
       const needle = val.toLowerCase();
-      profileOptions.value = allProfiles.value.filter((p) =>
-        p.name.toLowerCase().includes(needle),
+      customerOptions.value = allCustomers.value.filter((row) =>
+        row.group_name.toLowerCase().includes(needle),
       );
     }
   });
 }
 
-function openCreateBillingProfileDialog() {
-  $q.dialog({
-    title: t('product_based_costing.create_billing_profile_title'),
-    message: t('product_based_costing.create_billing_profile_message'),
-    prompt: {
-      model: profileSearchText.value.trim(),
-      type: 'text',
-      label: t('product_based_costing.profile_name'),
-      isValid: (val) => Boolean(val && val.trim().length > 0),
-    },
-    cancel: true,
-    persistent: true,
-  }).onOk((name: string) => {
-    void (async () => {
-      const tenantId = tenantStore.selectedTenant?.id;
-      if (!tenantId) {
-        showErrorNotification(t('product_based_costing.no_active_tenant'));
-        return;
-      }
-      try {
-        const created = await createBillingProfileMutation.mutateAsync({
-          tenant_id: tenantId,
-          name: name.trim(),
-        });
-        showSuccessNotification(t('product_based_costing.billing_profile_created', { name: created.name }));
-        selectedProfile.value = created;
-        onProfileChange(created);
-      } catch (err: unknown) {
-        showErrorNotification(
-          err instanceof Error ? err.message : t('product_based_costing.create_billing_profile_failed'),
-        );
-      }
-    })();
-  });
-}
-
-function onProfileChange(val: BillingProfile | null) {
+function onCustomerChange(val: CustomerAccount | null) {
   if (val) {
-    form.billing_profile_id = val.id;
+    form.customer_group_id = val.customer_group_id;
     if (!form.order_for || form.order_for.trim() === '') {
-      form.order_for = val.name;
+      form.order_for = val.group_name;
     }
   } else {
-    form.billing_profile_id = null;
+    form.customer_group_id = null;
+  }
+}
+
+async function handleCreateCustomer(payload: {
+  group_name: string;
+  phone: string;
+  phone_country_code: string;
+}) {
+  const id = tenantId.value;
+  if (!id) {
+    showErrorNotification(t('product_based_costing.no_active_tenant'));
+    return;
+  }
+
+  try {
+    const created = await createCustomerMutation.mutateAsync({
+      tenant_id: id,
+      group_name: payload.group_name,
+      phone: payload.phone,
+      phone_country_code: payload.phone_country_code,
+    });
+    showSuccessNotification(
+      t('product_based_costing.customer_created', { name: created.group_name }),
+    );
+    showCreateCustomerDialog.value = false;
+    await loadCustomers();
+    selectedCustomer.value = created;
+    onCustomerChange(created);
+  } catch (err: unknown) {
+    showErrorNotification(
+      err instanceof Error ? err.message : t('product_based_costing.create_customer_failed'),
+    );
   }
 }
 
@@ -255,11 +271,11 @@ function fillForm(source: CostingFileForm | null) {
   form.id = values.id ?? null;
   form.name = values.name ?? '';
   form.order_for = values.order_for ?? '';
-  form.billing_profile_id = values.billing_profile_id ?? null;
+  form.customer_group_id = values.customer_group_id ?? null;
   form.note = values.note ?? '';
   form.vendor_code = values.vendor_code ?? null;
   form.market_code = values.market_code ?? null;
-  syncSelectedProfile();
+  syncSelectedCustomer();
 }
 
 watch(
@@ -273,6 +289,7 @@ watch(
   (isOpen) => {
     if (isOpen) {
       fillForm(props.data);
+      void loadCustomers();
     }
   },
 );
@@ -286,7 +303,7 @@ async function handleSubmit() {
     id: form.id,
     name: form.name,
     order_for: form.order_for,
-    billing_profile_id: form.billing_profile_id,
+    customer_group_id: form.customer_group_id,
     note: form.note,
     vendor_code: form.vendor_code,
     market_code: form.market_code,

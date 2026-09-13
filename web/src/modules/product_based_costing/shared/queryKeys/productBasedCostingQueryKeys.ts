@@ -12,4 +12,16 @@ export const productBasedCostingQueryKeys = {
     [...productBasedCostingQueryKeys.itemsRoot(fileId), 'list'] as const,
   itemsInfinite: (fileId: number, pageSize = PBC_ITEMS_PAGE_SIZE) =>
     [...productBasedCostingQueryKeys.itemsRoot(fileId), 'infinite', pageSize] as const,
+  fileSummaryRoot: (fileId: number) =>
+    ['productBasedCosting', 'files', 'summary', fileId] as const,
+  fileSummary: (
+    fileId: number,
+    rates: { conversionRate: number; cargoRate: number; profitRate: number },
+  ) =>
+    [
+      ...productBasedCostingQueryKeys.fileSummaryRoot(fileId),
+      rates.conversionRate,
+      rates.cargoRate,
+      rates.profitRate,
+    ] as const,
 };
