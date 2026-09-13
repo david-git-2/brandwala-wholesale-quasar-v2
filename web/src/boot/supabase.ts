@@ -173,7 +173,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
-export default defineBoot(async ({ app }) => {
+export default defineBoot(async ({ app, router }) => {
   try {
     const {
       data: { session },
@@ -182,6 +182,7 @@ export default defineBoot(async ({ app }) => {
     const authStore = useAuthStore();
 
     if (authStore.hasAccess && !session) {
+      await router.isReady();
       const { tryRefreshSession, handleUnauthorizedResponse } =
         await import('src/modules/auth/utils/forceAuthLogout');
       const refreshed = await tryRefreshSession();

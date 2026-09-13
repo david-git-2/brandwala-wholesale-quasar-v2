@@ -4,7 +4,9 @@ import { useAuthStore } from '../stores/authStore';
 import { clearShopOrderQueryCache } from 'src/query/queryClient';
 import {
   getAppRouteLocation,
+  getScopeFromPath,
   getShopLoginRouteLocation,
+  getTenantSlugFromPath,
   getTenantSlugFromRoute,
 } from 'src/modules/tenant/utils/tenantRouteContext';
 
@@ -71,19 +73,20 @@ export async function handleUnauthorizedResponse() {
 
     const authStore = useAuthStore();
     let scope = authStore.scope;
-    const tenantSlug = authStore.tenantSlug ?? getTenantSlugFromRoute(currentRoute);
+    const locationPathname =
+      typeof window !== 'undefined' ? window.location.pathname : currentRoute.path;
+    const locationPath =
+      typeof window !== 'undefined'
+        ? `${window.location.pathname}${window.location.search}`
+        : currentRoute.fullPath ?? currentRoute.path;
+    const tenantSlug =
+      authStore.tenantSlug ??
+      getTenantSlugFromRoute(currentRoute) ??
+      getTenantSlugFromPath(locationPathname);
 
     if (!scope) {
-      const path = currentRoute.path;
-      if (path.startsWith('/platform')) {
-        scope = 'platform';
-      } else if (path.startsWith('/shop')) {
-        scope = 'shop';
-      } else if (path.startsWith('/investor')) {
-        scope = 'investor';
-      } else {
-        scope = 'app';
-      }
+      scope =
+        getScopeFromPath(locationPathname) ?? getScopeFromPath(currentRoute.path) ?? 'app';
     }
 
     authStore.clearAccess();
@@ -94,7 +97,11 @@ export async function handleUnauthorizedResponse() {
 
     const loginError = 'session_expired';
     const targetRedirect =
-      currentRoute.fullPath && currentRoute.fullPath !== '/' ? currentRoute.fullPath : undefined;
+      currentRoute.fullPath && currentRoute.fullPath !== '/'
+        ? currentRoute.fullPath
+        : locationPath && locationPathname !== '/'
+          ? locationPath
+          : undefined;
 
     const extraQuery: Record<string, string> = {
       login_error: loginError,
@@ -109,7 +116,7 @@ export async function handleUnauthorizedResponse() {
         query: extraQuery,
       });
     } else if (scope === 'shop') {
-      const loginRouteLocation = getShopLoginRouteLocation(currentRoute, extraQuery);
+      const loginRouteLocation = getShopLoginRouteLocation(currentRoute, extraQuery, tenantSlug);
       await router.replace(loginRouteLocation);
     } else if (scope === 'investor') {
       await router.replace({

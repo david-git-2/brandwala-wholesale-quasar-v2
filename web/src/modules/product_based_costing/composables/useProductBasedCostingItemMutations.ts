@@ -1,12 +1,143 @@
-import { useMutation, useQueryClient } from '@tanstack/vue-query';
+import { useMutation, useQueryClient, type QueryClient } from '@tanstack/vue-query';
 import { productBasedCostingQueryKeys } from '../shared/queryKeys/productBasedCostingQueryKeys';
 import { productBasedCostingRepository } from '../repositories/productBasedCostingRepository';
 import { parseSupabaseError, showSuccessNotification, showWarningDialog } from 'src/utils/appFeedback';
 import type {
   ProductBasedCostingItem,
   ProductBasedCostingItemCreateInput,
+  ProductBasedCostingItemListPage,
   ProductBasedCostingItemUpdateInput,
 } from '../types';
+
+type DeletePbcItemInput = number | { id: number; fileId?: number };
+
+type InfiniteItemsData = {
+  pages: ProductBasedCostingItemListPage[];
+  pageParams: unknown[];
+};
+
+function resolvePbcFileIdFromItemsCache(
+  queryClient: QueryClient,
+  itemId: number,
+): number | undefined {
+  const queries = queryClient.getQueriesData<ProductBasedCostingItem[]>({
+    queryKey: ['productBasedCosting', 'items'],
+  });
+
+  for (const [, items] of queries) {
+    const found = items?.find((item) => item.id === itemId);
+    if (found?.product_based_costing_file_id) {
+      return found.product_based_costing_file_id;
+    }
+  }
+
+  return undefined;
+}
+
+function isInfiniteItemsData(value: unknown): value is InfiniteItemsData {
+  return (
+    !!value &&
+    typeof value === 'object' &&
+    'pages' in value &&
+    Array.isArray((value as InfiniteItemsData).pages)
+  );
+}
+
+function removePbcItemFromCache(queryClient: QueryClient, fileId: number, itemId: number) {
+  queryClient.setQueryData<ProductBasedCostingItem[]>(
+    productBasedCostingQueryKeys.itemsList(fileId),
+    (oldItems) => (oldItems ?? []).filter((item) => item.id !== itemId),
+  );
+
+  queryClient.setQueriesData<InfiniteItemsData | ProductBasedCostingItem[]>(
+    { queryKey: productBasedCostingQueryKeys.itemsRoot(fileId) },
+    (oldData) => {
+      if (Array.isArray(oldData)) {
+        return oldData.filter((item) => item.id !== itemId);
+      }
+
+      if (!isInfiniteItemsData(oldData)) {
+        return oldData;
+      }
+
+      let removed = false;
+      const pages = oldData.pages.map((page) => {
+        const hadItem = page.data.some((item) => item.id === itemId);
+        if (hadItem) removed = true;
+        return {
+          ...page,
+          data: page.data.filter((item) => item.id !== itemId),
+        };
+      });
+
+      if (!removed) {
+        return oldData;
+      }
+
+      return {
+        ...oldData,
+        pages: pages.map((page, index) =>
+          index === 0
+            ? {
+                ...page,
+                meta: {
+                  ...page.meta,
+                  total: Math.max(0, page.meta.total - 1),
+                },
+              }
+            : page,
+        ),
+      };
+    },
+  );
+}
+
+function addPbcItemToCache(queryClient: QueryClient, fileId: number, item: ProductBasedCostingItem) {
+  queryClient.setQueryData<ProductBasedCostingItem[]>(
+    productBasedCostingQueryKeys.itemsList(fileId),
+    (oldItems) => {
+      if (!oldItems) return [item];
+      if (oldItems.some((existing) => existing.id === item.id)) return oldItems;
+      return [...oldItems, item];
+    },
+  );
+
+  queryClient.setQueriesData<InfiniteItemsData | ProductBasedCostingItem[]>(
+    { queryKey: productBasedCostingQueryKeys.itemsRoot(fileId) },
+    (oldData) => {
+      if (Array.isArray(oldData)) {
+        if (oldData.some((existing) => existing.id === item.id)) return oldData;
+        return [...oldData, item];
+      }
+
+      if (!isInfiniteItemsData(oldData) || oldData.pages.length === 0) {
+        return oldData;
+      }
+
+      if (oldData.pages.some((page) => page.data.some((existing) => existing.id === item.id))) {
+        return oldData;
+      }
+
+      const [firstPage, ...restPages] = oldData.pages;
+      if (!firstPage) return oldData;
+
+      return {
+        ...oldData,
+        pages: [
+          {
+            ...firstPage,
+            data: [...firstPage.data, item],
+            meta: {
+              ...firstPage.meta,
+              total: firstPage.meta.total + 1,
+            },
+          },
+          ...restPages,
+        ],
+      };
+    },
+  );
+}
 
 function errorText(error: unknown): string {
   if (typeof error === 'string') return error;
@@ -55,10 +186,7 @@ export function useCreateProductBasedCostingItemMutation() {
     onSuccess: (data) => {
       showSuccessNotification('Product based costing item created successfully.');
       if (data?.product_based_costing_file_id) {
-        queryClient.setQueryData<ProductBasedCostingItem[]>(
-          productBasedCostingQueryKeys.itemsList(data.product_based_costing_file_id),
-          (oldItems) => (oldItems ? [...oldItems, data] : [data]),
-        );
+        addPbcItemToCache(queryClient, data.product_based_costing_file_id, data);
       }
     },
     onError: (error) => {
@@ -98,15 +226,23 @@ export function useDeleteProductBasedCostingItemMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: number) => productBasedCostingRepository.deleteProductBasedCostingItem(id),
-    onSuccess: (data) => {
+    mutationFn: (input: DeletePbcItemInput) => {
+      const id = typeof input === 'number' ? input : input.id;
+      return productBasedCostingRepository.deleteProductBasedCostingItem(id);
+    },
+    onSuccess: (data, input) => {
       showSuccessNotification('Product based costing item deleted successfully.');
-      if (data?.product_based_costing_file_id) {
-        queryClient.setQueryData<ProductBasedCostingItem[]>(
-          productBasedCostingQueryKeys.itemsList(data.product_based_costing_file_id),
-          (oldItems) => (oldItems ? oldItems.filter((item) => item.id !== data.id) : []),
-        );
+      const fileId =
+        data.product_based_costing_file_id ??
+        (typeof input === 'object' ? input.fileId : undefined) ??
+        resolvePbcFileIdFromItemsCache(queryClient, data.id);
+
+      if (!fileId) {
+        void queryClient.invalidateQueries({ queryKey: ['productBasedCosting', 'items'] });
+        return;
       }
+
+      removePbcItemFromCache(queryClient, fileId, data.id);
     },
     onError: (error) => {
       showMutationWarning(error, 'Failed to delete costing item.', 'remove');
@@ -120,15 +256,13 @@ export function useDeleteProductBasedCostingItemsBulkMutation() {
   return useMutation({
     mutationFn: ({ ids }: { fileId: number; ids: number[] }) =>
       productBasedCostingRepository.deleteProductBasedCostingItemsBulk(ids),
-    onSuccess: (deletedItems, variables) => {
-      const deletedIds = new Set(variables.ids);
+    onSuccess: (_deletedItems, variables) => {
       showSuccessNotification(
         `${variables.ids.length} costing item${variables.ids.length === 1 ? '' : 's'} deleted successfully.`,
       );
-      queryClient.setQueryData<ProductBasedCostingItem[]>(
-        productBasedCostingQueryKeys.itemsList(variables.fileId),
-        (oldItems) => (oldItems ? oldItems.filter((item) => !deletedIds.has(item.id)) : []),
-      );
+      for (const id of variables.ids) {
+        removePbcItemFromCache(queryClient, variables.fileId, id);
+      }
     },
     onError: (error) => {
       showMutationWarning(error, 'Failed to delete costing items.', 'remove');

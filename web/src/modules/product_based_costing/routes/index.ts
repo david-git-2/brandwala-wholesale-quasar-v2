@@ -40,6 +40,13 @@ const productBasedCostingRoutes: RouteRecordRaw[] = [
         meta: { hasPageToolbar: true },
       },
       {
+        path: ':id/add-product-cart',
+        name: 'product-based-costing-add-product-cart-page',
+        component: () => import('../pages/AddProductCartPage.vue'),
+        props: true,
+        meta: { hasPageToolbar: true },
+      },
+      {
         path: ':id',
         name: 'product-based-costing-file-details-page',
         component: () => import('../pages/ProductBasedCostingFileDetailsV2Page.vue'),

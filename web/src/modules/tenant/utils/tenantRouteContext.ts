@@ -31,8 +31,70 @@ const isLocalHostname = (hostname: string | null) =>
   hostname === '127.0.0.1' ||
   hostname === '0.0.0.0';
 
-export const getTenantSlugFromRoute = (route: RouteLike): string | null =>
-  normalizeRouteToken(route.params?.tenantSlug) ?? normalizeRouteToken(route.query?.tenant_slug);
+export const getTenantSlugFromPath = (path: string): string | null => {
+  const normalizedPath = path.split('?')[0]?.split('#')[0] ?? path;
+  const scopedMatch = normalizedPath.match(/^\/([^/]+)\/(shop|app|investor)(\/|$)/);
+
+  if (scopedMatch?.[1]) {
+    return normalizeRouteToken(scopedMatch[1]);
+  }
+
+  return null;
+};
+
+export const getScopeFromPath = (
+  path: string,
+): 'platform' | 'app' | 'shop' | 'investor' | null => {
+  const normalizedPath = path.split('?')[0]?.split('#')[0] ?? path;
+
+  if (/^\/platform(\/|$)/.test(normalizedPath)) {
+    return 'platform';
+  }
+
+  const scopedMatch = normalizedPath.match(/^\/([^/]+)\/(shop|app|investor)(\/|$)/);
+  if (scopedMatch?.[2] === 'shop') return 'shop';
+  if (scopedMatch?.[2] === 'investor') return 'investor';
+  if (scopedMatch?.[2] === 'app') return 'app';
+  if (/^\/shop(\/|$)/.test(normalizedPath)) return 'shop';
+  if (/^\/investor(\/|$)/.test(normalizedPath)) return 'investor';
+  if (/^\/app(\/|$)/.test(normalizedPath)) return 'app';
+
+  return null;
+};
+
+export const getTenantSlugFromRoute = (
+  route: RouteLike,
+  tenantSlugOverride?: string | null,
+): string | null => {
+  const fromOverride = normalizeRouteToken(tenantSlugOverride);
+  if (fromOverride) {
+    return fromOverride;
+  }
+
+  const fromParams =
+    normalizeRouteToken(route.params?.tenantSlug) ?? normalizeRouteToken(route.query?.tenant_slug);
+  if (fromParams) {
+    return fromParams;
+  }
+
+  const redirectPath =
+    typeof route.query?.redirect === 'string' ? route.query.redirect.trim() : '';
+  if (redirectPath) {
+    const fromRedirect = getTenantSlugFromPath(redirectPath);
+    if (fromRedirect) {
+      return fromRedirect;
+    }
+  }
+
+  if (route.fullPath) {
+    const fromFullPath = getTenantSlugFromPath(route.fullPath);
+    if (fromFullPath) {
+      return fromFullPath;
+    }
+  }
+
+  return null;
+};
 
 export const getTenantHostnameForEntry = (): string | null => {
   if (typeof window === 'undefined') {
@@ -78,8 +140,9 @@ export const getTenantLookupFromRoute = (route: RouteLike) => {
 export const getShopLoginRouteLocation = (
   route: RouteLike,
   extraQuery?: Record<string, string>,
+  tenantSlugOverride?: string | null,
 ): RouteLocationRaw => {
-  const tenantSlug = getTenantSlugFromRoute(route) ?? undefined;
+  const tenantSlug = getTenantSlugFromRoute(route, tenantSlugOverride) ?? undefined;
 
   return {
     name: 'customer-login-page',
@@ -93,8 +156,9 @@ export const getShopLoginRouteLocation = (
 export const getShopSelectCompanyRouteLocation = (
   route: RouteLike,
   extraQuery?: Record<string, string>,
+  tenantSlugOverride?: string | null,
 ): RouteLocationRaw => {
-  const tenantSlug = getTenantSlugFromRoute(route) ?? undefined;
+  const tenantSlug = getTenantSlugFromRoute(route, tenantSlugOverride) ?? undefined;
 
   return {
     name: 'shop-select-company-page',

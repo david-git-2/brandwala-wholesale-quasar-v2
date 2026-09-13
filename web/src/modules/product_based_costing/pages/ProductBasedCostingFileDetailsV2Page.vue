@@ -136,7 +136,7 @@
             size="sm"
             style="border-radius: 8px"
           >
-            <q-menu>
+            <q-menu auto-close="false">
               <q-list style="min-width: 240px; max-height: 400px" class="q-pa-xs">
                 <q-item class="q-pb-none">
                   <q-item-section>
@@ -148,6 +148,7 @@
                       :placeholder="$t('product_based_costing.search_columns')"
                       clearable
                       class="q-mt-xs"
+                      @click.stop
                     >
                       <template #prepend>
                         <q-icon name="ph ph-magnifying-glass" size="14px" />
@@ -155,21 +156,30 @@
                     </q-input>
                   </q-item-section>
                 </q-item>
-                <q-item clickable class="q-py-xs" @click="toggleSelectAllColumns">
+                <q-item clickable class="q-py-xs" @click.stop>
                   <q-item-section>
-                    <q-checkbox :model-value="allColumnsVisible" :label="$t('product_based_costing.select_deselect_all')" />
+                    <q-checkbox
+                      v-model="allSelectableColumnsSelected"
+                      :label="$t('product_based_costing.select_deselect_all')"
+                      @click.stop
+                    />
                   </q-item-section>
                 </q-item>
                 <q-separator class="q-my-xs" />
-                <q-item
-                  v-for="col in filteredColumnOptions"
-                  :key="col.value"
-                  clickable
-                  class="q-py-2xs"
-                  @click="toggleColumn(col.value)"
-                >
+                <q-item class="q-py-none">
                   <q-item-section>
-                    <q-checkbox :model-value="visibleColumnMap[col.value]" :label="col.label" />
+                    <div
+                      v-if="!filteredColumnOptions.length"
+                      class="text-caption text-grey-6 q-pa-sm"
+                    >
+                      {{ $t('product_based_costing.no_matching_columns') }}
+                    </div>
+                    <q-option-group
+                      v-else
+                      v-model="localVisibleColumns"
+                      type="checkbox"
+                      :options="filteredColumnOptions"
+                    />
                   </q-item-section>
                 </q-item>
               </q-list>
@@ -885,6 +895,16 @@
                 </div>
                 <div class="row q-gutter-sm">
                   <q-btn
+                    outline
+                    color="primary"
+                    icon="ph ph-squares-four"
+                    :label="$t('product_based_costing.browse_catalog')"
+                    no-caps
+                    class="rounded-sq-btn"
+                    style="border-radius: 8px"
+                    @click="openAddProductCartPage"
+                  />
+                  <q-btn
                     color="primary"
                     icon="ph ph-plus"
                     :label="$t('product_based_costing.add_products')"
@@ -1077,6 +1097,7 @@ import { usePbcBacklog, type BacklogItem } from '../composables/usePbcBacklog';
 import { useMembershipColumnPreference } from 'src/modules/membership/composables/useMembershipColumnPreference';
 import {
   allColumnNames,
+  alwaysVisibleColumns,
   columnSelectorOptions,
   formatMoney,
   formatStatusLabel,
@@ -1214,16 +1235,29 @@ const { visibleColumns } = useMembershipColumnPreference({
 });
 
 const visibleColumnMap = computed<Record<string, boolean>>(() => {
-  const map: Record<string, boolean> = {
-    select: true,
-    sl: true,
-    image: true,
-    name: true,
-  };
+  const map: Record<string, boolean> = {};
   for (const col of allColumnNames) {
     map[col] = visibleColumns.value.includes(col);
   }
   return map;
+});
+
+const localVisibleColumns = computed({
+  get: () => visibleColumns.value,
+  set: (val: string[]) => {
+    visibleColumns.value = val;
+  },
+});
+
+const selectableColumnValues = columnSelectorOptions.map((option) => option.value);
+
+const allSelectableColumnsSelected = computed({
+  get: () => selectableColumnValues.every((value) => visibleColumns.value.includes(value)),
+  set: (checked: boolean) => {
+    visibleColumns.value = checked
+      ? [...alwaysVisibleColumns, ...selectableColumnValues]
+      : [...alwaysVisibleColumns];
+  },
 });
 
 const columnSearchQuery = ref('');
@@ -1232,26 +1266,6 @@ const filteredColumnOptions = computed(() => {
   if (!q) return columnSelectorOptions;
   return columnSelectorOptions.filter((opt) => opt.label.toLowerCase().includes(q));
 });
-
-const allColumnsVisible = computed(() => {
-  return columnSelectorOptions.every((col) => visibleColumns.value.includes(col.value));
-});
-
-function toggleSelectAllColumns() {
-  if (allColumnsVisible.value) {
-    visibleColumns.value = ['select', 'sl', 'image', 'name'];
-  } else {
-    visibleColumns.value = [...allColumnNames];
-  }
-}
-
-function toggleColumn(key: string) {
-  if (visibleColumns.value.includes(key)) {
-    visibleColumns.value = visibleColumns.value.filter((col) => col !== key);
-  } else {
-    visibleColumns.value = [...visibleColumns.value, key];
-  }
-}
 
 // Table computed rows with financial values
 const tableRows = computed(() => {
@@ -1531,6 +1545,18 @@ function openCatalogDialog() {
       selectedItem.value = { name: result.createProductName } as ProductBasedCostingItem;
       showItemDialog.value = true;
     }
+  });
+}
+
+function openAddProductCartPage() {
+  if (!fileId.value) return;
+  const tenantSlug = tenantStore.selectedTenant?.slug ?? route.params.tenantSlug;
+  void router.push({
+    name: 'product-based-costing-add-product-cart-page',
+    params: {
+      ...(tenantSlug ? { tenantSlug } : {}),
+      id: String(fileId.value),
+    },
   });
 }
 
