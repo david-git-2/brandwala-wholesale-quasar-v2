@@ -1,4 +1,6 @@
 import { supabase } from 'src/boot/supabase';
+import { productBasedCostingRepository } from 'src/modules/product_based_costing/repositories/productBasedCostingRepository';
+import { shopOrderRepository } from 'src/modules/shop_order/repositories/shopOrderRepository';
 
 export type ProcurementDemandStatus = 'procuring' | 'ready_for_shipment' | 'delivered';
 
@@ -45,7 +47,12 @@ export interface ProcurementDemandGroup {
   customer_group_id?: number | null;
   customer_group_name?: string | null;
   vendor: ProcurementDemandVendor | null;
+  invoice_id?: number | null;
   items: ProcurementDemandItem[];
+}
+
+export interface MarkDemandGroupReadyResult {
+  invoiceId: number | null;
 }
 
 export interface ProcurementDemandGroupsMeta {
@@ -134,9 +141,41 @@ const upsertPreorderDemand = async (
   return data as PreorderDemandRow;
 };
 
+const markDemandGroupReadyForShipment = async (
+  group: ProcurementDemandGroup,
+): Promise<MarkDemandGroupReadyResult> => {
+  if (group.document_type === 'shop_order') {
+    const items = group.items
+      .filter((item) => item.source_type === 'shop_order_item')
+      .map((item) => ({
+        id: item.source_id,
+        ordered_quantity: item.placed_quantity ?? 0,
+      }));
+
+    const response = await shopOrderRepository.staffSetCatalogOrderedQty(
+      group.document_id,
+      items,
+    );
+
+    return { invoiceId: response.order.global_invoice_id ?? null };
+  }
+
+  const result = await productBasedCostingRepository.markPbcReadyForShipment(
+    group.document_id,
+  );
+
+  const invoiceId =
+    result && typeof result === 'object' && 'invoice_id' in result
+      ? Number((result as { invoice_id?: string | number }).invoice_id) || null
+      : null;
+
+  return { invoiceId };
+};
+
 export const procurementDemandRepository = {
   listProcurementDemandGroups,
   upsertPreorderDemand,
+  markDemandGroupReadyForShipment,
 };
 
 export const getItemNeedQuantity = (item: ProcurementDemandItem): number =>

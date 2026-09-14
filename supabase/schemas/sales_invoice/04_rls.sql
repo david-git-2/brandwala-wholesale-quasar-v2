@@ -234,6 +234,9 @@ GRANT ALL ON FUNCTION "public"."process_wholesale_invoice_return"("p_invoice_id"
 GRANT ALL ON FUNCTION "public"."collect_wholesale_invoice_payment"("p_invoice_id" bigint, "p_cash_amount" numeric, "p_cash_method" "text", "p_wallet_amount" numeric, "p_settlement_amount" numeric) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."collect_wholesale_invoice_payment"("p_invoice_id" bigint, "p_cash_amount" numeric, "p_cash_method" "text", "p_wallet_amount" numeric, "p_settlement_amount" numeric) TO "service_role";
 
+GRANT EXECUTE ON FUNCTION "public"."billing_profile_valid_for_issuer"(bigint, bigint) TO "authenticated";
+GRANT EXECUTE ON FUNCTION "public"."recipient_profile_valid_for_issuer"(bigint, bigint) TO "authenticated";
+
 GRANT EXECUTE ON FUNCTION "public"."create_sales_invoice_from_payload"(bigint, jsonb) TO "authenticated";
 
 GRANT EXECUTE ON FUNCTION "public"."update_sales_invoice_from_payload"(bigint, bigint, jsonb) TO "authenticated";

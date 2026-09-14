@@ -29,6 +29,7 @@ export type ModuleKey =
   | 'global_reference_unit_of_measure'
   | 'global_shipment'
   | 'procurement_demand'
+  | 'procurement_fulfill'
   | 'global_stock'
   | 'global_stock_movement'
   | 'global_stock_location'
@@ -551,6 +552,13 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     key: 'procurement_demand',
     name: 'Demand',
     description: 'Aggregated line items from shop orders and costing files in procurement.',
+    parentModuleKey: 'procurement_stock',
+    routes: [],
+  },
+  {
+    key: 'procurement_fulfill',
+    name: 'Fulfill',
+    description: 'Pick parent warehouse stock and invoice shop orders.',
     parentModuleKey: 'procurement_stock',
     routes: [],
   },

@@ -137,6 +137,8 @@ const getSubmoduleSectionAndWeight = (
         return { section: '', weight: 5 };
       case 'procurement_demand':
         return { section: '', weight: 10 };
+      case 'procurement_fulfill':
+        return { section: '', weight: 15 };
       case 'global_shipment':
         return { section: '', weight: 20 };
       case 'global_stock':

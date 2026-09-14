@@ -88,6 +88,7 @@ const resolveAuthenticatedDenyTarget = ({
   if (
     requiredModule === 'global_shipment' ||
     requiredModule === 'procurement_demand' ||
+    requiredModule === 'procurement_fulfill' ||
     requiredModule === 'global_stock' ||
     requiredModule === 'global_stock_movement' ||
     requiredModule === 'global_stock_location' ||

@@ -11032,7 +11032,7 @@ begin
       'billing_profile_id', v_billing_profile_id
     ),
     'items', v_items,
-    'issue', true
+    'issue', false
   );
 
   v_result := public.create_sales_invoice_from_payload(v_operating_tenant_id, v_payload);
@@ -11042,6 +11042,13 @@ begin
   end if;
 
   v_invoice_id := (v_result->>'invoice_id')::bigint;
+
+  update public.sales_invoices
+  set
+    invoice_status = 'proforma_generated'::public.global_invoice_status,
+    updated_at = now()
+  where id = v_invoice_id
+    and invoice_status = 'draft'::public.global_invoice_status;
 
   if v_doc_type = 'shop_order' then
     update public.shop_orders
@@ -11059,7 +11066,10 @@ begin
       and invoice_id is null;
   end if;
 
-  return v_result || jsonb_build_object('created', true);
+  return v_result || jsonb_build_object(
+    'created', true,
+    'invoice_status', 'proforma_generated'
+  );
 end;
 $$;
 
@@ -11177,7 +11187,8 @@ begin
       pd.vendor_id,
       coalesce(pd.placed_quantity, 0) as placed_quantity,
       coalesce(pd.delivered_quantity, 0) as delivered_quantity,
-      coalesce(pd.stock_picks, '[]'::jsonb) as stock_picks
+      coalesce(pd.stock_picks, '[]'::jsonb) as stock_picks,
+      o.global_invoice_id as invoice_id
     from public.shop_order_items oi
     inner join public.shop_orders o on o.id = oi.order_id
     inner join tenant_scope ts on ts.tenant_id = o.tenant_id
@@ -11235,7 +11246,8 @@ begin
       pd.vendor_id,
       coalesce(pd.placed_quantity, 0) as placed_quantity,
       coalesce(pd.delivered_quantity, 0) as delivered_quantity,
-      coalesce(pd.stock_picks, '[]'::jsonb) as stock_picks
+      coalesce(pd.stock_picks, '[]'::jsonb) as stock_picks,
+      f.invoice_id
     from public.product_based_costing_items pci
     inner join public.product_based_costing_files f on f.id = pci.product_based_costing_file_id
     inner join tenant_scope ts on ts.tenant_id = f.tenant_id
@@ -11276,6 +11288,7 @@ begin
       max(el.customer_group_id) as customer_group_id,
       max(el.customer_group_name) as customer_group_name,
       (array_agg(el.vendor) filter (where el.vendor is not null))[1] as vendor,
+      max(el.invoice_id) as invoice_id,
       jsonb_agg(
         jsonb_build_object(
           'source_type', el.source_type,
@@ -11317,6 +11330,7 @@ begin
           'customer_group_id', p.customer_group_id,
           'customer_group_name', p.customer_group_name,
           'vendor', p.vendor,
+          'invoice_id', p.invoice_id,
           'items', p.items
         )
         order by p.document_type, p.document_id

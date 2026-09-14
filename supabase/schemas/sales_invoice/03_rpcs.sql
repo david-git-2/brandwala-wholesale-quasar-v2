@@ -914,7 +914,7 @@ begin
 
   select * into v_profile from public.billing_profiles where id = p_billing_profile_id;
   if v_profile.id is null then raise exception 'Billing profile not found.'; end if;
-  if v_profile.tenant_id <> v_issued_by then
+  if not public.billing_profile_valid_for_issuer(p_billing_profile_id, v_issued_by) then
     raise exception 'Billing profile does not belong to issuing tenant.';
   end if;
 
@@ -1041,19 +1041,13 @@ begin
   end if;
 
   if p_billing_profile_id is not null then
-    if not exists (
-      select 1 from public.billing_profiles
-      where id = p_billing_profile_id and tenant_id = v_issued_by
-    ) then
+    if not public.billing_profile_valid_for_issuer(p_billing_profile_id, v_issued_by) then
       raise exception 'billing profile must belong to the issuing tenant';
     end if;
   end if;
 
   if p_recipient_profile_id is not null then
-    if not exists (
-      select 1 from public.recipient_profiles
-      where id = p_recipient_profile_id and tenant_id = v_issued_by
-    ) then
+    if not public.recipient_profile_valid_for_issuer(p_recipient_profile_id, v_issued_by) then
       raise exception 'recipient profile must belong to the issuing tenant';
     end if;
   end if;
@@ -2497,25 +2491,76 @@ $$;
 ALTER FUNCTION "public"."trg_fn_global_invoices_stock_sync"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."billing_profile_valid_for_issuer"("p_billing_profile_id" bigint, "p_issued_by_tenant_id" bigint) RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  select exists (
+    select 1
+    from public.billing_profiles bp
+    where bp.id = p_billing_profile_id
+      and (
+        bp.tenant_id = p_issued_by_tenant_id
+        or bp.tenant_id = public.resolve_parent_tenant_id(p_issued_by_tenant_id)
+        or coalesce(bp.parent_tenant_id, bp.tenant_id)
+          = public.resolve_parent_tenant_id(p_issued_by_tenant_id)
+        or exists (
+          select 1
+          from public.tenants t
+          where t.id = bp.tenant_id
+            and t.parent_id = public.resolve_parent_tenant_id(p_issued_by_tenant_id)
+        )
+      )
+  );
+$$;
+
+ALTER FUNCTION "public"."billing_profile_valid_for_issuer"("p_billing_profile_id" bigint, "p_issued_by_tenant_id" bigint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."recipient_profile_valid_for_issuer"("p_recipient_profile_id" bigint, "p_issued_by_tenant_id" bigint) RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  select exists (
+    select 1
+    from public.recipient_profiles rp
+    where rp.id = p_recipient_profile_id
+      and (
+        rp.tenant_id = p_issued_by_tenant_id
+        or rp.tenant_id = public.resolve_parent_tenant_id(p_issued_by_tenant_id)
+        or coalesce(rp.parent_tenant_id, rp.tenant_id)
+          = public.resolve_parent_tenant_id(p_issued_by_tenant_id)
+        or exists (
+          select 1
+          from public.tenants t
+          where t.id = rp.tenant_id
+            and t.parent_id = public.resolve_parent_tenant_id(p_issued_by_tenant_id)
+        )
+      )
+  );
+$$;
+
+ALTER FUNCTION "public"."recipient_profile_valid_for_issuer"("p_recipient_profile_id" bigint, "p_issued_by_tenant_id" bigint) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."trg_validate_global_invoice_profiles"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 begin
   if new.billing_profile_id is not null then
-    if not exists (
-      select 1 from public.billing_profiles bp
-      where bp.id = new.billing_profile_id
-        and bp.tenant_id = new.issued_by_tenant_id
+    if not public.billing_profile_valid_for_issuer(
+      new.billing_profile_id,
+      new.issued_by_tenant_id
     ) then
       raise exception 'Billing profile tenant_id must match invoice issued_by_tenant_id';
     end if;
   end if;
 
   if new.recipient_profile_id is not null then
-    if not exists (
-      select 1 from public.recipient_profiles rp
-      where rp.id = new.recipient_profile_id
-        and rp.tenant_id = new.issued_by_tenant_id
+    if not public.recipient_profile_valid_for_issuer(
+      new.recipient_profile_id,
+      new.issued_by_tenant_id
     ) then
       raise exception 'Recipient profile tenant_id must match invoice issued_by_tenant_id';
     end if;

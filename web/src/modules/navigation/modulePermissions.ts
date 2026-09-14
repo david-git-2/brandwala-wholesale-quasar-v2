@@ -45,6 +45,9 @@ const isProcurementBlockedOnChildTenant = (
   if (moduleKey === 'global_stock' && action === 'view') {
     return false;
   }
+  if (moduleKey === 'procurement_fulfill' && action === 'view') {
+    return false;
+  }
   return true;
 };
 
@@ -75,6 +78,10 @@ const isTenantModuleActive = (
   }
 
   if (moduleKey === 'procurement_demand') {
+    return activeModuleKeys.includes('global_shipment');
+  }
+
+  if (moduleKey === 'procurement_fulfill') {
     return activeModuleKeys.includes('global_shipment');
   }
 
@@ -121,6 +128,12 @@ const hasModuleRoleGrant = ({
   }
 
   if (moduleKey === 'procurement_demand') {
+    return effectiveGrants.some(
+      (grant) => grant.module_key === 'global_shipment' && grant.action === action,
+    );
+  }
+
+  if (moduleKey === 'procurement_fulfill') {
     return effectiveGrants.some(
       (grant) => grant.module_key === 'global_shipment' && grant.action === action,
     );
@@ -341,7 +354,7 @@ export const resolveModuleAccess = ({
       isAdmin,
     });
     if (
-      moduleKey === 'procurement_demand' &&
+      (moduleKey === 'procurement_demand' || moduleKey === 'procurement_fulfill') &&
       allowedActions.length === 0 &&
       effectiveGrants.some((grant) => grant.module_key === 'global_shipment')
     ) {

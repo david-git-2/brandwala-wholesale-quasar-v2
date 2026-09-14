@@ -1,9 +1,13 @@
 # Procurement Demand List — Aggregated Items Desk
 
-Staff-facing **two-phase demand desk** for **catalog shop orders** and/or **PBC costing files**, grouped by source document:
+Staff-facing **two-surface procurement desk** for **catalog shop orders** and/or **PBC costing files**, grouped by source document:
 
-1. **Procuring** — log **vendor + place order qty**, then **allocate stock** into `preorder_demand.stock_picks`.
-2. **Ready for shipment** — staff mark the document ready; server creates the **customer invoice** from saved picks and moves stock.
+| Surface | Route | Who | Actions |
+| :--- | :--- | :--- | :--- |
+| **Demand** | `/procurement/demand` | **Parent** warehouse | Vendor + **place order qty** only |
+| **Fulfill** | `/procurement/fulfill` | **Child** shop (parent with child filter) | **Stock picks**, mark ready, print invoice |
+
+Both surfaces share the same grouped list RPC. **Procuring** and **Ready for shipment** tabs exist on each surface; row actions differ by surface.
 
 One aggregated queue instead of opening each order or costing file separately.
 
@@ -16,14 +20,16 @@ One aggregated queue instead of opening each order or costing file separately.
 | Problem | This desk |
 | :--- | :--- |
 | Staff must open each shop order and each costing file separately | One screen unions **both sources** by procurement status |
-| No shared log of vendor PO qty | **Procuring tab:** vendor + **place order qty** → `preorder_demand` |
-| No single place to fulfill from stock + invoice | **Procuring tab:** stock picks on `preorder_demand`; invoice on mark-ready |
+| No shared log of vendor PO qty | **Demand (parent):** vendor + **place order qty** → `preorder_demand` |
+| No single place to fulfill from stock + invoice | **Fulfill (child):** stock picks on `preorder_demand`; invoice on mark-ready |
 | Hard to see what was ordered vs what left the warehouse | Per line: `placed_quantity` vs `delivered_quantity` on `preorder_demand` |
-| Parent tenant manages multiple child concerns | Optional filter by child `tenant_id` |
+| Parent tenant manages multiple child concerns | **Fulfill:** optional filter by child `tenant_id` |
 
-**Tab 1 — `procuring`:** lines appear after the document enters procurement. Staff record vendor PO qty and **allocate warehouse stock** (`stock_picks`).
+**Demand — Procuring tab:** parent staff record vendor PO qty. No stock picks, no mark-ready, no print.
 
-**Tab 2 — `ready_for_shipment`:** lines appear after staff mark the document ready on the order / costing file detail. Marking ready runs **`create_invoice_from_preorder_demand_document`** — one issued wholesale invoice from saved picks. Picks are frozen after the flip.
+**Fulfill — Procuring tab:** child (or parent with child filter) staff **allocate warehouse stock** (`stock_picks`) from **parent-owned** stock. Place order + vendor are read-only.
+
+**Fulfill — Ready for shipment tab:** staff mark the document ready (or it was marked on order / PBC detail). Marking ready runs **`create_invoice_from_preorder_demand_document`** — one issued wholesale invoice from saved picks, **`issued_by` = document child `tenant_id`** (shop order / PBC file `tenant_id`), not the parent workspace. Picks are frozen after the flip.
 
 This is **not** the customer demand bucket (shortfalls from past orders).
 
@@ -32,38 +38,36 @@ This is **not** the customer demand bucket (shortfalls from past orders).
 ## 2. Flow
 
 ```mermaid
+flowchart LR
+  parentDemand[Parent Demand]
+  buy[vendor plus place qty]
+  childFulfill[Fulfill page]
+  pick[stock picks]
+  inv[invoice as child shop]
+  parentDemand --> buy
+  childFulfill --> pick
+  pick --> inv
+```
+
+```mermaid
 flowchart TD
-  subgraph Tab1 ["Tab: Procuring"]
-    SO1["Documents status: procuring"]
-    PP["preorder_demand<br/>vendor + placed_quantity + stock_picks"]
-    ACT1["Staff: vendor + qty + pick stock → save"]
+  subgraph Demand ["Demand — parent only"]
+    D1["Procuring: vendor + placed_quantity"]
+    D2["Ready: read-only placed / vendor"]
   end
 
-  subgraph Advance ["Mark ready on order / PBC detail"]
-    RFS["status → ready_for_shipment"]
-    INV["create_invoice_from_preorder_demand_document"]
-  end
-
-  subgraph Tab2 ["Tab: Ready for shipment"]
-    SO2["Documents status: ready_for_shipment"]
-    PF["preorder_demand picks frozen"]
-    ACT2["Read-only allocated qty"]
+  subgraph Fulfill ["Fulfill — child or parent + child filter"]
+    F1["Procuring: stock_picks from parent warehouse"]
+    F2["Mark ready → create_invoice_from_preorder_demand_document"]
+    F3["Ready: print invoice"]
   end
 
   subgraph RPC ["list_procurement_demand_groups"]
-    LIST["Filter by p_procurement_status<br/>procuring | ready_for_shipment"]
+    LIST["p_procurement_status + p_tenant_id + optional p_child_tenant_id"]
   end
 
-  SO1 --> LIST
-  SO2 --> LIST
-  LIST --> ACT1
-  LIST --> ACT2
-  ACT1 --> PP
-  PP --> RFS
-  RFS --> INV
-  INV --> SO2
-  SO2 --> ACT2
-  ACT2 --> PF
+  LIST --> Demand
+  LIST --> Fulfill
 ```
 
 **One row per demand line:** `preorder_demand` holds vendor PO qty (`placed_quantity`) and customer delivery (`delivered_quantity` + `stock_picks`) on the same source line (`source_type` + `source_id`). Inbound **parent shipments** (`global_shipment_items`) remain on the Shipment module when a vendor proforma exists.
@@ -81,13 +85,19 @@ Catalog and PBC share this path after `confirmed`. In-stock (`fixed_price`) shop
 
 **Do not** change document status when the vendor sends a proforma or final invoice — see [`CATALOG_NEGOTIATION.md`](./CATALOG_NEGOTIATION.md) stay-procuring table. Customer copy: `procuring` → **We're sourcing your items**; `ready_for_shipment` → **On the way**.
 
-### 2.1 Document status → Demand tab
+### 2.1 Document status → tabs (Demand vs Fulfill)
 
-| `p_procurement_status` | Demand tab | Staff action |
-| :--- | :--- | :--- |
-| `procuring` | **Procuring** | Vendor + **place order qty** + **stock picks** → `upsert_preorder_demand` |
-| `ready_for_shipment` | **Ready for shipment** | Read-only allocated qty; invoice already created on mark-ready |
-| `delivered` | *(not on Demand desk)* | Closed — view on order / costing file detail |
+| `p_procurement_status` | Tab | Demand (parent) | Fulfill (child / parent + filter) |
+| :--- | :--- | :--- | :--- |
+| `procuring` | **Procuring** | Vendor + **place order qty** → `upsert_preorder_demand` | Read-only vendor + placed qty; **stock picks** → `upsert_preorder_demand`; **mark ready** |
+| `ready_for_shipment` | **Ready for shipment** | Read-only placed / vendor | Read-only allocated qty; **print invoice** |
+| `delivered` | *(not listed)* | Closed — view on order / costing file detail | Same |
+
+**List tenant:** Demand always uses **parent** `p_tenant_id`. Fulfill uses **child** `p_tenant_id` when logged in as a child shop; parent operators use parent `p_tenant_id` with optional `p_child_tenant_id` filter.
+
+**Stock pick dialog:** always passes **parent warehouse** `context_tenant_id` (stock is parent-owned).
+
+**Invoice issuer:** `create_invoice_from_preorder_demand_document` issues as the **document child tenant** (`shop_orders.tenant_id` / `product_based_costing_files.tenant_id`), not the parent workspace.
 
 Pre-procurement (`submitted`, `priced`, `confirmed` on orders; `pending`, `offered` on PBC) **excludes** lines from this list.
 
@@ -141,11 +151,11 @@ On the Demand desk, staff **select vendor and ordered quantity** for each line a
 
 **Need** comes from the shop order / PBC line (`need_quantity`). **Placed** is the sum of active placement rows. **Remaining** = need − placed (floor at 0). Staff repeat vendor + qty until remaining is 0 or they advance the document to **`ready_for_shipment`**.
 
-### 2.5 Allocate stock while procuring; invoice on mark-ready
+### 2.5 Allocate stock on Fulfill; invoice on mark-ready
 
-While the document is **`procuring`**, staff save **stock picks** on the Demand desk. `delivered_quantity` = sum of picks (UI label: **Allocated**).
+While the document is **`procuring`**, staff save **stock picks** on the **Fulfill** desk only (not Demand). `delivered_quantity` = sum of picks (UI label: **Allocated**). Stock is picked from the **parent warehouse**.
 
-When staff mark the document **`ready_for_shipment`** (order detail or PBC detail), the server:
+When staff mark the document **`ready_for_shipment`** (Fulfill desk, order detail, or PBC detail), the server:
 
 1. Calls **`create_invoice_from_preorder_demand_document`** — builds and **issues** one wholesale invoice from saved picks.
 2. Links invoice to `shop_orders.global_invoice_id` or `product_based_costing_files.invoice_id`.
@@ -540,40 +550,42 @@ upsert_preorder_demand(
 
 ### 10.1 Module placement
 
-| Item | Value |
-| :--- | :--- |
-| **Parent module** | `procurement_stock` (Procurement & Stock) — **not** standalone |
-| **Submodule key** | `procurement_demand` |
-| **Code location** | `web/src/modules/procurement_stock/` (page + routes alongside Shipment) |
-| **Permissions** | `procurement_stock` view (same gate as Shipment) |
+| Item | Demand | Fulfill |
+| :--- | :--- | :--- |
+| **Parent module** | `procurement_stock` | `procurement_stock` |
+| **Submodule key** | `procurement_demand` | `procurement_fulfill` |
+| **Code location** | `web/src/modules/procurement_stock/` | Same — shared `ProcurementDemandDesk` component |
+| **Permissions** | `global_shipment` grant fallback (parent only) | Same grant; **unblocked for child tenants** |
 
-Do **not** add nav under `shop_order` or `product_based_costing` — this page unions both sources.
+Do **not** add nav under `shop_order` or `product_based_costing` — these pages union both sources.
 
 ### 10.2 Sidebar
 
-| Item | Value |
-| :--- | :--- |
-| **Route** | `/:tenantSlug/app/procurement/demand` |
-| **Nav label** | **Demand** (or **Procurement list**) |
-| **Caption** | Items to source from orders and costing files |
-| **Icon** | `ph ph-list-checks` |
-| **Sort order** | **Above** Shipment (`procurement/shipment`) in the Procurement & Stock group |
+| Item | Demand | Fulfill |
+| :--- | :--- | :--- |
+| **Route** | `/:tenantSlug/app/procurement/demand` | `/:tenantSlug/app/procurement/fulfill` |
+| **Nav label** | **Demand** | **Fulfill** |
+| **Caption** | Items to source from orders and costing files | Pick stock and invoice shop orders |
+| **Icon** | `ph ph-list-checks` | `ph ph-package` |
+| **Sort order** | 30 | 30.5 (between Demand and Shipments) |
+| **Child access** | Blocked | Allowed (view) |
 
 ### 10.3 Page behavior
 
-Two tabs on one route — status drives which RPC filter and which row actions are shown.
+Shared component `ProcurementDemandDesk` with `mode: 'buy' | 'fulfill'`. Tabs: **Procuring** · **Ready for shipment**.
 
-| Surface | Route | Behavior |
-| :--- | :--- | :--- |
-| **Procurement Demand Desk** | `/:tenantSlug/app/procurement/demand` | Tabs: **Procuring** · **Ready for shipment** |
-| **Procuring tab** | | `p_procurement_status = procuring` |
-| Filter bar | | Search; child tenant (parent operator) |
-| Group header | | Document type + id, link to order / costing file detail |
-| Procuring rows | | **need / placed / remaining**; vendor + place order qty + stock pick → `upsert_preorder_demand` |
-| **Ready for shipment tab** | | `p_procurement_status = ready_for_shipment` |
-| Ready rows | | Read-only allocated qty; picks frozen |
-| Invoice | | Created on mark-ready via `create_invoice_from_preorder_demand_document` (order / PBC detail) |
-| Group action | | Link to open invoice for document when at least one fulfillment exists |
+| Surface | Route | `p_tenant_id` | Row actions |
+| :--- | :--- | :--- | :--- |
+| **Demand** | `/procurement/demand` | Parent | Vendor + place order qty (procuring); read-only on Ready tab |
+| **Fulfill** | `/procurement/fulfill` | Child shop, or parent + `p_child_tenant_id` filter | Read-only vendor + placed qty; stock pick; mark ready; print invoice |
+
+| Fulfill detail | Behavior |
+| :--- | :--- |
+| Procuring tab | `p_procurement_status = procuring`; stock pick → `upsert_preorder_demand` with parent warehouse context |
+| Parent filter bar | Search + optional child shop `q-select` |
+| Group action (procuring) | **Mark ready for shipment** — creates invoice + flips document status |
+| Ready tab | Read-only allocated qty; **Print invoice** → `app-global-invoice-preview` in new tab |
+| Invoice | Created on mark-ready via `create_invoice_from_preorder_demand_document` (issuer = document child tenant) |
 
 Query keys:
 

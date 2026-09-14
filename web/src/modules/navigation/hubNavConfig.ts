@@ -16,6 +16,7 @@ export const SHOP_ORDER_HUB_MODULE_KEYS: readonly ModuleKey[] = [
 
 export const PROCUREMENT_HUB_MODULE_KEYS: readonly ModuleKey[] = [
   'procurement_demand',
+  'procurement_fulfill',
   'global_shipment',
   'global_stock',
   'global_stock_movement',
@@ -110,6 +111,14 @@ const PROCUREMENT_STOCK_HUB = {
       routeSegment: 'procurement/demand',
     },
     {
+      navWeight: 30.5,
+      moduleKey: 'procurement_fulfill' as ModuleKey,
+      title: 'Fulfill',
+      caption: 'Pick stock and invoice shop orders',
+      icon: 'ph ph-package',
+      routeSegment: 'procurement/fulfill',
+    },
+    {
       navWeight: 31,
       moduleKey: 'global_shipment' as ModuleKey,
       title: 'Shipments',
@@ -135,6 +144,7 @@ const PROCUREMENT_STOCK_HUB = {
     hubModuleKeys: PROCUREMENT_HUB_MODULE_KEYS,
     primaryRouteSegments: [
       'procurement/demand',
+      'procurement/fulfill',
       'procurement/shipment/list',
       'procurement/stock',
     ],

@@ -153,14 +153,16 @@
         </div>
 
         <footer v-if="canMutateInvoice" class="global-invoice-details-page__actions">
-          <template v-if="invoice.invoice_status === 'draft'">
+          <template
+            v-if="invoice.invoice_status === 'draft' || invoice.invoice_status === 'proforma_generated'"
+          >
             <q-btn
               color="primary"
               unelevated
               no-caps
               class="full-width text-weight-bold global-invoice-details-page__action-btn"
               icon="ph ph-paper-plane-right"
-              label="Post invoice"
+              :label="invoice.invoice_status === 'proforma_generated' ? 'Issue invoice' : 'Post invoice'"
               :loading="postingInvoice"
               data-test="post-invoice-btn"
               @click="changeInvoiceStatus('issued')"
@@ -1340,7 +1342,7 @@ const isTransitionDisabled = (targetStatus: string) => {
   const current = invoice.value.invoice_status;
   if (current === targetStatus) return true;
 
-  if (current === 'draft') {
+  if (current === 'draft' || current === 'proforma_generated') {
     return targetStatus !== 'issued';
   }
   if (current === 'issued') {

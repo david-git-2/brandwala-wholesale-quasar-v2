@@ -14,6 +14,7 @@ const guard = (requiredModule: ModuleKey) =>
 
 const PROCUREMENT_OVERVIEW_MODULE_KEYS = [
   'procurement_demand',
+  'procurement_fulfill',
   'global_shipment',
   'global_stock',
   'global_stock_movement',
@@ -113,6 +114,18 @@ const procurementStockRoutes: RouteRecordRaw[] = [
         name: 'app-procurement-demand',
         component: () => import('../pages/ProcurementDemandPage.vue'),
         beforeEnter: guard('procurement_demand'),
+      },
+    ],
+  },
+  {
+    path: '/:tenantSlug?/app/procurement/fulfill',
+    component: () => import('layouts/AppLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'app-procurement-fulfill',
+        component: () => import('../pages/ProcurementFulfillPage.vue'),
+        beforeEnter: guard('procurement_fulfill'),
       },
     ],
   },

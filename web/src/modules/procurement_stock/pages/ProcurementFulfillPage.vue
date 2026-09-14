@@ -1,5 +1,5 @@
 <template>
-  <ProcurementDemandDesk mode="buy" />
+  <ProcurementDemandDesk mode="fulfill" />
 </template>
 
 <script setup lang="ts">
