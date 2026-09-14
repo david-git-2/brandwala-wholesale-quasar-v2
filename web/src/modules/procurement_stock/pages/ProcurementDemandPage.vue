@@ -51,7 +51,7 @@
                 <th class="text-center demand-qty-col">Quantity</th>
                 <th class="text-center demand-place-col">Place order</th>
                 <th class="text-left demand-vendor-col">Vendor</th>
-                <th class="text-center demand-delivered-col">Delivered qty</th>
+                <th class="text-center demand-delivered-col">{{ allocatedColumnLabel }}</th>
               </tr>
             </thead>
             <tbody>
@@ -116,7 +116,7 @@
                         dense
                         outlined
                         hide-bottom-space
-                        :disable="isRowSaving(group, item)"
+                        :disable="!isProcuringGroup(group) || isRowSaving(group, item)"
                         class="demand-field demand-field--qty"
                         @update:model-value="(v) => onPlacedQuantityInput(group, item, v)"
                         @blur="() => flushProcuringSave(group, item)"
@@ -137,7 +137,7 @@
                         use-input
                         input-debounce="200"
                         placeholder="Vendor"
-                        :disable="isRowSaving(group, item)"
+                        :disable="!isProcuringGroup(group) || isRowSaving(group, item)"
                         :loading="vendorsLoading"
                         class="demand-field"
                         @filter="filterVendors"
@@ -163,7 +163,7 @@
                           color="primary"
                           icon="ph ph-package"
                           class="demand-pick-stock-btn"
-                          :disable="!item.product_id || isRowSaving(group, item)"
+                          :disable="!isProcuringGroup(group) || !item.product_id || isRowSaving(group, item)"
                           :loading="isRowSaving(group, item)"
                           @click="openStockPickDialog(group, item)"
                         >
@@ -289,6 +289,13 @@ watch(searchText, (value) => {
 });
 
 const procurementStatus = ref<ProcurementDemandStatus>('procuring');
+
+const isProcuringGroup = (group: ProcurementDemandGroup) =>
+  group.document_status === 'procuring';
+
+const allocatedColumnLabel = computed(() =>
+  procurementStatus.value === 'procuring' ? 'Allocated' : 'Allocated qty',
+);
 
 const {
   data: demandData,
@@ -427,7 +434,7 @@ const isProcuringDraftDirty = (
 };
 
 const flushProcuringSave = (group: ProcurementDemandGroup, item: ProcurementDemandItem) => {
-  if (!isProcuringDraftDirty(group, item)) return;
+  if (!isProcuringGroup(group) || !isProcuringDraftDirty(group, item)) return;
   void saveProcuringLine(group, item);
 };
 

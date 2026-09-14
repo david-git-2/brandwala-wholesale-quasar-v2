@@ -1988,6 +1988,31 @@ async function applyStatus(nextStatus: string) {
   }
 }
 
+async function markReadyForShipment() {
+  if (!fileId.value || updatingStatus.value) return;
+  updatingStatus.value = true;
+  targetUpdatingStatus.value = 'ready_for_shipment';
+  try {
+    await productBasedCostingRepository.markPbcReadyForShipment(fileId.value);
+    visibleColumns.value = getDefaultVisibleColumnsForStatus('ready_for_shipment');
+    await queryClient.invalidateQueries({
+      queryKey: productBasedCostingQueryKeys.fileDetail(fileId.value),
+    });
+    $q.notify({
+      type: 'positive',
+      message: t('product_based_costing.action_mark_ready_for_shipment'),
+    });
+  } catch (error) {
+    $q.notify({
+      type: 'negative',
+      message: (error as Error).message || 'Failed to mark ready for shipment',
+    });
+  } finally {
+    updatingStatus.value = false;
+    targetUpdatingStatus.value = null;
+  }
+}
+
 function handlePbcPrimaryAction(action: StaffPbcPrimaryAction) {
   const nextStatus = getStaffPbcPrimaryActionTargetStatus(action);
   if (action === 'confirm_order') {
@@ -2000,6 +2025,10 @@ function handlePbcPrimaryAction(action: StaffPbcPrimaryAction) {
     }).onOk(() => {
       void applyStatus(nextStatus);
     });
+    return;
+  }
+  if (action === 'mark_ready_for_shipment') {
+    void markReadyForShipment();
     return;
   }
   void applyStatus(nextStatus);

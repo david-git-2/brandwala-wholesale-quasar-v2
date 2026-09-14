@@ -8938,6 +8938,7 @@ declare
   v_target_qty integer;
   v_shortfall integer;
   v_product record;
+  v_invoice_result jsonb;
 begin
   select * into v_order from public.shop_orders where id = p_order_id;
   if not found then
@@ -8951,6 +8952,16 @@ begin
   if v_order.shop_type_snapshot <> 'vendor_catalog' then
     raise exception 'staff_set_catalog_ordered_qty is only valid for vendor_catalog orders.';
   end if;
+
+  if public.normalize_shop_order_procurement_status(v_order.status) <> 'procuring' then
+    raise exception 'order must be procuring to mark ready for shipment';
+  end if;
+
+  v_invoice_result := public.create_invoice_from_preorder_demand_document(
+    v_order.tenant_id,
+    'shop_order',
+    p_order_id
+  );
 
   for v_elem in select * from jsonb_array_elements(p_items) loop
     v_item_id := (v_elem->>'id')::bigint;

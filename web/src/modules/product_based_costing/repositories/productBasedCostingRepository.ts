@@ -606,6 +606,18 @@ const addCostingItemToShipment = async (
   return data;
 };
 
+const markPbcReadyForShipment = async (fileId: number) => {
+  const { data, error } = await supabase.rpc('staff_mark_pbc_ready_for_shipment', {
+    p_file_id: fileId,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+};
+
 export const productBasedCostingRepository = {
   listProductBasedCostingFiles,
   createProductBasedCostingFile,
@@ -626,4 +638,5 @@ export const productBasedCostingRepository = {
   getProductBasedCostingItemById,
   recalculateProductBasedCostingFileOfferPrices,
   addCostingItemToShipment,
+  markPbcReadyForShipment,
 };

@@ -2,8 +2,8 @@
 
 Staff-facing **two-phase demand desk** for **catalog shop orders** and/or **PBC costing files**, grouped by source document:
 
-1. **Procuring** — log **vendor + place order qty** on `preorder_demand.placed_quantity`.
-2. **Ready for shipment** — pick **stock** into `preorder_demand.stock_picks`, set **delivered qty**, create **invoice lines**.
+1. **Procuring** — log **vendor + place order qty**, then **allocate stock** into `preorder_demand.stock_picks`.
+2. **Ready for shipment** — staff mark the document ready; server creates the **customer invoice** from saved picks and moves stock.
 
 One aggregated queue instead of opening each order or costing file separately.
 
@@ -17,13 +17,13 @@ One aggregated queue instead of opening each order or costing file separately.
 | :--- | :--- |
 | Staff must open each shop order and each costing file separately | One screen unions **both sources** by procurement status |
 | No shared log of vendor PO qty | **Procuring tab:** vendor + **place order qty** → `preorder_demand` |
-| No single place to fulfill from stock + invoice | **Ready tab:** stock picks + **delivered qty** on same `preorder_demand` row + invoice |
+| No single place to fulfill from stock + invoice | **Procuring tab:** stock picks on `preorder_demand`; invoice on mark-ready |
 | Hard to see what was ordered vs what left the warehouse | Per line: `placed_quantity` vs `delivered_quantity` on `preorder_demand` |
 | Parent tenant manages multiple child concerns | Optional filter by child `tenant_id` |
 
-**Tab 1 — `procuring`:** lines appear after the document enters procurement. Staff record what they bought from suppliers.
+**Tab 1 — `procuring`:** lines appear after the document enters procurement. Staff record vendor PO qty and **allocate warehouse stock** (`stock_picks`).
 
-**Tab 2 — `ready_for_shipment`:** lines appear after staff mark the document ready (buying done, stock available). Staff pick warehouse stock, enter **delivered quantity**, and **create or extend a sales invoice** for that order / costing file customer. Each save links stock → invoice line → source line.
+**Tab 2 — `ready_for_shipment`:** lines appear after staff mark the document ready on the order / costing file detail. Marking ready runs **`create_invoice_from_preorder_demand_document`** — one issued wholesale invoice from saved picks. Picks are frozen after the flip.
 
 This is **not** the customer demand bucket (shortfalls from past orders).
 
@@ -35,19 +35,19 @@ This is **not** the customer demand bucket (shortfalls from past orders).
 flowchart TD
   subgraph Tab1 ["Tab: Procuring"]
     SO1["Documents status: procuring"]
-    PP["preorder_demand<br/>vendor + placed_quantity"]
-    ACT1["Staff: vendor + qty → save"]
+    PP["preorder_demand<br/>vendor + placed_quantity + stock_picks"]
+    ACT1["Staff: vendor + qty + pick stock → save"]
   end
 
-  subgraph Advance ["Document advance"]
+  subgraph Advance ["Mark ready on order / PBC detail"]
     RFS["status → ready_for_shipment"]
+    INV["create_invoice_from_preorder_demand_document"]
   end
 
   subgraph Tab2 ["Tab: Ready for shipment"]
     SO2["Documents status: ready_for_shipment"]
-    PF["preorder_demand<br/>stock_picks + delivered_quantity + invoice"]
-    INV["sales_invoices / sales_invoice_items"]
-    ACT2["Staff: pick stock + delivered qty<br/>→ invoice line + fulfillment row"]
+    PF["preorder_demand picks frozen"]
+    ACT2["Read-only allocated qty"]
   end
 
   subgraph RPC ["list_procurement_demand_groups"]
@@ -60,10 +60,10 @@ flowchart TD
   LIST --> ACT2
   ACT1 --> PP
   PP --> RFS
-  RFS --> SO2
+  RFS --> INV
+  INV --> SO2
+  SO2 --> ACT2
   ACT2 --> PF
-  ACT2 --> INV
-  PF --> INV
 ```
 
 **One row per demand line:** `preorder_demand` holds vendor PO qty (`placed_quantity`) and customer delivery (`delivered_quantity` + `stock_picks`) on the same source line (`source_type` + `source_id`). Inbound **parent shipments** (`global_shipment_items`) remain on the Shipment module when a vendor proforma exists.
@@ -75,7 +75,7 @@ Four records, one customer paper:
 | Customer document | `shop_orders` / `product_based_costing_files` | Status: `procuring` → `ready_for_shipment` → `delivered` |
 | Vendor PO + delivery log | `preorder_demand` | Demand desk (both tabs) |
 | Vendor cargo | Shipment module | Proforma, vendor invoice, receive, warehouse stock |
-| Customer invoice | `sales_invoices` / `sales_invoice_items` | Created from Ready tab |
+| Customer invoice | `sales_invoices` / `sales_invoice_items` | Created when document → `ready_for_shipment` |
 
 Catalog and PBC share this path after `confirmed`. In-stock (`fixed_price`) shops do **not**.
 
@@ -85,8 +85,8 @@ Catalog and PBC share this path after `confirmed`. In-stock (`fixed_price`) shop
 
 | `p_procurement_status` | Demand tab | Staff action |
 | :--- | :--- | :--- |
-| `procuring` | **Procuring** | Vendor + **place order qty** → `upsert_preorder_demand` (`placed_quantity`) |
-| `ready_for_shipment` | **Ready for shipment** | Stock picks + **delivered qty** → `upsert_preorder_demand` + invoice |
+| `procuring` | **Procuring** | Vendor + **place order qty** + **stock picks** → `upsert_preorder_demand` |
+| `ready_for_shipment` | **Ready for shipment** | Read-only allocated qty; invoice already created on mark-ready |
 | `delivered` | *(not on Demand desk)* | Closed — view on order / costing file detail |
 
 Pre-procurement (`submitted`, `priced`, `confirmed` on orders; `pending`, `offered` on PBC) **excludes** lines from this list.
@@ -141,15 +141,21 @@ On the Demand desk, staff **select vendor and ordered quantity** for each line a
 
 **Need** comes from the shop order / PBC line (`need_quantity`). **Placed** is the sum of active placement rows. **Remaining** = need − placed (floor at 0). Staff repeat vendor + qty until remaining is 0 or they advance the document to **`ready_for_shipment`**.
 
-### 2.5 Ready for shipment — delivered qty, stock, and invoice
+### 2.5 Allocate stock while procuring; invoice on mark-ready
 
-When the document is **`ready_for_shipment`**, the Ready tab shows the same grouped lines. Staff fulfill from **warehouse stock** and bill the customer in one flow.
+While the document is **`procuring`**, staff save **stock picks** on the Demand desk. `delivered_quantity` = sum of picks (UI label: **Allocated**).
+
+When staff mark the document **`ready_for_shipment`** (order detail or PBC detail), the server:
+
+1. Calls **`create_invoice_from_preorder_demand_document`** — builds and **issues** one wholesale invoice from saved picks.
+2. Links invoice to `shop_orders.global_invoice_id` or `product_based_costing_files.invoice_id`.
+3. Sets document status to `ready_for_shipment`.
 
 | UI field | Stored as |
 | :--- | :--- |
-| Stock rows (multi-pick) | `stock_picks` jsonb on `preorder_demand` |
-| Delivered qty | `delivered_quantity` (= sum of `stock_picks[].quantity`) |
-| Invoice | `sales_invoices` / `sales_invoice_items` (separate RPC on create) |
+| Stock rows (multi-pick) | `stock_picks` jsonb on `preorder_demand` (writable only while `procuring`) |
+| Allocated qty | `delivered_quantity` (= sum of `stock_picks[].quantity`) |
+| Invoice | `sales_invoices` / `sales_invoice_items` (created on mark-ready, not on Demand desk) |
 
 | Compare | Source |
 | :--- | :--- |
@@ -157,12 +163,12 @@ When the document is **`ready_for_shipment`**, the Ready tab shows the same grou
 | **Delivered** | `preorder_demand.delivered_quantity` |
 | **Remaining to deliver** | `greatest(placed_quantity − delivered_quantity, 0)` |
 
-**Invoice rules (target):**
+**Invoice rules:**
 
-- One invoice per document group is typical — create draft via `create_sales_invoice_from_payload` on first fulfillment, then add lines on later fulfillments for the same `document_type` + `document_id`.
-- `billing_profile_id` comes from the shop order or PBC costing file.
-- Each fulfillment RPC adds one `sales_invoice_items` row (stock-backed: `global_stock_id`, qty, sell price from order line / costing line) and deducts stock ATP atomically with the fulfillment row.
-- `links.shop_order_id` or `links.pbc_costing_file_id` on the invoice payload ties treasury back to the source document.
+- One issued invoice per document — `create_invoice_from_preorder_demand_document` is idempotent if `global_invoice_id` / `invoice_id` already set.
+- Requires at least one `stock_picks` line with qty > 0 before mark-ready.
+- `billing_profile_id` from shop order or PBC file; sell price from `final_price_amount` / `staff_offer_amount` (catalog) or `offer_price` (PBC).
+- Stock ATP consumed when invoice is **issued** (`create_sales_invoice_from_payload` with `issue: true`), not when picks are saved.
 
 **Do not** store delivered qty on `shop_order_items` / `product_based_costing_items` as source of truth — same pattern as placements (separate table, linked by `source_type` + `source_id`).
 
@@ -244,7 +250,7 @@ CREATE TABLE public.preorder_demand (
 
 1. Source line must exist; document status `procuring` or `ready_for_shipment`.
 2. **`placed_quantity`** + **`vendor_id`** only when document is **`procuring`**; `placed_quantity <= need_quantity`.
-3. **`stock_picks`** only when document is **`ready_for_shipment`**; `delivered_quantity = sum(picks)` and `<= placed_quantity`.
+3. **`stock_picks`** only when document is **`procuring`**; frozen after mark-ready. `delivered_quantity = sum(picks)` and `<= placed_quantity`.
 4. Upsert on `(source_type, source_id)` — partial updates (only passed fields change).
 
 ### 3.6 Retired tables
@@ -524,7 +530,7 @@ upsert_preorder_demand(
 | Param | When | Notes |
 | :--- | :--- | :--- |
 | `p_vendor_id` / `p_placed_quantity` | Procuring tab | Document must be `procuring` |
-| `p_stock_picks` | Ready tab | Document must be `ready_for_shipment`; sets `delivered_quantity` from pick sum |
+| `p_stock_picks` | Procuring tab | Document must be `procuring`; sets `delivered_quantity` from pick sum |
 
 `SECURITY DEFINER`. Upserts on `(source_type, source_id)`. Partial update — only non-null params change.
 
@@ -563,10 +569,10 @@ Two tabs on one route — status drives which RPC filter and which row actions a
 | **Procuring tab** | | `p_procurement_status = procuring` |
 | Filter bar | | Search; child tenant (parent operator) |
 | Group header | | Document type + id, link to order / costing file detail |
-| Procuring rows | | **need / placed / remaining**; vendor + place order qty → `upsert_preorder_demand` |
+| Procuring rows | | **need / placed / remaining**; vendor + place order qty + stock pick → `upsert_preorder_demand` |
 | **Ready for shipment tab** | | `p_procurement_status = ready_for_shipment` |
-| Ready rows | | Stock pick dialog → `stock_picks` + `delivered_quantity` via `upsert_preorder_demand`; bucket sync when document → `delivered` |
-| Invoice | | **Create invoice** per document group (separate RPC); stock picks feed invoice lines |
+| Ready rows | | Read-only allocated qty; picks frozen |
+| Invoice | | Created on mark-ready via `create_invoice_from_preorder_demand_document` (order / PBC detail) |
 | Group action | | Link to open invoice for document when at least one fulfillment exists |
 
 Query keys:
@@ -582,9 +588,10 @@ Query keys:
 | :--- | :--- |
 | **`customer_group_backlog_bucket_items`** | Filled on **`delivered`** status (ordered − delivered per line); popped on next order. See [`DEMAND_BUCKET.md`](./DEMAND_BUCKET.md) |
 | **`preorder_demand`** | One row per line — vendor + placed qty + stock picks + delivered qty |
-| **`create_sales_invoice_from_payload`** | Creates or extends customer invoice during fulfillment |
+| **`create_invoice_from_preorder_demand_document`** | Issues customer invoice from saved picks when document → `ready_for_shipment` |
+| **`create_sales_invoice_from_payload`** | Called by the helper above |
 | **`global_shipment_items`** | Parent inbound shipment (vendor proforma / cargo) — optional back-link from placement; separate from customer fulfillment. Created while document is still `procuring`. |
-| **Vendor invoice vs customer invoice** | Vendor paper stays on the shipment. Customer sales invoice is created on the Ready tab only. |
+| **Vendor invoice vs customer invoice** | Vendor paper stays on the shipment. Customer sales invoice is created when marking ready. |
 | **`list_procurement_shop_order_lines`** | Legacy shop-order-only list; replace with this RPC |
 | **Ordered vs delivered** | `placed_quantity` vs `delivered_quantity` on `preorder_demand` |
 
@@ -599,7 +606,8 @@ Query keys:
 - [x] Migration: alias normalization + status backfill (`20270911180000_align_demand_status_aliases.sql`)
 - [x] Web: dummy demand desk UI (`ProcurementDemandPage.vue`) — vendor, place order, stock pick, delivered qty, create invoice
 - [ ] Web: wire `list_procurement_demand_groups` + `upsert_preorder_demand` on demand page
-- [ ] Web: invoice create RPC integration on Ready tab
+- [x] Migration: `create_invoice_from_preorder_demand_document` + wire catalog / PBC mark-ready
+- [x] Web: invoice on mark-ready (catalog `staff_set_catalog_ordered_qty`, PBC `staff_mark_pbc_ready_for_shipment`)
 - [ ] Migration: `customer_group_backlog_bucket_items` + sync on `delivered` + pop DELETE ([`DEMAND_BUCKET.md`](./DEMAND_BUCKET.md) §10)
 - [ ] Later: RPC to attach placement(s) to `global_shipment_items` when proforma is entered
 - [ ] Doc: add route to [`UI_FLOW.md`](./UI_FLOW.md)

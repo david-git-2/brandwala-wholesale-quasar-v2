@@ -1489,6 +1489,8 @@ GRANT ALL ON SEQUENCE "public"."preorder_demand_id_seq" TO "service_role";
 GRANT ALL ON FUNCTION "public"."can_access_preorder_demand_tenant"(bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_procurement_demand_open_qty"("public"."preorder_demand_source_type", bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."upsert_preorder_demand"(bigint, "public"."preorder_demand_source_type", bigint, bigint, integer, jsonb, text) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."create_invoice_from_preorder_demand_document"(bigint, text, bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."staff_mark_pbc_ready_for_shipment"(bigint) TO "authenticated";
 
 
 
