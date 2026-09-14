@@ -94,7 +94,7 @@ export default {
     position: fixed;
     left: 0;
     right: 0;
-    bottom: 0;
+    bottom: var(--shop-bottom-nav-height, 0px);
     z-index: 200;
     padding: 0 12px calc(12px + env(safe-area-inset-bottom, 0px));
     background: linear-gradient(

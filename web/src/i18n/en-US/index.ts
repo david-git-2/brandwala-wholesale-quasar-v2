@@ -7,6 +7,7 @@ export default {
     dashboard_caption: 'Current orders, approvals, and next actions',
     home: 'Home',
     home_caption: 'Your shops and orders that need you',
+    account: 'Account',
     orders: 'Orders',
     orders_caption: 'Build carts, place orders, and follow negotiation',
     pre_order: 'Pre order',

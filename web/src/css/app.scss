@@ -679,6 +679,12 @@ body.theme-shop {
     padding: 12px 20px;
   }
 
+  @media (max-width: 599px) {
+    .shop-shell__page-container {
+      padding: 4px;
+    }
+  }
+
   .q-page {
     background: var(--bw-theme-base);
   }

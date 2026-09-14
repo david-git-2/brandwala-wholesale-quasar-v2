@@ -357,6 +357,8 @@ export default {
   access_no_groups_to_add: 'সব গ্রুপেরই অ্যাক্সেস আছে, অথবা এখনো কোনো গ্রুপ নেই। আগে একটি গ্রুপ তৈরি করুন।',
   access_remove: 'অ্যাক্সেস সরান',
   access_remove_confirm: '{name} কে এই শপ থেকে সরাতে চান? তারা আর শপ দেখতে পাবে না।',
+  access_remove_success: 'শপ অ্যাক্সেস সরানো হয়েছে।',
+  access_remove_failed: 'শপ অ্যাক্সেস সরানো যায়নি।',
   access_col_group: 'কাস্টমার গ্রুপ',
   actions: 'অ্যাকশন',
   access_col_capabilities: 'তারা কী করতে পারবে',

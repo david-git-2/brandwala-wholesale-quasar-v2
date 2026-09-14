@@ -1,6 +1,11 @@
 <template>
-  <q-layout view="hHh lpR fFf" class="shop-shell theme-shop">
-    <q-header class="shop-shell__header" reveal>
+  <q-layout
+    view="hHh lpR fFf"
+    class="shop-shell theme-shop"
+    :class="{ 'shop-shell--chrome-hidden': chromeHidden }"
+    @scroll="onLayoutScroll"
+  >
+    <q-header class="shop-shell__header">
       <q-toolbar class="shop-shell__toolbar">
         <div class="shop-shell__left">
           <button
@@ -9,12 +14,6 @@
             data-test="shop-header-tenant-link"
             @click="goHome"
           >
-            <q-icon
-              class="shop-shell__tenant-home"
-              name="ph ph-house"
-              size="20px"
-              :aria-label="$t('navigation.home')"
-            />
             <span class="shop-shell__tenant-text shop-banner-font">{{ tenantName }}</span>
           </button>
           <ShopCustomerGroupHeaderSwitcher
@@ -25,7 +24,7 @@
           />
         </div>
 
-        <nav class="shop-shell__nav" aria-label="Shop">
+        <nav v-if="!$q.screen.xs" class="shop-shell__nav" aria-label="Shop">
           <q-btn
             flat
             no-caps
@@ -76,7 +75,7 @@
           <NotificationBell scope="shop" />
 
           <q-btn
-            v-if="canShowCartIcon"
+            v-if="canShowCartIcon && !$q.screen.xs"
             flat
             round
             dense
@@ -98,6 +97,60 @@
         </div>
       </q-toolbar>
     </q-header>
+
+    <q-footer v-if="$q.screen.xs" class="shop-shell__bottom-nav" data-test="shop-bottom-nav">
+      <nav class="shop-shell__bottom-nav-inner" aria-label="Shop navigation">
+        <button
+          type="button"
+          class="shop-shell__bottom-nav-item"
+          :class="{ 'shop-shell__bottom-nav-item--active': isHomeNavActive }"
+          data-test="shop-bottom-nav-home"
+          @click="goHome"
+        >
+          <span class="shop-shell__bottom-nav-icon">
+            <q-icon name="ph ph-house" />
+          </span>
+          <span class="shop-shell__bottom-nav-label">{{ $t('navigation.home') }}</span>
+        </button>
+        <button
+          type="button"
+          class="shop-shell__bottom-nav-item"
+          :class="{ 'shop-shell__bottom-nav-item--active': isCatalogNavActive }"
+          data-test="shop-bottom-nav-catalog"
+          @click="goToCatalog"
+        >
+          <span class="shop-shell__bottom-nav-icon">
+            <q-icon name="ph ph-storefront" />
+          </span>
+          <span class="shop-shell__bottom-nav-label">{{ $t('navigation.catalog') }}</span>
+        </button>
+        <button
+          type="button"
+          class="shop-shell__bottom-nav-item"
+          :class="{ 'shop-shell__bottom-nav-item--active': isCartNavActive }"
+          data-test="shop-bottom-nav-cart"
+          @click="goToCart"
+        >
+          <span class="shop-shell__bottom-nav-icon">
+            <q-icon name="ph ph-shopping-cart" />
+            <span v-if="cartItemCount > 0" class="shop-shell__bottom-nav-badge">{{ cartItemCount }}</span>
+          </span>
+          <span class="shop-shell__bottom-nav-label">{{ $t('navigation.cart') }}</span>
+        </button>
+        <button
+          type="button"
+          class="shop-shell__bottom-nav-item"
+          :class="{ 'shop-shell__bottom-nav-item--active': isOrdersNavActive }"
+          data-test="shop-bottom-nav-orders"
+          @click="goToOrders"
+        >
+          <span class="shop-shell__bottom-nav-icon">
+            <q-icon name="ph ph-clipboard-text" />
+          </span>
+          <span class="shop-shell__bottom-nav-label">{{ $t('navigation.orders') }}</span>
+        </button>
+      </nav>
+    </q-footer>
 
     <q-page-container
       class="shop-shell__page-container"
@@ -200,6 +253,7 @@ const companyName = computed(() => authStore.customerGroup?.name ?? '');
 
 const showLogoutDialog = ref(false);
 const searchOpen = ref(false);
+const chromeHidden = ref(false);
 
 const CATALOG_ROUTE_NAMES = new Set([
   'shop-catalog-entry-page',
@@ -215,9 +269,23 @@ const showHeaderSearch = computed(() => route.name === 'customer-dashboard');
 
 const routeName = computed(() => String(route.name ?? ''));
 
+const isKobaActive = computed(() => !!(route.name && String(route.name).includes('koba')));
+
 const isCatalogNavActive = computed(() => CATALOG_ROUTE_NAMES.has(routeName.value));
 
+const isHomeNavActive = computed(() => routeName.value === 'customer-dashboard');
+
 const isOrdersNavActive = computed(() => ORDER_ROUTE_NAMES.has(routeName.value));
+
+const isCartNavActive = computed(() => {
+  if (CART_ROUTE_NAMES.has(routeName.value)) {
+    return true;
+  }
+  if (isKobaActive.value && routeName.value.includes('cart')) {
+    return true;
+  }
+  return false;
+});
 
 const isCartRoute = computed(() => CART_ROUTE_NAMES.has(routeName.value));
 
@@ -295,6 +363,50 @@ watch(showHeaderSearch, (visible) => {
   }
 });
 
+let lastChromeScrollY = 0;
+
+const applyChromeFromScrollY = (y: number) => {
+  if (!$q.screen.xs) {
+    chromeHidden.value = false;
+    lastChromeScrollY = y;
+    return;
+  }
+  if (y <= 16) {
+    chromeHidden.value = false;
+  } else if (y > lastChromeScrollY + 8) {
+    chromeHidden.value = true;
+  } else if (y < lastChromeScrollY - 8) {
+    chromeHidden.value = false;
+  }
+  lastChromeScrollY = y;
+};
+
+const onLayoutScroll = (info: { direction: string; position: number }) => {
+  applyChromeFromScrollY(info.position);
+};
+
+const onWindowScroll = () => {
+  const container = document.querySelector('.shop-shell .q-page-container');
+  const containerY = container instanceof HTMLElement ? container.scrollTop : 0;
+  applyChromeFromScrollY(Math.max(window.scrollY, containerY));
+};
+
+watch(
+  () => route.fullPath,
+  () => {
+    chromeHidden.value = false;
+  },
+);
+
+watch(
+  () => $q.screen.xs,
+  (isXs) => {
+    if (!isXs) {
+      chromeHidden.value = false;
+    }
+  },
+);
+
 const applyBodyThemeClass = () => {
   if (typeof document === 'undefined') {
     return;
@@ -304,13 +416,6 @@ const applyBodyThemeClass = () => {
 };
 
 applyBodyThemeClass();
-
-onBeforeUnmount(() => {
-  if (typeof document === 'undefined') {
-    return;
-  }
-  document.body.classList.remove(...WORKSPACE_THEME_CLASSES);
-});
 
 const userName = computed(
   () => authStore.user?.fullName ?? authStore.user?.email ?? 'Workspace user',
@@ -329,8 +434,6 @@ const userInitials = computed(() => {
 
   return source.slice(0, 2).toUpperCase();
 });
-
-const isKobaActive = computed(() => !!(route.name && String(route.name).includes('koba')));
 
 const cartItemCount = computed(() => {
   if (isKobaActive.value) {
@@ -406,6 +509,15 @@ const onSwitchCompany = async (group: ShopLoginGroupRow) => {
 
 onMounted(() => {
   void loadLoginGroups();
+  window.addEventListener('scroll', onWindowScroll, { passive: true });
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('scroll', onWindowScroll);
+  if (typeof document === 'undefined') {
+    return;
+  }
+  document.body.classList.remove(...WORKSPACE_THEME_CLASSES);
 });
 
 watch(
@@ -579,11 +691,6 @@ defineExpose({
   color: var(--bw-shop-charcoal, #2a2b2a);
 }
 
-.shop-shell__tenant-home {
-  display: none;
-  color: var(--bw-shop-charcoal, #2a2b2a);
-}
-
 .shop-shell__tenant-text {
   min-width: 0;
   font-size: clamp(0.95rem, 2.8vw, 1.15rem);
@@ -675,16 +782,94 @@ defineExpose({
 }
 
 @media (max-width: 599px) {
+  .shop-shell {
+    --shop-bottom-nav-height: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .shop-shell__header {
+    background: var(--shop-shell-surface);
+    border-bottom: 0;
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--shop-shell-border) 70%, transparent);
+  }
+
+  .shop-shell__toolbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 56px;
+    padding: calc(0.35rem + env(safe-area-inset-top, 0px)) 0.7rem 0.4rem;
+    gap: 0.5rem;
+  }
+
+  .shop-shell__left {
+    gap: 0.05rem;
+  }
+
   .shop-shell__tenant-link {
-    max-width: none;
+    max-width: min(58vw, 14rem);
+    justify-content: flex-start;
+    padding: 0;
   }
 
   .shop-shell__tenant-text {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+
+  .shop-shell__left :deep(.shop-company-switch__trigger),
+  .shop-shell__left :deep(.shop-company-switch__static) {
+    min-height: 0;
+    padding: 0;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: var(--shop-shell-muted);
+  }
+
+  .shop-shell__actions {
+    gap: 0.05rem;
+  }
+
+  .shop-shell__shop-switch {
+    max-width: 7.5rem;
+  }
+
+  .shop-shell__shop-switch :deep(.catalog-header-shop__static),
+  .shop-shell__shop-switch :deep(.catalog-header-shop__trigger) {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.15rem 0.2rem;
+  }
+
+  .shop-shell__icon-btn {
+    min-width: 36px;
+    min-height: 36px;
+  }
+
+  .shop-shell__actions :deep(.notification-bell) {
+    min-width: 36px;
+    min-height: 36px;
+  }
+
+  .shop-shell__actions :deep(.user-profile-btn) {
+    padding: 0;
+    min-height: 36px;
+  }
+
+  .shop-shell__actions :deep(.user-profile-btn .ph-caret-down) {
     display: none;
   }
 
-  .shop-shell__tenant-home {
-    display: block;
+  .shop-shell__header,
+  .shop-shell__bottom-nav {
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .shop-shell--chrome-hidden .shop-shell__header {
+    transform: translateY(-110%);
+  }
+
+  .shop-shell--chrome-hidden .shop-shell__bottom-nav {
+    transform: translateY(calc(100% + 12px));
   }
 }
 
@@ -700,6 +885,104 @@ defineExpose({
 
 .shop-shell__page-container {
   background: var(--shop-shell-base);
+}
+
+.shop-shell__bottom-nav {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  color: var(--shop-shell-ink);
+}
+
+.shop-shell__bottom-nav :deep(.q-footer) {
+  background: transparent;
+}
+
+.shop-shell__bottom-nav-inner {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 0.15rem;
+  margin: 0 10px calc(8px + env(safe-area-inset-bottom, 0px));
+  padding: 0.35rem 0.3rem;
+  border-radius: 18px;
+  background: var(--shop-shell-surface);
+  border: 1px solid color-mix(in srgb, var(--shop-shell-border) 70%, transparent);
+  box-shadow:
+    0 10px 28px rgb(var(--bw-theme-primary-rgb, 51 104 160) / 0.1),
+    0 1px 0 color-mix(in srgb, white 70%, transparent);
+}
+
+.shop-shell__bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  min-width: 0;
+  min-height: 3.35rem;
+  margin: 0;
+  padding: 0.15rem 0.2rem;
+  border: 0;
+  background: transparent;
+  color: var(--shop-shell-muted);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.shop-shell__bottom-nav-icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.35rem;
+  height: 1.85rem;
+  border-radius: 999px;
+}
+
+.shop-shell__bottom-nav-icon :deep(.q-icon) {
+  font-size: 1.35rem;
+  color: inherit;
+}
+
+.shop-shell__bottom-nav-label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  line-height: 1;
+}
+
+.shop-shell__bottom-nav-item--active {
+  color: var(--shop-shell-accent);
+}
+
+.shop-shell__bottom-nav-item--active .shop-shell__bottom-nav-icon {
+  background: var(--shop-shell-accent-soft);
+}
+
+.shop-shell__bottom-nav-item--active .shop-shell__bottom-nav-label {
+  font-weight: 700;
+}
+
+.shop-shell__bottom-nav-badge {
+  position: absolute;
+  top: -0.2rem;
+  right: -0.15rem;
+  min-width: 1rem;
+  height: 1rem;
+  padding: 0 0.22rem;
+  border-radius: 999px;
+  background: var(--bw-error, #c44536);
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  line-height: 1rem;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--shop-shell-surface);
 }
 
 .shop-shell__search-card {

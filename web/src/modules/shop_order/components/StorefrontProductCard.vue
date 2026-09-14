@@ -13,7 +13,7 @@
         v-if="showGradeChip && gradeChipLabel"
         dense
         size="sm"
-        class="product-overlay-chip product-grade-chip text-weight-bold"
+        class="product-grade-chip product-grade-chip--overlay gt-xs text-weight-bold"
         text-color="white"
         :style="gradeChipStyle"
       >
@@ -34,8 +34,18 @@
 
     <div class="product-main">
     <q-card-section class="product-body">
-      <div class="product-meta">
-        {{ item.product_brand || 'Generic' }}
+      <div class="product-meta row items-center justify-between no-wrap">
+        <span class="product-meta__brand ellipsis">{{ item.product_brand || 'Generic' }}</span>
+        <q-chip
+          v-if="showGradeChip && gradeChipLabel"
+          dense
+          size="sm"
+          class="product-grade-chip product-grade-chip--inline lt-sm text-weight-bold"
+          text-color="white"
+          :style="gradeChipStyle"
+        >
+          {{ gradeChipLabel }}
+        </q-chip>
       </div>
       <div
         class="storefront-product-card__name cursor-pointer"
@@ -474,17 +484,45 @@ const gradeChipStyle = computed(() => {
   padding: 0;
   overflow: hidden;
 }
-.product-overlay-chip {
-  position: absolute;
-  top: 10px;
-  z-index: 1;
+.product-grade-chip {
+  margin: 0;
   font-size: 11px;
   min-height: 22px;
   box-shadow: 0 2px 8px rgb(42 43 42 / 0.16);
 }
-.product-grade-chip {
-  left: 10px;
-  max-width: calc(100% - 20px);
+
+.product-grade-chip--overlay {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 1;
+  max-width: calc(100% - 16px);
+}
+
+.product-grade-chip--inline {
+  flex: 0 0 auto;
+  max-width: 45%;
+  font-size: 10px;
+  min-height: 20px;
+  box-shadow: none;
+}
+
+.product-grade-chip--inline :deep(.q-chip__content) {
+  padding: 0 6px;
+}
+
+.product-meta {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bw-theme-muted, #5e4955);
+  gap: 0.35rem;
+}
+
+.product-meta__brand {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .product-image {
   width: 100%;
@@ -514,13 +552,6 @@ const gradeChipStyle = computed(() => {
   overflow: visible;
   padding: 12px 12px 8px;
   gap: 0.25rem;
-}
-.product-meta {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--bw-theme-muted, #5e4955);
 }
 .storefront-product-card__name {
   font-size: 0.9375rem;

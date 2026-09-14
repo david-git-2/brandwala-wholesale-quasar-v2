@@ -235,10 +235,10 @@
                     size="sm"
                     color="negative"
                     icon="ph ph-trash"
-                    :loading="deletingGroupId === props.row.id"
-                    :aria-label="$t('shop_admin.access_delete_group')"
-                    data-test="access-delete-group-btn"
-                    @click="deleteGroup(props.row)"
+                    :loading="removingAccessGroupId === props.row.id"
+                    :aria-label="$t('shop_admin.access_remove')"
+                    data-test="access-remove-btn"
+                    @click="removeAccess(props.row)"
                   />
                 </div>
               </q-td>
@@ -567,7 +567,7 @@ const { t } = useI18n();
 const authStore = useAuthStore();
 const canAdministerCustomerGroup = useCanAdministerCustomerGroup();
 const store = useShopPermissionsStore();
-const { createGroupMutation, deleteGroupMutation } = useCustomerGroupMutations();
+const { createGroupMutation } = useCustomerGroupMutations();
 
 const tenantId = computed(() => authStore.tenantId as number);
 const shopId = computed(() => Number(route.params.shopId));
@@ -577,7 +577,7 @@ const shopName = ref('');
 const shopType = ref<Shop['shop_type'] | ''>('');
 const searchInput = ref('');
 const appliedSearch = ref('');
-const deletingGroupId = ref<number | null>(null);
+const removingAccessGroupId = ref<number | null>(null);
 
 const showPurchasePriceToggle = computed(
   () => shopType.value === 'vendor_catalog' || shopType.value === 'dropship',
@@ -796,28 +796,33 @@ const createThenGrant = async () => {
   }
 };
 
-const deleteGroup = async (group: { id: number; name: string }) => {
+const removeAccess = async (group: { id: number; name: string }) => {
   const confirmed = await requestConfirmation(
-    t('shop_admin.access_delete_group_confirm', { name: group.name }),
-    t('shop_admin.access_delete_group'),
-    t('shop_admin.delete'),
+    t('shop_admin.access_remove_confirm', { name: group.name }),
+    t('shop_admin.access_remove'),
+    t('shop_admin.access_remove'),
   );
-  if (!confirmed || !tenantId.value) return;
+  if (!confirmed) return;
 
-  deletingGroupId.value = group.id;
+  removingAccessGroupId.value = group.id;
   try {
-    await deleteGroupMutation.mutateAsync({ id: group.id, tenant_id: tenantId.value });
-    if (selectedDetailsGroup.value?.id === group.id) {
-      groupDetailsOpen.value = false;
-      selectedDetailsGroup.value = null;
+    const payload = standardGrantPayload(group.id);
+    payload.status = false;
+    const res = await store.revokeAccessOverride(payload);
+    if (res.success) {
+      if (selectedDetailsGroup.value?.id === group.id) {
+        groupDetailsOpen.value = false;
+        selectedDetailsGroup.value = null;
+      }
+      showSuccessNotification(t('shop_admin.access_remove_success'));
+    } else {
+      showErrorNotification(res.error || t('shop_admin.access_remove_failed'));
     }
-    await store.fetchCustomerGroups(tenantId.value);
-    showSuccessNotification(t('shop_admin.access_delete_group_success'));
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : t('shop_admin.access_delete_group_failed');
+    const message = err instanceof Error ? err.message : t('shop_admin.access_remove_failed');
     showErrorNotification(message);
   } finally {
-    deletingGroupId.value = null;
+    removingAccessGroupId.value = null;
   }
 };
 
@@ -903,6 +908,10 @@ const goBack = () => {
 };
 
 watch(tenantId, (v) => {
+  if (v) void load();
+});
+
+watch(shopId, (v) => {
   if (v) void load();
 });
 

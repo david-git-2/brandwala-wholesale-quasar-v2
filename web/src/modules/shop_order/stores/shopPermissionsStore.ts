@@ -149,6 +149,33 @@ export const useShopPermissionsStore = defineStore('shopPermissions', {
       }
     },
 
+    async revokeAccessOverride(payload: UpsertAccessPayload) {
+      this.saving = true;
+      this.error = null;
+      try {
+        const res = await shopPermissionsService.upsertAccessOverride({
+          ...payload,
+          status: false,
+        });
+        if (!res.success) {
+          this.error = res.error;
+          handleApiFailure(res, res.error);
+          return res;
+        }
+        const idx = this.accessOverrides.findIndex(
+          (o) => o.customer_group_id === payload.customer_group_id && o.shop_id === payload.shop_id,
+        );
+        if (idx !== -1) {
+          this.accessOverrides[idx] = res.data;
+        } else {
+          this.accessOverrides.push(res.data);
+        }
+        return res;
+      } finally {
+        this.saving = false;
+      }
+    },
+
     async fetchCurrencies() {
       if (this.currencies.length > 0) return;
       this.loadingCurrencies = true;

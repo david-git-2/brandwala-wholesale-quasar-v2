@@ -111,7 +111,12 @@
           </q-tab-panel>
 
           <q-tab-panel v-if="showAccessTab" name="access" class="q-pa-none q-pt-md shop-access-panel">
-            <ShopAccessMatrixPage v-if="activeTab === 'access'" embedded :shop="shop" />
+            <ShopAccessMatrixPage
+              v-if="activeTab === 'access'"
+              :key="shopId"
+              embedded
+              :shop="shop"
+            />
           </q-tab-panel>
 
           <q-tab-panel
