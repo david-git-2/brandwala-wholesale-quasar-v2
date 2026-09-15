@@ -231,6 +231,7 @@ def main(argv=None) -> int:
 
     required_value_keys = [col["key"] for col in REQUIRED_WTS_COLUMNS if col.get("row_required")]
     skipped_incomplete = 0
+    skipped_unavailable = 0
     eligible_rows: set[int] = set()
     for row, obj in products_by_row.items():
         missing_cells = []
@@ -241,12 +242,20 @@ def main(argv=None) -> int:
         if missing_cells:
             skipped_incomplete += 1
             continue
+
+        raw_available = to_int_or_default(obj.get(available_header, 0), 0)
+        if raw_available <= 0:
+            skipped_unavailable += 1
+            continue
+
         eligible_rows.add(row)
 
     if skipped_incomplete:
         log(f"Skipped {skipped_incomplete} row(s) with empty ProdCode, Barcode, or Product Description.")
+    if skipped_unavailable:
+        log(f"Skipped {skipped_unavailable} row(s) with Available <= 0 (out of stock).")
     if not eligible_rows:
-        raise RuntimeError("No product rows left after required value filters.")
+        raise RuntimeError("No product rows left after required value and availability filters.")
 
     products = []
     for row, obj in products_by_row.items():
@@ -256,16 +265,19 @@ def main(argv=None) -> int:
         product_code = to_text(obj.get(product_code_header, ""))
         barcode = to_text(obj.get(barcode_header, ""))
         product_id = f"{barcode}_{product_code}"
+        case_size = max(1, to_int_or_default(obj.get(case_size_header, 1), 1))
+        raw_available = to_int_or_default(obj.get(available_header, 0), 0)
+        available_units = raw_available * case_size
 
         out = {
             "product_code": product_code,
             "barcode": barcode,
             "product_id": product_id,
-            "case_size": max(1, to_int_or_default(obj.get(case_size_header, 1), 1)),
-            "minimum_quantity": max(1, to_int_or_default(obj.get(case_size_header, 1), 1)),
+            "case_size": case_size,
+            "minimum_quantity": case_size,
             "name": to_text(obj.get(name_header, "")),
             "price": to_float_or_default(obj.get(price_header, 0), 0.0),
-            "available_units": to_int_or_default(obj.get(available_header, 0), 0),
+            "available_units": available_units,
             "source": "excel",
             "hazardous": False,
         }
@@ -286,6 +298,7 @@ def main(argv=None) -> int:
             "headerRow": header_row,
             "productIdRule": "product_id = barcode + '_' + product_code",
             "minimumQuantityRule": "minimum_quantity = Pack column",
+            "availableUnitsRule": "available_units = Available * Pack (filtered Available > 0)",
         },
         "products": products,
     }

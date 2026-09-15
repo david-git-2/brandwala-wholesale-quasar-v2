@@ -124,8 +124,8 @@ st.title("WTS Excel uploader")
 st.write(
     "Drop the WTS spreadsheet, then enter the **header row** (the row with column names). "
     "Every listed header must exist. Each row needs **ProdCode**, **Barcode**, and **Product Description**. "
-    "**Each** is the unit price. **Pack** is MOQ. **Available** is stock. "
-    "Products in the file are marked available on sync; scoped WTS products not in the file are marked unavailable. "
+    "**Each** is the unit price. **Pack** is MOQ. **Available** is multiplied by **Pack** (`available_units = Available * Pack`). "
+    "Rows with **Available <= 0** are filtered out. Products in the file are marked available on sync; scoped WTS products not in the file are marked unavailable. "
     "Warehouse parent tenant defaults to **15**."
 )
 

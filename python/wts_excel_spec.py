@@ -64,7 +64,7 @@ REQUIRED_WTS_COLUMNS = [
         "excel": "Available",
         "db": "products.available_units",
         "aliases": ["available", "available_units", "available units", "stock"],
-        "note": "Stock count; drives availability scope on sync.",
+        "note": "Available * Pack. Rows with Available <= 0 are dropped (marked unavailable in DB).",
     },
 ]
 

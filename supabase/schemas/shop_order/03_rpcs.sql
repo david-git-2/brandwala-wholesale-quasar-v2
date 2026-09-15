@@ -8422,7 +8422,36 @@ CREATE OR REPLACE FUNCTION "public"."set_shops_updated_at"() RETURNS "trigger"
     AS $$
 begin
   new.updated_at = now();
-  ALTER FUNCTION "public"."set_shops_updated_at"() OWNER TO "postgres";
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."set_shops_updated_at"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."set_shop_parent_tenant_id"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_parent_id bigint;
+begin
+  if new.tenant_id is not null then
+    select parent_id into v_parent_id
+    from public.tenants
+    where id = new.tenant_id;
+
+    new.parent_tenant_id := v_parent_id;
+  else
+    new.parent_tenant_id := null;
+  end if;
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."set_shop_parent_tenant_id"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."shops_derive_is_negotiable"() RETURNS "trigger"

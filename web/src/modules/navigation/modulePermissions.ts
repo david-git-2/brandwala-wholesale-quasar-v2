@@ -162,14 +162,11 @@ const SALES_CHILD_CATALOG_MODULES: ReadonlySet<ModuleKey> = new Set([
   'invoice_brand',
 ]);
 
-const isShopOrderFamilyModule = (moduleKey: ModuleKey): boolean =>
-  moduleKey === 'shop_order' || getModuleDefinition(moduleKey)?.parentModuleKey === 'shop_order';
-
 const isBlockedOnParentCompany = (
   moduleKey: ModuleKey,
   tenantId: number | null | undefined,
 ): boolean => {
-  if (!SALES_CHILD_CATALOG_MODULES.has(moduleKey) && !isShopOrderFamilyModule(moduleKey)) {
+  if (!SALES_CHILD_CATALOG_MODULES.has(moduleKey)) {
     return false;
   }
 

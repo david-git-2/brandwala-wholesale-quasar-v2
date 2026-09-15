@@ -98,7 +98,14 @@ def get_first_value(row: dict[str, Any], keys: list[str], default: Any = "") -> 
     return default
 
 
-def build_normalized_row(row: dict[str, Any]) -> dict[str, Any]:
+def build_normalized_row(row: dict[str, Any]) -> dict[str, Any] | None:
+    raw_available = to_int(
+        get_first_value(row, ["available_units", "Available", "available"], 0),
+        0,
+    )
+    if raw_available <= 0:
+        return None
+
     normalized: dict[str, Any] = {}
     normalized["product_code"] = to_text(
         get_first_value(row, ["product_code", "ProdCode", "PRODUCT CODE"], "")
@@ -118,10 +125,7 @@ def build_normalized_row(row: dict[str, Any]) -> dict[str, Any]:
         get_first_value(row, ["price", "Each", "each", "PIECE PRICE £", "piece_price"], 0),
         0.0,
     )
-    normalized["available_units"] = to_int(
-        get_first_value(row, ["available_units", "Available", "available"], 0),
-        0,
-    )
+    normalized["available_units"] = raw_available * normalized["case_size"]
 
     for optional_key, aliases in {
         "pack_price": ["pack_price", "Price", "price"],
@@ -163,7 +167,8 @@ def main() -> int:
         payload = json.load(handle)
 
     products = load_products(payload)
-    filtered_products = [build_normalized_row(row) for row in products]
+    normalized_rows = [build_normalized_row(row) for row in products]
+    filtered_products = [row for row in normalized_rows if row is not None]
 
     if isinstance(payload, dict):
         normalized_payload = dict(payload)
@@ -173,6 +178,7 @@ def main() -> int:
         meta["normalizedAt"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         meta["normalizedStage"] = "wts_minimum_quantity"
         meta["minimumQuantityRule"] = "minimum_quantity = Pack (case_size)"
+        meta["availableUnitsRule"] = "available_units = Available * Pack (filtered Available > 0)"
         normalized_payload["meta"] = meta
     else:
         normalized_payload = filtered_products

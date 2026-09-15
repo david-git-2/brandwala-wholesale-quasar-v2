@@ -43,6 +43,9 @@ wts-scrape:
 wts-sync:
 	python scripts/uk/sync_wts_products_to_supabase.py --input "$(WTS_JSON)" --market "$(WTS_MARKET)" $(WTS_SYNC_FLAGS)
 
+wts-check-duplicates:
+	python scripts/uk/check_wts_duplicate_barcodes.py --vendor-id 4 --market "$(WTS_MARKET)" --parent-tenant-id 15
+
 wts-excel:
 	python scripts/uk/export_wts_excel.py $(WTS_EXPORT_FLAGS)
 	python scripts/uk/normalize_wts_data.py --input "$(WTS_JSON)" --no-backup

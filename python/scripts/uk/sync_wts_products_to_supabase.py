@@ -244,6 +244,9 @@ def build_wts_update_payload(
 ) -> dict[str, Any]:
     final_update_payload = dict(update_payload)
     final_update_payload.pop("image_url", None)
+    # Do not update price for existing products when matched by barcode
+    final_update_payload.pop("list_price_amount", None)
+    final_update_payload.pop("list_price_currency_id", None)
 
     db_source = to_text(existing_item.get("source")).lower()
     if db_source in ("website", "web"):
@@ -392,6 +395,7 @@ def main() -> int:
             insert_payload["inserted_by_tenant_id"] = inserted_by_tenant_id
             insert_payload["vendor_id"] = resolved_vendor_id
             insert_payload["vendor_code"] = resolved_vendor_code
+            insert_payload["product_code"] = None
             insert_payload["is_available"] = is_available
             donor_url = find_image_url_for_barcode(barcode_key, existing_rows_full)
             if donor_url:

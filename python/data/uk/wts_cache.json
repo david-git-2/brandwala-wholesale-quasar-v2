@@ -1873,54 +1873,6 @@
         "category": ""
       }
     },
-    "https://wholesaletradingsupplies.com/product/black-and-white-hair-dressing-7oz-200ml-original/": {
-      "last_modified": "2026-01-20T09:03:31+00:00",
-      "data": {
-        "title": "Black & White Hair Dressing 200ml 7oz Original Pomade",
-        "price": 3.6,
-        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2020/11/Black-White-200ml-original.jpg",
-        "packsize": "12",
-        "permalink": "https://wholesaletradingsupplies.com/product/black-and-white-hair-dressing-7oz-200ml-original/",
-        "id": "4385",
-        "brand": "Black & White",
-        "barcode": "075610948103",
-        "barcode_outer": "10075610948100",
-        "description": "Black & White Hair Dressing 200ml 7oz Original Pomade",
-        "product_code": "WTS_4385",
-        "product_id": "075610948103_WTS_4385",
-        "imageKey": "075610948103__WTS_4385",
-        "imageUrl": null,
-        "imageUploaded": false,
-        "expire_date": "",
-        "case_size": 12,
-        "minimum_order_quantity": 12,
-        "category": ""
-      }
-    },
-    "https://wholesaletradingsupplies.com/product/brut-aftershave-100ml-musk/": {
-      "last_modified": "2026-02-04T14:33:15+00:00",
-      "data": {
-        "title": "Brut Aftershave 100ml Musk",
-        "price": 2.4,
-        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2020/10/3014230022234.jpg",
-        "packsize": "12",
-        "permalink": "https://wholesaletradingsupplies.com/product/brut-aftershave-100ml-musk/",
-        "id": "3844",
-        "brand": "Brut",
-        "barcode": "3014230022234",
-        "barcode_outer": "25410373000023",
-        "description": "Brut Aftershave 100ml Musk",
-        "product_code": "WTS_3844",
-        "product_id": "3014230022234_WTS_3844",
-        "imageKey": "3014230022234__WTS_3844",
-        "imageUrl": null,
-        "imageUploaded": false,
-        "expire_date": "",
-        "case_size": 12,
-        "minimum_order_quantity": 12,
-        "category": ""
-      }
-    },
     "https://wholesaletradingsupplies.com/product/brut-anti-p-spray-200ml-original/": {
       "last_modified": "2023-03-15T12:48:46+00:00",
       "data": {
@@ -2009,30 +1961,6 @@
         "product_code": "WTS_3847",
         "product_id": "3014230022401_WTS_3847",
         "imageKey": "3014230022401__WTS_3847",
-        "imageUrl": null,
-        "imageUploaded": false,
-        "expire_date": "",
-        "case_size": 6,
-        "minimum_order_quantity": 6,
-        "category": ""
-      }
-    },
-    "https://wholesaletradingsupplies.com/product/brut-deo-spray-200ml-original/": {
-      "last_modified": "2020-11-26T16:10:25+00:00",
-      "data": {
-        "title": "Brut Deo Spray 200ml Original",
-        "price": 1.33,
-        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2020/10/3014230021404.jpg",
-        "packsize": "6",
-        "permalink": "https://wholesaletradingsupplies.com/product/brut-deo-spray-200ml-original/",
-        "id": "3848",
-        "brand": "Brut",
-        "barcode": "3014230021404",
-        "barcode_outer": "08717163084267",
-        "description": "Brut Deo Spray 200ml Original",
-        "product_code": "WTS_3848",
-        "product_id": "3014230021404_WTS_3848",
-        "imageKey": "3014230021404__WTS_3848",
         "imageUrl": null,
         "imageUploaded": false,
         "expire_date": "",
@@ -2787,6 +2715,56 @@
         "category": ""
       }
     },
+    "https://wholesaletradingsupplies.com/product/chapstick-original/": {
+      "last_modified": "2026-09-15T15:44:09+00:00",
+      "data": {
+        "title": "Chapstick Original",
+        "price": 0.7,
+        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2020/11/Chapstick-Origina.jpeg",
+        "packsize": "24",
+        "permalink": "https://wholesaletradingsupplies.com/product/chapstick-original/",
+        "id": "4068",
+        "brand": "Chapstick",
+        "barcode": "50309443",
+        "barcode_outer": "5000309128103",
+        "description": "Chapstick Original",
+        "product_code": "WTS_4068",
+        "product_id": "50309443_WTS_4068",
+        "imageKey": "50309443__WTS_4068",
+        "imageUrl": null,
+        "imageUploaded": false,
+        "expire_date": "",
+        "source": "website",
+        "case_size": 24,
+        "minimum_order_quantity": 24,
+        "category": ""
+      }
+    },
+    "https://wholesaletradingsupplies.com/product/chapstick-strawberry-2/": {
+      "last_modified": "2026-09-15T15:44:13+00:00",
+      "data": {
+        "title": "Chapstick Strawberry",
+        "price": 0.7,
+        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2020/11/Chapstick-Classic-Strawberry-1.jpg",
+        "packsize": "24",
+        "permalink": "https://wholesaletradingsupplies.com/product/chapstick-strawberry-2/",
+        "id": "5051",
+        "brand": "Chapstick",
+        "barcode": "96186893",
+        "barcode_outer": "05000309009136",
+        "description": "Chapstick Strawberry",
+        "product_code": "WTS_5051",
+        "product_id": "96186893_WTS_5051",
+        "imageKey": "96186893__WTS_5051",
+        "imageUrl": null,
+        "imageUploaded": false,
+        "expire_date": "",
+        "source": "website",
+        "case_size": 24,
+        "minimum_order_quantity": 24,
+        "category": ""
+      }
+    },
     "https://wholesaletradingsupplies.com/product/charlie-body-spray-black-75ml/": {
       "last_modified": "2025-03-26T09:42:04+00:00",
       "data": {
@@ -2904,54 +2882,6 @@
         "expire_date": "",
         "case_size": 1,
         "minimum_order_quantity": 1,
-        "category": ""
-      }
-    },
-    "https://wholesaletradingsupplies.com/product/cif-cream-500ml-lemon/": {
-      "last_modified": "2024-04-17T11:40:37+00:00",
-      "data": {
-        "title": "Cif Cream 500ml Lemon pm £1.69",
-        "price": 0.99,
-        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2020/11/Cif-lemon-1.jpg",
-        "packsize": "8",
-        "permalink": "https://wholesaletradingsupplies.com/product/cif-cream-500ml-lemon/",
-        "id": "4633",
-        "brand": "Cif",
-        "barcode": "8720181425806",
-        "barcode_outer": "08720181425813",
-        "description": "Cif Cream 500ml Lemon pm £1.69",
-        "product_code": "WTS_4633",
-        "product_id": "8720181425806_WTS_4633",
-        "imageKey": "8720181425806__WTS_4633",
-        "imageUrl": null,
-        "imageUploaded": false,
-        "expire_date": "",
-        "case_size": 8,
-        "minimum_order_quantity": 8,
-        "category": ""
-      }
-    },
-    "https://wholesaletradingsupplies.com/product/cif-cream-500ml-original/": {
-      "last_modified": "2024-04-17T11:33:43+00:00",
-      "data": {
-        "title": "Cif Cream 500ml Original",
-        "price": 0.99,
-        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2020/11/Cif-original-1.jpg",
-        "packsize": "8",
-        "permalink": "https://wholesaletradingsupplies.com/product/cif-cream-500ml-original/",
-        "id": "3871",
-        "brand": "Cif",
-        "barcode": "5000186735036",
-        "barcode_outer": "08712561241762",
-        "description": "Cif Cream 500ml Original",
-        "product_code": "WTS_3871",
-        "product_id": "5000186735036_WTS_3871",
-        "imageKey": "5000186735036__WTS_3871",
-        "imageUrl": null,
-        "imageUploaded": false,
-        "expire_date": "",
-        "case_size": 8,
-        "minimum_order_quantity": 8,
         "category": ""
       }
     },
@@ -3163,30 +3093,6 @@
         "product_code": "WTS_3864",
         "product_id": "5000207007425_WTS_3864",
         "imageKey": "5000207007425__WTS_3864",
-        "imageUrl": null,
-        "imageUploaded": false,
-        "expire_date": "",
-        "case_size": 6,
-        "minimum_order_quantity": 6,
-        "category": ""
-      }
-    },
-    "https://wholesaletradingsupplies.com/product/clean-and-clear-facial-cleansing-bar-75g/": {
-      "last_modified": "2024-04-23T13:37:45+00:00",
-      "data": {
-        "title": "Clean & Clear Facial Cleansing Bar 75g",
-        "price": 0.9,
-        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2024/04/Clean-Clear-facial-cleansing-bar.jpg",
-        "packsize": "6",
-        "permalink": "https://wholesaletradingsupplies.com/product/clean-and-clear-facial-cleansing-bar-75g/",
-        "id": "8323",
-        "brand": "Clean & Clear",
-        "barcode": "6001012500094",
-        "barcode_outer": "6001013500093",
-        "description": "Clean & Clear Facial Cleansing Bar 75g",
-        "product_code": "WTS_8323",
-        "product_id": "6001012500094_WTS_8323",
-        "imageKey": "6001012500094__WTS_8323",
         "imageUrl": null,
         "imageUploaded": false,
         "expire_date": "",
@@ -3649,30 +3555,6 @@
         "expire_date": "",
         "case_size": 12,
         "minimum_order_quantity": 12,
-        "category": ""
-      }
-    },
-    "https://wholesaletradingsupplies.com/product/colgate-toothpaste-100ml-pump-max-white-luminous/": {
-      "last_modified": "2024-09-24T09:52:09+00:00",
-      "data": {
-        "title": "Colgate Toothpaste 100ml Pump Max White Luminous",
-        "price": 1.9,
-        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2024/09/Colgate-toothpaste-pump-luminous.jpg",
-        "packsize": "6",
-        "permalink": "https://wholesaletradingsupplies.com/product/colgate-toothpaste-100ml-pump-max-white-luminous/",
-        "id": "8622",
-        "brand": "Colgate",
-        "barcode": "8718951095182",
-        "barcode_outer": "08718951095175",
-        "description": "Colgate Toothpaste 100ml Pump Max White Luminous",
-        "product_code": "WTS_8622",
-        "product_id": "8718951095182_WTS_8622",
-        "imageKey": "8718951095182__WTS_8622",
-        "imageUrl": null,
-        "imageUploaded": false,
-        "expire_date": "",
-        "case_size": 6,
-        "minimum_order_quantity": 6,
         "category": ""
       }
     },
@@ -4470,30 +4352,6 @@
         "category": ""
       }
     },
-    "https://wholesaletradingsupplies.com/product/cussons-250ml-shower-gel-to-the-moon-back/": {
-      "last_modified": "2023-06-28T10:47:10+00:00",
-      "data": {
-        "title": "Cussons Shower Gel 250ml To The Moon & Back",
-        "price": 0.66,
-        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2022/11/Cussons-Shower-Gel-Moon-Back.jpeg",
-        "packsize": "6",
-        "permalink": "https://wholesaletradingsupplies.com/product/cussons-250ml-shower-gel-to-the-moon-back/",
-        "id": "6823",
-        "brand": "Cussons",
-        "barcode": "5000101510779",
-        "barcode_outer": "05000101510762",
-        "description": "Cussons Shower Gel 250ml To The Moon & Back",
-        "product_code": "WTS_6823",
-        "product_id": "5000101510779_WTS_6823",
-        "imageKey": "5000101510779__WTS_6823",
-        "imageUrl": null,
-        "imageUploaded": false,
-        "expire_date": "",
-        "case_size": 6,
-        "minimum_order_quantity": 6,
-        "category": ""
-      }
-    },
     "https://wholesaletradingsupplies.com/product/cuticura-medicated-powder-150g/": {
       "last_modified": "2026-03-16T12:36:03+00:00",
       "data": {
@@ -4563,30 +4421,6 @@
         "expire_date": "",
         "case_size": 1,
         "minimum_order_quantity": 1,
-        "category": ""
-      }
-    },
-    "https://wholesaletradingsupplies.com/product/dax-short-and-neat-blue-tin/": {
-      "last_modified": "2023-12-18T08:38:26+00:00",
-      "data": {
-        "title": "Dax Short And Neat Blue Tin 99g",
-        "price": 2.19,
-        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2020/10/blue_dax.jpg",
-        "packsize": "12",
-        "permalink": "https://wholesaletradingsupplies.com/product/dax-short-and-neat-blue-tin/",
-        "id": "4764",
-        "brand": "Dax",
-        "barcode": "077315009059",
-        "barcode_outer": "10077315009056",
-        "description": "Dax Short And Neat Blue Tin 99g",
-        "product_code": "WTS_4764",
-        "product_id": "077315009059_WTS_4764",
-        "imageKey": "077315009059__WTS_4764",
-        "imageUrl": null,
-        "imageUploaded": false,
-        "expire_date": "",
-        "case_size": 12,
-        "minimum_order_quantity": 12,
         "category": ""
       }
     },
@@ -4878,30 +4712,6 @@
         "category": ""
       }
     },
-    "https://wholesaletradingsupplies.com/product/domestos-bleach-750ml-original/": {
-      "last_modified": "2025-10-06T13:46:15+00:00",
-      "data": {
-        "title": "Domestos Bleach 750ml Original",
-        "price": 0.87,
-        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2020/11/Domestos-original.jpg",
-        "packsize": "9",
-        "permalink": "https://wholesaletradingsupplies.com/product/domestos-bleach-750ml-original/",
-        "id": "5289",
-        "brand": "Domestos",
-        "barcode": "500186481001",
-        "barcode_outer": "08717644196236",
-        "description": "Domestos Bleach 750ml Original",
-        "product_code": "WTS_5289",
-        "product_id": "500186481001_WTS_5289",
-        "imageKey": "500186481001__WTS_5289",
-        "imageUrl": null,
-        "imageUploaded": false,
-        "expire_date": "",
-        "case_size": 9,
-        "minimum_order_quantity": 9,
-        "category": ""
-      }
-    },
     "https://wholesaletradingsupplies.com/product/domestos-bleach-750ml-pink/": {
       "last_modified": "2026-07-07T08:03:11+00:00",
       "data": {
@@ -4993,6 +4803,31 @@
         "imageUrl": null,
         "imageUploaded": false,
         "expire_date": "",
+        "case_size": 6,
+        "minimum_order_quantity": 6,
+        "category": ""
+      }
+    },
+    "https://wholesaletradingsupplies.com/product/dove-baby-lotion-200ml-rich-moisture/": {
+      "last_modified": "2026-09-15T15:47:16+00:00",
+      "data": {
+        "title": "Dove Baby Lotion 200ml Rich Moisture",
+        "price": 1.2,
+        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2023/09/Dove-Baby-Lotion-Rich-Moisture.jpg",
+        "packsize": "6",
+        "permalink": "https://wholesaletradingsupplies.com/product/dove-baby-lotion-200ml-rich-moisture/",
+        "id": "7741",
+        "brand": "Dove",
+        "barcode": "8710908658075",
+        "barcode_outer": "08710908656330",
+        "description": "Dove Baby Lotion 200ml Rich Moisture",
+        "product_code": "WTS_7741",
+        "product_id": "8710908658075_WTS_7741",
+        "imageKey": "8710908658075__WTS_7741",
+        "imageUrl": null,
+        "imageUploaded": false,
+        "expire_date": "",
+        "source": "website",
         "case_size": 6,
         "minimum_order_quantity": 6,
         "category": ""
@@ -5163,30 +4998,6 @@
         "expire_date": "",
         "case_size": 12,
         "minimum_order_quantity": 12,
-        "category": ""
-      }
-    },
-    "https://wholesaletradingsupplies.com/product/dove-body-scrub-exfoliating-jar-225ml-macadamia/": {
-      "last_modified": "2025-05-22T14:35:04+00:00",
-      "data": {
-        "title": "Dove Body Scrub Exfoliating Jar 225ml Macadamia",
-        "price": 3.6,
-        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2021/11/Dove-Body-Scrub-Exfoliating-Jar-225ml-Macadamia.jpg",
-        "packsize": "4",
-        "permalink": "https://wholesaletradingsupplies.com/product/dove-body-scrub-exfoliating-jar-225ml-macadamia/",
-        "id": "6207",
-        "brand": "Dove",
-        "barcode": "8710447217054",
-        "barcode_outer": "08710447217108",
-        "description": "Dove Body Scrub Exfoliating Jar 225ml Macadamia",
-        "product_code": "WTS_6207",
-        "product_id": "8710447217054_WTS_6207",
-        "imageKey": "8710447217054__WTS_6207",
-        "imageUrl": null,
-        "imageUploaded": false,
-        "expire_date": "",
-        "case_size": 4,
-        "minimum_order_quantity": 4,
         "category": ""
       }
     },
@@ -5474,30 +5285,6 @@
         "imageUploaded": false,
         "expire_date": "",
         "source": "website",
-        "case_size": 6,
-        "minimum_order_quantity": 6,
-        "category": ""
-      }
-    },
-    "https://wholesaletradingsupplies.com/product/dove-conditioner-350ml-pro-age/": {
-      "last_modified": "2026-07-06T13:28:21+00:00",
-      "data": {
-        "title": "Dove Conditioner 350ml Pro Age",
-        "price": 1.47,
-        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2026/07/Dove-conditioner-pro-age-.jpg",
-        "packsize": "6",
-        "permalink": "https://wholesaletradingsupplies.com/product/dove-conditioner-350ml-pro-age/",
-        "id": "10180",
-        "brand": "Dove",
-        "barcode": "8714100184950",
-        "barcode_outer": "08714100185063",
-        "description": "Dove Conditioner 350ml Pro Age",
-        "product_code": "WTS_10180",
-        "product_id": "8714100184950_WTS_10180",
-        "imageKey": "8714100184950__WTS_10180",
-        "imageUrl": null,
-        "imageUploaded": false,
-        "expire_date": "",
         "case_size": 6,
         "minimum_order_quantity": 6,
         "category": ""
@@ -7283,6 +7070,31 @@
         "category": ""
       }
     },
+    "https://wholesaletradingsupplies.com/product/durex-invisible-3s/": {
+      "last_modified": "2026-09-15T15:49:45+00:00",
+      "data": {
+        "title": "Durex Invisible 3’s",
+        "price": 1.57,
+        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2023/07/Durex-Invisible.jpg",
+        "packsize": "12",
+        "permalink": "https://wholesaletradingsupplies.com/product/durex-invisible-3s/",
+        "id": "7605",
+        "brand": "Durex",
+        "barcode": "5052197050233",
+        "barcode_outer": "05052197050240",
+        "description": "Durex Invisible 3’s",
+        "product_code": "WTS_7605",
+        "product_id": "5052197050233_WTS_7605",
+        "imageKey": "5052197050233__WTS_7605",
+        "imageUrl": null,
+        "imageUploaded": false,
+        "expire_date": "",
+        "source": "website",
+        "case_size": 12,
+        "minimum_order_quantity": 12,
+        "category": ""
+      }
+    },
     "https://wholesaletradingsupplies.com/product/durex-pleasuremax-3s/": {
       "last_modified": "2025-07-16T10:03:09+00:00",
       "data": {
@@ -8044,30 +7856,6 @@
         "product_code": "WTS_8947",
         "product_id": "7701018978106_WTS_8947",
         "imageKey": "7701018978106__WTS_8947",
-        "imageUrl": null,
-        "imageUploaded": false,
-        "expire_date": "",
-        "case_size": 6,
-        "minimum_order_quantity": 6,
-        "category": ""
-      }
-    },
-    "https://wholesaletradingsupplies.com/product/gillette-clear-gel-70ml-champion-gold/": {
-      "last_modified": "2025-02-19T12:31:13+00:00",
-      "data": {
-        "title": "Gillette Clear Gel 70ml Champion Gold",
-        "price": 1.75,
-        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2025/02/Gilette-clear-gel-champion-gold.jpg",
-        "packsize": "6",
-        "permalink": "https://wholesaletradingsupplies.com/product/gillette-clear-gel-70ml-champion-gold/",
-        "id": "8949",
-        "brand": "Gillette",
-        "barcode": "8700216380775",
-        "barcode_outer": "8700216380782",
-        "description": "Gillette Clear Gel 70ml Champion Gold",
-        "product_code": "WTS_8949",
-        "product_id": "8700216380775_WTS_8949",
-        "imageKey": "8700216380775__WTS_8949",
         "imageUrl": null,
         "imageUploaded": false,
         "expire_date": "",
@@ -10093,30 +9881,6 @@
         "category": ""
       }
     },
-    "https://wholesaletradingsupplies.com/product/j-j-bath-300ml-pm-1-50/": {
-      "last_modified": "2025-12-23T10:06:14+00:00",
-      "data": {
-        "title": "J & J Baby Bath 300ml pm £1.50",
-        "price": 0.9,
-        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2024/03/JJ-baby-bath-300ml-pm-1.50-1.jpg",
-        "packsize": "6",
-        "permalink": "https://wholesaletradingsupplies.com/product/j-j-bath-300ml-pm-1-50/",
-        "id": "8266",
-        "brand": "Johnson & Johnson",
-        "barcode": "3574661730783",
-        "barcode_outer": "3574661730844",
-        "description": "J & J Baby Bath 300ml pm £1.50",
-        "product_code": "WTS_8266",
-        "product_id": "3574661730783_WTS_8266",
-        "imageKey": "3574661730783__WTS_8266",
-        "imageUrl": null,
-        "imageUploaded": false,
-        "expire_date": "",
-        "case_size": 6,
-        "minimum_order_quantity": 6,
-        "category": ""
-      }
-    },
     "https://wholesaletradingsupplies.com/product/j-j-bath-500ml/": {
       "last_modified": "2023-11-29T12:36:39+00:00",
       "data": {
@@ -10421,30 +10185,6 @@
         "product_code": "WTS_7591",
         "product_id": "8801051127218_WTS_7591",
         "imageKey": "8801051127218__WTS_7591",
-        "imageUrl": null,
-        "imageUploaded": false,
-        "expire_date": "",
-        "case_size": 12,
-        "minimum_order_quantity": 12,
-        "category": ""
-      }
-    },
-    "https://wholesaletradingsupplies.com/product/jakemans-throat-chest-73g-spiced-cola/": {
-      "last_modified": "2026-03-31T10:31:47+00:00",
-      "data": {
-        "title": "Jakemans Throat & Chest  73g Spiced Cola",
-        "price": 0.53,
-        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2025/10/Jakemans-spiced-cola.jpg",
-        "packsize": "12",
-        "permalink": "https://wholesaletradingsupplies.com/product/jakemans-throat-chest-73g-spiced-cola/",
-        "id": "9639",
-        "brand": "Jakemans",
-        "barcode": "5030104005453",
-        "barcode_outer": "05030104005460",
-        "description": "Jakemans Throat & Chest 73g Spiced Cola",
-        "product_code": "WTS_9639",
-        "product_id": "5030104005453_WTS_9639",
-        "imageKey": "5030104005453__WTS_9639",
         "imageUrl": null,
         "imageUploaded": false,
         "expire_date": "",
@@ -10877,30 +10617,6 @@
         "product_code": "WTS_5596",
         "product_id": "5025971100288_WTS_5596",
         "imageKey": "5025971100288__WTS_5596",
-        "imageUrl": null,
-        "imageUploaded": false,
-        "expire_date": "",
-        "case_size": 8,
-        "minimum_order_quantity": 8,
-        "category": ""
-      }
-    },
-    "https://wholesaletradingsupplies.com/product/lillets-super-10s/": {
-      "last_modified": "2026-06-11T14:45:35+00:00",
-      "data": {
-        "title": "Lillets Super 10’s",
-        "price": 0.84,
-        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2020/11/Lillets-super.jpg",
-        "packsize": "8",
-        "permalink": "https://wholesaletradingsupplies.com/product/lillets-super-10s/",
-        "id": "5597",
-        "brand": "Lillets",
-        "barcode": "5025971100295",
-        "barcode_outer": "05025971205570",
-        "description": "Lillets Super 10’s",
-        "product_code": "WTS_5597",
-        "product_id": "5025971100295_WTS_5597",
-        "imageKey": "5025971100295__WTS_5597",
         "imageUrl": null,
         "imageUploaded": false,
         "expire_date": "",
@@ -11506,6 +11222,31 @@
         "product_code": "WTS_3971",
         "product_id": "8717644012208_WTS_3971",
         "imageKey": "8717644012208__WTS_3971",
+        "imageUrl": null,
+        "imageUploaded": false,
+        "expire_date": "",
+        "source": "website",
+        "case_size": 6,
+        "minimum_order_quantity": 6,
+        "category": ""
+      }
+    },
+    "https://wholesaletradingsupplies.com/product/lynx-body-spray-150ml-black/": {
+      "last_modified": "2026-09-15T15:51:44+00:00",
+      "data": {
+        "title": "Lynx Body Spray 150ml Black",
+        "price": 1.9,
+        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2025/02/Lynx-body-spray-black-150ml.jpg",
+        "packsize": "6",
+        "permalink": "https://wholesaletradingsupplies.com/product/lynx-body-spray-150ml-black/",
+        "id": "8060",
+        "brand": "Lynx",
+        "barcode": "8712561614023",
+        "barcode_outer": "08712561614030",
+        "description": "Lynx Body Spray 150ml Black",
+        "product_code": "WTS_8060",
+        "product_id": "8712561614023_WTS_8060",
+        "imageKey": "8712561614023__WTS_8060",
         "imageUrl": null,
         "imageUploaded": false,
         "expire_date": "",
@@ -12191,30 +11932,6 @@
         "category": ""
       }
     },
-    "https://wholesaletradingsupplies.com/product/mr-muscle-kitchen-750ml/": {
-      "last_modified": "2024-02-26T15:17:47+00:00",
-      "data": {
-        "title": "Mr Muscle 750ml Kitchen Cleaner",
-        "price": 1.65,
-        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2020/11/Mr-Muscle-kitchen-cleaner.jpg",
-        "packsize": "6",
-        "permalink": "https://wholesaletradingsupplies.com/product/mr-muscle-kitchen-750ml/",
-        "id": "5087",
-        "brand": "Mr Muscle",
-        "barcode": "5000204043976",
-        "barcode_outer": "05000204043969",
-        "description": "Mr Muscle 750ml Kitchen Cleaner",
-        "product_code": "WTS_5087",
-        "product_id": "5000204043976_WTS_5087",
-        "imageKey": "5000204043976__WTS_5087",
-        "imageUrl": null,
-        "imageUploaded": false,
-        "expire_date": "",
-        "case_size": 6,
-        "minimum_order_quantity": 6,
-        "category": ""
-      }
-    },
     "https://wholesaletradingsupplies.com/product/mr-muscle-oven-cleaner-300ml/": {
       "last_modified": "2025-01-21T08:58:11+00:00",
       "data": {
@@ -12839,6 +12556,31 @@
         "category": ""
       }
     },
+    "https://wholesaletradingsupplies.com/product/neutrogena-visibly-clear-blackhead-eliminating-toner-200ml/": {
+      "last_modified": "2026-09-15T15:54:20+00:00",
+      "data": {
+        "title": "Neutrogena Blackhead Eliminating Toner 200ml",
+        "price": 2.2,
+        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2020/11/Neutrogena-Blackhead-Eliminating-Toner-2.jpg",
+        "packsize": "6",
+        "permalink": "https://wholesaletradingsupplies.com/product/neutrogena-visibly-clear-blackhead-eliminating-toner-200ml/",
+        "id": "4490",
+        "brand": "Neutrogena",
+        "barcode": "3574661500478",
+        "barcode_outer": "3574661501338",
+        "description": "Neutrogena Visibly Clear Blackhead Eliminating Toner 200ml",
+        "product_code": "WTS_4490",
+        "product_id": "3574661500478_WTS_4490",
+        "imageKey": "3574661500478__WTS_4490",
+        "imageUrl": null,
+        "imageUploaded": false,
+        "expire_date": "",
+        "source": "website",
+        "case_size": 6,
+        "minimum_order_quantity": 6,
+        "category": ""
+      }
+    },
     "https://wholesaletradingsupplies.com/product/neutrogena-visibly-clear-pink-grapefruit-face-wash-pump-200ml/": {
       "last_modified": "2025-08-20T15:17:26+00:00",
       "data": {
@@ -13239,30 +12981,6 @@
         "product_code": "WTS_9732",
         "product_id": "4006000081465_WTS_9732",
         "imageKey": "4006000081465__WTS_9732",
-        "imageUrl": null,
-        "imageUploaded": false,
-        "expire_date": "",
-        "case_size": 6,
-        "minimum_order_quantity": 6,
-        "category": ""
-      }
-    },
-    "https://wholesaletradingsupplies.com/product/nivea-body-lotion-400ml-vanilla-almond-oil/": {
-      "last_modified": "2025-11-25T15:25:29+00:00",
-      "data": {
-        "title": "Nivea Body Lotion 400ml Vanilla & Almond Oil",
-        "price": 3.58,
-        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2024/09/Nivea-body-lotion-vanilla.jpg",
-        "packsize": "6",
-        "permalink": "https://wholesaletradingsupplies.com/product/nivea-body-lotion-400ml-vanilla-almond-oil/",
-        "id": "8590",
-        "brand": "Nivea",
-        "barcode": "6001051002023",
-        "barcode_outer": "16001051001740",
-        "description": "Nivea Body Lotion 400ml Vanilla & Almond Oil",
-        "product_code": "WTS_8590",
-        "product_id": "6001051002023_WTS_8590",
-        "imageKey": "6001051002023__WTS_8590",
         "imageUrl": null,
         "imageUploaded": false,
         "expire_date": "",
@@ -13703,30 +13421,6 @@
         "category": ""
       }
     },
-    "https://wholesaletradingsupplies.com/product/nivea-deo-spray-250ml-double-effect/": {
-      "last_modified": "2026-02-04T15:13:19+00:00",
-      "data": {
-        "title": "Nivea Deo Spray 250ml Women’s Double Effect",
-        "price": 1.83,
-        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2025/06/Nivea-deo-spray-double-effect-250ml.jpg",
-        "packsize": "6",
-        "permalink": "https://wholesaletradingsupplies.com/product/nivea-deo-spray-250ml-double-effect/",
-        "id": "9346",
-        "brand": "Nivea",
-        "barcode": "4005808230679",
-        "barcode_outer": "05025970118307",
-        "description": "Nivea Deo Spray 250ml Women’s Double Effect",
-        "product_code": "WTS_9346",
-        "product_id": "4005808230679_WTS_9346",
-        "imageKey": "4005808230679__WTS_9346",
-        "imageUrl": null,
-        "imageUploaded": false,
-        "expire_date": "",
-        "case_size": 6,
-        "minimum_order_quantity": 6,
-        "category": ""
-      }
-    },
     "https://wholesaletradingsupplies.com/product/nivea-deo-spray-250ml-mens-active-energy/": {
       "last_modified": "2025-08-18T11:36:51+00:00",
       "data": {
@@ -13751,30 +13445,6 @@
         "category": ""
       }
     },
-    "https://wholesaletradingsupplies.com/product/nivea-deo-spray-250ml-mens-cool-kick/": {
-      "last_modified": "2025-09-03T09:49:53+00:00",
-      "data": {
-        "title": "Nivea Deo Spray 250ml Men’s Cool Kick",
-        "price": 1.83,
-        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2025/09/Nivea-deo-spray-250ml-cool-kick.jpg",
-        "packsize": "6",
-        "permalink": "https://wholesaletradingsupplies.com/product/nivea-deo-spray-250ml-mens-cool-kick/",
-        "id": "9557",
-        "brand": "Nivea",
-        "barcode": "4005808298174",
-        "barcode_outer": "05025970119946",
-        "description": "Nivea Deo Spray 250ml Men’s Cool Kick",
-        "product_code": "WTS_9557",
-        "product_id": "4005808298174_WTS_9557",
-        "imageKey": "4005808298174__WTS_9557",
-        "imageUrl": null,
-        "imageUploaded": false,
-        "expire_date": "",
-        "case_size": 6,
-        "minimum_order_quantity": 6,
-        "category": ""
-      }
-    },
     "https://wholesaletradingsupplies.com/product/nivea-deo-spray-250ml-pearl-beauty/": {
       "last_modified": "2026-02-04T15:14:16+00:00",
       "data": {
@@ -13791,30 +13461,6 @@
         "product_code": "WTS_8500",
         "product_id": "4005808837335_WTS_8500",
         "imageKey": "4005808837335__WTS_8500",
-        "imageUrl": null,
-        "imageUploaded": false,
-        "expire_date": "",
-        "case_size": 6,
-        "minimum_order_quantity": 6,
-        "category": ""
-      }
-    },
-    "https://wholesaletradingsupplies.com/product/nivea-deo-spray-250ml-womens-black-white-silky-smooth/": {
-      "last_modified": "2026-03-25T12:28:04+00:00",
-      "data": {
-        "title": "Nivea Deo Spray 250ml Women’s Black & White Silky Smooth",
-        "price": 1.83,
-        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2026/03/Nivea-deo-spray-250ml-black-white-silky.jpg",
-        "packsize": "6",
-        "permalink": "https://wholesaletradingsupplies.com/product/nivea-deo-spray-250ml-womens-black-white-silky-smooth/",
-        "id": "10006",
-        "brand": "Nivea",
-        "barcode": "4005900543745",
-        "barcode_outer": "04005805239569",
-        "description": "Nivea Deo Spray 250ml Women’s Black & White Silky Smooth",
-        "product_code": "WTS_10006",
-        "product_id": "4005900543745_WTS_10006",
-        "imageKey": "4005900543745__WTS_10006",
         "imageUrl": null,
         "imageUploaded": false,
         "expire_date": "",
@@ -14280,30 +13926,6 @@
         "category": ""
       }
     },
-    "https://wholesaletradingsupplies.com/product/nivea-soft-500ml/": {
-      "last_modified": "2026-02-03T17:02:38+00:00",
-      "data": {
-        "title": "Nivea Soft 500ml",
-        "price": 4.2,
-        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2020/11/Nivea-soft-500ml.jpg",
-        "packsize": "4",
-        "permalink": "https://wholesaletradingsupplies.com/product/nivea-soft-500ml/",
-        "id": "5589",
-        "brand": "Nivea",
-        "barcode": "5025970004761",
-        "barcode_outer": "05025970115313",
-        "description": "Nivea Soft 500ml",
-        "product_code": "WTS_5589",
-        "product_id": "5025970004761_WTS_5589",
-        "imageKey": "5025970004761__WTS_5589",
-        "imageUrl": null,
-        "imageUploaded": false,
-        "expire_date": "",
-        "case_size": 4,
-        "minimum_order_quantity": 4,
-        "category": ""
-      }
-    },
     "https://wholesaletradingsupplies.com/product/nivea-soft-50ml/": {
       "last_modified": "2026-07-29T15:44:30+00:00",
       "data": {
@@ -14417,30 +14039,6 @@
         "product_code": "WTS_4161",
         "product_id": "5060128980382_WTS_4161",
         "imageKey": "5060128980382__WTS_4161",
-        "imageUrl": null,
-        "imageUploaded": false,
-        "expire_date": "",
-        "case_size": 6,
-        "minimum_order_quantity": 6,
-        "category": ""
-      }
-    },
-    "https://wholesaletradingsupplies.com/product/olay-cleanse-make-up-melting-milk-200ml/": {
-      "last_modified": "2025-09-03T09:40:34+00:00",
-      "data": {
-        "title": "Olay Cleanse Make Up Melting Milk 200ml",
-        "price": 1.83,
-        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2025/09/Olay-cleanse-make-up-milk.jpg",
-        "packsize": "6",
-        "permalink": "https://wholesaletradingsupplies.com/product/olay-cleanse-make-up-melting-milk-200ml/",
-        "id": "9553",
-        "brand": "Olay",
-        "barcode": "8001841480565",
-        "barcode_outer": "8001841480572",
-        "description": "Olay Cleanse Make Up Melting Milk 200ml",
-        "product_code": "WTS_9553",
-        "product_id": "8001841480565_WTS_9553",
-        "imageKey": "8001841480565__WTS_9553",
         "imageUrl": null,
         "imageUploaded": false,
         "expire_date": "",
@@ -14665,6 +14263,31 @@
         "category": ""
       }
     },
+    "https://wholesaletradingsupplies.com/product/oral-b-all-rounder-black-3-pack-toothbrush/": {
+      "last_modified": "2026-09-15T15:59:21+00:00",
+      "data": {
+        "title": "Oral B Toothbrush All Rounder Black 3 Pack",
+        "price": 1.23,
+        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2023/04/Oral-B-3-Pack-Black-Toothbrush-1.jpg",
+        "packsize": "6",
+        "permalink": "https://wholesaletradingsupplies.com/product/oral-b-all-rounder-black-3-pack-toothbrush/",
+        "id": "7283",
+        "brand": "Oral B",
+        "barcode": "3014260101657",
+        "barcode_outer": "3014260101664",
+        "description": "Oral B Toothbrush All Rounder Black 3 Pack",
+        "product_code": "WTS_7283",
+        "product_id": "3014260101657_WTS_7283",
+        "imageKey": "3014260101657__WTS_7283",
+        "imageUrl": null,
+        "imageUploaded": false,
+        "expire_date": "",
+        "source": "website",
+        "case_size": 6,
+        "minimum_order_quantity": 6,
+        "category": ""
+      }
+    },
     "https://wholesaletradingsupplies.com/product/oral-b-all-rounder-black-toothbrush/": {
       "last_modified": "2023-06-28T11:16:57+00:00",
       "data": {
@@ -14759,30 +14382,6 @@
         "expire_date": "",
         "case_size": 12,
         "minimum_order_quantity": 12,
-        "category": ""
-      }
-    },
-    "https://wholesaletradingsupplies.com/product/oral-b-toothbrush-indicator-1-2-3-35-triple-pack/": {
-      "last_modified": "2026-03-24T16:51:34+00:00",
-      "data": {
-        "title": "Oral B Toothbrush Indicator 1-2-3  35 Triple Pack",
-        "price": 7.99,
-        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2020/11/Oral-B-toothbrush-indicator-3-pack.jpeg",
-        "packsize": "6 x 3",
-        "permalink": "https://wholesaletradingsupplies.com/product/oral-b-toothbrush-indicator-1-2-3-35-triple-pack/",
-        "id": "5506",
-        "brand": "Oral B",
-        "barcode": "3014260106928",
-        "barcode_outer": "3014260106942",
-        "description": "Oral B Toothbrush Indicator 1-2-3 35 Triple Pack",
-        "product_code": "WTS_5506",
-        "product_id": "3014260106928_WTS_5506",
-        "imageKey": "3014260106928__WTS_5506",
-        "imageUrl": null,
-        "imageUploaded": false,
-        "expire_date": "",
-        "case_size": 1,
-        "minimum_order_quantity": 1,
         "category": ""
       }
     },
@@ -16155,30 +15754,6 @@
         "category": ""
       }
     },
-    "https://wholesaletradingsupplies.com/product/palmers-olive-oil-formula-conditioner-400ml-shine-therapy/": {
-      "last_modified": "2024-05-22T14:37:15+00:00",
-      "data": {
-        "title": "Palmers Olive Oil Shine Therapy Conditioner 400ml",
-        "price": 2.83,
-        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2023/03/Palmers-Shine-Therapy-Conditioner.jpg",
-        "packsize": "6",
-        "permalink": "https://wholesaletradingsupplies.com/product/palmers-olive-oil-formula-conditioner-400ml-shine-therapy/",
-        "id": "7221",
-        "brand": "Palmers",
-        "barcode": "010181025396",
-        "barcode_outer": "60010181025398",
-        "description": "Palmers Olive Oil Shine Therapy Conditioner 400ml",
-        "product_code": "WTS_7221",
-        "product_id": "010181025396_WTS_7221",
-        "imageKey": "010181025396__WTS_7221",
-        "imageUrl": null,
-        "imageUploaded": false,
-        "expire_date": "",
-        "case_size": 6,
-        "minimum_order_quantity": 6,
-        "category": ""
-      }
-    },
     "https://wholesaletradingsupplies.com/product/palmers-shea-butter-hand-cream-60ml/": {
       "last_modified": "2023-01-30T16:04:29+00:00",
       "data": {
@@ -16945,30 +16520,6 @@
         "imageUploaded": false,
         "expire_date": "",
         "source": "website",
-        "case_size": 6,
-        "minimum_order_quantity": 6,
-        "category": ""
-      }
-    },
-    "https://wholesaletradingsupplies.com/product/pantene-shampoo-270ml-volume-body/": {
-      "last_modified": "2026-03-23T15:21:47+00:00",
-      "data": {
-        "title": "Pantene Shampoo 225ml Volume & Body",
-        "price": 1.43,
-        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2020/11/Pantene-Shampoo-volume-body-1.jpg",
-        "packsize": "6",
-        "permalink": "https://wholesaletradingsupplies.com/product/pantene-shampoo-270ml-volume-body/",
-        "id": "4150",
-        "brand": "Pantene",
-        "barcode": "8006540476338",
-        "barcode_outer": "8006540476345",
-        "description": "Pantene Shampoo 225ml Volume & Body",
-        "product_code": "WTS_4150",
-        "product_id": "8006540476338_WTS_4150",
-        "imageKey": "8006540476338__WTS_4150",
-        "imageUrl": null,
-        "imageUploaded": false,
-        "expire_date": "",
         "case_size": 6,
         "minimum_order_quantity": 6,
         "category": ""
@@ -19645,31 +19196,6 @@
         "category": ""
       }
     },
-    "https://wholesaletradingsupplies.com/product/steradent-tablets-30s-pro-white/": {
-      "last_modified": "2026-08-24T11:46:22+00:00",
-      "data": {
-        "title": "Steradent Tablets 30’s Pro White",
-        "price": 0.87,
-        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2026/03/Steradent-pro-white.jpg",
-        "packsize": "12",
-        "permalink": "https://wholesaletradingsupplies.com/product/steradent-tablets-30s-pro-white/",
-        "id": "9932",
-        "brand": "Steradent",
-        "barcode": "5011417566343",
-        "barcode_outer": "05011417783351",
-        "description": "Steradent Tablets 30’s Pro White",
-        "product_code": "WTS_9932",
-        "product_id": "5011417566343_WTS_9932",
-        "imageKey": "5011417566343__WTS_9932",
-        "imageUrl": null,
-        "imageUploaded": false,
-        "expire_date": "",
-        "source": "website",
-        "case_size": 12,
-        "minimum_order_quantity": 12,
-        "category": ""
-      }
-    },
     "https://wholesaletradingsupplies.com/product/sudocrem-125g/": {
       "last_modified": "2023-12-11T16:19:16+00:00",
       "data": {
@@ -20418,30 +19944,6 @@
         "category": ""
       }
     },
-    "https://wholesaletradingsupplies.com/product/sure-rollon-original-mens/": {
-      "last_modified": "2026-01-26T16:34:14+00:00",
-      "data": {
-        "title": "Sure Roll On  50ml Men’s Original",
-        "price": 1.0,
-        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2020/11/Sure-roll-on-mens-original.webp",
-        "packsize": "6",
-        "permalink": "https://wholesaletradingsupplies.com/product/sure-rollon-original-mens/",
-        "id": "4033",
-        "brand": "Sure",
-        "barcode": "59095712",
-        "barcode_outer": "08720181274077",
-        "description": "Sure Roll On 50ml Men’s Original",
-        "product_code": "WTS_4033",
-        "product_id": "59095712_WTS_4033",
-        "imageKey": "59095712__WTS_4033",
-        "imageUrl": null,
-        "imageUploaded": false,
-        "expire_date": "",
-        "case_size": 6,
-        "minimum_order_quantity": 6,
-        "category": ""
-      }
-    },
     "https://wholesaletradingsupplies.com/product/sure-rollon-quantum-2/": {
       "last_modified": "2025-10-01T13:49:47+00:00",
       "data": {
@@ -20722,30 +20224,6 @@
         "product_code": "WTS_6082",
         "product_id": "5014713200105_WTS_6082",
         "imageKey": "5014713200105__WTS_6082",
-        "imageUrl": null,
-        "imageUploaded": false,
-        "expire_date": "",
-        "case_size": 6,
-        "minimum_order_quantity": 6,
-        "category": ""
-      }
-    },
-    "https://wholesaletradingsupplies.com/product/touch-of-silver-brightening-shampoo-150ml/": {
-      "last_modified": "2025-10-10T09:58:50+00:00",
-      "data": {
-        "title": "Touch Of Silver Shampoo 150ml Brightening",
-        "price": 1.75,
-        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2020/11/Touch-of-Silver-shampoo-brightening.jpg",
-        "packsize": "6",
-        "permalink": "https://wholesaletradingsupplies.com/product/touch-of-silver-brightening-shampoo-150ml/",
-        "id": "4319",
-        "brand": "Touch Of Silver",
-        "barcode": "5012008721301",
-        "barcode_outer": "05012008721318",
-        "description": "Touch Of Silver Shampoo 150ml Brightening",
-        "product_code": "WTS_4319",
-        "product_id": "5012008721301_WTS_4319",
-        "imageKey": "5012008721301__WTS_4319",
         "imageUrl": null,
         "imageUploaded": false,
         "expire_date": "",
@@ -21436,31 +20914,6 @@
         "product_code": "WTS_10192",
         "product_id": "8720181699825_WTS_10192",
         "imageKey": "8720181699825__WTS_10192",
-        "imageUrl": null,
-        "imageUploaded": false,
-        "expire_date": "",
-        "source": "website",
-        "case_size": 6,
-        "minimum_order_quantity": 6,
-        "category": ""
-      }
-    },
-    "https://wholesaletradingsupplies.com/product/tresemme-shampoo-500ml-keratin-smooth/": {
-      "last_modified": "2026-08-14T13:33:43+00:00",
-      "data": {
-        "title": "Tresemme Keratin Smooth Shampoo 500ml",
-        "price": 1.6,
-        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2026/03/Tresemme-shampoo-keratin-500ml.jpg",
-        "packsize": "6",
-        "permalink": "https://wholesaletradingsupplies.com/product/tresemme-shampoo-500ml-keratin-smooth/",
-        "id": "10043",
-        "brand": "Tresemme",
-        "barcode": "8720181699832",
-        "barcode_outer": "08720181699948",
-        "description": "Tresemme Keratin Smooth Shampoo 500ml",
-        "product_code": "WTS_10043",
-        "product_id": "8720181699832_WTS_10043",
-        "imageKey": "8720181699832__WTS_10043",
         "imageUrl": null,
         "imageUploaded": false,
         "expire_date": "",
@@ -23174,6 +22627,31 @@
         "category": ""
       }
     },
+    "https://wholesaletradingsupplies.com/product/wisdom-toothbrush-xtra-clean-firm/": {
+      "last_modified": "2026-09-15T16:01:40+00:00",
+      "data": {
+        "title": "Wisdom Toothbrush Xtra Clean Firm",
+        "price": 0.38,
+        "original_image_url": "https://wholesaletradingsupplies.com/wp-content/uploads/2020/10/wisdom_xtra_clean_firm_toothbrush.jpg",
+        "packsize": "12",
+        "permalink": "https://wholesaletradingsupplies.com/product/wisdom-toothbrush-xtra-clean-firm/",
+        "id": "5676",
+        "brand": "Wisdom",
+        "barcode": "5028763006737",
+        "barcode_outer": "05028763008182",
+        "description": "Wisdom Toothbrush Xtra Clean Firm",
+        "product_code": "WTS_5676",
+        "product_id": "5028763006737_WTS_5676",
+        "imageKey": "5028763006737__WTS_5676",
+        "imageUrl": null,
+        "imageUploaded": false,
+        "expire_date": "",
+        "source": "website",
+        "case_size": 12,
+        "minimum_order_quantity": 12,
+        "category": ""
+      }
+    },
     "https://wholesaletradingsupplies.com/product/wisdom-toothbrush-xtra-clean-medium/": {
       "last_modified": "2023-07-19T13:26:01+00:00",
       "data": {
@@ -23369,5 +22847,5 @@
       }
     }
   },
-  "scraped_at": "2026-09-09T09:16:05.720093Z"
+  "scraped_at": "2026-09-15T16:14:50.064643Z"
 }

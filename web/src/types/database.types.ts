@@ -5585,6 +5585,7 @@ export type Database = {
           package_weight_kg: number | null
           packing_charge_amount: number
           parcel_description: string | null
+          parent_tenant_id: number | null
           payout_account_info: string | null
           payout_account_type: string | null
           payout_settlement_status: string | null
@@ -5673,6 +5674,7 @@ export type Database = {
           package_weight_kg?: number | null
           packing_charge_amount?: number
           parcel_description?: string | null
+          parent_tenant_id?: number | null
           payout_account_info?: string | null
           payout_account_type?: string | null
           payout_settlement_status?: string | null
@@ -5761,6 +5763,7 @@ export type Database = {
           package_weight_kg?: number | null
           packing_charge_amount?: number
           parcel_description?: string | null
+          parent_tenant_id?: number | null
           payout_account_info?: string | null
           payout_account_type?: string | null
           payout_settlement_status?: string | null
@@ -5818,6 +5821,13 @@ export type Database = {
             columns: ["customer_group_id"]
             isOneToOne: false
             referencedRelation: "customer_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_orders_parent_tenant_id_fkey"
+            columns: ["parent_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
           {
@@ -6134,6 +6144,7 @@ export type Database = {
           min_available_units: number
           name: string
           order_mode: Database["public"]["Enums"]["shop_order_mode_enum"]
+          parent_tenant_id: number | null
           pricing_method: string
           quantity_display_mode: string
           sell_currency_id: number
@@ -6168,6 +6179,7 @@ export type Database = {
           min_available_units?: number
           name: string
           order_mode: Database["public"]["Enums"]["shop_order_mode_enum"]
+          parent_tenant_id?: number | null
           pricing_method: string
           quantity_display_mode: string
           sell_currency_id: number
@@ -6202,6 +6214,7 @@ export type Database = {
           min_available_units?: number
           name?: string
           order_mode?: Database["public"]["Enums"]["shop_order_mode_enum"]
+          parent_tenant_id?: number | null
           pricing_method?: string
           quantity_display_mode?: string
           sell_currency_id?: number
@@ -6226,6 +6239,13 @@ export type Database = {
             columns: ["default_currency_id"]
             isOneToOne: false
             referencedRelation: "global_currencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shops_parent_tenant_id_fkey"
+            columns: ["parent_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
           {
@@ -15522,6 +15542,7 @@ export type Database = {
           min_available_units: number
           name: string
           order_mode: Database["public"]["Enums"]["shop_order_mode_enum"]
+          parent_tenant_id: number | null
           pricing_method: string
           quantity_display_mode: string
           sell_currency_id: number

@@ -26,12 +26,18 @@ web/*.ntvs*
 web/*.njsproj
 web/*.sln
 python/.venv/
+python/**/__pycache__/
 python/__pycache__/
+*.pyc
 python/.ipynb_checkpoints/
 python/credentials/
 credentials/
 !credentials/.gitkeep
 python/images/
+*.xlsx
+*.xls
+python/data/**/*.xlsx
+python/data/**/*.xls
 
 scratch*.js
 scratch/

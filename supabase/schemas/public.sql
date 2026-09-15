@@ -4009,6 +4009,8 @@ BEGIN
 
   RETURN 'RET-' || v_year_month || '-' || lpad(v_next::TEXT, 5, '0');
 END;
+
+
 ALTER FUNCTION "public"."generate_thrift_return_number"("p_tenant_id" bigint, "p_date" timestamp with time zone) OWNER TO "postgres";
 
 
@@ -4045,38 +4047,16 @@ CREATE OR REPLACE FUNCTION "public"."get_active_module_keys_for_tenant"("p_tenan
     select module_key from active_assignments
     union
     select module_key from expanded_child_keys
-  ),
-  tenant_kind as (
-    select exists (
-      select 1
-      from public.tenants child
-      where child.parent_id = p_tenant_id
-    ) as is_parent_company
-  ),
-  visible as (
-    select c.module_key
-    from combined c
-    cross join tenant_kind k
-    where c.module_key is not null
-      and not (
-        k.is_parent_company
-        and (
-          c.module_key = 'shop_order'
-          or exists (
-            select 1
-            from public.modules mo
-            where mo.key = c.module_key
-              and mo.parent_module_key = 'shop_order'
-          )
-        )
-      )
   )
   select coalesce(
-    array_agg(v.module_key order by v.module_key)
-      filter (where v.module_key is not null),
+    array_agg(c.module_key order by c.module_key)
+      filter (where c.module_key is not null),
     '{}'::text[]
   )
-  from visible v;
+  from combined c;
+$$;
+
+
 ALTER FUNCTION "public"."get_active_module_keys_for_tenant"("p_tenant_id" bigint) OWNER TO "postgres";
 
 

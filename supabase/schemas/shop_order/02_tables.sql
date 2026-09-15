@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS "public"."shops" (
     "description" "text",
     "category_ids" bigint[] DEFAULT '{}'::bigint[],
     "min_available_units" integer DEFAULT 0 NOT NULL,
+    "parent_tenant_id" bigint,
     "deleted_at" timestamp with time zone,
     "deleted_by" "text",
     CONSTRAINT "shops_dropship_not_negotiable" CHECK ((("shop_type" <> 'dropship'::"public"."shop_type_enum") OR ("is_negotiable" = false))),
@@ -438,6 +439,7 @@ CREATE TABLE IF NOT EXISTS "public"."shop_orders" (
     "collection_source" "public"."collection_source_type",
     "payout_settlement_status" "text",
     "profit_basis" "text" DEFAULT 'total_cost'::"text",
+    "parent_tenant_id" bigint,
     CONSTRAINT "shop_orders_delivery_zone_check" CHECK (("delivery_zone" = ANY (ARRAY['inside_dhaka'::"text", 'outside_dhaka'::"text"]))),
     CONSTRAINT "shop_orders_payout_settlement_status_check" CHECK ((("payout_settlement_status" IS NULL) OR ("payout_settlement_status" = ANY (ARRAY['unpaid'::"text", 'partial'::"text", 'paid'::"text"])))),
     CONSTRAINT "shop_orders_profit_basis_check" CHECK (("profit_basis" = ANY (ARRAY['purchase'::"text", 'total_cost'::"text"]))),
@@ -642,6 +644,15 @@ CREATE INDEX "shop_orders_recipient_profile_id_idx" ON "public"."shop_orders" US
 CREATE INDEX "shops_tenant_live_idx" ON "public"."shops" USING "btree" ("tenant_id") WHERE ("deleted_at" IS NULL);
 
 
+CREATE INDEX "idx_shops_parent_tenant_id" ON "public"."shops" USING "btree" ("parent_tenant_id");
+
+
+CREATE INDEX "idx_shop_orders_parent_tenant_id" ON "public"."shop_orders" USING "btree" ("parent_tenant_id");
+
+
+CREATE INDEX "idx_shop_orders_parent_tenant_created_at" ON "public"."shop_orders" USING "btree" ("parent_tenant_id", "created_at" DESC);
+
+
 CREATE UNIQUE INDEX "shops_unique_live_slug" ON "public"."shops" USING "btree" ("tenant_id", "slug") WHERE ("deleted_at" IS NULL);
 
 
@@ -663,6 +674,9 @@ CREATE OR REPLACE TRIGGER "trg_shop_order_items_updated_at" BEFORE UPDATE ON "pu
 CREATE OR REPLACE TRIGGER "trg_shop_orders_updated_at" BEFORE UPDATE ON "public"."shop_orders" FOR EACH ROW EXECUTE FUNCTION "public"."set_shop_order_updated_at"();
 
 
+CREATE OR REPLACE TRIGGER "trg_shop_orders_set_parent_tenant_id" BEFORE INSERT OR UPDATE OF "tenant_id" ON "public"."shop_orders" FOR EACH ROW EXECUTE FUNCTION "public"."set_shop_parent_tenant_id"();
+
+
 CREATE OR REPLACE TRIGGER "trg_shop_pricing_rules_updated_at" BEFORE UPDATE ON "public"."shop_pricing_rules" FOR EACH ROW EXECUTE FUNCTION "public"."set_shop_pricing_rules_updated_at"();
 
 
@@ -676,6 +690,9 @@ CREATE OR REPLACE TRIGGER "trg_shops_derive_is_negotiable" BEFORE INSERT OR UPDA
 
 
 CREATE OR REPLACE TRIGGER "trg_shops_updated_at" BEFORE UPDATE ON "public"."shops" FOR EACH ROW EXECUTE FUNCTION "public"."set_shops_updated_at"();
+
+
+CREATE OR REPLACE TRIGGER "trg_shops_set_parent_tenant_id" BEFORE INSERT OR UPDATE OF "tenant_id" ON "public"."shops" FOR EACH ROW EXECUTE FUNCTION "public"."set_shop_parent_tenant_id"();
 
 
 CREATE OR REPLACE TRIGGER "trg_sync_shop_cart_item_reservation" AFTER INSERT OR DELETE OR UPDATE ON "public"."shop_cart_items" FOR EACH ROW EXECUTE FUNCTION "public"."sync_shop_cart_item_reservation"();
@@ -857,6 +874,10 @@ ALTER TABLE ONLY "public"."shop_orders"
     ADD CONSTRAINT "shop_orders_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
 
 
+ALTER TABLE ONLY "public"."shop_orders"
+    ADD CONSTRAINT "shop_orders_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE SET NULL;
+
+
 ALTER TABLE ONLY "public"."shop_pricing_rules"
     ADD CONSTRAINT "shop_pricing_rules_shop_id_fkey" FOREIGN KEY ("shop_id") REFERENCES "public"."shops"("id") ON DELETE CASCADE;
 
@@ -911,6 +932,10 @@ ALTER TABLE ONLY "public"."shops"
 
 ALTER TABLE ONLY "public"."shops"
     ADD CONSTRAINT "shops_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE;
+
+
+ALTER TABLE ONLY "public"."shops"
+    ADD CONSTRAINT "shops_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE SET NULL;
 
 
 CREATE OR REPLACE TRIGGER "trg_restock_dropship_order_on_delete" BEFORE DELETE ON "public"."shop_orders" FOR EACH ROW EXECUTE FUNCTION "public"."restock_dropship_order_on_delete"();
