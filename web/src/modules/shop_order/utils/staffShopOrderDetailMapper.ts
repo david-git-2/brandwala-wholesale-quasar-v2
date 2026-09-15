@@ -3,7 +3,6 @@ import type {
   StaffOrderMoney,
   StaffOrderOffer,
   StaffShopOrderDetailItem,
-  StaffShopOrderDetailOrder,
   StaffShopOrderDetailResponse,
 } from '../types/staffShopOrderDetail';
 

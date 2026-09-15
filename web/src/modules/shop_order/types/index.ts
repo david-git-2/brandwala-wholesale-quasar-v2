@@ -248,6 +248,7 @@ export interface ShopCatalogSearchResult {
 export interface Shop {
   id: number;
   tenant_id: number;
+  tenant_name?: string | null;
   name: string;
   slug: string;
   shop_type: ShopType;
@@ -494,6 +495,7 @@ export interface CustomerOrderDetail {
 export interface ShopOrder {
   id: number;
   tenant_id: number;
+  tenant_name?: string | null;
   shop_id: number;
   shop_name?: string;
   customer_group_id: number;

@@ -338,7 +338,7 @@ export const useShopOrderStore = defineStore('shopOrder', {
 
     async fetchShopsByTenant(
       tenantId: number,
-      opts: { active?: boolean | null; search?: string | null } = {},
+      opts: { active?: boolean | null; search?: string | null; parentTenantId?: number | null } = {},
     ) {
       this.loadingShops = true;
       this.error = null;

@@ -80,6 +80,7 @@
           <thead>
             <tr>
               <th class="text-left">Order No</th>
+              <th v-if="isParentTenant" class="text-left">Tenant</th>
               <th class="text-left">Middle Man</th>
               <th class="text-left">Recipient</th>
               <th class="text-left">Courier</th>
@@ -91,7 +92,7 @@
           </thead>
           <tbody>
             <tr v-if="filteredOrders.length === 0">
-              <td colspan="8" class="text-center text-grey-7 q-py-xl">
+              <td :colspan="isParentTenant ? 9 : 8" class="text-center text-grey-7 q-py-xl">
                 <q-icon name="ph ph-tray" size="36px" class="text-grey-4 q-mb-xs" />
                 <div>No dropship consignments found for this filter.</div>
               </td>
@@ -111,6 +112,12 @@
                   {{ c.order_no }}
                 </router-link>
                 <div class="text-caption text-grey-6">{{ formatDate(c.created_at) }}</div>
+              </td>
+              <td v-if="isParentTenant">
+                <div class="row items-center no-wrap q-gutter-xs">
+                  <q-icon name="ph ph-buildings" size="14px" class="text-grey-6" />
+                  <span class="text-weight-medium text-grey-9">{{ c.tenant_name || '—' }}</span>
+                </div>
               </td>
               <td>
                 <div class="text-weight-medium text-grey-9">
@@ -222,11 +229,19 @@ const statusOptions = [
   { label: 'Returned', val: 'returned' },
 ];
 
+const isParentTenant = computed(() => {
+  if (!authStore.tenantId) return false;
+  const pId = authStore.selectedTenant?.parent_id ?? authStore.tenantId;
+  return Number(pId) === Number(authStore.tenantId);
+});
+
 const loadOrders = async () => {
   if (!authStore.tenantId) return;
   loading.value = true;
   try {
+    const parentTenantId = authStore.selectedTenant?.parent_id ?? authStore.tenantId;
     const res = await shopOrderService.fetchDropshipStaffOrders(authStore.tenantId, {
+      parentTenantId,
       limit: 200,
       status: null,
       search: searchQuery.value.trim() || null,

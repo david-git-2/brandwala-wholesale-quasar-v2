@@ -1042,7 +1042,7 @@ begin
   into v_shop
   from public.shops
   where id = p_shop_id
-    and tenant_id = p_tenant_id
+    and (tenant_id = p_tenant_id or parent_tenant_id = p_tenant_id)
     and deleted_at is null;
 
   if v_shop.id is null then
@@ -2401,20 +2401,27 @@ CREATE OR REPLACE FUNCTION "public"."delete_shop"("p_shop_id" bigint, "p_tenant_
     SET "search_path" TO 'public'
     AS $$
 begin
-  if not public.user_can_manage_shop_tenant(p_tenant_id) then
+  if not public.user_can_manage_shop_tenant(p_tenant_id)
+     and not public.user_can_manage_shop_tenant(public.resolve_parent_tenant_id(p_tenant_id))
+     and not public.is_superadmin() then
     raise exception 'not allowed';
+  end if;
+
   update public.shops
   set
     deleted_at = now(),
     deleted_by = public.current_user_email(),
     is_active = false
   where id = p_shop_id
-    and tenant_id = p_tenant_id
+    and (tenant_id = p_tenant_id or parent_tenant_id = p_tenant_id)
     and deleted_at is null;
 
   if not found then
     raise exception 'shop not found or already deleted';
-  ALTER FUNCTION "public"."delete_shop"("p_shop_id" bigint, "p_tenant_id" bigint) OWNER TO "postgres";
+  end if;
+end;
+$$;
+ALTER FUNCTION "public"."delete_shop"("p_shop_id" bigint, "p_tenant_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."_undo_wallet_ledger_row_before_delete"("p_row" "public"."universal_wallet_ledger") RETURNS "void"
@@ -2636,7 +2643,7 @@ begin
     raise exception 'Order not found';
   end if;
 
-  if not public.is_tenant_staff(v_order.tenant_id) then
+  if not public.is_tenant_staff(v_order.tenant_id) and not (v_order.parent_tenant_id is not null and public.is_tenant_staff(v_order.parent_tenant_id)) then
     raise exception 'Access denied';
   end if;
 
@@ -3602,7 +3609,7 @@ begin
     raise exception 'order not found';
   end if;
 
-  if v_order.tenant_id is distinct from p_tenant_id then
+  if v_order.tenant_id is distinct from p_tenant_id and v_order.parent_tenant_id is distinct from p_tenant_id then
     raise exception 'tenant mismatch';
   end if;
 
@@ -4028,7 +4035,7 @@ begin
     raise exception 'order not found';
   end if;
 
-  if v_order.tenant_id is distinct from p_tenant_id then
+  if v_order.tenant_id is distinct from p_tenant_id and v_order.parent_tenant_id is distinct from p_tenant_id then
     raise exception 'tenant mismatch';
   end if;
 
@@ -6673,14 +6680,18 @@ $$;
 ALTER FUNCTION "public"."get_customer_dashboard_summary"("p_tenant_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_dropship_shop_orders_for_staff"("p_tenant_id" bigint, "p_limit" integer DEFAULT 20, "p_offset" integer DEFAULT 0, "p_status" "text" DEFAULT NULL::"text", "p_search" "text" DEFAULT NULL::"text", "p_statuses" "text"[] DEFAULT NULL::"text"[]) RETURNS TABLE("id" bigint, "order_no" "text", "status" "public"."shop_order_status", "created_at" timestamp with time zone, "customer_group_name" "text", "created_by_email" "text", "recipient_name" "text", "recipient_phone" "text", "courier_name" "text", "courier_awb_number" "text", "cod_collect_amount" numeric, "total_amount" numeric, "global_invoice_id" bigint, "courier_remittance_ref" "text", "collection_source" "public"."collection_source_type", "payout_settlement_status" "text")
+CREATE OR REPLACE FUNCTION "public"."list_dropship_shop_orders_for_staff"("p_tenant_id" bigint, "p_parent_tenant_id" bigint DEFAULT NULL::bigint, "p_limit" integer DEFAULT 20, "p_offset" integer DEFAULT 0, "p_status" "text" DEFAULT NULL::"text", "p_search" "text" DEFAULT NULL::"text", "p_statuses" "text"[] DEFAULT NULL::"text"[]) RETURNS TABLE("id" bigint, "order_no" "text", "status" "public"."shop_order_status", "created_at" timestamp with time zone, "customer_group_name" "text", "created_by_email" "text", "recipient_name" "text", "recipient_phone" "text", "courier_name" "text", "courier_awb_number" "text", "cod_collect_amount" numeric, "total_amount" numeric, "global_invoice_id" bigint, "courier_remittance_ref" "text", "collection_source" "public"."collection_source_type", "payout_settlement_status" "text", "tenant_id" bigint, "tenant_name" "text")
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
+declare
+  v_is_parent_query boolean;
 begin
   if not public.is_tenant_staff(p_tenant_id) then
     raise exception 'access denied';
   end if;
+
+  v_is_parent_query := (p_parent_tenant_id is not null and p_parent_tenant_id = p_tenant_id);
 
   return query
   select
@@ -6714,11 +6725,17 @@ begin
     o.global_invoice_id,
     o.courier_remittance_ref,
     o.collection_source,
-    o.payout_settlement_status
+    o.payout_settlement_status,
+    o.tenant_id,
+    coalesce(t.name, '')::text as tenant_name
   from public.shop_orders o
   join public.customer_groups cg on cg.id = o.customer_group_id
   left join public.courier_services cs on cs.id::text = o.courier_service_id::text
-  where o.tenant_id = p_tenant_id
+  left join public.tenants t on t.id = o.tenant_id
+  where (
+    (v_is_parent_query and (o.parent_tenant_id = p_parent_tenant_id or o.tenant_id = p_parent_tenant_id))
+    or (not v_is_parent_query and o.tenant_id = p_tenant_id)
+  )
     and o.shop_type_snapshot = 'dropship'
     and (
       case
@@ -6750,13 +6767,14 @@ begin
       or cs.name ilike ('%' || p_search || '%')
       or cg.name ilike ('%' || p_search || '%')
       or o.created_by_email ilike ('%' || p_search || '%')
+      or t.name ilike ('%' || p_search || '%')
     )
   order by o.created_at desc
   limit p_limit
   offset p_offset;
 end;
 $$;
-ALTER FUNCTION "public"."list_dropship_shop_orders_for_staff"("p_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_status" "text", "p_search" "text", "p_statuses" "text"[]) OWNER TO "postgres";
+ALTER FUNCTION "public"."list_dropship_shop_orders_for_staff"("p_tenant_id" bigint, "p_parent_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_status" "text", "p_search" "text", "p_statuses" "text"[]) OWNER TO "postgres";
 
 
 
@@ -7744,14 +7762,18 @@ $$;
 ALTER FUNCTION "public"."list_procurement_shop_order_lines"("p_parent_tenant_id" bigint, "p_child_tenant_id" bigint, "p_search" "text", "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_shop_orders_for_staff"("p_tenant_id" bigint, "p_limit" integer DEFAULT 20, "p_offset" integer DEFAULT 0, "p_search" "text" DEFAULT NULL::"text", "p_status" "text" DEFAULT NULL::"text", "p_shop_id" bigint DEFAULT NULL::bigint) RETURNS TABLE("id" bigint, "tenant_id" bigint, "shop_id" bigint, "shop_name" "text", "customer_group_id" bigint, "customer_group_name" "text", "order_no" "text", "name" "text", "shop_type_snapshot" "public"."shop_type_enum", "is_negotiable_snapshot" boolean, "status" "public"."shop_order_status", "created_at" timestamp with time zone, "updated_at" timestamp with time zone, "item_count" bigint)
+CREATE OR REPLACE FUNCTION "public"."list_shop_orders_for_staff"("p_tenant_id" bigint, "p_parent_tenant_id" bigint DEFAULT NULL::bigint, "p_limit" integer DEFAULT 20, "p_offset" integer DEFAULT 0, "p_search" "text" DEFAULT NULL::"text", "p_status" "text" DEFAULT NULL::"text", "p_shop_id" bigint DEFAULT NULL::bigint) RETURNS TABLE("id" bigint, "tenant_id" bigint, "shop_id" bigint, "shop_name" "text", "customer_group_id" bigint, "customer_group_name" "text", "order_no" "text", "name" "text", "shop_type_snapshot" "public"."shop_type_enum", "is_negotiable_snapshot" boolean, "status" "public"."shop_order_status", "created_at" timestamp with time zone, "updated_at" timestamp with time zone, "item_count" bigint, "tenant_name" "text")
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
+declare
+  v_is_parent_query boolean;
 begin
   if not public.is_tenant_staff(p_tenant_id) then
     raise exception 'access denied';
   end if;
+
+  v_is_parent_query := (p_parent_tenant_id is not null and p_parent_tenant_id = p_tenant_id);
 
   return query
   select
@@ -7768,11 +7790,16 @@ begin
     o.status,
     o.created_at,
     o.updated_at,
-    (select count(*)::bigint from public.shop_order_items where order_id = o.id) as item_count
+    (select count(*)::bigint from public.shop_order_items where order_id = o.id) as item_count,
+    coalesce(t.name, '')::text as tenant_name
   from public.shop_orders o
   join public.shops s on s.id = o.shop_id
   join public.customer_groups cg on cg.id = o.customer_group_id
-  where o.tenant_id = p_tenant_id
+  left join public.tenants t on t.id = o.tenant_id
+  where (
+    (v_is_parent_query and (o.parent_tenant_id = p_parent_tenant_id or o.tenant_id = p_parent_tenant_id))
+    or (not v_is_parent_query and o.tenant_id = p_tenant_id)
+  )
     and (p_status is null or o.status::text = p_status)
     and (p_shop_id is null or o.shop_id = p_shop_id)
     and (
@@ -7781,13 +7808,14 @@ begin
       or o.name ilike ('%' || p_search || '%')
       or s.name ilike ('%' || p_search || '%')
       or cg.name ilike ('%' || p_search || '%')
+      or t.name ilike ('%' || p_search || '%')
     )
   order by o.created_at desc
   limit p_limit
   offset p_offset;
 end;
 $$;
-ALTER FUNCTION "public"."list_shop_orders_for_staff"("p_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_search" "text", "p_status" "text", "p_shop_id" bigint) OWNER TO "postgres";
+ALTER FUNCTION "public"."list_shop_orders_for_staff"("p_tenant_id" bigint, "p_parent_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_search" "text", "p_status" "text", "p_shop_id" bigint) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."list_shop_product_listings"("p_shop_id" bigint) RETURNS TABLE("id" bigint, "tenant_id" bigint, "shop_id" bigint, "global_stock_allocation_id" bigint, "global_stock_id" bigint, "product_id" bigint, "sell_price_amount" numeric, "sell_price_currency_id" bigint, "minimum_sell_price_amount" numeric, "minimum_sell_price_currency_id" bigint, "show_quantity" boolean, "display_quantity_override" integer, "is_active" boolean, "created_at" timestamp with time zone, "updated_at" timestamp with time zone, "product_name" "text", "product_image_url" "text", "product_barcode" "text", "product_code" "text", "product_brand" "text", "product_category" "text", "allocated_quantity" integer, "available_to_sell" integer, "unit_cost_amount" numeric, "shipment_item_id" bigint, "shipment_id" bigint)
@@ -7844,68 +7872,145 @@ begin
 ALTER FUNCTION "public"."list_shop_product_listings"("p_shop_id" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_shops"("p_tenant_id" bigint, "p_limit" integer DEFAULT 200, "p_offset" integer DEFAULT 0, "p_search" "text" DEFAULT NULL::"text", "p_active" boolean DEFAULT NULL::boolean) RETURNS TABLE("id" bigint, "tenant_id" bigint, "name" "text", "slug" "text", "shop_type" "public"."shop_type_enum", "vendor_code" "text", "order_mode" "public"."shop_order_mode_enum", "is_negotiable" boolean, "show_stock_quantity" boolean, "default_currency_id" bigint, "global_stock_type_id" bigint, "is_active" boolean, "allow_delivery" boolean, "buy_currency_id" bigint, "sell_currency_id" bigint, "pricing_method" "text", "markup_percentage" numeric, "quantity_display_mode" "text", "default_print_charge_amount" numeric, "default_packing_charge_amount" numeric, "deduct_charges_from_margin" boolean, "vendor_filters" "jsonb", "deduct_print_from_margin" boolean, "deduct_packing_from_margin" boolean, "description" "text", "category_ids" bigint[], "created_at" timestamp with time zone, "updated_at" timestamp with time zone, "total_count" bigint)
+CREATE OR REPLACE FUNCTION "public"."list_shops"("p_tenant_id" bigint, "p_parent_tenant_id" bigint DEFAULT NULL::bigint, "p_limit" integer DEFAULT 200, "p_offset" integer DEFAULT 0, "p_search" "text" DEFAULT NULL::"text", "p_active" boolean DEFAULT NULL::boolean) RETURNS TABLE("id" bigint, "tenant_id" bigint, "name" "text", "slug" "text", "shop_type" "public"."shop_type_enum", "vendor_code" "text", "order_mode" "public"."shop_order_mode_enum", "is_negotiable" boolean, "show_stock_quantity" boolean, "default_currency_id" bigint, "global_stock_type_id" bigint, "is_active" boolean, "allow_delivery" boolean, "buy_currency_id" bigint, "sell_currency_id" bigint, "pricing_method" "text", "markup_percentage" numeric, "quantity_display_mode" "text", "default_print_charge_amount" numeric, "default_packing_charge_amount" numeric, "deduct_charges_from_margin" boolean, "vendor_filters" "jsonb", "deduct_print_from_margin" boolean, "deduct_packing_from_margin" boolean, "description" "text", "category_ids" bigint[], "created_at" timestamp with time zone, "updated_at" timestamp with time zone, "total_count" bigint, "tenant_name" "text")
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
 declare
   v_total bigint;
+  v_is_parent_query boolean;
 begin
   if not exists (
     select 1 from public.memberships m
-    where m.tenant_id = p_tenant_id
+    where (m.tenant_id = p_tenant_id or m.tenant_id = public.resolve_parent_tenant_id(p_tenant_id))
       and lower(trim(m.email)) = public.current_user_email()
       and m.is_active = true
   ) then
     raise exception 'not allowed';
-  select count(*)
-  into v_total
-  from public.shops s
-  where s.tenant_id = p_tenant_id
-    and s.deleted_at is null
-    and (p_active  is null or s.is_active = p_active)
-    and (p_search  is null or s.name ilike '%' || p_search || '%' or s.slug ilike '%' || p_search || '%');
+  end if;
 
-  return query
-  select
-    s.id,
-    s.tenant_id,
-    s.name,
-    s.slug,
-    s.shop_type,
-    s.vendor_code,
-    s.order_mode,
-    s.is_negotiable,
-    s.show_stock_quantity,
-    s.default_currency_id,
-    s.global_stock_type_id,
-    s.is_active,
-    s.allow_delivery,
-    s.buy_currency_id,
-    s.sell_currency_id,
-    s.pricing_method,
-    s.markup_percentage,
-    s.quantity_display_mode,
-    s.default_print_charge_amount,
-    s.default_packing_charge_amount,
-    s.deduct_charges_from_margin,
-    s.vendor_filters,
-    s.deduct_print_from_margin,
-    s.deduct_packing_from_margin,
-    s.description,
-    s.category_ids,
-    s.created_at,
-    s.updated_at,
-    v_total
-  from public.shops s
-  where s.tenant_id = p_tenant_id
-    and s.deleted_at is null
-    and (p_active  is null or s.is_active = p_active)
-    and (p_search  is null or s.name ilike '%' || p_search || '%' or s.slug ilike '%' || p_search || '%')
-  order by s.name asc
-  limit  p_limit
-  offset p_offset;
-ALTER FUNCTION "public"."list_shops"("p_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_search" "text", "p_active" boolean) OWNER TO "postgres";
+  v_is_parent_query := (p_parent_tenant_id is not null and p_parent_tenant_id = p_tenant_id);
+
+  if v_is_parent_query then
+    select count(*)
+    into v_total
+    from public.shops s
+    left join public.tenants t on t.id = s.tenant_id
+    where (s.parent_tenant_id = p_parent_tenant_id or s.tenant_id = p_parent_tenant_id)
+      and s.deleted_at is null
+      and (p_active is null or s.is_active = p_active)
+      and (
+        p_search is null
+        or s.name ilike '%' || p_search || '%'
+        or s.slug ilike '%' || p_search || '%'
+        or t.name ilike '%' || p_search || '%'
+      );
+
+    return query
+    select
+      s.id,
+      s.tenant_id,
+      s.name,
+      s.slug,
+      s.shop_type,
+      s.vendor_code,
+      s.order_mode,
+      s.is_negotiable,
+      s.show_stock_quantity,
+      s.default_currency_id,
+      s.global_stock_type_id,
+      s.is_active,
+      s.allow_delivery,
+      s.buy_currency_id,
+      s.sell_currency_id,
+      s.pricing_method,
+      s.markup_percentage,
+      s.quantity_display_mode,
+      s.default_print_charge_amount,
+      s.default_packing_charge_amount,
+      s.deduct_charges_from_margin,
+      s.vendor_filters,
+      s.deduct_print_from_margin,
+      s.deduct_packing_from_margin,
+      s.description,
+      s.category_ids,
+      s.created_at,
+      s.updated_at,
+      v_total,
+      coalesce(t.name, '')::text as tenant_name
+    from public.shops s
+    left join public.tenants t on t.id = s.tenant_id
+    where (s.parent_tenant_id = p_parent_tenant_id or s.tenant_id = p_parent_tenant_id)
+      and s.deleted_at is null
+      and (p_active is null or s.is_active = p_active)
+      and (
+        p_search is null
+        or s.name ilike '%' || p_search || '%'
+        or s.slug ilike '%' || p_search || '%'
+        or t.name ilike '%' || p_search || '%'
+      );
+  else
+    select count(*)
+    into v_total
+    from public.shops s
+    left join public.tenants t on t.id = s.tenant_id
+    where s.tenant_id = p_tenant_id
+      and s.deleted_at is null
+      and (p_active is null or s.is_active = p_active)
+      and (
+        p_search is null
+        or s.name ilike '%' || p_search || '%'
+        or s.slug ilike '%' || p_search || '%'
+        or t.name ilike '%' || p_search || '%'
+      );
+
+    return query
+    select
+      s.id,
+      s.tenant_id,
+      s.name,
+      s.slug,
+      s.shop_type,
+      s.vendor_code,
+      s.order_mode,
+      s.is_negotiable,
+      s.show_stock_quantity,
+      s.default_currency_id,
+      s.global_stock_type_id,
+      s.is_active,
+      s.allow_delivery,
+      s.buy_currency_id,
+      s.sell_currency_id,
+      s.pricing_method,
+      s.markup_percentage,
+      s.quantity_display_mode,
+      s.default_print_charge_amount,
+      s.default_packing_charge_amount,
+      s.deduct_charges_from_margin,
+      s.vendor_filters,
+      s.deduct_print_from_margin,
+      s.deduct_packing_from_margin,
+      s.description,
+      s.category_ids,
+      s.created_at,
+      s.updated_at,
+      v_total,
+      coalesce(t.name, '')::text as tenant_name
+    from public.shops s
+    left join public.tenants t on t.id = s.tenant_id
+    where s.tenant_id = p_tenant_id
+      and s.deleted_at is null
+      and (p_active is null or s.is_active = p_active)
+      and (
+        p_search is null
+        or s.name ilike '%' || p_search || '%'
+        or s.slug ilike '%' || p_search || '%'
+        or t.name ilike '%' || p_search || '%'
+      );
+  end if;
+end;
+$$;
+ALTER FUNCTION "public"."list_shops"("p_tenant_id" bigint, "p_parent_tenant_id" bigint, "p_limit" integer, "p_offset" integer, "p_search" "text", "p_active" boolean) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."mark_dropship_order_returned"("p_order_id" bigint, "p_actual_return_charge" numeric, "p_deduct_from_middle_man" boolean, "p_reason" "text" DEFAULT NULL::"text") RETURNS "jsonb"
@@ -8755,7 +8860,7 @@ begin
   end if;
 
   select * into v_order from public.shop_orders where id = p_order_id;
-  if not found or v_order.tenant_id is distinct from p_tenant_id then
+  if not found or (v_order.tenant_id is distinct from p_tenant_id and v_order.parent_tenant_id is distinct from p_tenant_id) then
     raise exception 'order not found';
   end if;
 
@@ -8801,7 +8906,7 @@ begin
   end if;
 
   select * into v_order from public.shop_orders where id = p_order_id;
-  if not found or v_order.tenant_id is distinct from p_tenant_id then
+  if not found or (v_order.tenant_id is distinct from p_tenant_id and v_order.parent_tenant_id is distinct from p_tenant_id) then
     raise exception 'order not found';
   end if;
 

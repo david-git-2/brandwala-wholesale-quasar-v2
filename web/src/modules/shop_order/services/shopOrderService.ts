@@ -189,7 +189,14 @@ const fetchCustomerOrders = async (
 
 const fetchStaffOrders = async (
   tenantId: number,
-  opts?: { limit?: number; offset?: number; search?: string | null; status?: string | null; shopId?: number | null },
+  opts?: {
+    parentTenantId?: number | null;
+    limit?: number;
+    offset?: number;
+    search?: string | null;
+    status?: string | null;
+    shopId?: number | null;
+  },
 ): Promise<ShopServiceResult<ShopOrder[]>> => {
   try {
     const data = await shopOrderRepository.listShopOrdersForStaff(tenantId, opts);
@@ -205,6 +212,7 @@ const fetchStaffOrders = async (
 const fetchDropshipStaffOrders = async (
   tenantId: number,
   opts?: {
+    parentTenantId?: number | null;
     limit?: number;
     offset?: number;
     search?: string | null;

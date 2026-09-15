@@ -18,6 +18,7 @@
           :is-loading-orders="isLoadingOrders"
           :is-processing-dropship="isProcessingDropship"
           :is-dropship-shop="isDropshipShop"
+          :is-parent-tenant="isParentTenant"
           @row-click="goToOrderDetails"
           @add-to-dropship="addToDropshipDesk"
         />
@@ -43,12 +44,20 @@ const route = useRoute();
 const authStore = useAuthStore();
 
 const tenantId = computed(() => authStore.tenantId as number);
+const parentTenantId = computed(() => authStore.selectedTenant?.parent_id ?? authStore.tenantId);
 const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '');
+
+const isParentTenant = computed(() => {
+  if (!tenantId.value) return false;
+  const pId = authStore.selectedTenant?.parent_id ?? tenantId.value;
+  return Number(pId) === Number(tenantId.value);
+});
 
 const selectedShopId = ref<number | null>(null);
 
 const shopParams = computed(() => ({
   tenantId: tenantId.value,
+  parentTenantId: parentTenantId.value,
 }));
 const { data: shopsData, isLoading: isLoadingShops } = useShopListQuery(shopParams);
 const shops = computed(() => shopsData.value || []);
@@ -68,6 +77,7 @@ watch(
 
 const orderParams = computed(() => ({
   tenantId: tenantId.value,
+  parentTenantId: parentTenantId.value,
   search: search.value || null,
   status: statusFilter.value || null,
   shopId: selectedShopId.value || null,

@@ -12522,6 +12522,7 @@ export type Database = {
         Args: {
           p_limit?: number
           p_offset?: number
+          p_parent_tenant_id?: number
           p_search?: string
           p_status?: string
           p_statuses?: string[]
@@ -12543,6 +12544,8 @@ export type Database = {
           recipient_name: string
           recipient_phone: string
           status: Database["public"]["Enums"]["shop_order_status"]
+          tenant_id: number
+          tenant_name: string
           total_amount: number
         }[]
       }
@@ -13118,6 +13121,7 @@ export type Database = {
         Args: {
           p_limit?: number
           p_offset?: number
+          p_parent_tenant_id?: number
           p_search?: string
           p_shop_id?: number
           p_status?: string
@@ -13137,6 +13141,7 @@ export type Database = {
           shop_type_snapshot: Database["public"]["Enums"]["shop_type_enum"]
           status: Database["public"]["Enums"]["shop_order_status"]
           tenant_id: number
+          tenant_name: string
           updated_at: string
         }[]
       }
@@ -13185,6 +13190,7 @@ export type Database = {
           p_active?: boolean
           p_limit?: number
           p_offset?: number
+          p_parent_tenant_id?: number
           p_search?: string
           p_tenant_id: number
         }
@@ -13214,6 +13220,7 @@ export type Database = {
           show_stock_quantity: boolean
           slug: string
           tenant_id: number
+          tenant_name: string
           total_count: number
           updated_at: string
           vendor_code: string

@@ -28,10 +28,17 @@ import type {
 
 const listShops = async (
   tenantId: number,
-  opts: { limit?: number; offset?: number; search?: string | null; active?: boolean | null } = {},
+  opts: {
+    parentTenantId?: number | null;
+    limit?: number;
+    offset?: number;
+    search?: string | null;
+    active?: boolean | null;
+  } = {},
 ): Promise<Shop[]> => {
   const { data, error } = await supabase.rpc('list_shops', {
     p_tenant_id: tenantId,
+    p_parent_tenant_id: opts.parentTenantId ?? null,
     p_limit: opts.limit ?? 200,
     p_offset: opts.offset ?? 0,
     p_search: opts.search ?? null,
@@ -53,7 +60,7 @@ const getShop = async (shopId: number, tenantId: number): Promise<Shop> => {
     .from('shops')
     .select(SHOP_DETAIL_SELECT)
     .eq('id', shopId)
-    .eq('tenant_id', tenantId)
+    .or(`tenant_id.eq.${tenantId},parent_tenant_id.eq.${tenantId}`)
     .is('deleted_at', null)
     .maybeSingle();
   if (error) throw error;
@@ -426,10 +433,18 @@ const listCustomerShopOrders = async (
 
 const listShopOrdersForStaff = async (
   tenantId: number,
-  opts: { limit?: number; offset?: number; search?: string | null; status?: string | null; shopId?: number | null } = {},
+  opts: {
+    parentTenantId?: number | null;
+    limit?: number;
+    offset?: number;
+    search?: string | null;
+    status?: string | null;
+    shopId?: number | null;
+  } = {},
 ): Promise<ShopOrder[]> => {
   const { data, error } = await supabase.rpc('list_shop_orders_for_staff', {
     p_tenant_id: tenantId,
+    p_parent_tenant_id: opts.parentTenantId ?? null,
     p_limit: opts.limit ?? 20,
     p_offset: opts.offset ?? 0,
     p_search: opts.search ?? null,
@@ -443,6 +458,7 @@ const listShopOrdersForStaff = async (
 const listDropshipShopOrdersForStaff = async (
   tenantId: number,
   opts: {
+    parentTenantId?: number | null;
     limit?: number;
     offset?: number;
     search?: string | null;
@@ -452,6 +468,7 @@ const listDropshipShopOrdersForStaff = async (
 ): Promise<ShopOrder[]> => {
   const { data, error } = await supabase.rpc('list_dropship_shop_orders_for_staff', {
     p_tenant_id: tenantId,
+    p_parent_tenant_id: opts.parentTenantId ?? null,
     p_limit: opts.limit ?? 20,
     p_offset: opts.offset ?? 0,
     p_status: opts.status ?? null,

@@ -1,7 +1,7 @@
 <template>
-  <q-card flat class="floating-surface q-pa-xs flex-shrink-0">
-    <div class="row items-center q-col-gutter-xs">
-      <div class="col-12 row items-center q-gutter-x-xs">
+  <q-card flat bordered class="q-pa-xs flex-shrink-0">
+    <div class="row items-center justify-between q-col-gutter-xs">
+      <div class="col-12 row items-center q-gutter-x-xs wrap">
         <q-input
           :model-value="search"
           clearable
@@ -11,7 +11,7 @@
           rounded
           style="min-width: 220px"
           class="col-grow col-sm-auto"
-          :placeholder="$t('shop_admin.search_orders_placeholder')"
+          :placeholder="$t('shop_admin.search_orders_placeholder', 'Search by Order No, recipient, shop...')"
           data-test="shop-orders-search"
           @update:model-value="(val) => emit('update:search', (val as string) || '')"
         >
@@ -30,15 +30,18 @@
           clearable
           use-input
           input-debounce="200"
-          :label="$t('shop_admin.filter_by_shop')"
+          :label="$t('shop_admin.filter_by_shop', 'All Shops')"
           :options="filteredShopOptions"
           :loading="shopsLoading"
-          style="min-width: 180px"
+          style="min-width: 190px"
           class="col-grow col-sm-auto"
           data-test="shop-orders-shop-filter"
           @filter="filterShops"
           @update:model-value="(val) => emit('update:selectedShopId', val)"
         >
+          <template #prepend>
+            <q-icon name="ph ph-storefront" size="16px" class="text-grey-6" />
+          </template>
           <template #no-option>
             <q-item>
               <q-item-section class="text-grey-6">
@@ -56,13 +59,17 @@
           emit-value
           map-options
           clearable
-          :label="$t('shop_admin.shop_type_filter')"
+          :label="$t('shop_admin.shop_type_filter', 'Shop Type')"
           :options="shopTypeOptions"
           style="min-width: 160px"
           class="col-grow col-sm-auto"
           data-test="shop-orders-type-filter"
           @update:model-value="(val) => emit('update:shopTypeFilter', val)"
-        />
+        >
+          <template #prepend>
+            <q-icon name="ph ph-squares-four" size="16px" class="text-grey-6" />
+          </template>
+        </q-select>
 
         <q-select
           :model-value="statusFilter"
@@ -72,13 +79,17 @@
           emit-value
           map-options
           clearable
-          :label="$t('shop_admin.filter_by_status')"
+          :label="$t('shop_admin.filter_by_status', 'Status')"
           :options="statusOptions"
           style="min-width: 160px"
           class="col-grow col-sm-auto"
           data-test="shop-orders-status-filter"
           @update:model-value="(val) => emit('update:statusFilter', val)"
-        />
+        >
+          <template #prepend>
+            <q-icon name="ph ph-flag" size="16px" class="text-grey-6" />
+          </template>
+        </q-select>
       </div>
     </div>
   </q-card>
@@ -138,7 +149,7 @@ const statusOptions = computed(() => [
 
 const shopOptions = computed(() =>
   props.shops.map((shop) => ({
-    label: shop.name,
+    label: shop.tenant_name ? `${shop.name} (${shop.tenant_name})` : shop.name,
     value: shop.id,
   })),
 );

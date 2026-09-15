@@ -6,6 +6,7 @@ import { vendorRepository } from 'src/modules/vendor/repositories/vendorReposito
 
 export interface ShopListQueryParams {
   tenantId: number;
+  parentTenantId?: number | null;
   search?: string | null;
   active?: boolean | null;
 }
@@ -25,6 +26,7 @@ export function useShopListQuery(params: Ref<ShopListQueryParams>, enabled?: Ref
     queryKey: computed(() => shopOrderQueryKeys.shopsList(params.value)),
     queryFn: () =>
       shopOrderRepository.listShops(params.value.tenantId, {
+        parentTenantId: params.value.parentTenantId ?? null,
         search: params.value.search ?? null,
         active: params.value.active ?? null,
       }),

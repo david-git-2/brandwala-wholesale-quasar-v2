@@ -95,6 +95,10 @@
               <div class="text-caption text-grey-6 ellipsis">
                 Slug: {{ shop.slug }}
               </div>
+              <div v-if="isParentTenant && shop.tenant_name" class="text-caption text-grey-8 row items-center q-gutter-xs q-mt-xs">
+                <q-icon name="ph ph-buildings" size="13px" class="text-grey-6" />
+                <span class="text-weight-medium">{{ shop.tenant_name }}</span>
+              </div>
             </q-card-section>
 
             <q-separator />
@@ -135,6 +139,7 @@ const router = useRouter();
 const authStore = useAuthStore();
 
 const tenantId = computed(() => authStore.tenantId as number);
+const parentTenantId = computed(() => authStore.selectedTenant?.parent_id ?? authStore.tenantId);
 const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '');
 
 const search = ref('');
@@ -147,9 +152,17 @@ const filterOptions = [
   { label: 'Fixed Price', value: 'fixed_price' },
 ];
 
+const isParentTenant = computed(() => {
+  if (!tenantId.value) return false;
+  const pId = authStore.selectedTenant?.parent_id ?? tenantId.value;
+  return Number(pId) === Number(tenantId.value);
+});
+
 const queryParams = computed(() => ({
   tenantId: tenantId.value,
-  search: search.value.trim() || null,
+  parentTenantId: parentTenantId.value,
+  search: search.value || null,
+  active: null,
 }));
 
 const { data: shops, isLoading, isError, error } = useShopListQuery(queryParams);

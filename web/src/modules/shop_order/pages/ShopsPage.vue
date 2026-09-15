@@ -80,10 +80,17 @@
                       icon="ph ph-storefront"
                     />
                     <div class="min-width-0">
-                      <div class="shops-table__title-row ellipsis">
+                      <div class="shops-table__title-row ellipsis items-center">
                         <span class="text-weight-bold text-grey-9">{{ props.row.name }}</span>
                         <span class="shops-table__dot" aria-hidden="true">·</span>
                         <span class="text-grey-6">{{ props.row.slug }}</span>
+                        <span
+                          v-if="isParentTenant && props.row.tenant_name"
+                          class="tenant-badge"
+                        >
+                          <q-icon name="ph ph-buildings" size="11px" class="q-mr-xs text-grey-6" />
+                          {{ props.row.tenant_name }}
+                        </span>
                       </div>
                       <div
                         v-if="props.row.description"
@@ -93,6 +100,13 @@
                         {{ props.row.description }}
                       </div>
                     </div>
+                  </div>
+                </q-td>
+
+                <q-td v-if="isParentTenant" key="tenant" :props="props">
+                  <div class="row items-center no-wrap q-gutter-xs">
+                    <q-icon name="ph ph-buildings" size="14px" class="text-grey-6" />
+                    <span class="text-weight-medium text-grey-9">{{ props.row.tenant_name || '—' }}</span>
                   </div>
                 </q-td>
 
@@ -171,6 +185,11 @@
                         <span class="shops-status__dot" aria-hidden="true" />
                         {{ props.row.is_active ? $t('shop_admin.public') : $t('shop_admin.draft') }}
                       </span>
+                    </div>
+
+                    <div v-if="isParentTenant && props.row.tenant_name" class="row items-center q-gutter-xs text-caption text-grey-8 q-mt-xs">
+                      <q-icon name="ph ph-buildings" size="14px" class="text-grey-6" />
+                      <span class="text-weight-medium">{{ props.row.tenant_name }}</span>
                     </div>
 
                     <p
@@ -265,6 +284,7 @@ const router = useRouter();
 const { t } = useI18n();
 
 const tenantId = computed(() => authStore.tenantId as number);
+const parentTenantId = computed(() => authStore.selectedTenant?.parent_id ?? authStore.tenantId);
 const tenantSlug = computed(() => authStore.selectedTenant?.slug ?? '');
 
 const search = ref<string>('');
@@ -272,6 +292,7 @@ const activeFilter = ref<boolean | null>(null);
 
 const queryParams = computed(() => ({
   tenantId: tenantId.value,
+  parentTenantId: parentTenantId.value,
   search: search.value || null,
   active: activeFilter.value,
 }));
@@ -279,54 +300,77 @@ const queryParams = computed(() => ({
 const { data: shops, isLoading, isError, error } = useShopListQuery(queryParams);
 const { mutate: saveShopMutation, isPending: isSaving } = useSaveShopMutation();
 
+const isParentTenant = computed(() => {
+  if (!tenantId.value) return false;
+  const pId = authStore.selectedTenant?.parent_id ?? tenantId.value;
+  return Number(pId) === Number(tenantId.value);
+});
+
 const filterOptions = computed(() => [
   { value: null, label: t('shop_admin.all') },
   { value: true, label: t('shop_admin.public') },
   { value: false, label: t('shop_admin.draft') },
 ]);
 
-const columns = computed<QTableColumn[]>(() => [
-  {
-    name: 'shop',
-    label: t('shop_admin.col_name'),
-    field: 'name',
-    align: 'left',
-    sortable: true,
-  },
-  {
-    name: 'status',
-    label: t('shop_admin.status'),
-    field: 'is_active',
-    align: 'left',
-    sortable: true,
-  },
-  {
-    name: 'type',
-    label: t('shop_admin.col_type'),
-    field: 'shop_type',
-    align: 'left',
-    sortable: true,
-  },
-  {
-    name: 'vendors',
-    label: t('shop_admin.col_vendor'),
-    field: (row: Shop) => shopVendorLabels(row).join(', '),
-    align: 'left',
-  },
-  {
-    name: 'created_at',
-    label: t('shop_admin.col_created'),
-    field: 'created_at',
-    align: 'left',
-    sortable: true,
-  },
-  {
-    name: 'actions',
-    label: '',
-    field: 'id',
-    align: 'right',
-  },
-]);
+const columns = computed<QTableColumn[]>(() => {
+  const cols: QTableColumn[] = [
+    {
+      name: 'shop',
+      label: t('shop_admin.col_name'),
+      field: 'name',
+      align: 'left',
+      sortable: true,
+    },
+  ];
+
+  if (isParentTenant.value) {
+    cols.push({
+      name: 'tenant',
+      label: 'Tenant',
+      field: 'tenant_name',
+      align: 'left',
+      sortable: true,
+    });
+  }
+
+  cols.push(
+    {
+      name: 'status',
+      label: t('shop_admin.status'),
+      field: 'is_active',
+      align: 'left',
+      sortable: true,
+    },
+    {
+      name: 'type',
+      label: t('shop_admin.col_type'),
+      field: 'shop_type',
+      align: 'left',
+      sortable: true,
+    },
+    {
+      name: 'vendors',
+      label: t('shop_admin.col_vendor'),
+      field: (row: Shop) => shopVendorLabels(row).join(', '),
+      align: 'left',
+    },
+    {
+      name: 'created_at',
+      label: t('shop_admin.col_created'),
+      field: 'created_at',
+      align: 'left',
+      sortable: true,
+    },
+    {
+      name: 'actions',
+      label: '',
+      field: 'id',
+      align: 'right',
+    },
+  );
+
+  return cols;
+});
 
 const dialogOpen = ref(false);
 const dialogError = ref<string | null>(null);
@@ -539,6 +583,25 @@ body.body--dark .shops-table__row:hover {
   font-weight: 500;
   line-height: 1.2;
   white-space: nowrap;
+}
+
+.tenant-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+  line-height: 1.2;
+}
+
+body.body--dark .tenant-badge {
+  background: rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 body.body--dark .shops-tag {

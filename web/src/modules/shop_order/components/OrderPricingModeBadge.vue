@@ -1,13 +1,16 @@
 <template>
-  <q-badge
+  <div
     v-if="visible"
-    rounded
-    class="order-pricing-mode-badge text-weight-bold text-caption q-px-sm q-py-xs"
-    :color="badgeColors.color"
-    :text-color="badgeColors.textColor"
+    class="order-pricing-mode-badge"
+    :class="isNegotiable ? 'mode-negotiable' : 'mode-fixed'"
   >
-    {{ label }}
-  </q-badge>
+    <q-icon
+      :name="isNegotiable ? 'ph ph-arrows-left-right' : 'ph ph-lock'"
+      size="12px"
+      class="q-mr-xs"
+    />
+    <span>{{ label }}</span>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -28,12 +31,43 @@ const visible = computed(() => {
 });
 
 const label = computed(() =>
-  props.isNegotiable ? t('shop_admin.order_pricing_negotiable') : t('shop_admin.order_pricing_fixed'),
-);
-
-const badgeColors = computed(() =>
-  props.isNegotiable
-    ? { color: 'purple-1', textColor: 'purple-9' }
-    : { color: 'blue-grey-1', textColor: 'blue-grey-9' },
+  props.isNegotiable ? t('shop_admin.order_pricing_negotiable', 'Negotiable') : t('shop_admin.order_pricing_fixed', 'Fixed Price'),
 );
 </script>
+
+<style scoped>
+.order-pricing-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 3px 8px;
+  border-radius: 6px;
+  line-height: 1.2;
+}
+
+.mode-negotiable {
+  background: #fdf4ff;
+  color: #86198f;
+  border: 1px solid #f0abfc;
+}
+
+.mode-fixed {
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+}
+
+body.body--dark .mode-negotiable {
+  background: rgba(192, 38, 211, 0.15);
+  color: #f0abfc;
+  border-color: rgba(192, 38, 211, 0.3);
+}
+
+body.body--dark .mode-fixed {
+  background: rgba(100, 116, 139, 0.15);
+  color: #cbd5e1;
+  border-color: rgba(100, 116, 139, 0.3);
+}
+</style>
