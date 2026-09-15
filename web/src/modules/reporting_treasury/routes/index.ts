@@ -114,6 +114,13 @@ const reportingTreasuryRoutes: RouteRecordRaw[] = [
         beforeEnter: guard('reporting_treasury'),
         meta: { title: 'Month snapshot', headerTitle: 'Month snapshot' },
       },
+      {
+        path: 'payments',
+        name: 'app-finance-payments-page',
+        component: () => import('../pages/PaymentsPage.vue'),
+        beforeEnter: guard('payments'),
+        meta: { title: 'Payments', headerTitle: 'Payments' },
+      },
     ],
   },
 ];

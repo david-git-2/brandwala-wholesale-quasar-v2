@@ -112,14 +112,14 @@ CREATE TABLE IF NOT EXISTS "public"."sales_invoices" (
     "created_by" "uuid",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "settlement_discount_amount" numeric(12,2) DEFAULT 0 NOT NULL,
+    "written_off_amount" numeric(12,2) DEFAULT 0 NOT NULL,
     "issued_by_tenant_id" bigint NOT NULL,
     CONSTRAINT "global_invoices_discount_amount_check" CHECK (("discount_amount" >= (0)::numeric)),
     CONSTRAINT "global_invoices_due_amount_check" CHECK (("due_amount" >= (0)::numeric)),
     CONSTRAINT "global_invoices_paid_amount_check" CHECK (("paid_amount" >= (0)::numeric)),
-    CONSTRAINT "global_invoices_payment_status_check" CHECK (("payment_status" = ANY (ARRAY['due'::"text", 'partially_paid'::"text", 'paid'::"text"]))),
+    CONSTRAINT "global_invoices_written_off_amount_check" CHECK (("written_off_amount" >= (0)::numeric)),
+    CONSTRAINT "global_invoices_payment_status_check" CHECK (("payment_status" = ANY (ARRAY['due'::"text", 'partially_paid'::"text", 'paid'::"text", 'settled_with_write_off'::"text"]))),
     CONSTRAINT "global_invoices_print_charge_check" CHECK (("print_charge" >= (0)::numeric)),
-    CONSTRAINT "global_invoices_settlement_discount_amount_check" CHECK (("settlement_discount_amount" >= (0)::numeric)),
     CONSTRAINT "global_invoices_cod_charge_amount_check" CHECK (("cod_charge_amount" >= (0)::numeric)),
     CONSTRAINT "global_invoices_shipping_charge_check" CHECK (("shipping_charge" >= (0)::numeric)),
     CONSTRAINT "global_invoices_subtotal_amount_check" CHECK (("subtotal_amount" >= (0)::numeric)),
@@ -237,6 +237,7 @@ CREATE OR REPLACE VIEW "public"."global_invoices" WITH ("security_invoker"='fals
     "total_amount",
     "due_amount",
     "paid_amount",
+    "written_off_amount",
     "subtotal_amount",
     "discount_amount",
     "shipping_charge",
@@ -246,7 +247,6 @@ CREATE OR REPLACE VIEW "public"."global_invoices" WITH ("security_invoker"='fals
     "created_by",
     "created_at",
     "updated_at",
-    "settlement_discount_amount",
     "cod_charge_amount"
    FROM "public"."sales_invoices";
 
@@ -435,3 +435,44 @@ ALTER TABLE "public"."sales_invoice_counters" OWNER TO "postgres";
 CREATE OR REPLACE TRIGGER "trg_sales_invoice_counters_set_updated_at"
 BEFORE UPDATE ON "public"."sales_invoice_counters"
 FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
+
+
+CREATE TABLE IF NOT EXISTS "public"."invoice_write_offs" (
+    "id" bigint NOT NULL,
+    "tenant_id" bigint NOT NULL,
+    "parent_tenant_id" bigint NOT NULL,
+    "invoice_id" bigint NOT NULL,
+    "payment_id" bigint,
+    "amount" numeric(12,2) NOT NULL,
+    "reason" "text" NOT NULL,
+    "note" "text",
+    "approved_by" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "invoice_write_offs_amount_check" CHECK (("amount" > 0)),
+    CONSTRAINT "invoice_write_offs_reason_check" CHECK (("reason" = ANY (ARRAY['dispute_settlement'::"text", 'bad_debt'::"text", 'currency_rounding'::"text", 'management_concession'::"text"]))),
+    CONSTRAINT "invoice_write_offs_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "invoice_write_offs_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE,
+    CONSTRAINT "invoice_write_offs_parent_tenant_id_fkey" FOREIGN KEY ("parent_tenant_id") REFERENCES "public"."tenants"("id") ON DELETE CASCADE,
+    CONSTRAINT "invoice_write_offs_invoice_id_fkey" FOREIGN KEY ("invoice_id") REFERENCES "public"."sales_invoices"("id") ON DELETE CASCADE,
+    CONSTRAINT "invoice_write_offs_payment_id_fkey" FOREIGN KEY ("payment_id") REFERENCES "public"."global_payments"("id") ON DELETE SET NULL,
+    CONSTRAINT "invoice_write_offs_approved_by_fkey" FOREIGN KEY ("approved_by") REFERENCES "auth"."users"("id")
+);
+
+ALTER TABLE "public"."invoice_write_offs" OWNER TO "postgres";
+
+CREATE SEQUENCE IF NOT EXISTS "public"."invoice_write_offs_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE "public"."invoice_write_offs_id_seq" OWNER TO "postgres";
+ALTER SEQUENCE "public"."invoice_write_offs_id_seq" OWNED BY "public"."invoice_write_offs"."id";
+ALTER TABLE ONLY "public"."invoice_write_offs" ALTER COLUMN "id" SET DEFAULT "nextval"('"public"."invoice_write_offs_id_seq"'::"regclass");
+
+CREATE INDEX "idx_invoice_write_offs_invoice_id" ON "public"."invoice_write_offs" USING "btree" ("invoice_id");
+CREATE INDEX "idx_invoice_write_offs_payment_id" ON "public"."invoice_write_offs" USING "btree" ("payment_id");
+CREATE INDEX "idx_invoice_write_offs_tenant_id" ON "public"."invoice_write_offs" USING "btree" ("tenant_id");
+CREATE INDEX "idx_invoice_write_offs_parent_tenant_id" ON "public"."invoice_write_offs" USING "btree" ("parent_tenant_id");
+

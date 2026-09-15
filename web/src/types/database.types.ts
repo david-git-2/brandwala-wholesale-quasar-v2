@@ -1370,6 +1370,7 @@ export type Database = {
           billing_profile_id: number | null
           collection_source: Database["public"]["Enums"]["collection_source_type"]
           created_at: string
+          customer_group_id: number | null
           id: number
           method: string | null
           note: string | null
@@ -1383,6 +1384,7 @@ export type Database = {
           billing_profile_id?: number | null
           collection_source?: Database["public"]["Enums"]["collection_source_type"]
           created_at?: string
+          customer_group_id?: number | null
           id?: number
           method?: string | null
           note?: string | null
@@ -1396,6 +1398,7 @@ export type Database = {
           billing_profile_id?: number | null
           collection_source?: Database["public"]["Enums"]["collection_source_type"]
           created_at?: string
+          customer_group_id?: number | null
           id?: number
           method?: string | null
           note?: string | null
@@ -1405,6 +1408,13 @@ export type Database = {
           unallocated_amount?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "global_payments_customer_group_id_fkey"
+            columns: ["customer_group_id"]
+            isOneToOne: false
+            referencedRelation: "customer_groups"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payments_billing_profile_id_fkey"
             columns: ["billing_profile_id"]
@@ -2184,6 +2194,81 @@ export type Database = {
           },
           {
             foreignKeyName: "payment_allocations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice_write_offs: {
+        Row: {
+          amount: number
+          approved_by: string | null
+          created_at: string
+          id: number
+          invoice_id: number
+          note: string | null
+          parent_tenant_id: number
+          payment_id: number | null
+          reason: string
+          tenant_id: number
+        }
+        Insert: {
+          amount: number
+          approved_by?: string | null
+          created_at?: string
+          id?: never
+          invoice_id: number
+          note?: string | null
+          parent_tenant_id: number
+          payment_id?: number | null
+          reason: string
+          tenant_id: number
+        }
+        Update: {
+          amount?: number
+          approved_by?: string | null
+          created_at?: string
+          id?: never
+          invoice_id?: number
+          note?: string | null
+          parent_tenant_id?: number
+          payment_id?: number | null
+          reason?: string
+          tenant_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_write_offs_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "global_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_write_offs_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "sales_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_write_offs_parent_tenant_id_fkey"
+            columns: ["parent_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_write_offs_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "global_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_write_offs_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -4241,12 +4326,12 @@ export type Database = {
           retail_billing_mode:
             | Database["public"]["Enums"]["retail_billing_mode"]
             | null
-          settlement_discount_amount: number
           shipping_charge: number
           subtotal_amount: number
           total_amount: number
           updated_at: string
           wrapping_charge: number
+          written_off_amount: number
         }
         Insert: {
           billing_profile_id?: number | null
@@ -4276,12 +4361,12 @@ export type Database = {
           retail_billing_mode?:
             | Database["public"]["Enums"]["retail_billing_mode"]
             | null
-          settlement_discount_amount?: number
           shipping_charge?: number
           subtotal_amount?: number
           total_amount?: number
           updated_at?: string
           wrapping_charge?: number
+          written_off_amount?: number
         }
         Update: {
           billing_profile_id?: number | null
@@ -4311,12 +4396,12 @@ export type Database = {
           retail_billing_mode?:
             | Database["public"]["Enums"]["retail_billing_mode"]
             | null
-          settlement_discount_amount?: number
           shipping_charge?: number
           subtotal_amount?: number
           total_amount?: number
           updated_at?: string
           wrapping_charge?: number
+          written_off_amount?: number
         }
         Relationships: [
           {
@@ -8848,13 +8933,13 @@ export type Database = {
           retail_billing_mode:
             | Database["public"]["Enums"]["retail_billing_mode"]
             | null
-          settlement_discount_amount: number | null
           shipping_charge: number | null
           subtotal_amount: number | null
           tenant_id: number | null
           total_amount: number | null
           updated_at: string | null
           wrapping_charge: number | null
+          written_off_amount: number | null
         }
         Insert: {
           billing_profile_id?: number | null
@@ -8892,13 +8977,13 @@ export type Database = {
           retail_billing_mode?:
             | Database["public"]["Enums"]["retail_billing_mode"]
             | null
-          settlement_discount_amount?: number | null
           shipping_charge?: number | null
           subtotal_amount?: number | null
           tenant_id?: number | null
           total_amount?: number | null
           updated_at?: string | null
           wrapping_charge?: number | null
+          written_off_amount?: number | null
         }
         Update: {
           billing_profile_id?: number | null
@@ -8936,13 +9021,13 @@ export type Database = {
           retail_billing_mode?:
             | Database["public"]["Enums"]["retail_billing_mode"]
             | null
-          settlement_discount_amount?: number | null
           shipping_charge?: number | null
           subtotal_amount?: number | null
           tenant_id?: number | null
           total_amount?: number | null
           updated_at?: string | null
           wrapping_charge?: number | null
+          written_off_amount?: number | null
         }
         Relationships: [
           {
@@ -9587,12 +9672,12 @@ export type Database = {
           retail_billing_mode:
             | Database["public"]["Enums"]["retail_billing_mode"]
             | null
-          settlement_discount_amount: number
           shipping_charge: number
           subtotal_amount: number
           total_amount: number
           updated_at: string
           wrapping_charge: number
+          written_off_amount: number
         }
         SetofOptions: {
           from: "*"
@@ -9772,6 +9857,10 @@ export type Database = {
         Returns: Json
       }
       auth_investor_id: { Args: never; Returns: number }
+      billing_profile_valid_for_issuer: {
+        Args: { p_billing_profile_id: number; p_issued_by_tenant_id: number }
+        Returns: boolean
+      }
       browse_shop_catalog_for_admin: {
         Args: {
           p_include_below_min_units?: boolean
@@ -10320,6 +10409,7 @@ export type Database = {
           billing_profile_id: number | null
           collection_source: Database["public"]["Enums"]["collection_source_type"]
           created_at: string
+          customer_group_id: number | null
           id: number
           method: string | null
           note: string | null
@@ -10499,12 +10589,12 @@ export type Database = {
               retail_billing_mode:
                 | Database["public"]["Enums"]["retail_billing_mode"]
                 | null
-              settlement_discount_amount: number
               shipping_charge: number
               subtotal_amount: number
               total_amount: number
               updated_at: string
               wrapping_charge: number
+              written_off_amount: number
             }
             SetofOptions: {
               from: "*"
@@ -10556,12 +10646,12 @@ export type Database = {
               retail_billing_mode:
                 | Database["public"]["Enums"]["retail_billing_mode"]
                 | null
-              settlement_discount_amount: number
               shipping_charge: number
               subtotal_amount: number
               total_amount: number
               updated_at: string
               wrapping_charge: number
+              written_off_amount: number
             }
             SetofOptions: {
               from: "*"
@@ -10638,12 +10728,12 @@ export type Database = {
               retail_billing_mode:
                 | Database["public"]["Enums"]["retail_billing_mode"]
                 | null
-              settlement_discount_amount: number
               shipping_charge: number
               subtotal_amount: number
               total_amount: number
               updated_at: string
               wrapping_charge: number
+              written_off_amount: number
             }
             SetofOptions: {
               from: "*"
@@ -10694,12 +10784,12 @@ export type Database = {
               retail_billing_mode:
                 | Database["public"]["Enums"]["retail_billing_mode"]
                 | null
-              settlement_discount_amount: number
               shipping_charge: number
               subtotal_amount: number
               total_amount: number
               updated_at: string
               wrapping_charge: number
+              written_off_amount: number
             }
             SetofOptions: {
               from: "*"
@@ -12050,12 +12140,12 @@ export type Database = {
           retail_billing_mode:
             | Database["public"]["Enums"]["retail_billing_mode"]
             | null
-          settlement_discount_amount: number
           shipping_charge: number
           subtotal_amount: number
           total_amount: number
           updated_at: string
           wrapping_charge: number
+          written_off_amount: number
         }
         SetofOptions: {
           from: "*"
@@ -12304,6 +12394,15 @@ export type Database = {
           id: number
           module_key: string
         }[]
+      }
+      list_customer_groups_payment_summary: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_tenant_id: number
+        }
+        Returns: Json
       }
       list_customer_order_backlog_items: {
         Args: { p_billing_profile_id: number; p_tenant_id: number }
@@ -12756,6 +12855,16 @@ export type Database = {
           p_page_size?: number
           p_tenant_id: number
           p_unread_only?: boolean
+        }
+        Returns: Json
+      }
+      list_open_invoices_for_payment: {
+        Args: {
+          p_customer_group_id?: number
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_tenant_id: number
         }
         Returns: Json
       }
@@ -13695,6 +13804,10 @@ export type Database = {
         Args: { p_shipment_id: number }
         Returns: number
       }
+      recipient_profile_valid_for_issuer: {
+        Args: { p_issued_by_tenant_id: number; p_recipient_profile_id: number }
+        Returns: boolean
+      }
       recompute_dropship_cod_collect_amount: {
         Args: { p_order_id: number }
         Returns: number
@@ -13709,6 +13822,21 @@ export type Database = {
       }
       reconcile_single_order_remittance: {
         Args: { p_courier_charge?: number; p_order_id: number }
+        Returns: Json
+      }
+      record_batch_customer_payment: {
+        Args: {
+          p_allocations?: Json
+          p_amount?: number
+          p_billing_profile_id?: number
+          p_customer_group_id?: number
+          p_method?: string
+          p_note?: string
+          p_payment_date?: string
+          p_reference?: string
+          p_tenant_id: number
+          p_write_offs?: Json
+        }
         Returns: Json
       }
       record_dropship_courier_bank_transfer: {
@@ -13880,12 +14008,12 @@ export type Database = {
           retail_billing_mode:
             | Database["public"]["Enums"]["retail_billing_mode"]
             | null
-          settlement_discount_amount: number
           shipping_charge: number
           subtotal_amount: number
           total_amount: number
           updated_at: string
           wrapping_charge: number
+          written_off_amount: number
         }
         SetofOptions: {
           from: "*"

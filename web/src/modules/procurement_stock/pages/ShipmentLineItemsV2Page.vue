@@ -507,7 +507,7 @@
             <!-- Dynamically added custom column cells -->
             <template v-for="col in customColumns" :key="col.name">
               <td v-if="visibleColumnMap[col.name]" class="text-grey-7 font-mono text-caption">
-                {{ (item as any)[col.name] || '-' }}
+                {{ (iteallm as any)[col.name] || '-' }}
               </td>
             </template>
           </tr>

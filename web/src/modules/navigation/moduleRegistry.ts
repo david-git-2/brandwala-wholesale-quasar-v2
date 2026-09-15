@@ -731,8 +731,17 @@ export const MODULE_REGISTRY: readonly ModuleDefinition[] = [
     key: 'payments',
     name: 'Payments & Collection',
     description: 'Record payments and allocate to invoices.',
-    parentModuleKey: 'reporting_treasury',
-    routes: [],
+    navIcon: 'ph ph-credit-card',
+    routes: [
+      {
+        scope: 'app',
+        title: 'Payments',
+        caption: 'Record payments and batch settlement',
+        icon: 'ph ph-credit-card',
+        routeSegment: 'finance/payments',
+        requiredAction: 'view',
+      },
+    ],
   },
 
   {
