@@ -5,8 +5,7 @@
         {{ shipmentStore.error }}
       </q-banner>
 
-      <!-- Toolbar: Quick Filters & Search -->
-      <q-card flat class="floating-surface shadow-1 q-pa-xs flex-shrink-0">
+      <q-card flat bordered class="q-pa-xs flex-shrink-0">
         <div class="row items-center justify-between q-col-gutter-xs">
           <!-- Quick Filter Tabs -->
           <div class="col-12 col-md-auto">
@@ -28,7 +27,6 @@
                   :color="quickFilter === tab.value ? 'white' : 'grey-3'"
                   :text-color="quickFilter === tab.value ? 'primary' : 'grey-9'"
                   class="q-ml-xs text-weight-bolder"
-                  rounded
                 >
                   {{ tab.count }}
                 </q-badge>
@@ -41,14 +39,13 @@
             <q-input
               v-model="searchText"
               outlined
-              rounded
               dense
+              debounce="300"
               clearable
               style="min-width: 200px"
               class="col-grow col-sm-auto dense-search-input"
               placeholder="Search by name or ID..."
-              @keyup.enter="onSearch"
-              @clear="onSearch"
+              @update:model-value="onSearch"
             >
               <template #prepend>
                 <q-icon name="ph ph-magnifying-glass" size="16px" />
@@ -63,12 +60,11 @@
             </q-btn>
 
             <q-btn
-              flat
+              outline
               dense
               no-caps
               color="grey-8"
               class="rounded-sq-btn text-weight-bold q-px-sm"
-              style="border-radius: 8px; border: 1px solid rgba(0, 0, 0, 0.12)"
               label="Archived"
               icon="ph ph-archive-box"
               @click="openArchivedShipmentsModal"
@@ -77,7 +73,6 @@
                 v-if="shipmentStore.archivedTotal > 0"
                 color="grey-3"
                 text-color="grey-9"
-                rounded
                 class="q-ml-xs text-weight-bold"
               >
                 {{ shipmentStore.archivedTotal }}
@@ -134,7 +129,6 @@
       >
         <thead>
           <tr>
-            <th><q-skeleton type="text" width="60px" /></th>
             <th><q-skeleton type="text" width="120px" /></th>
             <th><q-skeleton type="text" width="80px" /></th>
             <th><q-skeleton type="text" width="100px" /></th>
@@ -144,7 +138,6 @@
         </thead>
         <tbody>
           <tr v-for="n in 6" :key="n">
-            <td><q-skeleton type="text" width="60px" height="14px" /></td>
             <td><q-skeleton type="text" width="80%" height="14px" /></td>
             <td><q-skeleton type="QBadge" width="60px" height="16px" /></td>
             <td><q-skeleton type="text" width="70%" height="14px" /></td>
@@ -159,7 +152,7 @@
       <!-- Empty State -->
       <div
         v-else-if="!shipmentStore.rows.length && activeFilterCount === 0 && quickFilter === 'all'"
-        class="column items-center justify-center q-pa-lg text-grey-6 empty-state-block floating-surface shadow-1 col"
+        class="column items-center justify-center q-pa-lg text-grey-6 empty-state-block col"
       >
         <q-icon name="ph ph-truck" size="48px" class="q-mb-xs text-grey-4" />
         <div class="text-subtitle2 text-weight-medium q-mb-xs">No shipments yet</div>
@@ -177,7 +170,7 @@
       </div>
 
       <!-- No Matching Filters -->
-      <div v-else-if="!shipmentStore.rows.length" class="column items-center justify-center text-center text-grey-7 q-py-lg floating-surface shadow-1 rounded-borders col">
+      <div v-else-if="!shipmentStore.rows.length" class="column items-center justify-center text-center text-grey-7 q-py-lg col">
         <q-icon name="ph ph-funnel" size="36px" class="q-mb-xs text-grey-4" />
         <div class="text-subtitle2 text-weight-medium">No shipments match filters</div>
         <div class="text-caption text-grey-6 q-mt-xs">Try clearing search or filters to view all shipments.</div>
@@ -185,102 +178,115 @@
 
       <!-- Table View with Internal Scroll -->
       <div v-else class="treasury-table-wrap col">
-        <q-card flat class="floating-surface shadow-1 q-pa-none full-height column no-wrap">
-          <q-table
-            flat
-            :rows="shipmentStore.rows"
-            :columns="columns"
-            row-key="id"
-            :loading="shipmentStore.loading"
-            v-model:pagination="pagination"
-            :rows-per-page-options="[10, 20, 50]"
-            @request="onTableRequest"
-            class="shipment-table cursor-pointer col"
-            @row-click="onRowClick"
-          >
-            <template #body="props">
-              <q-tr
-                :props="props"
-                :style="statusRowStyle(props.row.status)"
-                class="shipment-row cursor-pointer"
-                @click="onRowClick($event, props.row)"
-              >
-                <!-- ID Slot -->
-                <q-td key="id" :props="props">
-                  <span class="text-weight-bold text-primary cursor-pointer hover-underline">
-                    #{{ props.row.tenant_shipment_id || props.row.id }}
-                  </span>
-                </q-td>
+        <q-table
+          flat
+          bordered
+          :rows="shipmentStore.rows"
+          :columns="columns"
+          row-key="id"
+          :loading="shipmentStore.loading"
+          v-model:pagination="pagination"
+          :rows-per-page-options="[10, 20, 50]"
+          @request="onTableRequest"
+          class="shipment-table cursor-pointer col"
+          @row-click="onRowClick"
+        >
+          <template #body="props">
+            <q-tr
+              :props="props"
+              :style="statusRowStyle(props.row.status)"
+              class="shipment-row cursor-pointer"
+              @click="onRowClick($event, props.row)"
+            >
+              <q-td key="name" :props="props">
+                <div class="text-weight-medium text-grey-9 line-clamp-1">
+                  {{ props.row.name ?? '—' }}
+                </div>
+                <div class="shipment-meta">
+                  {{ formatDate(props.row.created_at) }}
+                </div>
+              </q-td>
 
-                <!-- Shipment Name Slot -->
-                <q-td key="name" :props="props">
-                  <div class="text-weight-bold line-clamp-1">
-                    {{ props.row.name ?? '-' }}
-                  </div>
-                  <div class="text-caption text-grey-6 text-xxs row items-center">
-                    <q-icon name="ph ph-calendar-blank" size="10px" class="q-mr-xs" />
-                    {{ formatDate(props.row.created_at) }}
-                  </div>
-                </q-td>
+              <q-td key="type" :props="props">
+                <q-chip
+                  square
+                  dense
+                  :color="getTypeChipStyle(props.row.type).color"
+                  :text-color="getTypeChipStyle(props.row.type).textColor"
+                  class="text-weight-bold text-capitalize text-xxs q-ma-none soft-chip"
+                >
+                  {{ props.row.type }}
+                </q-chip>
+              </q-td>
 
-                <!-- Type Slot -->
-                <q-td key="type" :props="props">
-                  <q-chip
+              <q-td key="vendor" :props="props">
+                <div class="row items-center no-wrap">
+                  <q-avatar
                     square
-                    dense
-                    :color="getTypeChipStyle(props.row.type).color"
-                    :text-color="getTypeChipStyle(props.row.type).textColor"
-                    class="text-weight-bold text-capitalize text-xxs q-ma-none soft-chip"
+                    size="28px"
+                    :color="$q.dark.isActive ? 'grey-9' : 'grey-3'"
+                    :text-color="$q.dark.isActive ? 'grey-3' : 'grey-9'"
+                    class="q-mr-sm text-weight-bold text-xxs avatar-soft-sq"
                   >
-                    {{ props.row.type }}
-                  </q-chip>
-                </q-td>
-
-                <!-- Vendor Slot -->
-                <q-td key="vendor" :props="props">
-                  <div class="text-weight-bold text-xs line-clamp-1">
+                    {{ getInitials(props.row.vendor_name || getVendorName(props.row.vendor_id)) }}
+                  </q-avatar>
+                  <div class="text-weight-medium text-grey-9 text-xs line-clamp-1">
                     {{ props.row.vendor_name || getVendorName(props.row.vendor_id) }}
                   </div>
-                </q-td>
+                </div>
+              </q-td>
 
-                <!-- Status Slot -->
-                <q-td key="status" :props="props">
-                  <div
-                    class="shipment-status-badge row inline items-center no-wrap"
-                    :style="statusBadgeStyle(props.row.status)"
-                  >
-                    <q-icon
-                      :name="getStatusIcon(props.row.status)"
-                      size="13px"
-                      class="q-mr-xs"
-                    />
-                    <span class="text-weight-bolder text-uppercase text-xxs" style="letter-spacing: 0.04em">
-                      {{ formatShipmentStatusLabel(props.row.status) }}
-                    </span>
-                  </div>
-                </q-td>
+              <q-td key="status" :props="props">
+                <q-chip
+                  square
+                  dense
+                  :color="getStatusChipStyle(props.row.status).color"
+                  :text-color="getStatusChipStyle(props.row.status).textColor"
+                  class="text-weight-bold text-uppercase text-xxs q-ma-none soft-chip"
+                >
+                  <q-icon :name="getStatusIcon(props.row.status)" size="13px" class="q-mr-xs" />
+                  {{ formatShipmentStatusLabel(props.row.status) }}
+                </q-chip>
+              </q-td>
 
-                <!-- Actions Slot: Direct Archive Button (3-dots removed per spec) -->
-                <q-td key="actions" :props="props" class="text-right" @click.stop>
-                  <q-btn
-                    flat
-                    dense
-                    no-caps
-                    size="sm"
-                    color="grey-7"
-                    icon="ph ph-archive-box"
-                    label="Archive"
-                    class="rounded-sq-btn text-weight-medium q-px-xs"
-                    style="border-radius: 6px"
-                    @click.stop="confirmArchiveShipment(props.row)"
-                  >
-                    <q-tooltip>Archive this shipment</q-tooltip>
-                  </q-btn>
-                </q-td>
-              </q-tr>
-            </template>
-          </q-table>
-        </q-card>
+              <q-td key="actions" :props="props" class="text-right" @click.stop>
+                <q-btn
+                  flat
+                  dense
+                  round
+                  color="grey-7"
+                  icon="ph ph-dots-three-vertical"
+                  size="sm"
+                  aria-label="Shipment actions"
+                >
+                  <q-menu auto-close>
+                    <q-list dense style="min-width: 160px">
+                      <q-item clickable @click="viewDetails(props.row.id)">
+                        <q-item-section avatar style="min-width: 24px">
+                          <q-icon name="ph ph-eye" size="16px" />
+                        </q-item-section>
+                        <q-item-section>View details</q-item-section>
+                      </q-item>
+                      <q-item clickable @click="openEditShipment(props.row)">
+                        <q-item-section avatar style="min-width: 24px">
+                          <q-icon name="ph ph-pencil-simple" size="16px" />
+                        </q-item-section>
+                        <q-item-section>Edit</q-item-section>
+                      </q-item>
+                      <q-item clickable @click="confirmArchiveShipment(props.row)">
+                        <q-item-section avatar style="min-width: 24px">
+                          <q-icon name="ph ph-archive-box" size="16px" />
+                        </q-item-section>
+                        <q-item-section>Archive</q-item-section>
+                      </q-item>
+                    </q-list>
+                  </q-menu>
+                  <q-tooltip>Actions</q-tooltip>
+                </q-btn>
+              </q-td>
+            </q-tr>
+          </template>
+        </q-table>
       </div>
     </div>
   </q-page>
@@ -355,6 +361,14 @@ const getVendorName = (vendorId: number | null | undefined): string => {
   return found ? found.name : `Vendor #${vendorId}`;
 };
 
+const getInitials = (name: string | null | undefined): string => {
+  const parts = (name ?? '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length || parts[0] === '—') return '—';
+  const first = parts[0]?.[0] ?? '';
+  const last = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? '') : '';
+  return `${first}${last}`.toUpperCase();
+};
+
 const loadVendorData = async () => {
   if (!authStore.tenantId) return;
   try {
@@ -389,13 +403,42 @@ const getTypeChipStyle = (type: string | null | undefined) => {
   }
 };
 
+const getStatusChipStyle = (status: string | null | undefined) => {
+  const key = (status ?? '').trim().toLowerCase();
+  if ($q.dark.isActive) {
+    switch (key) {
+      case 'draft':
+        return { color: 'amber-10', textColor: 'amber-2' };
+      case 'in_transit':
+        return { color: 'orange-10', textColor: 'orange-2' };
+      case 'received':
+        return { color: 'green-10', textColor: 'green-2' };
+      case 'cancelled':
+        return { color: 'red-10', textColor: 'red-2' };
+      default:
+        return { color: 'grey-9', textColor: 'grey-2' };
+    }
+  }
+  switch (key) {
+    case 'draft':
+      return { color: 'amber-1', textColor: 'amber-10' };
+    case 'in_transit':
+      return { color: 'orange-1', textColor: 'orange-10' };
+    case 'received':
+      return { color: 'green-1', textColor: 'green-10' };
+    case 'cancelled':
+      return { color: 'red-1', textColor: 'red-10' };
+    default:
+      return { color: 'grey-2', textColor: 'grey-9' };
+  }
+};
+
 const formatDate = (dateStr: string | null | undefined): string => {
   if (!dateStr) return '—';
   return dateStr.split('T')[0] ?? '—';
 };
 
 const columns: QTableColumn[] = [
-  { name: 'id', label: 'ID', field: 'tenant_shipment_id', align: 'left', sortable: false },
   { name: 'name', label: 'Shipment Name', field: 'name', align: 'left', sortable: false },
   { name: 'type', label: 'Type', field: 'type', align: 'left', sortable: false },
   {
@@ -505,7 +548,7 @@ const openArchivedShipmentsModal = () => {
 const confirmArchiveShipment = (shipment: GlobalShipment) => {
   $q.dialog({
     title: 'Archive Shipment',
-    message: `Are you sure you want to archive "${shipment.name}" (#${(shipment as any).tenant_shipment_id || shipment.id})? It will be moved out of the active shipments list.`,
+    message: `Are you sure you want to archive "${shipment.name}" (#${shipment.tenant_shipment_id || shipment.id})? It will be moved out of the active shipments list.`,
     cancel: {
       flat: true,
       label: 'Cancel',
@@ -556,7 +599,7 @@ const defaultStatusVisual: ShipmentStatusVisual = {
 };
 
 const defaultDarkStatusVisual: ShipmentStatusVisual = {
-  rowBackground: 'transparent',
+  rowBackground: 'rgba(148, 163, 184, 0.08)',
   rowAccent: '#475569',
   chipBackground: 'rgba(255, 255, 255, 0.08)',
   chipText: '#cbd5e1',
@@ -606,7 +649,7 @@ const shipmentStatusVisualMap: Record<string, ShipmentStatusVisual> = {
 
 const darkStatusVisualMap: Record<string, ShipmentStatusVisual> = {
   draft: {
-    rowBackground: 'transparent',
+    rowBackground: 'rgba(245, 158, 11, 0.08)',
     rowAccent: '#f59e0b',
     chipBackground: 'rgba(245, 158, 11, 0.15)',
     chipText: '#fbbf24',
@@ -615,7 +658,7 @@ const darkStatusVisualMap: Record<string, ShipmentStatusVisual> = {
     icon: 'ph ph-note-pencil',
   },
   in_transit: {
-    rowBackground: 'transparent',
+    rowBackground: 'rgba(249, 115, 22, 0.08)',
     rowAccent: '#f97316',
     chipBackground: 'rgba(249, 115, 22, 0.15)',
     chipText: '#fb923c',
@@ -624,8 +667,8 @@ const darkStatusVisualMap: Record<string, ShipmentStatusVisual> = {
     icon: 'ph ph-truck',
   },
   received: {
-    rowBackground: 'transparent',
-    rowAccent: '#3ecf8e',
+    rowBackground: 'rgba(34, 197, 94, 0.08)',
+    rowAccent: '#22c55e',
     chipBackground: 'rgba(62, 207, 142, 0.15)',
     chipText: '#3ecf8e',
     chipBorder: 'rgba(62, 207, 142, 0.35)',
@@ -633,8 +676,8 @@ const darkStatusVisualMap: Record<string, ShipmentStatusVisual> = {
     icon: 'ph ph-check-circle',
   },
   cancelled: {
-    rowBackground: 'transparent',
-    rowAccent: '#f87171',
+    rowBackground: 'rgba(239, 68, 68, 0.08)',
+    rowAccent: '#ef4444',
     chipBackground: 'rgba(248, 113, 113, 0.15)',
     chipText: '#f87171',
     chipBorder: 'rgba(248, 113, 113, 0.35)',
@@ -658,16 +701,6 @@ const statusRowStyle = (status: string | null | undefined) => {
   return {
     backgroundColor: visual.rowBackground,
     boxShadow: `inset 3px 0 0 ${visual.rowAccent}`,
-  };
-};
-
-const statusBadgeStyle = (status: string | null | undefined) => {
-  const style = getStatusVisual(status);
-  return {
-    backgroundColor: style.chipBackground,
-    color: style.chipText,
-    border: `1px solid ${style.chipBorder}`,
-    boxShadow: style.chipShadow,
   };
 };
 
@@ -756,19 +789,13 @@ watch(
   top: 0;
   z-index: 2;
   font-weight: 700;
-  color: #0f172a;
-  background: #f8fafc;
+  color: var(--bw-neutral-chrome);
+  background: var(--bw-neutral-surface);
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.03em;
   padding: 8px 12px;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-body.body--dark .shipment-table :deep(thead tr th) {
-  background: #1c1c1c;
-  color: #a1a1aa;
-  border-bottom: 1px solid #2e2e2e;
+  border-bottom: 1px solid var(--bw-neutral-border);
 }
 
 .shipment-table :deep(tbody tr) {
@@ -776,39 +803,29 @@ body.body--dark .shipment-table :deep(thead tr th) {
 }
 
 .shipment-table :deep(tbody tr:hover) {
-  background-color: #f1f5f9 !important;
-}
-
-body.body--dark .shipment-table :deep(tbody tr:hover) {
-  background-color: #242424 !important;
+  filter: brightness(0.98);
 }
 
 .shipment-table :deep(tbody td) {
-  padding: 6px 12px;
-  border-bottom: 1px solid #f1f5f9;
-  font-size: 12.5px;
-}
-
-body.body--dark .shipment-table :deep(tbody td) {
-  border-bottom: 1px solid #262626;
-  color: #ededed;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--bw-neutral-border);
+  font-size: 13px;
+  color: var(--bw-neutral-ink);
 }
 
 .hover-underline:hover {
   text-decoration: underline;
 }
 
-.shipment-status-badge {
-  border-radius: 6px;
-  padding: 3px 8px;
-  display: inline-flex;
-  align-items: center;
-  font-weight: 700;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+.shipment-meta {
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--bw-neutral-muted);
+  margin-top: 2px;
 }
 
-.shipment-status-badge:hover {
-  transform: translateY(-1px);
+.avatar-soft-sq {
+  border-radius: 6px;
 }
 
 .line-clamp-1 {
@@ -820,8 +837,9 @@ body.body--dark .shipment-table :deep(tbody td) {
 }
 
 .text-xxs {
-  font-size: 9px;
-  line-height: 1;
+  font-size: 10px;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
 }
 
 .text-xs {

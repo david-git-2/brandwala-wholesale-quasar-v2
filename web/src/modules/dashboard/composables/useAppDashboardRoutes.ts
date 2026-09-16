@@ -12,7 +12,7 @@ export const useAppDashboardRoutes = (tenantSlugOverride?: string) => {
   const route = useRoute();
 
   const tenantSlug = computed(
-    () => tenantSlugOverride ?? (route.params.tenantSlug as string) || '',
+    () => tenantSlugOverride ?? ((route.params.tenantSlug as string) || ''),
   );
 
   const withSlug = (
@@ -31,9 +31,20 @@ export const useAppDashboardRoutes = (tenantSlugOverride?: string) => {
     tenantSlug,
     procurementStockList: () => withSlug('app-procurement-stock-list'),
     procurementShipmentList: () => withSlug('app-procurement-shipment-list'),
-    shopOrders: (query?: RouteQuery) => withSlug('app-shop-orders-page', { query }),
-    shopOrdersDropship: () => withSlug('app-shop-orders-page', { query: { shopType: 'dropship' } }),
-    globalInvoices: (query?: RouteQuery) => withSlug('app-global-invoices-page', { query }),
+    procurementShipmentCreate: () => withSlug('app-procurement-shipment-list'),
+    procurementShipmentDetails: (id: string | number) =>
+      withSlug('app-procurement-shipment-details', { params: { id } }),
+    shopOrders: (query?: RouteQuery) =>
+      withSlug('app-shop-orders-page', query ? { query } : undefined),
+    shopOrdersDropship: () =>
+      withSlug('app-shop-orders-page', { query: { shopType: 'dropship' } }),
+    globalInvoices: (query?: RouteQuery) =>
+      withSlug('app-global-invoices-page', query ? { query } : undefined),
+    globalInvoicesCreate: () => withSlug('app-global-invoices-create-wholesale'),
+    reportsSalesSummary: () => withSlug('app-global-invoices-overview'),
+    reportsCustomerDues: () =>
+      withSlug('app-global-invoices-page', { query: { payment_status: 'unpaid' } }),
+    stockValuation: () => withSlug('app-procurement-stock-list'),
     walletHome: () => withSlug('app-wallet-home-page'),
     tasks: () => withSlug('tasks-page'),
     capitalLedger: () => withSlug('app-capital-ledger-page'),

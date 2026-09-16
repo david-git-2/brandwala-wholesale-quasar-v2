@@ -15,32 +15,35 @@ A dashboard is only valuable if it answers two immediate questions for staff on 
 
 ---
 
-## 🏢 2. Multi-Tenant Adaptation: Parent vs. Child Tenants
+## 🏢 2. Multi-Tenant Architecture: Company Umbrella & Brand Selling Desks
 
-The dashboard adapts its components based on the workspace hierarchy:
+Under the unified enterprise architecture ([`doc/TENANT_UX_AND_FEATURE_ENABLEMENT.md`](../TENANT_UX_AND_FEATURE_ENABLEMENT.md)), child tenants operate as **Brands** within the single parent company:
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    PARENT COMPANY (parent_id = NULL)        │
-│                    "Supply Chain, Logistics & Treasury"     │
-├─────────────────────────────────────────────────────────────┤
-│  • Inbound Shipments (draft / in transit / received)         │
-│  • Warehouse Stock by Location                              │
-│  • Investor Capital Pools & Container ROI                   │
-│  • Consolidated Company Liquidity & Sister Concern Velocity │
-└──────────────────────────────┬──────────────────────────────┘
-                               │ Virtual Stock Allocation
-                               ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    SISTER CONCERN (parent_id !== NULL)      │
-│                    "Wholesale, Storefront & Dropshipping"   │
-├─────────────────────────────────────────────────────────────┤
-│  • B2B Shop Orders & Reseller Dropship Approval Queues      │
-│  • Courier Dispatch Batches (Pathao / Steadfast)            │
-│  • Wholesale Invoicing, Credit Terms & Receivables          │
-│  • Courier Cash-on-Delivery (COD) Remittance Tracking       │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    COMPANY WORKSPACE (Single App Dashboard)             │
+│                    "Consolidated Books, Physical Stock & Treasury"      │
+├─────────────────────────────────────────────────────────────────────────┤
+│  • Global Warehouse Stock Pool (`global_stocks`) & International Intake │
+│  • Universal Double-Entry Ledger & Operating Liquidity                  │
+│  • Investor Capital Pools & Landed Cost Tracking                        │
+│  • Cross-Brand Filter: [All Brands ▾] or slice by [Specific Brand ▾]    │
+└────────────────────────────────────┬────────────────────────────────────┘
+                                     │ Virtual Allocations & Orders
+                                     ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    BRAND SELLING DESKS (Filtered View)                  │
+│                    "Wholesale, Storefront, Dropshipping & Consignment"  │
+├─────────────────────────────────────────────────────────────────────────┤
+│  • Brand Storefront & B2B Wholesale Invoicing (`issued_by_tenant_id`)   │
+│  • Reseller Dropship Approval & Packaging Queues                        │
+│  • Courier Remittances (Pathao / Steadfast COD reconciliation)          │
+│  • Brand Contribution & Velocity Matrix                                 │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
+
+> [!NOTE]
+> See the full specification in **[UNIFIED_APP_DASHBOARD_PLAN.md](UNIFIED_APP_DASHBOARD_PLAN.md)**.
 
 ---
 

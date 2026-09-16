@@ -12,7 +12,10 @@ Staff home is an **operational work desk**, not photo heroes:
 - **Stubs** — unfinished modules (e.g. after-sales) use `DashboardStubBadge` + em-dash metrics only; no sample charts; never fake live counts in the attention strip.
 - **No shortcut tiles** on app dashboard — sidebar handles navigation.
 
-Parent workspace: stock + shipment pipeline (draft / in transit / received), invoices, wallet, investor, tasks (+ thrift if enabled). Child workspace: shop fulfillment + dropship queue, invoices, wallet, tasks (+ thrift).
+Unified enterprise workspace: All child tenants are unified as **Brands** under the parent company books. The dashboard provides a consolidated enterprise operational desk with dynamic Brand filtering (All Brands vs. specific brand), tracking inbound stock + shipment pipeline, order fulfillment & dropship, multi-brand revenue, universal wallet liquidity, investor yields, and tasks.
+
+> [!NOTE]
+> For the complete visual and technical specification, see the **[Unified Enterprise App Dashboard Plan](UNIFIED_APP_DASHBOARD_PLAN.md)**.
 
 ---
 
