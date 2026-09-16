@@ -38,3 +38,22 @@ export interface UpdateShipmentSectionPayload {
   sort_order?: number;
   metadata?: ShipmentSectionMetadata;
 }
+
+export interface SectionFormData {
+  id?: string;
+  dbId?: number;
+  title: string;
+  invoiceNumber?: string;
+  invoiceDate?: string;
+  notes?: string;
+}
+
+export interface SectionViewData {
+  id: string;
+  name: string;
+  invoiceNumber?: string;
+  invoiceDate?: string;
+  notes?: string;
+  dbId?: number;
+}
+

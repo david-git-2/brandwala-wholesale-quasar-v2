@@ -1,40 +1,38 @@
 <template>
   <q-page class="q-pa-sm page-fixed-layout column no-wrap overflow-hidden">
     <div class="column no-wrap full-height q-gutter-y-xs overflow-hidden">
+      <!-- Status/Error Banner -->
       <q-banner v-if="shipmentStore.error" class="bw-status-banner bg-negative text-white flex-shrink-0" dense rounded>
         {{ shipmentStore.error }}
       </q-banner>
 
-      <q-card flat bordered class="q-pa-xs flex-shrink-0">
+      <!-- Compact List Toolbar -->
+      <q-card flat bordered class="q-pa-xs flex-shrink-0 list-toolbar-card">
         <div class="row items-center justify-between q-col-gutter-xs">
           <!-- Quick Filter Tabs -->
           <div class="col-12 col-md-auto">
             <div class="row items-center q-gutter-x-xs quick-filter-toggle">
-              <q-btn
+              <button
                 v-for="tab in filterTabs"
                 :key="tab.value"
-                dense
-                unelevated
-                no-caps
-                :color="quickFilter === tab.value ? 'primary' : 'transparent'"
-                :text-color="quickFilter === tab.value ? 'white' : 'grey-8'"
-                class="quick-filter-btn text-xs"
+                type="button"
+                class="quick-filter-pill"
+                :class="{ 'quick-filter-pill--active': quickFilter === tab.value }"
                 @click="setQuickFilter(tab.value)"
               >
                 <span>{{ tab.label }}</span>
-                <q-badge
+                <span
                   v-if="tab.count !== undefined"
-                  :color="quickFilter === tab.value ? 'white' : 'grey-3'"
-                  :text-color="quickFilter === tab.value ? 'primary' : 'grey-9'"
-                  class="q-ml-xs text-weight-bolder"
+                  class="pill-badge"
+                  :class="{ 'pill-badge--active': quickFilter === tab.value }"
                 >
                   {{ tab.count }}
-                </q-badge>
-              </q-btn>
+                </span>
+              </button>
             </div>
           </div>
 
-          <!-- Search & Filter Actions -->
+          <!-- Search & Header Actions -->
           <div class="col-12 col-md-grow row items-center justify-end q-gutter-x-xs">
             <q-input
               v-model="searchText"
@@ -42,21 +40,21 @@
               dense
               debounce="300"
               clearable
-              style="min-width: 200px"
+              style="min-width: 220px"
               class="col-grow col-sm-auto dense-search-input"
-              placeholder="Search by name or ID..."
+              placeholder="Search by shipment name or ID..."
               @update:model-value="onSearch"
             >
               <template #prepend>
-                <q-icon name="ph ph-magnifying-glass" size="16px" />
+                <q-icon name="ph ph-magnifying-glass" size="16px" class="text-slate-400" />
               </template>
             </q-input>
 
-            <q-btn flat round dense icon="ph ph-funnel" @click="openFilterDrawer">
+            <q-btn flat round dense icon="ph ph-funnel" class="text-slate-500" @click="openFilterDrawer">
               <q-badge v-if="activeFilterCount > 0" color="primary" rounded floating>
                 {{ activeFilterCount }}
               </q-badge>
-              <q-tooltip>More Filters</q-tooltip>
+              <q-tooltip>Filter options</q-tooltip>
             </q-btn>
 
             <q-btn
@@ -64,19 +62,14 @@
               dense
               no-caps
               color="grey-8"
-              class="rounded-sq-btn text-weight-bold q-px-sm"
+              class="rounded-sq-btn text-weight-medium q-px-sm"
               label="Archived"
               icon="ph ph-archive-box"
               @click="openArchivedShipmentsModal"
             >
-              <q-badge
-                v-if="shipmentStore.archivedTotal > 0"
-                color="grey-3"
-                text-color="grey-9"
-                class="q-ml-xs text-weight-bold"
-              >
+              <span v-if="shipmentStore.archivedTotal > 0" class="archived-counter-badge q-ml-xs">
                 {{ shipmentStore.archivedTotal }}
-              </q-badge>
+              </span>
             </q-btn>
 
             <q-btn
@@ -85,7 +78,7 @@
               no-caps
               dense
               class="rounded-sq-btn text-weight-bold q-px-sm"
-              label="Add shipment"
+              label="New Shipment"
               icon="ph ph-plus"
               @click="openCreateShipment"
             />
@@ -93,18 +86,18 @@
         </div>
       </q-card>
 
-      <!-- Filter Sidebar -->
-      <FilterSidebar v-model="filterDrawerOpen" title="Filters">
+      <!-- Filter Sidebar Drawer -->
+      <FilterSidebar v-model="filterDrawerOpen" title="Filter Shipments">
         <div class="q-gutter-y-md q-pa-sm">
           <q-select
             v-model="draftStatusFilter"
             :options="statusOptions"
-            filled
+            outlined
             dense
             clearable
             emit-value
             map-options
-            label="Filter by Status"
+            label="Shipment Status"
           />
 
           <div class="row justify-end q-gutter-x-sm q-mt-md">
@@ -120,43 +113,30 @@
         </div>
       </FilterSidebar>
 
-      <!-- Skeleton Table Loader -->
-      <q-markup-table
-        v-if="shipmentStore.loading && !shipmentStore.rows.length"
-        flat
-        bordered
-        class="shipment-table treasury-table-wrap col"
-      >
-        <thead>
-          <tr>
-            <th><q-skeleton type="text" width="120px" /></th>
-            <th><q-skeleton type="text" width="80px" /></th>
-            <th><q-skeleton type="text" width="100px" /></th>
-            <th><q-skeleton type="text" width="70px" /></th>
-            <th class="text-right"><q-skeleton type="text" width="40px" class="q-ml-auto" /></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="n in 6" :key="n">
-            <td><q-skeleton type="text" width="80%" height="14px" /></td>
-            <td><q-skeleton type="QBadge" width="60px" height="16px" /></td>
-            <td><q-skeleton type="text" width="70%" height="14px" /></td>
-            <td><q-skeleton type="QBadge" width="65px" height="18px" /></td>
-            <td class="text-right">
-              <q-skeleton type="QBtn" size="sm" width="24px" height="24px" class="q-ml-auto" />
-            </td>
-          </tr>
-        </tbody>
-      </q-markup-table>
+      <!-- Skeleton Loading State -->
+      <div v-if="shipmentStore.loading && !shipmentStore.rows.length" class="shipment-list-card col">
+        <div class="shipment-list-scroll">
+          <div v-for="n in 8" :key="n" class="shipment-list-item shipment-list-item--skeleton">
+            <div class="shipment-info">
+              <q-skeleton type="text" width="220px" height="18px" class="q-mb-xs" />
+              <q-skeleton type="text" width="320px" height="13px" />
+            </div>
+            <div class="shipment-aside">
+              <q-skeleton type="QBadge" width="75px" height="22px" class="rounded-borders" />
+              <q-skeleton type="QBtn" size="xs" width="16px" height="16px" />
+            </div>
+          </div>
+        </div>
+      </div>
 
-      <!-- Empty State -->
+      <!-- Zero State (First Time) -->
       <div
         v-else-if="!shipmentStore.rows.length && activeFilterCount === 0 && quickFilter === 'all'"
-        class="column items-center justify-center q-pa-lg text-grey-6 empty-state-block col"
+        class="column items-center justify-center q-pa-xl text-grey-6 empty-state-block col"
       >
-        <q-icon name="ph ph-truck" size="48px" class="q-mb-xs text-grey-4" />
-        <div class="text-subtitle2 text-weight-medium q-mb-xs">No shipments yet</div>
-        <div class="text-caption text-grey-6 q-mb-sm">Add a shipment to start buying and receiving goods.</div>
+        <q-icon name="ph ph-truck" size="48px" class="q-mb-sm text-grey-4" />
+        <div class="text-subtitle1 text-weight-bold text-slate-800 q-mb-2xs">No Inbound Shipments</div>
+        <div class="text-caption text-grey-6 q-mb-md">Add a shipment to start procuring, receiving, and tracking stock batches.</div>
         <q-btn
           color="primary"
           unelevated
@@ -169,124 +149,64 @@
         />
       </div>
 
-      <!-- No Matching Filters -->
-      <div v-else-if="!shipmentStore.rows.length" class="column items-center justify-center text-center text-grey-7 q-py-lg col">
+      <!-- No Filter Matches -->
+      <div v-else-if="!shipmentStore.rows.length" class="column items-center justify-center text-center text-grey-7 q-py-xl col shipment-list-card">
         <q-icon name="ph ph-funnel" size="36px" class="q-mb-xs text-grey-4" />
-        <div class="text-subtitle2 text-weight-medium">No shipments match filters</div>
-        <div class="text-caption text-grey-6 q-mt-xs">Try clearing search or filters to view all shipments.</div>
+        <div class="text-subtitle2 text-weight-medium text-slate-800">No shipments found</div>
+        <div class="text-caption text-grey-6 q-mt-xs">Try searching with a different keyword or clear status filters.</div>
       </div>
 
-      <!-- Table View with Internal Scroll -->
-      <div v-else class="treasury-table-wrap col">
-        <q-table
-          flat
-          bordered
-          :rows="shipmentStore.rows"
-          :columns="columns"
-          row-key="id"
-          :loading="shipmentStore.loading"
-          v-model:pagination="pagination"
-          :rows-per-page-options="[10, 20, 50]"
-          @request="onTableRequest"
-          class="shipment-table cursor-pointer col"
-          @row-click="onRowClick"
-        >
-          <template #body="props">
-            <q-tr
-              :props="props"
-              :style="statusRowStyle(props.row.status)"
-              class="shipment-row cursor-pointer"
-              @click="onRowClick($event, props.row)"
-            >
-              <q-td key="name" :props="props">
-                <div class="text-weight-medium text-grey-9 line-clamp-1">
-                  {{ props.row.name ?? '—' }}
-                </div>
-                <div class="shipment-meta">
-                  {{ formatDate(props.row.created_at) }}
-                </div>
-              </q-td>
+      <!-- Clean Linear-Style List Container -->
+      <div v-else class="shipment-list-card col">
+        <!-- Scrollable List of Rows -->
+        <div class="shipment-list-scroll">
+          <div
+            v-for="shipment in shipmentStore.rows"
+            :key="shipment.id"
+            class="shipment-list-item"
+            @click="viewDetails(shipment.id)"
+          >
+            <!-- Left Side: Title & Inline Metadata -->
+            <div class="shipment-info">
+              <div class="shipment-title-line">
+                <span class="shipment-name">{{ shipment.name || `Shipment #${shipment.id}` }}</span>
+              </div>
+              <div class="shipment-meta-line">
+                <span class="meta-item meta-vendor">{{ shipment.vendor_name || getVendorName(shipment.vendor_id) }}</span>
+                <span class="meta-dot">·</span>
+                <span class="meta-item meta-type">{{ formatTypeLabel(shipment.type) }}</span>
+                <span class="meta-dot">·</span>
+                <span class="meta-item meta-date">{{ formatDate(shipment.created_at) }}</span>
+                <span v-if="shipment.cargo_company_id" class="meta-dot">·</span>
+                <span v-if="shipment.cargo_company_id" class="meta-item meta-cargo">Cargo #{{ shipment.cargo_company_id }}</span>
+              </div>
+            </div>
 
-              <q-td key="type" :props="props">
-                <q-chip
-                  square
-                  dense
-                  :color="getTypeChipStyle(props.row.type).color"
-                  :text-color="getTypeChipStyle(props.row.type).textColor"
-                  class="text-weight-bold text-capitalize text-xxs q-ma-none soft-chip"
-                >
-                  {{ props.row.type }}
-                </q-chip>
-              </q-td>
+            <!-- Right Side: Status Tag & Arrow CTA -->
+            <div class="shipment-aside">
+              <span class="status-pill" :class="`status-pill--${getStatusSlug(shipment.status)}`">
+                <q-icon :name="getStatusIcon(shipment.status)" size="12px" class="status-icon" />
+                {{ formatShipmentStatusLabel(shipment.status) }}
+              </span>
 
-              <q-td key="vendor" :props="props">
-                <div class="row items-center no-wrap">
-                  <q-avatar
-                    square
-                    size="28px"
-                    :color="$q.dark.isActive ? 'grey-9' : 'grey-3'"
-                    :text-color="$q.dark.isActive ? 'grey-3' : 'grey-9'"
-                    class="q-mr-sm text-weight-bold text-xxs avatar-soft-sq"
-                  >
-                    {{ getInitials(props.row.vendor_name || getVendorName(props.row.vendor_id)) }}
-                  </q-avatar>
-                  <div class="text-weight-medium text-grey-9 text-xs line-clamp-1">
-                    {{ props.row.vendor_name || getVendorName(props.row.vendor_id) }}
-                  </div>
-                </div>
-              </q-td>
+              <q-icon name="ph ph-caret-right" size="15px" class="shipment-chevron" />
+            </div>
+          </div>
 
-              <q-td key="status" :props="props">
-                <q-chip
-                  square
-                  dense
-                  :color="getStatusChipStyle(props.row.status).color"
-                  :text-color="getStatusChipStyle(props.row.status).textColor"
-                  class="text-weight-bold text-uppercase text-xxs q-ma-none soft-chip"
-                >
-                  <q-icon :name="getStatusIcon(props.row.status)" size="13px" class="q-mr-xs" />
-                  {{ formatShipmentStatusLabel(props.row.status) }}
-                </q-chip>
-              </q-td>
-
-              <q-td key="actions" :props="props" class="text-right" @click.stop>
-                <q-btn
-                  flat
-                  dense
-                  round
-                  color="grey-7"
-                  icon="ph ph-dots-three-vertical"
-                  size="sm"
-                  aria-label="Shipment actions"
-                >
-                  <q-menu auto-close>
-                    <q-list dense style="min-width: 160px">
-                      <q-item clickable @click="viewDetails(props.row.id)">
-                        <q-item-section avatar style="min-width: 24px">
-                          <q-icon name="ph ph-eye" size="16px" />
-                        </q-item-section>
-                        <q-item-section>View details</q-item-section>
-                      </q-item>
-                      <q-item clickable @click="openEditShipment(props.row)">
-                        <q-item-section avatar style="min-width: 24px">
-                          <q-icon name="ph ph-pencil-simple" size="16px" />
-                        </q-item-section>
-                        <q-item-section>Edit</q-item-section>
-                      </q-item>
-                      <q-item clickable @click="confirmArchiveShipment(props.row)">
-                        <q-item-section avatar style="min-width: 24px">
-                          <q-icon name="ph ph-archive-box" size="16px" />
-                        </q-item-section>
-                        <q-item-section>Archive</q-item-section>
-                      </q-item>
-                    </q-list>
-                  </q-menu>
-                  <q-tooltip>Actions</q-tooltip>
-                </q-btn>
-              </q-td>
-            </q-tr>
-          </template>
-        </q-table>
+          <!-- Load More Button inside list -->
+          <div v-if="hasMore" class="row justify-center q-py-sm">
+            <q-btn
+              flat
+              dense
+              no-caps
+              :loading="loadingMore"
+              class="load-more-btn text-weight-medium text-slate-700 q-px-md"
+              label="Load more"
+              icon="ph ph-arrow-down"
+              @click="loadMoreShipments"
+            />
+          </div>
+        </div>
       </div>
     </div>
   </q-page>
@@ -295,11 +215,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useQuasar, type QTableColumn } from 'quasar';
+import { useQuasar } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
-import type { GlobalShipment } from '../repositories/globalShipmentRepository';
 import FilterSidebar from 'src/components/FilterSidebar.vue';
 import ShipmentFormDialog from '../components/ShipmentFormDialog.vue';
 import ArchivedShipmentsModal from '../components/ArchivedShipmentsModal.vue';
@@ -312,10 +231,8 @@ const router = useRouter();
 const route = useRoute();
 const $q = useQuasar();
 
-// Filter & Quick Tab State
-const searchText = ref(
-  typeof route.query.search === 'string' ? route.query.search : '',
-);
+// Filter & Search State
+const searchText = ref(typeof route.query.search === 'string' ? route.query.search : '');
 const filterDrawerOpen = ref(false);
 const quickFilter = ref<string>('all');
 const statusFilter = ref<string | null>(null);
@@ -329,15 +246,9 @@ const statusOptions = [
   { label: 'Cancelled', value: 'cancelled' },
 ];
 
-const draftCount = computed(
-  () => shipmentStore.rows.filter((r) => r.status === 'draft').length,
-);
-const inTransitCount = computed(
-  () => shipmentStore.rows.filter((r) => r.status === 'in_transit').length,
-);
-const receivedCount = computed(
-  () => shipmentStore.rows.filter((r) => r.status === 'received').length,
-);
+const draftCount = computed(() => shipmentStore.rows.filter((r) => r.status === 'draft').length);
+const inTransitCount = computed(() => shipmentStore.rows.filter((r) => r.status === 'in_transit').length);
+const receivedCount = computed(() => shipmentStore.rows.filter((r) => r.status === 'received').length);
 
 const filterTabs = computed(() => [
   { label: 'All', value: 'all', count: shipmentStore.total },
@@ -361,14 +272,6 @@ const getVendorName = (vendorId: number | null | undefined): string => {
   return found ? found.name : `Vendor #${vendorId}`;
 };
 
-const getInitials = (name: string | null | undefined): string => {
-  const parts = (name ?? '').trim().split(/\s+/).filter(Boolean);
-  if (!parts.length || parts[0] === '—') return '—';
-  const first = parts[0]?.[0] ?? '';
-  const last = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? '') : '';
-  return `${first}${last}`.toUpperCase();
-};
-
 const loadVendorData = async () => {
   if (!authStore.tenantId) return;
   try {
@@ -378,94 +281,49 @@ const loadVendorData = async () => {
   }
 };
 
-const getTypeChipStyle = (type: string | null | undefined) => {
-  if ($q.dark.isActive) {
-    switch (type) {
-      case 'international':
-        return { color: 'purple-10', textColor: 'purple-2' };
-      case 'local':
-        return { color: 'teal-10', textColor: 'teal-2' };
-      case 'transfer':
-        return { color: 'indigo-10', textColor: 'indigo-2' };
-      default:
-        return { color: 'grey-9', textColor: 'grey-2' };
-    }
-  }
-  switch (type) {
-    case 'international':
-      return { color: 'purple-1', textColor: 'purple-9' };
-    case 'local':
-      return { color: 'teal-1', textColor: 'teal-9' };
-    case 'transfer':
-      return { color: 'indigo-1', textColor: 'indigo-9' };
-    default:
-      return { color: 'grey-2', textColor: 'grey-9' };
-  }
-};
-
-const getStatusChipStyle = (status: string | null | undefined) => {
-  const key = (status ?? '').trim().toLowerCase();
-  if ($q.dark.isActive) {
-    switch (key) {
-      case 'draft':
-        return { color: 'amber-10', textColor: 'amber-2' };
-      case 'in_transit':
-        return { color: 'orange-10', textColor: 'orange-2' };
-      case 'received':
-        return { color: 'green-10', textColor: 'green-2' };
-      case 'cancelled':
-        return { color: 'red-10', textColor: 'red-2' };
-      default:
-        return { color: 'grey-9', textColor: 'grey-2' };
-    }
-  }
-  switch (key) {
-    case 'draft':
-      return { color: 'amber-1', textColor: 'amber-10' };
-    case 'in_transit':
-      return { color: 'orange-1', textColor: 'orange-10' };
-    case 'received':
-      return { color: 'green-1', textColor: 'green-10' };
-    case 'cancelled':
-      return { color: 'red-1', textColor: 'red-10' };
-    default:
-      return { color: 'grey-2', textColor: 'grey-9' };
-  }
-};
-
 const formatDate = (dateStr: string | null | undefined): string => {
   if (!dateStr) return '—';
-  return dateStr.split('T')[0] ?? '—';
+  try {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch {
+    return dateStr.split('T')[0] ?? '—';
+  }
 };
 
-const columns: QTableColumn[] = [
-  { name: 'name', label: 'Shipment Name', field: 'name', align: 'left', sortable: false },
-  { name: 'type', label: 'Type', field: 'type', align: 'left', sortable: false },
-  {
-    name: 'vendor',
-    label: 'Vendor',
-    field: (row: GlobalShipment) => row.vendor_name || getVendorName(row.vendor_id),
-    align: 'left',
-    sortable: false,
-  },
-  { name: 'status', label: 'Status', field: 'status', align: 'left', sortable: false },
-  { name: 'actions', label: 'Actions', field: 'id', align: 'right', sortable: false },
-];
+const formatTypeLabel = (type: string | null | undefined): string => {
+  if (!type) return 'Standard';
+  return type.charAt(0).toUpperCase() + type.slice(1);
+};
 
-const pagination = computed({
-  get: () => ({
-    page: shipmentStore.page,
-    rowsPerPage: shipmentStore.pageSize,
-    rowsNumber: shipmentStore.total,
-  }),
-  set: (val) => {
-    shipmentStore.page = val.page;
-    shipmentStore.pageSize = val.rowsPerPage;
-  },
-});
+const formatShipmentStatusLabel = formatGlobalShipmentStatus;
+
+const getStatusSlug = (status: string | null | undefined): string => {
+  const s = (status ?? '').toLowerCase().trim();
+  if (s === 'received') return 'received';
+  if (s === 'in_transit') return 'transit';
+  if (s === 'draft') return 'draft';
+  if (s === 'cancelled') return 'cancelled';
+  return 'default';
+};
+
+const getStatusIcon = (status: string | null | undefined): string => {
+  const s = (status ?? '').toLowerCase().trim();
+  if (s === 'received') return 'ph ph-check-circle';
+  if (s === 'in_transit') return 'ph ph-truck';
+  if (s === 'draft') return 'ph ph-file-dashed';
+  if (s === 'cancelled') return 'ph ph-x-circle';
+  return 'ph ph-circle';
+};
+
+const loadingMore = ref(false);
 
 const activeFilterCount = computed(() => {
   return statusFilter.value && statusFilter.value !== '__all__' ? 1 : 0;
+});
+
+const hasMore = computed(() => {
+  return shipmentStore.rows.length < shipmentStore.total;
 });
 
 const loadShipments = async () => {
@@ -478,10 +336,21 @@ const loadShipments = async () => {
   });
 };
 
-const onTableRequest = async (props: { pagination: { page: number; rowsPerPage: number } }) => {
-  shipmentStore.page = props.pagination.page;
-  shipmentStore.pageSize = props.pagination.rowsPerPage;
-  await loadShipments();
+const loadMoreShipments = async () => {
+  if (loadingMore.value || !hasMore.value || !authStore.tenantId) return;
+  loadingMore.value = true;
+  try {
+    const nextPage = shipmentStore.page + 1;
+    await shipmentStore.fetchShipments(authStore.tenantId, {
+      page: nextPage,
+      pageSize: shipmentStore.pageSize,
+      search: searchText.value.trim() || null,
+      status: statusFilter.value === '__all__' ? null : statusFilter.value,
+      append: true,
+    });
+  } finally {
+    loadingMore.value = false;
+  }
 };
 
 const onSearch = () => {
@@ -511,10 +380,6 @@ const onResetFilters = () => {
   void loadShipments();
 };
 
-const onRowClick = (_evt: Event, row: GlobalShipment) => {
-  viewDetails(row.id);
-};
-
 const viewDetails = (id: number) => {
   const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : '';
   void router.push(`${tenantPrefix}/app/procurement/shipment/${id}`);
@@ -528,187 +393,14 @@ const openCreateShipment = () => {
   });
 };
 
-const openEditShipment = (shipment: GlobalShipment) => {
-  $q.dialog({
-    component: ShipmentFormDialog,
-    componentProps: {
-      shipment,
-    },
-  }).onOk(() => {
-    void loadShipments();
-  });
-};
-
 const openArchivedShipmentsModal = () => {
   $q.dialog({
     component: ArchivedShipmentsModal,
   });
 };
 
-const confirmArchiveShipment = (shipment: GlobalShipment) => {
-  $q.dialog({
-    title: 'Archive Shipment',
-    message: `Are you sure you want to archive "${shipment.name}" (#${shipment.tenant_shipment_id || shipment.id})? It will be moved out of the active shipments list.`,
-    cancel: {
-      flat: true,
-      label: 'Cancel',
-      noCaps: true,
-    },
-    ok: {
-      unelevated: true,
-      color: 'primary',
-      label: 'Archive',
-      noCaps: true,
-    },
-  }).onOk(async () => {
-    try {
-      await shipmentStore.archiveShipment(shipment.id);
-      $q.notify({
-        type: 'positive',
-        message: `Shipment "${shipment.name}" archived successfully.`,
-        timeout: 2000,
-      });
-    } catch (err: unknown) {
-      $q.notify({
-        type: 'negative',
-        message: (err as Error).message || 'Failed to archive shipment',
-      });
-    }
-  });
-};
-
-// Visual Styling Map for status badges & row hues
-type ShipmentStatusVisual = {
-  rowBackground: string;
-  rowAccent: string;
-  chipBackground: string;
-  chipText: string;
-  chipBorder: string;
-  chipShadow: string;
-  icon: string;
-};
-
-const defaultStatusVisual: ShipmentStatusVisual = {
-  rowBackground: '#ffffff',
-  rowAccent: '#cbd5e1',
-  chipBackground: '#f1f5f9',
-  chipText: '#334155',
-  chipBorder: '#cbd5e1',
-  chipShadow: '0 1px 3px rgba(51, 65, 85, 0.1)',
-  icon: 'ph ph-info',
-};
-
-const defaultDarkStatusVisual: ShipmentStatusVisual = {
-  rowBackground: 'rgba(148, 163, 184, 0.08)',
-  rowAccent: '#475569',
-  chipBackground: 'rgba(255, 255, 255, 0.08)',
-  chipText: '#cbd5e1',
-  chipBorder: 'rgba(255, 255, 255, 0.15)',
-  chipShadow: 'none',
-  icon: 'ph ph-info',
-};
-
-const shipmentStatusVisualMap: Record<string, ShipmentStatusVisual> = {
-  draft: {
-    rowBackground: '#fffdf5',
-    rowAccent: '#f59e0b',
-    chipBackground: '#fef3c7',
-    chipText: '#78350f',
-    chipBorder: '#f59e0b',
-    chipShadow: '0 2px 4px rgba(217, 119, 6, 0.18)',
-    icon: 'ph ph-note-pencil',
-  },
-  in_transit: {
-    rowBackground: '#fffbf7',
-    rowAccent: '#f97316',
-    chipBackground: '#ffedd5',
-    chipText: '#7c2d12',
-    chipBorder: '#f97316',
-    chipShadow: '0 2px 4px rgba(234, 88, 12, 0.18)',
-    icon: 'ph ph-truck',
-  },
-  received: {
-    rowBackground: '#f6fcf8',
-    rowAccent: '#22c55e',
-    chipBackground: '#dcfce7',
-    chipText: '#14532d',
-    chipBorder: '#22c55e',
-    chipShadow: '0 2px 4px rgba(22, 163, 74, 0.18)',
-    icon: 'ph ph-check-circle',
-  },
-  cancelled: {
-    rowBackground: '#fef7f7',
-    rowAccent: '#ef4444',
-    chipBackground: '#fee2e2',
-    chipText: '#7f1d1d',
-    chipBorder: '#ef4444',
-    chipShadow: '0 2px 4px rgba(220, 38, 38, 0.18)',
-    icon: 'ph ph-x-circle',
-  },
-};
-
-const darkStatusVisualMap: Record<string, ShipmentStatusVisual> = {
-  draft: {
-    rowBackground: 'rgba(245, 158, 11, 0.08)',
-    rowAccent: '#f59e0b',
-    chipBackground: 'rgba(245, 158, 11, 0.15)',
-    chipText: '#fbbf24',
-    chipBorder: 'rgba(245, 158, 11, 0.35)',
-    chipShadow: 'none',
-    icon: 'ph ph-note-pencil',
-  },
-  in_transit: {
-    rowBackground: 'rgba(249, 115, 22, 0.08)',
-    rowAccent: '#f97316',
-    chipBackground: 'rgba(249, 115, 22, 0.15)',
-    chipText: '#fb923c',
-    chipBorder: 'rgba(249, 115, 22, 0.35)',
-    chipShadow: 'none',
-    icon: 'ph ph-truck',
-  },
-  received: {
-    rowBackground: 'rgba(34, 197, 94, 0.08)',
-    rowAccent: '#22c55e',
-    chipBackground: 'rgba(62, 207, 142, 0.15)',
-    chipText: '#3ecf8e',
-    chipBorder: 'rgba(62, 207, 142, 0.35)',
-    chipShadow: 'none',
-    icon: 'ph ph-check-circle',
-  },
-  cancelled: {
-    rowBackground: 'rgba(239, 68, 68, 0.08)',
-    rowAccent: '#ef4444',
-    chipBackground: 'rgba(248, 113, 113, 0.15)',
-    chipText: '#f87171',
-    chipBorder: 'rgba(248, 113, 113, 0.35)',
-    chipShadow: 'none',
-    icon: 'ph ph-x-circle',
-  },
-};
-
-const formatShipmentStatusLabel = formatGlobalShipmentStatus;
-
-const getStatusVisual = (status: string | null | undefined): ShipmentStatusVisual => {
-  const key = (status ?? '').trim().toLowerCase();
-  if ($q.dark.isActive) {
-    return darkStatusVisualMap[key] ?? defaultDarkStatusVisual;
-  }
-  return shipmentStatusVisualMap[key] ?? defaultStatusVisual;
-};
-
-const statusRowStyle = (status: string | null | undefined) => {
-  const visual = getStatusVisual(status);
-  return {
-    backgroundColor: visual.rowBackground,
-    boxShadow: `inset 3px 0 0 ${visual.rowAccent}`,
-  };
-};
-
-const getStatusIcon = (status: string | null | undefined): string => {
-  return getStatusVisual(status).icon;
-};
-
 onMounted(() => {
+  void loadVendorData();
   void loadShipments();
 });
 
@@ -731,118 +423,248 @@ watch(
   height: calc(100vh - 55px);
   max-height: calc(100vh - 55px);
   overflow: hidden;
+  background: var(--bw-neutral-canvas, #F8FAFC);
+}
+
+.list-toolbar-card {
+  background: var(--bw-neutral-surface, #FFFFFF);
+  border-radius: var(--bw-radius-sm, 8px);
+  border: 1px solid var(--bw-neutral-border, #E2E8F0);
 }
 
 .rounded-sq-btn {
-  border-radius: 8px;
-}
-
-.style-compact-overline {
-  font-size: 10px;
-  line-height: 1.2;
+  border-radius: var(--bw-radius-sm, 8px);
 }
 
 .quick-filter-toggle {
-  background: rgba(0, 0, 0, 0.03);
-  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  background: #F1F5F9;
+  border-radius: var(--bw-radius-sm, 8px);
   padding: 2px;
+  gap: 2px;
 }
 
-.quick-filter-toggle :deep(.q-btn) {
-  border-radius: 6px;
-  font-weight: 600;
-  padding: 2px 10px;
-}
-
-.treasury-table-wrap {
-  flex: 1 1 0%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.shipment-table {
-  flex: 1 1 0%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.shipment-table :deep(.q-table__container) {
-  flex: 1 1 0%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  box-shadow: none;
+.quick-filter-pill {
+  border: none;
   background: transparent;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748B;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s ease;
 }
 
-.shipment-table :deep(.q-table__middle) {
+.quick-filter-pill:hover {
+  color: #0F172A;
+}
+
+.quick-filter-pill--active {
+  background: var(--bw-neutral-surface, #FFFFFF);
+  color: #0F172A;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.pill-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: #E2E8F0;
+  color: #475569;
+}
+
+.pill-badge--active {
+  background: #0F172A;
+  color: #FFFFFF;
+}
+
+.archived-counter-badge {
+  font-size: 10.5px;
+  font-weight: 600;
+  background: #F1F5F9;
+  color: #475569;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+/* Linear-Style List Container */
+.shipment-list-card {
+  flex: 1 1 0%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bw-neutral-surface, #FFFFFF);
+  border: 1px solid var(--bw-neutral-border, #E2E8F0);
+  border-radius: var(--bw-radius-sm, 8px);
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.shipment-list-scroll {
   flex: 1 1 0%;
   min-height: 0;
   overflow-y: auto;
 }
 
-.shipment-table :deep(thead tr th) {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  font-weight: 700;
-  color: var(--bw-neutral-chrome);
-  background: var(--bw-neutral-surface);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--bw-neutral-border);
+/* Individual Compact Row (~48-52px) */
+.shipment-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid var(--bw-neutral-border, #F1F5F9);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-height: 50px;
 }
 
-.shipment-table :deep(tbody tr) {
-  transition: background-color 0.15s ease;
+.shipment-list-item:hover {
+  background: #F8FAFC;
 }
 
-.shipment-table :deep(tbody tr:hover) {
-  filter: brightness(0.98);
+.shipment-list-item:hover .shipment-name {
+  color: #0F172A;
 }
 
-.shipment-table :deep(tbody td) {
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--bw-neutral-border);
+.shipment-list-item:hover .shipment-chevron {
+  color: #0F172A;
+  transform: translateX(2px);
+}
+
+.shipment-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.shipment-title-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.shipment-name {
   font-size: 13px;
-  color: var(--bw-neutral-ink);
-}
-
-.hover-underline:hover {
-  text-decoration: underline;
-}
-
-.shipment-meta {
-  font-size: 12px;
-  line-height: 1.35;
-  color: var(--bw-neutral-muted);
-  margin-top: 2px;
-}
-
-.avatar-soft-sq {
-  border-radius: 6px;
-}
-
-.line-clamp-1 {
+  font-weight: 600;
+  color: #1E293B;
+  white-space: nowrap;
   overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  line-clamp: 1;
-  -webkit-box-orient: vertical;
+  text-overflow: ellipsis;
+  letter-spacing: -0.01em;
 }
 
-.text-xxs {
-  font-size: 10px;
-  line-height: 1.2;
-  letter-spacing: 0.02em;
+.shipment-meta-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: #64748B;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.text-xs {
-  font-size: 11px;
+.meta-item {
+  font-weight: 400;
 }
+
+.meta-vendor {
+  color: #475569;
+  font-weight: 500;
+}
+
+.meta-dot {
+  color: #94A3B8;
+  font-weight: 700;
+}
+
+.shipment-aside {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+  margin-left: 1rem;
+}
+
+/* Status Pill */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-weight: 500;
+  padding: 2.5px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.status-icon {
+  flex-shrink: 0;
+}
+
+.status-pill--received {
+  background: #DCFCE7;
+  color: #166534;
+}
+
+.status-pill--transit {
+  background: #FFEDD5;
+  color: #9A3412;
+}
+
+.status-pill--draft {
+  background: #FEF3C7;
+  color: #92400E;
+}
+
+.status-pill--cancelled {
+  background: #FEE2E2;
+  color: #991B1B;
+}
+
+.status-pill--default {
+  background: #F1F5F9;
+  color: #475569;
+}
+
+.shipment-chevron {
+  color: #94A3B8;
+  transition: all 0.15s ease;
+}
+
+/* Skeleton Loading Item */
+.shipment-list-item--skeleton {
+  cursor: default;
+}
+
+.shipment-list-item--skeleton:hover {
+  background: transparent;
+}
+
+/* Load More */
+.load-more-btn {
+  background: #F1F5F9;
+  border-radius: var(--bw-radius-sm, 8px);
+  font-size: 12px;
+  transition: all 0.15s ease;
+}
+
+.load-more-btn:hover {
+  background: #E2E8F0;
+  color: #0F172A;
+}
+
+.text-slate-400 { color: #94A3B8; }
+.text-slate-500 { color: #64748B; }
+.text-slate-700 { color: #334155; }
+.text-slate-800 { color: #1E293B; }
+.text-slate-900 { color: #0F172A; }
 </style>

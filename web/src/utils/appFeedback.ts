@@ -16,6 +16,7 @@ const showNotification = (
     type,
     message,
     timeout,
+    position: 'bottom',
   } satisfies QNotifyCreateOptions);
 };
 

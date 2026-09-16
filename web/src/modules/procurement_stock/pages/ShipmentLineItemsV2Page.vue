@@ -1,12 +1,121 @@
 <template>
   <q-page class="shipment-items-v2-page column no-wrap" style="height: calc(100vh - 55px); overflow: hidden">
-    <!-- Top Sticky Section: Shipment Name, Status Workflow & Actions -->
-    <div class="shipment-items-top-section border-bottom q-px-lg q-py-md shrink-0 shadow-xs">
+    <!-- Full Page Initial Skeleton Loader -->
+    <div
+      v-if="pageInitialLoading"
+      class="column no-wrap full-height full-width overflow-hidden bg-slate-50"
+    >
+      <!-- Top Sticky Header Skeleton -->
+      <div class="shipment-items-top-section border-bottom q-px-lg q-py-md shrink-0 bg-white shadow-xs">
+        <div class="row items-center justify-between q-gutter-y-sm">
+          <!-- Left: Name Skeleton + Status Stepper Skeleton -->
+          <div class="row items-center q-gutter-md">
+            <q-skeleton type="text" width="180px" height="26px" class="rounded-borders" />
+            <div class="row items-center q-gutter-x-xs">
+              <q-skeleton type="rect" width="76px" height="26px" class="rounded-borders" />
+              <q-skeleton type="rect" width="76px" height="26px" class="rounded-borders" />
+              <q-skeleton type="rect" width="76px" height="26px" class="rounded-borders" />
+            </div>
+          </div>
+          <!-- Right: Buttons Skeleton -->
+          <div class="row items-center q-gutter-x-sm">
+            <q-skeleton type="rect" width="88px" height="26px" class="rounded-borders" />
+            <q-skeleton type="rect" width="76px" height="26px" class="rounded-borders" />
+            <q-skeleton type="circle" size="26px" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Table Skeleton Section -->
+      <div class="col overflow-hidden bg-white">
+        <div class="full-width q-px-md q-pt-md">
+          <!-- Table Header Skeleton -->
+          <div class="row items-center q-pb-sm border-bottom q-gutter-x-md text-grey-4">
+            <q-skeleton type="QCheckbox" size="xs" />
+            <q-skeleton type="text" width="20px" height="12px" />
+            <q-skeleton type="text" width="60px" height="12px" />
+            <q-skeleton type="text" width="140px" height="12px" />
+            <q-skeleton type="text" width="80px" height="12px" />
+            <q-skeleton type="text" width="60px" height="12px" />
+            <q-skeleton type="text" width="60px" height="12px" />
+            <q-skeleton type="text" width="50px" height="12px" />
+            <q-skeleton type="text" width="60px" height="12px" />
+            <q-skeleton type="text" width="60px" height="12px" />
+          </div>
+
+          <!-- Table Rows Skeleton -->
+          <div
+            v-for="n in 9"
+            :key="`init-skel-${n}`"
+            class="row items-center q-py-sm border-bottom q-gutter-x-md"
+          >
+            <q-skeleton type="QCheckbox" size="xs" />
+            <q-skeleton type="text" width="16px" height="12px" />
+            <q-skeleton type="rect" width="1in" height="1in" class="rounded-borders" />
+            <div class="col" style="max-width: 180px">
+              <q-skeleton type="text" width="85%" height="15px" class="q-mb-2xs" />
+              <q-skeleton type="text" width="50%" height="11px" />
+            </div>
+            <div style="width: 80px">
+              <q-skeleton type="text" width="65px" height="12px" class="q-mb-2xs" />
+              <q-skeleton type="text" width="45px" height="10px" />
+            </div>
+            <q-skeleton type="text" width="50px" height="14px" class="q-mx-auto" />
+            <q-skeleton type="text" width="50px" height="14px" class="q-mx-auto" />
+            <q-skeleton type="text" width="40px" height="14px" class="q-mx-auto" />
+            <q-skeleton type="text" width="50px" height="14px" class="q-mx-auto" />
+            <q-skeleton type="text" width="50px" height="14px" class="q-mx-auto" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Sheet Bar Skeleton -->
+      <div class="row items-center justify-between q-px-md q-py-xs bg-grey-2 border-top shrink-0" style="height: 38px">
+        <div class="row items-center q-gutter-x-xs">
+          <q-skeleton type="rect" width="80px" height="24px" class="rounded-borders" />
+          <q-skeleton type="rect" width="110px" height="24px" class="rounded-borders" />
+          <q-skeleton type="rect" width="100px" height="24px" class="rounded-borders" />
+          <q-skeleton type="circle" size="20px" />
+        </div>
+        <q-skeleton type="rect" width="160px" height="10px" class="rounded-borders" />
+      </div>
+    </div>
+
+    <!-- Live Content (When Loaded) -->
+    <template v-else>
+      <!-- Top Sticky Section: Shipment Name, Status Workflow & Actions -->
+      <div class="shipment-items-top-section border-bottom q-px-lg q-py-md shrink-0 shadow-xs">
       <div class="row items-center justify-between q-gutter-y-sm wrap">
         <!-- Left: Name + Status Workflow -->
         <div class="col-grow row items-center q-gutter-md wrap" style="min-width: 0">
-          <div class="text-subtitle1 text-weight-bolder ellipsis" style="font-size: 15px">
-            {{ shipmentStore.currentShipment?.name || 'Untitled Shipment' }}
+          <div class="shipment-name-container">
+            <template v-if="isEditingName">
+              <input
+                ref="nameInputRef"
+                v-model="nameEditValue"
+                type="text"
+                class="shipment-name-input"
+                maxlength="120"
+                placeholder="Shipment Name..."
+                :disabled="savingName"
+                @keydown.enter.prevent="saveNameInPlace"
+                @keydown.esc.prevent="cancelNameEdit"
+                @blur="saveNameInPlace"
+              />
+            </template>
+            <template v-else>
+              <button
+                type="button"
+                class="shipment-name-display-btn"
+                @click="startNameEdit"
+              >
+                <span class="shipment-name-text ellipsis">
+                  {{ shipmentStore.currentShipment?.name || 'Untitled Shipment' }}
+                </span>
+                <q-icon name="ph ph-pencil-simple" size="13px" class="shipment-name-icon" />
+                <q-tooltip>Click to edit name</q-tooltip>
+              </button>
+            </template>
           </div>
           <ShipmentStatusWorkflowBar
             class="shipment-header-workflow"
@@ -195,7 +304,7 @@
               <q-checkbox :model-value="allSelected" dense size="xs" @update:model-value="(val) => allSelected = !!val" />
             </th>
             <th class="text-center q-pa-none" style="width: 36px; min-width: 36px; max-width: 36px">SL</th>
-            <th class="text-left" style="width: 82px; min-width: 82px">Image</th>
+            <th class="text-center" style="width: 1.1in; min-width: 1.1in">Image</th>
             <th v-if="visibleColumnMap.name" class="text-left" style="min-width: 120px; width: 120px; max-width: 120px; white-space: normal">Name</th>
             <th v-if="visibleColumnMap.product_codes" class="text-left" style="min-width: 105px; width: 115px">Codes</th>
             <th v-if="visibleColumnMap.purchase_price" class="text-center bw-ops-col-tint--price" style="min-width: 56px; width: 56px">
@@ -218,8 +327,22 @@
             <th v-if="visibleColumnMap.cost_bdt" class="text-center bw-ops-col-tint--cost" style="min-width: 56px; width: 56px">
               Cost
             </th>
-            <th v-if="visibleColumnMap.ordered_quantity" class="text-center bw-ops-col-tint--qty" style="min-width: 56px; width: 56px">
-              <div class="row items-center justify-center no-wrap q-gutter-x-2xs">
+            <th
+              v-if="visibleColumnMap.ordered_quantity"
+              class="text-center bw-ops-col-tint--qty"
+              :style="{
+                minWidth: isShipmentReceived ? '90px' : '56px',
+                width: isShipmentReceived ? '90px' : '56px',
+                lineHeight: isShipmentReceived ? '1.2' : undefined,
+                paddingTop: isShipmentReceived ? '4px' : undefined,
+                paddingBottom: isShipmentReceived ? '4px' : undefined,
+              }"
+            >
+              <div v-if="isShipmentReceived" class="column items-center justify-center">
+                <div class="text-weight-bolder">Ord / Rec</div>
+                <div class="text-xxs text-grey-6 font-mono">Qty Variance</div>
+              </div>
+              <div v-else class="row items-center justify-center no-wrap q-gutter-x-2xs">
                 <span>Qty</span>
                 <q-btn
                   flat
@@ -282,245 +405,317 @@
           </tr>
         </thead>
         <tbody>
-          <template
-            v-for="(item, index) in displayedItems"
-            :key="item.id"
-          >
-            <!-- Section Header Break Row in All Items View -->
-            <tr
-              v-if="isFirstItemOfSection(item, index)"
-              class="section-break-row"
-            >
-              <td :colspan="totalVisibleColumnsCount" class="q-py-xs q-px-md text-weight-bold">
-                <div class="row items-center justify-between">
-                  <div class="row items-center q-gutter-x-sm">
-                    <q-icon name="ph ph-folder-open" size="16px" color="primary" />
-                    <span class="text-subtitle2 text-weight-bolder">{{ getSectionTitle(item.sectionId) }}</span>
-                    <span class="text-caption text-grey-6 font-mono">• {{ getSectionVendor(item.sectionId) }}</span>
-                    <q-badge color="grey-3" text-color="grey-8" class="text-weight-bold text-xxs">
-                      {{ getSectionItemCount(item.sectionId) }} item<span v-if="getSectionItemCount(item.sectionId) > 1">s</span>
-                    </q-badge>
-                  </div>
-                  <div class="row items-center q-gutter-x-md text-caption text-grey-7 font-mono">
-                    <span>Units: <b>{{ getSectionTotalQty(item.sectionId) }}</b></span>
-                    <span>Total: <b>{{ currentPurchaseCurrencySymbol }}{{ getSectionTotalPurchase(item.sectionId).toFixed(2) }}</b></span>
-                  </div>
-                </div>
+          <!-- Skeleton Loading Rows -->
+          <template v-if="shipmentStore.loading">
+            <tr v-for="n in 8" :key="`skel-${n}`" class="shipment-skeleton-row">
+              <td class="text-center"><q-skeleton type="QCheckbox" size="xs" /></td>
+              <td class="text-center"><q-skeleton type="text" width="16px" class="q-mx-auto" /></td>
+              <td class="text-center"><q-skeleton type="rect" width="1in" height="1in" class="rounded-borders q-mx-auto" /></td>
+              <td v-if="visibleColumnMap.name">
+                <q-skeleton type="text" width="85%" height="16px" class="q-mb-2xs" />
+                <q-skeleton type="text" width="50%" height="12px" />
               </td>
+              <td v-if="visibleColumnMap.product_codes">
+                <q-skeleton type="text" width="60px" height="13px" class="q-mb-2xs" />
+                <q-skeleton type="text" width="40px" height="11px" />
+              </td>
+              <td v-if="visibleColumnMap.purchase_price" class="text-center">
+                <q-skeleton type="text" width="44px" height="14px" class="q-mx-auto" />
+              </td>
+              <td v-if="visibleColumnMap.cost_bdt" class="text-center">
+                <q-skeleton type="text" width="44px" height="14px" class="q-mx-auto" />
+              </td>
+              <td v-if="visibleColumnMap.ordered_quantity" class="text-center" :style="{ minWidth: isShipmentReceived ? '90px' : '56px', width: isShipmentReceived ? '90px' : '56px' }">
+                <q-skeleton type="text" :width="isShipmentReceived ? '70px' : '36px'" height="14px" class="q-mx-auto" />
+              </td>
+              <td v-if="visibleColumnMap.product_weight" class="text-center">
+                <q-skeleton type="text" width="40px" height="14px" class="q-mx-auto" />
+              </td>
+              <td v-if="visibleColumnMap.package_weight" class="text-center">
+                <q-skeleton type="text" width="40px" height="14px" class="q-mx-auto" />
+              </td>
+              <template v-for="col in customColumns" :key="col.name">
+                <td v-if="visibleColumnMap[col.name]">
+                  <q-skeleton type="text" width="50px" />
+                </td>
+              </template>
             </tr>
-
-            <!-- Line Item Row -->
-            <tr
-              class="shipment-item-row cursor-pointer"
-              :class="{ 'row-selected': item.selected }"
-            >
-              <!-- Select -->
-              <td class="text-center q-pa-none" style="width: 18px; min-width: 18px" @click.stop>
-                <q-checkbox
-                  :model-value="item.selected"
-                  dense
-                  size="xs"
-                  @update:model-value="(val) => toggleRowSelection(item.id, !!val)"
-                />
-              </td>
-
-              <!-- SL with In-Place Editable Input -->
-              <td class="text-center text-weight-medium text-grey-7 q-pa-none" style="width: 36px; min-width: 36px; max-width: 36px" @click.stop>
-                <div class="row items-center justify-center no-wrap">
-                  <q-input
-                    :model-value="index + 1"
-                    type="number"
-                    min="1"
-                    :max="displayedItems.length"
-                    dense
-                    outlined
-                    hide-bottom-space
-                    class="inline-edit-input excel-cell-input"
-                    style="max-width: 32px"
-                    input-class="text-center text-weight-bold font-mono"
-                    @change="(val: any) => onSlPositionChange(index, val)"
-                    @keyup.enter="(e: any) => (e.target as HTMLElement)?.blur()"
-                  />
-                </div>
-              </td>
-
-            <!-- Image (0.85 inch ≈ 82px) -->
-            <td class="shipment-image-col">
-              <q-avatar square size="82px" class="avatar-soft-sq bg-grey-2 border-grey overflow-hidden" style="width: 0.85in; height: 0.85in">
-                <img :src="item.image" alt="item" style="object-fit: cover; width: 100%; height: 100%" />
-              </q-avatar>
-            </td>
-
-            <!-- Name (Multiline Wrapped) -->
-            <td v-if="visibleColumnMap.name" style="width: 120px; min-width: 120px; max-width: 120px; white-space: normal !important; word-break: break-word" @click="openEditItem(item.rawItem || item)">
-              <div class="text-weight-bold hover-underline" style="font-size: 13px; line-height: 1.35; word-break: break-word; white-space: normal">
-                {{ item.name }}
-              </div>
-            </td>
-
-            <!-- Product Codes with 1-click copy -->
-            <td v-if="visibleColumnMap.product_codes" class="font-mono text-caption">
-              <div class="column q-gutter-y-2xs" style="line-height: 1.1">
-                <div v-if="item.code" class="row items-center justify-between no-wrap">
-                  <div class="ellipsis">
-                    <span class="text-grey-6 text-uppercase" style="font-size: 8px">C: </span>
-                    <b style="font-size: 10px">{{ item.code }}</b>
-                  </div>
-                  <q-btn
-                    flat
-                    dense
-                    round
-                    size="xs"
-                    icon="ph ph-copy"
-                    color="grey-7"
-                    style="font-size: 9px; padding: 0"
-                    @click.stop="copyToClipboard(item.code, 'Product Code')"
-                  >
-                    <q-tooltip>Copy Code</q-tooltip>
-                  </q-btn>
-                </div>
-                <div v-if="item.rawItem?.barcode" class="row items-center justify-between no-wrap">
-                  <div class="ellipsis">
-                    <span class="text-grey-6 text-uppercase" style="font-size: 8px">B: </span>
-                    <span style="font-size: 10px">{{ item.rawItem.barcode }}</span>
-                  </div>
-                  <q-btn
-                    flat
-                    dense
-                    round
-                    size="xs"
-                    icon="ph ph-copy"
-                    color="grey-7"
-                    style="font-size: 9px; padding: 0"
-                    @click.stop="copyToClipboard(item.rawItem.barcode, 'Barcode')"
-                  >
-                    <q-tooltip>Copy Barcode</q-tooltip>
-                  </q-btn>
-                </div>
-              </div>
-            </td>
-
-            <!-- Purchase Price (Inline Editable) -->
-            <td v-if="visibleColumnMap.purchase_price" class="text-center bw-ops-col-tint--price" style="width: 56px; min-width: 56px">
-              <div class="row justify-center">
-                <q-input
-                  :model-value="getDraftValue(item, 'purchase_price')"
-                  type="number"
-                  step="0.01"
-                  dense
-                  outlined
-                  hide-bottom-space
-                  class="inline-edit-input excel-cell-input"
-                  style="max-width: 50px"
-                  input-class="text-center text-weight-bold"
-                  :disable="!canEditLineCostFields"
-                  @update:model-value="(val) => setDraftValue(item, 'purchase_price', val)"
-                  @blur="saveDraftValue(item, 'purchase_price', { decimals: 2 })"
-                  @keyup.enter="(e: any) => (e.target as HTMLElement)?.blur()"
-                />
-              </div>
-              <div class="text-caption text-grey-7 text-weight-normal q-mt-2xs" style="font-size: 10px">
-                T: {{ currentPurchaseCurrencySymbol }}{{ ((item.price || 0) * (item.quantity || 0)).toFixed(2) }}
-              </div>
-            </td>
-
-            <!-- Landed Cost -->
-            <td v-if="visibleColumnMap.cost_bdt" class="text-center bw-ops-col-tint--cost" style="width: 56px; min-width: 56px">
-              <div class="font-mono text-weight-bold text-primary" style="font-size: 12px">
-                {{ Number(item.cost / (item.quantity || 1) || 0).toFixed(2) }}
-              </div>
-              <div class="text-caption text-grey-7 text-weight-normal q-mt-2xs" style="font-size: 10px">
-                T: {{ Number(item.cost || 0).toLocaleString() }}
-              </div>
-            </td>
-
-            <!-- Ordered Quantity (Inline Editable) -->
-            <td v-if="visibleColumnMap.ordered_quantity" class="text-center bw-ops-col-tint--qty" style="width: 56px; min-width: 56px">
-              <div class="row justify-center">
-                <q-input
-                  :model-value="getDraftValue(item, 'ordered_quantity')"
-                  type="number"
-                  min="1"
-                  step="1"
-                  dense
-                  outlined
-                  hide-bottom-space
-                  class="inline-edit-input excel-cell-input"
-                  style="max-width: 50px"
-                  input-class="text-center text-weight-bold"
-                  :disable="!canEditLineStructure"
-                  @update:model-value="(val) => setDraftValue(item, 'ordered_quantity', val)"
-                  @blur="saveDraftValue(item, 'ordered_quantity')"
-                  @keyup.enter="(e: any) => (e.target as HTMLElement)?.blur()"
-                />
-              </div>
-            </td>
-
-            <!-- Product Weight (Inline Editable) -->
-            <td v-if="visibleColumnMap.product_weight" class="text-center font-mono text-grey-8" style="width: 56px; min-width: 56px">
-              <div class="row justify-center">
-                <q-input
-                  :model-value="getDraftValue(item, 'product_weight')"
-                  type="number"
-                  step="0.001"
-                  dense
-                  outlined
-                  hide-bottom-space
-                  class="inline-edit-input excel-cell-input"
-                  style="max-width: 50px"
-                  input-class="text-center text-weight-bold"
-                  :disable="!canEditLineCostFields"
-                  @update:model-value="(val) => setDraftValue(item, 'product_weight', val)"
-                  @blur="saveDraftValue(item, 'product_weight', { decimals: 3 })"
-                  @keyup.enter="(e: any) => (e.target as HTMLElement)?.blur()"
-                />
-              </div>
-              <div class="text-caption text-grey-7 text-weight-normal q-mt-2xs" style="font-size: 10px">
-                T: {{ ((getDraftValue(item, 'product_weight') || 0.25) * (item.quantity || 0)).toFixed(2) }} kg
-              </div>
-            </td>
-
-            <!-- Package Weight (Inline Editable) -->
-            <td v-if="visibleColumnMap.package_weight" class="text-center bw-ops-col-tint--weight font-mono text-grey-8" style="width: 56px; min-width: 56px">
-              <div class="row justify-center">
-                <q-input
-                  :model-value="getDraftValue(item, 'package_weight')"
-                  type="number"
-                  step="0.001"
-                  dense
-                  outlined
-                  hide-bottom-space
-                  class="inline-edit-input excel-cell-input"
-                  style="max-width: 50px"
-                  input-class="text-center text-weight-bold"
-                  :disable="!canEditLineCostFields"
-                  @update:model-value="(val) => setDraftValue(item, 'package_weight', val)"
-                  @blur="saveDraftValue(item, 'package_weight', { decimals: 3 })"
-                  @keyup.enter="(e: any) => (e.target as HTMLElement)?.blur()"
-                />
-              </div>
-              <div class="text-caption text-grey-7 text-weight-normal q-mt-2xs" style="font-size: 10px">
-                T: {{ ((getDraftValue(item, 'package_weight') || 0.35) * (item.quantity || 0)).toFixed(2) }} kg
-              </div>
-            </td>
-
-            <!-- Dynamically added custom column cells -->
-            <template v-for="col in customColumns" :key="col.name">
-              <td v-if="visibleColumnMap[col.name]" class="text-grey-7 font-mono text-caption">
-                {{ (iteallm as any)[col.name] || '-' }}
-              </td>
-            </template>
-          </tr>
           </template>
 
-          <!-- Empty State Row when shipment has 0 items -->
-          <tr v-if="displayedItems.length === 0">
-            <td :colspan="totalVisibleColumnsCount" class="text-center q-py-xl text-grey-6">
-              <div class="column items-center justify-center q-py-lg">
-                <q-icon name="ph ph-package" size="48px" class="text-grey-4 q-mb-sm" />
-                <div class="text-subtitle1 text-weight-bold text-grey-8">No line items in this shipment</div>
-                <div class="text-caption text-grey-6 q-mb-md">
-                  {{ activeSheetId === 'sheet_all' ? 'Please select a section tab from the bottom bar to add items.' : 'Click the "+ Add Items" button above or below to search and add products.' }}
+          <!-- Rendered Items -->
+          <template v-else-if="displayedItems.length > 0">
+            <template
+              v-for="(item, index) in displayedItems"
+              :key="item.id"
+            >
+              <!-- Section Header Break Row in All Items View -->
+              <tr
+                v-if="isFirstItemOfSection(item, index)"
+                class="section-break-row"
+              >
+                <td :colspan="totalVisibleColumnsCount" class="q-py-xs q-px-md text-weight-bold">
+                  <div class="row items-center justify-between">
+                    <div class="row items-center q-gutter-x-sm">
+                      <q-icon name="ph ph-folder-open" size="16px" color="primary" />
+                      <span class="text-subtitle2 text-weight-bolder">{{ getSectionTitle(item.sectionId) }}</span>
+                      <span class="text-caption text-grey-6 font-mono">• {{ getSectionVendor(item.sectionId) }}</span>
+                      <q-badge color="grey-3" text-color="grey-8" class="text-weight-bold text-xxs">
+                        {{ getSectionItemCount(item.sectionId) }} item<span v-if="getSectionItemCount(item.sectionId) > 1">s</span>
+                      </q-badge>
+                    </div>
+                    <div class="row items-center q-gutter-x-md text-caption text-grey-7 font-mono">
+                      <span>Units: <b>{{ getSectionTotalQty(item.sectionId) }}</b></span>
+                      <span>Total: <b>{{ currentPurchaseCurrencySymbol }}{{ getSectionTotalPurchase(item.sectionId).toFixed(2) }}</b></span>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Line Item Row -->
+              <tr
+                class="shipment-item-row cursor-pointer"
+                :class="{ 'row-selected': item.selected }"
+              >
+                <!-- Select -->
+                <td class="text-center q-pa-none" style="width: 18px; min-width: 18px" @click.stop>
+                  <q-checkbox
+                    :model-value="item.selected"
+                    dense
+                    size="xs"
+                    @update:model-value="(val) => toggleRowSelection(item.id, !!val)"
+                  />
+                </td>
+
+                <!-- SL with In-Place Editable Input -->
+                <td class="text-center text-weight-medium text-grey-7 q-pa-none" style="width: 36px; min-width: 36px; max-width: 36px" @click.stop>
+                  <div class="row items-center justify-center no-wrap">
+                    <input
+                      :value="item.sort_order ?? item.sl"
+                      type="number"
+                      min="1"
+                      class="sl-input font-mono"
+                      @change="(e) => onSlInputChange(item, (e.target as HTMLInputElement).value)"
+                      @keydown.enter="(e) => (e.target as HTMLInputElement).blur()"
+                    />
+                  </div>
+                </td>
+
+                <!-- Image (1 inch size) -->
+                <td style="width: 1.1in; min-width: 1.1in; padding: 4px 6px" class="text-center">
+                  <div class="item-img-container">
+                    <SmartImage
+                      :src="item.image_url"
+                      :alt="item.name"
+                      img-class="item-img-element"
+                      class="full-width full-height rounded-borders"
+                      fallback-icon="ph ph-t-shirt"
+                    />
+                    <!-- Expand Image Hover Button -->
+                    <q-btn
+                      v-if="item.image_url"
+                      flat
+                      round
+                      dense
+                      size="xs"
+                      icon="ph ph-magnifying-glass-plus"
+                      class="img-expand-btn"
+                      @click.stop="openImagePreview(item.image_url)"
+                    >
+                      <q-tooltip>View large photo</q-tooltip>
+                    </q-btn>
+                  </div>
+                </td>
+
+                <!-- Name & Style Codes -->
+                <td v-if="visibleColumnMap.name" style="min-width: 120px; width: 120px; max-width: 120px; white-space: normal" class="q-py-xs">
+                  <div class="column justify-center q-gutter-y-2xs" style="min-width: 0; max-width: 100%">
+                    <div class="text-weight-bold text-slate-900" style="font-size: 13px; line-height: 1.25; word-break: break-word">
+                      {{ item.name }}
+                    </div>
+                    <div class="text-caption text-slate-500 ellipsis" style="font-size: 11px">
+                      {{ item.style_code }}
+                    </div>
+                  </div>
+                </td>
+
+                <!-- Codes: SKU & Barcode -->
+                <td v-if="visibleColumnMap.product_codes" style="min-width: 105px; width: 115px" class="q-py-xs">
+                  <div class="column justify-center q-gutter-y-2xs font-mono" style="font-size: 11.5px">
+                    <div v-if="item.sku" class="text-weight-medium text-slate-700 ellipsis">
+                      SKU: {{ item.sku }}
+                    </div>
+                    <div v-if="item.barcode" class="text-caption text-slate-500 ellipsis">
+                      BAR: {{ item.barcode }}
+                    </div>
+                    <div v-if="!item.sku && !item.barcode" class="text-caption text-slate-400">
+                      —
+                    </div>
+                  </div>
+                </td>
+
+                <!-- Purchase Price (Excel cell style inline input) -->
+                <td v-if="visibleColumnMap.purchase_price" class="text-center bw-ops-col-tint--price" style="min-width: 56px; width: 56px; padding: 2px" @click.stop>
+                  <q-input
+                    :model-value="getCellDraftValue(item, 'purchase_price')"
+                    type="number"
+                    step="0.01"
+                    dense
+                    borderless
+                    input-class="text-center font-mono text-weight-bold text-slate-800 excel-cell-input-native"
+                    class="excel-cell-input"
+                    :disable="!canEditLineCostFields"
+                    @update:model-value="(val) => onCellDirectInput(item, 'purchase_price', val)"
+                    @blur="onCellDirectBlur(item, 'purchase_price')"
+                    @keydown.enter="(e: Event) => (e.target as HTMLInputElement).blur()"
+                  />
+                </td>
+
+                <!-- Landed Cost BDT -->
+                <td v-if="visibleColumnMap.cost_bdt" class="text-center bw-ops-col-tint--cost" style="min-width: 56px; width: 56px; padding: 2px">
+                  <div class="text-weight-bold text-slate-900 font-mono" style="font-size: 13px">
+                    {{ (item.landed_cost_bdt ?? item.unitCost ?? 0).toFixed(2) }}
+                  </div>
+                </td>
+
+                <!-- Ordered & Received Quantity -->
+                <td
+                  v-if="visibleColumnMap.ordered_quantity"
+                  class="text-center bw-ops-col-tint--qty"
+                  :style="{
+                    minWidth: isShipmentReceived ? '90px' : '56px',
+                    width: isShipmentReceived ? '90px' : '56px',
+                    padding: '2px',
+                  }"
+                  @click.stop
+                >
+                  <!-- Dual Display When Shipment is Received -->
+                  <div v-if="isShipmentReceived" class="column items-center justify-center q-gutter-y-2xs q-py-2xs">
+                    <div class="row items-center justify-center no-wrap q-gutter-x-xs font-mono" style="font-size: 11.5px">
+                      <span class="text-weight-bold text-slate-700" title="Ordered Quantity">{{ item.ordered_quantity }}</span>
+                      <span class="text-slate-400">/</span>
+                      <span class="text-weight-bolder text-primary" title="Received Quantity">{{ item.received_quantity ?? 0 }}</span>
+                    </div>
+
+                    <!-- Variance Badge -->
+                    <q-badge
+                      v-if="(item.received_quantity ?? 0) === item.ordered_quantity"
+                      color="positive"
+                      text-color="white"
+                      class="text-weight-bold font-mono"
+                      style="font-size: 9.5px; padding: 1px 4px; border-radius: 4px"
+                    >
+                      Exact
+                    </q-badge>
+                    <q-badge
+                      v-else-if="(item.received_quantity ?? 0) < item.ordered_quantity"
+                      color="orange-8"
+                      text-color="white"
+                      class="text-weight-bold font-mono"
+                      style="font-size: 9.5px; padding: 1px 4px; border-radius: 4px"
+                    >
+                      -{{ item.ordered_quantity - (item.received_quantity ?? 0) }}
+                    </q-badge>
+                    <q-badge
+                      v-else
+                      color="blue-8"
+                      text-color="white"
+                      class="text-weight-bold font-mono"
+                      style="font-size: 9.5px; padding: 1px 4px; border-radius: 4px"
+                    >
+                      +{{ (item.received_quantity ?? 0) - item.ordered_quantity }}
+                    </q-badge>
+                  </div>
+
+                  <!-- Editable Single Ordered Quantity Input When Draft / Processing -->
+                  <q-input
+                    v-else
+                    :model-value="getCellDraftValue(item, 'ordered_quantity')"
+                    type="number"
+                    min="1"
+                    step="1"
+                    dense
+                    borderless
+                    input-class="text-center font-mono text-weight-bold text-slate-800 excel-cell-input-native"
+                    class="excel-cell-input"
+                    :disable="!canEditLineStructure"
+                    @update:model-value="(val) => onCellDirectInput(item, 'ordered_quantity', val)"
+                    @blur="onCellDirectBlur(item, 'ordered_quantity')"
+                    @keydown.enter="(e: Event) => (e.target as HTMLInputElement).blur()"
+                  />
+                </td>
+
+                <!-- Product Weight (Excel cell style inline input) -->
+                <td v-if="visibleColumnMap.product_weight" class="text-center" style="min-width: 56px; width: 56px; padding: 2px" @click.stop>
+                  <q-input
+                    :model-value="getCellDraftValue(item, 'product_weight')"
+                    type="number"
+                    step="0.001"
+                    dense
+                    borderless
+                    input-class="text-center font-mono text-weight-medium text-slate-700 excel-cell-input-native"
+                    class="excel-cell-input"
+                    :disable="!canEditLineCostFields"
+                    @update:model-value="(val) => onCellDirectInput(item, 'product_weight', val)"
+                    @blur="onCellDirectBlur(item, 'product_weight')"
+                    @keydown.enter="(e: Event) => (e.target as HTMLInputElement).blur()"
+                  />
+                </td>
+
+                <!-- Package Weight (Excel cell style inline input) -->
+                <td v-if="visibleColumnMap.package_weight" class="text-center bw-ops-col-tint--weight" style="min-width: 56px; width: 56px; padding: 2px" @click.stop>
+                  <q-input
+                    :model-value="getCellDraftValue(item, 'package_weight')"
+                    type="number"
+                    step="0.001"
+                    dense
+                    borderless
+                    input-class="text-center font-mono text-weight-bold text-slate-800 excel-cell-input-native"
+                    class="excel-cell-input"
+                    :disable="!canEditLineCostFields"
+                    @update:model-value="(val) => onCellDirectInput(item, 'package_weight', val)"
+                    @blur="onCellDirectBlur(item, 'package_weight')"
+                    @keydown.enter="(e: Event) => (e.target as HTMLInputElement).blur()"
+                  />
+                </td>
+
+                <!-- Dynamically added custom column cells -->
+                <template v-for="col in customColumns" :key="col.name">
+                  <td v-if="visibleColumnMap[col.name]" class="text-slate-600 font-mono text-caption">
+                    {{ (item as any)[col.name] || '-' }}
+                  </td>
+                </template>
+              </tr>
+            </template>
+          </template>
+
+          <!-- Empty State Row with Modern SVG when shipment has 0 items -->
+          <tr v-else class="empty-state-table-row">
+            <td :colspan="totalVisibleColumnsCount" class="text-center q-py-xl">
+              <div class="empty-placeholder-wrapper column items-center justify-center q-py-xl">
+                <!-- Clean Modern Cargo Box & Document Vector Illustration -->
+                <svg width="140" height="120" viewBox="0 0 140 120" fill="none" xmlns="http://www.w3.org/2000/svg" class="empty-illustration-svg q-mb-md">
+                  <ellipse cx="70" cy="104" rx="48" ry="7" fill="#E2E8F0" />
+                  <rect x="36" y="38" width="68" height="56" rx="8" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.5" />
+                  <path d="M36 56H104" stroke="#E2E8F0" stroke-width="1.5" />
+                  <rect x="44" y="45" width="22" height="4" rx="2" fill="#E2E8F0" />
+                  <path d="M64 38V56H76V38H64Z" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1" />
+                  <g filter="drop-shadow(0px 2px 4px rgba(0, 0, 0, 0.06))">
+                    <rect x="74" y="16" width="38" height="26" rx="6" fill="#EFF6FF" stroke="#93C5FD" stroke-width="1.5" />
+                    <path d="M84 28H100" stroke="#3B82F6" stroke-width="2" stroke-linecap="round" />
+                    <path d="M84 34H94" stroke="#93C5FD" stroke-width="2" stroke-linecap="round" />
+                    <circle cx="80" cy="28" r="2" fill="#3B82F6" />
+                  </g>
+                  <g filter="drop-shadow(0px 4px 6px rgba(37, 99, 235, 0.2))">
+                    <circle cx="92" cy="76" r="16" fill="#2563EB" />
+                    <path d="M92 70V82M86 76H98" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" />
+                  </g>
+                </svg>
+
+                <div class="text-subtitle1 text-weight-bolder text-slate-800 q-mb-2xs">
+                  No line items in this {{ activeSheetId === 'sheet_all' ? 'shipment' : 'section' }}
+                </div>
+                <div class="text-caption text-slate-500 q-mb-md empty-state-subtitle" style="max-width: 440px; line-height: 1.4">
+                  {{ activeSheetId === 'sheet_all' ? 'Select a section tab from the bottom sheet bar or add items to begin.' : 'Add line items to track products, quantities, purchase costs, and weights for this section.' }}
                 </div>
                 <q-btn
                   color="primary"
@@ -528,7 +723,8 @@
                   label="Add First Item"
                   unelevated
                   no-caps
-                  class="rounded-borders"
+                  class="rounded-sq-btn text-weight-bold q-px-md"
+                  style="border-radius: 8px"
                   :disable="activeSheetId === 'sheet_all' || !canEditLineStructure"
                   @click="triggerAddItems"
                 >
@@ -655,22 +851,49 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <!-- Image Preview Dialog -->
+    <q-dialog v-model="showImagePreviewDialog">
+      <q-card style="max-width: 90vw; max-height: 90vh; background: transparent; box-shadow: none" class="overflow-hidden">
+        <div class="relative-position">
+          <img
+            v-if="previewImageUrl"
+            :src="previewImageUrl"
+            style="max-width: 85vw; max-height: 85vh; object-fit: contain; border-radius: 12px; display: block"
+            alt="Product Preview"
+          />
+          <q-btn
+            v-close-popup
+            icon="ph ph-x"
+            flat
+            round
+            dense
+            color="white"
+            class="absolute-top-right q-ma-sm"
+            style="background: rgba(0, 0, 0, 0.6)"
+          />
+        </div>
+      </q-card>
+    </q-dialog>
+    </template>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue';
+import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
 import { useCargoCompaniesQuery } from '../composables/useProcurementStockQuery';
+import SmartImage from 'src/components/SmartImage.vue';
 import AddShipmentItemsDrawer from '../components/AddShipmentItemsDrawer.vue';
 import ShipmentExcelBottomBar, { type SheetTabItem } from '../components/ShipmentExcelBottomBar.vue';
 import ShipmentSettingsDrawer from '../components/ShipmentSettingsDrawer.vue';
-import ShipmentSectionSheetDialog, { type SectionFormData } from '../components/ShipmentSectionSheetDialog.vue';
-import ShipmentSectionViewDialog, { type SectionViewData } from '../components/ShipmentSectionViewDialog.vue';
+import ShipmentSectionSheetDialog from '../components/ShipmentSectionSheetDialog.vue';
+import ShipmentSectionViewDialog from '../components/ShipmentSectionViewDialog.vue';
+import type { SectionFormData, SectionViewData } from '../types/shipmentSection';
 import AddCustomColumnDialog from '../components/AddCustomColumnDialog.vue';
 import ShipmentStatusWorkflowBar from '../components/ShipmentStatusWorkflowBar.vue';
 import { useInboundShipmentCalculations } from '../composables/useInboundShipmentCalculations';
@@ -688,6 +911,9 @@ const shipmentStore = useGlobalShipmentStore();
 const shipmentId = Number(route.params.id);
 
 const activeTab = ref<'lines' | 'balance' | 'cost' | 'receive'>('lines');
+const pageInitialLoading = computed(
+  () => shipmentStore.loading && (!shipmentStore.currentShipment || shipmentStore.currentShipment.id !== shipmentId),
+);
 const calculations = useInboundShipmentCalculations();
 const actions = useInboundShipmentActions({
   shipmentId,
@@ -697,13 +923,15 @@ const actions = useInboundShipmentActions({
 
 const {
   currentPurchaseCurrencySymbol,
-  currentCostCurrencySymbol,
   isStockPosted,
   isCostsLocked,
-  canEditCosts,
   canEditLineStructure,
   canEditLineCostFields,
 } = calculations;
+
+const isShipmentReceived = computed(
+  () => shipmentStore.currentShipment?.status === 'received' || isStockPosted.value,
+);
 
 const {
   openEditItem,
@@ -723,10 +951,69 @@ const {
   assigningChild,
   saveAssignChild,
   clearAssignChild,
-  openAddItems,
   confirmLockShipmentCosts,
   downloadExcel,
 } = actions;
+
+// In-Place Shipment Name Edit State
+const isEditingName = ref(false);
+const nameEditValue = ref('');
+const savingName = ref(false);
+const nameInputRef = ref<HTMLInputElement | null>(null);
+
+const startNameEdit = () => {
+  nameEditValue.value = shipmentStore.currentShipment?.name || '';
+  isEditingName.value = true;
+  void nextTick(() => {
+    nameInputRef.value?.focus();
+    nameInputRef.value?.select();
+  });
+};
+
+const cancelNameEdit = () => {
+  isEditingName.value = false;
+  nameEditValue.value = '';
+};
+
+const saveNameInPlace = async () => {
+  if (!isEditingName.value || savingName.value) return;
+  const current = shipmentStore.currentShipment;
+  if (!current?.id) {
+    isEditingName.value = false;
+    return;
+  }
+
+  const trimmed = nameEditValue.value.trim();
+  if (!trimmed) {
+    isEditingName.value = false;
+    return;
+  }
+
+  if (trimmed === current.name) {
+    isEditingName.value = false;
+    return;
+  }
+
+  savingName.value = true;
+  try {
+    await shipmentStore.updateShipment(current.id, { name: trimmed });
+    $q.notify({
+      type: 'positive',
+      message: 'Shipment name updated',
+      position: 'bottom',
+      timeout: 1000,
+    });
+  } catch (err: unknown) {
+    $q.notify({
+      type: 'negative',
+      message: (err as Error)?.message || 'Failed to update shipment name',
+      position: 'bottom',
+    });
+  } finally {
+    savingName.value = false;
+    isEditingName.value = false;
+  }
+};
 
 const settingsDrawerOpen = ref(false);
 const settingsDrawerTab = ref('details');
@@ -743,6 +1030,8 @@ const onSelectedChildTenantIdUpdate = (val: number | null) => {
 const showAddColumnDialog = ref(false);
 const showAddSectionDialog = ref(false);
 const showViewSectionDialog = ref(false);
+const showImagePreviewDialog = ref(false);
+const previewImageUrl = ref<string | null>(null);
 const isEditingSection = ref(false);
 const editingSectionData = ref<SectionFormData | null>(null);
 const viewingSectionData = ref<SectionViewData | null>(null);
@@ -831,7 +1120,7 @@ const applyBulkPaste = async () => {
         normalized = Number(val.toFixed(3));
       }
 
-      setDraftValue(targetItem, field, normalized);
+      onCellDirectInput(targetItem, field, normalized);
       if (targetItem.rawItem) {
         targetItem.rawItem[field] = normalized;
       }
@@ -847,36 +1136,43 @@ const applyBulkPaste = async () => {
     }
   }
 
-  if (updates.length > 0 && shipmentId && !isNaN(shipmentId)) {
-    bulkPasteSaving.value = true;
-    try {
-      await shipmentStore.updateShipmentItemsBulk(shipmentId, updates);
+  try {
+    if (updates.length > 0 && shipmentId && !isNaN(shipmentId)) {
+      bulkPasteSaving.value = true;
+      try {
+        await shipmentStore.updateShipmentItemsBulk(shipmentId, updates);
+        $q.notify({
+          message: `Successfully pasted and saved ${count} ${bulkPasteFieldLabel.value} value(s)`,
+          color: 'positive',
+          icon: 'ph ph-check-circle',
+          position: 'bottom',
+          timeout: 1500,
+        });
+      } catch (err: unknown) {
+        console.error('Failed to bulk save pasted values to server:', err);
+        $q.notify({
+          message: `Pasted ${count} value(s) locally. Failed to save to server: ${(err as Error)?.message || 'error'}`,
+          color: 'warning',
+          icon: 'ph ph-warning-circle',
+          position: 'bottom',
+          timeout: 2500,
+        });
+      } finally {
+        bulkPasteSaving.value = false;
+      }
+    } else {
       $q.notify({
-        message: `Successfully pasted and saved ${count} ${bulkPasteFieldLabel.value} value(s)`,
+        message: `Pasted ${count} value(s) into ${bulkPasteFieldLabel.value}`,
         color: 'positive',
-        icon: 'ph ph-check-circle',
+        icon: 'ph ph-clipboard-text',
+        position: 'bottom',
         timeout: 1500,
       });
-    } catch (err) {
-      $q.notify({
-        message: `Pasted ${count} value(s) locally. Failed to save to server.`,
-        color: 'warning',
-        icon: 'ph ph-warning-circle',
-        timeout: 2000,
-      });
-    } finally {
-      bulkPasteSaving.value = false;
     }
-  } else {
-    $q.notify({
-      message: `Pasted ${count} value(s) into ${bulkPasteFieldLabel.value}`,
-      color: 'positive',
-      icon: 'ph ph-clipboard-text',
-      timeout: 1500,
-    });
+  } finally {
+    bulkPasteSaving.value = false;
+    showBulkPasteDialog.value = false;
   }
-
-  showBulkPasteDialog.value = false;
 };
 
 const triggerAddItems = () => {
@@ -1099,9 +1395,20 @@ const displayedItems = computed(() => {
 
       return {
         id: item.id || idx + 1,
+        sl: idx + 1,
+        sort_order: item.sort_order ?? idx + 1,
         selected: selectedItemIds.value.includes(item.id),
         name: item.name || 'Unnamed Product',
         code: item.product_code || item.barcode || `ITEM-${item.id}`,
+        style_code: item.style_code,
+        sku: item.sku,
+        barcode: item.barcode,
+        purchase_price: item.purchase_price,
+        ordered_quantity: oQty,
+        received_quantity: item.received_quantity ?? null,
+        product_weight: item.product_weight,
+        package_weight: item.package_weight,
+        landed_cost_bdt: item.landed_cost_bdt ?? unitCost,
         category: getSectionTitle(item.section_id),
         sectionId: item.section_id ?? null,
         vendor: vendorName,
@@ -1109,6 +1416,8 @@ const displayedItems = computed(() => {
         quantity: oQty,
         price: pPrice,
         cost: totalCost,
+        unitCost,
+        image_url: item.image_url,
         image: item.image_url || 'https://images.unsplash.com/photo-1601924994987-69e26d50dc26?w=100&auto=format&fit=crop&q=60',
         rawItem: item,
       };
@@ -1129,92 +1438,79 @@ const allSelected = computed({
   },
 });
 
-// Inline Draft Edit Handlers
-const draftValues = reactive<Record<string, any>>({});
-const activeSaves = new Set<string>();
+// Cell Draft Values & Direct Edit Handlers
+const cellDraftValues = reactive<Record<number, Record<string, string | number | null>>>({});
 
-watch(
-  () => shipmentStore.costEntriesSaving,
-  (saving, wasSaving) => {
-    if (wasSaving && !saving) {
-      for (const key of Object.keys(draftValues)) {
-        if (
-          key.endsWith('_product_weight') ||
-          key.endsWith('_package_weight') ||
-          key.endsWith('_purchase_price') ||
-          key.endsWith('_ordered_quantity')
-        ) {
-          delete draftValues[key];
-        }
-      }
+const getCellDraftValue = (item: any, field: string) => {
+  if (cellDraftValues[item.id]?.[field] !== undefined) {
+    return cellDraftValues[item.id][field];
+  }
+  return item[field];
+};
+
+const onCellDirectInput = (item: any, field: string, val: string | number | null) => {
+  if (!cellDraftValues[item.id]) {
+    cellDraftValues[item.id] = {};
+  }
+  cellDraftValues[item.id][field] = val;
+};
+
+const onCellDirectBlur = async (item: any, field: string) => {
+  if (!cellDraftValues[item.id] || cellDraftValues[item.id][field] === undefined) return;
+  const draftVal = cellDraftValues[item.id][field];
+  delete cellDraftValues[item.id][field];
+
+  let parsedVal: number | null = null;
+  if (draftVal !== null && draftVal !== '' && draftVal !== undefined) {
+    const num = Number(draftVal);
+    if (!isNaN(num)) {
+      parsedVal = num;
     }
-  },
-);
-
-const getDraftValue = (item: any, field: string) => {
-  const key = `${item.id}_${field}`;
-  if (key in draftValues) return draftValues[key];
-  if (item.rawItem && field in item.rawItem) return item.rawItem[field];
-  if (field === 'purchase_price') return item.price;
-  if (field === 'ordered_quantity') return item.quantity;
-  if (field === 'product_weight') return 0.25;
-  if (field === 'package_weight') return 0.35;
-  return item[field] ?? '';
-};
-
-const setDraftValue = (item: any, field: string, value: any) => {
-  const key = `${item.id}_${field}`;
-  draftValues[key] = value;
-};
-
-const saveDraftValue = async (item: any, field: string, options?: { decimals?: number }) => {
-  const key = `${item.id}_${field}`;
-  if (!(key in draftValues)) return;
-  const rawVal = draftValues[key];
-  let normalized = rawVal === '' || rawVal == null ? null : Number(rawVal);
-  if (normalized != null && options?.decimals != null && !isNaN(normalized)) {
-    normalized = Number(normalized.toFixed(options.decimals));
   }
 
-  if (field === 'purchase_price') item.price = normalized ?? 0;
-  if (field === 'ordered_quantity') item.quantity = normalized ?? 0;
-  if (item.rawItem) item.rawItem[field] = normalized;
+  const rawOriginal = item.rawItem ? item.rawItem[field] : item[field];
+  const currentNum = rawOriginal != null ? Number(rawOriginal) : null;
+  if (parsedVal === currentNum) return;
 
-  if (shipmentId && item.rawItem?.id) {
-    if (activeSaves.has(key)) return;
-    activeSaves.add(key);
-    try {
-      await shipmentStore.updateShipmentItem(item.rawItem.id, { [field]: normalized });
-      $q.notify({
-        message: `Updated ${field.replace('_', ' ')}`,
-        color: 'positive',
-        icon: 'ph ph-check-circle',
-        timeout: 1000,
-      });
-    } catch (err) {
-      $q.notify({
-        message: 'Failed to update item',
-        color: 'negative',
-        icon: 'ph ph-warning-circle',
-      });
-    } finally {
-      activeSaves.delete(key);
-    }
+  if (field === 'ordered_quantity' && parsedVal !== null && parsedVal < 1) {
+    $q.notify({
+      type: 'warning',
+      message: 'Quantity must be at least 1',
+      position: 'bottom',
+    });
+    return;
+  }
+
+  try {
+    const payload: Record<string, unknown> = {
+      [field]: parsedVal,
+    };
+    await shipmentStore.updateShipmentItem(item.id, payload as any);
+    $q.notify({
+      type: 'positive',
+      message: 'Updated item',
+      position: 'bottom',
+      timeout: 1000,
+    });
+  } catch (err: unknown) {
+    console.error(`Failed to update ${field}:`, err);
+    $q.notify({
+      type: 'negative',
+      message: (err as Error)?.message || `Failed to update ${field}`,
+      position: 'bottom',
+    });
   }
 };
 
-const copyToClipboard = (text: any, label: string) => {
-  if (!text) return;
-  void navigator.clipboard.writeText(String(text));
-  $q.notify({
-    message: `Copied ${label} to clipboard`,
-    color: 'positive',
-    icon: 'ph ph-copy',
-    timeout: 1000,
-  });
+const openImagePreview = (url?: string | null) => {
+  if (!url) return;
+  previewImageUrl.value = url;
+  showImagePreviewDialog.value = true;
 };
 
-const onSlPositionChange = async (currentIndex: number, newSlValue: any) => {
+const onSlInputChange = async (item: any, newSlValue: any) => {
+  const currentIndex = displayedItems.value.findIndex((it) => it.id === item.id);
+  if (currentIndex === -1) return;
   const targetPos = parseInt(String(newSlValue), 10);
   const items = displayedItems.value || [];
   if (isNaN(targetPos) || targetPos < 1 || targetPos > items.length) return;
@@ -1241,8 +1537,8 @@ const onSlPositionChange = async (currentIndex: number, newSlValue: any) => {
   fullItems.splice(fullTargetIndex, 0, removed);
 
   if (shipmentId && !isNaN(shipmentId)) {
-    const itemsOrder = fullItems.map((item, idx) => ({
-      id: item.id,
+    const itemsOrder = fullItems.map((it, idx) => ({
+      id: it.id,
       sort_order: idx * 10,
     }));
     try {
@@ -1252,6 +1548,7 @@ const onSlPositionChange = async (currentIndex: number, newSlValue: any) => {
         message: `Moved item to position #${targetPos}`,
         color: 'positive',
         icon: 'ph ph-arrows-down-up',
+        position: 'bottom',
         timeout: 1000,
       });
     } catch (err: unknown) {
@@ -1260,6 +1557,7 @@ const onSlPositionChange = async (currentIndex: number, newSlValue: any) => {
         message: 'Failed to reorder item',
         color: 'negative',
         icon: 'ph ph-warning-circle',
+        position: 'bottom',
       });
     }
   }
@@ -1515,9 +1813,11 @@ const onSaveSectionSheet = async (data: SectionFormData) => {
         try {
           await shipmentStore.updateSection(target.dbId, {
             title: data.title,
-            invoice_number: data.invoiceNumber || null,
-            invoice_date: data.invoiceDate || null,
-            notes: data.notes || null,
+            metadata: {
+              invoice_number: data.invoiceNumber,
+              invoice_date: data.invoiceDate,
+              notes: data.notes,
+            },
           });
           await shipmentStore.fetchShipmentDetails(shipmentId);
           $q.notify({
@@ -1544,9 +1844,11 @@ const onSaveSectionSheet = async (data: SectionFormData) => {
           shipment_id: shipmentId,
           vendor_id: vendorId ?? undefined,
           title: data.title,
-          invoice_number: data.invoiceNumber || null,
-          invoice_date: data.invoiceDate || null,
-          notes: data.notes || null,
+          metadata: {
+            invoice_number: data.invoiceNumber,
+            invoice_date: data.invoiceDate,
+            notes: data.notes,
+          },
         });
         createdDbId = created?.id;
         await shipmentStore.fetchShipmentDetails(shipmentId);
@@ -1686,15 +1988,15 @@ const removeSheet = async (id: string) => {
 }
 
 /* Hide number input spinners */
-:deep(.inline-edit-input input[type='number']::-webkit-outer-spin-button),
-:deep(.inline-edit-input input[type='number']::-webkit-inner-spin-button) {
-  -webkit-appearance: none;
-  margin: 0;
+:deep(input[type='number']::-webkit-outer-spin-button),
+:deep(input[type='number']::-webkit-inner-spin-button) {
+  -webkit-appearance: none !important;
+  margin: 0 !important;
 }
 
-:deep(.inline-edit-input input[type='number']) {
-  -moz-appearance: textfield;
-  appearance: textfield;
+:deep(input[type='number']) {
+  -moz-appearance: textfield !important;
+  appearance: textfield !important;
 }
 
 :deep(.inline-edit-input .q-field__control) {
@@ -1745,5 +2047,170 @@ const removeSheet = async (id: string) => {
   opacity: 1 !important;
   color: var(--q-primary) !important;
   transform: scale(1.1);
+}
+
+.shipment-name-container {
+  display: inline-flex;
+  align-items: center;
+  max-width: 400px;
+}
+
+.shipment-name-display-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 3px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  max-width: 100%;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.shipment-name-display-btn:hover {
+  background: var(--bw-neutral-surface-hover, rgba(0, 0, 0, 0.05));
+  border-color: #E2E8F0;
+}
+
+.shipment-name-display-btn:hover .shipment-name-icon {
+  opacity: 1;
+  color: var(--q-primary, #0F172A);
+}
+
+.shipment-name-text {
+  font-size: 15px;
+  font-weight: 800;
+  color: #0F172A;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.shipment-name-icon {
+  color: #94A3B8;
+  opacity: 0.6;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.shipment-name-input {
+  font-size: 15px;
+  font-weight: 800;
+  color: #0F172A;
+  letter-spacing: -0.01em;
+  background: #FFFFFF;
+  border: 1.5px solid var(--q-primary, #2563EB);
+  border-radius: 6px;
+  padding: 2px 8px;
+  line-height: 1.2;
+  height: 28px;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+  width: 100%;
+  min-width: 220px;
+}
+
+/* Item Image Cell & Expand Button (1 inch) */
+.item-img-container {
+  position: relative;
+  width: 1in;
+  height: 1in;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bw-neutral-surface-subtle, #F1F5F9);
+  border: 1px solid var(--bw-theme-border, #E2E8F0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+:deep(.item-img-element) {
+  width: 1in !important;
+  height: 1in !important;
+  object-fit: cover !important;
+  border-radius: 8px !important;
+}
+
+.img-expand-btn {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  background: rgba(15, 23, 42, 0.7);
+  color: #FFFFFF !important;
+  padding: 2px !important;
+  opacity: 0;
+  transition: opacity 0.15s ease-in-out;
+}
+
+.item-img-container:hover .img-expand-btn {
+  opacity: 1;
+}
+
+/* SL In-Place Editable Input */
+.sl-input {
+  width: 32px;
+  height: 24px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  outline: none;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+.sl-input:hover {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: #CBD5E1;
+}
+
+.sl-input:focus {
+  background: #FFFFFF;
+  border-color: var(--q-primary, #2563EB);
+  box-shadow: 0 0 0 1.5px rgba(37, 99, 235, 0.2);
+  color: #0F172A;
+}
+
+/* Hide number spin buttons on SL input */
+.sl-input::-webkit-outer-spin-button,
+.sl-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.sl-input {
+  -moz-appearance: textfield;
+}
+
+/* Skeleton Rows & Empty Placeholder */
+.shipment-skeleton-row td {
+  padding: 8px !important;
+  border-bottom: 1px solid #F1F5F9;
+}
+
+.empty-state-table-row td {
+  background: var(--bw-neutral-surface, #FFFFFF);
+}
+
+.empty-placeholder-wrapper {
+  user-select: none;
+}
+
+.empty-illustration-svg {
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.04));
+  animation: floatIllustration 4s ease-in-out infinite alternate;
+}
+
+@keyframes floatIllustration {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-4px);
+  }
 }
 </style>

@@ -200,16 +200,42 @@
           </div>
         </q-card-section>
 
-        <q-card-actions align="right" class="q-pa-md bg-grey-1">
-          <q-btn flat label="Cancel" color="grey-8" v-close-popup no-caps />
-          <q-btn
-            type="submit"
-            color="primary"
-            unelevated
-            :label="isEdit ? 'Save Changes' : 'Create Shipment'"
-            :loading="submitting"
-            no-caps
-          />
+        <q-card-actions align="between" class="q-pa-md bg-grey-1">
+          <div v-if="isEdit" class="row q-gutter-xs">
+            <q-btn
+              flat
+              dense
+              color="grey-8"
+              icon="ph ph-archive-box"
+              label="Archive"
+              :loading="archiving"
+              no-caps
+              @click="onArchive"
+            />
+            <q-btn
+              flat
+              dense
+              color="negative"
+              icon="ph ph-trash"
+              label="Delete"
+              :loading="deleting"
+              no-caps
+              @click="onDelete"
+            />
+          </div>
+          <div v-else />
+
+          <div class="row q-gutter-xs items-center">
+            <q-btn flat label="Cancel" color="grey-8" v-close-popup no-caps />
+            <q-btn
+              type="submit"
+              color="primary"
+              unelevated
+              :label="isEdit ? 'Save Changes' : 'Create Shipment'"
+              :loading="submitting"
+              no-caps
+            />
+          </div>
         </q-card-actions>
       </q-form>
     </q-card>
@@ -217,8 +243,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue';
-import { useDialogPluginComponent } from 'quasar';
+import { ref, onMounted, computed } from 'vue';
+import { useDialogPluginComponent, useQuasar } from 'quasar';
 import { useAuthStore } from 'src/modules/auth/stores/authStore';
 import { useVendorStore } from 'src/modules/vendor/stores/vendorStore';
 import { useGlobalShipmentStore } from '../stores/globalShipmentStore';
@@ -235,6 +261,7 @@ const props = defineProps<{
 defineEmits([...useDialogPluginComponent.emits]);
 
 const { dialogRef, onDialogHide, onDialogOK } = useDialogPluginComponent();
+const $q = useQuasar();
 
 const authStore = useAuthStore();
 const vendorStore = useVendorStore();
@@ -242,6 +269,8 @@ const shipmentStore = useGlobalShipmentStore();
 
 const isEdit = computed(() => !!props.shipment);
 const submitting = ref(false);
+const archiving = ref(false);
+const deleting = ref(false);
 const error = ref<string | null>(null);
 
 const typeOptions = [
@@ -363,7 +392,8 @@ const onSubmit = async () => {
     }
 
     if (isEdit.value && props.shipment) {
-      const { cargo_company_id: _cargoCompanyId, ...editPayload } = form.value;
+      const editPayload = { ...form.value };
+      delete (editPayload as Record<string, unknown>).cargo_company_id;
       const updated = await shipmentStore.updateShipment(props.shipment.id, {
         ...editPayload,
         vendor_id: form.value.vendor_id!,
@@ -384,5 +414,85 @@ const onSubmit = async () => {
   } finally {
     submitting.value = false;
   }
+};
+
+const onArchive = () => {
+  if (!props.shipment) return;
+  const shipment = props.shipment;
+  $q.dialog({
+    title: 'Archive Shipment',
+    message: `Are you sure you want to archive "${shipment.name}" (#${shipment.tenant_shipment_id || shipment.id})? It will be moved out of the active shipments list.`,
+    cancel: {
+      flat: true,
+      label: 'Cancel',
+      noCaps: true,
+    },
+    ok: {
+      unelevated: true,
+      color: 'primary',
+      label: 'Archive',
+      noCaps: true,
+    },
+  }).onOk(() => {
+    void (async () => {
+      archiving.value = true;
+      try {
+        await shipmentStore.archiveShipment(shipment.id);
+        $q.notify({
+          type: 'positive',
+          message: `Shipment "${shipment.name}" archived successfully.`,
+          timeout: 2000,
+        });
+        onDialogOK();
+      } catch (err: unknown) {
+        $q.notify({
+          type: 'negative',
+          message: (err as Error).message || 'Failed to archive shipment',
+        });
+      } finally {
+        archiving.value = false;
+      }
+    })();
+  });
+};
+
+const onDelete = () => {
+  if (!props.shipment) return;
+  const shipment = props.shipment;
+  $q.dialog({
+    title: 'Delete Shipment',
+    message: `Are you sure you want to permanently delete "${shipment.name}" (#${shipment.tenant_shipment_id || shipment.id})? This action cannot be undone.`,
+    cancel: {
+      flat: true,
+      label: 'Cancel',
+      noCaps: true,
+    },
+    ok: {
+      unelevated: true,
+      color: 'negative',
+      label: 'Delete Permanently',
+      noCaps: true,
+    },
+  }).onOk(() => {
+    void (async () => {
+      deleting.value = true;
+      try {
+        await shipmentStore.deleteShipment(shipment.id);
+        $q.notify({
+          type: 'positive',
+          message: `Shipment "${shipment.name}" deleted successfully.`,
+          timeout: 2000,
+        });
+        onDialogOK();
+      } catch (err: unknown) {
+        $q.notify({
+          type: 'negative',
+          message: (err as Error).message || 'Failed to delete shipment',
+        });
+      } finally {
+        deleting.value = false;
+      }
+    })();
+  });
 };
 </script>

@@ -31,9 +31,6 @@ import { invalidateSharedShipmentItemsCostingCache, seedSharedShipmentItemsCosti
 import { applyShipmentWeightBalance } from '../utils/applyShipmentWeightBalance';
 import { applyShipmentPurchaseBalance } from '../utils/applyShipmentPurchaseBalance';
 import { syncShipmentWeightToProduct } from '../utils/syncShipmentWeightToProduct';
-import { supabase } from 'src/boot/supabase';
-import { useStockLocationStore } from './stockLocationStore';
-import { useAuthStore } from 'src/modules/auth/stores/authStore';
 
 const COST_AFFECTING_ITEM_FIELDS = new Set([
   'product_weight',
@@ -127,6 +124,7 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
         search?: string | null;
         status?: string | null;
         isArchived?: boolean;
+        append?: boolean;
       },
     ) {
       this.loading = true;
@@ -147,7 +145,11 @@ export const useGlobalShipmentStore = defineStore('global_shipment', {
           isArchived,
         );
 
-        this.rows = result.data;
+        if (options?.append) {
+          this.rows = [...this.rows, ...result.data];
+        } else {
+          this.rows = result.data;
+        }
         this.page = result.meta.page;
         this.pageSize = result.meta.pageSize;
         this.total = result.meta.total;

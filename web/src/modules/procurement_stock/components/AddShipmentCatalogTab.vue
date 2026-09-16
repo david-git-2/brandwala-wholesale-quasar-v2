@@ -1166,7 +1166,7 @@ const registerProduct = async (item: ShipmentCartItem): Promise<number> => {
     expire_date: null,
     minimum_order_quantity: null,
     market_code: null,
-    is_available: true,
+    is_available: false,
   });
   return created.id;
 };

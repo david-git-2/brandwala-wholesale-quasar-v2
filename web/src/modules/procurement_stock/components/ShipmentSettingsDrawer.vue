@@ -169,6 +169,43 @@
                 />
               </div>
             </div>
+
+            <q-separator class="q-my-sm" />
+
+            <!-- Danger Zone / Shipment Actions -->
+            <div class="column q-gutter-y-xs">
+              <div class="text-subtitle2 text-weight-bold text-grey-9 row items-center q-gutter-x-xs">
+                <q-icon name="ph ph-sliders" size="18px" color="primary" />
+                <span>Shipment Actions</span>
+              </div>
+              <div class="text-caption text-grey-6 text-xxs">
+                Archive to hide from active list, or permanently delete this shipment.
+              </div>
+              <div class="row q-gutter-sm q-pt-xs">
+                <q-btn
+                  outline
+                  dense
+                  no-caps
+                  color="grey-8"
+                  icon="ph ph-archive-box"
+                  label="Archive"
+                  class="col"
+                  :loading="archivingLoading"
+                  @click="confirmArchiveFromDrawer"
+                />
+                <q-btn
+                  outline
+                  dense
+                  no-caps
+                  color="negative"
+                  icon="ph ph-trash"
+                  label="Delete"
+                  class="col"
+                  :loading="deletingLoading"
+                  @click="confirmDeleteFromDrawer"
+                />
+              </div>
+            </div>
           </div>
         </q-tab-panel>
 
@@ -728,26 +765,72 @@ const confirmArchiveFromDrawer = () => {
       label: 'Archive',
       noCaps: true,
     },
-  }).onOk(async () => {
-    archivingLoading.value = true;
-    try {
-      await shipmentStore.archiveShipment(shipment.id);
-      $q.notify({
-        type: 'positive',
-        message: `Shipment "${shipment.name}" archived successfully.`,
-        timeout: 2000,
-      });
-      emit('update:modelValue', false);
-      const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : '';
-      void router.push(`${tenantPrefix}/app/procurement/shipments`);
-    } catch (err: unknown) {
-      $q.notify({
-        type: 'negative',
-        message: (err as Error).message || 'Failed to archive shipment',
-      });
-    } finally {
-      archivingLoading.value = false;
-    }
+  }).onOk(() => {
+    void (async () => {
+      archivingLoading.value = true;
+      try {
+        await shipmentStore.archiveShipment(shipment.id);
+        $q.notify({
+          type: 'positive',
+          message: `Shipment "${shipment.name}" archived successfully.`,
+          timeout: 2000,
+        });
+        emit('update:modelValue', false);
+        const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : '';
+        void router.push(`${tenantPrefix}/app/procurement/shipments`);
+      } catch (err: unknown) {
+        $q.notify({
+          type: 'negative',
+          message: (err as Error).message || 'Failed to archive shipment',
+        });
+      } finally {
+        archivingLoading.value = false;
+      }
+    })();
+  });
+};
+
+const deletingLoading = ref(false);
+
+const confirmDeleteFromDrawer = () => {
+  const shipment = shipmentStore.currentShipment;
+  if (!shipment) return;
+  $q.dialog({
+    title: 'Delete Shipment',
+    message: `Are you sure you want to permanently delete "${shipment.name}" (#${(shipment as any).tenant_shipment_id || shipment.id})? This action cannot be undone.`,
+    cancel: {
+      flat: true,
+      label: 'Cancel',
+      noCaps: true,
+    },
+    ok: {
+      unelevated: true,
+      color: 'negative',
+      label: 'Delete Permanently',
+      noCaps: true,
+    },
+  }).onOk(() => {
+    void (async () => {
+      deletingLoading.value = true;
+      try {
+        await shipmentStore.deleteShipment(shipment.id);
+        $q.notify({
+          type: 'positive',
+          message: `Shipment "${shipment.name}" deleted successfully.`,
+          timeout: 2000,
+        });
+        emit('update:modelValue', false);
+        const tenantPrefix = authStore.tenantSlug ? `/${authStore.tenantSlug}` : '';
+        void router.push(`${tenantPrefix}/app/procurement/shipments`);
+      } catch (err: unknown) {
+        $q.notify({
+          type: 'negative',
+          message: (err as Error).message || 'Failed to delete shipment',
+        });
+      } finally {
+        deletingLoading.value = false;
+      }
+    })();
   });
 };
 
@@ -998,19 +1081,7 @@ const removeProductRateRow = async (index: number) => {
   }
 };
 
-let ratesDebounceTimer: ReturnType<typeof setTimeout> | null = null;
-const debouncedSaveRates = () => {
-  if (ratesDebounceTimer) clearTimeout(ratesDebounceTimer);
-  ratesDebounceTimer = setTimeout(() => {
-    void saveRates();
-  }, 600);
-};
-
 const onRatesBlur = () => {
-  if (ratesDebounceTimer) {
-    clearTimeout(ratesDebounceTimer);
-    ratesDebounceTimer = null;
-  }
   void saveRates();
 };
 

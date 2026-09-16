@@ -87,34 +87,35 @@ export const calculateLineCargoPurchaseShare = (
 
 export const calculateLinePurchaseBase = (
   item: CostingLineItemInput,
-  shipment: CostingShipmentInput,
+  shipment?: CostingShipmentInput | null,
   items?: CostingLineItemInput[],
 ): number => {
+  if (!item) return 0;
   const purchasePrice = item.purchase_price || 0;
   const qty = item.ordered_quantity || 0;
 
-  if (items && items.length > 0) {
+  if (items && items.length > 0 && shipment) {
     const lineCargoPurchase = calculateLineCargoPurchaseShare(item, shipment, items);
     return purchasePrice + (qty > 0 ? lineCargoPurchase / qty : 0);
   }
 
   const weightKg = ((item.product_weight || 0) + (item.package_weight || 0)) / 1000;
-  return purchasePrice + weightKg * (shipment.cargo_rate || 0);
+  return purchasePrice + weightKg * (shipment?.cargo_rate || 0);
 };
 
 export const calculateRawTransactionRate = (
-  shipment: CostingShipmentInput,
-  items: CostingLineItemInput[],
+  shipment?: CostingShipmentInput | null,
+  items?: CostingLineItemInput[],
 ): number | null => {
-  if (shipment.type === 'local') {
+  if (!shipment || shipment.type === 'local') {
     return null;
   }
 
   const productConv = shipment.product_conversion_rate || 1.0;
   const cargoConv = shipment.cargo_conversion_rate || 1.0;
   const cargoRate = shipment.cargo_rate || 0;
-  const cargoWeight = getCargoWeightKg(shipment, items);
-  const goodsPurchase = sumGoodsPurchase(items);
+  const cargoWeight = items ? getCargoWeightKg(shipment, items) : 0;
+  const goodsPurchase = items ? sumGoodsPurchase(items) : 0;
   const cargoPurchase = cargoWeight * cargoRate;
 
   const goodsBdt = goodsPurchase * productConv;
@@ -147,9 +148,12 @@ export const getCalculatedTransactionRate = (
 /** Preview unit landed cost in BDT — does not write `landed_cost_bdt`. */
 export const calculateLineLandedCostBdt = (
   item: CostingLineItemInput,
-  shipment: CostingShipmentInput,
+  shipment?: CostingShipmentInput | null,
   items?: CostingLineItemInput[],
 ): number => {
+  if (!item) return 0;
+  if (!shipment) return Number(item.purchase_price) || 0;
+
   const base = calculateLinePurchaseBase(item, shipment, items);
 
   if (shipment.type === 'local') {
